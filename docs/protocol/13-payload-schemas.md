@@ -261,7 +261,7 @@ A sender that could not read the file omits the key. A receiver treats an
 array, `[]` included, as the list to hold, and treats absent or `null` as "the
 sender does not know" and keeps its own
 (`apps/desktop/src/main/sync/item-handlers/note-handler-frontmatter.ts:16`;
-the core's projector `crates/memry-core/src/storage/repositories/projectors/notes.rs:110`,
+the core's projector `crates/memry-core/src/storage/repositories/projectors/notes.rs:124`,
 journal `:184-191`).
 
 Builds before this rule never sent `aliases` from desktop, so their pushes keep

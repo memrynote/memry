@@ -192,7 +192,7 @@ chunk took 30 ms or 250 ms; with every 20th attachment at 300 chunks, it made 23
 The Rust core batches the manifests of one re-drive call's downloads, leaving
 out ids the metered policy defers, and fetches alone when fewer than two would
 download. It remembers a 404 for 10 minutes per vault
-(`crates/memry-core/src/api/sync/attachment_fetch.rs:30`, `:248`,
+(`crates/memry-core/src/api/sync/attachment_fetch.rs:30`, `:417`,
 `crates/memry-core/src/protocol/attachments.rs:165`).
 
 ## 14.6 Two transfer paths
@@ -260,6 +260,27 @@ from the body (`apps/desktop/src/main/sync/note-attachment-metadata.ts:14-23`).
 sender does not know"** (chapter 13 §13.4). A client MUST NOT infer "this note
 has no attachments" from an absent key, and MUST NOT clear the local list on
 seeing one.
+
+**A receiver downloads what a note references, and names it on open**
+(#5675). Applying a note records each id in its `attachmentReferences` as a
+wanted attachment, before any manifest is read, and stops wanting an id the
+note no longer lists or a note that was deleted. The receiver downloads the
+wanted ones under its metered policy (§14.6). Desktop requests each reference
+as it applies the note
+(`apps/desktop/src/main/sync/item-handlers/note-handler.ts:176`). The Rust
+core merges the list into its attachment cache in the projecting transaction
+(`crates/memry-core/src/storage/repositories/projectors/notes.rs:105`,
+`crates/memry-core/src/storage/repositories/projectors/mod.rs:206`,
+`crates/memry-core/src/domain/attachment_refs.rs:39`), and its re-drive walks
+those rows (`crates/memry-core/src/domain/attachments.rs:475`). A body block
+names its file by the manifest's filename, and a recorded id has none until its
+manifest is read, so the block cannot bind before then
+(`crates/memry-core/src/domain/attachments.rs:339`). Opening the note reads
+the manifests of its unnamed ids, whatever the download setting
+(`crates/memry-core/src/api/sync/attachment_fetch.rs:150`,
+`apps/ios/Memry/Features/Notes/NoteReadParts.swift:253`). A core that applied
+notes before #5675 records their ids once, before its next first sync or pass
+(`crates/memry-core/src/sync/note_refs_heal.rs:27`).
 
 **Disposition of Q14.2: answered** (this section).
 

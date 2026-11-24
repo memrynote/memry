@@ -97,7 +97,10 @@ pub fn project_note(
     // wants none of its pictures.
     let references = match item.deleted_at {
         Some(_) => Some(Vec::new()),
-        None => json(view, "attachmentReferences").map(|_| strings(view, "attachmentReferences")),
+        None => view
+            .get("attachmentReferences")
+            .filter(|references| !references.is_null())
+            .map(|_| strings(view, "attachmentReferences")),
     };
     attachment_refs::merge_note_references(conn, item.item_id, references.as_deref())?;
 

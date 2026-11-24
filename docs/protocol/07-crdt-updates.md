@@ -1033,7 +1033,7 @@ Consequences a conforming client MUST implement:
   pushes only when that body is pending and its own full state completes it
   (`crates/memry-core/src/sync/revive_heal.rs:65`, `:100`, `:187`). The pass
   runs the heal after the body step and before the push
-  (`crates/memry-core/src/api/sync/pass.rs:145`). Desktop, whose builds
+  (`crates/memry-core/src/api/sync/pass.rs:150`). Desktop, whose builds
   before #5358 kept the deleted doc the same way, judges the same candidates
   (it keeps no epoch, so a day revived since then is read once and found
   healthy) and queues a full-state row on its note-body outbox

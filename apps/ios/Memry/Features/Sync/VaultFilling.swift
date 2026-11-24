@@ -103,6 +103,11 @@ protocol VaultFilling: Sendable {
         reachable: Reachable
     ) async throws -> AttachmentFetchSummary
 
+    /// Reads the manifests of the attachments `noteId` names that have no
+    /// filename here yet, so their blocks bind (#5675). Answers how many it
+    /// named; no request when none is unnamed. Bytes: ``fetchAttachment(attachmentId:reachable:)``.
+    func fetchNoteManifests(noteId: String) async throws -> UInt32
+
     /// Uploads a file and attaches it to a note (chapter 14 §14.2–§14.5).
     ///
     /// One call for the whole chain, because every step is useless alone: a
@@ -265,6 +270,8 @@ struct CoreVaultFiller: VaultFilling {
     ) async throws -> AttachmentFetchSummary {
         try await sync.fetchAttachment(attachmentId: attachmentId, reachable: reachable)
     }
+
+    func fetchNoteManifests(noteId: String) async throws -> UInt32 { try await sync.fetchNoteManifests(noteId: noteId) }
 
     func uploadAttachment(
         noteId: String,

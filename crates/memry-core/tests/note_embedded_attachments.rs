@@ -425,14 +425,16 @@ async fn an_upgraded_device_gets_rows_for_notes_it_applied() {
     let transport = FakeTransport::new(first_sync_script(&[FIRST]));
     let sync = vault.sync(session(transport.clone()));
     sync.first_sync(None).await.expect("the first sync");
-    // What a build before #5675 left: the note's list, and no row.
+    // What a build before #5675 left: the note's list, no row, and no heal.
     vault
         .db_handle()
         .call_blocking(|conn| {
-            conn.execute("DELETE FROM attachments", [])
-                .map_err(|error| memry_core::api::errors::StorageError::Failed {
-                    what: error.to_string(),
-                })
+            conn.execute_batch(
+                "DELETE FROM attachments; DELETE FROM meta WHERE key = 'sync.note_refs_heal';",
+            )
+            .map_err(|error| memry_core::api::errors::StorageError::Failed {
+                what: error.to_string(),
+            })
         })
         .expect("the old state");
     assert!(missing(&vault).is_empty());

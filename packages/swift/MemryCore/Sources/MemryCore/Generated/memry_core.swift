@@ -14199,6 +14199,20 @@ public protocol VaultSyncProtocol: AnyObject, Sendable {
     func fetchAttachment(attachmentId: String, reachable: Reachable) async throws  -> AttachmentFetchSummary
     
     /**
+     * Reads the manifest of each attachment `note_id` references that has no
+     * name on this device yet, so `Notes::attachment_for_block` binds the
+     * block naming it (#5675). A block names its file by the manifest's
+     * filename, and a row a pulled note created has none until a manifest is
+     * read. Manifests only: the bytes still go through
+     * [`Self::fetch_attachment`].
+     *
+     * The shell calls it when the user opens the note, whatever the Download
+     * attachments setting. Answers how many it named; one that will not
+     * read is logged and asked again on the next open.
+     */
+    func fetchNoteManifests(noteId: String) async throws  -> UInt32
+    
+    /**
      * Retries every attachment a note references whose bytes are not here
      * (#1829's re-driver). The shell calls it on reconnect and after a sync
      * pass; each attachment goes through [`Self::fetch_attachment`], so the
@@ -14516,6 +14530,34 @@ open func fetchAttachment(attachmentId: String, reachable: Reachable)async throw
             completeFunc: ffi_memry_core_rust_future_complete_rust_buffer,
             freeFunc: ffi_memry_core_rust_future_free_rust_buffer,
             liftFunc: FfiConverterTypeAttachmentFetchSummary_lift,
+            errorHandler: FfiConverterTypeSyncError_lift
+        )
+}
+    
+    /**
+     * Reads the manifest of each attachment `note_id` references that has no
+     * name on this device yet, so `Notes::attachment_for_block` binds the
+     * block naming it (#5675). A block names its file by the manifest's
+     * filename, and a row a pulled note created has none until a manifest is
+     * read. Manifests only: the bytes still go through
+     * [`Self::fetch_attachment`].
+     *
+     * The shell calls it when the user opens the note, whatever the Download
+     * attachments setting. Answers how many it named; one that will not
+     * read is logged and asked again on the next open.
+     */
+open func fetchNoteManifests(noteId: String)async throws  -> UInt32  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_vaultsync_fetch_note_manifests(
+                        self.uniffiCloneHandle(),FfiConverterString.lower(noteId)
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_u32,
+            completeFunc: ffi_memry_core_rust_future_complete_u32,
+            freeFunc: ffi_memry_core_rust_future_free_u32,
+            liftFunc: FfiConverterUInt32.lift,
             errorHandler: FfiConverterTypeSyncError_lift
         )
 }
@@ -39021,6 +39063,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vaultsync_fetch_attachment() != 34657) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultsync_fetch_note_manifests() != 9013) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vaultsync_redrive_attachments() != 2191) {

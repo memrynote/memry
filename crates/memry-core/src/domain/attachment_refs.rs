@@ -4,8 +4,9 @@
 //! (§14.7). A row's `note_refs` derives from those lists, and
 //! [`merge_note_references`] is its one writer: every projection of a `note`
 //! merges in the projecting transaction (#5675), and
-//! [`crate::sync::note_refs_heal`] merges the notes a build before that
-//! applied. The re-drive (`attachments::missing_downloads`) walks these rows.
+//! [`crate::sync::note_refs_heal`] adds the references of the notes a build
+//! before that applied. The re-drive (`attachments::missing_downloads`) walks
+//! these rows.
 
 use rusqlite::{Connection, OptionalExtension as _};
 
@@ -47,14 +48,37 @@ pub fn merge_note_references(
     };
 
     // A reference the note no longer carries stops pointing at it.
+    for attachment_id in naming(conn, note_id)?
+        .iter()
+        .filter(|id| !references.contains(id))
+    {
+        let Some(mut refs) = stored_refs(conn, attachment_id)? else {
+            continue;
+        };
+        let before = refs.len();
+        refs.retain(|id| id != note_id);
+        if refs.len() != before {
+            write_refs(conn, attachment_id, &refs)?;
+        }
+    }
+
+    for attachment_id in references {
+        add_reference(conn, attachment_id, note_id)?;
+    }
+    Ok(())
+}
+
+/// The rows that may name `note_id`: its stored list, or a scan when the
+/// stored list is absent. A note not yet in `notes` is named by none.
+fn naming(conn: &Connection, note_id: &str) -> Result<Vec<String>, StorageError> {
     let stored: Option<Option<String>> = conn
         .prepare_cached("SELECT attachment_references FROM notes WHERE id = ?1")
         .and_then(|mut statement| statement.query_row([note_id], |row| row.get(0)).optional())
         .map_err(failed)?;
-    let naming: Vec<String> = match stored {
-        None => Vec::new(),
+    match stored {
+        None => Ok(Vec::new()),
         Some(list) => match list.and_then(|json| serde_json::from_str(&json).ok()) {
-            Some(list) => list,
+            Some(list) => Ok(list),
             // `instr` on the id as `write_refs` encodes it narrows the scan.
             None => conn
                 .prepare_cached(
@@ -66,45 +90,45 @@ pub fn merge_note_references(
                         .query_map([encoded], |row| row.get(0))?
                         .collect::<Result<_, _>>()
                 })
-                .map_err(failed)?,
+                .map_err(failed),
         },
-    };
-    for attachment_id in naming.iter().filter(|id| !references.contains(id)) {
-        let Some(mut refs) = stored_refs(conn, attachment_id)? else {
-            continue;
-        };
-        if !refs.iter().any(|id| id == note_id) {
-            continue;
-        }
-        refs.retain(|id| id != note_id);
-        write_refs(conn, attachment_id, &refs)?;
     }
+}
 
-    // A reference to an attachment this device has never fetched still gets a
-    // row, so the note can show a placeholder and a later fetch has somewhere
-    // to land. An id with no manifest is "known about, not yet pulled".
-    for attachment_id in references {
-        let Some(mut refs) = stored_refs(conn, attachment_id)? else {
-            conn.prepare_cached(
-                "INSERT INTO attachments (attachment_id, note_refs) VALUES (?1, ?2)",
-            )
-            .and_then(|mut statement| {
-                statement.execute(rusqlite::params![
-                    attachment_id,
-                    serde_json::to_string(&[note_id]).unwrap_or_else(|_| "[]".to_owned())
-                ])
-            })
-            .map_err(failed)?;
-            continue;
-        };
-        if refs.iter().any(|id| id == note_id) {
-            continue;
-        }
-        refs.push(note_id.to_owned());
-        refs.sort();
-        write_refs(conn, attachment_id, &refs)?;
+/// Makes `attachment_id`'s row name `note_id`. Idempotent.
+///
+/// A reference to an attachment this device has never fetched still gets a
+/// row, so the note can show a placeholder and a later fetch has somewhere to
+/// land. An id with no manifest is "known about, not yet pulled". That insert
+/// is the one statement a first sync spends per reference; only a row that
+/// already exists is read.
+pub(crate) fn add_reference(
+    conn: &Connection,
+    attachment_id: &str,
+    note_id: &str,
+) -> Result<(), StorageError> {
+    let inserted = conn
+        .prepare_cached(
+            "INSERT INTO attachments (attachment_id, note_refs) VALUES (?1, ?2)
+             ON CONFLICT(attachment_id) DO NOTHING",
+        )
+        .and_then(|mut statement| {
+            statement.execute(rusqlite::params![
+                attachment_id,
+                serde_json::to_string(&[note_id]).unwrap_or_else(|_| "[]".to_owned())
+            ])
+        })
+        .map_err(failed)?;
+    if inserted > 0 {
+        return Ok(());
     }
-    Ok(())
+    let mut refs = stored_refs(conn, attachment_id)?.unwrap_or_default();
+    if refs.iter().any(|id| id == note_id) {
+        return Ok(());
+    }
+    refs.push(note_id.to_owned());
+    refs.sort();
+    write_refs(conn, attachment_id, &refs)
 }
 
 /// One row's `note_refs`, or `None` when the row does not exist.

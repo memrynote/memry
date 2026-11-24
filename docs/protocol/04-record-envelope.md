@@ -454,7 +454,7 @@ before #5247 signs it.
   hostile one, so a writer MUST NOT fall back to v1 on a rejection. Writers:
   desktop passes no vault id (`apps/desktop/src/main/sync/engine/push-coordinator.ts:329`,
   used at `apps/desktop/src/main/sync/encrypt.ts:97`); the Rust core seals
-  without a vault (`crates/memry-core/src/api/sync/pass.rs:161`). The flip to
+  without a vault (`crates/memry-core/src/api/sync/pass.rs:166`). The flip to
   v2 (`AccountSealer::with_vault`, `crates/memry-core/src/protocol/account/seal.rs:195`)
   is held until production servers verify v2 and the version floor (chapter 11) excludes builds that refuse a v2 purged marker.
 - A verifier MUST accept v2 whose `vaultId` is the vault it serves or syncs,
