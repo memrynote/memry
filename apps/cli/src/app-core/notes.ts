@@ -5,7 +5,7 @@ import { eq } from 'drizzle-orm'
 import { noteMetadata } from '@memry/db-schema/data-schema'
 import { noteNames } from '@memry/db-schema/schema/notes-cache'
 import { pickWikiTarget } from '@memry/shared/note-names'
-import { saveCanonicalNote, deleteCanonicalNote, setCanonicalLocalOnly } from '@memry/domain-notes'
+import { saveCanonicalNote, setCanonicalLocalOnly } from '@memry/domain-notes'
 import { rewriteNoteRefsForMove } from '@memry/editor-schema/note-refs'
 import {
   getJournalNoteMetadataByDate,
@@ -25,6 +25,7 @@ import {
   writeMarkdownNote
 } from '@memry/app-core/markdown'
 import { assertNoteFileUnshared } from './case-twins.ts'
+import { deleteNoteRowQueuingSyncDelete } from './note-sync-delete.ts'
 import { aliasesFromFrontmatter } from './note-aliases.ts'
 import { frontmatterWithProperties, propertiesFromFrontmatter } from './note-properties.ts'
 import { normalizePath, safeFilename, type VaultConfig } from './paths.ts'
@@ -571,7 +572,7 @@ export function createNotesService({
       // and desktop would ingest them as the twin's edit (#5650).
       await assertNoteFileUnshared(dataDb, vaultPath, row, 'delete')
       await fs.rm(path.join(vaultPath, row.path), { force: true })
-      deleteCanonicalNote(dataDb, row.id)
+      deleteNoteRowQueuingSyncDelete(dataDb, row.id)
       return true
     },
 
