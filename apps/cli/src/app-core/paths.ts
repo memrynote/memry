@@ -100,6 +100,16 @@ export async function vaultFolder(
   return folder
 }
 
+/** A folder's `.folder.md`, which desktop's `getFolderConfigPath` also keeps for the vault root (#5679). */
+export async function folderConfigFile(
+  vaultPath: string,
+  requested: string,
+  action: string
+): Promise<string> {
+  const folder = await vaultFolder(vaultPath, requested, action, { allowRoot: true })
+  return path.join(vaultPath, folder, '.folder.md')
+}
+
 // Mirrors desktop's `sanitizeFilename` (file-ops.ts): platform-invalid chars
 // plus `[ ] # ^`, which Obsidian ≥1.8 forbids in filenames (they break
 // wikilink syntax).
