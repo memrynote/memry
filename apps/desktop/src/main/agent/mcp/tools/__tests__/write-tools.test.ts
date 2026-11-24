@@ -301,6 +301,24 @@ describe('Write tools — P1 deny-by-default', () => {
     expect(gate).not.toHaveBeenCalled()
   })
 
+  it('refuses on Windows to delete a folder whose name ends in a dot or space, before the gate', async () => {
+    const platform = process.platform
+    Object.defineProperty(process, 'platform', { value: 'win32' })
+    try {
+      const gate = vi.fn<WriteToolGate>(async () => ({ approved: true }))
+      const t = buildWriteTools(handles, gate).find((x) => x.name === 'vault_delete_folder')!
+      for (const path of ['Work.', 'Work /2026']) {
+        await expect(
+          t.handler({ path }, { writeGrant: 'turn-grant-1', windowId: 'w1' }),
+          path
+        ).rejects.toMatchObject({ code: 'VALIDATION' })
+      }
+      expect(gate).not.toHaveBeenCalled()
+    } finally {
+      Object.defineProperty(process, 'platform', { value: platform })
+    }
+  })
+
   it('rejects an argument the tool does not take, before the gate', async () => {
     const gate = vi.fn<WriteToolGate>(async () => ({ approved: true }))
     const t = buildWriteTools(handles, gate).find((x) => x.name === 'vault_update_task')!

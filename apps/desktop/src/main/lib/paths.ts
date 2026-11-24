@@ -42,8 +42,6 @@ export function normalizeRelativePath(relativePath: string): string {
  * segments, no trailing `/`, so `./Work/` and `Work\` are `Work` (#5642).
  * Null for the vault itself (`''`, `.`, `/`) and for a path that leaves it
  * (`..`, an absolute path), which a recursive delete must never reach (#5653).
- * On Windows a name ending in a dot or a space is null too: Windows drops
- * them, so `Work.` there is the folder `Work`.
  */
 export function vaultFolderPath(folderPath: string): string | null {
   const folder = path.posix.normalize(normalizeRelativePath(folderPath)).replace(/\/+$/, '')
@@ -53,9 +51,15 @@ export function vaultFolderPath(folderPath: string): string | null {
     folder === '..' ||
     folder.startsWith('../') ||
     path.win32.isAbsolute(folder)
-  const windowsAlias =
-    process.platform === 'win32' && folder.split('/').some((segment) => /[. ]$/.test(segment))
-  return outside || windowsAlias ? null : folder
+  return outside ? null : folder
+}
+
+/**
+ * Whether this device reads `folder` as another folder. Windows drops a dot or
+ * a space at the end of a name, so there a peer's `Work.` is the folder `Work`.
+ */
+export function windowsTrimsFolderName(folder: string): boolean {
+  return process.platform === 'win32' && folder.split('/').some((segment) => /[. ]$/.test(segment))
 }
 
 /**
