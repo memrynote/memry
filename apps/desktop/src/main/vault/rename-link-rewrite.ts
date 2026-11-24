@@ -45,6 +45,7 @@ import { getIndexDatabase, type IndexDb } from '../database'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
 import { feedBodyEdit, writeFedBodyEdit } from '../sync/writeback-baseline'
 import { takeWritebackTurn } from '../sync/crdt-writeback'
+import { crdtWriteback } from '../sync/crdt-writeback-port'
 import { recordAppWrite } from './app-writes'
 import { rewriteWikiLinksToNote, type WikiLinkNames } from '@memry/shared/rewrite-wiki-links'
 import { parseNote } from './frontmatter'
@@ -179,15 +180,27 @@ async function rewriteSource(
  * old folder again and move the rows back (#5690). The turn rewrites the bytes
  * the file holds then: a tag or property written during the feed is in them,
  * and the bytes read before it would write over it.
+ *
+ * `samePick` says whether `rewrite` edits the same spot in the bytes read
+ * before the feed and in the bytes read in the turn. When it does not and the
+ * doc was fed, the file is left as it is: the doc holds the rewrite, and a
+ * write-back scheduled here brings the file level, so `true`. A doc that was
+ * not fed holds nothing, so the file gets the rewrite of the bytes it holds.
  */
 export async function landSourceRewrite(
   db: IndexDb,
   cached: NoteCache,
-  source: { path: string; title: string; rewrite: (raw: string) => string | null }
+  source: {
+    path: string
+    title: string
+    rewrite: (raw: string) => string | null
+    samePick?: (fedFrom: string, current: string) => boolean
+  }
 ): Promise<boolean> {
   const sourceId = cached.id
   const original = await readVaultFile(getVaultRoot(), source.path)
-  const rewritten = original ? source.rewrite(original) : null
+  if (!original) return false
+  const rewritten = source.rewrite(original)
   if (rewritten === null) return false
   const parsed = parseNote(rewritten, source.path)
   const fed = await feedBodyEdit(sourceId, source.path, () =>
@@ -201,9 +214,14 @@ export async function landSourceRewrite(
     }
     const current = await readVaultFile(getVaultRoot(), sourcePath)
     const content = current ? source.rewrite(current) : null
-    if (content === null) {
+    if (!current || content === null) {
       log.warn('Dropped a link rewrite: its source no longer holds the link', { sourceId })
       return false
+    }
+    if (fed && source.samePick && !source.samePick(original, current)) {
+      log.warn('Left a link to the write-back: the body changed during the feed', { sourceId })
+      crdtWriteback().retryWriteback(sourceId)
+      return true
     }
     await writeSourceRewrite(db, cached, { ...source, path: sourcePath, content }, fed)
     return true

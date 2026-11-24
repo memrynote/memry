@@ -391,10 +391,18 @@ export async function listDirectories(dirPath: string, relativeTo?: string): Pro
  * Delete a file safely.
  *
  * @param filePath - Absolute path to the file
+ * @param stillDeletes - Asked with no await before the unlink: false keeps the file
  * @throws NoteError if delete fails
  */
-export async function deleteFile(filePath: string): Promise<void> {
+export async function deleteFile(
+  filePath: string,
+  stillDeletes: () => boolean = () => true
+): Promise<void> {
   const lockedPath = (await writeGuard?.beforeWrite(filePath)) ?? null
+  if (!stillDeletes()) {
+    await restoreReadOnlyAfterFailedWrite(filePath, lockedPath)
+    return
+  }
   try {
     await unlink(filePath)
   } catch (error) {

@@ -258,11 +258,15 @@ export function recordAppliedNoteCover(
  * After the note's file was rebuilt from its index rows, which hold the cover
  * ref (`case-twin-file.ts`). An image cover's framing and credit were not
  * written, so its push waits for a change here; any other cover was written
- * whole, and no cover sends no removal.
+ * whole, and no cover sends no removal. A removal built for push and not yet
+ * acked stays pending: its retry still sends the `null`.
  */
 export function recordRebuiltNoteCover(db: DrizzleDb, noteId: string, ref: string | null): void {
-  const image = ref !== null && parseCoverValue(ref)?.kind === 'image'
-  writeCoverMarker(db, noteId, image ? `${UNFRAMED_MARKER_PREFIX}${ref}` : null)
+  if (ref !== null && parseCoverValue(ref)?.kind === 'image') {
+    writeCoverMarker(db, noteId, `${UNFRAMED_MARKER_PREFIX}${ref}`)
+  } else if (readCoverMarker(db, noteId) !== 'removal-pending') {
+    writeCoverMarker(db, noteId, null)
+  }
 }
 
 export function clearNoteCoverMarker(db: DrizzleDb, noteId: string): void {
