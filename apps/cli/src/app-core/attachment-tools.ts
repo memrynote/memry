@@ -16,7 +16,7 @@ import {
   type AttachmentsService
 } from './note-files.ts'
 import type { NotesService } from './notes.ts'
-import { ATTACHMENTS_DIR, normalizePath, safeFilename } from './paths.ts'
+import { ATTACHMENTS_DIR, isPlainSegment, normalizePath, safeFilename } from './paths.ts'
 
 export interface VaultAttachmentEntry {
   ownerNoteId: string
@@ -52,16 +52,6 @@ const EXTENSION_BY_MIME: Record<string, string> = {
   'image/png': 'png',
   'image/webp': 'webp',
   'image/gif': 'gif'
-}
-
-function isPlainSegment(value: string): boolean {
-  return (
-    value.length > 0 &&
-    !value.includes('/') &&
-    !value.includes('\\') &&
-    value !== '.' &&
-    value !== '..'
-  )
 }
 
 /** The stored name minus its id prefix, which is the sanitized original name. */
