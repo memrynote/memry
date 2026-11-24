@@ -1205,7 +1205,11 @@ across devices:
   (note, attachment). Only the outcome writes here: the request itself no longer
   counts as a result, so a 404 and a success are no longer the same event. A
   transient failure (5xx, network, decrypt) keeps its retry on an exponential
-  backoff from one minute. A `404`/`410` — the server saying it does not have
+  backoff from one minute. So does a manifest whose `id` is not the attachment
+  asked for, from the single GET or under a batch key: the download refuses it
+  before any chunk request or write, as memry-core does, because landing it
+  would put another file's bytes under this id, and a server mix-up is no
+  evidence the blob is gone. A `404`/`410` — the server saying it does not have
   this blob — is re-probed at most once a day, three times, and then never
   automatically again. Session state (in-flight claims and this session's
   successes) is still in memory and still cleared on runtime teardown, because
