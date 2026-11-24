@@ -26,8 +26,11 @@ import { dereferenceChunks } from '../canvas/assets/attachment-dereference'
 import { encrypt, wrapFileKey } from '../crypto/encryption'
 import { generateFileKey } from '../crypto/keys'
 import { signPayload } from '../crypto/signatures'
+import { recordAttachmentFile } from './attachment-files'
+import { listPendingUploads } from './attachment-outbox'
 import { AttachmentSyncService, type EncryptedAttachmentManifest } from './attachments'
 import { recordDeletedItemAssets, releaseExpiredDeletedAssets } from './deleted-asset-release'
+import { noteRevived, settleRevivedNotes } from './note-attachment-revival'
 
 const warn = vi.hoisted(() => vi.fn())
 vi.mock('../lib/logger', () => ({
@@ -205,6 +208,7 @@ beforeEach(() => {
   dereferenced = []
   chunkLookups = []
   uploads = 0
+  warn.mockClear()
 })
 
 afterEach(() => {
@@ -419,13 +423,55 @@ describe('deleted note attachments', () => {
     expect(releaseRows()).toHaveLength(1)
     expect(warn).toHaveBeenCalledWith(expect.any(String), {
       attachmentId: 'a-1',
-      manifestId: 'a-2'
+      err: expect.objectContaining({ message: 'Manifest names attachment a-2, not a-1' })
     })
 
     server.servedAs.clear()
     expect(await releaseFromServer()).toBe(1)
     expect(dereferenced).toEqual([['chunk-of-a-1']])
     expect(releaseRows()).toEqual([])
+  })
+
+  it("keeps a revived note pending while the server answers with another attachment's manifest (#5664)", async () => {
+    const server = await manifestServer(['a-1', 'a-2'])
+    server.servedAs.set('a-1', 'a-2')
+    insertNote('back', ['a-1'])
+    const photo = path.join(vaultPath, 'attachments', 'back', 'photo.png')
+    fs.mkdirSync(path.dirname(photo), { recursive: true })
+    fs.writeFileSync(photo, 'photo bytes')
+    recordAttachmentFile(db, vaultPath, 'back', photo, 'a-1')
+    const settle = () =>
+      settleRevivedNotes({
+        db,
+        vaultPath,
+        chunkHashesOf: (id) => server.service.chunkHashesOf(id),
+        // The server freed a-1's chunk; a-2's is live.
+        probe: async (_noteId, attachments) => ({
+          status: 'ok',
+          missing: new Set(
+            attachments
+              .filter((a) => a.chunkHashes.includes('chunk-of-a-1'))
+              .map((a) => a.attachmentId)
+          )
+        })
+      })
+    const references = () =>
+      db.select().from(noteMetadata).where(eq(noteMetadata.id, 'back')).get()?.attachmentReferences
+
+    noteRevived('back')
+    await settle()
+    expect(references()).toEqual(['a-1'])
+    expect(listPendingUploads(db)).toEqual([])
+
+    server.servedAs.clear()
+    await settle()
+    expect(references()).toEqual([])
+    expect(listPendingUploads(db).map((row) => row.diskPath)).toEqual([photo])
+    expect(warn).toHaveBeenCalledOnce()
+    expect(warn).toHaveBeenCalledWith(expect.any(String), {
+      noteId: 'back',
+      error: expect.objectContaining({ message: 'Manifest names attachment a-2, not a-1' })
+    })
   })
 
   it('frees nothing for a note that is live again', async () => {

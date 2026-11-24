@@ -11,7 +11,14 @@ import { replaceWikiLinks } from '@memry/shared/wiki-target'
 import { createId } from '@memry/app-core/ids'
 import type { DataDb } from './database.ts'
 import { parseMarkdownNote } from '@memry/app-core/markdown'
-import { ATTACHMENTS_DIR, normalizePath, safeFilename, type VaultConfig } from './paths.ts'
+import {
+  ATTACHMENTS_DIR,
+  isPlainSegment,
+  normalizePath,
+  safeFilename,
+  vaultFolder,
+  type VaultConfig
+} from './paths.ts'
 import type { NotesService } from './notes.ts'
 import { propertiesFromFrontmatter } from './note-properties.ts'
 import { errorCode } from './errno.ts'
@@ -525,8 +532,16 @@ export function createAttachmentsService({
 
     async delete(noteId, filename) {
       const safeName = path.basename(filename)
-      const absolutePath = path.join(vaultPath, ATTACHMENTS_DIR, noteId, safeName)
-      await fs.rm(absolutePath, { force: true })
+      const action = `delete attachment "${filename}"`
+      // Joined unchecked, the id `../SuperNotes` deletes a note file (#5658).
+      if (!isPlainSegment(noteId)) {
+        throw new Error(`Refusing to ${action}: "${noteId}" is not a note id.`)
+      }
+      if (!isPlainSegment(safeName)) {
+        throw new Error(`Refusing to ${action}: "${filename}" is not an attachment file name.`)
+      }
+      const folder = await vaultFolder(vaultPath, `${ATTACHMENTS_DIR}/${noteId}`, action)
+      await fs.rm(path.join(vaultPath, folder, safeName), { force: true })
       return true
     }
   }
