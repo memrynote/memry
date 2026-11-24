@@ -289,7 +289,6 @@ export async function createMemryApp({ vaultPath }: CreateMemryAppInput): Promis
     dataDb: databases.dataDb,
     vaultPath,
     notes,
-    folders,
     calendar,
     reminders,
     inbox

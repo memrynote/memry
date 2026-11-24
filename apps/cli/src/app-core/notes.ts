@@ -29,7 +29,7 @@ import { assertNoteFileUnshared } from './case-twins.ts'
 import { deleteNoteRowQueuingSyncDelete } from './note-sync-delete.ts'
 import { aliasesFromFrontmatter } from './note-aliases.ts'
 import { frontmatterWithProperties, propertiesFromFrontmatter } from './note-properties.ts'
-import { normalizePath, safeFilename, type VaultConfig } from './paths.ts'
+import { normalizePath, safeFilename, vaultFolder, type VaultConfig } from './paths.ts'
 import { noteLinkStem, resolveWikiTarget as resolveTargetWith } from '@memry/shared/wiki-target'
 import { rewriteWikiLinksToNote, type WikiLinkNames } from '@memry/shared/rewrite-wiki-links'
 export type {
@@ -77,12 +77,12 @@ function wikilinks(content: string): string[] {
   return [...matches].map((match) => match[1]?.trim()).filter((title): title is string => !!title)
 }
 
-// `folder` is vault-relative, same contract as desktop's `createNote` since
-// #1204: a note created inside a folder lands in that folder. Only an unplaced
-// note falls back to `defaultNoteFolder` — it is a destination, not a notes
-// root.
+// `folder` is vault-relative ('' is the vault root), same contract as desktop's
+// `createNote` since #1204: a note created inside a folder lands in that folder.
+// Only an unplaced note falls back to `defaultNoteFolder` — it is a
+// destination, not a notes root.
 function notePath(config: VaultConfig, title: string, folder?: string): string {
-  const dir = folder ? normalizePath(folder) : normalizePath(config.defaultNoteFolder)
+  const dir = folder ?? normalizePath(config.defaultNoteFolder)
   return normalizePath(`${dir}/${safeFilename(title)}.md`)
 }
 
@@ -291,11 +291,13 @@ export function createNotesService({
 }): NotesService {
   return {
     async create(input) {
+      const folder = input.folder
+        ? await vaultFolder(vaultPath, input.folder, `create note "${input.title}"`, {
+            allowRoot: true
+          })
+        : undefined
       const now = new Date().toISOString()
-      const relativePath = await ensureUniquePath(
-        vaultPath,
-        notePath(config, input.title, input.folder)
-      )
+      const relativePath = await ensureUniquePath(vaultPath, notePath(config, input.title, folder))
       const id = createId('note')
       // User keys only — Memry identity/dates live in the metadata DB
       const frontmatter = frontmatterWithProperties(
@@ -442,7 +444,9 @@ export function createNotesService({
       const note = await readNote(vaultPath, row)
       // `newFolder` is vault-relative and '' means the vault root — never
       // re-root it through `defaultNoteFolder` (desktop `moveNote` contract).
-      const normalizedFolder = normalizePath(newFolder)
+      const normalizedFolder = await vaultFolder(vaultPath, newFolder, `move note "${row.path}"`, {
+        allowRoot: true
+      })
       const relativePath = normalizePath(
         normalizedFolder
           ? `${normalizedFolder}/${path.basename(row.path)}`

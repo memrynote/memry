@@ -80,7 +80,8 @@ import {
 } from '@main/database/queries/note-positions'
 import { getDatabase, getIndexDatabase } from '../database'
 import { NoteError, NoteErrorCode } from '../lib/errors'
-import { openVaultFile, readVaultFile, vaultFolderPath, windowsTrimsFolderName } from '../lib/paths'
+import { openVaultFile, readVaultFile } from '../lib/paths'
+import { vaultFolderPath, windowsTrimsFolderName } from '@memry/storage-vault'
 import { generateNoteId } from '../lib/id'
 import {
   NotesChannels,
