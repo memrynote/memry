@@ -333,12 +333,12 @@ describe("a peer's replacement of a binary note with attachment auto-download of
     server.blobs.set('att-embed', 'embed-bytes')
     await holdForPeerBytes('img', 'Pictures/p.png')
 
-    markDownloadRequested('img', 'att-embed')
     attachmentEvents.emitDownloadNeeded({
       noteId: 'img',
       attachmentId: 'att-embed',
       diskPath: abs('attachments/img'),
-      intoDir: true
+      intoDir: true,
+      claim: markDownloadRequested('img', 'att-embed')!
     })
     // Released, not downloaded: opening the note still asks for it.
     await vi.waitFor(() =>

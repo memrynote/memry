@@ -430,6 +430,16 @@ describe('runJournalDayMerges', () => {
     expect(parseJournalEntry(dayFile(), DATE).frontmatter.tags).toEqual(['x'])
   })
 
+  // The tag fold keeps whitespace, as core `tags::dedupe` folds the owed
+  // holder tags (protocol §13.7.7, the `no-trim-in-fold` vector).
+  it('keeps a padded spelling beside the plain one in an owed merge', () => {
+    const owed = { foreignId: FOREIGN, date: DATE, clock: { b: 1 } }
+    oweJournalDayMerge(ctx.db, { ...owed, tags: ['Work'] })
+    oweJournalDayMerge(ctx.db, { ...owed, tags: [' Work ', 'work'] })
+
+    expect(listOwedJournalDayMerges(ctx.db)[0].tags).toEqual(['Work', ' Work '])
+  })
+
   it('leaves a live foreign id with neither body nor text live, creating no day', async () => {
     // An update record carries `content: null`: the text may live only in an
     // old build's day file, which a tombstone would make it delete.

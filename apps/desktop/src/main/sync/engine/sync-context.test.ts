@@ -113,7 +113,9 @@ describe('SYNC_STATE_KEYS', () => {
         CASE_TWIN_LANDED_HASHES: 'caseTwinLandedHashes',
         // Additive (#5606): absent means no upload refusal is remembered, so
         // each refused file is offered and refused once more.
-        ATTACHMENT_UPLOAD_REFUSALS: 'attachmentUploadRefusals'
+        ATTACHMENT_UPLOAD_REFUSALS: 'attachmentUploadRefusals',
+        // Additive (REVIEW-5602): absent means no conflict copy kept from a shared file.
+        CASE_TWIN_KEPT_COPIES: 'caseTwinKeptCopies'
       })
     })
 

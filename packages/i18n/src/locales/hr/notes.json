@@ -45,6 +45,12 @@
     }
   },
   "page": {
+    "noteFiles": {
+      "downloading": "Preuzimanje datoteka ove bilješke…",
+      "failed": "Datoteke ove bilješke nije moguće preuzeti: {error}",
+      "failedFallback": "preuzimanje nije uspjelo",
+      "retry": "Pokušaj ponovno"
+    },
     "empty": {
       "title": "Nije odabrana nijedna bilješka",
       "body": "Odaberite bilješku na bočnoj traci da biste je pogledali"

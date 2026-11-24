@@ -62,6 +62,9 @@
     "uploadFailed": "Nu s-a putut încărca atașamentul",
     "uploadProgressFailed": "Nu s-a putut prelua progresul încărcării",
     "downloadFailed": "Nu s-a putut descărca atașamentul",
+    "downloadGone": "Acest fișier nu mai este pe serverul de sincronizare.",
+    "downloadMissing": "Acest fișier nu este încă pe serverul de sincronizare. Deschideți-l din nou mâine pentru a verifica.",
+    "downloadNeedsSync": "Sincronizarea nu rulează, așa că acest fișier nu poate fi descărcat. Se descarcă automat după ce sincronizarea pornește.",
     "downloadProgressFailed": "Nu s-a putut prelua progresul descărcării",
     "exceedsMaxSize": "Fișier prea mare: {size} depășește limita de {limit}",
     "exceedsPlanLimit": "Fișierul este mai mare decât permite planul: {size} depășește {limit}",
@@ -216,6 +219,7 @@
     "renameFailed": "Nu s-a putut redenumi dosarul",
     "renameCaseTwins": "Acest folder conține notițe care împart un fișier cu o notiță al cărei nume de folder diferă doar prin majuscule și minuscule. Redenumește sau mută mai întâi acele notițe, apoi redenumește folderul.",
     "deleteFailed": "Nu s-a putut șterge dosarul",
+    "deleteCaseTwins": "Acest folder și un folder cu același nume scris altfel, de exemplu cu alte majuscule și minuscule, sunt un singur folder pe disc, așa că ștergerea lui ar șterge notițele din amândouă. Șterge în schimb, pe rând, notițele de care nu ai nevoie.",
     "setConfigFailed": "Nu s-a putut seta configurația dosarului"
   },
   "folderView": {

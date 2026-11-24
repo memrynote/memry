@@ -45,6 +45,12 @@
     }
   },
   "page": {
+    "noteFiles": {
+      "downloading": "Download dei file di questa nota…",
+      "failed": "Impossibile scaricare i file di questa nota: {error}",
+      "failedFallback": "il download non è riuscito",
+      "retry": "Riprova"
+    },
     "empty": {
       "title": "Nessuna nota selezionata",
       "body": "Seleziona una nota dalla barra laterale per visualizzarla"

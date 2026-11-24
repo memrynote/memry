@@ -62,6 +62,9 @@
     "uploadFailed": "Uppladdningen av bilagan misslyckades",
     "uploadProgressFailed": "Det gick inte att hämta uppladdningsförloppet",
     "downloadFailed": "Nedladdningen av bilagan misslyckades",
+    "downloadGone": "Den här filen finns inte längre på synkservern.",
+    "downloadMissing": "Den här filen finns inte på synkservern än. Öppna den igen i morgon för att kontrollera.",
+    "downloadNeedsSync": "Synkroniseringen körs inte, så den här filen kan inte laddas ned. Den laddas ned automatiskt när synkroniseringen körs.",
     "downloadProgressFailed": "Det gick inte att hämta nedladdningsförloppet",
     "exceedsMaxSize": "Filen är för stor: {size} överskrider gränsen på {limit}",
     "exceedsPlanLimit": "Filen är större än din plan tillåter: {size} överskrider {limit}",
@@ -216,6 +219,7 @@
     "renameFailed": "Det gick inte att byta namn på mappen",
     "renameCaseTwins": "Den här mappen innehåller anteckningar som delar fil med en anteckning vars mappnamn bara skiljer sig i versaler och gemener. Byt namn på eller flytta de anteckningarna först, och byt sedan namn på mappen.",
     "deleteFailed": "Det gick inte att radera mappen",
+    "deleteCaseTwins": "Den här mappen och en mapp med samma namn stavat annorlunda, till exempel med andra versaler och gemener, är samma mapp på disken, så om du tar bort den tas anteckningarna i båda bort. Ta i stället bort de anteckningar du inte behöver en i taget.",
     "setConfigFailed": "Det gick inte att spara mappinställningarna"
   },
   "folderView": {

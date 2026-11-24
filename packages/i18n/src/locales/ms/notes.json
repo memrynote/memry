@@ -45,6 +45,12 @@
     }
   },
   "page": {
+    "noteFiles": {
+      "downloading": "Memuat turun fail nota ini…",
+      "failed": "Tidak dapat memuat turun fail nota ini: {error}",
+      "failedFallback": "muat turun gagal",
+      "retry": "Cuba lagi"
+    },
     "empty": {
       "title": "Tiada nota dipilih",
       "body": "Pilih nota dari bar sisi untuk melihatnya"

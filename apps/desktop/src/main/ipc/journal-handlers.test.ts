@@ -245,6 +245,11 @@ describe('journal-handlers', () => {
   it('creates a journal entry and emits event', async () => {
     registerJournalHandlers()
     // Properties are now passed to writeJournalEntryWithContent and serialized to frontmatter
+    // The reply is the entry as the file holds it after the create.
+    ;(journalVault.readJournalEntry as Mock).mockResolvedValue({
+      ...baseEntry,
+      properties: { mood: 'good' }
+    })
     ;(journalVault.writeJournalEntryWithContent as Mock).mockResolvedValue({
       entry: { ...baseEntry, properties: { mood: 'good' } },
       fileContent: 'serialized',

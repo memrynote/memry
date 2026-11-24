@@ -62,6 +62,9 @@
     "uploadFailed": "Uploaden van de bijlage mislukt",
     "uploadProgressFailed": "Kan de uploadvoortgang niet ophalen",
     "downloadFailed": "Downloaden van de bijlage mislukt",
+    "downloadGone": "Dit bestand staat niet meer op de synchronisatieserver.",
+    "downloadMissing": "Dit bestand staat nog niet op de synchronisatieserver. Open het morgen opnieuw om te controleren.",
+    "downloadNeedsSync": "Synchronisatie is niet actief, dus dit bestand kan niet worden gedownload. Het wordt vanzelf gedownload zodra synchronisatie actief is.",
     "downloadProgressFailed": "Kan de downloadvoortgang niet ophalen",
     "exceedsMaxSize": "Bestand te groot: {size} overschrijdt de limiet van {limit}",
     "exceedsPlanLimit": "Bestand is groter dan je abonnement toestaat: {size} overschrijdt {limit}",
@@ -216,6 +219,7 @@
     "renameFailed": "Kan de naam van de map niet wijzigen",
     "renameCaseTwins": "Deze map bevat notities die een bestand delen met een notitie waarvan de mapnaam alleen in hoofdletters en kleine letters verschilt. Wijzig eerst de naam van die notities of verplaats ze, en wijzig daarna de naam van de map.",
     "deleteFailed": "Kan de map niet verwijderen",
+    "deleteCaseTwins": "Deze map en een map met dezelfde naam die anders is gespeld, bijvoorbeeld met andere hoofdletters en kleine letters, zijn op de schijf één map, dus als je hem verwijdert, worden de notities in beide verwijderd. Verwijder in plaats daarvan de notities die je niet nodig hebt een voor een.",
     "setConfigFailed": "Kan de mapinstellingen niet opslaan"
   },
   "folderView": {

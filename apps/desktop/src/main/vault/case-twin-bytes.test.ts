@@ -20,8 +20,9 @@ import {
   listCaseTwinForeignBytes,
   markCaseTwinForeignBytes,
   readCaseTwinForeignBytes,
-  recordConflictCopyKept,
+  readKeptCaseTwinCopy,
   recordHeldCaseTwinChange,
+  recordKeptCaseTwinCopy,
   recordLandedCaseTwinHash,
   takeHeldCaseTwinChange,
   takeLandedCaseTwinHash
@@ -76,15 +77,13 @@ describe('case twin hold state', () => {
     expect(stored(SYNC_STATE_KEYS.CASE_TWIN_LANDED_HASHES)).toBeUndefined()
   })
 
-  it('a mark stores the file hash in its own row; a null mark stays null until a conflict copy keeps the change', () => {
+  it('a mark stores the file hash in its own row; a null mark stays null until cleared', () => {
     markCaseTwinForeignBytes(db(), 'twin-a', { sha256: 'h1' })
     expect(stored('caseTwinForeignBytes:twin-a')).toBe(JSON.stringify({ sha256: 'h1' }))
 
     markCaseTwinForeignBytes(db(), 'twin-b', null)
     markCaseTwinForeignBytes(db(), 'twin-b', { sha256: 'h2' })
     expect(readCaseTwinForeignBytes(db(), 'twin-b')).toBeNull()
-    recordConflictCopyKept(db(), 'twin-b', 'h3')
-    expect(readCaseTwinForeignBytes(db(), 'twin-b')).toEqual({ sha256: 'h3' })
     expect(stored('caseTwinForeignBytes:twin-a')).toBe(JSON.stringify({ sha256: 'h1' }))
     expect(listCaseTwinForeignBytes(db()).toSorted()).toEqual(['twin-a', 'twin-b'])
 
@@ -128,6 +127,39 @@ describe('case twin hold state', () => {
       'A case twin mark is unreadable; its file is held as changed',
       { noteId: 'twin-a' }
     )
+  })
+
+  it('kept bytes count as kept only while the copy named with them holds them', () => {
+    const kept = createHash('sha256').update('edited').digest('hex')
+    fs.writeFileSync(path.join(dir, 'p (conflict copy).png'), 'edited')
+    recordKeptCaseTwinCopy(db(), 'SUPERNOTES/p.png', {
+      sha256: kept,
+      copy: 'p (conflict copy).png'
+    })
+
+    expect(JSON.parse(stored(SYNC_STATE_KEYS.CASE_TWIN_KEPT_COPIES)!)).toEqual({
+      'supernotes/p.png': { sha256: kept, copy: 'p (conflict copy).png' }
+    })
+    expect(readKeptCaseTwinCopy(db(), dir, 'Supernotes/p.png')).toBe(kept)
+    fs.writeFileSync(path.join(dir, 'p (conflict copy).png'), 'changed')
+    expect(readKeptCaseTwinCopy(db(), dir, 'Supernotes/p.png')).toBeUndefined()
+    fs.rmSync(path.join(dir, 'p (conflict copy).png'))
+    expect(readKeptCaseTwinCopy(db(), dir, 'Supernotes/p.png')).toBeUndefined()
+    // VERIFY-5602R2 #5: a folder there cannot be read, and never fails the landing.
+    fs.mkdirSync(path.join(dir, 'p (conflict copy).png'))
+    expect(readKeptCaseTwinCopy(db(), dir, 'Supernotes/p.png')).toBeUndefined()
+    expect(log.warn).toHaveBeenCalledWith(
+      'A kept conflict copy cannot be read; its bytes count as not kept',
+      expect.objectContaining({ copy: 'p (conflict copy).png' })
+    )
+  })
+
+  it('a kept hash in the unreleased shape with no copy reads as not kept', () => {
+    const kept = createHash('sha256').update('edited').digest('hex')
+    fs.writeFileSync(path.join(dir, 'p (conflict copy).png'), 'edited')
+    store(SYNC_STATE_KEYS.CASE_TWIN_KEPT_COPIES, JSON.stringify({ 'supernotes/p.png': kept }))
+
+    expect(readKeptCaseTwinCopy(db(), dir, 'Supernotes/p.png')).toBeUndefined()
   })
 
   it('hashes a file larger than one read as the manifest checksum does, and a missing file as null', () => {
