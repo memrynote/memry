@@ -441,10 +441,11 @@ pass settles them. The decision is a pure function of five facts
    `crates/memry-core/src/sync/journal_day_merge/mod.rs:275`).
    Then add `F`'s tags to `j<D>`'s tags as a set union, keeping the tags
    `j<D>` has and their order, and push the change when the union adds a
-   tag. Tags compare by tag key (case-insensitive), so a tag `j<D>` holds in
-   another spelling adds nothing and the first spelling stays
+   tag. Tags compare by the tag fold (chapter 13 §13.7.7), which keeps
+   whitespace, so a tag `j<D>` holds in another case adds nothing and the
+   first spelling stays, while `Work` and `Work` are two tags
    (`apps/desktop/src/main/sync/journal-day-merge.ts:338`,
-   `apps/desktop/src/main/journal/update-entry.ts:71`; core:
+   `apps/desktop/src/main/journal/update-entry.ts:82-91`; core:
    `crates/memry-core/src/domain/tags.rs:96`). `j<D>`'s own tags (desktop:
    the day file's) are authoritative for the day, so `F`'s doc `tags` array,
    which the fold brings along, never reaches them (#5476, #5483). The tags

@@ -465,7 +465,10 @@ before #5247 signs it.
   `crates/memry-core/src/sync/purged_markers.rs:149`).
 - A client that holds an attested purged marker and cannot read its vault id
   MUST end the pull with an error and keep its cursor, never check v1 only
-  (`apps/desktop/src/main/sync/engine/pull-envelope.ts:227`).
+  (`apps/desktop/src/main/sync/engine/pull-envelope.ts:227`). The Rust core
+  fails the by-id pull that carries one, so the manifest reconcile ends with an
+  error and a `SYNC_DELETE_WINS` item is deferred
+  (`crates/memry-core/src/sync/pull/shared_apply.rs:88-98`).
 
 The two purposes are disjoint, so a v2 signature never verifies as v1, nor in
 another vault. The signature is 64 bytes in both versions and carries no

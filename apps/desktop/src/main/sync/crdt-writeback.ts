@@ -10,6 +10,7 @@ import { owesFileBody } from './crdt-owed-file-body'
 import { isOutsideEdit, recordUnchangedFile, writeWithBaseline } from './writeback-baseline'
 import type { SourceRestoreOutcome } from './blocknote-converter'
 import type { NoteBody } from './writing-markdown'
+import { applyCriticMarkMoves } from './critic-mark-anchors'
 import { readyWritebackConverter } from './converter-worker-bridge'
 import { emitNoteUpdated } from '@memry/sync-client/note-events'
 import { writingFrontmatterOf } from '@memry/shared'
@@ -114,6 +115,8 @@ const pendingTimers = new Map<string, PendingWriteback>()
 const runningPasses = new Map<string, Promise<unknown>>()
 /** Repairs that run at the start of a note's next turn (`repairAfterRunningTurn`). */
 const pendingRepairs = new Map<string, Array<() => Promise<void>>>()
+/** Work a flush waits for after the turns (`holdFlushUntil`). */
+const heldWork = new Set<Promise<unknown>>()
 /**
  * Bumped by `cancelWriteback`. A pass that was already converting when its
  * note was deleted sees the change and does not write the file back.
@@ -125,6 +128,8 @@ let flushing = false
 const failingWritebacks = new Set<string>()
 /** Note id to the content hash of the file bytes this module last wrote for it. */
 const lastWrittenHash = new Map<string, string>()
+/** Note id to the review marks its file could not hold, as last logged. */
+const unplacedCriticMarks = new Map<string, string>()
 
 /**
  * True while this note's on-disk markdown is known to be behind the live doc —
@@ -314,6 +319,19 @@ export function repairAfterRunningTurn(noteId: string, repair: () => Promise<voi
   void takeWritebackTurn(noteId, async () => {})
 }
 
+/**
+ * Makes a flush wait for `work` after the turns. For a writer's step that must
+ * land before a quit but runs after its turn: a new journal day's sync enqueue
+ * (`writeJournalEntryCreate`). Call it before the turn ends, so a flush that
+ * awaits the turn finds it. `work` must not wait on the CRDT store, since a
+ * flush runs while the store can be stuck (#5475).
+ */
+export function holdFlushUntil(work: Promise<unknown>): void {
+  heldWork.add(work)
+  const release = (): void => void heldWork.delete(work)
+  work.then(release, release)
+}
+
 async function runRepairs(noteId: string): Promise<void> {
   const queued = pendingRepairs.get(noteId)
   if (!queued) return
@@ -494,6 +512,7 @@ export function resetWritebackState(): void {
   cancelGenerations.clear()
   debugState.clear()
   failingWritebacks.clear()
+  unplacedCriticMarks.clear()
 }
 
 export async function flushPendingWritebacks(): Promise<void> {
@@ -520,6 +539,8 @@ async function flushAll(): Promise<void> {
       })
     )
   ])
+  // Its owner reports a failure; the flush only waits for it.
+  await Promise.all(Array.from(heldWork, (work) => work.catch(() => {})))
 }
 
 /**
@@ -687,10 +708,12 @@ async function performWriteback(
   }
 
   const modifiedAt = writebackModifiedAt(cached.modifiedAt, local, remoteEditedAtMs)
-  if (isJournalId(noteId)) {
-    await writebackJournal(noteId, doc, body, cached, indexDb, modifiedAt)
-  } else {
-    await writebackExisting(noteId, cached, doc, body, indexDb, isLargeFileBody, modifiedAt)
+  const journal = isJournalId(noteId)
+  const holdsBody = journal
+    ? await writebackJournal(noteId, doc, body, cached, indexDb, modifiedAt)
+    : await writebackExisting(noteId, cached, doc, body, indexDb, isLargeFileBody, modifiedAt)
+  settleCriticMarks(noteId, doc, body.criticMarks, local && holdsBody)
+  if (!journal) {
     // The reminders a body's date pills derive belong to every device that
     // holds the body, and each derives its own. Only this device's edit may
     // stamp and push them. A row derived from a remote body stays unclocked,
@@ -713,6 +736,40 @@ async function performWriteback(
   if (!pendingTimers.has(noteId) && !Buffer.from(converted).equals(Y.encodeStateVector(doc))) {
     scheduleWriteback(noteId, doc, 'local')
   }
+}
+
+/**
+ * What became of the doc's review marks in the body just written. The doc
+ * takes the marks the pass moved only once the file holds them, and only on
+ * the device whose edit the pass wrote: every other device places the same
+ * marks in its own file and gets the doc's copy from that one, so two devices
+ * do not both rewrite them (critic-mark-anchors.ts).
+ */
+function settleCriticMarks(
+  noteId: string,
+  doc: Y.Doc,
+  marks: NoteBody['criticMarks'],
+  movesDoc: boolean
+): void {
+  if (marks.orphaned.length > 0) {
+    log.warn('Comments whose text was deleted stay as a point where it was', {
+      noteId,
+      markIds: marks.orphaned
+    })
+  }
+  const unplaced = marks.unplaced.join(',')
+  if (unplaced !== (unplacedCriticMarks.get(noteId) ?? '')) {
+    if (unplaced) {
+      unplacedCriticMarks.set(noteId, unplaced)
+      log.warn('Review marks the file cannot hold stay in the doc only', {
+        noteId,
+        markIds: marks.unplaced
+      })
+    } else {
+      unplacedCriticMarks.delete(noteId)
+    }
+  }
+  if (movesDoc) applyCriticMarkMoves(doc, marks.moves)
 }
 
 /**
@@ -880,6 +937,7 @@ async function ingestOfflineEdit(noteId: string): Promise<void> {
   )
 }
 
+/** Resolves true when the file holds `body` afterwards: written now, or already. */
 async function writebackExisting(
   noteId: string,
   cached: NonNullable<ReturnType<typeof getNoteCacheById>>,
@@ -888,7 +946,7 @@ async function writebackExisting(
   indexDb: ReturnType<typeof getIndexDatabase>,
   isLargeFileBody: boolean,
   modifiedAt: string
-): Promise<void> {
+): Promise<boolean> {
   const { markdown } = body
   const relativePath = cached.path
   const absolutePath = toAbsolutePath(relativePath)
@@ -911,7 +969,7 @@ async function writebackExisting(
   if (existingRaw !== null && fileContent === existingRaw) {
     recordUnchangedFile(indexDb, noteId, cached, existingRaw)
     log.debug('Write-back is a no-op, skipping', { noteId })
-    return
+    return true
   }
 
   // The file changed under this doc, and the change has not been ingested yet.
@@ -954,7 +1012,7 @@ async function writebackExisting(
         noteId,
         path: relativePath
       })
-      return
+      return false
     }
     if (
       parsed &&
@@ -963,7 +1021,7 @@ async function writebackExisting(
         file: fileContent
       }))
     ) {
-      return
+      return false
     }
   }
 
@@ -1020,8 +1078,10 @@ async function writebackExisting(
     source: 'sync'
   })
   log.debug('Write-back complete', { noteId })
+  return true
 }
 
+/** Resolves true when the file holds `body` afterwards: written now, or already. */
 async function writebackJournal(
   noteId: string,
   doc: Y.Doc,
@@ -1029,7 +1089,7 @@ async function writebackJournal(
   cached: NonNullable<ReturnType<typeof getNoteCacheById>>,
   indexDb: ReturnType<typeof getIndexDatabase>,
   modifiedAt: string
-): Promise<void> {
+): Promise<boolean> {
   const { markdown } = body
   const date = journalIdToDate(noteId)
 
@@ -1055,7 +1115,7 @@ async function writebackJournal(
   if (existingRaw !== null && fileContent === existingRaw) {
     recordUnchangedFile(indexDb, noteId, cached, existingRaw)
     log.debug('Journal write-back is a no-op, skipping', { noteId, date })
-    return
+    return true
   }
 
   // A journal file edited outside the app is taken in the same way as a note's.
@@ -1067,7 +1127,7 @@ async function writebackJournal(
       file: fileContent
     }))
   ) {
-    return
+    return false
   }
 
   if (existingRaw !== null)
@@ -1104,6 +1164,7 @@ async function writebackJournal(
   void flushProjectionEvents()
 
   log.debug('Journal write-back complete', { noteId, date })
+  return true
 }
 
 /**

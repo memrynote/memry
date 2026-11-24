@@ -93,7 +93,8 @@ import {
   planBinaryCaseTwinMove,
   planCaseTwinLeave,
   planCaseTwinMove,
-  sharesCaseTwinFile
+  sharesCaseTwinFile,
+  updateCaseTwinOffFile
 } from '../../vault/case-twin-file'
 import {
   healBinaryNoteRecord,
@@ -290,7 +291,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
           ctx.db,
           existing,
           data.attachmentId,
-          resolution.action === 'merge'
+          resolution.action === 'merge' ? remoteClock : undefined
         )
         const newTitle = data.title ?? existing.title
         const titleChanged = newTitle !== existing.title
@@ -471,8 +472,8 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
         // A case twin's file is the other twin's too (#5498). Planned before
         // anything here changes: a throw fails the item with nothing moved, and
         // a not-ready one is retried by the pull. Its own file lands at the new
-        // path in one step with the other twin's, and the frontmatter below is
-        // applied to it in place.
+        // path in one step with the other twin's and its canonical row, and the
+        // frontmatter below is applied to it in place.
         const twinMove = sharesCaseTwinFile(notesDir, existing.path)
           ? planCaseTwinMove(notesDir, existing.path, itemId, newRelPath)
           : null
@@ -480,7 +481,9 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
         updateFields.path = newRelPath
 
         if (twinMove) {
-          const moved = twinMove()
+          const moved = twinMove(() => {
+            updateNoteMetadata(ctx.db, itemId, { path: newRelPath })
+          })
           movedTwinPath = newRelPath
           updateFields.contentHash = generateContentHash(moved.content)
           settleRemoteNoteFileSync(itemId, newAbsPath, newRelPath, moved.content)
@@ -549,7 +552,18 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
           })
         }
       }
-      if ((!needsPathUpdate || movedTwinPath !== null) && rewritesFrontmatter) {
+      // The file a case twin shares may hold the other twin's bytes (#5561).
+      const offFile =
+        !needsPathUpdate && rewritesFrontmatter
+          ? updateCaseTwinOffFile(getVaultRoot(), existing.path, itemId, frontmatterPatch)
+          : null
+      if (offFile) {
+        writtenAliases = { kind: 'read', aliases: extractAliases(offFile.frontmatter, newTitle) }
+        if (coverPresent) {
+          recordAppliedNoteCover(ctx.db, itemId, offFile.frontmatter)
+          updateFields.cover = offFile.cover
+        }
+      } else if ((!needsPathUpdate || movedTwinPath !== null) && rewritesFrontmatter) {
         // emoji is sidecar-only state — never a reason to rewrite the file
         const filePath = movedTwinPath ?? existing.path
         const absPath = toAbsolutePath(filePath)
@@ -593,7 +607,9 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
       const indexed = noteCacheExists(indexDb, itemId)
       const indexTags =
         indexed && tagsChanged && remoteTags
-          ? withLocalBodyTags(remoteTags, updateFields.path ?? existing.path)
+          ? offFile
+            ? offFile.tags
+            : withLocalBodyTags(remoteTags, updateFields.path ?? existing.path)
           : undefined
 
       if (indexTags) {

@@ -48,9 +48,16 @@ function readTextBlobs(db: DrizzleDb): Set<string> {
   try {
     ids = JSON.parse(value)
   } catch (error) {
-    // Forgetting the list only costs one more download of each text blob, while
-    // a throw here would stop every restore scan for good.
+    // Forgetting the list only costs one more download of each text blob, which
+    // the restore remembers again, while a throw here would stop every restore
+    // scan for good. Removing the value reports it once, not at every start.
     log.warn('Binary note text-blob list is corrupt; starting it again', { error })
+    trackMainLog('warn', { scope: 'BinaryNoteRestore', action: 'binary_note_text_blobs_corrupt' })
+    try {
+      db.delete(syncState).where(eq(syncState.key, SYNC_STATE_KEYS.BINARY_NOTE_TEXT_BLOBS)).run()
+    } catch (removeError) {
+      log.warn('Corrupt binary note text-blob list not removed', { error: removeError })
+    }
     return new Set()
   }
   return new Set(Array.isArray(ids) ? ids.filter((id) => typeof id === 'string') : [])

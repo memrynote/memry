@@ -176,9 +176,9 @@ describe('the day merge tags, behind a running pass of the day', () => {
     ])
   })
 
-  // Core `set_tags` dedupes the whole list by tag key, keeping the first
-  // spelling; the desktop write keeps one spelling per key too (#5247 A18).
-  it('writes one spelling per tag key when the day file holds case variants', async () => {
+  // Core `set_tags` dedupes the whole list by the tag fold, keeping the first
+  // spelling; the desktop write keeps one spelling per tag too (#5247 A18).
+  it('writes one spelling per tag when the day file holds case variants', async () => {
     await invokeHandler(JournalChannels.invoke.CREATE_ENTRY, { date: DATE, content: 'Morning.' })
     const file = path.join(vault.path, 'journal', `${DATE}.md`)
     fs.writeFileSync(file, `---\ndate: ${DATE}\ntags:\n  - Work\n  - work\n---\nMorning.\n`)
@@ -194,6 +194,27 @@ describe('the day merge tags, behind a running pass of the day', () => {
     expect(parseJournalEntry(fs.readFileSync(file, 'utf8'), DATE).frontmatter.tags).toEqual([
       'Work',
       'x'
+    ])
+  })
+
+  // The fold keeps whitespace (protocol §13.7.7, the `no-trim-in-fold`
+  // vector), so core's union keeps a padded spelling as a tag of its own.
+  it('adds a foreign tag that differs from a day tag only in whitespace, as core does', async () => {
+    await invokeHandler(JournalChannels.invoke.CREATE_ENTRY, { date: DATE, content: 'Morning.' })
+    const file = path.join(vault.path, 'journal', `${DATE}.md`)
+    fs.writeFileSync(file, `---\ndate: ${DATE}\ntags:\n  - Work\n---\nMorning.\n`)
+
+    journalHandler.applyUpsert(
+      { db: asSyncDb(dataDb.db), emit: vi.fn() },
+      FOREIGN,
+      { date: DATE, content: 'theirs\n', tags: [' Work '] },
+      { b: 1 }
+    )
+    await runJournalDayMerges(asSyncDb(dataDb.db), async () => true)
+
+    expect(parseJournalEntry(fs.readFileSync(file, 'utf8'), DATE).frontmatter.tags).toEqual([
+      'Work',
+      ' Work '
     ])
   })
 })
