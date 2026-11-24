@@ -15,7 +15,6 @@
 import { createHash } from 'crypto'
 import { eq, like } from 'drizzle-orm'
 import * as Y from 'yjs'
-import { foldTag } from '@memry/shared/tag-fold'
 import { syncState } from '@memry/db-schema/schema/sync-state'
 import { generateJournalId } from '@memry/contracts/journal-api'
 import type { VectorClock } from '@memry/contracts/sync-api'
@@ -32,6 +31,7 @@ import { getIndexDatabase } from '../database/client'
 import { deleteNoteCache, getNoteCacheByPath } from '../database/queries/notes'
 import { createJournalEntry } from '../journal/create-entry'
 import { addJournalTags } from '../journal/update-entry'
+import { mergeTagLists } from '../vault/frontmatter'
 import { getJournalRelativePath, parseJournalEntry, readJournalTextSync } from '../vault/journal'
 import { deleteNoteFromCache } from '../vault/note-sync'
 import { relinkTasksToMergedNote } from '../notes/runtime-effects'
@@ -95,7 +95,7 @@ export function oweJournalDayMerge(db: DrizzleDb, merge: OwedJournalDayMerge): v
   const fallbackMarkdown = merge.fallbackMarkdown ?? kept?.fallbackMarkdown
   const recordMarkdown = merge.recordMarkdown ?? kept?.recordMarkdown
   const deleted = merge.deleted || kept?.deleted
-  const tags = unionTags(kept?.tags ?? [], merge.tags ?? [])
+  const tags = mergeTagLists(kept?.tags ?? [], merge.tags ?? [])
   const recordTags = merge.recordTags ?? kept?.recordTags ?? []
   const value = JSON.stringify({
     ...merge,
@@ -263,7 +263,7 @@ async function mergeOne(deps: JournalDayMergeDeps, merge: OwedJournalDayMerge): 
     }
     const tags = merge.deleted
       ? (merge.tags ?? [])
-      : unionTags(merge.tags ?? [], merge.recordTags ?? [])
+      : mergeTagLists(merge.tags ?? [], merge.recordTags ?? [])
     if (tags.length > 0) await deps.addDayTags(merge.date, tags)
   }
 
@@ -332,17 +332,6 @@ function readDay(date: string): ReturnType<typeof parseJournalEntry> | null {
     log.warn('Could not read a journal day file', { date, error })
     return null
   }
-}
-
-/** By tag key, keeping the first spelling and its order, as the core's `tags::dedupe`. */
-function unionTags(kept: string[], added: string[]): string[] {
-  const seen = new Set<string>()
-  return [...kept, ...added].filter((tag) => {
-    const key = foldTag(tag.trim())
-    if (seen.has(key)) return false
-    seen.add(key)
-    return true
-  })
 }
 
 /**

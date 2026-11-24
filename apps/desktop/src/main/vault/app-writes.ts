@@ -17,6 +17,11 @@
  * app write, and once the watcher reads them, the bytes the app wrote before
  * are no longer its own: an outside edit that puts them back is an edit too.
  *
+ * Case twins write the file they share, each by its own spelling (#5624). A
+ * write that lands supersedes the landed records of every spelling that names
+ * the same file, so one twin's earlier bytes, put back from outside after the
+ * other twin wrote, are an edit too.
+ *
  * Records expire after `APP_WRITE_TTL_MS`. That only bounds the map: an
  * event comes about 200 ms after its write.
  *
@@ -24,12 +29,15 @@
  */
 
 import { createHash } from 'crypto'
-import { createReadStream } from 'fs'
+import { createReadStream, statSync } from 'fs'
+import { foldNotePath } from '@memry/storage-data/note-metadata-repository'
 
 /** What a writer puts in a file: its text (UTF-8), its bytes, or their sha256 in hex. */
 export type AppBytes = string | Uint8Array | { sha256: string }
 
 interface AppWrite {
+  /** The path the writer named. */
+  path: string
   /** sha256 of the bytes, or null for a move whose bytes were not read. */
   hash: string | null
   /** Wall clock, for expiry only. */
@@ -41,7 +49,8 @@ interface AppWrite {
 
 const APP_WRITE_TTL_MS = 5000
 
-const writesByPath = new Map<string, AppWrite[]>()
+/** By folded path: the spellings of one file on a case-insensitive disk share a list. */
+const writesByFold = new Map<string, AppWrite[]>()
 let sweptAt = 0
 /**
  * Orders landings and reads. Two of them often fall in one millisecond, and a
@@ -60,26 +69,47 @@ function isLive(write: AppWrite, at: number): boolean {
 }
 
 /**
- * The path's records that have not expired. Every path is swept at most once
- * per TTL, from the write side too, so a stopped watcher cannot leave the map
- * growing by one entry per written file.
+ * The records under `fold` that have not expired, of every spelling. Every
+ * path is swept at most once per TTL, from the write side too, so a stopped
+ * watcher cannot leave the map growing by one entry per written file.
  */
-function liveWrites(absolutePath: string, now: number): AppWrite[] {
+function liveWrites(fold: string, now: number): AppWrite[] {
   if (now - sweptAt >= APP_WRITE_TTL_MS) {
     sweptAt = now
-    for (const [swept, writes] of writesByPath) {
+    for (const [swept, writes] of writesByFold) {
       const live = writes.filter((write) => isLive(write, now))
-      if (live.length > 0) writesByPath.set(swept, live)
-      else writesByPath.delete(swept)
+      if (live.length > 0) writesByFold.set(swept, live)
+      else writesByFold.delete(swept)
     }
   }
-  return (writesByPath.get(absolutePath) ?? []).filter((write) => isLive(write, now))
+  return (writesByFold.get(fold) ?? []).filter((write) => isLive(write, now))
 }
 
-function addWrite(absolutePath: string, write: AppWrite): void {
-  const live = liveWrites(absolutePath, write.recordedAt)
+function liveWritesAt(absolutePath: string, now: number): AppWrite[] {
+  return liveWrites(foldNotePath(absolutePath), now).filter((write) => write.path === absolutePath)
+}
+
+function addWrite(write: AppWrite): void {
+  const fold = foldNotePath(write.path)
+  const live = liveWrites(fold, write.recordedAt)
   live.push(write)
-  writesByPath.set(absolutePath, live)
+  writesByFold.set(fold, live)
+}
+
+/**
+ * Whether two spellings name one file, as on a case-insensitive disk. A
+ * spelling that cannot be read counts as another file, which keeps its
+ * records the app's until they expire, as before #5624.
+ */
+function sameFile(a: string, b: string): boolean {
+  if (a === b) return true
+  try {
+    const first = statSync(a, { bigint: true, throwIfNoEntry: false })
+    const second = statSync(b, { bigint: true, throwIfNoEntry: false })
+    return !!first && !!second && first.dev === second.dev && first.ino === second.ino
+  } catch {
+    return false
+  }
 }
 
 /**
@@ -90,23 +120,29 @@ function addWrite(absolutePath: string, write: AppWrite): void {
  */
 export function recordAppWrite(absolutePath: string, bytes: AppBytes): () => void {
   const write: AppWrite = {
+    path: absolutePath,
     hash: sha256Of(bytes),
     recordedAt: Date.now(),
     landed: null,
     supersededStep: null
   }
-  addWrite(absolutePath, write)
+  addWrite(write)
   return () => {
     const landed = { at: Date.now(), step: ++step }
-    const live = liveWrites(absolutePath, landed.at)
+    const fold = foldNotePath(absolutePath)
+    const live = liveWrites(fold, landed.at)
     for (const earlier of live) {
-      if (earlier.landed !== null && earlier.supersededStep === null) {
+      if (
+        earlier.landed !== null &&
+        earlier.supersededStep === null &&
+        sameFile(earlier.path, absolutePath)
+      ) {
         earlier.supersededStep = landed.step
       }
     }
     write.landed = landed
     if (!live.includes(write)) live.push(write)
-    writesByPath.set(absolutePath, live)
+    writesByFold.set(fold, live)
   }
 }
 
@@ -117,7 +153,8 @@ export function recordAppWrite(absolutePath: string, bytes: AppBytes): () => voi
  * the window is dropped, as every edit was before #5605.
  */
 export function recordAppMove(absolutePath: string): void {
-  addWrite(absolutePath, {
+  addWrite({
+    path: absolutePath,
     hash: null,
     recordedAt: Date.now(),
     landed: null,
@@ -132,12 +169,12 @@ export function recordAppMove(absolutePath: string): void {
  * wrote nothing there lately, so nothing need be read.
  */
 export function appWriteCheck(absolutePath: string): ((bytes: AppBytes) => boolean) | null {
-  const atStart = liveWrites(absolutePath, Date.now())
+  const atStart = liveWritesAt(absolutePath, Date.now())
   if (atStart.length === 0) return null
   const readStep = ++step
   return (bytes) => {
     const hash = sha256Of(bytes)
-    const current = liveWrites(absolutePath, Date.now())
+    const current = liveWritesAt(absolutePath, Date.now())
     const owned = (write: AppWrite): boolean =>
       (write.hash === null || write.hash === hash) &&
       (write.supersededStep === null || write.supersededStep > readStep)
@@ -172,13 +209,13 @@ export async function fileHoldsAppWrite(absolutePath: string): Promise<boolean> 
   return sha256 !== null && check({ sha256 })
 }
 
-/** Paths with a live record. Diagnostics: the size of the map is what the sweep bounds. */
+/** Folded paths with a live record. Diagnostics: the size of the map is what the sweep bounds. */
 export function appWriteCount(): number {
-  return writesByPath.size
+  return writesByFold.size
 }
 
 /** Drops every record, at vault close: no path of one vault belongs to the next. */
 export function resetAppWrites(): void {
-  writesByPath.clear()
+  writesByFold.clear()
   sweptAt = 0
 }

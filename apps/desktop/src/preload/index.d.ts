@@ -1,4 +1,5 @@
 import type { ElectronAPI } from '@electron-toolkit/preload'
+import type { DownloadNoteFilesResult } from '@memry/contracts/ipc-attachments'
 import type { InitOAuthResult, RetryOAuthResult } from '@memry/contracts/ipc-auth'
 import type { GeneratedRpcApi } from '@memry/rpc'
 import type * as InboxRpc from '@memry/rpc/inbox'
@@ -2013,6 +2014,7 @@ interface SyncAttachmentsClientAPI {
     totalChunks: number
     progress: number
   }>
+  downloadNoteFiles: (input: { noteId: string }) => Promise<DownloadNoteFilesResult>
 }
 
 // Window controls API
