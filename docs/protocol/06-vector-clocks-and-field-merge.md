@@ -599,13 +599,18 @@ and every other hold in one batch (`:122-140`). A verified record for the id
 ends the hold (`:96-105`). Otherwise the hold gives up after 5 attempts or 50
 failures, whichever comes first, and the queued edit then pushes
 (`:59`, `:64`, `:224-226`). One re-pull counts as follows
-(`:155-174`, `:180-221`):
+(`:158-174`, `:180-221`):
 
 - **Attempt**: only a well-formed page that leaves the id out, with no dropped
   page and no record still unverifiable.
-- **Failure**: a dropped page, a record still unverifiable, a malformed body, or
-  a 4xx other than 429.
-- **Never counts**: a transport failure, a 5xx, or a 429.
+- **Failure**: the server's own answer about the request: a record still
+  unverifiable, or a 4xx other than 429 that carries the server's error code.
+- **Never counts**: a transport failure, a 5xx, a 429, a 200 that is no pull
+  envelope (a dropped page or a malformed body), or a 4xx with no error code.
+  A captive portal or proxy answers in these shapes (a sign-in page, `{}`, a
+  403, a 407). Counted, they would release the hold, and a held settings edit
+  would push over the account's settings on the next good network
+  (VERIFY-5447 r4 #8).
 
 **Desktop divergence.** Desktop has no hold and no re-pull. It skips a pulled
 record whose signer has no public key as a decrypt failure that is not a crypto
