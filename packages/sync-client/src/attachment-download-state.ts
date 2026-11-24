@@ -252,6 +252,22 @@ export function markDownloadOwed(db: DrizzleDb, ownerId: string, attachmentId: s
     .run()
 }
 
+/**
+ * A request a session reset dropped before its outcome came in: owed, unless
+ * this session landed the attachment or a request in it holds the download
+ * (REVIEW-5700). Owed then, the re-driver would download over the file, an
+ * edit made to it since included.
+ */
+export function markDroppedDownloadOwed(
+  db: DrizzleDb,
+  ownerId: string,
+  attachmentId: string
+): void {
+  const key = keyOf(ownerId, attachmentId)
+  if (inFlight.has(key) || succeeded.has(key)) return
+  markDownloadOwed(db, ownerId, attachmentId)
+}
+
 /** The bytes are on disk. Forget every failure recorded for this attachment. */
 export function markDownloadSucceeded(
   db: DrizzleDb | null,

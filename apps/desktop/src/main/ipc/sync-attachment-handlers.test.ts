@@ -328,7 +328,7 @@ describe('sync-attachment-handlers', () => {
     vi.mocked(getValidAccessToken).mockResolvedValue(null)
     vi.mocked(getVaultStatus).mockReturnValue({ path: null } as any)
     vi.mocked(isDatabaseInitialized).mockReturnValue(false)
-    clearAttachmentState()
+    void clearAttachmentState()
     resetAttachmentDownloadSession()
   })
 
@@ -380,7 +380,7 @@ describe('sync-attachment-handlers', () => {
     registerAttachmentHandlers()
 
     // #when
-    clearAttachmentState()
+    void clearAttachmentState()
 
     // #then — safe to call multiple times without throwing
     expect(() => clearAttachmentState()).not.toThrow()
@@ -405,13 +405,13 @@ describe('sync-attachment-handlers', () => {
     getCanvasAssetIO()
 
     // #when the sync runtime tears down
-    resetAttachmentQueue()
+    void resetAttachmentQueue()
 
     // #then the IPC layer's queue went with it
     expect(dispose).toHaveBeenCalledTimes(1)
 
     unregisterAttachmentHandlers()
-    resetAttachmentQueue()
+    void resetAttachmentQueue()
 
     // #then a deregistered handler set is not reachable from the runtime
     expect(dispose).toHaveBeenCalledTimes(1)
@@ -429,7 +429,7 @@ describe('sync-attachment-handlers', () => {
     expect(vi.mocked(UploadQueue).mock.calls[0][1]).toBe(monitorA)
 
     // #when that runtime stops and a second one starts with a fresh monitor
-    resetAttachmentQueue()
+    void resetAttachmentQueue()
     expect(attachmentMocks.queue.dispose).toHaveBeenCalledTimes(1)
     vi.mocked(getNetworkMonitor).mockReturnValue(monitorB)
     expect(getCanvasAssetIO()).not.toBeNull()
@@ -512,7 +512,8 @@ describe('sync-attachment-handlers', () => {
       {
         onProgress: expect.any(Function),
         pace: expect.any(Function),
-        upcoming: expect.any(Function)
+        upcoming: expect.any(Function),
+        signal: expect.any(AbortSignal)
       }
     )
     // The shared slot is never touched, so nothing can clear a concurrent
@@ -671,7 +672,11 @@ describe('sync-attachment-handlers', () => {
     expect(attachmentMocks.service.downloadAttachment).toHaveBeenCalledWith(
       'attachment-1',
       '/vault/attachments/canvas-1.png',
-      { pace: expect.any(Function), upcoming: expect.any(Function) }
+      {
+        pace: expect.any(Function),
+        upcoming: expect.any(Function),
+        signal: expect.any(AbortSignal)
+      }
     )
   })
 

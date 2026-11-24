@@ -852,6 +852,24 @@ describe('AttachmentSyncService', () => {
         expect((await fsp.readFile(asked)).equals(plaintext)).toBe(true)
       })
 
+      // REVIEW-5700: the landing keeps a conflict copy and records hashes, so
+      // where it would land is asked without it, and it runs once, at the landing.
+      it('runs the landing once when the landing moves the file elsewhere', async () => {
+        const { deps, plaintext } = buildDownloadFixture('report.pdf')
+        const asked = await fileHolding(plaintext)
+        const landAt = path.join(tmpDir, 'Report.pdf')
+        const landingFor = vi.fn(async () => landAt)
+        const beforeFileLands = vi.fn(async () => landAt)
+        const service = new AttachmentSyncService({ ...deps, landingFor, beforeFileLands })
+
+        await service.downloadAttachment('att-dir', asked, { fileOwnerId: 'note-3' })
+
+        expect(landingFor).toHaveBeenCalledWith(asked, 'att-dir', 'note-3')
+        expect(beforeFileLands).toHaveBeenCalledTimes(1)
+        const fsp = await import('node:fs/promises')
+        expect((await fsp.readFile(landAt)).equals(plaintext)).toBe(true)
+      })
+
       it('downloads to where the landing moves it, whatever the asked file holds', async () => {
         const { deps, plaintext } = buildDownloadFixture('report.pdf')
         const asked = await fileHolding(plaintext)

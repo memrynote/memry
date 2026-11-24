@@ -57,8 +57,8 @@ import {
   clearAttachmentDownloadFailure,
   holdsDownload,
   markDownloadFailed,
-  markDownloadOwed,
   markDownloadSucceeded,
+  markDroppedDownloadOwed,
   missingDownload,
   releaseDownloadAttempt
 } from '@memry/sync-client/attachment-download-state'
@@ -76,7 +76,7 @@ import {
 import { recordAppWrite } from '../vault/app-writes'
 import { applyDownloadedAttachmentName } from '../vault/attachment-rename'
 import { releaseAbandonedCaseTwinBytes } from '../vault/case-twin-file'
-import { landCaseTwinDownload } from '../vault/case-twin-landing'
+import { caseTwinLandingFor, landCaseTwinDownload } from '../vault/case-twin-landing'
 import { fileTextNoteChanged } from '../file-text'
 import { getStatus as getVaultStatus } from '../vault/status'
 import {
@@ -119,6 +119,10 @@ let downloadQueue: DownloadQueue | null = null
 const savedUploads = new Map<string, Promise<UploadResult | null>>()
 const savedUploadKey = (noteId: string, diskPath: string): string => `${noteId}\0${diskPath}`
 
+// Downloads whose outcome is not recorded yet. A teardown waits for them, or
+// one settling after the vault's databases close records nothing (REVIEW-5700).
+const settlingDownloads = new Set<Promise<string | null>>()
+
 /**
  * The attachment record tells the backfill which files the server already has
  * (#2651). Never throws: the transfer it records already succeeded.
@@ -143,12 +147,13 @@ function wasDeleted(noteId: string, diskPath: string): boolean {
 /**
  * A pull's request a sync runtime restart dropped: owed, the re-driver asks
  * for it when nothing else does. A row the new runtime wrote keeps its own
- * window. Never throws: the request it settles is already gone.
+ * window, and one it landed or holds is not owed. Never throws: the request it
+ * settles is already gone.
  */
 function oweDownload(noteId: string, attachmentId: string): void {
   if (!isDatabaseInitialized()) return
   try {
-    markDownloadOwed(getDatabase(), noteId, attachmentId)
+    markDroppedDownloadOwed(getDatabase(), noteId, attachmentId)
   } catch (err) {
     logger.warn('Failed to record a dropped download as owed', { noteId, attachmentId, err })
   }
@@ -264,6 +269,12 @@ const getOrCreateAttachmentService = (): AttachmentSyncService | null => {
       // reports no landing, so the record stays in flight until it expires.
       recordAppWrite(landAt, { sha256 })
       return landAt
+    },
+    landingFor: async (filePath, attachmentId, fileOwnerId) => {
+      await settleBinaryHashCheck(fileOwnerId)
+      return isDatabaseInitialized()
+        ? caseTwinLandingFor(filePath, attachmentId, fileOwnerId)
+        : filePath
     },
     getMaxFileSize: () => getCachedMaxFileSize(),
     getAccessToken: () => getValidAccessToken(),
@@ -394,20 +405,24 @@ export function getCanvasAssetIO(): {
  * `drainAttachmentOutbox()`. Carrying items across would be the actual data bug.
  *
  * Idempotent — the runtime teardown and session teardown both call it.
+ * Resolves once every download running now has recorded its outcome, so the
+ * teardown can wait for it before the vault's databases close.
  */
-export function clearAttachmentState(): void {
+export function clearAttachmentState(): Promise<void> {
   if (uploadQueue) {
     uploadQueue.dispose()
     uploadQueue = null
   }
   if (downloadQueue) {
-    // Rejects queued and running items with DownloadQueueClearedError; the
-    // download-needed callback releases their claims instead of recording
-    // failures, and owes a pull's request so the re-driver asks for it again.
+    // Rejects queued items and aborts running ones with
+    // DownloadQueueClearedError; the download-needed callback releases their
+    // claims instead of recording failures, and owes a pull's request so the
+    // re-driver asks for it again.
     downloadQueue.dispose()
     downloadQueue = null
   }
   attachmentService = null
+  return Promise.allSettled(settlingDownloads).then(() => undefined)
 }
 
 // ============================================================================
@@ -825,7 +840,20 @@ async function requestNoteFiles(
  * every exit records an outcome or releases the claim. Resolves with the
  * failure's message, or null when nothing is left to report.
  */
-async function materializeDownload(
+function materializeDownload(
+  event: AttachmentDownloadNeededEvent,
+  source: 'eager' | 'interactive'
+): Promise<string | null> {
+  const settled = downloadAndRecord(event, source)
+  settlingDownloads.add(settled)
+  const forget = (): void => {
+    settlingDownloads.delete(settled)
+  }
+  settled.then(forget, forget)
+  return settled
+}
+
+async function downloadAndRecord(
   {
     noteId,
     attachmentId,
@@ -952,7 +980,7 @@ export function unregisterAttachmentHandlers(): void {
   registerOutboxUploader(null, null, null)
   registerManifestChecksumReader(null)
   registerAttachmentQueueReset(null)
-  clearAttachmentState()
+  void clearAttachmentState()
   attachmentEvents.removeAllListeners('saved')
   attachmentEvents.removeAllListeners('download-needed')
 

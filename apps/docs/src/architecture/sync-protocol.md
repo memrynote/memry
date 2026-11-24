@@ -1256,17 +1256,23 @@ across devices:
   drops every claim, so a pull's request still waiting for its access token
   when the runtime restarts does not download: a request the new runtime makes
   for the same file is the only one, and a 404 counts once. It records the
-  download as owed instead (`markDownloadOwed`), so the re-driver asks for it
-  when nothing else does. A failure row the new runtime already wrote keeps its
-  window. A pull's request that is queued or mid-transfer when the runtime
-  restarts settles as `DownloadQueueClearedError` and is owed the same way:
-  the new runtime's pull starts from its cursor, and with auto-download on an
-  open asks for nothing, so without the row the file would land only when its
-  note is pulled again (#5697). The re-driver asks once per owed file. When
-  the file is already there, an embed is found through its attachment record
-  with no request, and a binary note's file that has the manifest's size and
-  sha256 costs one manifest read: no chunk is fetched and nothing is written
-  over it. Opening a binary note
+  download as owed instead (`markDroppedDownloadOwed`), so the re-driver asks
+  for it when nothing else does. A failure row the new runtime already wrote
+  keeps its window, and a download the new runtime landed or still holds is
+  not owed: the re-driver would write over an edit made since. A pull's
+  request that is queued or mid-transfer when the runtime restarts settles as
+  `DownloadQueueClearedError` and is owed the same way: the new runtime's pull
+  starts from its cursor, and with auto-download on an open asks for nothing,
+  so without the row the file would land only when its note is pulled again
+  (#5697). Disposing the queue aborts running transfers, and the runtime
+  teardown waits until every download has recorded its outcome, so a vault
+  switch closes the databases after the rows are written. The re-driver asks
+  once per owed file. When the file is already there, an embed is found
+  through its attachment record with no request, and a binary note's file
+  that has the manifest's size and sha256 costs one manifest read: no chunk is
+  fetched and nothing is written over it. Whether the download would land on
+  that file is asked first (`landingFor`), with no conflict copy kept and
+  nothing recorded, so a landing elsewhere runs once, after the download. Opening a binary note
   whose file has not downloaded keeps its row: `getFileById` drops a row with a
   missing file only when the canonical row names no attachment id (#5616).
 - **Reference pruning** — `attachmentReferences` merges union-only, so a

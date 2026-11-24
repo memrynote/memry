@@ -14,7 +14,9 @@ import { eq, sql } from 'drizzle-orm'
 import { attachmentDownloadFailures, noteMetadata } from '@memry/db-schema'
 import { SYNC_CHANNELS, SYNC_EVENTS } from '@memry/contracts/ipc-sync'
 import {
+  claimRequestedDownload,
   isDownloadAbandoned,
+  markDownloadOwed,
   markDownloadRequested,
   pruneUnresolvableReferences,
   resetAttachmentDownloadSession
@@ -24,10 +26,13 @@ import { invokeHandler, mockIpcMain, resetIpcMocks } from '@tests/utils/mock-ipc
 import { createTestDataDb, type TestDataDb } from '../../test/helpers/test-data-db'
 import { setSetting } from '../database/queries/settings'
 import { recordAttachmentFile } from '../sync/attachment-files'
+import { SupersededDownloadError } from '../sync/attachment-errors'
 import { redriveAttachmentDownloads } from '../sync/attachment-download-redriver'
 
 const h = vi.hoisted(() => ({
   db: null as unknown as TestDataDb,
+  /** False once the vault's databases close. */
+  dbOpen: true,
   vaultPath: '',
   sent: [] as Array<{ channel: string; payload: unknown }>,
   download: vi.fn(),
@@ -64,7 +69,7 @@ vi.mock('../sync/attachments', () => ({
 vi.mock('../sync/token-manager', () => ({ getValidAccessToken: () => h.token() }))
 vi.mock('../database/client', () => ({
   getDatabase: () => h.db,
-  isDatabaseInitialized: () => true
+  isDatabaseInitialized: () => h.dbOpen
 }))
 vi.mock('../vault/status', () => ({ getStatus: () => ({ path: h.vaultPath }) }))
 vi.mock('../sync/runtime-state', () => ({ getNetworkMonitor: () => h.network }))
@@ -155,6 +160,18 @@ function serveFiles(): void {
   )
 }
 
+/** Every transfer runs until the download queue aborts it. */
+function transfersRunUntilAborted(): void {
+  h.download.mockImplementation(
+    (_attachmentId: string, _targetPath: string, opts?: { signal?: AbortSignal }) =>
+      new Promise((_, reject) => {
+        opts?.signal?.addEventListener('abort', () => reject(new Error('Aborted')))
+      })
+  )
+}
+
+const failureRows = (): unknown[] => h.db.select().from(attachmentDownloadFailures).all()
+
 /** The server answered 404 for the binary note's file on all three days. */
 function abandonBinaryNoteFile(): void {
   h.db
@@ -176,6 +193,7 @@ beforeEach(() => {
   resetIpcMocks()
   resetAttachmentDownloadSession()
   h.sent = []
+  h.dbOpen = true
   h.download.mockReset()
   h.token.mockReset().mockResolvedValue('token')
   for (const log of Object.values(h.log)) log.mockClear()
@@ -214,7 +232,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.useRealTimers()
   unregisterAttachmentHandlers()
-  clearAttachmentState()
+  void clearAttachmentState()
   resetAttachmentDownloadSession()
   fs.rmSync(h.vaultPath, { recursive: true, force: true })
 })
@@ -337,6 +355,20 @@ describe('sync:download-note-files with auto-download off', () => {
 
   // With sync running, the downloader checks each embed no record names
   // against the file on disk, and its record keeps the next open local.
+  // An open asks again on its own, so a vault switch owes it nothing.
+  it('owes nothing for an open a vault switch aborts', async () => {
+    transfersRunUntilAborted()
+    const open = openNote('bin-1')
+    await settle()
+    expect(requested()).toEqual(['att-bin'])
+
+    resetAttachmentDownloadSession()
+    await clearAttachmentState()
+
+    await expect(open).resolves.toEqual({ success: true })
+    expect(failureRows()).toEqual([])
+  })
+
   describe('with sync running, an embed no record names is owed whatever the body shows', () => {
     it('downloads an embed a pull named before its text reached the body', async () => {
       serveFiles()
@@ -422,7 +454,7 @@ describe('sync:download-note-files with auto-download on', () => {
 
     pullAsksForEmbed()
     resetAttachmentDownloadSession()
-    clearAttachmentState()
+    void clearAttachmentState()
     pullAsksForEmbed()
     await settle()
     grantToken('token')
@@ -441,7 +473,7 @@ describe('sync:download-note-files with auto-download on', () => {
 
     pullAsksForEmbed()
     resetAttachmentDownloadSession()
-    clearAttachmentState()
+    void clearAttachmentState()
     grantToken('token')
     await settle()
     expect(h.download).not.toHaveBeenCalled()
@@ -485,7 +517,7 @@ describe('sync:download-note-files with auto-download on', () => {
     expect(requested()).toEqual(['att-note-2', 'att-note-3', 'att-bin'])
 
     resetAttachmentDownloadSession()
-    clearAttachmentState()
+    void clearAttachmentState()
     for (const abort of abortTransfers) abort()
     await settle()
 
@@ -507,13 +539,81 @@ describe('sync:download-note-files with auto-download on', () => {
     expect(h.download).toHaveBeenCalledTimes(4)
   })
 
+  // REVIEW-5700: owed, the re-driver would download over an edit made to the
+  // file since the new runtime landed it.
+  it('owes nothing for a dropped pull request the new runtime already landed', async () => {
+    setAutoDownload(true)
+    serveFiles()
+    const grantToken = holdNextToken()
+
+    pullAsksForEmbed()
+    resetAttachmentDownloadSession()
+    void clearAttachmentState()
+    pullAsksForEmbed()
+    await settle()
+    expect(fs.readFileSync(imagePath())).toEqual(PNG)
+    grantToken('token')
+    await settle()
+
+    expect(failureRows()).toEqual([])
+  })
+
+  it('owes nothing for a dropped pull request the new runtime is downloading', async () => {
+    setAutoDownload(true)
+    transfersRunUntilAborted()
+    const grantToken = holdNextToken()
+
+    pullAsksForEmbed()
+    resetAttachmentDownloadSession()
+    void clearAttachmentState()
+    pullAsksForEmbed()
+    await settle()
+    expect(requested()).toEqual(['att-embed'])
+    grantToken('token')
+    await settle()
+
+    expect(failureRows()).toEqual([])
+  })
+
+  // REVIEW-5700: a transfer that failed after the vault's databases closed
+  // wrote no row, so the old vault never asked for it again.
+  it('owes a running pull request a vault switch aborts, before the databases close', async () => {
+    setAutoDownload(true)
+    transfersRunUntilAborted()
+    pullAsksForBinaryFile()
+    await settle()
+    expect(requested()).toEqual(['att-bin'])
+
+    resetAttachmentDownloadSession()
+    await clearAttachmentState()
+    h.dbOpen = false
+
+    expect(failureRows()).toEqual([expect.objectContaining({ id: 'bin-1::att-bin' })])
+  })
+
+  // The downloader drops a binary note's bytes its note no longer names, its
+  // file already holding them or not (#5580).
+  it('drops a pull request whose note names another file now, landing nothing', async () => {
+    setAutoDownload(true)
+    markDownloadOwed(h.db, 'bin-1', 'att-bin')
+    h.download.mockRejectedValue(new SupersededDownloadError('bin-1', 'att-bin'))
+
+    pullAsksForBinaryFile()
+    await settle()
+
+    expect(failureRows()).toEqual([])
+    expect(materialized()).toEqual([])
+    // Not recorded as landed: a request for it is still free to ask.
+    expect(claimRequestedDownload(h.db, 'bin-1', 'att-bin')).not.toBeNull()
+  })
+
   it('logs a download it cannot record as owed, with the file it is for', async () => {
     setAutoDownload(true)
     const grantToken = holdNextToken()
 
     pullAsksForEmbed()
     resetAttachmentDownloadSession()
-    clearAttachmentState()
+    void clearAttachmentState()
     // The data DB refuses the write as the stale request settles.
     h.db.run(sql`DROP TABLE attachment_download_failures`)
     grantToken('token')

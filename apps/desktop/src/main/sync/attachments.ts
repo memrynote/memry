@@ -235,6 +235,16 @@ export interface AttachmentSyncDeps {
     sha256: string,
     fileOwnerId?: string
   ) => string | Promise<string>
+  /**
+   * Where `beforeFileLands` would land a binary note's file, with none of its
+   * effects, and throwing as it does. A file already holding the bytes skips
+   * the chunks only when it would land on itself (REVIEW-5700).
+   */
+  landingFor?: (
+    filePath: string,
+    attachmentId: string,
+    fileOwnerId: string
+  ) => string | Promise<string>
   fetchFn?: FetchFn
 }
 
@@ -828,7 +838,7 @@ export class AttachmentSyncService {
         // The server charges one blob_download token per id, so the pacer does too.
         for (let i = 0; i < attachmentIds.length; i++) await netOpts.pace?.()
         const body = JSON.stringify({ attachmentIds })
-        return binaryFetch('POST', batchUrl, token, body, this.deps.fetchFn)
+        return binaryFetch('POST', batchUrl, token, body, this.deps.fetchFn, netOpts.signal)
       })) ?? (await this.fetchManifest(token, attachmentId, netOpts))
 
     const signerPublicKey = await this.deps.getDevicePublicKey(encryptedManifest.signerDeviceId)
@@ -871,9 +881,15 @@ export class AttachmentSyncService {
 
       // A binary note's file a re-drive finds already holding these bytes, as
       // after a runtime restart dropped a request the new one landed
-      // (VERIFY-5683). The landing's checks still run, and only a landing on
-      // this same file skips the chunks: a case twin's lands elsewhere.
-      if (opts?.fileOwnerId !== undefined && (await holdsManifestBytes(destPath, manifest))) {
+      // (VERIFY-5683). Only a landing on this same file skips the chunks: a
+      // case twin's lands elsewhere. The landing runs then, its checks and
+      // records included; a landing elsewhere runs once, after the download.
+      if (
+        opts?.fileOwnerId !== undefined &&
+        (await holdsManifestBytes(destPath, manifest)) &&
+        ((await this.deps.landingFor?.(destPath, attachmentId, opts.fileOwnerId)) ?? destPath) ===
+          destPath
+      ) {
         const landAt = await this.deps.beforeFileLands?.(
           destPath,
           attachmentId,
