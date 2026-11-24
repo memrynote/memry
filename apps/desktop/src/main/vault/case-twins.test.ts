@@ -984,6 +984,15 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
     expect(parseNote(moved).frontmatter).toMatchObject(own)
   }, 30_000)
 
+  it('a twin move keeps its own quoted strings from its own version', async () => {
+    const own = await propertyTwins(QUOTED, TYPED, true)
+
+    await renameNoteCommand('lower', 'b')
+
+    const moved = fs.readFileSync(path.join(vault.path, 'SuperNotes/b.md'), 'utf8')
+    expect(parseNote(moved).frontmatter).toMatchObject(own)
+  }, 30_000)
+
   /** Holds twin upper's next file write until `release`; resolves `reached` when it gets there. */
   function holdUpperWrite() {
     let release = (): void => {}
