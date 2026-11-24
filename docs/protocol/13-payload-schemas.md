@@ -46,7 +46,7 @@ above in their order, then the six in the order just given
 which exists only with the `markdown` feature: without it `vault_lock` has no
 merge rule and would apply as a plain document. Every desktop build has it.
 Desktop passes that declaration to `Vault::sync_with_declaration`
-(`crates/memry-core/src/api/vault.rs:122-135`), which is not on the FFI
+(`crates/memry-core/src/api/vault.rs:133-149`), which is not on the FFI
 surface, so iOS keeps `Vault::sync` and the twenty-one. A type joins a
 declaration only with a reader for it: a declared type with none would be
 served and recorded corrupt
@@ -79,7 +79,7 @@ The platform-free engine establishes rules 1 and 2: it decrypts to
 copy for `fileType` (`:307-308`), with the contract stated at
 `packages/sync-client/src/pull/store.ts:5-9`, `:17`. The Rust core obeys it:
 the received string goes into `sync_items.payload` unchanged
-(`crates/memry-core/src/storage/repositories/sync_items.rs:403`, `:432`),
+(`crates/memry-core/src/storage/repositories/sync_items.rs:489`, `:503`),
 projections come from a parsed copy (`:151-152`), a local edit merges the
 changed keys into that copy and stores the result
 (`crates/memry-core/src/storage/repositories/payload.rs:64-72`), and a push
@@ -99,15 +99,15 @@ the `x-memry-client` header: the refusal is the core's decision, and iOS reports
 one marketing version across its builds. The first page of every run refetches
 by id each `(type, id)` another core build recorded and nobody tried within the
 last hour, desktop's `CORRUPT_ITEM_COOLDOWN_MS`, and stamps it as tried
-(`crates/memry-core/src/sync/pull.rs:376-377`,
+(`crates/memry-core/src/sync/pull.rs:390-391`,
 `crates/memry-core/src/sync/refused_items.rs:98-124`). It reads only the
 requested pairs (`crates/memry-core/src/sync/pull/apply_step.rs:177-180`). A
 failed refetch is logged and the run goes on to the feed with every entry kept
 (`crates/memry-core/src/sync/pull/apply_step.rs:118-122`). Three things resolve
 an entry: an apply, an expiry or a clock decision of the record
-(`crates/memry-core/src/sync/apply.rs:243`,
+(`crates/memry-core/src/sync/apply.rs:246`,
 `crates/memry-core/src/sync/refused_items.rs:63-78`), a tombstone of it, typed or
-bare (`apply.rs:215`, `:235`), and a refetch that did not return it
+bare (`apply.rs:216`, `:238`), and a refetch that did not return it
 (`crates/memry-core/src/sync/pull/apply_step.rs:231-238`). A pair the server
 lists in `blobMissing` (chapter 05 §5.12.4) is not returned, so Rust resolves
 it as gone where desktop keeps it as `blob_missing` and refetches it on the
@@ -117,9 +117,9 @@ new cursor that the feed delivers, where a refusal is ledgered again. A
 returned record that does not decode keeps its entry under the older build and
 the cooldown (`crates/memry-core/src/sync/pull/apply_step.rs:183-198`). Its
 local row is not flagged corrupt, except in the hardened pull of desktop's
-`SyncDriver` (`crates/memry-core/src/sync/pull.rs:166-169`), which flags it on
+`SyncDriver` (`crates/memry-core/src/sync/pull.rs:179-182`), which flags it on
 a bad signature or when the corrupt ledger also asked for the pair
-(`apply_step.rs:187-192`, `crates/memry-core/src/sync/pull/items.rs:206-220`).
+(`apply_step.rs:187-192`, `crates/memry-core/src/sync/pull/items.rs:235-249`).
 One that decodes but
 applies as corrupt keeps its entry the same way, and that apply does flag the
 row corrupt, as on any pull (`crates/memry-core/src/sync/apply/record.rs:228`).
@@ -225,7 +225,7 @@ plaintext in `data.db`. The exception is bounded:
   (`crates/memry-core/src/domain/agent_conversation/merge.rs:69-70`,
   `:137-164`). A push holds the row in the outbox with a backoff, never sends
   it sealed and never retires it, as it does with no key installed
-  (`crates/memry-core/src/sync/push.rs:260-272`, `:382-387`). Electron
+  (`crates/memry-core/src/sync/push.rs:312-324`, `:453-458`). Electron
   likewise never reinterprets such a row: when the vault key changes it
   deletes the agent rows (`apps/desktop/src/main/crypto/vault-key-state.ts:35-62`,
   `:95-99`, `:150-162`).
@@ -234,13 +234,13 @@ plaintext in `data.db`. The exception is bounded:
   rules 3 and 4 hold for what leaves the device. A pending record is already
   the wire value and goes as stored, with or without a key
   (`crates/memry-core/src/crypto/agent_payload.rs:99-121`,
-  `crates/memry-core/src/sync/push.rs:384-387`).
+  `crates/memry-core/src/sync/push.rs:453-456`).
 - **Installing a key** through `Vault::set_at_rest_key` binds the vault's local
   key verifier (chapter 01 §1.4.2, `meta` key `vault.crypto.verifier.v1`) to
   the first key installed when none is stored, in the same call that checks
   it and before anything is sealed. A key that does not match the stored
   verifier is refused and nothing is installed
-  (`crates/memry-core/src/api/vault.rs:149-175`,
+  (`crates/memry-core/src/api/vault.rs:151-177`,
   `crates/memry-core/src/domain/agent_records.rs:136-165`), so a store is
   never split across two keys. Agent rows already sealed under another key
   stay held; nothing resets them. An import of an Electron vault copies
@@ -273,9 +273,9 @@ the pull ledgers it as above
 `crates/memry-core/src/domain/home_page/merge.rs:63-69`,
 `crates/memry-core/src/domain/agent_conversation/merge.rs:66-68`,
 `crates/memry-core/src/domain/agent_message/merge.rs:55-57`,
-`crates/memry-core/src/sync/apply.rs:243`). Electron records the same item in
+`crates/memry-core/src/sync/apply.rs:246`). Electron records the same item in
 its schema-invalid ledger
-(`apps/desktop/src/main/sync/engine/pull-coordinator.ts:634`, `:684`), which
+(`apps/desktop/src/main/sync/engine/pull-coordinator.ts:641`, `:659`), which
 fetches it again by id once another app version runs
 (`apps/desktop/src/main/sync/engine/schema-invalid-ledger.ts:41-46`). An
 `agent_message` id this device already holds is checked first and skips
@@ -354,7 +354,7 @@ entry and corrupt each other's state
 Every schema below is a **reader** (§13.2). `clock` is `VectorClockSchema`
 optional on every type; `fieldClocks` appears only where §13.9 says so.
 
-### 13.7.1 `note` — `packages/contracts/src/sync-payloads.ts:230-246`
+### 13.7.1 `note` — `packages/contracts/src/sync-payloads.ts:344-367`
 
 | Field                                                            | Type                                          | Rule                                                                                                                                   |
 | ---------------------------------------------------------------- | --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
@@ -419,14 +419,14 @@ array, `[]` included, as the list to hold, and treats absent or `null` as "the
 sender does not know" and keeps its own
 (`apps/desktop/src/main/sync/item-handlers/note-handler-frontmatter.ts:16`;
 the core's projector `crates/memry-core/src/storage/repositories/projectors/notes.rs:110`,
-journal `:184-191`).
+journal `:188-194`).
 
 Builds before this rule never sent `aliases` from desktop, so their pushes keep
 every peer's list. They also ignore a pulled list on update, until the user
 upgrades and the next push carries it. A journal day follows the same rule
 (`packages/contracts/src/sync-payloads.ts:369`).
 
-### 13.7.2 `journal` — `:273-288`
+### 13.7.2 `journal` — `packages/contracts/src/sync-payloads.ts:369-388`
 
 Same shape as `note` minus the file fields, plus `date`.
 
@@ -457,7 +457,7 @@ only on a delete.
 **An inbound `journal` record whose id is not `j<date>` is never projected** (§1.9.1). Its
 body is merged into the day's `j<date>` item and its id is tombstoned.
 
-### 13.7.3 `task` — `:39-65`
+### 13.7.3 `task` — `packages/contracts/src/sync-payloads.ts:39-65`
 
 16 syncable fields (chapter 06 §6.7) plus `tags`, `linkedNoteIds`,
 `linkedCanvasIds`, **`fields`**, `clock`, **`fieldClocks`**, `createdAt`,
@@ -565,14 +565,14 @@ occurrence (`crates/memry-core/src/domain/tasks/create.rs:127`,
 `crates/memry-core/src/domain/tasks/lifecycle.rs:37`), pinned by
 `crates/memry-core/tests/versioned_keys_carry.rs`.
 
-### 13.7.4 `project` — `:239-253`
+### 13.7.4 `project` — `packages/contracts/src/sync-payloads.ts:249-264`
 
 `name`, `description`, `color`, `icon`, `position`, `isInbox`, `archivedAt`,
 `homeNoteId`, `createdAt`, `modifiedAt`, `clock`, **`fieldClocks`**, plus two
 nested arrays with their own schemas: `statuses` (`StatusSyncSchema`,
 `:216-223`) and `links` (`ProjectLinkSyncSchema`).
 
-### 13.7.5 `task_activity` — `:101-111`
+### 13.7.5 `task_activity` — `packages/contracts/src/sync-payloads.ts:115-125`
 
 `taskId`, `action`, `field`, `oldValue`, `newValue`, `actor`, `deviceId`,
 `clock`, `createdAt`.
@@ -586,7 +586,7 @@ per changed field, and a string value over 500 characters is logged like
 `description`: `oldValue` is `null` and `newValue` is `{"delta": n}`
 (`apps/desktop/src/main/tasks/activity-log.ts:206-228`).
 
-### 13.7.6 `template` — `:113-127`
+### 13.7.6 `template` — `packages/contracts/src/sync-payloads.ts:127-141`
 
 `name`, `description`, `icon`, `tags`, `properties`, `content`, `clock`,
 `createdAt`, `modifiedAt`.
@@ -614,13 +614,13 @@ two were written for different purposes and have drifted. This is recorded as
 an observation, not a rule to enforce — `type` is advisory on both sides and
 neither list is a wire constraint on the other.
 
-### 13.7.7 `tag_definition` — `:345-362`
+### 13.7.7 `tag_definition` — `packages/contracts/src/sync-payloads.ts:390-407`
 
 `name` and `color` are **required**; `icon`, `categoryId`, `sortOrder`,
 `colorAuthored`, `views`, **`schema`**, `clock`, `createdAt`.
 
 - **`colorAuthored` absent means "cannot tell" and the receiver honours the
-  colour**; only a sender that knows the field can say `false` (`:348-350`).
+  colour**; only a sender that knows the field can say `false` (`:393-396`).
   A client that mints a definition on a palette colour MUST say `false`, or a
   peer holding the tag takes the palette's colour over the one its user picked
   (`apps/desktop/src/main/database/queries/tag-definitions.ts:82`,
@@ -661,7 +661,7 @@ neither list is a wire constraint on the other.
   SQL function and compare through it
   (`apps/desktop/src/main/database/sqlite-functions.ts:31-33`,
   `apps/desktop/src/main/database/queries/tag-match.ts:13-41`,
-  `crates/memry-core/src/storage/connection.rs:140-150`).
+  `crates/memry-core/src/storage/pragmas.rs:147-152`).
 - A fold can change a name's length, so a client MUST NOT cut a carrier's
   spelling at the length of a folded name; a rename keeps a child's suffix by
   `/` segment (`packages/shared/src/tag-fold.ts:51-54`).
@@ -684,7 +684,7 @@ neither list is a wire constraint on the other.
   `crates/memry-core/src/domain/tag_admin.rs:82-128`). Desktop deletes the
   others on vault open, after copying into the survivor any icon, category,
   views or authored colour it lacks, and pushes the deletes
-  (`apps/desktop/src/main/tags/converge-identity.ts:70-106`,
+  (`apps/desktop/src/main/tags/converge-identity.ts:53-64`,
   `apps/desktop/src/main/vault/index.ts:571`). Every device picks the same
   survivor from the same rows, so devices converge on one id. An older build
   that still compares ASCII-only can mint a plain definition under its own
@@ -776,12 +776,12 @@ The shared vectors are `packages/contracts/test-vectors/tag-schema-refs.json`
 `packages/contracts/src/__tests__/tag-schema-refs.test.ts` and
 `crates/memry-core/tests/tag_schema_refs_vectors.rs`.
 
-### 13.7.8 `tag_category` — `:332-339`
+### 13.7.8 `tag_category` — `packages/contracts/src/sync-payloads.ts:434-441`
 
 `name` and `sortOrder` **required**; `clock`, `createdAt`, `updatedAt`,
 `deletedAt`.
 
-### 13.7.9 `property_definition` — `:322-330`
+### 13.7.9 `property_definition` — `packages/contracts/src/sync-payloads.ts:424-432`
 
 `name` and `type` **required**; `options`, `defaultValue`, `color`, `clock`,
 `createdAt`.
@@ -824,7 +824,7 @@ against the value **already stored on that note**, which is the only typing
 claim the payload actually makes. An explicit `null` is §13.4's clear and claims
 no type; a property with no value yet claims none either.
 
-### 13.7.10 `folder_config` — `:341-346`
+### 13.7.10 `folder_config` — `packages/contracts/src/sync-payloads.ts:443-448`
 
 **`icon` is `z.string().nullable()`** (`:342`). Plus `clock`, `createdAt`,
 `modifiedAt`.
@@ -871,7 +871,7 @@ cascade silently, and MUST NOT read it as settled — it is an open product
 question for the shell that first exposes folder deletion in a UI, and the two
 behaviours are distinguishable by any user who tries it.
 
-### 13.7.11 `custom_icon` — `:355-363`
+### 13.7.11 `custom_icon` — `packages/contracts/src/sync-payloads.ts:457-465`
 
 `name`, `ext`, **`data` (base64 image bytes carried inline)**, `clock`,
 `createdAt`, `updatedAt`.
@@ -889,7 +889,7 @@ The bytes ride in the record payload rather than the attachment pipeline because
 a normalised icon is a few KB, and this keeps every device's icon directory
 self-healing from the row (`:348-354`).
 
-### 13.7.12 `reminder` — `:170-186`
+### 13.7.12 `reminder` — `packages/contracts/src/sync-payloads.ts:159-175`
 
 `targetType`, `targetId`, `remindAt`, `anchorId`, `highlightText`,
 `highlightStart`, `highlightEnd`, `title`, `note`, `status`, `dismissedAt`,
@@ -941,7 +941,7 @@ The token and the run state (cursor, retry list) are device-local and never here
 (`packages/contracts/src/settings-sync.ts:219-227`). **Only the pulling device
 writes them, and only when a run changed something or the error state changed:
 a run that changed nothing sends no field**
-(`apps/desktop/src/main/readwise/status-publish.ts:14-41`). A cleared error is an
+(`apps/desktop/src/main/readwise/status-publish.ts:14-38`). A cleared error is an
 explicit `null`, never a removed key (§13.4). **Every other device treats the
 group as read-only.** The iOS app shows `syncDeviceName`, `rootFolder`,
 `status.lastChangeAt` and `status.error` and writes none of them (D13). It reads
@@ -974,7 +974,7 @@ desktop write path stores the whole group
 (`apps/desktop/src/main/ipc/settings-handlers.ts`, `writeGroupSettings`), so it
 is never seeded and cannot overwrite another device's choice.
 
-### 13.7.14 `filter` — `:86-98`
+### 13.7.14 `filter` — `packages/contracts/src/sync-payloads.ts:93-105`
 
 `name`, `config`, `expression`, `position`, `clock`, `createdAt`. No `modifiedAt` and no
 `fieldClocks`: `filter` takes the document-level resolver (§13.9). Desktop's
@@ -1059,7 +1059,7 @@ it, and a capture's file never changes once uploaded
 `data.attachmentId ?? existing.attachmentId`). A string sets it, including over
 a different known id. `metadata` is `z.unknown()` and replaced whole.
 
-### 13.7.16 `calendar_source` — `:410-428`
+### 13.7.16 `calendar_source` — `packages/contracts/src/sync-payloads.ts:541-560`
 
 `provider`, `kind` (`account` | `calendar`), `accountId`, `remoteId`, `title`,
 `timezone`, `color`, `isPrimary`, `isSelected`, `isMemryManaged`, `syncCursor`,
@@ -1081,7 +1081,7 @@ receiver never takes it. An update keeps the local cursor, `null` included, and
 an insert stores `null` so the receiver pulls the calendar in full
 (`calendar-source-handler.ts:19-26`, `:115`). Senders still include it.
 
-### 13.7.17 `calendar_event` — `:371-408`
+### 13.7.17 `calendar_event` — `packages/contracts/src/sync-payloads.ts:502-539`
 
 `title`, `description`, `location`, `startAt`, `endAt`, `timezone`, `isAllDay`,
 `recurrenceRule`, `recurrenceExceptions`, `attendees`, `reminders`, `visibility`
@@ -1103,7 +1103,7 @@ use presence, and the stored field clocks are the remote's or seeded from its
 clock. A create ticks every field clock; an update ticks the changed fields only
 (never `targetCalendarId`), and re-saving the same colour is not a change.
 
-### 13.7.18 `calendar_external_event` — `:447-470`
+### 13.7.18 `calendar_external_event` — `packages/contracts/src/sync-payloads.ts:578-602`
 
 `sourceId`, `remoteEventId`, `remoteEtag`, `remoteUpdatedAt`, `title`,
 `description`, `location`, `startAt`, `endAt`, `timezone`, `isAllDay`, `status`
@@ -1119,7 +1119,7 @@ which merge by presence. An event whose `sourceId` has not landed is not shown
 until it does (desktop parks and replays it; the phone stores it and its
 projection joins the source). Promotion archives the mirror.
 
-### 13.7.19 `calendar_binding` — `:431-445`
+### 13.7.19 `calendar_binding` — `packages/contracts/src/sync-payloads.ts:562-576`
 
 `sourceType` (`event` | `task` | `reminder` | `inbox_snooze`), `sourceId`,
 `provider`, `remoteCalendarId`, `remoteEventId`, `ownershipMode`
@@ -1132,7 +1132,7 @@ an item (by `createdAt`, then id) decides which provider writes it**
 (`provider/write-routing.ts`); a promote writes one `provider_managed` /
 `time_and_text` binding beside the new event.
 
-### 13.7.20 `bookmark` — `:154-160`
+### 13.7.20 `bookmark` — `packages/contracts/src/sync-payloads.ts:143-149`
 
 `itemType`, `itemId`, `position`, `clock`, `createdAt`. No `modifiedAt` and
 no `fieldClocks`: `bookmark` takes the document-level resolver (§13.9).
@@ -1147,7 +1147,7 @@ to a live row, `folder` by path and `tag` by name, and hides anything else,
 as desktop's sidebar does (`resolveBookmarkItem`). This client reads
 bookmarks and does not write them.
 
-### 13.7.21 `canvas` — `:198-218`
+### 13.7.21 `canvas` — `packages/contracts/src/sync-payloads.ts:187-207`
 
 `id`, `vaultId`, `title`, `scene`, `folder`, `icon`, `ownerNoteId`, `clock`,
 `deletedAt`, every one optional on the wire. Desktop's push states all nine,
@@ -1184,7 +1184,7 @@ non-negative integer
 `packages/contracts/src/sync-payloads.ts:187-207`,
 `crates/memry-core/src/domain/canvas/merge.rs:68-70`). Desktop refuses it as
 `schema_invalid` before the handler runs
-(`apps/desktop/src/main/sync/apply-item.ts:155-176`). Rust also refuses a
+(`apps/desktop/src/main/sync/apply-item.ts:181-202`). Rust also refuses a
 tick not written as a JSON integer literal (`1.0`, `-0`, `1e0`); no
 conforming writer emits one
 (`crates/memry-core/src/domain/desktop_records/mod.rs:118-119`). The refusal
@@ -1209,7 +1209,7 @@ when its local clock is strictly after the tombstone's (#2198,
 copy is the one push an apply writes, and it does not contradict §6.5.2 P3: it
 is a new item, not a re-push of the merged one.
 
-### 13.7.22 `vault_lock` — `:464-471`
+### 13.7.22 `vault_lock` — `packages/contracts/src/sync-payloads.ts:477-484`
 
 `targetKind`, `target`, `locked`, `clock`, `createdAt`, `updatedAt`, every one
 optional on the wire. `vault_lock` is desktop only: the iOS declaration leaves
@@ -1238,7 +1238,7 @@ a `clock` tick that is not a safe non-negative integer
 `packages/contracts/src/sync-payloads.ts:477-484`,
 `crates/memry-core/src/domain/vault_locks/merge.rs:65-67`). Desktop refuses it
 as `schema_invalid` before the handler runs
-(`apps/desktop/src/main/sync/apply-item.ts:155-176`). Rust also refuses a
+(`apps/desktop/src/main/sync/apply-item.ts:181-202`). Rust also refuses a
 tick not written as a JSON integer literal (`1.0`, `-0`, `1e0`); no
 conforming writer emits one
 (`crates/memry-core/src/domain/desktop_records/mod.rs:118-119`). The refusal
@@ -1266,7 +1266,7 @@ A client that locks a target whose record it holds as a tombstone writes the
 new record with a clock past the tombstone's
 (`crates/memry-core/src/domain/vault_locks/mod.rs:176`).
 
-### 13.7.23 `canvas_folder` — `:218-225`
+### 13.7.23 `canvas_folder` — `packages/contracts/src/sync-payloads.ts:218-225`
 
 `id`, `vaultId`, `path`, `icon`, `clock`, `deletedAt`, every one optional on the
 wire. `canvas_folder` is desktop only: the iOS declaration leaves it out
@@ -1300,7 +1300,7 @@ key of the wrong type, a `clock` tick that is not a safe non-negative integer
 (`packages/contracts/src/sync-api.ts:386`), or `null` in any schema key
 but `icon` and `deletedAt` (`packages/contracts/src/sync-payloads.ts:218-225`). Desktop refuses it
 as `parse_error` or `schema_invalid` before the handler reads the local row
-(`apps/desktop/src/main/sync/apply-item.ts:155-176`). Rust also refuses a
+(`apps/desktop/src/main/sync/apply-item.ts:181-202`). Rust also refuses a
 tick not written as a JSON integer literal (`1.0`, `-0`, `1e0`); no
 conforming writer emits one
 (`crates/memry-core/src/domain/desktop_records/mod.rs:118-119`). With no local row, a
@@ -1318,9 +1318,9 @@ either, and stays a skip.
 3. over a local record, deleted ones included, an absent `path` keeps the
    local path, an absent `icon` keeps the local icon and `null` clears it, and
    `vaultId` stays local. A `null` `path` fails the schema, so desktop refuses
-   the record (`apps/desktop/src/main/sync/apply-item.ts:166-176`) and the Rust
+   the record (`apps/desktop/src/main/sync/apply-item.ts:192-202`) and the Rust
    core refuses it too. `deletedAt` is the remote's: absent
-   or `null` makes the folder live again (`:74-80`).
+   or `null` makes the folder live again (`canvas-folder-handler.ts:74-80`).
 
 The Rust core follows the same rule
 (`crates/memry-core/src/domain/canvas_folder/merge.rs:30-60`, over
@@ -1332,7 +1332,7 @@ only when its local clock is strictly after the tombstone's
 `deletedAt` in the payload too, as desktop's soft delete does
 (`crates/memry-core/src/domain/canvas_folder/mod.rs:116-137`).
 
-### 13.7.24 `home_page` — `:330-342`
+### 13.7.24 `home_page` — `packages/contracts/src/sync-payloads.ts:330-342`
 
 `name`, `icon`, `position`, `widgets`, `cover`, `clock`, `createdAt`,
 `updatedAt`, every one optional on the wire. `home_page` is desktop only: the
@@ -1357,7 +1357,7 @@ key of the wrong type, a `clock` tick that is not a safe non-negative integer
 (`packages/contracts/src/sync-api.ts:386`), or `null` in any schema key
 but `icon` and `cover` (`packages/contracts/src/sync-payloads.ts:330-342`). Desktop refuses it
 as `parse_error` or `schema_invalid` before the handler reads the local row
-(`apps/desktop/src/main/sync/apply-item.ts:155-176`). Rust also refuses a
+(`apps/desktop/src/main/sync/apply-item.ts:181-202`). Rust also refuses a
 tick not written as a JSON integer literal (`1.0`, `-0`, `1e0`); no
 conforming writer emits one
 (`crates/memry-core/src/domain/desktop_records/mod.rs:118-119`). With no local row, a
@@ -1371,7 +1371,7 @@ either, and stays a skip.
 1. `widgets` that is present and is not text holding a JSON array is skipped
    **before the clock is compared**, so a later readable version of the board
    still wins (`:40-47`). A `widgets` that is not a string at all fails the
-   schema; desktop refuses it (`apps/desktop/src/main/sync/apply-item.ts:166-176`)
+   schema; desktop refuses it (`apps/desktop/src/main/sync/apply-item.ts:192-202`)
    and the Rust core refuses it too, into the refused-items ledger (§13.2)
    (`crates/memry-core/src/domain/home_page/merge.rs:63-69`);
 2. a create (no live local record) without a non-empty `name` is skipped
@@ -1380,10 +1380,10 @@ either, and stays a skip.
    clock (`:53-61`);
 4. over a local board, an absent `name`, `position` or `widgets` keeps the
    local value, and a `null` one fails the schema, so desktop and the Rust core
-   refuse the record (`apply-item.ts:166-176`); an absent `icon` or `cover` keeps the local value and
+   refuse the record (`apply-item.ts:192-202`); an absent `icon` or `cover` keeps the local value and
    `null` clears it; an unreadable `cover` is absent and keeps the local one;
    `createdAt` stays local; an absent `updatedAt` reads as the apply time
-   (`:63-75`).
+   (`home-page-handler.ts:63-75`).
 
 The Rust core follows the same rule
 (`crates/memry-core/src/domain/home_page/merge.rs:37-92`, over
@@ -1394,8 +1394,8 @@ The `home_pages.created_at` column of a board whose payload has no
 stored value (`COALESCE`,
 `crates/memry-core/src/storage/repositories/projectors/home_pages.rs:60`).
 `rebuild_projections` into dropped tables has no stored value and writes the
-rebuild time (`crates/memry-core/src/storage/repositories/sync_items.rs:358`,
-`:385`). Electron writes the apply time once at create
+rebuild time (`crates/memry-core/src/storage/repositories/sync_items.rs:402`,
+`:407`). Electron writes the apply time once at create
 (`packages/sync-client/src/item-handlers/home-page-handler.ts:102`) and has
 no rebuild. The payload is unchanged either way; only the local column
 differs.
@@ -1405,7 +1405,7 @@ only when its local clock is strictly after the tombstone's
 (`home-page-handler.ts:123-138`). Board ids are random, so the type is not in
 `RECREATABLE_AFTER_PURGE_ITEM_TYPES` (`packages/contracts/src/sync-api.ts:217-228`).
 
-### 13.7.25 `sticky_draft` — `:494-500`
+### 13.7.25 `sticky_draft` — `packages/contracts/src/sync-payloads.ts:494-500`
 
 `content`, `kind`, `clock`, `createdAt`, `modifiedAt`, every one optional on the
 wire. `sticky_draft` is desktop only: the iOS declaration leaves it out
@@ -1425,7 +1425,7 @@ key of the wrong type, a `clock` tick that is not a safe non-negative integer
 (`packages/contracts/src/sync-api.ts:386`), or `null` in any schema key
 (`packages/contracts/src/sync-payloads.ts:494-500`). Desktop refuses it
 as `parse_error` or `schema_invalid` before the handler reads the local row
-(`apps/desktop/src/main/sync/apply-item.ts:155-176`). Rust also refuses a
+(`apps/desktop/src/main/sync/apply-item.ts:181-202`). Rust also refuses a
 tick not written as a JSON integer literal (`1.0`, `-0`, `1e0`); no
 conforming writer emits one
 (`crates/memry-core/src/domain/desktop_records/mod.rs:118-119`). With no local row, a
@@ -1442,9 +1442,9 @@ either, and stays a skip.
    clock (`:35-39`);
 3. over a local draft, an absent `content` or `kind` keeps the local value,
    and a `null` one fails the schema, so desktop and the Rust core refuse the
-   record (`apps/desktop/src/main/sync/apply-item.ts:166-176`); `createdAt`
+   record (`apps/desktop/src/main/sync/apply-item.ts:192-202`); `createdAt`
    stays local, and an absent `modifiedAt` reads as the
-   apply time (`:41-50`).
+   apply time (`sticky-draft-handler.ts:41-50`).
 
 The Rust core follows the same rule
 (`crates/memry-core/src/domain/sticky_draft/merge.rs:31-54`, over
@@ -1454,7 +1454,7 @@ A delete follows chapter 05 §5.8 unchanged: the draft survives a tombstone only
 when its local clock is strictly after the tombstone's
 (`sticky-draft-handler.ts:80-92`).
 
-### 13.7.26 `agent_conversation` — `:699-711`
+### 13.7.26 `agent_conversation` — `packages/contracts/src/sync-payloads.ts:699-711`
 
 `vaultId`, `title`, `backend`, `backendModel` (nullable), `trustList`,
 `pinned`, `clock` (optional), `fieldClocks`, `createdAt`, `updatedAt`,
@@ -1501,9 +1501,10 @@ stores the merged clock, as it does for `task` and `project`
 is pushed either way.
 
 A delete follows chapter 05 §5.8: the conversation survives a tombstone only
-when its local clock is strictly after the tombstone's (`:190-210`).
+when its local clock is strictly after the tombstone's
+(`crates/memry-core/src/sync/apply/tombstone.rs:175-193`).
 
-### 13.7.27 `agent_message` — `:713-724`
+### 13.7.27 `agent_message` — `packages/contracts/src/sync-payloads.ts:713-724`
 
 `conversationId`, `role` (`user`, `assistant`, `tool_call`, `tool_result`,
 `system`), `content` (`AgentMessageContentSchema`), `attachments` (an array of
@@ -1526,7 +1527,7 @@ A message is immutable (§13.9):
    core reports both as `Skipped`; a row that has metadata and no payload
    takes the remote
    (`crates/memry-core/src/domain/agent_message/merge.rs:49-53`). A new id
-   stores the remote as sent (`:155-176`);
+   stores the remote as sent (`:58-64`);
 2. a remote the schema refuses (a value of the wrong type, or `null` in a key
    the schema does not mark `.nullable()`) is refused, nothing is written,
    and the pull ledgers it (§13.2.3)
@@ -1553,8 +1554,9 @@ A message is immutable (§13.9):
    an oracle for when one is queued (#3545 D1, D2)
    (`apps/desktop/src/main/agent/sync/entitlement-gate.ts:20-30`,
    `apps/desktop/src/main/agent/sync/backfill.ts:20-58`);
-4. without a vault key Electron skips the record (`:140-149`). The Rust core
-   stores it pending (§13.2.3) instead;
+4. without a vault key Electron skips the record
+   (`apps/desktop/src/main/sync/item-handlers/agent-message-handler.ts:140-149`).
+   The Rust core stores it pending (§13.2.3) instead;
 5. Electron defers a message whose conversation it does not hold to orphan
    repair (`:108-121`, `:156`). The Rust core has no parent check: it stores
    the message, which a read of its conversation returns once the

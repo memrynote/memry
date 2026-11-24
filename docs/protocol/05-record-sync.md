@@ -65,7 +65,7 @@ registered with plays no part: iOS registers with none, which the server stores
 as `default` (`apps/sync-server/src/middleware/paid-sync.ts:71`).
 
 **Normative.** The core sends `X-Memry-Vault-Id` on every `/sync/*` route
-below `paidSyncMiddleware` (`apps/sync-server/src/routes/sync.ts:224`),
+below `paidSyncMiddleware` (`apps/sync-server/src/routes/sync.ts:260`),
 `/sync/status` included (`crates/memry-core/src/sync/policy.rs:355`,
 `crates/memry-core/src/sync/engine.rs:474`). A header-less status poll that
 reaches the server before the vault's registration would create `default` next
@@ -205,10 +205,10 @@ in one transaction, and records `done` after a run that was not refused and
 reached `hasMore: false` (`crates/memry-core/src/sync/feed_restart.rs`,
 #2304). A first sync runs both feed-restart rules before its refs pass, so a
 fresh device records its declaration and `done` and its next pass keeps the
-cursor the first sync stored (`crates/memry-core/src/sync/first_sync.rs:294-300`).
+cursor the first sync stored (`crates/memry-core/src/sync/first_sync.rs:368-374`).
 When its metadata pass leaves rows `metadata-only` that are not held corrupt or
 refused, it removes the repair marker again, so the next pass reads the feed from
-the start once and fills them (`first_sync.rs:304-315`, `feed_restart.rs`).
+the start once and fills them (`first_sync.rs:401-408`, `feed_restart.rs`).
 
 **Acks are per item id.** Two queued rows sharing an id cannot be told apart in a
 mixed response, so **a client MUST collapse to one push item per id before
@@ -238,14 +238,14 @@ because collapse sends the newest row and the older rows ride its verdict
 
 ## 5.6 The push wave
 
-**Normative** (`apps/desktop/src/main/sync/engine/sync-context.ts`):
+**Normative** (`apps/desktop/src/main/sync/engine/sync-context.ts:286-296`):
 
 | Constant                                | Value | Line   |
 | --------------------------------------- | ----- | ------ |
-| `PUSH_BATCH_SIZE`                       | 100   | `:146` |
-| `MIN_PUSH_BATCH_SIZE`                   | 1     | `:151` |
-| `PUSH_CEILING_RAISE_AFTER_CLEAN_PUSHES` | 3     | `:155` |
-| `MAX_PUSH_ITERATIONS`                   | 50    | `:156` |
+| `PUSH_BATCH_SIZE`                       | 100   | `:286` |
+| `MIN_PUSH_BATCH_SIZE`                   | 1     | `:291` |
+| `PUSH_CEILING_RAISE_AFTER_CLEAN_PUSHES` | 3     | `:295` |
+| `MAX_PUSH_ITERATIONS`                   | 50    | `:296` |
 
 **A 5xx on a batch that can still be split is answered by halving it, not by
 resending the same one**, and the reduced size becomes a ceiling
@@ -800,17 +800,18 @@ null.
 
 **`POST /sync/vaults`** — request `{ vaultUuid, encryptedName, nameNonce }`
 (`vaultUuid` 1–128 characters, the name fields 1–2048 and 1–128), response
-`{ success: true }` (`apps/sync-server/src/routes/sync.ts:99-134`). It registers
+`{ success: true }` (`apps/sync-server/src/routes/sync.ts:111-137`). It registers
 a vault the account does not hold yet or renames one it does, so a repeat is not
 an error. `encryptedName` is the name sealed with XChaCha20-Poly1305 under the
 vault key (chapter 01 §1.6) with `vault-name-v1:<vaultUuid>` as associated data,
 ciphertext and nonce in standard base64
 (`apps/desktop/src/main/sync/vault-name-crypto.ts:48-55`). It answers `402`
-without an active sync entitlement (`:115-117`) and `402 SYNC_VAULT_LIMIT_EXCEEDED`
+without an active sync entitlement
+(`apps/sync-server/src/routes/sync.ts:118-121`) and `402 SYNC_VAULT_LIMIT_EXCEEDED`
 when the plan has no free vault slot (`ensureSyncVaultAllowed`,
 `apps/sync-server/src/services/entitlements.ts`). A client keeps `vaultUuid` within
 `[A-Za-z0-9_-]`, because `DELETE /sync/vaults/:vaultId` accepts nothing else
-(`:142`); a lowercase UUID is the usual choice.
+(`:146`); a lowercase UUID is the usual choice.
 
 **`PUT /sync/vaults/:vaultId/icon`** — request
 `{ encryptedIcon: string | null, iconNonce: string | null, iconUpdatedAt: integer }`,
@@ -933,26 +934,26 @@ Desktop: `changes-page.ts:38` (`apps/desktop/src/main/sync/engine/changes-page.t
 is the only read of `changes.deleted`, which joins the pull request, and only
 what `decryptPullBatch` verified (`apps/desktop/src/main/sync/engine/pull-coordinator.ts:831`)
 and attested markers (`pull-coordinator.ts:821`, applied at `:916`) apply.
-Rust core manifest reconcile: `crates/memry-core/src/sync/first_sync/reconcile.rs:103`
+Rust core manifest reconcile: `crates/memry-core/src/sync/first_sync/reconcile.rs:105`
 pulls each unlisted row by id, declaring `purged_tombstones`
-(`crates/memry-core/src/sync/pull/shared_apply.rs:57`), so only what that pull
+(`crates/memry-core/src/sync/pull/shared_apply.rs:49-52`), so only what that pull
 verifies deletes: a signed delete, or a marker for a row it asked about whose
-attestation verifies (`crates/memry-core/src/sync/first_sync/reconcile/markers.rs:26`,
-`crates/memry-core/src/sync/purged_markers.rs:148`, `delete_attestation::verify`).
-It keeps and logs the rest (`reconcile.rs:114`). Rust core page pull: every
+attestation verifies (`crates/memry-core/src/sync/purged_markers.rs:55`, `:156-169`,
+`delete_attestation::verify`).
+It keeps and logs the rest (`reconcile.rs:115-124`). Rust core page pull: every
 pulled delete opens and verifies before it applies
-(`crates/memry-core/src/sync/pull_decode.rs:73`);
-`crates/memry-core/src/sync/pull.rs:293-306` counts and logs the uncovered ids
-and `:325` applies none. The core's first sync refs pass pulls `deleted` ids
+(`crates/memry-core/src/sync/pull_decode.rs:55`);
+`crates/memry-core/src/sync/pull.rs:447-456` counts and logs the uncovered ids
+and `:471` applies none. The core's first sync refs pass pulls `deleted` ids
 100 at a time across pages, queues the remainder durably in the transaction
-that moves the page's cursor (`crates/memry-core/src/sync/first_sync.rs:454`),
+that moves the page's cursor (`crates/memry-core/src/sync/first_sync.rs:522-529`),
 applies only what that pull verified, and logs the uncovered ids with the page
-cursor (`crates/memry-core/src/sync/first_sync/deleted_ids.rs:77`,
-`crates/memry-core/src/sync/first_sync.rs:457-476`), so a bare id records
+cursor (`crates/memry-core/src/sync/first_sync/deleted_ids.rs:81-85`,
+`crates/memry-core/src/sync/first_sync.rs:487-494`), so a bare id records
 nothing (#5338, #5340, #5405, #5469). After record packs, while the manifest
 reconcile is still to run, the refs pass pulls none: the reconcile pulls every
 pack-held row the manifest does not list in the same request as the rows it
-lists (`crates/memry-core/src/sync/first_sync/reconcile.rs:89-110`), and a
+lists (`crates/memry-core/src/sync/first_sync/reconcile.rs:92-106`), and a
 metadata-only row is pulled by pass two. A stale row an attested marker names
 is the reconcile's, above.
 
@@ -1006,19 +1007,19 @@ every item sharing a chunk with one bad row.
   this section's rules: it deletes nothing, records no tombstone clock, and
   never costs its page-mates; a signature that does not verify also counts
   toward the quarantine. There is no unsigned delete to accept: the pull item
-  schema requires `signature` (`packages/contracts/src/sync-api.ts:781`,
-  `:789`). Desktop: every pulled item, a delete included, goes through
-  `decryptPullBatch` (`apps/desktop/src/main/sync/engine/pull-coordinator.ts:823`),
-  which fails an unknown signer (`apps/desktop/src/main/sync/sync-crypto-batch.ts:243`)
+  schema requires `signature` (`packages/contracts/src/sync-api.ts:846`,
+  `:854`). Desktop: every pulled item, a delete included, goes through
+  `decryptPullBatch` (`apps/desktop/src/main/sync/engine/pull-coordinator.ts:831`),
+  which fails an unknown signer (`apps/desktop/src/main/sync/sync-crypto-batch.ts:246`)
   and a bad signature (`apps/desktop/src/main/sync/decrypt.ts:79`, `:87`,
-  quarantined at `pull-coordinator.ts:884`); only what it decrypted applies
-  (`pull-coordinator.ts:908`). Rust core: `crates/memry-core/src/sync/pull_decode.rs:51`
-  opens the item before `:58` reads it as a delete.
+  quarantined at `pull-coordinator.ts:892`); only what it decrypted applies
+  (`pull-coordinator.ts:916`). Rust core: `crates/memry-core/src/sync/pull_decode.rs:55`
+  opens the item before `:62` reads it as a delete.
 - **A refused delete MUST NOT delete through its id.** When the server also
   lists a refused item's id in `deleted`, the id deletes nothing (§5.12.1):
   the corrupt count is the item's only outcome. Rust core:
-  `crates/memry-core/src/sync/pull.rs:430-434` counts such an id as bare and
-  `:436-439` logs it as ignored.
+  `crates/memry-core/src/sync/pull.rs:447-451` counts such an id as bare and
+  `:453-456` logs it as ignored.
 - `purgedTombstones` and `blobMissing` entries are validated one by one, like
   items: a malformed entry is refused on its own and never costs its siblings or
   the page (#2302).
@@ -1039,7 +1040,7 @@ tombstone: an id in `deleted` with no verified delete records nothing. The Rust
 core still honours a bare tombstone an older build filed: it is a `sync_items`
 row of type `_tombstone` (`crates/memry-core/src/sync/store.rs:31`), checked
 before an apply (`crates/memry-core/src/sync/store.rs:170`,
-`crates/memry-core/src/sync/apply.rs:172`). The rest of this
+`crates/memry-core/src/sync/apply.rs:223`). The rest of this
 section describes those rows.
 
 §5.12.1 establishes that a `deleted[]` entry is an **id with no
@@ -1196,9 +1197,9 @@ The Rust core's desktop driver declares it too (`Declaration::desktop`,
 `crates/memry-core/src/sync/hardening/purged.rs`: admission (`:194`), the
 attestation under the signer's key from the driver's device directory,
 refetched once per run when the signer is not in it, a failed refetch failing
-the page with the cursor held (`crates/memry-core/src/sync/driver/cipher.rs:164`;
+the page with the cursor held (`crates/memry-core/src/sync/driver/cipher.rs:171`;
 `purged.rs:264`), the local refusals over the item's `sync_items` row
-(`purged.rs:312`), then the signed-tombstone apply. An id a
+(`purged.rs:313`), then the signed-tombstone apply. An id a
 `purgedTombstones` entry names deletes only through that entry's attested
 marker, never as a bare `deleted` id (§5.12.1;
 `crates/memry-core/src/sync/pull.rs:437`, `:443-450`). A run that started from cursor 0
@@ -1241,24 +1242,24 @@ it reads:
   nothing, and the row is asked about again at the next check. A clock is
   recorded for the id in the row's own spelling, for these three types only,
   never `folder_config`, whose recorded clock reads as a deleted folder
-  (`manifest.rs:358`; `crates/memry-core/src/domain/folders.rs:222`).
+  (`manifest.rs:356-361`; `crates/memry-core/src/domain/folders.rs:223`).
 - A live row or a lost blob: no `create`.
-- Nothing named: `create` (`manifest.rs:336`), and a body snapshot of a note or
+- Nothing named: `create` (`manifest.rs:338`), and a body snapshot of a note or
   journal (`crates/memry-core/src/sync/driver/repairs.rs:27`).
 - A failed request: nothing of these types is queued until the next check
   (`manifest.rs:179`).
 
 A row whose recorded delete clock its own clock does not follow is not asked
-about (`manifest.rs:372`, Electron's `isNoteKnownDeleted`). Each row is asked
+about (`manifest.rs:373`, Electron's `isNoteKnownDeleted`). Each row is asked
 about at most once per check, so once per 30 minutes, and one check asks about
-at most 1,000 rows, ten requests (`MAX_PROBED`, `manifest.rs:98`, `:508`). The
-rows are taken in `(type, id)` order (`:483`), starting after the last row the
-previous check asked and wrapping around (`:503`), so of N rows each is asked
+at most 1,000 rows, ten requests (`MAX_PROBED`, `manifest.rs:99`, `:510`). The
+rows are taken in `(type, id)` order (`:484`), starting after the last row the
+previous check asked and wrapping around (`:502-505`), so of N rows each is asked
 within ceil(N / 1,000) checks, even when rows that never resolve (an
 unattested marker, an unknown signer) come first. A delete landing between
 the answer and the push is a signed tombstone, which §5.8 refuses; the core keeps
 its row live for these three types and asks again at the next check
-(`crates/memry-core/src/sync/push.rs:371-378`). Electron re-uploads without asking
+(`crates/memry-core/src/sync/push.rs:386-390`). Electron re-uploads without asking
 and keeps the hole described under residual risks
 (`crates/memry-core/tests/sync_hardening_purged.rs:562`,
 `a_note_whose_marker_a_run_from_zero_skipped_is_not_reuploaded`;
@@ -1271,7 +1272,8 @@ property type's promotion included
 (`crates/memry-core/src/domain/property_admin/learned.rs:103`). The server
 refuses that promotion over a marker with `SYNC_DELETE_WINS`, and the core
 tombstones the local record in the same transaction as the ack
-(`crates/memry-core/src/sync/push.rs:371-378`, `:399`), unless a newer local change is
+(`crates/memry-core/src/sync/push.rs:386-393`,
+`crates/memry-core/src/sync/push/delete_wins.rs:17-45`), unless a newer local change is
 queued for it. A learned name therefore never brings back a deleted definition
 (#4025).
 
@@ -1361,7 +1363,7 @@ an external event only when its parent is a tombstone here
 (`crates/memry-core/src/sync/hardening/orphans.rs:154-158`), and a parent that
 is only absent, requested by id and not served, keeps its children
 (`orphans.rs:99-113`). A message of a deleted conversation is kept, as in
-Electron (`orphans.rs:63`, `apps/desktop/src/main/sync/agent-message-handler.ts:104-107`).
+Electron (`orphans.rs:63`, `apps/desktop/src/main/sync/item-handlers/agent-message-handler.ts:104-107`).
 A parent's delete is not pushed while any row of its cascaded children's type
 is queued, so a child moved out of the parent, or moved and then edited, is never
 overtaken by the delete (`crates/memry-core/src/sync/outbox/claim.rs:104-107`).
@@ -1389,8 +1391,8 @@ paths (chapter 13 §13.6). An id-only key made a project and a tag both named
 
 The Rust core's desktop driver runs the manifest check at most every 30
 minutes (`crates/memry-core/src/sync/hardening/manifest.rs:68`), diffs on
-`(type, id)` with a note and a journal of one id as one item (`manifest.rs:435`),
-pulls by id a live server row it holds no row of (`manifest.rs:468`, `:165`), and
+`(type, id)` with a note and a journal of one id as one item (`manifest.rs:436`),
+pulls by id a live server row it holds no row of (`manifest.rs:470-475`, `:166`), and
 queues as `create` a live clocked local row the server does not list, of the
 types in `REUPLOADED` (`manifest.rs:75`). Of the types the server re-creates over
 a purged tombstone it re-uploads only `note`, `journal` and `bookmark`
@@ -1399,8 +1401,8 @@ nothing: a tombstone or a marker queues nothing and records its clock when a
 device signed it, and a
 failed request queues none until the next check (§5.12.3, #4785). Electron
 re-uploads those types without asking and has the resurrection hole
-(`apps/desktop/src/main/sync/engine/pull-coordinator.ts:312`, `:816`,
-`apps/desktop/src/main/sync/manifest-check.ts:179-224`).
+(`apps/desktop/src/main/sync/engine/pull-coordinator.ts:335`, `:821`,
+`apps/desktop/src/main/sync/manifest-check.ts:193-245`).
 
 ## 5.16 Clock skew
 
