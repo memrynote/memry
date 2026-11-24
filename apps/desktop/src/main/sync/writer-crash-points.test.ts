@@ -34,6 +34,8 @@ const h = vi.hoisted(() => ({
   storeFail: false,
   /** Store writes wait here; closing the store rejects them, as shutdown does. */
   storeGate: null as null | { reject: (e: Error) => void; promise: Promise<void> },
+  /** Store reads wait at the gate too: y-leveldb runs every call through one queue. */
+  storeGateHoldsReads: false,
   lockedNoteIds: new Set<string>(),
   lockedFolders: new Set<string>(),
   writeAttempts: 0,
@@ -69,6 +71,7 @@ vi.mock('./crdt-persistence', async () => {
   return {
     openCrdtPersistence: async () => ({
       getYDoc: async (noteId: string) => {
+        if (h.storeGateHoldsReads && h.storeGate) await h.storeGate.promise
         const doc = new Yjs.Doc()
         for (const update of h.store.get(noteId) ?? []) Yjs.applyUpdate(doc, update)
         return doc
@@ -335,6 +338,7 @@ function disarm(): void {
   h.failWrite = false
   h.storeFail = false
   h.storeGate = null
+  h.storeGateHoldsReads = false
   h.lockedNoteIds.clear()
   h.lockedFolders.clear()
   h.writeAttempts = 0
@@ -782,7 +786,9 @@ describe('a tags or properties update between a journal write-back read and writ
     h.ipc.get(PropertiesChannels.invoke.MERGE)!({}, { entityId: `j${date}`, values })
   const agent = (): ReturnType<typeof createJournalHandles> =>
     createJournalHandles(h.indexDb as never)
-  const cases: Array<[string, (date: string) => unknown, string[]]> = [
+  // The last case has no day file: the pass writes it (as a pulled record's
+  // `materialize` does), and the save creates the entry only after that pass.
+  const cases: Array<[string, (date: string) => unknown, string[], boolean?]> = [
     ['IPC journal tags save', (date) => viaIpc({ date, tags: ['focus'] }), ['focus']],
     [
       'IPC properties:set on the entry',
@@ -805,9 +811,15 @@ describe('a tags or properties update between a journal write-back read and writ
       'agent journal.update properties',
       (date) => agent().update({ date, properties: { mood: 'calm' } }),
       ['mood: calm']
+    ],
+    [
+      'IPC journal tags save of a day with no file',
+      (date) => viaIpc({ date, tags: ['focus'] }),
+      ['focus'],
+      true
     ]
   ]
-  cases.forEach(([name, apply, kept], i) => {
+  cases.forEach(([name, apply, kept, noFile], i) => {
     it(`${name}: the file keeps it and the typed body`, async () => {
       const date = `2026-05-1${i}`
       const id = `j${date}`
@@ -815,6 +827,7 @@ describe('a tags or properties update between a journal write-back read and writ
       await seedNote(id, notePath, 'Morning.')
       updateNoteCache(h.indexDb as never, id, { date })
       const doc = await restart(id)
+      if (noFile) h.files.delete(`/vault/${notePath}`)
       Y.applyUpdate(doc, editOf(doc, 'Morning.', ' Typed.'))
       let release = (): void => {}
       const reached = new Promise<void>((resolve) => {
@@ -837,6 +850,30 @@ describe('a tags or properties update between a journal write-back read and writ
       for (const line of kept) expect.soft(h.files.get(`/vault/${notePath}`)).toContain(line)
       expect.soft(h.files.get(`/vault/${notePath}`)).toContain('Morning. Typed.')
     })
+  })
+
+  // A tags save that creates the day seeds its doc, which reads the CRDT
+  // store. A quit flush awaits every turn, so that wait comes after the
+  // turn, as a body update's feed does (#5475).
+  it('IPC journal tags save that creates the day: a quit flush settles while the store is stuck', async () => {
+    const date = '2026-05-20'
+    const notePath = `Journal/${date}.md`
+    resetWritebackState()
+    resetCrdtProvider()
+    await getCrdtProvider().initPersistence()
+    let reject!: (e: Error) => void
+    const promise = new Promise<void>((_, r) => (reject = r))
+    promise.catch(() => {})
+    h.storeGate = { reject, promise }
+    h.storeGateHoldsReads = true
+    const update = Promise.resolve(viaIpc({ date, tags: ['focus'] })).then(
+      () => 'resolved',
+      () => 'rejected'
+    )
+    await vi.waitFor(() => expect(h.files.get(`/vault/${notePath}`)).toContain('focus'))
+    await flushPendingWritebacks()
+    await getCrdtProvider().destroy()
+    expect(await update).toBe('resolved')
   })
 })
 

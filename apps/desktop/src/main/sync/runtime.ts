@@ -112,6 +112,7 @@ import { recordNoteBodyPush } from './note-body-push-record'
 import { readMergedFullState } from './full-state-read'
 import { CrdtSnapshotScheduler } from '@memry/sync-client/crdt-snapshot-scheduler'
 import { createNoteBodyPush } from './note-body-push'
+import { isBinaryNote } from './note-body-apply'
 import { recoverDirtyItems } from './dirty-recovery'
 import {
   markSyncEligible,
@@ -635,6 +636,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         recordPush: (noteId, event, pushed) =>
           recordNoteBodyPush(noteId, event, Date.now(), db, pushed),
         requestSnapshot: (noteId) => snapshotScheduler.request(noteId),
+        isBinaryNote: (noteId) => isBinaryNote(db, noteId),
         isSyncPaused
       })
 

@@ -30,6 +30,7 @@
     "applyTemplateFailed": "Gagal menggunakan templat",
     "appendBlocksFailed": "Gagal mengalihkan blok ke nota itu",
     "appendIntoCaseTwin": "Nota itu berkongsi failnya dengan nota yang namanya hanya berbeza pada huruf besar dan kecil. Namakan semula salah satu daripadanya, kemudian alihkan blok sekali lagi.",
+    "appendIntoBinary": "Blok hanya boleh dialihkan ke nota, bukan ke fail imej, PDF, audio atau video.",
     "caseTwinMoveRefused": "Nota ini berkongsi failnya dengan nota yang namanya hanya berbeza dari segi huruf besar dan kecil, jadi nota ini tidak boleh dipindahkan dengan cara ini. Namakan semula atau pindahkan nota yang satu lagi, atau padamkan salinan yang anda tidak perlukan.",
     "exportPdfFailed": "Gagal mengeksport PDF",
     "exportHtmlFailed": "Gagal mengeksport HTML",

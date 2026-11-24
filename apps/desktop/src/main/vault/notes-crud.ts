@@ -92,6 +92,7 @@ import { getFileType, getExtension, isBinaryNoteRow } from '@memry/shared/file-t
 import { getStatus, getConfig } from './status'
 import { followJournalFolderMove } from './journal-folder-follow'
 import { createTreeFolderFilter } from './folder-visibility'
+import { isAttachmentStoreRow, isInAttachmentStore } from './attachments'
 import {
   assertFolderTreeWritable,
   assertFolderWritable,
@@ -628,6 +629,14 @@ export async function getNoteByPath(notePath: string): Promise<Note | null> {
     return getNoteById(cached.id)
   }
 
+  // Below, a path with no row is read and indexed as markdown, so only a file
+  // the indexer would index as markdown gets there. The attachment store holds
+  // no note, and the watcher gives a binary file its binary row and its sync;
+  // read here, a pasted image became a markdown note (#5607).
+  if (getFileType(getExtension(notePath)) !== 'markdown' || isInAttachmentStore(notePath)) {
+    return null
+  }
+
   const file = await openVaultFile(getVaultRoot(), notePath)
   // `null` = truly missing (ENOENT); an empty string is a valid empty note.
   if (file === null) return null
@@ -924,7 +933,8 @@ export async function deleteNote(id: string, syncDelete: SyncNoteDelete): Promis
         id
       )
     }
-    await deleteFile(toAbsolutePath(cached.path))
+    // A stray row's file is the attachment store's, not this row's (#5607).
+    if (!isAttachmentStoreRow(cached)) await deleteFile(toAbsolutePath(cached.path))
     dropRows()
   }
 
@@ -1143,8 +1153,8 @@ export async function importFiles(input: ImportFilesInput): Promise<ImportFilesR
  * The indexed id of a file `importFiles` just copied, or null until the watcher
  * has indexed it. `importedFiles[].destPath` is absolute while the index keys
  * vault-relative paths, so the path must be relativized before the lookup.
- * Cache-only on purpose: `getNoteByPath`'s read-and-parse fallback would index
- * a PDF or image as a markdown note.
+ * Cache-only on purpose: the copied file's row is the watcher's to make, and
+ * `getNoteByPath` would index a copied markdown file itself.
  */
 export function getIndexedIdByImportedPath(destPath: string): string | null {
   return getNoteCacheByPath(getIndexDatabase(), toRelativePath(destPath))?.id ?? null

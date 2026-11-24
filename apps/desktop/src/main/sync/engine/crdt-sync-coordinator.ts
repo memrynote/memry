@@ -120,23 +120,26 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
   /** Once per key per session — CRDT apply failures recur every pass and would storm otherwise. */
   private applyFailureReported = new Set<string>()
   /**
-   * A note or journal row exists on this device. A queued pull of an id with
-   * none is dropped (#2297): the owed note was deleted after it was queued,
-   * and merging its server body would let the write-back re-create it.
+   * A note or journal row exists on this device, and it has a CRDT body. A
+   * queued pull of an id with none is dropped (#2297): the owed note was
+   * deleted after it was queued, and merging its server body would let the
+   * write-back re-create it. A binary note's pull is dropped the same way: its
+   * file is the blob, and a body the server holds for it must open no doc and
+   * arm no write-back (#5607).
    */
-  private hasNoteRow: (noteId: string) => boolean
+  private takesBody: (noteId: string) => boolean
   /** The last vault key read found no key; see `isVaultKeyMissing`. */
   private vaultKeyMissing = false
 
   constructor(
     ctx: SyncContext,
     resolveDeviceKey: ResolveDeviceKey,
-    hasNoteRow: (noteId: string) => boolean = () => true,
+    takesBody: (noteId: string) => boolean = () => true,
     debts: CrdtBodyDebtStore = SESSION_ONLY_CRDT_BODY_DEBTS
   ) {
     super(ctx, debts)
     this.resolveDeviceKey = resolveDeviceKey
-    this.hasNoteRow = hasNoteRow
+    this.takesBody = takesBody
   }
 
   /**
@@ -400,7 +403,8 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
    * an update above the new snapshot and the next pass downloads it. Owed,
    * never settled or seeded. A server before #2299 sends no meta, so nothing
    * is owed. A baseline GET without a revision (a server before #2187) is
-   * compared by sequence only.
+   * compared by sequence only. Such an owe counts no failure, so a repeat is
+   * logged: it is the only sign of a note a peer keeps snapshotting.
    */
   private owesPrunedWalk(
     noteId: string,
@@ -415,7 +419,15 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
     ) {
       return false
     }
-    this.owePendingPull(noteId)
+    const inARow = this.owePrunedWalk(noteId)
+    if (inARow > 1) {
+      log.debug('CRDT walk owed again: a newer server snapshot replaced its baseline', {
+        noteId,
+        owedWalksInARow: inARow,
+        baselineSequence: baseline?.sequenceNum ?? null,
+        snapshotSequence: meta.sequenceNum
+      })
+    }
     return true
   }
 
@@ -1552,7 +1564,7 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
     // Same rule as the group sibling and the feed: a body stored for an id
     // with no row is never written to the vault, since the record's own walk
     // then merges nothing new. The record pulls its whole body when it lands.
-    if (!this.hasNoteRow(noteId)) {
+    if (!this.takesBody(noteId)) {
       this.dropRowless([noteId])
       return false
     }
@@ -1596,7 +1608,7 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
    * silently returning would strand every stale body until the next sweep.
    */
   async pullCrdtForNotes(queued: string[], signal?: AbortSignal): Promise<CrdtPullCost> {
-    const noteIds = queued.filter((noteId) => this.hasNoteRow(noteId))
+    const noteIds = queued.filter((noteId) => this.takesBody(noteId))
     // Nothing will ever pull a dropped id, so neither its flag nor its debt may stand.
     this.dropRowless(queued.filter((noteId) => !noteIds.includes(noteId)))
     if (noteIds.length === 0) return noCost()

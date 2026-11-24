@@ -23,6 +23,7 @@ import {
   readCriticMarkupMarksFromYDoc,
   serializeCriticMarkup,
   isWritingAlternativeId,
+  type CriticMarkupMark,
   readWritingAlternativesFromYDoc,
   readWritingGhostsFromYDoc,
   readWritingOverflowFromYDoc,
@@ -41,6 +42,7 @@ import {
 // Types only: the converter loads lazily (blocknote-converter-loader.ts), and
 // the write-back hands its functions in.
 import type * as BlockNoteConverter from './blocknote-converter'
+import { anchorCriticMarks, type CriticMarkAnchors } from './critic-mark-anchors'
 
 interface TextRun {
   type: Y.XmlText
@@ -424,38 +426,50 @@ function hasWritingRanges(doc: Y.Doc): boolean {
 export interface NoteBody {
   markdown: string
   writing: WritingFrontmatter
+  /** Where the doc's review marks went in `markdown` (`anchorCriticMarks`). */
+  criticMarks: Omit<CriticMarkAnchors, 'placed'>
 }
 
 /**
  * The body with its CriticMarkup and, when the doc has alternatives or
  * ghosts, the writing tools markers; plus the `writing` frontmatter.
+ *
+ * With `options.readFileBody`, the review marks follow the edits made since
+ * the file was written (`anchorCriticMarks`); without it they are placed by
+ * their offsets and text alone.
  */
 export async function serializeNoteBody(
   doc: Y.Doc,
   options: Parameters<typeof BlockNoteConverter.yDocToMarkdown>[2],
   converter: Pick<typeof BlockNoteConverter, 'yDocToMarkdown' | 'yDocToMarkdownWithWritingRanges'>
 ): Promise<NoteBody | null> {
-  const criticMarks = readCriticMarkupMarksFromYDoc(doc)
+  const marks = readCriticMarkupMarksFromYDoc(doc)
+  const previousBody =
+    marks.length > 0 && options?.readFileBody ? await options.readFileBody() : null
+  let anchors: CriticMarkAnchors = { placed: [], moves: [], orphaned: [], unplaced: [] }
+  const placeMarks = (plain: string): CriticMarkupMark[] => {
+    anchors = anchorCriticMarks(marks, plain, previousBody)
+    return anchors.placed
+  }
+  const body = (markdown: string, writing: WritingFrontmatter): NoteBody => {
+    const { placed: _placed, ...criticMarks } = anchors
+    return { markdown, writing, criticMarks }
+  }
+
   const overflow = readWritingOverflowFromYDoc(doc)
   if (hasWritingRanges(doc)) {
     const ranged = await converter.yDocToMarkdownWithWritingRanges(
       doc,
       CRDT_FRAGMENT_NAME,
-      criticMarks,
+      placeMarks,
       options
     )
     if (ranged === null) return null
     if (ranged) {
-      return {
-        markdown: ranged.markdown,
-        writing: writingFrontmatterFor(ranged.alternatives, overflow)
-      }
+      return body(ranged.markdown, writingFrontmatterFor(ranged.alternatives, overflow))
     }
   }
   const plain = await converter.yDocToMarkdown(doc, CRDT_FRAGMENT_NAME, options)
   if (plain === null) return null
-  return {
-    markdown: serializeCriticMarkup(plain, criticMarks),
-    writing: writingFrontmatterFor([], overflow)
-  }
+  return body(serializeCriticMarkup(plain, placeMarks(plain)), writingFrontmatterFor([], overflow))
 }
