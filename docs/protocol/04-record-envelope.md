@@ -489,7 +489,8 @@ character, never a map header.
 **Server.** It verifies the attestation per item, after the record signature,
 under the signer's `auth_public_key`: v2 for the vault the request resolves to
 (chapter 05 §5.2), else v1. One that does not verify, or does not
-decode, is that item's `403 SYNC_INVALID_SIGNATURE` in `rejected[]`; the
+decode, is that item's `SYNC_INVALID_DELETE_ATTESTATION` in `rejected[]`
+(servers before #5247 sent `SYNC_INVALID_SIGNATURE`); the
 request is still a 200 and the neighbours commit (chapter 05 §5.4). An
 attestation on a write with no claim is ignored and not stored. An accepted
 write stores the verified attestation in `sync_items.delete_attestation`, or
@@ -527,12 +528,12 @@ described, not the one it would guess.
 Then, per item
 (`apps/sync-server/src/services/sync.ts:139-178`):
 
-| Condition                                                                       | Answer                                |
-| ------------------------------------------------------------------------------- | ------------------------------------- |
-| signer device unknown                                                           | `404 AUTH_DEVICE_NOT_FOUND` (`:134`)  |
-| signer device revoked                                                           | `403 AUTH_DEVICE_REVOKED` (`:137`)    |
-| signature does not verify                                                       | `403 SYNC_INVALID_SIGNATURE` (`:166`) |
-| delete attestation present on an attestable delete and does not verify (§4.8.4) | `403 SYNC_INVALID_SIGNATURE`          |
+| Condition                                                                       | Answer                                       |
+| ------------------------------------------------------------------------------- | -------------------------------------------- |
+| signer device unknown                                                           | `404 AUTH_DEVICE_NOT_FOUND` (`:134`)         |
+| signer device revoked                                                           | `403 AUTH_DEVICE_REVOKED` (`:137`)           |
+| signature does not verify                                                       | `403 SYNC_INVALID_SIGNATURE` (`:166`)        |
+| delete attestation present on an attestable delete and does not verify (§4.8.4) | `SYNC_INVALID_DELETE_ATTESTATION` (per item) |
 
 **Q04.5 — the server rewrites `cryptoVersion` to `1`.** It reconstructs the
 signature payload with `cryptoVersion: CRYPTO_VERSION`
