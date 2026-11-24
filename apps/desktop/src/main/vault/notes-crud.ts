@@ -11,6 +11,7 @@ import { getNoteMetadataById } from '@memry/storage-data'
 import path from 'path'
 import fs from 'fs/promises'
 import type { Stats } from 'fs'
+import type { NoteCache } from '@memry/db-schema/schema/notes-cache'
 import { shell } from 'electron'
 import { and, desc, eq } from 'drizzle-orm'
 import {
@@ -44,7 +45,7 @@ import {
 } from './note-write'
 import { classifyMarkdownStat, classifyMarkdownContent } from '@memry/shared/markdown-class'
 import { hasPendingWriteback, takeWritebackTurn } from '../sync/crdt-writeback'
-import { baselineAfterWrite, landBodyEdit } from '../sync/writeback-baseline'
+import { baselineAfterWrite, feedBodyEdit, writeFedBodyEdit } from '../sync/writeback-baseline'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
 import {
   atomicWrite,
@@ -699,17 +700,24 @@ export async function getNoteByPath(notePath: string): Promise<Note | null> {
 // ============================================================================
 
 /**
- * Frontmatter is written in the note's write-back turn, so a pass never
- * writes back the frontmatter it read before it (#5472). A body update feeds
- * the doc first (`landBodyEdit`) outside the turn, since the feed can wait on
- * the store; the re-arm after a pass restores its body but not the
- * frontmatter written beside it, so its frontmatter is written again in the
+ * The file is written in the note's write-back turn, so a pass never writes
+ * back the frontmatter it read before it (#5472, #5479), and a folder rename
+ * that holds the turn moves the file before the write reads its path (#5690).
+ * A body update feeds the doc first (`feedBodyEdit`) outside the turn, since
+ * the feed can wait on the store (#5475). The re-arm after a pass restores
+ * the body but not the frontmatter written beside it, and a remote patch can
+ * land between the turns, so the frontmatter edit is written again in a later
  * turn (#5479). A rewrite with identical bytes writes nothing.
  */
 export function updateNote(input: NoteUpdateInput): Promise<NoteUpdateOutcome> {
   return writeNoteInOrder(input.id, async () => {
-    if (input.content === undefined) return takeWritebackTurn(input.id, () => writeNote(input))
-    const outcome = await writeNote(input)
+    const content = input.content
+    if (content === undefined) return takeWritebackTurn(input.id, () => writeNote(input))
+    const { path: notePath } = editableNoteRow(input.id)
+    const fed = await feedBodyEdit(input.id, notePath, () =>
+      feedExternalEditToCrdt(input.id, content)
+    )
+    const outcome = await takeWritebackTurn(input.id, () => writeNote(input, fed))
     const { frontmatter, properties, propertyPatch, aliases } = input
     const tagChange = outcome.headerTagChange
     if (!tagChange && !frontmatter && !properties && !propertyPatch && !aliases) return outcome
@@ -727,10 +735,7 @@ export function updateNote(input: NoteUpdateInput): Promise<NoteUpdateOutcome> {
   })
 }
 
-async function writeNote(input: NoteUpdateInput): Promise<NoteUpdateOutcome> {
-  const db = getIndexDatabase()
-  const dataDb = getDatabase()
-
+function editableNoteRow(id: string): NoteCache {
   // #2073: a PDF/image/audio/video row is binary content. Everything below
   // reads the file as UTF-8, parses it as markdown and writes a serialized
   // string back — on a PDF that replaces every non-ASCII byte with U+FFFD and
@@ -738,14 +743,23 @@ async function writeNote(input: NoteUpdateInput): Promise<NoteUpdateOutcome> {
   // binary file's tags (`note_tags` is a rebuildable cache that `rebuildIndex`
   // drops, and only markdown can restore itself from frontmatter), so the
   // honest answer is to refuse rather than to accept and lose the bytes.
-  const cachedRow = getNoteCacheById(db, input.id)
-  if (cachedRow && isBinaryNoteRow(cachedRow)) {
+  const row = getNoteCacheById(getIndexDatabase(), id)
+  if (!row) throw new NoteError(`Note not found: ${id}`, NoteErrorCode.NOT_FOUND, id)
+  if (isBinaryNoteRow(row)) {
     throw new NoteError(
-      `Cannot edit note metadata on a binary file: ${cachedRow.path}`,
+      `Cannot edit note metadata on a binary file: ${row.path}`,
       NoteErrorCode.NOT_MARKDOWN,
-      input.id
+      id
     )
   }
+  return row
+}
+
+/** `fed`: what `feedBodyEdit` resolved for `input.content`. */
+async function writeNote(input: NoteUpdateInput, fed?: boolean): Promise<NoteUpdateOutcome> {
+  const db = getIndexDatabase()
+  const dataDb = getDatabase()
+  editableNoteRow(input.id)
 
   const existing = await getNoteById(input.id)
   if (!existing) {
@@ -793,18 +807,13 @@ async function writeNote(input: NoteUpdateInput): Promise<NoteUpdateOutcome> {
   const write = async (): Promise<void> => {
     if (wrote) await atomicWrite(absolutePath, fileContent)
   }
-  // A new body goes to the doc before the file (`landBodyEdit`): the watcher
+  // A new body went to the doc before the file (`feedBodyEdit`): the watcher
   // ignores Memry's own write, so the next write-back would otherwise put the
   // doc's older body back over it (#2646). No `writing`: the doc keeps its own
   // alternatives. A metadata edit keeps the body the doc holds.
-  const content = input.content
   const contentHash =
-    content !== undefined
-      ? await landBodyEdit(db, input.id, fileContent, {
-          notePath: existing.path,
-          feed: () => feedExternalEditToCrdt(input.id, content),
-          write
-        })
+    fed !== undefined
+      ? await writeFedBodyEdit(db, input.id, fileContent, fed, { write })
       : (await write(), baselineAfterWrite(db, input.id, currentRaw, fileContent))
 
   // Identical bytes = no watcher echo, no sync item, no mtime bump. Sidecar

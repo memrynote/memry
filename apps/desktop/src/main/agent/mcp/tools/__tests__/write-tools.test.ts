@@ -311,7 +311,12 @@ describe('Write tools — P1 deny-by-default', () => {
         await expect(
           t.handler({ path }, { writeGrant: 'turn-grant-1', windowId: 'w1' }),
           path
-        ).rejects.toMatchObject({ code: 'VALIDATION' })
+        ).rejects.toMatchObject({
+          code: 'VALIDATION',
+          details: {
+            issues: [{ message: expect.stringMatching(/^The folder name ends in a dot/) }]
+          }
+        })
       }
       expect(gate).not.toHaveBeenCalled()
     } finally {
