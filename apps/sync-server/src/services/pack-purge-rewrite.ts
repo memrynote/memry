@@ -2,6 +2,7 @@ import { createLogger } from '../lib/logger'
 import { EXPIRED_TOMBSTONE_SQL } from './expired-tombstone'
 import { extractEntry, openPack, type PackKindName, type PackedEntry } from './pack-format'
 import {
+  ALWAYS,
   allLive,
   packDocuments,
   type Coverage,
@@ -45,13 +46,42 @@ const logger = createLogger('PackPurgeRewrite')
 
 // Rewrites per pass, one at a time: each holds the old pack and the new buffer
 // (up to twice PACK_TARGET_BYTES) and costs one R2 GET, one PUT and two D1
-// round trips. The purge and every compaction message run a pass; what is left
-// waits for the purge's delayed message (PACK_PURGE_RETRY_DELAY_SECONDS).
+// round trips; each retry of an emptied record pack (rewritePurgedPacks) costs
+// one more D1 round trip and no R2 read. The purge and every compaction message
+// run a pass; what is left waits for the purge's delayed message
+// (PACK_PURGE_RETRY_DELAY_SECONDS).
 export const PURGE_REWRITES_PER_PASS = 4
 
 // One retry covers a rewrite that lost to a prune or another purge between
 // its read and its commit; a second loss resets the kind.
 const REWRITE_ATTEMPTS = 2
+
+/** Outcome of an emptied record pack that no listed record pack borders yet. */
+const NO_NEIGHBOUR = 'no listed record pack adjacent to take its coverage'
+
+type PendingRewrite = { pack_key: string; cover_from: number | null; cover_through: number | null }
+
+/** An emptied record pack waiting for a listed neighbour to take its coverage. */
+type Emptied = { packKey: string; coverage: { from: number; through: number } }
+
+const waitingFor = (packKey: string): Guard => ({
+  sql: `EXISTS (SELECT 1 FROM pack_replaced_objects WHERE pack_key = ? AND replaced_by = '${REWRITE_PENDING}')`,
+  bind: [packKey]
+})
+
+/** Settles the pending rewrite of `packKey` as `by`, while `when` holds. */
+const settleRewrite = (
+  db: D1Database,
+  packKey: string,
+  by: string,
+  when: Guard
+): D1PreparedStatement =>
+  db
+    .prepare(
+      `UPDATE pack_replaced_objects SET replaced_by = ?, removed_at = 0
+       WHERE pack_key = ? AND replaced_by = '${REWRITE_PENDING}' AND ${when.sql}`
+    )
+    .bind(by, packKey, ...when.bind)
 
 /**
  * The entries a rewrite keeps: pack-rollup.ts liveJoin, less a record whose
@@ -116,13 +146,14 @@ const rewriteOne = async (
 ): Promise<true | string> => {
   const read = await readPackObject(storage, kind, packKey)
   if (typeof read === 'string') return read
-  const waiting: Guard = {
-    sql: `EXISTS (SELECT 1 FROM pack_replaced_objects WHERE pack_key = ? AND replaced_by = '${REWRITE_PENDING}')`,
-    bind: [packKey]
-  }
+  const waiting = waitingFor(packKey)
   for (let attempt = 0; attempt < REWRITE_ATTEMPTS; attempt++) {
     const live = await liveIndexes(db, keptJoin(kind, scope, read.entries))
     const kept = read.entries.filter((_, index) => live.has(index))
+    // A covered record pack that keeps nothing lists no pack, so its coverage
+    // moves to a listed neighbour, or the chain would keep a hole that no
+    // rollup closes (§8.10, REVIEW-5452).
+    if (kept.length === 0 && coverage !== null) return handOn(db, scope, coverage, packKey)
     const packId = crypto.randomUUID()
     const newKey = packObjectKey(scope, kind, range.minSortValue, range.maxSortValue, packId)
     const listed: Guard = { sql: 'EXISTS (SELECT 1 FROM pack_index WHERE id = ?)', bind: [packId] }
@@ -162,28 +193,10 @@ const rewriteOne = async (
         recordUnlisted(db, scope, packId, newKey)
       )
     }
-    // A covered record pack that keeps nothing lists no pack, so its coverage
-    // moves to a listed neighbour, or the chain would keep a hole that no
-    // rollup closes (§8.10, REVIEW-5452).
-    const absorbs = kept.length === 0 && coverage !== null
-    if (absorbs) statements.push(...absorbCoverage(db, scope, coverage, waiting))
-    const settles: Guard =
-      kept.length > 0
-        ? listed
-        : absorbs
-          ? {
-              sql: `EXISTS (SELECT 1 FROM pack_index WHERE user_id = ? AND vault_id = ?
-                AND item_kind = 'record' AND (cover_from = ? OR cover_through = ?))`,
-              bind: [scope.userId, scope.vaultId, coverage.from, coverage.through]
-            }
-          : { sql: '1', bind: [] }
     statements.push(
-      db
-        .prepare(
-          `UPDATE pack_replaced_objects SET replaced_by = ?, removed_at = 0
-           WHERE pack_key = ? AND replaced_by = '${REWRITE_PENDING}' AND ${settles.sql}`
-        )
-        .bind(kept.length > 0 ? packId : 'purge', packKey, ...settles.bind),
+      kept.length > 0
+        ? settleRewrite(db, packKey, packId, listed)
+        : settleRewrite(db, packKey, 'purge', ALWAYS),
       db
         .prepare(`SELECT NOT ${waiting.sql} AS settled, ${listed.sql} AS listed`)
         .bind(...waiting.bind, ...listed.bind)
@@ -208,16 +221,45 @@ const rewriteOne = async (
       })
       return true
     }
-    if (absorbs) return 'no listed record pack adjacent to take its coverage'
   }
   return 'lost the commit to a concurrent prune, purge or listing'
 }
 
 /**
+ * Hands an emptied record pack's coverage on and settles its rewrite. True
+ * when the rewrite is settled, by this batch or a concurrent pass, else
+ * NO_NEIGHBOUR: no listed record pack borders it yet, and its rewrite stays
+ * pending. Reads no object: the pack kept nothing.
+ */
+const handOn = async (
+  db: D1Database,
+  scope: VaultScope,
+  coverage: { from: number; through: number },
+  packKey: string
+): Promise<true | string> => {
+  const waiting = waitingFor(packKey)
+  const neighbour: Guard = {
+    sql: `EXISTS (SELECT 1 FROM pack_index WHERE user_id = ? AND vault_id = ?
+      AND item_kind = 'record' AND (cover_from = ? OR cover_through = ?))`,
+    bind: [scope.userId, scope.vaultId, coverage.from, coverage.through]
+  }
+  const results = await db.batch<{ settled: number }>([
+    ...absorbCoverage(db, scope, coverage, waiting),
+    settleRewrite(db, packKey, 'purge', neighbour),
+    db.prepare(`SELECT NOT ${waiting.sql} AS settled`).bind(...waiting.bind)
+  ])
+  if (!results[results.length - 1].results?.[0]?.settled) return NO_NEIGHBOUR
+  logger.info('purge rewrite handed its coverage on', {
+    userId: scope.userId,
+    vaultId: scope.vaultId
+  })
+  return true
+}
+
+/**
  * Statements that hand an emptied record pack's coverage `(from, through]` to
  * the listed pack that starts where it ended, else to the one that ends where
- * it started, while its rewrite is still pending. No row matching leaves the
- * rewrite pending, and the caller resets the kind.
+ * it started, while its rewrite is still pending.
  */
 const absorbCoverage = (
   db: D1Database,
@@ -244,6 +286,51 @@ const absorbCoverage = (
 }
 
 /**
+ * Runs one step of a rewrite; a step that fails resets the kind. False while
+ * the pack waits for a neighbour (NO_NEIGHBOUR): its rewrite is still pending.
+ */
+const runStep = async (
+  db: D1Database,
+  scope: VaultScope,
+  kind: PackKindName,
+  packKey: string,
+  step: () => Promise<true | string>
+): Promise<boolean> => {
+  let outcome: true | string
+  try {
+    outcome = await step()
+  } catch (error) {
+    outcome = error instanceof Error ? error.message : String(error)
+  }
+  if (outcome === NO_NEIGHBOUR) return false
+  if (outcome !== true) await resetKind(db, scope, kind, packKey, outcome)
+  return true
+}
+
+/** Rewrite one recorded object. The emptied record pack it leaves waiting, if any. */
+const rewriteRow = async (
+  db: D1Database,
+  storage: R2Bucket,
+  scope: VaultScope,
+  row: PendingRewrite
+): Promise<Emptied | null> => {
+  const packKey = row.pack_key
+  const range = packKeyRange(packKey)
+  if (!range) {
+    await markDue(db, packKey, 'unparsed key')
+    return null
+  }
+  // A record pack keeps its coverage, so the record chain keeps tiling (§8.10).
+  const coverage =
+    row.cover_from !== null && row.cover_through !== null
+      ? { from: row.cover_from, through: row.cover_through }
+      : null
+  const rewrite = () => rewriteOne(db, storage, scope, range.kind, range, coverage, packKey)
+  const settled = await runStep(db, scope, range.kind, packKey, rewrite)
+  return settled || coverage === null ? null : { packKey, coverage }
+}
+
+/**
  * Rewrite up to PURGE_REWRITES_PER_PASS objects of the vault a purge took out
  * of the listing, oldest first. `pending` is true when more are waiting.
  */
@@ -262,27 +349,34 @@ export const rewritePurgedPacks = async (
            LIMIT ?`
         )
         .bind(scope.userId, scope.vaultId, PURGE_REWRITES_PER_PASS + 1)
-        .all<{ pack_key: string; cover_from: number | null; cover_through: number | null }>()
+        .all<PendingRewrite>()
     ).results ?? []
-  for (const row of rows.slice(0, PURGE_REWRITES_PER_PASS)) {
-    const packKey = row.pack_key
-    const range = packKeyRange(packKey)
-    if (!range) {
-      await markDue(db, packKey, 'unparsed key')
-      continue
-    }
-    // A record pack keeps its coverage, so the record chain keeps tiling (§8.10).
-    const coverage =
-      row.cover_from !== null && row.cover_through !== null
-        ? { from: row.cover_from, through: row.cover_through }
-        : null
-    let outcome: true | string
-    try {
-      outcome = await rewriteOne(db, storage, scope, range.kind, range, coverage, packKey)
-    } catch (error) {
-      outcome = error instanceof Error ? error.message : String(error)
-    }
-    if (outcome !== true) await resetKind(db, scope, range.kind, packKey, outcome)
+  const pending = rows.length > PURGE_REWRITES_PER_PASS
+  const first = rows.slice(0, PURGE_REWRITES_PER_PASS)
+  let waiting: Emptied[] = []
+  for (const row of first) {
+    const emptied = await rewriteRow(db, storage, scope, row)
+    if (emptied) waiting.push(emptied)
   }
-  return { pending: rows.length > PURGE_REWRITES_PER_PASS }
+  // An emptied record pack whose neighbour still waits for its own rewrite
+  // takes its turn again once that rewrite lists or hands on coverage, for as
+  // long as each round settles another row (VERIFY-5452 #3).
+  let round = first.length
+  while (waiting.length > 0 && waiting.length < round) {
+    round = waiting.length
+    const retries = waiting
+    waiting = []
+    for (const row of retries) {
+      const retry = () => handOn(db, scope, row.coverage, row.packKey)
+      if (!(await runStep(db, scope, 'record', row.packKey, retry))) waiting.push(row)
+    }
+  }
+  // No rewrite of this pass can border them. A pass that settled a rewrite
+  // and leaves more pending leaves them to the next pass, which may list
+  // their neighbour; otherwise the reset settles every pending rewrite of the
+  // kind.
+  if (waiting.length > 0 && !(pending && waiting.length < first.length)) {
+    await resetKind(db, scope, 'record', waiting[0].packKey, NO_NEIGHBOUR)
+  }
+  return { pending }
 }

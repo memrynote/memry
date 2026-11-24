@@ -1468,7 +1468,7 @@ fetches it with up to 99 queued ones through `POST /sync/attachments/manifests/b
 URLs go into one cache keyed by chunk hash, with their expiry. A chunk with no live URL presigns the
 uncovered chunks of its own download first, then those of the batched downloads, up to 1,024 per
 call, and a caller whose chunk is already in flight waits for that call. A chunk a `200` answer
-leaves out (the vault holds no such chunk) downloads through the proxy, which answers its 404, and
+leaves out (the vault holds no such chunk) is fetched through the proxy, which answers its 404, and
 later calls stop presigning it for other downloads. The batch route charges `blob_download` one
 token per distinct id, so the limit still bounds R2 reads. The bytes still download eagerly, so an
 attachment opens offline after bootstrap as before. A server without the batch route answers 404,

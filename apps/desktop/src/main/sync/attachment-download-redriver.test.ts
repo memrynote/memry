@@ -97,6 +97,11 @@ vi.mock('./attachment-download-settings', () => ({
   isAttachmentAutoDownloadEnabled: () => mocks.autoDownloadEnabled
 }))
 
+const askForHeldOwnBytes = vi.hoisted(() => vi.fn((..._args: unknown[]) => 0))
+vi.mock('../vault/case-twin-file', () => ({
+  askForHeldOwnBytes: (...args: unknown[]) => askForHeldOwnBytes(...args)
+}))
+
 import {
   redriveAttachmentDownloads,
   startAttachmentDownloadRedriver,
@@ -261,6 +266,7 @@ describe('attachment download re-driver', () => {
 
     mocks.autoDownloadEnabled = false
     expect(await redriveAttachmentDownloads()).toEqual({ requested: 0, skipped: 0 })
+    expect(askForHeldOwnBytes).toHaveBeenCalledTimes(1)
 
     mocks.autoDownloadEnabled = true
     mocks.isDatabaseInitialized.mockReturnValue(false)
@@ -272,6 +278,17 @@ describe('attachment download re-driver', () => {
 
     expect(mocks.emitted).toHaveLength(0)
     mocks.vaultPath = { path: '/vault' }
+  })
+
+  it('with auto-download off, asks only for the bytes held binary note files wait for', async () => {
+    mocks.redrivableRows = [
+      { ownerId: 'note-1', attachmentId: 'att-a', reason: 'transient', attempts: 1 }
+    ]
+    mocks.autoDownloadEnabled = false
+    askForHeldOwnBytes.mockReturnValueOnce(2)
+
+    expect(await redriveAttachmentDownloads()).toEqual({ requested: 2, skipped: 0 })
+    expect(mocks.emitted).toHaveLength(0)
   })
 
   it('releases the claim and stops when no listener is registered', async () => {

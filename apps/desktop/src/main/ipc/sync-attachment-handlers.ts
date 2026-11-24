@@ -41,7 +41,10 @@ import {
 import { DownloadQueue, DownloadQueueClearedError } from '../sync/download-queue'
 import { onBootstrapElevationChange } from '../sync/bootstrap-session'
 import { getBootstrapElevationFactor } from '../sync/bootstrap-session-state'
-import { isAttachmentAutoDownloadEnabled } from '../sync/attachment-download-settings'
+import {
+  downloadsInBackground,
+  isAttachmentAutoDownloadEnabled
+} from '../sync/attachment-download-settings'
 import { owedNoteDownloads } from '../sync/owed-note-downloads'
 import {
   attachmentEvents,
@@ -713,12 +716,15 @@ export function registerAttachmentHandlers(): void {
     // for again for the life of the process.
     //
     // On-demand-only mode: background downloads (pull fan-out and re-drive
-    // both arrive through this event) are suppressed. Releasing the claim —
-    // not recording an outcome — keeps the attachment requestable the moment
-    // the toggle flips back or the note is opened (DOWNLOAD_NOTE_FILES).
-    // Released before the token wait, so an open never waits on a claim that
-    // downloads nothing.
-    if (isDatabaseInitialized() && !isAttachmentAutoDownloadEnabled(getDatabase())) {
+    // both arrive through this event) are suppressed, except the bytes a
+    // held binary note file waits for. Releasing the claim — not recording
+    // an outcome — keeps the attachment requestable the moment the toggle
+    // flips back or the note is opened (DOWNLOAD_NOTE_FILES). Released before
+    // the token wait, so an open never waits on a claim that downloads nothing.
+    if (
+      isDatabaseInitialized() &&
+      !downloadsInBackground(getDatabase(), event.noteId, !!event.intoDir)
+    ) {
       releaseDownloadAttempt(event.claim)
       return
     }

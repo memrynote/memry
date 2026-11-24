@@ -13,6 +13,7 @@ import {
   shouldAttemptDownload
 } from '@memry/sync-client/attachment-download-state'
 import { isAttachmentAutoDownloadEnabled } from './attachment-download-settings'
+import { askForHeldOwnBytes } from '../vault/case-twin-file'
 
 const log = createLogger('AttachmentDownloadRedriver')
 
@@ -60,9 +61,15 @@ export async function redriveAttachmentDownloads(): Promise<{
   try {
     if (!isDatabaseInitialized()) return summary
     const db = getDatabase()
-    if (!isAttachmentAutoDownloadEnabled(db)) return summary
     const vaultPath = getVaultStatus().path
     if (!vaultPath) return summary
+    if (!isAttachmentAutoDownloadEnabled(db)) {
+      // On-demand only, but a held binary note file stays stale and
+      // un-pushable until its own bytes land (#5580).
+      summary.requested = askForHeldOwnBytes(db)
+      if (summary.requested > 0) log.info('Asked again for held files of binary notes', summary)
+      return summary
+    }
 
     for (let round = 0; round < REDRIVE_MAX_ROUNDS; round++) {
       const rows = listRedrivableDownloadFailures(db, Date.now(), REDRIVE_BATCH_LIMIT)
