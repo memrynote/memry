@@ -291,7 +291,7 @@ describe('delete attestations on push, shed and pull (#2408)', () => {
     ['not base64', '%%%'],
     ['the wrong length', Buffer.alloc(12, 1).toString('base64')]
   ])(
-    'rejects an attestation %s with SYNC_INVALID_SIGNATURE per item, HTTP 200, neighbours accepted',
+    'rejects an attestation %s with SYNC_INVALID_DELETE_ATTESTATION per item, HTTP 200, neighbours accepted',
     async (_label, kind) => {
       const app = buildApp()
       await push(app, [{ id: 'task-t', clock: { [DEVICE_ID]: 1 } }])
@@ -315,7 +315,9 @@ describe('delete attestations on push, shed and pull (#2408)', () => {
 
       expect(res.status).toBe(200)
       expect(res.body.accepted).toEqual(['task-ok'])
-      expect(res.body.rejected).toEqual([{ id: 'task-t', reason: 'SYNC_INVALID_SIGNATURE' }])
+      expect(res.body.rejected).toEqual([
+        { id: 'task-t', reason: 'SYNC_INVALID_DELETE_ATTESTATION' }
+      ])
       expect(stored('task-t')).toMatchObject({ deleted_at: null, delete_attestation: null })
     }
   )
@@ -356,7 +358,7 @@ describe('delete attestations on push, shed and pull (#2408)', () => {
   it('rejects a v2 attestation signed for another vault', async () => {
     const { res } = await pushDeleteAttestedIn('vault-other')
 
-    expect(res.body.rejected).toEqual([{ id: 'task-t', reason: 'SYNC_INVALID_SIGNATURE' }])
+    expect(res.body.rejected).toEqual([{ id: 'task-t', reason: 'SYNC_INVALID_DELETE_ATTESTATION' }])
     expect(stored('task-t').delete_attestation).toBeNull()
   })
 
@@ -371,7 +373,7 @@ describe('delete attestations on push, shed and pull (#2408)', () => {
       { id: 'task-t', clock: { [DEVICE_ID]: 2 }, deletedAt, deleteAttestation: other }
     ])
 
-    expect(res.body.rejected).toEqual([{ id: 'task-t', reason: 'SYNC_INVALID_SIGNATURE' }])
+    expect(res.body.rejected).toEqual([{ id: 'task-t', reason: 'SYNC_INVALID_DELETE_ATTESTATION' }])
   })
 
   // #2408: nothing to attest, so the field is ignored and never stored.
