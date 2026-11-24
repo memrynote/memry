@@ -30,7 +30,12 @@ import {
   prepareCaseTwinLeave,
   sharesCaseTwinFile
 } from './case-twin-file'
-import { moveIndexedNotesWithFolder, type FolderMovedNote } from './folder-move-index'
+import {
+  announceFolderMove,
+  moveFolderHoldingWritebacks,
+  moveIndexedNotesWithFolder,
+  type FolderMovedNote
+} from './folder-move-index'
 import {
   compareHeaderTags,
   nextHeaderTags,
@@ -998,7 +1003,14 @@ export async function createFolder(folderPath: string): Promise<void> {
   placeNewItemAtTop(getDatabase(), folderPath, path.posix.dirname(folderPath).replace(/^\.$/, ''))
 }
 
+/** No write-back of a note under the folder runs beside the move (#5643, #5671). */
 export async function renameFolder(oldPath: string, newPath: string): Promise<FolderMovedNote[]> {
+  const moved = await moveFolderHoldingWritebacks(oldPath, () => moveFolder(oldPath, newPath))
+  await announceFolderMove(moved)
+  return moved
+}
+
+async function moveFolder(oldPath: string, newPath: string): Promise<FolderMovedNote[]> {
   assertFolderTreeWritable(oldPath)
   assertParentFolderWritable(newPath)
   assertFolderRenameKeepsCaseTwins(oldPath)
