@@ -12,6 +12,10 @@
 //! | the background download waits, opening fetches it | FR-045, Download attachments  |
 //! | a peer replacement lands and keeps the old bytes  | #5626, new attachment id      |
 //! | a markdown record without the file keeps it       | #5419, desktop pull keeps it  |
+//! | ... on a concurrent clock                         | #5419, either order           |
+//! | ... that says `attachmentId: null`                | null is not a replacement     |
+//! | a pdf record without `attachmentId` keeps it      | #5419, desktop pull keeps it  |
+//! | ... after a projection rebuild and a re-pull      | rebuild reads the stored file |
 
 mod http_fakes;
 
@@ -193,6 +197,10 @@ fn markdown_record_over_binary(counter: u64) -> Json {
 }
 
 fn note_record(payload: Json, counter: u64) -> Json {
+    note_record_clocked(payload, json!({ DEVICE: counter }))
+}
+
+fn note_record_clocked(payload: Json, clock: Json) -> Json {
     let (_, secret) = keypair();
     let sealer = AccountSealer::new(
         derive_vault_key(MASTER_KEY.to_vec()).expect("vault key"),
@@ -206,7 +214,7 @@ fn note_record(payload: Json, counter: u64) -> Json {
                 item_id: NOTE.to_owned(),
                 payload: Some(payload.to_string()),
                 payload_state: "full".to_owned(),
-                clock: Some(json!({ DEVICE: counter }).to_string()),
+                clock: Some(clock.to_string()),
                 field_clocks: None,
                 server_cursor: None,
                 signer_device_id: None,
@@ -425,4 +433,115 @@ async fn a_markdown_record_without_the_file_keeps_it() {
         )),
         "the note still opens as its file"
     );
+}
+
+/// One pass that pulls `record` as the note's version `version`.
+async fn pull(
+    sync: &memry_core::api::sync::VaultSync,
+    transport: &FakeTransport,
+    record: Json,
+    version: u64,
+) {
+    transport.push(devices());
+    transport.push(changes(version, 10 + version));
+    transport.push(response(200, &json!({ "items": [record] }).to_string()));
+    transport.push(response(200, &json!({"notes": {}}).to_string()));
+    transport.push(error_response(404, "NOT_FOUND", "no snapshot"));
+    sync.sync_now().await.expect("the pass");
+}
+
+/// The note still opens as its PDF, and its file is still wanted.
+fn assert_keeps_the_file(vault: &Vault) {
+    let kept = vault.notes().file(NOTE.to_string()).expect("read");
+    assert_eq!(
+        kept.map(|file| (file.file_type, file.mime_type, file.attachment_id)),
+        Some((
+            "pdf".to_string(),
+            Some("application/pdf".to_string()),
+            FIRST.to_string()
+        )),
+        "the note still opens as its file"
+    );
+    let missing = vault
+        .db_handle()
+        .call_blocking(|conn| attachments::missing_downloads(conn))
+        .expect("read");
+    assert_eq!(missing, [FIRST], "its file is still wanted");
+}
+
+/// A markdown record over the binary note, with `fields` merged in.
+fn markdown_payload(fields: Json) -> Json {
+    let mut payload = json!({
+        "title": "Scan",
+        "content": null,
+        "tags": [],
+        "properties": {},
+        "pinnedTags": [],
+        "emoji": null,
+        "fileType": "markdown",
+        "folderPath": null,
+        "createdAt": OLD,
+        "modifiedAt": OLD,
+    });
+    for (key, value) in fields.as_object().expect("an object") {
+        payload[key] = value.clone();
+    }
+    payload
+}
+
+async fn first_synced() -> (
+    Vault,
+    Arc<FakeTransport>,
+    Arc<memry_core::api::sync::VaultSync>,
+) {
+    let (vault, _dir) = scratch_vault();
+    let transport = FakeTransport::new(first_sync_script(FIRST));
+    let sync = vault.sync(session(transport.clone()));
+    sync.first_sync(None).await.expect("the first sync");
+    (vault, transport, sync)
+}
+
+#[tokio::test]
+async fn a_markdown_record_on_a_concurrent_clock_keeps_it() {
+    let (vault, transport, sync) = first_synced().await;
+    let clock = json!({ "device-b": 1 });
+    let payload = markdown_payload(json!({ "clock": clock }));
+    pull(&sync, &transport, note_record_clocked(payload, clock), 2).await;
+    assert_keeps_the_file(&vault);
+}
+
+#[tokio::test]
+async fn a_markdown_record_with_a_null_attachment_id_keeps_it() {
+    let (vault, transport, sync) = first_synced().await;
+    let payload = markdown_payload(json!({ "attachmentId": null, "clock": { DEVICE: 2 } }));
+    pull(&sync, &transport, note_record(payload, 2), 2).await;
+    assert_keeps_the_file(&vault);
+}
+
+#[tokio::test]
+async fn a_pdf_record_without_an_attachment_id_keeps_it() {
+    let (vault, transport, sync) = first_synced().await;
+    let payload = markdown_payload(json!({
+        "fileType": "pdf",
+        "mimeType": "application/pdf",
+        "clock": { DEVICE: 2 },
+    }));
+    pull(&sync, &transport, note_record(payload, 2), 2).await;
+    assert_keeps_the_file(&vault);
+}
+
+#[tokio::test]
+async fn a_rebuild_and_a_re_pull_keep_it() {
+    let (vault, transport, sync) = first_synced().await;
+    pull(&sync, &transport, markdown_record_over_binary(2), 2).await;
+    vault
+        .db_handle()
+        .call_blocking(|conn| {
+            memry_core::storage::repositories::sync_items::rebuild_projections(conn, 1)
+        })
+        .expect("the rebuild");
+    assert_keeps_the_file(&vault);
+
+    pull(&sync, &transport, markdown_record_over_binary(2), 3).await;
+    assert_keeps_the_file(&vault);
 }

@@ -13,6 +13,7 @@ use std::time::{Duration, Instant};
 
 use tokio::sync::{OnceCell, Semaphore};
 
+use crate::api::errors::ApiError;
 use crate::protocol::attachment_manifest::{AttachmentManifest, EncryptedAttachmentManifest};
 
 #[allow(unused_imports)]
@@ -26,13 +27,36 @@ const MAX_CONCURRENT_DOWNLOADS: usize = 3;
 const REDRIVE_BATCH_LIMIT: usize = 25;
 
 /// Desktop's `UNSUPPORTED_COOLDOWN_MS`: a server that answered the manifest
-/// batch route 404 is not asked again for this long (§14.5.2).
-const MANIFEST_BATCH_COOLDOWN: Duration = Duration::from_secs(10 * 60);
+/// batch route 404 is not asked again for this long (§14.5.2), and neither is
+/// a manifest a note open was answered 404 for.
+const NOT_FOUND_COOLDOWN: Duration = Duration::from_secs(10 * 60);
 
 /// When each vault's server last answered the manifest batch route 404, keyed
 /// like [`DOWNLOAD_GATES`] so every `VaultSync` of the vault shares it.
 static MANIFEST_BATCH_UNSUPPORTED: LazyLock<Mutex<HashMap<String, Instant>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
+
+/// When a note open was last answered 404 for an attachment's manifest, keyed
+/// like [`IN_FLIGHT`]: never uploaded, or gone. Without it every open of the
+/// note asks for the device directory and the manifest again (#5247).
+static MANIFEST_NOT_FOUND: LazyLock<Mutex<HashMap<String, Instant>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+
+/// Whether `key` answered 404 within [`NOT_FOUND_COOLDOWN`].
+fn recently_not_found(memory: &Mutex<HashMap<String, Instant>>, key: &str) -> bool {
+    let mut memory = memory
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    memory.retain(|_, at| at.elapsed() < NOT_FOUND_COOLDOWN);
+    memory.contains_key(key)
+}
+
+fn remember_not_found(memory: &Mutex<HashMap<String, Instant>>, key: &str) {
+    memory
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .insert(key.to_owned(), Instant::now());
+}
 
 /// One queue per vault, shared by every `VaultSync` the shell mints for it.
 static DOWNLOAD_GATES: LazyLock<Mutex<HashMap<String, Arc<Semaphore>>>> =
@@ -169,6 +193,8 @@ impl VaultSync {
     /// attachments setting. Answers how many it named; one that will not
     /// read is logged and asked again on the next open.
     pub async fn fetch_note_manifests(&self, note_id: String) -> Result<u32, SyncError> {
+        // A manifest the server answered 404 for (never uploaded, or gone)
+        // waits out [`NOT_FOUND_COOLDOWN`] instead of every open.
         let unnamed: Vec<String> = self
             .db
             .call(move |conn| attachments::for_note(conn, &note_id))
@@ -176,6 +202,7 @@ impl VaultSync {
             .into_iter()
             .filter(|row| row.filename.is_none())
             .map(|row| row.attachment_id)
+            .filter(|id| !recently_not_found(&MANIFEST_NOT_FOUND, &self.not_found_key(id)))
             .collect();
         if unnamed.is_empty() {
             return Ok(0);
@@ -211,6 +238,16 @@ impl VaultSync {
                     continue;
                 }
                 Err(error) => {
+                    if let protocol_attachments::AttachmentError::Api(ApiError::Status {
+                        status: 404,
+                        ..
+                    }) = error
+                    {
+                        remember_not_found(
+                            &MANIFEST_NOT_FOUND,
+                            &self.not_found_key(&attachment_id),
+                        );
+                    }
                     eprintln!("memry-core: naming attachment {attachment_id}: {error}");
                     continue;
                 }
@@ -267,6 +304,20 @@ impl ManifestRow {
 }
 
 impl VaultSync {
+    fn not_found_key(&self, attachment_id: &str) -> String {
+        format!("{}/{attachment_id}", self.vault_id)
+    }
+
+    /// `row`'s file and its length when all of it is here: on disk at the
+    /// manifest's plaintext length. A file of another length is torn or
+    /// foreign, and is downloaded over rather than shown or copied.
+    pub(super) fn intact_file(&self, row: &attachments::CachedAttachment) -> Option<(String, u64)> {
+        let local_path = row.local_path.as_deref()?;
+        let manifest = serde_json::from_str::<AttachmentManifest>(row.manifest.as_deref()?).ok()?;
+        let file = std::fs::metadata(self.images_file(local_path)).ok()?;
+        (file.is_file() && file.len() == manifest.size).then(|| (local_path.to_owned(), file.len()))
+    }
+
     /// [`Self::fetch_attachment`], opening `prefetched` when a batch already
     /// read this attachment's manifest instead of fetching it alone, and
     /// resolving signers from `directory`, which the first download fills.
@@ -294,21 +345,11 @@ impl VaultSync {
             });
         }
         // Already here: landed by the fetch this one waited for, or before it.
-        // A file of another length than the manifest's plaintext is torn or
-        // foreign, and is downloaded over.
-        if let Some(row) = cached
-            && let Some(local_path) = row.local_path
-            && let Some(manifest) = row.manifest.as_deref()
-            && let Ok(manifest) =
-                serde_json::from_str::<protocol::attachment_manifest::AttachmentManifest>(manifest)
-            && let Ok(file) = std::fs::metadata(self.images_file(&local_path))
-            && file.is_file()
-            && file.len() == manifest.size
-        {
+        if let Some((local_path, bytes)) = cached.as_ref().and_then(|row| self.intact_file(row)) {
             return Ok(AttachmentFetchSummary {
                 downloaded: true,
                 deferred: false,
-                bytes: file.len(),
+                bytes,
                 local_path: Some(local_path),
             });
         }
@@ -436,11 +477,7 @@ impl VaultSync {
         &self,
         ids: &[String],
     ) -> HashMap<String, EncryptedAttachmentManifest> {
-        let unsupported = MANIFEST_BATCH_UNSUPPORTED
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .get(&self.vault_id)
-            .is_some_and(|at| at.elapsed() < MANIFEST_BATCH_COOLDOWN);
+        let unsupported = recently_not_found(&MANIFEST_BATCH_UNSUPPORTED, &self.vault_id);
         // A key that cannot be read fails each row on its own, as before.
         let unlocked = matches!(self.session.master_key(), Ok(Some(_)));
         if ids.len() < 2 || unsupported || !unlocked {
@@ -457,10 +494,7 @@ impl VaultSync {
             {
                 Ok(Some(batch)) => manifests.extend(batch),
                 Ok(None) => {
-                    MANIFEST_BATCH_UNSUPPORTED
-                        .lock()
-                        .unwrap_or_else(std::sync::PoisonError::into_inner)
-                        .insert(self.vault_id.clone(), Instant::now());
+                    remember_not_found(&MANIFEST_BATCH_UNSUPPORTED, &self.vault_id);
                     break;
                 }
                 Err(_) => break,
