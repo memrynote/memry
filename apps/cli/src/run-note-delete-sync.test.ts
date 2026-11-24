@@ -8,7 +8,11 @@ import test from 'node:test'
 import { syncDevices, syncPendingDeletes, syncTombstoneClocks } from '@memry/db-schema/data-schema'
 import { getNoteMetadataById, updateNoteMetadata, upsertNoteMetadata } from '@memry/storage-data'
 
+import { drizzle } from 'drizzle-orm/better-sqlite3'
+import * as dataSchema from '@memry/db-schema/data-schema'
+
 import { openDatabases } from './app-core/database.ts'
+import { deleteNoteRowQueuingSyncDelete } from './app-core/note-sync-delete.ts'
 
 const testRoot = path.join(process.cwd(), 'test-results', 'memry-cli-note-delete-sync')
 await fs.mkdir(testRoot, { recursive: true })
@@ -187,3 +191,61 @@ for (const { name, device, setup, queued, keepsFile } of cases) {
     )
   })
 }
+
+// A write desktop commits between the delete's read of the row and its first
+// write would leave a deferred transaction on a stale snapshot: SQLite refuses
+// that write at once (SQLITE_BUSY_SNAPSHOT), whatever the busy timeout.
+test('notes delete commits while desktop writes the database mid-delete', async () => {
+  const vaultPath = path.join(testRoot, `vault-${process.pid}-${randomUUID()}`)
+  await fs.mkdir(vaultPath)
+  withDatabases(vaultPath, ({ dataDb }) =>
+    dataDb
+      .insert(syncDevices)
+      .values({
+        id: DEVICE,
+        name: 'This Mac',
+        platform: 'macos',
+        appVersion: '1.0.0',
+        linkedAt: new Date(),
+        isCurrentDevice: true,
+        signingPublicKey: 'key'
+      })
+      .run()
+  )
+  const id = await syncedNote()(vaultPath)
+  const other = await syncedNote()(vaultPath)
+
+  const cli = openDatabases(vaultPath)
+  const desktop = openDatabases(vaultPath)
+  // Refused at once rather than after the 5 s timeout while the CLI holds the lock.
+  desktop.dataSqlite.pragma('busy_timeout = 0')
+  const desktopWrite = () => {
+    try {
+      desktop.dataSqlite
+        .prepare('UPDATE note_metadata SET title = ? WHERE id = ?')
+        .run('Renamed', other)
+    } catch {
+      // A real desktop waits for the lock; here it gives up.
+    }
+  }
+  const dataDb = drizzle(cli.dataSqlite, {
+    schema: dataSchema,
+    logger: {
+      logQuery: (query) => {
+        if (query.startsWith('insert into "sync_pending_deletes"')) desktopWrite()
+      }
+    }
+  })
+  try {
+    deleteNoteRowQueuingSyncDelete(dataDb, id)
+
+    assert.equal(getNoteMetadataById(cli.dataDb, id), undefined)
+    assert.deepEqual(
+      cli.dataDb.select({ itemId: syncPendingDeletes.itemId }).from(syncPendingDeletes).all(),
+      [{ itemId: id }]
+    )
+  } finally {
+    cli.close()
+    desktop.close()
+  }
+})

@@ -20,7 +20,7 @@ import { compare } from '@memry/sync-client/vector-clock'
 import { createLogger } from '../lib/logger'
 import type { DataDb } from '../database/client'
 import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
-import { staysOnDevice } from './content-sync-base'
+import { encodeBodyStateVector, staysOnDevice } from './content-sync-base'
 
 const log = createLogger('PendingDeletes')
 
@@ -110,6 +110,69 @@ export function listPendingDeletes(db: DrizzleDb): PendingDelete[] {
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- syncPendingDeletes.type is a text column; validating rows would change which pending deletes are replayed
       .map((row) => ({ ...row, type: row.type as SyncItemType }))
   )
+}
+
+const CONTENT_TYPES = new Set<SyncItemType>(['note', 'journal'])
+
+/** The payload as an object, or null when it does not parse as one. */
+function payloadObject(payload: string): object | null {
+  try {
+    const parsed: unknown = JSON.parse(payload)
+    return typeof parsed === 'object' && parsed !== null ? parsed : null
+  } catch {
+    return null
+  }
+}
+
+const carriesBodyVector = (payload: string): boolean =>
+  'bodyStateVector' in (payloadObject(payload) ?? {})
+
+/**
+ * Pending note and journal deletes with no `bodyStateVector`: one the CLI
+ * queued (#5661), which cannot read the doc, or one a build before #5681
+ * deferred. Sent as they are, a peer may delete text this device never held
+ * with no kept copy: their `deletedAt` is the push time (chapter 05 §5.8).
+ */
+export function listUncoveredContentDeletes(db: DrizzleDb): PendingDelete[] {
+  return listPendingDeletes(db).filter(
+    (item) => CONTENT_TYPES.has(item.type) && !carriesBodyVector(item.payload)
+  )
+}
+
+/**
+ * Puts `stateVector`, from the doc this device holds for `itemId`, into each of
+ * the id's pending note or journal deletes that has no `bodyStateVector`
+ * (chapter 05 §5.8, #3037), and returns the id's pending deletes. Runs with the
+ * doc loaded, before it is purged: the vector is what the delete covered, and
+ * the row is replayed long after the doc is gone. With no doc to read, the
+ * delete still goes, without a vector.
+ */
+export function coverPendingContentDeletes(
+  db: DrizzleDb,
+  itemId: string,
+  stateVector: Uint8Array | null
+): PendingDelete[] {
+  const vector = encodeBodyStateVector(stateVector)
+  return listPendingDeletes(db)
+    .filter((item) => item.itemId === itemId && CONTENT_TYPES.has(item.type))
+    .map((item) => {
+      const body = payloadObject(item.payload)
+      if (body && 'bodyStateVector' in body) return item
+      if (!vector || !body) {
+        log.warn('A note delete goes out with no body vector', {
+          type: item.type,
+          itemId,
+          reason: body ? 'this device holds no doc for it' : 'its payload does not parse'
+        })
+        return item
+      }
+      const payload = JSON.stringify({ ...body, bodyStateVector: vector })
+      db.update(syncPendingDeletes)
+        .set({ payload })
+        .where(and(eq(syncPendingDeletes.type, item.type), eq(syncPendingDeletes.itemId, itemId)))
+        .run()
+      return { ...item, payload }
+    })
 }
 
 /**

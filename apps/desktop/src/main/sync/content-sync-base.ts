@@ -30,6 +30,16 @@ export function staysOnDevice(local: NoteMetadata | undefined): boolean {
   return Boolean(local?.localOnly) || (local !== undefined && isAttachmentStoreRow(local))
 }
 
+/**
+ * Base64 of a body doc's Yjs state vector, the `bodyStateVector` a note or
+ * journal tombstone carries (chapter 05 §5.8, #3037). Undefined when there is
+ * no doc or it holds nothing: a peer then decides as it did before #3037.
+ */
+export function encodeBodyStateVector(vector: Uint8Array | null): string | undefined {
+  if (!vector || Y.decodeStateVector(vector).size === 0) return undefined
+  return Buffer.from(vector).toString('base64')
+}
+
 export abstract class ContentSyncService<
   TPayload extends Record<string, unknown>,
   TArgs extends string[] = []
@@ -60,15 +70,9 @@ export abstract class ContentSyncService<
     ...extra: TArgs
   ): TPayload | null
 
-  /**
-   * Base64 state vector of the item's open doc, for its tombstone's
-   * `bodyStateVector` (chapter 05 §5.8, #3037). Undefined when the doc is not
-   * open or holds nothing: a peer then decides as it did before #3037.
-   */
+  /** The open doc's `encodeBodyStateVector`; undefined when the doc is not open. */
   protected bodyStateVector(itemId: string | undefined): string | undefined {
-    const vector = itemId ? this.getStateVector(itemId) : null
-    if (!vector || Y.decodeStateVector(vector).size === 0) return undefined
-    return Buffer.from(vector).toString('base64')
+    return encodeBodyStateVector(itemId ? this.getStateVector(itemId) : null)
   }
 
   enqueueCreate(itemId: string, ...extra: TArgs): void {

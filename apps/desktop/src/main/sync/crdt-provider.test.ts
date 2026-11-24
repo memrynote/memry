@@ -221,7 +221,8 @@ vi.mock('./local-mutations', () => ({
   enqueueLocalSyncCreate: vi.fn(),
   enqueueLocalSyncDelete: vi.fn(),
   enqueueLocalSyncUpdate: (...args: unknown[]) => mocks.enqueueLocalSyncUpdate(...args),
-  removePendingNoteSyncItems: (...args: unknown[]) => mocks.removePendingNoteSyncItems(...args)
+  removePendingNoteSyncItems: (...args: unknown[]) => mocks.removePendingNoteSyncItems(...args),
+  sendPendingContentDelete: vi.fn()
 }))
 vi.mock('@memry/sync-client/attachment-events', () => ({
   attachmentEvents: { emitSaved: vi.fn() }

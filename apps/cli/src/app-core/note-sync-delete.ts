@@ -45,23 +45,30 @@ function contentDeletePayload(db: DrizzleDb, row: NoteMetadata): string | null {
  * (apps/desktop/src/main/sync/local-mutations.ts) writes before it drops a row,
  * in the row delete's transaction. `flushPendingLocalDeletes` replays it at the
  * next sync runtime start.
+ *
+ * IMMEDIATE takes the write lock before the read. A deferred transaction that
+ * reads, then writes after desktop committed, fails at once with
+ * SQLITE_BUSY_SNAPSHOT, which `busy_timeout` does not wait out.
  */
 export function deleteNoteRowQueuingSyncDelete(db: DataDb, noteId: string): void {
-  db.transaction((tx) => {
-    const row = getNoteMetadataById(tx, noteId)
-    const payload = row ? contentDeletePayload(tx, row) : null
-    if (row && payload) {
-      // The type desktop's watcher queues for the same unlink (vault/watcher.ts).
-      const type: SyncItemType = row.journalDate ? 'journal' : 'note'
-      tx.insert(syncPendingDeletes)
-        .values({ type, itemId: noteId, payload, createdAt: new Date() })
-        .onConflictDoUpdate({
-          target: [syncPendingDeletes.type, syncPendingDeletes.itemId],
-          set: { payload, createdAt: new Date() }
-        })
-        .run()
-      recordLocalDeleteClock(tx, type, noteId, payload, 'final')
-    }
-    deleteCanonicalNote(tx, noteId)
-  })
+  db.transaction(
+    (tx) => {
+      const row = getNoteMetadataById(tx, noteId)
+      const payload = row ? contentDeletePayload(tx, row) : null
+      if (row && payload) {
+        // The type desktop's watcher queues for the same unlink (vault/watcher.ts).
+        const type: SyncItemType = row.journalDate ? 'journal' : 'note'
+        tx.insert(syncPendingDeletes)
+          .values({ type, itemId: noteId, payload, createdAt: new Date() })
+          .onConflictDoUpdate({
+            target: [syncPendingDeletes.type, syncPendingDeletes.itemId],
+            set: { payload, createdAt: new Date() }
+          })
+          .run()
+        recordLocalDeleteClock(tx, type, noteId, payload, 'final')
+      }
+      deleteCanonicalNote(tx, noteId)
+    },
+    { behavior: 'immediate' }
+  )
 }
