@@ -191,7 +191,8 @@ impl NoteFiles {
             .read_blocking(move |conn| note_files::unfiled(conn, &id))
     }
 
-    /// The live markdown note `id` as its record reads now ([`note_files::placed`]).
+    /// The live markdown note or journal day `id` as its record reads now
+    /// ([`note_files::placed`]).
     pub fn placed(&self, id: &str) -> Result<Option<note_files::Unfiled>, StorageError> {
         let id = id.to_owned();
         self.db
