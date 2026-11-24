@@ -55,7 +55,9 @@ import {
 import {
   claimRequestedDownload,
   clearAttachmentDownloadFailure,
+  holdsDownload,
   markDownloadFailed,
+  markDownloadOwed,
   markDownloadSucceeded,
   missingDownload,
   releaseDownloadAttempt
@@ -531,7 +533,7 @@ export function registerAttachmentHandlers(): void {
       const vaultPath = getVaultStatus().path
       if (!vaultPath || !isDatabaseInitialized()) return { success: true }
       const db = getDatabase()
-      const owed = owedNoteDownloads(db, vaultPath, noteId)
+      const owed = owedNoteDownloads(db, vaultPath, noteId, getNetworkMonitor() !== null)
       // Read whatever the setting: a binary note whose file the server lost
       // before it ever landed would otherwise open as an empty page.
       const gone = owed.filter((file) => missingDownload(db, noteId, file.attachmentId) === 'gone')
@@ -749,6 +751,16 @@ export function registerAttachmentHandlers(): void {
     }
     void (async () => {
       const token = await getValidAccessToken()
+      // The sync runtime restarted during the wait, and whoever asks in the new
+      // one holds the download: asking too would count the server's 404 twice.
+      // Owed, the re-driver asks for it when nothing else does; a row the new
+      // runtime wrote keeps its own window.
+      if (!holdsDownload(event.claim)) {
+        if (isDatabaseInitialized()) {
+          markDownloadOwed(getDatabase(), event.noteId, event.attachmentId)
+        }
+        return
+      }
       if (!token) return releaseDownloadAttempt(event.claim)
       await materializeDownload(event, 'eager')
     })()
