@@ -1,14 +1,24 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises'
 import path from 'node:path'
 import os from 'node:os'
 import sodium from 'libsodium-wrappers-sumo'
+import Database from 'better-sqlite3'
+import { drizzle } from 'drizzle-orm/better-sqlite3'
 
 import { AttachmentSyncService } from './attachments'
 import { DownloadPacer, DownloadQueue } from './download-queue'
 import { generateFileKey } from '../crypto/keys'
 import { signPayload } from '../crypto/signatures'
+import { runMigrations } from '../database/migrate'
 import { CBOR_FIELD_ORDER } from '@memry/contracts/cbor-ordering'
+import {
+  MISSING_PROBE_LIMIT,
+  isDownloadAbandoned,
+  markDownloadFailed,
+  pruneUnresolvableReferences
+} from '@memry/sync-client/attachment-download-state'
+import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
 const SERVER = 'http://localhost:8787'
 const R2 = 'https://r2.test/'
@@ -48,8 +58,14 @@ function encrypt(plaintext: Uint8Array, key: Uint8Array): Uint8Array {
 /**
  * A server holding attachments of the given chunk counts, with presigning on.
  * A 200 presign answer leaves out the chunks of the `noUrlFor` attachments.
+ * `servedAs` maps a requested id to the attachment whose manifest the server
+ * answers with instead, on the single GET and under the batch key.
  */
-function fakeServer(chunkCounts: Record<string, number>, noUrlFor: string[] = []) {
+function fakeServer(
+  chunkCounts: Record<string, number>,
+  noUrlFor: string[] = [],
+  servedAs = new Map<string, string>()
+) {
   const vaultKey = generateFileKey()
   const signer = sodium.crypto_sign_keypair()
   const manifests = new Map<string, Record<string, string>>()
@@ -122,7 +138,9 @@ function fakeServer(chunkCounts: Record<string, number>, noUrlFor: string[] = []
       counts.manifestBatch++
       const { attachmentIds } = JSON.parse(init?.body as string) as { attachmentIds: string[] }
       return Response.json({
-        manifests: Object.fromEntries(attachmentIds.map((id) => [id, manifests.get(id)]))
+        manifests: Object.fromEntries(
+          attachmentIds.map((id) => [id, manifests.get(servedAs.get(id) ?? id)])
+        )
       })
     }
     if (route === 'presign-batch') {
@@ -141,7 +159,8 @@ function fakeServer(chunkCounts: Record<string, number>, noUrlFor: string[] = []
       return new Response(Buffer.from(chunks.get(route.slice('chunks/'.length))!))
     }
     counts.manifestGet++
-    return Response.json(manifests.get(route.slice(0, -'/manifest'.length)))
+    const id = route.slice(0, -'/manifest'.length)
+    return Response.json(manifests.get(servedAs.get(id) ?? id))
   }
 
   const service = new AttachmentSyncService({
@@ -243,4 +262,64 @@ describe('attachment downloads sharing manifest and presign calls (#5329)', () =
     expect(server.counts.proxied).toBe(0)
     expect(server.counts.presign).toBeLessThanOrEqual(11)
   }, 120_000)
+})
+
+describe('a manifest that names another attachment (#5652)', () => {
+  const noTraffic = { manifestGet: 0, manifestBatch: 0, presign: 0, direct: 0, proxied: 0 }
+
+  it('refuses the single GET answer before any chunk request or write, and downloads once the server answers right', async () => {
+    const servedAs = new Map([['b', 'a']])
+    const server = fakeServer({ a: 1, b: 1 }, [], servedAs)
+    const targetPath = path.join(tmpDir, 'b.bin')
+
+    await expect(server.service.downloadAttachment('b', targetPath)).rejects.toThrow(
+      'Manifest names attachment a, not b'
+    )
+
+    expect(server.counts).toEqual({ ...noTraffic, manifestGet: 1 })
+    expect(await readdir(tmpDir)).toEqual([])
+
+    servedAs.clear()
+    await server.service.downloadAttachment('b', targetPath)
+    expect(Buffer.compare(await readFile(targetPath), server.files.get('b')!)).toBe(0)
+  })
+
+  it('refuses a batch answer under another attachment key before any chunk request or write', async () => {
+    const server = fakeServer({ a: 1, b: 1, c: 1 }, [], new Map([['b', 'c']]))
+    await server.service.downloadAttachment('a', path.join(tmpDir, 'a.bin'), {
+      upcoming: () => ['b']
+    })
+    const afterA = { ...noTraffic, manifestBatch: 1, presign: 1, direct: 1 }
+    expect(server.counts).toEqual(afterA)
+
+    await expect(
+      server.service.downloadAttachment('b', path.join(tmpDir, 'b.bin'))
+    ).rejects.toThrow('Manifest names attachment c, not b')
+
+    expect(server.counts).toEqual(afterA)
+    expect(await readdir(tmpDir)).toEqual(['a.bin'])
+  })
+
+  it('counts the refusal as transient, so the reference is never abandoned or pruned', async () => {
+    const server = fakeServer({ a: 1, b: 1 }, [], new Map([['b', 'a']]))
+    const refusal = await server.service
+      .downloadAttachment('b', path.join(tmpDir, 'b.bin'))
+      .then(() => null)
+      .catch((err: unknown) => err)
+    expect(refusal).toBeInstanceOf(Error)
+
+    const dbPath = path.join(tmpDir, 'data.db')
+    runMigrations(dbPath)
+    const sqlite = new Database(dbPath)
+    try {
+      const db = drizzle(sqlite) as unknown as DrizzleDb
+      for (let i = 0; i <= MISSING_PROBE_LIMIT; i++) {
+        expect(markDownloadFailed(db, 'note-1', 'b', refusal)).toBe('transient')
+      }
+      expect(isDownloadAbandoned(db, 'note-1', 'b')).toBe(false)
+      expect(pruneUnresolvableReferences(db, 'note-1', ['b'])).toEqual(['b'])
+    } finally {
+      sqlite.close()
+    }
+  })
 })

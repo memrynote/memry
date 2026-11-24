@@ -806,6 +806,18 @@ export class AttachmentSyncService {
     let trackedProgress: TransferProgress | null = null
 
     try {
+      // §14.7: the attachment id is the manifest's own `id`, as memry-core's
+      // fetch_with_manifest checks. A manifest naming another attachment, from
+      // the single GET or under a batch key, would land that file under this
+      // id. Refused before any chunk request or write. A plain Error, so
+      // markDownloadFailed counts it transient: never abandoned or pruned.
+      if (manifest.id !== attachmentId) {
+        log.warn('manifest names another attachment; refusing it', {
+          attachmentId,
+          manifestId: manifest.id
+        })
+        throw new Error(`Manifest names attachment ${manifest.id}, not ${attachmentId}`)
+      }
       const totalChunks = manifest.chunks.length
       // Embedded-attachment flow: the caller only knows the note's attachments
       // directory — the filename lives in the (signed, decrypted) manifest.
