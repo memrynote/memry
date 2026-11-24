@@ -192,7 +192,7 @@ chunk took 30 ms or 250 ms; with every 20th attachment at 300 chunks, it made 23
 The Rust core batches the manifests of one re-drive call's downloads, leaving
 out ids the metered policy defers, and fetches alone when fewer than two would
 download. It remembers a 404 for 10 minutes per vault
-(`crates/memry-core/src/api/sync/attachment_fetch.rs:30`, `:417`,
+(`crates/memry-core/src/api/sync/attachment_fetch.rs:30`, `:459`,
 `crates/memry-core/src/protocol/attachments.rs:165`).
 
 ## 14.6 Two transfer paths
@@ -261,7 +261,7 @@ from the body (`apps/desktop/src/main/sync/note-attachment-metadata.ts:14-23`).
 for**, whether the manifest came from the single GET or under that id's key in
 a batch answer (§14.5.2). It refuses after the signature check and decrypt and
 before it requests a chunk or writes a byte
-(`crates/memry-core/src/api/sync/attachment_fetch.rs:245`;
+(`crates/memry-core/src/api/sync/attachment_fetch.rs:352`;
 `apps/desktop/src/main/sync/attachments.ts:409`, called at `:828`). The
 signature does not catch this: a server that answers with another attachment's
 manifest sends one that some vault device validly signed, and a reader that
@@ -309,7 +309,7 @@ names its file by the manifest's filename, and a recorded id has none until its
 manifest is read, so the block cannot bind before then
 (`crates/memry-core/src/domain/attachments.rs:339`). Opening the note reads
 the manifests of its unnamed ids, whatever the download setting
-(`crates/memry-core/src/api/sync/attachment_fetch.rs:150`,
+(`crates/memry-core/src/api/sync/attachment_fetch.rs:171`,
 `apps/ios/Memry/Features/Notes/NoteReadParts.swift:253`). A core that applied
 notes before #5675 records their ids once, before its next first sync or pass
 (`crates/memry-core/src/sync/note_refs_heal.rs:27`).
