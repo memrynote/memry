@@ -77,6 +77,8 @@ vi.mock('../../vault/index', () => ({
   getConfig: () => ({ journalFolder: 'journal', defaultNoteFolder: 'notes' })
 }))
 
+import { attachmentEvents } from '@memry/sync-client/attachment-events'
+import type { AttachmentDownloadNeededEvent } from '@memry/sync-client/attachment-events'
 import { _resetBulkApplyForTests } from '../bulk-apply'
 import { journalHandler } from './journal-handler'
 import { noteHandler } from './note-handler'
@@ -256,6 +258,59 @@ describe('note and journal rows that share an id', () => {
       files: [`journal/${DATE}.md`]
     })
     expect(result).toBe('skipped')
+  })
+
+  // A journal day's pictures ride a `note` record under the day's id: the
+  // journal payload has no `attachmentReferences` (#5731).
+  it("a note upsert on a live journal merges the day's pictures and asks for them", () => {
+    seedLiveJournal()
+    testDb.db
+      .update(noteMetadata)
+      .set({ attachmentReferences: ['att-local'] })
+      .where(eq(noteMetadata.id, ID))
+      .run()
+    const asked: Array<
+      Pick<AttachmentDownloadNeededEvent, 'noteId' | 'attachmentId' | 'diskPath'>
+    > = []
+    const listener = (event: AttachmentDownloadNeededEvent) =>
+      asked.push({
+        noteId: event.noteId,
+        attachmentId: event.attachmentId,
+        diskPath: event.diskPath
+      })
+    attachmentEvents.onDownloadNeeded(listener)
+    try {
+      const result = noteHandler.applyUpsert(
+        ctx,
+        ID,
+        { title: 'Hijacked', attachmentReferences: ['att-local', 'att-peer'] },
+        { 'device-c239': 1, 'device-9821': 1 }
+      )
+
+      const stored = testDb.db
+        .select({ refs: noteMetadata.attachmentReferences })
+        .from(noteMetadata)
+        .where(eq(noteMetadata.id, ID))
+        .get()
+      expect({ result, row: rowOf(), refs: stored?.refs, files: vaultFiles() }).toEqual({
+        result: 'skipped',
+        row: {
+          path: `journal/${DATE}.md`,
+          title: DATE,
+          journalDate: DATE,
+          clock: { 'device-c239': 1 }
+        },
+        refs: ['att-local', 'att-peer'],
+        files: [`journal/${DATE}.md`]
+      })
+      const dir = path.join(vaultPath, 'attachments', ID)
+      expect(asked).toEqual([
+        { noteId: ID, attachmentId: 'att-local', diskPath: dir },
+        { noteId: ID, attachmentId: 'att-peer', diskPath: dir }
+      ])
+    } finally {
+      attachmentEvents.offDownloadNeeded(listener)
+    }
   })
 })
 
