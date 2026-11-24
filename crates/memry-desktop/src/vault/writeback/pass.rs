@@ -206,19 +206,27 @@ impl Pass {
             },
         };
         // The mark a pass that keeps the file gives back, so the pass after the wait (a body
-        // not pulled yet, #5509) still gives the file the pulled change. `None` once a failed
-        // move counted it.
+        // not pulled yet, #5509) still gives the file the pulled change; a pass that wrote it
+        // gives it back only for a failed move to be tried again.
         let mut waiting = pulled.as_ref().map(|(mark, _)| mark.clone());
-        let wait = |waiting: Option<Mark>, outcome: Outcome| {
+        let mut move_again = false;
+        let wait = |waiting: Option<Mark>, move_again: bool, outcome: Outcome| {
+            let wrote = matches!(outcome, Outcome::Wrote { .. } | Outcome::Unchanged);
             // A deleted note's mark goes: one that comes back is pulled again.
-            if let Some(mark) = waiting.filter(|_| outcome != Outcome::Kept(Keep::NoNote)) {
+            let gone = outcome == Outcome::Kept(Keep::NoNote);
+            if let Some(mark) = waiting.filter(|_| !gone && (!wrote || move_again)) {
                 self.pulled.put_back(note_id, mark);
             }
             outcome
         };
         let mut path = row.path.clone();
         let mut moved = false;
-        if let Some((mark, record)) = &pulled {
+        // A day's path is its date's: it is never placed.
+        let places = pulled
+            .as_ref()
+            .zip(waiting.as_mut())
+            .filter(|((mark, record), _)| record.date.is_none() && mark.moves());
+        if let Some(((mark, record), waiting)) = places {
             let found = Found {
                 path: &row.path,
                 file_hash: row.file_hash.as_deref(),
@@ -230,8 +238,8 @@ impl Pass {
                 // The file and its row stay where they were, and the body is written there: a
                 // move that cannot happen never holds the file back from the note's edits.
                 Err(why) => {
-                    waiting = None;
-                    self.pulled.retry(note_id, mark.clone(), &why);
+                    waiting.move_failed(note_id, &why);
+                    move_again = waiting.moves();
                 }
             }
         }
@@ -243,7 +251,7 @@ impl Pass {
         let made = (&*self.vault, self.settings.as_ref(), self.root.as_path());
         let output = match output_over(made, note_id, &path, &file, patch.as_ref()) {
             Ok(output) => output,
-            Err(outcome) => return wait(waiting, outcome),
+            Err(outcome) => return wait(waiting, move_again, outcome),
         };
         let patched = pulled.is_some()
             && split_frontmatter_block(&file.raw).block != split_frontmatter_block(&output).block;
@@ -277,7 +285,7 @@ impl Pass {
                     source,
                 });
             }
-            return Outcome::Unchanged;
+            return wait(waiting, move_again, Outcome::Unchanged);
         }
         let hash = content_hash(&output);
         let kept = self.keep_replaced(note_id, &file.raw, &file.hash, &output, patched);
@@ -286,6 +294,7 @@ impl Pass {
             Err(error) => {
                 return wait(
                     waiting,
+                    move_again,
                     Outcome::Failed(format!("no version of the replaced file was kept: {error}")),
                 );
             }
@@ -307,11 +316,12 @@ impl Pass {
             }
             Ok(_) => {}
             Err(NoteFileError::ChangedUnderWrite) => {
-                return wait(waiting, Outcome::Kept(Keep::FileChanged));
+                return wait(waiting, move_again, Outcome::Kept(Keep::FileChanged));
             }
             Err(error) => {
                 return wait(
                     waiting,
+                    move_again,
                     Outcome::Failed(format!("the file was not written: {error}")),
                 );
             }
@@ -333,7 +343,11 @@ impl Pass {
             // The file holds the document's body and the row the old hash, so the next pass
             // reads it as an outside edit and keeps it. The feed (12e-3b) reads it back
             // `Unchanged` and records the hash; until then the file only waits.
-            return Outcome::Failed(format!("the file was written, its row was not: {error}"));
+            return wait(
+                waiting,
+                move_again,
+                Outcome::Failed(format!("the file was written, its row was not: {error}")),
+            );
         }
         if let Some(record) = pulled.filter(|_| patched) {
             self.wrote_pulled(note_id, record);
@@ -357,11 +371,15 @@ impl Pass {
                 path,
             });
         }
-        Outcome::Wrote {
-            hash,
-            version_kept,
-            replaced_outside,
-        }
+        wait(
+            waiting,
+            move_again,
+            Outcome::Wrote {
+                hash,
+                version_kept,
+                replaced_outside,
+            },
+        )
     }
 
     /// Keeps the file a write replaces when the write changes bytes the document does not hold

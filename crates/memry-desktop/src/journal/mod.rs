@@ -8,10 +8,13 @@
 //! - a read takes the file of the day's row, and the config's path only for a day no row
 //!   names; the text, aliases and properties come from the file, as Electron reads them
 //!   (`readJournalEntry`), the id, tags and instants from the record (`findStoredJournalEntry`);
-//!   journal tags live on the record, never written back to the file (#3530, decided);
-//! - the page's read ([`NotesService::day_entry`]) gives the file's properties the values the
-//!   record holds that the file does not say yet (a pulled one, #5509), as Electron's pull
-//!   writes them into the file (`journal-handler.ts` `buildJournalEntryWrite`) before its read;
+//!   a tag edit and a pulled record write the file's `tags:` too, as Electron's do (#5509,
+//!   reversing #3530's "journal tags are never written back to the file");
+//! - the page's read ([`NotesService::day_entry`]), an update's and a create's answer, the
+//!   journal events and the Properties panel give the file's properties the values the record
+//!   holds that the file does not say yet (a pull whose write-back waits for the day's body,
+//!   #5509), as Electron's pull writes them into the file (`journal-handler.ts`
+//!   `buildJournalEntryWrite`) before its read;
 //! - a create ([`write`]) writes the file Electron's `createJournalEntry` writes, in the order
 //!   13f's note create uses;
 //! - an update ([`update`]) edits the file through the app-edit seam and the record's tags and

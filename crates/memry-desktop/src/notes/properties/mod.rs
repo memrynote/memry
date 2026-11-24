@@ -49,10 +49,11 @@ use serde_json::{Map, Value};
 
 use self::edit::{PropertyEdit, edited};
 use super::error::{NotesError, SCOPE};
-use super::frontmatter::user_properties;
+use super::frontmatter::{is_reserved_key, user_properties};
 use super::property_definitions::PropertyDefinitions;
 use super::read::large_file_of;
 use super::service::NotesService;
+use crate::journal::is_reserved_day_key;
 use crate::session::OpenVault;
 use crate::vault::app_edit::{AppEdit, Edited, Precondition};
 use crate::vault::consumer::ChangeSource;
@@ -121,11 +122,54 @@ impl NotesService {
                 });
             return Ok(views(&values, &types));
         }
-        Ok(file_properties(&file, &types)
-            .unwrap_or_default()
-            .into_iter()
-            .map(view)
-            .collect())
+        let mut values = file_properties(&file, &types).unwrap_or_default();
+        self.day_record_over(open, note_id, &mut values, &types);
+        Ok(values.into_iter().map(view).collect())
+    }
+
+    /// A journal day's record values over its file's, as the journal page reads them
+    /// ([`NotesService::day_entry`], #5509): a value the file does not say yet (a pull whose
+    /// write-back waits for the day's body) replaces the file's or follows them. A record whose
+    /// values do not read leaves the file's, with a warning. A note has no day record.
+    fn day_record_over(
+        &self,
+        open: &OpenVault,
+        note_id: &str,
+        values: &mut Vec<IndexedProperty>,
+        types: &HashMap<String, String>,
+    ) {
+        let record = self
+            .journal(open)
+            .and_then(|journal| Ok(journal.day_properties(note_id)?));
+        let record = match record {
+            Ok(record) => record,
+            Err(error) => {
+                tracing::warn!(
+                    scope = SCOPE,
+                    note_id,
+                    "the day's record properties did not read; the file's are shown: {error}"
+                );
+                return;
+            }
+        };
+        let file = stored(values);
+        let ahead = record
+            .iter()
+            .filter(|(name, value)| {
+                !is_reserved_day_key(name)
+                    && !is_reserved_key(name, value)
+                    && file.get(*name) != Some(*value)
+            })
+            .fold(YamlMap::new(), |mut map, (name, value)| {
+                map.insert(name.clone(), json_to_yaml(value));
+                map
+            });
+        for property in indexed(&ahead, types) {
+            match values.iter_mut().find(|held| held.name == property.name) {
+                Some(held) => *held = property,
+                None => values.push(property),
+            }
+        }
     }
 
     /// `properties:set`: the user's changes from `base`, the record they were shown, to

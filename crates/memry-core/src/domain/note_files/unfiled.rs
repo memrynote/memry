@@ -20,8 +20,10 @@ pub struct Unfiled {
     /// The day's date, `None` for a note.
     pub date: Option<String>,
     pub tags: Vec<String>,
-    /// The other names the record holds.
-    pub aliases: Vec<String>,
+    /// The other names the record holds. `None` for a day with no stored list (no
+    /// `journal_aliases` row, or NULL): a pull never sent one, so the file keeps its own. A
+    /// note's NULL reads as `[]`.
+    pub aliases: Option<Vec<String>>,
     pub properties: Map<String, Value>,
     /// A note's `cover` as its payload carries it (protocol 13.7.1.1), unchecked: the writer
     /// gates each key as Electron's `applyNoteCoverToFrontmatter` does. `None` for a day.
@@ -78,21 +80,27 @@ pub fn unfiled(conn: &Connection, id: &str) -> Result<Option<Unfiled>, StorageEr
     record_of(conn, id, (title, folder_path, is_day, aliases)).map(Some)
 }
 
-/// The live markdown note `id` as its record reads now, whether or not a row names its file:
-/// what a pulled change gives the file it has (desktop write-back, #5309). `None` for a journal
-/// day, which lives in `journal_entries`, and for a deleted or file note.
+/// The live markdown note or journal day `id` as its record reads now, whether or not a row
+/// names its file: what a pulled change gives the file it has (desktop write-back, #5309; a
+/// day's tags, other names and properties, #5509). `None` for a deleted day or note, and for a
+/// file note.
 pub fn placed(conn: &Connection, id: &str) -> Result<Option<Unfiled>, StorageError> {
     let found = conn
         .query_row(
-            "SELECT title, folder_path, aliases FROM notes
-              WHERE id = ?1 AND deleted_at IS NULL AND file_type = 'markdown'",
+            "SELECT title, folder_path, 0, aliases FROM notes
+              WHERE id = ?1 AND deleted_at IS NULL AND file_type = 'markdown'
+             UNION ALL
+             SELECT date, NULL, 1,
+                    (SELECT aliases FROM journal_aliases a WHERE a.journal_id = j.id)
+               FROM journal_entries j
+              WHERE id = ?1 AND deleted_at IS NULL",
             params![id],
             |row| {
                 Ok((
                     row.get::<_, String>(0)?,
                     row.get::<_, Option<String>>(1)?,
-                    false,
-                    row.get::<_, Option<String>>(2)?,
+                    row.get::<_, bool>(2)?,
+                    row.get::<_, Option<String>>(3)?,
                 ))
             },
         )
@@ -112,9 +120,16 @@ fn record_of(
     } else {
         notes::ITEM_TYPE
     };
-    let aliases = names::parse_stored(aliases).map_err(|error| StorageError::Failed {
-        what: format!("{id} aliases: {error}"),
-    })?;
+    let aliases = match (is_day, aliases) {
+        (true, None) => None,
+        (_, aliases) => {
+            Some(
+                names::parse_stored(aliases).map_err(|error| StorageError::Failed {
+                    what: format!("{id} aliases: {error}"),
+                })?,
+            )
+        }
+    };
     let cover = match is_day {
         true => None,
         false => note_payload(conn, id)?.and_then(|mut payload| match payload.remove("cover") {
