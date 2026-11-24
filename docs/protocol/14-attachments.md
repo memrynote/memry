@@ -244,6 +244,7 @@ The resolution chain is therefore:
 note.attachmentReferences[i]                       -> an attachment id
 GET /sync/attachments/<that id>/manifest           -> the encrypted manifest
 verify signature, unwrap file key, decrypt         -> the manifest
+check manifest.id == that id                       -> else refuse it (below)
 manifest.chunks[j].encryptedHash                   -> the R2 chunk address
 presign-batch or GET /attachments/chunks/<hash>    -> nonce ‖ ciphertext
 strip 24-byte nonce, AEAD decrypt under the file key
@@ -255,6 +256,33 @@ Desktop matches a downloaded attachment back to its notes on the same field
 (`apps/desktop/src/main/sync/attachment-download-redriver.ts:85`), and
 `attachmentReferences` is maintained on the note's metadata rather than derived
 from the body (`apps/desktop/src/main/sync/note-attachment-metadata.ts:14-23`).
+
+**A reader MUST refuse a manifest whose `id` is not the attachment id it asked
+for**, whether the manifest came from the single GET or under that id's key in
+a batch answer (§14.5.2). It refuses after the signature check and decrypt and
+before it requests a chunk or writes a byte
+(`crates/memry-core/src/api/sync/attachment_fetch.rs:202`;
+`apps/desktop/src/main/sync/attachments.ts:407`, called at `:826`). The
+signature does not catch this: a server that answers with another attachment's
+manifest sends one that some vault device validly signed, and a reader that
+took it would land that file's bytes under this id (#5652). A reader that reads
+chunk hashes from a manifest for any other purpose MUST refuse it the same way
+(`apps/desktop/src/main/sync/attachments.ts:1335`). Desktop reads them to free
+a deleted note's chunks, which would free the other attachment's, and to check
+a revived note (§14.8.2), which would take the other attachment's live chunks
+for this one's (#5664).
+
+**The refusal is not the server saying the attachment is gone.** A reader MUST
+NOT count it toward abandoning the download or pruning the reference, as it
+counts a 404, and MUST keep the work for a later pass. The core raises it as
+`SyncError::AttachmentCorrupt` (`crates/memry-core/src/api/errors.rs:402`), and
+its re-drive counts the row failed and leaves it missing
+(`crates/memry-core/src/api/sync/attachment_fetch.rs:101-102`, `:134`). Desktop
+throws a plain `Error`, which `markDownloadFailed` classifies as transient
+(`packages/sync-client/src/attachment-download-state.ts:117-127`). The
+deleted-asset release keeps its record
+(`apps/desktop/src/main/sync/deleted-asset-release.ts:315-320`), and a revived
+note stays pending (`apps/desktop/src/main/sync/note-attachment-revival.ts:59-63`).
 
 **`attachmentReferences` is `.nullable().optional()`, so absent means "this
 sender does not know"** (chapter 13 §13.4). A client MUST NOT infer "this note
