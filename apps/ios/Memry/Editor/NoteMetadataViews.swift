@@ -366,7 +366,7 @@ struct NoteTitleEditor: View {
                     // keys UIKit has and the binding has not seen yet.
                     text: Binding(
                         get: { commits.editing || returned != nil ? draft : title },
-                        set: typed
+                        set: { typed($0) }
                     ),
                     // Wraps rather than truncating a long title.
                     axis: .vertical
