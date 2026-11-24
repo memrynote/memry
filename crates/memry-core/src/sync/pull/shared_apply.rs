@@ -4,6 +4,7 @@
 
 use serde_json::{Value as Json, json};
 
+use crate::api::errors::StorageError;
 use crate::protocol::http::SYNC_TYPES_HEADER;
 use crate::protocol::types::ArrivingItemType;
 use crate::storage::nested_tx;
@@ -80,6 +81,20 @@ impl PullLoop {
             if let Some(Json::Array(marked)) = body.get_mut("purgedTombstones") {
                 entries.append(marked);
             }
+        }
+        // A v2 attestation names this vault: checked as v1 only, a valid
+        // marker is refused and its row kept (chapter 04 §4.8.4, #5247). The
+        // ids are held instead, as for a failed pull.
+        if self.vault_id().is_none()
+            && entries
+                .iter()
+                .any(|e| e.get("deleteAttestation").and_then(Json::as_str).is_some())
+        {
+            return Err(StorageError::Failed {
+                what: "a purged marker is attested and this pull has no vault id to check it in"
+                    .to_owned(),
+            }
+            .into());
         }
         let (mut report, failed) = self.apply_decoded(decoding, &answered).await?;
         report.dropped_pages = dropped_pages;
