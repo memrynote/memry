@@ -1,8 +1,8 @@
 //! The apply-time half of §1.9.1: which foreign ids are owed a merge, kept as
 //! one `meta` row per foreign id, `journal.day_merge:<foreignId>` =
 //! `{foreignId, date, clock, deleted, recordMarkdown?, recordTags?, holderTags?,
-//! unpushedHolderTags?}`, and a foreign row's last synced tags under
-//! `journal.synced_tags:<foreignId>`.
+//! unpushedHolderTags?}`, and a foreign row's last synced tags and clock under
+//! `journal.synced_tags:<foreignId>` = `{tags, clock}`.
 
 use rusqlite::{Connection, OptionalExtension as _, params};
 use serde_json::{Value, json};
@@ -15,6 +15,7 @@ use crate::storage::nested_tx;
 use crate::storage::repositories::sync_items::{self, ApplyOutcome, InboundRecord};
 use crate::sync::clock::{self, ClockOrder, VectorClock};
 use crate::sync::outbox::OP_UPSERT;
+use crate::sync::store;
 
 use super::{OWED_PREFIX, OwedMerge, failed};
 
@@ -41,10 +42,7 @@ pub(crate) fn plan_inbound(
     }
     let content = payload.get("content").and_then(Value::as_str);
     let incoming_tags = payload_tags(&payload);
-    let incoming_clock = payload
-        .get("clock")
-        .and_then(|value| serde_json::from_value::<VectorClock>(value.clone()).ok())
-        .unwrap_or_default();
+    let incoming_clock = payload_clock(&payload).unwrap_or_default();
 
     let held = journal::entry_for(conn, date)?;
     let live_holder = held
@@ -170,8 +168,8 @@ pub(super) fn owe(
     write_owed(conn, &owed)
 }
 
-/// A foreign local holder's stored tags, and the ones among them this device
-/// may never have pushed (§1.9.1 step 6).
+/// A foreign local holder's stored tags, and the ones among them the device
+/// that deleted it may never have seen (§1.9.1 step 6).
 #[derive(Debug, Default)]
 pub(super) struct HolderTags {
     all: Vec<String>,
@@ -179,34 +177,70 @@ pub(super) struct HolderTags {
 }
 
 impl HolderTags {
-    /// With no upsert of `item_id` queued, its stored record is the last one
-    /// synced, so no tag is unpushed. With one queued, the unpushed tags are
-    /// those absent from the tags [`note_local_edit`] kept, or all of them
-    /// when it kept none (an edit an older build queued).
+    /// Weighs the holder's tags against the clock of the tombstone that
+    /// deleted it. An ack proves nothing: a tombstone clocked before a pushed
+    /// edit replaces it on the server unseen (REVIEW-5656).
+    ///
+    /// - None are unpushed when no upsert is queued and the tombstone's clock
+    ///   covers the row's: the deleting device saw the row as it is.
+    /// - Those absent from the [`note_local_edit`] snapshot are, when the
+    ///   tombstone's clock covers the snapshot's and no tick the row took
+    ///   after it: the deleting device saw the snapshot's tags.
+    /// - Otherwise all are: no tombstone clock (none yet, or an unclocked
+    ///   delete), or no snapshot it saw exactly (an edit an older build
+    ///   queued, or pushed).
     fn read(
         conn: &Connection,
         item_id: &str,
         payload: &serde_json::Map<String, Value>,
+        tombstone: Option<&VectorClock>,
     ) -> Result<Self, StorageError> {
         let all = payload_tags(payload).unwrap_or_default();
-        let unpushed = if !upsert_queued(conn, item_id)? {
+        let tombstone = tombstone.filter(|clock| !clock.is_empty());
+        let (Some(deleted), Some(row)) = (tombstone, payload_clock(payload)) else {
+            return Ok(Self {
+                unpushed: all.clone(),
+                all,
+            });
+        };
+        let unpushed = if covers(deleted, &row) && !upsert_queued(conn, item_id)? {
             Vec::new()
-        } else if let Some(synced) = synced_tags(conn, item_id)? {
-            all.iter()
-                .filter(|tag| !synced.iter().any(|kept| tags::same_tag(kept, tag)))
-                .cloned()
-                .collect()
         } else {
-            all.clone()
+            match synced_tags(conn, item_id)? {
+                Some((synced, at)) if saw_exactly(deleted, &at, &row) => all
+                    .iter()
+                    .filter(|tag| !synced.iter().any(|kept| tags::same_tag(kept, tag)))
+                    .cloned()
+                    .collect(),
+                _ => all.clone(),
+            }
         };
         Ok(Self { all, unpushed })
     }
 }
 
+fn covers(deleted: &VectorClock, clock: &VectorClock) -> bool {
+    matches!(
+        clock::compare(clock, deleted),
+        ClockOrder::Before | ClockOrder::Equal
+    )
+}
+
+/// Whether `deleted` covers `synced` and none of the ticks `row` took after
+/// it, so the deleting device merged the tags kept at `synced`. A stale
+/// snapshot, one an older build pushed past, fails here.
+fn saw_exactly(deleted: &VectorClock, synced: &VectorClock, row: &VectorClock) -> bool {
+    covers(deleted, synced)
+        && row.iter().all(|(device, &tick)| {
+            tick.min(clock::get_tick(deleted, device)) <= clock::get_tick(synced, device)
+        })
+}
+
 /// Runs before every local edit of a sync item, ahead of its outbox row. A
 /// foreign journal row with no upsert queued holds the last record it
-/// synced, so its tags are kept for [`HolderTags::read`]. An edit after
-/// that, still unpushed, keeps the tags kept before it.
+/// synced, so its tags and clock are kept for [`HolderTags::read`]. An edit
+/// after that, still unpushed, keeps the snapshot taken before it.
+/// [`note_acked`] drops it.
 pub(crate) fn note_local_edit(
     conn: &Connection,
     item_type: &str,
@@ -226,7 +260,10 @@ pub(crate) fn note_local_edit(
     if !foreign || upsert_queued(conn, item_id)? {
         return Ok(());
     }
-    let synced = json!(payload_tags(&payload).unwrap_or_default());
+    let synced = json!({
+        "tags": payload_tags(&payload).unwrap_or_default(),
+        "clock": payload.get("clock"),
+    });
     conn.execute(
         "INSERT INTO meta (key, value) VALUES (?1, ?2)
          ON CONFLICT(key) DO UPDATE SET value = excluded.value",
@@ -245,12 +282,35 @@ fn upsert_queued(conn: &Connection, item_id: &str) -> Result<bool, StorageError>
     .map_err(failed)
 }
 
-fn synced_tags(conn: &Connection, item_id: &str) -> Result<Option<Vec<String>>, StorageError> {
+/// The snapshot's tags and clock. One that will not parse is none.
+fn synced_tags(
+    conn: &Connection,
+    item_id: &str,
+) -> Result<Option<(Vec<String>, VectorClock)>, StorageError> {
     let value = meta_value(conn, &format!("{SYNCED_TAGS_PREFIX}{item_id}"))?;
-    Ok(value.and_then(|value| serde_json::from_str(&value).ok()))
+    Ok(value.and_then(|value| {
+        let Ok(Value::Object(snapshot)) = serde_json::from_str::<Value>(&value) else {
+            return None;
+        };
+        Some((string_list(&snapshot, "tags")?, payload_clock(&snapshot)?))
+    }))
 }
 
-/// Called when the foreign id is forgotten with its owed merge.
+/// Runs when the server takes a queued record row: the snapshot an upsert of
+/// a journal id kept is no longer what the server holds.
+pub(crate) fn note_acked(
+    conn: &Connection,
+    item_type: &str,
+    item_id: &str,
+    op: &str,
+) -> Result<(), StorageError> {
+    if item_type != ITEM_TYPE || op != OP_UPSERT {
+        return Ok(());
+    }
+    drop_synced_tags(conn, item_id)
+}
+
+/// Called when the foreign id is forgotten with its owed merge, or pushed.
 pub(super) fn drop_synced_tags(conn: &Connection, foreign_id: &str) -> Result<(), StorageError> {
     conn.execute(
         "DELETE FROM meta WHERE key = ?1",
@@ -262,7 +322,8 @@ pub(super) fn drop_synced_tags(conn: &Connection, foreign_id: &str) -> Result<()
 
 /// Owes the merge of a foreign local holder, with the clock and `content`
 /// of its stored record, and its stored `tags` as holder tags. The caller deletes its `note_tags` rows, so
-/// the stored payload is where its tags survive.
+/// the stored payload is where its tags survive. A holder a tombstone already
+/// held is weighed against that tombstone again; before one, every tag counts.
 pub(super) fn owe_holder(
     conn: &Connection,
     foreign_id: &str,
@@ -274,9 +335,15 @@ pub(super) fn owe_holder(
         .and_then(|row| row.clock.as_deref())
         .and_then(|text| serde_json::from_str::<VectorClock>(text).ok())
         .unwrap_or_default();
+    let tombstone = match &row {
+        Some(row) if row.deleted_at.is_some() => {
+            store::tombstone_clock(conn, ITEM_TYPE, foreign_id)?
+        }
+        _ => None,
+    };
     let payload = stored_payload(row);
     let content = payload.get("content").and_then(Value::as_str);
-    let holder = HolderTags::read(conn, foreign_id, &payload)?;
+    let holder = HolderTags::read(conn, foreign_id, &payload, tombstone.as_ref())?;
     owe(conn, foreign_id, date, &clock, content, None, &holder)
 }
 
@@ -301,6 +368,10 @@ fn string_list(object: &serde_json::Map<String, Value>, key: &str) -> Option<Vec
 
 fn payload_tags(payload: &serde_json::Map<String, Value>) -> Option<Vec<String>> {
     string_list(payload, "tags")
+}
+
+fn payload_clock(payload: &serde_json::Map<String, Value>) -> Option<VectorClock> {
+    serde_json::from_value(payload.get("clock")?.clone()).ok()
 }
 
 /// A tombstone arrived for a foreign id that is a live row here (a pre-fix
@@ -329,7 +400,7 @@ pub(crate) fn hold_for_merge(
     let clock = tombstone.cloned().unwrap_or_default();
     // Its tags may be an unpushed local edit, as its body may.
     let payload = stored_payload(sync_items::load(conn, ITEM_TYPE, item_id)?);
-    let holder = HolderTags::read(conn, item_id, &payload)?;
+    let holder = HolderTags::read(conn, item_id, &payload, tombstone)?;
     owe(conn, item_id, &date, &clock, None, None, &holder)?;
     mark_deleted(conn, item_id)?;
     Ok(true)

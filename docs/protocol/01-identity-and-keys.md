@@ -360,16 +360,16 @@ also keeps two tag lists for step 6: the newest foreign record's `tags`,
 which a later record replaces (a record with no `tags` key keeps them), and
 a foreign local holder's tags, read before `j<D>` writes over the holder and
 unioned across sightings (`record_tags`, `holder_tags`;
-`crates/memry-core/src/sync/journal_day_merge/owed.rs:128`,
-`:267`), with the holder tags this device may never have pushed
-(`unpushed_holder_tags`, `:186`). An owed merge an older build recorded
+`crates/memry-core/src/sync/journal_day_merge/owed.rs:126`,
+`:327`), with the holder tags the deleting device may never have seen
+(`unpushed_holder_tags`, `:192`). An owed merge an older build recorded
 has no tag lists and adds no tags, or has holder tags and no unpushed list,
 and then counts every holder tag as unpushed. Desktop also
 keeps the day file's text when `j<D>` writes over a foreign holder's file. A foreign record
 whose id this device already tombstoned at or after the incoming clock owes
 nothing again (`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:75`,
 `apps/desktop/src/main/sync/journal-day-merge.ts:128`; core:
-`crates/memry-core/src/sync/journal_day_merge/owed.rs:100`). Desktop keeps
+`crates/memry-core/src/sync/journal_day_merge/owed.rs:98`). Desktop keeps
 owed merges in `sync_state` and declines the ref so the manifest check does not
 count the unprojected id as server-only
 (`apps/desktop/src/main/sync/journal-day-merge.ts:71`). The core keeps them in
@@ -378,12 +378,12 @@ count the unprojected id as server-only
 
 **Tombstones.** A tombstone for an owed `F` means another device merged it: the
 merge is marked deleted (`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:171`;
-core: `crates/memry-core/src/sync/journal_day_merge/owed.rs:341`). A tombstone
+core: `crates/memry-core/src/sync/journal_day_merge/owed.rs:411`). A tombstone
 for a foreign id that is a live local row keeps that row, its body and its file
 for the drain instead of purging them, and owes a deleted merge, so edits this
 device never pushed reach `j<D>` (#2984;
 `apps/desktop/src/main/sync/item-handlers/journal-handler.ts:186`; core:
-`crates/memry-core/src/sync/journal_day_merge/owed.rs:314`, called from
+`crates/memry-core/src/sync/journal_day_merge/owed.rs:384`, called from
 `crates/memry-core/src/sync/apply.rs:283`).
 
 **Drain.** After a pull run's body pass, each owed merge `F -> D` runs
@@ -452,16 +452,24 @@ pass settles them. The decision is a pure function of five facts
    device that deleted it added every tag that reached the server already,
    so adding one again would bring back a tag removed since: only holder
    tags this device may never have pushed are added. Desktop counts every
-   holder tag, its day file's, as unpushed. The core counts none while no
-   upsert of `F` is queued, since `F`'s stored record is then the last one
-   synced. With one queued, it counts those absent from the tags `F`'s row
-   held before its first queued edit, kept in `meta` under
-   `journal.synced_tags:<id>`
-   (`crates/memry-core/src/sync/journal_day_merge/owed.rs:210`, called from
-   `crates/memry-core/src/storage/repositories/sync_items.rs:242`), or all
-   of them when none were kept, as for an edit an older build queued. A
-   pulled tombstone reads them before it drops `F`'s queued upsert
-   (`crates/memry-core/src/sync/apply.rs:283`). A later record replaces the
+   holder tag, its day file's, as unpushed. The core weighs them against
+   the tombstone's clock, because an acked push is not proof that the
+   deleting device saw it: a tombstone clocked before the push replaces it
+   on the server (`crates/memry-core/src/sync/journal_day_merge/owed.rs:192`).
+   It counts none when no upsert of `F` is queued and the tombstone's clock
+   covers `F`'s row clock. Otherwise it counts the tags absent from the
+   snapshot of `F`'s row taken before its first unpushed edit, kept in
+   `meta` under `journal.synced_tags:<id>` as `{tags, clock}` (`:244`,
+   called from `crates/memry-core/src/storage/repositories/sync_items.rs:242`),
+   when the tombstone's clock covers the snapshot's clock and no tick the
+   row took after it. In every other case, a tombstone with no clock
+   included, it counts every holder tag. An ack of `F`'s upsert drops the
+   snapshot (`:301`, called from `crates/memry-core/src/sync/outbox.rs:466`),
+   and the clock check rules out a snapshot that an older build pushed past.
+   A pulled tombstone reads the tags before it drops `F`'s queued upsert
+   (`crates/memry-core/src/sync/apply.rs:283`). A holder that `j<D>`
+   displaces after a tombstone is weighed against that tombstone again.
+   Before any tombstone, every holder tag counts (`:327`). A later record replaces the
    record tags kept, for the same reason
    (`apps/desktop/src/main/sync/journal-day-merge.ts:99`,
    `:264`, `apps/desktop/src/main/sync/item-handlers/journal-handler.ts:88`;

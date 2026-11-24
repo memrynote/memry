@@ -21,7 +21,7 @@ mod owed;
 
 pub use owed::owed;
 use owed::{drop_synced_tags, owe_holder};
-pub(crate) use owed::{hold_for_merge, mark_deleted, note_local_edit, plan_inbound};
+pub(crate) use owed::{hold_for_merge, mark_deleted, note_acked, note_local_edit, plan_inbound};
 
 use rusqlite::{Connection, params};
 use serde_json::json;
@@ -68,8 +68,8 @@ pub struct OwedMerge {
     /// A foreign local holder's stored tags, unioned across sightings: added
     /// unless `deleted`, as record tags are.
     pub holder_tags: Vec<String>,
-    /// The holder tags this device may never have pushed: added even when
-    /// `deleted`, since the deleting device never saw them. Equal to
+    /// The holder tags the deleting device may never have seen, weighed
+    /// against its tombstone's clock: added even when `deleted`. Equal to
     /// `holder_tags` in a merge an older build recorded; every list is empty
     /// in one recorded before tags were kept.
     pub unpushed_holder_tags: Vec<String>,
@@ -284,7 +284,7 @@ fn settle(
     // The day's payload owns its tags; the fold carried only the body. A
     // set union over the tags the day holds now, read in this transaction,
     // so a re-run or a tag the day holds writes nothing (§1.9.1 step 6).
-    // A deleted `F`'s pushed tags were added by the device that deleted it.
+    // A deleted `F`'s tags its deleter saw were added by that device.
     let added: Vec<&String> = if merge.deleted {
         merge.unpushed_holder_tags.iter().collect()
     } else {
