@@ -41,7 +41,7 @@ import { ASSET_RELEASE_GRACE_MS } from '../canvas/assets/asset-store'
 import { contentHashFromRef, extractSceneFileRefs } from '../canvas/assets/memry-assets'
 import { readCanvasScene } from '../canvas/store'
 import { createLogger } from '../lib/logger'
-import { isAttachmentStoreRow } from '../vault/attachments'
+import { isAttachmentStoreRow } from '@memry/shared/attachment-store'
 
 const log = createLogger('DeletedAssetRelease')
 

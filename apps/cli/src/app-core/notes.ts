@@ -5,7 +5,8 @@ import { eq } from 'drizzle-orm'
 import { noteMetadata } from '@memry/db-schema/data-schema'
 import { noteNames } from '@memry/db-schema/schema/notes-cache'
 import { pickWikiTarget } from '@memry/shared/note-names'
-import { saveCanonicalNote, deleteCanonicalNote, setCanonicalLocalOnly } from '@memry/domain-notes'
+import { isAttachmentStoreRow } from '@memry/shared/attachment-store'
+import { saveCanonicalNote, setCanonicalLocalOnly } from '@memry/domain-notes'
 import { rewriteNoteRefsForMove } from '@memry/editor-schema/note-refs'
 import {
   getJournalNoteMetadataByDate,
@@ -25,6 +26,7 @@ import {
   writeMarkdownNote
 } from '@memry/app-core/markdown'
 import { assertNoteFileUnshared } from './case-twins.ts'
+import { deleteNoteRowQueuingSyncDelete } from './note-sync-delete.ts'
 import { aliasesFromFrontmatter } from './note-aliases.ts'
 import { frontmatterWithProperties, propertiesFromFrontmatter } from './note-properties.ts'
 import { normalizePath, safeFilename, vaultFolder, type VaultConfig } from './paths.ts'
@@ -574,8 +576,10 @@ export function createNotesService({
       // A row-only delete would leave this note's bytes in the file the twin keeps,
       // and desktop would ingest them as the twin's edit (#5650).
       await assertNoteFileUnshared(dataDb, vaultPath, row, 'delete')
-      await fs.rm(path.join(vaultPath, row.path), { force: true })
-      deleteCanonicalNote(dataDb, row.id)
+      // A stray row's file is the attachment store's, embedded by another note
+      // (#5607): only the row goes, as in desktop's `deleteNote`.
+      if (!isAttachmentStoreRow(row)) await fs.rm(path.join(vaultPath, row.path), { force: true })
+      deleteNoteRowQueuingSyncDelete(dataDb, row.id)
       return true
     },
 

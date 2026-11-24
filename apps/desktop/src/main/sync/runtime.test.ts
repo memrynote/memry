@@ -486,6 +486,7 @@ vi.mock('./crdt-provider', () => ({
   resetCrdtProvider: runtimeMocks.resetCrdtProvider
 }))
 
+vi.mock('./local-doc-delete', () => ({ coverQueuedContentDeletes: vi.fn(async () => {}) }))
 vi.mock('./dirty-recovery', () => ({
   recoverDirtyItems: runtimeMocks.recoverDirtyItems
 }))
