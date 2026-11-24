@@ -4,11 +4,13 @@ import { createTestIndexDb } from '@tests/utils/test-db'
 import {
   setNoteProperties,
   getNoteProperties,
+  getNoteFileProperties,
   getPropertyType,
   insertPropertyDefinition,
   listPropertyUsage,
   listNotesWithProperty
 } from './property-queries'
+import { noteProperties } from '@memry/db-schema/schema/notes-cache'
 import { insertNoteCache } from './note-crud'
 import { extractProperties, parseNote } from '../../../vault/frontmatter'
 import { inferPropertyType } from '../../../vault/property-type'
@@ -133,6 +135,25 @@ describe('unquoted YAML date typing (BBF-43)', () => {
 
   afterEach(() => {
     dbResult.close()
+  })
+
+  // A header rebuilt from the rows (#5721) keeps a quoted string that spells
+  // a date or JSON. A row an older build wrote records no string marker and
+  // reads back as before: the date or the list.
+  it('rebuilds quoted strings as strings, and rows older builds wrote as before', () => {
+    const file = "---\nwhen: '2026-01-02'\nids: '[1,2]'\nat: 2026-01-03\n---\n"
+    indexFile('quoted', file)
+
+    expect(getNoteFileProperties(db, 'quoted')).toEqual(
+      extractProperties(parseNote(file).frontmatter)
+    )
+
+    db.update(noteProperties).set({ yamlString: null }).run()
+    expect(getNoteFileProperties(db, 'quoted')).toEqual({
+      when: new Date('2026-01-02T00:00:00.000Z'),
+      ids: [1, 2],
+      at: new Date('2026-01-03T00:00:00.000Z')
+    })
   })
 
   it('indexes unquoted dates exactly as the same dates quoted', () => {

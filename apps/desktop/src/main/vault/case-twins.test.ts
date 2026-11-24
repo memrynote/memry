@@ -993,6 +993,25 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
     expect(parseNote(moved).frontmatter).toMatchObject(own)
   }, 30_000)
 
+  // No version holds the survivor's own bytes (#5721): its property rows
+  // record which values were YAML strings.
+  it("a twin delete keeps the survivor's quoted strings with no version of its own bytes", async () => {
+    const own = await propertyTwins(QUOTED, '', false)
+
+    await deleteNoteCommand('upper')
+
+    expect(parseNote(shared()).frontmatter).toEqual(own)
+  }, 30_000)
+
+  it('a twin move keeps its quoted strings with no version of its own bytes', async () => {
+    const own = await propertyTwins(QUOTED, TYPED, false)
+
+    await renameNoteCommand('lower', 'b')
+
+    const moved = fs.readFileSync(path.join(vault.path, 'SuperNotes/b.md'), 'utf8')
+    expect(parseNote(moved).frontmatter).toMatchObject(own)
+  }, 30_000)
+
   /** Holds twin upper's next file write until `release`; resolves `reached` when it gets there. */
   function holdUpperWrite() {
     let release = (): void => {}

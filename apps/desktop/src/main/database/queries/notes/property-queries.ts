@@ -43,7 +43,8 @@ export function setNoteProperties(
         noteId,
         name,
         value: serializeValue(value),
-        type
+        type,
+        yamlString: typeof value === 'string'
       }
     })
     db.insert(noteProperties).values(propertyRecords).run()
@@ -104,7 +105,9 @@ export function getNoteProperties(db: IndexDb, noteId: string): PropertyValue[] 
  * index (#5558). `getNoteProperties` keeps the text the properties panel shows
  * instead. A row stores a date or a list as text, so a quoted string that
  * spells one reads back as the date or the list: a value in `file` that stores
- * as the row's text is taken as it is, keeping its YAML type.
+ * as the row's text is taken as it is, keeping its YAML type, and a row that
+ * records a string (`yamlString`) stays that string. A row older builds wrote
+ * records neither (#5721).
  */
 export function getNoteFileProperties(
   db: IndexDb,
@@ -115,6 +118,7 @@ export function getNoteFileProperties(
     notePropertyRows(db, noteId).map((row) => {
       const own = Object.hasOwn(file, row.name) ? file[row.name] : undefined
       if (own !== undefined && serializeValue(own) === row.value) return [row.name, own]
+      if (row.yamlString) return [row.name, row.value]
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string DB/wire column narrowed to the union its writers constrain
       return [row.name, fileValueOf(row.value, row.type as PropertyType)]
     })

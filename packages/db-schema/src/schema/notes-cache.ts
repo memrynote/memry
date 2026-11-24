@@ -133,7 +133,10 @@ export const noteProperties = sqliteTable(
       .references(() => noteCache.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
     value: text('value'), // JSON-encoded for arrays and complex types
-    type: text('type').notNull() // PropertyType enum
+    type: text('type').notNull(), // PropertyType enum
+    // Whether the value was a string (#5721): `value` cannot tell a quoted
+    // '2026-01-02' from a date. Null on rows older builds wrote.
+    yamlString: integer('yaml_string', { mode: 'boolean' })
   },
   (table) => [
     primaryKey({ columns: [table.noteId, table.name] }),
