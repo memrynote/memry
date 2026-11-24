@@ -241,6 +241,20 @@ describe('FilePage', () => {
     expect(downloadNoteFiles).toHaveBeenCalledTimes(2)
   })
 
+  it('offers no Try again for a file the server no longer has (#5616)', async () => {
+    vi.mocked(window.api.syncAttachments.downloadNoteFiles).mockResolvedValueOnce({
+      success: false,
+      error: 'This file is no longer on the sync server.',
+      canRetry: false
+    })
+    renderWithProviders(<FilePage fileId="file-1" />)
+
+    expect(
+      await screen.findByText('This file is no longer on the sync server.')
+    ).toBeInTheDocument()
+    expect(screen.queryByText('phaseF.pagesFile.tryAgain')).toBeNull()
+  })
+
   it('renders file project chips with itemType file', async () => {
     renderWithProviders(<FilePage fileId="file-1" />)
 

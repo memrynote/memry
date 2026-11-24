@@ -42,4 +42,19 @@ describe('NoteFilesDownloadNotice', () => {
     finish({ success: true })
     await vi.waitFor(() => expect(screen.queryByRole('status')).toBeNull())
   })
+
+  it('offers no Try again for a file the server no longer has', async () => {
+    downloadNoteFiles.mockResolvedValue({
+      success: false,
+      error: 'This file is no longer on the sync server.',
+      canRetry: false
+    })
+
+    render(<NoteFilesDownloadNotice noteId="note-1" />)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      "Couldn't download this note's files: This file is no longer on the sync server."
+    )
+    expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull()
+  })
 })

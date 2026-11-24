@@ -536,10 +536,11 @@ function askForOwnBytes(
   diskPath: string
 ): void {
   markDownloadOwed(db, noteId, attachmentId)
-  if (!shouldAttemptDownload(db, noteId, attachmentId)) return
-  markDownloadRequested(noteId, attachmentId)
-  if (!attachmentEvents.emitDownloadNeeded({ noteId, attachmentId, diskPath })) {
-    releaseDownloadAttempt(noteId, attachmentId)
+  const claim = shouldAttemptDownload(db, noteId, attachmentId)
+    ? markDownloadRequested(noteId, attachmentId)
+    : null
+  if (claim && !attachmentEvents.emitDownloadNeeded({ noteId, attachmentId, diskPath, claim })) {
+    releaseDownloadAttempt(claim)
   }
 }
 

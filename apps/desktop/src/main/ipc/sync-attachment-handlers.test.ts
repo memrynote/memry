@@ -255,8 +255,10 @@ import { appWriteCheck, resetAppWrites } from '../vault/app-writes'
 import { landCaseTwinDownload, releaseAbandonedCaseTwinBytes } from '../vault/case-twin-file'
 import {
   clearAttachmentDownloadFailure,
+  markDownloadRequested,
   markDownloadSucceeded
 } from '@memry/sync-client/attachment-download-state'
+import type { AttachmentDownloadNeededEvent } from '@memry/sync-client/attachment-events'
 import {
   AttachmentSyncService,
   AttachmentTooLargeError,
@@ -1373,15 +1375,14 @@ describe('sync-attachment-handlers', () => {
     )
     registerAttachmentHandlers()
 
-    const onDownloadNeeded = mockOnDownloadNeeded.mock.calls[0][0] as (event: {
-      noteId: string
-      attachmentId: string
-      diskPath: string
-    }) => void
+    const onDownloadNeeded = mockOnDownloadNeeded.mock.calls[0][0] as (
+      event: AttachmentDownloadNeededEvent
+    ) => void
     onDownloadNeeded({
       noteId: 'note-1',
       attachmentId: 'attachment-1',
-      diskPath: '/vault/Pictures/p.png'
+      diskPath: '/vault/Pictures/p.png',
+      claim: markDownloadRequested('note-1', 'attachment-1')!
     })
     await vi.waitFor(() => expect(attachmentMocks.service.downloadAttachment).toHaveBeenCalled())
     await new Promise((resolve) => setTimeout(resolve, 20))

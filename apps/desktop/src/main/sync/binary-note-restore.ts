@@ -153,24 +153,27 @@ export async function restoreOverwrittenBinaryNotesWith(
     if (resolveVaultFileSync(deps.vaultPath, note.path).kind === 'outside') continue
     const absolutePath = path.join(deps.vaultPath, note.path)
     if (!(await fileHoldsText(absolutePath))) continue
-    if (!shouldAttemptDownload(deps.db, note.id, note.attachmentId)) continue
+    const attachmentId = note.attachmentId
+    const claim = shouldAttemptDownload(deps.db, note.id, attachmentId)
+      ? markDownloadRequested(note.id, attachmentId)
+      : null
+    if (!claim) continue
 
     log.warn('Binary note file holds text; downloading its attachment again', {
       noteId: note.id,
       attachmentId: note.attachmentId
     })
-    const attachmentId = note.attachmentId
-    markDownloadRequested(note.id, attachmentId)
     const delivered = attachmentEvents.emitDownloadNeeded({
       noteId: note.id,
       attachmentId,
       diskPath: absolutePath,
-      landed: () => void checkRestoredFile(deps.db, absolutePath, attachmentId)
+      landed: () => void checkRestoredFile(deps.db, absolutePath, attachmentId),
+      claim
     })
     if (!delivered) {
       // No downloader (runtime restarting): the rest would drop the same way,
       // and the next runtime start checks again.
-      releaseDownloadAttempt(note.id, attachmentId)
+      releaseDownloadAttempt(claim)
       break
     }
     requested++

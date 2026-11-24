@@ -62,6 +62,8 @@ export interface DownloadNoteFilesInput {
 export interface DownloadNoteFilesResult {
   success: boolean
   error?: string
+  /** False when asking again cannot help: the server no longer has the file, or answered 404 inside its retry window. */
+  canRetry?: boolean
 }
 
 export interface GetDownloadProgressInput {

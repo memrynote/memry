@@ -189,20 +189,23 @@ function requestEmbeddedAttachmentDownloads(
     // Skips what is already in flight, what already downloaded this session,
     // and what the server has answered 404 for — that last one persisted, so a
     // sync stop/start or a relaunch no longer replays the dead request.
-    if (!shouldAttemptDownload(db, itemId, attachmentId)) continue
-    markDownloadRequested(itemId, attachmentId)
+    const claim = shouldAttemptDownload(db, itemId, attachmentId)
+      ? markDownloadRequested(itemId, attachmentId)
+      : null
+    if (!claim) continue
     const delivered = attachmentEvents.emitDownloadNeeded({
       noteId: itemId,
       attachmentId,
       diskPath: attachmentsDir,
       intoDir: true,
-      ...(Number.isFinite(recencyMs) ? { recencyHint: recencyMs } : {})
+      ...(Number.isFinite(recencyMs) ? { recencyHint: recencyMs } : {}),
+      claim
     })
     // `unregisterAttachmentHandlers()` removes every 'download-needed' listener
     // on sync-runtime restart, sign-out/in and token churn, so a dropped emit
     // has no downloader to report an outcome. Release the claim immediately or
     // the attachment is never asked for again for the life of the process.
-    if (!delivered) releaseDownloadAttempt(itemId, attachmentId)
+    if (!delivered) releaseDownloadAttempt(claim)
   }
 }
 
@@ -731,14 +734,18 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
         modifiedAt
       })
 
-      if (data.attachmentId) {
+      // Null while another request holds the download, such as an open (#5616).
+      const claim = data.attachmentId ? markDownloadRequested(itemId, data.attachmentId) : null
+      if (data.attachmentId && claim) {
         const recencyMs = data.modifiedAt ? Date.parse(data.modifiedAt) : NaN
-        attachmentEvents.emitDownloadNeeded({
+        const delivered = attachmentEvents.emitDownloadNeeded({
           noteId: itemId,
           attachmentId: data.attachmentId,
           diskPath: absolutePath,
-          ...(Number.isFinite(recencyMs) ? { recencyHint: recencyMs } : {})
+          ...(Number.isFinite(recencyMs) ? { recencyHint: recencyMs } : {}),
+          claim
         })
+        if (!delivered) releaseDownloadAttempt(claim)
       }
 
       ctx.emit(NotesChannels.events.CREATED, {

@@ -17,7 +17,9 @@ const mocks = vi.hoisted(() => {
       attempts: number
     }>,
     shouldAttemptDownload: vi.fn((..._args: unknown[]) => true),
-    markDownloadRequested: vi.fn(),
+    markDownloadRequested: vi.fn((ownerId: string, attachmentId: string) => ({
+      key: `${ownerId}::${attachmentId}`
+    })),
     releaseDownloadAttempt: vi.fn(),
     clearAttachmentDownloadFailure: (_db: unknown, ownerId: string, attachmentId: string) => {
       mocks.purgedRows.push({ ownerId, attachmentId })
@@ -84,7 +86,8 @@ vi.mock('@memry/sync-client/attachment-download-state', () => ({
   listRedrivableDownloadFailures: (db: unknown, now: number, limit: number) =>
     mocks.listRedrivableDownloadFailures(db, now, limit),
   shouldAttemptDownload: (...args: unknown[]) => mocks.shouldAttemptDownload(...args),
-  markDownloadRequested: (...args: unknown[]) => mocks.markDownloadRequested(...args),
+  markDownloadRequested: (ownerId: string, attachmentId: string) =>
+    mocks.markDownloadRequested(ownerId, attachmentId),
   releaseDownloadAttempt: (...args: unknown[]) => mocks.releaseDownloadAttempt(...args),
   clearAttachmentDownloadFailure: (db: unknown, ownerId: string, attachmentId: string) =>
     mocks.clearAttachmentDownloadFailure(db, ownerId, attachmentId)
@@ -109,7 +112,7 @@ describe('attachment download re-driver', () => {
     mocks.redrivableRows = []
     mocks.purgedRows.length = 0
     mocks.shouldAttemptDownload.mockReset().mockReturnValue(true)
-    mocks.markDownloadRequested.mockReset()
+    mocks.markDownloadRequested.mockClear()
     mocks.releaseDownloadAttempt.mockReset()
     mocks.getNoteMetadataById.mockReset()
     mocks.getNoteMetadataById.mockImplementation((_db: unknown, id: string) => ({
@@ -281,7 +284,7 @@ describe('attachment download re-driver', () => {
     const summary = await redriveAttachmentDownloads()
 
     expect(summary).toEqual({ requested: 0, skipped: 0 })
-    expect(mocks.releaseDownloadAttempt).toHaveBeenCalledWith('note-1', 'att-a')
+    expect(mocks.releaseDownloadAttempt).toHaveBeenCalledWith({ key: 'note-1::att-a' })
     // The second row is deliberately not attempted — the runtime is going away.
     expect(mocks.emitted).toHaveLength(1)
   })

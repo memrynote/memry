@@ -45,6 +45,12 @@
     }
   },
   "page": {
+    "noteFiles": {
+      "downloading": "Mengunduh file catatan ini…",
+      "failed": "Tidak dapat mengunduh file catatan ini: {error}",
+      "failedFallback": "unduhan gagal",
+      "retry": "Coba lagi"
+    },
     "empty": {
       "title": "Tidak ada catatan yang dipilih",
       "body": "Pilih catatan dari bilah samping untuk melihatnya"

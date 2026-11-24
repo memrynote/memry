@@ -13,7 +13,8 @@ import {
   GetUploadProgressSchema,
   DownloadAttachmentSchema,
   DownloadNoteFilesSchema,
-  GetDownloadProgressSchema
+  GetDownloadProgressSchema,
+  type DownloadNoteFilesResult
 } from '@memry/contracts/ipc-attachments'
 
 import {
@@ -44,16 +45,18 @@ import { isAttachmentAutoDownloadEnabled } from '../sync/attachment-download-set
 import { owedNoteDownloads } from '../sync/owed-note-downloads'
 import {
   attachmentEvents,
-  type AttachmentDownloadNeededEvent
+  type AttachmentDownloadNeededEvent,
+  type NoteFileDownload
 } from '@memry/sync-client/attachment-events'
 import {
   claimRequestedDownload,
   clearAttachmentDownloadFailure,
-  isDownloadAbandoned,
   markDownloadFailed,
   markDownloadSucceeded,
+  missingDownload,
   releaseDownloadAttempt
 } from '@memry/sync-client/attachment-download-state'
+import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import {
   enqueueUpload,
   clearUpload,
@@ -519,30 +522,25 @@ export function registerAttachmentHandlers(): void {
   registerCommand(
     SYNC_CHANNELS.DOWNLOAD_NOTE_FILES,
     DownloadNoteFilesSchema,
-    async ({ noteId }) => {
+    async ({ noteId }): Promise<DownloadNoteFilesResult> => {
       const vaultPath = getVaultStatus().path
       if (!vaultPath || !isDatabaseInitialized()) return { success: true }
       const db = getDatabase()
-      // On: the pull already asked for every file in the background.
-      if (isAttachmentAutoDownloadEnabled(db)) return { success: true }
       const owed = owedNoteDownloads(db, vaultPath, noteId)
-      if (owed.length === 0) return { success: true }
-      if (!(await getValidAccessToken())) {
-        return { success: false, error: getMainI18n().t('errors:auth.notAuthenticated') }
-      }
-
-      const failures = await Promise.all(
-        owed.map(async (event) => {
-          if (isDownloadAbandoned(db, noteId, event.attachmentId)) {
-            return getMainI18n().t('errors:attachment.downloadGone')
-          }
-          // Already on its way: its landing re-renders the note.
-          if (!claimRequestedDownload(noteId, event.attachmentId)) return null
-          return materializeDownload(event, 'interactive')
-        })
-      )
-      const error = failures.find((failure) => failure !== null)
-      return error ? { success: false, error } : { success: true }
+      // Read whatever the setting: a binary note whose file the server lost
+      // before it ever landed would otherwise open as an empty page.
+      const gone = owed.filter((file) => missingDownload(db, noteId, file.attachmentId) === 'gone')
+      // On: the pull already asked for every other file in the background.
+      const wanted = isAttachmentAutoDownloadEnabled(db)
+        ? []
+        : owed.filter((file) => !gone.includes(file))
+      const failures = [
+        ...gone.map(() => notOnServer('gone')),
+        ...(wanted.length > 0 ? await requestNoteFiles(db, wanted) : [])
+      ]
+      // Try again shows while any file can still arrive, with that failure.
+      const shown = failures.find((failure) => failure.canRetry) ?? failures[0]
+      return shown ? { success: false, ...shown } : { success: true }
     },
     'errors:attachment.downloadFailed'
   )
@@ -709,25 +707,70 @@ export function registerAttachmentHandlers(): void {
   })
 
   attachmentEvents.onDownloadNeeded((event) => {
+    // Only the OUTCOME may settle the guard. The requester marks the attempt
+    // in flight before emitting, so every exit from here has to either record
+    // a result or release the claim — otherwise the attachment is never asked
+    // for again for the life of the process.
+    //
+    // On-demand-only mode: background downloads (pull fan-out and re-drive
+    // both arrive through this event) are suppressed. Releasing the claim —
+    // not recording an outcome — keeps the attachment requestable the moment
+    // the toggle flips back or the note is opened (DOWNLOAD_NOTE_FILES).
+    // Released before the token wait, so an open never waits on a claim that
+    // downloads nothing.
+    if (isDatabaseInitialized() && !isAttachmentAutoDownloadEnabled(getDatabase())) {
+      releaseDownloadAttempt(event.claim)
+      return
+    }
     void (async () => {
-      // Only the OUTCOME may settle the guard. The requester marks the attempt
-      // in flight before emitting, so every exit from here has to either record
-      // a result or release the claim — otherwise the attachment is never asked
-      // for again for the life of the process.
       const token = await getValidAccessToken()
-      if (!token) return releaseDownloadAttempt(event.noteId, event.attachmentId)
-
-      // On-demand-only mode: background downloads (pull fan-out and re-drive
-      // both arrive through this event) are suppressed. Releasing the claim —
-      // not recording an outcome — keeps the attachment requestable the moment
-      // the toggle flips back or the note is opened (DOWNLOAD_NOTE_FILES).
-      if (isDatabaseInitialized() && !isAttachmentAutoDownloadEnabled(getDatabase())) {
-        return releaseDownloadAttempt(event.noteId, event.attachmentId)
-      }
-
+      if (!token) return releaseDownloadAttempt(event.claim)
       await materializeDownload(event, 'eager')
     })()
   })
+}
+
+/** Why a file an open asked for did not arrive, and whether asking again can help. */
+interface NoteFileFailure {
+  error: string
+  canRetry: boolean
+}
+
+/**
+ * The server answered 404 for the file: no probe until its window opens, so
+ * Try again cannot help. `gone` once it answered so MISSING_PROBE_LIMIT times.
+ */
+function notOnServer(missing: 'gone' | 'missing'): NoteFileFailure {
+  const key = missing === 'gone' ? 'downloadGone' : 'downloadMissing'
+  return { error: getMainI18n().t(`errors:attachment.${key}`), canRetry: false }
+}
+
+/** Download the files an open is waiting on, each on its own claim. */
+async function requestNoteFiles(
+  db: DrizzleDb,
+  files: NoteFileDownload[]
+): Promise<NoteFileFailure[]> {
+  // No sync runtime: the vault is held (kept local, another account's), the
+  // plan has no sync, or sync has not started. The server would refuse, so it
+  // is not asked, the same as the save-time upload above.
+  if (!getNetworkMonitor()) {
+    return [{ error: getMainI18n().t('errors:attachment.downloadNeedsSync'), canRetry: true }]
+  }
+  if (!(await getValidAccessToken())) {
+    return [{ error: getMainI18n().t('errors:auth.notAuthenticated'), canRetry: true }]
+  }
+  const failures = await Promise.all(
+    files.map(async (file): Promise<NoteFileFailure | null> => {
+      const claim = claimRequestedDownload(db, file.noteId, file.attachmentId)
+      // No claim: already on its way (its landing re-renders the note), landed,
+      // or a 404 inside its window, read below.
+      const error = claim ? await materializeDownload({ ...file, claim }, 'interactive') : null
+      const missing = missingDownload(db, file.noteId, file.attachmentId)
+      if (missing) return notOnServer(missing)
+      return error === null ? null : { error, canRetry: true }
+    })
+  )
+  return failures.filter((failure) => failure !== null)
 }
 
 /**
@@ -743,7 +786,8 @@ async function materializeDownload(
     intoDir,
     sizeHint,
     recencyHint,
-    landed
+    landed,
+    claim
   }: AttachmentDownloadNeededEvent,
   source: 'eager' | 'interactive'
 ): Promise<string | null> {
@@ -756,7 +800,7 @@ async function materializeDownload(
 
   const queue = getOrCreateDownloadQueue()
   if (!queue) {
-    releaseDownloadAttempt(noteId, attachmentId)
+    releaseDownloadAttempt(claim)
     return getMainI18n().t('errors:sync.engineNotInitialized')
   }
   try {
@@ -808,7 +852,7 @@ async function materializeDownload(
       // A newer record named another attachment while this one
       // downloaded (#5580): nothing is owed for it any more.
       logger.info('Dropped a download its note no longer names', { noteId, attachmentId })
-      releaseDownloadAttempt(noteId, attachmentId)
+      releaseDownloadAttempt(claim)
       if (isDatabaseInitialized()) {
         clearAttachmentDownloadFailure(getDatabase(), noteId, attachmentId)
       }
@@ -818,7 +862,7 @@ async function materializeDownload(
       // Queue torn down (vault switch / runtime restart) before the item
       // ran. Not an outcome — release the claim so the next pull or
       // re-drive can ask again, and record no failure.
-      releaseDownloadAttempt(noteId, attachmentId)
+      releaseDownloadAttempt(claim)
       return null
     }
     const message = err instanceof Error ? err.message : 'Unknown error'

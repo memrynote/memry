@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { getNoteMetadataById } from '@memry/storage-data'
-import type { AttachmentDownloadNeededEvent } from '@memry/sync-client/attachment-events'
+import type { NoteFileDownload } from '@memry/sync-client/attachment-events'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { getNoteAttachmentsDir } from '../vault/attachments'
 import { recordedFileOf } from './attachment-files'
@@ -17,11 +17,11 @@ export function owedNoteDownloads(
   db: DrizzleDb,
   vaultPath: string,
   noteId: string
-): AttachmentDownloadNeededEvent[] {
+): NoteFileDownload[] {
   const note = getNoteMetadataById(db, noteId)
   if (!note || note.localOnly) return []
 
-  const owed: AttachmentDownloadNeededEvent[] = []
+  const owed: NoteFileDownload[] = []
   if (note.attachmentId) {
     const diskPath = path.join(vaultPath, note.path)
     if (!fs.existsSync(diskPath)) {

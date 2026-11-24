@@ -63,6 +63,8 @@
     "uploadProgressFailed": "Failed to fetch upload progress",
     "downloadFailed": "Attachment download failed",
     "downloadGone": "This file is no longer on the sync server.",
+    "downloadMissing": "This file isn't on the sync server yet. Open it again tomorrow to check.",
+    "downloadNeedsSync": "Sync isn't running, so this file can't be downloaded.",
     "downloadProgressFailed": "Failed to fetch download progress",
     "exceedsMaxSize": "File too large: {size} exceeds {limit} limit",
     "exceedsPlanLimit": "File is larger than your plan allows: {size} exceeds {limit}",

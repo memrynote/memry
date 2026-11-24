@@ -10,8 +10,11 @@ import { useT } from '@memry/i18n/renderer'
  */
 const SHOW_DOWNLOADING_AFTER_MS = 300
 
-/** `failure` is main's error message, or what the IPC call threw. */
-type DownloadState = 'idle' | 'downloading' | { failure: unknown }
+/**
+ * `failure` is main's error message, or what the IPC call threw. `canRetry` is
+ * false when asking again cannot help, such as a file the server no longer has.
+ */
+type DownloadState = 'idle' | 'downloading' | { failure: unknown; canRetry: boolean }
 
 /**
  * With attachment auto-download off, a note's files stay on the server until
@@ -54,9 +57,11 @@ function NoteFilesDownload({
       let next: DownloadState
       try {
         const result = await window.api.syncAttachments.downloadNoteFiles({ noteId })
-        next = result.success ? 'idle' : { failure: result.error }
+        next = result.success
+          ? 'idle'
+          : { failure: result.error, canRetry: result.canRetry !== false }
       } catch (err) {
-        next = { failure: err }
+        next = { failure: err, canRetry: true }
       }
       clearTimeout(timer)
       if (current) setState(next)
@@ -83,14 +88,21 @@ function NoteFilesDownload({
   return (
     <div
       role="alert"
-      className="flex items-center gap-1.5 text-xs text-destructive"
+      className="flex items-start gap-1.5 text-xs text-destructive"
       data-testid="note-files-download-failed"
     >
-      <AlertCircle className="size-3.5 shrink-0" aria-hidden />
-      <span className="min-w-0 truncate">{t('page.noteFiles.failed', { error })}</span>
-      <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={onRetry}>
-        {t('page.noteFiles.retry')}
-      </Button>
+      <AlertCircle className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+      <span className="min-w-0 break-words">{t('page.noteFiles.failed', { error })}</span>
+      {state.canRetry && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="-my-1 h-6 shrink-0 px-2 text-xs"
+          onClick={onRetry}
+        >
+          {t('page.noteFiles.retry')}
+        </Button>
+      )}
     </div>
   )
 }

@@ -58,6 +58,17 @@ function formatFileSize(bytes: number | null): string {
 // Error State Component
 // ============================================================================
 
+/** The file did not download (#5616). */
+class FileDownloadError extends Error {
+  /** False when asking again cannot help, such as a file the server no longer has. */
+  readonly canRetry: boolean
+
+  constructor(message: string | undefined, canRetry: boolean) {
+    super(message)
+    this.canRetry = canRetry
+  }
+}
+
 function FileErrorState({ error, onRetry }: { error: string; onRetry?: () => void }) {
   const { t: tPhaseF } = useT('notes')
   return (
@@ -284,11 +295,15 @@ export function FilePage({ fileId }: FilePageProps) {
       // With attachment auto-download off, the file stays on the server until
       // it is opened (#5616): fetch it before reading where it is.
       const downloaded = await window.api.syncAttachments.downloadNoteFiles({ noteId: fileId! })
-      if (!downloaded.success) throw new Error(downloaded.error)
+      if (!downloaded.success) {
+        throw new FileDownloadError(downloaded.error, downloaded.canRetry !== false)
+      }
       return notesService.getFile(fileId!)
     },
     enabled: !!fileId,
-    staleTime: 60_000 // 1 minute
+    staleTime: 60_000, // 1 minute
+    // Main paces the server's 404s for a missing file (#5616); Try again asks again.
+    retry: false
   })
 
   const { runCommand } = useFileCommands({
@@ -314,7 +329,9 @@ export function FilePage({ fileId }: FilePageProps) {
           error,
           getI18n().getFixedT(null, 'notes')('phaseF.pagesFile.failedToLoadFile')
         )}
-        onRetry={() => void refetch()}
+        onRetry={
+          error instanceof FileDownloadError && !error.canRetry ? undefined : () => void refetch()
+        }
       />
     )
   }

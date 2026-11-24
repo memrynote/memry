@@ -6,12 +6,17 @@
  * writes the file where the real one would.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { EventEmitter } from 'node:events'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { attachmentDownloadFailures, noteMetadata } from '@memry/db-schema'
 import { SYNC_CHANNELS, SYNC_EVENTS } from '@memry/contracts/ipc-sync'
-import { resetAttachmentDownloadSession } from '@memry/sync-client/attachment-download-state'
+import {
+  isDownloadAbandoned,
+  pruneUnresolvableReferences,
+  resetAttachmentDownloadSession
+} from '@memry/sync-client/attachment-download-state'
 import { invokeHandler, mockIpcMain, resetIpcMocks } from '@tests/utils/mock-ipc'
 import { createTestDataDb, type TestDataDb } from '../../test/helpers/test-data-db'
 import { setSetting } from '../database/queries/settings'
@@ -20,7 +25,9 @@ const h = vi.hoisted(() => ({
   db: null as unknown as TestDataDb,
   vaultPath: '',
   sent: [] as Array<{ channel: string; payload: unknown }>,
-  download: vi.fn()
+  download: vi.fn(),
+  /** The running sync runtime's monitor; null while sync is not running. */
+  network: null as object | null
 }))
 
 vi.mock('electron', () => ({
@@ -53,7 +60,7 @@ vi.mock('../database/client', () => ({
   isDatabaseInitialized: () => true
 }))
 vi.mock('../vault/status', () => ({ getStatus: () => ({ path: h.vaultPath }) }))
-vi.mock('../sync/runtime-state', () => ({ getNetworkMonitor: () => null }))
+vi.mock('../sync/runtime-state', () => ({ getNetworkMonitor: () => h.network }))
 vi.mock('../vault/attachment-rename', () => ({ applyDownloadedAttachmentName: vi.fn() }))
 vi.mock('../file-text', () => ({ fileTextNoteChanged: vi.fn() }))
 vi.mock('../sync/note-attachment-metadata', () => ({
@@ -72,8 +79,11 @@ import {
 
 const PDF = Buffer.from('%PDF-1.4 report')
 const PNG = Buffer.from('png bytes')
+const DAY_MS = 24 * 60 * 60 * 1000
+const notFound = (): Error =>
+  Object.assign(new Error('Failed to fetch manifest'), { statusCode: 404 })
 
-type Result = { success: boolean; error?: string }
+type Result = { success: boolean; error?: string; canRetry?: boolean }
 const openNote = (noteId: string): Promise<Result> =>
   invokeHandler<Result>(SYNC_CHANNELS.DOWNLOAD_NOTE_FILES, { noteId })
 
@@ -98,11 +108,29 @@ function serveFiles(): void {
   )
 }
 
+/** The server answered 404 for the binary note's file on all three days. */
+function abandonBinaryNoteFile(): void {
+  h.db
+    .insert(attachmentDownloadFailures)
+    .values({
+      id: 'bin-1::att-bin',
+      ownerId: 'bin-1',
+      attachmentId: 'att-bin',
+      reason: 'missing',
+      attempts: 3,
+      lastError: 'Not found',
+      nextAttemptAt: null,
+      updatedAt: Date.now()
+    })
+    .run()
+}
+
 beforeEach(() => {
   resetIpcMocks()
   resetAttachmentDownloadSession()
   h.sent = []
   h.download.mockReset()
+  h.network = Object.assign(new EventEmitter(), { online: true })
   h.db = createTestDataDb()
   h.vaultPath = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-note-files-'))
   const now = new Date().toISOString()
@@ -135,6 +163,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  vi.useRealTimers()
   unregisterAttachmentHandlers()
   clearAttachmentState()
   resetAttachmentDownloadSession()
@@ -162,7 +191,11 @@ describe('sync:download-note-files with auto-download off', () => {
   it('reports a failure, then Try again downloads without waiting out the backoff', async () => {
     h.download.mockRejectedValueOnce(new Error('R2 unavailable'))
 
-    await expect(openNote('bin-1')).resolves.toEqual({ success: false, error: 'R2 unavailable' })
+    await expect(openNote('bin-1')).resolves.toEqual({
+      success: false,
+      error: 'R2 unavailable',
+      canRetry: true
+    })
     expect(fs.existsSync(pdfPath())).toBe(false)
     const failure = h.db.select().from(attachmentDownloadFailures).get()
     expect(failure?.nextAttemptAt).toBeGreaterThan(Date.now())
@@ -174,24 +207,54 @@ describe('sync:download-note-files with auto-download off', () => {
   })
 
   it('reports a file the server no longer has without asking for it', async () => {
-    h.db
-      .insert(attachmentDownloadFailures)
-      .values({
-        id: 'bin-1::att-bin',
-        ownerId: 'bin-1',
-        attachmentId: 'att-bin',
-        reason: 'missing',
-        attempts: 3,
-        lastError: 'Not found',
-        nextAttemptAt: null,
-        updatedAt: Date.now()
-      })
-      .run()
+    abandonBinaryNoteFile()
 
     const result = await openNote('bin-1')
 
-    expect(result.success).toBe(false)
-    expect(result.error).toMatch(/no longer on the sync server/)
+    expect(result).toEqual({
+      success: false,
+      error: expect.stringMatching(/no longer on the sync server/),
+      canRetry: false
+    })
+    expect(h.download).not.toHaveBeenCalled()
+  })
+
+  // A 404 is asked again once a day, three days running, before the file is
+  // given up and its reference dropped from the note. Opening the note must
+  // not spend those three probes in seconds.
+  it('asks the server once a day for a file it answered 404, however often it is opened', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    h.download.mockRejectedValue(notFound())
+
+    for (let open = 0; open < 3; open++) {
+      await expect(openNote('note-1')).resolves.toEqual({
+        success: false,
+        error: expect.stringMatching(/isn't on the sync server yet/),
+        canRetry: false
+      })
+    }
+
+    expect(h.download).toHaveBeenCalledTimes(1)
+    expect(isDownloadAbandoned(h.db, 'note-1', 'att-embed')).toBe(false)
+    expect(pruneUnresolvableReferences(h.db, 'note-1', ['att-embed'])).toEqual(['att-embed'])
+
+    // A day later the next open asks again.
+    vi.setSystemTime(Date.now() + DAY_MS + 1000)
+    await openNote('note-1')
+    expect(h.download).toHaveBeenCalledTimes(2)
+  })
+
+  it('asks the server nothing while sync is not running, and says why', async () => {
+    h.network = null
+    serveFiles()
+
+    const result = await openNote('bin-1')
+
+    expect(result).toEqual({
+      success: false,
+      error: expect.stringMatching(/Sync isn't running/),
+      canRetry: true
+    })
     expect(h.download).not.toHaveBeenCalled()
   })
 })
@@ -206,5 +269,16 @@ describe('sync:download-note-files with auto-download on', () => {
 
     expect(h.download).not.toHaveBeenCalled()
     expect(fs.existsSync(imagePath())).toBe(false)
+  })
+
+  it('reports a file the server no longer has, which the pull never downloaded', async () => {
+    setAutoDownload(true)
+    abandonBinaryNoteFile()
+
+    await expect(openNote('bin-1')).resolves.toEqual({
+      success: false,
+      error: expect.stringMatching(/no longer on the sync server/),
+      canRetry: false
+    })
   })
 })

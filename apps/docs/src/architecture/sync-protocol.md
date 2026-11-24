@@ -1223,11 +1223,19 @@ across devices:
   background work, and lands with the same steps as a pull's download (record,
   rename to the body's name, `ATTACHMENT_MATERIALIZED`). The call resolves when
   every file has landed or failed. An open does not wait out a transient
-  failure's backoff, because the user asked now, but a file the server has
-  answered as gone three times is reported and not requested. With
-  auto-download on, the call does nothing. Opening a binary note whose file has
-  not downloaded keeps its row: `getFileById` drops a row with a missing file
-  only when the canonical row names no attachment id (#5616).
+  failure's backoff, because the user asked now. A 404 keeps its window: inside
+  the 24 hours after a 404 an open reports the file as not on the server yet
+  and sends no request, so opens never spend the three 404 probes that give a
+  reference up faster than the pull does. A file the server has answered as
+  gone three times is reported whatever the setting, and not requested. Neither
+  404 answer offers Try again (`canRetry: false`). With no sync runtime (a held
+  vault, a plan without sync, sync not started) the call asks the server
+  nothing and reports that sync is not running. With auto-download on, the call
+  requests nothing. Each request holds its own claim on the download
+  (`DownloadClaim`), and only its holder can release it, so a pull's request
+  settling late cannot free a download an open took. Opening a binary note
+  whose file has not downloaded keeps its row: `getFileById` drops a row with a
+  missing file only when the canonical row names no attachment id (#5616).
 - **Reference pruning** — `attachmentReferences` merges union-only, so a
   reference to a blob that is genuinely gone would otherwise live in the note's
   payload forever and be handed to every device that ever pulls it. On the pull
