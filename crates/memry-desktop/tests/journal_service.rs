@@ -384,6 +384,54 @@ fn a_delete_removes_the_file_then_tombstones_the_day() {
     assert_eq!(e.read(DAY_FILE), NEW_FILE);
 }
 
+/// The version a delete keeps is local: it queues nothing, and a day deleted, made again with the
+/// same text and deleted again holds that text once.
+#[test]
+fn a_day_deleted_twice_with_the_same_text_keeps_one_version_and_queues_no_extra_record() {
+    let (mut e, notes, _) = opened();
+    let open = e.session.current().unwrap();
+    let kept = |e: &Env| {
+        e.versions("j2025-01-17")
+            .iter()
+            .filter(|version| version.contains("Morning pages."))
+            .count()
+    };
+    notes.create_day(&open, new_day()).unwrap();
+    assert!(notes.delete_day(&open, DAY, false).unwrap());
+    e.drain();
+    assert_eq!(queued(&e, "j2025-01-17"), ["crdt-update", "delete"]);
+    assert_eq!(kept(&e), 1);
+    assert!(!notes.delete_day(&open, DAY, false).unwrap());
+    assert_eq!(kept(&e), 1, "a delete of a deleted day keeps nothing");
+
+    notes.create_day(&open, new_day()).unwrap();
+    let others = |e: &Env| {
+        e.core()
+            .db_handle()
+            .call_blocking(|conn| {
+                Ok(conn
+                    .query_row(
+                        "SELECT count(*) FROM outbox WHERE item_type != 'journal'",
+                        [],
+                        |row| row.get::<_, i64>(0),
+                    )
+                    .unwrap())
+            })
+            .unwrap()
+    };
+    let before = others(&e);
+    assert!(notes.delete_day(&open, DAY, false).unwrap());
+    e.drain();
+    assert_eq!(kept(&e), 1, "the same text is not kept twice");
+    assert_eq!(others(&e), before, "the kept version queues no record");
+    let after = queued(&e, "j2025-01-17");
+    assert_eq!(
+        after.last().map(String::as_str),
+        Some("delete"),
+        "{after:?}"
+    );
+}
+
 /// The file a create of `DAY` writes for `text` with no tags or properties.
 fn plain_file(text: &str) -> String {
     format!("---\ndate: '{DAY}'\n---\n{text}\n")

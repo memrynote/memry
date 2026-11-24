@@ -157,7 +157,7 @@ async function device(fetchFn: typeof fetch = realFetch): Promise<Device> {
       dereference: (chunkHashes) => dereferenceChunks(chunkHashes, holdDeps),
       holdChunks: (canvasId, holds) => holdCanvasAssetChunks(canvasId, holds, holdDeps),
       releaseHolds: (canvasId, hashes) => releaseCanvasAssetHolds(canvasId, hashes, holdDeps),
-      markWritebackIgnored: () => {},
+      recordAppWrite: () => () => {},
       trackEvent: (name) => {
         if (name === 'app_error_seen') dev.restoreErrors++
       }
@@ -217,8 +217,7 @@ async function deleteAndFree(dev: Device, canvasId: string): Promise<void> {
     now: () => Date.now() + 31 * DAY,
     chunkHashesOf: async () => [],
     dereference: dev.ctx.dereference,
-    releaseHolds: dev.ctx.releaseHolds,
-    markWritebackIgnored: () => {}
+    releaseHolds: dev.ctx.releaseHolds
   })
   expect(settled).toBe(1)
   await server.triggerScheduled()

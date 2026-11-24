@@ -15,9 +15,7 @@ import {
 import type { NoteTagTemplateOutcome } from '@memry/contracts/notes-api'
 import { applyTagTemplateAfterAdd, undoTagTemplate } from './tag-template'
 import { extractTags } from '../vault/frontmatter'
-import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
 import { replaceNoteTagsInCrdt } from '../sync/crdt-feed'
-import { createLogger } from '../lib/logger'
 import { getIndexDatabase } from '../database'
 import { extractDateFromPath, getNoteCacheById } from '@main/database/queries/notes'
 import { NoteError, NoteErrorCode } from '../lib/errors'
@@ -38,11 +36,11 @@ import {
 } from './folder-config-effects'
 import { followFolderRenameInShortcuts } from '../ipc/settings-handlers'
 import { followFolderRenameInReadwise } from '../readwise/settings'
-
-const log = createLogger('NotesDomain')
+import { recordNoteCreatedHere } from '../sync/note-sync-state'
 
 export async function createNoteCommand(input: NoteCreateInput): Promise<Note> {
   const note = await createNote(input)
+  recordNoteCreatedHere(note.id)
   // Frontmatter tags only. `note.tags` merges the body's `#hashtag`s in for the
   // index, and the CRDT tag array they would land in is what write-back writes
   // back into the file's `tags:` block (#1454).
@@ -83,17 +81,9 @@ async function writeNoteBodyCommand(input: NoteUpdateInput): Promise<Note> {
 }
 
 async function writeNoteCommand(input: NoteUpdateInput): Promise<NoteUpdateOutcome> {
+  // `updateNote` feeds a new body to the doc before it writes the file.
   const { note, headerTagChange } = await updateNote(input)
-  // `updateNote` moves the index hash to the new bytes, so the watcher never
-  // feeds this edit, and the next write-back would put the doc's older body
-  // back over it (#2646). No `writing`: the doc keeps its own alternatives.
-  // The file is already written, so a failed feed must not fail the save.
   if (input.content !== undefined) {
-    try {
-      await feedExternalEditToCrdt(input.id, input.content)
-    } catch (err) {
-      log.error('Could not feed the saved body to the note CRDT doc', { noteId: input.id, err })
-    }
     queueEmbeddedVaultFiles(input.id, input.content)
   }
   // Write-back writes an open doc's `tags` array over the file's `tags:` list
@@ -166,10 +156,10 @@ export async function deleteFolderCommand(folderPath: string): Promise<void> {
 export async function deleteNoteCommand(id: string): Promise<void> {
   // Before the sync delete is queued: a refused delete must not reach peers.
   assertNoteWritable(id)
-  // Enqueue sync delete BEFORE cache removal — enqueue reads cache for vector
-  // clock, and the loaded doc for the tombstone's body vector (#3037)
-  await syncNoteDelete(id)
-  await deleteNote(id)
+  // `deleteNote` queues the sync delete BEFORE cache removal: enqueue reads the
+  // cache for the vector clock, and the loaded doc for the tombstone's body
+  // vector (#3037). A case twin's file is written in the same step (#5495).
+  await deleteNote(id, (inStep) => syncNoteDelete(id, inStep))
   // Drop the note's project links + clear any project home note pointing at it,
   // only once the note is actually gone (spec §4 "Cleanup rules").
   await cleanupProjectLinksForDeletedNote(id)

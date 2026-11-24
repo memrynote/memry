@@ -44,6 +44,8 @@
     "moveFailed": "Không thể di chuyển ghi chú",
     "applyTemplateFailed": "Không thể áp dụng mẫu",
     "appendBlocksFailed": "Không thể di chuyển khối sang ghi chú đó",
+    "appendIntoCaseTwin": "Ghi chú đó dùng chung tệp với một ghi chú có tên chỉ khác nhau ở chữ hoa và chữ thường. Hãy đổi tên một trong hai ghi chú, rồi di chuyển lại khối.",
+    "caseTwinMoveRefused": "Ghi chú này dùng chung tệp với một ghi chú có tên chỉ khác nhau về chữ hoa và chữ thường, nên không thể di chuyển theo cách này. Hãy đổi tên hoặc di chuyển ghi chú kia, hoặc xóa bản sao bạn không cần.",
     "exportPdfFailed": "Không thể xuất PDF",
     "exportHtmlFailed": "Không thể xuất HTML",
     "restoreVersionFailed": "Không thể khôi phục phiên bản",
@@ -78,7 +80,9 @@
     "downloadProgressFailed": "Không thể lấy tiến trình tải xuống",
     "exceedsMaxSize": "Tệp quá lớn: {size} vượt quá giới hạn {limit}",
     "exceedsPlanLimit": "Tệp lớn hơn mức gói của bạn cho phép: {size} vượt quá {limit}",
-    "emptyFile": "Không thể tải lên tệp rỗng"
+    "emptyFile": "Không thể tải lên tệp rỗng",
+    "emptyNotAttached": "Tệp này trống nên không được đính kèm. Nếu bạn đã dán một hình ảnh, hãy sao chép lại rồi dán.",
+    "textInMediaFile": "Tệp này chứa văn bản thay vì nội dung đa phương tiện như tên tệp cho biết"
   },
   "crdt": {
     "persistenceDegradedTitle": "Lịch sử chỉnh sửa không được lưu trên thiết bị này",
@@ -233,6 +237,7 @@
   "folder": {
     "createFailed": "Không thể tạo thư mục",
     "renameFailed": "Không thể đổi tên thư mục",
+    "renameCaseTwins": "Thư mục này có các ghi chú dùng chung tệp với một ghi chú có tên thư mục chỉ khác nhau về chữ hoa và chữ thường. Hãy đổi tên hoặc di chuyển các ghi chú đó trước, rồi đổi tên thư mục.",
     "deleteFailed": "Không thể xóa thư mục",
     "keptNotPulled": "Thư mục này có một ghi chú mà tệp của nó đã bị xóa bên ngoài memrynote, và nội dung của ghi chú chưa được đồng bộ về thiết bị này, nên không thể chuyển vào thùng rác. Không có gì bị xóa. Hãy chờ đồng bộ xong, hoặc xóa riêng ghi chú đó trước.",
     "keptUnwritable": "Thư mục này có một ghi chú mà tệp của nó đã bị xóa bên ngoài memrynote, và không thể lưu nội dung của ghi chú vào tệp để đưa vào thùng rác. Không có gì bị xóa. Hãy xóa riêng ghi chú đó trước.",

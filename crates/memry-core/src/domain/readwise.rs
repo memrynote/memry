@@ -1,4 +1,4 @@
-//! Readwise's device-local state in `data.db` (migration 0038): the link from a Readwise book
+//! Readwise's device-local state in `data.db` (migration 0039): the link from a Readwise book
 //! or Reader document to its note (`links-repository.ts`), and the run state desktop kept as
 //! `readwise.<name>` settings (`sync-state.ts`). Neither syncs: a note's `readwise_url` is the
 //! identity that travels, and the links are rebuilt from it.

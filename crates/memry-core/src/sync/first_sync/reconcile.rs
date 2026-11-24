@@ -14,35 +14,36 @@
 //!    nothing, and a manifest with none at all means record packs only
 //!    seeded, so every item is pulled (fail closed).
 //! 2. A live row taken from a pack that the manifest does not list may have
-//!    been deleted on the server. It is pulled by id: a tombstone the server
-//!    still holds arrives signed with its clock, and one whose payload it shed
-//!    (§5.12.3) arrives as a marker to a pull that declares
-//!    `purged_tombstones`, which deletes only when it names a row asked about,
-//!    its cursor is past the row's and its attestation verifies
-//!    ([`markers`]). A row the pull answers with nothing, a refused item or no
-//!    envelope is kept and logged (§5.12.1): an omission is no evidence of a
-//!    delete. A row the device changed locally is kept, rechecked in the
-//!    transaction that deletes. The delete is local: a pulled tombstone queues
-//!    no push.
+//!    been deleted on the server. It is pulled by id, declaring
+//!    `purged_tombstones`: a tombstone the server still holds arrives signed
+//!    with its clock, and one whose payload it shed (§5.12.3) arrives as a
+//!    marker, which deletes only when it names a row asked about, its cursor
+//!    is past the row's and its attestation verifies ([`markers`]). A row the
+//!    pull answers with nothing, a refused item or no envelope is kept and
+//!    logged (§5.12.1): an omission is no evidence of a delete. A row the
+//!    device changed locally is kept, rechecked in the transaction that
+//!    deletes. The delete is local: a pulled tombstone queues no push.
 //! 3. Packed tombstones already applied as pulled ones would.
 //!
 //! The unpaged manifest is one request and one consistent read. The pulls are
-//! `ceil(k / 100)` requests for the `k` items the packs did not deliver.
+//! `ceil(k / 100)` requests for the `k` items of rules 1 and 2 together.
 
 use std::collections::{HashMap, HashSet};
 
 use serde_json::Value as Json;
 
+use crate::seams::diagnostics::CoreDiagnostic;
 use crate::storage::nested_tx;
 
 use super::super::apply::{self, Pending};
+use super::super::delete_wins;
 use super::super::first_sync_store::{HeldRow, forget_cursors, held_rows, read_meta, write_meta};
-use super::super::pull::{MAX_PULL_IDS, PullLoop};
+use super::super::hardening::purged;
+use super::super::pull::{MAX_PULL_IDS, PullLoop, still_open};
+use super::super::purged_markers as markers;
 use super::super::store::{self, RECORD_CURSOR_SCOPE};
-use super::{FirstSync, FirstSyncError, FirstSyncPhase, FirstSyncProgress, FirstSyncReport};
+use super::{FirstSync, FirstSyncError, FirstSyncReport};
 use super::{now_ms, sqlite_failed};
-
-mod markers;
 
 /// Set when the reconcile finished, so a resumed first sync does not pull
 /// again what it already pulled.
@@ -84,50 +85,50 @@ impl FirstSync {
         let held = self.db.call(|conn| held_rows(conn)).await?;
         let plan = plan(&listed, &held, &self.pull);
 
-        let total = (plan.pull.len() + plan.stale.len()) as u64;
-        let mut done = 0u64;
         let forget = plan.forget;
         self.db
             .call(move |conn| forget_cursors(conn, &forget))
             .await?;
-        for chunk in plan.pull.chunks(MAX_PULL_IDS) {
-            let page = self.pull.fetch_ids(chunk).await?;
+        // One pull for both rules, declaring `purged_tombstones` for rule 2's
+        // stale rows: a listed item is live, so no marker names it, and a
+        // stale row shares the request rule 1 already makes (#5405).
+        let mut seen: HashSet<&str> = plan.pull.iter().map(String::as_str).collect();
+        let stale_ids: Vec<&String> = plan
+            .stale
+            .iter()
+            .map(|row| &row.item_id)
+            .filter(|id| seen.insert(id.as_str()))
+            .collect();
+        let ids: Vec<String> = plan.pull.iter().chain(stale_ids).cloned().collect();
+        let mut verdicts = markers::Verdicts::default();
+        let mut dropped_pages = 0;
+        for chunk in ids.chunks(MAX_PULL_IDS) {
+            let (page, entries) = self.pull.fetch_ids_with_markers(chunk).await?;
             report.reconcile_requests += 1;
             report.reconcile_pulled += page.applied + page.deleted + page.skipped;
             report.metadata_corrupt += page.corrupt;
-            done += chunk.len() as u64;
-            self.progress.progress(FirstSyncProgress {
-                phase: FirstSyncPhase::Metadata,
-                completed: done,
-                total,
-            });
-        }
-        let mut attested = Vec::new();
-        let mut dropped_pages = 0;
-        for chunk in plan.stale.chunks(MAX_PULL_IDS) {
-            let ids: Vec<String> = chunk.iter().map(|row| row.item_id.clone()).collect();
-            let (page, entries) = self.pull.fetch_ids_with_markers(&ids).await?;
-            report.reconcile_requests += 1;
-            report.reconcile_removed += page.deleted;
             dropped_pages += page.dropped_pages;
-            attested.extend(markers::attested(entries, chunk, &self.pull).await?);
-            done += chunk.len() as u64;
-            self.progress.progress(FirstSyncProgress {
-                phase: FirstSyncPhase::Metadata,
-                completed: done,
-                total,
-            });
+            let keys = self.marker_signer_keys(&entries).await?;
+            markers::sort(&entries, &plan.stale, &self.pull, &keys, &mut verdicts);
+            self.records_progress(true).await?;
         }
-        let (removed, kept) = self.remove_attested(plan.stale, attested).await?;
+        let (removed, kept, remembered) = self.remove_attested(plan.stale, verdicts).await?;
         report.reconcile_removed += removed;
+        report.reconcile_kept += kept;
         if kept > 0 {
             let cursor = self
                 .db
                 .call(|conn| store::read_cursor(conn, RECORD_CURSOR_SCOPE))
                 .await?;
             eprintln!(
-                "memry-core: first sync reconcile: {kept} stale id(s) at cursor {cursor:?} had no verified delete or attested marker, kept ({dropped_pages} non-envelope answer(s))"
+                "memry-core: first sync reconcile: kept {kept} stale id(s) at cursor {cursor:?} with no verified delete or attested marker, {remembered} of them against a remembered unattested marker ({dropped_pages} non-envelope answer(s))"
             );
+            self.diagnostics.emit(CoreDiagnostic::ReconcileKept {
+                kept: CoreDiagnostic::count(kept),
+                remembered: CoreDiagnostic::count(remembered),
+                non_envelope: dropped_pages,
+                cursor: CoreDiagnostic::cursor(cursor.as_deref()),
+            });
         }
         self.db
             .call(|conn| write_meta(conn, META_FIRST_SYNC_RECONCILED, "1"))
@@ -135,19 +136,43 @@ impl FirstSync {
         Ok(())
     }
 
-    /// Rule 2's last step (§5.12.1, #5402): the pull by id already applied
-    /// every signed delete it returned. A stale row an attested marker names
-    /// is deleted here with the marker's clock, unless the device changed it
-    /// locally. Every other stale row the pull left live at its cursor got no
-    /// answer, a refused one, or no envelope, and is kept. Answers
-    /// `(removed, kept)`.
+    /// The keys of the marker signers [`PullLoop::signing_key`] does not
+    /// know, looked up once each through the loop's [`purged::SignerKeys`]
+    /// (Electron's `resolveDeviceKey`: the directory, then one refetch). A
+    /// lookup that cannot complete fails the reconcile, which runs again.
+    async fn marker_signer_keys(
+        &self,
+        entries: &[Json],
+    ) -> Result<markers::SignerKeyMap, FirstSyncError> {
+        let signers: Vec<String> = entries
+            .iter()
+            .filter_map(|entry| entry.get("signerDeviceId").and_then(Json::as_str))
+            .filter(|signer| self.pull.signing_key(signer).is_none())
+            .map(str::to_owned)
+            .collect();
+        if signers.is_empty() {
+            return Ok(markers::SignerKeyMap::new());
+        }
+        purged::resolve_signers(signers, self.pull.signer_keys(), self.pull.http())
+            .await
+            .map_err(|source| FirstSyncError::Pull {
+                source: source.into(),
+            })
+    }
+
+    /// Rule 2's last step (§5.12.1): the pull by id already applied every
+    /// signed delete it returned. A stale row an attested marker names is
+    /// deleted here with the marker's clock. Every other stale row the pull
+    /// left live at its cursor got no answer, a refused one, or no envelope,
+    /// and is kept; a kept row an unattested marker names remembers it for
+    /// the push wave (#5406). Answers `(removed, kept, remembered)`.
     async fn remove_attested(
         &self,
         stale: Vec<HeldRow>,
-        attested: Vec<Pending>,
-    ) -> Result<(usize, usize), FirstSyncError> {
+        verdicts: markers::Verdicts,
+    ) -> Result<(usize, usize, usize), FirstSyncError> {
         if stale.is_empty() {
-            return Ok((0, 0));
+            return Ok((0, 0, 0));
         }
         let now = now_ms();
         let at_rest = self.pull.at_rest_key();
@@ -162,7 +187,7 @@ impl FirstSync {
                     .filter(|row| row.held && !row.local_change)
                     .map(|row| (row.item_type, row.item_id, row.server_cursor))
                     .collect();
-                let unanswered: HashSet<(String, String)> = stale
+                let unanswered: HashMap<(String, String), Option<i64>> = stale
                     .into_iter()
                     .filter(|row| {
                         still.contains(&(
@@ -171,15 +196,16 @@ impl FirstSync {
                             row.server_cursor,
                         ))
                     })
-                    .map(|row| (row.item_type, row.item_id))
+                    .map(|row| ((row.item_type, row.item_id), row.server_cursor))
                     .collect();
                 // One marker per row: a repeated entry applies once.
                 let mut named = HashSet::new();
-                let gone: Vec<Pending> = attested
+                let gone: Vec<Pending> = verdicts
+                    .attested
                     .into_iter()
                     .filter(|marker| {
                         let key = (marker.item_type().to_owned(), marker.item_id().to_owned());
-                        unanswered.contains(&key) && named.insert(key)
+                        unanswered.contains_key(&key) && named.insert(key)
                     })
                     .collect();
                 let mut totals = apply::ApplyTotals::default();
@@ -192,9 +218,25 @@ impl FirstSync {
                     &at_rest,
                     &mut totals,
                 )?;
+                still_open(&txn)?;
+                let mut remembered = HashSet::new();
+                for (item_type, item_id, marker) in &verdicts.unattested {
+                    let key = (item_type.clone(), item_id.clone());
+                    if unanswered.contains_key(&key) && !named.contains(&key) {
+                        delete_wins::remember(&txn, item_type, item_id, marker)?;
+                        remembered.insert(key);
+                    }
+                }
+                still_open(&txn)?;
                 txn.commit().map_err(sqlite_failed)?;
-                let removed = totals.deleted;
-                Ok(((removed, unanswered.len() - removed), totals.feed))
+                Ok((
+                    (
+                        totals.deleted,
+                        unanswered.len() - totals.deleted,
+                        remembered.len(),
+                    ),
+                    totals.feed,
+                ))
             })
             .await?;
         // Told after the commit, as the pull does: an observer reads the row.

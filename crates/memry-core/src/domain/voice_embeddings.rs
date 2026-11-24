@@ -16,7 +16,7 @@ use rusqlite::{Connection, params};
 
 use crate::api::errors::StorageError;
 use crate::domain::embedding_input::{
-    EMBEDDING_INPUT_VERSION, EmbeddingTask, build_embedding_input,
+    EmbeddingTask, UNCAPPED_EMBEDDING_INPUT_VERSION, build_embedding_input,
 };
 use crate::storage::nested_tx;
 use crate::storage::vec::{VecTable, nearest, to_blob};
@@ -63,7 +63,7 @@ impl VoiceSource {
     /// `inputVersion`: the text input's version for a transcript, the audio one for audio.
     pub fn input_version(self) -> u32 {
         match self {
-            Self::Transcript => EMBEDDING_INPUT_VERSION,
+            Self::Transcript => UNCAPPED_EMBEDDING_INPUT_VERSION,
             Self::Audio => AUDIO_EMBEDDING_INPUT_VERSION,
         }
     }

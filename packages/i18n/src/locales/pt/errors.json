@@ -44,6 +44,8 @@
     "moveFailed": "Não foi possível mover a nota",
     "applyTemplateFailed": "Não foi possível aplicar o modelo",
     "appendBlocksFailed": "Não foi possível mover o bloco para essa nota",
+    "appendIntoCaseTwin": "Essa nota partilha o ficheiro com uma nota cujo nome difere apenas em maiúsculas e minúsculas. Mude o nome de uma delas e, em seguida, mova o bloco novamente.",
+    "caseTwinMoveRefused": "Esta nota partilha o arquivo com uma nota cujo nome difere apenas em maiúsculas e minúsculas, por isso não pode ser movida desta forma. Renomeie ou mova a outra nota, ou exclua a cópia de que não precisa.",
     "exportPdfFailed": "Não foi possível exportar o PDF",
     "exportHtmlFailed": "Não foi possível exportar o HTML",
     "restoreVersionFailed": "Não foi possível restaurar a versão",
@@ -78,7 +80,9 @@
     "downloadProgressFailed": "Não foi possível obter o progresso do download",
     "exceedsMaxSize": "Arquivo muito grande: {size} excede o limite de {limit}",
     "exceedsPlanLimit": "O arquivo é maior do que seu plano permite: {size} excede {limit}",
-    "emptyFile": "Não é possível enviar um arquivo vazio"
+    "emptyFile": "Não é possível enviar um arquivo vazio",
+    "emptyNotAttached": "Este arquivo está vazio, por isso não foi anexado. Se você colou uma imagem, copie-a novamente e cole.",
+    "textInMediaFile": "Este arquivo contém texto em vez da mídia indicada pelo nome"
   },
   "crdt": {
     "persistenceDegradedTitle": "O histórico de edições não está sendo mantido neste dispositivo",
@@ -233,6 +237,7 @@
   "folder": {
     "createFailed": "Não foi possível criar a pasta",
     "renameFailed": "Não foi possível renomear a pasta",
+    "renameCaseTwins": "Esta pasta contém notas que compartilham um arquivo com uma nota cujo nome de pasta difere apenas em maiúsculas e minúsculas. Renomeie ou mova essas notas primeiro e, depois, renomeie a pasta.",
     "deleteFailed": "Não foi possível excluir a pasta",
     "keptNotPulled": "Esta pasta tem uma nota cujo arquivo foi excluído fora do memrynote, e o texto dela ainda não foi sincronizado com este dispositivo, por isso ela não pode ir para a lixeira. Nada foi excluído. Aguarde a sincronização ou exclua essa nota separadamente primeiro.",
     "keptUnwritable": "Esta pasta tem uma nota cujo arquivo foi excluído fora do memrynote, e o texto dela não pode ser salvo em um arquivo para a lixeira. Nada foi excluído. Exclua essa nota separadamente primeiro.",

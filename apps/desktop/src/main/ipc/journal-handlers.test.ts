@@ -38,6 +38,7 @@ vi.mock('../vault/journal', () => ({
   readJournalEntry: vi.fn(),
   writeJournalEntry: vi.fn(),
   writeJournalEntryWithContent: vi.fn(),
+  composeJournalEntryWrite: vi.fn(),
   deleteJournalEntryFile: vi.fn(),
   getJournalRelativePath: vi.fn(),
   extractPreview: vi.fn(),
@@ -71,11 +72,14 @@ vi.mock('../sync/crdt-provider', () => ({
   }))
 }))
 
+vi.mock('../sync/crdt-external-feed', () => ({
+  feedExternalEditToCrdt: vi.fn().mockResolvedValue(true)
+}))
+
 vi.mock('../journal/runtime-effects', () => ({
   enqueueJournalCreate: vi.fn(),
   enqueueJournalUpdate: vi.fn(),
   enqueueJournalDelete: vi.fn(),
-  feedJournalBodyToCrdt: vi.fn().mockResolvedValue(undefined),
   initializeJournalCrdt: vi.fn().mockResolvedValue(undefined)
 }))
 
@@ -90,6 +94,7 @@ vi.mock('../projections', () => ({
 vi.mock('@main/database/queries/notes', () => ({
   insertNoteCache: vi.fn(),
   updateNoteCache: vi.fn(),
+  getNoteCacheById: vi.fn(),
   deleteNoteCache: vi.fn(),
   getNoteCacheByPath: vi.fn(),
   getJournalEntryByDate: vi.fn(),
@@ -121,7 +126,10 @@ import * as tasksQueries from '@main/database/queries/tasks'
 import * as domainNotes from '@memry/domain-notes'
 import * as projections from '../projections'
 import * as runtimeEffects from '../journal/runtime-effects'
+import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
 import { BrowserWindow } from 'electron'
+
+const write = vi.fn(async () => {})
 
 describe('journal-handlers', () => {
   const baseEntry: JournalEntry = {
@@ -375,7 +383,8 @@ describe('journal-handlers', () => {
     }
 
     ;(journalVault.readJournalEntry as Mock).mockResolvedValue({ ...baseEntry })
-    ;(journalVault.writeJournalEntryWithContent as Mock).mockResolvedValue({
+    ;(journalVault.composeJournalEntryWrite as Mock).mockResolvedValue({
+      write,
       entry: updatedEntry,
       fileContent: 'serialized',
       frontmatter: {
@@ -413,7 +422,8 @@ describe('journal-handlers', () => {
       { isDestroyed: () => false, webContents: { send } }
     ])
     ;(journalVault.readJournalEntry as Mock).mockResolvedValue({ ...baseEntry })
-    ;(journalVault.writeJournalEntryWithContent as Mock).mockResolvedValue({
+    ;(journalVault.composeJournalEntryWrite as Mock).mockResolvedValue({
+      write,
       entry: { ...baseEntry, content: 'Updated content' },
       fileContent: 'serialized',
       frontmatter: { date: baseEntry.date, tags: baseEntry.tags }
@@ -444,7 +454,8 @@ describe('journal-handlers', () => {
     ;(getDatabase as Mock).mockReturnValue(dataDb.db)
     registerJournalHandlers()
     ;(journalVault.readJournalEntry as Mock).mockResolvedValue({ ...baseEntry, tags: ['focus'] })
-    ;(journalVault.writeJournalEntryWithContent as Mock).mockResolvedValue({
+    ;(journalVault.composeJournalEntryWrite as Mock).mockResolvedValue({
+      write,
       entry: baseEntry,
       fileContent: 'serialized',
       frontmatter: { date: baseEntry.date }
@@ -457,7 +468,7 @@ describe('journal-handlers', () => {
       inlineTags: { add: ['meeting', 'car'], remove: ['focus'] }
     })
 
-    expect(journalVault.writeJournalEntryWithContent).toHaveBeenCalledWith(
+    expect(journalVault.composeJournalEntryWrite).toHaveBeenCalledWith(
       '2025-01-01',
       baseEntry.content,
       ['row', 'car'],
@@ -467,14 +478,16 @@ describe('journal-handlers', () => {
     dataDb.close()
   })
 
-  // An open journal editor is bound to the entry's CRDT doc, and the update
-  // moves the index hash to the new bytes, so the watcher never feeds it. An
-  // update from outside the editor (the desktop API) stayed invisible, and the
-  // editor's next write-back put the old body back.
-  it('feeds the saved body to the entry CRDT doc so an open editor shows it', async () => {
+  // An open journal editor is bound to the entry's CRDT doc, and the watcher
+  // ignores the update's write, so nothing else feeds it. An update from
+  // outside the editor (the desktop API) stayed invisible, and the editor's
+  // next write-back put the old body back. The doc takes it before the file
+  // does (D-DOC-FIRST).
+  it('feeds the saved body to the entry CRDT doc before the file write', async () => {
     registerJournalHandlers()
     ;(journalVault.readJournalEntry as Mock).mockResolvedValue({ ...baseEntry })
-    ;(journalVault.writeJournalEntryWithContent as Mock).mockResolvedValue({
+    ;(journalVault.composeJournalEntryWrite as Mock).mockResolvedValue({
+      write,
       entry: { ...baseEntry, content: 'Updated content' },
       fileContent: 'serialized',
       frontmatter: { date: baseEntry.date, tags: baseEntry.tags }
@@ -489,7 +502,10 @@ describe('journal-handlers', () => {
       content: 'Updated content'
     })
 
-    expect(runtimeEffects.feedJournalBodyToCrdt).toHaveBeenCalledWith('cache-1', 'Updated content')
+    expect(feedExternalEditToCrdt).toHaveBeenCalledWith('cache-1', 'Updated content')
+    expect(vi.mocked(feedExternalEditToCrdt).mock.invocationCallOrder[0]).toBeLessThan(
+      write.mock.invocationCallOrder[0]
+    )
   })
 
   it('flushes projections when update creates a missing journal entry', async () => {

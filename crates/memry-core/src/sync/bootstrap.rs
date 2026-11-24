@@ -43,9 +43,13 @@ use std::sync::{Arc, Mutex};
 
 use serde_json::{Value as Json, json};
 
+use crate::api::errors::ApiError;
 use crate::protocol::http::{
     ApiRequest, Auth, BOOTSTRAP_TOKEN_HEADER, HttpClient, RetryPolicy, VAULT_ID_HEADER,
 };
+use crate::seams::diagnostics::{BootstrapOutcome, CoreDiagnostic};
+
+use super::diagnostics::RunDiagnostics;
 
 /// §10.10, `BOOTSTRAP_SESSION_TTL_SECONDS`. The token's own life, renewable.
 pub const BOOTSTRAP_SESSION_TTL_SECONDS: i64 = 3_600;
@@ -97,6 +101,9 @@ pub struct BootstrapOpen {
     /// Why there is no session, for a log line. **Never shown to a user**
     /// (§10.5) and never a reason to retry.
     pub fallback_reason: Option<String>,
+    /// The wait a `RATE_LIMITED` 429 on the open asked for, in seconds, so a
+    /// caller that opens again soon holds back until then (#5247).
+    pub rate_limit_s: Option<u64>,
 }
 
 impl BootstrapOpen {
@@ -120,9 +127,32 @@ pub enum SessionState {
 }
 
 /// The session client. One per vault, held for the length of a first sync.
+/// How long [`BootstrapClient::close`] waits for the server.
+pub const BOOTSTRAP_CLOSE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(5);
+
+/// See [`BootstrapClient::close_on_drop`].
+pub struct CloseOnDrop(Arc<BootstrapClient>);
+
+impl Drop for CloseOnDrop {
+    fn drop(&mut self) {
+        if self.0.lock().session.is_none() {
+            return;
+        }
+        let Ok(runtime) = tokio::runtime::Handle::try_current() else {
+            eprintln!(
+                "memry-core: a dropped run left its bootstrap session open: no runtime to close it"
+            );
+            return;
+        };
+        let client = Arc::clone(&self.0);
+        runtime.spawn(async move { client.close().await });
+    }
+}
+
 pub struct BootstrapClient {
     http: Arc<HttpClient>,
     vault_id: Option<String>,
+    diagnostics: Arc<RunDiagnostics>,
     inner: Mutex<Inner>,
 }
 
@@ -140,8 +170,15 @@ impl BootstrapClient {
         Self {
             http,
             vault_id: None,
+            diagnostics: RunDiagnostics::silent(),
             inner: Mutex::new(Inner::default()),
         }
+    }
+
+    /// Reports how the open answered (#5215).
+    pub fn with_diagnostics(mut self, diagnostics: Arc<RunDiagnostics>) -> Self {
+        self.diagnostics = diagnostics;
+        self
     }
 
     pub fn with_vault(mut self, vault_id: &str) -> Self {
@@ -171,6 +208,7 @@ impl BootstrapClient {
                 session: None,
                 tail_cursor: 0,
                 fallback_reason: Some("one bootstrap session per run (§10.11 rule 3)".to_owned()),
+                rate_limit_s: None,
             };
         }
         self.lock().opened_once = true;
@@ -187,6 +225,8 @@ impl BootstrapClient {
             Ok(body) => body,
             Err(error) => {
                 self.lock().finished = true;
+                let (outcome, status) = open_failure(&error);
+                self.opened(outcome, status);
                 return BootstrapOpen {
                     session: None,
                     tail_cursor: 0,
@@ -194,6 +234,7 @@ impl BootstrapClient {
                     // deployment gap and this string is the whole of the
                     // client's reaction to it.
                     fallback_reason: Some(error.to_string()),
+                    rate_limit_s: error.rate_limit_wait_s(),
                 };
             }
         };
@@ -201,18 +242,22 @@ impl BootstrapClient {
         let tail_cursor = read_tail_cursor(&body);
         let Some(session) = read_session(&body, now_s) else {
             self.lock().finished = true;
+            self.opened(BootstrapOutcome::NoToken, 200);
             return BootstrapOpen {
                 session: None,
                 tail_cursor,
                 fallback_reason: Some("the open response carried no session token".to_owned()),
+                rate_limit_s: None,
             };
         };
 
         self.lock().session = Some(session.clone());
+        self.opened(BootstrapOutcome::Granted, 200);
         BootstrapOpen {
             session: Some(session),
             tail_cursor,
             fallback_reason: None,
+            rate_limit_s: None,
         }
     }
 
@@ -317,12 +362,33 @@ impl BootstrapClient {
             .header(BOOTSTRAP_TOKEN_HEADER, &session.token)
             .retry(RetryPolicy::never())
             .json(&json!({}));
-        if let Err(error) = self.http.send_json::<Json>(request).await {
-            eprintln!(
-                "memry-core: bootstrap session close failed, its slot frees at expiry {}: {error}",
-                session.expires_at
-            );
-        }
+        // Bounded: a stalled network must not hold a failed run's caller for
+        // the transport's whole timeout over a courtesy.
+        let sent = tokio::time::timeout(
+            BOOTSTRAP_CLOSE_TIMEOUT,
+            self.http.send_json::<Json>(request),
+        );
+        let failure = match sent.await {
+            Ok(Ok(_)) => return,
+            Ok(Err(error)) => error.to_string(),
+            Err(_) => format!("no answer in {}s", BOOTSTRAP_CLOSE_TIMEOUT.as_secs()),
+        };
+        eprintln!(
+            "memry-core: bootstrap session close failed, its slot frees at expiry {}: {failure}",
+            session.expires_at
+        );
+    }
+
+    /// A guard that closes the session when dropped, for a run that is
+    /// dropped or cancelled before its own [`Self::close`]. Without it the
+    /// slot stays taken until the session expires, up to an hour.
+    pub fn close_on_drop(self: &Arc<Self>) -> CloseOnDrop {
+        CloseOnDrop(Arc::clone(self))
+    }
+
+    fn opened(&self, outcome: BootstrapOutcome, status: u16) {
+        self.diagnostics
+            .emit(CoreDiagnostic::BootstrapOpened { outcome, status });
     }
 
     fn fall_back(&self) {
@@ -343,6 +409,32 @@ impl BootstrapClient {
         self.inner
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
+}
+
+/// What a failed open tells a log: the closed outcome, and the HTTP status, 0
+/// when no answer came back. The server's code is mapped here and never
+/// passed on as text.
+fn open_failure(error: &ApiError) -> (BootstrapOutcome, u16) {
+    match error {
+        ApiError::Status {
+            status: 409,
+            code: Some(code),
+            ..
+        } if code == "BOOTSTRAP_NOT_ELIGIBLE" => (BootstrapOutcome::NotEligible, 409),
+        ApiError::Status {
+            status: 429,
+            code: Some(code),
+            ..
+        } if code == "BOOTSTRAP_SESSION_LIMIT" => (BootstrapOutcome::SessionLimit, 429),
+        ApiError::BootstrapUnavailable => (BootstrapOutcome::NotImplemented, 501),
+        ApiError::Status { status: 501, .. } => (BootstrapOutcome::NotImplemented, 501),
+        ApiError::Status { status, .. } => (BootstrapOutcome::Failed, *status),
+        ApiError::RateLimited { .. } => (BootstrapOutcome::Failed, 429),
+        ApiError::Unauthorized { .. } => (BootstrapOutcome::Failed, 401),
+        ApiError::PaymentRequired { .. } => (BootstrapOutcome::Failed, 402),
+        ApiError::UpgradeRequired { .. } => (BootstrapOutcome::Failed, 426),
+        _ => (BootstrapOutcome::Failed, 0),
     }
 }
 

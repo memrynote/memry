@@ -15,6 +15,7 @@ pub mod agent_message;
 pub mod agent_queue;
 pub mod agent_records;
 pub mod app_settings;
+pub mod attachment_uploads;
 pub mod attachments;
 pub mod body_tags;
 pub mod body_write;

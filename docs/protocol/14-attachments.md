@@ -32,14 +32,14 @@ travels as a record is the **note's** reference list (§14.7).
 
 - Plaintext is split into fixed **8 MiB** chunks, with the final chunk short
   (`CHUNK_SIZE = 8 * 1024 * 1024`,
-  `apps/desktop/src/main/sync/attachments.ts:44`, applied at `:223`, `:228-230`).
+  `apps/desktop/src/main/sync/attachments.ts:48`, applied at `:241`, `:246-248`).
 - **At most 128 chunks per upload session**
   (`packages/contracts/src/blob-api.ts:17`, `:32`), so the effective per-file
   ceiling is **1 GiB** before plan limits.
 - **Each chunk on the wire is `nonce(24) ‖ ciphertext`**, built explicitly
-  (`apps/desktop/src/main/sync/attachments.ts:463-466`) and unpacked the same way
-  on read (`:808-809`). The AEAD is chapter 04 §4.3.
-- **All chunks share one file key** (`apps/desktop/src/main/sync/attachments.ts:463`
+  (`apps/desktop/src/main/sync/attachments.ts:534-537`) and unpacked the same way
+  on read (`:888-889`). The AEAD is chapter 04 §4.3.
+- **All chunks share one file key** (`apps/desktop/src/main/sync/attachments.ts:534`
   encrypts every chunk under the same `fileKey`), wrapped under the vault key
   once, in the manifest (§14.4).
 
@@ -49,7 +49,7 @@ travels as a record is the **note's** reference list (§14.7).
 ciphertext bytes** — that is, of `nonce ‖ ciphertext`, not of the plaintext —
 matched by `/^[a-f0-9]{64}$/`
 (`packages/contracts/src/blob-api.ts:10`, computed at
-`apps/desktop/src/main/sync/attachments.ts:468`).
+`apps/desktop/src/main/sync/attachments.ts:539`).
 
 **The object key is derived server-side from the caller's user and vault scope,
 so a client never submits key material** (`packages/contracts/src/blob-api.ts:5-8`).
@@ -66,8 +66,8 @@ readers on the selected vault never find (#2634). A presigned R2 URL is not a
 §14.5 route and carries no vault header.
 
 **The plaintext chunk hash is a separate value** used for the integrity check
-after decrypt (`apps/desktop/src/main/sync/attachments.ts:461`, checked at
-`:812`; declared at
+after decrypt (`apps/desktop/src/main/sync/attachments.ts:532`, checked at
+`:893`; declared at
 `packages/sync-client/src/push/attachment-manifest.ts:19-22`). **A reader MUST
 verify it**: the ciphertext hash proves the server returned the bytes it was
 asked for, and only the plaintext hash proves they decrypt to the right content.
@@ -111,7 +111,7 @@ redirecting a note's picture at somebody else's bytes.
 `:111-120`). A conforming reader MUST keep that order.
 
 An unresolvable signer device is a hard failure, not a fallback
-(`apps/desktop/src/main/sync/attachments.ts:703`).
+(`apps/desktop/src/main/sync/attachments.ts:782`).
 
 ## 14.5 Routes
 
@@ -120,21 +120,22 @@ An unresolvable signer device is a hard failure, not a fallback
 
 | Method | Path                                                      | Line   |
 | ------ | --------------------------------------------------------- | ------ |
-| GET    | `/sync/blob/:blob_key`                                    | `:161` |
-| DELETE | `/sync/blob/:blob_key`                                    | `:207` |
-| POST   | `/sync/attachments/upload/initiate`                       | `:230` |
-| PUT    | `/sync/attachments/upload/:session_id/chunk/:chunk_index` | `:361` |
-| POST   | `/sync/attachments/upload/:session_id/complete`           | `:451` |
-| GET    | `/sync/attachments/upload/:session_id`                    | `:574` |
-| DELETE | `/sync/attachments/upload/:session_id`                    | `:592` |
-| POST   | `/sync/attachments/dereference`                           | `:672` |
-| POST   | `/sync/attachments/holds`                                 | `:715` |
-| POST   | `/sync/attachments/holds/release`                         | `:729` |
-| POST   | `/sync/attachments/presign-batch`                         | `:765` |
-| HEAD   | `/sync/attachments/chunks/:chunk_hash`                    | `:826` |
-| GET    | `/sync/attachments/chunks/:chunk_hash`                    | `:847` |
-| GET    | `/sync/attachments/:attachment_id/manifest`               | `:878` |
-| PUT    | `/sync/attachments/:attachment_id/manifest`               | `:893` |
+| GET    | `/sync/blob/:blob_key`                                    | `:178` |
+| DELETE | `/sync/blob/:blob_key`                                    | `:225` |
+| POST   | `/sync/attachments/upload/initiate`                       | `:248` |
+| PUT    | `/sync/attachments/upload/:session_id/chunk/:chunk_index` | `:379` |
+| POST   | `/sync/attachments/upload/:session_id/complete`           | `:469` |
+| GET    | `/sync/attachments/upload/:session_id`                    | `:593` |
+| DELETE | `/sync/attachments/upload/:session_id`                    | `:611` |
+| POST   | `/sync/attachments/dereference`                           | `:691` |
+| POST   | `/sync/attachments/holds`                                 | `:734` |
+| POST   | `/sync/attachments/holds/release`                         | `:748` |
+| POST   | `/sync/attachments/presign-batch`                         | `:784` |
+| HEAD   | `/sync/attachments/chunks/:chunk_hash`                    | `:843` |
+| GET    | `/sync/attachments/chunks/:chunk_hash`                    | `:864` |
+| GET    | `/sync/attachments/:attachment_id/manifest`               | `:895` |
+| POST   | `/sync/attachments/manifests/batch`                       | `:917` |
+| PUT    | `/sync/attachments/:attachment_id/manifest`               | `:941` |
 
 ### 14.5.1 The minimal read-only route set — Q14.1
 
@@ -142,16 +143,57 @@ An unresolvable signer device is a hard failure, not a fallback
 
 | Route                                                    | Why                                                                                 |
 | -------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| `GET /sync/attachments/:attachment_id/manifest` (`:827`) | the only way to learn a file's chunk list and get its wrapped key                   |
-| `POST /sync/attachments/presign-batch` (`:714`)          | one call issues up to 1024 presigned GETs (`packages/contracts/src/blob-api.ts:62`) |
-| `GET /sync/attachments/chunks/:chunk_hash` (`:796`)      | the proxied fallback when presign is unavailable (§14.6)                            |
+| `GET /sync/attachments/:attachment_id/manifest` (`:895`) | the only way to learn a file's chunk list and get its wrapped key                   |
+| `POST /sync/attachments/presign-batch` (`:784`)          | one call issues up to 1024 presigned GETs (`packages/contracts/src/blob-api.ts:98`) |
+| `GET /sync/attachments/chunks/:chunk_hash` (`:864`)      | the proxied fallback when presign is unavailable (§14.6)                            |
 
 It needs **none** of the upload session routes, **not** `dereference` (§14.8),
 and **not** `/sync/blob/:blob_key`, which addresses record payload blobs rather
-than attachment chunks. `HEAD /attachments/chunks/:chunk_hash` (`:775`) is
+than attachment chunks. `HEAD /attachments/chunks/:chunk_hash` (`:843`) is
 optional and is an existence probe, not a requirement.
 
 **Disposition of Q14.1: answered (three routes).**
+
+### 14.5.2 Batched manifest reads (#5329)
+
+**Normative.** `POST /sync/attachments/manifests/batch`
+(`apps/sync-server/src/routes/blob.ts:917`) takes `{ attachmentIds }`, 1 to 100
+ids, each without `/` (`packages/contracts/src/blob-api.ts:113-125`). It answers
+`{ manifests: Record<attachmentId, manifest> }`. Each value is the manifest
+exactly as `GET /sync/attachments/:attachment_id/manifest` returns it, and an id
+with no stored manifest is absent. The client gate treats it as a read
+(`apps/sync-server/src/middleware/client-gate.ts:20`). It spends one
+`blob_download` token per distinct id, the same as the single GETs it replaces
+(`apps/sync-server/src/routes/blob.ts:113-121`,
+`apps/sync-server/src/middleware/rate-limit.ts:50`).
+
+The route is optional for a client and additive for the server. A conforming
+reader verifies a batched manifest's signature exactly as a single one (§14.4.1).
+On an older server the route answers 404; the reader then fetches each manifest
+with the single GET. Desktop remembers that answer for 10 minutes
+(`apps/desktop/src/main/sync/attachment-download-prefetch.ts:9`). An id missing
+from the answer is fetched with the single GET, which reports its 404.
+
+**Informative.** Desktop batches the manifests of the downloads in flight and
+queued behind the one that starts, leaving out ids whose manifest a download
+already took (`apps/desktop/src/main/sync/download-queue.ts:356`,
+`apps/desktop/src/main/sync/attachment-download-prefetch.ts:56`). Presigned chunk
+URLs live in one cache keyed by chunk hash. A chunk with no live URL arms a
+presign call over its transfer's uncovered chunks first, then over the chunks of
+batched downloads that have no URL yet, up to 1024; every call adds to the cache
+(`apps/desktop/src/main/sync/attachment-download-prefetch.ts:77`). Measured
+through the real queue and service against a fake server with presigning on,
+1,064 single-chunk attachments cost 11 manifest calls, no single manifest GET,
+and 11 presign calls, with no chunk proxied
+(`apps/desktop/src/main/sync/attachment-download-batching.test.ts`). With 80 ms
+presign and 150 ms manifest latency, the queue made 13 presign calls whether a
+chunk took 30 ms or 250 ms; with every 20th attachment at 300 chunks, it made 23.
+
+The Rust core batches the manifests of one re-drive call's downloads, leaving
+out ids the metered policy defers, and fetches alone when fewer than two would
+download. It remembers a 404 for 10 minutes per vault
+(`crates/memry-core/src/api/sync/attachment_fetch.rs:30`, `:248`,
+`crates/memry-core/src/protocol/attachments.rs:165`).
 
 ## 14.6 Two transfer paths
 
@@ -170,16 +212,22 @@ presign route on a timer.
 
 Caps:
 
-| Call                                             |         Cap | Source                                  |
-| ------------------------------------------------ | ----------: | --------------------------------------- |
-| `presign-batch` (download)                       | 1024 hashes | `packages/contracts/src/blob-api.ts:62` |
-| `upload/initiate` `chunkHashes` (upload presign) |         128 | `packages/contracts/src/blob-api.ts:32` |
-| `dereference`                                    |        4096 | `packages/contracts/src/blob-api.ts:49` |
+| Call                                             |         Cap | Source                                   |
+| ------------------------------------------------ | ----------: | ---------------------------------------- |
+| `presign-batch` (download)                       | 1024 hashes | `packages/contracts/src/blob-api.ts:98`  |
+| `manifests/batch`                                |     100 ids | `packages/contracts/src/blob-api.ts:113` |
+| `upload/initiate` `chunkHashes` (upload presign) |         128 | `packages/contracts/src/blob-api.ts:32`  |
+| `dereference`                                    |        4096 | `packages/contracts/src/blob-api.ts:49`  |
 
 `PresignBatchResponseSchema` is `{ urls: Record<hash, url>, expiresAt }` with
 `expiresAt` in **epoch seconds**
-(`packages/contracts/src/blob-api.ts:65-70`). `dereference` is rate limited to 20
-requests per 60 s (`apps/sync-server/src/routes/blob.ts:120-124`).
+(`packages/contracts/src/blob-api.ts:105-110`). A hash with no `blob_chunks` row in the
+caller's vault is absent from `urls`, and the client fetches that chunk through
+the proxied GET, which reports its 404
+(`apps/sync-server/src/routes/blob.ts:816-826`). The route never answers 404 for
+a missing hash, because desktop reads a 404 here as "presign unavailable"
+(`apps/desktop/src/main/sync/attachment-presign.ts:83`). `dereference` is rate limited to 20
+requests per 60 s (`apps/sync-server/src/routes/blob.ts:140-144`).
 
 ## 14.7 What connects a note to a manifest — Q14.2
 
@@ -187,7 +235,7 @@ requests per 60 s (`apps/sync-server/src/routes/blob.ts:120-124`).
 **attachment ids** (`packages/contracts/src/sync-payloads.ts:241`; chapter 13
 §13.7.1). An attachment id is exactly the `:attachment_id` path parameter of
 `GET /sync/attachments/:attachment_id/manifest`
-(`apps/sync-server/src/routes/blob.ts:827`) and the `id` field inside the
+(`apps/sync-server/src/routes/blob.ts:895`) and the `id` field inside the
 manifest itself (`packages/sync-client/src/push/attachment-manifest.ts:27`).
 
 The resolution chain is therefore:
@@ -285,7 +333,7 @@ and the manifest's `filename` is that path's last segment
   (`crates/memry-core/src/domain/inbox/write.rs:34`). An upload the server
   refuses for quota or for the plan's file size, both `413`
   (`STORAGE_QUOTA_EXCEEDED`, `STORAGE_FILE_TOO_LARGE`;
-  `apps/sync-server/src/routes/blob.ts:271`, `:274`,
+  `apps/sync-server/src/routes/blob.ts:288`, `:291`,
   `apps/sync-server/src/services/quota.ts:12`), is permanent. The capture gets
   no `attachmentId`, the device does not retry, and peers show the capture
   without its file (`crates/memry-core/src/api/sync/inbox_attachments.rs:67-78`).
@@ -311,7 +359,7 @@ against `manifest.size` under-counts.
 
 `POST /sync/attachments/dereference` is how chunk bytes are garbage collected: a
 client that removes an attachment reference tells the server the chunks are no
-longer needed (`apps/sync-server/src/routes/blob.ts:672`).
+longer needed (`apps/sync-server/src/routes/blob.ts:691`).
 
 **A read-only client never dereferences, and never calling it is safe.** It
 cannot leak quota, because quota is consumed by **uploads**, and a read-only
@@ -370,9 +418,9 @@ live while `ref_count > 0` or a hold names it.
   refund it. Storage is clamped at zero, so the effect is an under-counted
   quota, never a freed live chunk.
 - A dereference that takes a held chunk to zero refunds nothing; the release of
-  its last hold does (`apps/sync-server/src/routes/blob.ts:695-706`). The sweep
+  its last hold does (`apps/sync-server/src/routes/blob.ts:712-723`). The sweep
   reaps only rows with `ref_count <= 0` and no hold
-  (`apps/sync-server/src/services/cleanup.ts:345,360`).
+  (`apps/sync-server/src/services/cleanup.ts:387,402`).
 - A server that predates holds answers 404. A client treats that as "no holds":
   it pushes as before and has nothing to release
   (`apps/desktop/src/main/canvas/assets/chunk-holds.ts:107,143`).
@@ -418,7 +466,7 @@ the iOS core hold nothing past the probe of §14.8.2.
 
 ### 14.8.2 Revived notes re-upload freed attachments (#3054)
 
-**Client behaviour, desktop only; no wire, D1 or format change.** A note's
+**Client behaviour; no wire, D1 or format change.** On desktop, a note's
 attachments are freed by dereference 30 days after the delete, unless the note
 is live again on the deleting device by then
 (`apps/desktop/src/main/sync/deleted-asset-release.ts:276`). A device whose
@@ -435,7 +483,7 @@ references, in the next upload re-drive
   which refuses a dead chunk because it requires `ref_count > 0` or another
   hold (`apps/sync-server/src/services/chunk-holds.ts:54`).
   `HEAD /attachments/chunks/:chunk_hash` and `presign-batch` answer from the
-  `blob_chunks` row alone (`apps/sync-server/src/routes/blob.ts:826`, `:765`),
+  `blob_chunks` row alone (`apps/sync-server/src/routes/blob.ts:848`, `:816`),
   and a dereferenced chunk keeps that row until the sweep, so neither can tell
   a freed chunk from a live one. The probe releases its holds at once
   (`apps/desktop/src/main/canvas/assets/chunk-holds.ts:215`). Its holder id is
@@ -448,24 +496,40 @@ references, in the next upload re-drive
 - For each attachment that is gone, the device drops the id from the note's
   `attachmentReferences`, so the upload's dedup cannot reuse its still-present
   manifest, and queues its local file in the upload outbox
-  (`apps/desktop/src/main/sync/note-attachment-revival.ts:91-99`). The upload
+  (`apps/desktop/src/main/sync/note-attachment-revival.ts:91-100`). The upload
   adds the new id and pushes the note, as any upload does
-  (`apps/desktop/src/main/sync/note-attachment-metadata.ts:10`).
+  (`apps/desktop/src/main/sync/note-attachment-metadata.ts:10`). An empty
+  file, or one the uploader refused and nobody has written since, is not
+  queued, because it would be refused again
+  (`apps/desktop/src/main/sync/attachment-outbox.ts:136-150`).
 
 Chunk holds are not used for this: a hold ends with the grace period, so a
 peer offline for longer than that would still revive a note whose chunks are
 gone. Pending checks live in memory, so a restart before a check settles loses
 it.
 
+**Core: an owed upload outlives the purge.** In the core, a pulled delete that
+purges a note's body keeps the note's owed uploads, each with its row and its
+local bytes, and logs how many it kept
+(`crates/memry-core/src/sync/apply.rs:303-311`). A sync pass uploads nothing
+for a note that is not live (`crates/memry-core/src/api/sync/note_uploads.rs:336-345`).
+No age ends the wait, because the server accepts a create over the note's
+marker at any age (§5.12.3) and those bytes are the only copy
+(`crates/memry-core/src/api/sync/note_uploads.rs:25-33`). After a same-id
+revive, the next pass uploads the kept bytes once under the attachment's own
+id, and the transaction that adds the note's reference ends the debt
+(`crates/memry-core/src/api/sync/note_uploads.rs:380-387`). A detach ends it
+too, and nothing uploads (`crates/memry-core/src/api/sync/attachments_io.rs:82-83`).
+
 **Disposition of Q14.3: answered (safe; quota is consumed by uploads only).**
 
 ## 14.9 `CHUNK_SIZE` is not a contract constant — Q14.4
 
 **Normative.** `CHUNK_SIZE = 8 MiB` is a **desktop constant**
-(`apps/desktop/src/main/sync/attachments.ts:44`) and does not appear in
+(`apps/desktop/src/main/sync/attachments.ts:48`) and does not appear in
 `packages/contracts`. The manifest carries **`chunkSize` per file**
 (`packages/sync-client/src/push/attachment-manifest.ts:34`, written at
-`apps/desktop/src/main/sync/attachments.ts:498`).
+`apps/desktop/src/main/sync/attachments.ts:570`).
 
 **A reader therefore does not need it and MUST NOT assume it**: it MUST size
 every chunk from `manifest.chunks[j].size` and treat `manifest.chunkSize` as

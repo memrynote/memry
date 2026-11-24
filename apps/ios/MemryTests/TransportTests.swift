@@ -337,6 +337,20 @@ struct TransportHTTPTests {
         #expect(elapsed < 5_000, "ended long after its ceiling, so the ceiling did not end it")
     }
 
+    /// #5331: a pack GET's deadline runs to minutes, and the idle timer stays
+    /// at chapter 00 §0.6's 60 s, so a stalled pack still fails a minute after
+    /// its last byte. A shorter deadline is its own idle timer too.
+    @Test("the idle timer is 60 s, or the deadline when that is shorter")
+    func idleTimerIsCappedAtSixtySeconds() async throws {
+        StubURLProtocol.script(.respond(status: 200, headers: [:], body: Data(), chunks: 1))
+        _ = try await transport().send(request: request(timeoutMs: 1_200_000))
+        #expect(StubURLProtocol.lastRequest()?.timeoutInterval == 60)
+
+        StubURLProtocol.script(.respond(status: 200, headers: [:], body: Data(), chunks: 1))
+        _ = try await transport().send(request: request(timeoutMs: 400))
+        #expect(StubURLProtocol.lastRequest()?.timeoutInterval == 0.4)
+    }
+
     @Test("a dead network path is Offline, which is the variant reachability drives")
     func noPathIsOffline() async throws {
         StubURLProtocol.script(.fail(.notConnectedToInternet))

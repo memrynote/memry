@@ -18,9 +18,11 @@ use crate::driver_fakes::Desktop;
 /// A device that registers after the driver fetched its directory.
 const GHOST: &str = "server-device-9";
 const GHOST_SEED: u8 = 29;
-/// A clockless type: the server takes any edit of it over a delete, so an
-/// edit sent before the delete verifies brings the item back everywhere.
-const ITEM_TYPE: &str = "settings";
+/// A clocked type the push seals: an edit sent before the delete verifies
+/// carries the item back over the delete everywhere. Not `settings`: a pulled
+/// settings delete is skipped (#5434), and only `settings` may be sent with no
+/// clock (chapter 05 §5.4).
+const ITEM_TYPE: &str = "task";
 const ID: &str = "editor";
 
 fn failed(error: rusqlite::Error) -> StorageError {
@@ -29,14 +31,14 @@ fn failed(error: rusqlite::Error) -> StorageError {
     }
 }
 
-/// A driver holding settings [`ID`] live, whose delete by [`GHOST`] the last pass
+/// A driver holding task [`ID`] live, whose delete by [`GHOST`] the last pass
 /// refused: the directory did not list the signer.
 async fn refused_delete() -> Desktop {
     let desktop = Desktop::open_with(Declaration::desktop(), |_| Ok(())).await;
     desktop.server.put(
         ITEM_TYPE,
         ID,
-        json!({"settings": {"fontSize": 14}, "fieldClocks": {}}),
+        json!({"title": "light", "clock": {"peer": 1}, "fieldClocks": {}}),
     );
     desktop.server.page(&[ID], "1");
     desktop.pass().await;
@@ -57,7 +59,7 @@ fn edit(db: &Db) {
                 tx,
                 ITEM_TYPE,
                 ID,
-                &[("settings", FieldChange::Set(json!({"fontSize": 15})))],
+                &[("title", FieldChange::Set(json!("dark")))],
                 2,
             )
         })
@@ -194,12 +196,18 @@ async fn a_signer_that_never_registers_is_re_pulled_a_bounded_number_of_times() 
     let mut desktop = refused_delete().await;
     let before = pulls_of_item(&desktop);
 
-    for _ in 0..8 {
+    // Each reopen and pass re-pulls twice. A re-pull that comes back
+    // unverifiable counts toward MAX_FAILURES (50), not MAX_RETRIES (#5513).
+    for _ in 0..28 {
         desktop = desktop.reopen(Declaration::desktop()).await;
         desktop.pass().await;
     }
 
-    assert_eq!(pulls_of_item(&desktop) - before, 5, "MAX_RETRIES re-pulls");
+    assert_eq!(
+        pulls_of_item(&desktop) - before,
+        50,
+        "MAX_FAILURES re-pulls"
+    );
     assert!(!deleted(&desktop.db), "never verified: kept");
 
     // Given up: the hold ends and a later edit is sent.
@@ -217,7 +225,7 @@ async fn an_edit_queued_after_the_delete_applied_is_not_pushed() {
     desktop.server.put(
         ITEM_TYPE,
         ID,
-        json!({"settings": {"fontSize": 14}, "fieldClocks": {}}),
+        json!({"title": "light", "clock": {"peer": 1}, "fieldClocks": {}}),
     );
     desktop.server.page(&[ID], "1");
     desktop.pass().await;
@@ -245,7 +253,8 @@ async fn an_edit_queued_after_the_delete_applied_is_not_pushed() {
 async fn a_failed_refetch_counts_against_the_budget() {
     let desktop = refused_delete().await;
     desktop.server.devices_garbled(true);
-    for _ in 0..5 {
+    // A garbled directory counts toward MAX_FAILURES (50, #5513).
+    for _ in 0..50 {
         desktop.pass().await;
     }
 

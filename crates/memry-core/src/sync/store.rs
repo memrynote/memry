@@ -97,7 +97,7 @@ pub fn mark_deleted(
         params![item_type, item_id, server_cursor, now_ms, deleted_at],
     )
     .map_err(failed)?;
-    Ok(())
+    super::delete_wins::forget(conn, item_type, item_id)
 }
 
 /// Remembers a delete clock for `(type, id)`, merged into what is already
@@ -161,11 +161,12 @@ pub fn tombstone_clock(
     .transpose()
 }
 
-/// Whether a bare tombstone was filed for this id (§5.12.1).
+/// Whether an older build filed a bare tombstone for this id (§5.12.2).
 ///
 /// Consulted before an apply, because the tombstone that arrived without a
 /// type has to outrank the typed item that arrives after it; otherwise the
 /// "does not resurrect it locally" guarantee holds only until the next page.
+/// No current path files one (§5.12.1, #5340); the rows already on disk stay.
 pub fn has_bare_tombstone(conn: &Connection, item_id: &str) -> Result<bool, StorageError> {
     conn.prepare_cached(
         "SELECT 1 FROM sync_items

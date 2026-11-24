@@ -18,8 +18,11 @@
 //! `bench oracle-state` prints what this device holds in the shape the
 //! zero-loss oracle reads (`tests/sync-harness/src/zero-loss-oracle`), so the
 //! sync harness can run the oracle on a core bootstrap (#5232).
+//!
+//! `bench body-coverage` counts the live documents the server holds a body for
+//! that this device does not, after a bootstrap.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -65,7 +68,10 @@ pub fn parse(args: &mut Args) -> Result<Command, UsageError> {
         Some("oracle-state") => Ok(Command::BenchOracleState {
             vault: required(args, "--vault", "bench oracle-state")?,
         }),
-        _ => usage("bench needs a subcommand: bootstrap or oracle-state"),
+        Some("body-coverage") => Ok(Command::BenchBodyCoverage {
+            vault: required(args, "--vault", "bench body-coverage")?,
+        }),
+        _ => usage("bench needs a subcommand: bootstrap, oracle-state or body-coverage"),
     }
 }
 
@@ -91,22 +97,30 @@ fn mark(name: &str, fields: Json) {
     println!("{line}");
 }
 
-/// Marks `records` once the metadata pass has applied every record.
+/// Marks `records` when the records phase ends, as iOS's `the first sync is
+/// pulling bodies` line does: every record pass is over (#5233).
 #[derive(Default)]
 struct Progress {
-    phase: Mutex<Option<SyncPhase>>,
+    /// The phase last seen, and the documents its last records tick held.
+    state: Mutex<(Option<SyncPhase>, u64)>,
 }
 
 impl SyncProgressListener for Progress {
     fn progress(&self, progress: SyncProgress) {
-        let mut phase = self.phase.lock().unwrap_or_else(|p| p.into_inner());
-        if *phase != Some(progress.phase) {
-            mark("phase", json!({ "phase": format!("{:?}", progress.phase) }));
-            *phase = Some(progress.phase);
+        let mut state = self.state.lock().unwrap_or_else(|p| p.into_inner());
+        let (phase, documents) = &mut *state;
+        if *phase == Some(progress.phase) {
+            if progress.phase == SyncPhase::Records {
+                *documents = progress.completed;
+            }
+            return;
         }
-        if progress.phase == SyncPhase::Metadata && progress.completed >= progress.total {
-            mark("records", json!({ "applied": progress.completed }));
+        if *phase == Some(SyncPhase::Records) {
+            mark("records", json!({ "documents": *documents }));
         }
+        mark("phase", json!({ "phase": format!("{:?}", progress.phase) }));
+        *phase = Some(progress.phase);
+        *documents = progress.completed;
     }
 }
 
@@ -136,6 +150,10 @@ pub async fn bootstrap(
         "firstSync",
         json!({
             "metadataApplied": summary.metadata_applied,
+            "recordPackEntries": summary.record_pack_entries,
+            "reconcilePulled": summary.reconcile_pulled,
+            "packBodiesSettled": summary.pack_bodies_settled,
+            "bodiesOwed": summary.bodies_owed,
             "metadataCorrupt": summary.metadata_corrupt,
             "bodies": summary.bodies,
             "bodiesStopped": summary.bodies_stopped,
@@ -174,10 +192,36 @@ pub async fn bootstrap(
         }
     }
 
-    let (live, with_body) = body_coverage(&db).await?;
+    let (live, without_body) = db.call(|conn| body_coverage(conn)).await?;
     mark(
         "end",
-        json!({ "liveDocuments": live, "withBody": with_body }),
+        json!({ "liveDocuments": live, "withBody": live - without_body.len() as u64 }),
+    );
+    Ok(())
+}
+
+/// `bench body-coverage`: the local body coverage, and how many documents the
+/// server holds a body for that this device does not. Its own command, so the
+/// body manifest read is not bootstrap traffic: neither the benchmark's timed
+/// window nor the zero-loss harness's request counts see it.
+pub async fn coverage(cli: &Cli, vault: &str) -> Result<(), CliError> {
+    let db = cli.open_vault(vault)?;
+    let (live, without_body) = db.call(|conn| body_coverage(conn)).await?;
+    let server_bodies = match body_pull(cli, db, vault).await?.server_body_ids().await {
+        Ok(ids) => ids,
+        Err(error) => {
+            eprintln!("bench body-coverage: the body manifest read failed: {error}");
+            None
+        }
+    };
+    println!(
+        "{}",
+        json!({
+            "liveDocuments": live,
+            "withBody": live - without_body.len() as u64,
+            // Null when the body manifest read failed or stopped short.
+            "missingBodies": server_bodies.map(|ids| missing_bodies(&without_body, &ids)),
+        })
     );
     Ok(())
 }
@@ -190,23 +234,45 @@ async fn body_pull(cli: &Cli, db: Db, vault: &str) -> Result<BodyPull, CliError>
     Ok(BodyPull::new(http, db, Declaration::subscribed(), cipher).with_vault(vault))
 }
 
-/// Live notes and journals, and how many of them hold any body state locally.
-async fn body_coverage(db: &Db) -> Result<(u64, u64), StorageError> {
-    db.call(|conn| {
-        conn.query_row(
-            "SELECT COUNT(*), COUNT(b.doc_id) FROM sync_items i \
-             LEFT JOIN (SELECT doc_id FROM yjs_snapshots UNION SELECT doc_id FROM yjs_updates) b \
-               ON b.doc_id = i.item_id \
-             WHERE i.item_type IN ('note', 'journal') AND i.deleted_at IS NULL \
-               AND i.corrupt_reason IS NULL",
+/// Live notes and journals, and the ids of those that hold no body state
+/// locally.
+fn body_coverage(conn: &Connection) -> Result<(u64, Vec<String>), StorageError> {
+    let failed = |error: rusqlite::Error| StorageError::Failed {
+        what: format!("counting local bodies: {error}"),
+    };
+    let live: i64 = conn
+        .query_row(
+            &format!("SELECT COUNT(*) FROM sync_items i WHERE {LIVE_DOCUMENT}"),
             [],
-            |row| Ok((row.get::<_, i64>(0)? as u64, row.get::<_, i64>(1)? as u64)),
+            |row| row.get(0),
         )
-        .map_err(|error| StorageError::Failed {
-            what: format!("counting local bodies: {error}"),
-        })
-    })
-    .await
+        .map_err(failed)?;
+    let mut statement = conn
+        .prepare(&format!(
+            "SELECT i.item_id FROM sync_items i WHERE {LIVE_DOCUMENT} \
+               AND NOT EXISTS (SELECT 1 FROM yjs_snapshots WHERE doc_id = i.item_id) \
+               AND NOT EXISTS (SELECT 1 FROM yjs_updates WHERE doc_id = i.item_id) \
+             ORDER BY i.item_id"
+        ))
+        .map_err(failed)?;
+    let without_body = statement
+        .query_map([], |row| row.get(0))
+        .and_then(Iterator::collect)
+        .map_err(failed)?;
+    Ok((live as u64, without_body))
+}
+
+const LIVE_DOCUMENT: &str = "i.item_type IN ('note', 'journal') AND i.deleted_at IS NULL \
+     AND i.corrupt_reason IS NULL";
+
+/// The documents with no local body that the server holds a body for. One the
+/// server has no body for (an attachment note, a note never edited) is not
+/// missing anything (#5232).
+fn missing_bodies(without_body: &[String], server_bodies: &HashSet<String>) -> usize {
+    without_body
+        .iter()
+        .filter(|doc_id| server_bodies.contains(*doc_id))
+        .count()
 }
 
 /// The oracle's `LocalVaultState`, plus what its semantic check digests: each
@@ -218,10 +284,13 @@ pub async fn oracle_state(cli: &Cli, vault: &str) -> Result<(), CliError> {
     let mut bodies = db.call(|conn| read_bodies(conn)).await?;
     let mut state_vectors = BTreeMap::new();
     let mut body_states = BTreeMap::new();
-    for doc_id in bodies.keys() {
+    for (doc_id, entry) in bodies.iter_mut() {
         let body = open_body(&db, doc_id)?;
         state_vectors.insert(doc_id.clone(), format_hex(&body.state_vector()?));
         body_states.insert(doc_id.clone(), format_hex(&body.encode_state()?));
+        // #5351: an update whose parents never arrived stays pending and shows
+        // nothing, while the sequence numbers still read as applied.
+        entry["pending"] = json!(body.has_missing_updates()?);
     }
     let owed = db.call(|conn| body_debt::owed(conn)).await?;
     for doc_id in &owed {
@@ -282,7 +351,8 @@ fn read_records(conn: &Connection) -> Result<Records, StorageError> {
 
 /// Every document with body state or a body cursor: the baseline's revision,
 /// the highest server sequence the device holds (its cursor, or the
-/// baseline's), and whether it holds no Yjs state at all.
+/// baseline's), and whether it holds no Yjs state at all. `pending` is filled
+/// in by [`oracle_state`], which replays each body.
 fn read_bodies(conn: &Connection) -> Result<BTreeMap<String, Json>, StorageError> {
     let mut statement = conn
         .prepare(
@@ -338,7 +408,7 @@ fn read_bodies(conn: &Connection) -> Result<BTreeMap<String, Json>, StorageError
 }
 
 fn empty_body() -> Json {
-    json!({ "snapshotRevision": null, "appliedThrough": 0, "empty": true })
+    json!({ "snapshotRevision": null, "appliedThrough": 0, "empty": true, "pending": false })
 }
 
 fn storage(error: rusqlite::Error) -> StorageError {
@@ -353,7 +423,35 @@ fn sync_failed(error: SyncError) -> CliError {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashSet;
+
+    use rusqlite::Connection;
+
+    use super::{body_coverage, missing_bodies};
     use crate::cli::{Command, Parsed, parse};
+
+    #[test]
+    fn a_missing_body_is_one_the_server_holds() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            "CREATE TABLE sync_items (item_id TEXT, item_type TEXT, deleted_at TEXT, corrupt_reason TEXT);
+             CREATE TABLE yjs_snapshots (doc_id TEXT);
+             CREATE TABLE yjs_updates (doc_id TEXT);
+             INSERT INTO sync_items VALUES
+               ('snap', 'note', NULL, NULL), ('upd', 'journal', NULL, NULL),
+               ('owed', 'note', NULL, NULL), ('attachment', 'note', NULL, NULL),
+               ('gone', 'note', '1', NULL), ('bad', 'note', NULL, 'x'), ('task', 'task', NULL, NULL);
+             INSERT INTO yjs_snapshots VALUES ('snap');
+             INSERT INTO yjs_updates VALUES ('upd'), ('upd');",
+        )
+        .unwrap();
+        let (live, without_body) = body_coverage(&conn).unwrap();
+        assert_eq!(live, 4);
+        assert_eq!(without_body, ["attachment", "owed"]);
+        // The server holds a body for `owed` only: `attachment` never had one.
+        let server: HashSet<String> = ["snap", "upd", "owed"].map(String::from).into();
+        assert_eq!(missing_bodies(&without_body, &server), 1);
+    }
 
     fn bench(line: &str) -> Result<Command, String> {
         let args = line.split_whitespace().map(String::from).collect();
@@ -388,12 +486,19 @@ mod tests {
                 vault: "v-1".to_string()
             })
         );
+        assert_eq!(
+            bench("bench body-coverage --vault v-1"),
+            Ok(Command::BenchBodyCoverage {
+                vault: "v-1".to_string()
+            })
+        );
         for line in [
             "bench bootstrap --vault v-1 --pass-interval",
             "bench bootstrap --vault v-1 --pass-interval 1.5",
             "bench bootstrap --vault v-1 --pass-interval -3",
             "bench bootstrap --vault v-1 --resume --resume-later",
             "bench oracle-state",
+            "bench body-coverage",
         ] {
             assert!(bench(line).is_err(), "`{line}` should not parse");
         }

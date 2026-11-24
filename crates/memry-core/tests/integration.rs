@@ -31,6 +31,10 @@ mod api_inbox;
 mod api_inbox_attachments;
 #[path = "api_journal.rs"]
 mod api_journal;
+#[path = "api_note_attachment_queue.rs"]
+mod api_note_attachment_queue;
+#[path = "api_note_full_width.rs"]
+mod api_note_full_width;
 #[path = "api_notes_write.rs"]
 mod api_notes_write;
 #[path = "api_search.rs"]
@@ -44,6 +48,10 @@ mod api_search_file_text;
 mod api_sticky_store;
 #[path = "api_sync_declaration.rs"]
 mod api_sync_declaration;
+#[path = "api_sync_diagnostics.rs"]
+mod api_sync_diagnostics;
+#[path = "api_sync_drain.rs"]
+mod api_sync_drain;
 #[path = "api_sync_oversized_update.rs"]
 mod api_sync_oversized_update;
 #[path = "api_sync_pass.rs"]
@@ -102,6 +110,8 @@ mod body_edit_ops;
 mod body_edit_replace_text;
 #[path = "body_edit_restore.rs"]
 mod body_edit_restore;
+#[path = "body_edit_split.rs"]
+mod body_edit_split;
 #[path = "body_tags_reindex.rs"]
 mod body_tags_reindex;
 #[path = "calendar_cursor_device_local.rs"]
@@ -315,8 +325,14 @@ mod editor_locked_refuses;
 mod editor_open_apply;
 #[path = "editor_origin_fanout.rs"]
 mod editor_origin_fanout;
+#[path = "embedding_input_vectors.rs"]
+mod embedding_input_vectors;
+#[path = "embedding_parity.rs"]
+mod embedding_parity;
 #[path = "external_feed.rs"]
 mod external_feed;
+#[path = "feedback_send.rs"]
+mod feedback_send;
 #[path = "field_merge_vectors.rs"]
 mod field_merge_vectors;
 #[path = "fold_chunks_store.rs"]
@@ -345,6 +361,8 @@ mod journal_metadata;
 mod journal_reads;
 #[path = "journal_reminders.rs"]
 mod journal_reminders;
+#[path = "journal_same_day.rs"]
+mod journal_same_day;
 #[path = "journal_same_day_reads.rs"]
 mod journal_same_day_reads;
 #[path = "journal_seed.rs"]
@@ -497,6 +515,10 @@ mod sync_body_route_batch;
 mod sync_body_step_budget;
 #[path = "sync_cursor_repair.rs"]
 mod sync_cursor_repair;
+#[path = "sync_delete_wins.rs"]
+mod sync_delete_wins;
+#[path = "sync_diagnostics.rs"]
+mod sync_diagnostics;
 #[path = "sync_empty_body_first_sync.rs"]
 mod sync_empty_body_first_sync;
 #[path = "sync_empty_body_pull.rs"]
@@ -530,6 +552,8 @@ mod sync_list_fields_union;
 mod sync_note_attachment_union;
 #[path = "sync_note_body_feed.rs"]
 mod sync_note_body_feed;
+#[path = "sync_note_body_feed_revive.rs"]
+mod sync_note_body_feed_revive;
 #[path = "sync_outbox.rs"]
 mod sync_outbox;
 #[cfg(feature = "markdown")]
@@ -551,6 +575,8 @@ mod sync_requeue_convergence;
 mod sync_requeue_delete;
 #[path = "sync_requeue_pass.rs"]
 mod sync_requeue_pass;
+#[path = "sync_revive_heal.rs"]
+mod sync_revive_heal;
 #[cfg(feature = "markdown")]
 #[path = "sync_task_conflicts.rs"]
 mod sync_task_conflicts;
@@ -602,6 +628,8 @@ mod vault_locks_schema;
 mod vault_locks_writers;
 #[path = "vault_name_vectors.rs"]
 mod vault_name_vectors;
+#[path = "vector_store.rs"]
+mod vector_store;
 #[path = "vectors.rs"]
 mod vectors;
 #[path = "versioned_keys_carry.rs"]

@@ -8,7 +8,7 @@ use rusqlite::Connection;
 use crate::api::errors::StorageError;
 use crate::crdt::errors::CrdtError;
 use crate::crdt::update_log;
-use crate::domain::journal;
+use crate::domain::{attachment_uploads, journal, notes, settings};
 use crate::storage::nested_tx;
 use crate::storage::repositories::{projectors, sync_items};
 use crate::sync::clock::{ClockOrder, VectorClock, compare};
@@ -61,6 +61,15 @@ pub(super) fn apply_tombstone(
     vault_root: Option<&Path>,
     totals: &mut ApplyTotals,
 ) -> Result<(), StorageError> {
+    // Settings are never deleted (#5433), as desktop's settings handler skips
+    // a pulled delete: the row stays live and its queued edit stays queued.
+    if item_type == settings::SETTINGS_ITEM_TYPE {
+        eprintln!(
+            "memry-core: pull: {item_type}:{item_id} delete skipped: settings are never deleted"
+        );
+        totals.skipped += 1;
+        return Ok(());
+    }
     let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
     if let Some(clock) = clock.filter(|clock| !clock.is_empty()) {
         store::record_tombstone_clock(&txn, item_type, item_id, clock, now_ms)?;
@@ -85,6 +94,10 @@ pub(super) fn apply_tombstone(
         now_ms,
     )?;
     store::mark_deleted(&txn, item_type, item_id, deleted_at, server_cursor, now_ms)?;
+    // Sent, the queued edit would undelete the item (VERIFY-5426). After
+    // `delete_keep::keep`, which reads the queue (rule 1). A re-create whose
+    // clock is after the delete returned above, still queued.
+    drop_queued_edits(&txn, item_type, item_id)?;
     if item_type == journal::ITEM_TYPE {
         journal_day_merge::mark_deleted(&txn, item_id)?;
         // A live foreign row keeps its row and body for the drain (#2984).
@@ -96,12 +109,24 @@ pub(super) fn apply_tombstone(
         }
     }
     projectors::delete(&txn, item_type, item_id, deleted_at)?;
-    drop_queued_edits(&txn, item_type, item_id)?;
     let purged = if DOCUMENT_TYPES.contains(&item_type) {
         // The body debt goes with the body: a pull owed before the delete
         // would bring the server's surviving log back (#2297).
         body_debt::settle(&txn, item_id)?;
-        update_log::purge_in(&txn, item_id).map_err(crdt_failed)?
+        // After `delete_keep::keep`, which reads the queue to decide what text
+        // this device never pushed (#5379).
+        outbox::drop_body_updates(&txn, item_type, item_id)?;
+        let purged = update_log::purge_in(&txn, item_id).map_err(crdt_failed)?;
+        // A same-id revive can still want the note's unsent pictures (§14.8.2).
+        if item_type == notes::ITEM_TYPE {
+            let kept = attachment_uploads::ids_for_note(&txn, item_id)?.len();
+            if kept > 0 {
+                eprintln!(
+                    "memry-core: attachment uploads: note {item_id} was deleted elsewhere; its {kept} unsent picture(s) stay here until it is revived or they are detached"
+                );
+            }
+        }
+        purged
     } else {
         0
     };
@@ -116,8 +141,8 @@ pub(super) fn apply_tombstone(
 
 /// Retires the queued edits of a row this verified delete removed. Sent, each
 /// is an `update` carrying `deletedAt` that the server applies as a write,
-/// bringing the item back on every device (#5413, #5427). A queued delete and
-/// the document's body updates stay.
+/// bringing the item back on every device (#5413, #5427). A queued delete
+/// stays; a document's body updates go with its log (#5379).
 fn drop_queued_edits(
     conn: &Connection,
     item_type: &str,

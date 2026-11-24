@@ -37,6 +37,8 @@ import { listDeclinedRefs, retainDeclinedRefs } from '@memry/sync-client/decline
 import { getFromServer } from './http-client'
 import { itemRefKey } from './engine/sync-context'
 import type { ItemRef } from './engine/corrupt-item-tracker'
+import { readUnresolved, writeUnresolved } from './engine/pack-unresolved'
+import { editedHere } from './engine/pack-row-modified'
 import { clearPendingDelete, isNoteKnownDeleted, listPendingDeletes } from './pending-deletes'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
 import { getIndexDatabase } from '../database/client'
@@ -96,6 +98,38 @@ function skippedResult(checkedAt: number, reason: ManifestCheckSkipReason): Mani
   }
 }
 
+/**
+ * Every page of `GET /sync/manifest`. `complete` is false when the pages
+ * stopped short: a cursor that failed to advance ends the walk rather than
+ * looping, and the items gathered so far are not the whole inventory.
+ */
+export async function readManifestPages(
+  token: string,
+  opts: { isOnline: () => boolean; signal?: AbortSignal }
+): Promise<{ items: RecordSyncManifest['items']; complete: boolean }> {
+  const items: RecordSyncManifest['items'] = []
+  let cursor = 0
+  for (;;) {
+    const result = await withRetry(
+      () =>
+        getFromServer<RecordSyncManifest>(
+          `/sync/manifest?limit=${MANIFEST_PAGE_LIMIT}&cursor=${cursor}`,
+          token
+        ),
+      { isOnline: opts.isOnline, ...(opts.signal ? { signal: opts.signal } : {}) }
+    )
+    items.push(...result.value.items)
+
+    const next = result.value.nextCursor
+    if (next === undefined) return { items, complete: true }
+    if (next <= cursor) {
+      log.warn('Manifest pagination cursor did not advance — stopping early', { cursor, next })
+      return { items, complete: false }
+    }
+    cursor = next
+  }
+}
+
 export async function checkManifestIntegrity(
   deps: ManifestCheckDeps
 ): Promise<ManifestCheckResult> {
@@ -113,31 +147,7 @@ export async function checkManifestIntegrity(
     // later cursor rather than vanishing (the server pages over the
     // monotonically-growing server_cursor), so the only cross-page artifact is
     // a duplicate ref — and the (type, id) map dedups those by construction.
-    const serverItems: RecordSyncManifest['items'] = []
-    let cursor = 0
-    for (;;) {
-      const result = await withRetry(
-        () =>
-          getFromServer<RecordSyncManifest>(
-            `/sync/manifest?limit=${MANIFEST_PAGE_LIMIT}&cursor=${cursor}`,
-            token
-          ),
-        {
-          isOnline: deps.isOnline
-        }
-      )
-      serverItems.push(...result.value.items)
-
-      const next = result.value.nextCursor
-      if (next === undefined) break
-      if (next <= cursor) {
-        // A cursor that fails to advance would loop forever; treat the pages
-        // gathered so far as the manifest rather than spinning.
-        log.warn('Manifest pagination cursor did not advance — stopping early', { cursor, next })
-        break
-      }
-      cursor = next
-    }
+    const { items: serverItems } = await readManifestPages(token, { isOnline: deps.isOnline })
 
     // Ids repeat across item types (project 'inbox' vs tag 'inbox'), so both
     // diff directions must compare (type, id) pairs — an id-only diff hides a
@@ -174,12 +184,26 @@ export async function checkManifestIntegrity(
     const declinedKeys = new Set(
       listDeclinedRefs(deps.db).map((ref) => itemRefKey(ref.type, ref.id))
     )
+    // #5390: rows a record-pack rerun kept with no delete evidence (§8.10
+    // rule 2). Their absence suggests a delete, and a create would reverse it,
+    // until this device edits the row: then its own write is lost, not a delete.
+    const unresolved = readUnresolved(deps.db)
 
     let reEnqueuedCount = 0
     for (const local of deps.reuploadLocalOnly === false ? [] : localRefs) {
       const serverRef = serverItemMap.get(itemRefKey(local.type, local.id))
 
       if (!serverRef) {
+        if (
+          unresolved.has(itemRefKey(local.type, local.id)) &&
+          !editedHere(deps.db, local.type, local.id)
+        ) {
+          log.info('Local item missing from server manifest was kept by the pack phase, skipping', {
+            id: local.id,
+            type: local.type
+          })
+          continue
+        }
         // The manifest omits tombstoned ids, so a deleted note is "missing"
         // here too, and a create for it would republish its body.
         if (
@@ -262,6 +286,11 @@ export async function checkManifestIntegrity(
       clearPendingDelete(deps.db, pending.type, pending.itemId)
     }
     retainDeclinedRefs(deps.db, (ref) => serverItemMap.has(itemRefKey(ref.type, ref.id)))
+    // Retired once the server lists the row again or this device no longer holds it.
+    const stillUnresolved = new Set(
+      [...unresolved].filter((key) => !serverItemMap.has(key) && localKeys.has(key))
+    )
+    if (stillUnresolved.size !== unresolved.size) writeUnresolved(deps.db, stillUnresolved)
 
     if (reEnqueuedCount > 0) {
       log.info('Manifest check complete', { reEnqueued: reEnqueuedCount })

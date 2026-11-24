@@ -322,21 +322,40 @@ pub fn mark_corrupt(
     Ok(())
 }
 
-/// The ids of the rows held corrupt because their signer was not in the
-/// device directory (chapter 01 §1.4.0), by the reason's fixed ending
-/// ([`crate::protocol::account::UNKNOWN_SIGNER`]).
-pub fn unknown_signer_ids(conn: &Connection) -> Result<Vec<String>, StorageError> {
+/// The `(item_type, item_id)` of the rows held corrupt because their signer
+/// was not in the device directory (chapter 01 §1.4.0), by the reason's fixed
+/// ending ([`crate::protocol::account::UNKNOWN_SIGNER`]).
+pub fn unknown_signer_rows(conn: &Connection) -> Result<Vec<(String, String)>, StorageError> {
     let mut statement = conn
         .prepare(
-            "SELECT DISTINCT item_id FROM sync_items
-             WHERE substr(corrupt_reason, -length(?1)) = ?1 ORDER BY item_id",
+            "SELECT item_type, item_id FROM sync_items
+             WHERE substr(corrupt_reason, -length(?1)) = ?1 ORDER BY item_type, item_id",
         )
         .map_err(failed)?;
     statement
-        .query_map([crate::protocol::account::UNKNOWN_SIGNER], |row| row.get(0))
+        .query_map([crate::protocol::account::UNKNOWN_SIGNER], |row| {
+            Ok((row.get(0)?, row.get(1)?))
+        })
         .map_err(failed)?
-        .collect::<Result<Vec<String>, _>>()
+        .collect::<Result<Vec<_>, _>>()
         .map_err(failed)
+}
+
+/// Clears the row's unknown-signer flag once a verified record of it arrived:
+/// its signer is known now. A flag for any other reason stays.
+pub fn clear_unknown_signer(
+    conn: &Connection,
+    item_type: &str,
+    item_id: &str,
+) -> Result<(), StorageError> {
+    conn.execute(
+        "UPDATE sync_items SET corrupt_reason = NULL, corrupt_at = NULL
+         WHERE item_type = ?1 AND item_id = ?2
+           AND substr(corrupt_reason, -length(?3)) = ?3",
+        params![item_type, item_id, crate::protocol::account::UNKNOWN_SIGNER],
+    )
+    .map_err(failed)?;
+    Ok(())
 }
 
 /// Reads one row.
@@ -345,13 +364,16 @@ pub fn load(
     item_type: &str,
     item_id: &str,
 ) -> Result<Option<SyncItemRow>, StorageError> {
-    conn.query_row(
-        "SELECT item_type, item_id, payload, payload_state, clock, field_clocks,
-                server_cursor, signer_device_id, updated_at, deleted_at,
-                corrupt_reason, corrupt_at
-         FROM sync_items WHERE item_type = ?1 AND item_id = ?2",
-        params![item_type, item_id],
-        |row| {
+    let mut statement = conn
+        .prepare_cached(
+            "SELECT item_type, item_id, payload, payload_state, clock, field_clocks,
+                    server_cursor, signer_device_id, updated_at, deleted_at,
+                    corrupt_reason, corrupt_at
+             FROM sync_items WHERE item_type = ?1 AND item_id = ?2",
+        )
+        .map_err(failed)?;
+    statement
+        .query_row(params![item_type, item_id], |row| {
             Ok(SyncItemRow {
                 item_type: row.get(0)?,
                 item_id: row.get(1)?,
@@ -366,10 +388,9 @@ pub fn load(
                 corrupt_reason: row.get(10)?,
                 corrupt_at: row.get(11)?,
             })
-        },
-    )
-    .optional()
-    .map_err(failed)
+        })
+        .optional()
+        .map_err(failed)
 }
 
 /// Replays every stored payload through its projector (§A.1).
@@ -387,10 +408,10 @@ pub fn rebuild_projections(conn: &Connection, now_ms: i64) -> Result<usize, Stor
     )
 }
 
-/// Projects every `canvas` payload whose `canvases` row (migration `0036`) is
+/// Projects every `canvas` payload whose `canvases` row (migration `0037`) is
 /// missing or older than the payload, on every open of `data.db`, in one
 /// transaction. Payloads reach `sync_items` without this build's projector:
-/// stored before `0036`, written by an older build that opened the migrated
+/// stored before `0037`, written by an older build that opened the migrated
 /// file (its `run` skips the versions it knows, and its canvas projector is a
 /// no-op), or salvaged by a recovery into a file migrated while empty. A row
 /// the projector wrote has `synced_at` equal to its payload's `updated_at`, so
@@ -472,7 +493,7 @@ fn write_payload(
     corrupt_reason: Option<&str>,
     now_ms: i64,
 ) -> Result<(), StorageError> {
-    conn.execute(
+    conn.prepare_cached(
         "INSERT INTO sync_items (
              item_type, item_id, payload, payload_state, clock, field_clocks,
              server_cursor, signer_device_id, updated_at, deleted_at,
@@ -489,7 +510,9 @@ fn write_payload(
              deleted_at = excluded.deleted_at,
              corrupt_reason = excluded.corrupt_reason,
              corrupt_at = excluded.corrupt_at",
-        params![
+    )
+    .and_then(|mut statement| {
+        statement.execute(params![
             record.item_type,
             record.item_id,
             // Rule 1. The string the caller handed over, not a re-encoding of
@@ -504,8 +527,8 @@ fn write_payload(
             record.deleted_at,
             corrupt_reason,
             corrupt_reason.map(|_| now_ms),
-        ],
-    )
+        ])
+    })
     .map_err(failed)?;
     Ok(())
 }

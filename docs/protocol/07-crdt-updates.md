@@ -26,7 +26,7 @@ the document id from the date when a record exists.**
 
 **The CRDT wire carries no item type at all.** The server does not distinguish
 notes from journals: `NoteIdSchema` is `/^[a-zA-Z0-9_-]+$/` capped at 128
-characters (`apps/sync-server/src/routes/sync.ts:571-574`), which `j2026-08-13`
+characters (`apps/sync-server/src/routes/sync.ts:750-753`), which `j2026-08-13`
 satisfies, and every CRDT route treats `note_id` as an opaque string.
 
 Supporting evidence: journals are `note_metadata` rows on the note clock path
@@ -83,20 +83,21 @@ change. Both are pinned by
 
 ## 7.2 Routes
 
-**Normative** (`apps/sync-server/src/routes/sync.ts:1139-1144`), all under
+**Normative** (`apps/sync-server/src/routes/sync.ts:1441-1447`), all under
 `/sync/crdt`:
 
 | Method | Path                          | Purpose                                                    | Line    |
 | ------ | ----------------------------- | ---------------------------------------------------------- | ------- |
-| POST   | `/sync/crdt/updates`          | append updates for one document                            | `:1139` |
-| GET    | `/sync/crdt/updates`          | pull updates for one document: `note_id`, `since`, `limit` | `:1140` |
-| POST   | `/sync/crdt/updates/batch`    | pull updates for up to 100 documents                       | `:1141` |
-| POST   | `/sync/crdt/snapshot`         | write one snapshot                                         | `:1142` |
-| POST   | `/sync/crdt/snapshot/batch`   | write up to 50 snapshots                                   | `:1143` |
-| GET    | `/sync/crdt/snapshot/:noteId` | read the snapshot                                          | `:1144` |
+| POST   | `/sync/crdt/updates`          | append updates for one document                            | `:1441` |
+| GET    | `/sync/crdt/updates`          | pull updates for one document: `note_id`, `since`, `limit` | `:1442` |
+| POST   | `/sync/crdt/updates/batch`    | pull updates for up to 100 documents                       | `:1443` |
+| GET    | `/sync/crdt/manifest`         | body metadata for up to 1,000 documents: `cursor`, `limit` | `:1444` |
+| POST   | `/sync/crdt/snapshot`         | write one snapshot                                         | `:1445` |
+| POST   | `/sync/crdt/snapshot/batch`   | write up to 50 snapshots                                   | `:1446` |
+| GET    | `/sync/crdt/snapshot/:noteId` | read the snapshot                                          | `:1447` |
 
 Every route sits behind the paid gate and the sync-types middleware
-(`apps/sync-server/src/routes/sync.ts:142-143`).
+(`apps/sync-server/src/routes/sync.ts:260-261`).
 
 ## 7.3 Limits
 
@@ -104,30 +105,30 @@ Every route sits behind the paid gate and the sync-types middleware
 
 | Limit                                | Value                                                         | Source                                             |
 | ------------------------------------ | ------------------------------------------------------------- | -------------------------------------------------- |
-| `MAX_UPDATE_BYTES`                   | 5 MiB **decoded, per individual update**                      | `apps/sync-server/src/routes/sync.ts:145`          |
-| updates per push                     | 100, each base64 string capped at `MAX_UPDATE_BYTES * 2`      | `apps/sync-server/src/routes/sync.ts:642`          |
-| documents per batch pull             | 1 to 100, **duplicate ids rejected**                          | `apps/sync-server/src/routes/sync.ts:623-636`      |
-| updates per document in a batch pull | `limit`, 1 to 100, default 100                                | `apps/sync-server/src/routes/sync.ts:637`          |
-| updates per single-document pull     | `min(limit, 500)`                                             | `apps/sync-server/src/routes/sync.ts:781`          |
-| snapshots per batch push             | 1 to 50, **duplicate ids rejected**                           | `apps/sync-server/src/routes/sync.ts:660-673`      |
+| `MAX_UPDATE_BYTES`                   | 5 MiB **decoded, per individual update**                      | `apps/sync-server/src/routes/sync.ts:263`          |
+| updates per push                     | 100, each base64 string capped at `MAX_UPDATE_BYTES * 2`      | `apps/sync-server/src/routes/sync.ts:832`          |
+| documents per batch pull             | 1 to 100, **duplicate ids rejected**                          | `apps/sync-server/src/routes/sync.ts:821-826`      |
+| updates per document in a batch pull | `limit`, 1 to 100, default 100                                | `apps/sync-server/src/routes/sync.ts:827`          |
+| updates per single-document pull     | `min(limit, 500)`                                             | `apps/sync-server/src/routes/sync.ts:990`          |
+| snapshots per batch push             | 1 to 50, **duplicate ids rejected**                           | `apps/sync-server/src/routes/sync.ts:873-878`      |
 | client batch size                    | `CRDT_BATCH_MAX_NOTES = 100`, `CRDT_UPDATES_PAGE_LIMIT = 100` | `packages/sync-client/src/pull/crdt-pull.ts:26-27` |
 | `/sync/*` request body ceiling       | 8 MiB                                                         | `apps/sync-server/src/index.ts:56-62`              |
 
 The 50-document snapshot batch size is chosen because a snapshot is up to 5 MB
 decoded, roughly 6.7 MB of base64, and a full batch is the largest request the
 Worker body limit and subrequest budget comfortably take
-(`apps/sync-server/src/routes/sync.ts:650-654`).
+(`apps/sync-server/src/routes/sync.ts:852-855`).
 
 **`snapshot` is deliberately unbounded in the batch schema**
-(`apps/sync-server/src/routes/sync.ts:656-658`): an oversized payload is a
+(`apps/sync-server/src/routes/sync.ts:857-859`): an oversized payload is a
 **per-note failure reported in `results`**, not a 400 that throws away the 49
 good notes riding with it.
 
 ### 7.3.1 Why the two update caps differ — Q07.5
 
 The single-document pull caps at `min(limit, 500)`
-(`apps/sync-server/src/routes/sync.ts:781`); the batch form caps at 100 per
-document (`apps/sync-server/src/routes/sync.ts:637`).
+(`apps/sync-server/src/routes/sync.ts:990`); the batch form caps at 100 per
+document (`apps/sync-server/src/routes/sync.ts:827`).
 
 **Normative: they are scoped differently and both are correct.** The batch form
 multiplies its per-document limit by up to 100 documents against one 8 MiB body
@@ -145,7 +146,7 @@ conforming; neither cap may be exceeded.
 update takes `COALESCE(MAX(sequence_num), 0) + 1` over the **union** of
 `crdt_updates`, `crdt_snapshots` **and** `crdt_sequence_floors` for that document
 (`apps/sync-server/src/services/crdt.ts:143-151`, and the same union in
-`apps/sync-server/src/services/crdt-snapshot-write.ts:252-260` for a snapshot's
+`apps/sync-server/src/services/crdt-snapshot-write.ts:277-285` for a snapshot's
 watermark), so **a snapshot consumes a sequence number in the same space**. The
 floor is the highest sequence number of a body the server purged on delete
 (§7.15), so a re-created document numbers on from its deleted one and sequence
@@ -178,6 +179,42 @@ server that predates it omits the key.
 Response: `{ notes: { <noteId>: { updates, hasMore } } }`, keyed by id — which
 is why the single form's flat shape above is worth stating separately.
 
+**`GET /sync/crdt/manifest`** (#5232, additive) — query `cursor` and `limit`,
+both optional. Response `{ documents: [...], nextCursor }`
+(`CrdtManifestResponseSchema`, `packages/contracts/src/sync-api.ts:910`). It
+carries no ciphertext. Each document is
+`{ noteId, floor, snapshot, maxSequenceNum }`
+(`CrdtManifestDocumentSchema`, `:894`):
+
+- `floor` is the document's highest purged sequence number (§7.4, §7.15), 0
+  when it was never purged.
+- `snapshot` is `{ revision, sequenceNum }` of its stored snapshot, the same
+  `revision` token `snapshotMeta` and `GET /sync/crdt/snapshot` answer (§7.5),
+  or `null` when it has none.
+- `maxSequenceNum` is its highest stored update, 0 when it stores none (a
+  snapshot can prune them all, §7.7).
+
+The answer lists every document of the vault that holds an update row or a
+snapshot row, and every document with a `floor` above 0, in ascending
+`noteId` (`apps/sync-server/src/services/crdt-manifest.ts:12-18`). `limit` is
+an integer from 1, default and ceiling `CRDT_MANIFEST_PAGE_LIMIT` = 1000
+(`packages/contracts/src/sync-api.ts:889`); a larger value is capped. A
+`cursor` is the previous page's `nextCursor`, opaque to the client, and
+`nextCursor` is `null` on the last page, so a vault of `n` documents reads in
+`ceil(n / 1000)` requests. A page can hold more than `limit` documents, by
+the documents created in its range while it is read. A malformed `cursor` or
+`limit` answers 400.
+
+A page reads its key range first and then the documents in it with one D1
+batch (`apps/sync-server/src/services/crdt-manifest.ts:66`), so one
+document's `floor`, `snapshot` and `maxSequenceNum` are one consistent read: a
+purge or snapshot write that commits between the two reads shows up whole.
+Pages are separate reads. A page can come back empty with a `nextCursor` when
+the documents of its range were purged in between, and the reader follows the
+cursor. Every read uses the `(user_id, vault_id, note_id)` index of its table.
+Chapter 08 §8.4.3 and §8.10 say how a pack reader uses the answer, and what it
+does when the server answers 404.
+
 **Byte budget** (#3278). Both update reads also stop at 8 MiB of raw update
 bytes per response (`CRDT_PULL_BYTE_BUDGET`,
 `apps/sync-server/src/services/crdt.ts`), the first update always included. A
@@ -190,7 +227,7 @@ promise of that many entries.
 `{ noteId, snapshot, coversThrough?, baseRevision? }`, the snapshot being the
 base64 packed envelope and the other two the optional claim of §7.7.1 (#2299).
 Response `{ sequenceNum, revision }`
-(`apps/sync-server/src/routes/sync.ts:951`), the `revision` being the token the
+(`apps/sync-server/src/routes/sync.ts:1209`), the `revision` being the token the
 upsert just wrote (§7.13.4).
 
 **`POST /sync/crdt/snapshot/batch`** — request
@@ -200,14 +237,14 @@ deliberately unbounded per entry: an oversized payload is a per-note rejection,
 not a malformed batch. Response `{ results: [...] }`, one entry per request
 entry in request order, each `{ noteId, accepted: true, sequenceNum, revision }`
 or `{ noteId, accepted: false, reason }`
-(`apps/sync-server/src/services/crdt-snapshot-write.ts:43`).
+(`apps/sync-server/src/services/crdt-snapshot-write.ts:40-42`).
 
 `POST /sync/crdt/updates` takes
 `{ noteId: string, updates: string[] }` — the updates being base64 packed
 envelopes (chapter 04 §4.11), **at most 100 per call**, each capped at twice
 `MAX_UPDATE_BYTES` in its base64 form because base64 inflates by four thirds
 and the cap is applied to the encoded string. It answers `{ sequences: number[] }`
-(`apps/sync-server/src/routes/sync.ts:748`).
+(`apps/sync-server/src/routes/sync.ts:957`).
 
 **A client sizes a request by its base64 characters, not only by count.** The
 whole request is under the `/sync/*` body ceiling of 8 MiB
@@ -320,11 +357,11 @@ claim for the document sends it with the snapshot.
 
 **Normative.** A fresh `crypto.randomUUID()` on **every** snapshot write, insert
 and conflict alike, and **never conditional on whether the bytes changed**
-(`apps/sync-server/src/services/crdt-snapshot-write.ts:287`, applied by the upsert at `:114`).
+(`apps/sync-server/src/services/crdt-snapshot-write.ts:377`, applied by the upsert at `:153`).
 
 The reason is on record: a revision that fails to move when the blob moves leaves
 a client skipping a snapshot it needed, with a stale body forever
-(`apps/sync-server/src/services/crdt-snapshot-write.ts:300-302`).
+(`apps/sync-server/src/services/crdt-snapshot-write.ts:390-392`).
 
 Rows written before `revision` existed carry `''` and are coalesced to a
 synthetic `legacy:<id>:<created_at>:<size_bytes>`, so an old snapshot is not
@@ -339,7 +376,7 @@ equality.**
 **Normative.** Once a snapshot exists for a document, a push **without**
 `coversThrough` leaves its `sequence_num` where it is: the upsert reuses
 `existingSnapshot?.sequence_num ?? currentSeq`
-(`apps/sync-server/src/services/crdt-snapshot-write.ts:297-299`).
+(`apps/sync-server/src/services/crdt-snapshot-write.ts:389`).
 
 The reason is on record: client-uploaded snapshots carry no causal metadata
 proving they already contain every server update above the prior watermark, so
@@ -349,7 +386,7 @@ A push **with** `coversThrough` carries that proof for the rows it covers, so
 it may move the watermark forward, and only over rows it prunes (§7.7.1). The
 watermark **never moves down**: the conflict clause writes
 `MAX(crdt_snapshots.sequence_num, excluded.sequence_num)`
-(`apps/sync-server/src/services/crdt-snapshot-write.ts:114`), so a concurrent push that read an older watermark cannot
+(`apps/sync-server/src/services/crdt-snapshot-write.ts:153`), so a concurrent push that read an older watermark cannot
 lower it under rows another push already pruned.
 
 ## 7.7 Pruning is server-side
@@ -378,10 +415,15 @@ desktop retries it (its oversized-update fallback about once a second). So the
 server honours `coversThrough` only when the env var
 `CRDT_CLAIM_MIN_DESKTOP_VERSION` is set **and** `client_policies['desktop']
 .min_write_version` is at or above it (`compareVersions`;
-`snapshotClaimsEnabled`, `apps/sync-server/src/services/client-policies.ts:73`,
+`snapshotClaimsEnabled`, `apps/sync-server/src/services/client-policies.ts:75`,
 read once per request). Otherwise a claim is dropped and the push runs under
 the pre-#2299 rules exactly (`covers_through` stays NULL), so no claimed row
-exists and no legacy client ever meets the refusal. The env var is unset in
+exists and no legacy client meets the refusal for a claimed row. A snapshot for
+a deleted document is refused whatever the gate says (§7.15, #5367), so a
+pre-#2299 desktop (v2026-09-19 and older) does meet it there. Its oversized
+update fallback retries about once a second until it pulls the tombstone, and
+keeps the batch, so nothing is lost. The refusal comes from the write's first
+read, before any upload, so each retry costs one D1 read. The env var is unset in
 `wrangler.toml` for every environment. **Rollout:** raise the desktop
 `min_write_version` to the #2299 release, then set the env var. Setting it last
 also closes most of the mixed-version deploy window below, because no claimed
@@ -406,11 +448,11 @@ below keeps that blob from being replaced by one that does not hold them.
    (migration `0014_crdt_snapshot_covers_through.sql`, nullable, no backfill;
    NULL means "no claim"). A write through the `baseRevision` arm stores the
    union of both coverages, `MAX(C, COALESCE(old.covers_through, 0))`
-   (`STORED_COVERS_THROUGH_SQL`, `:106`): the pusher merged that snapshot, so
+   (`STORED_COVERS_THROUGH_SQL`, `:108`): the pusher merged that snapshot, so
    the new blob holds what it pruned. `old.server_cursor` is not used: rows
    between the old claim and the old snapshot's cursor are not provably merged.
 3. **The guard is a condition of the upsert, never a prior read**
-   (`REPLACE_ALLOWED_SQL`, `:91`, on `ON CONFLICT DO UPDATE ... WHERE`, checked
+   (`REPLACE_ALLOWED_SQL`, `:93`, on `ON CONFLICT DO UPDATE ... WHERE`, checked
    through `changes()`). A stored row may be replaced:
    - by an **unclaimed** push only when the row carries no claim either — an
      unclaimed push onto a claimed row is refused, because it never merged the
@@ -429,7 +471,7 @@ below keeps that blob from being replaced by one that does not hold them.
    oversized-update fallback) can lack content its newer snapshot took through
    `baseRevision`. Such a push gets the ordinary refusal and the client pulls.
 
-4. **Covered watermark** (`COVERED_WATERMARK_SQL`, `:128`). Starting above the
+4. **Covered watermark** (`COVERED_WATERMARK_SQL`, `:163`). Starting above the
    current watermark `W` (0 for a first snapshot, never `currentSeq`), take
    update rows in `sequence_num` order while each has a non-NULL cursor at or
    below `C`, and stop at the first that does not. The new watermark is
@@ -629,7 +671,7 @@ replays (§7.9). A page asked from above the cursor is never used. The page move
 document and is dropped once applied. Without a trusted answer, the document
 pages through the single-document route as before. A resumed first sync counts
 the settled documents as done before its first body request
-(`crates/memry-core/src/sync/first_sync/body_pass.rs:186-193`).
+(`crates/memry-core/src/sync/first_sync/body_pass.rs:205-221`).
 
 The rule exists precisely because of pruning (§7.7): updates at or below the
 snapshot watermark are answered with silence, so a `since` under the watermark
@@ -647,9 +689,10 @@ cursor only if the snapshot's sequence number is ahead (`:195-197`).
 **Normative** (`packages/sync-client/src/pull/crdt-pull.ts:225-250`):
 
 - an update whose `sequenceNum <= cursor` is **skipped as a replay** (`:226`);
-- each accepted update is decrypted, persisted, and the watermark advanced and
-  written **per update, not per page** (`:246-248`). What the rule protects is
-  that the watermark never leads a stored update. The Rust core writes a page's
+- **the watermark MUST NOT lead a stored update**: a reader never persists a
+  watermark above an update it has not stored. Either strategy keeps it.
+  Desktop decrypts, persists and advances the watermark **per update**
+  (`:246-248`). The Rust core writes a page's
   accepted updates and the watermark of the last one in **one** transaction
   (`crates/memry-core/src/sync/body_pull/log_writes.rs:34-53`), so a kill
   mid-page leaves the watermark at the previous page and the page is pulled
@@ -664,20 +707,56 @@ gap and owes the document a re-pull
 take the stop-at-gap side**: it is the only one under which no update can be
 skipped permanently.
 
+Updates read from a pack add one condition: the cursor moves across a packed
+update only when its `sequenceNum` is the cursor plus one, a missing number is
+pulled from the server, never skipped, and a packed update is used only above
+the document's `floor`, read from the routes after the pack, so a purged update a
+pack still holds is never applied. An answer without `floor`, which every server
+before step 05 (#5228) sends, leaves packed updates unusable (chapter 08 §8.4.3,
+`packages/contracts/src/sync-api.ts:876-880`).
+
 ## 7.10 Retry policy and rate limits
 
 **Normative.** Every CRDT request uses `maxRetries: 3`, `baseDelayMs: 2000`,
 `retryOn429: false`
 (`packages/sync-client/src/pull/crdt-pull.ts:70-76`).
 
+**Exception: the body manifest read.** Each page of `GET /sync/crdt/manifest`
+retries a `429`, because the read is one bounded walk that answers nothing
+unless every page is read (chapter 08 §8.4.3), and no poll comes back for it
+(#5349). The two clients differ only in how long they wait:
+
+- **Rust core.** Up to 3 retries per page. Each waits the `retry-after` the
+  answer carries, as whole seconds, and the read stops when that wait passes
+  60 s. When the answer carries no `retry-after`, or one that is not whole
+  seconds, the waits are 2, 4 and 8 s
+  (`crates/memry-core/src/protocol/http/retry.rs:4`, `:13`, `:42-46`, `:88-93`,
+  `:102-104`, `crates/memry-core/src/protocol/http.rs:284`, `:293`,
+  `:463-466`, `:471-474`,
+  `crates/memry-core/src/sync/body_pull/manifest.rs:61`). The whole read
+  stops short once it has run 300 s, so a server that rate-limits every page
+  costs one deadline, not a window per page
+  (`crates/memry-core/src/sync/body_pull/manifest.rs:26`, `:41`).
+- **Desktop.** No retry count. Each wait is the larger of 1 s and the
+  `retry-after`, read as seconds or as an HTTP date, and the read stops when
+  a wait would end more than 60 s after the page's first `429`
+  (`apps/desktop/src/main/sync/packs/body-manifest.ts:9`, `:52-58`,
+  `packages/sync-client/src/http-errors.ts:55-65`).
+
 **CRDT rate limits are per device, not per account**, because body sync is
-device-local work (`apps/sync-server/src/routes/sync.ts:582-620`):
+device-local work (`apps/sync-server/src/routes/sync.ts:761-811`):
 
 | Bucket            | Limit                     |
 | ----------------- | ------------------------- |
-| `crdt_push`       | 300 per 60 s (`:583-585`) |
-| `crdt_pull`       | 600 per 60 s (`:605-607`) |
-| `crdt_batch_pull` | 30 per 60 s (`:616-618`)  |
+| `crdt_push`       | 300 per 60 s (`:762-764`) |
+| `crdt_pull`       | 600 per 60 s (`:784-786`) |
+| `crdt_batch_pull` | 30 per 60 s (`:795-797`)  |
+| `crdt_manifest`   | 30 per 60 s (`:806-808`)  |
+
+A bootstrap session raises `crdt_pull` and `crdt_batch_pull` five times and
+`crdt_manifest` three times (`BOOTSTRAP_ELEVATION_MULTIPLIERS`,
+`apps/sync-server/src/services/bootstrap-session.ts`). The 14 manifest pages
+of a 13,527-document vault fit one window without it.
 
 ### 7.10.1 The client push outbox (#2298)
 
@@ -724,15 +803,26 @@ snapshot endpoint under the §7.13.2 gate.
 
 - an update entry is `{ sequenceNum, data, createdAt, signerDeviceId }`, where
   `data` is base64 of the **packed envelope** of chapter 04 §4.11;
+  a `crdt_update` pack entry carries the same entry, with the envelope bytes as
+  its payload and the other three fields as its meta
+  (`CrdtUpdatePackEntryMetaSchema`, `packages/contracts/src/sync-api.ts:876-880`,
+  chapter 08 §8.4.3);
 - the batch response is
   `{ notes: Record<noteId, { updates, hasMore }>, snapshotMeta?: Record<noteId,
   { sequenceNum, revision, signerDeviceId }> }`;
+- both forms gain an optional `floor` per document in step 05 (#5228): the
+  single form at the top level, the batch form inside each `notes` entry. It is
+  the highest purged sequence number (§7.4, §7.15), 0 when none, read in the
+  same D1 batch as the updates (`apps/sync-server/src/services/crdt.ts:312-332`).
+  A server before step 05 omits it, and a reader of packed updates treats its
+  absence as "use no packed update" (chapter 08 §8.4.3). The item-granular
+  routes never need it;
 - the snapshot response is
   `{ snapshot, sequenceNum, signerDeviceId, revision? }`, with `snapshot` null
   when absent.
 
 **A document absent from `snapshotMeta` has no server snapshot at all**
-(`apps/sync-server/src/services/crdt.ts:292-305` populates the map only from rows
+(`apps/sync-server/src/services/crdt.ts:477-483` populates the map only from rows
 that exist).
 
 **Snapshots use the identical packed envelope as updates. There is no separate
@@ -760,9 +850,9 @@ using it for anything else changes the baseline rule of §7.8.
 
 **Normative.** On a snapshot push the server does **store, then prune, then
 broadcast** — never broadcast between store and prune
-(`apps/sync-server/src/routes/sync.ts:872-881`, `:896`, `:919-929`).
+(`apps/sync-server/src/routes/sync.ts:1119-1129`, `:1150`, `:1176-1194`).
 
-The reason is on record (`apps/sync-server/src/routes/sync.ts:914-918`): a peer
+The reason is on record (`apps/sync-server/src/routes/sync.ts:1168-1172`): a peer
 must never be told to pull while the pre-snapshot updates are still being
 removed. Delivery is best-effort, because the write already succeeded and a
 failed broadcast must not become an error the client retries.
@@ -770,7 +860,7 @@ failed broadcast must not become an error the client retries.
 **A snapshot push MUST broadcast.** A snapshot can be the only carrier of edits
 no peer has seen (the fallback for an update too large for the incremental
 route, §7.10.1), and a silently stored snapshot stays invisible on every other
-device until its next pull (`apps/sync-server/src/routes/sync.ts:905-913`).
+device until its next pull (`apps/sync-server/src/routes/sync.ts:1159-1167`).
 
 ## 7.13 The client snapshot obligation — Q07.2
 
@@ -844,11 +934,11 @@ table only through
 stored snapshot row is server-originated.**
 
 A client that pushes a snapshot learns the revision it wrote from the push
-response: both snapshot routes carry it (`apps/sync-server/src/routes/sync.ts:951`
+response: both snapshot routes carry it (`apps/sync-server/src/routes/sync.ts:1209`
 for the single note, the accepted batch outcome at
-`apps/sync-server/src/services/crdt-snapshot-write.ts:43`), and it is the same token the
+`apps/sync-server/src/services/crdt-snapshot-write.ts:41`), and it is the same token the
 upsert bound, per push rather than per batch
-(`apps/sync-server/src/services/crdt-snapshot-write.ts:287`). **#2187**, resolved as the
+(`apps/sync-server/src/services/crdt-snapshot-write.ts:377`). **#2187**, resolved as the
 additive option: the field is new, so old clients reading these bodies through an
 unvalidated cast ignore it.
 
@@ -895,12 +985,19 @@ and recorded).**
 **Normative (server, #2986).** When the server accepts a `delete` of a `note` or
 `journal` record, it purges that document's body after the commit
 (`purgeDeletedDocumentBodies`,
-`apps/sync-server/src/services/document-body-purge.ts:45-127`, called from push
+`apps/sync-server/src/services/document-body-purge.ts:79-207`, called from push
 Stage 9 in `apps/sync-server/src/services/sync.ts`). In one D1 batch per
 document it records the highest sequence number in `crdt_sequence_floors`
 (§7.4), refunds the stored bytes, and deletes the `crdt_updates` and
-`crdt_snapshots` rows. Then it drops every `crdt_snapshot` pack of the vault,
-resets that kind's pack watermark, and deletes the snapshot and pack objects.
+`crdt_snapshots` rows. The same batch takes every `crdt_update` and
+`crdt_snapshot` pack that holds the document out of the listing, and the
+purge then rewrites each without the document (chapter 08 §8.13). A body kind
+whose listed packs include one written before migration 0024, which does not
+record the documents it holds, is instead dropped whole and its pack
+watermark reset, when the document has rows of that kind (chapter 08 §8.4.3,
+§8.13). The purge then deletes the snapshot objects. Every pack object it
+takes out of the listing is deleted by the replaced-object pass (chapter 08
+§8.12) once its rewrite commits or its kind is reset.
 Every statement re-checks that a `note` or `journal` record for the id is
 deleted and none is live, so a re-create that commits first keeps its body. A
 purge failure never fails the push. The 6-hourly cleanup
@@ -908,24 +1005,81 @@ purge failure never fails the push. The 6-hourly cleanup
 purges the bodies of tombstones written before this rule and of pushes whose
 purge failed.
 
+**Normative (server, #5367): a snapshot of the purged body is refused.** A
+snapshot push encoded before the delete can arrive after the purge, and stored
+it would be the baseline a fresh device takes for a re-created id. The purge
+therefore records the tombstone's feed cursor beside the floor
+(`crdt_sequence_floors.purge_cursor`, migration
+`0026_crdt_purge_cursor.sql`;
+`apps/sync-server/src/services/document-body-purge.ts:115-129`), and the
+snapshot upsert stores nothing, insert or replace, when either holds
+(`apps/sync-server/src/services/crdt-snapshot-write.ts:133-135`, `:151`):
+
+- the document is dead: a `note` or `journal` record for the id is deleted
+  and none is live, the same check the purge makes;
+- the push claims `coversThrough` (§7.7.1) below the purge cursor. That pusher
+  never read the tombstone, so its state may be the purged body's, even after
+  the id was re-created. **This fence is dormant until the claim rollout.** The
+  routes drop every claim while the §7.7.1 gate is closed, and
+  `CRDT_CLAIM_MIN_DESKTOP_VERSION` is unset in every environment. Until then
+  every push arrives unclaimed, so a snapshot of the purged body that lands
+  after the re-create is stored. The purge records the cursor regardless, so
+  the fence covers purges from this release on once the gate opens.
+
+A dead document is also refused from the write's first read, before the
+snapshot is uploaded (`:319`, `:368`), so a client that retries the refusal
+costs a D1 read per retry. The check in the upsert stays the authority for a
+delete that commits while the upload runs.
+
+The refusal is the ordinary `409 CRDT_SNAPSHOT_NOT_COVERED` on the single route
+and `{ accepted: false, reason: 'CRDT_SNAPSHOT_NOT_COVERED' }` in a batch, with
+the stored row's `blockingCursor` when one exists. Every shipped client already
+handles it: it keeps its document, owes it a pull, and pushes again later. The
+pull either applies the tombstone, and the document is gone, or reads the feed
+past the purge cursor, so the next claim is accepted. An unclaimed push for a
+live document carries nothing to judge and is stored, so a client that never
+claims is not refused once the id is live again.
+
+Update pushes (`POST /sync/crdt/updates`) are not fenced. A device that revives
+an id pushes its first update before its record (the core sends every CRDT
+row ahead of every record row in a pass), so a live-record check would refuse
+the new body and stall that device's outbox. The server cannot tell an update
+authored on the purged body from one authored on the new body; that needs a
+body generation (#5361). A refusal would also fail shipped clients (#5379):
+the core aborts the whole push wave on any error from this route and keeps the
+rows (`crates/memry-core/src/sync/push.rs:180`, `:328`), so the reviving
+device's outbox would stall on the update every pass and never reach the
+record that makes the id live; desktop drops the refused rows
+(`apps/desktop/src/main/sync/note-body-outbox.ts:314-350`). The client-side
+drop above narrows the case the fence would have covered. It leaves open
+updates queued by builds shipped before it, an edit typed after the tombstone
+into an editor still open on the document, and the unfenced server route until
+#5361. An unclaimed snapshot of the purged body that arrives
+after the re-create, which is every snapshot while the claim gate is closed,
+and a purge that ran before migration `0026`, are not fenced either.
+
 The reason is the re-create. A journal day's id is `j<date>` on every device
 (chapter 01 §1.9), so a day deleted and written again reuses its id. The
 re-create's record passes delete-wins (chapter 05 §5.8), the id is no longer
 tombstoned, and a device with no local body pulls it from sequence 0. When the
 server kept the deleted body, that pull returned the deleted snapshot and
-updates, and the deleted text came back inside the new day. Packs are dropped
-whole because they are immutable, hold many notes, and an older revision of the
-purged snapshot can sit in any pack built before its last write. Compaction
-rebuilds them without the dead note. Until it does, a fresh device bootstraps
-those bodies item by item.
+updates, and the deleted text came back inside the new day. Packs are
+immutable and hold many notes, so a pack that holds the document is rewritten
+without it, and an older revision of the purged snapshot can sit in any pack
+built before its last write. `pack_index.documents` names every document a
+body pack holds, so the purge finds all of them. The document's body
+ciphertext leaves pack objects within `PACK_PURGE_DEADLINE_SECONDS` = 900 of
+the purge's commit (`packages/contracts/src/sync-api.ts:793-794`), with the
+exceptions chapter 08 §8.13 states. Until a rewrite commits, a fresh device
+bootstraps the other documents of that pack item by item.
 
 A compaction run that selected the old snapshot before the purge commits its
 `pack_index` row and watermark in one batch, and only while every packed
-snapshot row still exists with the packed `blob_key` and its note is not dead
-(`apps/sync-server/src/services/pack-compaction.ts:452`). Otherwise it deletes
+snapshot row still exists with the packed `blob_key`
+(`apps/sync-server/src/services/pack-compaction.ts:440-445`). Otherwise it deletes
 the pack object and leaves the watermark, so the next run reselects
-(`apps/sync-server/src/services/pack-compaction.ts:469`). A run that commits
-first is dropped by the purge's later pack drop.
+(`apps/sync-server/src/services/pack-compaction.ts:494-495`). A run that commits
+first is taken out of the listing and rewritten by the purge.
 
 Before #2986 the server kept the rows. Clients MUST NOT rely on either
 behaviour: a server from before #2986 still holds the rows, and the purge of an
@@ -940,6 +1094,50 @@ Consequences a conforming client MUST implement:
   the surviving log, and re-applying it would resurrect body state for a document
   the record feed says is deleted.
 - **Do not treat surviving server rows as evidence the delete failed.**
+- **Start a new body when re-creating a deleted id (#5351).** A device that
+  writes a document id again after its delete, such as a journal day revived
+  under `j<date>`, drops its local update log, snapshots, body cursor, owed
+  pull and queued body updates for the id before it authors, as the core's
+  revive does (`crates/memry-core/src/domain/journal.rs:231-267`). An update
+  authored on the deleted body depends on structs the server purged, so a
+  device that bootstraps afterwards holds it pending and shows the day empty.
+- **Store nothing fetched before a purge (#5356).** Server-namespace body
+  rows (updates and snapshots) that a device fetched or pushed for a document
+  that was deleted or re-created before it stores them are dropped, and the
+  document owes a pull. They are the purged body's, and stored into a
+  re-created one they are the same orphaned parents. The core reads each
+  document's epoch (§7.16) before the network call. Every purge moves the
+  epoch, including the purge a tombstone's apply runs (§7.15.1). The core
+  writes those rows only through `HeldBody`, which exists only while the
+  epoch is unchanged inside the store transaction
+  (`crates/memry-core/src/crdt/epoch.rs:98-122`;
+  `crates/memry-core/src/crdt/update_log.rs:129`, `:279` are private to it).
+  This covers the body pull (`crates/memry-core/src/sync/body_pull.rs:299`),
+  the pack bootstrap (`crates/memry-core/src/sync/pack_bootstrap/bodies.rs:202`),
+  the change feed (`crates/memry-core/src/sync/note_body_feed.rs:321`, `:356`),
+  and the snapshot push (`crates/memry-core/src/crdt/snapshots.rs:324`, `:510`).
+- **Heal a body re-created before #5351 (#5354).** A build before the rule
+  above authored the revived document on the deleted body, so the server holds
+  only updates whose parents it purged, and every fresh device shows the
+  document empty. Only the author still holds the parents. The author re-pushes
+  its full state once, as one update on `POST /sync/crdt/updates` (§7.13,
+  which no purge fences), so it integrates on a fresh device and on a device
+  that already holds the pending updates. The deleted text comes back beside
+  the new text; that is accepted, because the alternative loses the new text.
+  A candidate is a live `note` or `journal` with a recorded tombstone clock, no
+  purge on this device (epoch 0, §7.16), nothing queued for it, and no earlier
+  verdict. The author reads the server's body into a scratch document and
+  pushes only when that body is pending and its own full state completes it
+  (`crates/memry-core/src/sync/revive_heal.rs:65`, `:100`, `:187`). The pass
+  runs the heal after the body step and before the push
+  (`crates/memry-core/src/api/sync/pass.rs:145`). Desktop, whose builds
+  before #5358 kept the deleted doc the same way, judges the same candidates
+  (it keeps no epoch, so a day revived since then is read once and found
+  healthy) and queues a full-state row on its note-body outbox
+  (`apps/desktop/src/main/sync/revive-heal.ts:55`, `:121`), every ten minutes
+  once a full sync has delivered (`apps/desktop/src/main/sync/runtime.ts:923`).
+  Each verdict is kept per document, so a document is read and pushed at most
+  once.
 
 ### 7.15.1 The three obligations are not all the same component's
 
@@ -955,9 +1153,20 @@ port.
 | mark the record deleted                  | durable | fail the delete               |
 | mark every projection row deleted        | durable | fail the delete               |
 | purge the local update log and snapshots | durable | fail the delete               |
+| drop the document's queued body updates  | durable | fail the delete               |
 | release the resident in-memory document  | runtime | **report the id**             |
 
-**The three durable obligations MUST commit as one transaction.** Done as
+**Normative (client, #5379): a queued body update goes with the log.** An
+update authored on the purged body and pushed after the delete lands on the
+server's dead document, and a later revive of the id pulls it back. The core
+deletes the document's `crdt-update` outbox rows in the tombstone's
+transaction, after the delete-keep copy has read the queue
+(`crates/memry-core/src/sync/apply.rs:299`); desktop drops them in the
+purge (`apps/desktop/src/main/sync/crdt-provider.ts:1448`, `:2395`). A delete
+the clock rule skips, and a journal day held for the day merge, keep their
+queued updates with their body.
+
+**The durable obligations MUST commit as one transaction.** Done as
 separate statements, a crash between them leaves a record marked deleted with a
 live body log — which is precisely the state the second consequence above
 forbids, reached by a client that was trying to obey it. A component that
@@ -1025,13 +1234,13 @@ wire.
 (migration `0011_crdt_server_cursor.sql`) drawn from the same per-user
 `server_cursor_sequence` as `sync_items`. The cursor is reserved **inside the
 batch that commits the row** (`apps/sync-server/src/services/crdt.ts:193`,
-`apps/sync-server/src/services/crdt-snapshot-write.ts:337`), the rule chapter 05 §5.11 relies on: no reader sees a cursor
+`apps/sync-server/src/services/crdt-snapshot-write.ts:428`), the rule chapter 05 §5.11 relies on: no reader sees a cursor
 above a row that has not committed. Push requests and responses are unchanged,
 and no push response carries the cursor.
 
 - **A snapshot is re-cursored on every write**, insert and conflict alike, like
   a `sync_items` row: the upsert sets `server_cursor = excluded.server_cursor`
-  (`apps/sync-server/src/services/crdt-snapshot-write.ts:114`). Its `sequence_num` stays
+  (`apps/sync-server/src/services/crdt-snapshot-write.ts:153`). Its `sequence_num` stays
   pinned (§7.6). A reader past the old cursor therefore sees the replaced
   snapshot again at its new cursor.
 - **Rows written before migration `0011` have a NULL cursor** and are never in
@@ -1043,6 +1252,12 @@ and no push response carries the cursor.
 - **A reader never assumes cursors are contiguous**: a pruned update leaves a
   gap in the sequence, and so does an update ignored as a duplicate (#2296),
   whose reserved cursor is never used.
+- **Packs cover bodies on the same axis.** A reader that applied body packs
+  tails this feed from the cursor chapter 08 §8.10 gives it, and confirms each
+  packed snapshot and the `floor` of its packed updates through a body
+  manifest read (§7.4.1) or `POST /sync/crdt/updates/batch`, read after the
+  pack bytes
+  (`packages/contracts/src/sync-api.ts:769-784`).
 
 ### 7.17.1 What the feed serves
 
@@ -1453,13 +1668,13 @@ Per page of a declaring run
     `noteBodyLegacySweep` to `pending` (`note-body-feed.ts:274`).
   - A full sync whose pull delivered (ran to `hasMore: false` without a refused
     page) then forces the vault-wide sweep
-    (`apps/desktop/src/main/sync/engine/full-sync-runner.ts:738`).
+    (`apps/desktop/src/main/sync/engine/full-sync-runner.ts:548-556`).
   - Only that sweep's drain, with nothing owed back, records `done`, and only
-    if the key still reads `pending` (`full-sync-runner.ts:505`). An
+    if the key still reads `pending` (`full-sync-runner.ts:354`). An
     interrupted or partly failed sweep stays `pending`.
   - A page without `noteBodies` while the key is set means the server stopped
     serving bodies (§7.17.3). The page deletes the key and discards the sweep
-    this engine queued (`full-sync-runner.ts:528`), so that drain records
+    this engine queued (`full-sync-runner.ts:364-366`), so that drain records
     nothing. The next negotiated page forces a new sweep.
   - A device that was offline for the whole of a server rollback never sees a
     page without `noteBodies`. It cannot tell that the rollback wrote rows with

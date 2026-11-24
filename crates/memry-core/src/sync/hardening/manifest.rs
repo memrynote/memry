@@ -281,6 +281,7 @@ async fn ask(
         markers.read(&body, chunk);
         let attested = purged::attest(
             markers.markers,
+            pull.vault_id(),
             pull.signer_keys(),
             pull.http(),
             &mut markers.refused,

@@ -10,7 +10,12 @@ import {
   PACK_MAX_INDEX_ENTRY_BYTES
 } from '@memry/contracts/pack-format'
 
-import { openPack, openPackFile, type PackByteSource } from './pack-file-reader'
+import {
+  openPack,
+  openPackFile,
+  type PackByteSource,
+  type PackFileHandle
+} from './pack-file-reader'
 import { buildTestPack } from './test-pack-builder'
 
 /** Overwrite one of the footer's two uint64 fields in place. */
@@ -195,6 +200,46 @@ describe('openPackFile', () => {
     expect(await handle.readEntry(handle.entries[0])).toEqual(bodyOf('a', 1000))
     await handle.close()
   })
+
+  // A post to the crypto worker clones a view's whole buffer. A small entry read
+  // into Node's shared Buffer pool sent the 8 KiB pool with every update.
+  it('reads a small entry into a buffer of its own size', async () => {
+    const pack = buildTestPack([
+      { id: 'note-a', bytes: bodyOf('a', 200), meta: { sequenceNum: 2, revision: 'r' } }
+    ])
+    const file = path.join(dir, 'small.pack')
+    await fs.writeFile(file, pack.bytes)
+
+    const handle = await openPackFile(file)
+    const bytes = await handle.readEntry(handle.entries[0])
+    expect(structuredClone(bytes).buffer.byteLength).toBe(bytes.byteLength)
+    await handle.close()
+  })
+
+  // A fresh device can hold hundreds of packs at once; one fd each ran into
+  // macOS's 256-fd soft limit and dropped every pack past it to the routes.
+  it.skipIf(process.platform === 'win32')(
+    '#given many opened packs #then no file descriptor stays open between reads',
+    async () => {
+      const pack = buildTestPack([
+        { id: 'note-a', bytes: bodyOf('a', 1000), meta: { sequenceNum: 2, revision: 'r' } }
+      ])
+      const openFds = async (): Promise<number> => (await fs.readdir('/dev/fd')).length
+      const before = await openFds()
+      const handles: PackFileHandle[] = []
+      for (let i = 0; i < 20; i++) {
+        const file = path.join(dir, `p${i}.pack`)
+        await fs.writeFile(file, pack.bytes)
+        handles.push(await openPackFile(file))
+      }
+      expect(await openFds()).toBe(before)
+      for (const handle of handles) {
+        expect(await handle.readEntry(handle.entries[0])).toEqual(bodyOf('a', 1000))
+      }
+      expect(await openFds()).toBe(before)
+      for (const handle of handles) await handle.close()
+    }
+  )
 
   it('closes the file handle when opening fails', async () => {
     const file = path.join(dir, 'bad.pack')

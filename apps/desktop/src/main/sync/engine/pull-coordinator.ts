@@ -8,9 +8,7 @@ import { MissingSyncParentError } from '@memry/sync-client/item-handlers/types'
 import { withRetry } from '@memry/sync-client/retry'
 import { getCurrentDeviceId } from '@memry/sync-client/current-device-id'
 import { engineAuthRetryDeps, withAuthRetry } from '../auth-retry'
-import { getFromServer, NOTE_BODY_FEED_HEADERS, RateLimitError } from '../http-client'
-import { classifyError } from '../sync-errors'
-import { syncErrorTelemetry } from '../sync-error-telemetry'
+import { getFromServer, NOTE_BODY_FEED_HEADERS } from '../http-client'
 import { SyncTimer } from '@memry/sync-client/sync-timer'
 import { recordBootstrapBytes } from '../bootstrap-metrics'
 import { trackMainEvent } from '../../telemetry/track'
@@ -40,7 +38,10 @@ import { repairOrphans, type OrphanRef } from './orphan-repair'
 import { reportConflict } from './conflict-report'
 import { listedCursorOf, RunAppliedCursors } from './run-applied-cursors'
 import type { PullRunState } from './pull-run-state'
+import type { PackedRecords } from '../packs/record-packs'
+import { pullRecords, readPackApplied, skipsMarker } from './packed-record-apply'
 import { tripPullBreaker } from './pull-breaker'
+import { handlePullError } from './pull-error'
 import { PullLatencyTrace } from './sync-latency-telemetry'
 import {
   PULL_SLICE_FETCH_WINDOW,
@@ -142,8 +143,10 @@ export class PullCoordinator {
    * infer it from the promise not rejecting.
    *
    * `missing` is what a manifest check found missing, pulled by id (#3391).
+   * `packed` is a fresh device's reconciled record packs (#5390), used only
+   * while no cursor exists.
    */
-  async pull(missing: readonly ItemRef[] = []): Promise<SyncRunOutcome> {
+  async pull(missing: readonly ItemRef[] = [], packed?: PackedRecords): Promise<SyncRunOutcome> {
     const lock = await this.ctx.acquireLock()
     if ('refused' in lock) return skipped(lock.refused)
 
@@ -165,6 +168,7 @@ export class PullCoordinator {
       vaultKey = credentials.vaultKey
 
       const runState = this.createPullRunState(credentials, pullStartedAt, abortController.signal)
+      runState.packApplied = readPackApplied(this.stateManager)
       this.pendingApplyRetries = []
       this.orphanedItems = []
       try {
@@ -180,14 +184,29 @@ export class PullCoordinator {
           this.queueBodyPull(runState, item, op)
         })
         await retrySchemaInvalidItems(recovery, credentials.accessJwt, vaultKey)
-        await this.pullChanges(runState)
         // Applied as deferred retries: FK order and orphan repair (#837) included.
+        const pullById = async (refs: readonly ItemRef[], opts?: { requireAnswers?: boolean }) => {
+          const fetchedAll = await fetchMissingItems(recovery, refs, runState, opts, (items) =>
+            this.applyDeferredRetries(runState, items)
+          )
+          await this.applyDeferredRetries(runState)
+          return fetchedAll
+        }
+        await pullRecords(runState, packed, {
+          applySlice: async (inline, cursorOf) => {
+            // Socket frames at or below the tail start belong to this pull (#2300).
+            this.ownedThroughCursor = Math.max(this.ownedThroughCursor, packed?.tailStart ?? 0)
+            const slice = { fetchIds: [], inline }
+            const { stop } = await this.applySlice(runState, slice, null, cursorOf)
+            return HOLDS_CURSOR.has(stop)
+          },
+          pullById,
+          pullChanges: () => this.pullChanges(runState),
+          state: this.stateManager,
+          db: this.ctx.deps.db
+        })
         // A fetch cut short left items missing, so the run did not deliver.
-        const fetchedAll = await fetchMissingItems(recovery, missing, runState, (items) =>
-          this.applyDeferredRetries(runState, items)
-        )
-        if (!fetchedAll) runState.refused = true
-        await this.applyDeferredRetries(runState)
+        if (!(await pullById(missing))) runState.refused = true
         await this.repairOrphanedItems(runState)
         // The bootstrap benchmark's records mark (#5223): every record is applied,
         // the run's last body batch is not.
@@ -209,7 +228,11 @@ export class PullCoordinator {
           outcome = DELIVERED
         }
       } catch (error) {
-        this.handlePullError(error, runState.startTime)
+        handlePullError(
+          { ctx: this.ctx, stateManager: this.stateManager },
+          error,
+          runState.startTime
+        )
       }
     } finally {
       this.cleanupAfterPull(vaultKey, cleanup)
@@ -312,7 +335,8 @@ export class PullCoordinator {
   private async pullChanges(runState: PullRunState): Promise<void> {
     let cursor = this.stateManager.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)
     let hasMore = true
-    runState.fromZero = !cursor || cursor === '0'
+    // Kept by a tail after record packs: body kinds state no coverage (#5390).
+    runState.fromZero ||= !cursor || cursor === '0'
 
     type ChangesRetryResult = Awaited<ReturnType<typeof this.fetchChangesPage>>
     let changesResult: ChangesRetryResult
@@ -377,6 +401,7 @@ export class PullCoordinator {
       // before #2294. A crash in between re-pulls the page, and the rows that
       // already committed come back identical and skip.
       if (!cursorCommitted) this.stateManager.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, nextCursor)
+      this.ctx.lockProgress++
       cursor = nextCursor
       hasMore = changes.hasMore
 
@@ -478,18 +503,15 @@ export class PullCoordinator {
     )
     for (const [index, slice] of slices.entries()) {
       const inSliceCursor = index === slices.length - 1 && !postCommitWork ? nextCursor : null
-      const pageResult = await this.processPage(
-        slice,
-        sliceBody(index),
+      const pageResult = await this.applySlice(
         runState,
+        slice,
         inSliceCursor,
-        listedCursor
+        listedCursor,
+        sliceBody(index)
       )
-      runState.pulledCount += pageResult.settled
-      runState.totalConflictsResolved += pageResult.conflicts
       postCommitWork ||= pageResult.postCommitWork === true
       cursorCommitted ||= pageResult.cursorCommitted === true
-      await this.applyCrdtBatch(runState)
 
       if (HOLDS_CURSOR.has(pageResult.stop)) {
         return { stop: pageResult.stop, cursorCommitted: false }
@@ -498,6 +520,22 @@ export class PullCoordinator {
     }
 
     return { stop: breakerTripped ? 'breaker' : 'none', cursorCommitted }
+  }
+
+  /** One slice through `processPage`, with the run's counters and its body batch; no `body`, all inline. */
+  private async applySlice(
+    runState: PullRunState,
+    slice: PullSlice,
+    pageCursor: string | null,
+    listedCursor: (id: string) => number,
+    body: Promise<unknown> = Promise.resolve({ items: [] })
+  ): Promise<Awaited<ReturnType<PullCoordinator['processPage']>>> {
+    const result = await this.processPage(slice, body, runState, pageCursor, listedCursor)
+    runState.pulledCount += result.settled
+    runState.totalConflictsResolved += result.conflicts
+    this.ctx.lockProgress++
+    await this.applyCrdtBatch(runState)
+    return result
   }
 
   private async applyCrdtBatch(runState: PullRunState): Promise<void> {
@@ -550,40 +588,6 @@ export class PullCoordinator {
           // Service not initialized yet — skip
         })
     }
-  }
-
-  private handlePullError(error: unknown, startedAt: number): void {
-    if (error instanceof DOMException && error.name === 'AbortError') {
-      log.debug('Pull aborted (likely network change)')
-      return
-    }
-
-    const errorInfo = classifyError(error)
-    this.ctx.lastErrorInfo = errorInfo
-    this.ctx.lastError = errorInfo.message
-    if (
-      errorInfo.category === 'device_revoked' ||
-      errorInfo.category === 'auth_expired' ||
-      errorInfo.category === 'network_offline' ||
-      error instanceof RateLimitError
-    ) {
-      throw error
-    }
-
-    // Swallowed here, so engine.pull() records sync_run_completed success —
-    // the sync_error for this terminal outcome must be emitted from inside
-    // this handler.
-    trackMainEvent('sync_error', {
-      surface: 'sync',
-      action: 'pull_failed',
-      result: 'failed',
-      ...syncErrorTelemetry(errorInfo),
-      metrics: { durationMs: Date.now() - startedAt },
-      source: 'pull',
-      dimensions: { transport: 'record' }
-    })
-    this.stateManager.setState('error')
-    this.stateManager.recordHistory('error', 0, Date.now() - startedAt, errorInfo.message)
   }
 
   private cleanupAfterPull(vaultKey: Uint8Array | null, cleanup: () => void): void {
@@ -710,6 +714,7 @@ export class PullCoordinator {
       return
     }
     if (this.noteBodyFeed.servesRecordBody(decision, dec.id)) return
+    if (runState.bodySettled?.has(dec.id)) return
     if (!this.ctx.deps.crdtProvider || !carriesCrdtBody(dec, op)) return
     this.crdtSync.oweRecordBody(dec.id)
     runState.crdtNoteIds.push(dec.id)
@@ -816,7 +821,7 @@ export class PullCoordinator {
     const purged = await purgedTombstoneApplyItems(
       parsed,
       (t) =>
-        runState.fromZero === true ||
+        skipsMarker(runState, t) ||
         applied.covers(t, listedCursor(t.id)) ||
         this.quarantine.isQuarantined(t.id, t.type),
       { db: this.ctx.deps.db, resolveKey: (id) => this.resolveDeviceKey(id) }

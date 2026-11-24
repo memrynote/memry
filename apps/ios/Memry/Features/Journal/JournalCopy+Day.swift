@@ -1,7 +1,7 @@
 import Foundation
 
 // JP040, JP041, JP051. The Day page's words: the date header, the placeholder
-// choice, the ghost row, the "Today" capsule, the stats footer line and the
+// choice, the "Today" capsule, the stats footer line and the
 // keyboard shortcut titles. Desktop wording (`journal.json`) where desktop
 // has the string (D1).
 
@@ -55,14 +55,6 @@ extension JournalCopy {
 
     static let firstLineLabel = "Write in this day"
     static let loadingDay = "Opening this day"
-
-    // MARK: Ghost row (J01)
-
-    static let ghostTag = "Tag"
-    static let ghostProperty = "Property"
-    static let addTag = "Add tag"
-    static let addProperty = "Add property"
-    static let metadataReadOnlyHint = "Read-only on \(ThisDevice.noun) for now"
 
     // MARK: Navigation (J10)
 

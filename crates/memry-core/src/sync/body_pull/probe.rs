@@ -3,15 +3,18 @@
 //! route sends none) and each document's first page of updates (#5293).
 
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use serde_json::{Value as Json, json};
 
+use crate::api::errors::StorageError;
+use crate::crdt::epoch::{self, Epoch};
 use crate::crdt::update_log;
-use crate::protocol::http::RetryPolicy;
+use crate::protocol::http::{HttpClient, RetryPolicy};
 use crate::sync::crdt_wire::{SnapshotMeta, UpdatePage, read_update_page};
 use crate::sync::store;
 
-use super::{BodyPull, BodyPullError, CRDT_UPDATES_PAGE_LIMIT, crdt_cursor_scope, waited_out_429};
+use super::{BodyPull, BodyPullError, CRDT_UPDATES_PAGE_LIMIT, crdt_cursor_scope};
 
 /// What the probe learned about one document.
 #[derive(Debug, Default)]
@@ -32,10 +35,17 @@ pub(in crate::sync) struct Probed {
 #[derive(Debug)]
 pub(in crate::sync) struct ProbeAnswer {
     pub(in crate::sync) since: i64,
+    /// The body's epoch when the page was asked for (#5356).
+    pub(in crate::sync) epoch: Epoch,
     pub(in crate::sync) page: UpdatePage,
 }
 
 impl BodyPull {
+    /// The client this pull sends through, for a caller pausing on its behalf.
+    pub(crate) fn http(&self) -> &Arc<HttpClient> {
+        &self.http
+    }
+
     /// The server's view of `doc_ids` (at most a batch, §7.3), each asked from
     /// its cursor, or from `0` when it holds none. `limit` is the sweep page
     /// size §7.3.1 asks for, so the answer is the first page itself.
@@ -56,6 +66,17 @@ impl BodyPull {
         requests: &mut usize,
         pauses: u32,
     ) -> Result<HashMap<String, Probed>, BodyPullError> {
+        Ok(self.probe_paced(doc_ids, requests, pauses).await?.0)
+    }
+
+    /// [`Self::probe`], and the wait a `429` refusing it asked for, which the
+    /// foreground drain holds its next round back by (#5247).
+    pub(in crate::sync) async fn probe_paced(
+        &self,
+        doc_ids: &[String],
+        requests: &mut usize,
+        pauses: u32,
+    ) -> Result<(HashMap<String, Probed>, Option<u64>), BodyPullError> {
         // The server refuses a batch naming an id twice.
         let mut ids: Vec<String> = Vec::new();
         for doc_id in doc_ids {
@@ -64,29 +85,36 @@ impl BodyPull {
             }
         }
         if ids.is_empty() {
-            return Ok(HashMap::new());
+            return Ok((HashMap::new(), None));
         }
         // A cursor of `0` is held too (#4315's empty body), so a resumed
-        // first sync can tell it is still empty without re-pulling it.
+        // first sync can tell it is still empty without re-pulling it. Each
+        // document's epoch is captured with its cursor, before the request:
+        // a purge after it leaves the answer to the purged body (#5356).
         //
         // One read on the pool for the whole chunk, not a writer hop per
         // document: a write-back busy on the writer starved the first sync's
         // probe for minutes with no request in flight (#5350).
-        let cursors: Vec<(String, Option<i64>)> = self
+        let cursors: Vec<(String, Option<i64>, Epoch)> = self
             .db
             .read(move |conn| {
                 ids.into_iter()
                     .map(|doc_id| {
                         let cursor = store::read_cursor(conn, &crdt_cursor_scope(&doc_id))?
                             .and_then(|text| text.parse().ok());
-                        Ok((doc_id, cursor))
+                        let epoch = epoch::capture(conn, &doc_id).map_err(|error| {
+                            StorageError::Failed {
+                                what: error.to_string(),
+                            }
+                        })?;
+                        Ok((doc_id, cursor, epoch))
                     })
                     .collect()
             })
             .await?;
         let notes: Vec<Json> = cursors
             .iter()
-            .map(|(doc_id, cursor)| json!({ "noteId": doc_id, "since": cursor.unwrap_or(0) }))
+            .map(|(doc_id, cursor, _)| json!({ "noteId": doc_id, "since": cursor.unwrap_or(0) }))
             .collect();
         let mut paused = 0;
         let body = loop {
@@ -100,8 +128,8 @@ impl BodyPull {
                 .retry(RetryPolicy::never());
             match self.http.send_json::<Json>(request).await {
                 Ok(body) => break body,
-                Err(error) if waited_out_429(&error, &mut paused, pauses).await => {}
-                Err(_) => return Ok(HashMap::new()),
+                Err(error) if self.waited_out_429(&error, &mut paused, pauses).await => {}
+                Err(error) => return Ok((HashMap::new(), error.rate_limit_wait_s())),
             }
         };
         // An older server sends no `snapshotMeta` key at all, so an empty
@@ -109,7 +137,7 @@ impl BodyPull {
         let metas = body.get("snapshotMeta").filter(|metas| metas.is_object());
         let revisions = self.held_revisions(&cursors).await?;
         let mut probed = HashMap::new();
-        for (doc_id, cursor) in cursors {
+        for (doc_id, cursor, epoch) in cursors {
             let page = read_update_page(&body, &doc_id);
             let since = cursor.unwrap_or(0);
             // A note the server left out of `notes` reads as an empty page,
@@ -159,11 +187,11 @@ impl BodyPull {
                 Probed {
                     meta: page.snapshot_meta.clone(),
                     current,
-                    answer: trusted.then_some(ProbeAnswer { since, page }),
+                    answer: trusted.then_some(ProbeAnswer { since, epoch, page }),
                 },
             );
         }
-        Ok(probed)
+        Ok((probed, None))
     }
 
     /// The server revision this device holds for each document with a
@@ -171,12 +199,12 @@ impl BodyPull {
     /// a whole chunk. A NULL revision (§7.13.4) never equals a server token.
     async fn held_revisions(
         &self,
-        cursors: &[(String, Option<i64>)],
+        cursors: &[(String, Option<i64>, Epoch)],
     ) -> Result<HashMap<String, Option<String>>, BodyPullError> {
         let ids: Vec<String> = cursors
             .iter()
-            .filter(|(_, cursor)| cursor.is_some())
-            .map(|(doc_id, _)| doc_id.clone())
+            .filter(|(_, cursor, _)| cursor.is_some())
+            .map(|(doc_id, _, _)| doc_id.clone())
             .collect();
         if ids.is_empty() {
             return Ok(HashMap::new());

@@ -1232,6 +1232,10 @@
     "loadingAria": "Geräte werden geladen",
     "none": "Noch keine Geräte gekoppelt",
     "linkNew": "Neues Gerät koppeln",
+    "linkNeedsPlan": {
+      "title": "Koppeln erfordert einen Synchronisierungstarif",
+      "description": "Ein gekoppeltes Gerät sieht deine Notizen nur, wenn die Synchronisierung aktiv ist. Ohne Tarif meldest du dich dort mit deiner Wiederherstellungsphrase an, und es behält seinen eigenen Tresor."
+    },
     "thisDevice": "Dieses Gerät",
     "lastSeen": "Zuletzt gesehen vor {time}",
     "linked": "Vor {time} gekoppelt",

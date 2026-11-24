@@ -80,15 +80,23 @@ impl Drop for NestedTx<'_> {
         // the caller sees the failure that caused it.
         if self.conn.is_autocommit() {
             eprintln!("memry-core: transaction already rolled back by SQLite when dropped");
-        } else if let Err(error) = self.rollback() {
-            eprintln!(
-                "memry-core: rolling back a dropped {} failed: {error}",
-                if self.savepoint {
-                    "savepoint"
-                } else {
-                    "transaction"
-                }
-            );
+            return;
+        }
+        let Err(error) = self.rollback() else {
+            return;
+        };
+        if !self.savepoint {
+            // Still open: `Db` rolls it back before the next call reaches the
+            // connection.
+            eprintln!("memry-core: rolling back a dropped transaction failed: {error}");
+            return;
+        }
+        // The savepoint's rows would go out with the outer COMMIT. Rolling the
+        // whole transaction back fails that COMMIT instead, so the page and
+        // its cursor are retried and nothing half-written lands.
+        eprintln!("memry-core: rolling back a dropped savepoint failed: {error}");
+        if let Err(error) = self.conn.execute_batch("ROLLBACK") {
+            eprintln!("memry-core: rolling back the savepoint's transaction failed: {error}");
         }
     }
 }
@@ -242,17 +250,26 @@ mod tests {
         assert_eq!(left, 0);
     }
 
-    static INTERRUPT_RELEASE: std::sync::Mutex<Option<rusqlite::InterruptHandle>> =
-        std::sync::Mutex::new(None);
-
-    /// Interrupts the next `RELEASE` while it runs, which fails it.
-    fn interrupt_release(event: rusqlite::trace::TraceEvent<'_>) {
+    /// Interrupts the next statement starting with `prefix` while it runs,
+    /// which fails it. One slot per test: tests run in parallel.
+    fn interrupt_next(
+        slot: &std::sync::Mutex<Option<rusqlite::InterruptHandle>>,
+        prefix: &str,
+        event: rusqlite::trace::TraceEvent<'_>,
+    ) {
         if let rusqlite::trace::TraceEvent::Stmt(_, sql) = event
-            && sql.starts_with("RELEASE")
-            && let Some(handle) = INTERRUPT_RELEASE.lock().expect("the handle").take()
+            && sql.starts_with(prefix)
+            && let Some(handle) = slot.lock().expect("the handle").take()
         {
             handle.interrupt();
         }
+    }
+
+    static INTERRUPT_RELEASE: std::sync::Mutex<Option<rusqlite::InterruptHandle>> =
+        std::sync::Mutex::new(None);
+
+    fn interrupt_release(event: rusqlite::trace::TraceEvent<'_>) {
+        interrupt_next(&INTERRUPT_RELEASE, "RELEASE", event);
     }
 
     #[test]
@@ -285,5 +302,78 @@ mod tests {
         }
         assert!(conn.is_autocommit());
         assert_eq!(count(&conn), 0);
+    }
+
+    static INTERRUPT_ROLLBACK_TO: std::sync::Mutex<Option<rusqlite::InterruptHandle>> =
+        std::sync::Mutex::new(None);
+
+    fn interrupt_rollback_to(event: rusqlite::trace::TraceEvent<'_>) {
+        interrupt_next(&INTERRUPT_ROLLBACK_TO, "ROLLBACK TO", event);
+    }
+
+    /// A savepoint whose rollback fails would leave its half-written rows for
+    /// the outer COMMIT; the whole transaction goes instead, and the outer
+    /// COMMIT fails, so the page and its cursor are retried.
+    #[test]
+    fn a_failed_savepoint_rollback_rolls_the_whole_transaction_back() {
+        let conn = setup();
+        conn.trace_v2(
+            rusqlite::trace::TraceEventCodes::SQLITE_TRACE_STMT,
+            Some(interrupt_rollback_to),
+        );
+        let outer = begin(&conn).expect("outer");
+        outer.execute("INSERT INTO t VALUES (1)", []).expect("one");
+        {
+            let inner = begin(&outer).expect("inner");
+            inner.execute("INSERT INTO t VALUES (2)", []).expect("two");
+            *INTERRUPT_ROLLBACK_TO.lock().expect("the handle") = Some(conn.get_interrupt_handle());
+        }
+        assert!(conn.is_autocommit(), "the outer transaction is rolled back");
+        assert!(outer.commit().is_err(), "the outer COMMIT fails");
+        conn.trace_v2(rusqlite::trace::TraceEventCodes::empty(), None);
+        assert_eq!(rows(&conn), Vec::<i64>::new());
+    }
+
+    static INTERRUPT_ROLLBACK: std::sync::Mutex<Option<rusqlite::InterruptHandle>> =
+        std::sync::Mutex::new(None);
+
+    fn interrupt_rollback(event: rusqlite::trace::TraceEvent<'_>) {
+        interrupt_next(&INTERRUPT_ROLLBACK, "ROLLBACK", event);
+    }
+
+    /// A dropped transaction whose ROLLBACK fails stays open on the shared
+    /// connection. The next write's `begin` would see it, open a savepoint
+    /// inside it, and its RELEASE would commit nothing: the next call rolls
+    /// the dead transaction back before it runs.
+    #[test]
+    fn the_next_call_rolls_back_a_transaction_a_failed_drop_left_open() {
+        let db = crate::storage::Db::open_in_memory().expect("open");
+        db.call_blocking(|conn| {
+            conn.execute_batch("CREATE TABLE t (n INTEGER)")
+                .expect("table");
+            conn.trace_v2(
+                rusqlite::trace::TraceEventCodes::SQLITE_TRACE_STMT,
+                Some(interrupt_rollback),
+            );
+            {
+                let txn = begin(conn).expect("begin");
+                txn.execute("INSERT INTO t VALUES (1)", []).expect("one");
+                *INTERRUPT_ROLLBACK.lock().expect("the handle") = Some(conn.get_interrupt_handle());
+            }
+            conn.trace_v2(rusqlite::trace::TraceEventCodes::empty(), None);
+            assert!(!conn.is_autocommit(), "the failed ROLLBACK left it open");
+            Ok(())
+        })
+        .expect("the failed drop");
+        db.call_blocking(|conn| {
+            assert!(conn.is_autocommit(), "no dead transaction reaches a call");
+            let txn = begin(conn).expect("begin");
+            txn.execute("INSERT INTO t VALUES (2)", []).expect("two");
+            txn.commit().expect("commit");
+            assert!(conn.is_autocommit(), "the write committed");
+            assert_eq!(rows(conn), [2]);
+            Ok(())
+        })
+        .expect("the next call");
     }
 }

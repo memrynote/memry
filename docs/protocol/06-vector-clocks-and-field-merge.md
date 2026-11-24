@@ -238,9 +238,9 @@ and a client that breaks any of them reintroduces divergence.**
 
 - **P1 — one row per item; any push with one component ahead is accepted.**
   `ON CONFLICT … DO UPDATE SET … clock = excluded.clock`
-  (`apps/sync-server/src/services/sync.ts:668-686`), `version = existing.version
+  (`apps/sync-server/src/services/sync.ts:678-696`), `version = existing.version
   - 1` (`:575`), and `detectReplay`
-    (`apps/sync-server/src/services/sync.ts:179-190`), which rejects only when **no**
+    (`apps/sync-server/src/services/sync.ts:189-200`), which rejects only when **no**
     incoming component exceeds the stored one. A concurrent push overwrites the
     row, so the earlier concurrent payload stops existing.
 - **P2 — a queued push is rebuilt from the live row at dequeue.**
@@ -274,7 +274,7 @@ and a client that breaks any of them reintroduces divergence.**
   `packages/sync-client/src/item-handlers/types.ts` (`resolveClockConflict`).
   This is what settles the two devices whose P3 re-pushes collide: the first is
   accepted, the second is refused as a replay
-  (`apps/sync-server/src/services/sync.ts:179-190`) and marked done anyway
+  (`apps/sync-server/src/services/sync.ts:189-200`) and marked done anyway
   (`apps/desktop/src/main/sync/engine/push-coordinator.ts:299-305`), and the
   refused device then pulls the accepted row under the same clock and takes it.
   **The one exception is an identical payload** (#2294): an equal clock MAY be
@@ -817,8 +817,47 @@ arbitrary depth** — `general.theme`, `journal.weekdayTemplates.3`,
 `sidebar.sortModes.collections`
 (`packages/contracts/src/settings-sync.ts:78-93`, `:111-116`). The whole settings
 blob is **one sync item** with `itemId = 'synced_settings'`
-(`packages/sync-client/src/settings-sync.ts:171`,
+(`packages/sync-client/src/settings-sync.ts:185`,
 `packages/sync-client/src/settings-sync-keys.ts:12`).
+
+**The settings item is never deleted.** A receiver MUST skip a pulled
+`settings` tombstone: the item stays live, its queued edit stays queued, and
+later edits keep syncing (`apps/desktop/src/main/sync/item-handlers/settings-handler.ts:80-82`,
+`crates/memry-core/src/sync/apply.rs:250-258`, #5433). A core that marked it
+deleted on an earlier build clears that delete on the item's next merged write
+(`crates/memry-core/src/domain/settings.rs:233-241`). When that earlier build
+left the row with no payload, a local edit seeds an empty payload, and its push
+waits until a by-id re-pull merges the server's copy, so the edit cannot
+replace the account's settings with one key
+(`crates/memry-core/src/domain/settings.rs:148-156`,
+`crates/memry-core/src/sync/unknown_signer.rs:86-92`, `:110-116`).
+
+**Every unknown-signer hold follows one rule, settings or not.** A pulled
+record refused only because its signer is missing from the pass's device
+directory records a hold on its `(type, id)`, and a queued edit of that row
+stays out of the push while the hold waits
+(`crates/memry-core/src/sync/unknown_signer.rs:86-92`, `:110-116`). Each pass
+re-pulls every waiting hold by id over that pass's fresh directory: each
+settings hold on its own, so another record's answer never counts toward it,
+and every other hold in one batch (`:122-140`). A verified record for the id
+ends the hold (`:96-105`). Otherwise the hold gives up after 5 attempts or 50
+failures, whichever comes first, and the queued edit then pushes
+(`:59`, `:64`, `:224-226`). One re-pull counts as follows
+(`:155-174`, `:180-221`):
+
+- **Attempt**: only a well-formed page that leaves the id out, with no dropped
+  page and no record still unverifiable.
+- **Failure**: a dropped page, a record still unverifiable, a malformed body, or
+  a 4xx other than 429.
+- **Never counts**: a transport failure, a 5xx, or a 429.
+
+**Desktop divergence.** Desktop has no hold and no re-pull. It skips a pulled
+record whose signer has no public key as a decrypt failure that is not a crypto
+error, and applies the rest of the page
+(`apps/desktop/src/main/sync/sync-crypto-batch.ts:174-184`, `:240-250`;
+`apps/desktop/src/main/sync/engine-pull.test.ts:306`). The page's corrupt
+re-fetch takes only crypto and parse failures, so it never retries that record
+(`apps/desktop/src/main/sync/engine/pull-coordinator.ts:1041`).
 
 Some sub-objects are deliberately single-clocked as a unit, and the reasons are
 in the schema comments:
@@ -995,7 +1034,7 @@ pruning rule.** There is no pruning in
 `packages/sync-client/src/vector-clock.ts`, none in
 `packages/sync-client/src/field-merge.ts`, and none on the server: the push path
 stores `clock = excluded.clock` verbatim
-(`apps/sync-server/src/services/sync.ts:668-686`).
+(`apps/sync-server/src/services/sync.ts:678-696`).
 
 The growth is bounded by the device cap, not by time: at most 50 active devices
 per account (chapter 02 §2.3.3), so at most 50 keys per document clock and 50 per
@@ -1093,7 +1132,7 @@ Desktop enqueues a local update after the apply's transaction
 `apps/desktop/src/main/sync/item-handlers/tag-definition-handler.ts:152`). The
 enqueue ticks this device into the document clock, which is what lets the
 re-push pass the server's replay check
-(`apps/sync-server/src/services/sync.ts:229-240`): the apply stored the remote's
+(`apps/sync-server/src/services/sync.ts:239-250`): the apply stored the remote's
 clock, and a push at that clock is refused. A task's heal names no changed
 field, so it ticks no field clock (`packages/sync-client/src/task-sync.ts:87-88`).
 

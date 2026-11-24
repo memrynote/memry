@@ -44,6 +44,8 @@
     "moveFailed": "Nepodarilo sa presunúť poznámku",
     "applyTemplateFailed": "Nepodarilo sa použiť šablónu",
     "appendBlocksFailed": "Nepodarilo sa presunúť blok do cieľovej poznámky",
+    "appendIntoCaseTwin": "Táto poznámka zdieľa súbor s poznámkou, ktorej názov sa líši len veľkosťou písmen. Jednu z nich premenujte a potom blok presuňte znova.",
+    "caseTwinMoveRefused": "Táto poznámka zdieľa súbor s poznámkou, ktorej názov sa líši len veľkosťou písmen, takže ju týmto spôsobom nemožno presunúť. Premenujte alebo presuňte druhú poznámku, alebo odstráňte kópiu, ktorú nepotrebujete.",
     "exportPdfFailed": "Nepodarilo sa exportovať PDF",
     "exportHtmlFailed": "Nepodarilo sa exportovať HTML",
     "restoreVersionFailed": "Nepodarilo sa obnoviť verziu",
@@ -78,7 +80,9 @@
     "downloadProgressFailed": "Nepodarilo sa načítať priebeh sťahovania",
     "exceedsMaxSize": "Súbor je príliš veľký: {size} prekračuje limit {limit}",
     "exceedsPlanLimit": "Súbor je väčší, než umožňuje váš plán: {size} prekračuje {limit}",
-    "emptyFile": "Prázdny súbor sa nedá nahrať"
+    "emptyFile": "Prázdny súbor sa nedá nahrať",
+    "emptyNotAttached": "Tento súbor je prázdny, preto nebol priložený. Ak ste vložili obrázok, skopírujte ho znova a vložte.",
+    "textInMediaFile": "Tento súbor obsahuje text namiesto média, ktoré uvádza jeho názov"
   },
   "crdt": {
     "persistenceDegradedTitle": "História úprav sa na tomto zariadení neukladá",
@@ -233,6 +237,7 @@
   "folder": {
     "createFailed": "Nepodarilo sa vytvoriť priečinok",
     "renameFailed": "Nepodarilo sa premenovať priečinok",
+    "renameCaseTwins": "Tento priečinok obsahuje poznámky, ktoré zdieľajú súbor s poznámkou, ktorej názov priečinka sa líši len veľkosťou písmen. Najprv tieto poznámky premenujte alebo presuňte a potom premenujte priečinok.",
     "deleteFailed": "Nepodarilo sa odstrániť priečinok",
     "keptNotPulled": "Tento priečinok obsahuje poznámku, ktorej súbor bol odstránený mimo memrynote, a jej text sa do tohto zariadenia ešte nesynchronizoval, takže ju nemožno presunúť do koša. Nič nebolo odstránené. Počkajte na synchronizáciu alebo túto poznámku najprv odstráňte samostatne.",
     "keptUnwritable": "Tento priečinok obsahuje poznámku, ktorej súbor bol odstránený mimo memrynote, a jej text sa nedá uložiť do súboru pre kôš. Nič nebolo odstránené. Túto poznámku najprv odstráňte samostatne.",

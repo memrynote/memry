@@ -30,8 +30,8 @@ vi.mock('./runtime-effects', () => ({
   queueEmbeddedVaultFiles: vi.fn()
 }))
 
-vi.mock('../sync/crdt-external-feed', () => ({ feedExternalEditToCrdt: vi.fn() }))
 vi.mock('../sync/crdt-feed', () => ({ replaceNoteTagsInCrdt: vi.fn() }))
+vi.mock('../sync/note-sync-state', () => ({ recordNoteCreatedHere: vi.fn() }))
 
 vi.mock('../vault-locks/registry', () => ({
   assertNoteWritable: vi.fn((noteId: string) => {
@@ -49,7 +49,7 @@ import {
 } from './domain'
 import * as noteVault from '../vault/notes'
 import * as runtimeEffects from './runtime-effects'
-import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
+import * as noteSyncState from '../sync/note-sync-state'
 
 /** What `updateNote` resolves to for a write that left the header list as it was. */
 function outcome(note: Record<string, unknown>): Awaited<ReturnType<typeof noteVault.updateNote>> {
@@ -88,6 +88,7 @@ describe('notes domain adapter', () => {
       content: 'Hello world #inline'
     })
     expect(runtimeEffects.syncNoteCreate).toHaveBeenCalledWith('note-1', 'Test Note', ['focus'])
+    expect(noteSyncState.recordNoteCreatedHere).toHaveBeenCalledWith('note-1')
   })
 
   it('routes local-only changes through the notes domain adapter', async () => {
@@ -170,13 +171,18 @@ describe('notes domain adapter', () => {
     expect(runtimeEffects.syncNoteUpdate).toHaveBeenCalledWith('note-1')
   })
 
-  it('enqueues sync delete before removing the note', async () => {
-    vi.mocked(noteVault.deleteNote).mockResolvedValue(undefined)
+  // `deleteNote` queues the sync delete before it drops the cache, and runs
+  // its own step (a case twin's file, #5495) in the tombstone's.
+  it("hands deleteNote the note's sync delete, with deleteNote's step", async () => {
+    const inStep = vi.fn()
+    vi.mocked(noteVault.deleteNote).mockImplementation(async (_id, syncDelete) => {
+      await syncDelete(inStep)
+    })
 
     await deleteNoteCommand('note-1')
 
-    expect(runtimeEffects.syncNoteDelete).toHaveBeenCalledWith('note-1')
-    expect(noteVault.deleteNote).toHaveBeenCalledWith('note-1')
+    expect(noteVault.deleteNote).toHaveBeenCalledWith('note-1', expect.any(Function))
+    expect(runtimeEffects.syncNoteDelete).toHaveBeenCalledWith('note-1', inStep)
   })
 
   it('cleans up project links + home notes after deleting a note', async () => {
@@ -212,23 +218,6 @@ describe('notes domain adapter', () => {
     expect(runtimeEffects.syncNoteUpdate).not.toHaveBeenCalled()
   })
 
-  // `updateNote` moves the index hash to the new bytes, so nothing else feeds
-  // the body to the note's CRDT doc (#2646). The file's `writing` frontmatter
-  // is not passed, so an open doc keeps its own alternatives.
-  it("feeds a body edit, and only a body edit, to the note's CRDT doc", async () => {
-    const note = {
-      id: 'note-1',
-      title: 'Title',
-      frontmatter: { writing: { alternatives: {}, overflow: [{ text: 'Cut line.' }] } }
-    }
-    vi.mocked(noteVault.updateNote).mockResolvedValue(outcome(note))
-
-    await updateNoteCommand({ id: 'note-1', headerTags: { add: ['focus'] } })
-    await updateNoteCommand({ id: 'note-1', content: 'new content' })
-
-    expect(vi.mocked(feedExternalEditToCrdt).mock.calls).toEqual([['note-1', 'new content']])
-  })
-
   // A body that embeds a vault file is the moment that file needs to reach the
   // server; waiting for the next backfill pass left it on this device (#2651).
   it('offers the files a written body embeds for upload, on create and on a body edit', async () => {
@@ -250,17 +239,6 @@ describe('notes domain adapter', () => {
     ])
   })
 
-  it('saves the note and pushes its metadata when the CRDT feed throws', async () => {
-    const note = { id: 'note-1', title: 'Renamed' }
-    vi.mocked(noteVault.updateNote).mockResolvedValue(outcome(note))
-    vi.mocked(feedExternalEditToCrdt).mockRejectedValueOnce(new Error('converter failed'))
-
-    const saved = await updateNoteCommand({ id: 'note-1', title: 'Renamed', content: 'body' })
-
-    expect(saved).toEqual({ id: 'note-1', title: 'Renamed' })
-    expect(vi.mocked(runtimeEffects.syncNoteUpdate).mock.calls).toEqual([['note-1', 'Renamed']])
-  })
-
   it('propagates vault error from createNoteCommand without calling syncNoteCreate', async () => {
     vi.mocked(noteVault.createNote).mockRejectedValue(new Error('disk full'))
 
@@ -268,10 +246,12 @@ describe('notes domain adapter', () => {
     expect(runtimeEffects.syncNoteCreate).not.toHaveBeenCalled()
   })
 
-  it('still calls syncNoteDelete when deleteNote rejects (delete-before-remove contract)', async () => {
+  // The delete-before-remove order lives in `deleteNote`, which queues the
+  // sync delete itself: a delete it refuses must not reach peers.
+  it('queues no sync delete of its own when deleteNote refuses the delete', async () => {
     vi.mocked(noteVault.deleteNote).mockRejectedValue(new Error('locked'))
 
     await expect(deleteNoteCommand('note-1')).rejects.toThrow('locked')
-    expect(runtimeEffects.syncNoteDelete).toHaveBeenCalledWith('note-1')
+    expect(runtimeEffects.syncNoteDelete).not.toHaveBeenCalled()
   })
 })

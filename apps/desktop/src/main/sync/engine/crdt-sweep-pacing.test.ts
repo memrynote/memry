@@ -213,17 +213,16 @@ describe('CRDT sweep pacing', () => {
     it('#then the cold pass stays inside BOTH buckets and finishes in ~3 min 20 s', async () => {
       const chunks = await sweep(vault(1000))
 
-      // No note has a watermark yet, so no probe is sent at all — the cold path
-      // costs exactly what it cost before the probe existed. The POSTs here are
-      // the apply rounds: ceil(100 / 32) = 4 sub-chunks per chunk.
+      // Every note has a server snapshot, so the probe saves no GET. The POSTs
+      // are one probe and ceil(100 / 32) = 4 apply rounds per chunk.
       expect(wire.snapshotGets).toHaveLength(1000)
-      expect(wire.batchRequests).toHaveLength(4 * 10)
-      expect(wire.batchRequests.every((r) => r.limit === 100)).toBe(true)
+      expect(wire.batchRequests).toHaveLength(5 * 10)
+      expect(wire.batchRequests.filter((r) => r.limit === 100)).toHaveLength(4 * 10)
 
       for (const chunk of chunks) {
         // What the pacer charged is what the wire saw, not a number the
         // coordinator decided on its own.
-        expect(chunk.cost).toEqual({ snapshotGets: 100, batchPosts: 4 })
+        expect(chunk.cost).toEqual({ snapshotGets: 100, batchPosts: 5 })
         expect(chunk.getsPerMinute).toBeLessThanOrEqual(CRDT_PULL_BUDGET_PER_MIN * MARGIN)
         expect(chunk.postsPerMinute).toBeLessThanOrEqual(CRDT_BATCH_PULL_BUDGET_PER_MIN * MARGIN)
       }

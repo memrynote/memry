@@ -6,7 +6,7 @@
 //!
 //! Real SQLite, FTS5, update log and `yrs`.
 
-use memry_core::crdt::update_log;
+use memry_core::crdt::epoch::HeldBody;
 use memry_core::domain::search::{self, NOTES_WATERMARK_KEY, STAMPS_KEY, TASKS_WATERMARK_KEY};
 use memry_core::storage::migrations::{self, DATA_MIGRATIONS, INDEX_MIGRATIONS};
 use memry_core::storage::repositories::sync_items::{self, InboundRecord};
@@ -69,7 +69,9 @@ fn day_with_empty_first_update(data: &Connection) -> Vec<u8> {
     )
     .expect("the day's record");
     let (first, snapshot) = empty_update_then_snapshot();
-    update_log::append_server_update(data, DAY, 1, &first, NOW + 1).expect("the first update");
+    HeldBody::never_purged(data, DAY)
+        .and_then(|held| held.append_server_update(1, &first, NOW + 1))
+        .expect("the first update");
     snapshot
 }
 
@@ -89,7 +91,8 @@ fn a_snapshot_that_brings_the_text_replaces_the_body_cached_empty() {
     search::reindex(&data, &index, NOW + 2).expect("reindex before the snapshot");
     assert!(hits(&data, &index).is_empty(), "no text has arrived yet");
 
-    update_log::put_server_snapshot(&data, DAY, &snapshot, 1, Some("rev-1"), NOW + 3)
+    HeldBody::never_purged(&data, DAY)
+        .and_then(|held| held.put_server_snapshot(&snapshot, 1, Some("rev-1"), NOW + 3))
         .expect("the snapshot");
     search::reindex(&data, &index, NOW + 4).expect("reindex after the snapshot");
 
@@ -103,7 +106,8 @@ fn a_snapshot_that_brings_the_text_replaces_the_body_cached_empty() {
 fn an_index_built_with_the_stale_body_cache_heals_on_the_next_reindex() {
     let (data, index) = databases();
     let snapshot = day_with_empty_first_update(&data);
-    update_log::put_server_snapshot(&data, DAY, &snapshot, 1, Some("rev-1"), NOW + 1)
+    HeldBody::never_purged(&data, DAY)
+        .and_then(|held| held.put_server_snapshot(&snapshot, 1, Some("rev-1"), NOW + 1))
         .expect("the snapshot");
     data.execute(
         "INSERT INTO note_bodies (note_id, text, text_sha256, source_seq, materialised_at)

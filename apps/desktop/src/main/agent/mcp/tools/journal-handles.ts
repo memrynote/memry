@@ -11,6 +11,7 @@
 import { generateJournalId } from '@memry/contracts/journal-api'
 
 import type { IndexDb } from '../../../database'
+import { updateJournalEntry } from '../../../journal/update-entry'
 import { listJournalEntriesInRange } from '../../../database/queries/notes'
 import { deleteJournalEntryFile, readJournalEntry, writeJournalEntry } from '../../../vault/journal'
 import { createdTasksReply, writeAgentBody } from './agent-checklists'
@@ -60,17 +61,17 @@ export function createJournalHandles(indexDb: IndexDb): VaultServiceHandles['jou
     async update({ date, content_markdown, tags, properties }) {
       const existing = await readJournalEntry(date)
       let written = existing?.content ?? ''
-      const write = (content: string): ReturnType<typeof writeJournalEntry> => {
-        written = content
-        return writeJournalEntry(
-          date,
-          content,
-          tags ?? existing?.tags,
-          properties ?? existing?.properties
-        )
+      // The body goes to the doc before the file (`updateJournalEntry` →
+      // `landBodyEdit`): written beside the doc, a write-back that read the
+      // file first put the older body back (REVIEW-5465). The reply keeps
+      // the `j<date>` id the tool has always returned.
+      const write = async (content: string | undefined): Promise<{ id: string }> => {
+        if (content !== undefined) written = content
+        await updateJournalEntry({ date, content, tags, properties })
+        return { id: generateJournalId(date) }
       }
       if (content_markdown === undefined) {
-        return withDroppedJournalKeys(date, () => write(existing?.content ?? ''))
+        return withDroppedJournalKeys(date, () => write(undefined))
       }
       let createdTasks: Parameters<typeof createdTasksReply>[0] = []
       const updated = await withDroppedJournalKeys(date, async () => {

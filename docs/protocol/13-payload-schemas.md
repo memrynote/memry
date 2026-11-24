@@ -89,7 +89,7 @@ The Rust core meets rule 5 with a refused-items ledger (#4453), the equal of
 desktop's below. A record its type's schema refuses is not applied, its local
 row is left as it is, and the pull records it by type, id and core build in
 `sync_refused_items`
-(`crates/memry-core/src/storage/migrations/data/0030_sync_refused_items.sql:12-18`,
+(`crates/memry-core/src/storage/migrations/data/0031_sync_refused_items.sql:12-18`,
 `crates/memry-core/src/sync/pull/apply_step.rs:54`). The core build is
 `<package version>+<tree hash>`, where the tree hash is git's hash of
 `crates/memry-core` at HEAD, stamped at compile time
@@ -190,7 +190,7 @@ plaintext in `data.db`. The exception is bounded:
   shape.** A plain title can look like an envelope, so no reader guesses. The
   owner of the fact is the `agent_sealed_pending` table, one row per record
   whose sealed keys are stored plain
-  (`crates/memry-core/src/storage/migrations/data/0029_agent_records.sql:18-26`,
+  (`crates/memry-core/src/storage/migrations/data/0030_agent_records.sql:18-26`,
   `:62-66`; `crates/memry-core/src/storage/repositories/projectors/agent.rs:63-92`).
   Projections read it and leave the sealed columns empty for a pending record
   (`crates/memry-core/src/storage/repositories/projectors/agent.rs:100`,
@@ -337,7 +337,7 @@ A conforming client MUST accept both shapes and MUST emit the string shape.
 - `tag_definition` ids are **tag names**;
 - `folder_config` ids are **folder paths**;
 - `settings` has exactly **one** item, `synced_settings`
-  (`packages/sync-client/src/settings-sync.ts:171`,
+  (`packages/sync-client/src/settings-sync.ts:185`,
   `packages/sync-client/src/settings-sync-keys.ts:12`).
 
 **The sync bookkeeping key MUST therefore be `(type, id)` and never `id`

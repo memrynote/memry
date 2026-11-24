@@ -379,13 +379,17 @@ impl Editor {
 
     /// `note_id`'s body was purged (a delete applied, chapter 07 §7.15): the
     /// resident copy goes, a log that did not replay may be tried again, and
-    /// the listeners hear [`Notice::Purged`]. A day deleted and written again is
+    /// the listeners hear [`Notice::Purged`], once until a holder opens it again
+    /// ([`Resident::purge_told`]). A day deleted and written again is
     /// a new document under the old id, which the next open replays. Until a
     /// holder opens it again, [`Editor::apply_update`] refuses its edits
     /// ([`EditorError::Purged`]): they are edits of the deleted body.
     pub fn purge(&self, note_id: &str) {
-        self.resident().purge(note_id);
-        self.fan_out(note_id, Notice::Purged);
+        if self.resident().purge_told(note_id) {
+            self.fan_out(note_id, Notice::Purged);
+        } else {
+            self.count_growth(note_id, Notice::Purged);
+        }
     }
 
     /// The document's state vector, for the sync-step handshake.

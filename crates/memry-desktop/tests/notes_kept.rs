@@ -130,7 +130,7 @@ fn kept_removing(
     // The reconcile after the walk re-stamps a row's hash: `ahead` comes after it.
     e.after_reconcile();
     let id = row_id(&e, rel);
-    let search = e.core().search().unwrap();
+    let search = e.core().search(None).unwrap();
     until("the file's header is measured", || {
         search
             .note_stats(&id)
@@ -816,7 +816,7 @@ fn a_refused_folder_delete_takes_back_two_kept_copies_and_the_folders_they_made(
         id,
     } = kept_removing("f/g/a.md", "f/g", FILE, no_trash, |e, store, id| {
         e.write("f/g/b.md", FILE);
-        let search = e.core().search().unwrap();
+        let search = e.core().search(None).unwrap();
         until("the second file is measured", || {
             e.rows().iter().any(|(_, path)| path == "f/g/b.md")
                 && search

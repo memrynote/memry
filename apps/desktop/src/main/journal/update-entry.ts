@@ -10,30 +10,104 @@
 
 import { JournalChannels } from '@memry/contracts/ipc-channels'
 import type { JournalEntry, UpdateEntryInput } from '@memry/contracts/journal-api'
+import type { HeaderTagEdit } from '@memry/contracts/notes-api'
 import { getCanonicalJournalByDate } from '@memry/domain-notes'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { createLogger } from '../lib/logger'
 import { getDatabase, getIndexDatabase } from '../database'
 import {
   readJournalEntry,
-  writeJournalEntryWithContent,
+  composeJournalEntryWrite,
   getJournalRelativePath,
   serializeJournalEntry
 } from '../vault/journal'
 import { maybeCreateSignificantSnapshot } from '../vault/notes'
 import { syncJournalCache } from '../vault/journal-cache-sync'
+import { baselineAfterWrite, landBodyEdit } from '../sync/writeback-baseline'
+import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
 import { applyInlineTagEdit } from '../tags/inline-tags'
+import { applyHeaderTagEdit } from '../vault/frontmatter'
+import { foldTag } from '@memry/shared/tag-fold'
 import { getCrdtProvider } from '../sync/crdt-provider'
-import { writebackNow } from '../sync/crdt-writeback'
+import { takeWritebackTurn, writebackNow } from '../sync/crdt-writeback'
 import { trackMainEvent } from '../telemetry/track'
 import { shouldEmitThrottled } from '../telemetry/throttle'
 import { createJournalEntry, resolveJournalEntryId } from './create-entry'
-import { enqueueJournalUpdate, feedJournalBodyToCrdt } from './runtime-effects'
+import { enqueueJournalUpdate } from './runtime-effects'
 import { getJournalEntryByDate, getNoteCacheByPath } from './store'
 
 const logger = createLogger('Journal:Update')
 
+/**
+ * Frontmatter is written in the entry's write-back turn, so a pass never
+ * writes back the frontmatter it read before it (#5472). A body update feeds
+ * the doc first (`landBodyEdit`) outside the turn, since the feed can wait on
+ * the store; the re-arm after a pass restores its body but not the tags or
+ * properties written beside it, so those are written again in the turn
+ * (#5479).
+ */
 export async function updateJournalEntry(input: UpdateEntryInput): Promise<JournalEntry> {
+  const id = resolveJournalEntryId(input.date)
+  if (input.content === undefined) {
+    return takeWritebackTurn(id, async () => (await writeJournalUpdate(input)).entry)
+  }
+  const { entry, tagsBefore } = await writeJournalUpdate(input)
+  const added = entry.tags.filter((tag) => !tagsBefore.includes(tag))
+  const removed = tagsBefore.filter((tag) => !entry.tags.includes(tag))
+  const tagEdit: HeaderTagEdit | undefined =
+    added.length + removed.length > 0 ? { add: added, remove: removed } : undefined
+  if (!tagEdit && input.properties === undefined) return entry
+  await takeWritebackTurn(id, () =>
+    rewriteJournalFrontmatter(input.date, tagEdit, input.properties)
+  )
+  return entry
+}
+
+/**
+ * Adds `tags` to `date`'s entry file, keeping the ones it has. The file is read
+ * in the entry's turn, so a tag edit queued ahead of this keeps its tags.
+ * Never call from inside a turn of the entry: it waits for that turn.
+ */
+export function addJournalTags(date: string, tags: readonly string[]): Promise<void> {
+  return takeWritebackTurn(resolveJournalEntryId(date), async () => {
+    const kept = (await readJournalEntry(date))?.tags ?? []
+    // By tag key, and keeping `kept` as written: a file holding case variants
+    // (`Work`, `work`) must not hide a tag that is missing.
+    const keys = new Set(kept.map((tag) => foldTag(tag.trim())))
+    const added = applyHeaderTagEdit([], {
+      add: tags.filter((tag) => !keys.has(foldTag(tag.trim())))
+    })
+    if (added.length > 0) await writeJournalUpdate({ date, tags: [...kept, ...added] })
+  })
+}
+
+/**
+ * Writes the tag edit and `properties` over the entry's file body, when its
+ * file lacks them. The edit, not the whole list, so a tags save queued ahead
+ * of this turn keeps its tags.
+ */
+async function rewriteJournalFrontmatter(
+  date: string,
+  tagEdit: HeaderTagEdit | undefined,
+  properties: Record<string, unknown> | undefined
+): Promise<void> {
+  const current = await readJournalEntry(date)
+  if (!current) return
+  const tags = tagEdit ? applyHeaderTagEdit(current.tags, tagEdit) : current.tags
+  const { fileContent, previousFile } = await composeJournalEntryWrite(
+    date,
+    current.content,
+    tags,
+    current,
+    properties ?? current.properties
+  )
+  if (fileContent !== previousFile) await writeJournalUpdate({ date, tags, properties })
+}
+
+/** Resolves the written entry and the tags the file held before. */
+async function writeJournalUpdate(
+  input: UpdateEntryInput
+): Promise<{ entry: JournalEntry; tagsBefore: string[] }> {
   const db = getIndexDatabase()
   const dataDb = getDatabase()
 
@@ -48,12 +122,13 @@ export async function updateJournalEntry(input: UpdateEntryInput): Promise<Journ
     ? applyInlineTagEdit(dataDb, givenTags, input.inlineTags)
     : givenTags
   if (!existing) {
-    return createJournalEntry({
+    const entry = await createJournalEntry({
       date: input.date,
       content: input.content ?? '',
       tags: newTags,
       properties: input.properties
     })
+    return { entry, tagsBefore: [] }
   }
 
   const newContent = input.content ?? existing.content
@@ -84,7 +159,7 @@ export async function updateJournalEntry(input: UpdateEntryInput): Promise<Journ
     }
   }
 
-  const { entry, fileContent, frontmatter } = await writeJournalEntryWithContent(
+  const { entry, fileContent, frontmatter, previousFile, write } = await composeJournalEntryWrite(
     input.date,
     newContent,
     newTags,
@@ -93,12 +168,27 @@ export async function updateJournalEntry(input: UpdateEntryInput): Promise<Journ
   )
   const cacheId = canonical?.id ?? cached?.id ?? entry.id
 
+  // A new body goes to the doc before the file (`landBodyEdit`): an open
+  // editor is bound to the entry's doc, and the watcher ignores this write, so
+  // the next write-back would otherwise put the doc's older body back over it.
+  // A metadata edit keeps the body the doc holds.
+  const content = input.content
+  const contentHash =
+    content !== undefined
+      ? await landBodyEdit(db, cacheId, fileContent, {
+          notePath: journalPath,
+          feed: () => feedExternalEditToCrdt(cacheId, content),
+          write
+        })
+      : (await write(), baselineAfterWrite(db, cacheId, previousFile, fileContent))
+
   syncJournalCache(
     db,
     {
       id: cacheId,
       path: journalPath,
       fileContent,
+      contentHash,
       frontmatter,
       parsedContent: entry.content,
       title: entry.date,
@@ -108,9 +198,6 @@ export async function updateJournalEntry(input: UpdateEntryInput): Promise<Journ
     { isNew: !cached }
   )
   enqueueJournalUpdate(cacheId, entry.date)
-
-  // An open editor is bound to the entry's doc (see feedJournalBodyToCrdt).
-  if (input.content !== undefined) await feedJournalBodyToCrdt(cacheId, input.content)
 
   // The renderer caches whatever this returns (and whatever the event carries)
   // as the open entry, so both carry the cache id rather than `j<date>`.
@@ -130,7 +217,7 @@ export async function updateJournalEntry(input: UpdateEntryInput): Promise<Journ
     })
   }
 
-  return syncedEntry
+  return { entry: syncedEntry, tagsBefore: existing.tags }
 }
 
 /**

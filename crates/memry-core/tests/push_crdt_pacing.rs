@@ -75,6 +75,7 @@ fn rig(
         db.clone(),
         Declaration::subscribed(),
         sealer.clone(),
+        "device-a",
     )
     .with_crdt_pacing(Arc::clone(&admission), Arc::clone(&requests));
     Rig {

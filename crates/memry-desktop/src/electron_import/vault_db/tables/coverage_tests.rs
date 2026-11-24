@@ -54,7 +54,7 @@ fn every_drizzle_table_has_a_mapping_or_a_skip_reason() {
             );
         }
     }
-    assert_eq!(replayed(electron_db::DATA_DIR).len(), 65);
+    assert_eq!(replayed(electron_db::DATA_DIR).len(), 66);
     assert_eq!(replayed(electron_db::INDEX_DIR).len(), 16);
 
     let virtuals: Vec<_> = TABLE_MAP

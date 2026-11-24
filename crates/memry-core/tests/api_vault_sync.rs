@@ -18,6 +18,7 @@
 //! | ----------------------------------------------- | ------------------------------------- |
 //! | an empty vault is filled by the pull, not a fixture | spec-defect 136                    |
 //! | a failed bodies pass still leaves the notes visible | never "partly failed" as empty     |
+//! | a bodies pass that gave up on a 429 holds the drain | #5247                              |
 //! | a windowed-out body arrives only on demand      | FR-028, chapter 10 §10.6.1            |
 //! | a body fetch for an unknown note is refused     | chapter 07 §7.15                      |
 //! | a locked device refuses before the first request | no key, no network                   |
@@ -329,6 +330,48 @@ async fn a_failed_bodies_pass_still_leaves_the_notes_that_arrived_visible() {
     );
 }
 
+/// #5247: a bodies pass that gave up on a `429` (a `Retry-After` past the
+/// minute it waits out itself) leaves the window open, and the drain the shell
+/// starts next sends nothing until it closes.
+#[tokio::test(start_paused = true)]
+async fn a_bodies_pass_that_gave_up_on_a_rate_limit_holds_the_drain_back() {
+    let vault = scratch_vault("first-sync-429");
+    let (public, secret) = keypair();
+    let mut script = first_sync_script(&public, secret, RECENT);
+    script.push(http_fakes::probe_refused());
+    script.push(http_fakes::response_with_header(
+        429,
+        r#"{"error":{"code":"RATE_LIMITED","message":"slow down"}}"#,
+        ("retry-after", "120"),
+    ));
+    let transport = FakeTransport::new(script);
+    let sync = vault.sync(session(transport.clone(), true));
+    sync.first_sync(None)
+        .await
+        .expect_err("the bodies pass gave up");
+
+    let calls = transport.call_count();
+    let held = sync.drain_bodies(None).await.expect("the paused round");
+    assert_eq!((held.documents, held.remaining), (0, 1), "{held:?}");
+    assert_eq!(
+        transport.call_count(),
+        calls,
+        "no request inside Retry-After"
+    );
+
+    tokio::time::advance(std::time::Duration::from_secs(120)).await;
+    for answer in [
+        devices_response(&public),
+        error_response(501, "BOOTSTRAP_UNAVAILABLE", "no bootstrap key"),
+        http_fakes::probe_refused(),
+        error_response(403, "SYNC_VAULT_FORBIDDEN", "not your vault"),
+    ] {
+        transport.push(answer);
+    }
+    sync.drain_bodies(None).await.expect("the resumed round");
+    assert_eq!(transport.call_count(), calls + 4, "the round ran");
+}
+
 /// FR-028's "older content on demand". The body of a windowed-out note is not
 /// missing data — it is data the first sync deliberately did not ask for, and
 /// `fetch_note_body` is the only way it can ever arrive.
@@ -408,6 +451,45 @@ async fn a_body_fetch_for_a_note_this_vault_does_not_hold_is_refused() {
         }
     );
     assert_eq!(transport.call_count(), 0, "and nothing was asked of anyone");
+}
+
+/// A shell browses the vault while its first sync runs, and a write or a
+/// foreground asks for a pass meanwhile. The pass waits for the first sync:
+/// both page the one record cursor and spend the same rate-limit buckets, so
+/// running them together rewinds each other's cursor and slows the fill.
+///
+/// The transport answers in script order, so a pass that ran inside the first
+/// sync would take its responses and break it.
+#[tokio::test]
+async fn a_pass_asked_for_during_the_first_sync_waits_for_it() {
+    let vault = scratch_vault("gated");
+    let (public, secret) = keypair();
+
+    let mut script = first_sync_script(&public, secret, OLD);
+    script.push(devices_response(&public));
+    script.push(error_response(
+        403,
+        "SYNC_VAULT_FORBIDDEN",
+        "the pass's first page",
+    ));
+    // Held in flight, so the pass is asked for while the first sync runs.
+    let transport = FakeTransport::slow(script, 20);
+    let sync = vault.sync(session(transport.clone(), true));
+
+    let (first, pass) = tokio::join!(sync.first_sync(None), async {
+        tokio::time::sleep(std::time::Duration::from_millis(5)).await;
+        sync.sync_now().await
+    });
+
+    first.expect("the first sync ran alone");
+    assert!(
+        matches!(pass, Err(SyncError::Api { .. })),
+        "the pass ran after it and met its own scripted page: {pass:?}"
+    );
+    let urls: Vec<String> = transport.calls().into_iter().map(|c| c.url).collect();
+    assert_eq!(urls.len(), 8, "{urls:?}");
+    assert!(urls[6].ends_with("/auth/devices"), "{urls:?}");
+    assert!(urls[7].contains("/sync/changes"), "{urls:?}");
 }
 
 /// No master key means no vault key, and a pull with no vault key could only

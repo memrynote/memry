@@ -39,12 +39,14 @@ impl FirstSync {
             .is_none();
         let (used, tail_start) = match &self.packs {
             Some(packs) if fresh => {
+                // A fresh device holds no record yet, so the documents the
+                // packs applied are the documents it holds.
                 let progress = Arc::clone(&self.progress);
-                let on_progress = move |completed: u64, total: u64| {
+                let on_progress = move |documents: u64| {
                     progress.progress(FirstSyncProgress {
-                        phase: FirstSyncPhase::Metadata,
-                        completed,
-                        total: total.max(completed),
+                        phase: FirstSyncPhase::Records,
+                        completed: documents,
+                        total: None,
                     });
                 };
                 let records = packs

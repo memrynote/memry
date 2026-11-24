@@ -314,6 +314,9 @@ fn insert(
         if created && *record_op == RecordOp::Upsert {
             op = OP_CREATE;
         }
+        if change.op() == RecordOp::Delete.as_str() {
+            super::delete_wins::forget(tx, item_type, item_id)?;
+        }
         tx.execute(
             "DELETE FROM outbox
               WHERE item_type = ?1 AND item_id = ?2 AND op <> ?3",
@@ -471,6 +474,14 @@ pub fn ack(conn: &Connection, ids: &[i64]) -> Result<usize, StorageError> {
             .map_err(failed)?;
     }
     Ok(removed)
+}
+
+/// Drops a purged document's queued body updates (chapter 07 §7.15.1, #5379).
+pub(crate) fn drop_body_updates(tx: &Connection, kind: &str, id: &str) -> Result<(), StorageError> {
+    let sql = "DELETE FROM outbox WHERE item_type = ?1 AND item_id = ?2 AND op = ?3";
+    tx.execute(sql, params![kind, id, OP_CRDT_UPDATE])
+        .map_err(failed)?;
+    Ok(())
 }
 
 /// Records a rejection against rows that stay queued: one attempt, the

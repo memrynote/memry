@@ -181,6 +181,7 @@ fn coordinator(db: &Db, server: &Arc<Server>) -> PushCoordinator {
         db.clone(),
         Declaration::subscribed(),
         Arc::new(Plain),
+        "device-a",
     )
 }
 

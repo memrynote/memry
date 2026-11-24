@@ -79,7 +79,8 @@ struct JournalDayPage: View {
             target: .journalDay(date),
             blocks: model?.read.blocks ?? [],
             blocksRead: model?.read.blocksRead ?? false,
-            finding: Binding(get: { model?.finding ?? false }, set: { model?.finding = $0 })
+            finding: Binding(get: { model?.finding ?? false }, set: { model?.finding = $0 }),
+            answersFind: isShown
         ))
         .task(id: model == nil) {
             guard let model else { return }
@@ -118,12 +119,6 @@ struct JournalDayPage: View {
         if let detail = model.detail {
             let taskBridge = taskBridge(model)
             VStack(alignment: .leading, spacing: Tokens.Space.section) {
-                if !JournalWriteGate.metadataWrites {
-                    JournalDayReadOnlyMetadata(
-                        metadata: JournalNoteBridge.metadata(store.cachedDay(date)),
-                        explains: Bindable(model).explainsReadOnlyMetadata
-                    )
-                }
                 NotePageContent(
                     model: model.read,
                     detail: detail,
@@ -139,7 +134,7 @@ struct JournalDayPage: View {
                     openTag: nil,
                     brokenLink: $brokenLink,
                     emptyBody: { preview in emptyBody(preview, model: model) },
-                    afterBacklinks: { EmptyView() }
+                    keepsEmptyBody: model.handingOff
                 )
             }
             .modifier(NotePageEnvironment(model: model.read, taskBridge: taskBridge))
@@ -171,12 +166,16 @@ struct JournalDayPage: View {
     /// page's own body state (not on this phone, with its fetch button).
     @ViewBuilder
     private func emptyBody(_ preview: NoteBodyPreview, model: JournalDayPageModel) -> some View {
-        if case .empty = preview {
+        if preview == .empty || model.handingOff {
             JournalDayFirstLine(
                 placeholder: JournalCopy.placeholder(date: date, today: store.clock.today)
-            ) { line in
-                await model.writeFirstLine(line)
+            ) { line, carrying in
+                await model.writeFirstLine(line, carrying: carrying)
             }
+            // Its line is drawn as a block already.
+            .frame(height: model.handingOff ? 0 : nil)
+            .opacity(model.handingOff ? 0 : 1)
+            .accessibilityHidden(model.handingOff)
         } else {
             NoteBodyView(
                 preview: preview,

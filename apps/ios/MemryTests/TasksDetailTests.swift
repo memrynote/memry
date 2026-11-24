@@ -1,5 +1,6 @@
 import Foundation
 import MemryCore
+import SwiftUI
 import Testing
 
 @testable import Memry
@@ -36,6 +37,116 @@ struct TasksDetailTests {
         #expect(await vault.store.detailRename(try item(vault, id), to: "  [agent] renamed  "))
         #expect(try item(vault, id).title == "[agent] renamed")
         #expect(vault.store.undoable == nil)
+    }
+
+    /// #4350: the title field commits on focus loss and on going away, once
+    /// per edit. Renamed to B, a peer renames it to C, B typed again: written.
+    @Test func a_title_retyped_after_a_peer_rename_is_written() async throws {
+        let (vault, id) = try await loaded()
+        var commits = DraftCommits()
+        commits.begin(try item(vault, id).title)
+        let taken = commits.take("[agent] B", explicit: false)
+        let first = try #require(taken)
+        #expect(await vault.store.detailRename(try item(vault, id), to: first))
+        _ = try vault.tasks.setTitle(id: id, title: "[agent] C")
+        await vault.store.refresh()
+        #expect(try item(vault, id).title == "[agent] C")
+        commits.begin(try item(vault, id).title)
+        let retaken = commits.take("[agent] B", explicit: false)
+        let again = try #require(retaken)
+        #expect(await vault.store.detailRename(try item(vault, id), to: again))
+        #expect(try item(vault, id).title == "[agent] B")
+    }
+
+    /// REVIEW-4529: the title is focused, nothing is typed, a peer renames it
+    /// to C. Blur, Back or a swap must not write the stale A over C.
+    @Test func a_focused_untouched_title_does_not_overwrite_a_peer_rename() async throws {
+        let (vault, id) = try await loaded("[agent] A")
+        var commits = DraftCommits()
+        commits.begin(try item(vault, id).title)
+        _ = try vault.tasks.setTitle(id: id, title: "[agent] C")
+        await vault.store.refresh()
+        if let text = commits.take("[agent] A", explicit: false) {
+            _ = await vault.store.detailRename(try item(vault, id), to: text)
+        }
+        #expect(try item(vault, id).title == "[agent] C")
+    }
+
+    @Test func focus_loss_and_going_away_write_one_edit_once() {
+        var commits = DraftCommits()
+        commits.begin("A")
+        #expect(commits.take("B", explicit: false) == "B")
+        #expect(commits.take("B", explicit: false) == nil)
+        commits.begin("B")
+        #expect(commits.take("B2", explicit: false) == "B2")
+    }
+
+    /// #4611: a title write fails after the field was focused again. The edit
+    /// typed next still writes, through the real field.
+    @Test func an_edit_after_a_failed_write_and_refocus_is_written() async throws {
+        let vault = try TasksTestVault()
+        let id = try vault.task("[agent] A", project: try vault.project())
+        let tasks = FailingTitleTasks(vault.tasks)
+        let defaults = try #require(UserDefaults(suiteName: "tasks-test-\(UUID().uuidString)"))
+        let store = TasksStore(core: tasks, filler: nil, vaultId: "vault-test", defaults: defaults)
+        await store.load()
+        let task = try #require(store.items[id])
+        let scene = try #require(UIApplication.shared.connectedScenes.first as? UIWindowScene)
+        let window = UIWindow(windowScene: scene)
+        window.rootViewController = UIHostingController(rootView: TaskDetailTitleField(task: task, store: store))
+        window.makeKeyAndVisible()
+        defer { window.isHidden = true }
+        try await settle { Self.textInput(in: window) != nil }
+        let field = try #require(Self.textInput(in: window))
+
+        field.becomeFirstResponder()
+        try await settle { field.isFirstResponder }
+        // SwiftUI takes a beat to see the focus and the typed text.
+        try await Task.sleep(for: .milliseconds(200))
+        tasks.failNextTitle()
+        field.insertText(" B")
+        try await Task.sleep(for: .milliseconds(200))
+        field.resignFirstResponder()
+        try await settle { tasks.waiting }
+        #expect(tasks.waiting, "the first edit never reached the core")
+
+        field.becomeFirstResponder()
+        try await settle { field.isFirstResponder }
+        try await Task.sleep(for: .milliseconds(200))
+        tasks.release()
+        try await settle { store.failure != nil }
+        #expect(store.failure != nil, "the failed write was not reported")
+        try await Task.sleep(for: .milliseconds(200))
+
+        field.insertText(" C")
+        try await Task.sleep(for: .milliseconds(200))
+        field.resignFirstResponder()
+        try await settle { store.items[id]?.title != "[agent] A" }
+        #expect(store.items[id]?.title == "[agent] A C")
+    }
+
+    private static func textInput(in view: UIView) -> (UIView & UIKeyInput)? {
+        if let input = view as? UIView & UIKeyInput, view.canBecomeFirstResponder { return input }
+        return view.subviews.lazy.compactMap { textInput(in: $0) }.first
+    }
+
+    private func settle(_ done: () -> Bool) async throws {
+        for _ in 0 ..< 40 where !done() {
+            try await Task.sleep(for: .milliseconds(50))
+        }
+    }
+
+    /// A task cannot be untitled: an emptied title ends the edit with no write.
+    @Test func an_emptied_title_is_dropped() {
+        var commits = DraftCommits()
+        commits.begin("A")
+        #expect(commits.take("", explicit: false) == nil)
+        #expect(commits.take("B", explicit: false) == nil, "the emptied edit ended")
+    }
+
+    @Test func going_away_without_focus_writes_nothing() {
+        var commits = DraftCommits()
+        #expect(commits.take("A", explicit: false) == nil)
     }
 
     @Test func status_priority_due_and_project_edits_are_undoable() async throws {
@@ -304,5 +415,36 @@ struct TasksDetailTests {
         let rendered = TaskDescriptionMarkdown.render("**Bold** and [link](https://memry.app)")
         #expect(String(rendered.characters) == "Bold and link")
         #expect(rendered.runs.contains { $0.link != nil })
+    }
+}
+
+/// The real tasks surface. After `failNextTitle`, the next `setTitle` waits
+/// for `release` and then fails, as a core write can.
+private final class FailingTitleTasks: Tasks, @unchecked Sendable {
+    private let lock = NSLock()
+    private var armed = false
+    private var entered = false
+    private let gate = DispatchSemaphore(value: 0)
+
+    init(_ tasks: Tasks) { super.init(unsafeFromHandle: tasks.uniffiCloneHandle()) }
+
+    required init(unsafeFromHandle handle: UInt64) { super.init(unsafeFromHandle: handle) }
+
+    var waiting: Bool { lock.withLock { entered } }
+
+    func failNextTitle() { lock.withLock { armed = true } }
+
+    func release() { gate.signal() }
+
+    override func setTitle(id: String, title: String) throws -> TaskChange {
+        let fails = lock.withLock {
+            defer { armed = false }
+            entered = armed
+            return armed
+        }
+        guard fails else { return try super.setTitle(id: id, title: title) }
+        gate.wait()
+        lock.withLock { entered = false }
+        throw StorageError.Failed(what: "the disk is full")
     }
 }

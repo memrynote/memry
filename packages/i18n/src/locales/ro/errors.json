@@ -44,6 +44,8 @@
     "moveFailed": "Nu s-a putut muta notița",
     "applyTemplateFailed": "Nu s-a putut aplica șablonul",
     "appendBlocksFailed": "Nu s-a putut muta blocul în acea notiță",
+    "appendIntoCaseTwin": "Acea notiță are același fișier cu o notiță al cărei nume diferă doar prin majuscule și minuscule. Redenumește una dintre ele, apoi mută din nou blocul.",
+    "caseTwinMoveRefused": "Această notiță își împarte fișierul cu o notiță al cărei nume diferă doar prin majuscule și minuscule, așa că nu poate fi mutată în acest mod. Redenumește sau mută cealaltă notiță ori șterge copia de care nu ai nevoie.",
     "exportPdfFailed": "Nu s-a putut exporta în PDF",
     "exportHtmlFailed": "Nu s-a putut exporta în HTML",
     "restoreVersionFailed": "Nu s-a putut restaura versiunea",
@@ -78,7 +80,9 @@
     "downloadProgressFailed": "Nu s-a putut prelua progresul descărcării",
     "exceedsMaxSize": "Fișier prea mare: {size} depășește limita de {limit}",
     "exceedsPlanLimit": "Fișierul este mai mare decât permite planul: {size} depășește {limit}",
-    "emptyFile": "Nu se poate încărca un fișier gol"
+    "emptyFile": "Nu se poate încărca un fișier gol",
+    "emptyNotAttached": "Acest fișier este gol, așa că nu a fost atașat. Dacă ați lipit o imagine, copiați-o din nou și lipiți-o.",
+    "textInMediaFile": "Acest fișier conține text în loc de conținutul media indicat de nume"
   },
   "crdt": {
     "persistenceDegradedTitle": "Istoricul editărilor nu este păstrat pe acest dispozitiv",
@@ -233,6 +237,7 @@
   "folder": {
     "createFailed": "Nu s-a putut crea dosarul",
     "renameFailed": "Nu s-a putut redenumi dosarul",
+    "renameCaseTwins": "Acest folder conține notițe care împart un fișier cu o notiță al cărei nume de folder diferă doar prin majuscule și minuscule. Redenumește sau mută mai întâi acele notițe, apoi redenumește folderul.",
     "deleteFailed": "Nu s-a putut șterge dosarul",
     "keptNotPulled": "Acest dosar conține o notiță al cărei fișier a fost șters în afara memrynote, iar textul ei nu s-a sincronizat încă pe acest dispozitiv, așa că nu poate fi mutată în coșul de gunoi. Nu s-a șters nimic. Așteaptă sincronizarea sau șterge mai întâi separat acea notiță.",
     "keptUnwritable": "Acest dosar conține o notiță al cărei fișier a fost șters în afara memrynote, iar textul ei nu poate fi salvat într-un fișier pentru coșul de gunoi. Nu s-a șters nimic. Șterge mai întâi separat acea notiță.",

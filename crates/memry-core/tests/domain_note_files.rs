@@ -252,10 +252,11 @@ fn missing_candidates_skip_attachments_that_never_arrived() {
 #[test]
 fn the_migration_runs_again_over_a_file_that_already_has_the_table() {
     // A crash between the migration's commit and the `user_version` pragma leaves the
-    // table in place at the old version; the next open runs 0020 again. Nothing past 0020
-    // has run in that window, so 0021's `note_positions`, 0022's `note_file_hashes`, 0023's
-    // `note_place_owed` and 0024's `wiki_name_keys` are not there either: a file at 19 that has
-    // one reads as one an earlier desktop build numbered (`legacy_numbering`).
+    // table in place at the old version; the next open runs 0021 again. Nothing past 0021
+    // has run in that window, so 0022's `note_positions`, 0023's `note_file_hashes`, 0024's
+    // `note_place_owed`, 0025's `wiki_name_keys` and 0026's `vault_locks` are not there either:
+    // a file at 20 that has one reads as one an earlier desktop build numbered
+    // (`legacy_numbering`).
     let Fixture { dir, vault } = fixture();
     vault
         .note_files()
@@ -266,7 +267,7 @@ fn the_migration_runs_again_over_a_file_that_already_has_the_table() {
         .call_blocking(|conn| {
             conn.execute_batch(
                 "DROP TABLE note_positions; DROP TABLE note_file_hashes; DROP TABLE note_place_owed;
-                 DROP TABLE wiki_name_keys; PRAGMA user_version = 19",
+                 DROP TABLE wiki_name_keys; DROP TABLE vault_locks; PRAGMA user_version = 20",
             )
             .map_err(|err| StorageError::Failed {
                 what: err.to_string(),

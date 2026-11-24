@@ -378,7 +378,7 @@ async fn bench_local_apply_of_a_seeded_vault() {
         .keep();
     let packed = PackBootstrap::new(http, db.clone(), pull)
         .with_spill_dir(spill)
-        .run_bodies(1_000, &|_, _| {})
+        .run_bodies(1_000)
         .await
         .expect("the pack bootstrap");
     let packs = started.elapsed();

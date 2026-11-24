@@ -44,6 +44,8 @@
     "moveFailed": "Impossibile spostare la nota",
     "applyTemplateFailed": "Impossibile applicare il modello",
     "appendBlocksFailed": "Impossibile spostare il blocco in quella nota",
+    "appendIntoCaseTwin": "Quella nota condivide il file con una nota il cui nome differisce solo per maiuscole e minuscole. Rinomina una delle due, quindi sposta di nuovo il blocco.",
+    "caseTwinMoveRefused": "Questa nota condivide il file con una nota il cui nome differisce solo per maiuscole e minuscole, quindi non può essere spostata in questo modo. Rinomina o sposta l’altra nota, oppure elimina la copia che non ti serve.",
     "exportPdfFailed": "Impossibile esportare in PDF",
     "exportHtmlFailed": "Impossibile esportare in HTML",
     "restoreVersionFailed": "Impossibile ripristinare la versione",
@@ -78,7 +80,9 @@
     "downloadProgressFailed": "Impossibile recuperare l'avanzamento del download",
     "exceedsMaxSize": "File troppo grande: {size} supera il limite di {limit}",
     "exceedsPlanLimit": "Il file è più grande di quanto consenta il tuo piano: {size} supera {limit}",
-    "emptyFile": "Impossibile caricare un file vuoto"
+    "emptyFile": "Impossibile caricare un file vuoto",
+    "emptyNotAttached": "Questo file è vuoto, quindi non è stato allegato. Se hai incollato un'immagine, copiala di nuovo e incollala.",
+    "textInMediaFile": "Questo file contiene testo invece del contenuto multimediale indicato dal nome"
   },
   "crdt": {
     "persistenceDegradedTitle": "La cronologia delle modifiche non viene conservata su questo dispositivo",
@@ -233,6 +237,7 @@
   "folder": {
     "createFailed": "Impossibile creare la cartella",
     "renameFailed": "Impossibile rinominare la cartella",
+    "renameCaseTwins": "Questa cartella contiene note che condividono un file con una nota il cui nome di cartella differisce solo per maiuscole e minuscole. Prima rinomina o sposta quelle note, poi rinomina la cartella.",
     "deleteFailed": "Impossibile eliminare la cartella",
     "keptNotPulled": "Questa cartella contiene una nota il cui file è stato eliminato fuori da memrynote, e il suo testo non è ancora stato sincronizzato su questo dispositivo, quindi non può andare nel cestino. Non è stato eliminato nulla. Attendi la sincronizzazione o elimina prima quella nota da sola.",
     "keptUnwritable": "Questa cartella contiene una nota il cui file è stato eliminato fuori da memrynote, e il suo testo non può essere salvato in un file per il cestino. Non è stato eliminato nulla. Elimina prima quella nota da sola.",

@@ -74,7 +74,8 @@ fn an_upsert_over_an_unsent_create_is_sent_as_the_create() {
     conn.execute_batch(
         "CREATE TABLE outbox (id INTEGER PRIMARY KEY AUTOINCREMENT, item_type TEXT NOT NULL,
            item_id TEXT NOT NULL, op TEXT NOT NULL, payload BLOB, enqueued_at INTEGER NOT NULL,
-           attempt_count INTEGER NOT NULL DEFAULT 0, last_error TEXT, next_attempt_at INTEGER);",
+           attempt_count INTEGER NOT NULL DEFAULT 0, last_error TEXT, next_attempt_at INTEGER);
+         CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);",
     )
     .unwrap();
     let ops = |conn: &Connection| -> Vec<String> {

@@ -16,6 +16,7 @@ use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use http_fakes::{FakeTransport, response};
 use memry_core::crdt::body_edit::BlockEdit;
+use memry_core::crdt::epoch::HeldBody;
 use memry_core::crdt::update_log;
 use memry_core::domain::body_write;
 use memry_core::domain::journal_ops::body;
@@ -240,7 +241,8 @@ async fn text_the_deleting_device_already_had_is_not_kept() {
             },
             DELETED_AT - 3_600_000,
         )?;
-        update_log::append_server_update(conn, DAY, 1, &server_paragraph("Old news"), 1)
+        HeldBody::never_purged(conn, DAY)
+            .and_then(|held| held.append_server_update(1, &server_paragraph("Old news"), 1))
             .expect("server body");
         Ok(())
     })
@@ -318,6 +320,16 @@ async fn a_note_edited_offline_is_kept_under_its_title() {
                 "Edited offline".to_owned()
             )]
         );
+        // The delete wins: the note's queued record edit would go out as an
+        // update over it and undelete the note on the server (VERIFY-5426).
+        let queued: i64 = conn
+            .query_row(
+                "SELECT count(*) FROM outbox WHERE item_type = 'note' AND item_id = ?1",
+                [NOTE],
+                |row| row.get(0),
+            )
+            .expect("count");
+        assert_eq!(queued, 0, "nothing of the note is left to push");
         Ok(())
     })
     .expect("check");
@@ -377,7 +389,9 @@ async fn text_inside_the_deleters_body_vector_is_not_kept() {
             },
             DELETED_AT - 3_600_000,
         )?;
-        update_log::append_server_update(conn, DAY, 1, &body, 1).expect("server body");
+        HeldBody::never_purged(conn, DAY)
+            .and_then(|held| held.append_server_update(1, &body, 1))
+            .expect("server body");
         Ok(())
     })
     .expect("seed");

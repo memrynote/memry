@@ -6,6 +6,7 @@ import { JournalChannels, NotesChannels } from '@memry/contracts/ipc-channels'
 import { noteCache, noteTags, noteLinks } from '@memry/db-schema/schema/notes-cache'
 import { noteMetadata, canvases } from '@memry/db-schema/data-schema'
 import { folderConfigs } from '@memry/db-schema/schema/folder-configs'
+import { markRecordsPulled, resetSyncDecision } from '@memry/sync-client/sync-eligibility'
 import { createTestVault, createTestNote } from '@tests/utils/test-vault'
 import {
   createTestDataDb,
@@ -160,6 +161,7 @@ import { setJournalConfig } from './journal-config'
 import {
   queueEmbeddedVaultFiles,
   syncNoteCreate,
+  syncNoteDelete,
   unlinkTasksFromDeletedNote
 } from '../notes/runtime-effects'
 import { updateNoteEmbedding } from '../inbox/suggestions'
@@ -212,9 +214,12 @@ describe('vault watcher', () => {
     mockWatch.mockReset()
 
     startProjectionRuntime([createNoteDerivedStateProjector(() => vault.path)])
+    // A device that has pulled: a folder it finds is synced at once (#5255).
+    markRecordsPulled()
   })
 
   afterEach(async () => {
+    resetSyncDecision()
     await closeActivityLog()
     await stopProjectionRuntime({ drain: true })
     clearIngestBackfill()
@@ -444,6 +449,69 @@ describe('vault watcher', () => {
     expect(syncNoteCreate).toHaveBeenCalledWith(noteId, 'body-only-tag-note', [], {
       sizeClass: expect.any(String)
     })
+  })
+
+  // A folder rename re-keys the canonical rows at once and the index in
+  // batches, so an old path's unlink can find the index row still there.
+  it('syncs no delete for a note moved before its index row followed', async () => {
+    vi.useFakeTimers()
+    const watcher = new VaultWatcher() as any
+    watcher.vaultPath = vault.path
+    const oldPath = createTestNote(vault, { title: 'moved-note', content: 'Body' })
+    await watcher.handleFileAdd(oldPath)
+    const noteId = indexDb.db
+      .select()
+      .from(noteCache)
+      .where(eq(noteCache.path, 'notes/moved-note.md'))
+      .get()!.id
+
+    fs.mkdirSync(path.join(vault.path, 'Archive'))
+    fs.renameSync(oldPath, path.join(vault.path, 'Archive', 'moved-note.md'))
+    dataDb.db
+      .update(noteMetadata)
+      .set({ path: 'Archive/moved-note.md' })
+      .where(eq(noteMetadata.id, noteId))
+      .run()
+    watcher.handleFileDelete(oldPath)
+    await vi.advanceTimersByTimeAsync(1000)
+    // The settled delete checks the disk before it syncs anything.
+    vi.useRealTimers()
+    await new Promise((resolve) => setTimeout(resolve, 300))
+
+    expect(syncNoteDelete).not.toHaveBeenCalled()
+    expect(
+      dataDb.db.select().from(noteMetadata).where(eq(noteMetadata.id, noteId)).get()?.path
+    ).toBe('Archive/moved-note.md')
+  })
+
+  it('queues no create for the add of a note the app is moving with its folder', async () => {
+    const watcher = new VaultWatcher() as any
+    watcher.vaultPath = vault.path
+    const oldPath = createTestNote(vault, { title: 'carried', content: 'Body' })
+    await watcher.handleFileAdd(oldPath)
+    await drainIngestBackfill()
+    const noteId = indexDb.db
+      .select()
+      .from(noteCache)
+      .where(eq(noteCache.path, 'notes/carried.md'))
+      .get()!.id
+    vi.mocked(syncNoteCreate).mockClear()
+
+    // The rename has moved the file and the canonical row; the index lags.
+    const newPath = path.join(vault.path, 'Archive', 'notes', 'carried.md')
+    fs.mkdirSync(path.dirname(newPath), { recursive: true })
+    fs.renameSync(oldPath, newPath)
+    dataDb.db
+      .update(noteMetadata)
+      .set({ path: 'Archive/notes/carried.md' })
+      .where(eq(noteMetadata.id, noteId))
+      .run()
+    await withAppFolderChange(['notes', 'Archive/notes'], async () => {
+      await watcher.handleFileAdd(newPath)
+      await drainIngestBackfill()
+    })
+
+    expect(syncNoteCreate).not.toHaveBeenCalled()
   })
 
   // ==========================================================================
@@ -1938,7 +2006,7 @@ describe('vault watcher', () => {
         uploadAttachment: vi.fn(),
         downloadAttachment: vi.fn(),
         dereference,
-        markWritebackIgnored: vi.fn(),
+        recordAppWrite: vi.fn(() => () => {}),
         trackEvent: vi.fn()
       })
       recordAsset(db, {

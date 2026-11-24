@@ -98,7 +98,9 @@ impl SyncDriver {
         }
         let pairs: Vec<_> = documents
             .iter()
-            .map(|document| (&**document, self.snapshots.gate(document.id())))
+            .map(|(document, opened_at)| {
+                (&**document, *opened_at, self.snapshots.gate(document.id()))
+            })
             .collect();
         let mut stored = Vec::new();
         for (doc_id, outcome) in self.snapshots.pusher.push_batch(&pairs, now).await {

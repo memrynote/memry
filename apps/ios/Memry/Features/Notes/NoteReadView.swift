@@ -16,7 +16,6 @@ import SwiftUI
 
 struct NoteReadView: View {
     @State private var model: NoteReadViewModel
-    @State private var reportedOpen = false
 
     /// The production entry point. `NotesListView.body`'s one
     /// `navigationDestination(for: NoteRoute.self)` calls exactly this, with
@@ -131,6 +130,11 @@ struct NoteReadView: View {
         _composer = State(
             initialValue: NoteAttachmentComposer(noteId: model.route.id, filler: model.filler)
         )
+        // A fresh session counts writes from 0 while `model` may keep a
+        // `blocksGeneration` from an earlier page's session (#4738). The
+        // stamp only holds back a read older than a row's own write, and
+        // this page's rows start with none, so an old stamp draws for them;
+        // `loadBlocks` stamps from this session from its next read on.
         _editorModel = State(
             initialValue: NoteEditorViewModel(noteId: model.route.id, editor: editor, notes: writer)
         )
@@ -175,6 +179,8 @@ struct NoteReadView: View {
     @Environment(TasksRouter.self) private var router: TasksRouter?
     /// Opens a day in the Journal tab. Absent outside the vault shell.
     @Environment(\.openJournalDay) private var openJournalDay
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
 
     /// `open`, with a day's `j<date>` route (a wiki link to a day) sent to
     /// the Journal tab instead of pushed as a note (JP052).
@@ -190,7 +196,6 @@ struct NoteReadView: View {
         }
     }
     @Environment(\.requestVaultSync) private var requestVaultSync
-    @Environment(\.vaultSyncPasses) private var vaultSyncPasses
 
     private var taskBridge: NoteTaskBridge {
         .note(tasks: taskActions, editor: editorModel, router: router) {
@@ -213,6 +218,8 @@ struct NoteReadView: View {
     @State private var topInset: CGFloat = 0
     /// Find in note (N801), shown on demand rather than always.
     @State private var finding = false
+    /// The heading the inspector's outline asked for, by block index.
+    @State private var outlineJump: Int?
 
     /// Applies one direction of an undo step.
     ///
@@ -226,14 +233,9 @@ struct NoteReadView: View {
         await model.reload()
     }
 
-    private func focusBody(atEnd: Bool) async {
-        await editorModel.focusBody(in: model.blocks, atEnd: atEnd)
+    private func focusBody(atEnd: Bool, carrying held: TitleBurst.Take? = nil) async {
+        await editorModel.focusBody(in: model.blocks, atEnd: atEnd, carrying: held)
         await model.reload()
-    }
-
-    private var hasCover: Bool {
-        guard case .ready = model.phase else { return false }
-        return NoteCoverValue.of(model.metadata?.coverJson) != nil
     }
 
     var body: some View {
@@ -276,7 +278,9 @@ struct NoteReadView: View {
                 case let .ready(detail):
                     NotePageTitle(
                         model: model, detail: detail, metadataModel: metadataModel,
-                        returnToBody: editorModel.canEdit ? { Task { await focusBody(atEnd: false) } } : nil
+                        // Immediate: a drawn first block takes the caret in
+                        // the Return's own turn, before the title lets go.
+                        returnToBody: editorModel.canEdit ? { held in Task.immediate { await focusBody(atEnd: false, carrying: held) } } : nil
                     )
                     NotePageContent(
                         model: model,
@@ -287,6 +291,7 @@ struct NoteReadView: View {
                         backlinks: backlinks,
                         unlinkedMentions: unlinkedMentions,
                         linkedTasks: linkedTasks,
+                        reminders: reminders,
                         taskBridge: taskBridge,
                         open: openRoute,
                         openTag: openTag,
@@ -304,11 +309,6 @@ struct NoteReadView: View {
                             )
                             }
                         },
-                        afterBacklinks: {
-                            // N804, under the backlinks: both are about the
-                            // note rather than in it.
-                            NoteRemindersSection(model: reminders)
-                        },
                         tapBelowBody: editorModel.canEdit && model.preview != .notPulled
                             ? { Task { await focusBody(atEnd: true) } } : nil
                     )
@@ -321,10 +321,10 @@ struct NoteReadView: View {
             .padding(.vertical, Tokens.Space.screenBlock)
         }
         .restoresScroll(scrollKey)
-        .modifier(NoteHeadingScroll(heading: model.route.heading, blocks: model.blocks))
+        .modifier(NoteHeadingScroll(heading: model.route.heading, blocks: model.blocks, jump: $outlineJump))
         .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.top } action: { topInset = $0 }
         // A cover runs under the navigation bar; the edge blur would smear it.
-        .scrollEdgeEffectHidden(hasCover, for: .top)
+        .scrollEdgeEffectHidden(model.hasCover, for: .top)
         .modifier(NoteFindScroll(target: .note(model.route.id), blocks: model.blocks, blocksRead: model.blocksRead, finding: $finding))
         // The keyboard accessory is floating glass: paint the page colour under
         // it and drop the bottom edge blur, or the strip behind the toolbar reads
@@ -338,8 +338,13 @@ struct NoteReadView: View {
         // it as a second glass surface, and the two composite into a
         // ghosted overlap of icons behind the tab bar's own. A pushed note
         // hides the tab bar, as a detail screen does everywhere else on
-        // this OS, so exactly one bottom bar is on screen at a time.
-        .toolbar(.hidden, for: .tabBar)
+        // this OS, so exactly one bottom bar is on screen at a time. At
+        // regular width the tab bar sits at the top and holds the button that
+        // brings a hidden page sidebar back, so it stays.
+        .toolbar(
+            LayoutWidth(horizontal: horizontalSizeClass, vertical: verticalSizeClass) == .compact ? .hidden : .automatic,
+            for: .tabBar
+        )
         .modifier(
             NoteReadToolbar(
                 model: model,
@@ -375,22 +380,10 @@ struct NoteReadView: View {
             )
         )
         .modifier(NotePageSync(actions: actions, metadata: metadataModel, reminders: reminders))
-        .task {
-            await model.loadIfNeeded()
-            if !reportedOpen, case .ready = model.phase {
-                reportedOpen = true
-                Telemetry.shared.track(.noteOpened, surface: .notes, action: "opened", objectType: "note", result: .success)
-            }
-            // After the body and its bindings are on screen, not before: the
-            // placeholders are what FR-045 asks to be visible first, and a
-            // fetch that finished early would still only re-render them.
-            await model.fetchWaitingAttachments()
-        }
-        // On open and after each sync pass: another device's edits reach this
-        // page only through a body pull and a re-read.
-        .task(id: vaultSyncPasses) {
-            await model.loadIfNeeded()
-            await model.refreshFromRemote()
-        }
+        .modifier(NotePageLoad(model: model, source: editorModel.source))
+        .modifier(NoteInspector(rail: NoteInspectorRail(
+            model: model, metadataModel: metadataModel, backlinks: backlinks, open: openRoute
+        ) { outlineJump = $0 }))
+        .handoff(.note(model.route.id))
     }
 }

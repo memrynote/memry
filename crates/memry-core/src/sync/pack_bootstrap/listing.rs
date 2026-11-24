@@ -5,6 +5,7 @@ use std::collections::HashMap;
 
 use serde_json::Value as Json;
 
+use crate::api::errors::ApiError;
 use crate::protocol::http::{ApiRequest, Auth, HttpClient, RetryPolicy, VAULT_ID_HEADER};
 use crate::protocol::pack::PackKind;
 
@@ -25,6 +26,8 @@ pub struct PackSummary {
     pub kind: PackKind,
     pub max_cursor: i64,
     pub item_count: u64,
+    /// `byteSize`: the payload region, which sizes the GET's deadline.
+    pub byte_size: Option<u64>,
     pub url: String,
     pub expires_at: i64,
     /// `(coverFrom, coverThrough]` on the `server_cursor` axis (§8.10).
@@ -58,12 +61,13 @@ pub struct Listing {
 }
 
 /// Walks `GET /sync/packs` newest first. `Err` means "no packs here": an old
-/// server's 404, any non-2xx, or a body that does not parse.
+/// server's 404, any non-2xx, or a body that does not parse. The error stays
+/// typed so a caller can tell a lost network from a final answer.
 pub async fn list(
     http: &HttpClient,
     vault_id: Option<&str>,
     now_s: i64,
-) -> Result<Listing, String> {
+) -> Result<Listing, ApiError> {
     let mut listing = Listing::default();
     let mut cursor: Option<String> = None;
     for page in 0..MAX_PACK_LIST_PAGES {
@@ -79,14 +83,13 @@ pub async fn list(
             request = request.header(VAULT_ID_HEADER, vault_id);
         }
         listing.pages += 1;
-        let body: Json = http
-            .send_json(request)
-            .await
-            .map_err(|error| error.to_string())?;
-        let listed = body
-            .get("packs")
-            .and_then(Json::as_array)
-            .ok_or("the pack list carried no `packs` array")?;
+        let body: Json = http.send_json(request).await?;
+        let listed = body.get("packs").and_then(Json::as_array).ok_or_else(|| {
+            ApiError::MalformedResponse {
+                path: path.clone(),
+                what: "the pack list carried no `packs` array".to_owned(),
+            }
+        })?;
         listing
             .packs
             .extend(listed.iter().filter_map(|pack| listed_pack(pack, now_s)));
@@ -122,6 +125,7 @@ pub fn listed_pack(pack: &Json, now_s: i64) -> Option<PackSummary> {
         kind,
         max_cursor: pack.get("maxCursor").and_then(Json::as_i64)?,
         item_count: pack.get("itemCount").and_then(Json::as_u64).unwrap_or(0),
+        byte_size: pack.get("byteSize").and_then(Json::as_u64),
         url: pack.get("url").and_then(Json::as_str)?.to_owned(),
         expires_at: pack.get("expiresAt").and_then(Json::as_i64)?,
         cover: cover_from.zip(cover_through),

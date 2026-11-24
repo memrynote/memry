@@ -10,6 +10,7 @@ use std::sync::atomic::{AtomicI64, Ordering};
 use memry_core::api::notes_write::NotesWriter;
 use memry_core::api::vault::Vault;
 use memry_core::crdt::body_edit::BlockEdit;
+use memry_core::crdt::epoch::HeldBody;
 use memry_core::crdt::registry::UpdateSink;
 use memry_core::crdt::{BODY_FRAGMENT, DocumentRegistry, update_log};
 use memry_core::domain::external_feed::{FeedInput, FeedOutcome};
@@ -224,7 +225,8 @@ impl Fixture {
         let now = now_ms();
         db.call_blocking(move |conn| {
             for (at, update) in updates.iter().enumerate() {
-                update_log::append_server_update(conn, &doc_id, first + at as i64, update, now)
+                HeldBody::never_purged(conn, &doc_id)
+                    .and_then(|held| held.append_server_update(first + at as i64, update, now))
                     .unwrap();
             }
             Ok(())

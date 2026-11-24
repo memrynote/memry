@@ -169,14 +169,14 @@ struct NoteBlockView: View {
         case "heading":
             field.accessibilityAddTraits(.isHeader)
         case "bulletListItem", "numberedListItem":
-            EditableMarkerRow(marker: marker ?? bullet) { field }
+            EditableMarkerRow(marker: marker ?? bullet) { field.baselineAligned }
         case "checkListItem":
             EditableCheckRow(isChecked: flag("checked"), toggle: block.id.map { id in
                 { Task { await editing?.session.model?.setProp(id, "checked", flag("checked") ? "false" : "true"); await editing?.session.didChange() } }
-            }) { field }
+            }) { field.baselineAligned }
                 .modifier(ChecklistTaskMenu(blockId: block.id))
         case "toggleListItem":
-            EditableToggleRow(isOpen: isOpen, toggle: toggle) { field }
+            EditableToggleRow(isOpen: isOpen, toggle: toggle) { field.baselineAligned }
         case "quote":
             EditableQuoteRow { field }
         case "callout":
@@ -247,7 +247,7 @@ struct NoteBlockView: View {
         case "whiteboard":
             WhiteboardBlockView(
                 canvasId: value("canvasId") ?? "",
-                edit: editing.map { editing in { editing.session.editWhiteboard(canvasId: $0, title: $1) } },
+                edit: editing.map { editing in { editing.session.editWhiteboard($0) } },
                 revision: editing?.session.whiteboardRevision ?? 0
             )
             .paneBreakout()

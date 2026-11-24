@@ -44,6 +44,8 @@
     "moveFailed": "Nem sikerült áthelyezni a jegyzetet",
     "applyTemplateFailed": "Nem sikerült alkalmazni a sablont",
     "appendBlocksFailed": "Nem sikerült áthelyezni a blokkot abba a jegyzetbe",
+    "appendIntoCaseTwin": "Ez a jegyzet egy olyan jegyzettel osztozik a fájlján, amelynek neve csak a kis- és nagybetűkben tér el. Nevezd át az egyiket, majd helyezd át újra a blokkot.",
+    "caseTwinMoveRefused": "Ez a jegyzet egy olyan jegyzettel osztozik a fájlján, amelynek a neve csak kis- és nagybetűkben tér el, ezért így nem helyezhető át. Nevezd át vagy helyezd át a másik jegyzetet, vagy töröld azt a példányt, amelyre nincs szükséged.",
     "exportPdfFailed": "Nem sikerült exportálni PDF-be",
     "exportHtmlFailed": "Nem sikerült exportálni HTML-be",
     "restoreVersionFailed": "Nem sikerült visszaállítani a verziót",
@@ -78,7 +80,9 @@
     "downloadProgressFailed": "Nem sikerült lekérni a letöltés állapotát",
     "exceedsMaxSize": "A fájl túl nagy: {size} meghaladja a(z) {limit} korlátot",
     "exceedsPlanLimit": "A fájl nagyobb, mint amit a csomagja megenged: {size} meghaladja a(z) {limit} méretet",
-    "emptyFile": "Üres fájl nem tölthető fel"
+    "emptyFile": "Üres fájl nem tölthető fel",
+    "emptyNotAttached": "Ez a fájl üres, ezért nem lett csatolva. Ha képet illesztett be, másolja ki újra, és illessze be.",
+    "textInMediaFile": "Ez a fájl szöveget tartalmaz a nevében jelzett média helyett"
   },
   "crdt": {
     "persistenceDegradedTitle": "A szerkesztési előzmények nem maradnak meg ezen az eszközön",
@@ -233,6 +237,7 @@
   "folder": {
     "createFailed": "Nem sikerült létrehozni a mappát",
     "renameFailed": "Nem sikerült átnevezni a mappát",
+    "renameCaseTwins": "Ez a mappa olyan jegyzeteket tartalmaz, amelyek egy olyan jegyzettel osztoznak egy fájlon, amelynek a mappaneve csak kis- és nagybetűkben tér el. Először nevezd át vagy helyezd át ezeket a jegyzeteket, majd nevezd át a mappát.",
     "deleteFailed": "Nem sikerült törölni a mappát",
     "keptNotPulled": "Ebben a mappában van egy jegyzet, amelynek a fájlját a memrynote alkalmazáson kívül törölték, és a szövege még nem szinkronizálódott erre az eszközre, ezért nem kerülhet a kukába. Semmi sem törlődött. Várja meg a szinkronizálást, vagy előbb törölje külön azt a jegyzetet.",
     "keptUnwritable": "Ebben a mappában van egy jegyzet, amelynek a fájlját a memrynote alkalmazáson kívül törölték, és a szövegét nem lehet fájlba menteni a kukához. Semmi sem törlődött. Előbb törölje külön azt a jegyzetet.",

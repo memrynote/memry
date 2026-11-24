@@ -16,6 +16,7 @@ import {
 import { SuggestionMenu } from '@blocknote/core/extensions'
 import { insertOrUpdateBlockForSlashMenu, type BlockNoteEditor } from '@blocknote/core'
 import { withCollaborationIfLive } from './collaboration-options'
+import { removeFailedUploadBlock } from './failed-upload-block'
 import { MENTION_MENU_FLOATING_OPTIONS } from './mention-menu-placement'
 import { Paperclip } from '@/lib/icons'
 import { BlockNoteView } from '@blocknote/shadcn'
@@ -68,6 +69,7 @@ import { FootnoteHoverCard, useFootnotes } from './footnote-hover-card'
 import { LinkMentionPreviewCard } from './link-mention-preview-card'
 import { BlockDropIndicator, EmptyDocumentDropIndicator } from './block-drop-indicator'
 import { BodySyncPendingHint } from './body-sync-pending-hint'
+import { RemoteBodyWaitNotice, useRemoteBodyReadOnly } from './remote-body-wait-notice'
 import { getCalloutSlashMenuItem, getCustomCalloutSlashMenuItems } from './callout-block'
 import { useCalloutTypes } from './callout-types-store'
 import { getMathSlashMenuItem } from './math-block'
@@ -604,6 +606,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         // BlockNote's upload tab only shows a generic "upload failed" line, so
         // the real reason (too large, type not allowed) never reached the user.
         toast.error(extractErrorMessage(error, tRef.current('editor.upload.failed')))
+        removeFailedUploadBlock(editorRef.current, blockId)
         throw error
       }
     },
@@ -1583,9 +1586,10 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           }
 
           // The plugin fields were lifted off the line already, so quick-add
-          // parses the description alone.
+          // parses the description alone. Its `[[…]]` links stay in the title:
+          // the line is what renders and indexes them (#5294).
           const parsed = title
-            ? parseQuickAdd(title, projects)
+            ? parseQuickAdd(title, projects, new Date(), { keepNoteLinks: true })
             : { title: '', priority: 'none', projectId: null, dueDate: null, tags: [] }
           // A checklist line of nothing but quick-add tokens ("- [ ] #errand")
           // parses to an empty title, which `tasks:create` rejects. Leave it as
@@ -1879,7 +1883,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           }
 
           const parsed = title
-            ? parseQuickAdd(title, projects)
+            ? parseQuickAdd(title, projects, new Date(), { keepNoteLinks: true })
             : { title: '', priority: 'none', projectId: null, dueDate: null }
           // The draft scan only checks the raw block title, so a token-only draft
           // reaches here with nothing left to name the task. Not retried for
@@ -3840,14 +3844,16 @@ export const ContentArea = memo(function ContentArea(props: ContentAreaProps) {
   // An editor mounted with no note (an empty journal day) stays unbound for its
   // lifetime. Its first save creates the note and hands in the id mid-typing;
   // binding then would unmount the editor being typed in and drop keystrokes.
-  // Its markdown saves still reach the doc (main's feedJournalBodyToCrdt), and
+  // Its markdown saves still reach the doc (main's updateJournalEntry), and
   // the next mount binds.
   const [mountedWithoutNote] = useState(!props.noteId)
   const localDocLive = !mountedWithoutNote && isLocalCrdtDocLive(props.noteId)
-  const { fragment, doc, isReady, isRemoteUpdateRef, isSideEffectOwner } = useYjsCollaboration({
-    noteId: props.noteId,
-    enabled: localDocLive
-  })
+  const { fragment, doc, isReady, isRemoteUpdateRef, isSideEffectOwner, remoteWait } =
+    useYjsCollaboration({
+      noteId: props.noteId,
+      enabled: localDocLive
+    })
+  const readOnlyReason = useRemoteBodyReadOnly(remoteWait)
   // Standalone/non-canvas callers pass no runSideEffects → own their effects.
   // A second editor on the same note in this window (R17) is a non-owner.
   const runSideEffects = props.runSideEffects ?? isSideEffectOwner
@@ -3855,10 +3861,29 @@ export const ContentArea = memo(function ContentArea(props: ContentAreaProps) {
   // Hold the render until the binding has settled. `useCreateBlockNote` builds
   // its collaboration extension once and never rebuilds it, so the fragment has
   // to be there at editor-creation time or it can never attach — which is why
-  // this is a wait rather than a fail-open. It is bounded: connect() settles
-  // either way, and crdt:open-doc waits on the store instead of rejecting.
+  // this is a wait rather than a fail-open. A doc main opened empty to wait
+  // for the server body (#5290) can wait as long as the device is offline or
+  // the body cannot be merged; then the vault file shows read-only, with no
+  // CRDT binding and no saves, until crdt:doc-loaded.
   if (localDocLive && !isReady) {
-    return <ContentAreaPending className={props.className} />
+    if (!readOnlyReason) return <ContentAreaPending className={props.className} />
+    return (
+      <div className={cn('content-area h-full flex flex-col', props.className)}>
+        <RemoteBodyWaitNotice reason={readOnlyReason} />
+        <ContentAreaEditor
+          {...props}
+          className="flex-1"
+          editable={false}
+          runSideEffects={false}
+          onContentChange={undefined}
+          onMarkdownChange={undefined}
+          onInlineTagsChange={undefined}
+          flushMarkdownRef={undefined}
+          openTemplateInsertRef={undefined}
+          focusAtEndRef={undefined}
+        />
+      </div>
+    )
   }
 
   return (

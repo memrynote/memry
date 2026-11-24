@@ -79,37 +79,268 @@ private struct NoteCoverPlaceholder: View {
 
 /// The note's icon and title, both editable (N702).
 struct NoteTitleEditor: View {
+    let noteId: String
     let title: String
     let icon: String?
     let canEdit: Bool
     let rename: (String) -> Void
     let setIcon: (String?) -> Void
-    /// Return in the title moves the caret into the body, as on desktop.
-    var returnToBody: (() -> Void)?
+    /// Return in the title moves the caret into the body, as on desktop,
+    /// with the way to take the keys the title holds for it meanwhile.
+    var returnToBody: ((@escaping TitleBurst.Take) -> Void)?
+    /// The edit in progress as it changes, `nil` once it ends.
+    var draftChanged: ((String?) -> Void)?
 
     @State private var draft: String = ""
-    @State private var editing = false
+    @State private var commits = DraftCommits()
+    /// The Return whose keys the title holds until the body takes the caret.
+    @State private var returned: LineReturn?
     @State private var pickingIcon = false
-    /// A new note's title wants the caret until the user types or moves it.
-    @State private var claimsFocus = false
+    @State private var claim = TitleFocusClaim()
+    @State private var host = TitleWindow()
     @FocusState private var focused: Bool
+    @Environment(NotesSplitRouter.self) private var split: NotesSplitRouter?
 
     private func commit() {
-        guard editing else { return }
-        editing = false
+        guard commits.editing else { return }
         // Unchanged titles write nothing, so tapping in and out does not
-        // enqueue a push. Compared here as well as in the model: the model's
-        // `current` reads "Untitled note" while the page reloads.
-        if draft != title { rename(draft) }
+        // enqueue a push. Compared with the title too, as well as in the
+        // model: the model's `current` reads "Untitled note" while the page
+        // reloads. Emptying a title is an edit on any end, so every end is
+        // explicit.
+        // A Return held after ⌘N that never reached the field is a space.
+        if let text = commits.take(NewNoteSeeds.title(draft), explicit: true), text != title { rename(text) }
         // Only the title's own focus: when a tap in a block ended the edit,
         // that block is already first responder and keeps its caret.
         focused = false
     }
 
-    private func commitAndContinue() {
-        guard editing else { return }
-        commit()
-        returnToBody?()
+    /// Saves the title typed so far and keeps the edit open, with the caret
+    /// (#4776): leaving the app ends no edit, and iOS may end a backgrounded
+    /// app before the title's focus changes. The edit goes on from what was
+    /// saved, so its end writes only what changes after this.
+    private func save() {
+        guard returned == nil, commits.editing else { return }
+        draft = NewNoteSeeds.title(draft)
+        if let text = commits.take(draft, explicit: true), text != title { rename(text) }
+        commits.begin(draft)
+    }
+
+    /// The title's text view while the title is edited: the window's text
+    /// view with the caret. Not gated on `focused`, which follows the caret
+    /// a turn late.
+    private var titleTextView: UITextView? {
+        guard commits.editing else { return nil }
+        return host.window.flatMap(Self.caretHolder)
+    }
+
+    /// The text view with the caret in `view`, if any.
+    private static func caretHolder(in view: UIView) -> UITextView? {
+        if let text = view as? UITextView, text.isFirstResponder { return text }
+        // A plain loop: a lazy `compactMap(...).first` maps each level again
+        // for every level above it, which hung the app on a page's deep view
+        // tree.
+        for subview in view.subviews {
+            if let text = caretHolder(in: subview) { return text }
+        }
+        return nil
+    }
+
+    /// What UIKit's focus `item` is to the title.
+    private func focusTarget(_ item: UIFocusItem?) -> TitleFocusTarget {
+        guard let item else { return .nothing }
+        if host.isTitle(item) { return .title }
+        if item is UITextInput { return .text }
+        if (item as? UICollectionViewCell)?.isSelected == true { return .selectedRow }
+        return .other
+    }
+
+    /// The list took the caret and the claim takes it back, once the focus
+    /// state has followed the loss. Never from a text view the user moved
+    /// to meanwhile: then the loss ends the edit after all.
+    private func retake() {
+        let caret = host.window.flatMap(Self.caretHolder)
+        if claim.retakes(caretInOtherText: caret.map { !host.isTitle($0) } ?? false) {
+            focused = true
+        } else if !focused {
+            focusLost()
+        }
+    }
+
+    /// The title lost the caret: the edit ends.
+    private func focusLost() {
+        if returned != nil {
+            // The body taking the caret ends the title's focus before it
+            // takes the held keys, on the same turn.
+            DispatchQueue.main.async {
+                keepHeld()
+                commit()
+            }
+        } else {
+            commit()
+        }
+    }
+
+    /// Return: saves the title before it and keeps the caret, holding the
+    /// keys typed after it for the body (`LineReturn`).
+    private func returnPressed(_ burst: LineReturn) {
+        guard let returnToBody else {
+            draft = draft.replacingOccurrences(of: "\n", with: "")
+            return commit()
+        }
+        host.keys.handOff()
+        returned = burst
+        if let text = commits.take(burst.line, explicit: true), text != title { rename(text) }
+        returnToBody(takeHeld)
+    }
+
+    /// The body took the caret: the keys typed since the Return go to it.
+    /// It refused the caret: they stay in the title (`TitleBurst.Take`).
+    /// The keys the line put back that arrived since go to neither, and the
+    /// ones still to come are the body's to drop (`LateKeys`).
+    private func takeHeld(_ moved: Bool) -> TitleBurst.Taken {
+        guard moved else {
+            keepHeld()
+            return (nil, nil)
+        }
+        guard let burst = returned else { return (nil, nil) }
+        returned = nil
+        host.body = host.window.flatMap(Self.caretHolder)
+        host.handedOff = draft
+        let (arrived, late) = host.keys.takeLate()
+        let held = burst.held(in: draft).map { String($0.dropFirst(arrived)) }
+        draft = burst.line
+        return (held?.isEmpty == false ? held : nil, late)
+    }
+
+    /// The caret left the title before the body took it, or an edit reached
+    /// past the Return: the keys stay in the title, as a title edit.
+    private func keepHeld() {
+        guard let burst = returned else { return }
+        returned = nil
+        commits.begin(burst.line)
+        // With no pressed keys to place, joined as a held Return is anywhere
+        // else (`NewNoteSeeds.title`): `milk⏎buy` stays two words.
+        draft = burst.kept(in: draft, dropping: host.keys.takeLate().arrived)
+            ?? NewNoteSeeds.title(draft)
+    }
+
+    /// The keys typed after ⌘N for this new note (#4787, `NewNoteSeeds`),
+    /// read as it appears: its edit starts with them before its field takes
+    /// the caret, so the keys typed in the field follow them. Returns
+    /// whether any were held: the note is new, though its title may show
+    /// them already (stored as the note was made).
+    private func attachSeed() -> Bool {
+        let shown = commits.editing ? draft : title
+        guard let seeded = NewNoteSeeds.shared.attach(noteId, to: shown, absorb: absorbSeed) else { return false }
+        if !commits.editing { commits.begin(title) }
+        draft = seeded
+        // Saved at once: a kill seconds after Home must find them stored.
+        // A Return among them waits for the caret, which moves the rest to
+        // the body (`takeSeed`).
+        if !seeded.contains(where: \.isNewline) { save() }
+        return true
+    }
+
+    /// The title has the caret: the keys held since it appeared join the
+    /// draft, and a Return among them moves the rest to the body.
+    private func takeSeed() {
+        guard commits.editing, returned == nil else { return }
+        let keys = NewNoteSeeds.shared.take(noteId)
+        if let keys {
+            draft += keys
+            if let field = titleTextView, field.text != draft { field.text = draft }
+        }
+        // The first Return splits the draft, as `NewNoteSeeds.title` would:
+        // the line before it is the title and the rest goes to the body.
+        // Not measured against the title shown, which may hold the same
+        // keys stored with a space (`milk buy` against `milk⏎buy` read only
+        // the Return as typed, and glued `milkbuy`, VERIFY-5087).
+        if draft.contains(where: \.isNewline), let burst = LineReturn(previous: "", value: draft) {
+            returnPressed(burst)
+        } else if keys != nil {
+            // Saved at once, as in `attachSeed`.
+            save()
+        }
+    }
+
+    /// Keys held for this title that it never took the caret for: its edit
+    /// ends with them (the page leaving, the app going to the background).
+    private func absorbSeed(_ keys: String) {
+        if !commits.editing {
+            draft = title
+            commits.begin(title)
+        }
+        draft += keys
+        save()
+    }
+
+    private func typed(_ value: String) {
+        var value = value
+        if let field = titleTextView {
+            host.title = field
+            host.relay.watch(field)
+            host.keys.locale = field.textInputMode?.primaryLanguage.map(Locale.init) ?? .current
+            // SwiftUI can report the text from before a confirm's restore
+            // again in the same turn: the field shows the restore.
+            if let shown = host.restored, field.text == shown, value != shown { return }
+            // An input method confirming its composition on Return first
+            // deletes it, as Backspace does: marked text gone with no Return
+            // down ends the composition.
+            if field.markedTextRange != nil {
+                host.composing = true
+                host.keys.reset()
+            } else {
+                if !host.returnDown { host.composing = false }
+                // The input method dropped the composition SwiftUI refused
+                // to confirm (`TitleWindow.confirmed`): the confirmed text
+                // goes where it was, and the caret keeps its place after it.
+                // One that kept the composition as text instead, as
+                // `unmarkText` does, already shows it.
+                let confirmed = host.confirmed
+                host.confirmed = nil
+                if let confirmed, confirmed.dropped(from: value) {
+                    let at = min(confirmed.location, (value as NSString).length)
+                    let caret = field.selectedRange.location
+                    value = (value as NSString).replacingCharacters(in: NSRange(location: at, length: 0), with: confirmed.text)
+                    field.text = value
+                    field.selectedRange = NSRange(location: max(caret, at) + (confirmed.text as NSString).length, length: 0)
+                    host.restored = value
+                }
+            }
+        }
+        // The text view reports the text it showed at the hand-off again
+        // before it shows the line: no new Return, and no edit over the
+        // keys the line put back.
+        if returned == nil, let shown = host.handedOff {
+            if value == shown { return }
+            host.handedOff = nil
+        }
+        if !host.composing {
+            host.keys.changed(from: commits.editing || returned != nil ? draft : title, to: value)
+        }
+        if let burst = returned {
+            draft = value
+            if burst.held(in: value) == nil { keepHeld() }
+            return
+        }
+        // The edit ended while the field kept the caret (the app resumed):
+        // the keys start a new one. The field showed the stored title, and
+        // must not show it again over them.
+        if !commits.editing {
+            guard value != title else { return }
+            draft = title
+            commits.begin(title)
+        }
+        // A vertical field takes Return as a newline rather than a submit; a
+        // title is one line, so Return ends it.
+        if var burst = LineReturn(previous: draft, value: value) {
+            draft = value
+            let newline = value.firstIndex(of: "\n").map { value.distance(from: value.startIndex, to: $0) } ?? value.count
+            burst.line = host.keys.restoring(burst.line, end: newline)
+            return returnPressed(burst)
+        }
+        draft = value
     }
 
     var body: some View {
@@ -130,20 +361,12 @@ struct NoteTitleEditor: View {
             if canEdit {
                 TextField(
                     "",
+                    // The field shows the draft as typed, keys held after a
+                    // Return too: showing anything else would write it over
+                    // keys UIKit has and the binding has not seen yet.
                     text: Binding(
-                        get: { editing ? draft : title },
-                        set: { value in
-                            // A vertical field takes Return as a newline
-                            // rather than a submit; a title is one line, so
-                            // Return commits it.
-                            if value.contains("\n") {
-                                draft = value.replacingOccurrences(of: "\n", with: "")
-                                commitAndContinue()
-                            } else {
-                                if value != draft { claimsFocus = false }
-                                draft = value
-                            }
-                        }
+                        get: { commits.editing || returned != nil ? draft : title },
+                        set: typed
                     ),
                     // Wraps rather than truncating a long title.
                     axis: .vertical
@@ -153,48 +376,178 @@ struct NoteTitleEditor: View {
                 .font(Tokens.Typography.screenTitle.font)
                 .foregroundStyle(Tokens.Text.primary.color)
                 .focused($focused)
-                .onSubmit(commitAndContinue)
+                // The hand-off to the body (#4756) acts only on what arrives
+                // in the keyboard's queue order: the newline a Return may
+                // insert, which hands off in `typed`, and the key-up, which
+                // ends the editing of every text view and then submits here,
+                // in the same turn, where a text view takes the caret again.
+                // A hardware Return's press arrives ahead of the keys the
+                // keyboard still queues, so a key-down handler cut the title
+                // short; the press only marks the Return as down.
+                //
+                // The line the Return ends holds every key pressed before the
+                // Return went down (#4823, #4815). The keyboard can drop keys
+                // it still queues as the Return goes down, so the presses,
+                // heard here in press order, decide the line rather than the
+                // text that arrived (`PressedKeys`): both hand-offs put back a
+                // key pressed before the Return that the text skipped or
+                // never got, unless an edit the presses cannot explain stopped
+                // the matching, in which case the line is the text that
+                // arrived.
+                .onKeyPress(phases: [.down, .repeat]) { press in
+                    if press.key == .return {
+                        if press.phase == .down {
+                            host.returnDown = true
+                            host.keys.returnPressed()
+                        }
+                    } else if press.modifiers.isDisjoint(with: [.command, .control]) {
+                        host.keys.pressed(press.characters)
+                    } else {
+                        host.keys.reset()
+                    }
+                    return .ignored
+                }
+                .onSubmit {
+                    host.returnDown = false
+                    host.confirmed = nil
+                    guard host.window.flatMap(Self.caretHolder) == nil else { return }
+                    if host.composing || returned != nil {
+                        // An input method took the Return as its own, or the
+                        // body has yet to take the keys held for it: the
+                        // caret goes back to the title, and the edit goes on.
+                        host.composing = false
+                        host.title?.becomeFirstResponder()
+                    } else if let body = host.body, body.window != nil {
+                        // The newline moved the caret to the body already.
+                        host.body = nil
+                        body.becomeFirstResponder()
+                    } else {
+                        // An edit that ended under the caret (the app
+                        // resumed) still moves to the body.
+                        if !commits.editing {
+                            draft = title
+                            commits.begin(title)
+                        }
+                        if let text = host.title?.text { draft = text }
+                        var burst = LineReturn(submitted: draft)
+                        burst.line = host.keys.restoring(draft, end: draft.count)
+                        returnPressed(burst)
+                    }
+                }
                 .onChange(of: focused) { _, isFocused in
                     if isFocused {
-                        if !editing {
+                        // A take-back goes on with the edit it interrupted.
+                        if claim.refocused() { return }
+                        host.keys.reset()
+                        host.handedOff = nil
+                        EditorFocusMemory.shared.forget()
+                        if !commits.editing, returned == nil {
                             draft = title
-                            editing = true
+                            commits.begin(title)
                         }
+                        if let field = titleTextView {
+                            host.title = field
+                            host.relay.watch(field)
+                        }
+                        host.composing = titleTextView?.markedTextRange != nil
+                        host.confirmed = nil
+                        host.body = nil
+                        takeSeed()
+                    } else if claim.retaking {
+                        Task { retake() }
                     } else {
-                        commit()
+                        host.confirmed = nil
+                        focusLost()
                     }
                 }
+                // A draft the user has not changed follows the saved title.
+                // A page drawn again by a size-class change reads the note
+                // before the title typed on the page before is saved; its
+                // stale empty draft must not be written over it (#4532). An
+                // input method's composition is in the draft, so a composing
+                // field never follows and keeps its composition.
+                .onChange(of: title) { _, new in
+                    if commits.editing { draft = commits.follow(draft, stored: new) }
+                }
+                .onChange(of: commits.editing ? draft : nil) { _, pending in draftChanged?(pending) }
                 // A note with no title (a new one) opens with the caret in
-                // its title, as desktop does.
+                // its title, as desktop does, and so does one whose title is
+                // the keys typed after ⌘N. Not when the page is drawn
+                // again under a block that had the caret (#4457), nor under
+                // something presented over the window (the search palette),
+                // which keeps the caret and its Escape (#4787).
                 .onAppear {
-                    if title.isEmpty {
-                        claimsFocus = true
+                    let seeded = attachSeed()
+                    let covered = (host.window ?? PresentingWindow.resolve()).map(PresentingWindow.isPresenting) == true
+                    if title.isEmpty || seeded, !covered, EditorFocusMemory.shared.titleMayAutofocus(noteId) {
+                        claim.start()
                         focused = true
-                    }
-                }
-                // #4346: in the iPad split view, the list column moves focus
-                // to the new note's selected row after its insert animation,
-                // which can land after the request above. A move from the
-                // title to an item that is not a text field is taken back, a
-                // turn later once the focus state has followed it. Dismissing
-                // the keyboard focuses nothing and is left alone.
-                .onReceive(NotificationCenter.default.publisher(for: UIFocusSystem.didUpdateNotification)) { note in
-                    guard claimsFocus, focused,
-                          let context = note.userInfo?[UIFocusSystem.focusUpdateContextUserInfoKey] as? UIFocusUpdateContext,
-                          let next = context.nextFocusedItem
-                    else { return }
-                    if next is UITextInput {
-                        claimsFocus = false
                     } else {
-                        Task { focused = true }
+                        // A claim its creator set (`NotesSplitRouter.created`)
+                        // ends when the title does not take the caret.
+                        split?.claimTitle(of: noteId, false)
                     }
                 }
+                // #4346, #4774: in the iPad split view, the notes list moves
+                // the focus to the new note's selected row each time it
+                // mirrors its selection (`TitleFocusClaim`), which can land
+                // after the request above and after the first keys. Each such
+                // move from this title is taken back, a turn after the focus
+                // state follows it (`retake`). A move counts from the title by
+                // UIKit's previous item, not by `focused`, which lags.
+                .onReceive(NotificationCenter.default.publisher(for: UIFocusSystem.didUpdateNotification)) { note in
+                    guard claim.holds, let window = host.window,
+                          note.object as? UIFocusSystem === UIFocusSystem.focusSystem(for: window),
+                          let context = note.userInfo?[UIFocusSystem.focusUpdateContextUserInfoKey] as? UIFocusUpdateContext
+                    else { return }
+                    let move = TitleFocusMove(
+                        to: focusTarget(context.nextFocusedItem), byKey: !context.focusHeading.isEmpty
+                    )
+                    if let previous = context.previouslyFocusedItem, host.isTitle(previous) {
+                        _ = claim.takesBack(after: move)
+                    } else {
+                        claim.observed(move)
+                    }
+                }
+                // Saved as the app resigns, as a body block is (#2820). Not
+                // while an input method composes: Control Center resigns the
+                // app too, and the draft holds the half-made text. Going to
+                // the background ends the composition as it stands, as a
+                // Return in the body does, and saves it.
+                .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
+                    host.confirmed = nil
+                    if titleTextView?.markedTextRange == nil { save() }
+                }
+                .onReceive(NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in
+                    if let view = titleTextView, view.markedTextRange != nil {
+                        view.unmarkText()
+                        typed(view.text)
+                    }
+                    save()
+                }
+                .background(TitleWindowReader(host: host))
+                // The notes list moves no focus to the note's row while the
+                // claim holds (`NotesListFocusHold`, #5100).
+                .onChange(of: claim.holds) { _, holds in split?.claimTitle(of: noteId, holds) }
                 // Leaving the page, or the page reloading under the field,
                 // ends the edit without a focus change; the typed title
                 // still lands (#2680).
                 .onDisappear {
-                    claimsFocus = false
+                    claim.end()
+                    split?.claimTitle(of: noteId, false)
+                    keepHeld()
+                    // Keys held after ⌘N that this title never took are
+                    // its edit, stored with it (#4787).
+                    if let keys = NewNoteSeeds.shared.take(noteId) {
+                        if !commits.editing {
+                            draft = title
+                            commits.begin(title)
+                        }
+                        draft += keys
+                    }
+                    NewNoteSeeds.shared.detach(noteId)
                     commit()
+                    draftChanged?(nil)
                 }
                 .accessibilityLabel("Title")
             } else {
@@ -209,6 +562,164 @@ struct NoteTitleEditor: View {
                 setIcon(chosen)
                 pickingIcon = false
             }
+        }
+    }
+}
+
+/// The window a title is drawn in, read without redrawing the title.
+@MainActor
+private final class TitleWindow {
+    weak var window: UIWindow?
+    /// The title's text view, which keeps no caret once SwiftUI ends its
+    /// editing.
+    weak var title: UITextView?
+    /// Whether an input method composes in the title: from a change with
+    /// marked text until a change without while no Return is down.
+    var composing = false
+    /// The text an input method confirmed its composition with, and where:
+    /// a replacement of the whole marked text that SwiftUI's field refused,
+    /// as it refuses every edit while Return is down (#4798). The input
+    /// method then drops the marked text, and the title puts this text where
+    /// the marked text was.
+    ///
+    /// Invariant: set only by that refused replacement, and used at most
+    /// once, by the change that drops the marked text in the same turn of
+    /// the run loop, the turn of the Return's key event. The input method
+    /// may mark its leftover first, as `n` after `かn` confirmed as `か`.
+    /// The turn's end, a submit, a focus change, and the app resigning clear
+    /// it, so marked text deleted with Backspace or Escape, cancelled, or
+    /// ended by the caret leaving never comes back. That change inserts it
+    /// only if the marked text left the title (`Confirm.dropped`), so an
+    /// input method that keeps it as text with `unmarkText` shows it once.
+    var confirmed: TitleDelegateRelay.Confirm?
+    /// The title as the confirm's restore showed it, until the turn ends.
+    var restored: String?
+    /// Counts the confirms, so a turn's end clears only its own.
+    private var confirms = 0
+    /// Hears the title's delegate calls ahead of SwiftUI.
+    let relay = TitleDelegateRelay()
+    /// A Return went down in the title and its key-up has not submitted.
+    var returnDown = false
+    /// The keys pressed in the title that the keyboard has not inserted.
+    var keys = PressedKeys()
+    /// The title's text as the body took the caret after a Return, until
+    /// the text view shows something else.
+    var handedOff: String?
+    /// The body block a Return in the title moved the caret to, until the
+    /// title takes the caret again.
+    weak var body: UITextView?
+    /// The view drawn behind the title, with its frame.
+    weak var probe: UIView?
+
+    init() {
+        relay.refusedConfirm = { [unowned self] confirm in
+            confirmed = confirm
+            confirms += 1
+            DispatchQueue.main.async { [weak self, confirm = confirms] in
+                guard let self, confirms == confirm else { return }
+                confirmed = nil
+                restored = nil
+            }
+        }
+    }
+
+    /// Whether `item` is the title's text view: the one drawn where the
+    /// title is, so neither when it was first seen nor a page that drew a
+    /// new one matters.
+    func isTitle(_ item: UIFocusItem) -> Bool {
+        guard let text = item as? UITextView, let probe, let window = probe.window, text.window === window
+        else { return false }
+        let center = text.convert(CGPoint(x: text.bounds.midX, y: text.bounds.midY), to: nil)
+        return probe.convert(probe.bounds, to: nil).contains(center)
+    }
+}
+
+/// Stands between the title's text view and SwiftUI's delegate, and passes
+/// every call on, to hear the input method's confirm SwiftUI refuses
+/// (`TitleWindow.confirmed`).
+final class TitleDelegateRelay: NSObject, UITextViewDelegate {
+    /// A replacement of the whole marked text the delegate refused.
+    struct Confirm {
+        /// The text the input method confirmed the marked text with.
+        let text: String
+        /// Where the marked text starts, in UTF-16 units.
+        let location: Int
+        /// The marked text.
+        let marked: String
+        /// The title's UTF-16 length with the marked text in it.
+        let length: Int
+
+        /// Whether `title` no longer holds the marked text: it is gone
+        /// from `location`, or the title shrank by at least its length.
+        func dropped(from title: String) -> Bool {
+            let title = title as NSString
+            let markedLength = (marked as NSString).length
+            return title.length <= length - markedLength
+                || location + markedLength > title.length
+                || title.substring(with: NSRange(location: location, length: markedLength)) != marked
+        }
+    }
+
+    /// Called with each confirm the delegate refused.
+    var refusedConfirm: (Confirm) -> Void = { _ in }
+    private weak var field: UITextView?
+    /// SwiftUI's delegate of `field`.
+    private weak var inner: (any UITextViewDelegate)?
+
+    /// Puts the relay in front of `field`'s delegate, and gives the field
+    /// it stood in front of before its own delegate back.
+    func watch(_ field: UITextView) {
+        guard field.delegate !== self else { return }
+        if let old = self.field, old.delegate === self { old.delegate = inner }
+        self.field = field
+        inner = field.delegate
+        field.delegate = self
+    }
+
+    override func responds(to selector: Selector!) -> Bool {
+        super.responds(to: selector) || inner?.responds(to: selector) == true
+    }
+
+    override func forwardingTarget(for selector: Selector!) -> Any? { inner ?? super.forwardingTarget(for: selector) }
+
+    func textView(_ textView: UITextView, shouldChangeTextInRanges ranges: [NSValue], replacementText text: String) -> Bool {
+        let allowed = inner?.textView?(textView, shouldChangeTextInRanges: ranges, replacementText: text)
+            ?? ranges.map(\.rangeValue).reduce(nil) { union, range in union.map { NSUnionRange($0, range) } ?? range }
+                .flatMap { inner?.textView?(textView, shouldChangeTextIn: $0, replacementText: text) }
+            ?? true
+        if !allowed, ranges.count == 1, let marked = textView.markedTextRange, let markedText = textView.text(in: marked) {
+            let location = textView.offset(from: textView.beginningOfDocument, to: marked.start)
+            let length = textView.offset(from: marked.start, to: marked.end)
+            if ranges[0].rangeValue == NSRange(location: location, length: length) {
+                refusedConfirm(Confirm(text: text, location: location, marked: markedText, length: (textView.text as NSString).length))
+            }
+        }
+        return allowed
+    }
+}
+
+private struct TitleWindowReader: UIViewRepresentable {
+    let host: TitleWindow
+
+    func makeUIView(context: Context) -> Probe {
+        let probe = Probe()
+        probe.host = host
+        host.probe = probe
+        probe.isUserInteractionEnabled = false
+        return probe
+    }
+
+    func updateUIView(_ probe: Probe, context: Context) {
+        probe.host = host
+        host.probe = probe
+    }
+
+    final class Probe: UIView {
+        weak var host: TitleWindow?
+
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            host?.window = window
         }
     }
 }
@@ -301,9 +812,13 @@ struct NoteTagEditor: View {
             }
         }
         .onAppear { if startsFocused { focused = true } }
+        // A typed tag lands when the field is left, as on Return: the rail
+        // can close, or the page change, before Return is pressed.
         .onChange(of: focused) { _, isFocused in
-            if !isFocused, draft.isEmpty { onIdle() }
+            guard !isFocused else { return }
+            if draft.isEmpty { onIdle() } else { commit() }
         }
+        .onDisappear(perform: commit)
     }
 
     private func choose(_ tag: String) {
@@ -391,6 +906,106 @@ struct FlowLayout: Layout {
     }
 }
 
+/// A property's name beside its value. Every row of one list shares one name
+/// width, the widest name's text with a `minimum` and at most `share` of the
+/// row, so the values share an edge and no name is cut off. A name wider than
+/// that, a long one or any at a large Dynamic Type size, sits above its value
+/// instead of squeezing it.
+struct PropertyRowLayout: Layout {
+    static let minimum: CGFloat = 118
+    static let share: CGFloat = 0.5
+
+    var spacing: CGFloat
+    /// The widest name's text in this row's list (`PropertyNameWidthKey`).
+    var widest: CGFloat = 0
+
+    /// The list's shared name width beside the value, or `nil` when this
+    /// name, `ideal` wide, goes above it. A row offered no width keeps every
+    /// name beside its value.
+    static func nameWidth(ideal: CGFloat, widest: CGFloat, row: CGFloat?) -> CGFloat? {
+        let shared = min(max(minimum, widest, ideal), max(minimum, (row ?? .infinity) * share))
+        return ideal <= shared ? shared : nil
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let (name, value) = frames(width: proposal.width, subviews)
+        let union = name.union(value)
+        return CGSize(width: proposal.width ?? union.width, height: union.height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let (name, value) = frames(width: bounds.width, subviews)
+        for (subview, frame) in zip(subviews, [name, value]) {
+            subview.place(
+                at: CGPoint(x: bounds.minX + frame.minX, y: bounds.minY + frame.minY), anchor: .topLeading,
+                proposal: ProposedViewSize(frame.size)
+            )
+        }
+    }
+
+    /// Where the name and the value go in a row `width` wide, from its
+    /// leading edge: side by side and centred on each other, or stacked.
+    private func frames(width: CGFloat?, _ subviews: Subviews) -> (CGRect, CGRect) {
+        guard subviews.count == 2 else { return (.zero, .zero) }
+        let ideal = subviews[0].sizeThatFits(.unspecified).width
+        if let nameWidth = Self.nameWidth(ideal: ideal, widest: widest, row: width) {
+            let name = subviews[0].sizeThatFits(ProposedViewSize(width: nameWidth, height: nil))
+            let valueWidth = width.map { max(0, $0 - nameWidth - spacing) }
+            let value = subviews[1].sizeThatFits(ProposedViewSize(width: valueWidth, height: nil))
+            let height = max(name.height, value.height)
+            return (
+                CGRect(x: 0, y: (height - name.height) / 2, width: nameWidth, height: name.height),
+                CGRect(
+                    x: nameWidth + spacing, y: (height - value.height) / 2,
+                    width: valueWidth ?? value.width, height: value.height
+                )
+            )
+        }
+        // Stacked only when a width was offered: `nameWidth` keeps an
+        // unbounded row side by side.
+        let width = width ?? ideal
+        let name = subviews[0].sizeThatFits(ProposedViewSize(width: width, height: nil))
+        let value = subviews[1].sizeThatFits(ProposedViewSize(width: width, height: nil))
+        return (
+            CGRect(x: 0, y: 0, width: width, height: name.height),
+            CGRect(x: 0, y: name.height + Tokens.Space.tight, width: width, height: value.height)
+        )
+    }
+}
+
+/// The widest property name's text below a list, which the list hands back
+/// to its rows as `widestPropertyName` (`sharesPropertyNameWidth`).
+struct PropertyNameWidthKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
+extension EnvironmentValues {
+    @Entry var widestPropertyName: CGFloat = 0
+}
+
+private struct SharedPropertyNameWidth: ViewModifier {
+    @State private var widest: CGFloat = 0
+
+    func body(content: Content) -> some View {
+        content
+            .environment(\.widestPropertyName, widest)
+            .onPreferenceChange(PropertyNameWidthKey.self) { widest = $0 }
+            // One list's names do not widen another's.
+            .transformPreference(PropertyNameWidthKey.self) { $0 = 0 }
+    }
+}
+
+extension View {
+    /// Gives every property row inside one name width, the widest name's.
+    func sharesPropertyNameWidth() -> some View {
+        modifier(SharedPropertyNameWidth())
+    }
+}
+
 /// One property, edited against its type (N704), laid out as desktop lays it
 /// out: a type glyph and the name in a label column, the value beside it —
 /// plain text for text, numbers and dates, coloured chips for choices,
@@ -425,10 +1040,16 @@ struct NotePropertyEditor: View {
 
     @State private var draft: String = ""
     @State private var loaded = false
+    @State private var commits = DraftCommits()
+    @FocusState private var valueFocused: Bool
     @State private var renaming = false
     @State private var nameDraft = ""
     @State private var pickingDate = false
     @State private var pickingRelation = false
+    /// The type glyph's lane, grown with the name's text size. A minimum, so
+    /// a glyph wider than the lane at a large size pushes the name over.
+    @ScaledMetric(relativeTo: .subheadline) private var glyphLane = Tokens.Space.inset
+    @Environment(\.widestPropertyName) private var widestName
 
     private var kind: NotePropertyKind? { NotePropertyKind.of(property) ?? kindHint }
 
@@ -436,9 +1057,13 @@ struct NotePropertyEditor: View {
     private var optionColors: [String: String] { NotePropertyOptions.colors(of: property.optionsJson) }
 
     var body: some View {
-        HStack(alignment: .center, spacing: Tokens.Space.medium) {
+        PropertyRowLayout(spacing: Tokens.Space.medium, widest: widestName) {
             nameLabel
-                .frame(width: 118, alignment: .leading)
+                .background {
+                    GeometryReader { proxy in
+                        Color.clear.preference(key: PropertyNameWidthKey.self, value: proxy.size.width)
+                    }
+                }
 
             editor
                 .font(Tokens.Typography.supporting.font)
@@ -452,17 +1077,28 @@ struct NotePropertyEditor: View {
                     Label("Rename \(property.name)", systemImage: "pencil")
                 }
             }
-            Button(role: .destructive, action: clear) {
+            Button(role: .destructive, action: clearValue) {
                 Label("Clear \(property.name)", systemImage: "xmark.circle")
             }
         }
         .accessibilityElement(children: .contain)
-        .accessibilityAction(named: "Clear \(property.name)", clear)
+        .accessibilityAction(named: "Clear \(property.name)", clearValue)
         .onAppear {
             guard !loaded else { return }
             draft = NotePropertyJSON.decode(property)
             loaded = true
         }
+        // A write from elsewhere (a Clear, the other copy of this row, sync)
+        // shows here unless the field holds a value typed in it.
+        .onChange(of: property.valueJson) {
+            draft = commits.follow(draft, stored: NotePropertyJSON.decode(property))
+        }
+        // A typed value lands when the field is left or the row goes, as on
+        // Return: the rail can close, or the page change, before Return.
+        .onChange(of: valueFocused) { _, isFocused in
+            if isFocused { commits.begin(draft) } else { submit(explicit: false) }
+        }
+        .onDisappear { submit(explicit: false) }
         .alert("Rename property", isPresented: $renaming) {
             TextField("Property name", text: $nameDraft)
                 .textInputAutocapitalization(.never)
@@ -479,8 +1115,7 @@ struct NotePropertyEditor: View {
                     pickingDate = false
                 },
                 clear: {
-                    draft = ""
-                    clear()
+                    clearValue()
                     pickingDate = false
                 }
             )
@@ -503,8 +1138,8 @@ struct NotePropertyEditor: View {
         let label = HStack(spacing: Tokens.Space.small) {
             // One lane for every glyph, so the names share an edge.
             Image(systemName: kind?.symbol ?? NotePropertyKind.text.symbol)
-                .frame(width: Tokens.Space.inset, alignment: .center)
-            Text(property.name).lineLimit(1)
+                .frame(minWidth: glyphLane, alignment: .center)
+            Text(property.name)
         }
         .font(Tokens.Typography.supporting.font)
         .foregroundStyle(Tokens.Text.secondary.color)
@@ -517,6 +1152,30 @@ struct NotePropertyEditor: View {
         } else {
             label.accessibilityHidden(true)
         }
+    }
+
+    /// Return is `explicit`: it ends the edit before the field loses focus,
+    /// so the blur that follows finds no edit and leaves the draft alone.
+    private func submit(explicit: Bool) {
+        guard commits.editing else { return }
+        if let value = commits.take(draft, explicit: explicit) {
+            commit(value)
+        } else {
+            draft = NotePropertyJSON.decode(property)
+        }
+    }
+
+    private func returned() {
+        submit(explicit: true)
+        valueFocused = false
+    }
+
+    /// The draft empties with the value (#4616), so a Return or a blur after
+    /// it cannot write the old value back.
+    private func clearValue() {
+        draft = ""
+        commits.rebase(draft)
+        clear()
     }
 
     private func startRenaming() {
@@ -643,7 +1302,8 @@ struct NotePropertyEditor: View {
         case .number:
             TextField("Empty", text: $draft)
                 .keyboardType(.decimalPad)
-                .onSubmit { commit(draft) }
+                .focused($valueFocused)
+                .onSubmit(returned)
                 .accessibilityLabel(property.name)
 
         case .url:
@@ -651,7 +1311,8 @@ struct NotePropertyEditor: View {
                 .keyboardType(.URL)
                 .textInputAutocapitalization(.never)
                 .foregroundStyle(Tokens.Text.tint.color)
-                .onSubmit { commit(draft) }
+                .focused($valueFocused)
+                .onSubmit(returned)
                 .accessibilityLabel(property.name)
 
         default:
@@ -659,7 +1320,8 @@ struct NotePropertyEditor: View {
             // never heard of. A comma-separated list is how an array type is
             // typed, which the model turns back into a JSON array.
             TextField("Empty", text: $draft)
-                .onSubmit { commit(draft) }
+                .focused($valueFocused)
+                .onSubmit(returned)
                 .accessibilityLabel(property.name)
         }
     }
@@ -1028,6 +1690,7 @@ struct NoteMetadataEditors: View {
                                 .accessibilityActions { moveActions(property.name) }
                         }
                     }
+                    .sharesPropertyNameWidth()
                     .onDrop(of: [.plainText], isTargeted: nil) { _ in
                         commitDragOrder()
                         return true

@@ -56,7 +56,6 @@
 //! snapshot are replays.
 
 use std::sync::Arc;
-use std::time::Duration;
 
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64;
@@ -74,17 +73,17 @@ use super::bootstrap::BootstrapClient;
 use super::crdt_wire::{SnapshotMeta, UpdateEntry, UpdatePage, read_update_page};
 use super::crypto_batch::off_runtime;
 use super::driver::observer::Observers;
-use super::first_sync::MAX_RATE_LIMIT_PAUSE_S;
-use super::store;
 
 mod baseline;
 mod log_writes;
 mod manifest;
 mod pack_seed;
 mod probe;
+mod server_body;
 use probe::ProbeAnswer;
 
-pub use manifest::CRDT_MANIFEST_PAGE_LIMIT;
+pub use log_writes::BodyEpochs;
+pub use manifest::{CRDT_MANIFEST_PAGE_LIMIT, MANIFEST_READ_DEADLINE};
 pub use pack_seed::{PACK_SEED_CHUNK, PackEntrySeed, PackSeed, PackUpdateSeed};
 pub(super) use probe::Probed;
 
@@ -100,23 +99,10 @@ pub const MAX_PAGES_PER_DOCUMENT: u32 = 50;
 /// Documents per snapshot-meta probe: the batch route's own cap (§7.3).
 pub(super) const PROBE_CHUNK: usize = 100;
 
-/// Waits out a 429 `error` while the read has a pause left, and answers
-/// whether it waited, so the caller asks again (#5570). A refused probe or
-/// manifest page otherwise falls back to a route pull per document. The
-/// server's floor is one second (`Math.max(retryAfter, 1)`); a wait past
-/// [`MAX_RATE_LIMIT_PAUSE_S`] is not a sixty-second bucket.
-async fn waited_out_429(error: &ApiError, paused: &mut u32, pauses: u32) -> bool {
-    let ApiError::RateLimited { retry_after_s, .. } = error else {
-        return false;
-    };
-    let wait_s = retry_after_s.unwrap_or(1).max(1);
-    if *paused >= pauses || wait_s > MAX_RATE_LIMIT_PAUSE_S {
-        return false;
-    }
-    *paused += 1;
-    tokio::time::sleep(Duration::from_secs(wait_s)).await;
-    true
-}
+/// The longest `Retry-After` a body read waits out itself. `crdt_pull` is a
+/// sixty-second fixed window, so anything longer is not this limiter and is
+/// returned to the caller instead of sat through.
+pub const MAX_RATE_LIMIT_PAUSE_S: u64 = 60;
 
 /// The cursor scope for one document's body feed (chapter 05 §5.11: the
 /// `scope` column exists for exactly this, and it is **not** a per-type record
@@ -199,7 +185,9 @@ pub struct BodyPullReport {
     pub advanced_documents: Vec<String>,
     /// Documents whose pull yielded at [`MAX_PAGES_PER_DOCUMENT`] with the
     /// server still reporting `hasMore`. Nothing was skipped, but the log does
-    /// not reach the server's head yet, so a body debt is not settled.
+    /// not reach the server's head yet, so a body debt is not settled. Also
+    /// documents purged mid-pull (#5356): what was fetched was the purged
+    /// body's and is dropped, and the next pass pulls the new one.
     pub incomplete: Vec<String>,
     /// Requests this pull sent, so a caller can hold a per-pass budget.
     pub requests: usize,
@@ -356,10 +344,12 @@ impl BodyPull {
         answer: Option<ProbeAnswer>,
         report: &mut BodyPullReport,
     ) -> Result<(), BodyPullError> {
+        let epoch = self.body_epoch(doc_id).await?;
         let mut cursor = self.read_cursor(doc_id).await?;
         let mut first_page = None;
 
-        if let Some(answer) = answer {
+        // A purge since the probe (#5356) left its answer to the purged body.
+        if let Some(answer) = answer.filter(|answer| answer.epoch == epoch) {
             // §7.8 from the batch answer: a baseline when the server's
             // snapshot is not the one held, whatever the cursor (a cursor of
             // 0 holds none, unless a snapshot at `sequenceNum` 0 was taken).
@@ -376,13 +366,13 @@ impl BodyPull {
             // is fetched afresh (REVIEW-5311, VERIFY-5311).
             let mut held = !due;
             if due {
-                if self.fetch_baseline(doc_id, cursor, report).await? {
+                if self.fetch_baseline(doc_id, epoch, cursor, report).await? {
                     cursor = self.read_cursor(doc_id).await?;
                     held = match meta {
                         Some(meta) => !self.baseline_due(doc_id, meta).await?,
                         None => true,
                     };
-                } else if !report.stopped.is_empty() {
+                } else if !report.merged() {
                     return Ok(());
                 }
             }
@@ -402,9 +392,9 @@ impl BodyPull {
             // it, because everything at or below the watermark is answered
             // with silence.
             if cursor == 0 {
-                if self.fetch_baseline(doc_id, cursor, report).await? {
+                if self.fetch_baseline(doc_id, epoch, cursor, report).await? {
                     cursor = self.read_cursor(doc_id).await?;
-                } else if !report.stopped.is_empty() {
+                } else if !report.merged() {
                     // A baseline that exists and could not be used: paging on
                     // from 0 would store the updates above the watermark and
                     // move the cursor past the state below it for good.
@@ -419,9 +409,9 @@ impl BodyPull {
                 && let Some(meta) = meta
                 && self.baseline_due(doc_id, meta).await?
             {
-                if self.fetch_baseline(doc_id, cursor, report).await? {
+                if self.fetch_baseline(doc_id, epoch, cursor, report).await? {
                     cursor = self.read_cursor(doc_id).await?;
-                } else if !report.stopped.is_empty() {
+                } else if !report.merged() {
                     return Ok(());
                 }
             }
@@ -439,9 +429,9 @@ impl BodyPull {
             if let Some(meta) = page.snapshot_meta.as_ref()
                 && self.baseline_due(doc_id, meta).await?
             {
-                if self.fetch_baseline(doc_id, cursor, report).await? {
+                if self.fetch_baseline(doc_id, epoch, cursor, report).await? {
                     cursor = self.read_cursor(doc_id).await?;
-                } else if !report.stopped.is_empty() {
+                } else if !report.merged() {
                     return Ok(());
                 }
             }
@@ -469,8 +459,12 @@ impl BodyPull {
             }
             // The updates before a gap are stored; the cursor stops there.
             if let Some(&(last, _)) = opened_page.last() {
-                report.updates += opened_page.len();
-                self.store_updates(doc_id, opened_page).await?;
+                let count = opened_page.len();
+                if !self.store_updates(doc_id, epoch, opened_page).await? {
+                    report.incomplete.push(doc_id.to_owned());
+                    return Ok(());
+                }
+                report.updates += count;
                 cursor = last;
                 if report.advanced_documents.last().map(String::as_str) != Some(doc_id) {
                     report.advanced_documents.push(doc_id.to_owned());
@@ -489,7 +483,7 @@ impl BodyPull {
         // Without a cursor the feed treats the document as never fetched and
         // drops every update typed into it afterwards.
         if cursor == 0 && report.merged() {
-            self.hold_empty_body(doc_id).await?;
+            self.hold_empty_body(doc_id, epoch).await?;
         }
 
         Ok(())
@@ -548,18 +542,25 @@ impl BodyPull {
         Ok(read_update_page(&body, doc_id))
     }
 
-    async fn read_cursor(&self, doc_id: &str) -> Result<i64, BodyPullError> {
-        Ok(self.stored_cursor(doc_id).await?.unwrap_or(0))
-    }
-
-    /// `None` when this device never pulled the document.
-    async fn stored_cursor(&self, doc_id: &str) -> Result<Option<i64>, BodyPullError> {
-        let scope = crdt_cursor_scope(doc_id);
-        let stored = self
-            .db
-            .call(move |conn| store::read_cursor(conn, &scope))
-            .await?;
-        Ok(stored.and_then(|text| text.parse().ok()))
+    /// Waits out a 429 `error` while the read has a pause left, and answers
+    /// whether it waited, so the caller asks again (#5570). A refused probe
+    /// otherwise falls back to a route pull per document. The wait is the
+    /// error's own ([`ApiError::rate_limit_wait_s`], one second at least); a
+    /// wait past [`MAX_RATE_LIMIT_PAUSE_S`] is not a sixty-second bucket. It
+    /// is reported to the client's observer and slept on the client's
+    /// sleeper, as the retry ladder's waits are.
+    async fn waited_out_429(&self, error: &ApiError, paused: &mut u32, pauses: u32) -> bool {
+        let Some(wait_s) = error.rate_limit_wait_s() else {
+            return false;
+        };
+        if *paused >= pauses || wait_s > MAX_RATE_LIMIT_PAUSE_S {
+            return false;
+        }
+        *paused += 1;
+        let wait_ms = wait_s.saturating_mul(1_000);
+        self.http.paused(wait_ms);
+        self.http.sleep_ms(wait_ms).await;
+        true
     }
 
     fn request(&self, method: &str, path: &str) -> ApiRequest {

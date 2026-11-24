@@ -8,73 +8,104 @@
 //! clockless type (settings, a delete stored with no clock) the server accepts
 //! a later edit of it and the item comes back on every device.
 //!
-//! - [`refused`] records the refusal as one `meta` row per item id, which a
-//!   local edit never touches (an edit clears `corrupt_reason`, so the reason
-//!   cannot be the record of it).
+//! - [`refused`] records the refusal as one `meta` row per `(type, id)`,
+//!   which a local edit never touches (an edit clears `corrupt_reason`, so the
+//!   reason cannot be the record of it).
 //! - [`retry`] re-pulls those ids at the start of every pass, over that pass's
-//!   fresh directory, at most [`MAX_RETRIES`] times per refusal.
-//! - [`holds`] keeps a queued edit of such a row out of the push meanwhile.
-//! - The row goes when the id resolves: any verified record for it
-//!   ([`resolve_verified`]), or the last retry.
+//!   fresh directory, until a budget below runs out. The desktop driver
+//!   (`driver/refusals.rs`) asks [`any_waiting`] first and refetches the
+//!   directory for it; a failed refetch counts through [`directory_failed`].
+//! - [`holds`] keeps a queued edit of such a row out of the push meanwhile
+//!   ([`held`] is the push gate's form of it).
+//! - The wait ends when the row resolves: a verified record for it
+//!   ([`resolve_verified`]) drops the `meta` row and the row's flag; the last
+//!   retry keeps the `meta` row as given up, with the flag.
+//!
+//! Only a well-formed answer that leaves the id out counts toward
+//! [`MAX_RETRIES`]: anything else would give up on a record over a server
+//! hiccup (#5502). An unusable answer about the request (a dropped page, a
+//! record still unverifiable, a malformed body, a 4xx) counts toward
+//! [`MAX_FAILURES`], which still bounds the hold; an answer about the network
+//! or the server's health (transport, 5xx, 429) counts nothing.
+//!
+//! The settings item reuses the hold (#5433): an edit over a deleted
+//! payload-less settings row ([`crate::domain::settings::apply`]) records a
+//! refusal of `synced_settings`, so the server copy is re-pulled and merged
+//! before the edit pushes. A settings hold is re-pulled on its own, so another
+//! record's answer never counts toward releasing a seeded one-key edit over
+//! live server settings.
 //!
 //! A record whose signature fails for any other reason is never retried: its
 //! reason does not end with
 //! [`crate::protocol::account::UNKNOWN_SIGNER`].
 //!
 //! The rows are baseline `meta` rows, so no numbered migration is needed:
-//! `sync.unknown_signer_retries:{id}` holding the passes that re-pulled it.
-//! An older build never reads them. A refusal recorded only in
-//! `corrupt_reason`, by an older build or any other writer, is adopted when
-//! [`retry`] runs ([`adopt_unrecorded`]); when its wait ends, its reason gets
-//! [`WAIT_ENDED`], which stops it being adopted again.
-
-use std::collections::HashSet;
+//! `sync.unknown_signer_wait:{type}:{id}` holding the passes that re-pulled
+//! it. An older build never reads them. Every pass adopts a flag with no
+//! `meta` row, which is a refusal an older build recorded only in
+//! `corrupt_reason`, also one it recorded after a downgrade. A reason an
+//! earlier feat build ended with ` (no longer re-pulled)` (#5429) no longer
+//! ends with the flag, so that given-up row is not adopted again.
 
 use rusqlite::{Connection, params};
 
 use crate::api::errors::{ApiError, StorageError};
-use crate::protocol::account::UNKNOWN_SIGNER;
+use crate::domain::settings::SETTINGS_ITEM_TYPE;
 use crate::storage::Db;
 use crate::storage::repositories::sync_items;
 
 use super::apply::Pending;
 use super::first_sync_store::{read_meta, write_meta};
 use super::outbox::{self, OutboxRow};
-use super::pull::{PullError, PullLoop};
+use super::pull::{PullError, PullLoop, PullReport};
 
-/// Passes that re-pull one refusal. A signer still missing after this many
-/// fresh directories is not a device of the account; the row stays as it is.
+/// Well-formed re-pulls that left the record out before its hold gives up:
+/// the server no longer serves it. The row stays as it is, and its `meta` row
+/// stays at this count, given up.
 pub(crate) const MAX_RETRIES: u32 = 5;
 
-const KEY_PREFIX: &str = "sync.unknown_signer_retries:";
+/// Re-pulls that failed (not for the network or the server's health) or came
+/// back unverifiable before a hold gives up. Stored after a `/` in the `meta`
+/// value; an older build parses such a value as 0 and keeps holding.
+pub(crate) const MAX_FAILURES: u32 = 50;
+
+const KEY_PREFIX: &str = "sync.unknown_signer_wait:";
 /// The first key past every [`KEY_PREFIX`] key (`;` follows `:`).
-const KEY_END: &str = "sync.unknown_signer_retries;";
-/// Appended to the reason of a refusal whose wait ended unverified, so it no
-/// longer ends with [`UNKNOWN_SIGNER`] and is not adopted again.
-const WAIT_ENDED: &str = " (no longer re-pulled)";
+const KEY_END: &str = "sync.unknown_signer_wait;";
+/// Id-only keys of unreleased builds (#5426, and feat's #5429), moved once by
+/// [`migrate_id_only_keys`]. A local edit clears the row's flag, so such a key
+/// can be the only record of a hold.
+const OLD_KEYS: (&str, &str) = (
+    "sync.unknown_signer_retries:",
+    "sync.unknown_signer_retries;",
+);
+const OLD_SEEDED_KEY: &str = "sync.unknown_signer_seeded";
+/// Set once the id-only keys are moved (sorts outside [`KEY_PREFIX`]).
+const MIGRATED_KEY: &str = "sync.unknown_signer_wait_keyed";
 
-fn key(item_id: &str) -> String {
-    format!("{KEY_PREFIX}{item_id}")
+/// Item types hold no `:`, so the first one ends the type.
+fn key(item_type: &str, item_id: &str) -> String {
+    format!("{KEY_PREFIX}{item_type}:{item_id}")
 }
 
-/// Records a fresh refusal of `item_id`'s record: a full retry budget.
-pub(crate) fn refused(conn: &Connection, item_id: &str) -> Result<(), StorageError> {
-    write_meta(conn, &key(item_id), "0")
+/// Records a fresh refusal of the item's record: a full retry budget.
+pub(crate) fn refused(
+    conn: &Connection,
+    item_type: &str,
+    item_id: &str,
+) -> Result<(), StorageError> {
+    write_meta(conn, &key(item_type, item_id), "0")
 }
 
-/// Ends the wait on every id in `pending`: each arrived verified, applied or
-/// skipped, so its signer is known and nothing is left to re-pull.
+/// Ends the wait on every item in `pending`: each arrived verified, applied
+/// or skipped, so its signer is known and nothing is left to re-pull.
 pub(crate) fn resolve_verified(conn: &Connection, pending: &[Pending]) -> Result<(), StorageError> {
-    if pending.is_empty() {
+    if pending.is_empty() || recorded(conn)?.is_empty() {
         return Ok(());
     }
-    // Only a waiting id runs `drop_refusal`, whose `sync_items` update scans
-    // the table (no index on `item_id`), inside the page's write transaction.
-    let waiting: HashSet<String> = waiting(conn)?.into_iter().map(|(id, _)| id).collect();
     for item in pending {
-        if waiting.contains(item.item_id()) {
-            drop_refusal(conn, item.item_id())?;
-        }
+        drop_refusal(conn, item.item_type(), item.item_id())?;
+        sync_items::clear_unknown_signer(conn, item.item_type(), item.item_id())?;
     }
     Ok(())
 }
@@ -82,8 +113,12 @@ pub(crate) fn resolve_verified(conn: &Connection, pending: &[Pending]) -> Result
 /// Whether a queued edit of this row waits: its last pulled record was
 /// refused for an unknown signer and is still being re-pulled. Sending the
 /// edit could reverse a delete this device has not verified yet.
-pub(crate) fn holds(conn: &Connection, item_id: &str) -> Result<bool, StorageError> {
-    Ok(read_meta(conn, &key(item_id))?.is_some())
+pub(crate) fn holds(
+    conn: &Connection,
+    item_type: &str,
+    item_id: &str,
+) -> Result<bool, StorageError> {
+    Ok(read_meta(conn, &key(item_type, item_id))?.is_some_and(|value| waiting(&value)))
 }
 
 /// Why a queued row waits instead of being sent: an upsert of a row
@@ -92,125 +127,242 @@ pub(crate) async fn held(db: &Db, row: &OutboxRow) -> Result<Option<String>, Sto
     if row.op != outbox::OP_UPSERT {
         return Ok(None);
     }
-    let item_id = row.item_id.clone();
-    let held = db.call(move |conn| holds(conn, &item_id)).await?;
+    let (item_type, item_id) = (row.item_type.clone(), row.item_id.clone());
+    let held = db
+        .call(move |conn| holds(conn, &item_type, &item_id))
+        .await?;
     Ok(held.then(|| "held: its last pulled record waits on an unknown signer".to_owned()))
 }
 
-/// Re-pulls, by id, every refusal still waiting. The caller built `pull` over
-/// the directory it fetched for this pass. A transport failure is logged and
-/// counts no attempt; any other failure counts one.
-pub(crate) async fn retry(db: &Db, pull: &PullLoop) -> Result<(), StorageError> {
-    let due = db
-        .call(|conn| {
-            adopt_unrecorded(conn)?;
-            waiting(conn)
-        })
-        .await?;
-    if due.is_empty() {
-        return Ok(());
-    }
-    let ids: Vec<String> = due.iter().map(|(id, _)| id.clone()).collect();
-    if let Err(error) = pull.fetch_ids(&ids).await {
-        eprintln!(
-            "memry-core: re-pulling {} record(s) of an unknown signer failed: {error}",
-            ids.len()
-        );
-        if let PullError::Api { source } = &error
-            && is_transport(source)
-        {
-            return Ok(());
-        }
-    }
-    db.call(move |conn| count_attempt(conn, due)).await
+/// Whether any refusal waits, after the same migration and adoption as
+/// [`retry`], so a refusal an older build recorded is seen on this pass.
+pub(crate) fn any_waiting(conn: &Connection) -> Result<bool, StorageError> {
+    Ok(!waiting_holds(conn)?.is_empty())
 }
 
-/// A directory refetch for the re-pull failed. Like a failed re-pull, a
-/// transport failure counts no attempt and any other failure counts one for
-/// every waiting id, so a directory that never loads cannot hold an edit
-/// forever.
+/// Re-pulls, by id, every refusal still waiting. The caller built `pull` over
+/// the directory it fetched for this pass. Each settings hold is re-pulled on
+/// its own, every other hold in one batch; each outcome counts per
+/// [`counted`].
+pub(crate) async fn retry(db: &Db, pull: &PullLoop) -> Result<(), StorageError> {
+    let (settings, due): (Vec<_>, Vec<_>) = db
+        .call(|conn| waiting_holds(conn))
+        .await?
+        .into_iter()
+        .partition(|(item_type, _, _)| item_type == SETTINGS_ITEM_TYPE);
+    for hold in settings {
+        re_pull(db, pull, vec![hold]).await?;
+    }
+    if !due.is_empty() {
+        re_pull(db, pull, due).await?;
+    }
+    Ok(())
+}
+
+/// A directory refetch for the re-pull failed. It counts as a failed re-pull
+/// would ([`counted_error`]): one failure toward [`MAX_FAILURES`] for every
+/// waiting hold, or nothing for the network or the server's health. So a
+/// directory that never loads cannot hold an edit for ever, and a server
+/// hiccup never ends a hold (#5502).
 pub(crate) async fn directory_failed(db: &Db, error: &ApiError) -> Result<(), StorageError> {
-    if is_transport(error) {
+    let counted = counted_error(error);
+    if matches!(counted, Counted::Nothing) {
         return Ok(());
     }
-    db.call(|conn| {
-        adopt_unrecorded(conn)?;
-        let due = waiting(conn)?;
-        count_attempt(conn, due)
+    db.call(move |conn| {
+        let holds = waiting_holds(conn)?;
+        count(conn, holds, counted)
     })
     .await
 }
 
-fn is_transport(error: &ApiError) -> bool {
-    matches!(error, ApiError::Transport { .. })
+/// What one re-pull counts toward (VERIFY-5447 r3).
+enum Counted {
+    /// Says nothing about the server copy, or about this request.
+    Nothing,
+    /// A well-formed answer that left the id out: the server holds no copy.
+    Attempt,
+    /// An answer about this request that cannot be used, which may persist.
+    Failure,
 }
 
-/// Counts this pass's attempt for each of `due`, ending the wait of one whose
-/// budget ran out.
-fn count_attempt(conn: &Connection, due: Vec<(String, u32)>) -> Result<(), StorageError> {
-    for (id, attempts) in due {
-        // Resolved by the re-pull, or a refusal of it is still recorded:
-        // this pass's attempt counts against the budget it had before.
-        if read_meta(conn, &key(&id))?.is_none() {
-            continue;
+/// Classifies a re-pull. Only a page that decoded, held no unverifiable
+/// record and left an id out shows the server has no copy; a record that
+/// resolved its hold has already dropped its `meta` row.
+fn counted(result: &Result<PullReport, PullError>) -> Counted {
+    match result {
+        Ok(report)
+            if report.uncovered > 0
+                && report.corrupt == 0
+                && report.dropped_pages == 0
+                && !report.refused =>
+        {
+            Counted::Attempt
         }
-        let attempts = attempts + 1;
-        if attempts < MAX_RETRIES {
-            write_meta(conn, &key(&id), &attempts.to_string())?;
-            continue;
+        Ok(_) => Counted::Failure,
+        Err(PullError::Api { source }) => counted_error(source),
+        Err(_) => Counted::Nothing,
+    }
+}
+
+/// A malformed body or a 4xx other than 429 is about the request; anything
+/// else (transport, 5xx, 429, a local failure) says nothing.
+fn counted_error(error: &ApiError) -> Counted {
+    match error {
+        ApiError::MalformedResponse { .. } => Counted::Failure,
+        ApiError::Status { status, .. } if (400..500).contains(status) && *status != 429 => {
+            Counted::Failure
         }
+        _ => Counted::Nothing,
+    }
+}
+
+/// Re-pulls `holds` in one fetch and counts its outcome (see [`counted`])
+/// against every one still recorded after it.
+async fn re_pull(
+    db: &Db,
+    pull: &PullLoop,
+    holds: Vec<(String, String, String)>,
+) -> Result<(), StorageError> {
+    let mut ids: Vec<String> = holds.iter().map(|(_, id, _)| id.clone()).collect();
+    ids.sort();
+    ids.dedup();
+    let result = pull.fetch_ids(&ids).await;
+    if let Err(error) = &result {
         eprintln!(
-            "memry-core: {id}'s signer is still unknown after {attempts} directories; \
-             no longer re-pulled"
+            "memry-core: re-pulling {} record(s) of an unknown signer failed: {error}",
+            ids.len()
         );
-        drop_refusal(conn, &id)?;
+    }
+    let counted = counted(&result);
+    if matches!(counted, Counted::Nothing) {
+        return Ok(());
+    }
+    db.call(move |conn| count(conn, holds, counted)).await
+}
+
+/// Counts `counted` against every one of `holds` still recorded: an attempt
+/// toward [`MAX_RETRIES`], a failure toward [`MAX_FAILURES`]. A refusal
+/// recorded again since `holds` was read counts against the budget it had
+/// before.
+fn count(
+    conn: &Connection,
+    holds: Vec<(String, String, String)>,
+    counted: Counted,
+) -> Result<(), StorageError> {
+    for (item_type, id, value) in holds {
+        let key = key(&item_type, &id);
+        if read_meta(conn, &key)?.is_none() {
+            continue;
+        }
+        let (mut attempts, mut failures) = (attempts_of(&value), failures_of(&value));
+        match counted {
+            Counted::Attempt => attempts += 1,
+            _ => failures += 1,
+        }
+        if attempts >= MAX_RETRIES || failures >= MAX_FAILURES {
+            eprintln!(
+                "memry-core: {item_type} {id}: {attempts} re-pull(s) found no server copy \
+                 and {failures} failed; no longer re-pulled"
+            );
+        }
+        write_meta(conn, &key, &format!("{attempts}/{failures}"))?;
     }
     Ok(())
 }
 
-/// Whether any refusal waits.
-pub(crate) fn any_waiting(conn: &Connection) -> Result<bool, StorageError> {
-    Ok(!waiting(conn)?.is_empty())
+/// Whether a recorded value still holds: under both budgets.
+fn waiting(value: &str) -> bool {
+    attempts_of(value) < MAX_RETRIES && failures_of(value) < MAX_FAILURES
 }
 
-/// The waiting ids with the passes that re-pulled each.
-fn waiting(conn: &Connection) -> Result<Vec<(String, u32)>, StorageError> {
+fn attempts_of(value: &str) -> u32 {
+    value
+        .split('/')
+        .next()
+        .and_then(|n| n.parse().ok())
+        .unwrap_or(0)
+}
+
+fn failures_of(value: &str) -> u32 {
+    value
+        .split_once('/')
+        .and_then(|(_, n)| n.parse().ok())
+        .unwrap_or(0)
+}
+
+/// Moves the id-only keys once, adopts the unrecorded flags, then reads every
+/// refusal still waiting, as `(type, id, value)`.
+fn waiting_holds(conn: &Connection) -> Result<Vec<(String, String, String)>, StorageError> {
+    migrate_id_only_keys(conn)?;
+    adopt(conn)?;
+    Ok(recorded(conn)?
+        .into_iter()
+        .filter(|(_, _, value)| waiting(value))
+        .collect())
+}
+
+/// Every recorded refusal, waiting or given up, as `(type, id, value)`.
+fn recorded(conn: &Connection) -> Result<Vec<(String, String, String)>, StorageError> {
     let mut statement = conn
         .prepare("SELECT key, value FROM meta WHERE key >= ?1 AND key < ?2 ORDER BY key")
         .map_err(failed)?;
-    statement
+    let rows = statement
         .query_map(params![KEY_PREFIX, KEY_END], |row| {
-            let key: String = row.get(0)?;
-            let value: String = row.get(1)?;
-            Ok((
-                key[KEY_PREFIX.len()..].to_owned(),
-                value.parse().unwrap_or(0),
-            ))
+            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
         })
         .map_err(failed)?
         .collect::<Result<Vec<_>, _>>()
-        .map_err(failed)
+        .map_err(failed)?;
+    Ok(rows
+        .into_iter()
+        .filter_map(|(key, value)| {
+            let (item_type, id) = key[KEY_PREFIX.len()..].split_once(':')?;
+            Some((item_type.to_owned(), id.to_owned(), value))
+        })
+        .collect())
 }
 
-fn drop_refusal(conn: &Connection, item_id: &str) -> Result<(), StorageError> {
-    conn.execute("DELETE FROM meta WHERE key = ?1", [key(item_id)])
+fn drop_refusal(conn: &Connection, item_type: &str, item_id: &str) -> Result<(), StorageError> {
+    conn.execute("DELETE FROM meta WHERE key = ?1", [key(item_type, item_id)])
         .map_err(failed)?;
-    conn.execute(
-        "UPDATE sync_items SET corrupt_reason = corrupt_reason || ?2
-         WHERE item_id = ?1 AND substr(corrupt_reason, -length(?3)) = ?3",
-        params![item_id, WAIT_ENDED, UNKNOWN_SIGNER],
-    )
-    .map_err(failed)?;
     Ok(())
 }
 
-/// Adopts the refusals recorded only in `corrupt_reason`: by an older build,
-/// or by a writer that does not call [`refused`].
-fn adopt_unrecorded(conn: &Connection) -> Result<(), StorageError> {
-    for id in sync_items::unknown_signer_ids(conn)? {
-        if read_meta(conn, &key(&id))?.is_none() {
-            refused(conn, &id)?;
-        }
+/// Moves each id-only key to every row with that id, at the same count:
+/// holding a sibling of another type a few passes is harmless, dropping a
+/// hold can push an edit over an unverified delete (REVIEW-5448). Runs once.
+fn migrate_id_only_keys(conn: &Connection) -> Result<(), StorageError> {
+    if read_meta(conn, MIGRATED_KEY)?.is_some() {
+        return Ok(());
+    }
+    conn.execute(
+        "INSERT OR IGNORE INTO meta (key, value)
+         SELECT ?1 || s.item_type || ':' || s.item_id, m.value
+         FROM meta m JOIN sync_items s ON s.item_id = substr(m.key, length(?2) + 1)
+         WHERE m.key >= ?2 AND m.key < ?3",
+        params![KEY_PREFIX, OLD_KEYS.0, OLD_KEYS.1],
+    )
+    .map_err(failed)?;
+    conn.execute(
+        "DELETE FROM meta WHERE (key >= ?1 AND key < ?2) OR key = ?3",
+        params![OLD_KEYS.0, OLD_KEYS.1, OLD_SEEDED_KEY],
+    )
+    .map_err(failed)?;
+    write_meta(conn, MIGRATED_KEY, "1")
+}
+
+/// Adopts every flagged row with no `meta` row: a refusal an older build
+/// recorded only in `corrupt_reason`, before or after this build first ran.
+/// A row this build resolved has no flag, and one it gave up on keeps its
+/// `meta` row, so neither comes back.
+fn adopt(conn: &Connection) -> Result<(), StorageError> {
+    for (item_type, id) in sync_items::unknown_signer_rows(conn)? {
+        conn.execute(
+            "INSERT OR IGNORE INTO meta (key, value) VALUES (?1, '0')",
+            [key(&item_type, &id)],
+        )
+        .map_err(failed)?;
     }
     Ok(())
 }

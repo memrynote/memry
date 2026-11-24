@@ -23,7 +23,7 @@ export const CBOR_FIELD_ORDER = {
     'encryptedFileKey',
     'keyNonce'
   ] as const,
-  DELETE_ATTESTATION: ['purpose', 'id', 'type', 'deletedAt', 'clock'] as const
+  DELETE_ATTESTATION: ['purpose', 'vaultId', 'id', 'type', 'deletedAt', 'clock'] as const
 } as const
 
 export type CborPayloadType = keyof typeof CBOR_FIELD_ORDER

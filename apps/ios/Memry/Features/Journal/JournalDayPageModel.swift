@@ -29,14 +29,15 @@ final class JournalDayPageModel {
     var lastDetail: NoteDetail?
     /// Find in page (J09) is open over this page.
     var finding = false
-    /// The user tapped a disabled ghost row: say why it is disabled.
-    var explainsReadOnlyMetadata = false
+    /// The first line's Return made a block that has yet to take the caret:
+    /// the field stays, hidden and holding the caret, until it does.
+    private(set) var handingOff = false
     private var seedChecked = false
 
     init(store: JournalStore, date: String, context: JournalVaultContext) {
         self.date = date
         let id = store.cachedDay(date)?.id ?? JournalNoteBridge.newDayId(date)
-        let bridge = JournalNoteBridge(store: store, date: date, exposesMetadata: JournalWriteGate.metadataWrites)
+        let bridge = JournalNoteBridge(store: store, date: date)
         self.bridge = bridge
         read = NoteReadViewModel(
             route: NoteRoute(id: id),
@@ -47,7 +48,7 @@ final class JournalDayPageModel {
         editor = NoteEditorViewModel(noteId: id, editor: bridge, notes: context.writer)
         metadata = NoteMetadataViewModel(
             noteId: id,
-            writer: JournalWriteGate.metadataWrites ? JournalMetadataWriter(bridge: bridge) : nil
+            writer: JournalMetadataWriter(bridge: bridge, definitions: context.metadataWriter)
         )
         composer = NoteAttachmentComposer(noteId: id, filler: context.filler)
         backlinks = BacklinksViewModel(noteId: id, search: context.search)
@@ -105,19 +106,31 @@ final class JournalDayPageModel {
 
     /// The first line typed into an empty day: one paragraph through
     /// `editDay`, which creates the day (D2). The block editor takes over
-    /// once the re-read draws the new block.
+    /// once the re-read draws the new block. A line written after it goes
+    /// at the end. `carrying` hands the new block the keys typed after the
+    /// line's Return, as it takes the caret (#4705).
     @discardableResult
-    func writeFirstLine(_ text: String) async -> Bool {
-        let edit = BlockEdit.insertParagraph(
-            afterBlockId: nil,
-            text: text,
-            newBlockId: UUID().uuidString.lowercased()
-        )
+    func writeFirstLine(_ text: String, carrying draft: JournalFirstLineDraft? = nil) async -> Bool {
+        let id = UUID().uuidString.lowercased()
+        let edit = BlockEdit.insertParagraph(afterBlockId: nil, text: text, newBlockId: id)
         do {
             _ = try await bridge.edit(noteId: read.route.id, edit)
         } catch {
             Log.storage.error("the first line of a journal day did not land")
             return false
+        }
+        // The user moved the caret elsewhere during the write: it stays
+        // there, and the field lands its keys as lines of their own. Set
+        // before the re-read, so the block takes the caret as it is drawn,
+        // from the field, which stays until then (`handingOff`): a key typed
+        // while neither holds the caret is lost.
+        if let draft, draft.focused {
+            handingOff = true
+            editor.session.titleBurst = TitleBurst(target: id) { [weak self] moved in
+                self?.handingOff = false
+                return draft.takeHeld(moved)
+            }
+            editor.session.focus(id)
         }
         await read.reload()
         return true

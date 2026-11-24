@@ -25,17 +25,26 @@ import { parseNote } from './frontmatter'
 import { ATTACHMENTS_DIR } from './attachments'
 import { generateNoteId } from '../lib/id'
 import { normalizeRelativePath } from '../lib/paths'
-import { syncNoteToCache, syncFileToCache, findCanonicalNoteByPath } from './note-sync'
+import {
+  syncNoteToCache,
+  syncFileToCache,
+  syncNoteStatToCache,
+  moveFileInCache,
+  findCanonicalNoteForFile,
+  isRemoteApplySpelling
+} from './note-sync'
+import { processRename } from './rename-tracker'
 import { flushProjectionEvents } from '../projections'
 import { reconcileTaskCheckboxesLazily } from '../tasks/reconcile-markdown-tasks-lazy'
 import {
+  getNoteCacheById,
   getNoteCacheByPath,
   countNotes,
   countJournalEntries,
   ensureTagDefinitions,
   newMarkdownFileId
 } from '@main/database/queries/notes'
-import { getNoteMetadataByPath, listPropertyDefinitions } from '@memry/storage-data'
+import { listPropertyDefinitions, updateNoteMetadata } from '@memry/storage-data'
 import { PropertyDefinitionsService } from './property-definitions'
 import { isSupportedPath, getFileType, getMimeType, getExtension } from '@memry/shared/file-types'
 import { createLogger } from '../lib/logger'
@@ -176,9 +185,17 @@ async function indexFile(
   try {
     const db = getIndexDatabase()
 
+    if (!getNoteCacheByPath(db, relativePath)) {
+      await rekeyCaseVariantRow(db, vaultPath, relativePath, fileType)
+    }
+
     // Check if already in cache by path
     const existingByPath = getNoteCacheByPath(db, relativePath)
     if (existingByPath && !forcePaths.has(relativePath)) {
+      if (fileType !== 'markdown' && existingByPath.fileType === 'markdown') {
+        await retypeBinaryRow(db, existingByPath, relativePath, fileType)
+        return 'indexed'
+      }
       return 'skipped'
     }
 
@@ -196,10 +213,104 @@ async function indexFile(
 }
 
 /**
+ * A file the index lists under no path, whose canonical row spells its path in
+ * another case: sync applied it into a folder the disk spells differently
+ * (#5261). The row moves to the disk's spelling and keeps its id and dates,
+ * and the file then takes the exact-path code like any other. The file's mtime
+ * is sync's own write: stamped on the row, a pulled note reads as edited since
+ * its sync, and a pull takes the file over the server body (#5276).
+ *
+ * A row the index does not hold moves in the data DB only, so the walk indexes
+ * it as an exact-path row the index does not know.
+ *
+ * A file name that changed case is the user's rename made while the app was
+ * closed: it takes the exact-path code, which restamps the title and marks the
+ * row modified since its sync.
+ * A folder renamed by case offline looks the same as a folder sync spelled
+ * differently, and is re-keyed without a sync.
+ */
+async function rekeyCaseVariantRow(
+  db: ReturnType<typeof getIndexDatabase>,
+  vaultPath: string,
+  relativePath: string,
+  fileType: NonNullable<ReturnType<typeof getFileType>>
+): Promise<void> {
+  const claimed = findCanonicalNoteForFile(vaultPath, relativePath)
+  if (!claimed || claimed.path === relativePath || !isRemoteApplySpelling(claimed, relativePath))
+    return
+  const indexed = getNoteCacheById(db, claimed.id)
+  if (!indexed) {
+    updateNoteMetadata(getDatabase(), claimed.id, { path: relativePath })
+    return
+  }
+  const row = {
+    id: claimed.id,
+    path: relativePath,
+    title: claimed.title,
+    fileSize: indexed.fileSize ?? 0
+  }
+  if (fileType === 'markdown') {
+    syncNoteStatToCache(
+      db,
+      {
+        ...row,
+        createdAt: claimed.createdAt,
+        modifiedAt: claimed.modifiedAt,
+        localOnly: claimed.localOnly,
+        emoji: claimed.emoji
+      },
+      { isNew: false }
+    )
+  } else {
+    moveFileInCache(db, {
+      ...row,
+      fileType,
+      mimeType: getMimeType(getExtension(relativePath)),
+      createdAt: new Date(claimed.createdAt),
+      modifiedAt: new Date(claimed.modifiedAt)
+    })
+  }
+  await flushProjectionEvents()
+  processRename(claimed.id, claimed.path, relativePath, { sync: false })
+}
+
+/**
+ * A binary file whose row says markdown: a write-back of the CRDT body the
+ * server holds for every note, binary ones included, re-saved the row as
+ * markdown on a fresh device (#5412). Only the type and MIME type move; the
+ * row keeps its id, emoji, size and sync bookkeeping. The file on disk may be
+ * the markdown that overwrote the blob, so its size is not the blob's (0 when
+ * the row has none: unknown). A markdown note's file is always `.md`, so a
+ * binary extension decides.
+ */
+async function retypeBinaryRow(
+  db: ReturnType<typeof getIndexDatabase>,
+  row: NonNullable<ReturnType<typeof getNoteCacheByPath>>,
+  relativePath: string,
+  fileType: Exclude<NonNullable<ReturnType<typeof getFileType>>, 'markdown'>
+): Promise<void> {
+  moveFileInCache(db, {
+    id: row.id,
+    path: relativePath,
+    title: row.title,
+    fileType,
+    mimeType: getMimeType(getExtension(relativePath)),
+    fileSize: row.fileSize ?? 0,
+    createdAt: new Date(row.createdAt),
+    modifiedAt: new Date(row.modifiedAt)
+  })
+  await flushProjectionEvents()
+  logger.warn('Restored the file type of a binary note saved as markdown', {
+    id: row.id,
+    fileType
+  })
+}
+
+/**
  * Index a markdown file with full frontmatter support.
  */
 async function indexMarkdownFile(
-  _vaultPath: string,
+  vaultPath: string,
   relativePath: string,
   absolutePath: string,
   db: ReturnType<typeof getIndexDatabase>
@@ -226,12 +337,7 @@ async function indexMarkdownFile(
     logger.warn(`Unparseable frontmatter, indexing body only: ${relativePath}`)
   }
 
-  let canonical: ReturnType<typeof getNoteMetadataByPath>
-  try {
-    canonical = getNoteMetadataByPath(getDatabase(), relativePath)
-  } catch {
-    // data DB not ready — fall back to a fresh id
-  }
+  const canonical = findCanonicalNoteForFile(vaultPath, relativePath)
   const noteId = canonical?.id ?? newMarkdownFileId(relativePath)
 
   // Use syncNoteToCache for unified cache operations
@@ -287,6 +393,7 @@ async function indexMarkdownFile(
  */
 export async function indexBinaryFile(
   db: ReturnType<typeof getIndexDatabase>,
+  vaultPath: string,
   relativePath: string,
   absolutePath: string,
   fileType: 'pdf' | 'image' | 'audio' | 'video'
@@ -294,7 +401,7 @@ export async function indexBinaryFile(
   // Get file stats for metadata
   const stats = await stat(absolutePath)
 
-  const id = findCanonicalNoteByPath(relativePath)?.id ?? generateNoteId()
+  const id = findCanonicalNoteForFile(vaultPath, relativePath)?.id ?? generateNoteId()
 
   // Get MIME type
   const ext = getExtension(absolutePath)
@@ -322,14 +429,14 @@ export async function indexBinaryFile(
  * Index a non-markdown file (PDF, images, audio, video).
  */
 async function indexNonMarkdownFile(
-  _vaultPath: string,
+  vaultPath: string,
   relativePath: string,
   absolutePath: string,
   fileType: 'pdf' | 'image' | 'audio' | 'video',
   db: ReturnType<typeof getIndexDatabase>
 ): Promise<'indexed' | IndexFailure> {
   try {
-    await indexBinaryFile(db, relativePath, absolutePath, fileType)
+    await indexBinaryFile(db, vaultPath, relativePath, absolutePath, fileType)
     logger.debug(`Successfully indexed: ${relativePath} (${fileType})`)
     return 'indexed'
   } catch (error) {

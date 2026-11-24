@@ -3,6 +3,7 @@ import os from 'os'
 import path from 'path'
 import fs from 'fs'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { MAX_EMBEDDING_INPUT_TOKENS } from './embedding-input'
 import { EMBEDDING_DIMENSION } from './embeddings-constants'
 
 const mockModelLoad = vi.hoisted(() => vi.fn())
@@ -11,6 +12,16 @@ const mockConfigLoad = vi.hoisted(() => vi.fn())
 const mockProcessorLoad = vi.hoisted(() => vi.fn())
 const mockFromBlob = vi.hoisted(() => vi.fn())
 const mockEnv = vi.hoisted(() => ({ cacheDir: '' }))
+const MockTensor = vi.hoisted(
+  () =>
+    class {
+      constructor(
+        readonly type: string,
+        readonly data: BigInt64Array,
+        readonly dims: number[]
+      ) {}
+    }
+)
 
 class MockParentPort extends EventEmitter {
   postMessage = vi.fn()
@@ -22,6 +33,7 @@ vi.mock('@huggingface/transformers', () => ({
   AutoTokenizer: { from_pretrained: mockTokenizerLoad },
   AutoProcessor: { from_pretrained: mockProcessorLoad },
   RawImage: { fromBlob: mockFromBlob },
+  Tensor: MockTensor,
   env: mockEnv
 }))
 
@@ -52,7 +64,7 @@ describe('embedding worker', () => {
       audio_config: {},
       text_config: {}
     }))
-    mockTokenizerLoad.mockResolvedValue(vi.fn().mockReturnValue({ input_ids: 'ids' }))
+    mockTokenizerLoad.mockResolvedValue({ encode: vi.fn().mockReturnValue([2, 7, 1]) })
     mockEnv.cacheDir = ''
   })
 
@@ -92,7 +104,7 @@ describe('embedding worker', () => {
     const model = Object.assign(vi.fn().mockResolvedValue({ sentence_embedding: { data: full } }), {
       dispose: vi.fn()
     })
-    const tokenizer = vi.fn().mockReturnValue({ input_ids: 'ids' })
+    const tokenizer = { encode: vi.fn().mockReturnValue([2, 7, 1]) }
     mockTokenizerLoad.mockResolvedValue(tokenizer)
     mockModelLoad.mockImplementationOnce(async (_model, options) => {
       options?.progress_callback?.({
@@ -135,7 +147,40 @@ describe('embedding worker', () => {
     expect(options).toMatchObject({ dtype: 'q4', device: 'cpu' })
     // Text only: without these sections no vision/audio session is built or downloaded.
     expect(options.config).toMatchObject({ vision_config: null, audio_config: null })
-    expect(tokenizer).toHaveBeenCalledWith(['a'.repeat(4000)], { padding: true, truncation: true })
+    expect(tokenizer.encode).toHaveBeenCalledWith('a'.repeat(4000))
+  })
+
+  it('feeds the model at most MAX_EMBEDDING_INPUT_TOKENS, keeping the closing token', async () => {
+    const port = new MockParentPort()
+    Object.defineProperty(process, 'parentPort', {
+      configurable: true,
+      writable: true,
+      value: port
+    })
+    const dense = [2, ...Array.from({ length: 7998 }, (_, i) => i + 10), 1]
+    mockTokenizerLoad.mockResolvedValue({ encode: vi.fn().mockReturnValue(dense) })
+    const model = Object.assign(
+      vi.fn().mockResolvedValue({ sentence_embedding: { data: new Float32Array(768).fill(1) } }),
+      { dispose: vi.fn() }
+    )
+    mockModelLoad.mockResolvedValue(model)
+
+    await import('./embedding-worker')
+    port.emit('message', { data: { type: 'embed', requestId: 'dense', text: '𠀀'.repeat(2000) } })
+    await vi.waitFor(() => {
+      expect(port.postMessage).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'embed-result', requestId: 'dense' })
+      )
+    })
+
+    const { input_ids, attention_mask } = model.mock.calls[0][0]
+    expect(input_ids.dims).toEqual([1, MAX_EMBEDDING_INPUT_TOKENS])
+    expect(Array.from(input_ids.data, Number)).toEqual([
+      ...dense.slice(0, MAX_EMBEDDING_INPUT_TOKENS - 1),
+      1
+    ])
+    expect(attention_mask.dims).toEqual([1, MAX_EMBEDDING_INPUT_TOKENS])
+    expect(attention_mask.data.every((bit: bigint) => bit === 1n)).toBe(true)
   })
 
   it.each([

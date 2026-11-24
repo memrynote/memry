@@ -45,6 +45,9 @@ export interface RateLimitOptions extends RateLimitBucket {
   identifier?: (c: Context<AppContext>) => Promise<string | null> | string | null
   // P1.2 seam — see GetElevatedLimits above. Defaults to noElevation.
   getElevatedLimits?: GetElevatedLimits
+  // Tokens one request spends, for a route that does the work of several
+  // (#5329: a manifest batch reads one R2 object per id). Defaults to 1.
+  cost?: (c: Context<AppContext>) => Promise<number> | number
 }
 
 // Keys a bucket by the requesting device instead of the account. A second
@@ -96,7 +99,7 @@ export const createRateLimiter = (options: RateLimitOptions): MiddlewareHandler<
       new Request(new URL('/consume', c.req.url), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ windowSeconds })
+        body: JSON.stringify({ windowSeconds, cost: (await options.cost?.(c)) ?? 1 })
       })
     )
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped JSON body from the request or upstream response; a runtime parser would change which inputs are accepted

@@ -39,6 +39,12 @@ struct NoteReadToolbar: ViewModifier {
 
     @State private var showingBacklinks = false
     @State private var choosingIcon = false
+    @State private var local = LocalSettings.shared
+    @Environment(\.vaultSyncPasses) private var vaultSyncPasses
+    @Environment(\.notesPane) private var pane
+
+    /// The note's own `fullWidth` wins, then this device's editor width.
+    private var isFullWidth: Bool { local.editorWidth.isFull(override: actions.fullWidth) }
 
     func body(content: Content) -> some View {
         content
@@ -48,14 +54,20 @@ struct NoteReadToolbar: ViewModifier {
                 // Everything the bottom bar used to hold lives here now: the
                 // keyboard toolbar owns editing at the caret, and one bottom
                 // surface fewer leaves the page to the writing.
-                ToolbarItem(placement: .topBarTrailing) {
-                    NotePageMenu(
-                        items: menuItems,
-                        editing: editorModel.canEdit ? editingItems : nil
-                    )
+                if !headed {
+                    ToolbarItem(placement: .topBarTrailing) { pageMenu }
+                }
+            }
+            // Two panes: the menu goes in the pane's own header (#4699).
+            .safeAreaBar(edge: .top) {
+                if let pane, headed {
+                    NotesPaneHeader(pane: pane, overCover: model.hasCover) { pageMenu }
                 }
             }
             .task { await actions.loadFavorite() }
+            // Desktop's toggle reaches this page as a pulled record.
+            .task(id: vaultSyncPasses) { await actions.loadFullWidth() }
+            .environment(\.fullWidthReading, isFullWidth)
             .sheet(isPresented: $showingBacklinks) {
                 NoteBacklinksSheet(model: backlinks) { route in
                     showingBacklinks = false
@@ -73,6 +85,12 @@ struct NoteReadToolbar: ViewModifier {
             }
     }
 
+    private var headed: Bool { pane?.headed ?? false }
+
+    private var pageMenu: some View {
+        NotePageMenu(items: menuItems, editing: editorModel.canEdit ? editingItems : nil)
+    }
+
     private var menuItems: NotePageMenuItems {
         var items = NotePageMenuItems(
             folderPath: model.folderPath,
@@ -85,8 +103,10 @@ struct NoteReadToolbar: ViewModifier {
         if actions.canWrite {
             items.toggleFavorite = toggleFavorite
             items.rename = {
-                // The dialog edits the current title, as the notes list's does.
-                renameDraft = model.title
+                // The dialog edits the current title, as the notes list's
+                // does: the one typed in the title field, if it is not saved
+                // yet (#4691).
+                renameDraft = metadataModel.titleDraft ?? model.title
                 renaming = true
             }
             items.duplicate = duplicate
@@ -99,7 +119,20 @@ struct NoteReadToolbar: ViewModifier {
             if case .image = NoteCoverValue.of(model.metadata?.coverJson)?.kind {
                 items.repositionCover = { repositioningCover = true }
             }
+            if actions.canWrite {
+                let isFull = isFullWidth
+                // Re-read so the `fullWidth` property row shows at once, as
+                // desktop's refetch does; a vault with no sync pass has no
+                // other trigger.
+                items.toggleFullWidth = {
+                    Task {
+                        await actions.toggleFullWidth(isFull: isFull)
+                        await model.reload()
+                    }
+                }
+            }
         }
+        items.isFullWidth = isFullWidth
         return items
     }
 
@@ -112,7 +145,8 @@ struct NoteReadToolbar: ViewModifier {
     /// Copies the note, then opens the copy, as desktop's canvas Duplicate
     /// leaves the user on what it made.
     private func duplicate() {
-        let title = model.displayTitle.isEmpty ? "Untitled" : model.displayTitle
+        let current = metadataModel.titleDraft ?? model.displayTitle
+        let title = current.isEmpty ? "Untitled" : current
         Task {
             if let id = await actions.duplicate(title: "\(title) copy") {
                 open?(NoteRoute(id: id))
@@ -123,8 +157,8 @@ struct NoteReadToolbar: ViewModifier {
     private var editingItems: NotePageEditingItems {
         let session = editorModel.session
         return NotePageEditingItems(
-            canUndo: session.history.canUndo,
-            canRedo: session.history.canRedo,
+            canUndo: session.canUndo,
+            canRedo: session.canRedo,
             undo: { session.undo() },
             redo: { session.redo() }
         )
