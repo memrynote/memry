@@ -12,6 +12,10 @@
 //!   ([`desktop_records::Kept`]); an absent
 //!   `icon` keeps the local icon and `null` clears it, and `vaultId` stays
 //!   local. `deletedAt` is the remote's: absent or `null` revives the folder.
+//! - **A restamp contests only `vaultId`** ([`server_vault::restamp`], which
+//!   Electron's handler does not know): a remote restamp whose base this live
+//!   folder is strictly after leaves its path, icon and `deletedAt` as they
+//!   are under the merged clock, re-queued.
 //!
 //! A delete is the tombstone path unchanged ([`crate::domain::desktop_records`]).
 
@@ -20,10 +24,12 @@ use serde_json::Value;
 
 use crate::api::errors::StorageError;
 use crate::domain::desktop_records::{self, Kept};
+use crate::domain::notes::clock_in;
 use crate::domain::task_merge;
 use crate::domain::tasks::Inbound;
 use crate::storage::repositories::StoredPayload;
 use crate::storage::repositories::sync_items::InboundRecord;
+use crate::sync::server_vault;
 
 use super::ITEM_TYPE;
 
@@ -55,6 +61,12 @@ pub fn apply_remote(
     };
     if local.is_none() && !(stated("vaultId") && stated("path")) {
         return Ok(Inbound::Skipped);
+    }
+    if let Some(live) = desktop_records::stored(conn, ITEM_TYPE, &record.item_id, true)?
+        && !desktop_records::fails_desktop_schema(ITEM_TYPE, remote.object(), KEPT.not_null)
+        && server_vault::restamp_superseded(remote.object(), &clock_in(live.object())?)
+    {
+        return desktop_records::apply_kept(conn, record, &live, Some(&live), Vec::new(), now_ms);
     }
     desktop_records::apply_kept(conn, record, &remote, local.as_ref(), Vec::new(), now_ms)
 }
