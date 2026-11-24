@@ -154,6 +154,7 @@ import {
   cancelWriteback,
   flushPendingWritebacks,
   hasPendingWriteback,
+  holdFlushUntil,
   getWritebackDebugState,
   getWritebackStateSizes,
   resetWritebackState,
@@ -744,6 +745,27 @@ describe('crdt writeback', () => {
       'Write-back failed during shutdown flush',
       expect.objectContaining({ noteId: 'note-1' })
     )
+  })
+
+  // A held journal create waits on the projection lane, which a stuck
+  // projection can hold for good: the quit, a vault close and a journal format
+  // change flush through here, and none of them may hang on it.
+  it('flushPendingWritebacks stops waiting for stuck held work and names it in the log', async () => {
+    let settle!: () => void
+    holdFlushUntil(new Promise<void>((resolve) => (settle = resolve)), 'journal create 2026-05-11')
+
+    let flushed = false
+    const flush = flushPendingWritebacks().then(() => (flushed = true))
+    await vi.advanceTimersByTimeAsync(0)
+    expect(flushed).toBe(false)
+    await vi.advanceTimersByTimeAsync(10_000)
+    await flush
+
+    expect(mocks.logger.warn).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ held: ['journal create 2026-05-11'] })
+    )
+    settle()
   })
 
   it('settleWriteback runs an armed pass at once and leaves an unarmed note alone', async () => {
