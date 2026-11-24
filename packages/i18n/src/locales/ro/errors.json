@@ -62,7 +62,7 @@
     "uploadFailed": "Nu s-a putut încărca atașamentul",
     "uploadProgressFailed": "Nu s-a putut prelua progresul încărcării",
     "downloadFailed": "Nu s-a putut descărca atașamentul",
-    "downloadGone": "Acest fișier nu mai este pe serverul de sincronizare. Dacă un alt dispozitiv îl mai are, adaugă-l din nou de pe acel dispozitiv.",
+    "downloadGone": "Acest fișier nu mai este pe serverul de sincronizare. Dacă un alt dispozitiv îl mai are, adăugați-l din nou de pe acel dispozitiv.",
     "downloadMissing": "Acest fișier nu este încă pe serverul de sincronizare. Deschideți-l din nou mâine pentru a verifica.",
     "downloadNeedsSync": "Sincronizarea nu rulează, așa că acest fișier nu poate fi descărcat. Se descarcă automat după ce sincronizarea pornește.",
     "downloadProgressFailed": "Nu s-a putut prelua progresul descărcării",

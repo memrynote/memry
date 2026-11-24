@@ -41,12 +41,16 @@ function bodyEmbedsOnDisk(vaultPath: string, note: { id: string; path: string })
  * note's own file, and each embedded attachment with no recorded file on disk.
  * Read from local state only, so opening a note that misses nothing sends no
  * request. An embed no record names (a note from before the record, #2651) is
- * listed only while a file the body embeds is missing.
+ * listed while sync runs: the downloader checks it against the file on disk,
+ * and its record keeps the next open local. While sync is off nothing can
+ * download and the list only decides the alert, so such an embed is listed
+ * only while a file the body embeds is missing.
  */
 export function owedNoteDownloads(
   db: DrizzleDb,
   vaultPath: string,
-  noteId: string
+  noteId: string,
+  syncRunning: boolean
 ): NoteFileDownload[] {
   const note = getNoteMetadataById(db, noteId)
   if (!note || note.localOnly) return []
@@ -66,7 +70,7 @@ export function owedNoteDownloads(
   let embedsOnDisk: boolean | undefined
   for (const attachmentId of note.attachmentReferences ?? []) {
     if (recordedFileOf(db, vaultPath, noteId, attachmentId)) continue
-    if (!isRecordedAttachment(db, noteId, attachmentId)) {
+    if (!syncRunning && !isRecordedAttachment(db, noteId, attachmentId)) {
       embedsOnDisk ??= bodyEmbedsOnDisk(vaultPath, note)
       if (embedsOnDisk) continue
     }
