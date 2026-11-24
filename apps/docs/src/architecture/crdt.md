@@ -946,9 +946,11 @@ document to its vault `.md` file and re-indexes it for search.
   in `folder-move-index.ts`). A pass takes its note's path from the row it read, so one that
   read the row before the move wrote the old path after it: the old folder came back with the
   edit in it, the note's rows moved back there, and the next vault open listed the file at the
-  new path as a second note (#5671). A body update feeds the doc before its file outside the
-  queue, because the
-  feed can wait on the store and a pass queued behind it could hang the quit flush. An update
+  new path as a second note (#5671). The rename releases the turns before it rewrites the
+  path links to the moved notes, because that rewrite feeds the linking notes' docs and can
+  wait on the store. Folder renames hold their turns one at a time: a rename and one of the
+  folder above it each held a note the other waited for, and neither finished. A body update
+  feeds the doc before its file outside the queue, because the feed can wait on the store and a pass queued behind it could hang the quit flush. An update
   that creates a journal day (a tags save or the day merge's tags, for a day with no file)
   writes the file and its index row in the queue, since a pass writes a day file that does
   not exist yet (`materialize`). The create's sync enqueue waits for the projection lane,

@@ -29,6 +29,7 @@ import {
   sharesCaseTwinFile
 } from './case-twin-file'
 import {
+  announceFolderMove,
   moveFolderHoldingWritebacks,
   moveIndexedNotesWithFolder,
   type FolderMovedNote
@@ -996,7 +997,9 @@ export async function createFolder(folderPath: string): Promise<void> {
 
 /** No write-back of a note under the folder runs beside the move (#5643, #5671). */
 export async function renameFolder(oldPath: string, newPath: string): Promise<FolderMovedNote[]> {
-  return moveFolderHoldingWritebacks(oldPath, () => moveFolder(oldPath, newPath))
+  const moved = await moveFolderHoldingWritebacks(oldPath, () => moveFolder(oldPath, newPath))
+  await announceFolderMove(moved)
+  return moved
 }
 
 async function moveFolder(oldPath: string, newPath: string): Promise<FolderMovedNote[]> {

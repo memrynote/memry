@@ -58,6 +58,8 @@ vi.mock('../sync/local-mutations', () => ({
   removePendingNoteSyncItems: vi.fn()
 }))
 const docs = vi.hoisted(() => new Map<string, unknown>())
+/** A doc the CRDT store cannot hand out yet: `open` waits on this. */
+const stalled = vi.hoisted(() => new Map<string, Promise<never>>())
 vi.mock('../sync/crdt-provider', () => {
   const stub = {
     initForNote: vi.fn(async () => {}),
@@ -69,7 +71,10 @@ vi.mock('../sync/crdt-provider', () => {
     readOnlyStore: () => ({ docNames: async () => [], updates: async () => [] }),
     isNoteLocalOnly: () => false,
     isAwaitingMerge: () => false,
-    open: vi.fn(async (id: string) => docs.get(id)),
+    open: vi.fn(async (id: string) => {
+      await stalled.get(id)
+      return docs.get(id)
+    }),
     withDocLoaded: vi.fn(async (_id: string, run: () => void) => run()),
     closeIfInactive: async () => {},
     whenPersisted: async () => {},
@@ -104,7 +109,8 @@ import {
 } from '../database/client'
 import { getStatus } from './index'
 import { markdownToYFragment } from '../sync/blocknote-converter'
-import { writebackNow } from '../sync/crdt-writeback'
+import { flushPendingWritebacks, hasWritebackTurn, writebackNow } from '../sync/crdt-writeback'
+import { getCrdtProvider } from '../sync/crdt-provider'
 import { readyWritebackConverter } from '../sync/converter-worker-bridge'
 import { recordAppWrite } from './app-writes'
 import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
@@ -113,7 +119,8 @@ import {
   startProjectionRuntime,
   stopProjectionRuntime
 } from '../projections'
-import { generateContentHash } from './frontmatter'
+import { generateContentHash, parseNote } from './frontmatter'
+import { syncNoteToCache } from './note-sync'
 import { clearIngestBackfill, drainIngestBackfill } from './ingest-backfill'
 import { indexVault } from './indexer'
 import { clearAllPendingDeletes } from './rename-tracker'
@@ -149,6 +156,7 @@ describe('a write-back across its folder rename (#5671)', () => {
 
   afterEach(async () => {
     docs.clear()
+    stalled.clear()
     await stopProjectionRuntime({ drain: true })
     clearIngestBackfill()
     clearAllPendingDeletes()
@@ -159,26 +167,47 @@ describe('a write-back across its folder rename (#5671)', () => {
   })
 
   /** A synced note at `Folder/n.md`, as a pull leaves it, then one vault open. */
-  async function seedNote(): Promise<void> {
-    const relativePath = 'Folder/n.md'
+  async function seedNote(relativePath = 'Folder/n.md'): Promise<void> {
+    seed('plain', relativePath, BODY)
+    await openVault()
+  }
+
+  /** A synced note as a pull leaves it: its rows, and its body written by sync. */
+  function seed(id: string, relativePath: string, body: string): void {
     const fields = {
-      id: 'plain',
+      id,
       path: relativePath,
-      title: 'n',
+      title: path.basename(relativePath, '.md'),
       fileType: 'markdown' as const,
       createdAt: '2026-01-10T00:00:00.000Z',
       modifiedAt: '2026-01-12T00:00:00.000Z',
       syncedAt: '2026-01-12T00:00:00.000Z',
-      fileSize: Buffer.byteLength(BODY)
+      fileSize: Buffer.byteLength(body)
     }
     upsertNoteMetadata(asClientDb(data.db), fields)
-    insertNoteCache(index.db, { ...fields, contentHash: generateContentHash(BODY) })
+    insertNoteCache(index.db, { ...fields, contentHash: generateContentHash(body) })
     const absolutePath = path.join(vault.path, relativePath)
     fs.mkdirSync(path.dirname(absolutePath), { recursive: true })
-    const landed = recordAppWrite(absolutePath, BODY)
-    fs.writeFileSync(absolutePath, BODY)
+    const landed = recordAppWrite(absolutePath, body)
+    fs.writeFileSync(absolutePath, body)
     landed()
-    await openVault()
+  }
+
+  /** Holds the note's write of `EDITED` until `release`; `atWrite` settles when it gets there. */
+  function holdEditedWrite() {
+    let release = (): void => {}
+    let reached = (): void => {}
+    const gate = new Promise<void>((resolve) => (release = resolve))
+    const atWrite = new Promise<void>((resolve) => (reached = resolve))
+    const real = vi.mocked(atomicWrite).getMockImplementation()!
+    vi.mocked(atomicWrite).mockImplementation(async (filePath, content) => {
+      if (content.includes('plain edited')) {
+        reached()
+        await gate
+      }
+      return real(filePath, content)
+    })
+    return { release, atWrite }
   }
 
   async function openVault(): Promise<void> {
@@ -224,18 +253,7 @@ describe('a write-back across its folder rename (#5671)', () => {
 
   it("a folder rename waits for a note's write-back in flight", async () => {
     await seedNote()
-    let release = (): void => {}
-    let reached = (): void => {}
-    const gate = new Promise<void>((resolve) => (release = resolve))
-    const atWrite = new Promise<void>((resolve) => (reached = resolve))
-    const real = vi.mocked(atomicWrite).getMockImplementation()!
-    vi.mocked(atomicWrite).mockImplementation(async (filePath, content) => {
-      if (content.includes('plain edited')) {
-        reached()
-        await gate
-      }
-      return real(filePath, content)
-    })
+    const { release, atWrite } = holdEditedWrite()
     const pass = writeBack(EDITED)
     await atWrite
 
@@ -280,5 +298,102 @@ describe('a write-back across its folder rename (#5671)', () => {
     await pass
 
     expect(await afterRename()).toEqual(RENAMED_WITH_EDIT)
+  }, 30_000)
+
+  // REVIEW-5672 (1): the rename re-points `[[Folder/n]]` in another note by
+  // feeding that note's doc, which waits on the CRDT store. Held turns spanning
+  // it left the quit flush and the note's write-back waiting on a stuck store.
+  it("a quit flush and a note's write-back finish while the rename's link rewrite waits on the store", async () => {
+    const linker = '# l\n\nsee [[Folder/n]]\n'
+    seed('linker', 'Other/l.md', linker)
+    await seedNote()
+    // The vault open skips a file its index row already hashes; index its link.
+    const parsed = parseNote(linker)
+    syncNoteToCache(
+      index.db,
+      {
+        id: 'linker',
+        path: 'Other/l.md',
+        fileContent: linker,
+        frontmatter: parsed.frontmatter,
+        parsedContent: parsed.content,
+        title: 'l',
+        createdAt: '2026-01-10T00:00:00.000Z',
+        modifiedAt: '2026-01-12T00:00:00.000Z'
+      },
+      { isNew: false }
+    )
+    await flushProjectionEvents()
+    await readyWritebackConverter()
+    let fail = (): void => {}
+    const store = new Promise<never>((_resolve, reject) => {
+      fail = () => reject(new Error('store gone'))
+    })
+    store.catch(() => {})
+    stalled.set('linker', store)
+
+    const renaming = renameFolderCommand('Folder', 'Renamed')
+    try {
+      await vi.waitFor(() =>
+        expect(getCrdtProvider().open).toHaveBeenCalledWith('linker', undefined, {
+          skipSeed: true
+        })
+      )
+      expect(hasWritebackTurn('plain')).toBe(false)
+      expect(
+        await Promise.all([
+          flushPendingWritebacks().then(() => 'flushed'),
+          writeBack(EDITED).then(() => 'written')
+        ])
+      ).toEqual(['flushed', 'written'])
+    } finally {
+      fail()
+    }
+    await renaming
+
+    expect(await afterRename()).toEqual({
+      ...RENAMED_WITH_EDIT,
+      reopened: ['Other/l.md', 'Renamed/n.md']
+    })
+  }, 30_000)
+
+  // REVIEW-5672 (2): a folder rename and one of the folder above it, with a
+  // note turning up while the first waits. Each took the turns it could, so
+  // the first held the note the second waited for while it waited for the
+  // late note the second held, and neither ever finished.
+  it('two overlapping folder renames both finish', async () => {
+    await seedNote('Top/Sub/n.md')
+    const { release, atWrite } = holdEditedWrite()
+    const pass = writeBack(EDITED)
+    await atWrite
+
+    const inner = renameFolderCommand('Top/Sub', 'Top/Inner')
+    let outer: Promise<void> = Promise.resolve()
+    try {
+      await new Promise((resolve) => setImmediate(resolve))
+      seed('late', 'Top/Sub/m.md', '# m\n\nlate body\n')
+      outer = renameFolderCommand('Top', 'Moved')
+      // Long enough for each rename to take the turns it can.
+      await new Promise((resolve) => setTimeout(resolve, 200))
+    } finally {
+      release()
+    }
+    await pass
+    await Promise.all([inner, outer])
+
+    expect({
+      rows: data.db
+        .select({ path: noteMetadata.path })
+        .from(noteMetadata)
+        .all()
+        .map((row) => row.path)
+        .toSorted(),
+      file: read('Moved/Inner/n.md'),
+      top: fs.existsSync(path.join(vault.path, 'Top'))
+    }).toEqual({
+      rows: ['Moved/Inner/m.md', 'Moved/Inner/n.md'],
+      file: expect.stringContaining('plain edited'),
+      top: false
+    })
   }, 30_000)
 })

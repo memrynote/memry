@@ -32,6 +32,9 @@ export interface FolderMovedNote {
   date: string | null
 }
 
+/** Settles once the last folder rename queued has released its turns. */
+let folderMoves: Promise<unknown> = Promise.resolve()
+
 /**
  * Runs `move`, a folder rename's move of `folderPath` and of its rows, with no
  * write-back turn of a note under the folder beside it. A pass takes its
@@ -45,11 +48,23 @@ export interface FolderMovedNote {
  * path. A note that turns up while the rename waits is held too before `move`
  * starts. The turns are taken all at once, so a large folder waits for its
  * slowest pass, not for the sum of them.
+ *
+ * Folder renames hold their turns one at a time. Two that overlap (a folder
+ * and one inside it) each took the turns they could, so one could hold a note
+ * the other waited for while it waited for a note the other held. `move` ends
+ * once the rows are at their new paths: a quit flush waits for the held
+ * turns, so nothing in `move` waits on the CRDT store (#5475).
  */
-export async function moveFolderHoldingWritebacks<T>(
+export function moveFolderHoldingWritebacks<T>(
   folderPath: string,
   move: () => Promise<T>
 ): Promise<T> {
+  const run = folderMoves.then(() => holdWritebacksWhile(folderPath, move))
+  folderMoves = run.catch(() => {})
+  return run
+}
+
+async function holdWritebacksWhile<T>(folderPath: string, move: () => Promise<T>): Promise<T> {
   const { promise: released, resolve: release } = Promise.withResolvers<void>()
   const held = new Set<string>()
   // Settles once the note's turn is held, or rejects when the turn fails
@@ -151,11 +166,22 @@ export async function moveIndexedNotesWithFolder(
   if (moved.length === 0) return moved
   await moveNotesInCache(db, moves)
 
+  // An unlink the watcher saw before the rows moved is waiting to be paired
+  // with an add. That add now finds its row and stops early, so the pending
+  // delete would fire and delete the note.
+  for (const note of moved) clearPendingDelete(note.id)
+  return moved
+}
+
+/**
+ * Tell the renderer each note of a folder rename moved, and re-point the
+ * path-form wiki-links (`[[Old/Note]]`) that name the moved folder. Call once
+ * the rename has released its write-back turns: the rewrite feeds each linking
+ * note's doc and can wait on the CRDT store.
+ */
+export async function announceFolderMove(moved: FolderMovedNote[]): Promise<void> {
+  const db = getIndexDatabase()
   for (const note of moved) {
-    // An unlink the watcher saw before the rows moved is waiting to be paired
-    // with an add. That add now finds its row and stops early, so the pending
-    // delete would fire and delete the note.
-    clearPendingDelete(note.id)
     emitNoteEvent(NotesChannels.events.MOVED, {
       id: note.id,
       oldPath: note.oldPath,
@@ -163,7 +189,6 @@ export async function moveIndexedNotesWithFolder(
     })
   }
 
-  // Path links (`[[Old/Note]]`) name the folder that just moved.
   for (const note of moved) {
     const title = getNoteCacheById(db, note.id)?.title ?? ''
     await rewriteInboundWikiLinks({
@@ -174,5 +199,4 @@ export async function moveIndexedNotesWithFolder(
       newPath: note.newPath
     })
   }
-  return moved
 }
