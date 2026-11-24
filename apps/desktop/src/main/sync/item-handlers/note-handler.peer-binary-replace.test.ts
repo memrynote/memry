@@ -153,6 +153,7 @@ import { enqueueLocalSyncUpdate } from '../local-mutations'
 import { SupersededDownloadError } from '../attachment-errors'
 import { enqueueUpload } from '../attachment-outbox'
 import { readSyncedBinaryHash } from '../binary-synced-hash'
+import { readCaseTwinForeignBytes } from '../../vault/case-twin-bytes'
 import { deleteNoteFromCache } from '../../vault/note-sync'
 import { renameNote } from '../../vault/notes-rename'
 import { resetAttachmentDownloadSession } from '@memry/sync-client/attachment-download-state'
@@ -484,6 +485,43 @@ describe("a peer's replacement of a binary note's bytes", () => {
       expect(readSyncedBinaryHash(asClientDb(data.db), 'img')).toBe(sha256('old-bytes'))
       land('img', 'att-new', abs('Pictures/p.png'), 'peer-bytes')
       expect(conflictCopies('Pictures')).toEqual([])
+    })
+
+    // An explicit download names no note whose check it waits for (`fileOwnerId`).
+    it('marks nothing when its new bytes land while the check hashes the old ones', async () => {
+      seed('img', 'Pictures/p.png', 'old-bytes', false)
+      manifests.set('att-img', sha256('old-bytes'))
+      const answer = holdHashes()
+
+      expect(pull('img', 'att-new')).toBe('applied')
+      await vi.waitFor(() => expect(hashing.reads).toBe(1))
+      const at = landCaseTwinDownload(abs('Pictures/p.png'), 'att-new', sha256('peer-bytes'))
+      recordAppWrite(at, { sha256: sha256('peer-bytes') })
+      fs.writeFileSync(at, 'peer-bytes')
+      recordDownloadedFileSize('img', 'att-new', 'peer-bytes'.length, sha256('peer-bytes'))
+      answer()
+      await settleBinaryHashCheck('img')
+
+      expect(readCaseTwinForeignBytes(asClientDb(data.db), 'img')).toBeUndefined()
+      expect(readSyncedBinaryHash(asClientDb(data.db), 'img')).toBe(sha256('peer-bytes'))
+      fs.writeFileSync(abs('Pictures/p.png'), 'new-edit')
+      expect(await recordUploadedFile('img', 'att-edit', sha256('new-edit'))).toBe(true)
+    })
+
+    it('keeps the file marked when the note is renamed while the check hashes', async () => {
+      seed('img', 'Pictures/p.png', 'old-bytes', false)
+      manifests.set('att-img', sha256('old-bytes'))
+      const answer = holdHashes()
+
+      expect(pull('img', 'att-new')).toBe('applied')
+      await vi.waitFor(() => expect(hashing.reads).toBe(1))
+      await renameNote('img', 'renamed')
+      answer()
+      await settleBinaryHashCheck('img')
+
+      expect(read('Pictures/renamed.png')).toBe('old-bytes')
+      expect(readCaseTwinForeignBytes(asClientDb(data.db), 'img')).toBeNull()
+      expect(readSyncedBinaryHash(asClientDb(data.db), 'img')).toBeUndefined()
     })
   })
 
