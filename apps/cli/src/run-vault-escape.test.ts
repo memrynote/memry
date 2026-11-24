@@ -193,3 +193,75 @@ test(
     await assert.rejects(fs.access(path.join(world, 'vault', 'Archive')), { code: 'ENOENT' })
   }
 )
+
+/** Every command that writes a folder's `.folder.md`, for one folder argument. */
+function folderConfigWrites(folder: string): string[][] {
+  return [
+    ['folders', 'template', folder, '--clear'],
+    ['folder-view', 'set-config', folder, '{"icon":"x"}'],
+    ['folder-view', 'set-view', folder, '{"name":"Table","type":"table"}'],
+    ['folder-view', 'delete-view', folder, 'Table']
+  ]
+}
+
+test('folders template and folder-view refuse a folder outside the vault', async () => {
+  for (const folder of ['..', '../escaped', '../outside/data', 'SuperNotes/../..']) {
+    for (const command of folderConfigWrites(folder)) await assertRefused(command, OUTSIDE)
+  }
+})
+
+test(
+  'folders template and folder-view refuse a folder through a link',
+  { skip: skipLinks },
+  async () => {
+    for (const folder of ['out', 'out/new', 'zz/outside/data']) {
+      for (const command of folderConfigWrites(folder)) await assertRefused(command, LINK)
+    }
+  }
+)
+
+test('folders template and folder-view still write the vault root for . and /', async () => {
+  const { vaultPath } = await makeWorld()
+  for (const folder of ['.', '/']) {
+    for (const command of folderConfigWrites(folder)) {
+      const result = await cli(vaultPath, ...command)
+      assert.equal(result.code, 0, `${command.join(' ')}: ${result.stderr}`)
+    }
+  }
+  assert.match(await fs.readFile(path.join(vaultPath, '.folder.md'), 'utf-8'), /icon: x/)
+})
+
+/** Captures an image into the world's inbox and returns its item id. */
+async function captureImage({ world, vaultPath }: World): Promise<string> {
+  const source = path.join(world, 'shot.png')
+  await fs.writeFile(source, 'png-bytes')
+  const captured = await cli(vaultPath, 'inbox', 'capture-image', source, '--title', 'Shot')
+  assert.equal(captured.code, 0, captured.stderr)
+  return (JSON.parse(captured.stdout.at(-1) ?? '{}') as { id: string }).id
+}
+
+test('inbox file refuses a folder outside the vault for an image', async () => {
+  for (const folder of ['..', '../outside/data', 'SuperNotes/../..']) {
+    let itemId = ''
+    await assertRefused(
+      () => ['inbox', 'file', itemId, '--folder', folder],
+      OUTSIDE,
+      async (world) => {
+        itemId = await captureImage(world)
+      }
+    )
+  }
+})
+
+test('inbox file refuses a folder through a link', { skip: skipLinks }, async () => {
+  for (const folder of ['out', 'out/x', 'zz/outside/data']) {
+    let itemId = ''
+    await assertRefused(
+      () => ['inbox', 'file', itemId, '--folder', folder],
+      LINK,
+      async (world) => {
+        itemId = await captureImage(world)
+      }
+    )
+  }
+})

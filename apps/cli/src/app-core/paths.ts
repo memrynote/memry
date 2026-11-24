@@ -92,6 +92,21 @@ export async function vaultFolder(
   return folder
 }
 
+/**
+ * The `.folder.md` a folder template or view write targets. `''`, `.` and `/` are the vault
+ * root, as in desktop's `getFolderConfigPath`; any other folder goes through `vaultFolder` (#5679).
+ */
+export async function folderConfigFile(
+  vaultPath: string,
+  requested: string,
+  action: string
+): Promise<string> {
+  const normalized = normalizePath(requested)
+  const folder =
+    normalized === '' || normalized === '.' ? '' : await vaultFolder(vaultPath, requested, action)
+  return path.join(vaultPath, folder, '.folder.md')
+}
+
 // Mirrors desktop's `sanitizeFilename` (file-ops.ts): platform-invalid chars
 // plus `[ ] # ^`, which Obsidian ≥1.8 forbids in filenames (they break
 // wikilink syntax).

@@ -118,7 +118,7 @@ test('inbox file refuses a folder outside the vault and a missing --folder', asy
   const item = await capture(vault, 'x')
   const escaping = await run(vault, ['inbox', 'file', item.id, '--folder', '../outside'])
   assert.equal(escaping.code, 1)
-  assert.match(escaping.stderr, /inside the vault/)
+  assert.match(escaping.stderr, /is the vault itself or outside it/)
   const missing = await run(vault, ['inbox', 'file', item.id])
   assert.equal(missing.code, 1)
   assert.match(missing.stderr, /Missing --folder/)

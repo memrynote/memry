@@ -3,7 +3,7 @@ import path from 'node:path'
 import { parseMarkdownNote, writeMarkdownNote } from '@memry/app-core/markdown'
 import type { NoteRecord, NotesService } from './notes.ts'
 import { listTreeFolders } from './folders.ts'
-import { normalizePath, type VaultConfig } from './paths.ts'
+import { folderConfigFile, normalizePath, type VaultConfig } from './paths.ts'
 
 export interface FolderViewColumn {
   id: string
@@ -168,7 +168,7 @@ async function writeConfig(
     frontmatter.summaries = config.summaries
   }
 
-  const target = configPath(vaultPath, folderPath)
+  const target = await folderConfigFile(vaultPath, folderPath, 'write folder view')
   await fs.mkdir(path.dirname(target), { recursive: true })
   await fs.writeFile(target, writeMarkdownNote(frontmatter, ''), 'utf-8')
 }

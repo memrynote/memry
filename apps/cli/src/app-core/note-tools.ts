@@ -19,7 +19,7 @@ import { extractWikiLinks } from '@memry/shared/wiki-target'
 import type { DataDb } from './database.ts'
 import { aliasesFromFrontmatter } from './note-aliases.ts'
 import type { NotesService } from './notes.ts'
-import { normalizePath } from './paths.ts'
+import { folderConfigFile, normalizePath } from './paths.ts'
 import type { TemplatesService } from './templates.ts'
 import { iterateFileLines, MAX_LINE_CHARS } from './note-large-file.ts'
 
@@ -455,7 +455,7 @@ export function createNoteToolsService({
       if (templateId !== null && !(await templates.get(templateId))) {
         throw new Error(`Template not found: ${templateId}`)
       }
-      const target = path.join(vaultPath, folder, '.folder.md')
+      const target = await folderConfigFile(vaultPath, folderPath, 'set folder template')
       const raw = await fs.readFile(target, 'utf-8').catch(() => null)
       const parsed = parseMarkdownNote(raw ?? '')
       const frontmatter = { ...parsed.frontmatter }
