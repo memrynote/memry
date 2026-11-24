@@ -73,7 +73,8 @@ import {
 } from '../sync/attachment-outbox'
 import { recordAppWrite } from '../vault/app-writes'
 import { applyDownloadedAttachmentName } from '../vault/attachment-rename'
-import { landCaseTwinDownload, releaseAbandonedCaseTwinBytes } from '../vault/case-twin-file'
+import { releaseAbandonedCaseTwinBytes } from '../vault/case-twin-file'
+import { landCaseTwinDownload } from '../vault/case-twin-landing'
 import { fileTextNoteChanged } from '../file-text'
 import { getStatus as getVaultStatus } from '../vault/status'
 import {
