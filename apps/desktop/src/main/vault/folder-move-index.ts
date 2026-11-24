@@ -16,7 +16,7 @@ import {
   listNoteCacheUnderFolder
 } from '@main/database/queries/notes'
 import { getDatabase, getIndexDatabase } from '../database'
-import { takeWritebackTurn } from '../sync/crdt-writeback'
+import { holdFlushUntil, takeWritebackTurn } from '../sync/crdt-writeback'
 import { moveNotesInCache, type NoteMove } from './note-sync'
 import { clearPendingDelete } from './rename-tracker'
 import { emitNoteEvent } from './notes-io'
@@ -53,7 +53,9 @@ let folderMoves: Promise<unknown> = Promise.resolve()
  * and one inside it) each took the turns they could, so one could hold a note
  * the other waited for while it waited for a note the other held. `move` ends
  * once the rows are at their new paths: a quit flush waits for the held
- * turns, so nothing in `move` waits on the CRDT store (#5475).
+ * turns, so nothing in `move` waits on the CRDT store (#5475). A flush also
+ * waits for a rename still queued, which holds no turn yet, so a quit never
+ * leaves a folder moved with its rows at the old path.
  */
 export function moveFolderHoldingWritebacks<T>(
   folderPath: string,
@@ -61,6 +63,7 @@ export function moveFolderHoldingWritebacks<T>(
 ): Promise<T> {
   const run = folderMoves.then(() => holdWritebacksWhile(folderPath, move))
   folderMoves = run.catch(() => {})
+  holdFlushUntil(run, `folder rename ${folderPath}`)
   return run
 }
 

@@ -43,7 +43,8 @@ import {
 import type { NoteCache } from '@memry/db-schema/schema/notes-cache'
 import { getIndexDatabase, type IndexDb } from '../database'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
-import { landBodyEdit } from '../sync/writeback-baseline'
+import { feedBodyEdit, writeFedBodyEdit } from '../sync/writeback-baseline'
+import { takeWritebackTurn } from '../sync/crdt-writeback'
 import { recordAppWrite } from './app-writes'
 import { rewriteWikiLinksToNote, type WikiLinkNames } from '@memry/shared/rewrite-wiki-links'
 import { parseNote } from './frontmatter'
@@ -173,6 +174,12 @@ async function rewriteSource(
  * Land a rewritten source file everywhere its body lives: the file, the index,
  * the renderer and the CRDT body (steps 1-4 above). Also used by the
  * unlinked-mention "Link" action.
+ *
+ * The doc is fed outside the source's write-back turn, since the feed can wait
+ * on the store (#5475); the file and the rows are written in the turn, at the
+ * path the source has then. A folder rename that ran during the feed moved
+ * the file and the rows, and writing the path read before it would make the
+ * old folder again and move the rows back (#5690).
  */
 export async function landSourceRewrite(
   db: IndexDb,
@@ -180,14 +187,42 @@ export async function landSourceRewrite(
   source: { path: string; title: string; content: string }
 ): Promise<void> {
   const sourceId = cached.id
+  const rewritten = source.content
+  const parsed = parseNote(rewritten, source.path)
+  const fed = await feedBodyEdit(sourceId, source.path, () =>
+    feedExternalEditToCrdt(sourceId, parsed.content, writingFrontmatterOf(parsed.frontmatter))
+  )
+  await takeWritebackTurn(sourceId, async () => {
+    const sourcePath = currentSourcePath(db, cached, source.path)
+    if (sourcePath === null) {
+      log.warn('Dropped a link rewrite: its source note was deleted meanwhile', { sourceId })
+      return
+    }
+    await writeSourceRewrite(db, cached, { ...source, path: sourcePath }, fed)
+  })
+}
+
+/**
+ * Where the source lives now: `path` (which can be ahead of a row the projector
+ * has not moved yet), unless its row moved since `cached` was read.
+ */
+function currentSourcePath(db: IndexDb, cached: NoteCache, path: string): string | null {
+  const row = getNoteCacheById(db, cached.id)
+  if (!row) return null
+  return row.path === cached.path ? path : row.path
+}
+
+async function writeSourceRewrite(
+  db: IndexDb,
+  cached: NoteCache,
+  source: { path: string; title: string; content: string },
+  fed: boolean
+): Promise<void> {
+  const sourceId = cached.id
   const { path: sourcePath, content: rewritten } = source
   const absolutePath = toAbsolutePath(sourcePath)
-
   const parsed = parseNote(rewritten, sourcePath)
-  const contentHash = await landBodyEdit(db, sourceId, rewritten, {
-    notePath: sourcePath,
-    feed: () =>
-      feedExternalEditToCrdt(sourceId, parsed.content, writingFrontmatterOf(parsed.frontmatter)),
+  const contentHash = await writeFedBodyEdit(db, sourceId, rewritten, fed, {
     // Recorded as the sync note handler and `moveNote` record theirs: the
     // watcher drops this write's echo, which is already being reconciled here.
     write: async () => {
