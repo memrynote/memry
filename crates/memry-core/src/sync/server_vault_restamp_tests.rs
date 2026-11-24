@@ -426,6 +426,50 @@ fn a_restamp_marker_with_an_extra_key_is_no_restamp() {
     assert_eq!(drawing_then_pull(before, newer), 2, "a conflict copy");
 }
 
+/// VERIFY-5621R2: serde reads a struct from a JSON array too, so a marker written as
+/// `[device, base]` is no restamp either, and the drawing its record carries keeps a conflict copy.
+#[test]
+fn a_restamp_marker_written_as_an_array_is_no_restamp() {
+    let (peer, _peer_dir, before) = restamped_peer("canvas", "c", canvas_written_by_restamper);
+    let mut newer = peer
+        .call_blocking(|conn| Ok(payload(conn, "canvas", "c")))
+        .expect("read");
+    newer["scene"] = json!(r#"{"elements":[{"id":"newer-ink"}]}"#);
+    newer["vaultRestamp"] = json!([RESTAMPER, { RESTAMPER: 1 }]);
+    assert_eq!(newer["clock"], json!({ RESTAMPER: 2 }));
+    assert_eq!(drawing_then_pull(before, newer), 2, "a conflict copy");
+}
+
+/// VERIFY-5621R2, folders: a newer icon whose marker is an array lands as any concurrent edit does.
+#[test]
+fn a_folder_restamp_marker_written_as_an_array_is_no_restamp() {
+    let (peer, _peer_dir, before) = restamped_peer("canvas_folder", "cvf_work", |conn| {
+        canvas_folder::upsert(conn, LOCAL, "Work", None, RESTAMPER, NOW).map(drop)
+    });
+    let mut newer = peer
+        .call_blocking(|conn| Ok(payload(conn, "canvas_folder", "cvf_work")))
+        .expect("read");
+    newer["icon"] = json!("moon");
+    newer["vaultRestamp"] = json!([RESTAMPER, { RESTAMPER: 1 }]);
+    assert_eq!(newer["clock"], json!({ RESTAMPER: 2 }));
+    let (db, _dir) = open("restamp-folder-array");
+    db.call_blocking(move |conn| {
+        pull(conn, vec![remote("canvas_folder", "cvf_work", &before)])?;
+        canvas_folder::upsert(conn, LOCAL, "Work", Some(Some("star")), DEVICE, NOW + 2)?;
+        assert_eq!(
+            payload(conn, "canvas_folder", "cvf_work")["clock"],
+            json!({ RESTAMPER: 1, DEVICE: 1 })
+        );
+        pull(conn, vec![remote("canvas_folder", "cvf_work", &newer)])?;
+        assert_eq!(
+            payload(conn, "canvas_folder", "cvf_work")["icon"],
+            json!("moon")
+        );
+        Ok(())
+    })
+    .expect("pull");
+}
+
 /// VERIFY-5621: the first form of the marker stated the base alone, as `vaultRestampBase`. A record
 /// carrying it at its base ticked once is no restamp, and a peer's drawing keeps a conflict copy.
 #[test]

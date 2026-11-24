@@ -1211,8 +1211,9 @@ refetches it once another core build runs (§13.2).
    is a restamp only while its `clock` equals that base ticked once by that
    device and the base is not empty. A marker a later edit carries along is
    inert: the edit ticks again, and a desktop that stored the marker without
-   applying the restamp ticks its own id. A marker of any other shape, an
-   extra key included, is no restamp (`server_vault.rs:100-107`, `:216-226`).
+   applying the restamp ticks its own id. A marker that is not a JSON object
+   with exactly `device` and `base` is no restamp (`server_vault.rs:100-107`,
+   `:216-227`).
    On a concurrent clock, a remote restamp whose
    base the live local canvas is strictly after leaves the local canvas as it
    is under the merged clock, re-queued, and a local restamp whose base the

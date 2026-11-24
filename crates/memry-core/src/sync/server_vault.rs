@@ -216,6 +216,7 @@ fn restamp_one(
 pub(crate) fn restamp_superseded(record: &Object, other: &VectorClock) -> bool {
     let marker = record
         .get(RESTAMP)
+        .filter(|marker| marker.is_object())
         .and_then(|marker| serde_json::from_value::<Restamp>(marker.clone()).ok());
     let (Some(Restamp { device, base }), Ok(clock)) = (marker, clock_in(record)) else {
         return false;
