@@ -402,14 +402,12 @@ const fromB64 = (s: string): Uint8Array =>
  * download would land that file under this id (#5652), and a deleted-asset
  * release would free that attachment's chunks on the server (#5664). A plain
  * Error, so markDownloadFailed counts it transient (never abandoned or pruned)
- * and every chunkHashesOf caller keeps its work for a later pass.
+ * and every chunkHashesOf caller keeps its work for a later pass. It logs
+ * nothing: the caller that gives up the work reports this message once, and
+ * a batch prefetch stays quiet because its download refuses the manifest again.
  */
 function requireOwnManifest(attachmentId: string, manifest: AttachmentManifest): void {
   if (manifest.id === attachmentId) return
-  log.warn('manifest names another attachment; refusing it', {
-    attachmentId,
-    manifestId: manifest.id
-  })
   throw new Error(`Manifest names attachment ${manifest.id}, not ${attachmentId}`)
 }
 
