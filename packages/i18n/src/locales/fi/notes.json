@@ -45,6 +45,12 @@
     }
   },
   "page": {
+    "noteFiles": {
+      "downloading": "Ladataan tämän muistiinpanon tiedostoja…",
+      "failed": "Tämän muistiinpanon tiedostojen lataaminen epäonnistui: {error}",
+      "failedFallback": "lataus epäonnistui",
+      "retry": "Yritä uudelleen"
+    },
     "empty": {
       "title": "Muistiinpanoa ei ole valittu",
       "body": "Valitse muistiinpano sivupalkista nähdäksesi sen"

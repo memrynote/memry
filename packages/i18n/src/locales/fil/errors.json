@@ -62,6 +62,9 @@
     "uploadFailed": "Nabigo ang pag-upload ng attachment",
     "uploadProgressFailed": "Hindi makuha ang progreso ng pag-upload",
     "downloadFailed": "Nabigo ang pag-download ng attachment",
+    "downloadGone": "Wala na sa sync server ang file na ito.",
+    "downloadMissing": "Wala pa sa sync server ang file na ito. Buksan ito ulit bukas para tingnan.",
+    "downloadNeedsSync": "Hindi tumatakbo ang sync, kaya hindi ma-download ang file na ito. Kusa itong mada-download kapag tumatakbo na ang sync.",
     "downloadProgressFailed": "Hindi makuha ang progreso ng pag-download",
     "exceedsMaxSize": "Masyadong malaki ang file: lumalampas ang {size} sa limitasyong {limit}",
     "exceedsPlanLimit": "Mas malaki ang file kaysa sa pinapayagan ng iyong plano: lumalampas ang {size} sa {limit}",
@@ -216,6 +219,7 @@
     "renameFailed": "Hindi mapalitan ang pangalan ng folder",
     "renameCaseTwins": "May mga tala sa folder na ito na kahati ng file ang isang tala na ang pangalan ng folder ay naiiba lamang sa malaki at maliit na titik. Palitan muna ang pangalan o ilipat ang mga talang iyon, pagkatapos ay palitan ang pangalan ng folder.",
     "deleteFailed": "Hindi matanggal ang folder",
+    "deleteCaseTwins": "Iisang folder sa disk ang folder na ito at ang folder na may parehong pangalan pero iba ang pagkakasulat, gaya ng ibang malaki at maliit na titik, kaya kapag binura ito, mabubura rin ang mga tala sa dalawa. Burahin na lang isa-isa ang mga talang hindi mo kailangan.",
     "setConfigFailed": "Hindi maitakda ang config ng folder"
   },
   "folderView": {

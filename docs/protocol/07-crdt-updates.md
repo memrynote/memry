@@ -18,7 +18,7 @@ as a note**. **Its document id is the journal record's `id`.**
 
 Desktop mints that id as `j<YYYY-MM-DD>` when it creates a day
 (`apps/desktop/src/main/lib/id.ts:20`), but an existing canonical row's id wins
-(`apps/desktop/src/main/journal/create-entry.ts:46-62`:
+(`apps/desktop/src/main/journal/create-entry.ts:49-65`:
 `canonical?.id ?? cached?.id ?? generateJournalId(date)`).
 
 **A client MUST use the id carried by the `journal` record and MUST NOT derive
@@ -1064,7 +1064,7 @@ update authored on the purged body and pushed after the delete lands on the
 server's dead document, and a later revive of the id pulls it back. The core
 deletes the document's `crdt-update` outbox rows in the tombstone's
 transaction, after the delete-keep copy has read the queue
-(`crates/memry-core/src/sync/apply.rs:299`); desktop drops them in the
+(`crates/memry-core/src/sync/apply.rs:301`); desktop drops them in the
 purge (`apps/desktop/src/main/sync/crdt-provider.ts:1448`, `:2395`). A delete
 the clock rule skips, and a journal day held for the day merge, keep their
 queued updates with their body.

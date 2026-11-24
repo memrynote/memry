@@ -62,6 +62,9 @@
     "uploadFailed": "附件上傳失敗",
     "uploadProgressFailed": "無法取得上傳進度",
     "downloadFailed": "附件下載失敗",
+    "downloadGone": "此檔案已不在同步伺服器上。",
+    "downloadMissing": "此檔案還不在同步伺服器上。請明天再開啟查看。",
+    "downloadNeedsSync": "同步未執行，因此無法下載此檔案。同步開始執行後，它會自動下載。",
     "downloadProgressFailed": "無法取得下載進度",
     "exceedsMaxSize": "檔案過大：{size} 超過 {limit} 的上限",
     "exceedsPlanLimit": "檔案超過你的方案允許的大小：{size} 超過 {limit}",
@@ -216,6 +219,7 @@
     "renameFailed": "無法重新命名資料夾",
     "renameCaseTwins": "此資料夾中有筆記與另一則僅資料夾名稱大小寫不同的筆記共用一個檔案。請先重新命名或移動這些筆記，再重新命名資料夾。",
     "deleteFailed": "無法刪除資料夾",
+    "deleteCaseTwins": "此資料夾與另一個同名但寫法不同（例如大小寫不同）的資料夾在磁碟上是同一個資料夾，刪除它會同時刪除兩者中的筆記。請改為逐一刪除不需要的筆記。",
     "setConfigFailed": "無法設定資料夾組態"
   },
   "folderView": {

@@ -45,6 +45,12 @@
     }
   },
   "page": {
+    "noteFiles": {
+      "downloading": "Đang tải xuống các tệp của ghi chú này…",
+      "failed": "Không thể tải xuống các tệp của ghi chú này: {error}",
+      "failedFallback": "tải xuống không thành công",
+      "retry": "Thử lại"
+    },
     "empty": {
       "title": "Chưa chọn ghi chú",
       "body": "Chọn một ghi chú từ thanh bên để xem"

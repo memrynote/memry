@@ -1215,6 +1215,36 @@ across devices:
   successes) is still in memory and still cleared on runtime teardown, because
   the file is on disk and a re-request is cheap; the verdicts deliberately are
   not, since surviving a sync stop/start is the whole point.
+- **Downloads on open** — with attachment auto-download off
+  (`sync.attachmentAutoDownload === false`), the pull and the re-drive ask for
+  no file, so opening a note or a file asks instead: the note page and the file
+  page call `sync:download-note-files` with the note id
+  (`apps/desktop/src/main/ipc/sync-attachment-handlers.ts`). Main lists what
+  this device lacks from local state only (`owed-note-downloads.ts`): a binary
+  note's own file when it is not on disk, and each referenced attachment with
+  no recorded file on disk. A note that lacks nothing sends no request. Each
+  file goes through the download queue as `interactive`, so it jumps queued
+  background work, and lands with the same steps as a pull's download (record,
+  rename to the body's name, `ATTACHMENT_MATERIALIZED`). The call resolves when
+  every file has landed or failed. An open does not wait out a transient
+  failure's backoff, because the user asked now. A 404 keeps its window: inside
+  the 24 hours after a 404 an open reports the file as not on the server yet
+  and sends no request, so opens never spend the three 404 probes that give a
+  reference up faster than the pull does. A file the server has answered as
+  gone three times is reported whatever the setting, and not requested. Neither
+  404 answer offers Try again (`retry: 'none'`). With no sync runtime (a held
+  vault, a plan without sync, sync not started) the call asks the server
+  nothing and reports that sync is not running (`retry: 'whenSyncRuns'`, no
+  Try again). The note page and the file page then ask again on each sync
+  status change, so a note restored at launch downloads once the runtime
+  starts. The note page also asks again on a status change while it shows
+  nothing, which downloads a file a pull adds to the open note; a failure that
+  offers Try again waits for the click. With auto-download on, the call
+  requests nothing. Each request holds its own claim on the download
+  (`DownloadClaim`), and only its holder can release it, so a pull's request
+  settling late cannot free a download an open took. Opening a binary note
+  whose file has not downloaded keeps its row: `getFileById` drops a row with a
+  missing file only when the canonical row names no attachment id (#5616).
 - **Reference pruning** — `attachmentReferences` merges union-only, so a
   reference to a blob that is genuinely gone would otherwise live in the note's
   payload forever and be handed to every device that ever pulls it. On the pull

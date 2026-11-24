@@ -62,6 +62,9 @@
     "uploadFailed": "Kunne ikke uploade den vedhæftede fil",
     "uploadProgressFailed": "Kunne ikke hente uploadstatus",
     "downloadFailed": "Kunne ikke hente den vedhæftede fil",
+    "downloadGone": "Denne fil er ikke længere på synkroniseringsserveren.",
+    "downloadMissing": "Denne fil er ikke på synkroniseringsserveren endnu. Åbn den igen i morgen for at tjekke.",
+    "downloadNeedsSync": "Synkronisering kører ikke, så denne fil kan ikke hentes. Den hentes automatisk, når synkroniseringen kører.",
     "downloadProgressFailed": "Kunne ikke hente downloadstatus",
     "exceedsMaxSize": "Filen er for stor: {size} overskrider grænsen på {limit}",
     "exceedsPlanLimit": "Filen er større, end dit abonnement tillader: {size} overskrider {limit}",
@@ -216,6 +219,7 @@
     "renameFailed": "Kunne ikke omdøbe mappen",
     "renameCaseTwins": "Denne mappe indeholder noter, der deler fil med en note, hvis mappenavn kun adskiller sig ved store og små bogstaver. Omdøb eller flyt de noter først, og omdøb derefter mappen.",
     "deleteFailed": "Kunne ikke slette mappen",
+    "deleteCaseTwins": "Denne mappe og en mappe med samme navn stavet anderledes, f.eks. med andre store og små bogstaver, er én mappe på disken, så hvis du sletter den, slettes noterne i begge. Slet i stedet de noter, du ikke har brug for, én ad gangen.",
     "setConfigFailed": "Kunne ikke gemme mappeindstillingerne"
   },
   "folderView": {

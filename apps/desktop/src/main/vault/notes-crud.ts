@@ -7,6 +7,7 @@
  */
 
 import { foldTag } from '@memry/shared/tag-fold'
+import { getNoteMetadataById } from '@memry/storage-data'
 import path from 'path'
 import fs from 'fs/promises'
 import type { Stats } from 'fs'
@@ -23,6 +24,7 @@ import {
 } from './frontmatter'
 import { syncNoteToCache, deleteNoteFromCache } from './note-sync'
 import {
+  assertFolderDeleteKeepsCaseTwins,
   assertFolderRenameKeepsCaseTwins,
   planCaseTwinLeave,
   prepareCaseTwinLeave,
@@ -73,7 +75,7 @@ import {
 } from '@main/database/queries/note-positions'
 import { getDatabase, getIndexDatabase } from '../database'
 import { NoteError, NoteErrorCode } from '../lib/errors'
-import { openVaultFile, readVaultFile } from '../lib/paths'
+import { openVaultFile, readVaultFile, vaultFolderPath } from '../lib/paths'
 import { generateNoteId } from '../lib/id'
 import {
   NotesChannels,
@@ -587,8 +589,13 @@ export async function getFileById(id: string): Promise<FileMetadata | null> {
   try {
     await fs.access(absolutePath)
   } catch {
-    deleteNoteFromCache(db, id)
-    return null
+    // A synced file whose bytes have not downloaded yet (auto-download off,
+    // #5616) is not stale: the file page fetches it. Its attachment id lives
+    // on the canonical row; the index row never carries one.
+    if (!getNoteMetadataById(getDatabase(), id)?.attachmentId) {
+      deleteNoteFromCache(db, id)
+      return null
+    }
   }
 
   const filedVoice =
@@ -1023,13 +1030,27 @@ export async function renameFolder(oldPath: string, newPath: string): Promise<Fo
   return moveIndexedNotesWithFolder(oldPath, newPath)
 }
 
-export async function deleteFolder(folderPath: string): Promise<void> {
+/**
+ * The folder a delete of `requestedPath` removes, as rows name it. Throws the
+ * refusal the delete would meet, with nothing changed: the guards and the
+ * delete must see one path, or `./Supernotes` passes the case-twin guard and
+ * the delete removes `SuperNotes` (#5642).
+ */
+export function checkFolderDelete(requestedPath: string): string {
+  const folderPath = vaultFolderPath(requestedPath)
+  if (folderPath === null) {
+    throw new NoteError('Not a vault folder that can be deleted', NoteErrorCode.INVALID_PATH)
+  }
   assertFolderTreeWritable(folderPath)
-  const notesDir = getVaultRoot()
-  const absPath = path.join(notesDir, folderPath)
+  assertFolderDeleteKeepsCaseTwins(folderPath)
+  return folderPath
+}
 
+export async function deleteFolder(requestedPath: string): Promise<void> {
   const { rm } = await import('fs/promises')
-  await rm(absPath, { recursive: true, force: true })
+  // Right before the delete, so a row filed in another spelling meanwhile is seen.
+  const folderPath = checkFolderDelete(requestedPath)
+  await rm(path.join(getVaultRoot(), folderPath), { recursive: true, force: true })
 
   dropFolderPositions(getDatabase(), folderPath)
 }

@@ -62,6 +62,9 @@
     "uploadFailed": "Attachment upload failed",
     "uploadProgressFailed": "Failed to fetch upload progress",
     "downloadFailed": "Attachment download failed",
+    "downloadGone": "This file is no longer on the sync server.",
+    "downloadMissing": "This file isn't on the sync server yet. Open it again tomorrow to check.",
+    "downloadNeedsSync": "Sync isn't running, so this file can't be downloaded. It downloads on its own once sync runs.",
     "downloadProgressFailed": "Failed to fetch download progress",
     "exceedsMaxSize": "File too large: {size} exceeds {limit} limit",
     "exceedsPlanLimit": "File is larger than your plan allows: {size} exceeds {limit}",
@@ -216,6 +219,7 @@
     "renameFailed": "Failed to rename folder",
     "renameCaseTwins": "This folder holds notes that share a file with a note whose folder name differs only in case. Rename or move those notes first, then rename the folder.",
     "deleteFailed": "Failed to delete folder",
+    "deleteCaseTwins": "This folder and a folder with the same name spelled differently, such as in another case, are one folder on disk, so deleting it would delete the notes in both. Delete the notes you don't need one by one instead.",
     "setConfigFailed": "Failed to set folder config"
   },
   "folderView": {

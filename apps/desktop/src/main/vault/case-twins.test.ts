@@ -35,11 +35,18 @@ import {
   updateNoteCache
 } from '@main/database/queries/notes'
 import { upsertNoteMetadata } from '@memry/storage-data'
+import { NotesChannels } from '@memry/contracts/notes-api'
+import { invokeHandler, mockIpcMain } from '@tests/utils/mock-ipc'
 
 vi.mock('electron', () => ({
   app: { getPath: vi.fn(() => os.tmpdir()), isPackaged: false, getVersion: () => '0.0.0' },
   BrowserWindow: { getAllWindows: vi.fn(() => []) },
-  ipcMain: { handle: vi.fn(), removeHandler: vi.fn() },
+  ipcMain: {
+    handle: vi.fn((channel: string, handler: unknown) =>
+      mockIpcMain.handle(channel, handler as Parameters<typeof mockIpcMain.handle>[1])
+    ),
+    removeHandler: vi.fn()
+  },
   shell: { openPath: vi.fn(), showItemInFolder: vi.fn(), trashItem: vi.fn() }
 }))
 vi.mock('../database', () => ({
@@ -178,8 +185,9 @@ import { noteCoverForPush, recordAppliedNoteCover } from '../sync/item-handlers/
 import { PendingSyncIntentError } from '../sync/pending-sync-intent-error'
 import { NoteError } from '../lib/errors'
 import { openVaultFile } from '../lib/paths'
-import { beginPageApply, writeSyncedVaultFile } from '../sync/bulk-apply'
+import { beginPageApply, writeNoteFileNow, writeSyncedVaultFile } from '../sync/bulk-apply'
 import { prepareCaseTwinLeave } from './case-twin-file'
+import { registerNotesHandlers } from '../ipc/notes-handlers'
 import { COVER_ZOOM_FRONTMATTER_KEY } from '@memry/shared/cover-image'
 
 function fileSystemIgnoresCase(): boolean {
@@ -788,14 +796,8 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
     }, 30_000)
   }
 
-  /**
-   * Holds twin upper's next file write until `release`; resolves `reached`
-   * when it gets there. The watcher is stopped first: it reads a file before
-   * it asks whether twins share it, so a leave step in between crosses the
-   * bodies whatever this fence does (#5624).
-   */
-  async function holdUpperWrite() {
-    await stopWatcher()
+  /** Holds twin upper's next file write until `release`; resolves `reached` when it gets there. */
+  function holdUpperWrite() {
     let release = (): void => {}
     let reached = (): void => {}
     const gate = new Promise<void>((resolve) => (release = resolve))
@@ -822,7 +824,7 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
   // checks would land its body on the survivor's file and re-create its row.
   it("a twin delete waits for the twin's write-back in flight, and the tombstone wins", async () => {
     await twins()
-    const held = await holdUpperWrite()
+    const held = holdUpperWrite()
     const pass = writeBack('upper', UPPER_EDITED)
     await held.atWrite
 
@@ -843,7 +845,7 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
     await twins()
     // The survivor's file is ready, as on a pull's retry.
     await prepareCaseTwinLeave(vault.path, 'SUPERNOTES/a.md', 'upper')
-    const held = await holdUpperWrite()
+    const held = holdUpperWrite()
     const pass = writeBack('upper', UPPER_EDITED)
     try {
       await held.atWrite
@@ -1072,6 +1074,20 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
     }
   }
 
+  // REVIEW-5632 (1): each twin's write is recorded under its own spelling, and
+  // the other twin's later write left it the app's until it expired.
+  it("an outside restore of one twin's write is no echo once the other twin wrote", async () => {
+    await twins()
+    const LOWER_PULLED = '# a\n\nlower pulled [[x]]\n'
+    // Each by its row's spelling, as a pull writes them.
+    writeNoteFileNow(path.join(vault.path, pathOf('lower')!), LOWER_PULLED)
+    writeNoteFileNow(path.join(vault.path, pathOf('upper')!), UPPER_EDITED)
+
+    fs.writeFileSync(path.join(vault.path, 'Supernotes/a.md'), LOWER_PULLED)
+
+    expect(await getWatcher()['isOwnWrite'](path.join(vault.path, 'Supernotes/a.md'))).toBe(false)
+  }, 30_000)
+
   // REVIEW-5501 (3): each twin keeps its own header across the move.
   it("a moved twin keeps its own header, and the survivor's file keeps its own", async () => {
     await headerTwins()
@@ -1226,7 +1242,7 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
   ] as const) {
     it(`a twin ${how} waits for the twin's write-back in flight`, async () => {
       await twins()
-      const held = await holdUpperWrite()
+      const held = holdUpperWrite()
       const pass = writeBack('upper', UPPER_EDITED)
       await held.atWrite
 
@@ -1268,7 +1284,7 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
     await twins()
     // Both files are ready, as on a pull's retry.
     await prepareCaseTwinLeave(vault.path, 'SUPERNOTES/a.md', 'upper', true)
-    const held = await holdUpperWrite()
+    const held = holdUpperWrite()
     const pass = writeBack('upper', UPPER_EDITED)
     try {
       await held.atWrite
@@ -1486,5 +1502,82 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
       ...UNMOVED,
       renamed: false
     })
+  }, 30_000)
+
+  // ==========================================================================
+  // Folder delete (#5642)
+  // ==========================================================================
+
+  const REAL = '# real\n\nreal body\n'
+
+  /** The sidebar's folder delete, through its IPC handler. */
+  async function deleteFolderFromSidebar(folderPath: string) {
+    registerNotesHandlers()
+    return invokeHandler(NotesChannels.invoke.DELETE_FOLDER, folderPath)
+  }
+
+  /**
+   * The disk holds `SuperNotes/` with `a.md` and `real.md`. The twin `upper`
+   * is filed under `Supernotes/`, so the sidebar draws that folder too.
+   */
+  async function twinInOldSpelling(): Promise<void> {
+    fs.mkdirSync(path.join(vault.path, 'SuperNotes'))
+    seed('lower', 'SuperNotes/a.md', LOWER)
+    seed('upper', 'Supernotes/a.md', UPPER)
+    seed('real', 'SuperNotes/real.md', REAL)
+    await openVault()
+  }
+
+  const folderOnDisk = () => {
+    const folder = path.join(vault.path, 'SuperNotes')
+    return {
+      rows: rowIds(),
+      files: fs.existsSync(folder) ? fs.readdirSync(folder).toSorted() : null,
+      real: read('SuperNotes/real.md')
+    }
+  }
+  const UNDELETED = { rows: ['lower', 'real', 'upper'], files: ['a.md', 'real.md'], real: REAL }
+
+  for (const [which, folderPath] of [
+    ['the old-spelling folder of a twin', 'Supernotes'],
+    ['the old-spelling folder of a twin with a trailing slash', 'Supernotes/'],
+    ['the old-spelling folder of a twin as ./Supernotes', './Supernotes'],
+    ['the old-spelling folder of a twin as Supernotes/.', 'Supernotes/.'],
+    ['the folder on disk while a twin is filed in another spelling', 'SuperNotes']
+  ] as const) {
+    it(`deleting ${which} is refused and deletes nothing`, async () => {
+      await twinInOldSpelling()
+
+      const response = await deleteFolderFromSidebar(folderPath)
+
+      expect({ response, ...folderOnDisk() }).toEqual({
+        response: { success: false, error: 'errors:folder.deleteCaseTwins' },
+        ...UNDELETED
+      })
+    }, 30_000)
+  }
+
+  for (const vaultRoot of ['', '.', '/']) {
+    it(`deleting the vault itself as '${vaultRoot}' is refused and deletes nothing (#5653)`, async () => {
+      await twinInOldSpelling()
+
+      const response = await deleteFolderFromSidebar(vaultRoot)
+
+      expect({ response, memry: fs.existsSync(vault.memryDir), ...folderOnDisk() }).toEqual({
+        response: { success: false, error: 'Not a vault folder that can be deleted' },
+        memry: true,
+        ...UNDELETED
+      })
+    }, 30_000)
+  }
+
+  it('deleting a folder that holds twins spelled with its own name deletes it', async () => {
+    fs.mkdirSync(path.join(vault.path, 'Supernotes'))
+    seed('lower', 'Supernotes/a.md', LOWER)
+    seed('upper', 'Supernotes/A.md', UPPER)
+    await openVault()
+
+    expect(await deleteFolderFromSidebar('Supernotes')).toEqual({ success: true })
+    expect(fs.existsSync(path.join(vault.path, 'Supernotes'))).toBe(false)
   }, 30_000)
 })

@@ -62,6 +62,9 @@
     "uploadFailed": "Caricamento dell'allegato non riuscito",
     "uploadProgressFailed": "Impossibile recuperare l'avanzamento del caricamento",
     "downloadFailed": "Download dell'allegato non riuscito",
+    "downloadGone": "Questo file non è più sul server di sincronizzazione.",
+    "downloadMissing": "Questo file non è ancora sul server di sincronizzazione. Riaprilo domani per controllare.",
+    "downloadNeedsSync": "La sincronizzazione non è attiva, quindi non è possibile scaricare questo file. Verrà scaricato automaticamente quando la sincronizzazione sarà attiva.",
     "downloadProgressFailed": "Impossibile recuperare l'avanzamento del download",
     "exceedsMaxSize": "File troppo grande: {size} supera il limite di {limit}",
     "exceedsPlanLimit": "Il file è più grande di quanto consenta il tuo piano: {size} supera {limit}",
@@ -216,6 +219,7 @@
     "renameFailed": "Impossibile rinominare la cartella",
     "renameCaseTwins": "Questa cartella contiene note che condividono un file con una nota il cui nome di cartella differisce solo per maiuscole e minuscole. Prima rinomina o sposta quelle note, poi rinomina la cartella.",
     "deleteFailed": "Impossibile eliminare la cartella",
+    "deleteCaseTwins": "Questa cartella e una cartella con lo stesso nome scritto in modo diverso, ad esempio con altre maiuscole e minuscole, sono un'unica cartella sul disco, quindi eliminarla eliminerebbe le note di entrambe. Elimina invece una alla volta le note che non ti servono.",
     "setConfigFailed": "Impossibile impostare la configurazione della cartella"
   },
   "folderView": {

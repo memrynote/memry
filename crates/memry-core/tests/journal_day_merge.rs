@@ -17,6 +17,7 @@ use http_fakes::{FakeTransport, response};
 use memry_core::api::errors::StorageError;
 use memry_core::crdt::epoch::HeldBody;
 use memry_core::crdt::update_log;
+use memry_core::domain::journal_ops::metadata;
 use memry_core::domain::{journal, tags};
 use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope, SyncOperation};
 use memry_core::protocol::http::{ClientIdentity, HttpClient};
@@ -240,6 +241,7 @@ async fn a_foreign_journal_for_a_held_day_is_skipped_and_owed_not_corrupt() {
                 record_markdown: None,
                 record_tags: Vec::new(),
                 holder_tags: Vec::new(),
+                unpushed_holder_tags: Vec::new(),
             }]
         );
         Ok(())
@@ -295,6 +297,7 @@ async fn the_canonical_day_displaces_a_foreign_holder_and_owes_its_merge() {
                 record_markdown: None,
                 record_tags: Vec::new(),
                 holder_tags: Vec::new(),
+                unpushed_holder_tags: Vec::new(),
             }]
         );
         Ok(())
@@ -498,8 +501,13 @@ async fn two_devices_merging_the_same_foreign_day_converge_on_one_copy() {
     }
 }
 
-/// Applies typed journal tombstones through the real pull loop.
+/// Applies typed journal tombstones with no clock through the real pull loop.
 async fn pull_tombstones(db: &Db, ids: &[&str]) {
+    pull_tombstones_at(db, ids, None).await;
+}
+
+/// Applies typed journal tombstones through the real pull loop.
+async fn pull_tombstones_at(db: &Db, ids: &[&str], clock: Option<Json>) {
     let refs: Vec<Json> = ids
         .iter()
         .map(|id| json!({"id": id, "type": "journal"}))
@@ -509,6 +517,9 @@ async fn pull_tombstones(db: &Db, ids: &[&str]) {
         .map(|id| {
             let mut item = envelope(id);
             item["deletedAt"] = json!(5);
+            if let Some(clock) = &clock {
+                item["clock"] = clock.clone();
+            }
             item
         })
         .collect();
@@ -566,12 +577,9 @@ async fn a_foreign_id_another_device_already_deleted_is_not_pulled_and_settles_w
 #[tokio::test]
 async fn a_tombstone_for_a_live_foreign_row_keeps_its_unpushed_edits_for_the_merge() {
     let db = scratch_db("tombstone-first");
-    // A pre-fix row holding the day, with an edit this device never pushed.
+    // A pre-fix row holding the day, with edits this device never pushed.
     db.call_blocking(|conn| {
-        let held = record(
-            FOREIGN,
-            &tagged_payload("", &["mine"], json!({"device-b": 2})),
-        );
+        let held = record(FOREIGN, &tagged_payload("", &[], json!({"device-b": 2})));
         assert_eq!(
             sync_items::apply_remote(conn, &held, 1)?,
             ApplyOutcome::Applied
@@ -581,6 +589,7 @@ async fn a_tombstone_for_a_live_foreign_row_keeps_its_unpushed_edits_for_the_mer
                 what: e.to_string(),
             },
         )?;
+        metadata::set_tags(conn, DATE, &["mine".to_owned()], "device-a", 2)?;
         Ok(())
     })
     .unwrap();
@@ -980,7 +989,9 @@ async fn a_later_foreign_record_replaces_the_record_tags_it_owes() {
 
 /// A deleted foreign id was merged by the device that deleted it, record
 /// tags included; adding them again would bring back a tag removed since.
-/// A holder's tags are this device's and still go in.
+/// A holder's tags are this device's and still go in: the row has no
+/// `unpushedHolderTags`, as an older build wrote it, so all of them count as
+/// unpushed.
 #[tokio::test]
 async fn a_deleted_foreign_id_adds_its_holder_tags_but_not_its_record_tags() {
     let db = scratch_db("deleted-record-tags");
@@ -1018,4 +1029,201 @@ async fn a_deleted_foreign_id_adds_its_holder_tags_but_not_its_record_tags() {
         Ok(())
     })
     .unwrap();
+}
+
+/// Device B merged `F` into the day, deleted it, then removed `b` from the
+/// day. This device held `F` as pulled, so `b` reached the server and B added
+/// it already: the deleted merge leaves it removed (#5247 B4). A tag added
+/// here and never pushed still goes in.
+#[tokio::test]
+async fn a_deleted_merge_adds_only_the_holder_tags_this_device_never_pushed() {
+    for (offline_add, expected) in [(false, vec!["a"]), (true, vec!["a", "c"])] {
+        let db = scratch_db("holder-unpushed-tags");
+        db.call_blocking(move |conn| {
+            let held = record(
+                FOREIGN,
+                &tagged_payload("", &["a", "b"], json!({"device-b": 2})),
+            );
+            sync_items::apply_remote(conn, &held, 1)?;
+            update_log::append_local_update(conn, FOREIGN, &text_update(7, "held"), 1).map_err(
+                |e| StorageError::Failed {
+                    what: e.to_string(),
+                },
+            )?;
+            if offline_add {
+                let tags = ["a", "b", "c"].map(str::to_owned);
+                metadata::set_tags(conn, DATE, &tags, "device-a", 2)?;
+                assert_eq!(upserts_of(conn, FOREIGN), 1, "the add is unpushed");
+            }
+            Ok(())
+        })
+        .unwrap();
+
+        pull_tombstones_at(&db, &[FOREIGN], Some(json!({"device-b": 3}))).await;
+        db.call_blocking(|conn| {
+            let day = record(
+                CANONICAL,
+                &tagged_payload("", &["a"], json!({"device-b": 3})),
+            );
+            assert_eq!(
+                apply_inbound_on(conn, &day, 3, Some("device-a"))?,
+                ApplyOutcome::Applied
+            );
+            Ok(())
+        })
+        .unwrap();
+
+        let report = journal_day_merge::drain(&db, &bodies_for(&db, &[]), "device-a")
+            .await
+            .unwrap();
+        assert_eq!(report.settled, vec![FOREIGN.to_owned()]);
+        db.call_blocking(move |conn| {
+            assert_eq!(text_of(conn, CANONICAL), "held");
+            assert_eq!(day_tags(conn), expected, "offline add: {offline_add}");
+            let kept: i64 = conn
+                .query_row(
+                    "SELECT count(*) FROM meta WHERE key LIKE 'journal.synced_tags:%'",
+                    [],
+                    |row| row.get(0),
+                )
+                .map_err(failed)?;
+            assert_eq!(kept, 0, "the merge forgets the tags kept for it");
+            Ok(())
+        })
+        .unwrap();
+    }
+}
+
+/// `F` held as pulled at `{device-b: 2}`, with a body, as a pre-fix install
+/// projected it.
+fn hold_foreign_tagged(conn: &mut Connection, held_tags: &[&str]) -> Result<(), StorageError> {
+    let held = record(
+        FOREIGN,
+        &tagged_payload("", held_tags, json!({"device-b": 2})),
+    );
+    sync_items::apply_remote(conn, &held, 1)?;
+    update_log::append_local_update(conn, FOREIGN, &text_update(7, "held"), 1).map_err(|e| {
+        StorageError::Failed {
+            what: e.to_string(),
+        }
+    })?;
+    Ok(())
+}
+
+fn upsert_ids(conn: &Connection, id: &str) -> Result<Vec<i64>, StorageError> {
+    let mut statement = conn
+        .prepare("SELECT id FROM outbox WHERE item_id = ?1 AND op = 'upsert'")
+        .map_err(failed)?;
+    statement
+        .query_map(params![id], |row| row.get(0))
+        .map_err(failed)?
+        .collect::<Result<Vec<i64>, _>>()
+        .map_err(failed)
+}
+
+/// B's tombstone for `F`, then B's `j<D>` with `day_tags`, then the drain.
+async fn delete_merge_and_drain(db: &Db, tombstone: Json, tags_of_day: &[&str]) -> Vec<String> {
+    pull_tombstones_at(db, &[FOREIGN], Some(tombstone)).await;
+    let day = record(
+        CANONICAL,
+        &tagged_payload("", tags_of_day, json!({"device-b": 4})),
+    );
+    db.call_blocking(move |conn| {
+        assert_eq!(
+            apply_inbound_on(conn, &day, 3, Some("device-a"))?,
+            ApplyOutcome::Applied
+        );
+        Ok(())
+    })
+    .unwrap();
+    let report = journal_day_merge::drain(db, &bodies_for(db, &[]), "device-a")
+        .await
+        .unwrap();
+    assert_eq!(report.settled, vec![FOREIGN.to_owned()]);
+    db.call_blocking(|conn| {
+        assert_eq!(text_of(conn, CANONICAL), "held");
+        Ok(day_tags(conn))
+    })
+    .unwrap()
+}
+
+/// This device pushed `c` while B merged `F`: the server took the upsert,
+/// then B's tombstone, clocked before it, replaced it. An ack does not mean
+/// the deleting device saw the tag, so the tombstone's clock decides
+/// (REVIEW-5656): `c` goes in. A push B did see, B merged, and B's removal
+/// of `c` from the day stands.
+#[tokio::test]
+async fn a_deleted_merge_keeps_a_pushed_tag_the_deleting_device_never_saw() {
+    for (tombstone, expected) in [
+        (json!({"device-b": 3}), vec!["a", "b", "c"]),
+        (json!({"device-b": 3, "device-a": 1}), vec!["a", "b"]),
+    ] {
+        let db = scratch_db("holder-acked-tags");
+        db.call_blocking(|conn| {
+            hold_foreign_tagged(conn, &["a", "b"])?;
+            let tags = ["a", "b", "c"].map(str::to_owned);
+            metadata::set_tags(conn, DATE, &tags, "device-a", 2)?;
+            let ids = upsert_ids(conn, FOREIGN)?;
+            assert_eq!(memry_core::sync::outbox::ack(conn, &ids)?, 1);
+            Ok(())
+        })
+        .unwrap();
+
+        let label = tombstone.to_string();
+        assert_eq!(
+            delete_merge_and_drain(&db, tombstone, &["a", "b"]).await,
+            expected,
+            "tombstone {label}"
+        );
+    }
+}
+
+/// `t` is removed here and pushed, then an older build, which keeps no tags,
+/// adds it back offline. B saw the removal and merged the day without `t`,
+/// so `t` goes in. Pushed by this build, the ack drops the tags kept before
+/// the removal. Pushed by an older build, they are still kept, and B's clock,
+/// past the edit they precede, rules them out.
+#[tokio::test]
+async fn a_deleted_merge_keeps_a_tag_an_older_build_added_back_after_a_push() {
+    for this_build_pushed in [true, false] {
+        let db = scratch_db("holder-downgrade-tags");
+        db.call_blocking(move |conn| {
+            hold_foreign_tagged(conn, &["a", "t"])?;
+            metadata::set_tags(conn, DATE, &["a".to_owned()], "device-a", 2)?;
+            let ids = upsert_ids(conn, FOREIGN)?;
+            if this_build_pushed {
+                memry_core::sync::outbox::ack(conn, &ids)?;
+            } else {
+                conn.execute("DELETE FROM outbox WHERE id = ?1", params![ids[0]])
+                    .map_err(failed)?;
+            }
+            // The older build's edit: its payload and its upsert, no tags kept.
+            let clock = json!({"device-a": 2, "device-b": 2});
+            conn.execute(
+                "UPDATE sync_items SET payload = ?2, clock = ?3
+                  WHERE item_type = 'journal' AND item_id = ?1",
+                params![
+                    FOREIGN,
+                    tagged_payload("", &["a", "t"], clock.clone()),
+                    clock.to_string()
+                ],
+            )
+            .map_err(failed)?;
+            conn.execute(
+                "INSERT INTO outbox (item_type, item_id, op, enqueued_at)
+                 VALUES ('journal', ?1, 'upsert', 3)",
+                params![FOREIGN],
+            )
+            .map_err(failed)?;
+            Ok(())
+        })
+        .unwrap();
+
+        let tombstone = json!({"device-b": 3, "device-a": 1});
+        assert_eq!(
+            delete_merge_and_drain(&db, tombstone, &["a"]).await,
+            vec!["a", "t"],
+            "pushed by this build: {this_build_pushed}"
+        );
+    }
 }

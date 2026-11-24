@@ -146,13 +146,16 @@ vi.mock('../sync/crdt-writeback', () => ({}))
 // tests that exercise the on-demand-only mode.
 const autoDownloadSettings = vi.hoisted(() => ({ enabled: true }))
 vi.mock('../sync/attachment-download-settings', () => ({
-  downloadsInBackground: vi.fn(() => autoDownloadSettings.enabled)
+  downloadsInBackground: vi.fn(() => autoDownloadSettings.enabled),
+  isAttachmentAutoDownloadEnabled: vi.fn(() => autoDownloadSettings.enabled)
 }))
 
 const mockApplyDownloadedAttachmentName = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
 vi.mock('../vault/case-twin-file', () => ({
-  landCaseTwinDownload: vi.fn((filePath: string) => filePath),
   releaseAbandonedCaseTwinBytes: vi.fn()
+}))
+vi.mock('../vault/case-twin-landing', () => ({
+  landCaseTwinDownload: vi.fn((filePath: string) => filePath)
 }))
 vi.mock('../vault/attachment-rename', () => ({
   applyDownloadedAttachmentName: (...args: unknown[]) => mockApplyDownloadedAttachmentName(...args)
@@ -252,11 +255,14 @@ import {
   recordUploadedAttachment
 } from '../sync/note-attachment-metadata'
 import { appWriteCheck, resetAppWrites } from '../vault/app-writes'
-import { landCaseTwinDownload, releaseAbandonedCaseTwinBytes } from '../vault/case-twin-file'
+import { releaseAbandonedCaseTwinBytes } from '../vault/case-twin-file'
+import { landCaseTwinDownload } from '../vault/case-twin-landing'
 import {
   clearAttachmentDownloadFailure,
+  markDownloadRequested,
   markDownloadSucceeded
 } from '@memry/sync-client/attachment-download-state'
+import type { AttachmentDownloadNeededEvent } from '@memry/sync-client/attachment-events'
 import {
   AttachmentSyncService,
   AttachmentTooLargeError,
@@ -313,7 +319,7 @@ describe('sync-attachment-handlers', () => {
   })
 
   // #given handlers are registered
-  it('registers all 4 attachment IPC channels on registerAttachmentHandlers', () => {
+  it('registers all 5 attachment IPC channels on registerAttachmentHandlers', () => {
     // #when
     registerAttachmentHandlers()
 
@@ -322,6 +328,7 @@ describe('sync-attachment-handlers', () => {
     expect(mockIpcMain._getHandler(SYNC_CHANNELS.GET_UPLOAD_PROGRESS)).toBeDefined()
     expect(mockIpcMain._getHandler(SYNC_CHANNELS.DOWNLOAD_ATTACHMENT)).toBeDefined()
     expect(mockIpcMain._getHandler(SYNC_CHANNELS.GET_DOWNLOAD_PROGRESS)).toBeDefined()
+    expect(mockIpcMain._getHandler(SYNC_CHANNELS.DOWNLOAD_NOTE_FILES)).toBeDefined()
   })
 
   it('subscribes to attachmentEvents on register', () => {
@@ -1372,15 +1379,14 @@ describe('sync-attachment-handlers', () => {
     )
     registerAttachmentHandlers()
 
-    const onDownloadNeeded = mockOnDownloadNeeded.mock.calls[0][0] as (event: {
-      noteId: string
-      attachmentId: string
-      diskPath: string
-    }) => void
+    const onDownloadNeeded = mockOnDownloadNeeded.mock.calls[0][0] as (
+      event: AttachmentDownloadNeededEvent
+    ) => void
     onDownloadNeeded({
       noteId: 'note-1',
       attachmentId: 'attachment-1',
-      diskPath: '/vault/Pictures/p.png'
+      diskPath: '/vault/Pictures/p.png',
+      claim: markDownloadRequested('note-1', 'attachment-1')!
     })
     await vi.waitFor(() => expect(attachmentMocks.service.downloadAttachment).toHaveBeenCalled())
     await new Promise((resolve) => setTimeout(resolve, 20))

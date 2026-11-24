@@ -62,6 +62,9 @@
     "uploadFailed": "Muat naik lampiran gagal",
     "uploadProgressFailed": "Gagal mengambil kemajuan muat naik",
     "downloadFailed": "Muat turun lampiran gagal",
+    "downloadGone": "Fail ini tiada lagi pada pelayan penyegerakan.",
+    "downloadMissing": "Fail ini belum ada pada pelayan penyegerakan. Buka semula esok untuk menyemak.",
+    "downloadNeedsSync": "Penyegerakan tidak berjalan, jadi fail ini tidak dapat dimuat turun. Fail ini dimuat turun dengan sendirinya sebaik sahaja penyegerakan berjalan.",
     "downloadProgressFailed": "Gagal mengambil kemajuan muat turun",
     "exceedsMaxSize": "Fail terlalu besar: {size} melebihi had {limit}",
     "exceedsPlanLimit": "Fail lebih besar daripada yang dibenarkan oleh pelan anda: {size} melebihi {limit}",
@@ -216,6 +219,7 @@
     "renameFailed": "Gagal menamakan semula folder",
     "renameCaseTwins": "Folder ini mengandungi nota yang berkongsi fail dengan nota yang nama foldernya hanya berbeza dari segi huruf besar dan kecil. Namakan semula atau pindahkan nota tersebut dahulu, kemudian namakan semula folder.",
     "deleteFailed": "Gagal memadamkan folder",
+    "deleteCaseTwins": "Folder ini dan folder dengan nama yang sama tetapi ditulis secara berbeza, contohnya dengan huruf besar dan kecil yang lain, ialah satu folder pada cakera, jadi memadamkannya akan memadamkan nota dalam kedua-duanya. Sebaliknya, padamkan nota yang tidak anda perlukan satu demi satu.",
     "setConfigFailed": "Gagal menetapkan konfigurasi folder"
   },
   "folderView": {

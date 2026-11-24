@@ -45,6 +45,12 @@
     }
   },
   "page": {
+    "noteFiles": {
+      "downloading": "Laddar ned filerna för den här anteckningen…",
+      "failed": "Det gick inte att ladda ned filerna för den här anteckningen: {error}",
+      "failedFallback": "nedladdningen misslyckades",
+      "retry": "Försök igen"
+    },
     "empty": {
       "title": "Ingen anteckning vald",
       "body": "Välj en anteckning från sidofältet för att visa den"

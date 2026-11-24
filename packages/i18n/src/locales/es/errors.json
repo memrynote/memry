@@ -62,6 +62,9 @@
     "uploadFailed": "No se pudo subir el archivo adjunto",
     "uploadProgressFailed": "No se pudo obtener el progreso de la subida",
     "downloadFailed": "No se pudo descargar el archivo adjunto",
+    "downloadGone": "Este archivo ya no está en el servidor de sincronización.",
+    "downloadMissing": "Este archivo aún no está en el servidor de sincronización. Vuelve a abrirlo mañana para comprobarlo.",
+    "downloadNeedsSync": "La sincronización no está activa, así que no se puede descargar este archivo. Se descargará automáticamente cuando la sincronización esté activa.",
     "downloadProgressFailed": "No se pudo obtener el progreso de la descarga",
     "exceedsMaxSize": "Archivo demasiado grande: {size} supera el límite de {limit}",
     "exceedsPlanLimit": "El archivo es más grande de lo que permite tu plan: {size} supera {limit}",
@@ -216,6 +219,7 @@
     "renameFailed": "No se pudo renombrar la carpeta",
     "renameCaseTwins": "Esta carpeta contiene notas que comparten un archivo con una nota cuyo nombre de carpeta solo difiere en mayúsculas y minúsculas. Cambia el nombre de esas notas o muévelas primero y, después, cambia el nombre de la carpeta.",
     "deleteFailed": "No se pudo eliminar la carpeta",
+    "deleteCaseTwins": "Esta carpeta y otra con el mismo nombre escrito de otra forma, por ejemplo con otras mayúsculas y minúsculas, son una sola carpeta en el disco, así que eliminarla eliminaría las notas de ambas. Elimina una a una las notas que no necesites.",
     "setConfigFailed": "No se pudo guardar la configuración de la carpeta"
   },
   "folderView": {

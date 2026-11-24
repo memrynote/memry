@@ -41,6 +41,10 @@ vi.mock('../notes/runtime-effects', () => ({
 }))
 vi.mock('../vault-locks/service', () => ({ restoreLockedNoteFile: mocks.restoreLockedNoteFile }))
 vi.mock('../telemetry/diagnostics', () => ({ trackMainError: vi.fn(), trackMainLog: vi.fn() }))
+vi.mock('./note-sync', async (importOriginal) => {
+  const real = await importOriginal<Record<string, unknown>>()
+  return { ...real, listCaseTwinPaths: vi.fn(real.listCaseTwinPaths as never) }
+})
 vi.mock('./status', async () => await import('./index'))
 vi.mock('./index', () => ({
   getStatus: () => ({ path: mocks.vaultPath }),
@@ -57,6 +61,7 @@ import { getDatabase, getIndexDatabase } from '../database'
 import { installVaultLockSource, invalidateVaultLocks } from '../vault-locks/registry'
 import { writeLockRow } from '../vault-locks/store'
 import { recordAppWrite, resetAppWrites } from './app-writes'
+import { listCaseTwinPaths } from './note-sync'
 import { VaultWatcher } from './watcher'
 
 describe('watcher, app writes and read-only locks (#2606)', () => {
@@ -70,11 +75,13 @@ describe('watcher, app writes and read-only locks (#2606)', () => {
   }
 
   const watcherFor = (): {
+    onError?: (error: Error) => void
     handleFileAdd(p: string): Promise<void>
     handleFileChange(p: string): Promise<void>
   } => {
     const watcher = new VaultWatcher() as unknown as {
       vaultPath: string
+      onError?: (error: Error) => void
       handleFileAdd(p: string): Promise<void>
       handleFileChange(p: string): Promise<void>
     }
@@ -177,6 +184,30 @@ describe('watcher, app writes and read-only locks (#2606)', () => {
       expect(isWritable(scan)).toBe(false)
     }
   )
+
+  // REVIEW-5632 (2): the echo check ran before the handlers' try, so its
+  // failure rejected an add nobody awaits and skipped the lock guard.
+  for (const handler of ['handleFileAdd', 'handleFileChange'] as const) {
+    it.skipIf(process.platform === 'win32')(
+      `a failed echo check in ${handler} reaches onError, and the locked file stays read-only`,
+      async () => {
+        const scan = path.join(vault.path, paths['note-scan'])
+        fs.writeFileSync(scan, 'replaced')
+        const failure = new Error('data db gone')
+        vi.mocked(listCaseTwinPaths).mockImplementationOnce(() => {
+          throw failure
+        })
+        const watcher = watcherFor()
+        const onError = vi.fn()
+        watcher.onError = onError
+
+        await expect(watcher[handler](scan)).resolves.toBeUndefined()
+
+        expect(onError).toHaveBeenCalledWith(failure)
+        expect(isWritable(scan)).toBe(false)
+      }
+    )
+  }
 
   it.skipIf(process.platform === 'win32')(
     'a locked note renamed outside the app is read-only at its new name',
