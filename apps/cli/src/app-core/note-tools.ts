@@ -19,7 +19,7 @@ import { extractWikiLinks } from '@memry/shared/wiki-target'
 import type { DataDb } from './database.ts'
 import { aliasesFromFrontmatter } from './note-aliases.ts'
 import type { NotesService } from './notes.ts'
-import { folderConfigFile, normalizePath, vaultFolder } from './paths.ts'
+import { folderConfigFile, normalizePath, vaultFile, vaultFolder } from './paths.ts'
 import type { TemplatesService } from './templates.ts'
 import { iterateFileLines, MAX_LINE_CHARS } from './note-large-file.ts'
 
@@ -166,20 +166,15 @@ export function createNoteToolsService({
 
   // A file's absolute path for a streaming read, without loading it. Indexed
   // notes resolve by id or path; a vault file the CLI never indexed (a large
-  // log dropped into the vault) resolves by its vault-relative path.
-  function resolveFile(idOrPath: string): string {
+  // log dropped into the vault) resolves by its vault-relative path. Neither
+  // is read through a link, which can lead outside the vault (#5717).
+  async function resolveFile(idOrPath: string, action: string): Promise<string> {
     const normalized = normalizePath(idOrPath)
     const row =
       getNoteMetadataById(dataDb, idOrPath) ??
       getNoteMetadataByPath(dataDb, normalized) ??
       getNoteMetadataByPath(dataDb, normalized.endsWith('.md') ? normalized : `${normalized}.md`)
-    const relative = row?.path ?? normalized
-    const root = path.resolve(vaultPath)
-    const absolute = path.resolve(root, relative)
-    if (absolute !== root && !absolute.startsWith(`${root}${path.sep}`)) {
-      throw new Error('File must be inside the vault')
-    }
-    return absolute
+    return await vaultFile(vaultPath, row?.path ?? normalized, action)
   }
 
   async function readFolderTemplateOf(folder: string): Promise<{
@@ -479,7 +474,7 @@ export function createNoteToolsService({
       if (!Number.isInteger(count) || count < 1 || count > MAX_READ_LINES) {
         throw new Error(`--count must be between 1 and ${MAX_READ_LINES}`)
       }
-      const absolute = resolveFile(idOrPath)
+      const absolute = await resolveFile(idOrPath, 'read lines')
       await assertFile(absolute, idOrPath)
 
       const lines: string[] = []
@@ -509,7 +504,7 @@ export function createNoteToolsService({
         throw new Error(`Query must be 1 to ${MAX_QUERY_LENGTH} characters`)
       }
       if (/[\r\n]/.test(query)) throw new Error('Query cannot span lines')
-      const absolute = resolveFile(idOrPath)
+      const absolute = await resolveFile(idOrPath, 'search file')
       await assertFile(absolute, idOrPath)
 
       // Literal, ASCII-case-insensitive, non-overlapping: the rule desktop's

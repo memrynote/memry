@@ -48,7 +48,7 @@ import type { NotesService } from './notes.ts'
 import { createNotesService } from './notes.ts'
 import type { PropertiesService } from './properties.ts'
 import { createPropertiesService } from './properties.ts'
-import { ensureVaultLayout, writeVaultConfig, type VaultConfig } from './paths.ts'
+import { ensureVaultLayout, vaultFolder, writeVaultConfig, type VaultConfig } from './paths.ts'
 import type { RemindersService } from '@memry/app-core/reminders'
 import { createRemindersService } from '@memry/app-core/reminders'
 import type { SettingsService } from '@memry/app-core/settings'
@@ -362,6 +362,12 @@ export async function createMemryApp({ vaultPath }: CreateMemryAppInput): Promis
         return config
       },
       async updateConfig(updates) {
+        // Validated before saving: opening the vault would only skip a refused folder.
+        for (const key of ['defaultNoteFolder', 'journalFolder'] as const) {
+          const requested = updates[key]
+          if (requested === undefined) continue
+          await vaultFolder(vaultPath, requested, `set ${key}`, { allowRoot: true })
+        }
         const next = { ...config, ...updates }
         await writeVaultConfig(vaultPath, next)
         Object.assign(config, next)
