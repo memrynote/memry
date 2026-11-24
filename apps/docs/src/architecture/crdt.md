@@ -941,7 +941,13 @@ document to its vault `.md` file and re-indexes it for search.
   `journal.update`) waits in the same per-note queue, and a pass armed meanwhile waits for it.
   A pass writes back the frontmatter it read, and such an update leaves the doc as it was,
   so one that landed between a pass's read and its write was lost with nothing left to re-arm
-  the pass (#5472). A body update feeds the doc before its file outside the queue, because the
+  the pass (#5472). A folder rename takes the turn of every note under the folder, all at
+  once, and holds them until the rows are at their new paths (`moveFolderHoldingWritebacks`
+  in `folder-move-index.ts`). A pass takes its note's path from the row it read, so one that
+  read the row before the move wrote the old path after it: the old folder came back with the
+  edit in it, the note's rows moved back there, and the next vault open listed the file at the
+  new path as a second note (#5671). A body update feeds the doc before its file outside the
+  queue, because the
   feed can wait on the store and a pass queued behind it could hang the quit flush. An update
   that creates a journal day (a tags save or the day merge's tags, for a day with no file)
   writes the file and its index row in the queue, since a pass writes a day file that does

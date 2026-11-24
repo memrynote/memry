@@ -347,47 +347,6 @@ function planLeave(
 }
 
 /**
- * Runs `move`, a folder rename's move of `folderPath` and of its rows, with no
- * write-back turn of a case twin in the folder beside it (#5643). A pass takes
- * its note's path from the index row it read, so a pass that read a twin's row
- * before the rows moved writes the old path after the folder moved: it makes
- * the folder again with that twin's body alone in it and puts its row back
- * there, and the file the other twin keeps holds bytes that are not its own.
- * The rename waits out each twin's turn and holds it until `move` ends, so a
- * pass that starts meanwhile reads the new path. A twin that turns up while
- * the rename waits is held too before `move` starts.
- */
-export function moveFolderHoldingCaseTwins<T>(
-  folderPath: string,
-  move: () => Promise<T>,
-  held: ReadonlySet<string> = new Set()
-): Promise<T> {
-  const next = caseTwinIdsIn(folderPath).find((id) => !held.has(id))
-  if (next === undefined) return move()
-  return takeWritebackTurn(next, () =>
-    moveFolderHoldingCaseTwins(folderPath, move, new Set([...held, next]))
-  )
-}
-
-/** The rows under `folderPath`, in any case, whose file a case twin shares. */
-function caseTwinIdsIn(folderPath: string): string[] {
-  const folded = foldNotePath(`${folderPath}/`)
-  const rows = getDatabase()
-    .select({ id: noteMetadata.id, path: noteMetadata.path })
-    .from(noteMetadata)
-    .all()
-    .map((row) => ({ ...row, folded: foldNotePath(row.path) }))
-    .filter((row) => row.folded.startsWith(folded))
-  const perFile = new Map<string, number>()
-  for (const row of rows) perFile.set(row.folded, (perFile.get(row.folded) ?? 0) + 1)
-  const vaultPath = getVaultRoot()
-  // Only rows that fold together can share a file: the rest cost no disk read.
-  return rows
-    .filter((row) => (perFile.get(row.folded) ?? 0) > 1 && sharesCaseTwinFile(vaultPath, row.path))
-    .map((row) => row.id)
-}
-
-/**
  * Refuse a folder rename that would strand a case twin (#5498). The rename
  * carries the rows spelled with the folder's exact name. A twin spelled with
  * the folder in another case would keep a path with no file, and carrying it

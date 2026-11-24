@@ -1,18 +1,22 @@
 /**
  * Carry the index rows of a moved folder's contents to their new paths, and
- * re-point path-form wiki-links to them.
+ * re-point path-form wiki-links to them, with no write-back of a note under
+ * the folder beside the move.
  *
  * @module vault/folder-move-index
  */
 
 import { binaryRecordFields } from '@memry/shared/file-types'
 import { NotesChannels } from '@memry/contracts/notes-api'
+import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
+import { foldNotePath } from '@memry/storage-data'
 import {
   extractDateFromPath,
   getNoteCacheById,
   listNoteCacheUnderFolder
 } from '@main/database/queries/notes'
-import { getIndexDatabase } from '../database'
+import { getDatabase, getIndexDatabase } from '../database'
+import { takeWritebackTurn } from '../sync/crdt-writeback'
 import { moveNotesInCache, type NoteMove } from './note-sync'
 import { clearPendingDelete } from './rename-tracker'
 import { emitNoteEvent } from './notes-io'
@@ -26,6 +30,63 @@ export interface FolderMovedNote {
   newPath: string
   /** Journal date; a journal's path is derived from it and never synced. */
   date: string | null
+}
+
+/**
+ * Runs `move`, a folder rename's move of `folderPath` and of its rows, with no
+ * write-back turn of a note under the folder beside it. A pass takes its
+ * note's path from the index row it read, so a pass that read its row before
+ * the rows moved writes the old path after the folder moved. It makes the old
+ * folder again with the note's body in it and moves the note's rows back, and
+ * the next vault open lists the file left at the new path as a second note
+ * (#5671). For a case twin, the file the other twin keeps also holds bytes
+ * that are not its own (#5643). The rename waits out each note's turn and
+ * holds it until `move` ends, so a pass that starts meanwhile reads the new
+ * path. A note that turns up while the rename waits is held too before `move`
+ * starts. The turns are taken all at once, so a large folder waits for its
+ * slowest pass, not for the sum of them.
+ */
+export async function moveFolderHoldingWritebacks<T>(
+  folderPath: string,
+  move: () => Promise<T>
+): Promise<T> {
+  const { promise: released, resolve: release } = Promise.withResolvers<void>()
+  const held = new Set<string>()
+  // Settles once the note's turn is held, or rejects when the turn fails
+  // before it starts (a repair queued ahead of it threw).
+  const hold = (id: string): Promise<void> =>
+    new Promise((entered, failed) => {
+      held.add(id)
+      takeWritebackTurn(id, () => {
+        entered()
+        return released
+      }).catch(failed)
+    })
+  try {
+    let pending = noteIdsUnder(folderPath)
+    while (pending.length > 0) {
+      await Promise.all(pending.map(hold))
+      pending = noteIdsUnder(folderPath).filter((id) => !held.has(id))
+    }
+    // No await between the last listing and the move's start.
+    return await move()
+  } finally {
+    release()
+  }
+}
+
+/**
+ * The note rows under `folderPath`, in any case: on a case-insensitive disk a
+ * row spelled with the folder in another case names a file in it too.
+ */
+function noteIdsUnder(folderPath: string): string[] {
+  const folded = foldNotePath(`${folderPath}/`)
+  return getDatabase()
+    .select({ id: noteMetadata.id, path: noteMetadata.path })
+    .from(noteMetadata)
+    .all()
+    .filter((row) => foldNotePath(row.path).startsWith(folded))
+    .map((row) => row.id)
 }
 
 /**
