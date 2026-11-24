@@ -14,6 +14,7 @@ import { DeadLetterError } from '@memry/sync-client/retry'
 import { enqueueUpload } from './attachment-outbox'
 import {
   MISSING_PROBE_LIMIT,
+  claimRequestedDownload,
   clearAttachmentDownloadFailure,
   markDownloadFailed,
   markDownloadRequested,
@@ -158,9 +159,25 @@ describe('attachment download state', () => {
   })
 
   it('releases an undelivered request so the next pull can ask again', () => {
-    markDownloadRequested('note-1', 'att-x')
+    const claim = markDownloadRequested('note-1', 'att-x')
     expect(shouldAttemptDownload(db, 'note-1', 'att-x')).toBe(false)
-    releaseDownloadAttempt('note-1', 'att-x')
+    releaseDownloadAttempt(claim!)
+    expect(shouldAttemptDownload(db, 'note-1', 'att-x')).toBe(true)
+  })
+
+  // #5616: a pull's listener settling late must not free a download an open
+  // took in the meantime, or a second request fans out and counts its 404 twice.
+  it('lets only the holder of a claim release it', () => {
+    const pull = markDownloadRequested('note-1', 'att-x')!
+    releaseDownloadAttempt(pull)
+    const open = claimRequestedDownload(db, 'note-1', 'att-x')!
+    expect(open).not.toBeNull()
+
+    releaseDownloadAttempt(pull)
+
+    expect(shouldAttemptDownload(db, 'note-1', 'att-x')).toBe(false)
+    expect(markDownloadRequested('note-1', 'att-x')).toBeNull()
+    releaseDownloadAttempt(open)
     expect(shouldAttemptDownload(db, 'note-1', 'att-x')).toBe(true)
   })
 

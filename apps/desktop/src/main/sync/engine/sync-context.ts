@@ -261,7 +261,16 @@ export const SYNC_STATE_KEYS = {
    * size and mtime still match; a write changes them and offers it again.
    * Missing reads as empty.
    */
-  ATTACHMENT_UPLOAD_REFUSALS: 'attachmentUploadRefusals'
+  ATTACHMENT_UPLOAD_REFUSALS: 'attachmentUploadRefusals',
+  /**
+   * JSON object from the folded vault path of a binary file case twins share,
+   * or shared before a split, to `{sha256, copy}`: the bytes a landing last
+   * kept from it as a conflict copy, and the vault path of that copy
+   * (REVIEW-5602). A later landing on the file reads those bytes as kept while
+   * the copy still holds them (VERIFY-5602, VERIFY-5602R2). Missing reads as
+   * empty.
+   */
+  CASE_TWIN_KEPT_COPIES: 'caseTwinKeptCopies'
 } as const
 
 /** The schema-invalid ledger type of a refused change-feed body, keyed by note id (#2297). */

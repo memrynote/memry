@@ -188,7 +188,7 @@ import { noteCoverForPush, recordAppliedNoteCover } from '../sync/item-handlers/
 import { PendingSyncIntentError } from '../sync/pending-sync-intent-error'
 import { NoteError } from '../lib/errors'
 import { openVaultFile } from '../lib/paths'
-import { beginPageApply, writeSyncedVaultFile } from '../sync/bulk-apply'
+import { beginPageApply, writeNoteFileNow, writeSyncedVaultFile } from '../sync/bulk-apply'
 import { prepareCaseTwinLeave } from './case-twin-file'
 import { COVER_ZOOM_FRONTMATTER_KEY } from '@memry/shared/cover-image'
 import { NotesChannels } from '@memry/contracts/notes-api'
@@ -799,14 +799,8 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
     }, 30_000)
   }
 
-  /**
-   * Holds twin upper's next file write until `release`; resolves `reached`
-   * when it gets there. The watcher is stopped first: it reads a file before
-   * it asks whether twins share it, so a leave step in between crosses the
-   * bodies whatever this fence does (#5624).
-   */
-  async function holdUpperWrite() {
-    await stopWatcher()
+  /** Holds twin upper's next file write until `release`; resolves `reached` when it gets there. */
+  function holdUpperWrite() {
     let release = (): void => {}
     let reached = (): void => {}
     const gate = new Promise<void>((resolve) => (release = resolve))
@@ -833,7 +827,7 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
   // checks would land its body on the survivor's file and re-create its row.
   it("a twin delete waits for the twin's write-back in flight, and the tombstone wins", async () => {
     await twins()
-    const held = await holdUpperWrite()
+    const held = holdUpperWrite()
     const pass = writeBack('upper', UPPER_EDITED)
     await held.atWrite
 
@@ -854,7 +848,7 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
     await twins()
     // The survivor's file is ready, as on a pull's retry.
     await prepareCaseTwinLeave(vault.path, 'SUPERNOTES/a.md', 'upper')
-    const held = await holdUpperWrite()
+    const held = holdUpperWrite()
     const pass = writeBack('upper', UPPER_EDITED)
     try {
       await held.atWrite
@@ -1083,6 +1077,20 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
     }
   }
 
+  // REVIEW-5632 (1): each twin's write is recorded under its own spelling, and
+  // the other twin's later write left it the app's until it expired.
+  it("an outside restore of one twin's write is no echo once the other twin wrote", async () => {
+    await twins()
+    const LOWER_PULLED = '# a\n\nlower pulled [[x]]\n'
+    // Each by its row's spelling, as a pull writes them.
+    writeNoteFileNow(path.join(vault.path, pathOf('lower')!), LOWER_PULLED)
+    writeNoteFileNow(path.join(vault.path, pathOf('upper')!), UPPER_EDITED)
+
+    fs.writeFileSync(path.join(vault.path, 'Supernotes/a.md'), LOWER_PULLED)
+
+    expect(await getWatcher()['isOwnWrite'](path.join(vault.path, 'Supernotes/a.md'))).toBe(false)
+  }, 30_000)
+
   // REVIEW-5501 (3): each twin keeps its own header across the move.
   it("a moved twin keeps its own header, and the survivor's file keeps its own", async () => {
     await headerTwins()
@@ -1237,7 +1245,7 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
   ] as const) {
     it(`a twin ${how} waits for the twin's write-back in flight`, async () => {
       await twins()
-      const held = await holdUpperWrite()
+      const held = holdUpperWrite()
       const pass = writeBack('upper', UPPER_EDITED)
       await held.atWrite
 
@@ -1279,7 +1287,7 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
     await twins()
     // Both files are ready, as on a pull's retry.
     await prepareCaseTwinLeave(vault.path, 'SUPERNOTES/a.md', 'upper', true)
-    const held = await holdUpperWrite()
+    const held = holdUpperWrite()
     const pass = writeBack('upper', UPPER_EDITED)
     try {
       await held.atWrite
@@ -1613,7 +1621,7 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
 
   it("a folder rename waits for a twin's write-back in flight", async () => {
     await folderTwins()
-    const held = await holdUpperWrite()
+    const held = holdUpperWrite()
     const pass = writeBack('upper', UPPER_EDITED)
     await held.atWrite
 

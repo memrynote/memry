@@ -101,7 +101,7 @@ import {
 import { clearIngestBackfill, drainIngestBackfill } from '../../vault/ingest-backfill'
 import { clearAllPendingDeletes } from '../../vault/rename-tracker'
 import { startWatcher, stopWatcher } from '../../vault/watcher'
-import { landCaseTwinDownload } from '../../vault/case-twin-file'
+import { landCaseTwinDownload } from '../../vault/case-twin-landing'
 import { noteHandler } from './note-handler'
 import { recordDownloadedFileSize, recordUploadedAttachment } from '../note-attachment-metadata'
 import { enqueueLocalSyncUpdate } from '../local-mutations'
