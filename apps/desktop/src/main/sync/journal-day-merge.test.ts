@@ -146,6 +146,8 @@ import {
   runJournalDayMerges
 } from './journal-day-merge'
 import { listPendingDeletes } from './pending-deletes'
+import { ItemApplier } from './apply-item'
+import { syncQueue } from '@memry/db-schema/schema/sync-queue'
 import { parseJournalEntry } from '../vault/journal'
 
 const DATE = '2026-06-09'
@@ -668,4 +670,110 @@ describe('runJournalDayMerges', () => {
 
     expect(listOwedJournalDayMerges(ctx.db)).toEqual([])
   })
+
+  // Device B merged `F` at `{me: 1}` into the day and pushed the day, then
+  // `F`'s tombstone `{me: 1, b: 1}` (#5659). This device held `F`. The same
+  // traces as the core's `journal_day_merge_devices.rs`, with the same end
+  // state: a tag B never saw is added, one B removed after seeing it is not.
+  describe.each(['day first', 'tombstone first'] as const)(
+    'a foreign holder merged elsewhere, %s',
+    (order) => {
+      const record = (value: unknown): Uint8Array => new TextEncoder().encode(JSON.stringify(value))
+
+      it.each([
+        // trace, F's tags and text here, F's tick here, an edit queued, B's day tags, redelivered, end state
+        [
+          'a: a pushed tag the delete overwrote',
+          ['a', 'b', 'c'],
+          'held',
+          2,
+          false,
+          ['a', 'b'],
+          false,
+          ['a', 'b', 'c']
+        ],
+        ['B4: a tag B removed after the merge', ['a', 'b'], 'held', 1, false, ['a'], false, ['a']],
+        [
+          'c1: a tag added offline',
+          ['a', 'b', 'c'],
+          'held',
+          2,
+          true,
+          ['a', 'b'],
+          false,
+          ['a', 'b', 'c']
+        ],
+        [
+          'c2: the same, the tombstone delivered again',
+          ['a', 'b', 'c'],
+          'held',
+          2,
+          true,
+          ['a', 'b'],
+          true,
+          ['a', 'b', 'c']
+        ],
+        [
+          'c3: two offline edits',
+          ['a', 'b', 'c', 'd'],
+          'held',
+          3,
+          true,
+          ['a', 'b'],
+          false,
+          ['a', 'b', 'c', 'd']
+        ],
+        ['c4: a tag added offline to a blank day', ['c'], '', 2, true, ['a'], false, ['a', 'c']]
+      ])('%s', async (_trace, held, text, tick, queued, dayTags, redeliver, expected) => {
+        foreignRow(
+          { me: tick },
+          { body: `---\ntags:\n${held.map((t) => `  - ${t}\n`).join('')}---\n${text}\n` }
+        )
+        if (queued) {
+          data.db
+            .insert(syncQueue)
+            .values({
+              id: 'edit',
+              type: 'journal',
+              itemId: FOREIGN,
+              operation: 'update',
+              payload: '{}',
+              createdAt: new Date()
+            })
+            .run()
+        }
+        const applier = new ItemApplier(ctx.db, vi.fn())
+        const day = () =>
+          applier.apply({
+            itemId: DAY,
+            type: 'journal',
+            operation: 'update',
+            content: record({ date: DATE, content: 'canonical\n', tags: dayTags }),
+            clock: { b: 2 }
+          })
+        const tombstone = () =>
+          applier.apply({
+            itemId: FOREIGN,
+            type: 'journal',
+            operation: 'delete',
+            content: record({ clock: { me: 1, b: 1 } }),
+            clock: { me: 1, b: 1 },
+            deletedAt: Date.now()
+          })
+
+        if (order === 'day first') {
+          day()
+          tombstone()
+        } else {
+          tombstone()
+          day()
+        }
+        if (redeliver) tombstone()
+        await drain()
+
+        expect(parseJournalEntry(dayFile(), DATE).frontmatter.tags).toEqual(expected)
+        expect(listOwedJournalDayMerges(ctx.db)).toEqual([])
+      })
+    }
+  )
 })

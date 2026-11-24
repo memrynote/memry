@@ -34,6 +34,7 @@ import { seedSkipsDeletedNote } from '../pending-deletes'
 import type { ApplyContext, ApplyResult, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { forgetBaselineOfRemotelyDeletedNote } from '../../vault-locks/files'
 import {
+  holderTags,
   journalTombstonedPast,
   markOwedJournalDayMergeDeleted,
   oweJournalDayMerge,
@@ -95,7 +96,9 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
         clock: holder?.clock ?? null,
         // The day's file is about to be written over.
         fallbackMarkdown: plan.removeHolder ? readDayBody(date) : null,
-        tags: plan.removeHolder ? readDayTags(date) : undefined
+        ...(plan.removeHolder
+          ? holderTags(ctx.db, foreignId, readDayTags(date), holder?.clock ?? null)
+          : {})
       })
     }
     if (plan.removeHolder && holder) removeJournalRow(ctx.db, holder.id)
@@ -191,7 +194,7 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
     bodyStateVector?: string
   ): 'applied' | 'skipped' {
     const indexDb = getIndexDatabase()
-    markOwedJournalDayMergeDeleted(ctx.db, itemId)
+    markOwedJournalDayMergeDeleted(ctx.db, itemId, clock)
     const existing = getNoteMetadataById(ctx.db, itemId)
     if (!existing || belongsToOtherType(itemId, 'journal', existing)) return 'skipped'
 
@@ -206,12 +209,20 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
     // A foreign row a pre-fix build left: another device merged it into the
     // day. Its row, doc and file stay for the drain, which folds them, unpushed
     // edits included, into `j<date>` (#2984); a purge here would lose them.
+    // Its tags are weighed while its queued edit is still queued.
     if (existing.journalDate && existing.id !== generateJournalId(existing.journalDate)) {
       oweJournalDayMerge(ctx.db, {
         foreignId: itemId,
         date: existing.journalDate,
         clock: existing.clock ?? null,
-        deleted: true
+        deleted: true,
+        ...holderTags(
+          ctx.db,
+          itemId,
+          readDayTags(existing.journalDate),
+          existing.clock ?? null,
+          clock ?? {}
+        )
       })
       return 'applied'
     }

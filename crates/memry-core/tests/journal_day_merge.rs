@@ -1094,6 +1094,43 @@ async fn a_deleted_merge_adds_only_the_holder_tags_this_device_never_pushed() {
     }
 }
 
+/// A blank `F` whose only content is a tag added offline: B's `j<D>` and then
+/// its tombstone arrive. Nothing holds `c` but this device, so the drain
+/// merges it into the day with no body to fold, rather than forgetting `F`
+/// (#5659).
+#[tokio::test]
+async fn a_deleted_blank_holder_still_brings_its_offline_tag_to_the_day() {
+    let db = scratch_db("holder-blank-tags");
+    db.call_blocking(|conn| {
+        let held = record(
+            FOREIGN,
+            &tagged_payload("", &["a", "b"], json!({"device-b": 2})),
+        );
+        sync_items::apply_remote(conn, &held, 1)?;
+        let tags = ["a", "b", "c"].map(str::to_owned);
+        metadata::set_tags(conn, DATE, &tags, "device-a", 2)?;
+        let day = record(
+            CANONICAL,
+            &tagged_payload("", &["a", "b"], json!({"device-b": 4})),
+        );
+        assert_eq!(
+            apply_inbound_on(conn, &day, 3, Some("device-a"))?,
+            ApplyOutcome::Applied
+        );
+        Ok(())
+    })
+    .unwrap();
+    pull_tombstones_at(&db, &[FOREIGN], Some(json!({"device-b": 3}))).await;
+
+    let report = journal_day_merge::drain(&db, &bodies_for(&db, &[]), "device-a")
+        .await
+        .unwrap();
+
+    assert_eq!(report.settled, vec![FOREIGN.to_owned()]);
+    let tags = db.call_blocking(|conn| Ok(day_tags(conn))).unwrap();
+    assert_eq!(tags, vec!["a", "b", "c"]);
+}
+
 /// `F` held as pulled at `{device-b: 2}`, with a body, as a pre-fix install
 /// projected it.
 fn hold_foreign_tagged(conn: &mut Connection, held_tags: &[&str]) -> Result<(), StorageError> {

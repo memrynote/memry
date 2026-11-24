@@ -145,7 +145,13 @@ describe("a journal id that is not its day's j<date>", () => {
     expect(result).toBe('applied')
     expect(rows()).toEqual([{ id: DAY, path: `journal/${DATE}.md` }])
     expect(listOwedJournalDayMerges(ctx.db)).toEqual([
-      { foreignId: FOREIGN, date: DATE, clock: { minter: 2 }, fallbackMarkdown: 'minted here' }
+      {
+        foreignId: FOREIGN,
+        date: DATE,
+        clock: { minter: 2 },
+        fallbackMarkdown: 'minted here',
+        holderClock: { minter: 2 }
+      }
     ])
   })
 })

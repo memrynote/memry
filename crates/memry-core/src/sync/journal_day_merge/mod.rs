@@ -144,10 +144,10 @@ async fn drain_one(
         canonical.clone(),
         merge.date.clone(),
     );
-    let has_text = build_text(&merge).is_some();
+    let has_content = build_text(&merge).is_some() || carries_tags(&merge);
     let (has_body, day_deleted) = db
         .call(move |conn| {
-            let has_body = has_text
+            let has_body = has_content
                 || !update_log::load_plan(conn, &foreign)
                     .map_err(crdt_failed)?
                     .is_empty();
@@ -246,8 +246,11 @@ fn settle(
     let foreign = &merge.foreign_id;
     let plan = update_log::load_plan(conn, foreign).map_err(crdt_failed)?;
     let state = match (plan.is_empty(), build_text(merge)) {
-        (false, _) => folded_state(foreign, &plan.blobs()).map_err(crdt_failed)?,
-        (true, Some(markdown)) => built_state(foreign, device_id, markdown).map_err(crdt_failed)?,
+        (false, _) => Some(folded_state(foreign, &plan.blobs()).map_err(crdt_failed)?),
+        (true, Some(markdown)) => {
+            Some(built_state(foreign, device_id, markdown).map_err(crdt_failed)?)
+        }
+        (true, None) if carries_tags(merge) => None,
         (true, None) => return Ok(false),
     };
 
@@ -272,10 +275,13 @@ fn settle(
     // The foreign state as a local edit of the canonical day: what it
     // authors is exactly the part the day does not hold yet, so a repeat
     // authors nothing and queues nothing.
-    let update = body_write::author_with(conn, canonical, device_id, |document| {
-        document.apply_local_update(&state)
-    })
-    .map_err(crdt_failed)?;
+    let update = match state {
+        Some(state) => body_write::author_with(conn, canonical, device_id, |document| {
+            document.apply_local_update(&state)
+        })
+        .map_err(crdt_failed)?,
+        None => None,
+    };
 
     let tx = nested_tx::begin(conn).map_err(failed)?;
     if let Some(update) = update {
@@ -326,6 +332,12 @@ fn forget(tx: &Connection, foreign: &str, now_ms: i64) -> Result<(), StorageErro
     body_debt::settle(tx, foreign)?;
     drop_synced_tags(tx, foreign)?;
     drop_owed(tx, foreign)
+}
+
+/// A deleted `F` whose unpushed holder tags exist nowhere else: they merge
+/// into `j<D>` with no body to fold, rather than being forgotten (#5659).
+fn carries_tags(merge: &OwedMerge) -> bool {
+    merge.deleted && !merge.unpushed_holder_tags.is_empty()
 }
 
 /// The record text a live foreign id with no Yjs history is built from. A
