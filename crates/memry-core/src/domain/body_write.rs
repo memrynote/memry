@@ -9,12 +9,11 @@
 //! correctly here and is missing a paragraph everywhere else, with nothing to
 //! detect it.
 //!
-//! **The document is rebuilt from the log for every edit.** It is the same
-//! document [`crate::domain::reads::body`] reads, opened under this device's
-//! id so the update is authored by it rather than by the reader identity. A
-//! cached document would be faster and would also be a second writer to keep in
-//! step with the log; that is a cache with a correctness problem, and this path
-//! is a local SQLite read plus a `yrs` apply.
+//! **The document is the log's, opened under this device's id** so the update
+//! is authored by it rather than by the reader identity. The last write's
+//! document stays decoded while the log holds nothing it lacks
+//! ([`crate::crdt::resident`], #5692), so an edit costs the change and not a
+//! replay of the note's history.
 //!
 //! **The update is what the transaction authored** (chapter 12 §12.5.1), taken
 //! from the registry's sink rather than recovered by diffing two copies of the
@@ -28,7 +27,7 @@ use crate::api::errors::StorageError;
 use crate::crdt::body_edit::{self, BlockEdit};
 use crate::crdt::errors::CrdtError;
 use crate::crdt::registry::UpdateSink;
-use crate::crdt::{epoch, markdown_seed, update_log};
+use crate::crdt::{epoch, markdown_seed, resident, update_log};
 use crate::domain::notes::ITEM_TYPE;
 use crate::domain::reads;
 use crate::storage::nested_tx;
@@ -162,22 +161,17 @@ pub(crate) fn author_with(
     device_id: &str,
     write: impl FnOnce(&crate::crdt::Document) -> Result<(), CrdtError>,
 ) -> Result<Option<Vec<u8>>, CrdtError> {
-    let authored: Arc<Mutex<Vec<Vec<u8>>>> = Arc::new(Mutex::new(Vec::new()));
-    let sink: UpdateSink = {
-        let authored = Arc::clone(&authored);
-        Arc::new(move |_, bytes: &[u8]| {
-            authored
-                .lock()
-                .unwrap_or_else(PoisonError::into_inner)
-                .push(bytes.to_vec())
-        })
-    };
-    let document = epoch::open_for_write(conn, device_id, doc_id, sink)?;
-
-    write(&document)?;
-
-    let mut updates = authored.lock().unwrap_or_else(PoisonError::into_inner);
-    Ok((!updates.is_empty()).then(|| updates.swap_remove(0)))
+    let body = resident::checkout(conn, device_id, doc_id)?;
+    write(body.document())?;
+    let mut updates = body.take_authored();
+    // The caller stores one update. A write that authored more holds changes
+    // the log will not, so its document is not kept.
+    if updates.len() > 1 {
+        return Ok(Some(updates.swap_remove(0)));
+    }
+    let update = updates.pop();
+    body.keep(update.clone());
+    Ok(update)
 }
 
 /// Stores an authored update and queues it as `(item_type, doc_id)`, inside

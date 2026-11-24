@@ -149,7 +149,7 @@ function metadataForPath(db: DataDb, idOrPath: string): NoteMetadataRow | undefi
   return undefined
 }
 
-function getMetadata(db: DataDb, idOrPath: string): NoteMetadataRow | undefined {
+export function getMetadata(db: DataDb, idOrPath: string): NoteMetadataRow | undefined {
   return getNoteMetadataById(db, idOrPath) ?? metadataForPath(db, idOrPath)
 }
 
