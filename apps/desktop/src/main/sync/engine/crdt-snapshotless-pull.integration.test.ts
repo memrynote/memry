@@ -22,19 +22,29 @@ const requests = vi.hoisted(() => [] as Recorded[])
 const afterResponse = vi.hoisted(() => ({
   hook: null as ((request: Recorded) => Promise<void>) | null
 }))
-const debugLogs = vi.hoisted(() => [] as Array<{ message: string; meta: unknown }>)
+const coordinatorLogs = vi.hoisted(
+  () => [] as Array<{ level: 'info' | 'debug'; message: string; meta: unknown }>
+)
 
-vi.mock('../../lib/logger', async (importOriginal) => ({
-  ...(await importOriginal<typeof LoggerModule>()),
-  createLogger: () => ({
-    info: () => {},
-    warn: () => {},
-    error: () => {},
-    debug: (message: string, meta?: unknown) => {
-      debugLogs.push({ message, meta })
+// Records the coordinator's info and debug lines and still writes every line,
+// so a failing run keeps its log output.
+vi.mock('../../lib/logger', async (importOriginal) => {
+  const actual = await importOriginal<typeof LoggerModule>()
+  return {
+    ...actual,
+    createLogger: (scope: string) => {
+      const logger = actual.createLogger(scope)
+      if (scope !== 'CrdtSyncCoordinator') return logger
+      const recorded =
+        (level: 'info' | 'debug') =>
+        (message: string, ...rest: unknown[]): void => {
+          coordinatorLogs.push({ level, message, meta: rest[0] })
+          logger[level](message, ...rest)
+        }
+      return { ...logger, info: recorded('info'), debug: recorded('debug') }
     }
-  })
-}))
+  }
+})
 
 vi.mock('electron', () => ({
   net: {
@@ -233,7 +243,11 @@ describe('CRDT body pull against a real sync server', () => {
   }
 
   /** `fullSyncActive` probes every chunk; outside one a small cold chunk is not probed. */
-  const coordinatorOver = (provider: CrdtProvider, fullSyncActive = false): CrdtSyncCoordinator => {
+  const coordinatorOver = (
+    provider: CrdtProvider,
+    fullSyncActive = false,
+    takesBody?: (noteId: string) => boolean
+  ): CrdtSyncCoordinator => {
     const ctx = {
       fullSyncActive,
       deps: {
@@ -243,7 +257,7 @@ describe('CRDT body pull against a real sync server', () => {
       },
       abortController: new AbortController()
     } as unknown as SyncContext
-    return new CrdtSyncCoordinator(ctx, async () => signing.publicKey)
+    return new CrdtSyncCoordinator(ctx, async () => signing.publicKey, takesBody)
   }
 
   const isSnapshotGet = (r: Recorded): boolean =>
@@ -409,7 +423,8 @@ describe('CRDT body pull against a real sync server', () => {
   const fragments = ['base. ', 'mid. ', 'late. ', 'tail.']
   const tail = ['tail.', ...Array.from({ length: 100 }, () => '+')]
   const isUpdatePage = (r: Recorded): boolean =>
-    r.path === '/sync/crdt/updates/batch' || (r.method === 'GET' && r.path === '/sync/crdt/updates')
+    (r.path === '/sync/crdt/updates/batch' && (r.body as { limit?: number }).limit === 100) ||
+    (r.method === 'GET' && r.path === '/sync/crdt/updates')
   it.each(['single', 'batch'] as const)(
     'owes a %s walk whose held snapshot a newer peer snapshot replaces before the walk',
     async (mode) => {
@@ -495,41 +510,94 @@ describe('CRDT body pull against a real sync server', () => {
 
   // #5247: that owe counts no failed pull, so a note a peer keeps snapshotting
   // could stay owed walk after walk with no other trace.
+  /**
+   * One pass over `noteId`; `churnAfter` names the read a peer's snapshot lands
+   * right after. Returns every owed-again line logged for the note so far.
+   */
+  const churnPass = async (
+    coordinator: CrdtSyncCoordinator,
+    noteId: string,
+    churnAfter?: (request: Recorded) => boolean,
+    mode: 'single' | 'batch' = 'batch'
+  ): Promise<Array<[string, number]>> => {
+    afterResponse.hook = async (request) => {
+      if (!churnAfter?.(request)) return
+      afterResponse.hook = null
+      await pushSnapshot(noteId, 'churn. ')
+    }
+    try {
+      if (mode === 'single') await coordinator.pullCrdtForNote(noteId)
+      else await coordinator.pullCrdtForNotes([noteId])
+    } finally {
+      afterResponse.hook = null
+    }
+    coordinator.drainPendingPulls()
+    return coordinatorLogs
+      .filter((entry) => entry.message.startsWith('CRDT walk owed again'))
+      .map((entry) => ({
+        level: entry.level,
+        ...(entry.meta as { noteId: string; owedWalksInARow: number })
+      }))
+      .filter((entry) => entry.noteId === noteId)
+      .map((entry) => [entry.level, entry.owedWalksInARow])
+  }
+
   it('logs a note owed again for a newer peer snapshot, and counts afresh once a walk settles it', async () => {
     const noteId = `churn-${randomUUID().slice(0, 8)}`
     await pushSnapshot(noteId, 'base. ')
     const coordinator = coordinatorOver(memoryProvider())
-    /** One pass; `churnAfter` names the read a peer's snapshot lands right after. */
-    const pass = async (churnAfter?: (request: Recorded) => boolean): Promise<unknown[]> => {
-      afterResponse.hook = async (request) => {
-        if (!churnAfter?.(request)) return
-        afterResponse.hook = null
-        await pushSnapshot(noteId, 'churn. ')
-      }
-      try {
-        await coordinator.pullCrdtForNotes([noteId])
-      } finally {
-        afterResponse.hook = null
-      }
-      coordinator.drainPendingPulls()
-      return debugLogs
-        .filter((entry) => entry.message.startsWith('CRDT walk owed again'))
-        .map((entry) => entry.meta as { noteId: string; owedWalksInARow: number })
-        .filter((meta) => meta.noteId === noteId)
-        .map((meta) => meta.owedWalksInARow)
-    }
 
-    expect(await pass(isSnapshotGet)).toEqual([])
-    expect(await pass(isSnapshotGet)).toEqual([2])
-    expect(await pass()).toEqual([2])
+    expect(await churnPass(coordinator, noteId, isSnapshotGet)).toEqual([])
+    expect(await churnPass(coordinator, noteId, isSnapshotGet)).toEqual([['debug', 2]])
+    expect(await churnPass(coordinator, noteId)).toEqual([['debug', 2]])
     expect(coordinator.hasUnmergedRemoteState(noteId)).toBe(false)
 
     // The probe proves the merged snapshot current, so the walk starts without
     // a GET; the update above it keeps the probe from settling the note.
     await pushUpdate(noteId, 'more. ')
-    expect(await pass(isProbe)).toEqual([2])
+    expect(await churnPass(coordinator, noteId, isProbe)).toEqual([['debug', 2]])
     expect(coordinator.hasUnmergedRemoteState(noteId)).toBe(true)
   }, 60_000)
+
+  // The single-note pull sends no batch POST, so the passes below leave the
+  // 30-per-minute batch bucket to the tests after them.
+  it('logs the third owe in a row at info, since packaged builds drop debug lines', async () => {
+    const noteId = `churn-info-${randomUUID().slice(0, 8)}`
+    await pushSnapshot(noteId, 'base. ')
+    const coordinator = coordinatorOver(memoryProvider())
+
+    await churnPass(coordinator, noteId, isSnapshotGet, 'single')
+    await churnPass(coordinator, noteId, isSnapshotGet, 'single')
+
+    expect(await churnPass(coordinator, noteId, isSnapshotGet, 'single')).toEqual([
+      ['debug', 2],
+      ['info', 3]
+    ])
+  }, 60_000)
+
+  it.each(['rowless', 'no longer synced'] as const)(
+    'counts afresh for a note the pull drops as %s',
+    async (how) => {
+      const noteId = `churn-dropped-${randomUUID().slice(0, 8)}`
+      await pushSnapshot(noteId, 'base. ')
+      let hasRow = true
+      const coordinator = coordinatorOver(memoryProvider(), false, () => hasRow)
+      await churnPass(coordinator, noteId, isSnapshotGet, 'single')
+      expect(await churnPass(coordinator, noteId, isSnapshotGet, 'single')).toEqual([['debug', 2]])
+
+      if (how === 'rowless') {
+        hasRow = false
+        await coordinator.pullCrdtForNote(noteId)
+        hasRow = true
+      } else {
+        coordinator.clearUnmergedForDroppedNote(noteId)
+      }
+
+      expect(await churnPass(coordinator, noteId, isSnapshotGet, 'single')).toEqual([['debug', 2]])
+      expect(coordinator.hasUnmergedRemoteState(noteId)).toBe(true)
+    },
+    60_000
+  )
 
   // #5286: a fresh device seeded 31 notes from markdown whose updates the
   // server returned, because the doc cache closed each doc mid-pass and the

@@ -1430,10 +1430,12 @@ new baseline in the same walk instead; both end with the same body.
 None of that page's updates reach the doc, and the walk requests no further page for the
 note, even when the page says `hasMore`. Such an owe counts no failed pull, so a note a peer
 keeps snapshotting could stay owed pass after pass with no backoff and no stuck state. The
-coordinator counts these owes per note in memory, and a walk that settles the note resets
-the count. Each owe after the first in a row logs
-`CRDT walk owed again: a newer server snapshot replaced its baseline` at debug level, with
-the count and both sequences (#5247).
+coordinator counts these owes per note in memory. A walk that settles the note resets the
+count, and so does dropping the note from the pull (no row left, or no longer synced). Each
+owe after the first in a row logs
+`CRDT walk owed again: a newer server snapshot replaced its baseline` with the count and
+both sequences: the second at debug level, and the third and later at info, because
+packaged builds drop debug lines (#5247).
 
 The batch POST figure is a **floor rather than an exact count**, because an apply
 sub-chunk loops while any of its notes still reports `hasMore`. That is precisely why the
