@@ -279,9 +279,12 @@ function recordPathOf(vaultPath: string, id: string): string {
 async function readMoveRecord(recordPath: string): Promise<FolderMoveRecord | null> {
   let handle: FileHandle
   try {
+    // The mode applies only to a create, which these flags never ask for;
+    // it tells CodeQL's insecure-temporary-file check the same.
     handle = await open(
       recordPath,
-      constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0) | (constants.O_NONBLOCK ?? 0)
+      constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0) | (constants.O_NONBLOCK ?? 0),
+      0o600
     )
   } catch (error) {
     if (errnoCode(error) === 'ELOOP') return null // a link
