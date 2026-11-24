@@ -399,6 +399,20 @@ export function syncNoteToCache(
   input: NoteSyncInput,
   options: NoteSyncOptions
 ): NoteSyncResult {
+  const { metadata, publish } = persistNoteToCache(input, options)
+  publish()
+  return metadata
+}
+
+/**
+ * `syncNoteToCache` for a write inside a data-DB transaction: run `publish`
+ * once the transaction commits, so the index never takes a row the data DB
+ * rolled back.
+ */
+export function persistNoteToCache(
+  input: NoteSyncInput,
+  options: NoteSyncOptions
+): { metadata: NoteSyncResult; publish: () => void } {
   const { id, path, parsedContent, title, createdAt, modifiedAt, localOnly } = input
   const metadata = extractNoteMetadata(input)
   const {
@@ -455,13 +469,13 @@ export function syncNoteToCache(
     wikiLinks
   }
 
-  publishProjectionEvent({
-    type: 'note.upserted',
-    note,
-    source: options.source
-  })
-
-  return metadata
+  const publish = (): void =>
+    publishProjectionEvent({
+      type: 'note.upserted',
+      note,
+      source: options.source
+    })
+  return { metadata, publish }
 }
 
 /**

@@ -62,7 +62,7 @@
     "uploadFailed": "附件上傳失敗",
     "uploadProgressFailed": "無法取得上傳進度",
     "downloadFailed": "附件下載失敗",
-    "downloadGone": "此檔案已不在同步伺服器上。",
+    "downloadGone": "此檔案已不在同步伺服器上。如果其他裝置上仍有此檔案，請從該裝置重新加入。",
     "downloadMissing": "此檔案還不在同步伺服器上。請明天再開啟查看。",
     "downloadNeedsSync": "同步未執行，因此無法下載此檔案。同步開始執行後，它會自動下載。",
     "downloadProgressFailed": "無法取得下載進度",

@@ -46,7 +46,8 @@ offers **Try again**. A file page shows the error with a retry button. Sync must
 file to download. A note or file you open before sync runs, such as one restored at launch, downloads
 its files on its own once sync starts. An open note also downloads a file that sync adds to it.
 A file the sync server does not have yet is checked again when you open it the
-next day, and a file the server no longer has shows that message with no retry button.
+next day, and a file the server no longer has shows that message with no retry button. To get
+such a file back, add it again from a device that still has it.
 Known limits: while the device is offline the message stays until it is back online,
 and opening a journal day does not download its files.
 
