@@ -549,11 +549,19 @@ pub fn cached_bytes(conn: &Connection) -> Result<i64, StorageError> {
 /// known size first so the cheap pictures land before one large file.
 ///
 /// Includes evicted rows: a note still showing them is a note that wants them.
+/// A live binary note's own `attachmentId` (§14.7.3) counts too, with or
+/// without a row yet: it is the note's whole content (#5668).
 pub fn missing_downloads(conn: &Connection) -> Result<Vec<String>, StorageError> {
     conn.prepare(
-        "SELECT attachment_id FROM attachments \
-         WHERE local_path IS NULL AND note_refs IS NOT NULL AND note_refs != '[]' \
-         ORDER BY remote_size IS NULL, remote_size ASC, attachment_id ASC",
+        "SELECT wanted.attachment_id FROM ( \
+           SELECT attachment_id FROM attachments \
+           WHERE note_refs IS NOT NULL AND note_refs != '[]' \
+           UNION \
+           SELECT attachment_id FROM notes \
+           WHERE deleted_at IS NULL AND attachment_id IS NOT NULL AND attachment_id != '' \
+         ) wanted LEFT JOIN attachments cached USING (attachment_id) \
+         WHERE cached.local_path IS NULL \
+         ORDER BY cached.remote_size IS NULL, cached.remote_size ASC, wanted.attachment_id ASC",
     )
     .map_err(failed)?
     .query_map([], |row| row.get::<_, String>(0))

@@ -8,8 +8,8 @@ import {
   type VectorClock
 } from '@memry/contracts/sync-api'
 import { incrementClock, recreateBaseClock } from '@memry/sync-core'
-import { getCurrentDeviceId } from './current-device-id'
-import { merge } from './vector-clock'
+import { getCurrentDeviceId } from './current-device-id.ts'
+import { merge } from './vector-clock.ts'
 
 /**
  * What this device knows about the deletes of a re-creatable id (#2409).

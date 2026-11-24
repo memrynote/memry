@@ -86,7 +86,10 @@ vi.mock('../sync/crdt-writeback-port', async () => {
   const writeback = await import('../sync/crdt-writeback')
   return { crdtWriteback: () => writeback }
 })
-vi.mock('../sync/crdt-writeback', () => ({ hasPendingWriteback: vi.fn(() => false) }))
+vi.mock('../sync/crdt-writeback', () => ({
+  hasPendingWriteback: vi.fn(() => false),
+  holdFlushUntil: vi.fn()
+}))
 vi.mock('../tasks/reconcile-markdown-tasks', () => ({
   reconcileTaskCheckboxesFromMarkdown: vi.fn(async () => undefined)
 }))

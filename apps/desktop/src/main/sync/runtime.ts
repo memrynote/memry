@@ -114,6 +114,7 @@ import { CrdtSnapshotScheduler } from '@memry/sync-client/crdt-snapshot-schedule
 import { createNoteBodyPush } from './note-body-push'
 import { isBinaryNote } from './note-body-apply'
 import { recoverDirtyItems } from './dirty-recovery'
+import { coverQueuedContentDeletes } from './local-doc-delete'
 import {
   markSyncEligible,
   markSyncIneligible,
@@ -907,6 +908,9 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         if (!crdtProvider.isNoteLocalOnly(noteId)) engine.markCrdtRemoteStateUnmerged(noteId)
       }
 
+      // Before the first pull, so a CLI delete takes the body vector this
+      // device held (#5661); the flush in `recoverDirtyItems` sends it.
+      await coverQueuedContentDeletes(runtimeSyncDb)
       recoverDirtyItems(runtimeSyncDb, adapters)
 
       pendingRuntime = {

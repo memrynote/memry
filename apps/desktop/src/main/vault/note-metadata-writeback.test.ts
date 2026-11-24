@@ -148,9 +148,8 @@ describe('a note tags or properties edit between a write-back read and write (#5
     expect.soft(onDisk).toContain('Morning. Typed.')
   })
 
-  // A body update writes its frontmatter beside the body, outside the turn.
-  // The body comes back through the doc (feed, re-arm); the frontmatter only
-  // through the update's own turn (#5479). The feed is stubbed here, so only
+  // A body update feeds the doc outside the turn and writes the file in it,
+  // after the pass (#5479, #5690). The feed is stubbed here, so only
   // the frontmatter is asserted.
   it.each<[string, Omit<NoteUpdateInput, 'id'>, string]>([
     ['tags', { content: 'Morning. Typed. More.', headerTags: { add: ['focus'] } }, '- focus'],
@@ -193,10 +192,14 @@ describe('a note tags or properties edit between a write-back read and write (#5
     ).toBe('applied')
   }
   const gap = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 10))
-  // A body update queues its frontmatter turn right after its write beside the
-  // body lands, with no file I/O in between.
-  const bodyWriteLanded = (body: string): Promise<void> =>
-    vi.waitFor(() => expect(hold.landed.some((file) => file.includes(body))).toBe(true))
+  // Holds the next file write, a body update's write in its turn, until `release`.
+  const holdNextWrite = () => {
+    let release = (): void => {}
+    const reached = new Promise<void>((resolve) => {
+      hold.next = { reached: resolve, release: new Promise<void>((r) => (release = r)) }
+    })
+    return { reached, release: () => release() }
+  }
 
   it('a local tag edit queued before a remote tags update keeps both', async () => {
     const onDisk = await raceWithPass(async (note) => {
@@ -219,8 +222,8 @@ describe('a note tags or properties edit between a write-back read and write (#5
     expect.soft(onDisk).toContain('- focus')
   })
 
-  // A body update writes its tag edit again in the note's turn, after the
-  // remote patch. The edit, not the list it wrote outside the turn, so the tag
+  // A body update writes its tag edit again in a later turn, after the
+  // remote patch. The edit, not the list its first turn wrote, so the tag
   // the remote removed stays removed (VERIFY-5482). Accepted limit: a remote
   // removal of the very tag the queued edit adds is undone; that needs the
   // add's push, the remote removal and its pull all inside one held pass.
@@ -239,9 +242,11 @@ describe('a note tags or properties edit between a write-back read and write (#5
               headerTags: { add: ['mine'] }
             })
           if (localFirst) {
+            const write = holdNextWrite()
             const queued = local()
-            await bodyWriteLanded('More.')
+            await write.reached
             remoteTags(note, ['keep'])
+            write.release()
             await queued
           } else {
             remoteTags(note, ['keep'])
