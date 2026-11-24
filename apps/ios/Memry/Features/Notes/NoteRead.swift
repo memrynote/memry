@@ -194,9 +194,11 @@ final class NoteReadViewModel {
         // A later pass restarted the page's task; its refresh pulls instead.
         guard !Task.isCancelled, hasLoaded else { return false }
         // A binary note has no body to pull: its file is the content.
-        if file != nil {
+        if let shown = file?.attachmentId {
             if fileFetch == .idle { await fetchFile() }
             if stale { await load(quietly: true) }
+            // A peer replaced the file while it was open: fetch the new one now.
+            if let now = file?.attachmentId, now != shown { fileFetch = .idle; await fetchFile() }
             return stale
         }
         if case let .ready(detail) = phase, !detail.body.present {

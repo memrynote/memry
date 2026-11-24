@@ -260,7 +260,7 @@ enum NoteAttachmentBinding: Equatable {
         case let .bound(attachment):
             // A bound attachment whose bytes are not on disk is still waiting,
             // but it knows which attachment it is waiting for.
-            guard let path = attachment.localPath, !path.isEmpty else {
+            guard let path = attachment.intactPath else {
                 return .waitingFor(attachment.attachmentId)
             }
             return .file(
@@ -312,6 +312,29 @@ enum AttachmentPaths {
     static func url(for relativePath: String) -> URL {
         let base = imagesDirectory ?? URL.temporaryDirectory
         return base.appending(path: relativePath)
+    }
+}
+
+extension CachedAttachment {
+    /// `localPath` when all of the file is there: on disk at the manifest's
+    /// plaintext `size`. A missing or torn file reads as not downloaded, so
+    /// the page asks again and the core downloads it over (#5247).
+    var intactPath: String? { intactPath(under: AttachmentPaths.url(for:)) }
+
+    func intactPath(under url: (String) -> URL) -> String? {
+        guard let localPath, !localPath.isEmpty,
+              let attributes = try? FileManager.default.attributesOfItem(
+                  atPath: url(localPath).path(percentEncoded: false)
+              ),
+              attributes[.type] as? FileAttributeType == .typeRegular,
+              let length = (attributes[.size] as? NSNumber)?.uint64Value
+        else { return nil }
+        // A row without a manifest has no size to hold the file to.
+        guard let data = manifest?.data(using: .utf8),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let size = (object["size"] as? NSNumber)?.uint64Value
+        else { return localPath }
+        return length == size ? localPath : nil
     }
 }
 

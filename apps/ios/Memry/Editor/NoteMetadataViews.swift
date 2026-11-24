@@ -29,7 +29,7 @@ struct NoteCoverView: View {
         if let cover, let resolve {
             switch resolve(cover.url) {
             case let .bound(attachment):
-                if let path = attachment.localPath,
+                if let path = attachment.intactPath,
                     let image = UIImage(
                         contentsOfFile: AttachmentPaths.url(for: path)
                             .path(percentEncoded: false)
