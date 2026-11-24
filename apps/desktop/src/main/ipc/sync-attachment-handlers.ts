@@ -861,7 +861,8 @@ async function materializeDownload(
   } catch (err) {
     if (err instanceof SupersededDownloadError) {
       // A newer record named another attachment while this one
-      // downloaded (#5580): nothing is owed for it any more.
+      // downloaded (#5580), or the note's row is gone (REVIEW-5662):
+      // nothing is owed for it any more.
       logger.info('Dropped a download its note no longer names', { noteId, attachmentId })
       releaseDownloadAttempt(claim)
       if (isDatabaseInitialized()) {

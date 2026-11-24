@@ -1048,6 +1048,27 @@ describe.runIf(fileSystemIgnoresCase())('binary case twins sharing one file', ()
     expect(fs.readlinkSync(abs(COPY))).toBe(abs('gone.png'))
   })
 
+  // REVIEW-5680 #1: the moving twin's copy followed a dangling link out of the vault.
+  it("a peer's move of a binary twin onto a dangling link writes nothing outside the vault", () => {
+    twins('Supernotes')
+    const outside = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'memry-outside-')), 'p.png')
+    try {
+      fs.mkdirSync(abs('Other'))
+      fs.symlinkSync(outside, abs('Other/p.png'))
+
+      expect(applyPeerUpdate({ folderPath: 'Other' })).toBe('applied')
+
+      expect(rows()).toEqual([
+        { id: 'twin-a', path: 'Supernotes/p.png' },
+        { id: 'twin-b', path: 'Other/p 1.png' }
+      ])
+      expect(read('Other/p 1.png')).toBe('b-bytes')
+      expect(fs.existsSync(outside)).toBe(false)
+    } finally {
+      fs.rmSync(path.dirname(outside), { recursive: true, force: true })
+    }
+  })
+
   // REVIEW-5662 #3: a twin's own download is in flight when a peer deletes it.
   it("a deleted twin's download lands nothing and records no hash", () => {
     twins('Supernotes')
