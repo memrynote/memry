@@ -15,6 +15,12 @@
 //! Every line on stdout is one JSON mark with a wall-clock `atMs`, so the
 //! harness can line the marks up with the requests its proxy recorded.
 //!
+//! `elevated` is `false` on a profile that keeps its device registration: the
+//! server opens a bootstrap session only for a device that never pulled the
+//! vault (`409 BOOTSTRAP_NOT_ELIGIBLE`), so this bench measures the unelevated
+//! path. The core prints why a run is unelevated on stderr. Its bodies pass
+//! pulls iOS's window (`FirstSyncLimits::RECENT`), not desktop's whole vault.
+//!
 //! `bench oracle-state` prints what this device holds in the shape the
 //! zero-loss oracle reads (`tests/sync-harness/src/zero-loss-oracle`), so the
 //! sync harness can run the oracle on a core bootstrap (#5232).

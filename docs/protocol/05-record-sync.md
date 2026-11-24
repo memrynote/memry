@@ -1017,8 +1017,8 @@ every item sharing a chunk with one bad row.
 - **A refused delete MUST NOT delete through its id.** When the server also
   lists a refused item's id in `deleted`, the id deletes nothing (§5.12.1):
   the corrupt count is the item's only outcome. Rust core:
-  `crates/memry-core/src/sync/pull.rs:416-419` counts such an id as bare and `:434` leaves it out of the
-  apply.
+  `crates/memry-core/src/sync/pull.rs:430-434` counts such an id as bare and
+  `:436-439` logs it as ignored.
 - `purgedTombstones` and `blobMissing` entries are validated one by one, like
   items: a malformed entry is refused on its own and never costs its siblings or
   the page (#2302).
@@ -1198,23 +1198,25 @@ attestation under the signer's key from the driver's device directory,
 refetched once per run when the signer is not in it, a failed refetch failing
 the page with the cursor held (`crates/memry-core/src/sync/driver/cipher.rs:164`;
 `purged.rs:264`), the local refusals over the item's `sync_items` row
-(`purged.rs:312`), then the signed-tombstone apply. Every id a
-`purgedTombstones` entry names counts as covered, never as a bare id in `deleted`
-(`crates/memry-core/src/sync/pull.rs:450`). A run that started from cursor 0
+(`purged.rs:312`), then the signed-tombstone apply. An id a
+`purgedTombstones` entry names deletes only through that entry's attested
+marker, never as a bare `deleted` id (§5.12.1;
+`crates/memry-core/src/sync/pull.rs:437`, `:443-450`). A run that started from cursor 0
 applies none until a page lands at the head, a refused one included, since the
-cursor moves past it (`crates/memry-core/src/sync/pull.rs:437`). The core keeps
+cursor moves past it (`crates/memry-core/src/sync/pull/items.rs:120-122`). The core keeps
 that state in `meta` (`sync.purged_from_zero`, `purged.rs:67`), set when a page
 is read from cursor 0 and cleared in the transaction that lands the head
 (`crates/memry-core/src/sync/note_body_feed.rs:439`), so it holds across the
 passes of a long run and across a restart. Its first
-sync's refs pass reads the feed without the token
-(`crates/memry-core/src/sync/first_sync.rs:458`), and a bare id in `deleted`
-deletes nothing there (§5.12.1); its manifest reconcile pulls by id declaring
-`purged_tombstones` (§5.12.1). iOS (`Declaration::subscribed`) and the shared
-sync-client do not declare it on the feed (#2304), so they never see a marker
-there; an iOS device that missed a delete keeps its copy locally (a bare id in
-`deleted` deletes nothing, §5.12.1), and the marker stops a push of it from
-reaching the server.
+sync's refs pass fetches every `deleted` id, and only the verified typed delete
+or attested marker that fetch returns deletes
+(`crates/memry-core/src/sync/first_sync/deleted_ids.rs:62-93`). That pass reads
+the feed without the token (`crates/memry-core/src/sync/first_sync.rs:459-462`);
+its manifest reconcile pulls by id declaring `purged_tombstones` (§5.12.1). iOS
+(`Declaration::subscribed`) and the shared sync-client do not declare it on the
+feed (#2304), so they never see a marker there; an iOS device that missed a
+delete keeps its copy locally (a bare id in `deleted` deletes nothing,
+§5.12.1), and the marker stops a push of it from reaching the server.
 The Rust core produces attestations on every attestable delete it pushes
 (`crates/memry-core/src/protocol/delete_attestation.rs`).
 

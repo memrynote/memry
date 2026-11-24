@@ -56,6 +56,7 @@
 //! snapshot are replays.
 
 use std::sync::Arc;
+use std::time::Duration;
 
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64;
@@ -79,6 +80,7 @@ mod log_writes;
 mod manifest;
 mod pack_seed;
 mod probe;
+mod rate_limit;
 mod server_body;
 use probe::ProbeAnswer;
 
@@ -86,6 +88,8 @@ pub use log_writes::BodyEpochs;
 pub use manifest::{CRDT_MANIFEST_PAGE_LIMIT, MANIFEST_READ_DEADLINE};
 pub use pack_seed::{PACK_SEED_CHUNK, PackEntrySeed, PackSeed, PackUpdateSeed};
 pub(super) use probe::Probed;
+pub use rate_limit::{MAX_RATE_LIMIT_PAUSE_S, MAX_RATE_LIMIT_PAUSES};
+pub(super) use rate_limit::{RateLimitPauses, ceil_ms};
 
 /// §7.3: the client's own page size for a sweep, matching the reference's
 /// `CRDT_UPDATES_PAGE_LIMIT`.
@@ -98,11 +102,6 @@ pub const MAX_PAGES_PER_DOCUMENT: u32 = 50;
 
 /// Documents per snapshot-meta probe: the batch route's own cap (§7.3).
 pub(super) const PROBE_CHUNK: usize = 100;
-
-/// The longest `Retry-After` a body read waits out itself. `crdt_pull` is a
-/// sixty-second fixed window, so anything longer is not this limiter and is
-/// returned to the caller instead of sat through.
-pub const MAX_RATE_LIMIT_PAUSE_S: u64 = 60;
 
 /// The cursor scope for one document's body feed (chapter 05 §5.11: the
 /// `scope` column exists for exactly this, and it is **not** a per-type record
@@ -279,6 +278,15 @@ impl BodyPull {
         self
     }
 
+    /// A 429's wait ([`RateLimitPauses::take`]), reported to the client's
+    /// observer and slept on the client's sleeper, as the retry ladder's waits
+    /// are: a paused driver cuts it as it cuts a retry's sleep (#5423).
+    pub(super) async fn wait(&self, wait: Duration) {
+        let wait_ms = ceil_ms(wait);
+        self.http.paused(wait_ms);
+        self.http.sleep_ms(wait_ms).await;
+    }
+
     /// Pulls every document in `doc_ids`, in order.
     ///
     /// **Callers must not pass a tombstoned id** (§7.15): the server still
@@ -290,7 +298,9 @@ impl BodyPull {
     ) -> Result<BodyPullReport, BodyPullError> {
         let mut total = BodyPullReport::default();
         for chunk in doc_ids.chunks(PROBE_CHUNK) {
-            let mut probed = self.probe(chunk, &mut total.requests, 0).await?;
+            let mut probed = self
+                .probe(chunk, &mut total.requests, &mut RateLimitPauses::new(0))
+                .await?;
             for doc_id in chunk {
                 total.absorb(self.pull_with(doc_id, probed.remove(doc_id)).await?);
             }
@@ -301,7 +311,13 @@ impl BodyPull {
     /// One document: baseline if §7.8 says so, then incrementals.
     pub async fn pull_document(&self, doc_id: &str) -> Result<BodyPullReport, BodyPullError> {
         let mut probes = 0;
-        let mut probed = self.probe(&[doc_id.to_owned()], &mut probes, 0).await?;
+        let mut probed = self
+            .probe(
+                &[doc_id.to_owned()],
+                &mut probes,
+                &mut RateLimitPauses::new(0),
+            )
+            .await?;
         let mut report = self.pull_with(doc_id, probed.remove(doc_id)).await?;
         report.requests += probes;
         Ok(report)
@@ -540,27 +556,6 @@ impl BodyPull {
             .send_json(self.request("GET", &path).retry(RetryPolicy::polled()))
             .await?;
         Ok(read_update_page(&body, doc_id))
-    }
-
-    /// Waits out a 429 `error` while the read has a pause left, and answers
-    /// whether it waited, so the caller asks again (#5570). A refused probe
-    /// otherwise falls back to a route pull per document. The wait is the
-    /// error's own ([`ApiError::rate_limit_wait_s`], one second at least); a
-    /// wait past [`MAX_RATE_LIMIT_PAUSE_S`] is not a sixty-second bucket. It
-    /// is reported to the client's observer and slept on the client's
-    /// sleeper, as the retry ladder's waits are.
-    async fn waited_out_429(&self, error: &ApiError, paused: &mut u32, pauses: u32) -> bool {
-        let Some(wait_s) = error.rate_limit_wait_s() else {
-            return false;
-        };
-        if *paused >= pauses || wait_s > MAX_RATE_LIMIT_PAUSE_S {
-            return false;
-        }
-        *paused += 1;
-        let wait_ms = wait_s.saturating_mul(1_000);
-        self.http.paused(wait_ms);
-        self.http.sleep_ms(wait_ms).await;
-        true
     }
 
     fn request(&self, method: &str, path: &str) -> ApiRequest {

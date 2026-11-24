@@ -203,8 +203,11 @@ pub async fn journal_update_entry<R: Runtime>(
     blocking("journal_update_entry", move || {
         let open = notes::open_vault(&app)?;
         let before = vault_settings(Some(&open.path));
-        // A tags-only update writes the record alone: the file, and so its counts, stay.
-        let rewrites_file = input.content.is_some() || input.properties.is_some();
+        // Any named field rewrites the file (a tag edit writes its `tags:`, #5509).
+        let rewrites_file = input.content.is_some()
+            || input.properties.is_some()
+            || input.tags.is_some()
+            || input.inline_tags.is_some();
         let update = DayUpdate {
             date: input.date,
             content: input.content,

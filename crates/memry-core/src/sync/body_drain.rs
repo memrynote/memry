@@ -28,7 +28,9 @@ use tokio::time::Instant;
 use crate::api::errors::StorageError;
 use crate::storage::Db;
 
-use super::body_pull::{BodyPull, BodyPullError, BodyPullReport, PROBE_CHUNK, Probed};
+use super::body_pull::{
+    BodyPull, BodyPullError, BodyPullReport, PROBE_CHUNK, Probed, RateLimitPauses,
+};
 use super::body_step::{Step, pull_one};
 use super::first_sync::{FirstSyncPhase, FirstSyncProgress, ProgressSink, read_body_counts};
 use super::{body_debt, body_heal};
@@ -114,13 +116,15 @@ pub async fn run(
     let ended = Arc::new(AtomicBool::new(false));
     let resume_at = Arc::new(Mutex::new(None));
     for chunk in due.chunks(PROBE_CHUNK) {
-        let (mut probed, probe_wait_s): (HashMap<String, Probed>, _) =
-            match bodies.probe_paced(chunk, &mut report.requests, 0).await {
-                Ok(probed) => probed,
-                Err(BodyPullError::Storage { source }) => return Err(source),
-                // Each document then pulls through the ordinary §7.8 path.
-                Err(BodyPullError::Api { .. }) => (HashMap::new(), None),
-            };
+        let (mut probed, probe_wait_s): (HashMap<String, Probed>, _) = match bodies
+            .probe_paced(chunk, &mut report.requests, &mut RateLimitPauses::new(0))
+            .await
+        {
+            Ok(probed) => probed,
+            Err(BodyPullError::Storage { source }) => return Err(source),
+            // Each document then pulls through the ordinary §7.8 path.
+            Err(BodyPullError::Api { .. }) => (HashMap::new(), None),
+        };
         // The batch route has its own limit: the round goes on through each
         // document's routes, and only the next one waits.
         if let Some(wait_s) = probe_wait_s {

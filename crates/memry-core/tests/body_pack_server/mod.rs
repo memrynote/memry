@@ -392,6 +392,12 @@ pub struct Server {
     pub batch_rewrite: Option<fn(&mut Json)>,
     /// The next this many batch requests answer 429 with `Retry-After: 1`.
     pub batch_rate_limits: usize,
+    /// Each batch request is refused once with `Retry-After: 1`, then
+    /// answered: a bucket that refills while the client waits.
+    pub batch_refused_once_each: bool,
+    batch_refused_last: bool,
+    /// The next this many snapshot GETs answer 429 with `Retry-After: 1`.
+    pub snapshot_rate_limits: usize,
     /// The manifest pages after the first answer 429 with `Retry-After: 1`
     /// this many times.
     pub manifest_rate_limits: usize,
@@ -420,6 +426,9 @@ impl Server {
             listings: 0,
             batch_rewrite: None,
             batch_rate_limits: 0,
+            batch_refused_once_each: false,
+            batch_refused_last: false,
+            snapshot_rate_limits: 0,
             manifest_rate_limits: 0,
             before: Vec::new(),
         }
@@ -608,6 +617,12 @@ impl Server {
                 self.batch_rate_limits -= 1;
                 return Some(rate_limited());
             }
+            if self.batch_refused_once_each {
+                self.batch_refused_last = !self.batch_refused_last;
+                if self.batch_refused_last {
+                    return Some(rate_limited());
+                }
+            }
             let asked = serde_json::from_slice::<Json>(request.body.as_deref().unwrap_or(b"{}"))
                 .expect("a JSON body");
             let limit = asked["limit"].as_u64().unwrap_or(100) as usize;
@@ -625,6 +640,10 @@ impl Server {
             return Some(response(200, &body.to_string()));
         }
         if let Some(id) = url.split("/sync/crdt/snapshot/").nth(1) {
+            if self.snapshot_rate_limits > 0 {
+                self.snapshot_rate_limits -= 1;
+                return Some(rate_limited());
+            }
             let body = match self.find(id).and_then(|doc| doc.snapshot.as_ref()) {
                 Some(snapshot) => json!({"snapshot": BASE64.encode(&snapshot.packed),
                     "sequenceNum": snapshot.sequence_num, "revision": snapshot.revision,

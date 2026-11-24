@@ -19,7 +19,8 @@ import { runInNewContext } from 'node:vm'
 const repo = new URL('..', import.meta.url).pathname
 const tierDir = join(repo, '.github/actions/ci-tier')
 const tierScript = join(tierDir, 'tier.sh')
-const changedScript = join(repo, '.github/actions/paths-changed/changed.sh')
+const pathsAction = join(repo, '.github/actions/paths-changed')
+const listFilter = readFileSync(join(pathsAction, 'action.yml'), 'utf8').match(/--jq '([^']+)'/)[1]
 const postMergeScript = join(tierDir, 'post-merge.sh')
 
 // A large PR lists thousands of files (the API stops at 3000); a match early in the list must still
@@ -28,6 +29,28 @@ function largeDiff(first, total = 2999) {
   const files = [first]
   for (let i = 1; i < total; i++) files.push(`apps/docs/src/generated/page-${i}.md`)
   return files
+}
+
+// Runs paths-changed on `files`: paths, or `{ filename, previous_filename }` for a rename. They go
+// through the files API's entry shape and the action's own jq filter, as the action lists them.
+function pathsChanged(files, include, exclude = '^$') {
+  const page = files.map((file) =>
+    typeof file === 'string'
+      ? { filename: file, status: 'modified' }
+      : { status: 'renamed', ...file }
+  )
+  const listed = spawnSync('jq', ['-c', listFilter], {
+    input: JSON.stringify(page),
+    encoding: 'utf8'
+  })
+  assert.equal(listed.status, 0, listed.stderr)
+  const result = spawnSync('bash', [join(pathsAction, 'changed.sh')], {
+    input: listed.stdout,
+    env: { PATH: process.env.PATH, INCLUDE: include, EXCLUDE: exclude },
+    encoding: 'utf8'
+  })
+  assert.equal(result.status, 0, result.stderr)
+  return result.stdout.trim()
 }
 
 const scratch = mkdtempSync(join(tmpdir(), 'ci-tier-'))
@@ -898,12 +921,7 @@ describe('ci tier and the workflow path gates agree', () => {
   // The TS side of the Tauri app is Desktop Tauri CI's: no Rust job reads it (#5035).
   it('leaves the renderer side of the Tauri app to Desktop Tauri CI', () => {
     const pattern = (k) => text[k].match(/include: '([^']+)'/)[1]
-    const changed = (files, k) =>
-      spawnSync('bash', [changedScript], {
-        input: files.join('\n'),
-        env: { PATH: process.env.PATH, INCLUDE: pattern(k), EXCLUDE: '^$' },
-        encoding: 'utf8'
-      }).stdout.trim()
+    const changed = (files, k) => pathsChanged(files, pattern(k))
     const rustSide = [
       'apps/desktop-tauri/src-tauri/src/main.rs',
       'apps/desktop-tauri/src-tauri/tauri.conf.json',
@@ -958,24 +976,26 @@ describe('ci tier and the workflow path gates agree', () => {
 })
 
 describe('paths-changed', () => {
-  function changed(files, include, exclude = '^$') {
-    const result = spawnSync('bash', [changedScript], {
-      input: files.join('\n'),
-      env: { PATH: process.env.PATH, INCLUDE: include, EXCLUDE: exclude },
-      encoding: 'utf8'
-    })
-    assert.equal(result.status, 0, result.stderr)
-    return result.stdout.trim()
-  }
-
   it('reports a change only for an included, non-excluded file', () => {
-    assert.equal(changed(['apps/sync-server/src/index.ts'], '^apps/sync-server/'), 'true')
-    assert.equal(changed(['apps/docs/x.md'], '^apps/sync-server/'), 'false')
-    assert.equal(changed(['apps/docs/x.md'], '.', '^apps/(docs|landing)/'), 'false')
+    assert.equal(pathsChanged(['apps/sync-server/src/index.ts'], '^apps/sync-server/'), 'true')
+    assert.equal(pathsChanged(['apps/docs/x.md'], '^apps/sync-server/'), 'false')
+    assert.equal(pathsChanged(['apps/docs/x.md'], '.', '^apps/(docs|landing)/'), 'false')
   })
 
   it('sees an included file in a PR with thousands of files', () => {
-    assert.equal(changed(largeDiff('crates/memry-core/src/lib.rs'), '^crates/'), 'true')
+    assert.equal(pathsChanged(largeDiff('crates/memry-core/src/lib.rs'), '^crates/'), 'true')
+  })
+
+  it('counts both paths of a rename', () => {
+    const moved = { filename: 'docs/old-lib.rs', previous_filename: 'crates/memry-core/src/lib.rs' }
+    assert.equal(pathsChanged([moved], '^crates/'), 'true')
+    const docsOnly = { ...moved, previous_filename: 'apps/docs/old-lib.rs' }
+    assert.equal(pathsChanged([docsOnly], '^crates/'), 'false')
+  })
+
+  it('reports a change for a list of 3000 files, where the API stops', () => {
+    assert.equal(pathsChanged(largeDiff('apps/docs/x.md', 3000), '^crates/'), 'true')
+    assert.equal(pathsChanged(largeDiff('apps/docs/x.md'), '^crates/'), 'false')
   })
 })
 

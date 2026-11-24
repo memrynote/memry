@@ -299,6 +299,8 @@ mod domain_templates;
 #[cfg(feature = "markdown")]
 #[path = "driver_observers.rs"]
 mod driver_observers;
+#[path = "driver_rate_limit_pause.rs"]
+mod driver_rate_limit_pause;
 #[cfg(feature = "markdown")]
 #[path = "driver_snapshots.rs"]
 mod driver_snapshots;

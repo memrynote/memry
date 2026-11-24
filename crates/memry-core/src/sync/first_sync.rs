@@ -89,10 +89,9 @@ pub(crate) use progress::read_body_counts;
 use open_session::OpenSession;
 use refs::read_refs_page;
 
-pub use super::body_pull::MAX_RATE_LIMIT_PAUSE_S;
 use super::pull::{PULL_PAGE_LIMIT, PullError, PullLoop};
 use super::store::{self, RECORD_CURSOR_SCOPE};
-pub use body_pass::{BODY_CONCURRENCY_ELEVATED, BODY_CONCURRENCY_STEADY, MAX_RATE_LIMIT_PAUSES};
+pub use body_pass::{BODY_CONCURRENCY_ELEVATED, BODY_CONCURRENCY_STEADY};
 
 /// `meta` keys, data-model §A.2's reserved list.
 pub const META_FIRST_SYNC_COMPLETED: &str = "first_sync.completed";
@@ -332,7 +331,12 @@ impl FirstSync {
 
         // §10.5: this cannot fail in any way a caller must handle.
         if let Some(bootstrap) = &self.bootstrap {
-            report.elevated = bootstrap.open(now_ms / 1_000).await.elevated();
+            let opened = bootstrap.open(now_ms / 1_000).await;
+            report.elevated = opened.elevated();
+            // §10.5: the reason is a log line, never shown and never retried.
+            if let Some(reason) = opened.fallback_reason {
+                eprintln!("memry-core: first sync runs unelevated: {reason}");
+            }
         }
 
         // Close on every exit after the open, so a failed or cancelled run

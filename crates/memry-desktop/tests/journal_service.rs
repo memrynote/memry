@@ -15,6 +15,7 @@ use std::sync::Arc;
 
 use memry_core::crdt::body_edit::BlockEdit;
 use memry_core::seams::secure_store::SecureStore;
+use memry_desktop::journal::update::DayUpdate;
 use memry_desktop::journal::write::NewDay;
 use memry_desktop::journal::{JournalEntryView, entry};
 use memry_desktop::notes::error::NotesError;
@@ -162,6 +163,151 @@ fn a_pulled_property_the_file_does_not_have_yet_is_in_the_entry() {
             .cloned()
     );
     assert!(!e.read(DAY_FILE).contains("p3c"), "the file is not written");
+}
+
+/// A value the file spells otherwise than the record stores it, but reads as the record's,
+/// keeps the file's spelling in the entry (`with_record`'s keep branch, REVIEW-5517R2).
+#[test]
+fn a_value_the_file_and_the_record_agree_on_keeps_the_files_spelling() {
+    let (e, notes, store) = opened();
+    let open = e.session.current().unwrap();
+    let journal = open.vault.journal(store).unwrap();
+    notes.create_day(&open, new_day()).unwrap();
+    journal
+        .set_property(DAY.into(), "due".into(), r#""2025-02-01""#.into())
+        .unwrap();
+    e.write(
+        DAY_FILE,
+        &NEW_FILE.replacen("rating: 4\n", "rating: 4\ndue: 2025-02-01\n", 1),
+    );
+
+    let file = entry(&open, &journal, DAY).unwrap().expect("the day");
+    let record = journal.day_properties("j2025-01-17").unwrap();
+    let file_due = file.properties.as_ref().and_then(|p| p.get("due")).cloned();
+    assert_ne!(
+        file_due.as_ref(),
+        record.get("due"),
+        "the file spells it otherwise"
+    );
+    let read = notes
+        .day_entry(&open, &journal, DAY)
+        .unwrap()
+        .expect("the day");
+    assert_eq!(
+        read.properties.as_ref().and_then(|p| p.get("due")).cloned(),
+        file_due
+    );
+}
+
+/// A record whose property payload does not read leaves the file's properties in the entry and
+/// the Properties panel, with a warning, instead of failing the read (REVIEW-5517R2).
+#[test]
+fn a_record_whose_properties_do_not_read_shows_the_files() {
+    let (e, notes, store) = opened();
+    let open = e.session.current().unwrap();
+    let journal = open.vault.journal(store).unwrap();
+    notes.create_day(&open, new_day()).unwrap();
+    e.core()
+        .db_handle()
+        .call_blocking(|conn| {
+            conn.execute(
+                "UPDATE sync_items SET payload = json_set(payload, '$.properties', 'not a map')
+                  WHERE item_type = 'journal' AND item_id = 'j2025-01-17'",
+                [],
+            )
+            .unwrap();
+            Ok(())
+        })
+        .unwrap();
+    assert!(
+        journal.day_properties("j2025-01-17").is_err(),
+        "the payload does not read"
+    );
+
+    let read = notes
+        .day_entry(&open, &journal, DAY)
+        .unwrap()
+        .expect("the day");
+    assert_eq!(
+        read.properties,
+        json!({ "mood": "calm", "rating": 4 }).as_object().cloned()
+    );
+    let panel: Vec<(String, serde_json::Value)> = notes
+        .properties(&open, "j2025-01-17")
+        .unwrap()
+        .into_iter()
+        .map(|p| (p.name, p.value))
+        .collect();
+    assert_eq!(
+        panel,
+        [
+            ("date".to_owned(), json!(DAY)),
+            ("mood".to_owned(), json!("calm")),
+            ("rating".to_owned(), json!(4)),
+        ]
+    );
+}
+
+/// The Properties panel of a day shows a pulled value its file does not have yet, as the page's
+/// read does (#5509): Electron's panel reads the file its pull already wrote.
+#[test]
+fn the_properties_panel_of_a_day_shows_a_pulled_value() {
+    let (e, notes, store) = opened();
+    let open = e.session.current().unwrap();
+    let journal = open.vault.journal(store).unwrap();
+    notes.create_day(&open, new_day()).unwrap();
+    journal
+        .set_property(DAY.into(), "p3c".into(), r#""c-val""#.into())
+        .unwrap();
+    journal
+        .set_property(DAY.into(), "mood".into(), r#""happy""#.into())
+        .unwrap();
+    assert!(!e.read(DAY_FILE).contains("p3c"), "the file is behind");
+
+    let panel: Vec<(String, serde_json::Value)> = notes
+        .properties(&open, "j2025-01-17")
+        .unwrap()
+        .into_iter()
+        .map(|p| (p.name, p.value))
+        .collect();
+    assert_eq!(
+        panel,
+        [
+            ("date".to_owned(), json!(DAY)),
+            ("mood".to_owned(), json!("happy")),
+            ("rating".to_owned(), json!(4)),
+            ("p3c".to_owned(), json!("c-val")),
+        ]
+    );
+}
+
+/// An update answers the day as the page reads it: a pulled value the file does not say yet is
+/// in its answer, as in the journal events' (REVIEW-5517R2).
+#[test]
+fn an_update_answers_with_the_records_values_over_the_files() {
+    let (e, notes, store) = opened();
+    let open = e.session.current().unwrap();
+    let journal = open.vault.journal(store).unwrap();
+    notes.create_day(&open, new_day()).unwrap();
+    journal
+        .set_property(DAY.into(), "p3c".into(), r#""c-val""#.into())
+        .unwrap();
+    let updated = notes
+        .update_day(
+            &open,
+            DayUpdate {
+                date: DAY.into(),
+                content: Some("Other words.".into()),
+                ..DayUpdate::default()
+            },
+        )
+        .unwrap();
+    assert_eq!(
+        updated.entry.properties,
+        json!({ "mood": "calm", "rating": 4, "p3c": "c-val" })
+            .as_object()
+            .cloned()
+    );
 }
 
 /// Keys the record never holds (`aliases`, a cover) and one an outside edit added that the

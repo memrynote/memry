@@ -23,7 +23,9 @@
 use crate::api::errors::{ApiError, StorageError};
 use crate::storage::Db;
 
-use super::body_pull::{BodyPull, BodyPullError, BodyPullReport, PROBE_CHUNK, Probed};
+use super::body_pull::{
+    BodyPull, BodyPullError, BodyPullReport, PROBE_CHUNK, Probed, RateLimitPauses,
+};
 use super::{body_debt, body_heal};
 
 /// Requests one pass's body step may send. The first document always runs,
@@ -54,7 +56,10 @@ pub async fn run(db: &Db, body_pull: &BodyPull) -> Result<BodyStep, StorageError
             more_due = true;
             break;
         }
-        let mut probed = match body_pull.probe(chunk, &mut total.requests, 0).await {
+        let mut probed = match body_pull
+            .probe(chunk, &mut total.requests, &mut RateLimitPauses::new(0))
+            .await
+        {
             Ok(probed) => probed,
             Err(BodyPullError::Storage { source }) => return Err(source),
             Err(BodyPullError::Api { .. }) => Default::default(),

@@ -54,7 +54,7 @@ use memry_core::markdown::frontmatter::{
 use memry_core::markdown::shared::writing_tools::merge_writing_yaml;
 use serde_json::{Map, Value};
 
-use super::{JournalEntryView, SCOPE, day_path, entry, is_reserved_day_key, view_of};
+use super::{JournalEntryView, SCOPE, day_path, is_reserved_day_key, view_of};
 use crate::journal::folder_follow::{Follow, follow_moved_journal};
 use crate::locks::Locks;
 use crate::notes::create::{Seed, remove_file, remove_row};
@@ -146,7 +146,7 @@ impl NotesService {
         let mut lane = rows.lane_of(session)?;
         let existing = |lane| {
             drop(lane);
-            answer(open, &journal, date)
+            self.answer(open, &journal, date)
         };
         let rel = match journal.stamp(date)? {
             Some(DayStamp {
@@ -480,13 +480,18 @@ fn text_of(
     Err(NotesError::DayTextUnwritable(why))
 }
 
-/// The day as a read of it answers, for a create that found it made.
-pub(super) fn answer(
-    open: &OpenVault,
-    journal: &Journal,
-    date: &str,
-) -> Result<JournalEntryView, NotesError> {
-    entry(open, journal, date)?.ok_or_else(|| NotesError::NotFound(date.to_owned()))
+impl NotesService {
+    /// The day as the page reads it ([`NotesService::day_entry`]), for a create that found it
+    /// made and an update: the record's property values over the file's.
+    pub(super) fn answer(
+        &self,
+        open: &OpenVault,
+        journal: &Journal,
+        date: &str,
+    ) -> Result<JournalEntryView, NotesError> {
+        self.day_entry(open, journal, date)?
+            .ok_or_else(|| NotesError::NotFound(date.to_owned()))
+    }
 }
 
 /// Days are written in order by date: a day's record id is known only once it is opened.

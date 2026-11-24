@@ -147,7 +147,10 @@ impl Pass {
                     !is_reserved_day_key(name) && !is_reserved_key(name, value)
                 });
                 let mut frontmatter = day_frontmatter(date, &unfiled.tags, &properties);
-                with_aliases(&mut frontmatter, &unfiled.aliases);
+                with_aliases(
+                    &mut frontmatter,
+                    unfiled.aliases.as_deref().unwrap_or_default(),
+                );
                 (rel, day_file(&frontmatter, ""))
             }
             None => {
@@ -158,7 +161,10 @@ impl Pass {
                 let rel = free_path(lane, root, root, &unfiled.title, folder)
                     .map_err(|error| Outcome::Broken(format!("no path for the note: {error}")))?;
                 let mut frontmatter = new_file_frontmatter(&unfiled.tags, &unfiled.properties);
-                with_aliases(&mut frontmatter, &unfiled.aliases);
+                with_aliases(
+                    &mut frontmatter,
+                    unfiled.aliases.as_deref().unwrap_or_default(),
+                );
                 // A `cover` property that is no cover is the user's; a remote cover never
                 // replaces it (`applyNoteCoverToFrontmatter`).
                 let cover = unfiled.cover.as_ref().map(cover_frontmatter);

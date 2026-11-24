@@ -194,7 +194,7 @@ impl Applier {
         let source = walk_or_watcher(scan.as_deref());
         match lane.row_at(path) {
             Ok(Some(row)) => {
-                return self.changed(lane, &row.note_id, path, size, modified_ms, scan);
+                return self.found_at_row(lane, &row.note_id, path, size, modified_ms, scan);
             }
             Ok(None) => {}
             Err(error) => {
@@ -270,18 +270,18 @@ impl Applier {
             tracing::error!(scope = SCOPE, note_id, "the row was not recorded: {error}");
             return Step::Retry(path.to_owned());
         }
+        self.report_found(path, &note_id, created, scan);
         lane.publish(Applied::Added {
             note_id,
             path: path.to_owned(),
             created,
             source,
         });
-        self.report_found(path, created, scan);
         Step::Done
     }
 
     /// The note's file at `path` differs from its row.
-    fn changed(
+    pub(super) fn changed(
         &self,
         lane: &mut Lane<'_>,
         note_id: &str,

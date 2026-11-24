@@ -14,9 +14,10 @@ use memry_core::crdt::epoch::HeldBody;
 use memry_core::crdt::registry::UpdateSink;
 use memry_core::crdt::{BODY_FRAGMENT, DocumentRegistry, update_log};
 use memry_core::domain::external_feed::{FeedInput, FeedOutcome};
+use memry_core::domain::note_stats::header_tags;
 use memry_core::domain::notes::identity::Adopted;
 use memry_core::domain::notes::journal_day::FileDay;
-use memry_core::markdown::frontmatter::{parse_markdown_note, split_frontmatter_block};
+use memry_core::markdown::frontmatter::{YamlValue, parse_markdown_note, split_frontmatter_block};
 use memry_core::markdown::shared::writing_tools::writing_of_yaml;
 use memry_core::seams::secure_store::SecureStore;
 use memry_core::storage::OpenOptions;
@@ -109,15 +110,20 @@ impl Fixture {
         id
     }
 
-    /// [`Self::adopt`] for the journal day `date` at `rel`, as the vault tier names it.
+    /// [`Self::adopt`] for the journal day `date` at `rel`, as the vault tier names it: the day
+    /// takes the file's header tags, as the identity's adoption does.
     pub(super) fn adopt_day(&mut self, rel: &str, date: &str, text: &str) -> String {
+        let tags = match parse_markdown_note(text).map(|parsed| parsed.frontmatter) {
+            Ok(YamlValue::Map(map)) => header_tags(&map),
+            _ => Vec::new(),
+        };
         let day = FileDay {
             path: rel,
             date,
             title: date,
             folder_path: None,
             body: "",
-            tags: &[],
+            tags: &tags,
             created_ms: 0,
             modified_ms: 0,
             electron_db_beside: false,
