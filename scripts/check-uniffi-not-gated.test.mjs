@@ -64,6 +64,32 @@ const gated = {
     'lib.rs': '#[cfg(feature = "semantic")]\npub mod api;\n',
     'api/mod.rs': 'mod search;\n',
     'api/search.rs': EXPORT
+  },
+  'a gated file whose first item is no export': {
+    'lib.rs': 'mod api;\n',
+    'api.rs': `#![cfg(feature = "semantic")]\nfn helper() {}\n${EXPORT}`
+  },
+  'a submodule of a gated file': {
+    'lib.rs': 'mod api;\n',
+    'api.rs': '#![cfg(feature = "semantic")]\nmod search;\n',
+    'api/search.rs': EXPORT
+  },
+  'a submodule of a gated mod.rs': {
+    'lib.rs': 'mod api;\n',
+    'api/mod.rs': '#![cfg(feature = "semantic")]\nmod search;\n',
+    'api/search.rs': EXPORT
+  },
+  'a file module of a gated inline module': {
+    'lib.rs': '#[cfg(feature = "semantic")]\nmod api {\n    mod search;\n}\n',
+    'api/search.rs': EXPORT
+  },
+  'stacked attributes before a gated module': {
+    'lib.rs': '#[cfg(feature = "semantic")]\n#[allow(dead_code)]\npub mod api;\n',
+    'api.rs': EXPORT
+  },
+  'stacked attributes before a gated generic impl': {
+    'lib.rs':
+      '#[cfg(feature = "semantic")]\n#[allow(dead_code)]\nimpl<A, B> Index<A, B> {\n    #[uniffi::constructor]\n    pub fn new() -> Self {\n        Index\n    }\n}\n'
   }
 }
 
@@ -102,6 +128,14 @@ describe('check-uniffi-not-gated', () => {
     const result = check({ 'lib.rs': `#[cfg(feature = "semantic")]\nmod gone;\n${EXPORT}` })
     assert.equal(result.status, 1)
     assert.match(result.stderr, /cannot find/)
+  })
+
+  it('fails on an import from uniffi, since attributes written through it name no uniffi path', () => {
+    const result = check({
+      'lib.rs': `${EXPORT}use uniffi::Record;\n\n#[derive(Record)]\npub struct Hit {}\n`
+    })
+    assert.equal(result.status, 1, result.stdout)
+    assert.match(result.stderr, /lib\.rs:3 imports from uniffi/)
   })
 
   it('fails when it sees no export, since the root is then wrong', () => {

@@ -9,8 +9,17 @@
  *
  * An export is a `uniffi::` attribute or derive, or a `uniffi::…!` macro.
  * Gated means the cfg sits on the export's item, on an item around it, on an
- * item inside it (a method, a field), or on the module or file that holds it.
- * A cfg inside a function body gates only the implementation and is allowed.
+ * item inside it (a method, a field), or on a module or file above it at any
+ * depth. A cfg inside a function body gates only the implementation and is
+ * allowed. A `use uniffi::` import fails too: `#[export]` or
+ * `#[derive(Record)]` written through it carries no `uniffi::` to find.
+ *
+ * Known limits:
+ * - A `macro_rules!` macro whose body holds an export, called behind the cfg,
+ *   passes: the export sits in the ungated definition.
+ * - `#[cfg_attr(not(feature = "semantic"), allow(dead_code))]` on an export
+ *   fails although it only toggles a lint. The error is on the safe side; put
+ *   the lint attribute on the implementation instead.
  *
  *   node scripts/check-uniffi-not-gated.mjs [crate-src-dir]
  */
@@ -142,11 +151,9 @@ function scan(src) {
     else if (next && !next.inner && /^\s*$/.test(code.slice(attr.end, next.start))) {
       attr.from = attr.start
       attr.to = next.to
-      attr.item = next.item
     } else {
       attr.from = attr.start
-      attr.item = code.slice(attr.end).search(/\S/) + attr.end
-      attr.to = extent(code, attr.item).end
+      attr.to = extent(code, code.slice(attr.end).search(/\S/) + attr.end).end
     }
   }
   const exports = attrs.filter((attr) => /\buniffi::/.test(attr.text))
@@ -163,13 +170,18 @@ function scan(src) {
   return { code, exports, gates }
 }
 
-/** `mod name;` declared in `file` resolves to these files and everything under its directory. */
-function moduleFiles(file, name, files) {
+/** Every `mod name;` in `file`, with the path its file sits at below any inline modules. */
+function declaredModules(file, code) {
   const stem = basename(file, '.rs')
   const dir = ['mod', 'lib', 'main'].includes(stem) ? dirname(file) : join(dirname(file), stem)
-  const own = join(dir, name)
-  const matched = files.filter((f) => f === `${own}.rs` || f.startsWith(`${own}${sep}`))
-  return matched.length > 0 ? matched : null
+  const inline = [...code.matchAll(/\bmod\s+(?:r#)?(\w+)\s*\{/g)].map((m) => {
+    const open = m.index + m[0].length - 1
+    return { name: m[1], open, end: matchForward(code, open) }
+  })
+  return [...code.matchAll(/\bmod\s+(?:r#)?(\w+)\s*;/g)].map((m) => {
+    const around = inline.filter(({ open, end }) => open < m.index && m.index < end)
+    return { at: m.index, name: m[1], path: join(dir, ...around.map(({ name }) => name), m[1]) }
+  })
 }
 
 const lineOf = (src, at) => src.slice(0, at).split('\n').length
@@ -188,16 +200,19 @@ for (const file of files) {
 const violations = []
 const gatedFiles = new Map()
 for (const [file, { src, code, exports, gates }] of scanned) {
+  for (const m of code.matchAll(/\buse\s+(?:::)?uniffi\b/g))
+    violations.push(
+      `${show(file)}:${lineOf(src, m.index)} imports from uniffi; write the \`uniffi::\` path in each attribute so this check sees the export`
+    )
+  const modules = declaredModules(file, code)
   for (const gate of gates) {
     const where = `${show(file)}:${lineOf(src, gate.start)} ${gate.text.replace(/\s+/g, ' ')}`
-    const declared = gate.inner
-      ? null
-      : /^(?:pub\s*(?:\([^)]*\))?\s*)?mod\s+(\w+)\s*;/.exec(code.slice(gate.item))
-    if (declared) {
-      const inside = moduleFiles(file, declared[1], files)
-      if (!inside)
-        violations.push(`${where}: gates \`mod ${declared[1]}\`, whose file this check cannot find`)
-      for (const f of inside ?? []) gatedFiles.set(f, where)
+    for (const { at, name, path } of modules) {
+      if (at < gate.from || gate.to <= at) continue
+      const inside = files.filter((f) => f === `${path}.rs` || f.startsWith(`${path}${sep}`))
+      if (inside.length === 0)
+        violations.push(`${where}: gates \`mod ${name}\`, whose file this check cannot find`)
+      for (const f of inside) gatedFiles.set(f, where)
     }
     for (const exp of exports)
       if (exp.from < gate.to && gate.from < exp.to)
