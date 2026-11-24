@@ -55,8 +55,8 @@ struct NoteBlockView: View {
     /// drawn as broken. `nil` until the vault's notes are read, which draws
     /// every link as whole rather than guessing.
     @Environment(\.noteTitleExists) private var titleExists
-    /// Review marks this block may carry, already narrowed to ones whose
-    /// text is unambiguous in the note (see `ReviewMarkStyle`).
+    /// Review marks this block may carry: unambiguous in the note, each
+    /// `visibleText` the words it shows (see `ReviewMarkStyle`).
     @Environment(\.reviewMarks) private var reviewMarks
     @Environment(\.taskCards) private var taskCards
 

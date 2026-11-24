@@ -52,7 +52,7 @@ import {
   createDeferredDeletes,
   type DeferredDeletes,
   buildStatRenameKey,
-  buildFileIdentityKey,
+  buildAddedFileIdentityKey,
   processRename,
   type RenameMatch
 } from './rename-tracker'
@@ -641,12 +641,14 @@ export class VaultWatcher {
   private async handleFileAdd(eventPath: string): Promise<void> {
     if (!this.vaultPath) return
     const absolutePath = this.inDiskCase(eventPath)
-
-    // The echo of the app's own write. Other bytes are an edit, however soon
-    // after an app write they land (#5605).
-    if (await this.isOwnWrite(absolutePath)) return
+    let echo = false
 
     try {
+      // The echo of the app's own write. Other bytes are an edit, however soon
+      // after an app write they land (#5605).
+      echo = await this.isOwnWrite(absolutePath)
+      if (echo) return
+
       const relativePath = normalizeRelativePath(path.relative(this.vaultPath, absolutePath))
       const fileType = getFileType(getExtension(absolutePath))
 
@@ -715,8 +717,9 @@ export class VaultWatcher {
       this.onError?.(error)
     } finally {
       // A file moved into a locked folder, a locked note renamed or a locked
-      // file recreated from outside comes in writable.
-      await protectLockedFile(absolutePath)
+      // file recreated from outside comes in writable. The app's own write is
+      // left alone: `protectLockedFile` would take it as replaced from outside.
+      if (!echo) await protectLockedFile(absolutePath)
     }
   }
 
@@ -986,7 +989,7 @@ export class VaultWatcher {
     const scan = await scanMarkdownFile(absolutePath, 0)
     const contentHash = scan?.contentHash ?? null
     const statKeys = [
-      buildFileIdentityKey(stats),
+      buildAddedFileIdentityKey(stats),
       buildStatRenameKey(stats.size, stats.mtime.toISOString())
     ]
 
@@ -1155,11 +1158,13 @@ export class VaultWatcher {
   private async handleFileChange(eventPath: string): Promise<void> {
     if (!this.vaultPath) return
     const absolutePath = this.inDiskCase(eventPath)
-
-    // The echo of the app's own write (see `handleFileAdd`).
-    if (await this.isOwnWrite(absolutePath)) return
+    let echo = false
 
     try {
+      // The echo of the app's own write (see `handleFileAdd`).
+      echo = await this.isOwnWrite(absolutePath)
+      if (echo) return
+
       const relativePath = normalizeRelativePath(path.relative(this.vaultPath, absolutePath))
       const fileType = getFileType(getExtension(absolutePath))
 
@@ -1193,7 +1198,7 @@ export class VaultWatcher {
       this.onError?.(error)
     } finally {
       // `atomic` reports a quick delete and recreate as a change.
-      await protectLockedFile(absolutePath)
+      if (!echo) await protectLockedFile(absolutePath)
     }
   }
 

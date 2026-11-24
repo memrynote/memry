@@ -1,4 +1,5 @@
 import { SyncEventEmitter } from '@memry/sync-client/emitter'
+import type { DownloadClaim } from './attachment-download-state'
 import { createLogger } from './logging'
 
 const log = createLogger('AttachmentEvents')
@@ -8,7 +9,8 @@ interface AttachmentSavedEvent {
   diskPath: string
 }
 
-interface AttachmentDownloadNeededEvent {
+/** A file a note names, and where it lands on this device. */
+export interface NoteFileDownload {
   noteId: string
   attachmentId: string
   /**
@@ -29,6 +31,11 @@ interface AttachmentDownloadNeededEvent {
   recencyHint?: number
   /** Called once the blob has landed at `diskPath` (binary-note flow only). */
   landed?: () => void
+}
+
+export interface AttachmentDownloadNeededEvent extends NoteFileDownload {
+  /** The requester's hold on the download: the listener settles or releases it. */
+  claim: DownloadClaim
 }
 
 type DownloadNeededHandler = (event: AttachmentDownloadNeededEvent) => void

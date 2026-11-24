@@ -45,6 +45,12 @@
     }
   },
   "page": {
+    "noteFiles": {
+      "downloading": "Pobieranie plików tej notatki…",
+      "failed": "Nie udało się pobrać plików tej notatki: {error}",
+      "failedFallback": "pobieranie nie powiodło się",
+      "retry": "Spróbuj ponownie"
+    },
     "empty": {
       "title": "Nie wybrano notatki",
       "body": "Wybierz notatkę na pasku bocznym, aby ją wyświetlić"

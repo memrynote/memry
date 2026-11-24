@@ -25,7 +25,10 @@ import {
 } from '@tests/utils/test-db'
 import { insertNoteCache } from '@main/database/queries/notes'
 import { upsertNoteMetadata } from '@memry/storage-data'
-import { attachmentEvents } from '@memry/sync-client/attachment-events'
+import {
+  attachmentEvents,
+  type AttachmentDownloadNeededEvent
+} from '@memry/sync-client/attachment-events'
 import type { NoteSyncPayload } from '@memry/contracts/sync-payloads'
 import type * as AttachmentBackfill from '../sync/attachment-backfill'
 
@@ -427,8 +430,7 @@ describe.runIf(fileSystemIgnoresCase())('binary case twins sharing one file', ()
 
   // The downloader drops a request with no token or with auto-download off by
   // releasing it, the same outcome as an emit with no listener.
-  const dropRequest = (event: { noteId: string; attachmentId: string }) =>
-    releaseDownloadAttempt(event.noteId, event.attachmentId)
+  const dropRequest = (event: AttachmentDownloadNeededEvent) => releaseDownloadAttempt(event.claim)
   for (const [how, drop] of [
     ['no downloader', null],
     ['a downloader that drops it', dropRequest]

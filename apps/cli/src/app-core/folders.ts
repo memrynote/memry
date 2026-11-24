@@ -1,5 +1,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
+import { caseTwinUnderFolder } from './case-twins.ts'
+import type { DataDb } from './database.ts'
 import { errorCode } from './errno.ts'
 import { ATTACHMENTS_DIR, CANVAS_DIR, normalizePath, type VaultConfig } from './paths.ts'
 
@@ -84,10 +86,12 @@ export function listTreeFolders(vaultPath: string, config: VaultConfig): Promise
 
 export function createFoldersService({
   vaultPath,
-  config
+  config,
+  dataDb
 }: {
   vaultPath: string
   config: VaultConfig
+  dataDb: DataDb
 }): FoldersService {
   // Folder paths are vault-relative (#1204): `defaultNoteFolder` is where an
   // unplaced note lands, not a notes root to resolve folders under.
@@ -104,6 +108,13 @@ export function createFoldersService({
     async rename(oldPath, newPath) {
       const oldNormalized = normalizePath(oldPath)
       const newNormalized = normalizePath(newPath)
+      // The rename leaves the notes' rows behind, and desktop pairs one row to a moved file (#5650).
+      const twin = await caseTwinUnderFolder(dataDb, root, oldNormalized)
+      if (twin) {
+        throw new Error(
+          `Refusing to rename folder "${oldPath}": note "${twin.path}" shares its file with a case twin on this case-insensitive disk, and the rename would leave one of them without a file.`
+        )
+      }
       await fs.mkdir(path.dirname(path.join(root, newNormalized)), { recursive: true })
       await fs.rename(path.join(root, oldNormalized), path.join(root, newNormalized))
       return { path: newNormalized }
