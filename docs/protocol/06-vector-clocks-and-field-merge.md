@@ -586,31 +586,37 @@ left the row with no payload, a local edit seeds an empty payload, and its push
 waits until a by-id re-pull merges the server's copy, so the edit cannot
 replace the account's settings with one key
 (`crates/memry-core/src/domain/settings.rs:148-156`,
-`crates/memry-core/src/sync/unknown_signer.rs:86-92`, `:110-116`).
+`crates/memry-core/src/sync/unknown_signer.rs:89-95`, `:113-119`).
 
 **Every unknown-signer hold follows one rule, settings or not.** A pulled
 record refused only because its signer is missing from the pass's device
 directory records a hold on its `(type, id)`, and a queued edit of that row
 stays out of the push while the hold waits
-(`crates/memry-core/src/sync/unknown_signer.rs:86-92`, `:110-116`). Each pass
+(`crates/memry-core/src/sync/unknown_signer.rs:89-95`, `:113-119`). Each pass
 re-pulls every waiting hold by id over that pass's fresh directory: each
 settings hold on its own, so another record's answer never counts toward it,
-and every other hold in one batch (`:122-140`). A verified record for the id
-ends the hold (`:96-105`). Otherwise the hold gives up after 5 attempts or 50
+and every other hold in one batch (`:125-143`). A verified record for the id
+ends the hold (`:99-108`). Otherwise the hold gives up after 5 attempts or 50
 failures, whichever comes first, and the queued edit then pushes
-(`:59`, `:64`, `:224-226`). One re-pull counts as follows
-(`:158-174`, `:180-221`):
+(`:62`, `:67`, `:234-236`). One re-pull counts as follows
+(`:161-177`, `:183-231`):
 
 - **Attempt**: only a well-formed page that leaves the id out, with no dropped
   page and no record still unverifiable.
 - **Failure**: the server's own answer about the request: a record still
-  unverifiable, or a 4xx other than 429 that carries the server's error code.
+  unverifiable, or a 4xx other than 429 that carries the server's error code
+  and that the client keeps as a plain status
+  (`crates/memry-core/src/protocol/http.rs:491-495`).
 - **Never counts**: a transport failure, a 5xx, a 429, a 200 that is no pull
   envelope (a dropped page or a malformed body), or a 4xx with no error code.
   A captive portal or proxy answers in these shapes (a sign-in page, `{}`, a
   403, a 407). Counted, they would release the hold, and a held settings edit
   would push over the account's settings on the next good network
-  (VERIFY-5447 r4 #8).
+  (VERIFY-5447 r4 #8). Nor does a 4xx the client turns into its own error,
+  because it is about the session, device or plan, not the record: any 401, a
+  revoked device, a 402 vault limit, a 403 with writes disabled, a 409 device
+  limit, or a 426 upgrade-required
+  (`crates/memry-core/src/protocol/http.rs:427-461`).
 
 **Desktop divergence.** Desktop has no hold and no re-pull. It skips a pulled
 record whose signer has no public key as a decrypt failure that is not a crypto
