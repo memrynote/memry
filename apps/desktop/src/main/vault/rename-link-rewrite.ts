@@ -45,6 +45,7 @@ import { getIndexDatabase, type IndexDb } from '../database'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
 import { feedBodyEdit, writeFedBodyEdit } from '../sync/writeback-baseline'
 import { takeWritebackTurn } from '../sync/crdt-writeback'
+import { crdtWriteback } from '../sync/crdt-writeback-port'
 import { recordAppWrite } from './app-writes'
 import { rewriteWikiLinksToNote, type WikiLinkNames } from '@memry/shared/rewrite-wiki-links'
 import { parseNote } from './frontmatter'
@@ -181,9 +182,10 @@ async function rewriteSource(
  * and the bytes read before it would write over it.
  *
  * `samePick` says whether `rewrite` edits the same spot in the bytes read
- * before the feed and in the bytes read in the turn. When it does not, the
- * file is left as it is: the doc holds the rewrite, and its next write-back
- * brings the file level. `true` then when the doc was fed.
+ * before the feed and in the bytes read in the turn. When it does not and the
+ * doc was fed, the file is left as it is: the doc holds the rewrite, and a
+ * write-back scheduled here brings the file level, so `true`. A doc that was
+ * not fed holds nothing, so the file gets the rewrite of the bytes it holds.
  */
 export async function landSourceRewrite(
   db: IndexDb,
@@ -216,9 +218,10 @@ export async function landSourceRewrite(
       log.warn('Dropped a link rewrite: its source no longer holds the link', { sourceId })
       return false
     }
-    if (source.samePick && !source.samePick(original, current)) {
-      log.warn('Left a link out of the file: its body changed during the feed', { sourceId, fed })
-      return fed
+    if (fed && source.samePick && !source.samePick(original, current)) {
+      log.warn('Left a link to the write-back: the body changed during the feed', { sourceId })
+      crdtWriteback().retryWriteback(sourceId)
+      return true
     }
     await writeSourceRewrite(db, cached, { ...source, path: sourcePath, content }, fed)
     return true
