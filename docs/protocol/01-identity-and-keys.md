@@ -481,11 +481,14 @@ pass settles them. The decision is a pure function of five facts
    `crates/memry-core/src/sync/journal_day_merge/owed.rs:201`). Both count
    none when no upsert of `F` is queued and the tombstone's clock covers
    `F`'s row clock. Desktop also needs the row unedited since its sync, its
-   `syncedAt`, which an acked push stamps as well as a pull
-   (`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:271`): an
+   `syncedAt`, which a pull stamps and an acked push stamps with the
+   `modifiedAt` its payload was read at, so an edit made between the read
+   and the ack still reads as edited
+   (`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:278`): an
    edit made outside the app is neither ticked nor queued until the next
-   start's dirty sweep queues it at the same clock
-   (`apps/desktop/src/main/sync/journal-day-merge.ts:221`). Otherwise
+   start's dirty sweep queues it under a fresh clock
+   (`apps/desktop/src/main/sync/journal-day-merge.ts:221`,
+   `apps/desktop/src/main/sync/dirty-recovery.ts:286`). Otherwise
    desktop counts every holder tag, its day file's: it keeps no snapshot of
    the tags last synced. The core counts the tags absent from the snapshot
    of `F`'s row taken before its first unpushed edit, kept in `meta` under
@@ -591,9 +594,13 @@ there lives only in its Yjs state
 - A task that links `F` and reaches this device after the merge settled keeps
   the dead link.
 - Desktop keeps no snapshot of a holder's last synced tags. When its holder
-  `F` has an unpushed tag edit, or a row edited after its last acked push
-  or pull, desktop adds back every holder tag of a deleted `F`, and the
-  core adds only those absent from its snapshot. So a tag the deleting device saw and removed
-  from `j<D>` comes back through a desktop device that also edited `F`
-  offline or outside the app, and not through the core. No tag is lost
-  either way.
+  `F` has an unpushed tag edit, or a row edited after the state its last
+  acked push carried or its last pull, desktop adds back every holder tag
+  of a deleted `F`, and the core adds only those absent from its snapshot.
+  So a tag the deleting device saw and removed from `j<D>` comes back
+  through a desktop device that also edited `F` offline or outside the
+  app, and not through the core. An ack only marks clean what the server
+  holds: the dirty sweep re-pushes an edit made outside the app under a
+  fresh clock, which a tombstone of `F` refuses as delete-wins and never
+  acks as a replay, so neither client drops a tag the deleting device
+  never saw.

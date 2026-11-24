@@ -8,6 +8,7 @@ import { noteMetadata, tasks } from '@memry/db-schema/data-schema'
 import { taskNotes } from '@memry/db-schema/schema/task-relations'
 import { syncDevices } from '@memry/db-schema/schema/sync-devices'
 import {
+  asClientDb,
   asSyncDb,
   createTestDataDb,
   createTestIndexDb,
@@ -85,7 +86,10 @@ vi.mock('../journal/runtime-effects', () => ({
   initializeJournalCrdt: vi.fn(async () => {})
 }))
 vi.mock('../tasks/publisher', () => ({ createTasksPublisher: () => ({}) }))
-vi.mock('./journal-sync', () => ({ getJournalSyncService: () => journalSync }))
+vi.mock('./journal-sync', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  getJournalSyncService: () => journalSync
+}))
 vi.mock('./crdt-provider', () => ({
   getCrdtProvider: () => ({
     hasDocState: async (id: string) => {
@@ -150,6 +154,9 @@ import { listPendingDeletes } from './pending-deletes'
 import { ItemApplier } from './apply-item'
 import { syncQueue } from '@memry/db-schema/schema/sync-queue'
 import { parseJournalEntry } from '../vault/journal'
+import { SyncQueueManager } from '@memry/sync-client/queue'
+import { JournalSyncService } from './journal-sync'
+import { recoverDirtyItems } from './dirty-recovery'
 
 const DATE = '2026-06-09'
 const DAY = `j${DATE}`
@@ -892,4 +899,133 @@ describe('runJournalDayMerges', () => {
       })
     }
   )
+  // A holder `F` at `{me: 1}`, held here with tags a, b, c; device B merged it
+  // into the day as a, b and deleted it at `{me: 1, b: 1}`. Each case pushes
+  // `F` against a server holding that tombstone. The server refuses the push
+  // (apps/sync-server/src/services/sync.ts `detectReplay`): a clock the
+  // tombstone covers is a replay and is acked, any other loses to the delete
+  // and is not. Either way the queue row goes, as in push-coordinator.
+  describe('a holder pushed against a peer tombstone', () => {
+    const TOMBSTONE = { me: 1, b: 1 }
+    const holderFile = (tags: string[]): string =>
+      `---\ntags:\n${tags.map((t) => `  - ${t}\n`).join('')}---\nheld\n`
+    let queue: SyncQueueManager
+    let service: JournalSyncService
+    const sweep = () =>
+      recoverDirtyItems(
+        data.db as never,
+        {
+          getLocal: (type: string) => (type === 'journal' ? service : undefined)
+        } as unknown as Parameters<typeof recoverDirtyItems>[1]
+      )
+    const clockOf = () =>
+      data.db.select().from(noteMetadata).where(eq(noteMetadata.id, FOREIGN)).get()?.clock
+    const build = (): Record<string, number> =>
+      (
+        JSON.parse(journalHandler.buildPushPayload(ctx.db, FOREIGN, 'me', 'update') ?? '{}') as {
+          clock: Record<string, number>
+        }
+      ).clock
+    const answer = (pushed: Record<string, number>): void => {
+      const covered = Object.entries(pushed).every(([d, n]) => n <= (TOMBSTONE[d as 'me'] ?? 0))
+      if (covered) journalHandler.markPushSynced(ctx.db, FOREIGN)
+      for (const row of queue.peek(10)) queue.markSuccess(row.id)
+    }
+    const peerMerged = async (order: 'day first' | 'tombstone first'): Promise<string[]> => {
+      const applier = new ItemApplier(ctx.db, vi.fn())
+      const day = () =>
+        applier.apply({
+          itemId: DAY,
+          type: 'journal',
+          operation: 'update',
+          content: new TextEncoder().encode(
+            JSON.stringify({ date: DATE, content: 'canonical\n', tags: ['a', 'b'] })
+          ),
+          clock: { b: 2 }
+        })
+      const tombstone = () =>
+        applier.apply({
+          itemId: FOREIGN,
+          type: 'journal',
+          operation: 'delete',
+          content: new TextEncoder().encode(JSON.stringify({ clock: TOMBSTONE })),
+          clock: TOMBSTONE,
+          deletedAt: Date.now()
+        })
+      if (order === 'day first') {
+        day()
+        tombstone()
+      } else {
+        tombstone()
+        day()
+      }
+      await drain()
+      return parseJournalEntry(dayFile(), DATE).frontmatter.tags ?? []
+    }
+
+    beforeEach(() => {
+      queue = new SyncQueueManager(asClientDb(data.db))
+      service = new JournalSyncService({ queue, getDeviceId: () => 'me' })
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    // Tag c was added outside the app, which never ticks the clock; the next
+    // start's dirty sweep queues it (VERIFY-5691R2).
+    it.each(['day first', 'tombstone first'] as const)(
+      'keeps a tag added outside the app and recovered at start, %s',
+      async (order) => {
+        foreignRow(
+          { me: 1 },
+          { body: holderFile(['a', 'b', 'c']), syncedAt: '2026-06-09T07:00:00.000Z' }
+        )
+        expect(sweep().journals).toBe(1)
+        answer(build())
+
+        expect(await peerMerged(order)).toEqual(['a', 'b', 'c'])
+      }
+    )
+
+    // Tag c lands outside the app after the push payload was read and before
+    // its ack, in the ack's millisecond or before it.
+    it.each([
+      ['in the ack millisecond, day first', 0, 'day first'],
+      ['in the ack millisecond, tombstone first', 0, 'tombstone first'],
+      ['before the ack, day first', 5, 'day first']
+    ] as const)(
+      'keeps a tag added outside the app during its push, %s',
+      async (_c, ackLag, order) => {
+        vi.useFakeTimers({ toFake: ['Date'] })
+        foreignRow({ me: 1 }, { body: holderFile(['a', 'b']) })
+        vi.setSystemTime(new Date('2026-06-09T09:00:00.000Z'))
+        const pushed = build()
+        const edit = new Date('2026-06-09T09:00:00.100Z')
+        fs.writeFileSync(path.join(vaultPath, DAY_PATH), holderFile(['a', 'b', 'c']))
+        data.db
+          .update(noteMetadata)
+          .set({ modifiedAt: edit.toISOString() })
+          .where(eq(noteMetadata.id, FOREIGN))
+          .run()
+        vi.setSystemTime(new Date(edit.getTime() + ackLag))
+        answer(pushed)
+
+        expect(await peerMerged(order)).toEqual(['a', 'b', 'c'])
+      }
+    )
+
+    it('does not bump or re-push a holder in step on the next start', () => {
+      foreignRow({ me: 1 }, { body: holderFile(['a', 'b']) })
+      service.enqueueUpdate(FOREIGN, DATE)
+      expect(clockOf()).toEqual({ me: 2 })
+      journalHandler.buildPushPayload(ctx.db, FOREIGN, 'me', 'update')
+      journalHandler.markPushSynced(ctx.db, FOREIGN)
+      for (const row of queue.peek(10)) queue.markSuccess(row.id)
+
+      expect(sweep().journals).toBe(0)
+      expect(queue.getPendingCount()).toBe(0)
+      expect(clockOf()).toEqual({ me: 2 })
+    })
+  })
 })

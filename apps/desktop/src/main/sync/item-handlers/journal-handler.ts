@@ -50,6 +50,8 @@ const log = createLogger('JournalHandler')
 class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
   readonly type = 'journal' as const
   readonly schema = JournalSyncPayloadSchema
+  /** Each journal's `modifiedAt` as its last push payload read it, until the ack. */
+  private readonly pushedModifiedAt = new Map<string, string>()
 
   applyUpsert(
     ctx: ApplyContext,
@@ -267,9 +269,16 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
    * Stamp the journal as "the server has this state", as notes do. Without it
    * `syncedAt` recorded only pulls, so every journal minted here read as
    * edited to the dirty sweep and to the day merge's holder weighing (#5659).
+   *
+   * The stamp is the `modifiedAt` the pushed payload was read at, not the ack
+   * time: an edit made outside the app between the read and the ack (in the
+   * ack's millisecond too) is not on the server, so it must still read as
+   * edited (VERIFY-5691R2). An ack with no payload read here stamps the time.
    */
   markPushSynced(db: DrizzleDb, itemId: string): void {
-    updateNoteMetadata(db, itemId, { syncedAt: utcNow() })
+    const pushed = this.pushedModifiedAt.get(itemId)
+    this.pushedModifiedAt.delete(itemId)
+    updateNoteMetadata(db, itemId, { syncedAt: pushed ?? utcNow() })
   }
 
   buildPushPayload(
@@ -280,6 +289,7 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
   ): string | null {
     const cached = getNoteMetadataById(db, itemId)
     if (!cached?.journalDate) return null
+    this.pushedModifiedAt.set(itemId, cached.modifiedAt)
 
     let content: string | null = null
     let tags: string[] = []

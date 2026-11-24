@@ -262,7 +262,7 @@ const recoverDirtyInbox: DirtySweep = {
  * argument the note one does not. Folding them together would mean carrying the
  * date and a service switch through a query that currently needs neither.
  *
- * The `date` handed to `enqueueRecoveredUpdate` is load-bearing.
+ * The `date` handed to `enqueueUpdate` is load-bearing.
  * `JournalSyncService.buildSnapshotPayload` resolves the journal's file path
  * from it *before* its own try/catch, and `formatJournalFilename` does
  * `isoDate.split('-')`, so recovering a journal without one throws out of this
@@ -270,9 +270,18 @@ const recoverDirtyInbox: DirtySweep = {
  *
  * Same narrow scope as notes: only journals the server already knows (`clock`
  * set) and that are not local-only. Clock-less journals belong to
- * `journalHandler.seedUnclocked`. The enqueue reuses the stored clock rather
- * than bumping it, so a journal that is actually in step is replay-detected
- * server side and simply stamped as synced.
+ * `journalHandler.seedUnclocked`.
+ *
+ * Invariant: a recovered journal edit always carries a fresh clock; an ack
+ * only marks clean what the server holds. So, like the inbox arm, this bumps
+ * the clock (`enqueueUpdate`). A day file edited outside the app is never
+ * ticked, so replaying its stored clock reads as a replay to a server that
+ * holds a later version or a tombstone, and the replay ack
+ * (`journalHandler.markPushSynced`) would mark an edit clean that never left
+ * this device: the day merge then drops its tags (VERIFY-5691R2). Bumped, the
+ * edit is a real write: concurrent with a peer's tombstone it is refused as
+ * delete-wins and stays unacked. A journal in step reads clean here, so it is
+ * never bumped.
  */
 const recoverDirtyJournals: DirtySweep = {
   kind: 'sweep',
@@ -303,8 +312,8 @@ const recoverDirtyJournals: DirtySweep = {
   enqueue: (journalSync, journal) => {
     // Unreachable given the `isNotNull` above, but the date is what keeps the
     // payload builder from throwing, so it is narrowed here rather than asserted.
-    if (!journalSync.enqueueRecoveredUpdate || !journal.journalDate) return false
-    journalSync.enqueueRecoveredUpdate(journal.id, journal.journalDate)
+    if (!journal.journalDate) return false
+    journalSync.enqueueUpdate(journal.id, journal.journalDate)
     return true
   }
 }
