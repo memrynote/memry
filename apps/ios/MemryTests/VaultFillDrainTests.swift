@@ -101,7 +101,15 @@ struct VaultFillDrainTests {
     /// outlast the core's longest hold, grow, and never spin.
     @Test("rounds that keep pulling nothing pause the drain until the next foreground")
     func emptyRoundsPauseTheDrain() async throws {
-        let empty = Array(repeating: (ticks: [SyncProgress](), answer: Result<BodyDrainSummary, any Error>.success(.round(0, remaining: 7))), count: 40)
+        // The rounds until the waits add up past the hold, plus spares: a
+        // script that runs out ends the drain instead of pausing it.
+        var waited = Duration.zero
+        var untilPause = 1
+        while waited <= VaultFillViewModel.longestHold {
+            waited += min(max(waited, VaultFillViewModel.firstRetry), VaultFillViewModel.longestRetry)
+            untilPause += 1
+        }
+        let empty = Array(repeating: (ticks: [SyncProgress](), answer: Result<BodyDrainSummary, any Error>.success(.round(0, remaining: 7))), count: untilPause + 4)
         let filler = StoreFiller(store: VaultStore(), alreadyComplete: true, rounds: empty)
         let waits = Waits()
         let fill = VaultFillViewModel(filler: filler, pause: waits.pause)

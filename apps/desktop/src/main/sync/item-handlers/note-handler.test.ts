@@ -361,7 +361,8 @@ describe('noteHandler.applyUpsert — path collision', () => {
       {},
       'note-1',
       { Rating: 5 },
-      expect.any(Function)
+      expect.any(Function),
+      'wire'
     )
     const getType = vi.mocked(setNoteProperties).mock.calls[0][3]
     expect(getType('Rating', 5)).toBe('number')
