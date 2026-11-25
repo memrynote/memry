@@ -34,7 +34,7 @@ import {
   takeHeldCaseTwinChange,
   takeLandedCaseTwinHash
 } from './case-twin-bytes'
-import { sharesCaseTwinFile } from './case-twin-file'
+import { sharesCaseTwinFile } from './case-twin-shared-file'
 import { generateUniquePathSync } from './file-ops'
 import { getVaultRoot, toRelativePath } from './notes-io'
 

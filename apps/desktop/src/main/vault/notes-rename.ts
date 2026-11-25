@@ -17,7 +17,8 @@ import fs from 'fs/promises'
 import { generateContentHash, parseNote } from './frontmatter'
 import { writingFrontmatterOf } from '@memry/shared/writing-tools/markdown'
 import { persistNoteToCache, syncNoteToCache, syncFileToCache } from './note-sync'
-import { planCaseTwinMove, prepareCaseTwinLeave, sharesCaseTwinFile } from './case-twin-file'
+import { planCaseTwinMove, prepareCaseTwinLeave } from './case-twin-file'
+import { sharesCaseTwinFile } from './case-twin-shared-file'
 import {
   ensureDirectory,
   sanitizeFilename,
