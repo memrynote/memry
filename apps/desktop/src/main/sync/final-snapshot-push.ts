@@ -1,6 +1,7 @@
 // The final CRDT snapshot push `stopSyncRuntime` runs before it destroys the
-// provider, with an optional bound for the quit path (#2522).
+// provider, bounded on every path (#2522, #5698).
 import { createLogger } from '../lib/logger'
+import { SHUTDOWN_FINAL_SNAPSHOT_PUSH_MS } from '../shutdown-sequence'
 import { getCrdtProvider } from './crdt-provider'
 
 const log = createLogger('SyncRuntime')
@@ -13,7 +14,10 @@ export interface StopSyncRuntimeOptions {
    * time, so on a slow or flaky network the push alone outlived the whole quit
    * budget and the provider flush behind it never ran (#2522). Past the bound
    * the walk stops and teardown continues, which is what `skipFinalSync` and an
-   * offline quit already do. Omitted: unbounded, as before.
+   * offline quit already do. Omitted (a vault switch, a sign-out):
+   * `SHUTDOWN_FINAL_SNAPSHOT_PUSH_MS`. Unbounded, a push that read its base
+   * from a stalled CRDT store held the close forever, and the store's close
+   * behind it never ran (#5698).
    */
   finalSyncTimeoutMs?: number
   /**
@@ -25,7 +29,9 @@ export interface StopSyncRuntimeOptions {
   downloadSettleTimeoutMs?: () => number
 }
 
-export async function pushFinalSnapshots(timeoutMs: number | undefined): Promise<void> {
+export async function pushFinalSnapshots(
+  timeoutMs: number = SHUTDOWN_FINAL_SNAPSHOT_PUSH_MS
+): Promise<void> {
   if (timeoutMs !== undefined && timeoutMs <= 0) {
     log.warn('Pre-shutdown CRDT snapshot push skipped: no time left in the shutdown budget')
     return
@@ -43,10 +49,6 @@ export async function pushFinalSnapshots(timeoutMs: number | undefined): Promise
         return true
       }
     )
-  if (timeoutMs === undefined) {
-    await push
-    return
-  }
   let timer: ReturnType<typeof setTimeout> | undefined
   const finished = await Promise.race([
     push,
@@ -58,7 +60,8 @@ export async function pushFinalSnapshots(timeoutMs: number | undefined): Promise
   if (!finished) {
     abort.abort()
     log.warn('Pre-shutdown CRDT snapshot push cut short; remaining snapshots deferred', {
-      timeoutMs
+      timeoutMs,
+      unpushedNoteIds: getCrdtProvider().unpushedSnapshotNoteIds()
     })
   }
 }

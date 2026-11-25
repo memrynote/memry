@@ -4,7 +4,7 @@ const mocks = vi.hoisted(() => ({
   getSetting: vi.fn(),
   isModelLoaded: vi.fn(),
   initEmbeddingModel: vi.fn(),
-  generateEmbedding: vi.fn(),
+  generateQueryEmbedding: vi.fn(),
   notes: vi.fn(),
   chunks: vi.fn(),
   images: vi.fn(),
@@ -28,7 +28,7 @@ vi.mock('@main/database/queries/settings', () => ({ getSetting: mocks.getSetting
 vi.mock('../lib/embeddings', () => ({
   isModelLoaded: mocks.isModelLoaded,
   initEmbeddingModel: mocks.initEmbeddingModel,
-  generateEmbedding: mocks.generateEmbedding
+  generateQueryEmbedding: mocks.generateQueryEmbedding
 }))
 
 import { semanticNoteHits } from './semantic'
@@ -39,7 +39,7 @@ describe('semanticNoteHits', () => {
     mocks.getSetting.mockReturnValue('true')
     mocks.isModelLoaded.mockReturnValue(true)
     mocks.initEmbeddingModel.mockResolvedValue(true)
-    mocks.generateEmbedding.mockResolvedValue(new Float32Array([1, 0]))
+    mocks.generateQueryEmbedding.mockResolvedValue(new Float32Array([1, 0]))
     mocks.notes.mockReturnValue([])
     mocks.chunks.mockReturnValue([])
     mocks.images.mockReturnValue([])
@@ -52,8 +52,23 @@ describe('semanticNoteHits', () => {
       { id: 'unrelated', distance: 0.3 }
     ])
     const hits = await semanticNoteHits('cat')
-    expect(mocks.generateEmbedding).toHaveBeenCalledWith('task: search result | query: cat')
+    expect(mocks.generateQueryEmbedding).toHaveBeenCalledWith('task: search result | query: cat')
     expect(hits).toEqual([{ id: 'near', cosine: 0.8 }])
+  })
+
+  it('answers without meaning when the query vector is not ready within two seconds', async () => {
+    vi.useFakeTimers()
+    try {
+      mocks.generateQueryEmbedding.mockReturnValue(new Promise(() => {}))
+      mocks.notes.mockReturnValue([{ id: 'near', distance: 0.2 }])
+      const hits = semanticNoteHits('cat')
+      await vi.advanceTimersByTimeAsync(1_999)
+      const early = await Promise.race([hits, Promise.resolve('waiting')])
+      await vi.advanceTimersByTimeAsync(1)
+      expect({ early, hits: await hits }).toEqual({ early: 'waiting', hits: [] })
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('returns the note that owns a near image, under the image floor', async () => {
@@ -110,13 +125,13 @@ describe('semanticNoteHits', () => {
     expect(await semanticNoteHits('cat AND dog')).toEqual([])
     mocks.getSetting.mockReturnValue('false')
     expect(await semanticNoteHits('cat')).toEqual([])
-    expect(mocks.generateEmbedding).not.toHaveBeenCalled()
+    expect(mocks.generateQueryEmbedding).not.toHaveBeenCalled()
   })
 
   it('starts the model load instead of waiting for it when the model is cold', async () => {
     mocks.isModelLoaded.mockReturnValue(false)
     expect(await semanticNoteHits('cat')).toEqual([])
     expect(mocks.initEmbeddingModel).toHaveBeenCalledOnce()
-    expect(mocks.generateEmbedding).not.toHaveBeenCalled()
+    expect(mocks.generateQueryEmbedding).not.toHaveBeenCalled()
   })
 })
