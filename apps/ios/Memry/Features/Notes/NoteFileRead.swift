@@ -25,7 +25,7 @@ extension NoteReadViewModel {
     /// path whatever the Download attachments setting, as for the note's
     /// other attachments (#5644). Offline waits for the next pass.
     func fetchFile() async {
-        guard let filler, let file, file.attachment?.localPath == nil, fileFetch != .fetching,
+        guard let filler, let file, file.attachment?.intactPath == nil, fileFetch != .fetching,
               (reachability?.current() ?? PathReachability.unknownPath) != .offline
         else { return }
         fileFetch = .fetching
@@ -42,6 +42,12 @@ extension NoteReadViewModel {
             }
         }.value
         await loadFile()
+    }
+
+    /// Whether a tap under the body starts a paragraph there. A file note's
+    /// file is its content, with no body under it to type into.
+    func tapStartsParagraph(canEdit: Bool) -> Bool {
+        canEdit && preview != .notPulled && file == nil
     }
 }
 

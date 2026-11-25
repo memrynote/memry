@@ -311,12 +311,13 @@ impl VaultSync {
         reachable: Reachable,
     ) -> Result<bool, SyncError> {
         let id = attachment_id.to_owned();
+        // A torn cached file goes through the fetch, which downloads it over.
         let cached = self
             .db
             .call(move |conn| attachments::get(conn, &id))
             .await?
-            .and_then(|row| row.local_path)
-            .filter(|local| self.images_file(local).is_file());
+            .and_then(|row| self.intact_file(&row))
+            .map(|(local, _)| local);
         let local = match cached {
             Some(local) => local,
             None => {
