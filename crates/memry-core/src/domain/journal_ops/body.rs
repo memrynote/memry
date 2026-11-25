@@ -89,10 +89,10 @@ pub fn edit_entry(
     if !journal::journal_exists(conn, id) {
         return Ok(false);
     }
-    let Some(update) = body_write::author(conn, id, edit, device_id)? else {
+    let tx = nested_tx::begin(conn).map_err(storage_failed)?;
+    let Some(update) = body_write::author(&tx, id, edit, device_id)? else {
         return Ok(true);
     };
-    let tx = nested_tx::begin(conn).map_err(storage_failed)?;
     body_write::append_in(&tx, ITEM_TYPE, id, &update, now_ms)?;
     tx.commit().map_err(storage_failed)?;
     Ok(true)
