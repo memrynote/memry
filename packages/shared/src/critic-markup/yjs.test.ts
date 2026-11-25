@@ -55,6 +55,27 @@ describe('critic markup marks across builds and devices (protocol 12.5.1)', () =
     expect(elementsOf(doc)).toEqual([{ ...c1, body: 'edit', futureField: { v: 2, keep: ['x'] } }])
   })
 
+  // REVIEW-5839B: a newer build's element (an unknown kind, or any shape this
+  // build cannot read) and a known mark's unknown field survive a whole-list
+  // write, as they do through updateCriticMarkupMarksInYDoc (#5574).
+  it('keeps an element it cannot read and unknown fields through a whole-list write', () => {
+    const newerKind = { id: 'n1', kind: 'highlight', visibleText: 'x', start: 0, end: 1, tone: 'y' }
+    const unreadable = [null, 'x', { ...c2, end: -1 }]
+    const doc = docWith([{ ...c1, future: 1 }, newerKind, ...unreadable])
+
+    writeCriticMarkupMarksToYDoc(doc, [{ ...c1, body: 'edit' }])
+
+    expect(elementsOf(doc)).toEqual([{ ...c1, body: 'edit', future: 1 }, newerKind, ...unreadable])
+  })
+
+  it('keeps an unknown field of an unchanged known mark through a whole-list write', () => {
+    const doc = docWith([{ ...c1, future: { v: 2 } }, c2])
+
+    writeCriticMarkupMarksToYDoc(doc, [c1])
+
+    expect(elementsOf(doc)).toEqual([{ ...c1, future: { v: 2 } }])
+  })
+
   it('leaves one mark per id after two devices edit the same mark offline', () => {
     const base = docWith([c1])
     const a = fork(base, 10)
