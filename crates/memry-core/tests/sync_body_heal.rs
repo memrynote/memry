@@ -118,6 +118,7 @@ fn the_heal_owes_each_live_document_without_body_state() {
     let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
     let dir: PathBuf =
         std::env::temp_dir().join(format!("memry-body-heal-{}-{unique}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).expect("create the scratch directory");
     let db = open_data(&dir.join("data.db")).expect("open data.db");
 
