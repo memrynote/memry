@@ -13,6 +13,10 @@ import { valuesEqual } from './field-merge'
  * which a device last wrote that unit. A unit clocked but absent from the
  * value is a removal. `fieldClocksFloor` covers every unit `fieldClocks` does
  * not name: the payload supersedes every write to it at or before the floor.
+ * `fieldFloors` overrides that floor for the units it names, where a merge
+ * kept a value only one side's floor covered. It is an additive key: an older
+ * build that pushes it ticks `clock` past `fieldClocksAt`, which makes it
+ * untrusted, so it is read only from a writer that knows it.
  */
 export interface JournalFields {
   tags?: string[] | null
@@ -21,6 +25,7 @@ export interface JournalFields {
   fieldClocks?: FieldClocks
   fieldClocksAt?: VectorClock
   fieldClocksFloor?: VectorClock
+  fieldFloors?: FieldClocks
 }
 
 /** The unit clock keys a journal payload carries (§6.12). */
@@ -28,6 +33,7 @@ export interface JournalUnitStamp {
   fieldClocks: FieldClocks
   fieldClocksAt: VectorClock
   fieldClocksFloor?: VectorClock
+  fieldFloors?: FieldClocks
 }
 
 /** A merged pair and the clock it is stored and stamped at (§6.12.3). */
@@ -68,16 +74,29 @@ function trusted(side: JournalFields): side is JournalFields & { fieldClocks: Fi
   )
 }
 
-function stamp(fieldClocks: FieldClocks, at: VectorClock, floor?: VectorClock): JournalUnitStamp {
+function stamp(
+  fieldClocks: FieldClocks,
+  at: VectorClock,
+  floor?: VectorClock,
+  floors?: FieldClocks
+): JournalUnitStamp {
   const out: JournalUnitStamp = { fieldClocks, fieldClocksAt: { ...at } }
   if (floor !== undefined && Object.keys(floor).length > 0) out.fieldClocksFloor = { ...floor }
+  if (floors !== undefined && Object.keys(floors).length > 0) out.fieldFloors = floors
   return out
+}
+
+/** §6.12.1: the floor a side reads for `unit`; an untrusted side's is its clock. */
+function unitFloor(side: JournalFields, unit: string): VectorClock | undefined {
+  if (!trusted(side)) return side.clock ?? {}
+  return side.fieldFloors?.[unit] ?? side.fieldClocksFloor
 }
 
 /**
  * §6.12.2: the unit clocks a local edit pushes. Each unit whose value differs
  * from `base`, the last synced fields, takes `next.clock`; the rest keep
- * theirs, and so does the base's floor. An untrusted base clocks no unit: it
+ * theirs, and so do the base's floor and the unit floors of unchanged
+ * units. An untrusted base clocks no unit: it
  * was written whole at its clock, which becomes the floor. With no base the
  * writer cannot tell which units it wrote since it last synced, so the edit
  * carries no unit clocks and is read whole at its clock, as an older build's is.
@@ -87,13 +106,27 @@ export function journalFieldClocksForEdit(
   next: JournalFields & { clock: VectorClock }
 ): JournalUnitStamp | null {
   if (base === null) return null
-  const clocks: FieldClocks = trusted(base) ? { ...base.fieldClocks } : {}
+  if (!trusted(base)) return stamp(edited(base, next, {}), next.clock, base.clock ?? {})
+  const clocks = edited(base, next, { ...base.fieldClocks })
+  const floors: FieldClocks = {}
+  for (const [unit, floor] of Object.entries(base.fieldFloors ?? {})) {
+    if (clocks[unit] === undefined) floors[unit] = { ...floor }
+  }
+  return stamp(clocks, next.clock, base.fieldClocksFloor, floors)
+}
+
+/** `clocks` with every unit whose value `next` changed from `base` clocked at `next.clock`. */
+function edited(
+  base: JournalFields,
+  next: JournalFields & { clock: VectorClock },
+  clocks: FieldClocks
+): FieldClocks {
   const before = units(base)
   const after = units(next)
   for (const unit of new Set([...before.keys(), ...after.keys()])) {
     if (!valuesEqual(before.get(unit), after.get(unit))) clocks[unit] = { ...next.clock }
   }
-  return stamp(clocks, next.clock, trusted(base) ? base.fieldClocksFloor : (base.clock ?? {}))
+  return clocks
 }
 
 /**
@@ -186,17 +219,24 @@ export function mergeJournalFields(
   // §6.12.1: an untrusted side was written whole at its clock, which is its
   // floor: it reads only where it dominates the other side's claim.
   const localStamped: FieldClocks = trusted(local) ? local.fieldClocks : {}
-  const localFloor = trusted(local) ? local.fieldClocksFloor : (local.clock ?? {})
   const remoteStamped: FieldClocks = trusted(remote) ? remote.fieldClocks : {}
-  const remoteFloor = trusted(remote) ? remote.fieldClocksFloor : (remote.clock ?? {})
+  // Every unit neither side names reads as absent on both, so the merged
+  // payload supersedes what either record floor did.
+  const recordFloor = mergeClock(
+    (trusted(local) ? local.fieldClocksFloor : local.clock) ?? {},
+    (trusted(remote) ? remote.fieldClocksFloor : remote.clock) ?? {}
+  )
 
   const merged = new Map<string, unknown>()
   const fieldClocks: FieldClocks = {}
+  const fieldFloors: FieldClocks = {}
   for (const unit of all) {
     const localValue = localUnits.get(unit)
     const remoteValue = remoteUnits.get(unit)
     const localWrite = localStamped[unit]
     const remoteWrite = remoteStamped[unit]
+    const localFloor = unitFloor(local, unit)
+    const remoteFloor = unitFloor(remote, unit)
     const localClaim = localWrite ?? floorAgainst(localFloor, remoteWrite ?? remoteFloor)
     const remoteClaim = remoteWrite ?? floorAgainst(remoteFloor, localWrite ?? localFloor)
     let localWins = false
@@ -216,7 +256,17 @@ export function mergeJournalFields(
       const other = localWins ? remoteWrite : localWrite
       const same = other !== undefined && valuesEqual(localValue, remoteValue)
       fieldClocks[unit] = same ? mergeClock(write, other) : { ...write }
+      continue
     }
+    // A unit floor claims only the writes its value supersedes: both floors
+    // when the sides agree, else the winner's alone. The loser's floor covers
+    // its own write of a value the merge dropped, which a later write to the
+    // unit concurrent with the winner's floor must still beat (#5508 (a)).
+    const winnerFloor = (localWins ? localFloor : remoteFloor) ?? {}
+    const floor = valuesEqual(localValue, remoteValue)
+      ? mergeClock(localFloor ?? {}, remoteFloor ?? {})
+      : winnerFloor
+    if (compareClock(floor, recordFloor) !== 'equal') fieldFloors[unit] = { ...floor }
   }
 
   const order = [
@@ -247,13 +297,11 @@ export function mergeJournalFields(
   const union = mergeClock(local.clock ?? {}, remote.clock ?? {})
   const clock = requeue ? increment(union, device) : union
 
-  // Every unit neither side names reads as absent on both, so the merged
-  // payload supersedes what either floor did.
   return {
     tags,
     properties,
     clock,
     requeue,
-    ...stamp(fieldClocks, clock, mergeClock(localFloor ?? {}, remoteFloor ?? {}))
+    ...stamp(fieldClocks, clock, recordFloor, fieldFloors)
   }
 }

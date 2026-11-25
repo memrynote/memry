@@ -1,78 +1,71 @@
 import { describe, expect, it } from 'vitest'
+import { readEnv } from '../env'
 import { Rule } from './fleet'
-import {
-  CONFIGS,
-  generate,
-  judge,
-  run,
-  shrink,
-  violations,
-  type Scenario,
-  type ServerMode,
-  type Verdict
-} from './run'
+import { judge, type Judgement, type LossClass } from './oracle'
+import { CONFIGS, generate, run, shrink, type Scenario, type ServerMode } from './run'
 
 // #5508: a seeded fleet of new and older desktop and core builds editing one
-// journal day (chapter 06 §6.12). JOURNAL_SIM_RUNS raises the run count
-// locally; JOURNAL_SIM_TABLE prints the table.
-const RUNS = Number(process.env.JOURNAL_SIM_RUNS ?? 300)
+// journal day (chapter 06 §6.12), judged per edit by `oracle.ts`. CI runs
+// seeds 1..1000 per config; JOURNAL_SIM_RUNS=20000 is the ship-bar run, and
+// JOURNAL_SIM_TABLE prints the table.
+const RUNS = Number(readEnv('JOURNAL_SIM_RUNS') ?? 1000)
 const SERVERS: ServerMode[] = ['legacy', 'stamped']
 
-interface Tally {
-  runs: number
-  losses: number
+type Tally = Record<LossClass, number> & {
   diverged: number
-  divergedSet: number
   livelock: number
-  violated: number
-  refViolated: number
   refDiverged: number
   first: Scenario | null
 }
 
-const failed = (verdict: Verdict): boolean =>
-  verdict.losses.length > 0 || verdict.diverged || verdict.livelock || verdict.refDiverged
+// `c` is allowed: older builds keep today's whole-record behaviour (Kaan,
+// 2026-11-25). `d` is a loss: an over-claimed floor reads as no claim too.
+const failed = (judgement: Judgement): boolean =>
+  judgement.loss === 'a' ||
+  judgement.loss === 'd' ||
+  judgement.diverged ||
+  judgement.livelock ||
+  judgement.refDiverged
+
+// Seeds a merged record floor over-claimed on: it claimed the losing side's
+// unit, so a later concurrent write to that unit reverted (#5508 (a)).
+const FLOOR_OVERCLAIM: [(typeof CONFIGS)[number], number][] = [
+  ['newUntrusted', 15890],
+  ['deskOnly', 7243],
+  ['deskOnly', 7426],
+  ['coreOnly', 17571],
+  ['mixed', 17404]
+]
 
 function tally(config: (typeof CONFIGS)[number], server: ServerMode): Tally {
   const out: Tally = {
-    runs: 0,
-    losses: 0,
+    a: 0,
+    b: 0,
+    c: 0,
+    d: 0,
     diverged: 0,
-    divergedSet: 0,
     livelock: 0,
-    violated: 0,
-    refViolated: 0,
     refDiverged: 0,
     first: null
   }
   for (let seed = 1; seed <= RUNS; seed++) {
     const scenario = generate(config, server, seed)
-    const verdict = judge(scenario, new Rule(), new Rule())
-    out.runs += 1
-    if (verdict.losses.length > 0) out.losses += 1
-    if (verdict.diverged) out.diverged += 1
-    if (verdict.divergedSet) out.divergedSet += 1
-    if (verdict.livelock) out.livelock += 1
-    if (verdict.violated) out.violated += 1
-    if (verdict.refViolated) out.refViolated += 1
-    if (verdict.refDiverged) out.refDiverged += 1
-    if (failed(verdict) && out.first === null) out.first = scenario
+    const judgement = judge(scenario)
+    if (judgement.loss !== null) out[judgement.loss] += 1
+    if (judgement.diverged) out.diverged += 1
+    if (judgement.livelock) out.livelock += 1
+    if (judgement.refDiverged) out.refDiverged += 1
+    if (failed(judgement) && out.first === null) out.first = scenario
   }
   return out
 }
 
 /** A failing scenario, shrunk, with the run's log: what a red test prints. */
 function explain(scenario: Scenario): string {
-  const minimal = shrink(scenario, (s) => failed(judge(s, new Rule(), new Rule())))
+  const minimal = shrink(scenario, (s) => failed(judge(s)))
   const outcome = run(minimal, new Rule())
   return JSON.stringify(
-    {
-      scenario: minimal,
-      verdict: judge(minimal, new Rule(), new Rule()),
-      violations: violations(outcome),
-      log: outcome.log,
-      views: outcome.views
-    },
+    { scenario: minimal, judgement: judge(minimal), log: outcome.log, views: outcome.views },
     null,
     1
   )
@@ -83,30 +76,36 @@ describe('journal fleet simulator (#5508, chapter 06 §6.12)', () => {
 
   for (const config of CONFIGS) {
     for (const server of SERVERS) {
-      it(`${config}/${server}: no loss against the document rule, and every device converges`, () => {
+      it(`${config}/${server}: no new build reverts a write, and every device converges`, () => {
         const result = tally(config, server)
         table.push(
-          `| ${config}/${server} | ${result.runs} | ${result.losses} | ${result.diverged} | ` +
-            `${result.divergedSet} | ${result.livelock} | ${result.violated} | ${result.refViolated} |`
+          `| ${config}/${server} | ${RUNS} | ${result.a} | ${result.b} | ${result.c} | ${result.d} | ` +
+            `${result.diverged} | ${result.livelock} |`
         )
         const detail = result.first === null ? '' : explain(result.first)
         expect(
           {
-            losses: result.losses,
+            a: result.a,
+            d: result.d,
             diverged: result.diverged,
             livelock: result.livelock,
             refDiverged: result.refDiverged
           },
           detail
-        ).toEqual({ losses: 0, diverged: 0, livelock: 0, refDiverged: 0 })
+        ).toEqual({ a: 0, d: 0, diverged: 0, livelock: 0, refDiverged: 0 })
       })
     }
   }
 
-  it.runIf(process.env.JOURNAL_SIM_TABLE)('prints the table', () => {
+  it.each(FLOOR_OVERCLAIM)('%s seed %i: a unit floor claims only its value', (config, seed) => {
+    const judgement = judge(generate(config, 'legacy', seed))
+    expect(judgement.loss, explain(generate(config, 'legacy', seed))).toBeNull()
+  })
+
+  it.runIf(readEnv('JOURNAL_SIM_TABLE'))('prints the table', () => {
     expect(table.length).toBeGreaterThan(0)
-    process.stdout.write(
-      '| config/server | runs | losses | diverged | diverged (set) | livelock | (a) violated | (a) violated, document rule |\n' +
+    console.log(
+      '| config/server | runs | a | b | c | d | diverged | livelock |\n' +
         '| --- | --: | --: | --: | --: | --: | --: | --: |\n' +
         table.join('\n') +
         '\n'

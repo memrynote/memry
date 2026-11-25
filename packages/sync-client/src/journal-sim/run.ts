@@ -2,12 +2,8 @@
  * A deterministic multi-device run of one journal day, its oracle, and a
  * seeded scenario generator (chapter 06 §6.12, #5508).
  *
- * Each run is checked three ways:
- * - (a) every unit's final value is one of the latest concurrent writes to it:
- *   a write no other write to the unit causally follows;
- * - (b) no unit that the document rule (§6.3.1, every device on the build
- *   before #5508) leaves on a latest write ends anywhere else: a loss;
- * - (c) every device and the server row hold the same tags and properties.
+ * A run records every write, every pull that changed a unit, and the final
+ * state of each device; `oracle.ts` judges it.
  */
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { journalFieldClocksForWholesale } from '../journal-merge'
@@ -24,7 +20,9 @@ import {
   type Init,
   type Kind,
   type Payload,
+  type PullAction,
   type Rule,
+  type RuleCall,
   type Server
 } from './fleet'
 
@@ -64,10 +62,30 @@ export interface View {
   clock: VectorClock
 }
 
+/** A pull that left a unit on a value other than the device's or the pulled record's. */
+export interface Drop {
+  dev: string
+  /** The device's build when it pulled. */
+  kind: Kind
+  action: PullAction
+  unit: string
+  from: string
+  /** The pulled record's value. */
+  incoming: string
+  to: string
+  /** The device's clock before the pull: the writes it had seen. */
+  seen: VectorClock
+  /** The pulled record's clock. */
+  remote: VectorClock
+  /** A new build's merge: the rule call that made it. */
+  call?: Extract<RuleCall, { fn: 'merge' }>
+}
+
 export interface Outcome {
   views: View[]
   server: Payload
   writes: Write[]
+  drops: Drop[]
   livelock: boolean
   log: string[]
 }
@@ -87,7 +105,10 @@ export const UNITS = [...TAGS.map((t) => `tags.${t}`), ...PROPS.map((p) => `prop
 const ABSENT = '<absent>'
 const MAX_ROUNDS = 40
 
-function valueOf(held: { tags: string[]; properties: Record<string, unknown> }, unit: string) {
+export function valueOf(
+  held: { tags: string[]; properties: Record<string, unknown> },
+  unit: string
+) {
   if (unit.startsWith('tags.')) {
     const tag = unit.slice('tags.'.length)
     return held.tags.includes(tag) ? tag : ABSENT
@@ -121,7 +142,11 @@ const brief = (payload: Payload): string => {
   return JSON.stringify({ tags, properties, clock, ...stamp })
 }
 
-/** Runs `scenario`, then syncs every device until nothing moves. `reference`: the document rule. */
+/**
+ * Runs `scenario`, then syncs every device until nothing moves. `reference`:
+ * the document rule. A `rule` that records its calls attaches each merge to
+ * the drops it made.
+ */
 export function run(scenario: Scenario, rule: Rule, reference = false): Outcome {
   const row = serverRow(scenario.server)
   const server: Server = { row: structuredClone(row), version: 0 }
@@ -137,10 +162,36 @@ export function run(scenario: Scenario, rule: Rule, reference = false): Outcome 
     step: -1
   }))
   const log: string[] = []
+  const drops: Drop[] = []
   const doPull = (device: Device): boolean => {
+    const kind = device.kind
+    const seen = { ...device.clock }
+    const before = UNITS.map((unit) => valueOf(device, unit))
+    const calls = rule.calls?.length ?? 0
+    const remote = server.row
     const action = pull(device, rule, server)
     if (action === 'none') return false
     log.push(`${device.id} pull ${action} -> ${brief(view(device))}`)
+    // A desk's merge first restamps its local fields through `edit`.
+    const call = rule.calls?.slice(calls).find((made) => made.fn === 'merge')
+    for (const [i, unit] of UNITS.entries()) {
+      const to = valueOf(device, unit)
+      const incoming = valueOf(remote, unit)
+      if (to === before[i] && to === incoming) continue
+      const drop: Drop = {
+        dev: device.id,
+        kind,
+        action,
+        unit,
+        from: before[i],
+        incoming,
+        to,
+        seen,
+        remote: { ...remote.clock }
+      }
+      if (call?.fn === 'merge') drop.call = call
+      drops.push(drop)
+    }
     return true
   }
   const doPush = (device: Device): boolean => {
@@ -175,7 +226,8 @@ export function run(scenario: Scenario, rule: Rule, reference = false): Outcome 
       break
     }
   }
-  return { views: [...devices.values()].map(view), server: server.row, writes, livelock, log }
+  const views = [...devices.values()].map(view)
+  return { views, server: server.row, writes, drops, livelock, log }
 }
 
 function view(device: Device | View): View & Payload {
@@ -195,7 +247,7 @@ export interface Violation {
   allowed: string[]
 }
 
-/** (a): units whose final value on some device is no latest write. */
+/** Units whose final value on some device is no latest write to them. */
 export function violations(outcome: Outcome): Violation[] {
   const out: Violation[] = []
   for (const unit of UNITS) {
@@ -212,7 +264,7 @@ export function violations(outcome: Outcome): Violation[] {
   return out
 }
 
-/** (c): every device and the server row hold the same values; `setLevel` ignores tag order. */
+/** Every device and the server row hold the same values; `setLevel` ignores tag order. */
 export function converged(outcome: Outcome, setLevel = false): boolean {
   const key = (v: { tags: string[]; properties: Record<string, unknown> }): string =>
     canonicalStringify({
@@ -221,33 +273,6 @@ export function converged(outcome: Outcome, setLevel = false): boolean {
     })
   const server = key(outcome.server)
   return outcome.views.every((device) => key(device) === server)
-}
-
-export interface Verdict {
-  losses: Violation[]
-  diverged: boolean
-  divergedSet: boolean
-  livelock: boolean
-  violated: boolean
-  refViolated: boolean
-  refDiverged: boolean
-}
-
-/** All three checks for one scenario, against the document rule replayed on it. */
-export function judge(scenario: Scenario, rule: Rule, reference: Rule): Verdict {
-  const outcome = run(scenario, rule)
-  const ref = run(scenario, reference, true)
-  const bad = violations(outcome)
-  const refBad = new Set(violations(ref).map((violation) => violation.unit))
-  return {
-    losses: bad.filter((violation) => !refBad.has(violation.unit)),
-    diverged: !converged(outcome),
-    divergedSet: !converged(outcome, true),
-    livelock: outcome.livelock,
-    violated: bad.length > 0,
-    refViolated: refBad.size > 0,
-    refDiverged: !converged(ref) || ref.livelock
-  }
 }
 
 /** Mulberry32: a small seeded generator, so every run replays from its seed. */
@@ -299,7 +324,14 @@ const POOLS: Record<Config, [Kind, Init][]> = {
   ]
 }
 
-export const CONFIGS = Object.keys(POOLS) as Config[]
+export const CONFIGS: Config[] = [
+  'trusted',
+  'newUntrusted',
+  'oldPlusTrusted',
+  'deskOnly',
+  'coreOnly',
+  'mixed'
+]
 
 export function generate(config: Config, server: ServerMode, seed: number): Scenario {
   const next = random(seed)

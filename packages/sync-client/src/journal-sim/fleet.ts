@@ -50,7 +50,7 @@ export type RuleCall =
   | { fn: 'wholesale'; remote: Payload; out: JournalUnitStamp | null }
   | { fn: 'merge'; local: Payload; remote: Payload; device: string; out: JournalFieldsMerge }
 
-const STAMP_KEYS = ['fieldClocks', 'fieldClocksAt', 'fieldClocksFloor'] as const
+const STAMP_KEYS = ['fieldClocks', 'fieldClocksAt', 'fieldClocksFloor', 'fieldFloors'] as const
 
 const clone = <T>(value: T): T => structuredClone(value)
 
@@ -251,7 +251,13 @@ function applyCore(device: Device, rule: Rule, remote: Payload): PullAction {
     return 'merge'
   }
   const merged = rule.merge(local, remote, device.id)
-  const { fieldClocks: _c, fieldClocksAt: _a, fieldClocksFloor: _f, ...rest } = clone(remote)
+  const {
+    fieldClocks: _c,
+    fieldClocksAt: _a,
+    fieldClocksFloor: _f,
+    fieldFloors: _u,
+    ...rest
+  } = clone(remote)
   setStored(device, {
     ...rest,
     tags: merged.tags,
