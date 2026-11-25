@@ -7,6 +7,7 @@
  * @module sync/crdt-writeback-ingest
  */
 
+import type * as Y from 'yjs'
 import { writingFrontmatterOf } from '@memry/shared'
 import { classifyMarkdownContent } from '@memry/shared/markdown-class'
 import { isBinaryNoteRow } from '@memry/shared/file-types'
@@ -15,13 +16,14 @@ import { getNoteCacheById } from '@main/database/queries/notes'
 import { createLogger } from '../lib/logger'
 import { readVaultFile } from '../lib/paths'
 import { restoreLockedNoteFile } from '../vault-locks/service'
-import { parseNote, type ParsedNote } from '../vault/frontmatter'
+import { parseNote, serializeNote, type ParsedNote } from '../vault/frontmatter'
 import { getVaultRoot, toAbsolutePath } from '../vault/notes-io'
 import { createSnapshot } from '../vault/notes-versions'
 import { syncNoteToCache, refusesCaseTwinFile } from '../vault/note-sync'
 import { flushProjectionEvents } from '../projections'
 import { getIndexDatabase } from '../database/client'
 import { feedExternalEditToCrdt } from './crdt-external-feed'
+import { readyWritebackConverter } from './converter-worker-bridge'
 import { holdsUnstoredFile, isOutsideEdit, recordBaseline } from './writeback-baseline'
 
 const log = createLogger('CrdtWriteback')
@@ -122,8 +124,25 @@ export async function ingestOutsideEditFirst(
   return true
 }
 
+/**
+ * The doc's body, and the file a pass would write from it under `parsed`'s
+ * header: the version an unstored ingest keeps first. Null when the doc cannot
+ * be written as markdown.
+ */
+async function docVersionOf(
+  doc: Y.Doc,
+  notePath: string,
+  parsed: ParsedNote
+): Promise<{ body: string; file: string } | null> {
+  const convert = await readyWritebackConverter()
+  const conversion = await convert(doc, notePath, async () => parsed.content)
+  if (conversion.kind === 'unrepresentable' || conversion.body === null) return null
+  const { markdown } = conversion.body
+  return { body: markdown, file: serializeNote(parsed.frontmatter, markdown) }
+}
+
 /** The write-back's outside-edit ingest, run at a doc's first open (#5319, `takeOfflineEdit`). */
-export async function ingestOfflineEdit(noteId: string): Promise<void> {
+export async function ingestOfflineEdit(noteId: string, doc: Y.Doc): Promise<void> {
   const indexDb = getIndexDatabase()
   const cached = getNoteCacheById(indexDb, noteId)
   // A binary note's file is its blob, never an outside edit of the body (#5412).
@@ -133,13 +152,21 @@ export async function ingestOfflineEdit(noteId: string): Promise<void> {
   // The last session wrote this file from a doc its store may never have held.
   const unstored = holdsUnstoredFile(cached)
   if (!unstored && !isOutsideEdit(indexDb, noteId, cached, raw)) return
-  await ingestOutsideEditFirst(
-    indexDb,
-    noteId,
-    cached,
-    raw,
-    parseNote(raw, toAbsolutePath(cached.path)),
-    undefined,
-    unstored
-  )
+  const parsed = parseNote(raw, toAbsolutePath(cached.path))
+  // The marker can outlive a store that recovered (the session ended before
+  // `recordDocFile` cleared it), and the stored doc then holds more than the
+  // file: it is kept as a version before the file replaces its body (#5698).
+  let pass: { body: string; file: string } | undefined
+  if (unstored) {
+    const version = await docVersionOf(doc, cached.path, parsed)
+    if (!version) {
+      // The write-back keeps the file too: it never writes a doc it cannot convert.
+      log.warn('Could not keep the doc as a version; the doc and the file keep what they hold', {
+        noteId
+      })
+      return
+    }
+    pass = version
+  }
+  await ingestOutsideEditFirst(indexDb, noteId, cached, raw, parsed, pass, unstored)
 }

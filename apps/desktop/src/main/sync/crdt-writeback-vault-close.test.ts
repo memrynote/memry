@@ -31,7 +31,13 @@ import { resolveJournalEntryId } from '../journal/create-entry'
 import { getCrdtProvider, resetCrdtProvider } from './crdt-provider'
 import { flushPendingWritebacks, hasArmedWritebacks, resetWritebackState } from './crdt-writeback'
 import { markdownToYFragment } from './blocknote-converter'
-import { getNoteCacheById, insertNoteCache } from '../database/queries/notes'
+import {
+  getNoteCacheById,
+  getNoteSnapshots,
+  insertNoteCache,
+  UNSTORED_FILE,
+  updateNoteCache
+} from '../database/queries/notes'
 import { generateContentHash } from '../vault/frontmatter'
 import { checkForRename, clearAllPendingDeletes, trackPendingDelete } from '../vault/rename-tracker'
 import { pushFinalSnapshots } from './final-snapshot-push'
@@ -295,6 +301,22 @@ function holdNextStoreUpdate(): Hold {
   const update = hold()
   store.nextUpdate = update.wait
   return update
+}
+
+/** Fails every stored update until `recover`, as a full disk does. */
+function failStore(): { recover: () => void } {
+  let failing = true
+  const fail = async (): Promise<void> => {
+    if (failing) store.nextUpdate = fail
+    throw new Error('disk full')
+  }
+  store.nextUpdate = fail
+  return {
+    recover: () => {
+      failing = false
+      store.nextUpdate = null
+    }
+  }
 }
 
 /** Advances the fake clock one step, then lets the real I/O between its timers run. */
@@ -805,5 +827,91 @@ describe('a CRDT store that stalls while the vault closes (#5698)', () => {
         context: expect.objectContaining({ unpushedNoteIds: [id] })
       })
     )
+  })
+
+  /**
+   * The store fails a keystroke, whose pass writes it to the file (marked
+   * unstored), then recovers: the next keystroke stores the whole doc, which
+   * holds the file's bytes and more. Resolves the day.
+   */
+  async function storeFailsThenRecovers(): Promise<string> {
+    const id = await openTypedDay()
+    await flushPendingWritebacks()
+    indexDay(vaultA, id)
+
+    const disk = failStore()
+    type(id, ' More.')
+    await vi.waitFor(
+      async () => {
+        await tick()
+        expect(dayBody(vaultA)).toContain('From A. Typed. More.')
+      },
+      { timeout: 10_000, interval: 10 }
+    )
+    await Promise.all(store.queues)
+    expect.soft(getNoteCacheById(vaultA.indexDb.db, id)?.pendingWriteHash).toBe(UNSTORED_FILE)
+    disk.recover()
+
+    type(id, ' Two.')
+    await Promise.all(store.queues)
+    await new Promise((resolve) => setImmediate(resolve))
+    expect.soft(storedBody(id)).toBe('From A. Typed. More. Two.')
+    return id
+  }
+
+  for (const [end, endSession] of [
+    [
+      'a close',
+      async () => {
+        await settle(closeVault())
+        store.queues = []
+        await getCrdtProvider().initPersistence()
+      }
+    ],
+    [
+      'a quit cut short',
+      async () => {
+        getCrdtProvider().beginClose()
+        await settle(flushPendingWritebacks())
+        await restart()
+      }
+    ],
+    // VERIFY-5703R2 P2: the forced exit lands inside the keystroke's debounce.
+    ['a forced exit (P2)', restart]
+  ] as const) {
+    it(`a store that failed and recovered keeps every edit through ${end}`, async () => {
+      const id = await storeFailsThenRecovers()
+
+      await endSession()
+      const doc = await getCrdtProvider().open(id, EDITOR_WINDOW)
+      expect.soft(bodyText(doc)).toBe('From A. Typed. More. Two.')
+      type(id, ' Again.')
+      await settle(flushPendingWritebacks())
+
+      expect(dayBody(vaultA)).toContain('From A. Typed. More. Two. Again.')
+    })
+  }
+
+  it('clears the unstored mark once the store holds the file again', async () => {
+    const id = await storeFailsThenRecovers()
+
+    expect(getNoteCacheById(vaultA.indexDb.db, id)).toMatchObject({
+      contentHash: generateContentHash(fs.readFileSync(dayFile(vaultA), 'utf8')),
+      pendingWriteHash: null
+    })
+  })
+
+  it('keeps the stored doc as a version when the unstored mark outlived a recovery', async () => {
+    const id = await storeFailsThenRecovers()
+    // The session ended before the mark was cleared.
+    updateNoteCache(vaultA.indexDb.db, id, { pendingWriteHash: UNSTORED_FILE })
+
+    await restart()
+    const doc = await getCrdtProvider().open(id, EDITOR_WINDOW)
+
+    expect.soft(bodyText(doc)).toBe('From A. Typed. More.')
+    expect(
+      getNoteSnapshots(vaultA.indexDb.db, id).map((version) => version.fileContent)
+    ).toContainEqual(expect.stringContaining('From A. Typed. More. Two.'))
   })
 })

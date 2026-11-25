@@ -363,6 +363,8 @@ export class CrdtProvider {
    * so the next store writes the doc's whole state (`persistUpdate`).
    */
   private storeOwed = new Set<string>()
+  /** Callers of `whenStored`, answered once the note is no longer storing. */
+  private storedWaiters = new Map<string, Array<() => void>>()
   private networkBatcher = new MicrotaskBatchBroadcaster((noteId, merged) => {
     this.broadcastToWindows(noteId, merged, ORIGIN_NETWORK, undefined)
   })
@@ -1229,7 +1231,7 @@ export class CrdtProvider {
     if (doc.getXmlFragment(CRDT_FRAGMENT_NAME).length === 0) return
     this.offlineEditChecked.add(noteId)
     try {
-      await crdtWriteback().ingestOfflineEdit(noteId)
+      await crdtWriteback().ingestOfflineEdit(noteId, doc)
     } catch (err) {
       log.warn('Could not check the file for an edit made while the app was closed', {
         noteId,
@@ -1763,6 +1765,8 @@ export class CrdtProvider {
     this.storeUnreconciled = false
     this.unvouchedNotes.clear()
     this.storeOwed.clear()
+    // Never answered: this store may not hold their notes (`whenStored`).
+    this.storedWaiters.clear()
 
     // Write-back keeps its own module-level per-note maps, keyed by ids and
     // absolute paths belonging to the vault being torn down here.
@@ -2560,7 +2564,30 @@ export class CrdtProvider {
       .catch(() => {})
       .finally(() => {
         if (this.persisting.get(noteId) === chained) this.persisting.delete(noteId)
+        this.answerStoredWaiters(noteId)
       })
+  }
+
+  private answerStoredWaiters(noteId: string): void {
+    if (!this.persistence || this.isStoring(noteId)) return
+    const waiters = this.storedWaiters.get(noteId)
+    this.storedWaiters.delete(noteId)
+    for (const resolve of waiters ?? []) resolve()
+  }
+
+  /**
+   * Resolves once the store holds every update of the note the live doc had
+   * when it was called, however late: after a failed store, once a store of
+   * the doc's whole state lands. Never rejects; never resolves while the store
+   * keeps failing, or after the store is torn down (`recordDocFile`, #5698).
+   */
+  whenStored(noteId: string): Promise<void> {
+    if (!this.isStoring(noteId)) return Promise.resolve()
+    return new Promise((resolve) => {
+      const waiters = this.storedWaiters.get(noteId) ?? []
+      waiters.push(resolve)
+      this.storedWaiters.set(noteId, waiters)
+    })
   }
 
   /**

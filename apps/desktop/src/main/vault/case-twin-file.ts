@@ -65,7 +65,7 @@ import { getCrdtProvider } from '../sync/crdt-provider'
 import { hasWritebackTurn, scheduleWriteback, takeWritebackTurn } from '../sync/crdt-writeback'
 import { recordAppWrite } from './app-writes'
 import { clearOwedFileBody, owesFileBody } from '../sync/crdt-owed-file-body'
-import { recordBaseline } from '../sync/writeback-baseline'
+import { holdsUnstoredFile, recordBaseline, recordDocFile } from '../sync/writeback-baseline'
 import { hasPendingVaultFileOp, writeNoteFileNow } from '../sync/bulk-apply'
 import { PendingSyncIntentError } from '../sync/pending-sync-intent-error'
 import { SnapshotReasons } from '@memry/db-schema/schema/notes-cache'
@@ -259,7 +259,15 @@ export function planCaseTwinMove(
     leave()
     writeNoteFileNow(absolutePath, own.content)
     try {
-      recordBaseline(indexDb, leavingId, own.content)
+      if (own.content !== raw) {
+        // Its doc's body, which the store may not hold yet (#5698).
+        recordDocFile(indexDb, leavingId, own.content, getCrdtProvider())
+      } else if (holdsUnstoredFile(cached)) {
+        // The file's own bytes keep the mark of a doc its store may lack.
+        updateNoteCache(indexDb, leavingId, { contentHash: generateContentHash(raw) })
+      } else {
+        recordBaseline(indexDb, leavingId, own.content)
+      }
       if (own.cover !== undefined) recordRebuiltNoteCover(dataDb, leavingId, own.cover)
       dataDb.transaction(() => moveRow(moved))
     } catch (error) {
@@ -339,7 +347,8 @@ function planLeave(
       updateNoteCache(indexDb, survivorId, { pendingWriteHash: generateContentHash(own.content) })
     }
     writeNoteFileNow(absolutePath, own.content)
-    recordBaseline(indexDb, survivorId, own.content)
+    // Its doc's body, which the store may not hold yet (#5698).
+    recordDocFile(indexDb, survivorId, own.content, getCrdtProvider())
     if (owesFileBody(survivorId)) clearOwedFileBody(survivorId)
     recordRebuiltNoteCover(dataDb, survivorId, own.cover)
     syncNoteToCache(

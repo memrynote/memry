@@ -81,8 +81,13 @@ export function recordBaseline(indexDb: IndexDb, noteId: string, raw: string): v
 export interface DocStore {
   /** An update of the note is on its way to the store, or the store missed one. */
   isStoring(noteId: string): boolean
-  /** Resolves once the store holds every update handed to it so far. */
+  /**
+   * Resolves once the store holds every update handed to it so far, storing
+   * the whole doc again when the store missed one; rejects when a store fails.
+   */
   whenPersisted(noteId: string): Promise<void>
+  /** Resolves once the store holds every update made so far, however late; never rejects. */
+  whenStored(noteId: string): Promise<void>
 }
 
 /**
@@ -98,6 +103,15 @@ export interface DocStore {
  * switch, a quit cut short, a forced exit or a crash, leaves the marker, and
  * the doc's first open in the next session takes the file in
  * (`ingestOfflineEdit`) instead of writing its older stored doc over it.
+ *
+ * Recovery: the marker clears once the store holds every update the doc had
+ * when the file was written (`whenStored`), whether the original store lands
+ * or a later store of the whole doc does after one failed. The store then
+ * holds the file's bytes and possibly more, so the next open must not take
+ * the older file over it. A row whose `content_hash` moved past `raw` (a
+ * later write, an outside edit) is left alone. A marker that outlives a
+ * recovery (the session ended first) costs the next open a re-ingest, which
+ * keeps the doc as a version first (`crdt-writeback-ingest.ts`).
  */
 export function recordDocFile(
   indexDb: IndexDb,
@@ -113,28 +127,27 @@ export function recordDocFile(
     contentHash: generateContentHash(raw),
     pendingWriteHash: UNSTORED_FILE
   })
-  store.whenPersisted(noteId).then(
-    () => {
-      // A later write that is still storing clears the marker in its own turn.
-      if (store.isStoring(noteId)) return
-      try {
-        if (holdsUnstoredFile(getNoteCacheById(indexDb, noteId))) {
-          updateNoteCache(indexDb, noteId, { pendingWriteHash: null })
-        }
-      } catch (err) {
-        log.warn('Could not record a stored file; its next open takes the file in again', {
-          noteId,
-          err
-        })
+  const hash = generateContentHash(raw)
+  // Stores the whole doc again when the store missed an update.
+  store.whenPersisted(noteId).catch((err: unknown) => {
+    log.warn('The store has not confirmed a written file yet; its next open takes the file in', {
+      noteId,
+      err
+    })
+  })
+  void store.whenStored(noteId).then(() => {
+    try {
+      const row = getNoteCacheById(indexDb, noteId)
+      if (holdsUnstoredFile(row) && row?.contentHash === hash) {
+        updateNoteCache(indexDb, noteId, { pendingWriteHash: null })
       }
-    },
-    (err: unknown) => {
-      log.warn('The store never confirmed a written file; its next open takes the file in', {
+    } catch (err) {
+      log.warn('Could not record a stored file; its next open takes the file in again', {
         noteId,
         err
       })
     }
-  )
+  })
 }
 
 /**

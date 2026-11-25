@@ -929,12 +929,18 @@ document to its vault `.md` file and re-indexes it for search.
   in, so the next session's first pass would write the older stored doc over it. While
   the note's updates are still storing, the write-back records the file's real hash in
   `content_hash` (the watcher's rename match needs it) and `unstored-file` in
-  `pending_write_hash`, and clears the marker once `whenPersisted` resolves
-  (`recordDocFile`). A session that ends first, by a close, a quit cut short, a forced
-  exit or a crash, leaves the marker, and the doc's first open takes the file in as an
-  edit made while the app was closed (`ingestOfflineEdit`). A pass whose file write
-  fails drops the marker: its file lacks the doc's edits, which only the store can
-  still hold.
+  `pending_write_hash` (`recordDocFile`). The marker clears once the store holds every
+  update the doc had when the file was written (`whenStored`): the original store, or a
+  later store of the whole doc after one failed. The store then holds the file and
+  possibly more, so taking the older file in would erase edits. A row whose
+  `content_hash` moved on keeps its marker. A session that ends first, by a close, a
+  quit cut short, a forced exit or a crash, leaves the marker, and the doc's first open
+  takes the file in as an edit made while the app was closed (`ingestOfflineEdit`),
+  keeping the doc as a version first. A doc that cannot be converted for that version
+  is not replaced. A pass whose file write fails drops the marker: its file lacks the
+  doc's edits, which only the store can still hold. A case twin leaving a shared file
+  records its doc-built file the same way, and a twin moving with its own bytes keeps
+  its marker.
 - **A quit flushes write-backs first, not last** — the provider is destroyed at the _end_
   of the shutdown chain, so relying on `destroy()` alone meant a slow teardown step could
   spend the whole shutdown budget and the forced exit would kill the process with the
