@@ -21,6 +21,7 @@ import { secureCleanup } from '../crypto/index'
 import { getFromServer } from './http-client'
 import { classifyError } from './sync-errors'
 import { syncState } from '@memry/db-schema/schema/sync-state'
+import { sessionState } from './device-local-state'
 import { ItemApplier } from './apply-item'
 import { FullSyncRunner } from './engine/full-sync-runner'
 import type {
@@ -770,9 +771,12 @@ export class SyncEngine extends SyncEventEmitter {
     this.pullCoordinator.clearCaches()
     this.quarantine.clear()
 
+    // A session reset: the IPC handler follows with an integrity teardown that
+    // keeps the vault files and the CRDT store, so the rows that describe them
+    // stay too (device-local-state.ts).
     try {
       this.ctx.deps.db.transaction((tx) => {
-        tx.delete(syncState).run()
+        tx.delete(syncState).where(sessionState()).run()
       })
     } catch (err) {
       log.error('Emergency wipe: failed to clear sync state', {

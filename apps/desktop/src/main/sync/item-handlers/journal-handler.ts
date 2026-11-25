@@ -8,6 +8,7 @@ import type { SyncQueueManager } from '@memry/sync-client/queue'
 import { nextLocalClock } from '@memry/sync-client/tombstone-clocks'
 import { getIndexDatabase } from '../../database/client'
 import { getNoteMetadataById, getNoteMetadataByPath, updateNoteMetadata } from '@memry/storage-data'
+import { getNoteCacheById } from '@main/database/queries/notes'
 import { planJournalDayApply } from '@memry/domain-notes/journal'
 import { saveCanonicalNote } from '@memry/domain-notes'
 import {
@@ -29,7 +30,7 @@ import { BaseItemHandler } from '@memry/sync-client/item-handlers/base-handler'
 import { belongsToOtherType } from './note-row-type'
 import { pulledRowSyncedAt } from './pulled-row-synced-at'
 import { remoteAliases } from './note-handler-frontmatter'
-import { extractAliases } from '../../vault/frontmatter'
+import { extractAliases, generateContentHash } from '../../vault/frontmatter'
 import { seedSkipsDeletedNote } from '../pending-deletes'
 import type { ApplyContext, ApplyResult, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { forgetBaselineOfRemotelyDeletedNote } from '../../vault-locks/files'
@@ -230,6 +231,7 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
         tombstoneClock: clock,
         deletedAt,
         bodyStateVector,
+        unseenFile: holdsUningestedEdit(indexDb, itemId, date),
         readBody: () => readDayBody(date)
       })
     }
@@ -349,6 +351,37 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
 
     return items.length
   }
+}
+
+/**
+ * Whether the day file holds bytes this device has not ingested: an edit made
+ * outside the app that the watcher has not taken yet (#5757). A closed-app
+ * edit waits for the vault open's replay, and a live one for the watcher's
+ * debounce; a pull can apply a delete in either window. No clock has ticked
+ * for that edit, so the tombstone's clock cannot say the deleter saw it.
+ *
+ * Invariant: a file this device has not ingested is never deleted unseen.
+ * The ingested bytes are the write-back baseline (`note_cache.content_hash`,
+ * or `pending_write_hash` while a write-back's own bytes land). A day with no
+ * cache row, or no hash, has no proof either, so it counts as not ingested.
+ */
+function holdsUningestedEdit(
+  indexDb: ReturnType<typeof getIndexDatabase>,
+  itemId: string,
+  date: string
+): boolean {
+  let raw: string | null
+  try {
+    raw = readJournalTextSync(date)
+  } catch (error) {
+    // `readBody` reads the same file and finds nothing to keep either.
+    log.warn('Could not read a journal day file before a remote delete', { date, error })
+    return false
+  }
+  if (raw === null) return false
+  const cached = getNoteCacheById(indexDb, itemId)
+  const onDisk = generateContentHash(raw)
+  return onDisk !== cached?.contentHash && onDisk !== cached?.pendingWriteHash
 }
 
 export const journalHandler = new JournalHandler()

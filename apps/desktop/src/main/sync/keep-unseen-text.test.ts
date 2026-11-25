@@ -1,3 +1,4 @@
+import type * as NotesModule from '@main/database/queries/notes'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import fs from 'fs'
 import os from 'os'
@@ -41,6 +42,19 @@ vi.mock('./crdt-writeback-port', async () => {
   return { crdtWriteback: () => writeback }
 })
 vi.mock('./crdt-writeback', () => ({}))
+// The index holds the day file's bytes as its baseline: the delete tests below
+// weigh clocks over text this device ingested (#5757 covers text it did not).
+vi.mock('@main/database/queries/notes', async (importOriginal) => {
+  const { generateContentHash } = await import('../vault/frontmatter')
+  return {
+    ...(await importOriginal<typeof NotesModule>()),
+    getNoteCacheById: vi.fn(() =>
+      fs.existsSync(dayFile)
+        ? { contentHash: generateContentHash(fs.readFileSync(dayFile, 'utf-8')) }
+        : undefined
+    )
+  }
+})
 vi.mock('./crdt-provider', () => ({
   getCrdtProvider: () => ({ purge: vi.fn(() => Promise.resolve()) })
 }))

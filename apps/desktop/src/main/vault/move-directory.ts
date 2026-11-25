@@ -596,7 +596,11 @@ async function placeFile(
   try {
     await copyFile(staged, temp, constants.COPYFILE_EXCL)
   } catch (error) {
-    if (errnoCode(error) !== 'EEXIST') throw error
+    if (errnoCode(error) !== 'EEXIST') {
+      // This run created `temp` with the exclusive copy, so it is ours.
+      await rm(temp, { force: true })
+      throw error
+    }
     // Not this put-back's file: drop its name from the record, keep it staged.
     await recordPlacement(journal, staged, target, staged)
     throw Object.assign(new Error('EIO'), { code: 'EIO' })

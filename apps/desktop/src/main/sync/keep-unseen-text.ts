@@ -38,6 +38,11 @@ export interface UnseenTextDelete {
   deletedAt: number | undefined
   /** The tombstone's `bodyStateVector` (#3037). */
   bodyStateVector: string | undefined
+  /**
+   * The item's file holds bytes this device never ingested (#5757). Its text
+   * is unseen whatever the clocks say, since no clock moved for it.
+   */
+  unseenFile?: boolean
   /** The item's markdown body, read only when a copy may be needed. */
   readBody: () => string | null
 }
@@ -56,16 +61,18 @@ export function keepUnseenText(ctx: ApplyContext, del: UnseenTextDelete): void {
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- loosely typed value (unknown, column or error) named as its contract type; a runtime guard would change behavior
   const facts = readLocalBodyFacts(ctx.db as DataDb, del.itemId)
   const decide = (bodyBlank: boolean): boolean =>
-    keepsUnseenText({
-      bodyBlank,
-      waitingChanges: facts.waiting,
-      localClock: del.localClock,
-      tombstoneClock: del.tombstoneClock ?? null,
-      deletedAt: del.deletedAt ?? null,
-      lastLocalBodyAt: facts.confirmedAt,
-      deleterBodyStateVector: del.bodyStateVector ?? null,
-      localBodyStateVector: facts.pushedStateVector
-    })
+    del.unseenFile === true
+      ? !bodyBlank
+      : keepsUnseenText({
+          bodyBlank,
+          waitingChanges: facts.waiting,
+          localClock: del.localClock,
+          tombstoneClock: del.tombstoneClock ?? null,
+          deletedAt: del.deletedAt ?? null,
+          lastLocalBodyAt: facts.confirmedAt,
+          deleterBodyStateVector: del.bodyStateVector ?? null,
+          localBodyStateVector: facts.pushedStateVector
+        })
   if (!decide(false)) return
   const body = del.readBody()
   if (!body || !decide(body.trim() === '')) return
