@@ -95,6 +95,24 @@ struct ChecklistAutoTaskTests {
         withExtendedLifetime(paragraph) {}
     }
 
+    /// #5817: the redrawn row can take the caret while the old one resigns,
+    /// as it moves into the window then: it begins editing before the old
+    /// row ends, and never ends editing itself. The old row's typing is
+    /// written all the same.
+    @Test func typingTakenOverBeforeTheOldRowEndsEditingIsWritten() async {
+        let paragraph = field(kind: "paragraph")
+        type("milk", in: paragraph)
+        model.session.shortcutField = paragraph
+
+        let checklist = field(kind: "checkListItem")
+        checklist.textViewDidBeginEditing(checklist.textView)
+        paragraph.textViewDidEndEditing(paragraph.textView)
+        await model.session.tail?.value
+
+        #expect(editor.all == [.replaceText(blockId: "c1", text: "milk", base: "")])
+        #expect(!checklist.dirty)
+    }
+
     @Test func aChecklistItemOnlyTappedThroughIsLeftAlone() async {
         let field = field(kind: "checkListItem")
         model.session.convertTypedChecklist = { _ in Issue.record("nothing was typed") }
