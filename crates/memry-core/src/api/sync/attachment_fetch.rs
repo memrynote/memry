@@ -9,9 +9,10 @@
 
 use std::collections::HashMap;
 use std::sync::{Arc, LazyLock, Mutex, Weak};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use tokio::sync::{OnceCell, Semaphore};
+use tokio::time::Instant;
 
 use crate::api::errors::ApiError;
 use crate::protocol::attachment_manifest::{AttachmentManifest, EncryptedAttachmentManifest};
@@ -33,29 +34,39 @@ const NOT_FOUND_COOLDOWN: Duration = Duration::from_secs(10 * 60);
 
 /// When each vault's server last answered the manifest batch route 404, keyed
 /// like [`DOWNLOAD_GATES`] so every `VaultSync` of the vault shares it.
-static MANIFEST_BATCH_UNSUPPORTED: LazyLock<Mutex<HashMap<String, Instant>>> =
-    LazyLock::new(|| Mutex::new(HashMap::new()));
+static MANIFEST_BATCH_UNSUPPORTED: LazyLock<NotFoundMemory> = LazyLock::new(Default::default);
 
-/// When a note open was last answered 404 for an attachment's manifest, keyed
-/// like [`IN_FLIGHT`]: never uploaded, or gone. Without it every open of the
-/// note asks for the device directory and the manifest again (#5247).
-static MANIFEST_NOT_FOUND: LazyLock<Mutex<HashMap<String, Instant>>> =
-    LazyLock::new(|| Mutex::new(HashMap::new()));
+/// When each key was last answered 404, for [`NOT_FOUND_COOLDOWN`], on tokio's
+/// clock so a paused test runtime drives the window.
+///
+/// The session holds the one for manifests a note open was answered 404 for
+/// (never uploaded, or gone), keyed like [`IN_FLIGHT`]. Without it every open
+/// of the note asks for the device directory and the manifest again (#5247);
+/// held by the session, a sign-out or a new session asks again.
+#[derive(Default)]
+pub(crate) struct NotFoundMemory(Mutex<HashMap<String, Instant>>);
 
-/// Whether `key` answered 404 within [`NOT_FOUND_COOLDOWN`].
-fn recently_not_found(memory: &Mutex<HashMap<String, Instant>>, key: &str) -> bool {
-    let mut memory = memory
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-    memory.retain(|_, at| at.elapsed() < NOT_FOUND_COOLDOWN);
-    memory.contains_key(key)
-}
+impl NotFoundMemory {
+    fn map(&self) -> std::sync::MutexGuard<'_, HashMap<String, Instant>> {
+        self.0
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
 
-fn remember_not_found(memory: &Mutex<HashMap<String, Instant>>, key: &str) {
-    memory
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner)
-        .insert(key.to_owned(), Instant::now());
+    /// Whether `key` answered 404 within [`NOT_FOUND_COOLDOWN`].
+    fn recently(&self, key: &str) -> bool {
+        let mut map = self.map();
+        map.retain(|_, at| at.elapsed() < NOT_FOUND_COOLDOWN);
+        map.contains_key(key)
+    }
+
+    fn remember(&self, key: &str) {
+        self.map().insert(key.to_owned(), Instant::now());
+    }
+
+    pub(crate) fn clear(&self) {
+        self.map().clear();
+    }
 }
 
 /// One queue per vault, shared by every `VaultSync` the shell mints for it.
@@ -202,7 +213,12 @@ impl VaultSync {
             .into_iter()
             .filter(|row| row.filename.is_none())
             .map(|row| row.attachment_id)
-            .filter(|id| !recently_not_found(&MANIFEST_NOT_FOUND, &self.not_found_key(id)))
+            .filter(|id| {
+                !self
+                    .session
+                    .manifest_not_found
+                    .recently(&self.not_found_key(id))
+            })
             .collect();
         if unnamed.is_empty() {
             return Ok(0);
@@ -243,10 +259,9 @@ impl VaultSync {
                         ..
                     }) = error
                     {
-                        remember_not_found(
-                            &MANIFEST_NOT_FOUND,
-                            &self.not_found_key(&attachment_id),
-                        );
+                        self.session
+                            .manifest_not_found
+                            .remember(&self.not_found_key(&attachment_id));
                     }
                     eprintln!("memry-core: naming attachment {attachment_id}: {error}");
                     continue;
@@ -477,7 +492,7 @@ impl VaultSync {
         &self,
         ids: &[String],
     ) -> HashMap<String, EncryptedAttachmentManifest> {
-        let unsupported = recently_not_found(&MANIFEST_BATCH_UNSUPPORTED, &self.vault_id);
+        let unsupported = MANIFEST_BATCH_UNSUPPORTED.recently(&self.vault_id);
         // A key that cannot be read fails each row on its own, as before.
         let unlocked = matches!(self.session.master_key(), Ok(Some(_)));
         if ids.len() < 2 || unsupported || !unlocked {
@@ -494,7 +509,7 @@ impl VaultSync {
             {
                 Ok(Some(batch)) => manifests.extend(batch),
                 Ok(None) => {
-                    remember_not_found(&MANIFEST_BATCH_UNSUPPORTED, &self.vault_id);
+                    MANIFEST_BATCH_UNSUPPORTED.remember(&self.vault_id);
                     break;
                 }
                 Err(_) => break,
