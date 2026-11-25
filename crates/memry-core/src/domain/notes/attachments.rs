@@ -23,11 +23,34 @@ pub fn add_attachment_reference(
     device_id: &str,
     now_ms: i64,
 ) -> Result<Option<Durable<String>>, StorageError> {
+    add_attachment_references(
+        conn,
+        note_id,
+        &[attachment_id.to_owned()],
+        device_id,
+        now_ms,
+    )
+}
+
+/// [`add_attachment_reference`] for several ids in one edit: one clock tick
+/// and one queued push, or none when the list holds every id already.
+pub(crate) fn add_attachment_references(
+    conn: &Connection,
+    note_id: &str,
+    attachment_ids: &[String],
+    device_id: &str,
+    now_ms: i64,
+) -> Result<Option<Durable<String>>, StorageError> {
     let mut merged: Vec<String> = read_attachment_references(conn, note_id)?;
-    if merged.iter().any(|id| id == attachment_id) {
+    let held = merged.len();
+    for id in attachment_ids {
+        if !merged.contains(id) {
+            merged.push(id.clone());
+        }
+    }
+    if merged.len() == held {
         return Ok(None);
     }
-    merged.push(attachment_id.to_owned());
     edit_references(conn, note_id, merged, device_id, now_ms).map(Some)
 }
 

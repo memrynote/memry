@@ -31,6 +31,7 @@ use memry_core::api::sync::VaultSync;
 use memry_core::api::vault::Vault;
 use memry_core::crdt::update_log;
 use memry_core::crypto::{keys, sodium};
+use memry_core::domain::attachments;
 use memry_core::domain::journal_ops::metadata;
 use memry_core::domain::tags;
 use memry_core::protocol::auth::DevicePlatform;
@@ -43,7 +44,7 @@ use memry_core::storage::Db;
 use memry_core::storage::repositories::sync_items::{self, ApplyOutcome, InboundRecord};
 use memry_core::sync::outbox::{self, Change};
 use memry_core::sync::store;
-use rusqlite::Connection;
+use rusqlite::{Connection, OptionalExtension as _};
 use serde_json::{Value as Json, json};
 use tokio::sync::Notify;
 use yrs::updates::decoder::Decode as _;
@@ -54,6 +55,8 @@ const MASTER_KEY: [u8; 32] = [7u8; 32];
 const DATE: &str = "2026-06-09";
 const DAY: &str = "j2026-06-09";
 const F: &str = "vcpzueguep8y";
+const PICTURE: &str = "c2aaafaa721c3893a1fb8ca144718a1e";
+const OWN: &str = "0b5d3c1e9f2a4b6c8d0e1f2a3b4c5d6e";
 
 static SCRATCH: AtomicU64 = AtomicU64::new(0);
 type Clock = BTreeMap<String, u64>;
@@ -106,6 +109,9 @@ struct State {
     /// registered device id -> signing public key
     devices: Vec<(String, Vec<u8>)>,
     traps: Vec<Trap>,
+    /// Attachment uploads fail with 503 while set: the device is offline
+    /// for them.
+    attachments_down: bool,
 }
 
 struct Server {
@@ -344,6 +350,19 @@ impl Server {
             ("GET", p) if p.starts_with("/sync/crdt/snapshot/") => {
                 json_response(200, json!({"snapshot": null}))
             }
+            // Accepts every upload step; only the reference names the bytes.
+            (_, p) if p.starts_with("/sync/attachments/") => {
+                if st.attachments_down {
+                    json_response(503, json!({}))
+                } else if p.ends_with("/upload/initiate") {
+                    json_response(
+                        200,
+                        json!({"sessionId": "upload-1", "expiresAt": 9_999_999_999_000i64}),
+                    )
+                } else {
+                    json_response(200, json!({"success": true}))
+                }
+            }
             _ => panic!("test server: unknown route {method} {full_path} from {device}"),
         }
     }
@@ -376,6 +395,10 @@ impl Server {
             .collect();
         tags.sort();
         tags
+    }
+
+    fn attachments_down(&self, down: bool) {
+        self.state.lock().unwrap().attachments_down = down;
     }
 
     fn max_cursor(&self) -> i64 {
@@ -427,7 +450,8 @@ impl Transport for DeviceTransport {
         let body = request
             .body
             .as_ref()
-            .map(|b| serde_json::from_slice::<Json>(b).unwrap());
+            // A chunk's body is bytes, not JSON.
+            .and_then(|b| serde_json::from_slice::<Json>(b).ok());
         Ok(self
             .server
             .handle(&self.device, &request.method, &path, body))
@@ -617,6 +641,61 @@ impl Dev {
         });
     }
 
+    /// The `note` record desktop pushes under `id` once `picture` uploaded
+    /// to it (`recordOnNote`), and the queued upsert that pushes it.
+    fn seed_picture(&self, id: &'static str, picture: &str, clock: Clock) {
+        let payload = json!({
+            "title": DATE, "fileType": "markdown", "folderPath": "journal",
+            "attachmentReferences": [picture], "clock": clock,
+            "createdAt": "2026-06-09T08:00:00.000Z", "modifiedAt": "2026-06-09T08:00:00.000Z",
+        })
+        .to_string();
+        self.db(move |conn| {
+            let record = InboundRecord {
+                item_type: "note".to_owned(),
+                item_id: id.to_owned(),
+                payload_json: payload,
+                server_cursor: None,
+                signer_device_id: Some("device-a".to_owned()),
+                updated_at: 1,
+                deleted_at: None,
+            };
+            assert_eq!(
+                sync_items::apply_remote(conn, &record, 1)?,
+                ApplyOutcome::Applied
+            );
+            outbox::commit(conn, &Change::upsert("note", id), 1, |_| Ok(()))
+        });
+    }
+
+    /// A picture attached to the day the device holds as `F`, as the day
+    /// page attaches (`upload_attachment`); its id.
+    async fn attach_to_foreign(&self) -> String {
+        self.sync
+            .upload_attachment(
+                F.to_owned(),
+                "photo.png".to_owned(),
+                "image/png".to_owned(),
+                b"a picture taken offline".to_vec(),
+            )
+            .await
+            .unwrap()
+    }
+
+    /// Deletes the `note` record under `id` (a user delete).
+    fn delete_note(&self, id: &'static str) {
+        let clock = self.clock.clone();
+        self.db(move |c| memry_core::domain::notes::delete(c, id, &clock, now()).map(|_| ()));
+    }
+
+    /// The pictures opening `j<D>` fetches (`fetch_note_manifests(DAY)`).
+    fn day_pictures(&self) -> Vec<String> {
+        self.db(|c| attachments::for_note(c, DAY))
+            .into_iter()
+            .map(|row| row.attachment_id)
+            .collect()
+    }
+
     /// The device already pulled the feed through `cursor`, as an install
     /// that held `F` long before has: it does not pull its own `F` back.
     fn pulled_through(&self, cursor: i64) {
@@ -802,6 +881,165 @@ async fn typed_offline(order: Order, in_the_gap: bool) {
         assert!(text.contains("held"), "{device}'s j<D>: {text:?}");
     }
     w.assert_day(&["a", "b"]);
+}
+
+/// (#5777) A named a picture under `F`; B merges `F`. A day's pictures are
+/// fetchable wherever the day is: a device that never held `F` opens `j<D>`
+/// and wants the picture, and the devices settle with no push loop.
+#[tokio::test]
+async fn a_fresh_device_fetches_the_merged_days_pictures() {
+    let w = World::new(&["a"]).await;
+    w.a.seed_picture(F, PICTURE, BTreeMap::from([(w.a.clock.clone(), 1)]));
+    w.a.pass().await;
+    w.b.pass().await;
+    w.settle().await;
+    assert_eq!(w.b.day_pictures(), [PICTURE], "B's j<D>");
+    assert_eq!(w.a.day_pictures(), [PICTURE], "A's j<D>");
+    fresh_device_wants(&w, &[PICTURE]).await;
+}
+
+/// (#5777) `j<D>` already names a picture of its own: the merge adds `F`'s
+/// to the list and drops none.
+#[tokio::test]
+async fn the_merge_keeps_the_days_own_pictures() {
+    let w = World::new(&["a"]).await;
+    let clock = BTreeMap::from([(w.a.clock.clone(), 1)]);
+    w.a.seed_picture(F, PICTURE, clock.clone());
+    w.a.seed_picture(DAY, OWN, clock);
+    w.a.pass().await;
+    w.b.pass().await;
+    w.settle().await;
+    let mut want = [OWN, PICTURE];
+    want.sort();
+    for (device, mut got) in [("A", w.a.day_pictures()), ("B", w.b.day_pictures())] {
+        got.sort();
+        assert_eq!(got, want, "{device}'s j<D>");
+    }
+    fresh_device_wants(&w, &want).await;
+}
+
+/// (#5801) A picture attached to `F` offline is still queued when the merge
+/// settles, and the pass uploads after the merge: the upload names `j<D>`,
+/// not `F`. With `pushed`, `F` already named a picture of its own.
+async fn queued_at_the_merge(pushed: bool) {
+    let w = World::new(&["a"]).await;
+    let mut want = Vec::new();
+    if pushed {
+        w.a.seed_picture(F, PICTURE, BTreeMap::from([(w.a.clock.clone(), 1)]));
+        w.a.pass().await;
+        want.push(PICTURE.to_owned());
+    }
+    w.server.attachments_down(true);
+    want.push(w.a.attach_to_foreign().await);
+    want.sort();
+    w.b.pass().await;
+    w.server.attachments_down(false);
+    w.settle().await;
+    for (device, mut got) in [("A", w.a.day_pictures()), ("B", w.b.day_pictures())] {
+        got.sort();
+        assert_eq!(got, want, "{device}'s j<D>");
+    }
+    let want: Vec<&str> = want.iter().map(String::as_str).collect();
+    fresh_device_wants(&w, &want).await;
+}
+
+#[tokio::test]
+async fn a_picture_queued_at_the_merge_is_named_under_the_day() {
+    queued_at_the_merge(false).await;
+}
+
+#[tokio::test]
+async fn a_picture_queued_at_the_merge_joins_the_carried_ones() {
+    queued_at_the_merge(true).await;
+}
+
+/// (#5801) A picture attached to `F` is in flight when the merge settles: A's
+/// manifest upload is held while A's own pass merges and moves the queue row
+/// to `j<D>`. `F` stays live until the merge tombstones it, so naming the
+/// note read before the bytes went up would leave the picture off the day.
+#[tokio::test]
+async fn a_picture_in_flight_at_the_merge_is_named_under_the_day() {
+    let w = World::new(&["a"]).await;
+    w.a.seed_picture(F, PICTURE, BTreeMap::from([(w.a.clock.clone(), 1)]));
+    w.a.pass().await;
+    w.b.pass().await;
+    let (arrived, release) = (Arc::new(Notify::new()), Arc::new(Notify::new()));
+    w.server.trap(
+        &w.a.registered,
+        "/manifest",
+        Some((arrived.clone(), release.clone())),
+    );
+    let settle_in_flight = async {
+        arrived.notified().await;
+        let moved = async {
+            loop {
+                let owner: Option<String> = w.a.db(|c| {
+                    c.query_row("SELECT note_id FROM note_attachment_uploads", [], |row| {
+                        row.get(0)
+                    })
+                    .optional()
+                    .map_err(failed)
+                });
+                if owner.as_deref() == Some(DAY) {
+                    break;
+                }
+                tokio::task::yield_now().await;
+            }
+            release.notify_one();
+        };
+        tokio::join!(w.a.pass(), moved);
+    };
+    let (attached, ()) = tokio::time::timeout(Duration::from_secs(300), async {
+        tokio::join!(w.a.attach_to_foreign(), settle_in_flight)
+    })
+    .await
+    .expect("the merge never settled while the upload was in flight");
+    w.settle().await;
+    let mut want = vec![PICTURE.to_owned(), attached];
+    want.sort();
+    for (device, mut got) in [("A", w.a.day_pictures()), ("B", w.b.day_pictures())] {
+        got.sort();
+        assert_eq!(got, want, "{device}'s j<D>");
+    }
+}
+
+/// (#5801) `j<D>`'s note record was deleted: the merge creates it again one
+/// tick past the tombstone, naming `F`'s pictures and none of the deleted
+/// record's.
+#[tokio::test]
+async fn a_deleted_day_record_is_created_again_with_the_carried_pictures() {
+    let w = World::new(&["a"]).await;
+    let clock = BTreeMap::from([(w.a.clock.clone(), 1)]);
+    w.a.seed_picture(F, PICTURE, clock.clone());
+    w.a.seed_picture(DAY, OWN, clock);
+    w.a.pass().await;
+    w.a.delete_note(DAY);
+    w.a.pass().await;
+    w.b.pass().await;
+    w.settle().await;
+    assert_eq!(w.b.day_pictures(), [PICTURE], "B's j<D>");
+    assert_eq!(w.a.day_pictures(), [PICTURE], "A's j<D>");
+    fresh_device_wants(&w, &[PICTURE]).await;
+}
+
+/// A device that never held `F` pulls the vault and opens `j<D>`; then the
+/// three devices settle, so the carry started no push loop.
+async fn fresh_device_wants(w: &World, want: &[&str]) {
+    let c = Dev::new(&w.server, "c", 23);
+    for _ in 0..4 {
+        if !c.pass().await {
+            break;
+        }
+    }
+    assert!(
+        c.db(|conn| Ok(memry_core::domain::journal::journal_exists(conn, DAY))),
+        "C pulled the day"
+    );
+    let mut got = c.day_pictures();
+    got.sort();
+    assert_eq!(got, want, "C's j<D>");
+    w.settle().await;
+    assert!(!c.pass().await, "C moved nothing more");
 }
 
 #[tokio::test]
