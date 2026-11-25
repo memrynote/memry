@@ -167,6 +167,7 @@ import { deleteNoteMetadata } from '@memry/storage-data'
 import { noteCache } from '@memry/db-schema/schema/notes-cache'
 import { getNoteCacheByPath } from '../database/queries/notes'
 import { resolveJournalEntryId } from '../journal/create-entry'
+import { updateJournalEntry } from '../journal/update-entry'
 import { recordTombstoneClock } from '@memry/sync-client/tombstone-clocks'
 import { _resetBulkApplyForTests } from './bulk-apply'
 import { journalHandler } from './item-handlers/journal-handler'
@@ -757,6 +758,30 @@ describe('runJournalDayMerges', () => {
 
     journalHandler.applyUpsert(ctx, FOREIGN, { date: DATE, content: 'theirs\n' }, { b: 1 })
 
+    expect(listOwedJournalDayMerges(ctx.db)).toEqual([])
+  })
+
+  // The user edits a foreign holder `F`'s tags through the real edit path
+  // after its tombstone is held and before the drain takes the day over
+  // (#5694). The drain merges the tags `F` holds then, not the ones read
+  // when the tombstone arrived.
+  it('merges the tags a held day holds when the drain runs, not those read at its tombstone', async () => {
+    foreignRow({ me: 1 }, { body: '---\ntags:\n  - a\n  - b\n---\nheld\n' })
+    getRemoteSyncAdapter('journal')?.markPushSynced?.(ctx.db, FOREIGN)
+    await updateJournalEntry({ date: DATE, tags: ['a', 'b', 'c'] })
+    new ItemApplier(ctx.db, vi.fn()).apply({
+      itemId: FOREIGN,
+      type: 'journal',
+      operation: 'delete',
+      content: new TextEncoder().encode(JSON.stringify({ clock: { me: 1, b: 1 } })),
+      clock: { me: 1, b: 1 },
+      deletedAt: Date.now()
+    })
+    await updateJournalEntry({ date: DATE, tags: ['a', 'b', 'd'] })
+
+    await drain()
+
+    expect(parseJournalEntry(dayFile(), DATE).frontmatter.tags).toEqual(['a', 'b', 'd'])
     expect(listOwedJournalDayMerges(ctx.db)).toEqual([])
   })
 
