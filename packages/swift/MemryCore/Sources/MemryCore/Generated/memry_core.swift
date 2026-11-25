@@ -14292,8 +14292,10 @@ public protocol VaultSyncProtocol: AnyObject, Sendable {
      * makes no request, and so does a round before the `Retry-After` of a
      * `429` the last one met, whether it ended that round or only answered
      * its probe or bootstrap open, or one the first sync's bodies pass gave
-     * up on: it pulls nothing, which pauses the shell's drain until the next
-     * foreground. It opens a bootstrap session
+     * up on: it pulls nothing. The shell then waits a few seconds and asks
+     * again, and pauses its drain until the next foreground only once the
+     * rounds have pulled nothing for longer than the longest `429` hold.
+     * It opens a bootstrap session
      * for the round and pulls four documents at a time when the server
      * grants one (a device's first day, §10.9), one at a time otherwise.
      *
@@ -14684,8 +14686,10 @@ open func uploadAttachment(noteId: String, filename: String, mimeType: String, b
      * makes no request, and so does a round before the `Retry-After` of a
      * `429` the last one met, whether it ended that round or only answered
      * its probe or bootstrap open, or one the first sync's bodies pass gave
-     * up on: it pulls nothing, which pauses the shell's drain until the next
-     * foreground. It opens a bootstrap session
+     * up on: it pulls nothing. The shell then waits a few seconds and asks
+     * again, and pauses its drain until the next foreground only once the
+     * rounds have pulled nothing for longer than the longest `429` hold.
+     * It opens a bootstrap session
      * for the round and pulls four documents at a time when the server
      * grants one (a device's first day, §10.9), one at a time otherwise.
      *
@@ -15983,8 +15987,8 @@ public struct BodyDrainSummary: Equatable, Hashable {
     public var requests: UInt32
     /**
      * Live documents still owed a body. Some may be backing off after a
-     * failure, so a round that pulled nothing pauses the drain even when
-     * this is above 0.
+     * failure, so a round that pulled nothing tells the shell to wait and ask
+     * again even when this is above 0.
      */
     public var remaining: UInt32
     /**
@@ -16000,8 +16004,8 @@ public struct BodyDrainSummary: Equatable, Hashable {
          */documents: UInt32, requests: UInt32, 
         /**
          * Live documents still owed a body. Some may be backing off after a
-         * failure, so a round that pulled nothing pauses the drain even when
-         * this is above 0.
+         * failure, so a round that pulled nothing tells the shell to wait and ask
+         * again even when this is above 0.
          */remaining: UInt32, 
         /**
          * Whether a bootstrap session widened the round (chapter 10 §10.7).
@@ -39236,7 +39240,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_vaultsync_upload_attachment() != 60438) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_vaultsync_drain_bodies() != 41901) {
+    if (uniffi_memry_core_checksum_method_vaultsync_drain_bodies() != 21882) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vaultsync_attach_inbox_file() != 44095) {
