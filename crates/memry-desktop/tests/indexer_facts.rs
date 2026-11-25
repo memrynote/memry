@@ -740,8 +740,8 @@ fn a_reindex_a_first_sync_held_midway_is_answered_once_it_ended() {
 
 /// Two reindexes asked at once while their shared pass meets a first sync: neither runs a pass
 /// while the first sync holds, and both are answered by the rerun once it ended (#5423 C8). The
-/// second asker shares the first's pass (REVIEW-5806 finding 2), so it is told the held pass's
-/// steps; the rerun's repeat them, which its throttle drops.
+/// second asker shares the first's pass (REVIEW-5806 finding 2): before the release it was told
+/// exactly the first asker's steps, of that one pass.
 #[test]
 fn a_held_reindex_holds_the_reindexes_asked_after_it() {
     let (mut e, _store, notes) = seeded(2);
@@ -750,21 +750,24 @@ fn a_held_reindex_holds_the_reindexes_asked_after_it() {
     let (first, second) = (&notes[0].0, &notes[1].0);
     let (sender, receiver) = broadcast::channel(16);
     with_task(&open, receiver, |task| {
+        // What each asker was told, and the release, in the order they happened.
+        let order: Arc<Mutex<Vec<(&str, IndexProgress)>>> = Arc::default();
         let hold = Arc::new(Mutex::new(None));
-        let (running, taken) = (open.first_sync.clone(), hold.clone());
-        let mut started = false;
+        let (running, taken, told) = (open.first_sync.clone(), hold.clone(), order.clone());
         let held = task
-            .reindex(Box::new(move |_| {
-                if !std::mem::replace(&mut started, true) {
+            .reindex(Box::new(move |step| {
+                let mut told = told.lock().unwrap();
+                if told.is_empty() {
                     *taken.lock().unwrap() = Some(running.hold());
                 }
+                told.push(("first", step));
             }))
             .unwrap();
-        // What the second asker was told, and the release, in the order they happened.
-        let order = Arc::new(Mutex::new(Vec::new()));
         let told = order.clone();
         let after = task
-            .reindex(Box::new(move |_| told.lock().unwrap().push("reported")))
+            .reindex(Box::new(move |step| {
+                told.lock().unwrap().push(("second", step));
+            }))
             .unwrap();
         sender.send(Applied::Indexed { complete: true }).unwrap();
         until("the first sync started", || hold.lock().unwrap().is_some());
@@ -776,7 +779,10 @@ fn a_held_reindex_holds_the_reindexes_asked_after_it() {
             .unwrap()
             .unwrap();
         assert!(held.try_recv().is_err() && after.try_recv().is_err());
-        order.lock().unwrap().push("released");
+        order
+            .lock()
+            .unwrap()
+            .push(("released", IndexProgress::default()));
         drop(hold.lock().unwrap().take());
         for answer in [held, after] {
             answer
@@ -785,9 +791,30 @@ fn a_held_reindex_holds_the_reindexes_asked_after_it() {
                 .unwrap();
         }
         let order = order.lock().unwrap().clone();
+        let released = order
+            .iter()
+            .position(|(who, _)| *who == "released")
+            .unwrap();
+        let steps = |asker| -> Vec<IndexProgress> {
+            (order[..released].iter())
+                .filter(|(who, _)| *who == asker)
+                .map(|(_, step)| *step)
+                .collect()
+        };
+        let (shared, theirs) = (steps("first"), steps("second"));
+        assert!(!shared.is_empty(), "the held pass stepped: {order:?}");
+        assert_eq!(
+            theirs, shared,
+            "the second asker shared the pass: {order:?}"
+        );
         assert!(
-            order.contains(&"reported"),
-            "the second asker was told the shared pass: {order:?}"
+            shared.windows(2).all(|pair| pair[0].built <= pair[1].built)
+                && shared
+                    .iter()
+                    .filter(|step| step.built == step.total)
+                    .count()
+                    == 1,
+            "one pass, no more: {order:?}"
         );
         assert!(links_to(&open, first, second));
     });

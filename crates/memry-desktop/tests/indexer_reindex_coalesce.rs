@@ -114,7 +114,8 @@ fn a_reindex_asked_during_a_pass_gets_a_pass_after_it() {
     e.close();
 }
 
-/// A shared pass that fails answers every asker it took with the failure, none left unanswered.
+/// A shared pass that fails answers every asker it took with the failure, none left unanswered:
+/// the second asker is told the first step before the first asker's answer is sent.
 #[test]
 fn a_failed_shared_pass_answers_every_asker_with_its_error() {
     let (mut e, _store, _notes) = seeded(3);
@@ -122,21 +123,92 @@ fn a_failed_shared_pass_answers_every_asker_with_its_error() {
     let open = e.session.current().unwrap();
     let (sender, receiver) = broadcast::channel(16);
     with_cancellable_task(&open, receiver, |task, cancel| {
-        let log = Told::default();
         // The first step closes the vault under the pass, which stops it.
-        let (closing, seen) = (cancel.clone(), log.clone());
-        let first = task
-            .reindex(Box::new(move |step| {
-                seen.lock().unwrap().push((0, step));
-                closing.cancel();
+        let closing = cancel.clone();
+        let first = task.reindex(Box::new(move |_| closing.cancel())).unwrap();
+        let first = Arc::new(Mutex::new(first));
+        // Whether the first asker was answered when the second was told a step; an answer
+        // taken to learn it is kept for the check below.
+        let before = Arc::new(Mutex::new(None::<bool>));
+        let kept = Arc::new(Mutex::new(None));
+        let (peek, seen, keep) = (first.clone(), before.clone(), kept.clone());
+        let second = task
+            .reindex(Box::new(move |_| {
+                let mut seen = seen.lock().unwrap();
+                if seen.is_none() {
+                    let sent = peek.lock().unwrap().try_recv();
+                    *seen = Some(sent.is_err());
+                    *keep.lock().unwrap() = sent.ok();
+                }
             }))
             .unwrap();
-        let rest: Vec<Answer> = (1..3).map(|asker| ask(task, &log, asker)).collect();
+        let third = ask(task, &Told::default(), 2);
         sender.send(Applied::Indexed { complete: true }).unwrap();
-        for answer in [first].into_iter().chain(rest) {
-            let outcome = answer.recv().expect("answered, not dropped");
+        // The second and third answers come after every step was told.
+        let mut outcomes = vec![second.recv(), third.recv()];
+        let held = kept.lock().unwrap().take();
+        outcomes.push(held.map_or_else(|| first.lock().unwrap().recv(), Ok));
+        for outcome in outcomes {
+            let outcome = outcome.expect("answered, not dropped");
             assert!(matches!(outcome, Err(IndexError::NotOpen)), "{outcome:?}");
         }
+        assert_eq!(
+            *before.lock().unwrap(),
+            Some(true),
+            "the second asker was told the shared pass's first step"
+        );
+    });
+    drop(open);
+    e.close();
+}
+
+/// An asker that joins while a first sync holds a pass is told no step below the held pass's:
+/// every asker's callback sets the shared `NoteIndex::indexing` before it reports, so the steps
+/// told to all askers, in order, are what `indexing()` says, and they never go back.
+#[test]
+fn an_asker_joining_a_held_pass_never_moves_the_progress_back() {
+    let (mut e, _store, notes) = seeded(10);
+    e.open();
+    let open = e.session.current().unwrap();
+    let (sender, receiver) = broadcast::channel(16);
+    with_task(&open, receiver, |task| {
+        let log = Told::default();
+        let hold = Arc::new(Mutex::new(None));
+        let (running, taken, seen) = (open.first_sync.clone(), hold.clone(), log.clone());
+        let first = task
+            .reindex(Box::new(move |step| {
+                let mut seen = seen.lock().unwrap();
+                if seen.is_empty() {
+                    *taken.lock().unwrap() = Some(running.hold());
+                }
+                seen.push((0, step));
+            }))
+            .unwrap();
+        sender.send(Applied::Indexed { complete: true }).unwrap();
+        let full = IndexProgress {
+            built: 10,
+            total: 10,
+        };
+        index_support::until("the held pass read every note", || {
+            told(&log).contains(&(0, full))
+        });
+        let joined = ask(task, &log, 1);
+        // The inbox is read in order: once the measure is answered, the new asker waits.
+        task.measure(notes[0].0.clone())
+            .unwrap()
+            .recv()
+            .unwrap()
+            .unwrap();
+        assert!(first.try_recv().is_err(), "held");
+        drop(hold.lock().unwrap().take());
+        first.recv().unwrap().unwrap();
+        joined.recv().unwrap().unwrap();
+        let told = told(&log);
+        assert!(
+            told.windows(2)
+                .all(|pair| pair[0].1.built <= pair[1].1.built),
+            "the shared progress went back: {told:?}"
+        );
     });
     drop(open);
     e.close();
