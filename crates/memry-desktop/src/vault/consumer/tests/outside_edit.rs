@@ -8,6 +8,7 @@ use memry_core::domain::journal;
 use memry_core::storage::repositories::sync_items;
 use memry_core::sync::apply::apply_pulled_delete;
 use memry_core::sync::clock::{ClockOrder, VectorClock, compare};
+use memry_core::sync::delete_keep::VaultFiles;
 use memry_core::sync::outbox;
 
 use super::*;
@@ -228,12 +229,16 @@ fn peer_deletes_item(f: &Fixture, item_type: &'static str, id: &str, pushed: &Ve
     let mut clock = pushed.clone();
     clock.insert("peer".into(), 1);
     let device = pushed.keys().next().expect("this device's tick").clone();
-    let (id, root) = (id.to_owned(), f.root.clone());
+    let id = id.to_owned();
+    let files = VaultFiles {
+        root: f.root.clone(),
+        own_writes: Some(f.applier.own_files.clone()),
+    };
     f.vault
         .db_handle()
         .call_blocking(move |conn| {
             apply_pulled_delete(
-                conn, item_type, &id, hour_later, &clock, hour_later, &device, &root,
+                conn, item_type, &id, hour_later, &clock, hour_later, &device, files,
             )
         })
         .unwrap();
@@ -325,4 +330,66 @@ fn a_delete_pulled_before_the_walk_sees_a_closed_app_note_edit_keeps_its_text() 
     f.walked("a.md");
     assert_eq!(kept_texts(&f).len(), 1, "a later walk keeps no second copy");
     assert!(deleted(&f), "a later walk does not revive the note");
+}
+
+fn note_deleted(f: &Fixture, id: &str) -> bool {
+    let id = id.to_owned();
+    f.vault
+        .db_handle()
+        .call_blocking(move |conn| Ok(sync_items::load(conn, "note", &id)?.expect("the record")))
+        .unwrap()
+        .deleted_at
+        .is_some()
+}
+
+/// A note whose file still holds the bytes the document took: the delete wins and keeps no copy.
+#[test]
+fn a_delete_of_an_unchanged_note_keeps_no_copy() {
+    let (f, id, pushed) = closed_app_file("a.md", "first\n", "first\n", "note");
+    peer_deletes_item(&f, "note", &id, &pushed);
+    assert_eq!(kept_texts(&f), Vec::<String>::new());
+    assert!(note_deleted(&f, &id), "the delete wins");
+}
+
+/// A note's file moved while the app was closed: nothing stands at the row's path, so the
+/// delete wins and keeps no copy; the moved file stays on disk for the walk.
+#[test]
+fn a_delete_after_a_closed_app_move_keeps_no_copy() {
+    let (f, id, pushed) = closed_app_file("a.md", "first\n", "first\n", "note");
+    std::fs::rename(f.root.join("a.md"), f.root.join("b.md")).unwrap();
+    peer_deletes_item(&f, "note", &id, &pushed);
+    assert_eq!(kept_texts(&f), Vec::<String>::new());
+    assert!(note_deleted(&f, &id), "the delete wins");
+    assert!(f.root.join("b.md").exists());
+}
+
+/// #5809 review, low 2: the write-back wrote this device's own body to the file and has not
+/// stamped the row yet when the delete lands. The file holds no text the device did not have,
+/// so the delete keeps no copy of it.
+#[test]
+fn a_delete_between_the_write_back_and_its_row_stamp_keeps_no_copy() {
+    let written = "first\n\nTyped here and written back.\n";
+    let (f, id, pushed) = closed_app_file("a.md", "first\n", written, "note");
+    f.applier.own_files.wrote_back(&id, &content_hash(written));
+    peer_deletes_item(&f, "note", &id, &pushed);
+    assert_eq!(kept_texts(&f), Vec::<String>::new());
+    assert!(note_deleted(&f, &id), "the delete wins");
+}
+
+/// #5809 review, low 4: a file past `MAX_NOTE_BYTES` is never read into the pull's
+/// transaction. The delete wins with no copy, and the file stays on disk (the write-back's
+/// sweep refuses to read it too).
+#[test]
+fn a_delete_never_reads_a_file_past_the_note_cap() {
+    let (f, id, pushed) = closed_app_file("a.md", "first\n", "first\n", "note");
+    let file = std::fs::OpenOptions::new()
+        .write(true)
+        .open(f.root.join("a.md"))
+        .unwrap();
+    file.set_len(crate::vault::note_file::MAX_NOTE_BYTES + 1)
+        .unwrap();
+    peer_deletes_item(&f, "note", &id, &pushed);
+    assert_eq!(kept_texts(&f).len(), 0);
+    assert!(note_deleted(&f, &id), "the delete wins");
+    assert!(f.root.join("a.md").exists());
 }

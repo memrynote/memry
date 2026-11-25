@@ -210,11 +210,13 @@ impl SyncWiring {
         .with_vault_root(open.path.clone())
         .with_first_sync(open.first_sync.clone());
         let backend = match &self.tier {
-            Some(tier) => backend.with_observer(Arc::new(DiskObserver::new(
-                Arc::clone(tier),
-                open.path.clone(),
-                Arc::clone(&open.vault),
-            ))),
+            Some(tier) => backend
+                .with_own_writes(tier.own_files())
+                .with_observer(Arc::new(DiskObserver::new(
+                    Arc::clone(tier),
+                    open.path.clone(),
+                    Arc::clone(&open.vault),
+                ))),
             None => backend,
         };
         let supervisor = SyncSupervisor::start(
