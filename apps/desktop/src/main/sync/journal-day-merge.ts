@@ -25,7 +25,13 @@ import { compare as compareClocks, merge as mergeClocks } from '@memry/sync-clie
 import { recordDeclinedRef } from '@memry/sync-client/declined-refs'
 import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 import { getCurrentDeviceId } from '@memry/sync-client/current-device-id'
-import { deleteNoteMetadata, getNoteMetadataById, getNoteMetadataByPath } from '@memry/storage-data'
+import {
+  deleteNoteMetadata,
+  getNoteMetadataById,
+  getNoteMetadataByPath,
+  updateNoteMetadata
+} from '@memry/storage-data'
+import { attachmentFiles } from '@memry/db-schema/data-schema'
 import { createLogger } from '../lib/logger'
 import { getIndexDatabase } from '../database/client'
 import { deleteNoteCache, getNoteCacheByPath } from '../database/queries/notes'
@@ -77,6 +83,11 @@ export interface OwedJournalDayMerge {
    * the same reason (core: `journal_day_merge/owed.rs`).
    */
   recordTags?: string[]
+  /**
+   * The attachment references of the local row that gave the day up. The row
+   * goes before the merge runs, so they are kept here for the day (OL-M47).
+   */
+  attachmentReferences?: string[]
 }
 
 /**
@@ -97,6 +108,7 @@ export function oweJournalDayMerge(db: DrizzleDb, merge: OwedJournalDayMerge): v
   const deleted = merge.deleted || kept?.deleted
   const tags = mergeTagLists(kept?.tags ?? [], merge.tags ?? [])
   const recordTags = merge.recordTags ?? kept?.recordTags ?? []
+  const attachmentReferences = unionOf(kept?.attachmentReferences, merge.attachmentReferences)
   const value = JSON.stringify({
     ...merge,
     clock,
@@ -104,7 +116,8 @@ export function oweJournalDayMerge(db: DrizzleDb, merge: OwedJournalDayMerge): v
     ...(recordMarkdown ? { recordMarkdown } : {}),
     ...(deleted ? { deleted: true } : {}),
     tags: tags.length > 0 ? tags : undefined,
-    recordTags: recordTags.length > 0 ? recordTags : undefined
+    recordTags: recordTags.length > 0 ? recordTags : undefined,
+    attachmentReferences: attachmentReferences.length > 0 ? attachmentReferences : undefined
   })
   db.insert(syncState)
     .values({ key: KEY_PREFIX + merge.foreignId, value, updatedAt: new Date() })
@@ -202,6 +215,44 @@ export interface JournalDayMergeDeps {
   enqueueDelete: (id: string, payload: string) => void
 }
 
+function unionOf(a: string[] | null | undefined, b: string[] | null | undefined): string[] {
+  return [...new Set([...(a ?? []), ...(b ?? [])])]
+}
+
+/**
+ * The day takes over the foreign id's attachments: its references, and its
+ * file records, so `attachments/<foreignId>/…` that the folded body embeds
+ * still resolves and is neither downloaded again nor uploaded as a second
+ * copy. The files stay where they are. Nothing is pushed: the folded body
+ * already reaches peers, and a `note` record under the day's id is what
+ * #5730 keeps from being pushed. Idempotent, so a crash before the tombstone
+ * carries the same set again. False when the day has no row to carry to.
+ */
+function carryAttachments(
+  db: DrizzleDb,
+  foreignId: string,
+  targetId: string,
+  references: string[]
+): boolean {
+  const day = getNoteMetadataById(db, targetId)
+  if (!day) return false
+  const merged = unionOf(day.attachmentReferences, references)
+  if (merged.length > (day.attachmentReferences ?? []).length) {
+    updateNoteMetadata(db, targetId, { attachmentReferences: merged })
+  }
+  for (const record of db
+    .select()
+    .from(attachmentFiles)
+    .where(eq(attachmentFiles.noteId, foreignId))
+    .all()) {
+    db.insert(attachmentFiles)
+      .values({ ...record, noteId: targetId })
+      .onConflictDoNothing()
+      .run()
+  }
+  return true
+}
+
 /** Log fields: never the fallback text, which is the user's journal. */
 function describe(merge: OwedJournalDayMerge): { foreignId: string; date: string } {
   return { foreignId: merge.foreignId, date: merge.date }
@@ -226,6 +277,11 @@ function dayDeleted(db: DrizzleDb, targetId: string): boolean {
 
 async function mergeOne(deps: JournalDayMergeDeps, merge: OwedJournalDayMerge): Promise<boolean> {
   const targetId = generateJournalId(merge.date)
+  // Read before `ensureDay` removes a foreign row that holds the day.
+  const references = unionOf(
+    merge.attachmentReferences,
+    getNoteMetadataById(deps.db, merge.foreignId)?.attachmentReferences
+  )
   // A deleted id's server body is already in the day, merged by the device
   // that deleted it; only what this device holds is left to fold in.
   const bodyPulled = merge.deleted === true || (await deps.pullBody(merge.foreignId))
@@ -265,6 +321,7 @@ async function mergeOne(deps: JournalDayMergeDeps, merge: OwedJournalDayMerge): 
       ? (merge.tags ?? [])
       : mergeTagLists(merge.tags ?? [], merge.recordTags ?? [])
     if (tags.length > 0) await deps.addDayTags(merge.date, tags)
+    carryAttachments(deps.db, merge.foreignId, targetId, references)
   }
 
   // A forgotten id goes from this device, as in the core: a row a pre-fix
@@ -276,6 +333,9 @@ async function mergeOne(deps: JournalDayMergeDeps, merge: OwedJournalDayMerge): 
     if (deps.holdsTextNow(merge.foreignId, merge.date)) {
       log.info('Blank foreign journal gained text; the forget waits', describe(merge))
       return false
+    }
+    if (!carryAttachments(deps.db, merge.foreignId, targetId, references) && references.length) {
+      log.warn('A forgotten foreign journal leaves its attachments with no day', describe(merge))
     }
     deps.removeRow(merge.foreignId)
   }
@@ -360,7 +420,8 @@ export async function ensureJournalDay(db: DrizzleDb, date: string): Promise<voi
       date,
       clock: row?.clock ?? null,
       fallbackMarkdown: readDayBody(date),
-      tags: readDayTags(date)
+      tags: readDayTags(date),
+      attachmentReferences: row?.attachmentReferences ?? undefined
     })
     removeJournalRow(db, holder.id)
   } else if (readDayBody(date)?.trim()) {

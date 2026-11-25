@@ -237,6 +237,40 @@ describe('sync:download-note-files with auto-download off', () => {
     expect(h.download).toHaveBeenCalledTimes(2)
   })
 
+  // The journal page asks with the day's id (#5735); a peer's pictures ride
+  // the day's row as references (#5731).
+  it("downloads a journal day's picture into the day's folder, once", async () => {
+    serveFiles()
+    const now = new Date().toISOString()
+    h.db
+      .insert(noteMetadata)
+      .values({
+        id: 'j2026-06-09',
+        path: 'journal/2026-06-09.md',
+        title: '2026-06-09',
+        journalDate: '2026-06-09',
+        attachmentReferences: ['att-embed'],
+        createdAt: now,
+        modifiedAt: now
+      })
+      .run()
+    fs.mkdirSync(path.join(h.vaultPath, 'journal'))
+    fs.writeFileSync(
+      path.join(h.vaultPath, 'journal', '2026-06-09.md'),
+      '![photo](../attachments/j2026-06-09/photo.png)\n'
+    )
+
+    await expect(openNote('j2026-06-09')).resolves.toEqual({ success: true })
+    resetAttachmentDownloadSession()
+    await expect(openNote('j2026-06-09')).resolves.toEqual({ success: true })
+
+    expect(
+      fs.readFileSync(path.join(h.vaultPath, 'attachments', 'j2026-06-09', 'photo.png'))
+    ).toEqual(PNG)
+    expect(requested()).toEqual(['att-embed'])
+    expect(materialized()).toEqual([{ noteId: 'j2026-06-09' }])
+  })
+
   it('reports a failure, then Try again downloads without waiting out the backoff', async () => {
     h.download.mockRejectedValueOnce(new Error('R2 unavailable'))
 
