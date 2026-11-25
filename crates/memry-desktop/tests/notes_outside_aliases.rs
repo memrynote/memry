@@ -4,11 +4,12 @@
 //! `vault/journal.ts`), so the next push carries it and a pull of that record keeps it.
 
 use memry_desktop::notes::create::NewNoteFile;
+use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::service::NotesService;
 use memry_desktop::vault::consumer::Applied;
 
 use crate::notes_outside_tags::{clear_outbox, edited_outside, opened, upserts};
-use crate::vault_env::{Env, QUIET};
+use crate::vault_env::{Env, QUIET, env, indexed};
 
 /// The record's `aliases`, as its payload holds them.
 fn record_aliases(e: &Env, item_type: &'static str, id: &str) -> Vec<String> {
@@ -28,6 +29,64 @@ fn record_aliases(e: &Env, item_type: &'static str, id: &str) -> Vec<String> {
         .unwrap();
     let payload: serde_json::Value = serde_json::from_str(&payload).unwrap();
     serde_json::from_value(payload["aliases"].clone()).unwrap_or_default()
+}
+
+/// The id of the row at `rel`.
+fn id_at(e: &Env, rel: &str) -> String {
+    e.rows()
+        .into_iter()
+        .find(|(_, path)| path == rel)
+        .unwrap_or_else(|| panic!("no row at {rel}"))
+        .0
+}
+
+/// A file first named by the tier gives its new record its aliases, and that record's queued
+/// push carries them (#5783).
+fn adopted_with_aliases(e: &Env, item_type: &'static str, rel: &str, aliases: &[&str]) {
+    let id = id_at(e, rel);
+    assert_eq!(record_aliases(e, item_type, &id), aliases, "{rel}");
+    assert!(upserts(e, &id) >= 1, "{rel} queued no push");
+}
+
+#[test]
+fn the_open_walk_gives_found_files_their_aliases() {
+    // `Plan.md` and `Other.md` are new notes the walk creates together, the day alone.
+    let mut e = env(|store| Some(NotesIdentity::new(store)));
+    e.write(
+        "Plan.md",
+        "---\naliases: [Blueprint, Plan]\n---\nAbout it\n",
+    );
+    e.write("Other.md", "---\naliases: Second\n---\nElse\n");
+    e.write("Bad.md", "---\naliases: [a\n---\nBroken\n");
+    e.write(
+        "journal/2025-03-05.md",
+        "---\ndate: 2025-03-05\naliases: [First]\n---\nBy the river.\n",
+    );
+    e.open();
+    e.facts_until(indexed);
+    adopted_with_aliases(&e, "note", "Plan.md", &["Blueprint"]);
+    adopted_with_aliases(&e, "note", "Other.md", &["Second"]);
+    adopted_with_aliases(&e, "note", "Bad.md", &[]);
+    adopted_with_aliases(&e, "journal", "journal/2025-03-05.md", &["First"]);
+    e.close();
+}
+
+#[test]
+fn a_file_made_outside_the_app_gives_its_new_record_its_aliases() {
+    let (mut e, _store) = opened();
+    e.watcher_live();
+    for (rel, text) in [
+        ("Idea.md", "---\naliases: [Spark]\n---\nA thought\n"),
+        (
+            "journal/2025-03-06.md",
+            "---\ndate: 2025-03-06\naliases: [Rain day]\n---\nWet.\n",
+        ),
+    ] {
+        e.write(rel, text);
+        e.facts_until(|f| matches!(f, Applied::Added { path, .. } if path == rel));
+    }
+    adopted_with_aliases(&e, "note", "Idea.md", &["Spark"]);
+    adopted_with_aliases(&e, "journal", "journal/2025-03-06.md", &["Rain day"]);
 }
 
 #[test]
