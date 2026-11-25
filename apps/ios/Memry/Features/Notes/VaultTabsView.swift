@@ -94,7 +94,8 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
         // Read here so the layout follows a module toggle and a synced order.
         let width = width
         let layout = VaultTabLayout(savedOrder: order.saved, width: width) { $0.isShown }
-        GeometryReader { proxy in
+        // Two expressions: as one chain Xcode 26 cannot type-check it in time.
+        let shell = GeometryReader { proxy in
             TabView(selection: Binding(
                 get: { ShellTab.page(layout.barSelection(for: router.selectedTab)) },
                 // Neither Menu nor Search becomes the selection by a tap: each
@@ -186,6 +187,7 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
         .onChange(of: router.path) { _, path in LaunchSnapshot.shared.setStack("tasks", value: path) }
         .environment(\.openJournalDay, { date in journalRouter.openDay(date) })
         .environment(inboxRouter)
+        shell
         // A `memry://calendar` link opens More › Calendar; the calendar screen
         // takes the link itself and opens the day and the item (spec 007 CL022).
         .onChange(of: calendarLinks.pending, initial: true) { _, pending in
