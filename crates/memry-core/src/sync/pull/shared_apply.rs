@@ -157,11 +157,12 @@ impl PullLoop {
             .filter(|id| !typed_covers(&pending, id))
             .count();
         pending.sort_by_key(|item| apply::apply_rank(item.item_type()));
-        let now = now_ms();
         let clock_device = self.clock_device.clone();
         let outcomes = self
             .db
             .call(move |conn| {
+                // #5849: stamped inside the hold that writes the rows.
+                let now = now_ms();
                 let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
                 let totals = apply_items(&txn, pending, false, now, clock_device.as_deref())?;
                 still_open(&txn)?;

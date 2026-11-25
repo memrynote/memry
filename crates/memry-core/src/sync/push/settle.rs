@@ -33,8 +33,10 @@ impl PushCoordinator {
     /// An upsert of a row the reconcile kept against an unattested marker
     /// applies that delete here instead of being sent ([`delete_wins`]).
     pub(super) async fn applies_kept_marker(&self, item: &Collapsed) -> Result<bool, StorageError> {
-        let (item, device, now) = (item.clone(), self.clock_device.clone(), now_ms());
-        let apply = move |conn: &mut _| delete_wins::apply_kept_marker(conn, &item, &device, now);
+        let (item, device) = (item.clone(), self.clock_device.clone());
+        // #5849: stamped inside the hold that writes the rows.
+        let apply =
+            move |conn: &mut _| delete_wins::apply_kept_marker(conn, &item, &device, now_ms());
         self.db.call(apply).await
     }
 
