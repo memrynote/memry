@@ -12,7 +12,7 @@ import { getCrdtProvider } from '../sync/crdt-provider'
 import { readyWritebackConverter } from '../sync/converter-worker-bridge'
 import type { NoteBody } from '../sync/writing-markdown'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
-import { isCoverValue } from '@memry/shared/cover-image'
+import { isCoverValue, parseCoverValue } from '@memry/shared/cover-image'
 import { toWritingFrontmatterValue, WRITING_FRONTMATTER_KEY } from '@memry/shared'
 import {
   getAliasesForNotes,
@@ -22,6 +22,10 @@ import {
 } from '@main/database/queries/notes'
 import { getNoteMetadataById } from '@memry/storage-data'
 import { applyRemoteFrontmatter } from '../sync/item-handlers/note-handler-frontmatter'
+import {
+  applyNoteCoverToFrontmatter,
+  noteCoverFromFrontmatter
+} from '../sync/item-handlers/note-cover-sync'
 import { getDatabase, type getIndexDatabase } from '../database'
 import { NoteError, NoteErrorCode } from '../lib/errors'
 import { generateContentHash, parseNote, serializeNote, type NoteFrontmatter } from './frontmatter'
@@ -128,19 +132,45 @@ type OwnBaseline = {
   pendingWriteHash?: string | null
 }
 
+/** A note's own header, and whether it holds its cover whole. */
+export interface OwnHeader {
+  frontmatter: NoteFrontmatter
+  /**
+   * False when the header has an image cover's ref without the framing and
+   * credit the note's own file gave it. A push then leaves the cover out, so
+   * peers keep theirs.
+   */
+  coverHeld: boolean
+}
+
 /**
  * A note's own header: rebuilt from its index rows, with the YAML types of its
  * own last header (`ownLastHeader`). The header a split writes, and the one a
  * push of the note sends.
+ *
+ * A push never sends a header value this device does not hold. A field whose
+ * index rows hold less than the header did comes from the own last header, or
+ * stays out of the push. Header tags, aliases and the cover ref are held whole
+ * by their rows, and property types come from the own last header. An image
+ * cover's framing and credit live only in the file: they come from the own
+ * last header when its cover is the same ref, and otherwise `coverHeld` is
+ * false, as for a file rebuilt with the bare ref (`recordRebuiltNoteCover`).
  */
 export function ownHeader(
   indexDb: ReturnType<typeof getIndexDatabase>,
   noteId: string,
   title: string,
   cached: OwnBaseline
-): NoteFrontmatter {
+): OwnHeader {
   const cover = isCoverValue(cached.cover) ? cached.cover : null
-  return indexedHeader(indexDb, noteId, title, cover, ownLastHeader(indexDb, noteId, cached))
+  const last = ownLastHeader(indexDb, noteId, cached)
+  const frontmatter = indexedHeader(indexDb, noteId, title, cover, last)
+  if (cover === null || parseCoverValue(cover)?.kind !== 'image') {
+    return { frontmatter, coverHeld: true }
+  }
+  const lastCover = last ? noteCoverFromFrontmatter(last) : null
+  if (lastCover?.ref !== cover) return { frontmatter, coverHeld: false }
+  return { frontmatter: applyNoteCoverToFrontmatter(frontmatter, lastCover), coverHeld: true }
 }
 
 /** A note's own file: its prepared doc body under its own header (`ownHeader`). */
@@ -152,7 +182,7 @@ export function ownFile(
   prepared: PreparedBody
 ): OwnTwinFile & { cover: string | null } {
   const cover = isCoverValue(cached.cover) ? cached.cover : null
-  const header = ownHeader(indexDb, noteId, title, cached)
+  const header = ownHeader(indexDb, noteId, title, cached).frontmatter
   const writing = prepared.body ? toWritingFrontmatterValue(prepared.body.writing) : undefined
   if (writing) header[WRITING_FRONTMATTER_KEY] = writing
   const markdown = prepared.body?.markdown ?? ''

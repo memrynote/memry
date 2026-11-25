@@ -32,8 +32,9 @@
  *
  * The survivor's header is rebuilt from its index rows (`case-twin-own-file.ts`):
  * header tags, properties, aliases, and the cover ref. An image cover's framing
- * and credit live only in the file, so the rebuilt file has the bare ref, and
- * the next push leaves the cover out until it changes here
+ * and credit live only in the file: they come from a version of the survivor's
+ * own file with the same ref (`ownHeader`). Without one the rebuilt file has
+ * the bare ref, and the next push leaves the cover out until it changes here
  * (`recordRebuiltNoteCover`): peers keep the framing.
  *
  * A binary survivor (`isBinaryNoteRow`) has no doc to rebuild a file from, and

@@ -49,12 +49,12 @@ export function buildNotePushPayload(itemId: string, operation: string): string 
     })
   }
 
-  const { content, tags, aliases, frontmatter } = readNoteFileFields(cached, operation)
+  const { content, tags, aliases, frontmatter, coverHeld } = readNoteFileFields(cached, operation)
   // `undefined` omits the key, which tells peers nothing: the file could not be
-  // read, or this note has had no cover here. `null` is a local removal only.
-  const cover: NoteCoverSync | null | undefined = frontmatter
-    ? noteCoverForPush(dataDb, itemId, frontmatter)
-    : undefined
+  // read, this device does not hold the cover's framing, or this note has had
+  // no cover here. `null` is a local removal only.
+  const cover: NoteCoverSync | null | undefined =
+    frontmatter && coverHeld ? noteCoverForPush(dataDb, itemId, frontmatter) : undefined
 
   const folderPath = extractFolderFromPath(cached.path)
   const properties = propsToRecord(getNoteProperties(indexDb, itemId))

@@ -199,7 +199,12 @@ import { readyWritebackConverter } from '../sync/converter-worker-bridge'
 import { enqueueLocalSyncDelete } from '../sync/local-mutations'
 import { noteHandler } from '../sync/item-handlers/note-handler'
 import { mergeEntityProperties } from '../notes/entity-properties'
-import { noteCoverForPush, recordAppliedNoteCover } from '../sync/item-handlers/note-cover-sync'
+import {
+  applyNoteCoverToFrontmatter,
+  noteCoverForPush,
+  recordAppliedNoteCover
+} from '../sync/item-handlers/note-cover-sync'
+import type { NoteCoverSync } from '@memry/contracts/sync-payloads'
 import { PendingSyncIntentError } from '../sync/pending-sync-intent-error'
 import { NoteError } from '../lib/errors'
 import { openVaultFile } from '../lib/paths'
@@ -1968,6 +1973,47 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
       create: own
     })
   }, 30_000)
+
+  // VERIFY-5753R2 (1): the push rebuilt lower's image cover from its index
+  // rows, which hold only the ref, so it sent default framing and a peer
+  // dropped lower's focus and credit.
+  const FRAMED = {
+    cover: 'covers/low.png',
+    coverFocus: 20,
+    coverZoom: 2,
+    coverFocusX: 30,
+    coverCredit: 'Jane',
+    coverCreditUrl: 'https://example.com/jane'
+  }
+  for (const [how, version, sentCover] of [
+    ['without a version of its own header leaves the cover out', false, undefined],
+    [
+      'with a version of its own header sends that framing',
+      true,
+      expect.objectContaining({ zoom: 2, credit: 'Jane' })
+    ]
+  ] as const) {
+    it(`a push of the twin off the shared file ${how}`, async () => {
+      await headerTwins('covers/low.png')
+      if (version) {
+        const own = serializeNote({ ...parseNote(LOWER_HEAD).frontmatter, ...FRAMED }, LOWER)
+        createSnapshot('lower', own, 'a', SnapshotReasons.CLOSE)
+        updateNoteCache(index.db, 'lower', { contentHash: generateContentHash(own) })
+      }
+      recordAppliedNoteCover(asClientDb(data.db), 'lower', { cover: 'covers/low.png' })
+      await updateNoteCommand({ id: 'lower', headerTags: { add: ['newtag'] } })
+      await flushProjectionEvents()
+
+      const pushed = JSON.parse(buildNotePushPayload('lower', 'update')!)
+      const peer = (cover: NoteCoverSync | undefined) =>
+        cover === undefined ? FRAMED : applyNoteCoverToFrontmatter(FRAMED, cover)
+      expect({ tags: pushed.tags, cover: pushed.cover, peer: peer(pushed.cover) }).toEqual({
+        tags: ['lowertag', 'newtag'],
+        cover: sentCover,
+        peer: FRAMED
+      })
+    }, 30_000)
+  }
 
   // REVIEW-5753: the off-file edit wrote the patch's wire value, so a date
   // came out of the split as a quoted string.
