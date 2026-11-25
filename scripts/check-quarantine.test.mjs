@@ -2,9 +2,9 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import {
-  checkFilter,
-  filterLine,
-  NEXTEST,
+  expiredEntries,
+  filterset,
+  PACKAGES,
   parseQuarantine,
   QUARANTINE,
   validate
@@ -16,7 +16,7 @@ const entry = (fields) =>
     '\n'
   )
 const complete = {
-  test: 'memry-core::integration move_journal::an_open_that_keeps_both_copies_says_so',
+  test: 'memry-desktop::integration move_journal::an_open_that_keeps_both_copies_says_so',
   issue: 'https://github.com/memrynote/memry/issues/5900',
   owner: 'h4yfans',
   expires: '2026-12-01'
@@ -26,17 +26,30 @@ const errorsFor = (text) => {
   return [...errors, ...validate(entries, today)]
 }
 
-test('a complete entry passes and leaves the merge queue', () => {
+test('a complete entry passes and the merge-queue filter skips it', () => {
   const text = `# comment\n\n${entry(complete)}  # trailing\n`
   assert.deepEqual(errorsFor(text), [])
   assert.equal(
-    filterLine(parseQuarantine(text).entries),
-    'default-filter = "not ((binary_id(=memry-core::integration) & test(=move_journal::an_open_that_keeps_both_copies_says_so)))"'
+    filterset(parseQuarantine(text).entries, today),
+    'not ((binary_id(=memry-desktop::integration) & test(=move_journal::an_open_that_keeps_both_copies_says_so)))'
   )
 })
 
 test('an empty list runs every test', () => {
-  assert.equal(filterLine([]), 'default-filter = "all()"')
+  assert.equal(filterset([], today), 'all()')
+})
+
+test('an expired entry is no longer skipped and is reported, but is not a structural error', () => {
+  const { entries } = parseQuarantine(
+    `${entry({ ...complete, expires: '2026-11-19' })}\n${entry({ ...complete, test: 'memry-core a::b', expires: '2026-11-20' })}`
+  )
+  assert.deepEqual(validate(entries, today), [])
+  assert.equal(filterset(entries, today), 'not ((binary_id(=memry-core) & test(=a::b)))')
+  assert.equal(expiredEntries(entries, today).length, 1)
+  assert.match(
+    expiredEntries(entries, today)[0],
+    /expired on 2026-11-19 and runs in the merge queue again/
+  )
 })
 
 test('an entry without an issue, owner or expiry is refused', () => {
@@ -49,12 +62,7 @@ test('an entry without an issue, owner or expiry is refused', () => {
   }
 })
 
-test('an expired entry, one more than 30 days out and a bad date are refused', () => {
-  assert.match(
-    errorsFor(entry({ ...complete, expires: '2026-11-19' })).join(),
-    /expired on 2026-11-19/
-  )
-  assert.deepEqual(errorsFor(entry({ ...complete, expires: '2026-11-20' })), [])
+test('an expiry more than 30 days out or a bad date is refused', () => {
   assert.deepEqual(errorsFor(entry({ ...complete, expires: '2026-12-20' })), [])
   assert.match(errorsFor(entry({ ...complete, expires: '2026-12-21' })).join(), /more than 30 days/)
   assert.match(errorsFor(entry({ ...complete, expires: '2026-02-30' })).join(), /YYYY-MM-DD/)
@@ -64,6 +72,10 @@ test('a malformed test, issue, owner, unknown key, duplicate or stray line is re
   const cases = [
     [{ ...complete, test: 'move_journal::x' }, /binary id/],
     [{ ...complete, test: 'a b) | all(' }, /binary id/],
+    [
+      { ...complete, test: 'memry-ml::lane a::b' },
+      /memry-ml is not run by the merge-queue Test step/
+    ],
     [{ ...complete, issue: 'https://github.com/other/repo/issues/1' }, /issue URL/],
     [{ ...complete, owner: '<github login>' }, /GitHub login/],
     [{ ...complete, reason: 'x' }, /unknown key reason/]
@@ -74,14 +86,22 @@ test('a malformed test, issue, owner, unknown key, duplicate or stray line is re
   assert.match(errorsFor(`${entry(complete)}\nexpires = 2026-12-01`).join(), /expected/)
 })
 
-test('a nextest filter that does not match the list is refused', () => {
-  const { entries } = parseQuarantine(entry(complete))
-  assert.match(checkFilter('default-filter = "all()"\n', entries).join(), /--write/)
-  assert.deepEqual(checkFilter(`x\n${filterLine(entries)}\n`, entries), [])
+test("the packages match rust-ci.yml's merge-queue Test step, which applies the filter", () => {
+  const workflow = readFileSync(
+    new URL('../.github/workflows/rust-ci.yml', import.meta.url),
+    'utf8'
+  )
+  const step = workflow.match(/^ {10}cargo nextest run --profile "\$PROFILE" (.*)$/m)?.[1]
+  assert.ok(step, 'the Test step runs cargo nextest run --profile "$PROFILE"')
+  assert.deepEqual(
+    [...step.matchAll(/-p (\S+)/g)].map(([, p]) => p),
+    PACKAGES
+  )
+  assert.match(step, /\$\{FILTER:\+-E "\$FILTER"\}/)
+  assert.match(workflow, /FILTER=\$\(node \.\.\/scripts\/check-quarantine\.mjs --filter\)/)
 })
 
-test("the committed list parses and nextest.toml's merge-queue filter matches it", () => {
-  const { entries, errors } = parseQuarantine(readFileSync(QUARANTINE, 'utf8'))
+test('the committed list parses', () => {
+  const { errors } = parseQuarantine(readFileSync(QUARANTINE, 'utf8'))
   assert.deepEqual(errors, [])
-  assert.deepEqual(checkFilter(readFileSync(NEXTEST, 'utf8'), entries), [])
 })

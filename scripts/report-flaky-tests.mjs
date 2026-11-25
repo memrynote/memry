@@ -97,13 +97,18 @@ export function commentBody(byTest, { runId, runUrl, pr }) {
 
 // gh-readonly-queue/<base>/pr-<number>-<sha>
 export const prFromRef = (ref) => ref.match(/\/pr-(\d+)-[0-9a-f]+$/)?.[1] ?? ''
+// The trailing SHA of the ref: the commit the group was built on.
+export const baseFromRef = (ref) => ref.match(/\/pr-\d+-([0-9a-f]+)$/)?.[1] ?? ''
 
-// runs: [{ id, url, pr, tests }], the failed merge-queue runs of the window and the tests that failed
-// every attempt in each. Returns the tests that did so for two or more PRs, with their runs.
+// runs: [{ id, url, pr, onBranch, tests }], the failed merge-queue runs of the window and the tests
+// that failed every attempt in each. onBranch: the group's base SHA is on feat/tauri-v2. A group
+// stacked on another group is built on that group's commit, so a test the first PR broke fails in
+// every group behind it too; only groups built on the branch count. Returns the tests that failed
+// every attempt for two or more such PRs, with their runs.
 export function repeatOffenders(runs) {
   const byTest = new Map()
   for (const run of runs) {
-    if (!run.pr) continue
+    if (!run.pr || !run.onBranch) continue
     for (const test of new Set(run.tests)) byTest.set(test, [...(byTest.get(test) ?? []), run])
   }
   return [...byTest]
@@ -134,7 +139,7 @@ export function alarmBody(test, runs, issueUrl, today = new Date()) {
     '',
     ...runs.map(runLine),
     '',
-    'Fix it, or quarantine it while it is fixed: paste this into `crates/.config/quarantine.toml`, set the owner, and run `node scripts/check-quarantine.mjs --write`.',
+    'Fix it, or quarantine it while it is fixed: paste this into `crates/.config/quarantine.toml`, set the owner, and run `node scripts/check-quarantine.mjs`.',
     '',
     '```toml',
     quarantineEntry(test, issueUrl, today),
@@ -161,6 +166,16 @@ function alarm() {
     '--jq',
     '.workflow_runs[] | {id, url: .html_url, branch: .head_branch}'
   ])
+  // ahead or identical: feat/tauri-v2 contains the SHA. A failed lookup counts as off the branch.
+  const onBranch = (sha) => {
+    try {
+      const status = gh(['api', `repos/${repo}/compare/${sha}...feat/tauri-v2`, '--jq', '.status'])
+      return ['ahead', 'identical'].includes(status.trim())
+    } catch (error) {
+      console.log(`::warning::could not compare ${sha} with feat/tauri-v2: ${error.message}`)
+      return false
+    }
+  }
   const runs = []
   for (const { id, url, branch } of listed
     .split('\n')
@@ -189,7 +204,7 @@ function alarm() {
       continue
     }
     const tests = [...junitFiles(dir)].flatMap(([, xml]) => exhaustedTests(xml))
-    runs.push({ id, url, pr: prFromRef(branch), tests })
+    runs.push({ id, url, pr: prFromRef(branch), onBranch: onBranch(baseFromRef(branch)), tests })
   }
   const offenders = repeatOffenders(runs)
   if (offenders.length === 0) {
@@ -311,9 +326,10 @@ function main() {
   })
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href && process.argv[2] === '--alarm') {
+const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href
+if (isMain && process.argv[2] === '--alarm') {
   alarm()
-} else if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+} else if (isMain) {
   try {
     main()
   } catch (error) {

@@ -1,18 +1,21 @@
 # Tests the merge queue skips (#5221). A test that fails every retry on a runner (a dependence on
 # directory order, a port, a clock) ejects every merge group it runs in, and nextest's retries cannot
-# save it. Each entry here leaves the `merge-queue` profile's default-filter in nextest.toml, so the
-# merge queue stops running it. PR, push and scheduled runs still run it under the default profile.
+# save it. rust-ci.yml's merge-queue Test step passes `-E "$(node scripts/check-quarantine.mjs --filter)"`,
+# which skips each unexpired entry. PR, push and scheduled runs still run it.
+#
+# Only tests of that main Test step can be quarantined: its `-p` packages (memry-core, memry-desktop,
+# memry-media, memry-tauri, memry-test-kit, xtask, memrynote-cli). The other nextest steps (live
+# keychain, ML, CLI, harness) take no filter, and the checker refuses their binaries.
 #
 # A quarantined test guards nothing in the queue, so keep this list short. scripts/check-quarantine.mjs
-# (Rust CI) refuses an entry without all four fields, an expiry in the past or more than 30 days out,
-# and a nextest.toml filter that does not match this file; its --online mode (flake-alarm.yml's
-# schedule) also refuses a closed issue. The flake alarm opens an issue labelled `flaky`, with an entry
-# ready to paste, when one test fails every retry in two PRs' merge groups within 24 hours.
-#
-# Add or remove an entry, then run `node scripts/check-quarantine.mjs --write` to regenerate the filter.
+# (Rust CI) refuses an entry without all four fields, a malformed one, and an expiry more than 30 days
+# out. An entry past its expiry day (UTC) is no longer skipped, so the test guards the queue again; Rust
+# CI warns, and flake-alarm.yml's daily job fails on it and on a closed issue. The flake alarm opens an
+# issue labelled `flaky`, with an entry ready to paste, when one test fails every retry in two PRs'
+# merge groups within 24 hours.
 #
 # [[quarantine]]
-# test = "memry-core::integration move_journal::an_open_that_keeps_both_copies_says_so_in_its_status"
+# test = "memry-desktop::integration move_journal::an_open_that_keeps_both_copies_says_so_in_its_status"
 # issue = "https://github.com/memrynote/memry/issues/<n>"
 # owner = "<github login>"
 # expires = "YYYY-MM-DD"

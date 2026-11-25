@@ -382,7 +382,10 @@ jobs:
         env:
           PARTITION: ${{ matrix.partition }}
           PROFILE: ${{ github.event_name == 'merge_group' && 'merge-queue' || 'default' }}
-        run: cargo nextest run --profile "$PROFILE" -p memry-core -p memry-desktop -p memry-media -p memry-tauri -p memry-test-kit -p xtask -p memrynote-cli --no-fail-fast --features memry-core/markdown ${PARTITION:+--partition "hash:$PARTITION"}
+        run: |
+          FILTER=
+          if [ "$PROFILE" = merge-queue ]; then FILTER=$(node ../scripts/check-quarantine.mjs --filter); fi
+          cargo nextest run --profile "$PROFILE" -p memry-core -p memry-desktop -p memry-media -p memry-tauri -p memry-test-kit -p xtask -p memrynote-cli --no-fail-fast --features memry-core/markdown ${PARTITION:+--partition "hash:$PARTITION"} ${FILTER:+-E "$FILTER"}
 
       - name: Upload the JUnit report (merge queue)
         if: ${{ !cancelled() && matrix.part != 'checks' && matrix.part != 'models' && github.event_name == 'merge_group' }}

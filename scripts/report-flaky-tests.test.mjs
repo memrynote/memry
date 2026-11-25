@@ -6,6 +6,7 @@ import { test } from 'node:test'
 import { parseQuarantine, validate } from './check-quarantine.mjs'
 import {
   alarmBody,
+  baseFromRef,
   alarmMarker,
   collectFlaky,
   commentBody,
@@ -86,7 +87,13 @@ test('a test that failed every attempt is exhausted; a pass and a pass on retry 
 })
 
 test('the alarm fires for a test exhausted in two PRs, not for one PR twice or a run without a PR', () => {
-  const run = (id, pr, tests) => ({ id, url: `https://example.test/runs/${id}`, pr, tests })
+  const run = (id, pr, tests) => ({
+    id,
+    url: `https://example.test/runs/${id}`,
+    pr,
+    onBranch: true,
+    tests
+  })
   const offenders = repeatOffenders([
     run(1, '10', ['c a', 'c b', 'c a']),
     run(2, '10', ['c b']),
@@ -97,6 +104,26 @@ test('the alarm fires for a test exhausted in two PRs, not for one PR twice or a
     offenders.map(({ test: name, runs }) => [name, runs.map(({ id }) => id)]),
     [['c a', [1, 3]]]
   )
+})
+
+test('groups stacked on a failed group do not count as other PRs', () => {
+  // The nested_tx wave of 25 Nov: #5793's group was built on the branch, #5795's on #5793's group
+  // commit, #5799's on #5795's. #5793's own guard failed in all three.
+  const test_ =
+    'memry-core storage::nested_tx::tests::no_core_write_opens_a_transaction_that_cannot_nest'
+  const runs = [
+    ['pr-5793-5a0a61d1', true],
+    ['pr-5795-3886b10d', false],
+    ['pr-5799-c6ea17f4', false]
+  ].map(([ref, onBranch], id) => ({
+    id,
+    url: `https://example.test/runs/${id}`,
+    pr: prFromRef(`refs/heads/gh-readonly-queue/feat/tauri-v2/${ref}`),
+    onBranch,
+    tests: [test_]
+  }))
+  assert.deepEqual(repeatOffenders(runs), [])
+  assert.equal(baseFromRef('gh-readonly-queue/feat/tauri-v2/pr-5795-3886b10d'), '3886b10d')
 })
 
 test('the alarm issue carries a quarantine entry the checker accepts once an owner is set', () => {
