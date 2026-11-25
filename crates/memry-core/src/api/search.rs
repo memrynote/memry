@@ -28,7 +28,7 @@ use crate::api::semantic::SemanticSearch;
 use crate::domain::journal_ops::links::{self, BacklinkRow, OutgoingLink};
 use crate::domain::search::{self, HitKind, MatchKind, SearchFilter, SearchHit, SnippetSegment};
 use crate::domain::unlinked_mentions::{self, UnlinkedMention};
-use crate::domain::wiki_target;
+use crate::domain::{journal, wiki_target};
 use crate::storage::{Db, open_index};
 
 /// One search result.
@@ -254,8 +254,11 @@ impl Search {
                 }
                 let row = data
                     .query_row(
-                        "SELECT title, COALESCE(modified_at, created_at, 0) FROM notes \
-                         WHERE id = ?1 AND deleted_at IS NULL",
+                        &format!(
+                            "SELECT title, COALESCE(modified_at, created_at, 0) FROM notes \
+                             WHERE id = ?1 AND deleted_at IS NULL AND {}",
+                            journal::not_a_journal_day("id")
+                        ),
                         rusqlite::params![&source_id],
                         |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?)),
                     )

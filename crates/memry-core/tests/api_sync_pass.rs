@@ -41,6 +41,7 @@ fn scratch_vault() -> Vault {
         "memry-api-sync-pass-{}-{unique}",
         std::process::id()
     ));
+    let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).expect("the scratch directory");
     Vault::open("vault-1".to_string(), dir.display().to_string()).expect("open")
 }
@@ -323,6 +324,7 @@ async fn the_pass_pulls_owed_bodies_and_settles_only_the_merged_ones() {
         "memry-api-sync-pass-owed-{}-{unique}",
         std::process::id()
     ));
+    let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).expect("the scratch directory");
     let vault = Vault::open("vault-1".to_string(), dir.display().to_string()).expect("open");
     let side = memry_core::storage::open_data(&dir.join("data.db")).expect("a second handle");
@@ -404,6 +406,7 @@ fn vault_with_side(
         "memry-api-sync-pass-{label}-{}-{unique}",
         std::process::id()
     ));
+    let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).expect("the scratch directory");
     let vault = Vault::open("vault-1".to_string(), dir.display().to_string()).expect("open");
     let side = memry_core::storage::open_data(&dir.join("data.db")).expect("a second handle");

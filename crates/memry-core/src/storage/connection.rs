@@ -15,7 +15,7 @@
 //! for the duration of the write.
 
 use std::path::Path;
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
 
 use rusqlite::Connection;
@@ -35,7 +35,21 @@ const STATEMENT_CACHE_CAPACITY: usize = 64;
 /// Cheap to clone: every clone shares the one connection and the one mutex.
 #[derive(Clone)]
 pub struct Db {
-    conn: Arc<Mutex<Connection>>,
+    conn: Arc<Shared>,
+}
+
+struct Shared {
+    conn: Mutex<Connection>,
+}
+
+/// The last user of the connection is gone, so the database is closing, as a
+/// vault close or a sign-out closes it: the note bodies kept decoded for it go
+/// with it, before the connection itself closes.
+impl Drop for Shared {
+    fn drop(&mut self) {
+        let conn = self.conn.get_mut().unwrap_or_else(PoisonError::into_inner);
+        crate::crdt::resident::release_connection(conn);
+    }
 }
 
 impl Db {
@@ -65,9 +79,16 @@ impl Db {
 
     fn adopt(conn: Connection) -> Result<Self, StorageError> {
         configure(&conn)?;
-        Ok(Self {
-            conn: Arc::new(Mutex::new(conn)),
-        })
+        let file_backed = conn.path().is_some_and(|path| !path.is_empty());
+        let shared = Arc::new(Shared {
+            conn: Mutex::new(conn),
+        });
+        if file_backed {
+            // Registered at its final address, inside the `Arc`.
+            let conn = shared.conn.lock().unwrap_or_else(PoisonError::into_inner);
+            crate::crdt::resident::open_connection(&conn);
+        }
+        Ok(Self { conn: shared })
     }
 
     /// Runs `f` against the connection on the blocking pool.
@@ -108,8 +129,8 @@ impl Db {
 /// that finds one open finds a dead one: its drop could not roll it back. A
 /// `begin` inside it would open a savepoint whose RELEASE commits nothing, so
 /// it is rolled back first, and the call fails when that fails too.
-fn lock(conn: &Arc<Mutex<Connection>>) -> Result<MutexGuard<'_, Connection>, StorageError> {
-    let guard = conn.lock().map_err(|_| StorageError::Failed {
+fn lock(shared: &Shared) -> Result<MutexGuard<'_, Connection>, StorageError> {
+    let guard = shared.conn.lock().map_err(|_| StorageError::Failed {
         what: "the database mutex was poisoned by a panic in an earlier statement".to_owned(),
     })?;
     if !guard.is_autocommit() {

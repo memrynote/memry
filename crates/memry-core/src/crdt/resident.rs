@@ -12,6 +12,17 @@
 //! would build the same document, and replays otherwise. Any other writer of
 //! the log, a pull, a fold, a purge, another process, or an authored update
 //! that never committed, costs one replay and never a stale body.
+//!
+//! A kept body is decrypted plaintext, so it goes when its document is purged
+//! (chapter 07 §7.15.1) and when its database closes, as a vault close or a
+//! sign-out does: memory frees what the log no longer holds.
+//!
+//! Bodies are kept per open connection, never per path. A sign-out wipes a
+//! vault and a re-sign-in recreates its data.db at the same path, maybe while
+//! a handle on the old file still lives; the new log can carry the same
+//! epoch, row count and newest seq as the old one, so a path-keyed body
+//! would serve the deleted vault's plaintext to the new one, and the next
+//! edit would be authored on top of it and lost on replay.
 
 use std::sync::{Arc, Mutex, PoisonError};
 
@@ -24,12 +35,30 @@ use super::errors::CrdtError;
 use super::registry::{Document, UpdateSink};
 use super::update_log::Namespace;
 
-/// How many bodies stay decoded: the notes a user moves between. Unit tests
-/// run in parallel in one process, and a body another test evicted would let
-/// a check of the reuse guards pass without reusing anything.
-const KEPT: usize = if cfg!(test) { 1024 } else { 4 };
+/// How many bodies each connection keeps decoded: the notes a user moves
+/// between. Counted per connection, so one vault's writes never evict another's.
+const KEPT: usize = 4;
 
-static RESIDENT: Mutex<Vec<Resident>> = Mutex::new(Vec::new());
+static RESIDENT: Mutex<Cache> = Mutex::new(Cache {
+    open: Vec::new(),
+    kept: Vec::new(),
+});
+
+struct Cache {
+    /// The connections that keep bodies: file-backed ones a `Db` owns,
+    /// registered at open and removed as the connection closes.
+    open: Vec<ConnectionId>,
+    kept: Vec<Resident>,
+}
+
+/// The address of a `Db`'s connection. Unique while the connection is open,
+/// and every body kept under it goes before the connection closes, so an
+/// address reused by a later connection finds nothing kept.
+type ConnectionId = usize;
+
+fn connection_id(conn: &Connection) -> ConnectionId {
+    std::ptr::from_ref(conn) as ConnectionId
+}
 
 /// A body checked out for one write. Dropped, it is forgotten: only
 /// [`Body::keep`] puts it back.
@@ -42,10 +71,13 @@ pub(crate) struct Body {
 
 type Authored = Arc<Mutex<Vec<Vec<u8>>>>;
 
-/// One body of one database, written as one device.
+/// One body of one open connection, written as one device.
+///
+/// Invariant: a kept body is only ever served to the connection that
+/// replayed it; a new connection on the same path always replays.
 #[derive(Clone, PartialEq, Eq)]
 struct Key {
-    database: String,
+    connection: ConnectionId,
     doc_id: String,
     device_id: String,
 }
@@ -84,20 +116,20 @@ struct RowsMark {
 }
 
 /// `doc_id`'s body, opened to author a write as `device_id`: the resident one
-/// when the log has not moved past it, else replayed from the log.
+/// when the log has not moved past it, else replayed from the log. Inside the
+/// transaction that stores what it authors ([`epoch::require_write_lock`]).
 pub(crate) fn checkout(
     conn: &Connection,
     device_id: &str,
     doc_id: &str,
 ) -> Result<Body, CrdtError> {
-    let key = conn
-        .path()
-        .filter(|path| !path.is_empty())
-        .map(|database| Key {
-            database: database.to_owned(),
-            doc_id: doc_id.to_owned(),
-            device_id: device_id.to_owned(),
-        });
+    epoch::require_write_lock(conn, doc_id)?;
+    let connection = connection_id(conn);
+    let key = lock(&RESIDENT).open.contains(&connection).then(|| Key {
+        connection,
+        doc_id: doc_id.to_owned(),
+        device_id: device_id.to_owned(),
+    });
     // Read before the replay: a row landing between the two leaves the mark
     // behind the document, which the next checkout sees as a moved log.
     let mark = LogMark::read(conn, doc_id)?;
@@ -141,24 +173,68 @@ impl Body {
         let Some(key) = self.key.clone() else {
             return;
         };
-        let mut resident = lock(&RESIDENT);
-        resident.retain(|kept| kept.key != key);
-        resident.insert(
-            0,
-            Resident {
-                key,
-                body: self,
-                expected: authored,
-            },
-        );
-        resident.truncate(KEPT);
+        let evicted = {
+            let mut cache = lock(&RESIDENT);
+            let mut same_connection = 0;
+            let (evicted, kept) = std::mem::take(&mut cache.kept)
+                .into_iter()
+                .partition(|kept| {
+                    kept.key == key
+                        || (kept.key.connection == key.connection && {
+                            same_connection += 1;
+                            same_connection >= KEPT
+                        })
+                });
+            cache.kept = kept;
+            cache.kept.insert(
+                0,
+                Resident {
+                    key,
+                    body: self,
+                    expected: authored,
+                },
+            );
+            evicted
+        };
+        drop::<Vec<Resident>>(evicted);
     }
 }
 
+/// Lets `conn`, a file-backed connection a `Db` just opened, keep bodies.
+pub(crate) fn open_connection(conn: &Connection) {
+    lock(&RESIDENT).open.push(connection_id(conn));
+}
+
+/// Drops every body kept for `conn`, which is closing.
+pub(crate) fn release_connection(conn: &Connection) {
+    let connection = connection_id(conn);
+    lock(&RESIDENT).open.retain(|open| *open != connection);
+    drop(forget(|key| key.connection == connection));
+}
+
+/// Drops `doc_id`'s kept bodies, for a purge of its log.
+pub(crate) fn release_document(conn: &Connection, doc_id: &str) {
+    let connection = connection_id(conn);
+    drop(forget(|key| {
+        key.connection == connection && key.doc_id == doc_id
+    }));
+}
+
+/// Takes the matching bodies out under the lock, so the caller drops them
+/// after it: a document's drop never runs while the cache is locked.
+fn forget(matches: impl Fn(&Key) -> bool) -> Vec<Resident> {
+    let mut cache = lock(&RESIDENT);
+    let (gone, kept) = std::mem::take(&mut cache.kept)
+        .into_iter()
+        .partition(|kept| matches(&kept.key));
+    cache.kept = kept;
+    gone
+}
+
 fn take(key: &Key) -> Option<Resident> {
-    let mut resident = lock(&RESIDENT);
-    let at = resident.iter().position(|kept| &kept.key == key)?;
-    Some(resident.remove(at))
+    let mut cache = lock(&RESIDENT);
+    let at = cache.kept.iter().position(|kept| &kept.key == key)?;
+    Some(cache.kept.remove(at))
 }
 
 impl Resident {
@@ -263,146 +339,5 @@ fn failed(what: &'static str) -> impl Fn(rusqlite::Error) -> StorageError {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::crdt::markdown_seed::append_markdown_in;
-    use crate::crdt::{DocumentRegistry, epoch::HeldBody, extract_text, update_log};
-    use crate::domain::body_write::author_with;
-    use crate::storage::{nested_tx, open_data, test_support::temp_dir};
-
-    const DAY: &str = "j2026-04-16";
-    const DEVICE: &str = "device-a";
-
-    fn storage(error: CrdtError) -> StorageError {
-        StorageError::Failed {
-            what: error.to_string(),
-        }
-    }
-
-    /// Writes `markdown` as this device and answers the update with the body
-    /// text the write saw before it.
-    fn write(conn: &Connection, markdown: &str) -> Result<(Vec<u8>, String), StorageError> {
-        let mut seen = String::new();
-        let update = author_with(conn, DAY, DEVICE, |document| {
-            seen = extract_text(document)?;
-            document.write(|txn| append_markdown_in(txn, markdown).map(|_| ()))?
-        })
-        .map_err(storage)?
-        .expect("authored an update");
-        Ok((update, seen))
-    }
-
-    fn commit(conn: &Connection, update: &[u8]) -> Result<(), StorageError> {
-        let failed = |e: rusqlite::Error| StorageError::Failed {
-            what: e.to_string(),
-        };
-        let tx = nested_tx::begin(conn).map_err(failed)?;
-        update_log::append_local_update_in(&tx, DAY, update, 1).map_err(storage)?;
-        tx.commit().map_err(failed)
-    }
-
-    /// An update another device authored over `base`, holding `markdown`.
-    fn peer_update(base: Option<&[u8]>, markdown: &str) -> Vec<u8> {
-        let authored: Authored = Arc::new(Mutex::new(Vec::new()));
-        let sink: UpdateSink = {
-            let authored = Arc::clone(&authored);
-            Arc::new(move |_, bytes: &[u8]| lock(&authored).push(bytes.to_vec()))
-        };
-        let peer = DocumentRegistry::new("device-b", sink)
-            .get_or_open(DAY)
-            .unwrap();
-        if let Some(base) = base {
-            peer.apply_durable_update(base).unwrap();
-        }
-        peer.write(|txn| append_markdown_in(txn, markdown).map(|_| ()))
-            .unwrap()
-            .unwrap();
-        lock(&authored).remove(0)
-    }
-
-    /// A kept body serves the next write while the log holds its update.
-    #[test]
-    fn a_write_sees_every_committed_write_before_it() {
-        let dir = temp_dir("resident-chain");
-        let db = open_data(&dir.path().join("data.db")).expect("open data.db");
-        let seen = db
-            .call_blocking(|conn| {
-                for text in ["one", "two"] {
-                    let (update, _) = write(conn, text)?;
-                    commit(conn, &update)?;
-                }
-                Ok(write(conn, "three")?.1)
-            })
-            .expect("write");
-        assert!(seen.contains("one") && seen.contains("two"), "{seen}");
-    }
-
-    /// A pull between two writes lands in the second one's body.
-    #[test]
-    fn a_server_row_after_a_write_is_in_the_next_one() {
-        let dir = temp_dir("resident-pull");
-        let db = open_data(&dir.path().join("data.db")).expect("open data.db");
-        let seen = db
-            .call_blocking(|conn| {
-                let (update, _) = write(conn, "mine")?;
-                commit(conn, &update)?;
-                HeldBody::never_purged(conn, DAY)
-                    .and_then(|body| {
-                        body.append_server_update(1, &peer_update(Some(&update), "pulled"), 2)
-                    })
-                    .map_err(storage)?;
-                Ok(write(conn, "next")?.1)
-            })
-            .expect("write");
-        assert!(seen.contains("mine") && seen.contains("pulled"), "{seen}");
-    }
-
-    /// A write whose update never committed leaves nothing in the next body.
-    #[test]
-    fn an_update_that_never_committed_is_not_in_the_next_write() {
-        let dir = temp_dir("resident-abandoned");
-        let db = open_data(&dir.path().join("data.db")).expect("open data.db");
-        let seen = db
-            .call_blocking(|conn| {
-                write(conn, "dropped")?;
-                Ok(write(conn, "next")?.1)
-            })
-            .expect("write");
-        assert!(!seen.contains("dropped"), "{seen}");
-    }
-
-    /// One row from another writer in place of the expected update is a
-    /// moved log, though it grows the log by the same one row.
-    #[test]
-    fn another_row_in_place_of_the_kept_update_is_a_moved_log() {
-        let dir = temp_dir("resident-swapped");
-        let db = open_data(&dir.path().join("data.db")).expect("open data.db");
-        let seen = db
-            .call_blocking(|conn| {
-                write(conn, "dropped")?;
-                commit(conn, &peer_update(None, "other"))?;
-                Ok(write(conn, "next")?.1)
-            })
-            .expect("write");
-        assert!(
-            seen.contains("other") && !seen.contains("dropped"),
-            "{seen}"
-        );
-    }
-
-    /// A purge between two writes leaves the next one an empty body.
-    #[test]
-    fn a_purge_after_a_write_empties_the_next_one() {
-        let dir = temp_dir("resident-purge");
-        let db = open_data(&dir.path().join("data.db")).expect("open data.db");
-        let seen = db
-            .call_blocking(|conn| {
-                let (update, _) = write(conn, "gone")?;
-                commit(conn, &update)?;
-                update_log::purge_in(conn, DAY).map_err(storage)?;
-                Ok(write(conn, "new")?.1)
-            })
-            .expect("write");
-        assert!(!seen.contains("gone"), "{seen}");
-    }
-}
+#[path = "resident_tests.rs"]
+mod tests;

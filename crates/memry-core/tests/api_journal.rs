@@ -74,6 +74,7 @@ fn open(label: &str) -> (PathBuf, Vault, Arc<Journal>) {
         "memry-api-journal-{label}-{}-{unique}",
         std::process::id()
     ));
+    let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).expect("scratch dir");
     let vault = Vault::open("vault-1".to_string(), dir.display().to_string()).expect("open");
     let journal = vault.journal(MemoryStore::registered()).expect("journal");
