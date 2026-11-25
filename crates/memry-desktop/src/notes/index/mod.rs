@@ -43,9 +43,9 @@
 //!   read with ([`learn`], `learnCanonicalPropertyType`); the next pass retypes the rows that
 //!   hold it.
 //! - **Not measured:** a file in the large-file class (Electron streams it; a follow-up).
-//! - [`NoteIndex::reindex`] (`vault_reindex`) measures every note again, through the task once
-//!   the open walk ended, and reports its progress at most once per [`PROGRESS_INTERVAL`],
-//!   never backwards, ending at the total once every file was read. The open's pass, the first
+//! - [`NoteIndex::reindex`] measures every note again, through the task once the open walk
+//!   ended (`vault_reindex` asks with [`NoteIndex::ask_reindex`] and answers at once), and
+//!   reports its progress at most once per [`PROGRESS_INTERVAL`], never backwards, ending at the total once every file was read. The open's pass, the first
 //!   after the walk, reports the same way (Electron's `indexVault` on open, `0` of `0`
 //!   included): the renderer refreshes the notes list on it. A close or a failed write ends a
 //!   pass without the total, and the pass that pays the rest does not report.
@@ -178,21 +178,42 @@ fn set_indexing(indexing: &Mutex<Indexing>, report: &Report, change: impl FnOnce
 }
 
 /// Counts a reindex as asked until it is answered, however it ends.
-struct Asked<'a>(&'a NoteIndex);
+struct Asked {
+    indexing: Arc<Mutex<Indexing>>,
+    report: Report,
+}
 
-impl<'a> Asked<'a> {
-    fn new(index: &'a NoteIndex) -> Self {
+impl Asked {
+    fn new(index: &NoteIndex) -> Self {
         set_indexing(&index.indexing, &index.report, |state| {
             state.start();
             state.asked += 1;
         });
-        Self(index)
+        Self {
+            indexing: index.indexing.clone(),
+            report: index.report.clone(),
+        }
     }
 }
 
-impl Drop for Asked<'_> {
+impl Drop for Asked {
     fn drop(&mut self) {
-        set_indexing(&self.0.indexing, &self.0.report, |state| state.asked -= 1);
+        set_indexing(&self.indexing, &self.report, |state| state.asked -= 1);
+    }
+}
+
+/// A reindex the open vault's task took ([`NoteIndex::ask_reindex`]): [`NoteIndex::indexing`]
+/// says so until it is answered or this is dropped.
+pub struct Reindexing {
+    answer: task::Answer,
+    _asked: Asked,
+}
+
+impl Reindexing {
+    /// Blocks until the task answers, which waits out a running first sync (#5409); `None` when
+    /// the vault closed or its task ended first.
+    pub fn wait(self) -> Option<Result<Backfilled, IndexError>> {
+        self.answer.recv().ok()
     }
 }
 
@@ -324,22 +345,35 @@ impl NoteIndex {
     /// after [`Self::indexing`] names the step.
     pub fn reindex(
         &self,
-        mut progress: impl FnMut(IndexProgress) + Send + 'static,
+        progress: impl FnMut(IndexProgress) + Send + 'static,
     ) -> Result<Backfilled, IndexError> {
+        self.ask_reindex(progress)?
+            .wait()
+            .unwrap_or_else(|| Err(self.gone()))
+    }
+
+    /// Asks the open vault's task for a [`Self::reindex`] and returns once it took the request,
+    /// without waiting for the answer, which a running first sync holds back.
+    pub fn ask_reindex(
+        &self,
+        mut progress: impl FnMut(IndexProgress) + Send + 'static,
+    ) -> Result<Reindexing, IndexError> {
         let handle = match &*lock(&self.slot) {
             Slot::Closed => return Err(IndexError::NotOpen),
             Slot::Failed => return Err(IndexError::NotRunning),
             Slot::Open { handle, .. } => handle.clone(),
         };
-        let _asked = Asked::new(self);
+        let asked = Asked::new(self);
         let (indexing, report) = (self.indexing.clone(), self.report.clone());
         let answer = handle.reindex(Box::new(move |step| {
             set_indexing(&indexing, &report, |state| state.step = step);
             progress(step);
         }));
-        answer
-            .and_then(|answer| answer.recv().ok())
-            .unwrap_or_else(|| Err(self.gone()))
+        let answer = answer.ok_or_else(|| self.gone())?;
+        Ok(Reindexing {
+            answer,
+            _asked: asked,
+        })
     }
 
     /// While the open's build runs or a reindex is asked and not answered, the last step either

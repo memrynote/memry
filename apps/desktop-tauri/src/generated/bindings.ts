@@ -956,8 +956,11 @@ export const commands = {
 	/**  Keeps entries for `days` (7, 30 or 90). */
 	vaultActivitySetRetention: (days: number) => __TAURI_INVOKE<null>("vault_activity_set_retention", { days }),
 	/**
-	 *  Measures every note of the open vault again; resolves once the last progress went out.
-	 *  The index sends the vault status, indexing, from the request to the answer.
+	 *  Measures every note of the open vault again; resolves once the index took the request, not
+	 *  when the reindex ends: a first sync holds a reindex until it ends (#5409), and a renderer
+	 *  awaiting the answer would hang that long (#5423 C9). The progress goes out as
+	 *  [`VaultIndexProgressEvent`], and the vault status says indexing from the request to the
+	 *  reindex's end. A reindex that fails after the request is logged.
 	 */
 	vaultReindex: () => __TAURI_INVOKE<null>("vault_reindex"),
 	/**
