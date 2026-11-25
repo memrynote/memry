@@ -84,6 +84,7 @@ import { trackMainEvent } from '../telemetry/track'
 import { getMainI18n } from '../lib/main-i18n'
 import { startSyncRuntime, stopSyncRuntime } from '../sync/runtime'
 import { getCrdtProvider } from '../sync/crdt-provider'
+import { journalClockEra } from '../sync/journal-clock-era'
 import {
   isReconcileFailure,
   rebuildProjections,
@@ -698,6 +699,10 @@ async function openVault(vaultPath: string): Promise<void> {
   const dataDb = getDatabase()
   initializeFtsTasks(dataDb)
   initializeFtsInbox(dataDb)
+
+  // Before the watcher can observe an outside edit, so every journal edit this
+  // build observes is dated in its era (`recoverDirtyJournals`).
+  journalClockEra(dataDb)
 
   // Ensure task infrastructure expected by new vaults exists.
   ensureDefaultTaskProject(dataDb)

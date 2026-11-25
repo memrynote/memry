@@ -35,8 +35,8 @@ id (`apps/desktop/src/main/journal/runtime-effects.ts:23-33`); pull routes both
 `note` and `journal` records into the CRDT body feed
 (`packages/sync-client/src/pull/engine.ts:305`); `journalHandler` defers
 concurrent body merges to the CRDT
-(`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:57-64`) and purges
-the Y.Doc on a remote delete (`:175-181`).
+(`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:119-122`) and purges
+the Y.Doc on a remote delete (`:238-245`).
 
 ### 7.1.0 Minting a note id
 
@@ -992,7 +992,7 @@ Consequences a conforming client MUST implement:
 
 - On applying a tombstone for a document, **delete the local Y.Doc and the local
   update log**, as desktop does
-  (`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:175-181`).
+  (`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:238-245`).
 - **Do not pull bodies for a tombstoned id.** The server will still answer with
   the surviving log, and re-applying it would resurrect body state for a document
   the record feed says is deleted.
