@@ -25,6 +25,7 @@ import {
   parseCoverValue
 } from '@memry/shared/cover-image'
 import type { NoteFrontmatter } from '../../vault/frontmatter'
+import { COVER_MARKER_KEY_PREFIX } from './note-cover-marker-key'
 
 /**
  * The note's cover as the push payload carries it, or `null` when the file has
@@ -166,7 +167,6 @@ export function applyNoteCoverToFrontmatter(
 type UnframedMarker = `unframed:${string}`
 type NoteCoverSyncMarker = 'present' | 'removal-pending' | UnframedMarker
 
-const COVER_MARKER_KEY_PREFIX = 'note-cover:'
 const UNFRAMED_MARKER_PREFIX = 'unframed:'
 
 function isUnframedMarker(value: string): value is UnframedMarker {
