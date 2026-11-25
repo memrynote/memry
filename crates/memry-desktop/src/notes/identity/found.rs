@@ -30,9 +30,9 @@ impl NotesIdentity {
             // alone, made as the in-app alias edit makes it (`notes::aliases::with_aliases`):
             // every other key, comment and the body stay as the file has them. A file's list,
             // `aliases: []` included, is its answer when the record is not newer.
-            // Window: the owed write is held in memory only (`Pass::mark_record_newer`). A
-            // restart before the pass runs drops it, and the next body-only outside edit then
-            // gives the record the file's stale list (VERIFY-5808R3 finding 4, a follow-up).
+            // The core records the debt with the decision, in `data.db`
+            // (`owed_file_aliases`): a restart before the pass, or an outside edit of the body
+            // alone before it, keeps the record's names, and the open reconcile writes them.
             owes_file = aliases::found(writer, id, text, matched);
             properties::found(writer, ctx, self.store.clone(), id, text)?;
         }

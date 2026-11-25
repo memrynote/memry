@@ -65,6 +65,7 @@ pub mod note_stats;
 pub mod note_status;
 pub mod note_tasks;
 pub mod notes;
+pub mod owed_file_aliases;
 pub mod owed_file_body;
 pub mod projects;
 pub mod properties;

@@ -24,7 +24,7 @@ use crate::vault::file_types::{FileType, extension, file_type_of_extension};
 use crate::vault::note_file::{NoteFile, large_by_size, large_file_class, record_large_file};
 use crate::vault::watch::filter::WatchFilter;
 use crate::vault::watch::{VaultEvent, WatchHandle};
-use crate::vault::writeback::{Pass, WriteBack};
+use crate::vault::writeback::WriteBack;
 
 mod crossing;
 mod locked;
@@ -78,9 +78,6 @@ pub(super) struct Applier {
     /// The open's write-back, which writes a body that won over an outside edit; `None` in a
     /// test that runs none.
     pub(super) writeback: Option<Arc<WriteBack>>,
-    /// The open write-back's pass, which a record newer than its file marks
-    /// ([`Applier::owe_record`]); `None` in a test that runs none.
-    pub(super) pass: Option<Arc<Pass>>,
 }
 
 impl Applier {
@@ -142,6 +139,7 @@ impl Applier {
             .identity
             .on_changed(&self.ctx(), note_id, previous, file)
         else {
+            self.owe_record_if_owed(note_id);
             self.untaken
                 .lock()
                 .unwrap_or_else(PoisonError::into_inner)
