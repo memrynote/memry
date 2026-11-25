@@ -870,25 +870,29 @@ describe('ci matrices', () => {
   it('builds everything but Intel for a full-ci PR and a push to feat/tauri-v2', () => {
     const fullCi = tier({ labels: 'full-ci', files: [shell], patches: {} })
     const push = tier({ event: 'push', ref: 'refs/heads/feat/tauri-v2', base: '', files: [shell] })
-    // A PR runs no windows-11-arm Rust leg and no perf budgets: the post-merge schedule runs them.
-    assert.deepEqual(rustLegs(fullCi), [...linuxRust, 'macos-15 all', ...windowsRust])
-    assert.deepEqual(rustLegs(push), [
-      ...linuxRust,
-      'macos-15 all',
-      ...windowsRust,
-      ...armRust,
-      ...perfRust
-    ])
-    for (const out of [fullCi, push]) assert.deepEqual(tauriBuilds(out), fullTauri)
+    // Only the merge queue drops windows-11-arm and the perf budgets; `full-ci` asks for every leg.
+    for (const out of [fullCi, push]) {
+      assert.deepEqual(rustLegs(out), [
+        ...linuxRust,
+        'macos-15 all',
+        ...windowsRust,
+        ...armRust,
+        ...perfRust
+      ])
+      assert.deepEqual(tauriBuilds(out), fullTauri)
+    }
   })
 
-  it('runs no windows-11-arm Rust leg and no perf budgets on a PR into main', () => {
+  // No schedule covers main, so a PR into main (the final feat/tauri-v2 one included) runs them.
+  it('runs the windows-11-arm Rust legs and the perf budgets on a PR into main', () => {
     const out = tier({ base: 'main', files: [shell], patches: {} })
     assert.deepEqual(rustLegs(out), [
       ...linuxRust,
       'macos-15 all',
       'macos-15-intel all',
-      ...windowsRust
+      ...windowsRust,
+      ...armRust,
+      ...perfRust
     ])
   })
 

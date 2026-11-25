@@ -87,6 +87,10 @@ describe('Rust CI gate', () => {
       assert.equal(changed([path.replace('**', 'x/y.rs').replace('*', '')]), 'true', path)
     for (const [, action] of workflow.matchAll(/uses: \.\/\.github\/actions\/([a-z0-9-]+)/g))
       assert.ok(pushPaths.includes(`.github/actions/${action}/**`), action)
+    // The flaky report and the quarantine check run inside Rust CI's merge-queue legs.
+    for (const script of ['report-flaky-tests', 'check-quarantine'])
+      for (const file of [`scripts/${script}.mjs`, `scripts/${script}.test.mjs`])
+        assert.equal(changed([file]), 'true', file)
     assert.equal(changed(['apps/docs/src/contribute/testing.md', 'README.md']), 'false')
   })
 
@@ -164,10 +168,11 @@ describe('Rust CI gate', () => {
         assert.ok(['os', 'partition', ...groups].includes(field), cond)
       assert.doesNotMatch(cond, /matrix\.part/, cond)
     }
-    // The live seams and the release read-pool test skip a PR into feat/tauri-v2 only.
+    // The live seams and the release read-pool test skip a PR into feat/tauri-v2 only, and never on
+    // macOS, which the merge queue does not run.
     assert.match(
       lintAndTest,
-      /^ {6}LIVE_SEAMS: \$\{\{ !\(github\.event_name == 'pull_request' && github\.base_ref == 'feat\/tauri-v2'\) \}\}$/m
+      /^ {6}LIVE_SEAMS: \$\{\{ !\(github\.event_name == 'pull_request' && github\.base_ref == 'feat\/tauri-v2'\) \|\| startsWith\(matrix\.os, 'macos'\) \}\}$/m
     )
     for (const name of [
       'Keychain seam, live OS secrets (Linux)',

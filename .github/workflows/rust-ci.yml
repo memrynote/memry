@@ -162,7 +162,7 @@ jobs:
         uses: ./.github/actions/paths-changed
         with:
           token: ${{ github.token }}
-          include: '^(crates/|apps/desktop-tauri/(src-tauri|scripts)/|tests/sync-harness/scripts/serve\.ts$|tests/sync-harness/src/|apps/sync-server/|pnpm-lock\.yaml$|packages/swift/|packages/contracts/test-vectors/|packages/article-extract/|scripts/check-line-ceilings\.mjs$|scripts/check-test-timing(\.test)?\.mjs$|scripts/fetch-pdfium\.mjs$|scripts/fetch-tesseract-sources\.mjs$|\.github/workflows/rust-ci\.yml$|\.github/actions/(apt-install|ci-tier|free-disk|libsodium-dist|ort-static|paths-changed|setup-pnpm|tesseract-sources)/)'
+          include: '^(crates/|apps/desktop-tauri/(src-tauri|scripts)/|tests/sync-harness/scripts/serve\.ts$|tests/sync-harness/src/|apps/sync-server/|pnpm-lock\.yaml$|packages/swift/|packages/contracts/test-vectors/|packages/article-extract/|scripts/check-line-ceilings\.mjs$|scripts/(report-flaky-tests|check-quarantine)(\.test)?\.mjs$|scripts/check-test-timing(\.test)?\.mjs$|scripts/fetch-pdfium\.mjs$|scripts/fetch-tesseract-sources\.mjs$|\.github/workflows/rust-ci\.yml$|\.github/actions/(apt-install|ci-tier|free-disk|libsodium-dist|ort-static|paths-changed|setup-pnpm|tesseract-sources)/)'
 
   lint-and-test:
     name: Rust ${{ matrix.part }}${{ matrix.partition && format(' {0}', matrix.partition) || '' }} (${{ matrix.os }})
@@ -212,9 +212,10 @@ jobs:
       # editor host budgets ejected six PRs with no retry. PR runs keep the default profile, with no
       # retries, so a flake still fails review. A step that names `--profile live` overrides this.
       NEXTEST_PROFILE: ${{ github.event_name == 'merge_group' && 'merge-queue' || 'default' }}
-      # The live OS seams and the release read-pool test run everywhere but a PR into feat/tauri-v2:
-      # the merge queue runs them on the same change before it lands (RCA #5221 item 11).
-      LIVE_SEAMS: ${{ !(github.event_name == 'pull_request' && github.base_ref == 'feat/tauri-v2') }}
+      # The live OS seams and the release read-pool test run everywhere but a PR into feat/tauri-v2's
+      # Linux and Windows legs: the merge queue runs those on the same change before it lands (RCA #5221
+      # item 11). The queue has no macOS leg, so a PR's macOS leg keeps them.
+      LIVE_SEAMS: ${{ !(github.event_name == 'pull_request' && github.base_ref == 'feat/tauri-v2') || startsWith(matrix.os, 'macos') }}
 
     steps:
       - name: Checkout

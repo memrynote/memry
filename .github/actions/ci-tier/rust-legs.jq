@@ -11,8 +11,9 @@
 # that OS's lint and seams, `tests` its whole leg); the rest of Windows x64 runs in the merge
 # queue, where a Windows-only failure ejects the PR. Full adds Windows x64, plus Apple Silicon unless
 # the run is a merge-queue run (macos=false) and Intel only where intel is true (main, dispatch).
-# windows-11-arm and `perf` run on a full tier only off the PR and merge-queue path (pushes, dispatch):
-# a windows-11-arm leg builds cold for about 70 minutes, the longest job of a queue round.
+# windows-11-arm and `perf` run on every full tier but the merge queue's: a windows-11-arm leg builds
+# cold for about 70 minutes, the longest job of a queue round. A PR reaches the full tier only into
+# main (no schedule covers main), with `full-ci`, or with an unreadable file list, and keeps them.
 #
 # Linux and Windows legs split in four jobs that run in parallel: `lint` (fmt, clippy, doctests, the
 # iOS feature check, line ceilings), `seams` (the live OS seams, the read pool release test, the sync
@@ -34,7 +35,7 @@ def leg($os): if ($os | startswith("macos")) then {os: $os, part: "all", lint: t
 def full_leg($os): if $os == "windows-11-arm" then (leg($os), {os: $os, part: "models", models: true})
   else leg($os) | if .part == "seams" or .part == "all" then . + {models: true} else . end end;
 def perf_leg: {os: "ubuntu-22.04", part: "perf", perf: true};
-def off_queue: $event != "pull_request" and $event != "merge_group";
+def off_queue: $event != "merge_group";
 def warm_legs: [(["ubuntu-22.04", "windows-2022"])[] | full_leg(.)] | map(select(.part == "seams"));
 (if $post_merge == "covered" then
   []
