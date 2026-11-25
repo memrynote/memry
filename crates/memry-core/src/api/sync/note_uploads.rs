@@ -377,6 +377,11 @@ impl VaultSync {
                 let Some(current) = attachment_uploads::get(&tx, &upload.attachment_id)? else {
                     return Ok(None);
                 };
+                // The owning note was deleted while the bytes went up: the
+                // upload stays owed and runs if the note comes back.
+                if !attachment_uploads::note_is_live(&tx, &current.note_id)? {
+                    return Ok(None);
+                }
                 uploaded.cache(&tx, now)?;
                 notes::add_attachment_reference(
                     &tx,

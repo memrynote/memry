@@ -56,7 +56,9 @@ use crate::storage::repositories::projectors;
 use crate::storage::repositories::sync_items::{self, ApplyOutcome, InboundRecord};
 
 use super::clock::{ClockOrder, VectorClock, compare};
-use super::{body_debt, delete_keep, journal_day_merge, outbox, settings_merge, store};
+use super::{
+    body_debt, day_picture_refs, delete_keep, journal_day_merge, outbox, settings_merge, store,
+};
 
 /// One decoded item, waiting for its turn in the apply order (§5.13).
 pub(crate) enum Pending {
@@ -439,7 +441,7 @@ pub fn apply_inbound_on(
         }
         // Whole-document LWW plus desktop's conflict copy (canvas-handler.ts).
         canvas::ITEM_TYPE => canvas::merge::apply_remote(conn, record, now_ms, clock_device),
-        _ => apply_document(conn, record, now_ms),
+        _ => apply_document(conn, record, now_ms, clock_device),
     };
     match merged {
         Ok(inbound) => Ok(outcome(inbound)),
@@ -467,9 +469,14 @@ fn apply_document(
     conn: &Connection,
     record: &InboundRecord,
     now_ms: i64,
+    clock_device: Option<&str>,
 ) -> Result<Inbound, StorageError> {
     let kept = crate::domain::note_file::keep_own_file(conn, record)?;
     let record = kept.as_ref().unwrap_or(record);
+    // A day's pictures merge id by id, and the merge may owe a push (#5800).
+    if record.item_type == notes::ITEM_TYPE && day_picture_refs::is_day_note(&record.item_id) {
+        return day_picture_refs::apply_remote(conn, record, now_ms, clock_device);
+    }
     match task_merge::document_gate(conn, record)? {
         Gate::Wholesale => task_merge::wholesale(conn, record, now_ms),
         Gate::Skip => Ok(Inbound::Skipped),

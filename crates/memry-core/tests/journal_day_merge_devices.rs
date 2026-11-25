@@ -671,15 +671,37 @@ impl Dev {
     /// A picture attached to the day the device holds as `F`, as the day
     /// page attaches (`upload_attachment`); its id.
     async fn attach_to_foreign(&self) -> String {
+        self.attach_to(F).await
+    }
+
+    /// A picture attached to `note`, as the day page attaches
+    /// (`upload_attachment`); its id.
+    async fn attach_to(&self, note: &str) -> String {
         self.sync
             .upload_attachment(
-                F.to_owned(),
+                note.to_owned(),
                 "photo.png".to_owned(),
                 "image/png".to_owned(),
                 b"a picture taken offline".to_vec(),
             )
             .await
             .unwrap()
+    }
+
+    /// The user detaches `id` from `j<D>`.
+    fn detach(&self, id: &'static str) {
+        let clock = self.clock.clone();
+        self.db(move |c| {
+            memry_core::domain::notes::remove_attachment_reference(c, DAY, id, &clock, now())
+                .map(|_| ())
+        });
+    }
+
+    /// The removals `j<D>`'s `note` record carries here.
+    fn removed(&self) -> Vec<String> {
+        let payload = self.db(|c| sync_items::push_payload(c, "note", DAY));
+        let payload: Json = serde_json::from_str(&payload.expect("a j<D> record")).unwrap();
+        serde_json::from_value(payload["removedAttachmentReferences"].clone()).unwrap_or_default()
     }
 
     /// Deletes the `note` record under `id` (a user delete).
@@ -1020,6 +1042,65 @@ async fn a_deleted_day_record_is_created_again_with_the_carried_pictures() {
     assert_eq!(w.b.day_pictures(), [PICTURE], "B's j<D>");
     assert_eq!(w.a.day_pictures(), [PICTURE], "A's j<D>");
     fresh_device_wants(&w, &[PICTURE]).await;
+}
+
+/// (#5800) A day merged with no picture has no `note` record. Its first
+/// picture, attached as the day page attaches, creates it.
+#[tokio::test]
+async fn a_days_first_picture_is_named_under_the_day() {
+    let w = World::new(&["a"]).await;
+    w.b.pass().await;
+    w.settle().await;
+    let attached = w.a.attach_to(DAY).await;
+    w.settle().await;
+    assert_eq!(
+        w.b.day_pictures(),
+        std::slice::from_ref(&attached),
+        "B's j<D>"
+    );
+    fresh_device_wants(&w, &[attached.as_str()]).await;
+}
+
+/// (#5800) `j<D>`'s record was deleted after A removed `OWN` from it. A's next
+/// picture creates the record over the tombstone, and `OWN`'s removal stands.
+#[tokio::test]
+async fn a_first_picture_over_a_deleted_day_record_keeps_its_removals() {
+    let w = World::new(&["a"]).await;
+    w.a.seed_picture(DAY, OWN, BTreeMap::from([(w.a.clock.clone(), 1)]));
+    w.a.pass().await;
+    w.b.pass().await;
+    w.settle().await;
+    w.a.detach(OWN);
+    w.a.delete_note(DAY);
+    w.a.pass().await;
+    let attached = w.a.attach_to(DAY).await;
+    w.settle().await;
+    assert_eq!(
+        w.b.day_pictures(),
+        std::slice::from_ref(&attached),
+        "B's j<D>"
+    );
+    assert_eq!(w.a.removed(), [OWN], "A's j<D> record");
+    assert_eq!(w.b.removed(), [OWN], "B's j<D> record");
+}
+
+/// (#5801) The merge creates a deleted `j<D>` record again, and the removal
+/// the tombstone carries stands in the created record.
+#[tokio::test]
+async fn a_deleted_day_record_created_again_keeps_its_removals() {
+    let w = World::new(&["a"]).await;
+    let clock = BTreeMap::from([(w.a.clock.clone(), 1)]);
+    w.a.seed_picture(F, PICTURE, clock.clone());
+    w.a.seed_picture(DAY, OWN, clock);
+    w.a.pass().await;
+    w.a.detach(OWN);
+    w.a.delete_note(DAY);
+    w.a.pass().await;
+    w.b.pass().await;
+    assert_eq!(w.b.removed(), [OWN], "B's created j<D> record");
+    w.settle().await;
+    assert_eq!(w.b.day_pictures(), [PICTURE], "B's j<D>");
+    assert_eq!(w.a.removed(), [OWN], "A's j<D> record");
 }
 
 /// A device that never held `F` pulls the vault and opens `j<D>`; then the
