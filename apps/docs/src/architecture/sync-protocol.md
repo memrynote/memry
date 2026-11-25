@@ -1236,12 +1236,15 @@ across devices:
   the record (#2651) has references no record names. Ids are random per
   upload and a stored name carries none, so the day records those
   references against the foreign folder's unrecorded files on disk only when
-  one reference and one file are unrecorded, and then nothing is downloaded
-  again. Otherwise it counts the files as known and the references stay owed. A download for a
+  one reference and one file are unrecorded and the foreign text folded into
+  the day embeds that file, and then nothing is downloaded again. Otherwise it counts the files as known and the references stay owed. A download for a
   file that is already present then lands a second copy in
   `attachments/j<date>/`. A file that is really missing moves to where the
-  body links it. The files stay where they are and nothing is pushed for the
-  carry.
+  body links it. The files stay where they are. The carry pushes the day's
+  `note` record with the unioned references, as an upload to the day does,
+  so a device that never held the foreign row can fetch the pictures the
+  folded body embeds; the server keeps each attachment by its own id, so the
+  bytes are not uploaded again (#5746).
 - **Downloads on open** — with attachment auto-download off
   (`sync.attachmentAutoDownload === false`), the pull and the re-drive ask for
   no file, so opening a note or a file asks instead: the note, journal and file
