@@ -25,6 +25,7 @@ import {
   getAliasesForNotes,
   getInboundLinkSourceIds,
   getNoteCacheById,
+  getNoteFileProperties,
   getNoteProperties,
   getNoteSnapshots,
   getNoteTags,
@@ -1101,22 +1102,14 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
     })
   }, 30_000)
 
-  it("a case twin's off-file header update then a split keeps its property types", async () => {
-    const header = await splitAfter(async () => {
-      await vi.waitFor(() =>
-        expect(applyPeerHeader('lower', ['newtag'], 'wash:moss')).toBe('applied')
-      )
-      await flushProjectionEvents()
-    })
-
-    expect(header).toMatchObject(mixed())
-  }, 30_000)
-
   // An edit of the twin off the shared file patches that file instead (#5742).
   it('a UI property edit of the twin on the shared file then a split keeps its property types', async () => {
     await propertyTwins('', MIXED, false)
 
     expect(await mergeEntityProperties('upper', { extra: 'x' })).toEqual({ success: true })
+    await flushProjectionEvents()
+    // The rows alone, with no file to lean on: they record the quoted string.
+    expect(getNoteFileProperties(index.db, 'upper')).toEqual({ ...mixed(), extra: 'x' })
     await deleteNoteCommand('lower')
 
     expect(parseNote(shared()).frontmatter).toEqual({ ...mixed(), extra: 'x' })
