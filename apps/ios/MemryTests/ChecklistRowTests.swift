@@ -84,7 +84,11 @@ struct ChecklistRowTests {
         window.rootViewController = UIHostingController(rootView: Row(page: Page(item), model: model, editor: editor))
         window.makeKeyAndVisible()
         defer { window.isHidden = true }
-        try await Task.sleep(for: .milliseconds(300))
+        // A loaded host draws the row later than a fixed wait allows (#5780).
+        for _ in 0..<300 where Self.textView(in: window) == nil {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        window.layoutIfNeeded()
         try await body(try #require(Self.textView(in: window)), model)
     }
 

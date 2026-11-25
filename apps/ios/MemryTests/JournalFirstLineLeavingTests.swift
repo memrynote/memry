@@ -16,6 +16,10 @@ struct JournalFirstLineLeavingTests {
         let window: UIWindow
     }
 
+    /// Where the page hears the app leave. The app-wide center would reach
+    /// every editor of every suite running in parallel (#5780).
+    private let notifications = NotificationCenter()
+
     /// Opens today's empty page and puts the caret in its first line.
     private func open() async throws -> (Fixture, UITextView) {
         let vault = try JournalTestVault()
@@ -25,7 +29,9 @@ struct JournalFirstLineLeavingTests {
         )
         vault.store.context = context
         await vault.store.loadDay(JournalTestVault.today)
-        let page = JournalDayPageModel(store: vault.store, date: JournalTestVault.today, context: context)
+        let page = JournalDayPageModel(
+            store: vault.store, date: JournalTestVault.today, context: context, notifications: notifications
+        )
         let scene = try #require(UIApplication.shared.connectedScenes.first as? UIWindowScene)
         let window = UIWindow(windowScene: scene)
         window.rootViewController = UIHostingController(rootView: JournalDayPage(
@@ -83,7 +89,7 @@ struct JournalFirstLineLeavingTests {
 
         for key in "hello" { field.insertText(String(key)) }
         await settle()
-        NotificationCenter.default.post(name: UIApplication.willResignActiveNotification, object: nil)
+        notifications.post(name: UIApplication.willResignActiveNotification, object: nil)
 
         await expectStored(day, ["hello"])
         // The line's block takes the caret, as after a Return: the keyboard
@@ -101,7 +107,7 @@ struct JournalFirstLineLeavingTests {
         for key in " more" where accepts(String(key)) {
             block.insertText(String(key))
         }
-        NotificationCenter.default.post(name: UIApplication.willResignActiveNotification, object: nil)
+        notifications.post(name: UIApplication.willResignActiveNotification, object: nil)
         await expectStored(day, ["hello more"])
     }
 
@@ -115,12 +121,12 @@ struct JournalFirstLineLeavingTests {
         for key in "Foo" { field.insertText(String(key)) }
         field.setMarkedText("k", selectedRange: NSRange(location: 1, length: 0))
         await settle()
-        NotificationCenter.default.post(name: UIApplication.willResignActiveNotification, object: nil)
+        notifications.post(name: UIApplication.willResignActiveNotification, object: nil)
         await settle()
         #expect(field.markedTextRange != nil, "resigning ended the composition")
         #expect(await stored(day).isEmpty, "a half-composed line landed")
 
-        NotificationCenter.default.post(name: UIApplication.didEnterBackgroundNotification, object: nil)
+        notifications.post(name: UIApplication.didEnterBackgroundNotification, object: nil)
 
         await expectStored(day, ["Fook"])
     }
@@ -146,7 +152,8 @@ struct JournalFirstLineLeavingTests {
                 written.append(line)
                 return true
             }
-        })
+        }
+        .environment(\.appLifecycle, notifications))
         window.makeKeyAndVisible()
         await until { views(UITextView.self, in: window).count == 2 }
         let fields = views(UITextView.self, in: window)
@@ -166,7 +173,7 @@ struct JournalFirstLineLeavingTests {
         two.setMarkedText("k", selectedRange: NSRange(location: 1, length: 0))
         await settle()
 
-        NotificationCenter.default.post(name: UIApplication.didEnterBackgroundNotification, object: nil)
+        notifications.post(name: UIApplication.didEnterBackgroundNotification, object: nil)
         await until { written.count == 2 }
         #expect(written.sorted() == ["Fook", "keep"], "\(written)")
     }
@@ -185,7 +192,8 @@ struct JournalFirstLineLeavingTests {
             written.append(line)
             return true
         }
-        .overlay(OverTextView()))
+        .overlay(OverTextView())
+        .environment(\.appLifecycle, notifications))
         window.makeKeyAndVisible()
         await until { views(UITextView.self, in: window).count == 2 }
         let over = try #require(views(UITextView.self, in: window).first { $0.tag == OverTextView.tag })
@@ -204,8 +212,8 @@ struct JournalFirstLineLeavingTests {
         over.setMarkedText("k", selectedRange: NSRange(location: 1, length: 0))
         await settle()
 
-        NotificationCenter.default.post(name: UIApplication.willResignActiveNotification, object: nil)
-        NotificationCenter.default.post(name: UIApplication.didEnterBackgroundNotification, object: nil)
+        notifications.post(name: UIApplication.willResignActiveNotification, object: nil)
+        notifications.post(name: UIApplication.didEnterBackgroundNotification, object: nil)
         await until { !written.isEmpty }
         await settle()
         #expect(written == ["keep"], "\(written)")

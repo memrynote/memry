@@ -100,6 +100,7 @@ struct NoteTitleEditor: View {
     @State private var host = TitleWindow()
     @FocusState private var focused: Bool
     @Environment(NotesSplitRouter.self) private var split: NotesSplitRouter?
+    @Environment(\.appLifecycle) private var appLifecycle
 
     private func commit() {
         guard commits.editing else { return }
@@ -514,11 +515,11 @@ struct NoteTitleEditor: View {
                 // app too, and the draft holds the half-made text. Going to
                 // the background ends the composition as it stands, as a
                 // Return in the body does, and saves it.
-                .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
+                .onReceive(appLifecycle.publisher(for: UIApplication.willResignActiveNotification)) { _ in
                     host.confirmed = nil
                     if titleTextView?.markedTextRange == nil { save() }
                 }
-                .onReceive(NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in
+                .onReceive(appLifecycle.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in
                     if let view = titleTextView, view.markedTextRange != nil {
                         view.unmarkText()
                         typed(view.text)
@@ -985,6 +986,9 @@ struct PropertyNameWidthKey: PreferenceKey {
 
 extension EnvironmentValues {
     @Entry var widestPropertyName: CGFloat = 0
+    /// Where a page's title and first line hear the app resign active and
+    /// enter the background: the page's `NoteEditorViewModel.notifications`.
+    @Entry var appLifecycle: NotificationCenter = .default
 }
 
 private struct SharedPropertyNameWidth: ViewModifier {
