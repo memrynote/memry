@@ -289,7 +289,11 @@ mod tests {
                     .expect("under src")
                     .to_string_lossy()
                     .replace('\\', "/");
-                let mut source = std::fs::read_to_string(&path).expect("read a source file");
+                // A Windows checkout has CRLF; the matchers and the
+                // multi-line headers above are written for LF.
+                let mut source = std::fs::read_to_string(&path)
+                    .expect("read a source file")
+                    .replace("\r\n", "\n");
                 for (_, header) in RAW_TRANSACTION_ALLOWED
                     .iter()
                     .filter(|(file, _)| *file == shown)
@@ -353,6 +357,38 @@ mod tests {
             raw_transaction_offenders(dir.path()),
             ["storage/recovery.rs"]
         );
+    }
+
+    /// A CRLF checkout (Windows) gets the verdicts an LF one gets: the
+    /// multi-line `#[cfg(test)]\nmod tests` header still matches and an
+    /// opener outside the allowlisted function still fails.
+    #[test]
+    fn a_crlf_checkout_gets_the_verdicts_of_an_lf_one() {
+        let files = [
+            (
+                "storage/nested_tx.rs",
+                "pub fn begin(conn: &Connection) {\n    conn.transaction_with_behavior(Immediate)\n}\n\
+                 #[cfg(test)]\nmod tests {\n    fn t() {\n        conn.execute_batch(\"BEGIN\");\n    }\n}\n",
+            ),
+            (
+                "storage/recovery.rs",
+                "fn salvage(fresh: &mut Connection) {\n    let tx = fresh\n        .transaction()?;\n}\n\
+                 mod tests {\n    fn a_locked_database_is_an_error_not_a_pending_recovery() {\n        holder.execute_batch(\"BEGIN EXCLUSIVE;\");\n    }\n}\n",
+            ),
+        ];
+        let verdict = |eol: &str| {
+            let dir = tempfile::Builder::new()
+                .prefix("nested-tx-eol")
+                .tempdir()
+                .expect("dir");
+            std::fs::create_dir_all(dir.path().join("storage")).expect("storage dir");
+            for (file, source) in files {
+                std::fs::write(dir.path().join(file), source.replace('\n', eol)).expect("write");
+            }
+            raw_transaction_offenders(dir.path())
+        };
+        assert_eq!(verdict("\n"), ["storage/recovery.rs"]);
+        assert_eq!(verdict("\r\n"), ["storage/recovery.rs"]);
     }
 
     #[test]
