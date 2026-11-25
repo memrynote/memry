@@ -99,7 +99,7 @@ vi.mock('../local-mutations', () => ({
 // Write-back asks the provider only for a newer doc of the same note.
 vi.mock('../crdt-provider', () => ({
   getCrdtProvider: () => ({
-    isStoring: () => false,
+    holdsDoc: () => true,
     getDoc: () => undefined,
     close: vi.fn(),
     purge: vi.fn()

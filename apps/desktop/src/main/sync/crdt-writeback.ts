@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from 'node:async_hooks'
 import * as Y from 'yjs'
 import { createLogger } from '../lib/logger'
 import { completeWithin } from '../shutdown-sequence'
@@ -266,12 +267,20 @@ export function hasWritebackTurn(noteId: string): boolean {
  * writers take a turn here too. `run` must not wait on a pass of the note.
  */
 export function takeWritebackTurn<T>(noteId: string, run: () => Promise<T>): Promise<T> {
+  const token = {}
+  const held = new Map(heldTurns.getStore())
+  held.set(noteId, token)
   const turn = (runningPasses.get(noteId) ?? Promise.resolve())
     // The previous turn reported its own failure; this one runs regardless.
     .catch(() => {})
     .then(async () => {
       await runRepairs(noteId)
-      return run()
+      runningTurns.set(noteId, token)
+      try {
+        return await heldTurns.run(held, run)
+      } finally {
+        if (runningTurns.get(noteId) === token) runningTurns.delete(noteId)
+      }
     })
   runningPasses.set(noteId, turn)
   const clear = (): void => {
@@ -279,6 +288,19 @@ export function takeWritebackTurn<T>(noteId: string, run: () => Promise<T>): Pro
   }
   turn.then(clear, clear)
   return turn
+}
+
+/**
+ * The turns the running code is inside of, by note, and the turn each note
+ * runs now. A timer armed inside a turn inherits its context after the turn
+ * ended, so only a match with the running turn counts (`insideWritebackTurn`).
+ */
+const heldTurns = new AsyncLocalStorage<ReadonlyMap<string, object>>()
+const runningTurns = new Map<string, object>()
+
+export function insideWritebackTurn(noteId: string): boolean {
+  const token = heldTurns.getStore()?.get(noteId)
+  return token !== undefined && runningTurns.get(noteId) === token
 }
 
 /**
@@ -321,11 +343,13 @@ async function runPass(
   noteId: string,
   doc: Y.Doc,
   local: boolean,
-  remoteEditedAtMs: number | undefined
+  remoteEditedAtMs: number | undefined,
+  ownDoc = false
 ): Promise<void> {
   const startedAt = Date.now()
   try {
-    await performWriteback(noteId, resolveWritebackDoc(noteId, doc), local, remoteEditedAtMs)
+    const serialized = ownDoc ? doc : resolveWritebackDoc(noteId, doc)
+    await performWriteback(noteId, serialized, local, remoteEditedAtMs)
     failingWritebacks.delete(noteId)
   } finally {
     const finishedAt = Date.now()
@@ -443,6 +467,37 @@ export async function settleWriteback(noteId: string): Promise<void> {
   await writebackNow(noteId, pending.doc).catch((err: unknown) =>
     reportWritebackFailure(noteId, err)
   )
+}
+
+/**
+ * Before a close destroys the note's doc: waits for the note's running turn,
+ * so a pass that serialized `doc` records its file while `doc` is still the
+ * note's. With `runArmed` (the store does not hold `doc`) it then runs the
+ * armed pass against `doc` itself inside the note's turn: once destroyed,
+ * nothing else writes what the store missed (#5698, `recordDocFile`). A close
+ * inside the note's own turn (a writer's feed closing the doc it opened) runs
+ * the pass in place: waiting for the turn would wait for itself. Never
+ * throws; a failed pass is reported as a timed one is.
+ */
+export async function writeBackBeforeClose(
+  noteId: string,
+  doc: Y.Doc,
+  runArmed: boolean
+): Promise<void> {
+  const pending = runArmed ? pendingTimers.get(noteId) : undefined
+  if (pending) {
+    clearTimeout(pending.timer)
+    pendingTimers.delete(noteId)
+  }
+  const pass = async (): Promise<void> => {
+    if (pending) await runPass(noteId, doc, pending.local, pending.remoteEditedAtMs, true)
+  }
+  const done = insideWritebackTurn(noteId)
+    ? pass()
+    : pending || runningPasses.has(noteId)
+      ? takeWritebackTurn(noteId, pass)
+      : Promise.resolve()
+  await done.catch((err: unknown) => reportWritebackFailure(noteId, err))
 }
 
 export function cancelPendingWritebacks(): void {
@@ -866,7 +921,7 @@ async function writebackExisting(
 
   // No byte change → no write, no mtime churn, no snapshot, no downstream signal
   if (existingRaw !== null && fileContent === existingRaw) {
-    recordUnchangedFile(indexDb, noteId, cached, existingRaw, getCrdtProvider())
+    recordUnchangedFile(indexDb, noteId, cached, existingRaw, doc, getCrdtProvider())
     log.debug('Write-back is a no-op, skipping', { noteId })
     return true
   }
@@ -938,6 +993,7 @@ async function writebackExisting(
       await runWithLockedWritesAllowed(() => atomicWrite(absolutePath, fileContent))
       landed()
     },
+    doc,
     getCrdtProvider()
   )
   lastWrittenHash.set(noteId, generateContentHash(fileContent))
@@ -1018,7 +1074,7 @@ async function writebackJournal(
 
   // No byte change → no write, no mtime churn, no snapshot, no downstream signal
   if (existingRaw !== null && fileContent === existingRaw) {
-    recordUnchangedFile(indexDb, noteId, cached, existingRaw, getCrdtProvider())
+    recordUnchangedFile(indexDb, noteId, cached, existingRaw, doc, getCrdtProvider())
     log.debug('Journal write-back is a no-op, skipping', { noteId, date })
     return true
   }
@@ -1049,6 +1105,7 @@ async function writebackJournal(
       await runWithLockedWritesAllowed(() => atomicWrite(absolutePath, fileContent))
       landed()
     },
+    doc,
     getCrdtProvider()
   )
   lastWrittenHash.set(noteId, generateContentHash(fileContent))
@@ -1109,5 +1166,7 @@ registerCrdtWritebackPort({
   flushPendingWritebacks,
   hasArmedWritebacks,
   resetWritebackState,
+  insideWritebackTurn,
+  writeBackBeforeClose,
   writebackNow
 })

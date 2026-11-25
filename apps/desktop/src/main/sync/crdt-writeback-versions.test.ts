@@ -75,7 +75,7 @@ vi.mock('../database/client', () => ({
 }))
 vi.mock('../database', () => ({ getIndexDatabase: () => h.indexDb, getDatabase: () => ({}) }))
 vi.mock('./crdt-provider', () => ({
-  getCrdtProvider: () => ({ isStoring: () => false, getDoc: () => undefined })
+  getCrdtProvider: () => ({ holdsDoc: () => true, getDoc: () => undefined })
 }))
 vi.mock('./crdt-external-feed', () => ({ feedExternalEditToCrdt: async () => false }))
 vi.mock('./crdt-feed', () => ({ replaceNoteTagsInCrdt: vi.fn() }))

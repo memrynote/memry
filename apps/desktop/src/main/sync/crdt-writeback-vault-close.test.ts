@@ -30,7 +30,12 @@ import { parseJournalEntry } from '../vault/journal'
 import { registerJournalHandlers } from '../ipc/journal-handlers'
 import { resolveJournalEntryId } from '../journal/create-entry'
 import { getCrdtProvider, resetCrdtProvider } from './crdt-provider'
-import { flushPendingWritebacks, hasArmedWritebacks, resetWritebackState } from './crdt-writeback'
+import {
+  flushPendingWritebacks,
+  hasArmedWritebacks,
+  resetWritebackState,
+  takeWritebackTurn
+} from './crdt-writeback'
 import { markdownToYFragment } from './blocknote-converter'
 import {
   deleteNoteCache,
@@ -957,8 +962,11 @@ describe('a CRDT store that stalls while the vault closes (#5698)', () => {
     return { id: lower, file }
   }
 
-  // VERIFY-5703R3: each trigger loses an edit under 02ec439e41's marker
-  // handling; the vault close and the same-session reopen under 0469b6b468's too.
+  // Each trigger but the case twin loses an edit with crdt-provider.ts,
+  // writeback-baseline.ts and crdt-writeback-ingest.ts at 02ec439e41; the
+  // vault close and the same-session reopen at 0469b6b468 too. The case twin
+  // loses it when vault/case-twin-file.ts records the survivor's doc-built
+  // file as stored (`recordBaseline` in place of `recordDocFile`).
   for (const [trigger, endSession] of [
     [
       'a vault close whose write fails behind a store that keeps failing',
@@ -1050,6 +1058,119 @@ describe('a CRDT store that stalls while the vault closes (#5698)', () => {
     expect.soft(bodyText(doc)).toBe('From A. Typed. More. Two.')
     expect.soft(await settledStoredBody(id)).toBe('From A. Typed. More. Two.')
     expect(dayBody(vaultA)).toContain('From A. Typed. More. Two.')
+  })
+
+  // VERIFY-5703R4 PROBE a: a reopen while the closing doc's pass writes its file.
+  it('a reopen while the closed doc writes its file takes that file in', async () => {
+    const id = await checkedDay()
+    const disk = failStore()
+    const write = holdNextWrite(dayFile(vaultA))
+    type(id, ' More.')
+    await settle(write.reached)
+
+    const closed = getCrdtProvider().close(id)
+    disk.recover()
+    const opened = getCrdtProvider().open(id, EDITOR_WINDOW)
+    write.release()
+    await settle(closed)
+    const doc = await settle(opened)
+    type(id, ' Two.')
+    await settle(flushPendingWritebacks())
+
+    expect.soft(bodyText(doc)).toBe('From A. Typed. More. Two.')
+    expect.soft(await settledStoredBody(id)).toBe('From A. Typed. More. Two.')
+    expect(dayBody(vaultA)).toContain('From A. Typed. More. Two.')
+  })
+
+  // VERIFY-5703R4 PROBE b: a close inside the debounce of a keystroke the store missed.
+  it('a close inside the debounce writes the keystroke the store missed for the reopen', async () => {
+    const id = await checkedDay()
+    const disk = failStore()
+    type(id, ' More.')
+    await settle(getCrdtProvider().close(id))
+    disk.recover()
+
+    const doc = await settle(getCrdtProvider().open(id, EDITOR_WINDOW))
+    await settle(flushPendingWritebacks())
+    type(id, ' Two.')
+    await settle(flushPendingWritebacks())
+
+    expect.soft(bodyText(doc)).toBe('From A. Typed. More. Two.')
+    expect.soft(await settledStoredBody(id)).toBe('From A. Typed. More. Two.')
+    expect(dayBody(vaultA)).toContain('From A. Typed. More. Two.')
+  })
+
+  // VERIFY-5703R4 (1i): the mark is written ahead of the file.
+  it('a crash between the file write and its record keeps the stored doc as a version', async () => {
+    const id = await checkedDay()
+    const disk = failStore()
+    const realWrite = fileOps.atomicWrite
+    let written = false
+    vi.spyOn(fileOps, 'atomicWrite').mockImplementation(async (target, content) => {
+      await realWrite(target, content)
+      if (written || target !== dayFile(vaultA)) return
+      written = true
+      // The process ends before the pass records the file.
+      throw new Error('crash after the file write')
+    })
+    type(id, ' More.')
+    await vi.waitFor(
+      async () => {
+        await tick()
+        expect(written).toBe(true)
+      },
+      { timeout: 10_000, interval: 10 }
+    )
+    disk.recover()
+    type(id, ' Two.')
+    await Promise.all(store.queues)
+    await restart()
+
+    const doc = await settle(getCrdtProvider().open(id, EDITOR_WINDOW))
+
+    expect.soft(bodyText(doc)).toBe('From A. Typed. More.')
+    expect(
+      getNoteSnapshots(vaultA.indexDb.db, id).map((version) => version.fileContent)
+    ).toContainEqual(expect.stringContaining('From A. Typed. More. Two.'))
+  })
+
+  it("an open inside the note's write-back turn never waits for a close waiting on that turn", async () => {
+    const id = await checkedDay()
+    const gate = hold()
+    const writer = takeWritebackTurn(id, async () => {
+      await gate.wait()
+      return getCrdtProvider().open(id, undefined, { skipSeed: true })
+    })
+    await gate.reached
+    const closed = getCrdtProvider().close(id)
+    gate.release()
+
+    await settle(Promise.all([writer, closed]))
+
+    expect(bodyText(await writer)).toBe('From A. Typed.')
+  })
+
+  // VERIFY-5703R4 (2): a store of a later doc says nothing about a closed one.
+  it("a closed doc's stored waiter stays unanswered after the reopened doc's store lands", async () => {
+    const id = await checkedDay()
+    const disk = failStore()
+    type(id, ' More.')
+    await Promise.all(store.queues)
+    const closedDoc = getCrdtProvider().getDoc(id) as Y.Doc
+    await settle(getCrdtProvider().close(id))
+    disk.recover()
+    await settle(getCrdtProvider().open(id, EDITOR_WINDOW))
+
+    let answered = false
+    void getCrdtProvider()
+      .whenStored(id, closedDoc)
+      .then(() => (answered = true))
+    type(id, ' Two.')
+    await settle(flushPendingWritebacks())
+    await Promise.all(store.queues)
+    await new Promise((resolve) => setImmediate(resolve))
+
+    expect(answered).toBe(false)
   })
 
   it("a close whose whole-doc store lands answers the doc's own stored waiters", async () => {

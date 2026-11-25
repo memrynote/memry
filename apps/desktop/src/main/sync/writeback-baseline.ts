@@ -12,7 +12,8 @@
  * doc lacks always does. Every writer of a note file goes through here:
  * - The write-back writes the live doc, which may hold updates the store has
  *   not confirmed, so it records its bytes through `writeDocWithBaseline` and
- *   `recordDocFile` (#5698, the invariant is stated there).
+ *   `recordDocFile` (#5698, the invariant and its three rules are stated
+ *   there).
  * - A seed, and the take of an owed file (`takeOwedFile`), record the bytes
  *   they built the doc from, over any older hash.
  * - Memry's other body writers (the note command, journal saves, appended
@@ -55,6 +56,7 @@
  * @module sync/writeback-baseline
  */
 
+import type * as Y from 'yjs'
 import { getNoteCacheById, UNSTORED_FILE, updateNoteCache } from '@main/database/queries/notes'
 import type { getIndexDatabase } from '../database/client'
 import { generateContentHash, parseNote } from '../vault/frontmatter'
@@ -79,62 +81,67 @@ export function recordBaseline(indexDb: IndexDb, noteId: string, raw: string): v
 
 /** The CRDT store's side of a note, as the write-back's baseline needs it. */
 export interface DocStore {
-  /** An update of the note is on its way to the store, or the store missed one. */
-  isStoring(noteId: string): boolean
+  /**
+   * Whether the store holds every update `doc`, an instance of the note's
+   * doc, has made so far.
+   */
+  holdsDoc(noteId: string, doc: Y.Doc): boolean
   /**
    * Resolves once the store holds every update handed to it so far, storing
    * the whole doc again when the store missed one; rejects when a store fails.
    */
   whenPersisted(noteId: string): Promise<void>
   /**
-   * Resolves once the store holds every update the live doc has made so far,
-   * however late; never rejects, and never resolves once that doc closed
-   * without the store holding them.
+   * Resolves once the store holds every update `doc` has made so far, however
+   * late; never rejects, and never resolves once `doc` is not the note's open
+   * doc without the store holding it.
    */
-  whenStored(noteId: string): Promise<void>
+  whenStored(noteId: string, doc: Y.Doc): Promise<void>
 }
 
 /**
- * Records `raw`, a file the write-back wrote from the live doc or found
- * already holding it, as the note's baseline.
+ * Records `raw`, a file the write-back wrote from `doc` or found already
+ * holding it, as the note's baseline.
  *
  * INVARIANT (#5698): while a note's row carries `UNSTORED_FILE`, its file is
- * the note's source of truth.
- * - Set: the write-back wrote the file from a live doc whose updates the store
- *   has not confirmed (`DocStore.isStoring`). The row keeps the file's real
- *   hash in `content_hash` (the watcher's rename match needs it) and the
- *   marker in `pending_write_hash`.
- * - Read: every open of the note's doc, the first of a session or a reopen in
- *   the same session (after a close, an eviction, a vault switch), takes the
- *   file into the doc before any edit reaches it (`takeOfflineEdit`,
- *   `ingestOfflineEdit`). The doc it read from the store may lack the file's
- *   bytes, and a write-back of it would put that older body over the file.
- * - Cleared: only once a store of a doc that holds the file's bytes lands.
- *   Here, by `whenStored` of the doc instance that wrote the file: its own
- *   stores, or the store of its whole state retried before it is destroyed. A
- *   later instance never answers for it (`ActiveDoc.storedWaiters`). After an
- *   ingest, by the ingest's own store (`ingestOutsideEditFirst`).
+ * the note's source of truth. Three rules keep it:
+ * - Write-ahead mark. A write of a doc the store does not hold yet
+ *   (`DocStore.holdsDoc`) marks the row `UNSTORED_FILE` before the file
+ *   changes, and records the file's hash in `content_hash` after (the
+ *   watcher's rename match needs it). An open between the two, or a crash,
+ *   finds the mark and takes the file in; that costs an ingest, which keeps
+ *   the doc as a version first (`crdt-writeback-ingest.ts`). A failed write
+ *   keeps the mark (`writeDocWithBaseline`).
+ * - Instance-tied clear. Only a store of the doc instance that was
+ *   serialized clears the mark (`DocStore.whenStored(noteId, doc)`, the
+ *   provider's `storedWaiters`): its own stores, or the store of its whole
+ *   state a close lands before destroying it. A later instance of the note,
+ *   read from a store that may lack the file's bytes, never answers for it.
+ *   After an ingest, the ingest's own store clears it
+ *   (`ingestOutsideEditFirst`).
+ * - Close before reopen. A close whose store does not hold the doc writes the
+ *   note's armed pass from that doc inside the note's write-back turn before
+ *   destroying it, and an open of the note waits for its close
+ *   (`CrdtProvider.close`, `open`). So every open after such a doc finds the
+ *   mark and takes the file in (`takeOfflineEdit`, `ingestOfflineEdit`),
+ *   the first open of a session and every reopen in it alike.
  * A row whose `content_hash` moved past `raw` (a later write, an outside edit)
  * is left alone. A session that ends first (a close whose store kept failing,
- * a quit cut short, a forced exit, a crash) leaves the marker for the next
- * open. A marker that outlives a recovery costs that open a re-ingest, which
- * keeps the doc as a version first (`crdt-writeback-ingest.ts`).
+ * a quit cut short, a forced exit, a crash) leaves the mark for the next open.
  */
 export function recordDocFile(
   indexDb: IndexDb,
   noteId: string,
   raw: string,
+  doc: Y.Doc,
   store: DocStore
 ): void {
-  if (!store.isStoring(noteId)) {
+  if (store.holdsDoc(noteId, doc)) {
     recordBaseline(indexDb, noteId, raw)
     return
   }
-  updateNoteCache(indexDb, noteId, {
-    contentHash: generateContentHash(raw),
-    pendingWriteHash: UNSTORED_FILE
-  })
   const hash = generateContentHash(raw)
+  updateNoteCache(indexDb, noteId, { contentHash: hash, pendingWriteHash: UNSTORED_FILE })
   // Stores the whole doc again when the store missed an update.
   store.whenPersisted(noteId).catch((err: unknown) => {
     log.warn('The store has not confirmed a written file yet; its next open takes the file in', {
@@ -142,7 +149,7 @@ export function recordDocFile(
       err
     })
   })
-  void store.whenStored(noteId).then(() => {
+  void store.whenStored(noteId, doc).then(() => {
     try {
       const row = getNoteCacheById(indexDb, noteId)
       if (holdsUnstoredFile(row) && row?.contentHash === hash) {
@@ -158,27 +165,50 @@ export function recordDocFile(
 }
 
 /**
- * Writes `fileContent`, the live doc's bytes, with `write`, and records it
+ * Writes `fileContent`, serialized from `doc`, with `write`, and records it
  * through `recordDocFile`. A doc the store holds records its bytes on both
- * sides of the write, as `writeWithBaseline` does. A doc still storing claims
- * no bytes before the write: a crash after it leaves the file an outside edit.
- * A failed write keeps the mark the file carries: the file still holds bytes
- * the store may lack, and it stays the source of truth (`recordDocFile`).
+ * sides of the write, as `writeWithBaseline` does. A doc the store does not
+ * hold marks the row before the write (`recordDocFile`, write-ahead mark). A
+ * failed write keeps the mark: the write may have landed before it failed,
+ * and the mark costs the next open only an ingest that keeps a version.
  */
 export async function writeDocWithBaseline(
   indexDb: IndexDb,
   noteId: string,
   fileContent: string,
   write: () => Promise<void>,
+  doc: Y.Doc,
   store: DocStore
 ): Promise<void> {
-  if (!store.isStoring(noteId)) {
+  if (store.holdsDoc(noteId, doc)) {
     await writeWithBaseline(indexDb, noteId, fileContent, write)
     return
   }
   const indexed = getNoteCacheById(indexDb, noteId) !== undefined
+  if (!indexed) {
+    await write()
+    return
+  }
+  markDocWrite(indexDb, noteId, fileContent, doc, store)
   await write()
-  if (indexed) recordDocFile(indexDb, noteId, fileContent, store)
+  recordDocFile(indexDb, noteId, fileContent, doc, store)
+}
+
+/**
+ * Marks the row before `raw`, serialized from `doc`, is written to the note's
+ * file: the pending hash when the store holds the doc, else `UNSTORED_FILE`
+ * (`recordDocFile`, write-ahead mark). `recordDocFile` follows the write.
+ */
+export function markDocWrite(
+  indexDb: IndexDb,
+  noteId: string,
+  raw: string,
+  doc: Y.Doc,
+  store: DocStore
+): void {
+  updateNoteCache(indexDb, noteId, {
+    pendingWriteHash: store.holdsDoc(noteId, doc) ? generateContentHash(raw) : UNSTORED_FILE
+  })
 }
 
 /**
@@ -237,10 +267,11 @@ export function recordUnchangedFile(
   noteId: string,
   baseline: Baseline,
   raw: string,
+  doc: Y.Doc,
   store: DocStore
 ): void {
   if (baseline.contentHash === generateContentHash(raw) && !baseline.pendingWriteHash) return
-  recordDocFile(indexDb, noteId, raw, store)
+  recordDocFile(indexDb, noteId, raw, doc, store)
 }
 
 /**

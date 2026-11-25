@@ -60,7 +60,7 @@ vi.mock('../lib/logger', () => ({
 
 vi.mock('./crdt-provider', () => ({
   getCrdtProvider: () => ({
-    isStoring: () => false,
+    holdsDoc: () => true,
     close: mocks.closeDoc,
     getDoc: mocks.getDoc
   })

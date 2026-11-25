@@ -280,11 +280,13 @@ interface ActiveDoc {
    */
   awaitingMerge: boolean
   /**
-   * Callers of `whenStored` against this doc instance. Only a store of this
-   * instance answers them: a doc reopened from the store may lack what this
-   * one held, so a store of it says nothing about this one's bytes. A close
-   * answers them once a store of this doc's whole state lands, and drops them
-   * unanswered when none does (`settleStoreBeforeDestroy`, #5698).
+   * Callers of `whenStored(noteId, doc)` for this entry's doc instance. A
+   * caller names the instance it serialized, and is answered only by a store
+   * of that instance: a doc reopened from the store may lack what this one
+   * held, so a store of it says nothing about this one's bytes. A caller
+   * naming another instance is never queued here. A close answers them once
+   * a store of this doc's whole state lands, and drops them unanswered when
+   * none does (`settleStoreBeforeDestroy`, `recordDocFile`, #5698).
    */
   storedWaiters: Array<() => void>
 }
@@ -299,6 +301,10 @@ export class CrdtProvider {
    */
   private applyingRemoteEditedAtMs: number | undefined
   private openLocks = new Map<string, Promise<Y.Doc>>()
+  /** In-flight closes by note. An open of the note waits for its close (`close`). */
+  private closeLocks = new Map<string, Promise<void>>()
+  /** Docs whose close landed a store of their whole state before destroying them. */
+  private storedAtClose = new WeakSet<Y.Doc>()
   private persistence: CrdtPersistence | null = null
   /** See `storeId`. Minted on every successful open, dropped on `destroy()`. */
   private storeIdentity: string | null = null
@@ -909,6 +915,15 @@ export class CrdtProvider {
   }
 
   async open(noteId: string, windowId?: number, options?: { skipSeed?: boolean }): Promise<Y.Doc> {
+    // A close in flight first: it may still write the closing doc's file,
+    // which this open must find marked to take in (`close`, #5698). Inside
+    // the note's write-back turn the close may be waiting for that turn, so
+    // the open goes ahead.
+    const closing = this.closeLocks.get(noteId)
+    if (closing && !crdtWriteback().insideWritebackTurn(noteId)) {
+      await closing
+      return this.open(noteId, windowId, options)
+    }
     // An open in flight first: its doc is in `docs` before the open takes in
     // an offline edit, and a remote update applied meanwhile would be
     // replaced by it (#5319).
@@ -1349,7 +1364,29 @@ export class CrdtProvider {
     }
 
     entry.closing = true
+    const closed = this.closeDoc(noteId, entry, options)
+    this.closeLocks.set(noteId, closed)
+    try {
+      await closed
+    } finally {
+      if (this.closeLocks.get(noteId) === closed) this.closeLocks.delete(noteId)
+    }
+  }
 
+  /**
+   * The body of `close`, while `closeLocks` holds the note: an open of the
+   * note waits for it, so the doc stays the note's until it is destroyed.
+   * Before destroying the doc it waits for the note's running write-back
+   * turn, and when the store does not hold the doc it runs the note's armed
+   * pass against it inside that turn: the doc is then the only holder of what
+   * the store missed, and the write-back marks its file for the next open to
+   * take in (`recordDocFile`, #5698).
+   */
+  private async closeDoc(
+    noteId: string,
+    entry: ActiveDoc,
+    options: { deferSnapshot?: boolean }
+  ): Promise<void> {
     this.flushNetworkBroadcast(noteId)
 
     const push = this.snapshotSender()
@@ -1375,29 +1412,16 @@ export class CrdtProvider {
     await this.flushDoc(noteId).catch((err: unknown) => {
       log.error('Failed to flush doc on close', { noteId, error: err })
     })
-    await this.settleStoreBeforeDestroy(noteId, entry)
-
-    if (this.docs.get(noteId) !== entry) {
-      // The note was reopened while the flush above was in flight, so doOpen()
-      // put a *different* entry — with its own Y.Doc — in the map. That
-      // replacement is what the editor is typing into, so the map entry must
-      // stay exactly as it is. Only the superseded doc is retired here, and it
-      // is provably unreachable: every routing path (applyIpcUpdate,
-      // applyIpcSyncStep2, applyRemoteUpdate, getDoc, getDiff, getStateVector,
-      // updateMeta, onDocUpdate, broadcastToWindows) re-reads this.docs by
-      // noteId and therefore resolves the replacement; nothing outside the
-      // provider retains a Y.Doc across awaits; and entry.doc is assigned only
-      // in doOpen and in compactDoc's in-place swap, so one doc belongs to
-      // exactly one entry and can never be shared with the replacement.
-      // Destroying it detaches its 'update' listener instead of leaving it for
-      // GC to notice.
-      log.debug('Doc reopened during async close, destroying the superseded doc', { noteId })
-      entry.doc.destroy()
-      return
-    }
+    const stored = await this.settleStoreBeforeDestroy(noteId, entry)
+    await crdtWriteback().writeBackBeforeClose(noteId, entry.doc, !stored)
+    // A pass that ran meanwhile may have fed the doc; it is stored only once
+    // nothing of it is storing.
+    if (stored && this.holdsDoc(noteId, entry.doc)) this.storedAtClose.add(entry.doc)
 
     entry.doc.destroy()
-    this.docs.delete(noteId)
+    // An open inside the note's write-back turn replaced the entry meanwhile,
+    // or a vault close dropped it.
+    if (this.docs.get(noteId) === entry) this.docs.delete(noteId)
     log.debug('Doc closed', { noteId })
   }
 
@@ -2581,19 +2605,30 @@ export class CrdtProvider {
   }
 
   /**
-   * Resolves once the store holds every update of the note the live doc had
-   * when it was called, however late: after a failed store, once a store of
-   * the doc's whole state lands. Never rejects. Never resolves while the store
-   * keeps failing, after the doc closed without a store of its whole state, or
-   * after the store is torn down: a later doc of the note, read from a store
-   * that missed this one's updates, never answers for it (`ActiveDoc`
-   * `storedWaiters`, `recordDocFile`, #5698).
+   * Whether the store holds every update `doc`, an instance of the note's doc,
+   * has made so far: it is the open doc and nothing of it is storing, or its
+   * close landed a store of its whole state. Any other instance is unknown to
+   * the store's side, so a store of the note says nothing about it.
    */
-  whenStored(noteId: string): Promise<void> {
-    if (!this.isStoring(noteId)) return Promise.resolve()
+  holdsDoc(noteId: string, doc: Y.Doc): boolean {
+    if (this.storedAtClose.has(doc)) return true
+    return this.docs.get(noteId)?.doc === doc && !this.isStoring(noteId)
+  }
+
+  /**
+   * Resolves once the store holds every update `doc` had when it was called,
+   * however late: after a failed store, once a store of its whole state
+   * lands. Tied to the instance, never to the note: a doc that is not the
+   * note's open doc (closed, or replaced by a later instance read from a
+   * store that missed this one's updates) never answers unless its close
+   * stored it. Never rejects. Never resolves while the store keeps failing or
+   * after the store is torn down (`ActiveDoc.storedWaiters`, `recordDocFile`,
+   * #5698).
+   */
+  whenStored(noteId: string, doc: Y.Doc): Promise<void> {
+    if (this.holdsDoc(noteId, doc)) return Promise.resolve()
     const entry = this.docs.get(noteId)
-    // The doc whose updates the store missed is gone, and only it held them.
-    if (!entry) return new Promise(() => {})
+    if (entry?.doc !== doc) return new Promise(() => {})
     return new Promise((resolve) => entry.storedWaiters.push(resolve))
   }
 
@@ -2602,8 +2637,9 @@ export class CrdtProvider {
    * state again when the store missed an update, then answers its `whenStored`
    * callers if the store holds it, or drops them unanswered. The doc is the
    * only holder of what the store missed; once destroyed, nothing stores it.
+   * Resolves whether the store holds the doc.
    */
-  private async settleStoreBeforeDestroy(noteId: string, entry: ActiveDoc): Promise<void> {
+  private async settleStoreBeforeDestroy(noteId: string, entry: ActiveDoc): Promise<boolean> {
     const landed = (stored: Promise<void> | undefined): Promise<boolean> =>
       this.untilStoredOrClose(noteId, stored).then(
         () => true,
@@ -2614,8 +2650,10 @@ export class CrdtProvider {
       this.persistUpdate(noteId, Y.encodeStateAsUpdate(entry.doc))
       stored = await landed(this.persisting.get(noteId))
     }
-    if (stored && !this.storeOwed.has(noteId)) answerStored(entry)
+    const holds = stored && !this.storeOwed.has(noteId)
+    if (holds) answerStored(entry)
     entry.storedWaiters = []
+    return holds
   }
 
   /** Whether the note's file holds bytes its store may lack (`holdsUnstoredFile`). */
@@ -2653,7 +2691,7 @@ export class CrdtProvider {
    * store missed one: a restart's doc may lack what the live doc holds
    * (`recordDocFile`, sync/writeback-baseline.ts).
    */
-  isStoring(noteId: string): boolean {
+  private isStoring(noteId: string): boolean {
     return this.persistence !== null && (this.persisting.has(noteId) || this.storeOwed.has(noteId))
   }
 

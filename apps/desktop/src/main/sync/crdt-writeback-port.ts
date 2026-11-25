@@ -19,6 +19,10 @@ export interface CrdtWritebackPort {
   ): void
   cancelWriteback(noteId: string): void
   writebackNow(noteId: string, doc: Y.Doc): Promise<void>
+  /** Before a close destroys the note's doc: see `writeBackBeforeClose` in crdt-writeback. */
+  writeBackBeforeClose(noteId: string, doc: Y.Doc, runArmed: boolean): Promise<void>
+  /** Whether the running code is inside the note's write-back turn. */
+  insideWritebackTurn(noteId: string): boolean
   /** Feed a file edited while the app was closed into the note's doc (#5319). */
   ingestOfflineEdit(noteId: string, doc: Y.Doc): Promise<void>
   /** Write the note's doc to its file again after a body writer's file write failed. */

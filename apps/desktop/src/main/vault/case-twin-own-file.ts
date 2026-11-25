@@ -31,6 +31,8 @@ export interface PreparedBody {
   body: NoteBody | null
   /** The doc's state vector when converted. */
   converted: Uint8Array
+  /** The doc instance converted, which a file written from it is tied to (`recordDocFile`). */
+  doc: Y.Doc
 }
 
 /** A twin's own file: its bytes, and the header and body they hold. */
@@ -48,7 +50,7 @@ export async function convertBody(noteId: string): Promise<PreparedBody> {
     const doc = live ?? (await provider.open(noteId, undefined, { skipSeed: true }))
     try {
       if (doc.getXmlFragment(CRDT_FRAGMENT_NAME).length === 0) {
-        return { body: null, converted: Y.encodeStateVector(doc) }
+        return { body: null, converted: Y.encodeStateVector(doc), doc }
       }
       const convert = await readyWritebackConverter()
       const converted = Y.encodeStateVector(doc)
@@ -58,7 +60,7 @@ export async function convertBody(noteId: string): Promise<PreparedBody> {
       if (conversion.kind === 'unrepresentable' || conversion.body === null) {
         throw new Error(`The doc cannot be written as markdown (${conversion.kind})`)
       }
-      return { body: conversion.body, converted }
+      return { body: conversion.body, converted, doc }
     } finally {
       if (!live) await provider.closeIfInactive(noteId)
     }

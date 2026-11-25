@@ -100,8 +100,8 @@ vi.mock('../sync/crdt-provider', () => {
     }),
     closeIfInactive: async () => {},
     whenPersisted: async () => {},
-    isStoring: vi.fn((_id: string) => false),
-    whenStored: vi.fn(async (_id: string) => {}),
+    holdsDoc: vi.fn((_id: string, _doc: unknown) => true),
+    whenStored: vi.fn(async (_id: string, _doc: unknown) => {}),
     purge: vi.fn(async () => {})
   }
   return { ORIGIN_LOCAL: 'local', getCrdtProvider: vi.fn(() => stub) }
@@ -1344,7 +1344,7 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
     await headerTwins()
     const provider = vi.mocked(getCrdtProvider())
     let stored!: () => void
-    provider.isStoring.mockImplementation((id) => id === 'lower')
+    provider.holdsDoc.mockImplementation((id) => id !== 'lower')
     provider.whenStored.mockImplementation(async () => new Promise((resolve) => (stored = resolve)))
     try {
       await moveNoteCommand('lower', 'Other')
@@ -1355,22 +1355,24 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
       })
 
       // The store recovers.
-      provider.isStoring.mockImplementation(() => false)
+      provider.holdsDoc.mockImplementation(() => true)
       stored()
       await new Promise((resolve) => setImmediate(resolve))
       expect(getNoteCacheById(index.db, 'lower')?.pendingWriteHash).toBeNull()
     } finally {
-      provider.isStoring.mockImplementation(() => false)
+      provider.holdsDoc.mockImplementation(() => true)
       provider.whenStored.mockImplementation(async () => {})
     }
   }, 30_000)
 
-  // VERIFY-5703R3 (3): the survivor's doc-built file, written while its store is storing.
+  // The survivor's doc-built file, written from a doc its store does not hold.
+  // Red when case-twin-file.ts records that file as stored (`recordBaseline`
+  // in place of `recordDocFile` and `markDocWrite`).
   it("a twin delete marks the survivor's file unstored until its store holds it", async () => {
     await twins()
     const provider = vi.mocked(getCrdtProvider())
     let stored!: () => void
-    provider.isStoring.mockImplementation((id) => id === 'lower')
+    provider.holdsDoc.mockImplementation((id) => id !== 'lower')
     provider.whenStored.mockImplementation(async () => new Promise((resolve) => (stored = resolve)))
     try {
       await deleteNoteCommand('upper')
@@ -1381,12 +1383,12 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
       })
 
       // The store holds the survivor's doc.
-      provider.isStoring.mockImplementation(() => false)
+      provider.holdsDoc.mockImplementation(() => true)
       stored()
       await new Promise((resolve) => setImmediate(resolve))
       expect(getNoteCacheById(index.db, 'lower')?.pendingWriteHash).toBeNull()
     } finally {
-      provider.isStoring.mockImplementation(() => false)
+      provider.holdsDoc.mockImplementation(() => true)
       provider.whenStored.mockImplementation(async () => {})
     }
   }, 30_000)

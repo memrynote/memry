@@ -44,7 +44,7 @@ vi.mock('../lib/window-broadcast', () => ({ broadcastToAllWindows: vi.fn() }))
 vi.mock('../telemetry/diagnostics', () => ({ trackMainError: vi.fn(), trackMainLog: vi.fn() }))
 vi.mock('./crdt-provider', () => ({
   getCrdtProvider: () => ({
-    isStoring: () => false,
+    holdsDoc: () => true,
     getDoc: () => undefined,
     close: vi.fn(),
     purge: vi.fn()
