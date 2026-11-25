@@ -16,10 +16,14 @@ fn storage(error: CrdtError) -> StorageError {
 }
 
 /// Writes `markdown` as this device and answers the update with the body
-/// text the write saw before it.
+/// text the write saw before it. Authored in a transaction rolled back
+/// here: [`commit`] stores it, as a body write does.
 fn write(conn: &Connection, markdown: &str) -> Result<(Vec<u8>, String), StorageError> {
     let mut seen = String::new();
-    let update = author_with(conn, DAY, DEVICE, |document| {
+    let tx = nested_tx::begin(conn).map_err(|e| StorageError::Failed {
+        what: e.to_string(),
+    })?;
+    let update = author_with(&tx, DAY, DEVICE, |document| {
         seen = extract_text(document)?;
         document.write(|txn| append_markdown_in(txn, markdown).map(|_| ()))?
     })
@@ -145,16 +149,16 @@ fn a_purge_after_a_write_empties_the_next_one() {
 /// Writes `markdown` to `doc_id` and keeps the body, answering a handle
 /// that lives exactly as long as the kept document.
 fn kept(conn: &Connection, doc_id: &str, markdown: &str) -> Result<Weak<Document>, StorageError> {
-    let body = checkout(conn, DEVICE, doc_id).map_err(storage)?;
+    let failed = |e: rusqlite::Error| StorageError::Failed {
+        what: e.to_string(),
+    };
+    let tx = nested_tx::begin(conn).map_err(failed)?;
+    let body = checkout(&tx, DEVICE, doc_id).map_err(storage)?;
     body.document()
         .write(|txn| append_markdown_in(txn, markdown).map(|_| ()))
         .map_err(storage)?
         .map_err(storage)?;
     let update = body.take_authored().remove(0);
-    let failed = |e: rusqlite::Error| StorageError::Failed {
-        what: e.to_string(),
-    };
-    let tx = nested_tx::begin(conn).map_err(failed)?;
     update_log::append_local_update_in(&tx, doc_id, &update, 1).map_err(storage)?;
     tx.commit().map_err(failed)?;
     let weak = Arc::downgrade(&body.document);
@@ -177,7 +181,10 @@ fn a_fifth_body_releases_the_first() {
         assert!(weak[0].upgrade().is_none(), "first body still held");
         assert!(weak[1..].iter().all(|kept| kept.upgrade().is_some()));
 
-        let rebuilt = checkout(conn, DEVICE, &docs[0]).map_err(storage)?;
+        let tx = nested_tx::begin(conn).map_err(|e| StorageError::Failed {
+            what: e.to_string(),
+        })?;
+        let rebuilt = checkout(&tx, DEVICE, &docs[0]).map_err(storage)?;
         let text = extract_text(rebuilt.document()).map_err(storage)?;
         assert!(text.contains("text of note-0"), "{text}");
         Ok(())
@@ -204,7 +211,10 @@ fn a_purge_releases_the_kept_body() {
 /// The body text a write would see, authoring nothing.
 fn text(conn: &Connection) -> Result<String, StorageError> {
     let mut seen = String::new();
-    author_with(conn, DAY, DEVICE, |document| {
+    let tx = nested_tx::begin(conn).map_err(|e| StorageError::Failed {
+        what: e.to_string(),
+    })?;
+    author_with(&tx, DAY, DEVICE, |document| {
         seen = extract_text(document)?;
         Ok(())
     })

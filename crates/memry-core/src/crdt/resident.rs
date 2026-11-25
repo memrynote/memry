@@ -116,12 +116,14 @@ struct RowsMark {
 }
 
 /// `doc_id`'s body, opened to author a write as `device_id`: the resident one
-/// when the log has not moved past it, else replayed from the log.
+/// when the log has not moved past it, else replayed from the log. Inside the
+/// transaction that stores what it authors ([`epoch::require_write_lock`]).
 pub(crate) fn checkout(
     conn: &Connection,
     device_id: &str,
     doc_id: &str,
 ) -> Result<Body, CrdtError> {
+    epoch::require_write_lock(conn, doc_id)?;
     let connection = connection_id(conn);
     let key = lock(&RESIDENT).open.contains(&connection).then(|| Key {
         connection,

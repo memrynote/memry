@@ -174,8 +174,11 @@ pub fn outgoing_links(
 pub(crate) fn live_item(data: &Connection, id: &str) -> Result<Option<Item>, StorageError> {
     let note = data
         .query_row(
-            "SELECT title, COALESCE(modified_at, created_at, 0) FROM notes \
-             WHERE id = ?1 AND deleted_at IS NULL",
+            &format!(
+                "SELECT title, COALESCE(modified_at, created_at, 0) FROM notes \
+                 WHERE id = ?1 AND deleted_at IS NULL AND {}",
+                crate::domain::journal::not_a_journal_day("id")
+            ),
             params![id],
             |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?)),
         )
