@@ -12,6 +12,7 @@
 //! | offline uploads and releases nothing                        | reachability                             |
 //! | a missing file or a path outside the folder is dropped      | receiver and sender path rule            |
 //! | a peer's capture downloads into its own folder              | download pass, `fetch_attachment` policy |
+//! | a torn cached file is downloaded over, not copied           | manifest size, as `fetch_attachment`     |
 //! | a metered path defers the download                          | FR-045                                   |
 //! | a path outside the capture's folder is never written        | receiver path rule                       |
 //! | a deleted capture's chunks are dereferenced after 30 days   | §14.8                                    |
@@ -73,6 +74,7 @@ fn env(script: Vec<Scripted>) -> Env {
         "memry-api-inbox-attachments-{}-{unique}",
         std::process::id()
     ));
+    let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).expect("the scratch directory");
     let vault = Vault::open(format!("vault-{unique}"), dir.display().to_string()).expect("open");
     let (_public, secret) = sodium::sign_seed_keypair(&SIGNING_SEED).expect("a keypair");
@@ -486,6 +488,34 @@ async fn a_peers_capture_downloads_into_its_own_folder() {
         .expect("pass");
     assert_eq!((again.downloaded, again.deferred, again.failed), (0, 0, 0));
     assert_eq!(env.transport.call_count(), calls, "the file is there now");
+}
+
+#[tokio::test]
+async fn a_torn_cached_file_is_downloaded_over_not_copied() {
+    let fx = fixture();
+    let env = env(download_script(&fx));
+    env.peer_capture("attachments/inbox/inbox-1/a.png", ATTACHMENT, 1);
+    env.sync
+        .sync_inbox_attachments(Reachable::Wifi)
+        .await
+        .expect("pass");
+    // The capture's file is gone and the cache holds half of it.
+    let target = env.dir.join("attachments/inbox/inbox-1/a.png");
+    std::fs::remove_file(&target).expect("remove the capture's file");
+    std::fs::write(env.dir.join("images").join(ATTACHMENT), &fx.plaintext[..3])
+        .expect("tear the cache");
+
+    for step in download_script(&fx) {
+        env.transport.push(step);
+    }
+    let summary = env
+        .sync
+        .sync_inbox_attachments(Reachable::Wifi)
+        .await
+        .expect("pass");
+
+    assert_eq!((summary.downloaded, summary.failed), (1, 0));
+    assert_eq!(std::fs::read(&target).expect("the file"), fx.plaintext);
 }
 
 #[tokio::test]

@@ -132,6 +132,7 @@ fn an_offline_write_is_queued_and_seeding_adds_nothing() {
     let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
     let dir =
         std::env::temp_dir().join(format!("memry-local-first-{}-{unique}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let vault = Vault::open("vault-local".into(), dir.display().to_string()).unwrap();
 

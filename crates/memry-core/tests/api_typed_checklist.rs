@@ -31,6 +31,7 @@ fn fixture() -> Fixture {
         "memry-typed-checklist-{}-{unique}",
         std::process::id()
     ));
+    let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).expect("the scratch directory");
     let vault = Vault::open("vault-1".to_string(), dir.display().to_string()).expect("open");
     let (_public, secret) = sodium::sign_seed_keypair(&[3u8; 32]).expect("a keypair");

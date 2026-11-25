@@ -62,6 +62,7 @@ fn scratch_vault_named(vault_id: &str) -> (Vault, PathBuf) {
         "memry-api-attachment-fetch-{}-{unique}",
         std::process::id()
     ));
+    let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).expect("the scratch directory");
     let vault = Vault::open(vault_id.to_string(), dir.display().to_string()).expect("open");
     (vault, dir)

@@ -64,7 +64,7 @@ struct NoteAttachmentsList: View {
     /// Downloaded or not, said plainly. A row with no bytes is waiting rather
     /// than broken (FR-045).
     private func subtitle(for attachment: CachedAttachment) -> String {
-        guard attachment.localPath != nil else { return "Not downloaded yet" }
+        guard attachment.intactPath != nil else { return "Not downloaded yet" }
         // A size this device has not been told is **unknown**, not zero: the
         // manifest may not have arrived, and "0 bytes" would be a claim.
         guard let size = attachment.remoteSize else { return "Downloaded" }

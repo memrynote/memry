@@ -259,7 +259,7 @@ extension NoteReadViewModel {
             // again; the core joins it to a download still running.
             guard !Task.isCancelled else { return }
             guard case let .bound(attachment) = binding,
-                  attachment.localPath == nil
+                  attachment.intactPath == nil
             else { continue }
             do {
                 let summary = try await filler.fetchAttachment(
