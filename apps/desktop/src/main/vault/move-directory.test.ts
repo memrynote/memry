@@ -747,6 +747,30 @@ describe('recoverStrandedFolderMoves', () => {
     expect(records()).toEqual([])
   })
 
+  it('removes its half copy when a copy fails on a volume with no hard links', async () => {
+    windows.noHardLinks = true
+    write(`${staging}/c.md`)
+    fs.writeFileSync(path.join(root, 'Beta/.memry-put-back'), 'USER')
+    // The disk fills partway through the copy.
+    windows.refuse = (_from, to) => {
+      if (!path.basename(to).startsWith('.memry-put-back-')) return null
+      fs.writeFileSync(to, 'half')
+      return 'ENOSPC'
+    }
+    fs.writeFileSync(recordPath(), JSON.stringify({ version: 1, from: 'Beta', staging }))
+
+    await recoverStrandedFolderMoves(root)
+
+    expect(tree().filter((rel) => rel.includes('.memry-put-back-'))).toEqual([])
+    expect(tree()).toContain('Beta (incomplete move)/c.md')
+    expect(fs.readFileSync(path.join(root, 'Beta (incomplete move)/c.md'), 'utf8')).toBe(
+      `${staging}/c.md`
+    )
+    expect(fs.readFileSync(path.join(root, 'Beta/.memry-put-back'), 'utf8')).toBe('USER')
+    expect(fs.readFileSync(path.join(root, 'Beta/b.md'), 'utf8')).toBe('Beta/b.md')
+    expect(records()).toEqual([])
+  })
+
   it.each(['Beta/b.md', 'Beta/.memry-put-back', 'Gamma/.memry-put-back-aaaaaaaaaaaa'])(
     'refuses a record that names %s as its copy',
     async (temp) => {
