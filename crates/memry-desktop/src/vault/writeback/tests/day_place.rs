@@ -70,6 +70,9 @@ fn a_refused_move_is_logged_once_per_session() {
         .with_ansi(false)
         .finish();
     tracing::subscriber::with_default(subscriber, || {
+        // A call site another thread was registering while this subscriber went in may have
+        // cached "never"; ask every call site again.
+        tracing::callsite::rebuild_interest_cache();
         for _ in 0..3 {
             f.pass.mark_pulled(&id, None);
             f.run(&id);
