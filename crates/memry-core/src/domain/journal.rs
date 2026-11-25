@@ -34,7 +34,7 @@ use crate::crdt::errors::CrdtError;
 use crate::crdt::update_log;
 use crate::storage::nested_tx;
 use crate::storage::repositories::{Change, sync_items};
-use crate::sync::{body_debt, outbox};
+use crate::sync::{body_debt, journal_day_merge, outbox};
 
 use super::notes::{failed, iso, object, require_payload, seed_body, valid_document_id};
 use super::recreate::{recreate_clock, write_over_tombstone};
@@ -276,7 +276,8 @@ fn revive_in(tx: &Connection, id: &str, device_id: &str, now_ms: i64) -> Result<
         ),
         ("modifiedAt", Change::set(iso(now_ms)?)),
     ];
-    sync_items::apply_local_edit_in(tx, ITEM_TYPE, id, &changes, now_ms)?;
+    // The one edit that shows a deleted day again.
+    sync_items::apply_local_edit_setting_deleted_in(tx, ITEM_TYPE, id, &changes, now_ms, None)?;
     Ok(())
 }
 
@@ -339,7 +340,11 @@ pub fn delete_day(
         conn,
         &outbox::Change::delete(ITEM_TYPE, &id),
         now_ms,
-        |tx| super::notes::tombstone_local(tx, ITEM_TYPE, &id, device_id, now_ms),
+        |tx| {
+            super::notes::tombstone_local(tx, ITEM_TYPE, &id, device_id, now_ms)?;
+            // A held day is deleted too, not merged into `j<date>` (§1.9.1).
+            journal_day_merge::forget_deleted_day(tx, &id, now_ms)
+        },
     )?
     .acknowledge();
     Ok(true)

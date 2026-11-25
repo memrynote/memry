@@ -8,6 +8,7 @@ vi.mock('../sync/local-mutations', () => ({
   sendPendingContentDelete: vi.fn()
 }))
 vi.mock('../database', () => ({ getDatabase: vi.fn() }))
+vi.mock('../sync/journal-day-merge-key', () => ({ forgetOwedJournalDayMerge: vi.fn() }))
 vi.mock('@memry/storage-data', () => ({ getNoteMetadataById: vi.fn(() => ({ id: 'row' })) }))
 vi.mock('../sync/pending-deletes', () => ({
   coverPendingContentDeletes: vi.fn(() => []),
