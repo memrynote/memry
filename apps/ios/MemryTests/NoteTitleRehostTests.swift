@@ -239,7 +239,7 @@ extension KeyWindowSuites {
             #expect(field.text == "Kestrel", "the re-read replaced the typed title")
 
             field.resignFirstResponder()
-            await f.writer.landed.until { f.writer.saved.count == 2 }
+            await f.writer.landed.until { f.writer.saved.count >= 2 }
             #expect(try await savedTitle(f) == "Kestrel")
             #expect(f.writer.titles == ["Agent Heron", "Kestrel"])
         }
