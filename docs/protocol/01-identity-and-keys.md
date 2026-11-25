@@ -365,9 +365,9 @@ replaced by each later sighting of the holder's stored record (`record_tags`, `h
 (`unpushed_holder_tags`, `:212`). Desktop keeps the same lists (`recordTags`,
 `tags`, `unpushedTags`) and the clock of the holder row its tags were read
 from, merged across sightings (`holderClock`;
-`apps/desktop/src/main/sync/journal-day-merge.ts:83`, `:89`). A holder row
+`apps/desktop/src/main/sync/journal-day-merge.ts:89`, `:95`). A holder row
 edited since its sync, with `modifiedAt` past `syncedAt` or no `syncedAt`,
-gives no clock (`:250`). An owed merge
+gives no clock (`:256`). An owed merge
 an older build recorded has no tag lists and adds no tags, or has holder tags
 and no unpushed list, and then counts every holder tag as unpushed. A desktop
 one with holder tags and no `holderClock` counts every holder tag as unpushed
@@ -375,11 +375,11 @@ at every weighing. Desktop also
 keeps the day file's text when `j<D>` writes over a foreign holder's file. A foreign record
 whose id this device already tombstoned at or after the incoming clock owes
 nothing again (`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:82`,
-`apps/desktop/src/main/sync/journal-day-merge.ts:287`; core:
+`apps/desktop/src/main/sync/journal-day-merge.ts:293`; core:
 `crates/memry-core/src/sync/journal_day_merge/owed.rs:98`). Desktop keeps
 owed merges in `sync_state` and declines the ref so the manifest check does not
 count the unprojected id as server-only
-(`apps/desktop/src/main/sync/journal-day-merge.ts:155`). The core keeps them in
+(`apps/desktop/src/main/sync/journal-day-merge.ts:161`). The core keeps them in
 `meta` under `journal.day_merge:<id>`
 (`crates/memry-core/src/sync/journal_day_merge/mod.rs:50`).
 
@@ -409,13 +409,13 @@ the deleted day back (core: `crates/memry-core/src/domain/journal.rs:346`,
 the owed merge just before it queues the delete
 (`apps/desktop/src/main/journal/runtime-effects.ts:29`). A drain that was
 already running reads the owed merge again before it opens `j<D>` and stops
-when the merge is gone (`apps/desktop/src/main/sync/journal-day-merge.ts:529`;
+when the merge is gone (`apps/desktop/src/main/sync/journal-day-merge.ts:551`;
 core: `crates/memry-core/src/sync/journal_day_merge/owed.rs:395`,
 `crates/memry-core/src/sync/journal_day_merge/mod.rs:244`).
 
 **Drain.** After a pull run's body pass, each owed merge `F -> D` runs
 (`apps/desktop/src/main/sync/engine/crdt-sync-coordinator.ts:459`,
-`apps/desktop/src/main/sync/journal-day-merge.ts:450`; core:
+`apps/desktop/src/main/sync/journal-day-merge.ts:472`; core:
 `crates/memry-core/src/api/sync/pass.rs:140`,
 `crates/memry-core/src/sync/journal_day_merge/mod.rs:127`). The core drains
 only in its steady-state pass; a first sync records owed merges and the next
@@ -430,7 +430,7 @@ pass settles them. The decision is a pure function of five facts
 2. If `F` has no body here (no Yjs state, and no non-blank text to build one
    from, see below), `F` is forgotten without creating `j<D>`: its local
    projection and doc go, and it is not tombstoned
-   (`apps/desktop/src/main/sync/journal-day-merge.ts:551`; core:
+   (`apps/desktop/src/main/sync/journal-day-merge.ts:573`; core:
    `crates/memry-core/src/sync/journal_day_merge/mod.rs:176`, `:358`). A local
    row left holding the day would take the user's typing into a dead id. A
    device that holds `F`'s text may never have pushed it, as when an old
@@ -440,14 +440,14 @@ pass settles them. The decision is a pure function of five facts
    body. `j<D>` lacks every tag when it holds no row here yet. The tag may
    exist nowhere else, as one added offline to a blank holder, so it merges
    into `j<D>` with nothing to fold instead of being forgotten (#5659,
-   #5699; `apps/desktop/src/main/sync/journal-day-merge.ts:463`; core:
+   #5699; `apps/desktop/src/main/sync/journal-day-merge.ts:485`; core:
    `crates/memry-core/src/sync/journal_day_merge/mod.rs:408`). A live `F`
    merged this way is tombstoned in step 7, as any merged `F` is.
    Desktop checks `F` again just before removing its row, with no await in
    between: if an editor window has `F` open, or the day file `F` holds or
    `F`'s open doc gained text since the decision, `F` stays owed and the next
    drain merges it (#3008, #3019;
-   `apps/desktop/src/main/sync/journal-day-merge.ts:552`). An open editor
+   `apps/desktop/src/main/sync/journal-day-merge.ts:574`). An open editor
    counts because main may not have applied the edits it sent yet. The core
    has no open editor: it reads `F` again in the transaction that forgets it,
    and `F` stays owed when it gained text or a tag the day lacks
@@ -455,7 +455,7 @@ pass settles them. The decision is a pure function of five facts
 3. If `j<D>` has no live row and a recorded tombstone here, the day is not
    re-created (#2986). `F` is dropped: only the owed merge goes. `F` is not
    tombstoned, and its row and local doc stay
-   (`apps/desktop/src/main/sync/journal-day-merge.ts:581`; core:
+   (`apps/desktop/src/main/sync/journal-day-merge.ts:603`; core:
    `crates/memry-core/src/sync/journal_day_merge/mod.rs:196`).
 4. Otherwise make `j<D>` hold the day. A foreign local row gives the day up
    (desktop keeps its file text first), and `j<D>` is created empty through
@@ -463,9 +463,9 @@ pass settles them. The decision is a pure function of five facts
    before the data database, so a kill in between leaves the data row, which
    the next drain removes again. An index row with no data row, left by an
    older build, still counts as the holder, so a restart converges
-   (`apps/desktop/src/main/sync/journal-day-merge.ts:628`). Desktop never
+   (`apps/desktop/src/main/sync/journal-day-merge.ts:650`). Desktop never
    writes over a day file no row holds
-   (`apps/desktop/src/main/sync/journal-day-merge.ts:653`; core:
+   (`apps/desktop/src/main/sync/journal-day-merge.ts:675`; core:
    `crates/memry-core/src/sync/journal_day_merge/mod.rs:235`).
 5. Point task links at `F` to `j<D>`
    (`apps/desktop/src/main/notes/runtime-effects.ts:125`; core:
@@ -492,7 +492,7 @@ pass settles them. The decision is a pure function of five facts
    the holder's tags against the tombstone's clock, because an acked push
    is not proof that the deleting device saw it: a tombstone clocked before
    the push replaces it on the server
-   (`apps/desktop/src/main/sync/journal-day-merge.ts:207`; core:
+   (`apps/desktop/src/main/sync/journal-day-merge.ts:213`; core:
    `crates/memry-core/src/sync/journal_day_merge/owed.rs:212`). Both count
    none when no upsert of `F` is queued and the tombstone's clock covers
    `F`'s row clock. Desktop also needs the row unedited since its sync, its
@@ -508,7 +508,7 @@ pass settles them. The decision is a pure function of five facts
    replays at its stored clock: a build before this rule stamped pulls and
    never acks, so its `syncedAt` cannot tell an edit the server lacks from
    one it holds
-   (`apps/desktop/src/main/sync/journal-day-merge.ts:250`,
+   (`apps/desktop/src/main/sync/journal-day-merge.ts:256`,
    `apps/desktop/src/main/sync/dirty-recovery.ts:343`). Otherwise
    desktop counts every holder tag, its day file's: it keeps no snapshot of
    the tags last synced. The core counts the tags absent from the snapshot
@@ -553,7 +553,7 @@ pass settles them. The decision is a pure function of five facts
    an older build's merge
    (`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:220`). Desktop reads the owed merge back after `ensureDay` owes the
    holder again from its day file
-   (`apps/desktop/src/main/sync/journal-day-merge.ts:138`, `:252`, `:540`).
+   (`apps/desktop/src/main/sync/journal-day-merge.ts:144`, `:258`, `:562`).
    In the core, a weighing replaces the unpushed list an earlier sighting
    kept, so that list never keeps a tag from before the weighing
    (`crates/memry-core/src/sync/journal_day_merge/owed.rs:171`).
@@ -561,7 +561,7 @@ pass settles them. The decision is a pure function of five facts
    until the tombstone arrives. A union would then keep a tag the deleting
    device saw and removed since, and bring it back (#5659). Desktop keeps no
    list before the first weighing and adds each later weighing to it
-   (`apps/desktop/src/main/sync/journal-day-merge.ts:192`). What a weighing
+   (`apps/desktop/src/main/sync/journal-day-merge.ts:198`). What a weighing
    reads is gone after the first, because the tombstone drops `F`'s queued
    edit and `j<D>` removes its row, so a later weighing would count none of
    a tag only this device holds. A holder that
@@ -569,7 +569,7 @@ pass settles them. The decision is a pure function of five facts
    again, and so is a displaced holder at every later delivery of the
    tombstone. A later record replaces the
    record tags kept, for the same reason
-   (`apps/desktop/src/main/sync/journal-day-merge.ts:128`,
+   (`apps/desktop/src/main/sync/journal-day-merge.ts:134`,
    `apps/desktop/src/main/sync/item-handlers/journal-handler.ts:89`;
    core: `crates/memry-core/src/sync/journal_day_merge/owed.rs:162`). `j<D>`'s
    current tags are read at the moment they are written, in the same
@@ -581,7 +581,7 @@ pass settles them. The decision is a pure function of five facts
    `increment(F.clock, self)` and payload `{"clock": ...}`, and record that
    clock. An empty clock means the server never saw `F`, so no tombstone is
    owed. The tombstone and dropping the owed merge commit together, then
-   `F`'s local doc is purged (`apps/desktop/src/main/sync/journal-day-merge.ts:567`;
+   `F`'s local doc is purged (`apps/desktop/src/main/sync/journal-day-merge.ts:589`;
    core: `crates/memry-core/src/sync/journal_day_merge/mod.rs:334`, `:341`).
    The plan owes a tombstone for the merge action only, so steps 2 and 3
    never delete `F` on any device.
@@ -596,10 +596,10 @@ field merge converges.
 **History from text.** An `F` with no Yjs state has its body built from
 text: on desktop the day file's body when `F` was the local holder, else the
 record's `content`
-(`apps/desktop/src/main/sync/journal-day-merge.ts:499`; core:
+(`apps/desktop/src/main/sync/journal-day-merge.ts:521`; core:
 `crates/memry-core/src/sync/journal_day_merge/mod.rs:424`). The text is
 parsed into a fresh doc under a client id fixed per foreign id and device
-(`apps/desktop/src/main/sync/journal-day-merge.ts:596`; core:
+(`apps/desktop/src/main/sync/journal-day-merge.ts:618`; core:
 `crates/memry-core/src/sync/journal_day_merge/mod.rs:435`), so a rebuild after
 a crash on the same device mints the same Yjs items and folds nothing twice.
 Desktop stores the built doc before folding it
