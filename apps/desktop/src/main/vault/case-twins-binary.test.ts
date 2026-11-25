@@ -145,6 +145,8 @@ import {
 } from '@memry/sync-client/attachment-download-state'
 import { attachmentDownloadFailures, syncState } from '@memry/db-schema/data-schema'
 import { teardownSession } from '../sync/session-teardown'
+import { SyncEngine } from '../sync/engine'
+import { createMockDeps } from '@tests/utils/engine-mocks'
 import { bindVaultForSync } from '../sync/vault-account-binding'
 import { eq } from 'drizzle-orm'
 
@@ -429,6 +431,27 @@ describe.runIf(fileSystemIgnoresCase())('binary case twins sharing one file', ()
     expect(applyPeerUpdate({ folderPath: 'Other' })).toBe('applied')
 
     await teardownSession('logout')
+    bindVaultForSync(asClientDb(data.db), 'user-1')
+    await startWatcher(vault.path)
+
+    await editUntilPushed(
+      { 'SUPERNOTES/p.png': 'edited', 'SUPERNOTES/c.png': 'edited' },
+      pushedNote('control')
+    )
+
+    expect(twinPushes()).toEqual({ updates: [], saved: [] })
+  }, 30_000)
+
+  // An emergency wipe resets the session like an integrity sign-out and keeps
+  // the vault files, so it keeps the hold too.
+  it("after a peer's move, an edit to the shared file is not pushed across an emergency wipe and sign-in", async () => {
+    twins('SUPERNOTES')
+    seed('control', 'SUPERNOTES/c.png', 'c-bytes')
+    expect(applyPeerUpdate({ folderPath: 'Other' })).toBe('applied')
+
+    // The EMERGENCY_WIPE handler's two steps (sync-core-handlers.ts).
+    await new SyncEngine(createMockDeps(data)).performEmergencyWipe()
+    await teardownSession('integrity')
     bindVaultForSync(asClientDb(data.db), 'user-1')
     await startWatcher(vault.path)
 

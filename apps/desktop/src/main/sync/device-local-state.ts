@@ -8,9 +8,9 @@ import { JOURNAL_CLOCK_ERA_KEY } from './journal-clock-era'
 import { JOURNAL_DAY_MERGE_KEY_PREFIX } from './journal-day-merge-key'
 
 /**
- * The `sync_state` rows sign-out keeps: device-local facts that outlive a
- * session. Sign-out wipes every other row, so a new device-local key is lost
- * on the first sign-out unless it is added here.
+ * The `sync_state` rows sign-out and the emergency wipe keep: device-local
+ * facts that outlive a session. Both wipe every other row, so a new
+ * device-local key is lost on the first sign-out unless it is added here.
  *
  * The rule: a key that describes this device's files or stores outlives the
  * session; a key that describes the server session does not. The cursor and
