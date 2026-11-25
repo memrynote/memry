@@ -1245,6 +1245,16 @@ across devices:
   so a device that never held the foreign row can fetch the pictures the
   folded body embeds; the server keeps each attachment by its own id, so the
   bytes are not uploaded again (#5746).
+  The server keeps one `note j<date>` record, last writer wins, so two
+  devices naming the day's pictures at once leave it only the winner's ids.
+  A device that applies a day `note` record lacking an id its own row holds
+  re-pushes its union, so the server copy converges to the union and a
+  device that bootstraps later asks for every picture. A peer that applies
+  the union holds nothing it lacks and pushes nothing back, so the re-push
+  does not loop (#5785). A day's `note` push raised while the sync runtime
+  is down waits as a `sync_intents` row, replayed at the next runtime start;
+  the offline clock bump would have re-pushed the day as a journal record,
+  which names no pictures.
 - **Downloads on open** — with attachment auto-download off
   (`sync.attachmentAutoDownload === false`), the pull and the re-drive ask for
   no file, so opening a note or a file asks instead: the note, journal and file
