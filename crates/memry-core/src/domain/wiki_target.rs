@@ -116,10 +116,11 @@ impl WikiNames {
     pub fn load(conn: &Connection) -> Result<Self, StorageError> {
         let mut rows = Vec::new();
         let mut notes = conn
-            .prepare(
+            .prepare(&format!(
                 "SELECT id, title, folder_path, file_type, aliases FROM notes \
-                 WHERE deleted_at IS NULL",
-            )
+                 WHERE deleted_at IS NULL AND {}",
+                crate::domain::journal::not_a_journal_day("id")
+            ))
             .map_err(failed)?;
         let found = notes
             .query_map([], |row| {

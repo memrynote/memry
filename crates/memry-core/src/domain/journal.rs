@@ -155,6 +155,24 @@ pub fn live_entry(conn: &Connection, date: &str) -> Result<Option<String>, Stora
     Ok(entry_for(conn, date)?.and_then(|(id, deleted)| (!deleted).then_some(id)))
 }
 
+/// SQL that holds when `id`, a `notes` id column, is not a journal day's.
+///
+/// Desktop names a day's pictures in a `note` record under the day's own id
+/// (`recordOnNote`), so a pulled day can hold a `notes` row (#5730). The row
+/// stays, because it carries the day's attachment references. A reader that
+/// lists or classifies notes filters with this, so the day never reads as a
+/// note. A day's id is the canonical `j<YYYY-MM-DD>` (desktop's
+/// `dateFromJournalId`) or any id a `journal_entries` row holds, live or not.
+/// The subquery drops NULL ids, since one would make `NOT IN` false for every
+/// row; it stays uncorrelated because callers pass a bare `id`, which a
+/// correlated `NOT EXISTS` would bind to the journal row itself.
+pub(crate) fn not_a_journal_day(id: &str) -> String {
+    format!(
+        "{id} NOT GLOB 'j[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]' \
+         AND {id} NOT IN (SELECT id FROM journal_entries WHERE id IS NOT NULL)"
+    )
+}
+
 /// Whether this vault holds a live journal entry with this record id.
 pub fn journal_exists(conn: &Connection, id: &str) -> bool {
     conn.query_row(

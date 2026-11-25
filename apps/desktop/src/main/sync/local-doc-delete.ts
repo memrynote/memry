@@ -75,9 +75,12 @@ export async function deleteDocLocally(noteId: string, raiseTombstone: () => voi
 /**
  * Per database: the queued delete rows a cover already tried (#5693). Keyed on
  * the row, not the id: a journal day's id recurs, and its next delete carries
- * a new payload, so it is tried once too.
+ * a new payload, so it is tried once too. A row that left the queue is dropped,
+ * so the same delete queued again is tried again.
  */
 const coverTried = new WeakMap<DrizzleDb, Set<string>>()
+
+const rowKey = (item: PendingDelete): string => `${item.type}\0${item.itemId}\0${item.payload}`
 
 /**
  * Gives every pending note or journal delete with no body vector the vector of
@@ -94,8 +97,11 @@ const coverTried = new WeakMap<DrizzleDb, Set<string>>()
 export async function coverQueuedContentDeletes(db: DrizzleDb): Promise<void> {
   const tried = coverTried.get(db) ?? new Set<string>()
   coverTried.set(db, tried)
-  for (const item of listUncoveredContentDeletes(db)) {
-    const row = `${item.type}\0${item.itemId}\0${item.payload}`
+  const items = listUncoveredContentDeletes(db)
+  const queued = new Set(items.map(rowKey))
+  for (const row of tried) if (!queued.has(row)) tried.delete(row)
+  for (const item of items) {
+    const row = rowKey(item)
     if (tried.has(row)) continue
     try {
       // A live row retires the delete in the flush; its doc is the note's.

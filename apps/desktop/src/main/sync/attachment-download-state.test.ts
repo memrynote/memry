@@ -16,9 +16,11 @@ import {
   MISSING_PROBE_LIMIT,
   claimRequestedDownload,
   clearAttachmentDownloadFailure,
+  listRedrivableDownloadFailures,
   markDownloadFailed,
   markDownloadRequested,
   markDownloadSucceeded,
+  markDroppedDownloadOwed,
   pruneUnresolvableReferences,
   releaseDownloadAttempt,
   resetAttachmentDownloadSession,
@@ -179,6 +181,36 @@ describe('attachment download state', () => {
     expect(markDownloadRequested('note-1', 'att-x')).toBeNull()
     releaseDownloadAttempt(open)
     expect(shouldAttemptDownload(db, 'note-1', 'att-x')).toBe(true)
+  })
+
+  // REVIEW-5722: a second restart clears the open's download without owing it,
+  // so the pull's dropped request owes it; the open landing clears the row.
+  it('owes a dropped pull request an open holds across a second restart', () => {
+    markDownloadRequested('note-1', 'att-x')
+    resetAttachmentDownloadSession()
+    const open = claimRequestedDownload(db, 'note-1', 'att-x')!
+
+    markDroppedDownloadOwed(db, 'note-1', 'att-x')
+    resetAttachmentDownloadSession()
+    releaseDownloadAttempt(open)
+
+    // The re-driver walks these rows; nothing else asks for it again.
+    expect(listRedrivableDownloadFailures(db, Date.now(), 10)).toEqual([
+      expect.objectContaining({ ownerId: 'note-1', attachmentId: 'att-x' })
+    ])
+    markDownloadRequested('note-1', 'att-x')
+    markDownloadSucceeded(db, 'note-1', 'att-x')
+    expect(sqlite.prepare('SELECT * FROM attachment_download_failures').all()).toEqual([])
+  })
+
+  it('owes nothing for a dropped pull request another pull request holds', () => {
+    markDownloadRequested('note-1', 'att-x')
+    resetAttachmentDownloadSession()
+    markDownloadRequested('note-1', 'att-x')
+
+    markDroppedDownloadOwed(db, 'note-1', 'att-x')
+
+    expect(sqlite.prepare('SELECT * FROM attachment_download_failures').all()).toEqual([])
   })
 
   it('lets a locally uploaded attachment out of a recorded verdict', () => {

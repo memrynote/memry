@@ -260,7 +260,27 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
     }
 
     const existing = getNoteMetadataById(ctx.db, itemId)
-    if (existing && belongsToOtherType(itemId, 'note', existing)) return 'skipped'
+    if (existing && belongsToOtherType(itemId, 'note', existing)) {
+      // A journal day's pictures ride a `note` record under the day's id: the
+      // journal payload has no `attachmentReferences` (#5731). The row stays
+      // the journal's; only the references merge.
+      const mergedRefs = mergeAttachmentReferences(
+        existing.attachmentReferences,
+        data.attachmentReferences
+      )
+      if (mergedRefs) {
+        updateNoteMetadata(ctx.db, itemId, {
+          attachmentReferences: pruneUnresolvableReferences(ctx.db, itemId, mergedRefs)
+        })
+        requestEmbeddedAttachmentDownloads(
+          ctx.db,
+          itemId,
+          data.attachmentReferences,
+          data.modifiedAt
+        )
+      }
+      return 'skipped'
+    }
 
     if (existing) {
       const resolution = this.resolveUpsertClock(ctx, itemId, existing.clock, remoteClock, data)

@@ -1221,6 +1221,14 @@ across devices:
   successes) is still in memory and still cleared on runtime teardown, because
   the file is on disk and a re-request is cheap; the verdicts deliberately are
   not, since surviving a sync stop/start is the whole point.
+- **Journal-day pictures** — a journal payload has no `attachmentReferences`.
+  The day's pictures ride a `note` record under the day's id, which the note
+  handler otherwise skips because the row is the journal's
+  (`belongsToOtherType`). On that skip it still merges the record's
+  references into the day's row and asks for the files as for a note, and
+  leaves the journal's path, title and clock alone (#5731). The journal page
+  does not call `sync:download-note-files`, so with auto-download off a
+  peer's journal pictures stay on the server until the setting is on.
 - **Downloads on open** — with attachment auto-download off
   (`sync.attachmentAutoDownload === false`), the pull and the re-drive ask for
   no file, so opening a note or a file asks instead: the note page and the file
@@ -1262,17 +1270,28 @@ across devices:
   drops every claim, so a pull's request still waiting for its access token
   when the runtime restarts does not download: a request the new runtime makes
   for the same file is the only one, and a 404 counts once. It records the
-  download as owed instead (`markDownloadOwed`), so the re-driver asks for it
-  when nothing else does. A failure row the new runtime already wrote keeps its
-  window. A pull's request that is queued or mid-transfer when the runtime
-  restarts settles as `DownloadQueueClearedError` and is owed the same way:
-  the new runtime's pull starts from its cursor, and with auto-download on an
-  open asks for nothing, so without the row the file would land only when its
-  note is pulled again (#5697). The re-driver asks once per owed file. When
-  the file is already there, an embed is found through its attachment record
-  with no request, and a binary note's file that has the manifest's size and
-  sha256 costs one manifest read: no chunk is fetched and nothing is written
-  over it. Opening a binary note
+  download as owed instead (`markDroppedDownloadOwed`), so the re-driver asks
+  for it when nothing else does. A failure row the new runtime already wrote
+  keeps its window, and a download the new runtime landed or a pull in it
+  still holds is not owed: the re-driver would write over an edit made since.
+  One an open holds is owed, since a second restart clears it without owing
+  it, and its landing clears the row. A pull's
+  request that is queued or mid-transfer when the runtime restarts settles as
+  `DownloadQueueClearedError` and is owed the same way: the new runtime's pull
+  starts from its cursor, and with auto-download on an open asks for nothing,
+  so without the row the file would land only when its note is pulled again
+  (#5697). The teardown owes every pull's request still unsettled while the
+  vault's databases are open, then aborts running transfers and waits for
+  their outcomes at most a few seconds (on quit, within the shutdown budget).
+  A download that settles after its vault's database closed or another
+  vault's opened writes nothing, so teardown never waits unbounded and a late
+  outcome never lands in the next vault. The re-driver asks
+  once per owed file. When the file is already there, an embed is found
+  through its attachment record with no request, and a binary note's file
+  that has the manifest's size and sha256 costs one manifest read: no chunk is
+  fetched and nothing is written over it. Whether the download would land on
+  that file is asked first (`landingFor`), with no conflict copy kept and
+  nothing recorded, so a landing elsewhere runs once, after the download. Opening a binary note
   whose file has not downloaded keeps its row: `getFileById` drops a row with a
   missing file only when the canonical row names no attachment id (#5616).
 - **Reference pruning** — `attachmentReferences` merges union-only, so a

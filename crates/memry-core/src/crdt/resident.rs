@@ -84,12 +84,14 @@ struct RowsMark {
 }
 
 /// `doc_id`'s body, opened to author a write as `device_id`: the resident one
-/// when the log has not moved past it, else replayed from the log.
+/// when the log has not moved past it, else replayed from the log. Inside the
+/// transaction that stores what it authors ([`epoch::require_write_lock`]).
 pub(crate) fn checkout(
     conn: &Connection,
     device_id: &str,
     doc_id: &str,
 ) -> Result<Body, CrdtError> {
+    epoch::require_write_lock(conn, doc_id)?;
     let key = conn
         .path()
         .filter(|path| !path.is_empty())
@@ -280,10 +282,14 @@ mod tests {
     }
 
     /// Writes `markdown` as this device and answers the update with the body
-    /// text the write saw before it.
+    /// text the write saw before it. Authored in a transaction rolled back
+    /// here: [`commit`] stores it, as a body write does.
     fn write(conn: &Connection, markdown: &str) -> Result<(Vec<u8>, String), StorageError> {
         let mut seen = String::new();
-        let update = author_with(conn, DAY, DEVICE, |document| {
+        let tx = nested_tx::begin(conn).map_err(|e| StorageError::Failed {
+            what: e.to_string(),
+        })?;
+        let update = author_with(&tx, DAY, DEVICE, |document| {
             seen = extract_text(document)?;
             document.write(|txn| append_markdown_in(txn, markdown).map(|_| ()))?
         })

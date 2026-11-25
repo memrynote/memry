@@ -1,6 +1,6 @@
 import { createLogger } from '../lib/logger'
 import { NetworkError, RateLimitError } from './http-client'
-import { DeadLetterError } from '@memry/sync-client/retry'
+import { DeadLetterError, sleep } from '@memry/sync-client/retry'
 import type { NetworkMonitor } from './network'
 import type { DownloadResult, ProgressCallback } from './attachments'
 
@@ -61,10 +61,12 @@ export class DownloadPacer {
     return Math.max(1, Math.floor(this.maxRequests * this.multiplier))
   }
 
-  async acquire(): Promise<void> {
+  /** Rejects once `signal` aborts, a wait for the window included. */
+  async acquire(signal?: AbortSignal): Promise<void> {
     // Loop instead of a single wait: several callers can be parked on the same
     // window, and only as many as fit may proceed when it slides.
     for (;;) {
+      signal?.throwIfAborted()
       const now = Date.now()
       while (this.stamps.length > 0 && this.stamps[0] <= now - this.windowMs) {
         this.stamps.shift()
@@ -74,7 +76,7 @@ export class DownloadPacer {
         return
       }
       const waitMs = Math.max(1, this.stamps[0] + this.windowMs - now)
-      await new Promise<void>((resolve) => setTimeout(resolve, waitMs))
+      await sleep(waitMs, signal)
     }
   }
 }
@@ -122,6 +124,7 @@ export type DownloadFn = (
     isOnline?: () => boolean
     upcoming?: () => string[]
     fileOwnerId?: string
+    signal?: AbortSignal
   }
 ) => Promise<DownloadResult>
 
@@ -177,6 +180,8 @@ export class DownloadQueue {
   private wakeBackoff: (() => void) | null = null
   private draining = false
   private disposed = false
+  /** Aborts every running transfer when the queue is disposed. */
+  private readonly aborter = new AbortController()
   private readonly downloadFn: DownloadFn
   private readonly network?: NetworkMonitor
   private readonly pacer: DownloadPacer
@@ -280,8 +285,14 @@ export class DownloadQueue {
     return this.pacer.acquire()
   }
 
+  /**
+   * Rejects queued items, and aborts running transfers, which then settle as
+   * cleared: a vault switch waits for their outcomes before its databases
+   * close (REVIEW-5700).
+   */
   dispose(): void {
     this.disposed = true
+    this.aborter.abort()
     if (this.network && this.boundHandler) {
       this.network.removeListener('status-changed', this.boundHandler)
     }
@@ -374,7 +385,8 @@ export class DownloadQueue {
         ...(request.targetIsDir ? { targetIsDir: true } : {}),
         ...(request.fileOwnerId ? { fileOwnerId: request.fileOwnerId } : {}),
         ...(request.onProgress ? { onProgress: request.onProgress } : {}),
-        pace: () => this.pacer.acquire(),
+        pace: () => this.pacer.acquire(this.aborter.signal),
+        signal: this.aborter.signal,
         upcoming: () => this.upcomingAttachmentIds(),
         ...(this.network ? { isOnline: () => this.network!.online } : {})
       })
