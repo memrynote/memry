@@ -95,6 +95,7 @@ describe('sign-out and the device-local sync state', () => {
     ['recordPacksUnresolved', false],
     ['cursorSkipRepair', false],
     ['schemaInvalidItems', false],
+    ['declinedSyncRefs', false],
     ['noteBodyLegacySweep', false],
     ['noteBodyFeedCursor', false],
     ['binaryNoteTextBlobs', false],
