@@ -36,6 +36,7 @@ import {
 import { getCanvasSyncService } from '@memry/sync-client/canvas-sync'
 import { trackMainEvent } from '../../telemetry/track'
 import { trackMainLog } from '../../telemetry/diagnostics'
+import { mergedVaultId } from '../merged-vault-id'
 import { BaseItemHandler } from '@memry/sync-client/item-handlers/base-handler'
 import type { ApplyContext, ApplyResult, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import type { MemryAssetDescriptor } from '@memry/contracts/canvas-api'
@@ -299,8 +300,10 @@ export class CanvasHandler extends BaseItemHandler<CanvasSyncPayload> {
       }
       writeCanvasScene(vaultPath, filePath, itemId, scene, existing.createdAt, now)
 
+      const vaultId = mergedVaultId(ctx.db, existing.vaultId, data.vaultId)
       tx.update(canvases)
         .set({
+          vaultId,
           title: nextTitle,
           filePath,
           // Always read back off the path, never echoed from the payload: the
@@ -331,7 +334,7 @@ export class CanvasHandler extends BaseItemHandler<CanvasSyncPayload> {
       writeRefs(tx, itemId, scene)
       // M5: ingest the incoming scene's asset sidecar under this canvas. Rows are
       // append-only (idempotent upsert); GC on save/delete prunes stale ones.
-      recordSceneAssets(tx, existing.vaultId, itemId, descriptors)
+      recordSceneAssets(tx, vaultId, itemId, descriptors)
 
       ctx.emit(CanvasChannels.events.UPDATED, {
         canvas: { id: itemId, title: nextTitle, createdAt: existing.createdAt, updatedAt: now }

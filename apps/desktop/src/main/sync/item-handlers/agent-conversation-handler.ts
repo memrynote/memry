@@ -15,6 +15,7 @@ import {
   encryptConversationTitle
 } from '../../agent/storage/conversation-store'
 import { createLogger } from '../../lib/logger'
+import { mergedVaultId } from '../merged-vault-id'
 import { BaseItemHandler } from '@memry/sync-client/item-handlers/base-handler'
 import type { ApplyContext, ApplyResult, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
@@ -150,6 +151,7 @@ export class AgentConversationHandler extends BaseItemHandler<AgentConversationS
 
         const nextPayload: AgentConversationSyncPayload = {
           ...localPayload,
+          vaultId: mergedVaultId(ctx.db, localPayload.vaultId, data.vaultId),
           // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- mergeAgentConversationFields returns Record<string, unknown>; each key is a typed conversation field and the merge only copies values of the matching field
           title: (merged.merged.title as string | undefined) ?? localPayload.title,
           // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- mergeAgentConversationFields returns Record<string, unknown>; each key is a typed conversation field and the merge only copies values of the matching field
@@ -168,7 +170,12 @@ export class AgentConversationHandler extends BaseItemHandler<AgentConversationS
           deletedAt: data.deletedAt ?? localPayload.deletedAt ?? null
         }
 
-        if (fieldValuesEqual(localPayload, nextPayload)) return 'skipped'
+        if (
+          fieldValuesEqual(localPayload, nextPayload) &&
+          nextPayload.vaultId === localPayload.vaultId
+        ) {
+          return 'skipped'
+        }
 
         this.writeMerged(tx, itemId, nextPayload, vaultKey, now)
         ctx.emit(AgentChannels.events.CONVERSATIONS_CHANGED, { conversationId: itemId })

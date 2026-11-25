@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest'
 import sodium, { ready } from 'libsodium-wrappers-sumo'
 import { eq } from 'drizzle-orm'
 import { agentConversations } from '@memry/db-schema/schema/agent-conversations'
+import { vaultMetadata } from '@memry/db-schema/data-schema'
 import { AgentChannels } from '@memry/contracts/ipc-agent'
 import type { AgentConversationSyncPayload } from '@memry/contracts/sync-payloads'
 import type { FieldClocks, VectorClock } from '@memry/contracts/sync-api'
@@ -177,6 +178,39 @@ describe('agentConversationHandler', () => {
 
     expect(result).toBe('skipped')
     expect(emit).not.toHaveBeenCalled()
+  })
+
+  // #5772: a Rust core restamps a conversation it wrote under its pre-bind
+  // local id to the server vault id. A concurrent restamp must still land.
+  it('a concurrent restamp to the bound server id replaces the stored id; another id never does', () => {
+    const now = Date.now()
+    db.insert(vaultMetadata)
+      .values({ id: 'singleton', vaultUuid: 'server-vault', createdAt: now, updatedAt: now })
+      .run()
+    const vaultIdOf = (): string | undefined =>
+      db.select().from(agentConversations).where(eq(agentConversations.id, 'conv-1')).get()?.vaultId
+    agentConversationHandler.applyUpsert(
+      ctx(),
+      'conv-1',
+      payload({ vaultId: 'rust-local-vault', fieldClocks: fieldClocksFor({ deviceA: 1 }) }),
+      { deviceA: 1 }
+    )
+
+    agentConversationHandler.applyUpsert(
+      ctx(),
+      'conv-1',
+      payload({ vaultId: 'server-vault', fieldClocks: fieldClocksFor({ deviceB: 1 }) }),
+      { deviceB: 1 }
+    )
+    expect(vaultIdOf()).toBe('server-vault')
+
+    agentConversationHandler.applyUpsert(
+      ctx(),
+      'conv-1',
+      payload({ vaultId: 'another-vault', fieldClocks: fieldClocksFor({ deviceC: 1 }) }),
+      { deviceC: 1 }
+    )
+    expect(vaultIdOf()).toBe('server-vault')
   })
 
   it('soft-deletes on delete and notifies the renderer', () => {

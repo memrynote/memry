@@ -11,6 +11,7 @@ import { nextLocalClock } from '@memry/sync-client/tombstone-clocks'
 import { createLogger } from '../../lib/logger'
 import { removeEmptyCanvasFolderDirs } from '../../canvas/scene-file'
 import { getCanvasVaultPath } from '../../canvas/vault-path'
+import { mergedVaultId } from '../merged-vault-id'
 import { BaseItemHandler } from '@memry/sync-client/item-handlers/base-handler'
 import type { ApplyContext, ApplyResult, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
@@ -72,6 +73,7 @@ class CanvasFolderHandler extends BaseItemHandler<CanvasFolderSyncPayload> {
         }
 
         const next = {
+          vaultId: mergedVaultId(ctx.db, existing.vaultId, data.vaultId),
           path: data.path ?? existing.path,
           // An explicit null is the user CLEARING the icon; `?? existing.icon`
           // would read that as "absent" and never propagate the clear.

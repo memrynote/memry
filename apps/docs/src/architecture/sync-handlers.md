@@ -147,6 +147,22 @@ row whose document is unreadable pushes nothing rather than an empty scene, and 
 gets its own file next to the winner. None of this touches key material; transport encryption is
 unchanged.
 
+### Which `vaultId` a pulled update keeps
+
+Canvases, canvas folders and agent conversations name their vault in `vaultId`, and desktop lists
+them by the vault uuid it syncs under. A pulled update keeps the stored `vaultId`, except when the
+remote states this device's bound server vault id: then the server id wins. Any other remote id is
+another vault's and never replaces the stored one. `sync/merged-vault-id.ts` owns that rule, and
+the canvas, canvas folder and agent conversation handlers call it (#5772).
+
+The exception exists for the Rust core's restamp: a Tauri or iOS build that wrote records under its
+pre-bind local vault id rewrites them to the server id once it binds. A desktop that pulled such a
+record first stores the old id. Keeping that id over the restamp would push it again on the next
+edit, and every fresh device, which lists by the server id, would hide the record. The Rust core
+applies the same rule (`server_vault::merged_vault_id`, #5669). Protocol chapter 13 states it as
+§13.7.21 rule 4 (canvas) and §13.7.23 rule 3 (canvas folder) on `feat/tauri-v2`; `main`'s chapter
+gets that text with the next feat-to-main sync.
+
 ## Home boards: the widget layout is an opaque string
 
 `home-page-handler.ts` carries a board's widgets as an **opaque JSON string**, declared

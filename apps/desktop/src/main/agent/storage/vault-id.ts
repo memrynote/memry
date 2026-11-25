@@ -1,12 +1,12 @@
 import { randomUUID } from 'node:crypto'
 import { eq } from 'drizzle-orm'
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
+import type { DrizzleDb } from '@memry/db-schema/drizzle-db'
 
 import * as schema from '@memry/db-schema/data-schema'
 
 const SINGLETON_ID = 'singleton'
 
-type VaultUuidDb = BetterSQLite3Database<typeof schema>
+type VaultUuidDb = DrizzleDb
 
 // vault_metadata holds a single row keyed on the literal 'singleton', and its
 // uuid never changes for as long as a vault stays open — yet every one of the
