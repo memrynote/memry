@@ -432,6 +432,39 @@ export function recordUnchangedFile(
 }
 
 /**
+ * Whether the file a pulled delete is about to remove holds bytes this device
+ * has not ingested: an edit made outside the app that the watcher has not
+ * taken yet (#5757, #5797). A closed-app edit waits for the vault open's
+ * replay, and a live one for the watcher's debounce; a pull can apply a delete
+ * in either window. No clock has ticked for that edit, so the tombstone's
+ * clock cannot say the deleter saw it.
+ *
+ * Invariant: a file this device has not ingested is never deleted unseen.
+ * The ingested bytes are the baseline (`content_hash`, or `pending_write_hash`
+ * while a write-back's own bytes land, read through `pendingWriteHashOf`). A
+ * row with no cache row, or no hash (a note only listed from `stat`), has no
+ * proof either, so it counts as not ingested. A file that cannot be read has
+ * nothing to keep.
+ */
+export function holdsUningestedEdit(
+  indexDb: IndexDb,
+  itemId: string,
+  read: () => string | null
+): boolean {
+  let raw: string | null
+  try {
+    raw = read()
+  } catch (error) {
+    log.warn('Could not read a file before a remote delete', { itemId, error })
+    return false
+  }
+  if (raw === null) return false
+  const cached = getNoteCacheById(indexDb, itemId)
+  const onDisk = generateContentHash(raw)
+  return onDisk !== cached?.contentHash && onDisk !== pendingWriteHashOf(cached?.pendingWriteHash)
+}
+
+/**
  * The hash a reader that does not feed the doc (the ingest backfill after a
  * rename) records for the bytes it measured: the baseline it found, or the
  * measured hash when the note has none yet. Moving a baseline past bytes the

@@ -1201,6 +1201,9 @@ document to its vault `.md` file and re-indexes it for search.
   say, when the file's hash is neither the index baseline nor a pending write: no clock
   moved for an edit the watcher has not taken yet (before the replay, or inside the
   debounce), so a file this device has not ingested is never deleted unseen (#5757).
+  A pulled note delete follows the same rule (`holdsUningestedEdit`, #5797) for the file it
+  removes. A case twin's shared file stays with the survivor, which keeps bytes neither twin
+  holds as a version, and a binary file has no baseline hash, so neither is checked.
   Before it feeds the file, the pass keeps the body it serialized
   as a version when that body differs from the file's, the rule the owed-file take follows
   (#2646). A version that cannot be saved leaves the edit waiting on disk. The pass feeds

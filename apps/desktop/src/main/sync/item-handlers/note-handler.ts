@@ -18,7 +18,7 @@ import type { VectorClock } from '@memry/contracts/sync-api'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
 import { extractFolderFromPath, getNoteSyncService } from '../note-sync'
 import { recordAppMove, recordAppWrite } from '../../vault/app-writes'
-import { baselineAfterWrite } from '../writeback-baseline'
+import { baselineAfterWrite, holdsUningestedEdit } from '../writeback-baseline'
 import { getCrdtProvider } from '../crdt-provider'
 import { deleteSyncedVaultFile, writeSyncedVaultFile } from '../bulk-apply'
 import { scheduleDeletedFolderPrune } from '../deleted-folder-prune'
@@ -909,6 +909,16 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
       tombstoneClock: clock,
       deletedAt,
       bodyStateVector,
+      // Only a file this delete removes: a case twin's leave keeps bytes
+      // neither twin holds as a version of the survivor, a stray row's file
+      // stays in the attachment store, and a binary file has no text or hash.
+      unseenFile:
+        !leave &&
+        !isAttachmentStoreRow(existing) &&
+        !isBinaryNoteRow(existing) &&
+        holdsUningestedEdit(indexDb, itemId, () =>
+          readVaultFileSync(getVaultRoot(), existing.path)
+        ),
       readBody: () => (isBinaryNoteRow(existing) ? null : readNoteFileBody(absolutePath))
     })
 

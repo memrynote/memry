@@ -20,6 +20,7 @@ const vaultPath = path.join(root, 'vault')
 const userDataDir = path.join(root, 'user-data')
 fs.mkdirSync(userDataDir, { recursive: true })
 
+const { ingested } = vi.hoisted(() => ({ ingested: new Map<string, string>() }))
 const { currentDb, purge, logger } = vi.hoisted(() => {
   const slot: { value: unknown } = { value: null }
   return {
@@ -57,7 +58,11 @@ vi.mock('@main/database/queries/notes', async (importOriginal) => ({
   getNoteCacheByPath: vi.fn(() => undefined),
   updateNoteCache: vi.fn(),
   setNoteTags: vi.fn(),
-  setNoteProperties: vi.fn()
+  setNoteProperties: vi.fn(),
+  // The note's file holds the bytes this device ingested (#5797).
+  getNoteCacheById: vi.fn((_db: unknown, id: string) =>
+    ingested.has(id) ? { contentHash: ingested.get(id) } : undefined
+  )
 }))
 vi.mock('../../notes/runtime-effects', () => ({
   cleanupProjectLinksForDeletedNote: vi.fn(() => Promise.resolve())
@@ -82,6 +87,7 @@ import type { AttachmentDownloadNeededEvent } from '@memry/sync-client/attachmen
 import { _resetBulkApplyForTests } from '../bulk-apply'
 import { journalHandler } from './journal-handler'
 import { noteHandler } from './note-handler'
+import { generateContentHash } from '../../vault/frontmatter'
 import { generateJournalId } from '@memry/contracts/journal-api'
 
 const ID = 'legacyagent0609'
@@ -372,6 +378,7 @@ describe('remote note delete and its note_date reminders', () => {
       })
       .run()
     fs.writeFileSync(path.join(vaultPath, 'Launch.md'), 'launch body\n', 'utf-8')
+    ingested.set('7225bkun6riy', generateContentHash('launch body\n'))
     testDb.db
       .insert(reminders)
       .values([
