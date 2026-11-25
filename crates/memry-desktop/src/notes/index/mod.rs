@@ -94,7 +94,7 @@ pub const RETRY_MAX: Duration = Duration::from_secs(300);
 /// reindex, whose pass measures the note anyway.
 pub const MEASURE_WAIT: Duration = Duration::from_secs(2);
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, Clone, thiserror::Error)]
 pub enum IndexError {
     #[error("no vault is open")]
     NotOpen,

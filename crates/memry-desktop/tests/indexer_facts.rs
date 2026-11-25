@@ -738,8 +738,10 @@ fn a_reindex_a_first_sync_held_midway_is_answered_once_it_ended() {
     e.close();
 }
 
-/// Two reindexes asked at once while the first one's pass meets a first sync: the second runs
-/// no pass while the first sync holds, and both are answered once it ended (#5423 C8).
+/// Two reindexes asked at once while their shared pass meets a first sync: neither runs a pass
+/// while the first sync holds, and both are answered by the rerun once it ended (#5423 C8). The
+/// second asker shares the first's pass (REVIEW-5806 finding 2), so it is told the held pass's
+/// steps; the rerun's repeat them, which its throttle drops.
 #[test]
 fn a_held_reindex_holds_the_reindexes_asked_after_it() {
     let (mut e, _store, notes) = seeded(2);
@@ -783,14 +785,9 @@ fn a_held_reindex_holds_the_reindexes_asked_after_it() {
                 .unwrap();
         }
         let order = order.lock().unwrap().clone();
-        assert_eq!(
-            order.first(),
-            Some(&"released"),
-            "no pass for the second asker while the first sync holds: {order:?}"
-        );
         assert!(
-            order.len() > 1,
-            "the second asker reported after the release"
+            order.contains(&"reported"),
+            "the second asker was told the shared pass: {order:?}"
         );
         assert!(links_to(&open, first, second));
     });

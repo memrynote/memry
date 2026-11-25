@@ -298,27 +298,30 @@ impl Indexer {
         let mut first_sync = self.first_sync.subscribe();
         while !cancel.is_cancelled() {
             // An asked reindex stays pending while a first sync runs, which holds its search
-            // reindex (#5409): its answer says the search is current.
-            if owed.walked() && !waiting.is_empty() && !self.first_sync.is_running() {
-                // A reindex reports through its own callback, which refreshes the list. The
+            // reindex (#5409): its answer says the search is current. The inbox is read first,
+            // so one pass answers every asker already waiting when it starts; one asked during
+            // it waits in the inbox for a pass of its own.
+            if owed.walked()
+                && !waiting.is_empty()
+                && !self.first_sync.is_running()
+                && commands.is_empty()
+            {
+                // A reindex reports through its askers' callbacks, which refresh the list. The
                 // open's build ends after it, once the rows hold every note.
                 let carried = std::mem::take(&mut owed.report);
-                let mut asked = std::mem::take(&mut waiting).into_iter();
-                while let Some((mut progress, answer)) = asked.next() {
-                    match self.reindex(&mut owed, &mut progress, cancel, announce, landed, defined)
-                    {
-                        // A first sync that started meanwhile held its search reindex: the
-                        // asker, and every one after it, waits for it to end, as one asked
-                        // during it does.
-                        None => {
-                            waiting.push((progress, answer));
-                            waiting.extend(asked);
-                            break;
-                        }
+                let mut progress = |step| {
+                    for (asker, _) in &mut waiting {
+                        asker(step);
+                    }
+                };
+                let outcome =
+                    self.reindex(&mut owed, &mut progress, cancel, announce, landed, defined);
+                // `None`: a first sync that started meanwhile held its search reindex, and every
+                // asker waits for it to end, as one asked during it does.
+                if let Some(done) = outcome {
+                    for (_, answer) in waiting.drain(..) {
                         // The asker may have gone; the work is done either way.
-                        Some(done) => {
-                            let _ = answer.send(done);
-                        }
+                        let _ = answer.send(done.clone());
                     }
                 }
                 if carried {
@@ -498,7 +501,7 @@ impl Indexer {
     fn reindex(
         &self,
         owed: &mut Owed,
-        progress: &mut Progress,
+        progress: &mut dyn FnMut(IndexProgress),
         cancel: &CancelToken,
         announce: &dyn Fn(LinkChanges),
         landed: &dyn Fn(&str),
