@@ -62,14 +62,15 @@ fn a_reindex_asked_during_a_first_sync_answers_at_once_and_runs_once_it_ended() 
 #[test]
 fn a_reindex_that_fails_after_the_answer_sets_the_vault_status_error() {
     let mocked = mocked();
-    let statuses: Arc<Mutex<Vec<VaultStatus>>> = Arc::default();
-    let sink = statuses.clone();
+    let (sink, statuses) = mpsc::channel::<VaultStatus>();
+    let sink = Mutex::new(sink);
     mocked
         .webview
         .listen_any(VaultStatusChangedEvent::NAME, move |event| {
-            sink.lock()
+            let _ = sink
+                .lock()
                 .unwrap()
-                .push(serde_json::from_str(event.payload()).unwrap());
+                .send(serde_json::from_str(event.payload()).unwrap());
         });
     let hold = mocked.session().current().unwrap().first_sync.hold();
     assert_eq!(mocked.invoke("vault_reindex", json!({})), Ok(Value::Null));
@@ -79,18 +80,15 @@ fn a_reindex_that_fails_after_the_answer_sets_the_vault_status_error() {
     index.execute_batch("DROP TABLE index_meta").unwrap();
     drop(hold);
 
-    let deadline = Instant::now() + WAIT;
+    let mut seen = Vec::new();
     let failed = loop {
-        let last = statuses.lock().unwrap().last().cloned();
-        if let Some(status) = last.filter(|status| status.error.is_some()) {
+        let status = statuses.recv_timeout(WAIT).unwrap_or_else(|_| {
+            panic!("no vault status told the window the reindex failed: {seen:?}")
+        });
+        if status.error.is_some() {
             break status;
         }
-        assert!(
-            Instant::now() < deadline,
-            "no vault status told the window the reindex failed: {:?}",
-            statuses.lock().unwrap()
-        );
-        std::thread::sleep(std::time::Duration::from_millis(20));
+        seen.push(status);
     };
     assert!(failed.is_open);
     assert!(!failed.is_indexing, "the failed reindex ended the indexing");
