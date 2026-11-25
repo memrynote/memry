@@ -150,6 +150,9 @@ private struct Body: View {
 private final class Screen {
     let editor: BodyEditor
     let model: NoteEditorViewModel
+    /// Where this screen's app resigns active: the app-wide center reaches
+    /// every suite's editor (#5484).
+    let notifications = NotificationCenter()
     let window: UIWindow
     /// The blocks the page draws, which a re-read of the note sets.
     let page: Page
@@ -161,7 +164,7 @@ private final class Screen {
             Block(id: "b\(index)", kind: "paragraph", depth: 0, props: [], inline: [InlineRun(text: text, marks: [], markAttrs: [:], target: nil)])
         }
         editor = BodyEditor(blocks)
-        model = NoteEditorViewModel(noteId: "note-1", editor: editor)
+        model = NoteEditorViewModel(noteId: "note-1", editor: editor, notifications: notifications)
         page = Page(blocks)
         let scene = try #require(UIApplication.shared.connectedScenes.first as? UIWindowScene)
         window = UIWindow(windowScene: scene)
@@ -848,7 +851,7 @@ struct EditorReturnBurstTests {
             screen.editor.texts.withLock { $0 = .wait }
             screen.editor.inserts.withLock { $0 = .wait }
             screen.keys(shortcut + "mi")
-            if twice { NotificationCenter.default.post(name: UIApplication.willResignActiveNotification, object: nil) }
+            if twice { screen.notifications.post(name: UIApplication.willResignActiveNotification, object: nil) }
             screen.keys("l")
             for _ in 0 ..< 80 where screen.textViews().contains(paragraph) || screen.focused?.text != "mil" {
                 try await Task.sleep(for: .milliseconds(25))
@@ -1051,7 +1054,7 @@ struct EditorReturnBurstTests {
             screen.editor.inserts.withLock { $0 = .wait }
             _ = try await screen.start()
             screen.keys("Alpha\nBeta")
-            NotificationCenter.default.post(name: UIApplication.willResignActiveNotification, object: nil)
+            screen.notifications.post(name: UIApplication.willResignActiveNotification, object: nil)
             screen.editor.inserts.withLock { $0 = .land }
             // No resign here: what lands is what leaving the app committed.
             for _ in 0 ..< 80 where screen.editor.all.count < 2 { try await Task.sleep(for: .milliseconds(25)) }
@@ -1074,7 +1077,7 @@ struct EditorReturnBurstTests {
             }
             try await Task.sleep(for: .milliseconds(200))
             screen.keys("Beta")
-            NotificationCenter.default.post(name: UIApplication.willResignActiveNotification, object: nil)
+            screen.notifications.post(name: UIApplication.willResignActiveNotification, object: nil)
             // No resign here: what lands is what leaving the app committed.
             screen.model.session.enqueue {}
             await screen.model.session.tail?.value

@@ -110,6 +110,12 @@ final class LoopbackSocketServer: @unchecked Sendable {
         listener.cancel()
     }
 
+    /// The listener has let go of its port.
+    var isStopped: Bool {
+        if case .cancelled = listener.state { return true }
+        return false
+    }
+
     func url(path: String = "/sync/ws") -> String { "ws://127.0.0.1:\(port)\(path)" }
 
     /// Sends one frame to the first connection, as a real text frame.
@@ -312,11 +318,16 @@ struct TransportSocketTests {
 
         subject.phaseChanged(to: .foreground)
         // Nothing new may appear: no second open here, no second connection at
-        // the server. A reopen would show up as either.
-        try await Task.sleep(for: .milliseconds(400))
+        // the server. A reopen would show up as either. `phaseChanged` returns
+        // after any reopen it starts, so a probe opened after it reaches the
+        // server behind that reopen: once the probe is in, a reopen is too.
+        let probe = RecordingListener()
+        let probeHandle = try subject.openSocket(request: socketRequest(server), listener: probe)
+        #expect(await probe.history(after: 1) == [.open])
+        await server.changes.until { server.log.withLock { $0.connections } >= 2 }
         #expect(listener.history == [.open, .closed(URLSessionTransport.backgroundCloseCode)])
-        #expect(server.log.withLock { $0.connections } == 1)
-        withExtendedLifetime(handle) {}
+        #expect(server.log.withLock { $0.connections } == 2, "only the probe connected")
+        withExtendedLifetime((handle, probeHandle)) {}
     }
 
     /// A write to a socket that is already closed fails **now**, with a typed
@@ -351,8 +362,7 @@ struct TransportSocketTests {
         let server = try await LoopbackSocketServer()
         let deadPort = server.port
         server.stop()
-        // Give the listener a moment to actually release the port.
-        try await Task.sleep(for: .milliseconds(200))
+        #expect(await settle { server.isStopped }, "the listener never released the port")
 
         let listener = RecordingListener()
         let subject = transport()

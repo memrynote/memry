@@ -351,6 +351,8 @@ mod notes_moves;
 mod notes_moves_edges;
 #[path = "notes_outside_after_reopen.rs"]
 mod notes_outside_after_reopen;
+#[path = "notes_outside_aliases.rs"]
+mod notes_outside_aliases;
 #[path = "notes_outside_tags.rs"]
 mod notes_outside_tags;
 #[path = "notes_plain_checklists.rs"]
