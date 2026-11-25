@@ -6,7 +6,7 @@ import { ContentArea } from '@/components/note'
 import { EditorErrorBoundary } from '@/components/note/editor-error-boundary'
 import { tasksService } from '@/services/tasks-service'
 import { notesService, type Note } from '@/services/notes-service'
-import { extractErrorMessage } from '@/lib/ipc-error'
+import { extractErrorMessage, unwrapIpcResult } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
@@ -140,7 +140,10 @@ export const ProjectOverviewNote = ({
       saveTimeoutRef.current = setTimeout(() => {
         void (async () => {
           try {
-            await notesService.update({ id: homeNoteId, content: markdown })
+            unwrapIpcResult(
+              await notesService.update({ id: homeNoteId, content: markdown }),
+              t('projectHome.overview.saveError')
+            )
             lastSavedContentRef.current = markdown
             pendingMarkdownRef.current = null
           } catch (error) {

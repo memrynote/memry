@@ -13,7 +13,7 @@ import { getCrdtProvider } from '../sync/crdt-provider'
 import { readyWritebackConverter } from '../sync/converter-worker-bridge'
 import type { NoteBody } from '../sync/writing-markdown'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
-import { COVER_FRONTMATTER_KEY, isCoverValue, parseCoverValue } from '@memry/shared/cover-image'
+import { isCoverValue } from '@memry/shared/cover-image'
 import { toWritingFrontmatterValue, WRITING_FRONTMATTER_KEY } from '@memry/shared'
 import {
   getAliasesForNotes,
@@ -137,12 +137,10 @@ type OwnBaseline = {
  *
  * Its rows hold header tags, aliases, properties and the cover ref whole. An
  * image cover's framing and credit have no row, and the shared file holds the
- * other twin's, so this device never holds them for the twin: a local edit
- * that sets them is refused (`assertOwnHeaderCoverEdit`), its push leaves the
- * cover out unless the ref changed here (`offFileNoteCoverForPush`), and a
- * peer's cover applied to it is recorded as unframed
- * (`recordRebuiltNoteCover`). The own last header never stands in for them:
- * a peer's reframe does not reach it.
+ * other twin's, so this device never holds them for the twin: its cover is
+ * never edited here (`assertOwnHeaderCoverUnchanged`), and a peer's cover
+ * applied to it is recorded as unframed (`recordRebuiltNoteCover`). The own
+ * last header never stands in for them: a peer's reframe does not reach it.
  */
 export function ownHeader(
   indexDb: ReturnType<typeof getIndexDatabase>,
@@ -155,17 +153,24 @@ export function ownHeader(
 }
 
 /**
- * Throws when a local edit of a twin off its shared file sets an image cover's
- * framing or credit, which this device does not hold for it (`ownHeader`). A
- * change or removal of the cover ref passes.
+ * Throws when a local edit of a case twin off its shared file changes its
+ * cover in any way: ref, removal, framing or credit.
+ *
+ * The rule (#5742, VERIFY-5753R4): such a twin's cover edits are refused until
+ * the twins are split, exactly like its body edits (`offFileBodyEdit`), and its
+ * push never carries `cover`. Its image framing and credit have no row and the
+ * shared file holds the other twin's, so an edit here could only push invented
+ * framing or lose an unpushed change when the twin goes back on its own file.
+ * A peer's cover still applies to it (`recordRebuiltNoteCover`).
  */
-export function assertOwnHeaderCoverEdit(noteId: string, edited: NoteFrontmatter): void {
-  const cover = noteCoverFromFrontmatter(edited)
-  if (cover === null || parseCoverValue(cover.ref)?.kind !== 'image') return
-  const bare = noteCoverFromFrontmatter({ [COVER_FRONTMATTER_KEY]: cover.ref })
-  if (isDeepStrictEqual(cover, bare)) return
+export function assertOwnHeaderCoverUnchanged(
+  noteId: string,
+  before: NoteFrontmatter,
+  after: NoteFrontmatter
+): void {
+  if (isDeepStrictEqual(noteCoverFromFrontmatter(before), noteCoverFromFrontmatter(after))) return
   throw new NoteError(
-    "This note shares its file with a note whose name differs only in case, so its cover's position and credit cannot be changed. Rename one of them, then edit the cover again; nothing was changed",
+    'This note shares its file with a note whose name differs only in case, so its cover cannot be changed. Rename one of them, then edit the cover again; nothing was changed',
     NoteErrorCode.WRITE_FAILED,
     noteId
   )

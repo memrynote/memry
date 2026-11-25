@@ -17,6 +17,7 @@ import { ContentArea } from '@/components/note/content-area'
 import { useNote } from '@/hooks/use-notes-query'
 import { notesService } from '@/services/notes-service'
 import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
+import { unwrapIpcResult } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { useIsNoteLocked } from '@/lib/vault-locks-store'
@@ -55,7 +56,7 @@ export const EmbeddedNoteEditor = ({ noteId }: EmbeddedNoteEditorProps): React.J
     if (pending === null) return
     pendingContentRef.current = null
     try {
-      await notesService.update({ id: noteId, content: pending })
+      unwrapIpcResult(await notesService.update({ id: noteId, content: pending }), 'Save failed')
       lastSavedContentRef.current = pending
     } catch (err) {
       log.error('Failed to save note', { noteId, error: err })

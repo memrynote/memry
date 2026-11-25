@@ -163,24 +163,14 @@ export function applyNoteCoverToFrontmatter(
  *   (`recordRebuiltNoteCover`). Its framing and credit lived only in the file,
  *   so while the file holds the bare ref the push leaves the cover out, and
  *   peers keep theirs. A build that predates this value reads it as no marker.
- * - `ref-changed:<ref>`: a case twin off its shared file got image cover `ref`
- *   from a local edit (`recordOwnHeaderCoverRef`). Its push sends the ref
- *   alone (`offFileNoteCoverForPush`) until a peer's cover is applied. A build
- *   that predates this value reads it as no marker.
  */
 type UnframedMarker = `unframed:${string}`
-type RefChangedMarker = `ref-changed:${string}`
-type NoteCoverSyncMarker = 'present' | 'removal-pending' | UnframedMarker | RefChangedMarker
+type NoteCoverSyncMarker = 'present' | 'removal-pending' | UnframedMarker
 
 const UNFRAMED_MARKER_PREFIX = 'unframed:'
-const REF_CHANGED_MARKER_PREFIX = 'ref-changed:'
 
 function isUnframedMarker(value: string): value is UnframedMarker {
   return value.startsWith(UNFRAMED_MARKER_PREFIX)
-}
-
-function isRefChangedMarker(value: string): value is RefChangedMarker {
-  return value.startsWith(REF_CHANGED_MARKER_PREFIX)
 }
 
 function readCoverMarker(db: DrizzleDb, noteId: string): NoteCoverSyncMarker | null {
@@ -190,10 +180,7 @@ function readCoverMarker(db: DrizzleDb, noteId: string): NoteCoverSyncMarker | n
     .where(eq(syncState.key, COVER_MARKER_KEY_PREFIX + noteId))
     .get()?.value
   if (value === undefined) return null
-  return value === 'present' ||
-    value === 'removal-pending' ||
-    isUnframedMarker(value) ||
-    isRefChangedMarker(value)
+  return value === 'present' || value === 'removal-pending' || isUnframedMarker(value)
     ? value
     : null
 }
@@ -240,43 +227,6 @@ export function noteCoverForPush(
 }
 
 /**
- * The `cover` a push of a case twin off its shared file carries (`ownHeader`).
- * Its image cover's framing and credit are not held here, so the cover is left
- * out unless its ref changed here, and then it is the ref alone. A removal and
- * any other cover go as for any note (`noteCoverForPush`).
- */
-export function offFileNoteCoverForPush(
-  db: DrizzleDb,
-  noteId: string,
-  frontmatter: NoteFrontmatter
-): NoteCoverSync | null | undefined {
-  const ref = noteCoverFromFrontmatter(frontmatter)?.ref
-  if (ref === undefined || parseCoverValue(ref)?.kind !== 'image') {
-    return noteCoverForPush(db, noteId, frontmatter)
-  }
-  return readCoverMarker(db, noteId) === `${REF_CHANGED_MARKER_PREFIX}${ref}`
-    ? noteCoverFromFrontmatter({ [COVER_FRONTMATTER_KEY]: ref })
-    : undefined
-}
-
-/**
- * After a local edit of a case twin off its shared file changed its image
- * cover ref from `before` to `after`: its pushes send the new ref.
- */
-export function recordOwnHeaderCoverRef(
-  db: DrizzleDb,
-  noteId: string,
-  before: NoteFrontmatter,
-  after: NoteFrontmatter
-): void {
-  const ref = noteCoverFromFrontmatter(after)?.ref
-  if (ref === undefined || ref === noteCoverFromFrontmatter(before)?.ref) return
-  if (parseCoverValue(ref)?.kind === 'image') {
-    writeCoverMarker(db, noteId, `${REF_CHANGED_MARKER_PREFIX}${ref}`)
-  }
-}
-
-/**
  * After a confirmed push: a removal that reached the server is done, so later
  * pushes of the coverless note omit the key again. `readFrontmatter` is only
  * called when a removal is pending, which keeps the ack free of a file read
@@ -306,14 +256,17 @@ export function recordAppliedNoteCover(
 
 /**
  * After the note's file was rebuilt from its index rows, which hold the cover
- * ref (`case-twin-file.ts`). An image cover's framing and credit were not
- * written, so its push waits for a change here; any other cover was written
- * whole, and no cover sends no removal. A removal built for push and not yet
- * acked stays pending: its retry still sends the `null`.
+ * ref (`case-twin-file.ts`), or a peer's cover was applied to a case twin off
+ * its shared file (`ownHeader`). An image cover's framing and credit were not
+ * written, so its push waits for a change here. Any other cover was written
+ * whole and is held here, so a later removal pushes `null`. No cover sends no
+ * removal, but a removal built for push and not yet acked stays pending: its
+ * retry still sends the `null`.
  */
 export function recordRebuiltNoteCover(db: DrizzleDb, noteId: string, ref: string | null): void {
-  if (ref !== null && parseCoverValue(ref)?.kind === 'image') {
-    writeCoverMarker(db, noteId, `${UNFRAMED_MARKER_PREFIX}${ref}`)
+  if (ref !== null) {
+    const image = parseCoverValue(ref)?.kind === 'image'
+    writeCoverMarker(db, noteId, image ? `${UNFRAMED_MARKER_PREFIX}${ref}` : 'present')
   } else if (readCoverMarker(db, noteId) !== 'removal-pending') {
     writeCoverMarker(db, noteId, null)
   }

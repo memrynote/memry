@@ -12,11 +12,7 @@ import { getNoteMetadataById, updateNoteMetadata } from '@memry/storage-data'
 import { getNoteProperties, type PropertyValue } from '@main/database/queries/notes'
 import type { NoteCoverSync } from '@memry/contracts/sync-payloads'
 import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
-import {
-  noteCoverForPush,
-  offFileNoteCoverForPush,
-  settleNoteCoverRemoval
-} from './note-cover-sync'
+import { noteCoverForPush, settleNoteCoverRemoval } from './note-cover-sync'
 import { binaryRecordFields } from '@memry/shared/file-types'
 
 const log = createLogger('NoteHandlerSyncHelpers')
@@ -55,12 +51,11 @@ export function buildNotePushPayload(itemId: string, operation: string): string 
 
   const { content, tags, aliases, frontmatter, offFile } = readNoteFileFields(cached, operation)
   // `undefined` omits the key, which tells peers nothing: the file could not be
-  // read, this device does not hold the cover's framing, or this note has had
-  // no cover here. `null` is a local removal only.
+  // read, the note is a case twin off its shared file, whose cover is never
+  // edited here (`assertOwnHeaderCoverUnchanged`), or this note has had no
+  // cover here. `null` is a local removal only.
   const cover: NoteCoverSync | null | undefined =
-    frontmatter === null
-      ? undefined
-      : (offFile ? offFileNoteCoverForPush : noteCoverForPush)(dataDb, itemId, frontmatter)
+    frontmatter === null || offFile ? undefined : noteCoverForPush(dataDb, itemId, frontmatter)
 
   const folderPath = extractFolderFromPath(cached.path)
   const properties = propsToRecord(getNoteProperties(indexDb, itemId))

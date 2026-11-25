@@ -142,7 +142,7 @@ import { toast } from 'sonner'
 import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
 import { useIsBookmarked } from '@/hooks/use-bookmarks'
 import { useEditorSettings, EDITOR_NORMAL_CONTENT_WIDTH } from '@/hooks/use-editor-settings'
-import { extractErrorMessage } from '@/lib/ipc-error'
+import { extractErrorMessage, unwrapIpcResult } from '@/lib/ipc-error'
 import { useHasOwnNoteLock, useIsNoteLocked } from '@/lib/vault-locks-store'
 import { LockedNoteNotice } from '@/components/note/locked-note-notice'
 import { NoteFilesDownloadNotice } from '@/components/note/note-files-download-notice'
@@ -1221,7 +1221,10 @@ export function NotePage({ noteId }: NotePageProps) {
     async (value: boolean) => {
       if (!noteId || isDeleted) return
       try {
-        await notesService.update({ id: noteId, frontmatter: { fullWidth: value } })
+        unwrapIpcResult(
+          await notesService.update({ id: noteId, frontmatter: { fullWidth: value } }),
+          t('page.toast.toggleFullWidthFailed')
+        )
         refetchNote()
       } catch (err) {
         toast.error(extractErrorMessage(err, t('page.toast.toggleFullWidthFailed')))
