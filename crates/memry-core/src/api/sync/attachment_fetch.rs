@@ -44,10 +44,19 @@ static MANIFEST_BATCH_UNSUPPORTED: LazyLock<NotFoundMemory> = LazyLock::new(Defa
 /// of the note asks for the device directory and the manifest again (#5247);
 /// held by the session, a sign-out or a new session asks again.
 #[derive(Default)]
-pub(crate) struct NotFoundMemory(Mutex<HashMap<String, Instant>>);
+pub(crate) struct NotFoundMemory(Mutex<NotFound>);
+
+#[derive(Default)]
+struct NotFound {
+    at: HashMap<String, Instant>,
+    /// Bumped by each clear, so a 404 asked before one is not remembered after
+    /// it: a sign-out during an open must not carry its 404 into the next
+    /// sign-in.
+    generation: u64,
+}
 
 impl NotFoundMemory {
-    fn map(&self) -> std::sync::MutexGuard<'_, HashMap<String, Instant>> {
+    fn map(&self) -> std::sync::MutexGuard<'_, NotFound> {
         self.0
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
@@ -56,16 +65,27 @@ impl NotFoundMemory {
     /// Whether `key` answered 404 within [`NOT_FOUND_COOLDOWN`].
     fn recently(&self, key: &str) -> bool {
         let mut map = self.map();
-        map.retain(|_, at| at.elapsed() < NOT_FOUND_COOLDOWN);
-        map.contains_key(key)
+        map.at.retain(|_, at| at.elapsed() < NOT_FOUND_COOLDOWN);
+        map.at.contains_key(key)
     }
 
-    fn remember(&self, key: &str) {
-        self.map().insert(key.to_owned(), Instant::now());
+    /// What a request captures before it asks, for [`Self::remember`].
+    fn generation(&self) -> u64 {
+        self.map().generation
+    }
+
+    /// Records `key`'s 404, unless the memory was cleared since `asked_in`.
+    fn remember(&self, key: &str, asked_in: u64) {
+        let mut map = self.map();
+        if map.generation == asked_in {
+            map.at.insert(key.to_owned(), Instant::now());
+        }
     }
 
     pub(crate) fn clear(&self) {
-        self.map().clear();
+        let mut map = self.map();
+        map.at.clear();
+        map.generation += 1;
     }
 }
 
@@ -206,6 +226,7 @@ impl VaultSync {
     pub async fn fetch_note_manifests(&self, note_id: String) -> Result<u32, SyncError> {
         // A manifest the server answered 404 for (never uploaded, or gone)
         // waits out [`NOT_FOUND_COOLDOWN`] instead of every open.
+        let asked_in = self.session.manifest_not_found.generation();
         let unnamed: Vec<String> = self
             .db
             .call(move |conn| attachments::for_note(conn, &note_id))
@@ -261,7 +282,7 @@ impl VaultSync {
                     {
                         self.session
                             .manifest_not_found
-                            .remember(&self.not_found_key(&attachment_id));
+                            .remember(&self.not_found_key(&attachment_id), asked_in);
                     }
                     eprintln!("memry-core: naming attachment {attachment_id}: {error}");
                     continue;
@@ -493,6 +514,7 @@ impl VaultSync {
         ids: &[String],
     ) -> HashMap<String, EncryptedAttachmentManifest> {
         let unsupported = MANIFEST_BATCH_UNSUPPORTED.recently(&self.vault_id);
+        let asked_in = MANIFEST_BATCH_UNSUPPORTED.generation();
         // A key that cannot be read fails each row on its own, as before.
         let unlocked = matches!(self.session.master_key(), Ok(Some(_)));
         if ids.len() < 2 || unsupported || !unlocked {
@@ -509,7 +531,7 @@ impl VaultSync {
             {
                 Ok(Some(batch)) => manifests.extend(batch),
                 Ok(None) => {
-                    MANIFEST_BATCH_UNSUPPORTED.remember(&self.vault_id);
+                    MANIFEST_BATCH_UNSUPPORTED.remember(&self.vault_id, asked_in);
                     break;
                 }
                 Err(_) => break,
