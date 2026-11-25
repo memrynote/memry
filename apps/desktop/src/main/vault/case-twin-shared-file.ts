@@ -11,7 +11,8 @@ import { getIndexDatabase } from '../database'
 import { readVaultFileSync } from '../lib/paths'
 import { diskCaseOf } from './disk-case'
 import { findCanonicalNoteForFile } from './note-sync'
-import { holdsOwnBytes, ownHeader, type OwnHeader } from './case-twin-own-file'
+import { holdsOwnBytes, ownHeader } from './case-twin-own-file'
+import type { NoteFrontmatter } from './frontmatter'
 
 /** Whether a case twin shares this note's file. Ask before the note's row leaves it. */
 export function sharesCaseTwinFile(vaultPath: string, relativePath: string): boolean {
@@ -44,7 +45,7 @@ export function caseTwinOffFileHeader(
   vaultPath: string,
   relativePath: string,
   noteId: string
-): OwnHeader | null {
+): NoteFrontmatter | null {
   if (!isCaseTwinOffFile(vaultPath, relativePath, noteId)) return null
   const indexDb = getIndexDatabase()
   const cached = getNoteCacheById(indexDb, noteId)

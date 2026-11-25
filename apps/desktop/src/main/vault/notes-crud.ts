@@ -30,6 +30,8 @@ import {
   deleteCaseTwin
 } from './case-twin-file'
 import { caseTwinOwnFile } from './case-twin-off-file'
+import { assertOwnHeaderCoverEdit } from './case-twin-own-file'
+import { recordOwnHeaderCoverRef } from '../sync/item-handlers/note-cover-sync'
 import { isCaseTwinOffFile, sharesCaseTwinFile } from './case-twin-shared-file'
 import {
   announceFolderMove,
@@ -818,6 +820,7 @@ async function writeNote(input: NoteUpdateInput, fed?: boolean): Promise<NoteUpd
     properties: newProperties,
     edited: frontmatterEdited
   } = nextNoteFrontmatter(existing, input, headerTags, headerTagChange)
+  if (own) assertOwnHeaderCoverEdit(input.id, newFrontmatter)
 
   let fileContent: string
   if (own) {
@@ -882,6 +885,9 @@ async function writeNote(input: NoteUpdateInput, fed?: boolean): Promise<NoteUpd
       )
     : null
 
+  if (own && syncResult) {
+    recordOwnHeaderCoverRef(dataDb, input.id, own.frontmatter, writtenFrontmatter)
+  }
   const tags = syncResult?.tags ?? existing.tags
   const tagsChanged =
     headerTagChange !== null ||

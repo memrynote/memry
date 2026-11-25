@@ -163,14 +163,24 @@ export function applyNoteCoverToFrontmatter(
  *   (`recordRebuiltNoteCover`). Its framing and credit lived only in the file,
  *   so while the file holds the bare ref the push leaves the cover out, and
  *   peers keep theirs. A build that predates this value reads it as no marker.
+ * - `ref-changed:<ref>`: a case twin off its shared file got image cover `ref`
+ *   from a local edit (`recordOwnHeaderCoverRef`). Its push sends the ref
+ *   alone (`offFileNoteCoverForPush`) until a peer's cover is applied. A build
+ *   that predates this value reads it as no marker.
  */
 type UnframedMarker = `unframed:${string}`
-type NoteCoverSyncMarker = 'present' | 'removal-pending' | UnframedMarker
+type RefChangedMarker = `ref-changed:${string}`
+type NoteCoverSyncMarker = 'present' | 'removal-pending' | UnframedMarker | RefChangedMarker
 
 const UNFRAMED_MARKER_PREFIX = 'unframed:'
+const REF_CHANGED_MARKER_PREFIX = 'ref-changed:'
 
 function isUnframedMarker(value: string): value is UnframedMarker {
   return value.startsWith(UNFRAMED_MARKER_PREFIX)
+}
+
+function isRefChangedMarker(value: string): value is RefChangedMarker {
+  return value.startsWith(REF_CHANGED_MARKER_PREFIX)
 }
 
 function readCoverMarker(db: DrizzleDb, noteId: string): NoteCoverSyncMarker | null {
@@ -180,7 +190,10 @@ function readCoverMarker(db: DrizzleDb, noteId: string): NoteCoverSyncMarker | n
     .where(eq(syncState.key, COVER_MARKER_KEY_PREFIX + noteId))
     .get()?.value
   if (value === undefined) return null
-  return value === 'present' || value === 'removal-pending' || isUnframedMarker(value)
+  return value === 'present' ||
+    value === 'removal-pending' ||
+    isUnframedMarker(value) ||
+    isRefChangedMarker(value)
     ? value
     : null
 }
@@ -224,6 +237,43 @@ export function noteCoverForPush(
   if (marker === null) return undefined
   writeCoverMarker(db, noteId, 'removal-pending')
   return null
+}
+
+/**
+ * The `cover` a push of a case twin off its shared file carries (`ownHeader`).
+ * Its image cover's framing and credit are not held here, so the cover is left
+ * out unless its ref changed here, and then it is the ref alone. A removal and
+ * any other cover go as for any note (`noteCoverForPush`).
+ */
+export function offFileNoteCoverForPush(
+  db: DrizzleDb,
+  noteId: string,
+  frontmatter: NoteFrontmatter
+): NoteCoverSync | null | undefined {
+  const ref = noteCoverFromFrontmatter(frontmatter)?.ref
+  if (ref === undefined || parseCoverValue(ref)?.kind !== 'image') {
+    return noteCoverForPush(db, noteId, frontmatter)
+  }
+  return readCoverMarker(db, noteId) === `${REF_CHANGED_MARKER_PREFIX}${ref}`
+    ? noteCoverFromFrontmatter({ [COVER_FRONTMATTER_KEY]: ref })
+    : undefined
+}
+
+/**
+ * After a local edit of a case twin off its shared file changed its image
+ * cover ref from `before` to `after`: its pushes send the new ref.
+ */
+export function recordOwnHeaderCoverRef(
+  db: DrizzleDb,
+  noteId: string,
+  before: NoteFrontmatter,
+  after: NoteFrontmatter
+): void {
+  const ref = noteCoverFromFrontmatter(after)?.ref
+  if (ref === undefined || ref === noteCoverFromFrontmatter(before)?.ref) return
+  if (parseCoverValue(ref)?.kind === 'image') {
+    writeCoverMarker(db, noteId, `${REF_CHANGED_MARKER_PREFIX}${ref}`)
+  }
 }
 
 /**

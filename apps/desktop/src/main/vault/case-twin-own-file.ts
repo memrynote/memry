@@ -7,12 +7,13 @@
  * @module vault/case-twin-own-file
  */
 
+import { isDeepStrictEqual } from 'node:util'
 import * as Y from 'yjs'
 import { getCrdtProvider } from '../sync/crdt-provider'
 import { readyWritebackConverter } from '../sync/converter-worker-bridge'
 import type { NoteBody } from '../sync/writing-markdown'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
-import { isCoverValue, parseCoverValue } from '@memry/shared/cover-image'
+import { COVER_FRONTMATTER_KEY, isCoverValue, parseCoverValue } from '@memry/shared/cover-image'
 import { toWritingFrontmatterValue, WRITING_FRONTMATTER_KEY } from '@memry/shared'
 import {
   getAliasesForNotes,
@@ -22,10 +23,7 @@ import {
 } from '@main/database/queries/notes'
 import { getNoteMetadataById } from '@memry/storage-data'
 import { applyRemoteFrontmatter } from '../sync/item-handlers/note-handler-frontmatter'
-import {
-  applyNoteCoverToFrontmatter,
-  noteCoverFromFrontmatter
-} from '../sync/item-handlers/note-cover-sync'
+import { noteCoverFromFrontmatter } from '../sync/item-handlers/note-cover-sync'
 import { getDatabase, type getIndexDatabase } from '../database'
 import { NoteError, NoteErrorCode } from '../lib/errors'
 import { generateContentHash, parseNote, serializeNote, type NoteFrontmatter } from './frontmatter'
@@ -132,45 +130,45 @@ type OwnBaseline = {
   pendingWriteHash?: string | null
 }
 
-/** A note's own header, and whether it holds its cover whole. */
-export interface OwnHeader {
-  frontmatter: NoteFrontmatter
-  /**
-   * False when the header has an image cover's ref without the framing and
-   * credit the note's own file gave it. A push then leaves the cover out, so
-   * peers keep theirs.
-   */
-  coverHeld: boolean
-}
-
 /**
  * A note's own header: rebuilt from its index rows, with the YAML types of its
- * own last header (`ownLastHeader`). The header a split writes, and the one a
- * push of the note sends.
+ * own last header (`ownLastHeader`). The header a split writes, a push of a
+ * twin off its shared file sends, and a local edit of that twin starts from.
  *
- * A push never sends a header value this device does not hold. A field whose
- * index rows hold less than the header did comes from the own last header, or
- * stays out of the push. Header tags, aliases and the cover ref are held whole
- * by their rows, and property types come from the own last header. An image
- * cover's framing and credit live only in the file: they come from the own
- * last header when its cover is the same ref, and otherwise `coverHeld` is
- * false, as for a file rebuilt with the bare ref (`recordRebuiltNoteCover`).
+ * Its rows hold header tags, aliases, properties and the cover ref whole. An
+ * image cover's framing and credit have no row, and the shared file holds the
+ * other twin's, so this device never holds them for the twin: a local edit
+ * that sets them is refused (`assertOwnHeaderCoverEdit`), its push leaves the
+ * cover out unless the ref changed here (`offFileNoteCoverForPush`), and a
+ * peer's cover applied to it is recorded as unframed
+ * (`recordRebuiltNoteCover`). The own last header never stands in for them:
+ * a peer's reframe does not reach it.
  */
 export function ownHeader(
   indexDb: ReturnType<typeof getIndexDatabase>,
   noteId: string,
   title: string,
   cached: OwnBaseline
-): OwnHeader {
+): NoteFrontmatter {
   const cover = isCoverValue(cached.cover) ? cached.cover : null
-  const last = ownLastHeader(indexDb, noteId, cached)
-  const frontmatter = indexedHeader(indexDb, noteId, title, cover, last)
-  if (cover === null || parseCoverValue(cover)?.kind !== 'image') {
-    return { frontmatter, coverHeld: true }
-  }
-  const lastCover = last ? noteCoverFromFrontmatter(last) : null
-  if (lastCover?.ref !== cover) return { frontmatter, coverHeld: false }
-  return { frontmatter: applyNoteCoverToFrontmatter(frontmatter, lastCover), coverHeld: true }
+  return indexedHeader(indexDb, noteId, title, cover, ownLastHeader(indexDb, noteId, cached))
+}
+
+/**
+ * Throws when a local edit of a twin off its shared file sets an image cover's
+ * framing or credit, which this device does not hold for it (`ownHeader`). A
+ * change or removal of the cover ref passes.
+ */
+export function assertOwnHeaderCoverEdit(noteId: string, edited: NoteFrontmatter): void {
+  const cover = noteCoverFromFrontmatter(edited)
+  if (cover === null || parseCoverValue(cover.ref)?.kind !== 'image') return
+  const bare = noteCoverFromFrontmatter({ [COVER_FRONTMATTER_KEY]: cover.ref })
+  if (isDeepStrictEqual(cover, bare)) return
+  throw new NoteError(
+    "This note shares its file with a note whose name differs only in case, so its cover's position and credit cannot be changed. Rename one of them, then edit the cover again; nothing was changed",
+    NoteErrorCode.WRITE_FAILED,
+    noteId
+  )
 }
 
 /** A note's own file: its prepared doc body under its own header (`ownHeader`). */
@@ -182,7 +180,7 @@ export function ownFile(
   prepared: PreparedBody
 ): OwnTwinFile & { cover: string | null } {
   const cover = isCoverValue(cached.cover) ? cached.cover : null
-  const header = ownHeader(indexDb, noteId, title, cached).frontmatter
+  const header = ownHeader(indexDb, noteId, title, cached)
   const writing = prepared.body ? toWritingFrontmatterValue(prepared.body.writing) : undefined
   if (writing) header[WRITING_FRONTMATTER_KEY] = writing
   const markdown = prepared.body?.markdown ?? ''

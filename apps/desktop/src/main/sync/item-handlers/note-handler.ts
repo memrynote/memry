@@ -108,7 +108,8 @@ import {
 import {
   applyNoteCoverToFrontmatter,
   clearNoteCoverMarker,
-  recordAppliedNoteCover
+  recordAppliedNoteCover,
+  recordRebuiltNoteCover
 } from './note-cover-sync'
 
 const log = createLogger('NoteHandler')
@@ -583,7 +584,8 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
       if (offFile) {
         writtenAliases = { kind: 'read', aliases: extractAliases(offFile.frontmatter, newTitle) }
         if (coverPresent) {
-          recordAppliedNoteCover(ctx.db, itemId, offFile.frontmatter)
+          // Its framing and credit are not held here (`ownHeader`).
+          recordRebuiltNoteCover(ctx.db, itemId, offFile.cover)
           updateFields.cover = offFile.cover
         }
       } else if ((!needsPathUpdate || movedTwinPath !== null) && rewritesFrontmatter) {

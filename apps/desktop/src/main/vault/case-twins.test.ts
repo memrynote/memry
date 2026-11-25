@@ -200,8 +200,8 @@ import { enqueueLocalSyncDelete } from '../sync/local-mutations'
 import { noteHandler } from '../sync/item-handlers/note-handler'
 import { mergeEntityProperties } from '../notes/entity-properties'
 import {
-  applyNoteCoverToFrontmatter,
   noteCoverForPush,
+  noteCoverFromFrontmatter,
   recordAppliedNoteCover
 } from '../sync/item-handlers/note-cover-sync'
 import type { NoteCoverSync } from '@memry/contracts/sync-payloads'
@@ -1985,35 +1985,99 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
     coverCredit: 'Jane',
     coverCreditUrl: 'https://example.com/jane'
   }
-  for (const [how, version, sentCover] of [
-    ['without a version of its own header leaves the cover out', false, undefined],
-    [
-      'with a version of its own header sends that framing',
-      true,
-      expect.objectContaining({ zoom: 2, credit: 'Jane' })
-    ]
+  const pushedCover = (): NoteCoverSync | undefined =>
+    JSON.parse(buildNotePushPayload('lower', 'update')!).cover
+  /** Lower's image cover twins, with a version of lower's own framed file when `version`. */
+  async function imageCoverTwins(version: boolean): Promise<void> {
+    await headerTwins('covers/low.png')
+    if (version) {
+      const own = serializeNote({ ...parseNote(LOWER_HEAD).frontmatter, ...FRAMED }, LOWER)
+      createSnapshot('lower', own, 'a', SnapshotReasons.CLOSE)
+      updateNoteCache(index.db, 'lower', { contentHash: generateContentHash(own) })
+    }
+    recordAppliedNoteCover(asClientDb(data.db), 'lower', { cover: 'covers/low.png' })
+  }
+  // FOLD-5753C: framing taken from a version of lower's own file went stale
+  // once a peer reframed the cover, so the rule is that an off-file twin's
+  // framing and credit are never held: its push leaves the cover out.
+  for (const [how, version] of [
+    ['without a version of its own header', false],
+    ['with a version of its own header', true]
   ] as const) {
-    it(`a push of the twin off the shared file ${how}`, async () => {
-      await headerTwins('covers/low.png')
-      if (version) {
-        const own = serializeNote({ ...parseNote(LOWER_HEAD).frontmatter, ...FRAMED }, LOWER)
-        createSnapshot('lower', own, 'a', SnapshotReasons.CLOSE)
-        updateNoteCache(index.db, 'lower', { contentHash: generateContentHash(own) })
-      }
-      recordAppliedNoteCover(asClientDb(data.db), 'lower', { cover: 'covers/low.png' })
+    it(`a push of the twin off the shared file ${how} leaves the cover out`, async () => {
+      await imageCoverTwins(version)
       await updateNoteCommand({ id: 'lower', headerTags: { add: ['newtag'] } })
       await flushProjectionEvents()
 
       const pushed = JSON.parse(buildNotePushPayload('lower', 'update')!)
-      const peer = (cover: NoteCoverSync | undefined) =>
-        cover === undefined ? FRAMED : applyNoteCoverToFrontmatter(FRAMED, cover)
-      expect({ tags: pushed.tags, cover: pushed.cover, peer: peer(pushed.cover) }).toEqual({
+      expect({ tags: pushed.tags, cover: pushed.cover }).toEqual({
         tags: ['lowertag', 'newtag'],
-        cover: sentCover,
-        peer: FRAMED
+        cover: undefined
       })
     }, 30_000)
   }
+
+  // VERIFY-5753R3 (1): a peer reframed lower's cover, keeping the ref. The
+  // version of lower's own file still held the old framing, so a local tag
+  // edit pushed it over the peer's.
+  it("a peer's reframe of the twin off the shared file survives its next local edit", async () => {
+    await imageCoverTwins(true)
+    const reframed = {
+      ref: 'covers/low.png',
+      focusX: 70,
+      zoom: 3,
+      height: 300,
+      credit: 'Bob'
+    }
+    await vi.waitFor(() =>
+      expect(
+        noteHandler.applyUpsert(
+          { db: asClientDb(data.db), emit: vi.fn() },
+          'lower',
+          {
+            title: 'a',
+            folderPath: path.posix.dirname(pathOf('lower')!),
+            cover: reframed,
+            modifiedAt: '2026-02-01T00:00:00.000Z'
+          },
+          { peer: 1 }
+        )
+      ).toBe('applied')
+    )
+    await updateNoteCommand({ id: 'lower', headerTags: { add: ['newtag'] } })
+    await flushProjectionEvents()
+
+    expect(pushedCover()).toBeUndefined()
+  }, 30_000)
+
+  // VERIFY-5753R3 (2): a local reframe of lower returned success, but no row
+  // stores framing, so the push sent the old framing and the edit was gone.
+  it('a local reframe or credit edit of the twin off the shared file is refused and changes nothing', async () => {
+    await imageCoverTwins(true)
+
+    await expect(
+      updateNoteCommand({ id: 'lower', frontmatter: { coverZoom: 3, coverCredit: 'Bob' } })
+    ).rejects.toThrow(NoteError)
+
+    expect({
+      file: shared(),
+      cover: getNoteCacheById(index.db, 'lower')?.cover,
+      push: pushedCover()
+    }).toEqual({ file: UPPER_HEAD + UPPER, cover: 'covers/low.png', push: undefined })
+  }, 30_000)
+
+  it('a local cover change of the twin off the shared file pushes the new ref alone until a peer frames it', async () => {
+    await imageCoverTwins(true)
+
+    await updateNoteCommand({ id: 'lower', frontmatter: { cover: 'covers/new.png' } })
+    await flushProjectionEvents()
+    const bare = noteCoverFromFrontmatter({ cover: 'covers/new.png' })
+    // A retry rebuilds the payload: it still carries the change.
+    expect([pushedCover(), pushedCover()]).toEqual([bare, bare])
+
+    await updateNoteCommand({ id: 'lower', frontmatter: { cover: null } })
+    expect(pushedCover()).toBeNull()
+  }, 30_000)
 
   // REVIEW-5753: the off-file edit wrote the patch's wire value, so a date
   // came out of the split as a quoted string.
