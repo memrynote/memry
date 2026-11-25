@@ -238,6 +238,27 @@ impl PullLoop {
             .await?)
     }
 
+    /// A first sync, before its first page: on a device with no record cursor
+    /// yet, records today's declaration and the repair `done`, as
+    /// [`PullLoop::run`] would. A first sync reads the feed outside `run`, and
+    /// without these the next pass read it all again (#5840). A refs page that
+    /// later reopens the repair still does so. Desktop records `done` at the
+    /// same moment (`full-sync-runner.ts`, `LAST_CURSOR == null`).
+    pub(super) async fn claim_fresh_feed(&self) -> Result<(), PullError> {
+        let current = self.declaration.header_value();
+        Ok(self
+            .db
+            .call(move |conn| {
+                if store::read_cursor(conn, RECORD_CURSOR_SCOPE)?.is_some() {
+                    return Ok(());
+                }
+                let now = now_ms();
+                feed_restart::restart_on_new_declaration(conn, &current, now)?;
+                feed_restart::begin_cursor_skip_repair(conn, now).map(|_| ())
+            })
+            .await?)
+    }
+
     /// One page: refs, bodies, apply, advance.
     pub async fn pull_page(&self) -> Result<PullReport, PullError> {
         self.page(false).await
