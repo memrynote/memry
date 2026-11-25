@@ -132,7 +132,8 @@ impl Db {
     /// that takes the connection in turns (the search reindex, #5842) lets
     /// them go first: a mutex just let go of is not handed to a waiter, so the
     /// job would otherwise take it straight back.
-    pub(crate) fn waiting(&self) -> usize {
+    #[doc(hidden)]
+    pub fn waiting(&self) -> usize {
         self.conn.waiting.load(Ordering::SeqCst)
     }
 }

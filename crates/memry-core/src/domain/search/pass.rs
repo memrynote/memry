@@ -14,9 +14,9 @@
 //! **The catch-up.** Once the list is drained, a step lists again from the
 //! same watermarks and indexes again every id that is new to the pass or whose
 //! stamps differ from the ones its batch read. Only the stamps are compared,
-//! never a clock: a writer may take its stamp before it takes `data.db` (a
-//! sync page does), so a row landing after a batch can carry a stamp older than
-//! that batch's read. An id with a row that has no stamp (`synced_at` NULL)
+//! never a clock: writers take their stamp inside the `data.db` hold that
+//! writes the row (#5849), but a wall clock can step back, so a row landing
+//! after a batch can still carry a stamp older than that batch's read. An id with a row that has no stamp (`synced_at` NULL)
 //! cannot say whether it moved, so the last listing indexes it again.
 //!
 //! **The last step.** It is the step whose listing finds at most `batch`

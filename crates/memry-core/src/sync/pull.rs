@@ -338,7 +338,6 @@ impl PullLoop {
         // Only a loop that lands bodies owes them: its caller is the one that
         // settles the debts (#2297 review A-7).
         let owe_bodies = self.bodies.is_some();
-        let now = now_ms();
         let clock_device = self.clock_device.clone();
         let advanced = page.next_cursor.clone().or(cursor);
         let stored = advanced.clone();
@@ -347,6 +346,10 @@ impl PullLoop {
         let (outcomes, advanced_documents) = self
             .db
             .call(move |conn| {
+                // #5849: stamped inside the hold that writes the rows, so no
+                // search watermark written while this page waited for the
+                // lock can pass them.
+                let now = now_ms();
                 let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
                 let totals = apply_items(&txn, pending, owe_bodies, now, clock_device.as_deref())?;
                 still_open(&txn)?;
