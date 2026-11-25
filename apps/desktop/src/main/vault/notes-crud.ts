@@ -1027,10 +1027,9 @@ async function moveFolder(oldPath: string, newPath: string): Promise<FolderMoved
   assertFolderRenameKeepsCaseTwins(oldPath)
   const notesDir = getVaultRoot()
   const oldAbsPath = path.join(notesDir, oldPath)
-  const newAbsPath = path.join(notesDir, newPath)
 
   try {
-    await moveDirectory(oldAbsPath, newAbsPath)
+    await moveDirectory(notesDir, oldPath, newPath)
   } catch (error) {
     // The folder was already moved or deleted on disk (another window, sync, a
     // file manager) before the sidebar caught up. The rename still fails for the
