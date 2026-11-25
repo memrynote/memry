@@ -398,8 +398,9 @@ impl NoteIdentity for NotesIdentity {
             }
         };
         let adopted = adopted.map_err(|error| IdentityError::Other(error.to_string()))?;
+        let matched = matches!(adopted, Adopted::Existing(_)).then_some(file.modified_ms);
         if let Adopted::Created(id) | Adopted::Existing(id) = &adopted {
-            aliases::found(&writer, id, text);
+            aliases::found(&writer, id, text, matched);
             properties::found(&writer, ctx, self.store.clone(), id, text)?;
         }
         Ok(self.adoption(adopted, ctx.root, file.path))

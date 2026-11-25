@@ -30,12 +30,18 @@ fn of_file(file: &NoteFile) -> Option<Vec<String>> {
 /// The tier first named the file of the note or day `id`: its record takes the file's
 /// `aliases`, as desktop's indexer gives a found file's record (`syncNoteToCache`). A file that
 /// declares none, or whose frontmatter does not read, takes nothing from the record: a record
-/// the file matched (`Adopted::Existing`) keeps the names it holds.
-pub(super) fn found(writer: &NotesWriter, id: &str, file: &NoteFile) {
+/// the file matched (`Adopted::Existing`) keeps the names it holds. `matched` is that file's
+/// modification time when it matched a record: a record modified after it keeps its names too
+/// ([`NotesWriter::matched_file_aliases`]).
+pub(super) fn found(writer: &NotesWriter, id: &str, file: &NoteFile, matched: Option<i64>) {
     let Some(names) = of_file(file).filter(|names| !names.is_empty()) else {
         return;
     };
-    match writer.file_aliases(id, &names) {
+    let taken = match matched {
+        Some(file_modified_ms) => writer.matched_file_aliases(id, &names, file_modified_ms),
+        None => writer.file_aliases(id, &names),
+    };
+    match taken {
         Ok(true) => {}
         Ok(false) => tracing::warn!(
             scope = SCOPE,

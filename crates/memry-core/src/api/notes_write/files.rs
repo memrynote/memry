@@ -418,6 +418,28 @@ impl NotesWriter {
         })
     }
 
+    /// A first-named file whose modification time is `file_modified_ms` matched the record `id`
+    /// (`Adopted::Existing`): the record takes its aliases unless the record is the newer
+    /// ([`notes::take_matched_file_aliases`]). `false` when no live note or day has that id.
+    pub fn matched_file_aliases(
+        &self,
+        id: &str,
+        aliases: &[String],
+        file_modified_ms: i64,
+    ) -> Result<bool, StorageError> {
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            notes::take_matched_file_aliases(
+                conn,
+                id,
+                aliases,
+                file_modified_ms,
+                &device_id,
+                now_ms(),
+            )
+        })
+    }
+
     /// An in-app edit wrote this cover into the note's file, `None` for none: the record's
     /// `cover` takes it ([`notes::take_file_cover`]). `false` when no live note has that id.
     pub fn file_cover(&self, id: &str, cover: Option<Object>) -> Result<bool, StorageError> {

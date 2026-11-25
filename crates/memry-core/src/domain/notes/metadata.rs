@@ -269,6 +269,41 @@ pub fn take_file_aliases(
     Ok(true)
 }
 
+/// A file first named matched the note or journal day `id`, a record no row named
+/// (`Adopted::Existing`): it takes the file's aliases ([`take_file_aliases`]) unless its
+/// `modifiedAt` is later than the file's `file_modified_ms`, when the record's list is the newer
+/// one and stays. `false` when no live note or day has that id.
+pub fn take_matched_file_aliases(
+    conn: &Connection,
+    id: &str,
+    aliases: &[String],
+    file_modified_ms: i64,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<bool, StorageError> {
+    let row = match sync_items::load(conn, ITEM_TYPE, id)? {
+        Some(row) => Some(row),
+        None => sync_items::load(conn, crate::domain::journal::ITEM_TYPE, id)?,
+    };
+    let Some(row) = row.filter(|row| row.deleted_at.is_none()) else {
+        return Ok(false);
+    };
+    let modified_ms = row
+        .payload
+        .as_deref()
+        .and_then(|payload| serde_json::from_str::<Value>(payload).ok())
+        .and_then(|payload| {
+            payload
+                .get("modifiedAt")
+                .and_then(Value::as_str)
+                .and_then(instants::to_epoch_ms)
+        });
+    if modified_ms.is_some_and(|modified_ms| modified_ms > file_modified_ms) {
+        return Ok(true);
+    }
+    take_file_aliases(conn, id, aliases, device_id, now_ms)
+}
+
 /// Desktop's per-note width override: the frontmatter key `fullWidth`, which
 /// desktop writes as a boolean (`apps/desktop/src/renderer/src/pages/note.tsx`).
 /// It is not a reserved key there, so it travels as a user property in the

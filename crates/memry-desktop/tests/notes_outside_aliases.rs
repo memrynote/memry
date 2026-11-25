@@ -3,11 +3,14 @@
 //! file's list whole, as desktop's watcher does (`extractAliases`, `vault/note-sync.ts` and
 //! `vault/journal.ts`), so the next push carries it and a pull of that record keeps it.
 
+use memry_core::markdown::shared::markdown_class::NOTE_MAX_BYTES;
+use memry_core::storage::repositories::sync_items::{self, InboundRecord};
 use memry_desktop::notes::create::NewNoteFile;
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::service::NotesService;
 use memry_desktop::vault::consumer::Applied;
 
+use crate::index_support::until;
 use crate::notes_outside_tags::{clear_outbox, edited_outside, opened, upserts};
 use crate::vault_env::{Env, QUIET, env, indexed};
 
@@ -160,4 +163,75 @@ fn an_outside_edit_of_a_days_aliases_reaches_its_record() {
     );
     assert_eq!(record_aliases(&e, "journal", &id), ["River day"]);
     assert_eq!(upserts(&e, &id), 1);
+}
+
+/// A large-file class file first named gives its record its aliases (#5423), and the record
+/// takes the file's list again when the file shrinks out of the class.
+#[test]
+fn a_large_file_first_named_gives_its_record_its_aliases() {
+    let (mut e, _store) = opened();
+    e.watcher_live();
+    let big = "word\n\n".repeat(NOTE_MAX_BYTES / 6 + 1);
+    e.write("Dump.md", &format!("---\naliases: [Heap]\n---\n{big}"));
+    e.facts_until(|f| matches!(f, Applied::Added { path, .. } if path == "Dump.md"));
+    let id = id_at(&e, "Dump.md");
+    assert_eq!(record_aliases(&e, "note", &id), ["Heap"]);
+
+    e.write("Dump.md", "---\naliases: [Small]\n---\nSmall now\n");
+    until("the shrunk file's aliases reach the record", || {
+        record_aliases(&e, "note", &id) == ["Small"]
+    });
+}
+
+/// A pulled note no row names, whose body the file matches (`Adopted::Existing`), with
+/// `aliases` and a `modifiedAt`.
+fn pulled_plan(e: &Env, aliases: &[&str], modified_at: &str) {
+    let record = InboundRecord {
+        item_type: "note".to_owned(),
+        item_id: "pulled".to_owned(),
+        payload_json: serde_json::json!({
+            "title": "Plan",
+            "content": "Body\n",
+            "fileType": "markdown",
+            "folderPath": null,
+            "aliases": aliases,
+            "clock": {"device-b": 1},
+            "createdAt": "2025-01-01T00:00:00.000Z",
+            "modifiedAt": modified_at,
+        })
+        .to_string(),
+        server_cursor: Some(1),
+        signer_device_id: Some("device-b".to_owned()),
+        updated_at: 1_760_000_000_000,
+        deleted_at: None,
+    };
+    e.core()
+        .db_handle()
+        .call_blocking(move |conn| {
+            sync_items::apply_remote(conn, &record, 1_760_000_000_000).map(drop)
+        })
+        .unwrap();
+}
+
+/// A file that matches a record no row names gives it its aliases only when the record is not
+/// the newer: a record modified after the file keeps its own (#5423).
+#[test]
+fn a_matched_record_newer_than_its_file_keeps_its_aliases() {
+    for (modified_at, kept) in [
+        ("2999-01-01T00:00:00.000Z", "Newer"),
+        ("2001-01-01T00:00:00.000Z", "Older"),
+    ] {
+        let (mut e, _store) = opened();
+        e.watcher_live();
+        pulled_plan(&e, &[kept], modified_at);
+        e.write("Plan.md", "---\naliases: [FromFile]\n---\nBody\n");
+        e.facts_until(|f| matches!(f, Applied::Added { path, .. } if path == "Plan.md"));
+        assert_eq!(id_at(&e, "Plan.md"), "pulled");
+        let expected = if kept == "Newer" { kept } else { "FromFile" };
+        assert_eq!(
+            record_aliases(&e, "note", "pulled"),
+            [expected],
+            "{modified_at}"
+        );
+    }
 }
