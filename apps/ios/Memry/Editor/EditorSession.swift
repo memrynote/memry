@@ -8,6 +8,7 @@
 //  through `NotePageContent` without either owning a toolbar of its own.
 //
 
+import Combine
 import MemryCore
 import Observation
 import SwiftUI
@@ -203,7 +204,7 @@ final class EditorSession {
     // `nonisolated(unsafe)`: written once in `init`, read only by `deinit`,
     // which runs after the last reference is gone.
     @ObservationIgnored private nonisolated(unsafe) var keyboardObserver: NSObjectProtocol?
-    @ObservationIgnored private nonisolated(unsafe) var resignObserver: NSObjectProtocol?
+    @ObservationIgnored private var leaving: AnyCancellable?
     /// Background tasks held until their resign's writes land. Each resign
     /// ends only its own, so a later resign's write stays protected.
     @ObservationIgnored private var heldTasks: Set<UIBackgroundTaskIdentifier> = []
@@ -215,7 +216,9 @@ final class EditorSession {
         UIApplication.shared.endBackgroundTask($0)
     }
 
-    init() {
+    /// `notifications`: the center the lifecycle notifications are posted
+    /// to, a seam for tests: the app-wide one reaches every suite's editors.
+    init(notifications: NotificationCenter = .default) {
         keyboardObserver = NotificationCenter.default.addObserver(
             forName: UIResponder.keyboardWillShowNotification, object: nil, queue: .main
         ) { [weak self] note in
@@ -239,16 +242,16 @@ final class EditorSession {
         // committed as the app stops being active. Entering the background is
         // too late: a kill within a second of going home beats it, and
         // swiping straight into the switcher never backgrounds the app.
-        resignObserver = NotificationCenter.default.addObserver(
-            forName: UIApplication.willResignActiveNotification, object: nil, queue: .main
-        ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.commitBeforeLeaving() }
-        }
+        // The block's own iPad window resigning counts too (#5820).
+        leaving = SceneLeaving.publisher(
+            of: { [weak self] in self?.field?.textView.window?.windowScene }, center: notifications
+        )
+            .filter { $0 == .resign }
+            .sink { [weak self] _ in MainActor.assumeIsolated { self?.commitBeforeLeaving() } }
     }
 
     deinit {
         if let keyboardObserver { NotificationCenter.default.removeObserver(keyboardObserver) }
-        if let resignObserver { NotificationCenter.default.removeObserver(resignObserver) }
     }
 
     /// Commits the focused block's typing, and holds a background task until
