@@ -8,7 +8,7 @@ import {
   holdsCaseTwinForeignBytes,
   markCaseTwinForeignBytes
 } from '../../vault/case-twin-bytes'
-import { sharesCaseTwinFile } from '../../vault/case-twin-file'
+import { sharesCaseTwinFile } from '../../vault/case-twin-shared-file'
 import { getVaultRoot, toAbsolutePath } from '../../vault/notes'
 
 interface BinaryNote {

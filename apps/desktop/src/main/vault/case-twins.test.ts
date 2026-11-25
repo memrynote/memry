@@ -26,6 +26,7 @@ import {
   getInboundLinkSourceIds,
   getNoteCacheById,
   getNoteFileProperties,
+  getNoteHeaderTags,
   getNoteProperties,
   getNoteSnapshots,
   getNoteTags,
@@ -190,6 +191,8 @@ import {
   updateNoteCommand
 } from '../notes/domain'
 import { editNoteAliasesCommand } from '../notes/note-aliases'
+import { buildNotePushPayload } from '../sync/item-handlers/note-handler-sync-helpers'
+import { renameTagEverywhere } from '../tags/rename-tag'
 import { atomicWrite, safeRead, setVaultFileWriteGuard } from './file-ops'
 import { moveDirectory } from './move-directory'
 import { readyWritebackConverter } from '../sync/converter-worker-bridge'
@@ -1933,6 +1936,77 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
       /^---\ntags:\n {2}- lowertag\n {2}- newtag\nstatus: mid\ncover: 'wash:moss'\naliases:\n {2}- lowalias\n {2}- newalias\n---\n[\s\S]*lower \[\[x\]\] #lowertag #lowinline\n$/
     )
     expect(await survivorKeepsOwn('upper')).toEqual([])
+  }, 30_000)
+
+  // REVIEW-5753: the push read tags and aliases from the shared file, which
+  // holds upper's header, so a peer gave lower upper's tags and aliases.
+  it("a push of the twin off the shared file sends its own header, never the file's", async () => {
+    await headerTwins()
+    await updateNoteCommand({ id: 'lower', headerTags: { add: ['newtag'] } })
+    await editNoteAliasesCommand({ id: 'lower', add: ['newalias'], remove: [] })
+    await flushProjectionEvents()
+
+    const pushed = (operation: string) => {
+      const payload = JSON.parse(buildNotePushPayload('lower', operation)!)
+      return {
+        content: payload.content,
+        tags: payload.tags,
+        aliases: payload.aliases,
+        properties: payload.properties,
+        cover: payload.cover?.ref
+      }
+    }
+    const own = {
+      content: null,
+      tags: ['lowertag', 'newtag'],
+      aliases: ['lowalias', 'newalias'],
+      properties: { status: 'low' },
+      cover: 'wash:sage'
+    }
+    expect({ update: pushed('update'), create: pushed('create') }).toEqual({
+      update: own,
+      create: own
+    })
+  }, 30_000)
+
+  // REVIEW-5753: the off-file edit wrote the patch's wire value, so a date
+  // came out of the split as a quoted string.
+  it('a UI date merge on the twin off the shared file then a split keeps a date', async () => {
+    const header = await splitAfter(() => mergeEntityProperties('lower', { when: '2026-03-04' }))
+
+    expect(header).toEqual({ ...mixed(), when: new Date('2026-03-04T00:00:00.000Z') })
+  }, 30_000)
+
+  // REVIEW-5753: with no doc loaded, the rename rewrote the shared file's
+  // body, upper's, as lower's, and lower's own body kept the old tag.
+  it('a tag rename of the twin off the shared file with no loaded doc renames its header and own body only', async () => {
+    await headerTwins()
+    const lowerDoc = await docOf(LOWER_TAGGED)
+    docs.set('lower', lowerDoc)
+    setNoteTags(index.db, 'lower', { header: ['lowertag'], inline: ['lowertag', 'lowinline'] })
+    vi.spyOn(getCrdtProvider(), 'getDoc').mockImplementation((id) =>
+      id === 'lower' ? undefined : (docs.get(id) as Y.Doc | undefined)
+    )
+
+    const result = await renameTagEverywhere(index.db, asClientDb(data.db), {
+      from: 'lowertag',
+      to: 'renamed',
+      runId: 'r'
+    })
+    await flushProjectionEvents()
+
+    const body = JSON.stringify(lowerDoc.getXmlFragment('prosemirror').toJSON())
+    expect({
+      result,
+      file: shared(),
+      header: getNoteHeaderTags(index.db, 'lower'),
+      body: { renamed: body.includes('renamed'), old: body.includes('lowertag') }
+    }).toEqual({
+      result: { notesWritten: 1, failedNoteIds: [], bodySkipped: false },
+      file: UPPER_HEAD + UPPER,
+      header: ['renamed'],
+      body: { renamed: true, old: false }
+    })
   }, 30_000)
 
   it('a body edit of the twin off the shared file is refused and changes nothing', async () => {

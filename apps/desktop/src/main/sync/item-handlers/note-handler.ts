@@ -89,9 +89,9 @@ import {
   askForCaseTwinOwnBytes,
   planBinaryCaseTwinMove,
   planCaseTwinLeave,
-  planCaseTwinMove,
-  sharesCaseTwinFile
+  planCaseTwinMove
 } from '../../vault/case-twin-file'
+import { sharesCaseTwinFile } from '../../vault/case-twin-shared-file'
 import { updateCaseTwinOffFile } from '../../vault/case-twin-off-file'
 import {
   healBinaryNoteRecord,

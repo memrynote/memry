@@ -27,10 +27,10 @@ import { syncNoteToCache, deleteNoteFromCache } from './note-sync'
 import {
   assertFolderDeleteKeepsCaseTwins,
   assertFolderRenameKeepsCaseTwins,
-  deleteCaseTwin,
-  sharesCaseTwinFile
+  deleteCaseTwin
 } from './case-twin-file'
-import { caseTwinOwnFile, isCaseTwinOffFile } from './case-twin-off-file'
+import { caseTwinOwnFile } from './case-twin-off-file'
+import { isCaseTwinOffFile, sharesCaseTwinFile } from './case-twin-shared-file'
 import {
   announceFolderMove,
   moveFolderHoldingWritebacks,
@@ -821,7 +821,9 @@ async function writeNote(input: NoteUpdateInput, fed?: boolean): Promise<NoteUpd
 
   let fileContent: string
   if (own) {
-    fileContent = serializeNote(newFrontmatter, own.markdown)
+    fileContent = serializeUpdatedNote(parseNote(own.content), newFrontmatter, own.markdown, {
+      frontmatterEdited
+    })
   } else if (currentRaw === null) {
     fileContent = serializeNote(newFrontmatter, newContent)
   } else {

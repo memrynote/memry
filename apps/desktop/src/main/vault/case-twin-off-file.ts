@@ -23,13 +23,11 @@ import {
   type RemoteFrontmatterPatch
 } from '../sync/item-handlers/note-handler-frontmatter'
 import { getIndexDatabase } from '../database'
-import { readVaultFileSync } from '../lib/paths'
 import { createLogger } from '../lib/logger'
 import { trackMainError } from '../telemetry/diagnostics'
-import { sharesCaseTwinFile } from './case-twin-file'
+import { isCaseTwinOffFile } from './case-twin-shared-file'
 import {
   convertBody,
-  holdsOwnBytes,
   indexedHeader,
   ownFile,
   sameStateVector,
@@ -93,22 +91,6 @@ export function updateCaseTwinOffFile(
     cover: isCoverValue(patchedCover) ? patchedCover : null,
     tags: tags && { header: tags, inline: ownInlineTags(indexDb, noteId) }
   }
-}
-
-/**
- * Whether note `noteId` shares its file with a case twin and the bytes there
- * are not its own: patching them would put the other twin's body under this
- * note's header.
- */
-export function isCaseTwinOffFile(
-  vaultPath: string,
-  relativePath: string,
-  noteId: string
-): boolean {
-  if (!sharesCaseTwinFile(vaultPath, relativePath)) return false
-  const cached = getNoteCacheById(getIndexDatabase(), noteId)
-  const raw = readVaultFileSync(vaultPath, relativePath)
-  return raw === null || !cached || !holdsOwnBytes(raw, cached)
 }
 
 /**

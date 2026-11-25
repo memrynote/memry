@@ -4,9 +4,6 @@ import type { SyncQueueManager } from '@memry/sync-client/queue'
 import { nextLocalClock } from '@memry/sync-client/tombstone-clocks'
 import { extractFolderFromPath } from '../note-sync'
 import { seedSkipsDeletedNote } from '../pending-deletes'
-import { getVaultRoot } from '../../vault/notes'
-import { readVaultFileSync } from '../../lib/paths'
-import { parseNote } from '../../vault/frontmatter'
 import { readNoteFileFields } from '../note-file-fields'
 import { getDatabase, getIndexDatabase } from '../../database/client'
 import { createLogger } from '../../lib/logger'
@@ -94,13 +91,7 @@ export function buildNotePushPayload(itemId: string, operation: string): string 
 export function settlePushedNoteCover(db: DrizzleDb, itemId: string): void {
   settleNoteCoverRemoval(db, itemId, () => {
     const cached = getNoteMetadataById(db, itemId)
-    if (!cached) return null
-    try {
-      const raw = readVaultFileSync(getVaultRoot(), cached.path)
-      return raw === null ? null : parseNote(raw).frontmatter
-    } catch {
-      return null
-    }
+    return cached ? readNoteFileFields(cached, 'update').frontmatter : null
   })
 }
 

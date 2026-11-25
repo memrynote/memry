@@ -122,29 +122,37 @@ function ownLastHeader(
   return version ? parseNote(version.fileContent).frontmatter : undefined
 }
 
+type OwnBaseline = {
+  cover?: string | null
+  contentHash?: string | null
+  pendingWriteHash?: string | null
+}
+
 /**
- * A note's own file: its prepared doc body under a header rebuilt from its
- * index rows, with the YAML types of its own last header (`ownLastHeader`).
+ * A note's own header: rebuilt from its index rows, with the YAML types of its
+ * own last header (`ownLastHeader`). The header a split writes, and the one a
+ * push of the note sends.
  */
+export function ownHeader(
+  indexDb: ReturnType<typeof getIndexDatabase>,
+  noteId: string,
+  title: string,
+  cached: OwnBaseline
+): NoteFrontmatter {
+  const cover = isCoverValue(cached.cover) ? cached.cover : null
+  return indexedHeader(indexDb, noteId, title, cover, ownLastHeader(indexDb, noteId, cached))
+}
+
+/** A note's own file: its prepared doc body under its own header (`ownHeader`). */
 export function ownFile(
   indexDb: ReturnType<typeof getIndexDatabase>,
   noteId: string,
   title: string,
-  cached: {
-    cover?: string | null
-    contentHash?: string | null
-    pendingWriteHash?: string | null
-  },
+  cached: OwnBaseline,
   prepared: PreparedBody
 ): OwnTwinFile & { cover: string | null } {
   const cover = isCoverValue(cached.cover) ? cached.cover : null
-  const header = indexedHeader(
-    indexDb,
-    noteId,
-    title,
-    cover,
-    ownLastHeader(indexDb, noteId, cached)
-  )
+  const header = ownHeader(indexDb, noteId, title, cached)
   const writing = prepared.body ? toWritingFrontmatterValue(prepared.body.writing) : undefined
   if (writing) header[WRITING_FRONTMATTER_KEY] = writing
   const markdown = prepared.body?.markdown ?? ''
