@@ -4,6 +4,12 @@
 
 use std::sync::atomic::Ordering;
 
+use memry_core::domain::journal;
+use memry_core::storage::repositories::sync_items;
+use memry_core::sync::apply::apply_pulled_delete;
+use memry_core::sync::clock::{ClockOrder, VectorClock, compare};
+use memry_core::sync::outbox;
+
 use super::*;
 
 fn told(f: &Fixture) -> Vec<(String, String)> {
@@ -138,4 +144,140 @@ fn a_fed_outside_edit_and_an_own_write_are_not_recorded_for_the_write_back() {
     own.wrote(&id, &content_hash(saved), ChangeSource::Save, None);
     assert_eq!(f.changed(&id, "a.md"), Step::Done);
     assert!(!own.is_outside(&id, &content_hash(saved)));
+}
+
+const DAY: &str = "journal/2025-01-17.md";
+const SEEN: &str = "---\ntags: [work]\n---\nMorning pages.\n";
+const EDITED: &str = "---\ntags: [work, idea]\n---\nMorning pages.\n\nWritten while closed.\n";
+
+/// A journal day the app read and pushed, its file then edited (body and tags) while the app
+/// was closed: the fixture over the real notes identity, the day's id and the clock it pushed.
+fn closed_app_day() -> (Fixture, String, VectorClock) {
+    let mut f = fixture();
+    let identity = crate::notes::identity::NotesIdentity::new(f.store.clone());
+    f.applier = applier(&f.root, &f.vault, &f.store, &f.rows, identity);
+    f.write(DAY, SEEN);
+    assert_eq!(f.walked(DAY), Step::Done);
+    let id = only_note(&f, DAY);
+    f.vault
+        .db_handle()
+        .call_blocking(|conn| {
+            let ids: Vec<i64> = conn
+                .prepare("SELECT id FROM outbox")
+                .unwrap()
+                .query_map([], |row| row.get(0))
+                .unwrap()
+                .collect::<Result<_, _>>()
+                .unwrap();
+            outbox::ack(conn, &ids).unwrap();
+            Ok(())
+        })
+        .unwrap();
+    let pushed = day_record(&f, &id).0;
+    f.write(DAY, EDITED);
+    (f, id, pushed)
+}
+
+/// The day's record clock and what the outbox holds for it.
+fn day_record(f: &Fixture, id: &str) -> (VectorClock, Vec<String>) {
+    let id = id.to_owned();
+    f.vault
+        .db_handle()
+        .call_blocking(move |conn| {
+            let row = sync_items::load(conn, journal::ITEM_TYPE, &id)?.expect("the day's record");
+            let clock = serde_json::from_str(&row.clock.expect("a clock")).unwrap();
+            let ops = conn
+                .prepare("SELECT op FROM outbox WHERE item_id = ?1 ORDER BY id")
+                .unwrap()
+                .query_map([&id], |row| row.get(0))
+                .unwrap()
+                .collect::<Result<_, _>>()
+                .unwrap();
+            Ok((clock, ops))
+        })
+        .unwrap()
+}
+
+/// A peer that saw the day as pushed deletes it an hour later: its clock is the pushed one and
+/// its own tick, and its stamp is past every slack the keep rule gives a recent local edit.
+fn peer_deletes(f: &Fixture, id: &str, pushed: &VectorClock) {
+    let hour_later = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_millis() as i64
+        + 3_600_000;
+    let mut clock = pushed.clone();
+    clock.insert("peer".into(), 1);
+    let device = pushed.keys().next().expect("this device's tick").clone();
+    let (id, root) = (id.to_owned(), f.root.clone());
+    f.vault
+        .db_handle()
+        .call_blocking(move |conn| {
+            apply_pulled_delete(
+                conn,
+                journal::ITEM_TYPE,
+                &id,
+                hour_later,
+                &clock,
+                hour_later,
+                &device,
+                &root,
+            )
+        })
+        .unwrap();
+}
+
+fn kept_texts(f: &Fixture) -> Vec<String> {
+    f.vault
+        .db_handle()
+        .call_blocking(|conn| {
+            Ok(conn
+                .prepare("SELECT content FROM inbox_items")
+                .unwrap()
+                .query_map([], |row| row.get(0))
+                .unwrap()
+                .collect::<Result<_, _>>()
+                .unwrap())
+        })
+        .unwrap()
+}
+
+/// #5758: a day edited while the app was closed is told to its record by the open walk, which
+/// ticks the day's clock and queues it, tags and all, so a peer's concurrent delete still wins
+/// but keeps the edited text as an inbox copy.
+#[test]
+fn a_closed_app_journal_edit_ticks_the_day_and_a_concurrent_delete_keeps_its_text() {
+    let (f, id, pushed) = closed_app_day();
+    assert_eq!(f.walked(DAY), Step::Done);
+    let (clock, ops) = day_record(&f, &id);
+    assert_eq!(
+        compare(&clock, &pushed),
+        ClockOrder::After,
+        "the edit ticks the day"
+    );
+    assert!(
+        ops.iter().any(|op| op == "upsert"),
+        "the record is queued: {ops:?}"
+    );
+    assert!(
+        ops.iter().any(|op| op == "crdt-update"),
+        "the body is queued: {ops:?}"
+    );
+
+    peer_deletes(&f, &id, &pushed);
+    let kept = kept_texts(&f);
+    assert_eq!(kept.len(), 1, "one inbox copy: {kept:?}");
+    assert!(kept[0].contains("Written while closed."), "{kept:?}");
+}
+
+/// #5758, the first pull before the open walk: the peer's delete lands while the day's record
+/// still holds the clock it pushed and nothing is queued, so the delete wins on the clock
+/// alone. The text the file holds, which the document never took, is kept as an inbox copy.
+#[test]
+fn a_delete_pulled_before_the_walk_sees_a_closed_app_journal_edit_keeps_its_text() {
+    let (f, id, pushed) = closed_app_day();
+    peer_deletes(&f, &id, &pushed);
+    let kept = kept_texts(&f);
+    assert_eq!(kept.len(), 1, "one inbox copy: {kept:?}");
+    assert!(kept[0].contains("Written while closed."), "{kept:?}");
 }
