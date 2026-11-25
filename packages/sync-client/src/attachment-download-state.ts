@@ -52,6 +52,8 @@ const MAX_SUCCEEDED_KEYS = 5000
  */
 export interface DownloadClaim {
   readonly key: string
+  /** Taken for a download the user is waiting on, not a pull's background one. */
+  readonly interactive?: true
 }
 
 /** Requests handed to the downloader whose outcome is not in yet, by holder. */
@@ -185,11 +187,13 @@ export function missingDownload(
  * Null while another requester holds it: that download is already on its way.
  */
 export function markDownloadRequested(ownerId: string, attachmentId: string): DownloadClaim | null {
-  const key = keyOf(ownerId, attachmentId)
-  if (inFlight.has(key)) return null
-  const claim = { key }
-  inFlight.set(key, claim)
-  return claim
+  return takeClaim({ key: keyOf(ownerId, attachmentId) })
+}
+
+function takeClaim(wanted: DownloadClaim): DownloadClaim | null {
+  if (inFlight.has(wanted.key)) return null
+  inFlight.set(wanted.key, wanted)
+  return wanted
 }
 
 /**
@@ -204,9 +208,10 @@ export function claimRequestedDownload(
   ownerId: string,
   attachmentId: string
 ): DownloadClaim | null {
-  if (succeeded.has(keyOf(ownerId, attachmentId))) return null
+  const key = keyOf(ownerId, attachmentId)
+  if (succeeded.has(key)) return null
   if (missingDownload(db, ownerId, attachmentId)) return null
-  return markDownloadRequested(ownerId, attachmentId)
+  return takeClaim({ key, interactive: true })
 }
 
 /**
@@ -250,6 +255,25 @@ export function markDownloadOwed(db: DrizzleDb, ownerId: string, attachmentId: s
     })
     .onConflictDoNothing()
     .run()
+}
+
+/**
+ * A request a session reset dropped before its outcome came in: owed, unless
+ * this session landed the attachment or a pull's request in it holds the
+ * download (REVIEW-5700). Owed then, the re-driver would download over the
+ * file, an edit made to it since included. An open's download is owed all the
+ * same: a second reset clears it without owing it, and its landing clears the
+ * row (REVIEW-5722).
+ */
+export function markDroppedDownloadOwed(
+  db: DrizzleDb,
+  ownerId: string,
+  attachmentId: string
+): void {
+  const key = keyOf(ownerId, attachmentId)
+  const holder = inFlight.get(key)
+  if (succeeded.has(key) || (holder && !holder.interactive)) return
+  markDownloadOwed(db, ownerId, attachmentId)
 }
 
 /** The bytes are on disk. Forget every failure recorded for this attachment. */

@@ -65,16 +65,9 @@ export function landCaseTwinDownload(
   sha256: string,
   fileOwnerId?: string
 ): string {
+  const landAt = caseTwinLandingFor(filePath, attachmentId, fileOwnerId)
   const db = getDatabase()
-  if (fileOwnerId !== undefined) assertOwnAttachmentLands(db, fileOwnerId, attachmentId)
   const vaultPath = getVaultRoot()
-  const owner = fileOwnerId === undefined ? undefined : getNoteMetadataById(db, fileOwnerId)
-  const ownerMarked =
-    owner?.attachmentId === attachmentId && holdsCaseTwinForeignBytes(db, owner.id)
-  const landAt =
-    owner && ownerMarked && foldNotePath(owner.path) !== foldNotePath(toRelativePath(filePath))
-      ? join(vaultPath, diskCaseOf(vaultPath, owner.path) ?? owner.path)
-      : filePath
   const landsOn = toRelativePath(landAt)
   const onFile = listNoteMetadataByFoldedPath(db, landsOn)
     .map((note) => ({ id: note.id, mark: readCaseTwinForeignBytes(db, note.id) }))
@@ -91,6 +84,27 @@ export function landCaseTwinDownload(
     recordFirstOnTwinFile(db, vaultPath, landsOn, sha256)
   }
   return landAt
+}
+
+/**
+ * Where `landCaseTwinDownload` lands a download, with nothing kept or
+ * recorded. Throws `SupersededDownloadError` when the note whose own file it
+ * is names another attachment now.
+ */
+export function caseTwinLandingFor(
+  filePath: string,
+  attachmentId: string,
+  fileOwnerId?: string
+): string {
+  const db = getDatabase()
+  if (fileOwnerId !== undefined) assertOwnAttachmentLands(db, fileOwnerId, attachmentId)
+  const owner = fileOwnerId === undefined ? undefined : getNoteMetadataById(db, fileOwnerId)
+  const ownerMarked =
+    owner?.attachmentId === attachmentId && holdsCaseTwinForeignBytes(db, owner.id)
+  if (!owner || !ownerMarked) return filePath
+  if (foldNotePath(owner.path) === foldNotePath(toRelativePath(filePath))) return filePath
+  const vaultPath = getVaultRoot()
+  return join(vaultPath, diskCaseOf(vaultPath, owner.path) ?? owner.path)
 }
 
 /**
