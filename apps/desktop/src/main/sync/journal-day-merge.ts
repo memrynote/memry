@@ -265,11 +265,13 @@ function carryAttachments(
  * no record, so the day would owe each one a download into its own folder: a
  * second copy of a file already in `attachments/<foreignId>/` (REVIEW-5743).
  * The files there that no record pairs with an id hold those references.
- * Ids are random per upload and stored names carry no id, so a file pairs
- * with an id only when they match one to one. Otherwise the files are counted
- * as known, as `recordAttachmentFile` counts an older note's, so none is
- * uploaded again, and the references stay owed: the downloader moves a file
- * that is really missing to where the body links it.
+ * Ids are random per upload, stored names carry no id, and this device keeps
+ * no hash or size per id, so a file pairs with an id only when one reference
+ * and one file are unrecorded. Otherwise the files are counted as known, as
+ * `recordAttachmentFile` counts an older note's, so none is uploaded again,
+ * and the references stay owed: the downloader moves a file that is really
+ * missing to where the body links it, and one already here may land a second
+ * copy (VERIFY-5743R2).
  */
 function recordUnnamedFiles(
   db: DrizzleDb,
@@ -292,7 +294,10 @@ function recordUnnamedFiles(
     (file) => !paired.has(relative(vaultPath, file).split(sep).join('/'))
   )
   if (files.length === 0) return
-  if (files.length !== unnamed.length) {
+  // A file is recorded under an attachment id only when nothing else could be
+  // that attachment. Directory order is not upload order, so two or more never
+  // pair by position: a wrong pair revives the wrong bytes under an id.
+  if (files.length !== 1 || unnamed.length !== 1) {
     countNoteFiles(db, vaultPath, targetId, files)
     log.warn('A foreign journal names attachments no file can be paired with', {
       foreignId,
@@ -302,21 +307,19 @@ function recordUnnamedFiles(
     })
     return
   }
-  files.forEach((file, i) => {
-    const recordPath = relative(vaultPath, file).split(sep).join('/')
-    db.insert(attachmentFiles)
-      .values({
-        noteId: targetId,
-        path: recordPath,
-        attachmentId: unnamed[i],
-        recordedAt: Date.now()
-      })
-      .onConflictDoUpdate({
-        target: [attachmentFiles.noteId, attachmentFiles.path],
-        set: { attachmentId: unnamed[i], recordedAt: Date.now() }
-      })
-      .run()
-  })
+  const [attachmentId] = unnamed
+  db.insert(attachmentFiles)
+    .values({
+      noteId: targetId,
+      path: relative(vaultPath, files[0]).split(sep).join('/'),
+      attachmentId,
+      recordedAt: Date.now()
+    })
+    .onConflictDoUpdate({
+      target: [attachmentFiles.noteId, attachmentFiles.path],
+      set: { attachmentId, recordedAt: Date.now() }
+    })
+    .run()
 }
 
 /** Log fields: never the fallback text, which is the user's journal. */

@@ -1236,8 +1236,8 @@ across devices:
   the record (#2651) has references no record names. Ids are random per
   upload and a stored name carries none, so the day records those
   references against the foreign folder's unrecorded files on disk only when
-  they match one to one, and then nothing is downloaded again. Otherwise it
-  counts the files as known and the references stay owed. A download for a
+  one reference and one file are unrecorded, and then nothing is downloaded
+  again. Otherwise it counts the files as known and the references stay owed. A download for a
   file that is already present then lands a second copy in
   `attachments/j<date>/`. A file that is really missing moves to where the
   body links it. The files stay where they are and nothing is pushed for the
