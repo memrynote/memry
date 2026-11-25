@@ -331,7 +331,7 @@ fn settle(
     }
     // A day's pictures are fetchable wherever the day is: `F`'s references
     // go to `j<D>`'s note record in this transaction (§14.7, #5777).
-    pictures::carry(&tx, foreign, canonical, &merge.date, device_id, now_ms)?;
+    pictures::carry(&tx, foreign, canonical, device_id, now_ms)?;
     // The foreign id's tombstone when it is live and clocked, then its body
     // and its debts, in one transaction.
     if tombstone {

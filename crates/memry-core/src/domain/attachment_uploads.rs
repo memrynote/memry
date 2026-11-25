@@ -18,6 +18,7 @@ use rusqlite::{Connection, OptionalExtension as _, params};
 
 use crate::api::errors::StorageError;
 use crate::domain::notes::failed;
+use crate::sync::day_picture_refs;
 
 /// One attachment owed an upload.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -114,11 +115,16 @@ pub(crate) fn move_to_note(conn: &Connection, from: &str, to: &str) -> Result<us
 }
 
 /// Whether the note is live here. A deleted note's upload waits rather than
-/// spends quota, and runs if the note comes back.
+/// spends quota, and runs if the note comes back. A journal day (`j<date>`)
+/// is live while its entry is: its first picture creates its `note` record,
+/// and so does one over a deleted record (`day_picture_refs`, #5800).
 pub fn note_is_live(conn: &Connection, note_id: &str) -> Result<bool, StorageError> {
+    let day = day_picture_refs::is_day_note(note_id);
     conn.query_row(
-        "SELECT EXISTS(SELECT 1 FROM notes WHERE id = ?1 AND deleted_at IS NULL)",
-        params![note_id],
+        "SELECT EXISTS(SELECT 1 FROM notes WHERE id = ?1 AND deleted_at IS NULL)
+             OR (?2 AND EXISTS(SELECT 1 FROM journal_entries
+                               WHERE id = ?1 AND deleted_at IS NULL))",
+        params![note_id, day],
         |row| row.get(0),
     )
     .map_err(failed)
