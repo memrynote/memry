@@ -495,6 +495,36 @@ describe('DownloadQueue', () => {
       expect(manual.calls.length).toBe(before)
     })
 
+    // A vault switch waits for running transfers before its databases close
+    // (REVIEW-5700): dispose aborts them, a transfer waiting for a pacing
+    // token included, instead of letting them run on.
+    it('dispose() aborts running transfers, one waiting for a pacing token too', async () => {
+      vi.useFakeTimers()
+      const fn = vi.fn(
+        async (
+          id: string,
+          _p: string,
+          opts?: { pace?: () => Promise<void>; signal?: AbortSignal }
+        ) => {
+          await opts?.pace?.()
+          await new Promise((_, reject) =>
+            opts?.signal?.addEventListener('abort', () => reject(new Error('aborted')))
+          )
+          return makeResult(id)
+        }
+      )
+      const q = new DownloadQueue(fn, undefined, new DownloadPacer(1, 60_000))
+      const transferring = q.enqueue({ ownerId: 'n1', attachmentId: 'a1', targetPath: '/p1' })
+      const pacing = q.enqueue({ ownerId: 'n2', attachmentId: 'a2', targetPath: '/p2' })
+      await vi.advanceTimersByTimeAsync(0)
+      expect(fn).toHaveBeenCalledTimes(2)
+
+      q.dispose()
+
+      await expect(transferring).rejects.toBeInstanceOf(DownloadQueueClearedError)
+      await expect(pacing).rejects.toBeInstanceOf(DownloadQueueClearedError)
+    })
+
     it('dispose() detaches from the network monitor', async () => {
       const monitor = createMockNetworkMonitor(true)
       const otherListener = vi.fn()
