@@ -51,11 +51,13 @@ vi.mock('./index', () => ({
   getStatus: vi.fn()
 }))
 const docs = vi.hoisted(() => new Map<string, Y.Doc>())
+/** Docs no editor holds: the feed opens them, and declines an empty one. */
+const closed = vi.hoisted(() => new Set<string>())
 vi.mock('../sync/crdt-provider', () => {
   const stub = {
     initForNote: vi.fn(async () => {}),
     updateMeta: vi.fn(),
-    getDoc: (id: string) => docs.get(id),
+    getDoc: (id: string) => (closed.has(id) ? undefined : docs.get(id)),
     recordOwedFullState: vi.fn(),
     hasPersistence: () => true,
     isPersistent: () => true,
@@ -102,6 +104,10 @@ import { clearAllPendingDeletes } from './rename-tracker'
 import { getWatcher, startWatcher, stopWatcher } from './watcher'
 import { initJournalSyncService, resetJournalSyncService } from '../sync/journal-sync'
 import { journalHandler } from '../sync/item-handlers/journal-handler'
+
+function fileSystemIgnoresCase(): boolean {
+  return fs.existsSync(os.tmpdir().toUpperCase())
+}
 
 const DATE = '2026-11-20'
 const ID = `j${DATE}`
@@ -160,6 +166,7 @@ describe('a journal day edited while the app was closed (#5752)', () => {
 
   afterEach(async () => {
     docs.clear()
+    closed.clear()
     resetJournalSyncService()
     await stopWatcher()
     await stopProjectionRuntime({ drain: true })
@@ -215,6 +222,106 @@ describe('a journal day edited while the app was closed (#5752)', () => {
     expect(kept).toHaveLength(1)
     expect(kept[0].content).toContain('Written on the train.')
   }, 30_000)
+
+  function applyPeerDelete(): void {
+    // A peer's delete made from {device-a: 1}: by the clocks, it saw this day.
+    journalHandler.applyDelete(
+      { db: asSyncDb(data.db), emit: vi.fn() },
+      ID,
+      { 'device-a': 1, 'device-b': 1 },
+      Date.now()
+    )
+  }
+
+  function keptTexts(): string[] {
+    return data.db
+      .select()
+      .from(inboxItems)
+      .all()
+      .map((item) => item.content ?? '')
+  }
+
+  it('keeps a closed-app edit from a peer delete the first pull applies before the replay', async () => {
+    // #given the day edited while the app was closed
+    fs.writeFileSync(path.join(vault.path, DAY_PATH), EDITED)
+
+    // #when the vault open's first pull applies the delete before the replay ran
+    applyPeerDelete()
+
+    // #then the edit, which no clock covers yet, is kept in the inbox
+    const kept = keptTexts()
+    expect(kept).toHaveLength(1)
+    expect(kept[0]).toContain('Written on the train.')
+  }, 30_000)
+
+  it('keeps a live outside edit the watcher has not taken yet from a peer delete', async () => {
+    await openVault()
+
+    // #given an edit made outside the app, still inside the watcher's debounce
+    fs.writeFileSync(path.join(vault.path, DAY_PATH), EDITED)
+
+    // #when a pull applies the delete before the watcher reads the file
+    applyPeerDelete()
+
+    // #then the edited text is kept
+    const kept = keptTexts()
+    expect(kept).toHaveLength(1)
+    expect(kept[0]).toContain('Written on the train.')
+  }, 30_000)
+
+  it('keeps nothing when the file holds the bytes this device ingested', async () => {
+    applyPeerDelete()
+
+    expect(keptTexts()).toHaveLength(0)
+  }, 30_000)
+
+  it('ticks a never-opened day once per edit, not on every open', async () => {
+    // #given a day whose doc was never opened: empty, so it declines the feed
+    docs.set(ID, new Y.Doc())
+    closed.add(ID)
+    fs.writeFileSync(path.join(vault.path, DAY_PATH), EDITED)
+
+    // #when the vault opens twice
+    await openVault()
+    expect(storedClock()).toEqual({ 'device-a': 2 })
+    await stopWatcher()
+    await openVault()
+
+    // #then the edit was ticked once
+    expect(storedClock()).toEqual({ 'device-a': 2 })
+    expect(getNoteCacheById(index.db, ID)?.contentHash).toBe(generateContentHash(SYNCED))
+
+    // #and a later edit ticks again
+    await stopWatcher()
+    fs.writeFileSync(path.join(vault.path, DAY_PATH), `${EDITED}\nOne more line.\n`)
+    await openVault()
+    expect(storedClock()).toEqual({ 'device-a': 3 })
+  }, 30_000)
+
+  it.runIf(fileSystemIgnoresCase())(
+    'ticks nothing for a day whose file a case twin shares',
+    async () => {
+      // #given a note row whose path differs from the day's only by case
+      upsertNoteMetadata(asClientDb(data.db), {
+        id: 'n-twin',
+        path: `Journal/${DATE}.md`,
+        title: 'Twin',
+        fileType: 'markdown',
+        localOnly: false,
+        createdAt: '2026-11-20T06:00:00.000Z',
+        modifiedAt: '2026-11-20T07:00:00.000Z'
+      })
+      fs.writeFileSync(path.join(vault.path, DAY_PATH), EDITED)
+
+      // #when the vault opens
+      await openVault()
+
+      // #then the refused edit moves no clock
+      expect(storedClock()).toEqual({ 'device-a': 1 })
+      expect(data.db.select().from(syncQueue).all()).toHaveLength(0)
+    },
+    30_000
+  )
 
   it('ticks nothing when the bytes are the ones it synced', async () => {
     // #given the file touched but not changed (a re-index, a copy that kept the bytes)

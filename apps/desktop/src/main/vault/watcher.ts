@@ -79,6 +79,7 @@ import { protectLockedFile } from '../vault-locks/files'
 import { writingFrontmatterOf } from '@memry/shared/writing-tools/markdown'
 import { reconcileTaskCheckboxesFromMarkdown } from '../tasks/reconcile-markdown-tasks'
 import { enqueueJournalDelete, enqueueJournalUpdate } from '../journal/runtime-effects'
+import { recordTick, wasTicked } from './missed-journal-ticks'
 import { externalJournalEntry } from '../journal/external-entry'
 import {
   syncNoteCreate,
@@ -588,7 +589,11 @@ export class VaultWatcher {
    * edit with it. A day whose bytes differ from its baseline gets the tick an
    * in-app edit gets (`enqueueJournalUpdate`), then the live watcher's ingest.
    * The same bytes (a re-index, a touched mtime) tick nothing. A locked day is
-   * left to the lock check, which put its locked text back.
+   * left to the lock check, which put its locked text back. A day the ingest
+   * refuses (a case twin shares its file) ticks nothing (#5757). Bytes ticked
+   * on an earlier open that the doc could not take yet (a day never opened in
+   * Memry, whose empty doc declines the feed until its first open seeds it)
+   * tick once, not on every open (`missed-journal-ticks.ts`).
    */
   async replayMissedJournalEdits(): Promise<void> {
     const vaultPath = this.vaultPath
@@ -601,10 +606,12 @@ export class VaultWatcher {
       const raw = await readVaultFile(vaultPath, cached.path)
       if (raw === null || !isOutsideEdit(db, cached.id, cached, raw)) continue
       if (isNoteLocked(cached.id, cached.path)) continue
+      if (!(await this.handleMarkdownFileChange(cached.path, cached, db))) continue
+      if (wasTicked(getDatabase(), cached.id, cached, raw)) continue
       // Invariant: an edit this device did not see happen still counts as this
       // device's edit once found.
       enqueueJournalUpdate(cached.id, cached.date)
-      await this.handleMarkdownFileChange(cached.path, cached, db)
+      recordTick(getDatabase(), cached.id, cached, raw)
     }
   }
 
@@ -1251,14 +1258,14 @@ export class VaultWatcher {
     relativePath: string,
     cached: NonNullable<ReturnType<typeof getNoteCacheByPath>>,
     db: ReturnType<typeof getIndexDatabase>
-  ): Promise<void> {
-    if (!this.vaultPath) return
+  ): Promise<boolean> {
+    if (!this.vaultPath) return false
     // A twin that leaves between the read and the check below leaves the file
     // unshared, holding bytes that may not be this note's (#5624).
     const sharedAtRead = listCaseTwinPaths(this.vaultPath, relativePath).length > 0
     const ownWrite = appWriteCheck(path.join(this.vaultPath, relativePath))
     const file = await openVaultFile(this.vaultPath, relativePath)
-    if (file === null) return
+    if (file === null) return false
     let content: string
     let stats: Stats
     try {
@@ -1268,19 +1275,19 @@ export class VaultWatcher {
       await file.close()
     }
     if (!content) {
-      return
+      return false
     }
     // Checked again on the bytes read here: a writer may have recorded them
     // after the event's own check, and only `writeWithBaseline` writers leave
     // a pending hash in the row for the check below.
-    if (ownWrite?.(content)) return
+    if (ownWrite?.(content)) return false
 
     const parsed = parseNote(content, relativePath, stats)
 
     // `cached` was read before the file. A write-back that recorded its bytes
     // since, or is recording them, wrote no edit to feed back (#5605).
     if (!isOutsideEdit(db, cached.id, getNoteCacheById(db, cached.id) ?? cached, content)) {
-      return
+      return false
     }
 
     // A locked note's outside edit is kept as a version and its locked text
@@ -1289,16 +1296,16 @@ export class VaultWatcher {
       isNoteLocked(cached.id, relativePath) &&
       (await restoreLockedNoteFile(cached.id, content))
     ) {
-      return
+      return false
     }
 
-    if (refusesCaseTwinFile(this.vaultPath, relativePath, cached.id)) return
+    if (refusesCaseTwinFile(this.vaultPath, relativePath, cached.id)) return false
     if (sharedAtRead) {
       logger.warn('A case twin left the file during its read; the bytes stay out of the doc', {
         noteId: cached.id,
         path: relativePath
       })
-      return
+      return false
     }
 
     const syncResult = syncNoteToCache(
@@ -1383,6 +1390,7 @@ export class VaultWatcher {
         source: 'external'
       })
     }
+    return true
   }
 
   /**
