@@ -101,16 +101,23 @@ export function getNoteProperties(db: IndexDb, noteId: string): PropertyValue[] 
 
 /**
  * A note's properties as its file holds them, for a header rebuilt from the
- * index alone (#5558). `getNoteProperties` keeps the text the properties
- * panel shows instead.
+ * index (#5558). `getNoteProperties` keeps the text the properties panel shows
+ * instead. A row stores a date or a list as text, so a quoted string that
+ * spells one reads back as the date or the list: a value in `file` that stores
+ * as the row's text is taken as it is, keeping its YAML type.
  */
-export function getNoteFileProperties(db: IndexDb, noteId: string): Record<string, unknown> {
+export function getNoteFileProperties(
+  db: IndexDb,
+  noteId: string,
+  file: Record<string, unknown> = {}
+): Record<string, unknown> {
   return Object.fromEntries(
-    notePropertyRows(db, noteId).map((row) => [
-      row.name,
+    notePropertyRows(db, noteId).map((row) => {
+      const own = Object.hasOwn(file, row.name) ? file[row.name] : undefined
+      if (own !== undefined && serializeValue(own) === row.value) return [row.name, own]
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string DB/wire column narrowed to the union its writers constrain
-      fileValueOf(row.value, row.type as PropertyType)
-    ])
+      return [row.name, fileValueOf(row.value, row.type as PropertyType)]
+    })
   )
 }
 

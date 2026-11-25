@@ -223,13 +223,6 @@ export function writeSyncedVaultFile(absolutePath: string, content: string): voi
   writeNoteFileNow(absolutePath, content)
 }
 
-/**
- * Remove the vault file of a remotely deleted note or journal entry, or defer
- * the unlink into the active page apply session so it runs after the row
- * delete commits and is journaled until it lands. Outside a session the row
- * delete has already auto-committed, so the unlink runs synchronously; a
- * failure is logged, not thrown, because the delete itself has applied.
- */
 /** A path as a case-insensitive disk compares it. */
 function foldPath(filePath: string): string {
   return filePath.normalize('NFC').toLowerCase()
@@ -246,6 +239,13 @@ export function hasPendingVaultFileOp(absolutePath: string): boolean {
   return unlandedOps.some(matches) || (activeSession?.hasOp(matches) ?? false)
 }
 
+/**
+ * Remove the vault file of a remotely deleted note or journal entry, or defer
+ * the unlink into the active page apply session so it runs after the row
+ * delete commits and is journaled until it lands. Outside a session the row
+ * delete has already auto-committed, so the unlink runs synchronously; a
+ * failure is logged, not thrown, because the delete itself has applied.
+ */
 export function deleteSyncedVaultFile(absolutePath: string): void {
   if (activeSession) {
     activeSession.deferDelete(absolutePath)

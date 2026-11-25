@@ -456,6 +456,25 @@ describe('a note delete sent after the fact, pulled by a peer with text it never
     expect(await peerPulls(queuedDelete(DAY), DAY)).toEqual([DAY.copy])
   })
 
+  it('covers a delete queued again with the payload of one it tried before', async () => {
+    seedNote(deviceA, 'Old\n')
+    cliDelete()
+    // No doc held: the try leaves the delete uncovered.
+    await coverQueuedContentDeletes(asSyncDb(deviceA.db))
+    // The server took the delete, and a later sync runtime start finds none queued.
+    asClientDb(deviceA.db).delete(syncPendingDeletes).run()
+    await coverQueuedContentDeletes(asSyncDb(deviceA.db))
+    // The same note is written again and held as a doc.
+    seedNote(deviceA, 'Old\n')
+    store.set(NOTE.id, [held])
+    cliDelete()
+
+    await coverQueuedContentDeletes(asSyncDb(deviceA.db))
+
+    const [row] = asClientDb(deviceA.db).select().from(syncPendingDeletes).all()
+    expect(JSON.parse(row.payload)).toHaveProperty('bodyStateVector', expect.any(String))
+  })
+
   it('covers the other queued deletes when one fails, and logs it', async () => {
     seedNote(deviceA, 'Old\n')
     seedNote(deviceA, 'Old\n', DAY)
