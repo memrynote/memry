@@ -32,6 +32,7 @@ use http_fakes::{FakeSecureStore, FakeTransport, error_response, response};
 use memry_core::api::auth::{AuthSession, DeviceDescriptor};
 use memry_core::api::crypto::derive_vault_key;
 use memry_core::api::errors::TransportError;
+use memry_core::api::sync::VaultSync;
 use memry_core::api::vault::Vault;
 use memry_core::crypto::sodium;
 use memry_core::domain::attachments::{self, BlockAttachment, CachedAttachment};
@@ -634,7 +635,6 @@ async fn a_heal_run_again_changes_nothing() {
 
 #[tokio::test]
 async fn a_manifest_the_server_lacks_is_not_asked_on_every_open() {
-    // Its own id: the 404 memory is per vault and attachment, process-wide.
     const GONE: &str = "e4cccfcc943e5a15c3ad0eb366930c3a";
     let (vault, _dir) = scratch_vault();
     let transport = FakeTransport::new(first_sync_script(&[GONE]));
@@ -655,6 +655,57 @@ async fn a_manifest_the_server_lacks_is_not_asked_on_every_open() {
         .await
         .expect("the next open");
     assert_eq!((again, transport.call_count()), (0, calls), "no request");
+}
+
+/// A note open answered 404 for its one manifest.
+async fn answer_404(sync: &VaultSync, transport: &FakeTransport) {
+    transport.push(devices());
+    transport.push(error_response(404, "NOT_FOUND", "no manifest"));
+    let named = sync
+        .fetch_note_manifests(NOTE.to_string())
+        .await
+        .expect("a 404 is logged, not raised");
+    assert_eq!(named, 0);
+}
+
+#[tokio::test]
+async fn a_new_session_asks_again_for_a_manifest_the_last_one_lacked() {
+    let photo = file(FIRST, b"\xff\xd8\xff the blue marble");
+    let (vault, _dir) = scratch_vault();
+    let transport = FakeTransport::new(first_sync_script(&[FIRST]));
+    let sync = vault.sync(session(transport.clone()));
+    sync.first_sync(None).await.expect("the first sync");
+    answer_404(&sync, &transport).await;
+    drop(sync);
+
+    // Signed out and back in: the peer uploaded the picture meanwhile.
+    let transport = FakeTransport::new(vec![devices(), response(200, &photo.manifest_body)]);
+    let sync = vault.sync(session(transport));
+    let named = sync
+        .fetch_note_manifests(NOTE.to_string())
+        .await
+        .expect("the open in the new session");
+    assert_eq!(named, 1, "the last session's 404 is not this one's");
+}
+
+#[tokio::test(start_paused = true)]
+async fn a_manifest_the_server_lacked_is_asked_again_after_the_cooldown() {
+    let photo = file(SECOND, b"\xff\xd8\xff the pale blue dot");
+    let (vault, _dir) = scratch_vault();
+    let transport = FakeTransport::new(first_sync_script(&[SECOND]));
+    let sync = vault.sync(session(transport.clone()));
+    sync.first_sync(None).await.expect("the first sync");
+    answer_404(&sync, &transport).await;
+
+    // Desktop's UNSUPPORTED_COOLDOWN_MS is ten minutes.
+    tokio::time::advance(std::time::Duration::from_secs(10 * 60 + 1)).await;
+    transport.push(devices());
+    transport.push(response(200, &photo.manifest_body));
+    let named = sync
+        .fetch_note_manifests(NOTE.to_string())
+        .await
+        .expect("the open after the cooldown");
+    assert_eq!(named, 1, "the uploaded manifest is named");
 }
 
 #[tokio::test]
