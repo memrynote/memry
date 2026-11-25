@@ -106,7 +106,8 @@ import {
   type PreparedBody
 } from './case-twin-own-file'
 import { generateContentHash, parseNote } from './frontmatter'
-import { findCanonicalNoteForFile, listCaseTwinIds, syncNoteToCache } from './note-sync'
+import { listCaseTwinIds, syncNoteToCache } from './note-sync'
+import { sharesCaseTwinFile } from './case-twin-shared-file'
 import { getVaultRoot, toAbsolutePath } from './notes-io'
 import { createSnapshot } from './notes-versions'
 
@@ -124,12 +125,6 @@ export class CaseTwinLeaveNotReadyError extends PendingSyncIntentError {
 /** A twin's doc as file body, by note id, for its next `planCaseTwinLeave` or `planCaseTwinMove`. */
 const preparedBodies = new Map<string, PreparedBody>()
 const preparing = new Map<string, Promise<void>>()
-
-/** Whether a case twin shares this note's file. Ask before the note's row leaves it. */
-export function sharesCaseTwinFile(vaultPath: string, relativePath: string): boolean {
-  const onDisk = diskCaseOf(vaultPath, relativePath)
-  return onDisk !== null && findCanonicalNoteForFile(vaultPath, onDisk)?.sharesFile === true
-}
 
 /** The rows other than `leavingId` on the file, or null when it is not shared. */
 function twinsOnFile(vaultPath: string, relativePath: string, leavingId: string): string[] | null {

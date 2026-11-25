@@ -27,9 +27,11 @@ import { syncNoteToCache, deleteNoteFromCache } from './note-sync'
 import {
   assertFolderDeleteKeepsCaseTwins,
   assertFolderRenameKeepsCaseTwins,
-  deleteCaseTwin,
-  sharesCaseTwinFile
+  deleteCaseTwin
 } from './case-twin-file'
+import { caseTwinOwnFile } from './case-twin-off-file'
+import { assertOwnHeaderCoverUnchanged } from './case-twin-own-file'
+import { isCaseTwinOffFile, sharesCaseTwinFile } from './case-twin-shared-file'
 import {
   announceFolderMove,
   moveFolderHoldingWritebacks,
@@ -714,6 +716,7 @@ export function updateNote(input: NoteUpdateInput): Promise<NoteUpdateOutcome> {
     const content = input.content
     if (content === undefined) return takeWritebackTurn(input.id, () => writeNote(input))
     const { path: notePath } = editableNoteRow(input.id)
+    if (isCaseTwinOffFile(getVaultRoot(), notePath, input.id)) throw offFileBodyEdit(input.id)
     const fed = await feedBodyEdit(input.id, notePath, () =>
       feedExternalEditToCrdt(input.id, content)
     )
@@ -733,6 +736,18 @@ export function updateNote(input: NoteUpdateInput): Promise<NoteUpdateOutcome> {
     )
     return outcome
   })
+}
+
+/**
+ * A body edit of a case twin whose shared file holds the other twin's bytes
+ * (#5742) has no file to land on: it is refused before the doc takes it.
+ */
+function offFileBodyEdit(id: string): NoteError {
+  return new NoteError(
+    'This note shares its file with a note whose name differs only in case. Rename one of them, then edit the body again; nothing was changed',
+    NoteErrorCode.WRITE_FAILED,
+    id
+  )
 }
 
 function editableNoteRow(id: string): NoteCache {
@@ -761,11 +776,24 @@ async function writeNote(input: NoteUpdateInput, fed?: boolean): Promise<NoteUpd
   const dataDb = getDatabase()
   editableNoteRow(input.id)
 
-  const existing = await getNoteById(input.id)
-  if (!existing) {
+  const read = await getNoteById(input.id)
+  if (!read) {
     throw new NoteError(`Note not found: ${input.id}`, NoteErrorCode.NOT_FOUND, input.id)
   }
-  assertNoteWritable(input.id, existing.path)
+  assertNoteWritable(input.id, read.path)
+  // A case twin whose shared file holds the other twin's bytes is edited on
+  // its own header and body, and the shared file stays as it is (#5742).
+  const own = await caseTwinOwnFile(getVaultRoot(), read.path, input.id)
+  if (own && input.content !== undefined) throw offFileBodyEdit(input.id)
+  const existing: Note = own
+    ? {
+        ...read,
+        content: own.markdown,
+        frontmatter: own.frontmatter,
+        headerTags: extractTags(own.frontmatter),
+        aliases: own.frontmatter.aliases ?? []
+      }
+    : read
 
   const newTitle = input.title ?? existing.title
   const newContent = input.content ?? existing.content
@@ -791,9 +819,14 @@ async function writeNote(input: NoteUpdateInput, fed?: boolean): Promise<NoteUpd
     properties: newProperties,
     edited: frontmatterEdited
   } = nextNoteFrontmatter(existing, input, headerTags, headerTagChange)
+  if (own) assertOwnHeaderCoverUnchanged(input.id, own.frontmatter, newFrontmatter)
 
   let fileContent: string
-  if (currentRaw === null) {
+  if (own) {
+    fileContent = serializeUpdatedNote(parseNote(own.content), newFrontmatter, own.markdown, {
+      frontmatterEdited
+    })
+  } else if (currentRaw === null) {
     fileContent = serializeNote(newFrontmatter, newContent)
   } else {
     const parsedCurrent = parseNote(currentRaw, existing.path)
@@ -803,25 +836,26 @@ async function writeNote(input: NoteUpdateInput, fed?: boolean): Promise<NoteUpd
     })
   }
 
-  const wrote = currentRaw === null || fileContent !== currentRaw
+  const wrote = !own && (currentRaw === null || fileContent !== currentRaw)
   const write = async (): Promise<void> => {
     if (wrote) await atomicWrite(absolutePath, fileContent)
   }
+  const cached = getNoteCacheById(db, input.id)
   // A new body went to the doc before the file (`feedBodyEdit`): the watcher
   // ignores Memry's own write, so the next write-back would otherwise put the
   // doc's older body back over it (#2646). No `writing`: the doc keeps its own
   // alternatives. A metadata edit keeps the body the doc holds.
-  const contentHash =
-    fed !== undefined
+  // An own file that is not on disk keeps the baseline of the note's own bytes.
+  const contentHash = own
+    ? (cached?.contentHash ?? undefined)
+    : fed !== undefined
       ? await writeFedBodyEdit(db, input.id, fileContent, fed, { write })
       : (await write(), baselineAfterWrite(db, input.id, currentRaw, fileContent))
 
   // Identical bytes = no watcher echo, no sync item, no mtime bump. Sidecar
   // state (title/emoji) still updates the DBs without touching the file.
   const sidecarChanged = newTitle !== existing.title || newEmoji !== existing.emoji
-  const changed = wrote || sidecarChanged
-
-  const cached = getNoteCacheById(db, input.id)
+  const changed = (own ? frontmatterEdited : wrote) || sidecarChanged
   const newModified = changed
     ? new Date().toISOString()
     : (cached?.modifiedAt ?? existing.modified.toISOString())

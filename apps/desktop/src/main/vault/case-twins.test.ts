@@ -26,6 +26,7 @@ import {
   getInboundLinkSourceIds,
   getNoteCacheById,
   getNoteFileProperties,
+  getNoteHeaderTags,
   getNoteProperties,
   getNoteSnapshots,
   getNoteTags,
@@ -193,8 +194,12 @@ import {
   deleteNoteCommand,
   moveNoteCommand,
   renameFolderCommand,
-  renameNoteCommand
+  renameNoteCommand,
+  updateNoteCommand
 } from '../notes/domain'
+import { editNoteAliasesCommand } from '../notes/note-aliases'
+import { buildNotePushPayload } from '../sync/item-handlers/note-handler-sync-helpers'
+import { renameTagEverywhere } from '../tags/rename-tag'
 import { atomicWrite, safeRead, setVaultFileWriteGuard } from './file-ops'
 import { moveDirectory } from './move-directory'
 import { readyWritebackConverter } from '../sync/converter-worker-bridge'
@@ -202,6 +207,7 @@ import { enqueueLocalSyncDelete } from '../sync/local-mutations'
 import { noteHandler } from '../sync/item-handlers/note-handler'
 import { mergeEntityProperties } from '../notes/entity-properties'
 import { noteCoverForPush, recordAppliedNoteCover } from '../sync/item-handlers/note-cover-sync'
+import type { NoteCoverSync } from '@memry/contracts/sync-payloads'
 import { PendingSyncIntentError } from '../sync/pending-sync-intent-error'
 import { NoteError } from '../lib/errors'
 import { openVaultFile } from '../lib/paths'
@@ -1109,7 +1115,23 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
     })
   }, 30_000)
 
-  // An edit of the twin off the shared file patches that file instead (#5742).
+  // #5742: the shared file holds upper's bytes. A UI property edit of lower
+  // patched that file, putting upper's body under lower's header, and lower's
+  // other properties left its rows.
+  it('a UI property edit of the twin off the shared file lands on its own header, and a split writes it', async () => {
+    await propertyTwins(MIXED, '', false)
+
+    expect(await mergeEntityProperties('lower', { extra: 'x' })).toEqual({ success: true })
+    await flushProjectionEvents()
+
+    expect({ file: shared(), rows: getNoteFileProperties(index.db, 'lower') }).toEqual({
+      file: UPPER,
+      rows: { ...mixed(), extra: 'x' }
+    })
+    await deleteNoteCommand('upper')
+    expect(shared()).toBe(serializeNote({ ...mixed(), extra: 'x' }, LOWER))
+  }, 30_000)
+
   it('a UI property edit of the twin on the shared file then a split keeps its property types', async () => {
     await propertyTwins('', MIXED, false)
 
@@ -1955,6 +1977,292 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
       tags: getNoteTags(index.db, 'lower'),
       cover: getNoteCacheById(index.db, 'lower')?.cover
     }).toEqual({ file: UPPER_HEAD + UPPER, tags: ['newtag', 'lowinline'], cover: 'wash:moss' })
+  }, 30_000)
+
+  // #5742: each UI writer of a header (tags, aliases, properties), on the twin
+  // off the shared file. Its cover edits are refused (VERIFY-5753R4).
+  it('UI header edits of the twin off the shared file land on its own header only', async () => {
+    await headerTwins()
+    docs.set('lower', await docOf(LOWER_TAGGED))
+    setNoteTags(index.db, 'lower', { header: ['lowertag'], inline: ['lowertag', 'lowinline'] })
+
+    await updateNoteCommand({ id: 'lower', headerTags: { add: ['newtag'] } })
+    await editNoteAliasesCommand({ id: 'lower', add: ['newalias'], remove: [] })
+    await expect(
+      updateNoteCommand({ id: 'lower', frontmatter: { cover: 'wash:moss' } })
+    ).rejects.toThrow(NoteError)
+    await updateNoteCommand({ id: 'lower', properties: { status: 'mid' } })
+    await flushProjectionEvents()
+
+    expect({
+      file: shared(),
+      tags: getNoteTags(index.db, 'lower'),
+      aliases: getAliasesForNotes(index.db, ['lower']).get('lower'),
+      cover: getNoteCacheById(index.db, 'lower')?.cover,
+      properties: getNoteFileProperties(index.db, 'lower')
+    }).toEqual({
+      file: UPPER_HEAD + UPPER,
+      tags: ['lowertag', 'newtag', 'lowinline'],
+      aliases: ['lowalias', 'newalias'],
+      cover: 'wash:sage',
+      properties: { status: 'mid' }
+    })
+    await moveNoteCommand('lower', 'Other')
+    expect(read('Other/a.md')).toMatch(
+      /^---\ntags:\n {2}- lowertag\n {2}- newtag\nstatus: mid\ncover: 'wash:sage'\naliases:\n {2}- lowalias\n {2}- newalias\n---\n[\s\S]*lower \[\[x\]\] #lowertag #lowinline\n$/
+    )
+    expect(await survivorKeepsOwn('upper')).toEqual([])
+  }, 30_000)
+
+  // REVIEW-5753: the push read tags and aliases from the shared file, which
+  // holds upper's header, so a peer gave lower upper's tags and aliases.
+  it("a push of the twin off the shared file sends its own header, never the file's", async () => {
+    await headerTwins()
+    await updateNoteCommand({ id: 'lower', headerTags: { add: ['newtag'] } })
+    await editNoteAliasesCommand({ id: 'lower', add: ['newalias'], remove: [] })
+    await flushProjectionEvents()
+
+    const pushed = (operation: string) => {
+      const payload = JSON.parse(buildNotePushPayload('lower', operation)!)
+      return {
+        content: payload.content,
+        tags: payload.tags,
+        aliases: payload.aliases,
+        properties: payload.properties,
+        cover: payload.cover?.ref
+      }
+    }
+    const own = {
+      content: null,
+      tags: ['lowertag', 'newtag'],
+      aliases: ['lowalias', 'newalias'],
+      properties: { status: 'low' },
+      // Never carried while off the shared file (`assertOwnHeaderCoverUnchanged`).
+      cover: undefined
+    }
+    expect({ update: pushed('update'), create: pushed('create') }).toEqual({
+      update: own,
+      create: own
+    })
+  }, 30_000)
+
+  // VERIFY-5753R2 (1): the push rebuilt lower's image cover from its index
+  // rows, which hold only the ref, so it sent default framing and a peer
+  // dropped lower's focus and credit.
+  const FRAMED = {
+    cover: 'covers/low.png',
+    coverFocus: 20,
+    coverZoom: 2,
+    coverFocusX: 30,
+    coverCredit: 'Jane',
+    coverCreditUrl: 'https://example.com/jane'
+  }
+  const pushedCover = (): NoteCoverSync | undefined =>
+    JSON.parse(buildNotePushPayload('lower', 'update')!).cover
+  /** Lower's image cover twins, with a version of lower's own framed file when `version`. */
+  async function imageCoverTwins(version: boolean): Promise<void> {
+    await headerTwins('covers/low.png')
+    if (version) {
+      const own = serializeNote({ ...parseNote(LOWER_HEAD).frontmatter, ...FRAMED }, LOWER)
+      createSnapshot('lower', own, 'a', SnapshotReasons.CLOSE)
+      updateNoteCache(index.db, 'lower', { contentHash: generateContentHash(own) })
+    }
+    recordAppliedNoteCover(asClientDb(data.db), 'lower', { cover: 'covers/low.png' })
+  }
+  // FOLD-5753C: framing taken from a version of lower's own file went stale
+  // once a peer reframed the cover, so the rule is that an off-file twin's
+  // framing and credit are never held: its push leaves the cover out.
+  for (const [how, version] of [
+    ['without a version of its own header', false],
+    ['with a version of its own header', true]
+  ] as const) {
+    it(`a push of the twin off the shared file ${how} leaves the cover out`, async () => {
+      await imageCoverTwins(version)
+      await updateNoteCommand({ id: 'lower', headerTags: { add: ['newtag'] } })
+      await flushProjectionEvents()
+
+      const pushed = JSON.parse(buildNotePushPayload('lower', 'update')!)
+      expect({ tags: pushed.tags, cover: pushed.cover }).toEqual({
+        tags: ['lowertag', 'newtag'],
+        cover: undefined
+      })
+    }, 30_000)
+  }
+
+  // VERIFY-5753R3 (1): a peer reframed lower's cover, keeping the ref. The
+  // version of lower's own file still held the old framing, so a local tag
+  // edit pushed it over the peer's.
+  it("a peer's reframe of the twin off the shared file survives its next local edit", async () => {
+    await imageCoverTwins(true)
+    const reframed = {
+      ref: 'covers/low.png',
+      focusX: 70,
+      zoom: 3,
+      height: 300,
+      credit: 'Bob'
+    }
+    await vi.waitFor(() =>
+      expect(
+        noteHandler.applyUpsert(
+          { db: asClientDb(data.db), emit: vi.fn() },
+          'lower',
+          {
+            title: 'a',
+            folderPath: path.posix.dirname(pathOf('lower')!),
+            cover: reframed,
+            modifiedAt: '2026-02-01T00:00:00.000Z'
+          },
+          { peer: 1 }
+        )
+      ).toBe('applied')
+    )
+    await updateNoteCommand({ id: 'lower', headerTags: { add: ['newtag'] } })
+    await flushProjectionEvents()
+
+    expect(pushedCover()).toBeUndefined()
+  }, 30_000)
+
+  // VERIFY-5753R3 (2), VERIFY-5753R4: no row holds the framing and credit of
+  // an off-file twin's image cover, so every local cover edit is refused
+  // until the twins are split, through the command and the UI's IPC call.
+  const COVER_EDITS = [
+    ['ref change', { cover: 'covers/new.png' }],
+    ['removal', { cover: null }],
+    ['reframe', { coverZoom: 3, coverFocusX: 10 }],
+    ['credit edit', { coverCredit: 'Bob', coverCreditUrl: 'https://example.com/bob' }]
+  ] as const
+  const lowerCoverUntouched = () => ({
+    file: shared(),
+    cover: getNoteCacheById(index.db, 'lower')?.cover,
+    push: pushedCover()
+  })
+  const LOWER_COVER_UNTOUCHED = {
+    file: UPPER_HEAD + UPPER,
+    cover: 'covers/low.png',
+    push: undefined
+  }
+  for (const [what, frontmatter] of COVER_EDITS) {
+    it(`a local cover ${what} of the twin off the shared file is refused and changes nothing`, async () => {
+      await imageCoverTwins(true)
+
+      await expect(updateNoteCommand({ id: 'lower', frontmatter })).rejects.toThrow(
+        /its cover cannot be changed\. Rename one of them/
+      )
+
+      expect(lowerCoverUntouched()).toEqual(LOWER_COVER_UNTOUCHED)
+    }, 30_000)
+
+    it(`a cover ${what} of the twin off the shared file through IPC returns the refusal`, async () => {
+      await imageCoverTwins(true)
+      registerNotesHandlers()
+
+      const result = await invokeHandler(NotesChannels.invoke.UPDATE, { id: 'lower', frontmatter })
+
+      expect({ result, ...lowerCoverUntouched() }).toEqual({
+        result: {
+          success: false,
+          error: expect.stringMatching(/its cover cannot be changed\. Rename one of them/)
+        },
+        ...LOWER_COVER_UNTOUCHED
+      })
+    }, 30_000)
+  }
+
+  // VERIFY-5753R4 (2, 4): a ref change held only here was lost when the twin
+  // went back on its own file, and A to B to A pushed A with default framing.
+  // Both edits are refused now, so the rebuilt file pushes nothing.
+  for (const [how, leave] of [
+    ['delete of the other twin', () => deleteNoteCommand('upper')],
+    ['rename', () => renameNoteCommand('lower', 'b')]
+  ] as const) {
+    it(`a refused cover change of the twin off the shared file pushes nothing after a ${how}`, async () => {
+      await imageCoverTwins(true)
+      await expect(
+        updateNoteCommand({ id: 'lower', frontmatter: { cover: 'covers/new.png' } })
+      ).rejects.toThrow(NoteError)
+
+      await leave()
+      await flushProjectionEvents()
+
+      expect({ cover: getNoteCacheById(index.db, 'lower')?.cover, push: pushedCover() }).toEqual({
+        cover: 'covers/low.png',
+        push: undefined
+      })
+    }, 30_000)
+  }
+
+  // VERIFY-5753R4 (3): a peer's wash cover applied to the twin off the shared
+  // file left no marker, so its removal once on its own file pushed nothing
+  // and peers kept the wash.
+  it("a peer's wash cover of the twin off the shared file is removed on peers once the twin is on its own file", async () => {
+    await headerTwins()
+    await vi.waitFor(() =>
+      expect(applyPeerHeader('lower', ['lowertag'], 'wash:clay')).toBe('applied')
+    )
+    await expect(updateNoteCommand({ id: 'lower', frontmatter: { cover: null } })).rejects.toThrow(
+      NoteError
+    )
+    expect(pushedCover()).toBeUndefined()
+
+    await deleteNoteCommand('upper')
+    await flushProjectionEvents()
+    await updateNoteCommand({ id: 'lower', frontmatter: { cover: null } })
+    await flushProjectionEvents()
+
+    expect(pushedCover()).toBeNull()
+  }, 30_000)
+
+  // REVIEW-5753: the off-file edit wrote the patch's wire value, so a date
+  // came out of the split as a quoted string.
+  it('a UI date merge on the twin off the shared file then a split keeps a date', async () => {
+    const header = await splitAfter(() => mergeEntityProperties('lower', { when: '2026-03-04' }))
+
+    expect(header).toEqual({ ...mixed(), when: new Date('2026-03-04T00:00:00.000Z') })
+  }, 30_000)
+
+  // REVIEW-5753: with no doc loaded, the rename rewrote the shared file's
+  // body, upper's, as lower's, and lower's own body kept the old tag.
+  it('a tag rename of the twin off the shared file with no loaded doc renames its header and own body only', async () => {
+    await headerTwins()
+    const lowerDoc = await docOf(LOWER_TAGGED)
+    docs.set('lower', lowerDoc)
+    setNoteTags(index.db, 'lower', { header: ['lowertag'], inline: ['lowertag', 'lowinline'] })
+    vi.spyOn(getCrdtProvider(), 'getDoc').mockImplementation((id) =>
+      id === 'lower' ? undefined : (docs.get(id) as Y.Doc | undefined)
+    )
+
+    const result = await renameTagEverywhere(index.db, asClientDb(data.db), {
+      from: 'lowertag',
+      to: 'renamed',
+      runId: 'r'
+    })
+    await flushProjectionEvents()
+
+    const body = JSON.stringify(lowerDoc.getXmlFragment('prosemirror').toJSON())
+    expect({
+      result,
+      file: shared(),
+      header: getNoteHeaderTags(index.db, 'lower'),
+      body: { renamed: body.includes('renamed'), old: body.includes('lowertag') }
+    }).toEqual({
+      result: { notesWritten: 1, failedNoteIds: [], bodySkipped: false },
+      file: UPPER_HEAD + UPPER,
+      header: ['renamed'],
+      body: { renamed: true, old: false }
+    })
+  }, 30_000)
+
+  it('a body edit of the twin off the shared file is refused and changes nothing', async () => {
+    await headerTwins()
+
+    await expect(updateNoteCommand({ id: 'lower', content: 'lower edited\n' })).rejects.toThrow(
+      NoteError
+    )
+
+    expect({ file: shared(), crossed: vi.mocked(feedExternalEditToCrdt).mock.calls }).toEqual({
+      file: UPPER_HEAD + UPPER,
+      crossed: []
+    })
   }, 30_000)
 
   it("a peer's header update of the twin on the shared file lands in the file", async () => {
