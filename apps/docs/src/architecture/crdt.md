@@ -1200,7 +1200,11 @@ document to its vault `.md` file and re-indexes it for search.
   debounce), so a file this device has not ingested is never deleted unseen (#5757).
   A pulled note delete follows the same rule (`holdsUningestedEdit`, #5797) for the file it
   removes. A case twin's shared file stays with the survivor, which keeps bytes neither twin
-  holds as a version, and a binary file has no baseline hash, so neither is checked.
+  holds as a version, so it is not checked. A binary file has no text: when its bytes are on
+  no server it is copied beside itself as `<name> (kept from deleted note)<ext>`, which the
+  vault takes in as a new note (`keepUnseenBinary` in `keep-unseen-text.ts`, #5803). The proof is the synced hash of
+  the bytes a download landed, or of an upload whose push the tombstone's clock holds; a note
+  with no synced hash recorded falls back to the watcher's mtime test against `indexedAt`.
   Before it feeds the file, the pass keeps the body it serialized
   as a version when that body differs from the file's, the rule the owed-file take follows
   (#2646). A version that cannot be saved leaves the edit waiting on disk. The pass feeds

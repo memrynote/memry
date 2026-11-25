@@ -23,7 +23,7 @@ import { getCrdtProvider } from '../crdt-provider'
 import { deleteSyncedVaultFile, writeSyncedVaultFile } from '../bulk-apply'
 import { scheduleDeletedFolderPrune } from '../deleted-folder-prune'
 import { noteRevived } from '../note-attachment-revival'
-import { keepUnseenText, readNoteFileBody } from '../keep-unseen-text'
+import { keepUnseenBinary, keepUnseenText, readNoteFileBody } from '../keep-unseen-text'
 import { emitNoteUpdated } from '@memry/sync-client/note-events'
 import { attachmentEvents } from '@memry/sync-client/attachment-events'
 import {
@@ -902,6 +902,8 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
     const leave = sharesCaseTwinFile(getVaultRoot(), existing.path)
       ? planCaseTwinLeave(getVaultRoot(), existing.path, itemId)
       : null
+    // A case twin's file stays with the other twin, a stray row's file with the attachment store.
+    const removesFile = !leave && !isAttachmentStoreRow(existing)
     keepUnseenText(ctx, {
       itemId,
       title: `${existing.title || 'Untitled'} (kept from deleted note)`,
@@ -911,16 +913,16 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
       bodyStateVector,
       // Only a file this delete removes: a case twin's leave keeps bytes
       // neither twin holds as a version of the survivor, a stray row's file
-      // stays in the attachment store, and a binary file has no text or hash.
+      // stays in the attachment store, and a binary file's bytes are kept below.
       unseenFile:
-        !leave &&
-        !isAttachmentStoreRow(existing) &&
+        removesFile &&
         !isBinaryNoteRow(existing) &&
         holdsUningestedEdit(indexDb, itemId, () =>
           readVaultFileSync(getVaultRoot(), existing.path)
         ),
       readBody: () => (isBinaryNoteRow(existing) ? null : readNoteFileBody(absolutePath))
     })
+    if (removesFile) keepUnseenBinary(ctx.db, indexDb, existing, absolutePath, clock)
 
     // Deliberately floated. `applyDelete` is synchronous by interface and runs
     // per item inside a pull batch, so awaiting a LevelDB clear here would
@@ -970,7 +972,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
     // unlink would leave a file with no row for the indexer to push back. A
     // case twin's file stays with the other twin, and a stray row's file with
     // the attachment store (#5607).
-    if (!leave && !isAttachmentStoreRow(existing)) deleteSyncedVaultFile(absolutePath)
+    if (removesFile) deleteSyncedVaultFile(absolutePath)
 
     // The note may be the last one in a folder another device deleted (#2512).
     const folder = extractFolderFromPath(existing.path)

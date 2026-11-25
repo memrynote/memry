@@ -1,5 +1,6 @@
 /**
- * Keeps text a pulled delete would erase unseen (#3029).
+ * Keeps text a pulled delete would erase unseen (#3029), and the bytes of a
+ * binary note file it would unlink while no server holds them (#5803).
  *
  * Another device deleted a note or journal day while this device held text it
  * never received. Delete still wins (chapter 05 §5.8), but before the handler
@@ -11,19 +12,34 @@
  * the delete. A delete that arrives again finds no row and never reaches here,
  * which keeps the copy to one.
  *
+ * A binary file (an image, PDF, audio or video) has no text. A replace made
+ * outside the app, while it was closed or inside the watcher's debounce, holds
+ * bytes no clock moved for, so the tombstone cannot say the deleter saw them.
+ * `keepUnseenBinary` copies them to a new file beside the note's,
+ * "<name> (kept from deleted note)<ext>", which the vault takes in as a note
+ * of its own.
+ *
  * @module sync/keep-unseen-text
  */
 
 import fs from 'fs'
+import { basename, dirname, extname, join } from 'path'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
 import { InboxChannels } from '@memry/contracts/ipc-channels'
 import type { VectorClock } from '@memry/contracts/sync-api'
+import { isBinaryNoteRow } from '@memry/shared/file-types'
 import { keepsUnseenText } from '@memry/sync-client/delete-keep'
-import type { ApplyContext } from '@memry/sync-client/item-handlers/types'
+import type { ApplyContext, DrizzleDb } from '@memry/sync-client/item-handlers/types'
+import { getNoteCacheById, getNoteCacheByPath } from '@main/database/queries/notes'
+import type { getIndexDatabase } from '../database/client'
 import type { DataDb } from '../database/types'
 import { syncInboxCreate } from '../inbox/runtime-effects'
 import { generateId } from '../lib/id'
 import { parseNote } from '../vault/frontmatter'
+import { hashFile } from '../vault/case-twin-bytes'
+import { toRelativePath } from '../vault/notes-io'
+import { hasPendingUpload } from './attachment-outbox'
+import { readSyncedBinaryHash } from './binary-synced-hash'
 import { createLogger } from '../lib/logger'
 import { readLocalBodyFacts } from './note-sync-state'
 
@@ -96,5 +112,81 @@ export function keepUnseenText(ctx: ApplyContext, del: UnseenTextDelete): void {
   log.info('Kept unseen text of a remotely deleted item in the inbox', {
     itemId: del.itemId,
     inboxId: id
+  })
+}
+
+type IndexDb = ReturnType<typeof getIndexDatabase>
+
+interface BinaryNote {
+  id: string
+  path: string
+  fileType?: string | null
+  attachmentId: string | null
+}
+
+/**
+ * Whether the file at `filePath`, whose bytes hash to `onDisk`, holds bytes
+ * of note `note` that no server has, as the tombstone's clock `seenBy` knows.
+ *
+ * Invariant: a binary file whose bytes this device cannot show are on a
+ * server is never deleted unseen. The proof, in order:
+ * - No attachment, or an upload pending or in flight: on no server.
+ * - The synced hash (`binary-synced-hash.ts`): the bytes a download landed,
+ *   or an upload whose push the tombstone's clock holds. Other bytes are
+ *   unseen, and so are uploaded bytes whose push the clock lacks or whose
+ *   push is unknown.
+ * - No synced hash (a note last synced by a build before #5603): the file's
+ *   mtime against the index row's `indexedAt`, the watcher's own test for a
+ *   file changed since it was read (`rescan`). No index row is no proof.
+ */
+function holdsBytesOnNoServer(
+  db: DrizzleDb,
+  indexDb: IndexDb,
+  note: BinaryNote,
+  filePath: string,
+  onDisk: string,
+  seenBy: VectorClock | undefined
+): boolean {
+  if (!note.attachmentId || hasPendingUpload(db, note.id, filePath)) return true
+  if (readSyncedBinaryHash(db, note.id) !== undefined) {
+    return onDisk !== readSyncedBinaryHash(db, note.id, seenBy)
+  }
+  const indexedAt = Date.parse(getNoteCacheById(indexDb, note.id)?.indexedAt ?? '')
+  if (Number.isNaN(indexedAt)) return true
+  return Math.floor(fs.statSync(filePath).mtimeMs) > indexedAt
+}
+
+/**
+ * Before a pulled delete unlinks note `note`'s file at `filePath`: copies
+ * bytes no server has to a new file beside it when the note is binary
+ * (`isBinaryNoteRow`); a markdown note's text is `keepUnseenText`'s. A retry of the delete
+ * (a rolled-back page) finds its copy by hash and makes no second one. Throws
+ * when the copy cannot be written, so the delete fails with the file intact
+ * and the pull retries it.
+ */
+export function keepUnseenBinary(
+  db: DrizzleDb,
+  indexDb: IndexDb,
+  note: BinaryNote,
+  filePath: string,
+  seenBy: VectorClock | undefined
+): void {
+  if (!isBinaryNoteRow(note)) return
+  const onDisk = hashFile(filePath)
+  if (onDisk === null || !holdsBytesOnNoServer(db, indexDb, note, filePath, onDisk, seenBy)) return
+  const ext = extname(filePath)
+  const base = join(dirname(filePath), `${basename(filePath, ext)} (kept from deleted note)`)
+  // A row's path with no file yet (a download still owed) is taken too.
+  const taken = (p: string): boolean =>
+    fs.existsSync(p) || getNoteCacheByPath(indexDb, toRelativePath(p)) !== undefined
+  let copyPath = `${base}${ext}`
+  for (let n = 1; taken(copyPath); n++) {
+    if (hashFile(copyPath) === onDisk) return
+    copyPath = `${base} ${n}${ext}`
+  }
+  fs.copyFileSync(filePath, copyPath, fs.constants.COPYFILE_EXCL)
+  log.warn('Kept bytes no server has of a remotely deleted binary note as a new file', {
+    noteId: note.id,
+    copy: toRelativePath(copyPath)
   })
 }
