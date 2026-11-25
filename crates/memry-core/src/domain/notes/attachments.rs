@@ -4,6 +4,7 @@
 use super::*;
 
 use crate::domain::attachment_refs;
+use crate::sync::day_picture_refs;
 
 /// Adds an attachment id to a note's `attachmentReferences` (§14.7).
 ///
@@ -92,8 +93,26 @@ fn edit_references(
         &outbox::Change::upsert(ITEM_TYPE, note_id),
         now_ms,
         |tx| {
+            // A day with no `note` record, or a deleted one: its owner creates
+            // it (#5800).
+            if day_picture_refs::creates_day_note(tx, note_id)? {
+                return day_picture_refs::create_day_note(
+                    tx,
+                    note_id,
+                    &references,
+                    device_id,
+                    now_ms,
+                );
+            }
+            let before = read_attachment_references(tx, note_id)?;
             attachment_refs::merge_note_references(tx, note_id, Some(&references))?;
             let mut changes = stamp(tx, ITEM_TYPE, note_id, device_id, now_ms)?;
+            changes.extend(day_picture_refs::removals_after_edit(
+                tx,
+                note_id,
+                &before,
+                &references,
+            )?);
             changes.push((
                 "attachmentReferences",
                 Change::Set(Value::Array(

@@ -353,6 +353,9 @@ export const NoteSyncPayloadSchema = z.object({
   mimeType: z.string().nullable().optional(),
   attachmentId: z.string().nullable().optional(),
   attachmentReferences: z.array(z.string()).nullable().optional(),
+  // A journal day's `note j<date>` record only: the ids a Rust core device
+  // removed from the day (chapter 14 §14.7.4). Desktop never sends it.
+  removedAttachmentReferences: z.array(z.string()).optional(),
   folderPath: z.string().nullable().optional(),
   // Absent means "this sender does not know" and leaves the receiver's cover
   // alone; `null` removes it. A value this build cannot read is treated as

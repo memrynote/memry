@@ -978,7 +978,7 @@ decide it. Read under §6.3's tick sum instead, a floor would beat such a write
 on a tie (`q` in `issue-5572-relay`).
 
 `fieldClocksAt` is the `clock` the writer stamped the units at
-(`packages/contracts/src/sync-payloads.ts:384-395`). **A side's
+(`packages/contracts/src/sync-payloads.ts:387-398`). **A side's
 `fieldClocks`, `fieldClocksFloor` and `fieldFloors` are trusted only when
 `fieldClocks` is present and `fieldClocksAt` equals its `clock`** under §6.4.2
 (`packages/sync-client/src/journal-merge.ts:69-75`, `crates/memry-core/src/sync/journal_merge.rs:116-149`). **An untrusted side, local or

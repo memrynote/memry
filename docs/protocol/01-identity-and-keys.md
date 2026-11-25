@@ -588,7 +588,7 @@ pass settles them. The decision is a pure function of five facts
    `F` fetches the bytes `F` uploaded once `j<D>` names them, and nothing is
    uploaded again (#5746, #5777;
    `apps/desktop/src/main/sync/journal-day-merge.ts:370`; core:
-   `crates/memry-core/src/sync/journal_day_merge/pictures.rs:43`, called from
+   `crates/memry-core/src/sync/journal_day_merge/pictures.rs:41`, called from
    `crates/memry-core/src/sync/journal_day_merge/mod.rs:334`). The core
    writes the union in the transaction that tombstones `F`, so a crash
    leaves neither, and a union that adds nothing pushes nothing. In the same
@@ -598,19 +598,21 @@ pass settles them. The decision is a pure function of five facts
    (`crates/memry-core/src/api/sync/note_uploads.rs:377`), so an attach made
    offline, or one whose bytes are going up while the merge settles, names
    `j<D>`: the pass uploads after the merge
-   (`crates/memry-core/src/api/sync/pass.rs:151`, `:157`). When `j<D>`'s `note` record is deleted, the core creates it again
-   over the tombstone, one tick past every delete clock it knows (chapter 05
-   §5.8), with only the carried references, as desktop's next upload to the
-   day does. When it carries no reference yet, only queued uploads, the
-   created record leaves `attachmentReferences` out rather than sending an
-   empty list (chapter 14 §14.7). A merge that another device already
-   settled (`deleted`) still carries: that device may run a build without
-   this step, and then no other device names `F`'s pictures under `j<D>`. Desktop
-   pushes on every carry, so a crash between its row write and its push
-   still names them on the retry. Desktop also pairs a lone reference with
-   a lone unrecorded file in `F`'s attachment folder when the folded text
-   embeds that file; the core stores every file under its attachment id and
-   has nothing to pair.
+   (`crates/memry-core/src/api/sync/pass.rs:151`, `:157`). When `j<D>` has
+   no `note` record, or a deleted one, the union creates it through the one
+   owner that creates a day's record, as a day's first picture does (chapter
+   14 §14.7.4): over the tombstone, one tick past every delete clock it knows
+   (chapter 05 §5.8), with the carried references and the removals the
+   tombstone carries
+   (`crates/memry-core/src/sync/day_picture_refs.rs:78`). A carry of queued
+   uploads alone creates no record; the first upload to land creates it. A
+   merge that another device already settled (`deleted`) still carries: that
+   device may run a build without this step, and then no other device names
+   `F`'s pictures under `j<D>`. Desktop pushes on every carry, so a crash
+   between its row write and its push still names them on the retry. Desktop
+   also pairs a lone reference with a lone unrecorded file in `F`'s attachment
+   folder when the folded text embeds that file; the core stores every file
+   under its attachment id and has nothing to pair.
 7. Only here, after the merge, and when `F` is live and its clock is
    non-empty, queue its tombstone with clock
    `increment(F.clock, self)` and payload `{"clock": ...}`, and record that

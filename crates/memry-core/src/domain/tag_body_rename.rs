@@ -45,15 +45,8 @@ pub(crate) fn renamed_tag(tag: &str, from: &str, to: &str) -> Option<String> {
 }
 
 pub(crate) fn is_inline_tag_name(name: &str) -> bool {
-    let word = |segment: &str, first_alpha: bool| {
-        let mut chars = segment.chars();
-        chars
-            .next()
-            .is_some_and(|c| c.is_ascii_alphabetic() || (!first_alpha && c.is_ascii_digit()))
-            && chars.all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
-    };
-    let mut segments = name.split('/');
-    segments.next().is_some_and(|head| word(head, true)) && segments.all(|s| word(s, false))
+    let chars: Vec<char> = name.chars().collect();
+    body_tags::tag_len(&chars) == Some(chars.len())
 }
 
 pub(crate) fn rewrite_bodies(
@@ -226,10 +219,29 @@ mod tests {
 
     #[test]
     fn inline_tag_names_match_desktop() {
-        for name in ["work", "a/b2", "x_y-z", "Area/2024"] {
+        for name in [
+            "work",
+            "a/b2",
+            "x_y-z",
+            "Area/2024",
+            "ünï",
+            "퓨리/하위",
+            "2024년",
+            "हिन्दी",
+        ] {
             assert!(is_inline_tag_name(name), "{name}");
         }
-        for name in ["my project", "2024", "a/", "/a", "a//b", "-a", "ünï", ""] {
+        for name in [
+            "my project",
+            "2024",
+            "2024/12",
+            "a/",
+            "/a",
+            "a//b",
+            "-a",
+            "タグ。",
+            "",
+        ] {
             assert!(!is_inline_tag_name(name), "{name}");
         }
     }

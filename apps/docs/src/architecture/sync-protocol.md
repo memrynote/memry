@@ -1226,7 +1226,10 @@ across devices:
   handler otherwise skips because the row is the journal's
   (`belongsToOtherType`). On that skip it still merges the record's
   references into the day's row and asks for the files as for a note, and
-  leaves the journal's path, title and clock alone (#5731). With
+  leaves the journal's path, title and clock alone (#5731). A record from
+  the Rust core (iOS) may also carry `removedAttachmentReferences`, the ids a
+  core device removed from the day. Desktop's schema accepts the optional key,
+  ignores it, and never sends it (protocol chapter 14 §14.7.4). With
   auto-download off, opening the day asks for them: the journal page calls
   `sync:download-note-files` with the day's id, like the note page (#5735).
   When the day merge folds a legacy foreign journal id into `j<date>`, the day

@@ -47,6 +47,7 @@ mod calendar_push;
 mod changes_page;
 pub mod clock;
 pub mod crdt_wire;
+pub(crate) mod day_picture_refs;
 pub mod delete_keep;
 mod delete_wins;
 pub mod diagnostics;

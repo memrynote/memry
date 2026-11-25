@@ -199,19 +199,20 @@ optional on every type; `fieldClocks` appears only where §13.9 says so.
 
 ### 13.7.1 `note` — `packages/contracts/src/sync-payloads.ts:230-246`
 
-| Field                                                            | Type                                          | Rule                                                                                                                                   |
-| ---------------------------------------------------------------- | --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `title`                                                          | string?                                       |                                                                                                                                        |
-| `content`                                                        | string, nullable?                             | **a CRDT update push carries `content: null`** (chapter 07); non-null only on `create` and `duplicate` (chapter 12 §12.2, carve-out A) |
-| `tags`                                                           | string[]?                                     | see chapter 12 §12.5.2 for the unresolved two-writer case                                                                              |
-| `pinnedTags`                                                     | string[]?                                     |                                                                                                                                        |
-| `emoji`                                                          | string, nullable?                             |                                                                                                                                        |
-| `properties`                                                     | record, nullable?                             | **free-form: values only, never definitions** (`property_definition` carries those)                                                    |
-| `aliases`                                                        | string[], nullable?                           | see §13.7.1.2; **absent or `null` keeps the receiver's list, `[]` clears it**                                                          |
-| `fileType`                                                       | `markdown \| pdf \| image \| audio \| video`? | **binary types have no CRDT body**                                                                                                     |
-| `mimeType`, `attachmentId`, `attachmentReferences`, `folderPath` | nullable?                                     |                                                                                                                                        |
-| `cover`                                                          | object, nullable?                             | see §13.7.1.1; **absent keeps the receiver's cover, `null` removes it**                                                                |
-| `createdAt`, `modifiedAt`                                        | `SyncTimestampSchema`?                        | §13.5                                                                                                                                  |
+| Field                                                            | Type                                          | Rule                                                                                                                                                |
+| ---------------------------------------------------------------- | --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `title`                                                          | string?                                       |                                                                                                                                                     |
+| `content`                                                        | string, nullable?                             | **a CRDT update push carries `content: null`** (chapter 07); non-null only on `create` and `duplicate` (chapter 12 §12.2, carve-out A)              |
+| `tags`                                                           | string[]?                                     | see chapter 12 §12.5.2 for the unresolved two-writer case                                                                                           |
+| `pinnedTags`                                                     | string[]?                                     |                                                                                                                                                     |
+| `emoji`                                                          | string, nullable?                             |                                                                                                                                                     |
+| `properties`                                                     | record, nullable?                             | **free-form: values only, never definitions** (`property_definition` carries those)                                                                 |
+| `aliases`                                                        | string[], nullable?                           | see §13.7.1.2; **absent or `null` keeps the receiver's list, `[]` clears it**                                                                       |
+| `fileType`                                                       | `markdown \| pdf \| image \| audio \| video`? | **binary types have no CRDT body**                                                                                                                  |
+| `mimeType`, `attachmentId`, `attachmentReferences`, `folderPath` | nullable?                                     |                                                                                                                                                     |
+| `cover`                                                          | object, nullable?                             | see §13.7.1.1; **absent keeps the receiver's cover, `null` removes it**                                                                             |
+| `removedAttachmentReferences`                                    | string[]?                                     | **`note j<YYYY-MM-DD>` only, sent by the Rust core**: the ids a core device removed from a journal day; desktop never sends it (chapter 14 §14.7.4) |
+| `createdAt`, `modifiedAt`                                        | `SyncTimestampSchema`?                        | §13.5                                                                                                                                               |
 
 #### 13.7.1.1 `cover`
 
@@ -298,7 +299,7 @@ short-circuits `operation === 'delete'` and reads only the optional
 only on a delete.
 
 A `journal` also carries `fieldClocks`, `fieldClocksAt`, `fieldClocksFloor` and
-`fieldFloors` (`packages/contracts/src/sync-payloads.ts:384-395`, #5508, #5572):
+`fieldFloors` (`packages/contracts/src/sync-payloads.ts:387-398`, #5508, #5572):
 one clock per `tags.<tagKey>` and `properties.<key>` unit, stamped at the
 payload's `clock`; one floor clock for every unit `fieldClocks` does not name;
 and, keyed as `fieldClocks` is, a unit's own floor where it differs from
@@ -1015,7 +1016,7 @@ is a new item, not a re-push of the merged one.
 | `project`                   | field-level                                                          | yes (`:247`)                                       |
 | `calendar_event`            | field-level                                                          | yes (`:405`)                                       |
 | `settings`                  | dotted-path field clocks                                             | yes, its own key space                             |
-| `journal`                   | document-level resolver, `tags` and `properties` per unit (06 §6.12) | yes, for those two keys (`:387`)                   |
+| `journal`                   | document-level resolver, `tags` and `properties` per unit (06 §6.12) | yes, for those two keys (`:390`)                   |
 | `canvas`                    | document-level resolver, plus a conflict copy (§13.7.21)             | no                                                 |
 | every other subscribed type | document-level resolver                                              | no                                                 |
 
