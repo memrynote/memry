@@ -21,6 +21,10 @@
 //! 4. the tombstone carries the deleter's body state vector and this device's
 //!    body log holds an item it does not cover (#3037).
 //!
+//! A journal day whose vault file holds bytes the document never took (an
+//! outside edit the vault has not read yet) keeps that file's text whatever
+//! the four rules say (#5758).
+//!
 //! The core never writes markdown, so the copy holds [`extract_text`]'s plain
 //! text: words, headings and list markers, without inline formatting. A body
 //! log with a blob that does not replay is read from the note's vault file,
@@ -40,6 +44,7 @@ use crate::crdt::CrdtError;
 use crate::crdt::registry::{Document, DocumentRegistry, UpdateSink};
 use crate::crdt::text_extract::extract_text;
 use crate::crdt::update_log::{self, LOCAL_NAMESPACE_PREFIX};
+use crate::domain::content_hash::content_hash;
 use crate::domain::inbox::write::{NewCapture, capture_in};
 use crate::domain::journal;
 use crate::domain::journal_rules::canonical_journal_id;
@@ -189,13 +194,23 @@ pub(crate) fn keep(
         Ok(state_vector) => facts.local_body_state_vector = Some(BASE64.encode(state_vector)),
         Err(error) => eprintln!("memry-core: no state vector for the body of {item_id}: {error}"),
     }
-    if !keeps_unseen_text(&facts) {
-        return Ok(());
-    }
-    let file = if skipped > 0 {
-        vault_file_body(tx, vault_root, item_id)?
+    // A journal day's file edited outside the app that the document has not taken yet (a
+    // closed-app edit the open walk has not reached, one still in the watcher's debounce) holds
+    // text no clock or body log here knows of: it is unseen whatever the clocks say, and the
+    // copy keeps the file's text (#5758, desktop's #5757).
+    let unseen_file = if item_type == journal::ITEM_TYPE {
+        untaken_file_body(tx, vault_root, item_id)?
     } else {
         None
+    };
+    let forced = unseen_file.is_some();
+    if !forced && !keeps_unseen_text(&facts) {
+        return Ok(());
+    }
+    let file = match unseen_file {
+        Some(text) => Some(text),
+        None if skipped > 0 => vault_file_body(tx, vault_root, item_id)?,
+        None => None,
     };
     let text = match file {
         Some(text) => text,
@@ -208,7 +223,7 @@ pub(crate) fn keep(
         },
     };
     facts.body_blank = text.trim().is_empty();
-    if !keeps_unseen_text(&facts) {
+    if facts.body_blank || (!forced && !keeps_unseen_text(&facts)) {
         return Ok(());
     }
     let device = clock_device.ok_or_else(|| StorageError::Failed {
@@ -292,6 +307,36 @@ fn vault_file_body(
             Ok(None)
         }
     }
+}
+
+/// The body of `item_id`'s vault file when its bytes are not the ones the document took
+/// (the row's `content_hash`), `None` when they are, when the row names no text the document
+/// took, or when there is no file to read.
+fn untaken_file_body(
+    tx: &Connection,
+    vault_root: Option<&Path>,
+    item_id: &str,
+) -> Result<Option<String>, StorageError> {
+    let Some(root) = vault_root else {
+        return Ok(None);
+    };
+    let Some(row) = note_files::by_id(tx, item_id)? else {
+        return Ok(None);
+    };
+    let Some(taken) = row.content_hash else {
+        return Ok(None);
+    };
+    let raw = match std::fs::read(root.join(&row.path)) {
+        Ok(bytes) => String::from_utf8_lossy(&bytes).into_owned(),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => {
+            eprintln!(
+                "memry-core: the vault file of {item_id} cannot be read before its delete: {error}"
+            );
+            return Ok(None);
+        }
+    };
+    Ok((content_hash(&raw) != taken).then(|| file_body(&raw)))
 }
 
 #[cfg(feature = "markdown")]
