@@ -9,6 +9,7 @@ import {
   baselineBeforeFeed,
   isOutsideEdit,
   landBodyEdit,
+  markDocWrite,
   recordDocFile,
   takesUnstoredFile,
   writeDocWithBaseline,
@@ -331,6 +332,16 @@ describe('the unstored mark of a write the store lacks (#5698)', () => {
     expect(takesUnstoredFile(index.db, 'n1', cached(), B, stored)).toBe(true)
     expect(takesUnstoredFile(index.db, 'n1', cached(), B, doc)).toBe(false)
     expect(cached().pendingWriteHash).toBeNull()
+  })
+
+  it("reads a file holding a marked write's bytes as its own, keeping the mark", () => {
+    const doc = new Y.Doc()
+    typed(doc, 'B')
+    const mark = markDocWrite(index.db, 'n1', B, serialized(doc), storeLackingTheDoc())
+    const cached = () => getNoteCacheById(index.db, 'n1')!
+
+    expect(isOutsideEdit(index.db, 'n1', cached(), B)).toBe(false)
+    expect(cached()).toMatchObject({ contentHash: generateContentHash(B), pendingWriteHash: mark })
   })
 
   // VERIFY-5703R6 (2): a keystroke after the conversion is not in the file.

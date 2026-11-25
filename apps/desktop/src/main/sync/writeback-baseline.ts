@@ -385,9 +385,20 @@ export async function writeWithBaseline(
 }
 
 /**
+ * The hash of the bytes the row's pending write names: the marked write's
+ * under an unstored mark, none under a mark this build cannot read.
+ */
+export function pendingWriteHashOf(pending: string | null | undefined): string | null {
+  if (pending?.startsWith(UNSTORED_FILE)) return parseUnstoredMark(pending)?.hash ?? null
+  return pending ?? null
+}
+
+/**
  * Whether `raw`, read from the note's file, holds an edit its doc lacks. Bytes
  * a write-back wrote before it stopped short of recording them are its own,
- * and become the baseline here.
+ * and become the baseline here. Under an unstored mark the store may lack
+ * them, so the mark stays and only `content_hash` moves, as `recordDocFile`
+ * leaves the row.
  */
 export function isOutsideEdit(
   indexDb: IndexDb,
@@ -397,8 +408,9 @@ export function isOutsideEdit(
 ): boolean {
   const onDisk = generateContentHash(raw)
   if (onDisk === baseline.contentHash) return false
-  if (onDisk !== baseline.pendingWriteHash) return true
-  recordBaseline(indexDb, noteId, raw)
+  if (onDisk !== pendingWriteHashOf(baseline.pendingWriteHash)) return true
+  if (holdsUnstoredFile(baseline)) updateNoteCache(indexDb, noteId, { contentHash: onDisk })
+  else recordBaseline(indexDb, noteId, raw)
   return false
 }
 
