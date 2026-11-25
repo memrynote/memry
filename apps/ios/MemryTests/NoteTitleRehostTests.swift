@@ -215,12 +215,10 @@ struct NoteTitleRehostTests {
     @Test(.timeLimit(.minutes(3))) func a_title_typed_on_the_redrawn_page_wins() async throws {
         // A window another suite makes key takes the caret and ends the
         // title's edit early: such a run proves nothing, and runs again.
-        var attempt = 0
-        while true {
-            attempt += 1
+        let (f, kept, first, shown) = try await Resigned.uninterrupted { watch in
             let f = try fixture()
             let window = try sceneWindow()
-            let resigned = Resigned(window)
+            watch(window)
             let field = try await typeAndRehost("Agent Heron", f, SyncPasses(), in: window)
             await until { field.isFirstResponder }
             let kept = field.isFirstResponder
@@ -238,19 +236,13 @@ struct NoteTitleRehostTests {
             for _ in 0..<300 where (try? await savedTitle(f)) != "Kestrel" {
                 try await Task.sleep(for: .milliseconds(20))
             }
-            resigned.stop()
-            window.isHidden = true
-            if resigned.happened, attempt < 10 {
-                try await Task.sleep(for: .milliseconds(200 * attempt))
-                continue
-            }
-            #expect(kept, "the redrawn title did not keep the caret")
-            #expect(first == "Agent Heron", "the typed title was not saved: \(f.writer.titles)")
-            #expect(shown == "Kestrel", "the re-read replaced the typed title")
-            #expect(try await savedTitle(f) == "Kestrel")
-            #expect(f.writer.titles == ["Agent Heron", "Kestrel"])
-            return
+            return (f, kept, first, shown)
         }
+        #expect(kept, "the redrawn title did not keep the caret")
+        #expect(first == "Agent Heron", "the typed title was not saved: \(f.writer.titles)")
+        #expect(shown == "Kestrel", "the re-read replaced the typed title")
+        #expect(try await savedTitle(f) == "Kestrel")
+        #expect(f.writer.titles == ["Agent Heron", "Kestrel"])
     }
 
     /// Opens a page on the note and puts the caret in its title.

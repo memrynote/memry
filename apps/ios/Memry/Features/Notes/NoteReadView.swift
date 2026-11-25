@@ -104,7 +104,8 @@ struct NoteReadView: View {
         search: (any VaultSearching)? = nil,
         open: ((NoteRoute) -> Void)? = nil,
         openTag: ((String) -> Void)? = nil,
-        noteTasks: (any NoteTaskWriting)? = nil
+        noteTasks: (any NoteTaskWriting)? = nil,
+        notifications: NotificationCenter = .default
     ) {
         self.open = open
         self.openTag = openTag
@@ -139,7 +140,9 @@ struct NoteReadView: View {
         // this page's rows start with none, so an old stamp draws for them;
         // `loadBlocks` stamps from this session from its next read on.
         _editorModel = State(
-            initialValue: NoteEditorViewModel(noteId: model.route.id, editor: editor, notes: writer)
+            initialValue: NoteEditorViewModel(
+                noteId: model.route.id, editor: editor, notes: writer, notifications: notifications
+            )
         )
         _metadataModel = State(
             initialValue: NoteMetadataViewModel(noteId: model.route.id, writer: metadataWriter)

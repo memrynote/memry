@@ -22,3 +22,25 @@ final class Resigned {
         observer = nil
     }
 }
+
+extension Resigned {
+    /// Runs `scenario` until no other suite made the window it watches key
+    /// meanwhile, at most ten times, and returns what the last run saw.
+    /// `scenario` makes its window and hands it to `watch` before it types;
+    /// the window is hidden when the run ends. The last run counts whether
+    /// interrupted or not, so a test still asserts every time (#5780).
+    static func uninterrupted<T>(
+        _ scenario: @MainActor (_ watch: @MainActor (UIWindow) -> Void) async throws -> T
+    ) async throws -> T {
+        var attempt = 0
+        while true {
+            attempt += 1
+            var watched: (window: UIWindow, resigned: Resigned)?
+            let seen = try await scenario { watched = ($0, Resigned($0)) }
+            watched?.resigned.stop()
+            watched?.window.isHidden = true
+            if watched?.resigned.happened != true || attempt == 10 { return seen }
+            try await Task.sleep(for: .milliseconds(200 * attempt))
+        }
+    }
+}
