@@ -1596,7 +1596,14 @@ then skipped until some later edit re-armed it.
 
 ## Sign-Out Keeps the Store
 
-Signing out does **not** delete the CRDT store. It used to, and that was the
+Signing out does **not** delete the CRDT store. The data DB rows that describe
+the store stay with it: `crdtStoreEpoch`, the `crdtUnmergedDebt` flag and its
+mirror marker, and the pack settle markers are in sign-out's keep-set
+(`sync/device-local-state.ts`). Wiped, the epoch reads as a mismatch at the next
+start and owes a body sweep of every note; keeping the epoch without the flag
+would drop the debt a mismatch raised just before the sign-out (#5754).
+
+The store used to be deleted here, and that was the
 containment for the cross-vault key collision described in
 [One Store Per Vault](#one-store-per-vault) — a problem the store path now makes
 structurally impossible, so the wipe has nothing left to defend.
