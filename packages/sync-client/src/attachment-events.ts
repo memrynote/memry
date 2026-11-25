@@ -29,8 +29,12 @@ export interface NoteFileDownload {
   sizeHint?: number
   /** Epoch ms of the owning note's modifiedAt at the time of the emit. */
   recencyHint?: number
-  /** Called once the blob has landed at `diskPath` (binary-note flow only). */
-  landed?: () => void
+  /**
+   * Called once the blob has landed at `diskPath` (binary-note flow only).
+   * `outlived` turns true once the download's session ends; a landing that
+   * awaits checks it before it writes.
+   */
+  landed?: (outlived: () => boolean) => void
 }
 
 export interface AttachmentDownloadNeededEvent extends NoteFileDownload {
