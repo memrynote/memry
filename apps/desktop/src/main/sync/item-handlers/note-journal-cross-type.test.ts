@@ -82,9 +82,11 @@ import type { AttachmentDownloadNeededEvent } from '@memry/sync-client/attachmen
 import { _resetBulkApplyForTests } from '../bulk-apply'
 import { journalHandler } from './journal-handler'
 import { noteHandler } from './note-handler'
+import { generateJournalId } from '@memry/contracts/journal-api'
 
 const ID = 'legacyagent0609'
 const DATE = '2026-06-09'
+const DAY_ID = generateJournalId(DATE)
 
 describe('note and journal rows that share an id', () => {
   let testDb: TestDatabaseResult
@@ -105,7 +107,7 @@ describe('note and journal rows that share an id', () => {
     testDb.close()
   })
 
-  const rowOf = () =>
+  const rowOf = (id = ID) =>
     testDb.db
       .select({
         path: noteMetadata.path,
@@ -114,7 +116,7 @@ describe('note and journal rows that share an id', () => {
         clock: noteMetadata.clock
       })
       .from(noteMetadata)
-      .where(eq(noteMetadata.id, ID))
+      .where(eq(noteMetadata.id, id))
       .get()
 
   const vaultFiles = () =>
@@ -139,11 +141,11 @@ describe('note and journal rows that share an id', () => {
     fs.writeFileSync(path.join(vaultPath, 'Untitled.md'), 'legacy body\n', 'utf-8')
   }
 
-  const seedLiveJournal = () => {
+  const seedLiveJournal = (id = ID) => {
     testDb.db
       .insert(noteMetadata)
       .values({
-        id: ID,
+        id,
         path: `journal/${DATE}.md`,
         title: DATE,
         fileType: 'markdown',
@@ -262,12 +264,17 @@ describe('note and journal rows that share an id', () => {
 
   // A journal day's pictures ride a `note` record under the day's id: the
   // journal payload has no `attachmentReferences` (#5731).
-  it("a note upsert on a live journal merges the day's pictures and asks for them", () => {
-    seedLiveJournal()
+  // The legacy id owes a day merge; the canonical `j<date>` is the day itself.
+  // Neither is pushed back as a note (#5730).
+  it.each([
+    ['a legacy', ID],
+    ['the canonical', DAY_ID]
+  ])("a note upsert on %s live journal merges the day's pictures and asks for them", (_, id) => {
+    seedLiveJournal(id)
     testDb.db
       .update(noteMetadata)
       .set({ attachmentReferences: ['att-local'] })
-      .where(eq(noteMetadata.id, ID))
+      .where(eq(noteMetadata.id, id))
       .run()
     const asked: Array<
       Pick<AttachmentDownloadNeededEvent, 'noteId' | 'attachmentId' | 'diskPath'>
@@ -282,7 +289,7 @@ describe('note and journal rows that share an id', () => {
     try {
       const result = noteHandler.applyUpsert(
         ctx,
-        ID,
+        id,
         { title: 'Hijacked', attachmentReferences: ['att-local', 'att-peer'] },
         { 'device-c239': 1, 'device-9821': 1 }
       )
@@ -290,9 +297,15 @@ describe('note and journal rows that share an id', () => {
       const stored = testDb.db
         .select({ refs: noteMetadata.attachmentReferences })
         .from(noteMetadata)
-        .where(eq(noteMetadata.id, ID))
+        .where(eq(noteMetadata.id, id))
         .get()
-      expect({ result, row: rowOf(), refs: stored?.refs, files: vaultFiles() }).toEqual({
+      expect({
+        result,
+        row: rowOf(id),
+        refs: stored?.refs,
+        files: vaultFiles(),
+        queued: testDb.db.select().from(syncQueue).all().length
+      }).toEqual({
         result: 'skipped',
         row: {
           path: `journal/${DATE}.md`,
@@ -301,12 +314,13 @@ describe('note and journal rows that share an id', () => {
           clock: { 'device-c239': 1 }
         },
         refs: ['att-local', 'att-peer'],
-        files: [`journal/${DATE}.md`]
+        files: [`journal/${DATE}.md`],
+        queued: 0
       })
-      const dir = path.join(vaultPath, 'attachments', ID)
+      const dir = path.join(vaultPath, 'attachments', id)
       expect(asked).toEqual([
-        { noteId: ID, attachmentId: 'att-local', diskPath: dir },
-        { noteId: ID, attachmentId: 'att-peer', diskPath: dir }
+        { noteId: id, attachmentId: 'att-local', diskPath: dir },
+        { noteId: id, attachmentId: 'att-peer', diskPath: dir }
       ])
     } finally {
       attachmentEvents.offDownloadNeeded(listener)

@@ -1226,13 +1226,26 @@ across devices:
   handler otherwise skips because the row is the journal's
   (`belongsToOtherType`). On that skip it still merges the record's
   references into the day's row and asks for the files as for a note, and
-  leaves the journal's path, title and clock alone (#5731). The journal page
-  does not call `sync:download-note-files`, so with auto-download off a
-  peer's journal pictures stay on the server until the setting is on.
+  leaves the journal's path, title and clock alone (#5731). With
+  auto-download off, opening the day asks for them: the journal page calls
+  `sync:download-note-files` with the day's id, like the note page (#5735).
+  When the day merge folds a legacy foreign journal id into `j<date>`, the day
+  takes over the foreign row's references (a union) and its attachment file
+  records, so the files under `attachments/<foreignId>/` that the folded body
+  embeds still resolve and are not uploaded again. A foreign row from before
+  the record (#2651) has references no record names. Ids are random per
+  upload and a stored name carries none, so the day records those
+  references against the foreign folder's unrecorded files on disk only when
+  one reference and one file are unrecorded, and then nothing is downloaded
+  again. Otherwise it counts the files as known and the references stay owed. A download for a
+  file that is already present then lands a second copy in
+  `attachments/j<date>/`. A file that is really missing moves to where the
+  body links it. The files stay where they are and nothing is pushed for the
+  carry.
 - **Downloads on open** — with attachment auto-download off
   (`sync.attachmentAutoDownload === false`), the pull and the re-drive ask for
-  no file, so opening a note or a file asks instead: the note page and the file
-  page call `sync:download-note-files` with the note id
+  no file, so opening a note or a file asks instead: the note, journal and file
+  pages call `sync:download-note-files` with the note id
   (`apps/desktop/src/main/ipc/sync-attachment-handlers.ts`). Main lists what
   this device lacks from local state only (`owed-note-downloads.ts`): a binary
   note's own file when it is not on disk, and each referenced attachment with
