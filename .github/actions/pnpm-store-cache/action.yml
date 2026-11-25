@@ -1,0 +1,32 @@
+name: Cache the pnpm store
+description: >-
+  Restore the pnpm store on every ref and save it only on main.
+
+  Replaces setup-node's `cache: pnpm`, which saves a ~950 MB entry for every
+  ref it runs on, PR merge refs included, and has no switch to turn saving off.
+  Those per-PR entries filled the repo's 10 GB Actions cache and evicted the
+  entries other runs restore (#5221). Runs after setup-node and a pnpm on PATH.
+
+runs:
+  using: composite
+  steps:
+    - name: Locate the pnpm store
+      id: store
+      shell: bash
+      run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+    # Only main saves (actions/cache, in its post step); every other ref restores main's entry and
+    # writes nothing. The two steps are exclusive.
+    - name: Restore and save the pnpm store
+      if: github.ref == 'refs/heads/main'
+      uses: actions/cache@v4
+      with:
+        path: ${{ steps.store.outputs.path }}
+        key: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
+
+    - name: Restore the pnpm store
+      if: github.ref != 'refs/heads/main'
+      uses: actions/cache/restore@v4
+      with:
+        path: ${{ steps.store.outputs.path }}
+        key: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}

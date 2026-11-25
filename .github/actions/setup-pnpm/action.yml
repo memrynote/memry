@@ -12,7 +12,7 @@ description: >-
   checkout, so there is nothing left to rate limit; pnpm itself comes from the
   npm registry, which serves this fan-out without complaint.
 
-  Must run before actions/setup-node when that step uses `cache: pnpm`, exactly
+  Must run before actions/setup-node and pnpm-store-cache, exactly
   where pnpm/action-setup used to sit. pnpm is installed outside the workspace
   and exposed through its npm bin shim, which resolves node at call time — so it
   survives setup-node swapping the node version out from under it, and it leaves

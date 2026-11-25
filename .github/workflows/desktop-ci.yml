@@ -54,7 +54,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
+
+      - name: Cache the pnpm store
+        uses: ./.github/actions/pnpm-store-cache
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
@@ -190,7 +192,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
+
+      - name: Cache the pnpm store
+        uses: ./.github/actions/pnpm-store-cache
 
       - name: Install system dependencies
         run: |
@@ -259,7 +263,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
+
+      - name: Cache the pnpm store
+        uses: ./.github/actions/pnpm-store-cache
 
       - name: Install dependencies
         env:
@@ -357,7 +363,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
+
+      - name: Cache the pnpm store
+        uses: ./.github/actions/pnpm-store-cache
 
       - name: Cache Electron binary
         uses: ./.github/actions/cache-electron-binary
@@ -425,7 +433,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
+
+      - name: Cache the pnpm store
+        uses: ./.github/actions/pnpm-store-cache
 
       - name: Cache Electron binary
         uses: ./.github/actions/cache-electron-binary
@@ -507,7 +517,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
+
+      - name: Cache the pnpm store
+        uses: ./.github/actions/pnpm-store-cache
 
       - name: Install dependencies
         shell: bash
@@ -622,7 +634,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
+
+      - name: Cache the pnpm store
+        uses: ./.github/actions/pnpm-store-cache
 
       - name: Cache Electron binary
         uses: ./.github/actions/cache-electron-binary
