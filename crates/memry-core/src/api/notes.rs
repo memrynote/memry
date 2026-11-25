@@ -13,6 +13,7 @@ use crate::crdt::comments::ReviewComment;
 use crate::crdt::errors::CrdtError;
 use crate::domain::attachments::{self, BlockAttachment, CachedAttachment};
 use crate::domain::bookmarks::{self, BookmarkEntry};
+use crate::domain::note_file::{self, NoteFile};
 use crate::domain::note_meta::{self, NoteMetadata};
 use crate::domain::notes;
 use crate::domain::reads::{
@@ -265,6 +266,14 @@ impl Notes {
     pub fn attachments(&self, id: String) -> Result<Vec<CachedAttachment>, StorageError> {
         self.db
             .read_blocking(move |conn| attachments::for_note(conn, &id))
+    }
+
+    /// A binary note's own file (#5668): the PDF, image, audio or video that
+    /// is the note's whole content. `None` for a note that names none, which
+    /// opens as a body. Fetch the bytes with `VaultSync::fetch_attachment`.
+    pub fn file(&self, id: String) -> Result<Option<NoteFile>, StorageError> {
+        self.db
+            .call_blocking(move |conn| note_file::for_note(conn, &id))
     }
 
     /// What one body block's `url` points at (Q4).

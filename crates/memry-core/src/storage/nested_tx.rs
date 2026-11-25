@@ -10,6 +10,15 @@
 //! cursor, which is why the test below holds the rule for the whole crate. Committing an inner one releases the
 //! savepoint, and dropping it uncommitted rolls back to it, so an item that
 //! fails leaves no half-written rows in the page and the page goes on.
+//!
+//! The outermost one on a writable connection is `BEGIN IMMEDIATE`: it takes the database's write lock
+//! before its first read, waiting out another connection's (the busy
+//! timeout). A body write reads the log and appends the update it authored
+//! from it, and the lock is what keeps a second connection, in this process
+//! or another, from authoring over the same log in between (#5734). A
+//! deferred transaction would instead fail its first write with
+//! `SQLITE_BUSY` whenever another connection wrote since its read. On a
+//! read-only connection it is `BEGIN DEFERRED`, a read snapshot.
 
 use std::ops::Deref;
 
@@ -29,8 +38,12 @@ pub fn begin(conn: &Connection) -> rusqlite::Result<NestedTx<'_>> {
     let savepoint = !conn.is_autocommit();
     if savepoint {
         conn.execute_batch(&format!("SAVEPOINT {SAVEPOINT}"))?;
-    } else {
+    } else if conn.is_readonly(rusqlite::MAIN_DB)? {
+        // A read pool connection (feat/tauri-v2) cannot take the write lock;
+        // its transaction is a read snapshot only.
         conn.execute_batch("BEGIN DEFERRED")?;
+    } else {
+        conn.execute_batch("BEGIN IMMEDIATE")?;
     }
     Ok(NestedTx {
         conn,
@@ -142,17 +155,16 @@ mod tests {
         assert_eq!(kept, [1, 3]);
     }
 
-    /// `update_log.rs`, `compact.rs`, `migrations.rs` and
-    /// `legacy_numbering.rs` open with `Connection::transaction` or
-    /// `transaction_with_behavior`, which take `&mut Connection`, so nothing
-    /// holding a page's shared `&Connection` can reach them.
+    /// `compact.rs`, `migrations.rs` and `legacy_numbering.rs` open with
+    /// `Connection::transaction` or `transaction_with_behavior`, which take
+    /// `&mut Connection`, so nothing holding a page's shared `&Connection` can
+    /// reach them.
     ///
     /// The `*_tests.rs` files and the test modules of `connection.rs`,
     /// `guard.rs`, `pool.rs` and `recovery.rs` (desktop, feat/tauri-v2) hold
     /// a lock or leave a transaction open on a second connection on purpose.
-    const RAW_TRANSACTION_ALLOWED: [&str; 13] = [
+    const RAW_TRANSACTION_ALLOWED: [&str; 12] = [
         "nested_tx.rs",
-        "crdt/update_log.rs",
         "crdt/compact.rs",
         "storage/migrations.rs",
         "storage/migrations/legacy_numbering.rs",

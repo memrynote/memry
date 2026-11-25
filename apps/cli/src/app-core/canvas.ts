@@ -25,7 +25,7 @@ import { CANVAS_ENTITY_TYPES, type CanvasEntityRef } from '@memry/contracts/canv
 import { canvasFolderSyncId } from '@memry/contracts/canvas-folder-types'
 import { createId } from '@memry/app-core/ids'
 import type { DataDb } from './database.ts'
-import { safeFilename } from './paths.ts'
+import { safeFilename, vaultFolder } from './paths.ts'
 import { errorCode } from './errno.ts'
 
 // Mirrors desktop's canvas store (apps/desktop/src/main/canvas/store.ts,
@@ -408,7 +408,9 @@ export function createCanvasService({
       .get()
   }
 
-  function insertCanvas(input: CanvasCreateInput & { ownerNoteId?: string | null }): CanvasRecord {
+  async function insertCanvas(
+    input: CanvasCreateInput & { ownerNoteId?: string | null }
+  ): Promise<CanvasRecord> {
     const id = createId('canvas')
     const now = Date.now()
     const scene = input.scene ?? ''
@@ -420,6 +422,8 @@ export function createCanvasService({
       }
     }
     const filePath = allocatePath(vaultPath, input.title ?? null, storedFolder(input.folder))
+    // `canvases` or a folder in it can be a link that leads outside the vault (#5679).
+    await vaultFolder(vaultPath, path.posix.dirname(filePath), 'create canvas')
     const folder = folderOfPath(filePath)
     const icon = input.icon ?? null
 
@@ -533,7 +537,7 @@ export function createCanvasService({
       const folder = normalizeFolder(row.folder)
       const copyFilename = allocatePath(vaultPath, row.title, folder).split('/').pop()!
       const copyTitle = row.title === null ? null : copyFilename.slice(0, -CANVAS_FILE_EXT.length)
-      const created = insertCanvas({ title: copyTitle, folder, icon: row.icon, scene })
+      const created = await insertCanvas({ title: copyTitle, folder, icon: row.icon, scene })
 
       // Asset GC treats a content hash as orphaned when no OTHER canvas holds a
       // row for it, so the copy needs the original's asset rows.

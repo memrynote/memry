@@ -54,6 +54,7 @@ extension InboxCopy {
     static let notYetViewed = "Not yet viewed"
     static func journalTitle(_ date: String) -> String { "Journal — \(date)" }
     static let fileNotHere = "The file is on the device that captured it."
+    static let fileDownloading = "Downloading the file…"
     static let pagesLabel = "Pages"
     static let duration = "Duration"
 }

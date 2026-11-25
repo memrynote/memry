@@ -45,8 +45,19 @@ const TRANSIENT_MAX_MS = 6 * 60 * 60 * 1000
  */
 const MAX_SUCCEEDED_KEYS = 5000
 
-/** Requests handed to the downloader whose outcome is not in yet. */
-const inFlight = new Set<string>()
+/**
+ * One requester's hold on a download (#5616). Only its holder may release it:
+ * a release from a requester that no longer holds the download would let a
+ * second request fan out and count the same 404 twice.
+ */
+export interface DownloadClaim {
+  readonly key: string
+  /** Taken for a download the user is waiting on, not a pull's background one. */
+  readonly interactive?: true
+}
+
+/** Requests handed to the downloader whose outcome is not in yet, by holder. */
+const inFlight = new Map<string, DownloadClaim>()
 /** Downloads that succeeded in this session. */
 const succeeded = new Set<string>()
 
@@ -152,22 +163,72 @@ export function shouldAttemptDownload(
  * separate occasions: it is never asked for again.
  */
 export function isDownloadAbandoned(db: DrizzleDb, ownerId: string, attachmentId: string): boolean {
-  const row = readFailure(db, ownerId, attachmentId)
-  return row?.reason === 'missing' && row.nextAttemptAt === null
+  return missingDownload(db, ownerId, attachmentId) === 'gone'
 }
 
-/** Claim the attempt so concurrent pulls of the same note do not fan out twice. */
-export function markDownloadRequested(ownerId: string, attachmentId: string): void {
-  inFlight.add(keyOf(ownerId, attachmentId))
+/**
+ * What the server's 404 for this download still says: `gone` once it answered
+ * so MISSING_PROBE_LIMIT times, `missing` until its next probe is due. Null when
+ * no 404 stands in the way of an attempt.
+ */
+export function missingDownload(
+  db: DrizzleDb,
+  ownerId: string,
+  attachmentId: string
+): 'gone' | 'missing' | null {
+  const row = readFailure(db, ownerId, attachmentId)
+  if (row?.reason !== 'missing') return null
+  if (row.nextAttemptAt === null) return 'gone'
+  return Date.now() < row.nextAttemptAt ? 'missing' : null
+}
+
+/**
+ * Claim the attempt so concurrent pulls of the same note do not fan out twice.
+ * Null while another requester holds it: that download is already on its way.
+ */
+export function markDownloadRequested(ownerId: string, attachmentId: string): DownloadClaim | null {
+  return takeClaim({ key: keyOf(ownerId, attachmentId) })
+}
+
+function takeClaim(wanted: DownloadClaim): DownloadClaim | null {
+  if (inFlight.has(wanted.key)) return null
+  inFlight.set(wanted.key, wanted)
+  return wanted
+}
+
+/**
+ * Claim a download the user is waiting on (#5616). Unlike
+ * {@link shouldAttemptDownload} it does not wait out a transient failure's
+ * backoff: the user asked now. A 404 keeps its window, so opening a note never
+ * spends the MISSING_PROBE_LIMIT probes faster than the pull does. Null while
+ * an attempt already runs, once one landed this session, or while a 404 stands.
+ */
+export function claimRequestedDownload(
+  db: DrizzleDb,
+  ownerId: string,
+  attachmentId: string
+): DownloadClaim | null {
+  const key = keyOf(ownerId, attachmentId)
+  if (succeeded.has(key)) return null
+  if (missingDownload(db, ownerId, attachmentId)) return null
+  return takeClaim({ key, interactive: true })
+}
+
+/**
+ * Whether this claim still holds its download. A session reset drops every
+ * claim, and a request made before it is not this session's to carry out.
+ */
+export function holdsDownload(claim: DownloadClaim): boolean {
+  return inFlight.get(claim.key) === claim
 }
 
 /**
  * Drop the in-flight claim without recording an outcome — the request never
  * reached the downloader (no listener, no token, no service), so the next pull
- * must be free to ask again.
+ * must be free to ask again. A claim another requester took since is theirs.
  */
-export function releaseDownloadAttempt(ownerId: string, attachmentId: string): void {
-  inFlight.delete(keyOf(ownerId, attachmentId))
+export function releaseDownloadAttempt(claim: DownloadClaim): void {
+  if (holdsDownload(claim)) inFlight.delete(claim.key)
 }
 
 /**
@@ -194,6 +255,25 @@ export function markDownloadOwed(db: DrizzleDb, ownerId: string, attachmentId: s
     })
     .onConflictDoNothing()
     .run()
+}
+
+/**
+ * A request a session reset dropped before its outcome came in: owed, unless
+ * this session landed the attachment or a pull's request in it holds the
+ * download (REVIEW-5700). Owed then, the re-driver would download over the
+ * file, an edit made to it since included. An open's download is owed all the
+ * same: a second reset clears it without owing it, and its landing clears the
+ * row (REVIEW-5722).
+ */
+export function markDroppedDownloadOwed(
+  db: DrizzleDb,
+  ownerId: string,
+  attachmentId: string
+): void {
+  const key = keyOf(ownerId, attachmentId)
+  const holder = inFlight.get(key)
+  if (succeeded.has(key) || (holder && !holder.interactive)) return
+  markDownloadOwed(db, ownerId, attachmentId)
 }
 
 /** The bytes are on disk. Forget every failure recorded for this attachment. */

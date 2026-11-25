@@ -4,6 +4,7 @@ import type { CriticMarkupMark } from './parser'
 import {
   CRITIC_MARKUP_MARKS_ARRAY,
   readCriticMarkupMarksFromYDoc,
+  updateCriticMarkupMarksInYDoc,
   writeCriticMarkupMarksToYDoc
 } from './yjs'
 
@@ -269,6 +270,41 @@ describe('critic markup marks across builds and devices (protocol 12.5.1)', () =
 })
 
 describe('critic markup Yjs helpers', () => {
+  // Two devices that move the same mark at once each replace its element, and
+  // the array keeps both. Every device must read the same one, and read it once.
+  it('reads a mark replaced on two devices at once once, the first well-formed one', () => {
+    const doc = new FakeYDoc()
+    const copy = (start: number) => ({
+      id: 'c1',
+      kind: 'comment',
+      visibleText: 'x',
+      start,
+      end: start + 1
+    })
+    doc.array.insert(0, [{ id: 'c1' }, copy(2), copy(5)])
+
+    expect(readCriticMarkupMarksFromYDoc(doc)).toEqual([copy(2)])
+  })
+
+  // A newer build may add a kind or a field. An older build that rewrites the
+  // array must not delete what it cannot read: both builds share the vault.
+  it("keeps a newer build's marks and fields when it changes a mark", () => {
+    const doc = new FakeYDoc()
+    const newerKind = { id: 'n1', kind: 'highlight', visibleText: 'x', start: 0, end: 1 }
+    doc.array.insert(0, [
+      { id: 'c1', kind: 'comment', visibleText: 'one', start: 0, end: 3, resolvedBy: 'kaan' },
+      newerKind
+    ])
+    const [comment] = readCriticMarkupMarksFromYDoc(doc)
+
+    updateCriticMarkupMarksInYDoc(doc, { upsert: [{ ...comment, start: 4, end: 7 }] })
+
+    expect(doc.array.toArray()).toEqual([
+      { id: 'c1', kind: 'comment', visibleText: 'one', start: 4, end: 7, resolvedBy: 'kaan' },
+      newerKind
+    ])
+  })
+
   it('preserves structured comment mentions and attachments', () => {
     const doc = new FakeYDoc()
 

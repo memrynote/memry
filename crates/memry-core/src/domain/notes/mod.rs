@@ -212,7 +212,11 @@ pub fn delete(
         conn,
         &outbox::Change::delete(ITEM_TYPE, note_id),
         now_ms,
-        |tx| tombstone_local(tx, ITEM_TYPE, note_id, device_id, now_ms),
+        |tx| {
+            // A deleted note wants none of its pictures (#5675).
+            crate::domain::attachment_refs::merge_note_references(tx, note_id, Some(&[]))?;
+            tombstone_local(tx, ITEM_TYPE, note_id, device_id, now_ms)
+        },
     )
 }
 
@@ -356,10 +360,10 @@ pub(crate) fn insert_local(
 /// Marks a row deleted and refreshes its projection through the same merge
 /// every other edit uses.
 ///
-/// The tombstone is written **before** the merge so that
-/// [`sync_items::apply_local_edit_in`] reads it back and projects it: the
-/// projection row is a cache of a parse plus the item's own bookkeeping, and
-/// `deleted_at` is the bookkeeping half.
+/// The tombstone is written **before** the merge, and the merge projects it
+/// ([`sync_items::apply_local_edit_setting_deleted_in`]): the projection row
+/// is a cache of a parse plus the item's own bookkeeping, and `deleted_at` is
+/// the bookkeeping half.
 pub(crate) fn tombstone_local(
     tx: &Connection,
     item_type: &str,
@@ -391,7 +395,14 @@ pub(crate) fn tombstone_local(
         "bodyStateVector",
         Change::set(crate::sync::delete_keep::body_state_vector(tx, item_id)?),
     ));
-    let merged = sync_items::apply_local_edit_in(tx, item_type, item_id, &changes, now_ms)?;
+    let merged = sync_items::apply_local_edit_setting_deleted_in(
+        tx,
+        item_type,
+        item_id,
+        &changes,
+        now_ms,
+        Some(now_ms),
+    )?;
     // #2409: the clock a later re-create of this id must happen after.
     let parsed = StoredPayload::parse(&merged).map_err(refuse(item_type, item_id))?;
     store::record_tombstone_clock(tx, item_type, item_id, &clock_in(parsed.object())?, now_ms)

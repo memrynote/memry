@@ -8,7 +8,7 @@ import { createLogger } from '../lib/logger'
 import { openVaultFileSync, resolveVaultFileSync } from '../lib/paths'
 import { OutsideVaultError } from '../lib/errors'
 import { getCurrentVaultPath } from '../store'
-import { holdsBinaryUpload } from '../vault/case-twin-bytes'
+import { holdsBinaryUpload } from '../vault/case-twin-hold'
 import { queueUploadIfAbsent } from './attachment-outbox'
 import {
   countNoteFiles,

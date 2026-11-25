@@ -235,18 +235,23 @@ struct NotePageLoad: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            // On open and after each sync pass: another device's edits reach this
-            // page only through a body pull and a re-read. One task, so the open
-            // reads and walks the note once (REVIEW-5567).
-            .task(id: vaultSyncPasses) {
-                await model.refreshFromRemote()
-                if !reportedOpen, case .ready = model.phase {
-                    reportedOpen = true
-                    Telemetry.shared.track(.noteOpened, surface: .notes, action: "opened", objectType: "note", result: .success)
-                }
+            // The open: the local read and walk, then the report and the
+            // waiting pictures, with no network round trip before them. A sync
+            // pass joins the read instead of restarting it (#5247).
+            .task {
+                await model.open()
+                reportOpen()
                 // After the body and its bindings are on screen, not before: the
                 // placeholders are what FR-045 asks to be visible first, and a
                 // fetch that finished early would still only re-render them.
+                await model.fetchWaitingAttachments()
+            }
+            // On open and after each sync pass: another device's edits reach this
+            // page only through a body pull and a re-read, which can bind
+            // pictures still to fetch.
+            .task(id: vaultSyncPasses) {
+                guard await model.refreshFromRemote() else { return }
+                reportOpen()
                 await model.fetchWaitingAttachments()
             }
             // Opened, or restored at launch, before the first sync brought
@@ -269,5 +274,11 @@ struct NotePageLoad: ViewModifier {
                 else { return }
                 Task { await model.reload() }
             }
+    }
+
+    private func reportOpen() {
+        guard !reportedOpen, case .ready = model.phase else { return }
+        reportedOpen = true
+        Telemetry.shared.track(.noteOpened, surface: .notes, action: "opened", objectType: "note", result: .success)
     }
 }

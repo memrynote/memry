@@ -77,10 +77,10 @@ use yrs::{ReadTxn as _, StateVector};
 use crate::api::errors::{AuthError, StorageError};
 use crate::api::excluded_paths::ExcludedPaths;
 use crate::api::tasks_write::now_ms;
+use crate::crdt::editor_resident::{EDITOR_LIFECYCLE, Resident};
 use crate::crdt::errors::CrdtError;
 use crate::crdt::markdown_seed::body_is_empty;
 use crate::crdt::registry::{Document, UpdateSink};
-use crate::crdt::resident::{EDITOR_LIFECYCLE, Resident};
 use crate::crdt::{BODY_FRAGMENT, epoch, update_log};
 use crate::crypto::keys;
 use crate::domain::body_write::append_in;
@@ -482,22 +482,25 @@ impl Editor {
                 }
             })
         };
-        let document = epoch::open_for_write(conn, &self.device_id, note_id, sink)?;
-        self.count_loaded(conn, note_id)?;
+        // The replay and its repair's append in one write-locked transaction
+        // (#5734).
+        let tx = nested_tx::begin(conn).map_err(storage_crdt)?;
+        let document = epoch::open_for_write(&tx, &self.device_id, note_id, sink)?;
+        self.count_loaded(&tx, note_id)?;
         Converter::new(CalloutTypes::default()).repair_empty_block_ids(&document, BODY_FRAGMENT);
         let taken = authored
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
             .take();
         let Some(update) = taken.and_then(|mut updates| updates.pop()) else {
+            tx.commit().map_err(storage_crdt)?;
             return Ok(document);
         };
-        let owner = body_owner(conn, note_id)?.ok_or_else(|| CrdtError::Storage {
+        let owner = body_owner(&tx, note_id)?.ok_or_else(|| CrdtError::Storage {
             source: StorageError::Failed {
                 what: format!("no live note or journal day {note_id} to repair"),
             },
         })?;
-        let tx = nested_tx::begin(conn).map_err(storage_crdt)?;
         append_in(&tx, owner.item_type, note_id, &update, now_ms())?;
         tx.commit().map_err(storage_crdt)?;
         *repaired = Some(update);

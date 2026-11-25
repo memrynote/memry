@@ -25,6 +25,7 @@ import {
   parseCoverValue
 } from '@memry/shared/cover-image'
 import type { NoteFrontmatter } from '../../vault/frontmatter'
+import { COVER_MARKER_KEY_PREFIX } from './note-cover-marker-key'
 
 /**
  * The note's cover as the push payload carries it, or `null` when the file has
@@ -166,7 +167,6 @@ export function applyNoteCoverToFrontmatter(
 type UnframedMarker = `unframed:${string}`
 type NoteCoverSyncMarker = 'present' | 'removal-pending' | UnframedMarker
 
-const COVER_MARKER_KEY_PREFIX = 'note-cover:'
 const UNFRAMED_MARKER_PREFIX = 'unframed:'
 
 function isUnframedMarker(value: string): value is UnframedMarker {
@@ -256,13 +256,20 @@ export function recordAppliedNoteCover(
 
 /**
  * After the note's file was rebuilt from its index rows, which hold the cover
- * ref (`case-twin-file.ts`). An image cover's framing and credit were not
- * written, so its push waits for a change here; any other cover was written
- * whole, and no cover sends no removal.
+ * ref (`case-twin-file.ts`), or a peer's cover was applied to a case twin off
+ * its shared file (`ownHeader`). An image cover's framing and credit were not
+ * written, so its push waits for a change here. Any other cover was written
+ * whole and is held here, so a later removal pushes `null`. No cover sends no
+ * removal, but a removal built for push and not yet acked stays pending: its
+ * retry still sends the `null`.
  */
 export function recordRebuiltNoteCover(db: DrizzleDb, noteId: string, ref: string | null): void {
-  const image = ref !== null && parseCoverValue(ref)?.kind === 'image'
-  writeCoverMarker(db, noteId, image ? `${UNFRAMED_MARKER_PREFIX}${ref}` : null)
+  if (ref !== null) {
+    const image = parseCoverValue(ref)?.kind === 'image'
+    writeCoverMarker(db, noteId, image ? `${UNFRAMED_MARKER_PREFIX}${ref}` : 'present')
+  } else if (readCoverMarker(db, noteId) !== 'removal-pending') {
+    writeCoverMarker(db, noteId, null)
+  }
 }
 
 export function clearNoteCoverMarker(db: DrizzleDb, noteId: string): void {

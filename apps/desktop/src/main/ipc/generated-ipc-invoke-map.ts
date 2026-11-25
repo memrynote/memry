@@ -13,6 +13,7 @@ import type { AppleNotesCheckUnlockResult, AppleNotesFoldersResult, ImporterMeta
 import type { ArchivedListResponse, BulkResponse, CapturePattern, CaptureResponse, FilingHistoryResponse, InboxItem, InboxJobsResponse, InboxListResponse, InboxStats, TranscribeAudioResponse } from '../../../../../packages/contracts/src/inbox-api'
 import type { IosBetaJoinResult } from '../../../../../packages/contracts/src/ios-beta-api'
 import type { Conversation, Message } from '../../../../../packages/contracts/src/ipc-agent'
+import type { DownloadNoteFilesResult } from '../../../../../packages/contracts/src/ipc-attachments'
 import type { CrdtHealth, CrdtRemoteBodyWait, CrdtSyncStep1Result } from '../../../../../packages/contracts/src/ipc-crdt'
 import type { DecryptItemResult, EncryptItemResult, VerifySignatureResult } from '../../../../../packages/contracts/src/ipc-crypto'
 import type { ApproveLinkingResult, CompleteLinkingQrResult, GenerateLinkingQrResult, LinkViaQrResult } from '../../../../../packages/contracts/src/ipc-devices'
@@ -312,6 +313,7 @@ export interface MainIpcInvokeHandlers {
   "notes:attachment-rename": (...args: [{ noteId: string; url: string; newName: string; }]) => Awaited<Promise<AttachmentRenameResult>>
   "notes:attachment-resolve": (...args: [{ noteId: string; url: string; }]) => Awaited<Promise<AttachmentResolveResult>>
   "notes:attachment-reveal-in-finder": (...args: [{ noteId: string; url: string; }]) => Awaited<Promise<void>>
+  "notes:check-folder-delete": (...args: [string]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; }>>
   "notes:cluster": (...args: [{ noteIds: string[]; }]) => Awaited<Promise<NoteClustersResponse>>
   "notes:create": (...args: [{ title: string; plainChecklists?: boolean | undefined; content?: string | undefined; folder?: string | undefined; tags?: string[] | undefined; template?: string | undefined; properties?: Record<string, unknown> | undefined; emoji?: string | null | undefined; }]) => Awaited<Promise<{ success: true; note: Note; }> | { success: false; error: string }>
   "notes:create-folder": (...args: [string]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; }>>
@@ -515,6 +517,7 @@ export interface MainIpcInvokeHandlers {
   "sync:complete-linking-qr": (...args: [{ sessionId: string; }]) => Awaited<Promise<CompleteLinkingQrResult> | { success: false; error: string }>
   "sync:confirm-recovery-phrase": (...args: [{ confirmed: boolean; }]) => Awaited<Promise<{ success: boolean; }> | { success: false; error: string }>
   "sync:download-attachment": (...args: [{ attachmentId: string; targetPath?: string | undefined; }]) => Awaited<Promise<{ success: boolean; error: string; filePath?: undefined; } | { success: boolean; filePath: string; error?: undefined; }> | { success: false; error: string }>
+  "sync:download-note-files": (...args: [{ noteId: string; }]) => Awaited<Promise<DownloadNoteFilesResult> | { success: false; error: string }>
   "sync:emergency-wipe": (...args: []) => Awaited<Promise<{ success: boolean; }>>
   "sync:finalize-vault-choice": (...args: [{ sessionId: string; parentFolderPath: string; selectedVaultUuids: string[]; primaryVaultUuid: string; }]) => Awaited<Promise<{ success: boolean; error?: string | undefined; }> | { success: false; error: string }>
   "sync:generate-linking-qr": (...args: []) => Awaited<Promise<GenerateLinkingQrResult>>

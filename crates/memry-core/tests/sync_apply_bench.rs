@@ -13,6 +13,10 @@
 //!   `/sync/crdt/snapshot` and `/sync/crdt/updates` responses for a tenth of
 //!   the notes, each with `MEMRY_BENCH_UPDATES` updates (default 10).
 //!
+//! Each note names `MEMRY_BENCH_REFS` embedded files (default 0) in
+//! `attachmentReferences`, so the records half also times the attachment rows
+//! a note's apply writes (#5675).
+//!
 //! Fixture generation is outside the timed region. Run it in release:
 //!
 //! ```text
@@ -110,8 +114,12 @@ fn note_id(index: usize) -> String {
 }
 
 fn note_payload(index: usize) -> String {
+    let references: Vec<String> = (0..env_count("MEMRY_BENCH_REFS", 0))
+        .map(|slot| format!("{index:016x}{slot:016x}"))
+        .collect();
     json!({
         "title": format!("Bench note {index}"),
+        "attachmentReferences": references,
         "tags": ["bench", format!("t{}", index % 50)],
         "folderPath": format!("folder-{}", index % 40),
         "clock": { "remote-device": 3 },
@@ -349,6 +357,12 @@ async fn bench_local_apply_of_a_seeded_vault() {
     let records = started.elapsed();
     assert_eq!(report.applied, count, "every record applied");
     assert_eq!(report.corrupt, 0);
+    // Before the body halves, so the records figure survives a body failure.
+    println!(
+        "apply-bench-records notes={count} refs={} records_ms={:.0}",
+        env_count("MEMRY_BENCH_REFS", 0),
+        records.as_secs_f64() * 1000.0
+    );
 
     let bodies = |transport: Arc<FakeTransport>| {
         let http = Arc::new(HttpClient::new(
@@ -412,9 +426,10 @@ async fn bench_local_apply_of_a_seeded_vault() {
 
     let ms = |total: std::time::Duration| total.as_secs_f64() * 1000.0;
     println!(
-        "apply-bench notes={count} record_crypto_ms={:.0} records_ms={:.0} ms_per_record={:.4} \
+        "apply-bench notes={count} refs={} record_crypto_ms={:.0} records_ms={:.0} ms_per_record={:.4} \
          packed_body_crypto_ms={:.0} packed_bodies_ms={:.0} ms_per_packed_body={:.4} pulled_docs={} pulled_updates={pulled_updates} \
          pulled_ms={:.0} ms_per_pulled_update={:.4}",
+        env_count("MEMRY_BENCH_REFS", 0),
         ms(crypto),
         ms(records),
         ms(records) / count as f64,

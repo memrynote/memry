@@ -18,6 +18,7 @@ use rusqlite::{Connection, OptionalExtension as _, params};
 
 use crate::api::errors::StorageError;
 use crate::domain::notes::failed;
+use crate::sync::day_picture_refs;
 
 /// One attachment owed an upload.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -103,12 +104,27 @@ pub fn ids_for_note(conn: &Connection, note_id: &str) -> Result<Vec<String>, Sto
         .map_err(failed)
 }
 
+/// Moves every upload still owed to `from` over to `to`, so each names `to`
+/// when it lands. Returns how many moved.
+pub(crate) fn move_to_note(conn: &Connection, from: &str, to: &str) -> Result<usize, StorageError> {
+    conn.execute(
+        "UPDATE note_attachment_uploads SET note_id = ?2 WHERE note_id = ?1",
+        params![from, to],
+    )
+    .map_err(failed)
+}
+
 /// Whether the note is live here. A deleted note's upload waits rather than
-/// spends quota, and runs if the note comes back.
+/// spends quota, and runs if the note comes back. A journal day (`j<date>`)
+/// is live while its entry is: its first picture creates its `note` record,
+/// and so does one over a deleted record (`day_picture_refs`, #5800).
 pub fn note_is_live(conn: &Connection, note_id: &str) -> Result<bool, StorageError> {
+    let day = day_picture_refs::is_day_note(note_id);
     conn.query_row(
-        "SELECT EXISTS(SELECT 1 FROM notes WHERE id = ?1 AND deleted_at IS NULL)",
-        params![note_id],
+        "SELECT EXISTS(SELECT 1 FROM notes WHERE id = ?1 AND deleted_at IS NULL)
+             OR (?2 AND EXISTS(SELECT 1 FROM journal_entries
+                               WHERE id = ?1 AND deleted_at IS NULL))",
+        params![note_id, day],
         |row| row.get(0),
     )
     .map_err(failed)
@@ -128,9 +144,10 @@ pub fn note_title(conn: &Connection, note_id: &str) -> Result<String, StorageErr
 
 /// Compat: the `meta` key under which #5573 and #5604 builds dated the purge
 /// of an owed upload's note. A #5573 build discards the upload 30 days after
-/// that date, so this build writes none: a downgrade keeps the only copy of
-/// the bytes (#5578). Nothing reads it; a key an older build left goes with
-/// its upload.
+/// that date and dates an undated purge at its first drain. This build writes
+/// none, so a downgrade to #5573 starts that grace at its first drain instead
+/// of discarding the only copy of the bytes at once (#5578). Nothing reads
+/// it; a key an older build left goes with its upload.
 const PURGED_KEY: &str = "attachment_upload.purged_at:";
 
 fn forget_purge(conn: &Connection, attachment_id: &str) -> Result<(), StorageError> {

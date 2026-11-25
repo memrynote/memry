@@ -133,6 +133,10 @@ name = "calendar_feed_memory"
 path = "tests/calendar_feed_memory.rs"
 
 [[test]]
+name = "large_note_bench"
+path = "tests/large_note_bench.rs"
+
+[[test]]
 name = "markdown_corpus"
 path = "tests/markdown_corpus.rs"
 

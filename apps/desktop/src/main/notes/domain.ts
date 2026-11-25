@@ -4,6 +4,7 @@ import {
   renameNote,
   moveNote,
   renameFolder,
+  checkFolderDelete,
   deleteFolder,
   deleteNote,
   getNoteById,
@@ -29,11 +30,8 @@ import {
   unlinkTasksFromDeletedNote,
   queueEmbeddedVaultFiles
 } from './runtime-effects'
-import {
-  syncFolderConfigDelete,
-  syncFolderConfigRename,
-  withAppFolderChange
-} from './folder-config-effects'
+import { syncFolderConfigDelete, syncFolderConfigRename } from './folder-config-effects'
+import { withAppFolderChange } from '../vault/app-folder-changes'
 import { followFolderRenameInShortcuts } from '../ipc/settings-handlers'
 import { followFolderRenameInReadwise } from '../readwise/settings'
 import { recordNoteCreatedHere } from '../sync/note-sync-state'
@@ -146,7 +144,9 @@ export async function renameFolderCommand(oldPath: string, newPath: string): Pro
   })
 }
 
-export async function deleteFolderCommand(folderPath: string): Promise<void> {
+export async function deleteFolderCommand(requestedPath: string): Promise<void> {
+  // The watcher and folder_config know the folder as rows name it.
+  const folderPath = checkFolderDelete(requestedPath)
   await withAppFolderChange([folderPath], async () => {
     await deleteFolder(folderPath)
     syncFolderConfigDelete(folderPath)
