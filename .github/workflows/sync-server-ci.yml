@@ -87,7 +87,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
+
+      - name: Cache the pnpm store
+        uses: ./.github/actions/pnpm-store-cache
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -120,6 +122,7 @@ jobs:
         with:
           workspaces: crates
           key: harness-${{ steps.image.outputs.os }}
+          save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Build the core device
         run: pnpm --filter @memry/sync-harness build:core
