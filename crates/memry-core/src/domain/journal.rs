@@ -163,10 +163,13 @@ pub fn live_entry(conn: &Connection, date: &str) -> Result<Option<String>, Stora
 /// lists or classifies notes filters with this, so the day never reads as a
 /// note. A day's id is the canonical `j<YYYY-MM-DD>` (desktop's
 /// `dateFromJournalId`) or any id a `journal_entries` row holds, live or not.
+/// The subquery drops NULL ids, since one would make `NOT IN` false for every
+/// row; it stays uncorrelated because callers pass a bare `id`, which a
+/// correlated `NOT EXISTS` would bind to the journal row itself.
 pub(crate) fn not_a_journal_day(id: &str) -> String {
     format!(
         "{id} NOT GLOB 'j[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]' \
-         AND {id} NOT IN (SELECT id FROM journal_entries)"
+         AND {id} NOT IN (SELECT id FROM journal_entries WHERE id IS NOT NULL)"
     )
 }
 

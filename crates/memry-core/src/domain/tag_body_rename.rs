@@ -85,11 +85,13 @@ pub(crate) fn rewrite_bodies(
 
 fn sources(conn: &Connection) -> Result<Vec<(String, &'static str)>, StorageError> {
     let mut statement = conn
-        .prepare(
+        .prepare(&format!(
             "SELECT id, 0 FROM notes WHERE deleted_at IS NULL AND file_type = 'markdown' \
-             UNION ALL SELECT id, 1 FROM journal_entries WHERE deleted_at IS NULL \
-             ORDER BY 1",
-        )
+                 AND {} \
+                 UNION ALL SELECT id, 1 FROM journal_entries WHERE deleted_at IS NULL \
+                 ORDER BY 1",
+            journal::not_a_journal_day("id")
+        ))
         .map_err(failed)?;
     let rows = statement
         .query_map([], |row| {

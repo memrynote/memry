@@ -10,21 +10,28 @@
 
 mod http_fakes;
 
-use std::sync::Arc;
+use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, Mutex};
 
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use http_fakes::{FakeSecureStore, FakeTransport, error_response, response};
 use memry_core::api::auth::{AuthSession, DeviceDescriptor};
+use memry_core::api::calendar_records::CalendarZone;
 use memry_core::api::crypto::derive_vault_key;
 use memry_core::api::errors::TransportError;
+use memry_core::api::projects::ProjectDraft;
 use memry_core::api::search::BacklinkOrder;
+use memry_core::api::sync::{SyncPhase, SyncProgress, SyncProgressListener};
+use memry_core::api::tasks_write::NewTaskInput;
 use memry_core::api::vault::Vault;
+use memry_core::crdt::body_edit::BlockEdit;
 use memry_core::crypto::sodium;
-use memry_core::domain::journal_ops::links;
-use memry_core::domain::note_meta;
+use memry_core::domain::calendar_items::projection::{self, RangeInput};
+use memry_core::domain::journal_ops::{body, links};
 use memry_core::domain::related_items;
+use memry_core::domain::{note_meta, notes as note_writes, tag_rename};
 use memry_core::protocol::account::{AccountSealer, DeviceSigner};
 use memry_core::protocol::auth::DevicePlatform;
 use memry_core::protocol::envelope::SyncOperation;
@@ -161,6 +168,10 @@ fn desktop_records() -> Vec<(&'static str, &'static str, Json)> {
 /// A fresh device's first sync of `records`: the bootstrap 501, no record
 /// packs, the changes page, the records, and no body packs.
 async fn pulled_vault() -> Vault {
+    pulled_vault_reporting(None).await
+}
+
+async fn pulled_vault_reporting(progress: Option<Arc<dyn SyncProgressListener>>) -> Vault {
     let records = desktop_records();
     let items: Vec<Json> = records
         .iter()
@@ -191,7 +202,7 @@ async fn pulled_vault() -> Vault {
     let vault = scratch_vault();
     vault
         .sync(session(transport))
-        .first_sync(None)
+        .first_sync(progress)
         .await
         .expect("the first sync");
     vault
@@ -300,4 +311,250 @@ async fn backlinks_read_the_day_as_a_journal_day() {
             .collect::<Vec<_>>(),
         [(DAY, "journal")]
     );
+}
+
+/// Every `(item_type, op)` the outbox queued for the day, after `since`.
+fn queued_for_day(vault: &Vault, since: i64) -> Vec<(String, String)> {
+    vault
+        .db_handle()
+        .call_blocking(move |conn| {
+            let mut statement = conn
+                .prepare(
+                    "SELECT item_type, op FROM outbox WHERE item_id = ?1 AND id > ?2 ORDER BY id",
+                )
+                .expect("the outbox");
+            Ok(statement
+                .query_map(rusqlite::params![DAY, since], |row| {
+                    Ok((row.get(0)?, row.get(1)?))
+                })
+                .expect("rows")
+                .collect::<Result<Vec<_>, _>>()
+                .expect("rows"))
+        })
+        .expect("read")
+}
+
+fn outbox_tip(vault: &Vault) -> i64 {
+    vault
+        .db_handle()
+        .call_blocking(|conn| {
+            Ok(conn
+                .query_row("SELECT COALESCE(MAX(id), 0) FROM outbox", [], |row| {
+                    row.get(0)
+                })
+                .expect("the tip"))
+        })
+        .expect("read")
+}
+
+/// A tag or title rename rewrites the day's body as the day's: a `note`
+/// update under the day's id would land on desktop's attachment-carrying
+/// note record instead of the journal body.
+#[tokio::test]
+async fn renames_rewrite_the_day_body_as_a_journal_update() {
+    let vault = pulled_vault().await;
+    vault
+        .db_handle()
+        .call_blocking(|conn| {
+            body::edit_day(
+                conn,
+                DATE,
+                &BlockEdit::InsertParagraph {
+                    after_block_id: None,
+                    text: "Packing #trip ".to_owned(),
+                    new_block_id: "b1".to_owned(),
+                },
+                DEVICE,
+                1,
+            )
+            .expect("the day's text");
+            body::edit_day(
+                conn,
+                DATE,
+                &BlockEdit::InsertInline {
+                    block_id: "b1".to_owned(),
+                    start: 14,
+                    end: 14,
+                    kind: "wikiLink".to_owned(),
+                    text: String::new(),
+                    attrs: HashMap::from([
+                        ("target".to_owned(), "Trip plan".to_owned()),
+                        ("alias".to_owned(), String::new()),
+                    ]),
+                },
+                DEVICE,
+                2,
+            )
+            .expect("the day's link");
+            Ok(())
+        })
+        .expect("write the day");
+
+    let tip = outbox_tip(&vault);
+    vault
+        .db_handle()
+        .call_blocking(|conn| tag_rename::rename(conn, "trip", "voyage", DEVICE, 3))
+        .expect("rename the tag");
+    let tagged = queued_for_day(&vault, tip);
+    assert!(
+        tagged.contains(&("journal".to_owned(), "crdt-update".to_owned())),
+        "the tag rename rewrote the day: {tagged:?}"
+    );
+    // The day's note record carries the tag too, so its metadata upsert is
+    // the record's own; only the body must never go out as a note's.
+    assert!(
+        !tagged.contains(&("note".to_owned(), "crdt-update".to_owned())),
+        "no body update queued as a note: {tagged:?}"
+    );
+
+    let tip = outbox_tip(&vault);
+    vault
+        .db_handle()
+        .call_blocking(|conn| note_writes::rename(conn, NOTE, "Voyage plan", DEVICE, 4))
+        .expect("rename the note");
+    let relinked = queued_for_day(&vault, tip);
+    assert_eq!(
+        relinked,
+        [("journal".to_owned(), "crdt-update".to_owned())],
+        "the link re-point rewrote the day once, as the day"
+    );
+}
+
+/// The calendar's "notes by created date" lists real notes only.
+#[tokio::test]
+async fn the_calendar_does_not_show_the_day_as_a_note() {
+    let vault = pulled_vault().await;
+    let zone = CalendarZone {
+        identifier: "UTC".to_owned(),
+        base_offset_ms: 0,
+        transitions: Vec::new(),
+    };
+    let input = RangeInput {
+        start_at: "2019-12-01T00:00:00.000Z".to_owned(),
+        end_at: "2020-02-01T00:00:00.000Z".to_owned(),
+        include_unselected_sources: true,
+        include_external: false,
+        external_providers: None,
+        enabled_property_names: Vec::new(),
+        show_notes_by_created: true,
+        local_timezone: "UTC".to_owned(),
+    };
+    let items = vault
+        .db_handle()
+        .call_blocking(move |conn| projection::range(conn, &zone, &input))
+        .expect("the range");
+    assert_eq!(
+        items
+            .iter()
+            .map(|item| item.source_id.as_str())
+            .collect::<Vec<_>>(),
+        [NOTE]
+    );
+}
+
+struct Recorded(Mutex<Vec<SyncProgress>>);
+
+impl SyncProgressListener for Recorded {
+    fn progress(&self, progress: SyncProgress) {
+        self.0.lock().unwrap().push(progress);
+    }
+}
+
+/// First-sync body progress counts the day once: two documents, not three.
+#[tokio::test]
+async fn first_sync_counts_the_day_as_one_document() {
+    let recorded = Arc::new(Recorded(Mutex::new(Vec::new())));
+    pulled_vault_reporting(Some(recorded.clone())).await;
+    let totals: Vec<Option<u64>> = recorded
+        .0
+        .lock()
+        .unwrap()
+        .iter()
+        .filter(|tick| matches!(tick.phase, SyncPhase::Bodies))
+        .map(|tick| tick.total)
+        .collect();
+    assert!(!totals.is_empty(), "a bodies tick");
+    assert!(
+        totals.iter().all(|total| *total == Some(2)),
+        "the day and the note: {totals:?}"
+    );
+}
+
+/// A task created inside the day links the day's id (desktop
+/// `journal-handlers.ts`). Desktop's task note index is its notes list, which
+/// holds no day, so the Location filter offers no note and no `journal` folder.
+#[tokio::test]
+async fn a_task_linked_to_the_day_has_no_note_location() {
+    let vault = pulled_vault().await;
+    let store = FakeSecureStore::new();
+    let (_, secret) = sodium::sign_seed_keypair(&SIGNING_SEED).expect("a keypair");
+    store
+        .set(SecureStoreKey::DeviceSigningKey, secret.to_vec())
+        .expect("plant the signing key");
+    let tasks = vault.tasks(store).expect("tasks");
+    let project = tasks
+        .create_project(ProjectDraft {
+            name: "Errands".to_owned(),
+            description: None,
+            color: None,
+            icon: None,
+            statuses: None,
+        })
+        .expect("a project");
+    tasks
+        .create(NewTaskInput {
+            title: "Book the hotel".to_owned(),
+            project_id: project,
+            status_id: None,
+            parent_id: None,
+            priority: 0,
+            description: None,
+            due_date: None,
+            due_time: None,
+            start_date: None,
+            repeat: None,
+            repeat_from: None,
+            tags: Vec::new(),
+            linked_note_ids: vec![DAY.to_owned(), NOTE.to_owned()],
+            linked_canvas_ids: Vec::new(),
+            source_note_id: None,
+            position: None,
+        })
+        .expect("a task");
+    let options = tasks
+        .location_options(Vec::new(), Vec::new(), String::new())
+        .expect("options");
+    assert_eq!(
+        options
+            .iter()
+            .map(|option| (option.kind.as_str(), option.value.as_str()))
+            .collect::<Vec<_>>(),
+        [("note", NOTE)]
+    );
+}
+
+/// `journal_entries.id` admits NULL (no `NOT NULL` on the key); a NULL id
+/// must not empty the notes list the way `x NOT IN (…, NULL)` would.
+#[tokio::test]
+async fn a_null_journal_id_does_not_hide_every_note() {
+    let vault = pulled_vault().await;
+    vault
+        .db_handle()
+        .call_blocking(|conn| {
+            conn.execute(
+                "INSERT INTO journal_entries (id, date) VALUES (NULL, '1999-01-01')",
+                [],
+            )
+            .expect("a NULL id");
+            Ok(())
+        })
+        .expect("write");
+    let listed: Vec<String> = vault
+        .notes()
+        .list()
+        .expect("list")
+        .into_iter()
+        .map(|row| row.id)
+        .collect();
+    assert_eq!(listed, [NOTE]);
 }
