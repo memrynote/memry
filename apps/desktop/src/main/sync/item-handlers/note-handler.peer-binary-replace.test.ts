@@ -15,6 +15,7 @@ import path from 'path'
 import type * as PromisesModule from 'fs/promises'
 import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
 import { syncDevices } from '@memry/db-schema/schema/sync-devices'
+import { syncQueue } from '@memry/db-schema/schema/sync-queue'
 import { createTestVault } from '@tests/utils/test-vault'
 import {
   asClientDb,
@@ -25,6 +26,8 @@ import {
 import { insertNoteCache } from '@main/database/queries/notes'
 import { updateNoteMetadata, upsertNoteMetadata } from '@memry/storage-data'
 import { attachmentEvents } from '@memry/sync-client/attachment-events'
+import { SyncQueueManager } from '@memry/sync-client/queue'
+import { recordTombstoneClock } from '@memry/sync-client/tombstone-clocks'
 import type { NoteSyncPayload } from '@memry/contracts/sync-payloads'
 import type { VectorClock } from '@memry/contracts/sync-api'
 
@@ -40,7 +43,9 @@ const hashing = vi.hoisted(() => ({
   /** Set: a hash, once it read the file, answers only when this resolves. */
   answer: null as Promise<void> | null,
   /** Set: runs as a stat of a file starts. */
-  onStat: null as ((filePath: string) => void) | null
+  onStat: null as ((filePath: string) => void) | null,
+  /** Set: runs before a rename, which fails when it rejects. */
+  onRename: null as ((from: string) => Promise<void>) | null
 }))
 
 vi.mock('../../vault/file-hash-bridge', async () => {
@@ -63,7 +68,11 @@ vi.mock('fs/promises', async (importOriginal) => {
     hashing.onStat?.(String(args[0]))
     return actual.stat(...args)
   }) as typeof actual.stat
-  return { ...actual, stat }
+  const rename: typeof actual.rename = async (from, to) => {
+    await hashing.onRename?.(String(from))
+    return actual.rename(from, to)
+  }
+  return { ...actual, stat, rename }
 })
 vi.mock('electron', () => ({
   app: { getPath: vi.fn(() => os.tmpdir()), isPackaged: false, getVersion: () => '0.0.0' },
@@ -112,6 +121,8 @@ vi.mock('../crdt-provider', () => ({
   }))
 }))
 vi.mock('../attachment-backfill', () => ({ queueEmbeddedVaultFiles: vi.fn() }))
+vi.mock('../../ipc/settings-handlers', () => ({ followFolderRenameInShortcuts: vi.fn() }))
+vi.mock('../../readwise/settings', () => ({ followFolderRenameInReadwise: vi.fn() }))
 vi.mock('../../tasks/reconcile-markdown-tasks', () => ({
   reconcileTaskCheckboxesFromMarkdown: vi.fn(async () => 0)
 }))
@@ -150,12 +161,14 @@ import { registerManifestChecksumReader, settleBinaryHashCheck } from '../binary
 import type { DownloadNetOptions } from '../attachments'
 import { SyncServerError } from '@memry/sync-client/http-errors'
 import { enqueueLocalSyncUpdate } from '../local-mutations'
+import { NoteSyncService } from '../note-sync'
 import { SupersededDownloadError } from '../attachment-errors'
 import { enqueueUpload } from '../attachment-outbox'
 import { readSyncedBinaryHash } from '../binary-synced-hash'
 import { readCaseTwinForeignBytes } from '../../vault/case-twin-bytes'
 import { deleteNoteFromCache } from '../../vault/note-sync'
 import { renameNote } from '../../vault/notes-rename'
+import { renameFolderCommand } from '../../notes/domain'
 import { resetAttachmentDownloadSession } from '@memry/sync-client/attachment-download-state'
 
 function fileSystemIgnoresCase(): boolean {
@@ -220,12 +233,14 @@ describe("a peer's replacement of a binary note's bytes", () => {
     // Drops the answers a test queued for reads that never came.
     readChecksum.mockReset()
     paceManifestRead.mockReset()
+    vi.mocked(enqueueLocalSyncUpdate).mockReset()
     hashing.opens = 0
     hashing.open = null
     hashing.reads = 0
     hashing.onRead = null
     hashing.answer = null
     hashing.onStat = null
+    hashing.onRename = null
     manifests.clear()
     await stopWatcher()
     await stopProjectionRuntime({ drain: true })
@@ -487,6 +502,30 @@ describe("a peer's replacement of a binary note's bytes", () => {
       expect(conflictCopies('Pictures')).toEqual([])
     })
 
+    // A pacer burst holds the landing's download slot only so long (OL-M32).
+    it('keeps its bytes as a conflict copy, and abandons the read, when the pacer never lets it go', async () => {
+      seed('img', 'Pictures/p.png', 'old-bytes', false)
+      manifests.set('att-img', sha256('old-bytes'))
+      paceManifestRead.mockImplementationOnce(() => new Promise<void>(() => {}))
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'performance'] })
+      let answered = false
+      try {
+        expect(pull('img', 'att-new')).toBe('applied')
+        void settleBinaryHashCheck('img').then(() => {
+          answered = true
+        })
+        await vi.advanceTimersByTimeAsync(60_000)
+      } finally {
+        vi.useRealTimers()
+      }
+
+      expect(answered).toBe(true)
+      expect(readChecksum.mock.calls[0]?.[1].signal?.aborted).toBe(true)
+      land('img', 'att-new', abs('Pictures/p.png'), 'peer-bytes')
+      expect(read('Pictures/p.png')).toBe('peer-bytes')
+      expect(conflictCopies('Pictures')).toEqual(['old-bytes'])
+    })
+
     // An explicit download names no note whose check it waits for (`fileOwnerId`).
     it('marks nothing when its new bytes land while the check hashes the old ones', async () => {
       seed('img', 'Pictures/p.png', 'old-bytes', false)
@@ -606,8 +645,8 @@ describe("a peer's replacement of a binary note's bytes", () => {
     expect(conflictCopies('Pictures')).toEqual([])
   })
 
-  /** Bytes this device uploaded at clock `{dev1: 1}`: its next push, at dev1 2, carries them. */
-  async function uploadHere(bytes: string): Promise<void> {
+  /** Bytes this device uploaded at clock `clock`: its next push carries them. */
+  async function uploadHere(bytes: string, clock: VectorClock | null = { dev1: 1 }): Promise<void> {
     data.db
       .insert(syncDevices)
       .values({
@@ -621,8 +660,24 @@ describe("a peer's replacement of a binary note's bytes", () => {
       })
       .run()
     seed('img', 'Pictures/p.png', 'old-bytes')
+    updateNoteMetadata(asClientDb(data.db), 'img', { clock })
     fs.writeFileSync(abs('Pictures/p.png'), bytes)
     expect(await recordUploadedFile('img', 'att-up', sha256(bytes))).toBe(true)
+  }
+
+  /** Note pushes through the real note sync service; resolves the clock of each queued push. */
+  function pushThroughNoteSync(): () => VectorClock[] {
+    const queue = new SyncQueueManager(asClientDb(data.db))
+    const notes = new NoteSyncService({ queue, getDeviceId: () => 'dev1' })
+    vi.mocked(enqueueLocalSyncUpdate).mockImplementation((type, itemId) => {
+      if (type === 'note') notes.enqueueUpdate(itemId)
+    })
+    return () =>
+      data.db
+        .select({ payload: syncQueue.payload })
+        .from(syncQueue)
+        .all()
+        .map((row) => (JSON.parse(row.payload) as NoteSyncPayload).clock as VectorClock)
   }
 
   it('keeps no conflict copy of uploaded bytes the merged record has seen', async () => {
@@ -668,6 +723,41 @@ describe("a peer's replacement of a binary note's bytes", () => {
 
     expect(read('Pictures/p.png')).toBe('peer-bytes')
     expect(conflictCopies('Pictures')).toEqual(['up-bytes!'])
+  })
+
+  // A row with no clock pushes on its tombstone's clock, past every tick the
+  // delete holds: the upload's tick is that push's (#5676).
+  describe('on a row with only a tombstone clock', () => {
+    beforeEach(() => {
+      // Deleted here at dev1 5, then back with no clock.
+      recordTombstoneClock(asClientDb(data.db), 'note', 'img', { dev1: 5 })
+    })
+
+    it('keeps uploaded bytes as a conflict copy when the merged record has not seen their push', async () => {
+      const pushed = pushThroughNoteSync()
+      await uploadHere('up-bytes!', null)
+      expect(pushed()).toEqual([{ dev1: 6 }])
+
+      expect(pull('img', 'att-new', { dev1: 3, peer: 1 })).toBe('conflict')
+      land('img', 'att-new', abs('Pictures/p.png'), 'peer-bytes')
+
+      expect(read('Pictures/p.png')).toBe('peer-bytes')
+      expect(conflictCopies('Pictures')).toEqual(['up-bytes!'])
+    })
+
+    it('keeps no conflict copy when the merged record has seen their push', async () => {
+      const pushed = pushThroughNoteSync()
+      await uploadHere('up-bytes!', null)
+      expect(pushed()).toEqual([{ dev1: 6 }])
+      // Renamed here after the push, at dev1 7.
+      updateNoteMetadata(asClientDb(data.db), 'img', { clock: { dev1: 7 } })
+
+      expect(pull('img', 'att-new', { dev1: 6, peer: 1 })).toBe('conflict')
+      land('img', 'att-new', abs('Pictures/p.png'), 'peer-bytes')
+
+      expect(read('Pictures/p.png')).toBe('peer-bytes')
+      expect(conflictCopies('Pictures')).toEqual([])
+    })
   })
 
   it('drops an older replacement that finishes after a newer one landed', () => {
@@ -921,6 +1011,48 @@ describe("a peer's replacement of a binary note's bytes", () => {
     expect(await recorded).toBe(false)
     expect(attachmentOf('img')).toBe('att-b')
     expect(enqueueLocalSyncUpdate).not.toHaveBeenCalledWith('note', 'img')
+    expect(read('Moved/p.png')).toBe('peer-bytes')
+    expect(readSyncedBinaryHash(asClientDb(data.db), 'img')).toBe(sha256('peer-bytes'))
+  })
+
+  // Windows refuses to rename a folder the watcher holds a subfolder of, so it
+  // moves entry by entry, and its rows follow once every file moved (#2206).
+  it("keeps a late upload off the note when the peer's landed bytes move with their folder entry by entry as its hash opens", async () => {
+    seed('img', 'Pictures/p.png', 'old-bytes')
+    fs.writeFileSync(abs('Pictures/p.png'), 'local-edit')
+    updateNoteMetadata(asClientDb(data.db), 'img', { fileSize: 'local-edit'.length })
+    enqueueUpload(asClientDb(data.db), 'img', abs('Pictures/p.png'))
+    expect(pull('img', 'att-b')).toBe('applied')
+    land('img', 'att-b', abs('Pictures/p.png'), 'peer-bytes')
+    fs.writeFileSync(abs('Pictures/z.png'), 'next entry')
+    const open = holdOpens()
+    let release = (): void => {}
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    let holding = false
+    hashing.onRename = async (from) => {
+      if (from === abs('Pictures')) {
+        throw Object.assign(new Error('EPERM: operation not permitted'), { code: 'EPERM' })
+      }
+      if (from === abs('Pictures/z.png')) {
+        holding = true
+        await held
+      }
+    }
+
+    const recorded = recordUploadedFile('img', 'att-local', sha256('local-edit'))
+    await vi.waitFor(() => expect(hashing.opens).toBe(1))
+    const renamed = renameFolderCommand('Pictures', 'Moved')
+    await vi.waitFor(() => expect(holding).toBe(true))
+    expect(fs.existsSync(abs('Pictures/p.png'))).toBe(false)
+    open()
+    await vi.waitFor(() => expect(hashing.reads).toBe(1))
+    release()
+    await renamed
+
+    expect(await recorded).toBe(false)
+    expect(attachmentOf('img')).toBe('att-b')
     expect(read('Moved/p.png')).toBe('peer-bytes')
     expect(readSyncedBinaryHash(asClientDb(data.db), 'img')).toBe(sha256('peer-bytes'))
   })

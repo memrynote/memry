@@ -30,11 +30,8 @@ import {
   unlinkTasksFromDeletedNote,
   queueEmbeddedVaultFiles
 } from './runtime-effects'
-import {
-  syncFolderConfigDelete,
-  syncFolderConfigRename,
-  withAppFolderChange
-} from './folder-config-effects'
+import { syncFolderConfigDelete, syncFolderConfigRename } from './folder-config-effects'
+import { withAppFolderChange } from '../vault/app-folder-changes'
 import { followFolderRenameInShortcuts } from '../ipc/settings-handlers'
 import { followFolderRenameInReadwise } from '../readwise/settings'
 import { recordNoteCreatedHere } from '../sync/note-sync-state'

@@ -63,6 +63,7 @@ import { onDataDbCorruption } from '../database/data-db-corruption-signal'
 import { VaultChannels } from '@memry/contracts/ipc-channels'
 import { NoteError, NoteErrorCode, VaultError, VaultErrorCode } from '../lib/errors'
 import { getWatcher, startWatcher, stopWatcher } from './watcher'
+import { recoverStrandedFolderMoves } from './move-directory'
 import { installVaultLockFileGuard } from '../vault-locks/files'
 import { checkLockedFilesAtOpen } from '../vault-locks/service'
 import { watchLockedAttachments } from '../vault-locks/attachment-watch'
@@ -484,6 +485,16 @@ async function runBackgroundIndexBuild(input: BackgroundIndexBuildInput): Promis
   } catch (error) {
     logger.error('Dropping note rows made of attachment files failed:', error)
     trackMainError('vault', 'stray_attachment_rows', error)
+  }
+  if (isStale()) return
+
+  // Before the removal replay, which would take the files a failed folder move
+  // left in its hidden staging directory for deletes (#5695).
+  try {
+    await recoverStrandedFolderMoves(vaultPath)
+  } catch (error) {
+    logger.error('Putting back the entries of a failed folder move failed:', error)
+    trackMainError('vault', 'recover_folder_moves', error)
   }
   if (isStale()) return
 

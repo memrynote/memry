@@ -1997,8 +1997,8 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
     const gate = new Promise<void>((resolve) => (release = resolve))
     const moved = new Promise<void>((resolve) => (reached = resolve))
     const real = vi.mocked(moveDirectory).getMockImplementation()!
-    vi.mocked(moveDirectory).mockImplementationOnce(async (from, to) => {
-      await real(from, to)
+    vi.mocked(moveDirectory).mockImplementationOnce(async (vaultPath, from, to) => {
+      await real(vaultPath, from, to)
       reached()
       await gate
     })
