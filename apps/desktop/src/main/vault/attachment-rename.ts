@@ -172,20 +172,25 @@ function displayNameFor(storedFilename: string, requested: string): string {
  * The one caller is the attachment download handler; the note's markdown is read
  * here so the reconcile itself stays a pure function of (body, folder). Never
  * throws: a missing note file or an unreadable folder leaves the download exactly
- * as it landed, which is what happened before this existed.
+ * as it landed, which is what happened before this existed. Returns where the
+ * file is now.
  */
 export async function applyDownloadedAttachmentName(
   noteId: string,
   downloadedPath: string
-): Promise<void> {
+): Promise<string> {
   try {
     const notePath = getNoteCacheById(getIndexDatabase(), noteId)?.path
-    if (!notePath) return
+    if (!notePath) return downloadedPath
     const vaultPath = getVaultRoot()
     const markdown = await readVaultFile(vaultPath, notePath)
-    if (markdown === null) return
-    reconcileDownloadedAttachmentName(noteId, downloadedPath, markdown, vaultPath)
+    if (markdown === null) return downloadedPath
+    return (
+      reconcileDownloadedAttachmentName(noteId, downloadedPath, markdown, vaultPath) ??
+      downloadedPath
+    )
   } catch (error) {
     logger.warn('Could not reconcile a downloaded attachment name', { noteId, error })
+    return downloadedPath
   }
 }

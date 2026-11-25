@@ -23,7 +23,7 @@
  * served through self-heal.
  */
 
-import { renameSync, existsSync } from 'fs'
+import { closeSync, existsSync, openSync, readSync, renameSync, statSync, unlinkSync } from 'fs'
 import path from 'path'
 import { createLogger } from '../lib/logger'
 import { getNoteAttachmentsDir } from './attachments'
@@ -133,6 +133,30 @@ export function reconcileRenamedAttachments(
   return applied
 }
 
+function sameBytes(a: string, b: string): boolean {
+  const size = statSync(a).size
+  if (statSync(b).size !== size) return false
+  const fa = openSync(a, 'r')
+  try {
+    const fb = openSync(b, 'r')
+    try {
+      const ba = Buffer.alloc(64 * 1024)
+      const bb = Buffer.alloc(ba.length)
+      for (let at = 0; at < size;) {
+        const n = readSync(fa, ba, 0, ba.length, at)
+        if (n === 0 || readSync(fb, bb, 0, n, at) !== n) return false
+        if (!ba.subarray(0, n).equals(bb.subarray(0, n))) return false
+        at += n
+      }
+      return true
+    } finally {
+      closeSync(fb)
+    }
+  } finally {
+    closeSync(fa)
+  }
+}
+
 /**
  * Rename a just-downloaded attachment to the name the note body asks for.
  *
@@ -140,6 +164,11 @@ export function reconcileRenamedAttachments(
  * materializes the file after a rename gets the old name. The body is the
  * authority here — and the file was created by sync a moment ago, so there is
  * no user-chosen name to overwrite.
+ *
+ * A file already under the body's name with the same bytes is this download
+ * landed and renamed before, its record cut short (OL-M48): the download is a
+ * second copy, so it is removed and that file reused. Other bytes there are
+ * kept beside it.
  *
  * Returns the file's final path (renamed or not), or null when the input is not
  * a file in this note's attachments folder.
@@ -166,9 +195,13 @@ export function reconcileDownloadedAttachmentName(
   if (candidates.length !== 1) return downloadedPath
 
   const target = path.join(dir, candidates[0])
-  if (existsSync(target)) return downloadedPath
-
   try {
+    if (existsSync(target)) {
+      if (!sameBytes(downloadedPath, target)) return downloadedPath
+      unlinkSync(downloadedPath)
+      logger.info('Reused the attachment already under its synced name', { noteId })
+      return target
+    }
     renameSync(downloadedPath, target)
     logger.info('Renamed a downloaded attachment to its synced name', { noteId })
     return target
