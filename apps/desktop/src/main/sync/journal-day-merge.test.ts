@@ -768,6 +768,39 @@ describe('runJournalDayMerges', () => {
       ).toEqual([{ path: PHOTO, attachmentId: null }])
     })
 
+    // VERIFY-5743R2: list order is not upload order, so two files never pair by position.
+    it('pairs none of two ids with two files, counting both as known', async () => {
+      const SECOND = `attachments/${FOREIGN}/a.png`
+      const FIRST = `attachments/${FOREIGN}/z.png`
+      foreignRow({ minter: 2 }, { body: `![one](../${FIRST})\n![two](../${SECOND})\n` })
+      data.db
+        .update(noteMetadata)
+        .set({ attachmentReferences: ['att-1', 'att-2'] })
+        .where(eq(noteMetadata.id, FOREIGN))
+        .run()
+      fs.mkdirSync(path.join(vaultPath, 'attachments', FOREIGN), { recursive: true })
+      fs.writeFileSync(path.join(vaultPath, FIRST), 'att-1 bytes')
+      fs.writeFileSync(path.join(vaultPath, SECOND), 'att-2 bytes')
+      journalHandler.applyUpsert(ctx, FOREIGN, { date: DATE, content: 'theirs\n' }, { minter: 3 })
+
+      await drain()
+
+      expect(refsOf(DAY)).toEqual(['att-1', 'att-2'])
+      expect(
+        data.db
+          .select({ path: attachmentFiles.path, attachmentId: attachmentFiles.attachmentId })
+          .from(attachmentFiles)
+          .where(eq(attachmentFiles.noteId, DAY))
+          .orderBy(attachmentFiles.path)
+          .all()
+      ).toEqual([
+        { path: SECOND, attachmentId: null },
+        { path: FIRST, attachmentId: null }
+      ])
+      expect(fs.readFileSync(path.join(vaultPath, FIRST), 'utf-8')).toBe('att-1 bytes')
+      expect(fs.readFileSync(path.join(vaultPath, SECOND), 'utf-8')).toBe('att-2 bytes')
+    })
+
     it('keeps them in the owed merge when the row goes before a crash', async () => {
       foreignHolderWithPhoto()
       journalHandler.applyUpsert(ctx, FOREIGN, { date: DATE, content: 'theirs\n' }, { minter: 3 })
