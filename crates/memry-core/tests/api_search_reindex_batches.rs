@@ -9,6 +9,7 @@
 //! | --------------------------------------------------- | --------------------------------- |
 //! | a database call during a reindex runs before it ends | sync and writes interleave        |
 //! | a note edited during a reindex is indexed with its new text | no stale row after the pass |
+//! | two searches of one vault never run two passes at once | one pass per vault             |
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -40,6 +41,13 @@ fn vault(label: &str) -> (PathBuf, Vault) {
     std::fs::create_dir_all(&dir).expect("the scratch directory");
     let opened = Vault::open("vault-1".to_string(), dir.display().to_string()).expect("open");
     (dir, opened)
+}
+
+fn wall_ms() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .expect("after the epoch")
+        .as_millis() as i64
 }
 
 fn note_id(i: usize) -> String {
@@ -182,14 +190,15 @@ fn a_note_edited_during_a_reindex_is_indexed_with_its_new_text() {
     // indexed it when the edit lands.
     let edited = note_id(0);
 
+    // Stamped at apply time, as the apply path stamps it.
     let (mid_pass, _) = reindex_while_calling(&dir, &vault, |conn| {
-        append_body(conn, &edited, 2, "saffron", NOW + 1);
+        append_body(conn, &edited, 2, "saffron", wall_ms());
     });
     if !mid_pass {
         // The reindex never let go: the edit lands after it, as it did.
         let data = vault.db_handle();
         data.call_blocking(|conn: &mut Connection| {
-            append_body(conn, &edited, 2, "saffron", NOW + 1);
+            append_body(conn, &edited, 2, "saffron", wall_ms());
             Ok(())
         })
         .expect("the edit");
@@ -203,4 +212,38 @@ fn a_note_edited_during_a_reindex_is_indexed_with_its_new_text() {
     assert_eq!(ids, [edited.as_str()], "the edit is in the index");
     assert_eq!(committed_rows(&dir, Some(&edited)), 1, "one row per note");
     assert_eq!(committed_rows(&dir, None), NOTES);
+}
+
+#[test]
+fn two_searches_of_one_vault_never_run_two_passes_at_once() {
+    let (dir, vault) = vault("two-searches");
+    seed(&vault);
+    let second = vault.search(None).expect("a second Search");
+    let started = std::sync::Mutex::new(None);
+
+    // The second `Search` asks for a reindex while the first is between
+    // batches. A pass of its own would plan against the unwritten stamps and
+    // rebuild from nothing a second time.
+    let (mid_pass, first) = reindex_while_calling(&dir, &vault, |_| {
+        let second = Arc::clone(&second);
+        *started.lock().expect("lock") = Some(std::thread::spawn(move || second.reindex()));
+    });
+    assert!(mid_pass);
+    let second = started
+        .into_inner()
+        .expect("lock")
+        .expect("started mid-pass")
+        .join()
+        .expect("join")
+        .expect("the second reindex");
+
+    assert_eq!(
+        [first.full, second.full]
+            .iter()
+            .filter(|full| **full)
+            .count(),
+        1,
+        "one rebuild, stepped by both"
+    );
+    assert_eq!(committed_rows(&dir, None), NOTES, "every note once");
 }

@@ -155,8 +155,9 @@ pub enum BacklinkOrder {
 pub struct Search {
     data: Db,
     index: Db,
-    /// The vault's: one reindex pass at a time across its `Search`es.
-    reindexing: Arc<Mutex<()>>,
+    /// The vault's reindex pass, shared by its `Search`es: they step one pass
+    /// and never run two at once (#5842).
+    pass: SharedPass,
     directory: PathBuf,
     /// `None` searches FTS alone.
     semantic: Option<Arc<SemanticSearch>>,
@@ -167,7 +168,7 @@ impl Search {
     /// handle and knows the directory the index belongs beside.
     pub(crate) fn over(
         data: Db,
-        reindexing: Arc<Mutex<()>>,
+        pass: SharedPass,
         directory: &str,
         semantic: Option<Arc<SemanticSearch>>,
     ) -> Result<Self, StorageError> {
@@ -176,7 +177,7 @@ impl Search {
         Ok(Self {
             data,
             index: opened.db,
-            reindexing,
+            pass,
             directory,
             semantic,
         })
@@ -420,27 +421,42 @@ impl Search {
         // A full rebuild of a large vault is minutes of work. It holds
         // `data.db` one batch at a time, so the sync pass started beside it
         // and every write wait one batch, not the pass (#5842).
-        let _one_pass = self
-            .reindexing
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner);
-        let mut pass = search::ReindexPass::default();
         loop {
             let held = Instant::now();
-            let step = self.data.call_blocking(|data| {
-                self.index
-                    .call_blocking(|index| pass.step(data, index, now_ms(), search::REINDEX_BATCH))
-            })?;
-            if let search::ReindexStep::Done(done) = step {
-                return Ok(ReindexSummary {
-                    full: done.full,
-                    notes_indexed: done.notes_indexed as u32,
-                    tasks_indexed: done.tasks_indexed as u32,
-                    corrupt_skipped: done.corrupt_skipped as u32,
-                });
+            if let Some(summary) = self.reindex_step()? {
+                return Ok(summary);
             }
             self.let_waiters_in(held.elapsed());
         }
+    }
+
+    /// One batch of [`Search::reindex`]: `Some` when it ended the pass, `None`
+    /// when more remain.
+    ///
+    /// For a shell that runs core calls on one serial queue: a call per batch
+    /// lets the queue's other calls run between batches (#5842). The pass
+    /// belongs to the vault, so a step through any of its `Search`es goes on
+    /// with it. A step that fails drops the pass; the next one starts over.
+    pub fn reindex_step(&self) -> Result<Option<ReindexSummary>, StorageError> {
+        let mut slot = self.pass.lock().unwrap_or_else(PoisonError::into_inner);
+        let mut pass = slot.take().unwrap_or_default();
+        let now = now_ms();
+        let step = self.data.call_blocking(|data| {
+            self.index
+                .call_blocking(|index| pass.step(data, index, now, search::REINDEX_BATCH))
+        })?;
+        Ok(match step {
+            search::ReindexStep::Done(done) => Some(ReindexSummary {
+                full: done.full,
+                notes_indexed: done.notes_indexed as u32,
+                tasks_indexed: done.tasks_indexed as u32,
+                corrupt_skipped: done.corrupt_skipped as u32,
+            }),
+            search::ReindexStep::More => {
+                *slot = Some(pass);
+                None
+            }
+        })
     }
 }
 
@@ -455,6 +471,9 @@ impl Search {
         }
     }
 }
+
+/// A vault's reindex pass in progress, shared by its `Search`es.
+pub(crate) type SharedPass = Arc<Mutex<Option<search::ReindexPass>>>;
 
 /// Wall clock, in epoch milliseconds (data-model §A.6).
 fn now_ms() -> i64 {

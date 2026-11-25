@@ -76,6 +76,7 @@ mod links;
 mod literal_links;
 mod maintenance;
 mod names;
+mod pass;
 mod query;
 pub mod recents;
 pub mod semantic;
@@ -86,9 +87,9 @@ pub(crate) use body_cache::body_version;
 pub use filter::{ModifiedRange, SearchFilter, SearchType};
 pub use inbox::{INBOX_RANK, INBOX_WATERMARK_KEY};
 pub use maintenance::{
-    DATA_VERSION_KEY, NOTES_WATERMARK_KEY, REINDEX_BATCH, ReindexPass, ReindexStep, Reindexed,
-    STAMPS_KEY, TASKS_WATERMARK_KEY, reindex,
+    DATA_VERSION_KEY, NOTES_WATERMARK_KEY, Reindexed, STAMPS_KEY, TASKS_WATERMARK_KEY, reindex,
 };
+pub use pass::{CATCH_UP_ROUNDS, REINDEX_BATCH, ReindexPass, ReindexStep};
 pub use snippet::SnippetSegment;
 
 /// The `fts_notes` ranking expression. Part of the contract (§A.5).
