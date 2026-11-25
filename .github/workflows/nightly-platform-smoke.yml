@@ -114,7 +114,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
+          # setup-node saves its ~970 MB store on any miss: only the scheduled run on feat/tauri-v2 uses
+          # it, so a dispatch on another ref leaves no per-ref copy in the 10 GB cache cap.
+          cache: ${{ github.ref == 'refs/heads/feat/tauri-v2' && 'pnpm' || '' }}
 
       - name: Install dependencies
         env:

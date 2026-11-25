@@ -349,7 +349,7 @@ jobs:
         if: matrix.lint || matrix.seams || matrix.models || matrix.perf
         uses: ./.github/actions/tesseract-sources
         with:
-          save: ${{ github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref != 'feat/tauri-v2') }}
+          save: ${{ github.ref == 'refs/heads/feat/tauri-v2' }}
 
       - name: Format
         if: matrix.lint && runner.os == 'Linux'
@@ -395,12 +395,13 @@ jobs:
         run: cargo nextest run -p memry-core -p memry-desktop -p memry-media -p memry-tauri -p memry-test-kit -p xtask -p memrynote-cli --no-fail-fast --features memry-core/markdown ${PARTITION:+--partition "hash:$PARTITION"}
 
       - name: Upload the JUnit report (merge queue)
-        if: ${{ !cancelled() && matrix.tests && github.event_name == 'merge_group' }}
+        if: ${{ !cancelled() && (matrix.tests || matrix.seams) && github.event_name == 'merge_group' }}
         continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: nextest-junit-${{ matrix.os }}-${{ strategy.job-index }}
-          path: crates/target/nextest/merge-queue/junit.xml
+          # A tests leg runs one nextest step; a seams leg keeps one report per step (see Test memry-ml).
+          path: ${{ matrix.tests && 'crates/target/nextest/merge-queue/junit.xml' || format('{0}/nextest-junit/', runner.temp) }}
           if-no-files-found: ignore
           retention-days: 7
 
@@ -629,9 +630,13 @@ jobs:
 
       # Builds the ONNX Runtime environment, so a target whose library is missing or does not link
       # fails here, on every tier.
+      # Each seams nextest step of a merge-queue run keeps its JUnit report (the profile's one junit.xml
+      # is overwritten by the next run), so the flaky-report job posts a test that passed only on retry.
       - name: Test memry-ml
         if: matrix.seams
-        run: cargo nextest run -p memry-ml --no-fail-fast
+        run: |
+          cargo nextest run -p memry-ml --no-fail-fast
+          [ "$NEXTEST_PROFILE" != merge-queue ] || { mkdir -p "$RUNNER_TEMP/nextest-junit" && cp target/nextest/merge-queue/junit.xml "$RUNNER_TEMP/nextest-junit/memry-ml.xml"; }
 
       # The PDF worker and its supervisor, on the pinned pdfium of this target (sha256 checked by
       # the script). Every OS leg, since the priority, kill and library-loading code is per OS.
@@ -642,6 +647,7 @@ jobs:
         run: |
           node ../scripts/fetch-pdfium.mjs --out "$MEMRY_PDFIUM_DIR"
           cargo nextest run -p memry-ml-worker --no-fail-fast
+          [ "$NEXTEST_PROFILE" != merge-queue ] || { mkdir -p "$RUNNER_TEMP/nextest-junit" && cp target/nextest/merge-queue/junit.xml "$RUNNER_TEMP/nextest-junit/memry-ml-worker.xml"; }
 
       # Tesseract, Leptonica and ONNX Runtime are linked into the worker statically, and on Windows
       # so is the VC runtime: the app ships none of their libraries and needs no VC++
@@ -680,6 +686,7 @@ jobs:
         run: |
           cargo build -p memry-ml-worker --bins
           cargo nextest run -p memry-desktop --test file_text_worker --run-ignored only --no-fail-fast
+          [ "$NEXTEST_PROFILE" != merge-queue ] || { mkdir -p "$RUNNER_TEMP/nextest-junit" && cp target/nextest/merge-queue/junit.xml "$RUNNER_TEMP/nextest-junit/file-text-worker.xml"; }
 
       # The model tests run on the full tier only (#3540 K5), in the one job per OS that rust-legs.jq
       # marks `models` (windows-11-arm: a `models` part of its own). The pinned text files (207 MB)
@@ -715,7 +722,7 @@ jobs:
           EOF
 
       - name: Save the text model (memry-ml smoke)
-        if: matrix.models && steps.model-cache.outputs.cache-hit != 'true' && github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref == 'main')
+        if: matrix.models && steps.model-cache.outputs.cache-hit != 'true' && github.ref == 'refs/heads/feat/tauri-v2'
         uses: actions/cache/save@v4
         with:
           path: ${{ runner.temp }}/models
@@ -772,7 +779,7 @@ jobs:
           EOF
 
       - name: Save the vision encoder (memry-ml golden image)
-        if: matrix.models && steps.vision-cache.outputs.cache-hit != 'true' && github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref == 'main')
+        if: matrix.models && steps.vision-cache.outputs.cache-hit != 'true' && github.ref == 'refs/heads/feat/tauri-v2'
         uses: actions/cache/save@v4
         with:
           path: |
@@ -823,7 +830,7 @@ jobs:
           EOF
 
       - name: Save the audio encoder (memry-ml golden audio)
-        if: matrix.models && steps.audio-model-cache.outputs.cache-hit != 'true' && github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref == 'main')
+        if: matrix.models && steps.audio-model-cache.outputs.cache-hit != 'true' && github.ref == 'refs/heads/feat/tauri-v2'
         uses: actions/cache/save@v4
         with:
           path: |
@@ -897,7 +904,9 @@ jobs:
 
       - name: Test memry-cli
         if: matrix.seams && runner.os == 'Linux'
-        run: cargo nextest run -p memry-cli --no-fail-fast
+        run: |
+          cargo nextest run -p memry-cli --no-fail-fast
+          [ "$NEXTEST_PROFILE" != merge-queue ] || { mkdir -p "$RUNNER_TEMP/nextest-junit" && cp target/nextest/merge-queue/junit.xml "$RUNNER_TEMP/nextest-junit/memry-cli.xml"; }
 
       # The Rust core against the real Worker (miniflare, the D1 migrations): two desktop vaults
       # sync through the engine (crates/memry-desktop/tests/sync_harness.rs, cargo feature
@@ -923,12 +932,15 @@ jobs:
         run: |
           cargo clippy -p memry-desktop --features harness --test sync_harness --test sync_driver_harness --test sync_supervisor_harness --test attachments_harness --test attachment_holds_harness -- -D warnings
           cargo nextest run -p memry-desktop --features harness --test sync_harness --test sync_driver_harness --test sync_supervisor_harness --test attachments_harness --test attachment_holds_harness --no-fail-fast
+          [ "$NEXTEST_PROFILE" != merge-queue ] || { mkdir -p "$RUNNER_TEMP/nextest-junit" && cp target/nextest/merge-queue/junit.xml "$RUNNER_TEMP/nextest-junit/sync-harness.xml"; }
 
       # The official TypeScript MCP client (tests/agent-mcp-client) against the agent MCP server
       # (crates/memry-desktop/tests/agent_mcp_client.rs, ignored where node is not installed).
       - name: Agent MCP client (memry-desktop)
         if: matrix.seams && runner.os == 'Linux'
-        run: cargo nextest run -p memry-desktop --test agent_mcp_client --run-ignored only --no-fail-fast
+        run: |
+          cargo nextest run -p memry-desktop --test agent_mcp_client --run-ignored only --no-fail-fast
+          [ "$NEXTEST_PROFILE" != merge-queue ] || { mkdir -p "$RUNNER_TEMP/nextest-junit" && cp target/nextest/merge-queue/junit.xml "$RUNNER_TEMP/nextest-junit/agent-mcp-client.xml"; }
 
       - name: Line ceilings
         if: matrix.lint && runner.os == 'Linux'
@@ -1010,7 +1022,7 @@ jobs:
       - name: Tesseract sources
         uses: ./.github/actions/tesseract-sources
         with:
-          save: ${{ github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref != 'feat/tauri-v2') }}
+          save: ${{ github.ref == 'refs/heads/feat/tauri-v2' }}
 
       - name: Install cargo-nextest
         uses: taiki-e/install-action@v2
@@ -1186,14 +1198,23 @@ jobs:
             exit 1
           fi
 
-      - name: Cache ONNX Runtime archive
-        uses: actions/cache@v4
+      # Saved only on refs/heads/feat/tauri-v2, like the cargo cache; every other ref restores.
+      - name: Restore the ONNX Runtime archive
+        id: onnxruntime-cache
+        uses: actions/cache/restore@v4
         with:
           path: ~/Library/Caches/memry/onnxruntime
           key: onnxruntime-${{ hashFiles('crates/memry-core/onnxruntime.lock') }}
 
       - name: Build XCFramework
         run: crates/memry-core/build-xcframework.sh
+
+      - name: Save the ONNX Runtime archive
+        if: steps.onnxruntime-cache.outputs.cache-hit != 'true' && github.ref == 'refs/heads/feat/tauri-v2'
+        uses: actions/cache/save@v4
+        with:
+          path: ~/Library/Caches/memry/onnxruntime
+          key: onnxruntime-${{ hashFiles('crates/memry-core/onnxruntime.lock') }}
 
       - name: Upload XCFramework
         uses: actions/upload-artifact@v4

@@ -389,7 +389,7 @@ jobs:
         if: matrix.variant == 'e2e' && contains(fromJSON('["windows-arm64","linux-arm64"]'), matrix.platform)
         uses: ./.github/actions/tesseract-sources
         with:
-          save: ${{ github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref != 'feat/tauri-v2') }}
+          save: ${{ github.ref == 'refs/heads/feat/tauri-v2' }}
 
       - name: Build memry-ml-worker and fetch pdfium
         if: matrix.variant == 'e2e' && contains(fromJSON('["windows-arm64","linux-arm64"]'), matrix.platform)

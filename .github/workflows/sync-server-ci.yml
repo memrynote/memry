@@ -158,15 +158,15 @@ jobs:
         id: image
         run: echo "os=${ImageOS:?ImageOS is unset, so the cargo cache key cannot name the image}" >> "$GITHUB_OUTPUT"
 
-      # Saves only on push, dispatch and PRs into main, like rust-ci.yml: a tiered PR and a merge-queue
-      # run restore what those saved and write nothing (the repo's cache cap is 10 GB).
+      # Saves only on refs/heads/feat/tauri-v2, like rust-ci.yml: every other ref restores what it saved
+      # and writes nothing (per-ref saves filled the repo's 10 GB cache cap).
       - name: Cache cargo
         if: steps.paths.outputs.changed == 'true'
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: crates
           key: harness-${{ steps.image.outputs.os }}
-          save-if: ${{ github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref == 'main') }}
+          save-if: ${{ github.ref == 'refs/heads/feat/tauri-v2' }}
 
       - name: Build the core device
         if: steps.paths.outputs.changed == 'true'

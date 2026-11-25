@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
-import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, it } from 'node:test'
@@ -204,6 +204,55 @@ describe('Rust CI gate', () => {
     assert.equal(saves.length, [...workflow.matchAll(/uses: Swatinem\/rust-cache@v2/g)].length)
     for (const save of saves)
       assert.match(save, /github\.ref == 'refs\/heads\/feat\/tauri-v2'/, save)
+  })
+
+  // Every per-ref save of a large entry fills the repo's 10 GB cache cap and evicts feat/tauri-v2's
+  // cargo entries, which PRs and the merge queue restore. Each cache step of every workflow and local
+  // action saves only on feat/tauri-v2 (main too where a step serves main's runs) and restores elsewhere.
+  it('saves every workflow cache only on feat/tauri-v2', () => {
+    const dirs = [
+      '.github/workflows',
+      ...readdirSync(join(repo, '.github/actions')).map((a) => `.github/actions/${a}`)
+    ]
+    const files = dirs.flatMap((dir) =>
+      readdirSync(join(repo, dir))
+        .filter((f) => /\.ya?ml$/.test(f))
+        .map((f) => join(dir, f))
+    )
+    const feat = /github\.ref == 'refs\/heads\/feat\/tauri-v2'/
+    let checked = 0
+    for (const file of files) {
+      const lines = readFileSync(join(repo, file), 'utf8').split('\n')
+      // The step around line i: from its `- ` line to the next item at the same indent.
+      const step = (i) => {
+        let start = i
+        while (!/^\s*- /.test(lines[start])) start--
+        const indent = lines[start].search(/-/)
+        let end = start + 1
+        while (end < lines.length && !(lines[end].search(/\S/) <= indent && lines[end].trim()))
+          end++
+        return lines.slice(start, end).join('\n')
+      }
+      for (const [i, line] of lines.entries()) {
+        if (/^\s*#/.test(line)) continue
+        const where = `${file}:${i + 1}`
+        if (/uses: Swatinem\/rust-cache@/.test(line)) {
+          const save = step(i).match(/save-if: (.*)/)?.[1] ?? ''
+          assert.ok(feat.test(save) || save === 'false', `${where} save-if: ${save}`)
+        } else if (/uses: actions\/cache(\/save)?@/.test(line)) {
+          const cond = step(i).match(/^\s*(?:- )?if: (.*)$/m)?.[1] ?? ''
+          // tesseract-sources saves when its `save` input says so; its callers are checked below.
+          assert.ok(feat.test(cond) || cond === "inputs.save == 'true'", `${where} if: ${cond}`)
+        } else if (/uses: \.\/\.github\/actions\/tesseract-sources/.test(line)) {
+          const save = step(i).match(/save: (.*)/)?.[1] ?? ''
+          assert.ok(feat.test(save), `${where} save: ${save}`)
+        } else if (/^\s*cache: /.test(line)) {
+          assert.match(line, feat, where)
+        } else continue
+        checked++
+      }
+    }
+    assert.ok(checked > 20, `only ${checked} cache steps found`)
   })
 
   it('reports the latest finished gate of a real run in a noop run into main', () => {

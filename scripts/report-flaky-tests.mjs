@@ -1,6 +1,7 @@
 // Posts the tests that passed only on retry in a merge-queue run of rust-ci.yml to the flaky-test
 // issue (#3967). Input: a directory of downloaded `nextest-junit-<os>-<n>` artifacts, each holding
-// the junit.xml of nextest's `merge-queue` profile (crates/.config/nextest.toml). Logging is best
+// JUnit reports of nextest's `merge-queue` profile (crates/.config/nextest.toml): a tests leg's
+// junit.xml, or a seams leg's one report per nextest step (`<step>.xml`). Logging is best
 // effort: every error ends in a warning and exit 0, so the merge queue never fails on it.
 import { execFileSync } from 'node:child_process'
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs'
@@ -41,17 +42,23 @@ export function collectFlaky(root) {
   for (const dir of readdirSync(root).toSorted()) {
     const leg = dir.match(/^nextest-junit-(.+)-\d+$/)?.[1]
     if (!leg) continue
-    let xml
+    let reports
     try {
-      xml = readFileSync(join(root, dir, 'junit.xml'), 'utf8')
-    } catch {
-      console.log(`::warning::${dir} has no junit.xml`)
+      reports = readdirSync(join(root, dir))
+        .filter((file) => file.endsWith('.xml'))
+        .toSorted()
+        .map((file) => readFileSync(join(root, dir, file), 'utf8'))
+    } catch (error) {
+      console.log(`::warning::${dir} could not be read: ${error.message}`)
       continue
     }
-    for (const { name, failedAttempts } of flakyTests(xml)) {
-      const legs = byTest.get(name) ?? []
-      legs.push({ leg, failedAttempts })
-      byTest.set(name, legs)
+    if (reports.length === 0) console.log(`::warning::${dir} has no JUnit report`)
+    for (const xml of reports) {
+      for (const { name, failedAttempts } of flakyTests(xml)) {
+        const legs = byTest.get(name) ?? []
+        legs.push({ leg, failedAttempts })
+        byTest.set(name, legs)
+      }
     }
   }
   return byTest
