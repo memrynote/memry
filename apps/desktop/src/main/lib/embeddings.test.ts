@@ -7,13 +7,27 @@ import { SettingsChannels } from '@memry/contracts/ipc-channels'
 import { formatWorkerStderrTail, isInformationalWorkerStderr } from './embeddings-worker-stderr'
 import { embeddingModelWeightsPath } from './embeddings-constants'
 import type { EmbeddingMainToWorkerMessage } from './embedding-model-protocol'
+import type * as LowPriority from './low-priority'
+import type { ProcessSample } from './process-sample'
 
 const mockApp = vi.hoisted(() => ({
   getPath: vi.fn((name: string) => `/mock/${name}`)
 }))
+const sampleProcess = vi.hoisted(() =>
+  vi.fn<() => Promise<ProcessSample | undefined>>(async () => undefined)
+)
+const setBackgroundQos = vi.hoisted(() => vi.fn(async () => {}))
 const getAllWindows = vi.hoisted(() => vi.fn<() => MockBrowserWindow[]>())
 const mockFork = vi.hoisted(() => vi.fn())
 const trackMainLogMock = vi.hoisted(() => vi.fn())
+
+// The fake worker's pid is not ours: never read or re-prioritize a real process.
+vi.mock('./process-sample', () => ({ sampleProcess }))
+vi.mock('./low-priority', async (importOriginal) => ({
+  ...(await importOriginal<typeof LowPriority>()),
+  moveToBackground: async () => {},
+  setBackgroundQos
+}))
 
 vi.mock('../telemetry/diagnostics', () => ({
   trackMainLog: trackMainLogMock,
@@ -83,6 +97,7 @@ import {
   generateEmbedding,
   generateImageEmbedding,
   generateAudioEmbedding,
+  generateQueryEmbedding,
   getEmbeddingWorkerCrashContext,
   getModelInfo,
   initEmbeddingModel,
@@ -103,6 +118,7 @@ describe('embeddings', () => {
       name === 'userData' ? '/mock/user-data' : `/mock/${name}`
     )
     getAllWindows.mockReturnValue([])
+    sampleProcess.mockReset().mockResolvedValue(undefined)
   })
 
   afterEach(() => {
@@ -409,6 +425,107 @@ describe('embeddings', () => {
       expect(settled).toHaveBeenCalledExactlyOnceWith([null, null, false, null, null])
       expect(getModelInfo()).toMatchObject({ loaded: false, loading: false })
       await pending
+    })
+
+    const deliver = (worker: MockUtilityProcess): void =>
+      worker.simulateMessage({
+        type: 'embed-result',
+        requestId: lastRequest(worker).requestId,
+        embedding: vector
+      })
+
+    it('lifts the worker out of background QoS while a search query waits, and only then', async () => {
+      const worker = await warmWorker()
+      setBackgroundQos.mockClear()
+
+      const background = generateEmbedding('backfill synthetic note content')
+      await vi.advanceTimersByTimeAsync(0)
+      deliver(worker)
+      await background
+      expect(setBackgroundQos).not.toHaveBeenCalled()
+
+      const first = generateQueryEmbedding('task: search result | query: kittens')
+      const second = generateQueryEmbedding('task: search result | query: herons')
+      await vi.advanceTimersByTimeAsync(0)
+      expect(setBackgroundQos.mock.calls).toEqual([[worker.pid, false]])
+      const [firstRequest, secondRequest] = worker.postMessage.mock.calls
+        .slice(-2)
+        .map(([message]) => ('requestId' in message ? message.requestId : ''))
+      worker.simulateMessage({ type: 'embed-result', requestId: firstRequest, embedding: vector })
+      await first
+      expect(setBackgroundQos.mock.calls).toEqual([[worker.pid, false]])
+      worker.simulateMessage({ type: 'embed-result', requestId: secondRequest, embedding: vector })
+      await expect(second).resolves.toEqual(new Float32Array(vector))
+      await vi.advanceTimersByTimeAsync(0)
+      expect(setBackgroundQos.mock.calls).toEqual([
+        [worker.pid, false],
+        [worker.pid, true]
+      ])
+    })
+
+    it('lets a worker that keeps using CPU run past the request timeout, and stops one that sleeps', async () => {
+      const worker = await warmWorker()
+      let cpuSeconds = 1
+      sampleProcess.mockImplementation(async () => ({ cpuSeconds, runnable: true }))
+
+      const slow = generateEmbedding('slow synthetic note content on a busy machine')
+      await vi.advanceTimersByTimeAsync(0)
+      for (let period = 0; period < 3; period++) {
+        cpuSeconds += 0.5
+        await vi.advanceTimersByTimeAsync(15 * 60_000)
+      }
+      expect(worker.kill).not.toHaveBeenCalled()
+      deliver(worker)
+      await expect(slow).resolves.toEqual(new Float32Array(vector))
+
+      sampleProcess.mockImplementation(async () => ({ cpuSeconds, runnable: false }))
+      const hung = generateEmbedding('hung synthetic note content')
+      await vi.advanceTimersByTimeAsync(0)
+      await vi.advanceTimersByTimeAsync(15 * 60_000)
+      expect(worker.kill).toHaveBeenCalledOnce()
+      await expect(hung).resolves.toBeNull()
+    })
+
+    it('waits for a worker that a busy machine holds back, however long', async () => {
+      const worker = await warmWorker()
+      sampleProcess.mockResolvedValue({ cpuSeconds: 1, runnable: true })
+
+      const held = generateEmbedding('held back synthetic note content')
+      await vi.advanceTimersByTimeAsync(0)
+      await vi.advanceTimersByTimeAsync(20 * 15 * 60_000)
+      expect(worker.kill).not.toHaveBeenCalled()
+      deliver(worker)
+      await expect(held).resolves.toEqual(new Float32Array(vector))
+    })
+
+    it('stops a worker that keeps using CPU once the request timeout has moved out eight times', async () => {
+      const worker = await warmWorker()
+      let cpuSeconds = 1
+      sampleProcess.mockImplementation(async () => ({
+        cpuSeconds: (cpuSeconds += 900),
+        runnable: true
+      }))
+      const spinning = generateEmbedding('spinning synthetic note content')
+      await vi.advanceTimersByTimeAsync(0)
+
+      await vi.advanceTimersByTimeAsync(9 * 15 * 60_000 - 1)
+      expect(worker.kill).not.toHaveBeenCalled()
+      await vi.advanceTimersByTimeAsync(1)
+      expect(worker.kill).toHaveBeenCalledOnce()
+      await expect(spinning).resolves.toBeNull()
+    })
+
+    it('keeps a worker that is slow to start while a busy machine holds it back', async () => {
+      sampleProcess.mockResolvedValue({ cpuSeconds: 0, runnable: true })
+      const pending = generateEmbedding('slow start synthetic note content')
+      const worker = mockUtilityProcessInstance
+      await vi.advanceTimersByTimeAsync(60_000)
+      expect(worker.kill).not.toHaveBeenCalled()
+
+      worker.simulateMessage({ type: 'ready' })
+      await vi.advanceTimersByTimeAsync(0)
+      deliver(worker)
+      await expect(pending).resolves.toEqual(new Float32Array(vector))
     })
 
     it.each(['progress', 'exit', 'fatal error'] as const)(
