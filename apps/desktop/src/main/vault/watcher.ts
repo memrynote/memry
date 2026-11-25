@@ -33,6 +33,7 @@ import {
 } from './note-sync'
 import {
   getAllNoteRefRows,
+  listJournalEntries,
   getNoteCacheByPath,
   getNoteCacheById,
   ensureTagDefinitions,
@@ -77,7 +78,7 @@ import { restoreLockedNoteFile } from '../vault-locks/service'
 import { protectLockedFile } from '../vault-locks/files'
 import { writingFrontmatterOf } from '@memry/shared/writing-tools/markdown'
 import { reconcileTaskCheckboxesFromMarkdown } from '../tasks/reconcile-markdown-tasks'
-import { enqueueJournalDelete } from '../journal/runtime-effects'
+import { enqueueJournalDelete, enqueueJournalUpdate } from '../journal/runtime-effects'
 import { externalJournalEntry } from '../journal/external-entry'
 import {
   syncNoteCreate,
@@ -88,7 +89,7 @@ import {
 } from '../notes/runtime-effects'
 import { syncFolderConfigDelete, syncFolderConfigDiscovered } from '../notes/folder-config-effects'
 import { isAppFolderChange } from './app-folder-changes'
-import { normalizeRelativePath, openVaultFile } from '../lib/paths'
+import { normalizeRelativePath, openVaultFile, readVaultFile } from '../lib/paths'
 import { createTreeFolderFilter } from './folder-visibility'
 import { recordActivity, recordSkippedFile, toActivityPath } from './activity-log'
 import { isVaultReachable } from './init'
@@ -577,6 +578,34 @@ export class VaultWatcher {
    */
   async replayMissedRemovals(): Promise<void> {
     await this.rescan(this.generation, false)
+  }
+
+  /**
+   * Vault open: a journal day whose file changed while the app was closed
+   * (#5752). `ignoreInitial` hides the edit and the walk skips indexed paths,
+   * so nothing moved the day's clock: its tags and properties never synced,
+   * and a peer's delete, in step with the old clock, removed the day and the
+   * edit with it. A day whose bytes differ from its baseline gets the tick an
+   * in-app edit gets (`enqueueJournalUpdate`), then the live watcher's ingest.
+   * The same bytes (a re-index, a touched mtime) tick nothing. A locked day is
+   * left to the lock check, which put its locked text back.
+   */
+  async replayMissedJournalEdits(): Promise<void> {
+    const vaultPath = this.vaultPath
+    if (!vaultPath) return
+    const generation = this.generation
+    const db = getIndexDatabase()
+    for (const cached of listJournalEntries(db)) {
+      if (this.generation !== generation) return
+      if (!cached.date || !cached.contentHash || cached.fileType !== 'markdown') continue
+      const raw = await readVaultFile(vaultPath, cached.path)
+      if (raw === null || !isOutsideEdit(db, cached.id, cached, raw)) continue
+      if (isNoteLocked(cached.id, cached.path)) continue
+      // Invariant: an edit this device did not see happen still counts as this
+      // device's edit once found.
+      enqueueJournalUpdate(cached.id, cached.date)
+      await this.handleMarkdownFileChange(cached.path, cached, db)
+    }
   }
 
   /**
