@@ -114,14 +114,19 @@ fn lane() -> Lane {
     service.register(&e.session);
     e.open();
     let inbox = e.core.as_ref().unwrap().inbox(with_device_key()).unwrap();
-    Lane {
+    let l = Lane {
         e,
         projector,
         model,
         ai,
         audio,
         inbox,
-    }
+    };
+    // The open's reconcile pass embeds every owed memo, so a memo made while it runs could be
+    // sent by it as well as by its event, and stored out of the events' order.
+    let runtime = l.e.session.projections().expect("open");
+    l.until("the open's reconcile pass", |_| runtime.live_threads() <= 1);
+    l
 }
 
 impl Lane {
@@ -373,7 +378,9 @@ fn an_upper_case_wav_name_is_embedded_from_its_audio() {
 }
 
 /// The worker opens the recording by path, so it gets the canonical target: a link inside the
-/// vault is resolved before the check, not left for the worker to follow afterwards.
+/// vault is resolved before the check, not left for the worker to follow afterwards. Both
+/// senders resolve it: the open's reconcile, which may reach a failed memo before its event,
+/// and the event, which embeds again (Electron's `project` too).
 #[cfg(unix)]
 #[test]
 fn the_worker_gets_the_recordings_real_path() {
@@ -387,9 +394,10 @@ fn the_worker_gets_the_recordings_real_path() {
     l.inbox
         .fail_transcription(id.clone(), "Rate limit exceeded".into())
         .unwrap();
-    l.notify(&id);
-    l.until("the audio vectors", |l| l.row(&id).is_some());
+    // On the test's thread, so the pass is over when it returns.
+    l.projector.reconcile(&CancelToken::default()).unwrap();
+    l.after(&[&id]);
     let recordings = l.model.recordings.lock().unwrap().clone();
     let expected = std::fs::canonicalize(real.join("voice-memo.wav")).unwrap();
-    assert_eq!(recordings, [expected]);
+    assert_eq!(recordings, [expected.clone(), expected]);
 }
