@@ -74,6 +74,7 @@ fn env(script: Vec<Scripted>) -> Env {
         "memry-api-inbox-attachments-{}-{unique}",
         std::process::id()
     ));
+    let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).expect("the scratch directory");
     let vault = Vault::open(format!("vault-{unique}"), dir.display().to_string()).expect("open");
     let (_public, secret) = sodium::sign_seed_keypair(&SIGNING_SEED).expect("a keypair");

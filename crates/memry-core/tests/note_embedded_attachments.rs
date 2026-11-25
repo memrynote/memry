@@ -18,6 +18,8 @@
 //! | an older peer's record without the list keeps the row  | absent is not `[]`           |
 //! | a heal run again changes nothing                       | the backfill is idempotent   |
 //! | a manifest the server lacks is not asked on every open | ten-minute 404 memory        |
+//! | signing in again asks again for a lacked manifest      | sign-out clears the memory   |
+//! | a 404 answered after sign-out is not remembered        | the next sign-in asks again  |
 //! | an upgraded device gets rows for notes it applied      | one-time backfill            |
 
 mod http_fakes;
@@ -29,7 +31,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use http_fakes::{FakeSecureStore, FakeTransport, error_response, response};
-use memry_core::api::auth::{AuthSession, DeviceDescriptor};
+use memry_core::api::auth::{AuthSession, AuthState, DeviceDescriptor};
 use memry_core::api::crypto::derive_vault_key;
 use memry_core::api::errors::TransportError;
 use memry_core::api::sync::VaultSync;
@@ -43,7 +45,9 @@ use memry_core::protocol::auth::DevicePlatform;
 use memry_core::protocol::envelope::SyncOperation;
 use memry_core::seams::reachability::Reachable;
 use memry_core::seams::secure_store::{SecureStore as _, SecureStoreKey};
-use memry_core::seams::transport::HttpResponse;
+use memry_core::seams::transport::{
+    HttpRequest, HttpResponse, SocketHandle, SocketListener, SocketRequest, Transport,
+};
 use memry_core::storage::repositories::instants;
 use memry_core::storage::repositories::sync_items::SyncItemRow;
 use memry_core::sync::push::{PendingRecord, PushSealer as _};
@@ -74,6 +78,7 @@ fn scratch_vault() -> (Vault, PathBuf) {
         "memry-note-embedded-{}-{unique}",
         std::process::id()
     ));
+    let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).expect("the scratch directory");
     let vault = Vault::open("vault-1".to_string(), dir.display().to_string()).expect("open");
     (vault, dir)
@@ -706,6 +711,171 @@ async fn a_manifest_the_server_lacked_is_asked_again_after_the_cooldown() {
         .await
         .expect("the open after the cooldown");
     assert_eq!(named, 1, "the uploaded manifest is named");
+}
+
+/// What the server answers a sign-in: the code, the setup grant, the device.
+fn sign_in_script() -> Vec<Scripted> {
+    let setup = http_fakes::jwt(
+        json!({"sub": "user-1", "jti": "jti-1", "exp": 4_102_444_800u64, "type": "setup"}),
+    );
+    let access = http_fakes::jwt(
+        json!({"sub": "user-1", "device_id": DEVICE, "type": "access", "exp": 9_999_999_999u64}),
+    );
+    vec![
+        response(200, r#"{"success":true,"expiresIn":600}"#),
+        response(200, &json!({"success": true, "setupToken": setup}).to_string()),
+        response(
+            200,
+            &json!({"success": true, "deviceId": DEVICE, "accessToken": access, "refreshToken": "refresh-1"})
+                .to_string(),
+        ),
+    ]
+}
+
+/// Walks `SignedOut -> Registered` through the server, then unlocks the
+/// master key as the shell's recovery step does.
+async fn sign_in(session: &AuthSession, store: &FakeSecureStore, transport: &FakeTransport) {
+    for step in sign_in_script() {
+        transport.push(step);
+    }
+    session
+        .request_email_code("kaan@example.com".to_string())
+        .await
+        .expect("the code");
+    session
+        .verify_email_code("123456".to_string())
+        .await
+        .expect("the setup grant");
+    session.register_device().await.expect("the device");
+    assert_eq!(session.state(), AuthState::Registered);
+    store
+        .set(SecureStoreKey::MasterKey, MASTER_KEY.to_vec())
+        .expect("plant the master key");
+}
+
+/// Holds every manifest request at the wire, after the session attached its
+/// token, until the test lets it go.
+struct HeldManifests {
+    inner: Arc<FakeTransport>,
+    gate: tokio::sync::Mutex<()>,
+    asked: tokio::sync::Notify,
+}
+
+#[async_trait::async_trait]
+impl Transport for HeldManifests {
+    async fn send(&self, request: HttpRequest) -> Result<HttpResponse, TransportError> {
+        if request.url.ends_with("/manifest") {
+            self.asked.notify_one();
+            let _held = self.gate.lock().await;
+        }
+        self.inner.send(request).await
+    }
+
+    fn open_socket(
+        &self,
+        request: SocketRequest,
+        listener: Arc<dyn SocketListener>,
+    ) -> Result<Arc<dyn SocketHandle>, TransportError> {
+        self.inner.open_socket(request, listener)
+    }
+}
+
+fn held_session(transport: Arc<HeldManifests>, store: Arc<FakeSecureStore>) -> Arc<AuthSession> {
+    Arc::new(
+        AuthSession::new(
+            transport,
+            store,
+            BASE.to_string(),
+            "ios".to_string(),
+            DeviceDescriptor {
+                name: "phone".to_string(),
+                platform: DevicePlatform::Ios,
+                form_factor: None,
+                os_version: None,
+                app_version: "1.0.0".to_string(),
+                vault_id: None,
+            },
+        )
+        .expect("a session"),
+    )
+}
+
+#[tokio::test]
+async fn signing_in_again_asks_again_for_a_manifest_the_last_sign_in_lacked() {
+    let photo = file(FIRST, b"\xff\xd8\xff the blue marble");
+    let (vault, _dir) = scratch_vault();
+    let transport = FakeTransport::new(vec![]);
+    let held = Arc::new(HeldManifests {
+        inner: transport.clone(),
+        gate: tokio::sync::Mutex::new(()),
+        asked: tokio::sync::Notify::new(),
+    });
+    let store = FakeSecureStore::new();
+    let session = held_session(held, store.clone());
+    sign_in(&session, &store, &transport).await;
+    for step in first_sync_script(&[FIRST]) {
+        transport.push(step);
+    }
+    let sync = vault.sync(session.clone());
+    sync.first_sync(None).await.expect("the first sync");
+    answer_404(&sync, &transport).await;
+
+    // One session, one VaultSync: signed out and back in while the peer
+    // uploaded the picture.
+    transport.push(response(200, "{}"));
+    session.sign_out().await.expect("sign out");
+    sign_in(&session, &store, &transport).await;
+    transport.push(devices());
+    transport.push(response(200, &photo.manifest_body));
+    let named = sync
+        .fetch_note_manifests(NOTE.to_string())
+        .await
+        .expect("the open after signing in again");
+    assert_eq!(named, 1, "signing out forgets the 404");
+}
+
+#[tokio::test]
+async fn a_404_answered_after_sign_out_is_not_remembered() {
+    let photo = file(FIRST, b"\xff\xd8\xff the blue marble");
+    let (vault, _dir) = scratch_vault();
+    let transport = FakeTransport::new(vec![]);
+    let held = Arc::new(HeldManifests {
+        inner: transport.clone(),
+        gate: tokio::sync::Mutex::new(()),
+        asked: tokio::sync::Notify::new(),
+    });
+    let store = FakeSecureStore::new();
+    let session = held_session(held.clone(), store.clone());
+    sign_in(&session, &store, &transport).await;
+    for step in first_sync_script(&[FIRST]) {
+        transport.push(step);
+    }
+    let sync = vault.sync(session.clone());
+    sync.first_sync(None).await.expect("the first sync");
+
+    // The manifest request is on the wire when the user signs out; its 404
+    // arrives after the sign-out cleared the memory.
+    transport.push(devices());
+    transport.push(response(200, "{}"));
+    transport.push(error_response(404, "NOT_FOUND", "no manifest"));
+    let gate = held.gate.lock().await;
+    let open = sync.fetch_note_manifests(NOTE.to_string());
+    let sign_out = async {
+        held.asked.notified().await;
+        session.sign_out().await.expect("sign out");
+        drop(gate);
+    };
+    let (named, ()) = tokio::join!(open, sign_out);
+    assert_eq!(named.expect("a 404 is logged, not raised"), 0);
+
+    sign_in(&session, &store, &transport).await;
+    transport.push(devices());
+    transport.push(response(200, &photo.manifest_body));
+    let named = sync
+        .fetch_note_manifests(NOTE.to_string())
+        .await
+        .expect("the open after signing in again");
+    assert_eq!(named, 1, "the next sign-in asks again");
 }
 
 #[tokio::test]

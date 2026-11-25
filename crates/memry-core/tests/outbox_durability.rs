@@ -48,6 +48,7 @@ fn scratch_dir(label: &str) -> PathBuf {
         "memry-durability-{label}-{}-{unique}",
         std::process::id()
     ));
+    let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).expect("create the scratch directory");
     dir
 }

@@ -62,6 +62,7 @@ fn scratch_vault() -> Vault {
         "memry-journal-day-reads-{}-{unique}",
         std::process::id()
     ));
+    let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).expect("the scratch directory");
     Vault::open("vault-1".to_string(), dir.display().to_string()).expect("open")
 }

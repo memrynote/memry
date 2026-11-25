@@ -21,6 +21,7 @@ impl Scratch {
             "memry-vector-store-{label}-{}-{unique}",
             std::process::id()
         ));
+        let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).expect("scratch dir");
         Self(dir)
     }
