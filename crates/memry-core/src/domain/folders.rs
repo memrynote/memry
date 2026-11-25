@@ -35,6 +35,7 @@ use crate::storage::nested_tx;
 use crate::storage::repositories::{Change, sync_items};
 use crate::sync::outbox::{self, Durable};
 
+use super::journal::not_a_journal_day;
 use super::notes::link_rewrite::{self, LinkNames, Renamed};
 use super::notes::{self, failed, iso, object, stamp, tombstone_local};
 use super::recreate::write_over_tombstone;
@@ -327,13 +328,17 @@ fn folders_within(tx: &Connection, root: &str) -> Result<Vec<String>, StorageErr
     Ok(found)
 }
 
-/// Every live note at or under `root`, as `(id, folder_path)`.
+/// Every live note at or under `root`, as `(id, folder_path)`. A journal
+/// day's `notes` row is not a note: desktop's folder move leaves a day where
+/// it is (`moveIndexedNotesWithFolder`), so a folder named `journal` moves
+/// without it.
 fn notes_within(tx: &Connection, root: &str) -> Result<Vec<(String, String)>, StorageError> {
     let mut statement = tx
-        .prepare(
+        .prepare(&format!(
             "SELECT id, folder_path FROM notes
-              WHERE deleted_at IS NULL AND folder_path IS NOT NULL ORDER BY id",
-        )
+              WHERE deleted_at IS NULL AND folder_path IS NOT NULL AND {} ORDER BY id",
+            not_a_journal_day("id")
+        ))
         .map_err(failed)?;
     let rows = statement
         .query_map([], |row| {

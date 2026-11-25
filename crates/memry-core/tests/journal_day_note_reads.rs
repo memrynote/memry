@@ -31,14 +31,17 @@ use memry_core::crypto::sodium;
 use memry_core::domain::calendar_items::projection::{self, RangeInput};
 use memry_core::domain::journal_ops::{body, links};
 use memry_core::domain::related_items;
-use memry_core::domain::{note_meta, notes as note_writes, tag_rename};
+use memry_core::domain::{folders, note_meta, notes as note_writes, tag_rename};
 use memry_core::protocol::account::{AccountSealer, DeviceSigner};
 use memry_core::protocol::auth::DevicePlatform;
 use memry_core::protocol::envelope::SyncOperation;
 use memry_core::seams::secure_store::{SecureStore as _, SecureStoreKey};
-use memry_core::seams::transport::HttpResponse;
+use memry_core::seams::transport::{
+    HttpRequest, HttpResponse, SocketHandle, SocketListener, SocketRequest, Transport,
+};
 use memry_core::storage::repositories::instants;
 use memry_core::storage::repositories::sync_items::SyncItemRow;
+use memry_core::sync::first_sync::RECENT_WINDOW_MS;
 use memry_core::sync::push::{PendingRecord, PushSealer as _};
 use rusqlite::Connection;
 use serde_json::{Value as Json, json};
@@ -66,7 +69,7 @@ fn scratch_vault() -> Vault {
     Vault::open("vault-1".to_string(), dir.display().to_string()).expect("open")
 }
 
-fn session(transport: Arc<FakeTransport>) -> Arc<AuthSession> {
+fn session(transport: Arc<dyn Transport>) -> Arc<AuthSession> {
     let store = FakeSecureStore::new();
     store.put_text(
         SecureStoreKey::AccessToken,
@@ -172,22 +175,27 @@ async fn pulled_vault() -> Vault {
 }
 
 async fn pulled_vault_reporting(progress: Option<Arc<dyn SyncProgressListener>>) -> Vault {
-    let records = desktop_records();
+    first_sync(scripted(desktop_records(), OLD), progress).await
+}
+
+/// The first sync's script for `records`, each modified at `modified_at`.
+fn scripted(records: Vec<(&str, &str, Json)>, modified_at: &str) -> Arc<FakeTransport> {
+    let at = instants::to_epoch_ms(modified_at).expect("an instant");
     let items: Vec<Json> = records
         .iter()
         .map(|(kind, id, _)| {
-            json!({
-                "id": id, "type": kind, "version": 1,
-                "modifiedAt": instants::to_epoch_ms(OLD).expect("an instant"),
-                "size": 12,
-            })
+            json!({ "id": id, "type": kind, "version": 1, "modifiedAt": at, "size": 12 })
         })
         .collect();
     let sealed: Vec<Json> = records
         .into_iter()
-        .map(|(kind, id, payload)| sealed(kind, id, payload))
+        .map(|(kind, id, mut payload)| {
+            payload["createdAt"] = json!(modified_at);
+            payload["modifiedAt"] = json!(modified_at);
+            sealed(kind, id, payload)
+        })
         .collect();
-    let transport = FakeTransport::new(vec![
+    FakeTransport::new(vec![
         devices(),
         error_response(501, "BOOTSTRAP_UNAVAILABLE", "no bootstrap key"),
         error_response(404, "NOT_FOUND", "no pack route"),
@@ -198,7 +206,13 @@ async fn pulled_vault_reporting(progress: Option<Arc<dyn SyncProgressListener>>)
         ),
         response(200, &json!({ "items": sealed }).to_string()),
         error_response(404, "NOT_FOUND", "no pack route"),
-    ]);
+    ])
+}
+
+async fn first_sync(
+    transport: Arc<dyn Transport>,
+    progress: Option<Arc<dyn SyncProgressListener>>,
+) -> Vault {
     let vault = scratch_vault();
     vault
         .sync(session(transport))
@@ -557,4 +571,95 @@ async fn a_null_journal_id_does_not_hide_every_note() {
         .map(|row| row.id)
         .collect();
     assert_eq!(listed, [NOTE]);
+}
+
+/// The script for everything but the body pulls, which run concurrently and
+/// so are answered by route: no snapshot and an empty log for every document.
+struct BodiesByRoute {
+    script: Arc<FakeTransport>,
+    snapshots: Mutex<Vec<String>>,
+}
+
+#[async_trait::async_trait]
+impl Transport for BodiesByRoute {
+    async fn send(&self, request: HttpRequest) -> Scripted {
+        let url = request.url.as_str();
+        if url.contains("/sync/crdt/updates/batch") {
+            http_fakes::probe_refused()
+        } else if url.contains("/sync/crdt/snapshot/") {
+            self.snapshots.lock().unwrap().push(request.url.clone());
+            response(200, &json!({ "snapshot": null }).to_string())
+        } else if url.contains("/sync/crdt/updates") {
+            response(200, &json!({ "updates": [], "hasMore": false }).to_string())
+        } else {
+            self.script.send(request).await
+        }
+    }
+
+    fn open_socket(
+        &self,
+        request: SocketRequest,
+        listener: Arc<dyn SocketListener>,
+    ) -> Result<Arc<dyn SocketHandle>, TransportError> {
+        self.script.open_socket(request, listener)
+    }
+}
+
+/// A recent day with a picture is one document in the first sync's window:
+/// its `journal` row and its `notes` row must not take two of the window's
+/// slots, nor pull the day's body twice.
+#[tokio::test]
+async fn first_sync_pulls_a_recent_day_once() {
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .expect("after the epoch")
+        .as_millis() as i64;
+    let yesterday = instants::to_iso8601(now - RECENT_WINDOW_MS / 30).expect("an instant");
+    let transport = Arc::new(BodiesByRoute {
+        script: scripted(desktop_records(), &yesterday),
+        snapshots: Mutex::new(Vec::new()),
+    });
+    first_sync(transport.clone(), None).await;
+    let snapshots = transport.snapshots.lock().unwrap().clone();
+    let pulled = |id: &str| snapshots.iter().filter(|url| url.contains(id)).count();
+    assert_eq!(
+        (pulled(DAY), pulled(NOTE)),
+        (1, 1),
+        "each document pulled once: {snapshots:?}"
+    );
+}
+
+/// Renaming a real folder named `journal` moves the folder's notes, never the
+/// day's note record: desktop's folder move skips a journal day's row
+/// (`moveIndexedNotesWithFolder`), and a day's path is never synced.
+#[tokio::test]
+async fn renaming_a_journal_folder_leaves_the_day_alone() {
+    let vault = pulled_vault().await;
+    let tip = outbox_tip(&vault);
+    vault
+        .db_handle()
+        .call_blocking(|conn| {
+            folders::create(conn, "journal", None, DEVICE, 5)?;
+            folders::rename(conn, "journal", "Diary", DEVICE, 6)?;
+            Ok(())
+        })
+        .expect("rename the folder");
+    assert_eq!(
+        queued_for_day(&vault, tip),
+        [],
+        "nothing queued for the day"
+    );
+    let folder: Option<String> = vault
+        .db_handle()
+        .call_blocking(|conn| {
+            Ok(conn
+                .query_row(
+                    "SELECT folder_path FROM notes WHERE id = ?1",
+                    [DAY],
+                    |row| row.get(0),
+                )
+                .expect("the day's row"))
+        })
+        .expect("read");
+    assert_eq!(folder.as_deref(), Some("journal"));
 }
