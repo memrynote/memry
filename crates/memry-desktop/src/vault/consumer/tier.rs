@@ -307,7 +307,7 @@ impl VaultTier {
         }
         unwatched();
         let after_walk = after_walk(&open.pass, &open.writeback, &open.owed);
-        let owned = (&open.echo, &open.writeback);
+        let owned = (&open.echo, &open.writeback, &open.pass);
         let (watcher, consumer) = self.watch(&open.view, open.session, owned, after_walk)?;
         *lock(&open.watch) = watcher.handle();
         *tasks = Tasks::Running(watcher, consumer);
@@ -389,7 +389,7 @@ impl VaultTier {
         let tasks = self.watch(
             vault,
             session,
-            (&echo, &writeback),
+            (&echo, &writeback, &pass),
             after_walk(&pass, &writeback, &owed),
         )?;
         Ok(Open {
@@ -409,7 +409,7 @@ impl VaultTier {
         &self,
         vault: &OpenVault,
         session: RowSession,
-        (echo, writeback): (&Arc<EchoGuard>, &Arc<WriteBack>),
+        (echo, writeback, pass): (&Arc<EchoGuard>, &Arc<WriteBack>, &Arc<Pass>),
         after_walk: AfterWalk,
     ) -> Result<(VaultWatcher, Consumer), String> {
         let exclude = applied_exclude_patterns(&vault.path, &vault.vault);
@@ -475,6 +475,7 @@ impl VaultTier {
             untaken: Mutex::default(),
             emptied: Mutex::default(),
             writeback: Some(writeback.clone()),
+            pass: Some(pass.clone()),
         };
         let consumer = Consumer::start(applier, inbox, watcher.handle(), exclude, after_walk)
             .map_err(|error| error.to_string())?;

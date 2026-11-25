@@ -61,6 +61,11 @@ pub enum Adoption {
     /// record's body is empty: a crash between a create and its seed ends here. A body that
     /// already is the file's text gives the row the file's hash; another is left alone.
     Existing(String),
+    /// [`Self::Existing`] whose record was modified after the file and kept the frontmatter
+    /// `aliases` it holds over the file's: the consumer also has the write-back give the file
+    /// the record's frontmatter, as a pulled record's (`vault::writeback::place`), so the two
+    /// agree once it ran.
+    ExistingNewer(String),
     /// A new record, created without a body. The consumer records the row and seeds the body
     /// from the file.
     Created(String),
@@ -262,16 +267,19 @@ pub trait NoteIdentity: Send + Sync {
     }
 
     /// The note's file, whose row names no text the document holds, was large-file class and is
-    /// not any more (`file`), before the consumer feeds it: a large file's note never queued its
-    /// record nor took its frontmatter, which a new note's file gives it. An `Err` retries the
-    /// fact, which asks again, so an implementation is idempotent.
+    /// not any more (`file`, modified at `modified_ms`), before the consumer feeds it: a large
+    /// file's note never queued its record nor took its frontmatter, which a new note's file
+    /// gives it. `true` when the record kept frontmatter newer than the file's: the consumer has
+    /// the write-back give it to the file, as for [`Adoption::ExistingNewer`]. An `Err` retries
+    /// the fact, which asks again, so an implementation is idempotent.
     fn left_large_class(
         &self,
         _ctx: &IdentityCtx<'_>,
         _note_id: &str,
         _file: &NoteFile,
-    ) -> Result<(), IdentityError> {
-        Ok(())
+        _modified_ms: i64,
+    ) -> Result<bool, IdentityError> {
+        Ok(false)
     }
 
     /// Whether the app's own move of the note's file to `new_path` keeps what the file is, so

@@ -49,22 +49,30 @@ pub(super) fn adopt(
         .map_err(|error| IdentityError::Other(error.to_string()))?;
     if let (Adopted::Created(id) | Adopted::Existing(id), Some(text)) = (&adopted, file.file) {
         let matched = matches!(adopted, Adopted::Existing(_)).then_some(file.modified_ms);
+        // A newer record that keeps its names is not written into the file here: no write-back
+        // writes a large file, whose body the note does not hold. Its note reads the file's
+        // names again when it leaves the class ([`left`]), and the file then takes the record's.
         aliases::found(writer, id, text, matched);
     }
     Ok(identity.adoption(adopted, ctx.root, file.path))
 }
 
 /// The note's file left the class: its record is queued ahead of the body the feed gives it
-/// next, and takes the file's aliases and property values, as a new note's file gives them
-/// ([`aliases::found`], [`properties::found`]).
+/// next, and takes the file's property values, as a new note's file gives them
+/// ([`properties::found`]), and its aliases as a matched file's, the file read as a note's for
+/// the first time: a record modified after the file, `modified_ms`, keeps its names
+/// ([`aliases::found`]). `true` when it did: the file owes them, and the consumer has the
+/// write-back give the file the record's frontmatter.
 pub(super) fn left(
     identity: &NotesIdentity,
     ctx: &IdentityCtx<'_>,
     note_id: &str,
     file: &NoteFile,
-) -> Result<(), IdentityError> {
+    modified_ms: i64,
+) -> Result<bool, IdentityError> {
     let writer = identity.writer(ctx)?;
     writer.large_file_left(note_id)?;
-    aliases::found(&writer, note_id, file, None);
-    properties::found(&writer, ctx, identity.store.clone(), note_id, file)
+    let owes_file = aliases::found(&writer, note_id, file, Some(modified_ms));
+    properties::found(&writer, ctx, identity.store.clone(), note_id, file)?;
+    Ok(owes_file)
 }

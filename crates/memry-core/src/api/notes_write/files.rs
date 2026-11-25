@@ -418,24 +418,15 @@ impl NotesWriter {
         })
     }
 
-    /// An edit outside the app gave the file of the note or day `id` these aliases
-    /// ([`notes::take_edited_file_aliases`]). `false` when no live note or day has that id.
-    pub fn edited_file_aliases(&self, id: &str, aliases: &[String]) -> Result<bool, StorageError> {
-        let device_id = self.device_id.clone();
-        self.db.call_blocking(move |conn| {
-            notes::take_edited_file_aliases(conn, id, aliases, &device_id, now_ms())
-        })
-    }
-
     /// A first-named file whose modification time is `file_modified_ms` matched the record `id`
     /// (`Adopted::Existing`): the record takes its aliases unless the record is the newer
-    /// ([`notes::take_matched_file_aliases`]). `false` when no live note or day has that id.
+    /// ([`notes::take_matched_file_aliases`]).
     pub fn matched_file_aliases(
         &self,
         id: &str,
         aliases: &[String],
         file_modified_ms: i64,
-    ) -> Result<bool, StorageError> {
+    ) -> Result<notes::MatchedAliases, StorageError> {
         let device_id = self.device_id.clone();
         self.db.call_blocking(move |conn| {
             notes::take_matched_file_aliases(

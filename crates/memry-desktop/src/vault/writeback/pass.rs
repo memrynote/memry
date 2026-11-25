@@ -141,6 +141,13 @@ impl Pass {
         self.pulled.mark(note_id, title_before);
     }
 
+    /// The note's record kept frontmatter newer than its file's when the file was first named
+    /// (`Adoption::ExistingNewer`): its next pass gives the file the record's frontmatter, as a
+    /// pulled record's (`place`), and never moves the file.
+    pub fn mark_record_newer(&self, note_id: &str) {
+        self.pulled.mark_in_place(note_id);
+    }
+
     /// Writes the note's body to its file, or says why the file was kept.
     pub fn run(&self, note_id: &str) -> Outcome {
         self.run_checked(note_id, &mut || {})

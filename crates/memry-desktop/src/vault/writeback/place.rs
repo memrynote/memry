@@ -114,6 +114,15 @@ impl Pulled {
         });
     }
 
+    /// A mark that gives the file the record's frontmatter and never moves it: the file is
+    /// where its record says (`Pass::mark_record_newer`). A pull's mark, already there, stays.
+    pub(super) fn mark_in_place(&self, note_id: &str) {
+        self.map().entry(note_id.to_owned()).or_insert(Mark {
+            title_before: None,
+            failed: PLACE_TRIES,
+        });
+    }
+
     pub(super) fn take(&self, note_id: &str) -> Option<Mark> {
         self.map().remove(note_id)
     }

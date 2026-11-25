@@ -269,10 +269,22 @@ pub fn take_file_aliases(
     Ok(true)
 }
 
+/// What a matched file's `aliases` did to its record ([`take_matched_file_aliases`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MatchedAliases {
+    /// No live note or day has that id.
+    NoNote,
+    /// The record took the file's list ([`take_file_aliases`]).
+    Taken,
+    /// The record was modified after the file and keeps its own list: the file owes the
+    /// record's, and the caller has the write-back give it to the file.
+    RecordNewer,
+}
+
 /// A file first named matched the note or journal day `id`, a record no row named
-/// (`Adopted::Existing`): it takes the file's aliases ([`take_file_aliases`]) unless its
-/// `modifiedAt` is later than the file's `file_modified_ms`, when the record's list is the newer
-/// one and stays. `false` when no live note or day has that id.
+/// (`Adopted::Existing`), or a large file's note read its file as a note's for the first time:
+/// it takes the file's aliases ([`take_file_aliases`]) unless its `modifiedAt` is later than the
+/// file's `file_modified_ms`, when the record's list is the newer one and stays.
 pub fn take_matched_file_aliases(
     conn: &Connection,
     id: &str,
@@ -280,13 +292,13 @@ pub fn take_matched_file_aliases(
     file_modified_ms: i64,
     device_id: &str,
     now_ms: i64,
-) -> Result<bool, StorageError> {
+) -> Result<MatchedAliases, StorageError> {
     let row = match sync_items::load(conn, ITEM_TYPE, id)? {
         Some(row) => Some(row),
         None => sync_items::load(conn, crate::domain::journal::ITEM_TYPE, id)?,
     };
     let Some(row) = row.filter(|row| row.deleted_at.is_none()) else {
-        return Ok(false);
+        return Ok(MatchedAliases::NoNote);
     };
     let modified_ms = row
         .payload
@@ -299,78 +311,14 @@ pub fn take_matched_file_aliases(
                 .and_then(instants::to_epoch_ms)
         });
     if modified_ms.is_some_and(|modified_ms| modified_ms > file_modified_ms) {
-        set_declined(conn, id, Some(aliases))?;
-        return Ok(true);
+        return Ok(MatchedAliases::RecordNewer);
     }
-    take_file_aliases(conn, id, aliases, device_id, now_ms)
-}
-
-/// The `meta` key prefix of the list a newer record declined from its matched file
-/// ([`take_matched_file_aliases`]). Kept on this device only; an older build ignores the key, so
-/// no migration.
-const DECLINED_FILE_ALIASES: &str = "notes.declined_file_aliases:";
-
-fn set_declined(
-    conn: &Connection,
-    id: &str,
-    aliases: Option<&[String]>,
-) -> Result<(), StorageError> {
-    let key = format!("{DECLINED_FILE_ALIASES}{id}");
-    match aliases {
-        Some(aliases) => {
-            let value = serde_json::to_string(aliases).map_err(|error| StorageError::Failed {
-                what: format!("a file's declined aliases will not serialise: {error}"),
-            })?;
-            conn.execute(
-                "INSERT INTO meta (key, value) VALUES (?1, ?2)
-                 ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-                rusqlite::params![key, value],
-            )
-        }
-        None => conn.execute("DELETE FROM meta WHERE key = ?1", [key]),
-    }
-    .map_err(failed)?;
-    Ok(())
-}
-
-/// An edit outside the app gave the file of the note or journal day `id` these aliases. While
-/// the record holds names newer than its file's ([`take_matched_file_aliases`] declined the
-/// file's list), the file's list is the one it had before: an edit that leaves it so, a body
-/// edit, takes nothing, so the stale list never replaces the newer one. An edit that changes
-/// the list ends that, and the record takes the file's list whole ([`take_file_aliases`]).
-/// `false` when no live note or day has that id.
-pub fn take_edited_file_aliases(
-    conn: &Connection,
-    id: &str,
-    aliases: &[String],
-    device_id: &str,
-    now_ms: i64,
-) -> Result<bool, StorageError> {
-    let tx = crate::storage::nested_tx::begin(conn).map_err(failed)?;
-    let declined: Option<Vec<String>> = tx
-        .query_row(
-            "SELECT value FROM meta WHERE key = ?1",
-            [format!("{DECLINED_FILE_ALIASES}{id}")],
-            |row| row.get::<_, String>(0),
-        )
-        .optional()
-        .map_err(failed)?
-        // A value that does not read declines nothing: the file's list is taken.
-        .and_then(|raw| serde_json::from_str(&raw).ok());
-    let taken = if declined.as_deref() == Some(aliases) {
-        sync_items::load(&tx, ITEM_TYPE, id)?
-            .or(sync_items::load(
-                &tx,
-                crate::domain::journal::ITEM_TYPE,
-                id,
-            )?)
-            .is_some_and(|row| row.deleted_at.is_none())
-    } else {
-        set_declined(&tx, id, None)?;
-        take_file_aliases(&tx, id, aliases, device_id, now_ms)?
-    };
-    tx.commit().map_err(failed)?;
-    Ok(taken)
+    Ok(
+        match take_file_aliases(conn, id, aliases, device_id, now_ms)? {
+            true => MatchedAliases::Taken,
+            false => MatchedAliases::NoNote,
+        },
+    )
 }
 
 /// Desktop's per-note width override: the frontmatter key `fullWidth`, which
