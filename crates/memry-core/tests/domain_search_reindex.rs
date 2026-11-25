@@ -205,10 +205,21 @@ fn r5425_d_a_pass_overlapped_by_another_never_doubles_a_row() {
     loop {
         match first.batch(&data, &index, NOW + 3, &|| false) {
             Ok(search::ReindexStep::More) => continue,
-            Ok(_) => break,
+            Ok(search::ReindexStep::Stale) => break,
+            Ok(step) => panic!("the overlapped pass went on: {step:?}"),
             Err(error) => panic!("batch: {error:?}"),
         }
     }
     assert_eq!(count(&index, "fts_notes"), 3, "every note once");
     assert_eq!(count(&index, "fts_tasks"), 1, "every task once");
+    let groups = search::search(
+        &data,
+        &index,
+        "ferry timetable",
+        &search::SearchFilter::default(),
+        20,
+    )
+    .expect("search");
+    let tasks: Vec<_> = groups.tasks.iter().map(|hit| hit.id.as_str()).collect();
+    assert_eq!(tasks, ["t1"], "the task the other pass indexed");
 }
