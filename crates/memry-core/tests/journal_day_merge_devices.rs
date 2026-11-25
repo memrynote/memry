@@ -44,7 +44,7 @@ use memry_core::storage::Db;
 use memry_core::storage::repositories::sync_items::{self, ApplyOutcome, InboundRecord};
 use memry_core::sync::outbox::{self, Change};
 use memry_core::sync::store;
-use rusqlite::Connection;
+use rusqlite::{Connection, OptionalExtension as _};
 use serde_json::{Value as Json, json};
 use tokio::sync::Notify;
 use yrs::updates::decoder::Decode as _;
@@ -921,7 +921,7 @@ async fn the_merge_keeps_the_days_own_pictures() {
 /// (#5801) A picture attached to `F` offline is still queued when the merge
 /// settles, and the pass uploads after the merge: the upload names `j<D>`,
 /// not `F`. With `pushed`, `F` already named a picture of its own.
-async fn uploading_at_the_merge(pushed: bool) {
+async fn queued_at_the_merge(pushed: bool) {
     let w = World::new(&["a"]).await;
     let mut want = Vec::new();
     if pushed {
@@ -944,13 +944,63 @@ async fn uploading_at_the_merge(pushed: bool) {
 }
 
 #[tokio::test]
-async fn a_picture_uploading_at_the_merge_is_named_under_the_day() {
-    uploading_at_the_merge(false).await;
+async fn a_picture_queued_at_the_merge_is_named_under_the_day() {
+    queued_at_the_merge(false).await;
 }
 
 #[tokio::test]
-async fn a_picture_uploading_at_the_merge_joins_the_carried_ones() {
-    uploading_at_the_merge(true).await;
+async fn a_picture_queued_at_the_merge_joins_the_carried_ones() {
+    queued_at_the_merge(true).await;
+}
+
+/// (#5801) A picture attached to `F` is in flight when the merge settles: A's
+/// manifest upload is held while A's own pass merges and moves the queue row
+/// to `j<D>`. `F` stays live until the merge tombstones it, so naming the
+/// note read before the bytes went up would leave the picture off the day.
+#[tokio::test]
+async fn a_picture_in_flight_at_the_merge_is_named_under_the_day() {
+    let w = World::new(&["a"]).await;
+    w.a.seed_picture(F, PICTURE, BTreeMap::from([(w.a.clock.clone(), 1)]));
+    w.a.pass().await;
+    w.b.pass().await;
+    let (arrived, release) = (Arc::new(Notify::new()), Arc::new(Notify::new()));
+    w.server.trap(
+        &w.a.registered,
+        "/manifest",
+        Some((arrived.clone(), release.clone())),
+    );
+    let settle_in_flight = async {
+        arrived.notified().await;
+        let moved = async {
+            loop {
+                let owner: Option<String> = w.a.db(|c| {
+                    c.query_row("SELECT note_id FROM note_attachment_uploads", [], |row| {
+                        row.get(0)
+                    })
+                    .optional()
+                    .map_err(failed)
+                });
+                if owner.as_deref() == Some(DAY) {
+                    break;
+                }
+                tokio::task::yield_now().await;
+            }
+            release.notify_one();
+        };
+        tokio::join!(w.a.pass(), moved);
+    };
+    let (attached, ()) = tokio::time::timeout(Duration::from_secs(300), async {
+        tokio::join!(w.a.attach_to_foreign(), settle_in_flight)
+    })
+    .await
+    .expect("the merge never settled while the upload was in flight");
+    w.settle().await;
+    let mut want = vec![PICTURE.to_owned(), attached];
+    want.sort();
+    for (device, mut got) in [("A", w.a.day_pictures()), ("B", w.b.day_pictures())] {
+        got.sort();
+        assert_eq!(got, want, "{device}'s j<D>");
+    }
 }
 
 /// (#5801) `j<D>`'s note record was deleted: the merge creates it again one

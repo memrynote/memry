@@ -395,7 +395,7 @@ device never pushed reach `j<D>` (#2984;
 already displaced is held the same way. That is the order of the deleting
 device's push, `j<D>` and then the tombstone, so it is the common case. The
 core keeps its stored record and its body when its owed merge's date is the
-stored record's (`owed.rs:454`). Desktop has no row left for the tombstone
+stored record's (`owed.rs:462`). Desktop has no row left for the tombstone
 to purge. Both hold on every delivery, because the feed can bring the
 tombstone again after a refused push (#5659). Each delivery weighs the
 holder's tags against the tombstone again (step 6).
@@ -593,9 +593,12 @@ pass settles them. The decision is a pure function of five facts
    writes the union in the transaction that tombstones `F`, so a crash
    leaves neither, and a union that adds nothing pushes nothing. In the same
    transaction the core moves every upload still queued under `F` to `j<D>`
-   (#5510), so an attach made offline names `j<D>` when it lands: the pass
-   uploads after the merge (`crates/memry-core/src/api/sync/pass.rs:151`,
-   `:157`). When `j<D>`'s `note` record is deleted, the core creates it again
+   (#5510). An upload references whichever note owns its queue row when it
+   lands, read in the transaction that writes the reference
+   (`crates/memry-core/src/api/sync/note_uploads.rs:377`), so an attach made
+   offline, or one whose bytes are going up while the merge settles, names
+   `j<D>`: the pass uploads after the merge
+   (`crates/memry-core/src/api/sync/pass.rs:151`, `:157`). When `j<D>`'s `note` record is deleted, the core creates it again
    over the tombstone, one tick past every delete clock it knows (chapter 05
    §5.8), with only the carried references, as desktop's next upload to the
    day does. When it carries no reference yet, only queued uploads, the
