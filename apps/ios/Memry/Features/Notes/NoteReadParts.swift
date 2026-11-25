@@ -271,7 +271,7 @@ extension NoteReadViewModel {
 
         var waiting: [String] = []
         for case let .bound(attachment) in attachments.values
-            where attachment.localPath == nil && !waiting.contains(attachment.attachmentId) {
+            where attachment.intactPath == nil && !waiting.contains(attachment.attachmentId) {
             waiting.append(attachment.attachmentId)
         }
         var landed = false
@@ -310,7 +310,7 @@ extension NoteReadViewModel {
         }
         return !attachments.values.contains { binding in
             guard case let .bound(attachment) = binding else { return false }
-            return attachment.attachmentId == id && attachment.localPath != nil
+            return attachment.attachmentId == id && attachment.intactPath != nil
         }
     }
 

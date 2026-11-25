@@ -19,6 +19,7 @@ import UIKit
 // | an ambiguous basename is refused, never guessed         | §Q4                     |
 // | only attachment-bearing blocks are resolved             | a bookmark url is not a vault path |
 // | a run holding a stale list skips a file another run landed | one download per file |
+// | a missing file is asked for again                     | VERIFY-5674 #1          |
 // | a later run asks again only after a failure waiting fixes | desktop `asksOnSync` |
 // | Try again asks after a corrupt download, not an unverifiable one | desktop `asksOnSync` |
 // | a cancelled fetch asks for no further picture           | REVIEW-5587: no repeat download per pass |
@@ -374,8 +375,13 @@ struct NoteAttachmentRunTests {
                 "b.png": .bound(attachment: cached(id: "att-b", localPath: nil))
             ]
         )
+        // The landed file is on disk: `intactPath` reads a missing one as not downloaded.
+        let run = UUID().uuidString
         let filler = FirstFetchGatedFiller { id in
-            if let url = urls[id] { reader.rebind(url, to: .bound(attachment: cached(id: id, localPath: id))) }
+            guard let url = urls[id] else { return }
+            let path = "\(run)-\(id)"
+            FileManager.default.createFile(atPath: AttachmentPaths.url(for: path).path(percentEncoded: false), contents: Data())
+            reader.rebind(url, to: .bound(attachment: cached(id: id, localPath: path)))
         }
         let model = NoteReadViewModel(
             route: route, reader: reader, filler: filler,
@@ -391,6 +397,24 @@ struct NoteAttachmentRunTests {
 
         #expect(filler.fetched.sorted() == ["att-a", "att-b"], "a file was downloaded twice")
         #expect(model.attachmentFetches.isEmpty)
+    }
+
+    /// VERIFY-5674 #1: a row naming a file that is missing or torn is not
+    /// downloaded, so the page asks for it again.
+    @Test("a missing file is asked for again")
+    func aMissingFileIsAskedForAgain() async {
+        let reader = ScriptedAttachments(
+            blocks: [imageBlock(url: "picture.png")],
+            bindings: ["picture.png": .bound(attachment: cached(id: "att-1", localPath: "gone-\(UUID().uuidString)"))]
+        )
+        let pending = AttachmentFetchSummary(downloaded: false, deferred: true, bytes: 0, localPath: nil)
+        let filler = ScriptedAttachmentFiller(summary: pending)
+        let model = NoteReadViewModel(route: route, reader: reader, filler: filler, reachability: FixedPath(path: .wifi))
+        await model.loadIfNeeded()
+
+        await model.fetchWaitingAttachments()
+
+        #expect(filler.fetched == ["att-1"], "a missing file read as downloaded")
     }
 
     /// REVIEW-5685 and REVIEW-5685R2 #4, desktop `asksOnSync`: a pass asks

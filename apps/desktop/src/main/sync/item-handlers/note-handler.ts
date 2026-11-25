@@ -640,8 +640,12 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
       }
 
       if (indexed && propertiesPresent) {
-        setNoteProperties(indexDb, itemId, remoteProperties, (name, value) =>
-          learnCanonicalPropertyType(ctx.db, name, value)
+        setNoteProperties(
+          indexDb,
+          itemId,
+          remoteProperties,
+          (name, value) => learnCanonicalPropertyType(ctx.db, name, value),
+          'wire'
         )
       }
 

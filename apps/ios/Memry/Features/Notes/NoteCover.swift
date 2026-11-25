@@ -223,7 +223,7 @@ struct NoteCoverBand: View {
             return .missing
         }
         guard case let .bound(attachment) = binding else { return .missing }
-        if let path = attachment.localPath {
+        if let path = attachment.intactPath {
             let file = AttachmentPaths.url(for: path).path(percentEncoded: false)
             return UIImage(contentsOfFile: file).map(NoteCoverPicture.image) ?? .missing
         }
