@@ -28,6 +28,22 @@ describe('installImeCompositionGuard', () => {
     expect(onChange).toHaveBeenCalledExactlyOnceWith('이것은 제목입니다')
   })
 
+  // WebKit (Tauri on macOS and Linux) sends the Enter that commits a Japanese
+  // conversion after compositionend, as keyCode 229 with isComposing false.
+  it('keeps a field from acting on the Enter that WebKit sends after the commit', () => {
+    const onChange = vi.fn()
+    render(<TitleInput value="New note" fresh onChange={onChange} />)
+    const title = screen.getByRole('textbox')
+    title.focus()
+
+    fireEvent.change(title, { target: { value: '日本語' } })
+    fireEvent.keyDown(title, { key: 'Enter', isComposing: false, keyCode: 229 })
+    expect(title).toHaveFocus()
+
+    fireEvent.keyDown(title, { key: 'Enter', keyCode: 13 })
+    expect(onChange).toHaveBeenCalledExactlyOnceWith('日本語')
+  })
+
   it('leaves composing keys to contenteditable editors', () => {
     const editor = document.createElement('div')
     editor.contentEditable = 'true'
