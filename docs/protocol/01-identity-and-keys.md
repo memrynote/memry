@@ -473,7 +473,7 @@ pass settles them. The decision is a pure function of five facts
 6. If `F`'s doc holds no Yjs state, build it from text first (below). Apply
    `F`'s whole Yjs state to `j<D>`'s doc as a local edit, so it is
    stored, written back and pushed as a CRDT update for `j<D>`. `j<D>` is
-   opened unseeded (`apps/desktop/src/main/sync/crdt-provider.ts:1654`; core:
+   opened unseeded (`apps/desktop/src/main/sync/crdt-provider.ts:2057`; core:
    `crates/memry-core/src/sync/journal_day_merge/mod.rs:313`).
    Then add `F`'s tags to `j<D>`'s tags as a set union, keeping the tags
    `j<D>` has and their order, and push the change when the union adds a
@@ -603,7 +603,7 @@ parsed into a fresh doc under a client id fixed per foreign id and device
 `crates/memry-core/src/sync/journal_day_merge/mod.rs:435`), so a rebuild after
 a crash on the same device mints the same Yjs items and folds nothing twice.
 Desktop stores the built doc before folding it
-(`apps/desktop/src/main/sync/crdt-provider.ts:1666`), so a retry reuses those
+(`apps/desktop/src/main/sync/crdt-provider.ts:2049`), so a retry reuses those
 items even if the text changed in between; the core builds and folds in one
 transaction.
 
