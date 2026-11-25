@@ -20,7 +20,7 @@ import {
   type TestDatabaseResult
 } from '@tests/utils/test-db'
 import { getNoteCacheById, getNoteCacheByPath, insertNoteCache } from '@main/database/queries/notes'
-import { getNoteMetadataById, upsertNoteMetadata } from '@memry/storage-data'
+import { getNoteMetadataById, updateNoteMetadata, upsertNoteMetadata } from '@memry/storage-data'
 import { attachmentEvents } from '@memry/sync-client/attachment-events'
 import { syncDevices } from '@memry/db-schema/schema/sync-devices'
 import type { VectorClock } from '@memry/contracts/sync-api'
@@ -71,6 +71,10 @@ vi.mock('../crdt-provider', () => ({
     purge: vi.fn(async () => {})
   }))
 }))
+vi.mock('../../vault/case-twin-bytes', async (importOriginal) => {
+  const actual = await importOriginal<{ hashFile: typeof hashFile }>()
+  return { ...actual, hashFile: vi.fn(actual.hashFile) }
+})
 vi.mock('../attachment-backfill', () => ({ queueEmbeddedVaultFiles: vi.fn() }))
 vi.mock('../../ipc/settings-handlers', () => ({ followFolderRenameInShortcuts: vi.fn() }))
 vi.mock('../../readwise/settings', () => ({ followFolderRenameInReadwise: vi.fn() }))
@@ -104,6 +108,8 @@ import { startWatcher, stopWatcher } from '../../vault/watcher'
 import { noteHandler } from './note-handler'
 import { recordDownloadedFileSize, recordUploadedFile } from '../note-attachment-metadata'
 import { enqueueUpload } from '../attachment-outbox'
+import { hashFile } from '../../vault/case-twin-bytes'
+import { keptCopyPath } from '../keep-unseen-text'
 
 const sha256 = (bytes: string) => createHash('sha256').update(bytes).digest('hex')
 
@@ -248,6 +254,8 @@ describe("a peer's delete of a binary note whose file holds bytes no server has"
       })
       .run()
     replaceOutside('Pictures/p.png', bytes)
+    // The watcher records the replace's size before its upload.
+    updateNoteMetadata(asClientDb(data.db), id, { fileSize: bytes.length })
     expect(await recordUploadedFile(id, 'att-up', sha256(bytes))).toBe(true)
   }
 
@@ -280,6 +288,26 @@ describe("a peer's delete of a binary note whose file holds bytes no server has"
     expect(pullDelete('img')).toBe('applied')
 
     expect(keptCopies()).toEqual(['uploading'])
+    expect(hashFile).not.toHaveBeenCalled()
+  })
+
+  it('keeps a replace of another size without reading the file', () => {
+    seed('img', 'Pictures/p.png', 'synced-bytes')
+    replaceOutside('Pictures/p.png', 'replaced while closed')
+
+    expect(pullDelete('img')).toBe('applied')
+
+    expect(keptCopies()).toEqual(['replaced while closed'])
+    expect(hashFile).not.toHaveBeenCalled()
+  })
+
+  it('keeps a replace of the same size, told apart by its hash', () => {
+    seed('img', 'Pictures/p.png', 'synced-bytes')
+    replaceOutside('Pictures/p.png', 'other-bytes!')
+
+    expect(pullDelete('img')).toBe('applied')
+
+    expect(keptCopies()).toEqual(['other-bytes!'])
   })
 
   describe('of a note with no synced hash recorded (before #5603)', () => {
@@ -301,6 +329,38 @@ describe("a peer's delete of a binary note whose file holds bytes no server has"
       expect(pullDelete('img')).toBe('applied')
 
       expect(keptCopies()).toEqual(['replaced while closed'])
+      expect(hashFile).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('of a note whose name is near the file name limit', () => {
+    const nameBytes = (relativePath: string) => Buffer.byteLength(path.basename(relativePath))
+
+    it.each([
+      ['a 240-character ASCII name', `${'a'.repeat(240)}.png`],
+      ['a long CJK name', `${'写真'.repeat(40)}.png`]
+    ])('keeps the copy under a name of at most 255 bytes, for %s', (_, name) => {
+      seed('img', `Pictures/${name}`, 'synced-bytes')
+      replaceOutside(`Pictures/${name}`, 'replaced while closed')
+
+      expect(pullDelete('img')).toBe('applied')
+
+      expect(keptCopies()).toEqual(['replaced while closed'])
+      const [kept] = fs.readdirSync(abs('Pictures'))
+      expect(Buffer.byteLength(kept)).toBeLessThanOrEqual(255)
+      expect(kept).toMatch(/ \(kept from deleted note\)\.png$/)
+      expect(name.startsWith(kept.slice(0, kept.indexOf(' (kept')))).toBe(true)
+    })
+
+    it('cuts whole characters and keeps the extension on later copies', () => {
+      const name = `Pictures/${'写真'.repeat(40)}.png`
+      for (const n of [0, 1, 12]) {
+        const copy = keptCopyPath(abs(name), n)
+        expect(nameBytes(copy)).toBeLessThanOrEqual(255)
+        expect(nameBytes(copy)).toBeGreaterThan(252)
+        expect(copy.endsWith(`(kept from deleted note)${n === 0 ? '' : ` ${n}`}.png`)).toBe(true)
+        expect(Buffer.from(copy, 'utf8').toString('utf8')).toBe(copy)
+      }
     })
   })
 
