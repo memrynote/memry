@@ -737,3 +737,156 @@ fn a_reindex_a_first_sync_held_midway_is_answered_once_it_ended() {
     drop(open);
     e.close();
 }
+
+/// Two reindexes asked at once while the first one's pass meets a first sync: the second runs
+/// no pass while the first sync holds, and both are answered once it ended (#5423 C8).
+#[test]
+fn a_held_reindex_holds_the_reindexes_asked_after_it() {
+    let (mut e, _store, notes) = seeded(2);
+    e.open();
+    let open = e.session.current().unwrap();
+    let (first, second) = (&notes[0].0, &notes[1].0);
+    let (sender, receiver) = broadcast::channel(16);
+    with_task(&open, receiver, |task| {
+        let hold = Arc::new(Mutex::new(None));
+        let (running, taken) = (open.first_sync.clone(), hold.clone());
+        let mut started = false;
+        let held = task
+            .reindex(Box::new(move |_| {
+                if !std::mem::replace(&mut started, true) {
+                    *taken.lock().unwrap() = Some(running.hold());
+                }
+            }))
+            .unwrap();
+        // What the second asker was told, and the release, in the order they happened.
+        let order = Arc::new(Mutex::new(Vec::new()));
+        let told = order.clone();
+        let after = task
+            .reindex(Box::new(move |_| told.lock().unwrap().push("reported")))
+            .unwrap();
+        sender.send(Applied::Indexed { complete: true }).unwrap();
+        until("the first sync started", || hold.lock().unwrap().is_some());
+        // A measure is answered only once the task is done with the askers it took at once:
+        // any pass it ran for the second asker has reported by then.
+        task.measure(first.clone())
+            .unwrap()
+            .recv_timeout(Duration::from_secs(30))
+            .unwrap()
+            .unwrap();
+        assert!(held.try_recv().is_err() && after.try_recv().is_err());
+        order.lock().unwrap().push("released");
+        drop(hold.lock().unwrap().take());
+        for answer in [held, after] {
+            answer
+                .recv_timeout(Duration::from_secs(30))
+                .unwrap()
+                .unwrap();
+        }
+        let order = order.lock().unwrap().clone();
+        assert_eq!(
+            order.first(),
+            Some(&"released"),
+            "no pass for the second asker while the first sync holds: {order:?}"
+        );
+        assert!(
+            order.len() > 1,
+            "the second asker reported after the release"
+        );
+        assert!(links_to(&open, first, second));
+    });
+    drop(open);
+    e.close();
+}
+
+/// A reindex a first sync held and ran again after it reports one progress that never goes
+/// back: the rerun does not restart its steps from 0 (#5423 C9b).
+#[test]
+fn a_held_reindex_reports_progress_that_never_goes_back() {
+    let (mut e, _store, _notes) = seeded(2);
+    e.open();
+    let open = e.session.current().unwrap();
+    let (sender, receiver) = broadcast::channel(16);
+    with_task(&open, receiver, |task| {
+        let hold = Arc::new(Mutex::new(None));
+        let reported = Reported::default();
+        let (running, taken, seen) = (open.first_sync.clone(), hold.clone(), reported.clone());
+        let answer = task
+            .reindex(Box::new(move |step| {
+                let mut seen = seen.lock().unwrap();
+                if seen.is_empty() {
+                    *taken.lock().unwrap() = Some(running.hold());
+                }
+                seen.push(step);
+            }))
+            .unwrap();
+        sender.send(Applied::Indexed { complete: true }).unwrap();
+        until("the first sync started", || hold.lock().unwrap().is_some());
+        std::thread::sleep(IDLE_DELAY * 2);
+        assert!(answer.try_recv().is_err(), "held");
+        drop(hold.lock().unwrap().take());
+        answer
+            .recv_timeout(Duration::from_secs(30))
+            .unwrap()
+            .unwrap();
+        let steps = reported.lock().unwrap().clone();
+        assert!(
+            steps.windows(2).all(|pair| pair[0].built <= pair[1].built),
+            "progress went back: {steps:?}"
+        );
+        assert_eq!(steps.last().map(|step| step.built), Some(2));
+    });
+    drop(open);
+    e.close();
+}
+
+/// A reindex a first sync held, rerun after notes were deleted meanwhile, ends its asker's
+/// progress at the rerun's total: the rerun's last step is never dropped as below the held
+/// pass's, so the bar does not stay on the held pass's step (REVIEW-5805 finding 1).
+#[test]
+fn a_held_reindex_rerun_over_fewer_notes_reports_its_last_step() {
+    let (mut e, _store, notes) = seeded(10);
+    e.open();
+    let open = e.session.current().unwrap();
+    let (sender, receiver) = broadcast::channel(16);
+    with_task(&open, receiver, |task| {
+        let hold = Arc::new(Mutex::new(None));
+        let reported = Reported::default();
+        let (running, taken, seen) = (open.first_sync.clone(), hold.clone(), reported.clone());
+        let answer = task
+            .reindex(Box::new(move |step| {
+                let mut seen = seen.lock().unwrap();
+                if seen.is_empty() {
+                    *taken.lock().unwrap() = Some(running.hold());
+                }
+                seen.push(step);
+            }))
+            .unwrap();
+        sender.send(Applied::Indexed { complete: true }).unwrap();
+        let full = IndexProgress {
+            built: 10,
+            total: 10,
+        };
+        until("the held pass read every note", || {
+            reported.lock().unwrap().contains(&full)
+        });
+        let rows = e.tier.rows();
+        let session = rows.session_for(&open.vault).unwrap();
+        for (id, _) in &notes[..4] {
+            assert!(rows.remove(session, id).unwrap());
+        }
+        assert!(answer.try_recv().is_err(), "held");
+        drop(hold.lock().unwrap().take());
+        answer
+            .recv_timeout(Duration::from_secs(30))
+            .unwrap()
+            .unwrap();
+        let steps = reported.lock().unwrap().clone();
+        assert_eq!(
+            steps.last(),
+            Some(&IndexProgress { built: 6, total: 6 }),
+            "the rerun's last step: {steps:?}"
+        );
+    });
+    drop(open);
+    e.close();
+}

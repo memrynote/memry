@@ -212,17 +212,30 @@ fn a_canvas_made_on_a_downloaded_vault_lists_on_the_first_device() {
 }
 
 #[test]
-fn canvases_stamped_with_the_local_id_or_none_still_list() {
+fn a_bound_vault_lists_every_canvas_whatever_id_it_states() {
     let b = device();
     // Made here before the bind: stamped with the local id, as every build before #5505 did.
     b.create("Before bind");
     b.vault.bind_server_vault(SERVER).unwrap();
     b.pull("Unnamed", canvas("", "Unnamed", None, 1));
+    // A peer's pre-bind id (#5784): a bound data.db only holds this vault's records.
     b.pull(
         "Other vault",
         canvas("another-vault", "Other vault", None, 1),
     );
-    assert_eq!(b.titles(), ["Before bind", "Unnamed"]);
+    assert_eq!(b.titles(), ["Before bind", "Other vault", "Unnamed"]);
+}
+
+#[test]
+fn an_unbound_vault_hides_a_canvas_stating_another_id() {
+    let b = device();
+    b.create("Mine");
+    b.pull("Unnamed", canvas("", "Unnamed", None, 1));
+    b.pull(
+        "Other vault",
+        canvas("another-vault", "Other vault", None, 1),
+    );
+    assert_eq!(b.titles(), ["Mine", "Unnamed"]);
 }
 
 #[test]

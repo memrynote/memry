@@ -136,6 +136,7 @@ struct JournalDayFirstLine: View {
     @State private var draft = JournalFirstLineDraft()
     @State private var place = JournalFirstLinePlace()
     @FocusState private var focused: Bool
+    @Environment(\.appLifecycle) private var appLifecycle
 
     var body: some View {
         // The setter sees each keystroke as UIKit makes it. The Return is
@@ -169,10 +170,10 @@ struct JournalDayFirstLine: View {
         // composes: Control Center resigns the app too. Going to the
         // background ends the composition as it stands and lands the line.
         .background(JournalFirstLinePlace.Reader(place: place))
-        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
+        .onReceive(appLifecycle.publisher(for: UIApplication.willResignActiveNotification)) { _ in
             if composing == nil { draft.leave(write: write) }
         }
-        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in
+        .onReceive(appLifecycle.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in
             if let view = composing {
                 view.unmarkText()
                 draft.typed(view.text, write: write)

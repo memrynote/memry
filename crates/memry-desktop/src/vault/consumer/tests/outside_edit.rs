@@ -153,12 +153,22 @@ const EDITED: &str = "---\ntags: [work, idea]\n---\nMorning pages.\n\nWritten wh
 /// A journal day the app read and pushed, its file then edited (body and tags) while the app
 /// was closed: the fixture over the real notes identity, the day's id and the clock it pushed.
 fn closed_app_day() -> (Fixture, String, VectorClock) {
+    closed_app_file(DAY, SEEN, EDITED, journal::ITEM_TYPE)
+}
+
+/// A file the app read and pushed as `item_type`, then edited while the app was closed.
+fn closed_app_file(
+    rel: &str,
+    seen: &str,
+    edited: &str,
+    item_type: &'static str,
+) -> (Fixture, String, VectorClock) {
     let mut f = fixture();
     let identity = crate::notes::identity::NotesIdentity::new(f.store.clone());
     f.applier = applier(&f.root, &f.vault, &f.store, &f.rows, identity);
-    f.write(DAY, SEEN);
-    assert_eq!(f.walked(DAY), Step::Done);
-    let id = only_note(&f, DAY);
+    f.write(rel, seen);
+    assert_eq!(f.walked(rel), Step::Done);
+    let id = only_note(&f, rel);
     f.vault
         .db_handle()
         .call_blocking(|conn| {
@@ -173,18 +183,23 @@ fn closed_app_day() -> (Fixture, String, VectorClock) {
             Ok(())
         })
         .unwrap();
-    let pushed = day_record(&f, &id).0;
-    f.write(DAY, EDITED);
+    let pushed = record(&f, item_type, &id).0;
+    f.write(rel, edited);
     (f, id, pushed)
 }
 
 /// The day's record clock and what the outbox holds for it.
 fn day_record(f: &Fixture, id: &str) -> (VectorClock, Vec<String>) {
+    record(f, journal::ITEM_TYPE, id)
+}
+
+/// The record's clock and what the outbox holds for it.
+fn record(f: &Fixture, item_type: &'static str, id: &str) -> (VectorClock, Vec<String>) {
     let id = id.to_owned();
     f.vault
         .db_handle()
         .call_blocking(move |conn| {
-            let row = sync_items::load(conn, journal::ITEM_TYPE, &id)?.expect("the day's record");
+            let row = sync_items::load(conn, item_type, &id)?.expect("the record");
             let clock = serde_json::from_str(&row.clock.expect("a clock")).unwrap();
             let ops = conn
                 .prepare("SELECT op FROM outbox WHERE item_id = ?1 ORDER BY id")
@@ -201,6 +216,10 @@ fn day_record(f: &Fixture, id: &str) -> (VectorClock, Vec<String>) {
 /// A peer that saw the day as pushed deletes it an hour later: its clock is the pushed one and
 /// its own tick, and its stamp is past every slack the keep rule gives a recent local edit.
 fn peer_deletes(f: &Fixture, id: &str, pushed: &VectorClock) {
+    peer_deletes_item(f, journal::ITEM_TYPE, id, pushed);
+}
+
+fn peer_deletes_item(f: &Fixture, item_type: &'static str, id: &str, pushed: &VectorClock) {
     let hour_later = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
@@ -214,14 +233,7 @@ fn peer_deletes(f: &Fixture, id: &str, pushed: &VectorClock) {
         .db_handle()
         .call_blocking(move |conn| {
             apply_pulled_delete(
-                conn,
-                journal::ITEM_TYPE,
-                &id,
-                hour_later,
-                &clock,
-                hour_later,
-                &device,
-                &root,
+                conn, item_type, &id, hour_later, &clock, hour_later, &device, &root,
             )
         })
         .unwrap();
@@ -280,4 +292,37 @@ fn a_delete_pulled_before_the_walk_sees_a_closed_app_journal_edit_keeps_its_text
     let kept = kept_texts(&f);
     assert_eq!(kept.len(), 1, "one inbox copy: {kept:?}");
     assert!(kept[0].contains("Written while closed."), "{kept:?}");
+}
+
+/// #5796, a note edited while the app was closed: the peer's delete lands before the walk reads
+/// the edit, so no clock, outbox entry or body log here knows of it. The delete wins and the
+/// file's text is kept as one inbox copy; a later walk of the same edit makes no second one.
+#[test]
+fn a_delete_pulled_before_the_walk_sees_a_closed_app_note_edit_keeps_its_text() {
+    let (f, id, pushed) = closed_app_file(
+        "a.md",
+        "first\n",
+        "first\n\nWritten while closed.\n",
+        "note",
+    );
+    peer_deletes_item(&f, "note", &id, &pushed);
+    let kept = kept_texts(&f);
+    assert_eq!(kept.len(), 1, "one inbox copy: {kept:?}");
+    assert!(kept[0].contains("Written while closed."), "{kept:?}");
+    let deleted = |f: &Fixture| {
+        let id = id.clone();
+        f.vault
+            .db_handle()
+            .call_blocking(
+                move |conn| Ok(sync_items::load(conn, "note", &id)?.expect("the record")),
+            )
+            .unwrap()
+            .deleted_at
+            .is_some()
+    };
+    assert!(deleted(&f), "the delete wins");
+
+    f.walked("a.md");
+    assert_eq!(kept_texts(&f).len(), 1, "a later walk keeps no second copy");
+    assert!(deleted(&f), "a later walk does not revive the note");
 }
