@@ -1702,6 +1702,39 @@ describe('sync runtime', () => {
     )
   })
 
+  // VERIFY-5722: both bounds were computed from the time left at the step's
+  // start, so the settle wait ran on top of a hung push and close-vault lost
+  // its reserve.
+  it('bounds the download settle wait by the time the final push left', async () => {
+    const {
+      finalSnapshotPushTimeoutMs,
+      shutdownDownloadSettleMs,
+      SHUTDOWN_CLOSE_VAULT_RESERVE_MS
+    } = await import('../shutdown-sequence')
+    const runtime = await loadRuntime()
+    const { registerAttachmentQueueReset } = await import('./attachment-outbox')
+    const settleWithin = vi.fn((_ms: number) => Promise.resolve())
+    registerAttachmentQueueReset(settleWithin)
+    await runtime.startSyncRuntime()
+    runtimeMocks.crdtProvider.pushAllSnapshots.mockImplementationOnce(
+      () => new Promise<number>(() => {})
+    )
+
+    vi.useFakeTimers()
+    const deadlineAt = Date.now() + SHUTDOWN_CLOSE_VAULT_RESERVE_MS + 300
+    const remainingMs = (): number => Math.max(0, deadlineAt - Date.now())
+    const deadline = { remainingMs, cap: (ms: number) => Math.min(ms, remainingMs()) }
+    const stopped = runtime.stopSyncRuntime({
+      finalSyncTimeoutMs: finalSnapshotPushTimeoutMs(deadline),
+      downloadSettleTimeoutMs: () => shutdownDownloadSettleMs(deadline)
+    })
+    await vi.advanceTimersByTimeAsync(300)
+    await stopped
+
+    expect(settleWithin).toHaveBeenCalledWith(0)
+    expect(remainingMs()).toBe(SHUTDOWN_CLOSE_VAULT_RESERVE_MS)
+  })
+
   it('skips the final snapshot push when its timeout leaves no time', async () => {
     const runtime = await loadRuntime()
     await runtime.startSyncRuntime()
