@@ -158,7 +158,11 @@ before the store is opened. Doing it there rather than inside the linking flow
 is deliberate: at that point the previous provider has always been destroyed
 (`closeVault` awaits `destroy()`, which closes LevelDB, before
 `resetCrdtProvider()`), so the directory is never moved out from under an open
-LevelDB lock.
+LevelDB lock. The exception is a store that stalled during the close:
+`destroy()` stops waiting for it (see [Markdown Write-Back](#markdown-write-back)),
+and its lock stays held until the stalled call returns. Reopening the same vault
+meanwhile cannot open the store, so that session runs in memory, and logs the note
+the close stalled on (`stalledFlushNoteId`).
 
 The record is written **before** the uuid it describes, for the same reason the
 legacy claim is written before its move:
@@ -904,6 +908,55 @@ document to its vault `.md` file and re-indexes it for search.
   check, so no later update can arm a pass. `resetWritebackState()` cancels and logs any
   pass still armed, which guards that rule: a timer left armed would fire into whichever
   vault is open next, where a journal day has the same id.
+- **A stalled store does not hold the close** — a store call that never returns, on a
+  wedged disk or a stuck LevelDB queue, held that loop and the vault switch forever
+  (#5698). `destroy()` waits at most `SHUTDOWN_CLOSE_VAULT_RESERVE_MS` (2 s) for each
+  store call. After a stall it stops asking the store, because y-leveldb queues every
+  later call behind the stalled one, and flushes the write-backs once more, so a pass
+  whose debounce fired during the wait finishes before the close. A pass that takes in
+  an outside edit waits for the store to hold it (`whenPersisted`); once a close has
+  started, that wait gives up after 2 s, logs its note, and the pass fails, its file
+  left as the outside edit made it. A quit starts the close (`beginClose()`) before it
+  flushes the write-backs, so the quit's budget is never spent on a stalled store. The
+  close then logs `CRDT store stalled` with the notes whose writes the store has not
+  confirmed, before it asks the store to close, which is queued behind those writes,
+  so they land if the store recovers. The final snapshot push of a vault switch or a
+  sign-out is bounded like a quit's (`SHUTDOWN_FINAL_SNAPSHOT_PUSH_MS`), and logs the
+  notes it did not push.
+- **A file counts as the doc's only once the store holds it** — the write-back writes
+  the live doc, which runs ahead of the store while its updates are on their way, and
+  a stalled store may never hold them. A file whose hash is the baseline is never taken
+  in, so the next session's first pass would write the older stored doc over it. While
+  the note's updates are still storing, the write-back marks `pending_write_hash` before
+  it writes (`markDocWrite`) and records the file's real hash in `content_hash` after
+  (the watcher's rename match needs it). The mark is
+  `unstored-file:<written hash>:<written snapshot>:<content_hash snapshot>`: every file
+  version the row can point at carries the Yjs snapshot (state vector and delete set) of
+  the doc state serialized into those exact bytes. The write-back takes the snapshot when
+  its conversion reads the doc (`SerializedDoc`), and the conversion on main converts a
+  copy of that state, so a keystroke typed during the write is never counted as in the
+  file. Bytes the store holds carry the empty snapshot. A mark written over an earlier
+  one keeps the earlier snapshot of the bytes under `content_hash`. The rule at open
+  (`takesUnstoredFile`) is one comparison: the file is taken in, keeping the doc as a
+  version first, only when the loaded doc does not cover the snapshot recorded for the
+  file's hash. A file whose hash has no recorded snapshot is an outside edit and is
+  taken in the same way, as is a mark this build cannot read (the bare `unstored-file`
+  or the `<0|1>` flag of pre-release builds of #5698). A covered file becomes the
+  baseline and the mark clears, so a file the store covers never beats a stored edit
+  made after it. Size: a snapshot measured 25-32 KB of base64 on heavy docs, and a mark
+  holds two, in the TEXT `pending_write_hash` column, only until the store holds the
+  write. The mark also clears once a store of the doc
+  instance that wrote the file lands (`whenStored`), or the ingest's own store. A doc that
+  closes while its store missed an update stores its whole state again before it is
+  destroyed; when that fails too, its `whenStored` callers are dropped unanswered. A pass
+  whose file write fails re-reads the file: unchanged bytes give the row back the pending
+  hash it had, and any other bytes keep the mark, since the write may have landed. An open
+  waits for a close of the same note for up to 2 s, then logs the note and goes ahead.
+  A case twin leaving a shared file records its doc-built file the same way, and a twin
+  moving with its own bytes keeps its mark. Downgrade limit: a build without this rule
+  reads the mark as a pending hash that never matches a file and judges the file by
+  `content_hash` alone, which equals the written file. It never takes that file in, and
+  its next write-back writes its stored doc over bytes the store lacked.
 - **A quit flushes write-backs first, not last** — the provider is destroyed at the _end_
   of the shutdown chain, so relying on `destroy()` alone meant a slow teardown step could
   spend the whole shutdown budget and the forced exit would kill the process with the
@@ -925,7 +978,10 @@ document to its vault `.md` file and re-indexes it for search.
   unedited since its sync (an edit outside the app is neither ticked nor queued), and the
   tombstone's clock covers the holder row's clock, else all of them, since desktop keeps no
   snapshot of the tags last synced. The first weighing sets that list and later ones add to
-  it, because the tombstone and the day take away what the first one read. A tag the day
+  it, because the tombstone and the day take away what the first one read. Each sighting of
+  the holder keeps only the listed tags its day file still holds, and the drain reads the
+  owed merge back after the day takes the holder over, so a tag the user removed from the
+  held day before the drain stays removed (#5694). A tag the day
   lacks merges even when the holder, deleted or live, has no body (#5699). It
   writes one spelling per tag by the tag fold, the first the file holds, as core `set_tags`
   does: a file holding `Work` and `work` is written with `Work`. The fold keeps whitespace,

@@ -30,6 +30,7 @@ use rusqlite::{Connection, OptionalExtension, params};
 use serde_json::Value;
 
 use crate::api::errors::StorageError;
+use crate::domain::journal;
 use crate::storage::nested_tx;
 use crate::sync::journal_day_merge;
 
@@ -209,6 +210,9 @@ pub fn apply_local_edit(
 /// [`apply_local_edit`] without the transaction, so a caller can commit the
 /// merged payload and its outbox row as one unit.
 ///
+/// The edit keeps whether the item is shown. For a journal row that is its
+/// entry's current `deleted_at`, not the row's (see [`shown_deleted_at`]).
+///
 /// Refuses autocommit for the same reason [`crate::sync::outbox::enqueue`]
 /// does: a merged payload written without the outbox row that publishes it is
 /// a local edit no peer will ever see, and the failure is silent. SQLite has
@@ -220,6 +224,33 @@ pub fn apply_local_edit_in(
     item_id: &str,
     changes: &[(&str, Change)],
     now_ms: i64,
+) -> Result<String, StorageError> {
+    merge_local_edit_in(tx, item_type, item_id, changes, now_ms, None)
+}
+
+/// The local edit that decides whether the item is shown: a delete
+/// (`Some(deleted_at)`, already written to the row) or a re-create (`None`,
+/// the row's tombstone already cleared). Every other edit is
+/// [`apply_local_edit_in`].
+pub(crate) fn apply_local_edit_setting_deleted_in(
+    tx: &Connection,
+    item_type: &str,
+    item_id: &str,
+    changes: &[(&str, Change)],
+    now_ms: i64,
+    deleted_at: Option<i64>,
+) -> Result<String, StorageError> {
+    merge_local_edit_in(tx, item_type, item_id, changes, now_ms, Some(deleted_at))
+}
+
+/// `deleted_at`: `Some` for a delete or a re-create, `None` to keep it.
+fn merge_local_edit_in(
+    tx: &Connection,
+    item_type: &str,
+    item_id: &str,
+    changes: &[(&str, Change)],
+    now_ms: i64,
+    deleted_at: Option<Option<i64>>,
 ) -> Result<String, StorageError> {
     if tx.is_autocommit() {
         return Err(StorageError::Failed {
@@ -240,6 +271,10 @@ pub fn apply_local_edit_in(
         });
     };
     journal_day_merge::note_local_edit(conn, item_type, item_id, &stored)?;
+    let deleted_at = match deleted_at {
+        Some(deleted_at) => deleted_at,
+        None => shown_deleted_at(conn, item_type, item_id, row.deleted_at)?,
+    };
 
     let merged = StoredPayload::parse(&stored)
         .map_err(refuse(item_type, item_id))?
@@ -277,12 +312,44 @@ pub fn apply_local_edit_in(
         ItemContext {
             item_id,
             synced_at: now_ms,
-            deleted_at: row.deleted_at,
+            deleted_at,
         },
         &view,
     )?;
 
     Ok(merged)
+}
+
+/// The `deleted_at` an edit that keeps whether the item is shown projects.
+///
+/// Invariant (#5763, §1.9.1): for a journal row it is the entry's current
+/// `deleted_at`, never the row's. A journal row can be tombstoned while its
+/// entry stays live: a foreign `F` whose tombstone the merge holds keeps the
+/// day, with its unpushed text, until the drain folds it, and a drop leaves
+/// it so. No edit of it may change whether its day is shown. Projected
+/// deleted, the day would vanish, and the next edit would reopen it through
+/// `journal::open_day_in`, whose revive purges the unpushed body and clears
+/// the row's tombstone so an `F` upsert goes out over it. Only a delete and a
+/// re-create set it ([`apply_local_edit_setting_deleted_in`]). A row with no
+/// entry keeps its own.
+fn shown_deleted_at(
+    conn: &Connection,
+    item_type: &str,
+    item_id: &str,
+    row_deleted_at: Option<i64>,
+) -> Result<Option<i64>, StorageError> {
+    if item_type != journal::ITEM_TYPE {
+        return Ok(row_deleted_at);
+    }
+    let entry: Option<Option<i64>> = conn
+        .query_row(
+            "SELECT deleted_at FROM journal_entries WHERE id = ?1",
+            params![item_id],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(failed)?;
+    Ok(entry.unwrap_or(row_deleted_at))
 }
 
 /// Chapter 06 §6.5.2 P2: the payload a push sends, read from the live row at

@@ -24,7 +24,7 @@ import { syncNoteToCache, deleteNoteFromCache } from '../../vault/note-sync'
 import { getCrdtProvider } from '../crdt-provider'
 import { deleteSyncedVaultFile, writeSyncedVaultFile } from '../bulk-apply'
 import { flushProjectionEvents } from '../../projections'
-import { baselineAfterWrite } from '../writeback-baseline'
+import { baselineAfterWrite, pendingWriteHashOf } from '../writeback-baseline'
 import { createLogger } from '../../lib/logger'
 import { BaseItemHandler } from '@memry/sync-client/item-handlers/base-handler'
 import { belongsToOtherType } from './note-row-type'
@@ -362,8 +362,9 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
  *
  * Invariant: a file this device has not ingested is never deleted unseen.
  * The ingested bytes are the write-back baseline (`note_cache.content_hash`,
- * or `pending_write_hash` while a write-back's own bytes land). A day with no
- * cache row, or no hash, has no proof either, so it counts as not ingested.
+ * or `pending_write_hash` while a write-back's own bytes land, read through
+ * `pendingWriteHashOf` for an unstored mark). A day with no cache row, or no
+ * hash, has no proof either, so it counts as not ingested.
  */
 function holdsUningestedEdit(
   indexDb: ReturnType<typeof getIndexDatabase>,
@@ -381,7 +382,7 @@ function holdsUningestedEdit(
   if (raw === null) return false
   const cached = getNoteCacheById(indexDb, itemId)
   const onDisk = generateContentHash(raw)
-  return onDisk !== cached?.contentHash && onDisk !== cached?.pendingWriteHash
+  return onDisk !== cached?.contentHash && onDisk !== pendingWriteHashOf(cached?.pendingWriteHash)
 }
 
 export const journalHandler = new JournalHandler()

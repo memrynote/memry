@@ -35,6 +35,7 @@ import {
   reindexNoteNames,
   setNoteProperties,
   setNoteTags,
+  UNSTORED_FILE,
   updateNoteCache
 } from '@main/database/queries/notes'
 import { upsertNoteMetadata } from '@memry/storage-data'
@@ -101,6 +102,8 @@ vi.mock('../sync/crdt-provider', () => {
     }),
     closeIfInactive: async () => {},
     whenPersisted: async () => {},
+    holdsDoc: vi.fn((_id: string, _doc: unknown) => true),
+    whenStored: vi.fn(async (_id: string, _doc: unknown) => {}),
     purge: vi.fn(async () => {})
   }
   return { ORIGIN_LOCAL: 'local', getCrdtProvider: vi.fn(() => stub) }
@@ -112,7 +115,11 @@ vi.mock('../lib/paths', async (importOriginal) => {
 })
 vi.mock('../sync/writeback-baseline', async (importOriginal) => {
   const real = await importOriginal<Record<string, unknown>>()
-  return { ...real, recordBaseline: vi.fn(real.recordBaseline as never) }
+  return {
+    ...real,
+    recordBaseline: vi.fn(real.recordBaseline as never),
+    recordDocFile: vi.fn(real.recordDocFile as never)
+  }
 })
 vi.mock('../sync/crdt-external-feed', async (importOriginal) => {
   const real = await importOriginal<Record<string, unknown>>()
@@ -162,7 +169,7 @@ import { getStatus } from './index'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
 import { getCrdtProvider } from '../sync/crdt-provider'
 import { owesFileBody, recordOwedFileBody } from '../sync/crdt-owed-file-body'
-import { recordBaseline } from '../sync/writeback-baseline'
+import { recordBaseline, recordDocFile } from '../sync/writeback-baseline'
 import { markdownToYFragment } from '../sync/blocknote-converter'
 import { writebackNow } from '../sync/crdt-writeback'
 import { recordAppWrite } from './app-writes'
@@ -1249,7 +1256,7 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
     [
       'a baseline that cannot be recorded',
       () =>
-        vi.mocked(recordBaseline).mockImplementationOnce(() => {
+        vi.mocked(recordDocFile).mockImplementationOnce(() => {
           throw new Error('index gone')
         }),
       LOWER
@@ -1473,6 +1480,72 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
     expect({ moved: read('Other/a.md'), ...lowerHeader() }).toEqual({
       moved: UPPER_HEAD + UPPER,
       ...LOWER_KEPT
+    })
+  }, 30_000)
+
+  // VERIFY-5703R2 (3): a store that failed and has not recovered yet.
+  it('a twin moved off its doc keeps its file marked unstored until the store holds it', async () => {
+    await headerTwins()
+    const provider = vi.mocked(getCrdtProvider())
+    let stored!: () => void
+    provider.holdsDoc.mockImplementation((id) => id !== 'lower')
+    provider.whenStored.mockImplementation(async () => new Promise((resolve) => (stored = resolve)))
+    try {
+      await moveNoteCommand('lower', 'Other')
+      const moved = read('Other/a.md')!
+      expect.soft(getNoteCacheById(index.db, 'lower')).toMatchObject({
+        contentHash: generateContentHash(moved),
+        pendingWriteHash: expect.stringMatching(/^unstored-file:/)
+      })
+
+      // The store recovers.
+      provider.holdsDoc.mockImplementation(() => true)
+      stored()
+      await new Promise((resolve) => setImmediate(resolve))
+      expect(getNoteCacheById(index.db, 'lower')?.pendingWriteHash).toBeNull()
+    } finally {
+      provider.holdsDoc.mockImplementation(() => true)
+      provider.whenStored.mockImplementation(async () => {})
+    }
+  }, 30_000)
+
+  // The survivor's doc-built file, written from a doc its store does not hold.
+  // Red when case-twin-file.ts records that file as stored (`recordBaseline`
+  // in place of `recordDocFile` and `markDocWrite`).
+  it("a twin delete marks the survivor's file unstored until its store holds it", async () => {
+    await twins()
+    const provider = vi.mocked(getCrdtProvider())
+    let stored!: () => void
+    provider.holdsDoc.mockImplementation((id) => id !== 'lower')
+    provider.whenStored.mockImplementation(async () => new Promise((resolve) => (stored = resolve)))
+    try {
+      await deleteNoteCommand('upper')
+      expect.soft(shared()).toBe(LOWER)
+      expect.soft(getNoteCacheById(index.db, 'lower')).toMatchObject({
+        contentHash: generateContentHash(LOWER),
+        pendingWriteHash: expect.stringMatching(/^unstored-file:/)
+      })
+
+      // The store holds the survivor's doc.
+      provider.holdsDoc.mockImplementation(() => true)
+      stored()
+      await new Promise((resolve) => setImmediate(resolve))
+      expect(getNoteCacheById(index.db, 'lower')?.pendingWriteHash).toBeNull()
+    } finally {
+      provider.holdsDoc.mockImplementation(() => true)
+      provider.whenStored.mockImplementation(async () => {})
+    }
+  }, 30_000)
+
+  it('a twin moved with its own bytes keeps the mark of a file its store may lack', async () => {
+    await headerTwins()
+    updateNoteCache(index.db, 'upper', { pendingWriteHash: UNSTORED_FILE })
+
+    await moveNoteCommand('upper', 'Other')
+
+    expect(getNoteCacheById(index.db, 'upper')).toMatchObject({
+      contentHash: generateContentHash(read('Other/a.md')!),
+      pendingWriteHash: UNSTORED_FILE
     })
   }, 30_000)
 

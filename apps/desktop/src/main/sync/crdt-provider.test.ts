@@ -231,6 +231,12 @@ vi.mock('../tasks/domain', () => ({ createDesktopTasksDomain: vi.fn() }))
 vi.mock('../tasks/publisher', () => ({ createTasksPublisher: vi.fn() }))
 vi.mock('../lib/id', () => ({ generateId: vi.fn(() => 'generated-id') }))
 vi.mock('../telemetry/diagnostics', () => ({ trackMainError: vi.fn() }))
+// A user delete forgets a held day's owed merge in `sync_state`; the
+// database here is a stand-in.
+vi.mock('./journal-day-merge-key', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  forgetOwedJournalDayMerge: vi.fn()
+}))
 // No case twins here: the twin rule reads canonical rows these mocks do not hold.
 vi.mock('../vault/note-sync', async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
@@ -293,6 +299,8 @@ vi.mock('./crdt-writeback-port', () => ({
     cancelWriteback: (...args: unknown[]) => mocks.cancelWriteback(...args),
     flushPendingWritebacks: (...args: unknown[]) => mocks.flushPendingWritebacks(...args),
     hasArmedWritebacks: () => false,
+    writeBackBeforeClose: async () => {},
+    insideWritebackTurn: () => false,
     resetWritebackState: (...args: unknown[]) => mocks.resetWritebackState(...args),
     writebackNow: (...args: unknown[]) => mocks.writebackNow(...args)
   })
@@ -2352,7 +2360,7 @@ describe('CrdtProvider', () => {
     expect(provider.getDoc('note-1')).toBe(replacementDoc)
   })
 
-  it('destroys the superseded doc when a real reopen replaces it mid-close', async () => {
+  it('a reopen mid-close waits for the close, then opens a fresh doc', async () => {
     createWindow(5)
     let releaseFlush: (() => void) | undefined
     mocks.persistenceInstances[0].flushDocument.mockImplementationOnce(
@@ -2362,29 +2370,31 @@ describe('CrdtProvider', () => {
           releaseFlush = resolve
         })
     )
-    const supersededDoc = await provider.open('note-1', undefined, { skipSeed: true })
+    const closedDoc = await provider.open('note-1', undefined, { skipSeed: true })
 
     const closePromise = provider.close('note-1')
     await Promise.resolve()
 
-    // A real reopen through open() — the editor mounting again while the
-    // close's flush is still in flight — not a hand-built map entry.
-    const replacementDoc = await provider.open('note-1', 5, { skipSeed: true })
-    expect(replacementDoc).not.toBe(supersededDoc)
+    // The editor mounting again while the close's flush is still in flight:
+    // the close may still write the closing doc's file, which the reopen must
+    // find (#5698).
+    let reopened = false
+    const reopenPromise = provider.open('note-1', 5, { skipSeed: true }).then((doc) => {
+      reopened = true
+      return doc
+    })
+    await new Promise((resolve) => setImmediate(resolve))
+    expect(reopened).toBe(false)
 
     releaseFlush?.()
     await closePromise
+    const replacementDoc = await reopenPromise
 
-    // The live doc must survive: the map still points at it and keystrokes
-    // arriving after the race still land in it.
+    expect(replacementDoc).not.toBe(closedDoc)
+    expect(closedDoc.isDestroyed).toBe(true)
     expect(provider.getDoc('note-1')).toBe(replacementDoc)
-    expect(replacementDoc.isDestroyed).toBe(false)
     provider.applyIpcUpdate('note-1', makeRemoteUpdate('typed after reopen'), 5)
     expect(replacementDoc.getMap('meta').get('title')).toBe('typed after reopen')
-
-    // The orphan is torn down instead of being left for GC with its 'update'
-    // listener still attached.
-    expect(supersededDoc.isDestroyed).toBe(true)
   })
 
   it('returns false when pushing a snapshot without a configured push callback', async () => {

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { getNoteCacheById, insertNoteCache, updateNoteCache } from '@main/database/queries/notes'
+import * as Y from 'yjs'
 import { generateContentHash } from '../vault/frontmatter'
 import { folderLockedError } from '../vault-locks/registry'
 import {
@@ -8,7 +9,12 @@ import {
   baselineBeforeFeed,
   isOutsideEdit,
   landBodyEdit,
-  writeWithBaseline
+  markDocWrite,
+  recordDocFile,
+  takesUnstoredFile,
+  writeDocWithBaseline,
+  writeWithBaseline,
+  type DocStore
 } from './writeback-baseline'
 
 const retryWriteback = vi.hoisted(() => vi.fn())
@@ -229,5 +235,127 @@ describe('a writer that does not feed the doc', () => {
   it('keeps the baseline under a frontmatter edit of an outside edit', () => {
     const edited = `---\ntags: [x]\n---\n${B}`
     expect(baselineAfterWrite(index.db, 'n1', B, edited)).toBe(generateContentHash(A))
+  })
+})
+
+/** A store that holds none of the doc until the test answers its waiters. */
+function storeLackingTheDoc(): DocStore & { answer: (index: number) => void } {
+  const waiters: Array<() => void> = []
+  return {
+    holdsDoc: () => false,
+    whenPersisted: () => Promise.resolve(),
+    whenStored: () => new Promise<void>((resolve) => waiters.push(resolve)),
+    answer: (index) => waiters[index]()
+  }
+}
+
+function typed(doc: Y.Doc, text: string): void {
+  doc.getText('t').insert(doc.getText('t').length, text)
+}
+
+/** `doc`, serialized as it is now. */
+const serialized = (doc: Y.Doc) => ({ doc, state: Y.snapshot(doc) })
+
+describe('the unstored mark of a write the store lacks (#5698)', () => {
+  let index: TestDatabaseResult
+  beforeEach(() => {
+    index = createTestIndexDb()
+    insertNoteCache(index.db, { ...row, contentHash: generateContentHash(A) })
+  })
+  afterEach(() => index.close())
+  const pending = () => getNoteCacheById(index.db, 'n1')!.pendingWriteHash
+
+  // VERIFY-5703R5 (3)
+  it("keeps a later write's mark when an earlier write's store lands", async () => {
+    const store = storeLackingTheDoc()
+    const doc = new Y.Doc()
+    typed(doc, 'A')
+    recordDocFile(index.db, 'n1', A, serialized(doc), store)
+    typed(doc, 'B')
+    recordDocFile(index.db, 'n1', B, serialized(doc), store)
+    const markOfB = pending()
+
+    store.answer(0)
+    await new Promise((resolve) => setImmediate(resolve))
+
+    expect(pending()).toBe(markOfB)
+    expect(markOfB).toMatch(/^unstored-file:/)
+  })
+
+  it('gives a write that failed before it wrote the pending hash it found back', async () => {
+    const doc = new Y.Doc()
+    typed(doc, 'B')
+    const write = writeDocWithBaseline(
+      index.db,
+      'n1',
+      B,
+      {
+        write: () => Promise.reject(new Error('disk full')),
+        read: async () => A
+      },
+      serialized(doc),
+      storeLackingTheDoc()
+    )
+
+    await expect(write).rejects.toThrow('disk full')
+    expect(pending()).toBeNull()
+  })
+
+  it('keeps the mark of a write that failed after it wrote', async () => {
+    const doc = new Y.Doc()
+    typed(doc, 'B')
+    const write = writeDocWithBaseline(
+      index.db,
+      'n1',
+      B,
+      {
+        write: () => Promise.reject(new Error('rename failed')),
+        read: async () => B
+      },
+      serialized(doc),
+      storeLackingTheDoc()
+    )
+
+    await expect(write).rejects.toThrow('rename failed')
+    expect(pending()).toMatch(/^unstored-file:/)
+  })
+
+  it('takes in a file whose write carried a delete the stored doc lacks', () => {
+    const doc = new Y.Doc()
+    typed(doc, 'AB')
+    const stored = new Y.Doc()
+    Y.applyUpdate(stored, Y.encodeStateAsUpdate(doc))
+    doc.getText('t').delete(1, 1)
+    recordDocFile(index.db, 'n1', B, serialized(doc), storeLackingTheDoc())
+    const cached = () => getNoteCacheById(index.db, 'n1')!
+
+    expect(takesUnstoredFile(index.db, 'n1', cached(), B, stored)).toBe(true)
+    expect(takesUnstoredFile(index.db, 'n1', cached(), B, doc)).toBe(false)
+    expect(cached().pendingWriteHash).toBeNull()
+  })
+
+  it("reads a file holding a marked write's bytes as its own, keeping the mark", () => {
+    const doc = new Y.Doc()
+    typed(doc, 'B')
+    const mark = markDocWrite(index.db, 'n1', B, serialized(doc), storeLackingTheDoc())
+    const cached = () => getNoteCacheById(index.db, 'n1')!
+
+    expect(isOutsideEdit(index.db, 'n1', cached(), B)).toBe(false)
+    expect(cached()).toMatchObject({ contentHash: generateContentHash(B), pendingWriteHash: mark })
+  })
+
+  // VERIFY-5703R6 (2): a keystroke after the conversion is not in the file.
+  it('records the state the file was serialized from, not a later one', () => {
+    const doc = new Y.Doc()
+    typed(doc, 'B')
+    const written = serialized(doc)
+    const stored = new Y.Doc()
+    Y.applyUpdate(stored, Y.encodeStateAsUpdate(doc))
+    typed(doc, 'C')
+    recordDocFile(index.db, 'n1', B, written, storeLackingTheDoc())
+    const cached = () => getNoteCacheById(index.db, 'n1')!
+
+    expect(takesUnstoredFile(index.db, 'n1', cached(), B, stored)).toBe(false)
+    expect(cached()).toMatchObject({ contentHash: generateContentHash(B), pendingWriteHash: null })
   })
 })

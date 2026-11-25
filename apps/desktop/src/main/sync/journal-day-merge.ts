@@ -137,7 +137,11 @@ export function oweJournalDayMerge(db: DrizzleDb, merge: OwedJournalDayMerge): v
     kept?.holderClock && merge.holderClock
       ? mergeClocks(kept.holderClock, merge.holderClock)
       : (merge.holderClock ?? kept?.holderClock ?? undefined)
-  const unpushedTags = addWeighing(kept?.unpushedTags, merge.unpushedTags)
+  // A sighting reads the holder's tags as its day file holds them now: an
+  // unpushed tag the user removed since stays removed (#5694).
+  const weighed = addWeighing(kept?.unpushedTags, merge.unpushedTags)
+  const held = new Set((merge.tags ?? []).map(foldTag))
+  const unpushedTags = merge.tags ? weighed?.filter((tag) => held.has(foldTag(tag))) : weighed
   const value = JSON.stringify({
     ...merge,
     clock,
@@ -237,18 +241,21 @@ function unpushedHolderTags(
  * edited since its sync holds an edit that neither its clock nor the queue
  * may show: one made outside the app is never ticked, and is queued only by
  * the next start's dirty sweep (REVIEW-5691). It has no clock to weigh, so
- * every tag counts.
+ * every tag counts. Unknown `tags` (no readable day file) weigh nothing and
+ * leave the kept ones as they are: read as none, they would drop every
+ * unpushed tag the owed merge holds.
  */
 export function holderTags(
   db: DrizzleDb,
   holderId: string,
-  tags: string[],
+  tags: string[] | undefined,
   row: Pick<NoteMetadata, 'clock' | 'syncedAt' | 'modifiedAt'> | undefined,
   tombstone: VectorClock | null = readTombstoneClock(db, 'journal', holderId)
 ): Pick<OwedJournalDayMerge, 'tags' | 'holderClock' | 'unpushedTags'> {
   // The dirty sweep's test (`recoverDirtyJournals`).
   const edited = !row?.syncedAt || row.modifiedAt > row.syncedAt
   const holderClock = edited ? null : (row.clock ?? null)
+  if (!tags) return { holderClock }
   return {
     tags,
     holderClock,
@@ -256,6 +263,10 @@ export function holderTags(
       ? { unpushedTags: unpushedHolderTags(db, holderId, tags, holderClock, tombstone) }
       : {})
   }
+}
+
+function isOwed(db: DrizzleDb, foreignId: string): boolean {
+  return listOwedJournalDayMerges(db).some((owed) => owed.foreignId === foreignId)
 }
 
 export function listOwedJournalDayMerges(db: DrizzleDb): OwedJournalDayMerge[] {
@@ -475,10 +486,17 @@ function dayLacksTag(db: DrizzleDb, date: string, tags: string[]): boolean {
   if (tags.length === 0) return false
   const held =
     getNoteMetadataByPath(db, getJournalRelativePath(date))?.id === generateJournalId(date)
-      ? readDayTags(date)
+      ? (readDayTags(date) ?? [])
       : []
   const keys = new Set(held.map(foldTag))
   return tags.some((tag) => !keys.has(foldTag(tag)))
+}
+
+/** A deleted id's tags the deleting device saw were added by it. */
+function addedTags(merge: OwedJournalDayMerge): string[] {
+  return merge.deleted
+    ? (merge.unpushedTags ?? merge.tags ?? [])
+    : mergeTagLists(merge.tags ?? [], merge.recordTags ?? [])
 }
 
 /** `j<date>` has no row here and this device recorded its tombstone. */
@@ -509,10 +527,7 @@ async function mergeOne(deps: JournalDayMergeDeps, merge: OwedJournalDayMerge): 
   // state and its holder file text still fold: they may never have been
   // pushed (#2984).
   if (!merge.deleted) fallback ??= merge.recordMarkdown ?? null
-  // A deleted id's tags the deleting device saw were added by it.
-  const tags = merge.deleted
-    ? (merge.unpushedTags ?? merge.tags ?? [])
-    : mergeTagLists(merge.tags ?? [], merge.recordTags ?? [])
+  const tags = addedTags(merge)
   // A tag the day lacks may exist nowhere else, as one added offline to a
   // blank holder: it merges with no body (#5659, #5699).
   const carriesTags = dayLacksTag(deps.db, merge.date, tags)
@@ -531,13 +546,22 @@ async function mergeOne(deps: JournalDayMergeDeps, merge: OwedJournalDayMerge): 
     return false
   }
   if (step.action === 'merge') {
+    // A user delete of the held day during an await above forgot the merge:
+    // the day is never built from it (§1.9.1).
+    if (!isOwed(deps.db, merge.foreignId)) return true
     await deps.ensureDay(merge.date)
     await deps.relinkTasks(merge.foreignId, targetId)
     if (!(await deps.absorbBody(targetId, merge.foreignId, fallback)) && !carriesTags) {
       log.warn('Foreign journal had nothing to fold; it stays owed', describe(merge))
       return false
     }
-    if (tags.length > 0) await deps.addDayTags(merge.date, tags)
+    // Invariant (#5694): the tags added are the holder's as it holds them
+    // when the day takes it over, never as they were when the merge was owed.
+    // `ensureDay` owes a holder `F` again from its day file as it removes it,
+    // so the owed merge is read back after it.
+    const owed = listOwedJournalDayMerges(deps.db).find((o) => o.foreignId === merge.foreignId)
+    const added = owed ? addedTags(owed) : tags
+    if (added.length > 0) await deps.addDayTags(merge.date, added)
     carryAttachments(deps.db, deps.vaultPath, merge.foreignId, targetId, references, fallback)
   }
 
@@ -599,8 +623,11 @@ export function readDayBody(date: string): string | null {
   return readDay(date)?.content ?? null
 }
 
-export function readDayTags(date: string): string[] {
-  const tags: unknown = readDay(date)?.frontmatter.tags
+/** Undefined when the day file is missing or will not read: its tags are unknown, not none. */
+export function readDayTags(date: string): string[] | undefined {
+  const day = readDay(date)
+  if (!day) return undefined
+  const tags: unknown = day.frontmatter.tags
   return Array.isArray(tags) ? tags.map(String) : []
 }
 
