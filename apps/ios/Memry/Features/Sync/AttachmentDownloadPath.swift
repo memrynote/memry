@@ -49,11 +49,13 @@ enum AttachmentFetchState: Equatable {
     /// The download threw. The mapped error says whether trying again helps.
     case failed(UserFacingError)
 
-    /// A failure asking again cannot fix, such as a manifest that does not
-    /// verify. A sync pass does not ask for it again, as desktop asks again on
-    /// sync only when waiting can help (`asksOnSync` in
-    /// `note-files-download-notice.tsx`); opening the screen again does.
-    var isPermanentFailure: Bool {
-        if case let .failed(error) = self { error.recourse == .blocked } else { false }
+    /// Whether a sync pass asks again: only after a failure waiting can fix,
+    /// as desktop asks on sync only for `whenSyncRuns` (`asksOnSync` in
+    /// `note-files-download-notice.tsx`). A `.retry` failure, such as a corrupt
+    /// blob, waits for Try again, so it is not downloaded again in full on
+    /// every pass, cellular included. A `.blocked` one, such as a manifest
+    /// that does not verify, waits for the screen to open again.
+    var asksOnSync: Bool {
+        if case let .failed(error) = self { error.recourse == .retryLater } else { false }
     }
 }

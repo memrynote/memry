@@ -19,7 +19,8 @@ import UIKit
 // | an ambiguous basename is refused, never guessed         | §Q4                     |
 // | only attachment-bearing blocks are resolved             | a bookmark url is not a vault path |
 // | a run holding a stale list skips a file another run landed | one download per file |
-// | a later run skips a permanent failure and asks again after any other | desktop `asksOnSync` |
+// | a later run asks again only after a failure waiting fixes | desktop `asksOnSync` |
+// | Try again asks after a corrupt download, not an unverifiable one | desktop `asksOnSync` |
 // | a cancelled fetch asks for no further picture           | REVIEW-5587: no repeat download per pass |
 // | the page asks for pictures before the body pull answers | REVIEW-5587: no network wait on open |
 
@@ -392,11 +393,38 @@ struct NoteAttachmentRunTests {
         #expect(model.attachmentFetches.isEmpty)
     }
 
-    /// REVIEW-5685, desktop `asksOnSync`: a file asking cannot bring stays
-    /// failed through the next pass instead of going back to the server and
-    /// flickering Downloading. A failure asking again can fix is asked again.
-    @Test("a later run skips a permanent failure and asks again after any other")
-    func passesSkipPermanentFailures() async {
+    /// REVIEW-5685 and REVIEW-5685R2 #4, desktop `asksOnSync`: a pass asks
+    /// again only after a failure waiting can fix. A corrupt or unverifiable
+    /// file stays failed through the next pass instead of downloading again
+    /// in full on each one.
+    @Test("a later run asks again only after a failure waiting fixes")
+    func passesAskOnlyWhenWaitingHelps() async {
+        let reader = ScriptedAttachments(
+            blocks: [imageBlock(url: "picture.png")],
+            bindings: ["picture.png": .bound(attachment: cached(id: "att-1", localPath: nil))]
+        )
+        let pending = AttachmentFetchSummary(downloaded: false, deferred: true, bytes: 0, localPath: nil)
+        let failures: [(SyncError, UserFacingError.Recourse, Int)] = [
+            (.AttachmentUnverified(deviceId: "device"), .blocked, 1),
+            (.AttachmentCorrupt(what: "chunk"), .retry, 1),
+            (.Locked, .retryLater, 2),
+        ]
+        for (failure, recourse, fetches) in failures {
+            #expect(ErrorMapping.userFacing(failure).recourse == recourse)
+            let filler = ScriptedAttachmentFiller(summary: pending, failure: failure)
+            let model = NoteReadViewModel(route: route, reader: reader, filler: filler, reachability: FixedPath(path: .wifi))
+            await model.loadIfNeeded()
+            await model.fetchWaitingAttachments()
+            await model.fetchWaitingAttachments()
+            #expect(filler.fetched.count == fetches, "\(recourse)")
+            #expect(model.attachmentFetches["att-1"] == .failed(ErrorMapping.userFacing(failure)))
+        }
+    }
+
+    /// REVIEW-5685R2 #4: only Try again clears a `.retry` failure; a `.blocked`
+    /// one waits for a new screen.
+    @Test("Try again asks after a corrupt download, not an unverifiable one")
+    func tryAgainAsksAfterARetryFailure() async {
         let reader = ScriptedAttachments(
             blocks: [imageBlock(url: "picture.png")],
             bindings: ["picture.png": .bound(attachment: cached(id: "att-1", localPath: nil))]
@@ -413,7 +441,7 @@ struct NoteAttachmentRunTests {
         )
         await refusedModel.loadIfNeeded()
         await refusedModel.fetchWaitingAttachments()
-        await refusedModel.fetchWaitingAttachments()
+        await refusedModel.fetchWaitingAttachments(tryAgain: true)
         #expect(refused.fetched == ["att-1"], "a permanent failure went back to the server")
         #expect(refusedModel.attachmentFetches["att-1"] == .failed(ErrorMapping.userFacing(unverified)))
 
@@ -423,7 +451,7 @@ struct NoteAttachmentRunTests {
         )
         await damagedModel.loadIfNeeded()
         await damagedModel.fetchWaitingAttachments()
-        await damagedModel.fetchWaitingAttachments()
+        await damagedModel.fetchWaitingAttachments(tryAgain: true)
         #expect(damaged.fetched == ["att-1", "att-1"])
     }
 

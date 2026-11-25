@@ -205,7 +205,7 @@ struct WaitingAttachment: View {
                     detail: "Couldn't download. \(error.text)"
                 )
                 if error.recourse == .retry, let downloads {
-                    Button("Try again") { Task { await downloads.fetchWaitingAttachments() } }
+                    Button("Try again") { Task { await downloads.fetchWaitingAttachments(tryAgain: true) } }
                         .memrySecondaryAction()
                 }
             }

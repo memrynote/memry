@@ -241,8 +241,9 @@ struct NoteCoverBand: View {
         } catch {
             let mapped = ErrorMapping.userFacing(error)
             Log.sync.error("a cover could not be fetched", .code(mapped.code))
-            // A failure asking again cannot fix is not asked again each pass.
-            return mapped.recourse == .blocked ? .missing : .waiting
+            // A pass asks again only when waiting can fix it; opening the
+            // note again asks for the rest.
+            return AttachmentFetchState.failed(mapped).asksOnSync ? .waiting : .missing
         }
         return await resolve(owner: owner, url: url, fetching: false)
     }

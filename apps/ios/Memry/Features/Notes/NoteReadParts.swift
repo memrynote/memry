@@ -245,8 +245,9 @@ extension NoteReadViewModel {
     /// fails, and every exit clears `.downloading`. An attachment another run
     /// is downloading, or whose file another run landed, is skipped, so the
     /// pass-triggered run and Try again never fetch the same bytes twice. A
-    /// permanent failure is not asked again (`isPermanentFailure`): a new
-    /// screen asks again.
+    /// failed file is asked again by a run only when waiting can fix it
+    /// (`asksOnSync`). `tryAgain` (the button) also asks after a `.retry`
+    /// failure; a `.blocked` one waits for a new screen.
     ///
     /// A single failure does not abandon the rest: one unverifiable manifest
     /// must not stop the other pictures in the note from arriving.
@@ -254,7 +255,7 @@ extension NoteReadViewModel {
     /// A sync pass cancels the run that `NotePageLoad` started for it. The
     /// cancelled run asks for no further picture: the next run asks for the
     /// rest, and the core joins it to a download still running (#5674).
-    func fetchWaitingAttachments() async {
+    func fetchWaitingAttachments(tryAgain: Bool = false) async {
         guard let filler else { return }
         // The screen passes `PathReachability.forAttachments`. With none, the
         // answer for "we have not seen a path" is usable (`unknownPath`).
@@ -274,7 +275,7 @@ extension NoteReadViewModel {
             waiting.append(attachment.attachmentId)
         }
         var landed = false
-        for id in waiting where asks(for: id) {
+        for id in waiting where asks(for: id, tryAgain: tryAgain) {
             guard !Task.isCancelled else { break }
             attachmentFetches[id] = .downloading
             do {
@@ -298,9 +299,14 @@ extension NoteReadViewModel {
 
     /// Read as each download starts, not when the run listed `waiting`: a run
     /// that started earlier holds a stale list.
-    private func asks(for id: String) -> Bool {
-        if attachmentFetches[id] == .downloading || attachmentFetches[id]?.isPermanentFailure == true {
-            return false
+    private func asks(for id: String, tryAgain: Bool) -> Bool {
+        if let fetch = attachmentFetches[id] {
+            let asksAgain = if tryAgain, case let .failed(error) = fetch {
+                error.recourse != .blocked
+            } else {
+                fetch.asksOnSync
+            }
+            guard asksAgain else { return false }
         }
         return !attachments.values.contains { binding in
             guard case let .bound(attachment) = binding else { return false }
