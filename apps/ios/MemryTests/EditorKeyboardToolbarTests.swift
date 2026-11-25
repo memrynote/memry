@@ -34,7 +34,12 @@ struct HashTagTextTests {
     }
 
     @Test func aHashInsideAWordOrBeforeNoTagCharacterIsNot() {
-        #expect(HashTagText.matches(in: "c#sharp issue#4 # heading #-x").isEmpty)
+        #expect(HashTagText.matches(in: "c#sharp issue#4 # heading #-x #2024 日本語#タグ").isEmpty)
+    }
+
+    @Test func tagsInEveryScriptAreFound() {
+        let found = HashTagText.matches(in: "#퓨리 #привет, #タグ。 #हिन्दी #2024년 #café")
+        #expect(found.map(\.tag) == ["퓨리", "привет", "タグ", "हिन्दी", "2024년", "café"])
     }
 }
 
@@ -54,6 +59,10 @@ struct HashTagTriggerTests {
 
     @Test func tagCharactersAreDesktops() {
         #expect(HashTagTrigger.active(in: "#work/q-1_x", caret: 11)?.query == "work/q-1_x")
+        #expect(HashTagTrigger.active(in: "x #퓨리", caret: 5)?.query == "퓨리")
+        #expect(HashTagTrigger.active(in: "#हिन्दी", caret: 7)?.query == "हिन्दी")
+        #expect(HashTagTrigger.active(in: "#𠀋", caret: 3)?.query == "𠀋")
+        #expect(HashTagTrigger.active(in: "#タグ。", caret: 4) == nil)
     }
 }
 
