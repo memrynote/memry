@@ -33,7 +33,7 @@ private struct SemanticSearchPage: View {
                     SettingsToggleRow(
                         title: SemanticSearchCopy.toggle,
                         detail: SemanticSearchCopy.toggleDetail,
-                        isOn: Binding(get: { display.isOn }, set: toggle),
+                        isOn: Binding(get: { display.isOn }, set: { toggle($0) }),
                         identifier: "settings.semanticSearch.toggle"
                     )
                     .disabled(model.pending != nil)
