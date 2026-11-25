@@ -215,7 +215,7 @@ struct NoteTitleRehostTests {
     @Test(.timeLimit(.minutes(3))) func a_title_typed_on_the_redrawn_page_wins() async throws {
         // A window another suite makes key takes the caret and ends the
         // title's edit early: such a run proves nothing, and runs again.
-        let (f, kept, first, shown) = try await Resigned.uninterrupted { watch in
+        let (saved, kept, first, shown) = try await Resigned.uninterrupted { watch in
             let f = try fixture()
             let window = try sceneWindow()
             watch(window)
@@ -239,10 +239,10 @@ struct NoteTitleRehostTests {
             return (f, kept, first, shown)
         }
         #expect(kept, "the redrawn title did not keep the caret")
-        #expect(first == "Agent Heron", "the typed title was not saved: \(f.writer.titles)")
+        #expect(first == "Agent Heron", "the typed title was not saved: \(saved.writer.titles)")
         #expect(shown == "Kestrel", "the re-read replaced the typed title")
-        #expect(try await savedTitle(f) == "Kestrel")
-        #expect(f.writer.titles == ["Agent Heron", "Kestrel"])
+        #expect(try await savedTitle(saved) == "Kestrel")
+        #expect(saved.writer.titles == ["Agent Heron", "Kestrel"])
     }
 
     /// Opens a page on the note and puts the caret in its title.
