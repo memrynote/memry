@@ -139,7 +139,7 @@ pub(crate) const DOCUMENT_TYPES: [&str; 2] = ["note", "journal"];
 /// Applies one page's decoded items, in the order they were handed over.
 ///
 /// `clock_device` is this device's clock id (chapter 01 §1.5), which a canvas
-/// conflict copy is clocked under.
+/// conflict copy and a re-queued journal merge are clocked under.
 ///
 /// The attachment rows of the notes it applied are written once, after the
 /// last record and outside each record's savepoint (#5675).
@@ -434,7 +434,7 @@ pub fn apply_inbound_on(
         projects::ITEM_TYPE => projects::apply_remote(conn, record, now_ms),
         settings::SETTINGS_ITEM_TYPE => settings_merge::apply_remote_merged(conn, record, now_ms),
         // `tags` and `properties` per unit, the rest by §6.3.1 (§6.12, #5508).
-        journal::ITEM_TYPE => journal_merge::apply_remote(conn, record, now_ms),
+        journal::ITEM_TYPE => journal_merge::apply_remote(conn, record, now_ms, clock_device),
         // "absent key keeps, explicit null clears" (desktop's inbox handler).
         inbox::ITEM_TYPE => inbox::merge::apply_remote(conn, record, now_ms),
         // Desktop's four calendar handlers (spec 007 CL010/CL011).

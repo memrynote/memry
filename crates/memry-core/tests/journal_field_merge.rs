@@ -1,15 +1,16 @@
 //! Concurrent journal tag and property edits from four devices all survive
 //! (chapter 06 §6.12, #5508). Each device is its own core database; records
-//! cross through `apply_inbound`, the pull's entry point, carrying the payload
+//! cross through `apply_inbound_on`, the pull's entry point, carrying the payload
 //! `push_payload` would send.
 
+use std::ops::Deref;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use memry_core::domain::journal_ops::metadata;
 use memry_core::storage::repositories::ApplyOutcome;
 use memry_core::storage::repositories::sync_items::{self, InboundRecord};
 use memry_core::storage::{Db, open_data};
-use memry_core::sync::apply::apply_inbound;
+use memry_core::sync::apply::apply_inbound_on;
 use serde_json::{Value, json};
 
 const NOW: i64 = 1_760_000_000_000;
@@ -18,14 +19,32 @@ const ID: &str = "j2026-11-23";
 
 static SCRATCH: AtomicU64 = AtomicU64::new(0);
 
-fn open(label: &str) -> Db {
+/// One device: its core database and the clock id its pulls tick a re-queued
+/// merge under (§6.12.3).
+struct Device {
+    db: Db,
+    id: String,
+}
+
+impl Deref for Device {
+    type Target = Db;
+
+    fn deref(&self) -> &Db {
+        &self.db
+    }
+}
+
+fn open(label: &str) -> Device {
     let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
     let dir = std::env::temp_dir().join(format!(
         "memry-journal-field-merge-{label}-{}-{unique}",
         std::process::id()
     ));
     std::fs::create_dir_all(&dir).expect("the scratch directory");
-    open_data(&dir.join("data.db")).expect("open data.db")
+    Device {
+        db: open_data(&dir.join("data.db")).expect("open data.db"),
+        id: format!("pull-{label}"),
+    }
 }
 
 fn pushed(db: &Db) -> String {
@@ -51,7 +70,7 @@ fn property(db: &Db, name: &str, value: Value, device: &str) {
     .expect("set property");
 }
 
-fn pull(db: &Db, payload: &str) {
+fn pull(db: &Device, payload: &str) {
     let record = InboundRecord {
         item_type: "journal".to_owned(),
         item_id: ID.to_owned(),
@@ -62,7 +81,7 @@ fn pull(db: &Db, payload: &str) {
         deleted_at: None,
     };
     let outcome = db
-        .call_blocking(|conn| apply_inbound(conn, &record, NOW))
+        .call_blocking(|conn| apply_inbound_on(conn, &record, NOW, Some(&db.id)))
         .expect("apply");
     assert!(matches!(
         outcome,
@@ -130,6 +149,40 @@ fn a_removal_is_not_resurrected_by_a_peer_that_edited_something_else() {
 
     pull(&phone, &pushed(&desk));
     assert_eq!(view(&phone), (json!(["keep"]), json!({ "k": 2 })));
+}
+
+/// §6.12.3: a merge that changed the remote's fields is ticked for this
+/// device. A pull with no device clock id records the item corrupt instead of
+/// storing a merge it cannot clock, and the stored day is left as it was.
+#[test]
+fn a_requeued_merge_with_no_device_clock_id_stores_nothing() {
+    let (origin, phone, desk) = (open("x3"), open("p3"), open("d3"));
+    tag(&origin, &["keep"], "dev-x");
+    let base = pushed(&origin);
+    pull(&phone, &base);
+    pull(&desk, &base);
+    tag(&phone, &["keep", "mine"], "dev-p");
+    property(&desk, "k", json!(1), "dev-d");
+    let before = pushed(&phone);
+
+    let record = InboundRecord {
+        item_type: "journal".to_owned(),
+        item_id: ID.to_owned(),
+        payload_json: pushed(&desk),
+        server_cursor: None,
+        signer_device_id: None,
+        updated_at: NOW,
+        deleted_at: None,
+    };
+    let outcome = phone
+        .call_blocking(|conn| apply_inbound_on(conn, &record, NOW, None))
+        .expect("apply");
+
+    assert!(
+        matches!(outcome, ApplyOutcome::Corrupt { .. }),
+        "{outcome:?}"
+    );
+    assert_eq!(pushed(&phone), before);
 }
 
 /// REVIEW-5529 finding 1: an older build's removal is read whole at its clock,
@@ -267,7 +320,7 @@ fn re_pulling_an_older_builds_record_is_skipped() {
         deleted_at: None,
     };
     let outcome = phone
-        .call_blocking(|conn| apply_inbound(conn, &record, NOW))
+        .call_blocking(|conn| apply_inbound_on(conn, &record, NOW, Some(&phone.id)))
         .expect("apply");
     assert!(matches!(outcome, ApplyOutcome::Skipped), "{outcome:?}");
     assert_eq!(pushed(&phone), stored);

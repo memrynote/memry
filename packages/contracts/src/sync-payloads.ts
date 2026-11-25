@@ -389,6 +389,10 @@ export const JournalSyncPayloadSchema = z.object({
   // §6.12.1 (#5572): every unit `fieldClocks` does not name is superseded at or
   // before this clock. Trusted with the stamp, so an older build's copy is not.
   fieldClocksFloor: VectorClockSchema.optional(),
+  // §6.12.1 (#5508): a unit's own floor where it differs from
+  // `fieldClocksFloor`, keyed as `fieldClocks` is. Additive: an older build
+  // keeps or drops it and ticks `clock` past the stamp, so it reads untrusted.
+  fieldFloors: FieldClocksSchema.optional(),
   createdAt: SyncTimestampSchema.optional(),
   modifiedAt: SyncTimestampSchema.optional(),
   // Delete tombstones only, as on notes (chapter 05 §5.8, #3037).

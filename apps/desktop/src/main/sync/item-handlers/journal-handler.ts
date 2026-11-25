@@ -43,6 +43,7 @@ import {
   removeJournalRow
 } from '../journal-day-merge'
 import { generateJournalId } from '@memry/contracts/journal-api'
+import { getJournalSyncService } from '../journal-sync'
 import { keepUnseenText } from '../keep-unseen-text'
 import {
   journalFieldClocksForWholesale,
@@ -135,7 +136,8 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
       ...(journalFieldClocksForWholesale(remoteWithClock) ?? {
         fieldClocks: data.fieldClocks,
         fieldClocksAt: data.fieldClocksAt,
-        fieldClocksFloor: data.fieldClocksFloor
+        fieldClocksFloor: data.fieldClocksFloor,
+        fieldFloors: data.fieldFloors
       })
     }
     if (existing) {
@@ -147,20 +149,30 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
       mergedClock = resolution.mergedClock
       if (resolution.action === 'merge') {
         // Tags and properties merge per unit (§6.12); the body is the CRDT's.
-        result = 'conflict'
         const day = readDayFields(date)
         if (day) {
-          const local = localJournalFields(ctx.db, itemId, day, existing.clock ?? {})
-          const merged = mergeJournalFields(local, remoteWithClock)
-          tags = merged.tags
-          properties = merged.properties
-          synced = {
-            clock: mergedClock,
-            fieldClocks: merged.fieldClocks,
-            fieldClocksAt: mergedClock,
-            fieldClocksFloor: merged.fieldClocksFloor
+          const deviceId = getJournalSyncService()?.getDeviceId()
+          if (!deviceId) {
+            // The merge clock is ticked for this device when it re-queues; a
+            // pull with no device id retries rather than store a merge.
+            throw new Error(`Journal ${itemId} merged with no device clock id`)
           }
+          const local = localJournalFields(ctx.db, itemId, day, existing.clock ?? {})
+          const {
+            tags: mergedTags,
+            properties: mergedProperties,
+            requeue,
+            ...stamp
+          } = mergeJournalFields(local, remoteWithClock, deviceId)
+          tags = mergedTags
+          properties = mergedProperties
+          mergedClock = stamp.clock
+          synced = stamp
+          // `'conflict'` re-queues the day: only a merge that changed the
+          // remote's fields has anything to push (§6.12.3).
+          if (requeue) result = 'conflict'
         } else {
+          result = 'conflict'
           log.warn('Concurrent journal edit with no readable day file; remote fields apply', {
             itemId
           })
@@ -350,7 +362,13 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
     itemId: string,
     remote: JournalSyncPayload
   ): boolean {
-    const { fieldClocks: _clocks, fieldClocksAt: _at, fieldClocksFloor: _floor, ...fields } = remote
+    const {
+      fieldClocks: _clocks,
+      fieldClocksAt: _at,
+      fieldClocksFloor: _floor,
+      fieldFloors: _floors,
+      ...fields
+    } = remote
     try {
       const local = this.buildPayload(db, itemId, 'update', false)
       if (local == null) return false
@@ -376,7 +394,10 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
     let tags: string[] = []
     let properties: Record<string, unknown> | null = null
     let aliases: string[] | undefined
-    let unitClocks: Pick<JournalFields, 'fieldClocks' | 'fieldClocksAt' | 'fieldClocksFloor'> = {}
+    let unitClocks: Pick<
+      JournalFields,
+      'fieldClocks' | 'fieldClocksAt' | 'fieldClocksFloor' | 'fieldFloors'
+    > = {}
     try {
       const raw = readJournalTextSync(cached.journalDate)
       if (raw === null) throw new Error(`Journal file is missing: ${cached.journalDate}`)
@@ -400,7 +421,8 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
           unitClocks = {
             fieldClocks: fields.fieldClocks,
             fieldClocksAt: fields.fieldClocksAt,
-            fieldClocksFloor: fields.fieldClocksFloor
+            fieldClocksFloor: fields.fieldClocksFloor,
+            fieldFloors: fields.fieldFloors
           }
         }
       }

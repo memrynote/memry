@@ -58,6 +58,7 @@ import { buildRecordEnvelope } from './vectors/record-envelope'
 import { buildRecreateClock } from './vectors/recreate-clock'
 import { buildSettingsMerge } from './vectors/settings-merge'
 import { buildJournalMerge } from './vectors/journal-merge'
+import { buildJournalMergeSim } from './vectors/journal-merge-sim'
 import { buildTagFold } from './vectors/tag-fold'
 import { buildTagSchemaRefs } from './vectors/tag-schema-refs'
 import { buildTaskFiltering } from './vectors/task-filtering'
@@ -89,7 +90,13 @@ const CLASSES: readonly VectorClass[] = [
   { name: 'compression', files: [{ path: 'compression.json', build: buildCompression }] },
   { name: 'field-merge', files: [{ path: 'field-merge.json', build: buildFieldMerge }] },
   { name: 'settings-merge', files: [{ path: 'settings-merge.json', build: buildSettingsMerge }] },
-  { name: 'journal-merge', files: [{ path: 'journal-merge.json', build: buildJournalMerge }] },
+  {
+    name: 'journal-merge',
+    files: [
+      { path: 'journal-merge.json', build: buildJournalMerge },
+      { path: 'journal-merge-sim.json', build: buildJournalMergeSim }
+    ]
+  },
   { name: 'recreate-clock', files: [{ path: 'recreate-clock.json', build: buildRecreateClock }] },
   {
     name: 'versioned-values',

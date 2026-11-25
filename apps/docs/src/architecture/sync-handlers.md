@@ -93,22 +93,25 @@ value is the only one that ever has it. A merge where every local clock is equal
 nothing, so pulling back your own push does not loop.
 
 Journals keep the document-level rule for every key but `tags` and `properties`, which merge per
-unit since #5508 (chapter 06 §6.12): `mergeJournalFields()` (`journal-merge.ts`) runs `mergeFields()`
-over `tags.<tagKey>` and `properties.<key>` units, and a winner with no value removes the unit, so a
-removed tag stays removed. A unit's clock is the document clock its writer last wrote it at, and a
-side's unit clocks count only while `fieldClocksAt` equals its `clock`; an older build keeps the keys
-but ticks the clock past the stamp, so its payload is read whole at its clock: every unit either
-side names takes that clock, and a unit missing from its value is a removal. An untrusted local side
-proves no unit clock, so the remote wins each of its units: its clock carries this device's own
-ticks since it last synced, which would otherwise outrank an older build's removal. A record's clock
+unit since #5508 (chapter 06 §6.12): `mergeJournalFields()` (`journal-merge.ts`) decides each
+`tags.<tagKey>` and `properties.<key>` unit by its claims, and a winner with no value removes the
+unit, so a removed tag stays removed. A unit's clock is the document clock its writer last wrote it
+at, and a side's unit clocks count only while `fieldClocksAt` equals its `clock`. An older build keeps
+the keys but ticks the clock past the stamp, so its payload is read whole at its clock. An untrusted
+side, local or remote, clocks no unit, and its clock is its floor on every unit. A floor beats only a
+claim it strictly dominates, so a concurrent write its writer never saw survives. A record's clock
 never becomes a unit clock: a day applied whole from an untrusted record is kept with no unit clocks
 and the record's clock as `fieldClocksFloor`, which covers every unit `fieldClocks` does not name.
 The next edit carries that floor, so a device that still holds a tag the older build removed drops
-it too (#5572). A floor beats only a claim it strictly dominates, so a concurrent write the older
-build never saw survives. Desktop diffs
-the day file against the last synced fields it keeps in `sync_state` (`journal-fields.ts`); a day
-with no such base, last synced by an older build, is pushed whole without unit clocks until a pull
-writes the base. The Rust core restamps in `apply_local_edit_in`. The shared `journal-merge.json` vectors run against both.
+it too (#5572). A merge keeps, per unit no stamped write won, the floor its value supersedes, and
+stores it in `fieldFloors` where it differs from the record floor, so the record floor never claims
+the losing side's copy. A merge that changed the remote's fields is stored at the union clock ticked
+for this device and re-queued (`'conflict'` on desktop); one that holds the remote's fields is stored
+at the union clock and not pushed. Desktop diffs the day file against the last synced fields it keeps
+in `sync_state` (`journal-fields.ts`); a day with no such base, last synced by an older build, is
+pushed whole without unit clocks until a pull writes the base. The Rust core restamps in
+`apply_local_edit_in`. The shared `journal-merge.json` and `journal-merge-sim.json` vectors run
+against both.
 
 Agent message sync is append-only. If a message id already exists locally, the handler treats the
 remote item as idempotent instead of overwriting a terminal message.

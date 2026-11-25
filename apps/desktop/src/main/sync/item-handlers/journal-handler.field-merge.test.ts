@@ -16,10 +16,12 @@ const vaultPath = path.join(root, 'vault')
 const userDataDir = path.join(root, 'user-data')
 fs.mkdirSync(userDataDir, { recursive: true })
 
-const { currentDb, purge, logger } = vi.hoisted(() => {
+const { currentDb, deviceId, purge, logger } = vi.hoisted(() => {
   const slot: { value: unknown } = { value: null }
   return {
     currentDb: slot,
+    // This device's clock id, which a re-queued merge ticks (§6.12.3).
+    deviceId: { value: 'L' },
     purge: vi.fn(() => Promise.resolve()),
     logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
   }
@@ -67,6 +69,9 @@ vi.mock('../../vault/notes', () => ({
   toAbsolutePath: (p: string) => path.join(vaultPath, p)
 }))
 vi.mock('../../vault/status', async () => await import('../../vault/index'))
+vi.mock('../journal-sync', () => ({
+  getJournalSyncService: () => ({ getDeviceId: () => deviceId.value })
+}))
 vi.mock('../../vault/index', () => ({
   getStatus: () => ({ path: vaultPath, isOpen: true }),
   getConfig: () => ({ journalFolder: 'journal', defaultNoteFolder: 'notes' })
@@ -96,6 +101,7 @@ describe('concurrent journal tag and property edits (#5508)', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    deviceId.value = 'L'
     freshDevice()
   })
 
@@ -131,6 +137,7 @@ describe('concurrent journal tag and property edits (#5508)', () => {
   }
 
   it('keeps a local tag add and a concurrent remote property set', () => {
+    deviceId.value = 'A'
     apply(base)
     editLocally(['lm-jtag', 't-a'], { mood: 'good' }, { X: 1, A: 1 })
 
@@ -152,7 +159,8 @@ describe('concurrent journal tag and property edits (#5508)', () => {
     const payload = pushed()
     expect(payload.tags).toEqual(['lm-jtag', 't-a'])
     expect(payload.properties).toEqual({ mood: 'good', p3c: 'c-val' })
-    expect(payload.clock).toEqual({ X: 1, A: 1, C: 1 })
+    // The re-queued merge is ticked for this device, so its push dominates both.
+    expect(payload.clock).toEqual({ X: 1, A: 2, C: 1 })
     expect(payload.fieldClocksAt).toEqual(payload.clock)
     expect(payload.fieldClocks?.['tags.t-a']).toEqual({ X: 1, A: 1 })
     // The body is the CRDT's: the merge leaves the file body alone.
@@ -186,8 +194,8 @@ describe('concurrent journal tag and property edits (#5508)', () => {
     editLocally(['lm-jtag'], { mood: 'good', mine: 1 }, { X: 1, A: 1 })
 
     // An older build kept the stamp but ticked the clock and removed `mood`.
-    // Its record is read whole at its clock, which dominates this device's
-    // tick on every unit: `mine` loses as it would under today's rule.
+    // Its record is read whole at its clock, a floor (§6.12.1): it removes
+    // `mood`, which it supersedes, but `mine` is a write it never saw.
     apply({
       date: DATE,
       content: null,
@@ -200,7 +208,7 @@ describe('concurrent journal tag and property edits (#5508)', () => {
 
     const payload = pushed()
     expect(payload.tags).toEqual(['lm-jtag'])
-    expect(payload.properties).toBeNull()
+    expect(payload.properties).toEqual({ mine: 1 })
   })
 
   // REVIEW-5529 finding 1: an older build removed a tag and a property while
@@ -245,6 +253,44 @@ describe('concurrent journal tag and property edits (#5508)', () => {
       expect(payload.properties).toBeNull()
     }
   )
+
+  it('applies a merge that holds the remote’s fields without re-queuing it', () => {
+    dayWithNoBase(2)
+
+    // §6.12.3: nothing to push, so `'applied'`, stored at the union clock.
+    expect(apply(oldBuildRemoval)).toBe('applied')
+
+    expect(pushed().clock).toEqual({ X: 1, N: 2, O: 1 })
+  })
+
+  it('pushes and keeps the unit floor of a value only one concurrent floor covers', () => {
+    deviceId.value = 'D'
+    apply({ ...base, tags: ['d'], properties: {}, clock: { X: 1, D: 1 } })
+    editLocally(['d'], { k: 1 }, { X: 1, D: 2 })
+
+    // E's removal of d and D's copy of it sit under concurrent floors.
+    const merged = apply({
+      ...base,
+      content: null,
+      tags: [],
+      properties: {},
+      clock: { X: 1, E: 1 }
+    })
+
+    expect(merged).toBe('conflict')
+    const payload = pushed()
+    expect(payload.tags).toEqual([])
+    expect(payload.clock).toEqual({ X: 1, D: 3, E: 1 })
+    expect(payload.fieldClocksFloor).toEqual({ X: 1, D: 1, E: 1 })
+    expect(payload.fieldFloors).toEqual({ 'tags.d': { X: 1, E: 1 } })
+
+    // A device that applies the push whole carries the unit floor on.
+    testDb.close()
+    freshDevice()
+    expect(apply(payload)).toBe('applied')
+    editLocally([], { k: 2 }, { X: 1, D: 3, E: 1, F: 1 })
+    expect(pushed().fieldFloors).toEqual({ 'tags.d': { X: 1, E: 1 } })
+  })
 
   it('pushes a day with no synced base whole and still keeps an older build’s removal', () => {
     dayWithNoBase(2)
