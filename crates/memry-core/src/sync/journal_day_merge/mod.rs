@@ -272,12 +272,11 @@ fn settle(
     // The foreign state as a local edit of the canonical day: what it
     // authors is exactly the part the day does not hold yet, so a repeat
     // authors nothing and queues nothing.
-    let update = body_write::author_with(conn, canonical, device_id, |document| {
+    let tx = nested_tx::begin(conn).map_err(failed)?;
+    let update = body_write::author_with(&tx, canonical, device_id, |document| {
         document.apply_local_update(&state)
     })
     .map_err(crdt_failed)?;
-
-    let tx = nested_tx::begin(conn).map_err(failed)?;
     if let Some(update) = update {
         body_write::append_in(&tx, ITEM_TYPE, canonical, &update, now_ms).map_err(crdt_failed)?;
     }

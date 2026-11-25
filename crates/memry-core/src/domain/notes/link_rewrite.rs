@@ -200,13 +200,13 @@ fn rewrite_source(
     if !may_link {
         return Ok(());
     }
-    let Some(update) = body_write::author_with(conn, id, device_id, |document| {
+    let tx = nested_tx::begin(conn).map_err(failed)?;
+    let Some(update) = body_write::author_with(&tx, id, device_id, |document| {
         document.write(|txn| rewrite_document(conn, txn, rules))?
     })?
     else {
         return Ok(());
     };
-    let tx = nested_tx::begin(conn).map_err(failed)?;
     body_write::append_in(&tx, item_type, id, &update, now_ms)?;
     tx.commit().map_err(failed)?;
     Ok(())
