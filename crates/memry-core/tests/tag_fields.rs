@@ -21,6 +21,7 @@ fn open() -> Db {
     let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
     let dir =
         std::env::temp_dir().join(format!("memry-tag-fields-{}-{unique}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).expect("the scratch directory");
     open_data(&dir.join("data.db")).expect("open data.db")
 }

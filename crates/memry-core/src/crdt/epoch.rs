@@ -109,8 +109,8 @@ pub(crate) fn client_id(
 /// id, and the clock it mints is the one after the log it replayed. Two
 /// connections that each replay the log and then append would mint the same
 /// `(client, clock)` twice, and a log holding both no longer replays. Every
-/// core transaction is `BEGIN IMMEDIATE` ([`crate::storage::nested_tx`]), so
-/// a write that replays, authors, and appends inside one holds the file's
+/// core transaction outside the schema migrations is `BEGIN IMMEDIATE`
+/// ([`crate::storage::nested_tx`]), so a write that replays, authors, and appends inside one holds the file's
 /// write lock from the replay to the commit, across connections and
 /// processes.
 pub(crate) fn require_write_lock(conn: &Connection, doc_id: &str) -> Result<(), CrdtError> {
