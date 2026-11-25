@@ -1,7 +1,7 @@
 import { execFileSync, spawn } from 'child_process'
 import os from 'os'
 import { describe, expect, it } from 'vitest'
-import { lowerProcessPriority, moveToBackground } from './low-priority'
+import { lowerProcessPriority, moveToBackground, setBackgroundQos } from './low-priority'
 
 describe('lowerProcessPriority', () => {
   it('drops a running process to the lowest priority, and ignores one that is gone', async () => {
@@ -22,7 +22,7 @@ describe('lowerProcessPriority', () => {
 describe('moveToBackground', () => {
   // Darwin background QoS shows as scheduling priority 4 in ps.
   it.runIf(process.platform === 'darwin')(
-    'puts a running process in background QoS, and ignores one that is gone',
+    'puts a running process in background QoS and back, and ignores one that is gone',
     async () => {
       const child = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 10000)'])
       const pid = child.pid
@@ -37,6 +37,10 @@ describe('moveToBackground', () => {
         await moveToBackground(pid)
         expect(scheduling()).toBe(4)
         expect(os.getPriority(pid)).toBe(os.constants.priority.PRIORITY_LOW)
+        // Back out first: on a busy machine a background process may not run
+        // long enough to act on the kill.
+        await setBackgroundQos(pid, false)
+        expect(scheduling()).toBeGreaterThan(4)
 
         child.kill()
         await new Promise((resolve) => child.once('exit', resolve))
