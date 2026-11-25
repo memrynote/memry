@@ -21,9 +21,9 @@
 //! 4. the tombstone carries the deleter's body state vector and this device's
 //!    body log holds an item it does not cover (#3037).
 //!
-//! A journal day whose vault file holds bytes the document never took (an
-//! outside edit the vault has not read yet) keeps that file's text whatever
-//! the four rules say (#5758).
+//! A note or journal day whose vault file holds bytes the document never took
+//! (an outside edit the vault has not read yet) keeps that file's text
+//! whatever the four rules say (#5758, #5796).
 //!
 //! The core never writes markdown, so the copy holds [`extract_text`]'s plain
 //! text: words, headings and list markers, without inline formatting. A body
@@ -194,15 +194,12 @@ pub(crate) fn keep(
         Ok(state_vector) => facts.local_body_state_vector = Some(BASE64.encode(state_vector)),
         Err(error) => eprintln!("memry-core: no state vector for the body of {item_id}: {error}"),
     }
-    // A journal day's file edited outside the app that the document has not taken yet (a
+    // Invariant: a file this device has not ingested is never deleted unseen. A note's or
+    // journal day's file edited outside the app that the document has not taken yet (a
     // closed-app edit the open walk has not reached, one still in the watcher's debounce) holds
     // text no clock or body log here knows of: it is unseen whatever the clocks say, and the
-    // copy keeps the file's text (#5758, desktop's #5757).
-    let unseen_file = if item_type == journal::ITEM_TYPE {
-        untaken_file_body(tx, vault_root, item_id)?
-    } else {
-        None
-    };
+    // copy keeps the file's text (#5758, #5796, desktop's #5757).
+    let unseen_file = untaken_file_body(tx, vault_root, item_id)?;
     let forced = unseen_file.is_some();
     if !forced && !keeps_unseen_text(&facts) {
         return Ok(());
