@@ -16,7 +16,7 @@ use memry_core::markdown::shared::writing_tools::{WritingFrontmatter, merge_writ
 use memry_core::seams::secure_store::SecureStore;
 
 use super::journal::{Dated, dated_block, set_date};
-use super::place::{Found, Mark, Patch, Pulled, header_tags_of, patch};
+use super::place::{Found, Mark, Patch, Pulled, header_tags_of, owed_aliases, patch};
 use crate::attachments;
 use crate::locks::Locks;
 use crate::vault::app_edit::OwnFiles;
@@ -141,6 +141,13 @@ impl Pass {
         self.pulled.mark(note_id, title_before);
     }
 
+    /// The note's record was strictly newer than its file when the file was first named
+    /// (`Adoption::ExistingNewer`): its next pass writes the file's `aliases` key alone
+    /// (`place::owed_aliases`) and never moves the file.
+    pub fn mark_record_newer(&self, note_id: &str) {
+        self.pulled.mark_in_place(note_id);
+    }
+
     /// Writes the note's body to its file, or says why the file was kept.
     pub fn run(&self, note_id: &str) -> Outcome {
         self.run_checked(note_id, &mut || {})
@@ -180,7 +187,7 @@ impl Pass {
             self.pulled.take(note_id);
             return Outcome::Kept(Keep::NotMarkdown);
         }
-        let Some(row_hash) = row.content_hash else {
+        let Some(row_hash) = row.content_hash.clone() else {
             return Outcome::Kept(Keep::NotRead);
         };
         let file = match read_note(&self.root, &row.path) {
@@ -194,6 +201,8 @@ impl Pass {
         if file.hash != row_hash {
             return Outcome::Kept(Keep::FileChanged);
         }
+        // A live day's file stands at its date's path (`day_place`, #5786).
+        let day_place = self.place_day(&mut lane, &row);
         // A pulled change: taken here, and given back to the next pass when this one stops.
         let pulled = match self.pulled.take(note_id) {
             None => None,
@@ -219,9 +228,9 @@ impl Pass {
             }
             outcome
         };
-        let mut path = row.path.clone();
-        let mut moved = false;
-        // A day's path is its date's: it is never placed.
+        let mut moved = day_place.is_some();
+        let mut path = day_place.unwrap_or_else(|| row.path.clone());
+        // A day's path is its date's (`day_place`): a pulled record never places it.
         let places = pulled
             .as_ref()
             .zip(waiting.as_mut())
@@ -243,15 +252,23 @@ impl Pass {
                 }
             }
         }
+        let aliases_only = waiting.as_ref().is_some_and(|mark| mark.aliases_only);
         let pulled = pulled.as_ref().map(|(_, record)| record);
-        let patch = pulled.map(|record| Patch {
+        let patch = pulled.filter(|_| !aliases_only).map(|record| Patch {
             record,
             types: self.property_types(),
         });
         let made = (&*self.vault, self.settings.as_ref(), self.root.as_path());
         let output = match output_over(made, note_id, &path, &file, patch.as_ref()) {
-            Ok(output) => output,
+            Ok(output) => match pulled.filter(|_| aliases_only) {
+                Some(record) => owed_aliases(output, record),
+                None => Ok(output),
+            },
             Err(outcome) => return wait(waiting, move_again, outcome),
+        };
+        let output = match output {
+            Ok(output) => output,
+            Err(why) => return wait(waiting, move_again, Outcome::Failed(why)),
         };
         let patched = pulled.is_some()
             && split_frontmatter_block(&file.raw).block != split_frontmatter_block(&output).block;

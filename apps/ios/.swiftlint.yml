@@ -73,6 +73,20 @@ custom_rules:
       added to this rule's excluded list.
     severity: error
 
+  # #5484, #5780. A test that posted willResignActive to the app-wide center
+  # committed the dirty, focused fields of other editor suites running in
+  # parallel: a drop landed nowhere, and a resumed continuation crashed the
+  # host. A test posts app lifecycle notifications to its own page's center.
+  app_lifecycle_posts_stay_private:
+    name: 'a test leaves the app on its own center'
+    regex: 'NotificationCenter\.default\.post\(\s*name:\s*UIApplication\.'
+    included: '.*Tests/.*\.swift'
+    message: >
+      Post to a NotificationCenter() handed to the page under test
+      (NoteReadView/NoteEditorViewModel/JournalDayPageModel `notifications:`,
+      or `.environment(\.appLifecycle, center)`), not to .default.
+    severity: error
+
 force_cast:
   severity: error
 

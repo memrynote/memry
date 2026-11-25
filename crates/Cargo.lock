@@ -4531,6 +4531,7 @@ dependencies = [
  "objc2-service-management",
  "objc2-user-notifications",
  "objc2-web-kit",
+ "rusqlite",
  "rust-ini",
  "rustls",
  "semver",

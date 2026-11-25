@@ -57,6 +57,7 @@ struct JournalDayPage: View {
             .padding(.vertical, Tokens.Space.medium)
         }
         .scrollDismissesKeyboard(.interactively)
+        .environment(\.appLifecycle, model?.editor.notifications ?? .default)
         // The keyboard accessory is floating glass: paint the page colour under
         // it and drop the bottom edge blur, or the strip behind the toolbar reads
         // as a black band with a shadow over it.

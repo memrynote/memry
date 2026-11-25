@@ -88,6 +88,7 @@ use crate::vault::notices::{Listed, VaultNotices};
 
 mod aliases;
 pub(crate) mod file;
+mod found;
 mod large;
 mod moving;
 mod new_files;
@@ -398,11 +399,7 @@ impl NoteIdentity for NotesIdentity {
             }
         };
         let adopted = adopted.map_err(|error| IdentityError::Other(error.to_string()))?;
-        if let Adopted::Created(id) | Adopted::Existing(id) = &adopted {
-            aliases::found(&writer, id, text);
-            properties::found(&writer, ctx, self.store.clone(), id, text)?;
-        }
-        Ok(self.adoption(adopted, ctx.root, file.path))
+        self.found(ctx, &writer, adopted, file, text)
     }
 
     fn may_be_new(&self, ctx: &IdentityCtx<'_>, files: &[Candidate<'_>]) -> Vec<bool> {
@@ -473,8 +470,9 @@ impl NoteIdentity for NotesIdentity {
         ctx: &IdentityCtx<'_>,
         note_id: &str,
         file: &NoteFile,
-    ) -> Result<(), IdentityError> {
-        large::left(self, ctx, note_id, file)
+        modified_ms: i64,
+    ) -> Result<bool, IdentityError> {
+        large::left(self, ctx, note_id, file, modified_ms)
     }
 
     /// A move that keeps what the file is reaches the record (`renameKeepsJournalDate`). One
