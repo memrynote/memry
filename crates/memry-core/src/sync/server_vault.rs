@@ -64,6 +64,7 @@ pub fn bound(conn: &Connection) -> Result<Option<String>, StorageError> {
 pub struct RecordVault {
     stamp: String,
     local: String,
+    bound: bool,
 }
 
 impl RecordVault {
@@ -71,8 +72,10 @@ impl RecordVault {
     /// the next write. `local` is the vault's own id, which an unbound vault
     /// states and which its server id becomes when it binds first.
     pub fn read(conn: &Connection, local: &str) -> Result<Self, StorageError> {
+        let server = bound(conn)?;
         Ok(Self {
-            stamp: bound(conn)?.unwrap_or_else(|| local.to_owned()),
+            bound: server.is_some(),
+            stamp: server.unwrap_or_else(|| local.to_owned()),
             local: local.to_owned(),
         })
     }
@@ -83,9 +86,22 @@ impl RecordVault {
     }
 
     /// The local id, which records written before the bind, or by a build before #5505, state
-    /// until [`restamp`] runs. A vault lists records of either id.
+    /// until [`restamp`] runs. An unbound vault lists records of either id.
     pub fn local(&self) -> &str {
         &self.local
+    }
+
+    /// Whether this vault lists and opens every live record whatever `vaultId` it states.
+    /// Invariant: a bound vault does. Its `data.db` belongs to the one server vault [`bind`]
+    /// accepts, and the server serves a device only the items of the `X-Memry-Vault-Id` vault
+    /// (`sync_items` is keyed by `user_id, vault_id`), so every pulled record is this vault's,
+    /// whichever pre-bind id its writer stated (Electron's own uuid, or a Rust device's local id
+    /// before its [`restamp`]). A filter on `vaultId` would hide those on every fresh device, and
+    /// pushing them again under the server id would race their writer's next edit into a
+    /// conflict copy (#5812). An account's other vaults sync into other `data.db` files, so no
+    /// foreign record is here to hide. A pull therefore never queues a record to fix its id.
+    pub fn lists_every_record(&self) -> bool {
+        self.bound
     }
 }
 
@@ -95,7 +111,9 @@ impl RecordVault {
 /// remote states the bound server id, which wins (#5669, #5784).
 /// Invariant: a merge never moves a record off the bound id. A peer that pulled a record before
 /// its writer's [`restamp`] stores the writer's old local id; keeping that over the restamp would
-/// push it again, and every fresh device would hide the record. `None` when neither side states
+/// push it again on the peer's next edit, and Electron lists by `vaultId`. A fast-forward over a
+/// remote stating another id keeps the stored one and queues nothing: every bound vault lists the
+/// record whatever it states ([`RecordVault::lists_every_record`]). `None` when neither side states
 /// a string, so the merge leaves the key as the winning payload has it.
 pub(crate) fn merged_vault_id(
     conn: &Connection,
@@ -114,46 +132,6 @@ pub(crate) fn merged_vault_id(
         return Ok(Some(remote_id));
     }
     Ok(stated(local))
-}
-
-/// Pushes a record that a fast-forward stored under the bound server id while the dominating remote
-/// states another id, which [`merged_vault_id`] kept off the record (#5784, #5812).
-/// Invariant: a record this device holds under the server vault id is never left on the server
-/// under a pre-bind id. A fresh device lists only the server id and its own local id, and a
-/// pre-#5784 or Electron peer pushes the id it stored, so the server copy would stay hidden.
-/// The fast-forward stored the remote's clock, which the server already holds and refuses to see
-/// again (`detectReplay`), so the record is a local edit under this device's next tick, queued
-/// once. The echo states the server id, so pulling it queues nothing; a peer that states the old
-/// id again costs one push per edit of its. A concurrent merge stores a clock past the remote's
-/// and re-queues on its own, so it is left as it is. `clock_device` is this device's clock id.
-pub(crate) fn repush_kept(
-    tx: &Connection,
-    item_type: &str,
-    item_id: &str,
-    remote: &Object,
-    clock_device: Option<&str>,
-    now_ms: i64,
-) -> Result<(), StorageError> {
-    let Some(server) = bound(tx)? else {
-        return Ok(());
-    };
-    let Some(stored) = desktop_records::stored(tx, item_type, item_id, true)? else {
-        return Ok(());
-    };
-    let held = stored.object().get("vaultId").and_then(Value::as_str);
-    if held != Some(server.as_str())
-        || remote.get("vaultId").and_then(Value::as_str) == held
-        || compare(&clock_in(stored.object())?, &clock_in(remote)?) != ClockOrder::Equal
-    {
-        return Ok(());
-    }
-    let device = clock_device.ok_or_else(|| StorageError::Failed {
-        what: format!(
-            "{item_type} {item_id} keeps the server vault id over a remote and this pull has no \
-             device clock id to push it"
-        ),
-    })?;
-    push_edit(tx, item_type, item_id, &stored, Vec::new(), device, now_ms)
 }
 
 /// Writes `changes` under `device_id`'s next tick and queues the record, unless it is a

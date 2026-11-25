@@ -24,8 +24,6 @@
 //!   `ownerNoteId` absent from the remote mean an older client that never
 //!   stated them, and `null` is a real clear. `vaultId` stays local unless the
 //!   remote states the bound server id ([`server_vault::merged_vault_id`], #5669).
-//!   A fast-forward that keeps the bound id over the remote's pushes it once
-//!   ([`server_vault::repush_kept`], #5812).
 //! - **A restamp contests only `vaultId`** ([`server_vault::restamp`], which
 //!   desktop's handler does not know). A concurrent remote restamp whose base
 //!   this live canvas is strictly after leaves this canvas as it is under the
@@ -92,7 +90,7 @@ pub fn apply_remote(
         if !remote.object().get("vaultId").is_some_and(Value::is_string) {
             return Ok(Inbound::Skipped);
         }
-        return finish(tx, record, now_ms, false, remote.object(), clock_device);
+        return finish(tx, record, now_ms, false);
     };
 
     let merged_clock = match task_merge::document_gate(&tx, record)? {
@@ -133,14 +131,7 @@ pub fn apply_remote(
         payload_json: winner.merge(&changes),
         ..record.clone()
     };
-    finish(
-        tx,
-        &merged,
-        now_ms,
-        merged_clock.is_some(),
-        remote.object(),
-        clock_device,
-    )
+    finish(tx, &merged, now_ms, merged_clock.is_some())
 }
 
 /// The remote payload's edits that keep what desktop keeps: an absent
@@ -200,15 +191,11 @@ fn write_conflict_copy(
     Ok(())
 }
 
-/// Stores `record`, the `remote` with the merge's edits. A merge is re-queued; a fast-forward that
-/// kept the server vault id over the remote's is pushed ([`server_vault::repush_kept`]).
 fn finish(
     tx: nested_tx::NestedTx<'_>,
     record: &InboundRecord,
     now_ms: i64,
     merged: bool,
-    remote: &Object,
-    clock_device: Option<&str>,
 ) -> Result<Inbound, StorageError> {
     let kept;
     let record = if merged {
@@ -223,15 +210,6 @@ fn finish(
     let outcome = sync_items::apply_remote_in(&tx, record, now_ms)?;
     if merged && outcome == ApplyOutcome::Applied {
         requeue::requeue(&tx, ITEM_TYPE, &record.item_id, now_ms)?;
-    } else if outcome == ApplyOutcome::Applied {
-        server_vault::repush_kept(
-            &tx,
-            ITEM_TYPE,
-            &record.item_id,
-            remote,
-            clock_device,
-            now_ms,
-        )?;
     }
     tx.commit().map_err(failed)?;
     Ok(match outcome {

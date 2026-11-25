@@ -22,9 +22,7 @@
 //!   local one unless the remote states the bound server id (#5784), on this
 //!   path and over a dominating remote alike, so a peer that stored a
 //!   conversation before its writer's restamp takes the restamp and a remote
-//!   stating the pre-bind id never moves a conversation off the bound id. A
-//!   fast-forward that keeps the bound id over the remote's pushes it once
-//!   ([`server_vault::repush_kept`], #5812).
+//!   stating the pre-bind id never moves a conversation off the bound id.
 //! - **No key installed**: Electron skips the record (`:92-100`), which loses
 //!   it once the cursor moves. Here the plain remote is stored and marked
 //!   sealed-pending until `Vault::set_at_rest_key` seals it. On a concurrent
@@ -61,15 +59,12 @@ use crate::sync::server_vault;
 
 use super::{ITEM_TYPE, NOT_NULL, SYNCABLE_FIELDS};
 
-/// Applies one inbound `agent_conversation` record. `clock_device` is this device's clock id,
-/// which a fast-forward that keeps the server vault id needs to push it
-/// ([`server_vault::repush_kept`]).
+/// Applies one inbound `agent_conversation` record.
 pub fn apply_remote(
     conn: &Connection,
     record: &InboundRecord,
     key: &AtRestKey,
     now_ms: i64,
-    clock_device: Option<&str>,
 ) -> Result<Inbound, StorageError> {
     if record.deleted_at.is_some() {
         return store_inbound(conn, record, key, now_ms);
@@ -84,21 +79,8 @@ pub fn apply_remote(
         opened.clone().unwrap_or(local)
     })? {
         Gate::Wholesale => {
-            let kept = in_merged_vault(conn, record, opened.as_ref(), &remote)?;
-            let transaction = nested_tx::begin(conn).map_err(sql_failed)?;
-            let inbound = store_inbound(&transaction, &kept, key, now_ms)?;
-            if matches!(inbound, Inbound::Applied) {
-                server_vault::repush_kept(
-                    &transaction,
-                    ITEM_TYPE,
-                    &record.item_id,
-                    &remote,
-                    clock_device,
-                    now_ms,
-                )?;
-            }
-            transaction.commit().map_err(sql_failed)?;
-            return Ok(inbound);
+            let record = in_merged_vault(conn, record, opened.as_ref(), &remote)?;
+            return store_inbound(conn, &record, key, now_ms);
         }
         Gate::Skip => return Ok(Inbound::Skipped),
         Gate::Merge {

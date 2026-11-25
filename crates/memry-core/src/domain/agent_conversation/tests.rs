@@ -479,9 +479,10 @@ pub(super) fn storage(error: AgentError) -> StorageError {
 
 /// #5505: a vault that downloaded the account vault binds the server id over its own local id.
 /// A conversation made here states the server id, and the list keeps one pulled under the
-/// server id and one made before the bind, never another vault's.
+/// server id, one made before the bind, and one pulled under another id: the bound vault's feed
+/// holds only its own records, whatever id their writer stated before its bind (#5812).
 #[test]
-fn a_bound_vault_states_the_server_id_and_lists_under_either_id() {
+fn a_bound_vault_states_the_server_id_and_lists_every_conversation() {
     let (db, _dir) = open("agent-conversation-server-vault");
     db.call_blocking(|conn| {
         let key = key();
@@ -518,7 +519,12 @@ fn a_bound_vault_states_the_server_id_and_lists_under_either_id() {
             .map(|conversation| conversation.id)
             .collect();
         ids.sort();
-        let mut expected = vec![before.id, after.id, "pulled".to_owned()];
+        let mut expected = vec![
+            before.id,
+            after.id,
+            "pulled".to_owned(),
+            "elsewhere".to_owned(),
+        ];
         expected.sort();
         assert_eq!(ids, expected);
         Ok(())

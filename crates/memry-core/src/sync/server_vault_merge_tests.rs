@@ -1,17 +1,18 @@
-//! [`super::merged_vault_id`] and [`super::repush_kept`] on a real `data.db`: a merge keeps the
-//! bound server id over a remote stating a restamped record's pre-bind id (#5784), and a
-//! fast-forward pushes it once, so the server copy reaches a fresh device (#5812).
+//! [`super::merged_vault_id`] and [`super::RecordVault::lists_every_record`] on a real `data.db`:
+//! a merge keeps the bound server id over a remote stating a restamped record's pre-bind id
+//! (#5784), and a bound vault lists a record of any pre-bind id, so a pull never pushes (#5812).
 
+use rusqlite::Connection;
 use serde_json::{Value, json};
 
 use super::restamp_tests::{conversation, pushed};
 use super::{bind, restamp};
+use crate::api::errors::StorageError;
 use crate::crypto::agent_envelope::AtRestKey;
 use crate::domain::desktop_records::testing::{
     DEVICE, NOW, clock, open, payload, pull, queued, remote,
 };
 use crate::domain::{agent_conversation, agent_queue, canvas, canvas_folder};
-use crate::sync::clock::{ClockOrder, compare};
 
 const LOCAL: &str = "local-vault";
 const SERVER: &str = "server-vault";
@@ -65,95 +66,167 @@ fn a_restamped_conversation_keeps_the_server_id_over_a_peers_concurrent_title() 
     }
 }
 
-/// #5812: a build before #5784, or Electron, pushes the pre-bind id under a clock past the
-/// restamp. The fast-forward keeps the server id and pushes it once under this device's next
-/// tick; its echo queues nothing, and a fresh device bound to the server id lists the record.
-#[test]
-fn a_fast_forward_over_a_pre_bind_id_pushes_the_server_id_once() {
-    let (db, _dir) = open("repush-kept");
-    let ids = db
-        .call_blocking(|conn| {
-            canvas::create(conn, &canvas::NewCanvas::default(), LOCAL, DEVICE, NOW)?;
-            let folder = canvas_folder::upsert(conn, LOCAL, "Work", None, DEVICE, NOW)?;
-            let chat = conversation(conn)?;
-            agent_queue::backfill(conn, LOCAL, NOW)?;
-            let canvas_id = canvas::list(conn, LOCAL)?[0].id.clone();
-            let ids = [
-                ("canvas", canvas_id),
-                ("canvas_folder", folder.id),
-                ("agent_conversation", chat),
-            ];
-            let before: Vec<Value> = ids
-                .iter()
-                .map(|(item_type, id)| payload(conn, item_type, id))
-                .collect();
-            pushed(conn)?;
-            bind(conn, SERVER)?;
-            assert_eq!(restamp(conn, LOCAL, DEVICE, NOW + 1)?, 3);
-            pushed(conn)?;
-            Ok(ids.into_iter().zip(before).collect::<Vec<_>>())
-        })
-        .expect("restamp");
-    let (fresh, _fresh_dir) = open("repush-kept-fresh");
-    fresh
-        .call_blocking(|conn| bind(conn, SERVER))
-        .expect("bind");
-    for ((item_type, id), before) in ids {
-        let (id, server, pushes, echo) = db
-            .call_blocking(move |conn| {
-                let mut stale = before;
-                stale["clock"] = json!(clock(conn, item_type, &id));
-                stale["clock"]["peer-q"] = json!(1);
-                if item_type == "agent_conversation" {
-                    stale["fieldClocks"]["title"] = stale["clock"].clone();
-                }
-                pull(conn, vec![remote(item_type, &id, &stale)])?;
-                let after = payload(conn, item_type, &id);
-                assert_eq!(after["vaultId"], json!(SERVER), "{item_type}");
-                let pushes = queued(conn, item_type, &id);
-                let stale_clock = serde_json::from_value(stale["clock"].clone()).expect("clock");
-                let order = compare(&clock(conn, item_type, &id), &stale_clock);
-                // The server stores a push only under a clock past the one it holds.
-                let server = if pushes > 0 && order == ClockOrder::After {
-                    after
-                } else {
-                    stale
-                };
-                pushed(conn)?;
-                // The echo, as a peer's later edit over it states it: the server id.
-                let mut echo = server.clone();
-                echo["clock"]["peer-q"] = json!(2);
-                pull(conn, vec![remote(item_type, &id, &echo)])?;
-                let echoed = queued(conn, item_type, &id);
-                Ok((id, server, pushes, echoed))
-            })
-            .expect("fast-forward");
-        let body = server.clone();
-        let listed = fresh
-            .call_blocking(move |conn| {
-                pull(conn, vec![remote(item_type, &id, &body)])?;
-                Ok(match item_type {
-                    "canvas" => canvas::list(conn, "fresh-local")?
-                        .iter()
-                        .any(|c| c.id == id),
-                    "agent_conversation" => {
-                        agent_conversation::list(conn, &AtRestKey::default(), "fresh-local")
-                            .map_err(|error| crate::api::errors::StorageError::Failed {
-                                what: error.to_string(),
-                            })?
-                            .iter()
-                            .any(|c| c.id == id)
-                    }
-                    // Folders list unfiltered here; Electron's filter on `vaultId` hides them.
-                    _ => body["vaultId"] == json!(SERVER),
-                })
-            })
-            .expect("fresh device");
-        assert!(listed, "a fresh device lists the {item_type}");
-        assert_eq!(
-            pushes, 1,
-            "{item_type} pushes it once, past the remote's clock"
-        );
-        assert_eq!(echo, 0, "{item_type} echo queues nothing");
+/// The three types that state a vault, each with an id, written by a device whose vault id is
+/// [`LOCAL`]: an Electron peer, or a Rust device before its bind. Returns the payloads it pushed.
+fn written_under_local(
+    conn: &Connection,
+) -> Result<Vec<(&'static str, String, Value)>, StorageError> {
+    canvas::create(conn, &canvas::NewCanvas::default(), LOCAL, DEVICE, NOW)?;
+    let folder = canvas_folder::upsert(conn, LOCAL, "Work", None, DEVICE, NOW)?;
+    let chat = conversation(conn)?;
+    agent_queue::backfill(conn, LOCAL, NOW)?;
+    let canvas_id = canvas::list(conn, LOCAL)?[0].id.clone();
+    Ok([
+        ("canvas", canvas_id),
+        ("canvas_folder", folder.id),
+        ("agent_conversation", chat),
+    ]
+    .into_iter()
+    .map(|(item_type, id)| {
+        let body = payload(conn, item_type, &id);
+        (item_type, id, body)
+    })
+    .collect())
+}
+
+fn agent(error: crate::domain::agent_records::AgentError) -> StorageError {
+    StorageError::Failed {
+        what: error.to_string(),
     }
+}
+
+/// Whether the vault whose own id is `local` lists and opens the record.
+fn listed_and_opened(
+    conn: &Connection,
+    local: &str,
+    item_type: &str,
+    id: &str,
+) -> Result<bool, StorageError> {
+    let key = AtRestKey::default();
+    Ok(match item_type {
+        "canvas" => {
+            canvas::list(conn, local)?.iter().any(|c| c.id == id)
+                && canvas::get(conn, id)?.is_some()
+        }
+        "canvas_folder" => {
+            let listed = canvas_folder::list(conn)?;
+            listed.iter().any(|f| f.id == id)
+                && listed.iter().all(|f| {
+                    f.id != id || canvas_folder::get(conn, &f.path).is_ok_and(|f| f.is_some())
+                })
+        }
+        _ => {
+            agent_conversation::list(conn, &key, local)
+                .map_err(agent)?
+                .iter()
+                .any(|c| c.id == id)
+                && agent_conversation::get(conn, &key, id)
+                    .map_err(agent)?
+                    .is_some()
+        }
+    })
+}
+
+/// #5812: a fresh device bound to the server vault lists and opens what an Electron peer, or a Rust
+/// device before its bind, wrote under its own vault id, stores the id as sent, and queues nothing.
+#[test]
+fn a_fresh_bound_device_lists_and_opens_records_of_a_pre_bind_id_and_queues_nothing() {
+    let (writer, _writer_dir) = open("pre-bind-writer");
+    let records = writer
+        .call_blocking(|conn| written_under_local(conn))
+        .expect("write");
+    let (fresh, _fresh_dir) = open("pre-bind-fresh");
+    fresh
+        .call_blocking(move |conn| {
+            bind(conn, SERVER)?;
+            for (item_type, id, body) in records {
+                pull(conn, vec![remote(item_type, &id, &body)])?;
+                assert!(
+                    listed_and_opened(conn, "fresh-local", item_type, &id)?,
+                    "{item_type} lists and opens"
+                );
+                assert_eq!(
+                    payload(conn, item_type, &id)["vaultId"],
+                    json!(LOCAL),
+                    "{item_type} keeps the id as sent"
+                );
+                assert_eq!(
+                    queued(conn, item_type, &id),
+                    0,
+                    "{item_type} queues nothing"
+                );
+            }
+            Ok(())
+        })
+        .expect("fresh device");
+}
+
+/// #5812: a peer that pulled a record before its writer's restamp, or Electron, pushes the pre-bind
+/// id under a clock past the restamp. The restamped device fast-forwards, keeps the server id,
+/// still lists the record, and queues nothing, so it makes no edit of its own that the peer's next
+/// edit would be concurrent with: that edit fast-forwards too, with no conflict copy.
+#[test]
+fn a_pre_bind_remote_over_a_restamped_record_queues_nothing_and_its_next_edit_makes_no_copy() {
+    let (db, _dir) = open("pre-bind-restamped");
+    db.call_blocking(|conn| {
+        let records = written_under_local(conn)?;
+        pushed(conn)?;
+        bind(conn, SERVER)?;
+        assert_eq!(restamp(conn, LOCAL, DEVICE, NOW + 1)?, 3);
+        pushed(conn)?;
+        for (item_type, id, before) in records {
+            let mut stale = before;
+            stale["clock"] = json!(clock(conn, item_type, &id));
+            stale["clock"]["peer-q"] = json!(1);
+            if item_type == "agent_conversation" {
+                stale["fieldClocks"]["title"] = stale["clock"].clone();
+            }
+            pull(conn, vec![remote(item_type, &id, &stale)])?;
+            assert_eq!(
+                payload(conn, item_type, &id)["vaultId"],
+                json!(SERVER),
+                "{item_type}"
+            );
+            assert_eq!(
+                queued(conn, item_type, &id),
+                0,
+                "{item_type} queues nothing"
+            );
+            assert!(
+                listed_and_opened(conn, LOCAL, item_type, &id)?,
+                "{item_type} lists"
+            );
+
+            // The peer's next edit, as Electron makes it over the copy the server holds.
+            let mut next = stale;
+            next["clock"]["peer-q"] = json!(2);
+            let (field, value) = match item_type {
+                "canvas" => ("scene", json!(r#"{"elements":[{"id":"peer"}]}"#)),
+                "canvas_folder" => ("icon", json!("star")),
+                _ => ("title", json!("Peer title")),
+            };
+            next[field] = value.clone();
+            if item_type == "agent_conversation" {
+                next["fieldClocks"]["title"] = next["clock"].clone();
+            }
+            pull(conn, vec![remote(item_type, &id, &next)])?;
+            assert_eq!(
+                payload(conn, item_type, &id)[field],
+                value,
+                "{item_type} edit applies"
+            );
+            assert_eq!(
+                queued(conn, item_type, &id),
+                0,
+                "{item_type} queues nothing"
+            );
+        }
+        assert_eq!(
+            canvas::list(conn, LOCAL)?.len(),
+            1,
+            "no conflict copy of the canvas"
+        );
+        Ok(())
+    })
+    .expect("restamped device");
 }
