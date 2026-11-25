@@ -456,18 +456,22 @@ its own (`apps/desktop/src/main/sync/item-handlers/note-handler.ts:268`), so
 its list keeps an id a core device removed. Core devices that adopted such a
 record carry its clock too.
 
-**Normative for the Rust core.** The first picture of a day that has no `note`
-record creates it in desktop's shape: title the date, `fileType` `markdown`,
-`folderPath` `journal`, no `content`
-(`crates/memry-core/src/domain/notes/attachments.rs:80`,
-`crates/memry-core/src/sync/day_picture_refs.rs:69`). The record carries
-`removedAttachmentReferences`, the ids a core device removed from the day
-(`crates/memry-core/src/sync/day_picture_refs.rs:56`). A local removal adds the
-id to it, and a local add takes the id out
-(`crates/memry-core/src/sync/day_picture_refs.rs:91`). An inbound
+**Normative for the Rust core.** One owner creates a day's `note` record, for
+the day's first picture and for a journal day merge's carry (chapter 01 §1.9.1
+step 6): when the day has no record or a deleted one, it writes desktop's shape
+(title the date, `fileType` `markdown`, `folderPath` `journal`, no `content`)
+over the tombstone, one tick past every delete clock it knows (chapter 05 §5.8)
+(`crates/memry-core/src/domain/notes/attachments.rs:98`,
+`crates/memry-core/src/sync/day_picture_refs.rs:78`). An upload to a day is
+owed while the day's journal entry is live, so it lands before the record
+exists (`crates/memry-core/src/domain/attachment_uploads.rs:121`). The record
+carries `removedAttachmentReferences`, the ids a core device removed from the
+day (`crates/memry-core/src/sync/day_picture_refs.rs:56`, chapter 13
+§13.7.1). A local removal adds the id to it, and a local add takes the id out
+(`crates/memry-core/src/sync/day_picture_refs.rs:119`). An inbound
 `note j<date>` record joins the stored one
 (`crates/memry-core/src/sync/apply.rs:478`,
-`crates/memry-core/src/sync/day_picture_refs.rs:221`):
+`crates/memry-core/src/sync/day_picture_refs.rs:298`):
 
 - The live list is the union of both lists, minus every id in either
   record's removals. The removals are the union of both. An absent list reads
@@ -477,13 +481,23 @@ id to it, and a local add takes the id out
   vault that predates the field is joined the same way.
 - The record's other fields follow §6.3.1's document gate: the stored payload
   when the local clock dominates, the inbound one otherwise, under both clocks
-  merged. A dominating local record whose join changes nothing is a skip.
+  merged. A dominating local record whose join changes nothing is a skip,
+  unless the inbound record lacks one of the join's removals
+  (`crates/memry-core/src/sync/day_picture_refs.rs:233`).
 - When the inbound record lacks a live id or a removal of the join, the core
   ticks its own entry and queues the record
-  (`crates/memry-core/src/sync/day_picture_refs.rs:159`, `:195`). The server's
+  (`crates/memry-core/src/sync/day_picture_refs.rs:228`, `:272`). The server's
   copy may be the sender's alone, and a device that pulls only that copy would
   never learn the id or the removal. Two core devices converge after one
   exchange, because the join of two equal states is that state.
+- Removals outlive a delete. An inbound tombstone is stored with the union of
+  the held and the sent removals, a live record over this device's tombstone
+  joins against the tombstone's removals, and a record created over a
+  tombstone keeps them, minus the ids it names
+  (`crates/memry-core/src/sync/day_picture_refs.rs:166`, `:188`). A corrupt
+  row, or one whose payload does not parse, has no removals this device can
+  read: a removal held only there is lost, and a peer's list can bring that
+  picture back. That costs a download, not the body.
 
 What a mixed vault keeps:
 

@@ -745,3 +745,47 @@ async fn a_removal_stands_in_a_day_that_predates_the_rule() {
     assert_eq!(a.refs(), want, "A's day");
     assert_eq!(b.refs(), want, "B's day");
 }
+
+#[tokio::test]
+async fn a_dominated_copy_without_this_devices_removal_is_owed_one() {
+    // The server's copy may be an older one of A's own that never saw `pb`'s
+    // removal; A holds the newer record, so the copy is a skip, yet A owes it.
+    let server = Server::new();
+    let a = Dev::new(&server, "a", 1);
+    a.add("pa", true);
+    a.add("pb", true);
+    settle(&[&a]).await;
+    let stale = a.record();
+    a.detach("pb");
+    settle(&[&a]).await;
+    assert_eq!(a.queued(), 0, "A pushed its removal");
+    let clock = a.clock.clone();
+    a.db(move |c| apply::apply_inbound_on(c, &stale, now(), Some(&clock)));
+    assert_eq!(a.refs(), names(&["pa"]), "`pb` stays removed");
+    assert_eq!(a.queued(), 1, "A owes the server its removal");
+}
+
+#[tokio::test]
+async fn a_removal_outlives_a_desktop_delete_of_the_days_record() {
+    // Desktop's tombstone carries no removals. A's next picture creates the
+    // record over it, and `pb`'s removal still stands against desktop's list.
+    let server = Server::new();
+    let a = Dev::new(&server, "a", 1);
+    a.add("pa", true);
+    a.add("pb", true);
+    a.detach("pb");
+    settle(&[&a]).await;
+    let tombstone = InboundRecord {
+        payload_json: json!({"clock": {"device-desktop": 90}}).to_string(),
+        deleted_at: Some(now()),
+        ..desktop_record(&[], &[])
+    };
+    let clock = a.clock.clone();
+    let applied = a.db(move |c| apply::apply_inbound_on(c, &tombstone, now(), Some(&clock)));
+    assert_eq!(applied, ApplyOutcome::Applied);
+    a.add("pc", true);
+    let record = desktop_record(&["pb", "pc"], &[&a]);
+    let clock = a.clock.clone();
+    a.db(move |c| apply::apply_inbound_on(c, &record, now(), Some(&clock)));
+    assert_eq!(a.refs(), names(&["pc"]), "`pb` stays removed");
+}

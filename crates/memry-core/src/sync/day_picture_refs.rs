@@ -44,7 +44,7 @@ use serde_json::{Value, json};
 use crate::api::errors::StorageError;
 use crate::domain::task_merge::{self, Gate};
 use crate::domain::tasks::Inbound;
-use crate::domain::{journal, notes};
+use crate::domain::{attachment_refs, journal, notes, recreate};
 use crate::storage::nested_tx;
 use crate::storage::repositories::schema::Object;
 use crate::storage::repositories::sync_items::{self, InboundRecord};
@@ -62,10 +62,19 @@ pub(crate) fn is_day_note(item_id: &str) -> bool {
         .is_some_and(|date| journal::valid_date(date).is_ok())
 }
 
-/// Creates the day's `note` record for its first picture, in the shape desktop
+/// Creates the day's `note` record, the one writer that does (#5800, #5801):
+/// a day's first picture, and a journal day merge's carry.
+///
+/// Invariant: a day's record is created only here, in the shape desktop
 /// pushes (`recordOnNote`): the day's title and folder, and the references.
-/// No `content`: the body is the journal's document. The caller queues the
-/// upsert in the same transaction.
+/// No `content`: the body is the journal's document. It is written over the
+/// record's tombstone one tick past every delete clock this device knows
+/// (chapter 05 §5.8), and it keeps the removals the tombstone carries, minus
+/// the ids it names: a deleted record's removals still stand against a peer's
+/// list. An empty `references` leaves the list out: absent says "this sender
+/// does not know" (§14.7), where an empty list would clear a peer's. The
+/// attachment rows follow the list first, because the stored list bounds
+/// what they drop. The caller queues the upsert in the same transaction.
 pub(crate) fn create_day_note(
     tx: &Connection,
     note_id: &str,
@@ -74,16 +83,35 @@ pub(crate) fn create_day_note(
     now_ms: i64,
 ) -> Result<String, StorageError> {
     let at = notes::iso(now_ms)?;
-    let payload = notes::object(json!({
+    let mut payload = notes::object(json!({
         "title": &note_id[1..],
         "fileType": "markdown",
         "folderPath": "journal",
-        "attachmentReferences": references,
-        "clock": notes::next_clock(&Object::new(), device_id)?,
         "createdAt": at,
         "modifiedAt": at,
     }));
-    notes::insert_local(tx, notes::ITEM_TYPE, note_id, payload, now_ms)
+    if !references.is_empty() {
+        payload.insert(REFERENCES.to_owned(), json!(references));
+    }
+    let removed: Vec<String> = readable_payload(tx, note_id)?
+        .map(|(held, _)| ids(held.object(), REMOVED))
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|id| !references.contains(id))
+        .collect();
+    if !removed.is_empty() {
+        payload.insert(REMOVED.to_owned(), json!(removed));
+    }
+    attachment_refs::merge_note_references(tx, note_id, Some(references))?;
+    recreate::write_over_tombstone(tx, notes::ITEM_TYPE, note_id, payload, device_id, now_ms)
+}
+
+/// Whether a local edit of `note_id`'s references creates the day's record
+/// rather than edits it: a day with no record, or a deleted one.
+pub(crate) fn creates_day_note(tx: &Connection, note_id: &str) -> Result<bool, StorageError> {
+    Ok(is_day_note(note_id)
+        && sync_items::load(tx, notes::ITEM_TYPE, note_id)?
+            .is_none_or(|row| row.deleted_at.is_some()))
 }
 
 /// The day's removals after a local edit from `before` to `after`: an id
@@ -116,24 +144,66 @@ pub(crate) fn apply_remote(
 ) -> Result<Inbound, StorageError> {
     let tx = nested_tx::begin(conn).map_err(notes::failed)?;
     let gate = task_merge::document_gate(&tx, record)?;
-    let local = stored_payload(&tx, &record.item_id)?;
-    let remote = StoredPayload::parse(&record.payload_json)
-        .ok()
-        .filter(|_| record.deleted_at.is_none());
-    let inbound = match (local, remote) {
-        (Some(local), Some(remote)) => join(
-            &tx,
-            record,
-            matches!(gate, Gate::Skip),
-            &local,
-            &remote,
-            clock_device,
-            now_ms,
-        )?,
-        _ => match gate {
-            Gate::Skip => Inbound::Skipped,
-            _ => task_merge::wholesale(&tx, record, now_ms)?,
-        },
+    let skip = matches!(gate, Gate::Skip);
+    let held = readable_payload(&tx, &record.item_id)?;
+    let remote = StoredPayload::parse(&record.payload_json).ok();
+    let inbound = match (held, remote) {
+        (Some((local, true)), Some(remote)) if record.deleted_at.is_none() => {
+            let lists = Lists::of(local.object());
+            join(
+                &tx,
+                record,
+                &local,
+                &lists,
+                skip,
+                &remote,
+                clock_device,
+                now_ms,
+            )?
+        }
+        // Over this device's tombstone: its removals still stand against
+        // the inbound list.
+        (Some((local, false)), Some(remote)) if record.deleted_at.is_none() && !skip => {
+            let lists = Lists {
+                live: Vec::new(),
+                removed: ids(local.object(), REMOVED),
+            };
+            if lists.removed.is_empty() {
+                task_merge::wholesale(&tx, record, now_ms)?
+            } else {
+                join(
+                    &tx,
+                    record,
+                    &local,
+                    &lists,
+                    false,
+                    &remote,
+                    clock_device,
+                    now_ms,
+                )?
+            }
+        }
+        // A delete keeps the removals this device holds, so a record created
+        // over it later still carries them.
+        (Some((local, _)), Some(remote)) if record.deleted_at.is_some() => {
+            let removed =
+                Lists::join(&Lists::of(local.object()), &Lists::of(remote.object())).removed;
+            let payload_json = if removed.is_empty() {
+                record.payload_json.clone()
+            } else {
+                remote.merge(&[(REMOVED, Change::Set(json!(removed)))])
+            };
+            task_merge::wholesale(
+                &tx,
+                &InboundRecord {
+                    payload_json,
+                    ..record.clone()
+                },
+                now_ms,
+            )?
+        }
+        _ if skip => Inbound::Skipped,
+        _ => task_merge::wholesale(&tx, record, now_ms)?,
     };
     tx.commit().map_err(notes::failed)?;
     Ok(inbound)
@@ -142,21 +212,28 @@ pub(crate) fn apply_remote(
 /// Stores the join of `local` and `remote` on the payload the document gate
 /// picks (`local` when it dominates), under both clocks merged, and queues
 /// the push the sender is owed.
+#[allow(clippy::too_many_arguments)] // one call per case of `apply_remote`
 fn join(
     tx: &Connection,
     record: &InboundRecord,
-    local_dominates: bool,
     local: &StoredPayload,
+    held: &Lists,
+    local_dominates: bool,
     remote: &StoredPayload,
     clock_device: Option<&str>,
     now_ms: i64,
 ) -> Result<Inbound, StorageError> {
-    let (held, sent) = (Lists::of(local.object()), Lists::of(remote.object()));
-    let joined = Lists::join(&held, &sent);
-    if local_dominates && joined.same(&held) {
+    let sent = Lists::of(remote.object());
+    let joined = Lists::join(held, &sent);
+    let owed = !joined.within(&sent);
+    // A dominated copy that lacks one of this device's removals is still
+    // owed one: a removal it lacks brings the picture back on a device that
+    // pulls only that copy. One that lacks only a live id is a stale page and
+    // stays a skip.
+    let lacks_removal = !joined.removed.iter().all(|id| sent.removed.contains(id));
+    if local_dominates && joined.same(held) && !lacks_removal {
         return Ok(Inbound::Skipped);
     }
-    let owed = !joined.within(&sent);
     let merged_clock = clock::merge(
         &notes::clock_in(local.object())?,
         &notes::clock_in(remote.object())?,
@@ -259,13 +336,27 @@ fn union(first: &[String], second: &[String]) -> Vec<String> {
 
 /// The live, readable payload this device holds for the day, if any.
 fn stored_payload(tx: &Connection, note_id: &str) -> Result<Option<StoredPayload>, StorageError> {
+    Ok(readable_payload(tx, note_id)?.and_then(|(payload, live)| live.then_some(payload)))
+}
+
+/// The day's stored payload, live or a tombstone's, and whether it is live.
+/// A corrupt or unparsable row reads as none: its removals are lost
+/// (§14.7.4).
+fn readable_payload(
+    tx: &Connection,
+    note_id: &str,
+) -> Result<Option<(StoredPayload, bool)>, StorageError> {
     let Some(row) = sync_items::load(tx, notes::ITEM_TYPE, note_id)? else {
         return Ok(None);
     };
-    if row.deleted_at.is_some() || row.corrupt_reason.is_some() {
+    if row.corrupt_reason.is_some() {
         return Ok(None);
     }
-    Ok(row.payload.and_then(|raw| StoredPayload::parse(&raw).ok()))
+    let live = row.deleted_at.is_none();
+    Ok(row
+        .payload
+        .and_then(|raw| StoredPayload::parse(&raw).ok())
+        .map(|payload| (payload, live)))
 }
 
 #[cfg(test)]

@@ -93,13 +93,9 @@ fn edit_references(
         &outbox::Change::upsert(ITEM_TYPE, note_id),
         now_ms,
         |tx| {
-            let before = read_attachment_references(tx, note_id)?;
-            attachment_refs::merge_note_references(tx, note_id, Some(&references))?;
-            // A day's first picture: no device has pushed its `note` record
-            // yet, so this one creates it (#5800).
-            if day_picture_refs::is_day_note(note_id)
-                && sync_items::load(tx, ITEM_TYPE, note_id)?.is_none()
-            {
+            // A day with no `note` record, or a deleted one: its owner creates
+            // it (#5800).
+            if day_picture_refs::creates_day_note(tx, note_id)? {
                 return day_picture_refs::create_day_note(
                     tx,
                     note_id,
@@ -108,6 +104,8 @@ fn edit_references(
                     now_ms,
                 );
             }
+            let before = read_attachment_references(tx, note_id)?;
+            attachment_refs::merge_note_references(tx, note_id, Some(&references))?;
             let mut changes = stamp(tx, ITEM_TYPE, note_id, device_id, now_ms)?;
             changes.extend(day_picture_refs::removals_after_edit(
                 tx,
