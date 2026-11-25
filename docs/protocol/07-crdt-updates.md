@@ -31,7 +31,7 @@ satisfies, and every CRDT route treats `note_id` as an opaque string.
 
 Supporting evidence: journals are `note_metadata` rows on the note clock path
 (`packages/sync-client/src/offline-clock.ts:325-328`); the Y.Doc opens under that
-id (`apps/desktop/src/main/journal/runtime-effects.ts:23-33`); pull routes both
+id (`apps/desktop/src/main/journal/runtime-effects.ts:34-44`); pull routes both
 `note` and `journal` records into the CRDT body feed
 (`packages/sync-client/src/pull/engine.ts:305`); `journalHandler` defers
 concurrent body merges to the CRDT

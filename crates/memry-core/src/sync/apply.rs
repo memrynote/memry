@@ -296,7 +296,8 @@ fn apply_tombstone(
     )?;
     store::mark_deleted(&txn, item_type, item_id, deleted_at, server_cursor, now_ms)?;
     // A live foreign row keeps its row and body for the drain (#2984). Held
-    // before the queue drops: a queued edit holds tags never pushed.
+    // before the queue drops: a queued edit holds tags never pushed. Defense
+    // in depth (VERIFY-5656): no test goes red with the order reversed.
     let held = item_type == journal::ITEM_TYPE && {
         journal_day_merge::mark_deleted(&txn, item_id)?;
         journal_day_merge::hold_for_merge(&txn, item_id, clock)?

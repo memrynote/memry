@@ -978,7 +978,10 @@ document to its vault `.md` file and re-indexes it for search.
   unedited since its sync (an edit outside the app is neither ticked nor queued), and the
   tombstone's clock covers the holder row's clock, else all of them, since desktop keeps no
   snapshot of the tags last synced. The first weighing sets that list and later ones add to
-  it, because the tombstone and the day take away what the first one read. A tag the day
+  it, because the tombstone and the day take away what the first one read. Each sighting of
+  the holder keeps only the listed tags its day file still holds, and the drain reads the
+  owed merge back after the day takes the holder over, so a tag the user removed from the
+  held day before the drain stays removed (#5694). A tag the day
   lacks merges even when the holder, deleted or live, has no body (#5699). It
   writes one spelling per tag by the tag fold, the first the file holds, as core `set_tags`
   does: a file holding `Work` and `work` is written with `Work`. The fold keeps whitespace,

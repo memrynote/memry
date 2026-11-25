@@ -122,7 +122,9 @@ fn tombstoned_past(
 /// Tags come in two kinds (§1.9.1 step 6). `record_tags` are the newest
 /// foreign record's `tags`: a later record replaces them, so a tag removed on
 /// the writing device stays removed; `None` (no `tags` key) keeps the ones
-/// kept. `holder` are a local holder's, and every sighting adds to them.
+/// kept. `holder` are a local holder's as its stored record holds them now,
+/// and a sighting replaces them: a tag the user removed from the held day
+/// since stays removed (#5694).
 pub(super) fn owe(
     conn: &Connection,
     foreign_id: &str,
@@ -158,7 +160,11 @@ pub(super) fn owe(
         deleted: existing.is_some_and(|existing| existing.deleted),
         record_markdown: markdown,
         record_tags: record_tags.map_or(kept_record, <[String]>::to_vec),
-        holder_tags: tags::dedupe(kept_holder.into_iter().chain(holder.all.iter().cloned())),
+        holder_tags: if holder.sighted {
+            holder.all.clone()
+        } else {
+            kept_holder
+        },
         // A tombstone's weighing replaces the list: before one, every holder
         // tag was kept as unpushed, and a tag the deleting device saw would
         // come back (#5659).
@@ -168,6 +174,9 @@ pub(super) fn owe(
             tags::dedupe(
                 kept_unpushed
                     .into_iter()
+                    .filter(|tag| {
+                        !holder.sighted || holder.all.iter().any(|t| tags::same_tag(t, tag))
+                    })
                     .chain(holder.unpushed.iter().cloned()),
             )
         },
@@ -183,6 +192,8 @@ pub(super) struct HolderTags {
     unpushed: Vec<String>,
     /// Read against a tombstone's clock.
     weighed: bool,
+    /// Read from the holder's stored record: `all` is every tag it holds.
+    sighted: bool,
 }
 
 impl HolderTags {
@@ -205,6 +216,7 @@ impl HolderTags {
         tombstone: Option<&VectorClock>,
     ) -> Result<Self, StorageError> {
         let all = payload_tags(payload).unwrap_or_default();
+        // Defense in depth (VERIFY-5656): no test goes red without the filter.
         let tombstone = tombstone.filter(|clock| !clock.is_empty());
         let weighed = tombstone.is_some();
         let (Some(deleted), Some(row)) = (tombstone, payload_clock(payload)) else {
@@ -212,8 +224,11 @@ impl HolderTags {
                 unpushed: all.clone(),
                 all,
                 weighed,
+                sighted: true,
             });
         };
+        // The queue check is defense in depth (VERIFY-5656): no test goes red
+        // without it.
         let unpushed = if covers(deleted, &row) && !upsert_queued(conn, item_id)? {
             Vec::new()
         } else {
@@ -230,6 +245,7 @@ impl HolderTags {
             all,
             unpushed,
             weighed,
+            sighted: true,
         })
     }
 }
@@ -272,6 +288,8 @@ pub(crate) fn note_local_edit(
         .get("date")
         .and_then(Value::as_str)
         .is_some_and(|date| canonical_journal_id(date) != item_id);
+    // Keeping the snapshot taken before the first unpushed edit is defense in
+    // depth (VERIFY-5656): no test goes red when a later edit replaces it.
     if !foreign || upsert_queued(conn, item_id)? {
         return Ok(());
     }
@@ -312,7 +330,8 @@ fn synced_tags(
 }
 
 /// Runs when the server takes a queued record row: the snapshot an upsert of
-/// a journal id kept is no longer what the server holds.
+/// a journal id kept is no longer what the server holds. Defense in depth
+/// (VERIFY-5656): no test goes red when the ack keeps the snapshot.
 pub(crate) fn note_acked(
     conn: &Connection,
     item_type: &str,
@@ -360,6 +379,27 @@ pub(super) fn owe_holder(
     let content = payload.get("content").and_then(Value::as_str);
     let holder = HolderTags::read(conn, foreign_id, &payload, tombstone.as_ref())?;
     owe(conn, foreign_id, date, &clock, content, None, &holder)
+}
+
+/// `merge` as its holder `F` is now, or `None` when it is no longer owed: a
+/// user delete of the held day forgot it (§1.9.1), and nothing may build
+/// `j<D>` from it. While `F`'s entry holds the day, the user can still edit
+/// it after its tombstone was held, and an owed merge read before that edit
+/// holds tags `F` no longer has, or lacks one it gained (#5694). `F` is owed
+/// again from its stored record, then read back. A soft-deleted entry counts
+/// too: an older build may have soft-deleted a held `F`.
+pub(super) fn owed_now(
+    conn: &Connection,
+    merge: OwedMerge,
+) -> Result<Option<OwedMerge>, StorageError> {
+    if read_owed(conn, &merge.foreign_id)?.is_none() {
+        return Ok(None);
+    }
+    let held = journal::entry_for(conn, &merge.date)?.is_some_and(|(id, _)| id == merge.foreign_id);
+    if held {
+        owe_holder(conn, &merge.foreign_id, &merge.date)?;
+    }
+    read_owed(conn, &merge.foreign_id)
 }
 
 fn stored_payload(row: Option<sync_items::SyncItemRow>) -> serde_json::Map<String, Value> {
@@ -479,7 +519,10 @@ fn write_owed(conn: &Connection, owed: &OwedMerge) -> Result<(), StorageError> {
     Ok(())
 }
 
-fn read_owed(conn: &Connection, foreign_id: &str) -> Result<Option<OwedMerge>, StorageError> {
+pub(super) fn read_owed(
+    conn: &Connection,
+    foreign_id: &str,
+) -> Result<Option<OwedMerge>, StorageError> {
     let value = meta_value(conn, &format!("{OWED_PREFIX}{foreign_id}"))?;
     Ok(value.and_then(|value| parse_owed(&value)))
 }
