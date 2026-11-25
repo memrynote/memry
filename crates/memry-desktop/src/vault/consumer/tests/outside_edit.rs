@@ -393,3 +393,20 @@ fn a_delete_never_reads_a_file_past_the_note_cap() {
     assert!(note_deleted(&f, &id), "the delete wins");
     assert!(f.root.join("a.md").exists());
 }
+
+/// #5823 review: an app save the document did not take (a large file, an owed or refused body,
+/// a failed feed) marks its bytes as the run's without stamping the row. The file holds text no
+/// document has, so a pulled delete keeps it as one inbox copy (#5796).
+#[test]
+fn a_delete_keeps_an_app_save_the_document_did_not_take() {
+    let saved = "first\n\nSaved, never taken by the document.\n";
+    let (f, id, pushed) = closed_app_file("a.md", "first\n", saved, "note");
+    f.applier
+        .own_files
+        .wrote(&id, &content_hash(saved), ChangeSource::Save, None);
+    peer_deletes_item(&f, "note", &id, &pushed);
+    let kept = kept_texts(&f);
+    assert_eq!(kept.len(), 1, "one inbox copy: {kept:?}");
+    assert!(kept[0].contains("Saved, never taken"), "{kept:?}");
+    assert!(note_deleted(&f, &id), "the delete wins");
+}

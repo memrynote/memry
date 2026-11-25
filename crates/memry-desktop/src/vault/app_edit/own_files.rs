@@ -58,8 +58,15 @@ impl Drop for Writing<'_> {
 
 /// A pulled delete keeps no copy of a file that holds the run's bytes (#5809 review, low 2).
 impl OwnWrites for OwnFiles {
+    /// Own only when the document holds the file's bytes: the write-back wrote them from it
+    /// (`written_back`) or is writing them now (`writing`). Never `marks`: an app
+    /// save the document did not take (a large file, an owed or refused body, a failed feed)
+    /// marks its bytes as the run's and leaves them in the file alone, so the delete keeps them
+    /// (#5796, #5823 review).
     fn wrote(&self, item_id: &str, file_hash: &str) -> bool {
-        self.ours(item_id, file_hash)
+        lock(&self.written_back)
+            .get(item_id)
+            .is_some_and(|last| last == file_hash)
             || lock(&self.writing)
                 .get(item_id)
                 .is_some_and(|writing| writing == file_hash)
