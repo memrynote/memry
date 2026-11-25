@@ -1,20 +1,20 @@
+import { AsyncLocalStorage } from 'node:async_hooks'
 import * as Y from 'yjs'
 import { createLogger } from '../lib/logger'
 import { completeWithin } from '../shutdown-sequence'
 import { trackMainError, trackMainLog } from '../telemetry/diagnostics'
 import { shouldEmitThrottled } from '../telemetry/throttle'
 import { getCrdtProvider } from './crdt-provider'
-import { feedExternalEditToCrdt } from './crdt-external-feed'
+import { ingestOfflineEdit, ingestOutsideEditFirst } from './crdt-writeback-ingest'
 import { registerCrdtWritebackPort } from './crdt-writeback-port'
 import { networkUpdateCount, resetNetworkUpdateState } from './crdt-network-update'
 import { owesFileBody } from './crdt-owed-file-body'
-import { isOutsideEdit, recordUnchangedFile, writeWithBaseline } from './writeback-baseline'
+import { recordUnchangedFile, writeDocWithBaseline, type SerializedDoc } from './writeback-baseline'
 import type { SourceRestoreOutcome } from './blocknote-converter'
 import type { NoteBody } from './writing-markdown'
 import { applyCriticMarkMoves } from './critic-mark-anchors'
 import { readyWritebackConverter } from './converter-worker-bridge'
 import { emitNoteUpdated } from '@memry/sync-client/note-events'
-import { writingFrontmatterOf } from '@memry/shared'
 import { mergeFrontmatter, mergeJournalFrontmatter } from './crdt-writeback-frontmatter'
 import { classifyMarkdownContent } from '@memry/shared/markdown-class'
 import { isBinaryNoteRow } from '@memry/shared/file-types'
@@ -23,13 +23,11 @@ import { atomicWrite, ensureDirectory } from '../vault/file-ops'
 import { appWriteCount, recordAppWrite, resetAppWrites } from '../vault/app-writes'
 import { readVaultFile, refuseOutsideVaultSync } from '../lib/paths'
 import { runWithLockedWritesAllowed } from '../vault-locks/registry'
-import { restoreLockedNoteFile } from '../vault-locks/service'
 import {
   generateContentHash,
   parseNote,
   serializeNote,
-  serializeParsedNote,
-  type ParsedNote
+  serializeParsedNote
 } from '../vault/frontmatter'
 import { splitFrontmatterBlock } from '@memry/shared/frontmatter-split'
 import { getVaultRoot, toAbsolutePath } from '../vault/notes-io'
@@ -269,12 +267,20 @@ export function hasWritebackTurn(noteId: string): boolean {
  * writers take a turn here too. `run` must not wait on a pass of the note.
  */
 export function takeWritebackTurn<T>(noteId: string, run: () => Promise<T>): Promise<T> {
+  const token = {}
+  const held = new Map(heldTurns.getStore())
+  held.set(noteId, token)
   const turn = (runningPasses.get(noteId) ?? Promise.resolve())
     // The previous turn reported its own failure; this one runs regardless.
     .catch(() => {})
     .then(async () => {
       await runRepairs(noteId)
-      return run()
+      runningTurns.set(noteId, token)
+      try {
+        return await heldTurns.run(held, run)
+      } finally {
+        if (runningTurns.get(noteId) === token) runningTurns.delete(noteId)
+      }
     })
   runningPasses.set(noteId, turn)
   const clear = (): void => {
@@ -282,6 +288,19 @@ export function takeWritebackTurn<T>(noteId: string, run: () => Promise<T>): Pro
   }
   turn.then(clear, clear)
   return turn
+}
+
+/**
+ * The turns the running code is inside of, by note, and the turn each note
+ * runs now. A timer armed inside a turn inherits its context after the turn
+ * ended, so only a match with the running turn counts (`insideWritebackTurn`).
+ */
+const heldTurns = new AsyncLocalStorage<ReadonlyMap<string, object>>()
+const runningTurns = new Map<string, object>()
+
+export function insideWritebackTurn(noteId: string): boolean {
+  const token = heldTurns.getStore()?.get(noteId)
+  return token !== undefined && runningTurns.get(noteId) === token
 }
 
 /**
@@ -324,11 +343,13 @@ async function runPass(
   noteId: string,
   doc: Y.Doc,
   local: boolean,
-  remoteEditedAtMs: number | undefined
+  remoteEditedAtMs: number | undefined,
+  ownDoc = false
 ): Promise<void> {
   const startedAt = Date.now()
   try {
-    await performWriteback(noteId, resolveWritebackDoc(noteId, doc), local, remoteEditedAtMs)
+    const serialized = ownDoc ? doc : resolveWritebackDoc(noteId, doc)
+    await performWriteback(noteId, serialized, local, remoteEditedAtMs)
     failingWritebacks.delete(noteId)
   } finally {
     const finishedAt = Date.now()
@@ -446,6 +467,37 @@ export async function settleWriteback(noteId: string): Promise<void> {
   await writebackNow(noteId, pending.doc).catch((err: unknown) =>
     reportWritebackFailure(noteId, err)
   )
+}
+
+/**
+ * Before a close destroys the note's doc: waits for the note's running turn,
+ * so a pass that serialized `doc` records its file while `doc` is still the
+ * note's. With `runArmed` (the store does not hold `doc`) it then runs the
+ * armed pass against `doc` itself inside the note's turn: once destroyed,
+ * nothing else writes what the store missed (#5698, `recordDocFile`). A close
+ * inside the note's own turn (a writer's feed closing the doc it opened) runs
+ * the pass in place: waiting for the turn would wait for itself. Never
+ * throws; a failed pass is reported as a timed one is.
+ */
+export async function writeBackBeforeClose(
+  noteId: string,
+  doc: Y.Doc,
+  runArmed: boolean
+): Promise<void> {
+  const pending = runArmed ? pendingTimers.get(noteId) : undefined
+  if (pending) {
+    clearTimeout(pending.timer)
+    pendingTimers.delete(noteId)
+  }
+  const pass = async (): Promise<void> => {
+    if (pending) await runPass(noteId, doc, pending.local, pending.remoteEditedAtMs, true)
+  }
+  const done = insideWritebackTurn(noteId)
+    ? pass()
+    : pending || runningPasses.has(noteId)
+      ? takeWritebackTurn(noteId, pass)
+      : Promise.resolve()
+  await done.catch((err: unknown) => reportWritebackFailure(noteId, err))
 }
 
 export function cancelPendingWritebacks(): void {
@@ -627,6 +679,8 @@ async function performWriteback(
   // stale body until a build that knows the type runs; writing costs them the
   // content.
   const converted = Y.encodeStateVector(doc)
+  // The state the conversion reads, which a file written from it records (`recordDocFile`).
+  const written: SerializedDoc = { doc, state: Y.snapshot(doc) }
   const conversion = await convert(doc, cached.path, async () => {
     const raw = await readVaultFile(getVaultRoot(), cached.path)
     return raw === null ? null : splitFrontmatterBlock(raw).body
@@ -719,8 +773,8 @@ async function performWriteback(
   const modifiedAt = writebackModifiedAt(cached.modifiedAt, local, remoteEditedAtMs)
   const journal = isJournalId(noteId)
   const holdsBody = journal
-    ? await writebackJournal(noteId, doc, body, cached, indexDb, modifiedAt)
-    : await writebackExisting(noteId, cached, doc, body, indexDb, isLargeFileBody, modifiedAt)
+    ? await writebackJournal(noteId, written, body, cached, indexDb, modifiedAt)
+    : await writebackExisting(noteId, cached, written, body, indexDb, isLargeFileBody, modifiedAt)
   settleCriticMarks(noteId, doc, body.criticMarks, local && holdsBody)
   if (!journal) {
     // The reminders a body's date pills derive belong to every device that
@@ -839,123 +893,17 @@ function keepVersionBeforeWriteback(
   }
 }
 
-/**
- * Keeps the file a pass would have written as a version before an outside
- * edit replaces the doc's body, when the doc's body differs from the file's:
- * the rule `takeOwedFile` keeps the server body by (#2646). The pass was armed
- * by typing or a peer's edit that the file lacks, and the feed erases it (#5605).
- * False when the version could not be saved; the ingest then waits for a later
- * pass, and the doc and the file both keep what they hold.
- */
-function keepDocVersionBeforeIngest(
-  noteId: string,
-  title: string,
-  fileBody: string,
-  pass: { body: string; file: string }
-): boolean {
-  const docBody = pass.body.trim()
-  if (
-    docBody === '' ||
-    docBody === fileBody.trim() ||
-    classifyMarkdownContent(fileBody).sizeClass === 'large-file'
-  ) {
-    return true
-  }
-  try {
-    const snap = createSnapshot(noteId, pass.file, title, SnapshotReasons.SIGNIFICANT)
-    if (snap)
-      log.info('Version kept before taking an outside edit', { noteId, snapshotId: snap.id })
-    return true
-  } catch (err) {
-    log.error('Could not keep a version of the doc; the outside edit waits', { noteId, error: err })
-    return false
-  }
-}
-
-/**
- * Takes in a file that changed outside the app before a write-back writes
- * over it (`writebackExisting` explains why). Resolves true when the
- * write-back must stop: a locked note's file was restored, or the doc was fed
- * (or refused) the edit, so the next pass writes from a doc that holds it.
- * `pass` is the body the pass serialized and the file it would have written.
- */
-async function ingestOutsideEditFirst(
-  indexDb: ReturnType<typeof getIndexDatabase>,
-  noteId: string,
-  cached: NonNullable<ReturnType<typeof getNoteCacheById>>,
-  existingRaw: string,
-  parsed: ParsedNote,
-  pass?: { body: string; file: string }
-): Promise<boolean> {
-  if (!cached.contentHash || !isOutsideEdit(indexDb, noteId, cached, existingRaw)) return false
-  // A locked note's outside edit is never taken in: its locked text goes
-  // back on disk and the edit is kept as a version (#2606).
-  if (await restoreLockedNoteFile(noteId, existingRaw)) return true
-  // A file shared with a case twin is never taken in by either note (#5297).
-  if (refusesCaseTwinFile(getVaultRoot(), cached.path, noteId)) return true
-  if (pass && !keepDocVersionBeforeIngest(noteId, cached.title, parsed.content, pass)) return true
-  const ingested = await feedExternalEditToCrdt(
-    noteId,
-    parsed.content,
-    writingFrontmatterOf(parsed.frontmatter)
-  )
-  // The index row moves to the new bytes only once the doc holds them.
-  // Moved first, the next pass would write a doc that never saw them.
-  if (ingested) {
-    syncNoteToCache(
-      indexDb,
-      {
-        id: noteId,
-        path: cached.path,
-        fileContent: existingRaw,
-        frontmatter: parsed.frontmatter,
-        parsedContent: parsed.content,
-        title: cached.title,
-        createdAt: cached.createdAt,
-        modifiedAt: cached.modifiedAt,
-        localOnly: cached.localOnly ?? false,
-        emoji: cached.emoji ?? null
-      },
-      { isNew: false }
-    )
-    void flushProjectionEvents()
-  }
-  log.warn(
-    ingested
-      ? 'Write-back deferred: ingested the file that changed outside the app'
-      : 'Write-back skipped: the file changed outside the app',
-    { noteId, path: cached.path }
-  )
-  return true
-}
-
-/** The write-back's outside-edit ingest, run at a doc's first open (#5319, `takeOfflineEdit`). */
-async function ingestOfflineEdit(noteId: string): Promise<void> {
-  const indexDb = getIndexDatabase()
-  const cached = getNoteCacheById(indexDb, noteId)
-  // A binary note's file is its blob, never an outside edit of the body (#5412).
-  if (!cached || isBinaryNoteRow(cached)) return
-  const raw = cached.contentHash ? await readVaultFile(getVaultRoot(), cached.path) : null
-  if (raw === null || !isOutsideEdit(indexDb, noteId, cached, raw)) return
-  await ingestOutsideEditFirst(
-    indexDb,
-    noteId,
-    cached,
-    raw,
-    parseNote(raw, toAbsolutePath(cached.path))
-  )
-}
-
 /** Resolves true when the file holds `body` afterwards: written now, or already. */
 async function writebackExisting(
   noteId: string,
   cached: NonNullable<ReturnType<typeof getNoteCacheById>>,
-  doc: Y.Doc,
+  written: SerializedDoc,
   body: NoteBody,
   indexDb: ReturnType<typeof getIndexDatabase>,
   isLargeFileBody: boolean,
   modifiedAt: string
 ): Promise<boolean> {
+  const { doc } = written
   const { markdown } = body
   const relativePath = cached.path
   const absolutePath = toAbsolutePath(relativePath)
@@ -976,7 +924,7 @@ async function writebackExisting(
 
   // No byte change → no write, no mtime churn, no snapshot, no downstream signal
   if (existingRaw !== null && fileContent === existingRaw) {
-    recordUnchangedFile(indexDb, noteId, cached, existingRaw)
+    recordUnchangedFile(indexDb, noteId, cached, existingRaw, written, getCrdtProvider())
     log.debug('Write-back is a no-op, skipping', { noteId })
     return true
   }
@@ -1039,11 +987,21 @@ async function writebackExisting(
 
   // A locked note's doc only ever takes another device's edits (local updates
   // are refused at crdt:apply-update), so its write-back is allowed (#2606).
-  await writeWithBaseline(indexDb, noteId, fileContent, async () => {
-    const landed = recordAppWrite(absolutePath, fileContent)
-    await runWithLockedWritesAllowed(() => atomicWrite(absolutePath, fileContent))
-    landed()
-  })
+  await writeDocWithBaseline(
+    indexDb,
+    noteId,
+    fileContent,
+    {
+      write: async () => {
+        const landed = recordAppWrite(absolutePath, fileContent)
+        await runWithLockedWritesAllowed(() => atomicWrite(absolutePath, fileContent))
+        landed()
+      },
+      read: () => readVaultFile(getVaultRoot(), cached.path)
+    },
+    written,
+    getCrdtProvider()
+  )
   lastWrittenHash.set(noteId, generateContentHash(fileContent))
 
   // An attachment rename that arrived in this body (#1714): the file is still
@@ -1093,12 +1051,13 @@ async function writebackExisting(
 /** Resolves true when the file holds `body` afterwards: written now, or already. */
 async function writebackJournal(
   noteId: string,
-  doc: Y.Doc,
+  written: SerializedDoc,
   body: NoteBody,
   cached: NonNullable<ReturnType<typeof getNoteCacheById>>,
   indexDb: ReturnType<typeof getIndexDatabase>,
   modifiedAt: string
 ): Promise<boolean> {
+  const { doc } = written
   const { markdown } = body
   const date = journalIdToDate(noteId)
 
@@ -1122,7 +1081,7 @@ async function writebackJournal(
 
   // No byte change → no write, no mtime churn, no snapshot, no downstream signal
   if (existingRaw !== null && fileContent === existingRaw) {
-    recordUnchangedFile(indexDb, noteId, cached, existingRaw)
+    recordUnchangedFile(indexDb, noteId, cached, existingRaw, written, getCrdtProvider())
     log.debug('Journal write-back is a no-op, skipping', { noteId, date })
     return true
   }
@@ -1144,11 +1103,21 @@ async function writebackJournal(
 
   // A locked note's doc only ever takes another device's edits (local updates
   // are refused at crdt:apply-update), so its write-back is allowed (#2606).
-  await writeWithBaseline(indexDb, noteId, fileContent, async () => {
-    const landed = recordAppWrite(absolutePath, fileContent)
-    await runWithLockedWritesAllowed(() => atomicWrite(absolutePath, fileContent))
-    landed()
-  })
+  await writeDocWithBaseline(
+    indexDb,
+    noteId,
+    fileContent,
+    {
+      write: async () => {
+        const landed = recordAppWrite(absolutePath, fileContent)
+        await runWithLockedWritesAllowed(() => atomicWrite(absolutePath, fileContent))
+        landed()
+      },
+      read: () => readVaultFile(getVaultRoot(), cached.path)
+    },
+    written,
+    getCrdtProvider()
+  )
   lastWrittenHash.set(noteId, generateContentHash(fileContent))
 
   // Journals hold file/image blocks like any other note — see the note path.
@@ -1207,5 +1176,7 @@ registerCrdtWritebackPort({
   flushPendingWritebacks,
   hasArmedWritebacks,
   resetWritebackState,
+  insideWritebackTurn,
+  writeBackBeforeClose,
   writebackNow
 })

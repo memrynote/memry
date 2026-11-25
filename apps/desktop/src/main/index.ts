@@ -2214,7 +2214,12 @@ app.on('before-quit', (event) => {
       // inside CrdtProvider.destroy() at the very end of the chain — which is
       // exactly why a timed-out quit dropped the last seconds of typing.
       name: 'flush-writebacks',
-      run: () => flushPendingWritebacks()
+      run: () => {
+        // A pass waits on the CRDT store; from here a stalled store costs each
+        // wait a bounded, logged delay, not the quit's whole budget (#5698).
+        getCrdtProvider().beginClose()
+        return flushPendingWritebacks()
+      }
     },
     {
       // Buffered vault activity entries -> activity.jsonl. Otherwise written

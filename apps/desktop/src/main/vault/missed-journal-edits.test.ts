@@ -104,6 +104,7 @@ import { clearAllPendingDeletes } from './rename-tracker'
 import { getWatcher, startWatcher, stopWatcher } from './watcher'
 import { initJournalSyncService, resetJournalSyncService } from '../sync/journal-sync'
 import { journalHandler } from '../sync/item-handlers/journal-handler'
+import { markDocWrite } from '../sync/writeback-baseline'
 
 function fileSystemIgnoresCase(): boolean {
   return fs.existsSync(os.tmpdir().toUpperCase())
@@ -270,6 +271,27 @@ describe('a journal day edited while the app was closed (#5752)', () => {
   }, 30_000)
 
   it('keeps nothing when the file holds the bytes this device ingested', async () => {
+    applyPeerDelete()
+
+    expect(keptTexts()).toHaveLength(0)
+  }, 30_000)
+
+  // #5698: a write-back marks the row unstored before it writes the day file.
+  it('keeps nothing when the file holds a write-back of this device marked unstored', async () => {
+    const doc = new Y.Doc()
+    markDocWrite(
+      index.db,
+      ID,
+      EDITED,
+      { doc, state: Y.snapshot(doc) },
+      {
+        holdsDoc: () => false,
+        whenPersisted: async () => {},
+        whenStored: async () => {}
+      }
+    )
+    fs.writeFileSync(path.join(vault.path, DAY_PATH), EDITED)
+
     applyPeerDelete()
 
     expect(keptTexts()).toHaveLength(0)

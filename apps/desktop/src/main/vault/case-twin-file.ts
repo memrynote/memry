@@ -65,7 +65,12 @@ import { getCrdtProvider } from '../sync/crdt-provider'
 import { hasWritebackTurn, scheduleWriteback, takeWritebackTurn } from '../sync/crdt-writeback'
 import { recordAppWrite } from './app-writes'
 import { clearOwedFileBody, owesFileBody } from '../sync/crdt-owed-file-body'
-import { recordBaseline } from '../sync/writeback-baseline'
+import {
+  holdsUnstoredFile,
+  markDocWrite,
+  recordBaseline,
+  recordDocFile
+} from '../sync/writeback-baseline'
 import { hasPendingVaultFileOp, writeNoteFileNow } from '../sync/bulk-apply'
 import { PendingSyncIntentError } from '../sync/pending-sync-intent-error'
 import { SnapshotReasons } from '@memry/db-schema/schema/notes-cache'
@@ -241,12 +246,13 @@ export function planCaseTwinMove(
   const cached = getNoteCacheById(indexDb, leavingId)
   if (!leaving || !cached) throw new CaseTwinLeaveNotReadyError(leavingId)
   let own: OwnTwinFile & { cover?: string | null }
+  let built: PreparedBody | undefined
   if (raw !== null && holdsOwnBytes(raw, cached)) {
     const parsed = parseNote(raw)
     own = { content: raw, frontmatter: parsed.frontmatter, markdown: parsed.content }
   } else {
-    const prepared = preparedBodies.get(leavingId) ?? notReady()
-    own = ownFile(indexDb, leavingId, leaving.title, cached, prepared)
+    built = preparedBodies.get(leavingId) ?? notReady()
+    own = ownFile(indexDb, leavingId, leaving.title, cached, built)
   }
   const absolutePath = toAbsolutePath(newRelativePath)
   const moved = { content: own.content, frontmatter: own.frontmatter, markdown: own.markdown }
@@ -254,7 +260,15 @@ export function planCaseTwinMove(
     leave()
     writeNoteFileNow(absolutePath, own.content)
     try {
-      recordBaseline(indexDb, leavingId, own.content)
+      if (own.content !== raw && built) {
+        // Its doc's body, which the store may not hold yet (#5698).
+        recordDocFile(indexDb, leavingId, own.content, built, getCrdtProvider())
+      } else if (raw !== null && holdsUnstoredFile(cached)) {
+        // The file's own bytes keep the mark of a doc its store may lack.
+        updateNoteCache(indexDb, leavingId, { contentHash: generateContentHash(raw) })
+      } else {
+        recordBaseline(indexDb, leavingId, own.content)
+      }
       if (own.cover !== undefined) recordRebuiltNoteCover(dataDb, leavingId, own.cover)
       dataDb.transaction(() => moveRow(moved))
     } catch (error) {
@@ -331,10 +345,11 @@ function planLeave(
   const leave = (): void => {
     if (raw !== own.content) {
       if (keepsCopy) createSnapshot(survivorId, raw, survivor.title, SnapshotReasons.SIGNIFICANT)
-      updateNoteCache(indexDb, survivorId, { pendingWriteHash: generateContentHash(own.content) })
+      markDocWrite(indexDb, survivorId, own.content, prepared, getCrdtProvider())
     }
     writeNoteFileNow(absolutePath, own.content)
-    recordBaseline(indexDb, survivorId, own.content)
+    // Its doc's body, which the store may not hold yet (#5698).
+    recordDocFile(indexDb, survivorId, own.content, prepared, getCrdtProvider())
     if (owesFileBody(survivorId)) clearOwedFileBody(survivorId)
     recordRebuiltNoteCover(dataDb, survivorId, own.cover)
     syncNoteToCache(

@@ -80,6 +80,7 @@ vi.mock('../sync/crdt-provider', () => {
     withDocLoaded: vi.fn(async (_id: string, run: () => void) => run()),
     closeIfInactive: async () => {},
     whenPersisted: async () => {},
+    holdsDoc: () => true,
     purge: vi.fn(async () => {})
   }
   return { ORIGIN_LOCAL: 'local', getCrdtProvider: vi.fn(() => stub) }
