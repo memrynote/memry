@@ -860,6 +860,10 @@ async function requestNoteFiles(
  * Download one file a note names and settle the claim its requester holds:
  * every exit records an outcome or releases the claim. Resolves with the
  * failure's message, or null when nothing is left to report.
+ *
+ * Invariant (VERIFY-5722): a download that outlives its wait or its session
+ * records no outcome: every await of its settle runs before one last
+ * outlived() check, and nothing between that check and its last write awaits.
  */
 async function downloadAndRecord(
   {
@@ -915,7 +919,7 @@ async function downloadAndRecord(
       if (vaultPath) {
         placed = await placeDownloadedFile(getDatabase(), vaultPath, noteId, result.filePath)
       }
-      await applyDownloadedAttachmentName(noteId, placed)
+      placed = await applyDownloadedAttachmentName(noteId, placed)
     }
     // Embedded attachments land inside attachments/<noteId>/ — the note's
     // own fileSize (a binary-note concept) must not be overwritten by them.
@@ -935,7 +939,7 @@ async function downloadAndRecord(
       if (isDatabaseInitialized()) {
         recordDownloadedFileSize(noteId, attachmentId, size, result.manifest.checksum)
       }
-      landed?.()
+      landed?.(() => outlived(download))
     }
     // The note was indexed before its file existed; text search reads a
     // PDF or image only once it is on disk.

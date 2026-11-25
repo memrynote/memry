@@ -685,6 +685,85 @@ describe('recoverStrandedFolderMoves', () => {
     expect(records()).toEqual([])
   })
 
+  it('never takes identical bytes at a target recorded with inode 0 for the placed file', async () => {
+    windows.zeroInodes = true
+    write(`${staging}/c.md`)
+    fs.writeFileSync(path.join(root, 'Beta/c.md'), `${staging}/c.md`)
+    const users = inodeOf('Beta/c.md')
+    fs.writeFileSync(recordPath(), placing(`${staging}/c.md`, 'Beta/c.md', '0'))
+
+    await recoverStrandedFolderMoves(root)
+
+    expect(inodeOf('Beta/c.md')).toBe(users)
+    expect(fs.readFileSync(path.join(root, 'Beta/c (conflict copy).md'), 'utf8')).toBe(
+      `${staging}/c.md`
+    )
+    expect(fs.existsSync(path.join(root, staging))).toBe(false)
+  })
+
+  it('finishes a linked put-back whose device number changed since, without a conflict copy', async () => {
+    write(`${staging}/c.md`)
+    fs.linkSync(path.join(root, staging, 'c.md'), path.join(root, 'Beta/c.md'))
+    const stat = fs.statSync(path.join(root, staging, 'c.md'), { bigint: true })
+    // A remount or reboot gave the volume another device number.
+    const placed = [
+      {
+        staged: `${staging}/c.md`,
+        target: 'Beta/c.md',
+        dev: String(stat.dev + 1n),
+        ino: String(stat.ino)
+      }
+    ]
+    fs.writeFileSync(recordPath(), JSON.stringify({ version: 1, from: 'Beta', staging, placed }))
+
+    await recoverStrandedFolderMoves(root)
+
+    expect(tree()).toEqual(['Beta/', 'Beta/Gamma/', 'Beta/Gamma/g.md', 'Beta/b.md', 'Beta/c.md'])
+    expect(records()).toEqual([])
+  })
+
+  it('removes only the copy its record names on a volume with no hard links', async () => {
+    windows.noHardLinks = true
+    write(`${staging}/c.md`)
+    fs.writeFileSync(path.join(root, 'Beta/.memry-put-back'), 'USER')
+    const temp = 'Beta/.memry-put-back-aaaaaaaaaaaa'
+    fs.writeFileSync(path.join(root, temp), 'half a cop')
+    const record = JSON.parse(placing(`${staging}/c.md`, 'Beta/c.md'))
+    record.placed[0].temp = temp
+    fs.writeFileSync(recordPath(), JSON.stringify(record))
+
+    await recoverStrandedFolderMoves(root)
+
+    expect(tree()).toEqual([
+      'Beta/',
+      'Beta/.memry-put-back',
+      'Beta/Gamma/',
+      'Beta/Gamma/g.md',
+      'Beta/b.md',
+      'Beta/c.md'
+    ])
+    expect(fs.readFileSync(path.join(root, 'Beta/.memry-put-back'), 'utf8')).toBe('USER')
+    expect(fs.readFileSync(path.join(root, 'Beta/c.md'), 'utf8')).toBe(`${staging}/c.md`)
+    expect(records()).toEqual([])
+  })
+
+  it.each(['Beta/b.md', 'Beta/.memry-put-back', 'Gamma/.memry-put-back-aaaaaaaaaaaa'])(
+    'refuses a record that names %s as its copy',
+    async (temp) => {
+      write(`${staging}/c.md`)
+      write('Gamma/.memry-put-back-aaaaaaaaaaaa')
+      fs.writeFileSync(path.join(root, 'Beta/.memry-put-back'), 'USER')
+      const record = JSON.parse(placing(`${staging}/c.md`, 'Beta/c.md'))
+      record.placed[0].temp = temp
+      fs.writeFileSync(recordPath(), JSON.stringify(record))
+
+      await recoverStrandedFolderMoves(root)
+
+      expect(fs.existsSync(path.join(root, temp))).toBe(true)
+      expect(tree()).toContain('Moved folder (incomplete move)/c.md')
+    }
+  )
+
   it('reopens to one visible folder of what cannot go back after a crash at any show step', async () => {
     const stagingAbs = path.join(root, staging)
     const stranded = (): void => {

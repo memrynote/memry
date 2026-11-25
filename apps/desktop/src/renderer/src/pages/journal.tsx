@@ -58,6 +58,7 @@ import { useVaultConfig } from '@/hooks/use-vault-config'
 import { useHasOwnNoteLock, useIsNoteLocked } from '@/lib/vault-locks-store'
 import { journalPathForDate } from '@/lib/journal-path'
 import { LockedNoteNotice } from '@/components/note/locked-note-notice'
+import { NoteFilesDownloadNotice } from '@/components/note/note-files-download-notice'
 import { isOutsideAllBlocks } from '@/components/note/content-area/marquee-hit-test'
 import type { WikiLinkOpenTarget } from '@/components/note/content-area/types'
 import { useOpenTarget } from '@/hooks/use-open-target'
@@ -1365,6 +1366,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                           data-marquee-ignore
                         >
                           {isLocked && <LockedNoteNotice />}
+                          {entryId && <NoteFilesDownloadNotice key={entryId} noteId={entryId} />}
                           <JournalDateDisplay viewState={currentViewState} dateParts={dateParts} />
                           <NoteNamesLine
                             noteId={entryId}

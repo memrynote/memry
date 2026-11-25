@@ -471,6 +471,16 @@ async function runBackgroundIndexBuild(input: BackgroundIndexBuildInput): Promis
   await lockedFilesChecked
   if (isStale()) return
 
+  // First, to tick each day before the sync runtime's first pull can apply a
+  // peer's delete over it.
+  try {
+    await getWatcher().replayMissedJournalEdits()
+  } catch (error) {
+    logger.error('Replaying journal edits made while the app was closed failed:', error)
+    trackMainError('vault', 'replay_missed_journal_edits', error)
+  }
+  if (isStale()) return
+
   try {
     await healCaseVariantRows(vaultPath)
   } catch (error) {

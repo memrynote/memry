@@ -1136,7 +1136,12 @@ document to its vault `.md` file and re-indexes it for search.
   replaced the doc's body with the file and lost what the doc had gained since, a peer's
   merged edit included. An edit made while the app was closed raises no event, and the
   launch index pass skips a path it already lists, so the pass that finds the mismatch runs
-  the ingest itself (#2539). Before it feeds the file, the pass keeps the body it serialized
+  the ingest itself (#2539). A journal day is checked at vault open instead, once locked
+  files are restored: a day whose bytes differ from its baseline gets the clock tick and
+  queued update an in-app edit gets, then the watcher's ingest
+  (`replayMissedJournalEdits`, #5752). Without the tick its tags never synced, and a peer's
+  delete in step with the old clock removed the day and the edit. A file with the same
+  bytes (a touched mtime, a re-index) ticks nothing. Before it feeds the file, the pass keeps the body it serialized
   as a version when that body differs from the file's, the rule the owed-file take follows
   (#2646). A version that cannot be saved leaves the edit waiting on disk. The pass feeds
   the file into the doc with `feedExternalEditToCrdt`, a full body replace in which the
@@ -1599,7 +1604,14 @@ then skipped until some later edit re-armed it.
 
 ## Sign-Out Keeps the Store
 
-Signing out does **not** delete the CRDT store. It used to, and that was the
+Signing out does **not** delete the CRDT store. The data DB rows that describe
+the store stay with it: `crdtStoreEpoch`, the `crdtUnmergedDebt` flag and its
+mirror marker, and the pack settle markers are in sign-out's keep-set
+(`sync/device-local-state.ts`). Wiped, the epoch reads as a mismatch at the next
+start and owes a body sweep of every note; keeping the epoch without the flag
+would drop the debt a mismatch raised just before the sign-out (#5754).
+
+The store used to be deleted here, and that was the
 containment for the cross-vault key collision described in
 [One Store Per Vault](#one-store-per-vault) — a problem the store path now makes
 structurally impossible, so the wipe has nothing left to defend.

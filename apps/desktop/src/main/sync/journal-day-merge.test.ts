@@ -4,7 +4,8 @@ import os from 'os'
 import path from 'path'
 import * as Y from 'yjs'
 import { eq } from 'drizzle-orm'
-import { noteMetadata, tasks } from '@memry/db-schema/data-schema'
+import { attachmentFiles, noteMetadata, tasks } from '@memry/db-schema/data-schema'
+import { syncQueue } from '@memry/db-schema/schema/sync-queue'
 import { taskNotes } from '@memry/db-schema/schema/task-relations'
 import { syncDevices } from '@memry/db-schema/schema/sync-devices'
 import { syncState } from '@memry/db-schema/schema/sync-state'
@@ -173,13 +174,14 @@ import { _resetBulkApplyForTests } from './bulk-apply'
 import { journalHandler } from './item-handlers/journal-handler'
 import { getRemoteSyncAdapter } from './item-handlers'
 import {
+  ensureJournalDay,
   listOwedJournalDayMerges,
   oweJournalDayMerge,
   runJournalDayMerges
 } from './journal-day-merge'
+import { owedNoteDownloads } from './owed-note-downloads'
 import { listPendingDeletes } from './pending-deletes'
 import { ItemApplier } from './apply-item'
-import { syncQueue } from '@memry/db-schema/schema/sync-queue'
 import { parseJournalEntry } from '../vault/journal'
 import { SyncQueueManager } from '@memry/sync-client/queue'
 import { JournalSyncService } from './journal-sync'
@@ -783,6 +785,181 @@ describe('runJournalDayMerges', () => {
 
     expect(parseJournalEntry(dayFile(), DATE).frontmatter.tags).toEqual(['a', 'b', 'd'])
     expect(listOwedJournalDayMerges(ctx.db)).toEqual([])
+  })
+
+  // OL-M47: a legacy foreign row's pictures stay the day's after the merge.
+  describe("a foreign row's attachments", () => {
+    const PHOTO = `attachments/${FOREIGN}/photo.png`
+    const refsOf = (id: string) =>
+      data.db
+        .select({ refs: noteMetadata.attachmentReferences })
+        .from(noteMetadata)
+        .where(eq(noteMetadata.id, id))
+        .get()?.refs
+    const recordFile = (noteId: string, file: string, attachmentId: string): void => {
+      data.db
+        .insert(attachmentFiles)
+        .values({ noteId, path: file, attachmentId, recordedAt: 1 })
+        .run()
+      fs.mkdirSync(path.dirname(path.join(vaultPath, file)), { recursive: true })
+      fs.writeFileSync(path.join(vaultPath, file), 'png bytes')
+    }
+    const foreignHolderWithPhoto = (): void => {
+      foreignRow({ minter: 2 }, { body: `![photo](../${PHOTO})\n` })
+      data.db
+        .update(noteMetadata)
+        .set({ attachmentReferences: ['att-f'] })
+        .where(eq(noteMetadata.id, FOREIGN))
+        .run()
+      recordFile(FOREIGN, PHOTO, 'att-f')
+    }
+
+    it('carries them to the day, where the file still resolves and nothing is owed', async () => {
+      foreignHolderWithPhoto()
+      journalHandler.applyUpsert(ctx, FOREIGN, { date: DATE, content: 'theirs\n' }, { minter: 3 })
+
+      await drain()
+
+      expect(rows()).toEqual([{ id: DAY, path: DAY_PATH }])
+      expect(textOf(DAY)).toBe(`![photo](../${PHOTO})`)
+      expect(refsOf(DAY)).toEqual(['att-f'])
+      expect(fs.readFileSync(path.join(vaultPath, PHOTO), 'utf-8')).toBe('png bytes')
+      expect(owedNoteDownloads(ctx.db, vaultPath, DAY, true)).toEqual([])
+      expect(listOwedJournalDayMerges(ctx.db)).toEqual([])
+      expect(
+        data.db
+          .select()
+          .from(syncQueue)
+          .all()
+          .filter((row) => row.type === 'note')
+      ).toEqual([])
+    })
+
+    // REVIEW-5743: a row from before the file record (#2651) has refs and no record.
+    it('records the files on disk of a row with no file record for the day', async () => {
+      foreignRow({ minter: 2 }, { body: `![photo](../${PHOTO})\n` })
+      data.db
+        .update(noteMetadata)
+        .set({ attachmentReferences: ['att-f'] })
+        .where(eq(noteMetadata.id, FOREIGN))
+        .run()
+      fs.mkdirSync(path.join(vaultPath, 'attachments', FOREIGN), { recursive: true })
+      fs.writeFileSync(path.join(vaultPath, PHOTO), 'png bytes')
+      journalHandler.applyUpsert(ctx, FOREIGN, { date: DATE, content: 'theirs\n' }, { minter: 3 })
+
+      await drain()
+
+      expect(refsOf(DAY)).toEqual(['att-f'])
+      expect(owedNoteDownloads(ctx.db, vaultPath, DAY, true)).toEqual([])
+      expect(
+        data.db
+          .select({ path: attachmentFiles.path, attachmentId: attachmentFiles.attachmentId })
+          .from(attachmentFiles)
+          .where(eq(attachmentFiles.noteId, DAY))
+          .all()
+      ).toEqual([{ path: PHOTO, attachmentId: 'att-f' }])
+    })
+
+    it('counts them as known, and pairs none, when the ids and files do not match up', async () => {
+      foreignRow({ minter: 2 }, { body: `![photo](../${PHOTO})\n` })
+      data.db
+        .update(noteMetadata)
+        .set({ attachmentReferences: ['att-f', 'att-g'] })
+        .where(eq(noteMetadata.id, FOREIGN))
+        .run()
+      fs.mkdirSync(path.join(vaultPath, 'attachments', FOREIGN), { recursive: true })
+      fs.writeFileSync(path.join(vaultPath, PHOTO), 'png bytes')
+      journalHandler.applyUpsert(ctx, FOREIGN, { date: DATE, content: 'theirs\n' }, { minter: 3 })
+
+      await drain()
+
+      expect(refsOf(DAY)).toEqual(['att-f', 'att-g'])
+      expect(
+        data.db
+          .select({ path: attachmentFiles.path, attachmentId: attachmentFiles.attachmentId })
+          .from(attachmentFiles)
+          .where(eq(attachmentFiles.noteId, DAY))
+          .all()
+      ).toEqual([{ path: PHOTO, attachmentId: null }])
+    })
+
+    // VERIFY-5743R2: list order is not upload order, so two files never pair by position.
+    it('pairs none of two ids with two files, counting both as known', async () => {
+      const SECOND = `attachments/${FOREIGN}/a.png`
+      const FIRST = `attachments/${FOREIGN}/z.png`
+      foreignRow({ minter: 2 }, { body: `![one](../${FIRST})\n![two](../${SECOND})\n` })
+      data.db
+        .update(noteMetadata)
+        .set({ attachmentReferences: ['att-1', 'att-2'] })
+        .where(eq(noteMetadata.id, FOREIGN))
+        .run()
+      fs.mkdirSync(path.join(vaultPath, 'attachments', FOREIGN), { recursive: true })
+      fs.writeFileSync(path.join(vaultPath, FIRST), 'att-1 bytes')
+      fs.writeFileSync(path.join(vaultPath, SECOND), 'att-2 bytes')
+      journalHandler.applyUpsert(ctx, FOREIGN, { date: DATE, content: 'theirs\n' }, { minter: 3 })
+
+      await drain()
+
+      expect(refsOf(DAY)).toEqual(['att-1', 'att-2'])
+      expect(
+        data.db
+          .select({ path: attachmentFiles.path, attachmentId: attachmentFiles.attachmentId })
+          .from(attachmentFiles)
+          .where(eq(attachmentFiles.noteId, DAY))
+          .orderBy(attachmentFiles.path)
+          .all()
+      ).toEqual([
+        { path: SECOND, attachmentId: null },
+        { path: FIRST, attachmentId: null }
+      ])
+      expect(fs.readFileSync(path.join(vaultPath, FIRST), 'utf-8')).toBe('att-1 bytes')
+      expect(fs.readFileSync(path.join(vaultPath, SECOND), 'utf-8')).toBe('att-2 bytes')
+    })
+
+    it('keeps them in the owed merge when the row goes before a crash', async () => {
+      foreignHolderWithPhoto()
+      journalHandler.applyUpsert(ctx, FOREIGN, { date: DATE, content: 'theirs\n' }, { minter: 3 })
+      // The drain's first step, then the process dies before the fold.
+      await ensureJournalDay(ctx.db, DATE)
+      expect(rows()).toEqual([{ id: DAY, path: DAY_PATH }])
+
+      await drain()
+
+      expect(refsOf(DAY)).toEqual(['att-f'])
+      expect(owedNoteDownloads(ctx.db, vaultPath, DAY, true)).toEqual([])
+    })
+
+    it("unions them with the day's own", async () => {
+      data.db
+        .insert(noteMetadata)
+        .values({
+          id: DAY,
+          path: DAY_PATH,
+          title: DATE,
+          journalDate: DATE,
+          fileType: 'markdown',
+          attachmentReferences: ['att-day', 'att-f'],
+          createdAt: '2026-06-09T08:00:00.000Z',
+          modifiedAt: '2026-06-09T08:00:00.000Z'
+        })
+        .run()
+      fs.writeFileSync(path.join(vaultPath, DAY_PATH), 'day\n')
+      recordFile(DAY, `attachments/${DAY}/day.png`, 'att-day')
+      oweJournalDayMerge(ctx.db, {
+        foreignId: FOREIGN,
+        date: DATE,
+        clock: { minter: 2 },
+        recordMarkdown: `![photo](../${PHOTO})`,
+        attachmentReferences: ['att-f', 'att-g']
+      })
+      recordFile(FOREIGN, PHOTO, 'att-f')
+      recordFile(FOREIGN, `attachments/${FOREIGN}/two.png`, 'att-g')
+
+      await drain()
+
+      expect(refsOf(DAY)).toEqual(['att-day', 'att-f', 'att-g'])
+      expect(owedNoteDownloads(ctx.db, vaultPath, DAY, true)).toEqual([])
+    })
   })
 
   // Device B merged `F` at `{me: 1}` into the day and pushed the day, then
