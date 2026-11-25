@@ -353,7 +353,9 @@ extension KeyWindowSuites {
         }
 
         private func until(_ condition: () -> Bool) async {
-            for _ in 0..<300 where !condition() {
+            // Bounded by the test's time limit, not a fixed count: a CI runner
+            // can take longer than any count that suits a laptop.
+            while !condition(), !Task.isCancelled {
                 try? await Task.sleep(for: .milliseconds(20))
             }
         }
@@ -373,10 +375,10 @@ extension KeyWindowSuites {
 
         /// Waits for the stored title and body to be `title` and `body`.
         private func expectStored(_ f: Fixture, title: String, body: [String]) async throws {
-            for _ in 0..<300 {
+            while !Task.isCancelled {
                 let now = try await stored(f)
                 if now.title == title, now.body == body { break }
-                try await Task.sleep(for: .milliseconds(20))
+                try? await Task.sleep(for: .milliseconds(20))
             }
             let now = try await stored(f)
             #expect(now.title == title, "\(now)")
@@ -975,8 +977,8 @@ extension KeyWindowSuites {
 
         /// Waits for the stored title to be `title`.
         private func expectTitle(_ f: Fixture, _ title: String) async throws {
-            for _ in 0..<300 where try await stored(f).title != title {
-                try await Task.sleep(for: .milliseconds(20))
+            while try await stored(f).title != title, !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(20))
             }
             #expect(try await stored(f).title == title)
         }

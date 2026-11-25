@@ -140,7 +140,9 @@ extension KeyWindowSuites {
         }
 
         private func until(_ condition: () -> Bool) async {
-            for _ in 0..<300 where !condition() {
+            // Bounded by the test's time limit, not a fixed count: a CI runner
+            // can take longer than any count that suits a laptop.
+            while !condition(), !Task.isCancelled {
                 try? await Task.sleep(for: .milliseconds(20))
             }
         }
@@ -179,8 +181,8 @@ extension KeyWindowSuites {
         /// Lets the held renames land and waits for `text` to be the saved title.
         private func release(_ f: Fixture, until text: String) async throws {
             f.writer.release()
-            for _ in 0..<300 where (try? await savedTitle(f)) != text {
-                try await Task.sleep(for: .milliseconds(20))
+            while (try? await savedTitle(f)) != text, !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(20))
             }
             #expect(try await savedTitle(f) == text, "the typed title was not saved: \(f.writer.titles)")
         }
