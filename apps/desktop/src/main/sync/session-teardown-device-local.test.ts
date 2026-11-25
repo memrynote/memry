@@ -46,7 +46,8 @@ import { recoverDirtyItems } from './dirty-recovery'
  * which sign-out keeps (#2462 F5): wiped, a packed body that landed during the
  * first sync is never written to its file. The journal clock era dates this
  * vault's upgrade (#5659): re-dated at the next sign-in, it would read an edit
- * made before the sign-out as an older build's.
+ * made before the sign-out as an older build's. An owed journal day merge
+ * holds a displaced holder's tags and text until its drain (#5699).
  */
 describe('sign-out and the device-local sync state', () => {
   let dataDb: TestDatabaseResult
@@ -61,7 +62,7 @@ describe('sign-out and the device-local sync state', () => {
     dataDb.close()
   })
 
-  it('keeps the pack settle markers and the journal clock era, and wipes the rest', async () => {
+  it('keeps the pack settle markers, the journal clock era and owed day merges, and wipes the rest', async () => {
     const now = new Date()
     dataDb.db
       .insert(syncState)
@@ -71,7 +72,8 @@ describe('sign-out and the device-local sync state', () => {
         { key: 'packSeedSettlePending', value: '1', updatedAt: now },
         { key: 'packSeeded:livenote0001', value: '1', updatedAt: now },
         { key: 'packSeeded:j2026-09-26', value: '1', updatedAt: now },
-        { key: 'journalClockEra', value: '2026-01-01T12:00:00.000Z', updatedAt: now }
+        { key: 'journalClockEra', value: '2026-01-01T12:00:00.000Z', updatedAt: now },
+        { key: 'journalDayMerge:jforeign', value: '{}', updatedAt: now }
       ])
       .run()
 
@@ -85,6 +87,7 @@ describe('sign-out and the device-local sync state', () => {
       .toSorted()
     expect(keys).toEqual([
       'journalClockEra',
+      'journalDayMerge:jforeign',
       'packSeedSettlePending',
       'packSeeded:j2026-09-26',
       'packSeeded:livenote0001'

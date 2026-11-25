@@ -78,8 +78,32 @@ vi.mock('../database', () => ({
 vi.mock('../database/client', () => ({
   getDatabase: () => dbs.data,
   getIndexDatabase: () => dbs.index,
+  isDatabaseInitialized: () => true,
   isIndexDatabaseInitialized: () => true,
   getRawIndexDatabase: () => null
+}))
+// Sign-out's real teardown runs its `sync_state` wipe; its keychain, runtime
+// and calendar collaborators are stand-ins.
+vi.mock('../crypto', () => ({ deleteKey: vi.fn(async () => {}) }))
+vi.mock('./runtime-state', async () => await import('./runtime'))
+vi.mock('./runtime', () => ({ stopSyncRuntime: vi.fn(async () => {}) }))
+vi.mock('./token-manager', () => ({
+  resetTokenManagerState: vi.fn(),
+  getValidAccessToken: vi.fn(async () => null)
+}))
+vi.mock('./linking-service', () => ({
+  clearPendingSession: vi.fn(),
+  clearPendingLinkCompletion: vi.fn()
+}))
+vi.mock('../ipc/in-memory-auth-state', () => ({ clearInMemoryAuthState: vi.fn() }))
+vi.mock('../store', () => ({ store: { set: vi.fn() } }))
+vi.mock('../calendar/google/oauth', () => ({
+  disconnectGoogleCalendar: vi.fn(),
+  listGoogleAccountIds: () => []
+}))
+vi.mock('../calendar/google/google-sync-runner', () => ({
+  startGoogleCalendarSyncRunner: vi.fn(async () => {}),
+  stopGoogleCalendarSyncRunner: vi.fn()
 }))
 vi.mock('../journal/runtime-effects', () => ({
   enqueueJournalCreate: vi.fn(),
@@ -117,6 +141,7 @@ vi.mock('./crdt-provider', () => ({
       Y.applyUpdate(target, Y.encodeStateAsUpdate(foreign))
       return true
     },
+    initPersistence: async () => {},
     purge: async (id: string) => {
       if (provider.purgeFails) throw new Error('crashed before the purge')
       provider.docs.delete(id)
@@ -158,11 +183,21 @@ import { parseJournalEntry } from '../vault/journal'
 import { SyncQueueManager } from '@memry/sync-client/queue'
 import { JournalSyncService } from './journal-sync'
 import { recoverDirtyItems } from './dirty-recovery'
+import { teardownSession } from './session-teardown'
 
 const DATE = '2026-06-09'
 const DAY = `j${DATE}`
 const FOREIGN = 'vcpzueguep8y'
 const DAY_PATH = `journal/${DATE}.md`
+const THIS_DEVICE = {
+  id: 'me',
+  name: 'This Mac',
+  platform: 'macos' as const,
+  appVersion: '1',
+  linkedAt: new Date(),
+  isCurrentDevice: true,
+  signingPublicKey: 'key'
+}
 
 describe('runJournalDayMerges', () => {
   let data: TestDatabaseResult
@@ -223,18 +258,7 @@ describe('runJournalDayMerges', () => {
     index = createTestIndexDb()
     dbs.data = data.db
     dbs.index = index.db
-    data.db
-      .insert(syncDevices)
-      .values({
-        id: 'me',
-        name: 'This Mac',
-        platform: 'macos',
-        appVersion: '1',
-        linkedAt: new Date(),
-        isCurrentDevice: true,
-        signingPublicKey: 'key'
-      })
-      .run()
+    data.db.insert(syncDevices).values(THIS_DEVICE).run()
     ctx = { db: asSyncDb(data.db), emit: vi.fn() }
     pullBody = vi.fn(async () => true)
   })
@@ -703,6 +727,28 @@ describe('runJournalDayMerges', () => {
       )
     }
   )
+
+  // The owed merge holds the only copy of the displaced blank holder's offline
+  // tag while the drain waits for the foreign body. A sign-out in that window
+  // keeps it, so the next sign-in's drain still adds the tag to the day.
+  it('keeps an owed offline tag of a blank holder through sign-out', async () => {
+    foreignRow(
+      { me: 2 },
+      { body: '---\ntags:\n  - a\n  - c\n---\n', syncedAt: '2026-06-09T07:00:00.000Z' }
+    )
+    journalHandler.applyUpsert(ctx, DAY, { date: DATE, content: '', tags: ['a'] }, { b: 2 })
+    pullBody.mockResolvedValue(false)
+    await drain()
+    expect(listOwedJournalDayMerges(ctx.db).map((owed) => owed.tags)).toEqual([['a', 'c']])
+
+    await teardownSession('logout')
+    data.db.insert(syncDevices).values(THIS_DEVICE).run()
+    pullBody.mockResolvedValue(true)
+    await drain()
+
+    expect(parseJournalEntry(dayFile(), DATE).frontmatter.tags).toEqual(['a', 'c'])
+    expect(listOwedJournalDayMerges(ctx.db)).toEqual([])
+  })
 
   it('owes nothing again when its own tombstoned foreign id is redelivered', async () => {
     journalHandler.applyUpsert(ctx, FOREIGN, { date: DATE, content: 'theirs\n' }, { b: 1 })

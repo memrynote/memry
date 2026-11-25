@@ -40,11 +40,10 @@ import { deleteNoteFromCache } from '../vault/note-sync'
 import { relinkTasksToMergedNote } from '../notes/runtime-effects'
 import { EMPTY_DOC_UPDATE_BYTES, getCrdtProvider } from './crdt-provider'
 import { getJournalSyncService } from './journal-sync'
+import { JOURNAL_DAY_MERGE_KEY_PREFIX as KEY_PREFIX } from './journal-day-merge-key'
 import { recordPendingDelete } from './pending-deletes'
 
 const log = createLogger('JournalDayMerge')
-
-const KEY_PREFIX = 'journalDayMerge:'
 
 export interface OwedJournalDayMerge {
   foreignId: string
