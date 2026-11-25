@@ -31,9 +31,12 @@ fail-fast = false
 # The merge queue's main Test step of rust-ci.yml. A test that fails and then passes within two
 # retries reports FLAKY and does not eject the PR; rust-ci.yml's flaky-report job reads the JUnit
 # file and posts each one to #3967. PR runs keep the default profile, with no retries, so a flake
-# still fails review. Like `live`, it keeps the default profile's limits and test group.
+# still fails review. Like `live`, it keeps the default profile's limits and test group. A test that
+# fails every retry on some runners is skipped here while it is listed in quarantine.toml.
 [profile.merge-queue]
 retries = 2
+# Generated from crates/.config/quarantine.toml by `node scripts/check-quarantine.mjs --write`.
+default-filter = "all()"
 
 [profile.merge-queue.junit]
 path = "junit.xml"

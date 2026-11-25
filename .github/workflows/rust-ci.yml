@@ -244,6 +244,11 @@ jobs:
           node --test scripts/check-test-timing.test.mjs
           node scripts/check-test-timing.mjs
 
+      - name: Merge-queue quarantine list
+        if: matrix.part != 'tests' && matrix.part != 'models' && runner.os == 'Linux'
+        working-directory: .
+        run: node --test scripts/check-quarantine.test.mjs && node scripts/check-quarantine.mjs
+
       # Linux linking needs tens of GB; the image ships ~20 GB of toolchains we never use.
       - name: Free disk space
         uses: ./.github/actions/free-disk
