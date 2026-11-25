@@ -71,6 +71,9 @@ const VaultRelativePath = z
     p.split('/').every((name) => !['', '.', '..'].includes(name) && !name.includes('\\'))
   )
 
+/** A device or inode number, in decimal: a `bigint` has no JSON form. */
+const FileNumber = z.string().regex(/^\d+$/)
+
 /**
  * A move going entry by entry, recorded in `.memry/moves/<id>.json` until it
  * ends, as `/`-separated vault-relative paths. This is the Tauri app's shipped
@@ -79,15 +82,53 @@ const VaultRelativePath = z
  * a move either app left half done is put back by whichever opens the vault
  * next. Tauri adds `shown` (the visible folder a show moves into, written
  * before anything moves there) and leaves `from` out of a record that only
- * shows a staging directory; both read here.
+ * shows a staging directory; both read here. A put-back here adds `placed`:
+ * each staged file it is putting back, the target it creates for it, and the
+ * device and inode that target gets, written before the target is created
+ * (Tauri's exclusive rename has no such step and writes none).
  */
 const FolderMoveRecordSchema = z.object({
   version: z.number(),
   from: VaultRelativePath.optional(),
   staging: VaultRelativePath,
-  shown: VaultRelativePath.optional()
+  shown: VaultRelativePath.optional(),
+  placed: z
+    .array(
+      z.object({
+        staged: VaultRelativePath,
+        target: VaultRelativePath,
+        dev: FileNumber,
+        ino: FileNumber
+      })
+    )
+    .optional()
 })
 type FolderMoveRecord = z.infer<typeof FolderMoveRecordSchema>
+type Placement = NonNullable<FolderMoveRecord['placed']>[number]
+
+/** A record a sweep acts on, saved before each step a crash must not lose. */
+interface MoveJournal {
+  vaultPath: string
+  recordPath: string
+  record: FolderMoveRecord
+  /** A placed file's staged name could not be unlinked: show nothing yet. */
+  deferred: boolean
+}
+
+async function saveRecord(journal: MoveJournal): Promise<void> {
+  const { version, from, staging, shown, placed } = journal.record
+  const text = JSON.stringify({
+    version,
+    from,
+    staging,
+    shown,
+    placed: placed?.length ? placed : undefined
+  })
+  // A longer record is unreadable at the next open; the file stays staged.
+  if (Buffer.byteLength(text) > RECORD_MAX_BYTES)
+    throw Object.assign(new Error('E2BIG'), { code: 'E2BIG' })
+  await atomicWrite(journal.recordPath, text)
+}
 
 function moveRecordDir(vaultPath: string): string {
   return path.join(getMemryDir(vaultPath), 'moves')
@@ -231,15 +272,19 @@ export async function recoverStrandedFolderMoves(vaultPath: string): Promise<voi
         unreadable.add(id)
       } else if (!runningMoves.has(id)) {
         claimed.add(id)
+        const journal: MoveJournal = { vaultPath, recordPath, record, deferred: false }
         const stagingAbs = path.join(vaultPath, record.staging)
         const fromAbs = record.from === undefined ? null : path.join(vaultPath, record.from)
         if (existsSync(stagingAbs)) {
           if (fromAbs) {
             await mkdir(path.dirname(fromAbs), { recursive: true })
-            await putBack(stagingAbs, fromAbs)
+            await putBack(stagingAbs, fromAbs, journal)
           }
-          const shown = record.shown === undefined ? null : path.join(vaultPath, record.shown)
-          await showStaged(stagingAbs, fromAbs ? path.basename(fromAbs) : UNKNOWN_SOURCE, shown)
+          // A deferred file is visible at its target already: showing its
+          // staged name too would make two visible copies.
+          if (!journal.deferred) {
+            await showStaged(stagingAbs, fromAbs ? path.basename(fromAbs) : UNKNOWN_SOURCE, journal)
+          }
         }
         if (!existsSync(stagingAbs)) await removeMoveRecord(recordPath)
         else if (record.from !== undefined) holdStrandedFolder(record.from)
@@ -260,7 +305,16 @@ export async function recoverStrandedFolderMoves(vaultPath: string): Promise<voi
     const recorded = !unreadable.has(id) && existsSync(recordPathOf(vaultPath, id))
     if (!owned(id) && !recorded) {
       logger.warn('Showing a folder move staging directory no usable record names')
-      await showStaged(stagingAbs, UNKNOWN_SOURCE, null)
+      // A move writes its record before its staging directory, so this one is
+      // no live move's: record the show, unless a record this build cannot
+      // use is there to keep.
+      const recordPath = recordPathOf(vaultPath, id)
+      const staging = path.relative(vaultPath, stagingAbs).split(path.sep).join('/')
+      const journal = unreadable.has(id)
+        ? null
+        : { vaultPath, recordPath, record: { version: 1, staging }, deferred: false }
+      await showStaged(stagingAbs, UNKNOWN_SOURCE, journal)
+      if (journal && !existsSync(stagingAbs)) await removeMoveRecord(recordPath)
     }
     if (existsSync(stagingAbs)) hidden.add(id)
   }
@@ -274,40 +328,61 @@ function recordPathOf(vaultPath: string, id: string): string {
 }
 
 /**
- * The record at `recordPath` when it is one: a regular file, never followed
- * through a link or opened as a FIFO, of at most `RECORD_MAX_BYTES`. The
- * checks run on the opened file, so nothing swapped in after them is read:
- * `O_NOFOLLOW` refuses a link where the platform has it, `O_NONBLOCK` keeps a
- * FIFO from blocking, and the path must still name the file that was opened
- * (Windows has no `O_NOFOLLOW`).
+ * The record at `recordPath` when it is one: a regular file (`openFile`) of at
+ * most `RECORD_MAX_BYTES`.
  */
 async function readMoveRecord(recordPath: string): Promise<FolderMoveRecord | null> {
+  const file = await openFile(recordPath)
+  if (!file) return null
+  try {
+    const bytes = Buffer.alloc(RECORD_MAX_BYTES + 1)
+    const { bytesRead } = await file.handle.read(bytes, 0, bytes.length, 0)
+    if (bytesRead > RECORD_MAX_BYTES) return null
+    return parseMoveRecord(bytes.subarray(0, bytesRead).toString('utf8'))
+  } finally {
+    await file.handle.close()
+  }
+}
+
+interface OpenFile {
+  handle: FileHandle
+  dev: bigint
+  ino: bigint
+}
+
+/**
+ * The regular file at `abs`, opened for reading, or null when nothing or
+ * something else is there. The checks run on the opened file, so nothing
+ * swapped in after them is read: `O_NOFOLLOW` refuses a link where the
+ * platform has it, `O_NONBLOCK` keeps a FIFO from blocking, and the path must
+ * still name the file that was opened (Windows has no `O_NOFOLLOW`).
+ */
+async function openFile(abs: string): Promise<OpenFile | null> {
   let handle: FileHandle
   try {
     // The mode applies only to a create, which these flags never ask for;
     // it tells CodeQL's insecure-temporary-file check the same.
     handle = await open(
-      recordPath,
+      abs,
       constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0) | (constants.O_NONBLOCK ?? 0),
       0o600
     )
   } catch (error) {
-    if (errnoCode(error) === 'ELOOP') return null // a link
+    if (['ELOOP', 'ENOENT'].includes(errnoCode(error) ?? '')) return null
     throw error
   }
   try {
     const stat = await handle.stat({ bigint: true })
-    const named = await lstat(recordPath, { bigint: true })
-    if (!stat.isFile() || !named.isFile() || named.ino !== stat.ino || named.dev !== stat.dev) {
-      return null
+    const named = await lstat(abs, { bigint: true }).catch(() => null)
+    if (stat.isFile() && named?.isFile() && named.ino === stat.ino && named.dev === stat.dev) {
+      return { handle, dev: stat.dev, ino: stat.ino }
     }
-    const bytes = Buffer.alloc(RECORD_MAX_BYTES + 1)
-    const { bytesRead } = await handle.read(bytes, 0, bytes.length, 0)
-    if (bytesRead > RECORD_MAX_BYTES) return null
-    return parseMoveRecord(bytes.subarray(0, bytesRead).toString('utf8'))
-  } finally {
+  } catch (error) {
     await handle.close()
+    throw error
   }
+  await handle.close()
+  return null
 }
 
 /**
@@ -352,14 +427,19 @@ function within(rel: string, folder: string): boolean {
 async function isOwnMove(
   vaultPath: string,
   id: string,
-  { from, staging, shown }: FolderMoveRecord
+  { from, staging, shown, placed = [] }: FolderMoveRecord
 ): Promise<boolean> {
   if (path.posix.basename(staging) !== `${STAGING_PREFIX}${id}`) return false
   if (from !== undefined && (within(from, staging) || within(from, '.memry'))) return false
   if (shown !== undefined && path.posix.dirname(shown) !== path.posix.dirname(staging)) {
     return false
   }
-  for (const rel of [from, staging, shown]) {
+  // A put-back only ever unlinks a staged name, once its target holds it.
+  for (const { staged, target } of placed) {
+    if (!within(staged, staging) || staged.toLowerCase() === staging.toLowerCase()) return false
+    if (within(target, staging) || within(target, '.memry')) return false
+  }
+  for (const rel of [from, staging, shown, ...placed.map((p) => p.target)]) {
     if (rel !== undefined && (await resolveVaultFile(vaultPath, rel)).kind === 'outside') {
       return false
     }
@@ -432,15 +512,47 @@ function nameTakenError(): NodeJS.ErrnoException {
   return Object.assign(new Error('EEXIST'), { code: 'EEXIST' })
 }
 
+function vaultRelative(journal: MoveJournal, abs: string): string {
+  return path.relative(journal.vaultPath, abs).split(path.sep).join('/')
+}
+
+/** Records, before `target` is created, that it is `file`, placed for `staged`. */
+async function recordPlacement(
+  journal: MoveJournal | null,
+  staged: string,
+  target: string,
+  file: string
+): Promise<void> {
+  if (!journal) return
+  const opened = await openFile(file)
+  if (!opened) throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' })
+  await opened.handle.close()
+  const placement: Placement = {
+    staged: vaultRelative(journal, staged),
+    target: vaultRelative(journal, target),
+    dev: String(opened.dev),
+    ino: String(opened.ino)
+  }
+  const others = journal.record.placed?.filter((p) => p.staged !== placement.staged) ?? []
+  journal.record.placed = [...others, placement]
+  await saveRecord(journal)
+}
+
 /**
  * Creates `target` from the file `staged` only while nothing is there, as
  * Tauri's `rename_no_replace`: Node has no exclusive rename, but a hard link
  * fails `EEXIST` on a name taken since the look. A volume with no hard links
  * (FAT, some network mounts) gets a copy, made under a hidden name first so
  * no crash leaves a half copy at `target`; the look before its rename is the
- * one window left there, as for a link.
+ * one window left there, as for a link. The file `target` is about to be is
+ * recorded first: the staged file itself for a link, the copy for a copy.
  */
-async function placeFile(staged: string, target: string): Promise<void> {
+async function placeFile(
+  staged: string,
+  target: string,
+  journal: MoveJournal | null
+): Promise<void> {
+  await recordPlacement(journal, staged, target, staged)
   try {
     await link(staged, target)
     return
@@ -452,6 +564,7 @@ async function placeFile(staged: string, target: string): Promise<void> {
   // A crash's leftover copy, whole or not.
   await rm(temp, { force: true })
   await copyFile(staged, temp, constants.COPYFILE_EXCL)
+  await recordPlacement(journal, staged, target, temp)
   if (await isTaken(target)) {
     await rm(temp, { force: true })
     throw nameTakenError()
@@ -460,43 +573,70 @@ async function placeFile(staged: string, target: string): Promise<void> {
 }
 
 /**
- * `target` holds the bytes of the file `staged`: its other hard link, or a
- * whole copy of it. A put-back cut short between placing `target` and
- * unlinking `staged` leaves exactly that.
+ * The placements under `staged` (or of it) whose target is still the file the
+ * put-back created there: the same device and inode, or, where the volume
+ * gives every file inode 0, the same bytes. Any other file at a target is not
+ * the put-back's.
  */
-async function holdsSameBytes(staged: string, target: string): Promise<boolean> {
-  const [a, b] = await Promise.all([
-    lstat(staged, { bigint: true }).catch(() => null),
-    lstat(target, { bigint: true }).catch(() => null)
-  ])
-  if (!a?.isFile() || !b?.isFile() || a.size !== b.size) return false
-  if (a.dev === b.dev && a.ino === b.ino) return true
-  const [ha, hb] = [await open(staged, 'r'), await open(target, 'r').catch(() => null)]
+async function placedUnder(journal: MoveJournal | null, staged: string): Promise<Placement[]> {
+  if (!journal?.record.placed) return []
+  const rel = vaultRelative(journal, staged)
+  const placed: Placement[] = []
+  for (const placement of journal.record.placed) {
+    if (within(placement.staged, rel) && (await isPlaced(journal, placement))) {
+      placed.push(placement)
+    }
+  }
+  return placed
+}
+
+async function isPlaced(journal: MoveJournal, placement: Placement): Promise<boolean> {
+  const staged = path.join(journal.vaultPath, placement.staged)
+  const target = await openFile(path.join(journal.vaultPath, placement.target))
+  if (!target) return false
   try {
-    if (!hb) return false
-    const [ba, bb] = [Buffer.alloc(64 * 1024), Buffer.alloc(64 * 1024)]
-    for (let at = 0; ; at += ba.length) {
-      const [{ bytesRead: na }, { bytesRead: nb }] = await Promise.all([
-        ha.read(ba, 0, ba.length, at),
-        hb.read(bb, 0, bb.length, at)
-      ])
-      if (na !== nb || !ba.subarray(0, na).equals(bb.subarray(0, nb))) return false
-      if (na === 0) return true
+    if (placement.ino !== '0') {
+      return String(target.dev) === placement.dev && String(target.ino) === placement.ino
+    }
+    const source = await openFile(staged)
+    if (!source) return false
+    try {
+      return await sameBytes(source.handle, target.handle)
+    } finally {
+      await source.handle.close()
     }
   } finally {
-    await ha.close()
-    await hb?.close()
+    await target.handle.close()
+  }
+}
+
+async function sameBytes(a: FileHandle, b: FileHandle): Promise<boolean> {
+  const [ba, bb] = [Buffer.alloc(64 * 1024), Buffer.alloc(64 * 1024)]
+  for (let at = 0; ; at += ba.length) {
+    const [{ bytesRead: na }, { bytesRead: nb }] = await Promise.all([
+      a.read(ba, 0, ba.length, at),
+      b.read(bb, 0, bb.length, at)
+    ])
+    if (na !== nb || !ba.subarray(0, na).equals(bb.subarray(0, nb))) return false
+    if (na === 0) return true
   }
 }
 
 /**
- * `staged` and `target` hold the same bytes: keep only `target`, or, when
- * `staged` cannot be unlinked, only `staged`, so a show never makes it a
- * second visible copy.
+ * The file `staged` is placed: unlink its staged name, and drop its
+ * placement. When the name cannot go (a lock on the file holds every name of
+ * it), both stay, and so does the record, for a later open.
  */
-async function keepOne(staged: string, target: string): Promise<void> {
-  if (await tryStep(() => unlink(staged))) return
-  if (await holdsSameBytes(staged, target)) await tryStep(() => unlink(target))
+async function finishPlacement(journal: MoveJournal | null, staged: string): Promise<void> {
+  if (!(await tryStep(() => unlink(staged)))) {
+    if (journal) journal.deferred = true
+    return
+  }
+  if (!journal?.record.placed) return
+  const rel = vaultRelative(journal, staged)
+  journal.record.placed = journal.record.placed.filter((p) => p.staged !== rel)
+  // A placement left behind names a staged file that is gone: inert.
+  await tryStep(() => saveRecord(journal))
 }
 
 /**
@@ -510,15 +650,36 @@ async function keepOne(staged: string, target: string): Promise<void> {
  * Invariant: every step is re-runnable; a crash between any two steps
  * reopens to exactly one visible copy. A file is placed (link, or copy to a
  * hidden name then rename) before its staged name is unlinked, so a crash in
- * between leaves `target` holding the staged bytes: the next run finds that
- * at the name it tries and only unlinks the staged one, never taking a
- * conflict name for it.
+ * between leaves `target` holding the staged bytes.
+ *
+ * Intent rule: recovery never infers what a put-back created. Before a target
+ * is created the journal records it and the device and inode it gets
+ * (`placed`). The next run unlinks a staged name only when the record's
+ * target is still that file, and it never unlinks or replaces a target: any
+ * other file there is someone else's, and the staged file goes back beside
+ * it. A staged name that cannot be unlinked defers the record's show, so the
+ * staged file never becomes a second visible copy.
  */
-async function putBack(staged: string, source: string): Promise<void> {
+async function putBack(staged: string, source: string, journal: MoveJournal | null): Promise<void> {
   const stat = await lstat(staged).catch(() => null)
   if (!stat) return // gone from the staging directory: nothing to put back
   const isDirectory = stat.isDirectory()
-  if (isDirectory || stat.isSymbolicLink()) {
+  let placed: Placement[] = []
+  try {
+    if (!stat.isSymbolicLink()) placed = await placedUnder(journal, staged)
+  } catch (error) {
+    // Not knowing whether a target is the put-back's: leave it all staged.
+    logger.error(`Could not check a put-back target: ${errnoCode(error) ?? 'unknown'}`)
+    if (journal) journal.deferred = true
+    return
+  }
+  if (stat.isFile() && placed.length > 0) {
+    await finishPlacement(journal, staged)
+    return
+  }
+  // A directory holding a placed file goes entry by entry, so the file's
+  // staged name is unlinked instead of moved to a second visible place.
+  if ((isDirectory && placed.length === 0) || stat.isSymbolicLink()) {
     // A directory rename refuses a file or a non-empty directory at the
     // target, so it replaces at most an empty directory: never a file. A link
     // has no exclusive create that keeps it a link: the look before its
@@ -544,11 +705,9 @@ async function putBack(staged: string, source: string): Promise<void> {
         if (stat.isSymbolicLink()) {
           if (await isTaken(target)) continue
           await withTransientFsRetry(() => rename(staged, target), 'moveDirectory')
-        } else if (await holdsSameBytes(staged, target)) {
-          await keepOne(staged, target)
         } else {
-          await withTransientFsRetry(() => placeFile(staged, target), 'moveDirectory')
-          await keepOne(staged, target)
+          await withTransientFsRetry(() => placeFile(staged, target, journal), 'moveDirectory')
+          await finishPlacement(journal, staged)
         }
         return
       }
@@ -560,7 +719,7 @@ async function putBack(staged: string, source: string): Promise<void> {
         if (errnoCode(error) !== 'EEXIST' || !merge) throw error
       }
       for (const name of await readdir(staged)) {
-        await putBack(path.join(staged, name), path.join(target, name))
+        await putBack(path.join(staged, name), path.join(target, name), journal)
       }
       await tryStep(() => rmdir(staged))
       return
@@ -574,18 +733,31 @@ async function putBack(staged: string, source: string): Promise<void> {
 }
 
 /**
- * Move what is left in the staging directory into `shown` when a show that
- * was cut short named it and it is a directory, or else into the first free
- * visible `<name> (incomplete move)`, then `(incomplete move 2)` and on,
- * beside it: Tauri's names, so the user finds the files.
+ * Move what is left in the staging directory into the record's `shown` when a
+ * show that was cut short named it and it is a directory or free, or else into
+ * the first free visible `<name> (incomplete move)`, then `(incomplete move
+ * 2)` and on, beside it: Tauri's names, so the user finds the files. `shown`
+ * is recorded before anything moves, so a crash mid-show resumes into the
+ * same folder.
  */
-async function showStaged(stagingAbs: string, name: string, shown: string | null): Promise<void> {
+async function showStaged(
+  stagingAbs: string,
+  name: string,
+  journal: MoveJournal | null
+): Promise<void> {
   if (!existsSync(stagingAbs)) return
-  const reuse = shown && (await lstat(shown).catch(() => null))?.isDirectory()
-  const visible = reuse
-    ? shown
-    : await freeName(stagingAbs, (n) => `${name} (incomplete move${n === 1 ? '' : ` ${n}`})`)
-  if (visible) await putBack(stagingAbs, visible)
+  const recorded = journal?.record.shown
+  const shown = journal && recorded !== undefined ? path.join(journal.vaultPath, recorded) : null
+  const there = shown && (await lstat(shown).catch(() => null))
+  const visible =
+    shown && (!there || there.isDirectory())
+      ? shown
+      : await freeName(stagingAbs, (n) => `${name} (incomplete move${n === 1 ? '' : ` ${n}`})`)
+  if (visible && journal && visible !== shown) {
+    journal.record.shown = vaultRelative(journal, visible)
+    if (!(await tryStep(() => saveRecord(journal)))) return
+  }
+  if (visible) await putBack(stagingAbs, visible, journal)
   if (existsSync(stagingAbs)) {
     logger.error('A failed folder move left files in its hidden staging directory')
   }

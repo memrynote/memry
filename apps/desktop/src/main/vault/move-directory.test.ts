@@ -17,6 +17,12 @@ const { windows } = vi.hoisted(() => ({
     beforeReaddir: null as null | ((dir: string) => Promise<void>),
     noHardLinks: false,
     unlinkFails: null as null | ((p: string) => string | null),
+    /** Inodes a lock holds: no name of them can be unlinked. */
+    lockedInodes: new Set<bigint>(),
+    /** The volume gives every file inode 0 (SMB, WebDAV, cloud redirectors). */
+    zeroInodes: false,
+    /** Fails a rename, link or copy with the code it returns. */
+    refuse: null as null | ((from: string, to: string) => string | null),
     /** The app dies right after its `crashAfter`th change to the disk. */
     crashAfter: Infinity,
     changes: 0
@@ -42,8 +48,19 @@ vi.mock('fs/promises', async (importOriginal) => {
       windows.changes++
       return result
     }
+  const refused = (from: string, to: string): void => {
+    const code = windows.refuse?.(from, to)
+    if (code) throw errno(code)
+  }
+  const zeroed = <S extends { ino: bigint | number }>(p: string, stat: S): S => {
+    if (windows.zeroInodes && !p.includes(`${path.sep}.memry${path.sep}`)) {
+      stat.ino = typeof stat.ino === 'bigint' ? 0n : 0
+    }
+    return stat
+  }
   const rename = async (from: string, to: string): Promise<void> => {
     await windows.beforeMove?.(from)
+    refused(from, to)
     if (windows.lockedFiles.has(path.basename(from))) throw errno('EPERM')
     if (windows.stagingLocked && from.includes('.memry-move-')) throw errno('EIO')
     if (windows.held && !path.basename(from).startsWith('.')) {
@@ -57,20 +74,35 @@ vi.mock('fs/promises', async (importOriginal) => {
   }
   const link = async (from: string, to: string): Promise<void> => {
     await windows.beforeMove?.(from)
+    refused(from, to)
     if (windows.lockedFiles.has(path.basename(from)) || windows.noHardLinks) throw errno('EPERM')
     return actual.link(from, to)
   }
   const unlink = async (p: string): Promise<void> => {
     const code = windows.unlinkFails?.(p)
     if (code) throw errno(code)
+    const stat = await actual.lstat(p, { bigint: true }).catch(() => null)
+    if (stat && windows.lockedInodes.has(stat.ino)) throw errno('EBUSY')
     return actual.unlink(p)
   }
+  const lstat = (async (p: string, options?: { bigint?: boolean }) =>
+    zeroed(p, await actual.lstat(p, options))) as typeof actual.lstat
+  const open = (async (p: string, ...rest: unknown[]) => {
+    const handle = await (
+      actual.open as (...args: unknown[]) => Promise<PromisesModule.FileHandle>
+    )(p, ...rest)
+    const stat = handle.stat.bind(handle)
+    handle.stat = (async (options?: { bigint?: boolean }) =>
+      zeroed(p, await stat(options))) as typeof handle.stat
+    return handle
+  }) as typeof actual.open
   const readdir = (async (dir: string, ...rest: unknown[]) => {
     await windows.beforeReaddir?.(dir)
     return (actual.readdir as (...args: unknown[]) => Promise<unknown>)(dir, ...rest)
   }) as typeof actual.readdir
   const copyFile = async (from: string, to: string, mode?: number): Promise<void> => {
     await windows.beforeMove?.(from)
+    refused(from, to)
     if (windows.lockedFiles.has(path.basename(from))) throw errno('EPERM')
     return actual.copyFile(from, to, mode)
   }
@@ -82,7 +114,9 @@ vi.mock('fs/promises', async (importOriginal) => {
     rm: change(actual.rm),
     rmdir: change(actual.rmdir),
     mkdir: change(actual.mkdir),
-    readdir
+    readdir,
+    lstat,
+    open
   }
   return { ...actual, default: { ...actual, ...mocked }, ...mocked }
 })
@@ -140,6 +174,9 @@ describe('moveDirectory', () => {
     windows.beforeReaddir = null
     windows.noHardLinks = false
     windows.unlinkFails = null
+    windows.lockedInodes.clear()
+    windows.zeroInodes = false
+    windows.refuse = null
     windows.crashAfter = Infinity
     windows.changes = 0
     write('Beta/b.md')
@@ -304,6 +341,9 @@ describe('recoverStrandedFolderMoves', () => {
     windows.beforeReaddir = null
     windows.noHardLinks = false
     windows.unlinkFails = null
+    windows.lockedInodes.clear()
+    windows.zeroInodes = false
+    windows.refuse = null
     windows.crashAfter = Infinity
     windows.changes = 0
     write('Beta/b.md')
@@ -312,6 +352,7 @@ describe('recoverStrandedFolderMoves', () => {
   })
 
   afterEach(() => {
+    vi.useRealTimers()
     fs.rmSync(root, { recursive: true, force: true })
   })
 
@@ -506,34 +547,192 @@ describe('recoverStrandedFolderMoves', () => {
     )
   })
 
+  /** The record of a put-back that was about to place `staged` at `target`. */
+  const placing = (staged: string, target: string, ino?: string): string => {
+    const stat = fs.statSync(path.join(root, staged), { bigint: true })
+    const placed = [{ staged, target, dev: String(stat.dev), ino: ino ?? String(stat.ino) }]
+    return JSON.stringify({ version: 1, from: 'Beta', staging, placed })
+  }
+  const inodeOf = (rel: string): bigint => fs.statSync(path.join(root, rel), { bigint: true }).ino
+  const records = (): string[] =>
+    fs.readdirSync(path.join(root, '.memry/moves')).filter((name) => name.endsWith('.json'))
+
   it('finishes a put-back cut short after the link without a conflict copy of the same file', async () => {
-    fs.writeFileSync(recordPath(), JSON.stringify({ version: 1, from: 'Beta', staging }))
     write(`${staging}/c.md`)
+    fs.writeFileSync(recordPath(), placing(`${staging}/c.md`, 'Beta/c.md'))
     fs.linkSync(path.join(root, staging, 'c.md'), path.join(root, 'Beta/c.md'))
 
     await recoverStrandedFolderMoves(root)
 
     expect(tree()).toEqual(['Beta/', 'Beta/Gamma/', 'Beta/Gamma/g.md', 'Beta/b.md', 'Beta/c.md'])
     expect(fs.readFileSync(path.join(root, 'Beta/c.md'), 'utf8')).toBe(`${staging}/c.md`)
+    expect(records()).toEqual([])
   })
 
-  it('takes a placed file back when its staged name cannot be unlinked', async () => {
+  it('keeps the staged name of a placed file a lock holds, and shows nothing, until a later open', async () => {
     fs.writeFileSync(recordPath(), JSON.stringify({ version: 1, from: 'Beta', staging }))
     write(`${staging}/c.md`)
-    windows.unlinkFails = (p) => (p.includes('.memry-move-') ? 'EBUSY' : null)
+    // A lock on the file itself: no name of it can be unlinked.
+    windows.lockedInodes.add(inodeOf(`${staging}/c.md`))
 
-    await recoverStrandedFolderMoves(root)
-    windows.unlinkFails = null
     await recoverStrandedFolderMoves(root)
 
     expect(tree()).toEqual([
-      'Beta (incomplete move)/',
-      'Beta (incomplete move)/c.md',
+      `${staging}/`,
+      `${staging}/c.md`,
       'Beta/',
       'Beta/Gamma/',
       'Beta/Gamma/g.md',
+      'Beta/b.md',
+      'Beta/c.md'
+    ])
+    expect(records()).toEqual([`${id}.json`])
+    expect(isAppFolderChange('Beta/c.md')).toBe(true)
+
+    windows.lockedInodes.clear()
+    await recoverStrandedFolderMoves(root)
+
+    expect(tree()).toEqual(['Beta/', 'Beta/Gamma/', 'Beta/Gamma/g.md', 'Beta/b.md', 'Beta/c.md'])
+    expect(records()).toEqual([])
+    expect(isAppFolderChange('Beta/c.md')).toBe(false)
+  })
+
+  it('shows no second visible copy of a locked file on any open while the lock lasts', async () => {
+    fs.writeFileSync(recordPath(), JSON.stringify({ version: 1, from: 'Beta', staging }))
+    write(`${staging}/c.md`)
+    windows.lockedInodes.add(inodeOf(`${staging}/c.md`))
+
+    for (const open of [1, 2, 3]) {
+      if (open === 3) windows.lockedInodes.clear()
+      await recoverStrandedFolderMoves(root)
+      expect(
+        tree().filter((rel) => path.posix.basename(rel) === 'c.md' && !rel.startsWith('.'))
+      ).toEqual(['Beta/c.md'])
+    }
+    expect(tree()).toEqual(['Beta/', 'Beta/Gamma/', 'Beta/Gamma/g.md', 'Beta/b.md', 'Beta/c.md'])
+  })
+
+  it('unlinks a placed file from its staged folder instead of moving the folder to a second place', async () => {
+    const shownFolder = 'Beta (incomplete move)'
+    fs.mkdirSync(path.join(root, shownFolder, 'Gamma'), { recursive: true })
+    fs.linkSync(path.join(root, staging, 'Gamma/g.md'), path.join(root, shownFolder, 'Gamma/g.md'))
+    const record = JSON.parse(placing(`${staging}/Gamma/g.md`, `${shownFolder}/Gamma/g.md`))
+    fs.writeFileSync(recordPath(), JSON.stringify({ ...record, shown: shownFolder }))
+
+    await recoverStrandedFolderMoves(root)
+
+    expect(tree()).toEqual([
+      `${shownFolder}/`,
+      `${shownFolder}/Gamma/`,
+      `${shownFolder}/Gamma/g.md`,
+      'Beta/',
+      'Beta/Gamma/',
       'Beta/b.md'
     ])
+    expect(records()).toEqual([])
+  })
+
+  it.each([
+    { staged: 'Beta/b.md', target: 'Beta/b.md' },
+    { staged: `${staging}/Gamma/g.md`, target: `${staging}/Gamma/g.md` }
+  ])('refuses a record that places $staged at $target', async ({ staged, target }) => {
+    fs.writeFileSync(recordPath(), placing(staged, target))
+
+    await recoverStrandedFolderMoves(root)
+
+    expect(tree()).toEqual([
+      'Beta/',
+      'Beta/b.md',
+      'Moved folder (incomplete move)/',
+      'Moved folder (incomplete move)/Gamma/',
+      'Moved folder (incomplete move)/Gamma/g.md'
+    ])
+  })
+
+  it('never unlinks a file at a target the put-back did not create, even with the same bytes', async () => {
+    fs.writeFileSync(recordPath(), JSON.stringify({ version: 1, from: 'Beta', staging }))
+    write(`${staging}/c.md`)
+    fs.writeFileSync(path.join(root, 'Beta/c.md'), `${staging}/c.md`)
+    const users = inodeOf('Beta/c.md')
+    windows.lockedInodes.add(inodeOf(`${staging}/c.md`))
+
+    await recoverStrandedFolderMoves(root)
+    windows.lockedInodes.clear()
+    await recoverStrandedFolderMoves(root)
+
+    expect(inodeOf('Beta/c.md')).toBe(users)
+    expect(tree()).toEqual([
+      'Beta/',
+      'Beta/Gamma/',
+      'Beta/Gamma/g.md',
+      'Beta/b.md',
+      'Beta/c (conflict copy).md',
+      'Beta/c.md'
+    ])
+  })
+
+  it('never takes a file on a volume with inode 0 for the one the put-back placed', async () => {
+    windows.zeroInodes = true
+    fs.writeFileSync(path.join(root, `${staging}/b.md`), 'STAGED!!!')
+    fs.writeFileSync(path.join(root, 'Beta/b.md'), 'USERFILE!')
+    // The put-back recorded inode 0 for Beta/b.md, then found it taken.
+    fs.writeFileSync(recordPath(), placing(`${staging}/b.md`, 'Beta/b.md', '0'))
+
+    await recoverStrandedFolderMoves(root)
+
+    expect(fs.readFileSync(path.join(root, 'Beta/b.md'), 'utf8')).toBe('USERFILE!')
+    expect(fs.readFileSync(path.join(root, 'Beta/b (conflict copy).md'), 'utf8')).toBe('STAGED!!!')
+    expect(records()).toEqual([])
+  })
+
+  it('reopens to one visible folder of what cannot go back after a crash at any show step', async () => {
+    const stagingAbs = path.join(root, staging)
+    const stranded = (): void => {
+      fs.rmSync(root, { recursive: true, force: true })
+      write('Beta/b.md')
+      write(`${staging}/Gamma/g.md`)
+      write(`${staging}/c.md`)
+      write(`${staging}/d.md`)
+      fs.mkdirSync(path.join(root, '.memry/moves'), { recursive: true })
+      fs.writeFileSync(recordPath(), JSON.stringify({ version: 1, from: 'Beta', staging }))
+      windows.changes = 0
+    }
+    // The refused staging rename is retried with backoff; skip its waits.
+    vi.useFakeTimers({ toFake: ['setTimeout'] })
+    const recover = async (): Promise<void> => {
+      const state = { done: false }
+      const run = recoverStrandedFolderMoves(root).finally(() => (state.done = true))
+      while (!state.done) {
+        await vi.advanceTimersByTimeAsync(1000)
+        await new Promise((resolve) => setImmediate(resolve))
+      }
+      await run
+    }
+    // Nothing goes back into Beta, and the staging directory moves entry by entry.
+    windows.refuse = (from, to) =>
+      from === stagingAbs
+        ? 'EPERM'
+        : to.startsWith(path.join(root, 'Beta', path.sep))
+          ? 'EIO'
+          : null
+    stranded()
+    await recover()
+    const shown = tree()
+    expect(shown.filter((rel) => /^Beta \(incomplete move.*\)\/$/.test(rel))).toEqual([
+      'Beta (incomplete move)/'
+    ])
+    expect(shown).toContain('Beta (incomplete move)/c.md')
+    const steps = windows.changes
+
+    for (let crashAfter = 1; crashAfter < steps; crashAfter++) {
+      stranded()
+      windows.crashAfter = crashAfter
+      await recover()
+      windows.crashAfter = Infinity
+      await recover()
+      expect(tree()).toEqual(shown)
+      expect(records()).toEqual([])
+    }
   })
 
   it.each([
@@ -569,7 +768,8 @@ describe('recoverStrandedFolderMoves', () => {
         ]) {
           expect(fs.readFileSync(path.join(root, rel), 'utf8')).toBe(bytes)
         }
-        expect(fs.readdirSync(path.join(root, '.memry/moves'))).toEqual([])
+        // A crash mid-write can leave the record's hidden temp file: no record.
+        expect(records()).toEqual([])
       }
       windows.noHardLinks = noHardLinks
       stranded()
