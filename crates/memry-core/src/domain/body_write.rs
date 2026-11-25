@@ -154,6 +154,30 @@ pub(crate) fn author_appends(
     })
 }
 
+/// Applies `write` to `doc_id`'s body and stores the update it authored, with
+/// its outbox row as `item_type`, in one write-locked transaction (#5734): the
+/// body write for a caller outside the core, `memry notes edit`. The replay
+/// authors under the document's epoch client id, as every core write does.
+///
+/// - Returns: the local sequence the update took and its size, or `None` when
+///   the write authored nothing, which stores nothing.
+pub fn write_body(
+    conn: &Connection,
+    item_type: &str,
+    doc_id: &str,
+    device_id: &str,
+    now_ms: i64,
+    write: impl FnOnce(&crate::crdt::Document) -> Result<(), CrdtError>,
+) -> Result<Option<(i64, usize)>, CrdtError> {
+    let tx = nested_tx::begin(conn).map_err(storage_failed)?;
+    let Some(update) = author_with(&tx, doc_id, device_id, write)? else {
+        return Ok(None);
+    };
+    let seq = append_in(&tx, item_type, doc_id, &update, now_ms)?;
+    tx.commit().map_err(storage_failed)?;
+    Ok(Some((seq, update.len())))
+}
+
 /// [`author`] for any write against the replayed document.
 pub(crate) fn author_with(
     conn: &Connection,
@@ -176,18 +200,18 @@ pub(crate) fn author_with(
 
 /// Stores an authored update and queues it as `(item_type, doc_id)`, inside
 /// the caller's transaction: the update row and its outbox row commit together
-/// or not at all (FR-030, data-model §A.2).
+/// or not at all (FR-030, data-model §A.2). Returns the local sequence.
 pub(crate) fn append_in(
     tx: &Connection,
     item_type: &str,
     doc_id: &str,
     update: &[u8],
     now_ms: i64,
-) -> Result<(), CrdtError> {
-    update_log::append_local_update_in(tx, doc_id, update, now_ms)?;
+) -> Result<i64, CrdtError> {
+    let seq = update_log::append_local_update_in(tx, doc_id, update, now_ms)?;
     let change = outbox::Change::crdt_update(item_type, doc_id, update.to_vec());
     outbox::enqueue(tx, &change, now_ms)?;
-    Ok(())
+    Ok(seq)
 }
 
 fn storage_failed(error: rusqlite::Error) -> CrdtError {

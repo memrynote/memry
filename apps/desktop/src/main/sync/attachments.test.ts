@@ -1007,11 +1007,42 @@ describe('AttachmentSyncService', () => {
   })
 
   describe('network retry behavior', () => {
+    // withRetry sleeps on setTimeout with Math.random jitter. Fake only those
+    // (file I/O and crypto stay real) so the backoff schedule is exact and
+    // costs no wall time.
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
+      vi.spyOn(Math, 'random').mockReturnValue(0)
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+      vi.mocked(Math.random).mockRestore()
+    })
+
+    // Fires each backoff sleep once it is scheduled, until the transfer settles.
+    async function driveBackoffs(transfer: Promise<unknown>): Promise<void> {
+      const state = { settled: false }
+      const settle = (): void => {
+        state.settled = true
+      }
+      transfer.then(settle, settle)
+      while (!state.settled) {
+        for (let i = 0; i < 1000 && !state.settled && vi.getTimerCount() === 0; i++) {
+          await new Promise((resolve) => setImmediate(resolve))
+        }
+        if (!state.settled) await vi.runOnlyPendingTimersAsync()
+      }
+    }
+
+    const gaps = (times: number[]): number[] => times.slice(1).map((t, i) => t - times[i])
+
     it('should retry uploadChunk on transient NetworkError', async () => {
       const testFile = path.join(tmpDir, 'retry.txt')
       await writeFile(testFile, Buffer.alloc(1024, 'R'))
 
       let putCallCount = 0
+      const putTimes: number[] = []
       const fetchFn = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
         const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.toString() : url.url
         const method = init?.method ?? 'GET'
@@ -1040,6 +1071,7 @@ describe('AttachmentSyncService', () => {
         }
         if (method === 'PUT' && urlStr.includes('/chunk/')) {
           putCallCount++
+          putTimes.push(Date.now())
           if (putCallCount <= 2) {
             throw new TypeError('Failed to fetch')
           }
@@ -1061,11 +1093,60 @@ describe('AttachmentSyncService', () => {
       const service = new AttachmentSyncService(deps)
 
       // #when
-      const result = await service.uploadAttachment('note-1', testFile)
+      const upload = service.uploadAttachment('note-1', testFile)
+      await driveBackoffs(upload)
+      const result = await upload
 
-      // #then
+      // #then — two failures, backoff 2 s then 4 s, third attempt lands
       expect(result.attachmentId).toBeTruthy()
-      expect(putCallCount).toBeGreaterThanOrEqual(3)
+      expect(putCallCount).toBe(3)
+      expect(gaps(putTimes)).toEqual([2000, 4000])
+    })
+
+    it('gives up on uploadChunk after five retries with capped exponential backoff', async () => {
+      const testFile = path.join(tmpDir, 'retry-exhausted.txt')
+      await writeFile(testFile, Buffer.alloc(1024, 'X'))
+
+      const putTimes: number[] = []
+      const responses = new Map<string, { status: number; body?: unknown }>([
+        [
+          'POST /attachments/upload/initiate',
+          { status: 200, body: { sessionId: 'session-dead', expiresAt: Date.now() + 3600000 } }
+        ],
+        [
+          'GET /attachments/upload/session-dead',
+          {
+            status: 200,
+            body: {
+              sessionId: 'session-dead',
+              attachmentId: '',
+              totalSize: 0,
+              chunkCount: 1,
+              uploadedChunks: [],
+              expiresAt: 0
+            }
+          }
+        ]
+      ])
+      const mockFetch = createMockFetch(responses)
+      const fetchFn = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+        const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.toString() : url.url
+        if (init?.method === 'PUT' && urlStr.includes('/chunk/')) {
+          putTimes.push(Date.now())
+          throw new TypeError('Failed to fetch')
+        }
+        return mockFetch(url, init)
+      })
+
+      const service = new AttachmentSyncService(createTestDeps(fetchFn))
+
+      // #when
+      const upload = service.uploadAttachment('note-1', testFile)
+      await driveBackoffs(upload)
+
+      // #then — 2, 4, 8, 16 s, then the 30 s cap; no seventh attempt
+      await expect(upload).rejects.toThrow('Dead letter after 6 attempts')
+      expect(gaps(putTimes)).toEqual([2000, 4000, 8000, 16000, 30000])
     })
 
     it('should emit waiting_network phase during retry', async () => {
@@ -1126,7 +1207,9 @@ describe('AttachmentSyncService', () => {
       service.setProgressCallback((p) => phases.push(p.phase))
 
       // #when
-      await service.uploadAttachment('note-1', testFile)
+      const upload = service.uploadAttachment('note-1', testFile)
+      await driveBackoffs(upload)
+      await upload
 
       // #then — waiting_network phase should appear before uploading resumes
       expect(phases).toContain('waiting_network')

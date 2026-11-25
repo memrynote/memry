@@ -13,6 +13,11 @@
 //! | a stale pulled edit moves no reference                 | a skipped record writes no row |
 //! | a picture removed here is no longer wanted             | local list edits merge too   |
 //! | a deleted note wants none of its pictures              | rows follow the note         |
+//! | a pulled tombstone wants none of its pictures          | a `deleted` entry, sync_now  |
+//! | an edit then a tombstone on one page wants none        | §5.13 page order             |
+//! | an older peer's record without the list keeps the row  | absent is not `[]`           |
+//! | a heal run again changes nothing                       | the backfill is idempotent   |
+//! | a manifest the server lacks is not asked on every open | ten-minute 404 memory        |
 //! | an upgraded device gets rows for notes it applied      | one-time backfill            |
 
 mod http_fakes;
@@ -27,6 +32,7 @@ use http_fakes::{FakeSecureStore, FakeTransport, error_response, response};
 use memry_core::api::auth::{AuthSession, DeviceDescriptor};
 use memry_core::api::crypto::derive_vault_key;
 use memry_core::api::errors::TransportError;
+use memry_core::api::sync::VaultSync;
 use memry_core::api::vault::Vault;
 use memry_core::crypto::sodium;
 use memry_core::domain::attachments::{self, BlockAttachment, CachedAttachment};
@@ -68,6 +74,7 @@ fn scratch_vault() -> (Vault, PathBuf) {
         "memry-note-embedded-{}-{unique}",
         std::process::id()
     ));
+    let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).expect("the scratch directory");
     let vault = Vault::open("vault-1".to_string(), dir.display().to_string()).expect("open");
     (vault, dir)
@@ -159,24 +166,43 @@ fn file(attachment_id: &str, plaintext: &[u8]) -> File {
 /// Desktop's markdown note record: no `content`, the embedded files named by
 /// `attachmentReferences`.
 fn note(references: &[&str], counter: u64) -> Json {
+    let mut payload = unlisted_note(counter);
+    payload["attachmentReferences"] = json!(references);
+    seal(SyncOperation::Update, payload, None, counter)
+}
+
+/// The payload of a build that predates `attachmentReferences`.
+fn unlisted_note(counter: u64) -> Json {
+    json!({
+        "title": "Earthrise",
+        "emoji": null,
+        "fileType": "markdown",
+        "folderPath": null,
+        "clock": { DEVICE: counter },
+        "createdAt": OLD,
+        "modifiedAt": OLD,
+    })
+}
+
+/// The note's signed tombstone.
+fn tombstone(counter: u64) -> Json {
+    seal(
+        SyncOperation::Delete,
+        unlisted_note(counter),
+        Some(1_760_000_000_000),
+        counter,
+    )
+}
+
+fn seal(operation: SyncOperation, payload: Json, deleted_at: Option<i64>, counter: u64) -> Json {
     let (_, secret) = keypair();
     let sealer = AccountSealer::new(
         derive_vault_key(MASTER_KEY.to_vec()).expect("vault key"),
         DeviceSigner::new(DEVICE, secret).expect("a signer"),
     );
-    let payload = json!({
-        "title": "Earthrise",
-        "emoji": null,
-        "fileType": "markdown",
-        "attachmentReferences": references,
-        "folderPath": null,
-        "clock": { DEVICE: counter },
-        "createdAt": OLD,
-        "modifiedAt": OLD,
-    });
     sealer
         .seal_record(&PendingRecord {
-            operation: SyncOperation::Update,
+            operation,
             row: SyncItemRow {
                 item_type: "note".to_owned(),
                 item_id: NOTE.to_owned(),
@@ -187,7 +213,7 @@ fn note(references: &[&str], counter: u64) -> Json {
                 server_cursor: None,
                 signer_device_id: None,
                 updated_at: 1,
-                deleted_at: None,
+                deleted_at,
                 corrupt_reason: None,
                 corrupt_at: None,
             },
@@ -196,6 +222,11 @@ fn note(references: &[&str], counter: u64) -> Json {
 }
 
 fn changes(version: u64, cursor: u64) -> Scripted {
+    changes_deleting(version, cursor, &[])
+}
+
+/// A changes page whose `deleted` names `deleted`.
+fn changes_deleting(version: u64, cursor: u64, deleted: &[&str]) -> Scripted {
     response(
         200,
         &json!({
@@ -204,7 +235,7 @@ fn changes(version: u64, cursor: u64) -> Scripted {
                 "modifiedAt": instants::to_epoch_ms(OLD).expect("an instant"),
                 "size": 12,
             }],
-            "deleted": [],
+            "deleted": deleted,
             "hasMore": false,
             "nextCursor": cursor,
         })
@@ -454,21 +485,228 @@ async fn a_deleted_note_wants_none_of_its_pictures() {
     );
 }
 
+/// One pass that pulls `items` for a page whose `deleted` names the note.
+async fn pull_deleting(
+    sync: &memry_core::api::sync::VaultSync,
+    transport: &FakeTransport,
+    items: Json,
+) {
+    transport.push(devices());
+    transport.push(changes_deleting(2, 11, &[NOTE]));
+    transport.push(response(200, &json!({ "items": items }).to_string()));
+    transport.push(response(200, &json!({"notes": {}}).to_string()));
+    transport.push(error_response(404, "NOT_FOUND", "no snapshot"));
+    sync.sync_now().await.expect("the pass");
+}
+
+fn note_is_deleted(vault: &Vault) -> bool {
+    vault
+        .db_handle()
+        .call_blocking(|conn| {
+            conn.query_row(
+                "SELECT deleted_at IS NOT NULL FROM notes WHERE id = ?1",
+                [NOTE],
+                |row| row.get(0),
+            )
+            .map_err(|error| memry_core::api::errors::StorageError::Failed {
+                what: error.to_string(),
+            })
+        })
+        .expect("read")
+}
+
 #[tokio::test]
 async fn a_pulled_tombstone_wants_none_of_its_pictures() {
     let (vault, _dir) = scratch_vault();
     let transport = FakeTransport::new(first_sync_script(&[FIRST]));
-    let sync = vault.sync(session(transport));
+    let sync = vault.sync(session(transport.clone()));
     sync.first_sync(None).await.expect("the first sync");
 
-    vault
-        .db_handle()
-        .call_blocking(|conn| {
-            memry_core::storage::repositories::projectors::delete(conn, "note", NOTE, 2)
-        })
-        .expect("the tombstone");
+    pull_deleting(&sync, &transport, json!([tombstone(2)])).await;
 
+    assert!(note_is_deleted(&vault), "the tombstone applied");
     assert!(missing(&vault).is_empty());
+    assert!(
+        row(&vault, FIRST)
+            .expect("the row stays")
+            .note_refs
+            .is_empty()
+    );
+}
+
+#[tokio::test]
+async fn an_edit_then_a_tombstone_on_one_page_wants_none() {
+    let (vault, _dir) = scratch_vault();
+    let transport = FakeTransport::new(first_sync_script(&[FIRST]));
+    let sync = vault.sync(session(transport.clone()));
+    sync.first_sync(None).await.expect("the first sync");
+
+    pull_deleting(&sync, &transport, json!([note(&[SECOND], 2), tombstone(3)])).await;
+
+    assert!(note_is_deleted(&vault), "the tombstone applied");
+    assert!(missing(&vault).is_empty(), "neither picture is wanted");
+    assert!(row(&vault, FIRST).is_none_or(|row| row.note_refs.is_empty()));
+    assert!(row(&vault, SECOND).is_none_or(|row| row.note_refs.is_empty()));
+}
+
+#[tokio::test]
+async fn an_older_peers_record_without_the_list_keeps_the_row() {
+    let (vault, _dir) = scratch_vault();
+    let transport = FakeTransport::new(first_sync_script(&[FIRST]));
+    let sync = vault.sync(session(transport.clone()));
+    sync.first_sync(None).await.expect("the first sync");
+
+    // A build that predates `attachmentReferences` edits the title.
+    let unlisted = seal(SyncOperation::Update, unlisted_note(2), None, 2);
+    for step in [
+        devices(),
+        changes(2, 11),
+        response(200, &json!({ "items": [unlisted] }).to_string()),
+        response(200, &json!({"notes": {}}).to_string()),
+        error_response(404, "NOT_FOUND", "no snapshot"),
+    ] {
+        transport.push(step);
+    }
+    sync.sync_now().await.expect("the pass");
+    assert_eq!(
+        row(&vault, FIRST).expect("a row").note_refs,
+        [NOTE],
+        "absent is not empty"
+    );
+    assert_eq!(missing(&vault), [FIRST]);
+
+    // A later record that says `[]` does drop it.
+    for step in [
+        devices(),
+        changes(3, 12),
+        response(200, &json!({ "items": [note(&[], 3)] }).to_string()),
+        response(200, &json!({"notes": {}}).to_string()),
+        error_response(404, "NOT_FOUND", "no snapshot"),
+    ] {
+        transport.push(step);
+    }
+    sync.sync_now().await.expect("the pass");
+    assert!(
+        row(&vault, FIRST)
+            .expect("the row stays")
+            .note_refs
+            .is_empty()
+    );
+    assert!(missing(&vault).is_empty());
+}
+
+#[tokio::test]
+async fn a_heal_run_again_changes_nothing() {
+    let (vault, _dir) = scratch_vault();
+    let transport = FakeTransport::new(first_sync_script(&[FIRST, SECOND]));
+    let sync = vault.sync(session(transport.clone()));
+    sync.first_sync(None).await.expect("the first sync");
+
+    for _ in 0..2 {
+        vault
+            .db_handle()
+            .call_blocking(|conn| {
+                conn.execute_batch("DELETE FROM meta WHERE key = 'sync.note_refs_heal';")
+                    .map_err(|error| memry_core::api::errors::StorageError::Failed {
+                        what: error.to_string(),
+                    })
+            })
+            .expect("the heal runs again");
+        for step in [
+            devices(),
+            response(
+                200,
+                &json!({"items": [], "deleted": [], "hasMore": false, "nextCursor": 10})
+                    .to_string(),
+            ),
+            response(200, &json!({"notes": {}}).to_string()),
+            error_response(404, "NOT_FOUND", "no snapshot"),
+        ] {
+            transport.push(step);
+        }
+        sync.sync_now().await.expect("the pass");
+
+        assert_eq!(row(&vault, FIRST).expect("a row").note_refs, [NOTE]);
+        assert_eq!(row(&vault, SECOND).expect("a row").note_refs, [NOTE]);
+        let mut wanted = missing(&vault);
+        wanted.sort();
+        assert_eq!(wanted, [FIRST, SECOND]);
+    }
+}
+
+#[tokio::test]
+async fn a_manifest_the_server_lacks_is_not_asked_on_every_open() {
+    const GONE: &str = "e4cccfcc943e5a15c3ad0eb366930c3a";
+    let (vault, _dir) = scratch_vault();
+    let transport = FakeTransport::new(first_sync_script(&[GONE]));
+    let sync = vault.sync(session(transport.clone()));
+    sync.first_sync(None).await.expect("the first sync");
+
+    transport.push(devices());
+    transport.push(error_response(404, "NOT_FOUND", "no manifest"));
+    let named = sync
+        .fetch_note_manifests(NOTE.to_string())
+        .await
+        .expect("a 404 is logged, not raised");
+    assert_eq!(named, 0);
+
+    let calls = transport.call_count();
+    let again = sync
+        .fetch_note_manifests(NOTE.to_string())
+        .await
+        .expect("the next open");
+    assert_eq!((again, transport.call_count()), (0, calls), "no request");
+}
+
+/// A note open answered 404 for its one manifest.
+async fn answer_404(sync: &VaultSync, transport: &FakeTransport) {
+    transport.push(devices());
+    transport.push(error_response(404, "NOT_FOUND", "no manifest"));
+    let named = sync
+        .fetch_note_manifests(NOTE.to_string())
+        .await
+        .expect("a 404 is logged, not raised");
+    assert_eq!(named, 0);
+}
+
+#[tokio::test]
+async fn a_new_session_asks_again_for_a_manifest_the_last_one_lacked() {
+    let photo = file(FIRST, b"\xff\xd8\xff the blue marble");
+    let (vault, _dir) = scratch_vault();
+    let transport = FakeTransport::new(first_sync_script(&[FIRST]));
+    let sync = vault.sync(session(transport.clone()));
+    sync.first_sync(None).await.expect("the first sync");
+    answer_404(&sync, &transport).await;
+    drop(sync);
+
+    // Signed out and back in: the peer uploaded the picture meanwhile.
+    let transport = FakeTransport::new(vec![devices(), response(200, &photo.manifest_body)]);
+    let sync = vault.sync(session(transport));
+    let named = sync
+        .fetch_note_manifests(NOTE.to_string())
+        .await
+        .expect("the open in the new session");
+    assert_eq!(named, 1, "the last session's 404 is not this one's");
+}
+
+#[tokio::test(start_paused = true)]
+async fn a_manifest_the_server_lacked_is_asked_again_after_the_cooldown() {
+    let photo = file(SECOND, b"\xff\xd8\xff the pale blue dot");
+    let (vault, _dir) = scratch_vault();
+    let transport = FakeTransport::new(first_sync_script(&[SECOND]));
+    let sync = vault.sync(session(transport.clone()));
+    sync.first_sync(None).await.expect("the first sync");
+    answer_404(&sync, &transport).await;
+
+    // Desktop's UNSUPPORTED_COOLDOWN_MS is ten minutes.
+    tokio::time::advance(std::time::Duration::from_secs(10 * 60 + 1)).await;
+    transport.push(devices());
+    transport.push(response(200, &photo.manifest_body));
+    let named = sync
+        .fetch_note_manifests(NOTE.to_string())
+        .await
+        .expect("the open after the cooldown");
+    assert_eq!(named, 1, "the uploaded manifest is named");
 }
 
 #[tokio::test]
