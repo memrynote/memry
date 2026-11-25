@@ -155,7 +155,9 @@ vi.mock('../sync/attachment-download-settings', () => ({
   isAttachmentAutoDownloadEnabled: vi.fn(() => autoDownloadSettings.enabled)
 }))
 
-const mockApplyDownloadedAttachmentName = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
+const mockApplyDownloadedAttachmentName = vi.hoisted(() =>
+  vi.fn(async (_noteId: string, placed: string) => placed)
+)
 vi.mock('../vault/case-twin-file', () => ({
   releaseAbandonedCaseTwinBytes: vi.fn()
 }))

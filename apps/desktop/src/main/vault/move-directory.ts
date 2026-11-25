@@ -85,7 +85,9 @@ const FileNumber = z.string().regex(/^\d+$/)
  * shows a staging directory; both read here. A put-back here adds `placed`:
  * each staged file it is putting back, the target it creates for it, and the
  * device and inode that target gets, written before the target is created
- * (Tauri's exclusive rename has no such step and writes none).
+ * (Tauri's exclusive rename has no such step and writes none), and for a copy
+ * the hidden `temp` name beside the target it is made under, written before
+ * that is created.
  */
 const FolderMoveRecordSchema = z.object({
   version: z.number(),
@@ -98,7 +100,8 @@ const FolderMoveRecordSchema = z.object({
         staged: VaultRelativePath,
         target: VaultRelativePath,
         dev: FileNumber,
-        ino: FileNumber
+        ino: FileNumber,
+        temp: VaultRelativePath.optional()
       })
     )
     .optional()
@@ -435,9 +438,17 @@ async function isOwnMove(
     return false
   }
   // A put-back only ever unlinks a staged name, once its target holds it.
-  for (const { staged, target } of placed) {
+  for (const { staged, target, temp } of placed) {
     if (!within(staged, staging) || staged.toLowerCase() === staging.toLowerCase()) return false
     if (within(target, staging) || within(target, '.memry')) return false
+    // A put-back only ever removes a temp name of its own, beside its target.
+    if (
+      temp !== undefined &&
+      (path.posix.dirname(temp) !== path.posix.dirname(target) ||
+        !PUT_BACK_TEMP.test(path.posix.basename(temp)))
+    ) {
+      return false
+    }
   }
   for (const rel of [from, staging, shown, ...placed.map((p) => p.target)]) {
     if (rel !== undefined && (await resolveVaultFile(vaultPath, rel)).kind === 'outside') {
@@ -505,8 +516,9 @@ async function tryStep(step: () => Promise<unknown>): Promise<boolean> {
 /** A rename onto a name that is there failed instead of replacing it. */
 const TAKEN_CODES = new Set(['EEXIST', 'ENOTEMPTY', 'ENOTDIR'])
 
-/** The hidden name beside a put-back target that a copy is made under first. */
-const PUT_BACK_TEMP = '.memry-put-back'
+/** The hidden names, one per copy, beside a put-back target that a copy is made under first. */
+const PUT_BACK_TEMP_PREFIX = '.memry-put-back-'
+const PUT_BACK_TEMP = /^\.memry-put-back-[0-9a-f]{12}$/
 
 function nameTakenError(): NodeJS.ErrnoException {
   return Object.assign(new Error('EEXIST'), { code: 'EEXIST' })
@@ -516,12 +528,16 @@ function vaultRelative(journal: MoveJournal, abs: string): string {
   return path.relative(journal.vaultPath, abs).split(path.sep).join('/')
 }
 
-/** Records, before `target` is created, that it is `file`, placed for `staged`. */
+/**
+ * Records, before `target` is created, that it is `file`, placed for
+ * `staged`, and for a copy the `temp` name it is made under.
+ */
 async function recordPlacement(
   journal: MoveJournal | null,
   staged: string,
   target: string,
-  file: string
+  file: string,
+  temp?: string
 ): Promise<void> {
   if (!journal) return
   const opened = await openFile(file)
@@ -531,7 +547,8 @@ async function recordPlacement(
     staged: vaultRelative(journal, staged),
     target: vaultRelative(journal, target),
     dev: String(opened.dev),
-    ino: String(opened.ino)
+    ino: String(opened.ino),
+    temp: temp === undefined ? undefined : vaultRelative(journal, temp)
   }
   const others = journal.record.placed?.filter((p) => p.staged !== placement.staged) ?? []
   journal.record.placed = [...others, placement]
@@ -546,12 +563,23 @@ async function recordPlacement(
  * no crash leaves a half copy at `target`; the look before its rename is the
  * one window left there, as for a link. The file `target` is about to be is
  * recorded first: the staged file itself for a link, the copy for a copy.
+ *
+ * The copy's hidden name is new for each copy and recorded before the
+ * exclusive create, so the only file a later run removes by that name is a
+ * copy this put-back made: a file the user gave any other name is never
+ * touched, and a taken name fails the create instead of being replaced.
  */
 async function placeFile(
   staged: string,
   target: string,
   journal: MoveJournal | null
 ): Promise<void> {
+  // A crash's leftover copy, whole or not, under the name the record gave it.
+  const rel = journal && vaultRelative(journal, staged)
+  const leftover = journal?.record.placed?.find((p) => p.staged === rel)?.temp
+  if (journal && leftover !== undefined) {
+    await rm(path.join(journal.vaultPath, leftover), { force: true })
+  }
   await recordPlacement(journal, staged, target, staged)
   try {
     await link(staged, target)
@@ -560,11 +588,24 @@ async function placeFile(
     if (errnoCode(error) === 'EEXIST') throw error
   }
   if (await isTaken(target)) throw nameTakenError()
-  const temp = path.join(path.dirname(target), PUT_BACK_TEMP)
-  // A crash's leftover copy, whole or not.
-  await rm(temp, { force: true })
-  await copyFile(staged, temp, constants.COPYFILE_EXCL)
-  await recordPlacement(journal, staged, target, temp)
+  const temp = path.join(
+    path.dirname(target),
+    `${PUT_BACK_TEMP_PREFIX}${randomBytes(6).toString('hex')}`
+  )
+  await recordPlacement(journal, staged, target, staged, temp)
+  try {
+    await copyFile(staged, temp, constants.COPYFILE_EXCL)
+  } catch (error) {
+    if (errnoCode(error) !== 'EEXIST') {
+      // This run created `temp` with the exclusive copy, so it is ours.
+      await rm(temp, { force: true })
+      throw error
+    }
+    // Not this put-back's file: drop its name from the record, keep it staged.
+    await recordPlacement(journal, staged, target, staged)
+    throw Object.assign(new Error('EIO'), { code: 'EIO' })
+  }
+  await recordPlacement(journal, staged, target, temp, temp)
   if (await isTaken(target)) {
     await rm(temp, { force: true })
     throw nameTakenError()
@@ -574,9 +615,8 @@ async function placeFile(
 
 /**
  * The placements under `staged` (or of it) whose target is still the file the
- * put-back created there: the same device and inode, or, where the volume
- * gives every file inode 0, the same bytes. Any other file at a target is not
- * the put-back's.
+ * put-back created there (`isPlaced`). Any other file at a target is not the
+ * put-back's.
  */
 async function placedUnder(journal: MoveJournal | null, staged: string): Promise<Placement[]> {
   if (!journal?.record.placed) return []
@@ -590,35 +630,29 @@ async function placedUnder(journal: MoveJournal | null, staged: string): Promise
   return placed
 }
 
+/**
+ * Whether the file at the placement's target is the one the record names:
+ * its recorded device and inode. A recorded inode 0 names no file (a volume
+ * that gives every file 0 cannot tell its files apart), so it is never ours
+ * and the staged file goes back as a conflict copy. A device number can
+ * change across a remount or reboot; the target is then still ours when it
+ * has the recorded inode and is the very file at the staged name, a link of
+ * it. A copy's target after such a change cannot be proven ours, and the
+ * staged file goes back as a conflict copy: a duplicate, never a loss.
+ */
 async function isPlaced(journal: MoveJournal, placement: Placement): Promise<boolean> {
-  const staged = path.join(journal.vaultPath, placement.staged)
+  if (placement.ino === '0') return false
   const target = await openFile(path.join(journal.vaultPath, placement.target))
   if (!target) return false
   try {
-    if (placement.ino !== '0') {
-      return String(target.dev) === placement.dev && String(target.ino) === placement.ino
-    }
-    const source = await openFile(staged)
-    if (!source) return false
-    try {
-      return await sameBytes(source.handle, target.handle)
-    } finally {
-      await source.handle.close()
-    }
+    if (String(target.ino) !== placement.ino) return false
+    if (String(target.dev) === placement.dev) return true
+    const staged = await openFile(path.join(journal.vaultPath, placement.staged))
+    if (!staged) return false
+    await staged.handle.close()
+    return staged.dev === target.dev && staged.ino === target.ino
   } finally {
     await target.handle.close()
-  }
-}
-
-async function sameBytes(a: FileHandle, b: FileHandle): Promise<boolean> {
-  const [ba, bb] = [Buffer.alloc(64 * 1024), Buffer.alloc(64 * 1024)]
-  for (let at = 0; ; at += ba.length) {
-    const [{ bytesRead: na }, { bytesRead: nb }] = await Promise.all([
-      a.read(ba, 0, ba.length, at),
-      b.read(bb, 0, bb.length, at)
-    ])
-    if (na !== nb || !ba.subarray(0, na).equals(bb.subarray(0, nb))) return false
-    if (na === 0) return true
   }
 }
 

@@ -88,12 +88,12 @@ describe('write-back after a binary note restore (#5415)', () => {
     noteId: string
     attachmentId: string
     diskPath: string
-    landed?: () => void
+    landed?: (outlived: () => boolean) => void
   }): void => {
     fs.writeFileSync(`${event.diskPath}.part`, PNG)
     fs.renameSync(`${event.diskPath}.part`, event.diskPath)
     markDownloadSucceeded(asClientDb(testDb.db), event.noteId, event.attachmentId)
-    event.landed?.()
+    event.landed?.(() => false)
   }
 
   beforeEach(() => {
