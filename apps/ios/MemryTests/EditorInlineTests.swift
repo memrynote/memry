@@ -275,7 +275,9 @@ struct EditorCommitBaseTests {
     @Test(.timeLimit(.minutes(1))) func its_window_resigning_commits_the_focused_blocks_typing() async throws {
         let editor = RecordingEditor()
         let model = NoteEditorViewModel(noteId: "note-1", editor: editor)
-        let session = model.session
+        // A private center: the app-wide one reaches every suite's editors.
+        let center = NotificationCenter()
+        let session = EditorSession(notifications: center)
         session.model = model
         let style = BlockText.Style(font: .systemFont(ofSize: 17), ink: .label, titleExists: nil)
         let field = BlockField(block: paragraph("hello"), session: session, style: style, alignment: .natural)
@@ -289,7 +291,7 @@ struct EditorCommitBaseTests {
 
         await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
             session.reload = { done.resume() }
-            NotificationCenter.default.post(name: UIScene.willDeactivateNotification, object: window.windowScene)
+            center.post(name: UIScene.willDeactivateNotification, object: window.windowScene)
         }
 
         #expect(editor.all == [.replaceText(blockId: "a", text: "hello world", base: "hello")])

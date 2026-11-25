@@ -216,7 +216,9 @@ final class EditorSession {
         UIApplication.shared.endBackgroundTask($0)
     }
 
-    init() {
+    /// `notifications`: the center the lifecycle notifications are posted
+    /// to, a seam for tests: the app-wide one reaches every suite's editors.
+    init(notifications: NotificationCenter = .default) {
         keyboardObserver = NotificationCenter.default.addObserver(
             forName: UIResponder.keyboardWillShowNotification, object: nil, queue: .main
         ) { [weak self] note in
@@ -241,7 +243,9 @@ final class EditorSession {
         // too late: a kill within a second of going home beats it, and
         // swiping straight into the switcher never backgrounds the app.
         // The block's own iPad window resigning counts too (#5820).
-        leaving = SceneLeaving.publisher { [weak self] in self?.field?.textView.window?.windowScene }
+        leaving = SceneLeaving.publisher(
+            of: { [weak self] in self?.field?.textView.window?.windowScene }, center: notifications
+        )
             .filter { $0 == .resign }
             .sink { [weak self] _ in MainActor.assumeIsolated { self?.commitBeforeLeaving() } }
     }
