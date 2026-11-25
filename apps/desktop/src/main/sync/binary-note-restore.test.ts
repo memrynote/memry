@@ -42,7 +42,7 @@ describe('restoreOverwrittenBinaryNotesWith (#5415)', () => {
     noteId: string
     attachmentId: string
     diskPath: string
-    landed?: () => void
+    landed?: (outlived: () => boolean) => void
   }): void => {
     // Mirrors the outcome bookkeeping of the real download-needed handler:
     // the blob lands by atomic rename, or the failure is persisted.
@@ -55,7 +55,7 @@ describe('restoreOverwrittenBinaryNotesWith (#5415)', () => {
     fs.writeFileSync(tmp, serverBlobs.get(attachmentId)!)
     fs.renameSync(tmp, diskPath)
     markDownloadSucceeded(db, noteId, attachmentId)
-    landed?.()
+    landed?.(() => false)
   }
 
   function seedBinaryNote(relPath: string, onDisk: Buffer | string, blob = PNG) {

@@ -93,10 +93,17 @@ function rememberTextBlob(db: DrizzleDb, attachmentId: string): void {
 async function checkRestoredFile(
   db: DrizzleDb,
   absolutePath: string,
-  attachmentId: string
+  attachmentId: string,
+  outlived: () => boolean
 ): Promise<void> {
   try {
-    if (await fileHoldsText(absolutePath)) rememberTextBlob(db, attachmentId)
+    const holdsText = await fileHoldsText(absolutePath)
+    // Its session ended during the read: `db` belongs to it.
+    if (outlived()) {
+      log.info('A restored binary note file outlived its session; not checked', { attachmentId })
+      return
+    }
+    if (holdsText) rememberTextBlob(db, attachmentId)
   } catch (error) {
     log.warn('Restored binary note file not checked', { attachmentId, error })
   }
@@ -167,7 +174,7 @@ export async function restoreOverwrittenBinaryNotesWith(
       noteId: note.id,
       attachmentId,
       diskPath: absolutePath,
-      landed: () => void checkRestoredFile(deps.db, absolutePath, attachmentId),
+      landed: (outlived) => void checkRestoredFile(deps.db, absolutePath, attachmentId, outlived),
       claim
     })
     if (!delivered) {

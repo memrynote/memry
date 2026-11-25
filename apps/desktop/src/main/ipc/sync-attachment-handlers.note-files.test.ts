@@ -11,7 +11,12 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { eq, sql } from 'drizzle-orm'
-import { attachmentDownloadFailures, noteMetadata } from '@memry/db-schema'
+import {
+  attachmentDownloadFailures,
+  attachmentFiles,
+  noteMetadata,
+  syncState
+} from '@memry/db-schema'
 import { SYNC_CHANNELS, SYNC_EVENTS } from '@memry/contracts/ipc-sync'
 import {
   claimRequestedDownload,
@@ -32,7 +37,10 @@ import { SupersededDownloadError } from '../sync/attachment-errors'
 import { redriveAttachmentDownloads } from '../sync/attachment-download-redriver'
 import { DOWNLOAD_SETTLE_TIMEOUT_MS } from '../sync/attachment-outbox'
 import { recordDownloadedFileSize } from '../sync/note-attachment-metadata'
+import { restoreOverwrittenBinaryNotesWith } from '../sync/binary-note-restore'
+import { SYNC_STATE_KEYS } from '../sync/engine/sync-context'
 import { applyDownloadedAttachmentName } from '../vault/attachment-rename'
+import { reconcileDownloadedAttachmentName } from '../vault/attachment-rename-reconcile'
 import { fileTextNoteChanged } from '../file-text'
 
 const h = vi.hoisted(() => ({
@@ -79,7 +87,9 @@ vi.mock('../database/client', () => ({
 }))
 vi.mock('../vault/status', () => ({ getStatus: () => ({ path: h.vaultPath }) }))
 vi.mock('../sync/runtime-state', () => ({ getNetworkMonitor: () => h.network }))
-vi.mock('../vault/attachment-rename', () => ({ applyDownloadedAttachmentName: vi.fn() }))
+vi.mock('../vault/attachment-rename', () => ({
+  applyDownloadedAttachmentName: vi.fn(async (_noteId: string, placed: string) => placed)
+}))
 vi.mock('../file-text', () => ({ fileTextNoteChanged: vi.fn() }))
 vi.mock('../sync/note-attachment-metadata', () => ({
   recordDownloadedFileSize: vi.fn(),
@@ -750,9 +760,9 @@ describe('sync:download-note-files with auto-download on', () => {
     serveFiles()
     let reconciled: () => void = () => undefined
     vi.mocked(applyDownloadedAttachmentName).mockImplementationOnce(
-      () =>
+      (_noteId, placed) =>
         new Promise((resolve) => {
-          reconciled = resolve
+          reconciled = () => resolve(placed)
         })
     )
     pullAsksForEmbed()
@@ -862,5 +872,118 @@ describe('sync:download-note-files with auto-download on', () => {
       error: expect.stringMatching(/no longer on the sync server/),
       retry: 'none'
     })
+  })
+
+  // OL-M48 low 1: the check awaits the file's bytes, and a session that ends
+  // meanwhile must not have the restore remember a text blob.
+  it('remembers no text blob for a restore whose session ends while the file is checked', async () => {
+    setAutoDownload(true)
+    const text = Buffer.from('plain text, not a pdf')
+    fs.mkdirSync(path.dirname(pdfPath()), { recursive: true })
+    fs.writeFileSync(pdfPath(), text)
+    h.download.mockImplementation(async (_attachmentId: string, targetPath: string) => {
+      fs.writeFileSync(targetPath, text)
+      return { filePath: targetPath, manifest: { checksum: 'sha-att-bin' } }
+    })
+    const vaultA = h.db
+    // Runs right after the landing started its check of the file.
+    vi.mocked(fileTextNoteChanged).mockImplementationOnce(() => void switchVault())
+
+    await restoreOverwrittenBinaryNotesWith({ db: vaultA, vaultPath: h.vaultPath })
+
+    await vi.waitFor(() =>
+      expect(h.log.info).toHaveBeenCalledWith(
+        'A restored binary note file outlived its session; not checked',
+        { attachmentId: 'att-bin' }
+      )
+    )
+    const textBlobs = vaultA
+      .select()
+      .from(syncState)
+      .where(eq(syncState.key, SYNC_STATE_KEYS.BINARY_NOTE_TEXT_BLOBS))
+      .all()
+    expect(textBlobs).toEqual([])
+  })
+})
+
+// OL-M48 lows 3 and 4: the manifest names the file as uploaded, the body as
+// renamed since (#1714).
+describe('an embed downloaded under the name the body renamed away from', () => {
+  const UPLOADED = 'abc123-photo.png'
+  const RENAMED = 'abc123-sunset.png'
+  const folder = (): string => path.join(h.vaultPath, 'attachments', 'note-1')
+  const recordedPaths = (): string[] =>
+    h.db
+      .select({ path: attachmentFiles.path })
+      .from(attachmentFiles)
+      .all()
+      .map((row) => row.path)
+  const reconcileName = async (noteId: string, placed: string): Promise<string> => {
+    const body = fs.readFileSync(path.join(h.vaultPath, 'note-1.md'), 'utf8')
+    return (await reconcileDownloadedAttachmentName(noteId, placed, body, h.vaultPath)) ?? placed
+  }
+
+  beforeEach(() => {
+    setAutoDownload(true)
+    setNote1(['att-embed'], `![sunset](attachments/note-1/${RENAMED})\n`)
+    h.download.mockImplementation(async (_attachmentId: string, targetPath: string) => {
+      const filePath = path.join(targetPath, UPLOADED)
+      fs.mkdirSync(targetPath, { recursive: true })
+      fs.writeFileSync(filePath, PNG)
+      return { filePath, manifest: { checksum: 'sha-att-embed' } }
+    })
+    vi.mocked(applyDownloadedAttachmentName).mockImplementation(reconcileName)
+  })
+
+  afterEach(() => {
+    vi.mocked(applyDownloadedAttachmentName).mockImplementation(async (_noteId, placed) => placed)
+  })
+
+  it('records the file under the name the body gives it', async () => {
+    pullAsksForEmbed()
+    await settle()
+
+    expect(fs.readdirSync(folder())).toEqual([RENAMED])
+    expect(recordedPaths()).toEqual([`attachments/note-1/${RENAMED}`])
+  })
+
+  it('reuses the file a cut reconcile renamed when the re-driver downloads it again', async () => {
+    let reconciled: () => void = () => undefined
+    vi.mocked(applyDownloadedAttachmentName).mockImplementationOnce(
+      (noteId, placed) =>
+        new Promise((resolve) => {
+          reconciled = () => resolve(reconcileName(noteId, placed))
+        })
+    )
+    pullAsksForEmbed()
+    await settle()
+    resetAttachmentDownloadSession()
+    await clearAttachmentState(0)
+    reconciled()
+    await settle()
+    expect(fs.readdirSync(folder())).toEqual([RENAMED])
+    expect(recordedPaths()).toEqual([])
+
+    await redriveAttachmentDownloads()
+    // The byte compare reads asynchronously, past one tick.
+    await vi.waitFor(() => expect(recordedPaths()).toHaveLength(1))
+
+    expect(requested()).toEqual(['att-embed', 'att-embed'])
+    expect(fs.readdirSync(folder())).toEqual([RENAMED])
+    expect(fs.readFileSync(path.join(folder(), RENAMED))).toEqual(PNG)
+    expect(recordedPaths()).toEqual([`attachments/note-1/${RENAMED}`])
+  })
+
+  it('keeps both files when the one under the body name holds other bytes', async () => {
+    fs.mkdirSync(folder(), { recursive: true })
+    fs.writeFileSync(path.join(folder(), RENAMED), 'edited here')
+
+    pullAsksForEmbed()
+    // The byte compare reads asynchronously, past one tick.
+    await vi.waitFor(() => expect(recordedPaths()).toHaveLength(1))
+
+    expect(fs.readdirSync(folder()).toSorted()).toEqual([UPLOADED, RENAMED])
+    expect(fs.readFileSync(path.join(folder(), RENAMED), 'utf8')).toBe('edited here')
+    expect(recordedPaths()).toEqual([`attachments/note-1/${UPLOADED}`])
   })
 })
