@@ -19,7 +19,8 @@
 //! time, but it walks the vault, so it is not hidden inside a keystroke.
 
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, PoisonError};
+use std::time::{Duration, Instant};
 
 use rusqlite::OptionalExtension as _;
 
@@ -154,6 +155,8 @@ pub enum BacklinkOrder {
 pub struct Search {
     data: Db,
     index: Db,
+    /// The vault's: one reindex pass at a time across its `Search`es.
+    reindexing: Arc<Mutex<()>>,
     directory: PathBuf,
     /// `None` searches FTS alone.
     semantic: Option<Arc<SemanticSearch>>,
@@ -164,6 +167,7 @@ impl Search {
     /// handle and knows the directory the index belongs beside.
     pub(crate) fn over(
         data: Db,
+        reindexing: Arc<Mutex<()>>,
         directory: &str,
         semantic: Option<Arc<SemanticSearch>>,
     ) -> Result<Self, StorageError> {
@@ -172,6 +176,7 @@ impl Search {
         Ok(Self {
             data,
             index: opened.db,
+            reindexing,
             directory,
             semantic,
         })
@@ -412,18 +417,42 @@ impl Search {
     /// belongs on an explicit moment — a screen appearing, a sync finishing —
     /// and never on a keystroke.
     pub fn reindex(&self) -> Result<ReindexSummary, StorageError> {
-        let index = self.index.clone();
-        self.data.call_blocking(move |data| {
-            index.call_blocking(|index| {
-                let done = search::reindex(data, index, now_ms())?;
-                Ok(ReindexSummary {
+        // A full rebuild of a large vault is minutes of work. It holds
+        // `data.db` one batch at a time, so the sync pass started beside it
+        // and every write wait one batch, not the pass (#5842).
+        let _one_pass = self
+            .reindexing
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner);
+        let mut pass = search::ReindexPass::default();
+        loop {
+            let held = Instant::now();
+            let step = self.data.call_blocking(|data| {
+                self.index
+                    .call_blocking(|index| pass.step(data, index, now_ms(), search::REINDEX_BATCH))
+            })?;
+            if let search::ReindexStep::Done(done) = step {
+                return Ok(ReindexSummary {
                     full: done.full,
                     notes_indexed: done.notes_indexed as u32,
                     tasks_indexed: done.tasks_indexed as u32,
                     corrupt_skipped: done.corrupt_skipped as u32,
-                })
-            })
-        })
+                });
+            }
+            self.let_waiters_in(held.elapsed());
+        }
+    }
+}
+
+impl Search {
+    /// Waits while calls are queued on `data.db`, for about as long as the
+    /// batch held it (10 ms to a second), so they run before the next batch.
+    /// The time bounds only the wait, never what the pass indexes.
+    fn let_waiters_in(&self, held: Duration) {
+        let until = Instant::now() + held.clamp(Duration::from_millis(10), Duration::from_secs(1));
+        while self.data.waiting() > 0 && Instant::now() < until {
+            std::thread::sleep(Duration::from_millis(1));
+        }
     }
 }
 

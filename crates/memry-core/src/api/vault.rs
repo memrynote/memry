@@ -36,7 +36,7 @@
 //! `Vault` to seal, rather than each object carrying its own copy.
 
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use crate::api::auth::AuthSession;
 use crate::api::calendar::VaultCalendar;
@@ -65,6 +65,9 @@ use crate::storage::{Db, open_data};
 pub struct Vault {
     id: String,
     db: Db,
+    /// Held for a whole search reindex, shared by every `Search` of this vault:
+    /// the batches of two passes must not interleave (#5842).
+    reindexing: Arc<Mutex<()>>,
     /// Kept because `index.db` lives beside `data.db` and is opened later, on
     /// demand: the index is a cache of the vault (data-model §A.5) and a
     /// vault that is never searched must not pay for it at open.
@@ -106,6 +109,7 @@ impl Vault {
         Ok(Self {
             id: vault_id,
             db,
+            reindexing: Arc::default(),
             directory,
         })
     }
@@ -233,6 +237,7 @@ impl Vault {
     ) -> Result<Arc<Search>, StorageError> {
         Ok(Arc::new(Search::over(
             self.db.clone(),
+            Arc::clone(&self.reindexing),
             &self.directory,
             semantic,
         )?))
