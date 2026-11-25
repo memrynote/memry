@@ -544,10 +544,21 @@ pass settles them. The decision is a pure function of five facts
    `F` fetches the bytes `F` uploaded once `j<D>` names them, and nothing is
    uploaded again (#5746, #5777;
    `apps/desktop/src/main/sync/journal-day-merge.ts:359`; core:
-   `crates/memry-core/src/sync/journal_day_merge/pictures.rs:31`, called from
+   `crates/memry-core/src/sync/journal_day_merge/pictures.rs:43`, called from
    `crates/memry-core/src/sync/journal_day_merge/mod.rs:302`). The core
    writes the union in the transaction that tombstones `F`, so a crash
-   leaves neither, and a union that adds nothing pushes nothing. Desktop
+   leaves neither, and a union that adds nothing pushes nothing. In the same
+   transaction the core moves every upload still queued under `F` to `j<D>`
+   (#5510), so an attach made offline names `j<D>` when it lands: the pass
+   uploads after the merge (`crates/memry-core/src/api/sync/pass.rs:151`,
+   `:157`). When `j<D>`'s `note` record is deleted, the core creates it again
+   over the tombstone, one tick past every delete clock it knows (chapter 05
+   §5.8), with only the carried references, as desktop's next upload to the
+   day does. When it carries no reference yet, only queued uploads, the
+   created record leaves `attachmentReferences` out rather than sending an
+   empty list (chapter 14 §14.7). A merge that another device already
+   settled (`deleted`) still carries: that device may run a build without
+   this step, and then no other device names `F`'s pictures under `j<D>`. Desktop
    pushes on every carry, so a crash between its row write and its push
    still names them on the retry. Desktop also pairs a lone reference with
    a lone unrecorded file in `F`'s attachment folder when the folded text
@@ -618,6 +629,18 @@ there lives only in its Yjs state
   stays in `F` on the server and on that build, but every device with this
   rule hides it: none projects `F`, and none re-creates `j<D>`. It is not
   deleted. Showing it needs the day revival #2986 tracks.
+- A picture removed from `j<D>` after the first merge comes back to
+  `j<D>`'s reference list when a device that still holds `F`'s `note` record
+  settles the merge late. The body does not embed it again; a device fetches
+  bytes nothing shows. Skipping the carry on a late settle would leave `F`'s
+  pictures unnamed whenever the device that merged first runs a build
+  without the carry.
+- When the core holds `j<D>`'s `note` record without its payload (not pulled
+  yet, or unreadable by this build), the merge writes nothing to it: a write
+  would replace references it cannot see. `F`'s references stay on `F`'s
+  `note` record, unnamed under `j<D>`, and the uploads moved to `j<D>` wait
+  until the record's payload is readable here
+  (`crates/memry-core/src/sync/journal_day_merge/pictures.rs:65`).
 - A task that links `F` and reaches this device after the merge settled keeps
   the dead link.
 - Desktop keeps no snapshot of a holder's last synced tags. When its holder

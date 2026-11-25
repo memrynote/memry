@@ -103,6 +103,16 @@ pub fn ids_for_note(conn: &Connection, note_id: &str) -> Result<Vec<String>, Sto
         .map_err(failed)
 }
 
+/// Moves every upload still owed to `from` over to `to`, so each names `to`
+/// when it lands. Returns how many moved.
+pub(crate) fn move_to_note(conn: &Connection, from: &str, to: &str) -> Result<usize, StorageError> {
+    conn.execute(
+        "UPDATE note_attachment_uploads SET note_id = ?2 WHERE note_id = ?1",
+        params![from, to],
+    )
+    .map_err(failed)
+}
+
 /// Whether the note is live here. A deleted note's upload waits rather than
 /// spends quota, and runs if the note comes back.
 pub fn note_is_live(conn: &Connection, note_id: &str) -> Result<bool, StorageError> {

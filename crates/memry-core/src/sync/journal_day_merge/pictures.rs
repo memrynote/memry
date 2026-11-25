@@ -16,18 +16,30 @@
 //! bytes and nothing is paired.
 
 use rusqlite::Connection;
-use serde_json::json;
+use serde_json::{Value, json};
 
 use crate::api::errors::StorageError;
-use crate::domain::{attachment_refs, notes};
-use crate::storage::repositories::schema::Object;
+use crate::domain::{attachment_refs, attachment_uploads, notes, recreate};
 use crate::storage::repositories::sync_items;
 use crate::sync::outbox;
 
 /// Unions `F`'s references into `j<D>`'s and queues `j<D>`'s `note` record,
-/// creating it in desktop's shape when the day has none. Runs in the settle's
-/// transaction, so a crash leaves neither half. Queues nothing when `j<D>`
-/// names every reference already, so a re-run or a peer's echo pushes nothing.
+/// creating it in desktop's shape when the day has none or a deleted one.
+/// Runs in the settle's transaction, so a crash leaves neither half. Queues
+/// nothing when `j<D>` names every reference already, so a re-run or a
+/// peer's echo pushes nothing.
+///
+/// Invariant: every reference `F` holds or will hold is named under `j<D>`
+/// before `F` is forgotten. `F`'s note row holds what it uploaded; an upload
+/// still queued under `F` (#5510) will hold one, and the pass uploads after
+/// this drain, so it moves to `j<D>` here and names `j<D>` when it lands.
+///
+/// A late settle (`F` deleted by the device that merged it) carries too. That
+/// device may run a build without this carry, and then this is the only
+/// device that names `F`'s pictures under `j<D>`; desktop carries on a late
+/// settle as well. A picture removed from `j<D>` in between comes back to the
+/// list as a reference, which costs a download, not the body (§1.9.1 known
+/// limits).
 pub(super) fn carry(
     tx: &Connection,
     foreign: &str,
@@ -37,31 +49,38 @@ pub(super) fn carry(
     now_ms: i64,
 ) -> Result<(), StorageError> {
     let carried = notes::read_attachment_references(tx, foreign)?;
-    if carried.is_empty() {
+    let queued = attachment_uploads::move_to_note(tx, foreign, canonical)?;
+    if carried.is_empty() && queued == 0 {
         return Ok(());
     }
     match sync_items::load(tx, notes::ITEM_TYPE, canonical)? {
-        None => create_day_note(tx, canonical, date, &carried, device_id, now_ms),
         Some(row) if row.deleted_at.is_none() && row.payload.is_some() => {
             notes::add_attachment_references(tx, canonical, &carried, device_id, now_ms)?;
             Ok(())
         }
-        // A tombstoned or bodiless day record cannot take an edit here. The
-        // references stay on `F`'s own note row, which the merge leaves.
-        Some(_) => {
+        // A live record whose payload this device does not hold: not pulled
+        // yet, or one it cannot read. A write here would replace what it
+        // cannot see. The references stay on `F`'s note row, and the moved
+        // uploads wait until the record is readable (§1.9.1 known limits).
+        Some(row) if row.deleted_at.is_none() => {
             eprintln!(
                 "memry-core: journal day merge of {foreign} cannot name {} attachment(s) under \
-                 {canonical}: its note record is deleted or not pulled",
+                 {canonical}: its note record is not pulled",
                 carried.len()
             );
             Ok(())
         }
+        // None, or deleted: created over the tombstone one tick past its
+        // clock, as desktop's next upload to the day would (`recordOnNote`).
+        _ => create_day_note(tx, canonical, date, &carried, device_id, now_ms),
     }
 }
 
 /// The `note` record desktop pushes under a day's id (`recordOnNote`): the
 /// day's title and folder, and its references. No `content`: the body is the
-/// journal's doc.
+/// journal's doc. With no reference to carry yet, only uploads that will
+/// add theirs, the list is left out: absent says "this sender does not
+/// know" (§14.7), where an empty list would clear a peer's.
 fn create_day_note(
     tx: &Connection,
     canonical: &str,
@@ -71,18 +90,23 @@ fn create_day_note(
     now_ms: i64,
 ) -> Result<(), StorageError> {
     let at = notes::iso(now_ms)?;
-    let payload = notes::object(json!({
+    let mut payload = notes::object(json!({
         "title": date,
         "fileType": "markdown",
         "folderPath": "journal",
-        "attachmentReferences": references,
-        "clock": notes::next_clock(&Object::new(), device_id)?,
         "createdAt": at,
         "modifiedAt": at,
     }));
-    // Before the row takes the list: the stored list bounds what it drops.
+    if !references.is_empty() {
+        payload.insert(
+            "attachmentReferences".to_owned(),
+            Value::from(references.to_vec()),
+        );
+    }
+    // Before the row takes the list: the stored list bounds what it drops,
+    // so a deleted record's pictures leave the day.
     attachment_refs::merge_note_references(tx, canonical, Some(references))?;
-    notes::insert_local(tx, notes::ITEM_TYPE, canonical, payload, now_ms)?;
+    recreate::write_over_tombstone(tx, notes::ITEM_TYPE, canonical, payload, device_id, now_ms)?;
     outbox::enqueue(
         tx,
         &outbox::Change::upsert(notes::ITEM_TYPE, canonical),

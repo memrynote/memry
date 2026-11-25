@@ -109,6 +109,9 @@ struct State {
     /// registered device id -> signing public key
     devices: Vec<(String, Vec<u8>)>,
     traps: Vec<Trap>,
+    /// Attachment uploads fail with 503 while set: the device is offline
+    /// for them.
+    attachments_down: bool,
 }
 
 struct Server {
@@ -347,6 +350,19 @@ impl Server {
             ("GET", p) if p.starts_with("/sync/crdt/snapshot/") => {
                 json_response(200, json!({"snapshot": null}))
             }
+            // Accepts every upload step; only the reference names the bytes.
+            (_, p) if p.starts_with("/sync/attachments/") => {
+                if st.attachments_down {
+                    json_response(503, json!({}))
+                } else if p.ends_with("/upload/initiate") {
+                    json_response(
+                        200,
+                        json!({"sessionId": "upload-1", "expiresAt": 9_999_999_999_000i64}),
+                    )
+                } else {
+                    json_response(200, json!({"success": true}))
+                }
+            }
             _ => panic!("test server: unknown route {method} {full_path} from {device}"),
         }
     }
@@ -379,6 +395,10 @@ impl Server {
             .collect();
         tags.sort();
         tags
+    }
+
+    fn attachments_down(&self, down: bool) {
+        self.state.lock().unwrap().attachments_down = down;
     }
 
     fn max_cursor(&self) -> i64 {
@@ -430,7 +450,8 @@ impl Transport for DeviceTransport {
         let body = request
             .body
             .as_ref()
-            .map(|b| serde_json::from_slice::<Json>(b).unwrap());
+            // A chunk's body is bytes, not JSON.
+            .and_then(|b| serde_json::from_slice::<Json>(b).ok());
         Ok(self
             .server
             .handle(&self.device, &request.method, &path, body))
@@ -645,6 +666,26 @@ impl Dev {
             );
             outbox::commit(conn, &Change::upsert("note", id), 1, |_| Ok(()))
         });
+    }
+
+    /// A picture attached to the day the device holds as `F`, as the day
+    /// page attaches (`upload_attachment`); its id.
+    async fn attach_to_foreign(&self) -> String {
+        self.sync
+            .upload_attachment(
+                F.to_owned(),
+                "photo.png".to_owned(),
+                "image/png".to_owned(),
+                b"a picture taken offline".to_vec(),
+            )
+            .await
+            .unwrap()
+    }
+
+    /// Deletes the `note` record under `id` (a user delete).
+    fn delete_note(&self, id: &'static str) {
+        let clock = self.clock.clone();
+        self.db(move |c| memry_core::domain::notes::delete(c, id, &clock, now()).map(|_| ()));
     }
 
     /// The pictures opening `j<D>` fetches (`fetch_note_manifests(DAY)`).
@@ -875,6 +916,60 @@ async fn the_merge_keeps_the_days_own_pictures() {
         assert_eq!(got, want, "{device}'s j<D>");
     }
     fresh_device_wants(&w, &want).await;
+}
+
+/// (#5801) A picture attached to `F` offline is still queued when the merge
+/// settles, and the pass uploads after the merge: the upload names `j<D>`,
+/// not `F`. With `pushed`, `F` already named a picture of its own.
+async fn uploading_at_the_merge(pushed: bool) {
+    let w = World::new(&["a"]).await;
+    let mut want = Vec::new();
+    if pushed {
+        w.a.seed_picture(F, PICTURE, BTreeMap::from([(w.a.clock.clone(), 1)]));
+        w.a.pass().await;
+        want.push(PICTURE.to_owned());
+    }
+    w.server.attachments_down(true);
+    want.push(w.a.attach_to_foreign().await);
+    want.sort();
+    w.b.pass().await;
+    w.server.attachments_down(false);
+    w.settle().await;
+    for (device, mut got) in [("A", w.a.day_pictures()), ("B", w.b.day_pictures())] {
+        got.sort();
+        assert_eq!(got, want, "{device}'s j<D>");
+    }
+    let want: Vec<&str> = want.iter().map(String::as_str).collect();
+    fresh_device_wants(&w, &want).await;
+}
+
+#[tokio::test]
+async fn a_picture_uploading_at_the_merge_is_named_under_the_day() {
+    uploading_at_the_merge(false).await;
+}
+
+#[tokio::test]
+async fn a_picture_uploading_at_the_merge_joins_the_carried_ones() {
+    uploading_at_the_merge(true).await;
+}
+
+/// (#5801) `j<D>`'s note record was deleted: the merge creates it again one
+/// tick past the tombstone, naming `F`'s pictures and none of the deleted
+/// record's.
+#[tokio::test]
+async fn a_deleted_day_record_is_created_again_with_the_carried_pictures() {
+    let w = World::new(&["a"]).await;
+    let clock = BTreeMap::from([(w.a.clock.clone(), 1)]);
+    w.a.seed_picture(F, PICTURE, clock.clone());
+    w.a.seed_picture(DAY, OWN, clock);
+    w.a.pass().await;
+    w.a.delete_note(DAY);
+    w.a.pass().await;
+    w.b.pass().await;
+    w.settle().await;
+    assert_eq!(w.b.day_pictures(), [PICTURE], "B's j<D>");
+    assert_eq!(w.a.day_pictures(), [PICTURE], "A's j<D>");
+    fresh_device_wants(&w, &[PICTURE]).await;
 }
 
 /// A device that never held `F` pulls the vault and opens `j<D>`; then the
