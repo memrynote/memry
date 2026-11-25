@@ -720,6 +720,54 @@ describe('runJournalDayMerges', () => {
       ).toEqual([])
     })
 
+    // REVIEW-5743: a row from before the file record (#2651) has refs and no record.
+    it('records the files on disk of a row with no file record for the day', async () => {
+      foreignRow({ minter: 2 }, { body: `![photo](../${PHOTO})\n` })
+      data.db
+        .update(noteMetadata)
+        .set({ attachmentReferences: ['att-f'] })
+        .where(eq(noteMetadata.id, FOREIGN))
+        .run()
+      fs.mkdirSync(path.join(vaultPath, 'attachments', FOREIGN), { recursive: true })
+      fs.writeFileSync(path.join(vaultPath, PHOTO), 'png bytes')
+      journalHandler.applyUpsert(ctx, FOREIGN, { date: DATE, content: 'theirs\n' }, { minter: 3 })
+
+      await drain()
+
+      expect(refsOf(DAY)).toEqual(['att-f'])
+      expect(owedNoteDownloads(ctx.db, vaultPath, DAY, true)).toEqual([])
+      expect(
+        data.db
+          .select({ path: attachmentFiles.path, attachmentId: attachmentFiles.attachmentId })
+          .from(attachmentFiles)
+          .where(eq(attachmentFiles.noteId, DAY))
+          .all()
+      ).toEqual([{ path: PHOTO, attachmentId: 'att-f' }])
+    })
+
+    it('counts them as known, and pairs none, when the ids and files do not match up', async () => {
+      foreignRow({ minter: 2 }, { body: `![photo](../${PHOTO})\n` })
+      data.db
+        .update(noteMetadata)
+        .set({ attachmentReferences: ['att-f', 'att-g'] })
+        .where(eq(noteMetadata.id, FOREIGN))
+        .run()
+      fs.mkdirSync(path.join(vaultPath, 'attachments', FOREIGN), { recursive: true })
+      fs.writeFileSync(path.join(vaultPath, PHOTO), 'png bytes')
+      journalHandler.applyUpsert(ctx, FOREIGN, { date: DATE, content: 'theirs\n' }, { minter: 3 })
+
+      await drain()
+
+      expect(refsOf(DAY)).toEqual(['att-f', 'att-g'])
+      expect(
+        data.db
+          .select({ path: attachmentFiles.path, attachmentId: attachmentFiles.attachmentId })
+          .from(attachmentFiles)
+          .where(eq(attachmentFiles.noteId, DAY))
+          .all()
+      ).toEqual([{ path: PHOTO, attachmentId: null }])
+    })
+
     it('keeps them in the owed merge when the row goes before a crash', async () => {
       foreignHolderWithPhoto()
       journalHandler.applyUpsert(ctx, FOREIGN, { date: DATE, content: 'theirs\n' }, { minter: 3 })
