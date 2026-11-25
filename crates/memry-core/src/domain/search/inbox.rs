@@ -13,53 +13,47 @@
 //! reads the others: `inbox_items.synced_at` is this device's apply stamp, and
 //! a missing watermark empties the table and fills it from every capture.
 
+use std::collections::BTreeMap;
+
 use rusqlite::{Connection, OptionalExtension as _, params};
 
 use crate::api::errors::StorageError;
 
 use super::failed;
-use super::maintenance::{Reindexed, candidates, meta_number, meta_set};
+use super::maintenance::{Reindexed, Stamps, merged, stamped};
 
 /// `index_meta` key: the `fts_inbox` watermark.
 pub const INBOX_WATERMARK_KEY: &str = "watermark.fts_inbox";
 /// The `fts_inbox` ranking expression, desktop's weights.
 pub const INBOX_RANK: &str = "bm25(fts_inbox, 0.0, 3.0, 1.0, 1.0, 0.5)";
 
-/// Brings `fts_inbox` up to date. `full` empties it first, as does a missing
-/// watermark.
-pub(super) fn reindex(
+/// Every capture whose projection row moved at or after `from`, with its
+/// stamps.
+pub(super) fn inbox_candidates(
     data: &Connection,
-    index: &Connection,
-    full: bool,
-    done: &mut Reindexed,
-) -> Result<(), StorageError> {
-    let from = match meta_number(index, INBOX_WATERMARK_KEY)? {
-        Some(from) if !full => from,
-        _ => {
-            index
-                .execute_batch("DELETE FROM fts_inbox;")
-                .map_err(failed)?;
-            0
-        }
-    };
-    let (ids, high) = candidates(
+    from: i64,
+) -> Result<BTreeMap<String, Stamps>, StorageError> {
+    stamped(
         data,
         "SELECT id AS doc_id, synced_at AS stamp FROM inbox_items
            WHERE synced_at IS NULL OR synced_at >= ?1",
         params![from],
-    )?;
-    for id in &ids {
-        index_item(data, index, id, done)?;
-    }
-    meta_set(
-        index,
-        INBOX_WATERMARK_KEY,
-        &high.unwrap_or(from).max(from).to_string(),
     )
 }
 
+/// [`inbox_candidates`]' stamps for one capture.
+pub(super) fn inbox_stamps(data: &Connection, from: i64, id: &str) -> Result<Stamps, StorageError> {
+    let stamps = stamped(
+        data,
+        "SELECT id, synced_at FROM inbox_items
+           WHERE id = ?2 AND (synced_at IS NULL OR synced_at >= ?1)",
+        params![from, id],
+    )?;
+    Ok(merged(stamps))
+}
+
 /// Re-indexes one capture: delete first, then insert if it is still live.
-fn index_item(
+pub(super) fn index_item(
     data: &Connection,
     index: &Connection,
     id: &str,

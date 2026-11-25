@@ -192,7 +192,8 @@ only after a pull that delivered. Desktop keeps it in `cursorSkipRepair`
 it in the `meta` row `sync.cursor_skip_repair`, writes the reset and `pending`
 in one transaction, and records `done` after a run that was not refused and
 reached `hasMore: false` (`crates/memry-core/src/sync/feed_restart.rs`,
-#2304).
+#2304), and at a first sync's start with no cursor
+(`crates/memry-core/src/sync/pull.rs:247` `claim_fresh_feed`, #5840).
 
 **Acks are per item id.** Two queued rows sharing an id cannot be told apart in a
 mixed response, so **a client MUST collapse to one push item per id before

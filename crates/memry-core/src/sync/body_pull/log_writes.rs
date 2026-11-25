@@ -63,10 +63,11 @@ impl BodyPull {
         };
         let doc = doc_id.to_owned();
         let scope = crdt_cursor_scope(doc_id);
-        let created_at = now_ms();
         let stored = self
             .db
             .call(move |conn| {
+                // #5849: stamped inside the hold that writes the log rows.
+                let created_at = now_ms();
                 let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
                 let Some(body) = held(&txn, &doc, epoch)? else {
                     return Ok(false);
@@ -96,10 +97,11 @@ impl BodyPull {
         cursor: i64,
     ) -> Result<bool, BodyPullError> {
         let doc = doc_id.to_owned();
-        let now = now_ms();
         let stored = self
             .db
             .call(move |conn| {
+                // #5849: stamped inside the hold that writes the rows.
+                let now = now_ms();
                 let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
                 let Some(body) = held(&txn, &doc, epoch)? else {
                     return Ok(false);
@@ -130,10 +132,11 @@ impl BodyPull {
         epochs: &BodyEpochs,
     ) -> Result<Vec<Freshness>, BodyPullError> {
         let epochs: Vec<Epoch> = baselines.iter().map(|b| epochs.of(&b.doc_id)).collect();
-        let now = now_ms();
         let stored = self
             .db
             .call(move |conn| {
+                // #5849: stamped inside the hold that writes the rows.
+                let now = now_ms();
                 let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
                 let mut stored = Vec::with_capacity(baselines.len());
                 for (baseline, epoch) in baselines.iter().zip(epochs) {
@@ -179,10 +182,11 @@ impl BodyPull {
         epochs: &BodyEpochs,
     ) -> Result<Vec<usize>, BodyPullError> {
         let epochs: Vec<Epoch> = runs.iter().map(|(doc_id, _)| epochs.of(doc_id)).collect();
-        let now = now_ms();
         let stored = self
             .db
             .call(move |conn| {
+                // #5849: stamped inside the hold that writes the rows.
+                let now = now_ms();
                 let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
                 let mut stored = Vec::with_capacity(runs.len());
                 for ((doc_id, updates), epoch) in runs.iter().zip(epochs) {

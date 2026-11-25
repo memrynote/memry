@@ -310,6 +310,7 @@ impl FirstSync {
         report: &mut FirstSyncReport,
     ) -> Result<(), FirstSyncError> {
         report.window_start = self.window_start(now_ms).await?;
+        self.pull.claim_fresh_feed().await?;
 
         // Records first (#5232): packs, then the feed from where they end,
         // then the manifest decides, so the note list fills before any body.

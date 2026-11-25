@@ -15,6 +15,7 @@
 //! for the duration of the write.
 
 use std::path::Path;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
 
@@ -40,6 +41,8 @@ pub struct Db {
 
 struct Shared {
     conn: Mutex<Connection>,
+    /// Calls blocked on `conn` right now ([`Db::waiting`]).
+    waiting: AtomicUsize,
 }
 
 /// The last user of the connection is gone, so the database is closing, as a
@@ -82,6 +85,7 @@ impl Db {
         let file_backed = conn.path().is_some_and(|path| !path.is_empty());
         let shared = Arc::new(Shared {
             conn: Mutex::new(conn),
+            waiting: AtomicUsize::new(0),
         });
         if file_backed {
             // Registered at its final address, inside the `Arc`.
@@ -123,6 +127,15 @@ impl Db {
         let mut guard = lock(&self.conn)?;
         f(&mut guard)
     }
+
+    /// How many calls are waiting for the connection right now. A long job
+    /// that takes the connection in turns (the search reindex, #5842) lets
+    /// them go first: a mutex just let go of is not handed to a waiter, so the
+    /// job would otherwise take it straight back.
+    #[doc(hidden)]
+    pub fn waiting(&self) -> usize {
+        self.conn.waiting.load(Ordering::SeqCst)
+    }
 }
 
 /// Every transaction borrows the guard of the call that opened it, so a call
@@ -130,7 +143,10 @@ impl Db {
 /// `begin` inside it would open a savepoint whose RELEASE commits nothing, so
 /// it is rolled back first, and the call fails when that fails too.
 fn lock(shared: &Shared) -> Result<MutexGuard<'_, Connection>, StorageError> {
-    let guard = shared.conn.lock().map_err(|_| StorageError::Failed {
+    shared.waiting.fetch_add(1, Ordering::SeqCst);
+    let locked = shared.conn.lock();
+    shared.waiting.fetch_sub(1, Ordering::SeqCst);
+    let guard = locked.map_err(|_| StorageError::Failed {
         what: "the database mutex was poisoned by a panic in an earlier statement".to_owned(),
     })?;
     if !guard.is_autocommit() {
