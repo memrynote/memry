@@ -73,7 +73,8 @@ impl TaskHandle {
     }
 
     /// Asks for a reindex, run once the open walk ended; `None` when the task already ended.
-    /// One throttle for the asker: a pass a first sync held and its rerun never report backwards.
+    /// One throttle for the asker: a pass a first sync held and its rerun never report backwards,
+    /// but for the rerun's last step, which ends the asker's progress.
     pub fn reindex(&self, mut progress: Progress) -> Option<Answer> {
         let mut throttle = ProgressThrottle::new(PROGRESS_INTERVAL);
         let progress: Progress = Box::new(move |step| {
