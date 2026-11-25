@@ -242,6 +242,23 @@ describe('reconcileDownloadedAttachmentName', () => {
     ).toBeNull()
     expect(fs.existsSync(outside)).toBe(true)
   })
+
+  it('never moves the download out of this note’s folder for a crafted ref', async () => {
+    const downloaded = writeAttachment('abc123-photo.png')
+    const otherNote = path.join(vaultPath, 'attachments', 'n2')
+    fs.mkdirSync(otherNote, { recursive: true })
+
+    const result = await reconcileDownloadedAttachmentName(
+      NOTE_ID,
+      downloaded,
+      `![x](attachments/${NOTE_ID}/abc123-/../../n2/abc123-new.png)`,
+      vaultPath
+    )
+
+    expect(result).toBe(downloaded)
+    expect(fs.readFileSync(downloaded, 'utf8')).toBe('bytes')
+    expect(fs.readdirSync(otherNote)).toEqual([])
+  })
 })
 
 function fileSystemIgnoresCase(): boolean {
@@ -328,7 +345,8 @@ describe.runIf(fileSystemIgnoresCase())('reconcileDownloadedAttachmentName, ino 
     )
   })
 
-  it('keeps the only copy of a case-only download', async () => {
+  // Guard: green before the ino-0 fix too (0n === 0n read as one file).
+  it('guard: a case-only download keeps its bytes as the only copy', async () => {
     const downloaded = writeAttachment('abc123-photo.png')
 
     const result = await reconcileDownloadedAttachmentName(
@@ -340,5 +358,44 @@ describe.runIf(fileSystemIgnoresCase())('reconcileDownloadedAttachmentName, ino 
 
     expect(fs.readdirSync(attachmentsDir())).toHaveLength(1)
     expect(fs.readFileSync(result!, 'utf8')).toBe('bytes')
+  })
+
+  it('keeps a subfolder file a ref names under a case variant of the download', async () => {
+    fs.mkdirSync(path.join(attachmentsDir(), 'abc123-x'), { recursive: true })
+    const downloaded = path.join(attachmentsDir(), 'abc123-photo.png')
+    fs.writeFileSync(downloaded, 'server')
+    const nested = path.join(attachmentsDir(), 'abc123-x', 'abc123-Photo.png')
+    fs.writeFileSync(nested, 'edited')
+
+    const result = await reconcileDownloadedAttachmentName(
+      NOTE_ID,
+      downloaded,
+      `![x](attachments/${NOTE_ID}/abc123-x/abc123-Photo.png)`,
+      vaultPath
+    )
+
+    expect(result).toBe(downloaded)
+    expect(fs.readFileSync(downloaded, 'utf8')).toBe('server')
+    expect(fs.readFileSync(nested, 'utf8')).toBe('edited')
+  })
+
+  it('keeps another note’s attachment a crafted ref points at', async () => {
+    const downloaded = path.join(attachmentsDir(), 'abc123-photo.png')
+    fs.mkdirSync(attachmentsDir(), { recursive: true })
+    fs.writeFileSync(downloaded, 'server')
+    const foreign = path.join(vaultPath, 'attachments', 'n2', 'abc123-photo.png')
+    fs.mkdirSync(path.dirname(foreign), { recursive: true })
+    fs.writeFileSync(foreign, 'edited')
+
+    const result = await reconcileDownloadedAttachmentName(
+      NOTE_ID,
+      downloaded,
+      `![x](attachments/${NOTE_ID}/abc123-/../../n2/abc123-photo.png)`,
+      vaultPath
+    )
+
+    expect(result).toBe(downloaded)
+    expect(fs.readFileSync(downloaded, 'utf8')).toBe('server')
+    expect(fs.readFileSync(foreign, 'utf8')).toBe('edited')
   })
 })

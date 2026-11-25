@@ -148,6 +148,7 @@ const foldName = (name: string): string => name.normalize('NFC').toLowerCase()
  * entry carries it.
  */
 function sameFile(a: string, b: string): Identity {
+  if (path.dirname(a) !== path.dirname(b)) return 'unknown'
   const sa = statSync(a, { bigint: true })
   const sb = statSync(b, { bigint: true })
   if (sa.dev === undefined || sb.dev === undefined || !sa.ino || !sb.ino) {
@@ -237,7 +238,17 @@ export async function reconcileDownloadedAttachmentName(
   if (refs.has(downloaded)) return downloadedPath
 
   const prefix = downloaded.slice(0, 7)
-  const candidates = [...refs].filter((name) => name.startsWith(prefix))
+  // A reconcile acts only inside this note's own attachments folder. A ref
+  // is decoded and may carry `/`, `\` or `..` (hand-edited or crafted body);
+  // such a name would aim the rename at a subfolder or another note's folder,
+  // so only a plain file name can be a target.
+  const candidates = [...refs].filter(
+    (name) =>
+      name.startsWith(prefix) &&
+      path.basename(name) === name &&
+      !/[/\\]/.test(name) &&
+      !name.includes('..')
+  )
   if (candidates.length !== 1) return downloadedPath
 
   const target = path.join(dir, candidates[0])
