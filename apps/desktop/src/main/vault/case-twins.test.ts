@@ -1058,7 +1058,7 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
   const mixed = () => parseNote(MIXED).frontmatter
 
   /** Lower off the shared file with MIXED rows; `trigger` runs, then upper leaves. */
-  async function splitAfter(trigger: () => Promise<unknown> | unknown) {
+  async function splitAfter(trigger: () => unknown) {
     await propertyTwins(MIXED, '', false)
     await trigger()
     await deleteNoteCommand('upper')
