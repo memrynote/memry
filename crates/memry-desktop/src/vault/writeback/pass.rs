@@ -180,7 +180,7 @@ impl Pass {
             self.pulled.take(note_id);
             return Outcome::Kept(Keep::NotMarkdown);
         }
-        let Some(row_hash) = row.content_hash else {
+        let Some(row_hash) = row.content_hash.clone() else {
             return Outcome::Kept(Keep::NotRead);
         };
         let file = match read_note(&self.root, &row.path) {
@@ -194,6 +194,8 @@ impl Pass {
         if file.hash != row_hash {
             return Outcome::Kept(Keep::FileChanged);
         }
+        // A live day's file stands at its date's path (`day_place`, #5786).
+        let day_place = self.place_day(&mut lane, &row);
         // A pulled change: taken here, and given back to the next pass when this one stops.
         let pulled = match self.pulled.take(note_id) {
             None => None,
@@ -219,9 +221,9 @@ impl Pass {
             }
             outcome
         };
-        let mut path = row.path.clone();
-        let mut moved = false;
-        // A day's path is its date's: it is never placed.
+        let mut moved = day_place.is_some();
+        let mut path = day_place.unwrap_or_else(|| row.path.clone());
+        // A day's path is its date's (`day_place`): a pulled record never places it.
         let places = pulled
             .as_ref()
             .zip(waiting.as_mut())
