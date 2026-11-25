@@ -117,13 +117,6 @@ private final class FileFiller: VaultFilling, @unchecked Sendable {
     }
 }
 
-private final class FixedPath: Reachability {
-    init(path: Reachable) { self.path = path }
-    let path: Reachable
-    func current() -> Reachable { path }
-    func observe(observer: ReachabilityObserver) {}
-}
-
 @Suite("Binary note file")
 @MainActor
 struct NoteFileTests {

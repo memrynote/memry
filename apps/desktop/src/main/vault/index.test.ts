@@ -242,6 +242,8 @@ vi.mock('../sync/runtime', () => ({
   stopSyncRuntime: (...args: unknown[]) => mocks.stopSyncRuntime(...args)
 }))
 
+vi.mock('../sync/journal-clock-era', () => ({ journalClockEra: vi.fn() }))
+
 vi.mock('../sync/crdt-provider', () => ({
   getCrdtProvider: () => ({
     initPersistence: mocks.initCrdtPersistence,

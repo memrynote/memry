@@ -29,9 +29,12 @@ const log = createLogger('BinaryHashCheck')
  * the landing holds a download slot meanwhile, so checks queued ahead of it
  * share the wait instead of adding theirs (#5617). A check whose deadline
  * passed in the queue reads no manifest, and one that runs out aborts its read.
- * Waits for the downloads' pacer are not counted: they pace the downloads too.
+ * Waits for the downloads' pacer are not counted, up to PACED_ALLOWANCE_MS:
+ * they pace the downloads too.
  */
 const CHECK_DEADLINE_MS = 30_000
+/** Pacer waits left out of a check's deadline, at most: a pacer burst holds the slot no longer. */
+const PACED_ALLOWANCE_MS = 30_000
 
 export interface ManifestChecksumReader {
   checksumOf(attachmentId: string, net: DownloadNetOptions): Promise<string>
@@ -43,7 +46,7 @@ let readChecksum: ManifestChecksumReader | null = null
 /** One check at a time: a pull that replaces many notes asks for one manifest at a time. */
 let tail: Promise<void> = Promise.resolve()
 const checks = new Map<string, Promise<void>>()
-/** Time checks waited for the pacer, which no deadline counts. */
+/** Time checks waited for the pacer, which deadlines leave out up to their allowance. */
 let pacedMs = 0
 
 /** The attachment service's manifest reader. Null while sync is down: no check runs. */
@@ -60,9 +63,9 @@ export function checkUnhashedBinaryFile(
 ): void {
   const reader = readChecksum
   if (!reader) return
-  const spent = deadlineClock()
+  const clock = deadlineClock()
   const check = tail
-    .then(() => compare(db, noteId, attachmentId, filePath, reader, spent))
+    .then(() => compare(db, noteId, attachmentId, filePath, reader, clock))
     .catch((error: unknown) => {
       log.warn(
         'A binary note file was not compared with its attachment; it stays a conflict copy',
@@ -91,9 +94,9 @@ async function compare(
   attachmentId: string,
   filePath: string,
   reader: ManifestChecksumReader,
-  spent: () => number
+  clock: DeadlineClock
 ): Promise<void> {
-  const onServer = await withinDeadline(spent, reader, async (net) => {
+  const onServer = await withinDeadline(clock, reader, async (net) => {
     const checksum = await reader.checksumOf(attachmentId, net)
     const onDisk = await hashFileOffThread(filePath)
     return onDisk === checksum ? onDisk : null
@@ -105,33 +108,48 @@ async function compare(
   if (markHeldFileOnServer(db, noteId, onServer)) recordLandedBinaryHash(db, noteId, onServer)
 }
 
-/** The time since the replace that counts against its check's deadline. */
-function deadlineClock(): () => number {
+interface DeadlineClock {
+  /** The time since the replace that counts against its check's deadline. */
+  spent(): number
+  /** The pacer wait the deadline still leaves out. */
+  allowance(): number
+}
+
+function deadlineClock(): DeadlineClock {
   const start = performance.now()
   const pacedAtStart = pacedMs
-  return () => performance.now() - start - (pacedMs - pacedAtStart)
+  const paced = (): number => Math.min(pacedMs - pacedAtStart, PACED_ALLOWANCE_MS)
+  return {
+    spent: () => performance.now() - start - paced(),
+    allowance: () => PACED_ALLOWANCE_MS - paced()
+  }
 }
 
 async function withinDeadline<T>(
-  spent: () => number,
+  clock: DeadlineClock,
   reader: ManifestChecksumReader,
   work: (net: DownloadNetOptions) => Promise<T>
 ): Promise<T> {
   const timedOut = new Error(`No answer within ${CHECK_DEADLINE_MS} ms`)
-  if (spent() >= CHECK_DEADLINE_MS) throw timedOut
+  if (clock.spent() >= CHECK_DEADLINE_MS) throw timedOut
   const controller = new AbortController()
   const { signal } = controller
   let timer: ReturnType<typeof setTimeout> | undefined
-  const arm = (): void => {
-    timer = setTimeout(() => controller.abort(timedOut), CHECK_DEADLINE_MS - spent())
+  const arm = (extraMs = 0): void => {
+    timer = setTimeout(
+      () => controller.abort(timedOut),
+      CHECK_DEADLINE_MS - clock.spent() + extraMs
+    )
   }
   const pace = async (): Promise<void> => {
     clearTimeout(timer)
+    arm(clock.allowance())
     const from = performance.now()
     try {
       await reader.pace()
     } finally {
       pacedMs += performance.now() - from
+      clearTimeout(timer)
       if (!signal.aborted) arm()
     }
   }

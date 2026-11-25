@@ -59,7 +59,7 @@ import {
   deleteFolderCommand,
   setNoteLocalOnlyCommand
 } from './domain'
-import { isAppFolderChange } from './folder-config-effects'
+import { isAppFolderChange } from '../vault/app-folder-changes'
 import * as noteVault from '../vault/notes'
 import * as runtimeEffects from './runtime-effects'
 import * as noteSyncState from '../sync/note-sync-state'

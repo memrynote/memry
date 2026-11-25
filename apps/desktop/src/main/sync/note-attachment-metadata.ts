@@ -5,10 +5,12 @@ import { getDatabase, getIndexDatabase } from '../database'
 import { createLogger } from '../lib/logger'
 import { clearAttachmentDownloadFailure } from '@memry/sync-client/attachment-download-state'
 import { getCurrentDeviceId } from '@memry/sync-client/current-device-id'
+import { peekNextLocalClock } from '@memry/sync-client/tombstone-clocks'
 import { enqueueLocalSyncUpdate } from './local-mutations'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { isBinaryNoteRow } from '@memry/shared/file-types'
 import { clearCaseTwinForeignBytes, holdsCaseTwinForeignBytes } from '../vault/case-twin-bytes'
+import { settleAppFolderChanges } from '../vault/app-folder-changes'
 import { hashFileOffThread } from '../vault/file-hash-bridge'
 import { toAbsolutePath } from '../vault/notes-io'
 import { SupersededDownloadError } from './attachment-errors'
@@ -60,7 +62,9 @@ export async function recordUploadedFile(
  * filesystem with no inode numbers. A change made during the hash keeps this
  * upload off too, and its own upload records it. A hash that found nothing
  * proves nothing while the file is still there: it moved as the hash opened
- * it, and is hashed again where the row names it now.
+ * it, and is hashed again where the row names it now. Nor while the app moves
+ * its folder entry by entry, which re-keys the row only once every file moved
+ * (#2206): it is hashed again once the move settles.
  */
 async function fileHoldsUpload(noteId: string, sha256: string): Promise<boolean> {
   const db = getDatabase()
@@ -76,8 +80,12 @@ async function fileHoldsUpload(noteId: string, sha256: string): Promise<boolean>
     const after = await fileAtRowPath(db, noteId)
     if (readSyncedBinaryHash(db, noteId) !== synced) return false
     if (onDisk !== null) return after?.identity === file.identity
-    // Gone after the hash too: nothing there holds other bytes.
-    if (after?.identity === null) return true
+    if (after?.identity === null) {
+      // Gone after the hash too: nothing there holds other bytes.
+      if (!(await settleAppFolderChanges(after.relativePath))) return true
+      file = await fileAtRowPath(db, noteId)
+      continue
+    }
     file = after
   }
   return false
@@ -87,14 +95,16 @@ async function fileHoldsUpload(noteId: string, sha256: string): Promise<boolean>
 async function fileAtRowPath(
   db: DrizzleDb,
   noteId: string
-): Promise<{ filePath: string; identity: string | null } | undefined> {
+): Promise<{ relativePath: string; filePath: string; identity: string | null } | undefined> {
   for (;;) {
     const relativePath = getNoteMetadataById(db, noteId)?.path
     if (relativePath === undefined) return undefined
     const filePath = toAbsolutePath(relativePath)
     const identity = await fileIdentity(filePath)
     // A rename moves the file before the row: stat again where the row names it now.
-    if (getNoteMetadataById(db, noteId)?.path === relativePath) return { filePath, identity }
+    if (getNoteMetadataById(db, noteId)?.path === relativePath) {
+      return { relativePath, filePath, identity }
+    }
   }
 }
 
@@ -130,9 +140,15 @@ function recordOnNote(noteId: string, attachmentId: string, syncedHash?: string)
   const existing = note?.attachmentReferences ?? []
   const merged = existing.includes(attachmentId) ? existing : [...existing, attachmentId]
   // The bytes reach a peer only in a push of this device's queued from here
-  // on, below: its tick on this device is past the row's.
+  // on, below, minted as the note sync service mints it: a row with no clock
+  // pushes past its tombstone's (#5676).
   const deviceId = getCurrentDeviceId(db)
-  const push = deviceId ? { deviceId, tick: (note?.clock?.[deviceId] ?? 0) + 1 } : null
+  const push = deviceId
+    ? {
+        deviceId,
+        tick: peekNextLocalClock(db, 'note', noteId, note?.clock, deviceId, 'update')[deviceId]
+      }
+    : null
   // Data DB FIRST. It is the sync source of truth (`buildNotePushPayload` reads
   // `attachmentReferences` from it) while the index DB is a rebuildable cache.
   // These are two SQLite files with no shared transaction, so if one write has

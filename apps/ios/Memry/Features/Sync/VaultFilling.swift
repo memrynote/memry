@@ -89,10 +89,10 @@ protocol VaultFilling: Sendable {
 
     /// Fetches one attachment's bytes (chapter 14, FR-045).
     ///
-    /// - Parameter reachable: **the shell's observation, not its policy.**
-    ///   Only the shell can see the current path; the core decides what that
-    ///   means, so the unmetered-by-default rule and its per-item override
-    ///   live in one place rather than being re-argued here.
+    /// - Parameter reachable: the path the core's metered policy judges this
+    ///   download against: the shell's observation, as this device's Download
+    ///   attachments setting reads it (`AttachmentDownloadPath.swift`). The
+    ///   unmetered-by-default rule and its per-item override stay the core's.
     ///
     /// **A deferred fetch is not a failure.** A picture waiting for an
     /// unmetered path is FR-045 working, and the summary says so rather than
