@@ -103,6 +103,8 @@ vi.mock('@memry/sync-client/offline-clock', () => ({
 }))
 
 import { getDatabase } from '../database'
+import { noteMetadata } from '@memry/db-schema/data-schema'
+import { createTestDataDb } from '@tests/utils/test-db'
 import { getCalendarBindingSyncService } from '@memry/sync-client/calendar-binding-sync'
 import { getCalendarEventSyncService } from './calendar-event-sync'
 import { getCalendarExternalEventSyncService } from '@memry/sync-client/calendar-external-event-sync'
@@ -414,7 +416,17 @@ describe('local-mutations', () => {
   })
 
   it('falls back to the offline clock bump when the note sync service is down', () => {
-    const db = {}
+    const { db } = createTestDataDb()
+    db.insert(noteMetadata)
+      .values({
+        id: 'note-1',
+        path: 'notes/note-1.md',
+        title: 'Note',
+        fileType: 'markdown',
+        createdAt: '2026-06-09T08:00:00.000Z',
+        modifiedAt: '2026-06-09T08:00:00.000Z'
+      })
+      .run()
     ;(getDatabase as Mock).mockReturnValue(db)
     ;(getNoteSyncService as Mock).mockReturnValue(null)
 

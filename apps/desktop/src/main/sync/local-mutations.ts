@@ -8,6 +8,8 @@ import { shouldEmitThrottled } from '../telemetry/throttle'
 import { isSyncEligible } from '@memry/sync-client/sync-eligibility'
 import { recordLocalDeleteClock } from '@memry/sync-client/tombstone-clocks'
 import { getNoteMetadataById } from '@memry/storage-data'
+import { and, eq } from 'drizzle-orm'
+import { syncIntents } from '@memry/db-schema/schema/sync-intents'
 import {
   buildContentDeletePayload,
   clearPendingDelete,
@@ -109,6 +111,25 @@ function svcOrTrackDrop<T>(
     )
   }
   return service
+}
+
+/** One pending `note` update intent for `itemId`; a second offline upload adds none. */
+function oweNoteUpdateIntent(db: DrizzleDb, itemId: string): void {
+  const pending = db
+    .select({ seq: syncIntents.seq })
+    .from(syncIntents)
+    .where(
+      and(
+        eq(syncIntents.type, 'note'),
+        eq(syncIntents.itemId, itemId),
+        eq(syncIntents.op, 'update')
+      )
+    )
+    .get()
+  if (pending) return
+  db.insert(syncIntents)
+    .values({ type: 'note', itemId, op: 'update', args: '[]', createdAt: new Date() })
+    .run()
 }
 
 interface DeleteEnqueuer {
@@ -639,7 +660,17 @@ const localSyncRegistry = createSyncAdapterRegistry([
         // some unrelated later edit happened to push the note. Marking the note
         // dirty hands the push to `recoverDirtyItems`, which re-pushes it at the
         // next runtime start.
-        incrementNoteClockOffline(getDatabase(), itemId)
+        //
+        // A journal day is the exception: its dirty row re-pushes as a journal
+        // record, which has no `attachmentReferences`, so the `note` record
+        // that names the day's pictures would never go (#5785). It waits as a
+        // sync intent instead, which the runtime-start drain replays here.
+        const db = getDatabase()
+        if (getNoteMetadataById(db, itemId)?.journalDate) {
+          oweNoteUpdateIntent(db, itemId)
+          return
+        }
+        incrementNoteClockOffline(db, itemId)
       },
       enqueueRecoveredUpdate(itemId: string): void {
         getNoteSyncService()?.enqueueRecoveredUpdate(itemId)

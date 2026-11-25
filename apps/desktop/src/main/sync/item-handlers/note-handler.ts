@@ -17,6 +17,8 @@ import { NotesChannels, ReminderChannels } from '@memry/contracts/ipc-channels'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
 import { extractFolderFromPath, getNoteSyncService } from '../note-sync'
+import { enqueueLocalSyncUpdate } from '../local-mutations'
+import { dateFromJournalId } from '@memry/contracts/journal-api'
 import { recordAppMove, recordAppWrite } from '../../vault/app-writes'
 import { baselineAfterWrite } from '../writeback-baseline'
 import { getCrdtProvider } from '../crdt-provider'
@@ -269,10 +271,10 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
         existing.attachmentReferences,
         data.attachmentReferences
       )
+      let dayRefs = existing.attachmentReferences ?? []
       if (mergedRefs) {
-        updateNoteMetadata(ctx.db, itemId, {
-          attachmentReferences: pruneUnresolvableReferences(ctx.db, itemId, mergedRefs)
-        })
+        dayRefs = pruneUnresolvableReferences(ctx.db, itemId, mergedRefs)
+        updateNoteMetadata(ctx.db, itemId, { attachmentReferences: dayRefs })
         requestEmbeddedAttachmentDownloads(
           ctx.db,
           itemId,
@@ -280,6 +282,18 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
           data.modifiedAt
         )
       }
+      // The server keeps one `note j<date>` record, last writer wins, so two
+      // devices naming the day's pictures at once leave it the winner's ids
+      // alone, and a device that bootstraps later never asks for the others
+      // (#5785). A device that holds an id the applied record lacks re-pushes
+      // its union, so the server copy converges to the union. No loop: the
+      // re-push carries every id this device holds, so a peer that applies it
+      // lacks nothing it holds and pushes nothing back, and a device pushes
+      // again only when a later record drops one of its ids. A legacy id's
+      // row is never pushed as a note (#5730).
+      const isDay = dateFromJournalId(itemId) === existing.journalDate
+      const lacked = dayRefs.some((id) => !data.attachmentReferences?.includes(id))
+      if (isDay && lacked) enqueueLocalSyncUpdate('note', itemId)
       return 'skipped'
     }
 
