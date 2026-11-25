@@ -26,7 +26,12 @@ use crate::vault::note_file::NoteFile;
 /// with no `aliases` key, which says nothing of them; an explicit `aliases: []` is the file's
 /// answer, an empty list. `None` for a block that does not parse or is not a map.
 fn of_file(file: &NoteFile) -> Option<Option<Vec<String>>> {
-    match file.split().block.map(gray_matter_data) {
+    declared(file.split().block)
+}
+
+/// [`of_file`] of a file's frontmatter `block`, `None` for a file with no block.
+pub(crate) fn declared(block: Option<&str>) -> Option<Option<Vec<String>>> {
+    match block.map(gray_matter_data) {
         None | Some(Ok(YamlValue::Null)) => Some(None),
         Some(Ok(YamlValue::Map(map))) => Some(map.contains_key("aliases").then(|| aliases(&map))),
         Some(_) => None,

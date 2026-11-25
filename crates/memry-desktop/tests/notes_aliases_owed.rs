@@ -13,6 +13,7 @@ use memry_core::markdown::shared::markdown_class::NOTE_MAX_BYTES;
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::vault::consumer::Applied;
 
+use crate::index_support::until;
 use crate::notes_outside_aliases::{NEWER, file_holds, id_at, pulled_note_in, record_aliases};
 use crate::notes_outside_tags::{clear_outbox, edited_outside, opened, upserts};
 use crate::vault_env::{Env, QUIET, indexed};
@@ -196,4 +197,71 @@ fn a_large_file_gets_its_aliases_key_with_its_body_byte_identical() {
         read.len() - big.len(),
         "---\naliases:\n  - Newer\n---\n".len()
     );
+}
+
+const DUMP: &str = "Sub/Dump.md";
+
+/// `Sub/Dump.md`, a large file holding `[Old]` and adopted under a record with `["Newer"]` while
+/// its folder is read-only, edited outside to `edit` while the owed pass still cannot write, then
+/// the app restarted with the folder writable: the env once the open's pass settled the debt.
+#[cfg(unix)]
+fn large_held_then_edited(edit: &str) -> Env {
+    let (mut e, _store) = opened();
+    e.watcher_live();
+    pulled_note_in(&e, Some("Sub"), ("Dump", ""), &["Newer"], NEWER);
+    e.write(DUMP, &format!("---\naliases: [Old]\n---\n{}", big()));
+    read_only(&e, true);
+    added(&mut e, DUMP);
+    std::thread::sleep(QUIET);
+    e.drain();
+    let file_hash = |e: &Env| {
+        e.core()
+            .note_files()
+            .by_id("pulled")
+            .unwrap()
+            .unwrap()
+            .file_hash
+    };
+    let adopted = file_hash(&e);
+    e.write(DUMP, edit);
+    until("the edit is read", || file_hash(&e) != adopted);
+    std::thread::sleep(QUIET);
+    e.drain();
+    assert_eq!(e.read(DUMP), edit, "the pass could not write the file");
+    let mut e = e.restart(|store| Some(NotesIdentity::new(store)));
+    read_only(&e, false);
+    e.open();
+    e.facts_until(indexed);
+    until("the open's pass settles the owed aliases", || {
+        !e.core().note_files().owes_file_aliases("pulled").unwrap()
+    });
+    std::thread::sleep(QUIET);
+    e.drain();
+    e
+}
+
+/// REVIEW-5836: an outside edit of a large file's list is never written over. A large file's
+/// re-read does not take its list, so the owed write settles it first: the user's `[Mine]` is
+/// the record's, and the file keeps it, with nothing written.
+#[cfg(unix)]
+#[test]
+fn an_outside_alias_edit_to_a_large_file_is_never_written_over() {
+    let mine = format!("---\naliases: [Mine]\n---\n{}", big());
+    let e = large_held_then_edited(&mine);
+    assert_eq!(e.read(DUMP), mine);
+    assert_eq!(record_aliases(&e, "note", "pulled"), ["Mine"]);
+}
+
+/// A large file whose list is still the one it had when it came to owe the record's gets the
+/// record's list, its edited body as it is.
+#[cfg(unix)]
+#[test]
+fn a_large_file_still_holding_its_stale_list_gets_the_owed_write() {
+    let body = format!("Edited outside\n{}", big());
+    let e = large_held_then_edited(&format!("---\naliases: [Old]\n---\n{body}"));
+    assert_eq!(
+        e.read(DUMP),
+        format!("---\naliases:\n  - Newer\n---\n{body}")
+    );
+    assert_eq!(record_aliases(&e, "note", "pulled"), ["Newer"]);
 }

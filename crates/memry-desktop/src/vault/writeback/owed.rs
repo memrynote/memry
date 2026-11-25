@@ -11,16 +11,18 @@
 //! version of a large file would copy the whole body for them.
 
 use memry_core::domain::note_files::{NoteFile as Row, StampMark, Unfiled};
+use memry_core::domain::notes::EditedAliases;
 
 use super::Pass;
 use super::pass::{Keep, Outcome};
 use super::place::owed_aliases;
 use crate::locks::Locks;
+use crate::notes::identity::aliases::declared;
 use crate::vault::consumer::rows::{Lane, RowStat};
 use crate::vault::consumer::{Applied, ChangeSource};
 use crate::vault::file_types::FileType;
 use crate::vault::note_file::{NoteFileError, hash_file};
-use crate::vault::note_head::{read_head, replace_head_checked};
+use crate::vault::note_head::{Head, read_head, replace_head_checked};
 
 /// What stands for the body after a head given to the frontmatter writer: it is never
 /// touched, so the new head is the written text before it.
@@ -98,22 +100,33 @@ impl Pass {
             Ok(None) => return Outcome::Kept(Keep::NoFile),
             Err(error) => return Outcome::Failed(format!("the file could not be read: {error}")),
         }
-        let given = format!("{}{BODY}", if head.block { head.text.as_str() } else { "" });
-        let written = match owed_aliases(given.clone(), record) {
-            Ok(written) => written,
-            Err(why) => return Outcome::Failed(why),
-        };
-        if written == given {
-            self.paid(note_id);
-            return Outcome::Unchanged;
+        // Invariant: the write never replaces a list the debt did not record. The head's list is
+        // settled first: one an outside edit changed, which a large file's re-read does not
+        // measure (REVIEW-5836), is the user's answer, taken by the record, and the debt is
+        // cleared. Only the list the file had when it came to owe the record's is written over.
+        if let Some(declared) = declared(head.block.then_some(head.text.as_str())) {
+            let settled = self
+                .vault
+                .notes_writer(self.store.clone())
+                .map_err(|error| error.to_string())
+                .and_then(|writer| {
+                    writer
+                        .edited_file_aliases(note_id, declared.as_deref())
+                        .map_err(|error| error.to_string())
+                });
+            match settled {
+                Ok(EditedAliases::Owed) => {}
+                Ok(EditedAliases::Taken | EditedAliases::NoNote) => return Outcome::Unchanged,
+                Err(error) => return Outcome::Failed(format!("the file's aliases: {error}")),
+            }
         }
-        let Some(block) = written.strip_suffix(BODY) else {
-            return Outcome::Failed("the aliases did not leave the body as it is".to_owned());
-        };
-        // A byte order mark ahead of a file with no block stays first.
-        let new = match head.block {
-            true => block.to_owned(),
-            false => format!("{}{block}", head.text),
+        let new = match new_head(&head, record) {
+            Ok(Some(new)) => new,
+            Ok(None) => {
+                self.paid(note_id);
+                return Outcome::Unchanged;
+            }
+            Err(why) => return Outcome::Failed(why),
         };
         match Locks::new(&self.root, &self.vault).is_path_locked(path) {
             Ok(false) => {}
@@ -156,5 +169,60 @@ impl Pass {
             version_kept: false,
             replaced_outside: false,
         }
+    }
+}
+
+/// The head that gives the file whose head is `head` the record's `aliases`; `None` when it
+/// holds them already.
+fn new_head(head: &Head, record: &Unfiled) -> Result<Option<String>, String> {
+    // A block that ends the file without a line break is closed, so the new block follows it.
+    let block = match head.block {
+        true if !head.text.ends_with('\n') => format!("{}\n", head.text),
+        true => head.text.clone(),
+        false => String::new(),
+    };
+    let given = format!("{block}{BODY}");
+    let written = owed_aliases(given.clone(), record)?;
+    if written == given {
+        return Ok(None);
+    }
+    let Some(block) = written.strip_suffix(BODY) else {
+        return Err("the aliases did not leave the body as it is".to_owned());
+    };
+    // A byte order mark ahead of a file with no block stays first.
+    Ok(Some(match head.block {
+        true => block.to_owned(),
+        false => format!("{}{block}", head.text),
+    }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn newer() -> Unfiled {
+        Unfiled {
+            title: "Dump".to_owned(),
+            folder_path: None,
+            date: None,
+            tags: Vec::new(),
+            aliases: Some(vec!["Newer".to_owned()]),
+            properties: serde_json::Map::new(),
+            cover: None,
+        }
+    }
+
+    /// REVIEW-5836: a block that ends the file with no line break gets the list in it, never
+    /// a second block ahead of it.
+    #[test]
+    fn a_block_ending_the_file_without_a_line_break_gets_no_second_block() {
+        let head = Head {
+            text: "---\ntags: [mine]\naliases: [Old]\n---".to_owned(),
+            block: true,
+        };
+        assert_eq!(
+            new_head(&head, &newer()).unwrap().as_deref(),
+            Some("---\ntags: [mine]\naliases:\n  - Newer\n---\n")
+        );
     }
 }

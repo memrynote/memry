@@ -86,7 +86,7 @@ use crate::vault::journal_format::JournalDays;
 use crate::vault::note_file::NoteFile;
 use crate::vault::notices::{Listed, VaultNotices};
 
-mod aliases;
+pub(crate) mod aliases;
 pub(crate) mod file;
 mod found;
 mod large;

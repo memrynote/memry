@@ -5,12 +5,15 @@
 //! once it is still the file read ([`replace_head_checked`]).
 
 use std::fs::File;
-use std::io::{self, Read, Seek, SeekFrom, Write};
+use std::io::{self, Read, Write};
 use std::path::Path;
+use std::time::Duration;
 
 use memry_core::markdown::frontmatter::split_frontmatter_block;
 
-use super::fs_atomic::{self, carry_over_attributes, open_temp, remove_temp, replace_file};
+use super::fs_atomic::{
+    self, carry_over_attributes, open_temp, remove_temp, replace_file, with_transient_retry,
+};
 use super::hash::hash_reader;
 use super::note_file::{NoteFileError, open_note_file, still_contained, target};
 
@@ -47,6 +50,12 @@ pub fn read_head(vault: &Path, rel: &str) -> Result<Option<Head>, NoteFileError>
         Err(_) => return Err(NoteFileError::NotUtf8),
     };
     if let Some(block) = split_frontmatter_block(text).block {
+        // A closing line cut at the cap could go on past it: it is not guessed at.
+        if !block.ends_with('\n') && bytes.len() as u64 == HEAD_CAP {
+            return Err(NoteFileError::Io(io::Error::other(
+                "the frontmatter block does not end in the file's first MiB",
+            )));
+        }
         return Ok(Some(Head {
             text: block.to_owned(),
             block: true,
@@ -65,7 +74,9 @@ pub fn read_head(vault: &Path, rel: &str) -> Result<Option<Head>, NoteFileError>
 }
 
 /// Replaces the head `old` of the note file at `rel`, read with hash `read_hash`, with `new`, and
-/// answers the new file's hash and size. The rest of the file is copied from the file itself.
+/// answers the new file's hash and size. The rest of the file is copied from the file itself,
+/// through the handle that reads `old` and hashes the file: one whose head or hash is not the
+/// one read is not written ([`NoteFileError::ChangedUnderWrite`]).
 /// Right before the rename the file is hashed again: one that changed, moved or went since that
 /// read is not written over ([`NoteFileError::ChangedUnderWrite`]). Its folder is never created.
 /// `between` is given the new file's hash after it is written aside and before those checks.
@@ -85,18 +96,34 @@ pub fn replace_head_checked(
         .filter(|dir| !dir.as_os_str().is_empty())
         .unwrap_or_else(|| Path::new("."));
     let temp = dir.join(fs_atomic::temp_name());
-    let written = (|| -> io::Result<(String, u64)> {
+    // One handle gives the head, the hash and the body: the bytes copied are the file read.
+    let written = (|| -> io::Result<Option<(String, u64)>> {
         let mut file = open_temp(&temp)?;
         file.write_all(new.as_bytes())?;
-        source.seek(SeekFrom::Start(old.text.len() as u64))?;
-        io::copy(&mut source, &mut file)?;
+        let mut held = vec![0; old.text.len()];
+        match source.read_exact(&mut held) {
+            Err(error) if error.kind() == io::ErrorKind::UnexpectedEof => return Ok(None),
+            read => read?,
+        }
+        let copied = Copy {
+            from: &mut source,
+            to: &mut file,
+        };
+        let (source_hash, _) = hash_reader(held.as_slice().chain(copied))?;
+        if held != old.text.as_bytes() || source_hash != read_hash {
+            return Ok(None);
+        }
         file.sync_all()?;
         drop(file);
         carry_over_attributes(&path, &temp);
-        hash_reader(File::open(&temp)?)
+        hash_reader(File::open(&temp)?).map(Some)
     })();
     let (hash, size) = match written {
-        Ok(written) => written,
+        Ok(Some(written)) => written,
+        Ok(None) => {
+            remove_temp(&temp, false);
+            return Err(NoteFileError::ChangedUnderWrite);
+        }
         Err(error) => {
             remove_temp(&temp, false);
             return Err(error.into());
@@ -119,10 +146,43 @@ pub fn replace_head_checked(
         remove_temp(&temp, false);
         return Err(NoteFileError::ChangedUnderWrite);
     }
-    if let Err(error) = replace_file(&temp, &path) {
+    let delays = fs_atomic::RETRY_DELAYS_MS.map(Duration::from_millis);
+    if let Err(error) = with_transient_retry(&delays, || replace_file(&temp, &path)) {
         remove_temp(&temp, false);
         return Err(error.into());
     }
     fs_atomic::sync_dir(dir);
     Ok((hash, size))
+}
+
+/// A reader that writes what it reads from `from` to `to`.
+struct Copy<'a> {
+    from: &'a mut File,
+    to: &'a mut File,
+}
+
+impl Read for Copy<'_> {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        let read = self.from.read(buf)?;
+        self.to.write_all(&buf[..read])?;
+        Ok(read)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// REVIEW-5836: a block whose closing line ends exactly at [`HEAD_CAP`] could go on past it,
+    /// so it is not read as the block.
+    #[test]
+    fn a_block_cut_at_the_cap_is_not_guessed_at() {
+        let dir = tempfile::tempdir().unwrap();
+        let open = "---\nnote: ";
+        let close = "\n---";
+        let fill = "x".repeat(HEAD_CAP as usize - open.len() - close.len());
+        let text = format!("{open}{fill}{close}-not-a-close\n---\nBody\n");
+        std::fs::write(dir.path().join("Dump.md"), text).unwrap();
+        assert!(read_head(dir.path(), "Dump.md").is_err());
+    }
 }
