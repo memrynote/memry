@@ -663,3 +663,19 @@ async fn renaming_a_journal_folder_leaves_the_day_alone() {
         .expect("read");
     assert_eq!(folder.as_deref(), Some("journal"));
 }
+
+/// A folder holding only a journal day is still in use: desktop refuses to
+/// move a folder onto an existing directory (`move-directory.ts`), and a
+/// date-named note moved under `journal` would read there as a journal entry.
+#[tokio::test]
+async fn renaming_onto_a_folder_holding_only_a_day_is_refused() {
+    let vault = pulled_vault().await;
+    let refused = vault
+        .db_handle()
+        .call_blocking(|conn| {
+            folders::create(conn, "Work", None, DEVICE, 5)?;
+            Ok(folders::rename(conn, "Work", "journal", DEVICE, 6).is_err())
+        })
+        .expect("try the rename");
+    assert!(refused, "`journal` holds the day's row, so it is in use");
+}
