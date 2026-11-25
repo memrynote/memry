@@ -9,8 +9,8 @@
 //! changed key is merged into the stored payload, so unknown keys survive, and
 //! an update also writes `content: null`, the advanced document clock and
 //! `modifiedAt`. A day created by the write keeps its create-time
-//! `content: ""`. `journal` merges document-level (chapter 06 §6.8), so there
-//! are no field clocks to tick.
+//! `content: ""`. The `tags` and `properties` unit clocks (chapter 06 §6.12)
+//! are restamped by `sync_items::apply_local_edit_in`, not here.
 //!
 //! The `date` property is reserved: a write naming it is refused, and the maps
 //! returned here never contain it. A stored `date` property written by desktop
