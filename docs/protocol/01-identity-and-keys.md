@@ -618,10 +618,14 @@ there lives only in its Yjs state
   edit, and the peer's merge would overwrite that edit's tags. The sweep
   therefore re-clocks only a row whose `modifiedAt` is from this rule's era,
   which starts when the vault first opens under it, before its watcher
-  runs. It replays every other dirty journal at its stored clock, and the
+  runs. Sign-out keeps the era, so a later sign-in does not move its start.
+  It replays every other dirty journal at its stored clock, and the
   replay's ack stamps the `modifiedAt` the payload read. What stays exposed
   is an edit an older build saw made outside the app and never pushed: it is
   acked as a replay and stamped clean without reaching the server, as every
   start of those builds did, and a tombstone of the journal can drop that
   edit's tags. A `modifiedAt` an older build wrote ahead of the era, under a
-  device clock running fast, reads as this era's and is re-clocked.
+  device clock running fast, reads as this era's and is re-clocked. An era
+  dated while the device clock ran fast reads every edit made before real
+  time passes it as an older build's, so each such edit replays and stays
+  exposed as above until then.

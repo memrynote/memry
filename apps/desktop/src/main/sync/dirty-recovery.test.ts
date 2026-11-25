@@ -59,6 +59,7 @@ import { syncIntents } from '@memry/db-schema/schema/sync-intents'
 import { syncQueue } from '@memry/db-schema/schema/sync-queue'
 import { trackMainEvent } from '../telemetry/track'
 import { DIRTY_RECOVERY, recoverDirtyItems } from './dirty-recovery'
+import { sessionState } from './device-local-state'
 
 const TEST_PROJECT = {
   id: 'proj-1',
@@ -794,6 +795,27 @@ describe('dirty-recovery', () => {
       expect(
         db.select().from(syncState).where(eq(syncState.key, 'journalClockEra')).get()?.value
       ).toBe(era?.value)
+    })
+
+    // Sign-out wipes the session's sync_state; a re-dated era would read an
+    // edit made before the sign-out as an older build's and replay it, which
+    // the server refuses and the ack stamps clean (VERIFY-5691R5).
+    it('keeps the era through a sign-out, so an edit from before it is re-clocked', () => {
+      upgradedAt('2026-01-01T12:00:00.000Z')
+      insertJournal({
+        id: 'journal-edited',
+        clock: { 'device-A': 1 },
+        syncedAt: '2026-01-01T13:00:00.000Z',
+        modifiedAt: '2026-01-01T14:00:00.000Z'
+      })
+
+      db.delete(syncState).where(sessionState()).run()
+      recoverDirtyItems(db, journalAdapters)
+
+      expect(enqueued).toEqual([['journal-edited', 'reclock']])
+      expect(
+        db.select().from(syncState).where(eq(syncState.key, 'journalClockEra')).get()?.value
+      ).toBe('2026-01-01T12:00:00.000Z')
     })
 
     it('recovers a synced journal whose local change never reached the server', () => {

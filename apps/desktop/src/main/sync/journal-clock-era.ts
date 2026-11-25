@@ -8,7 +8,7 @@ import { utcNow } from '@memry/shared/utc'
  * stamps journal push acks (#5659). Additive: older builds never read it, and
  * a downgrade leaves it in place.
  */
-const KEY = 'journalClockEra'
+export const JOURNAL_CLOCK_ERA_KEY = 'journalClockEra'
 
 /**
  * When this vault first opened under a build that stamps journal push acks
@@ -19,13 +19,13 @@ const KEY = 'journalClockEra'
  */
 export function journalClockEra(db: DrizzleDb): string {
   db.insert(syncState)
-    .values({ key: KEY, value: utcNow(), updatedAt: new Date() })
+    .values({ key: JOURNAL_CLOCK_ERA_KEY, value: utcNow(), updatedAt: new Date() })
     .onConflictDoNothing({ target: syncState.key })
     .run()
   const row = db
     .select({ value: syncState.value })
     .from(syncState)
-    .where(eq(syncState.key, KEY))
+    .where(eq(syncState.key, JOURNAL_CLOCK_ERA_KEY))
     .get()
   if (!row) throw new Error('journalClockEra: the era row was not written')
   return row.value
