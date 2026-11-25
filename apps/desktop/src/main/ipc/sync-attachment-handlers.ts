@@ -57,13 +57,14 @@ import {
   clearAttachmentDownloadFailure,
   holdsDownload,
   markDownloadFailed,
-  markDownloadOwed,
   markDownloadSucceeded,
+  markDroppedDownloadOwed,
   missingDownload,
   releaseDownloadAttempt
 } from '@memry/sync-client/attachment-download-state'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import {
+  DOWNLOAD_SETTLE_TIMEOUT_MS,
   enqueueUpload,
   clearUpload,
   isLocalOnlyNote,
@@ -76,7 +77,7 @@ import {
 import { recordAppWrite } from '../vault/app-writes'
 import { applyDownloadedAttachmentName } from '../vault/attachment-rename'
 import { releaseAbandonedCaseTwinBytes } from '../vault/case-twin-file'
-import { landCaseTwinDownload } from '../vault/case-twin-landing'
+import { caseTwinLandingFor, landCaseTwinDownload } from '../vault/case-twin-landing'
 import { fileTextNoteChanged } from '../file-text'
 import { getStatus as getVaultStatus } from '../vault/status'
 import {
@@ -97,6 +98,13 @@ import { recordDownloadedFileSize, recordUploadedFile } from '../sync/note-attac
 import { registerManifestChecksumReader, settleBinaryHashCheck } from '../sync/binary-hash-check'
 import { registerCommand } from './lib/register-command'
 import { getNetworkMonitor } from '../sync/runtime-state'
+import {
+  oweUnsettledDownloads,
+  outlived,
+  settleDownloadsWithin,
+  trackDownload,
+  type SettlingDownload
+} from '../sync/settling-downloads'
 import { resolveSyncServerUrl } from '@memry/sync-client/sync-server-url'
 import { getValidAccessToken } from '../sync/token-manager'
 import { getOrCreateVaultUuid } from '../agent/storage/vault-id'
@@ -143,12 +151,13 @@ function wasDeleted(noteId: string, diskPath: string): boolean {
 /**
  * A pull's request a sync runtime restart dropped: owed, the re-driver asks
  * for it when nothing else does. A row the new runtime wrote keeps its own
- * window. Never throws: the request it settles is already gone.
+ * window, and one it landed or a pull in it holds is not owed. Never throws:
+ * the request it settles is already gone.
  */
 function oweDownload(noteId: string, attachmentId: string): void {
   if (!isDatabaseInitialized()) return
   try {
-    markDownloadOwed(getDatabase(), noteId, attachmentId)
+    markDroppedDownloadOwed(getDatabase(), noteId, attachmentId)
   } catch (err) {
     logger.warn('Failed to record a dropped download as owed', { noteId, attachmentId, err })
   }
@@ -264,6 +273,12 @@ const getOrCreateAttachmentService = (): AttachmentSyncService | null => {
       // reports no landing, so the record stays in flight until it expires.
       recordAppWrite(landAt, { sha256 })
       return landAt
+    },
+    landingFor: async (filePath, attachmentId, fileOwnerId) => {
+      await settleBinaryHashCheck(fileOwnerId)
+      return isDatabaseInitialized()
+        ? caseTwinLandingFor(filePath, attachmentId, fileOwnerId)
+        : filePath
     },
     getMaxFileSize: () => getCachedMaxFileSize(),
     getAccessToken: () => getValidAccessToken(),
@@ -394,20 +409,28 @@ export function getCanvasAssetIO(): {
  * `drainAttachmentOutbox()`. Carrying items across would be the actual data bug.
  *
  * Idempotent — the runtime teardown and session teardown both call it.
+ * Owes the pull's requests still unsettled while the vault's database is open,
+ * then resolves once every download has recorded its outcome, or after
+ * `settleWithinMs` (REVIEW-5722).
  */
-export function clearAttachmentState(): void {
+export function clearAttachmentState(
+  settleWithinMs: number = DOWNLOAD_SETTLE_TIMEOUT_MS
+): Promise<void> {
+  oweUnsettledDownloads()
   if (uploadQueue) {
     uploadQueue.dispose()
     uploadQueue = null
   }
   if (downloadQueue) {
-    // Rejects queued and running items with DownloadQueueClearedError; the
-    // download-needed callback releases their claims instead of recording
-    // failures, and owes a pull's request so the re-driver asks for it again.
+    // Rejects queued items and aborts running ones with
+    // DownloadQueueClearedError; the download-needed callback releases their
+    // claims instead of recording failures, and owes a pull's request so the
+    // re-driver asks for it again.
     downloadQueue.dispose()
     downloadQueue = null
   }
   attachmentService = null
+  return settleDownloadsWithin(settleWithinMs)
 }
 
 // ============================================================================
@@ -763,14 +786,22 @@ export function registerAttachmentHandlers(): void {
       releaseDownloadAttempt(event.claim)
       return
     }
-    void (async () => {
+    void trackDownload(event, 'eager', async (download) => {
       const token = await getValidAccessToken()
+      // Its vault closed during the wait, which owed it.
+      if (outlived(download)) return null
       // The sync runtime restarted during the wait, and whoever asks in the new
       // one holds the download: asking too would count the server's 404 twice.
-      if (!holdsDownload(event.claim)) return oweDownload(event.noteId, event.attachmentId)
-      if (!token) return releaseDownloadAttempt(event.claim)
-      await materializeDownload(event, 'eager')
-    })()
+      if (!holdsDownload(event.claim)) {
+        oweDownload(event.noteId, event.attachmentId)
+        return null
+      }
+      if (!token) {
+        releaseDownloadAttempt(event.claim)
+        return null
+      }
+      return downloadAndRecord(event, download)
+    })
   })
 }
 
@@ -811,7 +842,12 @@ async function requestNoteFiles(
       const claim = claimRequestedDownload(db, file.noteId, file.attachmentId)
       // No claim: already on its way (its landing re-renders the note), landed,
       // or a 404 inside its window, read below.
-      const error = claim ? await materializeDownload({ ...file, claim }, 'interactive') : null
+      const request = claim ? { ...file, claim } : null
+      const error = request
+        ? await trackDownload(request, 'interactive', (download) =>
+            downloadAndRecord(request, download)
+          )
+        : null
       const missing = missingDownload(db, file.noteId, file.attachmentId)
       if (missing) return notOnServer(missing)
       return error === null ? null : { error, retry: 'now' }
@@ -825,7 +861,7 @@ async function requestNoteFiles(
  * every exit records an outcome or releases the claim. Resolves with the
  * failure's message, or null when nothing is left to report.
  */
-async function materializeDownload(
+async function downloadAndRecord(
   {
     noteId,
     attachmentId,
@@ -836,8 +872,13 @@ async function materializeDownload(
     landed,
     claim
   }: AttachmentDownloadNeededEvent,
-  source: 'eager' | 'interactive'
+  download: SettlingDownload
 ): Promise<string | null> {
+  const { source } = download
+  const writesNothing = (): null => {
+    logger.info('A download outlived its vault; it records nothing', { noteId, attachmentId })
+    return null
+  }
   // This device uploaded the file from where it lives (an embed from
   // outside the note's folder): a download would only duplicate it.
   if (intoDir && heldAtRecordedPath(noteId, attachmentId)) {
@@ -863,30 +904,36 @@ async function materializeDownload(
       ...(sizeHint !== undefined ? { sizeHint } : {}),
       ...(recencyHint !== undefined ? { recencyHint } : {})
     })
-    markDownloadSucceeded(isDatabaseInitialized() ? getDatabase() : null, noteId, attachmentId)
+    if (outlived(download)) return writesNothing()
+    let placed = result.filePath
     // The manifest froze this file's name at upload, so a device that
     // materializes it after an in-app rename (#1714) gets the OLD name.
     // The note body is the authority — rename to what it asks for before
     // anything is told the file exists.
     if (intoDir && isDatabaseInitialized()) {
       const vaultPath = getVaultStatus().path
-      const placed = vaultPath
-        ? await placeDownloadedFile(getDatabase(), vaultPath, noteId, result.filePath)
-        : result.filePath
-      recordFile(noteId, placed, attachmentId)
+      if (vaultPath) {
+        placed = await placeDownloadedFile(getDatabase(), vaultPath, noteId, result.filePath)
+      }
       await applyDownloadedAttachmentName(noteId, placed)
     }
+    // Embedded attachments land inside attachments/<noteId>/ — the note's
+    // own fileSize (a binary-note concept) must not be overwritten by them.
+    const size = intoDir ? null : (await fs.promises.stat(result.filePath)).size
+    // VERIFY-5722R2: no await between this check and the writes below, so a
+    // cut can never land after the owed row is cleared and before the outcome.
+    if (outlived(download)) return writesNothing()
+    markDownloadSucceeded(isDatabaseInitialized() ? getDatabase() : null, noteId, attachmentId)
+    download.recorded = true
+    if (intoDir) recordFile(noteId, placed, attachmentId)
     // The bytes are on disk now, but a note that is already open resolved
     // its attachment URLs when its blocks were built and never asks again.
     // Without this the file is invisible until the app is restarted —
     // reopening the note does not help, the editor never unmounts.
     broadcastToAllWindows(SYNC_EVENTS.ATTACHMENT_MATERIALIZED, { noteId })
-    // Embedded attachments land inside attachments/<noteId>/ — the note's
-    // own fileSize (a binary-note concept) must not be overwritten by them.
-    if (!intoDir) {
-      const stats = await fs.promises.stat(result.filePath)
+    if (size !== null) {
       if (isDatabaseInitialized()) {
-        recordDownloadedFileSize(noteId, attachmentId, stats.size, result.manifest.checksum)
+        recordDownloadedFileSize(noteId, attachmentId, size, result.manifest.checksum)
       }
       landed?.()
     }
@@ -895,6 +942,11 @@ async function materializeDownload(
     fileTextNoteChanged(noteId)
     return null
   } catch (err) {
+    if (outlived(download)) {
+      releaseDownloadAttempt(claim)
+      return writesNothing()
+    }
+    download.recorded = true
     if (err instanceof SupersededDownloadError) {
       // A newer record named another attachment while this one
       // downloaded (#5580), or the note's row is gone (REVIEW-5662):
@@ -952,7 +1004,7 @@ export function unregisterAttachmentHandlers(): void {
   registerOutboxUploader(null, null, null)
   registerManifestChecksumReader(null)
   registerAttachmentQueueReset(null)
-  clearAttachmentState()
+  void clearAttachmentState()
   attachmentEvents.removeAllListeners('saved')
   attachmentEvents.removeAllListeners('download-needed')
 
