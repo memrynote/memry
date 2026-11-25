@@ -541,6 +541,54 @@ describe('a write-back across its folder rename (#5671)', () => {
       })
     }, 30_000)
 
+    // VERIFY-5719 low 1: the turn rewrites the bytes the file holds then, not
+    // the ones read before the feed.
+    it("a body edit written while a rename's link rewrite waits on the store survives it", async () => {
+      const linker = '# l\n\nsee [[Folder/n]]\n'
+      seed('linker', 'B/l.md', linker)
+      await seedNote()
+      indexLinks('linker', 'B/l.md', linker)
+      await flushProjectionEvents()
+      const release = stallStore('linker')
+
+      const renaming = renameFolderIpc('Folder', 'Renamed')
+      try {
+        await vi.waitFor(() => opened('linker'))
+        fs.writeFileSync(
+          path.join(vault.path, 'B/l.md'),
+          '# l\n\nsee [[Folder/n]]\ntyped between\n'
+        )
+      } finally {
+        release()
+      }
+      expect(await renaming).toEqual({ success: true })
+
+      expect(read('B/l.md')).toBe('# l\n\nsee [[Renamed/n]]\ntyped between\n')
+    }, 30_000)
+
+    it("a linking note renamed on disk while a rename's link rewrite waits on the store is not re-created", async () => {
+      const linker = '# l\n\nsee [[Folder/n]]\n'
+      seed('linker', 'B/l.md', linker)
+      await seedNote()
+      indexLinks('linker', 'B/l.md', linker)
+      await flushProjectionEvents()
+      const release = stallStore('linker')
+
+      const renaming = renameFolderIpc('Folder', 'Renamed')
+      try {
+        await vi.waitFor(() => opened('linker'))
+        fs.renameSync(path.join(vault.path, 'B/l.md'), path.join(vault.path, 'B/x.md'))
+      } finally {
+        release()
+      }
+      expect(await renaming).toEqual({ success: true })
+
+      expect({ old: read('B/l.md'), renamed: read('B/x.md') }).toEqual({
+        old: null,
+        renamed: linker
+      })
+    }, 30_000)
+
     it("a rename's link rewrite lands where the linking note's folder moved", async () => {
       const linker = '# l\n\nsee [[Folder/n]]\n'
       seed('linker', 'B/l.md', linker)

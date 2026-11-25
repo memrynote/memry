@@ -100,6 +100,21 @@ export async function getUnlinkedMentions(noteId: string): Promise<UnlinkedMenti
 }
 
 /**
+ * Where the `ordinal`-th mention sits: its line and its column in it. A body
+ * edit on another line leaves it in place; one that adds or drops a mention
+ * before it, on its line or above, moves it.
+ */
+function pickedMention(raw: string, names: readonly string[], ordinal: number): string | null {
+  const { body } = splitFrontmatterBlock(raw)
+  const mention = findUnlinkedMentions(body, names)[ordinal]
+  if (!mention) return null
+  const lineStart = body.lastIndexOf('\n', mention.start - 1) + 1
+  const lineEnd = body.indexOf('\n', mention.end)
+  const line = body.slice(lineStart, lineEnd === -1 ? body.length : lineEnd)
+  return `${mention.start - lineStart}:${line}`
+}
+
+/**
  * Turn the source's `ordinal`-th mention of the target into a wiki link.
  * `false` when that mention is gone; a missing or locked note is an error.
  */
@@ -123,6 +138,11 @@ export async function linkUnlinkedMentionInSource(input: {
       const { block, body } = splitFrontmatterBlock(raw)
       const linked = linkUnlinkedMention(body, target.names, input.ordinal, target.title)
       return linked === null ? null : (block ?? '') + linked
-    }
+    },
+    // The doc links the mention picked before the feed; the file must not link
+    // a different one picked after a body change (VERIFY-5719).
+    samePick: (fedFrom, current) =>
+      pickedMention(fedFrom, target.names, input.ordinal) ===
+      pickedMention(current, target.names, input.ordinal)
   })
 }
