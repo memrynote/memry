@@ -82,22 +82,20 @@ struct JournalDayPage: View {
             finding: Binding(get: { model?.finding ?? false }, set: { model?.finding = $0 }),
             answersFind: isShown
         ))
-        .task(id: model == nil) {
-            guard let model else { return }
-            await model.read.loadIfNeeded()
-            await model.read.fetchWaitingAttachments()
-        }
+        .task(id: model == nil) { await model?.load() }
         .task(id: isShown && model != nil) {
             if isShown { await model?.seedIfNeeded(store: store) }
         }
         .task(id: PullKey(shown: isShown && model != nil, pass: store.syncPasses)) {
-            if isShown { await model?.pullRemoteBody(store: store) }
+            if isShown { await model?.refreshShown(store: store) }
         }
         .onChange(of: store.generation) {
-            // A write or a sync pass changed something: re-read in place.
+            // A write, a sync pass or a pulled body changed something: re-read
+            // in place. The shown day then asks for what the read bound.
             Task {
                 await model?.read.reload()
                 await model?.backlinks.reload()
+                if isShown { await model?.read.fetchWaitingAttachments() }
             }
         }
         .onChange(of: model?.read.phase) { _, phase in
@@ -194,8 +192,8 @@ struct JournalDayPage: View {
     }
 }
 
-/// When the shown day pulls its remote body: on becoming shown, and after
-/// each sync pass while shown.
+/// When the shown day pulls its remote body and asks for its attachments: on
+/// becoming shown, and after each sync pass while shown.
 private struct PullKey: Equatable {
     let shown: Bool
     let pass: Int

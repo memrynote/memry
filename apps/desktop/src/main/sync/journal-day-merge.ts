@@ -14,8 +14,9 @@
  */
 import { createHash } from 'crypto'
 import { relative, sep } from 'path'
-import { eq, like } from 'drizzle-orm'
+import { and, eq, like, ne } from 'drizzle-orm'
 import * as Y from 'yjs'
+import { syncQueue } from '@memry/db-schema/schema/sync-queue'
 import { syncState } from '@memry/db-schema/schema/sync-state'
 import { generateJournalId } from '@memry/contracts/journal-api'
 import type { VectorClock } from '@memry/contracts/sync-api'
@@ -33,6 +34,8 @@ import {
   updateNoteMetadata
 } from '@memry/storage-data'
 import { attachmentFiles } from '@memry/db-schema/data-schema'
+import type { NoteMetadata } from '@memry/db-schema/schema/note-metadata'
+import { foldTag } from '@memry/shared/tag-fold'
 import { createLogger } from '../lib/logger'
 import { getIndexDatabase } from '../database/client'
 import { getStatus as getVaultStatus } from '../vault/status'
@@ -46,11 +49,10 @@ import { relinkTasksToMergedNote } from '../notes/runtime-effects'
 import { EMPTY_DOC_UPDATE_BYTES, getCrdtProvider } from './crdt-provider'
 import { countNoteFiles, isRecordedAttachment, ownFolderFiles } from './attachment-files'
 import { getJournalSyncService } from './journal-sync'
+import { JOURNAL_DAY_MERGE_KEY_PREFIX as KEY_PREFIX } from './journal-day-merge-key'
 import { recordPendingDelete } from './pending-deletes'
 
 const log = createLogger('JournalDayMerge')
-
-const KEY_PREFIX = 'journalDayMerge:'
 
 export interface OwedJournalDayMerge {
   foreignId: string
@@ -79,6 +81,19 @@ export interface OwedJournalDayMerge {
    * device's, since dropping them could drop a tag only this device held.
    */
   tags?: string[]
+  /**
+   * The clock of the local row `tags` were read from, merged across
+   * sightings. Absent in an owed merge an older build wrote, and when the row
+   * was edited since its sync: its tags all count as unpushed.
+   */
+  holderClock?: VectorClock | null
+  /**
+   * The holder tags the device that deleted the foreign id may never have
+   * seen, weighed against its tombstone's clock (`unpushedHolderTags`). Added
+   * when the id was deleted elsewhere. Absent until a tombstone is weighed:
+   * every holder tag counts. Later weighings add to it.
+   */
+  unpushedTags?: string[]
   /**
    * The foreign record's `tags`. Skipped like `recordMarkdown` when the id was
    * deleted elsewhere: the deleting device merged them, and a tag removed
@@ -112,6 +127,11 @@ export function oweJournalDayMerge(db: DrizzleDb, merge: OwedJournalDayMerge): v
   const tags = mergeTagLists(kept?.tags ?? [], merge.tags ?? [])
   const recordTags = merge.recordTags ?? kept?.recordTags ?? []
   const attachmentReferences = unionOf(kept?.attachmentReferences, merge.attachmentReferences)
+  const holderClock =
+    kept?.holderClock && merge.holderClock
+      ? mergeClocks(kept.holderClock, merge.holderClock)
+      : (merge.holderClock ?? kept?.holderClock ?? undefined)
+  const unpushedTags = addWeighing(kept?.unpushedTags, merge.unpushedTags)
   const value = JSON.stringify({
     ...merge,
     clock,
@@ -120,7 +140,9 @@ export function oweJournalDayMerge(db: DrizzleDb, merge: OwedJournalDayMerge): v
     ...(deleted ? { deleted: true } : {}),
     tags: tags.length > 0 ? tags : undefined,
     recordTags: recordTags.length > 0 ? recordTags : undefined,
-    attachmentReferences: attachmentReferences.length > 0 ? attachmentReferences : undefined
+    attachmentReferences: attachmentReferences.length > 0 ? attachmentReferences : undefined,
+    holderClock,
+    unpushedTags
   })
   db.insert(syncState)
     .values({ key: KEY_PREFIX + merge.foreignId, value, updatedAt: new Date() })
@@ -132,15 +154,102 @@ export function oweJournalDayMerge(db: DrizzleDb, merge: OwedJournalDayMerge): v
 /**
  * A tombstone for an owed id means another device merged and deleted it. What
  * this device holds of its body still merges, but it owes no tombstone, and an
- * empty body no longer keeps it owed.
+ * empty body no longer keeps it owed. The tags of a holder the day already
+ * displaced are weighed against `tombstone` (#5659), on every delivery.
  */
-export function markOwedJournalDayMergeDeleted(db: DrizzleDb, foreignId: string): void {
+export function markOwedJournalDayMergeDeleted(
+  db: DrizzleDb,
+  foreignId: string,
+  tombstone: VectorClock | undefined
+): void {
   const owed = listOwedJournalDayMerges(db).find((merge) => merge.foreignId === foreignId)
-  if (!owed || owed.deleted) return
+  if (!owed) return
+  const unpushedTags = addWeighing(
+    owed.unpushedTags,
+    owed.tags && owed.holderClock
+      ? unpushedHolderTags(db, foreignId, owed.tags, owed.holderClock, tombstone ?? {})
+      : undefined
+  )
   db.update(syncState)
-    .set({ value: JSON.stringify({ ...owed, deleted: true }), updatedAt: new Date() })
+    .set({
+      value: JSON.stringify({ ...owed, deleted: true, unpushedTags }),
+      updatedAt: new Date()
+    })
     .where(eq(syncState.key, KEY_PREFIX + foreignId))
     .run()
+}
+
+/**
+ * The first weighing sets the unpushed list and later ones add to it. What a
+ * weighing reads is gone after the first: the tombstone drops the holder's
+ * queued edit, and `j<D>` removes its row (REVIEW-5691). No list is kept
+ * before a weighing, so the union never keeps a tag from before the first.
+ */
+function addWeighing(
+  kept: string[] | undefined,
+  weighed: string[] | undefined
+): string[] | undefined {
+  return kept && weighed ? mergeTagLists(kept, weighed) : (weighed ?? kept)
+}
+
+/**
+ * The holder tags the device that deleted `foreignId` may never have seen
+ * (§1.9.1 step 6; core `HolderTags::read`). None when no edit of the holder is
+ * queued and the tombstone's clock covers the holder row's: the deleting
+ * device merged the row as it is. Otherwise every one, as with no clock on
+ * either side: desktop keeps no snapshot of the last synced tags, so it adds a
+ * tag back rather than drop one.
+ */
+function unpushedHolderTags(
+  db: DrizzleDb,
+  foreignId: string,
+  tags: string[],
+  holderClock: VectorClock | null,
+  tombstone: VectorClock
+): string[] {
+  if (!holderClock || Object.keys(holderClock).length === 0) return tags
+  if (Object.keys(tombstone).length === 0) return tags
+  const order = compareClocks(holderClock, tombstone)
+  if (order !== 'before' && order !== 'equal') return tags
+  const queued = db
+    .select({ id: syncQueue.id })
+    .from(syncQueue)
+    .where(
+      and(
+        eq(syncQueue.type, 'journal'),
+        eq(syncQueue.itemId, foreignId),
+        ne(syncQueue.operation, 'delete')
+      )
+    )
+    .get()
+  return queued ? tags : []
+}
+
+/**
+ * A local holder's tags as its owed merge keeps them: weighed against
+ * `tombstone`, by default the one recorded for it, when there is one. A row
+ * edited since its sync holds an edit that neither its clock nor the queue
+ * may show: one made outside the app is never ticked, and is queued only by
+ * the next start's dirty sweep (REVIEW-5691). It has no clock to weigh, so
+ * every tag counts.
+ */
+export function holderTags(
+  db: DrizzleDb,
+  holderId: string,
+  tags: string[],
+  row: Pick<NoteMetadata, 'clock' | 'syncedAt' | 'modifiedAt'> | undefined,
+  tombstone: VectorClock | null = readTombstoneClock(db, 'journal', holderId)
+): Pick<OwedJournalDayMerge, 'tags' | 'holderClock' | 'unpushedTags'> {
+  // The dirty sweep's test (`recoverDirtyJournals`).
+  const edited = !row?.syncedAt || row.modifiedAt > row.syncedAt
+  const holderClock = edited ? null : (row.clock ?? null)
+  return {
+    tags,
+    holderClock,
+    ...(tombstone
+      ? { unpushedTags: unpushedHolderTags(db, holderId, tags, holderClock, tombstone) }
+      : {})
+  }
 }
 
 export function listOwedJournalDayMerges(db: DrizzleDb): OwedJournalDayMerge[] {
@@ -339,6 +448,17 @@ export async function drainJournalDayMerges(deps: JournalDayMergeDeps): Promise<
   return settled
 }
 
+/** Whether `j<date>`'s day file lacks one of `tags`, by the tag fold. */
+function dayLacksTag(db: DrizzleDb, date: string, tags: string[]): boolean {
+  if (tags.length === 0) return false
+  const held =
+    getNoteMetadataByPath(db, getJournalRelativePath(date))?.id === generateJournalId(date)
+      ? readDayTags(date)
+      : []
+  const keys = new Set(held.map(foldTag))
+  return tags.some((tag) => !keys.has(foldTag(tag)))
+}
+
 /** `j<date>` has no row here and this device recorded its tombstone. */
 function dayDeleted(db: DrizzleDb, targetId: string): boolean {
   return !getNoteMetadataById(db, targetId) && readTombstoneClock(db, 'journal', targetId) !== null
@@ -367,7 +487,16 @@ async function mergeOne(deps: JournalDayMergeDeps, merge: OwedJournalDayMerge): 
   // state and its holder file text still fold: they may never have been
   // pushed (#2984).
   if (!merge.deleted) fallback ??= merge.recordMarkdown ?? null
-  const hasBody = bodyPulled && (Boolean(fallback?.trim()) || (await deps.hasBody(merge.foreignId)))
+  // A deleted id's tags the deleting device saw were added by it.
+  const tags = merge.deleted
+    ? (merge.unpushedTags ?? merge.tags ?? [])
+    : mergeTagLists(merge.tags ?? [], merge.recordTags ?? [])
+  // A tag the day lacks may exist nowhere else, as one added offline to a
+  // blank holder: it merges with no body (#5659, #5699).
+  const carriesTags = dayLacksTag(deps.db, merge.date, tags)
+  const hasBody =
+    bodyPulled &&
+    (Boolean(fallback?.trim()) || (await deps.hasBody(merge.foreignId)) || carriesTags)
   const step = planJournalDayMerge({
     deleted: merge.deleted === true,
     bodyPulled,
@@ -382,13 +511,10 @@ async function mergeOne(deps: JournalDayMergeDeps, merge: OwedJournalDayMerge): 
   if (step.action === 'merge') {
     await deps.ensureDay(merge.date)
     await deps.relinkTasks(merge.foreignId, targetId)
-    if (!(await deps.absorbBody(targetId, merge.foreignId, fallback))) {
+    if (!(await deps.absorbBody(targetId, merge.foreignId, fallback)) && !carriesTags) {
       log.warn('Foreign journal had nothing to fold; it stays owed', describe(merge))
       return false
     }
-    const tags = merge.deleted
-      ? (merge.tags ?? [])
-      : mergeTagLists(merge.tags ?? [], merge.recordTags ?? [])
     if (tags.length > 0) await deps.addDayTags(merge.date, tags)
     carryAttachments(deps.db, deps.vaultPath, merge.foreignId, targetId, references)
   }
@@ -492,7 +618,7 @@ export async function ensureJournalDay(db: DrizzleDb, date: string): Promise<voi
       date,
       clock: row?.clock ?? null,
       fallbackMarkdown: readDayBody(date),
-      tags: readDayTags(date),
+      ...holderTags(db, holder.id, readDayTags(date), row),
       attachmentReferences: row?.attachmentReferences ?? undefined
     })
     removeJournalRow(db, holder.id)

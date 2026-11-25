@@ -63,6 +63,7 @@ import { onDataDbCorruption } from '../database/data-db-corruption-signal'
 import { VaultChannels } from '@memry/contracts/ipc-channels'
 import { NoteError, NoteErrorCode, VaultError, VaultErrorCode } from '../lib/errors'
 import { getWatcher, startWatcher, stopWatcher } from './watcher'
+import { recoverStrandedFolderMoves } from './move-directory'
 import { installVaultLockFileGuard } from '../vault-locks/files'
 import { checkLockedFilesAtOpen } from '../vault-locks/service'
 import { watchLockedAttachments } from '../vault-locks/attachment-watch'
@@ -83,6 +84,7 @@ import { trackMainEvent } from '../telemetry/track'
 import { getMainI18n } from '../lib/main-i18n'
 import { startSyncRuntime, stopSyncRuntime } from '../sync/runtime'
 import { getCrdtProvider } from '../sync/crdt-provider'
+import { journalClockEra } from '../sync/journal-clock-era'
 import {
   isReconcileFailure,
   rebuildProjections,
@@ -487,6 +489,16 @@ async function runBackgroundIndexBuild(input: BackgroundIndexBuildInput): Promis
   }
   if (isStale()) return
 
+  // Before the removal replay, which would take the files a failed folder move
+  // left in its hidden staging directory for deletes (#5695).
+  try {
+    await recoverStrandedFolderMoves(vaultPath)
+  } catch (error) {
+    logger.error('Putting back the entries of a failed folder move failed:', error)
+    trackMainError('vault', 'recover_folder_moves', error)
+  }
+  if (isStale()) return
+
   // Before the walk: a file renamed or moved while closed pairs with its
   // missing old path here and keeps its id. The walk would index the new path
   // under a fresh id, and the old id's delete would sync (#3013).
@@ -687,6 +699,10 @@ async function openVault(vaultPath: string): Promise<void> {
   const dataDb = getDatabase()
   initializeFtsTasks(dataDb)
   initializeFtsInbox(dataDb)
+
+  // Before the watcher can observe an outside edit, so every journal edit this
+  // build observes is dated in its era (`recoverDirtyJournals`).
+  journalClockEra(dataDb)
 
   // Ensure task infrastructure expected by new vaults exists.
   ensureDefaultTaskProject(dataDb)

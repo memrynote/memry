@@ -159,11 +159,18 @@ pub(super) fn owe(
         record_markdown: markdown,
         record_tags: record_tags.map_or(kept_record, <[String]>::to_vec),
         holder_tags: tags::dedupe(kept_holder.into_iter().chain(holder.all.iter().cloned())),
-        unpushed_holder_tags: tags::dedupe(
-            kept_unpushed
-                .into_iter()
-                .chain(holder.unpushed.iter().cloned()),
-        ),
+        // A tombstone's weighing replaces the list: before one, every holder
+        // tag was kept as unpushed, and a tag the deleting device saw would
+        // come back (#5659).
+        unpushed_holder_tags: if holder.weighed {
+            tags::dedupe(holder.unpushed.iter().cloned())
+        } else {
+            tags::dedupe(
+                kept_unpushed
+                    .into_iter()
+                    .chain(holder.unpushed.iter().cloned()),
+            )
+        },
     };
     write_owed(conn, &owed)
 }
@@ -174,6 +181,8 @@ pub(super) fn owe(
 pub(super) struct HolderTags {
     all: Vec<String>,
     unpushed: Vec<String>,
+    /// Read against a tombstone's clock.
+    weighed: bool,
 }
 
 impl HolderTags {
@@ -197,10 +206,12 @@ impl HolderTags {
     ) -> Result<Self, StorageError> {
         let all = payload_tags(payload).unwrap_or_default();
         let tombstone = tombstone.filter(|clock| !clock.is_empty());
+        let weighed = tombstone.is_some();
         let (Some(deleted), Some(row)) = (tombstone, payload_clock(payload)) else {
             return Ok(Self {
                 unpushed: all.clone(),
                 all,
+                weighed,
             });
         };
         let unpushed = if covers(deleted, &row) && !upsert_queued(conn, item_id)? {
@@ -215,7 +226,11 @@ impl HolderTags {
                 _ => all.clone(),
             }
         };
-        Ok(Self { all, unpushed })
+        Ok(Self {
+            all,
+            unpushed,
+            weighed,
+        })
     }
 }
 
@@ -375,9 +390,12 @@ fn payload_clock(payload: &serde_json::Map<String, Value>) -> Option<VectorClock
 }
 
 /// A tombstone arrived for a foreign id that is a live row here (a pre-fix
-/// install projected it). Its row and local body stay for the drain, which
-/// folds them, unpushed edits included, into `j<D>` (#2984): the ordinary
-/// delete would purge them first. True when the tombstone was held this way.
+/// install projected it), or was one until `j<D>` displaced it. Its row, its
+/// stored record and its local body stay for the drain, which folds them,
+/// unpushed edits included, into `j<D>` (#2984): the ordinary delete would
+/// purge them first. True when the tombstone was held this way, on every
+/// delivery: `j<D>` can arrive first, and the feed can bring the tombstone
+/// again (#5659).
 ///
 /// Runs before the tombstone drops the row's queued upsert, which tells
 /// [`HolderTags::read`] what was never pushed.
@@ -386,7 +404,7 @@ pub(crate) fn hold_for_merge(
     item_id: &str,
     tombstone: Option<&VectorClock>,
 ) -> Result<bool, StorageError> {
-    let date: Option<String> = conn
+    let live: Option<String> = conn
         .query_row(
             "SELECT date FROM journal_entries WHERE id = ?1 AND deleted_at IS NULL",
             params![item_id],
@@ -394,12 +412,24 @@ pub(crate) fn hold_for_merge(
         )
         .optional()
         .map_err(failed)?;
-    let Some(date) = date.filter(|date| canonical_journal_id(date) != item_id) else {
-        return Ok(false);
-    };
-    let clock = tombstone.cloned().unwrap_or_default();
     // Its tags may be an unpushed local edit, as its body may.
     let payload = stored_payload(sync_items::load(conn, ITEM_TYPE, item_id)?);
+    let date = match live {
+        Some(date) => date,
+        // A displaced holder: an owed merge, and the record it held the day by.
+        None => match read_owed(conn, item_id)? {
+            Some(owed)
+                if payload.get("date").and_then(Value::as_str) == Some(owed.date.as_str()) =>
+            {
+                owed.date
+            }
+            _ => return Ok(false),
+        },
+    };
+    if canonical_journal_id(&date) == item_id {
+        return Ok(false);
+    }
+    let clock = tombstone.cloned().unwrap_or_default();
     let holder = HolderTags::read(conn, item_id, &payload, tombstone)?;
     owe(conn, item_id, &date, &clock, None, None, &holder)?;
     mark_deleted(conn, item_id)?;

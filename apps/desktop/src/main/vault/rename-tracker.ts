@@ -17,6 +17,7 @@ import { NotesChannels } from '@memry/contracts/ipc-channels'
 import type { NoteRenamedEvent } from '@memry/contracts/notes-api'
 import { createLogger } from '../lib/logger'
 import { birthtimeIsReal } from './birthtime-probe'
+import { isAppFolderChange } from './app-folder-changes'
 
 const logger = createLogger('RenameTracker')
 
@@ -153,6 +154,22 @@ function addToIndex(index: Map<string, PendingDelete[]>, key: string, entry: Pen
   }
 }
 
+/**
+ * Give `entry` its rename window. A window that closes while the app is still
+ * moving or deleting the entry's folder opens again: the app re-keys the rows
+ * only once its move ends, and a move that goes entry by entry (Windows,
+ * `moveDirectory`) unlinks each file long before the folder reappears (#5695).
+ */
+function armRenameWindow(entry: PendingDelete): void {
+  entry.timeout = setTimeout(() => {
+    if (isAppFolderChange(entry.path)) return armRenameWindow(entry)
+    // No matching 'add' event arrived - this is a real delete
+    logger.debug(`No rename detected for ${entry.id}, processing as delete`)
+    removePending(entry)
+    void entry.onRealDelete()
+  }, RENAME_WINDOW_MS)
+}
+
 function takeMatch(index: Map<string, PendingDelete[]>, key: string): PendingDelete | null {
   const bucket = index.get(key)
   if (!bucket || bucket.length === 0) return null
@@ -196,17 +213,11 @@ export function trackPendingDelete(
     statKey: statKey ?? null,
     path: relativePath,
     timestamp: Date.now(),
-    timeout: deferred
-      ? null
-      : setTimeout(() => {
-          // No matching 'add' event arrived - this is a real delete
-          logger.debug(`No rename detected for ${id}, processing as delete`)
-          removePending(entry)
-          void entry.onRealDelete()
-        }, RENAME_WINDOW_MS),
+    timeout: null,
     onRealDelete
   }
 
+  if (!deferred) armRenameWindow(entry)
   deferred?.add(entry)
   addToIndex(pendingDeletes, contentHash, entry)
   if (entry.statKey !== null) addToIndex(pendingDeletesByStat, entry.statKey, entry)
@@ -290,6 +301,10 @@ export async function settleDeferredDeletes(batch: DeferredDeletes): Promise<voi
   batch.clear()
   for (const pending of unmatched) {
     if (!pendingDeletes.get(pending.contentHash)?.includes(pending)) continue
+    if (isAppFolderChange(pending.path)) {
+      armRenameWindow(pending)
+      continue
+    }
     removePending(pending)
     logger.debug(`No rename detected for ${pending.id}, processing as delete`)
     await pending.onRealDelete()
