@@ -39,7 +39,7 @@ final class NoteEditorViewModel {
     @ObservationIgnored private var holdsFailure = false
 
     /// The keyboard toolbar's state and actions for this body.
-    let session = EditorSession()
+    let session: EditorSession
 
     /// The blocks as the editor holds them, keyed by block id.
     ///
@@ -47,8 +47,13 @@ final class NoteEditorViewModel {
     /// typed into is ahead of the document until it commits.
     private(set) var drafts: [String: String] = [:]
 
-    init(noteId: String, editor: (any BlockEditing)?, notes: (any NotesWriting)? = nil) {
+    /// `notifications` is where the session hears the app resign active.
+    init(
+        noteId: String, editor: (any BlockEditing)?, notes: (any NotesWriting)? = nil,
+        notifications: NotificationCenter = .default
+    ) {
         self.noteId = noteId
+        session = EditorSession(notifications: notifications)
         let source = UUID()
         self.source = source
         self.editor = editor.map { AnnouncedEdits(editor: $0, source: source) }
