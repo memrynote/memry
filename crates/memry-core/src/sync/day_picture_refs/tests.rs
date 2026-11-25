@@ -11,7 +11,7 @@ fn lists(live: &[&str], removed: &[&str]) -> Lists {
 #[test]
 fn a_picture_the_sender_never_named_is_kept() {
     let joined = Lists::join(&lists(&["a"], &[]), &lists(&["b"], &[]));
-    assert_eq!(joined, lists(&["b", "a"], &[]));
+    assert_eq!(joined, lists(&["a", "b"], &[]));
     assert!(
         !joined.within(&lists(&["b"], &[])),
         "the sender is owed `a`"

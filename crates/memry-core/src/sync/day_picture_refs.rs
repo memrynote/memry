@@ -313,10 +313,10 @@ impl Lists {
         }
     }
 
-    /// Live: `remote`'s, then `local`'s own, minus every removal of either.
+    /// Live: `local`'s, then `remote`'s new ones, minus every removal of either (Electron, §6.8.1).
     fn join(local: &Lists, remote: &Lists) -> Lists {
         let removed = union(&local.removed, &remote.removed);
-        let live = union(&remote.live, &local.live)
+        let live = union(&local.live, &remote.live)
             .into_iter()
             .filter(|id| !removed.contains(id))
             .collect();
