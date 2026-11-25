@@ -1138,7 +1138,14 @@ document to its vault `.md` file and re-indexes it for search.
   queued update an in-app edit gets, then the watcher's ingest
   (`replayMissedJournalEdits`, #5752). Without the tick its tags never synced, and a peer's
   delete in step with the old clock removed the day and the edit. A file with the same
-  bytes (a touched mtime, a re-index) ticks nothing. Before it feeds the file, the pass keeps the body it serialized
+  bytes (a touched mtime, a re-index) ticks nothing. A day the ingest refuses (a case twin
+  shares its file) ticks nothing, and bytes already ticked on an earlier open that the doc
+  could not take yet (a never-opened day's empty doc) tick once, not on every open (#5757).
+  A pulled journal delete keeps the day file's text as an inbox copy, whatever the clocks
+  say, when the file's hash is neither the index baseline nor a pending write: no clock
+  moved for an edit the watcher has not taken yet (before the replay, or inside the
+  debounce), so a file this device has not ingested is never deleted unseen (#5757).
+  Before it feeds the file, the pass keeps the body it serialized
   as a version when that body differs from the file's, the rule the owed-file take follows
   (#2646). A version that cannot be saved leaves the edit waiting on disk. The pass feeds
   the file into the doc with `feedExternalEditToCrdt`, a full body replace in which the
