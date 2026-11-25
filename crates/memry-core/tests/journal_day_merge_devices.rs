@@ -31,6 +31,7 @@ use memry_core::api::sync::VaultSync;
 use memry_core::api::vault::Vault;
 use memry_core::crdt::update_log;
 use memry_core::crypto::{keys, sodium};
+use memry_core::domain::attachments;
 use memry_core::domain::journal_ops::metadata;
 use memry_core::domain::tags;
 use memry_core::protocol::auth::DevicePlatform;
@@ -54,6 +55,8 @@ const MASTER_KEY: [u8; 32] = [7u8; 32];
 const DATE: &str = "2026-06-09";
 const DAY: &str = "j2026-06-09";
 const F: &str = "vcpzueguep8y";
+const PICTURE: &str = "c2aaafaa721c3893a1fb8ca144718a1e";
+const OWN: &str = "0b5d3c1e9f2a4b6c8d0e1f2a3b4c5d6e";
 
 static SCRATCH: AtomicU64 = AtomicU64::new(0);
 type Clock = BTreeMap<String, u64>;
@@ -617,6 +620,41 @@ impl Dev {
         });
     }
 
+    /// The `note` record desktop pushes under `id` once `picture` uploaded
+    /// to it (`recordOnNote`), and the queued upsert that pushes it.
+    fn seed_picture(&self, id: &'static str, picture: &str, clock: Clock) {
+        let payload = json!({
+            "title": DATE, "fileType": "markdown", "folderPath": "journal",
+            "attachmentReferences": [picture], "clock": clock,
+            "createdAt": "2026-06-09T08:00:00.000Z", "modifiedAt": "2026-06-09T08:00:00.000Z",
+        })
+        .to_string();
+        self.db(move |conn| {
+            let record = InboundRecord {
+                item_type: "note".to_owned(),
+                item_id: id.to_owned(),
+                payload_json: payload,
+                server_cursor: None,
+                signer_device_id: Some("device-a".to_owned()),
+                updated_at: 1,
+                deleted_at: None,
+            };
+            assert_eq!(
+                sync_items::apply_remote(conn, &record, 1)?,
+                ApplyOutcome::Applied
+            );
+            outbox::commit(conn, &Change::upsert("note", id), 1, |_| Ok(()))
+        });
+    }
+
+    /// The pictures opening `j<D>` fetches (`fetch_note_manifests(DAY)`).
+    fn day_pictures(&self) -> Vec<String> {
+        self.db(|c| attachments::for_note(c, DAY))
+            .into_iter()
+            .map(|row| row.attachment_id)
+            .collect()
+    }
+
     /// The device already pulled the feed through `cursor`, as an install
     /// that held `F` long before has: it does not pull its own `F` back.
     fn pulled_through(&self, cursor: i64) {
@@ -802,6 +840,61 @@ async fn typed_offline(order: Order, in_the_gap: bool) {
         assert!(text.contains("held"), "{device}'s j<D>: {text:?}");
     }
     w.assert_day(&["a", "b"]);
+}
+
+/// (#5777) A named a picture under `F`; B merges `F`. A day's pictures are
+/// fetchable wherever the day is: a device that never held `F` opens `j<D>`
+/// and wants the picture, and the devices settle with no push loop.
+#[tokio::test]
+async fn a_fresh_device_fetches_the_merged_days_pictures() {
+    let w = World::new(&["a"]).await;
+    w.a.seed_picture(F, PICTURE, BTreeMap::from([(w.a.clock.clone(), 1)]));
+    w.a.pass().await;
+    w.b.pass().await;
+    w.settle().await;
+    assert_eq!(w.b.day_pictures(), [PICTURE], "B's j<D>");
+    assert_eq!(w.a.day_pictures(), [PICTURE], "A's j<D>");
+    fresh_device_wants(&w, &[PICTURE]).await;
+}
+
+/// (#5777) `j<D>` already names a picture of its own: the merge adds `F`'s
+/// to the list and drops none.
+#[tokio::test]
+async fn the_merge_keeps_the_days_own_pictures() {
+    let w = World::new(&["a"]).await;
+    let clock = BTreeMap::from([(w.a.clock.clone(), 1)]);
+    w.a.seed_picture(F, PICTURE, clock.clone());
+    w.a.seed_picture(DAY, OWN, clock);
+    w.a.pass().await;
+    w.b.pass().await;
+    w.settle().await;
+    let mut want = [OWN, PICTURE];
+    want.sort();
+    for (device, mut got) in [("A", w.a.day_pictures()), ("B", w.b.day_pictures())] {
+        got.sort();
+        assert_eq!(got, want, "{device}'s j<D>");
+    }
+    fresh_device_wants(&w, &want).await;
+}
+
+/// A device that never held `F` pulls the vault and opens `j<D>`; then the
+/// three devices settle, so the carry started no push loop.
+async fn fresh_device_wants(w: &World, want: &[&str]) {
+    let c = Dev::new(&w.server, "c", 23);
+    for _ in 0..4 {
+        if !c.pass().await {
+            break;
+        }
+    }
+    assert!(
+        c.db(|conn| Ok(memry_core::domain::journal::journal_exists(conn, DAY))),
+        "C pulled the day"
+    );
+    let mut got = c.day_pictures();
+    got.sort();
+    assert_eq!(got, want, "C's j<D>");
+    w.settle().await;
+    assert!(!c.pass().await, "C moved nothing more");
 }
 
 #[tokio::test]
