@@ -192,6 +192,7 @@ import { moveDirectory } from './move-directory'
 import { readyWritebackConverter } from '../sync/converter-worker-bridge'
 import { enqueueLocalSyncDelete } from '../sync/local-mutations'
 import { noteHandler } from '../sync/item-handlers/note-handler'
+import { mergeEntityProperties } from '../notes/entity-properties'
 import { noteCoverForPush, recordAppliedNoteCover } from '../sync/item-handlers/note-cover-sync'
 import { PendingSyncIntentError } from '../sync/pending-sync-intent-error'
 import { NoteError } from '../lib/errors'
@@ -659,7 +660,7 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
       ['upper', 'uppersecret', 'secret', 'wash:clay', 'upalias']
     ] as const) {
       setNoteTags(index.db, id, { header: [tag], inline: [] })
-      setNoteProperties(index.db, id, { status }, () => 'text')
+      setNoteProperties(index.db, id, { status }, () => 'text', 'file')
       reindexNoteNames(index.db, {
         noteId: id,
         title: 'a',
@@ -905,8 +906,12 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
       // The index rows lower's own file gave it, as the projector writes them.
       const own = parseNote(typed + LOWER)
       setNoteTags(index.db, 'lower', { header: ['lowertag'], inline: [] })
-      setNoteProperties(index.db, 'lower', extractProperties(own.frontmatter), (name, value) =>
-        getPropertyType(index.db, name, value, inferPropertyType)
+      setNoteProperties(
+        index.db,
+        'lower',
+        extractProperties(own.frontmatter),
+        (name, value) => getPropertyType(index.db, name, value, inferPropertyType),
+        'file'
       )
       const indexed = getNoteProperties(index.db, 'lower')
       docs.set('lower', await docOf(LOWER))
@@ -937,8 +942,12 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
     seed('upper', 'SUPERNOTES/a.md', upperOwn + UPPER)
     await openVault()
     const own = parseNote(lowerOwn + LOWER)
-    setNoteProperties(index.db, 'lower', extractProperties(own.frontmatter), (name, value) =>
-      getPropertyType(index.db, name, value, inferPropertyType)
+    setNoteProperties(
+      index.db,
+      'lower',
+      extractProperties(own.frontmatter),
+      (name, value) => getPropertyType(index.db, name, value, inferPropertyType),
+      'file'
     )
     if (lowerVersion) {
       createSnapshot('lower', lowerOwn + LOWER, 'a', SnapshotReasons.CLOSE)
@@ -1010,6 +1019,107 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
 
     const moved = fs.readFileSync(path.join(vault.path, 'SuperNotes/b.md'), 'utf8')
     expect(parseNote(moved).frontmatter).toMatchObject(own)
+  }, 30_000)
+
+  /** A peer's update of twin `id`'s properties as the wire carries them, as a pull applies it. */
+  const applyPeerProperties = (id: 'lower' | 'upper', properties: Record<string, unknown>) =>
+    noteHandler.applyUpsert(
+      { db: asClientDb(data.db), emit: vi.fn() },
+      id,
+      {
+        title: 'a',
+        folderPath: path.posix.dirname(pathOf(id)!),
+        properties: JSON.parse(JSON.stringify(properties)),
+        modifiedAt: '2026-02-01T00:00:00.000Z'
+      },
+      { peer: 1 }
+    )
+
+  const wireProperties = (id: string) =>
+    Object.fromEntries(getNoteProperties(index.db, id).map((p) => [p.name, p.value]))
+
+  // REVIEW-5738: the wire carries a date and a list as their text. A peer
+  // update of a twin whose shared file holds the other twin's bytes writes
+  // only its rows, and they carry no YAML type: the split rebuilds the date
+  // and the list, not quoted strings.
+  it("a peer's property update of an off-file twin keeps its dates and lists through a split", async () => {
+    const own = await propertyTwins(TYPED, '', false)
+
+    expect(applyPeerProperties('lower', wireProperties('lower'))).toBe('applied')
+    await deleteNoteCommand('upper')
+
+    expect(parseNote(shared()).frontmatter).toEqual(own)
+  }, 30_000)
+
+  // FOLD-5738: each writer of a twin's property rows, then a split. A row
+  // records a YAML string only when a parsed file said so; the wire carries a
+  // date and a list as text, so its rows read back as they did before #5721.
+  const MIXED = "---\nq: '2026-01-02'\nwhen: 2026-01-02\nids: [1,2]\n---\n"
+  const mixed = () => parseNote(MIXED).frontmatter
+
+  /** Lower off the shared file with MIXED rows; `trigger` runs, then upper leaves. */
+  async function splitAfter(trigger: () => Promise<unknown> | unknown) {
+    await propertyTwins(MIXED, '', false)
+    await trigger()
+    await deleteNoteCommand('upper')
+    return parseNote(shared()).frontmatter
+  }
+
+  it('a file edit then a split keeps its quoted strings, dates and lists', async () => {
+    const header = await splitAfter(async () => {
+      const row = pathOf('lower')!
+      const parsed = parseNote(MIXED + LOWER, row)
+      syncNoteToCache(
+        index.db,
+        {
+          id: 'lower',
+          path: row,
+          fileContent: MIXED + LOWER,
+          frontmatter: parsed.frontmatter,
+          parsedContent: parsed.content,
+          title: 'a',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          modifiedAt: '2026-01-01T00:00:00.000Z'
+        },
+        { isNew: false }
+      )
+      await flushProjectionEvents()
+    })
+
+    expect(header).toEqual(mixed())
+  }, 30_000)
+
+  it('a peer sync apply then a split keeps its dates and lists', async () => {
+    const header = await splitAfter(() =>
+      expect(applyPeerProperties('lower', wireProperties('lower'))).toBe('applied')
+    )
+
+    expect(header).toEqual({
+      q: new Date('2026-01-02T00:00:00.000Z'),
+      when: new Date('2026-01-02T00:00:00.000Z'),
+      ids: [1, 2]
+    })
+  }, 30_000)
+
+  it("a case twin's off-file header update then a split keeps its property types", async () => {
+    const header = await splitAfter(async () => {
+      await vi.waitFor(() =>
+        expect(applyPeerHeader('lower', ['newtag'], 'wash:moss')).toBe('applied')
+      )
+      await flushProjectionEvents()
+    })
+
+    expect(header).toMatchObject(mixed())
+  }, 30_000)
+
+  // An edit of the twin off the shared file patches that file instead (#5742).
+  it('a UI property edit of the twin on the shared file then a split keeps its property types', async () => {
+    await propertyTwins('', MIXED, false)
+
+    expect(await mergeEntityProperties('upper', { extra: 'x' })).toEqual({ success: true })
+    await deleteNoteCommand('lower')
+
+    expect(parseNote(shared()).frontmatter).toEqual({ ...mixed(), extra: 'x' })
   }, 30_000)
 
   /** Holds twin upper's next file write until `release`; resolves `reached` when it gets there. */

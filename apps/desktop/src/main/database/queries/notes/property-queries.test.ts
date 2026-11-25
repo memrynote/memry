@@ -44,8 +44,12 @@ describe('project property typing', () => {
 
   it('types the reserved project key as project and keeps the array', () => {
     createNote('note-1')
-    setNoteProperties(db, 'note-1', { project: ['Alpha', 'Beta'] }, (name, value) =>
-      getPropertyType(db, name, value, inferPropertyType)
+    setNoteProperties(
+      db,
+      'note-1',
+      { project: ['Alpha', 'Beta'] },
+      (name, value) => getPropertyType(db, name, value, inferPropertyType),
+      'file'
     )
 
     const props = getNoteProperties(db, 'note-1')
@@ -55,8 +59,12 @@ describe('project property typing', () => {
 
   it('keeps a single project as a one-element array', () => {
     createNote('note-2')
-    setNoteProperties(db, 'note-2', { project: ['Alpha'] }, (name, value) =>
-      getPropertyType(db, name, value, inferPropertyType)
+    setNoteProperties(
+      db,
+      'note-2',
+      { project: ['Alpha'] },
+      (name, value) => getPropertyType(db, name, value, inferPropertyType),
+      'file'
     )
 
     expect(getNoteProperties(db, 'note-2')[0].value).toEqual(['Alpha'])
@@ -64,8 +72,12 @@ describe('project property typing', () => {
 
   it('reads an empty project list back as an empty array', () => {
     createNote('note-3')
-    setNoteProperties(db, 'note-3', { project: [] }, (name, value) =>
-      getPropertyType(db, name, value, inferPropertyType)
+    setNoteProperties(
+      db,
+      'note-3',
+      { project: [] },
+      (name, value) => getPropertyType(db, name, value, inferPropertyType),
+      'file'
     )
 
     expect(getNoteProperties(db, 'note-3')[0].value).toEqual([])
@@ -73,8 +85,12 @@ describe('project property typing', () => {
 
   it('still infers a non-reserved array key as text', () => {
     createNote('note-4')
-    setNoteProperties(db, 'note-4', { colours: ['red'] }, (name, value) =>
-      getPropertyType(db, name, value, inferPropertyType)
+    setNoteProperties(
+      db,
+      'note-4',
+      { colours: ['red'] },
+      (name, value) => getPropertyType(db, name, value, inferPropertyType),
+      'file'
     )
 
     expect(getNoteProperties(db, 'note-4')[0].type).toBe('text')
@@ -94,8 +110,12 @@ describe('project property typing', () => {
     })
     createNote('note-5')
 
-    setNoteProperties(db, 'note-5', { project: ['Alpha'] }, (name, value) =>
-      getPropertyType(db, name, value, inferPropertyType)
+    setNoteProperties(
+      db,
+      'note-5',
+      { project: ['Alpha'] },
+      (name, value) => getPropertyType(db, name, value, inferPropertyType),
+      'file'
     )
 
     expect(getNoteProperties(db, 'note-5')).toEqual([
@@ -122,8 +142,12 @@ describe('unquoted YAML date typing (BBF-43)', () => {
       modifiedAt: '2026-01-12T00:00:00.000Z'
     })
     const { frontmatter } = parseNote(file, `notes/${id}.md`)
-    setNoteProperties(db, id, extractProperties(frontmatter), (name, value) =>
-      getPropertyType(db, name, value, inferPropertyType)
+    setNoteProperties(
+      db,
+      id,
+      extractProperties(frontmatter),
+      (name, value) => getPropertyType(db, name, value, inferPropertyType),
+      'file'
     )
     return getNoteProperties(db, id)
   }
@@ -153,6 +177,26 @@ describe('unquoted YAML date typing (BBF-43)', () => {
       when: new Date('2026-01-02T00:00:00.000Z'),
       ids: [1, 2],
       at: new Date('2026-01-03T00:00:00.000Z')
+    })
+  })
+
+  // REVIEW-5738: the wire carries a date and a list as their text, so values
+  // that did not come from a parsed file record no YAML type.
+  it('rebuilds values from the wire as rows older builds wrote', () => {
+    indexFile('wired', '---\nwhen: 2026-01-02\nids: [1,2]\n---\n')
+    const wire = Object.fromEntries(getNoteProperties(db, 'wired').map((p) => [p.name, p.value]))
+
+    setNoteProperties(
+      db,
+      'wired',
+      JSON.parse(JSON.stringify(wire)),
+      (name, value) => getPropertyType(db, name, value, inferPropertyType),
+      'wire'
+    )
+
+    expect(getNoteFileProperties(db, 'wired')).toEqual({
+      when: new Date('2026-01-02T00:00:00.000Z'),
+      ids: [1, 2]
     })
   })
 
@@ -220,8 +264,12 @@ describe('property usage across notes', () => {
       modifiedAt: '2026-01-12T00:00:00.000Z'
     })
     const { frontmatter } = parseNote(file, `notes/${id}.md`)
-    setNoteProperties(db, id, extractProperties(frontmatter), (name, value) =>
-      getPropertyType(db, name, value, inferPropertyType)
+    setNoteProperties(
+      db,
+      id,
+      extractProperties(frontmatter),
+      (name, value) => getPropertyType(db, name, value, inferPropertyType),
+      'file'
     )
   }
 

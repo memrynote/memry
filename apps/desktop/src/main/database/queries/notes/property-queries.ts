@@ -25,11 +25,25 @@ export interface PropertyValue {
   type: PropertyType
 }
 
+/**
+ * Where a note's property values come from: `file` when parsed from its
+ * frontmatter, `wire` for any other writer (a sync payload, a UI edit that
+ * does not go through the file).
+ */
+export type PropertyValueSource = 'file' | 'wire'
+
+/**
+ * Replaces a note's property rows. `yaml_string` records only what a parsed
+ * file said; values from the wire or the UI carry no YAML type, because the
+ * wire turns a date and a list into text (REVIEW-5738). Their rows leave it
+ * NULL and read back as rows older builds wrote.
+ */
 export function setNoteProperties(
   db: IndexDb,
   noteId: string,
   properties: Record<string, unknown>,
-  getType: (name: string, value: unknown) => PropertyType
+  getType: (name: string, value: unknown) => PropertyType,
+  source: PropertyValueSource
 ): void {
   db.delete(noteProperties).where(eq(noteProperties.noteId, noteId)).run()
 
@@ -44,7 +58,7 @@ export function setNoteProperties(
         name,
         value: serializeValue(value),
         type,
-        yamlString: typeof value === 'string'
+        yamlString: source === 'file' ? typeof value === 'string' : null
       }
     })
     db.insert(noteProperties).values(propertyRecords).run()
