@@ -110,13 +110,16 @@ async fn a_server_refusing_every_body_read_holds_the_pass_for_one_pause_budget()
         .await
         .expect_err("every body read is refused");
 
-    // Three reads give up, each on one refused request: the two probe chunks
-    // and the one document pull. Every other request followed a wait.
-    let refused = routes.count("/sync/crdt/updates/batch") + routes.count("/sync/crdt/snapshot/");
-    assert!(
-        refused <= 3 + MAX_RATE_LIMIT_PAUSES as usize,
-        "{refused} refused requests"
+    // The first probe chunk waits out the whole budget and gives up on the
+    // next refusal; the second chunk and the one document pull find it spent
+    // and give up on their first request. A pass that never waits sends 3.
+    let pauses = MAX_RATE_LIMIT_PAUSES as usize;
+    assert_eq!(
+        routes.count("/sync/crdt/updates/batch"),
+        pauses + 2,
+        "probes"
     );
+    assert_eq!(routes.count("/sync/crdt/snapshot/"), 1, "document pulls");
 }
 
 /// A bucket that refills is waited out however many windows the probes take
