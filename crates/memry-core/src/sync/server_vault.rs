@@ -89,6 +89,32 @@ impl RecordVault {
     }
 }
 
+/// The `vaultId` a pulled canvas or canvas folder states over a stored one, the one owner of that
+/// choice in a merge: the stored id, as Electron keeps `existing.vaultId` (§13.7.21 rule 4,
+/// §13.7.23 rule 3), unless the remote states the bound server id, which wins (#5669).
+/// Invariant: a merge never moves a record off the bound id. A peer that pulled a record before
+/// its writer's [`restamp`] stores the writer's old local id; keeping that over the restamp would
+/// push it again, and every fresh device would hide the record. `None` when neither side states
+/// a string, so the merge leaves the key as the winning payload has it.
+pub(crate) fn merged_vault_id(
+    conn: &Connection,
+    local: &Object,
+    remote: &Object,
+) -> Result<Option<Value>, StorageError> {
+    let stated = |object: &Object| {
+        object
+            .get("vaultId")
+            .filter(|value| value.is_string())
+            .cloned()
+    };
+    if let Some(remote_id) = stated(remote)
+        && bound(conn)?.is_some_and(|server| remote_id.as_str() == Some(server.as_str()))
+    {
+        return Ok(Some(remote_id));
+    }
+    Ok(stated(local))
+}
+
 /// `meta` key set once [`restamp`] ran for the bound vault.
 const META_RESTAMPED: &str = "sync.record_vault_restamped";
 

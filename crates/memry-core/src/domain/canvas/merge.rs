@@ -21,7 +21,8 @@
 //!   been pushed ([`requeue::queued_tombstone`], the rule every merge keeps).
 //! - **An absent key keeps the local value.** `title`, `folder`, `icon` and
 //!   `ownerNoteId` absent from the remote mean an older client that never
-//!   stated them, and `null` is a real clear. `vaultId` always stays local.
+//!   stated them, and `null` is a real clear. `vaultId` stays local unless the
+//!   remote states the bound server id ([`server_vault::merged_vault_id`], #5669).
 //! - **A restamp contests only `vaultId`** ([`server_vault::restamp`], which
 //!   desktop's handler does not know). A concurrent remote restamp whose base
 //!   this live canvas is strictly after leaves this canvas as it is under the
@@ -118,7 +119,13 @@ pub fn apply_remote(
     }
 
     let winner = if restamped_remote { &local } else { &remote };
-    let changes = kept_changes(local.object(), winner.object(), merged_clock.as_ref())?;
+    let vault_id = server_vault::merged_vault_id(&tx, local.object(), remote.object())?;
+    let changes = kept_changes(
+        local.object(),
+        winner.object(),
+        vault_id,
+        merged_clock.as_ref(),
+    )?;
     let merged = InboundRecord {
         payload_json: winner.merge(&changes),
         ..record.clone()
@@ -127,10 +134,11 @@ pub fn apply_remote(
 }
 
 /// The remote payload's edits that keep what desktop keeps: an absent
-/// [`KEPT_WHEN_ABSENT`] key, the local `vaultId`, and the merged clock.
+/// [`KEPT_WHEN_ABSENT`] key, the merge's `vault_id`, and the merged clock.
 fn kept_changes(
     local: &Object,
     remote: &Object,
+    vault_id: Option<Value>,
     merged_clock: Option<&VectorClock>,
 ) -> Result<Vec<(&'static str, Change)>, StorageError> {
     let mut changes: Vec<(&'static str, Change)> = KEPT_WHEN_ABSENT
@@ -138,10 +146,10 @@ fn kept_changes(
         .filter(|key| !remote.contains_key(*key))
         .filter_map(|key| Some((key, Change::Set(local.get(key)?.clone()))))
         .collect();
-    if let Some(vault_id) = local.get("vaultId").filter(|value| value.is_string())
-        && remote.get("vaultId") != Some(vault_id)
+    if let Some(vault_id) = vault_id
+        && remote.get("vaultId") != Some(&vault_id)
     {
-        changes.push(("vaultId", Change::Set(vault_id.clone())));
+        changes.push(("vaultId", Change::Set(vault_id)));
     }
     if let Some(clock) = merged_clock {
         let clock = serde_json::to_value(clock).map_err(|error| StorageError::Failed {
