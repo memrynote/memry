@@ -45,6 +45,7 @@ fn create_note(path: &Path) {
 #[test]
 fn concurrent_handles_on_one_database_keep_the_body_replayable() {
     let dir = std::env::temp_dir().join(format!("memry-5734-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).expect("temp dir");
     let path = dir.join("data.db");
     create_note(&path);

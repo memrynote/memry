@@ -64,6 +64,7 @@ fn fixture(label: &str) -> Fixture {
         "memry-link-rewrite-{label}-{}-{unique}",
         std::process::id()
     ));
+    let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).expect("the scratch directory");
     let vault = Vault::open("vault-1".to_string(), dir.display().to_string()).expect("open");
     let mut secret = vec![7u8; 32];

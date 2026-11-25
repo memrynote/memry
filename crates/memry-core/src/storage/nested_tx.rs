@@ -150,14 +150,10 @@ mod tests {
         assert_eq!(kept, [1, 3]);
     }
 
-    /// These two open with `Connection::transaction`, which takes
+    /// The migrations open with `Connection::transaction`, which takes
     /// `&mut Connection`, so nothing holding a page's shared `&Connection`
-    /// can reach them.
-    const RAW_TRANSACTION_ALLOWED: [&str; 3] = [
-        "nested_tx.rs",
-        "crdt/update_log.rs",
-        "storage/migrations.rs",
-    ];
+    /// can reach them, and they author no body.
+    const RAW_TRANSACTION_ALLOWED: [&str; 2] = ["nested_tx.rs", "storage/migrations.rs"];
 
     /// rusqlite's two transaction openers, and a `BEGIN` statement with or
     /// without a mode. iCalendar's `BEGIN:` lines are not SQL.

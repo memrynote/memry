@@ -42,6 +42,7 @@ fn scratch_dir() -> PathBuf {
         "memry-api-note-attachment-queue-{}-{unique}",
         std::process::id()
     ));
+    let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).expect("the scratch directory");
     dir
 }

@@ -92,6 +92,7 @@ mod pass;
 mod realtime;
 
 pub use attachment_fetch::AttachmentRedriveSummary;
+pub(crate) use attachment_fetch::NotFoundMemory;
 pub use drain::BodyDrainSummary;
 pub use inbox_attachments::{InboxAttachmentSyncSummary, InboxFileAttachment};
 pub use note_uploads::{AttachmentRefusal, QueuedAttachmentNews, QueuedUploadSummary};

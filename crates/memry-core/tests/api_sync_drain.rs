@@ -51,6 +51,7 @@ fn vault_with_side(label: &str, transport: Arc<FakeTransport>) -> (Vault, Db, Ar
         "memry-api-sync-drain-{label}-{}-{unique}",
         std::process::id()
     ));
+    let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).expect("the scratch directory");
     let vault = Vault::open("vault-1".to_string(), dir.display().to_string()).expect("open");
     let side = memry_core::storage::open_data(&dir.join("data.db")).expect("a second handle");
