@@ -297,8 +297,8 @@ const recoverDirtyInbox: DirtySweep = {
  * (VERIFY-5691R3). Re-clocked, either becomes a new write concurrent with any
  * unpushed peer edit, and the peer's merge overwrites its tags with ours. The
  * file baseline cannot tell either: an older build's watcher moved it to the
- * edit it ingested, and an edit made while the app was closed is compared
- * with it only when the doc first opens, keeping `modifiedAt` (#5319).
+ * edit it ingested, and an edit made while the app was closed is ticked
+ * where the vault open finds it (`replayMissedJournalEdits`, #5752).
  *
  * So a journal with no stamp, or edited before the era, replays. Its ack
  * stamps the `modifiedAt` the payload read, so an edit after the era

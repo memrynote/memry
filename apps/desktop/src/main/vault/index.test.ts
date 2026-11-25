@@ -70,6 +70,7 @@ const mocks = vi.hoisted(() => ({
   stopProjectionRuntime: vi.fn(),
   reconcileProjections: vi.fn(),
   replayMissedRemovals: vi.fn(async () => {}),
+  replayMissedJournalEdits: vi.fn(async () => {}),
   rebuildProjections: vi.fn(),
   detectCorruption: vi.fn(),
   trackMainError: vi.fn(),
@@ -183,7 +184,8 @@ vi.mock('./watcher', () => ({
   stopWatcher: (...args: unknown[]) => mocks.stopWatcher(...args),
   getWatcher: () => ({
     isWatching: () => mocks.watcherRunning,
-    replayMissedRemovals: () => mocks.replayMissedRemovals()
+    replayMissedRemovals: () => mocks.replayMissedRemovals(),
+    replayMissedJournalEdits: () => mocks.replayMissedJournalEdits()
   })
 }))
 
@@ -831,6 +833,23 @@ describe('vault lifecycle', () => {
     expect(mocks.replayMissedRemovals.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.indexVault.mock.invocationCallOrder[0]
     )
+  })
+
+  it('replays journal edits made while closed once locked files are restored (#5752)', async () => {
+    let finishLockCheck!: () => void
+    mocks.checkLockedFilesAtOpen.mockReturnValue(
+      new Promise<void>((resolve) => {
+        finishLockCheck = resolve
+      })
+    )
+
+    await selectVault({ path: '/vault/edited-journal' })
+    expect(mocks.replayMissedJournalEdits).not.toHaveBeenCalled()
+
+    finishLockCheck()
+
+    // A locked day's edit is put back first, so it is never taken for this device's edit.
+    await vi.waitFor(() => expect(mocks.replayMissedJournalEdits).toHaveBeenCalledTimes(1))
   })
 
   it('re-applies locks once the open-time walk has indexed new notes (#2978)', async () => {
