@@ -16,7 +16,7 @@ use memry_core::markdown::shared::writing_tools::{WritingFrontmatter, merge_writ
 use memry_core::seams::secure_store::SecureStore;
 
 use super::journal::{Dated, dated_block, set_date};
-use super::place::{Found, Mark, Patch, Pulled, header_tags_of, patch};
+use super::place::{Found, Mark, Patch, Pulled, header_tags_of, owed_aliases, patch};
 use crate::attachments;
 use crate::locks::Locks;
 use crate::vault::app_edit::OwnFiles;
@@ -141,6 +141,13 @@ impl Pass {
         self.pulled.mark(note_id, title_before);
     }
 
+    /// The note's record was strictly newer than its file when the file was first named
+    /// (`Adoption::ExistingNewer`): its next pass writes the file's `aliases` key alone
+    /// (`place::owed_aliases`) and never moves the file.
+    pub fn mark_record_newer(&self, note_id: &str) {
+        self.pulled.mark_in_place(note_id);
+    }
+
     /// Writes the note's body to its file, or says why the file was kept.
     pub fn run(&self, note_id: &str) -> Outcome {
         self.run_checked(note_id, &mut || {})
@@ -245,15 +252,23 @@ impl Pass {
                 }
             }
         }
+        let aliases_only = waiting.as_ref().is_some_and(|mark| mark.aliases_only);
         let pulled = pulled.as_ref().map(|(_, record)| record);
-        let patch = pulled.map(|record| Patch {
+        let patch = pulled.filter(|_| !aliases_only).map(|record| Patch {
             record,
             types: self.property_types(),
         });
         let made = (&*self.vault, self.settings.as_ref(), self.root.as_path());
         let output = match output_over(made, note_id, &path, &file, patch.as_ref()) {
-            Ok(output) => output,
+            Ok(output) => match pulled.filter(|_| aliases_only) {
+                Some(record) => owed_aliases(output, record),
+                None => Ok(output),
+            },
             Err(outcome) => return wait(waiting, move_again, outcome),
+        };
+        let output = match output {
+            Ok(output) => output,
+            Err(why) => return wait(waiting, move_again, Outcome::Failed(why)),
         };
         let patched = pulled.is_some()
             && split_frontmatter_block(&file.raw).block != split_frontmatter_block(&output).block;
