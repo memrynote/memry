@@ -1,8 +1,9 @@
 /**
  * The write-back's take of a file edited outside the app (#5292, #5319,
  * #5605): before a pass writes over it, and at a doc's first open in a
- * session (`ingestOfflineEdit`), including a file the last session wrote from
- * a doc its store may never have held (#5698, `recordDocFile`).
+ * session (`ingestOfflineEdit`). A file written from a doc its store may never
+ * have held is taken in at every open while it carries the mark (#5698,
+ * `recordDocFile`).
  *
  * @module sync/crdt-writeback-ingest
  */
@@ -141,7 +142,11 @@ async function docVersionOf(
   return { body: markdown, file: serializeNote(parsed.frontmatter, markdown) }
 }
 
-/** The write-back's outside-edit ingest, run at a doc's first open (#5319, `takeOfflineEdit`). */
+/**
+ * The write-back's outside-edit ingest, run at a doc's first open in a session
+ * and at every open while the file is marked unstored (#5319, #5698,
+ * `takeOfflineEdit`).
+ */
 export async function ingestOfflineEdit(noteId: string, doc: Y.Doc): Promise<void> {
   const indexDb = getIndexDatabase()
   const cached = getNoteCacheById(indexDb, noteId)

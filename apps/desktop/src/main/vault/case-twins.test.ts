@@ -1365,6 +1365,32 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
     }
   }, 30_000)
 
+  // VERIFY-5703R3 (3): the survivor's doc-built file, written while its store is storing.
+  it("a twin delete marks the survivor's file unstored until its store holds it", async () => {
+    await twins()
+    const provider = vi.mocked(getCrdtProvider())
+    let stored!: () => void
+    provider.isStoring.mockImplementation((id) => id === 'lower')
+    provider.whenStored.mockImplementation(async () => new Promise((resolve) => (stored = resolve)))
+    try {
+      await deleteNoteCommand('upper')
+      expect.soft(shared()).toBe(LOWER)
+      expect.soft(getNoteCacheById(index.db, 'lower')).toMatchObject({
+        contentHash: generateContentHash(LOWER),
+        pendingWriteHash: UNSTORED_FILE
+      })
+
+      // The store holds the survivor's doc.
+      provider.isStoring.mockImplementation(() => false)
+      stored()
+      await new Promise((resolve) => setImmediate(resolve))
+      expect(getNoteCacheById(index.db, 'lower')?.pendingWriteHash).toBeNull()
+    } finally {
+      provider.isStoring.mockImplementation(() => false)
+      provider.whenStored.mockImplementation(async () => {})
+    }
+  }, 30_000)
+
   it('a twin moved with its own bytes keeps the mark of a file its store may lack', async () => {
     await headerTwins()
     updateNoteCache(index.db, 'upper', { pendingWriteHash: UNSTORED_FILE })

@@ -48,7 +48,7 @@ import { openVaultFile } from '../lib/paths'
 import { completeWithin, SHUTDOWN_CLOSE_VAULT_RESERVE_MS } from '../shutdown-sequence'
 import { OutsideVaultError } from '../lib/errors'
 import { parseNote } from '../vault/frontmatter'
-import { recordBaseline } from './writeback-baseline'
+import { holdsUnstoredFile, recordBaseline } from './writeback-baseline'
 import { isBinaryNote } from './note-body-apply'
 import { loadBlockNoteConverter } from './blocknote-converter-loader'
 import { seedFragment } from './converter-worker-bridge'
@@ -279,6 +279,14 @@ interface ActiveDoc {
    * shows its loading state until it ends (`crdt:doc-loaded`, #5290).
    */
   awaitingMerge: boolean
+  /**
+   * Callers of `whenStored` against this doc instance. Only a store of this
+   * instance answers them: a doc reopened from the store may lack what this
+   * one held, so a store of it says nothing about this one's bytes. A close
+   * answers them once a store of this doc's whole state lands, and drops them
+   * unanswered when none does (`settleStoreBeforeDestroy`, #5698).
+   */
+  storedWaiters: Array<() => void>
 }
 
 export class CrdtProvider {
@@ -363,8 +371,6 @@ export class CrdtProvider {
    * so the next store writes the doc's whole state (`persistUpdate`).
    */
   private storeOwed = new Set<string>()
-  /** Callers of `whenStored`, answered once the note is no longer storing. */
-  private storedWaiters = new Map<string, Array<() => void>>()
   private networkBatcher = new MicrotaskBatchBroadcaster((noteId, merged) => {
     this.broadcastToWindows(noteId, merged, ORIGIN_NETWORK, undefined)
   })
@@ -1203,7 +1209,8 @@ export class CrdtProvider {
       lastTouchedAt: this.now(),
       localOnly: this.isNoteLocalOnly(noteId),
       binary: this.isBinary(noteId),
-      awaitingMerge: !this.persistence && options?.skipSeed === true
+      awaitingMerge: !this.persistence && options?.skipSeed === true,
+      storedWaiters: []
     }
     this.docs.set(noteId, entry)
 
@@ -1225,9 +1232,14 @@ export class CrdtProvider {
    * full-body replace would delete that edit. The write-back's outside-edit
    * ingest decides and feeds, against the baseline (`writeback-baseline.ts`).
    * A failure leaves the file to that same check on the next write-back.
+   *
+   * A file marked unstored (`holdsUnstoredFile`) is taken in at every open,
+   * not only the first: the store this doc was read from may lack the file's
+   * bytes, in this session too, once an earlier doc of the note closed with
+   * a store that failed (#5698).
    */
   private async takeOfflineEdit(noteId: string, doc: Y.Doc): Promise<void> {
-    if (this.offlineEditChecked.has(noteId)) return
+    if (this.offlineEditChecked.has(noteId) && !this.holdsUnstoredFile(noteId)) return
     if (doc.getXmlFragment(CRDT_FRAGMENT_NAME).length === 0) return
     this.offlineEditChecked.add(noteId)
     try {
@@ -1363,6 +1375,7 @@ export class CrdtProvider {
     await this.flushDoc(noteId).catch((err: unknown) => {
       log.error('Failed to flush doc on close', { noteId, error: err })
     })
+    await this.settleStoreBeforeDestroy(noteId, entry)
 
     if (this.docs.get(noteId) !== entry) {
       // The note was reopened while the flush above was in flight, so doOpen()
@@ -1765,8 +1778,6 @@ export class CrdtProvider {
     this.storeUnreconciled = false
     this.unvouchedNotes.clear()
     this.storeOwed.clear()
-    // Never answered: this store may not hold their notes (`whenStored`).
-    this.storedWaiters.clear()
 
     // Write-back keeps its own module-level per-note maps, keyed by ids and
     // absolute paths belonging to the vault being torn down here.
@@ -2564,30 +2575,60 @@ export class CrdtProvider {
       .catch(() => {})
       .finally(() => {
         if (this.persisting.get(noteId) === chained) this.persisting.delete(noteId)
-        this.answerStoredWaiters(noteId)
+        const entry = this.docs.get(noteId)
+        if (entry && this.persistence && !this.isStoring(noteId)) answerStored(entry)
       })
-  }
-
-  private answerStoredWaiters(noteId: string): void {
-    if (!this.persistence || this.isStoring(noteId)) return
-    const waiters = this.storedWaiters.get(noteId)
-    this.storedWaiters.delete(noteId)
-    for (const resolve of waiters ?? []) resolve()
   }
 
   /**
    * Resolves once the store holds every update of the note the live doc had
    * when it was called, however late: after a failed store, once a store of
-   * the doc's whole state lands. Never rejects; never resolves while the store
-   * keeps failing, or after the store is torn down (`recordDocFile`, #5698).
+   * the doc's whole state lands. Never rejects. Never resolves while the store
+   * keeps failing, after the doc closed without a store of its whole state, or
+   * after the store is torn down: a later doc of the note, read from a store
+   * that missed this one's updates, never answers for it (`ActiveDoc`
+   * `storedWaiters`, `recordDocFile`, #5698).
    */
   whenStored(noteId: string): Promise<void> {
     if (!this.isStoring(noteId)) return Promise.resolve()
-    return new Promise((resolve) => {
-      const waiters = this.storedWaiters.get(noteId) ?? []
-      waiters.push(resolve)
-      this.storedWaiters.set(noteId, waiters)
-    })
+    const entry = this.docs.get(noteId)
+    // The doc whose updates the store missed is gone, and only it held them.
+    if (!entry) return new Promise(() => {})
+    return new Promise((resolve) => entry.storedWaiters.push(resolve))
+  }
+
+  /**
+   * Before a closing doc is destroyed: waits for its stores, stores its whole
+   * state again when the store missed an update, then answers its `whenStored`
+   * callers if the store holds it, or drops them unanswered. The doc is the
+   * only holder of what the store missed; once destroyed, nothing stores it.
+   */
+  private async settleStoreBeforeDestroy(noteId: string, entry: ActiveDoc): Promise<void> {
+    const landed = (stored: Promise<void> | undefined): Promise<boolean> =>
+      this.untilStoredOrClose(noteId, stored).then(
+        () => true,
+        () => false
+      )
+    let stored = await landed(this.persisting.get(noteId))
+    if (this.persistence && this.storeOwed.delete(noteId)) {
+      this.persistUpdate(noteId, Y.encodeStateAsUpdate(entry.doc))
+      stored = await landed(this.persisting.get(noteId))
+    }
+    if (stored && !this.storeOwed.has(noteId)) answerStored(entry)
+    entry.storedWaiters = []
+  }
+
+  /** Whether the note's file holds bytes its store may lack (`holdsUnstoredFile`). */
+  private holdsUnstoredFile(noteId: string): boolean {
+    try {
+      return holdsUnstoredFile(getNoteCacheById(getIndexDatabase(), noteId))
+    } catch (err) {
+      log.warn('Could not read whether the file holds unstored bytes; taking it in', {
+        noteId,
+        error: err
+      })
+      return true
+    }
   }
 
   /**
@@ -2714,10 +2755,12 @@ export class CrdtProvider {
    * whose call outlived `STORE_CALL_CLOSE_WAIT_MS`, or null.
    */
   private async storeOpenDocsForClose(): Promise<string | null> {
-    for (const [noteId] of this.docs) {
-      const flushed = this.flushDoc(noteId).catch((err: unknown) => {
-        log.warn('Failed to flush doc during CRDT destroy', { noteId, error: err })
-      })
+    for (const [noteId, entry] of this.docs) {
+      const flushed = this.flushDoc(noteId)
+        .catch((err: unknown) => {
+          log.warn('Failed to flush doc during CRDT destroy', { noteId, error: err })
+        })
+        .then(() => this.settleStoreBeforeDestroy(noteId, entry))
       if (!(await completeWithin(flushed, STORE_CALL_CLOSE_WAIT_MS))) return noteId
     }
     return null
@@ -3036,6 +3079,12 @@ async function readAndClose(file: FileHandle): Promise<string> {
   } finally {
     await file.close()
   }
+}
+
+function answerStored(entry: ActiveDoc): void {
+  const waiters = entry.storedWaiters
+  entry.storedWaiters = []
+  for (const resolve of waiters) resolve()
 }
 
 function isIpcOrigin(origin: unknown): origin is IpcOrigin {

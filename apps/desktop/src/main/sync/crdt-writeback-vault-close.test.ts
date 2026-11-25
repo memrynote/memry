@@ -7,6 +7,7 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import * as fs from 'fs'
+import * as os from 'os'
 import * as path from 'path'
 import * as Y from 'yjs'
 import { JournalChannels } from '@memry/contracts/ipc-channels'
@@ -32,6 +33,7 @@ import { getCrdtProvider, resetCrdtProvider } from './crdt-provider'
 import { flushPendingWritebacks, hasArmedWritebacks, resetWritebackState } from './crdt-writeback'
 import { markdownToYFragment } from './blocknote-converter'
 import {
+  deleteNoteCache,
   getNoteCacheById,
   getNoteSnapshots,
   insertNoteCache,
@@ -41,6 +43,8 @@ import {
 import { generateContentHash } from '../vault/frontmatter'
 import { checkForRename, clearAllPendingDeletes, trackPendingDelete } from '../vault/rename-tracker'
 import { pushFinalSnapshots } from './final-snapshot-push'
+import { deleteCaseTwin } from '../vault/case-twin-file'
+import { deleteNoteMetadata, upsertNoteMetadata } from '@memry/storage-data'
 import type * as PersistenceModule from './crdt-persistence'
 import type * as LoggerModule from '../lib/logger'
 
@@ -155,6 +159,16 @@ vi.mock('./crdt-store-path', () => ({
 vi.mock('./crdt-store-epoch', () => ({ reconcileCrdtStoreEpoch: async () => false }))
 
 const DATE = '2026-05-10'
+
+function fileSystemIgnoresCase(): boolean {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-case-probe-'))
+  try {
+    fs.writeFileSync(path.join(dir, 'probe'), '')
+    return fs.existsSync(path.join(dir, 'PROBE'))
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true })
+  }
+}
 const OTHER_DATE = '2026-05-11'
 const EDITOR_WINDOW = 7
 
@@ -839,17 +853,7 @@ describe('a CRDT store that stalls while the vault closes (#5698)', () => {
     await flushPendingWritebacks()
     indexDay(vaultA, id)
 
-    const disk = failStore()
-    type(id, ' More.')
-    await vi.waitFor(
-      async () => {
-        await tick()
-        expect(dayBody(vaultA)).toContain('From A. Typed. More.')
-      },
-      { timeout: 10_000, interval: 10 }
-    )
-    await Promise.all(store.queues)
-    expect.soft(getNoteCacheById(vaultA.indexDb.db, id)?.pendingWriteHash).toBe(UNSTORED_FILE)
+    const disk = await typeIntoFailedStore(id, dayFile(vaultA))
     disk.recover()
 
     type(id, ' Two.')
@@ -859,38 +863,205 @@ describe('a CRDT store that stalls while the vault closes (#5698)', () => {
     return id
   }
 
-  for (const [end, endSession] of [
-    [
-      'a close',
+  /**
+   * The day, written and indexed, then closed and reopened once, so this
+   * session's first-open check of its file is spent. Resolves the day.
+   */
+  async function checkedDay(): Promise<string> {
+    const id = await openTypedDay()
+    await flushPendingWritebacks()
+    indexDay(vaultA, id)
+    await settle(getCrdtProvider().close(id))
+    await settle(getCrdtProvider().open(id, EDITOR_WINDOW))
+    return id
+  }
+
+  /** The store fails a keystroke, whose pass writes it to the file, marked unstored. */
+  async function typeIntoFailedStore(id: string, file: string, text = ' More.') {
+    const disk = failStore()
+    type(id, text)
+    // The pass marks the row after its write lands: wait for both.
+    await vi.waitFor(
       async () => {
+        await tick()
+        expect(fs.readFileSync(file, 'utf8')).toContain(text.trim())
+        expect(getNoteCacheById(vaultA.indexDb.db, id)?.pendingWriteHash).toBe(UNSTORED_FILE)
+      },
+      { timeout: 10_000, interval: 10 }
+    )
+    await Promise.all(store.queues)
+    return disk
+  }
+
+  /** What the store holds of the note once its queue is empty. */
+  async function settledStoredBody(id: string): Promise<string> {
+    await Promise.all(store.queues)
+    return storedBody(id)
+  }
+
+  const CASE_TWIN_LOWER = '# Lower.\n'
+
+  /**
+   * Two case twins on one file, the survivor's doc open with a keystroke its
+   * store failed. The other twin's delete writes the survivor's doc to the
+   * file (`planLeave`), then the process ends. Resolves the survivor.
+   */
+  async function survivorOfTwinDelete(): Promise<{ id: string; file: string }> {
+    const lower = 'twin-lower'
+    const upper = 'twin-upper'
+    const dir = path.join(vaultA.vault.path, 'Supernotes')
+    fs.mkdirSync(dir, { recursive: true })
+    const file = path.join(dir, 'a.md')
+    fs.writeFileSync(file, '# Upper.\n')
+    for (const [id, relativePath] of [
+      [lower, 'Supernotes/a.md'],
+      [upper, 'SUPERNOTES/a.md']
+    ] as const) {
+      const fields = {
+        id,
+        path: relativePath,
+        title: 'a',
+        fileType: 'markdown' as const,
+        createdAt: '2026-05-10T00:00:00.000Z',
+        modifiedAt: '2026-05-10T00:00:00.000Z',
+        syncedAt: '2026-05-10T00:00:00.000Z'
+      }
+      upsertNoteMetadata(asClientDb(vaultA.dataDb.db), fields)
+      const body = id === lower ? CASE_TWIN_LOWER : '# Upper.\n'
+      insertNoteCache(vaultA.indexDb.db, { ...fields, contentHash: generateContentHash(body) })
+    }
+    const seeded = new Y.Doc()
+    await markdownToYFragment(CASE_TWIN_LOWER, seeded.getXmlFragment(CRDT_FRAGMENT_NAME))
+    store.updates.set(lower, [Y.encodeStateAsUpdate(seeded)])
+    await getCrdtProvider().open(lower, EDITOR_WINDOW)
+    if (!vi.isFakeTimers()) vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+
+    const disk = failStore()
+    type(lower, ' More.')
+    await Promise.all(store.queues)
+    await settle(
+      deleteCaseTwin(
+        vaultA.vault.path,
+        'SUPERNOTES/a.md',
+        upper,
+        async (inStep) => inStep(() => {}),
+        () => {
+          deleteNoteMetadata(asClientDb(vaultA.dataDb.db), upper)
+          deleteNoteCache(vaultA.indexDb.db, upper)
+        }
+      )
+    )
+    expect.soft(fs.readFileSync(file, 'utf8')).toContain('Lower. More.')
+    disk.recover()
+    await restart()
+    return { id: lower, file }
+  }
+
+  // VERIFY-5703R3: each trigger loses an edit under 02ec439e41's marker
+  // handling; the vault close and the same-session reopen under 0469b6b468's too.
+  for (const [trigger, endSession] of [
+    [
+      'a vault close whose write fails behind a store that keeps failing',
+      async () => {
+        const id = await openTypedDay()
+        await flushPendingWritebacks()
+        indexDay(vaultA, id)
+        const disk = await typeIntoFailedStore(id, dayFile(vaultA))
+        // The close's pass of a later keystroke fails to write: the file keeps
+        // " More.", which the store never held.
+        type(id, ' Two.')
+        const writes = failWrites(dayFile(vaultA))
         await settle(closeVault())
+        writes.stop()
+        disk.recover()
+        resetCrdtProvider()
         store.queues = []
         await getCrdtProvider().initPersistence()
+        return { id, file: dayFile(vaultA), kept: 'From A. Typed. More.' }
       }
     ],
     [
-      'a quit cut short',
+      'a quit cut short after its flush',
       async () => {
+        const id = await checkedDay()
+        const disk = await typeIntoFailedStore(id, dayFile(vaultA))
+        disk.recover()
         getCrdtProvider().beginClose()
         await settle(flushPendingWritebacks())
+        // A keystroke the store takes after the quit's flush step, before its budget ends.
+        type(id, ' Two.')
+        await Promise.all(store.queues)
         await restart()
+        return { id, file: dayFile(vaultA), kept: 'From A. Typed. More. Two.' }
       }
     ],
-    // VERIFY-5703R2 P2: the forced exit lands inside the keystroke's debounce.
-    ['a forced exit (P2)', restart]
+    [
+      'a forced exit inside the debounce (P2)',
+      async () => {
+        const id = await storeFailsThenRecovers()
+        await restart()
+        return { id, file: dayFile(vaultA), kept: 'From A. Typed. More. Two.' }
+      }
+    ],
+    [
+      'a case twin leaving the survivor its doc-built file',
+      async () => {
+        const { id, file } = await survivorOfTwinDelete()
+        return { id, file, kept: 'Lower. More.' }
+      }
+    ],
+    [
+      'a close and a reopen in the same session (R3)',
+      async () => {
+        const id = await checkedDay()
+        const disk = await typeIntoFailedStore(id, dayFile(vaultA))
+        await settle(getCrdtProvider().close(id))
+        disk.recover()
+        return { id, file: dayFile(vaultA), kept: 'From A. Typed. More.' }
+      }
+    ]
   ] as const) {
-    it(`a store that failed and recovered keeps every edit through ${end}`, async () => {
-      const id = await storeFailsThenRecovers()
+    // A case twin needs a file system that folds case; ubuntu CI skips it.
+    const runs = !trigger.startsWith('a case twin') || fileSystemIgnoresCase()
+    it.runIf(runs)(`an edit the store missed survives ${trigger}`, async () => {
+      const { id, file, kept } = await endSession()
 
-      await endSession()
-      const doc = await getCrdtProvider().open(id, EDITOR_WINDOW)
-      expect.soft(bodyText(doc)).toBe('From A. Typed. More. Two.')
+      const doc = await settle(getCrdtProvider().open(id, EDITOR_WINDOW))
       type(id, ' Again.')
       await settle(flushPendingWritebacks())
 
-      expect(dayBody(vaultA)).toContain('From A. Typed. More. Two. Again.')
+      expect.soft(bodyText(doc)).toBe(`${kept} Again.`)
+      expect.soft(await settledStoredBody(id)).toBe(`${kept} Again.`)
+      expect(fs.readFileSync(file, 'utf8')).toContain(`${kept} Again.`)
     })
   }
+
+  // VERIFY-5703R3 (1): the store recovers between a close and the reopen.
+  it('a reopen in the same session takes in the file its closed doc never stored', async () => {
+    const id = await checkedDay()
+    const disk = await typeIntoFailedStore(id, dayFile(vaultA))
+    await settle(getCrdtProvider().close(id))
+    disk.recover()
+
+    const doc = await settle(getCrdtProvider().open(id, EDITOR_WINDOW))
+    type(id, ' Two.')
+    await settle(flushPendingWritebacks())
+
+    expect.soft(bodyText(doc)).toBe('From A. Typed. More. Two.')
+    expect.soft(await settledStoredBody(id)).toBe('From A. Typed. More. Two.')
+    expect(dayBody(vaultA)).toContain('From A. Typed. More. Two.')
+  })
+
+  it("a close whose whole-doc store lands answers the doc's own stored waiters", async () => {
+    const id = await checkedDay()
+    const disk = await typeIntoFailedStore(id, dayFile(vaultA))
+    disk.recover()
+
+    await settle(getCrdtProvider().close(id))
+
+    expect.soft(storedBody(id)).toBe('From A. Typed. More.')
+    expect(getNoteCacheById(vaultA.indexDb.db, id)?.pendingWriteHash).toBeNull()
+  })
 
   it('clears the unstored mark once the store holds the file again', async () => {
     const id = await storeFailsThenRecovers()

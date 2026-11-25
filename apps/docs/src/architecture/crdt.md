@@ -929,16 +929,18 @@ document to its vault `.md` file and re-indexes it for search.
   in, so the next session's first pass would write the older stored doc over it. While
   the note's updates are still storing, the write-back records the file's real hash in
   `content_hash` (the watcher's rename match needs it) and `unstored-file` in
-  `pending_write_hash` (`recordDocFile`). The marker clears once the store holds every
-  update the doc had when the file was written (`whenStored`): the original store, or a
-  later store of the whole doc after one failed. The store then holds the file and
-  possibly more, so taking the older file in would erase edits. A row whose
-  `content_hash` moved on keeps its marker. A session that ends first, by a close, a
-  quit cut short, a forced exit or a crash, leaves the marker, and the doc's first open
-  takes the file in as an edit made while the app was closed (`ingestOfflineEdit`),
-  keeping the doc as a version first. A doc that cannot be converted for that version
-  is not replaced. A pass whose file write fails drops the marker: its file lacks the
-  doc's edits, which only the store can still hold. A case twin leaving a shared file
+  `pending_write_hash` (`recordDocFile`). While the marker stands, the file is the
+  note's source of truth: every open of the note, the first of a session or a reopen in
+  the same session after a close, an eviction or a vault switch, takes the file in
+  before any edit (`ingestOfflineEdit`), keeping the doc as a version first. The marker
+  clears only once a store of a doc that holds the file's bytes lands: a store of the doc
+  instance that wrote the file (`whenStored`), or the ingest's own store. A doc that
+  closes while its store missed an update stores its whole state again before it is
+  destroyed; when that fails too, its `whenStored` callers are dropped unanswered, so a
+  doc reopened from that store never clears the marker for it. A row whose
+  `content_hash` moved on keeps its marker. A doc that cannot be converted for that version
+  is not replaced. A pass whose file write fails keeps the marker: the file still holds
+  bytes the store may lack. A case twin leaving a shared file
   records its doc-built file the same way, and a twin moving with its own bytes keeps
   its marker.
 - **A quit flushes write-backs first, not last** — the provider is destroyed at the _end_
