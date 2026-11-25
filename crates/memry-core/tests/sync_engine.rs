@@ -1017,6 +1017,23 @@ fn seed_locally_edited_task(db: &Db, id: &str) {
     .expect("the local edits");
 }
 
+/// The outbox row ids for `item_id`: a superseded row comes back with a new id.
+fn outbox_ids(db: &Db, item_id: &str) -> Vec<i64> {
+    let item_id = item_id.to_owned();
+    db.call_blocking(move |conn| {
+        let mut stmt = conn
+            .prepare("SELECT id FROM outbox WHERE item_id = ?1 ORDER BY id")
+            .expect("prepare");
+        let ids = stmt
+            .query_map([&item_id], |row| row.get(0))
+            .expect("query")
+            .collect::<Result<Vec<i64>, _>>()
+            .expect("rows");
+        Ok(ids)
+    })
+    .expect("the outbox ids")
+}
+
 fn outbox_rows(db: &Db, item_id: &str) -> i64 {
     let item_id = item_id.to_owned();
     db.call_blocking(move |conn| {
@@ -1571,7 +1588,7 @@ fn projected_settings(db: &Db) -> Vec<(String, String, String)> {
 async fn a_stale_remote_settings_payload_does_not_clobber_a_newer_local_one() {
     let db = scratch_db("pull-settings-skip");
     seed_local_theme(&db);
-    let queued_before = outbox_rows(&db, SETTINGS_ID);
+    let queued_before = outbox_ids(&db, SETTINGS_ID);
 
     // {device-a: 1} against the local {device-a: 2}: the local path clock
     // dominates, so every arbitrated path resolves to what is already here.
@@ -1607,9 +1624,10 @@ async fn a_stale_remote_settings_payload_does_not_clobber_a_newer_local_one() {
             "\"light\"".to_owned()
         )]
     );
-    // The re-queue supersedes the still-queued local edit: one row, one push.
-    assert_eq!(queued_before, 1);
-    assert_eq!(outbox_rows(&db, SETTINGS_ID), 1);
+    // The re-queue leaves the still-queued local edit alone: that row rebuilds
+    // from the live, merged row at send, so it is the same row, one push.
+    assert_eq!(queued_before.len(), 1);
+    assert_eq!(outbox_ids(&db, SETTINGS_ID), queued_before);
 }
 
 /// **FR-059's §6.9 equivalent**: two devices changed two different paths, and
@@ -1960,13 +1978,12 @@ async fn a_desktop_echo_of_a_stripped_setting_keeps_the_ios_value() {
 async fn a_concurrent_settings_merge_requeues_the_merged_payload() {
     let db = scratch_db("pull-settings-requeue");
     seed_local_theme(&db);
-    // The local edits were pushed.
-    db.call_blocking(|conn| {
-        conn.execute("DELETE FROM outbox", [])
-            .expect("clear the outbox");
-        Ok(())
-    })
-    .expect("pushed");
+    assert_eq!(
+        push_wave(&db, SETTINGS_ID).await.len(),
+        1,
+        "the local edits were pushed"
+    );
+    assert_eq!(outbox_rows(&db, SETTINGS_ID), 0);
 
     // {device-a: 2} against {device-b: 3}: concurrent, remote total wins.
     let remote = settings_payload(
@@ -1983,14 +2000,13 @@ async fn a_concurrent_settings_merge_requeues_the_merged_payload() {
         json!({"device-a": 2, "device-b": 3})
     );
     assert_eq!(outbox_rows(&db, SETTINGS_ID), 1, "the merge re-queued");
+    assert_eq!(
+        push_wave(&db, SETTINGS_ID).await,
+        vec![parsed],
+        "the push sends the merged payload with its union clock"
+    );
 
     // A later payload that dominates is taken without a re-queue.
-    db.call_blocking(|conn| {
-        conn.execute("DELETE FROM outbox", [])
-            .expect("clear the outbox");
-        Ok(())
-    })
-    .expect("pushed");
     let newer = settings_payload(
         json!({"general": {"theme": "light"}}),
         json!({"general.theme": {"device-a": 2, "device-b": 4}}),
