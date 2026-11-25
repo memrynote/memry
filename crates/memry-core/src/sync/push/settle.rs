@@ -67,11 +67,10 @@ impl PushCoordinator {
     pub(super) async fn settle_delete_wins(
         &self,
         lost: Vec<Collapsed>,
-        now: i64,
         report: &mut PushReport,
     ) -> Result<(), PushError> {
         for item in lost {
-            match self.settle_one(&item, now).await {
+            match self.settle_one(&item).await {
                 Ok(deleted) => {
                     report.accepted += item.ids().len();
                     report.deleted_locally += usize::from(deleted);
@@ -87,7 +86,7 @@ impl PushCoordinator {
 
     /// `SYNC_DELETE_WINS` for one item: pulls its id with markers, then
     /// deletes only on verified evidence ([`delete_wins::apply_delete_wins`]).
-    async fn settle_one(&self, item: &Collapsed, now: i64) -> Result<bool, String> {
+    async fn settle_one(&self, item: &Collapsed) -> Result<bool, String> {
         // §5.8: an item whose delete cannot be checked is deferred, as a
         // failed pull is, and its queued upsert keeps protecting the row.
         let Some(pull) = &self.pull else {
@@ -101,6 +100,9 @@ impl PushCoordinator {
         let (item, pull, device) = (item.clone(), self.pull.clone(), self.clock_device.clone());
         self.db
             .call(move |conn| {
+                // #5849: stamped inside the hold that writes the tombstone,
+                // after the by-id pull's round trip.
+                let now = now_ms();
                 delete_wins::apply_delete_wins(conn, &item, &entries, pull.as_deref(), &device, now)
             })
             .await
