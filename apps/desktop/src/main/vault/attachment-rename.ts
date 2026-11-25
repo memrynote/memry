@@ -186,7 +186,7 @@ export async function applyDownloadedAttachmentName(
     const markdown = await readVaultFile(vaultPath, notePath)
     if (markdown === null) return downloadedPath
     return (
-      reconcileDownloadedAttachmentName(noteId, downloadedPath, markdown, vaultPath) ??
+      (await reconcileDownloadedAttachmentName(noteId, downloadedPath, markdown, vaultPath)) ??
       downloadedPath
     )
   } catch (error) {

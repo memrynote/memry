@@ -886,7 +886,7 @@ describe('an embed downloaded under the name the body renamed away from', () => 
       .map((row) => row.path)
   const reconcileName = async (noteId: string, placed: string): Promise<string> => {
     const body = fs.readFileSync(path.join(h.vaultPath, 'note-1.md'), 'utf8')
-    return reconcileDownloadedAttachmentName(noteId, placed, body, h.vaultPath) ?? placed
+    return (await reconcileDownloadedAttachmentName(noteId, placed, body, h.vaultPath)) ?? placed
   }
 
   beforeEach(() => {
@@ -931,7 +931,8 @@ describe('an embed downloaded under the name the body renamed away from', () => 
     expect(recordedPaths()).toEqual([])
 
     await redriveAttachmentDownloads()
-    await settle()
+    // The byte compare reads asynchronously, past one tick.
+    await vi.waitFor(() => expect(recordedPaths()).toHaveLength(1))
 
     expect(requested()).toEqual(['att-embed', 'att-embed'])
     expect(fs.readdirSync(folder())).toEqual([RENAMED])
@@ -944,7 +945,8 @@ describe('an embed downloaded under the name the body renamed away from', () => 
     fs.writeFileSync(path.join(folder(), RENAMED), 'edited here')
 
     pullAsksForEmbed()
-    await settle()
+    // The byte compare reads asynchronously, past one tick.
+    await vi.waitFor(() => expect(recordedPaths()).toHaveLength(1))
 
     expect(fs.readdirSync(folder()).toSorted()).toEqual([UPLOADED, RENAMED])
     expect(fs.readFileSync(path.join(folder(), RENAMED), 'utf8')).toBe('edited here')

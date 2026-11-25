@@ -177,11 +177,11 @@ describe('reconcileRenamedAttachments', () => {
 })
 
 describe('reconcileDownloadedAttachmentName', () => {
-  it('renames a freshly downloaded file to the name the body carries', () => {
+  it('renames a freshly downloaded file to the name the body carries', async () => {
     // The manifest froze the name at upload, so sync lands the OLD one here.
     const downloaded = writeAttachment('k3f9x2-scan.pdf')
 
-    const result = reconcileDownloadedAttachmentName(
+    const result = await reconcileDownloadedAttachmentName(
       NOTE_ID,
       downloaded,
       body('k3f9x2-invoice.pdf'),
@@ -193,19 +193,24 @@ describe('reconcileDownloadedAttachmentName', () => {
     expect(fs.existsSync(downloaded)).toBe(false)
   })
 
-  it('leaves a download the body already names alone', () => {
+  it('leaves a download the body already names alone', async () => {
     const downloaded = writeAttachment('k3f9x2-invoice.pdf')
 
     expect(
-      reconcileDownloadedAttachmentName(NOTE_ID, downloaded, body('k3f9x2-invoice.pdf'), vaultPath)
+      await reconcileDownloadedAttachmentName(
+        NOTE_ID,
+        downloaded,
+        body('k3f9x2-invoice.pdf'),
+        vaultPath
+      )
     ).toBe(downloaded)
   })
 
-  it('leaves a download the body has no unique match for alone', () => {
+  it('leaves a download the body has no unique match for alone', async () => {
     const downloaded = writeAttachment('k3f9x2-scan.pdf')
 
     expect(
-      reconcileDownloadedAttachmentName(
+      await reconcileDownloadedAttachmentName(
         NOTE_ID,
         downloaded,
         body('k3f9x2-a.pdf', 'k3f9x2-b.pdf'),
@@ -215,14 +220,67 @@ describe('reconcileDownloadedAttachmentName', () => {
     expect(fs.existsSync(downloaded)).toBe(true)
   })
 
-  it('refuses a path outside this note’s attachments folder', () => {
+  it('refuses a path outside this note’s attachments folder', async () => {
     const outside = path.join(vaultPath, 'attachments', 'other', 'k3f9x2-scan.pdf')
     fs.mkdirSync(path.dirname(outside), { recursive: true })
     fs.writeFileSync(outside, 'bytes')
 
     expect(
-      reconcileDownloadedAttachmentName(NOTE_ID, outside, body('k3f9x2-invoice.pdf'), vaultPath)
+      await reconcileDownloadedAttachmentName(
+        NOTE_ID,
+        outside,
+        body('k3f9x2-invoice.pdf'),
+        vaultPath
+      )
     ).toBeNull()
     expect(fs.existsSync(outside)).toBe(true)
+  })
+})
+
+function fileSystemIgnoresCase(): boolean {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-case-probe-'))
+  try {
+    fs.writeFileSync(path.join(dir, 'probe'), '')
+    return fs.existsSync(path.join(dir, 'PROBE'))
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true })
+  }
+}
+
+// REVIEW-5749: a ref that differs from the manifest name only by case names
+// the download itself on a case-insensitive FS. It must never be deleted as
+// its own duplicate.
+describe.runIf(fileSystemIgnoresCase())('reconcileDownloadedAttachmentName, case-only ref', () => {
+  it('gives the download the body’s spelling and keeps its bytes', async () => {
+    const downloaded = writeAttachment('abc123-photo.png')
+
+    const result = await reconcileDownloadedAttachmentName(
+      NOTE_ID,
+      downloaded,
+      `![x](attachments/${NOTE_ID}/abc123-Photo.png)`,
+      vaultPath
+    )
+
+    expect(result).toBe(path.join(attachmentsDir(), 'abc123-Photo.png'))
+    expect(fs.readdirSync(attachmentsDir())).toEqual(['abc123-Photo.png'])
+    expect(fs.readFileSync(result!, 'utf8')).toBe('bytes')
+  })
+
+  it('keeps local edits of a file the download skipped as already materialized', async () => {
+    // The skip hands back the manifest's spelling of the file on disk, which
+    // holds this device's edits the server lacks.
+    fs.mkdirSync(attachmentsDir(), { recursive: true })
+    fs.writeFileSync(path.join(attachmentsDir(), 'abc123-Photo.png'), 'edited here')
+    const skipped = path.join(attachmentsDir(), 'abc123-photo.png')
+
+    const result = await reconcileDownloadedAttachmentName(
+      NOTE_ID,
+      skipped,
+      `![x](attachments/${NOTE_ID}/abc123-Photo.png)`,
+      vaultPath
+    )
+
+    expect(fs.readdirSync(attachmentsDir())).toEqual(['abc123-Photo.png'])
+    expect(fs.readFileSync(result!, 'utf8')).toBe('edited here')
   })
 })
