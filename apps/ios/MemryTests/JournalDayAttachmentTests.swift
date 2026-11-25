@@ -31,6 +31,7 @@ private func binding(_ id: String, localPath: String? = nil) -> BlockAttachment 
 /// body would.
 private final class DayReader: NotesReading, @unchecked Sendable {
     private let state: Mutex<(blocks: [Block], bindings: [String: BlockAttachment])>
+    private let written = Mutex<[URL]>([])
 
     init(blocks: [Block], bindings: [String: BlockAttachment]) {
         state = Mutex((blocks, bindings))
@@ -44,7 +45,9 @@ private final class DayReader: NotesReading, @unchecked Sendable {
     /// `intactPath` reads a missing one as not downloaded.
     func landBytes(of id: String) {
         let path = "journal-\(UUID().uuidString)-\(id)"
-        FileManager.default.createFile(atPath: AttachmentPaths.url(for: path).path(percentEncoded: false), contents: Data())
+        let file = AttachmentPaths.url(for: path)
+        FileManager.default.createFile(atPath: file.path(percentEncoded: false), contents: Data())
+        written.withLock { $0.append(file) }
         state.withLock { state in
             for (url, bound) in state.bindings {
                 if case let .bound(attachment) = bound, attachment.attachmentId == id {
@@ -52,6 +55,12 @@ private final class DayReader: NotesReading, @unchecked Sendable {
                 }
             }
         }
+    }
+
+    /// Deletes every file `landBytes` wrote: they sit in the shared images
+    /// directory, not under the test's vault.
+    func removeLandedBytes() {
+        written.withLock { $0 }.forEach { try? FileManager.default.removeItem(at: $0) }
     }
 
     func folders() async throws -> [FolderSummary] { [] }
@@ -169,6 +178,7 @@ struct JournalDayAttachmentTests {
     /// cellular. It asks once the user pages to it.
     @Test(.timeLimit(.minutes(1))) func a_neighbour_asks_for_nothing_until_it_is_shown() async throws {
         let reader = DayReader(blocks: [picture("shot.png")], bindings: ["shot.png": binding("att-1")])
+        defer { reader.removeLandedBytes() }
         let day = try await open(reader, shown: false)
         defer { day.window.isHidden = true }
 
@@ -190,6 +200,7 @@ struct JournalDayAttachmentTests {
     /// downloads it without being reopened.
     @Test(.timeLimit(.minutes(1))) func the_shown_day_downloads_a_picture_a_pulled_body_brings() async throws {
         let reader = DayReader(blocks: [paragraph], bindings: [:])
+        defer { reader.removeLandedBytes() }
         let day = try await open(reader, shown: true)
         defer { day.window.isHidden = true }
 

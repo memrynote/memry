@@ -1,6 +1,7 @@
 import Foundation
 import MemryCore
 import SwiftUI
+import Synchronization
 import Testing
 import UIKit
 
@@ -19,6 +20,7 @@ import UIKit
 // | an ambiguous basename is refused, never guessed         | §Q4                     |
 // | only attachment-bearing blocks are resolved             | a bookmark url is not a vault path |
 // | a run holding a stale list skips a file another run landed | one download per file |
+// | a landed file stays downloading until it is rebound    | one download per file |
 // | a missing file is asked for again                     | VERIFY-5674 #1          |
 // | a later run asks again only after a failure waiting fixes | desktop `asksOnSync` |
 // | Try again asks after a corrupt download, not an unverifiable one | desktop `asksOnSync` |
@@ -377,10 +379,14 @@ struct NoteAttachmentRunTests {
         )
         // The landed file is on disk: `intactPath` reads a missing one as not downloaded.
         let run = UUID().uuidString
+        let written = Mutex<[URL]>([])
+        defer { written.withLock { $0 }.forEach { try? FileManager.default.removeItem(at: $0) } }
         let filler = FirstFetchGatedFiller { id in
             guard let url = urls[id] else { return }
             let path = "\(run)-\(id)"
-            FileManager.default.createFile(atPath: AttachmentPaths.url(for: path).path(percentEncoded: false), contents: Data())
+            let file = AttachmentPaths.url(for: path)
+            FileManager.default.createFile(atPath: file.path(percentEncoded: false), contents: Data())
+            written.withLock { $0.append(file) }
             reader.rebind(url, to: .bound(attachment: cached(id: id, localPath: path)))
         }
         let model = NoteReadViewModel(
@@ -396,6 +402,33 @@ struct NoteAttachmentRunTests {
         await first.value
 
         #expect(filler.fetched.sorted() == ["att-a", "att-b"], "a file was downloaded twice")
+        #expect(model.attachmentFetches.isEmpty)
+    }
+
+    /// REVIEW-5685R3 #1: a landed file keeps its `.downloading` mark until
+    /// the run rebinds it. A run starting between the fetch and the rebind
+    /// finds the old binding with no file, so only the mark stops it from
+    /// downloading the file again.
+    @Test("a landed file stays downloading until it is rebound", .timeLimit(.minutes(1)))
+    func aLandedFileHoldsItsMarkUntilRebound() async {
+        let reader = RebindGatedReader(
+            url: "picture.png",
+            binding: .bound(attachment: cached(id: "att-1", localPath: nil))
+        )
+        let filler = ScriptedAttachmentFiller(
+            summary: AttachmentFetchSummary(downloaded: true, deferred: false, bytes: 100, localPath: "att-1")
+        )
+        let model = NoteReadViewModel(route: route, reader: reader, filler: filler, reachability: FixedPath(path: .wifi))
+        await model.loadIfNeeded()
+
+        reader.holdNextResolve()
+        let first = Task { await model.fetchWaitingAttachments() }
+        for await _ in reader.held { break }
+        await model.fetchWaitingAttachments()
+        reader.release()
+        await first.value
+
+        #expect(filler.fetched == ["att-1"], "a run between the fetch and the rebind downloaded the file again")
         #expect(model.attachmentFetches.isEmpty)
     }
 
@@ -529,6 +562,57 @@ struct NoteAttachmentRunTests {
 
         for await _ in filler.started { break }
         #expect(filler.fetched == ["att-1"])
+    }
+}
+
+/// Resolves one url to one binding. Once armed, it holds the next resolve
+/// until `release()`: the rebind after a download, held open.
+private final class RebindGatedReader: NotesReading, @unchecked Sendable {
+    let held: AsyncStream<Void>
+    private let hold: AsyncStream<Void>.Continuation
+    private let url: String
+    private let binding: BlockAttachment
+    private let gate = Mutex<(armed: Bool, waiting: CheckedContinuation<Void, Never>?)>((false, nil))
+
+    init(url: String, binding: BlockAttachment) {
+        self.url = url
+        self.binding = binding
+        (held, hold) = AsyncStream.makeStream()
+    }
+
+    func holdNextResolve() { gate.withLock { $0.armed = true } }
+
+    func release() {
+        gate.withLock { state in
+            defer { state.waiting = nil }
+            return state.waiting
+        }?.resume()
+    }
+
+    func folders() async throws -> [FolderSummary] { [] }
+    func list() async throws -> [NoteSummary] { [] }
+    func read(id: String) async throws -> NoteDetail? {
+        NoteDetail(
+            summary: NoteSummary(
+                id: id, title: "a note", folderPath: nil,
+                emoji: nil, createdAt: nil, modifiedAt: nil, aliases: []
+            ),
+            body: NoteBody(text: "body", present: true)
+        )
+    }
+
+    func blocks(id: String) async throws -> [Block]? { [imageBlock(url: url)] }
+
+    func attachmentForBlock(id: String, url: String) async throws -> BlockAttachment {
+        await withCheckedContinuation { continuation in
+            let holds = gate.withLock { state in
+                guard state.armed else { return false }
+                state = (false, continuation)
+                return true
+            }
+            if holds { hold.yield() } else { continuation.resume() }
+        }
+        return url == self.url ? binding : .unknown
     }
 }
 
