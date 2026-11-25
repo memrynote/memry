@@ -14,11 +14,22 @@ const dirs = [
   '.github/workflows',
   ...readdirSync(join(repo, '.github/actions')).map((a) => `.github/actions/${a}`)
 ]
-const files = dirs.flatMap((dir) =>
-  readdirSync(join(repo, dir))
-    .filter((f) => /\.ya?ml$/.test(f))
-    .map((f) => join(dir, f))
-)
+// Deploy and release workflows run only on main or on tags, so their saves already land only there.
+// Editing them is not free: sync-server-deploy-staging has a push path filter on its own file, so a
+// change to it deploys staging on merge, which needs Kaan's separate approval.
+const exempt = new Set([
+  '.github/workflows/sync-server-deploy-staging.yml',
+  '.github/workflows/sync-server-deploy-production.yml',
+  '.github/workflows/publish-release.yml',
+  '.github/workflows/publish-extension.yml'
+])
+const files = dirs
+  .flatMap((dir) =>
+    readdirSync(join(repo, dir))
+      .filter((f) => /\.ya?ml$/.test(f))
+      .map((f) => join(dir, f))
+  )
+  .filter((f) => !exempt.has(f))
 
 // The step around line i: from its `- ` line to the next line at or left of that indent.
 function step(lines, i) {

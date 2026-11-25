@@ -31,9 +31,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-
-      - name: Cache the pnpm store
-        uses: ./.github/actions/pnpm-store-cache
+          cache: pnpm
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
