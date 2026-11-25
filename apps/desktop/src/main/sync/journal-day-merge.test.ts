@@ -7,6 +7,7 @@ import { eq } from 'drizzle-orm'
 import { noteMetadata, tasks } from '@memry/db-schema/data-schema'
 import { taskNotes } from '@memry/db-schema/schema/task-relations'
 import { syncDevices } from '@memry/db-schema/schema/sync-devices'
+import { syncState } from '@memry/db-schema/schema/sync-state'
 import {
   asClientDb,
   asSyncDb,
@@ -963,9 +964,19 @@ describe('runJournalDayMerges', () => {
       return parseJournalEntry(dayFile(), DATE).frontmatter.tags ?? []
     }
 
+    // This vault first opened under the stamping build at `iso` (`journalClockEra`).
+    const upgradedAt = (iso: string): void => {
+      data.db
+        .insert(syncState)
+        .values({ key: 'journalClockEra', value: iso, updatedAt: new Date() })
+        .onConflictDoUpdate({ target: syncState.key, set: { value: iso } })
+        .run()
+    }
+
     beforeEach(() => {
       queue = new SyncQueueManager(asClientDb(data.db))
       service = new JournalSyncService({ queue, getDeviceId: () => 'me' })
+      upgradedAt('2026-06-09T06:00:00.000Z')
     })
 
     afterEach(() => {
@@ -1034,6 +1045,73 @@ describe('runJournalDayMerges', () => {
     describe('on the first start after an upgrade', () => {
       const queuedClock = (): Record<string, number> =>
         (JSON.parse(queue.peek(1)[0]?.payload ?? '{}') as { clock: Record<string, number> }).clock
+
+      // The fixture rows below are an older build's: written before this one.
+      beforeEach(() => {
+        upgradedAt('2026-06-09T09:30:00.000Z')
+      })
+
+      // The older build pulled the day from B at `{b: 1}`, which stamped it,
+      // then took an edit here (`{b: 1, me: 1}`) and pushed it; its ack stamped
+      // nothing. B then made a tag edit it has not pushed yet (VERIFY-5691R4).
+      it("replays a pulled-then-acked journal, leaving a peer's unpushed tag edit standing", () => {
+        vi.useFakeTimers({ toFake: ['Date'] })
+        vi.setSystemTime(new Date('2026-06-09T08:30:00.000Z'))
+        journalHandler.applyUpsert(
+          ctx,
+          DAY,
+          { date: DATE, content: 'held\n', tags: ['a'] },
+          { b: 1 }
+        )
+        data.db
+          .update(noteMetadata)
+          .set({ clock: { b: 1, me: 1 }, modifiedAt: '2026-06-09T09:00:00.000Z' })
+          .where(eq(noteMetadata.id, DAY))
+          .run()
+        vi.useRealTimers()
+
+        expect(sweep().journals).toBe(1)
+        const pushed = queuedClock()
+        expect(pushed).toEqual({ b: 1, me: 1 })
+        for (const row of queue.peek(10)) queue.markSuccess(row.id)
+
+        fs.writeFileSync(
+          path.join(vaultPath, DAY_PATH),
+          dayFile().replace('  - a\n', '  - a\n  - peer\n')
+        )
+        data.db
+          .update(noteMetadata)
+          .set({ clock: { b: 2, me: 1 } })
+          .where(eq(noteMetadata.id, DAY))
+          .run()
+        journalHandler.applyUpsert(ctx, DAY, { date: DATE, content: null, tags: ['a'] }, pushed)
+
+        expect(parseJournalEntry(dayFile(), DATE).frontmatter.tags).toEqual(['a', 'peer'])
+      })
+
+      // The same older-build row, pulled at 07:00 and edited and acked at
+      // 08:00, then given tag c outside the app after the upgrade: the watcher
+      // moves `modifiedAt` and nothing ticks.
+      it.each(['day first', 'tombstone first'] as const)(
+        'keeps a tag added outside the app after the upgrade to a pulled-then-acked holder, %s',
+        async (order) => {
+          foreignRow(
+            { me: 1 },
+            { body: holderFile(['a', 'b', 'c']), syncedAt: '2026-06-09T07:00:00.000Z' }
+          )
+          data.db
+            .update(noteMetadata)
+            .set({ modifiedAt: '2026-06-09T10:00:00.000Z' })
+            .where(eq(noteMetadata.id, FOREIGN))
+            .run()
+
+          expect(sweep().journals).toBe(1)
+          expect(queuedClock()).toEqual({ me: 2 })
+          answer(build())
+
+          expect(await peerMerged(order)).toEqual(['a', 'b', 'c'])
+        }
+      )
 
       it('replays an acked unstamped journal at its stored clock', () => {
         foreignRow({ me: 1 }, { body: holderFile(['a']) })

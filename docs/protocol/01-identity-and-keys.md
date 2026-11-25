@@ -486,11 +486,15 @@ pass settles them. The decision is a pure function of five facts
    and the ack still reads as edited
    (`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:278`): an
    edit made outside the app is neither ticked nor queued until the next
-   start's dirty sweep queues it, under a fresh clock when the row carries a
-   `syncedAt` older than its `modifiedAt`, and at its stored clock when it
-   carries none, which every journal a build before this rule acked does
+   start's dirty sweep queues it. The sweep pushes it under a fresh clock
+   when the row's `syncedAt` is older than its `modifiedAt` and that
+   `modifiedAt` is not older than the time the vault first opened under this
+   rule (`journalClockEra` in `sync_state`). Every other dirty journal it
+   replays at its stored clock: a build before this rule stamped pulls and
+   never acks, so its `syncedAt` cannot tell an edit the server lacks from
+   one it holds
    (`apps/desktop/src/main/sync/journal-day-merge.ts:221`,
-   `apps/desktop/src/main/sync/dirty-recovery.ts:328`). Otherwise
+   `apps/desktop/src/main/sync/dirty-recovery.ts:343`). Otherwise
    desktop counts every holder tag, its day file's: it keeps no snapshot of
    the tags last synced. The core counts the tags absent from the snapshot
    of `F`'s row taken before its first unpushed edit, kept in `meta` under
@@ -606,11 +610,18 @@ there lives only in its Yjs state
   made outside the app under a fresh clock, which a tombstone of `F`
   refuses as delete-wins and never acks as a replay, so neither client
   drops a tag the deleting device never saw.
-- A journal a desktop build before this rule acked carries no `syncedAt`, so
-  its first start under this rule replays it at its stored clock instead of
-  re-clocking it. Re-clocking would push every such journal as a new write
-  concurrent with any unpushed peer edit, which the peer's merge would
-  overwrite. The replay's ack stamps the row. Until then, an edit made to
-  it outside the app is acked as a replay and stamped clean without
-  reaching the server, as every start of those builds did, and a tombstone
-  of it can drop that edit's tags.
+- A desktop build before this rule acked journal pushes without stamping
+  `syncedAt`. A journal it acked carries no `syncedAt` when this device
+  minted it, and its last pull's when it pulled the journal before editing
+  it. Either may read as dirty to the sweep with nothing the server lacks.
+  Re-clocking it would push a new write concurrent with any unpushed peer
+  edit, and the peer's merge would overwrite that edit's tags. The sweep
+  therefore re-clocks only a row whose `modifiedAt` is from this rule's era,
+  which starts when the vault first opens under it, before its watcher
+  runs. It replays every other dirty journal at its stored clock, and the
+  replay's ack stamps the `modifiedAt` the payload read. What stays exposed
+  is an edit an older build saw made outside the app and never pushed: it is
+  acked as a replay and stamped clean without reaching the server, as every
+  start of those builds did, and a tombstone of the journal can drop that
+  edit's tags. A `modifiedAt` an older build wrote ahead of the era, under a
+  device clock running fast, reads as this era's and is re-clocked.

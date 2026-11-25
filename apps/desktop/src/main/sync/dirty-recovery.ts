@@ -32,6 +32,7 @@ import { getCanvasFolderSyncService } from '@memry/sync-client/canvas-folder-syn
 import { getTaskActivitySyncService } from '@memry/sync-client/task-activity-sync'
 import { taskActivityRetentionCutoff } from '@memry/sync-client/task-activity-retention'
 import { getJournalSyncService } from './journal-sync'
+import { journalClockEra } from './journal-clock-era'
 import { getNoteSyncService } from './note-sync'
 import { getProjectSyncService } from '@memry/sync-client/project-sync'
 import { getTaskSyncService } from '@memry/sync-client/task-sync'
@@ -60,6 +61,8 @@ interface DirtyRow {
   id: string
   syncedAt: string | number | null
   journalDate?: string | null
+  /** Journals: push under a fresh clock rather than replay the stored one. */
+  reclock?: boolean
 }
 
 /**
@@ -272,28 +275,36 @@ const recoverDirtyInbox: DirtySweep = {
  * set) and that are not local-only. Clock-less journals belong to
  * `journalHandler.seedUnclocked`.
  *
- * Invariant: only a journal whose acked push or pull is stamped (`syncedAt`)
- * and that changed since (`modifiedAt > syncedAt`) is re-clocked
- * (`enqueueUpdate`). Its edit happened after the server held this state, and
- * a day file edited outside the app is never ticked, so replaying its stored
- * clock would read as a replay to a server holding a later version or a
- * tombstone, and the replay ack (`journalHandler.markPushSynced`) would mark
- * clean an edit that never left this device (VERIFY-5691R2). Fresh, the edit
- * is a real write: against a peer's tombstone it is refused as delete-wins and
- * stays unacked.
+ * Invariant: a journal's clock advances only when this device observed a
+ * change the server lacks: an in-app edit, which ticks where it is made, or an
+ * edit made outside the app, which only moves `modifiedAt` and is re-clocked
+ * here (`enqueueUpdate`). Every other dirty journal replays its stored clock
+ * (`enqueueRecoveredUpdate`), which the server answers as a replay, keeping
+ * what it holds, or accepts when it never got the push.
  *
- * A journal with no stamp replays its stored clock (`enqueueRecoveredUpdate`).
- * That covers a push that never reached the server, an offline tick (which
- * already advanced the clock and cleared the stamp), and every journal a build
- * before #5659 acked, since those builds stamped only pulls. Re-clocking those
- * on the first start after an upgrade would push every journal this device
- * minted as a new write, concurrent with any unpushed peer edit, and the
- * peer's merge would overwrite its day file's tags with ours (VERIFY-5691R3).
- * At its stored clock the server answers a replay and keeps what it has, and
- * the ack stamps the row, so the next start sweeps it under the rule above.
- * What stays exposed: a day file edited outside the app before that first
- * ack, whose replay is acked and stamped clean without its edit, as every
- * start of the older builds already did.
+ * A journal reads as edited outside the app when its `syncedAt` is older than
+ * its `modifiedAt` and that `modifiedAt` is from this build's era
+ * (`journalClockEra`). Re-clocked, the edit is a real write: against a peer's
+ * tombstone it is refused as delete-wins and stays unacked. Replayed, a server
+ * holding a later version or a tombstone would ack it as a replay, and the ack
+ * (`journalHandler.markPushSynced`) would mark clean an edit that never left
+ * this device (VERIFY-5691R2).
+ *
+ * The era is needed because a build before #5659 acked journal pushes without
+ * stamping `syncedAt`, so its `syncedAt` is the last pull, or none. A journal
+ * it pulled, edited and pushed reads `modifiedAt > syncedAt` with nothing the
+ * server lacks (VERIFY-5691R4), and one it minted reads no stamp
+ * (VERIFY-5691R3). Re-clocked, either becomes a new write concurrent with any
+ * unpushed peer edit, and the peer's merge overwrites its tags with ours. The
+ * file baseline cannot tell either: an older build's watcher moved it to the
+ * edit it ingested, and an edit made while the app was closed is compared
+ * with it only when the doc first opens, keeping `modifiedAt` (#5319).
+ *
+ * So a journal with no stamp, or edited before the era, replays. Its ack
+ * stamps the `modifiedAt` the payload read, so an edit after the era
+ * re-clocks from then on. What stays exposed is an edit an older build made
+ * outside the app and never pushed: it is replayed and acked clean, as every
+ * start of those builds did.
  */
 const recoverDirtyJournals: DirtySweep = {
   kind: 'sweep',
@@ -303,7 +314,11 @@ const recoverDirtyJournals: DirtySweep = {
       .select({
         id: noteMetadata.id,
         syncedAt: noteMetadata.syncedAt,
-        journalDate: noteMetadata.journalDate
+        journalDate: noteMetadata.journalDate,
+        reclock:
+          sql<number>`${noteMetadata.syncedAt} IS NOT NULL AND ${noteMetadata.modifiedAt} > ${noteMetadata.syncedAt} AND ${noteMetadata.modifiedAt} >= ${journalClockEra(db)}`.mapWith(
+            Boolean
+          )
       })
       .from(noteMetadata)
       .where(
@@ -325,7 +340,7 @@ const recoverDirtyJournals: DirtySweep = {
     // Unreachable given the `isNotNull` above, but the date is what keeps the
     // payload builder from throwing, so it is narrowed here rather than asserted.
     if (!journal.journalDate) return false
-    if (journal.syncedAt !== null) {
+    if (journal.reclock) {
       journalSync.enqueueUpdate(journal.id, journal.journalDate)
       return true
     }
