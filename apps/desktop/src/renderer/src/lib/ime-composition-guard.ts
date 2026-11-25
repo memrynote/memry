@@ -13,7 +13,7 @@
  * CodeMirror) still get the events: they track composition themselves.
  */
 function onKeyDown(event: KeyboardEvent): void {
-  // oxlint-disable-next-line typescript/no-deprecated -- keyCode 229 marks the IME keydown that starts a composition, before isComposing turns true
+  // oxlint-disable-next-line typescript/no-deprecated -- keyCode 229 also marks IME keydowns that carry isComposing false: the one that starts a composition, and in WebKit the one that commits it
   if (!event.isComposing && event.keyCode !== 229) return
   const field = event.target
   if (!(field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement)) return
