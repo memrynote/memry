@@ -37,6 +37,8 @@ use crate::storage::pool::ReaderPool;
 use crate::storage::pragmas;
 pub use crate::storage::pragmas::{BUSY_TIMEOUT_MS, Profile};
 
+const STATEMENT_CACHE_CAPACITY: usize = 64;
+
 /// A single SQLite database the core owns.
 ///
 /// Cheap to clone: every clone shares the one writer and the one pool.
@@ -72,6 +74,9 @@ impl Db {
             what: format!("could not open {}: {err}", path.display()),
         })?;
         pragmas::configure_writer(&conn, profile)?;
+        // The record apply reuses its hot statements through `prepare_cached`
+        // (#5231); rusqlite's default of 16 would evict them between items.
+        conn.set_prepared_statement_cache_capacity(STATEMENT_CACHE_CAPACITY);
         // The writer has created the file and persisted WAL by now.
         let readers = ReaderPool::open(path, profile)?;
         Ok(Self {
@@ -92,6 +97,7 @@ impl Db {
             what: format!("could not open an in-memory database: {err}"),
         })?;
         pragmas::configure_writer(&conn, Profile::Data)?;
+        conn.set_prepared_statement_cache_capacity(STATEMENT_CACHE_CAPACITY);
         Ok(Self {
             writer: Arc::new(Mutex::new(conn)),
             readers: None,
@@ -243,10 +249,23 @@ fn set_query_only(conn: &Connection, on: bool) -> Result<(), StorageError> {
         })
 }
 
+/// Every transaction borrows the guard of the call that opened it, so a call
+/// that finds one open finds a dead one: its drop could not roll it back. A
+/// `begin` inside it would open a savepoint whose RELEASE commits nothing, so
+/// it is rolled back first, and the call fails when that fails too.
 fn lock(conn: &Arc<Mutex<Connection>>) -> Result<MutexGuard<'_, Connection>, StorageError> {
-    conn.lock().map_err(|_| StorageError::Failed {
+    let guard = conn.lock().map_err(|_| StorageError::Failed {
         what: "the database mutex was poisoned by a panic in an earlier statement".to_owned(),
-    })
+    })?;
+    if !guard.is_autocommit() {
+        eprintln!("memry-core: rolling back a transaction an earlier call left open");
+        guard
+            .execute_batch("ROLLBACK")
+            .map_err(|err| StorageError::Failed {
+                what: format!("could not roll back a transaction left open: {err}"),
+            })?;
+    }
+    Ok(guard)
 }
 
 #[cfg(test)]

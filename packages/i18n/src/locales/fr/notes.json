@@ -196,6 +196,10 @@
   "editor": {
     "bodySyncPending": "Synchronisation en cours – le contenu de cette note n'est peut-être pas encore arrivé",
     "databaseReadOnly": "Lecture seule. Cet appareil ne peut pas enregistrer les modifications.",
+    "remoteBodyStuck": "En attente de synchronisation — lecture seule jusqu'à l'arrivée du contenu synchronisé de cette note",
+    "remoteBodyOffline": "Hors ligne — lecture seule jusqu'à la synchronisation de cette note",
+    "remoteBodySignedOut": "Déconnecté — lecture seule jusqu'à ce que vous vous connectiez et que cette note se synchronise",
+    "remoteBodyVaultLocked": "Impossible de lire la clé de chiffrement de ce coffre — lecture seule jusqu'à la synchronisation de cette note",
     "taskRemoval": {
       "title": "{count, plural, one {Tâche retirée de cette note} other {# tâches retirées de cette note}}",
       "description": "{count, plural, one {La conserver dans Tâches ou la supprimer partout ?} other {Les conserver dans Tâches ou les supprimer partout ?}}",

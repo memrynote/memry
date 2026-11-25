@@ -44,6 +44,8 @@
     "moveFailed": "Die Notiz konnte nicht verschoben werden",
     "applyTemplateFailed": "Die Vorlage konnte nicht angewendet werden",
     "appendBlocksFailed": "Der Block konnte nicht in diese Notiz verschoben werden",
+    "appendIntoCaseTwin": "Diese Notiz teilt ihre Datei mit einer Notiz, deren Name sich nur in der Groß- und Kleinschreibung unterscheidet. Benenne eine der beiden um und verschiebe den Block dann erneut.",
+    "caseTwinMoveRefused": "Diese Notiz teilt ihre Datei mit einer Notiz, deren Name sich nur in der Groß- und Kleinschreibung unterscheidet, daher kann sie so nicht verschoben werden. Benenne die andere Notiz um oder verschiebe sie, oder lösche die Kopie, die du nicht brauchst.",
     "exportPdfFailed": "PDF konnte nicht exportiert werden",
     "exportHtmlFailed": "HTML konnte nicht exportiert werden",
     "restoreVersionFailed": "Die Version konnte nicht wiederhergestellt werden",
@@ -78,7 +80,9 @@
     "downloadProgressFailed": "Der Downloadfortschritt konnte nicht abgerufen werden",
     "exceedsMaxSize": "Datei zu groß: {size} überschreitet das Limit von {limit}",
     "exceedsPlanLimit": "Die Datei ist größer, als dein Tarif erlaubt: {size} überschreitet {limit}",
-    "emptyFile": "Leere Dateien können nicht hochgeladen werden"
+    "emptyFile": "Leere Dateien können nicht hochgeladen werden",
+    "emptyNotAttached": "Diese Datei ist leer und wurde deshalb nicht angehängt. Wenn du ein Bild eingefügt hast, kopiere es erneut und füge es wieder ein.",
+    "textInMediaFile": "Diese Datei enthält Text statt der Medien, die ihr Name angibt"
   },
   "crdt": {
     "persistenceDegradedTitle": "Der Bearbeitungsverlauf wird auf diesem Gerät nicht gespeichert",
@@ -233,6 +237,7 @@
   "folder": {
     "createFailed": "Der Ordner konnte nicht erstellt werden",
     "renameFailed": "Der Ordner konnte nicht umbenannt werden",
+    "renameCaseTwins": "Dieser Ordner enthält Notizen, die eine Datei mit einer Notiz teilen, deren Ordnername sich nur in der Groß- und Kleinschreibung unterscheidet. Benenne diese Notizen zuerst um oder verschiebe sie, und benenne dann den Ordner um.",
     "deleteFailed": "Der Ordner konnte nicht gelöscht werden",
     "keptNotPulled": "Dieser Ordner enthält eine Notiz, deren Datei außerhalb von memrynote gelöscht wurde, und ihr Text wurde noch nicht mit diesem Gerät synchronisiert. Daher kann sie nicht in den Papierkorb verschoben werden. Es wurde nichts gelöscht. Warte, bis sie synchronisiert ist, oder lösche diese Notiz zuerst einzeln.",
     "keptUnwritable": "Dieser Ordner enthält eine Notiz, deren Datei außerhalb von memrynote gelöscht wurde, und ihr Text kann nicht für den Papierkorb in einer Datei gespeichert werden. Es wurde nichts gelöscht. Lösche diese Notiz zuerst einzeln.",

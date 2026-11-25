@@ -4,8 +4,10 @@ import { NoteSyncPayloadSchema, type NoteSyncPayload } from '@memry/contracts/sy
 import { utcNow } from '@memry/shared/utc'
 import {
   isBinaryFileType,
+  isBinaryNoteRow,
   getExtensionFromMimeType,
   getDefaultExtension,
+  binaryRecordFields,
   getMimeType,
   type FileType
 } from '@memry/shared/file-types'
@@ -14,8 +16,9 @@ import { reminders } from '@memry/db-schema/schema/reminders'
 import { NotesChannels, ReminderChannels } from '@memry/contracts/ipc-channels'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
-import { extractFolderFromPath } from '../note-sync'
-import { markWritebackIgnored } from '../crdt-writeback'
+import { extractFolderFromPath, getNoteSyncService } from '../note-sync'
+import { recordAppMove, recordAppWrite } from '../../vault/app-writes'
+import { baselineAfterWrite } from '../writeback-baseline'
 import { getCrdtProvider } from '../crdt-provider'
 import { deleteSyncedVaultFile, writeSyncedVaultFile } from '../bulk-apply'
 import { scheduleDeletedFolderPrune } from '../deleted-folder-prune'
@@ -36,12 +39,12 @@ import { readVaultFileSync } from '../../lib/paths'
 import { getNoteAttachmentsDir } from '../../vault/attachments'
 import { getStatus as getVaultStatus } from '../../vault/status'
 import {
+  generateContentHash,
   parseNote,
   serializeNote,
   serializeParsedNote,
   mergeTagLists,
   extractAliases,
-  generateContentHash,
   type NoteFrontmatter
 } from '../../vault/frontmatter'
 import { extractInlineTagsFromMarkdown } from '@memry/shared/inline-tags'
@@ -71,6 +74,7 @@ import { createLogger } from '../../lib/logger'
 import { BaseItemHandler } from '@memry/sync-client/item-handlers/base-handler'
 import { applyPinnedTags } from '@memry/sync-client/item-handlers/note-pin-helpers'
 import { applyRemoteFrontmatter, remoteAliases } from './note-handler-frontmatter'
+import { reapplyRemoteFrontmatterAfterPass } from './note-frontmatter-turn'
 import {
   buildNotePushPayload,
   fetchLocalNote,
@@ -79,7 +83,20 @@ import {
 } from './note-handler-sync-helpers'
 import type { ApplyContext, ApplyResult, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { belongsToOtherType } from './note-row-type'
+import {
+  askForCaseTwinOwnBytes,
+  planBinaryCaseTwinMove,
+  planCaseTwinLeave,
+  planCaseTwinMove,
+  sharesCaseTwinFile
+} from '../../vault/case-twin-file'
+import {
+  healBinaryNoteRecord,
+  isMarkdownRecordOverBinaryNote,
+  noteBinaryRecordForMarkdownRow
+} from './binary-note-record'
 import { pulledRowSyncedAt } from './pulled-row-synced-at'
+import { planPeerBinaryReplace } from './peer-binary-replace'
 import {
   forgetBaselineOfRemotelyDeletedNote,
   settleRemoteNoteFileSync,
@@ -250,7 +267,14 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
       const modifiedAt = laterModifiedAt(existing.modifiedAt, data.modifiedAt ?? now)
       const syncedAt = pulledRowSyncedAt(modifiedAt, now)
 
-      if (existing.fileType && isBinaryFileType(existing.fileType)) {
+      const binary = binaryRecordFields(existing)
+      if (binary) {
+        const replaceBytes = planPeerBinaryReplace(
+          ctx.db,
+          existing,
+          data.attachmentId,
+          resolution.action === 'merge'
+        )
         const newTitle = data.title ?? existing.title
         const titleChanged = newTitle !== existing.title
         const localFolder = extractFolderFromPath(existing.path)
@@ -269,10 +293,9 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
 
         if (needsPathUpdate) {
           const notesDir = getVaultRoot()
-          const ext = existing.mimeType
-            ? (getExtensionFromMimeType(existing.mimeType) ??
-              getDefaultExtension(existing.fileType))
-            : getDefaultExtension(existing.fileType)
+          const ext = binary.mimeType
+            ? (getExtensionFromMimeType(binary.mimeType) ?? getDefaultExtension(binary.fileType))
+            : getDefaultExtension(binary.fileType)
           // Folder-only move (title unchanged): preserve the existing on-disk
           // basename byte-for-byte instead of re-deriving it through the
           // sanitizer, which would retroactively rename legacy files.
@@ -285,12 +308,28 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
           )
           const newRelPath = toRelativePath(newAbsPath)
           const oldAbsPath = toAbsolutePath(existing.path)
+          // A case twin's file is the other twin's too (#5560): it stays, and
+          // this twin's own file lands at the new path in the step below. A
+          // throw fails the item with nothing moved.
+          const twinMove = sharesCaseTwinFile(notesDir, existing.path)
+            ? planBinaryCaseTwinMove(
+                notesDir,
+                existing.path,
+                itemId,
+                newAbsPath,
+                data.attachmentId ?? existing.attachmentId
+              )
+            : null
 
           updateFields.path = newRelPath
 
+          twinMove?.()
           try {
-            if (fs.existsSync(oldAbsPath)) {
-              markWritebackIgnored(newAbsPath)
+            if (!twinMove && fs.existsSync(oldAbsPath)) {
+              // An attachment can be gigabytes, too much to hash inside the
+              // apply, so the move keeps the watcher's time window. Its change
+              // path feeds no doc.
+              recordAppMove(newAbsPath)
               const dir = path.dirname(newAbsPath)
               fs.mkdirSync(dir, { recursive: true })
               fs.renameSync(oldAbsPath, newAbsPath)
@@ -325,14 +364,18 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
           path: updateFields.path ?? existing.path,
           title: newTitle,
           emoji: resolvedEmoji,
-          fileType: existing.fileType,
-          mimeType: existing.mimeType,
+          ...binary,
           fileSize: existing.fileSize,
           attachmentId: data.attachmentId ?? existing.attachmentId,
           clock: resolution.mergedClock,
           syncedAt,
           modifiedAt
         })
+        replaceBytes?.(toAbsolutePath(updateFields.path ?? existing.path))
+        askForCaseTwinOwnBytes(ctx.db, itemId)
+        if (isMarkdownRecordOverBinaryNote(existing, data)) {
+          healBinaryNoteRecord(ctx.db, itemId, remoteClock, getNoteSyncService())
+        }
         // Binary/file branch: only sidecar metadata moved, never file bytes.
         emitNoteUpdated(ctx.emit, {
           id: itemId,
@@ -342,6 +385,9 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
         return resolution.action === 'merge' ? 'conflict' : 'applied'
       }
 
+      if (data.attachmentId && data.fileType && isBinaryFileType(data.fileType)) {
+        noteBinaryRecordForMarkdownRow(itemId)
+      }
       const localFolder = extractFolderFromPath(existing.path)
       const remoteFolder = data.folderPath ?? null
       const folderChanged = localFolder !== remoteFolder
@@ -371,6 +417,8 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
       const rewritesFrontmatter =
         tagsChanged || propertiesPresent || coverPresent || frontmatterPatch.aliases !== undefined
       let writtenAliases: IndexedAliases = { kind: 'unread' }
+      /** Where a case twin's own file went when this update moved it off a shared file. */
+      let movedTwinPath: string | null = null
 
       log.debug('applyUpsert properties', {
         itemId,
@@ -403,44 +451,66 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
         )
         const newRelPath = toRelativePath(newAbsPath)
         const oldAbsPath = toAbsolutePath(existing.path)
+        // A case twin's file is the other twin's too (#5498). Planned before
+        // anything here changes: a throw fails the item with nothing moved, and
+        // a not-ready one is retried by the pull. Its own file lands at the new
+        // path in one step with the other twin's, and the frontmatter below is
+        // applied to it in place.
+        const twinMove = sharesCaseTwinFile(notesDir, existing.path)
+          ? planCaseTwinMove(notesDir, existing.path, itemId, newRelPath)
+          : null
 
         updateFields.path = newRelPath
 
-        try {
-          markWritebackIgnored(newAbsPath)
-          const dir = path.dirname(newAbsPath)
-          fs.mkdirSync(dir, { recursive: true })
+        if (twinMove) {
+          const moved = twinMove()
+          movedTwinPath = newRelPath
+          updateFields.contentHash = generateContentHash(moved.content)
+          settleRemoteNoteFileSync(itemId, newAbsPath, newRelPath, moved.content)
+        } else {
+          try {
+            const dir = path.dirname(newAbsPath)
+            fs.mkdirSync(dir, { recursive: true })
 
-          if (rewritesFrontmatter) {
-            // Content actually changed — rewrite user keys only
-            const raw = readVaultFileSync(notesDir, existing.path)
-            if (raw === null) throw new Error(`Note file is missing: ${oldAbsPath}`)
-            const parsed = parseNote(raw)
-            parsed.frontmatter = applyRemoteFrontmatter(parsed.frontmatter, frontmatterPatch)
-            const updatedContent = serializeParsedNote(parsed, parsed.content, {
-              frontmatterEdited: true
-            })
-            const tmpPath = newAbsPath + '.tmp'
-            writeThroughLockSync(oldAbsPath, () => {
-              fs.writeFileSync(tmpPath, updatedContent, 'utf-8')
-              fs.renameSync(tmpPath, newAbsPath)
-              fs.unlinkSync(oldAbsPath)
-              return null
-            })
-            settleRemoteNoteFileSync(itemId, newAbsPath, newRelPath, updatedContent)
-            // The watcher ignores this write, so the index hash moves here or the
-            // next write-back reads the app's own bytes as an outside edit (#3282).
-            updateFields.contentHash = generateContentHash(updatedContent)
-            writtenAliases = { kind: 'read', aliases: extractAliases(parsed.frontmatter, newTitle) }
-            if (coverPresent) recordAppliedNoteCover(ctx.db, itemId, parsed.frontmatter)
-          } else {
-            // Pure rename/move — file bytes untouched
-            fs.renameSync(oldAbsPath, newAbsPath)
-            settleRemoteNoteFileSync(itemId, newAbsPath, newRelPath, null)
+            if (rewritesFrontmatter) {
+              // Content actually changed — rewrite user keys only
+              const raw = readVaultFileSync(notesDir, existing.path)
+              if (raw === null) throw new Error(`Note file is missing: ${oldAbsPath}`)
+              const parsed = parseNote(raw)
+              parsed.frontmatter = applyRemoteFrontmatter(parsed.frontmatter, frontmatterPatch)
+              const updatedContent = serializeParsedNote(parsed, parsed.content, {
+                frontmatterEdited: true
+              })
+              const tmpPath = newAbsPath + '.tmp'
+              const landed = recordAppWrite(newAbsPath, updatedContent)
+              writeThroughLockSync(oldAbsPath, () => {
+                fs.writeFileSync(tmpPath, updatedContent, 'utf-8')
+                fs.renameSync(tmpPath, newAbsPath)
+                fs.unlinkSync(oldAbsPath)
+                return null
+              })
+              landed()
+              settleRemoteNoteFileSync(itemId, newAbsPath, newRelPath, updatedContent)
+              // The watcher drops this write's echo, so the index hash moves here or the
+              // next write-back reads the app's own bytes as an outside edit (#3282).
+              updateFields.contentHash = baselineAfterWrite(indexDb, itemId, raw, updatedContent)
+              writtenAliases = {
+                kind: 'read',
+                aliases: extractAliases(parsed.frontmatter, newTitle)
+              }
+              if (coverPresent) recordAppliedNoteCover(ctx.db, itemId, parsed.frontmatter)
+              reapplyRemoteFrontmatterAfterPass(itemId, frontmatterPatch)
+            } else {
+              // Pure rename/move — file bytes untouched
+              const landed = recordAppWrite(newAbsPath, fs.readFileSync(oldAbsPath))
+              fs.renameSync(oldAbsPath, newAbsPath)
+              landed()
+              settleRemoteNoteFileSync(itemId, newAbsPath, newRelPath, null)
+            }
+            removeEmptyParents(path.dirname(oldAbsPath), notesDir).catch(() => {})
+          } catch {
+            log.warn('Could not read old note for rename/move', { itemId })
           }
-          removeEmptyParents(path.dirname(oldAbsPath), notesDir).catch(() => {})
-        } catch {
-          log.warn('Could not read old note for rename/move', { itemId })
         }
 
         if (titleChanged) {
@@ -461,11 +531,13 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
             source: 'sync'
           })
         }
-      } else if (rewritesFrontmatter) {
+      }
+      if ((!needsPathUpdate || movedTwinPath !== null) && rewritesFrontmatter) {
         // emoji is sidecar-only state — never a reason to rewrite the file
-        const absPath = toAbsolutePath(existing.path)
+        const filePath = movedTwinPath ?? existing.path
+        const absPath = toAbsolutePath(filePath)
         try {
-          const raw = readVaultFileSync(getVaultRoot(), existing.path)
+          const raw = readVaultFileSync(getVaultRoot(), filePath)
           if (raw === null) throw new Error(`Note file is missing: ${absPath}`)
           const parsed = parseNote(raw)
           parsed.frontmatter = applyRemoteFrontmatter(parsed.frontmatter, frontmatterPatch)
@@ -473,18 +545,20 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
             frontmatterEdited: true
           })
           if (updatedContent !== raw) {
-            markWritebackIgnored(absPath)
             const tmpPath = absPath + '.tmp'
+            const landed = recordAppWrite(absPath, updatedContent)
             writeThroughLockSync(absPath, () => {
               fs.writeFileSync(tmpPath, updatedContent, 'utf-8')
               fs.renameSync(tmpPath, absPath)
               return null
             })
-            settleRemoteNoteFileSync(itemId, absPath, existing.path, updatedContent)
-            updateFields.contentHash = generateContentHash(updatedContent)
+            landed()
+            settleRemoteNoteFileSync(itemId, absPath, filePath, updatedContent)
+            updateFields.contentHash = baselineAfterWrite(indexDb, itemId, raw, updatedContent)
           }
           writtenAliases = { kind: 'read', aliases: extractAliases(parsed.frontmatter, newTitle) }
           if (coverPresent) recordAppliedNoteCover(ctx.db, itemId, parsed.frontmatter)
+          reapplyRemoteFrontmatterAfterPass(itemId, frontmatterPatch)
         } catch {
           log.warn('Could not read note for frontmatter update', { itemId })
         }
@@ -507,16 +581,6 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
 
       if (indexTags) {
         setNoteTags(indexDb, itemId, indexTags)
-      }
-
-      if (indexed) {
-        projectNoteNames(indexDb, {
-          noteId: itemId,
-          title: newTitle,
-          aliases: writtenAliases,
-          path: updateFields.path ?? existing.path,
-          previousPath: needsPathUpdate ? existing.path : undefined
-        })
       }
 
       if (indexed && propertiesPresent) {
@@ -543,6 +607,22 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
         : undefined
 
       updateNoteCache(indexDb, itemId, updateFields)
+      // After the row update: the resolver matches titles and paths on the
+      // index row, so before it a link naming the new title stayed unresolved.
+      if (indexed) {
+        projectNoteNames(
+          indexDb,
+          {
+            noteId: itemId,
+            title: newTitle,
+            aliases: writtenAliases,
+            path: updateFields.path ?? existing.path,
+            previousPath: needsPathUpdate ? existing.path : undefined
+          },
+          'sync'
+        )
+      }
+
       updateNoteMetadata(ctx.db, itemId, {
         path: updateFields.path ?? existing.path,
         title: newTitle,
@@ -689,7 +769,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
         modifiedAt,
         emoji: data.emoji ?? null
       },
-      { isNew: true }
+      { isNew: true, source: 'sync' }
     )
     // Ahead of the flush: the links projector then finds the rows in place and
     // commits no project intent for this remote note.
@@ -749,6 +829,13 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
     }
 
     const absolutePath = toAbsolutePath(existing.path)
+    // Planned while this row still names the file (#5495), before anything
+    // else here: a throw fails the item with both rows, the doc and the file
+    // intact, and a not-ready one is retried by the pull. `applyDelete` is
+    // synchronous, so nothing runs between the plan and the drop.
+    const leave = sharesCaseTwinFile(getVaultRoot(), existing.path)
+      ? planCaseTwinLeave(getVaultRoot(), existing.path, itemId)
+      : null
     keepUnseenText(ctx, {
       itemId,
       title: `${existing.title || 'Untitled'} (kept from deleted note)`,
@@ -756,7 +843,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
       tombstoneClock: clock,
       deletedAt,
       bodyStateVector,
-      readBody: () => (existing.fileType === 'markdown' ? readNoteFileBody(absolutePath) : null)
+      readBody: () => (isBinaryNoteRow(existing) ? null : readNoteFileBody(absolutePath))
     })
 
     // Deliberately floated. `applyDelete` is synchronous by interface and runs
@@ -787,6 +874,8 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
       .all()
     for (const { id } of clearedReminders) ctx.emit(ReminderChannels.events.DELETED, { id })
 
+    // The shared file becomes the survivor's own in the row drop's step.
+    leave?.()
     deleteNoteFromCache(indexDb, itemId)
     clearNoteCoverMarker(ctx.db, itemId)
     forgetBaselineOfRemotelyDeletedNote(ctx.db, itemId)
@@ -802,8 +891,9 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
     ctx.emit(NotesChannels.events.DELETED, { id: itemId, path: existing.path, source: 'sync' })
 
     // Journaled with the page and unlinked after it commits (#2385): a lost
-    // unlink would leave a file with no row for the indexer to push back.
-    deleteSyncedVaultFile(absolutePath)
+    // unlink would leave a file with no row for the indexer to push back. A
+    // case twin's file stays with the other twin.
+    if (!leave) deleteSyncedVaultFile(absolutePath)
 
     // The note may be the last one in a folder another device deleted (#2512).
     const folder = extractFolderFromPath(existing.path)

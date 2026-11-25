@@ -45,6 +45,9 @@ use std::sync::atomic::AtomicBool;
 
 use serde_json::{Value as Json, json};
 
+use rusqlite::Connection;
+
+use crate::api::errors::StorageError;
 use crate::crypto::agent_envelope::AtRestKey;
 use crate::protocol::envelope::{EnvelopeError, RecordEnvelope};
 use crate::protocol::http::{ApiRequest, Auth, HttpClient, SYNC_TYPES_HEADER, VAULT_ID_HEADER};
@@ -83,6 +86,14 @@ pub const MAX_PULL_IDS: usize = 100;
 /// item, never a dropped page.
 pub trait RecordCipher: Send + Sync {
     fn open(&self, envelope: &RecordEnvelope) -> Result<Vec<u8>, EnvelopeError>;
+
+    /// The Ed25519 public key of `device_id`, which a purged tombstone's
+    /// delete attestation verifies under (chapter 04 §4.8.4, chapter 05
+    /// §5.12.3). `None` when the signer is unknown, so the marker deletes
+    /// nothing.
+    fn signing_key(&self, _device_id: &str) -> Option<Vec<u8>> {
+        None
+    }
 }
 
 pub use super::pull_report::{PullError, PullReport};
@@ -93,6 +104,8 @@ mod items;
 pub use super::feed_restart::{META_CURSOR_SKIP_REPAIR, META_RECORD_DECLARATION};
 
 mod shared_apply;
+
+use shared_apply::IdItems;
 
 /// The pull loop. One per vault; cheap to clone through the `Arc`s it holds.
 pub struct PullLoop {
@@ -249,7 +262,8 @@ impl PullLoop {
         self
     }
 
-    /// The vault [`PullLoop::with_vault`] selected.
+    /// The vault [`PullLoop::with_vault`] selected, which a purged marker's
+    /// attestation must name (chapter 04 §4.8.4, #5247).
     pub fn vault_id(&self) -> Option<&str> {
         self.vault_id.as_deref()
     }
@@ -399,8 +413,9 @@ impl PullLoop {
 
         let fetch = uncovered_ids(&page, &ids);
 
-        self.take_items(std::mem::take(&mut page.inline), &mut report, &mut pending)
-            .await?;
+        // Each chunk decodes while the next one's request is out (#5231).
+        let inline = std::mem::take(&mut page.inline);
+        let mut decoding = vec![self.start_items(inline, &mut report).await?];
         let mut markers = purged::Entries::default();
         for chunk in fetch.chunks(MAX_PULL_IDS) {
             let mut body = self.fetch_bodies(chunk).await?;
@@ -410,13 +425,15 @@ impl PullLoop {
                 // contract regression. Nothing from the page is applied and the
                 // cursor holds, so the page is still there to re-pull once the
                 // server is fixed; the run is refused so no success is written.
+                self.take_decoded(decoding, &mut report).await?;
                 report.dropped_pages += 1;
                 report.refused = true;
                 report.cursor = cursor;
                 return Ok(report);
             };
-            self.take_items(items, &mut report, &mut pending).await?;
+            decoding.push(self.start_items(items, &mut report).await?);
         }
+        pending.extend(self.take_decoded(decoding, &mut report).await?);
         let named = self.take_markers(markers, from_zero, &mut pending).await?;
 
         // §5.13: rank, then a **stable** sort, so two items of the same rank
@@ -488,9 +505,18 @@ impl PullLoop {
     /// other rule does: per-item validation, the §5.13 apply order, and one
     /// corrupt item never poisoning its chunk mates.
     pub async fn fetch_ids(&self, ids: &[String]) -> Result<PullReport, PullError> {
-        let (mut report, mut pending, markers) = self.fetch_id_items(ids).await?;
+        let IdItems {
+            mut report,
+            mut pending,
+            markers,
+            answered,
+            ..
+        } = self.fetch_id_items(ids, false).await?;
         let named = self.take_markers(markers, false, &mut pending).await?;
-        report.uncovered = ids
+        // A chunk with no envelope is a server fault counted in
+        // `dropped_pages`, so only the answered chunks' ids can be uncovered
+        // (#5492).
+        report.uncovered = answered
             .iter()
             .filter(|id| !typed_covers(&pending, id) && !named.contains(*id))
             .count();
@@ -542,6 +568,17 @@ impl PullLoop {
         }
         request
     }
+}
+
+/// Fails the page when SQLite rolled its transaction back on its own: writing
+/// on would autocommit the cursor without the records it names.
+pub(crate) fn still_open(conn: &Connection) -> Result<(), StorageError> {
+    if conn.is_autocommit() {
+        return Err(StorageError::Failed {
+            what: "the page's transaction was rolled back".to_owned(),
+        });
+    }
+    Ok(())
 }
 
 /// §5.14's breaker: a page that requested items, yielded none and met

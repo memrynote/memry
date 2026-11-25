@@ -1,4 +1,7 @@
 {
+  "wikiLink": {
+    "openFailed": "このリンクを開けませんでした"
+  },
   "portalBlock": {
     "copyFailed": "ポータルをコピーできませんでした",
     "hiddenCount": "{count} 件非表示",

@@ -149,7 +149,7 @@ mod tests {
             source: file_text::OWN_FILE.into(),
         };
         {
-            let search = Search::over(data.clone(), &directory).expect("search");
+            let search = Search::over(data.clone(), &directory, None).expect("search");
             search
                 .reset_file_text(pdf.clone(), "1:1".into(), "1.0.0".into())
                 .expect("reset");
@@ -166,7 +166,7 @@ mod tests {
                 .expect("finish");
         }
 
-        let reopened = Search::over(data, &directory).expect("reopen");
+        let reopened = Search::over(data, &directory, None).expect("reopen");
         assert_eq!(
             reopened.extracted_text_for_note("n1").expect("text"),
             "Rechnung"

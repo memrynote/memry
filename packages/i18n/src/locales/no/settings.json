@@ -1232,6 +1232,10 @@
     "loadingAria": "Laster inn enheter",
     "none": "Ingen enheter koblet til ennå",
     "linkNew": "Koble til ny enhet",
+    "linkNeedsPlan": {
+      "title": "Tilkobling krever et synkroniseringsabonnement",
+      "description": "En tilkoblet enhet ser bare notatene dine når synkronisering er på. Uten abonnement logger du på der med gjenopprettingsfrasen din, og enheten beholder sitt eget hvelv."
+    },
     "thisDevice": "Denne enheten",
     "lastSeen": "Sist sett for {time} siden",
     "linked": "Koblet til for {time} siden",

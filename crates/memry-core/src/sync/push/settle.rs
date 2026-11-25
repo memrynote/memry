@@ -1,0 +1,129 @@
+//! The push wave's half of a row the server holds deleted (chapter 05 §5.8,
+//! #5406): the calls into [`delete_wins`] and the per-item deferral when one
+//! fails. A failure defers that item and never the wave.
+
+use crate::api::errors::StorageError;
+use crate::protocol::envelope::SyncOperation;
+use crate::sync::outbox::{self, Collapsed};
+use crate::sync::{delete_wins, unknown_signer};
+
+use super::{PendingRecord, PushCoordinator, PushError, PushReport, now_ms, retry_at};
+
+/// Why a queued upsert of a row this device holds deleted retires unsent.
+///
+/// Sent, it is an `update`, which the server stores with no `deletedAt`
+/// while its signature covers one: the item comes back live on the server
+/// for a clockless type, and every peer refuses the record (VERIFY-5426).
+/// The pulled delete drops such an upsert (`apply::tombstone`'s
+/// `drop_queued_edits`); this
+/// catches one queued another way, such as an older build's queue.
+pub(super) fn undeletes(item: &PendingRecord) -> Option<String> {
+    let row = &item.row;
+    if item.operation != SyncOperation::Update || row.deleted_at.is_none() {
+        return None;
+    }
+    let reason = "an upsert of a deleted row: the delete wins (§5.8)".to_owned();
+    eprintln!(
+        "memry-core: push: {}:{} retired: {reason}",
+        row.item_type, row.item_id
+    );
+    Some(reason)
+}
+
+impl PushCoordinator {
+    /// An upsert of a row the reconcile kept against an unattested marker
+    /// applies that delete here instead of being sent ([`delete_wins`]).
+    pub(super) async fn applies_kept_marker(&self, item: &Collapsed) -> Result<bool, StorageError> {
+        let (item, device, now) = (item.clone(), self.clock_device.clone(), now_ms());
+        let at_rest = self.at_rest.clone();
+        let apply =
+            move |conn: &mut _| delete_wins::apply_kept_marker(conn, &item, &device, &at_rest, now);
+        self.db.call(apply).await
+    }
+
+    /// An upsert of a row whose last pulled record waits on an unknown signer
+    /// ([`unknown_signer::holds`]) is deferred, not sent: that record may be a
+    /// delete the server would let this edit reverse (#5413).
+    pub(super) async fn held_for_unknown_signer(
+        &self,
+        item: &Collapsed,
+    ) -> Result<bool, PushError> {
+        if item.row.op != outbox::OP_UPSERT {
+            return Ok(false);
+        }
+        let (item_type, item_id) = (item.row.item_type.clone(), item.row.item_id.clone());
+        let holds = move |conn: &mut _| unknown_signer::holds(conn, &item_type, &item_id);
+        if !self.db.call(holds).await? {
+            return Ok(false);
+        }
+        let (ids, at) = (item.ids(), retry_at(now_ms(), item.row.attempt_count));
+        let reason = "held: its last pulled record waits on an unknown signer";
+        self.db
+            .call(move |conn| outbox::defer(conn, &ids, reason, Some(at)))
+            .await?;
+        Ok(true)
+    }
+
+    /// The items the server answered `SYNC_DELETE_WINS`, one at a time.
+    pub(super) async fn settle_delete_wins(
+        &self,
+        lost: Vec<Collapsed>,
+        now: i64,
+        report: &mut PushReport,
+    ) -> Result<(), PushError> {
+        for item in lost {
+            match self.settle_one(&item, now).await {
+                Ok(deleted) => {
+                    report.accepted += item.ids().len();
+                    report.deleted_locally += usize::from(deleted);
+                }
+                Err(error) => {
+                    self.defer_unsettled(&item, &error).await?;
+                    report.rejected += 1;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// `SYNC_DELETE_WINS` for one item: pulls its id with markers, then
+    /// deletes only on verified evidence ([`delete_wins::apply_delete_wins`]).
+    async fn settle_one(&self, item: &Collapsed, now: i64) -> Result<bool, String> {
+        // §5.8: an item whose delete cannot be checked is deferred, as a
+        // failed pull is, and its queued upsert keeps protecting the row.
+        let Some(pull) = &self.pull else {
+            return Err("no pull to check the delete-wins answer through".to_owned());
+        };
+        let ids = [item.row.item_id.clone()];
+        let (_, entries) = pull
+            .fetch_ids_with_markers(&ids)
+            .await
+            .map_err(|e| e.to_string())?;
+        let (item, pull, device) = (item.clone(), self.pull.clone(), self.clock_device.clone());
+        let at_rest = self.at_rest.clone();
+        self.db
+            .call(move |conn| {
+                let pull = pull.as_deref();
+                delete_wins::apply_delete_wins(conn, &item, &entries, pull, &device, &at_rest, now)
+            })
+            .await
+            .map_err(|e| e.to_string())
+    }
+
+    /// An item whose local delete could not be decided or applied (an
+    /// unreadable body, a failed pull): logged, deferred, nothing deleted.
+    pub(super) async fn defer_unsettled(
+        &self,
+        item: &Collapsed,
+        error: &str,
+    ) -> Result<(), PushError> {
+        let (item_type, item_id) = (&item.row.item_type, &item.row.item_id);
+        eprintln!("memry-core: push: {item_type}:{item_id} deferred, nothing deleted: {error}");
+        let (ids, reason) = (item.ids(), format!("{item_type}:{item_id}: {error}"));
+        let at = retry_at(now_ms(), item.row.attempt_count);
+        self.db
+            .call(move |conn| outbox::defer(conn, &ids, &reason, Some(at)))
+            .await?;
+        Ok(())
+    }
+}

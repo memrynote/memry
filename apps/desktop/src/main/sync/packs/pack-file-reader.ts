@@ -54,10 +54,12 @@ export const openFileByteSource = async (filePath: string): Promise<PackByteSour
       if (length < 0 || position < 0 || position + length > size) {
         throw new Error('pack read out of bounds')
       }
-      const buffer = Buffer.allocUnsafe(length)
-      const { bytesRead } = await handle.read(buffer, 0, length, position)
+      // Not Buffer.allocUnsafe: a small read lands in Node's shared pool, and
+      // a post to the crypto worker clones the view's whole 8 KiB buffer.
+      const bytes = new Uint8Array(length)
+      const { bytesRead } = await handle.read(bytes, 0, length, position)
       if (bytesRead !== length) throw new Error('pack truncated')
-      return new Uint8Array(buffer.buffer, buffer.byteOffset, bytesRead)
+      return bytes
     },
     close: () => handle.close()
   }
@@ -150,30 +152,52 @@ export const openPack = async (
 
   return {
     entries,
-    readEntry: async (entry) => {
-      const bytes = await source.read(PACK_HEADER_SIZE + entry.offset, entry.length)
-      const digest = new Uint8Array(createHash('sha256').update(bytes).digest())
-      if (!packBytesEqual(digest, entry.sha256)) {
-        throw new Error(`pack entry checksum mismatch: ${entry.id}`)
-      }
-      return bytes
-    },
+    readEntry: (entry) => readVerifiedEntry(source, entry),
     close: () => source.close()
   }
 }
 
-/** Convenience wrapper: open a pack straight from a temp file path. */
+const readVerifiedEntry = async (
+  source: PackByteSource,
+  entry: PackIndexEntry
+): Promise<Uint8Array> => {
+  const bytes = await source.read(PACK_HEADER_SIZE + entry.offset, entry.length)
+  const digest = new Uint8Array(createHash('sha256').update(bytes).digest())
+  if (!packBytesEqual(digest, entry.sha256)) {
+    throw new Error(`pack entry checksum mismatch: ${entry.id}`)
+  }
+  return bytes
+}
+
+/**
+ * Open a pack straight from a temp file path. The file descriptor is released
+ * once the pack is verified and each entry read opens the file again: a fresh
+ * device holds every pack until the manifest is read, and one fd per pack ran
+ * past macOS's 256-fd soft limit (EMFILE dropped those packs to the routes).
+ */
 export const openPackFile = async (
   filePath: string,
   options: OpenPackOptions = {}
 ): Promise<PackFileHandle> => {
   const source = await openFileByteSource(filePath)
+  let entries: PackIndexEntry[]
   try {
-    return await openPack(source, options)
-  } catch (err) {
+    entries = (await openPack(source, options)).entries
+  } finally {
     await source.close().catch(() => {
-      /* the open failure is the interesting one */
+      /* the open result or failure is the interesting one */
     })
-    throw err
+  }
+  return {
+    entries,
+    readEntry: async (entry) => {
+      const reopened = await openFileByteSource(filePath)
+      try {
+        return await readVerifiedEntry(reopened, entry)
+      } finally {
+        await reopened.close()
+      }
+    },
+    close: async () => {}
   }
 }

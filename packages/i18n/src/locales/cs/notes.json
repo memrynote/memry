@@ -196,6 +196,10 @@
   "editor": {
     "bodySyncPending": "Synchronizace – obsah této poznámky možná ještě nedorazil",
     "databaseReadOnly": "Jen pro čtení. Toto zařízení nemůže ukládat změny.",
+    "remoteBodyStuck": "Čeká se na synchronizaci — jen pro čtení, dokud nedorazí synchronizovaný obsah poznámky",
+    "remoteBodyOffline": "Offline — jen pro čtení, dokud se poznámka nesynchronizuje",
+    "remoteBodySignedOut": "Odhlášeno — jen pro čtení, dokud se nepřihlásíte a poznámka se nesynchronizuje",
+    "remoteBodyVaultLocked": "Šifrovací klíč trezoru nelze načíst — jen pro čtení, dokud se poznámka nesynchronizuje",
     "taskRemoval": {
       "title": "{count, plural, one {Úkol byl z této poznámky odebrán} few {# úkoly byly z této poznámky odebrány} other {# úkolů bylo z této poznámky odebráno}}",
       "description": "{count, plural, one {Ponechat ho v úkolech, nebo ho smazat všude?} few {Ponechat je v úkolech, nebo je smazat všude?} other {Ponechat je v úkolech, nebo je smazat všude?}}",

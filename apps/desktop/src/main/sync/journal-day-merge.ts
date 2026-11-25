@@ -15,6 +15,7 @@
 import { createHash } from 'crypto'
 import { eq, like } from 'drizzle-orm'
 import * as Y from 'yjs'
+import { foldTag } from '@memry/shared/tag-fold'
 import { syncState } from '@memry/db-schema/schema/sync-state'
 import { generateJournalId } from '@memry/contracts/journal-api'
 import type { VectorClock } from '@memry/contracts/sync-api'
@@ -30,6 +31,7 @@ import { createLogger } from '../lib/logger'
 import { getIndexDatabase } from '../database/client'
 import { deleteNoteCache, getNoteCacheByPath } from '../database/queries/notes'
 import { createJournalEntry } from '../journal/create-entry'
+import { addJournalTags } from '../journal/update-entry'
 import { getJournalRelativePath, parseJournalEntry, readJournalTextSync } from '../vault/journal'
 import { deleteNoteFromCache } from '../vault/note-sync'
 import { relinkTasksToMergedNote } from '../notes/runtime-effects'
@@ -59,6 +61,22 @@ export interface OwedJournalDayMerge {
   recordMarkdown?: string | null
   /** The foreign id's tombstone arrived: another device merged it already. */
   deleted?: boolean
+  /**
+   * The day file tags of the local row that gave the day up: this device's,
+   * added like `fallbackMarkdown`, even when the id was deleted elsewhere. The
+   * fold carries the doc's `tags` array, but the day file owns its tags
+   * (#5476), so the merge adds these to the file. Owed merges written before
+   * `recordTags` kept the record's tags here too; they are added as this
+   * device's, since dropping them could drop a tag only this device held.
+   */
+  tags?: string[]
+  /**
+   * The foreign record's `tags`. Skipped like `recordMarkdown` when the id was
+   * deleted elsewhere: the deleting device merged them, and a tag removed
+   * since must not come back. The newest record's replace the ones kept, for
+   * the same reason (core: `journal_day_merge/owed.rs`).
+   */
+  recordTags?: string[]
 }
 
 /**
@@ -77,12 +95,16 @@ export function oweJournalDayMerge(db: DrizzleDb, merge: OwedJournalDayMerge): v
   const fallbackMarkdown = merge.fallbackMarkdown ?? kept?.fallbackMarkdown
   const recordMarkdown = merge.recordMarkdown ?? kept?.recordMarkdown
   const deleted = merge.deleted || kept?.deleted
+  const tags = unionTags(kept?.tags ?? [], merge.tags ?? [])
+  const recordTags = merge.recordTags ?? kept?.recordTags ?? []
   const value = JSON.stringify({
     ...merge,
     clock,
     ...(fallbackMarkdown ? { fallbackMarkdown } : {}),
     ...(recordMarkdown ? { recordMarkdown } : {}),
-    ...(deleted ? { deleted: true } : {})
+    ...(deleted ? { deleted: true } : {}),
+    tags: tags.length > 0 ? tags : undefined,
+    recordTags: recordTags.length > 0 ? recordTags : undefined
   })
   db.insert(syncState)
     .values({ key: KEY_PREFIX + merge.foreignId, value, updatedAt: new Date() })
@@ -172,6 +194,8 @@ export interface JournalDayMergeDeps {
     foreignId: string,
     fallbackMarkdown: string | null
   ) => Promise<boolean>
+  /** Adds `tags` to `date`'s day file, keeping the ones it has. */
+  addDayTags: (date: string, tags: string[]) => Promise<void>
   purgeDoc: (id: string) => Promise<void>
   /** Removes `id`'s local row, if any, from both databases. */
   removeRow: (id: string) => void
@@ -237,6 +261,10 @@ async function mergeOne(deps: JournalDayMergeDeps, merge: OwedJournalDayMerge): 
       log.warn('Foreign journal had nothing to fold; it stays owed', describe(merge))
       return false
     }
+    const tags = merge.deleted
+      ? (merge.tags ?? [])
+      : unionTags(merge.tags ?? [], merge.recordTags ?? [])
+    if (tags.length > 0) await deps.addDayTags(merge.date, tags)
   }
 
   // A forgotten id goes from this device, as in the core: a row a pre-fix
@@ -288,13 +316,33 @@ export function fallbackClientId(foreignId: string, deviceId: string): number {
 }
 
 export function readDayBody(date: string): string | null {
+  return readDay(date)?.content ?? null
+}
+
+export function readDayTags(date: string): string[] {
+  const tags: unknown = readDay(date)?.frontmatter.tags
+  return Array.isArray(tags) ? tags.map(String) : []
+}
+
+function readDay(date: string): ReturnType<typeof parseJournalEntry> | null {
   try {
     const raw = readJournalTextSync(date)
-    return raw === null ? null : parseJournalEntry(raw, date).content
+    return raw === null ? null : parseJournalEntry(raw, date)
   } catch (error) {
     log.warn('Could not read a journal day file', { date, error })
     return null
   }
+}
+
+/** By tag key, keeping the first spelling and its order, as the core's `tags::dedupe`. */
+function unionTags(kept: string[], added: string[]): string[] {
+  const seen = new Set<string>()
+  return [...kept, ...added].filter((tag) => {
+    const key = foldTag(tag.trim())
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
 }
 
 /**
@@ -322,7 +370,8 @@ export async function ensureJournalDay(db: DrizzleDb, date: string): Promise<voi
       foreignId: holder.id,
       date,
       clock: row?.clock ?? null,
-      fallbackMarkdown: readDayBody(date)
+      fallbackMarkdown: readDayBody(date),
+      tags: readDayTags(date)
     })
     removeJournalRow(db, holder.id)
   } else if (readDayBody(date)?.trim()) {
@@ -365,6 +414,7 @@ export async function runJournalDayMerges(
         fallbackMarkdown,
         fallbackClientId(foreignId, deviceId)
       ),
+    addDayTags: addJournalTags,
     purgeDoc: (id) => provider.purge(id),
     removeRow: (id) => removeJournalRow(db, id),
     enqueueDelete: (id, payload) => journalSync.enqueueRecoveredDelete(id, payload)

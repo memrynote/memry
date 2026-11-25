@@ -44,6 +44,8 @@
     "moveFailed": "Not taşınamadı",
     "applyTemplateFailed": "Şablon uygulanamadı",
     "appendBlocksFailed": "Blok bu nota taşınamadı",
+    "appendIntoCaseTwin": "Bu not, adı yalnızca büyük/küçük harf bakımından farklı olan bir notla aynı dosyayı paylaşıyor. Birini yeniden adlandırın, ardından bloğu tekrar taşıyın.",
+    "caseTwinMoveRefused": "Bu not, adı yalnızca büyük/küçük harf farkıyla ayrılan bir notla aynı dosyayı paylaşıyor, bu yüzden bu şekilde taşınamaz. Diğer notu yeniden adlandırın ya da taşıyın veya ihtiyacınız olmayan kopyayı silin.",
     "exportPdfFailed": "PDF olarak dışa aktarılamadı",
     "exportHtmlFailed": "HTML olarak dışa aktarılamadı",
     "restoreVersionFailed": "Sürüm geri yüklenemedi",
@@ -78,7 +80,9 @@
     "downloadProgressFailed": "İndirme ilerlemesi alınamadı",
     "exceedsMaxSize": "Dosya çok büyük: {size}, {limit} sınırını aşıyor",
     "exceedsPlanLimit": "Dosya, planınızın izin verdiğinden büyük: {size}, {limit} sınırını aşıyor",
-    "emptyFile": "Boş dosya yüklenemez"
+    "emptyFile": "Boş dosya yüklenemez",
+    "emptyNotAttached": "Bu dosya boş olduğu için eklenmedi. Bir görsel yapıştırdıysanız görseli tekrar kopyalayıp yapıştırın.",
+    "textInMediaFile": "Bu dosya, adının belirttiği medya yerine metin içeriyor"
   },
   "crdt": {
     "persistenceDegradedTitle": "Düzenleme geçmişi bu cihazda tutulmuyor",
@@ -233,6 +237,7 @@
   "folder": {
     "createFailed": "Klasör oluşturulamadı",
     "renameFailed": "Klasör yeniden adlandırılamadı",
+    "renameCaseTwins": "Bu klasörde, klasör adı yalnızca büyük/küçük harf farkıyla ayrılan bir notla aynı dosyayı paylaşan notlar var. Önce bu notları yeniden adlandırın ya da taşıyın, ardından klasörü yeniden adlandırın.",
     "deleteFailed": "Klasör silinemedi",
     "keptNotPulled": "Bu klasörde, dosyası memrynote dışında silinmiş bir not var ve notun metni henüz bu cihaza eşitlenmedi, bu yüzden çöp kutusuna taşınamıyor. Hiçbir şey silinmedi. Eşitlenmesini bekleyin veya önce o notu tek başına silin.",
     "keptUnwritable": "Bu klasörde, dosyası memrynote dışında silinmiş bir not var ve notun metni çöp kutusu için bir dosyaya kaydedilemiyor. Hiçbir şey silinmedi. Önce o notu tek başına silin.",

@@ -28,6 +28,7 @@ use std::sync::{Arc, Mutex};
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use http_fakes::{FakeTransport, error_response, response};
+use memry_core::crdt::epoch::HeldBody;
 use memry_core::crdt::registry::UpdateSink;
 use memry_core::crdt::update_log::{self, Namespace};
 use memry_core::crdt::{DocumentRegistry, extract_text};
@@ -35,10 +36,14 @@ use memry_core::protocol::crdt_envelope::{CrdtMaterial, CrdtRequest, pack, unpac
 use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope};
 use memry_core::protocol::http::{BOOTSTRAP_TOKEN_HEADER, ClientIdentity, HttpClient};
 use memry_core::protocol::types::Declaration;
-use memry_core::storage::repositories::instants;
+use memry_core::seams::diagnostics::{
+    BootstrapOutcome, CoreDiagnostic, DiagnosticPhase, DiagnosticsSink, RequestStats,
+};
+use memry_core::storage::repositories::{instants, sync_items};
 use memry_core::storage::{Db, open_data};
 use memry_core::sync::body_pull::{BodyPull, CrdtCipher, PackedUpdate, crdt_cursor_scope};
 use memry_core::sync::bootstrap::BootstrapClient;
+use memry_core::sync::diagnostics::RunDiagnostics;
 use memry_core::sync::first_sync::{
     BODY_CONCURRENCY_ELEVATED, FirstSync, FirstSyncLimits, FirstSyncPhase, FirstSyncProgress,
     ProgressSink,
@@ -305,10 +310,23 @@ async fn a_first_sync_fills_yjs_updates_so_extract_text_returns_the_body() {
 
     // FR-028: determinate, and never above one.
     let seen = progress.seen();
-    assert!(seen.iter().all(|p| p.completed <= p.total));
     assert!(
         seen.iter()
-            .any(|p| p.phase == memry_core::sync::first_sync::FirstSyncPhase::Bodies)
+            .all(|p| p.total.is_none_or(|total| p.completed <= total))
+    );
+    // #5233: counted in live notes, records before bodies, then done.
+    let ticks: Vec<_> = seen
+        .iter()
+        .map(|p| (p.phase, p.completed, p.total))
+        .collect();
+    assert_eq!(
+        ticks,
+        vec![
+            (FirstSyncPhase::Records, 0, Some(1)),
+            (FirstSyncPhase::Records, 1, Some(1)),
+            (FirstSyncPhase::Bodies, 1, Some(1)),
+            (FirstSyncPhase::Done, 1, Some(1)),
+        ]
     );
 }
 
@@ -509,11 +527,11 @@ async fn a_baseline_is_taken_when_the_advertised_revision_differs_and_not_otherw
     // This device is already at sequence 5 with a snapshot at revision
     // `rev-1`, which is what the server is about to advertise.
     db.call_blocking(|conn| {
-        update_log::put_server_snapshot(conn, NOTE, b"unused", 4, Some("rev-1"), 1).map_err(
-            |error| memry_core::api::errors::StorageError::Failed {
+        HeldBody::never_purged(conn, NOTE)
+            .and_then(|held| held.put_server_snapshot(b"unused", 4, Some("rev-1"), 1))
+            .map_err(|error| memry_core::api::errors::StorageError::Failed {
                 what: error.to_string(),
-            },
-        )?;
+            })?;
         store::write_cursor(conn, &crdt_cursor_scope(NOTE), Some("5"), 1)
     })
     .expect("seed");
@@ -783,12 +801,27 @@ async fn a_bare_deleted_id_keeps_the_note_and_a_signed_delete_still_deletes() {
         response(200, &answer),
         response(200, &answer),
     ]);
+    let sink = Arc::new(CapturedDiagnostics::default());
     let report = first_sync(&db, transport.clone(), public_key, RecordedProgress::new())
+        .with_diagnostics(RunDiagnostics::new(sink.clone()))
         .run(epoch(MODIFIED_AT) + 2_000)
         .await
         .expect("the first sync");
 
     assert_eq!(report.tombstones, 2);
+    // #5247: the unverified id reaches the shell's log, with the page cursor.
+    assert!(
+        sink.0
+            .lock()
+            .unwrap()
+            .contains(&CoreDiagnostic::RefsDeletes {
+                unverified: 1,
+                non_envelope: 0,
+                cursor: Some(10),
+            }),
+        "{:?}",
+        sink.0.lock().unwrap()
+    );
     assert_eq!(
         deleted_marks(&db, NOTE),
         (None, None),
@@ -802,6 +835,43 @@ async fn a_bare_deleted_id_keeps_the_note_and_a_signed_delete_still_deletes() {
     );
     let pulled = transport.calls_to("/sync/pull");
     assert_eq!(pulled.len(), 1, "the deleted ids were pulled once");
+}
+
+/// §5.12.1: the refs pass deletes a `deleted` id only through the typed
+/// delete its pull returns, and that delete never crosses types: a tag named
+/// like the deleted note keeps its row (§5.15's collision).
+#[tokio::test]
+async fn a_refs_pass_delete_never_crosses_types() {
+    let db = scratch_db("typed-only");
+    let (public_key, _secret) =
+        memry_core::crypto::sodium::sign_seed_keypair(&[37u8; 32]).expect("keypair");
+    db.call_blocking(|conn| {
+        sync_items::upsert_metadata_only(conn, "tag_definition", NOTE, 1, None)
+    })
+    .expect("the tag row");
+
+    // One answer serves every pull: the note's signed delete.
+    let answer = json!({"items": [signed_delete(NOTE)]}).to_string();
+    let transport = FakeTransport::new(vec![
+        response(200, &changes_page(&[], &[NOTE], 10, false)),
+        response(200, &answer),
+        response(200, &answer),
+    ]);
+    first_sync(&db, transport, public_key, RecordedProgress::new())
+        .run(epoch(MODIFIED_AT) + 1_000)
+        .await
+        .expect("the first sync");
+
+    let (note, tag) = db
+        .call_blocking(|conn| {
+            Ok((
+                sync_items::load(conn, "note", NOTE)?.and_then(|row| row.deleted_at),
+                sync_items::load(conn, "tag_definition", NOTE)?.and_then(|row| row.deleted_at),
+            ))
+        })
+        .expect("the rows");
+    assert!(note.is_some(), "the signed note delete applies");
+    assert_eq!(tag, None, "the tag under the same id is not deleted");
 }
 
 /// The scripted cipher, except that it refuses every envelope one signer
@@ -889,10 +959,9 @@ async fn a_forged_delete_for_a_deleted_id_leaves_the_note_live() {
     assert_eq!(text_of(&db, NOTE), "Still here");
 }
 
-/// §10.11: the refs pass counts the items it listed (refs and tombstones),
-/// with one more page while the feed has more, as Electron's
-/// `initial-sync-progress.ts` does. The server cursor is a per-user sequence
-/// over every vault and every edit, so it is never a count.
+/// §10.11: the records phase counts this device's own note and journal rows,
+/// with no total until the feed has been read to its end. The server cursor is
+/// a per-user sequence over every vault and every edit, so it is never a count.
 #[tokio::test]
 async fn the_refs_pass_reports_items_listed_not_server_cursors() {
     let db = scratch_db("refs-progress");
@@ -930,18 +999,20 @@ async fn the_refs_pass_reports_items_listed_not_server_cursors() {
         .await;
     assert!(run.is_err(), "the run stops in the metadata pass");
 
-    let refs: Vec<(u64, u64)> = progress
+    // Page one has more: three rows are not yet known to be the vault. The
+    // feed's end makes the total known; no body is held yet.
+    let records: Vec<(u64, Option<u64>)> = progress
         .seen()
         .iter()
-        .filter(|p| p.phase == FirstSyncPhase::Refs)
+        .filter(|p| p.phase == FirstSyncPhase::Records)
         .map(|p| (p.completed, p.total))
         .collect();
-    assert_eq!(refs, vec![(3, 503), (5, 5)]);
+    assert_eq!(records, vec![(0, None), (0, Some(3))]);
     assert!(
         progress
             .seen()
             .iter()
-            .all(|p| p.completed < 50_000 && p.total < 50_000),
+            .all(|p| p.completed < 50_000 && p.total.is_none_or(|total| total < 50_000)),
         "{:?}",
         progress.seen()
     );
@@ -1044,6 +1115,98 @@ async fn a_full_chunk_of_deleted_ids_is_pulled_before_the_feed_ends() {
     );
 }
 
+/// §5.14 (#5411 review): the pull of a refs page's `deleted` ids answered with
+/// no pull envelope reopens the cursor-skip repair, so the next pull re-reads
+/// the feed and retries those deletes. The page's refs are still recorded and
+/// pulled, and the bootstrap makes no extra request for the fault.
+#[tokio::test]
+async fn a_refs_pass_delete_pull_without_an_envelope_reopens_the_feed_re_read() {
+    const OTHER: &str = "def456abc789";
+    const REPAIR: &str = "sync.cursor_skip_repair";
+    let db = scratch_db("delete-non-envelope");
+    let (public_key, _secret) =
+        memry_core::crypto::sodium::sign_seed_keypair(&[41u8; 32]).expect("keypair");
+    db.call_blocking(|conn| {
+        conn.execute(
+            "INSERT INTO meta (key, value) VALUES (?1, 'done')",
+            [REPAIR],
+        )
+        .map(|_| ())
+        .map_err(|error| memry_core::api::errors::StorageError::Failed {
+            what: error.to_string(),
+        })
+    })
+    .expect("the finished repair");
+
+    let transport = FakeTransport::new(vec![
+        response(200, &changes_page(&[(OTHER, "note")], &[NOTE], 10, false)),
+        response(200, &json!({"error": "upstream"}).to_string()),
+        response(
+            200,
+            &json!({"items": [record_envelope(OTHER, "note")]}).to_string(),
+        ),
+        response(
+            200,
+            &json!({"notes": {OTHER: {"updates": [], "hasMore": false, "floor": 0}},
+                "snapshotMeta": {}})
+            .to_string(),
+        ),
+    ]);
+    let sink = Arc::new(CapturedDiagnostics::default());
+    let report = first_sync(&db, transport.clone(), public_key, RecordedProgress::new())
+        .with_diagnostics(RunDiagnostics::new(sink.clone()))
+        .run(epoch(MODIFIED_AT) + 1_000)
+        .await
+        .expect("the first sync");
+
+    assert_eq!(report.refs_recorded, 1);
+    assert_eq!(report.metadata_applied, 1, "the page's ref is not skipped");
+    // #5247: the fault reaches the shell's log as a non-envelope pull, not as
+    // an unverified id; a fresh device has no cursor yet.
+    let refs_deletes = CoreDiagnostic::RefsDeletes {
+        unverified: 0,
+        non_envelope: 1,
+        cursor: None,
+    };
+    assert!(sink.0.lock().unwrap().contains(&refs_deletes));
+    assert_eq!(
+        transport.calls_to("/sync/pull").len(),
+        2,
+        "one pull for the deleted id and one for the ref, no retry"
+    );
+    let (repair, other) = db
+        .call_blocking(|conn| {
+            Ok((
+                read_meta(conn, REPAIR)?,
+                sync_items::load(conn, "note", OTHER)?.map(|row| row.deleted_at),
+            ))
+        })
+        .expect("the state");
+    assert_eq!(repair, None, "the feed re-read is reopened");
+    assert_eq!(other, Some(None), "the pulled ref is live");
+}
+
+/// §5.12.1, §5.14 (#5411 review): an id whose pull got no envelope is a server
+/// fault, counted in `dropped_pages`, and never as an id the server answered
+/// without a verified delete.
+#[tokio::test]
+async fn ids_in_a_pull_without_an_envelope_are_dropped_and_not_uncovered() {
+    let db = scratch_db("fetch-non-envelope");
+    let transport = FakeTransport::new(vec![response(
+        200,
+        &json!({"error": "upstream"}).to_string(),
+    )]);
+    let pull = PullLoop::new(
+        http(transport),
+        db,
+        Declaration::subscribed(),
+        ScriptedCipher::new(&[(NOTE, &note_payload())]),
+    );
+    let report = pull.fetch_ids(&[NOTE.to_owned()]).await.expect("the pull");
+    assert_eq!(report.dropped_pages, 1);
+    assert_eq!(report.uncovered, 0);
+}
+
 /// #2299 review A-5: a coversThrough push moves the server's watermark, so a
 /// per-document cursor can sit between the old and the new one; the single
 /// update route now advertises the snapshot, and a revision this device does
@@ -1054,11 +1217,11 @@ async fn a_snapshot_whose_revision_is_not_held_is_taken_even_below_the_cursor() 
     let (public_key, secret_key) =
         memry_core::crypto::sodium::sign_seed_keypair(&[23u8; 32]).expect("keypair");
     db.call_blocking(|conn| {
-        update_log::put_server_snapshot(conn, NOTE, b"unused", 4, Some("rev-1"), 1).map_err(
-            |error| memry_core::api::errors::StorageError::Failed {
+        HeldBody::never_purged(conn, NOTE)
+            .and_then(|held| held.put_server_snapshot(b"unused", 4, Some("rev-1"), 1))
+            .map_err(|error| memry_core::api::errors::StorageError::Failed {
                 what: error.to_string(),
-            },
-        )?;
+            })?;
         store::write_cursor(conn, &crdt_cursor_scope(NOTE), Some("10"), 1)
     })
     .expect("seed");
@@ -1266,6 +1429,32 @@ async fn a_first_sync_cancelled_mid_run_still_closes_its_bootstrap_session() {
     assert_eq!(bootstrap.header(0), None);
 }
 
+#[tokio::test]
+async fn a_dropped_guard_closes_the_open_session() {
+    // A run dropped before its own close (the shell's task cancelled, a
+    // panic) must not hold the server's bootstrap slot for an hour.
+    let transport = FakeTransport::new(vec![
+        response(
+            200,
+            &json!({"session": {"token": "boot-token", "expiresAt": 4_000_000_000i64}, "tailCursor": 10})
+                .to_string(),
+        ),
+        response(200, &json!({"success": true}).to_string()),
+    ]);
+    let bootstrap = Arc::new(BootstrapClient::new(http(transport.clone())));
+    assert!(bootstrap.open(1_000).await.elevated());
+
+    drop(bootstrap.close_on_drop());
+
+    for _ in 0..100 {
+        if !transport.calls_to("/sync/bootstrap/close").is_empty() {
+            break;
+        }
+        tokio::task::yield_now().await;
+    }
+    assert_eq!(transport.calls_to("/sync/bootstrap/close").len(), 1);
+}
+
 #[test]
 fn a_replayed_update_is_skipped_rather_than_re_applied() {
     // §7.9's replay rule, at the storage layer: the same sequence twice is a
@@ -1273,8 +1462,12 @@ fn a_replayed_update_is_skipped_rather_than_re_applied() {
     let db = scratch_db("replay");
     let update = body_update("once");
     db.call_blocking(|conn| {
-        update_log::append_server_update(conn, NOTE, 1, &update, 1).expect("first");
-        update_log::append_server_update(conn, NOTE, 1, b"different", 2).expect("second");
+        HeldBody::never_purged(conn, NOTE)
+            .and_then(|held| held.append_server_update(1, &update, 1))
+            .expect("first");
+        HeldBody::never_purged(conn, NOTE)
+            .and_then(|held| held.append_server_update(1, b"different", 2))
+            .expect("second");
         Ok(())
     })
     .expect("append");
@@ -1543,6 +1736,141 @@ async fn a_rate_limited_document_is_paused_out_and_retried_rather_than_failing_t
             .len(),
         2,
         "the refused request was sent again"
+    );
+}
+
+#[derive(Default)]
+struct CapturedDiagnostics(Mutex<Vec<CoreDiagnostic>>);
+
+impl DiagnosticsSink for CapturedDiagnostics {
+    fn record(&self, event: CoreDiagnostic) {
+        self.0.lock().unwrap().push(event);
+    }
+}
+
+/// #5215: the incident's first sync. The bootstrap open is refused 409, so the
+/// run is unelevated, and the one document's pull meets a 5xx probe and a 429.
+/// The sink gets what a support reader needs to see why it was slow, from
+/// numbers alone.
+#[tokio::test(start_paused = true)]
+async fn a_first_sync_tells_the_sink_its_bootstrap_result_concurrency_and_per_phase_requests() {
+    let db = scratch_db("diagnostics");
+    let (public_key, secret_key) =
+        memry_core::crypto::sodium::sign_seed_keypair(&[37u8; 32]).expect("keypair");
+    let update = body_update("After the pause");
+    let transport = FakeTransport::new(vec![
+        error_response(409, "BOOTSTRAP_NOT_ELIGIBLE", "this device already pulled"),
+        response(200, &changes_page(&[(NOTE, "note")], &[], 10, false)),
+        response(
+            200,
+            &json!({"items": [record_envelope(NOTE, "note")]}).to_string(),
+        ),
+        http_fakes::probe_refused(),
+        http_fakes::response_with_header(
+            429,
+            r#"{"error":{"code":"RATE_LIMITED","message":"Too many requests"}}"#,
+            ("retry-after", "7"),
+        ),
+        response(200, &json!({"snapshot": Json::Null}).to_string()),
+        response(
+            200,
+            &json!({"updates": [{
+                "sequenceNum": 1,
+                "data": packed_base64(NOTE, &update, &secret_key),
+                "signerDeviceId": "device-a"
+            }], "hasMore": false})
+            .to_string(),
+        ),
+    ]);
+    let sink = Arc::new(CapturedDiagnostics::default());
+    let diagnostics = RunDiagnostics::new(sink.clone());
+    let plain = http(transport.clone());
+    let counted = diagnostics.observe(&plain);
+    let pull = Arc::new(PullLoop::new(
+        Arc::clone(&counted),
+        db.clone(),
+        Declaration::subscribed(),
+        ScriptedCipher::new(&[(NOTE, &note_payload())]),
+    ));
+    let bootstrap =
+        Arc::new(BootstrapClient::new(plain).with_diagnostics(Arc::clone(&diagnostics)));
+    let bodies = Arc::new(
+        BodyPull::new(
+            counted,
+            db.clone(),
+            Declaration::subscribed(),
+            RealCrdtCipher::with("device-a", public_key),
+        )
+        .with_bootstrap(Arc::clone(&bootstrap)),
+    );
+
+    FirstSync::new(pull, bodies, db.clone())
+        .with_bootstrap(bootstrap)
+        .with_diagnostics(diagnostics)
+        .run(epoch(MODIFIED_AT) + 1_000)
+        .await
+        .expect("the first sync survives a 429");
+
+    // The counts are the contract; elapsed time is the run's own clock.
+    let events: Vec<CoreDiagnostic> = sink
+        .0
+        .lock()
+        .unwrap()
+        .iter()
+        .map(|event| match *event {
+            CoreDiagnostic::PhaseStats {
+                phase,
+                finished,
+                requests,
+                ..
+            } => CoreDiagnostic::PhaseStats {
+                phase,
+                finished,
+                elapsed_ms: 0,
+                requests,
+            },
+            other => other,
+        })
+        .collect();
+    let finished = |phase, requests| CoreDiagnostic::PhaseStats {
+        phase,
+        finished: true,
+        elapsed_ms: 0,
+        requests,
+    };
+    let one_request = RequestStats {
+        requests: 1,
+        ..RequestStats::default()
+    };
+    assert_eq!(
+        events,
+        vec![
+            CoreDiagnostic::BootstrapOpened {
+                outcome: BootstrapOutcome::NotEligible,
+                status: 409,
+            },
+            finished(DiagnosticPhase::Refs, one_request),
+            finished(DiagnosticPhase::Metadata, one_request),
+            CoreDiagnostic::BodyPassStarted {
+                elevated: false,
+                concurrency: 1,
+                documents: 1,
+                up_to_date: Some(0),
+            },
+            // The refused probe, the 429, the snapshot and the updates: the
+            // document went back on the queue and waited out the Retry-After.
+            finished(
+                DiagnosticPhase::Bodies,
+                RequestStats {
+                    requests: 4,
+                    retries: 1,
+                    rate_limited: 1,
+                    rate_limit_wait_ms: 7_000,
+                    server_errors: 1,
+                    ..RequestStats::default()
+                }
+            ),
+        ]
     );
 }
 
@@ -1974,13 +2302,13 @@ async fn a_resumed_bodies_pass_counts_finished_documents_and_pulls_them_no_more(
         "the finished document was pulled again"
     );
     assert_eq!(resumed.calls_to("/sync/crdt/updates/batch").len(), 1);
-    let bodies_progress: Vec<(u64, u64)> = progress
+    let bodies_progress: Vec<(u64, Option<u64>)> = progress
         .seen()
         .iter()
         .filter(|p| p.phase == FirstSyncPhase::Bodies)
         .map(|p| (p.completed, p.total))
         .collect();
-    assert_eq!(bodies_progress, vec![(1, 2), (2, 2)]);
+    assert_eq!(bodies_progress, vec![(1, Some(2)), (2, Some(2))]);
 }
 
 #[tokio::test]
@@ -1989,11 +2317,11 @@ async fn a_probe_showing_nothing_new_and_the_held_snapshot_sends_no_pull() {
     let (public_key, _secret) =
         memry_core::crypto::sodium::sign_seed_keypair(&[43u8; 32]).expect("keypair");
     db.call_blocking(|conn| {
-        update_log::put_server_snapshot(conn, NOTE, b"unused", 4, Some("rev-1"), 1).map_err(
-            |error| memry_core::api::errors::StorageError::Failed {
+        HeldBody::never_purged(conn, NOTE)
+            .and_then(|held| held.put_server_snapshot(b"unused", 4, Some("rev-1"), 1))
+            .map_err(|error| memry_core::api::errors::StorageError::Failed {
                 what: error.to_string(),
-            },
-        )?;
+            })?;
         store::write_cursor(conn, &crdt_cursor_scope(NOTE), Some("5"), 1)
     })
     .expect("seed");

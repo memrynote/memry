@@ -9,9 +9,21 @@ on:
     branches:
       - main
       - feat/tauri-v2
+    # A push to main runs the full Electron matrix, e2e included. Skip it when
+    # every changed file sits in a tree the Electron app neither bundles nor tests:
+    # the iOS app, the Rust core and its generated Swift bindings. Anything else,
+    # including a path nobody listed here, still runs everything. The crates are
+    # listed by name, not as crates/**: Desktop CI checks the goldens of
+    # crates/memrynote-cli against the TypeScript CLI, so a change there still runs it.
     paths-ignore:
       - 'apps/docs/**'
       - 'apps/landing/**'
+      - 'apps/ios/**'
+      - 'crates/*'
+      - 'crates/memry-*/**'
+      - 'crates/uniffi-bindgen-swift/**'
+      - 'crates/xtask/**'
+      - 'packages/swift/**'
   # The merge queue (feat/tauri-v2) runs the full matrix on the merge-group commit; `paths` do not apply.
   merge_group:
   workflow_dispatch:

@@ -1,5 +1,8 @@
 import { CRYPTO_VERSION, ED25519_PARAMS, XCHACHA20_PARAMS } from '@memry/contracts/crypto'
-import { deleteAttestationPayload, deleteClaimOf } from '@memry/contracts/delete-attestation'
+import {
+  acceptedDeleteAttestationPayloads,
+  deleteClaimOf
+} from '@memry/contracts/delete-attestation'
 import type {
   EncryptedItemPayload,
   NoteBodyChange,
@@ -8,6 +11,7 @@ import type {
   SyncStatus,
   VectorClock,
   RecordChangesResponse,
+  RecordPackEntryMeta,
   RecordPullBlobMissing,
   RecordPullItemResponse,
   RecordPullPurgedTombstone,
@@ -99,6 +103,16 @@ export interface RecordPushBatchResult extends PushResponse {
   committedItems: RecordPullItemResponse[]
   /** Commit time of the batch's latest committed wave; 0 when nothing committed. */
   committedAtMs: number
+  /**
+   * A body purge left pack objects due (protocol 08 §8.13): the caller enqueues
+   * the delayed retry message (PACK_PURGE_RETRY_DELAY_SECONDS).
+   */
+  purgeRetry: boolean
+}
+
+interface PushWaveResult {
+  outcomes: PushItemOutcome[]
+  purgeRetry: boolean
 }
 
 export const validateEncryptedFields = (item: PushItemInput): void => {
@@ -196,18 +210,23 @@ const verifySignatureWithDevice = async (
  * §4.8.4), or null when the write attests nothing: not an attestable delete
  * (deleteClaimOf), or an old client that sent none. One that is present on an
  * attestable delete and does not verify under the signer's key is the item's
- * own SYNC_INVALID_SIGNATURE, like a bad item signature.
+ * own SYNC_INVALID_SIGNATURE, like a bad item signature. v2 must name the vault
+ * the push is routed to; v1, from builds before #5247, names none.
  */
 const verifyDeleteAttestation = async (
   device: Device,
-  item: PushItemInput
+  item: PushItemInput,
+  vaultId: string
 ): Promise<string | null> => {
   const claim = deleteClaimOf(item)
   if (!claim || item.deleteAttestation === undefined) return null
-  const message = encodeSignaturePayload(deleteAttestationPayload(claim), 'DELETE_ATTESTATION')
-  const valid = await verifyEd25519(device.auth_public_key, item.deleteAttestation, message).catch(
-    () => false
-  )
+  const signature = item.deleteAttestation
+  let valid = false
+  for (const payload of acceptedDeleteAttestationPayloads(claim, vaultId)) {
+    const message = encodeSignaturePayload(payload, 'DELETE_ATTESTATION')
+    valid = await verifyEd25519(device.auth_public_key, signature, message).catch(() => false)
+    if (valid) break
+  }
   if (!valid) {
     throw new AppError(
       ErrorCodes.SYNC_INVALID_SIGNATURE,
@@ -252,7 +271,7 @@ const happensAfter = (incoming: VectorClock, existing: VectorClock): boolean => 
   return strictlyGreater
 }
 
-const isSupportedRecordSyncItemType = (type: string): type is RecordSyncItemType =>
+export const isSupportedRecordSyncItemType = (type: string): type is RecordSyncItemType =>
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing cast at a trust boundary; the type cannot express the runtime value without a behavior-changing parser
   RECORD_SYNC_ITEM_TYPE_SET.has(type as RecordSyncItemType)
 
@@ -384,7 +403,7 @@ const readEncryptedPayload = async (
 }
 
 /** The stored columns a `/sync/pull` item is made of, already narrowed. */
-interface PullItemColumns {
+export interface PullItemColumns {
   id: string
   type: RecordSyncItemType
   operation: string
@@ -396,6 +415,25 @@ interface PullItemColumns {
 }
 
 /**
+ * A `/sync/pull` item without `id`, `type` and `blob`: the meta of a `record`
+ * pack entry (protocol 08 §8.4.2). The pull builds its items from this too, so
+ * a packed entry and the pull item for the same row cannot drift apart.
+ * Throws on a corrupt stored clock, as the pull does.
+ */
+export const recordMetaFromColumns = (columns: PullItemColumns): RecordPackEntryMeta => {
+  const parsedClock = parseStoredClock(columns.id, columns.clock)
+  return {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing cast at a trust boundary; the type cannot express the runtime value without a behavior-changing parser
+    operation: columns.operation as RecordPullItemResponse['operation'],
+    cryptoVersion: columns.cryptoVersion,
+    signature: columns.signature,
+    signerDeviceId: columns.signerDeviceId,
+    ...(columns.deletedAt ? { deletedAt: columns.deletedAt } : {}),
+    ...(parsedClock ? { clock: parsedClock } : {})
+  }
+}
+
+/**
  * The one constructor of a `/sync/pull` item. The pull feeds it a D1 row and
  * the R2 object; a push feeds it the values it just committed, so a socket
  * item (#2300) is byte-identical to what `/sync/pull` returns for that row.
@@ -403,21 +441,12 @@ interface PullItemColumns {
 const pullItemFromColumns = (
   columns: PullItemColumns,
   payload: EncryptedItemPayload
-): RecordPullItemResponse => {
-  const parsedClock = parseStoredClock(columns.id, columns.clock)
-  return {
-    id: columns.id,
-    type: columns.type,
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing cast at a trust boundary; the type cannot express the runtime value without a behavior-changing parser
-    operation: columns.operation as RecordPullItemResponse['operation'],
-    cryptoVersion: columns.cryptoVersion,
-    signature: columns.signature,
-    signerDeviceId: columns.signerDeviceId,
-    ...(columns.deletedAt ? { deletedAt: columns.deletedAt } : {}),
-    ...(parsedClock ? { clock: parsedClock } : {}),
-    blob: payload
-  }
-}
+): RecordPullItemResponse => ({
+  id: columns.id,
+  type: columns.type,
+  ...recordMetaFromColumns(columns),
+  blob: payload
+})
 
 /**
  * What one sync_items row contributes to a POST /sync/pull response (#2302).
@@ -646,7 +675,7 @@ const processPushWave = async (
   vaultId: string,
   client: ClientIdentity | null,
   collectCommitted = false
-): Promise<PushItemOutcome[]> => {
+): Promise<PushWaveResult> => {
   const outcomes: PushItemOutcome[] = Array.from<PushItemOutcome>({ length: items.length })
   const reject = (index: number, reason: string): void => {
     outcomes[index] = { accepted: false, reason }
@@ -691,7 +720,7 @@ const processPushWave = async (
     for (const index of alive()) {
       rejectWithError(index, error)
     }
-    return outcomes
+    return { outcomes, purgeRetry: false }
   }
   const attestations = new Map<number, string>()
   await Promise.all(
@@ -701,7 +730,7 @@ const processPushWave = async (
           devices.get(items[index].signerDeviceId) ?? null,
           items[index]
         )
-        const attestation = await verifyDeleteAttestation(device, items[index])
+        const attestation = await verifyDeleteAttestation(device, items[index], vaultId)
         if (attestation) attestations.set(index, attestation)
       } catch (error) {
         rejectWithError(index, error)
@@ -743,7 +772,7 @@ const processPushWave = async (
       for (const index of lookupIndexes) {
         rejectWithError(index, error)
       }
-      return outcomes
+      return { outcomes, purgeRetry: false }
     }
   }
 
@@ -1002,10 +1031,13 @@ const processPushWave = async (
       (entry) => entry.item.operation === 'delete' && DOCUMENT_ITEM_TYPES.has(entry.item.type)
     )
     .map((entry) => entry.item.id)
+  let purgeRetry = false
   if (deletedDocuments.length > 0) {
     try {
-      await purgeDeletedDocumentBodies(db, storage, userId, vaultId, deletedDocuments)
+      purgeRetry = await purgeDeletedDocumentBodies(db, storage, userId, vaultId, deletedDocuments)
     } catch (error) {
+      // The purge may have made pack objects due before it threw.
+      purgeRetry = true
       logger.warn('deleted document body purge failed, left to the cleanup sweep', {
         vaultId,
         documents: deletedDocuments.length,
@@ -1029,7 +1061,7 @@ const processPushWave = async (
     }
   }
 
-  return outcomes
+  return { outcomes, purgeRetry }
 }
 
 export const processRecordPushBatch = async (
@@ -1044,8 +1076,9 @@ export const processRecordPushBatch = async (
   socketItemsBudget = 0
 ): Promise<RecordPushBatchResult> => {
   const itemOutcomes = Array.from<PushItemOutcome>({ length: items.length })
+  let purgeRetry = false
   for (const wave of splitIntoWaves(items)) {
-    const waveOutcomes = await processPushWave(
+    const { outcomes: waveOutcomes, purgeRetry: waveRetry } = await processPushWave(
       db,
       storage,
       userId,
@@ -1054,6 +1087,7 @@ export const processRecordPushBatch = async (
       client,
       socketItemsBudget > 0
     )
+    purgeRetry ||= waveRetry
     wave.forEach((entry, position) => {
       itemOutcomes[entry.index] = waveOutcomes[position]
     })
@@ -1103,7 +1137,8 @@ export const processRecordPushBatch = async (
       committed.toSorted((a, b) => a.serverCursor - b.serverCursor).map((entry) => entry.row),
       socketItemsBudget
     ),
-    committedAtMs
+    committedAtMs,
+    purgeRetry
   }
 }
 
@@ -1116,7 +1151,9 @@ export const processPushItem = async (
   vaultId = 'default',
   client: ClientIdentity | null = null
 ): Promise<PushItemOutcome> => {
-  const [outcome] = await processPushWave(db, storage, userId, [item], vaultId, client)
+  const {
+    outcomes: [outcome]
+  } = await processPushWave(db, storage, userId, [item], vaultId, client)
   return outcome
 }
 
@@ -1234,7 +1271,11 @@ export const getManifest = async (
       type: row.item_type as RecordSyncItemType,
       version: row.version,
       modifiedAt: row.updated_at,
-      size: row.size_bytes
+      size: row.size_bytes,
+      // The reader's record reconcile keys on this, not `version`, which two
+      // concurrent pushes can both commit (protocol 08 §8.10). Manifest only:
+      // pull and socket items never carry it.
+      serverCursor: row.server_cursor
     }))
 
   // nextCursor comes from the last row KEPT, unsupported types included — the

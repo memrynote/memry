@@ -5,7 +5,7 @@
  * @module vault/folder-move-index
  */
 
-import { isBinaryFileType } from '@memry/shared/file-types'
+import { binaryRecordFields } from '@memry/shared/file-types'
 import { NotesChannels } from '@memry/contracts/notes-api'
 import {
   extractDateFromPath,
@@ -13,8 +13,7 @@ import {
   listNoteCacheUnderFolder
 } from '@main/database/queries/notes'
 import { getIndexDatabase } from '../database'
-import { flushProjectionEvents } from '../projections'
-import { syncFileToCache, syncNoteStatToCache } from './note-sync'
+import { moveNotesInCache, type NoteMove } from './note-sync'
 import { clearPendingDelete } from './rename-tracker'
 import { emitNoteEvent } from './notes-io'
 import { rewriteInboundWikiLinks } from './rename-link-rewrite'
@@ -34,11 +33,11 @@ export interface FolderMovedNote {
  *
  * Without this the index only learns of the move from the watcher's per-file
  * unlink + add, and a missed event leaves the sidebar drawing the folder at its
- * old path until a restart reconciles it (#2513). Same helpers the watcher's
- * rename and `moveNote` use. Once the rows move, the watcher's events for these
- * files no-op: the unlink finds no row at the old path, the add finds one at
- * the new path. A row whose journal date the move changes is left to the
- * watcher, which turns it into a new item (see `renameKeepsJournalDate`).
+ * old path until a restart reconciles it (#2513). Once the rows move, the
+ * watcher's events for these files no-op: the unlink finds no row at the old
+ * path, the add finds one at the new path. A row whose journal date the move
+ * changes is left to the watcher, which turns it into a new item (see
+ * `renameKeepsJournalDate`).
  */
 export async function moveIndexedNotesWithFolder(
   oldPath: string,
@@ -46,6 +45,7 @@ export async function moveIndexedNotesWithFolder(
 ): Promise<FolderMovedNote[]> {
   const db = getIndexDatabase()
   const moved: FolderMovedNote[] = []
+  const moves: NoteMove[] = []
 
   for (const row of listNoteCacheUnderFolder(db, oldPath)) {
     const cached = getNoteCacheById(db, row.id)
@@ -54,22 +54,25 @@ export async function moveIndexedNotesWithFolder(
     const date = cached.date ?? null
     if (date !== extractDateFromPath(newRelativePath)) continue
 
-    if (isBinaryFileType(cached.fileType)) {
-      syncFileToCache(db, {
-        id: cached.id,
-        path: newRelativePath,
-        title: cached.title,
-        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string DB/wire column narrowed to the union its writers constrain
-        fileType: cached.fileType as Exclude<typeof cached.fileType, 'markdown'>,
-        mimeType: cached.mimeType ?? null,
-        fileSize: cached.fileSize ?? 0,
-        createdAt: new Date(cached.createdAt),
-        modifiedAt: new Date(cached.modifiedAt)
+    const binary = binaryRecordFields(cached)
+    if (binary) {
+      moves.push({
+        kind: 'file',
+        input: {
+          id: cached.id,
+          path: newRelativePath,
+          title: cached.title,
+          fileType: binary.fileType,
+          mimeType: binary.mimeType,
+          fileSize: cached.fileSize ?? 0,
+          createdAt: new Date(cached.createdAt),
+          modifiedAt: new Date(cached.modifiedAt)
+        }
       })
     } else {
-      syncNoteStatToCache(
-        db,
-        {
+      moves.push({
+        kind: 'markdown',
+        input: {
           id: cached.id,
           path: newRelativePath,
           title: cached.title,
@@ -78,15 +81,14 @@ export async function moveIndexedNotesWithFolder(
           fileSize: cached.fileSize ?? 0,
           localOnly: cached.localOnly ?? false,
           emoji: cached.emoji ?? null
-        },
-        { isNew: false }
-      )
+        }
+      })
     }
     moved.push({ id: cached.id, oldPath: cached.path, newPath: newRelativePath, date })
   }
 
   if (moved.length === 0) return moved
-  await flushProjectionEvents()
+  await moveNotesInCache(db, moves)
 
   for (const note of moved) {
     // An unlink the watcher saw before the rows moved is waiting to be paired

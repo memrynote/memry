@@ -13,22 +13,8 @@ import Observation
 // markdown: §12.1.2 forbids a non-desktop client from doing either outside two
 // core writes (§12.1.0).
 //
-// **Four outcomes, four screens, and no arm shared between them.** This is the
-// single most likely bug in this task, so the distinction is carried by types
-// rather than by care:
-//
-//   * `read` **threw** — the note may exist and may hold anything. `.unreadable`.
-//   * `read` returned **nil** — this vault holds no live note by that id.
-//     `.missing`. A restored navigation path lands here, and so does a note
-//     deleted on another device.
-//   * the body is **not on this device** — `present == false`. `.notPulled`.
-//   * the body is **empty** — `present == true`, no text. `.empty`.
-//
-// The first two are `Phase` cases; the last two are ``NoteBodyPreview`` cases,
-// because they are facts about a note that was read successfully and so must
-// still show its title and its dates. Collapsing any pair would report an
-// unread note as an empty one, which is the failure `domain/reads.rs` says the
-// whole module was written against.
+// The four outcomes of a read, and why no two share a screen, are in
+// `NoteReadParts.swift` beside the types that carry them.
 //
 // **The call blocks.** `Notes.read(id:)` is a local SQLite read plus a `yrs`
 // apply (`contracts/core-api.md`, the read slice), so it goes on the shell's
@@ -42,6 +28,10 @@ import Observation
 @MainActor
 @Observable
 final class NoteReadViewModel {
+
+    /// Posted with a note id once that note's title is saved. Each page on
+    /// the note re-reads it (`NotePageLoad`).
+    nonisolated static let titleSaved = Notification.Name("memry.note.titleSaved")
 
     let route: NoteRoute
 
@@ -76,8 +66,14 @@ final class NoteReadViewModel {
     /// that was never pulled, and a reader that cannot walk blocks are three
     /// different facts and only the first two are the note's.
     private(set) var blocks: [Block] = []
+    /// The page editor's `EditorSession.landedWrites`, set by the page.
+    @ObservationIgnored var landedWrites: () -> Int = { 0 }
+    /// The writes `blocks` includes: `landedWrites` as it was read (#4738).
+    @ObservationIgnored private(set) var blocksGeneration = 0
     /// The first walk of the blocks has finished, whatever it found.
     private(set) var blocksRead = false
+    /// A walk of the body on screen has answered, present or not (#5507).
+    private(set) var blocksWalked = false
     /// Each table in the body, by the block id of its `table` block.
     ///
     /// Read eagerly once the blocks land, rather than lazily while drawing:
@@ -131,15 +127,22 @@ final class NoteReadViewModel {
     /// record of. It is **permanent** — the mapped copy says so and carries
     /// `.blocked`, so the view offers no retry over it.
     func fetchBody() async {
-        guard let filler, fetch != .fetching else { return }
+        guard filler != nil, fetch != .fetching else { return }
         fetch = .fetching
+        // Not cancelled with the screen's task. The pull cannot be (spec-
+        // defect 108), so a page task cancelled mid-pull would leave the body
+        // it landed unread, and during a first sync no pass comes to re-read
+        // it (`VaultFillView`).
+        await Task { await pullBody() }.value
+    }
+
+    private func pullBody() async {
+        guard let filler else { return }
         do {
             let summary = try await filler.fetchNoteBody(noteId: route.id)
             Log.sync.notice("fetched one note body", .count(Int(summary.updates)))
             fetch = summary.stopped ? .incomplete : .idle
         } catch {
-            // Cancelled with its `.task`, not failed: no notice.
-            if Task.isCancelled { fetch = .idle; return }
             let mapped = ErrorMapping.userFacing(error)
             Log.sync.error("a note body could not be fetched", .code(mapped.code))
             fetch = .failed(mapped)
@@ -157,7 +160,13 @@ final class NoteReadViewModel {
     /// state, as desktop pulls the note on screen first (#3253); a failed
     /// fetch is not repeated until the user asks. Offline is not an error for a
     /// present body: the local copy stays.
+    ///
+    /// Loads first when the page has not (on open, or after a cancelled
+    /// walk). That read already holds what the pass applied, so it is read
+    /// again only when the pull lands something (#5247).
     func refreshFromRemote() async {
+        var stale = hasLoaded
+        await loadIfNeeded()
         guard hasLoaded else { return }
         if case let .ready(detail) = phase, !detail.body.present {
             if fetch == .idle { await fetchBody() }
@@ -166,12 +175,13 @@ final class NoteReadViewModel {
         if let filler, fetch != .fetching,
            case let .ready(detail) = phase, detail.body.present {
             do {
-                _ = try await filler.fetchNoteBody(noteId: route.id)
+                let pulled = try await filler.fetchNoteBody(noteId: route.id)
+                stale = stale || pulled.updates > 0 || pulled.baselines > 0
             } catch {
                 Log.sync.debug("a note body could not be pulled")
             }
         }
-        await load(quietly: true)
+        if stale { await load(quietly: true) }
     }
 
     /// The rendered body, read after the summary so the title and the dates
@@ -181,47 +191,28 @@ final class NoteReadViewModel {
     /// text preview are already loaded, so the screen falls back to the
     /// preview rather than replacing a readable note with an error.
     private func loadBlocks() async {
+        let generation = landedWrites()
         do {
-            blocks = try await reader.blocks(id: route.id) ?? []
+            let read = try await reader.blocks(id: route.id) ?? []
+            blocksGeneration = generation
+            blocks = read
         } catch {
             // Cancelled, not failed: keep the blocks being edited on screen.
-            if Task.isCancelled { return }
+            // With no walk answered yet, the next open walks again (#5247).
+            if Task.isCancelled { hasLoaded = blocksWalked; return }
             let mapped = ErrorMapping.userFacing(error)
             Log.storage.error("this note's blocks could not be walked", .code(mapped.code))
+            blocksGeneration = generation
             blocks = []
         }
+        blocksWalked = true
         // A body not on this device yet has no blocks to find in: a find
         // request waits for the pull instead of reporting no match.
         if case let .ready(detail) = phase { blocksRead = detail.body.present }
-        await loadTables()
+        if let read = await readTables() { tables = read }
         await loadAttachments()
-        await loadComments()
-        await loadTaskCards()
-    }
-
-    /// A task block the vault holds no task for draws from its own props.
-    private func loadTaskCards() async {
-        var cards: [String: TaskCard] = [:]
-        for block in blocks where block.kind == "taskBlock" {
-            guard let id = block.props.first(where: { $0.name == "taskId" })?.value, !id.isEmpty
-            else { continue }
-            if let card = try? await reader.task(id: id) { cards[id] = card }
-        }
-        guard !Task.isCancelled else { return }
-        taskCards = cards
-    }
-
-    /// A failure leaves the list empty: not seeing a comment is much smaller
-    /// than not seeing the note.
-    private func loadComments() async {
-        do {
-            comments = try await reader.comments(id: route.id)
-        } catch {
-            if Task.isCancelled { return }
-            let mapped = ErrorMapping.userFacing(error)
-            Log.storage.error("this note's review comments could not be read", .code(mapped.code))
-            comments = []
-        }
+        if let read = await readComments() { comments = read }
+        if let read = await readTaskCards() { taskCards = read }
     }
 
     /// Binds every attachment-bearing block in the body.
@@ -241,28 +232,6 @@ final class NoteReadViewModel {
             }
         }
         attachments = bound
-    }
-
-    /// The structure of every table in the body.
-    ///
-    /// A table that will not read is **left out rather than emptied**, and
-    /// the view draws its placeholder: an empty `TableContent` would claim
-    /// the note holds a table with no rows, which is a different note.
-    private func loadTables() async {
-        var loaded: [String: TableContent] = [:]
-        for block in blocks where block.kind == "table" {
-            guard let blockId = block.id else { continue }
-            do {
-                if let table = try await reader.table(id: route.id, blockId: blockId) {
-                    loaded[blockId] = table
-                }
-            } catch {
-                if Task.isCancelled { return }
-                let mapped = ErrorMapping.userFacing(error)
-                Log.storage.error("a table in this note could not be read", .code(mapped.code))
-            }
-        }
-        tables = loaded
     }
 
     /// The tags and properties, read after the note for the same reason the
@@ -310,7 +279,7 @@ final class NoteReadViewModel {
     /// apply for an answer the screen already holds.
     func loadIfNeeded() async {
         guard !hasLoaded else { return }
-        await load()
+        await reload()
     }
 
     /// What the retry button and every post-edit refresh call. A note already
@@ -327,7 +296,11 @@ final class NoteReadViewModel {
     /// `quietly` keeps the page on screen, so a post-sync refresh does not flash.
     private func load(quietly: Bool = false) async {
         hasLoaded = true
-        if !quietly { phase = .loading }
+        if !quietly {
+            phase = .loading
+            // A body that just downloaded waits for its own walk (#5247).
+            blocksWalked = false
+        }
         let detail: NoteDetail?
         do {
             detail = try await reader.read(id: route.id)

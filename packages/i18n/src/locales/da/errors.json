@@ -44,6 +44,8 @@
     "moveFailed": "Kunne ikke flytte noten",
     "applyTemplateFailed": "Kunne ikke anvende skabelonen",
     "appendBlocksFailed": "Kunne ikke flytte blokken til den note",
+    "appendIntoCaseTwin": "Den note deler fil med en note, hvis navn kun adskiller sig ved store og små bogstaver. Omdøb en af dem, og flyt derefter blokken igen.",
+    "caseTwinMoveRefused": "Denne note deler fil med en note, hvis navn kun adskiller sig ved store og små bogstaver, så den kan ikke flyttes på denne måde. Omdøb eller flyt den anden note, eller slet den kopi, du ikke har brug for.",
     "exportPdfFailed": "Kunne ikke eksportere til PDF",
     "exportHtmlFailed": "Kunne ikke eksportere til HTML",
     "restoreVersionFailed": "Kunne ikke gendanne versionen",
@@ -78,7 +80,9 @@
     "downloadProgressFailed": "Kunne ikke hente downloadstatus",
     "exceedsMaxSize": "Filen er for stor: {size} overskrider grænsen på {limit}",
     "exceedsPlanLimit": "Filen er større, end dit abonnement tillader: {size} overskrider {limit}",
-    "emptyFile": "Kan ikke uploade en tom fil"
+    "emptyFile": "Kan ikke uploade en tom fil",
+    "emptyNotAttached": "Denne fil er tom, så den blev ikke vedhæftet. Hvis du indsatte et billede, så kopiér det igen, og indsæt det.",
+    "textInMediaFile": "Denne fil indeholder tekst i stedet for de medier, navnet angiver"
   },
   "crdt": {
     "persistenceDegradedTitle": "Redigeringshistorikken gemmes ikke på denne enhed",
@@ -233,6 +237,7 @@
   "folder": {
     "createFailed": "Kunne ikke oprette mappen",
     "renameFailed": "Kunne ikke omdøbe mappen",
+    "renameCaseTwins": "Denne mappe indeholder noter, der deler fil med en note, hvis mappenavn kun adskiller sig ved store og små bogstaver. Omdøb eller flyt de noter først, og omdøb derefter mappen.",
     "deleteFailed": "Kunne ikke slette mappen",
     "keptNotPulled": "Denne mappe indeholder en note, hvis fil blev slettet uden for memrynote, og dens tekst er endnu ikke synkroniseret til denne enhed, så den kan ikke flyttes til papirkurven. Intet blev slettet. Vent på, at den synkroniseres, eller slet først den note for sig selv.",
     "keptUnwritable": "Denne mappe indeholder en note, hvis fil blev slettet uden for memrynote, og dens tekst kan ikke gemmes i en fil til papirkurven. Intet blev slettet. Slet først den note for sig selv.",

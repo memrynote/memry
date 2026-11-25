@@ -1,5 +1,5 @@
 //! The device-local index of Readwise highlight dates behind the journal day sections
-//! (`highlights-index.ts`, #3476 D17), over `readwise_highlights` (data migration 0038). A run
+//! (`highlights-index.ts`, #3476 D17), over `readwise_highlights` (data migration 0039). A run
 //! keeps it current; a full export replaces it, so a device that takes over renders the bytes
 //! the old one wrote. It never syncs: a full export refills it.
 

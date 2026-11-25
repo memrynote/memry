@@ -20,7 +20,7 @@ fn scratch() -> tempfile::TempDir {
 
 fn open(dir: &Path) -> (Vault, Arc<Search>) {
     let vault = Vault::open("vault-1".to_owned(), dir.display().to_string()).expect("open");
-    let search = vault.search().expect("index.db");
+    let search = vault.search(None).expect("index.db");
     (vault, search)
 }
 

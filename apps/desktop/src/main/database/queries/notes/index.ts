@@ -26,6 +26,7 @@ export {
   listNotesWithUnresolvedHeaderTags,
   resolveHeaderTagFlags,
   getNoteTags,
+  getNoteHeaderTags,
   getTagsForNotes,
   getAllTags,
   findNotesByTag,
@@ -103,6 +104,7 @@ export {
 export {
   setNoteProperties,
   getNoteProperties,
+  getNoteFileProperties,
   getNotePropertiesAsRecord,
   getPropertiesForNotes,
   deleteNoteProperties,

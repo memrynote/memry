@@ -65,7 +65,7 @@ broadcasts sent while it was away are gone. Desktop pulls on every socket
 ## 9.2 Handshake
 
 **Normative.** `GET /sync/ws`
-(`apps/sync-server/src/routes/sync.ts:311`). **Authentication is handshake
+(`apps/sync-server/src/routes/sync.ts:312`). **Authentication is handshake
 headers only — never a query parameter and never a subprotocol**
 (`packages/contracts/src/sync-socket.ts:12-16`).
 
@@ -127,8 +127,8 @@ and where it is produced:
 
 | Type                         | Payload                                                                                                                                          | Producer                                                                                                                                                         |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `changes_available`          | `{ cursor?, vaultId?, committedAtMs?, items? }` (`packages/contracts/src/sync-socket.ts:70-75`); the last two only on an opted-in socket (§9.13) | the default broadcast type (`apps/sync-server/src/durable-objects/user-sync-state.ts:220`), sent after a record push (`apps/sync-server/src/routes/sync.ts:526`) |
-| `crdt_updated`               | `{ vaultId?, noteId, cursor? }` (`packages/contracts/src/sync-socket.ts:86-93`)                                                                  | after a CRDT update push (`apps/sync-server/src/routes/sync.ts:849`), a snapshot push (`:1067`) and a batch (`:1243`)                                            |
+| `changes_available`          | `{ cursor?, vaultId?, committedAtMs?, items? }` (`packages/contracts/src/sync-socket.ts:70-75`); the last two only on an opted-in socket (§9.13) | the default broadcast type (`apps/sync-server/src/durable-objects/user-sync-state.ts:220`), sent after a record push (`apps/sync-server/src/routes/sync.ts:527`) |
+| `crdt_updated`               | `{ vaultId?, noteId, cursor? }` (`packages/contracts/src/sync-socket.ts:86-93`)                                                                  | after a CRDT update push (`apps/sync-server/src/routes/sync.ts:859`), a snapshot push (`:1067`) and a batch (`:1243`)                                            |
 | `calendar_changes_available` | `{ sourceId }`                                                                                                                                   | the calendar webhook route (`apps/sync-server/src/routes/webhooks.ts:183-187`)                                                                                   |
 | `auth_ok`                    | `{ exp? }` (`packages/contracts/src/sync-socket.ts:101`)                                                                                         | the in-place re-auth reply (§9.8)                                                                                                                                |
 | `error`                      | `{ code?, message? }` (`packages/contracts/src/sync-socket.ts:102`)                                                                              | `WS_RATE_LIMITED` (`apps/sync-server/src/durable-objects/user-sync-state.ts:355-360`) and `WS_TOKEN_EXPIRED` (`:464-469`)                                        |
@@ -431,7 +431,7 @@ socket's `changes_available` payload:
   returns for that row version, byte for byte, tombstones included with
   `deletedAt`. The push builds it from the values it just committed through
   the same constructor the pull uses
-  (`apps/sync-server/src/services/sync.ts:399`, `:491`, `:564`). Only accepted rows
+  (`apps/sync-server/src/services/sync.ts:433`, `:517`, `:590`). Only accepted rows
   appear, in ascending server cursor order. `committedAtMs` is the commit time
   of the push's latest wave, for the latency trace (#2280).
 - **Only negotiated types.** A socket receives only the item types it
@@ -442,7 +442,7 @@ socket's `changes_available` payload:
   hint-only; the server never truncates the list. The server decides from the
   committed payload sizes before it builds anything, and builds the items only
   after every wave committed, so building can never reject a committed row
-  (`apps/sync-server/src/services/sync.ts:554-574`). The server variable
+  (`apps/sync-server/src/services/sync.ts:564-584`). The server variable
   `SYNC_SOCKET_ITEMS_MAX_BYTES` can lower the budget and `"0"` turns items off
   at no cost (`apps/sync-server/src/lib/socket-items.ts:18-24`); it cannot
   raise it.

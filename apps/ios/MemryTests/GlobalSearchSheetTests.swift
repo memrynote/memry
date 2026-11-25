@@ -24,6 +24,7 @@ struct GlobalSearchSheetTests {
             changes.changed()
             return SearchGroups(notes: [], journals: [], tasks: [], inbox: [])
         }
+        func semanticModelLoaded() async -> Bool { false }
         func reindex() async throws {}
         func backlinks(noteId: String, order: BacklinkOrder) async throws -> [Backlink] { [] }
         func linksTo(targetId: String, order: BacklinkOrder) async throws -> [BacklinkRow] { [] }
@@ -48,7 +49,7 @@ struct GlobalSearchSheetTests {
         let window = UIWindow(windowScene: scene)
         window.rootViewController = UIHostingController(
             rootView: GlobalSearchSheet(
-                browse: browse, openNote: { _ in }, openTask: { _ in }, openInboxItem: { _ in }, openJournalDay: { _ in }
+                presentation: .sheet, browse: browse, openNote: { _ in }, openTask: { _ in }, openInboxItem: { _ in }, openJournalDay: { _ in }
             )
             .environment(\.vaultSearchIndex, index)
         )

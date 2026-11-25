@@ -90,6 +90,10 @@ describe('SYNC_STATE_KEYS', () => {
         PACKS_APPLIED_THROUGH_CURSOR: 'packsAppliedThroughCursor',
         // Additive: absent means no pack-seeded doc owes a settle.
         PACK_SEED_SETTLE_PENDING: 'packSeedSettlePending',
+        // Additive (#5390): absent means no record-pack phase row is on record.
+        RECORD_PACKS_APPLIED: 'recordPacksApplied',
+        // Additive (#5390): absent means rule 2 kept no row.
+        RECORD_PACKS_UNRESOLVED: 'recordPacksUnresolved',
         CURSOR_SKIP_REPAIR: 'cursorSkipRepair',
         SCHEMA_INVALID_ITEMS: 'schemaInvalidItems',
         // #2297: absent, `pending` or `done`; an install without it has not
@@ -99,7 +103,17 @@ describe('SYNC_STATE_KEYS', () => {
         NOTE_BODY_FEED_CURSOR: 'noteBodyFeedCursor',
         // #2299: absent reads as a mismatch with the CRDT store's epoch, so an
         // install from before it runs the vault sweep once.
-        CRDT_STORE_EPOCH: 'crdtStoreEpoch'
+        CRDT_STORE_EPOCH: 'crdtStoreEpoch',
+        // Additive (#5415): absent means no server blob was found to be text.
+        BINARY_NOTE_TEXT_BLOBS: 'binaryNoteTextBlobs',
+        // Additive (#5522, #5560): absent means no held change and no hold.
+        CASE_TWIN_HELD_CHANGES: 'caseTwinHeldChanges',
+        CASE_TWIN_FOREIGN_BYTES: 'caseTwinForeignBytes',
+        // Additive (#5585): absent means no landing recorded on a shared file.
+        CASE_TWIN_LANDED_HASHES: 'caseTwinLandedHashes',
+        // Additive (#5606): absent means no upload refusal is remembered, so
+        // each refused file is offered and refused once more.
+        ATTACHMENT_UPLOAD_REFUSALS: 'attachmentUploadRefusals'
       })
     })
 

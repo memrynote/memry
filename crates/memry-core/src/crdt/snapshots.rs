@@ -52,6 +52,7 @@ use crate::storage::Db;
 use crate::storage::nested_tx;
 use crate::sync::{body_debt, note_body_feed};
 
+use super::epoch::{self, Epoch, HeldBody};
 use super::errors::CrdtError;
 use super::registry::{Document, OFFSET_KIND};
 use super::update_log::{self, Namespace};
@@ -72,12 +73,11 @@ pub trait SnapshotSealer: Send + Sync {
     fn seal_snapshot(&self, doc_id: &str, state: &[u8]) -> Result<Vec<u8>, EnvelopeError>;
 }
 
-/// Why §7.13.2 refused a document.
+/// Why a snapshot push refused a document.
 ///
-/// Distinct variants rather than a bool, because the three conditions clear in
-/// completely different ways: unmerged state clears on the next clean pull, a
-/// local-only document never clears, and an empty encode clears on the first
-/// edit.
+/// Distinct variants rather than a bool, because each clears its own way:
+/// unmerged state on the next clean pull, a local-only or deleted document
+/// never, an empty encode on the first edit, and a stale load on a reload.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Refusal {
     /// Condition 1: the last pull ended holding debt — a stop-at-gap, an
@@ -85,7 +85,7 @@ pub enum Refusal {
     UnmergedRemoteState,
     /// Condition 2: the document is local-only.
     LocalOnly,
-    /// Condition 2: the document was purged.
+    /// Condition 2: the gate says the document was deleted. Never retried.
     Purged,
     /// Condition 3: the encoded state is empty.
     EmptyState,
@@ -93,6 +93,9 @@ pub enum Refusal {
     /// envelope (chapter 07 §7.3). Decided from the sealed bytes, before any
     /// request, so a note this large costs no upload on any retry.
     TooLarge,
+    /// A purge moved the epoch since the document loaded, so it holds the
+    /// purged body (#5356). Reload it under a fresh [`Epoch`] and retry.
+    PurgedSinceLoad,
 }
 
 impl Refusal {
@@ -103,6 +106,7 @@ impl Refusal {
             Self::Purged => "the document was purged",
             Self::EmptyState => "the encoded state is empty",
             Self::TooLarge => "the document is too large to sync: its snapshot is over 5 MiB",
+            Self::PurgedSinceLoad => "the document was purged since it loaded",
         }
     }
 }
@@ -214,6 +218,8 @@ pub enum SnapshotError {
 /// entry built.
 pub(super) struct Prepared {
     pub(super) doc_id: String,
+    /// The body's epoch when `document` loaded (#5356).
+    epoch: Epoch,
     state: Vec<u8>,
     pub(super) payload: Json,
 }
@@ -272,13 +278,19 @@ impl SnapshotPusher {
     /// refused document never pays for one, and the store runs before the
     /// prune so a kill between them leaves rows that are merely redundant
     /// rather than rows the snapshot never absorbed.
+    ///
+    /// `opened_at` is the document's [`Epoch`], captured before its log loaded
+    /// into `document` (#5356). A purge since then left `document` holding
+    /// the purged body, which is refused [`Refusal::PurgedSinceLoad`] before the
+    /// endpoint, since a stored snapshot deletes the server's rows.
     pub async fn push(
         &self,
         document: &Document,
+        opened_at: Epoch,
         gate: SnapshotGate,
         now_ms: i64,
     ) -> Result<SnapshotOutcome, SnapshotError> {
-        let prepared = match self.prepare(document, gate).await? {
+        let prepared = match self.prepare(document, opened_at, gate).await? {
             Ok(prepared) => prepared,
             Err(refusal) => return Ok(SnapshotOutcome::Refused(refusal)),
         };
@@ -319,6 +331,7 @@ impl SnapshotPusher {
     pub(super) async fn prepare(
         &self,
         document: &Document,
+        opened_at: Epoch,
         gate: SnapshotGate,
     ) -> Result<Result<Prepared, Refusal>, SnapshotError> {
         // §7.13.2 condition 1, from the durable side: a document owed a
@@ -327,7 +340,7 @@ impl SnapshotPusher {
         // The claim is read before the log check and the encode (#2299): the
         // log only grows, so the state then holds every body at or below it.
         let owed_id = document.id().to_owned();
-        let (owed, covers_through, base_revision, local_only) = self
+        let (owed, covers_through, base_revision, local_only, now_at) = self
             .db
             .call(move |conn| {
                 let base = update_log::snapshot(conn, Namespace::Server, &owed_id)
@@ -338,12 +351,17 @@ impl SnapshotPusher {
                     note_body_feed::covers_through(conn, &owed_id)?,
                     base,
                     note_files::is_local_only(conn, &owed_id)?,
+                    epoch::capture(conn, &owed_id).map_err(crdt_to_storage)?,
                 ))
             })
             .await?;
         // §7.13.2 condition 2, from the one place the flag lives.
         if local_only {
             return Ok(Err(Refusal::LocalOnly));
+        }
+        // #5356: purged since `document` loaded, so it holds the purged body.
+        if now_at != opened_at {
+            return Ok(Err(Refusal::PurgedSinceLoad));
         }
         if owed {
             return Ok(Err(Refusal::UnmergedRemoteState));
@@ -385,6 +403,7 @@ impl SnapshotPusher {
         }
         Ok(Ok(Prepared {
             doc_id,
+            epoch: opened_at,
             state,
             payload,
         }))
@@ -417,11 +436,17 @@ impl SnapshotPusher {
             .and_then(Json::as_str)
             .map(str::to_owned);
 
-        let Prepared { doc_id, state, .. } = prepared;
-        let (sequence_num, pruned) = self
+        let Prepared {
+            doc_id,
+            epoch,
+            state,
+            ..
+        } = prepared;
+        let stored = self
             .db
             .call(move |conn| {
                 let pushed = PushedSnapshot {
+                    epoch,
                     state: &state,
                     answered,
                     revision: revision.as_deref(),
@@ -429,6 +454,11 @@ impl SnapshotPusher {
                 store_pushed_snapshot(conn, &doc_id, pushed, now_ms)
             })
             .await?;
+        // #5356: purged during the request, by a delete or a revive. The state
+        // pushed is the purged body's, and the new body owes a pull.
+        let Some((sequence_num, pruned)) = stored else {
+            return Ok(SnapshotOutcome::Refused(Refusal::PurgedSinceLoad));
+        };
 
         Ok(SnapshotOutcome::Pushed {
             sequence_num,
@@ -504,9 +534,11 @@ pub fn stable_watermark(existing: Option<i64>, answered: Option<i64>) -> i64 {
 /// One transaction. A kill between the two would otherwise leave a pruned log
 /// with no snapshot, which is the one shape that loses body state.
 ///
-/// Returns the watermark written and how many rows were pruned.
+/// Returns the watermark written and how many rows were pruned, or `None`,
+/// storing nothing and owing a pull, when the body moved off `epoch`.
 /// What the push response answered for the bytes it stored.
 struct PushedSnapshot<'a> {
+    epoch: Epoch,
     state: &'a [u8],
     answered: Option<i64>,
     revision: Option<&'a str>,
@@ -517,8 +549,13 @@ fn store_pushed_snapshot(
     doc_id: &str,
     pushed: PushedSnapshot<'_>,
     now_ms: i64,
-) -> Result<(i64, usize), StorageError> {
+) -> Result<Option<(i64, usize)>, StorageError> {
     let txn = nested_tx::begin(conn).map_err(failed)?;
+    let Some(body) = HeldBody::check(&txn, doc_id, pushed.epoch).map_err(crdt_to_storage)? else {
+        body_debt::owe(&txn, doc_id)?;
+        txn.commit().map_err(failed)?;
+        return Ok(None);
+    };
 
     let existing = update_log::snapshot(&txn, Namespace::Server, doc_id)
         .map_err(crdt_to_storage)?
@@ -526,15 +563,8 @@ fn store_pushed_snapshot(
     let watermark = stable_watermark(existing, pushed.answered);
 
     // §7.13.4: the revision the server answered, never an invented token.
-    update_log::put_server_snapshot(
-        &txn,
-        doc_id,
-        pushed.state,
-        watermark,
-        pushed.revision,
-        now_ms,
-    )
-    .map_err(crdt_to_storage)?;
+    body.put_server_snapshot(pushed.state, watermark, pushed.revision, now_ms)
+        .map_err(crdt_to_storage)?;
 
     let pruned = txn
         .execute(
@@ -544,7 +574,7 @@ fn store_pushed_snapshot(
         .map_err(failed)?;
 
     txn.commit().map_err(failed)?;
-    Ok((watermark, pruned))
+    Ok(Some((watermark, pruned)))
 }
 
 fn crdt_to_storage(error: CrdtError) -> StorageError {
@@ -560,41 +590,4 @@ fn failed(error: rusqlite::Error) -> StorageError {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn the_watermark_never_walks_forward_once_a_snapshot_exists() {
-        // §7.6: the server reuses the existing sequence number, so the two
-        // agree and nothing moves.
-        assert_eq!(stable_watermark(Some(12), Some(12)), 12);
-        // A server that answered higher is not believed: believing it would
-        // hide updates 13..=30 from `load_plan` forever.
-        assert_eq!(stable_watermark(Some(12), Some(30)), 12);
-        // The first snapshot for a document takes whatever the server gave it.
-        assert_eq!(stable_watermark(None, Some(7)), 7);
-        // A server that answered nothing, on a fresh document, keeps every
-        // update pullable.
-        assert_eq!(stable_watermark(None, None), 0);
-        assert_eq!(stable_watermark(Some(4), None), 4);
-    }
-
-    #[test]
-    fn every_refusal_carries_its_own_reason() {
-        let reasons: Vec<&str> = [
-            Refusal::UnmergedRemoteState,
-            Refusal::LocalOnly,
-            Refusal::Purged,
-            Refusal::EmptyState,
-        ]
-        .iter()
-        .map(Refusal::reason)
-        .collect();
-        // Four conditions, four explanations: §7.13.2's three clear in
-        // different ways and a collapsed message tells the user the wrong one.
-        let mut unique = reasons.clone();
-        unique.sort_unstable();
-        unique.dedup();
-        assert_eq!(unique.len(), reasons.len());
-    }
-}
+mod tests;

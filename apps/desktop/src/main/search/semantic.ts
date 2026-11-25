@@ -87,9 +87,10 @@ export async function semanticNoteHits(text: string): Promise<SemanticHit[]> {
     }
     if (isImageEmbeddingEnabled()) {
       // An image answers for the note that owns it: the image itself when filed,
-      // else the note that embeds it. Its floor is higher (text-to-image cosines
-      // run lower and overlap more), and the hit is shifted down by the gap so
-      // the merge scores both kinds of hit by the same distance above their floor.
+      // else the note that embeds it. It has its own floor (text-to-image cosines
+      // run lower and overlap more), and the hit is shifted by the gap between
+      // the floors so the merge scores both kinds of hit by their distance above
+      // their own floor.
       const shift = EMBEDDING_IMAGE_QUERY_SIMILARITY_FLOOR - EMBEDDING_QUERY_SIMILARITY_FLOOR
       try {
         for (const hit of nearestImageVectors(rawDb, vector, NEIGHBOURS)) {
@@ -106,9 +107,9 @@ export async function semanticNoteHits(text: string): Promise<SemanticHit[]> {
       .map(([id, cosine]) => ({ id, cosine }))
       .toSorted((a, b) => b.cosine - a.cosine)
       .slice(0, NEIGHBOURS)
-    // Memos answer for themselves. An audio-embedded memo has the stricter audio
-    // floor, shifted down by the gap like images so the merge scores every kind
-    // of hit by its distance above its own floor.
+    // Memos answer for themselves. An audio-embedded memo has the audio floor,
+    // shifted by the gap like images so the merge scores every kind of hit by
+    // its distance above its own floor.
     const audioShift = EMBEDDING_AUDIO_QUERY_SIMILARITY_FLOOR - EMBEDDING_QUERY_SIMILARITY_FLOOR
     const voice: SemanticHit[] = []
     try {

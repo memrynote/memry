@@ -52,6 +52,9 @@ pub struct Resident {
     holders: BTreeMap<String, BTreeSet<String>>,
     /// Holders whose copy is of a document since purged; see [`Resident::purge`].
     stale: BTreeMap<String, BTreeSet<String>>,
+    /// Holders told of a purge that have not opened the document since; see
+    /// [`Resident::purge_told`].
+    told: BTreeMap<String, BTreeSet<String>>,
     /// When the last holder of each unheld document let it go, until the grace period ends; see
     /// [`Resident::held_lately`].
     released_at: HashMap<String, i64>,
@@ -65,6 +68,7 @@ impl Resident {
             docs: HashMap::new(),
             holders: BTreeMap::new(),
             stale: BTreeMap::new(),
+            told: BTreeMap::new(),
             released_at: HashMap::new(),
             grace_ms: config.grace_ms,
         }
@@ -176,6 +180,22 @@ impl Resident {
         }
     }
 
+    /// [`Resident::purge`], for a purge the listeners are told of. False when
+    /// every holder was told of an earlier purge and has not opened the
+    /// document since: its copy is already of a deleted document, so this
+    /// purge tells it nothing (a deleted day written again purges the deleted
+    /// log once more, #5351).
+    pub fn purge_told(&mut self, doc_id: &str) -> bool {
+        self.purge(doc_id);
+        let Some(holders) = self.holders.get(doc_id) else {
+            return true;
+        };
+        let told = self.told.entry(doc_id.to_owned()).or_default();
+        let news = !holders.is_subset(told);
+        told.extend(holders.iter().cloned());
+        news
+    }
+
     /// Whether `holder`'s copy of `doc_id` is of a document since purged.
     pub fn is_stale(&self, doc_id: &str, holder: &str) -> bool {
         self.stale
@@ -195,10 +215,12 @@ impl Resident {
 
     /// `holder` received the document as it is now, or let it go.
     pub fn reopened(&mut self, doc_id: &str, holder: &str) {
-        if let Some(set) = self.stale.get_mut(doc_id) {
-            set.remove(holder);
-            if set.is_empty() {
-                self.stale.remove(doc_id);
+        for sets in [&mut self.stale, &mut self.told] {
+            if let Some(set) = sets.get_mut(doc_id) {
+                set.remove(holder);
+                if set.is_empty() {
+                    sets.remove(doc_id);
+                }
             }
         }
     }

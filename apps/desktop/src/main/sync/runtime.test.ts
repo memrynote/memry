@@ -204,6 +204,11 @@ const runtimeMocks = vi.hoisted(() => {
     setOnTokenRefreshed: vi.fn((cb: (() => void) | null) => {
       runtimeMocks.tokenRefreshedCallback = cb
     }),
+    // The same single slot for the session-ended callback (#5342).
+    sessionEndedCallback: null as (() => void) | null,
+    setOnSessionEnded: vi.fn((cb: (() => void) | null) => {
+      runtimeMocks.sessionEndedCallback = cb
+    }),
     trackMainEvent: vi.fn(),
     logDebug: vi.fn(),
     logInfo: vi.fn(),
@@ -227,13 +232,17 @@ const runtimeMocks = vi.hoisted(() => {
       setSnapshotCoverage: vi.fn(),
       setOweRemoteMerge: vi.fn(),
       setRemoteMerge: vi.fn(),
+      setRemoteBodyQuery: vi.fn(),
       setSyncPaused: vi.fn(),
+      setNetworkOnline: vi.fn(),
+      snapshotsHeld: vi.fn(() => false),
       seedExistingDocs: vi.fn(),
       pushSnapshotForNote: vi.fn(),
       pushSnapshotsForNotes: vi.fn(),
       setSnapshotDeferral: vi.fn(),
       readSyncableState: vi.fn(async () => new Uint8Array([7])),
       pushAllSnapshots: vi.fn(),
+      reportEditorWaits: vi.fn(),
       destroy: vi.fn()
     },
     browserSend: vi.fn(),
@@ -336,7 +345,10 @@ vi.mock('../lib/logger', () => ({
   })
 }))
 
-vi.mock('@memry/sync-client/queue', () => ({ SyncQueueManager: runtimeMocks.SyncQueueManager }))
+vi.mock('@memry/sync-client/queue', () => ({
+  SyncQueueManager: runtimeMocks.SyncQueueManager,
+  NOTE_BODY_QUEUE_TYPE: 'note_body'
+}))
 // runtime.ts lazy-imports the cover service; unmocked, that import resolves late
 // on a slow runner and calls getDatabase() inside a later test.
 vi.mock('../home/cover-service', () => ({
@@ -346,6 +358,9 @@ vi.mock('../home/cover-service', () => ({
 vi.mock('./network', () => ({ NetworkMonitor: runtimeMocks.NetworkMonitor }))
 vi.mock('./websocket', () => ({ WebSocketManager: runtimeMocks.WebSocketManager }))
 vi.mock('./engine', () => ({ SyncEngine: runtimeMocks.SyncEngine }))
+// Started fire-and-forget after startup; left real, it reads the database
+// mock after the test that started it has ended.
+vi.mock('./binary-note-restore', () => ({ restoreOverwrittenBinaryNotes: async () => {} }))
 vi.mock('./worker-bridge', () => ({ SyncWorkerBridge: runtimeMocks.SyncWorkerBridge }))
 vi.mock('./note-body-outbox', () => ({
   NoteBodyCredentialsMissingError: class NoteBodyCredentialsMissingError extends Error {},
@@ -515,7 +530,8 @@ vi.mock('./token-manager', () => ({
   getValidAccessToken: runtimeMocks.getValidAccessToken,
   refreshAccessToken: runtimeMocks.refreshAccessToken,
   retrieveToken: runtimeMocks.retrieveToken,
-  setOnTokenRefreshed: runtimeMocks.setOnTokenRefreshed
+  setOnTokenRefreshed: runtimeMocks.setOnTokenRefreshed,
+  setOnSessionEnded: runtimeMocks.setOnSessionEnded
 }))
 
 vi.mock('./vault-account-binding', () => ({
@@ -1027,6 +1043,47 @@ describe('sync runtime', () => {
     await runtime.stopSyncRuntime({ skipFinalSync: true })
   })
 
+  // #5247 C58.2: a scheduled batch held offline or paused returned false and
+  // waited for the next edit or close, if one ever came.
+  it('sends a snapshot batch held offline or paused on the reconnect and the resume', async () => {
+    const runtime = await loadRuntime()
+    await runtime.startSyncRuntime()
+    const queue = runtimeMocks.NoteBodyOutbox.instances[0]
+    const network = runtimeMocks.NetworkMonitor.instances.at(-1)!
+    const engine = runtimeMocks.SyncEngine.instances.at(-1)!
+    const push = runtimeMocks.crdtProvider.pushSnapshotsForNotes
+
+    vi.useFakeTimers()
+    try {
+      runtimeMocks.crdtProvider.snapshotsHeld.mockReturnValue(true)
+      await queue.onBatch?.('note-1', [new Uint8Array([1])])
+      await vi.advanceTimersByTimeAsync(30_000 + SNAPSHOT_BATCH_WINDOW_MS)
+      expect(push).not.toHaveBeenCalled()
+
+      runtimeMocks.crdtProvider.snapshotsHeld.mockReturnValue(false)
+      network.listeners.get('status-changed')?.({ online: true })
+      await vi.advanceTimersByTimeAsync(SNAPSHOT_BATCH_WINDOW_MS)
+      expect(push).toHaveBeenCalledTimes(1)
+      expect(push).toHaveBeenLastCalledWith(['note-1'], { skipSeed: true })
+
+      runtimeMocks.crdtProvider.snapshotsHeld.mockReturnValue(true)
+      await queue.onBatch?.('note-2', [new Uint8Array([1])])
+      await vi.advanceTimersByTimeAsync(30_000 + SNAPSHOT_BATCH_WINDOW_MS)
+      expect(push).toHaveBeenCalledTimes(1)
+
+      runtimeMocks.crdtProvider.snapshotsHeld.mockReturnValue(false)
+      ;(engine.deps.onSyncResumed as () => void)()
+      await vi.advanceTimersByTimeAsync(SNAPSHOT_BATCH_WINDOW_MS)
+      expect(push).toHaveBeenCalledTimes(2)
+      expect(push).toHaveBeenLastCalledWith(['note-2'], { skipSeed: true })
+    } finally {
+      vi.useRealTimers()
+      runtimeMocks.crdtProvider.snapshotsHeld.mockReturnValue(false)
+    }
+
+    await runtime.stopSyncRuntime({ skipFinalSync: true })
+  })
+
   it('handles CRDT auth and quota failures by pausing and notifying renderer', async () => {
     const runtime = await loadRuntime()
     await runtime.startSyncRuntime()
@@ -1305,6 +1362,20 @@ describe('sync runtime', () => {
 
     ;(engine.deps.onSyncResumed as () => void)()
     expect(outbox.flushAll).toHaveBeenCalledTimes(1)
+  })
+
+  // #5371: the snapshot push records `sent` before its request, so an offline
+  // close made a note created here look synced and reopen read-only offline.
+  it('holds snapshot sends while the network monitor reports offline', async () => {
+    const runtime = await loadRuntime()
+    await runtime.startSyncRuntime()
+    const network = runtimeMocks.NetworkMonitor.instances.at(-1)!
+    const online = runtimeMocks.crdtProvider.setNetworkOnline.mock.calls.at(-1)![0] as () => boolean
+
+    network.online = false
+    expect(online()).toBe(false)
+    network.online = true
+    expect(online()).toBe(true)
   })
 
   it("wires the engine's snapshot coverage into the provider and owes a pull on a refusal", async () => {
@@ -1658,6 +1729,22 @@ describe('sync runtime', () => {
     expect(runtimeMocks.resetCrdtProvider).toHaveBeenCalled()
   })
 
+  it('shows waiting editors read-only when the session ends, and stops reaching them after stop (#5342)', async () => {
+    runtimeMocks.sessionEndedCallback = null
+    /** What token-manager does when the session ends: invoke the one slot. */
+    const fireSessionEnded = (): void => runtimeMocks.sessionEndedCallback?.()
+    const runtime = await loadRuntime()
+    await runtime.startSyncRuntime()
+
+    fireSessionEnded()
+    expect(runtimeMocks.crdtProvider.reportEditorWaits).toHaveBeenCalledTimes(1)
+
+    await runtime.stopSyncRuntime({ skipFinalSync: true })
+    runtimeMocks.crdtProvider.reportEditorWaits.mockClear()
+    fireSessionEnded()
+    expect(runtimeMocks.crdtProvider.reportEditorWaits).not.toHaveBeenCalled()
+  })
+
   describe('token-refresh callback lifecycle', () => {
     /** What token-manager does on a successful refresh: invoke the one slot. */
     const fireTokenRefresh = (): void => runtimeMocks.tokenRefreshedCallback?.()
@@ -1777,7 +1864,7 @@ describe('sync runtime', () => {
     async function startWithQueuedFile() {
       const runtime = await loadRuntime()
       const outbox = await import('./attachment-outbox')
-      const upload = vi.fn(async () => ({ attachmentId: 'attachment-1' }))
+      const upload = vi.fn(async () => ({ attachmentId: 'attachment-1', sha256: 'sha' }))
       outbox.registerOutboxUploader(upload, () => outboxDb, null)
       const queueFile = (name: string): string => {
         const diskPath = path.join(tempDir, name)

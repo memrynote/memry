@@ -61,7 +61,8 @@ vi.mock('@main/database/queries/notes', () => ({
     title: 'Plans',
     contentHash: null,
     createdAt: '2026-09-26T00:00:00.000Z'
-  })
+  }),
+  updateNoteCache: vi.fn()
 }))
 vi.mock('../vault/file-ops', () => ({
   atomicWrite: vi.fn(async () => {}),

@@ -22,7 +22,7 @@ import {
   type TransferProgress,
   type UploadResult
 } from '../sync/attachments'
-import { EmptyAttachmentError } from '../sync/attachment-errors'
+import { SupersededDownloadError, UnsendableAttachmentError } from '../sync/attachment-errors'
 import { classifyError } from '../sync/sync-errors'
 import {
   getCachedMaxFileSize,
@@ -42,6 +42,7 @@ import { getBootstrapElevationFactor } from '../sync/bootstrap-session-state'
 import { isAttachmentAutoDownloadEnabled } from '../sync/attachment-download-settings'
 import { attachmentEvents } from '@memry/sync-client/attachment-events'
 import {
+  clearAttachmentDownloadFailure,
   markDownloadFailed,
   markDownloadSucceeded,
   releaseDownloadAttempt
@@ -51,17 +52,20 @@ import {
   clearUpload,
   isLocalOnlyNote,
   markUploadFailed,
+  refuseUpload,
   registerAttachmentQueueReset,
   registerOutboxUploader,
   uploadFileState
 } from '../sync/attachment-outbox'
-import { markWritebackIgnored } from '../sync/crdt-writeback'
+import { recordAppWrite } from '../vault/app-writes'
 import { applyDownloadedAttachmentName } from '../vault/attachment-rename'
+import { landCaseTwinDownload, releaseAbandonedCaseTwinBytes } from '../vault/case-twin-file'
 import { fileTextNoteChanged } from '../file-text'
 import { getStatus as getVaultStatus } from '../vault/status'
 import {
   recordAttachmentDownloadFailure,
-  recordAttachmentUploadFailure
+  recordAttachmentUploadFailure,
+  reportRefusedUpload
 } from '../sync/sync-activity'
 
 import {
@@ -221,6 +225,15 @@ const getOrCreateAttachmentService = (): AttachmentSyncService | null => {
 
   attachmentService = new AttachmentSyncService({
     getVaultPath: () => getVaultStatus().path,
+    beforeFileLands: (filePath, attachmentId, sha256, fileOwnerId) => {
+      const landAt = isDatabaseInitialized()
+        ? landCaseTwinDownload(filePath, attachmentId, sha256, fileOwnerId)
+        : filePath
+      // The downloader renames the verified file in after this returns and
+      // reports no landing, so the record stays in flight until it expires.
+      recordAppWrite(landAt, { sha256 })
+      return landAt
+    },
     getMaxFileSize: () => getCachedMaxFileSize(),
     getAccessToken: () => getValidAccessToken(),
     getVaultKey: async () => {
@@ -508,12 +521,19 @@ export function registerAttachmentHandlers(): void {
       }
       const queue = getOrCreateUploadQueue()
       if (!queue) throw new Error('Sync not initialized')
-      const result = await queue.enqueue(noteId, diskPath, createUploadProgressBroadcaster())
+      let result: UploadResult
+      try {
+        result = await queue.enqueue(noteId, diskPath, createUploadProgressBroadcaster())
+      } catch (err) {
+        // The drain drops the row; the user still learns why.
+        if (err instanceof UnsendableAttachmentError) reportRefusedUpload(noteId, diskPath, err)
+        throw err
+      }
       recordFile(noteId, diskPath, result.attachmentId)
-      return { attachmentId: result.attachmentId }
+      return { attachmentId: result.attachmentId, sha256: result.manifest.checksum }
     },
     () => getDatabase(),
-    (noteId, attachmentId) => recordUploadedAttachment(noteId, attachmentId)
+    (noteId, uploaded) => recordUploadedAttachment(noteId, uploaded.attachmentId, uploaded.sha256)
   )
 
   attachmentEvents.onSaved(({ noteId, diskPath }) => {
@@ -546,7 +566,7 @@ export function registerAttachmentHandlers(): void {
         const result = await upload
         if (!result) return
         if (isDatabaseInitialized()) {
-          recordUploadedAttachment(noteId, result.attachmentId)
+          recordUploadedAttachment(noteId, result.attachmentId, result.manifest.checksum)
           recordFile(noteId, diskPath, result.attachmentId)
           // Outbox cleanup must never turn a successful upload into a failure.
           try {
@@ -569,17 +589,25 @@ export function registerAttachmentHandlers(): void {
           }
           return
         }
-        // A zero-byte file fails identically on every retry: drop the row, no
-        // failure to show or report (#3414).
-        if (err instanceof EmptyAttachmentError) {
-          logger.info('Dropped the upload of an empty attachment', { noteId })
+        // An empty file (#3414) or text in a media file (#5415) fails
+        // identically on every retry: drop the row and remember the refusal,
+        // so the backfill does not offer the unchanged file again (#5606).
+        if (err instanceof UnsendableAttachmentError) {
+          logger.info('Dropped an attachment upload that cannot succeed', {
+            noteId,
+            reason: err.name
+          })
           if (isDatabaseInitialized()) {
             try {
-              clearUpload(getDatabase(), noteId, diskPath)
+              refuseUpload(getDatabase(), noteId, diskPath)
             } catch (outboxErr) {
-              logger.warn('Failed to clear attachment upload intent', { noteId, err: outboxErr })
+              logger.warn('Failed to record a refused attachment upload', {
+                noteId,
+                err: outboxErr
+              })
             }
           }
+          reportRefusedUpload(noteId, diskPath, err)
           return
         }
         const message = err instanceof Error ? err.message : 'Unknown error'
@@ -640,7 +668,7 @@ export function registerAttachmentHandlers(): void {
   })
 
   attachmentEvents.onDownloadNeeded(
-    ({ noteId, attachmentId, diskPath, intoDir, sizeHint, recencyHint }) => {
+    ({ noteId, attachmentId, diskPath, intoDir, sizeHint, recencyHint, landed }) => {
       void (async () => {
         // Only the OUTCOME may settle the guard. The requester marks the attempt
         // in flight before emitting, so every exit from here has to either record
@@ -666,7 +694,6 @@ export function registerAttachmentHandlers(): void {
         const queue = getOrCreateDownloadQueue()
         if (!queue) return releaseDownloadAttempt(noteId, attachmentId)
         try {
-          markWritebackIgnored(diskPath)
           // The eager path FEEDS THE QUEUE instead of firing a download directly:
           // the queue owns concurrency, pacing, the global 429 pause and the
           // hybrid priority ordering (recently-used + small first).
@@ -674,7 +701,7 @@ export function registerAttachmentHandlers(): void {
             ownerId: noteId,
             attachmentId,
             targetPath: diskPath,
-            ...(intoDir ? { targetIsDir: true } : {}),
+            ...(intoDir ? { targetIsDir: true } : { fileOwnerId: noteId }),
             source: 'eager',
             ...(sizeHint !== undefined ? { sizeHint } : {}),
             ...(recencyHint !== undefined ? { recencyHint } : {})
@@ -706,13 +733,24 @@ export function registerAttachmentHandlers(): void {
           if (!intoDir) {
             const stats = await fs.promises.stat(result.filePath)
             if (isDatabaseInitialized()) {
-              recordDownloadedFileSize(noteId, stats.size)
+              recordDownloadedFileSize(noteId, attachmentId, stats.size, result.manifest.checksum)
             }
+            landed?.()
           }
           // The note was indexed before its file existed; text search reads a
           // PDF or image only once it is on disk.
           fileTextNoteChanged(noteId)
         } catch (err) {
+          if (err instanceof SupersededDownloadError) {
+            // A newer record named another attachment while this one
+            // downloaded (#5580): nothing is owed for it any more.
+            logger.info('Dropped a download its note no longer names', { noteId, attachmentId })
+            releaseDownloadAttempt(noteId, attachmentId)
+            if (isDatabaseInitialized()) {
+              clearAttachmentDownloadFailure(getDatabase(), noteId, attachmentId)
+            }
+            return
+          }
           if (err instanceof DownloadQueueClearedError) {
             // Queue torn down (vault switch / runtime restart) before the item
             // ran. Not an outcome — release the claim so the next pull or
@@ -729,6 +767,9 @@ export function registerAttachmentHandlers(): void {
             attachmentId,
             err
           )
+          if (reason === 'missing' && isDatabaseInitialized()) {
+            releaseAbandonedCaseTwinBytes(getDatabase(), noteId, attachmentId)
+          }
           logger.error('Attachment download failed', {
             noteId,
             attachmentId,

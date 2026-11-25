@@ -165,7 +165,8 @@ describe('sidebar order across the note lifecycle (#1646)', () => {
       fileType: 'markdown'
     })
 
-    await deleteNote('note-1')
+    // No sync here: the delete's step runs, and queues no tombstone.
+    await deleteNote('note-1', async (inStep) => inStep?.(() => {}))
 
     expect(getAllNotePositions(db).map((r) => r.path)).toEqual(['Work/a.md'])
   })

@@ -72,7 +72,7 @@ fn device() -> Device {
     ensure_device_identity(store.clone()).unwrap();
     let vault =
         Vault::open_with(core.to_string_lossy().into_owned(), OpenOptions::default()).unwrap();
-    let index = vault.search().unwrap().index_handle();
+    let index = vault.search(None).unwrap().index_handle();
     let canvases = CanvasService::new(root, vault.canvases(store).unwrap(), index, side_trash);
     let db = open_data(&core.join("data.db")).unwrap();
     Device {

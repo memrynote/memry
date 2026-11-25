@@ -10,18 +10,22 @@
 //! others start from the probe's page. Without that, each relaunch restarted the count at 0 and
 //! spent a probe and an updates page on every finished document.
 
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::{Arc, Mutex};
 
 use tokio::task::JoinSet;
 use tokio::time::Instant;
 
+use crate::api::errors::StorageError;
+use crate::protocol::http::HttpClient;
+use crate::seams::diagnostics::CoreDiagnostic;
 use crate::storage::{Db, nested_tx};
 use crate::sync::body_debt;
 use crate::sync::body_pull::{
     BodyPull, BodyPullError, BodyPullReport, MAX_RATE_LIMIT_PAUSES, PROBE_CHUNK, Probed,
-    RateLimitPauses,
+    RateLimitPauses, ceil_ms,
 };
+use crate::sync::diagnostics::RunDiagnostics;
 use crate::sync::first_sync_store::{
     owe_live_documents, read_meta, recent_document_ids, write_meta,
 };
@@ -29,7 +33,7 @@ use crate::sync::note_body_feed;
 
 use super::{
     FirstSync, FirstSyncError, FirstSyncPhase, FirstSyncProgress, FirstSyncReport,
-    META_FIRST_SYNC_BODY_PACKS, ProgressSink, now_ms, sqlite_failed,
+    META_FIRST_SYNC_BODY_PACKS, ProgressSink, now_ms, read_body_counts, sqlite_failed,
 };
 
 /// Documents the bodies pass pulls at once while a bootstrap session elevates
@@ -87,16 +91,16 @@ impl FirstSync {
         let Some(packs) = &self.packs else {
             return Ok(false);
         };
-        let progress = Arc::clone(&self.progress);
-        let on_progress = move |completed: u64, total: u64| {
-            progress.progress(FirstSyncProgress {
-                phase: FirstSyncPhase::Bodies,
-                completed,
-                total: total.max(completed),
-            });
-        };
+        // No body is held before this phase decides, so the count starts at
+        // 0 of the vault and moves once the packs are applied and settled.
+        let (live, _) = read_body_counts(&self.db).await?;
+        self.progress.progress(FirstSyncProgress {
+            phase: FirstSyncPhase::Bodies,
+            completed: 0,
+            total: Some(live),
+        });
         self.progress.packs(None);
-        report.body_packs = packs.run_bodies(now_ms() / 1_000, &on_progress).await?;
+        report.body_packs = packs.run_bodies(now_ms() / 1_000).await?;
         self.progress.packs(Some(&report.body_packs));
         if !report.body_packs.ran {
             // The phase writes `1` in the transaction that settles; `0` sends
@@ -117,8 +121,9 @@ impl FirstSync {
     ///
     /// After the body pack phase every live document is settled or owed, so
     /// the window is the owed documents in it, and each one that reaches its
-    /// head is settled. Otherwise the window is pulled and everything outside
-    /// it is owed.
+    /// head is settled. Otherwise every live document is owed and the window
+    /// is pulled. Either way a window document that stops short of its head
+    /// is owed ([`settle_or_owe`]).
     pub(super) async fn bodies_pass(
         &self,
         window_start: i64,
@@ -163,44 +168,67 @@ impl FirstSync {
             Some(bootstrap) => bootstrap.renew_if_due(now_ms() / 1_000).await,
             None => false,
         };
+        // Every live document not owed is done: the window's documents are
+        // owed by now, after packs or by the sweep above.
+        let (live, owed) = super::progress::read_body_counts_pooled(&self.db).await?;
+        let done = live.saturating_sub(owed);
         let pulled = pull_parallel(
             &self.bodies,
             &self.db,
             window.clone(),
             elevated,
+            (done, live),
             &self.progress,
+            &self.diagnostics,
         )
         .await?;
-        if body_packs_used {
-            let unfinished: Vec<String> = pulled
-                .stopped
-                .iter()
-                .chain(&pulled.incomplete)
-                .cloned()
-                .collect();
-            self.db
-                .call(move |conn| {
-                    for doc_id in window.iter().filter(|id| !unfinished.contains(id)) {
-                        body_debt::settle(conn, doc_id)?;
-                    }
-                    Ok(())
-                })
-                .await?;
-        }
+        let unfinished: HashSet<String> = pulled
+            .stopped
+            .iter()
+            .chain(&pulled.incomplete)
+            .cloned()
+            .collect();
+        self.db
+            .call(move |conn| settle_or_owe(conn, &window, &unfinished))
+            .await?;
         report.bodies.absorb(pulled);
         Ok(())
     }
 }
 
+/// The window's outcome, with packs or without: a document that reached the
+/// server's head is settled, and one whose pull stopped (§7.9) or yielded at
+/// the page limit is owed. A completed first sync then marks the legacy pull
+/// done, so a behind-head document left unowed would claim `coversThrough`
+/// past body rows it never merged (REVIEW-5347).
+fn settle_or_owe(
+    conn: &rusqlite::Connection,
+    window: &[String],
+    unfinished: &HashSet<String>,
+) -> Result<(), StorageError> {
+    let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
+    for doc_id in window {
+        if unfinished.contains(doc_id) {
+            body_debt::owe(&txn, doc_id)?;
+        } else {
+            body_debt::settle(&txn, doc_id)?;
+        }
+    }
+    txn.commit().map_err(sqlite_failed)
+}
+
 /// Pulls every document in `window`, newest first, `BODY_CONCURRENCY_*` at a
 /// time. `elevated` is whether a bootstrap session widens `crdt_pull` for
-/// this run.
+/// this run. `(done, live)` places the window's documents within the vault's
+/// count, so the bar reads documents of the vault.
 async fn pull_parallel(
     bodies: &Arc<BodyPull>,
     db: &Db,
     window: Vec<String>,
     elevated: bool,
+    (done, live): (u64, u64),
     progress: &Arc<dyn ProgressSink>,
+    diagnostics: &Arc<RunDiagnostics>,
 ) -> Result<BodyPullReport, BodyPullError> {
     let mut report = BodyPullReport::default();
     // One budget for the whole pass (#5423): the probes and the document
@@ -214,7 +242,6 @@ async fn pull_parallel(
                 .await?,
         );
     }
-    let total = window.len() as u64;
     let (current, pending): (Vec<String>, Vec<String>) = window
         .into_iter()
         .partition(|doc_id| probed.get(doc_id).is_some_and(|probed| probed.current));
@@ -227,13 +254,22 @@ async fn pull_parallel(
     }
     .min(pending.len());
 
+    diagnostics.emit(CoreDiagnostic::BodyPassStarted {
+        elevated,
+        concurrency: u32::try_from(workers).unwrap_or(u32::MAX),
+        documents: u32::try_from(current.len() + pending.len()).unwrap_or(u32::MAX),
+        up_to_date: Some(u32::try_from(current.len()).unwrap_or(u32::MAX)),
+    });
+    let completed = done + current.len() as u64;
+    let total = live.max(completed + pending.len() as u64);
     let queue = Arc::new(BodyQueue::new(
         pending,
         total,
-        current.len() as u64,
+        completed,
         probed,
         pauses,
         Arc::clone(progress),
+        Arc::clone(bodies.http()),
     ));
     let mut running = JoinSet::new();
     for _ in 0..workers {
@@ -264,9 +300,12 @@ struct BodyQueue {
     total: u64,
     /// Probe pages until a worker takes its document's (#5293): with the
     /// server's 8 MiB batch byte budget, at most 8 MiB of updates per probe
-    /// chunk, and each leaves the map when its document is pulled.
+    /// chunk, and each leaves the map when its document is pulled. The window
+    /// is at most [`super::RECENT_BODY_LIMIT`] documents, five probe chunks of
+    /// [`PROBE_CHUNK`], so the map holds at most 5 x 8 MiB = 40 MiB.
     probed: Mutex<HashMap<String, Probed>>,
     progress: Arc<dyn ProgressSink>,
+    http: Arc<HttpClient>,
 }
 
 struct QueueState {
@@ -286,12 +325,13 @@ impl BodyQueue {
         probed: HashMap<String, Probed>,
         pauses: RateLimitPauses,
         progress: Arc<dyn ProgressSink>,
+        http: Arc<HttpClient>,
     ) -> Self {
         if completed > 0 {
             progress.progress(FirstSyncProgress {
                 phase: FirstSyncPhase::Bodies,
                 completed,
-                total,
+                total: Some(total),
             });
         }
         Self {
@@ -304,6 +344,7 @@ impl BodyQueue {
             total,
             probed: Mutex::new(probed),
             progress,
+            http,
         }
     }
 
@@ -322,19 +363,19 @@ impl BodyQueue {
             .remove(doc_id)
     }
 
-    /// The next document, after any pause a 429 set. The wait is `bodies`'s,
-    /// which a paused driver cuts; a cut wait is not slept again for the same
-    /// pause, and the next request answers the driver's pause.
-    async fn next(&self, bodies: &BodyPull) -> Option<String> {
+    /// The next document, after any pause a 429 set. The wait sleeps on the
+    /// client's sleeper, which a paused driver cuts; a cut wait is not slept
+    /// again for the same pause, and the next request answers the driver's
+    /// pause. [`Self::rate_limited`] reported it to the client's observer.
+    async fn next(&self) -> Option<String> {
         let mut waited = None;
         loop {
             let until = self.lock().paused_until;
             match until {
                 Some(until) if until > Instant::now() && waited != Some(until) => {
                     waited = Some(until);
-                    bodies
-                        .wait(until.saturating_duration_since(Instant::now()))
-                        .await;
+                    let wait = until.saturating_duration_since(Instant::now());
+                    self.http.sleep_ms(ceil_ms(wait)).await;
                 }
                 _ => return self.lock().pending.pop_front(),
             }
@@ -354,7 +395,7 @@ impl BodyQueue {
         self.progress.progress(FirstSyncProgress {
             phase: FirstSyncPhase::Bodies,
             completed: state.completed,
-            total: self.total,
+            total: Some(self.total),
         });
     }
 
@@ -369,13 +410,17 @@ impl BodyQueue {
         let Some(wait) = state.pauses.take(source) else {
             return false;
         };
-        let until = Instant::now() + wait;
-        state.paused_until = Some(
-            state
-                .paused_until
-                .map_or(until, |current| current.max(until)),
-        );
+        let now = Instant::now();
+        let until = now + wait;
+        let held_until = state.paused_until.filter(|held| *held > now);
+        let paused_until = held_until.map_or(until, |held| held.max(until));
+        state.paused_until = Some(paused_until);
         state.pending.push_front(doc_id);
+        // The wait this pause adds: what another worker's pause already holds
+        // is counted once.
+        let waited = paused_until.duration_since(held_until.unwrap_or(now));
+        self.http
+            .paused(u64::try_from(waited.as_millis()).unwrap_or(u64::MAX));
         true
     }
 }
@@ -393,7 +438,7 @@ async fn body_worker(
     queue: Arc<BodyQueue>,
 ) -> Result<BodyPullReport, BodyPullError> {
     let mut report = BodyPullReport::default();
-    while let Some(doc_id) = queue.next(&bodies).await {
+    while let Some(doc_id) = queue.next().await {
         match bodies.pull_with(&doc_id, queue.take_probed(&doc_id)).await {
             Ok(part) => {
                 // The bodies pass owed this document before the pull; only a

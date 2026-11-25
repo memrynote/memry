@@ -18,7 +18,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use memry_core::api::inbox::Inbox;
-use memry_core::domain::embedding_input::EMBEDDING_INPUT_VERSION;
+use memry_core::domain::embedding_input::UNCAPPED_EMBEDDING_INPUT_VERSION;
 use memry_core::domain::inbox::enrich::VoiceMemoName;
 use memry_core::domain::voice_embeddings::{
     AUDIO_EMBEDDING_INPUT_VERSION, VoiceEmbeddingState, VoiceSource,
@@ -214,7 +214,7 @@ fn a_transcribed_memo_is_embedded_from_its_transcript() {
         VoiceEmbeddingState {
             item_id: id.clone(),
             source: "transcript".into(),
-            input_version: EMBEDDING_INPUT_VERSION,
+            input_version: UNCAPPED_EMBEDDING_INPUT_VERSION,
             chunks: 1,
         }
     );
@@ -331,7 +331,7 @@ fn the_reconcile_embeds_owed_memos_and_prunes_gone_ones() {
         l.row("gone").is_none()
             && l.row(&owed).is_some()
             && l.row(&stale)
-                .is_some_and(|row| row.input_version == EMBEDDING_INPUT_VERSION)
+                .is_some_and(|row| row.input_version == UNCAPPED_EMBEDDING_INPUT_VERSION)
     });
 }
 

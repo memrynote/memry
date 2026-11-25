@@ -5,7 +5,7 @@ use std::collections::BTreeSet;
 use serde_json::Value as Json;
 
 use super::items::field;
-use super::{MAX_PULL_IDS, PullError, PullLoop, now_ms};
+use super::{MAX_PULL_IDS, PullError, PullLoop, now_ms, still_open};
 use crate::api::errors::StorageError;
 use crate::storage::nested_tx;
 use crate::sync::apply::{self, ApplyTotals, Pending};
@@ -248,17 +248,6 @@ pub(super) struct Advance {
     /// the head: the cursor moves past it, so a run from cursor 0 ends there and the next
     /// run's markers apply (§5.12.3).
     pub at_head: bool,
-}
-
-/// Fails the page when SQLite rolled its transaction back on its own: writing
-/// on would autocommit the cursor without the records it names.
-fn still_open(conn: &rusqlite::Connection) -> Result<(), StorageError> {
-    if conn.is_autocommit() {
-        return Err(StorageError::Failed {
-            what: "the page's transaction was rolled back".to_owned(),
-        });
-    }
-    Ok(())
 }
 
 fn sqlite_failed(error: rusqlite::Error) -> StorageError {

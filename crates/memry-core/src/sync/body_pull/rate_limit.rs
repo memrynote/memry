@@ -3,8 +3,8 @@
 //! A refused probe or manifest page otherwise falls back to a route pull per
 //! document, and a refused document pull is `retryOn429: false` (§7.10), so
 //! it would fail the run. The wait goes through the client's sleeper
-//! ([`super::BodyPull::wait`]), so a paused driver cuts it as it cuts a
-//! retry's sleep, and the next request answers the pause.
+//! ([`super::BodyPull::wait`], or the bodies pass's queue), so a paused driver
+//! cuts it as it cuts a retry's sleep, and the next request answers the pause.
 
 use std::time::Duration;
 
@@ -39,12 +39,8 @@ impl RateLimitPauses {
     /// when it is no 429, asks for more than [`MAX_RATE_LIMIT_PAUSE_S`], or
     /// `cap` 429s in a row were waited out already.
     pub(in crate::sync) fn take(&mut self, error: &ApiError) -> Option<Duration> {
-        let ApiError::RateLimited { retry_after_s, .. } = error else {
-            return None;
-        };
-        // A 429 without `Retry-After` still means "not now"; one second is the
-        // server's own floor (`Math.max(retryAfter, 1)`).
-        let wait_s = retry_after_s.unwrap_or(1).max(1);
+        // One second at least, the server's own floor (#5547's owner).
+        let wait_s = error.rate_limit_wait_s()?;
         if self.in_a_row >= self.cap || wait_s > MAX_RATE_LIMIT_PAUSE_S {
             return None;
         }
@@ -56,6 +52,12 @@ impl RateLimitPauses {
     pub(in crate::sync) fn answered(&mut self) {
         self.in_a_row = 0;
     }
+}
+
+/// `wait` in whole milliseconds for [`crate::protocol::http::HttpClient::sleep_ms`],
+/// rounded up so the wait never ends early.
+pub(in crate::sync) fn ceil_ms(wait: Duration) -> u64 {
+    u64::try_from(wait.as_micros().div_ceil(1_000)).unwrap_or(u64::MAX)
 }
 
 #[cfg(test)]

@@ -322,8 +322,11 @@ export function insertInlineContentInActiveEditor(noteId: string, content: unkno
   return true
 }
 
-/** URLs each editor already asked a preview for, so a change never refetches. */
-const requestedLinkPreviews = new WeakMap<object, Set<string>>()
+/**
+ * Each editor's previews by URL, so a change never refetches. Null while the
+ * fetch is in flight, and for good once it failed.
+ */
+const linkPreviews = new WeakMap<object, Map<string, UrlPreviewData | null>>()
 
 /**
  * Fill in the title, favicon and site name of every link mention missing them.
@@ -333,7 +336,10 @@ const requestedLinkPreviews = new WeakMap<object, Set<string>>()
  * (a restore, the file watcher, an agent write) — is a bare domain until this
  * runs. Running on open only left every such chip bare on a collaborative note
  * for good, which is how a page of mentions came to look like plain links
- * (#3871). So it runs on every change too, and asks for each URL once.
+ * (#3871). So it runs on every change too, and asks for each URL once. A URL
+ * already resolved is filled from memory: an outside edit or a restore that
+ * rebuilds a chip bare would otherwise leave it bare until the note reopens
+ * (#4475). The fill writes only attrs that differ, so it starts no change loop.
  *
  * The preview is written as the mention's attributes, on the node found again
  * when it arrives: content captured before the fetch would put back whatever
@@ -345,23 +351,35 @@ function hydrateLinkMentions(editor: any): void {
   const state = editor?._tiptapEditor?.state
   if (!state?.doc || typeof editor.transact !== 'function') return
 
-  let requested = requestedLinkPreviews.get(editor)
-  if (!requested) {
-    requested = new Set()
-    requestedLinkPreviews.set(editor, requested)
+  let previews = linkPreviews.get(editor)
+  if (!previews) {
+    previews = new Map()
+    linkPreviews.set(editor, previews)
   }
 
   const urls = new Set<string>()
   state.doc.descendants((node: any) => {
     if (node.type.name !== 'linkMention') return
     const { url, favicon, siteName, title } = node.attrs
-    if (url && !requested.has(url) && (!favicon || !siteName || !title)) urls.add(url)
+    if (url && (!favicon || !siteName || !title)) urls.add(url)
   })
 
   for (const url of urls) {
-    requested.add(url)
+    const known = previews.get(url)
+    if (known) {
+      // Inside a y-prosemirror render the write would miss the Y.Doc (see
+      // `isYSyncRender`), so it waits until that render has returned.
+      if (isYSyncRender(editor)) queueMicrotask(() => applyLinkPreview(editor, url, known))
+      else applyLinkPreview(editor, url, known)
+      continue
+    }
+    if (previews.has(url)) continue
+    previews.set(url, null)
     fetchLinkPreview(url)
-      .then((preview) => applyLinkPreview(editor, url, preview))
+      .then((preview) => {
+        previews.set(url, preview)
+        applyLinkPreview(editor, url, preview)
+      })
       .catch((error: unknown) => log.warn('Link mention preview failed', error))
   }
 }

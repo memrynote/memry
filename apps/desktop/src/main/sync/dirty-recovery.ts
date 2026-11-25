@@ -131,9 +131,15 @@ const recoverDirtyProjects: DirtySweep = {
       .select({ id: projects.id, syncedAt: projects.syncedAt })
       .from(projects)
       .where(
-        or(
-          and(isNotNull(projects.syncedAt), gt(projects.modifiedAt, projects.syncedAt)),
-          isNull(projects.syncedAt)
+        and(
+          // Clock-less rows belong to the seed after the pull: the inbox the
+          // vault open writes exists on the server already, and pushed before
+          // the pull it merged over the remote one (#5255).
+          isNotNull(projects.clock),
+          or(
+            and(isNotNull(projects.syncedAt), gt(projects.modifiedAt, projects.syncedAt)),
+            isNull(projects.syncedAt)
+          )
         )
       )
       .all(),

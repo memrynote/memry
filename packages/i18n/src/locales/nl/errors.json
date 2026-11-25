@@ -44,6 +44,8 @@
     "moveFailed": "Kan de notitie niet verplaatsen",
     "applyTemplateFailed": "Kan het sjabloon niet toepassen",
     "appendBlocksFailed": "Kan het blok niet naar die notitie verplaatsen",
+    "appendIntoCaseTwin": "Die notitie deelt haar bestand met een notitie waarvan de naam alleen in hoofdletters en kleine letters verschilt. Wijzig de naam van een van beide en verplaats het blok daarna opnieuw.",
+    "caseTwinMoveRefused": "Deze notitie deelt haar bestand met een notitie waarvan de naam alleen in hoofdletters en kleine letters verschilt, dus ze kan niet op deze manier worden verplaatst. Wijzig de naam van de andere notitie of verplaats die, of verwijder de kopie die je niet nodig hebt.",
     "exportPdfFailed": "Kan niet naar PDF exporteren",
     "exportHtmlFailed": "Kan niet naar HTML exporteren",
     "restoreVersionFailed": "Kan de versie niet herstellen",
@@ -78,7 +80,9 @@
     "downloadProgressFailed": "Kan de downloadvoortgang niet ophalen",
     "exceedsMaxSize": "Bestand te groot: {size} overschrijdt de limiet van {limit}",
     "exceedsPlanLimit": "Bestand is groter dan je abonnement toestaat: {size} overschrijdt {limit}",
-    "emptyFile": "Kan geen leeg bestand uploaden"
+    "emptyFile": "Kan geen leeg bestand uploaden",
+    "emptyNotAttached": "Dit bestand is leeg en is daarom niet bijgevoegd. Als je een afbeelding hebt geplakt, kopieer die dan opnieuw en plak hem.",
+    "textInMediaFile": "Dit bestand bevat tekst in plaats van de media die de naam aangeeft"
   },
   "crdt": {
     "persistenceDegradedTitle": "De bewerkingsgeschiedenis wordt niet bewaard op dit apparaat",
@@ -233,6 +237,7 @@
   "folder": {
     "createFailed": "Kan de map niet maken",
     "renameFailed": "Kan de naam van de map niet wijzigen",
+    "renameCaseTwins": "Deze map bevat notities die een bestand delen met een notitie waarvan de mapnaam alleen in hoofdletters en kleine letters verschilt. Wijzig eerst de naam van die notities of verplaats ze, en wijzig daarna de naam van de map.",
     "deleteFailed": "Kan de map niet verwijderen",
     "keptNotPulled": "Deze map bevat een notitie waarvan het bestand buiten memrynote is verwijderd, en de tekst ervan is nog niet met dit apparaat gesynchroniseerd, dus de notitie kan niet naar de prullenbak. Er is niets verwijderd. Wacht tot ze is gesynchroniseerd, of verwijder die notitie eerst afzonderlijk.",
     "keptUnwritable": "Deze map bevat een notitie waarvan het bestand buiten memrynote is verwijderd, en de tekst ervan kan niet in een bestand voor de prullenbak worden opgeslagen. Er is niets verwijderd. Verwijder die notitie eerst afzonderlijk.",

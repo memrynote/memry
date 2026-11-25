@@ -26,7 +26,12 @@ final class EditorSession {
 
     // MARK: Wiring
 
-    @ObservationIgnored weak var model: NoteEditorViewModel?
+    @ObservationIgnored weak var model: NoteEditorViewModel? {
+        didSet { if let model { noteId = model.noteId } }
+    }
+    /// The note being edited, kept past the model: a page torn down drops
+    /// its model as its focused block leaves the window (#4457).
+    @ObservationIgnored private(set) var noteId: String?
     /// Re-reads the page after a write (`didChange`).
     @ObservationIgnored var reload: () async -> Void = {}
     /// Notes for the `[[` and `@` menus, most recently modified first.
@@ -41,6 +46,9 @@ final class EditorSession {
     /// Opens an attachment picker; `nil` hides the paperclip menu and the
     /// catalog's media rows.
     var attach: ((EditorAttachmentSource) -> Void)?
+    /// Uploads files dropped on a block, each into a block after it (#4357),
+    /// through the pickers' path. `nil` where `attach` is: no drop is taken.
+    @ObservationIgnored var attachDropped: (([NSItemProvider], _ after: String) -> Void)?
     /// The page's blocks, flat with `depth`, as the page draws them: what the
     /// toolbar's indent and move buttons read the focused block's place from.
     /// Read through the page's observable model, so the toolbar redraws when
@@ -58,6 +66,10 @@ final class EditorSession {
     /// Opens a wiki link's target, for a tap on a link in a block. `nil`
     /// leaves the tap to place the caret.
     @ObservationIgnored var openWikiTarget: ((String) -> Void)?
+    /// Opens a wiki link's target in the pane beside this note (#4377), for
+    /// a `⌘`-tap and the link's menu. `nil` where no pane can show beside
+    /// it: a tap opens the link here, and the link has no menu.
+    @ObservationIgnored var openWikiTargetToSide: ((String) -> Void)?
     /// Schedules a vault sync pass (`requestVaultSync`, debounced), so a
     /// write reaches other devices without waiting for the next foreground
     /// or launch. `didChange` calls it after every committed write.
@@ -80,10 +92,29 @@ final class EditorSession {
     private(set) var selectionMarks: Set<String> = []
     private(set) var hasSelection = false
     private(set) var trigger: InlineTrigger?
-    private(set) var suggestions: [EditorSuggestion] = []
+    private(set) var suggestions: [EditorSuggestion] = [] {
+        didSet { menuChanged() }
+    }
     /// The open `#` menu, when no `[[` / `@` menu is.
     private(set) var tagTrigger: HashTagTrigger?
-    private(set) var tagSuggestions: [TagSuggestion] = []
+    private(set) var tagSuggestions: [TagSuggestion] = [] {
+        didSet { menuChanged() }
+    }
+    /// The open menu's row that Return picks, moved by the arrow keys.
+    var highlighted = 0
+    /// The arrow keys moved `highlighted` in the open menu
+    /// (`menuFollowsKeys`).
+    var highlightMoved = false
+    /// The menu Esc closed, by its trigger character and where it starts, so
+    /// it stays closed while the caret is still in that trigger.
+    @ObservationIgnored private var dismissedMenu: DismissedMenu?
+
+    private struct DismissedMenu: Equatable {
+        let trigger: Character
+        let location: Int
+    }
+    /// Seam for tests; the app reads the attached keyboard.
+    @ObservationIgnored var hardwareKeyboard = HardwareKeyboard.shared
     /// The toolbar shows the format slide (`Aa`) rather than the main row.
     private(set) var formatting = false
     /// A block waiting for the note picker (the `...` menu's Move to).
@@ -100,7 +131,8 @@ final class EditorSession {
     private(set) var sourceEdit: BlockSourceRequest?
     /// A view block whose query sheet is open (`ViewQuerySheet`).
     private(set) var viewEdit: ViewQueryRequest?
-    /// A whiteboard open in its editor (`WhiteboardEditor`).
+    /// A whiteboard open in its editor (`WhiteboardEditor`) or the drawing
+    /// surface (`InkSurface`).
     private(set) var whiteboardEdit: WhiteboardEditRequest?
     /// Bumped when a whiteboard editor closes, so the block re-reads its board.
     private(set) var whiteboardRevision = 0
@@ -115,12 +147,55 @@ final class EditorSession {
     /// The field a block shortcut fired in, held until the row its type
     /// change redraws takes the caret (`BlockField.takeOver`).
     @ObservationIgnored var shortcutField: BlockField?
+    /// The kind `shortcutField`'s block is turning into.
+    @ObservationIgnored var shortcutKind = "paragraph"
+    /// Keys typed after a Return, held for the block it makes (#4692).
+    @ObservationIgnored var returnBurst: ReturnBurst?
+    /// The block whose Return a Backspace took back before the core made
+    /// the new block: the Return's write merges it back (#4834).
+    @ObservationIgnored var withdrawnReturn: String?
+    /// The block a Return split off: the caret goes to its start, where the
+    /// text after the old caret begins (#4834).
+    @ObservationIgnored var caretAtStart: String?
+    /// Keys typed after the title's Return, held for the body (#4705).
+    @ObservationIgnored var titleBurst: TitleBurst?
+    /// The keys the title's Return put back in its line that the keyboard
+    /// may still deliver to the block that took the caret (#4823).
+    @ObservationIgnored var lateKeys: (blockId: String, keys: LateKeys)?
     /// A column list just inserted, by its `id` prop: the caret goes to its
     /// first block once a redraw shows the ids the core minted for it
     /// (`resolveColumnFocus`).
     @ObservationIgnored var pendingColumnFocus: String?
     @ObservationIgnored var keyboardHeight: CGFloat = 300
-    @ObservationIgnored private var tail: Task<Void, Never>?
+    @ObservationIgnored private(set) var tail: Task<Void, Never>?
+    /// Each run `enqueue` queues is one write generation, numbered from 1
+    /// (#4738). A run's writes count as landed once it re-reads the page
+    /// (`didChange`) or ends. A read taken now includes `landedWrites`.
+    @ObservationIgnored private var queuedWrites = 0
+    @ObservationIgnored private(set) var landedWrites = 0
+    /// Each block's last typing commit from this session that failed,
+    /// until one lands (#4773): the text it sent (`typed`), the row's base
+    /// with its chips drawn (`drawn`), the draws whose chips the core never
+    /// got (`draws`), the text it left the block at (`held`), and the runs
+    /// queued by then (`queued`). A commit queued by then on top of `typed`
+    /// or `drawn` sends its change from `held`, with those chips back to
+    /// the text they replaced, so the failed one's typing goes with it
+    /// (REVIEW-4784). Any other commit was drawn or typed from what the row
+    /// showed, and goes from its own base: a clean redraw since puts the
+    /// core's text there.
+    @ObservationIgnored private var unlanded: [String: (typed: String, drawn: String, draws: Set<Int>, held: String, queued: Int)] = [:]
+    /// The generation the run this task is in was queued as.
+    @TaskLocal private static var running: Int?
+    /// The generation the page's drawn blocks include: `landedWrites` as
+    /// they were read (`NoteReadViewModel.blocksGeneration`).
+    @ObservationIgnored var drawnGeneration: () -> Int = { 0 }
+    /// The field whose editing just ended, and its selection, until the turn
+    /// ends (`editingEnded`).
+    @ObservationIgnored var endedField: (field: BlockField, selection: NSRange)?
+    /// A remembered caret is on its way back (`restoreFocus`).
+    @ObservationIgnored var restoringFocus = false
+    /// Seam for tests; the app keeps one memory (`EditorFocusMemory`).
+    @ObservationIgnored var focusMemory = EditorFocusMemory.shared
     /// The Reduce Motion panel swap in flight (`show`). The generation lets a
     /// later swap retire an earlier swap's fallback timer.
     @ObservationIgnored private var panelSwap: (generation: Int, observer: NSObjectProtocol)?
@@ -251,7 +326,9 @@ final class EditorSession {
         if panel == .none {
             textView.inputView = nil
         } else {
-            panelView.frame.size.height = keyboardHeight
+            panelView.frame.size.height = EditorPanelView.height(
+                keyboard: keyboardHeight, window: textView.window?.bounds.height
+            )
             textView.inputView = panelView
         }
         guard reduceMotion() else { return textView.reloadInputViews() }
@@ -323,26 +400,30 @@ final class EditorSession {
         drawnFields.setObject(field, forKey: field.blockId as NSString)
     }
 
+    /// The row drawing `blockId` now, if any.
+    func drawnRow(_ blockId: String) -> BlockField? {
+        drawnFields.object(forKey: blockId as NSString).flatMap { $0.blockId == blockId ? $0 : nil }
+    }
+
     /// Puts the caret at the end of `blockId`: now when its row is on
     /// screen, else once it is drawn (`pendingFocus`). A row the page drew
     /// before the request (a reload that raced the write) never reads
     /// `pendingFocus` again. A field that has since moved on to another
     /// block is not this block's.
     func focus(_ blockId: String) {
-        guard let field = drawnFields.object(forKey: blockId as NSString), field.blockId == blockId,
-              field.textView.window != nil
+        guard let field = drawnRow(blockId), field.textView.window != nil
         else {
             pendingFocus = blockId
             return
         }
-        let textView = field.textView
-        textView.becomeFirstResponder()
-        textView.selectedRange = NSRange(location: textView.textStorage.length, length: 0)
+        takeCaret(field)
     }
 
     func focusChanged(to field: BlockField?) {
         focusedBlockId = field?.blockId
+        dismissedMenu = nil
         if let field {
+            focusMemory.forget()
             self.field = field
             focusedKind = field.block.kind
             focusedLevel = field.value("level").flatMap(Int.init)
@@ -351,6 +432,9 @@ final class EditorSession {
         } else {
             if panel != .none { panel = .none }
             formatting = false
+            // A caret back over a selection brings the format slide back
+            // (`selectionChanged`), as after the Link prompt (#4667).
+            hasSelection = false
             trigger = nil
             suggestions = []
             tagTrigger = nil
@@ -360,6 +444,7 @@ final class EditorSession {
 
     func selectionChanged(in field: BlockField) {
         guard field === self.field else { return }
+        refreshTypingState()
         let textView = field.textView
         let range = textView.selectedRange
         let selected = range.length > 0
@@ -378,7 +463,15 @@ final class EditorSession {
         // A code block keeps `[[`, `@`, `/` and `#` as literal text, as
         // desktop's does: no menu opens there.
         let inCode = field.block.kind == "codeBlock"
-        let next = range.length == 0 && !inCode ? InlineTrigger.active(in: textView.text, caret: range.location) : nil
+        let typed = range.length == 0 && !inCode ? InlineTrigger.active(in: textView.text, caret: range.location) : nil
+        let typedTag = range.length == 0 && !inCode
+            ? HashTagTrigger.active(in: textView.text, caret: range.location) : nil
+        let typedMenu = typed.map(Self.dismissable)
+        let typedTagMenu = typedTag.map { DismissedMenu(trigger: "#", location: $0.range.location) }
+        if let dismissed = dismissedMenu, typedMenu != dismissed, typedTagMenu != dismissed {
+            dismissedMenu = nil
+        }
+        let next = typedMenu == dismissedMenu ? nil : typed
         if next != trigger {
             let leftWiki: Bool = if case .wiki = trigger { next == nil } else { false }
             trigger = next
@@ -392,10 +485,13 @@ final class EditorSession {
             if case .mention = next, suggestions.isEmpty { trigger = nil }
             if case .slash = next, suggestions.isEmpty { trigger = nil }
             // The caret left a finished `[[target]]`: it becomes a link.
-            if leftWiki, !WikiLinkText.typed(in: textView.text, since: field.base).isEmpty { commit(field) }
+            // Not in keys held for a Return's new block (#4692): drawn here,
+            // the link would reach that block as a bare placeholder.
+            if leftWiki, !holdsKeys(field), !WikiLinkText.typed(in: textView.text, since: field.base).isEmpty {
+                commit(field)
+            }
         }
-        let nextTag = range.length == 0 && trigger == nil && !inCode
-            ? HashTagTrigger.active(in: textView.text, caret: range.location) : nil
+        let nextTag = trigger == nil && typedTagMenu != dismissedMenu ? typedTag : nil
         if nextTag != tagTrigger {
             tagTrigger = nextTag
             tagSuggestions = nextTag.map { TagSuggestions.rank(query: $0.query, tags: tags) } ?? []
@@ -403,66 +499,200 @@ final class EditorSession {
         }
     }
 
+    /// Esc over an open menu: it closes and stays closed until the caret
+    /// leaves its trigger.
+    func closeMenu() {
+        dismissedMenu = trigger.map(Self.dismissable)
+            ?? tagTrigger.map { DismissedMenu(trigger: "#", location: $0.range.location) }
+        trigger = nil
+        suggestions = []
+        tagTrigger = nil
+        tagSuggestions = []
+    }
+
+    private static func dismissable(_ trigger: InlineTrigger) -> DismissedMenu {
+        let character: Character = switch trigger {
+        case .wiki: "["
+        case .mention: "@"
+        case .slash: "/"
+        }
+        return DismissedMenu(trigger: character, location: trigger.range.location)
+    }
+
+    /// A menu's rows changed: the highlight goes back to the first, and a
+    /// closed menu forgets the arrows, so on-screen Return makes a block
+    /// again once the keyboard is detached.
+    private func menuChanged() {
+        highlighted = 0
+        if !menuOpen { highlightMoved = false }
+    }
+
     // MARK: Ordered writes
 
     /// Every committed write ends here: a sync pass is scheduled, then the
     /// page re-reads the document.
     func didChange() async {
+        if let generation = Self.running { landed(generation) }
         requestSync?()
         await reload()
     }
 
     /// Runs `work` after every write queued before it: a mark must land after
-    /// the commit of the text it marks.
-    private func enqueue(_ work: @escaping @MainActor () async -> Void) {
+    /// the commit of the text it marks. Answers its write generation.
+    @discardableResult
+    func enqueue(_ work: @escaping @MainActor () async -> Void) -> Int {
+        queuedWrites += 1
+        let generation = queuedWrites
         let previous = tail
-        tail = Task { @MainActor in
+        tail = Task { @MainActor [weak self] in
             await previous?.value
-            await work()
+            await Self.$running.withValue(generation) { await work() }
+            self?.landed(generation)
         }
+        return generation
+    }
+
+    private func landed(_ generation: Int) {
+        landedWrites = max(landedWrites, generation)
     }
 
     /// Writes what the user typed in `field`, then turns a `[[target]]` typed
     /// since the last commit into a link node (desktop's input rule). Never
-    /// in a code block, whose text stays literal.
-    func commit(_ field: BlockField, then: (@MainActor () async -> Void)? = nil) {
+    /// in a code block, whose text stays literal. Answers where a UTF-16
+    /// location in `field` before the commit is after it, with each such
+    /// link drawn as its one-character node. `nodes` puts zero-width inline
+    /// nodes in after the typing and answers the ones that landed, which join
+    /// the typing's undo step. `over` puts nodes over text in `field`, such
+    /// as a `#tag`, as the typed links go (`NoteEditorViewModel.insert`).
+    /// `typing` is the text without what `nodes` and `over` brought: the
+    /// typing up to it is its own undo step, so undo takes back the nodes
+    /// and not the typing before them (#4796). `drawing` draws chips for the
+    /// nodes in the row once the typed links are drawn, given where a
+    /// location before them is after them.
+    @discardableResult
+    func commit(
+        _ field: BlockField,
+        then: (@MainActor () async -> Void)? = nil,
+        typing: String? = nil,
+        over: [EditorUndoStep.TextNode] = [],
+        drawing: ((Int) -> Int) -> Void = { _ in },
+        inserting nodes: (@MainActor (NoteEditorViewModel) async -> [EditorUndoStep.PlacedNode])? = nil
+    ) -> (Int) -> Int {
+        // Keys held for a Return's new block commit here instead (Tab, ⌘B,
+        // leaving the app): moved on later, they would leave undo steps that
+        // write them twice.
+        keepHeldKeys(in: field)
+        // Held by the queued write, not read when it runs: a page torn down
+        // (a split view swapping notes, Back, a size-class re-host) drops
+        // the model before its last typing lands.
+        guard let model else {
+            Log.storage.error("a block commit had no editor model")
+            return { $0 }
+        }
         let attributed = field.textView.attributedText ?? NSAttributedString()
         let text = attributed.string
-        let current = BlockText.shown(field.block.inline)
-        let formatted = BlockText.isFormatted(field.block.inline) || text.contains(BlockText.placeholder)
         let blockId = field.blockId
         let dirty = field.dirty
         let base = field.base
         let links = dirty && field.block.kind != "codeBlock" ? WikiLinkText.typed(in: text, since: base) : []
-        let offsets = links.map { (
-            BlockText.coreOffset(in: attributed, utf16: $0.range.location),
-            BlockText.coreOffset(in: attributed, utf16: NSMaxRange($0.range)),
-            $0
-        ) }
+        let overText = links.map { link in
+            NoteEditorViewModel.wikiLinkNode(
+                WikiLinkText.Typed(
+                    start: BlockText.coreOffset(in: attributed, utf16: link.range.location),
+                    literal: (text as NSString).substring(with: link.range),
+                    target: link.target, alias: link.alias
+                ),
+                in: blockId
+            )
+        } + over
+        let length = BlockText.coreOffset(in: attributed, utf16: attributed.length)
         field.dirty = false
-        if dirty { field.base = text }
+        if dirty {
+            field.base = text
+            field.textView.forgetTyping()
+        }
+        if field === self.field { refreshTypingState() }
         // The literal text goes now, not when the page reloads: typing that
         // lands before the reload would keep it, and the next commit's base
         // would still spell a link the core already holds as a node.
-        if !links.isEmpty { field.drawLinks(links) }
-        enqueue { [weak self] in
-            guard let self, let model = self.model else { return }
-            if dirty, text != base {
-                await model.commit(text, for: blockId, current: current, formatted: formatted, base: base)
-                self.history.record(Self.textStep(blockId, from: current, to: text, formatted: formatted))
+        let draw = BlockField.beginDraw()
+        let moved = links.isEmpty ? { $0 } : field.drawLinks(links)
+        drawing(moved)
+        // The row's base with this commit's chips drawn: `text` when it
+        // drew none.
+        let drawn = field.base
+        let wrote = dirty && text != base
+        // The session too, so the write still schedules its sync pass.
+        let generation = enqueue {
+            // Queued behind a commit that failed, `base` holds typing the
+            // core never got: the change goes from what it holds (#4773).
+            let failed = self.unlanded[blockId].flatMap {
+                dirty && ($0.typed == base || $0.drawn == base) && (Self.running ?? 0) <= $0.queued ? $0 : nil
             }
-            for (start, end, link) in offsets.reversed() {
-                await model.insertWikiLink(in: blockId, from: start, to: end, title: link.target, alias: link.alias)
+            let from = failed?.held ?? base
+            // Its chips the core never got go as the text they replaced.
+            let carried = failed?.draws ?? []
+            let sent = carried.isEmpty ? text : BlockField.undrawn(attributed, draws: carried)
+            let sends = dirty && sent != from
+            let (landed, held) = sends ? await model.commit(sent, for: blockId, base: from) : (true, sent)
+            if dirty {
+                self.unlanded[blockId] = landed
+                    ? nil : (typed: text, drawn: drawn, draws: carried.union([draw]), held: held, queued: self.queuedWrites)
+            }
+            // Not written: the block's row keeps its text unsaved, so a
+            // redraw keeps it and the next commit sends it again
+            // (REVIEW-4700). The row that took this one's typing over
+            // (`BlockField.takeOver`) is the block's row now. A row whose
+            // base a later commit moved on has that commit queued, which
+            // sends this typing too.
+            let row = self.drawnFields.object(forKey: blockId as NSString).flatMap { $0.blockId == blockId ? $0 : nil } ?? field
+            // A row still on this commit's drawn chips gets back the text
+            // they replaced, and keeps it unsaved the same way (REVIEW-4784).
+            if !landed, row.base == text || (drawn != text && row.base == drawn) {
+                row.undraw(carried.union([draw]))
+                row.base = held
+                row.dirty = true
+            }
+            // Not after a failed write: their places hold typing the core
+            // never got, and they would go at the block's end (REVIEW-4784).
+            let converted = !landed || overText.isEmpty
+                ? [] : await model.insert(overText, over: blockId, typedLength: length)
+            let added = landed ? await nodes?(model) ?? [] : []
+            // From `from`, as the write: the block may hold another pane's
+            // typing since, which undo and redo keep. To this pane's text
+            // with the nodes in, so undo takes them back too. A node over
+            // text, such as a `#tag`, keeps its literal for redo to find.
+            // Only over a text write that landed: undo would replay a change
+            // the core never had. Nor when a failed commit's chips were
+            // swapped out of this text: its nodes' places count them.
+            let placed = !converted.isEmpty || !added.isEmpty
+            if landed, placed, sent == text {
+                let spans = converted.map { $0.start ..< $0.start + $0.literal.utf8.count } + added.compactMap { Self.span($0.edit) }
+                let typed = typing ?? from
+                if typed != from { self.history.record(.text(blockId: blockId, from: from, to: typed)) }
+                self.history.record(.text(
+                    blockId: blockId, from: typed, typed: text, typedLength: length, overText: converted,
+                    nodes: added, to: BlockText.placingNodes(spans, in: attributed),
+                    caret: (field.pendingSelection ?? field.textView.selectedRange).location
+                ))
+            } else if landed, sends, !placed {
+                self.history.record(.text(blockId: blockId, from: from, to: sent))
             }
             await then?()
-            if dirty || !offsets.isEmpty || then != nil { await self.didChange() }
+            if dirty || !overText.isEmpty || nodes != nil || then != nil {
+                await self.didChange()
+                self.caughtUp(blockId)
+            }
         }
+        // A commit that sends nothing holds back no read.
+        if wrote || !overText.isEmpty || nodes != nil { field.written = generation }
+        return moved
     }
 
-    private static func textStep(_ blockId: String, from: String, to: String, formatted: Bool) -> EditorUndoStep {
-        formatted
-            ? .replaceText(blockId: blockId, from: from, to: to)
-            : .text(blockId: blockId, from: from, to: to)
+    /// The core range an `insertInline` replaced.
+    private static func span(_ edit: BlockEdit) -> Range<Int>? {
+        guard case let .insertInline(_, start, end, _, _, _) = edit else { return nil }
+        return Int(start) ..< Int(max(start, end))
     }
 
     /// Commits the focused block (if any), then runs `work` against it.
@@ -581,6 +811,15 @@ final class EditorSession {
     func startTrigger(_ character: String) {
         guard let field else { return }
         let textView = field.textView
+        // Commit the composition before `show` reloads the input views. The
+        // commit writes the composed text back over its own range: with the
+        // Japanese keyboard, `unmarkText()` and the reload can both drop it.
+        if let marked = textView.markedTextRange, let composed = textView.text(in: marked) {
+            textView.replace(marked, withText: composed)
+            // Ends the keyboard's composition too, or it composes `にほn` again into the next keys.
+            textView.inputDelegate?.selectionWillChange(textView)
+            textView.inputDelegate?.selectionDidChange(textView)
+        }
         show(.none)
         let caret = textView.selectedRange.location
         let string = textView.text as NSString
@@ -591,11 +830,13 @@ final class EditorSession {
     }
 
     /// Replaces the open `#query` with a `hashTag` node and a space, as
-    /// desktop's tag menu does.
+    /// desktop's tag menu does. Undo takes back the tag and not the typing
+    /// before it (#4804), as `insertInline`.
     func chooseTag(_ suggestion: TagSuggestion) {
         guard let field, let tagTrigger else { return }
         let textView = field.textView
         let range = tagTrigger.range
+        let typing = Self.typing(without: range, in: field, query: true)
         let after = NSMaxRange(range)
         let string = textView.text as NSString
         if after >= string.length || string.character(at: after) != 32 {
@@ -610,10 +851,11 @@ final class EditorSession {
         field.pendingSelection = NSRange(location: range.location + 2, length: 0)
         self.tagTrigger = nil
         tagSuggestions = []
-        let attrs = HashTagAttrs.attrs(tag: suggestion.tag, colors: tagColors)
-        withFocused { model, blockId in
-            await model.insertInline(blockId, from: start, to: end, kind: "hashTag", text: "", attrs: attrs)
-        }
+        let edit = BlockEdit.insertInline(
+            blockId: field.blockId, start: UInt32(start), end: UInt32(end), kind: "hashTag", text: "",
+            attrs: HashTagAttrs.attrs(tag: suggestion.tag, colors: tagColors)
+        )
+        commit(field, typing: typing, over: [.init(start: start, literal: string.substring(with: range), edit: edit)])
     }
 
     // MARK: The focused block's place
@@ -740,36 +982,69 @@ final class EditorSession {
         dateEditField = nil
     }
 
-    /// Rewrites the open chip. The chip's character is swapped in the text
-    /// view and committed like typing (a space for an update, the date's
-    /// words for a conversion, nothing for a removal); an update then puts
-    /// the node back over that space under the same anchor, the path a typed
-    /// `[[link]]` takes. The space keeps the insert inside a text run even
-    /// when the chip was the block's only content.
+    /// Rewrites the open chip. An update rewrites the node under the same
+    /// anchor where the block holds it (`NoteEditorViewModel.rewriteDate`),
+    /// after the block's typing, as one undo step; the text view keeps the
+    /// chip, so the page's re-read draws the new date (#4762). A conversion
+    /// or a removal swaps the chip's character in the text view for the
+    /// date's words, or nothing, and commits it like typing.
     func applyDateEdit(_ edit: DateMentionEdit) {
         guard let request = dateEdit, let field = dateEditField, field.blockId == request.blockId,
               let range = field.dateChipRange(anchorId: request.anchorId)
         else { return cancelDateEdit() }
         cancelDateEdit()
-        let replacement = switch edit {
-        case .update: " "
-        case .convertToText: DateMentionRemind.plainText(request.value)
-        case .remove: ""
+        let replacement: String
+        switch edit {
+        case let .update(value):
+            return rewriteDate(request, at: range, in: field, to: value)
+        case .convertToText:
+            replacement = DateMentionRemind.plainText(request.value)
+        case .remove:
+            replacement = ""
         }
         let attributes = BlockText.baseAttributes(field.style)
         field.textView.textStorage.replaceCharacters(
             in: range, with: NSAttributedString(string: replacement, attributes: attributes)
         )
         field.dirty = true
-        guard case let .update(value) = edit else { return commit(field) }
-        let attributed = field.textView.attributedText ?? NSAttributedString()
-        let start = BlockText.coreOffset(in: attributed, utf16: range.location)
-        let blockId = field.blockId
-        commit(field) { [weak self] in
-            await self?.model?.insertDateMention(
-                in: blockId, from: start, to: start + 1, value: value, anchorId: request.anchorId
-            )
+        commit(field)
+    }
+
+    private func rewriteDate(_ request: DateMentionEditRequest, at range: NSRange, in field: BlockField, to value: DateMentionValue) {
+        // Done with nothing changed: no write, and no empty undo step (#4764).
+        guard value != request.value else { return }
+        // Held now, as `commit` holds it: a page torn down drops its model.
+        guard let model else {
+            Log.storage.error("a date edit had no editor model")
+            return
         }
+        let blockId = field.blockId
+        // The chip's place once the commit has drawn a typed `[[…]]` as its
+        // node, as the core holds it when the chip is rewritten.
+        let moved = commit(field)
+        let chip = DateChipAnchor(
+            anchorId: request.anchorId,
+            place: NodeAnchor.at(moved(range.location), in: field.textView.attributedText ?? NSAttributedString(), replaces: true)
+        )
+        field.written = enqueue { [weak self] in
+            if await model.rewriteDate(chip, in: blockId, to: value) {
+                self?.history.record(.date(blockId: blockId, chip: chip, from: request.value, to: value))
+            }
+            await self?.didChange()
+            self?.caughtUp(blockId)
+        }
+    }
+
+    /// The row of `blockId` takes the page's blocks once its run has
+    /// re-read them. A run that left the block as it was (a refused date
+    /// edit, nodes that did not land) re-reads the block the row skipped
+    /// as older while the run was queued, and SwiftUI does not update a
+    /// row whose block did not change, so the skipped read is drawn here.
+    private func caughtUp(_ blockId: String) {
+        guard let field = drawnFields.object(forKey: blockId as NSString), field.blockId == blockId,
+              let block = blocks().first(where: { $0.id == blockId })
+        else { return }
+        field.receive(block, generation: drawnGeneration())
     }
 
     // MARK: Source blocks
@@ -800,8 +1075,8 @@ final class EditorSession {
             case .diagram:
                 // A diagram's source is its plain content: `ReplaceText`
                 // edits it in place, so a peer's concurrent edit survives.
-                await model.commit(text, for: request.blockId, current: request.source, formatted: true)
-                self?.history.record(.replaceText(blockId: request.blockId, from: request.source, to: text))
+                await model.commit(text, for: request.blockId, base: request.source)
+                self?.history.record(.text(blockId: request.blockId, from: request.source, to: text))
             }
         }
     }
@@ -877,9 +1152,9 @@ final class EditorSession {
         viewEdit = nil
     }
 
-    func editWhiteboard(canvasId: String, title: String) {
+    func editWhiteboard(_ request: WhiteboardEditRequest) {
         dismissKeyboard()
-        whiteboardEdit = WhiteboardEditRequest(canvasId: canvasId, title: title)
+        whiteboardEdit = request
     }
 
     /// The editor closed: its saves are on the canvas, which the block
@@ -899,8 +1174,8 @@ final class EditorSession {
         if let blockId = request.blockId {
             guard text != request.text else { return }
             runBlockAction { [weak self] model in
-                await model.commit(text, for: blockId, current: request.text, formatted: true)
-                self?.history.record(.replaceText(blockId: blockId, from: request.text, to: text))
+                await model.commit(text, for: blockId, base: request.text)
+                self?.history.record(.text(blockId: blockId, from: request.text, to: text))
             }
             return
         }
@@ -931,21 +1206,29 @@ final class EditorSession {
         }
     }
 
-    /// An uploaded attachment's block, after the caret's block (or at the end
+    /// An uploaded attachment's block, after `target`: the block a file was
+    /// dropped on. A picked file goes after the caret's block (or at the end
     /// of the body when none has had the caret). Undo removes the block and
-    /// keeps the upload, as desktop's undo does.
-    func insertAttachment(_ block: AttachmentBlock) {
-        let after = field?.blockId
+    /// keeps the upload, as desktop's undo does. Answers the new block's id
+    /// once it is written, so the next of a batch goes after it; `nil` when
+    /// the insert failed, which the editor's status shows.
+    @discardableResult
+    func insertAttachment(_ block: AttachmentBlock, after target: String? = nil) async -> String? {
+        let after = target ?? field?.blockId
         if let field { commit(field) }
-        enqueue { [weak self] in
-            guard let self, let model = self.model else { return }
-            guard let newId = await model.insert(block.kind, after: after) else { return }
-            let props = block.props.map { BlockEdit.setProp(blockId: newId, name: $0.name, value: $0.value) }
-            for prop in props { await model.apply(prop) }
-            var step = EditorUndoStep.insert(blockId: newId, after: after, kind: block.kind, text: "")
-            step.forwardProps = props
-            self.history.record(step)
-            await self.didChange()
+        return await withCheckedContinuation { done in
+            enqueue { [weak self] in
+                guard let self, let model = self.model,
+                      let newId = await model.insert(block.kind, after: after)
+                else { return done.resume(returning: nil) }
+                let props = block.props.map { BlockEdit.setProp(blockId: newId, name: $0.name, value: $0.value) }
+                for prop in props { await model.apply(prop) }
+                var step = EditorUndoStep.insert(blockId: newId, after: after, kind: block.kind, text: "")
+                step.forwardProps = props
+                self.history.record(step)
+                await self.didChange()
+                done.resume(returning: newId)
+            }
         }
     }
 
@@ -953,99 +1236,271 @@ final class EditorSession {
     /// as desktop's menus insert it.
     func choose(_ suggestion: EditorSuggestion) {
         if case let .slash(row) = suggestion.kind { return chooseSlash(row) }
-        guard let trigger else { return }
-        insertInline(suggestion.kind, replacing: trigger.range)
+        guard let field, let trigger else { return }
+        insertInline([suggestion.kind], replacing: trigger.range, in: field, query: true)
     }
 
     /// `range` of the focused block replaced with a link or date node and a
     /// space.
     func insertInline(_ kind: EditorSuggestion.Kind, replacing range: NSRange) {
         guard let field else { return }
-        let textView = field.textView
-        textView.textStorage.deleteCharacters(in: range)
-        field.dirty = true
-        // The trailing space goes in as text first, so the node lands before it.
-        let string = textView.text as NSString
-        if range.location >= string.length || string.character(at: range.location) != 32 {
-            textView.textStorage.insert(
-                NSAttributedString(string: " ", attributes: BlockText.baseAttributes(field.style)), at: range.location
-            )
-        }
-        let start = BlockText.coreOffset(in: textView.attributedText ?? NSAttributedString(), utf16: range.location)
-        field.pendingSelection = NSRange(location: range.location + 2, length: 0)
-        self.trigger = nil
-        suggestions = []
-        withFocused { model, blockId in
-            switch kind {
-            case let .note(title, alias):
-                await model.insertWikiLink(in: blockId, from: start, to: start, title: title, alias: alias)
-            case let .create(title, alias):
-                await model.createNote(titled: title)
-                await model.insertWikiLink(in: blockId, from: start, to: start, title: title, alias: alias)
-            case let .date(value):
-                await model.insertDateMention(in: blockId, from: start, to: start, value: value)
-            case .slash:
-                break
-            }
-        }
+        insertInline([kind], replacing: range, in: field)
     }
 
-    /// A link or date at the end of `block`, followed by a space: the page
-    /// menu's path, for when no block has the caret.
-    func append(_ kind: EditorSuggestion.Kind, to block: Block) {
-        guard let blockId = block.id else { return }
-        let shown = BlockText.shown(block.inline)
-        let end = block.inline.reduce(0) { $0 + $1.text.utf8.count }
-        enqueue { [weak self] in
-            guard let self, let model = self.model else { return }
-            // The space first, so the node lands inside a text run.
-            await model.commit(shown + " ", for: blockId, current: shown, formatted: true)
-            switch kind {
-            case let .note(title, alias):
-                await model.insertWikiLink(in: blockId, from: end, to: end, title: title, alias: alias)
-            case let .create(title, alias):
-                await model.createNote(titled: title)
-                await model.insertWikiLink(in: blockId, from: end, to: end, title: title, alias: alias)
-            case let .date(value):
-                await model.insertDateMention(in: blockId, from: end, to: end, value: value)
-            case .slash:
-                break
-            }
-            await self.didChange()
+    /// `range` of `field` replaced with each node, in order, each followed
+    /// by a space: the menus' path, and a drop's (#4357). Typing not yet
+    /// committed in `field` is written first, so the nodes land in it, as
+    /// its own undo step: undo takes back the nodes and not the typing
+    /// before them (#4796). The part of `range` that typing wrote goes with
+    /// that step, and a part already committed with the nodes'. `query`:
+    /// `range` is a typed trigger query, not a selection or a drop point.
+    func insertInline(
+        _ kinds: [EditorSuggestion.Kind], replacing range: NSRange, in field: BlockField, query: Bool = false
+    ) {
+        let textView = field.textView
+        let typing = Self.typing(without: range, in: field, query: query)
+        textView.textStorage.deleteCharacters(in: range)
+        field.dirty = true
+        // The trailing spaces go in as text first, so each node lands before
+        // its own.
+        let string = textView.text as NSString
+        let spaced = range.location < string.length && string.character(at: range.location) == 32
+        let spaces = spaced ? kinds.count - 1 : kinds.count
+        if spaces > 0 {
+            textView.textStorage.insert(
+                NSAttributedString(string: String(repeating: " ", count: spaces), attributes: BlockText.baseAttributes(field.style)),
+                at: range.location
+            )
         }
+        if field === self.field {
+            trigger = nil
+            suggestions = []
+        }
+        let blockId = field.blockId
+        // Each node as the row draws it and the core gets it, a date under
+        // the anchor its chip carries.
+        let nodes: [(kind: EditorSuggestion.Kind, run: InlineRun?, anchorId: String?)] = kinds.map { kind in
+            switch kind {
+            case let .note(title, alias), let .create(title, alias):
+                let attrs = WikiLinkAttrs.attrs(target: title, alias: alias)
+                return (kind, Self.node("wikiLink", attrs), nil)
+            case let .date(value):
+                let anchorId = DateMentionValue.mintAnchorId()
+                return (kind, Self.node("dateMention", value.attrs(anchorId: anchorId)), anchorId)
+            case .slash:
+                return (kind, nil, nil)
+            }
+        }
+        // Read once the commit has drawn a typed `[[…]]` before `range` as
+        // its node, as the core holds it when the nodes go in. Each node
+        // goes before its own space.
+        var anchors: [NodeAnchor] = []
+        commit(field, typing: typing, drawing: { moved in
+            let location = moved(range.location)
+            let text = textView.attributedText ?? NSAttributedString()
+            anchors = kinds.indices.map { NodeAnchor.at(location + $0, in: text, replaces: false) }
+            // Drawn now, as `commit` draws a typed `[[…]]` (#4780): keys typed
+            // before the nodes land leave the row dirty, a dirty row is never
+            // redrawn, and the chips stayed off screen until its next commit.
+            field.drawNodes(nodes.compactMap(\.run), at: location)
+            field.pendingSelection = NSRange(location: location + 2 * kinds.count, length: 0)
+        }, inserting: { model in
+            var edits: [EditorUndoStep.PlacedNode] = []
+            // Last first, so each node's offset still counts only the spaces
+            // before it.
+            for (node, at) in zip(nodes, anchors).reversed() {
+                switch node.kind {
+                case let .note(title, alias):
+                    if let edit = await model.insertWikiLink(in: blockId, at: at, title: title, alias: alias) { edits.append(edit) }
+                case let .create(title, alias):
+                    await model.createNote(titled: title)
+                    if let edit = await model.insertWikiLink(in: blockId, at: at, title: title, alias: alias) { edits.append(edit) }
+                case let .date(value):
+                    if let edit = await model.insertDateMention(in: blockId, at: at, value: value, anchorId: node.anchorId) {
+                        edits.append(edit)
+                    }
+                case .slash:
+                    break
+                }
+            }
+            return edits
+        })
+    }
+
+    /// `field`'s text without the part of `range` that typing wrote since
+    /// its base: a pick's `typing` (`commit`).
+    private static func typing(without range: NSRange, in field: BlockField, query: Bool) -> String {
+        let text = field.textView.text ?? ""
+        let span = Self.typed(since: field.base, in: text)
+        // The prefix/suffix guess places typing that repeats the text beside
+        // it at the wrong end (`#ta` typed before `#task`). `range` itself is
+        // the typing when taking it out leaves exactly the rest (#4810). Only
+        // a query is known to be typed: a selection can cover committed text
+        // the typing repeats (REVIEW-4831).
+        let removed = (text as NSString).replacingCharacters(in: range, with: "")
+        if query, range.length > 0, Self.typed(since: field.base, in: removed).length == span.length - range.length {
+            return removed
+        }
+        // No intersection leaves its location undefined.
+        let typed = NSIntersectionRange(range, span)
+        return typed.length == 0 ? text : (text as NSString).replacingCharacters(in: typed, with: "")
+    }
+
+    /// What typing changed in `text` since `base`: the span between their
+    /// common prefix and common suffix.
+    private static func typed(since base: String, in text: String) -> NSRange {
+        let base = base as NSString, text = text as NSString
+        var prefix = 0
+        while prefix < min(base.length, text.length), base.character(at: prefix) == text.character(at: prefix) {
+            prefix += 1
+        }
+        var suffix = 0
+        while suffix < min(base.length, text.length) - prefix,
+              base.character(at: base.length - 1 - suffix) == text.character(at: text.length - 1 - suffix) {
+            suffix += 1
+        }
+        return NSRange(location: prefix, length: text.length - prefix - suffix)
+    }
+
+    /// An inline node run of `mark`, with `attrs` under the mark's prefix,
+    /// as the core reads it back.
+    private static func node(_ mark: String, _ attrs: [String: String]) -> InlineRun {
+        InlineRun(
+            text: "", marks: [mark],
+            markAttrs: Dictionary(uniqueKeysWithValues: attrs.map { ("\(mark).\($0.key)", $0.value) }), target: nil
+        )
     }
 
     // MARK: Undo
 
-    var canUndo: Bool { history.canUndo || (field?.textView.undoManager?.canUndo ?? false) }
-    var canRedo: Bool { history.canRedo || (field?.textView.undoManager?.canRedo ?? false) }
+    /// What `undo()` and `redo()` would take: typing counts only while the
+    /// block holds uncommitted typing, and nothing while an IME composition
+    /// is open. Changed typing is a new edit: its commit records a step,
+    /// which ends redo, so only its own typing redo is left.
+    var canUndo: Bool {
+        _ = typingState
+        return !composing && (history.canUndo || typingChanged || pendingTyping?.canUndo == true)
+    }
+
+    var canRedo: Bool {
+        _ = typingState
+        return !composing && (pendingTyping?.canRedo == true || !typingChanged && history.canRedo)
+    }
+
+    /// What `canUndo` and `canRedo` read from the open text view, which
+    /// nothing observes. They read this copy so the toolbars redraw as
+    /// typing starts, composes or is committed, and the text view itself
+    /// for the answer.
+    private(set) var typingState = TypingState()
+
+    struct TypingState: Equatable {
+        var changed = false
+        var composing = false
+        var undo = false
+        var redo = false
+    }
+
+    private func refreshTypingState() {
+        let now = TypingState(
+            changed: typingChanged, composing: composing,
+            undo: pendingTyping?.canUndo == true, redo: pendingTyping?.canRedo == true
+        )
+        if now != typingState { typingState = now }
+    }
+
+    private var composing: Bool { field?.textView.markedTextRange != nil }
+
+    /// The open block holds typing that its commit will record as a step
+    /// (`commit`).
+    private var typingChanged: Bool {
+        guard let field, field.dirty else { return false }
+        return field.textView.text != field.base
+    }
+
+    /// The text view's typing undo, while the open block's typing is not yet
+    /// committed. After a commit, the typing is a history step.
+    private var pendingTyping: UndoManager? {
+        field?.dirty == true ? field?.textView.editorUndo.typing() : nil
+    }
+
+    /// The open block's text before the latest run of typing undos, which
+    /// typing redo would bring back (`undo`).
+    @ObservationIgnored private var undoneTyping: (blockId: String, text: String)?
 
     /// Typing in the open block first, through the text view's own undo;
-    /// then the writes this session made, newest first.
+    /// then the writes this session made, newest first. The toolbar, ⌘Z
+    /// and the system's undo all land here (`BlockUndoManager`).
     func undo() {
-        if let undoManager = field?.textView.undoManager, undoManager.canUndo, field?.dirty == true {
-            undoManager.undo()
+        // An IME composition keeps its text: a replay's reload would cancel
+        // it (#4659). The undo waits for the composition to end.
+        guard !composing else { return }
+        if let field, let typing = pendingTyping, typing.canUndo {
+            if !typing.canRedo { undoneTyping = (field.blockId, field.textView.text) }
+            typing.undo()
             return
         }
-        guard let step = history.popUndo() else { return }
-        replay([step.backward] + step.backwardAfter)
+        guard canUndo else { return }
+        // The block step's replay drops the text view's typing redo, so typing
+        // undone before it is kept as a history step to redo after it.
+        var kept: EditorUndoStep?
+        if let field, let undone = undoneTyping, undone.blockId == field.blockId,
+           pendingTyping?.canRedo == true, undone.text != field.textView.text {
+            kept = .text(blockId: field.blockId, from: field.textView.text, to: undone.text)
+        }
+        undoneTyping = nil
+        // The commit records the changed typing, and this undo takes it back
+        // off: the core ends as the block was drawn before the typing, and
+        // SwiftUI may not update a row whose block did not change, so the
+        // replay redraws the text view itself (`redrawing`).
+        replay(redrawing: typingChanged ? field : nil) { history in
+            if let kept { history.keepRedo(kept) }
+            guard let step = history.popUndo() else { return nil }
+            return { model in await model.undo(step) }
+        }
     }
 
     func redo() {
-        if let undoManager = field?.textView.undoManager, undoManager.canRedo, field?.dirty == true {
-            undoManager.redo()
+        guard !composing else { return }
+        if let typing = pendingTyping, typing.canRedo {
+            typing.redo()
             return
         }
-        guard let step = history.popRedo() else { return }
-        replay([step.forward] + step.forwardProps)
+        guard canRedo else { return }
+        replay { [weak self] history in
+            guard let step = history.popRedo() else { return nil }
+            return { model in
+                await model.redo(step)
+                if let caret = step.caret, let field = self?.field,
+                   case let .replaceText(blockId, _, _) = step.forward, field.blockId == blockId {
+                    field.pendingSelection = NSRange(location: caret, length: 0)
+                }
+            }
+        }
     }
 
-    private func replay(_ edits: [BlockEdit]) {
-        if let field { field.dirty = false }
+    /// Takes a step with `take` and applies its edits once the open block's
+    /// typing is written and recorded: the reload that follows redraws the
+    /// block from the core, which would drop typing it does not hold
+    /// (#4659), and a step taken before that record would replay over text
+    /// it never saw, ahead of it in the history.
+    private func replay(
+        redrawing reverted: BlockField? = nil,
+        _ take: @escaping @MainActor (EditorUndoStack) -> (@MainActor (NoteEditorViewModel) async -> Void)?
+    ) {
+        let apply: @MainActor () async -> Void = { [weak self] in
+            guard let self, let model = self.model, let run = take(self.history) else { return }
+            await run(model)
+            // Never over typing that landed during the writes: its next
+            // commit sends the change from `base` onto the reverted core.
+            if reverted?.dirty == false { reverted?.render() }
+        }
+        if let field {
+            commit(field, then: apply)
+            return
+        }
         enqueue { [weak self] in
-            guard let self, let model = self.model else { return }
-            for edit in edits { await model.apply(edit) }
-            await self.didChange()
+            await apply()
+            await self?.didChange()
         }
     }
 

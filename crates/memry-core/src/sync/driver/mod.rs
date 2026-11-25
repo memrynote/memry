@@ -272,11 +272,20 @@ impl SyncDriver {
             pull: Arc::new(RwLock::new(LastPull::default())),
             admission: Some(Arc::clone(&admission)),
         });
-        let push = PushCoordinator::new(Arc::clone(&http), db.clone(), declaration.clone(), sealer)
-            .with_at_rest_key(at_rest.clone())
-            .with_vault(&server_vault)
-            .with_snapshot_fallback(Arc::clone(&snapshots) as _)
-            .with_crdt_pacing(Arc::clone(&admission), Arc::clone(&snapshot_requests));
+        let push = PushCoordinator::new(
+            Arc::clone(&http),
+            db.clone(),
+            declaration.clone(),
+            sealer,
+            &device_id,
+        )
+        .with_at_rest_key(at_rest.clone())
+        .with_vault(&server_vault)
+        .with_snapshot_fallback(Arc::clone(&snapshots) as _)
+        .with_crdt_pacing(Arc::clone(&admission), Arc::clone(&snapshot_requests))
+        // A `SYNC_DELETE_WINS` answer is pulled by id with its markers, so
+        // only a verified delete removes the local row (#5407).
+        .with_pull(Arc::new(pull_loop().with_note_bodies(cipher.clone())));
         let bootstrap = Arc::new(BootstrapClient::new(Arc::clone(&http)).with_vault(&server_vault));
         let bodies = Arc::new(
             BodyPull::new(

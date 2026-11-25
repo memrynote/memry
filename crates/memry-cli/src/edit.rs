@@ -244,6 +244,7 @@ fn record(
 mod tests {
     use super::node::fixtures::*;
     use super::*;
+    use memry_core::crdt::epoch::HeldBody;
 
     /// The whole write, end to end over a real database, minus the profile:
     /// load from the log, write through the registry, take the one update off
@@ -255,11 +256,11 @@ mod tests {
         let base = from_hex(PLAIN_PARAGRAPH_VECTOR);
         let seeded = base.clone();
         db.call_blocking(move |conn| {
-            update_log::append_server_update(conn, "note-1", 1, &seeded, 1_700_000_000_000).map_err(
-                |error| StorageError::Failed {
+            HeldBody::never_purged(conn, "note-1")
+                .and_then(|held| held.append_server_update(1, &seeded, 1_700_000_000_000))
+                .map_err(|error| StorageError::Failed {
                     what: error.to_string(),
-                },
-            )
+                })
         })
         .expect("seed the server namespace");
 

@@ -2,7 +2,7 @@
 //! `SyncStateManager.recordHistory` writes (`apps/desktop/src/main/sync/
 //! engine/sync-state-manager.ts:223-241`) and the sync settings list as
 //! `SyncHistoryEntry` (`packages/contracts/src/ipc-sync-ops.ts:165-173`), in
-//! `sync_history` (migration 0031). `SyncDriver` records a row per pass:
+//! `sync_history` (migration 0032). `SyncDriver` records a row per pass:
 //! the pull when it succeeded, the push when it sent something, and the
 //! error when the pass failed. The newest [`KEEP`] rows are kept.
 

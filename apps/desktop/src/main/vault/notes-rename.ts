@@ -14,9 +14,10 @@
 
 import path from 'path'
 import fs from 'fs/promises'
-import { parseNote } from './frontmatter'
+import { generateContentHash, parseNote } from './frontmatter'
 import { writingFrontmatterOf } from '@memry/shared/writing-tools/markdown'
 import { syncNoteToCache, syncFileToCache } from './note-sync'
+import { planCaseTwinMove, prepareCaseTwinLeave, sharesCaseTwinFile } from './case-twin-file'
 import {
   ensureDirectory,
   sanitizeFilename,
@@ -28,7 +29,8 @@ import { rewriteNoteRefsForMove } from '@memry/editor-schema/note-refs'
 import { rewriteInboundWikiLinks } from './rename-link-rewrite'
 import { noteLinkStem } from '@memry/shared/wiki-target'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
-import { markWritebackIgnored } from '../sync/crdt-writeback'
+import { recordAppWrite } from './app-writes'
+import { baselineAfterWrite, landBodyEdit } from '../sync/writeback-baseline'
 import { extractDateFromPath, getNoteCacheById } from '@main/database/queries/notes'
 import {
   carryPositionToPath,
@@ -38,7 +40,7 @@ import {
 import { getDatabase, getIndexDatabase } from '../database'
 import { NoteError, NoteErrorCode } from '../lib/errors'
 import { NotesChannels } from '@memry/contracts/notes-api'
-import { isBinaryFileType, type FileType } from '@memry/shared/file-types'
+import { binaryRecordFields } from '@memry/shared/file-types'
 import { updateNoteMetadata } from '@memry/storage-data'
 import { emitNoteEvent, getVaultRoot, toAbsolutePath, toRelativePath } from './notes-io'
 import { getNoteById } from './notes-crud'
@@ -61,6 +63,41 @@ function changesJournalDate(oldDate: string | null, newRelativePath: string): bo
   return oldDate !== extractDateFromPath(newRelativePath)
 }
 
+/**
+ * A case twin's rename or move (#5498): the file it shares stays with the
+ * other twin, as that twin's own file, and this twin's own file goes to the
+ * new path. Both files and this row's move are one synchronous step
+ * (`planCaseTwinMove`); a throw before it changes nothing.
+ */
+async function leaveCaseTwinFile(
+  existing: Note,
+  newRelativePath: string,
+  title: string,
+  now: string
+): Promise<void> {
+  const vaultPath = getVaultRoot()
+  await prepareCaseTwinLeave(vaultPath, existing.path, existing.id, true)
+  const cached = getNoteCacheById(getIndexDatabase(), existing.id)
+  const moved = planCaseTwinMove(vaultPath, existing.path, existing.id, newRelativePath)()
+  syncNoteToCache(
+    getIndexDatabase(),
+    {
+      id: existing.id,
+      path: newRelativePath,
+      fileContent: moved.content,
+      contentHash: generateContentHash(moved.content),
+      frontmatter: moved.frontmatter,
+      parsedContent: moved.markdown,
+      title,
+      createdAt: cached?.createdAt ?? existing.created.toISOString(),
+      modifiedAt: now,
+      localOnly: cached?.localOnly ?? false,
+      emoji: cached?.emoji ?? null
+    },
+    { isNew: false }
+  )
+}
+
 export async function renameNote(id: string, newTitle: string): Promise<Note> {
   const db = getIndexDatabase()
 
@@ -71,7 +108,7 @@ export async function renameNote(id: string, newTitle: string): Promise<Note> {
   assertNoteWritable(id, existing.path)
 
   const cached = getNoteCacheById(db, id)
-  const isBinary = cached?.fileType ? isBinaryFileType(cached.fileType) : false
+  const binary = cached ? binaryRecordFields(cached) : null
 
   const oldPath = toAbsolutePath(existing.path)
   const dir = path.dirname(oldPath)
@@ -82,21 +119,26 @@ export async function renameNote(id: string, newTitle: string): Promise<Note> {
 
   const now = new Date().toISOString()
 
-  // Pure filesystem rename — file bytes untouched; title/dates live in the DBs
-  await fs.rename(oldPath, newPath)
+  // Pure filesystem rename — file bytes untouched; title/dates live in the DBs.
+  // A case twin's file is the other twin's too (#5498).
+  if (sharesCaseTwinFile(getVaultRoot(), existing.path)) {
+    if (binary || changesJournalDate(cached?.date ?? null, newRelativePath)) {
+      throw new Error('errors:note.caseTwinMoveRefused')
+    }
+    await leaveCaseTwinFile(existing, newRelativePath, newTitle, now)
+  } else await fs.rename(oldPath, newPath)
 
-  if (!isBinary && changesJournalDate(cached?.date ?? null, newRelativePath)) {
+  if (!binary && changesJournalDate(cached?.date ?? null, newRelativePath)) {
     return { ...existing, path: newRelativePath, title: newTitle, modified: new Date(now) }
   }
 
-  if (isBinary) {
+  if (binary) {
     syncFileToCache(db, {
       id,
       path: newRelativePath,
       title: newTitle,
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string DB/wire column narrowed to the union its writers constrain
-      fileType: cached?.fileType as Exclude<FileType, 'markdown'>,
-      mimeType: cached?.mimeType ?? null,
+      fileType: binary.fileType,
+      mimeType: binary.mimeType,
       fileSize: cached?.fileSize ?? 0,
       createdAt: existing.created,
       modifiedAt: new Date(now)
@@ -115,6 +157,8 @@ export async function renameNote(id: string, newTitle: string): Promise<Note> {
         id,
         path: newRelativePath,
         fileContent,
+        // A rename leaves the bytes alone, so the baseline stays.
+        contentHash: baselineAfterWrite(db, id, fileContent, fileContent),
         frontmatter: parsed.frontmatter,
         parsedContent: parsed.content,
         title: newTitle,
@@ -181,7 +225,7 @@ export async function moveNote(id: string, newFolder: string): Promise<Note> {
   assertFolderWritable(newFolder)
 
   const cached = getNoteCacheById(db, id)
-  const isBinary = cached?.fileType ? isBinaryFileType(cached.fileType) : false
+  const binary = cached ? binaryRecordFields(cached) : null
 
   const oldPath = toAbsolutePath(existing.path)
   const filename = path.basename(oldPath)
@@ -195,21 +239,25 @@ export async function moveNote(id: string, newFolder: string): Promise<Note> {
 
   // Filesystem rename first; the body, if it needs re-pointing, is rewritten in
   // place below rather than during the move, so a failed write cannot strand the
-  // file between two folders.
-  await fs.rename(oldPath, newPath)
+  // file between two folders. A case twin leaves the file it shares (#5498).
+  if (sharesCaseTwinFile(notesDir, existing.path)) {
+    if (binary || changesJournalDate(cached?.date ?? null, newRelativePath)) {
+      throw new Error('errors:note.caseTwinMoveRefused')
+    }
+    await leaveCaseTwinFile(existing, newRelativePath, existing.title, now)
+  } else await fs.rename(oldPath, newPath)
 
-  if (!isBinary && changesJournalDate(cached?.date ?? null, newRelativePath)) {
+  if (!binary && changesJournalDate(cached?.date ?? null, newRelativePath)) {
     return { ...existing, path: newRelativePath, modified: new Date(now) }
   }
 
-  if (isBinary) {
+  if (binary) {
     syncFileToCache(db, {
       id,
       path: newRelativePath,
       title: existing.title,
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string DB/wire column narrowed to the union its writers constrain
-      fileType: cached?.fileType as Exclude<FileType, 'markdown'>,
-      mimeType: cached?.mimeType ?? null,
+      fileType: binary.fileType,
+      mimeType: binary.mimeType,
       fileSize: cached?.fileSize ?? 0,
       createdAt: existing.created,
       modifiedAt: new Date(now)
@@ -227,21 +275,36 @@ export async function moveNote(id: string, newFolder: string): Promise<Note> {
       sourceNoteId: id,
       preserveRootRelativeAttachments: true
     })
-    if (rewritten !== null) {
-      // The watcher's external-edit feed must not race the CRDT push below; the
-      // sync note handler marks its own writes the same way before touching a
-      // file it is about to reconcile itself.
-      markWritebackIgnored(newPath)
-      await atomicWrite(newPath, rewritten)
-    }
     const fileContent = rewritten ?? original
     const parsed = parseNote(fileContent, newRelativePath)
+    // Mandatory, not bookkeeping. Main owns the Y.Doc and it is keyed by note
+    // id, so a move never invalidates it; the doc still holds the pre-move body
+    // and the next write-back would serialize that straight back over the
+    // corrected file. The doc takes the rewrite first, then the file
+    // (`landBodyEdit`). The watcher's external-edit feed must not race it, so
+    // the bytes the move put here and the rewrite's are recorded as the app's;
+    // the sync note handler records its own writes the same way.
+    if (rewritten !== null) recordAppWrite(newPath, original)()
+    const contentHash =
+      rewritten === null
+        ? baselineAfterWrite(db, id, original, original)
+        : await landBodyEdit(db, id, rewritten, {
+            notePath: newRelativePath,
+            feed: () =>
+              feedExternalEditToCrdt(id, parsed.content, writingFrontmatterOf(parsed.frontmatter)),
+            write: async () => {
+              const landed = recordAppWrite(newPath, rewritten)
+              await atomicWrite(newPath, rewritten)
+              landed()
+            }
+          })
     syncNoteToCache(
       db,
       {
         id,
         path: newRelativePath,
         fileContent,
+        contentHash,
         frontmatter: parsed.frontmatter,
         parsedContent: parsed.content,
         title: existing.title,
@@ -252,17 +315,6 @@ export async function moveNote(id: string, newFolder: string): Promise<Note> {
       },
       { isNew: false }
     )
-
-    if (rewritten !== null) {
-      // Mandatory, not bookkeeping. Main owns the Y.Doc and it is keyed by note
-      // id, so a move never invalidates it; the doc still holds the pre-move
-      // body and the next write-back would serialize that straight back over the
-      // file we just corrected — and persist it, so closing the note would not
-      // undo the loss. The cache row already points at the new path, so the
-      // embed resolution inside this call reads the note from where it now
-      // lives. Same order `applyTemplateToNote` uses: file first, then the doc.
-      await feedExternalEditToCrdt(id, parsed.content, writingFrontmatterOf(parsed.frontmatter))
-    }
   }
 
   // Path links (`[[Old/Folder/Note]]`) name the old folder; re-point them.

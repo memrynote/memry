@@ -27,6 +27,7 @@
 //! | [`bootstrap`]     | 10                     | the elevated window, and the silent fallback      |
 //! | [`socket`]        | 09                     | the hint channel, which is never a data path      |
 //! | `socket_frame`    | 09 §9.5, §9.12         | one socket message parsed into one hint           |
+//! | [`diagnostics`]   | #5215                  | a run's request statistics, told to the shell's log |
 //! | [`first_sync`]    | §C.3, FR-028           | refs, then metadata, then bodies for the window   |
 //! | [`first_sync_store`] | §A.2                | that run's two work lists and its two `meta` keys |
 //! | [`driver`]        | #3534                  | the one composition a long-lived shell runs        |
@@ -44,6 +45,7 @@ pub mod admission;
 pub mod apply;
 pub mod attachments;
 pub mod body_debt;
+pub mod body_drain;
 pub mod body_heal;
 pub mod body_pull;
 pub mod body_step;
@@ -54,6 +56,8 @@ pub mod clock;
 pub mod crdt_wire;
 mod crypto_batch;
 pub mod delete_keep;
+mod delete_wins;
+pub mod diagnostics;
 pub mod driver;
 pub mod engine;
 mod feed_restart;
@@ -70,8 +74,10 @@ pub mod policy;
 pub mod pull;
 mod pull_decode;
 mod pull_report;
+mod purged_markers;
 pub mod push;
 pub mod refused_items;
+pub mod revive_heal;
 pub mod server_vault;
 pub mod settings_merge;
 pub mod socket;

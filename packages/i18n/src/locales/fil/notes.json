@@ -196,6 +196,10 @@
   "editor": {
     "bodySyncPending": "Sini-sync — maaaring parating pa ang nilalaman ng talang ito",
     "databaseReadOnly": "Read-only. Hindi makakapag-save ng mga pagbabago ang device na ito.",
+    "remoteBodyStuck": "Naghihintay ng sync — read-only hanggang dumating ang na-sync na nilalaman ng note na ito",
+    "remoteBodyOffline": "Offline — read-only hanggang mag-sync ang note na ito",
+    "remoteBodySignedOut": "Naka-sign out — read-only hanggang mag-sign in ka at mag-sync ang note na ito",
+    "remoteBodyVaultLocked": "Hindi mabasa ang encryption key ng vault na ito — read-only hanggang mag-sync ang note na ito",
     "taskRemoval": {
       "title": "{count, plural, one {Inalis ang gawain sa talang ito} other {Inalis ang # gawain sa talang ito}}",
       "description": "{count, plural, one {Panatilihin ito sa Mga gawain, o tanggalin ito sa lahat ng lugar?} other {Panatilihin ang mga ito sa Mga gawain, o tanggalin ang mga ito sa lahat ng lugar?}}",

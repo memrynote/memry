@@ -43,6 +43,19 @@ as `default`. `GET /sync/storage` is account-wide and sits outside this gate ent
 vault header and never creates a vault, and it still answers `SYNC_PAYMENT_REQUIRED` without an active
 plan.
 
+`GET /sync/status` (and `GET /sync/records/status`) resolve the vault the same way and return the same
+400 and 402 errors, but never create the vault row. The Rust core polls status with no vault header at
+the start of a sync pass, racing vault registration. Before this, on an account with no vaults the poll
+minted `default`, and on Plus the real vault's registration then failed with 402 (#3967). A status read
+for a vault with no row answers `pendingItems: 0` and no `lastSyncAt`, the same body as before.
+
+Every other read with no vault header behaves the same way (#4278). That covers manifest, changes,
+pull, items, packs, CRDT updates and snapshots, blob and chunk downloads, presign and the WebSocket
+upgrade. On an account with no vaults these reads answer from an empty vault and create nothing. The
+client gate's read classification decides what counts as a read. Only a header-less write still
+creates `default` on an account with no vaults, because a build that predates the header needs it on
+its first push.
+
 The desktop client mirrors this gate locally to avoid pointless round-trips that can only return 402. Handlers for paid-only endpoints check the cached entitlement first and return their empty
 value (`GET_STATUS` → `local_only`, `GET_STORAGE_BREAKDOWN` → `null`) when the cache says the user
 is on the free plan. Only a **known-unpaid** entitlement is gated — an unknown/uncached
@@ -94,6 +107,16 @@ floor its release does not.
 The server keeps one `client_policies` row per platform, holding a semver write
 floor and a kill switch. It is consulted on **writes only**; reads are never
 gated, so a device dropped to read-only can still open every note it owns.
+The gate classifies by route, not by method: besides `GET`, `HEAD` and
+`OPTIONS`, the `POST` routes that change no client-authored state are exempt
+too: `/sync/pull`, `/sync/records/pull`, `/sync/crdt/updates/batch`,
+`/sync/attachments/presign-batch` and `/sync/attachments/manifests/batch`. Without that list a read-only device could
+not fetch a change a peer made after the floor went up (#4716). The two pull
+routes are not strictly read-only: when a live row's blob is gone they stamp the
+server-set `blob_missing_at` on it (#2302), and a repeat pull keeps the first
+stamp. Only the exact paths are exempt, so `/sync/pull/` is gated, and so is
+`POST /sync/attachments/holds`, which writes chunk holds. Protocol chapter 11
+§11.4 holds the full list.
 
 | Condition                                | Server behaviour                                                   |
 | ---------------------------------------- | ------------------------------------------------------------------ |
@@ -709,7 +732,11 @@ whole history. Rows it already holds at the same or a newer clock change nothing
 `cursorSkipRepair` sync-state key tracks the repair: `pending:<cursor>` after the reset, `done` after
 a pull delivered. An interrupted repair resumes from the persisted cursor on the next full sync, so a
 page the pull refuses every time costs one pass, not one per sync. A device with no cursor yet pulls
-from 0 anyway and records `done` without a reset.
+from 0 anyway and records `done` without a reset, at the start of its first full sync and before
+any await. Recording it later let a fresh device skip the record: a pull the socket's `connected`
+scheduled while the bootstrap session opened took the lock, the repair was refused, and a quit
+mid-bootstrap relaunched into a re-pull from 0 of a feed only this build had ever read. The full
+sync now also marks itself active before it opens the session, so that pull is never scheduled.
 
 The server fix has to be live before a desktop build runs the repair: a repair pull that races a
 peer push on an old Worker can skip the range again and still record `done`.
@@ -868,9 +895,12 @@ waking from sleep is already on the fast cadence.
 
 Three guards keep a wedged sync from lasting until restart. Every sync HTTP request carries a
 60-second abort timeout, so a black-holed socket (suspend/resume, NAT teardown) surfaces as a
-retryable network error instead of pinning the sync lock forever. If the lock is still held after
-15 minutes anyway, a watchdog on the periodic tick force-releases it, aborts the in-flight run,
-and lets the next pull proceed. Skipped periodic pulls log `Periodic pull skipped` with the
+retryable network error instead of pinning the sync lock forever. If the lock is still held with no
+progress for 15 minutes anyway, a watchdog on the periodic tick force-releases it, aborts the
+in-flight run, and lets the next pull proceed. Progress is the lock holder's own work only: a
+pull slice or page that commits, or a push batch the server answers (`SyncContext.lockProgress`).
+A fresh device's record pull that applies a page every few seconds keeps the lock however long the
+vault takes, and local edits or socket frames never keep a hung pull alive. Skipped periodic pulls log `Periodic pull skipped` with the
 blocking flags, which is the first thing to look for when a device shows stale data.
 
 ### Socket items
@@ -1096,6 +1126,47 @@ across devices:
   each embedded vault file without an outbox row, the note's own folder
   included, gets one and uploads at once. Rows whose file was deleted are
   dropped before the online and token gate, so that happens offline too.
+- **Files that can never upload** — an empty file, and a media file that
+  holds text instead of media, fail the same way on every retry, so the upload
+  refuses them before any request and its caller drops the queued row
+  (`refuseUpload`). Dropping the row alone was not enough: the next re-drive's
+  backfill found the file on disk with no record and no row, queued it, and
+  the drain dropped it again, every five minutes (#5606). So the drop also
+  remembers the file's size and mtime in `sync_state.attachmentUploadRefusals`,
+  keyed by its absolute path, and `queueUploadIfAbsent`, which both backfill
+  routes, the write-time hook and a revived note's re-upload (#3054) go
+  through, offers no empty file and no file whose size and mtime still match
+  a refusal. A write changes them, and the
+  next pass offers the file again. A refusal whose file changed or is gone is
+  let go at the next refusal. Sign-out clears `sync_state`, so after the next
+  sign-in each refused file is offered and refused once more. An empty file
+  drops silently. A media file that holds text is reported: a vault-activity
+  failure and an upload-failed toast that says why, once per refusal rather
+  than on every re-drive. The drain's summary log counts dropped rows by
+  reason (`droppedBy`: `deleted`, `EmptyAttachmentError`,
+  `TextInMediaFileError`). `saveAttachment` never writes an empty attachment
+  in the first place: it returns an error the editor shows as a toast, and
+  the editor takes back out the block that the paste or drop put in the note
+  before the upload (`removeFailedUploadBlock`), as it does for any failed
+  upload. On Windows, Chromium hands a paste `image.png` with no bytes when it cannot
+  open the clipboard or decode the image on it, and the editor used to write
+  that and embed a broken image.
+  "Text instead of media" means the extension has a known signature (SVG and
+  unknown types are never judged), the leading bytes do not match it, and the
+  file is at most 16 MiB, has no NUL byte and decodes as UTF-8. Before #5414 the
+  CRDT write-back wrote a binary note's doc as markdown over its downloaded
+  file, and uploading those bytes would replace the blob on every device.
+- **Restoring overwritten binary notes** — at each sync runtime start, after
+  the download re-drive, every binary note with an attachment id and a file
+  that holds text by the rule above gets the same download request a pull
+  sends. The blob lands by atomic rename. A failed download keeps its
+  `attachment_download_failures` row and is re-driven on its backoff. A file
+  the user replaced with real media fails the rule and is never touched
+  (#5415). When a restore lands and the file still holds text, the server blob
+  is text too: its attachment id goes into `sync_state.binaryNoteTextBlobs`,
+  a warning logs the count and sends it to telemetry, and the restore never
+  requests that attachment again. A corrupt list is logged and read as empty. In on-demand download mode, or with no access token, the request is
+  released with no failure row and the next runtime start asks again.
 - **Unreachable vault** — a missing file counts as deleted only while its
   vault is reachable: `<vault>/.memry/data.db` is a file and the folder of the
   row's note exists. A vault on a removable or network drive that is away for a
@@ -1196,6 +1267,38 @@ upload again, which adds the new id and pushes the note. Holds would not cover
 this: a hold ends with the 30-day grace period, and a device can stay offline
 longer. The pending checks live in memory, so a restart before one settles
 loses it.
+
+### Binary note records pushed as markdown
+
+A binary note (image, PDF, audio, video file) syncs as a record with a binary
+`fileType`, its `mimeType` and the `attachmentId` of its blob. Shipped desktop
+builds up to v2026-11-20 could retype such a row to markdown (#5412) and then
+push it as a markdown record with no `attachmentId`. A device that first sees
+the note through that record has no link to the blob (#5419). The record
+format is unchanged; clients repair it among themselves:
+
+- **Push.** A row at a binary-extension path always pushes the binary record,
+  with its type taken from the path. A markdown note is always a `.md` file.
+  The same rule (`isBinaryNoteRow`) picks the binary branch on receive, so a
+  rename of such a row keeps the file's bytes and its extension and the row is
+  retyped from the path. Metadata edits (tags, properties, title) on such a row
+  are refused instead of rewriting the file as markdown, and a remote delete
+  never reads its bytes as text to keep.
+- **Receive and heal.** A device that holds the note as a binary file with its
+  attachment keeps its row and file when a markdown record without an
+  attachment arrives. It then re-pushes its binary record once per markdown
+  record (one `sync_state` row per note id and record clock) through the normal
+  update path, with the clock ticked past the merged record, and logs a
+  warning. A later markdown record, such as a re-push by a device that took
+  the markdown record, is answered once too. Receiving never pushes, so two
+  devices cannot answer each other in a loop; a real rename to `.md` on
+  another device is answered as well, which desktop never applies on receive.
+- **Devices that took the markdown record.** They keep the `.md` note when the
+  re-pushed binary record arrives and log a warning; nothing is written.
+
+Older clients receiving the re-pushed record apply it as any binary record:
+a device holding the note as binary updates its sidecar fields, a device holding
+it as markdown keeps its markdown row.
 
 ## Tombstones
 
@@ -1304,30 +1407,43 @@ signed-in account for sync, so another account's vaults never reach this account
 
 ## Endpoints
 
-| Path                                   | Direction | Purpose                                                                                       |
-| -------------------------------------- | --------- | --------------------------------------------------------------------------------------------- |
-| `POST /sync/push`                      | up        | Upload new sync items (metadata + blob refs)                                                  |
-| `POST /sync/pull`                      | down      | Fetch updates since cursor                                                                    |
-| `POST /sync/crdt/updates`              | up        | Incremental Yjs binary updates                                                                |
-| `GET /sync/crdt/updates`               | down      | One note's incremental updates (`note_id`, `since`, `limit` query params)                     |
-| `POST /sync/crdt/updates/batch`        | down      | Incremental updates for up to 100 notes in one request, plus `snapshotMeta`                   |
-| `POST /sync/crdt/snapshot`             | up        | Full Yjs document baseline; prunes stored updates it covers (`coversThrough`, else watermark) |
-| `POST /sync/crdt/snapshot/batch`       | up        | Up to 50 full baselines in one request; same store-and-prune semantics, reported per note     |
-| `GET /sync/crdt/snapshot/:noteId`      | down      | The note's snapshot baseline and its `revision`, applied before its incrementals              |
-| `GET /sync/vaults`                     | down      | List the account's registered vaults                                                          |
-| `POST /sync/vaults`                    | up        | Register or update a vault's encrypted name                                                   |
-| `PUT /sync/vaults/:vaultId/icon`       | up        | Set or reset a vault's encrypted icon; last writer wins on the client's change time           |
-| `POST /sync/bootstrap`                 | mixed     | Open an elevated bootstrap window; returns a token, the first manifest page and a tail cursor |
-| `POST /sync/bootstrap/renew`           | mixed     | Slide the window's TTL under the same session id                                              |
-| `POST /sync/bootstrap/close`           | up        | Release the window and its per-user session slot (idempotent)                                 |
-| `GET /sync/packs`                      | down      | List this vault's compaction packs, newest-first, with presigned URLs when available          |
-| `POST /sync/attachments/presign-batch` | down      | Presigned R2 GETs for attachment chunks the caller already owns                               |
-| `POST /auth/*`                         | mixed     | OTP, sign-in, refresh, sign-out                                                               |
-| `POST /auth/oauth/google/native`       | mixed     | Trade a platform-issued Google ID token for a setup token (mobile)                            |
-| `GET /auth/key-verifier`               | down      | Account key verifier for an established session (vault-key mismatch detection)                |
-| `GET /auth/devices`                    | down      | Signing-key directory; includes revoked devices (`revokedAt` set)                             |
-| `POST /devices/*`                      | mixed     | Linking, listing, revoking                                                                    |
-| `POST /keys/*`                         | mixed     | Key sealing during link, rotation                                                             |
+| Path                                     | Direction | Purpose                                                                                       |
+| ---------------------------------------- | --------- | --------------------------------------------------------------------------------------------- |
+| `POST /sync/push`                        | up        | Upload new sync items (metadata + blob refs)                                                  |
+| `POST /sync/pull`                        | down      | Fetch updates since cursor                                                                    |
+| `POST /sync/crdt/updates`                | up        | Incremental Yjs binary updates                                                                |
+| `GET /sync/crdt/updates`                 | down      | One note's incremental updates (`note_id`, `since`, `limit` query params)                     |
+| `POST /sync/crdt/updates/batch`          | down      | Incremental updates for up to 100 notes in one request, plus `snapshotMeta`                   |
+| `GET /sync/crdt/manifest`                | down      | Body metadata for up to 1,000 notes per page: floor, snapshot revision, highest update        |
+| `POST /sync/crdt/snapshot`               | up        | Full Yjs document baseline; prunes stored updates it covers (`coversThrough`, else watermark) |
+| `POST /sync/crdt/snapshot/batch`         | up        | Up to 50 full baselines in one request; same store-and-prune semantics, reported per note     |
+| `GET /sync/crdt/snapshot/:noteId`        | down      | The note's snapshot baseline and its `revision`, applied before its incrementals              |
+| `GET /sync/vaults`                       | down      | List the account's registered vaults                                                          |
+| `POST /sync/vaults`                      | up        | Register or update a vault's encrypted name                                                   |
+| `PUT /sync/vaults/:vaultId/icon`         | up        | Set or reset a vault's encrypted icon; last writer wins on the client's change time           |
+| `POST /sync/bootstrap`                   | mixed     | Open an elevated bootstrap window; returns a token, the first manifest page and a tail cursor |
+| `POST /sync/bootstrap/renew`             | mixed     | Slide the window's TTL under the same session id                                              |
+| `POST /sync/bootstrap/close`             | up        | Release the window and its per-user session slot (idempotent)                                 |
+| `GET /sync/packs`                        | down      | List this vault's compaction packs, newest-first, with presigned URLs when available          |
+| `POST /sync/attachments/presign-batch`   | down      | Presigned R2 GETs for attachment chunks the caller already owns                               |
+| `POST /sync/attachments/manifests/batch` | down      | Signed manifests of up to 100 attachments in one request; a missing one is left out           |
+| `POST /auth/*`                           | mixed     | OTP, sign-in, refresh, sign-out                                                               |
+| `POST /auth/oauth/google/native`         | mixed     | Trade a platform-issued Google ID token for a setup token (mobile)                            |
+| `GET /auth/key-verifier`                 | down      | Account key verifier for an established session (vault-key mismatch detection)                |
+| `GET /auth/devices`                      | down      | Signing-key directory; includes revoked devices (`revokedAt` set)                             |
+| `POST /devices/*`                        | mixed     | Linking, listing, revoking                                                                    |
+| `POST /keys/*`                           | mixed     | Key sealing during link, rotation                                                             |
+
+A fresh device downloads every attachment, and it used to send one manifest `GET` and one
+`presign-batch` per attachment: 2,128 of a 2,767-request bootstrap (#5329). The desktop download
+queue now hands the service the ids it will start next. The first download that needs a manifest
+fetches it with up to 99 queued ones through `POST /sync/attachments/manifests/batch`. Presigned
+URLs go into one cache keyed by chunk hash, with their expiry. A chunk with no live URL presigns the
+uncovered chunks of its own download first, then those of the batched downloads, up to 1,024 per
+call, and a caller whose chunk is already in flight waits for that call. The batch route charges
+`blob_download` one token per distinct id, so the limit still bounds R2 reads. The bytes still
+download eagerly, so an attachment opens offline after bootstrap as before. A server without the
+batch route answers 404, and the desktop then fetches each manifest alone for 10 minutes.
 
 `GET /auth/devices` is the key directory every client verifies item and CRDT signatures against,
 not the device-management list (`GET /devices`, which hides revoked devices). It keeps revoked
@@ -1335,12 +1451,18 @@ devices because push rejects a revoked signer, so everything signed under a revo
 accepted before revocation and must stay verifiable. Without them, a device revoked from Settings
 left its whole history unappliable on every install, failing with `No public key for signer`.
 
-The five `/sync/crdt/*` routes are the only ones that carry a note body; the record feed above them
+The `/sync/crdt/*` routes other than the manifest are the only ones that carry a note body; the record feed above them
 moves metadata only. A device reads a body by applying the baseline from
 `GET /sync/crdt/snapshot/:noteId` and then replaying incrementals from `GET /sync/crdt/updates`.
 `POST /sync/crdt/updates/batch` is the whole-vault form of that second step — up to 100 notes per
 request, each with its own `since` — but it batches incrementals only, so the baselines stay one GET
 per note and dominate a first-sync sweep's request count.
+
+`GET /sync/crdt/manifest` carries no body. It pages every document of the vault in id order, 1,000
+per request, and answers each document's purge floor, snapshot revision and sequence number, and
+highest stored update. A device that bootstraps from packs reads it to the last page after it holds
+the pack bytes, and checks each packed body against it before applying it. A server without the
+route answers 404, and the device asks `POST /sync/crdt/updates/batch` instead.
 
 ### Native OAuth on mobile
 
@@ -1429,9 +1551,19 @@ and the peer's edits never reach the note (#2511). An empty document therefore d
 and downloads the baseline. A note the probe finishes is never opened, so an unchanged note still
 costs no download.
 
+A note the probe answered for and that is absent from a present `snapshotMeta` has no server
+snapshot at all. It skips the GET whether or not it has a watermark, and a note with no watermark or
+an empty document walks its incrementals from 0. That is the `since` a GET answering
+`{ snapshot: null }` produced. The probe runs on a cold chunk too, so a fresh bootstrap spends no GET
+on these notes (#5234). Outside a fullSync, a cold chunk of fewer than 20 notes sends no probe and
+fetches every baseline. Another device can snapshot the note after the probe, which prunes the
+updates the walk starts from. Every apply round's `snapshotMeta` is checked for that case. A note
+that gained a snapshot is not settled and not seeded, and it is owed a pull. The next pass downloads
+the snapshot.
+
 Everything else falls through to a fetch: an absent `snapshotMeta` key (an older server), a note the
-server left out of the response, and any note this session holds no merged revision for. A missed
-skip costs one request; a wrong skip costs a note body.
+server left out of the response, and any note with a server snapshot that this session holds no
+merged revision for. A missed skip costs one request; a wrong skip costs a note body.
 
 The bookkeeping — `{ appliedSequence, snapshotRevision }` per note, the **snapshot watermark** — is
 persisted **inside the per-vault CRDT store**, so the warm path survives an app restart and a fresh
@@ -1615,7 +1747,7 @@ after those two migrate.
 
 ### CRDT rate limits
 
-The three CRDT limiters (`crdt_push`, `crdt_pull`, `crdt_batch_pull`) key their buckets by
+The four CRDT limiters (`crdt_push`, `crdt_pull`, `crdt_batch_pull`, `crdt_manifest`) key their buckets by
 **deviceId**, not by account. Body sync is device-local work: each device pulls the note bodies it
 does not already hold, so a second device on the same account is normal use rather than contention.
 Under the default per-user key the two devices split one budget, and a legitimate first sync on
@@ -1727,6 +1859,7 @@ touching the counter — see [Rate limiter mechanism](#rate-limiter-mechanism).
 | `sync_pull`       | 120/min      | ×3         | 360/min  | Up to 100 R2 reads per POST (`pullItems` caps concurrency at 25) |
 | `sync_changes`    | 60/min       | ×3         | 180/min  | One indexed scan per page of 500, refs only                      |
 | `sync_manifest`   | 30/min       | ×3         | 90/min   | Bounded indexed keyset scan per page                             |
+| `crdt_manifest`   | 30/min       | ×3         | 90/min   | One indexed key read and one 3-statement batch per page          |
 
 Everything else — every push, every upload, status, vaults, the socket, and presign issuance itself
 — stays at its steady-state ceiling whether or not a valid token is present. Bootstrap is a pull
@@ -1781,21 +1914,44 @@ elevates nothing.
 
 ### Eligibility, TTL and the lifetime cap
 
-`POST /sync/bootstrap` is only granted to a device that has never completed a pull for this vault:
-`device_sync_state.last_cursor_seen` is absent, NULL or 0. `updateDeviceCursor` only writes when a
-changes page actually delivered items, so that is a genuine never-pulled device — the same signal
-the client's own `LAST_CURSOR` gate uses. An already-synced device gets `BOOTSTRAP_NOT_ELIGIBLE`
+`POST /sync/bootstrap` is granted to a device that is still in its first sync of this vault. That
+is either a device that has never completed a pull (`device_sync_state.last_cursor_seen` is
+absent, NULL or 0) or one whose `devices` row was registered less than
+`BOOTSTRAP_RESUME_WINDOW_SECONDS` (24 hours) ago. `updateDeviceCursor` only writes when a changes
+page actually delivered items, so the first case is a genuine never-pulled device, the same
+signal the client's own `LAST_CURSOR` gate uses. Any other device gets `BOOTSTRAP_NOT_ELIGIBLE`
 (409).
 
-Any `GET /sync/changes` page that delivers an item therefore spends eligibility, including one
-that is not part of a pull. The desktop launch probe for a revoked device (`checkDeviceStatus`)
+The second case exists for resumed first syncs. The first refs page moves the cursor off 0, and
+iOS reruns the first sync on every relaunch after the OS suspends or kills the app. Before the
+resume window, every relaunch was refused and the rest of the sync ran at steady-state pacing,
+about a fifth of the elevated speed (one production user hit the 409 eighteen times). The window
+reads the server's own `devices.created_at`, not anything the client sends, and a re-registration
+already earns a new device row, so it grants no elevation a new sign-in would not. The per-user cap
+of two concurrent sessions still applies. Desktop opens a session while its first sync is pending:
+the `bootstrapPending` sync-state key is written at the first full sync of a device with no
+`LAST_CURSOR` and deleted when the bootstrap closes with every body current, the moment the
+`Bootstrap window closed` line is logged. A device with no CRDT store has no body phase and deletes
+it once a pull delivers to the head of the feed. A relaunch that finds the key resumes from the
+persisted cursor, opens a session and asks for packs again, so a quit during packs, the record
+pull, the settle of pack-seeded docs or the body drain costs the work already done, not the
+elevation. An earlier build deleted the key at delivery: a kill in the 15-minute settle and drain
+of a large vault relaunched unelevated and never closed its bootstrap window. The server judges the resume
+window from the device's registration: when `POST /sync/bootstrap` answers 409
+`BOOTSTRAP_NOT_ELIGIBLE`, desktop deletes the key and syncs as steady state from the next run. It
+deletes the key the same way on a 404 (a server without the route) or a 501 (`BOOTSTRAP_UNAVAILABLE`),
+so a relaunch does not re-post a session the server can never open. Any other refusal keeps the key.
+Builds that predate the key ignore it.
+
+After the window, any `GET /sync/changes` page that delivers an item spends eligibility, including
+one that is not part of a pull. The desktop launch probe for a revoked device (`checkDeviceStatus`)
 used to read `/sync/changes?limit=1`, so every fresh desktop device got the 409 on its first full
 sync. It now reads `GET /sync/status`, which sits behind the same `authMiddleware` revocation check
 and writes nothing. It is not a single-row read: `getSyncStatus` also counts the vault's
 `sync_items` rows above the device cursor, which for a fresh device is the whole vault, served by
 `idx_sync_user_cursor`. A client that sends identification headers also costs one `getClientPolicy`
-read. Desktop builds that still send the old probe keep losing the session; that costs them
-elevated limits, not data.
+read. Desktop builds that still send the old probe lost the session before the resume window, at a
+cost of elevated limits, not data. A device registered within the window now gets one anyway.
 
 | Constant                                 | Value      | Why                                                 |
 | ---------------------------------------- | ---------- | --------------------------------------------------- |
@@ -1824,6 +1980,12 @@ so there is no interleaving point left between check and take. `changes === 0` m
 refused, i.e. the user is at cap, answered `BOOTSTRAP_SESSION_LIMIT` (429). The earlier
 prune-then-count-then-insert sequence had a TOCTOU window where two concurrent opens could both see
 one free slot.
+
+An open also supersedes the same device's earlier sessions for the vault: the same D1 batch
+deletes their ledger rows before the capped `INSERT`. A process killed during its first sync never
+calls `/close`, so its relaunch used to hold a second slot until the dead session's TTL, up to an
+hour, and two such relaunches left the user at cap. A superseded token still elevates until its
+`exp`, but its renewal is refused, which drops that client to steady-state pacing.
 
 Errors are logged with the **caller's** identifiers only, never the mismatched token's, so the
 warning line cannot be used to enumerate other users' identifiers.
@@ -1922,12 +2084,10 @@ Besides the session, `POST /sync/bootstrap` answers with:
   start and a client must not treat the page as a complete inventory. URLs come from
   `POST /sync/attachments/presign-batch`, which keeps this response bounded no matter how
   attachment-heavy the vault is.
-- `packs` — always an empty array, and now permanently so. The route returns `packs: []`
-  unconditionally. It was reserved so the pack pipeline could plug in without a protocol change,
-  but the pipeline did not use it: the client discovers packs through
-  [`GET /sync/packs`](#pack-discovery) instead, and reads this field only to log its length. It is
-  dead weight in `BootstrapOpenResponseSchema` — it cannot be removed without a contract change, so
-  it stays, but nothing should be built on it.
+- `packs`, `packsNextCursor` and `coverage` — the first page of
+  [`GET /sync/packs`](#pack-discovery) with its coverage statement, read in one D1 batch, so a
+  client starts its pack walk without a listing request (#5230). A server before that sends
+  `packs: []` and neither of the others; a client then lists the packs itself.
 
 ## Presigned R2 Transfers
 
@@ -2020,6 +2180,10 @@ stays valid on the proxied path; `GET /sync/packs` omits `url` and `expiresAt`. 
 three as "use the proxied path". Old servers answer 404 to the presign route, which clients treat
 identically.
 
+`presign-batch` leaves out a hash the caller's vault does not own and presigns the rest. The client
+fetches that one chunk through the proxied GET, which reports its 404. The route never answers 404
+for a missing hash, because a client would read that as "no presign here" and proxy every download.
+
 **`R2_S3_BUCKET` must name the same bucket the `STORAGE` binding points at.** Nothing in the code
 cross-checks this — the Worker cannot read a binding's bucket name — so a mismatch fails at
 `/complete` instead: the presigned PUTs land in the _other_ bucket, the Worker's `head` against
@@ -2071,6 +2235,40 @@ those packs out of its listing entirely and bootstraps through the item-granular
 `expiresAt` already in the past (a page held too long) has the same effect; the client applies a
 30-second clock-skew margin and re-lists to mint fresh signatures when a queued pack ages out
 mid-run.
+
+**Rollback switch.** The Worker secret `PACK_COVERAGE_DISABLED` takes packs away from a vault
+without touching them. Set to `*` or to a comma-separated list of vault ids, it makes the listing
+and the bootstrap open answer `packs: []` and `coverage: []` for each vault it names, and the open
+starts no backfill chain, so every client of that vault syncs item by item. It deletes and
+rewrites nothing: pack rows, watermarks and R2 objects stay, compaction keeps running, and
+deleting the secret serves the packs again with no rebuild. Unset, nothing changes. It is the
+rollback of the packs rollout (protocol chapter 08 §8.10), set only by an operator. Four points:
+
+- It does not stop compaction. To stop the packer, remove the `PACK_QUEUE` and
+  `PACK_BACKFILL_QUEUE` producer bindings, in each `[env.*]` section of `wrangler.toml`
+  (`apps/sync-server/wrangler.toml:124`, `:135`, `:184`, `:195`), and deploy. Messages already
+  queued still run. Removing `PACK_QUEUE` also drops the delayed purge retry
+  (`apps/sync-server/src/routes/sync.ts:589`, `apps/sync-server/src/services/cleanup.ts:371`),
+  so a purge that needs more than four rewrites, or whose R2 delete fails, leaves purged bodies in
+  R2 until the next 6-hourly backfill tick deletes them
+  (`apps/sync-server/src/services/pack-backfill.ts:187`), not within 900 s. When stopping the
+  backfill is enough, remove only `PACK_BACKFILL_QUEUE`.
+- It takes effect on the next listing. A run that already holds presigned pack URLs may keep
+  fetching for up to about 300 s more, until they expire.
+- Vault ids match exactly and case-sensitively. `default` is the vault of every account a legacy
+  client synced, so naming it disables packs for all of them.
+- `wrangler secret put` and `wrangler secret delete` deploy a new version of the current Worker
+  code. No code deploy is needed.
+
+```sh
+# staging, one drill vault (or '*' for every vault)
+printf '%s' '<vault-id>' | pnpm --filter @memry/sync-server exec wrangler secret put PACK_COVERAGE_DISABLED --env staging
+pnpm --filter @memry/sync-server exec wrangler secret delete PACK_COVERAGE_DISABLED --env staging
+
+# production
+printf '%s' '*' | pnpm --filter @memry/sync-server exec wrangler secret put PACK_COVERAGE_DISABLED --env production
+pnpm --filter @memry/sync-server exec wrangler secret delete PACK_COVERAGE_DISABLED --env production
+```
 
 ## Deploy Prerequisites and Ordering
 
@@ -2174,7 +2372,7 @@ client (`apps/ios/Memry/App/ShellState.swift:173-179`), so the phone picks up an
 changes on its next sync pass. A mobile client that opens the socket MUST close it when the app
 backgrounds (chapter 09 §9.1). Otherwise a close the OS delivers while suspending the process arms
 the reconnect backoff and spends the handshake budget, which is 15 per 60 seconds keyed by user and
-shared across all their devices (`apps/sync-server/src/routes/sync.ts:305-309`).
+shared across all their devices (`apps/sync-server/src/routes/sync.ts:306-310`).
 
 ### Certificate pinning on the socket
 
@@ -2233,6 +2431,12 @@ A rejection therefore latches. The first two rejections open a backoff window (1
 during which no refresh request reaches the network at all; that spacing exists only so a transient
 server-side 401 can recover before the session is written off. The third rejection is terminal: the
 client stops refreshing for good and prompts the user to sign in again.
+
+A refresh whose answer never arrived is not a rejection. The server rotates the token before it
+answers, so the client retries with the token it still holds, and the server re-issues for it while
+the rotation is under 15 minutes old and its successor is unused (§2.9 of
+`docs/protocol/02-auth-and-sessions.md`). The client's request deadline counts only time its main thread could run: after a stall it gives the
+request a few more seconds to read an answer that arrived during the stall, instead of discarding it.
 
 Signing out remains an explicit user action. The session is already dead on the server, but local
 key material is never cleared on the strength of an HTTP status alone. Signing in again clears the

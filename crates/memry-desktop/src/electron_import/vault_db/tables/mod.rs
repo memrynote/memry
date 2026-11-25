@@ -129,18 +129,18 @@ macro_rules! map {
 }
 
 /// The last journal entry (`when`) of each frozen Electron migration directory
-/// (`tests/fixtures/electron-schema`): `0083_inbox_attachment_id` and `0036_note_task_checks`.
+/// (`tests/fixtures/electron-schema`): `0084_notes_created_here` and `0037_note_pending_write_hash`.
 /// A source whose `__drizzle_migrations` ledger ends elsewhere has another schema than the one
 /// `TABLE_MAP` describes, and the import refuses it.
-pub const ELECTRON_DATA_LAST_MIGRATION: i64 = 1_794_152_091_237;
-pub const ELECTRON_INDEX_LAST_MIGRATION: i64 = 1_792_900_300_000;
+pub const ELECTRON_DATA_LAST_MIGRATION: i64 = 1_794_238_491_237;
+pub const ELECTRON_INDEX_LAST_MIGRATION: i64 = 1_792_900_400_000;
 
 /// The drizzle migration ledger; never imported, and the core refuses a database holding it.
 pub const LEDGER_TABLE: &str = "__drizzle_migrations";
 
 #[rustfmt::skip]
 pub const TABLE_MAP: &[TableMapping] = &[
-    // data.db, 64 tables (and sync_unknown_fields, last).
+    // data.db, 65 tables (and sync_unknown_fields, last).
     map!(Data Migration "agent_conversations" [16, Convert, "36b"]: "core agent_conversation record table of Step 16; clocks and version 1 ciphertext envelope copied byte for byte"),
     map!(Data Migration "agent_messages" [16, Convert, "36b"]: "core agent_message record table of Step 16; sealed content ciphertext kept byte for byte"),
     map!(Data Migration "attachment_download_failures" [18, Reseed]: "retry state; rows are dropped and the Step 18 redrive recomputes failures from the manifest"),
@@ -172,7 +172,8 @@ pub const TABLE_MAP: &[TableMapping] = &[
     map!(Data Migration "inbox_stats" [26, Rebuild]: "derived counters rebuilt by the Step 27 stats projector"),
     map!(Data Migration "note_body_sync" [17, Convert, "36c"]: "Step 17 note_body_sync; pushed_state_vector dropped and counted (not in core)"),
     map!(Data Migration "note_metadata" [13, Convert => notes::note_metadata]: "note and journal records built as Electron pushes them (file and index copy) plus the Step 12 note_files row; ids and clocks bit exact"),
-    map!(Data Migration "note_positions" [13, Convert => notes::note_positions]: "Step 13 manual order rows (data 0021)"),
+    map!(Data Migration "note_positions" [13, Convert => notes::note_positions]: "Step 13 manual order rows (data 0022)"),
+    map!(Data Migration "notes_created_here" [13, Skip]: "device-local marker of Electron's create command (data 0084, #5371) for its offline editor rule; core keeps no such marker and imports no note content from it"),
     map!(Data Migration "project_links" [21, Convert, "36d2"]: "core project_links table"),
     map!(Data Migration "projects" [21, Convert, "36d2"]: "core projects table; clock JSON kept"),
     map!(Data Migration "property_definitions" [13, Convert => records::property_definitions]: "core property_definitions table"),
@@ -201,9 +202,9 @@ pub const TABLE_MAP: &[TableMapping] = &[
     map!(Data Migration "task_tags" [21, Convert, "36d2"]: "core tasks.tags JSON column and tags of the payload"),
     map!(Data Migration "tasks" [21, Convert, "36d2"]: "core tasks table; 16 field clocks kept"),
     map!(Data Migration "templates" [13, Convert => row_dumps::templates]: "core templates table"),
-    map!(Data Migration "vault_lock_baselines" [14, Convert, "36b"]: "Step 14 vault_lock_baselines (data 0025)"),
-    map!(Data Migration "vault_lock_file_modes" [14, Convert, "36b"]: "Step 14 vault_lock_file_modes (data 0025)"),
-    map!(Data Migration "vault_locks" [14, Convert, "36b"]: "core vault_lock record type; table vault_locks (data 0025)"),
+    map!(Data Migration "vault_lock_baselines" [14, Convert, "36b"]: "Step 14 vault_lock_baselines (data 0026)"),
+    map!(Data Migration "vault_lock_file_modes" [14, Convert, "36b"]: "Step 14 vault_lock_file_modes (data 0026)"),
+    map!(Data Migration "vault_locks" [14, Convert, "36b"]: "core vault_lock record type; table vault_locks (data 0026)"),
     map!(Data Migration "vault_metadata" [8, Copy => records::vault_metadata]: "singleton vault uuid into core meta vault.id, bit exact; Step 37 opens the vault under it"),
     // index.db, 16 tables.
     map!(Index Migration "block_link_refs" [13, Rebuild]: "derived link table; rebuilt from vault files"),
@@ -217,7 +218,7 @@ pub const TABLE_MAP: &[TableMapping] = &[
     map!(Index Migration "note_links" [13, Rebuild]: "derived links"),
     map!(Index Migration "note_names" [13, Rebuild]: "derived names"),
     map!(Index Migration "note_properties" [13, Rebuild]: "derived properties"),
-    map!(Index Migration "note_snapshots" [14, Copy => notes::note_snapshots]: "core note_snapshots (data 0018); user data in a derived database"),
+    map!(Index Migration "note_snapshots" [14, Copy => notes::note_snapshots]: "core note_snapshots (data 0019); user data in a derived database"),
     map!(Index Migration "note_tags" [13, Rebuild]: "derived tags"),
     map!(Index Migration "portal_refs" [13, Rebuild]: "derived portal references"),
     map!(Index Migration "property_definitions" [13, Rebuild]: "cache copy of the data row"),

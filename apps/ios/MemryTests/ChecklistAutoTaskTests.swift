@@ -71,7 +71,7 @@ struct ChecklistAutoTaskTests {
         let asked = await leave(field)
 
         #expect(asked == ["c1"])
-        #expect(editor.all == [.setText(blockId: "c1", text: "Buy milk")])
+        #expect(editor.all == [.replaceText(blockId: "c1", text: "Buy milk", base: "")])
     }
 
     /// `[] ` redraws the row as a checklist item with a new text view, and the
@@ -118,16 +118,23 @@ struct ChecklistAutoTaskTests {
         let field = field(kind: "checkListItem", props: ["plain": "true"])
         type("Keep me", in: field)
 
+        // The commit's write reloads first; the split's reload comes after.
         await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
-            model.session.reload = { done.resume() }
+            let session = model.session
+            session.reload = { [editor] in
+                guard editor.all.contains(where: { if case .splitBlock = $0 { true } else { false } }) else { return }
+                session.reload = {}
+                done.resume()
+            }
             model.session.returnPressed(field)
         }
 
         let edits = editor.all
-        guard case let .insertBlock(kind, _, _, newId)? = edits.dropFirst().first else {
-            Issue.record("no block was inserted: \(edits)")
+        guard case let .splitBlock(blockId, at, kind, newId)? = edits.dropFirst().first else {
+            Issue.record("no block was split: \(edits)")
             return
         }
+        #expect(blockId == "c1" && at == 7)
         #expect(kind == "checkListItem")
         #expect(edits.last == .setProp(blockId: newId, name: "plain", value: "true"))
     }

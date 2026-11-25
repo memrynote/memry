@@ -1,7 +1,7 @@
-//! Data migration 0036, `canvases` (Step 30d, #3547), through the real open of
+//! Data migration 0037, `canvases` (Step 30d, #3547), through the real open of
 //! a `data.db` file: every open projects the canvas payloads that have no
 //! current `canvases` row ([`sync_items::heal_projections`]), whoever wrote
-//! them: a build before 0036, an older build opening this file, a recovery's
+//! them: a build before 0037, an older build opening this file, a recovery's
 //! salvage, or a crash.
 
 use rusqlite::Connection;
@@ -31,7 +31,7 @@ fn payload(id: &str, title: &str, folder: &str) -> String {
     )
 }
 
-/// A `data.db` as the build before 0036 leaves it, holding three synced
+/// A `data.db` as the build before 0037 leaves it, holding three synced
 /// canvases (one deleted) and a note.
 fn older_file(path: &std::path::Path) {
     let mut conn = Connection::open(path).expect("open");
@@ -111,7 +111,7 @@ fn expected() -> Vec<Row> {
     ]
 }
 
-/// A fresh `data.db` holds 0036's tables, and a fresh `index.db` 0012's.
+/// A fresh `data.db` holds 0037's tables, and a fresh `index.db` 0012's.
 #[test]
 fn fresh_databases_hold_the_canvas_tables() {
     for (migrations, tables) in [
@@ -164,7 +164,7 @@ fn opening_an_older_file_projects_the_canvases_it_already_holds() {
     .expect("projected");
 }
 
-/// A crash after 0036 commits and before its `user_version` write re-runs the
+/// A crash after 0037 commits and before its `user_version` write re-runs the
 /// migration; a crash before the fill commits leaves no rows. Either way the
 /// next open ends with the same rows.
 #[test]
@@ -176,7 +176,7 @@ fn a_crash_at_any_step_converges_on_the_next_open() {
         let mut conn = Connection::open(&path).expect("open");
         let tx = conn.transaction().expect("tx");
         tx.execute_batch(DATA_MIGRATIONS[before()].sql)
-            .expect("0036 commits");
+            .expect("0037 commits");
         tx.commit().expect("commit");
         // Crash: `user_version` still names the migration before and nothing
         // is projected.
@@ -245,7 +245,7 @@ fn canvases_an_older_build_wrote_into_a_migrated_file_show_on_the_next_open() {
 }
 
 /// A recovery migrates an empty fresh file, then salvages the quarantined
-/// file's payloads into it; a quarantine from before 0036 has no `canvases`
+/// file's payloads into it; a quarantine from before 0037 has no `canvases`
 /// table to salvage. The open after the recovery projects them.
 #[test]
 fn a_recovery_from_an_older_file_shows_its_canvases() {

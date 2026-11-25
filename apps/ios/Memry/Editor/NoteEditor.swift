@@ -27,11 +27,16 @@ final class NoteEditorViewModel {
     }
 
     let noteId: String
+    /// Names this page's writes in `bodyChanged`, so it skips its own.
+    let source: UUID
     private let editor: (any BlockEditing)?
     /// Creates the note a `[[` menu's Create row names. `nil` creates none.
     private let notes: (any NotesWriting)?
 
     private(set) var status: Status = .idle
+    /// Set while `redo` runs a step's edits: one that lands keeps the
+    /// status of one before it that failed.
+    @ObservationIgnored private var holdsFailure = false
 
     /// The keyboard toolbar's state and actions for this body.
     let session = EditorSession()
@@ -44,7 +49,9 @@ final class NoteEditorViewModel {
 
     init(noteId: String, editor: (any BlockEditing)?, notes: (any NotesWriting)? = nil) {
         self.noteId = noteId
-        self.editor = editor
+        let source = UUID()
+        self.source = source
+        self.editor = editor.map { AnnouncedEdits(editor: $0, source: source) }
         self.notes = notes
     }
 
@@ -72,37 +79,31 @@ final class NoteEditorViewModel {
     /// unchanged commit is still a CRDT update and an outbox row (FR-030) —
     /// tapping into a block and back out must not enqueue a push.
     ///
-    /// `formatted` routes the write through `ReplaceText`, which edits in place
-    /// and keeps the block's marks and inline nodes: `SetText` would replace a
-    /// formatted block's whole content and drop them. A plain block keeps
-    /// `SetText`'s in-place single-run edit.
-    ///
-    /// `base` is the text the user's typing started from. When `current` has
-    /// moved on since (a peer's edit merged while the block held unsaved
-    /// typing), the write is a `ReplaceText` carrying `base`, so the core
-    /// applies only the user's change and the peer's edit survives; a
-    /// `SetText` of `text` would delete it. With a `base`, "unchanged" means
-    /// the user changed nothing, whatever the peer did.
-    func commit(
-        _ text: String, for blockId: String, current: String, formatted: Bool = false, base: String? = nil
-    ) async {
-        guard let editor else { return }
+    /// The write is a `ReplaceText` carrying `base`, the text the user's
+    /// change started from. It edits in place, keeping the block's marks and
+    /// inline nodes, and the core applies only the change, `base` to `text`,
+    /// on the live block, so an edit that landed since survives: a second
+    /// pane on the note (#4377) can write after this page last read it. For
+    /// the same reason "unchanged" means the user changed nothing, whatever
+    /// the peer did. Answers whether the text is written, and the text the
+    /// write left the block at as far as it knows: `text`, or the last of
+    /// its steps that landed (`send`), or `base`.
+    @discardableResult
+    func commit(_ text: String, for blockId: String, base: String) async -> (landed: Bool, held: String) {
+        guard let editor else { return (false, base) }
         drafts[blockId] = text
-        guard text != (base ?? current) else {
+        guard text != base else {
             status = .idle
-            return
+            return (true, text)
         }
 
         status = .saving
+        var held = base
         do {
-            let landed = try await editor.edit(
-                noteId: noteId,
-                formatted || (base != nil && base != current)
-                    ? .replaceText(blockId: blockId, text: text, base: base)
-                    : .setText(blockId: blockId, text: text)
-            )
+            let landed = try await send(.replaceText(blockId: blockId, text: text, base: base)) { held = $0 }
             if landed {
                 status = .idle
+                return (true, text)
             } else {
                 // The note is gone. Not an error the user caused, and not
                 // something a retry fixes. The existing copy for exactly this
@@ -114,6 +115,7 @@ final class NoteEditorViewModel {
             Log.storage.error("a block edit did not land")
             status = .failed(ErrorMapping.userFacing(error))
         }
+        return (false, held)
     }
 
     /// Inserts a paragraph after `blockId` and returns its new id.
@@ -144,36 +146,29 @@ final class NoteEditorViewModel {
 
     // MARK: - Block boundaries (N501)
 
-    /// Splits a block at `offset`: what is before the caret stays, what is
-    /// after it becomes a new block below.
+    /// Return inside a block's text (desktop's `splitBlockTr`): the text
+    /// from the caret on, marks and inline nodes kept, moves to a new block
+    /// below in one write (`BlockEdit.splitBlock`). `typed` is the block as
+    /// the pane shows it and `caret` a UTF-16 location in it; the split goes
+    /// where the block holds that place when it is written, so another
+    /// pane's typing before it does not move it. `kind` is the new block's
+    /// type, or `nil` for the block's own type and props.
     ///
-    /// **Two operations, in this order.** The tail is written into the new
-    /// block *before* the head is truncated, so a failure between them leaves
-    /// the text duplicated rather than destroyed. Duplicated text is a
-    /// user-visible mistake they can fix; deleted text is not.
-    @discardableResult
-    func split(_ blockId: String, at offset: Int, text: String) async -> String? {
-        guard let editor else { return nil }
-        let cut = text.index(text.startIndex, offsetBy: min(offset, text.count))
-        let head = String(text[text.startIndex..<cut])
-        let tail = String(text[cut...])
+    /// - Returns: the new block's id and the step that undoes it, a merge
+    ///   back; `nil` when it did not land or the place is gone.
+    func split(_ blockId: String, typed: String, at caret: Int, kind: String?) async -> (id: String, step: EditorUndoStep)? {
         let newId = UUID().uuidString.lowercased()
-
-        status = .saving
-        do {
-            _ = try await editor.edit(
-                noteId: noteId,
-                .insertParagraph(afterBlockId: blockId, text: tail, newBlockId: newId)
-            )
-            _ = try await editor.edit(noteId: noteId, .setText(blockId: blockId, text: head))
-            drafts[blockId] = head
-            drafts[newId] = tail
-            status = .idle
-            return newId
-        } catch {
-            status = .failed(ErrorMapping.userFacing(error))
-            return nil
+        let located = await run(in: blockId) { runs in
+            let live = runs.map(BlockText.shown) ?? typed
+            guard let at = BlockText.follow(caret, length: 0, from: typed, to: live) else { return nil }
+            let characters = (live as NSString).substring(to: min(at, (live as NSString).length)).unicodeScalars.count
+            return .splitBlock(blockId: blockId, at: UInt32(characters), kind: kind, newBlockId: newId)
         }
+        guard case let .landed(forward)? = located else { return nil }
+        drafts[blockId] = nil
+        return (newId, EditorUndoStep(
+            name: "Split", backward: .mergeBlocks(blockId: newId, intoBlockId: blockId), forward: forward
+        ))
     }
 
     /// Merges a block into the one above it, which is Backspace at offset 0:
@@ -388,31 +383,44 @@ final class NoteEditorViewModel {
 
     // MARK: - Inline nodes (N601, N602, N603)
 
-    /// Puts an inline node into a block, replacing `start..<end`.
+    /// Puts an inline node into a block at `anchor`, found on the block as
+    /// the core holds it (`NodeAnchor.range(in:)`).
     ///
     /// **Not a mark.** y-prosemirror carries a mention, a wiki link and a date
     /// as elements beside the block's text, so `mark` cannot make one and the
     /// core has its own operation for it.
     ///
-    /// `start == end` inserts at the caret without removing anything.
+    /// A node whose place another pane's edit took goes at the end of the
+    /// block's text instead, never over that edit and never lost (a date's
+    /// reminder with it), and the status says so.
+    ///
+    /// Answers the node, which an undo step's redo puts back at `anchor`
+    /// after the pane's typing (`place`), or `nil` when it did not land
+    /// there: a step must not redo a node the user never had.
+    @discardableResult
     func insertInline(
         _ blockId: String,
-        from start: Int,
-        to end: Int,
+        at anchor: NodeAnchor,
         kind: String,
         text: String,
         attrs: [String: String]
-    ) async {
-        await run(
-            .insertInline(
-                blockId: blockId,
-                start: UInt32(max(0, start)),
-                end: UInt32(max(0, end)),
-                kind: kind,
-                text: text,
-                attrs: attrs
+    ) async -> EditorUndoStep.PlacedNode? {
+        let edit = { @Sendable (range: Range<Int>) in
+            BlockEdit.insertInline(
+                blockId: blockId, start: UInt32(range.lowerBound), end: UInt32(range.upperBound),
+                kind: kind, text: text, attrs: attrs
             )
-        )
+        }
+        switch await run(in: blockId, locating: { runs in anchor.range(in: runs).map(edit) }) {
+        case .landed?:
+            return EditorUndoStep.PlacedNode(anchor: anchor, edit: edit(anchor.paneRange))
+        case .notFound?:
+            let moved = await run(in: blockId) { runs in NodeAnchor.textEnd(in: runs).map { edit($0 ..< $0) } }
+            if case .landed? = moved { status = .failed(NodeAnchor.moved) }
+            return nil
+        case .refused?, nil:
+            return nil
+        }
     }
 
     /// A wiki link to `title` (N602), in desktop's shape.
@@ -422,21 +430,120 @@ final class NoteEditorViewModel {
     /// no text inside the node, and an empty `alias` when the link shows its
     /// target. An alias equal to the target is no alias, as `wikiLinkToText`
     /// treats it.
+    @discardableResult
     func insertWikiLink(
         in blockId: String,
-        from start: Int,
-        to end: Int,
+        at anchor: NodeAnchor,
         title: String,
         alias: String? = nil
-    ) async {
+    ) async -> EditorUndoStep.PlacedNode? {
         await insertInline(
             blockId,
-            from: start,
-            to: end,
+            at: anchor,
             kind: "wikiLink",
             text: "",
             attrs: WikiLinkAttrs.attrs(target: title, alias: alias)
         )
+    }
+
+    /// The link node for a `[[target]]` literal a commit wrote, for
+    /// `insert(_:over:typedLength:)`. `start` is in the pane's text.
+    static func wikiLinkNode(_ link: WikiLinkText.Typed, in blockId: String) -> EditorUndoStep.TextNode {
+        EditorUndoStep.TextNode(
+            start: link.start, literal: link.literal,
+            edit: .insertInline(
+                blockId: blockId, start: UInt32(link.start), end: UInt32(link.start + link.literal.utf8.count),
+                kind: "wikiLink", text: "", attrs: WikiLinkAttrs.attrs(target: link.target, alias: link.alias)
+            )
+        )
+    }
+
+    /// Puts each node's `insertInline` in over its literal, where `blockId`
+    /// holds it when its node goes in. Each `start` is in text
+    /// `typedLength` core bytes long that a write rebased onto the live
+    /// block (#4377): a commit's, or a redo's `forward`. Another pane's
+    /// typing may have moved a literal, so it is found in the block as the
+    /// core holds it then, and one no longer there stays text. Answers the
+    /// nodes that landed, last first, as they went in.
+    @discardableResult
+    func insert(
+        _ nodes: [EditorUndoStep.TextNode], over blockId: String, typedLength: Int
+    ) async -> [EditorUndoStep.TextNode] {
+        let ordered = nodes.sorted { $0.start < $1.start }
+        var landed: [EditorUndoStep.TextNode] = []
+        // The literal bytes the nodes that went in took out of the block.
+        var taken = 0
+        // Last first, so each offset still counts only the text before it.
+        for index in ordered.indices.reversed() {
+            let node = ordered[index]
+            guard case let .insertInline(_, _, _, kind, text, attrs) = node.edit else { continue }
+            let links = ordered[...index].map { ($0.start, $0.literal) }
+            let length = typedLength - taken
+            let located = await run(in: blockId) { runs in
+                // No runs: the surface reads no block (the journal), and
+                // holds only this pane's text.
+                let start = runs.map {
+                    WikiLinkText.locate(links, in: $0.map(\.text).joined(), typedLength: length).last ?? nil
+                } ?? node.start
+                return start.map {
+                    .insertInline(
+                        blockId: blockId, start: UInt32($0), end: UInt32($0 + node.literal.utf8.count),
+                        kind: kind, text: text, attrs: attrs
+                    )
+                }
+            }
+            guard case let .landed(edit)? = located else { continue }
+            landed.append(.init(start: node.start, literal: node.literal, edit: edit))
+            taken += node.literal.utf8.count
+        }
+        return landed
+    }
+
+    /// Does `step` again: `forward`, then its nodes over text where the
+    /// block now holds their literals, then its other nodes at their
+    /// anchors, then the rest. None of them when `forward` did not land: a
+    /// literal found then is another writer's text. A failure stays the
+    /// status through the edits after it.
+    func redo(_ step: EditorUndoStep) async {
+        if let date = step.date {
+            await rewriteDate(date.chip, in: date.blockId, to: date.to)
+            return
+        }
+        guard await run(step.forward) else { return }
+        holdsFailure = true
+        defer { holdsFailure = false }
+        if case let .replaceText(blockId, _, _) = step.forward {
+            await insert(step.forwardOverText, over: blockId, typedLength: step.forwardLength)
+        }
+        for node in step.forwardNodes { await place(node) }
+        for edit in step.forwardProps { await run(edit) }
+    }
+
+    /// Puts `node` back where the block holds its anchor, read and written
+    /// in one core turn. One whose place is gone is not written, neither at
+    /// the pane's offsets, which may sit inside another writer's text, nor
+    /// at the end, as a first pick would: the user undid it, so nothing is
+    /// lost, and the status says so (#4794).
+    private func place(_ node: EditorUndoStep.PlacedNode) async {
+        guard case let .insertInline(blockId, _, _, kind, text, attrs) = node.edit else { return }
+        let located = await run(in: blockId) { runs in
+            node.anchor.range(in: runs).map {
+                .insertInline(
+                    blockId: blockId, start: UInt32($0.lowerBound), end: UInt32($0.upperBound),
+                    kind: kind, text: text, attrs: attrs
+                )
+            }
+        }
+        if case .notFound? = located { status = .failed(NodeAnchor.gone) }
+    }
+
+    /// Takes `step` back: `backward`, then the rest, in order.
+    func undo(_ step: EditorUndoStep) async {
+        if let date = step.date {
+            await rewriteDate(date.chip, in: date.blockId, to: date.from)
+            return
+        }
+        for edit in [step.backward] + step.backwardAfter { await run(edit) }
     }
 
     /// Creates the note titled `title` in the new-notes folder, for the `[[`
@@ -460,21 +567,55 @@ final class NoteEditorViewModel {
     /// (`packages/editor-schema/src/inline/date-mention.ts`), minted by
     /// `insertDatePill` with a `dm_<uuid>` anchor. An edited date keeps its
     /// `anchorId`, as desktop's `updateDateMention` does.
+    @discardableResult
     func insertDateMention(
         in blockId: String,
-        from start: Int,
-        to end: Int,
+        at anchor: NodeAnchor,
         value: DateMentionValue,
         anchorId: String? = nil
-    ) async {
+    ) async -> EditorUndoStep.PlacedNode? {
         await insertInline(
             blockId,
-            from: start,
-            to: end,
+            at: anchor,
             kind: "dateMention",
             text: "",
             attrs: value.attrs(anchorId: anchorId ?? DateMentionValue.mintAnchorId())
         )
+    }
+
+    /// Rewrites the date chip at `chip` to `value` under the same anchor, as
+    /// desktop's `updateDateMention` does: its U+FFFC becomes a space, read
+    /// and written in one core-queue turn, then the node goes back over that
+    /// space (`insertInline`), which keeps #4706's rules. A chip the block
+    /// no longer holds gets `value` at the end of its text, so the date is
+    /// never lost, and the status says so. Answers whether the node went
+    /// back where the chip was.
+    @discardableResult
+    func rewriteDate(_ chip: DateChipAnchor, in blockId: String, to value: DateMentionValue) async -> Bool {
+        let swapped = await run(in: blockId) { runs in
+            guard let at = chip.location(in: runs) else { return nil }
+            let live = runs.map(BlockText.shown) ?? chip.place.typed
+            let text = (live as NSString).replacingCharacters(in: NSRange(location: at, length: 1), with: " ")
+            return .replaceText(blockId: blockId, text: text, base: live)
+        }
+        switch swapped {
+        case let .landed(.replaceText(_, text, base?))?:
+            // The chip's place: where the two first differ.
+            let at = zip(base.utf16, text.utf16).prefix { $0 == $1 }.count
+            let anchor = NodeAnchor(typed: text, location: at, replaces: true, paneRange: chip.place.paneRange)
+            return await insertDateMention(in: blockId, at: anchor, value: value, anchorId: chip.anchorId) != nil
+        case .notFound?:
+            let attrs = value.attrs(anchorId: chip.anchorId)
+            let appended = await run(in: blockId) { runs in
+                NodeAnchor.textEnd(in: runs).map {
+                    .insertInline(blockId: blockId, start: UInt32($0), end: UInt32($0), kind: "dateMention", text: "", attrs: attrs)
+                }
+            }
+            if case .landed? = appended { status = .failed(NodeAnchor.moved) }
+            return false
+        default:
+            return false
+        }
     }
 
     // MARK: - Tables (N505)
@@ -538,17 +679,71 @@ final class NoteEditorViewModel {
     }
 
     /// One operation, with the status handling every caller would repeat.
-    private func run(_ edit: BlockEdit, then finish: (() -> Void)? = nil) async {
-        guard let editor else { return }
+    /// Answers whether it landed: the core refuses one that no longer
+    /// applies, such as a range past the block's end.
+    @discardableResult
+    private func run(_ edit: BlockEdit, then finish: (() -> Void)? = nil) async -> Bool {
+        let outcome = await write(then: finish) { try await self.send(edit) ? .landed(edit) : .refused }
+        if case .landed? = outcome { return true }
+        return false
+    }
+
+    /// `run`, for an edit `locate` builds from the block as the core holds
+    /// it (`BlockEditing.edit(noteId:blockId:locating:)`). `nil` when it
+    /// threw.
+    private func run(
+        in blockId: String, locating locate: @escaping @Sendable ([InlineRun]?) -> BlockEdit?
+    ) async -> LocatedEdit? {
+        guard let editor else { return nil }
+        return await write { try await editor.edit(noteId: self.noteId, blockId: blockId, locating: locate) }
+    }
+
+    /// One write, with the status handling every caller would repeat.
+    /// Answers what it did, or `nil` when it threw.
+    private func write(then finish: (() -> Void)? = nil, _ attempt: () async throws -> LocatedEdit) async -> LocatedEdit? {
+        guard editor != nil else { return nil }
+        let failure: Status? = if holdsFailure, case .failed = status { status } else { nil }
         status = .saving
         do {
-            _ = try await editor.edit(noteId: noteId, edit)
+            let outcome = try await attempt()
             finish?()
-            status = .idle
+            switch outcome {
+            case .landed:
+                status = failure ?? .idle
+            case .refused:
+                // Refused, as `commit` reports it: the note or block is gone.
+                status = failure ?? .failed(ErrorMapping.unknownNote)
+                Log.storage.error("a block edit was refused")
+            case .notFound:
+                // Another writer took the text the edit went at: writing at
+                // the offsets this page holds would replace theirs.
+                status = failure ?? .idle
+                Log.storage.error("an inline node's place was gone from its block")
+            }
+            return outcome
         } catch {
             Log.storage.error("a block edit did not land")
             status = .failed(ErrorMapping.userFacing(error))
+            return nil
         }
+    }
+}
+
+extension NoteEditorViewModel {
+    /// `edit`, with a `ReplaceText` written one run of text between nodes at
+    /// a time (`BlockText.stepsAroundNodes`), so it keeps every node, each
+    /// step's text to `landed` as it lands. Answers whether every write
+    /// landed.
+    fileprivate func send(_ edit: BlockEdit, landed: (String) -> Void = { _ in }) async throws -> Bool {
+        guard let editor else { return false }
+        guard case let .replaceText(blockId, text, base?) = edit else { return try await editor.edit(noteId: noteId, edit) }
+        var from = base
+        for step in BlockText.stepsAroundNodes(from: base, to: text) {
+            guard try await editor.edit(noteId: noteId, .replaceText(blockId: blockId, text: step, base: from)) else { return false }
+            landed(step)
+            from = step
+        }
+        return true
     }
 }
 
@@ -565,10 +760,12 @@ struct NoteEditingBridge {
         linkNotes: [NoteSummary] = [],
         icons: [String: String] = [:],
         titleExists: ((String) -> Bool)? = nil,
+        drawnGeneration: @escaping () -> Int,
         didChange: @escaping () async -> Void
     ) {
         session = model.session
         session.model = model
+        session.drawnGeneration = drawnGeneration
         session.reload = didChange
         session.linkNotes = linkNotes
         session.icons = icons

@@ -1,5 +1,6 @@
 //! A search reindex lets go of the `data.db` writer between batches (#5417).
 
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, mpsc};
 use std::time::Duration;
@@ -36,7 +37,12 @@ fn search_over(notes: usize) -> Search {
     index
         .call_blocking(|conn| migrations::run(conn, INDEX_MIGRATIONS).map(drop))
         .expect("index migrations");
-    Search { data, index }
+    Search {
+        data,
+        index,
+        directory: PathBuf::new(),
+        semantic: None,
+    }
 }
 
 /// Before #5417 a full reindex held the `data.db` writer for the whole pass: a writer that
@@ -373,7 +379,8 @@ fn a_stopped_pass_owes_the_links_its_committed_batches_changed() {
     search
         .data
         .call_blocking(|conn| {
-            crate::crdt::update_log::append_server_update(conn, "note-00000", 1, &update, NOW)
+            crate::crdt::epoch::HeldBody::never_purged(conn, "note-00000")
+                .and_then(|held| held.append_server_update(1, &update, NOW))
                 .map_err(|error| StorageError::Failed {
                     what: error.to_string(),
                 })

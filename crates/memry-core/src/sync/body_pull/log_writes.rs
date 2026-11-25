@@ -1,10 +1,14 @@
 //! The durable writes of [`BodyPull`]: updates and baselines land with their
 //! cursors in one transaction per chunk (§7.9, #5231), and an empty log leaves
-//! a cursor too.
+//! a cursor too. The local reads a pull starts from live here as well.
+//!
+//! Every write first checks, in its own transaction, that the body it fetched
+//! for is still the document's body ([`HeldBody`], #5356).
 
 use rusqlite::{Connection, params};
 
 use crate::api::errors::StorageError;
+use crate::crdt::epoch::{self, Epoch, Epochs, HeldBody};
 use crate::crdt::update_log;
 use crate::storage::nested_tx;
 use crate::sync::store;
@@ -22,6 +26,18 @@ pub(super) struct Baseline {
     pub(super) revision: String,
 }
 
+/// Every document's epoch (§7.16) before a pack bootstrap fetched anything,
+/// for the [`HeldBody`] check at each seed (#5356). Read
+/// with [`BodyPull::body_epochs`].
+#[derive(Debug, Clone)]
+pub struct BodyEpochs(Epochs);
+
+impl BodyEpochs {
+    fn of(&self, doc_id: &str) -> Epoch {
+        self.0.of(doc_id)
+    }
+}
+
 impl BodyPull {
     /// One page's opened updates, in order, durable **with** the cursor of the
     /// last one. §7.9 asks that no cursor ever lead its rows; one transaction
@@ -34,73 +50,90 @@ impl BodyPull {
     /// (`domain::search::maintenance`), and a server stamp (seconds, or a
     /// remote clock) sat below it, so a pulled body was never re-indexed and
     /// its links never became backlinks.
+    ///
+    /// Answers `false`, storing nothing, when the body moved off `epoch`.
     pub(super) async fn store_updates(
         &self,
         doc_id: &str,
+        epoch: Epoch,
         updates: Vec<(i64, Vec<u8>)>,
-    ) -> Result<(), BodyPullError> {
+    ) -> Result<bool, BodyPullError> {
         let Some(&(last, _)) = updates.last() else {
-            return Ok(());
+            return Ok(true);
         };
         let doc = doc_id.to_owned();
         let scope = crdt_cursor_scope(doc_id);
-        self.db
+        let stored = self
+            .db
             .call(move |conn| {
                 // Stamped under the writer, not before waiting for it: a body entry's stamp is
                 // then later than every read of the body that did not see it, which the
                 // desktop write-back's stamp relies on (`domain::note_files::NoteFile::indexed_at`).
                 let created_at = now_ms();
                 let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
+                let Some(body) = held(&txn, &doc, epoch)? else {
+                    return Ok(false);
+                };
                 for (sequence_num, update) in &updates {
-                    update_log::append_server_update(&txn, &doc, *sequence_num, update, created_at)
+                    body.append_server_update(*sequence_num, update, created_at)
                         .map_err(crdt_failed)?;
                 }
                 store::write_cursor(&txn, &scope, Some(&last.to_string()), created_at)?;
-                txn.commit().map_err(sqlite_failed)
+                txn.commit().map_err(sqlite_failed)?;
+                Ok(true)
             })
             .await?;
-        Ok(())
+        Ok(stored)
     }
 
     /// §7.8: store the snapshot with its sequence number and revision, and
     /// advance the cursor **only if** the snapshot's sequence number is ahead.
+    /// Answers `false`, storing nothing, when the body moved off `epoch`.
     pub(super) async fn store_baseline(
         &self,
         doc_id: &str,
+        epoch: Epoch,
         snapshot: Vec<u8>,
         sequence_num: i64,
         revision: Option<String>,
         cursor: i64,
-    ) -> Result<(), BodyPullError> {
+    ) -> Result<bool, BodyPullError> {
         let doc = doc_id.to_owned();
-        self.db
+        let stored = self
+            .db
             .call(move |conn| {
                 // Under the writer, as `store_updates` stamps.
                 let now = now_ms();
                 let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
+                let Some(body) = held(&txn, &doc, epoch)? else {
+                    return Ok(false);
+                };
                 put_baseline(
-                    &txn,
-                    &doc,
+                    &body,
                     &snapshot,
                     sequence_num,
                     revision.as_deref(),
                     Some(cursor),
                     now,
                 )?;
-                txn.commit().map_err(sqlite_failed)
+                txn.commit().map_err(sqlite_failed)?;
+                Ok(true)
             })
             .await?;
-        Ok(())
+        Ok(stored)
     }
 
     /// A pack chunk's verified baselines, each with its cursor, in one
     /// transaction. Freshness is checked again inside it, so a document that
     /// moved since the caller's read is left alone. Answers, per baseline,
-    /// whether it was stored.
+    /// its freshness inside the transaction: `Fresh` was stored, and a body
+    /// that moved off its epoch is `Stale`.
     pub(super) async fn store_baselines(
         &self,
         baselines: Vec<Baseline>,
-    ) -> Result<Vec<bool>, BodyPullError> {
+        epochs: &BodyEpochs,
+    ) -> Result<Vec<Freshness>, BodyPullError> {
+        let epochs: Vec<Epoch> = baselines.iter().map(|b| epochs.of(&b.doc_id)).collect();
         let stored = self
             .db
             .call(move |conn| {
@@ -108,7 +141,7 @@ impl BodyPull {
                 let now = now_ms();
                 let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
                 let mut stored = Vec::with_capacity(baselines.len());
-                for baseline in &baselines {
+                for (baseline, epoch) in baselines.iter().zip(epochs) {
                     let fresh = pack_freshness(
                         &txn,
                         baseline.sequence_num,
@@ -116,19 +149,22 @@ impl BodyPull {
                         &baseline.revision,
                     )?;
                     let Freshness::Fresh { cursor } = fresh else {
-                        stored.push(false);
+                        stored.push(fresh);
+                        continue;
+                    };
+                    let Some(body) = held(&txn, &baseline.doc_id, epoch)? else {
+                        stored.push(Freshness::Stale);
                         continue;
                     };
                     put_baseline(
-                        &txn,
-                        &baseline.doc_id,
+                        &body,
                         &baseline.snapshot,
                         baseline.sequence_num,
                         Some(&baseline.revision),
                         cursor,
                         now,
                     )?;
-                    stored.push(true);
+                    stored.push(Freshness::Fresh { cursor });
                 }
                 txn.commit().map_err(sqlite_failed)?;
                 Ok(stored)
@@ -140,12 +176,14 @@ impl BodyPull {
     /// Opened packed updates, one run per document in sequence order, each
     /// run stored with its cursor in one transaction for the chunk (§7.9).
     /// A run is stored only when its first update is the stored cursor plus
-    /// one and the record is live, both read inside the transaction; answers
-    /// the updates stored per run.
+    /// one, the record is live and the body is the one in `epochs`, all read
+    /// inside the transaction; answers the updates stored per run.
     pub(super) async fn store_pack_runs(
         &self,
         runs: Vec<PackRun>,
+        epochs: &BodyEpochs,
     ) -> Result<Vec<usize>, BodyPullError> {
+        let epochs: Vec<Epoch> = runs.iter().map(|(doc_id, _)| epochs.of(doc_id)).collect();
         let stored = self
             .db
             .call(move |conn| {
@@ -153,7 +191,7 @@ impl BodyPull {
                 let now = now_ms();
                 let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
                 let mut stored = Vec::with_capacity(runs.len());
-                for (doc_id, updates) in &runs {
+                for ((doc_id, updates), epoch) in runs.iter().zip(epochs) {
                     let scope = crdt_cursor_scope(doc_id);
                     let cursor: i64 = store::read_cursor(&txn, &scope)?
                         .and_then(|text| text.parse().ok())
@@ -162,12 +200,17 @@ impl BodyPull {
                         stored.push(0);
                         continue;
                     };
-                    if updates[0].0 != cursor + 1 || record_gone(&txn, doc_id)? {
+                    let body = held(&txn, doc_id, epoch)?;
+                    let Some(body) = body.filter(|_| updates[0].0 == cursor + 1) else {
+                        stored.push(0);
+                        continue;
+                    };
+                    if record_gone(&txn, doc_id)? {
                         stored.push(0);
                         continue;
                     }
                     for (sequence_num, update) in updates {
-                        update_log::append_server_update(&txn, doc_id, *sequence_num, update, now)
+                        body.append_server_update(*sequence_num, update, now)
                             .map_err(crdt_failed)?;
                     }
                     store::write_cursor(&txn, &scope, Some(&last.to_string()), now)?;
@@ -180,18 +223,72 @@ impl BodyPull {
         Ok(stored)
     }
 
-    /// A `crdt:<docId>` cursor of `0`, unless one is already stored.
-    pub(super) async fn hold_empty_body(&self, doc_id: &str) -> Result<(), BodyPullError> {
+    /// A `crdt:<docId>` cursor of `0`, unless one is already stored or the
+    /// body moved off `epoch`.
+    pub(super) async fn hold_empty_body(
+        &self,
+        doc_id: &str,
+        epoch: Epoch,
+    ) -> Result<(), BodyPullError> {
+        let doc = doc_id.to_owned();
         let scope = crdt_cursor_scope(doc_id);
         let now = now_ms();
         self.db
-            .call(move |conn| match store::read_cursor(conn, &scope)? {
-                Some(_) => Ok(()),
-                None => store::write_cursor(conn, &scope, Some("0"), now),
+            .call(move |conn| {
+                let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
+                if held(&txn, &doc, epoch)?.is_some() && store::read_cursor(&txn, &scope)?.is_none()
+                {
+                    store::write_cursor(&txn, &scope, Some("0"), now)?;
+                }
+                txn.commit().map_err(sqlite_failed)
             })
             .await?;
         Ok(())
     }
+
+    pub(super) async fn read_cursor(&self, doc_id: &str) -> Result<i64, BodyPullError> {
+        Ok(self.stored_cursor(doc_id).await?.unwrap_or(0))
+    }
+
+    /// `None` when this device never pulled the document.
+    pub(super) async fn stored_cursor(&self, doc_id: &str) -> Result<Option<i64>, BodyPullError> {
+        let scope = crdt_cursor_scope(doc_id);
+        let stored = self
+            .db
+            .call(move |conn| store::read_cursor(conn, &scope))
+            .await?;
+        Ok(stored.and_then(|text| text.parse().ok()))
+    }
+
+    /// `doc_id`'s epoch, read before a pull fetches anything for it.
+    pub(super) async fn body_epoch(&self, doc_id: &str) -> Result<Epoch, BodyPullError> {
+        let doc = doc_id.to_owned();
+        let epoch = self
+            .db
+            .call(move |conn| epoch::capture(conn, &doc).map_err(crdt_failed))
+            .await?;
+        Ok(epoch)
+    }
+
+    /// Every document's epoch, read before a pack bootstrap fetches anything.
+    pub async fn body_epochs(&self) -> Result<BodyEpochs, BodyPullError> {
+        let epochs = self
+            .db
+            .call(|conn| epoch::capture_all(conn).map_err(crdt_failed))
+            .await?;
+        Ok(BodyEpochs(epochs))
+    }
+}
+
+/// `doc_id`'s body when it is still at `epoch`, the capture before the fetch
+/// (#5356). Not a record check: the journal day merge pulls a foreign id that
+/// has no record row, and a delete applied here purges and moves the epoch.
+fn held<'c>(
+    conn: &'c Connection,
+    doc_id: &'c str,
+    epoch: Epoch,
+) -> Result<Option<HeldBody<'c>>, StorageError> {
+    HeldBody::check(conn, doc_id, epoch).map_err(crdt_failed)
 }
 
 /// Whether a packed snapshot still has anything to give this document.
@@ -234,7 +331,7 @@ pub(super) fn pack_freshness(
 
 /// §7.15 and §8.10: a document whose record is a tombstone, or that has no
 /// live note or journal record at all, takes no packed body.
-pub(super) fn record_gone(conn: &Connection, doc_id: &str) -> Result<bool, StorageError> {
+fn record_gone(conn: &Connection, doc_id: &str) -> Result<bool, StorageError> {
     conn.prepare_cached(
         "SELECT NOT EXISTS(SELECT 1 FROM sync_items WHERE item_id = ?1
                              AND item_type IN ('note', 'journal') AND deleted_at IS NULL)
@@ -245,19 +342,18 @@ pub(super) fn record_gone(conn: &Connection, doc_id: &str) -> Result<bool, Stora
 }
 
 fn put_baseline(
-    conn: &Connection,
-    doc_id: &str,
+    body: &HeldBody<'_>,
     snapshot: &[u8],
     sequence_num: i64,
     revision: Option<&str>,
     cursor: Option<i64>,
     now: i64,
 ) -> Result<(), StorageError> {
-    update_log::put_server_snapshot(conn, doc_id, snapshot, sequence_num, revision, now)
+    body.put_server_snapshot(snapshot, sequence_num, revision, now)
         .map_err(crdt_failed)?;
     if cursor.is_none_or(|cursor| sequence_num > cursor) {
-        let scope = crdt_cursor_scope(doc_id);
-        store::write_cursor(conn, &scope, Some(&sequence_num.to_string()), now)?;
+        let scope = crdt_cursor_scope(body.doc_id());
+        store::write_cursor(body.conn(), &scope, Some(&sequence_num.to_string()), now)?;
     }
     Ok(())
 }

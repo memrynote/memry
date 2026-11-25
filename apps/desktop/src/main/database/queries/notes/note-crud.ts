@@ -31,6 +31,14 @@ export function insertNoteCache(db: IndexDb, note: NewNoteCache): NoteCache {
         taskChecks: note.taskChecks,
         localOnly: note.localOnly,
         contentHash: note.contentHash,
+        // A changed content hash supersedes a write still pending; the same hash
+        // keeps it, as a crash's write-ahead record (sync/writeback-baseline.ts).
+        // An omitted hash keeps both.
+        ...(note.contentHash !== undefined
+          ? {
+              pendingWriteHash: sql`CASE WHEN ${noteCache.contentHash} IS excluded.content_hash THEN ${noteCache.pendingWriteHash} ELSE NULL END`
+            }
+          : {}),
         wordCount: note.wordCount,
         characterCount: note.characterCount,
         snippet: note.snippet,
@@ -52,6 +60,16 @@ export function updateNoteCache(
     .update(noteCache)
     .set({
       indexedAt: new Date().toISOString(),
+      // A changed content hash supersedes a write still pending; the same hash
+      // keeps it, as a crash's write-ahead record. A caller may set both
+      // (sync/writeback-baseline.ts). An omitted hash keeps both.
+      ...(updates.contentHash !== undefined
+        ? {
+            pendingWriteHash: sql<
+              string | null
+            >`CASE WHEN ${noteCache.contentHash} IS ${updates.contentHash ?? null} THEN ${noteCache.pendingWriteHash} ELSE NULL END`
+          }
+        : {}),
       ...updates
     })
     .where(eq(noteCache.id, id))

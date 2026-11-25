@@ -377,8 +377,7 @@ mod tests {
 
         // A 402 that is not the entitlement code leaves the plan alone.
         assert_eq!(
-            tier.observe(&ApiError::Status {
-                status: 402,
+            tier.observe(&ApiError::PaymentRequired {
                 code: Some("SYNC_VAULT_LIMIT_EXCEEDED".to_owned()),
                 message: "too many vaults".to_owned(),
             }),

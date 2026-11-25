@@ -3,7 +3,8 @@
 //! `GET /sync/crdt/manifest`, and `POST /sync/crdt/updates/batch` when the
 //! server has no manifest route or the read stops short.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+use std::time::Duration;
 
 use serde_json::{Value as Json, json};
 
@@ -11,7 +12,7 @@ use crate::protocol::http::RetryPolicy;
 use crate::sync::pack_bootstrap::body_plan::{BodyCheck, ServerSnapshot};
 use crate::sync::pack_bootstrap::query_encode;
 
-use super::{BodyPull, BodyPullError, PROBE_CHUNK, RateLimitPauses};
+use super::{BodyPull, BodyPullError, PROBE_CHUNK};
 
 /// Documents per manifest page: the route's ceiling (chapter 07 §7.4.1).
 pub const CRDT_MANIFEST_PAGE_LIMIT: u32 = 1000;
@@ -20,57 +21,67 @@ pub const CRDT_MANIFEST_PAGE_LIMIT: u32 = 1000;
 /// documents, far past any vault, so it only stops a cursor that never ends.
 const MAX_MANIFEST_PAGES: usize = 10_000;
 
-/// 429s one manifest read waits out: one wait refills the thirty-page bucket.
-const MANIFEST_RATE_LIMIT_PAUSES: u32 = 2;
+/// A body manifest read that has not ended after this long stops short
+/// (#5352 L1).
+pub const MANIFEST_READ_DEADLINE: Duration = Duration::from_secs(300);
 
 impl BodyPull {
     /// Every page from no `cursor` until `nextCursor` is `null`. `None` when
     /// the read stops short: a 404 from a server before the route, any failed
     /// or malformed page, a document listed twice, or a cursor that does not
-    /// move. A short read answers nothing (§8.4.3).
-    ///
-    /// A 429 is waited out, up to [`MANIFEST_RATE_LIMIT_PAUSES`] times, and the
-    /// page asked again (#5570): the unelevated bucket is 30 pages a minute, a
-    /// large vault reads 17, and a short read owes every document a route pull.
+    /// move. A short read answers nothing (§8.4.3), so a rate-limited page
+    /// waits out `Retry-After` and is asked again (#5349). A read still
+    /// running at [`MANIFEST_READ_DEADLINE`] stops short too, so a server
+    /// that rate-limits every page cannot hold it for a window per page.
+    /// The `Err` is the reason the read stopped short.
     pub(in crate::sync) async fn read_body_manifest(
         &self,
         requests: &mut usize,
-    ) -> Result<Option<HashMap<String, BodyCheck>>, BodyPullError> {
+    ) -> Result<Result<HashMap<String, BodyCheck>, &'static str>, BodyPullError> {
+        let read = tokio::time::timeout(MANIFEST_READ_DEADLINE, self.walk_body_manifest(requests));
+        Ok(match read.await {
+            Ok(Some(checks)) => Ok(checks),
+            Ok(None) => Err("no body manifest: checked through the batch route"),
+            Err(_) => {
+                Err("the body manifest read passed its deadline: checked through the batch route")
+            }
+        })
+    }
+
+    async fn walk_body_manifest(&self, requests: &mut usize) -> Option<HashMap<String, BodyCheck>> {
         let mut checks = HashMap::new();
         let mut cursor: Option<String> = None;
-        let mut pauses = RateLimitPauses::new(MANIFEST_RATE_LIMIT_PAUSES);
         for _ in 0..MAX_MANIFEST_PAGES {
             let mut path = format!("/sync/crdt/manifest?limit={CRDT_MANIFEST_PAGE_LIMIT}");
             if let Some(cursor) = &cursor {
                 path.push_str("&cursor=");
                 path.push_str(&query_encode(cursor));
             }
-            let body = loop {
-                *requests += 1;
-                let request = self.request("GET", &path).retry(RetryPolicy::polled());
-                match self.http.send_json::<Json>(request).await {
-                    Ok(body) => break body,
-                    Err(error) => match pauses.take(&error) {
-                        Some(wait) => self.wait(wait).await,
-                        None => return Ok(None),
-                    },
-                }
-            };
-            let Some((documents, next)) = read_manifest_page(&body) else {
-                return Ok(None);
-            };
+            *requests += 1;
+            let request = self.request("GET", &path).retry(RetryPolicy::walk());
+            let body = self.http.send_json::<Json>(request).await.ok()?;
+            let (documents, next) = read_manifest_page(&body)?;
             for (doc_id, check) in documents {
                 if checks.insert(doc_id, check).is_some() {
-                    return Ok(None);
+                    return None;
                 }
             }
             match next {
-                None => return Ok(Some(checks)),
-                Some(next) if cursor.as_deref() == Some(next.as_str()) => return Ok(None),
+                None => return Some(checks),
+                Some(next) if cursor.as_deref() == Some(next.as_str()) => return None,
                 Some(next) => cursor = Some(next),
             }
         }
-        Ok(None)
+        None
+    }
+
+    /// The documents the server holds a body for (an update, a snapshot or a
+    /// floor above 0), read off the body manifest. `None` when the read stops
+    /// short. The bootstrap bench counts a missing body against these only.
+    pub async fn server_body_ids(&self) -> Result<Option<HashSet<String>>, BodyPullError> {
+        let mut requests = 0;
+        let checks = self.read_body_manifest(&mut requests).await?.ok();
+        Ok(checks.map(|checks| checks.into_keys().collect()))
     }
 
     /// The batch route's `floor` and `snapshotMeta` for each `(docId, since)`,

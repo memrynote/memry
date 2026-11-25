@@ -263,6 +263,7 @@ pub(crate) async fn resolve_signers(
 /// One key lookup per signer; a lookup that cannot complete fails the call.
 pub(crate) async fn attest(
     markers: Vec<Marker>,
+    vault_id: Option<&str>,
     keys: Option<&dyn SignerKeys>,
     http: &HttpClient,
     refused: &mut Vec<Refusal>,
@@ -287,7 +288,7 @@ pub(crate) async fn attest(
             refused.push(Refusal::SignerUnknown);
             continue;
         };
-        if delete_attestation::verify(&marker.claim(), signature, key).is_err() {
+        if delete_attestation::verify(&marker.claim(), vault_id, signature, key).is_err() {
             refused.push(Refusal::AttestationInvalid);
             continue;
         }
@@ -401,6 +402,7 @@ fn to_ms(at: i64) -> i64 {
 pub(crate) async fn applicable(
     entries: Entries,
     skip: impl Fn(&Marker) -> bool,
+    vault_id: Option<&str>,
     keys: Option<&dyn SignerKeys>,
     http: &HttpClient,
     db: &Db,
@@ -411,7 +413,7 @@ pub(crate) async fn applicable(
         ..
     } = entries;
     let candidates: Vec<Marker> = markers.into_iter().filter(|marker| !skip(marker)).collect();
-    let attested = attest(candidates, keys, http, &mut refused).await?;
+    let attested = attest(candidates, vault_id, keys, http, &mut refused).await?;
     let known = if attested.is_empty() {
         None
     } else {

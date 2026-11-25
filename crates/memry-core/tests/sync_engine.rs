@@ -28,7 +28,7 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
-use http_fakes::{FakeTransport, response};
+use http_fakes::{FakeTransport, body_json, response};
 use memry_core::api::errors::{ApiError, SyncError};
 use memry_core::domain::notes::{self, NewNote};
 use memry_core::domain::settings;
@@ -42,6 +42,7 @@ use memry_core::storage::repositories::sync_items;
 use memry_core::storage::{Db, open_data};
 use memry_core::sync::engine::{PassReport, PushWave, SyncEngine};
 use memry_core::sync::pull::{PullLoop, PullReport, RecordCipher};
+use memry_core::sync::push::{PendingRecord, PushCoordinator, PushSealer};
 use memry_core::sync::state::{PassTrigger, SyncState, WriteGate, is_drawn};
 use memry_core::sync::store::{self, RECORD_CURSOR_SCOPE};
 use serde_json::{Value as Json, json};
@@ -1710,15 +1711,60 @@ async fn an_unmodelled_settings_group_rides_along_through_the_merge() {
     assert_eq!(outbox_rows(&db, SETTINGS_ID), queued_before);
 }
 
-fn drain_outbox(db: &Db) -> i64 {
-    db.call_blocking(|conn| {
-        conn.execute("DELETE FROM outbox", []).map_err(|error| {
-            memry_core::api::errors::StorageError::Failed {
-                what: error.to_string(),
-            }
+/// Seals a record as its live plaintext, so a test can read what a push sent.
+/// The envelope's bytes are chapter 04's, pinned by the `record-envelope`
+/// vector class.
+struct PlainSealer;
+
+impl PushSealer for PlainSealer {
+    fn seal_record(&self, item: &PendingRecord) -> Result<Json, EnvelopeError> {
+        Ok(json!({
+            "id": item.row.item_id,
+            "type": item.row.item_type,
+            "operation": item.operation.as_str(),
+            "encryptedData": item.row.payload.clone().unwrap_or_default(),
+        }))
+    }
+
+    fn seal_crdt_update(&self, _doc_id: &str, update: &[u8]) -> Result<Vec<u8>, EnvelopeError> {
+        Ok(update.to_vec())
+    }
+}
+
+/// One real push wave from `db` to a server that accepts `id`. Returns the
+/// payloads the wave sent; the server's ack deletes their outbox rows.
+async fn push_wave(db: &Db, id: &str) -> Vec<Json> {
+    let accepted = json!({"accepted": [id], "rejected": [], "serverTime": 1, "maxCursor": 1});
+    let transport = FakeTransport::new(vec![response(200, &accepted.to_string())]);
+    let http = HttpClient::new(
+        transport.clone(),
+        "https://sync.example",
+        ClientIdentity::new("ios", "1.2.3").expect("a valid identity"),
+    );
+    PushCoordinator::new(
+        Arc::new(http),
+        db.clone(),
+        Declaration::subscribed(),
+        Arc::new(PlainSealer),
+        "device-a",
+    )
+    .drain_wave()
+    .await
+    .expect("the wave");
+    transport
+        .calls_to("/sync/push")
+        .iter()
+        .flat_map(|call| {
+            body_json(call)["items"]
+                .as_array()
+                .cloned()
+                .unwrap_or_default()
         })
-    })
-    .expect("drain") as i64
+        .map(|item| {
+            serde_json::from_str(item["encryptedData"].as_str().expect("the plaintext"))
+                .expect("valid JSON")
+        })
+        .collect()
 }
 
 /// #5506 through the real pull: phone and desk start from weekStartDay
@@ -1753,13 +1799,23 @@ async fn a_settings_merge_that_keeps_a_tick_the_server_lacks_pushes_it_back() {
             Ok(())
         })
         .expect("the offline edit");
-    assert_eq!(drain_outbox(&phone), 1, "the edit was pushed");
-    assert_eq!(drain_outbox(&desk), 0);
+    assert_eq!(
+        push_wave(&phone, SETTINGS_ID).await.len(),
+        1,
+        "the edit was pushed"
+    );
+    assert!(push_wave(&desk, SETTINGS_ID).await.is_empty());
 
     let report = pull_one(&phone, SETTINGS_ID, "settings", &stale, "71").await;
     assert_eq!(report.applied, 1);
     assert_eq!(outbox_rows(&phone, SETTINGS_ID), 1, "phone re-pushes");
-    let server = stored_payload(&phone, "settings", SETTINGS_ID);
+    let pushed = push_wave(&phone, SETTINGS_ID).await;
+    assert_eq!(
+        pushed,
+        vec![stored_payload(&phone, "settings", SETTINGS_ID)]
+    );
+    assert_eq!(outbox_rows(&phone, SETTINGS_ID), 0, "the server acked it");
+    let server = pushed[0].clone();
     assert_eq!(
         server["settings"]["calendar"]["weekStartDay"],
         json!("monday")
@@ -1769,7 +1825,6 @@ async fn a_settings_merge_that_keeps_a_tick_the_server_lacks_pushes_it_back() {
         server["fieldClocks"]["calendar.weekStartDay"],
         json!({"desk": 1, "phone": 1})
     );
-    drain_outbox(&phone);
 
     let server = server.to_string();
     let report = pull_one(&desk, SETTINGS_ID, "settings", &server, "72").await;

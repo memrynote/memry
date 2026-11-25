@@ -63,10 +63,11 @@ const KEPT_PREFIXES = [
 /**
  * Follows main.log across the logger's renames (main.log -> main.1.log at
  * 5 MB, four archives kept), so a long run keeps its first lines. Each call
- * reads what was appended since the last one and returns the lines the
- * benchmark reads.
+ * reads what was appended since the last one and returns the lines whose
+ * message starts with one of `prefixes`. Tauri writes the same file name and
+ * line layout.
  */
-export function followLog(logPath, fs) {
+export function followLog(logPath, fs, prefixes = KEPT_PREFIXES) {
   const archivePath = logPath.replace(/\.log$/, '.1.log')
   let inode = null
   let offset = 0
@@ -104,7 +105,7 @@ export function followLog(logPath, fs) {
     const split = text.split('\n')
     partial = split.pop() ?? ''
     for (const line of split) {
-      if (KEPT_PREFIXES.some((prefix) => line.includes(`] ${prefix}`))) lines.push(line)
+      if (prefixes.some((prefix) => line.includes(`] ${prefix}`))) lines.push(line)
     }
     return lines
   }

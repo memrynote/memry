@@ -44,6 +44,8 @@
     "moveFailed": "Nie udało się przenieść notatki",
     "applyTemplateFailed": "Nie udało się zastosować szablonu",
     "appendBlocksFailed": "Nie udało się przenieść bloku do tej notatki",
+    "appendIntoCaseTwin": "Ta notatka współdzieli plik z notatką, której nazwa różni się tylko wielkością liter. Zmień nazwę jednej z nich, a następnie ponownie przenieś blok.",
+    "caseTwinMoveRefused": "Ta notatka współdzieli plik z notatką, której nazwa różni się tylko wielkością liter, więc nie można jej przenieść w ten sposób. Zmień nazwę drugiej notatki lub ją przenieś albo usuń kopię, której nie potrzebujesz.",
     "exportPdfFailed": "Nie udało się wyeksportować pliku PDF",
     "exportHtmlFailed": "Nie udało się wyeksportować pliku HTML",
     "restoreVersionFailed": "Nie udało się przywrócić wersji",
@@ -78,7 +80,9 @@
     "downloadProgressFailed": "Nie udało się odczytać postępu pobierania",
     "exceedsMaxSize": "Plik jest zbyt duży: {size} przekracza limit {limit}",
     "exceedsPlanLimit": "Plik jest większy, niż pozwala twój plan: {size} przekracza {limit}",
-    "emptyFile": "Nie można przesłać pustego pliku"
+    "emptyFile": "Nie można przesłać pustego pliku",
+    "emptyNotAttached": "Ten plik jest pusty, więc nie został dołączony. Jeśli wklejono obraz, skopiuj go ponownie i wklej.",
+    "textInMediaFile": "Ten plik zawiera tekst zamiast multimediów wskazanych w jego nazwie"
   },
   "crdt": {
     "persistenceDegradedTitle": "Historia edycji nie jest przechowywana na tym urządzeniu",
@@ -233,6 +237,7 @@
   "folder": {
     "createFailed": "Nie udało się utworzyć folderu",
     "renameFailed": "Nie udało się zmienić nazwy folderu",
+    "renameCaseTwins": "Ten folder zawiera notatki, które współdzielą plik z notatką, której nazwa folderu różni się tylko wielkością liter. Najpierw zmień nazwy tych notatek lub je przenieś, a potem zmień nazwę folderu.",
     "deleteFailed": "Nie udało się usunąć folderu",
     "keptNotPulled": "Ten folder zawiera notatkę, której plik usunięto poza memrynote, a jej tekst nie został jeszcze zsynchronizowany z tym urządzeniem, więc nie może trafić do kosza. Nic nie zostało usunięte. Poczekaj na synchronizację albo najpierw usuń tę notatkę osobno.",
     "keptUnwritable": "Ten folder zawiera notatkę, której plik usunięto poza memrynote, a jej tekstu nie można zapisać w pliku dla kosza. Nic nie zostało usunięte. Najpierw usuń tę notatkę osobno.",

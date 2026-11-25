@@ -29,8 +29,8 @@ The directions:
 
 | Direction              | Mechanism                                                                                                                                                                                                                                                                            |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| markdown to document   | `Converter::seed_body` (`crates/memry-core/src/markdown/convert/api.rs:113`), the port of `markdownToYFragment` (`apps/desktop/src/main/sync/blocknote-converter.ts:548`) with the repairs of §12.1.1; in the iOS build, `markdown_seed` for the two writes of §12.1.0 and no others |
-| document to markdown   | `Converter::serialize_note_body` (`crates/memry-core/src/markdown/convert/api.rs:152`), the port of the vault write-back's `serializeNoteBody` (`apps/desktop/src/main/sync/crdt-writeback.ts:603`)                                                                                  |
+| markdown to document   | `Converter::seed_body` (`crates/memry-core/src/markdown/convert/api.rs:114`), the port of `markdownToYFragment` (`apps/desktop/src/main/sync/blocknote-converter.ts:535`) with the repairs of §12.1.1; in the iOS build, `markdown_seed` for the two writes of §12.1.0 and no others |
+| document to markdown   | `Converter::serialize_note_body` (`crates/memry-core/src/markdown/convert/api.rs:184`), the port of the vault write-back's `serializeNoteBody` (`apps/desktop/src/main/sync/crdt-writeback.ts:598`)                                                                                  |
 | document to plain text | `extract_text`, a plain-text walk of the `prosemirror` fragment that keeps headings and list markers, drops everything else, and claims no markdown fidelity (§12.1.3)                                                                                                               |
 
 ### 12.1.0 The core's markdown seed
@@ -84,19 +84,20 @@ opened from a template on the phone, and neither write closes it.
 **Normative, and a client MUST NOT assume otherwise.** Desktop does more than BlockNote's
 markdown parse and export.
 
-- **Inbound**, `markdownToYFragment` (`apps/desktop/src/main/sync/blocknote-converter.ts:548`)
-  runs `prepareFragmentSeed` (`:586`), which takes writing tools markers, CriticMarkup and link
-  reference definitions out of the text before the parse, then `applyFragmentSeed` (`:636`),
-  which writes the blocks and those side channels, then `recordMarkdownSourceInYDoc` (`:690`).
+- **Inbound**, `markdownToYFragment` (`apps/desktop/src/main/sync/blocknote-converter.ts:535`)
+  runs `prepareFragmentSeed` (`:573`), which takes writing tools markers, CriticMarkup and link
+  reference definitions out of the text before the parse, then `applyFragmentSeed` (`:631`),
+  which writes the blocks and those side channels, then `recordMarkdownSourceInYDoc` (`:692`).
   The seed promotes link mention tokens as §12.1.1.1 says. The core's `markdown_seed` keeps a
   line holding a token as literal text (§12.1.0).
 - **Outbound**, the vault write-back calls `serializeNoteBody`
-  (`apps/desktop/src/main/sync/crdt-writeback.ts:603`,
-  `apps/desktop/src/main/sync/writing-markdown.ts:430`). It runs `yDocToMarkdown`
-  (`apps/desktop/src/main/sync/blocknote-converter.ts:204`), which serialises with
-  `blocksToMarkdownPreserving` and `restoreLinkReferences` (`:387-389`) and then runs
-  `restoreMarkdownSource` (`:224`), and it applies `serializeCriticMarkup` last
-  (`apps/desktop/src/main/sync/writing-markdown.ts:455`).
+  (`apps/desktop/src/main/sync/crdt-writeback.ts:598`,
+  `apps/desktop/src/main/sync/writeback-conversion.ts:36`,
+  `apps/desktop/src/main/sync/writing-markdown.ts:433`). It runs `yDocToMarkdown`
+  (`apps/desktop/src/main/sync/blocknote-converter.ts:208`), which serialises with
+  `blocksToMarkdownPreserving` and `restoreLinkReferences` (`:397-399`) and then runs
+  `restoreMarkdownSource` (`:234`), and it applies `serializeCriticMarkup` last
+  (`apps/desktop/src/main/sync/writing-markdown.ts:458`).
 
 The renderer and main build their block and inline specs from one factory (§12.1), so the block
 grammar of §12.6 and §12.7 is the same in both. **The out-of-band layer of §12.8 runs only on
@@ -114,7 +115,7 @@ converter's `prepare_fragment_seed` (`crates/memry-core/src/markdown/convert/see
 - A token is a match of `MENTION_TOKEN_REGEX`
   (`packages/editor-schema/src/inline/link-mention.ts:28`) in a text run of any block except a
   `codeBlock`, table cells and nested blocks included, whose payload `parseLinkMentionToken`
-  (`:99`, ported as `crates/memry-core/src/markdown/schema/link_mention_normalize.rs:73`)
+  (`:131`, ported as `crates/memry-core/src/markdown/schema/link_mention_normalize.rs:73`)
   accepts. A payload with no whitespace and no backslash is accepted when it percent-decodes to
   a non-empty string. The legacy ones are accepted too: `_ * ! ~ '` raw, as builds before #1844
   wrote them, and a stray whitespace or remark backslash, which the parse strips. A repaired
@@ -202,10 +203,12 @@ A build before #4478 re-encodes a legacy token once, on its next write-back of a
 seeded; the URL does not change.
 
 Desktop's seed MUST promote exactly these tokens. A token a seed leaves as text is promoted by
-each device's editor on open, and two devices doing that before they sync merge two chips per
-mention (#3871, #4478). The core's `markdown_seed` keeps every token as text (§12.1.0), so a
-body it seeds reaches desktop with its tokens unpromoted and the #3871 race remains for those
-bodies.
+each device's editor on open (`apps/desktop/src/renderer/src/components/note/content-area/hooks/use-editor-sync.ts:234`),
+and two devices doing that before they sync merge two chips per mention (#3871, #4478). The
+core's `markdown_seed` keeps every token as text (§12.1.0,
+`crates/memry-core/src/crdt/markdown_seed/prepare.rs:94`), so a body it seeds reaches desktop
+with its tokens unpromoted, desktop's editor promotes them on open, and the #3871 race remains
+for those bodies.
 
 ### 12.1.2 What this means for a non-desktop client
 

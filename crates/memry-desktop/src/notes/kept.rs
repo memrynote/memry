@@ -335,7 +335,7 @@ impl NotesService {
         } else {
             let measured = open
                 .vault
-                .search()?
+                .search(None)?
                 .note_stats(note_id)?
                 .filter(|stored| stored.stats.header_read)
                 .map(|stored| stored.stats.header_tags)

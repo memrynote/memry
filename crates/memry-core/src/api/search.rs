@@ -21,19 +21,19 @@
 #[cfg(feature = "markdown")]
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use rusqlite::OptionalExtension as _;
 
 use crate::api::errors::StorageError;
+use crate::api::semantic::SemanticSearch;
 use crate::domain::journal_ops::links::{self, BacklinkRow, OutgoingLink};
-use crate::domain::link_reads::{self, Incoming, LinkTarget, MentionSources};
 #[cfg(feature = "markdown")]
 use crate::domain::note_properties::{self, NoteWithProperty, PropertyUse, StoredProperty};
 #[cfg(feature = "markdown")]
 use crate::domain::note_stats::{self, MeasuredFile, NoteStatsRow, StoredStats, Unindexed};
 #[cfg(feature = "markdown")]
 use crate::domain::notes::journal_day;
-use crate::domain::notes::link_rewrite::LinkNames;
 use crate::domain::search::{self, LinkChanges, SearchFilter, SearchHit};
 use crate::domain::unlinked_mentions::{self, UnlinkedMention};
 use crate::domain::wiki_target;
@@ -42,6 +42,7 @@ use crate::storage::{Db, open_index};
 // Desktop folds notes and reads block references; iOS links none of it.
 #[cfg(feature = "markdown")]
 mod block_refs;
+mod desktop_links;
 #[cfg(feature = "vec")]
 mod embeddings;
 #[cfg(feature = "markdown")]
@@ -114,25 +115,36 @@ pub enum BacklinkOrder {
 pub struct Search {
     data: Db,
     index: Db,
+    directory: PathBuf,
+    /// `None` searches FTS alone.
+    semantic: Option<Arc<SemanticSearch>>,
 }
 
 impl Search {
     /// Built by [`crate::api::vault::Vault::search`], which holds the data
     /// handle and knows the directory the index belongs beside.
-    pub(crate) fn over(data: Db, directory: &str) -> Result<Self, StorageError> {
-        Self::over_reporting(data, directory).map(|(search, _)| search)
+    pub(crate) fn over(
+        data: Db,
+        directory: &str,
+        semantic: Option<Arc<SemanticSearch>>,
+    ) -> Result<Self, StorageError> {
+        Self::over_reporting(data, directory, semantic).map(|(search, _)| search)
     }
 
     /// [`Search::over`] plus the reason `index.db` was rebuilt, when it was.
     pub(crate) fn over_reporting(
         data: Db,
         directory: &str,
+        semantic: Option<Arc<SemanticSearch>>,
     ) -> Result<(Self, Option<String>), StorageError> {
-        let opened = open_index(&PathBuf::from(directory).join("index.db"))?;
+        let directory = PathBuf::from(directory);
+        let opened = open_index(&directory.join("index.db"))?;
         Ok((
             Self {
                 data,
                 index: opened.db,
+                directory,
+                semantic,
             },
             opened.rebuild_reason,
         ))
@@ -144,67 +156,6 @@ impl Search {
     #[doc(hidden)]
     pub fn index_handle(&self) -> Db {
         self.index.clone()
-    }
-}
-
-/// Desktop's link reads ([`link_reads`]). Not on the FFI surface: they answer in desktop's
-/// shapes (file paths, `getIncomingLinks`'s resolved-id match).
-impl Search {
-    /// The notes and journal days whose links resolved to `target_id` ([`link_reads::incoming`]).
-    pub fn incoming_links(&self, target_id: &str) -> Result<Incoming, StorageError> {
-        let target_id = target_id.to_owned();
-        let index = self.index.clone();
-        self.data.read_blocking(move |data| {
-            index.read_blocking(|index| link_reads::incoming(data, index, &target_id))
-        })
-    }
-
-    /// The notes and days whose links may name the note once called `from`
-    /// ([`link_reads::rewrite_sources`]).
-    pub fn link_rewrite_sources(
-        &self,
-        target_id: &str,
-        from: &LinkNames,
-    ) -> Result<Vec<String>, StorageError> {
-        let (target_id, from) = (target_id.to_owned(), from.clone());
-        self.index
-            .read_blocking(move |index| link_reads::rewrite_sources(index, &target_id, &from))
-    }
-
-    /// The notes and days that may mention `target_id` unlinked ([`link_reads::mention_sources`]).
-    pub fn mention_sources(&self, target_id: &str) -> Result<Option<MentionSources>, StorageError> {
-        let target_id = target_id.to_owned();
-        let index = self.index.clone();
-        self.data.read_blocking(move |data| {
-            index.read_blocking(|index| link_reads::mention_sources(data, index, &target_id))
-        })
-    }
-
-    /// The names a mention of `target_id` spells: its title (a day's date), then its aliases,
-    /// as [`Search::mention_sources`] lists them. Empty when the target is not live.
-    pub fn mention_names(&self, target_id: &str) -> Result<Vec<String>, StorageError> {
-        let target_id = target_id.to_owned();
-        self.data
-            .read_blocking(move |data| unlinked_mentions::target_names(data, &target_id))
-    }
-
-    /// What each of `queries` names as a whole ([`link_reads::resolve_titles`]).
-    pub fn resolve_link_titles(
-        &self,
-        queries: Vec<String>,
-    ) -> Result<Vec<Option<LinkTarget>>, StorageError> {
-        self.data
-            .read_blocking(move |data| link_reads::resolve_titles(data, &queries))
-    }
-
-    /// What a wiki-link target names, with its heading ([`link_reads::resolve_target`]).
-    pub fn resolve_link_target(
-        &self,
-        target: &str,
-    ) -> Result<Option<(LinkTarget, Option<String>)>, StorageError> {
-        let target = target.to_owned();
-        self.data
-            .read_blocking(move |data| link_reads::resolve_target(data, &target))
     }
 }
 
@@ -332,7 +283,7 @@ impl Search {
     }
 }
 
-#[uniffi::export]
+#[uniffi::export(async_runtime = "tokio")]
 impl Search {
     /// Every note linking to this one (N800).
     ///
@@ -494,6 +445,12 @@ impl Search {
     ///
     /// A query carrying no searchable term returns **empty, not everything**:
     /// an empty search box is not a request for the whole vault.
+    ///
+    /// With semantic search on and its model loaded, notes and journals near
+    /// the query's meaning fuse into their groups. The query is embedded
+    /// before any database lock is taken, and never waits on a model load:
+    /// the first query starts the load and answers from FTS alone, with
+    /// `semantic_pending` set.
     pub fn search(
         &self,
         query: String,
@@ -503,6 +460,15 @@ impl Search {
         let index = self.index.clone();
         let filter = filter.unwrap_or_default();
         let limit = limit as usize;
+        let (hits, semantic_pending) = match self
+            .semantic
+            .as_ref()
+            .map(|semantic| semantic.hits(&self.directory, &query))
+        {
+            Some(None) => (Vec::new(), true),
+            Some(Some(hits)) => (hits, false),
+            None => (Vec::new(), false),
+        };
         // Two pooled readers, so two snapshots: one of `data.db` and one of
         // `index.db`, each the last commit when its reader started the call. A
         // write landing between them can show a hit whose note was just edited
@@ -512,7 +478,12 @@ impl Search {
         // routes through the writer, as the pre-pool code did.
         self.data.read_blocking(move |data| {
             index.read_blocking(|index| {
-                let groups = search::search(data, index, &query, &filter, limit)?;
+                let mut groups = search::search(data, index, &query, &filter, limit)?;
+                if let Err(error) =
+                    search::semantic::fuse(data, index, &mut groups, &hits, &filter, limit)
+                {
+                    eprintln!("memry-core: semantic fusion failed, FTS only: {error}");
+                }
                 let results =
                     |hits: Vec<SearchHit>| hits.into_iter().map(SearchResult::from).collect();
                 Ok(SearchGroups {
@@ -520,9 +491,21 @@ impl Search {
                     journals: results(groups.journals),
                     tasks: results(groups.tasks),
                     inbox: results(groups.inbox),
+                    semantic_pending,
                 })
             })
         })
+    }
+
+    /// Waits for the semantic model load in flight, if any, and answers
+    /// whether the model is loaded now. A search that came back with
+    /// `semantic_pending` runs again once, and only on `true`: a load that
+    /// failed or was released by a memory warning answers `false`.
+    pub async fn semantic_model_loaded(&self) -> bool {
+        match &self.semantic {
+            Some(semantic) => semantic.load_finished().await,
+            None => false,
+        }
     }
 
     /// Brings the index up to date with the vault.
@@ -555,3 +538,7 @@ fn now_ms() -> i64 {
         .map(|elapsed| elapsed.as_millis() as i64)
         .unwrap_or_default()
 }
+
+#[cfg(test)]
+#[path = "search_semantic_tests.rs"]
+mod semantic_tests;

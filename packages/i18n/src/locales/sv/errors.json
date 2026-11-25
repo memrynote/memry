@@ -44,6 +44,8 @@
     "moveFailed": "Det gick inte att flytta anteckningen",
     "applyTemplateFailed": "Det gick inte att använda mallen",
     "appendBlocksFailed": "Det gick inte att flytta blocket till den anteckningen",
+    "appendIntoCaseTwin": "Den anteckningen delar fil med en anteckning vars namn bara skiljer sig i versaler och gemener. Byt namn på en av dem och flytta sedan blocket igen.",
+    "caseTwinMoveRefused": "Den här anteckningen delar fil med en anteckning vars namn bara skiljer sig i versaler och gemener, så den kan inte flyttas på det här sättet. Byt namn på eller flytta den andra anteckningen, eller ta bort kopian du inte behöver.",
     "exportPdfFailed": "Det gick inte att exportera till PDF",
     "exportHtmlFailed": "Det gick inte att exportera till HTML",
     "restoreVersionFailed": "Det gick inte att återställa versionen",
@@ -78,7 +80,9 @@
     "downloadProgressFailed": "Det gick inte att hämta nedladdningsförloppet",
     "exceedsMaxSize": "Filen är för stor: {size} överskrider gränsen på {limit}",
     "exceedsPlanLimit": "Filen är större än din plan tillåter: {size} överskrider {limit}",
-    "emptyFile": "Det går inte att ladda upp en tom fil"
+    "emptyFile": "Det går inte att ladda upp en tom fil",
+    "emptyNotAttached": "Den här filen är tom, så den bifogades inte. Om du klistrade in en bild kopierar du den igen och klistrar in den.",
+    "textInMediaFile": "Den här filen innehåller text i stället för det medium som namnet anger"
   },
   "crdt": {
     "persistenceDegradedTitle": "Redigeringshistoriken sparas inte på den här enheten",
@@ -233,6 +237,7 @@
   "folder": {
     "createFailed": "Det gick inte att skapa mappen",
     "renameFailed": "Det gick inte att byta namn på mappen",
+    "renameCaseTwins": "Den här mappen innehåller anteckningar som delar fil med en anteckning vars mappnamn bara skiljer sig i versaler och gemener. Byt namn på eller flytta de anteckningarna först, och byt sedan namn på mappen.",
     "deleteFailed": "Det gick inte att radera mappen",
     "keptNotPulled": "Den här mappen innehåller en anteckning vars fil raderades utanför memrynote, och dess text har ännu inte synkats till den här enheten, så den kan inte flyttas till papperskorgen. Inget raderades. Vänta tills den har synkats, eller radera den anteckningen separat först.",
     "keptUnwritable": "Den här mappen innehåller en anteckning vars fil raderades utanför memrynote, och dess text kan inte sparas i en fil för papperskorgen. Inget raderades. Radera den anteckningen separat först.",

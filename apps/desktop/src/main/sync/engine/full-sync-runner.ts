@@ -7,6 +7,7 @@ import { closeBootstrapSession, openBootstrapSession } from '../bootstrap-sessio
 import { getBootstrapElevationFactor } from '../bootstrap-session-state'
 import { checkManifestIntegrity } from '../manifest-check'
 import { runInitialSeed } from '../initial-seed'
+import { scheduleSeedDuplicateRepair } from '../crdt-seed-duplicates'
 import { trackMainEvent } from '../../telemetry/track'
 import type { SyncContext, SyncRunOutcome } from './sync-context'
 import { DELIVERED, INCOMPLETE, skipped } from './sync-run-outcome'
@@ -22,11 +23,12 @@ import {
 import type { SyncStateManager } from './sync-state-manager'
 import type { PushCoordinator } from './push-coordinator'
 import type { ItemRef } from './corrupt-item-tracker'
+import type { PackedRecords } from '../packs/record-packs'
 import type { CrdtSyncCoordinator } from './crdt-sync-coordinator'
 import { CRDT_BODY_DEBT_MAX_BACKOFF_MS, convertUnmergedDebtMirror } from './crdt-body-debts'
 import { getAllCrdtNoteIds, getAllSyncableNoteMetadataIds } from '../../database/queries/notes'
 import { getIndexDatabase, isIndexDatabaseInitialized } from '../../database/client'
-import { markPullCompleted } from '@memry/sync-client/sync-eligibility'
+import { markPullCompleted, markRecordsPulled } from '@memry/sync-client/sync-eligibility'
 import { isKnownNote } from '../note-body-apply'
 import { listPackSeeded, packSeededKey } from './pack-seeded-docs'
 
@@ -35,14 +37,29 @@ const log = createLogger('SyncEngine')
 const CURSOR_SKIP_REPAIR_DONE = 'done'
 
 /**
+ * `sync_state` key (#5234): `'1'` from the first full sync of a device with no
+ * cursor until the bootstrap closes with every body current (#5328), or, with
+ * no CRDT store, until a pull delivers to the head of the feed. A relaunch that
+ * finds it resumes the bootstrap from the persisted cursor, elevated and with
+ * packs, instead of running as a steady-state device. A key cleared at
+ * delivery sent a kill during the settle or the body drain into an unelevated
+ * relaunch that never closed its window. The server owns the resume window
+ * (BOOTSTRAP_RESUME_WINDOW_SECONDS, from device registration): its 409 on
+ * POST /sync/bootstrap deletes the key. Older builds ignore the row.
+ */
+const BOOTSTRAP_PENDING_KEY = 'bootstrapPending'
+/** Pack-seeded docs settled at once; the provider keeps 32 inactive docs open. */
+const PACK_SEED_SETTLE_CONCURRENCY = 8
+
+/**
  * How long the paced CRDT drain must stay CONTINUOUSLY blocked before the
  * elevated bootstrap session is given up (#1837).
  *
  * Releasing on the first blocked tick was an unbounded regression. The session
- * is opened exactly once per vault, gated on `LAST_CURSOR == null`, and the
- * first pull page persists that cursor — so once it is released nothing
- * re-opens it, and the rest of the bootstrap drains at base pacing for the
- * whole run. A laptop lid, a wifi switch or a VPN reconnect lasting seconds
+ * is opened once per engine while the bootstrap is pending and before its pull
+ * delivers, so once it is released nothing re-opens it
+ * before a relaunch, and the rest of the bootstrap drains at base pacing for
+ * the whole run. A laptop lid, a wifi switch or a VPN reconnect lasting seconds
  * therefore cost the entire remaining drain its elevation factor, which on a
  * large vault turns minutes of chunk delay into tens of minutes — a permanent
  * slowdown of exactly the workload the session exists to accelerate.
@@ -61,9 +78,10 @@ export interface FullSyncActions {
    * Every error path out of a pull is swallowed (`SyncEngine.pull` catches
    * everything, `PullCoordinator.pull` returns early on a busy lock, missing
    * credentials or a refused page), so non-rejection is not evidence of
-   * anything (#1835). Only the outcome is. `missing` is pulled by id (#3391).
+   * anything (#1835). Only the outcome is. `missing` is pulled by id (#3391);
+   * `packed` is a fresh device's record packs (#5390).
    */
-  pull: (missing?: readonly ItemRef[]) => Promise<SyncRunOutcome>
+  pull: (missing?: readonly ItemRef[], packed?: PackedRecords) => Promise<SyncRunOutcome>
   push: () => Promise<SyncRunOutcome>
   /** False when the engine dropped `fn` because a full sync is running. */
   scheduleSync: (fn: () => Promise<unknown>) => boolean
@@ -117,6 +135,15 @@ export class FullSyncRunner {
    * controller stays aborted and a later engine must not inherit it.
    */
   private pacedCrdtPullAbort: AbortController | null = null
+  /**
+   * The pack phase's own controller (#5389). It runs before the first pull
+   * takes the lock, so `ctx.abortController` is null on a fresh device and a
+   * stop, cancel, pause, emergency wipe or vault switch reaches the phase only
+   * through `abortPackPhase()` (or `dispose()`), never cut short by a pause.
+   */
+  private packPhaseAbort: AbortController | null = null
+  /** The pack phase a stop, cancel or wipe ended: its run skips the pull too. */
+  private stoppedPackPhase: AbortController | null = null
   /**
    * This engine queued the one-time note-body legacy sweep (#2297) and its
    * drain is outstanding; that drain, and only it, records the sweep done.
@@ -250,6 +277,7 @@ export class FullSyncRunner {
     this.legacyNoteBodySweepQueued = false
     this.pacedCrdtPullAbort?.abort()
     this.pacedCrdtPullAbort = null
+    this.packPhaseAbort?.abort()
     // The telemetry window dies with the engine that armed it (#1835). Without
     // this the module-global window outlives the vault: `beginBootstrap` no-ops
     // while one is set, so the NEXT vault's bootstrap inherits this one's t0 and
@@ -352,6 +380,17 @@ export class FullSyncRunner {
     this.legacyNoteBodySweepQueued = false
   }
 
+  /**
+   * Ends a running pack phase at once: nothing downloads or applies after it.
+   * After a 'stop' the run skips its pull as well. After a 'pause' it skips the
+   * pull only while the pause lasts: resume() schedules no pull while this run
+   * holds `fullSyncActive`, so this run pulls.
+   */
+  abortPackPhase(cause: 'pause' | 'stop'): void {
+    if (cause === 'stop') this.stoppedPackPhase = this.packPhaseAbort
+    this.packPhaseAbort?.abort()
+  }
+
   async run(): Promise<SyncRunOutcome> {
     // A paused device runs no part of a full sync (#3382). Its pull and push
     // were refused at the lock, yet the manifest check still fetched, reset
@@ -361,10 +400,29 @@ export class FullSyncRunner {
     log.debug('fullSync started')
     if (this.disposed) this.wirePullTimers()
     // No persisted cursor = this device has never completed a pull for this
-    // vault: a genuine fresh-device bootstrap (#1835). beginBootstrap no-ops
-    // while a window is already open (the vault-download seam fires earlier
-    // and keeps the truer start time), and telemetry must never break sync.
-    const isFreshDevice = this.stateManager.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR) == null
+    // vault: a genuine fresh-device bootstrap (#1835). Pending = a bootstrap a
+    // quit interrupted after its first page, which resumes from its cursor.
+    // beginBootstrap no-ops while a window is already open (the vault-download
+    // seam fires earlier and keeps the truer start time), and telemetry must
+    // never break sync.
+    if (this.stateManager.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR) == null) {
+      // Only this build's pulls ever wrote a cursor here, and they skip no
+      // range: there is nothing for the #2382 repair to heal, now or after an
+      // interruption.
+      this.stateManager.setStateValue(SYNC_STATE_KEYS.CURSOR_SKIP_REPAIR, CURSOR_SKIP_REPAIR_DONE)
+      this.stateManager.setStateValue(BOOTSTRAP_PENDING_KEY, '1')
+    }
+    // Once a pull of this engine delivered, the packs and the session are
+    // spent: only a relaunch resumes them.
+    const isFreshDevice =
+      !this.bootstrapPullSucceeded && this.stateManager.getStateValue(BOOTSTRAP_PENDING_KEY) != null
+    // Before the first await: a pull the socket's `connected` scheduled while
+    // the session opened took the lock, read the whole feed outside this run,
+    // and left the repair unrecorded (#5234).
+    this.ctx.fullSyncActive = true
+    // Also before the first await: a stop, cancel, pause, wipe or vault switch
+    // while the session opens must reach the pack phase that follows (#5389).
+    const packAbort = isFreshDevice ? (this.packPhaseAbort = new AbortController()) : null
     try {
       if (isFreshDevice) {
         beginBootstrap('first_full_sync')
@@ -375,14 +433,18 @@ export class FullSyncRunner {
         // Elevated limits + presigned sets for this pull (#1837). Any failure
         // — old server, unconfigured, capped, offline — silently falls back to
         // steady-state pacing; nothing downstream may depend on it succeeding.
-        await openBootstrapSession(this.ctx.deps.getAccessToken)
+        const session = await openBootstrapSession(this.ctx.deps.getAccessToken)
+        if (session === 'ineligible') {
+          log.info('fullSync: server ended the bootstrap resume window, syncing as steady state')
+          this.stateManager.deleteStateValue(BOOTSTRAP_PENDING_KEY)
+        }
         this.bootstrapSessionOpen = true
       }
     } catch {
       /* telemetry only — sync proceeds */
     }
-    this.ctx.fullSyncActive = true
-    if (isFreshDevice) {
+    let packedRecords: PackedRecords | null = null
+    if (packAbort) {
       // Compaction packs (#1840): seed note bodies from a handful of large
       // transfers before the item-granular pull, so the CRDT sweep that
       // follows finds them already merged and issues no snapshot GETs for
@@ -391,13 +453,23 @@ export class FullSyncRunner {
       // byte-for-byte as it does on a deployment with no packs at all. It is
       // awaited rather than fired off because it writes into the same Y.Docs
       // and the same DBs the pull is about to touch.
-      await this.applyBootstrapPacks()
+      packedRecords = await this.applyBootstrapPacks(packAbort)
     }
     // A pull that delivered ran to the head of the feed unrefused (#1835): only
     // then can a vault sweep cover every note whose record exists (#2297).
     let pullDelivered = false
     let pushesDelivered = true
     try {
+      // A stop, wipe, vault switch or a pause still in force after the session
+      // opened or the packs ran ends the run here, as it ended the pack phase
+      // (#5389).
+      if (
+        packAbort &&
+        (this.stoppedPackPhase === packAbort || this.disposed || this.stateManager.isPaused())
+      ) {
+        this.lastRunCaughtUp = false
+        return skipped(this.stateManager.isPaused() ? 'paused' : 'cancelled')
+      }
       // Evidence for the full-text mark: the pull REPORTED that it delivered.
       // "The await did not reject" is true on every production run — the engine
       // swallows every error and the coordinator returns early on a busy lock,
@@ -405,7 +477,7 @@ export class FullSyncRunner {
       // nothing outside a unit test whose `pull` was a bare mock.
       const repairFrom = await this.beginCursorSkipRepair()
       const changedBeforePull = this.ctx.applier.changedCount
-      const pull = await this.actions.pull()
+      const pull = await this.actions.pull([], packedRecords ?? undefined)
       // No session, a cancelled engine or a pause refuses the push and the
       // manifest check as surely as the pull. A busy lock is only this moment.
       if (pull.status === 'skipped' && pull.reason !== 'busy') {
@@ -414,7 +486,14 @@ export class FullSyncRunner {
       }
       pullDelivered = pull.status === 'delivered'
       if (pullDelivered) {
+        // Before the seed: a folder found after this point has no remote row
+        // left to arrive, so it is pushed at once (folder-config-effects).
+        markRecordsPulled()
         this.bootstrapPullSucceeded = true
+        // Without a CRDT store there is no body phase to wait for.
+        if (this.ctx.deps.crdtProvider == null) {
+          this.stateManager.deleteStateValue(BOOTSTRAP_PENDING_KEY)
+        }
         if (repairFrom !== null) {
           this.finishCursorSkipRepair(repairFrom, this.ctx.applier.changedCount - changedBeforePull)
         }
@@ -481,6 +560,12 @@ export class FullSyncRunner {
       } satisfies InitialSyncProgressEvent)
       this.lastRunCaughtUp = pullDelivered
       if (pullDelivered) markPullCompleted()
+      // The seed-duplicate repair (#5289) runs only when every body the server
+      // holds is merged here, so a body still downloading is never judged.
+      const provider = this.ctx.deps.crdtProvider
+      if (pullDelivered && provider != null && !this.owesNoteBodies()) {
+        scheduleSeedDuplicateRepair(provider, () => !this.owesNoteBodies())
+      }
       if (!pullDelivered && pull.status === 'skipped') return pull
       return pullDelivered && pushesDelivered ? DELIVERED : INCOMPLETE
     } catch (error) {
@@ -526,6 +611,20 @@ export class FullSyncRunner {
       // without a second call of our own.
       this.flushPendingCrdtPulls()
     }
+  }
+
+  /** Any note body still to pull, now or after a backoff, or a legacy sweep still to run. */
+  private owesNoteBodies(): boolean {
+    return (
+      !isIndexDatabaseInitialized() ||
+      !this.ctx.deps.network.online ||
+      this.pacedCrdtChunkInFlight ||
+      this.pacedCrdtPullQueue.size > 0 ||
+      this.crdtSync.pendingPullCount > 0 ||
+      this.crdtSync.nextDeferredPullAt() !== null ||
+      this.stateManager.getStateValue(SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP) ===
+        NOTE_BODY_LEGACY_SWEEP_PENDING
+    )
   }
 
   /**
@@ -651,10 +750,12 @@ export class FullSyncRunner {
    * secrets, a vault with no packs yet, a corrupt pack or a dead transfer all
    * end here quietly and the pull that follows behaves exactly as it does on a
    * deployment where packs do not exist. The sync cursor is untouched either
-   * way — nothing in this path writes `LAST_CURSOR`.
+   * way — nothing in this path writes `LAST_CURSOR`. Returns the reconciled
+   * record packs the pull applies before it sets one (#5390).
    */
-  private async applyBootstrapPacks(): Promise<void> {
+  private async applyBootstrapPacks(abort: AbortController): Promise<PackedRecords | null> {
     try {
+      if (abort.signal.aborted || this.disposed || this.stateManager.isPaused()) return null
       const provider = this.ctx.deps.crdtProvider
       // No CRDT store means no document to seed and no watermark to record;
       // an in-memory provider rebuilds bodies from vault markdown instead.
@@ -669,14 +770,14 @@ export class FullSyncRunner {
           hasProvider: provider != null,
           storeId: provider?.storeId ?? null
         })
-        return
+        return null
       }
 
       const [
         path,
         { app },
         { runPackBootstrap },
-        { createCrdtSnapshotApplier, decodeSignerPublicKeys },
+        { createPackBodyApplier, decodeSignerPublicKeys },
         { beginPageApply },
         { DownloadPacer },
         { syncDevices },
@@ -685,7 +786,7 @@ export class FullSyncRunner {
         import('node:path'),
         import('electron'),
         import('../packs/pack-bootstrap'),
-        import('../packs/crdt-snapshot-applier'),
+        import('../packs/pack-body-applier'),
         import('../bulk-apply'),
         import('../download-queue'),
         import('@memry/db-schema/schema/sync-devices'),
@@ -699,7 +800,7 @@ export class FullSyncRunner {
       pacer.setMultiplier(getBootstrapElevationFactor())
 
       let settlePending = false
-      const applier = createCrdtSnapshotApplier({
+      const applier = createPackBodyApplier({
         store: {
           getSnapshotWatermark: (noteId) => provider.getSnapshotWatermark(noteId),
           // The marker goes first: once the watermark exists, no later pack
@@ -720,13 +821,19 @@ export class FullSyncRunner {
           openDoc: async (noteId) => {
             await provider.open(noteId, undefined, { skipSeed: true })
           },
-          applyRemoteUpdate: (noteId, update) => provider.applyRemoteUpdate(noteId, update),
+          applyRemoteUpdate: (noteId, update, editedAtMs) =>
+            provider.applyRemoteUpdate(noteId, update, editedAtMs),
+          holdsPendingStructs: (noteId) => {
+            const store = provider.getDoc(noteId)?.store
+            return store != null && (store.pendingStructs !== null || store.pendingDs !== null)
+          },
           getStateVector: (noteId) => provider.getStateVector(noteId),
           closeDoc: async (noteId) => {
             await provider.closeIfInactive(noteId)
           }
         },
         getVaultKey: this.ctx.deps.getVaultKey,
+        workerBridge: this.ctx.deps.workerBridge,
         getSignerPublicKeys: async () => {
           // `sync_devices` holds ONLY this device's own row on a fresh
           // install — peer rows arrive through `fetchAndCacheDeviceKeys`,
@@ -750,10 +857,9 @@ export class FullSyncRunner {
           }
           return decodeSignerPublicKeys(
             this.ctx.deps.db
-              .select({ key: syncDevices.signingPublicKey })
+              .select({ deviceId: syncDevices.id, key: syncDevices.signingPublicKey })
               .from(syncDevices)
               .all()
-              .map((row) => row.key)
           )
         }
       })
@@ -761,12 +867,12 @@ export class FullSyncRunner {
       const result = await runPackBootstrap({
         getAccessToken: this.ctx.deps.getAccessToken,
         tempDir: path.join(app.getPath('userData'), 'sync-packs'),
-        snapshots: applier,
+        bodies: applier,
         beginPage: () => beginPageApply(this.ctx.deps.db),
         getStateValue: (key) => this.stateManager.getStateValue(key),
         setStateValue: (key, value) => this.stateManager.setStateValue(key, value),
         emit: (channel, data) => this.ctx.deps.emitToRenderer(channel, data),
-        ...(this.ctx.abortController ? { signal: this.ctx.abortController.signal } : {}),
+        signal: abort.signal,
         pace: () => pacer.acquire()
       })
 
@@ -779,10 +885,14 @@ export class FullSyncRunner {
           appliedThroughCursor: result.appliedThroughCursor
         })
       }
+      return result.records
     } catch (error) {
       log.info('fullSync: pack bootstrap unavailable — item-granular bootstrap', {
         error: error instanceof Error ? error.message : String(error)
       })
+      return null
+    } finally {
+      if (this.packPhaseAbort === abort) this.packPhaseAbort = null
     }
   }
 
@@ -809,8 +919,7 @@ export class FullSyncRunner {
     let materialized = 0
     let purged = 0
     let owed = 0
-    for (const noteId of noteIds) {
-      if (this.ctx.abortController?.signal.aborted) break
+    const settleOne = async (noteId: string): Promise<void> => {
       try {
         if (!isKnownNote(db, noteId)) {
           await provider.purge(noteId)
@@ -834,6 +943,17 @@ export class FullSyncRunner {
         })
       }
     }
+    // Each doc settles on its own and clears only its own marker, so several
+    // run at once: one at a time, 17k docs left the process idle on store,
+    // converter and file awaits for most of the settle (#5390). An abort stops
+    // new docs from starting; the ones in flight finish.
+    let next = 0
+    const worker = async (): Promise<void> => {
+      while (next < noteIds.length && !this.ctx.abortController?.signal.aborted) {
+        await settleOne(noteIds[next++])
+      }
+    }
+    await Promise.all(Array.from({ length: PACK_SEED_SETTLE_CONCURRENCY }, worker))
     if (listPackSeeded(db).length === 0) {
       this.stateManager.deleteStateValue(SYNC_STATE_KEYS.PACK_SEED_SETTLE_PENDING)
     }
@@ -999,6 +1119,7 @@ export class FullSyncRunner {
     if (!this.bootstrapPullSucceeded) return
     if (this.pacedCrdtChunkInFlight || this.pacedCrdtPullQueue.size > 0) return
     if (this.crdtSync.pendingPullCount > 0) return
+    if (this.bootstrapWindowOwned) this.stateManager.deleteStateValue(BOOTSTRAP_PENDING_KEY)
     this.bootstrapWindowOwned = false
     markBootstrapFullText()
     this.releaseBootstrapSession('completed')

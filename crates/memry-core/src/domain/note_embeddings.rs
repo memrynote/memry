@@ -28,7 +28,9 @@ use rusqlite::{Connection, OptionalExtension as _, params};
 
 use crate::api::errors::StorageError;
 use crate::domain::content_hash::{ContentHasher, content_hash};
-use crate::domain::embedding_input::{EMBEDDING_INPUT_VERSION, MAX_EMBEDDABLE_CONTENT_LENGTH};
+use crate::domain::embedding_input::{
+    MAX_EMBEDDABLE_CONTENT_LENGTH, UNCAPPED_EMBEDDING_INPUT_VERSION,
+};
 use crate::domain::file_text::extracted_text_for_note;
 use crate::storage::nested_tx;
 use crate::storage::vec::to_blob;
@@ -333,7 +335,11 @@ pub fn store(
         .execute(
             "INSERT OR REPLACE INTO note_embedding_state (note_id, input_version, chunk_count)
              VALUES (?1, ?2, ?3)",
-            params![note_id, EMBEDDING_INPUT_VERSION, later.len() as i64],
+            params![
+                note_id,
+                UNCAPPED_EMBEDDING_INPUT_VERSION,
+                later.len() as i64
+            ],
         )
         .map_err(failed)?;
     transaction
@@ -428,7 +434,7 @@ pub fn owed(
         .map_err(failed)?;
     type Built = (Option<String>, Option<String>);
     let built: HashMap<String, Option<Built>> = statement
-        .query_map([EMBEDDING_INPUT_VERSION], |row| {
+        .query_map([UNCAPPED_EMBEDDING_INPUT_VERSION], |row| {
             let hashed: bool = row.get(1)?;
             let recorded = || Ok::<_, rusqlite::Error>((row.get(2)?, row.get(3)?));
             Ok((row.get(0)?, hashed.then(recorded).transpose()?))

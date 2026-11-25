@@ -10,12 +10,17 @@
 //! the pages it already read when it resumes. A kill after a pull and before
 //! that transaction re-reads the page and pulls again, which applies nothing
 //! twice.
+//!
+//! A chunk with an id the server served no verified delete for, or that got
+//! no pull envelope, is logged and told to the run's diagnostics with the
+//! cursor of the page that pulled it (#5247).
 
 use std::collections::HashSet;
 
 use rusqlite::Connection;
 
 use crate::api::errors::StorageError;
+use crate::seams::diagnostics::CoreDiagnostic;
 
 use super::super::first_sync_store::{read_meta, write_meta};
 use super::super::pull::MAX_PULL_IDS;
@@ -63,6 +68,7 @@ impl FirstSync {
         &self,
         deleted: Vec<String>,
         feed_ended: bool,
+        cursor: Option<&str>,
     ) -> Result<(Vec<String>, bool), FirstSyncError> {
         let mut ids = self.db.call(|conn| queued(conn)).await?;
         // A set, so a hostile page of many ids costs linear time.
@@ -73,11 +79,13 @@ impl FirstSync {
         while ids.len() - start >= MAX_PULL_IDS || (feed_ended && start < ids.len()) {
             let end = ids.len().min(start + MAX_PULL_IDS);
             let pulled = self.pull.fetch_ids(&ids[start..end]).await?;
-            if pulled.uncovered > 0 {
+            if pulled.uncovered > 0 || pulled.dropped_pages > 0 {
                 eprintln!(
-                    "memry-core: first sync: {} deleted id(s) had no verified delete, ignored",
-                    pulled.uncovered
+                    "memry-core: first sync: page at cursor {cursor:?}: {} deleted id(s) had no verified delete, ignored; {} pull(s) got no envelope, the feed re-read retries them",
+                    pulled.uncovered, pulled.dropped_pages
                 );
+                let event = CoreDiagnostic::refs_deletes(&pulled, cursor);
+                self.diagnostics.emit(event);
             }
             missed |= pulled.dropped_pages > 0;
             start = end;

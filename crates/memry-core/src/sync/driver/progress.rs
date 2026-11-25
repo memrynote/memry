@@ -79,11 +79,12 @@ impl Phases {
 impl ProgressSink for Phases {
     fn progress(&self, progress: FirstSyncProgress) {
         match progress.phase {
-            // Each pass has its own denominator, so only one feeds the bar.
-            FirstSyncPhase::Refs => self.emit(InitialSyncPhase::Notes, 0, 0),
-            FirstSyncPhase::Metadata => {
-                self.emit(InitialSyncPhase::Notes, progress.completed, progress.total);
-            }
+            // Records have no total until the feed is read to its end, so the
+            // bar stays indeterminate (0 of 0) until then.
+            FirstSyncPhase::Records => match progress.total {
+                Some(total) => self.emit(InitialSyncPhase::Notes, progress.completed, total),
+                None => self.emit(InitialSyncPhase::Notes, 0, 0),
+            },
             // Bodies: Electron's body pulls report nothing. Done: the catch-up
             // passes still run, and the driver reports `complete`.
             FirstSyncPhase::Bodies | FirstSyncPhase::Done => {}

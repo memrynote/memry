@@ -9,7 +9,12 @@
 // are out of the benchmark's scope.
 //
 // The benchmark only reads the vault: the proxy answers every write under
-// /sync/ with 403 itself and never forwards it.
+// /sync/ with 403 itself and never forwards it. It refuses a path with a `%`
+// too, since the Worker decodes `/%73ync/push` to `/sync/push`, and no shell
+// encodes a path, and a path starting with `//`. `/__r2/` takes only GET and
+// HEAD, to R2 or the line probe; the upgrade only `GET /sync/ws`. It keeps
+// the type and operation of each refused push item, and the `hasMore` of
+// each feed page.
 //
 // What it costs: the shell speaks HTTP/1.1 to localhost, and the proxy keeps
 // its own pooled TLS connections upstream. Electron's net.fetch opens at most
@@ -21,6 +26,7 @@ import http from 'node:http'
 import https from 'node:https'
 import net from 'node:net'
 import tls from 'node:tls'
+import zlib from 'node:zlib'
 
 const R2_PREFIX = '/__r2/'
 const HOP_HEADERS = new Set([
@@ -45,7 +51,8 @@ const READ_POSTS = new Set([
   '/sync/bootstrap',
   '/sync/bootstrap/renew',
   '/sync/bootstrap/close',
-  '/sync/attachments/presign-batch'
+  '/sync/attachments/presign-batch',
+  '/sync/attachments/manifests/batch'
 ])
 
 export function assertAllowedUpstream(upstream) {
@@ -55,7 +62,24 @@ export function assertAllowedUpstream(upstream) {
   }
 }
 
+const LOOPBACK = new Set(['127.0.0.1', 'localhost'])
+const LINE_PROBE_HOST = 'speed.cloudflare.com'
+const SOCKET_PATH = '/sync/ws'
+
+/**
+ * Whether `/__r2/` may fetch `url`: R2's S3 endpoint and the line probe on
+ * https's default port, or the loopback upstream itself when it runs locally.
+ */
+export function isAllowedR2(upstream, url) {
+  const { protocol, host, hostname } = new URL(url)
+  const remote = hostname.endsWith('.r2.cloudflarestorage.com') || hostname === LINE_PROBE_HOST
+  if (remote) return protocol === 'https:' && host === hostname
+  const upstreamUrl = new URL(upstream)
+  return LOOPBACK.has(upstreamUrl.hostname) && host === upstreamUrl.host
+}
+
 export function isWriteRoute(method, pathname) {
+  if (pathname.includes('%') || pathname.startsWith('//')) return true
   if (!pathname.startsWith('/sync/') || method === 'GET' || method === 'HEAD') return false
   return !(method === 'POST' && READ_POSTS.has(pathname))
 }
@@ -81,6 +105,49 @@ function rewritePackUrls(body, route) {
     }
   }
   return Buffer.from(JSON.stringify(json))
+}
+
+/**
+ * `{ 'note:create': 3 }` for a refused push body: only each item's type and
+ * operation, which travel in clear beside the ciphertext. Other bodies count
+ * as `other`.
+ */
+export function refusedItems(body) {
+  let items
+  try {
+    items = JSON.parse(body.toString('utf8')).items
+  } catch {
+    items = null
+  }
+  if (!Array.isArray(items)) return { other: 1 }
+  const counts = {}
+  for (const item of items) {
+    const key = `${item?.type ?? '?'}:${item?.operation ?? '?'}`
+    counts[key] = (counts[key] ?? 0) + 1
+  }
+  return counts
+}
+
+const DECODERS = {
+  gzip: zlib.gunzipSync,
+  br: zlib.brotliDecompressSync,
+  deflate: zlib.inflateSync,
+  zstd: zlib.zstdDecompressSync
+}
+
+/**
+ * The `hasMore` of one `GET /sync/changes` page, so a shell's records mark
+ * can be read off the timeline: the feed head is the first page without more.
+ * Null when the body does not parse.
+ */
+export function feedHasMore(body, encoding) {
+  try {
+    const decode = encoding ? DECODERS[encoding] : (bytes) => bytes
+    const hasMore = JSON.parse(decode(body).toString('utf8')).hasMore
+    return typeof hasMore === 'boolean' ? hasMore : null
+  } catch {
+    return null
+  }
 }
 
 /**
@@ -121,6 +188,7 @@ export async function startProxy({ upstream, port = 0 }) {
     const isPackList = !isR2 && req.method === 'GET' && target.pathname.endsWith('/packs')
     const headers = forwardHeaders(req.headers, target.host)
     if (isPackList) headers['accept-encoding'] = 'identity'
+    const isFeedPage = !isR2 && req.method === 'GET' && target.pathname === '/sync/changes'
 
     const entry = {
       startMs,
@@ -134,10 +202,15 @@ export async function startProxy({ upstream, port = 0 }) {
     }
     req.on('data', (chunk) => (entry.reqBytes += chunk.length))
 
-    if (!isR2 && isWriteRoute(req.method, target.pathname)) {
-      req.resume()
+    const refuse = isR2
+      ? !(req.method === 'GET' || req.method === 'HEAD') || !isAllowedR2(upstream, target.href)
+      : req.url.startsWith('//') || isWriteRoute(req.method, target.pathname)
+    if (refuse) {
+      const chunks = []
+      req.on('data', (chunk) => chunks.push(chunk))
       req.on('end', () => {
         Object.assign(entry, { status: 403, refused: true, endMs: Date.now() })
+        entry.refusedItems = refusedItems(Buffer.concat(chunks))
         requests.push(entry)
         res.writeHead(403, { 'content-type': 'application/json' })
         res.end(JSON.stringify({ error: 'BENCH_READ_ONLY', message: 'the benchmark only reads' }))
@@ -147,6 +220,7 @@ export async function startProxy({ upstream, port = 0 }) {
 
     const client = target.protocol === 'http:' ? http : https
     const agent = agents[target.protocol]
+    let upstreamDone = false
     const upstreamReq = client.request(target, { method: req.method, headers, agent }, (up) => {
       entry.status = up.statusCode ?? 0
       const outHeaders = forwardHeaders(up.headers, undefined)
@@ -154,11 +228,15 @@ export async function startProxy({ upstream, port = 0 }) {
       const chunks = []
       up.on('data', (chunk) => {
         entry.resBytes += chunk.length
-        if (isPackList) chunks.push(chunk)
-        else res.write(chunk)
+        if (isPackList || isFeedPage) chunks.push(chunk)
+        if (!isPackList) res.write(chunk)
       })
       up.on('end', () => {
+        upstreamDone = true
         entry.endMs = Date.now()
+        if (isFeedPage && entry.status === 200) {
+          entry.hasMore = feedHasMore(Buffer.concat(chunks), up.headers['content-encoding'])
+        }
         requests.push(entry)
         if (isPackList && entry.status === 200) {
           const body = rewritePackUrls(Buffer.concat(chunks), route)
@@ -178,17 +256,46 @@ export async function startProxy({ upstream, port = 0 }) {
       if (!isPackList) res.writeHead(entry.status, outHeaders)
     })
     upstreamReq.on('error', (error) => {
+      if (entry.error) return
       entry.endMs = Date.now()
       entry.error = error.message
       requests.push(entry)
       if (!res.headersSent) res.writeHead(502)
       res.end()
     })
+    // A client that drops its request before the response ends: log it and
+    // drop the upstream request too, so it neither shows as open nor holds a
+    // pooled socket.
+    res.on('close', () => {
+      if (upstreamDone || entry.error) return
+      entry.endMs = Date.now()
+      entry.error = 'client aborted'
+      requests.push(entry)
+      upstreamReq.destroy()
+    })
     req.pipe(upstreamReq)
   })
 
   server.on('upgrade', (req, socket, head) => {
     const startMs = Date.now()
+    const target = new URL(req.url, upstreamUrl)
+    const path = target.pathname + target.search
+    if (req.method !== 'GET' || req.url.startsWith('//') || target.pathname !== SOCKET_PATH) {
+      requests.push({
+        startMs,
+        endMs: startMs,
+        method: req.method,
+        path,
+        host: 'worker',
+        status: 403,
+        reqBytes: 0,
+        resBytes: 0,
+        refused: true,
+        refusedItems: { other: 1 }
+      })
+      socket.end('HTTP/1.1 403 Forbidden\r\nconnection: close\r\ncontent-length: 0\r\n\r\n')
+      return
+    }
     const secure = upstreamUrl.protocol === 'https:'
     const upstreamSocket = secure
       ? tls.connect(Number(upstreamUrl.port || 443), upstreamUrl.hostname, {
@@ -196,7 +303,7 @@ export async function startProxy({ upstream, port = 0 }) {
         })
       : net.connect(Number(upstreamUrl.port || 80), upstreamUrl.hostname)
     upstreamSocket.on(secure ? 'secureConnect' : 'connect', () => {
-      const lines = [`${req.method} ${req.url} HTTP/1.1`, `host: ${upstreamUrl.host}`]
+      const lines = [`GET ${path} HTTP/1.1`, `host: ${upstreamUrl.host}`]
       for (let i = 0; i < req.rawHeaders.length; i += 2) {
         if (req.rawHeaders[i].toLowerCase() !== 'host') {
           lines.push(`${req.rawHeaders[i]}: ${req.rawHeaders[i + 1]}`)
@@ -216,7 +323,7 @@ export async function startProxy({ upstream, port = 0 }) {
       startMs,
       endMs: startMs,
       method: 'WS',
-      path: req.url,
+      path,
       host: 'worker',
       status: 101,
       reqBytes: 0,

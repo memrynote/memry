@@ -13,7 +13,7 @@ use std::sync::{Arc, PoisonError, RwLock};
 use async_trait::async_trait;
 
 use crate::api::errors::{ApiError, StorageError};
-use crate::crdt::epoch;
+use crate::crdt::epoch::{self, Epoch};
 use crate::crdt::errors::CrdtError;
 use crate::crdt::registry::{Document, UpdateSink};
 use crate::crdt::snapshots::SnapshotError;
@@ -79,11 +79,12 @@ impl PassSnapshots {
         }
     }
 
-    /// The document replayed from its durable log, or the class of why not.
+    /// The document replayed from its durable log with the epoch read before
+    /// it loaded (a purge since refuses the push, #5356), or the class of why not.
     pub(crate) async fn replay(
         &self,
         doc_id: &str,
-    ) -> Result<Result<Arc<Document>, SnapshotFallbackOutcome>, ApiError> {
+    ) -> Result<Result<(Arc<Document>, Epoch), SnapshotFallbackOutcome>, ApiError> {
         let id = doc_id.to_owned();
         let device_id = self.device_id.clone();
         let opened = self
@@ -91,7 +92,9 @@ impl PassSnapshots {
             .call(move |conn| {
                 // The replay is durable, so the sink sees nothing.
                 let sink: UpdateSink = Arc::new(|_, _| {});
-                Ok(epoch::open_for_write(conn, &device_id, &id, sink))
+                Ok(epoch::capture(conn, &id).and_then(|opened_at| {
+                    epoch::open_for_write(conn, &device_id, &id, sink).map(|doc| (doc, opened_at))
+                }))
             })
             .await
             .map_err(local)?;
@@ -108,8 +111,8 @@ impl PassSnapshots {
 #[async_trait]
 impl SnapshotFallback for PassSnapshots {
     async fn push_snapshot(&self, doc_id: &str) -> Result<SnapshotFallbackOutcome, ApiError> {
-        let document = match self.replay(doc_id).await? {
-            Ok(document) => document,
+        let (document, opened_at) = match self.replay(doc_id).await? {
+            Ok(opened) => opened,
             Err(outcome) => return Ok(outcome),
         };
         let gate = self.gate(doc_id);
@@ -127,7 +130,12 @@ impl SnapshotFallback for PassSnapshots {
         };
         let pushed = self
             .pusher
-            .push(&document, gate, crate::api::tasks_write::now_ms())
+            .push(
+                &document,
+                opened_at,
+                gate,
+                crate::api::tasks_write::now_ms(),
+            )
             .await;
         if let (Some(admission), Err(SnapshotError::Api { source })) = (&self.admission, &pushed) {
             admission.note(source);
@@ -152,7 +160,8 @@ pub(crate) fn classify(
         Ok(SnapshotOutcome::Refused(refusal)) => {
             let reason = refusal.reason().to_owned();
             match refusal {
-                Refusal::UnmergedRemoteState => Transient(reason),
+                // A purge since the replay: the next pass replays it again.
+                Refusal::UnmergedRemoteState | Refusal::PurgedSinceLoad => Transient(reason),
                 Refusal::LocalOnly | Refusal::Purged | Refusal::EmptyState | Refusal::TooLarge => {
                     Parked(reason)
                 }

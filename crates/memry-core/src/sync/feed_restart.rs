@@ -89,7 +89,8 @@ pub(super) fn finish_cursor_skip_repair(conn: &Connection) -> Result<(), Storage
 
 /// Leaves the repair unstarted, so the next run that holds a cursor reads the
 /// feed from the start once. A first sync calls it when its metadata pass left
-/// rows `metadata-only`: that re-read is the only retry they get.
+/// rows `metadata-only`, or when a pull of its refs pass's `deleted` ids got no
+/// pull envelope: that re-read is the only retry those rows and deletes get.
 pub(super) fn reopen_cursor_skip_repair(conn: &Connection) -> Result<(), StorageError> {
     conn.execute("DELETE FROM meta WHERE key = ?1", [META_CURSOR_SKIP_REPAIR])
         .map_err(failed)?;

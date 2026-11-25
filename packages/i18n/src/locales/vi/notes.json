@@ -196,6 +196,10 @@
   "editor": {
     "bodySyncPending": "Đang đồng bộ — nội dung ghi chú này có thể vẫn đang được tải về",
     "databaseReadOnly": "Chỉ đọc. Thiết bị này không thể lưu thay đổi.",
+    "remoteBodyStuck": "Đang chờ đồng bộ — chỉ đọc cho đến khi nội dung đã đồng bộ của ghi chú này đến",
+    "remoteBodyOffline": "Ngoại tuyến — chỉ đọc cho đến khi ghi chú này được đồng bộ",
+    "remoteBodySignedOut": "Đã đăng xuất — chỉ đọc cho đến khi bạn đăng nhập và ghi chú này được đồng bộ",
+    "remoteBodyVaultLocked": "Không đọc được khóa mã hóa của kho này — chỉ đọc cho đến khi ghi chú này được đồng bộ",
     "taskRemoval": {
       "title": "{count, plural, other {Đã gỡ # công việc khỏi ghi chú này}}",
       "description": "{count, plural, other {Giữ lại trong Công việc hay xóa ở mọi nơi?}}",

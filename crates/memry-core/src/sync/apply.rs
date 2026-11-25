@@ -49,6 +49,7 @@ use rusqlite::Connection;
 
 use crate::api::errors::StorageError;
 use crate::crypto::agent_envelope::AtRestKey;
+use crate::domain::settings;
 use crate::storage::repositories::sync_items::{ApplyOutcome, InboundRecord};
 
 use super::clock::VectorClock;
@@ -218,7 +219,9 @@ pub(crate) fn apply_page_into(
                 // §5.12.1: a bare tombstone outranks the item that arrives
                 // after it, or the "does not resurrect it locally" guarantee
                 // holds only until the next page.
-                if store::has_bare_tombstone(conn, &record.item_id)? {
+                if record.item_type != settings::SETTINGS_ITEM_TYPE
+                    && store::has_bare_tombstone(conn, &record.item_id)?
+                {
                     apply_tombstone(
                         conn,
                         &record.item_type,

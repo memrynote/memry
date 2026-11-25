@@ -132,9 +132,9 @@ const liveNote = (db: DrizzleDb, itemId: string): boolean =>
 /**
  * This device knows the note or journal is deleted: it has no row, or it
  * recorded a tombstone (#2409) that the row's clock does not follow. A row
- * minted past the tombstone is a re-create and stays live. The server keeps
- * a deleted note's CRDT state and accepts bodies for it, so offering one of
- * these as a create puts the deleted body back on every device.
+ * minted past the tombstone is a re-create and stays live. The server accepts
+ * updates for a deleted note (it refuses only snapshots, #5367), so offering
+ * one of these as a create puts the deleted body back on every device.
  */
 export function isNoteKnownDeleted(db: DrizzleDb, noteId: string): boolean {
   const row = db

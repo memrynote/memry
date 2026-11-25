@@ -36,12 +36,12 @@ use crate::domain::body_tags;
 #[cfg(feature = "markdown")]
 use crate::domain::file_text;
 use crate::domain::wiki_target::WikiNames;
-use crate::storage::repositories::StoredPayload;
-use crate::storage::repositories::projectors::{self, strings, text};
+use crate::storage::repositories::projectors::{strings, text};
 
 use super::body_cache::{body_document, body_text, crdt_failed};
 use super::failed;
 use super::links::{self, LinkChanges};
+use super::source::{NoteRow, note_row, read_payload};
 
 /// `index_meta` key: the `data.db` `user_version` the index was built against.
 pub const DATA_VERSION_KEY: &str = "data.user_version";
@@ -185,47 +185,19 @@ fn index_note_rows(
     super::block_refs::clear(index, id)?;
     body_tags::clear(data, id)?;
 
-    // The primary key is (item_type, item_id), so one id could in principle
-    // name both a note and a journal. `journal` sorts first and one row is
-    // indexed; the ambiguity is not this module's to resolve.
-    let row = data
-        .query_row(
-            "SELECT item_type, payload, deleted_at, corrupt_reason FROM sync_items
-             WHERE item_id = ?1 AND item_type IN ('note', 'journal')
-             ORDER BY item_type LIMIT 1",
-            params![id],
-            |row| {
-                Ok((
-                    row.get::<_, String>(0)?,
-                    row.get::<_, Option<String>>(1)?,
-                    row.get::<_, Option<i64>>(2)?,
-                    row.get::<_, Option<String>>(3)?,
-                ))
-            },
-        )
-        .optional()
-        .map_err(failed)?;
-
-    let Some((item_type, payload, deleted_at, corrupt)) = row else {
-        done.notes_removed += 1;
-        return Ok(());
+    let (title, tags) = match note_row(data, id)? {
+        NoteRow::Absent => {
+            done.notes_removed += 1;
+            return Ok(());
+        }
+        NoteRow::Corrupt => {
+            done.corrupt_skipped += 1;
+            return Ok(());
+        }
+        // The fill bumps `synced_at`, so it comes back as a candidate.
+        NoteRow::NotPulled => return Ok(()),
+        NoteRow::Live { title, tags } => (title, tags),
     };
-    if deleted_at.is_some() {
-        done.notes_removed += 1;
-        return Ok(());
-    }
-    if corrupt.is_some() {
-        done.corrupt_skipped += 1;
-        return Ok(());
-    }
-    let Some(payload) = payload else {
-        // `metadata-only`: the body of the record has not been pulled yet. The
-        // fill bumps `synced_at`, so it comes back as a candidate.
-        return Ok(());
-    };
-
-    let view = read_payload(&item_type, id, &payload)?;
-    let title = indexed_title(&view);
     index
         .execute(
             "INSERT INTO fts_notes (id, title, content, tags) VALUES (?1, ?2, ?3, ?4)",
@@ -233,7 +205,7 @@ fn index_note_rows(
                 id,
                 title,
                 note_content(data, index, id, now_ms)?,
-                strings(&view, "tags").join(" "),
+                tags.join(" "),
             ],
         )
         .map_err(failed)?;
@@ -415,11 +387,6 @@ pub(super) fn index_task(
     Ok(())
 }
 
-/// The stored payload, read through the same reader the projectors use.
-///
-/// A row the apply path did not flag corrupt but that will not read back is a
-/// bug in this build, and it stops the pass instead of quietly leaving a note
-/// out of every search result for the life of the install.
 /// The title `fts_notes` holds for a note or journal day. A journal's title is
 /// not projected anywhere, so it is read from the payload like every other field
 /// here, and falls back to its calendar date.
@@ -446,19 +413,6 @@ pub(super) fn journal_title(data: &Connection, id: &str) -> Result<Option<String
     payload
         .map(|payload| read_payload("journal", id, &payload).map(|view| indexed_title(&view)))
         .transpose()
-}
-
-fn read_payload(
-    item_type: &str,
-    item_id: &str,
-    payload: &str,
-) -> Result<crate::storage::repositories::schema::Object, StorageError> {
-    let parsed = StoredPayload::parse(payload).map_err(|error| StorageError::Failed {
-        what: format!("{item_type}/{item_id} will not parse for indexing: {error}"),
-    })?;
-    projectors::read(item_type, parsed.object()).map_err(|error| StorageError::Failed {
-        what: format!("{item_type}/{item_id} will not read for indexing: {error}"),
-    })
 }
 
 pub(super) fn meta_number(index: &Connection, key: &str) -> Result<Option<i64>, StorageError> {

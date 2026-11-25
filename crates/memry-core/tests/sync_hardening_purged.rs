@@ -102,7 +102,7 @@ fn marker(
         .expect("an attestable delete");
         let (_, secret) = sodium::sign_seed_keypair(&[seed; 32]).expect("a keypair");
         entry["signerDeviceId"] = json!(device);
-        entry["deleteAttestation"] = json!(sign(&claim, &secret).expect("signed"));
+        entry["deleteAttestation"] = json!(sign(&claim, None, &secret).expect("signed"));
     }
     entry
 }

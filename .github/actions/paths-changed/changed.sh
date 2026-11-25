@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Reads a pull request's files as the files API lists them, one JSON object per entry
 # (`{"filename", "previous_filename"}`), on stdin. Prints `true` when a changed path matches INCLUDE
-# and not EXCLUDE (extended regexes), else `false`. scripts/ci-tier.test.mjs runs this file.
+# and not EXCLUDE (extended regexes), else `false`. scripts/ci-tier.test.mjs and
+# scripts/rust-ci-gate.test.mjs run this file.
 set -euo pipefail
 entries=$(cat)
 # The API lists at most 3000 files, so a list that long may be cut short: count it as a change.

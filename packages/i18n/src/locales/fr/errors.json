@@ -44,6 +44,8 @@
     "moveFailed": "Impossible de déplacer la note",
     "applyTemplateFailed": "Impossible d'appliquer le modèle",
     "appendBlocksFailed": "Impossible de déplacer le bloc vers cette note",
+    "appendIntoCaseTwin": "Cette note partage son fichier avec une note dont le nom ne diffère que par la casse. Renommez l’une des deux, puis déplacez à nouveau le bloc.",
+    "caseTwinMoveRefused": "Cette note partage son fichier avec une note dont le nom ne diffère que par la casse : elle ne peut donc pas être déplacée ainsi. Renommez ou déplacez l’autre note, ou supprimez la copie dont vous n’avez pas besoin.",
     "exportPdfFailed": "Impossible d'exporter en PDF",
     "exportHtmlFailed": "Impossible d'exporter en HTML",
     "restoreVersionFailed": "Impossible de restaurer la version",
@@ -78,7 +80,9 @@
     "downloadProgressFailed": "Impossible de récupérer la progression du téléchargement",
     "exceedsMaxSize": "Fichier trop volumineux : {size} dépasse la limite de {limit}",
     "exceedsPlanLimit": "Fichier plus volumineux que ne l'autorise votre forfait : {size} dépasse {limit}",
-    "emptyFile": "Impossible d'envoyer un fichier vide"
+    "emptyFile": "Impossible d'envoyer un fichier vide",
+    "emptyNotAttached": "Ce fichier est vide, il n'a donc pas été joint. Si vous avez collé une image, copiez-la à nouveau puis collez-la.",
+    "textInMediaFile": "Ce fichier contient du texte au lieu du média qu’indique son nom"
   },
   "crdt": {
     "persistenceDegradedTitle": "L'historique des modifications n'est pas conservé sur cet appareil",
@@ -233,6 +237,7 @@
   "folder": {
     "createFailed": "Impossible de créer le dossier",
     "renameFailed": "Impossible de renommer le dossier",
+    "renameCaseTwins": "Ce dossier contient des notes qui partagent un fichier avec une note dont le nom de dossier ne diffère que par la casse. Renommez ou déplacez d’abord ces notes, puis renommez le dossier.",
     "deleteFailed": "Impossible de supprimer le dossier",
     "keptNotPulled": "Ce dossier contient une note dont le fichier a été supprimé en dehors de memrynote, et son texte n'a pas encore été synchronisé sur cet appareil : elle ne peut donc pas aller dans la corbeille. Rien n'a été supprimé. Attendez la synchronisation, ou supprimez d'abord cette note séparément.",
     "keptUnwritable": "Ce dossier contient une note dont le fichier a été supprimé en dehors de memrynote, et son texte ne peut pas être enregistré dans un fichier pour la corbeille. Rien n'a été supprimé. Supprimez d'abord cette note séparément.",

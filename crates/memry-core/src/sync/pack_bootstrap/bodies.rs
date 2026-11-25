@@ -27,21 +27,19 @@
 
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 
 use serde_json::Value as Json;
-use tokio::task::JoinSet;
 
 use crate::api::errors::StorageError;
 use crate::protocol::pack::{PackEntry, PackKind};
 
-use super::super::body_pull::{BodyPullError, PackEntrySeed, PackSeed, PackUpdateSeed};
+use super::super::body_pull::{BodyEpochs, BodyPullError, PackEntrySeed, PackSeed, PackUpdateSeed};
 use super::super::first_sync_store::{body_states, settle_pack_bodies};
+use super::PackBootstrap;
 use super::body_plan::{BodyCheck, ServerSnapshot, plan_packed_updates, updates_may_follow};
+use super::download::Downloads;
 use super::listing::{PackSummary, list};
-use super::records::{RECORD_DOWNLOAD_WIDTH, download};
 use super::spill::{self, Loc, Spilled};
-use super::{PackBootstrap, now};
 
 /// Entries per apply transaction.
 pub const BODY_CHUNK_ENTRIES: usize = 250;
@@ -174,18 +172,12 @@ impl PackBootstrap {
     /// phase does not run again after one. An `Err` keeps it: the first sync
     /// is retried with the marker unset, and the retry downloads no held
     /// pack again.
-    pub async fn run_bodies(
-        &self,
-        now_s: i64,
-        on_progress: &(dyn Fn(u64, u64) + Send + Sync),
-    ) -> Result<BodyPackReport, BodyPullError> {
+    pub async fn run_bodies(&self, now_s: i64) -> Result<BodyPackReport, BodyPullError> {
         let mut report = BodyPackReport::default();
         let Some(dir) = &self.spill_dir else {
             return Ok(report);
         };
-        let result = self
-            .bodies_through(dir, now_s, &mut report, on_progress)
-            .await;
+        let result = self.bodies_through(dir, now_s, &mut report).await;
         result?;
         report.fallback_reasons.extend(spill::remove(dir).await);
         Ok(report)
@@ -202,13 +194,15 @@ impl PackBootstrap {
         dir: &Path,
         now_s: i64,
         report: &mut BodyPackReport,
-        on_progress: &(dyn Fn(u64, u64) + Send + Sync),
     ) -> Result<(), BodyPullError> {
+        // Before anything is fetched: a body purged after this, by a delete
+        // or a revive, takes nothing the packs hold (#5356).
+        let epochs = self.bodies.body_epochs().await?;
         let listing = match list(&self.http, self.vault_id.as_deref(), now_s).await {
             Ok(listing) => listing,
-            Err(reason) => {
+            Err(error) => {
                 report.requests += 1;
-                report.fallback_reasons.push(reason);
+                report.fallback_reasons.push(error.to_string());
                 return Ok(());
             }
         };
@@ -221,7 +215,7 @@ impl PackBootstrap {
         if packs.is_empty() {
             return Ok(());
         }
-        let Some(held) = self.hold(dir, packs, report, on_progress).await? else {
+        let Some(held) = self.hold(dir, packs, now_s, report).await? else {
             return Ok(());
         };
         if held.files.is_empty() {
@@ -229,22 +223,21 @@ impl PackBootstrap {
         }
 
         let checks = match self.bodies.read_body_manifest(&mut report.requests).await? {
-            Some(checks) => {
+            Ok(checks) => {
                 report.manifest = true;
                 checks
             }
-            None => {
-                report
-                    .fallback_reasons
-                    .push("no body manifest: checked through the batch route".to_owned());
+            Err(reason) => {
+                report.fallback_reasons.push(reason.to_owned());
                 let docs = since_per_document(&held);
                 self.bodies
                     .batch_checks(&docs, &mut report.requests)
                     .await?
             }
         };
-        self.apply_snapshots(&held, &checks, report).await?;
-        self.apply_updates(&held, &checks, report).await?;
+        self.apply_snapshots(&held, &checks, &epochs, report)
+            .await?;
+        self.apply_updates(&held, &checks, &epochs, report).await?;
 
         let manifest = report.manifest.then_some(checks);
         let (settled, owed) = self
@@ -269,8 +262,8 @@ impl PackBootstrap {
         &self,
         dir: &Path,
         packs: Vec<PackSummary>,
+        now_s: i64,
         report: &mut BodyPackReport,
-        on_progress: &(dyn Fn(u64, u64) + Send + Sync),
     ) -> Result<Option<Held>, BodyPullError> {
         if let Err(error) = spill::create(dir).await? {
             report
@@ -278,7 +271,6 @@ impl PackBootstrap {
                 .push(format!("the pack spill cannot be created: {error}"));
             return Ok(None);
         }
-        let total = packs.len() as u64;
         let mut held = Held::default();
         let mut queue = Vec::new();
         for pack in packs {
@@ -288,55 +280,18 @@ impl PackBootstrap {
                 None => queue.push((pack, path)),
             }
         }
-        on_progress(held.files.len() as u64, total);
-
-        let mut queue = queue.into_iter();
-        let mut relisted: Option<Vec<PackSummary>> = None;
-        let mut running: JoinSet<(PackSummary, PathBuf, Result<Vec<u8>, String>)> = JoinSet::new();
+        let mut downloads = Downloads::new(&self.http, self.vault_id.as_deref(), now_s, queue);
         loop {
-            while running.len() < RECORD_DOWNLOAD_WIDTH {
-                let Some((mut pack, path)) = queue.next() else {
-                    break;
-                };
-                if !pack.live(now()) {
-                    // One re-list mints fresh URLs for a run that outlived them.
-                    if relisted.is_none() {
-                        report.requests += 1;
-                        relisted = Some(
-                            list(&self.http, self.vault_id.as_deref(), now())
-                                .await
-                                .map(|listing| listing.packs)
-                                .unwrap_or_default(),
-                        );
-                    }
-                    match relisted.iter().flatten().find(|fresh| fresh.id == pack.id) {
-                        Some(fresh) if fresh.live(now()) => pack.url = fresh.url.clone(),
-                        _ => {
-                            report
-                                .fallback_reasons
-                                .push(format!("pack {} expired and was not re-signed", pack.id));
-                            continue;
-                        }
-                    }
-                }
-                report.requests += 1;
-                let http = Arc::clone(&self.http);
-                running.spawn(async move {
-                    let bytes = download(&http, &pack.url).await;
-                    (pack, path, bytes)
-                });
-            }
-            let Some(joined) = running.join_next().await else {
+            let next = downloads
+                .next(&mut report.requests, &mut report.fallback_reasons)
+                .await
+                .map_err(|error| StorageError::Failed {
+                    what: format!("a body pack download did not finish: {error}"),
+                })?;
+            let Some((pack, path, bytes)) = next else {
                 break;
             };
-            let (pack, path, bytes) = joined.map_err(|error| StorageError::Failed {
-                what: format!("a body pack download did not finish: {error}"),
-            })?;
-            let spilled = match bytes {
-                Ok(bytes) => spill::verify_and_write(&path, bytes).await?,
-                Err(reason) => Spilled::Unusable(reason),
-            };
-            match spilled {
+            match spill::verify_and_write(&path, bytes).await? {
                 Spilled::Held(entries) => held.index(path, entries, report),
                 Spilled::NotWritten(error) => {
                     report
@@ -348,7 +303,6 @@ impl PackBootstrap {
                     .fallback_reasons
                     .push(format!("pack {}: {reason}", pack.id)),
             }
-            on_progress(held.files.len() as u64, total);
         }
         report.packs_held = held.files.len();
         Ok(Some(held))
@@ -358,6 +312,7 @@ impl PackBootstrap {
         &self,
         held: &Held,
         checks: &HashMap<String, BodyCheck>,
+        epochs: &BodyEpochs,
         report: &mut BodyPackReport,
     ) -> Result<(), BodyPullError> {
         let mut todo: Vec<(&str, &HeldSnapshot)> = Vec::new();
@@ -395,7 +350,7 @@ impl PackBootstrap {
                     None => report.entries_unconfirmed += 1,
                 }
             }
-            for seeded in self.bodies.seed_pack_chunk(&seeds).await? {
+            for seeded in self.bodies.seed_pack_chunk(&seeds, epochs).await? {
                 match seeded {
                     PackSeed::Applied => report.snapshots_applied += 1,
                     PackSeed::Stale => {}
@@ -410,6 +365,7 @@ impl PackBootstrap {
         &self,
         held: &Held,
         checks: &HashMap<String, BodyCheck>,
+        epochs: &BodyEpochs,
         report: &mut BodyPackReport,
     ) -> Result<(), BodyPullError> {
         let mut docs: Vec<String> = held
@@ -473,7 +429,7 @@ impl PackBootstrap {
                     }
                 }
             }
-            let (stored, stops) = self.bodies.seed_pack_updates(&seeds).await?;
+            let (stored, stops) = self.bodies.seed_pack_updates(&seeds, epochs).await?;
             applied += stored;
             stopped.extend(stops);
         }

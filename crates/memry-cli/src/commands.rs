@@ -472,6 +472,9 @@ mod tests {
             corrupt: 3,
             expired: 0,
             dropped_pages: 0,
+            // Set only by a pull by id (`fetch_ids`), which this command
+            // never runs.
+            uncovered: 0,
             cursor: Some("42".to_string()),
             has_more: true,
             refused: true,
@@ -480,9 +483,6 @@ mod tests {
             // count can never be added without this test seeing it.
             purged_documents: Vec::new(),
             advanced_documents: Vec::new(),
-            // Set only by the first sync's pull by id, which this command
-            // never runs.
-            uncovered: 0,
         };
         let rendered = format_pull(&report);
         assert!(rendered.contains("applied 7"), "{rendered}");

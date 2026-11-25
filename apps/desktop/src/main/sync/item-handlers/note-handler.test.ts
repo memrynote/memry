@@ -43,6 +43,8 @@ const mockLearnCanonicalPropertyType = vi.fn(
   (_db: unknown, _name: string, _value: unknown) => 'number'
 )
 vi.mock('../../vault/note-sync', () => ({
+  // No case twin shares a file here (#5498).
+  findCanonicalNoteForFile: () => null,
   syncNoteToCache: vi.fn(),
   syncFileToCache: vi.fn(),
   deleteNoteFromCache: vi.fn(),
@@ -106,15 +108,12 @@ vi.mock('../../notes/runtime-effects', () => ({
     mockCleanupProjectLinksForDeletedNote(...(args as []))
 }))
 
-const mockMarkWritebackIgnored = vi.fn()
 vi.mock('../crdt-network-update', async () => await import('../crdt-writeback'))
 vi.mock('../crdt-writeback-port', async () => {
   const writeback = await import('../crdt-writeback')
   return { crdtWriteback: () => writeback }
 })
-vi.mock('../crdt-writeback', () => ({
-  markWritebackIgnored: (...args: unknown[]) => mockMarkWritebackIgnored(...args)
-}))
+vi.mock('../crdt-writeback', () => ({}))
 
 const mockPurgeCrdtDoc = vi.fn(() => Promise.resolve())
 const mockDeleteSyncedVaultFile = vi.fn()
