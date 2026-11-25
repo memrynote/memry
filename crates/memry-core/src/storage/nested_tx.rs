@@ -10,6 +10,14 @@
 //! cursor, which is why the test below holds the rule for the whole crate. Committing an inner one releases the
 //! savepoint, and dropping it uncommitted rolls back to it, so an item that
 //! fails leaves no half-written rows in the page and the page goes on.
+//!
+//! The outermost one is `BEGIN IMMEDIATE`: it takes the database's write lock
+//! before its first read, waiting out another connection's (the busy
+//! timeout). A body write reads the log and appends the update it authored
+//! from it, and the lock is what keeps a second connection, in this process
+//! or another, from authoring over the same log in between (#5734). A
+//! deferred transaction would instead fail its first write with
+//! `SQLITE_BUSY` whenever another connection wrote since its read.
 
 use std::ops::Deref;
 
@@ -30,7 +38,7 @@ pub fn begin(conn: &Connection) -> rusqlite::Result<NestedTx<'_>> {
     if savepoint {
         conn.execute_batch(&format!("SAVEPOINT {SAVEPOINT}"))?;
     } else {
-        conn.execute_batch("BEGIN DEFERRED")?;
+        conn.execute_batch("BEGIN IMMEDIATE")?;
     }
     Ok(NestedTx {
         conn,

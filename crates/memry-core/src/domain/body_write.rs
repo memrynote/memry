@@ -50,22 +50,22 @@ pub fn edit_block(
         return Ok(false);
     }
 
-    let Some(update) = author(conn, note_id, edit, device_id)? else {
+    let tx = nested_tx::begin(conn).map_err(storage_failed)?;
+    let Some(update) = author(&tx, note_id, edit, device_id)? else {
         // A write that authored nothing: setting an attribute to the value it
         // already holds. Nothing is stored and nothing is pushed — an edit
         // that changed nothing must not ship a clock and win a conflict it had
         // no business winning.
         return Ok(true);
     };
-
-    let tx = nested_tx::begin(conn).map_err(storage_failed)?;
     append_in(&tx, ITEM_TYPE, note_id, &update, now_ms)?;
     tx.commit().map_err(storage_failed)?;
     Ok(true)
 }
 
 /// Replays `doc_id`'s durable log into a document opened under `device_id`
-/// and applies `edit` to it, **without writing anything**.
+/// and applies `edit` to it, **without writing anything**. Called inside the
+/// transaction that stores the update ([`epoch::require_write_lock`]).
 ///
 /// - Returns: the update the edit authored, or `None` when it authored nothing.
 ///   A refused edit (a block the body does not hold) is an error, and nothing
@@ -98,13 +98,13 @@ pub fn append_snapshot(
     if !reads::note_exists(conn, note_id) {
         return Ok(false);
     }
-    let Some(update) = author_with(conn, note_id, device_id, |document| {
+    let tx = nested_tx::begin(conn).map_err(storage_failed)?;
+    let Some(update) = author_with(&tx, note_id, device_id, |document| {
         body_edit::append_snapshot(document, snapshot)
     })?
     else {
         return Ok(true);
     };
-    let tx = nested_tx::begin(conn).map_err(storage_failed)?;
     append_in(&tx, ITEM_TYPE, note_id, &update, now_ms)?;
     tx.commit().map_err(storage_failed)?;
     Ok(true)
@@ -123,13 +123,13 @@ pub fn append_markdown(
     if !reads::note_exists(conn, note_id) {
         return Ok(false);
     }
-    let Some(update) = author_with(conn, note_id, device_id, |document| {
+    let tx = nested_tx::begin(conn).map_err(storage_failed)?;
+    let Some(update) = author_with(&tx, note_id, device_id, |document| {
         document.write(|txn| markdown_seed::append_markdown_in(txn, markdown).map(|_| ()))?
     })?
     else {
         return Ok(true);
     };
-    let tx = nested_tx::begin(conn).map_err(storage_failed)?;
     append_in(&tx, ITEM_TYPE, note_id, &update, now_ms)?;
     tx.commit().map_err(storage_failed)?;
     Ok(true)
@@ -257,7 +257,8 @@ mod tests {
     const DAY: &str = "j2026-04-16";
 
     fn appended(conn: &Connection, markdown: &str) -> Vec<u8> {
-        author_with(conn, DAY, "device-a", |document| {
+        let tx = nested_tx::begin(conn).expect("begin");
+        author_with(&tx, DAY, "device-a", |document| {
             document.write(|txn| markdown_seed::append_markdown_in(txn, markdown).map(|_| ()))?
         })
         .expect("author")
