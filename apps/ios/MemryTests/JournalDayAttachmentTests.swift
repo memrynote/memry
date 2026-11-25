@@ -40,12 +40,15 @@ private final class DayReader: NotesReading, @unchecked Sendable {
         state.withLock { $0 = (blocks, bindings) }
     }
 
-    /// The bytes of `id` arrived: its rows now carry a file.
+    /// The bytes of `id` arrived: its rows now carry a file, on disk, as
+    /// `intactPath` reads a missing one as not downloaded.
     func landBytes(of id: String) {
+        let path = "journal-\(UUID().uuidString)-\(id)"
+        FileManager.default.createFile(atPath: AttachmentPaths.url(for: path).path(percentEncoded: false), contents: Data())
         state.withLock { state in
             for (url, bound) in state.bindings {
                 if case let .bound(attachment) = bound, attachment.attachmentId == id {
-                    state.bindings[url] = binding(id, localPath: id)
+                    state.bindings[url] = binding(id, localPath: path)
                 }
             }
         }
