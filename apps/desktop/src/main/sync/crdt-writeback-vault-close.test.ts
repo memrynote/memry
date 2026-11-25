@@ -25,13 +25,13 @@ import * as vaultStatus from '../vault/status'
 import * as fileOps from '../vault/file-ops'
 import * as database from '../database'
 import * as databaseClient from '../database/client'
-import { closeVault } from '../vault'
+import { closeVault as closeVaultInQueue } from '../vault'
 import { parseJournalEntry } from '../vault/journal'
 import { registerJournalHandlers } from '../ipc/journal-handlers'
 import { resolveJournalEntryId } from '../journal/create-entry'
 import { getCrdtProvider, resetCrdtProvider } from './crdt-provider'
 import {
-  flushPendingWritebacks,
+  flushPendingWritebacks as flushWritebacks,
   hasArmedWritebacks,
   resetWritebackState,
   takeWritebackTurn
@@ -257,6 +257,7 @@ interface Hold {
 function hold(): Hold {
   let release!: () => void
   const busy = new Promise<void>((resolve) => (release = resolve))
+  holds.push(() => release())
   let reach!: () => void
   const reached = new Promise<void>((resolve) => (reach = resolve))
   return {
@@ -267,6 +268,41 @@ function hold(): Hold {
       await busy
     }
   }
+}
+
+/** The release of every hold, and every close and flush a test started. */
+const holds: Array<() => void> = []
+const started: Promise<unknown>[] = []
+
+function closeVault(): Promise<void> {
+  const closing = closeVaultInQueue()
+  started.push(closing)
+  return closing
+}
+
+function flushPendingWritebacks(): Promise<void> {
+  const flushing = flushWritebacks()
+  started.push(flushing)
+  return flushing
+}
+
+/**
+ * Lets the work a failed test left running end before the next test starts.
+ * A close left waiting holds the vault lifecycle queue, so every later close
+ * would wait on it, and a pass left running reads the databases the hook
+ * closes.
+ */
+async function drainLeftovers(): Promise<void> {
+  store.nextFlush = null
+  store.nextUpdate = null
+  for (const release of holds.splice(0)) release()
+  const drained = { done: false }
+  void Promise.allSettled([...started.splice(0), flushWritebacks(), ...store.queues]).then(
+    () => (drained.done = true)
+  )
+  if (!vi.isFakeTimers()) vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+  for (let step = 0; step < 400 && !drained.done; step++) await tick()
+  if (!drained.done) console.warn('A test left a close, flush or store call that never ended')
 }
 
 /** Holds the next write of `file`. */
@@ -384,6 +420,19 @@ function indexDay(open: OpenVault, id: string, date = DATE): string {
 async function openDay(date = DATE): Promise<string> {
   await invokeHandler(JournalChannels.invoke.CREATE_ENTRY, { date, content: 'From A.' })
   const id = resolveJournalEntryId(date)
+  // The create's index row lands through the projection lane, which this
+  // suite does not run. Without it a pass's version of the file has no
+  // parent row.
+  const file = path.join(vaultStatus.getStatus().path ?? '', 'journal', `${date}.md`)
+  insertNoteCache(database.getIndexDatabase(), {
+    id,
+    path: `journal/${date}.md`,
+    title: date,
+    date,
+    createdAt: '2026-05-10T00:00:00.000Z',
+    modifiedAt: '2026-05-10T00:00:00.000Z',
+    contentHash: generateContentHash(fs.readFileSync(file, 'utf8'))
+  })
   const doc = getCrdtProvider().getDoc(id) as Y.Doc
   await markdownToYFragment('From A.', doc.getXmlFragment(CRDT_FRAGMENT_NAME))
   if (!vi.isFakeTimers()) vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
@@ -441,7 +490,8 @@ describe('a keystroke while the vault closes', () => {
     registerJournalHandlers()
   })
 
-  afterEach(() => {
+  afterEach(async () => {
+    await drainLeftovers()
     resetWritebackState()
     resetCrdtProvider()
     vi.useRealTimers()
@@ -570,7 +620,8 @@ describe('a CRDT store that stalls while the vault closes (#5698)', () => {
     await getCrdtProvider().initPersistence()
   })
 
-  afterEach(() => {
+  afterEach(async () => {
+    await drainLeftovers()
     clearAllPendingDeletes()
     resetWritebackState()
     resetCrdtProvider()
@@ -619,7 +670,7 @@ describe('a CRDT store that stalls while the vault closes (#5698)', () => {
     void closing.then(() => (closed = true))
     // Well past the debounce and every store wait of the close.
     for (let step = 0; step < 40; step++) await tick()
-    await write.reached
+    await settle(write.reached)
 
     expect.soft(closed).toBe(false)
     write.release()
@@ -684,11 +735,8 @@ describe('a CRDT store that stalls while the vault closes (#5698)', () => {
     type(id, ' More.')
     await storing.reached
     fs.writeFileSync(dayFile(vaultA), written.replace('From A. Typed.', 'From A. Typed. Outside.'))
-    const close = { done: false }
-    void closeVault().then(() => (close.done = true))
-    for (let step = 0; step < 200 && !close.done; step++) await tick()
+    await settle(closeVault())
 
-    expect(close.done).toBe(true)
     expect.soft(dayBody(vaultA)).toContain('From A. Typed. Outside.')
 
     store.queues = []
@@ -747,10 +795,7 @@ describe('a CRDT store that stalls while the vault closes (#5698)', () => {
 
     // The quit's flush-writebacks step.
     getCrdtProvider().beginClose()
-    const flush = { done: false }
-    void flushPendingWritebacks().then(() => (flush.done = true))
-    for (let step = 0; step < 200 && !flush.done; step++) await tick()
-    expect(flush.done).toBe(true)
+    await settle(flushPendingWritebacks())
     expect.soft(warnings).toContainEqual(
       expect.objectContaining({
         message: 'A store wait gave up: the CRDT store stalled while the vault closed',
@@ -835,11 +880,8 @@ describe('a CRDT store that stalls while the vault closes (#5698)', () => {
     type(id, ' More.')
     await storing.reached
 
-    const push = { done: false }
-    void pushFinalSnapshots().then(() => (push.done = true))
-    for (let step = 0; step < 200 && !push.done; step++) await tick()
+    await settle(pushFinalSnapshots())
 
-    expect(push.done).toBe(true)
     expect(warnings).toContainEqual(
       expect.objectContaining({
         message: 'Pre-shutdown CRDT snapshot push cut short; remaining snapshots deferred',
@@ -1072,7 +1114,9 @@ describe('a CRDT store that stalls while the vault closes (#5698)', () => {
     disk.recover()
     const opened = getCrdtProvider().open(id, EDITOR_WINDOW)
     write.release()
-    await settle(closed)
+    // The close ends on real I/O alone. Stepping the fake clock meanwhile
+    // runs out the open's wait for it on a loaded runner.
+    await closed
     const doc = await settle(opened)
     type(id, ' Two.')
     await settle(flushPendingWritebacks())
@@ -1210,13 +1254,14 @@ describe('a CRDT store that stalls while the vault closes (#5698)', () => {
     expect.soft(getNoteCacheById(vaultA.indexDb.db, id)?.pendingWriteHash).toBeNull()
     // The session ended before the mark was cleared.
     updateNoteCache(vaultA.indexDb.db, id, { pendingWriteHash: mark })
+    const versionsBefore = getNoteSnapshots(vaultA.indexDb.db, id)
 
     await restart()
     const doc = await settle(getCrdtProvider().open(id, EDITOR_WINDOW))
 
     expect.soft(bodyText(doc)).toBe('From A. Typed. More. Two.')
     // Nothing was taken in, so the open kept no version of the doc.
-    expect.soft(getNoteSnapshots(vaultA.indexDb.db, id)).toEqual([])
+    expect.soft(getNoteSnapshots(vaultA.indexDb.db, id)).toEqual(versionsBefore)
     expect(getNoteCacheById(vaultA.indexDb.db, id)?.pendingWriteHash).toBeNull()
   })
 
