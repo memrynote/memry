@@ -222,16 +222,27 @@ fn text(conn: &Connection) -> Result<String, StorageError> {
     Ok(seen)
 }
 
-fn remove_database(path: &std::path::Path) {
+/// Deletes the database at `path`, as a sign-out wipe does, and hands back
+/// `open`, a handle on it, where it can outlive the file. Windows refuses to
+/// delete a file SQLite holds open, so a wipe there closes the handle first,
+/// and the old handle living on is a unix-only sequence.
+fn remove_database(path: &std::path::Path, open: crate::storage::Db) -> Option<crate::storage::Db> {
+    let open = (!cfg!(windows)).then_some(open);
     for suffix in ["", "-wal", "-shm"] {
         let mut file = path.as_os_str().to_owned();
         file.push(suffix);
-        let _ = std::fs::remove_file(&file);
+        match std::fs::remove_file(&file) {
+            Err(err) if err.kind() != std::io::ErrorKind::NotFound => {
+                panic!("remove {}: {err}", file.display())
+            }
+            _ => {}
+        }
     }
+    open
 }
 
-/// A data.db deleted and recreated at the same path while a handle on the
-/// old one lives, as a sign-out wipe and a re-sign-in do, is a new log: a
+/// A data.db deleted and recreated at the same path, on unix while a handle
+/// on the old one lives, as a sign-out wipe and a re-sign-in do, is a new log: a
 /// write to it never sees the old body, and survives a replay.
 #[test]
 fn a_database_recreated_at_the_same_path_never_sees_the_old_body() {
@@ -245,7 +256,7 @@ fn a_database_recreated_at_the_same_path_never_sees_the_old_body() {
     })
     .expect("write old");
 
-    remove_database(&path);
+    let old = remove_database(&path, old);
     let new = open_data(&path).expect("open new data.db");
     let seen = new
         .call_blocking(|conn| {
@@ -299,7 +310,7 @@ fn every_reopen_sees_only_its_own_log() {
     assert!(seen.contains("a-three"), "{seen}");
 
     switched.call_blocking(|conn| text(conn)).expect("read b");
-    remove_database(&b);
+    let switched = remove_database(&b, switched);
     let signed_in = open_data(&b).expect("recreate b");
     let seen = signed_in
         .call_blocking(|conn| {
@@ -308,6 +319,7 @@ fn every_reopen_sees_only_its_own_log() {
         })
         .expect("write recreated b");
     assert!(seen.contains("pulled") && !seen.contains("b-one"), "{seen}");
+    drop(switched);
 }
 
 /// Closing a database, as a vault close or a sign-out does, releases
