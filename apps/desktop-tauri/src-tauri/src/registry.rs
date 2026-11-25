@@ -427,7 +427,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::vault_activity::vault_activity_reveal,
             crate::commands::vault_activity::vault_activity_set_retention,
             // vault index
-            crate::commands::vault_index::vault_reindex,
+            crate::commands::vault_index::vault_reindex::<Wry>,
             // vault files
             crate::commands::vault_files::vault_resolve_embeds,
             // vault locks

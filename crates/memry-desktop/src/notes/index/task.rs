@@ -73,7 +73,14 @@ impl TaskHandle {
     }
 
     /// Asks for a reindex, run once the open walk ended; `None` when the task already ended.
-    pub fn reindex(&self, progress: Progress) -> Option<Answer> {
+    /// One throttle for the asker: a pass a first sync held and its rerun never report backwards.
+    pub fn reindex(&self, mut progress: Progress) -> Option<Answer> {
+        let mut throttle = ProgressThrottle::new(PROGRESS_INTERVAL);
+        let progress: Progress = Box::new(move |step| {
+            if throttle.offer(step, Instant::now()) {
+                progress(step);
+            }
+        });
         let (answer, receiver) = reply::channel();
         self.0
             .send(Command::Reindex { progress, answer })
@@ -295,12 +302,18 @@ impl Indexer {
                 // A reindex reports through its own callback, which refreshes the list. The
                 // open's build ends after it, once the rows hold every note.
                 let carried = std::mem::take(&mut owed.report);
-                for (mut progress, answer) in std::mem::take(&mut waiting) {
+                let mut asked = std::mem::take(&mut waiting).into_iter();
+                while let Some((mut progress, answer)) = asked.next() {
                     match self.reindex(&mut owed, &mut progress, cancel, announce, landed, defined)
                     {
                         // A first sync that started meanwhile held its search reindex: the
-                        // asker waits for it to end, as one asked during it does.
-                        None => waiting.push((progress, answer)),
+                        // asker, and every one after it, waits for it to end, as one asked
+                        // during it does.
+                        None => {
+                            waiting.push((progress, answer));
+                            waiting.extend(asked);
+                            break;
+                        }
                         // The asker may have gone; the work is done either way.
                         Some(done) => {
                             let _ = answer.send(done);
@@ -494,22 +507,9 @@ impl Indexer {
         let scan = std::mem::take(&mut owed.scan);
         owed.retype = false;
         let stop = || cancel.is_cancelled();
-        let mut throttle = ProgressThrottle::new(PROGRESS_INTERVAL);
         let outcome = self.scan(true).map_err(IndexError::from).and_then(|notes| {
-            let mut progress = |step| {
-                if throttle.offer(step, Instant::now()) {
-                    progress(step);
-                }
-            };
             let typing = self.typing_all()?;
-            self.pass(
-                notes,
-                typing,
-                &mut owed.links,
-                &stop,
-                &mut progress,
-                announce,
-            )
+            self.pass(notes, typing, &mut owed.links, &stop, progress, announce)
         });
         if let Ok(pass) = &outcome
             && pass.reindexed

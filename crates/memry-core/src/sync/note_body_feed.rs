@@ -340,10 +340,7 @@ pub(super) fn held_bodies(
         if let Some(at) = cursor.and_then(|text| text.parse::<i64>().ok()) {
             held.cursors.insert(doc_id.to_owned(), at);
         }
-        let revision = update_log::snapshot(conn, Namespace::Server, doc_id)
-            .map_err(crdt_failed)?
-            .and_then(|row| row.server_revision);
-        if let Some(revision) = revision {
+        if let Some(revision) = update_log::server_revision(conn, doc_id)? {
             held.revisions.insert(doc_id.to_owned(), revision);
         }
     }

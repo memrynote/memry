@@ -212,26 +212,45 @@ struct NoteTitleRehostTests {
     /// #4680: a title typed on the redrawn page before the first page's title
     /// is saved is the latest edit. The save and the re-read it causes leave
     /// it alone, and leaving the title writes it.
-    @Test(.timeLimit(.minutes(1))) func a_title_typed_on_the_redrawn_page_wins() async throws {
-        let f = try fixture()
-        let window = try sceneWindow()
-        defer { window.isHidden = true }
+    @Test(.timeLimit(.minutes(3))) func a_title_typed_on_the_redrawn_page_wins() async throws {
+        // A window another suite makes key takes the caret and ends the
+        // title's edit early: such a run proves nothing, and runs again.
+        var attempt = 0
+        while true {
+            attempt += 1
+            let f = try fixture()
+            let window = try sceneWindow()
+            let resigned = Resigned(window)
+            let field = try await typeAndRehost("Agent Heron", f, SyncPasses(), in: window)
+            await until { field.isFirstResponder }
+            let kept = field.isFirstResponder
+            field.insertText("Kestrel")
+            await until { field.text == "Kestrel" }
+            f.writer.release()
+            for _ in 0..<300 where (try? await savedTitle(f)) != "Agent Heron" {
+                try await Task.sleep(for: .milliseconds(20))
+            }
+            let first = try await savedTitle(f)
+            try await settleReads(f)
+            let shown = field.text
 
-        let field = try await typeAndRehost("Agent Heron", f, SyncPasses(), in: window)
-        await until { field.isFirstResponder }
-        #expect(field.isFirstResponder, "the redrawn title did not keep the caret")
-        field.insertText("Kestrel")
-        await until { field.text == "Kestrel" }
-        try await release(f, until: "Agent Heron")
-        try await settleReads(f)
-        #expect(field.text == "Kestrel", "the re-read replaced the typed title")
-
-        field.resignFirstResponder()
-        for _ in 0..<300 where (try? await savedTitle(f)) != "Kestrel" {
-            try await Task.sleep(for: .milliseconds(20))
+            field.resignFirstResponder()
+            for _ in 0..<300 where (try? await savedTitle(f)) != "Kestrel" {
+                try await Task.sleep(for: .milliseconds(20))
+            }
+            resigned.stop()
+            window.isHidden = true
+            if resigned.happened, attempt < 10 {
+                try await Task.sleep(for: .milliseconds(200 * attempt))
+                continue
+            }
+            #expect(kept, "the redrawn title did not keep the caret")
+            #expect(first == "Agent Heron", "the typed title was not saved: \(f.writer.titles)")
+            #expect(shown == "Kestrel", "the re-read replaced the typed title")
+            #expect(try await savedTitle(f) == "Kestrel")
+            #expect(f.writer.titles == ["Agent Heron", "Kestrel"])
+            return
         }
-        #expect(try await savedTitle(f) == "Kestrel")
-        #expect(f.writer.titles == ["Agent Heron", "Kestrel"])
     }
 
     /// Opens a page on the note and puts the caret in its title.
