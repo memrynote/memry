@@ -15,7 +15,7 @@
 //! for the duration of the write.
 
 use std::path::Path;
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
 
 use rusqlite::Connection;
@@ -40,17 +40,15 @@ pub struct Db {
 
 struct Shared {
     conn: Mutex<Connection>,
-    path: Option<String>,
 }
 
 /// The last user of the connection is gone, so the database is closing, as a
 /// vault close or a sign-out closes it: the note bodies kept decoded for it go
-/// with it.
+/// with it, before the connection itself closes.
 impl Drop for Shared {
     fn drop(&mut self) {
-        if let Some(path) = &self.path {
-            crate::crdt::resident::release_database(path);
-        }
+        let conn = self.conn.get_mut().unwrap_or_else(PoisonError::into_inner);
+        crate::crdt::resident::release_connection(conn);
     }
 }
 
@@ -81,16 +79,16 @@ impl Db {
 
     fn adopt(conn: Connection) -> Result<Self, StorageError> {
         configure(&conn)?;
-        let path = conn
-            .path()
-            .filter(|path| !path.is_empty())
-            .map(str::to_owned);
-        Ok(Self {
-            conn: Arc::new(Shared {
-                conn: Mutex::new(conn),
-                path,
-            }),
-        })
+        let file_backed = conn.path().is_some_and(|path| !path.is_empty());
+        let shared = Arc::new(Shared {
+            conn: Mutex::new(conn),
+        });
+        if file_backed {
+            // Registered at its final address, inside the `Arc`.
+            let conn = shared.conn.lock().unwrap_or_else(PoisonError::into_inner);
+            crate::crdt::resident::open_connection(&conn);
+        }
+        Ok(Self { conn: shared })
     }
 
     /// Runs `f` against the connection on the blocking pool.
