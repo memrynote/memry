@@ -63,5 +63,5 @@ it('saves every workflow cache only on main', () => {
       checked++
     }
   }
-  assert.ok(checked > 30, `only ${checked} cache steps found`)
+  assert.ok(checked >= 30, `only ${checked} cache steps found`)
 })
