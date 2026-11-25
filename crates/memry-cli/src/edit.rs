@@ -11,26 +11,28 @@
 //! **The node** and the parent it goes into are [`node`]'s, which is also
 //! where the sources for each part of the shape are written down.
 //!
-//! **What this file owns** is everything around it: which note, whether that
-//! note may be written to at all, loading its body out of the update log, and
-//! making the resulting update durable in the same transaction as its outbox
-//! row (FR-030).
+//! **What this file owns** is everything around it: which note, and whether
+//! that note may be written to at all. Loading the body, authoring and storing
+//! the update with its outbox row (FR-030) is the core's
+//! [`body_write::write_body`], inside one write-locked transaction (#5734), so
+//! a core write in another process can never land between the load and the
+//! append.
 //!
 //! **What it never does.** It never appends to a document it could not load.
 //! An unreadable or unpulled body is an error, never an empty document that
 //! then gets one paragraph written over the user's note.
 
-use std::sync::{Arc, Mutex};
-
 use memry_core::api::errors::StorageError;
-use memry_core::crdt::registry::{Document, DocumentRegistry, UpdateSink};
 use memry_core::crdt::text_extract::extract_text;
 use memry_core::crdt::update_log;
-use memry_core::storage::Db;
-use memry_core::sync::outbox;
+use memry_core::domain::body_write;
+use memry_core::storage::{Db, nested_tx};
+use rusqlite::Connection;
 
 use crate::session::{Cli, CliError};
 
+#[cfg(test)]
+mod lock_tests;
 mod node;
 
 use node::{append_paragraph, block_id};
@@ -63,46 +65,107 @@ pub fn notes_append(
     let device_id = cli.device_id()?;
 
     let item_type = live_item_type(&db, note)?;
-    let (document, authored) = load_body(&db, note, &device_id)?;
-
-    let before = extract_text(&document)?;
     let block_id = block_id();
-    document.write(|txn| append_paragraph(txn, &block_id, text))??;
-    let update = one_update(&authored)?;
+    let appended = append_locked(&db, &item_type, note, text, &block_id, &device_id, now_ms())?;
 
-    let seq = record(&db, &item_type, note, &update, now_ms())?;
     // Only now: the acknowledgement follows the commit, never precedes it
     // (data-model §C.4, FR-030).
-    let after = extract_text(&document)?;
-
     println!(
-        "appended {} bytes to {note} as block {block_id}, local update {seq}",
-        update.len()
+        "appended {} bytes to {note} as block {block_id}, local update {}",
+        appended.bytes, appended.seq
     );
-    println!("lines {} -> {}", line_count(&before), line_count(&after));
+    println!(
+        "lines {} -> {}",
+        appended.lines_before, appended.lines_after
+    );
     Ok(())
 }
 
-/// The one update the one write transaction produced.
-///
-/// The bytes come from the registry's own update sink, which is the only
-/// place they exist. The alternative — encoding the document before and after
-/// and diffing two copies — is exactly the "assemble a document" move chapter
-/// 12 §12.5.1 forbids, and it would be a second Y.Doc for the same note.
-fn one_update(authored: &Mutex<Vec<Vec<u8>>>) -> Result<Vec<u8>, CliError> {
-    let mut updates = authored
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
-    match updates.len() {
-        1 => Ok(updates.remove(0)),
-        // Neither can happen with one write on one transaction. Saying so
-        // beats recording bytes nobody can account for.
-        0 => Err(CliError::Refused(
+/// What one append stored.
+#[derive(Debug)]
+struct Appended {
+    seq: i64,
+    bytes: usize,
+    lines_before: usize,
+    lines_after: usize,
+}
+
+fn append_locked(
+    db: &Db,
+    item_type: &str,
+    note: &str,
+    text: &str,
+    block_id: &str,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<Appended, CliError> {
+    db.call_blocking(|conn| {
+        Ok(append_in_tx(
+            conn, item_type, note, text, block_id, device_id, now_ms,
+        ))
+    })?
+}
+
+/// The load, the write and the record, under one `BEGIN IMMEDIATE`: the
+/// write lock is taken before the log is read and held to the commit.
+fn append_in_tx(
+    conn: &Connection,
+    item_type: &str,
+    note: &str,
+    text: &str,
+    block_id: &str,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<Appended, CliError> {
+    let tx = nested_tx::begin(conn).map_err(storage_failed)?;
+
+    // The document, or an error — **never** a fresh empty one. `notes text`
+    // may open a body with nothing in the log and print nothing; this path
+    // may not. A document whose log is empty has not been pulled, and
+    // appending to it would push one paragraph that a desktop merges into a
+    // note this client never held.
+    if update_log::load_plan(&tx, note)?.is_empty() {
+        return Err(CliError::Refused(format!(
+            "the body of `{note}` is not in this vault's update log: run `memry pull` first. \
+             Appending to an unloaded document would replace a note that exists on the server \
+             with one paragraph"
+        )));
+    }
+
+    let mut refused = None;
+    let mut lines = (0, 0);
+    let stored = body_write::write_body(&tx, item_type, note, device_id, now_ms, |document| {
+        lines.0 = line_count(&extract_text(document)?);
+        if let Err(error) = document.write(|txn| append_paragraph(txn, block_id, text))? {
+            refused = Some(error);
+            return Err(StorageError::Failed {
+                what: "the append was refused".to_string(),
+            }
+            .into());
+        }
+        lines.1 = line_count(&extract_text(document)?);
+        Ok(())
+    });
+    if let Some(error) = refused {
+        return Err(error);
+    }
+    let Some((seq, bytes)) = stored? else {
+        return Err(CliError::Refused(
             "the append produced no Yjs update, so there is nothing to record".to_string(),
-        )),
-        many => Err(CliError::Refused(format!(
-            "the append produced {many} Yjs updates where one transaction must produce one"
-        ))),
+        ));
+    };
+    tx.commit().map_err(storage_failed)?;
+    Ok(Appended {
+        seq,
+        bytes,
+        lines_before: lines.0,
+        lines_after: lines.1,
+    })
+}
+
+fn storage_failed(error: rusqlite::Error) -> StorageError {
+    StorageError::Failed {
+        what: error.to_string(),
     }
 }
 
@@ -163,126 +226,54 @@ fn live_item_type(db: &Db, note: &str) -> Result<String, CliError> {
     }
 }
 
-/// The document, or an error — **never** a fresh empty one.
-///
-/// `notes text` may open a body with nothing in the log and print nothing;
-/// this path may not. A document whose log is empty has not been pulled, and
-/// appending to it would push one paragraph that a desktop merges into a note
-/// this client never held.
-type Authored = Arc<Mutex<Vec<Vec<u8>>>>;
-
-fn load_body(db: &Db, note: &str, device_id: &str) -> Result<(Arc<Document>, Authored), CliError> {
-    let doc_id = note.to_string();
-    let plan = db.call_blocking(move |conn| {
-        update_log::load_plan(conn, &doc_id).map_err(|error| StorageError::Failed {
-            what: error.to_string(),
-        })
-    })?;
-
-    if plan.is_empty() {
-        return Err(CliError::Refused(format!(
-            "the body of `{note}` is not in this vault's update log: run `memry pull` first. \
-             Appending to an unloaded document would replace a note that exists on the server \
-             with one paragraph"
-        )));
-    }
-
-    // One registry, one document, one sink — the registry's own local-update
-    // path. Nothing applied here reaches the sink: `apply_durable_update`
-    // stamps the durable origin precisely so a replay is not re-enqueued as
-    // this device's edit, so the vector is still empty when the write runs.
-    let authored: Authored = Arc::new(Mutex::new(Vec::new()));
-    let sink: UpdateSink = {
-        let authored = Arc::clone(&authored);
-        Arc::new(move |_, bytes: &[u8]| {
-            authored
-                .lock()
-                .unwrap_or_else(|poisoned| poisoned.into_inner())
-                .push(bytes.to_vec());
-        })
-    };
-    let document = DocumentRegistry::new(device_id, sink).get_or_open(note)?;
-    for blob in plan.blobs() {
-        // An update that will not decode or will not apply ends the command.
-        // Reading it as "nothing was there" is the one outcome that loses a
-        // note.
-        document.apply_durable_update(blob)?;
-    }
-    Ok((document, authored))
-}
-
-/// The update row and its outbox row, in **one** transaction (FR-030,
-/// data-model §A.2).
-///
-/// `Change::CrdtUpdate` carries the bytes because there is no live row to
-/// rebuild them from, and `outbox::enqueue` deliberately does not collapse
-/// CRDT rows: a merged update cannot be re-sent individually, and collapsing
-/// drops updates a peer has not seen.
-fn record(
-    db: &Db,
-    item_type: &str,
-    note: &str,
-    update: &[u8],
-    now_ms: i64,
-) -> Result<i64, CliError> {
-    let change = outbox::Change::crdt_update(item_type, note, update.to_vec());
-    let doc_id = note.to_string();
-    let update = update.to_vec();
-    let durable = db.call_blocking(move |conn| {
-        outbox::commit(conn, &change, now_ms, |tx| {
-            update_log::append_local_update_in(tx, &doc_id, &update, now_ms).map_err(|error| {
-                StorageError::Failed {
-                    what: error.to_string(),
-                }
-            })
-        })
-    })?;
-    Ok(durable.acknowledge())
-}
-
 #[cfg(test)]
 mod tests {
     use super::node::fixtures::*;
     use super::*;
     use memry_core::crdt::epoch::HeldBody;
+    use memry_core::sync::outbox;
 
-    /// The whole write, end to end over a real database, minus the profile:
-    /// load from the log, write through the registry, take the one update off
-    /// the sink, and hand those bytes to a peer that holds only the original
-    /// state. What the peer ends up with is what a desktop ends up with.
-    #[test]
-    fn the_loaded_document_authors_one_update_that_carries_the_paragraph() {
-        let (dir, db) = scratch("end-to-end");
-        let base = from_hex(PLAIN_PARAGRAPH_VECTOR);
-        let seeded = base.clone();
+    fn seed_server_body(db: &Db, base: Vec<u8>) {
         db.call_blocking(move |conn| {
             HeldBody::never_purged(conn, "note-1")
-                .and_then(|held| held.append_server_update(1, &seeded, 1_700_000_000_000))
+                .and_then(|held| held.append_server_update(1, &base, 1_700_000_000_000))
                 .map_err(|error| StorageError::Failed {
                     what: error.to_string(),
                 })
         })
         .expect("seed the server namespace");
+    }
 
-        let (document, authored) = load_body(&db, "note-1", "device-a").expect("loads");
-        assert_eq!(
-            extract_text(&document).expect("extract"),
-            "One plain paragraph."
-        );
-        // The replay reached the document without reaching the sink: a
-        // replayed update re-enqueued as a local edit would re-push the whole
-        // document on every launch.
-        assert!(authored.lock().expect("lock").is_empty());
+    /// The whole write, end to end over a real database, minus the profile:
+    /// load from the log, write through the core, and hand what the log then
+    /// holds to a peer. What the peer ends up with is what a desktop ends up
+    /// with.
+    #[test]
+    fn the_loaded_document_authors_one_update_that_carries_the_paragraph() {
+        let (dir, db) = scratch("end-to-end");
+        let base = from_hex(PLAIN_PARAGRAPH_VECTOR);
+        seed_server_body(&db, base);
 
-        document
-            .write(|txn| append_paragraph(txn, "block-1", "from cli"))
-            .expect("a transaction")
+        let appended = append_locked(&db, "note", "note-1", "from cli", "block-1", "device-a", 1)
             .expect("appends");
-        let update = one_update(&authored).expect("exactly one update");
+        // The replay was not re-recorded as this device's edit: the append is
+        // the first local update, and a replay re-enqueued would re-push the
+        // whole document on every launch.
+        assert_eq!(appended.seq, 1);
+        assert_eq!((appended.lines_before, appended.lines_after), (1, 2));
 
+        let plan = db
+            .call_blocking(|conn| {
+                update_log::load_plan(conn, "note-1").map_err(|error| StorageError::Failed {
+                    what: error.to_string(),
+                })
+            })
+            .expect("the log");
+        assert_eq!(plan.local_updates.len(), 1, "one local update");
         let peer = doc();
-        apply(&peer, &base);
-        apply(&peer, &update);
+        for blob in plan.blobs() {
+            apply(&peer, blob);
+        }
         assert_eq!(text_of(&peer), "One plain paragraph.\nfrom cli");
         assert!(
             shape(&peer).contains(
@@ -361,11 +352,10 @@ mod tests {
     #[test]
     fn a_body_that_is_not_in_the_log_is_never_appended_to() {
         let (dir, db) = scratch("unpulled");
-        let refused = load_body(&db, "alive", "device-a");
+        let refused = append_locked(&db, "note", "alive", "text", "block-1", "device-a", 1);
         assert!(
             matches!(&refused, Err(CliError::Refused(message)) if message.contains("update log")),
-            "{:?}",
-            refused.map(|_| "a document")
+            "{refused:?}"
         );
 
         drop(db);
@@ -378,15 +368,17 @@ mod tests {
     #[test]
     fn the_update_row_and_its_outbox_row_commit_together() {
         let (dir, db) = scratch("record");
-        let update = vec![1u8, 2, 3];
-        let seq = record(&db, "note", "note-1", &update, 1_700_000_000_000).expect("records");
-        assert_eq!(seq, 1, "the first local sequence");
+        seed_server_body(&db, from_hex(PLAIN_PARAGRAPH_VECTOR));
+        let appended = append_locked(&db, "note", "note-1", "first", "block-1", "device-a", 1)
+            .expect("records");
+        assert_eq!(appended.seq, 1, "the first local sequence");
 
         let rows: (String, Vec<u8>, String, String, Option<Vec<u8>>) = db
             .call_blocking(|conn| {
                 conn.query_row(
                     "SELECT u.doc_id, u.update_blob, o.item_type, o.op, o.payload
-                       FROM yjs_updates u JOIN outbox o ON o.item_id = 'note-1'",
+                       FROM yjs_updates u JOIN outbox o ON o.item_id = 'note-1'
+                      WHERE u.created_at = 1",
                     [],
                     |row| {
                         Ok((
@@ -407,16 +399,18 @@ mod tests {
         // The local namespace, never the server's: a local append that took a
         // server sequence would silently drop one of the two.
         assert_eq!(rows.0, "local.note-1");
-        assert_eq!(rows.1, update);
+        assert_eq!(rows.1.len(), appended.bytes);
         assert_eq!(rows.2, "note");
         assert_eq!(rows.3, outbox::OP_CRDT_UPDATE);
-        assert_eq!(rows.4, Some(update));
+        assert_eq!(rows.4, Some(rows.1.clone()));
 
         // A second append takes the next sequence rather than colliding, and
         // does not collapse the first: collapsing CRDT rows drops updates a
         // peer has not seen.
         assert_eq!(
-            record(&db, "note", "note-1", &[4u8], 1_700_000_000_001).expect("records again"),
+            append_locked(&db, "note", "note-1", "second", "block-2", "device-a", 2)
+                .expect("records again")
+                .seq,
             2
         );
         let queued: i64 = db

@@ -41,6 +41,7 @@ fn vault() -> Vault {
     let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
     let dir: PathBuf =
         std::env::temp_dir().join(format!("memry-api-tasks-{}-{unique}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).expect("the scratch directory");
     Vault::open("vault-1".to_string(), dir.display().to_string()).expect("open")
 }

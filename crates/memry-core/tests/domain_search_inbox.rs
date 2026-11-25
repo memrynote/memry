@@ -233,6 +233,7 @@ fn a_missing_inbox_watermark_forces_the_first_fill() {
 #[test]
 fn an_index_db_from_before_fts_inbox_is_rebuilt_and_filled() {
     let dir = std::env::temp_dir().join(format!("memry-inbox-index-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).expect("scratch dir");
     let path = dir.join("index.db");
     {
