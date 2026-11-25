@@ -79,7 +79,8 @@ pub fn read_head(vault: &Path, rel: &str) -> Result<Option<Head>, NoteFileError>
 /// one read is not written ([`NoteFileError::ChangedUnderWrite`]).
 /// Right before the rename the file is hashed again: one that changed, moved or went since that
 /// read is not written over ([`NoteFileError::ChangedUnderWrite`]). Its folder is never created.
-/// `between` is given the new file's hash after it is written aside and before those checks.
+/// The check runs again before each attempt of a retried rename. `between` is given the new
+/// file's hash after it is written aside and before each check.
 pub fn replace_head_checked(
     vault: &Path,
     rel: &str,
@@ -129,27 +130,32 @@ pub fn replace_head_checked(
             return Err(error.into());
         }
     };
-    between(&hash);
     let mut nothing = || {};
     let mut contained = still_contained(vault, rel, &path, aimed_at, &mut nothing);
-    let unchanged = match contained() {
-        Ok(()) => match open_note_file(vault, rel)? {
-            Some(file) => hash_reader(&file)?.0 == read_hash,
-            None => false,
-        },
-        Err(error) => {
-            remove_temp(&temp, false);
-            return Err(error.into());
-        }
-    };
-    if !unchanged {
-        remove_temp(&temp, false);
-        return Err(NoteFileError::ChangedUnderWrite);
-    }
+    let mut refused = None;
     let delays = fs_atomic::RETRY_DELAYS_MS.map(Duration::from_millis);
-    if let Err(error) = with_transient_retry(&delays, || replace_file(&temp, &path)) {
+    // Every attempt checks the file again, as `fs_atomic::write_once` does: a retry after a
+    // transient failure must not rename over an edit made while it waited.
+    let replaced = with_transient_retry(&delays, || {
+        between(&hash);
+        contained()?;
+        let unchanged = match open_note_file(vault, rel) {
+            Ok(Some(file)) => hash_reader(&file)?.0 == read_hash,
+            Ok(None) => false,
+            Err(error) => {
+                refused = Some(error);
+                return Err(io::Error::other("the file could not be read again"));
+            }
+        };
+        if !unchanged {
+            refused = Some(NoteFileError::ChangedUnderWrite);
+            return Err(io::Error::other("the file changed under the write"));
+        }
+        replace_file(&temp, &path)
+    });
+    if let Err(error) = replaced {
         remove_temp(&temp, false);
-        return Err(error.into());
+        return Err(refused.unwrap_or_else(|| error.into()));
     }
     fs_atomic::sync_dir(dir);
     Ok((hash, size))
@@ -184,5 +190,73 @@ mod tests {
         let text = format!("{open}{fill}{close}-not-a-close\n---\nBody\n");
         std::fs::write(dir.path().join("Dump.md"), text).unwrap();
         assert!(read_head(dir.path(), "Dump.md").is_err());
+    }
+    const STALE: &str = "---\naliases: [Old]\n---\nBody\n";
+    const EDIT: &str = "---\naliases: [Mine]\n---\nUser edit\n";
+
+    fn file_hash(path: &Path) -> String {
+        hash_reader(File::open(path).unwrap()).unwrap().0
+    }
+
+    /// VERIFY-5836R2: the head read is not the file's head now, though the hash given is the
+    /// file's. The one handle's head check refuses it.
+    #[test]
+    fn a_head_changed_since_it_was_read_is_not_written() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("Plan.md");
+        std::fs::write(&file, STALE).unwrap();
+        let head = read_head(dir.path(), "Plan.md").unwrap().unwrap();
+        std::fs::write(&file, EDIT).unwrap();
+        let result = replace_head_checked(
+            dir.path(),
+            "Plan.md",
+            (&head, "---\naliases: [New]\n---\n"),
+            &file_hash(&file),
+            &mut |_| {},
+        );
+        assert!(matches!(result, Err(NoteFileError::ChangedUnderWrite)));
+        assert_eq!(std::fs::read_to_string(&file).unwrap(), EDIT);
+        assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 1);
+    }
+
+    /// VERIFY-5836R2: the first rename fails on a read-only folder, the user edits the file
+    /// before the retry, and the retry refuses instead of renaming over the edit. Root writes to
+    /// any folder, so the first rename cannot fail for it.
+    #[cfg(unix)]
+    #[test]
+    fn a_retried_rename_never_writes_over_an_edit_made_while_it_waited() {
+        use std::os::unix::fs::PermissionsExt;
+        // SAFETY: geteuid has no preconditions.
+        if unsafe { libc::geteuid() } == 0 {
+            return;
+        }
+        let dir = tempfile::tempdir().unwrap();
+        let sub = dir.path().join("Sub");
+        std::fs::create_dir(&sub).unwrap();
+        let file = sub.join("Plan.md");
+        std::fs::write(&file, STALE).unwrap();
+        let head = read_head(dir.path(), "Sub/Plan.md").unwrap().unwrap();
+        let mode = |mode| std::fs::set_permissions(&sub, std::fs::Permissions::from_mode(mode));
+        let mut attempt = 0;
+        let mut between = |_: &str| {
+            attempt += 1;
+            if attempt == 1 {
+                mode(0o555).unwrap();
+            } else if attempt == 2 {
+                std::fs::write(&file, EDIT).unwrap();
+                mode(0o755).unwrap();
+            }
+        };
+        let result = replace_head_checked(
+            dir.path(),
+            "Sub/Plan.md",
+            (&head, "---\naliases: [New]\n---\n"),
+            &file_hash(&file),
+            &mut between,
+        );
+        mode(0o755).unwrap();
+        assert!(matches!(result, Err(NoteFileError::ChangedUnderWrite)));
+        assert_eq!(std::fs::read_to_string(&file).unwrap(), EDIT);
+        assert_eq!(std::fs::read_dir(&sub).unwrap().count(), 1);
     }
 }
