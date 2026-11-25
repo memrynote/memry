@@ -211,7 +211,7 @@ plaintext in `data.db`. The exception is bounded:
   absent keeps the stored title, so the record keeps its mark. Without a key
   a sealed local title that wins stays sealed, and a winning title is plain
   when the local record was pending or the remote's title won
-  (`crates/memry-core/src/domain/agent_conversation/merge.rs:100-112`,
+  (`crates/memry-core/src/domain/agent_conversation/merge.rs:104-116`,
   `:128-131`). A local title edit seals the title and clears the mark
   (`crates/memry-core/src/domain/agent_conversation/mod.rs:204-208`).
 - **A sealed value that does not open is an error, whatever its shape.** Under
@@ -222,7 +222,7 @@ plaintext in `data.db`. The exception is bounded:
   error (`crates/memry-core/src/domain/agent_records.rs:56-76`). A merge
   refuses the remote before the gate, so the pull records it corrupt and the
   local record stays as it is
-  (`crates/memry-core/src/domain/agent_conversation/merge.rs:69-70`,
+  (`crates/memry-core/src/domain/agent_conversation/merge.rs:73-74`,
   `:137-164`). A push holds the row in the outbox with a backoff, never sends
   it sealed and never retires it, as it does with no key installed
   (`crates/memry-core/src/sync/push.rs:312-324`, `:453-458`). Electron
@@ -271,7 +271,7 @@ the pull ledgers it as above
 `crates/memry-core/src/domain/canvas/merge.rs:76-78`,
 `crates/memry-core/src/domain/vault_locks/merge.rs:65-67`,
 `crates/memry-core/src/domain/home_page/merge.rs:63-69`,
-`crates/memry-core/src/domain/agent_conversation/merge.rs:66-68`,
+`crates/memry-core/src/domain/agent_conversation/merge.rs:70-72`,
 `crates/memry-core/src/domain/agent_message/merge.rs:55-57`,
 `crates/memry-core/src/sync/apply.rs:246`). Electron records the same item in
 its schema-invalid ledger
@@ -1183,6 +1183,20 @@ edit look like a divergence.
 
 `vaultId` is the account vault's uuid, the value of `X-Memry-Vault-Id`
 (chapter 05 §5.2). Desktop skips a create without it and lists canvases by it.
+Rust core only, the listing rule: a vault bound to a server vault lists and
+opens every live canvas, canvas folder (§13.7.23) and agent conversation
+(§13.7.26) whatever `vaultId` it states, and stores a pulled record's
+`vaultId` as the merge rules below choose it, so a pull never queues a record
+to change its `vaultId`. The server serves a device only the items of the
+`X-Memry-Vault-Id` vault (`sync_items` is keyed by `user_id, vault_id`,
+`apps/sync-server/migrations/0001_baseline.sql:182`), and a core binds one
+`data.db` to one server vault, so every pulled record is that vault's, even
+one that states an Electron vault's own uuid or a Rust device's local id from
+before its restamp. An account's other vaults sync into other databases. An
+unbound vault lists the records that state its local id or no id
+(`crates/memry-core/src/sync/server_vault.rs:94-105`,
+`crates/memry-core/src/domain/canvas/store.rs:124-145`,
+`crates/memry-core/src/domain/agent_conversation/mod.rs:257-288`; #5812).
 `ownerNoteId` names the note whose whiteboard block embeds the canvas.
 
 **Normative**, the apply rule (`canvas-handler.ts:148-345`, `:479-571`). It is the
@@ -1209,15 +1223,19 @@ refetches it once another core build runs (§13.2).
 3. on a **concurrent** clock, when the local row is live and its scene text
    differs from the remote's, the client first writes the local scene as a new
    canvas: a fresh nanoid, title `<local title, or "Canvas"> (conflict copy)`,
-   the local `vaultId`, `folder` and `ownerNoteId`, `icon: null`, a clock of
-   `{<this device>: 1}`, queued for push. The remote then applies under the
-   merged clock. Identical scene text merges the clocks and creates nothing;
+   the `vaultId` rule 4 keeps (the local one, or on a Rust core the bound
+   server vault id a remote states, so a copy made as a restamp arrives is not
+   hidden on fresh devices, #5784; desktop #5788), the local `folder` and
+   `ownerNoteId`, `icon: null`, a clock of `{<this device>: 1}`, queued for
+   push (`crates/memry-core/src/domain/canvas/merge.rs:106`, `:180`). The
+   remote then applies under the merged clock. Identical scene text merges the
+   clocks and creates nothing;
 4. `title`, `folder`, `icon` and `ownerNoteId` absent from the remote keep the
    local value, and `null` clears it. `vaultId` keeps the local value. Rust
    core only: a remote that states the bound server vault id (§13.7.21 rule 6)
    sets it, so a peer that stored a record before its writer's restamp pushes
    the server id on, not the old local one (#5669,
-   `crates/memry-core/src/sync/server_vault.rs:99-116`);
+   `crates/memry-core/src/sync/server_vault.rs:108-136`);
 5. the copy and the overwrite are one transaction;
 6. Rust core only: a restamp contests only `vaultId`. A client that rewrites
    `vaultId` to the bound server vault id (#5535) changes nothing else under
@@ -1308,6 +1326,8 @@ wire. `canvas_folder` is desktop only: the iOS declaration leaves it out
 (§13.1), and `payload-schemas.json` lists it under `meta.desktopOnlyTypes`. The
 record carries only what a directory cannot: the icon, and the existence of an
 empty folder. Which folder a canvas is in lives on the canvas (§13.7.21).
+A Rust core lists every live folder whatever `vaultId` it states, the listing
+rule of §13.7.21 (`crates/memry-core/src/domain/canvas_folder/mod.rs:212-225`).
 
 The id is derived from the path: `cvf_` and the path, NFC-normalised and
 lowercased (`canvasFolderSyncId`,
@@ -1518,17 +1538,28 @@ It is the field-level merge (§13.9) over `title`, `backend`, `backendModel`,
 1. a remote the schema refuses (a value of the wrong type, or `null` in a key
    the schema does not mark `.nullable()`) is refused before the clock is
    compared, nothing is written, and the pull ledgers it (§13.2.3)
-   (`crates/memry-core/src/domain/agent_conversation/merge.rs:65-68`,
+   (`crates/memry-core/src/domain/agent_conversation/merge.rs:69-72`,
    `crates/memry-core/src/domain/agent_conversation/mod.rs:42-55`);
 2. no local record, or a remote clock that dominates the local one, stores the
    remote as sent (`:113-133`, `:178-186`); a local clock that dominates skips
-   the remote (`:136-137`). An equal clock over the same payload skips; the
-   Rust core compares the local payload with its title opened, the payload it
-   would push (`crates/memry-core/src/domain/agent_conversation/merge.rs:69-73`);
+   the remote (`:136-137`). Rust core only: over a stored conversation a
+   dominating remote keeps the stored `vaultId` unless it states the bound
+   server vault id, as rule 3 says, and queues nothing: the listing rule of
+   §13.7.21 lists the conversation whatever id the server copy states, and an
+   automatic push of the kept id would be concurrent with the writer's next
+   edit (#5812, `crates/memry-core/src/domain/agent_conversation/merge.rs:81-84`).
+   An equal clock over
+   the same payload skips; the Rust core compares the local payload with its
+   title opened, the payload it would push (`crates/memry-core/src/domain/agent_conversation/merge.rs:73-77`);
 3. concurrent clocks merge field by field under `fieldClocks` (chapter 06
    §6.3). A local record without `fieldClocks` seeds every field from its
    document clock (`:140-142`). `updatedAt` is the later of the two, and
-   `deletedAt` is the remote's, else the local one (`:167-168`);
+   `deletedAt` is the remote's, else the local one (`:167-168`). `vaultId` is
+   no merged field and keeps the local value; Rust core only: a remote that
+   states the bound server vault id sets it, as §13.7.21 rule 4 says, so a
+   peer that stored a conversation before its writer's restamp pushes the
+   server id on, not the old local one (#5784,
+   `crates/memry-core/src/domain/agent_conversation/merge.rs:131-133`);
 4. without a vault key Electron skips the record (`:92-101`), so the cursor
    moves past it and that device never has it. The Rust core stores it pending
    (§13.2.3) instead; on a concurrent merge a sealed local title that wins
@@ -1537,11 +1568,11 @@ It is the field-level merge (§13.9) over `title`, `backend`, `backendModel`,
    (§13.2.3).
 
 The Rust core follows the same rule
-(`crates/memry-core/src/domain/agent_conversation/merge.rs:56-135`) with one
+(`crates/memry-core/src/domain/agent_conversation/merge.rs:60-142`) with one
 chosen difference: on a concurrent merge in which no field value changed,
 Electron writes nothing (`:171`) and keeps its old clock, while the Rust core
 stores the merged clock, as it does for `task` and `project`
-(`crates/memry-core/src/domain/agent_conversation/merge.rs:121-131`). Nothing
+(`crates/memry-core/src/domain/agent_conversation/merge.rs:125-138`). Nothing
 is pushed either way.
 
 A delete follows chapter 05 §5.8: the conversation survives a tombstone only

@@ -36,7 +36,7 @@ fn new_canvas(conn: &Connection, id: &str) -> Result<(), StorageError> {
     canvas::create(conn, &new, LOCAL, DEVICE, NOW).map(drop)
 }
 
-fn conversation(conn: &Connection) -> Result<String, StorageError> {
+pub(super) fn conversation(conn: &Connection) -> Result<String, StorageError> {
     let key = AtRestKey::default();
     key.set(Some(Zeroizing::new([7; 32])));
     let new = NewConversation {
@@ -53,7 +53,7 @@ fn conversation(conn: &Connection) -> Result<String, StorageError> {
 }
 
 /// Stands in for a push: the server took every queued row.
-fn pushed(conn: &Connection) -> Result<(), StorageError> {
+pub(super) fn pushed(conn: &Connection) -> Result<(), StorageError> {
     conn.execute("DELETE FROM outbox", [])
         .map(drop)
         .map_err(|error| StorageError::Failed {
@@ -331,10 +331,20 @@ fn a_restamp_over_an_edit_this_side_never_saw_keeps_both_drawings() {
     let (db, _dir) = open("restamp-unseen-base");
     db.call_blocking(move |conn| {
         pull(conn, vec![remote("canvas", "c", &before)])?;
+        bind(conn, SERVER)?;
         canvas::update(conn, "c", &scene_edit(PEER_INK), DEVICE, NOW + 2)?;
         pull(conn, vec![remote("canvas", "c", &restamped)])?;
         assert_eq!(canvas_count(conn), 2, "a conflict copy");
         assert_eq!(payload(conn, "canvas", "c")["scene"], restamped["scene"]);
+        // #5784: the copy holds the losing ink in the bound vault, or fresh devices hide it.
+        let copy: String = conn
+            .query_row(
+                "SELECT item_id FROM sync_items WHERE item_type = 'canvas' AND item_id != 'c'",
+                [],
+                |row| row.get(0),
+            )
+            .expect("the copy");
+        assert_eq!(payload(conn, "canvas", &copy)["vaultId"], json!(SERVER));
         Ok(())
     })
     .expect("pull");

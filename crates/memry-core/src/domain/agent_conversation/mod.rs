@@ -255,8 +255,8 @@ pub fn get(
 }
 
 /// Every live conversation of the vault whose local id is `vault_id`, most
-/// recently updated first (`listByVault`): those stating its [`RecordVault`]
-/// stamp or its local id.
+/// recently updated first (`listByVault`): every one once the vault is bound
+/// ([`RecordVault::lists_every_record`]), else those stating its local id.
 pub fn list(
     conn: &Connection,
     key: &AtRestKey,
@@ -267,12 +267,15 @@ pub fn list(
         let mut statement = conn
             .prepare_cached(
                 "SELECT id FROM agent_conversations
-                 WHERE vault_id IN (?1, ?2) AND deleted_at IS NULL
+                 WHERE (?3 OR vault_id IN (?1, ?2)) AND deleted_at IS NULL
                  ORDER BY updated_at DESC, id",
             )
             .map_err(failed)?;
         statement
-            .query_map(params![vault.stamp(), vault.local()], |row| row.get(0))
+            .query_map(
+                params![vault.stamp(), vault.local(), vault.lists_every_record()],
+                |row| row.get(0),
+            )
             .map_err(failed)?
             .collect::<Result<_, _>>()
             .map_err(failed)?
