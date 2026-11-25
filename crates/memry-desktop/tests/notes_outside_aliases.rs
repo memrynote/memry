@@ -365,14 +365,29 @@ fn left_as(e: &mut Env, text: &str) {
 
 const OLDER: &str = "2001-01-01T00:00:00.000Z";
 
-/// VERIFY-5808R3 finding 1: an older record never rewrites a newer file that has no `aliases`
-/// key; its comment and tags stay, and the record keeps its names.
+/// VERIFY-5808R3 finding 1 and VERIFY-5808R4 finding 1: an older record keeps its names over a
+/// newer file with no `aliases` key and gives the file that key alone, its comment, tags and
+/// body as they were; body-only outside edits then keep the names, and push no alias change.
 #[test]
-fn an_older_record_leaves_a_newer_file_with_no_aliases_as_it_is() {
+fn an_older_record_gives_a_newer_file_with_no_aliases_its_names() {
     let text = "---\n# my note\ntags: ['mine']\n---\nBody\n";
     let (mut e, _store) = matched(text, &["Kept"], OLDER);
-    left_as(&mut e, text);
     assert_eq!(record_aliases(&e, "note", "pulled"), ["Kept"]);
+    file_holds(&mut e, "Plan.md", &["Kept"]);
+    assert_eq!(
+        e.read("Plan.md"),
+        "---\n# my note\ntags: ['mine']\naliases:\n  - Kept\n---\nBody\n"
+    );
+
+    let text = body_edited(&e, "Plan.md", "Body edited outside\n");
+    edited_outside(&mut e, "pulled", "Plan.md", &text);
+    assert_eq!(record_aliases(&e, "note", "pulled"), ["Kept"]);
+    // The first outside edit gives the record the file's tags; the next pushes nothing.
+    clear_outbox(&e);
+    let text = body_edited(&e, "Plan.md", "Body edited again\n");
+    edited_outside(&mut e, "pulled", "Plan.md", &text);
+    assert_eq!(record_aliases(&e, "note", "pulled"), ["Kept"]);
+    assert_eq!(upserts(&e, "pulled"), 0);
 }
 
 /// VERIFY-5808R3 finding 2: an explicit `aliases: []` in a newer file is its answer.

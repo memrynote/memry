@@ -142,9 +142,17 @@ impl Pulled {
         self.map().remove(note_id)
     }
 
-    /// Gives `mark` back to the next pass: this one stopped before it took the change.
+    /// Gives `mark` back to the next pass: this one stopped before it took the change. A pull's
+    /// mark made meanwhile stays over an aliases-only one, as in [`Pulled::mark`]: its patch
+    /// writes the aliases too, and dropping it would lose the pulled frontmatter (#5316).
     pub(super) fn put_back(&self, note_id: &str, mark: Mark) {
-        self.map().insert(note_id.to_owned(), mark);
+        let mut map = self.map();
+        match map.get(note_id) {
+            Some(held) if !held.aliases_only && mark.aliases_only => {}
+            _ => {
+                map.insert(note_id.to_owned(), mark);
+            }
+        }
     }
 
     fn map(&self) -> MutexGuard<'_, HashMap<String, Mark>> {

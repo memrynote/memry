@@ -36,11 +36,11 @@ fn of_file(file: &NoteFile) -> Option<Option<Vec<String>>> {
 /// frontmatter does not read, or that has no `aliases` key, gives nothing. `matched` is the
 /// file's modification time when it matched a record (`Adopted::Existing`) or a large file's
 /// note reads it as a note's for the first time ([`super::large::left`]): a record modified
-/// strictly after it keeps its names ([`NotesWriter::matched_file_aliases`]).
+/// strictly after it keeps its names, and so does a record with names whose file has no
+/// `aliases` key, whatever the times ([`NotesWriter::matched_file_aliases`]).
 ///
-/// `true` when the record is strictly newer than the file and kept its names: the file owes
-/// them, and the caller has the write-back write its `aliases` key alone
-/// ([`Adoption::ExistingNewer`]).
+/// `true` when the record kept its names and the file owes them: the caller has the write-back
+/// write its `aliases` key alone ([`Adoption::ExistingNewer`]).
 pub(super) fn found(writer: &NotesWriter, id: &str, file: &NoteFile, matched: Option<i64>) -> bool {
     let Some(declared) = of_file(file) else {
         return false;
