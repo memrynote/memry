@@ -47,7 +47,10 @@ import { recoverDirtyItems } from './dirty-recovery'
  * first sync is never written to its file. The journal clock era dates this
  * vault's upgrade (#5659): re-dated at the next sign-in, it would read an edit
  * made before the sign-out as an older build's. An owed journal day merge
- * holds a displaced holder's tags and text until its drain (#5699).
+ * holds a displaced holder's tags and text until its drain (#5699). The CRDT
+ * store epoch and its debt flag describe the kept store (#2299), and the case
+ * twin holds, cover markers and upload refusals describe this device's files
+ * (#5754).
  */
 describe('sign-out and the device-local sync state', () => {
   let dataDb: TestDatabaseResult
@@ -62,36 +65,52 @@ describe('sign-out and the device-local sync state', () => {
     dataDb.close()
   })
 
-  it('keeps the pack settle markers, the journal clock era and owed day merges, and wipes the rest', async () => {
-    const now = new Date()
-    dataDb.db
-      .insert(syncState)
-      .values([
-        { key: 'lastCursor', value: '500', updatedAt: now },
-        { key: 'packsAppliedThroughCursor', value: '400', updatedAt: now },
-        { key: 'packSeedSettlePending', value: '1', updatedAt: now },
-        { key: 'packSeeded:livenote0001', value: '1', updatedAt: now },
-        { key: 'packSeeded:j2026-09-26', value: '1', updatedAt: now },
-        { key: 'journalClockEra', value: '2026-01-01T12:00:00.000Z', updatedAt: now },
-        { key: 'journalDayMerge:jforeign', value: '{}', updatedAt: now }
-      ])
-      .run()
+  // One row per key: [key, kept]. A kept key describes this device's files or
+  // stores; a wiped one describes the server session.
+  const rows: readonly (readonly [string, boolean])[] = [
+    ['packSeedSettlePending', true],
+    ['packSeeded:livenote0001', true],
+    ['packSeeded:j2026-09-26', true],
+    ['journalClockEra', true],
+    ['journalDayMerge:jforeign', true],
+    ['crdtStoreEpoch', true],
+    ['crdtUnmergedDebt', true],
+    ['crdtBodyDebtMirrorAt', true],
+    ['caseTwinForeignBytes', true],
+    ['caseTwinForeignBytes:twin-a', true],
+    ['caseTwinHeldChanges', true],
+    ['caseTwinLandedHashes', true],
+    ['caseTwinKeptCopies', true],
+    ['note-cover:note-1', true],
+    ['attachmentUploadRefusals', true],
+    ['lastCursor', false],
+    ['lastSyncAt', false],
+    ['syncPaused', false],
+    ['initialSeedDone', false],
+    ['bootstrapPending', false],
+    ['quarantinedItems', false],
+    ['lastManifestCheckAt', false],
+    ['packsAppliedThroughCursor', false],
+    ['recordPacksApplied', false],
+    ['recordPacksUnresolved', false],
+    ['cursorSkipRepair', false],
+    ['schemaInvalidItems', false],
+    ['noteBodyLegacySweep', false],
+    ['noteBodyFeedCursor', false],
+    ['binaryNoteTextBlobs', false],
+    ['binarySyncedHash:note-1', false],
+    ['sync.reviveHeal:note-1', false],
+    ['sync.reviveHealTried:note-1', false],
+    ['sync.binaryNoteRecordHeal:note-1:[]', false]
+  ]
+
+  it.each(rows)('sign-out keeps %s: %s', async (key, kept) => {
+    dataDb.db.insert(syncState).values({ key, value: '1', updatedAt: new Date() }).run()
 
     await teardownSession('logout')
 
-    const keys = dataDb.db
-      .select({ key: syncState.key })
-      .from(syncState)
-      .all()
-      .map((row) => row.key)
-      .toSorted()
-    expect(keys).toEqual([
-      'journalClockEra',
-      'journalDayMerge:jforeign',
-      'packSeedSettlePending',
-      'packSeeded:j2026-09-26',
-      'packSeeded:livenote0001'
-    ])
+    const left = dataDb.db.select({ key: syncState.key }).from(syncState).all()
+    expect(left).toEqual(kept ? [{ key }] : [])
   })
 
   it('re-clocks at the next sign-in a journal edit made in the era before the sign-out', async () => {

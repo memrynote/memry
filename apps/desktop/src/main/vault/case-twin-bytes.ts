@@ -35,6 +35,7 @@ import { syncState } from '@memry/db-schema/schema/sync-state'
 import { foldNotePath } from '@memry/storage-data'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { SYNC_STATE_KEYS } from '../sync/engine/sync-context'
+import { CASE_TWIN_MARK_PREFIX } from './case-twin-mark-key'
 import { createLogger } from '../lib/logger'
 
 const log = createLogger('CaseTwinBytes')
@@ -45,7 +46,6 @@ type Key =
   | typeof SYNC_STATE_KEYS.CASE_TWIN_LANDED_HASHES
   | typeof SYNC_STATE_KEYS.CASE_TWIN_KEPT_COPIES
 
-const MARK_PREFIX = `${SYNC_STATE_KEYS.CASE_TWIN_FOREIGN_BYTES}:`
 /** The first key after every mark row: `;` follows `:`. */
 const MARK_END = `${SYNC_STATE_KEYS.CASE_TWIN_FOREIGN_BYTES};`
 
@@ -152,7 +152,7 @@ function moveLegacyMarks(db: DrizzleDb): void {
       const mark = toMarkedFile(value)
       if (mark === undefined) continue
       db.insert(syncState)
-        .values({ key: MARK_PREFIX + noteId, value: JSON.stringify(mark), updatedAt })
+        .values({ key: CASE_TWIN_MARK_PREFIX + noteId, value: JSON.stringify(mark), updatedAt })
         .onConflictDoNothing()
         .run()
     }
@@ -182,7 +182,7 @@ export function readCaseTwinForeignBytes(db: DrizzleDb, noteId: string): MarkedF
   const row = db
     .select({ value: syncState.value })
     .from(syncState)
-    .where(eq(syncState.key, MARK_PREFIX + noteId))
+    .where(eq(syncState.key, CASE_TWIN_MARK_PREFIX + noteId))
     .get()
   return row ? toMark(noteId, row.value) : undefined
 }
@@ -193,9 +193,9 @@ export function listCaseTwinForeignBytes(db: DrizzleDb): string[] {
   return db
     .select({ key: syncState.key })
     .from(syncState)
-    .where(and(gt(syncState.key, MARK_PREFIX), lt(syncState.key, MARK_END)))
+    .where(and(gt(syncState.key, CASE_TWIN_MARK_PREFIX), lt(syncState.key, MARK_END)))
     .all()
-    .map((row) => row.key.slice(MARK_PREFIX.length))
+    .map((row) => row.key.slice(CASE_TWIN_MARK_PREFIX.length))
 }
 
 function writeMark(db: DrizzleDb, noteId: string, mark: MarkedFile): void {
@@ -203,7 +203,7 @@ function writeMark(db: DrizzleDb, noteId: string, mark: MarkedFile): void {
   const value = JSON.stringify(mark)
   const updatedAt = new Date()
   db.insert(syncState)
-    .values({ key: MARK_PREFIX + noteId, value, updatedAt })
+    .values({ key: CASE_TWIN_MARK_PREFIX + noteId, value, updatedAt })
     .onConflictDoUpdate({ target: syncState.key, set: { value, updatedAt } })
     .run()
 }
@@ -347,6 +347,6 @@ export function holdsCaseTwinForeignBytes(db: DrizzleDb, noteId: string): boolea
 export function clearCaseTwinForeignBytes(db: DrizzleDb, noteId: string): void {
   moveLegacyMarks(db)
   db.delete(syncState)
-    .where(eq(syncState.key, MARK_PREFIX + noteId))
+    .where(eq(syncState.key, CASE_TWIN_MARK_PREFIX + noteId))
     .run()
 }

@@ -75,7 +75,8 @@ vi.mock('../sync/crdt-provider', () => ({
     readOnlyStore: () => ({ docNames: async () => [], updates: async () => [] }),
     isNoteLocalOnly: () => false,
     isAwaitingMerge: () => false,
-    purge: vi.fn(async () => {})
+    purge: vi.fn(async () => {}),
+    initPersistence: vi.fn(async () => {})
   }))
 }))
 vi.mock('../sync/attachment-backfill', () => ({ queueEmbeddedVaultFiles: vi.fn() }))
@@ -86,8 +87,27 @@ vi.mock('../inbox/suggestions', () => ({ updateNoteEmbedding: vi.fn() }))
 vi.mock('../telemetry/diagnostics', () => ({ trackMainError: vi.fn(), trackMainLog: vi.fn() }))
 vi.mock('../database/client', async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
+  isDatabaseInitialized: () => true,
   getDatabase: vi.fn(),
   getIndexDatabase: vi.fn()
+}))
+// Sign-out's session side: keychain, runtime, tokens and the calendar runner.
+vi.mock('../crypto', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  deleteKey: vi.fn(async () => {})
+}))
+vi.mock('../sync/runtime', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  stopSyncRuntime: vi.fn(async () => {})
+}))
+vi.mock('../sync/token-manager', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  resetTokenManagerState: vi.fn(),
+  getValidAccessToken: vi.fn(async () => null)
+}))
+vi.mock('../calendar/google/google-sync-runner', () => ({
+  startGoogleCalendarSyncRunner: vi.fn(async () => {}),
+  stopGoogleCalendarSyncRunner: vi.fn()
 }))
 
 import { getDatabase, getIndexDatabase } from '../database'
@@ -124,6 +144,8 @@ import {
   resetAttachmentDownloadSession
 } from '@memry/sync-client/attachment-download-state'
 import { attachmentDownloadFailures, syncState } from '@memry/db-schema/data-schema'
+import { teardownSession } from '../sync/session-teardown'
+import { bindVaultForSync } from '../sync/vault-account-binding'
 import { eq } from 'drizzle-orm'
 
 function fileSystemIgnoresCase(): boolean {
@@ -398,6 +420,25 @@ describe.runIf(fileSystemIgnoresCase())('binary case twins sharing one file', ()
       expect(twinPushes()).toEqual({ updates: [], saved: [] })
     }, 30_000)
   }
+
+  // The hold describes this device's file, not the session: a sign-out keeps
+  // it, so after the next sign-in the file still waits for its own bytes (#5754).
+  it("after a peer's move, an edit to the shared file is not pushed across a sign-out and sign-in", async () => {
+    twins('SUPERNOTES')
+    seed('control', 'SUPERNOTES/c.png', 'c-bytes')
+    expect(applyPeerUpdate({ folderPath: 'Other' })).toBe('applied')
+
+    await teardownSession('logout')
+    bindVaultForSync(asClientDb(data.db), 'user-1')
+    await startWatcher(vault.path)
+
+    await editUntilPushed(
+      { 'SUPERNOTES/p.png': 'edited', 'SUPERNOTES/c.png': 'edited' },
+      pushedNote('control')
+    )
+
+    expect(twinPushes()).toEqual({ updates: [], saved: [] })
+  }, 30_000)
 
   it("an edit to a split twin's file whose index row lags is not pushed", async () => {
     twins('Supernotes')

@@ -1144,8 +1144,8 @@ across devices:
   through, offers no empty file and no file whose size and mtime still match
   a refusal. A write changes them, and the
   next pass offers the file again. A refusal whose file changed or is gone is
-  let go at the next refusal. Sign-out clears `sync_state`, so after the next
-  sign-in each refused file is offered and refused once more. An empty file
+  let go at the next refusal. The refusals describe this device's files, so
+  sign-out keeps them (`device-local-state.ts`). An empty file
   drops silently. A media file that holds text is reported: a vault-activity
   failure and an upload-failed toast that says why, once per refusal rather
   than on every re-drive. The drain's summary log counts dropped rows by
