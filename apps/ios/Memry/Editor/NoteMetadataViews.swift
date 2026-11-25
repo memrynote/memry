@@ -513,17 +513,21 @@ struct NoteTitleEditor: View {
                 // while an input method composes: Control Center resigns the
                 // app too, and the draft holds the half-made text. Going to
                 // the background ends the composition as it stands, as a
-                // Return in the body does, and saves it.
-                .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
-                    host.confirmed = nil
-                    if titleTextView?.markedTextRange == nil { save() }
-                }
-                .onReceive(NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in
-                    if let view = titleTextView, view.markedTextRange != nil {
-                        view.unmarkText()
-                        typed(view.text)
+                // Return in the body does, and saves it. The title's own
+                // window leaving counts too: an iPad window can go to the
+                // background while others stay (#5820).
+                .onReceive(SceneLeaving.publisher { host.window?.windowScene }) { leave in
+                    switch leave {
+                    case .resign:
+                        host.confirmed = nil
+                        if titleTextView?.markedTextRange == nil { save() }
+                    case .background:
+                        if let view = titleTextView, view.markedTextRange != nil {
+                            view.unmarkText()
+                            typed(view.text)
+                        }
+                        save()
                     }
-                    save()
                 }
                 .background(TitleWindowReader(host: host))
                 // The notes list moves no focus to the note's row while the
