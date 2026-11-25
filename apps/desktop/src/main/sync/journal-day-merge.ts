@@ -235,18 +235,21 @@ function unpushedHolderTags(
  * edited since its sync holds an edit that neither its clock nor the queue
  * may show: one made outside the app is never ticked, and is queued only by
  * the next start's dirty sweep (REVIEW-5691). It has no clock to weigh, so
- * every tag counts.
+ * every tag counts. Unknown `tags` (no readable day file) weigh nothing and
+ * leave the kept ones as they are: read as none, they would drop every
+ * unpushed tag the owed merge holds.
  */
 export function holderTags(
   db: DrizzleDb,
   holderId: string,
-  tags: string[],
+  tags: string[] | undefined,
   row: Pick<NoteMetadata, 'clock' | 'syncedAt' | 'modifiedAt'> | undefined,
   tombstone: VectorClock | null = readTombstoneClock(db, 'journal', holderId)
 ): Pick<OwedJournalDayMerge, 'tags' | 'holderClock' | 'unpushedTags'> {
   // The dirty sweep's test (`recoverDirtyJournals`).
   const edited = !row?.syncedAt || row.modifiedAt > row.syncedAt
   const holderClock = edited ? null : (row.clock ?? null)
+  if (!tags) return { holderClock }
   return {
     tags,
     holderClock,
@@ -457,7 +460,7 @@ function dayLacksTag(db: DrizzleDb, date: string, tags: string[]): boolean {
   if (tags.length === 0) return false
   const held =
     getNoteMetadataByPath(db, getJournalRelativePath(date))?.id === generateJournalId(date)
-      ? readDayTags(date)
+      ? (readDayTags(date) ?? [])
       : []
   const keys = new Set(held.map(foldTag))
   return tags.some((tag) => !keys.has(foldTag(tag)))
@@ -591,8 +594,11 @@ export function readDayBody(date: string): string | null {
   return readDay(date)?.content ?? null
 }
 
-export function readDayTags(date: string): string[] {
-  const tags: unknown = readDay(date)?.frontmatter.tags
+/** Undefined when the day file is missing or will not read: its tags are unknown, not none. */
+export function readDayTags(date: string): string[] | undefined {
+  const day = readDay(date)
+  if (!day) return undefined
+  const tags: unknown = day.frontmatter.tags
   return Array.isArray(tags) ? tags.map(String) : []
 }
 

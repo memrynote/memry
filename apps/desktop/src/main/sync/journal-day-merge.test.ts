@@ -787,6 +787,30 @@ describe('runJournalDayMerges', () => {
     expect(listOwedJournalDayMerges(ctx.db)).toEqual([])
   })
 
+  // The day file is gone when the drain runs, so `ensureDay` owes the holder
+  // again with its tags unknown, not none: the unpushed tag kept when the
+  // tombstone was held is still merged (#5694).
+  it("keeps a held day's unpushed tag when its file is gone at the drain", async () => {
+    foreignRow({ me: 1 }, { body: '---\ntags:\n  - a\n  - b\n---\nheld\n' })
+    getRemoteSyncAdapter('journal')?.markPushSynced?.(ctx.db, FOREIGN)
+    await updateJournalEntry({ date: DATE, tags: ['a', 'b', 'c'] })
+    new ItemApplier(ctx.db, vi.fn()).apply({
+      itemId: FOREIGN,
+      type: 'journal',
+      operation: 'delete',
+      content: new TextEncoder().encode(JSON.stringify({ clock: { me: 1, b: 1 } })),
+      clock: { me: 1, b: 1 },
+      deletedAt: Date.now()
+    })
+    fs.rmSync(path.join(vaultPath, DAY_PATH))
+
+    await drain()
+
+    expect(listOwedJournalDayMerges(ctx.db)).toEqual([])
+    expect(rows()).toEqual([{ id: DAY, path: DAY_PATH }])
+    expect(parseJournalEntry(dayFile(), DATE).frontmatter.tags).toContain('c')
+  })
+
   // OL-M47: a legacy foreign row's pictures stay the day's after the merge.
   describe("a foreign row's attachments", () => {
     const PHOTO = `attachments/${FOREIGN}/photo.png`

@@ -21,7 +21,9 @@ mod owed;
 
 pub use owed::owed;
 use owed::{drop_synced_tags, owe_holder, owed_now, read_owed};
-pub(crate) use owed::{hold_for_merge, mark_deleted, note_acked, note_local_edit, plan_inbound};
+pub(crate) use owed::{
+    held_live, hold_for_merge, mark_deleted, note_acked, note_local_edit, plan_inbound,
+};
 
 use rusqlite::{Connection, params};
 use serde_json::json;
@@ -145,19 +147,11 @@ async fn drain_one(
             .map_err(|error| DrainError::Step(error.to_string()))?
             .merged();
     let canonical = canonical_journal_id(&merge.date);
-    let (foreign, day, date) = (
-        merge.foreign_id.clone(),
-        canonical.clone(),
-        merge.date.clone(),
-    );
+    let (day, date) = (canonical.clone(), merge.date.clone());
     let probe = merge.clone();
     let (has_body, day_deleted) = db
         .call(move |conn| {
-            let has_body = build_text(&probe).is_some()
-                || carries_tags(conn, &probe, &day)
-                || !update_log::load_plan(conn, &foreign)
-                    .map_err(crdt_failed)?
-                    .is_empty();
+            let has_body = holds_body(conn, &probe, &day)?;
             let day_deleted = journal::live_entry(conn, &date)?.as_deref() != Some(day.as_str())
                 && sync_items::load(conn, ITEM_TYPE, &day)?
                     .is_some_and(|row| row.deleted_at.is_some());
@@ -175,14 +169,24 @@ async fn drain_one(
         JournalDayMergeAction::Wait => return Ok(false),
         // Neither tombstones `F` (§1.9.1): a device that holds its text may
         // not have pushed it.
+        // `F` is read again in the forget's transaction: the user may have
+        // typed or tagged into it during the body fetch, and the next drain
+        // merges that instead (desktop: `holdsTextNow`).
         JournalDayMergeAction::Forget => {
-            db.call(move |conn| {
-                let tx = nested_tx::begin(conn).map_err(failed)?;
-                forget(&tx, &merge.foreign_id, now_ms())?;
-                tx.commit().map_err(failed)
-            })
-            .await?;
-            return Ok(true);
+            let forgotten = db
+                .call(move |conn| {
+                    let tx = nested_tx::begin(conn).map_err(failed)?;
+                    let merge = owed_now(&tx, merge)?;
+                    let day = canonical_journal_id(&merge.date);
+                    let forgotten = !holds_body(&tx, &merge, &day)?;
+                    if forgotten {
+                        forget(&tx, &merge.foreign_id, now_ms())?;
+                    }
+                    tx.commit().map_err(failed)?;
+                    Ok(forgotten)
+                })
+                .await?;
+            return Ok(forgotten);
         }
         // A deleted day is not re-created (#2986). `F` stays live with its
         // row and body: only the owed merge goes.
@@ -229,8 +233,9 @@ fn ensure_canonical(
     let date = merge.date.as_str();
     let canonical = canonical_journal_id(date);
     let tx = nested_tx::begin(conn).map_err(failed)?;
-    // `F`'s soft-deleted entry still holds the day (`owed_now`); left in
-    // place, `open_day_in` would revive it.
+    // Defense in depth (#5763): `held_live` keeps a held `F` live, but a
+    // soft-deleted `F` an older build left still holds the day (`owed_now`);
+    // left in place, `open_day_in` would revive it.
     let holder = match journal::entry_for(&tx, date)? {
         Some((id, _)) if id == merge.foreign_id => Some(id),
         _ => journal::live_entry(&tx, date)?,
@@ -335,13 +340,26 @@ fn drop_owed(conn: &Connection, foreign: &str) -> Result<(), StorageError> {
     Ok(())
 }
 
-/// The foreign id's projection, local body, body debt and owed-merge row.
+/// The foreign id's projection, local body, body debt, queued record edits
+/// and owed-merge row. An edit of a held `F` queued an upsert; its content is
+/// the day's now, and sent it would re-create `F` over its tombstone (#5763).
 fn forget(tx: &Connection, foreign: &str, now_ms: i64) -> Result<(), StorageError> {
     projectors::delete(tx, ITEM_TYPE, foreign, now_ms)?;
+    outbox::drop_upserts(tx, ITEM_TYPE, foreign)?;
     update_log::purge_in(tx, foreign).map_err(crdt_failed)?;
     body_debt::settle(tx, foreign)?;
     drop_synced_tags(tx, foreign)?;
     drop_owed(tx, foreign)
+}
+
+/// Whether `F` has anything to fold into `j<D>`: record text, a tag the day
+/// lacks, or a local Yjs body.
+fn holds_body(conn: &Connection, merge: &OwedMerge, canonical: &str) -> Result<bool, StorageError> {
+    Ok(build_text(merge).is_some()
+        || carries_tags(conn, merge, canonical)
+        || !update_log::load_plan(conn, &merge.foreign_id)
+            .map_err(crdt_failed)?
+            .is_empty())
 }
 
 /// The tags `settle` adds to `j<D>` (§1.9.1 step 6). A deleted `F`'s tags its

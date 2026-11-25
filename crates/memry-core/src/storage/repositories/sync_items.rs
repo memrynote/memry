@@ -240,6 +240,11 @@ pub fn apply_local_edit_in(
         });
     };
     journal_day_merge::note_local_edit(conn, item_type, item_id, &stored)?;
+    let deleted_at = if journal_day_merge::held_live(conn, item_type, item_id)? {
+        None
+    } else {
+        row.deleted_at
+    };
 
     let merged = StoredPayload::parse(&stored)
         .map_err(refuse(item_type, item_id))?
@@ -277,7 +282,7 @@ pub fn apply_local_edit_in(
         ItemContext {
             item_id,
             synced_at: now_ms,
-            deleted_at: row.deleted_at,
+            deleted_at,
         },
         &view,
     )?;

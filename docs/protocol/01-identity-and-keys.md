@@ -434,9 +434,11 @@ pass settles them. The decision is a pure function of five facts
    between: if an editor window has `F` open, or the day file `F` holds or
    `F`'s open doc gained text since the decision, `F` stays owed and the next
    drain merges it (#3008, #3019;
-   `apps/desktop/src/main/sync/journal-day-merge.ts:417`). An open editor
+   `apps/desktop/src/main/sync/journal-day-merge.ts:545`). An open editor
    counts because main may not have applied the edits it sent yet. The core
-   has no open editor.
+   has no open editor: it reads `F` again in the transaction that forgets it,
+   and `F` stays owed when it gained text or a tag the day lacks
+   (`crates/memry-core/src/sync/journal_day_merge/mod.rs:175`).
 3. If `j<D>` has no live row and a recorded tombstone here, the day is not
    re-created (#2986). `F` is dropped: only the owed merge goes. `F` is not
    tombstoned, and its row and local doc stay
@@ -515,16 +517,25 @@ pass settles them. The decision is a pure function of five facts
    tags when it runs, never as the merge was owed (#5694). The core owes a
    holder `F` again from its stored record before it plans the step, and
    `settle` takes the owed merge read back in the transaction that removes
-   `F`. An edit of a held `F` projects the tombstone's `deleted_at` onto its
-   entry, so the drain treats `F`'s entry as the holder even soft-deleted;
-   `open_day_in` would revive it otherwise
-   (`crates/memry-core/src/sync/journal_day_merge/owed.rs:390`,
-   `crates/memry-core/src/sync/journal_day_merge/mod.rs:223`). A sighting
-   keeps only the unpushed tags the holder still holds. Desktop reads the
-   owed merge back after `ensureDay` owes the holder again from its day file
-   (`apps/desktop/src/main/sync/journal-day-merge.ts:119`, `:405`).
+   `F`. A held `F` stays live until then: an edit of it projects its entry
+   with no `deleted_at`, though its stored row carries the tombstone's
+   (#5763). A soft-deleted entry would make the next edit revive `F`, which
+   purges its unpushed body and queues an upsert over the tombstone. The
+   merge drops `F`'s queued upserts with its row
+   (`crates/memry-core/src/sync/journal_day_merge/owed.rs:478`,
+   `crates/memry-core/src/storage/repositories/sync_items.rs:243`,
+   `crates/memry-core/src/sync/journal_day_merge/mod.rs:348`). The drain still
+   treats a soft-deleted `F` entry, which an older build may have left, as the
+   holder (`crates/memry-core/src/sync/journal_day_merge/owed.rs:390`,
+   `crates/memry-core/src/sync/journal_day_merge/mod.rs:227`). A sighting
+   keeps only the unpushed tags the holder still holds. A sighting with no
+   readable day file keeps the unpushed tags it has: their tags are unknown,
+   not none. Desktop reads the owed merge back after `ensureDay` owes the
+   holder again from its day file
+   (`apps/desktop/src/main/sync/journal-day-merge.ts:138`, `:252`, `:533`).
    In the core, a weighing replaces the unpushed list an earlier sighting
-   kept, so that list never keeps a tag from before the weighing (`:169`).
+   kept, so that list never keeps a tag from before the weighing
+   (`crates/memry-core/src/sync/journal_day_merge/owed.rs:171`).
    When `j<D>` displaces the holder ahead of the tombstone, every tag counts
    until the tombstone arrives. A union would then keep a tag the deleting
    device saw and removed since, and bring it back (#5659). Desktop keeps no
