@@ -89,7 +89,7 @@ pub use inbox::{INBOX_RANK, INBOX_WATERMARK_KEY};
 pub use maintenance::{
     DATA_VERSION_KEY, NOTES_WATERMARK_KEY, Reindexed, STAMPS_KEY, TASKS_WATERMARK_KEY, reindex,
 };
-pub use pass::{CATCH_UP_ROUNDS, REINDEX_BATCH, ReindexPass, ReindexStep};
+pub use pass::{CATCH_UP_ROUNDS, PASS_KEY, REINDEX_BATCH, ReindexPass, ReindexStep};
 pub use snippet::SnippetSegment;
 
 /// The `fts_notes` ranking expression. Part of the contract (§A.5).

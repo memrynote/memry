@@ -6,34 +6,39 @@
 //! beside it at app open waited for all of it.
 //!
 //! **The plan.** The first step reads the watermarks, empties the tables a full
-//! rebuild owes, and lists every note, task and capture that moved, with its
-//! stamp. Each step indexes at most `batch` of them from `data.db` as it is
-//! then, and records when it read each one.
+//! rebuild owes, and lists every note, task and capture with a row stamped at
+//! or after its table's watermark. Each step indexes at most `batch` of them
+//! from `data.db` as it is then and, in the same hold, records the stamps of
+//! the rows it read for each ([`Stamps`]).
 //!
-//! **The catch-up.** A row written after the plan has a stamp at or above the
-//! plan's largest, so once the list is drained a step lists again from there.
-//! A row is indexed again when it is new to the pass, or when its stamp is not
-//! older than the moment its batch read it: an edit in that same millisecond
-//! is not taken for the version already read. A row with no stamp
-//! (`synced_at` NULL) cannot say whether it moved, so the last listing indexes
-//! it again.
+//! **The catch-up.** Once the list is drained, a step lists again from the
+//! same watermarks and indexes again every id that is new to the pass or whose
+//! stamps differ from the ones its batch read. Only the stamps are compared,
+//! never a clock: a writer may take its stamp before it takes `data.db` (a
+//! sync page does), so a row landing after a batch can carry a stamp older than
+//! that batch's read. An id with a row that has no stamp (`synced_at` NULL)
+//! cannot say whether it moved, so the last listing indexes it again.
 //!
 //! **The last step.** It is the step whose listing finds at most `batch`
 //! rows to index, or the one after [`CATCH_UP_ROUNDS`] catch-ups, and it
-//! indexes them all in one transaction together with the watermarks it chose.
-//! It holds `data.db` for at most `batch` rows plus the stamp-less ones, and,
-//! when the vault kept changing for every catch-up, for whatever the last
-//! listing found.
+//! indexes them all in one transaction together with the watermarks: the
+//! largest stamp listed. It holds `data.db` for at most `batch` rows plus the
+//! stamp-less ones, and, when the vault kept changing for every catch-up, for
+//! whatever the last listing found.
 //!
 //! **A pass that stops part way** (an error, or a dropped pass) wrote no
 //! watermark, so every row it had not finished is still owed. A full rebuild
 //! that stops part way left the version stamps unwritten, and the next pass is
 //! full again.
 //!
-//! Two passes over one `index.db` must not interleave: a full pass's plan
-//! empties what the other has indexed. The caller runs one at a time.
+//! **A pass belongs to one `index.db`.** The plan writes [`PASS_KEY`], and a
+//! step that finds another value (the file was rebuilt, or another pass
+//! planned) drops the pass and plans again. Two passes over one `index.db`
+//! must not interleave, since a full plan empties what the other indexed: the
+//! caller runs one at a time.
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use rusqlite::Connection;
 
@@ -42,11 +47,11 @@ use crate::domain::wiki_target::WikiNames;
 use crate::storage::nested_tx;
 
 use super::failed;
-use super::inbox::{INBOX_WATERMARK_KEY, inbox_candidates, index_item};
+use super::inbox::{INBOX_WATERMARK_KEY, inbox_candidates, inbox_stamps, index_item};
 use super::maintenance::{
-    DATA_VERSION_KEY, NOTES_WATERMARK_KEY, Reindexed, STAMPS_KEY, STAMPS_VERSION,
+    DATA_VERSION_KEY, NOTES_WATERMARK_KEY, Reindexed, STAMPS_KEY, STAMPS_VERSION, Stamps,
     TASKS_WATERMARK_KEY, index_note, index_task, meta_number, meta_set, note_candidates,
-    task_candidates,
+    note_stamps, task_candidates, task_stamps,
 };
 
 /// The most rows one [`ReindexPass::step`] of `Search::reindex` indexes: about
@@ -57,6 +62,12 @@ pub const REINDEX_BATCH: usize = 64;
 /// step whatever it finds, so a vault that never stops changing still ends the
 /// pass.
 pub const CATCH_UP_ROUNDS: usize = 4;
+
+/// `index_meta` key: the pass planned against this `index.db`.
+pub const PASS_KEY: &str = "reindex.pass";
+
+/// Tells apart two passes planned in one millisecond.
+static PLANNED: AtomicU64 = AtomicU64::new(0);
 
 /// What one [`ReindexPass::step`] did.
 #[derive(Debug)]
@@ -75,6 +86,8 @@ pub struct ReindexPass {
 }
 
 struct Plan {
+    /// This pass's [`PASS_KEY`].
+    token: i64,
     version: i64,
     full: bool,
     notes: Queue,
@@ -83,49 +96,76 @@ struct Plan {
     rounds: usize,
 }
 
+type List = fn(&Connection, i64) -> Result<BTreeMap<String, Stamps>, StorageError>;
+type StampsOf = fn(&Connection, i64, &str) -> Result<Stamps, StorageError>;
+
 /// One table's rows in a pass.
 struct Queue {
+    list: List,
+    stamps_of: StampsOf,
+    /// The watermark the pass planned from. Every listing starts here.
+    from: i64,
     /// The largest stamp listed yet: the watermark the last step writes.
     high: i64,
     /// Listed and not indexed yet, ascending.
     ids: Vec<String>,
-    /// When the step that last indexed each id read `data.db`.
-    read_at: HashMap<String, i64>,
+    /// The stamps each id had when a step last indexed it.
+    read: HashMap<String, Stamps>,
 }
 
 impl Queue {
-    fn new(listed: BTreeMap<String, Option<i64>>, from: i64) -> Self {
-        Self {
+    fn new(
+        data: &Connection,
+        from: i64,
+        list: List,
+        stamps_of: StampsOf,
+    ) -> Result<Self, StorageError> {
+        let listed = list(data, from)?;
+        Ok(Self {
+            list,
+            stamps_of,
+            from,
             high: high(&listed, from),
             ids: listed.into_keys().collect(),
-            read_at: HashMap::new(),
-        }
+            read: HashMap::new(),
+        })
     }
 
-    /// Lists the rows of `listed` that moved since they were read. Answers
-    /// the stamp-less ones it left out because they were read already.
-    fn relist(&mut self, listed: BTreeMap<String, Option<i64>>) -> Vec<String> {
+    /// Lists the ids whose stamps moved since they were read. Answers the
+    /// stamp-less ones it left out because their stamps did not move.
+    fn relist(&mut self, data: &Connection) -> Result<Vec<String>, StorageError> {
+        let listed = (self.list)(data, self.from)?;
         self.high = high(&listed, self.high);
         let mut unstamped = Vec::new();
-        for (id, stamp) in listed {
-            match (self.read_at.get(&id), stamp) {
-                (Some(read), Some(stamp)) if stamp < *read => {}
-                (Some(_), None) => unstamped.push(id),
+        for (id, stamps) in listed {
+            match self.read.get(&id) {
+                Some(read) if *read == stamps => {
+                    if stamps.contains(&None) {
+                        unstamped.push(id);
+                    }
+                }
                 _ => self.ids.push(id),
             }
         }
-        unstamped
+        Ok(unstamped)
     }
 
     fn take(&mut self, count: usize) -> Vec<String> {
         let rest = self.ids.split_off(count.min(self.ids.len()));
         std::mem::replace(&mut self.ids, rest)
     }
+
+    /// Records the stamps of `id`'s rows. Called in the hold that indexed it.
+    fn read(&mut self, data: &Connection, id: String) -> Result<(), StorageError> {
+        let stamps = (self.stamps_of)(data, self.from, &id)?;
+        self.read.insert(id, stamps);
+        Ok(())
+    }
 }
 
 impl ReindexPass {
     /// Runs the next batch of at most `batch` rows in one transaction of
-    /// `index`, and commits it. `now_ms` is read before `data.db` was taken.
+    /// `index`, and commits it.
     pub fn step(
         &mut self,
         data: &Connection,
@@ -134,11 +174,17 @@ impl ReindexPass {
         batch: usize,
     ) -> Result<ReindexStep, StorageError> {
         let transaction = nested_tx::begin(index).map_err(failed)?;
+        if let Some(plan) = &self.plan
+            && meta_number(&transaction, PASS_KEY)? != Some(plan.token)
+        {
+            self.plan = None;
+            self.done = Reindexed::default();
+        }
         // `last`: this step listed, in this transaction, everything it will
         // index, and indexes all of it.
         let last = match &mut self.plan {
             None => {
-                let plan = Plan::new(data, &transaction)?;
+                let plan = Plan::new(data, &transaction, now_ms)?;
                 self.done.full = plan.full;
                 let last = plan.pending() <= batch;
                 self.plan = Some(plan);
@@ -156,7 +202,7 @@ impl ReindexPass {
             let names = WikiNames::load(data)?;
             for id in &notes {
                 index_note(data, &names, &transaction, id, now_ms, &mut self.done)?;
-                plan.notes.read_at.insert(id.clone(), now_ms);
+                plan.notes.read(data, id.clone())?;
             }
             // A full plan indexes every note against the same names; one a
             // catch-up lists may be a name the others link to.
@@ -169,31 +215,23 @@ impl ReindexPass {
         room -= tasks.len().min(room);
         for id in tasks {
             index_task(data, &transaction, &id, &mut self.done)?;
-            plan.tasks.read_at.insert(id, now_ms);
+            plan.tasks.read(data, id)?;
         }
         for id in plan.inbox.take(room) {
             index_item(data, &transaction, &id, &mut self.done)?;
-            plan.inbox.read_at.insert(id, now_ms);
+            plan.inbox.read(data, id)?;
         }
 
         if last {
             meta_set(&transaction, DATA_VERSION_KEY, &plan.version.to_string())?;
             meta_set(&transaction, STAMPS_KEY, &STAMPS_VERSION.to_string())?;
-            meta_set(
-                &transaction,
-                NOTES_WATERMARK_KEY,
-                &plan.notes.high.to_string(),
-            )?;
-            meta_set(
-                &transaction,
-                TASKS_WATERMARK_KEY,
-                &plan.tasks.high.to_string(),
-            )?;
-            meta_set(
-                &transaction,
-                INBOX_WATERMARK_KEY,
-                &plan.inbox.high.to_string(),
-            )?;
+            for (key, queue) in [
+                (NOTES_WATERMARK_KEY, &plan.notes),
+                (TASKS_WATERMARK_KEY, &plan.tasks),
+                (INBOX_WATERMARK_KEY, &plan.inbox),
+            ] {
+                meta_set(&transaction, key, &queue.high.to_string())?;
+            }
         }
         transaction.commit().map_err(failed)?;
         Ok(if last {
@@ -205,7 +243,7 @@ impl ReindexPass {
 }
 
 impl Plan {
-    fn new(data: &Connection, index: &Connection) -> Result<Self, StorageError> {
+    fn new(data: &Connection, index: &Connection, now_ms: i64) -> Result<Self, StorageError> {
         let version: i64 = data
             .query_row("PRAGMA user_version", [], |row| row.get(0))
             .map_err(failed)?;
@@ -237,12 +275,16 @@ impl Plan {
         };
         let notes_from = if full { 0 } else { notes_from.unwrap_or(0) };
         let tasks_from = if full { 0 } else { tasks_from.unwrap_or(0) };
+        let planned = PLANNED.fetch_add(1, Ordering::Relaxed) % 1_000;
+        let token = now_ms.saturating_mul(1_000).saturating_add(planned as i64);
+        meta_set(index, PASS_KEY, &token.to_string())?;
         Ok(Self {
+            token,
             version,
             full,
-            notes: Queue::new(note_candidates(data, notes_from)?, notes_from),
-            tasks: Queue::new(task_candidates(data, tasks_from)?, tasks_from),
-            inbox: Queue::new(inbox_candidates(data, inbox_from)?, inbox_from),
+            notes: Queue::new(data, notes_from, note_candidates, note_stamps)?,
+            tasks: Queue::new(data, tasks_from, task_candidates, task_stamps)?,
+            inbox: Queue::new(data, inbox_from, inbox_candidates, inbox_stamps)?,
             rounds: 0,
         })
     }
@@ -255,9 +297,9 @@ impl Plan {
     /// listing, which then also lists the stamp-less rows again.
     fn catch_up(&mut self, data: &Connection, batch: usize) -> Result<bool, StorageError> {
         let unstamped = [
-            self.notes.relist(note_candidates(data, self.notes.high)?),
-            self.tasks.relist(task_candidates(data, self.tasks.high)?),
-            self.inbox.relist(inbox_candidates(data, self.inbox.high)?),
+            self.notes.relist(data)?,
+            self.tasks.relist(data)?,
+            self.inbox.relist(data)?,
         ];
         self.rounds += 1;
         let last = self.pending() <= batch || self.rounds > CATCH_UP_ROUNDS;
@@ -273,9 +315,10 @@ impl Plan {
 }
 
 /// The largest stamp listed, never below `from`.
-fn high(listed: &BTreeMap<String, Option<i64>>, from: i64) -> i64 {
+fn high(listed: &BTreeMap<String, Stamps>, from: i64) -> i64 {
     listed
         .values()
+        .flatten()
         .flatten()
         .copied()
         .max()

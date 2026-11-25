@@ -20,7 +20,7 @@ use rusqlite::{Connection, OptionalExtension as _, params};
 use crate::api::errors::StorageError;
 
 use super::failed;
-use super::maintenance::{Reindexed, stamped};
+use super::maintenance::{Reindexed, Stamps, merged, stamped};
 
 /// `index_meta` key: the `fts_inbox` watermark.
 pub const INBOX_WATERMARK_KEY: &str = "watermark.fts_inbox";
@@ -28,17 +28,28 @@ pub const INBOX_WATERMARK_KEY: &str = "watermark.fts_inbox";
 pub const INBOX_RANK: &str = "bm25(fts_inbox, 0.0, 3.0, 1.0, 1.0, 0.5)";
 
 /// Every capture whose projection row moved at or after `from`, with its
-/// stamp.
+/// stamps.
 pub(super) fn inbox_candidates(
     data: &Connection,
     from: i64,
-) -> Result<BTreeMap<String, Option<i64>>, StorageError> {
+) -> Result<BTreeMap<String, Stamps>, StorageError> {
     stamped(
         data,
         "SELECT id AS doc_id, synced_at AS stamp FROM inbox_items
            WHERE synced_at IS NULL OR synced_at >= ?1",
         params![from],
     )
+}
+
+/// [`inbox_candidates`]' stamps for one capture.
+pub(super) fn inbox_stamps(data: &Connection, from: i64, id: &str) -> Result<Stamps, StorageError> {
+    let stamps = stamped(
+        data,
+        "SELECT id, synced_at FROM inbox_items
+           WHERE id = ?2 AND (synced_at IS NULL OR synced_at >= ?1)",
+        params![from, id],
+    )?;
+    Ok(merged(stamps))
 }
 
 /// Re-indexes one capture: delete first, then insert if it is still live.

@@ -93,12 +93,17 @@ pub fn reindex(
     }
 }
 
+/// The stamps of the rows one id is indexed from, sorted. Two reads of an id
+/// that answer the same stamps read the same rows, as far as a stamp can tell;
+/// a `None` is a row whose stamp cannot tell (#5842).
+pub type Stamps = Vec<Option<i64>>;
+
 /// Every note or journal whose record, body log or body snapshot moved at or
-/// after `from`, with the largest stamp seen for it.
+/// after `from`, with the stamps of those rows.
 pub(super) fn note_candidates(
     data: &Connection,
     from: i64,
-) -> Result<BTreeMap<String, Option<i64>>, StorageError> {
+) -> Result<BTreeMap<String, Stamps>, StorageError> {
     // A `synced_at` this device never wrote is read as "changed" rather than
     // as "older than the watermark": a NULL compares false against every
     // bound, so the null-tolerant reading is the only one that cannot lose a
@@ -120,11 +125,30 @@ pub(super) fn note_candidates(
     stamped(data, sql, params![from, local, skip])
 }
 
+/// [`note_candidates`]' stamps for one note.
+pub(super) fn note_stamps(data: &Connection, from: i64, id: &str) -> Result<Stamps, StorageError> {
+    let sql = "
+        SELECT id, synced_at FROM notes
+          WHERE id = ?2 AND (synced_at IS NULL OR synced_at >= ?1)
+        UNION ALL
+        SELECT id, synced_at FROM journal_entries
+          WHERE id = ?2 AND (synced_at IS NULL OR synced_at >= ?1)
+        UNION ALL
+        SELECT doc_id, created_at FROM yjs_updates
+          WHERE doc_id IN (?2, ?3) AND created_at >= ?1
+        UNION ALL
+        SELECT doc_id, compacted_at FROM yjs_snapshots
+          WHERE doc_id IN (?2, ?3) AND compacted_at >= ?1";
+    let local = format!("{LOCAL_NAMESPACE_PREFIX}{id}");
+    let stamps = stamped(data, sql, params![from, id, local])?;
+    Ok(merged(stamps))
+}
+
 /// Every task whose projection row moved at or after `from`.
 pub(super) fn task_candidates(
     data: &Connection,
     from: i64,
-) -> Result<BTreeMap<String, Option<i64>>, StorageError> {
+) -> Result<BTreeMap<String, Stamps>, StorageError> {
     stamped(
         data,
         "SELECT id AS doc_id, synced_at AS stamp FROM tasks
@@ -133,23 +157,43 @@ pub(super) fn task_candidates(
     )
 }
 
-/// Every id `sql` answers, with the largest stamp it answered for it.
+/// [`task_candidates`]' stamps for one task.
+pub(super) fn task_stamps(data: &Connection, from: i64, id: &str) -> Result<Stamps, StorageError> {
+    let stamps = stamped(
+        data,
+        "SELECT id, synced_at FROM tasks
+           WHERE id = ?2 AND (synced_at IS NULL OR synced_at >= ?1)",
+        params![from, id],
+    )?;
+    Ok(merged(stamps))
+}
+
+/// The stamps of every id in `stamps`, as one id's.
+pub(super) fn merged(stamps: BTreeMap<String, Stamps>) -> Stamps {
+    let mut merged: Stamps = stamps.into_values().flatten().collect();
+    merged.sort_unstable();
+    merged
+}
+
+/// Every id `sql` answers, with the stamps it answered for it, sorted.
 pub(super) fn stamped(
     data: &Connection,
     sql: &str,
     bound: &[&dyn rusqlite::ToSql],
-) -> Result<BTreeMap<String, Option<i64>>, StorageError> {
+) -> Result<BTreeMap<String, Stamps>, StorageError> {
     let mut statement = data.prepare(sql).map_err(failed)?;
     let rows = statement
         .query_map(bound, |row| {
             Ok((row.get::<_, String>(0)?, row.get::<_, Option<i64>>(1)?))
         })
         .map_err(failed)?;
-    let mut listed: BTreeMap<String, Option<i64>> = BTreeMap::new();
+    let mut listed: BTreeMap<String, Stamps> = BTreeMap::new();
     for row in rows {
         let (id, stamp) = row.map_err(failed)?;
-        let entry = listed.entry(id).or_default();
-        *entry = (*entry).max(stamp);
+        listed.entry(id).or_default().push(stamp);
+    }
+    for stamps in listed.values_mut() {
+        stamps.sort_unstable();
     }
     Ok(listed)
 }

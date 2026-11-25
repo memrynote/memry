@@ -11,6 +11,9 @@
 //! | a pass dropped after one step leaves the next one full    | stamps move only with the last step    |
 //! | a rename and a delete between steps leave search right    | no stale row, links follow the rename  |
 //! | a vault that keeps changing still ends the pass           | catch-up rounds are bounded            |
+//! | a sync page stamped before a batch read is indexed        | stamps compared, never a clock         |
+//! | a task and a capture edited mid-pass are indexed again    | every table catches up                 |
+//! | a pass parked over a replaced index.db plans again        | a pass belongs to one index.db         |
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -25,6 +28,7 @@ use memry_core::domain::notes::{self, NewNote};
 use memry_core::domain::search::{
     CATCH_UP_ROUNDS, NOTES_WATERMARK_KEY, ReindexPass, ReindexStep, STAMPS_KEY,
 };
+use memry_core::storage::repositories::sync_items::{self, InboundRecord};
 use memry_core::storage::{Db, open_index};
 use rusqlite::{Connection, OptionalExtension as _};
 use yrs::{ReadTxn as _, Xml as _, XmlElementPrelim, XmlFragment as _, XmlTextPrelim};
@@ -35,6 +39,7 @@ const DEVICE: &str = "device-a";
 static SCRATCH: AtomicU64 = AtomicU64::new(0);
 
 struct Fixture {
+    dir: PathBuf,
     vault: Vault,
     data: Db,
     index: Db,
@@ -53,6 +58,7 @@ fn fixture(label: &str) -> Fixture {
         data: vault.db_handle(),
         index: open_index(&dir.join("index.db")).expect("index.db").db,
         vault,
+        dir,
     }
 }
 
@@ -111,9 +117,34 @@ impl Fixture {
     }
 
     fn found(&self, word: &str) -> Vec<String> {
+        self.groups(word).0
+    }
+
+    /// The note, task and inbox ids a search finds.
+    fn groups(&self, word: &str) -> (Vec<String>, Vec<String>, Vec<String>) {
         let search = self.vault.search(None).expect("search");
         let hits = search.search(word.to_string(), None, 10).expect("search");
-        hits.notes.into_iter().map(|hit| hit.id).collect()
+        let ids = |hits: Vec<memry_core::api::search::SearchResult>| {
+            hits.into_iter().map(|hit| hit.id).collect()
+        };
+        (ids(hits.notes), ids(hits.tasks), ids(hits.inbox))
+    }
+
+    /// A record pulled from sync, stamped `at` the way a sync page stamps it:
+    /// with a clock read before it took `data.db`.
+    fn pulled(&self, item_type: &str, id: &str, payload: &str, at: i64) {
+        self.write(|conn| {
+            let record = InboundRecord {
+                item_type: item_type.to_owned(),
+                item_id: id.to_owned(),
+                payload_json: payload.to_owned(),
+                server_cursor: Some(1),
+                signer_device_id: Some("device-b".to_owned()),
+                updated_at: at,
+                deleted_at: None,
+            };
+            sync_items::apply_remote(conn, &record, at).expect("apply");
+        });
     }
 }
 
@@ -310,5 +341,111 @@ fn a_vault_that_keeps_changing_still_ends_the_pass() {
         fx.found(&format!("edit{edits}")).len(),
         1,
         "the last edit is indexed"
+    );
+}
+
+#[test]
+fn a_sync_page_stamped_before_a_batch_read_is_indexed() {
+    let fx = fixture("stamped-early");
+    for id in ["n0", "n1", "n2"] {
+        fx.note(id, id, Some(paragraph(id, "cardamom", None)));
+    }
+    let mut pass = ReindexPass::default();
+    // The batch reads n0 at T + 10.
+    assert!(matches!(fx.step(&mut pass, T + 10, 1), ReindexStep::More));
+    // A sync page that read its clock at T + 5 lands after it, then a later
+    // edit moves the largest stamp past it.
+    fx.write(|conn| append(conn, "n0", 2, &paragraph("n0", "saffron", None), T + 5));
+    fx.write(|conn| append(conn, "n1", 2, &paragraph("n1", "clove", None), T + 12));
+    run_to_end(&fx, &mut pass, T + 20, 1);
+    run_to_end(&fx, &mut ReindexPass::default(), T + 30, 1);
+
+    assert_eq!(fx.found("saffron"), ["n0"]);
+}
+
+#[test]
+fn a_task_and_a_capture_edited_mid_pass_are_indexed_again() {
+    let fx = fixture("task-inbox");
+    for id in ["t0", "t1", "t2"] {
+        fx.pulled("task", id, r#"{"title":"Gamma","projectId":"p"}"#, T);
+        fx.pulled("inbox", &format!("i{id}"), r#"{"title":"Heron"}"#, T);
+    }
+    let mut pass = ReindexPass::default();
+    // Batches of two: the first reads t0 and t1, the second t2 and it0.
+    assert!(matches!(fx.step(&mut pass, T + 10, 2), ReindexStep::More));
+    assert!(matches!(fx.step(&mut pass, T + 20, 2), ReindexStep::More));
+    fx.pulled(
+        "task",
+        "t0",
+        r#"{"title":"Sunflower","projectId":"p"}"#,
+        T + 5,
+    );
+    fx.pulled("inbox", "it0", r#"{"title":"Lantern"}"#, T + 15);
+    run_to_end(&fx, &mut pass, T + 30, 2);
+
+    assert_eq!(fx.groups("Sunflower").1, ["t0"]);
+    assert_eq!(fx.groups("Lantern").2, ["it0"]);
+    assert!(
+        fx.groups("Gamma").1.iter().all(|id| id != "t0"),
+        "no stale task row"
+    );
+    assert!(
+        fx.groups("Heron").2.iter().all(|id| id != "it0"),
+        "no stale capture row"
+    );
+}
+
+#[test]
+fn a_pass_parked_over_a_replaced_index_plans_again() {
+    let fx = fixture("replaced");
+    for id in ["n0", "n1", "n2"] {
+        fx.note(id, id, Some(paragraph(id, "cardamom", None)));
+    }
+    run_to_end(&fx, &mut ReindexPass::default(), T + 10, 64);
+    for id in ["n3", "n4"] {
+        fx.write(|conn| {
+            let note = NewNote {
+                id,
+                title: id,
+                folder_path: None,
+                content: "",
+                tags: &[],
+                properties: None,
+                emoji: None,
+            };
+            notes::create(conn, &note, DEVICE, T + 20).expect("create");
+        });
+    }
+    // An incremental pass, parked after its first batch.
+    let mut pass = ReindexPass::default();
+    assert!(matches!(fx.step(&mut pass, T + 30, 1), ReindexStep::More));
+
+    // The index is rebuilt from nothing under it (`open_or_rebuild`).
+    let rebuilt = open_index(&fx.dir.join("rebuilt.db"))
+        .expect("a new index")
+        .db;
+    let done = loop {
+        let step = fx
+            .data
+            .call_blocking(|data| rebuilt.call_blocking(|index| pass.step(data, index, T + 40, 1)))
+            .expect("a step");
+        if let ReindexStep::Done(done) = step {
+            break done;
+        }
+    };
+
+    assert!(done.full, "planned again against the new file");
+    let rows: i64 = rebuilt
+        .call_blocking(|index| {
+            index
+                .query_row("SELECT count(*) FROM fts_notes", [], |row| row.get(0))
+                .map_err(|error| memry_core::api::errors::StorageError::Failed {
+                    what: error.to_string(),
+                })
+        })
+        .expect("count");
+    assert_eq!(
+        rows, 5,
+        "every note, not only the ones the parked pass owed"
     );
 }
