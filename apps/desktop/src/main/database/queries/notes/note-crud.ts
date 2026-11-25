@@ -17,13 +17,15 @@ import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
 // ============================================================================
 
 /**
- * `pending_write_hash` of a note whose file holds bytes its CRDT store may not
- * hold yet (#5698, sync/writeback-baseline.ts `recordDocFile`). Never a content
+ * Prefix of the `pending_write_hash` of a note whose file holds bytes its CRDT
+ * store may not hold yet (#5698, sync/writeback-baseline.ts `unstoredMark`). Never a content
  * hash, so it never names a file as Memry's own. `content_hash` keeps the
  * file's real hash, which the watcher's rename match needs. A moved hash keeps
  * it: only a writer that knows the store holds the bytes clears it.
  */
 export const UNSTORED_FILE = 'unstored-file'
+/** Matches every unstored mark: the bare prefix and the marks that carry what a write held. */
+const UNSTORED_FILE_PATTERN = `${UNSTORED_FILE}%`
 
 export function insertNoteCache(db: IndexDb, note: NewNoteCache): NoteCache {
   return db
@@ -45,7 +47,7 @@ export function insertNoteCache(db: IndexDb, note: NewNoteCache): NoteCache {
         // An omitted hash keeps both, and `UNSTORED_FILE` stays.
         ...(note.contentHash !== undefined
           ? {
-              pendingWriteHash: sql`CASE WHEN ${noteCache.contentHash} IS excluded.content_hash OR ${noteCache.pendingWriteHash} = ${UNSTORED_FILE} THEN ${noteCache.pendingWriteHash} ELSE NULL END`
+              pendingWriteHash: sql`CASE WHEN ${noteCache.contentHash} IS excluded.content_hash OR ${noteCache.pendingWriteHash} LIKE ${UNSTORED_FILE_PATTERN} THEN ${noteCache.pendingWriteHash} ELSE NULL END`
             }
           : {}),
         wordCount: note.wordCount,
@@ -77,7 +79,7 @@ export function updateNoteCache(
         ? {
             pendingWriteHash: sql<
               string | null
-            >`CASE WHEN ${noteCache.contentHash} IS ${updates.contentHash ?? null} OR ${noteCache.pendingWriteHash} = ${UNSTORED_FILE} THEN ${noteCache.pendingWriteHash} ELSE NULL END`
+            >`CASE WHEN ${noteCache.contentHash} IS ${updates.contentHash ?? null} OR ${noteCache.pendingWriteHash} LIKE ${UNSTORED_FILE_PATTERN} THEN ${noteCache.pendingWriteHash} ELSE NULL END`
           }
         : {}),
       ...updates

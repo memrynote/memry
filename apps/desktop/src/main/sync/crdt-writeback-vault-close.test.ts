@@ -890,7 +890,7 @@ describe('a CRDT store that stalls while the vault closes (#5698)', () => {
       async () => {
         await tick()
         expect(fs.readFileSync(file, 'utf8')).toContain(text.trim())
-        expect(getNoteCacheById(vaultA.indexDb.db, id)?.pendingWriteHash).toBe(UNSTORED_FILE)
+        expect(getNoteCacheById(vaultA.indexDb.db, id)?.pendingWriteHash).toMatch(/^unstored-file/)
       },
       { timeout: 10_000, interval: 10 }
     )
@@ -1100,8 +1100,9 @@ describe('a CRDT store that stalls while the vault closes (#5698)', () => {
     expect(dayBody(vaultA)).toContain('From A. Typed. More. Two.')
   })
 
-  // VERIFY-5703R4 (1i): the mark is written ahead of the file.
-  it('a crash between the file write and its record keeps the stored doc as a version', async () => {
+  // VERIFY-5703R4 (1i), VERIFY-5703R5 (2): the mark is written ahead of the
+  // file, and a stored edit made after the write stays live.
+  it('a crash between the file write and its record keeps every stored edit live', async () => {
     const id = await checkedDay()
     const disk = failStore()
     const realWrite = fileOps.atomicWrite
@@ -1127,11 +1128,11 @@ describe('a CRDT store that stalls while the vault closes (#5698)', () => {
     await restart()
 
     const doc = await settle(getCrdtProvider().open(id, EDITOR_WINDOW))
+    type(id, ' Again.')
+    await settle(flushPendingWritebacks())
 
-    expect.soft(bodyText(doc)).toBe('From A. Typed. More.')
-    expect(
-      getNoteSnapshots(vaultA.indexDb.db, id).map((version) => version.fileContent)
-    ).toContainEqual(expect.stringContaining('From A. Typed. More. Two.'))
+    expect.soft(bodyText(doc)).toBe('From A. Typed. More. Two. Again.')
+    expect(dayBody(vaultA)).toContain('From A. Typed. More. Two. Again.')
   })
 
   it("an open inside the note's write-back turn never waits for a close waiting on that turn", async () => {
@@ -1147,7 +1148,10 @@ describe('a CRDT store that stalls while the vault closes (#5698)', () => {
 
     await settle(Promise.all([writer, closed]))
 
-    expect(bodyText(await writer)).toBe('From A. Typed.')
+    expect.soft(bodyText(await writer)).toBe('From A. Typed.')
+    expect(warnings.map(({ message }) => message)).not.toContain(
+      'An open stopped waiting for a close stalled on its store'
+    )
   })
 
   // VERIFY-5703R4 (2): a store of a later doc says nothing about a closed one.
@@ -1193,17 +1197,237 @@ describe('a CRDT store that stalls while the vault closes (#5698)', () => {
     })
   })
 
-  it('keeps the stored doc as a version when the unstored mark outlived a recovery', async () => {
-    const id = await storeFailsThenRecovers()
+  it('keeps every stored edit live when the unstored mark outlived a recovery', async () => {
+    const id = await openTypedDay()
+    await flushPendingWritebacks()
+    indexDay(vaultA, id)
+    const disk = await typeIntoFailedStore(id, dayFile(vaultA))
+    const mark = getNoteCacheById(vaultA.indexDb.db, id)?.pendingWriteHash
+    disk.recover()
+    type(id, ' Two.')
+    await Promise.all(store.queues)
+    await new Promise((resolve) => setImmediate(resolve))
+    expect.soft(getNoteCacheById(vaultA.indexDb.db, id)?.pendingWriteHash).toBeNull()
     // The session ended before the mark was cleared.
+    updateNoteCache(vaultA.indexDb.db, id, { pendingWriteHash: mark })
+
+    await restart()
+    const doc = await settle(getCrdtProvider().open(id, EDITOR_WINDOW))
+
+    expect.soft(bodyText(doc)).toBe('From A. Typed. More. Two.')
+    // Nothing was taken in, so the open kept no version of the doc.
+    expect.soft(getNoteSnapshots(vaultA.indexDb.db, id)).toEqual([])
+    expect(getNoteCacheById(vaultA.indexDb.db, id)?.pendingWriteHash).toBeNull()
+  })
+
+  it('takes in a file written under a mark this build cannot read, keeping the doc as a version', async () => {
+    const id = await storeFailsThenRecovers()
     updateNoteCache(vaultA.indexDb.db, id, { pendingWriteHash: UNSTORED_FILE })
 
     await restart()
-    const doc = await getCrdtProvider().open(id, EDITOR_WINDOW)
+    const doc = await settle(getCrdtProvider().open(id, EDITOR_WINDOW))
 
     expect.soft(bodyText(doc)).toBe('From A. Typed. More.')
     expect(
       getNoteSnapshots(vaultA.indexDb.db, id).map((version) => version.fileContent)
     ).toContainEqual(expect.stringContaining('From A. Typed. More. Two.'))
+  })
+
+  /** Fails the next write of `file` before it writes; resolves once it failed. */
+  function failNextWrite(file: string): Promise<void> {
+    const realWrite = fileOps.atomicWrite
+    let failed!: () => void
+    const reached = new Promise<void>((resolve) => (failed = resolve))
+    let failNext = true
+    vi.spyOn(fileOps, 'atomicWrite').mockImplementation(async (target, content) => {
+      if (failNext && target === file) {
+        failNext = false
+        failed()
+        throw new Error('disk full')
+      }
+      return realWrite(target, content)
+    })
+    return reached
+  }
+
+  /**
+   * Types " More." while the store holds the keystroke in flight and the
+   * day's write fails before it writes, then lets the store land it.
+   */
+  async function failWriteBehindStoreInFlight(id: string): Promise<void> {
+    const storing = holdNextStoreUpdate()
+    const failed = failNextWrite(dayFile(vaultA))
+    type(id, ' More.')
+    await storing.reached
+    await settle(failed)
+    storing.release()
+    await Promise.all(store.queues)
+    expect.soft(storedBody(id)).toBe('From A. Typed. More.')
+  }
+
+  // VERIFY-5703R5 PROBE-C1: the write never reached the file, and the store holds the edit.
+  it('a write that failed behind a store in flight keeps the stored edit through a restart (PROBE-C1)', async () => {
+    const id = await checkedDay()
+    await failWriteBehindStoreInFlight(id)
+    await restart()
+
+    const doc = await settle(getCrdtProvider().open(id, EDITOR_WINDOW))
+    type(id, ' Again.')
+    await settle(flushPendingWritebacks())
+
+    expect.soft(bodyText(doc)).toBe('From A. Typed. More. Again.')
+    expect(dayBody(vaultA)).toContain('From A. Typed. More. Again.')
+  })
+
+  // VERIFY-5703R5 PROBE-C1b: the same, through a close and a reopen in one session.
+  it('a write that failed behind a store in flight keeps the stored edit through a reopen (PROBE-C1b)', async () => {
+    const id = await checkedDay()
+    await failWriteBehindStoreInFlight(id)
+    await settle(getCrdtProvider().close(id))
+
+    const doc = await settle(getCrdtProvider().open(id, EDITOR_WINDOW))
+    type(id, ' Again.')
+    await settle(flushPendingWritebacks())
+
+    expect.soft(bodyText(doc)).toBe('From A. Typed. More. Again.')
+    expect(dayBody(vaultA)).toContain('From A. Typed. More. Again.')
+  })
+
+  /**
+   * Ends the process inside the next write of the day, before (C1) or after
+   * (C2) it writes: `start` sets the pass off, and `meanwhile` runs while the
+   * process is still up. The next session finds the file and the row as they
+   * were at that step.
+   */
+  async function crashAtWrite(
+    id: string,
+    afterWrite: boolean,
+    start: () => void,
+    meanwhile: () => Promise<void> = async () => {}
+  ): Promise<void> {
+    const file = dayFile(vaultA)
+    const write = hold()
+    const realWrite = fileOps.atomicWrite
+    let crashNext = true
+    vi.spyOn(fileOps, 'atomicWrite').mockImplementation(async (target, content) => {
+      if (!crashNext || target !== file) return realWrite(target, content)
+      crashNext = false
+      if (afterWrite) await realWrite(target, content)
+      await write.wait()
+      throw new Error('the process ended')
+    })
+    start()
+    await settle(write.reached)
+    const row = getNoteCacheById(vaultA.indexDb.db, id)!
+    const raw = fs.readFileSync(file, 'utf8')
+    await meanwhile()
+    // Nothing after the step runs in a crash: the pass's own handling of the
+    // throw is undone before the next session.
+    write.release()
+    for (let turn = 0; turn < 10; turn++) await new Promise((resolve) => setImmediate(resolve))
+    updateNoteCache(vaultA.indexDb.db, id, {
+      contentHash: row.contentHash,
+      pendingWriteHash: row.pendingWriteHash
+    })
+    fs.writeFileSync(file, raw)
+    await restart()
+  }
+
+  // VERIFY-5703R5 (1, 2): a crash at each step of a pass the store missed.
+  for (const step of ['C0', 'C1', 'C2'] as const) {
+    it(`a crash at ${step} of a pass the store missed keeps every edit`, async () => {
+      const id = await checkedDay()
+      const disk = failStore()
+      const recoverAndType = async (): Promise<void> => {
+        disk.recover()
+        type(id, ' Two.')
+        await Promise.all(store.queues)
+      }
+      if (step === 'C0') {
+        // The process ends before the pass marks the row.
+        type(id, ' More.')
+        await recoverAndType()
+        await restart()
+      } else {
+        await crashAtWrite(id, step === 'C2', () => type(id, ' More.'), recoverAndType)
+      }
+
+      const doc = await settle(getCrdtProvider().open(id, EDITOR_WINDOW))
+      type(id, ' Again.')
+      await settle(flushPendingWritebacks())
+
+      expect.soft(bodyText(doc)).toBe('From A. Typed. More. Two. Again.')
+      expect.soft(await settledStoredBody(id)).toBe('From A. Typed. More. Two. Again.')
+      expect(dayBody(vaultA)).toContain('From A. Typed. More. Two. Again.')
+    })
+  }
+
+  /** An edit from another device, as the store took it after the session ended. */
+  function storeRemoteEdit(id: string, text: string): void {
+    const remote = new Y.Doc()
+    for (const update of store.updates.get(id) ?? []) Y.applyUpdate(remote, update)
+    const before = Y.encodeStateVector(remote)
+    const node = firstText(remote.getXmlFragment(CRDT_FRAGMENT_NAME))
+    node.insert(node.length, text)
+    store.updates.set(id, [...(store.updates.get(id) ?? []), Y.encodeStateAsUpdate(remote, before)])
+  }
+
+  it('a write that never landed leaves a stored edit of another device live', async () => {
+    const id = await checkedDay()
+    const disk = failStore()
+    await crashAtWrite(
+      id,
+      false,
+      () => type(id, ' More.'),
+      async () => disk.recover()
+    )
+    storeRemoteEdit(id, ' Remote.')
+
+    const doc = await settle(getCrdtProvider().open(id, EDITOR_WINDOW))
+
+    expect.soft(bodyText(doc)).toBe('From A. Typed. Remote.')
+    expect(getNoteCacheById(vaultA.indexDb.db, id)?.pendingWriteHash).toBeNull()
+  })
+
+  it('a write that never landed over a marked file takes that file in', async () => {
+    const id = await checkedDay()
+    const disk = await typeIntoFailedStore(id, dayFile(vaultA))
+    await crashAtWrite(
+      id,
+      false,
+      () => type(id, ' Two.'),
+      async () => disk.recover()
+    )
+
+    const doc = await settle(getCrdtProvider().open(id, EDITOR_WINDOW))
+
+    expect(bodyText(doc)).toBe('From A. Typed. More.')
+  })
+
+  // VERIFY-5703R5 (5): a close stalled on its store holds an open only so long.
+  it('an open stops waiting for a close stalled on its store, and says which note', async () => {
+    const id = await checkedDay()
+    type(id, ' More.')
+    const storing = holdNextStoreFlush()
+    const closed = getCrdtProvider().close(id)
+    await settle(storing.reached)
+
+    const opened = getCrdtProvider().open(id, EDITOR_WINDOW)
+    await vi.waitFor(
+      async () => {
+        await tick()
+        expect(warnings).toContainEqual(
+          expect.objectContaining({
+            message: 'An open stopped waiting for a close stalled on its store',
+            context: { noteId: id }
+          })
+        )
+      },
+      { timeout: 10_000, interval: 10 }
+    )
+    storing.release()
+    await settle(closed)
+
+    expect(bodyText(await settle(opened))).toBe('From A. Typed. More.')
   })
 })

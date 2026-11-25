@@ -918,11 +918,16 @@ export class CrdtProvider {
     // A close in flight first: it may still write the closing doc's file,
     // which this open must find marked to take in (`close`, #5698). Inside
     // the note's write-back turn the close may be waiting for that turn, so
-    // the open goes ahead.
+    // the open goes ahead. A close stalled on its store is waited for as long
+    // as a vault close waits for one store call, then the open goes ahead.
+    // It still finds the mark of a file the close already wrote; a file the
+    // close writes after it is not taken in by this doc.
     const closing = this.closeLocks.get(noteId)
     if (closing && !crdtWriteback().insideWritebackTurn(noteId)) {
-      await closing
-      return this.open(noteId, windowId, options)
+      if (await completeWithin(closing, STORE_CALL_CLOSE_WAIT_MS)) {
+        return this.open(noteId, windowId, options)
+      }
+      log.warn('An open stopped waiting for a close stalled on its store', { noteId })
     }
     // An open in flight first: its doc is in `docs` before the open takes in
     // an offline edit, and a remote update applied meanwhile would be

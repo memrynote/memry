@@ -1473,7 +1473,7 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
       const moved = read('Other/a.md')!
       expect.soft(getNoteCacheById(index.db, 'lower')).toMatchObject({
         contentHash: generateContentHash(moved),
-        pendingWriteHash: UNSTORED_FILE
+        pendingWriteHash: expect.stringMatching(/^unstored-file:/)
       })
 
       // The store recovers.
@@ -1501,7 +1501,7 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
       expect.soft(shared()).toBe(LOWER)
       expect.soft(getNoteCacheById(index.db, 'lower')).toMatchObject({
         contentHash: generateContentHash(LOWER),
-        pendingWriteHash: UNSTORED_FILE
+        pendingWriteHash: expect.stringMatching(/^unstored-file:/)
       })
 
       // The store holds the survivor's doc.

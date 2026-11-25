@@ -56,7 +56,7 @@
  * @module sync/writeback-baseline
  */
 
-import type * as Y from 'yjs'
+import * as Y from 'yjs'
 import { getNoteCacheById, UNSTORED_FILE, updateNoteCache } from '@main/database/queries/notes'
 import type { getIndexDatabase } from '../database/client'
 import { generateContentHash, parseNote } from '../vault/frontmatter'
@@ -100,18 +100,106 @@ export interface DocStore {
 }
 
 /**
+ * The unstored mark of a write of `raw` from `doc`:
+ * `unstored-file:<hash of raw>:<0|1>:<base64 Yjs snapshot of doc>`. The
+ * snapshot (state vector and delete set) names what the write carries; taken
+ * after the doc was serialized, it covers at least that. The flag says whether
+ * the bytes under `content_hash` were themselves marked, so a write that
+ * never landed leaves a file the store may lack (`takesUnstoredFile`).
+ */
+function unstoredMark(raw: string, doc: Y.Doc, overUnstoredFile: boolean): string {
+  const snapshot = Buffer.from(Y.encodeSnapshot(Y.snapshot(doc))).toString('base64')
+  return `${UNSTORED_FILE}:${generateContentHash(raw)}:${overUnstoredFile ? 1 : 0}:${snapshot}`
+}
+
+type UnstoredMark = { hash: string; overUnstoredFile: boolean; snapshot: Y.Snapshot }
+
+/** The parts of an unstored mark; null for the bare `UNSTORED_FILE` of an earlier build of #5698. */
+function parseUnstoredMark(pending: string | null | undefined): UnstoredMark | null {
+  const match = /^unstored-file:([^:]+):([01]):(.+)$/.exec(pending ?? '')
+  if (!match) return null
+  try {
+    const snapshot = Y.decodeSnapshot(Buffer.from(match[3], 'base64'))
+    return { hash: match[1], overUnstoredFile: match[2] === '1', snapshot }
+  } catch (err) {
+    log.warn('Could not read an unstored mark; the file is taken in', { err })
+    return null
+  }
+}
+
+/** Whether `doc` holds every insert and delete of `marked`. */
+function docCovers(doc: Y.Doc, marked: Y.Snapshot): boolean {
+  const held = Y.snapshot(doc)
+  for (const [client, clock] of marked.sv) {
+    if ((held.sv.get(client) ?? 0) < clock) return false
+  }
+  for (const [client, items] of marked.ds.clients) {
+    // Consecutive deleted structs merge into one item, so a range the doc
+    // deleted sits inside a single item of its delete set.
+    const deleted = held.ds.clients.get(client) ?? []
+    for (const { clock, len } of items) {
+      if (!deleted.some((d) => d.clock <= clock && clock + len <= d.clock + d.len)) return false
+    }
+  }
+  return true
+}
+
+/**
+ * The open-time decision for a file whose row carries an unstored mark: true
+ * when the file must be taken into `doc`, the note's doc as loaded from the
+ * store. A false answer settles the mark.
+ *
+ * INVARIANT (#5698): the file wins at open only when it holds something the
+ * store lacks. A mark never makes an older file beat a stored edit.
+ * - The loaded doc covers the mark's snapshot: the store holds everything the
+ *   write carried. The written file is the doc's own and becomes the baseline;
+ *   any other file is judged as any file is (`isOutsideEdit`).
+ * - The file is the bytes under `content_hash`, not the marked write's, and
+ *   those bytes were not themselves marked: the write never landed, and the
+ *   file holds nothing the store lacks. The mark clears.
+ * - Otherwise the file's bytes changed and the store does not cover them: it
+ *   is taken in, and the caller keeps the doc as a version first
+ *   (`keepDocVersionBeforeIngest`). So is a mark this build cannot read.
+ */
+export function takesUnstoredFile(
+  indexDb: IndexDb,
+  noteId: string,
+  baseline: Baseline,
+  raw: string,
+  doc: Y.Doc
+): boolean {
+  const mark = parseUnstoredMark(baseline.pendingWriteHash)
+  if (!mark) return true
+  const onDisk = generateContentHash(raw)
+  if (docCovers(doc, mark.snapshot)) {
+    if (onDisk === mark.hash) {
+      recordBaseline(indexDb, noteId, raw)
+      return false
+    }
+    updateNoteCache(indexDb, noteId, { pendingWriteHash: null })
+    return isOutsideEdit(indexDb, noteId, { ...baseline, pendingWriteHash: null }, raw)
+  }
+  if (onDisk !== mark.hash && onDisk === baseline.contentHash && !mark.overUnstoredFile) {
+    updateNoteCache(indexDb, noteId, { pendingWriteHash: null })
+    return false
+  }
+  return true
+}
+
+/**
  * Records `raw`, a file the write-back wrote from `doc` or found already
  * holding it, as the note's baseline.
  *
- * INVARIANT (#5698): while a note's row carries `UNSTORED_FILE`, its file is
- * the note's source of truth. Three rules keep it:
+ * A file written from a doc the store may not hold yet is marked unstored, so
+ * the next open can take in what the store lacks (#5698). The open decides by
+ * what the write carried (`takesUnstoredFile` states the invariant). Three
+ * rules keep the mark:
  * - Write-ahead mark. A write of a doc the store does not hold yet
- *   (`DocStore.holdsDoc`) marks the row `UNSTORED_FILE` before the file
- *   changes, and records the file's hash in `content_hash` after (the
+ *   (`DocStore.holdsDoc`) marks the row before the file changes
+ *   (`unstoredMark`), and records the file's hash in `content_hash` after (the
  *   watcher's rename match needs it). An open between the two, or a crash,
- *   finds the mark and takes the file in; that costs an ingest, which keeps
- *   the doc as a version first (`crdt-writeback-ingest.ts`). A failed write
- *   keeps the mark (`writeDocWithBaseline`).
+ *   finds the mark. A failed write whose file kept its bytes restores the row
+ *   it found (`writeDocWithBaseline`).
  * - Instance-tied clear. Only a store of the doc instance that was
  *   serialized clears the mark (`DocStore.whenStored(noteId, doc)`, the
  *   provider's `storedWaiters`): its own stores, or the store of its whole
@@ -123,10 +211,9 @@ export interface DocStore {
  *   note's armed pass from that doc inside the note's write-back turn before
  *   destroying it, and an open of the note waits for its close
  *   (`CrdtProvider.close`, `open`). So every open after such a doc finds the
- *   mark and takes the file in (`takeOfflineEdit`, `ingestOfflineEdit`),
- *   the first open of a session and every reopen in it alike.
- * A row whose `content_hash` moved past `raw` (a later write, an outside edit)
- * is left alone. A session that ends first (a close whose store kept failing,
+ *   mark (`takeOfflineEdit`, `ingestOfflineEdit`), the first open of a
+ *   session and every reopen in it alike.
+ * A row whose mark moved on (a later write, an outside edit) is left alone. A session that ends first (a close whose store kept failing,
  * a quit cut short, a forced exit, a crash) leaves the mark for the next open.
  */
 export function recordDocFile(
@@ -140,8 +227,12 @@ export function recordDocFile(
     recordBaseline(indexDb, noteId, raw)
     return
   }
-  const hash = generateContentHash(raw)
-  updateNoteCache(indexDb, noteId, { contentHash: hash, pendingWriteHash: UNSTORED_FILE })
+  // `content_hash` becomes `raw`'s, so the flag of an earlier mark no longer applies.
+  const mark = unstoredMark(raw, doc, false)
+  updateNoteCache(indexDb, noteId, {
+    contentHash: generateContentHash(raw),
+    pendingWriteHash: mark
+  })
   // Stores the whole doc again when the store missed an update.
   store.whenPersisted(noteId).catch((err: unknown) => {
     log.warn('The store has not confirmed a written file yet; its next open takes the file in', {
@@ -151,8 +242,7 @@ export function recordDocFile(
   })
   void store.whenStored(noteId, doc).then(() => {
     try {
-      const row = getNoteCacheById(indexDb, noteId)
-      if (holdsUnstoredFile(row) && row?.contentHash === hash) {
+      if (getNoteCacheById(indexDb, noteId)?.pendingWriteHash === mark) {
         updateNoteCache(indexDb, noteId, { pendingWriteHash: null })
       }
     } catch (err) {
@@ -169,35 +259,62 @@ export function recordDocFile(
  * through `recordDocFile`. A doc the store holds records its bytes on both
  * sides of the write, as `writeWithBaseline` does. A doc the store does not
  * hold marks the row before the write (`recordDocFile`, write-ahead mark). A
- * failed write keeps the mark: the write may have landed before it failed,
- * and the mark costs the next open only an ingest that keeps a version.
+ * failed write re-reads the file with `read`: bytes it left unchanged get the
+ * row's pending hash back as it found it, and any other bytes keep the mark,
+ * since the write may have landed before it failed.
  */
 export async function writeDocWithBaseline(
   indexDb: IndexDb,
   noteId: string,
   fileContent: string,
-  write: () => Promise<void>,
+  file: { write: () => Promise<void>; read: () => Promise<string | null> },
   doc: Y.Doc,
   store: DocStore
 ): Promise<void> {
   if (store.holdsDoc(noteId, doc)) {
-    await writeWithBaseline(indexDb, noteId, fileContent, write)
+    await writeWithBaseline(indexDb, noteId, fileContent, file.write)
     return
   }
-  const indexed = getNoteCacheById(indexDb, noteId) !== undefined
-  if (!indexed) {
-    await write()
+  const found = getNoteCacheById(indexDb, noteId)
+  if (!found) {
+    await file.write()
     return
   }
-  markDocWrite(indexDb, noteId, fileContent, doc, store)
-  await write()
+  const mark = markDocWrite(indexDb, noteId, fileContent, doc, store)
+  try {
+    await file.write()
+  } catch (err) {
+    await dropMarkOfUnchangedFile(indexDb, noteId, found, mark, file.read)
+    throw err
+  }
   recordDocFile(indexDb, noteId, fileContent, doc, store)
+}
+
+/** Gives a failed write's row back its pending hash when the file kept the bytes the row names. */
+async function dropMarkOfUnchangedFile(
+  indexDb: IndexDb,
+  noteId: string,
+  found: Baseline,
+  mark: string,
+  read: () => Promise<string | null>
+): Promise<void> {
+  try {
+    const raw = await read()
+    const row = getNoteCacheById(indexDb, noteId)
+    if (raw === null || row?.pendingWriteHash !== mark) return
+    if (generateContentHash(raw) !== row.contentHash || row.contentHash !== found.contentHash)
+      return
+    updateNoteCache(indexDb, noteId, { pendingWriteHash: found.pendingWriteHash ?? null })
+  } catch (err) {
+    log.warn('Could not re-read a file whose write failed; its mark stays', { noteId, err })
+  }
 }
 
 /**
  * Marks the row before `raw`, serialized from `doc`, is written to the note's
- * file: the pending hash when the store holds the doc, else `UNSTORED_FILE`
+ * file: the pending hash when the store holds the doc, else an unstored mark
  * (`recordDocFile`, write-ahead mark). `recordDocFile` follows the write.
+ * Resolves the pending hash it set.
  */
 export function markDocWrite(
   indexDb: IndexDb,
@@ -205,19 +322,20 @@ export function markDocWrite(
   raw: string,
   doc: Y.Doc,
   store: DocStore
-): void {
-  updateNoteCache(indexDb, noteId, {
-    pendingWriteHash: store.holdsDoc(noteId, doc) ? generateContentHash(raw) : UNSTORED_FILE
-  })
+): string {
+  const pendingWriteHash = store.holdsDoc(noteId, doc)
+    ? generateContentHash(raw)
+    : unstoredMark(raw, doc, holdsUnstoredFile(getNoteCacheById(indexDb, noteId)))
+  updateNoteCache(indexDb, noteId, { pendingWriteHash })
+  return pendingWriteHash
 }
 
 /**
- * Whether the note's file holds bytes its store may lack: the file is the
- * source of truth, and every open takes it in (`recordDocFile` states the
- * invariant).
+ * Whether the note's file may hold bytes its store lacks: every open decides
+ * it (`takesUnstoredFile` states the invariant).
  */
 export function holdsUnstoredFile(baseline: Baseline | undefined): boolean {
-  return baseline?.pendingWriteHash === UNSTORED_FILE
+  return baseline?.pendingWriteHash?.startsWith(UNSTORED_FILE) === true
 }
 
 /**

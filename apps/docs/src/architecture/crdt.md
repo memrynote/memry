@@ -927,22 +927,29 @@ document to its vault `.md` file and re-indexes it for search.
   the live doc, which runs ahead of the store while its updates are on their way, and
   a stalled store may never hold them. A file whose hash is the baseline is never taken
   in, so the next session's first pass would write the older stored doc over it. While
-  the note's updates are still storing, the write-back records the file's real hash in
-  `content_hash` (the watcher's rename match needs it) and `unstored-file` in
-  `pending_write_hash` (`recordDocFile`). While the marker stands, the file is the
-  note's source of truth: every open of the note, the first of a session or a reopen in
-  the same session after a close, an eviction or a vault switch, takes the file in
-  before any edit (`ingestOfflineEdit`), keeping the doc as a version first. The marker
-  clears only once a store of a doc that holds the file's bytes lands: a store of the doc
-  instance that wrote the file (`whenStored`), or the ingest's own store. A doc that
+  the note's updates are still storing, the write-back marks `pending_write_hash` before
+  it writes (`markDocWrite`) and records the file's real hash in `content_hash` after
+  (the watcher's rename match needs it). The mark is
+  `unstored-file:<written hash>:<flag>:<Yjs snapshot>`: the snapshot (state vector and
+  delete set) names what the write carried. The rule at open (`takesUnstoredFile`): the
+  file wins only when it holds something the store lacks, and a mark never makes an
+  older file beat a stored edit. When the loaded doc covers the mark's snapshot, the mark
+  clears and the written file becomes the baseline, with no ingest. When the file still
+  has the bytes under `content_hash` and those were not themselves marked (the flag), the
+  write never landed, and the mark clears. Only a file whose bytes changed and that the
+  store does not cover is taken in, keeping the doc as a version first. A mark this build
+  cannot read is taken in the same way. The mark also clears once a store of the doc
+  instance that wrote the file lands (`whenStored`), or the ingest's own store. A doc that
   closes while its store missed an update stores its whole state again before it is
-  destroyed; when that fails too, its `whenStored` callers are dropped unanswered, so a
-  doc reopened from that store never clears the marker for it. A row whose
-  `content_hash` moved on keeps its marker. A doc that cannot be converted for that version
-  is not replaced. A pass whose file write fails keeps the marker: the file still holds
-  bytes the store may lack. A case twin leaving a shared file
-  records its doc-built file the same way, and a twin moving with its own bytes keeps
-  its marker.
+  destroyed; when that fails too, its `whenStored` callers are dropped unanswered. A pass
+  whose file write fails re-reads the file: unchanged bytes give the row back the pending
+  hash it had, and any other bytes keep the mark, since the write may have landed. An open
+  waits for a close of the same note for up to 2 s, then logs the note and goes ahead.
+  A case twin leaving a shared file records its doc-built file the same way, and a twin
+  moving with its own bytes keeps its mark. Downgrade limit: a build without this rule
+  reads the mark as a pending hash that never matches a file and judges the file by
+  `content_hash` alone, which equals the written file. It never takes that file in, and
+  its next write-back writes its stored doc over bytes the store lacked.
 - **A quit flushes write-backs first, not last** — the provider is destroyed at the _end_
   of the shutdown chain, so relying on `destroy()` alone meant a slow teardown step could
   spend the whole shutdown budget and the forced exit would kill the process with the

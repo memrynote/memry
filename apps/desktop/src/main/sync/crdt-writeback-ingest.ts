@@ -2,8 +2,8 @@
  * The write-back's take of a file edited outside the app (#5292, #5319,
  * #5605): before a pass writes over it, and at a doc's first open in a
  * session (`ingestOfflineEdit`). A file written from a doc its store may never
- * have held is taken in at every open while it carries the mark (#5698,
- * `recordDocFile`).
+ * have held is checked at every open while it carries the mark, and taken in
+ * when it holds what the store lacks (#5698, `takesUnstoredFile`).
  *
  * @module sync/crdt-writeback-ingest
  */
@@ -25,7 +25,12 @@ import { flushProjectionEvents } from '../projections'
 import { getIndexDatabase } from '../database/client'
 import { feedExternalEditToCrdt } from './crdt-external-feed'
 import { readyWritebackConverter } from './converter-worker-bridge'
-import { holdsUnstoredFile, isOutsideEdit, recordBaseline } from './writeback-baseline'
+import {
+  holdsUnstoredFile,
+  isOutsideEdit,
+  recordBaseline,
+  takesUnstoredFile
+} from './writeback-baseline'
 
 const log = createLogger('CrdtWriteback')
 
@@ -68,8 +73,8 @@ function keepDocVersionBeforeIngest(
  * write-back must stop: a locked note's file was restored, or the doc was fed
  * (or refused) the edit, so the next pass writes from a doc that holds it.
  * `pass` is the body the pass serialized and the file it would have written.
- * `unstored`: the file holds bytes the stored doc may lack (`recordDocFile`),
- * so it is taken in although its hash is the baseline.
+ * `unstored`: the open found the file holds bytes the stored doc lacks
+ * (`takesUnstoredFile`), so it is taken in although its hash is the baseline.
  */
 export async function ingestOutsideEditFirst(
   indexDb: ReturnType<typeof getIndexDatabase>,
@@ -145,7 +150,7 @@ async function docVersionOf(
 /**
  * The write-back's outside-edit ingest, run at a doc's first open in a session
  * and at every open while the file is marked unstored (#5319, #5698,
- * `takeOfflineEdit`).
+ * `takeOfflineEdit`, `takesUnstoredFile`).
  */
 export async function ingestOfflineEdit(noteId: string, doc: Y.Doc): Promise<void> {
   const indexDb = getIndexDatabase()
@@ -154,13 +159,16 @@ export async function ingestOfflineEdit(noteId: string, doc: Y.Doc): Promise<voi
   if (!cached || isBinaryNoteRow(cached)) return
   const raw = cached.contentHash ? await readVaultFile(getVaultRoot(), cached.path) : null
   if (raw === null) return
-  // The last session wrote this file from a doc its store may never have held.
+  // A file written from a doc its store may never have held is taken in only
+  // when it holds something the store lacks (`takesUnstoredFile`, #5698).
   const unstored = holdsUnstoredFile(cached)
-  if (!unstored && !isOutsideEdit(indexDb, noteId, cached, raw)) return
+  const takes = unstored
+    ? takesUnstoredFile(indexDb, noteId, cached, raw, doc)
+    : isOutsideEdit(indexDb, noteId, cached, raw)
+  if (!takes) return
   const parsed = parseNote(raw, toAbsolutePath(cached.path))
-  // The marker can outlive a store that recovered (the session ended before
-  // `recordDocFile` cleared it), and the stored doc then holds more than the
-  // file: it is kept as a version before the file replaces its body (#5698).
+  // The doc may hold edits the file lacks: it is kept as a version before
+  // the file replaces its body (#5698).
   let pass: { body: string; file: string } | undefined
   if (unstored) {
     const version = await docVersionOf(doc, cached.path, parsed)

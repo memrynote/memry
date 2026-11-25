@@ -988,10 +988,13 @@ async function writebackExisting(
     indexDb,
     noteId,
     fileContent,
-    async () => {
-      const landed = recordAppWrite(absolutePath, fileContent)
-      await runWithLockedWritesAllowed(() => atomicWrite(absolutePath, fileContent))
-      landed()
+    {
+      write: async () => {
+        const landed = recordAppWrite(absolutePath, fileContent)
+        await runWithLockedWritesAllowed(() => atomicWrite(absolutePath, fileContent))
+        landed()
+      },
+      read: () => readVaultFile(getVaultRoot(), cached.path)
     },
     doc,
     getCrdtProvider()
@@ -1100,10 +1103,13 @@ async function writebackJournal(
     indexDb,
     noteId,
     fileContent,
-    async () => {
-      const landed = recordAppWrite(absolutePath, fileContent)
-      await runWithLockedWritesAllowed(() => atomicWrite(absolutePath, fileContent))
-      landed()
+    {
+      write: async () => {
+        const landed = recordAppWrite(absolutePath, fileContent)
+        await runWithLockedWritesAllowed(() => atomicWrite(absolutePath, fileContent))
+        landed()
+      },
+      read: () => readVaultFile(getVaultRoot(), cached.path)
     },
     doc,
     getCrdtProvider()
