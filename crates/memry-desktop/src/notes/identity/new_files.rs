@@ -96,7 +96,7 @@ pub(super) fn adopt(
         .collect();
     let found: Vec<(&str, &NoteFile)> = made.iter().map(|(_, id, text)| (*id, *text)).collect();
     for (id, text) in &found {
-        aliases::found(&writer, id, text);
+        aliases::found(&writer, id, text, None);
     }
     // A record whose properties did not go in is asked about alone, which adopts it and
     // fills them again.

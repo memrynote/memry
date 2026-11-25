@@ -475,7 +475,8 @@ pub fn list_missing_candidates(conn: &Connection) -> Result<Vec<NoteFile>, Stora
 /// this vault has no record of is not among them: its record may not have arrived yet, and
 /// a file is not given up on an absence. An owed one is the caller's to decide: a crossing a
 /// crash cut short leaves its record deleted and owed, and its file is the item the next
-/// crossing makes, not a deleted one's (#4258).
+/// crossing makes, not a deleted one's (#4258). A tombstoned `notes` row whose id a live journal
+/// day holds is not among them: the id reads as the day (the invariant on `unfiled`'s query, #5786).
 pub fn rows_of_deleted_notes(conn: &Connection) -> Result<Vec<(NoteFile, bool)>, StorageError> {
     let mut statement = conn
         .prepare(&format!(
@@ -484,7 +485,9 @@ pub fn rows_of_deleted_notes(conn: &Connection) -> Result<Vec<(NoteFile, bool)>,
                FROM {ROWS}
               WHERE f.file_type = 'markdown'
                 AND (EXISTS (SELECT 1 FROM notes n
-                              WHERE n.id = f.note_id AND n.deleted_at IS NOT NULL)
+                              WHERE n.id = f.note_id AND n.deleted_at IS NOT NULL
+                                AND NOT EXISTS (SELECT 1 FROM journal_entries d
+                                                 WHERE d.id = n.id AND d.deleted_at IS NULL))
                   OR EXISTS (SELECT 1 FROM journal_entries j
                               WHERE j.id = f.note_id AND j.deleted_at IS NOT NULL))
               ORDER BY f.path"
