@@ -134,11 +134,29 @@ export function reconcileRenamedAttachments(
   return applied
 }
 
-/** Two paths name one file: a case or normalization variant on a folding FS. */
-function sameFile(a: string, b: string): boolean {
+type Identity = 'same' | 'different' | 'unknown'
+
+const foldName = (name: string): string => name.normalize('NFC').toLowerCase()
+
+/**
+ * Whether two paths name one file: a case or normalization variant on a
+ * folding FS. A file is removed or replaced only when identity is proven, so
+ * callers act on `same` and `different` and leave everything alone on
+ * `unknown`. Some mounts (SMB/WebDAV redirectors, virtual cloud drives, FUSE)
+ * report ino 0 for every file, which proves neither. The folder listing then
+ * settles `same` only when both names fold to one spelling and exactly one
+ * entry carries it.
+ */
+function sameFile(a: string, b: string): Identity {
   const sa = statSync(a, { bigint: true })
   const sb = statSync(b, { bigint: true })
-  return sa.dev === sb.dev && sa.ino === sb.ino
+  if (sa.dev === undefined || sb.dev === undefined || !sa.ino || !sb.ino) {
+    const folded = foldName(path.basename(a))
+    if (folded !== foldName(path.basename(b))) return 'unknown'
+    const entries = readdirSync(path.dirname(a)).filter((name) => foldName(name) === folded)
+    return entries.length === 1 ? 'same' : 'unknown'
+  }
+  return sa.dev === sb.dev && sa.ino === sb.ino ? 'same' : 'different'
 }
 
 /** Reads both files off the main thread's event loop, chunk by chunk. */
@@ -195,7 +213,8 @@ function renameCaseOnly(from: string, to: string): void {
  * second copy, so it is removed and that file reused. Other bytes there are
  * kept beside it. On a case-insensitive FS a ref that differs only by case
  * names the download itself (REVIEW-5749): that one file takes the body's
- * spelling and nothing is removed.
+ * spelling and nothing is removed. When the FS cannot prove whether the two
+ * names are one file (ino 0), the download keeps its name and nothing moves.
  *
  * Returns the file's final path (renamed or not), or null when the input is not
  * a file in this note's attachments folder.
@@ -224,7 +243,9 @@ export async function reconcileDownloadedAttachmentName(
   const target = path.join(dir, candidates[0])
   try {
     if (existsSync(target)) {
-      if (sameFile(downloadedPath, target)) {
+      const identity = sameFile(downloadedPath, target)
+      if (identity === 'unknown') return downloadedPath
+      if (identity === 'same') {
         // Both spellings listed are two links to one file: nothing to rename.
         if (readdirSync(dir).includes(candidates[0])) return downloadedPath
         renameCaseOnly(downloadedPath, target)

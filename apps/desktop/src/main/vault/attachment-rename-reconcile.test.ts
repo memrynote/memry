@@ -5,7 +5,7 @@
  * just as importantly, what it does not (an external rename is left alone).
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import * as fs from 'fs'
 import * as path from 'path'
 import * as os from 'os'
@@ -16,6 +16,12 @@ import {
   reconcileDownloadedAttachmentName,
   reconcileRenamedAttachments
 } from './attachment-rename-reconcile'
+
+// statSync passes through unless a test reports the ino 0 some mounts return.
+vi.mock('fs', async (importOriginal) => {
+  const actual = await importOriginal<typeof fs>()
+  return { ...actual, statSync: vi.fn(actual.statSync) }
+})
 
 const NOTE_ID = 'n1'
 
@@ -47,6 +53,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  vi.mocked(fs.statSync).mockRestore()
   fs.rmSync(vaultPath, { recursive: true, force: true })
 })
 
@@ -282,5 +289,56 @@ describe.runIf(fileSystemIgnoresCase())('reconcileDownloadedAttachmentName, case
 
     expect(fs.readdirSync(attachmentsDir())).toEqual(['abc123-Photo.png'])
     expect(fs.readFileSync(result!, 'utf8')).toBe('edited here')
+  })
+})
+
+// VERIFY-5749R2: some mounts (SMB/WebDAV redirectors, virtual cloud drives,
+// FUSE) report ino 0 for every file, which proves neither same nor different.
+describe.runIf(fileSystemIgnoresCase())('reconcileDownloadedAttachmentName, ino 0', () => {
+  beforeEach(() => {
+    const realStatSync = vi.mocked(fs.statSync).getMockImplementation()!
+    vi.mocked(fs.statSync).mockImplementation((p: fs.PathLike, options?: fs.StatOptions) => {
+      const stats = realStatSync(p, options)
+      if (stats && options?.bigint) (stats as fs.BigIntStats).ino = 0n
+      return stats
+    })
+  })
+
+  it('keeps a different file whose name differs from the body only by case', async () => {
+    fs.mkdirSync(attachmentsDir(), { recursive: true })
+    const downloaded = path.join(attachmentsDir(), 'abc123-scan.pdf')
+    fs.writeFileSync(downloaded, 'server')
+    fs.writeFileSync(path.join(attachmentsDir(), 'abc123-invoice.pdf'), 'edited')
+
+    const result = await reconcileDownloadedAttachmentName(
+      NOTE_ID,
+      downloaded,
+      `![x](attachments/${NOTE_ID}/abc123-Invoice.pdf)`,
+      vaultPath
+    )
+
+    expect(result).toBe(downloaded)
+    expect(fs.readdirSync(attachmentsDir()).toSorted()).toEqual([
+      'abc123-invoice.pdf',
+      'abc123-scan.pdf'
+    ])
+    expect(fs.readFileSync(downloaded, 'utf8')).toBe('server')
+    expect(fs.readFileSync(path.join(attachmentsDir(), 'abc123-invoice.pdf'), 'utf8')).toBe(
+      'edited'
+    )
+  })
+
+  it('keeps the only copy of a case-only download', async () => {
+    const downloaded = writeAttachment('abc123-photo.png')
+
+    const result = await reconcileDownloadedAttachmentName(
+      NOTE_ID,
+      downloaded,
+      `![x](attachments/${NOTE_ID}/abc123-Photo.png)`,
+      vaultPath
+    )
+
+    expect(fs.readdirSync(attachmentsDir())).toHaveLength(1)
+    expect(fs.readFileSync(result!, 'utf8')).toBe('bytes')
   })
 })
