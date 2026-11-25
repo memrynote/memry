@@ -4,6 +4,7 @@
 use super::*;
 
 use crate::domain::attachment_refs;
+use crate::sync::day_picture_refs;
 
 /// Adds an attachment id to a note's `attachmentReferences` (§14.7).
 ///
@@ -69,7 +70,21 @@ fn edit_references(
         &outbox::Change::upsert(ITEM_TYPE, note_id),
         now_ms,
         |tx| {
+            let before = read_attachment_references(tx, note_id)?;
             attachment_refs::merge_note_references(tx, note_id, Some(&references))?;
+            // A day's first picture: no device has pushed its `note` record
+            // yet, so this one creates it (#5800).
+            if day_picture_refs::is_day_note(note_id)
+                && sync_items::load(tx, ITEM_TYPE, note_id)?.is_none()
+            {
+                return day_picture_refs::create_day_note(
+                    tx,
+                    note_id,
+                    &references,
+                    device_id,
+                    now_ms,
+                );
+            }
             let mut changes = stamp(tx, ITEM_TYPE, note_id, device_id, now_ms)?;
             changes.push((
                 "attachmentReferences",
@@ -77,7 +92,9 @@ fn edit_references(
                     references.into_iter().map(Value::String).collect(),
                 )),
             ));
-            sync_items::apply_local_edit_in(tx, ITEM_TYPE, note_id, &changes, now_ms)
+            let stored = sync_items::apply_local_edit_in(tx, ITEM_TYPE, note_id, &changes, now_ms)?;
+            day_picture_refs::note_local_edit(tx, note_id, &before, &stored)?;
+            Ok(stored)
         },
     )
 }
