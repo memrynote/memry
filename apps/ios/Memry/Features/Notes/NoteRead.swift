@@ -52,11 +52,8 @@ final class NoteReadViewModel {
     /// again, at note granularity.
     let filler: (any VaultFilling)?
 
-    /// The current network path, for FR-045's metered policy.
-    ///
-    /// Optional so a test can leave it out. An opened note judges any usable
-    /// path unmetered (`AttachmentDownload.openedPath`); the per-attachment
-    /// policy stays the core's, in `may_download`.
+    /// The current network path, for FR-045's metered policy, which is the
+    /// core's (`may_download`). Optional so a test can leave it out.
     let reachability: (any Reachability)?
 
     private(set) var phase: Phase = .loading
