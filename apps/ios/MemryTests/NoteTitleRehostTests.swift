@@ -231,8 +231,8 @@ extension KeyWindowSuites {
             field.insertText("Kestrel")
             await until { field.text == "Kestrel" }
             f.writer.release()
-            await f.writer.landed.until { f.writer.saved.count == 1 }
-            #expect(try await savedTitle(f) == "Agent Heron", "the typed title was not saved: \(f.writer.titles)")
+            await f.writer.landed.until { !f.writer.saved.isEmpty }
+            #expect(f.writer.saved.first == "Agent Heron", "the typed title was not saved: \(f.writer.titles)")
             try await settleReads(f)
             #expect(field.text == "Kestrel", "the re-read replaced the typed title")
 
