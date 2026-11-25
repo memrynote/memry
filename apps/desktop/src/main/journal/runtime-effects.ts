@@ -1,6 +1,8 @@
 import { createLogger } from '../lib/logger'
 import { getCrdtProvider } from '../sync/crdt-provider'
+import { getDatabase } from '../database'
 import { deleteDocLocally } from '../sync/local-doc-delete'
+import { forgetOwedJournalDayMerge } from '../sync/journal-day-merge-key'
 import {
   enqueueLocalSyncCreate,
   enqueueLocalSyncDelete,
@@ -17,9 +19,16 @@ export function enqueueJournalUpdate(noteId: string, date: string): void {
   enqueueLocalSyncUpdate('journal', noteId, date)
 }
 
-/** Raises the day's tombstone and purges its doc (`deleteDocLocally`). */
+/**
+ * Raises the day's tombstone and purges its doc (`deleteDocLocally`). A held
+ * day's owed merge goes first: a crash after it leaves the day deleted here,
+ * never merged back (§1.9.1).
+ */
 export async function enqueueJournalDelete(noteId: string, date: string): Promise<void> {
-  await deleteDocLocally(noteId, () => enqueueLocalSyncDelete('journal', noteId, date))
+  await deleteDocLocally(noteId, () => {
+    forgetOwedJournalDayMerge(getDatabase(), noteId)
+    enqueueLocalSyncDelete('journal', noteId, date)
+  })
 }
 
 export async function initializeJournalCrdt(

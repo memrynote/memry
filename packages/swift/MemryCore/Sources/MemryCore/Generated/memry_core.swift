@@ -5664,6 +5664,13 @@ public protocol NotesProtocol: AnyObject, Sendable {
     func comments(id: String) throws  -> [ReviewComment]
     
     /**
+     * A binary note's own file (#5668): the PDF, image, audio or video that
+     * is the note's whole content. `None` for a note that names none, which
+     * opens as a body. Fetch the bytes with `VaultSync::fetch_attachment`.
+     */
+    func file(id: String) throws  -> NoteFile?
+    
+    /**
      * Every live folder, parent before child.
      */
     func folders() throws  -> [FolderSummary]
@@ -5980,6 +5987,21 @@ open func comments(id: String)throws  -> [ReviewComment]  {
     return try  FfiConverterSequenceTypeReviewComment.lift(try rustCallWithError(FfiConverterTypeCrdtError_lift) {
         uniffiCallStatus in
     uniffi_memry_core_fn_method_notes_comments(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * A binary note's own file (#5668): the PDF, image, audio or video that
+     * is the note's whole content. `None` for a note that names none, which
+     * opens as a body. Fetch the bytes with `VaultSync::fetch_attachment`.
+     */
+open func file(id: String)throws  -> NoteFile?  {
+    return try  FfiConverterOptionTypeNoteFile.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_notes_file(
             self.uniffiCloneHandle(),
         FfiConverterString.lower(id),uniffiCallStatus
     )
@@ -14199,6 +14221,20 @@ public protocol VaultSyncProtocol: AnyObject, Sendable {
     func fetchAttachment(attachmentId: String, reachable: Reachable) async throws  -> AttachmentFetchSummary
     
     /**
+     * Reads the manifest of each attachment `note_id` references that has no
+     * name on this device yet, so `Notes::attachment_for_block` binds the
+     * block naming it (#5675). A block names its file by the manifest's
+     * filename, and a row a pulled note created has none until a manifest is
+     * read. Manifests only: the bytes still go through
+     * [`Self::fetch_attachment`].
+     *
+     * The shell calls it when the user opens the note, whatever the Download
+     * attachments setting. Answers how many it named; one that will not
+     * read is logged and asked again on the next open.
+     */
+    func fetchNoteManifests(noteId: String) async throws  -> UInt32
+    
+    /**
      * Retries every attachment a note references whose bytes are not here
      * (#1829's re-driver). The shell calls it on reconnect and after a sync
      * pass; each attachment goes through [`Self::fetch_attachment`], so the
@@ -14256,8 +14292,10 @@ public protocol VaultSyncProtocol: AnyObject, Sendable {
      * makes no request, and so does a round before the `Retry-After` of a
      * `429` the last one met, whether it ended that round or only answered
      * its probe or bootstrap open, or one the first sync's bodies pass gave
-     * up on: it pulls nothing, which pauses the shell's drain until the next
-     * foreground. It opens a bootstrap session
+     * up on: it pulls nothing. The shell then waits a few seconds and asks
+     * again, and pauses its drain until the next foreground only once the
+     * rounds have pulled nothing for longer than the longest `429` hold.
+     * It opens a bootstrap session
      * for the round and pulls four documents at a time when the server
      * grants one (a device's first day, §10.9), one at a time otherwise.
      *
@@ -14521,6 +14559,34 @@ open func fetchAttachment(attachmentId: String, reachable: Reachable)async throw
 }
     
     /**
+     * Reads the manifest of each attachment `note_id` references that has no
+     * name on this device yet, so `Notes::attachment_for_block` binds the
+     * block naming it (#5675). A block names its file by the manifest's
+     * filename, and a row a pulled note created has none until a manifest is
+     * read. Manifests only: the bytes still go through
+     * [`Self::fetch_attachment`].
+     *
+     * The shell calls it when the user opens the note, whatever the Download
+     * attachments setting. Answers how many it named; one that will not
+     * read is logged and asked again on the next open.
+     */
+open func fetchNoteManifests(noteId: String)async throws  -> UInt32  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_vaultsync_fetch_note_manifests(
+                        self.uniffiCloneHandle(),FfiConverterString.lower(noteId)
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_u32,
+            completeFunc: ffi_memry_core_rust_future_complete_u32,
+            freeFunc: ffi_memry_core_rust_future_free_u32,
+            liftFunc: FfiConverterUInt32.lift,
+            errorHandler: FfiConverterTypeSyncError_lift
+        )
+}
+    
+    /**
      * Retries every attachment a note references whose bytes are not here
      * (#1829's re-driver). The shell calls it on reconnect and after a sync
      * pass; each attachment goes through [`Self::fetch_attachment`], so the
@@ -14620,8 +14686,10 @@ open func uploadAttachment(noteId: String, filename: String, mimeType: String, b
      * makes no request, and so does a round before the `Retry-After` of a
      * `429` the last one met, whether it ended that round or only answered
      * its probe or bootstrap open, or one the first sync's bodies pass gave
-     * up on: it pulls nothing, which pauses the shell's drain until the next
-     * foreground. It opens a bootstrap session
+     * up on: it pulls nothing. The shell then waits a few seconds and asks
+     * again, and pauses its drain until the next foreground only once the
+     * rounds have pulled nothing for longer than the longest `429` hold.
+     * It opens a bootstrap session
      * for the round and pulls four documents at a time when the server
      * grants one (a device's first day, §10.9), one at a time otherwise.
      *
@@ -15919,8 +15987,8 @@ public struct BodyDrainSummary: Equatable, Hashable {
     public var requests: UInt32
     /**
      * Live documents still owed a body. Some may be backing off after a
-     * failure, so a round that pulled nothing pauses the drain even when
-     * this is above 0.
+     * failure, so a round that pulled nothing tells the shell to wait and ask
+     * again even when this is above 0.
      */
     public var remaining: UInt32
     /**
@@ -15936,8 +16004,8 @@ public struct BodyDrainSummary: Equatable, Hashable {
          */documents: UInt32, requests: UInt32, 
         /**
          * Live documents still owed a body. Some may be backing off after a
-         * failure, so a round that pulled nothing pauses the drain even when
-         * this is above 0.
+         * failure, so a round that pulled nothing tells the shell to wait and ask
+         * again even when this is above 0.
          */remaining: UInt32, 
         /**
          * Whether a bootstrap session widened the round (chapter 10 §10.7).
@@ -22098,6 +22166,85 @@ public func FfiConverterTypeNoteDetail_lower(_ value: NoteDetail) -> RustBuffer 
 
 
 /**
+ * What a shell needs to open a binary note.
+ */
+public struct NoteFile: Equatable, Hashable {
+    /**
+     * The payload's `fileType`, as stored: `pdf`, `image`, `audio` or `video`.
+     */
+    public var fileType: String
+    public var mimeType: String?
+    public var attachmentId: String
+    /**
+     * The cache row, `None` until a manifest or a download writes one. Its
+     * `local_path` is set once the bytes are on disk.
+     */
+    public var attachment: CachedAttachment?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * The payload's `fileType`, as stored: `pdf`, `image`, `audio` or `video`.
+         */fileType: String, mimeType: String?, attachmentId: String, 
+        /**
+         * The cache row, `None` until a manifest or a download writes one. Its
+         * `local_path` is set once the bytes are on disk.
+         */attachment: CachedAttachment?) {
+        self.fileType = fileType
+        self.mimeType = mimeType
+        self.attachmentId = attachmentId
+        self.attachment = attachment
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension NoteFile: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeNoteFile: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> NoteFile {
+        return
+            try NoteFile(
+                fileType: FfiConverterString.read(from: &buf), 
+                mimeType: FfiConverterOptionString.read(from: &buf), 
+                attachmentId: FfiConverterString.read(from: &buf), 
+                attachment: FfiConverterOptionTypeCachedAttachment.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: NoteFile, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.fileType, into: &buf)
+        FfiConverterOptionString.write(value.mimeType, into: &buf)
+        FfiConverterString.write(value.attachmentId, into: &buf)
+        FfiConverterOptionTypeCachedAttachment.write(value.attachment, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNoteFile_lift(_ buf: RustBuffer) throws -> NoteFile {
+    return try FfiConverterTypeNoteFile.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNoteFile_lower(_ value: NoteFile) -> RustBuffer {
+    return FfiConverterTypeNoteFile.lower(value)
+}
+
+
+/**
  * The note a `[[wiki link]]` opens, and the heading to scroll to.
  */
 public struct NoteLinkTarget: Equatable, Hashable {
@@ -25331,6 +25478,11 @@ public struct SyncPassSummary: Equatable, Hashable {
      * Rows still queued after the pass.
      */
     public var pending: UInt32
+    /**
+     * Attachment refusals the user was not told of yet, and landed uploads
+     * they were (#5532).
+     */
+    public var attachments: [QueuedAttachmentNews]
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
@@ -25352,13 +25504,18 @@ public struct SyncPassSummary: Equatable, Hashable {
          */rejected: UInt32, 
         /**
          * Rows still queued after the pass.
-         */pending: UInt32) {
+         */pending: UInt32, 
+        /**
+         * Attachment refusals the user was not told of yet, and landed uploads
+         * they were (#5532).
+         */attachments: [QueuedAttachmentNews] = []) {
         self.pulled = pulled
         self.deleted = deleted
         self.bodies = bodies
         self.pushed = pushed
         self.rejected = rejected
         self.pending = pending
+        self.attachments = attachments
     }
 
     
@@ -25382,7 +25539,8 @@ public struct FfiConverterTypeSyncPassSummary: FfiConverterRustBuffer {
                 bodies: FfiConverterUInt32.read(from: &buf), 
                 pushed: FfiConverterUInt32.read(from: &buf), 
                 rejected: FfiConverterUInt32.read(from: &buf), 
-                pending: FfiConverterUInt32.read(from: &buf)
+                pending: FfiConverterUInt32.read(from: &buf), 
+                attachments: FfiConverterSequenceTypeQueuedAttachmentNews.read(from: &buf)
         )
     }
 
@@ -25393,6 +25551,7 @@ public struct FfiConverterTypeSyncPassSummary: FfiConverterRustBuffer {
         FfiConverterUInt32.write(value.pushed, into: &buf)
         FfiConverterUInt32.write(value.rejected, into: &buf)
         FfiConverterUInt32.write(value.pending, into: &buf)
+        FfiConverterSequenceTypeQueuedAttachmentNews.write(value.attachments, into: &buf)
     }
 }
 
@@ -28423,6 +28582,104 @@ public func FfiConverterTypeApproverStatus_lift(_ buf: RustBuffer) throws -> App
 #endif
 public func FfiConverterTypeApproverStatus_lower(_ value: ApproverStatus) -> RustBuffer {
     return FfiConverterTypeApproverStatus.lower(value)
+}
+
+
+
+/**
+ * Why the server refused an owed upload (#5532).
+ */
+
+public enum AttachmentRefusal: Equatable, Hashable {
+    
+    /**
+     * The `STORAGE_QUOTA_EXCEEDED` code: the plan's storage is full.
+     */
+    case storageFull
+    /**
+     * `STORAGE_FILE_TOO_LARGE` or `VALIDATION_BODY_TOO_LARGE`: the file is
+     * past the plan's or the server's per-file limit, which freeing space
+     * never changes.
+     */
+    case tooLarge
+    /**
+     * 403: the account may not upload it.
+     */
+    case notAllowed
+    /**
+     * Any other refusal: a 4xx such as a 400 or a 413 with another code, or
+     * bytes that would not frame.
+     */
+    case rejected
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension AttachmentRefusal: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAttachmentRefusal: FfiConverterRustBuffer {
+    typealias SwiftType = AttachmentRefusal
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AttachmentRefusal {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .storageFull
+        
+        case 2: return .tooLarge
+        
+        case 3: return .notAllowed
+        
+        case 4: return .rejected
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: AttachmentRefusal, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .storageFull:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .tooLarge:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .notAllowed:
+            writeInt(&buf, Int32(3))
+        
+        
+        case .rejected:
+            writeInt(&buf, Int32(4))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAttachmentRefusal_lift(_ buf: RustBuffer) throws -> AttachmentRefusal {
+    return try FfiConverterTypeAttachmentRefusal.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAttachmentRefusal_lower(_ value: AttachmentRefusal) -> RustBuffer {
+    return FfiConverterTypeAttachmentRefusal.lower(value)
 }
 
 
@@ -32579,6 +32836,94 @@ public func FfiConverterTypeProtectionClass_lower(_ value: ProtectionClass) -> R
 
 
 
+/**
+ * What a walk over the owed uploads has to tell the user (#5532).
+ */
+
+public enum QueuedAttachmentNews: Equatable, Hashable {
+    
+    /**
+     * The server refused the upload, and the user was not told of this
+     * refusal yet. It stays owed. `status` is the HTTP status, 0 for bytes
+     * that would not frame. `note_title` is empty for an untitled note.
+     */
+    case refused(attachmentId: String, noteId: String, noteTitle: String, refusal: AttachmentRefusal, status: UInt16
+    )
+    /**
+     * An upload the user was told was refused has landed.
+     */
+    case uploaded(attachmentId: String, noteId: String
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension QueuedAttachmentNews: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeQueuedAttachmentNews: FfiConverterRustBuffer {
+    typealias SwiftType = QueuedAttachmentNews
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> QueuedAttachmentNews {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .refused(attachmentId: try FfiConverterString.read(from: &buf), noteId: try FfiConverterString.read(from: &buf), noteTitle: try FfiConverterString.read(from: &buf), refusal: try FfiConverterTypeAttachmentRefusal.read(from: &buf), status: try FfiConverterUInt16.read(from: &buf)
+        )
+        
+        case 2: return .uploaded(attachmentId: try FfiConverterString.read(from: &buf), noteId: try FfiConverterString.read(from: &buf)
+        )
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: QueuedAttachmentNews, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case let .refused(attachmentId,noteId,noteTitle,refusal,status):
+            writeInt(&buf, Int32(1))
+            FfiConverterString.write(attachmentId, into: &buf)
+            FfiConverterString.write(noteId, into: &buf)
+            FfiConverterString.write(noteTitle, into: &buf)
+            FfiConverterTypeAttachmentRefusal.write(refusal, into: &buf)
+            FfiConverterUInt16.write(status, into: &buf)
+            
+        
+        case let .uploaded(attachmentId,noteId):
+            writeInt(&buf, Int32(2))
+            FfiConverterString.write(attachmentId, into: &buf)
+            FfiConverterString.write(noteId, into: &buf)
+            
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeQueuedAttachmentNews_lift(_ buf: RustBuffer) throws -> QueuedAttachmentNews {
+    return try FfiConverterTypeQueuedAttachmentNews.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeQueuedAttachmentNews_lower(_ value: QueuedAttachmentNews) -> RustBuffer {
+    return FfiConverterTypeQueuedAttachmentNews.lower(value)
+}
+
+
+
 
 public enum Reachable: Equatable, Hashable {
     
@@ -33794,12 +34139,19 @@ enum SyncError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
     case AttachmentUnverified(deviceId: String
     )
     /**
-     * The bytes arrived and were not the bytes the manifest describes.
+     * The attachment's bytes or its manifest were not what chapter 14 requires.
      *
-     * A failed chunk hash, a failed whole-file checksum, or a chunk that
-     * would not decrypt. Separate from `AttachmentUnverified` because the
-     * manifest was trustworthy and the transfer was not, so a retry is
-     * reasonable here and is not there.
+     * On a download: a chunk that failed its hash or size check, would not
+     * decrypt, or never arrived; an assembled file that failed its whole-file
+     * checksum; a manifest that would not decode, decrypt or parse; or a
+     * manifest whose `id` names another attachment than the one asked for
+     * (§14.7). Separate from `AttachmentUnverified` because no signature
+     * failed: the server sent the wrong bytes or the wrong manifest, so a
+     * retry is reasonable here and is not there.
+     *
+     * On an upload: a file that needs more chunks than a session allows
+     * (§14.2), or a manifest that would not seal. The upload counts these as
+     * refused and does not retry them.
      */
     case AttachmentCorrupt(what: String
     )
@@ -34597,6 +34949,30 @@ fileprivate struct FfiConverterOptionTypeSyncProgressListener: FfiConverterRustB
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeCachedAttachment: FfiConverterRustBuffer {
+    typealias SwiftType = CachedAttachment?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeCachedAttachment.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeCachedAttachment.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeCalendarCaldavObject: FfiConverterRustBuffer {
     typealias SwiftType = CalendarCaldavObject?
 
@@ -34829,6 +35205,30 @@ fileprivate struct FfiConverterOptionTypeNoteDetail: FfiConverterRustBuffer {
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeNoteDetail.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeNoteFile: FfiConverterRustBuffer {
+    typealias SwiftType = NoteFile?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeNoteFile.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeNoteFile.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -37146,6 +37546,31 @@ fileprivate struct FfiConverterSequenceTypeWikiLinkCandidate: FfiConverterRustBu
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeQueuedAttachmentNews: FfiConverterRustBuffer {
+    typealias SwiftType = [QueuedAttachmentNews]
+
+    public static func write(_ value: [QueuedAttachmentNews], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeQueuedAttachmentNews.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [QueuedAttachmentNews] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [QueuedAttachmentNews]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeQueuedAttachmentNews.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeSearchType: FfiConverterRustBuffer {
     typealias SwiftType = [SearchType]
 
@@ -38551,6 +38976,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_notes_comments() != 52547) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_notes_file() != 56267) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_notes_folders() != 56251) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -38800,6 +39228,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_vaultsync_fetch_attachment() != 34657) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_vaultsync_fetch_note_manifests() != 9013) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_vaultsync_redrive_attachments() != 2191) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -38809,7 +39240,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_vaultsync_upload_attachment() != 60438) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_vaultsync_drain_bodies() != 41901) {
+    if (uniffi_memry_core_checksum_method_vaultsync_drain_bodies() != 21882) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vaultsync_attach_inbox_file() != 44095) {

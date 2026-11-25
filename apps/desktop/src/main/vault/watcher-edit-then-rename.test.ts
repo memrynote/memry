@@ -9,7 +9,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import fs from 'fs'
+import fs, { statSync } from 'fs'
 import os from 'os'
 import path from 'path'
 import { eq } from 'drizzle-orm'
@@ -25,6 +25,7 @@ import {
 import { insertNoteCache } from '@main/database/queries/notes'
 import { upsertNoteMetadata } from '@memry/storage-data'
 import type * as Chokidar from 'chokidar'
+import type * as Fs from 'fs'
 
 vi.mock('electron', () => ({
   BrowserWindow: { getAllWindows: vi.fn(() => []) },
@@ -82,16 +83,27 @@ vi.mock('../inbox/suggestions', () => ({ updateNoteEmbedding: vi.fn() }))
 vi.mock('../telemetry/diagnostics', () => ({ trackMainError: vi.fn(), trackMainLog: vi.fn() }))
 // Tells the test when the app's watcher hears a change: a listener on its own
 // chokidar watcher, added before the app's, so the app's runs in the same emit.
-const changeHeard = vi.hoisted(() => ({ path: '', resolve: () => {} }))
+const changeHeard = vi.hoisted(() => ({
+  path: '',
+  resolve: () => {},
+  watcher: null as Chokidar.FSWatcher | null
+}))
 vi.mock('chokidar', async (importOriginal) => {
   const actual = await importOriginal<typeof Chokidar>()
   return {
     ...actual,
-    watch: (...args: Parameters<typeof actual.watch>) =>
-      actual.watch(...args).on('change', (filePath: string) => {
+    watch: (...args: Parameters<typeof actual.watch>) => {
+      changeHeard.watcher = actual.watch(...args).on('change', (filePath: string) => {
         if (filePath === changeHeard.path) changeHeard.resolve()
       })
+      return changeHeard.watcher
+    }
   }
+})
+vi.mock('fs', async (importOriginal) => {
+  const actual = await importOriginal<typeof Fs>()
+  const spied = vi.fn(actual.statSync)
+  return { ...actual, statSync: spied, default: { ...actual, statSync: spied } }
 })
 vi.mock('../database/client', async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
@@ -314,6 +326,21 @@ describe('an outside edit followed by a rename inside the change debounce', () =
     },
     20_000
   )
+
+  it('raw events on one file in one event-loop turn stat it once', async () => {
+    seed('n1', 'Docs/apple.md', '# apple\n\nbody\n')
+    await watch()
+    const absolutePath = path.join(vault.path, 'Docs/apple.md')
+    vi.mocked(statSync).mockClear()
+    // One write reports about three raw events on its file.
+    for (let i = 0; i < 5; i++) {
+      changeHeard.watcher?.emit('raw', 'change', 'apple.md', {
+        watchedPath: path.dirname(absolutePath)
+      })
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(vi.mocked(statSync).mock.calls.filter(([p]) => p === absolutePath)).toHaveLength(1)
+  })
 
   it('a rename right after an outside edit keeps the note id', async () => {
     seed('n1', 'Docs/apple.md', '# apple\n\nbody\n')

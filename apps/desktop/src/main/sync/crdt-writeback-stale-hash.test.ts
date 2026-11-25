@@ -76,7 +76,8 @@ vi.mock('../vault/notes-io', async () => await import('../vault/notes'))
 vi.mock('../vault/notes', () => ({
   getVaultRoot: () => VAULT_ROOT,
   toAbsolutePath: (relative: string) => `/vault/${relative}`,
-  maybeCreateSignificantSnapshot: () => null
+  maybeCreateSignificantSnapshot: () => null,
+  createSnapshot: () => null
 }))
 vi.mock('../lib/paths', async (importOriginal) => ({
   ...(await importOriginal<typeof PathsModule>()),

@@ -103,6 +103,16 @@ pub fn ids_for_note(conn: &Connection, note_id: &str) -> Result<Vec<String>, Sto
         .map_err(failed)
 }
 
+/// Moves every upload still owed to `from` over to `to`, so each names `to`
+/// when it lands. Returns how many moved.
+pub(crate) fn move_to_note(conn: &Connection, from: &str, to: &str) -> Result<usize, StorageError> {
+    conn.execute(
+        "UPDATE note_attachment_uploads SET note_id = ?2 WHERE note_id = ?1",
+        params![from, to],
+    )
+    .map_err(failed)
+}
+
 /// Whether the note is live here. A deleted note's upload waits rather than
 /// spends quota, and runs if the note comes back.
 pub fn note_is_live(conn: &Connection, note_id: &str) -> Result<bool, StorageError> {
@@ -114,76 +124,25 @@ pub fn note_is_live(conn: &Connection, note_id: &str) -> Result<bool, StorageErr
     .map_err(failed)
 }
 
-/// Whether the note's body was purged here and holds nothing since: another
-/// device's delete applied (§7.15), so no block shows the picture any more.
-/// A note deleted only here keeps its body until then, and its upload stays
-/// owed. A note this database does not hold is not judged purged.
-pub fn note_is_purged(conn: &Connection, note_id: &str) -> Result<bool, StorageError> {
-    let local = crate::crdt::update_log::Namespace::Local.row_id(note_id);
+/// The note's title, empty when it has none, so a refusal can name it.
+pub fn note_title(conn: &Connection, note_id: &str) -> Result<String, StorageError> {
     conn.query_row(
-        "SELECT EXISTS(SELECT 1 FROM notes WHERE id = ?1 AND deleted_at IS NOT NULL) \
-           AND EXISTS(SELECT 1 FROM yjs_doc_epochs WHERE doc_id = ?1 AND epoch > 0) \
-           AND NOT EXISTS(SELECT 1 FROM yjs_updates WHERE doc_id IN (?1, ?2)) \
-           AND NOT EXISTS(SELECT 1 FROM yjs_snapshots WHERE doc_id IN (?1, ?2))",
-        params![note_id, local],
-        |row| row.get(0),
+        "SELECT title FROM notes WHERE id = ?1",
+        params![note_id],
+        |row| row.get::<_, Option<String>>(0),
     )
+    .optional()
+    .map(|title| title.flatten().unwrap_or_default())
     .map_err(failed)
 }
 
-/// How long a purged note's picture waits for a revive (§14.8.2) before its
-/// bytes and row go: desktop's `ASSET_RELEASE_GRACE_MS`
-/// (`apps/desktop/src/main/canvas/assets/asset-store.ts`), so this device
-/// keeps the picture as long as desktop keeps a deleted note's chunks.
-pub const PURGE_GRACE_MS: i64 = 30 * 24 * 60 * 60 * 1000;
-
-/// When a pulled delete purged the note of an owed upload, in `meta`. No
-/// migration: an older build ignores the key.
+/// Compat: the `meta` key under which #5573 and #5604 builds dated the purge
+/// of an owed upload's note. A #5573 build discards the upload 30 days after
+/// that date and dates an undated purge at its first drain. This build writes
+/// none, so a downgrade to #5573 starts that grace at its first drain instead
+/// of discarding the only copy of the bytes at once (#5578). Nothing reads
+/// it; a key an older build left goes with its upload.
 const PURGED_KEY: &str = "attachment_upload.purged_at:";
-
-/// A pulled delete purged `note_id` here at `now_ms`: its owed uploads wait
-/// out [`PURGE_GRACE_MS`] from now. A later delete restarts the grace.
-pub fn mark_purged(conn: &Connection, note_id: &str, now_ms: i64) -> Result<(), StorageError> {
-    conn.execute(
-        "INSERT INTO meta (key, value) \
-         SELECT ?1 || attachment_id, ?2 FROM note_attachment_uploads WHERE note_id = ?3 \
-         ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-        params![PURGED_KEY, now_ms.to_string(), note_id],
-    )
-    .map_err(failed)?;
-    Ok(())
-}
-
-/// Whether the grace of an upload whose note is purged has ended at `now_ms`.
-/// A purge with no recorded time (applied before this build) starts its grace
-/// now, so the picture is never dropped early.
-pub fn purge_grace_ended(
-    conn: &Connection,
-    attachment_id: &str,
-    now_ms: i64,
-) -> Result<bool, StorageError> {
-    let key = format!("{PURGED_KEY}{attachment_id}");
-    let recorded = conn
-        .query_row(
-            "SELECT value FROM meta WHERE key = ?1",
-            params![key],
-            |row| row.get::<_, String>(0),
-        )
-        .optional()
-        .map_err(failed)?;
-    match recorded.and_then(|value| value.parse::<i64>().ok()) {
-        Some(purged_at) => Ok(now_ms - purged_at >= PURGE_GRACE_MS),
-        None => {
-            conn.execute(
-                "INSERT INTO meta (key, value) VALUES (?1, ?2) \
-                 ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-                params![key, now_ms.to_string()],
-            )
-            .map_err(failed)?;
-            Ok(false)
-        }
-    }
-}
 
 fn forget_purge(conn: &Connection, attachment_id: &str) -> Result<(), StorageError> {
     conn.execute(
@@ -276,12 +235,65 @@ pub fn clear(conn: &Connection, attachment_id: &str) -> Result<(), StorageError>
         params![attachment_id],
     )
     .map_err(failed)?;
+    forget_refusal(conn, attachment_id)?;
     forget_purge(conn, attachment_id)
 }
 
+/// The `meta` key holding the refusal status the shell was last told about
+/// for one owed upload (#5532). A `meta` row rather than a table: the core's
+/// numbered migrations stay frozen until the Tauri branch merges. An older
+/// build never reads the key; a row it leaves behind once its upload lands
+/// names a random id that no new attach reuses, so it is never read again.
+fn refusal_key(attachment_id: &str) -> String {
+    format!("attachment_upload.refusal_seen:{attachment_id}")
+}
+
+/// The refusal status the shell was last told about for this upload.
+pub fn told_refusal(conn: &Connection, attachment_id: &str) -> Result<Option<u16>, StorageError> {
+    let stored: Option<String> = conn
+        .query_row(
+            "SELECT value FROM meta WHERE key = ?1",
+            params![refusal_key(attachment_id)],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(failed)?;
+    Ok(stored.and_then(|status| status.parse().ok()))
+}
+
+/// Records that the shell was told the upload was refused with `status`.
+/// An upload no longer owed records nothing.
+pub fn remember_refusal(
+    conn: &Connection,
+    attachment_id: &str,
+    status: u16,
+) -> Result<(), StorageError> {
+    conn.execute(
+        "INSERT INTO meta (key, value) \
+         SELECT ?1, ?2 WHERE EXISTS \
+           (SELECT 1 FROM note_attachment_uploads WHERE attachment_id = ?3) \
+         ON CONFLICT (key) DO UPDATE SET value = excluded.value",
+        params![
+            refusal_key(attachment_id),
+            status.to_string(),
+            attachment_id
+        ],
+    )
+    .map_err(failed)?;
+    Ok(())
+}
+
+fn forget_refusal(conn: &Connection, attachment_id: &str) -> Result<(), StorageError> {
+    conn.execute(
+        "DELETE FROM meta WHERE key = ?1",
+        params![refusal_key(attachment_id)],
+    )
+    .map_err(failed)?;
+    Ok(())
+}
+
 /// Takes back an attach the server refused at once, where no block was
-/// inserted, or a purged note's picture whose grace ended: nothing may keep
-/// the row.
+/// inserted: nothing may keep the row.
 pub fn discard(conn: &Connection, attachment_id: &str) -> Result<(), StorageError> {
     let tx = crate::storage::nested_tx::begin(conn).map_err(failed)?;
     tx.execute(
@@ -294,6 +306,7 @@ pub fn discard(conn: &Connection, attachment_id: &str) -> Result<(), StorageErro
         params![attachment_id],
     )
     .map_err(failed)?;
+    forget_refusal(&tx, attachment_id)?;
     forget_purge(&tx, attachment_id)?;
     tx.commit().map_err(failed)
 }

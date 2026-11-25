@@ -242,6 +242,7 @@ const runtimeMocks = vi.hoisted(() => {
       setSnapshotDeferral: vi.fn(),
       readSyncableState: vi.fn(async () => new Uint8Array([7])),
       pushAllSnapshots: vi.fn(),
+      unpushedSnapshotNoteIds: vi.fn(() => []),
       reportEditorWaits: vi.fn(),
       destroy: vi.fn()
     },
@@ -486,6 +487,7 @@ vi.mock('./crdt-provider', () => ({
   resetCrdtProvider: runtimeMocks.resetCrdtProvider
 }))
 
+vi.mock('./local-doc-delete', () => ({ coverQueuedContentDeletes: vi.fn(async () => {}) }))
 vi.mock('./dirty-recovery', () => ({
   recoverDirtyItems: runtimeMocks.recoverDirtyItems
 }))
@@ -1697,8 +1699,41 @@ describe('sync runtime', () => {
     expect(runtimeMocks.resetCrdtProvider).toHaveBeenCalled()
     expect(runtimeMocks.logWarn).toHaveBeenCalledWith(
       'Pre-shutdown CRDT snapshot push cut short; remaining snapshots deferred',
-      { timeoutMs: 20 }
+      { timeoutMs: 20, unpushedNoteIds: [] }
     )
+  })
+
+  // VERIFY-5722: both bounds were computed from the time left at the step's
+  // start, so the settle wait ran on top of a hung push and close-vault lost
+  // its reserve.
+  it('bounds the download settle wait by the time the final push left', async () => {
+    const {
+      finalSnapshotPushTimeoutMs,
+      shutdownDownloadSettleMs,
+      SHUTDOWN_CLOSE_VAULT_RESERVE_MS
+    } = await import('../shutdown-sequence')
+    const runtime = await loadRuntime()
+    const { registerAttachmentQueueReset } = await import('./attachment-outbox')
+    const settleWithin = vi.fn((_ms: number) => Promise.resolve())
+    registerAttachmentQueueReset(settleWithin)
+    await runtime.startSyncRuntime()
+    runtimeMocks.crdtProvider.pushAllSnapshots.mockImplementationOnce(
+      () => new Promise<number>(() => {})
+    )
+
+    vi.useFakeTimers()
+    const deadlineAt = Date.now() + SHUTDOWN_CLOSE_VAULT_RESERVE_MS + 300
+    const remainingMs = (): number => Math.max(0, deadlineAt - Date.now())
+    const deadline = { remainingMs, cap: (ms: number) => Math.min(ms, remainingMs()) }
+    const stopped = runtime.stopSyncRuntime({
+      finalSyncTimeoutMs: finalSnapshotPushTimeoutMs(deadline),
+      downloadSettleTimeoutMs: () => shutdownDownloadSettleMs(deadline)
+    })
+    await vi.advanceTimersByTimeAsync(300)
+    await stopped
+
+    expect(settleWithin).toHaveBeenCalledWith(0)
+    expect(remainingMs()).toBe(SHUTDOWN_CLOSE_VAULT_RESERVE_MS)
   })
 
   it('skips the final snapshot push when its timeout leaves no time', async () => {
@@ -1864,7 +1899,7 @@ describe('sync runtime', () => {
     async function startWithQueuedFile() {
       const runtime = await loadRuntime()
       const outbox = await import('./attachment-outbox')
-      const upload = vi.fn(async () => ({ attachmentId: 'attachment-1' }))
+      const upload = vi.fn(async () => ({ attachmentId: 'attachment-1', sha256: 'sha' }))
       outbox.registerOutboxUploader(upload, () => outboxDb, null)
       const queueFile = (name: string): string => {
         const diskPath = path.join(tempDir, name)

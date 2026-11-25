@@ -48,7 +48,8 @@ use crate::crdt::update_log;
 use crate::domain::task_merge::{self, Gate};
 use crate::domain::tasks::Inbound;
 use crate::domain::{
-    attachment_uploads, calendar_items, canvas, inbox, journal, notes, projects, settings, tasks,
+    attachment_refs, attachment_uploads, calendar_items, canvas, inbox, journal, notes, projects,
+    settings, tasks,
 };
 use crate::storage::nested_tx;
 use crate::storage::repositories::projectors;
@@ -139,6 +140,9 @@ pub(crate) const DOCUMENT_TYPES: [&str; 2] = ["note", "journal"];
 ///
 /// `clock_device` is this device's clock id (chapter 01 §1.5), which a canvas
 /// conflict copy is clocked under.
+///
+/// The attachment rows of the notes it applied are written once, after the
+/// last record and outside each record's savepoint (#5675).
 pub(crate) fn apply_page(
     conn: &Connection,
     pending: Vec<Pending>,
@@ -146,6 +150,15 @@ pub(crate) fn apply_page(
     clock_device: Option<&str>,
 ) -> Result<ApplyTotals, StorageError> {
     let mut totals = ApplyTotals::default();
+    let note_ids: Vec<&str> = pending
+        .iter()
+        .filter(
+            |item| matches!(item, Pending::Record(record) if record.item_type == notes::ITEM_TYPE),
+        )
+        .map(Pending::item_id)
+        .collect();
+    let stored_lists = attachment_refs::stored_lists(conn, &note_ids)?;
+    let mut applied_notes = Vec::new();
     for item in pending {
         match item {
             Pending::Tombstone {
@@ -196,6 +209,9 @@ pub(crate) fn apply_page(
                         if DOCUMENT_TYPES.contains(&record.item_type.as_str()) {
                             totals.applied_documents.push(record.item_id.clone());
                         }
+                        if record.item_type == notes::ITEM_TYPE {
+                            applied_notes.push(record.item_id.clone());
+                        }
                     }
                     ApplyOutcome::Skipped => totals.skipped += 1,
                     ApplyOutcome::Corrupt { .. } => totals.corrupt += 1,
@@ -204,6 +220,7 @@ pub(crate) fn apply_page(
             }
         }
     }
+    attachment_refs::merge_page(conn, &stored_lists, &applied_notes)?;
     Ok(totals)
 }
 
@@ -280,18 +297,21 @@ fn apply_tombstone(
         now_ms,
     )?;
     store::mark_deleted(&txn, item_type, item_id, deleted_at, server_cursor, now_ms)?;
+    // A live foreign row keeps its row and body for the drain (#2984). Held
+    // before the queue drops: a queued edit holds tags never pushed. Defense
+    // in depth (VERIFY-5656): no test goes red with the order reversed.
+    let held = item_type == journal::ITEM_TYPE && {
+        journal_day_merge::mark_deleted(&txn, item_id)?;
+        journal_day_merge::hold_for_merge(&txn, item_id, clock)?
+    };
     // Sent, the queued edit would undelete the item (VERIFY-5426). After
     // `delete_keep::keep`, which reads the queue (rule 1). A re-create whose
     // clock is after the delete returned above, still queued.
     outbox::drop_upserts(&txn, item_type, item_id)?;
-    if item_type == journal::ITEM_TYPE {
-        journal_day_merge::mark_deleted(&txn, item_id)?;
-        // A live foreign row keeps its row and body for the drain (#2984).
-        if journal_day_merge::hold_for_merge(&txn, item_id, clock)? {
-            txn.commit().map_err(sqlite_failed)?;
-            totals.deleted += 1;
-            return Ok(());
-        }
+    if held {
+        txn.commit().map_err(sqlite_failed)?;
+        totals.deleted += 1;
+        return Ok(());
     }
     projectors::delete(&txn, item_type, item_id, deleted_at)?;
     let purged = if DOCUMENT_TYPES.contains(&item_type) {
@@ -304,7 +324,12 @@ fn apply_tombstone(
         let purged = update_log::purge_in(&txn, item_id).map_err(crdt_failed)?;
         // A same-id revive can still want the note's unsent pictures (§14.8.2).
         if item_type == notes::ITEM_TYPE {
-            attachment_uploads::mark_purged(&txn, item_id, now_ms)?;
+            let kept = attachment_uploads::ids_for_note(&txn, item_id)?.len();
+            if kept > 0 {
+                eprintln!(
+                    "memry-core: attachment uploads: note {item_id} was deleted elsewhere; its {kept} unsent picture(s) stay here until it is revived or they are detached"
+                );
+            }
         }
         purged
     } else {
@@ -447,6 +472,8 @@ fn apply_document(
     record: &InboundRecord,
     now_ms: i64,
 ) -> Result<Inbound, StorageError> {
+    let kept = crate::domain::note_file::keep_own_file(conn, record)?;
+    let record = kept.as_ref().unwrap_or(record);
     match task_merge::document_gate(conn, record)? {
         Gate::Wholesale => task_merge::wholesale(conn, record, now_ms),
         Gate::Skip => Ok(Inbound::Skipped),

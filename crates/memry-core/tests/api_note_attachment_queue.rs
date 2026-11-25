@@ -16,7 +16,7 @@ use base64::engine::general_purpose::STANDARD as BASE64;
 use http_fakes::{FakeSecureStore, FakeTransport, body_json, error_response, jwt, response};
 use memry_core::api::auth::{AuthSession, DeviceDescriptor};
 use memry_core::api::errors::{SyncError, TransportError};
-use memry_core::api::sync::VaultSync;
+use memry_core::api::sync::{AttachmentRefusal, QueuedAttachmentNews, VaultSync};
 use memry_core::api::vault::Vault;
 use memry_core::crypto::sodium;
 use memry_core::domain::attachments::{self, BlockAttachment};
@@ -42,6 +42,7 @@ fn scratch_dir() -> PathBuf {
         "memry-api-note-attachment-queue-{}-{unique}",
         std::process::id()
     ));
+    let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).expect("the scratch directory");
     dir
 }
@@ -537,15 +538,38 @@ async fn a_detach_after_a_crashed_upload_still_releases_its_chunks() {
     assert!(app.transport.calls_to("/upload/initiate").is_empty());
 }
 
-/// The 30-day grace a purged note's picture waits for a revive, the same span
-/// desktop holds a deleted note's assets (§14.8.2).
-const GRACE_MS: i64 = 30 * 24 * 60 * 60 * 1000;
+/// A year, far past the 30-day grace #5573 gave a purged note's picture.
+const A_YEAR_MS: i64 = 365 * 24 * 60 * 60 * 1000;
 
-fn now_ms() -> i64 {
-    std::time::SystemTime::now()
+/// Dates the purge of `id`'s note a year back under the key a #5573 or #5604
+/// build wrote (`attachment_upload.purged_at:<id>`), as if one ran the
+/// pulled delete before this build.
+fn plant_an_old_purge(app: &Launch, id: &str) {
+    let key = format!("attachment_upload.purged_at:{id}");
+    let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .expect("a clock after 1970")
-        .as_millis() as i64
+        .expect("after 1970")
+        .as_millis() as i64;
+    app.vault
+        .db_handle()
+        .call_blocking(move |conn| {
+            conn.execute(
+                "INSERT OR REPLACE INTO meta (key, value) VALUES (?1, ?2)",
+                rusqlite::params![key, (now - A_YEAR_MS).to_string()],
+            )
+            .map_err(|error| memry_core::api::errors::StorageError::Failed {
+                what: error.to_string(),
+            })
+        })
+        .expect("plant the purge");
+}
+
+fn purge_dates(app: &Launch, id: &str) -> i64 {
+    count(
+        app,
+        "SELECT COUNT(*) FROM meta WHERE key = 'attachment_upload.purged_at:' || ?1",
+        id,
+    )
 }
 
 fn count(app: &Launch, sql: &'static str, id: &str) -> i64 {
@@ -577,23 +601,24 @@ fn attachment_rows(app: &Launch, id: &str) -> i64 {
     )
 }
 
-/// Another device's delete, pulled here, purges the note's body. The delete
-/// can still be undone by a revive (§14.8.2), so the picture's bytes and row
-/// stay for the grace and nothing goes up; once the grace ends they go.
+/// Another device's delete, pulled here, purges the note's body. A note can
+/// come back under its id at any age (§5.12.3: the server keeps its row, and a
+/// create over the marker is accepted), and these bytes are the only copy, so
+/// they, the row and the owed upload stay however long the note stays gone.
 #[tokio::test]
-async fn a_purged_notes_picture_waits_out_the_grace_then_goes() {
+async fn a_purged_notes_picture_is_kept_however_long_the_note_stays_gone() {
     let (dir, store) = (scratch_dir(), store());
     let app = launch(&dir, &store, vec![Err(TransportError::Offline)]);
     let note = app.note(&store);
     let id = app.attach(&note).await.expect("kept for later");
 
     deliver_a_delete(&app.vault.db_handle(), &note).await;
-    let applied = now_ms();
+    plant_an_old_purge(&app, &id);
     let drained = app
         .sync
-        .upload_queued_attachments_at(applied + GRACE_MS - 60_000)
+        .upload_queued_attachments()
         .await
-        .expect("drain within the grace");
+        .expect("drain a year after the purge");
 
     assert_eq!(drained, Default::default());
     assert_eq!(app.transport.call_count(), 1, "nothing went up");
@@ -602,33 +627,37 @@ async fn a_purged_notes_picture_waits_out_the_grace_then_goes() {
         BYTES
     );
     assert_eq!(attachment_rows(&app, &id), 1, "the row stays");
-
-    let drained = app
-        .sync
-        .upload_queued_attachments_at(now_ms() + GRACE_MS + 60_000)
-        .await
-        .expect("drain after the grace");
-    assert_eq!(drained, Default::default());
-    assert_eq!(app.transport.call_count(), 1, "nothing went up");
-    assert!(
-        !dir.join("images").join(&id).exists(),
-        "the bytes go once the grace ends"
-    );
-    assert_eq!(attachment_rows(&app, &id), 0);
-    assert_eq!(owed(&app, &id), 0);
+    assert_eq!(owed(&app, &id), 1, "the upload stays owed");
 }
 
-/// A purged note that another device revives under the same id (§14.8.2)
-/// gets its picture back: the next pass uploads the kept bytes once, under
-/// the attachment's id, and references it.
+/// A pulled delete dates nothing for a downgrade to act on: a #5573 build
+/// discards an owed upload 30 days after its `attachment_upload.purged_at`
+/// date, and these bytes are the only copy.
 #[tokio::test]
-async fn a_revived_note_uploads_its_kept_picture_once() {
+async fn a_pulled_delete_leaves_no_purge_date_an_older_build_would_discard_by() {
+    let (dir, store) = (scratch_dir(), store());
+    let app = launch(&dir, &store, vec![Err(TransportError::Offline)]);
+    let note = app.note(&store);
+    let id = app.attach(&note).await.expect("kept for later");
+
+    deliver_a_delete(&app.vault.db_handle(), &note).await;
+
+    assert_eq!(purge_dates(&app, &id), 0);
+    assert_eq!(owed(&app, &id), 1, "the upload stays owed");
+}
+
+/// A purged note that another device revives under the same id (§14.8.2),
+/// even long after the purge, gets its picture back: the next pass uploads
+/// the kept bytes once, under the attachment's id, and references it.
+#[tokio::test]
+async fn a_note_revived_long_after_its_purge_uploads_its_kept_picture_once() {
     let (dir, store) = (scratch_dir(), store());
     let (note, id) = {
         let app = launch(&dir, &store, vec![Err(TransportError::Offline)]);
         let note = app.note(&store);
         let id = app.attach(&note).await.expect("kept for later");
         deliver_a_delete(&app.vault.db_handle(), &note).await;
+        plant_an_old_purge(&app, &id);
         app.sync.upload_queued_attachments().await.expect("drain");
         assert_eq!(
             app.transport.call_count(),
@@ -653,12 +682,14 @@ async fn a_revived_note_uploads_its_kept_picture_once() {
         BYTES
     );
     assert_eq!(owed(&app, &id), 0);
+    assert_eq!(
+        purge_dates(&app, &id),
+        0,
+        "the old date goes with the upload"
+    );
 
     let calls = app.transport.call_count();
-    app.sync
-        .upload_queued_attachments_at(now_ms() + GRACE_MS * 2)
-        .await
-        .expect("again");
+    app.sync.upload_queued_attachments().await.expect("again");
     assert_eq!(app.transport.call_count(), calls, "uploaded once");
     assert_eq!(attachment_rows(&app, &id), 1, "a referenced picture stays");
 }
@@ -708,11 +739,7 @@ async fn a_deleted_note_whose_body_is_kept_keeps_its_owed_upload() {
         .expect("a writer")
         .delete(note.clone())
         .expect("delete");
-    let drained = app
-        .sync
-        .upload_queued_attachments_at(now_ms() + GRACE_MS * 2)
-        .await
-        .expect("drain");
+    let drained = app.sync.upload_queued_attachments().await.expect("drain");
 
     assert_eq!(drained, Default::default());
     assert_eq!(
@@ -720,7 +747,7 @@ async fn a_deleted_note_whose_body_is_kept_keeps_its_owed_upload() {
         1,
         "a deleted note uploads nothing"
     );
-    assert_eq!(owed(&app, &id), 1, "still owed, past any grace");
+    assert_eq!(owed(&app, &id), 1, "still owed");
     assert_eq!(
         std::fs::read(dir.join("images").join(&id)).expect("the bytes"),
         BYTES
@@ -933,4 +960,174 @@ async fn a_queued_upload_never_writes_the_kept_bytes() {
     assert_eq!(after.modified().expect("mtime"), pinned, "never rewritten");
     assert_eq!(after.permissions().mode() & 0o777, 0o444);
     assert_eq!(std::fs::read(&path).expect("the bytes"), BYTES);
+}
+
+/// #5532: a refusal on a later pass reaches the shell once, naming the note
+/// and the reason, not on every pass that retries it, nor again after a
+/// relaunch. The upload that later lands is told too, so the shell can take
+/// its alert back.
+#[tokio::test]
+async fn a_later_refusal_is_told_once_and_its_later_upload_is_told_too() {
+    let (dir, store) = (scratch_dir(), store());
+    let (note, id) = {
+        let app = launch(&dir, &store, vec![Err(TransportError::Offline)]);
+        let note = app.note(&store);
+        let id = app.attach(&note).await.expect("kept for later");
+        (note, id)
+    };
+    let refused = QueuedAttachmentNews::Refused {
+        attachment_id: id.clone(),
+        note_id: note.clone(),
+        note_title: "Offline".to_owned(),
+        refusal: AttachmentRefusal::StorageFull,
+        status: 413,
+    };
+
+    let mut script = pass_head();
+    script.push(error_response(413, "STORAGE_QUOTA_EXCEEDED", "over quota"));
+    script.push(response(
+        200,
+        &json!({"accepted": [note], "rejected": [], "serverTime": 1, "maxCursor": 1}).to_string(),
+    ));
+    script.push(error_response(413, "STORAGE_QUOTA_EXCEEDED", "over quota"));
+    let app = launch(&dir, &store, script);
+    let pass = app.sync.sync_now().await.expect("the pass");
+    assert_eq!(pass.attachments, vec![refused], "{pass:?}");
+    let again = app.sync.upload_queued_attachments().await.expect("drain");
+    assert_eq!((again.refused, again.news.len()), (1, 0), "{again:?}");
+    drop(app);
+
+    let mut script = vec![error_response(403, "FORBIDDEN", "not allowed")];
+    script.extend(upload_script());
+    let app = launch(&dir, &store, script);
+    let forbidden = app.sync.upload_queued_attachments().await.expect("drain");
+    assert!(
+        matches!(
+            forbidden.news.as_slice(),
+            [QueuedAttachmentNews::Refused {
+                refusal: AttachmentRefusal::NotAllowed,
+                status: 403,
+                ..
+            }]
+        ),
+        "a new reason is a new refusal: {forbidden:?}"
+    );
+    let landed = app.sync.upload_queued_attachments().await.expect("drain");
+    assert_eq!(
+        landed.news,
+        vec![QueuedAttachmentNews::Uploaded {
+            attachment_id: id.clone(),
+            note_id: note.clone(),
+        }]
+    );
+    assert_eq!(app.references(&note), vec![id]);
+}
+
+/// #5532: a pass that fails after the walk returns no summary, so the user
+/// heard nothing; the next pass tells the refusal instead of keeping quiet.
+// Paused: the push's retry ladder sleeps on tokio's clock.
+#[tokio::test(start_paused = true)]
+async fn a_refusal_in_a_pass_that_failed_is_told_by_the_next_pass() {
+    let (dir, store) = (scratch_dir(), store());
+    let (note, id) = {
+        let app = launch(&dir, &store, vec![Err(TransportError::Offline)]);
+        let note = app.note(&store);
+        let id = app.attach(&note).await.expect("kept for later");
+        (note, id)
+    };
+
+    let mut script = pass_head();
+    script.push(error_response(413, "STORAGE_QUOTA_EXCEEDED", "over quota"));
+    // Every attempt the push's retry ladder makes.
+    script.extend((0..8).map(|_| Err(TransportError::Offline)));
+    let app = launch(&dir, &store, script);
+    app.sync.sync_now().await.expect_err("the push failed");
+    drop(app);
+
+    let mut script = pass_head();
+    script.push(error_response(413, "STORAGE_QUOTA_EXCEEDED", "over quota"));
+    script.push(response(
+        200,
+        &json!({"accepted": [note], "rejected": [], "serverTime": 1, "maxCursor": 1}).to_string(),
+    ));
+    let app = launch(&dir, &store, script);
+    let pass = app.sync.sync_now().await.expect("the pass");
+    assert!(
+        matches!(
+            pass.attachments.as_slice(),
+            [QueuedAttachmentNews::Refused { attachment_id, .. }] if *attachment_id == id
+        ),
+        "{pass:?}"
+    );
+}
+
+/// #5532 review: only a full quota is storage full. A file past the plan's or
+/// the server's per-file limit is too large, which freeing space never fixes,
+/// and a 413 with no code the core knows promises neither.
+#[tokio::test]
+async fn a_413_names_storage_full_only_for_the_quota() {
+    for (code, expected) in [
+        ("STORAGE_QUOTA_EXCEEDED", AttachmentRefusal::StorageFull),
+        ("STORAGE_FILE_TOO_LARGE", AttachmentRefusal::TooLarge),
+        ("VALIDATION_BODY_TOO_LARGE", AttachmentRefusal::TooLarge),
+        ("SOMETHING_ELSE", AttachmentRefusal::Rejected),
+    ] {
+        let (dir, store) = (scratch_dir(), store());
+        let (note, id) = {
+            let app = launch(&dir, &store, vec![Err(TransportError::Offline)]);
+            let note = app.note(&store);
+            let id = app.attach(&note).await.expect("kept for later");
+            (note, id)
+        };
+        let app = launch(&dir, &store, vec![error_response(413, code, "refused")]);
+        let drained = app.sync.upload_queued_attachments().await.expect("drain");
+        assert_eq!(
+            drained.news,
+            vec![QueuedAttachmentNews::Refused {
+                attachment_id: id,
+                note_id: note,
+                note_title: "Offline".to_owned(),
+                refusal: expected,
+                status: 413,
+            }],
+            "{code}"
+        );
+    }
+}
+
+/// #5532 review: the client gate's kill switch (403 `PLATFORM_WRITES_DISABLED`)
+/// and version floor (426 `CLIENT_UPGRADE_REQUIRED`) say nothing about the
+/// file. The upload stays owed and silent, and lands once the gate opens.
+#[tokio::test]
+async fn a_closed_client_gate_keeps_the_upload_owed_and_untold() {
+    for (status, code) in [
+        (403, "PLATFORM_WRITES_DISABLED"),
+        (426, "CLIENT_UPGRADE_REQUIRED"),
+    ] {
+        let (dir, store) = (scratch_dir(), store());
+        let (note, id) = {
+            let app = launch(&dir, &store, vec![Err(TransportError::Offline)]);
+            let note = app.note(&store);
+            let id = app.attach(&note).await.expect("kept for later");
+            (note, id)
+        };
+        let mut script = vec![error_response(status, code, "gate closed")];
+        script.extend(upload_script());
+        let app = launch(&dir, &store, script);
+        let gated = app.sync.upload_queued_attachments().await.expect("drain");
+        assert_eq!(
+            (gated.refused, gated.news.len()),
+            (0, 0),
+            "{code}: {gated:?}"
+        );
+        assert_eq!(owed(&app, &id), 1, "{code}");
+
+        let landed = app.sync.upload_queued_attachments().await.expect("drain");
+        assert_eq!(
+            (landed.uploaded, landed.news.len()),
+            (1, 0),
+            "{code}: {landed:?}"
+        );
+        assert_eq!(app.references(&note), vec![id], "{code}");
+    }
 }

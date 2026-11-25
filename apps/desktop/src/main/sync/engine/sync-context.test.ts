@@ -108,7 +108,14 @@ describe('SYNC_STATE_KEYS', () => {
         BINARY_NOTE_TEXT_BLOBS: 'binaryNoteTextBlobs',
         // Additive (#5522, #5560): absent means no held change and no hold.
         CASE_TWIN_HELD_CHANGES: 'caseTwinHeldChanges',
-        CASE_TWIN_FOREIGN_BYTES: 'caseTwinForeignBytes'
+        CASE_TWIN_FOREIGN_BYTES: 'caseTwinForeignBytes',
+        // Additive (#5585): absent means no landing recorded on a shared file.
+        CASE_TWIN_LANDED_HASHES: 'caseTwinLandedHashes',
+        // Additive (#5606): absent means no upload refusal is remembered, so
+        // each refused file is offered and refused once more.
+        ATTACHMENT_UPLOAD_REFUSALS: 'attachmentUploadRefusals',
+        // Additive (REVIEW-5602): absent means no conflict copy kept from a shared file.
+        CASE_TWIN_KEPT_COPIES: 'caseTwinKeptCopies'
       })
     })
 

@@ -30,6 +30,7 @@
     "applyTemplateFailed": "Nepodarilo sa použiť šablónu",
     "appendBlocksFailed": "Nepodarilo sa presunúť blok do cieľovej poznámky",
     "appendIntoCaseTwin": "Táto poznámka zdieľa súbor s poznámkou, ktorej názov sa líši len veľkosťou písmen. Jednu z nich premenujte a potom blok presuňte znova.",
+    "appendIntoBinary": "Blok možno presunúť len do poznámky, nie do obrázka, PDF, zvukového ani video súboru.",
     "caseTwinMoveRefused": "Táto poznámka zdieľa súbor s poznámkou, ktorej názov sa líši len veľkosťou písmen, takže ju týmto spôsobom nemožno presunúť. Premenujte alebo presuňte druhú poznámku, alebo odstráňte kópiu, ktorú nepotrebujete.",
     "exportPdfFailed": "Nepodarilo sa exportovať PDF",
     "exportHtmlFailed": "Nepodarilo sa exportovať HTML",
@@ -61,10 +62,14 @@
     "uploadFailed": "Nahrávanie prílohy zlyhalo",
     "uploadProgressFailed": "Nepodarilo sa načítať priebeh nahrávania",
     "downloadFailed": "Sťahovanie prílohy zlyhalo",
+    "downloadGone": "Tento súbor už na synchronizačnom serveri nie je. Ak ho ešte má iné zariadenie, pridajte ho z neho znova.",
+    "downloadMissing": "Tento súbor zatiaľ na synchronizačnom serveri nie je. Otvorte ho znova zajtra a skontrolujte to.",
+    "downloadNeedsSync": "Synchronizácia nebeží, preto tento súbor nemožno stiahnuť. Stiahne sa sám, keď synchronizácia pobeží.",
     "downloadProgressFailed": "Nepodarilo sa načítať priebeh sťahovania",
     "exceedsMaxSize": "Súbor je príliš veľký: {size} prekračuje limit {limit}",
     "exceedsPlanLimit": "Súbor je väčší, než umožňuje váš plán: {size} prekračuje {limit}",
     "emptyFile": "Prázdny súbor sa nedá nahrať",
+    "emptyNotAttached": "Tento súbor je prázdny, preto nebol priložený. Ak ste vložili obrázok, skopírujte ho znova a vložte.",
     "textInMediaFile": "Tento súbor obsahuje text namiesto média, ktoré uvádza jeho názov"
   },
   "crdt": {
@@ -214,6 +219,8 @@
     "renameFailed": "Nepodarilo sa premenovať priečinok",
     "renameCaseTwins": "Tento priečinok obsahuje poznámky, ktoré zdieľajú súbor s poznámkou, ktorej názov priečinka sa líši len veľkosťou písmen. Najprv tieto poznámky premenujte alebo presuňte a potom premenujte priečinok.",
     "deleteFailed": "Nepodarilo sa odstrániť priečinok",
+    "deleteCaseTwins": "Tento priečinok a priečinok s rovnakým názvom napísaným inak, napríklad inou veľkosťou písmen, sú na disku jeden priečinok, takže jeho odstránením by sa odstránili poznámky v oboch. Namiesto toho odstráňte nepotrebné poznámky jednu po druhej.",
+    "deleteWindowsName": "Názov tohto priečinka končí bodkou alebo medzerou, ktorú Windows ignoruje, takže jeho odstránením by sa mohol odstrániť aj iný priečinok. Namiesto toho odstráňte poznámky v ňom jednu po druhej.",
     "setConfigFailed": "Nepodarilo sa nastaviť konfiguráciu priečinka"
   },
   "folderView": {

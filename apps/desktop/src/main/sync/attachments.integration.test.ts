@@ -47,6 +47,7 @@ import { recordAttachmentFile } from './attachment-files'
 import { listPendingUploads } from './attachment-outbox'
 import { noteRevived, settleRevivedNotes } from './note-attachment-revival'
 import { DownloadQueue } from './download-queue'
+import { sha256OfFile } from '../vault/file-sha256'
 
 const MIB = 1024 * 1024
 // nonce(24) + Poly1305 tag(16) — mirrors the server's CHUNK_CRYPTO_OVERHEAD.
@@ -515,6 +516,27 @@ describe('an upload whose bytes the note already has on the server', () => {
   }, 120_000)
 })
 
+// #5608: a peer's replace of a binary note with no synced hash compares its file
+// with the manifest checksum of the attachment the note named.
+describe('the checksum of an uploaded attachment', () => {
+  it('reads the sha256 the file hashes to from its manifest, and fails for an id the server lacks', async () => {
+    const user = await seedUser({
+      plan: 'believer',
+      status: 'active',
+      maxFileSize: 200 * MIB,
+      storageLimit: 50 * 1024 * MIB
+    })
+    const svc = new AttachmentSyncService(createDeps(user))
+    const src = await writeTempFile('p.png', randomBytes(64 * 1024))
+    const { attachmentId } = await svc.uploadAttachment('note-1', src)
+
+    const pace = vi.fn(async () => {})
+    expect(await svc.checksumOf(attachmentId, { pace })).toBe(await sha256OfFile(src))
+    await expect(svc.checksumOf(randomUUID(), { pace })).rejects.toMatchObject({ statusCode: 404 })
+    expect(pace).toHaveBeenCalledTimes(2)
+  }, 120_000)
+})
+
 // #3015: a deleted note's attachment is freed on the real server 30 days after
 // the delete: its chunks drop to zero references, the quota gets their bytes
 // back, and a replayed release frees nothing twice.
@@ -576,8 +598,7 @@ describe('deleted note attachment release against the real sync-server', () => {
             getSyncServerUrl: () => baseUrl,
             getVaultId: () => 'default',
             fetchFn: (input, init) => fetch(input, init)
-          }),
-        markWritebackIgnored: () => {}
+          })
       })
 
     now += 29 * 24 * 60 * 60 * 1000

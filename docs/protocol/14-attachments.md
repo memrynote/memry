@@ -192,7 +192,7 @@ chunk took 30 ms or 250 ms; with every 20th attachment at 300 chunks, it made 23
 The Rust core batches the manifests of one re-drive call's downloads, leaving
 out ids the metered policy defers, and fetches alone when fewer than two would
 download. It remembers a 404 for 10 minutes per vault
-(`crates/memry-core/src/api/sync/attachment_fetch.rs:30`, `:248`,
+(`crates/memry-core/src/api/sync/attachment_fetch.rs:30`, `:459`,
 `crates/memry-core/src/protocol/attachments.rs:165`).
 
 ## 14.6 Two transfer paths
@@ -224,7 +224,7 @@ Caps:
 (`packages/contracts/src/blob-api.ts:105-110`). A hash with no `blob_chunks` row in the
 caller's vault is absent from `urls`, and the client fetches that chunk through
 the proxied GET, which reports its 404
-(`apps/sync-server/src/routes/blob.ts:816-826`). The route never answers 404 for
+(`apps/sync-server/src/routes/blob.ts:812-830`). The route never answers 404 for
 a missing hash, because desktop reads a 404 here as "presign unavailable"
 (`apps/desktop/src/main/sync/attachment-presign.ts:83`). `dereference` is rate limited to 20
 requests per 60 s (`apps/sync-server/src/routes/blob.ts:140-144`).
@@ -244,6 +244,7 @@ The resolution chain is therefore:
 note.attachmentReferences[i]                       -> an attachment id
 GET /sync/attachments/<that id>/manifest           -> the encrypted manifest
 verify signature, unwrap file key, decrypt         -> the manifest
+check manifest.id == that id                       -> else refuse it (below)
 manifest.chunks[j].encryptedHash                   -> the R2 chunk address
 presign-batch or GET /attachments/chunks/<hash>    -> nonce ‖ ciphertext
 strip 24-byte nonce, AEAD decrypt under the file key
@@ -256,10 +257,62 @@ Desktop matches a downloaded attachment back to its notes on the same field
 `attachmentReferences` is maintained on the note's metadata rather than derived
 from the body (`apps/desktop/src/main/sync/note-attachment-metadata.ts:14-23`).
 
+**A reader MUST refuse a manifest whose `id` is not the attachment id it asked
+for**, whether the manifest came from the single GET or under that id's key in
+a batch answer (§14.5.2). It refuses after the signature check and decrypt and
+before it requests a chunk or writes a byte
+(`crates/memry-core/src/api/sync/attachment_fetch.rs:352`;
+`apps/desktop/src/main/sync/attachments.ts:409`, called at `:828`). The
+signature does not catch this: a server that answers with another attachment's
+manifest sends one that some vault device validly signed, and a reader that
+took it would land that file's bytes under this id (#5652). A reader that reads
+chunk hashes from a manifest for any other purpose MUST refuse it the same way
+(`apps/desktop/src/main/sync/attachments.ts:1357`). Desktop reads them to free
+a deleted note's chunks, which would free the other attachment's, and to check
+a revived note (§14.8.2), which would take the other attachment's live chunks
+for this one's (#5664).
+
+**The refusal is not the server saying the attachment is gone.** A reader MUST
+NOT count it toward abandoning the download or pruning the reference, as it
+counts a 404, and MUST keep the work for a later pass. The core raises it as
+`SyncError::AttachmentCorrupt` (`crates/memry-core/src/api/errors.rs:402`), and
+its re-drive counts the row failed and leaves it missing
+(`crates/memry-core/src/api/sync/attachment_fetch.rs:122-123`, `:155`). Desktop
+throws a plain `Error`, which `markDownloadFailed` classifies as transient
+(`packages/sync-client/src/attachment-download-state.ts:117-127`). The
+deleted-asset release keeps its record
+(`apps/desktop/src/main/sync/deleted-asset-release.ts:315-320`), and a revived
+note stays pending (`apps/desktop/src/main/sync/note-attachment-revival.ts:59-63`).
+
 **`attachmentReferences` is `.nullable().optional()`, so absent means "this
 sender does not know"** (chapter 13 §13.4). A client MUST NOT infer "this note
 has no attachments" from an absent key, and MUST NOT clear the local list on
 seeing one.
+
+**A receiver downloads what a note references, and names it on open**
+(#5675). Applying a note records each id in its `attachmentReferences` as a
+wanted attachment, before any manifest is read, and stops wanting an id the
+note no longer lists or a note that was deleted. The receiver downloads the
+wanted ones under its metered policy (§14.6). Desktop requests each reference
+as it applies the note
+(`apps/desktop/src/main/sync/item-handlers/note-handler.ts:176`). The Rust
+core merges the lists of a pulled page's notes into its attachment cache once,
+in the page's transaction after its last record
+(`crates/memry-core/src/sync/apply.rs:221`,
+`crates/memry-core/src/domain/attachment_refs.rs:93`). A pulled delete, a
+local delete and a local list edit merge in their own transaction
+(`crates/memry-core/src/storage/repositories/projectors/mod.rs:206`,
+`crates/memry-core/src/domain/notes/mod.rs:193`,
+`crates/memry-core/src/domain/notes/attachments.rs:72`). The re-drive walks
+those rows (`crates/memry-core/src/domain/attachments.rs:477`). A body block
+names its file by the manifest's filename, and a recorded id has none until its
+manifest is read, so the block cannot bind before then
+(`crates/memry-core/src/domain/attachments.rs:339`). Opening the note reads
+the manifests of its unnamed ids, whatever the download setting
+(`crates/memry-core/src/api/sync/attachment_fetch.rs:171`,
+`apps/ios/Memry/Features/Notes/NoteReadParts.swift:253`). A core that applied
+notes before #5675 records their ids once, before its next first sync or pass
+(`crates/memry-core/src/sync/note_refs_heal.rs:27`).
 
 **Disposition of Q14.2: answered** (this section).
 
@@ -349,6 +402,42 @@ and the manifest's `filename` is that path's last segment
   unmodelled key (chapter 13 §13.2 rule 3) and keeps a capture's file on the
   device that took it, as before. A capture whose file never uploaded has no
   `attachmentId`.
+
+### 14.7.3 A binary note's own file (#5668)
+
+**Normative.** A `note` payload whose `fileType` is `pdf`, `image`, `audio` or
+`video` has no CRDT body, and its `attachmentId` names the one attachment that
+is the note's content (`packages/contracts/src/sync-payloads.ts:352-354`;
+chapter 13 §13.7.1). It is resolved and verified by the chain of §14.7, chunk
+hashes and `manifest.checksum` included
+(`crates/memry-core/src/protocol/attachments.rs:421`). Desktop pushes the id
+with the file fields (`apps/desktop/src/main/sync/note-sync.ts:73-83`) and, on
+pull, downloads it over the note's vault file
+(`apps/desktop/src/main/sync/item-handlers/note-handler.ts:750-757`).
+
+- **A receiver downloads every live note's `attachmentId`**, under the same
+  metered policy as a referenced attachment. It does not gate on the stored
+  `fileType`, which desktop's restore does not trust either
+  (`apps/desktop/src/main/sync/binary-note-restore.ts:143-151`). The core
+  queues it with the referenced ones
+  (`crates/memry-core/src/domain/attachments.rs:477-494`) and writes the bytes
+  to `images/<attachmentId>`
+  (`crates/memry-core/src/api/sync/attachments_io.rs:401-420`).
+- **A replacement is a new id.** A peer that replaces the file uploads it
+  afresh, and attachment ids are random per upload
+  (`apps/desktop/src/main/sync/item-handlers/peer-binary-replace.ts:20-23`). A
+  receiver keeps the old bytes until the new ones land. Desktop holds the
+  note's file and keeps a change that is on no server as a conflict copy
+  (`apps/desktop/src/main/sync/item-handlers/peer-binary-replace.ts:33-57`).
+  The core keys bytes by id, so the old file stays beside the new one.
+- **A record that names no file keeps the note's file.** Shipped desktops
+  pushed a markdown record with no `attachmentId` for a binary note whose row
+  their write-back had retyped
+  (`apps/desktop/src/main/sync/item-handlers/binary-note-record.ts:22-29`). A
+  receiver that holds the note as a file keeps its `attachmentId`, `fileType`
+  and `mimeType` over such a record
+  (`apps/desktop/src/main/sync/item-handlers/note-handler.ts:288`, `:387`;
+  `crates/memry-core/src/domain/note_file.rs:80-111`).
 
 ## 14.8 Quota, and never dereferencing — Q14.3
 
@@ -463,7 +552,7 @@ the iOS core hold nothing past the probe of §14.8.2.
 
 ### 14.8.2 Revived notes re-upload freed attachments (#3054)
 
-**Client behaviour, desktop only; no wire, D1 or format change.** A note's
+**Client behaviour; no wire, D1 or format change.** On desktop, a note's
 attachments are freed by dereference 30 days after the delete, unless the note
 is live again on the deleting device by then
 (`apps/desktop/src/main/sync/deleted-asset-release.ts:276`). A device whose
@@ -493,14 +582,34 @@ references, in the next upload re-drive
 - For each attachment that is gone, the device drops the id from the note's
   `attachmentReferences`, so the upload's dedup cannot reuse its still-present
   manifest, and queues its local file in the upload outbox
-  (`apps/desktop/src/main/sync/note-attachment-revival.ts:91-99`). The upload
+  (`apps/desktop/src/main/sync/note-attachment-revival.ts:91-100`). The upload
   adds the new id and pushes the note, as any upload does
-  (`apps/desktop/src/main/sync/note-attachment-metadata.ts:10`).
+  (`apps/desktop/src/main/sync/note-attachment-metadata.ts:10`). An empty
+  file, or one the uploader refused and nobody has written since, is not
+  queued, because it would be refused again
+  (`apps/desktop/src/main/sync/attachment-outbox.ts:136-150`).
 
 Chunk holds are not used for this: a hold ends with the grace period, so a
 peer offline for longer than that would still revive a note whose chunks are
 gone. Pending checks live in memory, so a restart before a check settles loses
 it.
+
+**Core: an owed upload outlives the purge.** In the core, a pulled delete that
+purges a note's body keeps the note's owed uploads, each with its row and its
+local bytes, and logs how many it kept
+(`crates/memry-core/src/sync/apply.rs:322-330`). A sync pass uploads nothing
+for a note that is not live (`crates/memry-core/src/api/sync/note_uploads.rs:336-345`).
+Desktop's outbox does not wait for a revive: it skips a local-only note's rows
+and a stray's, never a deleted note's
+(`apps/desktop/src/main/sync/attachment-outbox.ts:265-270`), and uploads a
+queued file while it exists (`:300`).
+No age ends the wait, because the server accepts a create over the note's
+marker at any age (§5.12.3) and those bytes are the only copy
+(`crates/memry-core/src/api/sync/note_uploads.rs:25-33`). After a same-id
+revive, the next pass uploads the kept bytes once under the attachment's own
+id, and the transaction that adds the note's reference ends the debt
+(`crates/memry-core/src/api/sync/note_uploads.rs:380-387`). A detach ends it
+too, and nothing uploads (`crates/memry-core/src/api/sync/attachments_io.rs:82-83`).
 
 **Disposition of Q14.3: answered (safe; quota is consumed by uploads only).**
 

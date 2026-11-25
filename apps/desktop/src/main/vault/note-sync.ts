@@ -48,6 +48,8 @@ import {
 import { flushProjectionEvents, publishProjectionEvent } from '../projections'
 import { DEFAULT_PROJECTION_QUEUE_LIMIT } from '../projections/bus'
 import type { FileNoteProjection, MarkdownNoteProjection } from '../projections/types'
+import { forgetSyncedBinaryHash } from '../sync/binary-synced-hash'
+import { clearCaseTwinForeignBytes } from './case-twin-bytes'
 
 function getCanonicalDb() {
   try {
@@ -153,6 +155,23 @@ export function listCaseTwinIds(vaultPath: string, relativePath: string, noteId:
 }
 
 /**
+ * The paths of the case twins sharing the file at `relativePath`, in any
+ * spelling, or none when the file is not shared. The disk is read only when
+ * another row folds to the path, so a file with no twin costs a watcher event
+ * no I/O (#5624).
+ */
+export function listCaseTwinPaths(vaultPath: string, relativePath: string): string[] {
+  const dataDb = getCanonicalDb()
+  if (!dataDb || !volumeIgnoresCase(vaultPath)) return []
+  if (listNoteMetadataByFoldedPath(dataDb, relativePath).length < 2) return []
+  // Callers name the file by the row's spelling; the rows are matched to
+  // the disk's. A file that is not there holds no body to take.
+  const onDisk = diskCaseOf(vaultPath, relativePath)
+  const rows = onDisk === null ? [] : listRowsOnFile(dataDb, vaultPath, onDisk)
+  return rows.length > 1 ? rows.map((row) => row.path) : []
+}
+
+/**
  * The identity the vault already holds for the file at `relativePath`, given
  * in the disk's spelling, if it holds one.
  *
@@ -221,10 +240,7 @@ export function refusesCaseTwinFile(
   relativePath: string,
   noteId: string
 ): boolean {
-  // Callers name the file by the row's spelling; the rows are matched to
-  // the disk's. A file that is not there holds no body to take.
-  const onDisk = diskCaseOf(vaultPath, relativePath)
-  if (onDisk === null || !findCanonicalNoteForFile(vaultPath, onDisk)?.sharesFile) return false
+  if (listCaseTwinPaths(vaultPath, relativePath).length === 0) return false
   log.warn('A file shared with a case twin stays out of the doc', { noteId, path: relativePath })
   return true
 }
@@ -236,10 +252,18 @@ export function findCanonicalNotePath(id: string): string | null {
   return getNoteMetadataById(dataDb, id)?.path ?? null
 }
 
+/**
+ * Drops note `noteId`'s row and the `sync_state` marks kept for its binary
+ * file. Every caller drops the row once its file is gone or another row's,
+ * and the pull re-creates no id this device deleted while its tombstone is
+ * pending, so a re-created id starts with no mark.
+ */
 function removeCanonicalMetadata(noteId: string): void {
   const dataDb = getCanonicalDb()
   if (!dataDb) return
   deleteCanonicalNote(dataDb, noteId)
+  forgetSyncedBinaryHash(dataDb, noteId)
+  clearCaseTwinForeignBytes(dataDb, noteId)
 }
 
 /**
@@ -375,6 +399,20 @@ export function syncNoteToCache(
   input: NoteSyncInput,
   options: NoteSyncOptions
 ): NoteSyncResult {
+  const { metadata, publish } = persistNoteToCache(input, options)
+  publish()
+  return metadata
+}
+
+/**
+ * `syncNoteToCache` for a write inside a data-DB transaction: run `publish`
+ * once the transaction commits, so the index never takes a row the data DB
+ * rolled back.
+ */
+export function persistNoteToCache(
+  input: NoteSyncInput,
+  options: NoteSyncOptions
+): { metadata: NoteSyncResult; publish: () => void } {
   const { id, path, parsedContent, title, createdAt, modifiedAt, localOnly } = input
   const metadata = extractNoteMetadata(input)
   const {
@@ -431,13 +469,13 @@ export function syncNoteToCache(
     wikiLinks
   }
 
-  publishProjectionEvent({
-    type: 'note.upserted',
-    note,
-    source: options.source
-  })
-
-  return metadata
+  const publish = (): void =>
+    publishProjectionEvent({
+      type: 'note.upserted',
+      note,
+      source: options.source
+    })
+  return { metadata, publish }
 }
 
 /**

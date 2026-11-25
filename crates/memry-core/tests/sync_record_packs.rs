@@ -27,7 +27,9 @@ use memry_core::seams::transport::{
 use memry_core::storage::{Db, open_data};
 use memry_core::sync::body_pull::{BodyPull, CrdtCipher, PackedUpdate};
 use memry_core::sync::diagnostics::RunDiagnostics;
-use memry_core::sync::first_sync::{FirstSync, FirstSyncError, FirstSyncReport};
+use memry_core::sync::first_sync::{
+    FirstSync, FirstSyncError, FirstSyncReport, META_FIRST_SYNC_RECONCILED,
+};
 use memry_core::sync::first_sync_store::read_meta;
 use memry_core::sync::pack_bootstrap::{
     META_RECORD_PACKS_DONE, PACK_RETRY_PAUSES, PackBootstrap, pack_deadline_ms,
@@ -45,6 +47,7 @@ fn scratch_db(label: &str) -> Db {
         "memry-record-packs-{label}-{}-{unique}",
         std::process::id()
     ));
+    let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).expect("create the scratch directory");
     open_data(&dir.join("data.db")).expect("open data.db")
 }
@@ -572,30 +575,33 @@ impl Transport for Routes {
 }
 
 fn first_sync(db: &Db, routes: &Arc<Routes>, forged: &[&str]) -> FirstSync {
-    first_sync_observed(db, routes, forged, &RunDiagnostics::silent())
+    first_sync_observed(db, routes, forged, &RunDiagnostics::silent(), Some(VAULT))
 }
 
-/// [`first_sync`] whose pack downloads are counted by `diagnostics`.
+/// [`first_sync`] whose pack downloads are counted by `diagnostics`, its pull
+/// knowing `vault` as the vault it syncs.
 fn first_sync_observed(
     db: &Db,
     routes: &Arc<Routes>,
     forged: &[&str],
     diagnostics: &Arc<RunDiagnostics>,
+    vault: Option<&str>,
 ) -> FirstSync {
     let http = Arc::new(HttpClient::new(
         Arc::clone(routes) as Arc<dyn Transport>,
         "https://sync.example",
         ClientIdentity::new("ios", "1.2.3").expect("a valid identity"),
     ));
-    let pull = Arc::new(
-        PullLoop::new(
-            Arc::clone(&http),
-            db.clone(),
-            Declaration::subscribed(),
-            Arc::new(Cipher(forged.iter().map(|id| (*id).to_owned()).collect())),
-        )
-        .with_vault(VAULT),
+    let pull = PullLoop::new(
+        Arc::clone(&http),
+        db.clone(),
+        Declaration::subscribed(),
+        Arc::new(Cipher(forged.iter().map(|id| (*id).to_owned()).collect())),
     );
+    let pull = Arc::new(match vault {
+        Some(vault) => pull.with_vault(vault),
+        None => pull,
+    });
     let bodies = Arc::new(BodyPull::new(
         Arc::clone(&http),
         db.clone(),
@@ -958,7 +964,7 @@ async fn the_pack_download_counts_its_429_pause_and_not_a_5xx_pause() {
         let routes = Routes::new(server);
         let sink = Arc::new(Captured::default());
         let diagnostics = RunDiagnostics::new(sink.clone());
-        first_sync_observed(&db, &routes, &[], &diagnostics)
+        first_sync_observed(&db, &routes, &[], &diagnostics, Some(VAULT))
             .run(1_800_000_000_000)
             .await
             .expect("the first sync finishes");
@@ -1167,10 +1173,16 @@ async fn a_kept_stale_row_is_told_to_the_diagnostics_sink() {
     server.markers.push(clockless);
     let routes = Routes::new(server);
     let sink = Arc::new(Captured::default());
-    first_sync_observed(&db, &routes, &[], &RunDiagnostics::new(sink.clone()))
-        .run(1_800_000_000_000)
-        .await
-        .expect("the first sync finishes");
+    first_sync_observed(
+        &db,
+        &routes,
+        &[],
+        &RunDiagnostics::new(sink.clone()),
+        Some(VAULT),
+    )
+    .run(1_800_000_000_000)
+    .await
+    .expect("the first sync finishes");
 
     let told: Vec<CoreDiagnostic> = sink
         .0
@@ -1235,6 +1247,31 @@ async fn an_omitted_row_the_pull_answers_with_a_v1_marker_is_removed() {
     .await;
     assert!(!notes(&db)["n3"].0, "the v1 marker removes n3");
     assert_eq!(report.reconcile_removed, 1);
+}
+
+/// #5247: a pull with no vault id cannot check a v2 attestation. Checked as v1
+/// only, the marker is refused, n3 kept, and the reconcile marked done, so no
+/// later run asks again. Instead the run fails and the reconcile stays due
+/// (chapter 04 §4.8.4).
+#[tokio::test]
+async fn a_reconcile_with_no_vault_id_and_an_attested_marker_fails_and_stays_due() {
+    let db = scratch_db("omitted-no-vault");
+    let mut server = covered_vault(4, 10);
+    server.live.retain(|(id, _)| id != "n3");
+    server.markers.push(marker("n3", 7, false));
+    let routes = Routes::new(server);
+    let outcome = first_sync_observed(&db, &routes, &[], &RunDiagnostics::silent(), None)
+        .run(1_800_000_000_000)
+        .await;
+    assert!(
+        matches!(outcome, Err(FirstSyncError::Pull { .. })),
+        "{outcome:?}"
+    );
+    assert!(notes(&db)["n3"].0, "no delete without its check: n3 stays");
+    let reconciled = db
+        .call_blocking(|conn| read_meta(conn, META_FIRST_SYNC_RECONCILED))
+        .expect("read the meta row");
+    assert_eq!(reconciled, None, "the reconcile stays due");
 }
 
 /// A marker whose attestation does not verify deletes nothing, nor does one

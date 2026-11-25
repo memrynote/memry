@@ -79,6 +79,7 @@ vi.mock('../sync/crdt-provider', () => {
     }),
     closeIfInactive: async () => {},
     whenPersisted: async () => {},
+    holdsDoc: () => true,
     purge: vi.fn(async () => {})
   }
   return { ORIGIN_LOCAL: 'local', getCrdtProvider: vi.fn(() => stub) }
@@ -103,7 +104,7 @@ import {
 import { getStatus } from './index'
 import { getCrdtProvider } from '../sync/crdt-provider'
 import { markdownToYFragment } from '../sync/blocknote-converter'
-import { markWritebackIgnored } from '../sync/crdt-writeback'
+import { recordAppWrite } from './app-writes'
 import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
 import { startProjectionRuntime, stopProjectionRuntime } from '../projections'
 import { generateContentHash, parseNote } from './frontmatter'
@@ -182,8 +183,9 @@ describe.runIf(fileSystemIgnoresCase())('deleting a case twin of a binary note',
   function onDisk(relativePath: string, bytes: Buffer | string): void {
     const absolutePath = path.join(vault.path, relativePath)
     fs.mkdirSync(path.dirname(absolutePath), { recursive: true })
-    markWritebackIgnored(absolutePath)
+    const landed = recordAppWrite(absolutePath, bytes)
     fs.writeFileSync(absolutePath, bytes)
+    landed()
   }
 
   const fileAt = (relativePath: string) => fs.readFileSync(path.join(vault.path, relativePath))

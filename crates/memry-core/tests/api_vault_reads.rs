@@ -44,6 +44,7 @@ fn vault(label: &str) -> (PathBuf, Vault) {
         "memry-api-vault-{label}-{}-{unique}",
         std::process::id()
     ));
+    let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).expect("the scratch directory");
     let opened = Vault::open("vault-1".to_string(), dir.display().to_string()).expect("open");
     (dir, opened)

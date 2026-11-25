@@ -200,6 +200,7 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
             )
         }
         .handoffMissingSheet($handoffMissing)
+        .attachmentRefusalAlert(openNote: openNote, openStorage: { router.openSettings(.storage) })
         // A tapped inbox notification or a Share hand-off opens the Inbox.
         .onChange(of: inboxLinks.pending, initial: true) {
             if inboxLinks.take() { inboxRouter.openInbox(in: router) }

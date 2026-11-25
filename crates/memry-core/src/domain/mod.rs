@@ -10,6 +10,7 @@
 //! parses it (chapter 12 §12.1.0). `extract_text` is the core's only
 //! document-to-text operation (chapter 12 §12.1).
 
+pub mod attachment_refs;
 pub mod attachment_uploads;
 pub mod attachments;
 pub mod body_tags;
@@ -24,6 +25,7 @@ pub mod inbox;
 pub mod journal;
 pub mod journal_ops;
 pub mod journal_rules;
+pub mod note_file;
 pub mod note_meta;
 pub mod note_status;
 pub mod note_tasks;
@@ -32,7 +34,7 @@ pub mod projects;
 pub mod properties;
 pub mod property_admin;
 pub mod reads;
-mod recreate;
+pub(crate) mod recreate;
 pub mod recurrence;
 pub mod related_items;
 pub mod reminders;

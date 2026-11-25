@@ -23,7 +23,7 @@ import { syncNoteToCache, deleteNoteFromCache } from '../../vault/note-sync'
 import { getCrdtProvider } from '../crdt-provider'
 import { deleteSyncedVaultFile, writeSyncedVaultFile } from '../bulk-apply'
 import { flushProjectionEvents } from '../../projections'
-import { baselineAfterWrite } from '../writeback-baseline'
+import { baselineAfterWrite, holdsUningestedEdit } from '../writeback-baseline'
 import { createLogger } from '../../lib/logger'
 import { BaseItemHandler } from '@memry/sync-client/item-handlers/base-handler'
 import { belongsToOtherType } from './note-row-type'
@@ -34,6 +34,7 @@ import { seedSkipsDeletedNote } from '../pending-deletes'
 import type { ApplyContext, ApplyResult, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { forgetBaselineOfRemotelyDeletedNote } from '../../vault-locks/files'
 import {
+  holderTags,
   journalTombstonedPast,
   markOwedJournalDayMergeDeleted,
   oweJournalDayMerge,
@@ -61,6 +62,8 @@ const log = createLogger('JournalHandler')
 class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
   readonly type = 'journal' as const
   readonly schema = JournalSyncPayloadSchema
+  /** Each journal's `modifiedAt` as its last push payload read it, until the ack. */
+  private readonly pushedModifiedAt = new Map<string, string>()
 
   applyUpsert(
     ctx: ApplyContext,
@@ -107,7 +110,7 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
         clock: holder?.clock ?? null,
         // The day's file is about to be written over.
         fallbackMarkdown: plan.removeHolder ? readDayBody(date) : null,
-        tags: plan.removeHolder ? readDayTags(date) : undefined
+        ...(plan.removeHolder ? holderTags(ctx.db, foreignId, readDayTags(date), holder) : {})
       })
     }
     if (plan.removeHolder && holder) removeJournalRow(ctx.db, holder.id)
@@ -239,7 +242,7 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
     bodyStateVector?: string
   ): 'applied' | 'skipped' {
     const indexDb = getIndexDatabase()
-    markOwedJournalDayMergeDeleted(ctx.db, itemId)
+    markOwedJournalDayMergeDeleted(ctx.db, itemId, clock)
     const existing = getNoteMetadataById(ctx.db, itemId)
     if (!existing || belongsToOtherType(itemId, 'journal', existing)) return 'skipped'
 
@@ -254,12 +257,14 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
     // A foreign row a pre-fix build left: another device merged it into the
     // day. Its row, doc and file stay for the drain, which folds them, unpushed
     // edits included, into `j<date>` (#2984); a purge here would lose them.
+    // Its tags are weighed while its queued edit is still queued.
     if (existing.journalDate && existing.id !== generateJournalId(existing.journalDate)) {
       oweJournalDayMerge(ctx.db, {
         foreignId: itemId,
         date: existing.journalDate,
         clock: existing.clock ?? null,
-        deleted: true
+        deleted: true,
+        ...holderTags(ctx.db, itemId, readDayTags(existing.journalDate), existing, clock ?? {})
       })
       return 'applied'
     }
@@ -273,6 +278,7 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
         tombstoneClock: clock,
         deletedAt,
         bodyStateVector,
+        unseenFile: holdsUningestedEdit(indexDb, itemId, () => readJournalTextSync(date)),
         readBody: () => readDayBody(date)
       })
     }
@@ -307,6 +313,22 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
     const cached = getNoteMetadataById(db, itemId)
     if (!cached?.journalDate) return undefined
     return cached
+  }
+
+  /**
+   * Stamp the journal as "the server has this state", as notes do. Without it
+   * `syncedAt` recorded only pulls, so every journal minted here read as
+   * edited to the dirty sweep and to the day merge's holder weighing (#5659).
+   *
+   * The stamp is the `modifiedAt` the pushed payload was read at, not the ack
+   * time: an edit made outside the app between the read and the ack (in the
+   * ack's millisecond too) is not on the server, so it must still read as
+   * edited (VERIFY-5691R2). An ack with no payload read here stamps the time.
+   */
+  markPushSynced(db: DrizzleDb, itemId: string): void {
+    const pushed = this.pushedModifiedAt.get(itemId)
+    this.pushedModifiedAt.delete(itemId)
+    updateNoteMetadata(db, itemId, { syncedAt: pushed ?? utcNow() })
   }
 
   buildPushPayload(
@@ -348,6 +370,7 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
   ): string | null {
     const cached = getNoteMetadataById(db, itemId)
     if (!cached?.journalDate) return null
+    this.pushedModifiedAt.set(itemId, cached.modifiedAt)
 
     let content: string | null = null
     let tags: string[] = []

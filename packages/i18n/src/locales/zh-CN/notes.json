@@ -45,6 +45,12 @@
     }
   },
   "page": {
+    "noteFiles": {
+      "downloading": "正在下载此笔记的文件…",
+      "failed": "无法下载此笔记的文件：{error}",
+      "failedFallback": "下载失败",
+      "retry": "重试"
+    },
     "empty": {
       "title": "未选择笔记",
       "body": "从侧边栏选择一篇笔记以查看"

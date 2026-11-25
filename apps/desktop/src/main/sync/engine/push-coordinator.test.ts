@@ -1024,6 +1024,35 @@ describe('PushCoordinator', () => {
     })
   })
 
+  // #5247 B17b: a bad delete attestation refuses that delete only. The item
+  // signature verified, so this device's key is fine and must not be repaired.
+  describe('#given the server refuses a delete attestation', () => {
+    it('#then only that row is refused and no device-key mismatch is raised', async () => {
+      const { coordinator, queue, ctx } = createHarness(getDb())
+      const onDeviceKeyMismatch = vi.fn()
+      ctx.deps.onDeviceKeyMismatch = onDeviceKeyMismatch
+      postToServerMock.mockImplementation(async (_path: string, body: PushBody) => ({
+        accepted: body.items.filter((i) => i.id !== 'task-del').map((i) => i.id),
+        rejected: [{ id: 'task-del', reason: 'SYNC_INVALID_DELETE_ATTESTATION' }],
+        serverTime: Math.floor(Date.now() / 1000),
+        maxCursor: 0
+      }))
+
+      const payload = JSON.stringify({ title: 'x' })
+      queue.enqueue({ type: 'task', itemId: 'task-del', operation: 'delete', payload })
+      queue.enqueue({ type: 'note', itemId: 'note-ok', operation: 'update', payload })
+
+      await coordinator.push()
+
+      expect(onDeviceKeyMismatch).not.toHaveBeenCalled()
+      expect(ctx.lastErrorInfo?.category).not.toBe('device_key_mismatch')
+      const rows = queue.peek(2)
+      expect(rows.map((row) => row.itemId)).toEqual(['task-del'])
+      expect(rows[0].attempts).toBe(1)
+      expect(rows[0].errorMessage).toBe('SYNC_INVALID_DELETE_ATTESTATION')
+    })
+  })
+
   describe('#given a second edit lands while the first is in flight', () => {
     it('#then the newer payload survives and is the one that reaches the server', async () => {
       const { coordinator, queue } = createHarness(getDb())

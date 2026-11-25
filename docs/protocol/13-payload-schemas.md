@@ -61,11 +61,11 @@ The platform-free engine establishes rules 1 and 2: it decrypts to
 copy for `fileType` (`:307-308`), with the contract stated at
 `packages/sync-client/src/pull/store.ts:5-9`, `:17`. The Rust core obeys it:
 the received string goes into `sync_items.payload` unchanged
-(`crates/memry-core/src/storage/repositories/sync_items.rs:399`, `:428`),
-projections come from a parsed copy (`:147-148`), a local edit merges the
+(`crates/memry-core/src/storage/repositories/sync_items.rs:401`, `:430`),
+projections come from a parsed copy (`:148-149`), a local edit merges the
 changed keys into that copy and stores the result
 (`crates/memry-core/src/storage/repositories/payload.rs:64-72`), and a push
-sends the stored string (`crates/memry-core/src/storage/repositories/sync_items.rs:285-287`).
+sends the stored string (`crates/memry-core/src/storage/repositories/sync_items.rs:290`).
 
 ### 13.2.1 Desktop meets the obligation by a different mechanism (#2183)
 
@@ -495,7 +495,7 @@ neither list is a wire constraint on the other.
   others on vault open, after copying into the survivor any icon, category,
   views or authored colour it lacks, and pushes the deletes
   (`apps/desktop/src/main/tags/converge-identity.ts:70-106`,
-  `apps/desktop/src/main/vault/index.ts:571`). Every device picks the same
+  `apps/desktop/src/main/vault/index.ts:580`). Every device picks the same
   survivor from the same rows, so devices converge on one id. An older build
   that still compares ASCII-only can mint a plain definition under its own
   spelling again; the next open merges it back, and since the survivor keeps

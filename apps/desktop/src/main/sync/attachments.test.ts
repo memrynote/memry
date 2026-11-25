@@ -12,7 +12,11 @@ import {
 import { generateFileKey } from '../crypto/keys'
 import { signPayload } from '../crypto/signatures'
 import { CBOR_FIELD_ORDER } from '@memry/contracts/cbor-ordering'
-import { EmptyAttachmentError, TextInMediaFileError } from './attachment-errors'
+import {
+  EmptyAttachmentError,
+  SupersededDownloadError,
+  TextInMediaFileError
+} from './attachment-errors'
 import type * as PromisesModule from 'node:fs/promises'
 
 let tmpDir: string
@@ -483,6 +487,27 @@ describe('AttachmentSyncService', () => {
     })
   })
 
+  // A binary note's check abandons a read past its deadline (#5617).
+  it('abandons a manifest read in flight when its signal aborts', async () => {
+    const mockFetch = vi.fn(
+      (_url: string, init?: RequestInit) =>
+        new Promise<Response>((_, reject) => {
+          init?.signal?.addEventListener('abort', () =>
+            reject(new DOMException('This operation was aborted', 'AbortError'))
+          )
+        })
+    )
+    const service = new AttachmentSyncService(createTestDeps(mockFetch))
+    const controller = new AbortController()
+
+    const read = service.checksumOf('att-1', { signal: controller.signal })
+    await vi.waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1))
+    controller.abort()
+
+    await expect(read).rejects.toThrow('The operation was aborted.')
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+  })
+
   describe('downloadAttachment', () => {
     it('should download, decrypt, and verify a file', async () => {
       const vaultKey = generateFileKey()
@@ -744,16 +769,122 @@ describe('AttachmentSyncService', () => {
       const { deps, plaintext } = buildDownloadFixture('moved.pdf')
       const asked = path.join(tmpDir, 'old', 'moved.pdf')
       const landAt = path.join(tmpDir, 'moved.pdf')
-      const beforeFileLands = vi.fn((_filePath: string, _attachmentId: string) => landAt)
+      // Async: the hook waits for a binary note's hash check before it answers (#5608).
+      const beforeFileLands = vi.fn(
+        async (_filePath: string, _attachmentId: string, _sha256: string, _fileOwnerId?: string) =>
+          landAt
+      )
       const service = new AttachmentSyncService({ ...deps, beforeFileLands })
 
-      const result = await service.downloadAttachment('att-dir', asked)
+      const result = await service.downloadAttachment('att-dir', asked, { fileOwnerId: 'note-3' })
 
-      expect(beforeFileLands).toHaveBeenCalledWith(asked, 'att-dir')
+      // The manifest's checksum of the verified bytes (#5585).
+      // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is a CJS default-export object and sibling crypto tests mock it as default-only
+      const sha256 = sodium.to_hex(sodium.crypto_hash_sha256(plaintext))
+      expect(beforeFileLands).toHaveBeenCalledWith(asked, 'att-dir', sha256, 'note-3')
       expect(result.filePath).toBe(landAt)
       const fsp = await import('node:fs/promises')
       expect((await fsp.readFile(landAt)).equals(plaintext)).toBe(true)
       await expect(fsp.stat(asked)).rejects.toThrow(/ENOENT/)
+    })
+
+    it('lands nothing when beforeFileLands drops a superseded download', async () => {
+      const { deps } = buildDownloadFixture('p.png')
+      const asked = path.join(tmpDir, 'p.png')
+      const beforeFileLands = vi.fn((): string => {
+        throw new SupersededDownloadError('note-3', 'att-dir')
+      })
+      const service = new AttachmentSyncService({ ...deps, beforeFileLands })
+
+      await expect(
+        service.downloadAttachment('att-dir', asked, { fileOwnerId: 'note-3' })
+      ).rejects.toBeInstanceOf(SupersededDownloadError)
+      const fsp = await import('node:fs/promises')
+      await expect(fsp.stat(asked)).rejects.toThrow(/ENOENT/)
+      // Neither the partial nor its resume sidecar outlives the dropped download.
+      expect((await fsp.readdir(tmpDir)).filter((name) => name.includes('.mrypart'))).toEqual([])
+    })
+
+    // A download a runtime restart dropped is owed, and the re-driver asks for
+    // it even when the new runtime already landed it (VERIFY-5683).
+    describe('a binary note whose file is already on disk', () => {
+      const chunkCalls = (mockFetch: ReturnType<typeof vi.fn>): unknown[] =>
+        mockFetch.mock.calls.filter(([url]) => String(url).includes('/attachments/chunks/'))
+
+      async function fileHolding(bytes: Buffer): Promise<string> {
+        const filePath = path.join(tmpDir, 'files', 'report.pdf')
+        const fsp = await import('node:fs/promises')
+        await fsp.mkdir(path.dirname(filePath), { recursive: true })
+        await fsp.writeFile(filePath, bytes)
+        return filePath
+      }
+
+      it("asks for no chunk and leaves the file alone when it holds the manifest's bytes", async () => {
+        const { deps, mockFetch, plaintext } = buildDownloadFixture('report.pdf')
+        const asked = await fileHolding(plaintext)
+        const fsp = await import('node:fs/promises')
+        const before = await fsp.stat(asked)
+        const beforeFileLands = vi.fn(async (filePath: string) => filePath)
+        const service = new AttachmentSyncService({ ...deps, beforeFileLands })
+
+        const result = await service.downloadAttachment('att-dir', asked, {
+          fileOwnerId: 'note-3'
+        })
+
+        expect(result.filePath).toBe(asked)
+        expect(chunkCalls(mockFetch)).toEqual([])
+        expect((await fsp.stat(asked)).ino).toBe(before.ino)
+        // The landing's checks still run: a superseded download is still dropped.
+        // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is a CJS default-export object and sibling crypto tests mock it as default-only
+        const sha256 = sodium.to_hex(sodium.crypto_hash_sha256(plaintext))
+        expect(beforeFileLands).toHaveBeenCalledWith(asked, 'att-dir', sha256, 'note-3')
+      })
+
+      it('downloads over a file of the same size that holds other bytes', async () => {
+        const { deps, mockFetch, plaintext } = buildDownloadFixture('report.pdf')
+        const asked = await fileHolding(Buffer.alloc(plaintext.length, 'X'))
+        const service = new AttachmentSyncService(deps)
+
+        await service.downloadAttachment('att-dir', asked, { fileOwnerId: 'note-3' })
+
+        expect(chunkCalls(mockFetch)).toHaveLength(1)
+        const fsp = await import('node:fs/promises')
+        expect((await fsp.readFile(asked)).equals(plaintext)).toBe(true)
+      })
+
+      // REVIEW-5700: the landing keeps a conflict copy and records hashes, so
+      // where it would land is asked without it, and it runs once, at the landing.
+      it('runs the landing once when the landing moves the file elsewhere', async () => {
+        const { deps, plaintext } = buildDownloadFixture('report.pdf')
+        const asked = await fileHolding(plaintext)
+        const landAt = path.join(tmpDir, 'Report.pdf')
+        const landingFor = vi.fn(async () => landAt)
+        const beforeFileLands = vi.fn(async () => landAt)
+        const service = new AttachmentSyncService({ ...deps, landingFor, beforeFileLands })
+
+        await service.downloadAttachment('att-dir', asked, { fileOwnerId: 'note-3' })
+
+        expect(landingFor).toHaveBeenCalledWith(asked, 'att-dir', 'note-3')
+        expect(beforeFileLands).toHaveBeenCalledTimes(1)
+        const fsp = await import('node:fs/promises')
+        expect((await fsp.readFile(landAt)).equals(plaintext)).toBe(true)
+      })
+
+      it('downloads to where the landing moves it, whatever the asked file holds', async () => {
+        const { deps, plaintext } = buildDownloadFixture('report.pdf')
+        const asked = await fileHolding(plaintext)
+        const landAt = path.join(tmpDir, 'Report.pdf')
+        const beforeFileLands = vi.fn(async () => landAt)
+        const service = new AttachmentSyncService({ ...deps, beforeFileLands })
+
+        const result = await service.downloadAttachment('att-dir', asked, {
+          fileOwnerId: 'note-3'
+        })
+
+        expect(result.filePath).toBe(landAt)
+        const fsp = await import('node:fs/promises')
+        expect((await fsp.readFile(landAt)).equals(plaintext)).toBe(true)
+      })
     })
 
     it('reports progress to the per-call callback instead of the shared slot', async () => {
@@ -876,11 +1007,42 @@ describe('AttachmentSyncService', () => {
   })
 
   describe('network retry behavior', () => {
+    // withRetry sleeps on setTimeout with Math.random jitter. Fake only those
+    // (file I/O and crypto stay real) so the backoff schedule is exact and
+    // costs no wall time.
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
+      vi.spyOn(Math, 'random').mockReturnValue(0)
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+      vi.mocked(Math.random).mockRestore()
+    })
+
+    // Fires each backoff sleep once it is scheduled, until the transfer settles.
+    async function driveBackoffs(transfer: Promise<unknown>): Promise<void> {
+      const state = { settled: false }
+      const settle = (): void => {
+        state.settled = true
+      }
+      transfer.then(settle, settle)
+      while (!state.settled) {
+        for (let i = 0; i < 1000 && !state.settled && vi.getTimerCount() === 0; i++) {
+          await new Promise((resolve) => setImmediate(resolve))
+        }
+        if (!state.settled) await vi.runOnlyPendingTimersAsync()
+      }
+    }
+
+    const gaps = (times: number[]): number[] => times.slice(1).map((t, i) => t - times[i])
+
     it('should retry uploadChunk on transient NetworkError', async () => {
       const testFile = path.join(tmpDir, 'retry.txt')
       await writeFile(testFile, Buffer.alloc(1024, 'R'))
 
       let putCallCount = 0
+      const putTimes: number[] = []
       const fetchFn = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
         const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.toString() : url.url
         const method = init?.method ?? 'GET'
@@ -909,6 +1071,7 @@ describe('AttachmentSyncService', () => {
         }
         if (method === 'PUT' && urlStr.includes('/chunk/')) {
           putCallCount++
+          putTimes.push(Date.now())
           if (putCallCount <= 2) {
             throw new TypeError('Failed to fetch')
           }
@@ -930,11 +1093,60 @@ describe('AttachmentSyncService', () => {
       const service = new AttachmentSyncService(deps)
 
       // #when
-      const result = await service.uploadAttachment('note-1', testFile)
+      const upload = service.uploadAttachment('note-1', testFile)
+      await driveBackoffs(upload)
+      const result = await upload
 
-      // #then
+      // #then — two failures, backoff 2 s then 4 s, third attempt lands
       expect(result.attachmentId).toBeTruthy()
-      expect(putCallCount).toBeGreaterThanOrEqual(3)
+      expect(putCallCount).toBe(3)
+      expect(gaps(putTimes)).toEqual([2000, 4000])
+    })
+
+    it('gives up on uploadChunk after five retries with capped exponential backoff', async () => {
+      const testFile = path.join(tmpDir, 'retry-exhausted.txt')
+      await writeFile(testFile, Buffer.alloc(1024, 'X'))
+
+      const putTimes: number[] = []
+      const responses = new Map<string, { status: number; body?: unknown }>([
+        [
+          'POST /attachments/upload/initiate',
+          { status: 200, body: { sessionId: 'session-dead', expiresAt: Date.now() + 3600000 } }
+        ],
+        [
+          'GET /attachments/upload/session-dead',
+          {
+            status: 200,
+            body: {
+              sessionId: 'session-dead',
+              attachmentId: '',
+              totalSize: 0,
+              chunkCount: 1,
+              uploadedChunks: [],
+              expiresAt: 0
+            }
+          }
+        ]
+      ])
+      const mockFetch = createMockFetch(responses)
+      const fetchFn = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+        const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.toString() : url.url
+        if (init?.method === 'PUT' && urlStr.includes('/chunk/')) {
+          putTimes.push(Date.now())
+          throw new TypeError('Failed to fetch')
+        }
+        return mockFetch(url, init)
+      })
+
+      const service = new AttachmentSyncService(createTestDeps(fetchFn))
+
+      // #when
+      const upload = service.uploadAttachment('note-1', testFile)
+      await driveBackoffs(upload)
+
+      // #then — 2, 4, 8, 16 s, then the 30 s cap; no seventh attempt
+      await expect(upload).rejects.toThrow('Dead letter after 6 attempts')
+      expect(gaps(putTimes)).toEqual([2000, 4000, 8000, 16000, 30000])
     })
 
     it('should emit waiting_network phase during retry', async () => {
@@ -995,7 +1207,9 @@ describe('AttachmentSyncService', () => {
       service.setProgressCallback((p) => phases.push(p.phase))
 
       // #when
-      await service.uploadAttachment('note-1', testFile)
+      const upload = service.uploadAttachment('note-1', testFile)
+      await driveBackoffs(upload)
+      await upload
 
       // #then — waiting_network phase should appear before uploading resumes
       expect(phases).toContain('waiting_network')
@@ -1443,6 +1657,50 @@ describe('terminal transfer phases', () => {
 
       expect(events.map((e) => e.phase)).toEqual(['decrypting', 'completed'])
     })
+  })
+
+  // REVIEW-5722: the queue's dispose() aborts a stalled proxied chunk read.
+  it('abandons a proxied chunk read in flight when its signal aborts', async () => {
+    const vaultKey = generateFileKey()
+    const signingKeypair = sodium.crypto_sign_keypair()
+    const { encManifest } = buildSignedManifest({
+      attachmentId: 'att-stalled',
+      filename: 'stalled.txt',
+      plaintext: Buffer.alloc(256, 'S'),
+      vaultKey,
+      signingKeypair
+    })
+    let chunkAsked = false
+    const fetchFn = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.toString() : url.url
+      if (urlStr.includes('/att-stalled/manifest')) {
+        return new Response(JSON.stringify(encManifest), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        })
+      }
+      if (urlStr.includes('/chunks/')) {
+        chunkAsked = true
+        return new Promise<Response>((_, reject) => {
+          init?.signal?.addEventListener('abort', () =>
+            reject(new DOMException('This operation was aborted', 'AbortError'))
+          )
+        })
+      }
+      return new Response(null, { status: 404 })
+    })
+    const service = new AttachmentSyncService(
+      createDownloadDeps(fetchFn, vaultKey, signingKeypair.publicKey)
+    )
+    const controller = new AbortController()
+
+    const download = service.downloadAttachment('att-stalled', path.join(tmpDir, 'stalled.txt'), {
+      signal: controller.signal
+    })
+    await vi.waitFor(() => expect(chunkAsked).toBe(true))
+    controller.abort()
+
+    await expect(download).rejects.toThrow(/abort/i)
   })
 })
 

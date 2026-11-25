@@ -172,7 +172,8 @@ import { scanMarkdownFile } from './file-scan'
 import { clearIngestBackfill, drainIngestBackfill } from './ingest-backfill'
 import { trackMainError } from '../telemetry/diagnostics'
 import { VaultWatcher, getWatcher, startWatcher, stopWatcher } from './watcher'
-import { syncFolderConfigRename, withAppFolderChange } from '../notes/folder-config-effects'
+import { syncFolderConfigRename } from '../notes/folder-config-effects'
+import { withAppFolderChange } from './app-folder-changes'
 import { closeActivityLog, listActivity, openActivityLog } from './activity-log'
 import { CanvasChannels } from '@memry/contracts/canvas-api'
 import { createCanvas } from '../canvas/store'
@@ -841,36 +842,21 @@ describe('vault watcher', () => {
     await watcher.stop()
   })
 
-  it('skips attachments/ and watches the folder a non-default attachmentsFolder names', async () => {
-    vi.mocked(getConfig).mockReturnValue({ ...baseConfig, attachmentsFolder: 'files' })
-    const mockWatcher = {
-      on: vi.fn(() => mockWatcher),
-      once: vi.fn((event: string, handler: () => void) => {
-        if (event === 'ready') handler()
-        return mockWatcher
-      }),
-      close: vi.fn().mockResolvedValue(undefined)
-    }
-    mockWatch.mockReturnValue(mockWatcher)
+  // `ignored` keeps the store out (watcher-windows-paths.test.ts); this is the
+  // add path's own check, for an event that gets past it (#5607).
+  it('makes no note of a file in the root attachments folder', async () => {
+    const watcher = new VaultWatcher() as any
+    watcher.vaultPath = vault.path
+    const imagePath = path.join(vault.path, 'attachments', 'host-note', 'pasted.png')
+    fs.mkdirSync(path.dirname(imagePath), { recursive: true })
+    fs.writeFileSync(imagePath, Buffer.from('image'))
 
-    const watcher = new VaultWatcher()
-    await watcher.start({ vaultPath: vault.path })
-    const ignored = mockWatch.mock.calls[0][1].ignored as (
-      filePath: string,
-      stats?: { isFile: () => boolean }
-    ) => boolean
-    const file = { isFile: () => true }
-    const dir = { isFile: () => false }
+    await watcher.handleFileChange(imagePath)
+    await flushProjectionEvents()
 
-    expect(ignored(path.join(vault.path, 'attachments'), dir)).toBe(true)
-    expect(ignored(path.join(vault.path, 'attachments', 'n1', 'a.md'), file)).toBe(true)
-    expect(ignored(path.join(vault.path, 'files'), dir)).toBe(false)
-    expect(ignored(path.join(vault.path, 'files', 'note.md'), file)).toBe(false)
-    // #3161: a nested attachments folder is the user's, not the app's.
-    expect(ignored(path.join(vault.path, 'Projects', 'attachments'), dir)).toBe(false)
-    expect(ignored(path.join(vault.path, 'Projects', 'attachments', 'a.md'), file)).toBe(false)
-    expect(ignored(path.join(vault.path, 'attachments-old', 'a.md'), file)).toBe(false)
-    await watcher.stop()
+    expect(indexDb.db.select().from(noteCache).all()).toEqual([])
+    expect(dataDb.db.select().from(noteMetadata).all()).toEqual([])
+    expect(syncNoteCreate).not.toHaveBeenCalled()
   })
 
   it('logs an unsupported file dropped in after the initial walk, once', async () => {
@@ -2006,7 +1992,7 @@ describe('vault watcher', () => {
         uploadAttachment: vi.fn(),
         downloadAttachment: vi.fn(),
         dereference,
-        markWritebackIgnored: vi.fn(),
+        recordAppWrite: vi.fn(() => () => {}),
         trackEvent: vi.fn()
       })
       recordAsset(db, {

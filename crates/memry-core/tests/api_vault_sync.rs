@@ -76,6 +76,7 @@ fn scratch_vault(label: &str) -> Vault {
         "memry-api-vault-sync-{label}-{}-{unique}",
         std::process::id()
     ));
+    let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).expect("the scratch directory");
     Vault::open("vault-1".to_string(), dir.display().to_string()).expect("open")
 }
@@ -519,6 +520,7 @@ async fn the_first_pass_after_a_first_sync_owes_no_body_it_already_pulled() {
         std::process::id(),
         SCRATCH.fetch_add(1, Ordering::Relaxed)
     ));
+    let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).expect("the scratch directory");
     let vault = Vault::open("vault-1".to_string(), dir.display().to_string()).expect("open");
     let side = memry_core::storage::open_data(&dir.join("data.db")).expect("a second handle");
@@ -590,6 +592,7 @@ async fn a_window_document_whose_first_sync_pull_stopped_is_owed() {
         std::process::id(),
         SCRATCH.fetch_add(1, Ordering::Relaxed)
     ));
+    let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).expect("the scratch directory");
     let vault = Vault::open("vault-1".to_string(), dir.display().to_string()).expect("open");
     let side = memry_core::storage::open_data(&dir.join("data.db")).expect("a second handle");

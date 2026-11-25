@@ -16,8 +16,9 @@ import path from 'path'
 import fs from 'fs/promises'
 import { generateContentHash, parseNote } from './frontmatter'
 import { writingFrontmatterOf } from '@memry/shared/writing-tools/markdown'
-import { syncNoteToCache, syncFileToCache } from './note-sync'
-import { planCaseTwinMove, prepareCaseTwinLeave, sharesCaseTwinFile } from './case-twin-file'
+import { persistNoteToCache, syncNoteToCache, syncFileToCache } from './note-sync'
+import { planCaseTwinMove, prepareCaseTwinLeave } from './case-twin-file'
+import { sharesCaseTwinFile } from './case-twin-shared-file'
 import {
   ensureDirectory,
   sanitizeFilename,
@@ -29,7 +30,7 @@ import { rewriteNoteRefsForMove } from '@memry/editor-schema/note-refs'
 import { rewriteInboundWikiLinks } from './rename-link-rewrite'
 import { noteLinkStem } from '@memry/shared/wiki-target'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
-import { markWritebackIgnored } from '../sync/crdt-writeback'
+import { recordAppWrite } from './app-writes'
 import { baselineAfterWrite, landBodyEdit } from '../sync/writeback-baseline'
 import { extractDateFromPath, getNoteCacheById } from '@main/database/queries/notes'
 import {
@@ -78,24 +79,28 @@ async function leaveCaseTwinFile(
   const vaultPath = getVaultRoot()
   await prepareCaseTwinLeave(vaultPath, existing.path, existing.id, true)
   const cached = getNoteCacheById(getIndexDatabase(), existing.id)
-  const moved = planCaseTwinMove(vaultPath, existing.path, existing.id, newRelativePath)()
-  syncNoteToCache(
-    getIndexDatabase(),
-    {
-      id: existing.id,
-      path: newRelativePath,
-      fileContent: moved.content,
-      contentHash: generateContentHash(moved.content),
-      frontmatter: moved.frontmatter,
-      parsedContent: moved.markdown,
-      title,
-      createdAt: cached?.createdAt ?? existing.created.toISOString(),
-      modifiedAt: now,
-      localOnly: cached?.localOnly ?? false,
-      emoji: cached?.emoji ?? null
-    },
-    { isNew: false }
-  )
+  const move = planCaseTwinMove(vaultPath, existing.path, existing.id, newRelativePath)
+  let publish: (() => void) | undefined
+  move((moved) => {
+    publish = persistNoteToCache(
+      {
+        id: existing.id,
+        path: newRelativePath,
+        fileContent: moved.content,
+        contentHash: generateContentHash(moved.content),
+        frontmatter: moved.frontmatter,
+        parsedContent: moved.markdown,
+        title,
+        createdAt: cached?.createdAt ?? existing.created.toISOString(),
+        modifiedAt: now,
+        localOnly: cached?.localOnly ?? false,
+        emoji: cached?.emoji ?? null
+      },
+      { isNew: false }
+    ).publish
+  })
+  // After the step's transaction commits: the index never takes a row move it rolled back.
+  publish?.()
 }
 
 export async function renameNote(id: string, newTitle: string): Promise<Note> {
@@ -281,9 +286,10 @@ export async function moveNote(id: string, newFolder: string): Promise<Note> {
     // id, so a move never invalidates it; the doc still holds the pre-move body
     // and the next write-back would serialize that straight back over the
     // corrected file. The doc takes the rewrite first, then the file
-    // (`landBodyEdit`). The watcher's external-edit feed must not race it; the
-    // sync note handler marks its own writes the same way.
-    if (rewritten !== null) markWritebackIgnored(newPath)
+    // (`landBodyEdit`). The watcher's external-edit feed must not race it, so
+    // the bytes the move put here and the rewrite's are recorded as the app's;
+    // the sync note handler records its own writes the same way.
+    if (rewritten !== null) recordAppWrite(newPath, original)()
     const contentHash =
       rewritten === null
         ? baselineAfterWrite(db, id, original, original)
@@ -291,7 +297,11 @@ export async function moveNote(id: string, newFolder: string): Promise<Note> {
             notePath: newRelativePath,
             feed: () =>
               feedExternalEditToCrdt(id, parsed.content, writingFrontmatterOf(parsed.frontmatter)),
-            write: () => atomicWrite(newPath, rewritten)
+            write: async () => {
+              const landed = recordAppWrite(newPath, rewritten)
+              await atomicWrite(newPath, rewritten)
+              landed()
+            }
           })
     syncNoteToCache(
       db,

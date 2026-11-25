@@ -108,15 +108,12 @@ vi.mock('../../notes/runtime-effects', () => ({
     mockCleanupProjectLinksForDeletedNote(...(args as []))
 }))
 
-const mockMarkWritebackIgnored = vi.fn()
 vi.mock('../crdt-network-update', async () => await import('../crdt-writeback'))
 vi.mock('../crdt-writeback-port', async () => {
   const writeback = await import('../crdt-writeback')
   return { crdtWriteback: () => writeback }
 })
-vi.mock('../crdt-writeback', () => ({
-  markWritebackIgnored: (...args: unknown[]) => mockMarkWritebackIgnored(...args)
-}))
+vi.mock('../crdt-writeback', () => ({}))
 
 const mockPurgeCrdtDoc = vi.fn(() => Promise.resolve())
 const mockDeleteSyncedVaultFile = vi.fn()
@@ -161,7 +158,8 @@ vi.mock('../../vault/file-ops', async () => {
   }
 })
 
-vi.mock('../../vault/attachments', () => ({
+vi.mock('../../vault/attachments', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   getNoteAttachmentsDir: vi.fn((vaultPath: string, noteId: string) =>
     path.join(vaultPath, 'attachments', noteId)
   )
@@ -176,6 +174,7 @@ import { noteHandler } from './note-handler'
 import {
   MISSING_PROBE_LIMIT,
   markDownloadFailed,
+  markDownloadRequested,
   resetAttachmentDownloadSession
 } from '@memry/sync-client/attachment-download-state'
 import { asClientDb, createTestDatabase, type TestDatabaseResult } from '@tests/utils/test-db'
@@ -189,7 +188,10 @@ import {
   updateNoteCache
 } from '@main/database/queries/notes'
 import { NotesChannels } from '@memry/contracts/ipc-channels'
-import { attachmentEvents } from '@memry/sync-client/attachment-events'
+import {
+  attachmentEvents,
+  type AttachmentDownloadNeededEvent
+} from '@memry/sync-client/attachment-events'
 import { extractFolderFromPath } from '../note-sync'
 import {
   buildNotePushPayload,
@@ -359,7 +361,8 @@ describe('noteHandler.applyUpsert — path collision', () => {
       {},
       'note-1',
       { Rating: 5 },
-      expect.any(Function)
+      expect.any(Function),
+      'wire'
     )
     const getType = vi.mocked(setNoteProperties).mock.calls[0][3]
     expect(getType('Rating', 5)).toBe('number')
@@ -599,6 +602,38 @@ describe('noteHandler.applyUpsert — path collision', () => {
     }
   })
 
+  // #5616: an open downloading the file holds its claim. A second request
+  // would release that claim when auto-download is off.
+  it('asks for no second download of a pulled binary note an open is downloading', () => {
+    const downloads: unknown[] = []
+    const handler = (event: unknown) => downloads.push(event)
+    attachmentEvents.onDownloadNeeded(handler)
+    resetAttachmentDownloadSession()
+    markDownloadRequested('file-1', 'att-1')
+
+    try {
+      const result = noteHandler.applyUpsert(
+        ctx,
+        'file-1',
+        makeNotePayload({
+          title: 'Report',
+          content: undefined,
+          fileType: 'pdf',
+          mimeType: 'application/pdf',
+          attachmentId: 'att-1',
+          folderPath: 'Files'
+        }),
+        { dev1: 1 }
+      )
+
+      expect(result).toBe('applied')
+      expect(downloads).toEqual([])
+    } finally {
+      attachmentEvents.offDownloadNeeded(handler)
+      resetAttachmentDownloadSession()
+    }
+  })
+
   it('updates and moves an existing binary note without touching frontmatter', () => {
     mockGetNoteMetadataById.mockReturnValue({
       id: 'file-1',
@@ -795,14 +830,15 @@ describe('noteHandler.applyUpsert — embedded attachment references', () => {
     intoDir?: boolean
     recencyHint?: number
   }>
-  const listener = (e: {
-    noteId: string
-    attachmentId: string
-    diskPath: string
-    intoDir?: boolean
-    recencyHint?: number
-  }): void => {
-    downloadEvents.push(e)
+  // What was asked for; the claim is the requester's hold on it.
+  const listener = ({
+    noteId,
+    attachmentId,
+    diskPath,
+    intoDir,
+    recencyHint
+  }: AttachmentDownloadNeededEvent): void => {
+    downloadEvents.push({ noteId, attachmentId, diskPath, intoDir, recencyHint })
   }
 
   beforeEach(() => {

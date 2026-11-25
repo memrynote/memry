@@ -16,6 +16,8 @@ import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { NotesChannels } from '@memry/contracts/ipc-channels'
 import type { NoteRenamedEvent } from '@memry/contracts/notes-api'
 import { createLogger } from '../lib/logger'
+import { birthtimeIsReal } from './birthtime-probe'
+import { isAppFolderChange } from './app-folder-changes'
 
 const logger = createLogger('RenameTracker')
 
@@ -66,6 +68,11 @@ export type DeferredDeletes = Set<PendingDelete>
 export function createDeferredDeletes(): DeferredDeletes {
   return new Set()
 }
+
+type IdentityStats = Pick<
+  Stats,
+  'dev' | 'ino' | 'birthtime' | 'birthtimeMs' | 'ctimeMs' | 'size' | 'mtime'
+>
 
 export interface RenameMatch {
   id: string
@@ -147,6 +154,22 @@ function addToIndex(index: Map<string, PendingDelete[]>, key: string, entry: Pen
   }
 }
 
+/**
+ * Give `entry` its rename window. A window that closes while the app is still
+ * moving or deleting the entry's folder opens again: the app re-keys the rows
+ * only once its move ends, and a move that goes entry by entry (Windows,
+ * `moveDirectory`) unlinks each file long before the folder reappears (#5695).
+ */
+function armRenameWindow(entry: PendingDelete): void {
+  entry.timeout = setTimeout(() => {
+    if (isAppFolderChange(entry.path)) return armRenameWindow(entry)
+    // No matching 'add' event arrived - this is a real delete
+    logger.debug(`No rename detected for ${entry.id}, processing as delete`)
+    removePending(entry)
+    void entry.onRealDelete()
+  }, RENAME_WINDOW_MS)
+}
+
 function takeMatch(index: Map<string, PendingDelete[]>, key: string): PendingDelete | null {
   const bucket = index.get(key)
   if (!bucket || bucket.length === 0) return null
@@ -190,17 +213,11 @@ export function trackPendingDelete(
     statKey: statKey ?? null,
     path: relativePath,
     timestamp: Date.now(),
-    timeout: deferred
-      ? null
-      : setTimeout(() => {
-          // No matching 'add' event arrived - this is a real delete
-          logger.debug(`No rename detected for ${id}, processing as delete`)
-          removePending(entry)
-          void entry.onRealDelete()
-        }, RENAME_WINDOW_MS),
+    timeout: null,
     onRealDelete
   }
 
+  if (!deferred) armRenameWindow(entry)
   deferred?.add(entry)
   addToIndex(pendingDeletes, contentHash, entry)
   if (entry.statKey !== null) addToIndex(pendingDeletesByStat, entry.statKey, entry)
@@ -284,6 +301,10 @@ export async function settleDeferredDeletes(batch: DeferredDeletes): Promise<voi
   batch.clear()
   for (const pending of unmatched) {
     if (!pendingDeletes.get(pending.contentHash)?.includes(pending)) continue
+    if (isAppFolderChange(pending.path)) {
+      armRenameWindow(pending)
+      continue
+    }
     removePending(pending)
     logger.debug(`No rename detected for ${pending.id}, processing as delete`)
     await pending.onRealDelete()
@@ -328,16 +349,37 @@ export function buildStatRenameKey(
  * where the filesystem hands a freed inode to the next file (ext4), another
  * birthtime. Null when the filesystem reports no inode or no birthtime (0 on
  * some Windows, Linux and network filesystems), so such a file never falls
- * back to size + mtime alone. A birthtime equal to the ctime counts as none:
- * libuv reports the ctime as birthtime where Linux has no statx, and with 1 s
- * timestamps an unrelated file written the same second would share it.
+ * back to size + mtime alone. Where Linux has no statx, libuv reports the
+ * ctime as birthtime, and with 1 s timestamps an unrelated file written the
+ * same second would share it, so no file gets a key once the startup probe
+ * (`probeBirthtime`) finds that. Until the probe answers, a birthtime equal to
+ * the ctime counts as none; after it found real birthtimes, a fresh file whose
+ * birthtime and ctime share a timestamp tick keeps its key. The probe answers
+ * once per process; `birthtime-probe.ts` says when that answer goes stale, and
+ * `buildAddedFileIdentityKey` keeps a stale answer from pairing a wrong file.
  */
-export function buildFileIdentityKey(
-  stats: Pick<Stats, 'dev' | 'ino' | 'birthtime' | 'birthtimeMs' | 'ctimeMs' | 'size' | 'mtime'>
-): string | null {
+export function buildFileIdentityKey(stats: IdentityStats): string | null {
   const born = stats.birthtime.getTime()
-  if (!stats.ino || !born || stats.birthtimeMs === stats.ctimeMs) return null
+  if (!stats.ino || !born) return null
+  const realBirthtime = birthtimeIsReal()
+  if (realBirthtime === false) return null
+  if (realBirthtime === null && stats.birthtimeMs === stats.ctimeMs) return null
   return `ino:${stats.dev}:${stats.ino}:${born}:${stats.size}:${stats.mtime.getTime()}`
+}
+
+/**
+ * Identity key of the file an `add` reports. A renamed file's ctime is past its
+ * birthtime: the rename, or a write after its creation, moved it, except a
+ * file created and renamed within one timestamp tick. On Linux an add whose
+ * birthtime equals its ctime therefore gets no key, and that file's rename
+ * only misses its identity match. Once libuv falls
+ * back to stat(2) after the probe found real birthtimes, every birthtime is
+ * the ctime, so no add pairs by identity, and an unrelated file written on a
+ * deleted note's freed inode in the same second never takes that note over.
+ */
+export function buildAddedFileIdentityKey(stats: IdentityStats): string | null {
+  if (process.platform === 'linux' && stats.birthtimeMs === stats.ctimeMs) return null
+  return buildFileIdentityKey(stats)
 }
 
 /**

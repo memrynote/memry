@@ -30,6 +30,7 @@
     "applyTemplateFailed": "Nepodařilo se použít šablonu",
     "appendBlocksFailed": "Blok se nepodařilo přesunout do této poznámky",
     "appendIntoCaseTwin": "Tato poznámka sdílí soubor s poznámkou, jejíž název se liší jen velikostí písmen. Jednu z nich přejmenujte a pak blok přesuňte znovu.",
+    "appendIntoBinary": "Blok lze přesunout jen do poznámky, ne do obrázku, PDF, zvukového nebo video souboru.",
     "caseTwinMoveRefused": "Tato poznámka sdílí soubor s poznámkou, jejíž název se liší jen velikostí písmen, takže ji tímto způsobem nelze přesunout. Přejmenujte nebo přesuňte druhou poznámku, nebo smažte kopii, kterou nepotřebujete.",
     "exportPdfFailed": "Nepodařilo se exportovat PDF",
     "exportHtmlFailed": "Nepodařilo se exportovat HTML",
@@ -61,10 +62,14 @@
     "uploadFailed": "Nahrání přílohy se nezdařilo",
     "uploadProgressFailed": "Nepodařilo se načíst průběh nahrávání",
     "downloadFailed": "Stažení přílohy se nezdařilo",
+    "downloadGone": "Tento soubor už na synchronizačním serveru není. Pokud ho ještě má jiné zařízení, přidejte ho z něj znovu.",
+    "downloadMissing": "Tento soubor zatím na synchronizačním serveru není. Otevřete ho znovu zítra a zkontrolujte to.",
+    "downloadNeedsSync": "Synchronizace neběží, proto tento soubor nelze stáhnout. Stáhne se sám, jakmile synchronizace poběží.",
     "downloadProgressFailed": "Nepodařilo se načíst průběh stahování",
     "exceedsMaxSize": "Soubor je příliš velký: {size} překračuje limit {limit}",
     "exceedsPlanLimit": "Soubor je větší, než váš plán dovoluje: {size} překračuje {limit}",
     "emptyFile": "Prázdný soubor nelze nahrát",
+    "emptyNotAttached": "Tento soubor je prázdný, proto nebyl přiložen. Pokud jste vložili obrázek, zkopírujte ho znovu a vložte.",
     "textInMediaFile": "Tento soubor obsahuje text místo média, které uvádí jeho název"
   },
   "crdt": {
@@ -214,6 +219,8 @@
     "renameFailed": "Nepodařilo se přejmenovat složku",
     "renameCaseTwins": "Tato složka obsahuje poznámky, které sdílejí soubor s poznámkou, jejíž název složky se liší jen velikostí písmen. Nejprve tyto poznámky přejmenujte nebo přesuňte a pak složku přejmenujte.",
     "deleteFailed": "Nepodařilo se smazat složku",
+    "deleteCaseTwins": "Tato složka a složka se stejným názvem zapsaným jinak, například jinou velikostí písmen, jsou na disku jedna složka, takže jejím smazáním byste smazali poznámky v obou. Místo toho smažte nepotřebné poznámky jednu po druhé.",
+    "deleteWindowsName": "Název této složky končí tečkou nebo mezerou, kterou Windows ignoruje, takže jejím smazáním byste mohli smazat i jinou složku. Místo toho smažte poznámky v ní jednu po druhé.",
     "setConfigFailed": "Nepodařilo se nastavit konfiguraci složky"
   },
   "folderView": {

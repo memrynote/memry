@@ -21,6 +21,9 @@ vi.mock('@memry/storage-data', () => ({
   updateNoteMetadata: vi.fn()
 }))
 
+const probe = vi.hoisted(() => ({ real: null as boolean | null }))
+vi.mock('./birthtime-probe', () => ({ birthtimeIsReal: () => probe.real }))
+
 import { getDatabase, getIndexDatabase } from '../database'
 import {
   trackPendingDelete,
@@ -32,9 +35,11 @@ import {
   getPendingDeleteCount,
   createDeferredDeletes,
   settleDeferredDeletes,
+  buildAddedFileIdentityKey,
   buildFileIdentityKey,
   buildStatRenameKey
 } from './rename-tracker'
+import { withAppFolderChange } from './app-folder-changes'
 
 describe('rename-tracker', () => {
   let indexDb: TestDatabaseResult
@@ -91,6 +96,33 @@ describe('rename-tracker', () => {
 
     expect(onRealDelete).toHaveBeenCalledTimes(1)
     expect(hasPendingDeletes()).toBe(false)
+  })
+
+  it('holds a delete under a folder the app is moving until the move ends (#5695)', async () => {
+    vi.useFakeTimers()
+    const timed = vi.fn().mockResolvedValue(undefined)
+    const deferred = vi.fn().mockResolvedValue(undefined)
+    const rescan = createDeferredDeletes()
+    let finishMove = (): void => {}
+    const move = withAppFolderChange(
+      ['Big'],
+      () => new Promise<void>((resolve) => (finishMove = resolve))
+    )
+
+    trackPendingDelete('note-1', 'hash-1', 'Big/Sub/a.md', timed)
+    trackPendingDelete('note-2', 'hash-2', 'Big/b.md', deferred, null, rescan)
+    await settleDeferredDeletes(rescan)
+    await vi.advanceTimersByTimeAsync(10_000)
+
+    expect(timed).not.toHaveBeenCalled()
+    expect(deferred).not.toHaveBeenCalled()
+    // The moved file's add still pairs with its delete as a rename.
+    expect(checkForRename('hash-1', 'Renamed/Sub/a.md')).toMatchObject({ id: 'note-1' })
+
+    finishMove()
+    await move
+    await vi.advanceTimersByTimeAsync(500)
+    expect(deferred).toHaveBeenCalledTimes(1)
   })
 
   // ==========================================================================
@@ -166,6 +198,105 @@ describe('rename-tracker', () => {
     expect(buildFileIdentityKey({ ...changed, birthtime: new Date(0) })).toBeNull()
     // Linux without statx reports the ctime as birthtime.
     expect(buildFileIdentityKey({ ...changed, birthtimeMs: changed.ctimeMs })).toBeNull()
+  })
+
+  it('keys a file whose birthtime equals its ctime once the probe found real birthtimes', () => {
+    // A file written right after it was created on ext4 or tmpfs: statx reports
+    // a real birthtime, in the same timestamp tick as the ctime.
+    const fresh = new Date('2026-01-12T00:00:00.000Z')
+    const linuxFresh = {
+      dev: 1,
+      ino: 42,
+      birthtime: fresh,
+      birthtimeMs: fresh.getTime(),
+      ctimeMs: fresh.getTime(),
+      size: 20,
+      mtime: fresh
+    }
+    try {
+      probe.real = true
+      const key = buildFileIdentityKey(linuxFresh)
+      expect(key).not.toBeNull()
+      trackPendingDelete('note-f', 'stale-hash', 'notes/f.md', vi.fn(), key)
+      // ext4 hands the freed inode to a file born later: its own key.
+      const reborn = new Date(fresh.getTime() + 1)
+      const reused = buildFileIdentityKey({
+        ...linuxFresh,
+        birthtime: reborn,
+        birthtimeMs: reborn.getTime(),
+        ctimeMs: reborn.getTime()
+      })
+      expect(checkForRename('new-hash', 'notes/other.md', [reused])).toBeNull()
+      expect(checkForRename('new-hash', 'notes/f-renamed.md', [key])).toMatchObject({
+        id: 'note-f'
+      })
+      // No birthtime still means no key.
+      expect(buildFileIdentityKey({ ...linuxFresh, birthtime: new Date(0) })).toBeNull()
+
+      // libuv reports the ctime as birthtime: no file has an identity.
+      probe.real = false
+      expect(buildFileIdentityKey(linuxFresh)).toBeNull()
+      expect(
+        buildFileIdentityKey({ ...linuxFresh, birthtimeMs: 1, birthtime: new Date(1) })
+      ).toBeNull()
+    } finally {
+      probe.real = null
+    }
+  })
+
+  // After the probe found real birthtimes, libuv can fall back to stat(2) for
+  // the rest of the process and report the ctime as every birthtime (#5247
+  // A24). With 1 s timestamps a file written on a deleted note's freed inode
+  // the same second then shares the note's whole key.
+  it('pairs no add by identity once Linux stat reports the ctime as birthtime', async () => {
+    vi.useFakeTimers()
+    const platform = Object.getOwnPropertyDescriptor(process, 'platform')
+    Object.defineProperty(process, 'platform', { value: 'linux', configurable: true })
+    probe.real = true
+    try {
+      const second = new Date('2026-01-12T00:00:01.000Z')
+      const deleted = {
+        dev: 1,
+        ino: 42,
+        birthtime: second,
+        birthtimeMs: second.getTime(),
+        ctimeMs: second.getTime(),
+        size: 20,
+        mtime: second
+      }
+      const onRealDelete = vi.fn().mockResolvedValue(undefined)
+      trackPendingDelete(
+        'note-a',
+        'hash-a',
+        'notes/a.md',
+        onRealDelete,
+        buildFileIdentityKey(deleted)
+      )
+
+      const unrelated = { ...deleted }
+      const unrelatedKeys = [buildAddedFileIdentityKey(unrelated)]
+      expect(checkForRename('hash-b', 'notes/b.md', unrelatedKeys)).toBeNull()
+      await vi.advanceTimersByTimeAsync(500)
+      expect(onRealDelete).toHaveBeenCalledOnce()
+
+      // With statx a rename moves the ctime past the real birthtime.
+      const born = new Date('2026-01-10T00:00:00.000Z')
+      const changed = { ...deleted, birthtime: born, birthtimeMs: born.getTime() }
+      trackPendingDelete(
+        'note-c',
+        'stale-hash',
+        'notes/c.md',
+        vi.fn(),
+        buildFileIdentityKey(changed)
+      )
+      const renamed = { ...changed, ctimeMs: second.getTime() + 5 }
+      expect(
+        checkForRename('new-hash', 'notes/c-renamed.md', [buildAddedFileIdentityKey(renamed)])
+      ).toMatchObject({ id: 'note-c' })
+    } finally {
+      probe.real = null
+      if (platform) Object.defineProperty(process, 'platform', platform)
+    }
   })
 
   it('matches identical-hash collisions FIFO, oldest pending delete first', async () => {

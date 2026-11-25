@@ -30,6 +30,7 @@
     "applyTemplateFailed": "Impossibile applicare il modello",
     "appendBlocksFailed": "Impossibile spostare il blocco in quella nota",
     "appendIntoCaseTwin": "Quella nota condivide il file con una nota il cui nome differisce solo per maiuscole e minuscole. Rinomina una delle due, quindi sposta di nuovo il blocco.",
+    "appendIntoBinary": "Un blocco può essere spostato solo in una nota, non in un'immagine, un PDF o un file audio o video.",
     "caseTwinMoveRefused": "Questa nota condivide il file con una nota il cui nome differisce solo per maiuscole e minuscole, quindi non può essere spostata in questo modo. Rinomina o sposta l’altra nota, oppure elimina la copia che non ti serve.",
     "exportPdfFailed": "Impossibile esportare in PDF",
     "exportHtmlFailed": "Impossibile esportare in HTML",
@@ -61,10 +62,14 @@
     "uploadFailed": "Caricamento dell'allegato non riuscito",
     "uploadProgressFailed": "Impossibile recuperare l'avanzamento del caricamento",
     "downloadFailed": "Download dell'allegato non riuscito",
+    "downloadGone": "Questo file non è più sul server di sincronizzazione. Se un altro dispositivo lo ha ancora, aggiungilo di nuovo da quel dispositivo.",
+    "downloadMissing": "Questo file non è ancora sul server di sincronizzazione. Riaprilo domani per controllare.",
+    "downloadNeedsSync": "La sincronizzazione non è attiva, quindi non è possibile scaricare questo file. Verrà scaricato automaticamente quando la sincronizzazione sarà attiva.",
     "downloadProgressFailed": "Impossibile recuperare l'avanzamento del download",
     "exceedsMaxSize": "File troppo grande: {size} supera il limite di {limit}",
     "exceedsPlanLimit": "Il file è più grande di quanto consenta il tuo piano: {size} supera {limit}",
     "emptyFile": "Impossibile caricare un file vuoto",
+    "emptyNotAttached": "Questo file è vuoto, quindi non è stato allegato. Se hai incollato un'immagine, copiala di nuovo e incollala.",
     "textInMediaFile": "Questo file contiene testo invece del contenuto multimediale indicato dal nome"
   },
   "crdt": {
@@ -214,6 +219,8 @@
     "renameFailed": "Impossibile rinominare la cartella",
     "renameCaseTwins": "Questa cartella contiene note che condividono un file con una nota il cui nome di cartella differisce solo per maiuscole e minuscole. Prima rinomina o sposta quelle note, poi rinomina la cartella.",
     "deleteFailed": "Impossibile eliminare la cartella",
+    "deleteCaseTwins": "Questa cartella e una cartella con lo stesso nome scritto in modo diverso, ad esempio con altre maiuscole e minuscole, sono un'unica cartella sul disco, quindi eliminarla eliminerebbe le note di entrambe. Elimina invece una alla volta le note che non ti servono.",
+    "deleteWindowsName": "Il nome di questa cartella termina con un punto o uno spazio, che Windows ignora, quindi eliminarla potrebbe eliminare anche un'altra cartella. Elimina invece una alla volta le note che contiene.",
     "setConfigFailed": "Impossibile impostare la configurazione della cartella"
   },
   "folderView": {

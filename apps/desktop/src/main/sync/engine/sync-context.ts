@@ -240,11 +240,37 @@ export const SYNC_STATE_KEYS = {
    */
   CASE_TWIN_HELD_CHANGES: 'caseTwinHeldChanges',
   /**
-   * JSON list of binary note ids whose file may hold a case twin's bytes
-   * after the twins split (#5560). The watcher pushes no change to them
-   * until the note's own download lands. Missing reads as an empty list.
+   * Prefix of one row per binary note whose file may hold bytes that are not
+   * its own (#5560, #5580), `caseTwinForeignBytes:<noteId>`: JSON `{sha256}`
+   * of its file, or null. The watcher pushes no change to them until the
+   * note's own download lands. Missing reads as no hold. Builds before kept
+   * every mark in one JSON object under this key; the first touch moves it.
    */
-  CASE_TWIN_FOREIGN_BYTES: 'caseTwinForeignBytes'
+  CASE_TWIN_FOREIGN_BYTES: 'caseTwinForeignBytes',
+  /**
+   * JSON object from the folded vault path of a binary file case twins share
+   * to the sha256 of the bytes a download last landed there (#5585). The
+   * split compares the file with it to find a change the watcher never saw.
+   * Missing reads as empty: the split then keeps the file's bytes.
+   */
+  CASE_TWIN_LANDED_HASHES: 'caseTwinLandedHashes',
+  /**
+   * JSON object from the absolute path of a file the attachment uploader
+   * refused for good (`UnsendableAttachmentError`) to its `{size, mtimeMs}`
+   * at the time (#5606). The upload backfill does not offer a file whose
+   * size and mtime still match; a write changes them and offers it again.
+   * Missing reads as empty.
+   */
+  ATTACHMENT_UPLOAD_REFUSALS: 'attachmentUploadRefusals',
+  /**
+   * JSON object from the folded vault path of a binary file case twins share,
+   * or shared before a split, to `{sha256, copy}`: the bytes a landing last
+   * kept from it as a conflict copy, and the vault path of that copy
+   * (REVIEW-5602). A later landing on the file reads those bytes as kept while
+   * the copy still holds them (VERIFY-5602, VERIFY-5602R2). Missing reads as
+   * empty.
+   */
+  CASE_TWIN_KEPT_COPIES: 'caseTwinKeptCopies'
 } as const
 
 /** The schema-invalid ledger type of a refused change-feed body, keyed by note id (#2297). */

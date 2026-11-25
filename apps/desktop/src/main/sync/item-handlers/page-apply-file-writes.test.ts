@@ -30,7 +30,7 @@ vi.mock('../crdt-writeback-port', async () => {
   const writeback = await import('../crdt-writeback')
   return { crdtWriteback: () => writeback }
 })
-vi.mock('../crdt-writeback', () => ({ markWritebackIgnored: vi.fn() }))
+vi.mock('../crdt-writeback', () => ({}))
 vi.mock('../../database/client', () => ({
   getIndexDatabase: vi.fn(() => ({ index: true })),
   isIndexDatabaseInitialized: vi.fn(() => false),
@@ -41,10 +41,19 @@ vi.mock('../../database', () => ({
   getIndexDatabase: () => currentDb.value
 }))
 // The stub index holds no rows, so no note has an outside-edit baseline yet.
-vi.mock('@main/database/queries/notes', async (importOriginal) => ({
-  ...(await importOriginal<typeof NotesModule>()),
-  getNoteCacheById: vi.fn(() => undefined)
-}))
+// The index holds the day file's bytes as its baseline: these deletes remove
+// a day this device ingested (#5757).
+vi.mock('@main/database/queries/notes', async (importOriginal) => {
+  const { generateContentHash } = await import('../../vault/frontmatter')
+  return {
+    ...(await importOriginal<typeof NotesModule>()),
+    getNoteCacheById: vi.fn(() =>
+      fs.existsSync(journalFile)
+        ? { contentHash: generateContentHash(fs.readFileSync(journalFile, 'utf-8')) }
+        : undefined
+    )
+  }
+})
 vi.mock('../../vault/init', () => ({
   getMemryDir: (vault: string) => path.join(vault, '.memry')
 }))

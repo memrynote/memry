@@ -30,6 +30,7 @@
     "applyTemplateFailed": "Pohjan käyttäminen epäonnistui",
     "appendBlocksFailed": "Lohkon siirtäminen kyseiseen muistiinpanoon epäonnistui",
     "appendIntoCaseTwin": "Muistiinpano jakaa tiedostonsa sellaisen muistiinpanon kanssa, jonka nimi eroaa vain kirjainkoon osalta. Nimeä toinen niistä uudelleen ja siirrä lohko sitten uudelleen.",
+    "appendIntoBinary": "Lohkon voi siirtää vain muistiinpanoon, ei kuvaan, PDF-tiedostoon tai ääni- tai videotiedostoon.",
     "caseTwinMoveRefused": "Tämä muistiinpano jakaa tiedostonsa sellaisen muistiinpanon kanssa, jonka nimi eroaa vain kirjainkoon osalta, joten sitä ei voi siirtää näin. Nimeä toinen muistiinpano uudelleen tai siirrä se, tai poista kopio, jota et tarvitse.",
     "exportPdfFailed": "PDF-tiedoston vieminen epäonnistui",
     "exportHtmlFailed": "HTML-tiedoston vieminen epäonnistui",
@@ -61,10 +62,14 @@
     "uploadFailed": "Liitteen lähettäminen epäonnistui",
     "uploadProgressFailed": "Lähetyksen edistymisen hakeminen epäonnistui",
     "downloadFailed": "Liitteen lataaminen epäonnistui",
+    "downloadGone": "Tätä tiedostoa ei ole enää synkronointipalvelimella. Jos se on vielä toisella laitteella, lisää se uudelleen siltä laitteelta.",
+    "downloadMissing": "Tätä tiedostoa ei ole vielä synkronointipalvelimella. Avaa se uudelleen huomenna tarkistaaksesi.",
+    "downloadNeedsSync": "Synkronointi ei ole käynnissä, joten tätä tiedostoa ei voi ladata. Se latautuu itsestään, kun synkronointi on käynnissä.",
     "downloadProgressFailed": "Latauksen edistymisen hakeminen epäonnistui",
     "exceedsMaxSize": "Tiedosto on liian suuri: {size} ylittää rajan {limit}",
     "exceedsPlanLimit": "Tiedosto on suurempi kuin tilauksesi sallii: {size} ylittää rajan {limit}",
     "emptyFile": "Tyhjää tiedostoa ei voi lähettää",
+    "emptyNotAttached": "Tämä tiedosto on tyhjä, joten sitä ei liitetty. Jos liitit kuvan, kopioi se uudelleen ja liitä se.",
     "textInMediaFile": "Tämä tiedosto sisältää tekstiä nimensä mukaisen median sijaan"
   },
   "crdt": {
@@ -214,6 +219,8 @@
     "renameFailed": "Kansion uudelleennimeäminen epäonnistui",
     "renameCaseTwins": "Tässä kansiossa on muistiinpanoja, jotka jakavat tiedoston sellaisen muistiinpanon kanssa, jonka kansion nimi eroaa vain kirjainkoon osalta. Nimeä nämä muistiinpanot uudelleen tai siirrä ne ensin ja nimeä sitten kansio uudelleen.",
     "deleteFailed": "Kansion poistaminen epäonnistui",
+    "deleteCaseTwins": "Tämä kansio ja kansio, jonka nimi on sama mutta kirjoitettu eri tavalla, esimerkiksi eri kirjainkoolla, ovat levyllä sama kansio, joten sen poistaminen poistaisi molempien muistiinpanot. Poista sen sijaan tarpeettomat muistiinpanot yksi kerrallaan.",
+    "deleteWindowsName": "Tämän kansion nimi päättyy pisteeseen tai välilyöntiin, jonka Windows jättää huomiotta, joten sen poistaminen voisi poistaa myös toisen kansion. Poista sen sijaan sen muistiinpanot yksi kerrallaan.",
     "setConfigFailed": "Kansion asetusten tallentaminen epäonnistui"
   },
   "folderView": {

@@ -32,7 +32,7 @@ vi.mock('../crdt-writeback-port', async () => {
   const writeback = await import('../crdt-writeback')
   return { crdtWriteback: () => writeback }
 })
-vi.mock('../crdt-writeback', () => ({ markWritebackIgnored: vi.fn() }))
+vi.mock('../crdt-writeback', () => ({}))
 vi.mock('../crdt-provider', () => ({ getCrdtProvider: () => ({ purge }) }))
 vi.mock('../../projections', () => ({
   flushProjectionEvents: vi.fn(),
@@ -135,6 +135,7 @@ describe("a journal id that is not its day's j<date>", () => {
         fileType: 'markdown',
         journalDate: DATE,
         clock: { minter: 2 },
+        syncedAt: '2026-06-09T08:00:00.000Z',
         createdAt: '2026-06-09T08:00:00.000Z',
         modifiedAt: '2026-06-09T08:00:00.000Z'
       })
@@ -145,7 +146,13 @@ describe("a journal id that is not its day's j<date>", () => {
     expect(result).toBe('applied')
     expect(rows()).toEqual([{ id: DAY, path: `journal/${DATE}.md` }])
     expect(listOwedJournalDayMerges(ctx.db)).toEqual([
-      { foreignId: FOREIGN, date: DATE, clock: { minter: 2 }, fallbackMarkdown: 'minted here' }
+      {
+        foreignId: FOREIGN,
+        date: DATE,
+        clock: { minter: 2 },
+        fallbackMarkdown: 'minted here',
+        holderClock: { minter: 2 }
+      }
     ])
   })
 })

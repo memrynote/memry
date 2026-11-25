@@ -454,7 +454,7 @@ before #5247 signs it.
   hostile one, so a writer MUST NOT fall back to v1 on a rejection. Writers:
   desktop passes no vault id (`apps/desktop/src/main/sync/engine/push-coordinator.ts:329`,
   used at `apps/desktop/src/main/sync/encrypt.ts:97`); the Rust core seals
-  without a vault (`crates/memry-core/src/api/sync/pass.rs:161`). The flip to
+  without a vault (`crates/memry-core/src/api/sync/pass.rs:166`). The flip to
   v2 (`AccountSealer::with_vault`, `crates/memry-core/src/protocol/account/seal.rs:195`)
   is held until production servers verify v2 and the version floor (chapter 11) excludes builds that refuse a v2 purged marker.
 - A verifier MUST accept v2 whose `vaultId` is the vault it serves or syncs,
@@ -465,7 +465,10 @@ before #5247 signs it.
   `crates/memry-core/src/sync/purged_markers.rs:149`).
 - A client that holds an attested purged marker and cannot read its vault id
   MUST end the pull with an error and keep its cursor, never check v1 only
-  (`apps/desktop/src/main/sync/engine/pull-envelope.ts:227`).
+  (`apps/desktop/src/main/sync/engine/pull-envelope.ts:227`). The Rust core
+  fails the by-id pull that carries one, so the manifest reconcile ends with an
+  error and a `SYNC_DELETE_WINS` item is deferred
+  (`crates/memry-core/src/sync/pull/shared_apply.rs:88-98`).
 
 The two purposes are disjoint, so a v2 signature never verifies as v1, nor in
 another vault. The signature is 64 bytes in both versions and carries no
@@ -486,7 +489,8 @@ character, never a map header.
 **Server.** It verifies the attestation per item, after the record signature,
 under the signer's `auth_public_key`: v2 for the vault the request resolves to
 (chapter 05 §5.2), else v1. One that does not verify, or does not
-decode, is that item's `403 SYNC_INVALID_SIGNATURE` in `rejected[]`; the
+decode, is that item's `SYNC_INVALID_DELETE_ATTESTATION` in `rejected[]`
+(servers before #5247 sent `SYNC_INVALID_SIGNATURE`); the
 request is still a 200 and the neighbours commit (chapter 05 §5.4). An
 attestation on a write with no claim is ignored and not stored. An accepted
 write stores the verified attestation in `sync_items.delete_attestation`, or
@@ -524,12 +528,12 @@ described, not the one it would guess.
 Then, per item
 (`apps/sync-server/src/services/sync.ts:139-178`):
 
-| Condition                                                                       | Answer                                |
-| ------------------------------------------------------------------------------- | ------------------------------------- |
-| signer device unknown                                                           | `404 AUTH_DEVICE_NOT_FOUND` (`:134`)  |
-| signer device revoked                                                           | `403 AUTH_DEVICE_REVOKED` (`:137`)    |
-| signature does not verify                                                       | `403 SYNC_INVALID_SIGNATURE` (`:166`) |
-| delete attestation present on an attestable delete and does not verify (§4.8.4) | `403 SYNC_INVALID_SIGNATURE`          |
+| Condition                                                                       | Answer                                       |
+| ------------------------------------------------------------------------------- | -------------------------------------------- |
+| signer device unknown                                                           | `404 AUTH_DEVICE_NOT_FOUND` (`:134`)         |
+| signer device revoked                                                           | `403 AUTH_DEVICE_REVOKED` (`:137`)           |
+| signature does not verify                                                       | `403 SYNC_INVALID_SIGNATURE` (`:166`)        |
+| delete attestation present on an attestable delete and does not verify (§4.8.4) | `SYNC_INVALID_DELETE_ATTESTATION` (per item) |
 
 **Q04.5 — the server rewrites `cryptoVersion` to `1`.** It reconstructs the
 signature payload with `cryptoVersion: CRYPTO_VERSION`

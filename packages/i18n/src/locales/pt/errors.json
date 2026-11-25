@@ -30,6 +30,7 @@
     "applyTemplateFailed": "Não foi possível aplicar o modelo",
     "appendBlocksFailed": "Não foi possível mover o bloco para essa nota",
     "appendIntoCaseTwin": "Essa nota partilha o ficheiro com uma nota cujo nome difere apenas em maiúsculas e minúsculas. Mude o nome de uma delas e, em seguida, mova o bloco novamente.",
+    "appendIntoBinary": "Só é possível mover um bloco para uma nota, não para uma imagem, um PDF ou um ficheiro de áudio ou vídeo.",
     "caseTwinMoveRefused": "Esta nota partilha o arquivo com uma nota cujo nome difere apenas em maiúsculas e minúsculas, por isso não pode ser movida desta forma. Renomeie ou mova a outra nota, ou exclua a cópia de que não precisa.",
     "exportPdfFailed": "Não foi possível exportar o PDF",
     "exportHtmlFailed": "Não foi possível exportar o HTML",
@@ -61,10 +62,14 @@
     "uploadFailed": "Não foi possível enviar o anexo",
     "uploadProgressFailed": "Não foi possível obter o progresso do envio",
     "downloadFailed": "Não foi possível baixar o anexo",
+    "downloadGone": "Este arquivo não está mais no servidor de sincronização. Se outro dispositivo ainda tiver o arquivo, adicione-o novamente a partir desse dispositivo.",
+    "downloadMissing": "Este arquivo ainda não está no servidor de sincronização. Abra-o novamente amanhã para verificar.",
+    "downloadNeedsSync": "A sincronização não está em execução, então não é possível baixar este arquivo. Ele será baixado automaticamente quando a sincronização estiver em execução.",
     "downloadProgressFailed": "Não foi possível obter o progresso do download",
     "exceedsMaxSize": "Arquivo muito grande: {size} excede o limite de {limit}",
     "exceedsPlanLimit": "O arquivo é maior do que seu plano permite: {size} excede {limit}",
     "emptyFile": "Não é possível enviar um arquivo vazio",
+    "emptyNotAttached": "Este arquivo está vazio, por isso não foi anexado. Se você colou uma imagem, copie-a novamente e cole.",
     "textInMediaFile": "Este arquivo contém texto em vez da mídia indicada pelo nome"
   },
   "crdt": {
@@ -214,6 +219,8 @@
     "renameFailed": "Não foi possível renomear a pasta",
     "renameCaseTwins": "Esta pasta contém notas que compartilham um arquivo com uma nota cujo nome de pasta difere apenas em maiúsculas e minúsculas. Renomeie ou mova essas notas primeiro e, depois, renomeie a pasta.",
     "deleteFailed": "Não foi possível excluir a pasta",
+    "deleteCaseTwins": "Esta pasta e uma pasta com o mesmo nome escrito de outra forma, por exemplo com outras maiúsculas e minúsculas, são uma única pasta no disco, então excluí-la excluiria as notas de ambas. Em vez disso, exclua uma a uma as notas de que você não precisa.",
+    "deleteWindowsName": "O nome desta pasta termina em um ponto ou um espaço, que o Windows ignora, então excluí-la poderia excluir também outra pasta. Em vez disso, exclua uma a uma as notas que ela contém.",
     "setConfigFailed": "Não foi possível definir a configuração da pasta"
   },
   "folderView": {

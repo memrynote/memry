@@ -34,7 +34,7 @@ use crate::crdt::errors::CrdtError;
 use crate::crdt::update_log;
 use crate::storage::nested_tx;
 use crate::storage::repositories::{Change, sync_items};
-use crate::sync::{body_debt, outbox};
+use crate::sync::{body_debt, journal_day_merge, outbox};
 
 use super::notes::{failed, iso, object, require_payload, seed_body, valid_document_id};
 use super::recreate::{recreate_clock, write_over_tombstone};
@@ -155,6 +155,24 @@ pub fn live_entry(conn: &Connection, date: &str) -> Result<Option<String>, Stora
     Ok(entry_for(conn, date)?.and_then(|(id, deleted)| (!deleted).then_some(id)))
 }
 
+/// SQL that holds when `id`, a `notes` id column, is not a journal day's.
+///
+/// Desktop names a day's pictures in a `note` record under the day's own id
+/// (`recordOnNote`), so a pulled day can hold a `notes` row (#5730). The row
+/// stays, because it carries the day's attachment references. A reader that
+/// lists or classifies notes filters with this, so the day never reads as a
+/// note. A day's id is the canonical `j<YYYY-MM-DD>` (desktop's
+/// `dateFromJournalId`) or any id a `journal_entries` row holds, live or not.
+/// The subquery drops NULL ids, since one would make `NOT IN` false for every
+/// row; it stays uncorrelated because callers pass a bare `id`, which a
+/// correlated `NOT EXISTS` would bind to the journal row itself.
+pub(crate) fn not_a_journal_day(id: &str) -> String {
+    format!(
+        "{id} NOT GLOB 'j[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]' \
+         AND {id} NOT IN (SELECT id FROM journal_entries WHERE id IS NOT NULL)"
+    )
+}
+
 /// Whether this vault holds a live journal entry with this record id.
 pub fn journal_exists(conn: &Connection, id: &str) -> bool {
     conn.query_row(
@@ -258,7 +276,8 @@ fn revive_in(tx: &Connection, id: &str, device_id: &str, now_ms: i64) -> Result<
         ),
         ("modifiedAt", Change::set(iso(now_ms)?)),
     ];
-    sync_items::apply_local_edit_in(tx, ITEM_TYPE, id, &changes, now_ms)?;
+    // The one edit that shows a deleted day again.
+    sync_items::apply_local_edit_setting_deleted_in(tx, ITEM_TYPE, id, &changes, now_ms, None)?;
     Ok(())
 }
 
@@ -321,7 +340,11 @@ pub fn delete_day(
         conn,
         &outbox::Change::delete(ITEM_TYPE, &id),
         now_ms,
-        |tx| super::notes::tombstone_local(tx, ITEM_TYPE, &id, device_id, now_ms),
+        |tx| {
+            super::notes::tombstone_local(tx, ITEM_TYPE, &id, device_id, now_ms)?;
+            // A held day is deleted too, not merged into `j<date>` (§1.9.1).
+            journal_day_merge::forget_deleted_day(tx, &id, now_ms)
+        },
     )?
     .acknowledge();
     Ok(true)

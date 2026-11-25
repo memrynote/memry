@@ -62,8 +62,9 @@ final class VaultSelectionViewModel {
     private(set) var registryNotice: UserFacingError?
 
     /// The vault open offline is gone from the account. Its files stay on
-    /// this device; the screen says so until dismissed or left.
-    private(set) var openVaultRemoved = false
+    /// this device; the screen says so, and offers to export them, until
+    /// dismissed or left (#5600).
+    private(set) var removedVault: RemovedVaultExport?
 
     /// A re-read is out. Other triggers wait for its answer instead of
     /// queueing reads of their own, and Try again shows it.
@@ -135,6 +136,9 @@ final class VaultSelectionViewModel {
     /// the running app share.
     private let snapshot: LaunchSnapshot
 
+    /// A vault's folder on this device, for exporting a removed one.
+    private let removedVaultSource: @Sendable (String) throws -> URL
+
     init(
         registry: any VaultRegistry,
         opener: any VaultOpening,
@@ -142,9 +146,13 @@ final class VaultSelectionViewModel {
         secureStore: (any SecureStore)? = nil,
         session: (any AuthSessionProtocol)? = nil,
         snapshot: LaunchSnapshot = .shared,
-        syncable: @escaping @Sendable (String) -> Bool = { _ in true }
+        syncable: @escaping @Sendable (String) -> Bool = { _ in true },
+        removedVaultSource: @escaping @Sendable (String) throws -> URL = {
+            try VaultFiles(emitter: CoreEventEmitter { _ in }).vaultDirectory($0)
+        }
     ) {
         self.snapshot = snapshot
+        self.removedVaultSource = removedVaultSource
         self.syncable = syncable
         self.registry = registry
         self.opener = opener
@@ -171,7 +179,7 @@ final class VaultSelectionViewModel {
     /// happening and offers no button that would lie about stopping it.
     func load() async {
         loadGeneration += 1
-        openVaultRemoved = false
+        dismissRemovedVaultNotice()
         phase = .loading
         vault = nil
         filler = nil
@@ -232,7 +240,7 @@ final class VaultSelectionViewModel {
     /// account answers it reconciles the open vault with the list: pruned
     /// snapshot, refreshed name, notice gone, sync started for a vault that
     /// joined the account meanwhile. A vault the account no longer lists goes
-    /// through ``load()`` with ``openVaultRemoved`` set. Its files stay on
+    /// through ``load()`` with ``removedVault`` set. Its files stay on
     /// disk, so nothing written offline is deleted.
     func registryReachable() async {
         guard !isRecheckingRegistry, registryNotice != nil, case let .opened(open) = phase else { return }
@@ -260,7 +268,8 @@ final class VaultSelectionViewModel {
         snapshot.prune(keeping: Set(summaries.map(\.id)))
         guard let row = summaries.first(where: { $0.id == open.id }) else {
             await load()
-            openVaultRemoved = true
+            let source = removedVaultSource
+            removedVault = RemovedVaultExport(summary: open) { try source(open.id) }
             return
         }
         registryNotice = nil
@@ -298,8 +307,11 @@ final class VaultSelectionViewModel {
         }
     }
 
+    /// Hides the notice. An export still copying stops; its partial copy goes,
+    /// the vault's own files never do.
     func dismissRemovedVaultNotice() {
-        openVaultRemoved = false
+        removedVault?.cancel()
+        removedVault = nil
     }
 
     /// `registry.vaults()`, one call at a time and in the order asked.
