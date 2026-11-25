@@ -1201,7 +1201,11 @@ refetches it once another core build runs (§13.2).
    `{<this device>: 1}`, queued for push. The remote then applies under the
    merged clock. Identical scene text merges the clocks and creates nothing;
 4. `title`, `folder`, `icon` and `ownerNoteId` absent from the remote keep the
-   local value, and `null` clears it. `vaultId` keeps the local value;
+   local value, and `null` clears it. `vaultId` keeps the local value. Rust
+   core only: a remote that states the bound server vault id (§13.7.21 rule 6)
+   sets it, so a peer that stored a record before its writer's restamp pushes
+   the server id on, not the old local one (#5669,
+   `crates/memry-core/src/sync/server_vault.rs:99-116`);
 5. the copy and the overwrite are one transaction;
 6. Rust core only: a restamp contests only `vaultId`. A client that rewrites
    `vaultId` to the bound server vault id (#5535) changes nothing else under
@@ -1336,7 +1340,9 @@ either, and stays a skip.
    clock (`:65-73`);
 3. over a local record, deleted ones included, an absent `path` keeps the
    local path, an absent `icon` keeps the local icon and `null` clears it, and
-   `vaultId` stays local. A `null` `path` fails the schema, so desktop refuses
+   `vaultId` stays local, except that on a Rust core a remote stating the bound
+   server vault id sets it, as §13.7.21 rule 4 says (#5669,
+   `crates/memry-core/src/domain/canvas_folder/merge.rs:68-79`). A `null` `path` fails the schema, so desktop refuses
    the record (`apps/desktop/src/main/sync/apply-item.ts:192-202`) and the Rust
    core refuses it too. `deletedAt` is the remote's: absent
    or `null` makes the folder live again (`canvas-folder-handler.ts:74-80`);
