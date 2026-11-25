@@ -111,12 +111,14 @@ pub(super) fn apply_record(
         vault_locks::ITEM_TYPE => vault_locks::merge::apply_remote(conn, record, now_ms),
         // Whole-row LWW keeping local keys (canvas-folder-handler.ts,
         // home-page-handler.ts, sticky-draft-handler.ts).
-        canvas_folder::ITEM_TYPE => canvas_folder::merge::apply_remote(conn, record, now_ms),
+        canvas_folder::ITEM_TYPE => {
+            canvas_folder::merge::apply_remote(conn, record, now_ms, clock_device)
+        }
         home_page::ITEM_TYPE => home_page::merge::apply_remote(conn, record, now_ms),
         sticky_draft::ITEM_TYPE => sticky_draft::merge::apply_remote(conn, record, now_ms),
         // Field merge, the title sealed (agent-conversation-handler.ts).
         agent_conversation::ITEM_TYPE => {
-            agent_conversation::merge::apply_remote(conn, record, at_rest, now_ms)
+            agent_conversation::merge::apply_remote(conn, record, at_rest, now_ms, clock_device)
         }
         // Written once, terminal only, sealed (agent-message-handler.ts).
         agent_message::ITEM_TYPE => {

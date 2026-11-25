@@ -116,6 +116,64 @@ pub(crate) fn merged_vault_id(
     Ok(stated(local))
 }
 
+/// Pushes a record that a fast-forward stored under the bound server id while the dominating remote
+/// states another id, which [`merged_vault_id`] kept off the record (#5784, #5812).
+/// Invariant: a record this device holds under the server vault id is never left on the server
+/// under a pre-bind id. A fresh device lists only the server id and its own local id, and a
+/// pre-#5784 or Electron peer pushes the id it stored, so the server copy would stay hidden.
+/// The fast-forward stored the remote's clock, which the server already holds and refuses to see
+/// again (`detectReplay`), so the record is a local edit under this device's next tick, queued
+/// once. The echo states the server id, so pulling it queues nothing; a peer that states the old
+/// id again costs one push per edit of its. A concurrent merge stores a clock past the remote's
+/// and re-queues on its own, so it is left as it is. `clock_device` is this device's clock id.
+pub(crate) fn repush_kept(
+    tx: &Connection,
+    item_type: &str,
+    item_id: &str,
+    remote: &Object,
+    clock_device: Option<&str>,
+    now_ms: i64,
+) -> Result<(), StorageError> {
+    let Some(server) = bound(tx)? else {
+        return Ok(());
+    };
+    let Some(stored) = desktop_records::stored(tx, item_type, item_id, true)? else {
+        return Ok(());
+    };
+    let held = stored.object().get("vaultId").and_then(Value::as_str);
+    if held != Some(server.as_str())
+        || remote.get("vaultId").and_then(Value::as_str) == held
+        || compare(&clock_in(stored.object())?, &clock_in(remote)?) != ClockOrder::Equal
+    {
+        return Ok(());
+    }
+    let device = clock_device.ok_or_else(|| StorageError::Failed {
+        what: format!(
+            "{item_type} {item_id} keeps the server vault id over a remote and this pull has no \
+             device clock id to push it"
+        ),
+    })?;
+    push_edit(tx, item_type, item_id, &stored, Vec::new(), device, now_ms)
+}
+
+/// Writes `changes` under `device_id`'s next tick and queues the record, unless it is a
+/// conversation the agent backfill still owes ([`agent_queue::backfill`]).
+fn push_edit(
+    tx: &Connection,
+    item_type: &str,
+    id: &str,
+    stored: &StoredPayload,
+    changes: Vec<(&'static str, Change)>,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<(), StorageError> {
+    desktop_records::edit(tx, item_type, id, stored, changes, device_id, now_ms)?;
+    if item_type != agent_conversation::ITEM_TYPE || !agent_queue::backfill_pending(tx)? {
+        outbox::enqueue(tx, &outbox::Change::upsert(item_type, id), now_ms)?;
+    }
+    Ok(())
+}
+
 /// `meta` key set once [`restamp`] ran for the bound vault.
 const META_RESTAMPED: &str = "sync.record_vault_restamped";
 
@@ -227,10 +285,7 @@ fn restamp_one(
             Change::Set(json!({ "device": device_id, "base": base })),
         ));
     }
-    desktop_records::edit(tx, item_type, id, &stored, changes, device_id, now_ms)?;
-    if item_type != agent_conversation::ITEM_TYPE || !agent_queue::backfill_pending(tx)? {
-        outbox::enqueue(tx, &outbox::Change::upsert(item_type, id), now_ms)?;
-    }
+    push_edit(tx, item_type, id, &stored, changes, device_id, now_ms)?;
     Ok(true)
 }
 

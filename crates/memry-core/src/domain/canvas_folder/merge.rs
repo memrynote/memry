@@ -12,8 +12,9 @@
 //!   ([`desktop_records::Kept`]); an absent
 //!   `icon` keeps the local icon and `null` clears it, and `vaultId` stays
 //!   local unless the remote states the bound server id
-//!   ([`server_vault::merged_vault_id`], #5669). `deletedAt` is the remote's:
-//!   absent or `null` revives the folder.
+//!   ([`server_vault::merged_vault_id`], #5669), pushed once when a fast-forward
+//!   keeps it over the remote's ([`server_vault::repush_kept`], #5812).
+//!   `deletedAt` is the remote's: absent or `null` revives the folder.
 //! - **A restamp contests only `vaultId`** ([`server_vault::restamp`], which
 //!   Electron's handler does not know): a remote restamp whose base this live
 //!   folder is strictly after leaves its path, icon and `deletedAt` as they
@@ -26,9 +27,10 @@ use serde_json::Value;
 
 use crate::api::errors::StorageError;
 use crate::domain::desktop_records::{self, Kept};
-use crate::domain::notes::clock_in;
+use crate::domain::notes::{clock_in, failed};
 use crate::domain::task_merge;
 use crate::domain::tasks::Inbound;
+use crate::storage::nested_tx;
 use crate::storage::repositories::sync_items::InboundRecord;
 use crate::storage::repositories::{Change, StoredPayload};
 use crate::sync::server_vault;
@@ -43,11 +45,13 @@ pub(crate) const KEPT: Kept = Kept {
     local: &[],
 };
 
-/// Applies one inbound `canvas_folder` record.
+/// Applies one inbound `canvas_folder` record. `clock_device` is this device's clock id, which a
+/// fast-forward that keeps the server vault id needs to push it ([`server_vault::repush_kept`]).
 pub fn apply_remote(
     conn: &Connection,
     record: &InboundRecord,
     now_ms: i64,
+    clock_device: Option<&str>,
 ) -> Result<Inbound, StorageError> {
     let remote = match StoredPayload::parse(&record.payload_json) {
         Ok(remote) if record.deleted_at.is_none() => remote,
@@ -85,5 +89,18 @@ pub fn apply_remote(
         return desktop_records::apply_kept(conn, record, &live, Some(&live), extra, now_ms);
     }
     let extra = vault_id(&remote)?;
-    desktop_records::apply_kept(conn, record, &remote, local.as_ref(), extra, now_ms)
+    let tx = nested_tx::begin(conn).map_err(failed)?;
+    let inbound = desktop_records::apply_kept(&tx, record, &remote, local.as_ref(), extra, now_ms)?;
+    if matches!(inbound, Inbound::Applied) {
+        server_vault::repush_kept(
+            &tx,
+            ITEM_TYPE,
+            &record.item_id,
+            remote.object(),
+            clock_device,
+            now_ms,
+        )?;
+    }
+    tx.commit().map_err(failed)?;
+    Ok(inbound)
 }

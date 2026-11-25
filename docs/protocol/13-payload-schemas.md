@@ -1514,9 +1514,18 @@ It is the field-level merge (§13.9) over `title`, `backend`, `backendModel`,
    `crates/memry-core/src/domain/agent_conversation/mod.rs:42-55`);
 2. no local record, or a remote clock that dominates the local one, stores the
    remote as sent (`:113-133`, `:178-186`); a local clock that dominates skips
-   the remote (`:136-137`). An equal clock over the same payload skips; the
-   Rust core compares the local payload with its title opened, the payload it
-   would push (`crates/memry-core/src/domain/agent_conversation/merge.rs:73-77`);
+   the remote (`:136-137`). Rust core only: over a stored conversation a
+   dominating remote keeps the stored `vaultId` unless it states the bound
+   server vault id, as rule 3 says. When that leaves the bound server id over
+   a remote stating another id, the core writes the conversation under its
+   own next clock tick and queues one upsert, so the server copy states the
+   server id: a fresh device lists only the server id and its own local id,
+   and the server refuses a clock it already holds (`detectReplay`). The echo
+   states the server id and queues nothing (#5812,
+   `crates/memry-core/src/domain/agent_conversation/merge.rs:86-102`,
+   `crates/memry-core/src/sync/server_vault.rs:119-157`). An equal clock over
+   the same payload skips; the Rust core compares the local payload with its
+   title opened, the payload it would push (`crates/memry-core/src/domain/agent_conversation/merge.rs:73-77`);
 3. concurrent clocks merge field by field under `fieldClocks` (chapter 06
    §6.3). A local record without `fieldClocks` seeds every field from its
    document clock (`:140-142`). `updatedAt` is the later of the two, and
@@ -1525,7 +1534,7 @@ It is the field-level merge (§13.9) over `title`, `backend`, `backendModel`,
    states the bound server vault id sets it, as §13.7.21 rule 4 says, so a
    peer that stored a conversation before its writer's restamp pushes the
    server id on, not the old local one (#5784,
-   `crates/memry-core/src/domain/agent_conversation/merge.rs:126-128`);
+   `crates/memry-core/src/domain/agent_conversation/merge.rs:149-151`);
 4. without a vault key Electron skips the record (`:92-101`), so the cursor
    moves past it and that device never has it. The Rust core stores it pending
    (§13.2.3) instead; on a concurrent merge a sealed local title that wins
