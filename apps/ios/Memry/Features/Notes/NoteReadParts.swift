@@ -274,14 +274,13 @@ extension NoteReadViewModel {
             where attachment.intactPath == nil && !waiting.contains(attachment.attachmentId) {
             waiting.append(attachment.attachmentId)
         }
-        var landed = false
+        var landed: [String] = []
         for id in waiting where asks(for: id, tryAgain: tryAgain) {
             guard !Task.isCancelled else { break }
             attachmentFetches[id] = .downloading
             do {
                 let summary = try await filler.fetchAttachment(attachmentId: id, reachable: reachable)
-                attachmentFetches[id] = nil
-                if summary.downloaded { landed = true }
+                if summary.downloaded { landed.append(id) } else { attachmentFetches[id] = nil }
             } catch {
                 let mapped = ErrorMapping.userFacing(error)
                 Log.sync.error("an attachment could not be fetched", .code(mapped.code))
@@ -291,9 +290,12 @@ extension NoteReadViewModel {
 
         // Not the caller's task: the next run skips what this one marked
         // downloading, so what landed here is rebound here or not at all, and
-        // `loadAttachments` binds nothing on a cancelled task.
-        if landed {
+        // `loadAttachments` binds nothing on a cancelled task. The mark holds
+        // until the rebind: cleared before it, another run would find the
+        // file neither downloading nor bound and download it again.
+        if !landed.isEmpty {
             await Task { await loadAttachments() }.value
+            for id in landed { attachmentFetches[id] = nil }
         }
     }
 
