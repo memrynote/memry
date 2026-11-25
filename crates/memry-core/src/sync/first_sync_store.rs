@@ -12,6 +12,7 @@ use rusqlite::{Connection, OptionalExtension as _, params};
 
 use crate::api::errors::StorageError;
 use crate::crdt::update_log::Namespace;
+use crate::domain::journal::not_a_journal_day;
 use crate::storage::nested_tx;
 
 use super::body_debt;
@@ -43,7 +44,8 @@ pub(super) fn pending_metadata_ids(conn: &Connection) -> Result<Vec<String>, Sto
 }
 
 /// Pass three's work list: the note and journal documents inside the window,
-/// newest first, capped.
+/// newest first, capped. A journal day's `notes` row (desktop's picture
+/// record under the day's id) is the day's, so it takes no second slot.
 ///
 /// Read from the **projections**, not from `sync_items.updated_at`: the latter
 /// is the instant this device applied the row, which pass two rewrites to
@@ -54,15 +56,17 @@ pub(super) fn recent_document_ids(
     window_start: i64,
 ) -> Result<Vec<String>, StorageError> {
     let mut statement = conn
-        .prepare(
+        .prepare(&format!(
             "SELECT id FROM (
-               SELECT id, COALESCE(modified_at, 0) AS m FROM notes WHERE deleted_at IS NULL
+               SELECT id, COALESCE(modified_at, 0) AS m FROM notes
+                 WHERE deleted_at IS NULL AND {}
                UNION ALL
                SELECT id, COALESCE(modified_at, 0) AS m FROM journal_entries
                  WHERE deleted_at IS NULL
              )
              WHERE m >= ?1 ORDER BY m DESC LIMIT ?2",
-        )
+            not_a_journal_day("id")
+        ))
         .map_err(sqlite_failed)?;
     let ids = statement
         .query_map(params![window_start, RECENT_BODY_LIMIT as i64], |row| {
