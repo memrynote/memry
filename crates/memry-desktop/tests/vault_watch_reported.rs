@@ -378,6 +378,35 @@ fn a_file_reported_new_and_given_a_note_reads_its_edit_as_a_change_of_that_note(
 }
 
 #[test]
+fn a_late_naming_of_a_note_whose_row_moved_away_never_names_the_new_file_at_its_old_path() {
+    let f = fixture();
+    let mut r = f.reconciler();
+    f.write("a.md", "one");
+    f.touch(&mut r, &["a.md"], 1);
+    assert_eq!(kinds(&f.take()), ["added"]);
+    // The consumer gives a.md the note n1; its word to the watcher waits behind a full tick.
+    f.index("n1", "a.md", "one");
+    f.rename("a.md", "b.md");
+    f.touch(&mut r, &["a.md", "b.md"], 2);
+    assert!(f.take().iter().any(renamed("n1", "a.md", "b.md")));
+    f.index("n1", "b.md", "one");
+    // Another file at the old path, reported new, before the late word lands.
+    f.write("a.md", "two");
+    f.touch(&mut r, &["a.md"], 3);
+    assert_eq!(kinds(&f.take()), ["added"]);
+    r.named("a.md", "n1");
+    f.index("n2", "a.md", "two");
+    r.named("a.md", "n2");
+    f.write("a.md", "two edited");
+    f.touch(&mut r, &["a.md"], 4);
+    let events = f.take();
+    assert!(
+        matches!(events.as_slice(), [VaultEvent::Changed { note_id, .. }] if note_id == "n2"),
+        "the new file's edit reached another note: {events:?}"
+    );
+}
+
+#[test]
 fn a_note_edited_outside_and_then_moved_keeps_its_id() {
     let f = fixture();
     let mut r = f.reconciler();
