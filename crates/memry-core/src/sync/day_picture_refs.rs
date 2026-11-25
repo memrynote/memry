@@ -108,10 +108,29 @@ pub(crate) fn create_day_note(
 
 /// Whether a local edit of `note_id`'s references creates the day's record
 /// rather than edits it: a day with no record, or a deleted one.
+///
+/// Invariant: a day's record is created only while the day's journal entry,
+/// `j<D>` itself, is live here, whoever calls (an upload landing, a journal
+/// day merge's carry, an inbox filing). A picture named on a deleted day
+/// would write over the record's tombstone and bring the day's pictures
+/// back on every device. So an edit that would create the record of a day
+/// with no live entry is refused, with nothing written. A merge's carry
+/// passes: the drain opens `j<D>` (`ensure_canonical`) and commits it before
+/// the settle that carries, and a delete between the two refuses the settle,
+/// whose merge stays owed and is dropped on the next pass.
 pub(crate) fn creates_day_note(tx: &Connection, note_id: &str) -> Result<bool, StorageError> {
-    Ok(is_day_note(note_id)
-        && sync_items::load(tx, notes::ITEM_TYPE, note_id)?
-            .is_none_or(|row| row.deleted_at.is_some()))
+    if !is_day_note(note_id)
+        || sync_items::load(tx, notes::ITEM_TYPE, note_id)?
+            .is_some_and(|row| row.deleted_at.is_none())
+    {
+        return Ok(false);
+    }
+    if journal::live_entry(tx, &note_id[1..])?.as_deref() != Some(note_id) {
+        return Err(StorageError::Failed {
+            what: format!("journal day {note_id} has no live entry here: no picture is named"),
+        });
+    }
+    Ok(true)
 }
 
 /// The day's removals after a local edit from `before` to `after`: an id

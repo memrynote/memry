@@ -20,7 +20,7 @@ use memry_core::api::sync::{AttachmentRefusal, QueuedAttachmentNews, VaultSync};
 use memry_core::api::vault::Vault;
 use memry_core::crypto::sodium;
 use memry_core::domain::attachments::{self, BlockAttachment};
-use memry_core::domain::notes;
+use memry_core::domain::{journal, notes};
 use memry_core::protocol::auth::DevicePlatform;
 use memry_core::seams::secure_store::{SecureStore as _, SecureStoreKey};
 use memry_core::seams::transport::HttpResponse;
@@ -1130,4 +1130,127 @@ async fn a_closed_client_gate_keeps_the_upload_owed_and_untold() {
         );
         assert_eq!(app.references(&note), vec![id], "{code}");
     }
+}
+
+/// Runs the queued uploads over a slow wire and calls `meanwhile` once the
+/// bytes are on it: after the drain read the note live, before the
+/// transaction that references the upload.
+async fn drain_with_a_write_mid_upload(
+    dir: &Path,
+    store: &Arc<FakeSecureStore>,
+    meanwhile: impl FnOnce(&Launch),
+) -> (Launch, memry_core::api::sync::QueuedUploadSummary) {
+    let mut script = upload_script();
+    // The released chunks' dereference.
+    script.push(response(200, &json!({"success": true}).to_string()));
+    let app = launch_over(dir, store, FakeTransport::slow(script, 50));
+    let sync = Arc::clone(&app.sync);
+    let drain = tokio::spawn(async move { sync.upload_queued_attachments().await });
+    while app.transport.call_count() < 2 {
+        tokio::time::sleep(std::time::Duration::from_millis(1)).await;
+    }
+    meanwhile(&app);
+    let drained = drain.await.expect("join").expect("drain");
+    (app, drained)
+}
+
+fn upserts(app: &Launch, note_id: &str) -> i64 {
+    count(
+        app,
+        "SELECT COUNT(*) FROM outbox WHERE item_type = 'note' AND item_id = ?1 AND op = 'upsert'",
+        note_id,
+    )
+}
+
+/// A note deleted while its picture's bytes are going up is not named: the
+/// reference would land on its tombstone and the upload would no longer be
+/// owed. It stays deleted, queues no push, and the upload waits for it.
+#[tokio::test]
+async fn a_note_deleted_during_the_upload_stays_deleted_and_keeps_the_upload_owed() {
+    let (dir, store) = (scratch_dir(), store());
+    let (note, id) = {
+        let app = launch(&dir, &store, vec![Err(TransportError::Offline)]);
+        let note = app.note(&store);
+        let id = app.attach(&note).await.expect("kept for later");
+        (note, id)
+    };
+
+    let deleted = note.clone();
+    let (app, drained) = drain_with_a_write_mid_upload(&dir, &store, |app| {
+        app.vault
+            .notes_writer(store.clone())
+            .expect("a writer")
+            .delete(deleted)
+            .expect("delete");
+    })
+    .await;
+
+    assert_eq!(drained.uploaded, 0, "nothing was referenced");
+    assert_eq!(owed(&app, &id), 1, "the upload is still owed");
+    assert_eq!(
+        count(
+            &app,
+            "SELECT COUNT(*) FROM sync_items WHERE item_type = 'note' AND item_id = ?1 \
+             AND deleted_at IS NOT NULL",
+            &note,
+        ),
+        1,
+        "the note stays deleted"
+    );
+    assert_eq!(upserts(&app, &note), 0, "no push of the deleted note");
+
+    assert_eq!(
+        app.transport
+            .calls_to("/sync/attachments/dereference")
+            .len(),
+        1,
+        "the unnamed chunks go back"
+    );
+}
+
+/// A journal day deleted while its picture's bytes are going up: the picture
+/// waits for the day, no `note j<D>` record is created over it, and the
+/// unnamed chunks go back.
+#[tokio::test]
+async fn a_journal_day_deleted_during_the_upload_keeps_the_upload_waiting() {
+    const DATE: &str = "2026-06-09";
+    let day = format!("j{DATE}");
+    let (dir, store) = (scratch_dir(), store());
+    let id = {
+        let app = launch(&dir, &store, vec![Err(TransportError::Offline)]);
+        app.vault
+            .db_handle()
+            .call_blocking(|conn| journal::open_day(conn, DATE, "phone", 1))
+            .expect("open the day");
+        app.attach(&day).await.expect("kept for later")
+    };
+
+    let (app, drained) = drain_with_a_write_mid_upload(&dir, &store, |app| {
+        app.vault
+            .db_handle()
+            .call_blocking(|conn| journal::delete_day(conn, DATE, "phone", 2))
+            .expect("delete the day");
+    })
+    .await;
+
+    assert_eq!(drained.uploaded, 0, "nothing was referenced");
+    assert_eq!(owed(&app, &id), 1, "the upload waits for the day");
+    assert_eq!(
+        count(
+            &app,
+            "SELECT COUNT(*) FROM sync_items WHERE item_type = 'note' AND item_id = ?1",
+            &day,
+        ),
+        0,
+        "no record of the deleted day"
+    );
+    assert_eq!(upserts(&app, &day), 0, "no push of the day's pictures");
+
+    assert_eq!(
+        app.transport
+            .calls_to("/sync/attachments/dereference")
+            .len(),
+        1,
+        "the unnamed chunks go back"
+    );
 }

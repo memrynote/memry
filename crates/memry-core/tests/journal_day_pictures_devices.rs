@@ -30,7 +30,7 @@ use memry_core::api::errors::{StorageError, TransportError};
 use memry_core::api::sync::VaultSync;
 use memry_core::api::vault::Vault;
 use memry_core::crypto::{keys, sodium};
-use memry_core::domain::{attachments, notes};
+use memry_core::domain::{attachments, journal, notes};
 use memry_core::protocol::auth::DevicePlatform;
 use memry_core::protocol::envelope;
 use memry_core::seams::secure_store::{SecureStore as _, SecureStoreKey};
@@ -463,6 +463,8 @@ impl Dev {
             if manifest {
                 attachments::put_manifest(c, &id, "{}", 1, "picture.png", "image/png")?;
             }
+            // A picture is added to a day the user has open.
+            journal::open_day(c, &DAY[1..], &clock, now())?;
             notes::add_attachment_reference(c, DAY, &id, &clock, now()).map(|_| ())
         });
     }
@@ -788,4 +790,32 @@ async fn a_removal_outlives_a_desktop_delete_of_the_days_record() {
     let clock = a.clock.clone();
     a.db(move |c| apply::apply_inbound_on(c, &record, now(), Some(&clock)));
     assert_eq!(a.refs(), names(&["pc"]), "`pb` stays removed");
+}
+
+#[tokio::test]
+async fn a_picture_named_on_a_deleted_day_is_refused_and_writes_nothing() {
+    // Whoever names it (an upload landing, a merge's carry, an inbox
+    // filing), a deleted day gets no record: one would bring its pictures
+    // back on every device.
+    let server = Server::new();
+    let a = Dev::new(&server, "a", 1);
+    let clock = a.clock.clone();
+    let refused = a.side.call_blocking(move |c| {
+        journal::open_day(c, &DAY[1..], &clock, now())?;
+        journal::delete_day(c, &DAY[1..], &clock, now())?;
+        notes::add_attachment_reference(c, DAY, "pa", &clock, now())
+    });
+    assert!(refused.is_err(), "the deleted day is refused");
+    let records = a.db(|c| {
+        c.query_row(
+            "SELECT COUNT(*) FROM sync_items WHERE item_type = 'note' AND item_id = ?1",
+            [DAY],
+            |row| row.get::<_, i64>(0),
+        )
+        .map_err(|error| StorageError::Failed {
+            what: error.to_string(),
+        })
+    });
+    assert_eq!(records, 0, "no record of the deleted day");
+    assert_eq!(a.queued(), 0, "nothing to push");
 }
