@@ -223,7 +223,7 @@ pub(crate) fn apply_remote_merged(
 /// The stored payload of a row that has one, or `None` when there is nothing
 /// local to merge against, and whether that payload is what a push would send
 /// (the row is neither deleted nor flagged corrupt).
-fn live_payload(
+pub(crate) fn live_payload(
     conn: &Connection,
     record: &InboundRecord,
 ) -> Result<Option<(StoredPayload, bool)>, StorageError> {

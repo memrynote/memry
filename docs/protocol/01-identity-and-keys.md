@@ -374,7 +374,7 @@ one with holder tags and no `holderClock` counts every holder tag as unpushed
 at every weighing. Desktop also
 keeps the day file's text when `j<D>` writes over a foreign holder's file. A foreign record
 whose id this device already tombstoned at or after the incoming clock owes
-nothing again (`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:82`,
+nothing again (`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:97`,
 `apps/desktop/src/main/sync/journal-day-merge.ts:293`; core:
 `crates/memry-core/src/sync/journal_day_merge/owed.rs:98`). Desktop keeps
 owed merges in `sync_state` and declines the ref so the manifest check does not
@@ -384,12 +384,12 @@ count the unprojected id as server-only
 (`crates/memry-core/src/sync/journal_day_merge/mod.rs:51`).
 
 **Tombstones.** A tombstone for an owed `F` means another device merged it: the
-merge is marked deleted (`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:195`;
+merge is marked deleted (`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:257`;
 core: `crates/memry-core/src/sync/journal_day_merge/owed.rs:481`). A tombstone
 for a foreign id that is a live local row keeps that row, its body and its file
 for the drain instead of purging them, and owes a deleted merge, so edits this
 device never pushed reach `j<D>` (#2984;
-`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:211`; core:
+`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:269-281`; core:
 `crates/memry-core/src/sync/journal_day_merge/owed.rs:442`, called from
 `crates/memry-core/src/sync/apply.rs:301`). A foreign holder that `j<D>`
 already displaced is held the same way. That is the order of the deleting
@@ -499,7 +499,7 @@ pass settles them. The decision is a pure function of five facts
    `syncedAt`, which a pull stamps and an acked push stamps with the
    `modifiedAt` its payload was read at, so an edit made between the read
    and the ack still reads as edited
-   (`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:278`): an
+   (`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:391`): an
    edit made outside the app is neither ticked nor queued until the next
    start's dirty sweep queues it. The sweep pushes it under a fresh clock
    when the row's `syncedAt` is older than its `modifiedAt` and that
@@ -523,7 +523,7 @@ pass settles them. The decision is a pure function of five facts
    called from `crates/memry-core/src/sync/outbox.rs:466`),
    and the clock check rules out a snapshot that an older build pushed past.
    A pulled tombstone reads the tags before it drops `F`'s queued upsert
-   (`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:211`; core:
+   (`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:279`; core:
    `crates/memry-core/src/sync/apply.rs:301`). Before any tombstone, every
    holder tag counts (`crates/memry-core/src/sync/journal_day_merge/owed.rs:361`).
    A held `F` stays editable until `j<D>` removes it, so the drain reads `F`'s
@@ -551,7 +551,7 @@ pass settles them. The decision is a pure function of five facts
    weighs no tags either: the merge keeps the tags an earlier sighting read,
    and with no earlier weighing every one of them counts as unpushed, as in
    an older build's merge
-   (`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:220`). Desktop reads the owed merge back after `ensureDay` owes the
+   (`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:279`). Desktop reads the owed merge back after `ensureDay` owes the
    holder again from its day file
    (`apps/desktop/src/main/sync/journal-day-merge.ts:144`, `:258`, `:562`).
    In the core, a weighing replaces the unpushed list an earlier sighting
@@ -570,7 +570,7 @@ pass settles them. The decision is a pure function of five facts
    tombstone. A later record replaces the
    record tags kept, for the same reason
    (`apps/desktop/src/main/sync/journal-day-merge.ts:134`,
-   `apps/desktop/src/main/sync/item-handlers/journal-handler.ts:89`;
+   `apps/desktop/src/main/sync/item-handlers/journal-handler.ts:104`;
    core: `crates/memry-core/src/sync/journal_day_merge/owed.rs:162`). `j<D>`'s
    current tags are read at the moment they are written, in the same
    transaction or write-back turn, never earlier. Desktop owed merges written

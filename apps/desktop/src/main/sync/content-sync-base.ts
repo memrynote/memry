@@ -47,7 +47,8 @@ export abstract class ContentSyncService<
   protected queue: SyncQueueManager
   protected abstract readonly log: Logger.LogFunctions
   abstract readonly itemType: Extract<SyncItemType, 'note' | 'journal'>
-  private readonly getDeviceId: () => string | null
+  /** This device's clock id (chapter 01 §1.5), `null` until sync signs in. */
+  readonly getDeviceId: () => string | null
   private readonly getStateVector: (itemId: string) => Uint8Array | null
   private controller: RecordSyncController<NoteMetadata, TArgs, TArgs> | null = null
 
