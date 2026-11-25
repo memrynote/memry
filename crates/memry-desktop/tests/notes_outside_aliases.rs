@@ -344,18 +344,85 @@ fn a_large_file_that_shrinks_with_a_body_edit_keeps_a_newer_records_aliases() {
     assert!(e.read("Dump.md").ends_with("---\nSmall now\n"));
 }
 
-/// A matched file that declares no aliases says nothing of them: the record keeps its own, and
-/// the file takes them, so a later body edit outside does not empty the record's list.
+/// A record and the file `text` it matches at `Plan.md`, the record's `modifiedAt` being
+/// `modified_at`; waits until the file is adopted.
+fn matched(text: &str, aliases: &[&str], modified_at: &str) -> (Env, Arc<dyn SecureStore>) {
+    let (mut e, store) = opened();
+    e.watcher_live();
+    pulled_note(&e, "Plan", "Body\n", aliases, modified_at);
+    e.write("Plan.md", text);
+    e.facts_until(|f| matches!(f, Applied::Added { path, .. } if path == "Plan.md"));
+    assert_eq!(id_at(&e, "Plan.md"), "pulled");
+    (e, store)
+}
+
+/// Lets a write-back that was owed run, then asserts `Plan.md` still reads `text`.
+fn left_as(e: &mut Env, text: &str) {
+    std::thread::sleep(QUIET);
+    e.drain();
+    assert_eq!(e.read("Plan.md"), text);
+}
+
+const OLDER: &str = "2001-01-01T00:00:00.000Z";
+
+/// VERIFY-5808R3 finding 1: an older record never rewrites a newer file that has no `aliases`
+/// key; its comment and tags stay, and the record keeps its names.
 #[test]
-fn a_matched_file_with_no_aliases_takes_the_records() {
+fn an_older_record_leaves_a_newer_file_with_no_aliases_as_it_is() {
+    let text = "---\n# my note\ntags: ['mine']\n---\nBody\n";
+    let (mut e, _store) = matched(text, &["Kept"], OLDER);
+    left_as(&mut e, text);
+    assert_eq!(record_aliases(&e, "note", "pulled"), ["Kept"]);
+}
+
+/// VERIFY-5808R3 finding 2: an explicit `aliases: []` in a newer file is its answer.
+#[test]
+fn an_older_record_takes_a_newer_files_explicit_empty_aliases() {
+    let text = "---\naliases: []\n---\nBody\n";
+    let (mut e, _store) = matched(text, &["Stale"], OLDER);
+    left_as(&mut e, text);
+    assert!(record_aliases(&e, "note", "pulled").is_empty());
+}
+
+/// A newer record writes its `aliases` key alone: the file's comment and tags stay.
+#[test]
+fn a_newer_record_writes_only_its_aliases_into_the_file() {
+    let text = "---\n# my note\ntags: ['mine']\naliases: [Old]\n---\nBody\n";
+    let (mut e, _store) = matched(text, &["Newer"], NEWER);
+    file_holds(&mut e, "Plan.md", &["Newer"]);
+    let read = e.read("Plan.md");
+    assert!(
+        read.starts_with("---\n# my note\ntags: ['mine']\n"),
+        "{read}"
+    );
+    assert!(read.ends_with("---\nBody\n"), "{read}");
+    assert_eq!(upserts(&e, "pulled"), 0);
+
+    let text = "---\n# my note\ntags: ['mine']\n---\nBody\n";
+    let (mut e, _store) = matched(text, &["Newer"], NEWER);
+    file_holds(&mut e, "Plan.md", &["Newer"]);
+    let read = e.read("Plan.md");
+    assert!(
+        read.starts_with("---\n# my note\ntags: ['mine']\n"),
+        "{read}"
+    );
+}
+
+/// VERIFY-5808R3 finding 3: a large file that shrinks with no `aliases` line keeps its tags
+/// when the newer record's names are written into it.
+#[test]
+fn a_large_file_that_shrinks_without_aliases_keeps_its_tags() {
     let (mut e, _store) = opened();
     e.watcher_live();
-    pulled_note(&e, "Plan", "Body\n", &["Kept"], "2001-01-01T00:00:00.000Z");
-    e.write("Plan.md", "Body\n");
-    e.facts_until(|f| matches!(f, Applied::Added { path, .. } if path == "Plan.md"));
-    file_holds(&mut e, "Plan.md", &["Kept"]);
+    pulled_note(&e, "Dump", "", &["Newer"], NEWER);
+    let big = "word\n\n".repeat(NOTE_MAX_BYTES / 6 + 1);
+    e.write("Dump.md", &format!("---\ntags: [mine]\n---\n{big}"));
+    e.facts_until(|f| matches!(f, Applied::Added { path, .. } if path == "Dump.md"));
+    assert_eq!(id_at(&e, "Dump.md"), "pulled");
 
-    let text = body_edited(&e, "Plan.md", "Body edited outside\n");
-    edited_outside(&mut e, "pulled", "Plan.md", &text);
-    assert_eq!(record_aliases(&e, "note", "pulled"), ["Kept"]);
+    e.write("Dump.md", "---\ntags: [mine]\n---\nSmall now\n");
+    file_holds(&mut e, "Dump.md", &["Newer"]);
+    let read = e.read("Dump.md");
+    assert!(read.starts_with("---\ntags: [mine]\n"), "{read}");
+    assert!(read.ends_with("---\nSmall now\n"), "{read}");
 }

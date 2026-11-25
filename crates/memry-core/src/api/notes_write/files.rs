@@ -420,11 +420,11 @@ impl NotesWriter {
 
     /// A first-named file whose modification time is `file_modified_ms` matched the record `id`
     /// (`Adopted::Existing`): the record takes its aliases unless the record is the newer
-    /// ([`notes::take_matched_file_aliases`]).
+    /// ([`notes::take_matched_file_aliases`]). `None` for a file with no `aliases` key.
     pub fn matched_file_aliases(
         &self,
         id: &str,
-        aliases: &[String],
+        aliases: Option<&[String]>,
         file_modified_ms: i64,
     ) -> Result<notes::MatchedAliases, StorageError> {
         let device_id = self.device_id.clone();

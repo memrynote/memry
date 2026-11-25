@@ -22,10 +22,15 @@ impl NotesIdentity {
         let matched = matches!(adopted, Adopted::Existing(_)).then_some(file.modified_ms);
         let mut owes_file = false;
         if let Adopted::Created(id) | Adopted::Existing(id) = &adopted {
-            // Invariant: after adoption the file and the record never disagree on aliases. A
-            // record newer than its file keeps its names, and the write-back gives them to the
-            // file (`Adoption::ExistingNewer`): an outside edit and an in-app alias edit are both
-            // measured against the file's list, so neither takes a stale list over them.
+            // Invariant: adoption owes the file a write only when the record is strictly newer
+            // than the file, and the write is the `aliases` key alone, made as the in-app alias
+            // edit makes it (`notes::aliases::with_aliases`): every other key, comment and the
+            // body stay as the file has them, so an older record never rewrites a newer file.
+            // A file's list, `aliases: []` included, is its answer under that time rule; a file
+            // with no `aliases` key says nothing and the record keeps its names.
+            // Window: the owed write is held in memory only (`Pass::mark_record_newer`). A
+            // restart before the pass runs drops it, and the next body-only outside edit then
+            // gives the record the file's stale list (VERIFY-5808R3 finding 4, a follow-up).
             owes_file = aliases::found(writer, id, text, matched);
             properties::found(writer, ctx, self.store.clone(), id, text)?;
         }

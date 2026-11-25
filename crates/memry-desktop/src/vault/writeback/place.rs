@@ -48,6 +48,8 @@ use memry_core::markdown::frontmatter::{YamlMap, YamlValue, json_to_yaml, parse_
 
 use super::Pass;
 use crate::locks::Locks;
+use crate::notes::aliases::with_aliases;
+use crate::notes::error::NotesError;
 use crate::notes::frontmatter::{aliases, is_reserved_key};
 use crate::notes::moves::{free_target, name_for, plain_folder};
 use crate::notes::properties::{definition_types, text_values};
@@ -74,6 +76,9 @@ pub(super) struct Mark {
     pub(super) title_before: Option<String>,
     /// The passes whose move failed.
     failed: u32,
+    /// The record was strictly newer than its file when the file was first named: the pass
+    /// writes the file's `aliases` key alone and never moves it ([`owed_aliases`]).
+    pub(super) aliases_only: bool,
 }
 
 impl Mark {
@@ -106,20 +111,30 @@ impl Mark {
 }
 
 impl Pulled {
-    /// A later pull keeps the first one's title: the file still carries that one.
+    /// A later pull keeps the first one's title: the file still carries that one. A pull
+    /// replaces an aliases-only mark: its frontmatter patch writes the aliases too.
     pub(super) fn mark(&self, note_id: &str, title_before: Option<&str>) {
-        self.map().entry(note_id.to_owned()).or_insert(Mark {
+        let pulled = Mark {
             title_before: title_before.map(str::to_owned),
             failed: 0,
-        });
+            aliases_only: false,
+        };
+        let mut map = self.map();
+        match map.get(note_id) {
+            Some(mark) if !mark.aliases_only => {}
+            _ => {
+                map.insert(note_id.to_owned(), pulled);
+            }
+        }
     }
 
-    /// A mark that gives the file the record's frontmatter and never moves it: the file is
-    /// where its record says (`Pass::mark_record_newer`). A pull's mark, already there, stays.
+    /// A mark that writes the file's `aliases` key alone and never moves the file
+    /// (`Pass::mark_record_newer`). A pull's mark, already there, stays.
     pub(super) fn mark_in_place(&self, note_id: &str) {
         self.map().entry(note_id.to_owned()).or_insert(Mark {
             title_before: None,
             failed: PLACE_TRIES,
+            aliases_only: true,
         });
     }
 
@@ -142,6 +157,21 @@ impl Pulled {
 pub(crate) struct Patch<'a> {
     pub(super) record: &'a Unfiled,
     pub(super) types: HashMap<String, String>,
+}
+
+/// The file `output` with its `aliases` key set to the record's list, as the in-app alias edit
+/// writes it ([`with_aliases`]): every other key, comment and the body as `output` has them. A
+/// record with no list, or a frontmatter that is not a map, leaves `output` as it is.
+pub(super) fn owed_aliases(output: String, record: &Unfiled) -> Result<String, String> {
+    let Some(held) = &record.aliases else {
+        return Ok(output);
+    };
+    let name = record.date.as_deref().unwrap_or(&record.title);
+    match with_aliases(&output, name, |_| normalize_aliases(name, held)) {
+        Ok((_, Some(written))) => Ok(written),
+        Ok((_, None)) | Err(NotesError::FrontmatterNotAMap) => Ok(output),
+        Err(error) => Err(format!("the aliases could not be written: {error}")),
+    }
 }
 
 /// The header tags of the file `text`, case folded; `None` when its frontmatter does not read.

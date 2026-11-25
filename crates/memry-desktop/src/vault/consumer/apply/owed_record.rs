@@ -1,6 +1,6 @@
-//! A record that kept frontmatter newer than its file's when the file was first named
+//! A record strictly newer than its file that kept its `aliases` when the file was first named
 //! ([`Adoption::ExistingNewer`], or a large file's note that left the class): the write-back
-//! gives the file the record's, so the two never disagree once it ran.
+//! writes the file's `aliases` key alone, so the two agree on names once it ran.
 
 use super::super::identity::IdentityError;
 #[cfg(doc)]
@@ -30,9 +30,9 @@ impl Applier {
         Ok(())
     }
 
-    /// The note's record kept frontmatter newer than its file's ([`Adoption::ExistingNewer`]):
-    /// its write-back gives the file the record's frontmatter, in place, and the body as a
-    /// normal pass writes it. It runs under the lane this fact holds, so after the row and body
+    /// The note's record kept aliases newer than its file's ([`Adoption::ExistingNewer`]): its
+    /// write-back writes the file's `aliases` key alone, in place, every other key and comment
+    /// as the file has them, and the body as a normal pass writes it. It runs under the lane this fact holds, so after the row and body
     /// the fact records; the file it writes is the app's own, which pushes nothing.
     pub(super) fn owe_record(&self, note_id: &str) {
         if let (Some(pass), Some(writeback)) = (&self.pass, &self.writeback) {

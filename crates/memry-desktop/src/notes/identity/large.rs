@@ -49,9 +49,10 @@ pub(super) fn adopt(
         .map_err(|error| IdentityError::Other(error.to_string()))?;
     if let (Adopted::Created(id) | Adopted::Existing(id), Some(text)) = (&adopted, file.file) {
         let matched = matches!(adopted, Adopted::Existing(_)).then_some(file.modified_ms);
-        // A newer record that keeps its names is not written into the file here: no write-back
-        // writes a large file, whose body the note does not hold. Its note reads the file's
-        // names again when it leaves the class ([`left`]), and the file then takes the record's.
+        // A strictly newer record that keeps its names is not written into the file here: no
+        // write-back writes a large file, whose body the note does not hold. Its note reads the
+        // file's names again when it leaves the class ([`left`]), and the file then takes the
+        // record's `aliases` key alone.
         aliases::found(writer, id, text, matched);
     }
     Ok(identity.adoption(adopted, ctx.root, file.path))

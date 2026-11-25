@@ -274,7 +274,8 @@ pub fn take_file_aliases(
 pub enum MatchedAliases {
     /// No live note or day has that id.
     NoNote,
-    /// The record took the file's list ([`take_file_aliases`]).
+    /// The record took the file's list ([`take_file_aliases`]), or the file declares none and
+    /// is not older than the record, which keeps its own.
     Taken,
     /// The record was modified after the file and keeps its own list: the file owes the
     /// record's, and the caller has the write-back give it to the file.
@@ -284,11 +285,12 @@ pub enum MatchedAliases {
 /// A file first named matched the note or journal day `id`, a record no row named
 /// (`Adopted::Existing`), or a large file's note read its file as a note's for the first time:
 /// it takes the file's aliases ([`take_file_aliases`]) unless its `modifiedAt` is later than the
-/// file's `file_modified_ms`, when the record's list is the newer one and stays.
+/// file's `file_modified_ms`, when the record's list is the newer one and stays. `None` is a
+/// file with no `aliases` key, which says nothing of them: the record takes nothing.
 pub fn take_matched_file_aliases(
     conn: &Connection,
     id: &str,
-    aliases: &[String],
+    aliases: Option<&[String]>,
     file_modified_ms: i64,
     device_id: &str,
     now_ms: i64,
@@ -313,6 +315,9 @@ pub fn take_matched_file_aliases(
     if modified_ms.is_some_and(|modified_ms| modified_ms > file_modified_ms) {
         return Ok(MatchedAliases::RecordNewer);
     }
+    let Some(aliases) = aliases else {
+        return Ok(MatchedAliases::Taken);
+    };
     Ok(
         match take_file_aliases(conn, id, aliases, device_id, now_ms)? {
             true => MatchedAliases::Taken,
