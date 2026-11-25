@@ -152,18 +152,18 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
         const day = readDayFields(date)
         if (day) {
           const deviceId = getJournalSyncService()?.getDeviceId()
-          if (!deviceId) {
-            // The merge clock is ticked for this device when it re-queues; a
-            // pull with no device id retries rather than store a merge.
-            throw new Error(`Journal ${itemId} merged with no device clock id`)
-          }
           const local = localJournalFields(ctx.db, itemId, day, existing.clock ?? {})
           const {
             tags: mergedTags,
             properties: mergedProperties,
             requeue,
             ...stamp
-          } = mergeJournalFields(local, remoteWithClock, deviceId)
+          } = mergeJournalFields(local, remoteWithClock, deviceId ?? '')
+          if (requeue && !deviceId) {
+            // A re-queued merge is ticked for this device; a pull with no
+            // device id retries rather than store a merge it cannot clock.
+            throw new Error(`Journal ${itemId} merged with no device clock id`)
+          }
           tags = mergedTags
           properties = mergedProperties
           mergedClock = stamp.clock

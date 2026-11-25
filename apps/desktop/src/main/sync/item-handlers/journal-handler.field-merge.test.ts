@@ -263,6 +263,26 @@ describe('concurrent journal tag and property edits (#5508)', () => {
     expect(pushed().clock).toEqual({ X: 1, N: 2, O: 1 })
   })
 
+  it('applies a merge that re-queues nothing with no device clock id', () => {
+    dayWithNoBase(2)
+    deviceId.value = ''
+
+    expect(apply(oldBuildRemoval)).toBe('applied')
+    expect(pushed().clock).toEqual({ X: 1, N: 2, O: 1 })
+  })
+
+  it('refuses a merge that re-queues with no device clock id and leaves the day', () => {
+    apply(base)
+    editLocally(['lm-jtag', 't-a'], { mood: 'good' }, { X: 1, A: 1 })
+    deviceId.value = ''
+    const before = pushed()
+
+    expect(() =>
+      apply({ ...base, content: null, properties: { mood: 'good', p: 1 }, clock: { X: 1, C: 1 } })
+    ).toThrow(/no device clock id/)
+    expect(pushed()).toEqual(before)
+  })
+
   it('pushes and keeps the unit floor of a value only one concurrent floor covers', () => {
     deviceId.value = 'D'
     apply({ ...base, tags: ['d'], properties: {}, clock: { X: 1, D: 1 } })

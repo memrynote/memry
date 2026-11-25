@@ -26,7 +26,7 @@ const DEVICE: &str = "device-a";
 const DAY: &str = "2099-06-15";
 
 /// `JournalSyncPayloadSchema` (`packages/contracts/src/sync-payloads.ts:369`).
-const SCHEMA_KEYS: [&str; 11] = [
+const SCHEMA_KEYS: [&str; 12] = [
     "date",
     "aliases",
     "content",
@@ -36,6 +36,7 @@ const SCHEMA_KEYS: [&str; 11] = [
     "fieldClocks",
     "fieldClocksAt",
     "fieldClocksFloor",
+    "fieldFloors",
     "createdAt",
     "modifiedAt",
 ];
