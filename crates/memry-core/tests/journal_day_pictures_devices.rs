@@ -1,10 +1,11 @@
-//! A journal day's pictures across real devices (#5800, chapter 14 §14.7.2).
+//! A journal day's pictures across real devices (#5800, chapter 14 §14.7.4).
 //!
 //! A day names its pictures to peers in a `note` record under its own id,
 //! `j<D>`, and the server keeps one record per id, last writer wins. Two
 //! devices that add a picture to one day at once must both end up named on the
-//! server, a removal made by a device that saw the picture must stay removed,
-//! and an id a device cannot resolve must never make it push the list again.
+//! server, and a removal must stay removed, including against a record from an
+//! Electron desktop, whose clock is the journal row's and can dominate a list
+//! it never saw, and against lists that predate the rule.
 //!
 //! The devices are real (`Vault` + `VaultSync::sync_now`: sealing, signing,
 //! SQLite, outbox, pull and push). The picture's upload is out of scope: each
@@ -336,10 +337,6 @@ impl Server {
         let payload: Json = serde_json::from_slice(&plain).unwrap();
         sorted(serde_json::from_value(payload["attachmentReferences"].clone()).unwrap())
     }
-
-    fn cursor(&self) -> i64 {
-        self.state.lock().unwrap().cursor
-    }
 }
 
 struct DeviceTransport {
@@ -600,9 +597,10 @@ async fn a_removal_concurrent_with_another_picture_stays_removed() {
 }
 
 #[tokio::test]
-async fn an_id_this_device_cannot_resolve_never_pushes_the_list_again() {
+async fn an_id_this_device_cannot_resolve_is_kept_and_named_to_the_server() {
     // C names `px` and A applies it without its manifest. B, which never saw
-    // `px`, names `pb` concurrently. A keeps `px` but owes no push for it.
+    // `px`, names `pb` concurrently. A keeps `px` and names it again, so the
+    // server's copy is not B's alone.
     let server = Server::new();
     let (a, c) = (Dev::new(&server, "a", 1), Dev::new(&server, "c", 3));
     c.add("px", true);
@@ -618,10 +616,9 @@ async fn an_id_this_device_cannot_resolve_never_pushes_the_list_again() {
         names(&["pb", "px"]),
         "A keeps the id it cannot resolve"
     );
-    assert_eq!(a.queued(), 0, "A owes no push for it");
-    let cursor = server.cursor();
-    a.pass().await;
-    assert_eq!(server.cursor(), cursor, "A pushed nothing");
+    b.pass().await;
+    settle(&[&a, &b, &c]).await;
+    assert_eq!(server.refs(DAY), names(&["pb", "px"]), "the server's day");
 }
 
 #[tokio::test]
@@ -632,4 +629,119 @@ async fn the_first_picture_of_a_day_creates_its_note_record() {
     assert_eq!(a.refs(), names(&["pa"]));
     settle(&[&a]).await;
     assert_eq!(server.refs(DAY), names(&["pa"]), "the server's day");
+}
+
+#[tokio::test]
+async fn two_devices_adding_to_a_day_that_already_has_a_record_keep_both() {
+    // The day's record exists everywhere, so neither add creates it. Last
+    // writer wins here would keep one of `pa` and `pb`.
+    let server = Server::new();
+    let (a, b) = (Dev::new(&server, "a", 1), Dev::new(&server, "b", 2));
+    a.add("p0", true);
+    settle(&[&a, &b]).await;
+    assert_eq!(b.refs(), names(&["p0"]), "B's day before the adds");
+    a.add("pa", true);
+    b.add("pb", true);
+    a.pass().await;
+    settle(&[&b, &a]).await;
+    let all = names(&["p0", "pa", "pb"]);
+    assert_eq!(server.refs(DAY), all, "the server's day");
+    assert_eq!(a.refs(), all, "A's day");
+    assert_eq!(b.refs(), all, "B's day");
+}
+
+/// A `note j<D>` record as Electron desktop pushes it (`buildNotePushPayload`):
+/// the journal's body and the journal row's clock, which here dominates every
+/// clock `devices` hold for the record, though desktop never saw their lists.
+fn desktop_record(list: &[&str], devices: &[&Dev]) -> InboundRecord {
+    let mut clock = json!({"device-desktop": 3});
+    for dev in devices {
+        let payload: Json = serde_json::from_str(&dev.record().payload_json).unwrap();
+        for (device, tick) in payload["clock"].as_object().unwrap() {
+            clock[device] = json!(tick.as_u64().unwrap() + 40);
+        }
+    }
+    let at = "2026-06-09T12:00:00.000Z";
+    InboundRecord {
+        item_type: "note".to_owned(),
+        item_id: DAY.to_owned(),
+        payload_json: json!({
+            "title": "2026-06-09", "content": "# A day\n", "tags": [],
+            "properties": {}, "pinnedTags": [], "emoji": null,
+            "fileType": "markdown", "folderPath": "journal",
+            "attachmentReferences": list, "clock": clock,
+            "createdAt": at, "modifiedAt": at,
+        })
+        .to_string(),
+        server_cursor: None,
+        signer_device_id: Some("device-desktop".to_owned()),
+        updated_at: now(),
+        deleted_at: None,
+    }
+}
+
+#[tokio::test]
+async fn a_desktop_record_never_drops_a_picture_it_never_saw() {
+    let server = Server::new();
+    let a = Dev::new(&server, "a", 1);
+    a.add("pa", true);
+    settle(&[&a]).await;
+    a.add("pc", true);
+    let (record, clock) = (desktop_record(&["pa"], &[&a]), a.clock.clone());
+    let applied = a.db(move |c| apply::apply_inbound_on(c, &record, now(), Some(&clock)));
+    assert_eq!(applied, ApplyOutcome::Applied);
+    assert_eq!(a.refs(), names(&["pa", "pc"]), "A's day keeps `pc`");
+    assert_eq!(a.queued(), 1, "A owes the server `pc`");
+    settle(&[&a]).await;
+    assert_eq!(server.refs(DAY), names(&["pa", "pc"]), "the server's day");
+}
+
+#[tokio::test]
+async fn a_desktop_record_never_brings_back_a_picture_a_core_device_removed() {
+    let server = Server::new();
+    let (a, b) = both_added(&server).await;
+    a.detach("pb");
+    settle(&[&a, &b]).await;
+    assert_eq!(b.refs(), names(&["pa"]), "B took A's removal");
+    // Desktop unioned `pb` in before the removal and pushes its list again.
+    for dev in [&a, &b] {
+        let record = desktop_record(&["pa", "pb"], &[&a, &b]);
+        let applied = dev.db(move |c| apply::apply_inbound_on(c, &record, now(), Some(&dev.clock)));
+        assert_eq!(applied, ApplyOutcome::Applied);
+        assert_eq!(dev.refs(), names(&["pa"]), "`pb` stays removed");
+    }
+    settle(&[&a, &b]).await;
+    assert_eq!(server.refs(DAY), names(&["pa"]), "the server's day");
+}
+
+#[tokio::test]
+async fn a_removal_stands_in_a_day_that_predates_the_rule() {
+    // Both devices hold the day as an older build left it: a list, no
+    // removals. B removes `pa` while A, offline, adds `pc`.
+    let server = Server::new();
+    let (a, b) = (Dev::new(&server, "a", 1), Dev::new(&server, "b", 2));
+    let old = InboundRecord {
+        signer_device_id: Some("device-old".to_owned()),
+        payload_json: json!({
+            "title": "2026-06-09", "fileType": "markdown", "folderPath": "journal",
+            "attachmentReferences": ["pa", "pb"], "clock": {"device-old": 1},
+            "createdAt": "2026-06-09T08:00:00.000Z",
+            "modifiedAt": "2026-06-09T08:00:00.000Z",
+        })
+        .to_string(),
+        ..desktop_record(&[], &[])
+    };
+    for dev in [&a, &b] {
+        let old = old.clone();
+        let applied = dev.db(move |c| apply::apply_inbound_on(c, &old, now(), Some(&dev.clock)));
+        assert_eq!(applied, ApplyOutcome::Applied);
+    }
+    b.detach("pa");
+    a.add("pc", true);
+    b.pass().await;
+    settle(&[&a, &b]).await;
+    let want = names(&["pb", "pc"]);
+    assert_eq!(server.refs(DAY), want, "the server's day");
+    assert_eq!(a.refs(), want, "A's day");
+    assert_eq!(b.refs(), want, "B's day");
 }

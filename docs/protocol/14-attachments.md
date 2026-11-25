@@ -442,48 +442,71 @@ pull, downloads it over the note's vault file
 ### 14.7.4 A journal day's pictures (#5800)
 
 A `journal` payload has no `attachmentReferences` (§13.7.2), so a day names its
-pictures in a `note` record under the day's own id, `j<YYYY-MM-DD>`. Every
-device that adds or removes a picture pushes the whole list under one document
-clock, and the server keeps one record per id and accepts a concurrent write
+pictures in a `note` record under the day's own id, `j<YYYY-MM-DD>`. The server
+keeps one record per id and accepts a concurrent write
 (`apps/sync-server/src/services/sync.ts:251-317`). Two devices that add a
 picture to one day at once therefore leave the server with one list, and a
 device that bootstraps later never fetches the other picture.
 
+No clock can say which list saw which picture. Electron desktop pushes the
+record under the journal row's clock and never adopts the record's own
+(`apps/desktop/src/main/sync/item-handlers/note-handler-sync-helpers.ts:85`),
+so its clock can dominate a list it never saw. It unions an inbound list into
+its own (`apps/desktop/src/main/sync/item-handlers/note-handler.ts:268`), so
+its list keeps an id a core device removed. Core devices that adopted such a
+record carry its clock too.
+
 **Normative for the Rust core.** The first picture of a day that has no `note`
 record creates it in desktop's shape: title the date, `fileType` `markdown`,
 `folderPath` `journal`, no `content`
-(`crates/memry-core/src/domain/notes/attachments.rs:77-87`,
-`crates/memry-core/src/sync/day_picture_refs.rs:61`). For each id of the
-day's list the core keeps the clock it first held the id at, or last removed it
-at (`day_picture_ref_clocks`, data migration 0019), from local edits and from
-applied records (`crates/memry-core/src/sync/day_picture_refs.rs:85`, `:106`).
-An inbound `note j<date>` record runs §6.3.1's document gate
-(`crates/memry-core/src/sync/apply.rs:476`):
+(`crates/memry-core/src/domain/notes/attachments.rs:80`,
+`crates/memry-core/src/sync/day_picture_refs.rs:69`). The record carries
+`removedAttachmentReferences`, the ids a core device removed from the day
+(`crates/memry-core/src/sync/day_picture_refs.rs:56`). A local removal adds the
+id to it, and a local add takes the id out
+(`crates/memry-core/src/sync/day_picture_refs.rs:91`). An inbound
+`note j<date>` record joins the stored one
+(`crates/memry-core/src/sync/apply.rs:478`,
+`crates/memry-core/src/sync/day_picture_refs.rs:221`):
 
-- A record whose clock dominates is applied as is. An id it lacks is a removal
-  made by a device that saw the id, and stands.
-- A concurrent record is merged id by id
-  (`crates/memry-core/src/sync/day_picture_refs.rs:236`). An id the core holds
-  and the record lacks is dropped when the record's clock dominates the clock
-  the core held it at, and kept otherwise. An id the record holds is taken,
-  unless the core removed it at a clock the record's clock does not dominate.
-  An absent list on either side is "the sender does not know" (§14.7), and the
-  known list stands.
-- The merge is stored under the merged clock. When it keeps an id, or a
-  removal, that the sender could not have seen, the core ticks its own entry
-  and queues the record (`crates/memry-core/src/sync/day_picture_refs.rs:179`,
-  `:213`). A kept id counts only when the core holds its manifest
-  (`crates/memry-core/src/sync/day_picture_refs.rs:264`). An id it cannot
-  resolve stays in the stored list and never causes a push, so two devices
-  never bounce a list over it; the device that uploaded the picture holds its
-  manifest and pushes it back.
+- The live list is the union of both lists, minus every id in either
+  record's removals. The removals are the union of both. An absent list reads
+  as empty: the sender does not know (§14.7).
+- A list's silence about an id is never a removal. The join reads no clock and
+  no signer, so a record from desktop, from an older core build, or from a
+  vault that predates the field is joined the same way.
+- The record's other fields follow §6.3.1's document gate: the stored payload
+  when the local clock dominates, the inbound one otherwise, under both clocks
+  merged. A dominating local record whose join changes nothing is a skip.
+- When the inbound record lacks a live id or a removal of the join, the core
+  ticks its own entry and queues the record
+  (`crates/memry-core/src/sync/day_picture_refs.rs:159`, `:195`). The server's
+  copy may be the sender's alone, and a device that pulls only that copy would
+  never learn the id or the removal. Two core devices converge after one
+  exchange, because the join of two equal states is that state.
+
+What a mixed vault keeps:
+
+- **A picture is never lost.** An id leaves a day only through a removal a
+  core device made on purpose.
+- **A core removal stands.** Desktop never sends `removedAttachmentReferences`
+  (`buildNotePushPayload` names its keys,
+  `apps/desktop/src/main/sync/item-handlers/note-handler-sync-helpers.ts:64-87`),
+  and an older core build keeps the field from the record it adopted. A picture
+  an iOS device removed comes back on that device only if desktop puts it in
+  the day's body again, as content.
+- **A desktop removal does not reach core devices.** Desktop sends no
+  removals, and its silence is not one.
+- **A removal is for good.** An id is minted per upload, so a picture added
+  again is a new id. A device that adds an id back takes it out of its own
+  removals, and a peer that still carries the removal removes it again.
+- **An older core build** adopts the record last-write-wins, and a removal it
+  makes is silence, so a core device that runs this rule keeps the picture.
 
 This is a departure from §6.5.2 P3 (an apply never re-pushes) for this one
-record: the server cannot merge, so the device that knows the missing id has to
-send it. Desktop applies the record last-write-wins. It adopts a pushed merge,
-whose clock dominates what it sent, so a mixed vault converges. No conformance
-vector covers the rule: vectors come from the TypeScript code paths, and
-desktop has no counterpart (#5785).
+record: the server cannot merge, so the device that knows the missing id or
+removal has to send it. No conformance vector covers the rule: vectors come
+from the TypeScript code paths, and desktop has no counterpart (#5785).
 
 ## 14.8 Quota, and never dereferencing — Q14.3
 

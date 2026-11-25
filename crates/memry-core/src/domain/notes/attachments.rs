@@ -86,15 +86,19 @@ fn edit_references(
                 );
             }
             let mut changes = stamp(tx, ITEM_TYPE, note_id, device_id, now_ms)?;
+            changes.extend(day_picture_refs::removals_after_edit(
+                tx,
+                note_id,
+                &before,
+                &references,
+            )?);
             changes.push((
                 "attachmentReferences",
                 Change::Set(Value::Array(
                     references.into_iter().map(Value::String).collect(),
                 )),
             ));
-            let stored = sync_items::apply_local_edit_in(tx, ITEM_TYPE, note_id, &changes, now_ms)?;
-            day_picture_refs::note_local_edit(tx, note_id, &before, &stored)?;
-            Ok(stored)
+            sync_items::apply_local_edit_in(tx, ITEM_TYPE, note_id, &changes, now_ms)
         },
     )
 }

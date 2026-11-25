@@ -130,11 +130,6 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "note_attachment_uploads",
         sql: include_str!("migrations/data/0018_note_attachment_uploads.sql"),
     },
-    Migration {
-        version: 19,
-        name: "day_picture_ref_clocks",
-        sql: include_str!("migrations/data/0019_day_picture_ref_clocks.sql"),
-    },
 ];
 
 /// `index.db`: the rebuildable search and link index.
@@ -284,7 +279,7 @@ mod tests {
         let version = db
             .call_blocking(|conn| user_version(conn))
             .expect("user_version");
-        assert_eq!(version, 19);
+        assert_eq!(version, 18);
 
         let names = table_names(&db);
         // Source of record, §A.2.
@@ -313,7 +308,6 @@ mod tests {
             "calendar_push_queue",
             "calendar_source_states",
             "calendar_sources",
-            "day_picture_ref_clocks",
             "folders",
             "inbox_attachment_releases",
             "inbox_attachment_uploads",
@@ -401,7 +395,7 @@ mod tests {
         let version = db
             .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
             .expect("step forward");
-        assert_eq!(version, 19);
+        assert_eq!(version, 18);
 
         let (count, payload): (i64, String) = db
             .call_blocking(|conn| {
