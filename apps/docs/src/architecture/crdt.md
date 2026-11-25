@@ -930,15 +930,22 @@ document to its vault `.md` file and re-indexes it for search.
   the note's updates are still storing, the write-back marks `pending_write_hash` before
   it writes (`markDocWrite`) and records the file's real hash in `content_hash` after
   (the watcher's rename match needs it). The mark is
-  `unstored-file:<written hash>:<flag>:<Yjs snapshot>`: the snapshot (state vector and
-  delete set) names what the write carried. The rule at open (`takesUnstoredFile`): the
-  file wins only when it holds something the store lacks, and a mark never makes an
-  older file beat a stored edit. When the loaded doc covers the mark's snapshot, the mark
-  clears and the written file becomes the baseline, with no ingest. When the file still
-  has the bytes under `content_hash` and those were not themselves marked (the flag), the
-  write never landed, and the mark clears. Only a file whose bytes changed and that the
-  store does not cover is taken in, keeping the doc as a version first. A mark this build
-  cannot read is taken in the same way. The mark also clears once a store of the doc
+  `unstored-file:<written hash>:<written snapshot>:<content_hash snapshot>`: every file
+  version the row can point at carries the Yjs snapshot (state vector and delete set) of
+  the doc state serialized into those exact bytes. The write-back takes the snapshot when
+  its conversion reads the doc (`SerializedDoc`), and the conversion on main converts a
+  copy of that state, so a keystroke typed during the write is never counted as in the
+  file. Bytes the store holds carry the empty snapshot. A mark written over an earlier
+  one keeps the earlier snapshot of the bytes under `content_hash`. The rule at open
+  (`takesUnstoredFile`) is one comparison: the file is taken in, keeping the doc as a
+  version first, only when the loaded doc does not cover the snapshot recorded for the
+  file's hash. A file whose hash has no recorded snapshot is an outside edit and is
+  taken in the same way, as is a mark this build cannot read (the bare `unstored-file`
+  or the `<0|1>` flag of pre-release builds of #5698). A covered file becomes the
+  baseline and the mark clears, so a file the store covers never beats a stored edit
+  made after it. Size: a snapshot measured 25-32 KB of base64 on heavy docs, and a mark
+  holds two, in the TEXT `pending_write_hash` column, only until the store holds the
+  write. The mark also clears once a store of the doc
   instance that wrote the file lands (`whenStored`), or the ingest's own store. A doc that
   closes while its store missed an update stores its whole state again before it is
   destroyed; when that fails too, its `whenStored` callers are dropped unanswered. A pass

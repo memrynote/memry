@@ -31,6 +31,8 @@ export interface PreparedBody {
   body: NoteBody | null
   /** The doc's state vector when converted. */
   converted: Uint8Array
+  /** The doc's state when converted, which the file's unstored mark records (`SerializedDoc`). */
+  state: Y.Snapshot
   /** The doc instance converted, which a file written from it is tied to (`recordDocFile`). */
   doc: Y.Doc
 }
@@ -50,17 +52,18 @@ export async function convertBody(noteId: string): Promise<PreparedBody> {
     const doc = live ?? (await provider.open(noteId, undefined, { skipSeed: true }))
     try {
       if (doc.getXmlFragment(CRDT_FRAGMENT_NAME).length === 0) {
-        return { body: null, converted: Y.encodeStateVector(doc), doc }
+        return { body: null, converted: Y.encodeStateVector(doc), state: Y.snapshot(doc), doc }
       }
       const convert = await readyWritebackConverter()
       const converted = Y.encodeStateVector(doc)
+      const state = Y.snapshot(doc)
       const notePath = getNoteMetadataById(getDatabase(), noteId)?.path ?? ''
       // No file to restore spellings from: the bytes there may be the other twin's.
       const conversion = await convert(doc, notePath, async () => null)
       if (conversion.kind === 'unrepresentable' || conversion.body === null) {
         throw new Error(`The doc cannot be written as markdown (${conversion.kind})`)
       }
-      return { body: conversion.body, converted, doc }
+      return { body: conversion.body, converted, state, doc }
     } finally {
       if (!live) await provider.closeIfInactive(noteId)
     }

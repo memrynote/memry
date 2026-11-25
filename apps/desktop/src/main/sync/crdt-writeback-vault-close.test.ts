@@ -1404,6 +1404,39 @@ describe('a CRDT store that stalls while the vault closes (#5698)', () => {
     expect(bodyText(doc)).toBe('From A. Typed. More.')
   })
 
+  // VERIFY-5703R6 (1): the file under `content_hash` was itself written unstored,
+  // and the store holds that write and an edit made after it.
+  it('a write that never landed over a marked file the store covers keeps the later stored edit', async () => {
+    const id = await checkedDay()
+    const disk = await typeIntoFailedStore(id, dayFile(vaultA))
+    disk.recover()
+    const storing = holdNextStoreUpdate()
+    type(id, ' Two.')
+    await settle(storing.reached)
+    let stillFailing!: { recover: () => void }
+    await crashAtWrite(
+      id,
+      false,
+      () => {
+        stillFailing = failStore()
+        type(id, ' Three.')
+      },
+      async () => {
+        storing.release()
+        await Promise.all(store.queues)
+        stillFailing.recover()
+        expect.soft(storedBody(id)).toBe('From A. Typed. More. Two.')
+      }
+    )
+
+    const doc = await settle(getCrdtProvider().open(id, EDITOR_WINDOW))
+    type(id, ' Again.')
+    await settle(flushPendingWritebacks())
+
+    expect.soft(bodyText(doc)).toBe('From A. Typed. More. Two. Again.')
+    expect(dayBody(vaultA)).toContain('From A. Typed. More. Two. Again.')
+  })
+
   // VERIFY-5703R5 (5): a close stalled on its store holds an open only so long.
   it('an open stops waiting for a close stalled on its store, and says which note', async () => {
     const id = await checkedDay()

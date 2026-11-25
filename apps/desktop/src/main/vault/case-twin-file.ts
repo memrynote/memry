@@ -267,7 +267,7 @@ export function planCaseTwinMove(
     try {
       if (own.content !== raw && built) {
         // Its doc's body, which the store may not hold yet (#5698).
-        recordDocFile(indexDb, leavingId, own.content, built.doc, getCrdtProvider())
+        recordDocFile(indexDb, leavingId, own.content, built, getCrdtProvider())
       } else if (raw !== null && holdsUnstoredFile(cached)) {
         // The file's own bytes keep the mark of a doc its store may lack.
         updateNoteCache(indexDb, leavingId, { contentHash: generateContentHash(raw) })
@@ -350,11 +350,11 @@ function planLeave(
   const leave = (): void => {
     if (raw !== own.content) {
       if (keepsCopy) createSnapshot(survivorId, raw, survivor.title, SnapshotReasons.SIGNIFICANT)
-      markDocWrite(indexDb, survivorId, own.content, prepared.doc, getCrdtProvider())
+      markDocWrite(indexDb, survivorId, own.content, prepared, getCrdtProvider())
     }
     writeNoteFileNow(absolutePath, own.content)
     // Its doc's body, which the store may not hold yet (#5698).
-    recordDocFile(indexDb, survivorId, own.content, prepared.doc, getCrdtProvider())
+    recordDocFile(indexDb, survivorId, own.content, prepared, getCrdtProvider())
     if (owesFileBody(survivorId)) clearOwedFileBody(survivorId)
     recordRebuiltNoteCover(dataDb, survivorId, own.cover)
     syncNoteToCache(

@@ -252,6 +252,9 @@ function typed(doc: Y.Doc, text: string): void {
   doc.getText('t').insert(doc.getText('t').length, text)
 }
 
+/** `doc`, serialized as it is now. */
+const serialized = (doc: Y.Doc) => ({ doc, state: Y.snapshot(doc) })
+
 describe('the unstored mark of a write the store lacks (#5698)', () => {
   let index: TestDatabaseResult
   beforeEach(() => {
@@ -266,9 +269,9 @@ describe('the unstored mark of a write the store lacks (#5698)', () => {
     const store = storeLackingTheDoc()
     const doc = new Y.Doc()
     typed(doc, 'A')
-    recordDocFile(index.db, 'n1', A, doc, store)
+    recordDocFile(index.db, 'n1', A, serialized(doc), store)
     typed(doc, 'B')
-    recordDocFile(index.db, 'n1', B, doc, store)
+    recordDocFile(index.db, 'n1', B, serialized(doc), store)
     const markOfB = pending()
 
     store.answer(0)
@@ -289,7 +292,7 @@ describe('the unstored mark of a write the store lacks (#5698)', () => {
         write: () => Promise.reject(new Error('disk full')),
         read: async () => A
       },
-      doc,
+      serialized(doc),
       storeLackingTheDoc()
     )
 
@@ -308,7 +311,7 @@ describe('the unstored mark of a write the store lacks (#5698)', () => {
         write: () => Promise.reject(new Error('rename failed')),
         read: async () => B
       },
-      doc,
+      serialized(doc),
       storeLackingTheDoc()
     )
 
@@ -322,11 +325,26 @@ describe('the unstored mark of a write the store lacks (#5698)', () => {
     const stored = new Y.Doc()
     Y.applyUpdate(stored, Y.encodeStateAsUpdate(doc))
     doc.getText('t').delete(1, 1)
-    recordDocFile(index.db, 'n1', B, doc, storeLackingTheDoc())
+    recordDocFile(index.db, 'n1', B, serialized(doc), storeLackingTheDoc())
     const cached = () => getNoteCacheById(index.db, 'n1')!
 
     expect(takesUnstoredFile(index.db, 'n1', cached(), B, stored)).toBe(true)
     expect(takesUnstoredFile(index.db, 'n1', cached(), B, doc)).toBe(false)
     expect(cached().pendingWriteHash).toBeNull()
+  })
+
+  // VERIFY-5703R6 (2): a keystroke after the conversion is not in the file.
+  it('records the state the file was serialized from, not a later one', () => {
+    const doc = new Y.Doc()
+    typed(doc, 'B')
+    const written = serialized(doc)
+    const stored = new Y.Doc()
+    Y.applyUpdate(stored, Y.encodeStateAsUpdate(doc))
+    typed(doc, 'C')
+    recordDocFile(index.db, 'n1', B, written, storeLackingTheDoc())
+    const cached = () => getNoteCacheById(index.db, 'n1')!
+
+    expect(takesUnstoredFile(index.db, 'n1', cached(), B, stored)).toBe(false)
+    expect(cached()).toMatchObject({ contentHash: generateContentHash(B), pendingWriteHash: null })
   })
 })

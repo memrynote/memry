@@ -9,7 +9,7 @@ import { ingestOfflineEdit, ingestOutsideEditFirst } from './crdt-writeback-inge
 import { registerCrdtWritebackPort } from './crdt-writeback-port'
 import { networkUpdateCount, resetNetworkUpdateState } from './crdt-network-update'
 import { owesFileBody } from './crdt-owed-file-body'
-import { recordUnchangedFile, writeDocWithBaseline } from './writeback-baseline'
+import { recordUnchangedFile, writeDocWithBaseline, type SerializedDoc } from './writeback-baseline'
 import type { SourceRestoreOutcome } from './blocknote-converter'
 import type { NoteBody } from './writing-markdown'
 import { applyCriticMarkMoves } from './critic-mark-anchors'
@@ -679,6 +679,8 @@ async function performWriteback(
   // stale body until a build that knows the type runs; writing costs them the
   // content.
   const converted = Y.encodeStateVector(doc)
+  // The state the conversion reads, which a file written from it records (`recordDocFile`).
+  const written: SerializedDoc = { doc, state: Y.snapshot(doc) }
   const conversion = await convert(doc, cached.path, async () => {
     const raw = await readVaultFile(getVaultRoot(), cached.path)
     return raw === null ? null : splitFrontmatterBlock(raw).body
@@ -771,8 +773,8 @@ async function performWriteback(
   const modifiedAt = writebackModifiedAt(cached.modifiedAt, local, remoteEditedAtMs)
   const journal = isJournalId(noteId)
   const holdsBody = journal
-    ? await writebackJournal(noteId, doc, body, cached, indexDb, modifiedAt)
-    : await writebackExisting(noteId, cached, doc, body, indexDb, isLargeFileBody, modifiedAt)
+    ? await writebackJournal(noteId, written, body, cached, indexDb, modifiedAt)
+    : await writebackExisting(noteId, cached, written, body, indexDb, isLargeFileBody, modifiedAt)
   settleCriticMarks(noteId, doc, body.criticMarks, local && holdsBody)
   if (!journal) {
     // The reminders a body's date pills derive belong to every device that
@@ -895,12 +897,13 @@ function keepVersionBeforeWriteback(
 async function writebackExisting(
   noteId: string,
   cached: NonNullable<ReturnType<typeof getNoteCacheById>>,
-  doc: Y.Doc,
+  written: SerializedDoc,
   body: NoteBody,
   indexDb: ReturnType<typeof getIndexDatabase>,
   isLargeFileBody: boolean,
   modifiedAt: string
 ): Promise<boolean> {
+  const { doc } = written
   const { markdown } = body
   const relativePath = cached.path
   const absolutePath = toAbsolutePath(relativePath)
@@ -921,7 +924,7 @@ async function writebackExisting(
 
   // No byte change → no write, no mtime churn, no snapshot, no downstream signal
   if (existingRaw !== null && fileContent === existingRaw) {
-    recordUnchangedFile(indexDb, noteId, cached, existingRaw, doc, getCrdtProvider())
+    recordUnchangedFile(indexDb, noteId, cached, existingRaw, written, getCrdtProvider())
     log.debug('Write-back is a no-op, skipping', { noteId })
     return true
   }
@@ -996,7 +999,7 @@ async function writebackExisting(
       },
       read: () => readVaultFile(getVaultRoot(), cached.path)
     },
-    doc,
+    written,
     getCrdtProvider()
   )
   lastWrittenHash.set(noteId, generateContentHash(fileContent))
@@ -1048,12 +1051,13 @@ async function writebackExisting(
 /** Resolves true when the file holds `body` afterwards: written now, or already. */
 async function writebackJournal(
   noteId: string,
-  doc: Y.Doc,
+  written: SerializedDoc,
   body: NoteBody,
   cached: NonNullable<ReturnType<typeof getNoteCacheById>>,
   indexDb: ReturnType<typeof getIndexDatabase>,
   modifiedAt: string
 ): Promise<boolean> {
+  const { doc } = written
   const { markdown } = body
   const date = journalIdToDate(noteId)
 
@@ -1077,7 +1081,7 @@ async function writebackJournal(
 
   // No byte change → no write, no mtime churn, no snapshot, no downstream signal
   if (existingRaw !== null && fileContent === existingRaw) {
-    recordUnchangedFile(indexDb, noteId, cached, existingRaw, doc, getCrdtProvider())
+    recordUnchangedFile(indexDb, noteId, cached, existingRaw, written, getCrdtProvider())
     log.debug('Journal write-back is a no-op, skipping', { noteId, date })
     return true
   }
@@ -1111,7 +1115,7 @@ async function writebackJournal(
       },
       read: () => readVaultFile(getVaultRoot(), cached.path)
     },
-    doc,
+    written,
     getCrdtProvider()
   )
   lastWrittenHash.set(noteId, generateContentHash(fileContent))
