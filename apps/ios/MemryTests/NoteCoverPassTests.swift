@@ -61,25 +61,25 @@ struct NoteCoverPassTests {
     @Test(.timeLimit(.minutes(1)))
     func aPassAsksAgainOnlyAfterAFailureWaitingFixes() async throws {
         let deferred = ScriptedAttachmentFiller(summary: pending)
-        let locked = ScriptedAttachmentFiller(summary: pending, failure: .Locked)
+        let offline = ScriptedAttachmentFiller(summary: pending, failure: .Api(source: .Transport(source: .Offline)))
         let corrupt = ScriptedAttachmentFiller(summary: pending, failure: .AttachmentCorrupt(what: "chunk"))
         let unverified = ScriptedAttachmentFiller(
             summary: pending, failure: .AttachmentUnverified(deviceId: "device")
         )
-        #expect(ErrorMapping.userFacing(SyncError.Locked).recourse == .retryLater)
+        #expect(ErrorMapping.userFacing(SyncError.Api(source: .Transport(source: .Offline))).recourse == .retryLater)
         #expect(ErrorMapping.userFacing(SyncError.AttachmentCorrupt(what: "chunk")).recourse == .retry)
         #expect(ErrorMapping.userFacing(SyncError.AttachmentUnverified(deviceId: "device")).recourse == .blocked)
-        let all = [deferred, locked, corrupt, unverified]
+        let all = [deferred, offline, corrupt, unverified]
         let passes = Passes()
         let window = show(Host(fillers: all, passes: passes))
         defer { window.isHidden = true }
         try await settle { all.allSatisfy { $0.fetched.count == 1 } }
 
         passes.count += 1
-        try await settle { deferred.fetched.count == 2 && locked.fetched.count == 2 }
+        try await settle { deferred.fetched.count == 2 && offline.fetched.count == 2 }
         try await Task.sleep(for: .milliseconds(300))
 
-        #expect(locked.fetched.count == 2, "a failure waiting fixes was not asked again")
+        #expect(offline.fetched.count == 2, "a failure waiting fixes was not asked again")
         #expect(corrupt.fetched.count == 1, "a corrupt cover downloaded again on a pass")
         #expect(unverified.fetched.count == 1, "an unverifiable cover went back to the server on a pass")
     }

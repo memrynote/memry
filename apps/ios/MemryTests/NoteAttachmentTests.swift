@@ -407,7 +407,7 @@ struct NoteAttachmentRunTests {
         let failures: [(SyncError, UserFacingError.Recourse, Int)] = [
             (.AttachmentUnverified(deviceId: "device"), .blocked, 1),
             (.AttachmentCorrupt(what: "chunk"), .retry, 1),
-            (.Locked, .retryLater, 2),
+            (.Api(source: .Transport(source: .Offline)), .retryLater, 2),
         ]
         for (failure, recourse, fetches) in failures {
             #expect(ErrorMapping.userFacing(failure).recourse == recourse)

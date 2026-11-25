@@ -383,7 +383,7 @@ struct InboxOpenedFileTests {
         let failures: [(SyncError, UserFacingError.Recourse, Int)] = [
             (.AttachmentUnverified(deviceId: "device"), .blocked, 1),
             (.AttachmentCorrupt(what: "chunk"), .retry, 1),
-            (.Locked, .retryLater, 2),
+            (.Api(source: .Transport(source: .Offline)), .retryLater, 2),
         ]
         for (failure, recourse, fetches) in failures {
             #expect(ErrorMapping.userFacing(failure).recourse == recourse)
@@ -474,7 +474,7 @@ struct InboxDetailPassTests {
 
         path.withLock { $0 = .cellular }
         passes.count += 1
-        try await settle { !filler.fetches.isEmpty }
+        try await settle { !filler.inboxSyncs.isEmpty }
 
         #expect(filler.fetches == [.wifi], "the pass did not download the opened capture's file")
         #expect(filler.inboxSyncs == [.cellular])
