@@ -486,7 +486,7 @@ neither list is a wire constraint on the other.
   others on vault open, after copying into the survivor any icon, category,
   views or authored colour it lacks, and pushes the deletes
   (`apps/desktop/src/main/tags/converge-identity.ts:70-106`,
-  `apps/desktop/src/main/vault/index.ts:571`). Every device picks the same
+  `apps/desktop/src/main/vault/index.ts:580`). Every device picks the same
   survivor from the same rows, so devices converge on one id. An older build
   that still compares ASCII-only can mint a plain definition under its own
   spelling again; the next open merges it back, and since the survivor keeps

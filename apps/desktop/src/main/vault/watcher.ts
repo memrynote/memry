@@ -86,11 +86,8 @@ import {
   queueEmbeddedVaultFiles,
   unlinkTasksFromDeletedNote
 } from '../notes/runtime-effects'
-import {
-  isAppFolderChange,
-  syncFolderConfigDelete,
-  syncFolderConfigDiscovered
-} from '../notes/folder-config-effects'
+import { syncFolderConfigDelete, syncFolderConfigDiscovered } from '../notes/folder-config-effects'
+import { isAppFolderChange } from './app-folder-changes'
 import { normalizeRelativePath, openVaultFile } from '../lib/paths'
 import { createTreeFolderFilter } from './folder-visibility'
 import { recordActivity, recordSkippedFile, toActivityPath } from './activity-log'

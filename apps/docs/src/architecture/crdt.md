@@ -958,8 +958,14 @@ document to its vault `.md` file and re-indexes it for search.
   created with `[a]` and retagged `[b]` got `[a]` back on the next keystroke (#5476).
   A foreign journal entry folded into its day brings its tags through the day merge instead
   (protocol §1.9.1). The merge reads the day file's tags in the day's write-back turn
-  (`addJournalTags`), so a tag edit queued behind a running pass is not written over, and a
-  foreign id deleted elsewhere adds only this device's holder tags, not its record's. It
+  (`addJournalTags`), so a tag edit queued behind a running pass is not written over. A
+  foreign id deleted elsewhere adds none of its record's tags, and only the holder tags the
+  deleting device may never have seen: none when no edit of the holder is queued, its row is
+  unedited since its sync (an edit outside the app is neither ticked nor queued), and the
+  tombstone's clock covers the holder row's clock, else all of them, since desktop keeps no
+  snapshot of the tags last synced. The first weighing sets that list and later ones add to
+  it, because the tombstone and the day take away what the first one read. A tag the day
+  lacks merges even when the holder, deleted or live, has no body (#5699). It
   writes one spelling per tag by the tag fold, the first the file holds, as core `set_tags`
   does: a file holding `Work` and `work` is written with `Work`. The fold keeps whitespace,
   so a foreign `" Work "` is added beside `"Work"`, as core adds it. Owed merges union

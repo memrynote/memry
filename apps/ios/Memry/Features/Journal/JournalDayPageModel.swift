@@ -33,6 +33,10 @@ final class JournalDayPageModel {
     /// the field stays, hidden and holding the caret, until it does.
     private(set) var handingOff = false
     private var seedChecked = false
+    /// The page's first read, which the neighbour prefetch and the shown
+    /// day's refresh share. Not either caller's task, so the shown day asks
+    /// for its attachments only after the read has bound them.
+    @ObservationIgnored private var firstRead: Task<Void, Never>?
 
     init(store: JournalStore, date: String, context: JournalVaultContext) {
         self.date = date
@@ -62,6 +66,26 @@ final class JournalDayPageModel {
         guard let context = store.context else { return nil }
         if !store.hasRead(date) { await store.loadDay(date) }
         return JournalDayPageModel(store: store, date: date, context: context)
+    }
+
+    /// Reads the page once. Every caller waits for the same read.
+    func load() async {
+        let read = read
+        let pending = firstRead ?? Task { await read.loadIfNeeded() }
+        firstRead = pending
+        await pending.value
+    }
+
+    /// The shown day, when it appears and after each sync pass: its body from
+    /// the server, then the attachments it waits on (#5644). Only the shown
+    /// page asks: building a neighbour is a prefetch, and an attachment
+    /// downloads whatever the Download attachments setting only once the
+    /// user opens it. The page re-reads a pulled body on `store.generation`
+    /// and asks again for what that read binds.
+    func refreshShown(store: JournalStore) async {
+        await load()
+        await pullRemoteBody(store: store)
+        await read.fetchWaitingAttachments()
     }
 
     /// What the page draws: the current read, or the last one while a

@@ -144,10 +144,11 @@ async fn drain_one(
         canonical.clone(),
         merge.date.clone(),
     );
-    let has_text = build_text(&merge).is_some();
+    let probe = merge.clone();
     let (has_body, day_deleted) = db
         .call(move |conn| {
-            let has_body = has_text
+            let has_body = build_text(&probe).is_some()
+                || carries_tags(conn, &probe, &day)
                 || !update_log::load_plan(conn, &foreign)
                     .map_err(crdt_failed)?
                     .is_empty();
@@ -246,8 +247,11 @@ fn settle(
     let foreign = &merge.foreign_id;
     let plan = update_log::load_plan(conn, foreign).map_err(crdt_failed)?;
     let state = match (plan.is_empty(), build_text(merge)) {
-        (false, _) => folded_state(foreign, &plan.blobs()).map_err(crdt_failed)?,
-        (true, Some(markdown)) => built_state(foreign, device_id, markdown).map_err(crdt_failed)?,
+        (false, _) => Some(folded_state(foreign, &plan.blobs()).map_err(crdt_failed)?),
+        (true, Some(markdown)) => {
+            Some(built_state(foreign, device_id, markdown).map_err(crdt_failed)?)
+        }
+        (true, None) if carries_tags(conn, merge, canonical) => None,
         (true, None) => return Ok(false),
     };
 
@@ -273,22 +277,20 @@ fn settle(
     // authors is exactly the part the day does not hold yet, so a repeat
     // authors nothing and queues nothing.
     let tx = nested_tx::begin(conn).map_err(failed)?;
-    let update = body_write::author_with(&tx, canonical, device_id, |document| {
-        document.apply_local_update(&state)
-    })
-    .map_err(crdt_failed)?;
+    let update = match state {
+        Some(state) => body_write::author_with(&tx, canonical, device_id, |document| {
+            document.apply_local_update(&state)
+        })
+        .map_err(crdt_failed)?,
+        None => None,
+    };
     if let Some(update) = update {
         body_write::append_in(&tx, ITEM_TYPE, canonical, &update, now_ms).map_err(crdt_failed)?;
     }
     // The day's payload owns its tags; the fold carried only the body. A
     // set union over the tags the day holds now, read in this transaction,
     // so a re-run or a tag the day holds writes nothing (§1.9.1 step 6).
-    // A deleted `F`'s tags its deleter saw were added by that device.
-    let added: Vec<&String> = if merge.deleted {
-        merge.unpushed_holder_tags.iter().collect()
-    } else {
-        merge.holder_tags.iter().chain(&merge.record_tags).collect()
-    };
+    let added = added_tags(merge);
     if !added.is_empty() {
         let mut union = tags::list(&tx, ITEM_TYPE, canonical)?;
         union.extend(added.into_iter().cloned());
@@ -325,6 +327,32 @@ fn forget(tx: &Connection, foreign: &str, now_ms: i64) -> Result<(), StorageErro
     body_debt::settle(tx, foreign)?;
     drop_synced_tags(tx, foreign)?;
     drop_owed(tx, foreign)
+}
+
+/// The tags `settle` adds to `j<D>` (§1.9.1 step 6). A deleted `F`'s tags its
+/// deleter saw were added by that device.
+fn added_tags(merge: &OwedMerge) -> Vec<&String> {
+    if merge.deleted {
+        merge.unpushed_holder_tags.iter().collect()
+    } else {
+        merge.holder_tags.iter().chain(&merge.record_tags).collect()
+    }
+}
+
+/// Whether `F` brings `j<D>` a tag it lacks. Such a tag may exist nowhere
+/// else, as one added offline to a blank holder, so `F` merges with no body
+/// to fold rather than being forgotten (#5659, #5699). A day whose tags will
+/// not read lacks them all: `settle` reads them again, fails, and leaves `F`
+/// owed.
+fn carries_tags(conn: &Connection, merge: &OwedMerge, canonical: &str) -> bool {
+    let added = added_tags(merge);
+    if added.is_empty() {
+        return false;
+    }
+    let day = tags::list(conn, ITEM_TYPE, canonical).unwrap_or_default();
+    added
+        .into_iter()
+        .any(|tag| !day.iter().any(|held| tags::same_tag(held, tag)))
 }
 
 /// The record text a live foreign id with no Yjs history is built from. A
