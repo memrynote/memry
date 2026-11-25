@@ -29,6 +29,7 @@ use super::{Keep, Outcome, Pass};
 use crate::journal::write::{day_file, day_frontmatter};
 use crate::journal::{day_path_in, is_reserved_day_key};
 use crate::notes::create::{free_path, remove_row};
+use crate::notes::error::NotesError;
 use crate::notes::frontmatter::{is_reserved_key, new_file_frontmatter};
 use crate::vault::config::read_vault_config_strict;
 use crate::vault::consumer::rows::{Lane, RowStat};
@@ -158,8 +159,14 @@ impl Pass {
                     .folder_path
                     .as_deref()
                     .filter(|folder| !folder.is_empty());
-                let rel = free_path(lane, root, root, &unfiled.title, folder)
-                    .map_err(|error| Outcome::Broken(format!("no path for the note: {error}")))?;
+                // A read error may pass (a folder's permissions, a busy disk): tried again.
+                let rel = free_path(lane, root, root, &unfiled.title, folder).map_err(|error| {
+                    let reason = format!("no path for the note: {error}");
+                    match error {
+                        NotesError::Io(_) => Outcome::Failed(reason),
+                        _ => Outcome::Broken(reason),
+                    }
+                })?;
                 let mut frontmatter = new_file_frontmatter(&unfiled.tags, &unfiled.properties);
                 with_aliases(
                     &mut frontmatter,
