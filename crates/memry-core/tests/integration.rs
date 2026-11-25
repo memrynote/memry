@@ -545,6 +545,9 @@ mod sync_hardening_purged;
 #[path = "sync_hardening_repairs.rs"]
 mod sync_hardening_repairs;
 #[cfg(feature = "markdown")]
+#[path = "sync_journal_day_pictures.rs"]
+mod sync_journal_day_pictures;
+#[cfg(feature = "markdown")]
 #[path = "sync_list_fields_union.rs"]
 mod sync_list_fields_union;
 #[cfg(feature = "markdown")]

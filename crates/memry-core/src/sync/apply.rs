@@ -168,6 +168,35 @@ pub(crate) fn apply_page(
     Ok(totals)
 }
 
+/// One pulled delete, applied as a page applies it, for the desktop tests that race a peer's
+/// delete against the vault's own facts. Off in every shipped build.
+#[cfg(any(test, feature = "test-support"))]
+#[allow(clippy::too_many_arguments)]
+pub fn apply_pulled_delete(
+    conn: &Connection,
+    item_type: &str,
+    item_id: &str,
+    deleted_at: i64,
+    clock: &VectorClock,
+    now_ms: i64,
+    clock_device: &str,
+    vault_root: &Path,
+) -> Result<(), StorageError> {
+    apply_tombstone(
+        conn,
+        item_type,
+        item_id,
+        deleted_at,
+        None,
+        Some(clock),
+        None,
+        now_ms,
+        Some(clock_device),
+        Some(vault_root),
+        &mut ApplyTotals::default(),
+    )
+}
+
 /// Applies one page's decoded items, in the order they were handed over.
 ///
 /// `clock_device` is this device's clock id (chapter 01 §1.5), which a canvas

@@ -251,7 +251,8 @@ struct EditorCommitBaseTests {
     /// switcher lost the focused block's typing. Resigning active commits it.
     @Test(.timeLimit(.minutes(1))) func leaving_the_app_commits_the_focused_blocks_typing() async {
         let editor = RecordingEditor()
-        let model = NoteEditorViewModel(noteId: "note-1", editor: editor)
+        let notifications = NotificationCenter()
+        let model = NoteEditorViewModel(noteId: "note-1", editor: editor, notifications: notifications)
         let session = model.session
         session.model = model
         let style = BlockText.Style(font: .systemFont(ofSize: 17), ink: .label, titleExists: nil)
@@ -263,7 +264,7 @@ struct EditorCommitBaseTests {
 
         await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
             session.reload = { done.resume() }
-            NotificationCenter.default.post(name: UIApplication.willResignActiveNotification, object: nil)
+            notifications.post(name: UIApplication.willResignActiveNotification, object: nil)
         }
 
         #expect(editor.all == [.replaceText(blockId: "a", text: "hello world", base: "hello")])
@@ -274,7 +275,8 @@ struct EditorCommitBaseTests {
     /// own background task, and the first write landing does not end it.
     @Test(.timeLimit(.minutes(1))) func a_later_resigns_write_stays_protected_when_an_earlier_one_lands() async {
         let editor = GatedEditor()
-        let model = NoteEditorViewModel(noteId: "note-1", editor: editor)
+        let notifications = NotificationCenter()
+        let model = NoteEditorViewModel(noteId: "note-1", editor: editor, notifications: notifications)
         let session = model.session
         session.model = model
         var next = 0
@@ -283,7 +285,8 @@ struct EditorCommitBaseTests {
             next += 1
             return UIBackgroundTaskIdentifier(rawValue: next)
         }
-        session.endBackgroundTask = { ended.append($0) }
+        let changes = Changes()
+        session.endBackgroundTask = { ended.append($0); changes.changed() }
         let style = BlockText.Style(font: .systemFont(ofSize: 17), ink: .label, titleExists: nil)
         let field = BlockField(block: paragraph("hello"), session: session, style: style, alignment: .natural)
         field.render()
@@ -295,24 +298,22 @@ struct EditorCommitBaseTests {
             session.reload = { done.resume() }
             field.textView.text = "hello world"
             field.dirty = true
-            NotificationCenter.default.post(name: UIApplication.willResignActiveNotification, object: nil)
+            notifications.post(name: UIApplication.willResignActiveNotification, object: nil)
             field.textView.text = "hello world!"
             field.dirty = true
-            NotificationCenter.default.post(name: UIApplication.willResignActiveNotification, object: nil)
+            notifications.post(name: UIApplication.willResignActiveNotification, object: nil)
         }
-        for _ in 0..<50 { await Task.yield() }
+        await changes.until { !ended.isEmpty }
 
-        // Other tests post the same notification, so only these two ids count.
-        #expect(ended.contains(first))
-        #expect(!ended.contains(second))
+        #expect(ended == [first])
 
         await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
             session.reload = { done.resume() }
             editor.release()
         }
-        for _ in 0..<50 { await Task.yield() }
+        await changes.until { ended.count > 1 }
 
-        #expect(ended.contains(second))
+        #expect(ended == [first, second])
     }
 
     /// #4506: a page torn down (a split view swapping notes, Back, a
