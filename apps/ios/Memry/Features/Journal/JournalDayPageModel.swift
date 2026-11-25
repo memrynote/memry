@@ -34,7 +34,10 @@ final class JournalDayPageModel {
     private(set) var handingOff = false
     private var seedChecked = false
 
-    init(store: JournalStore, date: String, context: JournalVaultContext) {
+    init(
+        store: JournalStore, date: String, context: JournalVaultContext,
+        notifications: NotificationCenter = .default
+    ) {
         self.date = date
         let id = store.cachedDay(date)?.id ?? JournalNoteBridge.newDayId(date)
         let bridge = JournalNoteBridge(store: store, date: date)
@@ -45,7 +48,9 @@ final class JournalDayPageModel {
             filler: context.filler,
             reachability: PathReachability.forAttachments
         )
-        editor = NoteEditorViewModel(noteId: id, editor: bridge, notes: context.writer)
+        editor = NoteEditorViewModel(
+            noteId: id, editor: bridge, notes: context.writer, notifications: notifications
+        )
         metadata = NoteMetadataViewModel(
             noteId: id,
             writer: JournalMetadataWriter(bridge: bridge, definitions: context.metadataWriter)
