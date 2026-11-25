@@ -213,25 +213,68 @@ fn pulled_plan(e: &Env, aliases: &[&str], modified_at: &str) {
         .unwrap();
 }
 
-/// A file that matches a record no row names gives it its aliases only when the record is not
-/// the newer: a record modified after the file keeps its own (#5423).
+/// `Plan.md` written with `aliases: [FromFile]` over a pulled record whose `modifiedAt` is
+/// `modified_at`, matched by the file (`Adopted::Existing`).
+fn adopted_plan(modified_at: &str, aliases: &[&str]) -> Env {
+    let (mut e, _store) = opened();
+    e.watcher_live();
+    pulled_plan(&e, aliases, modified_at);
+    e.write("Plan.md", "---\naliases: [FromFile]\n---\nBody\n");
+    e.facts_until(|f| matches!(f, Applied::Added { path, .. } if path == "Plan.md"));
+    assert_eq!(id_at(&e, "Plan.md"), "pulled");
+    e
+}
+
+/// A record modified after the file that matched it keeps its own aliases (#5423).
 #[test]
 fn a_matched_record_newer_than_its_file_keeps_its_aliases() {
-    for (modified_at, kept) in [
-        ("2999-01-01T00:00:00.000Z", "Newer"),
-        ("2001-01-01T00:00:00.000Z", "Older"),
-    ] {
-        let (mut e, _store) = opened();
-        e.watcher_live();
-        pulled_plan(&e, &[kept], modified_at);
-        e.write("Plan.md", "---\naliases: [FromFile]\n---\nBody\n");
-        e.facts_until(|f| matches!(f, Applied::Added { path, .. } if path == "Plan.md"));
-        assert_eq!(id_at(&e, "Plan.md"), "pulled");
-        let expected = if kept == "Newer" { kept } else { "FromFile" };
-        assert_eq!(
-            record_aliases(&e, "note", "pulled"),
-            [expected],
-            "{modified_at}"
-        );
-    }
+    let e = adopted_plan("2999-01-01T00:00:00.000Z", &["Newer"]);
+    assert_eq!(record_aliases(&e, "note", "pulled"), ["Newer"]);
+}
+
+/// A record modified before the file that matched it takes the file's aliases (#5423).
+#[test]
+fn a_matched_record_older_than_its_file_takes_its_aliases() {
+    let e = adopted_plan("2001-01-01T00:00:00.000Z", &["Older"]);
+    assert_eq!(record_aliases(&e, "note", "pulled"), ["FromFile"]);
+}
+
+/// The newer record kept its aliases over the file's stale list (REVIEW-5808): an outside edit
+/// that leaves the file's list as it was pushes no record and keeps the record's names, and one
+/// that changes the list is taken.
+#[test]
+fn an_outside_edit_keeps_a_newer_matched_records_aliases_until_the_files_list_changes() {
+    let mut e = adopted_plan("2999-01-01T00:00:00.000Z", &["Newer"]);
+    std::thread::sleep(QUIET);
+    e.drain();
+
+    clear_outbox(&e);
+    edited_outside(
+        &mut e,
+        "pulled",
+        "Plan.md",
+        "---\naliases: [FromFile]\n---\nBody edited outside\n",
+    );
+    assert_eq!(record_aliases(&e, "note", "pulled"), ["Newer"]);
+    assert_eq!(upserts(&e, "pulled"), 0);
+
+    clear_outbox(&e);
+    edited_outside(
+        &mut e,
+        "pulled",
+        "Plan.md",
+        "---\naliases: [FromFile]\n---\nBody edited outside, again\n",
+    );
+    assert_eq!(record_aliases(&e, "note", "pulled"), ["Newer"]);
+    assert_eq!(upserts(&e, "pulled"), 0);
+
+    clear_outbox(&e);
+    edited_outside(
+        &mut e,
+        "pulled",
+        "Plan.md",
+        "---\naliases: [Renamed]\n---\nBody edited outside, again\n",
+    );
+    assert_eq!(record_aliases(&e, "note", "pulled"), ["Renamed"]);
+    assert_eq!(upserts(&e, "pulled"), 1);
 }

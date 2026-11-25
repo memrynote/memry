@@ -57,7 +57,8 @@ pub(super) fn found(writer: &NotesWriter, id: &str, file: &NoteFile, matched: Op
 }
 
 /// An edit outside the app replaced the file of the note or day `note_id`: its record takes the
-/// file's `aliases`. A frontmatter that does not parse, or is not a map, says nothing of them:
+/// file's `aliases`, unless the list is the stale one a newer record declined when the file
+/// matched it ([`NotesWriter::edited_file_aliases`]). A frontmatter that does not parse, or is not a map, says nothing of them:
 /// the record stays as it was.
 pub(super) fn edited(
     writer: &NotesWriter,
@@ -75,7 +76,7 @@ pub(super) fn edited(
             return Ok(());
         }
     };
-    if !writer.file_aliases(note_id, &names)? {
+    if !writer.edited_file_aliases(note_id, &names)? {
         tracing::warn!(
             scope = SCOPE,
             note_id,

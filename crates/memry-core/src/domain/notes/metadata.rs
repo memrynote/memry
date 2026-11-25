@@ -299,9 +299,78 @@ pub fn take_matched_file_aliases(
                 .and_then(instants::to_epoch_ms)
         });
     if modified_ms.is_some_and(|modified_ms| modified_ms > file_modified_ms) {
+        set_declined(conn, id, Some(aliases))?;
         return Ok(true);
     }
     take_file_aliases(conn, id, aliases, device_id, now_ms)
+}
+
+/// The `meta` key prefix of the list a newer record declined from its matched file
+/// ([`take_matched_file_aliases`]). Kept on this device only; an older build ignores the key, so
+/// no migration.
+const DECLINED_FILE_ALIASES: &str = "notes.declined_file_aliases:";
+
+fn set_declined(
+    conn: &Connection,
+    id: &str,
+    aliases: Option<&[String]>,
+) -> Result<(), StorageError> {
+    let key = format!("{DECLINED_FILE_ALIASES}{id}");
+    match aliases {
+        Some(aliases) => {
+            let value = serde_json::to_string(aliases).map_err(|error| StorageError::Failed {
+                what: format!("a file's declined aliases will not serialise: {error}"),
+            })?;
+            conn.execute(
+                "INSERT INTO meta (key, value) VALUES (?1, ?2)
+                 ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                rusqlite::params![key, value],
+            )
+        }
+        None => conn.execute("DELETE FROM meta WHERE key = ?1", [key]),
+    }
+    .map_err(failed)?;
+    Ok(())
+}
+
+/// An edit outside the app gave the file of the note or journal day `id` these aliases. While
+/// the record holds names newer than its file's ([`take_matched_file_aliases`] declined the
+/// file's list), the file's list is the one it had before: an edit that leaves it so, a body
+/// edit, takes nothing, so the stale list never replaces the newer one. An edit that changes
+/// the list ends that, and the record takes the file's list whole ([`take_file_aliases`]).
+/// `false` when no live note or day has that id.
+pub fn take_edited_file_aliases(
+    conn: &Connection,
+    id: &str,
+    aliases: &[String],
+    device_id: &str,
+    now_ms: i64,
+) -> Result<bool, StorageError> {
+    let tx = crate::storage::nested_tx::begin(conn).map_err(failed)?;
+    let declined: Option<Vec<String>> = tx
+        .query_row(
+            "SELECT value FROM meta WHERE key = ?1",
+            [format!("{DECLINED_FILE_ALIASES}{id}")],
+            |row| row.get::<_, String>(0),
+        )
+        .optional()
+        .map_err(failed)?
+        // A value that does not read declines nothing: the file's list is taken.
+        .and_then(|raw| serde_json::from_str(&raw).ok());
+    let taken = if declined.as_deref() == Some(aliases) {
+        sync_items::load(&tx, ITEM_TYPE, id)?
+            .or(sync_items::load(
+                &tx,
+                crate::domain::journal::ITEM_TYPE,
+                id,
+            )?)
+            .is_some_and(|row| row.deleted_at.is_none())
+    } else {
+        set_declined(&tx, id, None)?;
+        take_file_aliases(&tx, id, aliases, device_id, now_ms)?
+    };
+    tx.commit().map_err(failed)?;
+    Ok(taken)
 }
 
 /// Desktop's per-note width override: the frontmatter key `fullWidth`, which
