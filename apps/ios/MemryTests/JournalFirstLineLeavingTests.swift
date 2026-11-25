@@ -134,8 +134,10 @@ struct JournalFirstLineLeavingTests {
         for key in "Foo" { field.insertText(String(key)) }
         field.setMarkedText("k", selectedRange: NSRange(location: 1, length: 0))
         await settle()
-        // A test host has one scene: another object stands for another window's.
-        NotificationCenter.default.post(name: UIScene.didEnterBackgroundNotification, object: NSObject())
+        // A test host has one scene, and UIKit's own observers take the
+        // object for a scene (an NSObject crashes the app: no
+        // `_sceneIdentifier`): no scene stands for another window's.
+        NotificationCenter.default.post(name: UIScene.didEnterBackgroundNotification, object: nil)
         await settle()
         #expect(await stored(day).isEmpty, "another window landed the line")
 

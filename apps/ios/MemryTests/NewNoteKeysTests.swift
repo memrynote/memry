@@ -513,7 +513,8 @@ struct NewNoteKeysTests {
         staying.made("there") { _, _ in }
         let leaving = try sceneWindow()
         leaving.rootViewController = UIViewController()
-        leaving.makeKeyAndVisible()
+        // Visible, not key: the key window belongs to the suites running alongside.
+        leaving.isHidden = false
         defer { leaving.isHidden = true }
         let scene = try #require(leaving.windowScene)
         try #require(window.windowScene !== scene, "the other window shares the leaving one's scene")
