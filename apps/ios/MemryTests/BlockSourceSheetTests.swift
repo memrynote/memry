@@ -177,28 +177,96 @@ struct BlockWebRendererTests {
     /// The app's renderer is built on whichever window is key, and that window
     /// can go away while a picture is drawn. A web view taken out of its window
     /// is suspended, so the picture, and every one queued behind it, never came.
+    /// The first window holds its page's load, so it always goes away mid-load.
     @Test func theWindowGoingAwayMidPictureDoesNotHoldTheNextOne() async throws {
         let scene = try #require(UIApplication.shared.connectedScenes.first as? UIWindowScene)
-        var first: UIWindow? = UIWindow(windowScene: scene)
-        first?.rootViewController = UIViewController()
-        first?.isHidden = false
+        let load = HeldLoad()
+        let first = LoadHoldingWindow(windowScene: scene, load: load)
+        first.rootViewController = UIViewController()
+        first.isHidden = false
         let next = UIWindow(windowScene: scene)
         next.rootViewController = UIViewController()
         next.isHidden = false
         defer { next.isHidden = true }
-        let renderer = BlockWebRenderer { [weak first] in first ?? next }
-        let pending = Task { await renderer.render(request("x^2")) }
-        // The web view is in the first window and loading its page.
-        try await wait(30) { first?.subviews.contains { $0 is WKWebView } == true }
-        first?.isHidden = true
-        first = nil
+        let renderer = BlockWebRenderer { first.isHidden ? next : first }
+        let firstPicture = FirstPicture()
+        Task { firstPicture.output = await renderer.render(request("x^2")) }
+        // The web view is in the first window, its page asked for and held.
+        try await wait(30) { load.isHeld }
+        // The window goes away. Hiding alone keeps it and its views alive,
+        // so its views are taken out as its teardown would.
+        first.isHidden = true
+        first.subviews.forEach { $0.removeFromSuperview() }
 
-        _ = await pending.value
+        // Bounds only the failure: with the fix the picture ends as the web
+        // view leaves, and the held load is let go so a failure unwinds.
+        try await wait(30) { firstPicture.output != nil }
+        load.release()
+        try #require(firstPicture.output != nil, "the first picture ended when its window went away")
         guard case let .image(image) = await renderer.render(request("y^2")) else {
             Issue.record("expected a picture once the renderer moved to the next window")
             return
         }
         #expect(inkedPixels(image) > 20, "the glyphs are painted")
+    }
+}
+
+/// A window that holds the load of any web view put in it: the page's
+/// navigation is never allowed, so it cannot finish before the window goes.
+private final class LoadHoldingWindow: UIWindow {
+    private let load: HeldLoad
+
+    init(windowScene: UIWindowScene, load: HeldLoad) {
+        self.load = load
+        super.init(windowScene: windowScene)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("unused") }
+
+    override func didAddSubview(_ subview: UIView) {
+        super.didAddSubview(subview)
+        guard let web = subview as? WKWebView else { return }
+        load.renderer = web.navigationDelegate
+        web.navigationDelegate = load
+    }
+}
+
+@MainActor
+private final class FirstPicture {
+    var output: BlockWebRenderer.Output?
+}
+
+/// Stands between the web view and the renderer, holding the page's
+/// navigation until `release` and passing the rest on.
+@MainActor
+private final class HeldLoad: NSObject, WKNavigationDelegate {
+    weak var renderer: WKNavigationDelegate?
+    private var held: [@MainActor (WKNavigationActionPolicy) -> Void] = []
+
+    var isHeld: Bool { !held.isEmpty }
+
+    func release() {
+        let decisions = held
+        held = []
+        decisions.forEach { $0(.cancel) }
+    }
+
+    func webView(
+        _ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
+        decisionHandler: @escaping @MainActor (WKNavigationActionPolicy) -> Void
+    ) {
+        held.append(decisionHandler)
+    }
+
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        renderer?.webView?(webView, didFinish: navigation)
+    }
+
+    func webView(
+        _ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error
+    ) {
+        renderer?.webView?(webView, didFailProvisionalNavigation: navigation, withError: error)
     }
 }
 

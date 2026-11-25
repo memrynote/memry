@@ -47,12 +47,18 @@ final class NoteEditorViewModel {
     /// typed into is ahead of the document until it commits.
     private(set) var drafts: [String: String] = [:]
 
-    /// `notifications` is where the session hears the app resign active.
+    /// Where this page hears the app resign active and enter the
+    /// background: its session, and its title and first line through
+    /// `appLifecycle`. A seam for tests: the app-wide center reaches every
+    /// page of every suite running in parallel (#5780).
+    let notifications: NotificationCenter
+
     init(
         noteId: String, editor: (any BlockEditing)?, notes: (any NotesWriting)? = nil,
         notifications: NotificationCenter = .default
     ) {
         self.noteId = noteId
+        self.notifications = notifications
         session = EditorSession(notifications: notifications)
         let source = UUID()
         self.source = source

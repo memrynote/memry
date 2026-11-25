@@ -142,79 +142,259 @@ mod tests {
         assert_eq!(kept, [1, 3]);
     }
 
-    /// `update_log.rs`, `compact.rs`, `migrations.rs` and
-    /// `legacy_numbering.rs` open with `Connection::transaction` or
-    /// `transaction_with_behavior`, which take `&mut Connection`, so nothing
-    /// holding a page's shared `&Connection` can reach them.
+    /// The functions that may open a raw transaction, as (file, header).
+    /// Only that function's body is exempt, so a new opener elsewhere in the
+    /// same file still fails (#5423 C5: a whole-file entry for `recovery.rs`
+    /// would have hidden its production salvage's `.transaction()`).
     ///
-    /// The `*_tests.rs` files and the test modules of `connection.rs`,
-    /// `guard.rs`, `pool.rs` and `recovery.rs` (desktop, feat/tauri-v2) hold
-    /// a lock or leave a transaction open on a second connection on purpose.
-    const RAW_TRANSACTION_ALLOWED: [&str; 13] = [
-        "nested_tx.rs",
-        "crdt/update_log.rs",
-        "crdt/compact.rs",
-        "storage/migrations.rs",
-        "storage/migrations/legacy_numbering.rs",
-        "storage/connection.rs",
-        "storage/guard.rs",
-        "storage/pool.rs",
-        "storage/recovery.rs",
-        "storage/index_db_tests.rs",
-        "storage/vec_tests.rs",
-        "domain/agent_records_tests.rs",
-        "storage/migrations/canvases_tests.rs",
+    /// The `&mut Connection` openers (`update_log.rs`, `compact.rs`,
+    /// `migrations.rs`, `legacy_numbering.rs`) cannot be reached from a page's
+    /// shared `&Connection`. The tests hold a lock or leave a transaction open
+    /// on a second connection on purpose. `begin` is the one nesting opener.
+    const RAW_TRANSACTION_ALLOWED: [(&str, &str); 15] = [
+        // First: the test module holds these headers as text.
+        ("storage/nested_tx.rs", "#[cfg(test)]\nmod tests"),
+        ("storage/nested_tx.rs", "pub fn begin("),
+        ("crdt/update_log.rs", "pub fn append_local_update("),
+        ("crdt/update_log.rs", "pub fn purge("),
+        ("crdt/compact.rs", "pub fn fold_compacted("),
+        ("storage/migrations.rs", "pub fn run_atomic("),
+        (
+            "storage/migrations/legacy_numbering.rs",
+            "pub(super) fn renumber(",
+        ),
+        (
+            "storage/connection.rs",
+            "fn a_reader_never_sees_an_uncommitted_write_and_does_not_wait_for_it(",
+        ),
+        (
+            "storage/guard.rs",
+            "fn drizzle_guard_fails_closed_when_the_file_is_locked(",
+        ),
+        (
+            "storage/pool.rs",
+            "fn a_reader_that_left_a_transaction_open_is_rolled_back_on_return(",
+        ),
+        (
+            "storage/recovery.rs",
+            "fn a_locked_database_is_an_error_not_a_pending_recovery(",
+        ),
+        (
+            "storage/index_db_tests.rs",
+            "fn an_index_held_by_another_connection_is_an_error_and_keeps_its_rows(",
+        ),
+        (
+            "storage/vec_tests.rs",
+            "fn a_locked_index_is_busy_not_a_vec_defect(",
+        ),
+        (
+            "domain/agent_records_tests.rs",
+            "fn sealing_with_nothing_pending_or_held_opens_no_write_transaction(",
+        ),
+        (
+            "storage/migrations/canvases_tests.rs",
+            "fn a_crash_at_any_step_converges_on_the_next_open(",
+        ),
     ];
 
-    /// rusqlite's three transaction openers, and a `BEGIN` statement with or
-    /// without a mode. iCalendar's `BEGIN:` lines are not SQL.
+    /// rusqlite's transaction openers and a SQL `BEGIN`, in any case and
+    /// spacing: the source is lowercased with its whitespace removed, so a
+    /// call split over lines or a `begin` in lowercase still counts.
+    /// iCalendar's `BEGIN:` lines and `.expect("begin")` messages are not SQL.
     fn opens_raw_transaction(source: &str) -> bool {
-        const OPENERS: [&str; 9] = [
+        let code: String = source
+            .chars()
+            .filter(|c| !c.is_whitespace())
+            .collect::<String>()
+            .to_lowercase();
+        const CALLS: [&str; 3] = [
             ".unchecked_transaction(",
-            ".transaction()",
+            ".transaction(",
             ".transaction_with_behavior(",
-            "(\"BEGIN\"",
-            "(\"BEGIN;",
-            "(\"BEGIN ",
-            "\"BEGIN DEFERRED",
-            "\"BEGIN IMMEDIATE",
-            "\"BEGIN EXCLUSIVE",
         ];
-        OPENERS.iter().any(|opener| source.contains(opener))
+        const MODES: [&str; 4] = ["deferred", "immediate", "exclusive", "transaction"];
+        let constructor = code
+            .match_indices("transaction::new")
+            .any(|(at, _)| !code[..at].ends_with(|c: char| c.is_alphanumeric() || c == '_'));
+        // A statement starts after a quote or after a `;` in a batch.
+        let sql_begin = code.match_indices("begin").any(|(at, _)| {
+            let rest = &code[at + "begin".len()..];
+            let ends = rest.starts_with('"') || rest.starts_with(';');
+            if code[..at].ends_with(';') {
+                return ends || MODES.iter().any(|mode| rest.starts_with(mode));
+            }
+            let Some(call) = code[..at].strip_suffix('"') else {
+                return false;
+            };
+            let call = call.trim_end_matches(['r', '#']);
+            MODES.iter().any(|mode| rest.starts_with(mode))
+                || (ends && call.ends_with('(') && !call.ends_with(".expect("))
+        });
+        constructor || sql_begin || CALLS.iter().any(|call| code.contains(call))
     }
 
-    #[test]
-    fn no_core_write_opens_a_transaction_that_cannot_nest() {
-        assert!(opens_raw_transaction(r#"conn.execute_batch("BEGIN")?"#));
-        assert!(opens_raw_transaction("let tx = conn.transaction()?;"));
-        assert!(opens_raw_transaction(
-            "conn.transaction_with_behavior(TransactionBehavior::Immediate)"
-        ));
-        assert!(!opens_raw_transaction(r#"format!("BEGIN:{}", name)"#));
-        fn scan(dir: &std::path::Path, offenders: &mut Vec<String>) {
+    /// `source` without the item that starts at `header`, through its closing
+    /// brace. Panics unless the header occurs once and its body opens a raw
+    /// transaction, so a stale or ambiguous entry fails instead of hiding code.
+    fn without_item(source: &str, shown: &str, header: &str) -> String {
+        assert_eq!(
+            source.matches(header).count(),
+            1,
+            "{shown}: allowlisted `{header}` must occur exactly once"
+        );
+        let start = source.find(header).expect("the header");
+        let open = start + source[start..].find('{').expect("the body");
+        let mut depth = 0usize;
+        let mut end = None;
+        let bytes = source.as_bytes();
+        for (offset, ch) in source[open..].char_indices() {
+            let at = open + offset;
+            // A `'{'` char literal is not a brace of the item.
+            if bytes.get(at.wrapping_sub(1)) == Some(&b'\'') && bytes.get(at + 1) == Some(&b'\'') {
+                continue;
+            }
+            match ch {
+                '{' => depth += 1,
+                '}' => {
+                    depth -= 1;
+                    if depth == 0 {
+                        end = Some(open + offset + 1);
+                        break;
+                    }
+                }
+                _ => {}
+            }
+        }
+        let end = end.unwrap_or_else(|| panic!("{shown}: `{header}` has no closing brace"));
+        assert!(
+            opens_raw_transaction(&source[start..end]),
+            "{shown}: allowlisted `{header}` opens no raw transaction; drop the entry"
+        );
+        format!("{}{}", &source[..start], &source[end..])
+    }
+
+    fn raw_transaction_offenders(root: &std::path::Path) -> Vec<String> {
+        fn scan(dir: &std::path::Path, root: &std::path::Path, offenders: &mut Vec<String>) {
             for entry in std::fs::read_dir(dir).expect("read src") {
                 let path = entry.expect("an entry").path();
                 if path.is_dir() {
-                    scan(&path, offenders);
+                    scan(&path, root, offenders);
                     continue;
                 }
-                let shown = path.to_string_lossy().replace('\\', "/");
-                if path.extension().is_some_and(|ext| ext == "rs")
-                    && !RAW_TRANSACTION_ALLOWED
-                        .iter()
-                        .any(|allowed| shown.ends_with(allowed))
-                    && opens_raw_transaction(
-                        &std::fs::read_to_string(&path).expect("read a source file"),
-                    )
+                if path.extension().is_none_or(|ext| ext != "rs") {
+                    continue;
+                }
+                let shown = path
+                    .strip_prefix(root)
+                    .expect("under src")
+                    .to_string_lossy()
+                    .replace('\\', "/");
+                // A Windows checkout has CRLF; the matchers and the
+                // multi-line headers above are written for LF.
+                let mut source = std::fs::read_to_string(&path)
+                    .expect("read a source file")
+                    .replace("\r\n", "\n");
+                for (_, header) in RAW_TRANSACTION_ALLOWED
+                    .iter()
+                    .filter(|(file, _)| *file == shown)
                 {
+                    source = without_item(&source, &shown, header);
+                }
+                if opens_raw_transaction(&source) {
                     offenders.push(shown);
                 }
             }
         }
         let mut offenders = Vec::new();
-        scan(
+        scan(root, root, &mut offenders);
+        offenders
+    }
+
+    #[test]
+    fn the_guard_sees_every_raw_opener() {
+        for opener in [
+            r#"conn.execute_batch("BEGIN")?"#,
+            r#"conn.execute_batch("begin;")?"#,
+            r#"conn.execute_batch(r"BEGIN")?"#,
+            r#"conn.execute_batch("begin immediate")?"#,
+            r#"const SQL: &str = "Begin Exclusive";"#,
+            "conn.execute_batch(\"CREATE TABLE t (n);\n BEGIN EXCLUSIVE;\")",
+            "let tx = conn.transaction()?;",
+            "let tx = conn\n    .transaction ()?;",
+            "conn.unchecked_transaction()?",
+            "conn.transaction_with_behavior(TransactionBehavior::Immediate)",
+            "Transaction::new(&mut conn, TransactionBehavior::Deferred)?",
+            "rusqlite::Transaction::new_unchecked(&conn, TransactionBehavior::Deferred)?",
+        ] {
+            assert!(opens_raw_transaction(opener), "missed: {opener}");
+        }
+        for not_sql in [
+            r#"format!("BEGIN:{}", name)"#,
+            r#""BEGIN" if stack.len() >= MAX_DEPTH => {}"#,
+            r#"nested_tx::begin(conn).expect("begin")"#,
+            "CalendarTransaction::new(x)",
+        ] {
+            assert!(!opens_raw_transaction(not_sql), "flagged: {not_sql}");
+        }
+    }
+
+    /// A raw opener outside an allowlisted function of an allowlisted file
+    /// still fails: the salvage `recovery.rs` shipped before #5339.
+    #[test]
+    fn an_allowlisted_file_is_exempt_only_inside_its_function() {
+        let dir = tempfile::Builder::new()
+            .prefix("nested-tx-guard")
+            .tempdir()
+            .expect("dir");
+        std::fs::create_dir_all(dir.path().join("storage")).expect("storage dir");
+        std::fs::write(
+            dir.path().join("storage/recovery.rs"),
+            "fn salvage_in_transaction(fresh: &mut Connection) {\n    let tx = fresh\n        .transaction()\n        .map_err(failed)?;\n}\n\
+             mod tests {\n    fn a_locked_database_is_an_error_not_a_pending_recovery() {\n        holder.execute_batch(\"BEGIN EXCLUSIVE;\");\n    }\n}\n",
+        )
+        .expect("write");
+        assert_eq!(
+            raw_transaction_offenders(dir.path()),
+            ["storage/recovery.rs"]
+        );
+    }
+
+    /// A CRLF checkout (Windows) gets the verdicts an LF one gets: the
+    /// multi-line `#[cfg(test)]\nmod tests` header still matches and an
+    /// opener outside the allowlisted function still fails.
+    #[test]
+    fn a_crlf_checkout_gets_the_verdicts_of_an_lf_one() {
+        let files = [
+            (
+                "storage/nested_tx.rs",
+                "pub fn begin(conn: &Connection) {\n    conn.transaction_with_behavior(Immediate)\n}\n\
+                 #[cfg(test)]\nmod tests {\n    fn t() {\n        conn.execute_batch(\"BEGIN\");\n    }\n}\n",
+            ),
+            (
+                "storage/recovery.rs",
+                "fn salvage(fresh: &mut Connection) {\n    let tx = fresh\n        .transaction()?;\n}\n\
+                 mod tests {\n    fn a_locked_database_is_an_error_not_a_pending_recovery() {\n        holder.execute_batch(\"BEGIN EXCLUSIVE;\");\n    }\n}\n",
+            ),
+        ];
+        let verdict = |eol: &str| {
+            let dir = tempfile::Builder::new()
+                .prefix("nested-tx-eol")
+                .tempdir()
+                .expect("dir");
+            std::fs::create_dir_all(dir.path().join("storage")).expect("storage dir");
+            for (file, source) in files {
+                std::fs::write(dir.path().join(file), source.replace('\n', eol)).expect("write");
+            }
+            raw_transaction_offenders(dir.path())
+        };
+        assert_eq!(verdict("\n"), ["storage/recovery.rs"]);
+        assert_eq!(verdict("\r\n"), ["storage/recovery.rs"]);
+    }
+
+    #[test]
+    fn no_core_write_opens_a_transaction_that_cannot_nest() {
+        let offenders = raw_transaction_offenders(
             &std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src"),
-            &mut offenders,
         );
         assert!(
             offenders.is_empty(),
