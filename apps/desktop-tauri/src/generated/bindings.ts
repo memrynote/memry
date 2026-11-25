@@ -960,7 +960,8 @@ export const commands = {
 	 *  when the reindex ends: a first sync holds a reindex until it ends (#5409), and a renderer
 	 *  awaiting the answer would hang that long (#5423 C9). The progress goes out as
 	 *  [`VaultIndexProgressEvent`], and the vault status says indexing from the request to the
-	 *  reindex's end. A reindex that fails after the request is logged.
+	 *  reindex's end. A reindex that fails after the request is logged, and the vault status carries
+	 *  its message as the error, as Electron's `reindex` sets it (`main/vault/index.ts`).
 	 */
 	vaultReindex: () => __TAURI_INVOKE<null>("vault_reindex"),
 	/**

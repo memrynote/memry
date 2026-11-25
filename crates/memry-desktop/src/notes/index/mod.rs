@@ -45,10 +45,11 @@
 //! - **Not measured:** a file in the large-file class (Electron streams it; a follow-up).
 //! - [`NoteIndex::reindex`] measures every note again, through the task once the open walk
 //!   ended (`vault_reindex` asks with [`NoteIndex::ask_reindex`] and answers at once), and
-//!   reports its progress at most once per [`PROGRESS_INTERVAL`], never backwards, ending at the total once every file was read. The open's pass, the first
-//!   after the walk, reports the same way (Electron's `indexVault` on open, `0` of `0`
-//!   included): the renderer refreshes the notes list on it. A close or a failed write ends a
-//!   pass without the total, and the pass that pays the rest does not report.
+//!   reports its progress at most once per [`PROGRESS_INTERVAL`], never backwards, ending at
+//!   the total once every file was read. The open's pass, the first after the walk, reports
+//!   the same way (Electron's `indexVault` on open, `0` of `0` included): the renderer
+//!   refreshes the notes list on it. A close or a failed write ends a pass without the total,
+//!   and the pass that pays the rest does not report.
 //! - **Indexing, as the vault status says it** ([`NoteIndex::indexing`]): from the open to the
 //!   end of the pass that reports it (Electron's open-time build: a stopped or failed pass and
 //!   a close end it too), and from a reindex's request to its answer (Electron's `reindex`),
