@@ -15,6 +15,8 @@ use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope};
 use memry_core::protocol::http::{ClientIdentity, HttpClient};
 use memry_core::protocol::types::Declaration;
 use memry_core::storage::{Db, open_data};
+use memry_core::sync::body_pull::{BodyPull, CrdtCipher, PackedUpdate};
+use memry_core::sync::first_sync::FirstSync;
 use memry_core::sync::first_sync_store::read_meta;
 use memry_core::sync::pull::{
     META_CURSOR_SKIP_REPAIR, META_RECORD_DECLARATION, PullLoop, RecordCipher,
@@ -55,14 +57,17 @@ fn page(
     )
 }
 
-fn pull(db: &Db, transport: Arc<FakeTransport>) -> PullLoop {
-    let http = HttpClient::new(
+fn http(transport: Arc<FakeTransport>) -> Arc<HttpClient> {
+    Arc::new(HttpClient::new(
         transport,
         "https://sync.example",
         ClientIdentity::new("ios", "1.2.3").expect("a valid identity"),
-    );
+    ))
+}
+
+fn pull(db: &Db, transport: Arc<FakeTransport>) -> PullLoop {
     PullLoop::new(
-        Arc::new(http),
+        http(transport),
         db.clone(),
         Declaration::subscribed(),
         Arc::new(NoRecords),
@@ -201,4 +206,42 @@ async fn a_done_repair_leaves_the_cursor_alone() {
         urls(&transport),
         ["https://sync.example/sync/changes?limit=500&cursor=500&inline=1"]
     );
+}
+
+/// #5840: a first sync reads the whole feed from no cursor, which is the
+/// repair, and under today's declaration. It records both, so the next pass
+/// reads on from its cursor instead of from the start.
+#[tokio::test]
+async fn a_first_sync_leaves_the_repair_done_so_the_next_pass_reads_from_its_cursor() {
+    let db = scratch_db("first-sync");
+    let transport = FakeTransport::new(vec![page(74_529, false), page(74_530, false)]);
+    let pull = Arc::new(pull(&db, transport.clone()));
+    let bodies = Arc::new(BodyPull::new(
+        http(transport.clone()),
+        db.clone(),
+        Declaration::subscribed(),
+        Arc::new(NoBodies),
+    ));
+    FirstSync::new(Arc::clone(&pull), bodies, db.clone())
+        .run(1_700_000_000_000)
+        .await
+        .expect("the first sync");
+    assert_eq!(repair_state(&db).as_deref(), Some("done"));
+
+    pull.run(5).await.expect("the pass after it");
+    assert_eq!(
+        urls(&transport),
+        [
+            "https://sync.example/sync/changes?limit=500",
+            "https://sync.example/sync/changes?limit=500&cursor=74529&inline=1",
+        ]
+    );
+}
+
+struct NoBodies;
+
+impl CrdtCipher for NoBodies {
+    fn open(&self, _update: &PackedUpdate<'_>) -> Result<Vec<u8>, EnvelopeError> {
+        Err(EnvelopeError::SignatureInvalid)
+    }
 }
