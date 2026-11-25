@@ -209,6 +209,8 @@ export async function recoverStrandedFolderMoves(vaultPath: string): Promise<voi
   const claimed = new Set<string>()
   const owned = (id: string): boolean => claimed.has(id) || runningMoves.has(id)
   const unusable = new Map<string, string>()
+  // Ids whose record is on disk but no build of this version can put back.
+  const unreadable = new Set<string>()
   const recordDir = moveRecordDir(vaultPath)
   const names = existsSync(recordDir) ? await readdir(recordDir) : []
 
@@ -221,10 +223,12 @@ export async function recoverStrandedFolderMoves(vaultPath: string): Promise<voi
       record = await readMoveRecord(recordPath)
       if (record?.version !== undefined && record.version !== 1) {
         logger.error(`Leaving a version ${record.version} folder move record`)
+        unreadable.add(id)
         if (record.from !== undefined) holdStrandedFolder(record.from)
       } else if (!record || !(await isOwnMove(vaultPath, id, record))) {
         logger.error('Showing the folder of a folder move record this build cannot use')
         unusable.set(id, recordPath)
+        unreadable.add(id)
       } else if (!runningMoves.has(id)) {
         claimed.add(id)
         const stagingAbs = path.join(vaultPath, record.staging)
@@ -250,10 +254,11 @@ export async function recoverStrandedFolderMoves(vaultPath: string): Promise<voi
   const hidden = new Set<string>()
   for (const stagingAbs of await findStagingDirs(vaultPath, exclude)) {
     const id = path.basename(stagingAbs).slice(STAGING_PREFIX.length)
-    // A record written since the loop read the journal: a move that started
-    // and failed meanwhile. Its record puts it back at the next open.
-    const recordedSince = !names.includes(`${id}.json`) && existsSync(recordPathOf(vaultPath, id))
-    if (!owned(id) && !recordedSince) {
+    // A record on disk that this build can use puts its staging directory
+    // back at the next open: one the loop kept, one it skipped while its move
+    // ran and that failed since, or one written since the loop read the journal.
+    const recorded = !unreadable.has(id) && existsSync(recordPathOf(vaultPath, id))
+    if (!owned(id) && !recorded) {
       logger.warn('Showing a folder move staging directory no usable record names')
       await showStaged(stagingAbs, UNKNOWN_SOURCE, null)
     }
@@ -420,19 +425,78 @@ async function tryStep(step: () => Promise<unknown>): Promise<boolean> {
 /** A rename onto a name that is there failed instead of replacing it. */
 const TAKEN_CODES = new Set(['EEXIST', 'ENOTEMPTY', 'ENOTDIR'])
 
+/** The hidden name beside a put-back target that a copy is made under first. */
+const PUT_BACK_TEMP = '.memry-put-back'
+
+function nameTakenError(): NodeJS.ErrnoException {
+  return Object.assign(new Error('EEXIST'), { code: 'EEXIST' })
+}
+
 /**
  * Creates `target` from the file `staged` only while nothing is there, as
  * Tauri's `rename_no_replace`: Node has no exclusive rename, but a hard link
- * and an exclusive copy both fail `EEXIST` on a name taken since the look.
+ * fails `EEXIST` on a name taken since the look. A volume with no hard links
+ * (FAT, some network mounts) gets a copy, made under a hidden name first so
+ * no crash leaves a half copy at `target`; the look before its rename is the
+ * one window left there, as for a link.
  */
 async function placeFile(staged: string, target: string): Promise<void> {
   try {
     await link(staged, target)
+    return
   } catch (error) {
-    // A volume with no hard links (FAT, some network mounts) gets a copy.
     if (errnoCode(error) === 'EEXIST') throw error
-    await copyFile(staged, target, constants.COPYFILE_EXCL)
   }
+  if (await isTaken(target)) throw nameTakenError()
+  const temp = path.join(path.dirname(target), PUT_BACK_TEMP)
+  // A crash's leftover copy, whole or not.
+  await rm(temp, { force: true })
+  await copyFile(staged, temp, constants.COPYFILE_EXCL)
+  if (await isTaken(target)) {
+    await rm(temp, { force: true })
+    throw nameTakenError()
+  }
+  await rename(temp, target)
+}
+
+/**
+ * `target` holds the bytes of the file `staged`: its other hard link, or a
+ * whole copy of it. A put-back cut short between placing `target` and
+ * unlinking `staged` leaves exactly that.
+ */
+async function holdsSameBytes(staged: string, target: string): Promise<boolean> {
+  const [a, b] = await Promise.all([
+    lstat(staged, { bigint: true }).catch(() => null),
+    lstat(target, { bigint: true }).catch(() => null)
+  ])
+  if (!a?.isFile() || !b?.isFile() || a.size !== b.size) return false
+  if (a.dev === b.dev && a.ino === b.ino) return true
+  const [ha, hb] = [await open(staged, 'r'), await open(target, 'r').catch(() => null)]
+  try {
+    if (!hb) return false
+    const [ba, bb] = [Buffer.alloc(64 * 1024), Buffer.alloc(64 * 1024)]
+    for (let at = 0; ; at += ba.length) {
+      const [{ bytesRead: na }, { bytesRead: nb }] = await Promise.all([
+        ha.read(ba, 0, ba.length, at),
+        hb.read(bb, 0, bb.length, at)
+      ])
+      if (na !== nb || !ba.subarray(0, na).equals(bb.subarray(0, nb))) return false
+      if (na === 0) return true
+    }
+  } finally {
+    await ha.close()
+    await hb?.close()
+  }
+}
+
+/**
+ * `staged` and `target` hold the same bytes: keep only `target`, or, when
+ * `staged` cannot be unlinked, only `staged`, so a show never makes it a
+ * second visible copy.
+ */
+async function keepOne(staged: string, target: string): Promise<void> {
+  if (await tryStep(() => unlink(staged))) return
+  if (await holdsSameBytes(staged, target)) await tryStep(() => unlink(target))
 }
 
 /**
@@ -442,6 +506,13 @@ async function placeFile(staged: string, target: string): Promise<void> {
  * whose name is taken comes back beside it at the first conflict name that
  * the create gets. A step that fails is logged and the rest still goes back;
  * what failed stays in `staged`.
+ *
+ * Invariant: every step is re-runnable; a crash between any two steps
+ * reopens to exactly one visible copy. A file is placed (link, or copy to a
+ * hidden name then rename) before its staged name is unlinked, so a crash in
+ * between leaves `target` holding the staged bytes: the next run finds that
+ * at the name it tries and only unlinks the staged one, never taking a
+ * conflict name for it.
  */
 async function putBack(staged: string, source: string): Promise<void> {
   const stat = await lstat(staged).catch(() => null)
@@ -473,9 +544,11 @@ async function putBack(staged: string, source: string): Promise<void> {
         if (stat.isSymbolicLink()) {
           if (await isTaken(target)) continue
           await withTransientFsRetry(() => rename(staged, target), 'moveDirectory')
+        } else if (await holdsSameBytes(staged, target)) {
+          await keepOne(staged, target)
         } else {
           await withTransientFsRetry(() => placeFile(staged, target), 'moveDirectory')
-          await tryStep(() => unlink(staged))
+          await keepOne(staged, target)
         }
         return
       }

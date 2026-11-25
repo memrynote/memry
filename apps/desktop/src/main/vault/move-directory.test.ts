@@ -12,7 +12,14 @@ const { windows } = vi.hoisted(() => ({
     lockedFiles: new Set<string>(),
     stagingLocked: false,
     /** Runs before every rename, link and copy the app makes. */
-    beforeMove: null as null | ((from: string) => Promise<void>)
+    beforeMove: null as null | ((from: string) => Promise<void>),
+    /** Runs before every directory read. */
+    beforeReaddir: null as null | ((dir: string) => Promise<void>),
+    noHardLinks: false,
+    unlinkFails: null as null | ((p: string) => string | null),
+    /** The app dies right after its `crashAfter`th change to the disk. */
+    crashAfter: Infinity,
+    changes: 0
   }
 }))
 
@@ -26,6 +33,15 @@ function errno(code: string): NodeJS.ErrnoException {
 // Dot-named directories are ignored by the watcher, so nothing holds them.
 vi.mock('fs/promises', async (importOriginal) => {
   const actual = await importOriginal<typeof PromisesModule>()
+  // Every change to the disk: once the app has died, none happens.
+  const change =
+    <A extends unknown[], R>(run: (...args: A) => Promise<R>) =>
+    async (...args: A): Promise<R> => {
+      if (windows.changes >= windows.crashAfter) throw errno('ECRASH')
+      const result = await run(...args)
+      windows.changes++
+      return result
+    }
   const rename = async (from: string, to: string): Promise<void> => {
     await windows.beforeMove?.(from)
     if (windows.lockedFiles.has(path.basename(from))) throw errno('EPERM')
@@ -41,15 +57,33 @@ vi.mock('fs/promises', async (importOriginal) => {
   }
   const link = async (from: string, to: string): Promise<void> => {
     await windows.beforeMove?.(from)
-    if (windows.lockedFiles.has(path.basename(from))) throw errno('EPERM')
+    if (windows.lockedFiles.has(path.basename(from)) || windows.noHardLinks) throw errno('EPERM')
     return actual.link(from, to)
   }
+  const unlink = async (p: string): Promise<void> => {
+    const code = windows.unlinkFails?.(p)
+    if (code) throw errno(code)
+    return actual.unlink(p)
+  }
+  const readdir = (async (dir: string, ...rest: unknown[]) => {
+    await windows.beforeReaddir?.(dir)
+    return (actual.readdir as (...args: unknown[]) => Promise<unknown>)(dir, ...rest)
+  }) as typeof actual.readdir
   const copyFile = async (from: string, to: string, mode?: number): Promise<void> => {
     await windows.beforeMove?.(from)
     if (windows.lockedFiles.has(path.basename(from))) throw errno('EPERM')
     return actual.copyFile(from, to, mode)
   }
-  const mocked = { rename, link, copyFile }
+  const mocked = {
+    rename: change(rename),
+    link: change(link),
+    copyFile: change(copyFile),
+    unlink: change(unlink),
+    rm: change(actual.rm),
+    rmdir: change(actual.rmdir),
+    mkdir: change(actual.mkdir),
+    readdir
+  }
   return { ...actual, default: { ...actual, ...mocked }, ...mocked }
 })
 
@@ -103,6 +137,11 @@ describe('moveDirectory', () => {
     windows.lockedFiles.clear()
     windows.stagingLocked = false
     windows.beforeMove = null
+    windows.beforeReaddir = null
+    windows.noHardLinks = false
+    windows.unlinkFails = null
+    windows.crashAfter = Infinity
+    windows.changes = 0
     write('Beta/b.md')
     write('Beta/Gamma/g.md')
     write('Beta/Gamma/Deep/deep.md')
@@ -262,6 +301,11 @@ describe('recoverStrandedFolderMoves', () => {
     windows.lockedFiles.clear()
     windows.stagingLocked = false
     windows.beforeMove = null
+    windows.beforeReaddir = null
+    windows.noHardLinks = false
+    windows.unlinkFails = null
+    windows.crashAfter = Infinity
+    windows.changes = 0
     write('Beta/b.md')
     write(`${staging}/Gamma/g.md`)
     fs.mkdirSync(path.join(root, '.memry/moves'), { recursive: true })
@@ -459,6 +503,180 @@ describe('recoverStrandedFolderMoves', () => {
     expect(fs.readFileSync(landing, 'utf8')).toBe('landed')
     expect(fs.readFileSync(path.join(root, 'Beta/b (conflict copy 2).md'), 'utf8')).toBe(
       `${staging}/b.md`
+    )
+  })
+
+  it('finishes a put-back cut short after the link without a conflict copy of the same file', async () => {
+    fs.writeFileSync(recordPath(), JSON.stringify({ version: 1, from: 'Beta', staging }))
+    write(`${staging}/c.md`)
+    fs.linkSync(path.join(root, staging, 'c.md'), path.join(root, 'Beta/c.md'))
+
+    await recoverStrandedFolderMoves(root)
+
+    expect(tree()).toEqual(['Beta/', 'Beta/Gamma/', 'Beta/Gamma/g.md', 'Beta/b.md', 'Beta/c.md'])
+    expect(fs.readFileSync(path.join(root, 'Beta/c.md'), 'utf8')).toBe(`${staging}/c.md`)
+  })
+
+  it('takes a placed file back when its staged name cannot be unlinked', async () => {
+    fs.writeFileSync(recordPath(), JSON.stringify({ version: 1, from: 'Beta', staging }))
+    write(`${staging}/c.md`)
+    windows.unlinkFails = (p) => (p.includes('.memry-move-') ? 'EBUSY' : null)
+
+    await recoverStrandedFolderMoves(root)
+    windows.unlinkFails = null
+    await recoverStrandedFolderMoves(root)
+
+    expect(tree()).toEqual([
+      'Beta (incomplete move)/',
+      'Beta (incomplete move)/c.md',
+      'Beta/',
+      'Beta/Gamma/',
+      'Beta/Gamma/g.md',
+      'Beta/b.md'
+    ])
+  })
+
+  it.each([
+    { volume: 'hard links', noHardLinks: false },
+    { volume: 'no hard links', noHardLinks: true }
+  ])(
+    'reopens to exactly one copy of every note after a crash at any put-back step, on a volume with $volume',
+    async ({ noHardLinks }) => {
+      const stranded = (): void => {
+        fs.rmSync(root, { recursive: true, force: true })
+        write('Beta/b.md')
+        write(`${staging}/Gamma/g.md`)
+        write(`${staging}/b.md`)
+        write(`${staging}/c.md`)
+        fs.mkdirSync(path.join(root, '.memry/moves'), { recursive: true })
+        fs.writeFileSync(recordPath(), JSON.stringify({ version: 1, from: 'Beta', staging }))
+        windows.changes = 0
+      }
+      const expectOneCopyEach = (): void => {
+        expect(tree()).toEqual([
+          'Beta/',
+          'Beta/Gamma/',
+          'Beta/Gamma/g.md',
+          'Beta/b (conflict copy).md',
+          'Beta/b.md',
+          'Beta/c.md'
+        ])
+        for (const [rel, bytes] of [
+          ['Beta/b.md', 'Beta/b.md'],
+          ['Beta/b (conflict copy).md', `${staging}/b.md`],
+          ['Beta/c.md', `${staging}/c.md`],
+          ['Beta/Gamma/g.md', `${staging}/Gamma/g.md`]
+        ]) {
+          expect(fs.readFileSync(path.join(root, rel), 'utf8')).toBe(bytes)
+        }
+        expect(fs.readdirSync(path.join(root, '.memry/moves'))).toEqual([])
+      }
+      windows.noHardLinks = noHardLinks
+      stranded()
+      await recoverStrandedFolderMoves(root)
+      expectOneCopyEach()
+      const steps = windows.changes
+
+      for (let crashAfter = 1; crashAfter < steps; crashAfter++) {
+        stranded()
+        windows.crashAfter = crashAfter
+        await recoverStrandedFolderMoves(root)
+        windows.crashAfter = Infinity
+        await recoverStrandedFolderMoves(root)
+        expectOneCopyEach()
+      }
+    }
+  )
+
+  it('keeps hidden for the next open a move that fails and cannot undo during the sweep', async () => {
+    write('Alpha/A1/a.md')
+    write('Alpha/x.md')
+    let release = (): void => {}
+    const gate = new Promise<void>((resolve) => (release = resolve))
+    let gated = (): void => {}
+    const atGate = new Promise<void>((resolve) => (gated = resolve))
+    windows.held = true
+    const move = moveDirectory(root, 'Alpha', 'Moved')
+    windows.beforeMove = async (from) => {
+      if (path.basename(from) !== 'x.md') return
+      gated()
+      await gate
+    }
+    await atGate
+    windows.beforeReaddir = async (dir) => {
+      if (dir !== root) return
+      // The move fails, and its undo too, once the sweep has read its record.
+      windows.beforeReaddir = null
+      windows.lockedFiles.add('x.md')
+      windows.stagingLocked = true
+      release()
+      await expect(move).rejects.toMatchObject({ code: 'EPERM' })
+      windows.stagingLocked = false
+    }
+
+    await recoverStrandedFolderMoves(root)
+
+    expect(tree().some((rel) => rel.startsWith('Moved folder (incomplete move 2)'))).toBe(false)
+    windows.lockedFiles.clear()
+    await recoverStrandedFolderMoves(root)
+    expect(tree()).toEqual([
+      'Alpha/',
+      'Alpha/A1/',
+      'Alpha/A1/a.md',
+      'Alpha/x.md',
+      'Beta/',
+      'Beta/b.md',
+      'Moved folder (incomplete move)/',
+      'Moved folder (incomplete move)/Gamma/',
+      'Moved folder (incomplete move)/Gamma/g.md'
+    ])
+  })
+
+  it('leaves alone a move started while the sweep reads the journal', async () => {
+    write('Alpha/A1/a.md')
+    write('Alpha/x.md')
+    let release = (): void => {}
+    const gate = new Promise<void>((resolve) => (release = resolve))
+    let gated = (): void => {}
+    const atGate = new Promise<void>((resolve) => (gated = resolve))
+    let move: Promise<void> | null = null
+    windows.beforeMove = async (from) => {
+      if (path.basename(from) !== 'x.md') return
+      gated()
+      await gate
+    }
+    windows.beforeReaddir = async (dir) => {
+      if (dir !== path.join(root, '.memry/moves') || move) return
+      windows.held = true
+      move = moveDirectory(root, 'Alpha', 'Moved')
+      await atGate
+    }
+
+    await recoverStrandedFolderMoves(root)
+
+    // The move is mid-way: its staging directory is as it left it.
+    const moving =
+      fs.readdirSync(root).find((name) => /^\.memry-move-(?!0123456789ab)/.test(name)) ?? 'missing'
+    expect(tree().filter((rel) => rel.startsWith(moving))).toEqual([
+      `${moving}/`,
+      `${moving}/A1/`,
+      `${moving}/A1/a.md`
+    ])
+    expect(tree()).toContain('Alpha/x.md')
+    release()
+    await expect(move).resolves.toBeUndefined()
+    expect(tree()).toEqual(
+      [
+        'Moved folder (incomplete move)/',
+        'Moved folder (incomplete move)/Gamma/',
+        'Moved folder (incomplete move)/Gamma/g.md',
+        'Beta/',
+        'Beta/b.md',
+        'Moved/',
+        'Moved/A1/',
+        'Moved/A1/a.md',
+        'Moved/x.md'
+      ].toSorted()
     )
   })
 
