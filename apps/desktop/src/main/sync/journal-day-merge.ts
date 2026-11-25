@@ -259,6 +259,10 @@ export function holderTags(
   }
 }
 
+function isOwed(db: DrizzleDb, foreignId: string): boolean {
+  return listOwedJournalDayMerges(db).some((owed) => owed.foreignId === foreignId)
+}
+
 export function listOwedJournalDayMerges(db: DrizzleDb): OwedJournalDayMerge[] {
   return db
     .select({ value: syncState.value })
@@ -520,6 +524,9 @@ async function mergeOne(deps: JournalDayMergeDeps, merge: OwedJournalDayMerge): 
     return false
   }
   if (step.action === 'merge') {
+    // A user delete of the held day during an await above forgot the merge:
+    // the day is never built from it (§1.9.1).
+    if (!isOwed(deps.db, merge.foreignId)) return true
     await deps.ensureDay(merge.date)
     await deps.relinkTasks(merge.foreignId, targetId)
     if (!(await deps.absorbBody(targetId, merge.foreignId, fallback)) && !carriesTags) {

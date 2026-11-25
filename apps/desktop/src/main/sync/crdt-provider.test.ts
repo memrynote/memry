@@ -231,6 +231,12 @@ vi.mock('../tasks/domain', () => ({ createDesktopTasksDomain: vi.fn() }))
 vi.mock('../tasks/publisher', () => ({ createTasksPublisher: vi.fn() }))
 vi.mock('../lib/id', () => ({ generateId: vi.fn(() => 'generated-id') }))
 vi.mock('../telemetry/diagnostics', () => ({ trackMainError: vi.fn() }))
+// A user delete forgets a held day's owed merge in `sync_state`; the
+// database here is a stand-in.
+vi.mock('./journal-day-merge-key', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  forgetOwedJournalDayMerge: vi.fn()
+}))
 // No case twins here: the twin rule reads canonical rows these mocks do not hold.
 vi.mock('../vault/note-sync', async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),

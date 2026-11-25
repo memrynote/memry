@@ -381,19 +381,25 @@ pub(super) fn owe_holder(
     owe(conn, foreign_id, date, &clock, content, None, &holder)
 }
 
-/// `merge` as its holder `F` is now. While `F`'s entry holds the day, the
-/// user can still edit it after its tombstone was held, and an owed merge
-/// read before that edit holds tags `F` no longer has, or lacks one it gained
-/// (#5694). `F` is owed again from its stored record, then read back. A
-/// soft-deleted entry counts too, as defense in depth: [`held_live`] keeps a
-/// held `F` live, but an older build may have soft-deleted one.
-pub(super) fn owed_now(conn: &Connection, merge: OwedMerge) -> Result<OwedMerge, StorageError> {
-    let held = journal::entry_for(conn, &merge.date)?.is_some_and(|(id, _)| id == merge.foreign_id);
-    if !held {
-        return Ok(merge);
+/// `merge` as its holder `F` is now, or `None` when it is no longer owed: a
+/// user delete of the held day forgot it (§1.9.1), and nothing may build
+/// `j<D>` from it. While `F`'s entry holds the day, the user can still edit
+/// it after its tombstone was held, and an owed merge read before that edit
+/// holds tags `F` no longer has, or lacks one it gained (#5694). `F` is owed
+/// again from its stored record, then read back. A soft-deleted entry counts
+/// too: an older build may have soft-deleted a held `F`.
+pub(super) fn owed_now(
+    conn: &Connection,
+    merge: OwedMerge,
+) -> Result<Option<OwedMerge>, StorageError> {
+    if read_owed(conn, &merge.foreign_id)?.is_none() {
+        return Ok(None);
     }
-    owe_holder(conn, &merge.foreign_id, &merge.date)?;
-    Ok(read_owed(conn, &merge.foreign_id)?.unwrap_or(merge))
+    let held = journal::entry_for(conn, &merge.date)?.is_some_and(|(id, _)| id == merge.foreign_id);
+    if held {
+        owe_holder(conn, &merge.foreign_id, &merge.date)?;
+    }
+    read_owed(conn, &merge.foreign_id)
 }
 
 fn stored_payload(row: Option<sync_items::SyncItemRow>) -> serde_json::Map<String, Value> {
@@ -468,23 +474,6 @@ pub(crate) fn hold_for_merge(
     owe(conn, item_id, &date, &clock, None, None, &holder)?;
     mark_deleted(conn, item_id)?;
     Ok(true)
-}
-
-/// Invariant (#5763): a foreign journal row `F` whose owed merge is marked
-/// deleted and whose entry is live is held, and stays live until the drain
-/// removes it. Its `sync_items.deleted_at` is the tombstone's, so a local
-/// edit must not project it: a soft-deleted `F` makes the next edit revive it,
-/// purging its unpushed body and queuing an upsert over the tombstone.
-pub(crate) fn held_live(conn: &Connection, kind: &str, id: &str) -> Result<bool, StorageError> {
-    if kind != ITEM_TYPE || !read_owed(conn, id)?.is_some_and(|owed| owed.deleted) {
-        return Ok(false);
-    }
-    conn.query_row(
-        "SELECT EXISTS(SELECT 1 FROM journal_entries WHERE id = ?1 AND deleted_at IS NULL)",
-        params![id],
-        |row| row.get(0),
-    )
-    .map_err(failed)
 }
 
 /// Called from the tombstone apply: an owed foreign id is already deleted on
