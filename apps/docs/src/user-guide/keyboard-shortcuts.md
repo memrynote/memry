@@ -221,6 +221,21 @@ opens the task's detail drawer beside the note. See
 
 <kbd>⌘</kbd>+<kbd>Z</kbd> undoes recent task changes within a 10-second window. Coverage includes status, priority, due date, deletion, and bulk actions.
 
+## Input Methods
+
+Korean, Japanese, Chinese, Vietnamese and some Hindi keyboards build each character in
+steps: an input method (IME) shows the character underlined until you confirm it.
+While a character is underlined, <kbd>Enter</kbd> and <kbd>Esc</kbd> go to the input
+method. <kbd>Enter</kbd> confirms the character and <kbd>Esc</kbd> cancels it. Neither
+saves a title, submits a field or closes a dialog.
+
+For example, typing `이것은 제목입니다` as a note title and pressing <kbd>Enter</kbd>
+while `다` is still underlined keeps the whole title. With a Korean keyboard that one
+<kbd>Enter</kbd> also saves the title. With a Japanese keyboard it confirms the text,
+and a second <kbd>Enter</kbd> saves it.
+
+The note editor handles input methods the same way.
+
 ## Customizing
 
 Open [Settings → Keyboard Shortcuts](/user-guide/settings#keyboard-shortcuts), find a row, and click to capture a new binding. A rebind applies immediately — no restart — and the old chord stops working, including the one shown next to the matching menu-bar item. Conflicts are flagged inline. While a row is waiting for keys, the app's own shortcuts pause, so pressing <kbd>⌘</kbd>+<kbd>K</kbd> to record it does not also open search. **Reset All** restores defaults; it's only visible if you've made changes.
