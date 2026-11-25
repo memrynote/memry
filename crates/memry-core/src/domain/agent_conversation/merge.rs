@@ -18,6 +18,11 @@
 //!   stored and re-queued (§6.5.2 P3); Electron skips the write when
 //!   no field changed (`:171`), which leaves its clock behind the peer's, so
 //!   this core stores the union clock either way, as `task` and `project` do.
+//!   `vaultId` is no merged field: [`server_vault::merged_vault_id`] keeps the
+//!   local one unless the remote states the bound server id (#5784), on this
+//!   path and over a dominating remote alike, so a peer that stored a
+//!   conversation before its writer's restamp takes the restamp and a remote
+//!   stating the pre-bind id never moves a conversation off the bound id.
 //! - **No key installed**: Electron skips the record (`:92-100`), which loses
 //!   it once the cursor moves. Here the plain remote is stored and marked
 //!   sealed-pending until `Vault::set_at_rest_key` seals it. On a concurrent
@@ -50,6 +55,7 @@ use crate::storage::repositories::schema::Object;
 use crate::storage::repositories::sync_items::{self, InboundRecord};
 use crate::storage::repositories::{Change, StoredPayload};
 use crate::sync::field_merge::{init_all_field_clocks, merge_fields};
+use crate::sync::server_vault;
 
 use super::{ITEM_TYPE, NOT_NULL, SYNCABLE_FIELDS};
 
@@ -72,7 +78,10 @@ pub fn apply_remote(
     let (local, merged_clock) = match task_merge::document_gate_with(conn, record, |local| {
         opened.clone().unwrap_or(local)
     })? {
-        Gate::Wholesale => return store_inbound(conn, record, key, now_ms),
+        Gate::Wholesale => {
+            let record = in_merged_vault(conn, record, opened.as_ref(), &remote)?;
+            return store_inbound(conn, &record, key, now_ms);
+        }
         Gate::Skip => return Ok(Inbound::Skipped),
         Gate::Merge {
             local,
@@ -119,6 +128,9 @@ pub fn apply_remote(
         .iter()
         .filter_map(|field| Some((*field, Change::Set(winners.get(*field)?.clone()))))
         .collect();
+    if let Some(vault_id) = server_vault::merged_vault_id(conn, &local, &remote)? {
+        changes.push(("vaultId", Change::Set(vault_id)));
+    }
     changes.push(("clock", Change::Set(as_json(&merged_clock)?)));
     changes.push((
         "fieldClocks",
@@ -146,6 +158,29 @@ pub fn apply_remote(
     Ok(Inbound::Merged {
         conflicted_fields: result.conflicted_fields,
         conflicts,
+    })
+}
+
+/// `record` stating [`server_vault::merged_vault_id`]'s `vaultId` over `local`, so a dominating
+/// remote that states a pre-bind id leaves a stored conversation on the bound id (#5784).
+fn in_merged_vault(
+    conn: &Connection,
+    record: &InboundRecord,
+    local: Option<&Object>,
+    remote: &Object,
+) -> Result<InboundRecord, StorageError> {
+    let vault_id = match local {
+        Some(local) => server_vault::merged_vault_id(conn, local, remote)?,
+        None => None,
+    };
+    let Some(vault_id) = vault_id.filter(|id| remote.get("vaultId") != Some(id)) else {
+        return Ok(record.clone());
+    };
+    let mut remote = remote.clone();
+    remote.insert("vaultId".to_owned(), vault_id);
+    Ok(InboundRecord {
+        payload_json: Value::Object(remote).to_string(),
+        ..record.clone()
     })
 }
 

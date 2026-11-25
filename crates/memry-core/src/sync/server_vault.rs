@@ -89,9 +89,10 @@ impl RecordVault {
     }
 }
 
-/// The `vaultId` a pulled canvas or canvas folder states over a stored one, the one owner of that
-/// choice in a merge: the stored id, as Electron keeps `existing.vaultId` (§13.7.21 rule 4,
-/// §13.7.23 rule 3), unless the remote states the bound server id, which wins (#5669).
+/// The `vaultId` a pulled canvas, canvas folder or agent conversation states over a stored one,
+/// the one owner of that choice in a merge of every [`STAMPED`] type: the stored id, as Electron
+/// keeps `existing.vaultId` (§13.7.21 rule 4, §13.7.23 rule 3, §13.7.26 rule 3), unless the
+/// remote states the bound server id, which wins (#5669, #5784).
 /// Invariant: a merge never moves a record off the bound id. A peer that pulled a record before
 /// its writer's [`restamp`] stores the writer's old local id; keeping that over the restamp would
 /// push it again, and every fresh device would hide the record. `None` when neither side states
@@ -255,6 +256,10 @@ pub(crate) fn restamp_superseded(record: &Object, other: &VectorClock) -> bool {
 #[cfg(test)]
 #[path = "server_vault_restamp_tests.rs"]
 mod restamp_tests;
+
+#[cfg(test)]
+#[path = "server_vault_merge_tests.rs"]
+mod merge_tests;
 
 #[cfg(test)]
 mod tests {
