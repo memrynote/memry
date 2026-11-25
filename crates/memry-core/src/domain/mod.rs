@@ -34,7 +34,7 @@ pub mod projects;
 pub mod properties;
 pub mod property_admin;
 pub mod reads;
-mod recreate;
+pub(crate) mod recreate;
 pub mod recurrence;
 pub mod related_items;
 pub mod reminders;
