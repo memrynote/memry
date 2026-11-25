@@ -8587,6 +8587,17 @@ public protocol SearchProtocol: AnyObject, Sendable {
     func reindex() throws  -> ReindexSummary
     
     /**
+     * One batch of [`Search::reindex`]: `Some` when it ended the pass, `None`
+     * when more remain.
+     *
+     * For a shell that runs core calls on one serial queue: a call per batch
+     * lets the queue's other calls run between batches (#5842). The pass
+     * belongs to the vault, so a step through any of its `Search`es goes on
+     * with it. A step that fails drops the pass; the next one starts over.
+     */
+    func reindexStep() throws  -> ReindexSummary?
+    
+    /**
      * Everything matching `query`, in desktop's four groups, each best
      * first and at most `limit` long. `filter` narrows the types, the
      * modified date and the tags; `None` narrows nothing.
@@ -8742,6 +8753,24 @@ open func reindex()throws  -> ReindexSummary  {
     return try  FfiConverterTypeReindexSummary_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
         uniffiCallStatus in
     uniffi_memry_core_fn_method_search_reindex(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * One batch of [`Search::reindex`]: `Some` when it ended the pass, `None`
+     * when more remain.
+     *
+     * For a shell that runs core calls on one serial queue: a call per batch
+     * lets the queue's other calls run between batches (#5842). The pass
+     * belongs to the vault, so a step through any of its `Search`es goes on
+     * with it. A step that fails drops the pass; the next one starts over.
+     */
+open func reindexStep()throws  -> ReindexSummary?  {
+    return try  FfiConverterOptionTypeReindexSummary.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_search_reindex_step(
             self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
@@ -35309,6 +35338,30 @@ fileprivate struct FfiConverterOptionTypeParsedDate: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeReindexSummary: FfiConverterRustBuffer {
+    typealias SwiftType = ReindexSummary?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeReindexSummary.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeReindexSummary.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeRelatedItemRecord: FfiConverterRustBuffer {
     typealias SwiftType = RelatedItemRecord?
 
@@ -39136,6 +39189,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_search_reindex() != 12616) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_search_reindex_step() != 24434) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_search_search() != 18447) {

@@ -19,7 +19,8 @@
 //! time, but it walks the vault, so it is not hidden inside a keystroke.
 
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, PoisonError};
+use std::time::{Duration, Instant};
 
 use rusqlite::OptionalExtension as _;
 
@@ -154,6 +155,9 @@ pub enum BacklinkOrder {
 pub struct Search {
     data: Db,
     index: Db,
+    /// The vault's reindex pass, shared by its `Search`es: they step one pass
+    /// and never run two at once (#5842).
+    pass: SharedPass,
     directory: PathBuf,
     /// `None` searches FTS alone.
     semantic: Option<Arc<SemanticSearch>>,
@@ -164,6 +168,7 @@ impl Search {
     /// handle and knows the directory the index belongs beside.
     pub(crate) fn over(
         data: Db,
+        pass: SharedPass,
         directory: &str,
         semantic: Option<Arc<SemanticSearch>>,
     ) -> Result<Self, StorageError> {
@@ -172,6 +177,7 @@ impl Search {
         Ok(Self {
             data,
             index: opened.db,
+            pass,
             directory,
             semantic,
         })
@@ -412,20 +418,62 @@ impl Search {
     /// belongs on an explicit moment — a screen appearing, a sync finishing —
     /// and never on a keystroke.
     pub fn reindex(&self) -> Result<ReindexSummary, StorageError> {
-        let index = self.index.clone();
-        self.data.call_blocking(move |data| {
-            index.call_blocking(|index| {
-                let done = search::reindex(data, index, now_ms())?;
-                Ok(ReindexSummary {
-                    full: done.full,
-                    notes_indexed: done.notes_indexed as u32,
-                    tasks_indexed: done.tasks_indexed as u32,
-                    corrupt_skipped: done.corrupt_skipped as u32,
-                })
-            })
+        // A full rebuild of a large vault is minutes of work. It holds
+        // `data.db` one batch at a time, so the sync pass started beside it
+        // and every write wait one batch, not the pass (#5842).
+        loop {
+            let held = Instant::now();
+            if let Some(summary) = self.reindex_step()? {
+                return Ok(summary);
+            }
+            self.let_waiters_in(held.elapsed());
+        }
+    }
+
+    /// One batch of [`Search::reindex`]: `Some` when it ended the pass, `None`
+    /// when more remain.
+    ///
+    /// For a shell that runs core calls on one serial queue: a call per batch
+    /// lets the queue's other calls run between batches (#5842). The pass
+    /// belongs to the vault, so a step through any of its `Search`es goes on
+    /// with it. A step that fails drops the pass; the next one starts over.
+    pub fn reindex_step(&self) -> Result<Option<ReindexSummary>, StorageError> {
+        let mut slot = self.pass.lock().unwrap_or_else(PoisonError::into_inner);
+        let mut pass = slot.take().unwrap_or_default();
+        let now = now_ms();
+        let step = self.data.call_blocking(|data| {
+            self.index
+                .call_blocking(|index| pass.step(data, index, now, search::REINDEX_BATCH))
+        })?;
+        Ok(match step {
+            search::ReindexStep::Done(done) => Some(ReindexSummary {
+                full: done.full,
+                notes_indexed: done.notes_indexed as u32,
+                tasks_indexed: done.tasks_indexed as u32,
+                corrupt_skipped: done.corrupt_skipped as u32,
+            }),
+            search::ReindexStep::More => {
+                *slot = Some(pass);
+                None
+            }
         })
     }
 }
+
+impl Search {
+    /// Waits while calls are queued on `data.db`, for about as long as the
+    /// batch held it (10 ms to a second), so they run before the next batch.
+    /// The time bounds only the wait, never what the pass indexes.
+    fn let_waiters_in(&self, held: Duration) {
+        let until = Instant::now() + held.clamp(Duration::from_millis(10), Duration::from_secs(1));
+        while self.data.waiting() > 0 && Instant::now() < until {
+            std::thread::sleep(Duration::from_millis(1));
+        }
+    }
+}
+
+/// A vault's reindex pass in progress, shared by its `Search`es.
+pub(crate) type SharedPass = Arc<Mutex<Option<search::ReindexPass>>>;
 
 /// Wall clock, in epoch milliseconds (data-model §A.6).
 fn now_ms() -> i64 {

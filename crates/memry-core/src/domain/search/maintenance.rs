@@ -22,10 +22,10 @@
 //!
 //! A missing watermark, or an `index_meta` `data.user_version` that does not
 //! match `data.db`, forces a full rebuild: every FTS table is emptied and
-//! every live row is re-indexed. `fts_inbox` is [`super::inbox`]'s, called
-//! from here with its own watermark.
+//! every live row is re-indexed. `fts_inbox` is [`super::inbox`]'s, indexed
+//! by [`super::pass`] with its own watermark.
 
-use std::collections::BTreeSet;
+use std::collections::BTreeMap;
 
 use rusqlite::{Connection, OptionalExtension as _, params};
 
@@ -34,11 +34,11 @@ use crate::crdt::blocks::extract_blocks;
 use crate::crdt::update_log::LOCAL_NAMESPACE_PREFIX;
 use crate::domain::body_tags;
 use crate::domain::wiki_target::WikiNames;
-use crate::storage::nested_tx;
 use crate::storage::repositories::projectors::{strings, text};
 
 use super::body_cache::{body_document, body_text, crdt_failed};
 use super::failed;
+use super::pass::{ReindexPass, ReindexStep};
 use super::source::{NoteRow, note_row, read_payload};
 
 /// `index_meta` key: the `data.db` `user_version` the index was built against.
@@ -57,7 +57,7 @@ pub const STAMPS_KEY: &str = "stamps.version";
 /// (#4315): the body cache keyed by a version a snapshot moves, so the bodies
 /// cached empty under `1` are read again. `3` (#5716): body `#tags` read in
 /// every script, so `note_body_tags` gains the ones `2` read as prose.
-const STAMPS_VERSION: i64 = 3;
+pub(super) const STAMPS_VERSION: i64 = 3;
 
 /// What one [`reindex`] pass did.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -78,77 +78,32 @@ pub struct Reindexed {
 /// Brings `index.db` up to date with `data.db`, incrementally where it can.
 ///
 /// Safe to call at any time and on any schedule: it is idempotent, and calling
-/// it against an empty `index.db` is the supported full rebuild.
+/// it against an empty `index.db` is the supported full rebuild. Runs the whole
+/// pass in one transaction; [`ReindexPass`] runs it in batches.
 pub fn reindex(
     data: &Connection,
     index: &Connection,
     now_ms: i64,
 ) -> Result<Reindexed, StorageError> {
-    let version: i64 = data
-        .query_row("PRAGMA user_version", [], |row| row.get(0))
-        .map_err(failed)?;
-
-    let transaction = nested_tx::begin(index).map_err(failed)?;
-    let indexed = meta_number(&transaction, DATA_VERSION_KEY)?;
-    let notes_from = meta_number(&transaction, NOTES_WATERMARK_KEY)?;
-    let tasks_from = meta_number(&transaction, TASKS_WATERMARK_KEY)?;
-
-    let stamps = meta_number(&transaction, STAMPS_KEY)?;
-
-    let full = indexed != Some(version)
-        || stamps != Some(STAMPS_VERSION)
-        || notes_from.is_none()
-        || tasks_from.is_none();
-    if full {
-        transaction
-            .execute_batch("DELETE FROM fts_notes; DELETE FROM fts_tasks;")
-            .map_err(failed)?;
-    }
-    let notes_from = if full { 0 } else { notes_from.unwrap_or(0) };
-    let tasks_from = if full { 0 } else { tasks_from.unwrap_or(0) };
-
-    let mut done = Reindexed {
-        full,
-        ..Reindexed::default()
-    };
-    let (note_ids, notes_high) = note_candidates(data, notes_from)?;
-    if !note_ids.is_empty() {
-        let names = WikiNames::load(data)?;
-        for id in &note_ids {
-            index_note(data, &names, &transaction, id, now_ms, &mut done)?;
-        }
-        if !full {
-            super::links::reresolve(&names, &transaction, &note_ids)?;
+    let mut pass = ReindexPass::default();
+    loop {
+        if let ReindexStep::Done(done) = pass.step(data, index, now_ms, usize::MAX)? {
+            return Ok(done);
         }
     }
-    let (task_ids, tasks_high) = task_candidates(data, tasks_from)?;
-    for id in &task_ids {
-        index_task(data, &transaction, id, &mut done)?;
-    }
-    super::inbox::reindex(data, &transaction, full, &mut done)?;
-
-    meta_set(&transaction, DATA_VERSION_KEY, &version.to_string())?;
-    meta_set(&transaction, STAMPS_KEY, &STAMPS_VERSION.to_string())?;
-    meta_set(
-        &transaction,
-        NOTES_WATERMARK_KEY,
-        &notes_high.unwrap_or(notes_from).max(notes_from).to_string(),
-    )?;
-    meta_set(
-        &transaction,
-        TASKS_WATERMARK_KEY,
-        &tasks_high.unwrap_or(tasks_from).max(tasks_from).to_string(),
-    )?;
-    transaction.commit().map_err(failed)?;
-    Ok(done)
 }
 
+/// The stamps of the rows one id is indexed from, sorted. Two reads of an id
+/// that answer the same stamps read the same rows, as far as a stamp can tell;
+/// a `None` is a row whose stamp cannot tell (#5842).
+pub type Stamps = Vec<Option<i64>>;
+
 /// Every note or journal whose record, body log or body snapshot moved at or
-/// after `from`, and the largest stamp seen.
-fn note_candidates(
+/// after `from`, with the stamps of those rows.
+pub(super) fn note_candidates(
     data: &Connection,
     from: i64,
-) -> Result<(BTreeSet<String>, Option<i64>), StorageError> {
+) -> Result<BTreeMap<String, Stamps>, StorageError> {
     // A `synced_at` this device never wrote is read as "changed" rather than
     // as "older than the watermark": a NULL compares false against every
     // bound, so the null-tolerant reading is the only one that cannot lose a
@@ -167,15 +122,34 @@ fn note_candidates(
           FROM yjs_snapshots WHERE compacted_at >= ?1";
     let local = format!("{LOCAL_NAMESPACE_PREFIX}%");
     let skip = LOCAL_NAMESPACE_PREFIX.len() as i64 + 1;
-    candidates(data, sql, params![from, local, skip])
+    stamped(data, sql, params![from, local, skip])
+}
+
+/// [`note_candidates`]' stamps for one note.
+pub(super) fn note_stamps(data: &Connection, from: i64, id: &str) -> Result<Stamps, StorageError> {
+    let sql = "
+        SELECT id, synced_at FROM notes
+          WHERE id = ?2 AND (synced_at IS NULL OR synced_at >= ?1)
+        UNION ALL
+        SELECT id, synced_at FROM journal_entries
+          WHERE id = ?2 AND (synced_at IS NULL OR synced_at >= ?1)
+        UNION ALL
+        SELECT doc_id, created_at FROM yjs_updates
+          WHERE doc_id IN (?2, ?3) AND created_at >= ?1
+        UNION ALL
+        SELECT doc_id, compacted_at FROM yjs_snapshots
+          WHERE doc_id IN (?2, ?3) AND compacted_at >= ?1";
+    let local = format!("{LOCAL_NAMESPACE_PREFIX}{id}");
+    let stamps = stamped(data, sql, params![from, id, local])?;
+    Ok(merged(stamps))
 }
 
 /// Every task whose projection row moved at or after `from`.
-fn task_candidates(
+pub(super) fn task_candidates(
     data: &Connection,
     from: i64,
-) -> Result<(BTreeSet<String>, Option<i64>), StorageError> {
-    candidates(
+) -> Result<BTreeMap<String, Stamps>, StorageError> {
+    stamped(
         data,
         "SELECT id AS doc_id, synced_at AS stamp FROM tasks
            WHERE synced_at IS NULL OR synced_at >= ?1",
@@ -183,30 +157,50 @@ fn task_candidates(
     )
 }
 
-pub(super) fn candidates(
+/// [`task_candidates`]' stamps for one task.
+pub(super) fn task_stamps(data: &Connection, from: i64, id: &str) -> Result<Stamps, StorageError> {
+    let stamps = stamped(
+        data,
+        "SELECT id, synced_at FROM tasks
+           WHERE id = ?2 AND (synced_at IS NULL OR synced_at >= ?1)",
+        params![from, id],
+    )?;
+    Ok(merged(stamps))
+}
+
+/// The stamps of every id in `stamps`, as one id's.
+pub(super) fn merged(stamps: BTreeMap<String, Stamps>) -> Stamps {
+    let mut merged: Stamps = stamps.into_values().flatten().collect();
+    merged.sort_unstable();
+    merged
+}
+
+/// Every id `sql` answers, with the stamps it answered for it, sorted.
+pub(super) fn stamped(
     data: &Connection,
     sql: &str,
     bound: &[&dyn rusqlite::ToSql],
-) -> Result<(BTreeSet<String>, Option<i64>), StorageError> {
+) -> Result<BTreeMap<String, Stamps>, StorageError> {
     let mut statement = data.prepare(sql).map_err(failed)?;
     let rows = statement
         .query_map(bound, |row| {
             Ok((row.get::<_, String>(0)?, row.get::<_, Option<i64>>(1)?))
         })
         .map_err(failed)?;
-    let mut ids = BTreeSet::new();
-    let mut high: Option<i64> = None;
+    let mut listed: BTreeMap<String, Stamps> = BTreeMap::new();
     for row in rows {
         let (id, stamp) = row.map_err(failed)?;
-        ids.insert(id);
-        high = high.max(stamp);
+        listed.entry(id).or_default().push(stamp);
     }
-    Ok((ids, high))
+    for stamps in listed.values_mut() {
+        stamps.sort_unstable();
+    }
+    Ok(listed)
 }
 
 /// Re-indexes one note or journal: delete first, then insert if it still earns
 /// a row.
-fn index_note(
+pub(super) fn index_note(
     data: &Connection,
     names: &WikiNames,
     index: &Connection,
@@ -277,7 +271,7 @@ fn index_links(
 
 /// Re-indexes one task. A task has no body document, so `description` is the
 /// whole of its second column.
-fn index_task(
+pub(super) fn index_task(
     data: &Connection,
     index: &Connection,
     id: &str,

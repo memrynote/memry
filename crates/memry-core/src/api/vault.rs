@@ -46,7 +46,7 @@ use crate::api::inbox::Inbox;
 use crate::api::journal::Journal;
 use crate::api::notes::Notes;
 use crate::api::notes_write::NotesWriter;
-use crate::api::search::Search;
+use crate::api::search::{Search, SharedPass};
 use crate::api::search_recents::SearchRecents;
 use crate::api::semantic::SemanticSearch;
 use crate::api::sync::VaultSync;
@@ -65,6 +65,9 @@ use crate::storage::{Db, open_data};
 pub struct Vault {
     id: String,
     db: Db,
+    /// The search reindex pass in progress, shared by every `Search` of this
+    /// vault: the batches of two passes must not interleave (#5842).
+    reindexing: SharedPass,
     /// Kept because `index.db` lives beside `data.db` and is opened later, on
     /// demand: the index is a cache of the vault (data-model §A.5) and a
     /// vault that is never searched must not pay for it at open.
@@ -106,6 +109,7 @@ impl Vault {
         Ok(Self {
             id: vault_id,
             db,
+            reindexing: Arc::default(),
             directory,
         })
     }
@@ -233,6 +237,7 @@ impl Vault {
     ) -> Result<Arc<Search>, StorageError> {
         Ok(Arc::new(Search::over(
             self.db.clone(),
+            Arc::clone(&self.reindexing),
             &self.directory,
             semantic,
         )?))
