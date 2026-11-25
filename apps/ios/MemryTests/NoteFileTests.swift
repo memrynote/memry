@@ -38,9 +38,14 @@ private func cached(id: String = "att-pdf", localPath: String?, manifest: String
 private final class BinaryNoteReader: NotesReading, @unchecked Sendable {
     private let landed: Mutex<Bool>
     private let id = Mutex("att-pdf")
+    private let bodyPresent: Bool
 
-    /// `landed`: the row already names a local file, which the disk need not hold.
-    init(landed: Bool = false) { self.landed = Mutex(landed) }
+    /// `landed`: the row already names a local file, which the disk need not
+    /// hold. `bodyPresent`: an empty body document is on this device too.
+    init(landed: Bool = false, bodyPresent: Bool = false) {
+        self.landed = Mutex(landed)
+        self.bodyPresent = bodyPresent
+    }
 
     func land() { landed.withLock { $0 = true } }
 
@@ -59,7 +64,7 @@ private final class BinaryNoteReader: NotesReading, @unchecked Sendable {
                 id: id, title: "Scan", folderPath: nil,
                 emoji: nil, createdAt: nil, modifiedAt: nil, aliases: []
             ),
-            body: NoteBody(text: "", present: false)
+            body: NoteBody(text: "", present: bodyPresent)
         )
     }
 
@@ -216,7 +221,7 @@ struct NoteFileTests {
     /// under its file is the other way into a body it does not have.
     @Test("a tap under a file note starts no paragraph")
     func tapUnderFileStartsNoParagraph() async {
-        let reader = BinaryNoteReader()
+        let reader = BinaryNoteReader(bodyPresent: true)
         let model = NoteReadViewModel(
             route: route, reader: reader, filler: FileFiller(reader: reader),
             reachability: FixedPath(path: .offline)
