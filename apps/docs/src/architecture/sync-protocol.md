@@ -1232,8 +1232,16 @@ across devices:
   When the day merge folds a legacy foreign journal id into `j<date>`, the day
   takes over the foreign row's references (a union) and its attachment file
   records, so the files under `attachments/<foreignId>/` that the folded body
-  embeds still resolve and are neither downloaded nor uploaded again. The
-  files stay where they are and nothing is pushed for the carry.
+  embeds still resolve and are not uploaded again. A foreign row from before
+  the record (#2651) has references no record names. Ids are random per
+  upload and a stored name carries none, so the day records those
+  references against the foreign folder's unrecorded files on disk only when
+  they match one to one, and then nothing is downloaded again. Otherwise it
+  counts the files as known and the references stay owed. A download for a
+  file that is already present then lands a second copy in
+  `attachments/j<date>/`. A file that is really missing moves to where the
+  body links it. The files stay where they are and nothing is pushed for the
+  carry.
 - **Downloads on open** — with attachment auto-download off
   (`sync.attachmentAutoDownload === false`), the pull and the re-drive ask for
   no file, so opening a note or a file asks instead: the note, journal and file

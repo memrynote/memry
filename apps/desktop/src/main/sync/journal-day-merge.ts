@@ -13,6 +13,7 @@
  * build ignores the keys.
  */
 import { createHash } from 'crypto'
+import { relative, sep } from 'path'
 import { eq, like } from 'drizzle-orm'
 import * as Y from 'yjs'
 import { syncState } from '@memry/db-schema/schema/sync-state'
@@ -34,6 +35,7 @@ import {
 import { attachmentFiles } from '@memry/db-schema/data-schema'
 import { createLogger } from '../lib/logger'
 import { getIndexDatabase } from '../database/client'
+import { getStatus as getVaultStatus } from '../vault/status'
 import { deleteNoteCache, getNoteCacheByPath } from '../database/queries/notes'
 import { createJournalEntry } from '../journal/create-entry'
 import { addJournalTags } from '../journal/update-entry'
@@ -42,6 +44,7 @@ import { getJournalRelativePath, parseJournalEntry, readJournalTextSync } from '
 import { deleteNoteFromCache } from '../vault/note-sync'
 import { relinkTasksToMergedNote } from '../notes/runtime-effects'
 import { EMPTY_DOC_UPDATE_BYTES, getCrdtProvider } from './crdt-provider'
+import { countNoteFiles, isRecordedAttachment, ownFolderFiles } from './attachment-files'
 import { getJournalSyncService } from './journal-sync'
 import { recordPendingDelete } from './pending-deletes'
 
@@ -174,6 +177,8 @@ export function journalTombstonedPast(
 
 export interface JournalDayMergeDeps {
   db: DrizzleDb
+  /** The open vault, where a foreign row's attachment files are. */
+  vaultPath: string
   deviceId: string
   /** Merges the server's body for `id` into its local doc. False when it is not fully merged. */
   pullBody: (id: string) => Promise<boolean>
@@ -230,6 +235,7 @@ function unionOf(a: string[] | null | undefined, b: string[] | null | undefined)
  */
 function carryAttachments(
   db: DrizzleDb,
+  vaultPath: string,
   foreignId: string,
   targetId: string,
   references: string[]
@@ -250,7 +256,67 @@ function carryAttachments(
       .onConflictDoNothing()
       .run()
   }
+  recordUnnamedFiles(db, vaultPath, foreignId, targetId, references)
   return true
+}
+
+/**
+ * A foreign row from before the file record (#2651) names its references in
+ * no record, so the day would owe each one a download into its own folder: a
+ * second copy of a file already in `attachments/<foreignId>/` (REVIEW-5743).
+ * The files there that no record pairs with an id hold those references.
+ * Ids are random per upload and stored names carry no id, so a file pairs
+ * with an id only when they match one to one. Otherwise the files are counted
+ * as known, as `recordAttachmentFile` counts an older note's, so none is
+ * uploaded again, and the references stay owed: the downloader moves a file
+ * that is really missing to where the body links it.
+ */
+function recordUnnamedFiles(
+  db: DrizzleDb,
+  vaultPath: string,
+  foreignId: string,
+  targetId: string,
+  references: string[]
+): void {
+  const unnamed = references.filter((id) => !isRecordedAttachment(db, targetId, id))
+  if (unnamed.length === 0) return
+  const paired = new Set(
+    db
+      .select({ path: attachmentFiles.path, attachmentId: attachmentFiles.attachmentId })
+      .from(attachmentFiles)
+      .where(eq(attachmentFiles.noteId, targetId))
+      .all()
+      .flatMap((row) => (row.attachmentId === null ? [] : [row.path]))
+  )
+  const files = ownFolderFiles(vaultPath, foreignId).filter(
+    (file) => !paired.has(relative(vaultPath, file).split(sep).join('/'))
+  )
+  if (files.length === 0) return
+  if (files.length !== unnamed.length) {
+    countNoteFiles(db, vaultPath, targetId, files)
+    log.warn('A foreign journal names attachments no file can be paired with', {
+      foreignId,
+      targetId,
+      unnamed: unnamed.length,
+      files: files.length
+    })
+    return
+  }
+  files.forEach((file, i) => {
+    const recordPath = relative(vaultPath, file).split(sep).join('/')
+    db.insert(attachmentFiles)
+      .values({
+        noteId: targetId,
+        path: recordPath,
+        attachmentId: unnamed[i],
+        recordedAt: Date.now()
+      })
+      .onConflictDoUpdate({
+        target: [attachmentFiles.noteId, attachmentFiles.path],
+        set: { attachmentId: unnamed[i], recordedAt: Date.now() }
+      })
+      .run()
+  })
 }
 
 /** Log fields: never the fallback text, which is the user's journal. */
@@ -321,7 +387,7 @@ async function mergeOne(deps: JournalDayMergeDeps, merge: OwedJournalDayMerge): 
       ? (merge.tags ?? [])
       : mergeTagLists(merge.tags ?? [], merge.recordTags ?? [])
     if (tags.length > 0) await deps.addDayTags(merge.date, tags)
-    carryAttachments(deps.db, merge.foreignId, targetId, references)
+    carryAttachments(deps.db, deps.vaultPath, merge.foreignId, targetId, references)
   }
 
   // A forgotten id goes from this device, as in the core: a row a pre-fix
@@ -334,7 +400,10 @@ async function mergeOne(deps: JournalDayMergeDeps, merge: OwedJournalDayMerge): 
       log.info('Blank foreign journal gained text; the forget waits', describe(merge))
       return false
     }
-    if (!carryAttachments(deps.db, merge.foreignId, targetId, references) && references.length) {
+    if (
+      !carryAttachments(deps.db, deps.vaultPath, merge.foreignId, targetId, references) &&
+      references.length
+    ) {
       log.warn('A forgotten foreign journal leaves its attachments with no day', describe(merge))
     }
     deps.removeRow(merge.foreignId)
@@ -438,10 +507,12 @@ export async function runJournalDayMerges(
   if (listOwedJournalDayMerges(db).length === 0) return
   const deviceId = getCurrentDeviceId(db)
   const journalSync = getJournalSyncService()
-  if (!deviceId || !journalSync) return
+  const vaultPath = getVaultStatus().path
+  if (!deviceId || !journalSync || !vaultPath) return
   const provider = getCrdtProvider()
   await drainJournalDayMerges({
     db,
+    vaultPath,
     deviceId,
     pullBody,
     localHolderText: (id, date) =>
