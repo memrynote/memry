@@ -306,6 +306,9 @@ struct NoteTitleBurstTests {
         let vault: TasksTestVault
         let noteId: String
         let reader: CoreNotesReader
+        /// Where the page hears the app leave. The app-wide center would
+        /// reach every editor of every suite running in parallel (#5780).
+        let notifications = NotificationCenter()
     }
 
     private func fixture() throws -> Fixture {
@@ -330,7 +333,7 @@ struct NoteTitleBurstTests {
         window.rootViewController = UIHostingController(rootView: NoteReadView(
             route: NoteRoute(id: f.noteId), reader: reader ?? f.reader, filler: QuietFiller(),
             editor: CoreBlockEditor(vault: f.vault.vault, store: TaskTestKeychain(), executor: .shared),
-            metadataWriter: writer
+            metadataWriter: writer, notifications: f.notifications
         ))
         window.makeKeyAndVisible()
         await until { title(in: window)?.isFirstResponder == true }
@@ -423,17 +426,29 @@ struct NoteTitleBurstTests {
 
     /// The edit ended while the title kept the caret, as when the app
     /// resumes: the next keys still land, and Return still moves to the body.
-    @Test(.timeLimit(.minutes(1))) func keys_after_an_edit_ended_under_the_caret_land() async throws {
-        let f = try fixture()
-        let (window, field) = try await open(f)
-        defer { window.isHidden = true }
+    @Test(.timeLimit(.minutes(2))) func keys_after_an_edit_ended_under_the_caret_land() async throws {
+        let seen = try await uninterrupted(note: fixture) { f, window, field in
+            for key in "F1 par" { field.insertText(String(key)) }
+            field.resignFirstResponder()
+            field.becomeFirstResponder()
+            for key in "agraph\nbody" { field.insertText(String(key)) }
 
-        for key in "F1 par" { field.insertText(String(key)) }
-        field.resignFirstResponder()
-        field.becomeFirstResponder()
-        for key in "agraph\nbody" { field.insertText(String(key)) }
-
-        try await expectBody(in: window, f)
+            await until { views(BlockTextView.self, in: window).first?.text == "body" }
+            let block = views(BlockTextView.self, in: window).first
+            let focused = block?.isFirstResponder == true
+            let text = block?.text
+            block?.resignFirstResponder()
+            for _ in 0..<300 {
+                let now = try await stored(f)
+                if now.title == "F1 paragraph", now.body == ["body"] { break }
+                try await Task.sleep(for: .milliseconds(20))
+            }
+            return (focused, text, try await stored(f))
+        }
+        #expect(seen.0, "Return left the caret in the title")
+        #expect(seen.1 == "body")
+        #expect(seen.2.title == "F1 paragraph", "\(seen.2)")
+        #expect(seen.2.body == ["body"], "\(seen.2)")
     }
 
     /// A key as the keyboard delivers it: to the text view that has the
@@ -593,11 +608,14 @@ struct NoteTitleBurstTests {
     /// key meanwhile, and returns what it saw. Suites run in parallel in this
     /// process, and a window made key elsewhere takes the caret mid-burst:
     /// such a run proves nothing either way (as in `EditorReturnBurstTests`).
-    private func uninterrupted<T>(_ scenario: (Fixture, UIWindow, UITextView) async throws -> T) async throws -> T {
+    private func uninterrupted<T>(
+        note: (() async throws -> Fixture)? = nil,
+        _ scenario: (Fixture, UIWindow, UITextView) async throws -> T
+    ) async throws -> T {
         var attempt = 0
         while true {
             attempt += 1
-            let f = try await newNote()
+            let f = if let note { try await note() } else { try await newNote() }
             let (window, field) = try await open(f)
             let resigned = Resigned(window)
             let seen = try await scenario(f, window, field)
@@ -966,7 +984,7 @@ struct NoteTitleBurstTests {
                 block.insertText(String(key))
             }
         }
-        NotificationCenter.default.post(name: UIApplication.willResignActiveNotification, object: nil)
+        f.notifications.post(name: UIApplication.willResignActiveNotification, object: nil)
 
         try await expectStored(f, title: "F1 paragraph", body: ["body"])
         #expect(block.isFirstResponder, "the block kept the caret: only leaving the app committed it")
@@ -989,7 +1007,7 @@ struct NoteTitleBurstTests {
 
         for key in "Title" { field.insertText(String(key)) }
         try await settle(f)
-        NotificationCenter.default.post(name: UIApplication.willResignActiveNotification, object: nil)
+        f.notifications.post(name: UIApplication.willResignActiveNotification, object: nil)
 
         try await expectTitle(f, "Title")
         #expect(field.isFirstResponder, "the title kept the caret: only leaving the app saved it")
@@ -1013,12 +1031,12 @@ struct NoteTitleBurstTests {
         for key in "Foo" { field.insertText(String(key)) }
         field.setMarkedText("k", selectedRange: NSRange(location: 1, length: 0))
         try await settle(f)
-        NotificationCenter.default.post(name: UIApplication.willResignActiveNotification, object: nil)
+        f.notifications.post(name: UIApplication.willResignActiveNotification, object: nil)
         try await settle(f)
         #expect(field.markedTextRange != nil, "resigning ended the composition")
         #expect(try await stored(f).title == "", "a half-composed title was saved")
 
-        NotificationCenter.default.post(name: UIApplication.didEnterBackgroundNotification, object: nil)
+        f.notifications.post(name: UIApplication.didEnterBackgroundNotification, object: nil)
 
         try await expectTitle(f, "Fook")
         #expect(field.markedTextRange == nil)
@@ -1332,26 +1350,6 @@ private final class HardwareKey: UIKey {
     override var characters: String { text }
     override var charactersIgnoringModifiers: String { text }
     override var modifierFlags: UIKeyModifierFlags { [] }
-}
-
-/// Whether `window` stopped being the key window while watched.
-@MainActor
-private final class Resigned {
-    private(set) var happened = false
-    private var observer: NSObjectProtocol?
-
-    init(_ window: UIWindow) {
-        observer = NotificationCenter.default.addObserver(
-            forName: UIWindow.didResignKeyNotification, object: window, queue: .main
-        ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.happened = true }
-        }
-    }
-
-    func stop() {
-        observer.map(NotificationCenter.default.removeObserver)
-        observer = nil
-    }
 }
 
 /// The vault's reader, with the block walk held until `open()`: a page
