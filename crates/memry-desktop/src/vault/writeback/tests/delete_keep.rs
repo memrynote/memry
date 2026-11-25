@@ -13,8 +13,7 @@ use memry_core::sync::outbox;
 use super::*;
 
 /// The delete lands after the pass's write and before its row stamp, which still names the
-/// file it replaced. The note was a large file, so the pass records the class before the stamp
-/// and waits there on the database writer the delete holds.
+/// file it replaced: it holds the database writer, which the pass waits on before the stamp.
 #[test]
 fn a_delete_pulled_between_the_write_and_its_row_stamp_keeps_no_copy() {
     let mut f = fixture();
@@ -34,10 +33,6 @@ fn a_delete_pulled_between_the_write_and_its_row_stamp_keeps_no_copy() {
             Ok(())
         })
         .unwrap();
-    f.sql(
-        "INSERT OR IGNORE INTO note_large_files (note_id) VALUES (?1)",
-        &id,
-    );
     let own: Arc<dyn OwnWrites> = f.own_files.clone();
     let files = VaultFiles {
         root: f.root.clone(),
@@ -50,14 +45,12 @@ fn a_delete_pulled_between_the_write_and_its_row_stamp_keeps_no_copy() {
             db.call_blocking(move |conn| {
                 started.send(()).unwrap();
                 let deadline = Instant::now() + Duration::from_secs(10);
-                let seen = loop {
-                    let text = std::fs::read_to_string(&path).unwrap();
-                    if text != "first words\n" {
-                        break text;
-                    }
-                    assert!(Instant::now() < deadline, "the pass never wrote");
+                let mut seen = std::fs::read_to_string(&path).unwrap();
+                while seen == "first words\n" && Instant::now() < deadline {
                     std::thread::sleep(Duration::from_millis(1));
-                };
+                    seen = std::fs::read_to_string(&path).unwrap();
+                }
+                assert_ne!(seen, "first words\n", "the pass never wrote");
                 let row = sync_items::load(conn, "note", &item)?.expect("the record");
                 let mut clock: VectorClock =
                     serde_json::from_str(&row.clock.expect("a clock")).unwrap();
