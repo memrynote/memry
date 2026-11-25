@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
-import { getNoteCacheById, insertNoteCache, updateNoteCache } from './note-crud'
+import { getNoteCacheById, insertNoteCache, UNSTORED_FILE, updateNoteCache } from './note-crud'
 
 /**
  * A hash moved outside the write-back supersedes the write it had pending, so
@@ -44,5 +44,15 @@ describe('note_cache pending_write_hash', () => {
   it('keeps a pending write through an update that leaves the hash alone', () => {
     updateNoteCache(index.db, 'n1', { title: 'renamed' })
     expect(stored()).toEqual({ contentHash: 'A', pendingWriteHash: 'B' })
+  })
+
+  it('keeps the unstored-file marker through a moved hash until a writer clears it (#5698)', () => {
+    updateNoteCache(index.db, 'n1', { pendingWriteHash: UNSTORED_FILE })
+    insertNoteCache(index.db, { ...row, contentHash: 'C' })
+    updateNoteCache(index.db, 'n1', { contentHash: 'D' })
+    expect(stored()).toEqual({ contentHash: 'D', pendingWriteHash: UNSTORED_FILE })
+
+    updateNoteCache(index.db, 'n1', { contentHash: 'E', pendingWriteHash: null })
+    expect(stored()).toEqual({ contentHash: 'E', pendingWriteHash: null })
   })
 })
