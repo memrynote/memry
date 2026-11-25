@@ -211,8 +211,8 @@ fn counted(result: &Result<PullReport, PullError>) -> Counted {
     }
 }
 
-/// A malformed body or a 4xx other than 429 is about the request; anything
-/// else (transport, 5xx, 429, a local failure) says nothing.
+/// A 4xx other than 429 with an error code is about the request; anything
+/// else (a malformed body, transport, 5xx, 429, a local failure) says nothing.
 fn counted_error(error: &ApiError) -> Counted {
     match error {
         ApiError::Status {

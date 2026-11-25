@@ -18,6 +18,7 @@
 //! | a write newer than the marker pushes normally           | §5.12.3, #5406        |
 //! | a local delete forgets the marker                       | §5.8 re-create, #5406 |
 //! | a marker with no vault id to check it in defers         | §4.8.4, #5247         |
+//! | a by-id pull with no vault id holds an attested marker  | §4.8.4, #5247         |
 
 use crate::http_fakes;
 
@@ -394,6 +395,32 @@ async fn a_marker_with_no_vault_id_to_check_it_in_defers_the_item() {
         ),
         1
     );
+}
+
+/// #5247 on the by-id pull without marker declaration (the first sync's
+/// metadata pass): a v2-attested marker with no vault id to check it in holds
+/// the ids as a failed pull does, and is never refused as a forgery.
+#[tokio::test]
+async fn a_by_id_pull_with_no_vault_id_holds_an_attested_marker() {
+    let db = scratch_db("no-vault-by-id");
+    edited_task(&db, "t1", 5);
+    let transport = FakeTransport::new(vec![response(
+        200,
+        &pull_answer(vec![marker_in("t1", 9, false, Some(VAULT))]),
+    )]);
+    let http = Arc::new(HttpClient::new(
+        transport,
+        "https://sync.example",
+        ClientIdentity::new("ios", "1.2.3").expect("a valid identity"),
+    ));
+    let pull = PullLoop::new(
+        http,
+        db.clone(),
+        Declaration::subscribed(),
+        Arc::new(Directory),
+    );
+    assert!(pull.fetch_ids(&["t1".to_owned()]).await.is_err());
+    assert!(!task_deleted(&db, "t1"));
 }
 
 /// A remembered marker that will not parse: logged and deferred, the row

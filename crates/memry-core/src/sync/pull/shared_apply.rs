@@ -41,6 +41,7 @@ impl PullLoop {
         let mut pending: Vec<Pending> = Vec::with_capacity(ids.len());
         let mut markers = purged::Entries::default();
         let mut entries = Vec::new();
+        let mut attested = false;
         // A chunk with no envelope is a server fault counted in
         // `dropped_pages`, so only the answered chunks' ids can be uncovered.
         let mut answered: Vec<String> = Vec::with_capacity(ids.len());
@@ -62,6 +63,14 @@ impl PullLoop {
                 markers.read(&body, chunk);
                 body
             };
+            attested |= body
+                .get("purgedTombstones")
+                .and_then(Json::as_array)
+                .is_some_and(|marked| {
+                    marked
+                        .iter()
+                        .any(|e| e.get("deleteAttestation").and_then(Json::as_str).is_some())
+                });
             let Some(items) = Self::pulled_items(&mut body) else {
                 report.dropped_pages += 1;
                 continue;
@@ -74,12 +83,8 @@ impl PullLoop {
         }
         // A v2 attestation names this vault: checked as v1 only, a valid
         // marker is refused and its row kept (chapter 04 §4.8.4, #5247). The
-        // ids are held instead, as for a failed pull.
-        if self.vault_id().is_none()
-            && entries
-                .iter()
-                .any(|e| e.get("deleteAttestation").and_then(Json::as_str).is_some())
-        {
+        // ids are held instead, as for a failed pull, on both paths.
+        if self.vault_id().is_none() && attested {
             return Err(StorageError::Failed {
                 what: "a purged marker is attested and this pull has no vault id to check it in"
                     .to_owned(),

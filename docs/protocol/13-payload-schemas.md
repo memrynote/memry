@@ -79,11 +79,11 @@ The platform-free engine establishes rules 1 and 2: it decrypts to
 copy for `fileType` (`:307-308`), with the contract stated at
 `packages/sync-client/src/pull/store.ts:5-9`, `:17`. The Rust core obeys it:
 the received string goes into `sync_items.payload` unchanged
-(`crates/memry-core/src/storage/repositories/sync_items.rs:489`, `:503`),
-projections come from a parsed copy (`:151-152`), a local edit merges the
+(`crates/memry-core/src/storage/repositories/sync_items.rs:488`, `:505`),
+projections come from a parsed copy (`:158`), a local edit merges the
 changed keys into that copy and stores the result
 (`crates/memry-core/src/storage/repositories/payload.rs:64-72`), and a push
-sends the stored string (`crates/memry-core/src/storage/repositories/sync_items.rs:289-291`).
+sends the stored string (`crates/memry-core/src/storage/repositories/sync_items.rs:368-370`).
 
 The Rust core meets rule 5 with a refused-items ledger (#4453), the equal of
 desktop's below. A record its type's schema refuses is not applied, its local
@@ -122,7 +122,7 @@ a bad signature or when the corrupt ledger also asked for the pair
 (`apply_step.rs:187-192`, `crates/memry-core/src/sync/pull/items.rs:235-249`).
 One that decodes but
 applies as corrupt keeps its entry the same way, and that apply does flag the
-row corrupt, as on any pull (`crates/memry-core/src/sync/apply/record.rs:228`).
+row corrupt, as on any pull (`crates/memry-core/src/sync/apply/record.rs:248`).
 
 ### 13.2.1 Desktop meets the obligation by a different mechanism (#2183)
 
@@ -697,7 +697,7 @@ neither list is a wire constraint on the other.
   others on vault open, after copying into the survivor any icon, category,
   views or authored colour it lacks, and pushes the deletes
   (`apps/desktop/src/main/tags/converge-identity.ts:53-64`,
-  `apps/desktop/src/main/vault/index.ts:580`). Every device picks the same
+  `apps/desktop/src/main/vault/index.ts:606`). Every device picks the same
   survivor from the same rows, so devices converge on one id. An older build
   that still compares ASCII-only can mint a plain definition under its own
   spelling again; the next open merges it back, and since the survivor keeps

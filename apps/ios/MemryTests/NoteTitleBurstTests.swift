@@ -1054,7 +1054,7 @@ struct NoteTitleBurstTests {
         for key in "Foo" { field.insertText(String(key)) }
         field.setMarkedText("k", selectedRange: NSRange(location: 1, length: 0))
         try await settle(note)
-        NotificationCenter.default.post(name: UIScene.didEnterBackgroundNotification, object: window.windowScene)
+        note.notifications.post(name: UIScene.didEnterBackgroundNotification, object: window.windowScene)
 
         try await expectTitle(note, "Fook")
         #expect(field.markedTextRange == nil)
@@ -1070,10 +1070,8 @@ struct NoteTitleBurstTests {
         for key in "Foo" { field.insertText(String(key)) }
         field.setMarkedText("k", selectedRange: NSRange(location: 1, length: 0))
         try await settle(note)
-        // A test host has one scene, and UIKit's own observers take the
-        // object for a scene (an NSObject crashes the app: no
-        // `_sceneIdentifier`): no scene stands for another window's.
-        NotificationCenter.default.post(name: UIScene.didEnterBackgroundNotification, object: nil)
+        // A test host has one scene: no scene stands for another window's.
+        note.notifications.post(name: UIScene.didEnterBackgroundNotification, object: nil)
         try await settle(note)
 
         #expect(field.markedTextRange != nil, "another window ended the composition")

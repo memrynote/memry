@@ -128,12 +128,17 @@ macro_rules! map {
     };
 }
 
-/// The last journal entry (`when`) of each frozen Electron migration directory
-/// (`tests/fixtures/electron-schema`): `0084_notes_created_here` and `0039_note_embedding_input_hash`.
-/// A source whose `__drizzle_migrations` ledger ends elsewhere has another schema than the one
-/// `TABLE_MAP` describes, and the import refuses it.
-pub const ELECTRON_DATA_LAST_MIGRATION: i64 = 1_794_238_491_237;
-pub const ELECTRON_INDEX_LAST_MIGRATION: i64 = 1_792_900_600_000;
+/// The journal entries (`when`) of the frozen Electron migration directories
+/// (`tests/fixtures/electron-schema`) at which a source's `__drizzle_migrations` ledger may end,
+/// oldest first; the last is the directory's last entry. data.db: `0084_notes_created_here`.
+/// index.db: `0037_note_pending_write_hash` (the last shipped Electron release, v2026-11-23),
+/// `0038_note_property_yaml_string` and `0039_note_embedding_input_hash`, which `TABLE_MAP`
+/// reads alike (note_properties is rebuilt, note_embedding_state copied or dropped). A ledger
+/// ending elsewhere has another schema than the one `TABLE_MAP` describes, and the import
+/// refuses it.
+pub const ELECTRON_DATA_LEDGER_ENDS: &[i64] = &[1_794_238_491_237];
+pub const ELECTRON_INDEX_LEDGER_ENDS: &[i64] =
+    &[1_792_900_400_000, 1_792_900_500_000, 1_792_900_600_000];
 
 /// The drizzle migration ledger; never imported, and the core refuses a database holding it.
 pub const LEDGER_TABLE: &str = "__drizzle_migrations";

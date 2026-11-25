@@ -404,7 +404,7 @@ for the drain instead of purging them, and owes a deleted merge, so edits this
 device never pushed reach `j<D>` (#2984;
 `apps/desktop/src/main/sync/item-handlers/journal-handler.ts:269-281`; core:
 `crates/memry-core/src/sync/journal_day_merge/owed.rs:442`, called from
-`crates/memry-core/src/sync/apply/tombstone.rs:97`). A foreign holder that `j<D>`
+`crates/memry-core/src/sync/apply/tombstone.rs:100-102`). A foreign holder that `j<D>`
 already displaced is held the same way. That is the order of the deleting
 device's push, `j<D>` and then the tombstone, so it is the common case. The
 core keeps its stored record and its body when its owed merge's date is the
