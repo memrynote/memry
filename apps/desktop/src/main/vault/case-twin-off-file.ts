@@ -1,7 +1,8 @@
 /**
- * A peer's frontmatter update of a case twin whose bytes are not on the file
- * it shares (#5561). The update goes to the twin's index rows, with the body
- * tags of its own doc, and the file stays as it is.
+ * A frontmatter update of a case twin whose bytes are not on the file it
+ * shares, from a peer (#5561) or a local edit (#5742). The update goes to the
+ * twin's index rows, with the body tags of its own doc, and the file stays as
+ * it is.
  *
  * @module vault/case-twin-off-file
  */
@@ -30,7 +31,9 @@ import {
   convertBody,
   holdsOwnBytes,
   indexedHeader,
+  ownFile,
   sameStateVector,
+  type OwnTwinFile,
   type PreparedBody
 } from './case-twin-own-file'
 import type { NoteFrontmatter } from './frontmatter'
@@ -75,12 +78,9 @@ export function updateCaseTwinOffFile(
   noteId: string,
   patch: RemoteFrontmatterPatch
 ): OffFileTwinUpdate | null {
-  if (!sharesCaseTwinFile(vaultPath, relativePath)) return null
+  if (!isCaseTwinOffFile(vaultPath, relativePath, noteId)) return null
   const indexDb = getIndexDatabase()
-  const cached = getNoteCacheById(indexDb, noteId)
-  const raw = readVaultFileSync(vaultPath, relativePath)
-  if (raw !== null && cached && holdsOwnBytes(raw, cached)) return null
-  const cachedCover = cached?.cover
+  const cachedCover = getNoteCacheById(indexDb, noteId)?.cover
   const cover = isCoverValue(cachedCover) ? cachedCover : null
   const frontmatter = applyRemoteFrontmatter(
     indexedHeader(indexDb, noteId, patch.title, cover),
@@ -93,6 +93,41 @@ export function updateCaseTwinOffFile(
     cover: isCoverValue(patchedCover) ? patchedCover : null,
     tags: tags && { header: tags, inline: ownInlineTags(indexDb, noteId) }
   }
+}
+
+/**
+ * Whether note `noteId` shares its file with a case twin and the bytes there
+ * are not its own: patching them would put the other twin's body under this
+ * note's header.
+ */
+export function isCaseTwinOffFile(
+  vaultPath: string,
+  relativePath: string,
+  noteId: string
+): boolean {
+  if (!sharesCaseTwinFile(vaultPath, relativePath)) return false
+  const cached = getNoteCacheById(getIndexDatabase(), noteId)
+  const raw = readVaultFileSync(vaultPath, relativePath)
+  return raw === null || !cached || !holdsOwnBytes(raw, cached)
+}
+
+/**
+ * Note `noteId`'s own file, for a local header edit (#5742): its doc's body
+ * under the header its index rows hold. Null when its file takes the edit in
+ * place (`isCaseTwinOffFile`). The edit goes to the note's index rows, which
+ * a split writes to its own file, and the shared file stays as it is. Throws
+ * `NoteError` when its doc cannot be loaded or written as markdown.
+ */
+export async function caseTwinOwnFile(
+  vaultPath: string,
+  relativePath: string,
+  noteId: string
+): Promise<OwnTwinFile | null> {
+  if (!isCaseTwinOffFile(vaultPath, relativePath, noteId)) return null
+  const indexDb = getIndexDatabase()
+  const cached = getNoteCacheById(indexDb, noteId)
+  if (!cached) return null
+  return ownFile(indexDb, noteId, cached.title, cached, await convertBody(noteId))
 }
 
 /**

@@ -186,8 +186,10 @@ import {
   deleteNoteCommand,
   moveNoteCommand,
   renameFolderCommand,
-  renameNoteCommand
+  renameNoteCommand,
+  updateNoteCommand
 } from '../notes/domain'
+import { editNoteAliasesCommand } from '../notes/note-aliases'
 import { atomicWrite, safeRead, setVaultFileWriteGuard } from './file-ops'
 import { moveDirectory } from './move-directory'
 import { readyWritebackConverter } from '../sync/converter-worker-bridge'
@@ -1102,7 +1104,23 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
     })
   }, 30_000)
 
-  // An edit of the twin off the shared file patches that file instead (#5742).
+  // #5742: the shared file holds upper's bytes. A UI property edit of lower
+  // patched that file, putting upper's body under lower's header, and lower's
+  // other properties left its rows.
+  it('a UI property edit of the twin off the shared file lands on its own header, and a split writes it', async () => {
+    await propertyTwins(MIXED, '', false)
+
+    expect(await mergeEntityProperties('lower', { extra: 'x' })).toEqual({ success: true })
+    await flushProjectionEvents()
+
+    expect({ file: shared(), rows: getNoteFileProperties(index.db, 'lower') }).toEqual({
+      file: UPPER,
+      rows: { ...mixed(), extra: 'x' }
+    })
+    await deleteNoteCommand('upper')
+    expect(shared()).toBe(serializeNote({ ...mixed(), extra: 'x' }, LOWER))
+  }, 30_000)
+
   it('a UI property edit of the twin on the shared file then a split keeps its property types', async () => {
     await propertyTwins('', MIXED, false)
 
@@ -1882,6 +1900,52 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
       tags: getNoteTags(index.db, 'lower'),
       cover: getNoteCacheById(index.db, 'lower')?.cover
     }).toEqual({ file: UPPER_HEAD + UPPER, tags: ['newtag', 'lowinline'], cover: 'wash:moss' })
+  }, 30_000)
+
+  // #5742: each UI writer of a header (tags, aliases, cover, properties),
+  // on the twin off the shared file.
+  it('UI header edits of the twin off the shared file land on its own header only', async () => {
+    await headerTwins()
+    docs.set('lower', await docOf(LOWER_TAGGED))
+    setNoteTags(index.db, 'lower', { header: ['lowertag'], inline: ['lowertag', 'lowinline'] })
+
+    await updateNoteCommand({ id: 'lower', headerTags: { add: ['newtag'] } })
+    await editNoteAliasesCommand({ id: 'lower', add: ['newalias'], remove: [] })
+    await updateNoteCommand({ id: 'lower', frontmatter: { cover: 'wash:moss' } })
+    await updateNoteCommand({ id: 'lower', properties: { status: 'mid' } })
+    await flushProjectionEvents()
+
+    expect({
+      file: shared(),
+      tags: getNoteTags(index.db, 'lower'),
+      aliases: getAliasesForNotes(index.db, ['lower']).get('lower'),
+      cover: getNoteCacheById(index.db, 'lower')?.cover,
+      properties: getNoteFileProperties(index.db, 'lower')
+    }).toEqual({
+      file: UPPER_HEAD + UPPER,
+      tags: ['lowertag', 'newtag', 'lowinline'],
+      aliases: ['lowalias', 'newalias'],
+      cover: 'wash:moss',
+      properties: { status: 'mid' }
+    })
+    await moveNoteCommand('lower', 'Other')
+    expect(read('Other/a.md')).toMatch(
+      /^---\ntags:\n {2}- lowertag\n {2}- newtag\nstatus: mid\ncover: 'wash:moss'\naliases:\n {2}- lowalias\n {2}- newalias\n---\n[\s\S]*lower \[\[x\]\] #lowertag #lowinline\n$/
+    )
+    expect(await survivorKeepsOwn('upper')).toEqual([])
+  }, 30_000)
+
+  it('a body edit of the twin off the shared file is refused and changes nothing', async () => {
+    await headerTwins()
+
+    await expect(updateNoteCommand({ id: 'lower', content: 'lower edited\n' })).rejects.toThrow(
+      NoteError
+    )
+
+    expect({ file: shared(), crossed: vi.mocked(feedExternalEditToCrdt).mock.calls }).toEqual({
+      file: UPPER_HEAD + UPPER,
+      crossed: []
+    })
   }, 30_000)
 
   it("a peer's header update of the twin on the shared file lands in the file", async () => {
