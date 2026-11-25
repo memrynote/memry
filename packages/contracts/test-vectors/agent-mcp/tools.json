@@ -3369,6 +3369,20 @@
   ],
   "refinements": [
     {
+      "tool": "vault_delete_folder",
+      "path": [
+        "path"
+      ],
+      "message": "Name a folder inside the vault, not the vault itself or a path outside it"
+    },
+    {
+      "tool": "vault_delete_folder",
+      "path": [
+        "path"
+      ],
+      "message": "The folder name ends in a dot or a space, which Windows ignores, so deleting it could delete another folder. Delete the notes in it one by one instead."
+    },
+    {
       "tool": "vault_create_task",
       "path": [
         "due"
