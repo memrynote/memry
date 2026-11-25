@@ -7,6 +7,7 @@
  * @module vault/case-twin-own-file
  */
 
+import { isDeepStrictEqual } from 'node:util'
 import * as Y from 'yjs'
 import { getCrdtProvider } from '../sync/crdt-provider'
 import { readyWritebackConverter } from '../sync/converter-worker-bridge'
@@ -22,6 +23,7 @@ import {
 } from '@main/database/queries/notes'
 import { getNoteMetadataById } from '@memry/storage-data'
 import { applyRemoteFrontmatter } from '../sync/item-handlers/note-handler-frontmatter'
+import { noteCoverFromFrontmatter } from '../sync/item-handlers/note-cover-sync'
 import { getDatabase, type getIndexDatabase } from '../database'
 import { NoteError, NoteErrorCode } from '../lib/errors'
 import { generateContentHash, parseNote, serializeNote, type NoteFrontmatter } from './frontmatter'
@@ -122,29 +124,68 @@ function ownLastHeader(
   return version ? parseNote(version.fileContent).frontmatter : undefined
 }
 
+type OwnBaseline = {
+  cover?: string | null
+  contentHash?: string | null
+  pendingWriteHash?: string | null
+}
+
 /**
- * A note's own file: its prepared doc body under a header rebuilt from its
- * index rows, with the YAML types of its own last header (`ownLastHeader`).
+ * A note's own header: rebuilt from its index rows, with the YAML types of its
+ * own last header (`ownLastHeader`). The header a split writes, a push of a
+ * twin off its shared file sends, and a local edit of that twin starts from.
+ *
+ * Its rows hold header tags, aliases, properties and the cover ref whole. An
+ * image cover's framing and credit have no row, and the shared file holds the
+ * other twin's, so this device never holds them for the twin: its cover is
+ * never edited here (`assertOwnHeaderCoverUnchanged`), and a peer's cover
+ * applied to it is recorded as unframed (`recordRebuiltNoteCover`). The own
+ * last header never stands in for them: a peer's reframe does not reach it.
  */
+export function ownHeader(
+  indexDb: ReturnType<typeof getIndexDatabase>,
+  noteId: string,
+  title: string,
+  cached: OwnBaseline
+): NoteFrontmatter {
+  const cover = isCoverValue(cached.cover) ? cached.cover : null
+  return indexedHeader(indexDb, noteId, title, cover, ownLastHeader(indexDb, noteId, cached))
+}
+
+/**
+ * Throws when a local edit of a case twin off its shared file changes its
+ * cover in any way: ref, removal, framing or credit.
+ *
+ * The rule (#5742, VERIFY-5753R4): such a twin's cover edits are refused until
+ * the twins are split, exactly like its body edits (`offFileBodyEdit`), and its
+ * push never carries `cover`. Its image framing and credit have no row and the
+ * shared file holds the other twin's, so an edit here could only push invented
+ * framing or lose an unpushed change when the twin goes back on its own file.
+ * A peer's cover still applies to it (`recordRebuiltNoteCover`).
+ */
+export function assertOwnHeaderCoverUnchanged(
+  noteId: string,
+  before: NoteFrontmatter,
+  after: NoteFrontmatter
+): void {
+  if (isDeepStrictEqual(noteCoverFromFrontmatter(before), noteCoverFromFrontmatter(after))) return
+  throw new NoteError(
+    'This note shares its file with a note whose name differs only in case, so its cover cannot be changed. Rename one of them, then edit the cover again; nothing was changed',
+    NoteErrorCode.WRITE_FAILED,
+    noteId
+  )
+}
+
+/** A note's own file: its prepared doc body under its own header (`ownHeader`). */
 export function ownFile(
   indexDb: ReturnType<typeof getIndexDatabase>,
   noteId: string,
   title: string,
-  cached: {
-    cover?: string | null
-    contentHash?: string | null
-    pendingWriteHash?: string | null
-  },
+  cached: OwnBaseline,
   prepared: PreparedBody
 ): OwnTwinFile & { cover: string | null } {
   const cover = isCoverValue(cached.cover) ? cached.cover : null
-  const header = indexedHeader(
-    indexDb,
-    noteId,
-    title,
-    cover,
-    ownLastHeader(indexDb, noteId, cached)
-  )
+  const header = ownHeader(indexDb, noteId, title, cached)
   const writing = prepared.body ? toWritingFrontmatterValue(prepared.body.writing) : undefined
   if (writing) header[WRITING_FRONTMATTER_KEY] = writing
   const markdown = prepared.body?.markdown ?? ''

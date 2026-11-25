@@ -19,6 +19,8 @@ import {
 } from '@tests/utils/test-db'
 import type { ApplyContext } from '@memry/sync-client/item-handlers/types'
 import type { Doc } from 'yjs'
+import type { NoteSyncPayload } from '@memry/contracts/sync-payloads'
+import type { VectorClock } from '@memry/contracts/sync-api'
 
 // The drain through its real adapters (#2939): the data and index databases,
 // the vault's day files, the journal handler, `createJournalEntry` and the
@@ -168,7 +170,7 @@ vi.mock('../vault/index', () => ({
   getConfig: () => ({ journalFolder: 'journal', defaultNoteFolder: 'notes' })
 }))
 
-import { deleteNoteMetadata } from '@memry/storage-data'
+import { deleteNoteMetadata, getNoteMetadataById } from '@memry/storage-data'
 import { noteCache } from '@memry/db-schema/schema/notes-cache'
 import { getNoteCacheByPath } from '../database/queries/notes'
 import { resolveJournalEntryId } from '../journal/create-entry'
@@ -177,6 +179,9 @@ import { updateJournalEntry } from '../journal/update-entry'
 import { recordTombstoneClock } from '@memry/sync-client/tombstone-clocks'
 import { _resetBulkApplyForTests } from './bulk-apply'
 import { journalHandler } from './item-handlers/journal-handler'
+import { noteHandler } from './item-handlers/note-handler'
+import { attachmentEvents } from '@memry/sync-client/attachment-events'
+import { initNoteSyncService, resetNoteSyncService } from './note-sync'
 import { getRemoteSyncAdapter } from './item-handlers'
 import {
   ensureJournalDay,
@@ -898,13 +903,84 @@ describe('runJournalDayMerges', () => {
       expect(fs.readFileSync(path.join(vaultPath, PHOTO), 'utf-8')).toBe('png bytes')
       expect(owedNoteDownloads(ctx.db, vaultPath, DAY, true)).toEqual([])
       expect(listOwedJournalDayMerges(ctx.db)).toEqual([])
-      expect(
-        data.db
+    })
+
+    // #5746: a device that never held the foreign row gets the folded body,
+    // and the day's pictures only by a `note` record under the day's id.
+    it('names them to a device that never held the foreign row, which asks for them', async () => {
+      initNoteSyncService({
+        queue: new SyncQueueManager(asClientDb(data.db)),
+        getDeviceId: () => 'me'
+      })
+      const b = { data: createTestDataDb(), index: createTestIndexDb() }
+      const asked: Array<{ noteId: string; attachmentId: string }> = []
+      const listener = ({ noteId, attachmentId }: { noteId: string; attachmentId: string }) =>
+        asked.push({ noteId, attachmentId })
+      attachmentEvents.onDownloadNeeded(listener)
+      try {
+        foreignHolderWithPhoto()
+        journalHandler.applyUpsert(ctx, FOREIGN, { date: DATE, content: 'theirs\n' }, { minter: 3 })
+        await drain()
+        const pushed = data.db
           .select()
           .from(syncQueue)
           .all()
-          .filter((row) => row.type === 'note')
-      ).toEqual([])
+          .filter((row) => row.type === 'note' && row.itemId === DAY)
+        expect(pushed.map((row) => row.operation)).toEqual(['update'])
+        // What the push sends for the queued row, read at push time.
+        const wire = noteHandler.buildPushPayload(ctx.db, DAY, 'me', 'update')
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the note wire record
+        const record = JSON.parse(wire ?? '{}') as NoteSyncPayload & { clock: VectorClock }
+
+        // Device B: a fresh vault pulls the day, then its `note` record.
+        dbs.data = b.data.db
+        dbs.index = b.index.db
+        fs.rmSync(vaultPath, { recursive: true, force: true })
+        fs.mkdirSync(path.join(vaultPath, 'journal'), { recursive: true })
+        const ctxB: ApplyContext = { db: asSyncDb(b.data.db), emit: vi.fn() }
+        journalHandler.applyUpsert(
+          ctxB,
+          DAY,
+          { date: DATE, content: `![photo](../${PHOTO})\n` },
+          record.clock
+        )
+        noteHandler.applyUpsert(ctxB, DAY, record, record.clock)
+
+        expect(getNoteMetadataById(ctxB.db, DAY)?.attachmentReferences).toEqual(['att-f'])
+        expect(asked).toEqual([{ noteId: DAY, attachmentId: 'att-f' }])
+      } finally {
+        attachmentEvents.offDownloadNeeded(listener)
+        resetNoteSyncService()
+        dbs.data = data.db
+        dbs.index = index.db
+        b.data.close()
+        b.index.close()
+      }
+    })
+
+    // VERIFY-5743R3: a stale file the body does not embed is not the picture.
+    it('pairs no lone file the folded text does not embed', async () => {
+      foreignRow({ minter: 2 }, { body: 'no picture here\n' })
+      data.db
+        .update(noteMetadata)
+        .set({ attachmentReferences: ['att-f'] })
+        .where(eq(noteMetadata.id, FOREIGN))
+        .run()
+      fs.mkdirSync(path.join(vaultPath, 'attachments', FOREIGN), { recursive: true })
+      fs.writeFileSync(path.join(vaultPath, PHOTO), 'stale bytes')
+      journalHandler.applyUpsert(ctx, FOREIGN, { date: DATE, content: 'theirs\n' }, { minter: 3 })
+
+      await drain()
+
+      expect(refsOf(DAY)).toEqual(['att-f'])
+      expect(
+        data.db
+          .select({ path: attachmentFiles.path, attachmentId: attachmentFiles.attachmentId })
+          .from(attachmentFiles)
+          .where(eq(attachmentFiles.noteId, DAY))
+          .all()
+      ).toEqual([{ path: PHOTO, attachmentId: null }])
+      expect(fs.readFileSync(path.join(vaultPath, PHOTO), 'utf-8')).toBe('stale bytes')
     })
 
     // REVIEW-5743: a row from before the file record (#2651) has refs and no record.

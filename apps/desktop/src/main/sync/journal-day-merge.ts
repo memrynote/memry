@@ -47,8 +47,14 @@ import { getJournalRelativePath, parseJournalEntry, readJournalTextSync } from '
 import { deleteNoteFromCache } from '../vault/note-sync'
 import { relinkTasksToMergedNote } from '../notes/runtime-effects'
 import { EMPTY_DOC_UPDATE_BYTES, getCrdtProvider } from './crdt-provider'
-import { countNoteFiles, isRecordedAttachment, ownFolderFiles } from './attachment-files'
+import {
+  countNoteFiles,
+  isRecordedAttachment,
+  ownFolderFiles,
+  referencedVaultFiles
+} from './attachment-files'
 import { getJournalSyncService } from './journal-sync'
+import { enqueueLocalSyncUpdate } from './local-mutations'
 import { JOURNAL_DAY_MERGE_KEY_PREFIX as KEY_PREFIX } from './journal-day-merge-key'
 import { recordPendingDelete } from './pending-deletes'
 
@@ -348,17 +354,27 @@ function unionOf(a: string[] | null | undefined, b: string[] | null | undefined)
  * The day takes over the foreign id's attachments: its references, and its
  * file records, so `attachments/<foreignId>/…` that the folded body embeds
  * still resolves and is neither downloaded again nor uploaded as a second
- * copy. The files stay where they are. Nothing is pushed: the folded body
- * already reaches peers, and a `note` record under the day's id is what
- * #5730 keeps from being pushed. Idempotent, so a crash before the tombstone
- * carries the same set again. False when the day has no row to carry to.
+ * copy. The files stay where they are. Idempotent, so a crash before the
+ * tombstone carries the same set again. False when the day has no row to
+ * carry to.
+ *
+ * A day's pictures are fetchable wherever the day is. A journal payload has
+ * no `attachmentReferences`, so the day names them to peers in a `note`
+ * record under its id, as an upload to the day does (`recordOnNote`, #5731).
+ * The server keeps each attachment by its own id, not by note (chapter 14
+ * §14.7), so the bytes the foreign id uploaded need no second upload: a
+ * device that never held the foreign row fetches them once the day names
+ * their ids (#5746). Pushed on every carry, so a crash between the row write
+ * and the push still names them on the retry.
  */
 function carryAttachments(
   db: DrizzleDb,
   vaultPath: string,
   foreignId: string,
   targetId: string,
-  references: string[]
+  references: string[],
+  /** The foreign text folded into the day, when the fold built it from text. */
+  body: string | null
 ): boolean {
   const day = getNoteMetadataById(db, targetId)
   if (!day) return false
@@ -376,7 +392,9 @@ function carryAttachments(
       .onConflictDoNothing()
       .run()
   }
-  recordUnnamedFiles(db, vaultPath, foreignId, targetId, references)
+  const embedded = body ? referencedVaultFiles(body, vaultPath, day.path, foreignId) : []
+  recordUnnamedFiles(db, vaultPath, foreignId, targetId, references, embedded)
+  if (references.length > 0) enqueueLocalSyncUpdate('note', targetId)
   return true
 }
 
@@ -387,8 +405,11 @@ function carryAttachments(
  * The files there that no record pairs with an id hold those references.
  * Ids are random per upload, stored names carry no id, and this device keeps
  * no hash or size per id, so a file pairs with an id only when one reference
- * and one file are unrecorded. Otherwise the files are counted as known, as
- * `recordAttachmentFile` counts an older note's, so none is uploaded again,
+ * and one file are unrecorded and the text folded into the day embeds that
+ * file: a stale file left in the folder is not the picture (VERIFY-5743R3).
+ * With no text, as when the body came as Yjs state, nothing pairs.
+ * Otherwise the files are counted as known, as `recordAttachmentFile` counts
+ * an older note's, so none is uploaded again,
  * and the references stay owed: the downloader moves a file that is really
  * missing to where the body links it, and one already here may land a second
  * copy (VERIFY-5743R2).
@@ -398,7 +419,8 @@ function recordUnnamedFiles(
   vaultPath: string,
   foreignId: string,
   targetId: string,
-  references: string[]
+  references: string[],
+  embedded: string[]
 ): void {
   const unnamed = references.filter((id) => !isRecordedAttachment(db, targetId, id))
   if (unnamed.length === 0) return
@@ -417,7 +439,7 @@ function recordUnnamedFiles(
   // A file is recorded under an attachment id only when nothing else could be
   // that attachment. Directory order is not upload order, so two or more never
   // pair by position: a wrong pair revives the wrong bytes under an id.
-  if (files.length !== 1 || unnamed.length !== 1) {
+  if (files.length !== 1 || unnamed.length !== 1 || !embedded.includes(files[0])) {
     countNoteFiles(db, vaultPath, targetId, files)
     log.warn('A foreign journal names attachments no file can be paired with', {
       foreignId,
@@ -540,7 +562,7 @@ async function mergeOne(deps: JournalDayMergeDeps, merge: OwedJournalDayMerge): 
     const owed = listOwedJournalDayMerges(deps.db).find((o) => o.foreignId === merge.foreignId)
     const added = owed ? addedTags(owed) : tags
     if (added.length > 0) await deps.addDayTags(merge.date, added)
-    carryAttachments(deps.db, deps.vaultPath, merge.foreignId, targetId, references)
+    carryAttachments(deps.db, deps.vaultPath, merge.foreignId, targetId, references, fallback)
   }
 
   // A forgotten id goes from this device, as in the core: a row a pre-fix
@@ -554,7 +576,7 @@ async function mergeOne(deps: JournalDayMergeDeps, merge: OwedJournalDayMerge): 
       return false
     }
     if (
-      !carryAttachments(deps.db, deps.vaultPath, merge.foreignId, targetId, references) &&
+      !carryAttachments(deps.db, deps.vaultPath, merge.foreignId, targetId, references, null) &&
       references.length
     ) {
       log.warn('A forgotten foreign journal leaves its attachments with no day', describe(merge))
