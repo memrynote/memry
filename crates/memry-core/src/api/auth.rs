@@ -22,6 +22,7 @@ use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
 
 use crate::api::errors::{ApiError, AuthError, SecureStoreError};
+use crate::api::sync::NotFoundMemory;
 use crate::protocol::auth::{
     AuthRoutes, DeviceFormFactor, DevicePlatform, DeviceRegisterRequest, RenewSetupTokenRequest,
     TokenClaims, TokenManager, VerifyOtpRequest, random_nonce, sign_device_challenge,
@@ -194,6 +195,8 @@ pub struct AuthSession {
     device: DeviceDescriptor,
     state: Mutex<AuthState>,
     pending: Mutex<PendingSignIn>,
+    /// The manifests a note open was answered 404 for (#5247).
+    pub(crate) manifest_not_found: NotFoundMemory,
 }
 
 impl AuthSession {
@@ -336,6 +339,7 @@ impl AuthSession {
             device,
             state: Mutex::new(AuthState::SignedOut),
             pending: Mutex::new(PendingSignIn::default()),
+            manifest_not_found: NotFoundMemory::default(),
         })
     }
 
@@ -590,6 +594,7 @@ impl AuthSession {
             let mut pending = self.pending.lock().unwrap_or_else(|e| e.into_inner());
             *pending = PendingSignIn::default();
         }
+        self.manifest_not_found.clear();
         self.apply(AuthEvent::SignedOutByUser, "sign out")
     }
 }

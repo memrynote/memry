@@ -311,7 +311,7 @@ struct NoteReadView: View {
                             )
                             }
                         },
-                        tapBelowBody: editorModel.canEdit && model.preview != .notPulled
+                        tapBelowBody: model.tapStartsParagraph(canEdit: editorModel.canEdit)
                             ? { Task { await focusBody(atEnd: true) } } : nil
                     )
                 }
