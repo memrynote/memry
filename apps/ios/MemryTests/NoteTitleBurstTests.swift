@@ -1046,6 +1046,41 @@ extension KeyWindowSuites {
             #expect(field.text == "Fook")
         }
 
+        /// #5820: an iPad window going to the background while others stay
+        /// posts only its scene's notification, which ends the composition and
+        /// saves the title.
+        @Test(.timeLimit(.minutes(1))) func a_composing_title_is_saved_as_its_window_backgrounds() async throws {
+            let note = try fixture()
+            let (window, field) = try await open(note)
+            defer { window.isHidden = true }
+
+            for key in "Foo" { field.insertText(String(key)) }
+            field.setMarkedText("k", selectedRange: NSRange(location: 1, length: 0))
+            try await settle(note)
+            note.notifications.post(name: UIScene.didEnterBackgroundNotification, object: window.windowScene)
+
+            try await expectTitle(note, "Fook")
+            #expect(field.markedTextRange == nil)
+        }
+
+        /// #5820: another window going to the background leaves this title's
+        /// composition alone.
+        @Test(.timeLimit(.minutes(1))) func another_window_backgrounding_keeps_the_composition() async throws {
+            let note = try fixture()
+            let (window, field) = try await open(note)
+            defer { window.isHidden = true }
+
+            for key in "Foo" { field.insertText(String(key)) }
+            field.setMarkedText("k", selectedRange: NSRange(location: 1, length: 0))
+            try await settle(note)
+            // A test host has one scene: no scene stands for another window's.
+            note.notifications.post(name: UIScene.didEnterBackgroundNotification, object: nil)
+            try await settle(note)
+
+            #expect(field.markedTextRange != nil, "another window ended the composition")
+            #expect(try await stored(note).title == "", "another window saved the title")
+        }
+
         /// The iPad notes list moving the focus from the title to its selected
         /// row, as UIKit reports it, and the title's text view letting go.
         private func listSteals(from field: UITextView, in window: UIWindow) {

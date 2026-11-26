@@ -41,6 +41,7 @@ import { ASSET_RELEASE_GRACE_MS } from '../canvas/assets/asset-store'
 import { contentHashFromRef, extractSceneFileRefs } from '../canvas/assets/memry-assets'
 import { readCanvasScene } from '../canvas/store'
 import { createLogger } from '../lib/logger'
+import { recordDeletedNoteAssets } from '@memry/storage-data'
 
 const log = createLogger('DeletedAssetRelease')
 
@@ -66,6 +67,10 @@ export function recordDeletedItemAssets(
   itemId: string,
   now = Date.now()
 ): void {
+  if (itemType === 'note') {
+    recordDeletedNoteAssets(db, itemId, now)
+    return
+  }
   let attachmentIds: string[] | null = null
   if (itemType === 'inbox') {
     // A filed item's blob belongs to the note it joined, which keeps it.
@@ -76,14 +81,6 @@ export function recordDeletedItemAssets(
       .get()
     if (!item?.id || item.filedAt) return
     attachmentIds = [item.id]
-  } else if (itemType === 'note') {
-    const note = db
-      .select({ refs: noteMetadata.attachmentReferences, own: noteMetadata.attachmentId })
-      .from(noteMetadata)
-      .where(eq(noteMetadata.id, itemId))
-      .get()
-    attachmentIds = [...new Set([...(note?.refs ?? []), ...(note?.own ? [note.own] : [])])]
-    if (attachmentIds.length === 0) return
   } else {
     const hasAssets = db
       .select({ id: canvasAssets.canvasId })

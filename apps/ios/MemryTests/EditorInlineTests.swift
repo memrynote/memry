@@ -271,6 +271,34 @@ struct EditorCommitBaseTests {
         #expect(!field.dirty)
     }
 
+    /// #5820: an iPad window resigning while others stay active posts only
+    /// its scene's notification, which commits the focused block's typing.
+    @Test(.timeLimit(.minutes(1))) func its_window_resigning_commits_the_focused_blocks_typing() async throws {
+        let editor = RecordingEditor()
+        let model = NoteEditorViewModel(noteId: "note-1", editor: editor)
+        // A private center: the app-wide one reaches every suite's editors.
+        let center = NotificationCenter()
+        let session = EditorSession(notifications: center)
+        session.model = model
+        let style = BlockText.Style(font: .systemFont(ofSize: 17), ink: .label, titleExists: nil)
+        let field = BlockField(block: paragraph("hello"), session: session, style: style, alignment: .natural)
+        field.render()
+        let window = UIWindow(windowScene: try #require(UIApplication.shared.connectedScenes.first as? UIWindowScene))
+        window.addSubview(field.textView)
+        defer { window.isHidden = true }
+        session.focusChanged(to: field)
+        field.textView.text = "hello world"
+        field.dirty = true
+
+        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+            session.reload = { done.resume() }
+            center.post(name: UIScene.willDeactivateNotification, object: window.windowScene)
+        }
+
+        #expect(editor.all == [.replaceText(blockId: "a", text: "hello world", base: "hello")])
+        #expect(!field.dirty)
+    }
+
     /// #2820: a second resign while the first's write is in flight holds its
     /// own background task, and the first write landing does not end it.
     @Test(.timeLimit(.minutes(1))) func a_later_resigns_write_stays_protected_when_an_earlier_one_lands() async {

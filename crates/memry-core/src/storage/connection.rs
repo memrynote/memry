@@ -27,7 +27,7 @@
 
 use std::path::Path;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex, MutexGuard, OnceLock, Weak};
+use std::sync::{Arc, Mutex, MutexGuard, OnceLock, PoisonError, Weak};
 
 use rusqlite::Connection;
 
@@ -51,10 +51,25 @@ pub struct Db {
     /// read-only connection cannot, so the writer has to be the last one out or
     /// `data.db-wal` outlives the handle holding every recent write.
     readers: Option<Arc<ReaderPool>>,
-    writer: Arc<Mutex<Connection>>,
+    writer: Arc<Shared>,
     /// Calls blocked on `writer` right now ([`Db::writers_waiting`]).
     waiting: Arc<AtomicUsize>,
     observer: Arc<OnceLock<Weak<dyn BodyObserver>>>,
+}
+
+/// The writer connection.
+struct Shared {
+    conn: Mutex<Connection>,
+}
+
+/// The last user of the connection is gone, so the database is closing, as a
+/// vault close or a sign-out closes it: the note bodies kept decoded for it go
+/// with it, before the connection itself closes.
+impl Drop for Shared {
+    fn drop(&mut self) {
+        let conn = self.conn.get_mut().unwrap_or_else(PoisonError::into_inner);
+        crate::crdt::resident::release_connection(conn);
+    }
 }
 
 impl Db {
@@ -79,8 +94,16 @@ impl Db {
         conn.set_prepared_statement_cache_capacity(STATEMENT_CACHE_CAPACITY);
         // The writer has created the file and persisted WAL by now.
         let readers = ReaderPool::open(path, profile)?;
+        let writer = Arc::new(Shared {
+            conn: Mutex::new(conn),
+        });
+        {
+            // Registered at its final address, inside the `Arc`.
+            let conn = writer.conn.lock().unwrap_or_else(PoisonError::into_inner);
+            crate::crdt::resident::open_connection(&conn);
+        }
         Ok(Self {
-            writer: Arc::new(Mutex::new(conn)),
+            writer,
             readers: Some(Arc::new(readers)),
             waiting: Arc::default(),
             observer: Arc::default(),
@@ -99,7 +122,9 @@ impl Db {
         pragmas::configure_writer(&conn, Profile::Data)?;
         conn.set_prepared_statement_cache_capacity(STATEMENT_CACHE_CAPACITY);
         Ok(Self {
-            writer: Arc::new(Mutex::new(conn)),
+            writer: Arc::new(Shared {
+                conn: Mutex::new(conn),
+            }),
             readers: None,
             waiting: Arc::default(),
             observer: Arc::default(),
@@ -253,8 +278,8 @@ fn set_query_only(conn: &Connection, on: bool) -> Result<(), StorageError> {
 /// that finds one open finds a dead one: its drop could not roll it back. A
 /// `begin` inside it would open a savepoint whose RELEASE commits nothing, so
 /// it is rolled back first, and the call fails when that fails too.
-fn lock(conn: &Arc<Mutex<Connection>>) -> Result<MutexGuard<'_, Connection>, StorageError> {
-    let guard = conn.lock().map_err(|_| StorageError::Failed {
+fn lock(shared: &Shared) -> Result<MutexGuard<'_, Connection>, StorageError> {
+    let guard = shared.conn.lock().map_err(|_| StorageError::Failed {
         what: "the database mutex was poisoned by a panic in an earlier statement".to_owned(),
     })?;
     if !guard.is_autocommit() {

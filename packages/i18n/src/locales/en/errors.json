@@ -46,6 +46,7 @@
     "appendBlocksFailed": "Failed to move the block to that note",
     "caseTwinMoveRefused": "This note shares its file with a note whose name differs only in case, so it can't be moved this way. Rename or move the other note, or delete the copy you don't need.",
     "appendIntoCaseTwin": "That note shares its file with a note whose name differs only in case. Rename one of them, then move the block again.",
+    "appendIntoBinary": "A block can only move into a note, not into an image, PDF, audio or video file.",
     "exportPdfFailed": "Failed to export PDF",
     "exportHtmlFailed": "Failed to export HTML",
     "restoreVersionFailed": "Failed to restore version",
@@ -77,6 +78,9 @@
     "uploadFailed": "Attachment upload failed",
     "uploadProgressFailed": "Failed to fetch upload progress",
     "downloadFailed": "Attachment download failed",
+    "downloadGone": "This file is no longer on the sync server. If another device still has it, add it again from that device.",
+    "downloadMissing": "This file isn't on the sync server yet. Open it again tomorrow to check.",
+    "downloadNeedsSync": "Sync isn't running, so this file can't be downloaded. It downloads on its own once sync runs.",
     "downloadProgressFailed": "Failed to fetch download progress",
     "exceedsMaxSize": "File too large: {size} exceeds {limit} limit",
     "exceedsPlanLimit": "File is larger than your plan allows: {size} exceeds {limit}",
@@ -242,6 +246,8 @@
     "keptNotPulled": "This folder has a note whose file was deleted outside memrynote, and its text hasn't synced to this device yet, so it can't go to the trash. Nothing was deleted. Wait for it to sync, or delete that note on its own first.",
     "keptUnwritable": "This folder has a note whose file was deleted outside memrynote, and its text can't be saved to a file for the trash. Nothing was deleted. Delete that note on its own first.",
     "trashUnavailable": "This folder couldn't be moved to the trash. Anything still in it wasn't deleted.",
+    "deleteCaseTwins": "This folder and a folder with the same name spelled differently, such as in another case, are one folder on disk, so deleting it would delete the notes in both. Delete the notes you don't need one by one instead.",
+    "deleteWindowsName": "This folder's name ends in a dot or a space, which Windows ignores, so deleting it could delete another folder too. Delete the notes in it one by one instead.",
     "setConfigFailed": "Failed to set folder config"
   },
   "folderView": {

@@ -22,6 +22,7 @@
 //! | a queued edit of a deleted row is never sent                  | §5.8, #5413      |
 //! | a re-create whose clock is after the delete is still sent     | §5.8 client rule |
 //! | a settings edit over a deleted payload-less row pushes merged | #5433            |
+//! | a captive portal's answers never release a settings hold      | #5247            |
 
 use crate::http_fakes;
 
@@ -963,6 +964,55 @@ async fn settings_re_pulls_failing_with_a_server_error_keep_the_seeded_edit_held
         )
     })
     .await;
+}
+
+/// VERIFY-5447 r4 #8: a captive portal or proxy answers in the server's place.
+/// None of its answers is about the server copy or the request, so passes past
+/// [`MAX_FAILURES`] of each keep the one-key edit held.
+#[tokio::test]
+async fn settings_re_pulls_a_captive_portal_answers_keep_the_seeded_edit_held() {
+    let answers = [
+        (
+            "settings-portal-page",
+            200,
+            "<html>Sign in to the network</html>",
+        ),
+        ("settings-portal-empty", 200, "{}"),
+        ("settings-portal-403", 403, "<html>Forbidden</html>"),
+        (
+            "settings-portal-407",
+            407,
+            "<html>Proxy authentication</html>",
+        ),
+    ];
+    for (label, status, body) in answers {
+        held_passes(label, 52, true, || response(status, body)).await;
+    }
+}
+
+/// The server's own refusal of the re-pull is about the request and may
+/// persist: the fiftieth releases the seeded edit.
+#[tokio::test]
+async fn settings_re_pulls_the_server_refuses_release_the_seeded_edit() {
+    let transport = FakeTransport::new(vec![]);
+    let (vault, side, session) = vault("settings-refetch-refused", transport.clone());
+    seed_settings_edit(&side);
+    let sync = vault.sync(session);
+    for pass in 0..50 {
+        transport.push(devices(true));
+        transport.push(response(
+            400,
+            r#"{"error":{"code":"VALIDATION_ERROR","message":"bad ids"}}"#,
+        ));
+        transport.push(empty_changes());
+        if pass == 49 {
+            transport.push(accepted("synced_settings"));
+        }
+        push_due(&side);
+        let summary = sync.sync_now().await.expect("a pass");
+        let pending = if pass == 49 { 0 } else { 1 };
+        assert_eq!(summary.pending, pending, "pass {pass}: {summary:?}");
+    }
 }
 
 /// The server answers well-formed pages that leave `synced_settings` out: it

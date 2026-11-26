@@ -6,9 +6,9 @@
  * touches Electron or the databases — it opens one file, crosses it once
  * through fixed windows, and posts the result back.
  *
- * Two jobs share the entry: the line-offset scan, and an in-file search. Both
- * are one pass over every byte, which is a stall at 2 GB wherever it runs, so
- * both belong off the main thread.
+ * Three jobs share the entry: the line-offset scan, an in-file search, and a
+ * file's sha256. Each is one pass over every byte, which is a stall at 2 GB
+ * wherever it runs, so each belongs off the main thread.
  *
  * Progress is throttled: a 2 GB pass is ~500 windows, and a message per window
  * would cost more in structured clones than the pass does in reads.
@@ -19,6 +19,7 @@ import type { FileHandle } from 'fs/promises'
 import { parentPort, workerData } from 'worker_threads'
 import { fileHandleReader, scanLineIndex } from './large-file-index'
 import { findMatches } from './large-file-search'
+import { sha256OfFile } from './file-sha256'
 import type {
   IndexWorkerInput,
   LargeFileWorkerInput,
@@ -81,6 +82,10 @@ async function runSearch(input: SearchWorkerInput, handle: FileHandle): Promise<
 async function run(): Promise<void> {
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- worker message payload is untyped; sender in this module posts only this union
   const input = workerData as LargeFileWorkerInput
+  if (input.kind === 'hash') {
+    post({ type: 'hash-done', sha256: await sha256OfFile(input.absolutePath) })
+    return
+  }
   const handle = await fs.open(input.absolutePath, 'r')
   try {
     if (input.kind === 'search') {

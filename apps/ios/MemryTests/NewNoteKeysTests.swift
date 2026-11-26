@@ -501,6 +501,53 @@ extension KeyWindowSuites {
             #expect(NewNoteJournal(url: url).stranded(in: "v2").isEmpty)
         }
 
+        /// #5820: an iPad window going to the background while others stay
+        /// posts only its scene's notification. The keys held in that window end
+        /// their hold and are written; another window's hold and keys stay.
+        @Test("a window going to the background ends only its own hold and writes only its note's keys")
+        func aWindowLeavingEndsOnlyItsHold() throws {
+            let center = NotificationCenter()
+            let seeds = NewNoteSeeds(notifications: center)
+            textView().becomeFirstResponder()
+            let staying = NewNoteKeys(window: window, seeds: seeds)
+            try type("kz")
+            staying.made("there") { _, _ in }
+            let leaving = try sceneWindow()
+            leaving.rootViewController = UIViewController()
+            // Visible, not key: the key window belongs to the suites running alongside.
+            leaving.isHidden = false
+            defer { leaving.isHidden = true }
+            let scene = try #require(leaving.windowScene)
+            try #require(window.windowScene !== scene, "the other window shares the leaving one's scene")
+
+            let keys = NewNoteKeys(window: leaving, seeds: seeds)
+            try type("milk", in: leaving)
+            keys.made("here") { _, _ in }
+            center.post(name: UIScene.didEnterBackgroundNotification, object: scene)
+
+            #expect(firstResponder(in: leaving) == nil, "the leaving window's hold did not end")
+            #expect(seeds.take("here") == nil, "the leaving window's keys were not written")
+            #expect(firstResponder(in: window) != nil, "the other window's hold ended")
+            #expect(seeds.take("there") == "kz", "the other window's keys were written")
+        }
+
+        /// A scene notification that names no scene ends no hold: only the app
+        /// leaving ends every one.
+        @Test("a scene notification for no scene ends no hold")
+        func anUnrelatedSceneNotificationEndsNoHold() throws {
+            let center = NotificationCenter()
+            let seeds = NewNoteSeeds(notifications: center)
+            textView().becomeFirstResponder()
+
+            let keys = NewNoteKeys(window: window, seeds: seeds)
+            try type("milk")
+            keys.made("new") { _, _ in }
+            center.post(name: UIScene.didEnterBackgroundNotification, object: NSObject())
+
+            #expect(firstResponder(in: window) != nil, "the hold ended")
+            #expect(seeds.take("new") == "milk", "the keys were written")
+        }
+
         @Test("a title that appeared keeps the hold until its field takes the caret")
         func aShownTitleKeepsTheHold() async throws {
             var settled: CheckedContinuation<Void, Never>?

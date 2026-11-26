@@ -142,7 +142,9 @@ struct NotePageContent<EmptyBody: View>: View {
             NotePropertiesBlock(model: model, metadata: metadata, metadataModel: metadataModel)
         }
         let preview = NoteBodyPreview.of(detail.body)
-        if (model.blocks.isEmpty && model.showsPreview(preview)) || keepsEmptyBody {
+        if let file = model.file {
+            NoteFileView(file: file, fetch: model.fileFetch) { Task { await model.fetchFile() } }
+        } else if (model.blocks.isEmpty && model.showsPreview(preview)) || keepsEmptyBody {
             // No blocks to draw. Which of the three reasons it is — never
             // pulled, genuinely empty, or a walk that failed — is the
             // caller's to say.
@@ -170,6 +172,7 @@ struct NotePageContent<EmptyBody: View>: View {
             )
             .environment(\.openNote, open)
             .environment(\.portalHostNote, detail.summary.id)
+            .environment(\.attachmentDownloads, model)
             .modifier(EditorAttachmentSources(source: $attaching, composer: composer, session: editorModel.session))
             .modifier(MoveBlockPresenter(session: editorModel.session, notes: model.vaultNotes, currentNoteId: detail.summary.id))
             .sheet(item: Binding(
@@ -206,7 +209,7 @@ struct NotePageContent<EmptyBody: View>: View {
                 .accessibilityHidden(true)
         }
         // Read only (N604): §12.5.1 forbids writing them.
-        ReviewCommentsSection(comments: inspectorShown ? [] : model.comments)
+        ReviewCommentsSection(comments: inspectorShown ? [] : model.shownComments)
             // On a view that is always present, so the first block typed
             // into an empty note is seen too.
             .onChange(of: model.blocks, initial: true) { syncInlineTags() }
@@ -301,7 +304,7 @@ struct NotePageEnvironment: ViewModifier {
             .environment(\.noteTasks, taskBridge)
             .environment(
                 \.reviewMarks,
-                ReviewMarkStyle.unambiguous(model.comments, in: model.exportText)
+                ReviewMarkStyle.unambiguous(model.shownComments, in: model.exportText)
             )
     }
 }

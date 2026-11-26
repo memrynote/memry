@@ -18,12 +18,12 @@ import type { VectorClock } from '@memry/contracts/sync-api'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
 import { extractFolderFromPath, getNoteSyncService } from '../note-sync'
 import { recordAppMove, recordAppWrite } from '../../vault/app-writes'
-import { baselineAfterWrite } from '../writeback-baseline'
+import { baselineAfterWrite, holdsUningestedEdit } from '../writeback-baseline'
 import { getCrdtProvider } from '../crdt-provider'
 import { deleteSyncedVaultFile, writeSyncedVaultFile } from '../bulk-apply'
 import { scheduleDeletedFolderPrune } from '../deleted-folder-prune'
 import { noteRevived } from '../note-attachment-revival'
-import { keepUnseenText, readNoteFileBody } from '../keep-unseen-text'
+import { keepUnseenBinary, keepUnseenText, readNoteFileBody } from '../keep-unseen-text'
 import { emitNoteUpdated } from '@memry/sync-client/note-events'
 import { attachmentEvents } from '@memry/sync-client/attachment-events'
 import {
@@ -36,7 +36,9 @@ import { getIndexDatabase } from '../../database/client'
 import { generateNotePath, generateFilePath, generateUniquePathSync } from '../../vault/file-ops'
 import { toAbsolutePath, toRelativePath, getVaultRoot } from '../../vault/notes'
 import { readVaultFileSync } from '../../lib/paths'
+import { isAttachmentStoreRow, isInAttachmentStore } from '@memry/shared/attachment-store'
 import { getNoteAttachmentsDir } from '../../vault/attachments'
+import { recordDeclinedRef } from '@memry/sync-client/declined-refs'
 import { getStatus as getVaultStatus } from '../../vault/status'
 import {
   generateContentHash,
@@ -87,9 +89,10 @@ import {
   askForCaseTwinOwnBytes,
   planBinaryCaseTwinMove,
   planCaseTwinLeave,
-  planCaseTwinMove,
-  sharesCaseTwinFile
+  planCaseTwinMove
 } from '../../vault/case-twin-file'
+import { sharesCaseTwinFile } from '../../vault/case-twin-shared-file'
+import { updateCaseTwinOffFile } from '../../vault/case-twin-off-file'
 import {
   healBinaryNoteRecord,
   isMarkdownRecordOverBinaryNote,
@@ -105,7 +108,8 @@ import {
 import {
   applyNoteCoverToFrontmatter,
   clearNoteCoverMarker,
-  recordAppliedNoteCover
+  recordAppliedNoteCover,
+  recordRebuiltNoteCover
 } from './note-cover-sync'
 
 const log = createLogger('NoteHandler')
@@ -184,20 +188,23 @@ function requestEmbeddedAttachmentDownloads(
     // Skips what is already in flight, what already downloaded this session,
     // and what the server has answered 404 for — that last one persisted, so a
     // sync stop/start or a relaunch no longer replays the dead request.
-    if (!shouldAttemptDownload(db, itemId, attachmentId)) continue
-    markDownloadRequested(itemId, attachmentId)
+    const claim = shouldAttemptDownload(db, itemId, attachmentId)
+      ? markDownloadRequested(itemId, attachmentId)
+      : null
+    if (!claim) continue
     const delivered = attachmentEvents.emitDownloadNeeded({
       noteId: itemId,
       attachmentId,
       diskPath: attachmentsDir,
       intoDir: true,
-      ...(Number.isFinite(recencyMs) ? { recencyHint: recencyMs } : {})
+      ...(Number.isFinite(recencyMs) ? { recencyHint: recencyMs } : {}),
+      claim
     })
     // `unregisterAttachmentHandlers()` removes every 'download-needed' listener
     // on sync-runtime restart, sign-out/in and token churn, so a dropped emit
     // has no downloader to report an outcome. Release the claim immediately or
     // the attachment is never asked for again for the life of the process.
-    if (!delivered) releaseDownloadAttempt(itemId, attachmentId)
+    if (!delivered) releaseDownloadAttempt(claim)
   }
 }
 
@@ -241,8 +248,40 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
     const remoteClock = Object.keys(clock).length > 0 ? clock : (data.clock ?? {})
     const now = utcNow()
 
+    // A binary record in the attachment store is a note an older Windows build
+    // made of an attachment file (#5607). This device keeps no row for one,
+    // and the vault-open pass drops any it has (`vault/stray-attachment-rows`).
+    if (
+      data.fileType &&
+      isBinaryFileType(data.fileType) &&
+      isInAttachmentStore(data.folderPath ?? '')
+    ) {
+      recordDeclinedRef(ctx.db, { type: 'note', id: itemId })
+      return 'skipped'
+    }
+
     const existing = getNoteMetadataById(ctx.db, itemId)
-    if (existing && belongsToOtherType(itemId, 'note', existing)) return 'skipped'
+    if (existing && belongsToOtherType(itemId, 'note', existing)) {
+      // A journal day's pictures ride a `note` record under the day's id: the
+      // journal payload has no `attachmentReferences` (#5731). The row stays
+      // the journal's; only the references merge.
+      const mergedRefs = mergeAttachmentReferences(
+        existing.attachmentReferences,
+        data.attachmentReferences
+      )
+      if (mergedRefs) {
+        updateNoteMetadata(ctx.db, itemId, {
+          attachmentReferences: pruneUnresolvableReferences(ctx.db, itemId, mergedRefs)
+        })
+        requestEmbeddedAttachmentDownloads(
+          ctx.db,
+          itemId,
+          data.attachmentReferences,
+          data.modifiedAt
+        )
+      }
+      return 'skipped'
+    }
 
     if (existing) {
       const resolution = this.resolveUpsertClock(ctx, itemId, existing.clock, remoteClock, data)
@@ -273,7 +312,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
           ctx.db,
           existing,
           data.attachmentId,
-          resolution.action === 'merge'
+          resolution.action === 'merge' ? remoteClock : undefined
         )
         const newTitle = data.title ?? existing.title
         const titleChanged = newTitle !== existing.title
@@ -454,8 +493,8 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
         // A case twin's file is the other twin's too (#5498). Planned before
         // anything here changes: a throw fails the item with nothing moved, and
         // a not-ready one is retried by the pull. Its own file lands at the new
-        // path in one step with the other twin's, and the frontmatter below is
-        // applied to it in place.
+        // path in one step with the other twin's and its canonical row, and the
+        // frontmatter below is applied to it in place.
         const twinMove = sharesCaseTwinFile(notesDir, existing.path)
           ? planCaseTwinMove(notesDir, existing.path, itemId, newRelPath)
           : null
@@ -463,7 +502,12 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
         updateFields.path = newRelPath
 
         if (twinMove) {
-          const moved = twinMove()
+          const moved = twinMove(() => {
+            updateNoteMetadata(ctx.db, itemId, { path: newRelPath })
+            // A write-back takes the note's path from its index row: moved in
+            // the step, and last, so a throw here rolls the data row back.
+            updateNoteCache(indexDb, itemId, { path: newRelPath })
+          })
           movedTwinPath = newRelPath
           updateFields.contentHash = generateContentHash(moved.content)
           settleRemoteNoteFileSync(itemId, newAbsPath, newRelPath, moved.content)
@@ -532,7 +576,19 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
           })
         }
       }
-      if ((!needsPathUpdate || movedTwinPath !== null) && rewritesFrontmatter) {
+      // The file a case twin shares may hold the other twin's bytes (#5561).
+      const offFile =
+        !needsPathUpdate && rewritesFrontmatter
+          ? updateCaseTwinOffFile(getVaultRoot(), existing.path, itemId, frontmatterPatch)
+          : null
+      if (offFile) {
+        writtenAliases = { kind: 'read', aliases: extractAliases(offFile.frontmatter, newTitle) }
+        if (coverPresent) {
+          // Its framing and credit are not held here (`ownHeader`).
+          recordRebuiltNoteCover(ctx.db, itemId, offFile.cover)
+          updateFields.cover = offFile.cover
+        }
+      } else if ((!needsPathUpdate || movedTwinPath !== null) && rewritesFrontmatter) {
         // emoji is sidecar-only state — never a reason to rewrite the file
         const filePath = movedTwinPath ?? existing.path
         const absPath = toAbsolutePath(filePath)
@@ -576,7 +632,9 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
       const indexed = noteCacheExists(indexDb, itemId)
       const indexTags =
         indexed && tagsChanged && remoteTags
-          ? withLocalBodyTags(remoteTags, updateFields.path ?? existing.path)
+          ? offFile
+            ? offFile.tags
+            : withLocalBodyTags(remoteTags, updateFields.path ?? existing.path)
           : undefined
 
       if (indexTags) {
@@ -584,8 +642,12 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
       }
 
       if (indexed && propertiesPresent) {
-        setNoteProperties(indexDb, itemId, remoteProperties, (name, value) =>
-          learnCanonicalPropertyType(ctx.db, name, value)
+        setNoteProperties(
+          indexDb,
+          itemId,
+          remoteProperties,
+          (name, value) => learnCanonicalPropertyType(ctx.db, name, value),
+          'wire'
         )
       }
 
@@ -714,14 +776,18 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
         modifiedAt
       })
 
-      if (data.attachmentId) {
+      // Null while another request holds the download, such as an open (#5616).
+      const claim = data.attachmentId ? markDownloadRequested(itemId, data.attachmentId) : null
+      if (data.attachmentId && claim) {
         const recencyMs = data.modifiedAt ? Date.parse(data.modifiedAt) : NaN
-        attachmentEvents.emitDownloadNeeded({
+        const delivered = attachmentEvents.emitDownloadNeeded({
           noteId: itemId,
           attachmentId: data.attachmentId,
           diskPath: absolutePath,
-          ...(Number.isFinite(recencyMs) ? { recencyHint: recencyMs } : {})
+          ...(Number.isFinite(recencyMs) ? { recencyHint: recencyMs } : {}),
+          claim
         })
+        if (!delivered) releaseDownloadAttempt(claim)
       }
 
       ctx.emit(NotesChannels.events.CREATED, {
@@ -836,6 +902,8 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
     const leave = sharesCaseTwinFile(getVaultRoot(), existing.path)
       ? planCaseTwinLeave(getVaultRoot(), existing.path, itemId)
       : null
+    // A case twin's file stays with the other twin, a stray row's file with the attachment store.
+    const removesFile = !leave && !isAttachmentStoreRow(existing)
     keepUnseenText(ctx, {
       itemId,
       title: `${existing.title || 'Untitled'} (kept from deleted note)`,
@@ -843,8 +911,18 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
       tombstoneClock: clock,
       deletedAt,
       bodyStateVector,
+      // Only a file this delete removes: a case twin's leave keeps bytes
+      // neither twin holds as a version of the survivor, a stray row's file
+      // stays in the attachment store, and a binary file's bytes are kept below.
+      unseenFile:
+        removesFile &&
+        !isBinaryNoteRow(existing) &&
+        holdsUningestedEdit(indexDb, itemId, () =>
+          readVaultFileSync(getVaultRoot(), existing.path)
+        ),
       readBody: () => (isBinaryNoteRow(existing) ? null : readNoteFileBody(absolutePath))
     })
+    if (removesFile) keepUnseenBinary(ctx.db, indexDb, existing, absolutePath, clock)
 
     // Deliberately floated. `applyDelete` is synchronous by interface and runs
     // per item inside a pull batch, so awaiting a LevelDB clear here would
@@ -892,8 +970,9 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
 
     // Journaled with the page and unlinked after it commits (#2385): a lost
     // unlink would leave a file with no row for the indexer to push back. A
-    // case twin's file stays with the other twin.
-    if (!leave) deleteSyncedVaultFile(absolutePath)
+    // case twin's file stays with the other twin, and a stray row's file with
+    // the attachment store (#5607).
+    if (removesFile) deleteSyncedVaultFile(absolutePath)
 
     // The note may be the last one in a folder another device deleted (#2512).
     const folder = extractFolderFromPath(existing.path)

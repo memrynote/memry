@@ -105,10 +105,19 @@ async fn holding_the_day() -> (Device, Relay) {
     (device, relay)
 }
 
+/// The stored payload carries the field-clock stamp of #5572 on top of the peer's keys.
+fn without_field_clocks(payload: &str) -> Json {
+    let mut json: Json = serde_json::from_str(payload).expect("a JSON payload");
+    json.as_object_mut()
+        .expect("an object")
+        .retain(|key, _| !key.starts_with("fieldClocks"));
+    json
+}
+
 fn assert_day_kept(device: &Device) {
     assert_eq!(
-        device.stored("journal", DAY),
-        electron_day(),
+        without_field_clocks(&device.stored("journal", DAY)),
+        without_field_clocks(&electron_day()),
         "the day's record is the peer's journal payload, untouched by the note record"
     );
     assert_eq!(

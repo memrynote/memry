@@ -27,6 +27,8 @@
     "@memry/shared": "workspace:*",
     "@memry/storage-data": "workspace:*",
     "@memry/storage-vault": "workspace:*",
+    "@memry/sync-client": "workspace:*",
+    "@memry/sync-core": "workspace:*",
     "better-sqlite3": "^12.11.1",
     "drizzle-orm": "^0.45.2",
     "gray-matter": "^4.0.3",

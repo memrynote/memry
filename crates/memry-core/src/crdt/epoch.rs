@@ -103,14 +103,38 @@ pub(crate) fn client_id(
     })
 }
 
+/// Refuses to author `doc_id` outside a transaction (#5734).
+///
+/// Every handle on a vault's `data.db` authors under the device's one client
+/// id, and the clock it mints is the one after the log it replayed. Two
+/// connections that each replay the log and then append would mint the same
+/// `(client, clock)` twice, and a log holding both no longer replays. Every
+/// core transaction outside the schema migrations is `BEGIN IMMEDIATE`
+/// ([`crate::storage::nested_tx`]), so a write that replays, authors, and appends inside one holds the file's
+/// write lock from the replay to the commit, across connections and
+/// processes.
+pub(crate) fn require_write_lock(conn: &Connection, doc_id: &str) -> Result<(), CrdtError> {
+    if conn.is_autocommit() {
+        return Err(StorageError::Failed {
+            what: format!(
+                "{doc_id}'s body must be authored inside the transaction that stores the update"
+            ),
+        }
+        .into());
+    }
+    Ok(())
+}
+
 /// `doc_id` replayed from its durable log, opened to author a write as
-/// `device_id`. The replay is durable, so `sink` sees only the write.
+/// `device_id`. The replay is durable, so `sink` sees only the write. Inside
+/// the transaction that stores what it authors ([`require_write_lock`]).
 pub(crate) fn open_for_write(
     conn: &Connection,
     device_id: &str,
     doc_id: &str,
     sink: UpdateSink,
 ) -> Result<Arc<Document>, CrdtError> {
+    require_write_lock(conn, doc_id)?;
     let document = DocumentRegistry::with_client_id(client_id(conn, device_id, doc_id)?, sink)
         .get_or_open(doc_id)?;
     for blob in update_log::load_plan(conn, doc_id)?.blobs() {
@@ -259,6 +283,28 @@ mod tests {
         assert_eq!(all.of(DOC), purged);
         assert_eq!(all.of("other"), untouched);
         assert_ne!(purged, untouched);
+    }
+
+    /// #5734: a body authored outside a transaction could be authored over
+    /// the same log by another connection before it is stored.
+    #[test]
+    fn a_body_is_authored_only_inside_a_transaction() {
+        let dir = temp_dir("epoch-write-lock");
+        let db = open_data(&dir.path().join("data.db")).expect("open data.db");
+        let (outside, inside) = db
+            .call_blocking(|conn| {
+                let sink: UpdateSink = Arc::new(|_, _| {});
+                let outside = open_for_write(conn, "device-a", DOC, Arc::clone(&sink)).is_err();
+                let tx =
+                    crate::storage::nested_tx::begin(conn).map_err(|e| StorageError::Failed {
+                        what: e.to_string(),
+                    })?;
+                let inside = open_for_write(&tx, "device-a", DOC, sink).is_ok();
+                Ok((outside, inside))
+            })
+            .expect("open");
+        assert!(outside, "authoring outside a transaction is refused");
+        assert!(inside, "authoring inside one is allowed");
     }
 
     #[test]

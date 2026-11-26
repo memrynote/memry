@@ -4,7 +4,7 @@
     "oracle": "apps/desktop/scripts/markdown-oracle (Electron converter run in place; gray-matter 4.0.3, js-yaml 3.15.1)",
     "note": "Function-level cases of CriticMarkup parsing, the per-id write and first-copy-wins read of the criticMarkupMarks root (critic.yjsWrite, protocol 12.5.1), and writing tools marker decoding (packages/shared critic-markup and writing-tools).",
     "yamlJsonEncoding": "Numbers that JSON cannot carry are {\"$num\": \"NaN\"|\"Infinity\"|\"-Infinity\"|\"-0\"}, a Date is {\"$date\": ISO}, a Buffer is {\"$bin\": base64}, a map with a \"$\"-prefixed key is wrapped as {\"$map\": {...}}. Key order is Object.keys order.",
-    "caseCount": 3011
+    "caseCount": 3013
   },
   "cases": [
     {
@@ -94073,9 +94073,18 @@
         "status": "ok",
         "output": {
           "changed": [
-            true
+            false
           ],
           "elements": [
+            {
+              "body": "one",
+              "end": 5,
+              "id": "c1",
+              "kind": "highlight",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "visibleText": "alpha"
+            },
             {
               "body": "valid",
               "end": 5,
@@ -94163,7 +94172,7 @@
       }
     },
     {
-      "id": "critic-yjs/fn/023-invalid-elements-deleted",
+      "id": "critic-yjs/fn/023-invalid-elements-kept",
       "op": "fn",
       "input": {
         "fn": "critic.yjsWrite",
@@ -94225,9 +94234,40 @@
         "status": "ok",
         "output": {
           "changed": [
-            true
+            false
           ],
           "elements": [
+            null,
+            "x",
+            3,
+            [
+              {
+                "body": "one",
+                "end": 5,
+                "id": "c1",
+                "kind": "comment",
+                "metadata": "id=c1;type=comment",
+                "start": 0,
+                "visibleText": "alpha"
+              }
+            ],
+            {
+              "body": "one",
+              "end": -1,
+              "id": "c1",
+              "kind": "comment",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "visibleText": "alpha"
+            },
+            {
+              "end": 13,
+              "id": "c2",
+              "kind": "note",
+              "originalText": "old",
+              "start": 10,
+              "visibleText": "new"
+            },
             {
               "end": 24,
               "id": "c3",
@@ -94249,7 +94289,265 @@
       }
     },
     {
-      "id": "critic-yjs/fn/024-invalid-mark-not-written",
+      "id": "critic-yjs/fn/024-newer-kind-kept-on-edit",
+      "op": "fn",
+      "input": {
+        "fn": "critic.yjsWrite",
+        "args": [
+          [
+            {
+              "id": "c1",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "one",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": 5,
+              "future": {
+                "flag": true,
+                "nested": {
+                  "v": 2,
+                  "list": [
+                    1,
+                    "x",
+                    null
+                  ]
+                }
+              }
+            },
+            {
+              "id": "c2",
+              "kind": "highlight",
+              "visibleText": "new",
+              "originalText": "old",
+              "start": 10,
+              "end": 13,
+              "future": {
+                "flag": true,
+                "nested": {
+                  "v": 2,
+                  "list": [
+                    1,
+                    "x",
+                    null
+                  ]
+                }
+              }
+            },
+            {
+              "id": "c3",
+              "kind": "addition",
+              "visibleText": "more",
+              "start": 20,
+              "end": 24
+            }
+          ],
+          [
+            [
+              {
+                "id": "c1",
+                "kind": "comment",
+                "visibleText": "alpha",
+                "body": "edited",
+                "metadata": "id=c1;type=comment",
+                "start": 0,
+                "end": 5
+              },
+              {
+                "id": "c3",
+                "kind": "addition",
+                "visibleText": "more",
+                "start": 20,
+                "end": 24,
+                "body": "edited"
+              }
+            ]
+          ]
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "changed": [
+            true
+          ],
+          "elements": [
+            {
+              "body": "edited",
+              "end": 5,
+              "future": {
+                "flag": true,
+                "nested": {
+                  "list": [
+                    1,
+                    "x",
+                    null
+                  ],
+                  "v": 2
+                }
+              },
+              "id": "c1",
+              "kind": "comment",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "visibleText": "alpha"
+            },
+            {
+              "end": 13,
+              "future": {
+                "flag": true,
+                "nested": {
+                  "list": [
+                    1,
+                    "x",
+                    null
+                  ],
+                  "v": 2
+                }
+              },
+              "id": "c2",
+              "kind": "highlight",
+              "originalText": "old",
+              "start": 10,
+              "visibleText": "new"
+            },
+            {
+              "body": "edited",
+              "end": 24,
+              "id": "c3",
+              "kind": "addition",
+              "start": 20,
+              "visibleText": "more"
+            }
+          ],
+          "marks": [
+            {
+              "id": "c1",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "edited",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": 5
+            },
+            {
+              "id": "c3",
+              "kind": "addition",
+              "visibleText": "more",
+              "body": "edited",
+              "start": 20,
+              "end": 24
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "critic-yjs/fn/025-newer-kind-kept-on-insert-and-delete",
+      "op": "fn",
+      "input": {
+        "fn": "critic.yjsWrite",
+        "args": [
+          [
+            {
+              "id": "c1",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "one",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": 5
+            },
+            {
+              "id": "n1",
+              "kind": "highlight",
+              "visibleText": "new",
+              "originalText": "old",
+              "start": 10,
+              "end": 13
+            },
+            {
+              "id": "c3",
+              "kind": "addition",
+              "visibleText": "more",
+              "start": 20,
+              "end": 24
+            }
+          ],
+          [
+            [
+              {
+                "id": "c2",
+                "kind": "substitution",
+                "visibleText": "new",
+                "originalText": "old",
+                "start": 10,
+                "end": 13
+              },
+              {
+                "id": "c3",
+                "kind": "addition",
+                "visibleText": "more",
+                "start": 20,
+                "end": 24
+              }
+            ]
+          ]
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "changed": [
+            true
+          ],
+          "elements": [
+            {
+              "end": 13,
+              "id": "c2",
+              "kind": "substitution",
+              "originalText": "old",
+              "start": 10,
+              "visibleText": "new"
+            },
+            {
+              "end": 13,
+              "id": "n1",
+              "kind": "highlight",
+              "originalText": "old",
+              "start": 10,
+              "visibleText": "new"
+            },
+            {
+              "end": 24,
+              "id": "c3",
+              "kind": "addition",
+              "start": 20,
+              "visibleText": "more"
+            }
+          ],
+          "marks": [
+            {
+              "id": "c2",
+              "kind": "substitution",
+              "visibleText": "new",
+              "originalText": "old",
+              "start": 10,
+              "end": 13
+            },
+            {
+              "id": "c3",
+              "kind": "addition",
+              "visibleText": "more",
+              "start": 20,
+              "end": 24
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "critic-yjs/fn/026-invalid-mark-not-written",
       "op": "fn",
       "input": {
         "fn": "critic.yjsWrite",
@@ -94308,7 +94606,7 @@
       }
     },
     {
-      "id": "critic-yjs/fn/025-two-writers-same-mark",
+      "id": "critic-yjs/fn/027-two-writers-same-mark",
       "op": "fn",
       "input": {
         "fn": "critic.yjsWrite",
@@ -94392,7 +94690,7 @@
       }
     },
     {
-      "id": "critic-yjs/fn/026-two-writers-different-marks",
+      "id": "critic-yjs/fn/028-two-writers-different-marks",
       "op": "fn",
       "input": {
         "fn": "critic.yjsWrite",
@@ -94507,7 +94805,7 @@
       }
     },
     {
-      "id": "critic-yjs/fn/027-two-writers-delete-and-edit",
+      "id": "critic-yjs/fn/029-two-writers-delete-and-edit",
       "op": "fn",
       "input": {
         "fn": "critic.yjsWrite",
@@ -94613,7 +94911,7 @@
       }
     },
     {
-      "id": "critic-yjs/fn/028-two-writers-both-insert",
+      "id": "critic-yjs/fn/030-two-writers-both-insert",
       "op": "fn",
       "input": {
         "fn": "critic.yjsWrite",
@@ -94733,7 +95031,7 @@
       }
     },
     {
-      "id": "critic-yjs/fn/029-two-writers-insert-same-id",
+      "id": "critic-yjs/fn/031-two-writers-insert-same-id",
       "op": "fn",
       "input": {
         "fn": "critic.yjsWrite",
@@ -94807,7 +95105,7 @@
       }
     },
     {
-      "id": "critic-yjs/fn/030-two-writers-one-unchanged",
+      "id": "critic-yjs/fn/032-two-writers-one-unchanged",
       "op": "fn",
       "input": {
         "fn": "critic.yjsWrite",
@@ -94904,7 +95202,7 @@
       }
     },
     {
-      "id": "critic-yjs/fn/031-three-writers-same-mark",
+      "id": "critic-yjs/fn/033-three-writers-same-mark",
       "op": "fn",
       "input": {
         "fn": "critic.yjsWrite",
@@ -95009,7 +95307,7 @@
       }
     },
     {
-      "id": "critic-yjs/fn/032-offset-only",
+      "id": "critic-yjs/fn/034-offset-only",
       "op": "fn",
       "input": {
         "fn": "critic.yjsWrite",
@@ -95104,7 +95402,7 @@
       }
     },
     {
-      "id": "critic-yjs/fn/033-offset-and-edit",
+      "id": "critic-yjs/fn/035-offset-and-edit",
       "op": "fn",
       "input": {
         "fn": "critic.yjsWrite",
@@ -95167,7 +95465,7 @@
       }
     },
     {
-      "id": "critic-yjs/fn/034-nested-unknown-keys-untouched",
+      "id": "critic-yjs/fn/036-nested-unknown-keys-untouched",
       "op": "fn",
       "input": {
         "fn": "critic.yjsWrite",
@@ -95342,7 +95640,7 @@
       }
     },
     {
-      "id": "critic-yjs/fn/035-nested-unknown-keys-dropped-on-edit",
+      "id": "critic-yjs/fn/037-nested-unknown-keys-dropped-on-edit",
       "op": "fn",
       "input": {
         "fn": "critic.yjsWrite",
@@ -95514,7 +95812,7 @@
       }
     },
     {
-      "id": "critic-yjs/fn/036-two-writers-offset-only-and-edit",
+      "id": "critic-yjs/fn/038-two-writers-offset-only-and-edit",
       "op": "fn",
       "input": {
         "fn": "critic.yjsWrite",
@@ -95629,7 +95927,7 @@
       }
     },
     {
-      "id": "critic-yjs/fn/037-two-writers-offset-only-and-edit-reversed",
+      "id": "critic-yjs/fn/039-two-writers-offset-only-and-edit-reversed",
       "op": "fn",
       "input": {
         "fn": "critic.yjsWrite",
@@ -95744,7 +96042,7 @@
       }
     },
     {
-      "id": "critic-yjs/fn/038-many-contiguous-edits-coalesced",
+      "id": "critic-yjs/fn/040-many-contiguous-edits-coalesced",
       "op": "fn",
       "input": {
         "fn": "critic.yjsWrite",
@@ -97731,7 +98029,7 @@
       }
     },
     {
-      "id": "critic-yjs/fn/039-many-scattered-edits",
+      "id": "critic-yjs/fn/041-many-scattered-edits",
       "op": "fn",
       "input": {
         "fn": "critic.yjsWrite",
@@ -99718,7 +100016,7 @@
       }
     },
     {
-      "id": "critic-yjs/fn/040-many-scattered-deletes",
+      "id": "critic-yjs/fn/042-many-scattered-deletes",
       "op": "fn",
       "input": {
         "fn": "critic.yjsWrite",
@@ -100970,7 +101268,7 @@
       }
     },
     {
-      "id": "critic-yjs/fn/041-many-scattered-inserts",
+      "id": "critic-yjs/fn/043-many-scattered-inserts",
       "op": "fn",
       "input": {
         "fn": "critic.yjsWrite",
@@ -103692,7 +103990,7 @@
       }
     },
     {
-      "id": "critic-yjs/fn/042-scattered-edits-keep-unknown-keys",
+      "id": "critic-yjs/fn/044-scattered-edits-keep-unknown-keys",
       "op": "fn",
       "input": {
         "fn": "critic.yjsWrite",
@@ -105701,7 +105999,7 @@
       }
     },
     {
-      "id": "critic-yjs/fn/043-duplicates-repaired-by-later-write",
+      "id": "critic-yjs/fn/045-duplicates-repaired-by-later-write",
       "op": "fn",
       "input": {
         "fn": "critic.yjsWrite",
@@ -105836,7 +106134,7 @@
       }
     },
     {
-      "id": "critic-yjs/fn/044-large-write-and-concurrent-edit",
+      "id": "critic-yjs/fn/046-large-write-and-concurrent-edit",
       "op": "fn",
       "input": {
         "fn": "critic.yjsWrite",
@@ -108316,7 +108614,7 @@
       }
     },
     {
-      "id": "critic-yjs/fn/045-two-large-writes-different-marks",
+      "id": "critic-yjs/fn/047-two-large-writes-different-marks",
       "op": "fn",
       "input": {
         "fn": "critic.yjsWrite",
@@ -110796,7 +111094,7 @@
       }
     },
     {
-      "id": "critic-yjs/fn/046-large-write-and-concurrent-delete",
+      "id": "critic-yjs/fn/048-large-write-and-concurrent-delete",
       "op": "fn",
       "input": {
         "fn": "critic.yjsWrite",
