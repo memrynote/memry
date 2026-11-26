@@ -16,8 +16,9 @@ use std::time::Duration;
 
 use body_pack_server::{
     BodyPack, MANIFEST_RETRY_AFTER_S, Manifest, NOW_MS, Routes, Server, ServerDoc, bootstrap,
-    bootstrap_observed, cursor_of, first_sync, has_snapshot, holds_exactly, is_owed, seed_records,
-    snapshot_item_as, snapshot_items, update_item, update_items, update_seqs,
+    bootstrap_observed, cursor_of, first_sync, first_sync_observed, has_snapshot, holds_exactly,
+    is_owed, seed_records, snapshot_item_as, snapshot_items, update_item, update_items,
+    update_seqs,
 };
 use memry_core::storage::Db;
 use memry_core::sync::body_pull::MANIFEST_READ_DEADLINE;
@@ -845,5 +846,51 @@ async fn every_body_a_pack_applies_is_told_to_the_observers_after_it_commits() {
             "{id}: told after its last commit"
         );
         assert!(!last.2, "{id}: told once its debt settled: {heard:?}");
+    }
+}
+
+/// A snapshot entry and an update entry sealed under a key outside the
+/// account, both naming the account's device as signer, are confirmed by the
+/// manifest but fail the signature: neither is stored, nothing of the run
+/// past the forged update is stored, both documents stay owed and no observer
+/// hears of them. The honest document in the same pack settles.
+#[tokio::test]
+async fn a_forged_snapshot_or_update_in_a_body_pack_is_not_seeded_told_or_settled() {
+    let (db, dir) = body_pack_server::scratch("forged");
+    let good = ServerDoc::new("gooddoc00001", 3);
+    let forged_snapshot = ServerDoc::new("forgedsnap01", 3)
+        .snapshot_only()
+        .snapshot_forged();
+    let forged_update = ServerDoc::new("forgedupd001", 3).update_forged(1);
+    let packs = vec![
+        BodyPack::new("s1", snapshot_items(&[&forged_snapshot])),
+        BodyPack::new("u1", update_items(&[&good, &forged_update])),
+    ];
+    let mut server = Server::new(vec![good, forged_snapshot, forged_update], packs);
+    server.records = true;
+    let routes = Routes::new(server);
+    let observers = Arc::new(Observers::default());
+    let watcher = Arc::new(BodyWatcher {
+        db: db.clone(),
+        heard: std::sync::Mutex::default(),
+    });
+    observers.register(watcher.clone());
+
+    first_sync_observed(&db, &routes, &dir, observers)
+        .run(NOW_MS)
+        .await
+        .expect("the first sync");
+
+    holds_exactly(&db, routes.server.lock().unwrap().doc("gooddoc00001"), 3);
+    assert!(!is_owed(&db, "gooddoc00001"));
+    let heard = watcher.heard.lock().unwrap().clone();
+    for id in ["forgedsnap01", "forgedupd001"] {
+        assert!(!has_snapshot(&db, id), "{id}: no snapshot");
+        assert_eq!(update_seqs(&db, id), Vec::<i64>::new(), "{id}: no update");
+        assert!(is_owed(&db, id), "{id}: owed");
+        assert!(
+            heard.iter().all(|(told, ..)| told != id),
+            "{id} was told: {heard:?}"
+        );
     }
 }
