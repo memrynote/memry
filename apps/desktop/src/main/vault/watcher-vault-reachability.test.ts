@@ -57,7 +57,8 @@ vi.mock('./indexer', async (importOriginal) => {
     })
   }
 })
-vi.mock('../sync/crdt-external-feed', () => ({ feedExternalEditToCrdt: vi.fn(async () => {}) }))
+// The doc takes every fed edit, so the baseline follows it (sync/writeback-baseline.ts).
+vi.mock('../sync/crdt-external-feed', () => ({ feedExternalEditToCrdt: vi.fn(async () => true) }))
 vi.mock('../tasks/reconcile-markdown-tasks', () => ({
   reconcileTaskCheckboxesFromMarkdown: vi.fn(async () => {})
 }))
@@ -227,9 +228,8 @@ describe('watcher and an unreachable vault (#2785)', () => {
     fs.chmodSync(abs('notes/kept.md'), 0o644)
     fs.writeFileSync(abs('notes/kept.md'), 'edited while unreadable\n')
     await internals().handleFileAdd(abs('notes/kept.md'))
-    await flushProjectionEvents()
-
-    expect(row('note-kept')?.contentHash).not.toBe('hash-note-kept')
+    // The baseline follows the edit once its feed reaches the doc.
+    await vi.waitFor(() => expect(row('note-kept')?.contentHash).not.toBe('hash-note-kept'))
     expect(syncNoteDelete).toHaveBeenCalledTimes(1)
   })
 

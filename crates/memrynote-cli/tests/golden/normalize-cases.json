@@ -1,0 +1,56 @@
+[
+  {
+    "input": "{\"path\":\"/tmp/x/vault/a\",\"home\":\"/tmp/x/home/b\",\"other\":\"/tmp/x/c\",\"near\":\"/tmp/xy\"}",
+    "dirs": {
+      "tmp": "/tmp/x",
+      "vault": "/tmp/x/vault",
+      "home": "/tmp/x/home"
+    },
+    "output": "{\"path\":\"<vault>/a\",\"home\":\"<home>/b\",\"other\":\"<tmp>/c\",\"near\":\"<tmp>y\"}"
+  },
+  {
+    "input": "0f8fad5b-d9cb-469f-a165-70867728950e 7c9e6679-7425-40de-944b-e07fc1f90ae7 0f8fad5b-d9cb-469f-a165-70867728950e",
+    "dirs": {
+      "tmp": "/tmp/x",
+      "vault": "/tmp/x/vault",
+      "home": "/tmp/x/home"
+    },
+    "output": "<id1> <id2> <id1>"
+  },
+  {
+    "input": "2026-01-02T03:04:05.678Z 2026-01-02T03:04:05Z 2026-01-02T03:04:05.678+03:00 2026-01-02",
+    "dirs": {
+      "tmp": "/tmp/x",
+      "vault": "/tmp/x/vault",
+      "home": "/tmp/x/home"
+    },
+    "output": "<iso> <iso> <iso> 2026-01-02"
+  },
+  {
+    "input": "1767225600000 12345678901234 123456789012 a1767225600000",
+    "dirs": {
+      "tmp": "/tmp/x",
+      "vault": "/tmp/x/vault",
+      "home": "/tmp/x/home"
+    },
+    "output": "<ms> 12345678901234 123456789012 a1767225600000"
+  },
+  {
+    "input": "undefined\n\n",
+    "dirs": {
+      "tmp": "/tmp/x",
+      "vault": "/tmp/x/vault",
+      "home": "/tmp/x/home"
+    },
+    "output": "undefined\n\n"
+  },
+  {
+    "input": "mkdir '/tmp/x\\appdata\\f\\.memry' \"/tmp/x/vault\\\\a\\\\b\" \"/tmp/x/home\\\"\"",
+    "dirs": {
+      "tmp": "/tmp/x",
+      "vault": "/tmp/x/vault",
+      "home": "/tmp/x/home"
+    },
+    "output": "mkdir '<tmp>/appdata/f/.memry' \"<vault>/a/b\" \"<home>\\\"\""
+  }
+]

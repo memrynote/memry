@@ -43,7 +43,12 @@ vi.mock('../lib/logger', () => ({
 vi.mock('../lib/window-broadcast', () => ({ broadcastToAllWindows: vi.fn() }))
 vi.mock('../telemetry/diagnostics', () => ({ trackMainError: vi.fn(), trackMainLog: vi.fn() }))
 vi.mock('./crdt-provider', () => ({
-  getCrdtProvider: () => ({ getDoc: () => undefined, close: vi.fn(), purge: vi.fn() })
+  getCrdtProvider: () => ({
+    holdsDoc: () => true,
+    getDoc: () => undefined,
+    close: vi.fn(),
+    purge: vi.fn()
+  })
 }))
 vi.mock('./blocknote-converter', () => ({
   setVaultEmbedResolver: () => {},
@@ -61,7 +66,8 @@ vi.mock('@main/database/queries/notes', () => ({
     title: 'Plans',
     contentHash: null,
     createdAt: '2026-09-26T00:00:00.000Z'
-  })
+  }),
+  updateNoteCache: vi.fn()
 }))
 vi.mock('../vault/file-ops', () => ({
   atomicWrite: vi.fn(async () => {}),

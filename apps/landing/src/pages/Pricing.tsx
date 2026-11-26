@@ -6,6 +6,9 @@ import { Container } from '@/components/layout/Container'
 import { PageHead } from '@/components/shared/PageHead'
 import { Faq } from '@/components/site/Faq'
 import { FinalCta } from '@/components/site/FinalCta'
+import { NewsletterSignup } from '@/components/site/NewsletterSignup'
+import { DownloadPill } from '@/components/shared/DownloadCTA'
+import { isMobileOS, useDetectedOS } from '@/lib/download'
 import { PageHero } from '@/components/site/PageHero'
 import { Button } from '@/components/ui/button'
 import {
@@ -120,7 +123,9 @@ export function PricingPage() {
             event: 'security:pricing-final'
           }}
           footnote="All prices in USD. Paddle is the merchant of record."
-        />
+        >
+          <NewsletterSignup location="pricing-final" />
+        </FinalCta>
       </main>
     </>
   )
@@ -199,9 +204,24 @@ function CheckoutNoticeBanner({ notice }: { notice: CheckoutNotice | null }) {
   )
 }
 
+/**
+ * Pricing is the most visited page after home, and most visitors arrive asking whether the
+ * app is free. The hero answers with the free download before the paid tiers, so the local
+ * app is one click away instead of below the tier grid. Phones get no desktop download here;
+ * their hero ask is the iPhone beta.
+ */
 function Hero() {
+  const isMobile = isMobileOS(useDetectedOS())
   return (
     <PageHero
+      actions={
+        isMobile ? undefined : (
+          <div className="flex flex-col items-center gap-3">
+            <DownloadPill location="pricing-hero" />
+            <p className="text-[13px] text-muted">Free on your device. No account needed.</p>
+          </div>
+        )
+      }
       title={
         <>
           Sync that respects your <span className="italic text-terracotta">wallet.</span>

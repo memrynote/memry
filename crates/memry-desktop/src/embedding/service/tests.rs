@@ -226,11 +226,14 @@ impl Case {
     fn image(&self) -> Option<Vec<f32>> {
         let service = self.service.clone();
         returns(move || {
-            service.embed_image(ImageInput {
-                bytes: vec![1, 2, 3],
-                text: None,
-                soft_tokens: None,
-            })
+            service.embed_image(
+                ImageInput {
+                    bytes: vec![1, 2, 3],
+                    text: None,
+                    soft_tokens: None,
+                },
+                &CancelToken::default(),
+            )
         })
     }
 
@@ -427,8 +430,8 @@ fn stopping_ends_a_waiting_load_and_cancels_its_download() {
     assert!(c.service.load());
 }
 
-#[test]
-fn closing_the_vault_cancels_the_download() {
+/// A session with an empty vault open.
+fn open_session() -> (tempfile::TempDir, Session) {
     let dir = tempfile::tempdir().unwrap();
     std::fs::create_dir_all(dir.path().join("app")).unwrap();
     std::fs::create_dir_all(dir.path().join("vault")).unwrap();
@@ -437,6 +440,12 @@ fn closing_the_vault_cancels_the_download() {
     session
         .open(&dir.path().join("vault"), OpenSource::Select)
         .unwrap();
+    (dir, session)
+}
+
+#[test]
+fn closing_the_vault_cancels_the_download() {
+    let (_dir, session) = open_session();
     let c = case(long_deadline());
     c.service.register(&session);
     let (gate, reached) = Gate::new();
@@ -450,6 +459,29 @@ fn closing_the_vault_cancels_the_download() {
     until("the download seeing the cancel", || {
         c.script.cancelled.load(Ordering::SeqCst) == 1
     });
+}
+
+/// REVIEW-4548: a lane that passed its own cancel check just before the vault closed asks only
+/// after the close hook stopped the model. The service refuses it, so the closed vault's lane
+/// loads nothing and `close` returns with the model unloaded.
+#[test]
+fn a_lane_request_after_the_vault_closed_loads_nothing() {
+    let (_dir, session) = open_session();
+    let c = case(long_deadline());
+    c.service.register(&session);
+    assert!(c.service.load());
+    let lane = session.projections().expect("open").cancel_token();
+
+    session.close();
+    assert_eq!(c.service.embed_in_lane(TEXT, &lane), None);
+    let image = ImageInput {
+        bytes: vec![1, 2, 3],
+        text: None,
+        soft_tokens: None,
+    };
+    assert_eq!(c.service.embed_image(image, &lane), None);
+    assert!(!c.service.status().loaded);
+    assert_eq!(c.loads(), 1);
 }
 
 /// `IDLE_SHUTDOWN_MS` (embeddings.ts:931-950): the model is dropped after the idle time and the

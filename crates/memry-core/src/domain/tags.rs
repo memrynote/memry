@@ -44,6 +44,7 @@ use serde_json::Value;
 
 use crate::api::errors::StorageError;
 use crate::domain::tag_body_rename::renamed_tag;
+use crate::storage::nested_tx;
 use crate::storage::repositories::instants;
 use crate::storage::repositories::schema::Object;
 use crate::storage::repositories::{Change, StoredPayload, sync_items};
@@ -430,7 +431,7 @@ fn publish(
     if !conn.is_autocommit() {
         return write(conn);
     }
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     write(&tx)?;
     tx.commit().map_err(failed)
 }

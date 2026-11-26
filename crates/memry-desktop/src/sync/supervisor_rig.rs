@@ -5,9 +5,10 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use memry_core::api::errors::SyncError;
+use memry_core::api::errors::{ApiError, SyncError, TransportError};
 use memry_core::seams::reachability::{Reachability, ReachabilityObserver, Reachable};
 use memry_core::storage::{Db, open_data};
+use memry_core::sync::driver::progress::{InitialSyncPhase, InitialSyncProgress, InitialSyncSink};
 use memry_core::sync::engine::PassReport;
 use memry_core::sync::policy::ServerClock;
 use memry_core::sync::pull::PullReport;
@@ -18,6 +19,8 @@ use tokio::sync::broadcast;
 use tokio::time::{Instant, sleep};
 
 use super::super::backend::{SyncBackend, SyncPasses};
+use super::super::events::SyncEvent;
+use super::super::first_sync_running::FirstSyncRunning;
 use super::super::gate::{AuthFacts, Entitlement, SyncStartGate, VaultBinding};
 use super::super::realtime::{RealtimeSocket, SocketEnd};
 use super::super::signals::AuthSignals;
@@ -27,6 +30,8 @@ pub(crate) use crate::session::lock;
 
 /// One pass takes this long on the fake, so a request can land while it runs.
 pub(crate) const PASS: Duration = Duration::from_millis(50);
+/// How long each pass reports its push took: less than the whole pass.
+pub(crate) const PASS_PUSH: Duration = Duration::from_millis(7);
 
 #[derive(Default)]
 pub(crate) struct FakeDriver {
@@ -56,17 +61,58 @@ pub(crate) struct FakeDriver {
     pub(crate) socket_stops: Arc<AtomicUsize>,
     /// Passes that ran to their end, not aborted.
     pub(crate) finished: AtomicUsize,
+    /// Each pass waits here before it pushes, when set.
+    pub(crate) hold: Mutex<Option<Arc<tokio::sync::Notify>>>,
+    /// Rows each pass reports pushed.
+    pub(crate) pushed_items: AtomicUsize,
     pub(crate) observers: Mutex<Vec<Arc<dyn memry_core::sync::driver::ApplyObserver>>>,
     /// A snapshot is due until a pass pushes it.
     pub(crate) snapshot_due: AtomicBool,
     /// Rounds of due snapshots pushed, and final rounds.
     pub(crate) snapshot_rounds: AtomicUsize,
     pub(crate) final_rounds: AtomicUsize,
+    /// The vault has not finished a first sync: the next pass is one.
+    pub(crate) fresh: AtomicBool,
+    pub(crate) first_syncs: AtomicUsize,
+    /// The next first sync fails with this after its first progress.
+    pub(crate) first_sync_error: Mutex<Option<SyncError>>,
+    /// Every first sync fails with `first_sync_error`, as one body the server keeps refusing.
+    pub(crate) first_sync_keeps_failing: AtomicBool,
+    /// The next this many passes end with bodies their budget left due.
+    pub(crate) bodies_left: AtomicUsize,
+    /// What the backend hands the loop for its first syncs, and whether each saw it held.
+    pub(crate) first_sync_running: FirstSyncRunning,
+    pub(crate) held_in_first_sync: Mutex<Vec<bool>>,
 }
 
 impl FakeDriver {
     pub(crate) fn passes(&self) -> usize {
         lock(&self.passes).len()
+    }
+
+    async fn until_paused(&self) {
+        while !self.paused.load(Ordering::SeqCst) {
+            sleep(Duration::from_millis(1)).await;
+        }
+    }
+}
+
+/// What a pass the pause cut reports: its request answered `Cancelled`.
+fn cut_report(trigger: PassTrigger) -> PassReport {
+    PassReport {
+        trigger,
+        transitions: vec![SyncState::Pulling, SyncState::Failed],
+        final_state: SyncState::Failed,
+        pull: PullReport::default(),
+        parked: false,
+        pushed: false,
+        pushed_items: 0,
+        push_ms: 0,
+        pull_error: Some(SyncError::from(ApiError::Transport {
+            source: TransportError::Cancelled,
+        })),
+        push_error: None,
+        bodies_left: false,
     }
 }
 
@@ -88,6 +134,19 @@ impl SyncPasses for FakeDriver {
                 server_ms: local_ms - skew,
                 local_ms,
             });
+        }
+        let hold = lock(&self.hold).clone();
+        if let Some(hold) = hold {
+            // A pause cuts the held pass as the driver's cancelled requests do: it ends at
+            // once, pushes nothing, and runs to its end.
+            let cut = tokio::select! {
+                () = hold.notified() => false,
+                () = self.until_paused() => true,
+            };
+            if cut {
+                self.finished.fetch_add(1, Ordering::SeqCst);
+                return Some(cut_report(trigger));
+            }
         }
         tokio::time::sleep(PASS).await;
         let error = {
@@ -111,11 +170,54 @@ impl SyncPasses for FakeDriver {
                 ..PullReport::default()
             },
             parked: false,
-            pushed: false,
-            pushed_items: 0,
+            pushed: self.pushed_items.load(Ordering::SeqCst) > 0,
+            pushed_items: self.pushed_items.load(Ordering::SeqCst),
+            push_ms: PASS_PUSH.as_millis() as u64,
             pull_error: error,
             push_error: None,
+            bodies_left: self
+                .bodies_left
+                .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |left| {
+                    left.checked_sub(1)
+                })
+                .is_ok(),
         })
+    }
+    async fn needs_first_sync(&self) -> Result<bool, SyncError> {
+        Ok(self.fresh.load(Ordering::SeqCst))
+    }
+    /// One page of notes, then a pass to the head, then `complete`; as the driver, `None`
+    /// while paused.
+    async fn first_sync(
+        &self,
+        progress: Arc<dyn InitialSyncSink>,
+    ) -> Result<Option<PassReport>, SyncError> {
+        if self.paused.load(Ordering::SeqCst) {
+            return Ok(None);
+        }
+        self.first_syncs.fetch_add(1, Ordering::SeqCst);
+        lock(&self.held_in_first_sync).push(self.first_sync_running.is_running());
+        progress.progress(InitialSyncProgress {
+            phase: InitialSyncPhase::Notes,
+            processed_items: 1,
+            total_items: 2,
+        });
+        let error = if self.first_sync_keeps_failing.load(Ordering::SeqCst) {
+            lock(&self.first_sync_error).clone()
+        } else {
+            lock(&self.first_sync_error).take()
+        };
+        if let Some(error) = error {
+            return Err(error);
+        }
+        self.fresh.store(false, Ordering::SeqCst);
+        let report = self.run_pass(PassTrigger::Explicit).await;
+        progress.progress(InitialSyncProgress {
+            phase: InitialSyncPhase::Complete,
+            processed_items: 0,
+            total_items: 0,
+        });
+        Ok(report)
     }
     fn snapshots_due(&self, _now_ms: i64) -> bool {
         self.snapshot_due.load(Ordering::SeqCst)
@@ -157,9 +259,6 @@ impl SyncPasses for FakeDriver {
     fn server_clock(&self) -> Option<ServerClock> {
         *lock(&self.clock)
     }
-    fn observe(&self, observer: Arc<dyn memry_core::sync::driver::ApplyObserver>) {
-        lock(&self.observers).push(observer);
-    }
 }
 
 /// A socket that ends at once with `end`, or never connects and ends only when stopped.
@@ -192,7 +291,7 @@ impl RealtimeSocket for FakeSocket {
 pub(crate) struct FakeBackend {
     pub(crate) driver: Arc<FakeDriver>,
     pub(crate) signed_in: AtomicBool,
-    /// The gate read never returns, as a keychain access prompt nobody answers.
+    /// The gate read waits while set, as a keychain access prompt nobody has answered yet.
     pub(crate) stall_facts: AtomicBool,
     /// The keychain does not answer the master-key read.
     pub(crate) keychain_locked: AtomicBool,
@@ -217,8 +316,8 @@ impl FakeBackend {
 impl SyncBackend for FakeBackend {
     async fn auth_facts(&self) -> AuthFacts {
         lock(&self.fact_reads).push(Instant::now());
-        if self.stall_facts.load(Ordering::SeqCst) {
-            std::future::pending::<()>().await;
+        while self.stall_facts.load(Ordering::SeqCst) {
+            sleep(Duration::from_millis(1)).await;
         }
         let locked = self.keychain_locked.load(Ordering::SeqCst);
         AuthFacts {
@@ -228,13 +327,17 @@ impl SyncBackend for FakeBackend {
             keychain_unavailable: locked,
         }
     }
-    async fn open(&self) -> Result<Arc<dyn SyncPasses>, SyncError> {
+    async fn open(
+        &self,
+        observers: Vec<Arc<dyn memry_core::sync::driver::ApplyObserver>>,
+    ) -> Result<Arc<dyn SyncPasses>, SyncError> {
         lock(&self.opens).push(Instant::now());
         if self.fail_open.load(Ordering::SeqCst) {
             return Err(lock(&self.open_error).clone().unwrap_or(SyncError::Locked));
         }
-        // A new `SyncDriver` starts unpaused.
+        // A new `SyncDriver` starts unpaused, with only the observers it opened with.
         self.driver.paused.store(false, Ordering::SeqCst);
+        *lock(&self.driver.observers) = observers;
         Ok(Arc::clone(&self.driver) as Arc<dyn SyncPasses>)
     }
     fn refresh_refused(&self) -> bool {
@@ -242,6 +345,9 @@ impl SyncBackend for FakeBackend {
     }
     fn close(&self) {
         self.closes.fetch_add(1, Ordering::SeqCst);
+    }
+    fn first_sync_running(&self) -> Option<FirstSyncRunning> {
+        Some(self.driver.first_sync_running.clone())
     }
 }
 
@@ -283,6 +389,8 @@ pub(crate) struct Rig {
     /// `KeyringStore::subscribe_recovered`'s stand-in.
     pub(crate) recovered: broadcast::Sender<()>,
     pub(crate) events: Arc<Mutex<Vec<(Instant, SyncStatus)>>>,
+    /// Every [`SyncEvent`] besides the status.
+    pub(crate) sync_events: Arc<Mutex<Vec<SyncEvent>>>,
     pub(crate) telemetry: Option<Arc<crate::telemetry::Service>>,
     /// The session's account signals, shared by every supervisor the rig starts.
     pub(crate) signals: AuthSignals,
@@ -314,6 +422,7 @@ impl Rig {
             net: Arc::default(),
             recovered: broadcast::Sender::new(4),
             events: Arc::default(),
+            sync_events: Arc::default(),
             telemetry: None,
             signals: AuthSignals::new(),
         }
@@ -321,6 +430,7 @@ impl Rig {
 
     pub(crate) async fn start(&self) -> SyncSupervisor {
         let events = Arc::clone(&self.events);
+        let sync_events = Arc::clone(&self.sync_events);
         let supervisor = SyncSupervisor::start(
             &tokio::runtime::Handle::current(),
             SupervisorParts {
@@ -335,6 +445,7 @@ impl Rig {
                 on_status: Arc::new(move |status| {
                     lock(&events).push((Instant::now(), status.clone()));
                 }),
+                on_event: Arc::new(move |event| lock(&sync_events).push(event.clone())),
             },
         );
         settle().await;

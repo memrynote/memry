@@ -11,12 +11,21 @@ import {
   onSettingsOpenRequested,
   settingsService
 } from '../services/settings-service'
+import {
+  onCertificatePinFailed,
+  onClockSkewWarning,
+  onInitialSyncProgress,
+  onQueueCleared,
+  onSecurityWarning,
+  onSyncStatusChanged,
+  syncService
+} from '../services/sync-service'
 
 /**
  * What Step 09 (#3526) puts on `window.api`: settings, language, telemetry, feedback and
- * diagnostics, each over its Rust commands. Callers keep the Electron names. Other domains
- * replace the rest as they port; Step 43 (#3560) deletes this file once every caller imports
- * its service. The window functions of Step 10 (#3527) are imported from
+ * diagnostics, each over its Rust commands, and Step 17's (#3534) sync operations and events.
+ * Callers keep the Electron names. Other domains replace the rest as they port; Step 43 (#3560)
+ * deletes this file once every caller imports its service. The window functions of Step 10 (#3527) are imported from
  * `services/window-service` and are not on `window.api`.
  */
 const ported: Record<string, unknown> = {
@@ -25,11 +34,18 @@ const ported: Record<string, unknown> = {
   telemetry: telemetryService,
   feedback: feedbackService,
   diagnostics: diagnosticsApi,
+  syncOps: syncService,
   import: { readwise: readwiseService },
   onReadwiseStatusChanged,
   onSettingsChanged,
   onSettingsOpenRequested,
-  onLocaleChanged
+  onLocaleChanged,
+  onSyncStatusChanged,
+  onQueueCleared,
+  onClockSkewWarning,
+  onInitialSyncProgress,
+  onSecurityWarning,
+  onCertificatePinFailed
 }
 
 export interface PortedApiHost {

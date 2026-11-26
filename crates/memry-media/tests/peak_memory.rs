@@ -449,21 +449,21 @@ impl Bits {
 /// A 1 by 1 VP8L image whose entropy image names group 65535, so the decoder reads 65,536 groups
 /// of five Huffman codes. Each code has lengths 1 to 10 and 10 again, about 12 bytes to describe,
 /// and the decoder builds a 1024-entry table for it: 1.25 GiB of tables from 3.8 MB.
-fn huffman_groups_vp8l() -> Vec<u8> {
+fn huffman_groups_vp8l(width: u32, height: u32, alpha: bool, groups: u32) -> Vec<u8> {
     let mut bits = Bits::default();
     bits.push(0x2F, 8);
-    bits.push(0, 14); // width - 1
-    bits.push(0, 14); // height - 1
-    bits.push(0, 1); // no alpha
+    bits.push(width - 1, 14);
+    bits.push(height - 1, 14);
+    bits.push(u32::from(alpha), 1);
     bits.push(0, 3); // version
     bits.push(0, 1); // no transform
     bits.push(0, 1); // no colour cache
     bits.push(1, 1); // meta Huffman codes
     bits.push(0, 3); // 4 by 4 blocks
-    // The entropy image, one pixel: no colour cache, then one-symbol codes for green 0xFF, red
-    // 0xFF, blue, alpha and distance 0, so the pixel is 0x__FFFF__ and takes no bits.
+    // The entropy image: no colour cache, then one-symbol codes for green, red, blue, alpha and
+    // distance 0, so every pixel names the last group and takes no bits.
     bits.push(0, 1);
-    for symbol in [0xFF, 0xFF] {
+    for symbol in [(groups - 1) & 0xFF, (groups - 1) >> 8] {
         bits.push(0b1, 1); // simple
         bits.push(0, 1); // one symbol
         bits.push(1, 1); // 8 bits
@@ -489,7 +489,7 @@ fn huffman_groups_vp8l() -> Vec<u8> {
         }
     };
     let lengths = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 10];
-    for _ in 0..65_536 * 5 {
+    for _ in 0..groups * 5 {
         bits.push(0, 1); // normal code
         bits.push(order.len() as u32 - 4, 4);
         for symbol in order {
@@ -510,14 +510,28 @@ fn huffman_groups_vp8l() -> Vec<u8> {
 /// them; `read_frame` hands image-webp's memory limit what the checked peak leaves, so the decode
 /// fails before it builds them all.
 #[test]
-fn a_lossless_webp_with_65536_huffman_groups_decodes_under_the_cap() {
-    let bytes = webp(&[(b"VP8L", huffman_groups_vp8l())]);
+fn a_lossless_webp_with_65536_huffman_groups_is_refused_under_the_cap() {
+    let bytes = webp(&[(b"VP8L", huffman_groups_vp8l(1, 1, false, 65_536))]);
     assert!(bytes.len() < memry_media::MAX_IMAGE_BYTES);
     let (result, peak) = peak_of(|| decode_fit(&bytes, 200));
-    assert!(result.is_err(), "decoded {result:?}");
+    let error = result.expect_err("refused").to_string();
+    assert!(error.to_lowercase().contains("memory limit"), "{error}");
     assert!(
         peak < CAP,
         "peak {peak} bytes from a {}-byte file",
         bytes.len()
     );
+}
+
+/// The Huffman tables live while the decoder fills the frame, and the pipeline's copies come only
+/// after they are freed: a 72 Mpx RGBA image's 3,000 groups (about 60 MB of tables) fit beside its
+/// frame and scratch, though not beside the copies. The stream has no pixel data, so the decode
+/// fails after the tables, never at the memory limit.
+#[test]
+fn huffman_tables_get_the_room_beside_the_frame_not_beside_the_later_copies() {
+    let bytes = webp(&[(b"VP8L", huffman_groups_vp8l(9_000, 8_000, true, 3_000))]);
+    let (result, peak) = peak_of(|| memry_media::decode(&bytes));
+    let error = result.expect_err("no pixel data").to_string();
+    assert!(!error.to_lowercase().contains("memory limit"), "{error}");
+    assert!(peak < CAP, "peak {peak} bytes");
 }

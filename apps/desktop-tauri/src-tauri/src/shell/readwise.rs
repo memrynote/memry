@@ -27,7 +27,7 @@ use memry_desktop::seams::reachability::DesktopReachability;
 use memry_desktop::seams::secure_store::{DeviceIdentityStore, GenericSecrets, KeyringStore};
 use memry_desktop::session::{OpenVault, Session};
 use memry_desktop::vault::activity::ActivityLog;
-use tauri::{AppHandle, Manager, Wry};
+use tauri::{AppHandle, Manager, Runtime, Wry};
 
 use crate::commands::error::CommandError;
 use crate::events::{ImportReadwiseStatusChangedEvent, broadcast};
@@ -59,7 +59,7 @@ fn start(app: &AppHandle<Wry>) -> Result<(), CommandError> {
 }
 
 /// A sign-out stops the run in flight; the next tick runs signed out.
-pub fn cancel_run(app: &AppHandle<Wry>) {
+pub fn cancel_run<R: Runtime>(app: &AppHandle<R>) {
     if let Some(runs) = app
         .try_state::<Arc<ReadwiseSlot>>()
         .and_then(|slot| slot.current())

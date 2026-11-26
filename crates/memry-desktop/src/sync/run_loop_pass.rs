@@ -3,16 +3,20 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use memry_core::api::errors::{ApiError, SyncError};
+use memry_core::api::errors::{ApiError, SyncError, TransportError};
+use memry_core::sync::driver::ApplyObserver;
+use memry_core::sync::driver::progress::InitialSyncSink;
 use memry_core::sync::engine::PassReport;
 use memry_core::sync::outbox;
 use memry_core::sync::state::SyncState;
-use tokio::sync::oneshot;
+use tokio::sync::{oneshot, watch};
 use tokio::time::Instant;
 
 use super::{Loop, blocking, now_ms};
 use crate::sync::backend::{SyncBackend, SyncPasses};
 use crate::sync::error_category::SyncErrorCategory;
+use crate::sync::events::{EventObserver, SyncEvent};
+use crate::sync::first_sync_running::FirstSyncRunning;
 use crate::sync::gate::GateDecision;
 use crate::sync::result::{SyncNowBlockedReason as Blocked, TriggerSyncResult};
 use crate::sync::telemetry::{ConflictTelemetry, sync_error_event};
@@ -27,36 +31,55 @@ pub(super) struct PassDone {
     /// The driver the pass ran on, or why it could not be opened.
     driver: Result<Arc<dyn SyncPasses>, SyncError>,
     report: Option<PassReport>,
+    /// A failure outside the report: the first sync's (then `report` is the pass that drained
+    /// the outbox after it, if one ran), or the read of whether one is owed.
+    error: Option<SyncError>,
     pending: Option<u32>,
 }
 
-/// Runs one pass on `existing`, or on a driver opened for it.
+/// The driver a pass runs on.
+pub(super) enum PassDriver {
+    /// The one the loop holds.
+    Held(Arc<dyn SyncPasses>),
+    /// One the pass opens, which `observers` hear from its open on.
+    Open {
+        entitled: bool,
+        observers: Vec<Arc<dyn ApplyObserver>>,
+    },
+}
+
+/// Runs one pass, or the first sync with its progress to `progress` while the vault has not
+/// finished one. `pause` is the loop's: it reaches the driver while the pass holds it.
 pub(super) async fn run(
     id: u64,
     trigger: Trigger,
-    existing: Option<Arc<dyn SyncPasses>>,
+    driver: PassDriver,
     backend: Arc<dyn SyncBackend>,
     db: memry_core::storage::Db,
-    entitled: bool,
+    pause: watch::Receiver<bool>,
+    progress: Arc<dyn InitialSyncSink>,
 ) -> PassDone {
     let started = Instant::now();
-    let driver = match existing {
-        Some(driver) => Ok(driver),
-        None => backend.open().await.inspect(|driver| {
+    let running = backend.first_sync_running();
+    let driver = match driver {
+        PassDriver::Held(driver) => Ok(driver),
+        PassDriver::Open {
+            entitled,
+            observers,
+        } => backend.open(observers).await.inspect(|driver| {
             if entitled {
                 driver.set_entitled(true);
             }
         }),
     };
-    let report = match (&driver, trigger) {
-        (Ok(driver), Trigger::Hint { cursor }) => driver.wake(cursor).await,
-        (Ok(driver), _) => driver.run_pass(trigger.pass_trigger()).await,
-        (Err(_), _) => None,
+    let (report, error) = match &driver {
+        Ok(driver) => tokio::select! {
+            biased;
+            ran = pass_on(driver.as_ref(), trigger, progress, running) => ran,
+            () = follow_pause(driver.as_ref(), pause) => (None, None),
+        },
+        Err(_) => (None, None),
     };
-    // The pass ends with the snapshots due, so their gate reads the pull it just ran.
-    if let (Ok(driver), Some(_)) = (&driver, &report) {
-        driver.push_due_snapshots(now_ms()).await;
-    }
     let pending = match blocking(&db, outbox::depth).await {
         Ok(depth) => u32::try_from(depth).ok(),
         Err(error) => {
@@ -70,11 +93,109 @@ pub(super) async fn run(
         started,
         driver,
         report,
+        error,
         pending,
     }
 }
 
+/// A fresh device's first pass, whatever asked for it, is the first sync (`full-sync-runner.ts`
+/// `isFreshDevice`): it pulls every live body, which the feed alone does not serve (#2297). A
+/// first sync cut short resumes from what it wrote at the next pass.
+///
+/// A first sync that fails is followed by a pass, so the seeds run and the outbox drains while the
+/// device stays fresh: Electron's full sync seeds and pushes on every run (`full-sync-runner.ts:
+/// 400-455`), and one body the server keeps refusing must not hold every local write back.
+///
+/// `running` is held for the first sync alone, a failed or cut one included: the note index
+/// defers its search reindex meanwhile (#5409).
+async fn pass_on(
+    driver: &dyn SyncPasses,
+    trigger: Trigger,
+    progress: Arc<dyn InitialSyncSink>,
+    running: Option<FirstSyncRunning>,
+) -> (Option<PassReport>, Option<SyncError>) {
+    let (report, error) = match driver.needs_first_sync().await {
+        Err(error) => (None, Some(error)),
+        Ok(true) => {
+            let hold = running.as_ref().map(FirstSyncRunning::hold);
+            let ran = driver.first_sync(progress).await;
+            drop(hold);
+            match ran {
+                Ok(report) => (report, None),
+                Err(error) if drains_after(&error) => {
+                    (driver.run_pass(trigger.pass_trigger()).await, Some(error))
+                }
+                Err(error) => (None, Some(error)),
+            }
+        }
+        Ok(false) => (
+            match trigger {
+                Trigger::Hint { cursor } => driver.wake(cursor).await,
+                _ => driver.run_pass(trigger.pass_trigger()).await,
+            },
+            None,
+        ),
+    };
+    // The pass ends with the snapshots due, so their gate reads the pull it just ran.
+    if report.is_some() {
+        driver.push_due_snapshots(now_ms()).await;
+    }
+    (report, error)
+}
+
+/// Whether a pass runs after a first sync that failed with `error`. Not after a pause cut, an
+/// auth refusal, a `429` or offline: the pass would fail the same way.
+fn drains_after(error: &SyncError) -> bool {
+    !(error.is_cancelled()
+        || is_offline(error)
+        || rate_limited(error).is_some()
+        || matches!(
+            SyncErrorCategory::of(error),
+            SyncErrorCategory::AuthExpired
+                | SyncErrorCategory::DeviceRevoked
+                | SyncErrorCategory::CertificatePinFailed
+        ))
+}
+
+/// The engine's offline case (`engine.rs` `is_offline`): a reachability transition, not a backoff.
+fn is_offline(error: &SyncError) -> bool {
+    matches!(
+        error,
+        SyncError::Api {
+            source: ApiError::Transport {
+                source: TransportError::Offline
+            }
+        }
+    )
+}
+
+/// Pauses and resumes `driver` with the loop. The loop does so for the driver it holds; a driver
+/// this pass opened is the pass's until it hands it back, and a pause during its pass must still
+/// cut it.
+async fn follow_pause(driver: &dyn SyncPasses, mut pause: watch::Receiver<bool>) {
+    loop {
+        if *pause.borrow_and_update() {
+            driver.pause();
+        } else {
+            driver.resume();
+        }
+        if pause.changed().await.is_err() {
+            return std::future::pending().await;
+        }
+    }
+}
+
 impl Loop {
+    /// What a driver this loop opens hears: the shell's events and the conflict telemetry.
+    pub(super) fn observers(&self) -> Vec<Arc<dyn ApplyObserver>> {
+        let mut observers: Vec<Arc<dyn ApplyObserver>> =
+            vec![Arc::new(EventObserver(Arc::clone(&self.on_event)))];
+        if let Some(telemetry) = &self.telemetry {
+            observers.push(Arc::new(ConflictTelemetry(Arc::clone(telemetry))));
+        }
+        observers
+    }
+
     pub(super) async fn finished(&mut self, done: PassDone) {
         if let Some(pending) = done.pending {
             self.pending = pending;
@@ -96,24 +217,26 @@ impl Loop {
         };
         // The keychain answered: the open read the master key.
         self.keychain = None;
-        let fresh = !self
-            .driver
-            .as_ref()
-            .is_some_and(|d| Arc::ptr_eq(d, &driver));
-        if let Some(telemetry) = self.telemetry.as_ref().filter(|_| fresh) {
-            driver.observe(Arc::new(ConflictTelemetry(Arc::clone(telemetry))));
-        }
+        // A pause or resume may have come after the pass let go of the driver.
         if self.paused {
             driver.pause();
+        } else {
+            driver.resume();
         }
         self.driver = Some(Arc::clone(&driver));
-        let result = match &done.report {
-            // A hint the engine dropped: this device already holds its change.
-            None if matches!(done.trigger, Trigger::Hint { .. }) && !self.paused => {
-                TriggerSyncResult::ok()
+        let result = match &done.error {
+            Some(error) if error.is_cancelled() => {
+                TriggerSyncResult::blocked(Blocked::Paused, None)
             }
-            None => TriggerSyncResult::blocked(Blocked::Paused, None),
-            Some(report) => self.record(report, done.started),
+            Some(error) => {
+                self.first_sync_failed(error, done.report.as_ref(), done.started, done.pending)
+            }
+            None => self.reported(
+                done.report.as_ref(),
+                done.trigger,
+                done.started,
+                done.pending,
+            ),
         };
         if result.success {
             self.socket_refused = false;
@@ -131,10 +254,13 @@ impl Loop {
                     skew_ms = clock.skew_ms(),
                     "the clock is off from the server's; sync paused"
                 );
-                match self.set_paused(true).await {
-                    Ok(()) => self.skew_paused = true,
-                    Err(error) => tracing::error!(%error, "could not persist the clock-skew pause"),
+                // Paused in memory even when the write failed (`set_paused`), so the event and
+                // the status agree.
+                if let Err(error) = self.set_paused(true).await {
+                    tracing::error!(%error, "could not persist the clock-skew pause");
                 }
+                self.skew_paused = true;
+                (self.on_event)(&SyncEvent::clock_skew(clock));
             }
         }
         let result = if self.paused {
@@ -145,35 +271,83 @@ impl Loop {
         self.answer(done.id, result);
     }
 
+    fn reported(
+        &mut self,
+        report: Option<&PassReport>,
+        trigger: Trigger,
+        started: Instant,
+        pending: Option<u32>,
+    ) -> TriggerSyncResult {
+        match report {
+            // A hint the engine dropped: this device already holds its change.
+            None if matches!(trigger, Trigger::Hint { .. }) && !self.paused => {
+                TriggerSyncResult::ok()
+            }
+            None => TriggerSyncResult::blocked(Blocked::Paused, None),
+            Some(report) => {
+                self.took_in(report, started, pending);
+                let result = self.record(report);
+                // Bodies the budget left due: the next pass takes them now, not at the tick.
+                if report.bodies_left && result.success {
+                    self.trailing = Some(
+                        self.trailing
+                            .map_or(Trigger::Tick, |queued| queued.stronger(Trigger::Tick)),
+                    );
+                }
+                result
+            }
+        }
+    }
+
+    /// A first sync that failed, and the pass that drained the outbox after it. The pass's push
+    /// and pull are taken in, but not its success: the failure stays shown and its backoff keeps
+    /// doubling until a first sync completes. A failure of the pass itself (a latch, a `429`)
+    /// wins, as it would on its own.
+    fn first_sync_failed(
+        &mut self,
+        error: &SyncError,
+        drained: Option<&PassReport>,
+        started: Instant,
+        pending: Option<u32>,
+    ) -> TriggerSyncResult {
+        let mut error = error;
+        if let Some(report) = drained {
+            self.took_in(report, started, pending);
+            if let Some(failed) = report.error().filter(|failed| !failed.is_cancelled()) {
+                error = failed;
+            }
+        }
+        self.pass_failed(error, is_offline(error))
+    }
+
+    /// What every pass that ran tells, whatever its outcome: queue-cleared and the pull's age.
+    fn took_in(&mut self, report: &PassReport, started: Instant, pending: Option<u32>) {
+        if report.pushed_items > 0 && report.push_error.is_none() && pending == Some(0) {
+            (self.on_event)(&SyncEvent::QueueCleared {
+                item_count: u32::try_from(report.pushed_items).unwrap_or(u32::MAX),
+                duration_ms: i64::try_from(report.push_ms).unwrap_or(i64::MAX),
+            });
+        }
+        if report.transitions.contains(&SyncState::Applying) {
+            self.last_pull = Some(started);
+            self.signals.pulled();
+        }
+    }
+
     /// Takes in what one pass did and says how a Sync Now caller sees it.
-    fn record(&mut self, report: &PassReport, started: Instant) -> TriggerSyncResult {
-        self.engine = Some(report.final_state);
+    fn record(&mut self, report: &PassReport) -> TriggerSyncResult {
         let clean = report.error().is_none();
         let online = !matches!(report.final_state, SyncState::Offline | SyncState::Refused);
         // A pass stopped at the page cap left pages on the server (`full-sync-runner.ts:482`).
         self.signals
             .set_caught_up(clean && online && !report.pull.has_more);
-        if report.transitions.contains(&SyncState::Applying) {
-            self.last_pull = Some(started);
-            self.signals.pulled();
+        // A pass the pause cut failed nothing: the pass after the resume goes on from it.
+        if report.error().is_some_and(SyncError::is_cancelled) {
+            return TriggerSyncResult::blocked(Blocked::Paused, None);
         }
+        self.engine = Some(report.final_state);
         match report.error() {
-            Some(error) => {
-                self.report(error);
-                let category = SyncErrorCategory::of(error);
-                self.last_error = Some((error.to_string(), category));
-                if let Some(retry_after) = rate_limited(error) {
-                    self.rate_failures += 1;
-                    let wait = rate_limit_backoff(retry_after, self.rate_failures);
-                    self.blocked_until = Some(Instant::now() + wait);
-                } else if report.final_state != SyncState::Offline {
-                    self.failed(category);
-                }
-                if report.final_state == SyncState::Offline {
-                    return TriggerSyncResult::blocked(Blocked::Offline, None);
-                }
-                TriggerSyncResult::blocked(Blocked::Failed, Some(error.clone()))
-            }
+            Some(error) => self.pass_failed(error, report.final_state == SyncState::Offline),
             None if report.final_state == SyncState::Offline => {
                 TriggerSyncResult::blocked(Blocked::Offline, None)
             }
@@ -202,6 +376,24 @@ impl Loop {
 }
 
 impl Loop {
+    /// A pass or a first sync that failed: told, shown, and backed off (`429`: its window).
+    fn pass_failed(&mut self, error: &SyncError, offline: bool) -> TriggerSyncResult {
+        self.report(error);
+        let category = SyncErrorCategory::of(error);
+        self.last_error = Some((error.to_string(), category));
+        if let Some(retry_after) = rate_limited(error) {
+            self.rate_failures += 1;
+            let wait = rate_limit_backoff(retry_after, self.rate_failures);
+            self.blocked_until = Some(Instant::now() + wait);
+        } else if !offline {
+            self.failed(category);
+        }
+        if offline {
+            return TriggerSyncResult::blocked(Blocked::Offline, None);
+        }
+        TriggerSyncResult::blocked(Blocked::Failed, Some(error.clone()))
+    }
+
     /// `sync_error`, redacted by the service; dropped by it while telemetry is off.
     fn report(&self, error: &memry_core::api::errors::SyncError) {
         if let Some(telemetry) = &self.telemetry {

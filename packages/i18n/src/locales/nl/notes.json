@@ -45,6 +45,12 @@
     }
   },
   "page": {
+    "noteFiles": {
+      "downloading": "Bestanden van deze notitie downloaden…",
+      "failed": "Kan de bestanden van deze notitie niet downloaden: {error}",
+      "failedFallback": "het downloaden is mislukt",
+      "retry": "Opnieuw proberen"
+    },
     "empty": {
       "title": "Geen notitie geselecteerd",
       "body": "Selecteer een notitie in de zijbalk om deze te bekijken"
@@ -196,6 +202,10 @@
   "editor": {
     "bodySyncPending": "Synchroniseren – de inhoud van deze notitie is mogelijk nog onderweg",
     "databaseReadOnly": "Alleen-lezen. Dit apparaat kan geen wijzigingen opslaan.",
+    "remoteBodyStuck": "Wachten op synchronisatie — alleen-lezen tot de gesynchroniseerde inhoud van deze notitie binnen is",
+    "remoteBodyOffline": "Offline — alleen-lezen tot deze notitie is gesynchroniseerd",
+    "remoteBodySignedOut": "Afgemeld — alleen-lezen tot je inlogt en deze notitie is gesynchroniseerd",
+    "remoteBodyVaultLocked": "De versleutelingssleutel van deze kluis is niet leesbaar — alleen-lezen tot deze notitie is gesynchroniseerd",
     "taskRemoval": {
       "title": "{count, plural, one {Taak uit deze notitie verwijderd} other {# taken uit deze notitie verwijderd}}",
       "description": "{count, plural, one {Wil je deze taak in Taken houden of overal verwijderen?} other {Wil je deze taken in Taken houden of overal verwijderen?}}",

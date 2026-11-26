@@ -4,6 +4,8 @@
 use std::collections::HashMap;
 use std::sync::{Mutex, MutexGuard, PoisonError};
 
+use memry_core::sync::delete_keep::OwnWrites;
+
 use crate::vault::consumer::ChangeSource;
 
 /// By note id, the hash of the file this run wrote for the note, who wrote it, and from which
@@ -30,11 +32,45 @@ use crate::vault::consumer::ChangeSource;
 /// Apart again, by note id, the hash of the bytes the write-back wrote last: the run's bytes too
 /// ([`Self::ours`]), though a save does not replace them with no version, since no editor showed
 /// them.
+///
+/// Apart last, by note id, the hash of the bytes a write-back pass is writing now, from just
+/// before its write until the pass ends: a pulled delete reads them as this device's own
+/// ([`OwnWrites`]) in the gap between the write and the row's stamp.
 #[derive(Debug, Default)]
 pub struct OwnFiles {
     marks: Mutex<HashMap<String, Mark>>,
     outside: Mutex<HashMap<String, String>>,
     written_back: Mutex<HashMap<String, String>>,
+    writing: Mutex<HashMap<String, String>>,
+}
+
+/// A write-back pass's bytes in flight ([`OwnFiles::writing`]), forgotten when it drops.
+pub(crate) struct Writing<'a> {
+    own: &'a OwnFiles,
+    note_id: &'a str,
+}
+
+impl Drop for Writing<'_> {
+    fn drop(&mut self) {
+        lock(&self.own.writing).remove(self.note_id);
+    }
+}
+
+/// A pulled delete keeps no copy of a file that holds the run's bytes (#5809 review, low 2).
+impl OwnWrites for OwnFiles {
+    /// Own only when the document holds the file's bytes: the write-back wrote them from it
+    /// (`written_back`) or is writing them now (`writing`). Never `marks`: an app
+    /// save the document did not take (a large file, an owed or refused body, a failed feed)
+    /// marks its bytes as the run's and leaves them in the file alone, so the delete keeps them
+    /// (#5796, #5823 review).
+    fn wrote(&self, item_id: &str, file_hash: &str) -> bool {
+        lock(&self.written_back)
+            .get(item_id)
+            .is_some_and(|last| last == file_hash)
+            || lock(&self.writing)
+                .get(item_id)
+                .is_some_and(|writing| writing == file_hash)
+    }
 }
 
 #[derive(Debug)]
@@ -73,6 +109,12 @@ impl OwnFiles {
     /// The write-back wrote `hash` as the note's text.
     pub(crate) fn wrote_back(&self, note_id: &str, hash: &str) {
         lock(&self.written_back).insert(note_id.to_owned(), hash.to_owned());
+    }
+
+    /// A write-back pass is about to write `hash` as the note's text, until the guard drops.
+    pub(crate) fn writing<'a>(&'a self, note_id: &'a str, hash: &str) -> Writing<'a> {
+        lock(&self.writing).insert(note_id.to_owned(), hash.to_owned());
+        Writing { own: self, note_id }
     }
 
     /// Whether `hash` is the bytes this run wrote last for the note: the write-back's, or another
@@ -154,5 +196,21 @@ mod tests {
         assert!(!own.is_own_to("n", "h1", None));
         own.clear();
         assert!(!own.ours("n", "h1"));
+    }
+
+    /// A pulled delete reads the bytes a write-back pass is writing as the run's, from before
+    /// the write until the pass ends, and no longer.
+    #[test]
+    fn a_delete_reads_the_bytes_in_flight_as_the_runs_until_the_pass_ends() {
+        let own = OwnFiles::default();
+        let writing = own.writing("n", "h1");
+        assert!(OwnWrites::wrote(&own, "n", "h1"));
+        assert!(!OwnWrites::wrote(&own, "n", "h0"));
+        assert!(
+            !own.ours("n", "h1"),
+            "the write-back's own checks are unchanged"
+        );
+        drop(writing);
+        assert!(!OwnWrites::wrote(&own, "n", "h1"));
     }
 }

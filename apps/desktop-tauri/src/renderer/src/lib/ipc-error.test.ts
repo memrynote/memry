@@ -141,6 +141,15 @@ describe('extractErrorMessage', () => {
     )
   })
 
+  it('says a refused canvas write in the words of the canvas actions', async () => {
+    await createRendererI18n({ locale: 'en' })
+
+    const refused = { kind: 'invalid', code: 'canvas_write_refused', message: 'rust text' }
+    expect(extractErrorMessage(refused, 'fallback')).toBe(
+      'That canvas action could not be completed'
+    )
+  })
+
   it('says a write to a note in an excluded folder was refused (#3530)', async () => {
     await createRendererI18n({ locale: 'en' })
     const refused = {

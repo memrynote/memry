@@ -16,14 +16,20 @@ use crate::commands::vault_locks::VaultLockStateView;
 
 mod account;
 mod ai;
+mod canvas;
+mod home_pages;
 mod sync;
 mod tags;
+mod tasks;
 mod voice;
 
 pub use account::*;
 pub use ai::*;
+pub use canvas::*;
+pub use home_pages::*;
 pub use sync::*;
 pub use tags::*;
+pub use tasks::*;
 pub use voice::*;
 
 /// Emit `event` to every webview: the one window-wide emit (inv09#66). Each listener gets it once.
@@ -205,12 +211,14 @@ pub struct VaultActivityChangedEvent;
 #[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
 pub struct VaultNoticesChangedEvent;
 
-/// Who made a note change (`NoteEventSource`): the app, or an edit outside it.
+/// Who made a note change (`NoteEventSource`): the app, an edit outside it, or a change pulled
+/// from another device, which an open editor does not remount for (Electron `source: 'sync'`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, serde::Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub enum NoteEventSource {
     Internal,
     External,
+    Sync,
 }
 
 /// A note was made, by the app or from a file that appeared (`notes:created`).
@@ -477,6 +485,11 @@ pub struct AppNavigationRequestedEvent {
 pub struct FlushRequestedEvent {
     pub request_id: String,
 }
+
+/// A sticky draft was written or deleted (`sticky:drafts-changed`), sent to every window; the
+/// edge tab and the sticky read the list again.
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+pub struct StickyDraftsChangedEvent;
 
 /// Open an inbox item (`inbox-open-item-event`): `memry://open?item=<id>` and, with Step 27
 /// (#3544), a clicked inbox notification.

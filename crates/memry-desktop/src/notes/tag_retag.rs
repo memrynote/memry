@@ -7,8 +7,8 @@
 //! does not hold it (and a removal from it alone is refused), goes in its own write turn, as a rename's does (`super::tag_rename`): a
 //! note's frontmatter `tags:` through [`AppEdit`] with [`Precondition::Held`], the body left as
 //! Electron's `editNoteHeaderTags` leaves it; then, once the file holds it, its record's `tags`
-//! and `pinnedTags` (`TagHub::retag_in`, one outbox row). A day's file is the author's (#3931):
-//! its record alone. A note with no file to edit has its record alone. A note the seam keeps is
+//! and `pinnedTags` (`TagHub::retag_in`, one outbox row). A day goes as a note does: its header
+//! follows its record (#5509, #5588). A note with no file to edit has its record alone. A note the seam keeps is
 //! tried once more after the write-back ran what it had scheduled; one still kept keeps the tag
 //! in its file and its record and is answered in `failed`, named, with whether asking again can
 //! finish it (Electron logs a header write-back that failed and goes on). The tasks and the
@@ -241,10 +241,6 @@ impl NotesService {
             Retag::Locked => Ok(InNote::Kept(Kept::Locked)),
         };
         let retagged = self.order.run(id, |turn| {
-            // A day's file is its author's: its record owns its tags (#3931).
-            if holder.day {
-                return record(hub);
-            }
             let mut changed = false;
             let edited = edit.run_then(
                 turn,
@@ -312,6 +308,11 @@ fn blank() -> NotesError {
 /// `text` with its frontmatter `tags:` made what `header` makes of them (left when it makes
 /// `None` or the same list) and its body made what `body` makes of it (left on `None`), every
 /// other key keeping its lines; `None` when neither changes, else the text and its body.
+///
+/// Invariant (#5588): every tag change across the vault (rename, merge, delete, removal from
+/// one holder) edits a holder's file header here, a journal day's as a note's, before its
+/// record takes the change: a day's file header follows its record's tags (#5509), so no change
+/// may reach a day's record and leave its header stale.
 pub(super) fn tags_edited(
     text: &str,
     header: impl FnOnce(&[String]) -> Option<Vec<String>>,

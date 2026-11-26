@@ -539,18 +539,25 @@ fn session(app: &Path) -> Session {
     ))))
 }
 
-/// Killed once two files are in the hidden staging folder.
+/// Killed at the step after a note of `notes/` itself was staged. The folder lists its entries
+/// in the file system's order (hash order on ext4), so the kill keys on what moved, not on a name.
 fn crash_mid_move(root: &Path) {
     let mut seen = Vec::new();
     let mut windows = as_windows_holds(&mut seen);
+    let notes = root.join("notes");
+    let mut note_staged = false;
     let killed = was_killed(catch_unwind(AssertUnwindSafe(|| {
         move_dir_checked(
             root,
             &root.join("notes"),
             &root.join("moved"),
             &mut |step| {
-                if matches!(step, Step::Entry { from, .. } if from.ends_with("sub")) {
-                    kill();
+                if let Step::Entry { from, .. } = step {
+                    if note_staged {
+                        kill();
+                    }
+                    note_staged = from.parent() == Some(notes.as_path())
+                        && from.extension().is_some_and(|ext| ext == "md");
                 }
                 windows(step)
             },

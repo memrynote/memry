@@ -38,6 +38,7 @@ function makeInput(overrides?: Partial<EncryptItemInput>): EncryptItemInput {
     vaultKey: keys.vaultKey,
     signingSecretKey: keys.signingSecretKey,
     signerDeviceId: keys.deviceId,
+    vaultId: 'vault-a',
     ...overrides
   }
 }
@@ -139,7 +140,7 @@ describe('encryptItemForPush', () => {
 
   // #2408: the content-free signature that survives the payload shed.
   describe('#given an attestable delete #when encryptItemForPush', () => {
-    it('#then attests exactly the pushed (purpose, id, type, deletedAt, clock)', () => {
+    it('#then attests exactly the pushed (purpose, vaultId, id, type, deletedAt, clock)', () => {
       const keys = generateTestKeys()
       const claim = {
         id: 'task-1',
@@ -155,15 +156,43 @@ describe('encryptItemForPush', () => {
         })
       )
 
-      const valid = verifySignature(
-        deleteAttestationPayload(claim),
-        CBOR_FIELD_ORDER.DELETE_ATTESTATION,
-        // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is a CJS default-export object and sibling crypto tests mock it as default-only
-        sodium.from_base64(pushItem.deleteAttestation!, sodium.base64_variants.ORIGINAL),
-        keys.signingPublicKey
-      )
-      expect(valid).toBe(true)
+      const verifiesIn = (vaultId: string | null) =>
+        verifySignature(
+          deleteAttestationPayload(claim, vaultId),
+          CBOR_FIELD_ORDER.DELETE_ATTESTATION,
+          // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is a CJS default-export object and sibling crypto tests mock it as default-only
+          sodium.from_base64(pushItem.deleteAttestation!, sodium.base64_variants.ORIGINAL),
+          keys.signingPublicKey
+        )
+      // #5247: v2, bound to the vault the push is routed to.
+      expect(verifiesIn('vault-a')).toBe(true)
+      expect(verifiesIn('vault-b')).toBe(false)
+      expect(verifiesIn(null)).toBe(false)
       expect(pushItem.deleteAttestation).not.toBe(pushItem.signature)
+    })
+
+    // #5247: a device that cannot name its vault signs v1, which every server accepts.
+    it('#then attests v1 when the vault id is unknown', () => {
+      const keys = generateTestKeys()
+      const claim = { id: 'task-1', type: 'task' as const, clock: { 'dev-a': 7 }, deletedAt: 5 }
+      const { pushItem } = encryptItemForPush(
+        makeInput({
+          ...claim,
+          operation: 'delete',
+          vaultId: null,
+          signingSecretKey: keys.signingSecretKey
+        })
+      )
+
+      expect(
+        verifySignature(
+          deleteAttestationPayload(claim, null),
+          CBOR_FIELD_ORDER.DELETE_ATTESTATION,
+          // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is a CJS default-export object and sibling crypto tests mock it as default-only
+          sodium.from_base64(pushItem.deleteAttestation!, sodium.base64_variants.ORIGINAL),
+          keys.signingPublicKey
+        )
+      ).toBe(true)
     })
 
     it('#then attests nothing for an update, a clockless delete, or a settings delete', () => {

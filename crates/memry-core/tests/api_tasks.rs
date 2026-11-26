@@ -30,6 +30,7 @@ use memry_core::api::tasks::{TaskViewQuery, Tasks};
 use memry_core::api::tasks_write::NewTaskInput;
 use memry_core::api::vault::Vault;
 use memry_core::crypto::sodium;
+use memry_core::domain::projects;
 use memry_core::seams::secure_store::{SecureStore as _, SecureStoreKey};
 use memry_core::storage::repositories::sync_items::{self, InboundRecord};
 use serde_json::{Value, json};
@@ -459,18 +460,26 @@ fn an_empty_vault_gets_desktops_inbox_and_a_synced_one_keeps_its_own() {
     tasks
         .create(input("First", "inbox"))
         .expect("a task lands in it");
-    let queued: i64 = vault_db(&vault)
-        .call_blocking(|conn| {
-            Ok(conn
-                .query_row(
-                    "SELECT COUNT(*) FROM outbox WHERE item_type = 'project' AND item_id = 'inbox'",
-                    [],
-                    |row| row.get(0),
-                )
-                .unwrap())
-        })
+    let queued = || -> i64 {
+        vault_db(&vault)
+            .call_blocking(|conn| {
+                Ok(conn
+                    .query_row(
+                        "SELECT COUNT(*) FROM outbox WHERE item_type = 'project' AND item_id = 'inbox'",
+                        [],
+                        |row| row.get(0),
+                    )
+                    .unwrap())
+            })
+            .unwrap()
+    };
+    // Unclocked and unqueued, as desktop seeds it: the sync pass queues it after its pull.
+    assert_eq!(queued(), 0);
+    let seeded = vault_db(&vault)
+        .call_blocking(|conn| projects::seed_unclocked(conn, "desk", 1))
         .unwrap();
-    assert_eq!(queued, 1);
+    assert_eq!(seeded, ["inbox"]);
+    assert_eq!(queued(), 1);
 
     let synced = self::vault();
     inbound(

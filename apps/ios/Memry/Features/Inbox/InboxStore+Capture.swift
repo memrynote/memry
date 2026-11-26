@@ -66,9 +66,9 @@ extension InboxStore {
             let json = (try? JSONSerialization.data(withJSONObject: patch)).flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
             let title = fetched?.title ?? found?.title
             let description = found?.description
-            await self?.write { try $0.completeLink(id: id, title: title, description: description, metadataJson: json) }
+            await self?.write(background: true) { try $0.completeLink(id: id, title: title, description: description, metadataJson: json) }
             guard let page, let article = await InboxArticle.extract(html: page.html, url: url) else { return }
-            await self?.write {
+            await self?.write(background: true) {
                 try $0.completeArticle(id: id, contentMarkdown: article.markdown, metadataJson: article.metadataJson)
             }
         }
@@ -89,7 +89,7 @@ extension InboxStore {
         let checkedMime = mime
         guard await read({ try $0.checkFile(mimeType: checkedMime, size: size) }) != nil else {
             clearFailure()
-            fail(size > 50 * 1024 * 1024 ? InboxErrors.tooLarge : InboxErrors.unsupportedType)
+            fail(InboxErrors.fileRefusal(size: size))
             trackCaptured(InboxCaptureKind(mime: mime), source: source, ok: false)
             return .failed
         }

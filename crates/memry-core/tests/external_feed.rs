@@ -16,6 +16,7 @@ use http_fakes::FakeSecureStore;
 use memry_core::api::external_feed::ExternalFeed;
 use memry_core::api::notes_write::NotesWriter;
 use memry_core::api::vault::Vault;
+use memry_core::crdt::epoch::HeldBody;
 use memry_core::crdt::registry::UpdateSink;
 use memry_core::crdt::{BODY_FRAGMENT, DocumentRegistry, update_log};
 use memry_core::crypto::sodium;
@@ -394,7 +395,8 @@ fn server_body(
         .db_handle()
         .call_blocking(|conn| {
             for (seq, update) in updates.iter().enumerate() {
-                update_log::append_server_update(conn, id, seq as i64 + 1, update, 1)
+                HeldBody::never_purged(conn, id)
+                    .and_then(|held| held.append_server_update(seq as i64 + 1, update, 1))
                     .expect("store");
             }
             Ok(())
@@ -828,7 +830,9 @@ fn release_body(f: &Fixture, id: &str, case: &str) {
     f.vault
         .db_handle()
         .call_blocking(move |conn| {
-            update_log::append_server_update(conn, &id, 1, &update, 1).expect("store");
+            HeldBody::never_purged(conn, &id)
+                .and_then(|held| held.append_server_update(1, &update, 1))
+                .expect("store");
             Ok(())
         })
         .expect("store");

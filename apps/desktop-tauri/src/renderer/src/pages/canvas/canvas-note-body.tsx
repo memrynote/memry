@@ -31,7 +31,7 @@ import {
   sanitizeBlockIds
 } from '@/components/note/content-area/markdown-utils'
 import { normalizeNoteBlocks } from '@/components/note/content-area/normalize-note-blocks'
-import { normalizeMarkdownHardBreaks } from '@/components/note/content-area/wiki-link-utils'
+import { normalizeLoadedMarkdown } from '@/components/note/content-area/wiki-link-utils'
 import { TaskPrefetchProvider } from '@/components/note/content-area/task-block/task-prefetch-context'
 import { useEditorLinkClicks } from '@/components/note/content-area/editor-links'
 import { createLogger } from '@/lib/logger'
@@ -68,7 +68,7 @@ export const CanvasNoteBody = memo(function CanvasNoteBody({
         // markdown markers back into real blocks — without it a
         // `- [ ] Ship it {task:abc}` line renders as literal marker text
         // instead of the task renderer.
-        const source = normalizeMarkdownHardBreaks(markdown)
+        const source = normalizeLoadedMarkdown(markdown)
         const parsed = await parseMarkdownPreservingBlanks(editor, source)
         const blocks = sanitizeBlockIds(normalizeNoteBlocks(parsed, source))
         if (cancelled) return

@@ -36,6 +36,8 @@ jobs:
         with:
           workspaces: crates
           key: macos-26
+          # Saved only on refs/heads/feat/tauri-v2 (the repo's 10 GB cache cap); other refs restore.
+          save-if: ${{ github.ref == 'refs/heads/feat/tauri-v2' }}
 
       - name: Select Xcode 26
         run: |
@@ -47,8 +49,22 @@ jobs:
           sudo xcode-select -s "$app"
           xcodebuild -version
 
+      - name: Restore the ONNX Runtime archive
+        id: onnxruntime-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/Library/Caches/memry/onnxruntime
+          key: onnxruntime-${{ hashFiles('crates/memry-core/onnxruntime.lock') }}
+
       - name: Build XCFramework (release)
         run: crates/memry-core/build-xcframework.sh --release
+
+      - name: Save the ONNX Runtime archive
+        if: steps.onnxruntime-cache.outputs.cache-hit != 'true' && github.ref == 'refs/heads/feat/tauri-v2'
+        uses: actions/cache/save@v4
+        with:
+          path: ~/Library/Caches/memry/onnxruntime
+          key: onnxruntime-${{ hashFiles('crates/memry-core/onnxruntime.lock') }}
 
       - name: Write App Store Connect API key
         env:
@@ -91,6 +107,17 @@ jobs:
             -authenticationKeyPath "$ASC_KEY_PATH" \
             -authenticationKeyID "$ASC_KEY_ID" \
             -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+
+      # Cloud signing mints an "Apple Development: Created via API" certificate
+      # on every run, and the ephemeral runner never reuses it. Apple stops
+      # signing at its certificate limit, so revoke them when the run ends.
+      - name: Revoke CI development certificates
+        if: always() && env.ASC_KEY_PATH != ''
+        continue-on-error: true
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: node apps/ios/scripts/revoke-ci-dev-certs.mjs
 
       - name: Remove API key
         if: always()

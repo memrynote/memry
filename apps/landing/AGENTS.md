@@ -31,6 +31,6 @@ Landing is a separate design register from the product apps.
 
 ## Commands
 
-- `pnpm --filter @memry/landing typecheck`, `lint`, `test`, and `build` are the gates. The root `pnpm lint` and `pnpm typecheck` skip this app. `build` runs the typecheck, the Vite build, and prerendering (`scripts/prerender.ts`). Tests use `node:test`, not Vitest.
+- The gates are the root `pnpm lint`, which covers this app, and `pnpm --filter @memry/landing typecheck`, `test`, and `build`. The root `pnpm typecheck` skips this app. `build` runs the typecheck, the Vite build, and prerendering (`scripts/prerender.ts`). Tests use `node:test`, not Vitest.
 - Check copy changes in the built output with `pnpm --filter @memry/landing preview`.
 - `.env.local` is gitignored and linked across worktrees by `pnpm env:link`.

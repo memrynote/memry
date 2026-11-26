@@ -16,9 +16,17 @@ const localProvider = vi.hoisted(() => ({
   agentListLocalModels: vi.fn(),
   agentTestLocalProvider: vi.fn()
 }))
+const billing = vi.hoisted(() => ({
+  accountGetBillingStatus: vi.fn(),
+  accountRefreshBillingStatus: vi.fn(),
+  accountStartCheckout: vi.fn(),
+  accountOpenBillingPortal: vi.fn(),
+  accountPreviewPlanChange: vi.fn(),
+  accountChangePlan: vi.fn()
+}))
 vi.mock('../../../../generated/bindings', async (importOriginal) => {
   const actual = await importOriginal<typeof Bindings>()
-  return { ...actual, commands: { ...actual.commands, ...localProvider } }
+  return { ...actual, commands: { ...actual.commands, ...localProvider, ...billing } }
 })
 
 const mocks = vi.hoisted(() => ({
@@ -299,6 +307,10 @@ vi.mock('@/contexts/auth-context', () => ({
   })
 }))
 
+vi.mock('@/services/sync-service', () => ({
+  syncService: { getUnsentNotes: vi.fn().mockResolvedValue({ total: 0, notes: [] }) }
+}))
+
 vi.mock('@/contexts/sync-context', () => ({
   useSync: () => mocks.syncContext
 }))
@@ -391,6 +403,45 @@ vi.mock('@/components/sync/device-list', () => ({
   )
 }))
 
+function installBillingCommands() {
+  const free = {
+    plan: 'free',
+    cadence: null,
+    status: 'inactive',
+    email: null,
+    limits: { storageLimit: 0, maxFileSize: 0, maxVaults: 0, versionHistoryDays: 0 },
+    usage: { storageUsed: 0 },
+    expiresAt: null,
+    canManageBilling: false
+  }
+  billing.accountGetBillingStatus.mockReset().mockResolvedValue(free)
+  billing.accountRefreshBillingStatus.mockReset().mockResolvedValue(PRO_MONTHLY)
+  billing.accountStartCheckout
+    .mockReset()
+    .mockResolvedValue({ success: true, checkoutUrl: 'https://checkout' })
+  billing.accountOpenBillingPortal
+    .mockReset()
+    .mockResolvedValue({ success: true, portalUrl: 'https://paddle.test/portal' })
+  billing.accountPreviewPlanChange.mockReset()
+  billing.accountChangePlan.mockReset()
+}
+
+const PRO_MONTHLY = {
+  plan: 'pro',
+  cadence: 'monthly',
+  status: 'active',
+  email: 'kaan@example.com',
+  limits: {
+    storageLimit: 10 * 1024 * 1024 * 1024,
+    maxFileSize: 200 * 1024 * 1024,
+    maxVaults: 10,
+    versionHistoryDays: 365
+  },
+  usage: { storageUsed: 1536 },
+  expiresAt: null,
+  canManageBilling: true
+}
+
 function installLocalProviderCommands() {
   localProvider.agentGetLocalProviderSettings.mockResolvedValue({
     preset: 'ollama',
@@ -452,44 +503,8 @@ function installWindowApi() {
         used: 1536,
         limit: 4096,
         breakdown: { notes: 1024, attachments: 256, crdt: 128, other: 128 }
-      }),
-      getUnsentNotes: vi.fn().mockResolvedValue({ total: 0, notes: [] })
-    } as unknown as typeof window.api.syncOps,
-    account: {
-      getBillingStatus: vi.fn().mockResolvedValue({
-        plan: 'free',
-        status: 'inactive',
-        source: 'none',
-        limits: {
-          storageLimit: 0,
-          maxFileSize: 0,
-          maxVaults: 0,
-          versionHistoryDays: 0
-        },
-        usage: { storageUsed: 0 },
-        expiresAt: null,
-        canManageBilling: false
-      }),
-      refreshBillingStatus: vi.fn().mockResolvedValue({
-        plan: 'pro',
-        status: 'active',
-        source: 'paddle',
-        limits: {
-          storageLimit: 10 * 1024 * 1024 * 1024,
-          maxFileSize: 200 * 1024 * 1024,
-          maxVaults: 10,
-          versionHistoryDays: 365
-        },
-        usage: { storageUsed: 1536 },
-        expiresAt: null,
-        canManageBilling: true
-      }),
-      startCheckout: vi.fn().mockResolvedValue({ success: true, checkoutUrl: 'https://checkout' }),
-      openBillingPortal: vi.fn().mockResolvedValue({
-        success: true,
-        portalUrl: 'https://paddle.test/portal'
       })
-    } as unknown as typeof window.api.account,
+    } as unknown as typeof window.api.syncOps,
     settings: {
       ...window.api.settings,
       getSyncSettings: vi.fn().mockResolvedValue({
@@ -579,6 +594,7 @@ describe('settings section coverage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     installWindowApi()
+    installBillingCommands()
     mocks.authState = { status: 'authenticated', email: 'kaan@example.com' }
     mocks.syncStatus.status = 'idle'
     mocks.syncContext.linkingRequest = null
@@ -651,7 +667,7 @@ describe('settings section coverage', () => {
 
     // Free plan renders the marketing CTA in both the sync upsell and billing.
     fireEvent.click(screen.getAllByText('account.billing.actions.unlockSync')[0])
-    await waitFor(() => expect(window.api.account.startCheckout).toHaveBeenCalledWith())
+    await waitFor(() => expect(billing.accountStartCheckout).toHaveBeenCalledWith(null))
 
     fireEvent.click(screen.getByText('account.billing.actions.refresh'))
     await waitFor(() =>
@@ -660,24 +676,11 @@ describe('settings section coverage', () => {
     expect(mocks.syncContext.triggerSync).toHaveBeenCalled()
 
     fireEvent.click(screen.getByText('account.billing.actions.manage'))
-    await waitFor(() => expect(window.api.account.openBillingPortal).toHaveBeenCalled())
+    await waitFor(() => expect(billing.accountOpenBillingPortal).toHaveBeenCalled())
   })
 
   it('shows the sync toggle for a paid plan and pauses sync on toggle', async () => {
-    ;(window.api.account.getBillingStatus as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-      plan: 'pro',
-      status: 'active',
-      source: 'paddle',
-      limits: {
-        storageLimit: 10 * 1024 * 1024 * 1024,
-        maxFileSize: 200 * 1024 * 1024,
-        maxVaults: 10,
-        versionHistoryDays: 365
-      },
-      usage: { storageUsed: 1536 },
-      expiresAt: null,
-      canManageBilling: true
-    })
+    billing.accountGetBillingStatus.mockResolvedValueOnce(PRO_MONTHLY)
     render(<AccountSettings />)
     expect((await screen.findAllByText('account.billing.plans.pro')).length).toBeGreaterThan(0)
     expect(screen.queryByText('account.sync.upsell.title')).not.toBeInTheDocument()
@@ -689,21 +692,7 @@ describe('settings section coverage', () => {
   })
 
   it('reads a sync-settings blob without attachmentAutoDownload as on', async () => {
-    // SAFETY: setup() installs vi.fn() for every window.api.account method.
-    ;(window.api.account.getBillingStatus as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-      plan: 'pro',
-      status: 'active',
-      source: 'paddle',
-      limits: {
-        storageLimit: 10 * 1024 * 1024 * 1024,
-        maxFileSize: 200 * 1024 * 1024,
-        maxVaults: 10,
-        versionHistoryDays: 365
-      },
-      usage: { storageUsed: 1536 },
-      expiresAt: null,
-      canManageBilling: true
-    })
+    billing.accountGetBillingStatus.mockResolvedValueOnce(PRO_MONTHLY)
     // Blobs written by builds before the setting existed have no key.
     // SAFETY: setup() installs vi.fn() for getSyncSettings; the untyped mock lets the test
     // return the legacy shape the current type no longer describes.
@@ -735,20 +724,7 @@ describe('settings section coverage', () => {
 
   it('offers a refresh, never a second checkout, when an active plan is still gated', async () => {
     // #2201: the server has not released sync yet, but the money is already paid.
-    ;(window.api.account.getBillingStatus as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-      plan: 'pro',
-      status: 'active',
-      source: 'paddle',
-      limits: {
-        storageLimit: 10 * 1024 * 1024 * 1024,
-        maxFileSize: 200 * 1024 * 1024,
-        maxVaults: 10,
-        versionHistoryDays: 365
-      },
-      usage: { storageUsed: 1536 },
-      expiresAt: null,
-      canManageBilling: true
-    })
+    billing.accountGetBillingStatus.mockResolvedValueOnce(PRO_MONTHLY)
     mocks.syncStatus.status = 'local_only'
 
     render(<AccountSettings />)
@@ -759,8 +735,60 @@ describe('settings section coverage', () => {
 
     // Two refresh buttons now (sync card + billing actions); either must refresh.
     fireEvent.click(screen.getAllByText('account.billing.actions.refresh')[0])
-    await waitFor(() => expect(window.api.account.refreshBillingStatus).toHaveBeenCalled())
-    expect(window.api.account.startCheckout).not.toHaveBeenCalled()
+    await waitFor(() => expect(billing.accountRefreshBillingStatus).toHaveBeenCalled())
+    expect(billing.accountStartCheckout).not.toHaveBeenCalled()
+  })
+
+  it('prices the yearly switch first and applies it on the second click', async () => {
+    billing.accountGetBillingStatus.mockResolvedValueOnce(PRO_MONTHLY)
+    billing.accountPreviewPlanChange.mockResolvedValue({
+      plan: 'pro',
+      cadence: 'annual',
+      isUpgrade: true,
+      effective: 'immediate',
+      immediateChargeAmount: '4349',
+      recurringAmount: '9600',
+      currencyCode: 'USD',
+      nextBilledAt: null
+    })
+    billing.accountChangePlan.mockResolvedValue({ ...PRO_MONTHLY, cadence: 'annual' })
+    render(<AccountSettings />)
+
+    fireEvent.click(await screen.findByText('account.billing.annualSwitch.action'))
+    await screen.findByText('account.billing.annualSwitch.confirm')
+    expect(billing.accountPreviewPlanChange).toHaveBeenCalledWith({
+      plan: 'pro',
+      cadence: 'annual'
+    })
+    expect(billing.accountChangePlan).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByText('account.billing.annualSwitch.confirm'))
+    await waitFor(() =>
+      expect(toast.success).toHaveBeenCalledWith('account.billing.annualSwitch.success')
+    )
+    expect(billing.accountChangePlan).toHaveBeenCalledWith({ plan: 'pro', cadence: 'annual' })
+    expect(screen.queryByText('account.billing.annualSwitch.title')).not.toBeInTheDocument()
+  })
+
+  it('says there is no billing account when the portal answers no-billing-customer', async () => {
+    billing.accountGetBillingStatus.mockResolvedValueOnce(PRO_MONTHLY)
+    billing.accountOpenBillingPortal.mockResolvedValue({
+      success: false,
+      reason: 'no-billing-customer'
+    })
+    render(<AccountSettings />)
+
+    fireEvent.click(await screen.findByText('account.billing.actions.manage'))
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith('account.billing.toasts.portalNoCustomer')
+    )
+  })
+
+  it('shows the signed-out envelope as the billing error', async () => {
+    billing.accountGetBillingStatus.mockResolvedValueOnce({ success: false, error: 'Sign in' })
+    render(<AccountSettings />)
+
+    expect(await screen.findByText('Sign in')).toBeInTheDocument()
   })
 
   it('renders setup while recovery confirmation is still pending', () => {
