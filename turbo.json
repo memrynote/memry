@@ -15,7 +15,7 @@
       "dependsOn": ["^typecheck"],
       "inputs": ["**/*.ts", "**/*.tsx", "tsconfig*.json", "package.json"],
       "outputs": ["**/*.tsbuildinfo"],
-      "passThroughEnv": ["CARGO_*"]
+      "passThroughEnv": ["CARGO_*", "ANDROID_NDK_HOME"]
     },
     "test": {
       "cache": true,

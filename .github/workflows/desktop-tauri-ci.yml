@@ -228,8 +228,6 @@ jobs:
         run: pnpm format:check
 
       - name: IPC bindings are current
-        env:
-          CARGO_LOG: cargo::core::compiler::fingerprint=info
         run: pnpm ipc:check
 
       # The certificate pins live in the Rust transport; a webview request to a memry host skips them.
