@@ -16,7 +16,6 @@ on:
   push:
     branches:
       - feat/tauri-v2
-  workflow_dispatch:
 
 permissions:
   contents: read

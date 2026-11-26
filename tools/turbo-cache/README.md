@@ -17,7 +17,11 @@ sync server and shares nothing with it.
 - A hit is only as correct as the task hash. `check-task-inputs.mjs` proves every file a cached
   typecheck's TypeScript programs load is hashed, and runs before every write. Files a task reads
   outside its TypeScript programs (the desktop `pretypecheck` scripts) are listed by hand in
-  `apps/desktop/turbo.json` and `apps/desktop-tauri/turbo.json`.
+  `apps/desktop/turbo.json` and `apps/desktop-tauri/turbo.json`. The check cannot see them: when a
+  `pretypecheck` script gains a read (a new walker root, a new generator input, a new script it
+  runs), add that path to the package's `turbo.json` inputs in the same change, or a cache hit
+  replays a stale pass. Root `package.json` is a global dependency, so editing a script entry there
+  misses every task.
 
 ## Deploy
 

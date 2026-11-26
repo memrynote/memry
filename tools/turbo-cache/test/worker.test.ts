@@ -12,6 +12,10 @@ const root = resolve(import.meta.dirname, '..')
 let worker: Unstable_DevWorker
 let state: string
 
+// Plain fetch to the dev server: worker.fetch() drops content-length, which turbo always sends.
+const call = (path: string, init: RequestInit = {}) =>
+  fetch(`http://${worker.address}:${worker.port}${path}`, init)
+
 beforeAll(async () => {
   state = mkdtempSync(join(tmpdir(), 'turbo-cache-'))
   worker = await unstable_dev(join(root, 'src/index.ts'), {
@@ -35,7 +39,7 @@ interface ArtifactInit {
 }
 
 const artifact = (hash: string, token: string | null, init: ArtifactInit = {}) =>
-  worker.fetch(`/v8/artifacts/${hash}?slug=memry`, {
+  call(`/v8/artifacts/${hash}?slug=memry`, {
     method: init.method,
     body: init.body,
     headers: { ...(token ? { authorization: `Bearer ${token}` } : {}), ...init.headers }
@@ -84,7 +88,7 @@ describe('turbo cache worker', () => {
     expect((await artifact('aaaa1111', null)).status).toBe(401)
     expect((await artifact('aaaa1111', 'x'.repeat(40))).status).toBe(401)
     expect((await upload('dddd4444', 'x'.repeat(40))).status).toBe(401)
-    const status = await worker.fetch('/v8/artifacts/status')
+    const status = await call('/v8/artifacts/status')
     expect(status.status).toBe(401)
   })
 
@@ -96,14 +100,27 @@ describe('turbo cache worker', () => {
 
   it('keeps teams apart and rejects a request without a team', async () => {
     expect((await upload('ffff6666', WRITE)).status).toBe(202)
-    const other = await worker.fetch('/v8/artifacts/ffff6666?slug=other', {
+    const other = await call('/v8/artifacts/ffff6666?slug=other', {
       headers: { authorization: `Bearer ${READ}` }
     })
     expect(other.status).toBe(404)
-    const none = await worker.fetch('/v8/artifacts/ffff6666', {
+    const none = await call('/v8/artifacts/ffff6666', {
       headers: { authorization: `Bearer ${READ}` }
     })
     expect(none.status).toBe(400)
+  })
+
+  it('refuses an upload without a content-length', async () => {
+    // A stream body goes out chunked; Node's fetch needs duplex for it, which RequestInit omits.
+    const init: RequestInit & { duplex: 'half' } = {
+      method: 'PUT',
+      body: new Blob(['chunked']).stream(),
+      duplex: 'half',
+      headers: { authorization: `Bearer ${WRITE}`, 'x-artifact-tag': 'tag' }
+    }
+    const chunked = await call('/v8/artifacts/abab7777?slug=memry', init)
+    expect(chunked.status).toBe(411)
+    expect((await artifact('abab7777', WRITE)).status).toBe(404)
   })
 
   it('refuses an artifact name that is not a plain hash', async () => {
@@ -113,7 +130,7 @@ describe('turbo cache worker', () => {
 
   it('answers the status probe for either token', async () => {
     for (const token of [READ, WRITE]) {
-      const res = await worker.fetch('/v8/artifacts/status', {
+      const res = await call('/v8/artifacts/status', {
         headers: { authorization: `Bearer ${token}` }
       })
       expect(await res.json()).toEqual({ status: 'enabled' })
