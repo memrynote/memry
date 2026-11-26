@@ -261,6 +261,11 @@ export const MARKDOWN_SEED_CASES: ReadonlyArray<{ name: string; markdown: string
       pins: 'a hard-break token that lands in a code block gets its spelling back, never the token'
     },
     {
+      name: 'hard break: in a nested fence opener',
+      markdown: '- a\n    ```  \n    x\n```',
+      pins: "a hard-break token in a code block's language gets its spelling back, as every string prop does"
+    },
+    {
       name: 'line endings: CRLF and CR',
       markdown: '# Title\r\n\r\n| a |\r\n|---|\r\n| 1 |\r\nlast\rline',
       pins: 'CRLF and a lone CR read as LF'

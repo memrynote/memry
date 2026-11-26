@@ -9,7 +9,7 @@
     "authoredBy": "desktop's markdownToYFragment path: LF line endings, separateBlockImages, splitMarkdownByToggles, splitMarkdownPreservingBlanks, parseContentWithMarkers (callouts, math, structured quotes, marker lines), parseMarkdownToBlocksRepaired on desktop's server schema, blocksToYXmlFragment",
     "provenAgainst": "apps/desktop/src/main/sync/markdown-seed-vectors.test.ts",
     "blockIds": "removed from every blockContainer line: BlockNote mints them at random",
-    "caseCount": 49
+    "caseCount": 50
   },
   "cases": [
     {
@@ -299,6 +299,12 @@
       "pins": "a hard-break token that lands in a code block gets its spelling back, never the token",
       "markdown": "```\ncode\n```mermaid\na  \nb",
       "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element codeBlock language=\"\"\n3 text \"code\\n```mermaid\\na  \\nb\""
+    },
+    {
+      "name": "hard break: in a nested fence opener",
+      "pins": "a hard-break token in a code block's language gets its spelling back, as every string prop does",
+      "markdown": "- a\n    ```  \n    x\n```",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a\"\n2 element blockGroup\n3 element blockContainer\n4 element codeBlock language=\"  \"\n5 text \"  x\"\n1 element blockContainer\n2 element codeBlock language=\"\""
     },
     {
       "name": "line endings: CRLF and CR",
