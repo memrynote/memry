@@ -3,16 +3,20 @@ import { Fragment } from '@tiptap/pm/model'
 import type { EditorState } from '@tiptap/pm/state'
 import type { EditorView } from '@tiptap/pm/view'
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model'
-import { isInlineTagPrefix } from '@memry/shared/inline-tags'
+import { isInlineTagName, isInlineTagPrefix, TAG_CHAR } from '@memry/shared/inline-tags'
 
 const PLUGIN_KEY = new PluginKey('hashTagInline')
-const HASH_TAG_IMMEDIATE = /(^|[\s\ufffc])#([a-zA-Z])$/
-const TAG_CHAR_PATTERN = /^[a-zA-Z0-9_\-/]$/
-const TRAILING_TAG_CHARS = /\ufffc([a-zA-Z0-9_\-/]+)$/
+/** Meta on the transaction that reads the text an input method just committed. */
+const RECHECK = 'recheck'
+const TAG_RUN = String.raw`(?:${TAG_CHAR}|\/)+`
+const HASH_TAG_BEFORE_CURSOR = new RegExp(String.raw`(^|[\s\ufffc])#(${TAG_RUN})$`, 'u')
+const TAG_CHAR_PATTERN = new RegExp(String.raw`^(?:${TAG_CHAR}|\/)$`, 'u')
+const TRAILING_TAG_CHARS = new RegExp(String.raw`\ufffc(${TAG_RUN})$`, 'u')
 
-export function matchHashTagImmediate(text: string): string | null {
-  const match = text.match(HASH_TAG_IMMEDIATE)
-  return match ? match[2] : null
+/** The whole tag a word-starting `#` holds right before the cursor, if any. */
+export function matchHashTagBeforeCursor(text: string): string | null {
+  const tag = text.match(HASH_TAG_BEFORE_CURSOR)?.[2]
+  return tag && isInlineTagName(tag) ? tag : null
 }
 
 export function matchTrailingTagChars(text: string): { chars: string; offset: number } | null {
@@ -49,10 +53,30 @@ function getHashTagBeforeCursor(state: EditorState): { node: ProseMirrorNode; po
 type GetTagColor = (tag: string) => string
 
 export function createHashTagInlinePlugin(getTagColor: GetTagColor): Plugin {
+  // An input method (Korean, Japanese, Chinese, accents) edits the doc while it
+  // composes, and replacing that text with a chip would tear the composition:
+  // `#ㅍ` is half of `#퓨`. Composing transactions are left alone, and once the
+  // input method commits, the text before the cursor is read whole. The commit
+  // may arrive together with the space or punctuation that ended it.
+  let composedSinceRead = false
+
   return new Plugin({
     key: PLUGIN_KEY,
 
     props: {
+      handleDOMEvents: {
+        compositionend(view: EditorView): boolean {
+          // After ProseMirror's own handler, which flushes the committed text
+          // in a microtask. A new composition (the next Korean syllable) waits
+          // for its own end.
+          setTimeout(() => {
+            if (view.isDestroyed || view.composing) return
+            view.dispatch(view.state.tr.setMeta(PLUGIN_KEY, RECHECK))
+          })
+          return false
+        }
+      },
+
       handleKeyDown(view: EditorView, event: KeyboardEvent): boolean {
         if (event.key !== 'Backspace') return false
 
@@ -86,8 +110,15 @@ export function createHashTagInlinePlugin(getTagColor: GetTagColor): Plugin {
     },
 
     appendTransaction(transactions, _oldState, newState) {
+      if (transactions.some((tr) => tr.getMeta('composition') !== undefined)) {
+        composedSinceRead = true
+        return null
+      }
       const hasDocChange = transactions.some((tr) => tr.docChanged && !tr.getMeta(PLUGIN_KEY))
-      if (!hasDocChange) return null
+      const recheck = transactions.some((tr) => tr.getMeta(PLUGIN_KEY) === RECHECK)
+      if (!hasDocChange && !recheck) return null
+      const afterCommit = composedSinceRead
+      composedSinceRead = false
 
       const { selection } = newState
       const $from = selection.$from
@@ -95,25 +126,26 @@ export function createHashTagInlinePlugin(getTagColor: GetTagColor): Plugin {
 
       if (parent.type.spec.code) return null
 
-      const parentOffset = $from.parentOffset
-      const textUpToCursor = parent.textBetween(0, parentOffset, undefined, '\ufffc')
+      let textUpToCursor = parent.textBetween(0, $from.parentOffset, undefined, '\ufffc')
+      if (afterCommit && /\s$/u.test(textUpToCursor)) {
+        textUpToCursor = textUpToCursor.slice(0, -1)
+      }
+      const endPos = $from.start() + textUpToCursor.length
 
       const hashTagNodeType = newState.schema.nodes.hashTag
       if (!hashTagNodeType) return null
 
-      // Pattern 1: Immediate creation — #[letter] → create hashTag node
-      const createTag = matchHashTagImmediate(textUpToCursor)
+      // Creation: a `#` that starts a word, then a whole tag. Typing makes the
+      // chip at its first letter; a commit, a paste or a digit-first tag
+      // (`#2024년`) makes it from the whole run.
+      const createTag = matchHashTagBeforeCursor(textUpToCursor)
       if (createTag) {
-        const endPos = $from.start() + parentOffset
-        const leadingMatch = textUpToCursor.match(HASH_TAG_IMMEDIATE)!
-        const prefixLen = leadingMatch[1].length
-        const hashPos = endPos - 2 - prefixLen
-
-        const color = getTagColor(createTag)
-        const hashTagNode = hashTagNodeType.create({ tag: createTag, color })
-
+        const hashTagNode = hashTagNodeType.create({
+          tag: createTag,
+          color: getTagColor(createTag)
+        })
         const tr = newState.tr.replaceWith(
-          hashPos + prefixLen,
+          endPos - createTag.length - 1,
           endPos,
           Fragment.from([hashTagNode])
         )
@@ -121,7 +153,7 @@ export function createHashTagInlinePlugin(getTagColor: GetTagColor): Plugin {
         return tr
       }
 
-      // Pattern 2: Extension — hashTag node followed by tag-char text → absorb into tag
+      // Extension: a chip followed by tag characters absorbs them.
       const trailing = matchTrailingTagChars(textUpToCursor)
       if (trailing) {
         const absPos = $from.start() + trailing.offset
@@ -135,7 +167,6 @@ export function createHashTagInlinePlugin(getTagColor: GetTagColor): Plugin {
         const color = getTagColor(newTag)
         const newNode = hashTagNodeType.create({ tag: newTag, color })
 
-        const endPos = $from.start() + parentOffset
         const tr = newState.tr.replaceWith(absPos, endPos, Fragment.from([newNode]))
         tr.setMeta(PLUGIN_KEY, true)
         return tr

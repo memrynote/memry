@@ -23,10 +23,13 @@
 //!
 //! Only a well-formed answer that leaves the id out counts toward
 //! [`MAX_RETRIES`]: anything else would give up on a record over a server
-//! hiccup (#5502). An unusable answer about the request (a dropped page, a
-//! record still unverifiable, a malformed body, a 4xx) counts toward
-//! [`MAX_FAILURES`], which still bounds the hold; an answer about the network
-//! or the server's health (transport, 5xx, 429) counts nothing.
+//! hiccup (#5502). The server's unusable answer about the request (a record
+//! still unverifiable, a coded 4xx kept as [`ApiError::Status`]) counts toward
+//! [`MAX_FAILURES`], which still bounds the hold. Nothing else counts: transport,
+//! 5xx, 429, a 200 that is no pull envelope, a 4xx with no code (a portal's), a
+//! 4xx that arrives as its own [`ApiError`] variant (any 401, a revoked device,
+//! a 402 vault limit, a 403 with writes disabled, a 409 device limit, a 426
+//! upgrade-required): it is about the session, device or plan, not the record.
 //!
 //! The settings item reuses the hold (#5433): an edit over a deleted
 //! payload-less settings row ([`crate::domain::settings::apply`]) records a
@@ -64,9 +67,9 @@ use super::pull::{PullError, PullLoop, PullReport};
 /// stays at this count, given up.
 pub(crate) const MAX_RETRIES: u32 = 5;
 
-/// Re-pulls that failed (not for the network or the server's health) or came
-/// back unverifiable before a hold gives up. Stored after a `/` in the `meta`
-/// value; an older build parses such a value as 0 and keeps holding.
+/// Re-pulls the server refused (a coded 4xx kept as [`ApiError::Status`]) or
+/// answered unverifiable before a hold gives up. Stored after a `/` in the
+/// `meta` value; an older build parses such a value as 0 and keeps holding.
 pub(crate) const MAX_FAILURES: u32 = 50;
 
 const KEY_PREFIX: &str = "sync.unknown_signer_wait:";
@@ -160,12 +163,17 @@ pub(crate) async fn retry(db: &Db, pull: &PullLoop) -> Result<(), StorageError> 
 }
 
 /// A directory refetch for the re-pull failed. It counts as a failed re-pull
-/// would ([`counted_error`]): one failure toward [`MAX_FAILURES`] for every
+/// would ([`counted_error`]), and a malformed directory counts too: one failure toward [`MAX_FAILURES`] for every
 /// waiting hold, or nothing for the network or the server's health. So a
 /// directory that never loads cannot hold an edit for ever, and a server
 /// hiccup never ends a hold (#5502).
 pub(crate) async fn directory_failed(db: &Db, error: &ApiError) -> Result<(), StorageError> {
-    let counted = counted_error(error);
+    // A garbled directory counts too, unlike a re-pull's non-envelope answer
+    // (#5651): a directory that never loads must not hold an edit for ever.
+    let counted = match error {
+        ApiError::MalformedResponse { .. } => Counted::Failure,
+        other => counted_error(other),
+    };
     if matches!(counted, Counted::Nothing) {
         return Ok(());
     }
@@ -188,31 +196,30 @@ enum Counted {
 
 /// Classifies a re-pull. Only a page that decoded, held no unverifiable
 /// record and left an id out shows the server has no copy; a record that
-/// resolved its hold has already dropped its `meta` row.
+/// resolved its hold has already dropped its `meta` row. A captive portal or
+/// proxy answers a 200 that is no pull envelope (a page, `{}`) or a 4xx with
+/// no error code (403, 407): off the server's network, these count nothing,
+/// or they would release a hold (VERIFY-5447 r4 #8).
 fn counted(result: &Result<PullReport, PullError>) -> Counted {
     match result {
-        Ok(report)
-            if report.uncovered > 0
-                && report.corrupt == 0
-                && report.dropped_pages == 0
-                && !report.refused =>
-        {
-            Counted::Attempt
-        }
+        Ok(report) if report.corrupt > 0 || report.refused => Counted::Failure,
+        Ok(report) if report.dropped_pages > 0 => Counted::Nothing,
+        Ok(report) if report.uncovered > 0 => Counted::Attempt,
         Ok(_) => Counted::Failure,
         Err(PullError::Api { source }) => counted_error(source),
         Err(_) => Counted::Nothing,
     }
 }
 
-/// A malformed body or a 4xx other than 429 is about the request; anything
-/// else (transport, 5xx, 429, a local failure) says nothing.
+/// A 4xx other than 429 with an error code is about the request; anything
+/// else (a malformed body, transport, 5xx, 429, a local failure) says nothing.
 fn counted_error(error: &ApiError) -> Counted {
     match error {
-        ApiError::MalformedResponse { .. } => Counted::Failure,
-        ApiError::Status { status, .. } if (400..500).contains(status) && *status != 429 => {
-            Counted::Failure
-        }
+        ApiError::Status {
+            status,
+            code: Some(_),
+            ..
+        } if (400..500).contains(status) && *status != 429 => Counted::Failure,
         _ => Counted::Nothing,
     }
 }
@@ -228,11 +235,18 @@ async fn re_pull(
     ids.sort();
     ids.dedup();
     let result = pull.fetch_ids(&ids).await;
-    if let Err(error) = &result {
-        eprintln!(
+    match &result {
+        Err(error) => eprintln!(
             "memry-core: re-pulling {} record(s) of an unknown signer failed: {error}",
             ids.len()
-        );
+        ),
+        Ok(report) if report.dropped_pages > 0 => eprintln!(
+            "memry-core: re-pulling {} record(s) of an unknown signer got {} answer(s) \
+             that were no pull envelope",
+            ids.len(),
+            report.dropped_pages
+        ),
+        Ok(_) => {}
     }
     let counted = counted(&result);
     if matches!(counted, Counted::Nothing) {

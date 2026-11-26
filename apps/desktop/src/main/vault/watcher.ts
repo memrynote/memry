@@ -25,6 +25,7 @@ import {
   moveFileInCache,
   deleteNoteFromCache,
   findCanonicalNoteForFile,
+  listCaseTwinPaths,
   refusesCaseTwinFile,
   findCanonicalNotePath,
   isRemoteApplySpelling,
@@ -32,6 +33,7 @@ import {
 } from './note-sync'
 import {
   getAllNoteRefRows,
+  listJournalEntries,
   getNoteCacheByPath,
   getNoteCacheById,
   ensureTagDefinitions,
@@ -51,7 +53,7 @@ import {
   createDeferredDeletes,
   type DeferredDeletes,
   buildStatRenameKey,
-  buildFileIdentityKey,
+  buildAddedFileIdentityKey,
   processRename,
   type RenameMatch
 } from './rename-tracker'
@@ -76,7 +78,8 @@ import { restoreLockedNoteFile } from '../vault-locks/service'
 import { protectLockedFile } from '../vault-locks/files'
 import { writingFrontmatterOf } from '@memry/shared/writing-tools/markdown'
 import { reconcileTaskCheckboxesFromMarkdown } from '../tasks/reconcile-markdown-tasks'
-import { enqueueJournalDelete } from '../journal/runtime-effects'
+import { enqueueJournalDelete, enqueueJournalUpdate } from '../journal/runtime-effects'
+import { recordTick, wasTicked } from './missed-journal-ticks'
 import { externalJournalEntry } from '../journal/external-entry'
 import {
   syncNoteCreate,
@@ -85,23 +88,20 @@ import {
   queueEmbeddedVaultFiles,
   unlinkTasksFromDeletedNote
 } from '../notes/runtime-effects'
-import {
-  isAppFolderChange,
-  syncFolderConfigDelete,
-  syncFolderConfigDiscovered
-} from '../notes/folder-config-effects'
-import { normalizeRelativePath, openVaultFile } from '../lib/paths'
+import { syncFolderConfigDelete, syncFolderConfigDiscovered } from '../notes/folder-config-effects'
+import { isAppFolderChange } from './app-folder-changes'
+import { normalizeRelativePath, openVaultFile, readVaultFile } from '../lib/paths'
 import { createTreeFolderFilter } from './folder-visibility'
 import { recordActivity, recordSkippedFile, toActivityPath } from './activity-log'
 import { isVaultReachable } from './init'
 import { findVaultFiles } from './indexer'
-import { ATTACHMENTS_DIR } from './attachments'
+import { isInAttachmentStore } from '@memry/shared/attachment-store'
 import { liveCanvasPaths, trackExternalCanvasRemoval } from '../canvas/delete'
 import { isCanvasFilePath, resolveCanvasFile } from '../canvas/scene-file'
 import { hasBulkApplyJournal } from '../sync/bulk-apply'
 import { isGoneFromDisk } from './gone-from-disk'
 import { diskCaseOf } from './disk-case'
-import { holdsBinaryChange } from './case-twin-bytes'
+import { holdsBinaryChange } from './case-twin-hold'
 
 const logger = createLogger('Watcher')
 
@@ -284,7 +284,6 @@ export class VaultWatcher {
 
     // Capture exclude patterns for use in ignored function
     const userExcludePatterns = this.excludePatterns
-    const attachmentsRoot = path.join(vaultPath, ATTACHMENTS_DIR)
 
     // Create watcher with chokidar
     this.watcher = chokidarWatch(watchPaths, {
@@ -297,10 +296,9 @@ export class VaultWatcher {
         // Always ignore hidden files and directories
         if (basename.startsWith('.')) return true
 
-        // Only the root attachments folder is the app's; nested ones hold notes (#3161).
-        if (filePath === attachmentsRoot || filePath.startsWith(attachmentsRoot + path.sep)) {
-          return true
-        }
+        // `filePath` has forward slashes on Windows, whatever `vaultPath` has.
+        const relativePath = normalizeRelativePath(path.relative(vaultPath, filePath))
+        if (isInAttachmentStore(relativePath)) return true
 
         // Check user-defined exclude patterns
         for (const pattern of userExcludePatterns) {
@@ -314,9 +312,7 @@ export class VaultWatcher {
         if (stats?.isFile()) {
           // Canvas documents are watched only so a removal outside the app
           // becomes a canvas delete (#2938); the note index never takes them.
-          const supported =
-            isSupportedPath(filePath) ||
-            isCanvasFilePath(normalizeRelativePath(path.relative(vaultPath, filePath)))
+          const supported = isSupportedPath(filePath) || isCanvasFilePath(relativePath)
           // Before `ready` this is the initial walk over files that were
           // already there; the open-time scan reports those. After it, an
           // unsupported file is one the user just put in the vault, and
@@ -586,6 +582,40 @@ export class VaultWatcher {
   }
 
   /**
+   * Vault open: a journal day whose file changed while the app was closed
+   * (#5752). `ignoreInitial` hides the edit and the walk skips indexed paths,
+   * so nothing moved the day's clock: its tags and properties never synced,
+   * and a peer's delete, in step with the old clock, removed the day and the
+   * edit with it. A day whose bytes differ from its baseline gets the tick an
+   * in-app edit gets (`enqueueJournalUpdate`), then the live watcher's ingest.
+   * The same bytes (a re-index, a touched mtime) tick nothing. A locked day is
+   * left to the lock check, which put its locked text back. A day the ingest
+   * refuses (a case twin shares its file) ticks nothing (#5757). Bytes ticked
+   * on an earlier open that the doc could not take yet (a day never opened in
+   * Memry, whose empty doc declines the feed until its first open seeds it)
+   * tick once, not on every open (`missed-journal-ticks.ts`).
+   */
+  async replayMissedJournalEdits(): Promise<void> {
+    const vaultPath = this.vaultPath
+    if (!vaultPath) return
+    const generation = this.generation
+    const db = getIndexDatabase()
+    for (const cached of listJournalEntries(db)) {
+      if (this.generation !== generation) return
+      if (!cached.date || !cached.contentHash || cached.fileType !== 'markdown') continue
+      const raw = await readVaultFile(vaultPath, cached.path)
+      if (raw === null || !isOutsideEdit(db, cached.id, cached, raw)) continue
+      if (isNoteLocked(cached.id, cached.path)) continue
+      if (!(await this.handleMarkdownFileChange(cached.path, cached, db))) continue
+      if (wasTicked(getDatabase(), cached.id, cached, raw)) continue
+      // Invariant: an edit this device did not see happen still counts as this
+      // device's edit once found.
+      enqueueJournalUpdate(cached.id, cached.date)
+      recordTick(getDatabase(), cached.id, cached, raw)
+    }
+  }
+
+  /**
    * Indexed notes and live canvases whose file is gone from the vault, as
    * absolute paths for `handleFileDelete`, and how many rows were checked.
    * Null when the watcher moved on to another vault meanwhile.
@@ -644,16 +674,25 @@ export class VaultWatcher {
   private async handleFileAdd(eventPath: string): Promise<void> {
     if (!this.vaultPath) return
     const absolutePath = this.inDiskCase(eventPath)
-
-    // The echo of the app's own write. Other bytes are an edit, however soon
-    // after an app write they land (#5605).
-    if (await fileHoldsAppWrite(absolutePath)) return
+    let echo = false
 
     try {
+      // The echo of the app's own write. Other bytes are an edit, however soon
+      // after an app write they land (#5605).
+      echo = await this.isOwnWrite(absolutePath)
+      if (echo) return
+
       const relativePath = normalizeRelativePath(path.relative(this.vaultPath, absolutePath))
       const fileType = getFileType(getExtension(absolutePath))
 
-      if (!fileType || isAppMoveEcho(this.vaultPath, relativePath)) {
+      // `ignored` keeps the attachment store out. An event that gets past it
+      // anyway (a change to a path with no row lands here) must not make a
+      // note of another note's attachment either (#5607).
+      if (
+        !fileType ||
+        isInAttachmentStore(relativePath) ||
+        isAppMoveEcho(this.vaultPath, relativePath)
+      ) {
         return
       }
 
@@ -711,8 +750,9 @@ export class VaultWatcher {
       this.onError?.(error)
     } finally {
       // A file moved into a locked folder, a locked note renamed or a locked
-      // file recreated from outside comes in writable.
-      await protectLockedFile(absolutePath)
+      // file recreated from outside comes in writable. The app's own write is
+      // left alone: `protectLockedFile` would take it as replaced from outside.
+      if (!echo) await protectLockedFile(absolutePath)
     }
   }
 
@@ -982,7 +1022,7 @@ export class VaultWatcher {
     const scan = await scanMarkdownFile(absolutePath, 0)
     const contentHash = scan?.contentHash ?? null
     const statKeys = [
-      buildFileIdentityKey(stats),
+      buildAddedFileIdentityKey(stats),
       buildStatRenameKey(stats.size, stats.mtime.toISOString())
     ]
 
@@ -1151,11 +1191,13 @@ export class VaultWatcher {
   private async handleFileChange(eventPath: string): Promise<void> {
     if (!this.vaultPath) return
     const absolutePath = this.inDiskCase(eventPath)
-
-    // The echo of the app's own write (see `handleFileAdd`).
-    if (await fileHoldsAppWrite(absolutePath)) return
+    let echo = false
 
     try {
+      // The echo of the app's own write (see `handleFileAdd`).
+      echo = await this.isOwnWrite(absolutePath)
+      if (echo) return
+
       const relativePath = normalizeRelativePath(path.relative(this.vaultPath, absolutePath))
       const fileType = getFileType(getExtension(absolutePath))
 
@@ -1189,19 +1231,41 @@ export class VaultWatcher {
       this.onError?.(error)
     } finally {
       // `atomic` reports a quick delete and recreate as a change.
-      await protectLockedFile(absolutePath)
+      if (!echo) await protectLockedFile(absolutePath)
     }
+  }
+
+  /**
+   * Whether the file the event names holds the app's own write. A write is
+   * recorded by the path it went to, and a case twin writes the file it shares
+   * by its own spelling, which the event, spelled as the disk is, does not
+   * carry (#5624).
+   */
+  private async isOwnWrite(absolutePath: string): Promise<boolean> {
+    if (await fileHoldsAppWrite(absolutePath)) return true
+    const vaultPath = this.vaultPath
+    if (!vaultPath) return false
+    const relativePath = normalizeRelativePath(path.relative(vaultPath, absolutePath))
+    for (const twinPath of listCaseTwinPaths(vaultPath, relativePath)) {
+      if (twinPath !== relativePath && (await fileHoldsAppWrite(path.join(vaultPath, twinPath)))) {
+        return true
+      }
+    }
+    return false
   }
 
   private async handleMarkdownFileChange(
     relativePath: string,
     cached: NonNullable<ReturnType<typeof getNoteCacheByPath>>,
     db: ReturnType<typeof getIndexDatabase>
-  ): Promise<void> {
-    if (!this.vaultPath) return
+  ): Promise<boolean> {
+    if (!this.vaultPath) return false
+    // A twin that leaves between the read and the check below leaves the file
+    // unshared, holding bytes that may not be this note's (#5624).
+    const sharedAtRead = listCaseTwinPaths(this.vaultPath, relativePath).length > 0
     const ownWrite = appWriteCheck(path.join(this.vaultPath, relativePath))
     const file = await openVaultFile(this.vaultPath, relativePath)
-    if (file === null) return
+    if (file === null) return false
     let content: string
     let stats: Stats
     try {
@@ -1211,19 +1275,19 @@ export class VaultWatcher {
       await file.close()
     }
     if (!content) {
-      return
+      return false
     }
     // Checked again on the bytes read here: a writer may have recorded them
     // after the event's own check, and only `writeWithBaseline` writers leave
     // a pending hash in the row for the check below.
-    if (ownWrite?.(content)) return
+    if (ownWrite?.(content)) return false
 
     const parsed = parseNote(content, relativePath, stats)
 
     // `cached` was read before the file. A write-back that recorded its bytes
     // since, or is recording them, wrote no edit to feed back (#5605).
     if (!isOutsideEdit(db, cached.id, getNoteCacheById(db, cached.id) ?? cached, content)) {
-      return
+      return false
     }
 
     // A locked note's outside edit is kept as a version and its locked text
@@ -1232,10 +1296,17 @@ export class VaultWatcher {
       isNoteLocked(cached.id, relativePath) &&
       (await restoreLockedNoteFile(cached.id, content))
     ) {
-      return
+      return false
     }
 
-    if (refusesCaseTwinFile(this.vaultPath, relativePath, cached.id)) return
+    if (refusesCaseTwinFile(this.vaultPath, relativePath, cached.id)) return false
+    if (sharedAtRead) {
+      logger.warn('A case twin left the file during its read; the bytes stay out of the doc', {
+        noteId: cached.id,
+        path: relativePath
+      })
+      return false
+    }
 
     const syncResult = syncNoteToCache(
       db,
@@ -1319,6 +1390,7 @@ export class VaultWatcher {
         source: 'external'
       })
     }
+    return true
   }
 
   /**

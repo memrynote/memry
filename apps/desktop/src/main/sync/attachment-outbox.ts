@@ -7,6 +7,7 @@ import { getNoteMetadataById } from '@memry/storage-data'
 import { createLogger } from '../lib/logger'
 import { trackMainLog } from '../telemetry/diagnostics'
 import { isVaultReachable } from '../vault/init'
+import { isStrayAttachmentNote } from '../vault/attachments'
 import { UnsendableAttachmentError } from './attachment-errors'
 import { SYNC_STATE_KEYS } from './engine/sync-context'
 import { classifyError } from './sync-errors'
@@ -232,7 +233,8 @@ export interface OutboxDrainDeps {
   vaultPath: string
   /** Null: another path owns this upload and records its outcome; the row is left alone. */
   upload: (noteId: string, diskPath: string) => Promise<UploadedFile | null>
-  onUploaded?: (noteId: string, uploaded: UploadedFile) => void
+  /** Awaited before the row clears: a crash while it records retries the upload. */
+  onUploaded?: (noteId: string, uploaded: UploadedFile, diskPath: string) => void | Promise<void>
   now?: number
 }
 
@@ -243,7 +245,9 @@ function retryOpensAt(row: { attempts: number; updatedAt: number }): number {
 
 /**
  * The oldest rows whose retry window is open. Rows of a local-only note never
- * count toward the batch, so they cannot hold back the rows behind them.
+ * count toward the batch, so they cannot hold back the rows behind them. Nor
+ * do a stray's (#5607): its file is the attachment store's, and its upload
+ * would be a second blob of the file the embedding note already uploads.
  */
 function listDueUploads(
   db: DrizzleDb,
@@ -259,7 +263,12 @@ function listDueUploads(
     .from(attachmentUploadQueue)
     .orderBy(asc(attachmentUploadQueue.updatedAt))
     .all()
-    .filter((row) => retryOpensAt(row) <= now && !isLocalOnlyNote(db, row.noteId))
+    .filter(
+      (row) =>
+        retryOpensAt(row) <= now &&
+        !isLocalOnlyNote(db, row.noteId) &&
+        !isStrayAttachmentNote(db, row.noteId)
+    )
     .slice(0, DRAIN_BATCH_LIMIT)
 }
 
@@ -334,8 +343,8 @@ export async function drainOutboxWith(deps: OutboxDrainDeps): Promise<{
     try {
       const result = await deps.upload(row.noteId, row.diskPath)
       if (!result) continue
+      await deps.onUploaded?.(row.noteId, result, row.diskPath)
       clearUpload(deps.db, row.noteId, row.diskPath)
-      deps.onUploaded?.(row.noteId, result)
       uploaded++
     } catch (err) {
       if (uploadFileState(deps.db, deps.vaultPath, row) === 'deleted') {
@@ -397,7 +406,7 @@ type RegisteredUploader = OutboxDrainDeps['upload']
 let registeredUploader: RegisteredUploader | null = null
 let getDbForDrain: (() => DrizzleDb) | null = null
 let onUploadedForDrain: OutboxDrainDeps['onUploaded'] | null = null
-let registeredQueueReset: (() => void) | null = null
+let registeredQueueReset: ((settleWithinMs: number) => Promise<void>) | null = null
 let draining = false
 
 export function registerOutboxUploader(
@@ -419,13 +428,24 @@ export function registerOutboxUploader(
  * the queue can still serve the wrong vault. The IPC layer registers its
  * disposer here; the runtime calls it on every teardown.
  */
-export function registerAttachmentQueueReset(reset: (() => void) | null): void {
+export function registerAttachmentQueueReset(
+  reset: ((settleWithinMs: number) => Promise<void>) | null
+): void {
   registeredQueueReset = reset
 }
 
-/** No-ops until the IPC layer has registered a disposer. */
-export function resetAttachmentQueue(): void {
-  registeredQueueReset?.()
+/** How long a vault switch or sign-out waits for the downloads it stopped. */
+export const DOWNLOAD_SETTLE_TIMEOUT_MS = 3_000
+
+/**
+ * No-ops until the IPC layer has registered a disposer. Resolves once the
+ * downloads it stopped have recorded their outcomes, or after
+ * `settleWithinMs`: those still running then write nothing (REVIEW-5722).
+ */
+export function resetAttachmentQueue(
+  settleWithinMs: number = DOWNLOAD_SETTLE_TIMEOUT_MS
+): Promise<void> {
+  return registeredQueueReset?.(settleWithinMs) ?? Promise.resolve()
 }
 
 /**

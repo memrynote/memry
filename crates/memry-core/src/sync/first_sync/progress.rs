@@ -9,6 +9,7 @@
 use rusqlite::Connection;
 
 use crate::api::errors::StorageError;
+use crate::domain::journal;
 use crate::storage::Db;
 use crate::sync::body_debt;
 
@@ -29,10 +30,15 @@ fn record_counts(conn: &Connection) -> Result<(u64, u64), StorageError> {
 
 /// Live documents, and how many of them still owe a body pull.
 fn body_counts(conn: &Connection) -> Result<(u64, u64), StorageError> {
+    // A journal day's picture record holds a `notes` row under the day's id
+    // (#5730); the day is one document, counted with the journal.
     let live: i64 = conn
         .query_row(
-            "SELECT (SELECT COUNT(*) FROM notes WHERE deleted_at IS NULL)
-                  + (SELECT COUNT(*) FROM journal_entries WHERE deleted_at IS NULL)",
+            &format!(
+                "SELECT (SELECT COUNT(*) FROM notes WHERE deleted_at IS NULL AND {})
+                      + (SELECT COUNT(*) FROM journal_entries WHERE deleted_at IS NULL)",
+                journal::not_a_journal_day("id")
+            ),
             [],
             |row| row.get(0),
         )

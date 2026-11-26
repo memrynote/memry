@@ -230,6 +230,7 @@ struct InkCanvas: UIViewRepresentable {
         picker.addObserver(canvas)
         picker.addObserver(context.coordinator)
         context.coordinator.canvas = canvas
+        board.canvas = canvas
         context.coordinator.pinEraser()
         DispatchQueue.main.async { canvas.becomeFirstResponder() }
         return canvas

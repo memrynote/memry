@@ -1,7 +1,9 @@
 import Foundation
 import MemryCore
+import SwiftUI
 import Synchronization
 import Testing
+import UIKit
 
 @testable import Memry
 
@@ -12,115 +14,18 @@ import Testing
 // | a bound attachment with no bytes yet is still waiting   | placeholder, not a gap  |
 // | bytes that land re-resolve in place                     | FR-045's "without the note being recreated" |
 // | a metered refusal is not an error and keeps the placeholder | FR-045's default    |
+// | opening a note names a peer's picture, then fetches it  | #5675                   |
+// | offline, opening names nothing                          | #5675                   |
 // | a remote url is ordinary content, not a failed download | §Q4                     |
 // | an ambiguous basename is refused, never guessed         | §Q4                     |
 // | only attachment-bearing blocks are resolved             | a bookmark url is not a vault path |
-
-// MARK: - fakes
-
-/// A reader whose attachment answers a test scripts.
-private final class ScriptedAttachments: NotesReading, @unchecked Sendable {
-    private let blocks: [Block]
-    private let bindings: Mutex<[String: BlockAttachment]>
-    private let resolved = Mutex<[String]>([])
-
-    init(blocks: [Block], bindings: [String: BlockAttachment]) {
-        self.blocks = blocks
-        self.bindings = Mutex(bindings)
-    }
-
-    /// Every url the model asked about, in order.
-    var asked: [String] { resolved.withLock { $0 } }
-
-    func rebind(_ url: String, to binding: BlockAttachment) {
-        bindings.withLock { $0[url] = binding }
-    }
-
-    func folders() async throws -> [FolderSummary] { [] }
-    func list() async throws -> [NoteSummary] { [] }
-
-    func read(id: String) async throws -> NoteDetail? {
-        NoteDetail(
-            summary: NoteSummary(
-                id: id, title: "a note", folderPath: nil,
-                emoji: nil, createdAt: nil, modifiedAt: nil, aliases: []
-            ),
-            body: NoteBody(text: "body", present: true)
-        )
-    }
-
-    func blocks(id: String) async throws -> [Block]? { blocks }
-
-    func attachmentForBlock(id: String, url: String) async throws -> BlockAttachment {
-        resolved.withLock { $0.append(url) }
-        return bindings.withLock { $0[url] } ?? .unknown
-    }
-}
-
-/// A filler that reports what the core would for one attachment.
-private final class ScriptedAttachmentFiller: VaultFilling, @unchecked Sendable {
-    private let summary: AttachmentFetchSummary
-    private let calls = Mutex<[String]>([])
-    private let onFetch: (@Sendable () -> Void)?
-
-    init(summary: AttachmentFetchSummary, onFetch: (@Sendable () -> Void)? = nil) {
-        self.summary = summary
-        self.onFetch = onFetch
-    }
-
-    var fetched: [String] { calls.withLock { $0 } }
-
-    func isFirstSyncComplete() async throws -> Bool { true }
-    func firstSync(
-        progress: @escaping @MainActor @Sendable (SyncProgress) -> Void
-    ) async throws -> FirstSyncSummary { .none }
-    func pullNoteBody(noteId: String) async throws -> BodyFetchSummary {
-        BodyFetchSummary(updates: 0, baselines: 0, stopped: false)
-    }
-
-    func fetchAttachment(
-        attachmentId: String,
-        reachable: Reachable
-    ) async throws -> AttachmentFetchSummary {
-        calls.withLock { $0.append(attachmentId) }
-        onFetch?()
-        return summary
-    }
-}
-
-private final class FixedPath: Reachability {
-    init(path: Reachable) { self.path = path }
-    let path: Reachable
-    func current() -> Reachable { path }
-    func observe(observer: ReachabilityObserver) {}
-}
-
-// MARK: - helpers
-
-private func imageBlock(url: String) -> Block {
-    Block(
-        id: "b1",
-        kind: "image",
-        depth: 0,
-        props: [BlockProp(name: "url", value: url)],
-        inline: []
-    )
-}
-
-private func cached(id: String, localPath: String?) -> CachedAttachment {
-    CachedAttachment(
-        attachmentId: id,
-        manifest: "{}",
-        noteRefs: ["note-1"],
-        remoteSize: 100,
-        localPath: localPath,
-        downloadedAt: localPath == nil ? nil : 1,
-        unmeteredOnly: true,
-        pinned: false,
-        filename: "picture.png",
-        mimeType: "image/png"
-    )
-}
+// | a run holding a stale list skips a file another run landed | one download per file |
+// | a landed file stays downloading until it is rebound    | one download per file |
+// | a missing file is asked for again                     | VERIFY-5674 #1          |
+// | a later run asks again only after a failure waiting fixes | desktop `asksOnSync` |
+// | Try again asks after a corrupt download, not an unverifiable one | desktop `asksOnSync` |
+// | a cancelled fetch asks for no further picture           | REVIEW-5587: no repeat download per pass |
+// | the page asks for pictures before the body pull answers | REVIEW-5587: no network wait on open |
 
 private let route = NoteRoute(id: "note-1")
 
@@ -186,6 +91,116 @@ struct NoteAttachmentTests {
             return
         }
         #expect(attachment.localPath == "att-1")
+        #expect(model.attachmentFetches.isEmpty, "a landed download still shows as running")
+    }
+
+    /// #5644, `SettingsCopy.downloadFooter`: "An attachment you open always
+    /// downloads." Opening judges the path unmetered whatever the setting, so
+    /// the core's unmetered-only default does not hold an opened picture back.
+    @Test("opening a note downloads its pictures on a metered path")
+    func openingDownloadsOnAMeteredPath() async {
+        let reader = ScriptedAttachments(
+            blocks: [imageBlock(url: "picture.png")],
+            bindings: ["picture.png": .bound(attachment: cached(id: "att-1", localPath: nil))]
+        )
+        let filler = ScriptedAttachmentFiller(
+            summary: AttachmentFetchSummary(downloaded: true, deferred: false, bytes: 100, localPath: "att-1")
+        )
+        let model = NoteReadViewModel(
+            route: route, reader: reader, filler: filler,
+            reachability: FixedPath(path: .cellular)
+        )
+        await model.loadIfNeeded()
+        await model.fetchWaitingAttachments()
+
+        #expect(filler.judged == [.wifi])
+    }
+
+    @Test("opening a note offline asks for nothing")
+    func openingOfflineAsksNothing() async {
+        let reader = ScriptedAttachments(
+            blocks: [imageBlock(url: "picture.png")],
+            bindings: ["picture.png": .bound(attachment: cached(id: "att-1", localPath: nil))]
+        )
+        let filler = ScriptedAttachmentFiller(
+            summary: AttachmentFetchSummary(downloaded: false, deferred: true, bytes: 0, localPath: nil)
+        )
+        let model = NoteReadViewModel(
+            route: route, reader: reader, filler: filler,
+            reachability: FixedPath(path: .offline)
+        )
+        await model.loadIfNeeded()
+        await model.fetchWaitingAttachments()
+
+        #expect(filler.fetched.isEmpty)
+        #expect(model.attachmentFetches.isEmpty)
+    }
+
+    /// The placeholder goes from "Not downloaded yet" to downloading to the
+    /// failure, and a second run while the first downloads asks for nothing.
+    @Test("an on-open download shows while it runs and after it fails")
+    func onOpenDownloadIsVisible() async {
+        let reader = ScriptedAttachments(
+            blocks: [imageBlock(url: "picture.png")],
+            bindings: ["picture.png": .bound(attachment: cached(id: "att-1", localPath: nil))]
+        )
+        let filler = GatedAttachmentFiller(failure: .Locked)
+        let model = NoteReadViewModel(
+            route: route, reader: reader, filler: filler,
+            reachability: FixedPath(path: .wifi)
+        )
+        await model.loadIfNeeded()
+        #expect(model.attachmentFetches.isEmpty)
+
+        let first = Task { await model.fetchWaitingAttachments() }
+        await filler.waitUntilFetching()
+        #expect(model.attachmentFetches["att-1"] == .downloading)
+
+        await model.fetchWaitingAttachments()
+        #expect(filler.fetches == 1, "a second run fetched bytes already downloading")
+
+        filler.finish()
+        await first.value
+        #expect(model.attachmentFetches["att-1"] == .failed(ErrorMapping.userFacing(SyncError.Locked)))
+        #expect(
+            NoteAttachmentBinding.of("picture.png") { model.attachments[$0] ?? .unknown }
+                == .waitingFor("att-1"),
+            "a failed download keeps its placeholder"
+        )
+    }
+
+    /// `NotePageLoad` restarts its task on every sync pass. A pass that ends
+    /// mid-download cancels the run doing it, and the restarted run skips the
+    /// attachment as already downloading. The picture still appears.
+    @Test("a sync pass that restarts the page mid-download still shows the picture")
+    func restartMidDownloadStillRebinds() async {
+        let reader = ScriptedAttachments(
+            blocks: [imageBlock(url: "picture.png")],
+            bindings: ["picture.png": .bound(attachment: cached(id: "att-1", localPath: nil))]
+        )
+        let filler = GatedAttachmentFiller(failure: nil, onLanded: {
+            reader.rebind("picture.png", to: .bound(attachment: cached(id: "att-1", localPath: "att-1")))
+        })
+        let model = NoteReadViewModel(
+            route: route, reader: reader, filler: filler,
+            reachability: FixedPath(path: .wifi)
+        )
+        await model.loadIfNeeded()
+
+        let first = Task { await model.fetchWaitingAttachments() }
+        await filler.waitUntilFetching()
+        first.cancel()
+        await model.fetchWaitingAttachments()
+        filler.finish()
+        await first.value
+
+        #expect(filler.fetches == 1)
+        guard case let .bound(attachment) = model.attachments["picture.png"] else {
+            Issue.record("the attachment did not rebind after its bytes landed")
+            return
+        }
+        #expect(attachment.localPath == "att-1", "the landed picture stayed a placeholder")
+        #expect(model.attachmentFetches.isEmpty)
     }
 
     /// A picture waiting for an unmetered path is the feature working. The
@@ -214,6 +229,58 @@ struct NoteAttachmentTests {
                 == .waitingFor("att-1"),
             "a deferred picture keeps its placeholder"
         )
+    }
+
+    /// #5675: a peer's picture reaches this device as a reference with no
+    /// filename, so its block binds to nothing until the manifest is read.
+    /// Opening the note reads it, the block binds, and its bytes are fetched.
+    @Test("opening a note names a peer's picture, then fetches it")
+    func unnamedPictureIsNamedThenFetched() async {
+        let reader = ScriptedAttachments(blocks: [imageBlock(url: "picture.png")], bindings: [:])
+        let filler = ScriptedAttachmentFiller(
+            summary: AttachmentFetchSummary(
+                downloaded: true, deferred: false, bytes: 100, localPath: "att-1"
+            ),
+            onFetch: { reader.rebind("picture.png", to: .bound(attachment: cached(id: "att-1", localPath: "att-1"))) },
+            onManifests: {
+                reader.rebind("picture.png", to: .bound(attachment: cached(id: "att-1", localPath: nil)))
+                return 1
+            }
+        )
+        let model = NoteReadViewModel(
+            route: route, reader: reader, filler: filler,
+            reachability: FixedPath(path: .wifi)
+        )
+        await model.loadIfNeeded()
+        #expect(model.attachments["picture.png"] == .unknown, "no name yet")
+
+        await model.fetchWaitingAttachments()
+
+        #expect(filler.named == ["note-1"])
+        #expect(filler.fetched == ["att-1"], "the newly bound picture is fetched in the same open")
+        guard case let .bound(attachment) = model.attachments["picture.png"] else {
+            Issue.record("the picture did not bind after its manifest was read")
+            return
+        }
+        #expect(attachment.localPath == "att-1")
+    }
+
+    @Test("offline, opening a note names nothing")
+    func offlineNamesNothing() async {
+        let reader = ScriptedAttachments(blocks: [imageBlock(url: "picture.png")], bindings: [:])
+        let filler = ScriptedAttachmentFiller(
+            summary: AttachmentFetchSummary(downloaded: false, deferred: true, bytes: 0, localPath: nil),
+            onManifests: { 1 }
+        )
+        let model = NoteReadViewModel(
+            route: route, reader: reader, filler: filler,
+            reachability: FixedPath(path: .offline)
+        )
+        await model.loadIfNeeded()
+        await model.fetchWaitingAttachments()
+
+        #expect(filler.named.isEmpty)
+        #expect(model.attachments["picture.png"] == .unknown)
     }
 
     /// Q4: desktop refuses to resolve a scheme-bearing url against the vault
@@ -289,6 +356,263 @@ struct NoteAttachmentTests {
     func repeatedUrlsAreDeduplicated() {
         let blocks = [imageBlock(url: "a.png"), imageBlock(url: "a.png")]
         #expect(NoteReadViewModel.attachmentUrls(in: blocks) == ["a.png"])
+    }
+}
+
+/// Runs of the note page's on-open download: two at once, one a sync pass
+/// cancelled, one after a failure, and the one the open starts.
+@Suite("Note attachment download runs")
+@MainActor
+struct NoteAttachmentRunTests {
+    /// REVIEW-5685: a pass restarts the page while a run downloads one of two
+    /// files. The new run lands the other; the first run, still holding both
+    /// in its list, must not download it again.
+    @Test("a run holding a stale list skips a file another run landed")
+    func staleRunSkipsALandedFile() async {
+        let urls = ["att-a": "a.png", "att-b": "b.png"]
+        let reader = ScriptedAttachments(
+            blocks: [imageBlock(url: "a.png"), imageBlock(url: "b.png")],
+            bindings: [
+                "a.png": .bound(attachment: cached(id: "att-a", localPath: nil)),
+                "b.png": .bound(attachment: cached(id: "att-b", localPath: nil))
+            ]
+        )
+        // The landed file is on disk: `intactPath` reads a missing one as not downloaded.
+        let run = UUID().uuidString
+        let written = Mutex<[URL]>([])
+        defer { written.withLock { $0 }.forEach { try? FileManager.default.removeItem(at: $0) } }
+        let filler = FirstFetchGatedFiller { id in
+            guard let url = urls[id] else { return }
+            let path = "\(run)-\(id)"
+            let file = AttachmentPaths.url(for: path)
+            FileManager.default.createFile(atPath: file.path(percentEncoded: false), contents: Data())
+            written.withLock { $0.append(file) }
+            reader.rebind(url, to: .bound(attachment: cached(id: id, localPath: path)))
+        }
+        let model = NoteReadViewModel(
+            route: route, reader: reader, filler: filler,
+            reachability: FixedPath(path: .wifi)
+        )
+        await model.loadIfNeeded()
+
+        let first = Task { await model.fetchWaitingAttachments() }
+        await filler.waitUntilFetching()
+        await model.fetchWaitingAttachments()
+        filler.finish()
+        await first.value
+
+        #expect(filler.fetched.sorted() == ["att-a", "att-b"], "a file was downloaded twice")
+        #expect(model.attachmentFetches.isEmpty)
+    }
+
+    /// REVIEW-5685R3 #1: a landed file keeps its `.downloading` mark until
+    /// the run rebinds it. A run starting between the fetch and the rebind
+    /// finds the old binding with no file, so only the mark stops it from
+    /// downloading the file again.
+    @Test("a landed file stays downloading until it is rebound", .timeLimit(.minutes(1)))
+    func aLandedFileHoldsItsMarkUntilRebound() async {
+        let reader = RebindGatedReader(
+            url: "picture.png",
+            binding: .bound(attachment: cached(id: "att-1", localPath: nil))
+        )
+        let filler = ScriptedAttachmentFiller(
+            summary: AttachmentFetchSummary(downloaded: true, deferred: false, bytes: 100, localPath: "att-1")
+        )
+        let model = NoteReadViewModel(route: route, reader: reader, filler: filler, reachability: FixedPath(path: .wifi))
+        await model.loadIfNeeded()
+
+        reader.holdNextResolve()
+        let first = Task { await model.fetchWaitingAttachments() }
+        for await _ in reader.held { break }
+        await model.fetchWaitingAttachments()
+        reader.release()
+        await first.value
+
+        #expect(filler.fetched == ["att-1"], "a run between the fetch and the rebind downloaded the file again")
+        #expect(model.attachmentFetches.isEmpty)
+    }
+
+    /// VERIFY-5674 #1: a row naming a file that is missing or torn is not
+    /// downloaded, so the page asks for it again.
+    @Test("a missing file is asked for again")
+    func aMissingFileIsAskedForAgain() async {
+        let reader = ScriptedAttachments(
+            blocks: [imageBlock(url: "picture.png")],
+            bindings: ["picture.png": .bound(attachment: cached(id: "att-1", localPath: "gone-\(UUID().uuidString)"))]
+        )
+        let pending = AttachmentFetchSummary(downloaded: false, deferred: true, bytes: 0, localPath: nil)
+        let filler = ScriptedAttachmentFiller(summary: pending)
+        let model = NoteReadViewModel(route: route, reader: reader, filler: filler, reachability: FixedPath(path: .wifi))
+        await model.loadIfNeeded()
+
+        await model.fetchWaitingAttachments()
+
+        #expect(filler.fetched == ["att-1"], "a missing file read as downloaded")
+    }
+
+    /// REVIEW-5685 and REVIEW-5685R2 #4, desktop `asksOnSync`: a pass asks
+    /// again only after a failure waiting can fix. A corrupt or unverifiable
+    /// file stays failed through the next pass instead of downloading again
+    /// in full on each one.
+    @Test("a later run asks again only after a failure waiting fixes")
+    func passesAskOnlyWhenWaitingHelps() async {
+        let reader = ScriptedAttachments(
+            blocks: [imageBlock(url: "picture.png")],
+            bindings: ["picture.png": .bound(attachment: cached(id: "att-1", localPath: nil))]
+        )
+        let pending = AttachmentFetchSummary(downloaded: false, deferred: true, bytes: 0, localPath: nil)
+        let failures: [(SyncError, UserFacingError.Recourse, Int)] = [
+            (.AttachmentUnverified(deviceId: "device"), .blocked, 1),
+            (.AttachmentCorrupt(what: "chunk"), .retry, 1),
+            (.Api(source: .Transport(source: .Offline)), .retryLater, 2),
+        ]
+        for (failure, recourse, fetches) in failures {
+            #expect(ErrorMapping.userFacing(failure).recourse == recourse)
+            let filler = ScriptedAttachmentFiller(summary: pending, failure: failure)
+            let model = NoteReadViewModel(route: route, reader: reader, filler: filler, reachability: FixedPath(path: .wifi))
+            await model.loadIfNeeded()
+            await model.fetchWaitingAttachments()
+            await model.fetchWaitingAttachments()
+            #expect(filler.fetched.count == fetches, "\(recourse)")
+            #expect(model.attachmentFetches["att-1"] == .failed(ErrorMapping.userFacing(failure)))
+        }
+    }
+
+    /// REVIEW-5685R2 #4: only Try again clears a `.retry` failure; a `.blocked`
+    /// one waits for a new screen.
+    @Test("Try again asks after a corrupt download, not an unverifiable one")
+    func tryAgainAsksAfterARetryFailure() async {
+        let reader = ScriptedAttachments(
+            blocks: [imageBlock(url: "picture.png")],
+            bindings: ["picture.png": .bound(attachment: cached(id: "att-1", localPath: nil))]
+        )
+        let unverified = SyncError.AttachmentUnverified(deviceId: "device")
+        let corrupt = SyncError.AttachmentCorrupt(what: "chunk")
+        #expect(ErrorMapping.userFacing(unverified).recourse == .blocked)
+        #expect(ErrorMapping.userFacing(corrupt).recourse == .retry)
+        let pending = AttachmentFetchSummary(downloaded: false, deferred: true, bytes: 0, localPath: nil)
+
+        let refused = ScriptedAttachmentFiller(summary: pending, failure: unverified)
+        let refusedModel = NoteReadViewModel(
+            route: route, reader: reader, filler: refused, reachability: FixedPath(path: .wifi)
+        )
+        await refusedModel.loadIfNeeded()
+        await refusedModel.fetchWaitingAttachments()
+        await refusedModel.fetchWaitingAttachments(tryAgain: true)
+        #expect(refused.fetched == ["att-1"], "a permanent failure went back to the server")
+        #expect(refusedModel.attachmentFetches["att-1"] == .failed(ErrorMapping.userFacing(unverified)))
+
+        let damaged = ScriptedAttachmentFiller(summary: pending, failure: corrupt)
+        let damagedModel = NoteReadViewModel(
+            route: route, reader: reader, filler: damaged, reachability: FixedPath(path: .wifi)
+        )
+        await damagedModel.loadIfNeeded()
+        await damagedModel.fetchWaitingAttachments()
+        await damagedModel.fetchWaitingAttachments(tryAgain: true)
+        #expect(damaged.fetched == ["att-1", "att-1"])
+    }
+
+    /// REVIEW-5587: each sync pass restarts the page's task. The cancelled
+    /// loop stops after the fetch in flight; the next task asks again.
+    @Test("a cancelled fetch of waiting pictures asks for no further one", .timeLimit(.minutes(1)))
+    func aCancelledFetchStops() async {
+        let reader = ScriptedAttachments(
+            blocks: [imageBlock(url: "a.png"), imageBlock(url: "b.png")],
+            bindings: [
+                "a.png": .bound(attachment: cached(id: "att-a", localPath: nil)),
+                "b.png": .bound(attachment: cached(id: "att-b", localPath: nil)),
+            ]
+        )
+        let filler = HeldAttachmentFiller()
+        let model = NoteReadViewModel(route: route, reader: reader, filler: filler, reachability: FixedPath(path: .wifi))
+        await model.loadIfNeeded()
+
+        let run = Task { await model.fetchWaitingAttachments() }
+        for await _ in filler.started { break }
+        run.cancel()
+        filler.release()
+        await run.value
+        #expect(filler.fetched.count == 1)
+    }
+
+    /// REVIEW-5587: opening a note asks for its pictures right after the
+    /// local read, not after the body pull's round trip.
+    @Test("the page asks for its pictures while the body pull is out", .timeLimit(.minutes(1)))
+    func picturesDoNotWaitForThePull() async throws {
+        let reader = ScriptedAttachments(
+            blocks: [imageBlock(url: "picture.png")],
+            bindings: ["picture.png": .bound(attachment: cached(id: "att-1", localPath: nil))]
+        )
+        let filler = HeldAttachmentFiller()
+        defer { filler.release() }
+        // Its own id: parallel suites announce edits to shared ids.
+        let model = NoteReadViewModel(
+            route: NoteRoute(id: UUID().uuidString), reader: reader, filler: filler,
+            reachability: FixedPath(path: .wifi)
+        )
+        let window = UIWindow(windowScene: try #require(UIApplication.shared.connectedScenes.first as? UIWindowScene))
+        window.makeKeyAndVisible()
+        defer {
+            window.isHidden = true
+            window.rootViewController = nil
+        }
+        window.rootViewController = UIHostingController(
+            rootView: Color.clear.modifier(NotePageLoad(model: model, source: UUID()))
+        )
+
+        for await _ in filler.started { break }
+        #expect(filler.fetched == ["att-1"])
+    }
+}
+
+/// Resolves one url to one binding. Once armed, it holds the next resolve
+/// until `release()`: the rebind after a download, held open.
+private final class RebindGatedReader: NotesReading, @unchecked Sendable {
+    let held: AsyncStream<Void>
+    private let hold: AsyncStream<Void>.Continuation
+    private let url: String
+    private let binding: BlockAttachment
+    private let gate = Mutex<(armed: Bool, waiting: CheckedContinuation<Void, Never>?)>((false, nil))
+
+    init(url: String, binding: BlockAttachment) {
+        self.url = url
+        self.binding = binding
+        (held, hold) = AsyncStream.makeStream()
+    }
+
+    func holdNextResolve() { gate.withLock { $0.armed = true } }
+
+    func release() {
+        gate.withLock { state in
+            defer { state.waiting = nil }
+            return state.waiting
+        }?.resume()
+    }
+
+    func folders() async throws -> [FolderSummary] { [] }
+    func list() async throws -> [NoteSummary] { [] }
+    func read(id: String) async throws -> NoteDetail? {
+        NoteDetail(
+            summary: NoteSummary(
+                id: id, title: "a note", folderPath: nil,
+                emoji: nil, createdAt: nil, modifiedAt: nil, aliases: []
+            ),
+            body: NoteBody(text: "body", present: true)
+        )
+    }
+
+    func blocks(id: String) async throws -> [Block]? { [imageBlock(url: url)] }
+
+    func attachmentForBlock(id: String, url: String) async throws -> BlockAttachment {
+        await withCheckedContinuation { continuation in
+            let holds = gate.withLock { state in
+                guard state.armed else { return false }
+                state = (false, continuation)
+                return true
+            }
+            if holds { hold.yield() } else { continuation.resume() }
+        }
+        return url == self.url ? binding : .unknown
     }
 }
 

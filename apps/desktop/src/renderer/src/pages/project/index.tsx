@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
+import { getI18n } from 'react-i18next'
 import { useT } from '@memry/i18n/renderer'
 import { FolderKanban } from '@/lib/icons'
 import { cn } from '@/lib/utils'
@@ -16,7 +17,7 @@ import { createDefaultTask, type Priority, type RepeatConfig } from '@/data/task
 import { openRelatedVaultItem } from '@/lib/open-related-vault-item'
 import { notesService } from '@/services/notes-service'
 import { tasksService } from '@/services/tasks-service'
-import { extractErrorMessage } from '@/lib/ipc-error'
+import { extractErrorMessage, unwrapIpcResult } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
 import { trackTelemetry } from '@/lib/telemetry'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
@@ -131,10 +132,18 @@ export const ProjectPage = ({ projectId, className }: ProjectPageProps): React.J
 
   const handleNoteIconChange = useCallback(
     (noteId: string, icon: string | null) => {
+      const failed = getI18n().getFixedT(null, 'notes')('phaseI.toasts.failedToUpdateIcon')
       void notesService
         .update({ id: noteId, emoji: icon })
-        .then(() => hub.refresh())
-        .catch((error: unknown) => log.error('Failed to set note icon', extractErrorMessage(error)))
+        .then((result) => {
+          unwrapIpcResult(result, failed)
+          hub.refresh()
+        })
+        .catch((error: unknown) => {
+          const message = extractErrorMessage(error, failed)
+          log.error('Failed to set note icon', message)
+          toast.error(message)
+        })
     },
     [hub]
   )

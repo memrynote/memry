@@ -4,6 +4,11 @@ import fs from 'fs'
 import { noteMetadata } from '@memry/db-schema/data-schema'
 import { asClientDb, asSyncDb, createTestDataDb } from '@tests/utils/test-db'
 import { getBaseline, writeBaseline } from '../../vault-locks/store'
+
+interface JournalDay {
+  tags: string[]
+  properties: Record<string, unknown>
+}
 import { JournalChannels } from '@memry/contracts/ipc-channels'
 import { SyncQueueManager } from '@memry/sync-client/queue'
 import { journalHandler } from './journal-handler'
@@ -52,6 +57,18 @@ vi.mock('@main/database/queries/notes', async (importOriginal) => ({
 
 // Covered through a real database in keep-unseen-text.test.ts; these cases run on a stub db.
 vi.mock('../keep-unseen-text', () => ({ keepUnseenText: vi.fn() }))
+// Covered through a real database in journal-handler.field-merge.test.ts.
+vi.mock('../journal-fields', () => ({
+  readDayFields: vi.fn(() => null),
+  localJournalFields: vi.fn(
+    (_db: unknown, _id: string, day: JournalDay, clock: Record<string, number>) => ({
+      ...day,
+      clock
+    })
+  ),
+  writeJournalFieldsBase: vi.fn(),
+  forgetJournalFieldsBase: vi.fn()
+}))
 
 vi.mock('../journal-day-merge', () => ({
   oweJournalDayMerge: vi.fn(),

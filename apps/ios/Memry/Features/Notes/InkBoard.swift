@@ -1,3 +1,4 @@
+import Combine
 import MemryCore
 import Observation
 import PencilKit
@@ -55,8 +56,9 @@ final class InkBoard {
     @ObservationIgnored private var settle: Task<Void, Never>?
     @ObservationIgnored var stamp = InkStamp()
     @ObservationIgnored var settleDelay: Duration = .milliseconds(800)
-    @ObservationIgnored private nonisolated(unsafe) var resignObserver: NSObjectProtocol?
-    private nonisolated let notifications: NotificationCenter
+    @ObservationIgnored private var leaving: AnyCancellable?
+    /// The surface's canvas, whose window resigning saves the board.
+    @ObservationIgnored weak var canvas: UIView?
     @ObservationIgnored private var heldTasks: Set<UIBackgroundTaskIdentifier> = []
     /// Seam for tests; the app holds tasks from `UIApplication`.
     @ObservationIgnored var beginBackgroundTask: (@escaping () -> Void) -> UIBackgroundTaskIdentifier = {
@@ -78,18 +80,14 @@ final class InkBoard {
     init(canvasId: String, boards: any WhiteboardBoards, notifications: NotificationCenter = .default) {
         self.canvasId = canvasId
         self.boards = boards
-        self.notifications = notifications
         // A kill from the app switcher beats the settle delay, and swiping
-        // into the switcher never backgrounds the app.
-        resignObserver = notifications.addObserver(
-            forName: UIApplication.willResignActiveNotification, object: nil, queue: .main
-        ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.saveBeforeLeaving() }
-        }
-    }
-
-    deinit {
-        if let resignObserver { notifications.removeObserver(resignObserver) }
+        // into the switcher never backgrounds the app. The canvas's own iPad
+        // window resigning counts too (#5820).
+        leaving = SceneLeaving.publisher(
+            of: { [weak self] in self?.canvas?.window?.windowScene }, center: notifications
+        )
+            .filter { $0 == .resign }
+            .sink { [weak self] _ in MainActor.assumeIsolated { self?.saveBeforeLeaving() } }
     }
 
     /// Saves what is left, holding a background task until the save lands.
