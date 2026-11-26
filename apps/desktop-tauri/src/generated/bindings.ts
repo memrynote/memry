@@ -118,28 +118,6 @@ export const commands = {
 	accountRefreshBillingStatus: (input: RefreshBillingInput | null) => __TAURI_INVOKE<BillingStatusResult>("account_refresh_billing_status", { input }),
 	/**  Opens the checkout page in the browser, with the plan picked during onboarding. */
 	accountStartCheckout: (input: StartCheckoutInput | null) => __TAURI_INVOKE<CheckoutResult>("account_start_checkout", { input }),
-	/**  Bookmarks each item not bookmarked yet and answers how many it made. */
-	bookmarksBulkCreate: (items: BookmarkItemInput[]) => __TAURI_INVOKE<number>("bookmarks_bulk_create", { items }),
-	/**  Removes each bookmark of `bookmark_ids` and answers how many it removed. */
-	bookmarksBulkDelete: (bookmarkIds: string[]) => __TAURI_INVOKE<number>("bookmarks_bulk_delete", { bookmarkIds }),
-	/**
-	 *  Bookmarks the item at the end of the list; an item bookmarked already is refused with
-	 *  Electron's "already bookmarked".
-	 */
-	bookmarksCreate: (input: BookmarkItemInput) => __TAURI_INVOKE<BookmarkView>("bookmarks_create", { input }),
-	/**  Removes the bookmark `id`; an id with no live bookmark is refused with Electron's "not found". */
-	bookmarksDelete: (id: string) => __TAURI_INVOKE<null>("bookmarks_delete", { id }),
-	bookmarksGet: (id: string) => __TAURI_INVOKE<BookmarkView | null>("bookmarks_get", { id }),
-	bookmarksGetByItem: (input: BookmarkItemInput) => __TAURI_INVOKE<BookmarkView | null>("bookmarks_get_by_item", { input }),
-	bookmarksIsBookmarked: (input: BookmarkItemInput) => __TAURI_INVOKE<boolean>("bookmarks_is_bookmarked", { input }),
-	/**  One page of bookmarks, each with what it points at. */
-	bookmarksList: (input: BookmarkListInput) => __TAURI_INVOKE<BookmarkListView>("bookmarks_list", { input }),
-	/**  Every bookmark of `item_type`, by position. */
-	bookmarksListByType: (itemType: string) => __TAURI_INVOKE<BookmarkListView>("bookmarks_list_by_type", { itemType }),
-	/**  Puts `bookmark_ids` in this order. */
-	bookmarksReorder: (bookmarkIds: string[]) => __TAURI_INVOKE<null>("bookmarks_reorder", { bookmarkIds }),
-	/**  Bookmarks an unbookmarked item, or removes every bookmark of a bookmarked one. */
-	bookmarksToggle: (input: BookmarkItemInput) => __TAURI_INVOKE<BookmarkToggleView>("bookmarks_toggle", { input }),
 	/**
 	 *  `calendar_eventkit_request_access`: the status after the request; a failure throws its code
 	 *  (`unsupported_platform`, `unavailable`, `permission_denied`, `sync_failed`).
@@ -676,10 +654,6 @@ export const commands = {
 	 *  shown; only the user's changes between the two are written.
 	 */
 	propertiesSet: (entityId: string, properties: { [key in string]: Value }, base: { [key in string]: Value }) => __TAURI_INVOKE<SetPropertiesView>("properties_set", { entityId, properties, base }),
-	/**  The newest opened items that still exist, at most `limit` (50 when absent). */
-	recentsList: (limit: number | null) => __TAURI_INVOKE<RecentlyOpenedView[]>("recents_list", { limit }),
-	/**  Records that the note or canvas was opened now: whether it was written. */
-	recentsRecord: (input: RecordRecentInput) => __TAURI_INVOKE<boolean>("recents_record", { input }),
 	/**  Registers the saved binding (or the fallback) and says what the OS did. */
 	shortcutRegisterGlobalCapture: () => __TAURI_INVOKE<GlobalCaptureResult>("shortcut_register_global_capture"),
 	/**
@@ -1058,6 +1032,32 @@ export const commands = {
 	windowSetCaptionRects: (min: CaptionRect, max: CaptionRect, close: CaptionRect) => __TAURI_INVOKE<null>("window_set_caption_rects", { min, max, close }),
 	/**  Maximizes the calling window, or restores it when it is maximized. */
 	windowToggleMaximize: () => __TAURI_INVOKE<null>("window_toggle_maximize"),
+	/**  Bookmarks each item not bookmarked yet and answers how many it made. */
+	bookmarksBulkCreate: (items: BookmarkItemInput[]) => __TAURI_INVOKE<number>("bookmarks_bulk_create", { items }),
+	/**  Removes each bookmark of `bookmark_ids` and answers how many it removed. */
+	bookmarksBulkDelete: (bookmarkIds: string[]) => __TAURI_INVOKE<number>("bookmarks_bulk_delete", { bookmarkIds }),
+	/**
+	 *  Bookmarks the item at the end of the list; an item bookmarked already is refused with
+	 *  Electron's "already bookmarked".
+	 */
+	bookmarksCreate: (input: BookmarkItemInput) => __TAURI_INVOKE<BookmarkView>("bookmarks_create", { input }),
+	/**  Removes the bookmark `id`; an id with no live bookmark is refused with Electron's "not found". */
+	bookmarksDelete: (id: string) => __TAURI_INVOKE<null>("bookmarks_delete", { id }),
+	bookmarksGet: (id: string) => __TAURI_INVOKE<BookmarkView | null>("bookmarks_get", { id }),
+	bookmarksGetByItem: (input: BookmarkItemInput) => __TAURI_INVOKE<BookmarkView | null>("bookmarks_get_by_item", { input }),
+	bookmarksIsBookmarked: (input: BookmarkItemInput) => __TAURI_INVOKE<boolean>("bookmarks_is_bookmarked", { input }),
+	/**  One page of bookmarks, each with what it points at. */
+	bookmarksList: (input: BookmarkListInput) => __TAURI_INVOKE<BookmarkListView>("bookmarks_list", { input }),
+	/**  Every bookmark of `item_type`, by position. */
+	bookmarksListByType: (itemType: string) => __TAURI_INVOKE<BookmarkListView>("bookmarks_list_by_type", { itemType }),
+	/**  Puts `bookmark_ids` in this order. */
+	bookmarksReorder: (bookmarkIds: string[]) => __TAURI_INVOKE<null>("bookmarks_reorder", { bookmarkIds }),
+	/**  Bookmarks an unbookmarked item, or removes every bookmark of a bookmarked one. */
+	bookmarksToggle: (input: BookmarkItemInput) => __TAURI_INVOKE<BookmarkToggleView>("bookmarks_toggle", { input }),
+	/**  The newest opened items that still exist, at most `limit` (50 when absent). */
+	recentsList: (limit: number | null) => __TAURI_INVOKE<RecentlyOpenedView[]>("recents_list", { limit }),
+	/**  Records that the note or canvas was opened now: whether it was written. */
+	recentsRecord: (input: RecordRecentInput) => __TAURI_INVOKE<boolean>("recents_record", { input }),
 	tasksArchive: (id: string) => __TAURI_INVOKE<TaskAck>("tasks_archive", { id }),
 	tasksBulkArchive: (input: BulkIdsInput) => __TAURI_INVOKE<BulkMutation>("tasks_bulk_archive", { input }),
 	tasksBulkComplete: (input: BulkIdsInput) => __TAURI_INVOKE<BulkMutation>("tasks_bulk_complete", { input }),
