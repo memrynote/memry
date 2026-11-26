@@ -90,10 +90,34 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
     /// Reminder notification taps (TP053), handed over by the app delegate.
     private let reminderTaps = ReminderTaps.shared
 
+    // One modifier chain in three functions: as a single expression, Xcode 26's
+    // compiler cannot type-check it in time and the Release archive fails.
     var body: some View {
         // Read here so the layout follows a module toggle and a synced order.
         let width = width
         let layout = VaultTabLayout(savedOrder: order.saved, width: width) { $0.isShown }
+        routes(presentations(over: tabView(layout, width: width), layout: layout, width: width))
+            // The vault closed or the account signed out: no reminder text may
+            // outlive it on the lock screen. The next vault refills its own window.
+            .onDisappear {
+                Task {
+                    await ReminderScheduler.shared.clearAll()
+                    await InboxNotifications.clearAll()
+                }
+            }
+            // Turning a module off stops its reminders on this phone (flow lane 06).
+            .onChange(of: local.isOn(.tasks)) { _, on in
+                if !on { Task { await ReminderScheduler.shared.clearAll() } }
+            }
+            .onChange(of: local.isOn(.inbox)) { _, on in
+                if !on { Task { await InboxNotifications.clearAll() } }
+            }
+            // Sign out lives on Settings › Account (F1), so the shell stops
+            // drawing it over every screen of the vault.
+            .preference(key: SignOutHostedKey.self, value: true)
+    }
+
+    private func tabView(_ layout: VaultTabLayout, width: LayoutWidth) -> some View {
         GeometryReader { proxy in
             TabView(selection: Binding(
                 get: { ShellTab.page(layout.barSelection(for: router.selectedTab)) },
@@ -133,8 +157,11 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
                 VaultSidebarHeader(name: vaultName, context: settings, switchVault: switchVault)
             }
         }
+    }
+
+    private func presentations(over tabs: some View, layout: VaultTabLayout, width: LayoutWidth) -> some View {
         // The app's keyboard commands (`MemryCommands`), ⌘K among them.
-        .focusedSceneValue(\.vaultCommands, commands(pages: layout.commandPages))
+        tabs.focusedSceneValue(\.vaultCommands, commands(pages: layout.commandPages))
         .sheet(isPresented: $showsMenu) {
             VaultMenuSheet(pages: layout.menu) { page in
                 router.selectedTab = page
@@ -172,7 +199,10 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
                 .presentationBackground(.clear)
         }
         .commandPalette($commandPalette, width: width)
-        .environment(\.openGlobalSearch, openSearch)
+    }
+
+    private func routes(_ shell: some View) -> some View {
+        shell.environment(\.openGlobalSearch, openSearch)
         .environment(router)
         .environment(journalRouter)
         .environment(sideRails)
@@ -212,24 +242,6 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
             journalRouter.tabs = router
             reminderTaps.take()?.open(in: router, journal: journalRouter)
         }
-        // The vault closed or the account signed out: no reminder text may
-        // outlive it on the lock screen. The next vault refills its own window.
-        .onDisappear {
-            Task {
-                await ReminderScheduler.shared.clearAll()
-                await InboxNotifications.clearAll()
-            }
-        }
-        // Turning a module off stops its reminders on this phone (flow lane 06).
-        .onChange(of: local.isOn(.tasks)) { _, on in
-            if !on { Task { await ReminderScheduler.shared.clearAll() } }
-        }
-        .onChange(of: local.isOn(.inbox)) { _, on in
-            if !on { Task { await InboxNotifications.clearAll() } }
-        }
-        // Sign out lives on Settings › Account (F1), so the shell stops
-        // drawing it over every screen of the vault.
-        .preference(key: SignOutHostedKey.self, value: true)
     }
 
     private var width: LayoutWidth {
@@ -337,41 +349,6 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
 private enum ShellTab: Hashable {
     case page(VaultTab)
     case search
-}
-
-/// Menu's sheet: the pages that did not fit the bar, then Settings. A pick
-/// shows under the Menu tab; the page behind the sheet does not change until
-/// then.
-private struct VaultMenuSheet: View {
-    let pages: [VaultTab]
-    let select: (VaultTab) -> Void
-
-    var body: some View {
-        NavigationStack {
-            List {
-                if !pages.isEmpty {
-                    Section {
-                        ForEach(pages, id: \.self) { page in
-                            row(page, title: page.title, symbol: page.symbol)
-                        }
-                    }
-                }
-                Section {
-                    row(.more, title: SettingsCopy.title, symbol: "gearshape")
-                }
-            }
-            .navigationTitle(VaultTab.more.title)
-            .navigationBarTitleDisplayMode(.inline)
-        }
-    }
-
-    private func row(_ page: VaultTab, title: String, symbol: String) -> some View {
-        Button { select(page) } label: {
-            Label(title, systemImage: symbol)
-                .foregroundStyle(Tokens.Text.primary.color)
-        }
-        .accessibilityIdentifier(page == .more ? "menu.settings" : "menu.\(page.rawValue)")
-    }
 }
 
 /// A tab that exists in the product and not yet on this phone.
