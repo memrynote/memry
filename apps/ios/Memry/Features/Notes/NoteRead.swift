@@ -9,9 +9,9 @@ import Observation
 // drawn by `NoteBlocksView`, and this preview remains for a note whose blocks
 // are not on this phone. `NoteBody.text` is `extract_text` output (chapter 12
 // §12.1.3), so a heading arrives as `# `, a bullet as `- `, and bold, links and
-// code fences arrive as nothing at all. Nothing here parses or serialises
-// markdown: §12.1.2 forbids a non-desktop client from doing either outside two
-// core writes (§12.1.0).
+// code fences arrive as nothing at all. Nothing here parses or serialises a
+// body's markdown: §12.1.2 forbids a non-desktop client from doing either
+// outside two core writes (§12.1.0).
 //
 // The four outcomes of a read, and why no two share a screen, are in
 // `NoteReadParts.swift` beside the types that carry them.
@@ -52,15 +52,16 @@ final class NoteReadViewModel {
     /// again, at note granularity.
     let filler: (any VaultFilling)?
 
-    /// The current network path, for FR-045's metered policy.
-    ///
-    /// Optional because nothing constructs a `PathReachability` in production
-    /// yet. The **policy** is never here either way — it is the core's, in
-    /// `may_download` — so this only supplies the observation.
+    /// The current network path, for FR-045's metered policy, which is the
+    /// core's (`may_download`). Optional so a test can leave it out.
     let reachability: (any Reachability)?
 
     private(set) var phase: Phase = .loading
     private(set) var fetch: Fetch = .idle
+    /// A binary note's own file (#5668), or `nil` for a note with a body.
+    /// Read and fetched in `NoteFileRead.swift`.
+    var file: NoteFile?
+    var fileFetch: Fetch = .idle
     /// The rendered body. Empty means "nothing to draw", which the screen
     /// resolves against `preview`: a body that is present and empty, a body
     /// that was never pulled, and a reader that cannot walk blocks are three
@@ -88,17 +89,34 @@ final class NoteReadViewModel {
     /// download so a picture becomes visible **without the note being
     /// recreated**, which is what FR-045 asks for in as many words.
     private(set) var attachments: [String: BlockAttachment] = [:]
+    /// On-open downloads running or failed, by id; `fetchWaitingAttachments` writes it (#5644).
+    var attachmentFetches: [String: AttachmentFetchState] = [:]
     /// The note's tags and typed properties, or `nil` while they are unread.
     ///
     /// `nil` and "read, and it has none" are different: the first draws
     /// nothing because the answer has not arrived, the second draws nothing
     /// because there is nothing — and only the first may change on its own.
     private(set) var metadata: NoteMetadata?
-    /// The note's review comments and suggestions (N604), read only.
-    private(set) var comments: [ReviewComment] = []
+    /// The note's review comments and suggestions (N604), read only, as the
+    /// core read them. Private, so every screen shows `shownComments`.
+    private var comments: [ReviewComment] = []
+    /// The review marks as this note shows them, each `visibleText` resolved
+    /// against its text (`ReviewMarkStyle.resolved`): what the Review list
+    /// lists and the body draws. A note with no marks reads no text, so a
+    /// view showing them does not redraw on every body change.
+    var shownComments: [ReviewComment] {
+        guard !comments.isEmpty else { return [] }
+        return ReviewMarkStyle.resolved(comments, in: exportText)
+    }
     /// Each task block's task, by task id, for the row desktop draws.
     private(set) var taskCards: [String: TaskCard] = [:]
     private var hasLoaded = false
+    /// The open's read and walk, which a sync pass's refresh joins rather than
+    /// restarts, which held a large note on `.loading` (#5247). Leaving cancels it.
+    @ObservationIgnored private var opening: Task<Void, Never>?
+    /// `opening` has not had the page's own refresh, whose pull follows the
+    /// open's read. A later refresh may follow a pass that applied after it.
+    @ObservationIgnored private var openAwaitsRefresh = false
 
     init(
         route: NoteRoute,
@@ -152,7 +170,8 @@ final class NoteReadViewModel {
         await load()
     }
 
-    /// Pulls this note's body, then re-reads the note in place.
+    /// Pulls this note's body, then re-reads the note in place. Answers
+    /// whether it read the note again, which can bind pictures to fetch.
     ///
     /// Runs on appear and after every sync pass: a desktop body edit is CRDT
     /// updates with no record, so the pass never pulls it, and applied records
@@ -161,16 +180,30 @@ final class NoteReadViewModel {
     /// fetch is not repeated until the user asks. Offline is not an error for a
     /// present body: the local copy stays.
     ///
-    /// Loads first when the page has not (on open, or after a cancelled
-    /// walk). That read already holds what the pass applied, so it is read
+    /// Joins the open's read when the page has not read the note (on open, or
+    /// after a cancelled walk), and a pass does not cancel it. That read
+    /// already holds what came before it, so the page's own refresh reads
     /// again only when the pull lands something (#5247).
-    func refreshFromRemote() async {
-        var stale = hasLoaded
-        await loadIfNeeded()
-        guard hasLoaded else { return }
+    @discardableResult
+    func refreshFromRemote() async -> Bool {
+        var stale = hasLoaded && !openAwaitsRefresh
+        let read = await opened()
+        openAwaitsRefresh = false
+        await read?.value
+        // A later pass restarted the page's task; its refresh pulls instead.
+        guard !Task.isCancelled, hasLoaded else { return false }
+        // A binary note has no body to pull: its file is the content.
+        if let shown = file?.attachmentId {
+            if fileFetch == .idle { await fetchFile() }
+            if stale { await load(quietly: true) }
+            // A peer replaced the file while it was open: fetch the new one now.
+            if let now = file?.attachmentId, now != shown { fileFetch = .idle; await fetchFile() }
+            return stale
+        }
         if case let .ready(detail) = phase, !detail.body.present {
-            if fetch == .idle { await fetchBody() }
-            return
+            guard fetch == .idle else { return false }
+            await fetchBody()
+            return true
         }
         if let filler, fetch != .fetching,
            case let .ready(detail) = phase, detail.body.present {
@@ -182,6 +215,29 @@ final class NoteReadViewModel {
             }
         }
         if stale { await load(quietly: true) }
+        return stale
+    }
+
+    /// Reads and walks the note when the page has not, or joins that read
+    /// while it runs. Leaving the page cancels it; a sync pass does not.
+    func open() async {
+        guard let read = await opened() else { return }
+        await withTaskCancellationHandler { await read.value } onCancel: { read.cancel() }
+    }
+
+    /// The open's read: the one running, a new one when the page has not
+    /// read the note, or `nil`. One that leaving the page cancelled ends first.
+    private func opened() async -> Task<Void, Never>? {
+        while let read = opening, read.isCancelled { await read.value }
+        if let opening { return opening }
+        guard !hasLoaded else { return nil }
+        openAwaitsRefresh = true
+        let read = Task {
+            await load()
+            opening = nil
+        }
+        opening = read
+        return read
     }
 
     /// The rendered body, read after the summary so the title and the dates
@@ -305,9 +361,12 @@ final class NoteReadViewModel {
         do {
             detail = try await reader.read(id: route.id)
         } catch {
-            // Each sync pass cancels `.task(id: vaultSyncPasses)` and
-            // `CoreExecutor` refuses its queued read. Not unreadable: keep the page.
-            if Task.isCancelled { return }
+            // A cancelled page task, whose queued read `CoreExecutor` refuses.
+            // Not unreadable: keep the page, and an open with no read reads again.
+            if Task.isCancelled {
+                if phase == .loading { hasLoaded = false }
+                return
+            }
             let mapped = ErrorMapping.userFacing(error)
             Log.storage.error("this note could not be read", .code(mapped.code))
             // Retryable, so the next attempt is a real attempt.
@@ -325,36 +384,16 @@ final class NoteReadViewModel {
         // measurement of one, and `LogDetail` has no shape that says "the body
         // was present" without also saying how long it is.
         Log.storage.info("read one note")
+        // Before `.ready`, so a binary note never draws as a missing body.
+        await loadFile()
         phase = .ready(detail)
         await loadBlocks()
         await loadMetadata()
-        await loadVaultNotes()
-    }
-
-    /// The vault's notes, for the wiki-link search (N602).
-    ///
-    /// A failure leaves the list empty rather than failing the screen: not
-    /// being able to search for a link is much smaller than not being able to
-    /// read the note.
-    private func loadVaultNotes() async {
-        do {
-            vaultNotes = try await reader.list()
-        } catch {
-            if Task.isCancelled { return }
-            Log.storage.error("the vault's notes could not be listed for linking")
-            vaultNotes = []
-        }
-        do {
-            var colors: [String: String] = [:]
-            let tags = try await reader.tags()
-            for tag in tags {
-                if let color = tag.color, !color.isEmpty { colors[tag.name.lowercased()] = color }
-            }
-            tagColors = colors
-            vaultTagNames = tags.sorted { $0.noteCount > $1.noteCount }.map(\.name)
-        } catch {
-            if Task.isCancelled { return }
-            Log.storage.error("the vault's tag colours could not be read")
+        guard let notes = await readVaultNotes() else { return }
+        vaultNotes = notes
+        if let tags = await readVaultTags() {
+            tagColors = tags.colors
+            vaultTagNames = tags.names
         }
     }
 }

@@ -4,7 +4,16 @@ vi.mock('../sync/crdt-provider', () => ({ getCrdtProvider: vi.fn() }))
 vi.mock('../sync/local-mutations', () => ({
   enqueueLocalSyncCreate: vi.fn(),
   enqueueLocalSyncDelete: vi.fn(),
-  enqueueLocalSyncUpdate: vi.fn()
+  enqueueLocalSyncUpdate: vi.fn(),
+  sendPendingContentDelete: vi.fn()
+}))
+vi.mock('../database', () => ({ getDatabase: vi.fn() }))
+vi.mock('../sync/journal-day-merge-key', () => ({ forgetOwedJournalDayMerge: vi.fn() }))
+vi.mock('@memry/storage-data', () => ({ getNoteMetadataById: vi.fn(() => ({ id: 'row' })) }))
+vi.mock('../sync/pending-deletes', () => ({
+  coverPendingContentDeletes: vi.fn(() => []),
+  isSupersededByLiveRow: vi.fn(),
+  listUncoveredContentDeletes: vi.fn(() => [])
 }))
 
 import { getCrdtProvider } from '../sync/crdt-provider'
@@ -17,7 +26,11 @@ describe('enqueueJournalDelete', () => {
   it('raises the delete with the day doc loaded', async () => {
     const withDocLoaded = vi.fn(async (_id: string, enqueue: () => void) => enqueue())
     const purge = vi.fn(async () => undefined)
-    vi.mocked(getCrdtProvider).mockReturnValue({ withDocLoaded, purge } as never)
+    vi.mocked(getCrdtProvider).mockReturnValue({
+      withDocLoaded,
+      purge,
+      getStateVector: () => null
+    } as never)
 
     await enqueueJournalDelete('j2026-10-09', '2026-10-09')
 

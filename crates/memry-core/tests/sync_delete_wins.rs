@@ -8,6 +8,7 @@
 //! | ------------------------------------------------------ | --------------------- |
 //! | a bare `SYNC_DELETE_WINS` keeps the row                 | §5.8, #5338, #5406    |
 //! | delete-wins with an attested marker deletes, records T | §5.8, §5.12.3, #5406  |
+//! | delete-wins with a v2 marker in this vault deletes      | §4.8.4, #5247         |
 //! | delete-wins with a forged marker keeps the row          | §5.12.3, #5406        |
 //! | a re-create after the delete is not deleted again       | §5.8 client rule      |
 //! | an id two sent items share deletes neither              | §5.12.1, #5406        |
@@ -16,6 +17,8 @@
 //! | an edit over a kept marker deletes and sends none       | §5.12.3, #5406        |
 //! | a write newer than the marker pushes normally           | §5.12.3, #5406        |
 //! | a local delete forgets the marker                       | §5.8 re-create, #5406 |
+//! | a marker with no vault id to check it in defers         | §4.8.4, #5247         |
+//! | a by-id pull with no vault id holds an attested marker  | §4.8.4, #5247         |
 
 use crate::http_fakes;
 
@@ -148,9 +151,17 @@ impl RecordCipher for Directory {
     }
 }
 
+/// The vault every coordinator here pulls, unless a test says otherwise.
+const VAULT: &str = "vault-1";
+
 /// The purged marker of task `id` at `cursor`, clock `{device-a: 2}`,
-/// attested by `device-a` unless `forged`.
+/// attested v1 by `device-a` unless `forged`.
 fn marker(id: &str, cursor: i64, forged: bool) -> Json {
+    marker_in(id, cursor, forged, None)
+}
+
+/// [`marker`], attested v2 in `vault` when one is given.
+fn marker_in(id: &str, cursor: i64, forged: bool, vault: Option<&str>) -> Json {
     let clock: VectorClock = [("device-a".to_owned(), 2)].into();
     let deleted_at = 1_700_000_000_000i64;
     let claim = DeleteClaim {
@@ -159,7 +170,7 @@ fn marker(id: &str, cursor: i64, forged: bool) -> Json {
         clock: &clock,
         deleted_at: if forged { deleted_at + 1 } else { deleted_at },
     };
-    let attestation = delete_attestation::sign(&claim, None, &signer().1).expect("signed");
+    let attestation = delete_attestation::sign(&claim, vault, &signer().1).expect("signed");
     json!({"id": id, "type": "task", "deletedAt": deleted_at, "clock": clock,
            "serverCursor": cursor, "signerDeviceId": "device-a",
            "deleteAttestation": attestation})
@@ -172,6 +183,10 @@ fn pull_answer(markers: Vec<Json>) -> String {
 }
 
 fn coordinator(db: &Db, transport: Arc<FakeTransport>) -> PushCoordinator {
+    coordinator_in(db, transport, Some(VAULT))
+}
+
+fn coordinator_in(db: &Db, transport: Arc<FakeTransport>, vault: Option<&str>) -> PushCoordinator {
     let http = Arc::new(HttpClient::new(
         transport,
         "https://sync.example",
@@ -184,6 +199,10 @@ fn coordinator(db: &Db, transport: Arc<FakeTransport>) -> PushCoordinator {
         Arc::new(Directory),
     )
     .with_clock_device("device-b");
+    let pull = match vault {
+        Some(vault) => pull.with_vault(vault),
+        None => pull,
+    };
     PushCoordinator::new(
         http,
         db.clone(),
@@ -249,6 +268,28 @@ async fn a_delete_wins_with_an_attested_marker_deletes_the_row() {
         1,
         "the tombstone clock is recorded"
     );
+}
+
+/// #5247: a marker attested v2 in the vault the pull syncs deletes the row as
+/// a v1 one does (chapter 04 §4.8.4).
+#[tokio::test]
+async fn a_delete_wins_with_a_v2_marker_in_this_vault_deletes_the_row() {
+    let db = scratch_db("attested-v2");
+    edited_task(&db, "t1", 5);
+    let transport = FakeTransport::new(vec![
+        response(200, &delete_wins("t1")),
+        response(
+            200,
+            &pull_answer(vec![marker_in("t1", 9, false, Some(VAULT))]),
+        ),
+    ]);
+    let report = coordinator(&db, transport)
+        .drain_wave()
+        .await
+        .expect("the wave");
+    assert!(task_deleted(&db, "t1"));
+    assert_eq!(report.deleted_locally, 1);
+    assert_eq!(count(&db, "SELECT COUNT(*) FROM outbox"), 0);
 }
 
 #[tokio::test]
@@ -325,6 +366,61 @@ async fn a_failed_by_id_pull_defers_the_item_and_not_the_wave() {
         ),
         1
     );
+}
+
+/// #5247: a pull with no vault id cannot check a v2 attestation. Checked as
+/// v1 only, the marker is refused and the edit acked over the server's delete;
+/// instead the item waits, as for a failed pull (chapter 04 §4.8.4).
+#[tokio::test]
+async fn a_marker_with_no_vault_id_to_check_it_in_defers_the_item() {
+    let db = scratch_db("no-vault");
+    edited_task(&db, "t1", 5);
+    let transport = FakeTransport::new(vec![
+        response(200, &delete_wins("t1")),
+        response(
+            200,
+            &pull_answer(vec![marker_in("t1", 9, false, Some(VAULT))]),
+        ),
+    ]);
+    let report = coordinator_in(&db, transport, None)
+        .drain_wave()
+        .await
+        .expect("the wave survives");
+    assert!(!task_deleted(&db, "t1"));
+    assert_eq!(report.rejected, 1);
+    assert_eq!(
+        count(
+            &db,
+            "SELECT COUNT(*) FROM outbox WHERE last_error IS NOT NULL"
+        ),
+        1
+    );
+}
+
+/// #5247 on the by-id pull without marker declaration (the first sync's
+/// metadata pass): a v2-attested marker with no vault id to check it in holds
+/// the ids as a failed pull does, and is never refused as a forgery.
+#[tokio::test]
+async fn a_by_id_pull_with_no_vault_id_holds_an_attested_marker() {
+    let db = scratch_db("no-vault-by-id");
+    edited_task(&db, "t1", 5);
+    let transport = FakeTransport::new(vec![response(
+        200,
+        &pull_answer(vec![marker_in("t1", 9, false, Some(VAULT))]),
+    )]);
+    let http = Arc::new(HttpClient::new(
+        transport,
+        "https://sync.example",
+        ClientIdentity::new("ios", "1.2.3").expect("a valid identity"),
+    ));
+    let pull = PullLoop::new(
+        http,
+        db.clone(),
+        Declaration::subscribed(),
+        Arc::new(Directory),
+    );
+    assert!(pull.fetch_ids(&["t1".to_owned()]).await.is_err());
+    assert!(!task_deleted(&db, "t1"));
 }
 
 /// A remembered marker that will not parse: logged and deferred, the row

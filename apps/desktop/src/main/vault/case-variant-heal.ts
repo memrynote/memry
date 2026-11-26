@@ -121,6 +121,13 @@ function docOf(noteId: string, saved: Uint8Array[]): Y.Doc {
  * With sync off nothing is queued or pushed, and the doc is the one place an
  * edit not yet written to the shared file lives. Synchronous, so the caller
  * drops the row on the very doc this read.
+ *
+ * `pushedStateVector` holds only this device's confirmed pushes, and nothing
+ * on the device records what else the server holds. A peer's edit pulled into
+ * the copy's doc, or a doc built from a pulled snapshot, looks the same here
+ * as text typed on this device and never sent. Such a copy stays: a duplicate
+ * in the sidebar, with no text lost. Deleting it leaves the shared file to the
+ * kept note (#5495).
  */
 function docLosesNothing(
   copyId: string,

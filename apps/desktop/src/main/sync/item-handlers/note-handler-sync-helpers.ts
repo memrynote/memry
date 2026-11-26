@@ -4,9 +4,6 @@ import type { SyncQueueManager } from '@memry/sync-client/queue'
 import { nextLocalClock } from '@memry/sync-client/tombstone-clocks'
 import { extractFolderFromPath } from '../note-sync'
 import { seedSkipsDeletedNote } from '../pending-deletes'
-import { getVaultRoot } from '../../vault/notes'
-import { readVaultFileSync } from '../../lib/paths'
-import { parseNote } from '../../vault/frontmatter'
 import { readNoteFileFields } from '../note-file-fields'
 import { getDatabase, getIndexDatabase } from '../../database/client'
 import { createLogger } from '../../lib/logger'
@@ -52,12 +49,13 @@ export function buildNotePushPayload(itemId: string, operation: string): string 
     })
   }
 
-  const { content, tags, aliases, frontmatter } = readNoteFileFields(cached, operation)
+  const { content, tags, aliases, frontmatter, offFile } = readNoteFileFields(cached, operation)
   // `undefined` omits the key, which tells peers nothing: the file could not be
-  // read, or this note has had no cover here. `null` is a local removal only.
-  const cover: NoteCoverSync | null | undefined = frontmatter
-    ? noteCoverForPush(dataDb, itemId, frontmatter)
-    : undefined
+  // read, the note is a case twin off its shared file, whose cover is never
+  // edited here (`assertOwnHeaderCoverUnchanged`), or this note has had no
+  // cover here. `null` is a local removal only.
+  const cover: NoteCoverSync | null | undefined =
+    frontmatter === null || offFile ? undefined : noteCoverForPush(dataDb, itemId, frontmatter)
 
   const folderPath = extractFolderFromPath(cached.path)
   const properties = propsToRecord(getNoteProperties(indexDb, itemId))
@@ -94,13 +92,7 @@ export function buildNotePushPayload(itemId: string, operation: string): string 
 export function settlePushedNoteCover(db: DrizzleDb, itemId: string): void {
   settleNoteCoverRemoval(db, itemId, () => {
     const cached = getNoteMetadataById(db, itemId)
-    if (!cached) return null
-    try {
-      const raw = readVaultFileSync(getVaultRoot(), cached.path)
-      return raw === null ? null : parseNote(raw).frontmatter
-    } catch {
-      return null
-    }
+    return cached ? readNoteFileFields(cached, 'update').frontmatter : null
   })
 }
 

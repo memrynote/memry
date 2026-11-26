@@ -45,6 +45,12 @@
     }
   },
   "page": {
+    "noteFiles": {
+      "downloading": "Henter denne notes filer…",
+      "failed": "Kunne ikke hente denne notes filer: {error}",
+      "failedFallback": "hentningen mislykkedes",
+      "retry": "Prøv igen"
+    },
     "empty": {
       "title": "Ingen note valgt",
       "body": "Vælg en note fra sidebjælken for at se den"

@@ -301,7 +301,9 @@ describe('healCaseVariantRows', () => {
   // A copy indexed before #5297 holds an older doc than the kept note's, and
   // differs from it forever. The server already holds every change in it, so
   // dropping the row loses nothing, and keeping it leaves a duplicate whose
-  // delete unlinks the kept note's file (#5495).
+  // delete unlinks the kept note's file (#5495). Only this device's pushes are
+  // on record, so a peer's edit pulled into a copy's doc looks like the
+  // unpushed row's text, and that copy stays with its text (#5247 A19).
   it.runIf(fileSystemIgnoresCase())(
     'drops a copy whose differing doc the server already holds, and keeps unpushed text',
     async () => {
@@ -322,7 +324,9 @@ describe('healCaseVariantRows', () => {
       )
 
       expect(await healCaseVariantRows(vault.path)).toEqual({ notes: 1, folders: 0 })
-      expect(notes().canonical.map((row) => row.id)).toEqual(['original', 'unpushed'])
+      const kept = ['original', 'unpushed']
+      expect(notes().canonical.map((row) => row.id)).toEqual(kept)
+      expect(notes().index.map((row) => row.id)).toEqual(kept)
     }
   )
 

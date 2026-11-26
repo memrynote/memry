@@ -48,9 +48,16 @@ function readTextBlobs(db: DrizzleDb): Set<string> {
   try {
     ids = JSON.parse(value)
   } catch (error) {
-    // Forgetting the list only costs one more download of each text blob, while
-    // a throw here would stop every restore scan for good.
+    // Forgetting the list only costs one more download of each text blob, which
+    // the restore remembers again, while a throw here would stop every restore
+    // scan for good. Removing the value reports it once, not at every start.
     log.warn('Binary note text-blob list is corrupt; starting it again', { error })
+    trackMainLog('warn', { scope: 'BinaryNoteRestore', action: 'binary_note_text_blobs_corrupt' })
+    try {
+      db.delete(syncState).where(eq(syncState.key, SYNC_STATE_KEYS.BINARY_NOTE_TEXT_BLOBS)).run()
+    } catch (removeError) {
+      log.warn('Corrupt binary note text-blob list not removed', { error: removeError })
+    }
     return new Set()
   }
   return new Set(Array.isArray(ids) ? ids.filter((id) => typeof id === 'string') : [])
@@ -86,10 +93,17 @@ function rememberTextBlob(db: DrizzleDb, attachmentId: string): void {
 async function checkRestoredFile(
   db: DrizzleDb,
   absolutePath: string,
-  attachmentId: string
+  attachmentId: string,
+  outlived: () => boolean
 ): Promise<void> {
   try {
-    if (await fileHoldsText(absolutePath)) rememberTextBlob(db, attachmentId)
+    const holdsText = await fileHoldsText(absolutePath)
+    // Its session ended during the read: `db` belongs to it.
+    if (outlived()) {
+      log.info('A restored binary note file outlived its session; not checked', { attachmentId })
+      return
+    }
+    if (holdsText) rememberTextBlob(db, attachmentId)
   } catch (error) {
     log.warn('Restored binary note file not checked', { attachmentId, error })
   }
@@ -146,24 +160,27 @@ export async function restoreOverwrittenBinaryNotesWith(
     if (resolveVaultFileSync(deps.vaultPath, note.path).kind === 'outside') continue
     const absolutePath = path.join(deps.vaultPath, note.path)
     if (!(await fileHoldsText(absolutePath))) continue
-    if (!shouldAttemptDownload(deps.db, note.id, note.attachmentId)) continue
+    const attachmentId = note.attachmentId
+    const claim = shouldAttemptDownload(deps.db, note.id, attachmentId)
+      ? markDownloadRequested(note.id, attachmentId)
+      : null
+    if (!claim) continue
 
     log.warn('Binary note file holds text; downloading its attachment again', {
       noteId: note.id,
       attachmentId: note.attachmentId
     })
-    const attachmentId = note.attachmentId
-    markDownloadRequested(note.id, attachmentId)
     const delivered = attachmentEvents.emitDownloadNeeded({
       noteId: note.id,
       attachmentId,
       diskPath: absolutePath,
-      landed: () => void checkRestoredFile(deps.db, absolutePath, attachmentId)
+      landed: (outlived) => void checkRestoredFile(deps.db, absolutePath, attachmentId, outlived),
+      claim
     })
     if (!delivered) {
       // No downloader (runtime restarting): the rest would drop the same way,
       // and the next runtime start checks again.
-      releaseDownloadAttempt(note.id, attachmentId)
+      releaseDownloadAttempt(claim)
       break
     }
     requested++

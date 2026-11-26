@@ -20,6 +20,7 @@ const vaultPath = path.join(root, 'vault')
 const userDataDir = path.join(root, 'user-data')
 fs.mkdirSync(userDataDir, { recursive: true })
 
+const { ingested } = vi.hoisted(() => ({ ingested: new Map<string, string>() }))
 const { currentDb, purge, logger } = vi.hoisted(() => {
   const slot: { value: unknown } = { value: null }
   return {
@@ -57,7 +58,11 @@ vi.mock('@main/database/queries/notes', async (importOriginal) => ({
   getNoteCacheByPath: vi.fn(() => undefined),
   updateNoteCache: vi.fn(),
   setNoteTags: vi.fn(),
-  setNoteProperties: vi.fn()
+  setNoteProperties: vi.fn(),
+  // The note's file holds the bytes this device ingested (#5797).
+  getNoteCacheById: vi.fn((_db: unknown, id: string) =>
+    ingested.has(id) ? { contentHash: ingested.get(id) } : undefined
+  )
 }))
 vi.mock('../../notes/runtime-effects', () => ({
   cleanupProjectLinksForDeletedNote: vi.fn(() => Promise.resolve())
@@ -77,12 +82,17 @@ vi.mock('../../vault/index', () => ({
   getConfig: () => ({ journalFolder: 'journal', defaultNoteFolder: 'notes' })
 }))
 
+import { attachmentEvents } from '@memry/sync-client/attachment-events'
+import type { AttachmentDownloadNeededEvent } from '@memry/sync-client/attachment-events'
 import { _resetBulkApplyForTests } from '../bulk-apply'
 import { journalHandler } from './journal-handler'
 import { noteHandler } from './note-handler'
+import { generateContentHash } from '../../vault/frontmatter'
+import { generateJournalId } from '@memry/contracts/journal-api'
 
 const ID = 'legacyagent0609'
 const DATE = '2026-06-09'
+const DAY_ID = generateJournalId(DATE)
 
 describe('note and journal rows that share an id', () => {
   let testDb: TestDatabaseResult
@@ -103,7 +113,7 @@ describe('note and journal rows that share an id', () => {
     testDb.close()
   })
 
-  const rowOf = () =>
+  const rowOf = (id = ID) =>
     testDb.db
       .select({
         path: noteMetadata.path,
@@ -112,7 +122,7 @@ describe('note and journal rows that share an id', () => {
         clock: noteMetadata.clock
       })
       .from(noteMetadata)
-      .where(eq(noteMetadata.id, ID))
+      .where(eq(noteMetadata.id, id))
       .get()
 
   const vaultFiles = () =>
@@ -137,11 +147,11 @@ describe('note and journal rows that share an id', () => {
     fs.writeFileSync(path.join(vaultPath, 'Untitled.md'), 'legacy body\n', 'utf-8')
   }
 
-  const seedLiveJournal = () => {
+  const seedLiveJournal = (id = ID) => {
     testDb.db
       .insert(noteMetadata)
       .values({
-        id: ID,
+        id,
         path: `journal/${DATE}.md`,
         title: DATE,
         fileType: 'markdown',
@@ -257,6 +267,71 @@ describe('note and journal rows that share an id', () => {
     })
     expect(result).toBe('skipped')
   })
+
+  // A journal day's pictures ride a `note` record under the day's id: the
+  // journal payload has no `attachmentReferences` (#5731).
+  // The legacy id owes a day merge; the canonical `j<date>` is the day itself.
+  // Neither is pushed back as a note (#5730).
+  it.each([
+    ['a legacy', ID],
+    ['the canonical', DAY_ID]
+  ])("a note upsert on %s live journal merges the day's pictures and asks for them", (_, id) => {
+    seedLiveJournal(id)
+    testDb.db
+      .update(noteMetadata)
+      .set({ attachmentReferences: ['att-local'] })
+      .where(eq(noteMetadata.id, id))
+      .run()
+    const asked: Array<
+      Pick<AttachmentDownloadNeededEvent, 'noteId' | 'attachmentId' | 'diskPath'>
+    > = []
+    const listener = (event: AttachmentDownloadNeededEvent) =>
+      asked.push({
+        noteId: event.noteId,
+        attachmentId: event.attachmentId,
+        diskPath: event.diskPath
+      })
+    attachmentEvents.onDownloadNeeded(listener)
+    try {
+      const result = noteHandler.applyUpsert(
+        ctx,
+        id,
+        { title: 'Hijacked', attachmentReferences: ['att-local', 'att-peer'] },
+        { 'device-c239': 1, 'device-9821': 1 }
+      )
+
+      const stored = testDb.db
+        .select({ refs: noteMetadata.attachmentReferences })
+        .from(noteMetadata)
+        .where(eq(noteMetadata.id, id))
+        .get()
+      expect({
+        result,
+        row: rowOf(id),
+        refs: stored?.refs,
+        files: vaultFiles(),
+        queued: testDb.db.select().from(syncQueue).all().length
+      }).toEqual({
+        result: 'skipped',
+        row: {
+          path: `journal/${DATE}.md`,
+          title: DATE,
+          journalDate: DATE,
+          clock: { 'device-c239': 1 }
+        },
+        refs: ['att-local', 'att-peer'],
+        files: [`journal/${DATE}.md`],
+        queued: 0
+      })
+      const dir = path.join(vaultPath, 'attachments', id)
+      expect(asked).toEqual([
+        { noteId: id, attachmentId: 'att-local', diskPath: dir },
+        { noteId: id, attachmentId: 'att-peer', diskPath: dir }
+      ])
+    } finally {
+      attachmentEvents.offDownloadNeeded(listener)
+    }
+  })
 })
 
 describe('remote note delete and its note_date reminders', () => {
@@ -303,6 +378,7 @@ describe('remote note delete and its note_date reminders', () => {
       })
       .run()
     fs.writeFileSync(path.join(vaultPath, 'Launch.md'), 'launch body\n', 'utf-8')
+    ingested.set('7225bkun6riy', generateContentHash('launch body\n'))
     testDb.db
       .insert(reminders)
       .values([

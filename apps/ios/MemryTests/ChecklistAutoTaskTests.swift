@@ -24,6 +24,28 @@ private final class RecordingEditor: BlockEditing, @unchecked Sendable {
     var all: [BlockEdit] { edits.withLock { $0 } }
 }
 
+/// Begins `onShouldEnd` as UIKit asks `field`'s text view to end editing,
+/// and hands every other delegate call to `field`.
+private final class ResigningDelegate: NSObject, UITextViewDelegate {
+    let field: BlockField
+    let onShouldEnd: () -> Void
+    init(_ field: BlockField, onShouldEnd: @escaping () -> Void) {
+        self.field = field
+        self.onShouldEnd = onShouldEnd
+    }
+
+    override func responds(to aSelector: Selector!) -> Bool {
+        super.responds(to: aSelector) || field.responds(to: aSelector)
+    }
+
+    override func forwardingTarget(for aSelector: Selector!) -> Any? { field }
+
+    func textViewShouldEndEditing(_ textView: UITextView) -> Bool {
+        onShouldEnd()
+        return true
+    }
+}
+
 @MainActor
 @Suite("Checklist items typed into tasks")
 struct ChecklistAutoTaskTests {
@@ -111,6 +133,45 @@ struct ChecklistAutoTaskTests {
 
         #expect(editor.all == [.replaceText(blockId: "c1", text: "milk", base: "")])
         #expect(!checklist.dirty)
+    }
+
+    /// REVIEW-5829: in UIKit, a row that takes the caret while the old one
+    /// resigns begins editing without holding the caret, so no key reaches
+    /// it. Keys reach it once it takes the caret again, and it writes them
+    /// when it lets go, with no page closing.
+    @Test func keysTypedIntoTheRedrawnRowAreWrittenWhenItLetsGo() async throws {
+        let scene = try #require(UIApplication.shared.connectedScenes.first as? UIWindowScene)
+        let window = UIWindow(windowScene: scene)
+        window.frame = CGRect(x: 0, y: 0, width: 400, height: 300)
+        window.rootViewController = UIViewController()
+        window.isHidden = false
+        defer { window.isHidden = true }
+        let root = try #require(window.rootViewController?.view)
+        let paragraph = field(kind: "paragraph")
+        let checklist = field(kind: "checkListItem")
+        for row in [paragraph, checklist] {
+            row.textView.frame = CGRect(x: 0, y: 0, width: 300, height: 40)
+            row.textView.delegate = row
+        }
+        root.addSubview(paragraph.textView)
+        #expect(paragraph.textView.becomeFirstResponder())
+        paragraph.textView.insertText("milk")
+        model.session.shortcutField = paragraph
+        // The redrawn row moves in, and takes the caret, as the old one resigns.
+        let resigning = ResigningDelegate(paragraph) { root.addSubview(checklist.textView) }
+        paragraph.textView.delegate = resigning
+        paragraph.textView.removeFromSuperview()
+
+        if !checklist.textView.isFirstResponder { #expect(checklist.textView.becomeFirstResponder()) }
+        checklist.textView.insertText(" and eggs")
+        checklist.textView.resignFirstResponder()
+        await model.session.tail?.value
+
+        #expect(editor.all == [
+            .replaceText(blockId: "c1", text: "milk", base: ""),
+            .replaceText(blockId: "c1", text: "milk and eggs", base: "milk")
+        ])
+        withExtendedLifetime(resigning) {}
     }
 
     @Test func aChecklistItemOnlyTappedThroughIsLeftAlone() async {

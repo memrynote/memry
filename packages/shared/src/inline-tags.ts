@@ -1,17 +1,24 @@
 import { foldTag, suffixBelow } from './tag-fold.ts'
 
 /**
- * The inline `#tag` grammar every reader and rewriter of note bodies shares:
- * a letter, then letters, digits, `_` or `-`, with `/`-separated child
- * segments. Group 1 is the tag without its `#`.
+ * The inline `#tag` grammar every reader and rewriter of note bodies shares,
+ * in any script: `/`-separated segments, each a letter or digit followed by
+ * letters, combining marks, digits, `_` or `-`, and at least one letter in the
+ * whole tag, so `#2024` stays prose while `#2024년` and `#퓨리` are tags.
+ * Letters are Unicode `Alphabetic` and marks `\p{M}` (Hindi's virama, Thai's
+ * tone marks), which the Rust core's `char::is_alphabetic` and
+ * `is_combining_mark` match exactly (`domain/body_tags.rs`).
  */
-export const INLINE_TAG_PATTERN = /#([a-zA-Z][a-zA-Z0-9_-]*(?:\/[a-zA-Z0-9][a-zA-Z0-9_-]*)*)/g
-
-const INLINE_TAG_NAME = /^[a-zA-Z][a-zA-Z0-9_-]*(?:\/[a-zA-Z0-9][a-zA-Z0-9_-]*)*$/
+export const TAG_CHAR = String.raw`[\p{Alphabetic}\p{M}\p{N}_\-]`
+const SEGMENT = String.raw`[\p{Alphabetic}\p{N}]${TAG_CHAR}*`
+const TAG = String.raw`${SEGMENT}(?:\/${SEGMENT})*`
+const INLINE_TAG_PATTERN = new RegExp(`#(${TAG})`, 'gu')
+const INLINE_TAG_NAME = new RegExp(`^${TAG}$`, 'u')
+const LETTER = /\p{Alphabetic}/u
 
 /** Whether `name` can be written as an inline `#name` and read back whole. */
 export function isInlineTagName(name: string): boolean {
-  return INLINE_TAG_NAME.test(name)
+  return INLINE_TAG_NAME.test(name) && LETTER.test(name)
 }
 
 /**
@@ -45,7 +52,9 @@ export function findInlineTags(text: string, before = ''): InlineTagMatch[] {
   const out: InlineTagMatch[] = []
   for (const match of text.matchAll(INLINE_TAG_PATTERN)) {
     const preceding = match.index > 0 ? text[match.index - 1] : before
-    if (canStartInlineTag(preceding)) out.push({ index: match.index, tag: match[1] })
+    if (canStartInlineTag(preceding) && LETTER.test(match[1])) {
+      out.push({ index: match.index, tag: match[1] })
+    }
   }
   return out
 }

@@ -45,6 +45,7 @@
     "applyTemplateFailed": "Kunne ikke bruke malen",
     "appendBlocksFailed": "Kunne ikke flytte blokken til det notatet",
     "appendIntoCaseTwin": "Det notatet deler fil med et notat der navnet bare skiller seg ut med store og små bokstaver. Gi nytt navn til ett av dem, og flytt deretter blokken på nytt.",
+    "appendIntoBinary": "En blokk kan bare flyttes til et notat, ikke til et bilde, en PDF eller en lyd- eller videofil.",
     "caseTwinMoveRefused": "Dette notatet deler fil med et notat der navnet bare skiller seg ved store og små bokstaver, så det kan ikke flyttes på denne måten. Gi det andre notatet nytt navn eller flytt det, eller slett kopien du ikke trenger.",
     "exportPdfFailed": "Kunne ikke eksportere PDF",
     "exportHtmlFailed": "Kunne ikke eksportere HTML",
@@ -77,6 +78,9 @@
     "uploadFailed": "Opplasting av vedlegget mislyktes",
     "uploadProgressFailed": "Kunne ikke hente opplastingsstatus",
     "downloadFailed": "Nedlasting av vedlegget mislyktes",
+    "downloadGone": "Denne filen finnes ikke lenger på synkroniseringsserveren. Hvis en annen enhet fortsatt har den, legg den til på nytt fra den enheten.",
+    "downloadMissing": "Denne filen er ikke på synkroniseringsserveren ennå. Åpne den igjen i morgen for å sjekke.",
+    "downloadNeedsSync": "Synkronisering kjører ikke, så denne filen kan ikke lastes ned. Den lastes ned av seg selv når synkroniseringen kjører.",
     "downloadProgressFailed": "Kunne ikke hente nedlastingsstatus",
     "exceedsMaxSize": "Filen er for stor: {size} overskrider grensen på {limit}",
     "exceedsPlanLimit": "Filen er større enn abonnementet ditt tillater: {size} overskrider {limit}",
@@ -242,6 +246,8 @@
     "keptNotPulled": "Denne mappen inneholder et notat der filen ble slettet utenfor memrynote, og teksten er ennå ikke synkronisert til denne enheten, så notatet kan ikke flyttes til papirkurven. Ingenting ble slettet. Vent til det er synkronisert, eller slett det notatet for seg selv først.",
     "keptUnwritable": "Denne mappen inneholder et notat der filen ble slettet utenfor memrynote, og teksten kan ikke lagres i en fil for papirkurven. Ingenting ble slettet. Slett det notatet for seg selv først.",
     "trashUnavailable": "Mappen kunne ikke flyttes til papirkurven. Det som fortsatt ligger i den, ble ikke slettet.",
+    "deleteCaseTwins": "Denne mappen og en mappe med samme navn stavet annerledes, for eksempel med andre store og små bokstaver, er én mappe på disken, så hvis du sletter den, slettes notatene i begge. Slett heller notatene du ikke trenger, ett om gangen.",
+    "deleteWindowsName": "Navnet på denne mappen slutter med et punktum eller et mellomrom, som Windows ignorerer, så hvis du sletter den, kan en annen mappe også bli slettet. Slett heller notatene i den ett om gangen.",
     "setConfigFailed": "Kunne ikke lagre mappeoppsettet"
   },
   "folderView": {
