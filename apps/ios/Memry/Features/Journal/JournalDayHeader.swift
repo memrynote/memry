@@ -169,16 +169,19 @@ struct JournalDayFirstLine: View {
         // resigns, as a body block commits (#2820), unless an input method
         // composes: Control Center resigns the app too. Going to the
         // background ends the composition as it stands and lands the line.
+        // The line's own iPad window leaving counts too (#5820).
         .background(JournalFirstLinePlace.Reader(place: place))
-        .onReceive(appLifecycle.publisher(for: UIApplication.willResignActiveNotification)) { _ in
-            if composing == nil { draft.leave(write: write) }
-        }
-        .onReceive(appLifecycle.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in
-            if let view = composing {
-                view.unmarkText()
-                draft.typed(view.text, write: write)
+        .onReceive(SceneLeaving.publisher(of: { place.scene }, center: appLifecycle)) { leave in
+            switch leave {
+            case .resign:
+                if composing == nil { draft.leave(write: write) }
+            case .background:
+                if let view = composing {
+                    view.unmarkText()
+                    draft.typed(view.text, write: write)
+                }
+                draft.leave(write: write)
             }
-            draft.leave(write: write)
         }
         .accessibilityLabel(JournalCopy.firstLineLabel)
         .accessibilityHint(placeholder)

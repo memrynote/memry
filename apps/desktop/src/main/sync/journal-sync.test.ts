@@ -264,15 +264,13 @@ describe('JournalSyncService deletes', () => {
     })
   })
 
-  it('still propagates the delete when the metadata row is already gone', () => {
-    // Unlike notes, a journal delete is enqueued even without a cache row, so a
-    // missing row must not swallow the delete.
+  it('queues no delete when the metadata row is already gone', () => {
+    // As for notes: with no row there is no clock to order the delete by. A
+    // CLI delete queues its own (sent from sync_pending_deletes), and a day
+    // that never reached the server, or stays on this device, owes none (#5693).
     makeService().enqueueDelete('journal-2026-01-01', '2026-01-01')
 
-    const rows = queueRows()
-    expect(rows).toHaveLength(1)
-    expect(rows[0].operation).toBe('delete')
-    expect(payloadOf(rows[0])).toEqual({ clock: { 'device-a': 1 } })
+    expect(queueRows()).toEqual([])
   })
 
   it('emits a tombstone the current schema accepts, date key entirely absent', () => {

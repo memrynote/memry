@@ -268,6 +268,10 @@ pub fn detect_checkbox_flip(
     note_id: &str,
     edit: &BlockEdit,
 ) -> Result<Option<TaskCheckboxFlip>, CrdtError> {
+    // Only a `checked` prop flips one: any other edit skips the body walk.
+    if !matches!(edit, BlockEdit::SetProp { name, .. } if name == "checked") {
+        return Ok(None);
+    }
     Ok(reads::note_blocks(conn, note_id)?.and_then(|blocks| checkbox_flip(&blocks, edit)))
 }
 

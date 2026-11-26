@@ -169,28 +169,23 @@ impl VaultSync {
             let id = attachment_id.clone();
             let told = self
                 .db
-                .call(move |conn| {
-                    let Some(upload) = attachment_uploads::get(conn, &id)? else {
-                        return Ok(None);
-                    };
-                    let told = attachment_uploads::told_refusal(conn, &id)?;
-                    Ok(told.map(|_| upload.note_id))
-                })
-                .await?;
+                .call(move |conn| attachment_uploads::told_refusal(conn, &id))
+                .await?
+                .is_some();
             match self
                 .upload_queued(&attachment_id, RetryPolicy::polled())
                 .await
             {
-                Ok(true) => {
+                Ok(Some(note_id)) => {
                     summary.uploaded += 1;
-                    if let Some(note_id) = told {
+                    if told {
                         summary.news.push(QueuedAttachmentNews::Uploaded {
                             attachment_id,
                             note_id,
                         });
                     }
                 }
-                Ok(false) => {}
+                Ok(None) => {}
                 Err(error) => match refusal(&error) {
                     Some((refusal, status)) => {
                         summary.refused += 1;
@@ -316,16 +311,16 @@ impl VaultSync {
     }
 
     /// Uploads one owed attachment under its own id and references it from
-    /// its note.
+    /// the note that owns its queue row when it lands.
     ///
-    /// - Returns: `false` when nothing was owed (another caller uploaded it,
-    ///   or it was detached, before or during the upload) or the note is
-    ///   deleted or purged here, which keeps it owed.
+    /// - Returns: the note it named, or `None` when nothing was owed (another
+    ///   caller uploaded it, or it was detached, before or during the upload)
+    ///   or the note is deleted or purged here, which keeps it owed.
     pub(super) async fn upload_queued(
         &self,
         attachment_id: &str,
         initiate: RetryPolicy,
-    ) -> Result<bool, SyncError> {
+    ) -> Result<Option<String>, SyncError> {
         let _gate = upload_gate(&self.vault_id).lock_owned().await;
         let id = attachment_id.to_owned();
         // An earlier try's chunks: this try puts new ones under a new key.
@@ -341,7 +336,7 @@ impl VaultSync {
             })
             .await?;
         let Some(upload) = owed else {
-            return Ok(false);
+            return Ok(None);
         };
         let device_id = self.session.device_id()?;
         let path = PathBuf::from(&self.directory)
@@ -371,26 +366,37 @@ impl VaultSync {
             .db
             .call(move |conn| {
                 let tx = crate::storage::nested_tx::begin(conn).map_err(notes::failed)?;
-                // Detached while the bytes were going up: the user removed the
-                // picture, so the note must not gain it back.
-                if attachment_uploads::get(&tx, &upload.attachment_id)?.is_none() {
-                    return Ok(false);
+                // Invariant: the upload names the note that owns its queue row
+                // when it lands, read here in the transaction that references
+                // it, never the note read before the bytes went up. While they
+                // were going up the row may have moved (a journal day merge
+                // settling moves `F`'s rows to `j<D>`, #5801), and the old
+                // note can still be live, so naming it would lose the picture
+                // from the day. No row: the user detached the picture while
+                // the bytes were going up, so no note gains it back.
+                let Some(current) = attachment_uploads::get(&tx, &upload.attachment_id)? else {
+                    return Ok(None);
+                };
+                // The owning note was deleted while the bytes went up: the
+                // upload stays owed and runs if the note comes back.
+                if !attachment_uploads::note_is_live(&tx, &current.note_id)? {
+                    return Ok(None);
                 }
                 uploaded.cache(&tx, now)?;
                 notes::add_attachment_reference(
                     &tx,
-                    &upload.note_id,
-                    &upload.attachment_id,
+                    &current.note_id,
+                    &current.attachment_id,
                     &device_id,
                     now,
                 )?;
-                attachment_uploads::clear(&tx, &upload.attachment_id)?;
-                attachment_uploads::forget_chunks(&tx, &upload.attachment_id)?;
+                attachment_uploads::clear(&tx, &current.attachment_id)?;
+                attachment_uploads::forget_chunks(&tx, &current.attachment_id)?;
                 tx.commit().map_err(notes::failed)?;
-                Ok(true)
+                Ok(Some(current.note_id))
             })
             .await?;
-        if !referenced {
+        if referenced.is_none() {
             // Nothing will name these chunks, so their quota goes back (§14.8).
             self.release_recorded(Some(attachment_id)).await?;
         }

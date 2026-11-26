@@ -9,7 +9,7 @@
 //! **An absent `attachmentReferences` means "this sender does not know", never
 //! "this note has no attachments"** (§14.7, chapter 13 §13.4). The field is
 //! `.nullable().optional()`, so an older client pushing a note it edited omits
-//! it entirely. [`merge_note_references`] therefore takes an `Option` and
+//! it entirely. [`attachment_refs::merge_note_references`] therefore takes an `Option` and
 //! **does nothing at all** when it is `None` — it does not clear the local
 //! list. Treating absence as emptiness would delete a note's pictures from
 //! this device's view because a different device did not mention them.
@@ -42,6 +42,7 @@
 use rusqlite::{Connection, OptionalExtension as _};
 
 use crate::api::errors::StorageError;
+use crate::domain::attachment_refs;
 use crate::seams::reachability::Reachable;
 
 /// One cached attachment.
@@ -82,10 +83,7 @@ fn read_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<CachedAttachment> {
     Ok(CachedAttachment {
         attachment_id: row.get("attachment_id")?,
         manifest: row.get("manifest")?,
-        note_refs: refs
-            .as_deref()
-            .and_then(|json| serde_json::from_str::<Vec<String>>(json).ok())
-            .unwrap_or_default(),
+        note_refs: attachment_refs::parse(refs.as_deref()),
         remote_size: row.get("remote_size")?,
         local_path: row.get("local_path")?,
         downloaded_at: row.get("downloaded_at")?,
@@ -211,81 +209,6 @@ pub fn may_download_with(unmetered_only: bool, reachable: Reachable) -> bool {
 }
 
 // MARK: - N204, what connects a note to a manifest
-
-/// Merges a note's `attachmentReferences` into the cache.
-///
-/// **`None` does nothing** (§14.7). The field is nullable and optional, so a
-/// client that does not know about attachments pushes a note without it, and
-/// clearing the local list on that would delete a note's pictures from this
-/// device because another device stayed quiet. `Some(vec![])` is different and
-/// does clear: that sender knows, and says there are none.
-pub fn merge_note_references(
-    conn: &Connection,
-    note_id: &str,
-    references: Option<&[String]>,
-) -> Result<(), StorageError> {
-    let Some(references) = references else {
-        // "This sender does not know." Not an empty list, and not a reason to
-        // forget what another sender told us.
-        return Ok(());
-    };
-
-    // Drop this note from every row, then add it back where it belongs, so a
-    // reference the note no longer carries stops pointing at it.
-    let existing: Vec<CachedAttachment> = conn
-        .prepare(&format!("SELECT {COLUMNS} FROM attachments"))
-        .map_err(failed)?
-        .query_map([], read_row)
-        .map_err(failed)?
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(failed)?;
-
-    for row in existing {
-        let wanted = references.contains(&row.attachment_id);
-        let present = row.note_refs.iter().any(|id| id == note_id);
-        if wanted == present {
-            continue;
-        }
-        let mut refs = row.note_refs.clone();
-        if wanted {
-            refs.push(note_id.to_owned());
-        } else {
-            refs.retain(|id| id != note_id);
-        }
-        refs.sort();
-        refs.dedup();
-        write_refs(conn, &row.attachment_id, &refs)?;
-    }
-
-    // A reference to an attachment this device has never fetched still gets a
-    // row, so the note can show a placeholder and a later fetch has somewhere
-    // to land. An id with no manifest is "known about, not yet pulled".
-    for attachment_id in references {
-        if get(conn, attachment_id)?.is_none() {
-            conn.execute(
-                "INSERT INTO attachments (attachment_id, note_refs) VALUES (?1, ?2)",
-                rusqlite::params![
-                    attachment_id,
-                    serde_json::to_string(&[note_id]).unwrap_or_else(|_| "[]".to_owned())
-                ],
-            )
-            .map_err(failed)?;
-        }
-    }
-    Ok(())
-}
-
-fn write_refs(conn: &Connection, attachment_id: &str, refs: &[String]) -> Result<(), StorageError> {
-    conn.execute(
-        "UPDATE attachments SET note_refs = ?2 WHERE attachment_id = ?1",
-        rusqlite::params![
-            attachment_id,
-            serde_json::to_string(refs).unwrap_or_else(|_| "[]".to_owned())
-        ],
-    )
-    .map_err(failed)?;
-    Ok(())
-}
 
 /// Every attachment one note references.
 ///
@@ -549,11 +472,19 @@ pub fn cached_bytes(conn: &Connection) -> Result<i64, StorageError> {
 /// known size first so the cheap pictures land before one large file.
 ///
 /// Includes evicted rows: a note still showing them is a note that wants them.
+/// A live binary note's own `attachmentId` (§14.7.3) counts too, with or
+/// without a row yet: it is the note's whole content (#5668).
 pub fn missing_downloads(conn: &Connection) -> Result<Vec<String>, StorageError> {
     conn.prepare(
-        "SELECT attachment_id FROM attachments \
-         WHERE local_path IS NULL AND note_refs IS NOT NULL AND note_refs != '[]' \
-         ORDER BY remote_size IS NULL, remote_size ASC, attachment_id ASC",
+        "SELECT wanted.attachment_id FROM ( \
+           SELECT attachment_id FROM attachments \
+           WHERE note_refs IS NOT NULL AND note_refs != '[]' \
+           UNION \
+           SELECT attachment_id FROM notes \
+           WHERE deleted_at IS NULL AND attachment_id IS NOT NULL AND attachment_id != '' \
+         ) wanted LEFT JOIN attachments cached USING (attachment_id) \
+         WHERE cached.local_path IS NULL \
+         ORDER BY cached.remote_size IS NULL, cached.remote_size ASC, wanted.attachment_id ASC",
     )
     .map_err(failed)?
     .query_map([], |row| row.get::<_, String>(0))

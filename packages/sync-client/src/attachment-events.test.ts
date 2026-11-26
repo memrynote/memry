@@ -13,7 +13,11 @@ vi.mock('./logging', () => ({
   })
 }))
 
+import type { DownloadClaim } from './attachment-download-state'
 import { attachmentEvents } from './attachment-events'
+
+/** The requester's hold on the download; the bus hands it through untouched. */
+const claim: DownloadClaim = { key: 'note-1::att-1' }
 
 interface SavedEvent {
   noteId: string
@@ -132,6 +136,7 @@ describe('attachmentEvents — download needed', () => {
     attachmentEvents.onDownloadNeeded(handler)
 
     attachmentEvents.emitDownloadNeeded({
+      claim,
       noteId: 'note-1',
       attachmentId: 'att-1',
       diskPath: '/vault/attachments/note-1',
@@ -140,6 +145,7 @@ describe('attachmentEvents — download needed', () => {
 
     expect(handler).toHaveBeenCalledTimes(1)
     expect(handler).toHaveBeenCalledWith({
+      claim,
       noteId: 'note-1',
       attachmentId: 'att-1',
       diskPath: '/vault/attachments/note-1',
@@ -154,6 +160,7 @@ describe('attachmentEvents — download needed', () => {
     // Embedded-attachment flow: diskPath is the note's attachments DIRECTORY,
     // the filename only exists inside the encrypted manifest.
     attachmentEvents.emitDownloadNeeded({
+      claim,
       noteId: 'note-1',
       attachmentId: 'att-1',
       diskPath: '/vault/attachments/note-1',
@@ -161,6 +168,7 @@ describe('attachmentEvents — download needed', () => {
     })
     // Binary-note flow: diskPath is the exact target FILE.
     attachmentEvents.emitDownloadNeeded({
+      claim,
       noteId: 'note-2',
       attachmentId: 'att-2',
       diskPath: '/vault/Scans/report.pdf'
@@ -181,6 +189,7 @@ describe('attachmentEvents — download needed', () => {
 
     attachmentEvents.offDownloadNeeded(dropped)
     attachmentEvents.emitDownloadNeeded({
+      claim,
       noteId: 'note-1',
       attachmentId: 'att-1',
       diskPath: '/vault/attachments/note-1',
@@ -193,6 +202,7 @@ describe('attachmentEvents — download needed', () => {
 
   it('logs noteId and attachmentId only — the disk path never reaches the log', () => {
     attachmentEvents.emitDownloadNeeded({
+      claim,
       noteId: 'note-1',
       attachmentId: 'att-1',
       diskPath: '/Users/someone/Vault/attachments/note-1',
@@ -223,6 +233,7 @@ describe('attachmentEvents — channel isolation', () => {
     expect(download).not.toHaveBeenCalled()
 
     attachmentEvents.emitDownloadNeeded({
+      claim,
       noteId: 'note-1',
       attachmentId: 'att-1',
       diskPath: '/vault/attachments/note-1',
@@ -242,6 +253,7 @@ describe('attachmentEvents — failure surfacing', () => {
 
     expect(() =>
       attachmentEvents.emitDownloadNeeded({
+        claim,
         noteId: 'note-1',
         attachmentId: 'att-missing',
         diskPath: '/vault/attachments/note-1',
@@ -259,6 +271,7 @@ describe('attachmentEvents — failure surfacing', () => {
 
     expect(() =>
       attachmentEvents.emitDownloadNeeded({
+        claim,
         noteId: 'note-1',
         attachmentId: 'att-1',
         diskPath: '/vault/attachments/note-1',
@@ -279,6 +292,7 @@ describe('attachmentEvents — failure surfacing', () => {
     // a sync-runtime restart or sign-out/in.
     expect(() =>
       attachmentEvents.emitDownloadNeeded({
+        claim,
         noteId: 'note-1',
         attachmentId: 'att-1',
         diskPath: '/vault/attachments/note-1',
@@ -314,6 +328,7 @@ describe('attachmentEvents — failure surfacing', () => {
 
     expect(
       attachmentEvents.emitDownloadNeeded({
+        claim,
         noteId: 'note-1',
         attachmentId: 'att-1',
         diskPath: '/vault/attachments/note-1',
@@ -334,6 +349,7 @@ describe('attachmentEvents — failure surfacing', () => {
     // and retry. (The claim now lives in `attachment_download_failures`; it used
     // to be a module-level Set that a sync stop silently wiped.)
     const delivered = attachmentEvents.emitDownloadNeeded({
+      claim,
       noteId: 'note-1',
       attachmentId: 'att-1',
       diskPath: '/vault/attachments/note-1',

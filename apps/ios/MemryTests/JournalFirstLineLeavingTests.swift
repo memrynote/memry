@@ -131,6 +131,25 @@ struct JournalFirstLineLeavingTests {
         await expectStored(day, ["Fook"])
     }
 
+    /// #5820: an iPad window going to the background while others stay
+    /// posts only its scene's notification, which lands the composing line.
+    @Test(.timeLimit(.minutes(1))) func a_composing_line_lands_once_its_window_goes_to_the_background() async throws {
+        let (day, field) = try await open()
+        defer { day.window.isHidden = true }
+
+        for key in "Foo" { field.insertText(String(key)) }
+        field.setMarkedText("k", selectedRange: NSRange(location: 1, length: 0))
+        await settle()
+        // A test host has one scene: no scene stands for another window's.
+        notifications.post(name: UIScene.didEnterBackgroundNotification, object: nil)
+        await settle()
+        #expect(await stored(day).isEmpty, "another window landed the line")
+
+        notifications.post(name: UIScene.didEnterBackgroundNotification, object: day.window.windowScene)
+
+        await expectStored(day, ["Fook"])
+    }
+
     /// Each first line ends only its own composition: one that kept a line
     /// after a failed write lands that line, not the other day's text. Both
     /// orders, as the fields hear the notification in an order of their own.

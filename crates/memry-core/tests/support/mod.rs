@@ -157,6 +157,12 @@ pub fn vector_file(name: &str) -> Json {
             include_str!("../../../../packages/contracts/test-vectors/task-completion-spawn.json")
         }
         "journal" => include_str!("../../../../packages/contracts/test-vectors/journal.json"),
+        "journal-merge" => {
+            include_str!("../../../../packages/contracts/test-vectors/journal-merge.json")
+        }
+        "journal-merge-sim" => {
+            include_str!("../../../../packages/contracts/test-vectors/journal-merge-sim.json")
+        }
         "markdown-seed" => {
             include_str!("../../../../packages/contracts/test-vectors/markdown-seed.json")
         }

@@ -7,6 +7,9 @@ import UIKit
 final class JournalFirstLinePlace {
     private weak var view: UIView?
 
+    /// The scene of the window the field is drawn in.
+    var scene: UIScene? { view?.window?.windowScene }
+
     /// The field's text view while it has the caret: the window's first
     /// responder, when it is the text view drawn where the field is. A block
     /// or another day's first line may hold the caret instead.

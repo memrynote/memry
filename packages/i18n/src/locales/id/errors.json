@@ -45,6 +45,7 @@
     "applyTemplateFailed": "Gagal menerapkan templat",
     "appendBlocksFailed": "Gagal memindahkan blok ke catatan tersebut",
     "appendIntoCaseTwin": "Catatan itu berbagi file dengan catatan yang namanya hanya berbeda pada huruf besar dan kecil. Ganti nama salah satunya, lalu pindahkan blok lagi.",
+    "appendIntoBinary": "Blok hanya dapat dipindahkan ke catatan, bukan ke file gambar, PDF, audio, atau video.",
     "caseTwinMoveRefused": "Catatan ini berbagi file dengan catatan yang namanya hanya berbeda huruf besar dan kecilnya, jadi catatan ini tidak dapat dipindahkan dengan cara ini. Ganti nama atau pindahkan catatan yang lain, atau hapus salinan yang tidak Anda perlukan.",
     "exportPdfFailed": "Gagal mengekspor PDF",
     "exportHtmlFailed": "Gagal mengekspor HTML",
@@ -77,6 +78,9 @@
     "uploadFailed": "Unggahan lampiran gagal",
     "uploadProgressFailed": "Gagal mengambil progres unggahan",
     "downloadFailed": "Unduhan lampiran gagal",
+    "downloadGone": "File ini sudah tidak ada di server sinkronisasi. Jika perangkat lain masih memilikinya, tambahkan lagi dari perangkat tersebut.",
+    "downloadMissing": "File ini belum ada di server sinkronisasi. Buka lagi besok untuk memeriksa.",
+    "downloadNeedsSync": "Sinkronisasi tidak berjalan, jadi file ini tidak dapat diunduh. File ini akan diunduh otomatis setelah sinkronisasi berjalan.",
     "downloadProgressFailed": "Gagal mengambil progres unduhan",
     "exceedsMaxSize": "File terlalu besar: {size} melebihi batas {limit}",
     "exceedsPlanLimit": "File lebih besar dari yang diizinkan paket Anda: {size} melebihi {limit}",
@@ -242,6 +246,8 @@
     "keptNotPulled": "Folder ini berisi catatan yang file-nya dihapus di luar memrynote, dan teksnya belum disinkronkan ke perangkat ini, jadi catatan itu tidak dapat dipindahkan ke tempat sampah. Tidak ada yang dihapus. Tunggu hingga tersinkron, atau hapus catatan itu secara terpisah terlebih dahulu.",
     "keptUnwritable": "Folder ini berisi catatan yang file-nya dihapus di luar memrynote, dan teksnya tidak dapat disimpan ke file untuk tempat sampah. Tidak ada yang dihapus. Hapus catatan itu secara terpisah terlebih dahulu.",
     "trashUnavailable": "Folder ini tidak dapat dipindahkan ke tempat sampah. Apa pun yang masih ada di dalamnya tidak dihapus.",
+    "deleteCaseTwins": "Folder ini dan folder dengan nama yang sama tetapi ditulis berbeda, misalnya dengan huruf besar dan kecil yang lain, adalah satu folder di disk, jadi menghapusnya akan menghapus catatan di keduanya. Sebagai gantinya, hapus satu per satu catatan yang tidak Anda perlukan.",
+    "deleteWindowsName": "Nama folder ini diakhiri titik atau spasi, yang diabaikan Windows, jadi menghapusnya bisa ikut menghapus folder lain. Sebagai gantinya, hapus catatan di dalamnya satu per satu.",
     "setConfigFailed": "Gagal menyetel konfigurasi folder"
   },
   "folderView": {
