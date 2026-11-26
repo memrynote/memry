@@ -48,6 +48,11 @@
 //! refuse a `create` over a purged tombstone, so a `settings` create is
 //! re-created over one just as the re-creatable types are. [`REUPLOADED`] is
 //! Electron's `REUPLOADABLE_TYPES` (`:293-313`) without them.
+//!
+//! **From a watermark** ([`manifest_watermark`], #5861): after a complete
+//! check, the next one lists only the rows written since and checks the
+//! server-only direction alone, so an app reopen reads one manifest page, not
+//! every page.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Mutex;
@@ -63,13 +68,11 @@ use crate::sync::outbox::{self, Change};
 use crate::sync::pull::{MAX_PULL_IDS, PullError, PullLoop};
 use crate::sync::{refused_items, store};
 
+use super::manifest_watermark::{self as watermark, FORMAT_VERSION, Watermark};
 use super::{purged, quarantine};
 
 /// `MIN_INTERVAL_MS` (`manifest-check.ts:47`).
 pub const MIN_INTERVAL_MS: i64 = 30 * 60 * 1000;
-
-/// `MANIFEST_PAGE_LIMIT` (`manifest-check.ts:54`), the server's page cap.
-const PAGE_LIMIT: u32 = 1000;
 
 /// The types a local-only row of is queued as `create`, the [`PROBED`] ones
 /// only after the server's answer names nothing.
@@ -147,12 +150,34 @@ impl ManifestCheck {
             }
             *last = Some(now_ms);
         }
-        let server = fetch(pull).await?;
+        let (vault, types) = (
+            pull.vault_id().map(str::to_owned),
+            pull.declaration().header_value(),
+        );
+        let (claimed_vault, claimed_types) = (vault.clone(), types.clone());
+        let claim = pull
+            .db()
+            .call(move |conn| {
+                watermark::claim(conn, claimed_vault.as_deref(), &claimed_types, now_ms)
+            })
+            .await?;
+        let mut from = claim.from.clone();
+        let mut listing =
+            watermark::list(pull, from.as_ref().map_or(0, |from| from.cursor)).await?;
+        if from.is_some() && listing.top.is_none() {
+            eprintln!(
+                "memry-core: the manifest since the watermark is not trusted; listing it all"
+            );
+            from = None;
+            listing = watermark::list(pull, 0).await?;
+        }
         let declared: Vec<String> = pull.declaration().types().to_vec();
         let after = self.last_asked().clone();
-        let (mut outcome, asked) = pull
+        let server = listing.keys;
+        let every_row = from.is_none();
+        let (mut outcome, asked, blocked) = pull
             .db()
-            .call(move |conn| diff(conn, &server, &declared, after.as_ref(), now_ms))
+            .call(move |conn| diff(conn, &server, &declared, after.as_ref(), now_ms, every_row))
             .await?;
         if let Some(last) = asked.last() {
             *self.last_asked() = Some(last.clone());
@@ -166,6 +191,22 @@ impl ManifestCheck {
             pull.fetch_ids(&ids).await?;
         }
         if asked.is_empty() {
+            // Only a check that left nothing to retry founds a watermark: a
+            // blocked row may be pulled once its block lifts, and an asked
+            // row is asked again.
+            if let Some(top) = listing.top.filter(|_| !blocked) {
+                let next = Watermark {
+                    v: FORMAT_VERSION,
+                    vault,
+                    types,
+                    cursor: top,
+                    full_at: from.map_or(now_ms, |from| from.full_at),
+                };
+                let token = claim.token;
+                pull.db()
+                    .call(move |conn| watermark::settle(conn, &token, &next))
+                    .await?;
+            }
             return Ok(Some(outcome));
         }
         match ask(pull, &asked).await {
@@ -397,42 +438,6 @@ fn known_deleted(conn: &Connection, item_type: &str, id: &str) -> Result<bool, S
     Ok(own.is_none_or(|own| clock::compare(&own, &recorded) != ClockOrder::After))
 }
 
-/// Every page of `GET /sync/manifest`, deduplicated on `(type, id)`. A
-/// `nextCursor` that does not advance ends the listing (`:127-134`).
-async fn fetch(pull: &PullLoop) -> Result<BTreeSet<(String, String)>, PullError> {
-    let mut server = BTreeSet::new();
-    let mut cursor: i64 = 0;
-    loop {
-        let path = format!("/sync/manifest?limit={PAGE_LIMIT}&cursor={cursor}");
-        let body: Json = pull.http().send_json(pull.request("GET", &path)).await?;
-        for item in body
-            .get("items")
-            .and_then(Json::as_array)
-            .into_iter()
-            .flatten()
-        {
-            if let (Some(item_type), Some(id)) = (
-                item.get("type").and_then(Json::as_str),
-                item.get("id").and_then(Json::as_str),
-            ) {
-                server.insert((item_type.to_owned(), id.to_owned()));
-            }
-        }
-        match body.get("nextCursor").and_then(Json::as_i64) {
-            Some(next) if next > cursor => cursor = next,
-            Some(next) => {
-                eprintln!(
-                    "memry-core: the manifest cursor did not advance ({cursor} to {next}); \
-                     diffing the pages read so far"
-                );
-                break;
-            }
-            None => break,
-        }
-    }
-    Ok(server)
-}
-
 /// A note and a journal of one id are one item (`tombstoneRefKeys`).
 fn spellings(item_type: &str, id: &str) -> Vec<(String, String)> {
     match item_type {
@@ -447,13 +452,16 @@ fn spellings(item_type: &str, id: &str) -> Vec<(String, String)> {
 /// The two directions, the re-uploads queued in one transaction, and the
 /// [`PROBED`] rows to ask the server about: at most [`MAX_PROBED`], in
 /// `(type, id)` order from the first one after `after`, wrapping around.
+/// The local-only direction needs `server` to be `every_row`. Also returns
+/// whether a listed row was left alone as refused or quarantined.
 fn diff(
     conn: &Connection,
     server: &BTreeSet<(String, String)>,
     declared: &[String],
     after: Option<&(String, String)>,
     now_ms: i64,
-) -> Result<(ManifestOutcome, Keys), StorageError> {
+    every_row: bool,
+) -> Result<(ManifestOutcome, Keys, bool), StorageError> {
     let held: BTreeSet<(String, String)> = keys(conn, "SELECT item_type, item_id FROM sync_items")?
         .iter()
         .flat_map(|(item_type, id)| spellings(item_type, id))
@@ -467,12 +475,20 @@ fn diff(
         .iter()
         .flat_map(|(item_type, id)| spellings(item_type, id))
         .collect();
-    let server_only: Vec<(String, String)> = server
+    let (left_alone, server_only): (Keys, Keys) = server
         .iter()
         .filter(|(item_type, _)| item_type != "task_activity" && declared.contains(item_type))
-        .filter(|key| !held.contains(*key) && !excluded.contains(*key))
+        .filter(|key| !held.contains(*key))
         .cloned()
-        .collect();
+        .partition(|key| excluded.contains(key));
+    if !every_row {
+        log_server_only(&server_only);
+        let outcome = ManifestOutcome {
+            server_only,
+            ..ManifestOutcome::default()
+        };
+        return Ok((outcome, Vec::new(), !left_alone.is_empty()));
+    }
 
     let server_spellings: BTreeSet<(String, String)> = server
         .iter()
@@ -519,12 +535,7 @@ fn diff(
         }
         tx.commit().map_err(failed)?;
     }
-    if !server_only.is_empty() {
-        eprintln!(
-            "memry-core: the server holds {} record(s) not found here; pulling them by id",
-            server_only.len()
-        );
-    }
+    log_server_only(&server_only);
     Ok((
         ManifestOutcome {
             server_only,
@@ -532,7 +543,17 @@ fn diff(
             deleted_there: Vec::new(),
         },
         unknown,
+        !left_alone.is_empty(),
     ))
+}
+
+fn log_server_only(server_only: &[(String, String)]) {
+    if !server_only.is_empty() {
+        eprintln!(
+            "memry-core: the server holds {} record(s) not found here; pulling them by id",
+            server_only.len()
+        );
+    }
 }
 
 fn keys(conn: &Connection, sql: &str) -> Result<Vec<(String, String)>, StorageError> {
