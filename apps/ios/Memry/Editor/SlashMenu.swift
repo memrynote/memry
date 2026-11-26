@@ -66,6 +66,17 @@ enum BlockCatalog {
             case .block, .attach, .link, .source, .columns, .view, .whiteboard: false
             }
         }
+
+        /// A row that makes a text block type changes the line it was typed
+        /// on instead of adding one below it. The types are the block menu's
+        /// Turn into list (`BlockActionTarget.textKinds`), and desktop's
+        /// `slash-menu-convert.ts` applies the same rule. Dividers, tables,
+        /// columns, media and every other block draw something of their own,
+        /// so they go after the line.
+        var convertsInPlace: Bool {
+            guard case let .block(kind, _, _) = action else { return false }
+            return BlockActionTarget.textKinds.contains(kind)
+        }
     }
 
     private static func block(
@@ -289,7 +300,7 @@ extension EditorSession {
         field.dirty = true
         textView.invalidateIntrinsicContentSize()
         selectionChanged(in: field)
-        run(row, in: field)
+        run(row, in: field, turnsLine: row.convertsInPlace && BlockActionTarget.textKinds.contains(field.block.kind))
     }
 
     /// A `+` grid row chosen: the grid closes, then the row acts at the caret
@@ -303,13 +314,16 @@ extension EditorSession {
             }
             return
         }
-        run(row, in: field)
+        run(row, in: field, turnsLine: false)
     }
 
-    private func run(_ row: BlockCatalog.Row, in field: BlockField) {
+    /// `turnsLine`: a block row changes the line that holds text instead of
+    /// adding one after it. Only the slash menu asks for that: the `+` grid
+    /// has no `/query` and always adds a block.
+    private func run(_ row: BlockCatalog.Row, in field: BlockField, turnsLine: Bool) {
         switch row.action {
         case let .block(kind, level, props):
-            insertOrTurn(field, kind: kind, level: level, props: props)
+            insertOrTurn(field, kind: kind, level: level, props: props, turnsLine: turnsLine)
         case .linkToNote:
             startWikiLink()
         case let .attach(source):
@@ -417,12 +431,14 @@ extension EditorSession {
         }
     }
 
-    /// An empty block changes type; a block with text keeps it and gets the
-    /// new block after (BlockNote's `insertOrUpdateBlockForSlashMenu`).
-    private func insertOrTurn(_ field: BlockField, kind: String, level: Int?, props: [String: String]) {
+    /// An empty block changes type, and so does a block with text when
+    /// `turnsLine`: it keeps its text. Otherwise a block with text keeps it
+    /// and gets the new block after (BlockNote's
+    /// `insertOrUpdateBlockForSlashMenu`).
+    private func insertOrTurn(_ field: BlockField, kind: String, level: Int?, props: [String: String], turnsLine: Bool) {
         let blockId = field.blockId
         let empty = field.textView.text.isEmpty
-        if empty, kind != "divider" {
+        if empty || turnsLine, kind != "divider" {
             // A table draws in the reload the turn itself triggers, so it
             // asks for the caret before that write rather than after it.
             if kind == "table" { pendingFocus = blockId }
