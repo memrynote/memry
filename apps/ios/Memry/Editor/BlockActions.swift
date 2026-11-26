@@ -32,10 +32,12 @@ struct BlockSiblings: Equatable {
     var next: String?
     /// Whether the block is nested in something it may leave.
     var canOutdent = false
+    /// A column list holds columns only, so nothing nests under it.
+    var previousIsColumnList = false
 
-    /// The core nests any block under its previous sibling, and refuses the
-    /// first block of its parent (`indent` in `structure.rs`).
-    var canIndent: Bool { previous != nil }
+    /// The core nests a block under its previous sibling, and refuses the
+    /// first block of its parent and a column list (`indent` in `structure.rs`).
+    var canIndent: Bool { previous != nil && !previousIsColumnList }
 
     /// Over the flat list the core returns, where nesting is `depth`: the
     /// nearest block at the same depth, stopping at a shallower one (the
@@ -43,22 +45,24 @@ struct BlockSiblings: Equatable {
     static func of(_ index: Int, in blocks: [Block]) -> BlockSiblings {
         guard blocks.indices.contains(index) else { return BlockSiblings() }
         let depth = blocks[index].depth
-        func sibling(_ candidates: some Sequence<Block>) -> String? {
+        func sibling(_ candidates: some Sequence<Block>) -> Block? {
             for block in candidates {
                 if block.depth < depth { return nil }
-                if block.depth == depth { return block.id }
+                if block.depth == depth { return block }
             }
             return nil
         }
+        let previous = sibling(blocks[..<index].reversed())
         // The core lifts any nested block, and refuses a top-level one and a
         // column's own block (`outdent` in `structure.rs`), as desktop's
         // `liftItem` does nothing there.
         let canOutdent = depth > 0
             && (NoteColumns.parentIndex(of: index, in: blocks).map { blocks[$0].kind != "column" } ?? true)
         return BlockSiblings(
-            previous: sibling(blocks[..<index].reversed()),
-            next: sibling(blocks[(index + 1)...]),
-            canOutdent: canOutdent
+            previous: previous?.id,
+            next: sibling(blocks[(index + 1)...])?.id,
+            canOutdent: canOutdent,
+            previousIsColumnList: previous?.kind == "columnList"
         )
     }
 }

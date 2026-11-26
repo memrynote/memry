@@ -83,6 +83,18 @@ struct BlockSiblingsTests {
         #expect(last.canIndent && !last.canOutdent)
     }
 
+    @Test func nothing_indents_under_a_column_list() {
+        // The core refuses it (`a_block_cannot_be_indented_under_a_column_list`),
+        // so the toolbar and the block menu must not offer it.
+        let blocks = [
+            block("cl", kind: "columnList"), block("c1", depth: 1, kind: "column"),
+            block("in", depth: 2), block("after"),
+        ]
+        let after = BlockSiblings.of(3, in: blocks)
+        #expect(after.previous == "cl")
+        #expect(!after.canIndent)
+    }
+
     @Test func an_index_out_of_range_has_no_siblings() {
         #expect(BlockSiblings.of(3, in: [block("a")]) == BlockSiblings())
     }
