@@ -31,10 +31,15 @@ private func binding(_ id: String, localPath: String? = nil) -> BlockAttachment 
 /// body would.
 private final class DayReader: NotesReading, @unchecked Sendable {
     private let state: Mutex<(blocks: [Block], bindings: [String: BlockAttachment])>
-    private let written = Mutex<[URL]>([])
+    /// Where `landBytes` writes and the page reads, in a directory of its own:
+    /// a parallel suite's vault open moves `AttachmentPaths.imagesDirectory`
+    /// between the write and the read, and the page then fetches again (#5847).
+    let images = URL.temporaryDirectory
+        .appending(path: "memry-images-\(UUID().uuidString)", directoryHint: .isDirectory)
 
     init(blocks: [Block], bindings: [String: BlockAttachment]) {
         state = Mutex((blocks, bindings))
+        try? FileManager.default.createDirectory(at: images, withIntermediateDirectories: true)
     }
 
     func land(_ blocks: [Block], bindings: [String: BlockAttachment]) {
@@ -45,9 +50,8 @@ private final class DayReader: NotesReading, @unchecked Sendable {
     /// `intactPath` reads a missing one as not downloaded.
     func landBytes(of id: String) {
         let path = "journal-\(UUID().uuidString)-\(id)"
-        let file = AttachmentPaths.url(for: path)
+        let file = images.appending(path: path)
         FileManager.default.createFile(atPath: file.path(percentEncoded: false), contents: Data())
-        written.withLock { $0.append(file) }
         state.withLock { state in
             for (url, bound) in state.bindings {
                 if case let .bound(attachment) = bound, attachment.attachmentId == id {
@@ -57,10 +61,9 @@ private final class DayReader: NotesReading, @unchecked Sendable {
         }
     }
 
-    /// Deletes every file `landBytes` wrote: they sit in the shared images
-    /// directory, not under the test's vault.
+    /// Deletes every file `landBytes` wrote, with their directory.
     func removeLandedBytes() {
-        written.withLock { $0 }.forEach { try? FileManager.default.removeItem(at: $0) }
+        try? FileManager.default.removeItem(at: images)
     }
 
     func folders() async throws -> [FolderSummary] { [] }
@@ -159,7 +162,10 @@ extension KeyWindowSuites {
             )
             vault.store.context = context
             await vault.store.loadDay(JournalTestVault.today)
-            let page = JournalDayPageModel(store: vault.store, date: JournalTestVault.today, context: context)
+            let page = JournalDayPageModel(
+                store: vault.store, date: JournalTestVault.today, context: context,
+                attachmentURL: { [images = reader.images] in images.appending(path: $0) }
+            )
             let shown = Shown(shown)
             let scene = try #require(UIApplication.shared.connectedScenes.first as? UIWindowScene)
             let window = UIWindow(windowScene: scene)
