@@ -106,11 +106,13 @@ final class EditorSession {
     /// The arrow keys moved `highlighted` in the open menu
     /// (`menuFollowsKeys`).
     var highlightMoved = false
-    /// The menu Esc closed, by its trigger character and where it starts, so
-    /// it stays closed while the caret is still in that trigger.
-    @ObservationIgnored private var dismissedMenu: DismissedMenu?
+    /// The trigger the user typed, by its character and where it starts: its
+    /// menu shows while the caret stays in it, until Esc. Only typing a
+    /// trigger (`willType`) or a toolbar button (`openMenu`) sets it, as
+    /// only desktop's `handleTextInput` and `openSuggestionMenu` open one.
+    @ObservationIgnored private var openedMenu: MenuAnchor?
 
-    private struct DismissedMenu: Equatable {
+    private struct MenuAnchor: Equatable {
         let trigger: Character
         let location: Int
     }
@@ -424,14 +426,14 @@ final class EditorSession {
 
     func focusChanged(to field: BlockField?) {
         focusedBlockId = field?.blockId
-        dismissedMenu = nil
+        openedMenu = nil
         if let field {
             focusMemory.forget()
             self.field = field
             focusedKind = field.block.kind
             focusedLevel = field.value("level").flatMap(Int.init)
             focusedProps = Dictionary(field.block.props.map { ($0.name, $0.value) }) { $1 }
-            selectionChanged(in: field, placed: true)
+            selectionChanged(in: field)
         } else {
             if panel != .none { panel = .none }
             formatting = false
@@ -445,10 +447,37 @@ final class EditorSession {
         }
     }
 
-    /// `placed`: the caret moved or the row was redrawn, and no text was typed.
-    /// Only typing opens a menu, so a placed caret keeps the menu it is
-    /// already in, and a leftover `/`, `@`, `[[` or `#` beside it stays closed.
-    func selectionChanged(in field: BlockField, placed: Bool = false) {
+    /// A key about to replace `range` with `text`: one that types a trigger
+    /// opens its menu, as desktop's `handleTextInput` does. Pasting,
+    /// dictating, deleting and moving the caret open none.
+    func willType(_ text: String, replacing range: NSRange, in field: BlockField) {
+        guard text.count == 1, "/@#[".contains(text) else { return }
+        let after = (field.textView.text as NSString).replacingCharacters(in: range, with: text)
+        if let typed = Self.freshTrigger(in: after, at: range.location + (text as NSString).length) {
+            openedMenu = typed
+        }
+    }
+
+    /// Opens the menu of the trigger just inserted before the caret, as
+    /// desktop's `openSuggestionMenu`: the toolbar's `/`, `@` and `#`, and
+    /// the slash menu's link row.
+    private func openMenu(in field: BlockField) {
+        openedMenu = Self.freshTrigger(in: field.textView.text, at: field.textView.selectedRange.location)
+        selectionChanged(in: field)
+    }
+
+    /// The trigger the caret is right after, with no query typed yet.
+    private static func freshTrigger(in text: String, at caret: Int) -> MenuAnchor? {
+        if let trigger = InlineTrigger.active(in: text, caret: caret), trigger.query.isEmpty {
+            return anchor(trigger)
+        }
+        if let tag = HashTagTrigger.active(in: text, caret: caret), tag.query.isEmpty {
+            return MenuAnchor(trigger: "#", location: tag.range.location)
+        }
+        return nil
+    }
+
+    func selectionChanged(in field: BlockField) {
         guard field === self.field else { return }
         refreshTypingState()
         let textView = field.textView
@@ -469,21 +498,15 @@ final class EditorSession {
         // A code block keeps `[[`, `@`, `/` and `#` as literal text, as
         // desktop's does: no menu opens there.
         let inCode = field.block.kind == "codeBlock"
-        var typed = range.length == 0 && !inCode ? InlineTrigger.active(in: textView.text, caret: range.location) : nil
-        var typedTag = range.length == 0 && !inCode
+        let typed = range.length == 0 && !inCode ? InlineTrigger.active(in: textView.text, caret: range.location) : nil
+        let typedTag = range.length == 0 && !inCode
             ? HashTagTrigger.active(in: textView.text, caret: range.location) : nil
-        // An Esc-closed menu stays closed while the caret is in its trigger,
-        // placed or typing: UIKit reports a keystroke's caret move first.
-        let typedMenu = typed.map(Self.dismissable)
-        let typedTagMenu = typedTag.map { DismissedMenu(trigger: "#", location: $0.range.location) }
-        if let dismissed = dismissedMenu, typedMenu != dismissed, typedTagMenu != dismissed {
-            dismissedMenu = nil
-        }
-        if placed {
-            if typedMenu != trigger.map(Self.dismissable) { typed = nil }
-            if typedTag?.range.location != tagTrigger?.range.location { typedTag = nil }
-        }
-        let next = typedMenu == dismissedMenu ? nil : typed
+        // The caret left the opened trigger, or the trigger went: its menu
+        // stays closed, even with the caret back beside it.
+        let typedMenu = typed.map(Self.anchor)
+        let typedTagMenu = typedTag.map { MenuAnchor(trigger: "#", location: $0.range.location) }
+        if typedMenu != openedMenu, typedTagMenu != openedMenu { openedMenu = nil }
+        let next = typedMenu == openedMenu ? typed : nil
         if next != trigger {
             let leftWiki: Bool = if case .wiki = trigger { next == nil } else { false }
             trigger = next
@@ -503,7 +526,7 @@ final class EditorSession {
                 commit(field)
             }
         }
-        let nextTag = trigger == nil && typedTagMenu != dismissedMenu ? typedTag : nil
+        let nextTag = trigger == nil && typedTagMenu == openedMenu ? typedTag : nil
         if nextTag != tagTrigger {
             tagTrigger = nextTag
             tagSuggestions = nextTag.map { TagSuggestions.rank(query: $0.query, tags: tags) } ?? []
@@ -511,24 +534,22 @@ final class EditorSession {
         }
     }
 
-    /// Esc over an open menu: it closes and stays closed until the caret
-    /// leaves its trigger.
+    /// Esc over an open menu: it closes until its trigger is typed again.
     func closeMenu() {
-        dismissedMenu = trigger.map(Self.dismissable)
-            ?? tagTrigger.map { DismissedMenu(trigger: "#", location: $0.range.location) }
+        openedMenu = nil
         trigger = nil
         suggestions = []
         tagTrigger = nil
         tagSuggestions = []
     }
 
-    private static func dismissable(_ trigger: InlineTrigger) -> DismissedMenu {
+    private static func anchor(_ trigger: InlineTrigger) -> MenuAnchor {
         let character: Character = switch trigger {
         case .wiki: "["
         case .mention: "@"
         case .slash: "/"
         }
-        return DismissedMenu(trigger: character, location: trigger.range.location)
+        return MenuAnchor(trigger: character, location: trigger.range.location)
     }
 
     /// A menu's rows changed: the highlight goes back to the first, and a
@@ -815,7 +836,7 @@ final class EditorSession {
         textView.insertText("[[]]")
         let caret = textView.selectedRange.location
         textView.selectedRange = NSRange(location: max(0, caret - 2), length: 0)
-        if let field { selectionChanged(in: field) }
+        if let field { openMenu(in: field) }
     }
 
     /// The `@` and `#` buttons: the trigger at the caret, after a space when
@@ -838,7 +859,7 @@ final class EditorSession {
         let before = caret > 0 && caret <= string.length ? string.character(at: caret - 1) : 32
         let wordEnds = before != 32 && before != 9 && before != 10 && before != 0xA0 && before != 0xFFFC
         textView.insertText(wordEnds ? " " + character : character)
-        selectionChanged(in: field)
+        openMenu(in: field)
     }
 
     /// Replaces the open `#query` with a `hashTag` node and a space, as

@@ -68,6 +68,12 @@ enum InlineTrigger: Equatable {
         }
     }
 
+    var query: String {
+        switch self {
+        case let .wiki(_, query), let .mention(_, query), let .slash(_, query): query
+        }
+    }
+
     /// The trigger the caret sits in, or `nil`.
     static func active(in text: String, caret: Int) -> InlineTrigger? {
         let string = text as NSString

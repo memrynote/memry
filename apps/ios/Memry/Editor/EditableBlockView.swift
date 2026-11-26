@@ -525,7 +525,7 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
             if focused {
                 textView.inputDelegate?.textDidChange(textView)
                 textView.inputDelegate?.selectionDidChange(textView)
-                session?.selectionChanged(in: self, placed: true)
+                session?.selectionChanged(in: self)
             }
         }
         let text = NSMutableAttributedString(attributedString: BlockText.attributed(block.inline, style: style))
@@ -755,7 +755,7 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
             textView.typingAttributes[.memryTag] = nil
             textView.typingAttributes[.foregroundColor] = style.ink
         }
-        if !rendering { session?.selectionChanged(in: self, placed: true) }
+        if !rendering { session?.selectionChanged(in: self) }
     }
 
     func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
@@ -763,6 +763,7 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
         // Held for the block a Return is making, as typed (#4692).
         if let session, session.holdsKeys(self), let holds = session.holdsEdit(range, text, in: self) { return holds }
         if let session, session.carriesEdit(range, text, in: self) { return false }
+        session?.willType(text, replacing: range, in: self)
         let string = textView.text as NSString
         // `[[` becomes `[[]]` with the caret between (desktop's autocomplete),
         // outside a code block, whose text stays literal.
