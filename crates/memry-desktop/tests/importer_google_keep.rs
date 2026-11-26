@@ -14,8 +14,9 @@ use memry_desktop::import::google_keep::{
 };
 use memry_desktop::import::zip::{MAX_NESTED_ZIP_BYTES, MAX_ZIP_NESTING, Zips};
 use memry_desktop::import::{
-    ImportContext, ImportInput, ImportSink, ImportSummary, ImportedJournalEntry, ImportedNote,
-    ImportedTask, Importer, JournalEntry, MAX_NOTE_JSON_BYTES, MAX_SOURCE_BYTES, SinkError,
+    ImportContext, ImportInput, ImportSink, ImportSummary, ImportedBookmark, ImportedJournalEntry,
+    ImportedNote, ImportedTask, Importer, JournalEntry, MAX_NOTE_JSON_BYTES, MAX_SOURCE_BYTES,
+    SinkError,
 };
 use memry_test_kit::{assert_steps_at_most, on_small_stack, output_bound, proptest_config};
 use proptest::prelude::*;
@@ -122,6 +123,10 @@ impl ImportSink for Sink {
 
     fn create_journal_entry(&self, _: ImportedJournalEntry) -> Result<(), SinkError> {
         unreachable!("Google Keep writes no journal entries")
+    }
+
+    fn save_bookmark(&self, _: ImportedBookmark) -> Result<(), SinkError> {
+        unreachable!("Google Keep saves no bookmarks")
     }
 }
 
