@@ -76,11 +76,12 @@ impl VaultSync {
         let device_id = self.session.device_id()?;
         let id = attachment_id.clone();
         let note = note_id.clone();
-        let now = now_ms();
 
         let (row, still_referenced) = self
             .db
             .call(move |conn| {
+                // #5849: stamped inside the hold that writes the note.
+                let now = now_ms();
                 // A picture removed before its upload never uploads (#5510).
                 attachment_uploads::clear(conn, &id)?;
                 notes::remove_attachment_reference(conn, &note, &id, &device_id, now)?;

@@ -416,7 +416,7 @@ impl PushCoordinator {
                 tx.commit().map_err(failed)
             })
             .await?;
-        self.settle_delete_wins(lost, now, report).await
+        self.settle_delete_wins(lost, report).await
     }
 
     /// Reads the live row and seals it, or names why the row retires or waits.
