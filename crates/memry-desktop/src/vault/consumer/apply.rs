@@ -14,9 +14,7 @@ use memry_core::domain::app_settings::AppSettings;
 
 use super::activity::report_unread;
 use super::body::{Body, Emptied, Write};
-use super::identity::{
-    Adoption, Candidate, IdentityCtx, IdentityError, NoteIdentity, Removal, Rename,
-};
+use super::identity::{Adoption, Candidate, IdentityCtx, NoteIdentity, Removal, Rename};
 use super::rows::{Lane, RowOwner, RowSession, RowStat};
 use super::{Applied, ChangeSource, MAX_RETRIES, MoveKind};
 use crate::editor::EditorHost;
@@ -30,6 +28,7 @@ use crate::vault::writeback::WriteBack;
 
 mod crossing;
 mod locked;
+mod owed_record;
 mod read;
 mod watched;
 
@@ -140,6 +139,7 @@ impl Applier {
             .identity
             .on_changed(&self.ctx(), note_id, previous, file)
         else {
+            self.owe_record_if_owed(note_id);
             self.untaken
                 .lock()
                 .unwrap_or_else(PoisonError::into_inner)
@@ -167,19 +167,6 @@ impl Applier {
         true
     }
 
-    /// The identity's [`NoteIdentity::left_large_class`], when the note's file was large.
-    fn left_large(
-        &self,
-        lane: &Lane<'_>,
-        note_id: &str,
-        file: &NoteFile,
-    ) -> Result<(), IdentityError> {
-        if !lane.files().is_large_file(note_id)? {
-            return Ok(());
-        }
-        self.identity.left_large_class(&self.ctx(), note_id, file)
-    }
-
     /// A file at `path`. A row there makes it a change of that row's note; otherwise the
     /// identity names its note. `scan` is the open walk's, `None` for a watcher's fact.
     pub(super) fn found(
@@ -194,7 +181,7 @@ impl Applier {
         let source = walk_or_watcher(scan.as_deref());
         match lane.row_at(path) {
             Ok(Some(row)) => {
-                return self.changed(lane, &row.note_id, path, size, modified_ms, scan);
+                return self.found_at_row(lane, &row.note_id, path, size, modified_ms, scan);
             }
             Ok(None) => {}
             Err(error) => {
@@ -232,6 +219,10 @@ impl Applier {
         let (note_id, created) = match self.identity.adopt_or_create(&self.ctx(), &candidate) {
             Ok(Adoption::Defer) => return Step::Done,
             Ok(Adoption::Existing(id)) => (id, false),
+            Ok(Adoption::ExistingNewer(id)) => {
+                self.owe_record(&id);
+                (id, false)
+            }
             Ok(Adoption::Created(id)) => (id, true),
             Err(error) => {
                 tracing::error!(scope = SCOPE, "a new file got no note: {error}");
@@ -241,7 +232,7 @@ impl Applier {
         if let Some(file) = &file {
             // A large file's note claimed after its file shrank queues its record (#4326).
             let large = large_file_class(&file.raw).is_some();
-            if !large && let Err(error) = self.left_large(lane, &note_id, file) {
+            if !large && let Err(error) = self.left_large(lane, &note_id, file, modified_ms) {
                 tracing::error!(scope = SCOPE, note_id, "a shrunk large file waits: {error}");
                 return Step::Retry(path.to_owned());
             }
@@ -270,18 +261,18 @@ impl Applier {
             tracing::error!(scope = SCOPE, note_id, "the row was not recorded: {error}");
             return Step::Retry(path.to_owned());
         }
+        self.report_found(path, &note_id, created, scan);
         lane.publish(Applied::Added {
             note_id,
             path: path.to_owned(),
             created,
             source,
         });
-        self.report_found(path, created, scan);
         Step::Done
     }
 
     /// The note's file at `path` differs from its row.
-    fn changed(
+    pub(super) fn changed(
         &self,
         lane: &mut Lane<'_>,
         note_id: &str,
@@ -338,7 +329,7 @@ impl Applier {
             let large = large_file_class(&file.raw).is_some();
             if row.content_hash.is_none()
                 && !large
-                && let Err(error) = self.left_large(lane, note_id, &file)
+                && let Err(error) = self.left_large(lane, note_id, &file, modified_ms)
             {
                 tracing::error!(scope = SCOPE, note_id, "a shrunk large file waits: {error}");
                 return Step::Retry(path.to_owned());

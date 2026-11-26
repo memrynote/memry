@@ -3,12 +3,17 @@
 #
 #   pnpm dev:mobile:device                  # pick from connected devices
 #   MEMRY_IOS_TEAM=ABCDE12345 pnpm dev:mobile:device
+#   MEMRY_IOS_DEVICE=<udid> pnpm dev:mobile:device   # skip the picker
 #
 # Debug build, so it talks to staging (SyncEnvironment.swift). Signing uses
 # the team set in Xcode unless MEMRY_IOS_TEAM overrides it.
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+if [ -n "${MEMRY_IOS_DEVICE:-}" ]; then
+  udid="$MEMRY_IOS_DEVICE"
+else
 json="$(mktemp)"
 trap 'rm -f "$json"' EXIT
 
@@ -29,6 +34,7 @@ fi
 echo "Select device:"
 select choice in "${devices[@]}"; do [ -n "${choice:-}" ] && break; done
 udid="${choice%%$'\t'*}"
+fi
 
 "$repo_root/crates/memry-core/build-xcframework.sh"
 

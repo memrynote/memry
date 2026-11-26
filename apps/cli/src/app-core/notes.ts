@@ -5,7 +5,8 @@ import { eq } from 'drizzle-orm'
 import { noteMetadata } from '@memry/db-schema/data-schema'
 import { noteNames } from '@memry/db-schema/schema/notes-cache'
 import { pickWikiTarget } from '@memry/shared/note-names'
-import { saveCanonicalNote, deleteCanonicalNote, setCanonicalLocalOnly } from '@memry/domain-notes'
+import { isAttachmentStoreRow } from '@memry/shared/attachment-store'
+import { saveCanonicalNote, setCanonicalLocalOnly } from '@memry/domain-notes'
 import { rewriteNoteRefsForMove } from '@memry/editor-schema/note-refs'
 import {
   getJournalNoteMetadataByDate,
@@ -24,9 +25,11 @@ import {
   wordCount,
   writeMarkdownNote
 } from '@memry/app-core/markdown'
+import { assertNoteFileUnshared } from './case-twins.ts'
+import { deleteNoteRowQueuingSyncDelete } from './note-sync-delete.ts'
 import { aliasesFromFrontmatter } from './note-aliases.ts'
 import { frontmatterWithProperties, propertiesFromFrontmatter } from './note-properties.ts'
-import { normalizePath, safeFilename, type VaultConfig } from './paths.ts'
+import { normalizePath, safeFilename, vaultFolder, type VaultConfig } from './paths.ts'
 import { noteLinkStem, resolveWikiTarget as resolveTargetWith } from '@memry/shared/wiki-target'
 import { rewriteWikiLinksToNote, type WikiLinkNames } from '@memry/shared/rewrite-wiki-links'
 export type {
@@ -74,13 +77,12 @@ function wikilinks(content: string): string[] {
   return [...matches].map((match) => match[1]?.trim()).filter((title): title is string => !!title)
 }
 
-// `folder` is vault-relative, same contract as desktop's `createNote` since
-// #1204: a note created inside a folder lands in that folder. Only an unplaced
-// note falls back to `defaultNoteFolder` — it is a destination, not a notes
-// root.
-function notePath(config: VaultConfig, title: string, folder?: string): string {
-  const dir = folder ? normalizePath(folder) : normalizePath(config.defaultNoteFolder)
-  return normalizePath(`${dir}/${safeFilename(title)}.md`)
+// `folder` is vault-relative ('' is the vault root), same contract as desktop's
+// `createNote` since #1204: a note created inside a folder lands in that folder.
+// Only an unplaced note falls back to `defaultNoteFolder` — it is a
+// destination, not a notes root.
+function notePath(title: string, folder: string): string {
+  return normalizePath(`${folder}/${safeFilename(title)}.md`)
 }
 
 // The vault-relative folder a note currently sits in ('' = vault root).
@@ -147,7 +149,7 @@ function metadataForPath(db: DataDb, idOrPath: string): NoteMetadataRow | undefi
   return undefined
 }
 
-function getMetadata(db: DataDb, idOrPath: string): NoteMetadataRow | undefined {
+export function getMetadata(db: DataDb, idOrPath: string): NoteMetadataRow | undefined {
   return getNoteMetadataById(db, idOrPath) ?? metadataForPath(db, idOrPath)
 }
 
@@ -288,11 +290,15 @@ export function createNotesService({
 }): NotesService {
   return {
     async create(input) {
-      const now = new Date().toISOString()
-      const relativePath = await ensureUniquePath(
+      // An unplaced note lands in `defaultNoteFolder`, which a link can lead outside the vault.
+      const folder = await vaultFolder(
         vaultPath,
-        notePath(config, input.title, input.folder)
+        input.folder || config.defaultNoteFolder,
+        `create note "${input.title}"`,
+        { allowRoot: true }
       )
+      const now = new Date().toISOString()
+      const relativePath = await ensureUniquePath(vaultPath, notePath(input.title, folder))
       const id = createId('note')
       // User keys only — Memry identity/dates live in the metadata DB
       const frontmatter = frontmatterWithProperties(
@@ -378,6 +384,7 @@ export function createNotesService({
         // A rename stays in the note's current folder — including the vault
         // root, which the `notePath` fallback would re-root under
         // `defaultNoteFolder`.
+        await assertNoteFileUnshared(dataDb, vaultPath, row, 'rename')
         const folder = noteFolderOf(row.path)
         nextPath = await ensureUniquePath(
           vaultPath,
@@ -438,7 +445,9 @@ export function createNotesService({
       const note = await readNote(vaultPath, row)
       // `newFolder` is vault-relative and '' means the vault root — never
       // re-root it through `defaultNoteFolder` (desktop `moveNote` contract).
-      const normalizedFolder = normalizePath(newFolder)
+      const normalizedFolder = await vaultFolder(vaultPath, newFolder, `move note "${row.path}"`, {
+        allowRoot: true
+      })
       const relativePath = normalizePath(
         normalizedFolder
           ? `${normalizedFolder}/${path.basename(row.path)}`
@@ -447,6 +456,7 @@ export function createNotesService({
       const nextPath =
         relativePath === row.path ? relativePath : await ensureUniquePath(vaultPath, relativePath)
       if (nextPath !== row.path) {
+        await assertNoteFileUnshared(dataDb, vaultPath, row, 'move')
         await fs.mkdir(path.dirname(path.join(vaultPath, nextPath)), { recursive: true })
         await fs.rename(path.join(vaultPath, row.path), path.join(vaultPath, nextPath))
         // Relative attachment/file refs in the body were written against the old
@@ -564,8 +574,13 @@ export function createNotesService({
     async delete(idOrPath) {
       const row = getMetadata(dataDb, idOrPath)
       if (!row) return false
-      await fs.rm(path.join(vaultPath, row.path), { force: true })
-      deleteCanonicalNote(dataDb, row.id)
+      // A row-only delete would leave this note's bytes in the file the twin keeps,
+      // and desktop would ingest them as the twin's edit (#5650).
+      await assertNoteFileUnshared(dataDb, vaultPath, row, 'delete')
+      // A stray row's file is the attachment store's, embedded by another note
+      // (#5607): only the row goes, as in desktop's `deleteNote`.
+      if (!isAttachmentStoreRow(row)) await fs.rm(path.join(vaultPath, row.path), { force: true })
+      deleteNoteRowQueuingSyncDelete(dataDb, row.id)
       return true
     },
 

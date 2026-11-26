@@ -1,5 +1,6 @@
 import Foundation
 import MemryCore
+import Observation
 import Security
 import SwiftUI
 import Synchronization
@@ -22,14 +23,15 @@ import Testing
 // so a test that waited for it to finish would be exactly that bug.
 
 @MainActor
-@Suite("ShellEvents")
+@Suite("ShellEvents", .timeLimit(.minutes(1)))
 struct ShellEventsTests {
     /// Polls to a deadline. Never waits forever, and answers the condition one
-    /// last time so an expiry and a slow pass cannot be confused. The default
-    /// is generous because the handler runs on the main actor, which a full
-    /// parallel Unit run keeps busy; the one negative wait passes its own.
+    /// last time so an expiry and a slow pass cannot be confused. Only the
+    /// absence checks use it; a wait for something to happen uses
+    /// `published` or `firstRead`, because a busy main actor outlasts any
+    /// deadline (#5484).
     private func waitUntil(
-        _ seconds: Double = 10,
+        _ seconds: Double,
         _ condition: @MainActor () -> Bool
     ) async -> Bool {
         let deadline = Date().addingTimeInterval(seconds)
@@ -40,11 +42,29 @@ struct ShellEventsTests {
         return condition()
     }
 
+    /// Returns once the shell has published `condition`, woken by Observation
+    /// on each change of what `condition` reads rather than polled against a
+    /// wall clock. A full parallel run keeps the main actor, where the handler
+    /// publishes, busy past any fixed deadline (#5484: a 10 s poll expired
+    /// after 40 s while the signal-driven siblings passed); the suite's time
+    /// limit bounds this, and a cancelled wait returns the condition.
+    private func published(_ condition: @MainActor () -> Bool) async -> Bool {
+        let changes = Changes()
+        await changes.until {
+            // One-shot tracking, re-armed on every check, so each publish
+            // wakes the waiter. All of it runs on the main actor with the
+            // handler, so no publish falls between a check and its arming.
+            withObservationTracking { condition() } onChange: { changes.changed() }
+        }
+        return condition()
+    }
+
     /// Awaits a task's value against a deadline. `nil` means it had not
-    /// finished, which is what a leaked loop looks like.
+    /// finished, which is what a leaked loop looks like. Generous because a
+    /// busy main actor delays it too: a cancelled loop returns on the main actor (#5484).
     private func outcome(
         of task: Task<ShellState.Outcome, Never>,
-        within seconds: Double = 3
+        within seconds: Double = 30
     ) async -> ShellState.Outcome? {
         await withTaskGroup(of: ShellState.Outcome?.self) { group in
             group.addTask { await task.value }
@@ -63,6 +83,7 @@ struct ShellEventsTests {
     private final class CountingProbe: SecureStoreProbe {
         private let answer: SecureStoreAvailability
         private let calls = Mutex<Int>(0)
+        let changes = Changes()
 
         init(_ answer: SecureStoreAvailability) { self.answer = answer }
 
@@ -70,7 +91,16 @@ struct ShellEventsTests {
 
         func availability() -> SecureStoreAvailability {
             calls.withLock { $0 += 1 }
+            changes.changed()
             return answer
+        }
+
+        /// Awaits the first read. A full parallel run can keep the main actor,
+        /// where the handler runs, busy past any short deadline (#5484); the
+        /// suite's time limit bounds this.
+        func firstRead() async -> Int {
+            await changes.until { count >= 1 }
+            return count
         }
     }
 
@@ -100,7 +130,7 @@ struct ShellEventsTests {
         // is the part this test is about.
         #expect(startup.isAlreadyUnlocked() == false)
 
-        #expect(await waitUntil { shell.secureStore == .locked })
+        #expect(await published { shell.secureStore == .locked })
         #expect(shell.secureStoreNotice?.code.description == "secureStore.locked")
         // Constitution II: what a view is handed is `UserFacingError`, and it
         // carries no identifier off the stream.
@@ -137,7 +167,7 @@ struct ShellEventsTests {
 
         shell.emitter.emit(CoreEvent(.secureStoreLocked))
         // Proof the loop is running, not an assumption that it is.
-        #expect(await waitUntil { shell.secureStore == .locked })
+        #expect(await published { shell.secureStore == .locked })
 
         // A second call site gets `nil` from the hub and says so, rather than
         // sitting on an empty stream and looking correct forever.
@@ -165,7 +195,7 @@ struct ShellEventsTests {
         #expect(await waitUntil(0.3) { probe.count >= 1 } == false)
 
         shell.scenePhaseChanged(to: .active)
-        #expect(await waitUntil { probe.count == 1 })
+        #expect(await probe.firstRead() == 1)
     }
 
     /// One hint, one re-read.
@@ -183,7 +213,7 @@ struct ShellEventsTests {
         defer { loop.cancel() }
 
         shell.emitter.emit(CoreEvent(.secureStoreLocked))
-        #expect(await waitUntil { probe.count == 1 })
+        #expect(await probe.firstRead() == 1)
         // Long enough for a feedback loop to have run many times.
         #expect(await waitUntil(0.3) { probe.count > 1 } == false)
     }
@@ -211,7 +241,7 @@ struct ShellEventsTests {
         // lands, all four above have provably been consumed and ignored.
         shell.emitter.emit(CoreEvent(.secureStoreLocked))
 
-        #expect(await waitUntil { probe.count == 1 })
+        #expect(await probe.firstRead() == 1)
         #expect(shell.secureStore == .locked)
     }
 

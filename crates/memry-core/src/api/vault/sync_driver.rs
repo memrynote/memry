@@ -24,6 +24,23 @@ impl Vault {
             .call_blocking(move |conn| server_vault::bind(conn, &id))
     }
 
+    /// Makes the records this vault stated its local id in state the bound server id, once
+    /// ([`server_vault::restamp`], #5535). The shell calls it whenever the vault is bound for
+    /// sync, before the first push; `device_id` ticks each record's clock. Returns how many it
+    /// restamped.
+    #[doc(hidden)]
+    pub fn restamp_record_vaults(&self, device_id: &str) -> Result<usize, StorageError> {
+        let local = self.id.clone();
+        let device_id = device_id.to_owned();
+        let now_ms = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |elapsed| {
+                i64::try_from(elapsed.as_millis()).unwrap_or(i64::MAX)
+            });
+        self.db
+            .call_blocking(move |conn| server_vault::restamp(conn, &local, &device_id, now_ms))
+    }
+
     /// The bound server vault id, if any.
     #[doc(hidden)]
     pub fn server_vault_id(&self) -> Result<Option<String>, StorageError> {
@@ -87,6 +104,8 @@ impl Vault {
             seeds,
             pass_gate: crate::api::sync::pass_gate(&self.id),
             observers,
+            // Beside `data.db`, as `VaultSync::first_sync` holds it.
+            spill_dir: Some(std::path::Path::new(&self.directory).join("pack-spill")),
         })
         .await
     }

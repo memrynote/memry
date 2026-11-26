@@ -122,6 +122,9 @@ pub fn vector_file(name: &str) -> Json {
         "text-extract" => {
             include_str!("../../../../packages/contracts/test-vectors/text-extract.json")
         }
+        "embedding-input" => {
+            include_str!("../../../../packages/contracts/test-vectors/embedding-input.json")
+        }
         "note-blocks" => {
             include_str!("../../../../packages/contracts/test-vectors/note-blocks.json")
         }
@@ -154,6 +157,12 @@ pub fn vector_file(name: &str) -> Json {
             include_str!("../../../../packages/contracts/test-vectors/task-completion-spawn.json")
         }
         "journal" => include_str!("../../../../packages/contracts/test-vectors/journal.json"),
+        "journal-merge" => {
+            include_str!("../../../../packages/contracts/test-vectors/journal-merge.json")
+        }
+        "journal-merge-sim" => {
+            include_str!("../../../../packages/contracts/test-vectors/journal-merge-sim.json")
+        }
         "markdown-seed" => {
             include_str!("../../../../packages/contracts/test-vectors/markdown-seed.json")
         }

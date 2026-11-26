@@ -13,6 +13,7 @@ import {
   shouldAttemptDownload
 } from '@memry/sync-client/attachment-download-state'
 import { isAttachmentAutoDownloadEnabled } from './attachment-download-settings'
+import { askForHeldOwnBytes } from '../vault/case-twin-file'
 
 const log = createLogger('AttachmentDownloadRedriver')
 
@@ -60,9 +61,15 @@ export async function redriveAttachmentDownloads(): Promise<{
   try {
     if (!isDatabaseInitialized()) return summary
     const db = getDatabase()
-    if (!isAttachmentAutoDownloadEnabled(db)) return summary
     const vaultPath = getVaultStatus().path
     if (!vaultPath) return summary
+    if (!isAttachmentAutoDownloadEnabled(db)) {
+      // On-demand only, but a held binary note file stays stale and
+      // un-pushable until its own bytes land (#5580).
+      summary.requested = askForHeldOwnBytes(db)
+      if (summary.requested > 0) log.info('Asked again for held files of binary notes', summary)
+      return summary
+    }
 
     for (let round = 0; round < REDRIVE_MAX_ROUNDS; round++) {
       const rows = listRedrivableDownloadFailures(db, Date.now(), REDRIVE_BATCH_LIMIT)
@@ -104,11 +111,13 @@ export async function redriveAttachmentDownloads(): Promise<{
         // failure row (and the in-flight/succeeded session sets) so a row whose
         // window closed between the list and here is not double-requested.
         // Left as-is: these rows are alive, just not due right now.
-        if (!shouldAttemptDownload(db, row.ownerId, row.attachmentId)) {
+        const claim = shouldAttemptDownload(db, row.ownerId, row.attachmentId)
+          ? markDownloadRequested(row.ownerId, row.attachmentId)
+          : null
+        if (!claim) {
           summary.skipped++
           continue
         }
-        markDownloadRequested(row.ownerId, row.attachmentId)
 
         const recencyMs = note.modifiedAt ? Date.parse(note.modifiedAt) : NaN
         const delivered = attachmentEvents.emitDownloadNeeded({
@@ -117,12 +126,13 @@ export async function redriveAttachmentDownloads(): Promise<{
           diskPath,
           ...(intoDir ? { intoDir: true } : {}),
           ...(Number.isFinite(recencyMs) ? { recencyHint: recencyMs } : {}),
-          ...(sizeHint !== undefined ? { sizeHint } : {})
+          ...(sizeHint !== undefined ? { sizeHint } : {}),
+          claim
         })
         if (!delivered) {
           // No listener (runtime restarting): release the claim and stop — the
           // rest of the batch would drop the same way.
-          releaseDownloadAttempt(row.ownerId, row.attachmentId)
+          releaseDownloadAttempt(claim)
           return summary
         }
         summary.requested++

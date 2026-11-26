@@ -11,8 +11,8 @@ use memry_core::crdt::DocumentRegistry;
 use memry_core::crdt::blocks::extract_blocks;
 use memry_core::crdt::body_edit::{BlockEdit, append_snapshot, apply, snapshot_block};
 use memry_core::crdt::canonical::canonical_fragment;
+use memry_core::crdt::epoch::HeldBody;
 use memry_core::crdt::registry::{Document, UpdateSink};
-use memry_core::crdt::update_log;
 use memry_core::domain::notes::{self, NewNote};
 use memry_core::domain::{body_write, reads};
 use memry_core::storage::{Db, open_data};
@@ -218,7 +218,9 @@ fn seed_note(conn: &Connection, id: &str, specs: &[Spec]) {
         NOW,
     )
     .expect("create the note");
-    update_log::append_server_update(conn, id, 1, &body(specs), NOW).expect("seed the body");
+    HeldBody::never_purged(conn, id)
+        .and_then(|held| held.append_server_update(1, &body(specs), NOW))
+        .expect("seed the body");
 }
 
 fn queued(conn: &Connection, id: &str) -> i64 {

@@ -37,7 +37,7 @@ pub(crate) fn open() -> (tempfile::TempDir, Vault, Arc<Search>) {
         .tempdir()
         .expect("the scratch directory");
     let vault = Vault::open("vault-1".to_owned(), dir.path().display().to_string()).expect("open");
-    let search = vault.search().expect("index.db");
+    let search = vault.search(None).expect("index.db");
     (dir, vault, search)
 }
 

@@ -22,8 +22,10 @@ use rusqlite::{Connection, OptionalExtension, params};
 use crate::api::errors::StorageError;
 use crate::domain::notes::failed;
 use crate::domain::{agent_conversation, agent_message};
+use crate::storage::nested_tx;
 use crate::storage::repositories::sync_items;
 use crate::sync::outbox::{self, Change};
+use crate::sync::server_vault::RecordVault;
 
 /// Whether a write queues its record for the push.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -79,7 +81,7 @@ fn in_transaction<T>(
     if !conn.is_autocommit() {
         return body(conn);
     }
-    let transaction = conn.unchecked_transaction().map_err(failed)?;
+    let transaction = nested_tx::begin(conn).map_err(failed)?;
     let value = body(&transaction)?;
     transaction.commit().map_err(failed)?;
     Ok(value)
@@ -103,7 +105,7 @@ pub fn enqueue_existing(
     ids: &[String],
     now_ms: i64,
 ) -> Result<usize, StorageError> {
-    let transaction = conn.unchecked_transaction().map_err(failed)?;
+    let transaction = nested_tx::begin(conn).map_err(failed)?;
     let queued = enqueue(&transaction, item_type, ids, now_ms)?;
     transaction.commit().map_err(failed)?;
     Ok(queued)
@@ -135,36 +137,31 @@ fn enqueue(
     Ok(queued)
 }
 
-/// Queues every conversation of `vault_id`, deleted ones included, and every
+/// Queues every conversation of the vault whose local id is `vault_id` (either
+/// id of its [`RecordVault`]), deleted ones included, and every
 /// final message of those conversations, as Electron's
 /// `backfillAgentChatRows` does when the account turns paid. A deleted
 /// conversation is queued too, so one the server holds from an earlier paid
 /// period is deleted there. Runs only while the backfill is pending, and
 /// clears it in the same transaction. Returns how many it queued.
 pub fn backfill(conn: &Connection, vault_id: &str, now_ms: i64) -> Result<usize, StorageError> {
-    let transaction = conn.unchecked_transaction().map_err(failed)?;
-    let pending: bool = transaction
-        .query_row(
-            "SELECT NOT EXISTS(SELECT 1 FROM meta WHERE key = ?1)",
-            params![BACKFILL_DONE],
-            |row| row.get(0),
-        )
-        .map_err(failed)?;
-    if !pending {
+    let transaction = nested_tx::begin(conn).map_err(failed)?;
+    if !backfill_pending(&transaction)? {
         return Ok(0);
     }
     let conn = &transaction;
+    let vault = RecordVault::read(conn, vault_id)?;
     let conversations = ids(
         conn,
-        "SELECT id FROM agent_conversations WHERE vault_id = ?1 ORDER BY created_at, id",
-        vault_id,
+        "SELECT id FROM agent_conversations WHERE vault_id IN (?1, ?2) ORDER BY created_at, id",
+        &vault,
     )?;
     let messages = ids(
         conn,
         "SELECT id FROM agent_messages
-         WHERE conversation_id IN (SELECT id FROM agent_conversations WHERE vault_id = ?1)
+         WHERE conversation_id IN (SELECT id FROM agent_conversations WHERE vault_id IN (?1, ?2))
          ORDER BY created_at, id",
-        vault_id,
+        &vault,
     )?;
     let queued = enqueue(conn, agent_conversation::ITEM_TYPE, &conversations, now_ms)?
         + enqueue(conn, agent_message::ITEM_TYPE, &messages, now_ms)?;
@@ -177,10 +174,21 @@ pub fn backfill(conn: &Connection, vault_id: &str, now_ms: i64) -> Result<usize,
     Ok(queued)
 }
 
-fn ids(conn: &Connection, sql: &str, vault_id: &str) -> Result<Vec<String>, StorageError> {
+/// Whether the next [`backfill`] queues this vault's records: true until one
+/// ran, and again once the account turned unpaid.
+pub(crate) fn backfill_pending(conn: &Connection) -> Result<bool, StorageError> {
+    conn.query_row(
+        "SELECT NOT EXISTS(SELECT 1 FROM meta WHERE key = ?1)",
+        params![BACKFILL_DONE],
+        |row| row.get(0),
+    )
+    .map_err(failed)
+}
+
+fn ids(conn: &Connection, sql: &str, vault: &RecordVault) -> Result<Vec<String>, StorageError> {
     let mut statement = conn.prepare(sql).map_err(failed)?;
     statement
-        .query_map(params![vault_id], |row| row.get(0))
+        .query_map(params![vault.stamp(), vault.local()], |row| row.get(0))
         .map_err(failed)?
         .collect::<Result<_, _>>()
         .map_err(failed)

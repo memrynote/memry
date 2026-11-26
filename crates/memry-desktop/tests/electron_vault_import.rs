@@ -22,6 +22,8 @@ use sha2::{Digest, Sha256};
 
 #[path = "support/electron_db.rs"]
 mod electron_db;
+#[path = "electron_vault_import/ledger_ends.rs"]
+mod ledger_ends;
 #[path = "electron_vault_import/notes.rs"]
 mod notes;
 #[path = "electron_vault_import/queue.rs"]

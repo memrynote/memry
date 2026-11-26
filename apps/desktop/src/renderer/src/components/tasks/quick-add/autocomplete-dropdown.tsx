@@ -26,6 +26,8 @@ interface AutocompleteDropdownProps {
    */
   selectedIndex?: number
   className?: string
+  /** The listbox id, for an input's `aria-controls`. */
+  id?: string
 }
 
 // ============================================================================
@@ -113,7 +115,8 @@ export const AutocompleteDropdown = ({
   onSelect,
   onClose,
   selectedIndex: controlledIndex,
-  className
+  className,
+  id
 }: AutocompleteDropdownProps): React.JSX.Element | null => {
   const isControlled = controlledIndex !== undefined
   const [internalIndex, setInternalIndex] = useState(0)
@@ -190,6 +193,7 @@ export const AutocompleteDropdown = ({
       )}
       // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- semantic tag would change default styles/behavior; ARIA role kept to preserve visuals and semantics
       role="listbox"
+      id={id}
       aria-label={`${type} options`}
     >
       {/* Header */}

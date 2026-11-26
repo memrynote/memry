@@ -69,6 +69,13 @@ specta = { version = "=2.0.0-rc.26", features = ["derive", "serde_json"] }
 # literal search with aho-corasick.
 memchr = "2.8"
 aho-corasick = "1.1"
+# The Inbox's page fetches (`services/web_fetch`) only: BoringSSL with Chrome's TLS and HTTP/2
+# fingerprint, which Cloudflare-style bot walls let through (Electron used `net.fetch` for this).
+# Every other HTTP client stays on reqwest and `ring` rustls.
+wreq = { version = "0.16.3", default-features = false, features = ["tokio-rt", "webpki-roots", "gzip", "brotli", "deflate", "zstd", "system-proxy", "stream"] }
+wreq-util = { version = "0.2.1", default-features = false, features = ["emulation"] }
+webpki-root-certs = "1.0.7"
+encoding_rs = "0.8"
 reqwest = { version = "0.13.5", default-features = false, features = ["rustls-no-provider", "json", "http2", "stream", "system-proxy"] }
 
 # The OS credential stores behind `seams::secure_store`: keyring-core 1.x with the platform store
@@ -184,6 +191,8 @@ import-crash-points = []
 
 [dev-dependencies]
 memry-desktop = { path = ".", features = ["test-hooks", "import-crash-points"] }
+# `HeldBody::never_purged`: the tests seed another device's body updates without a fetch (#5356).
+memry-core = { path = "../memry-core", default-features = false, features = ["test-support"] }
 proptest = "1"
 memry-test-kit = { path = "../memry-test-kit" }
 tokio = { workspace = true, features = ["net", "io-util", "time", "macros", "rt-multi-thread", "test-util"] }

@@ -5,6 +5,7 @@ pub mod backend;
 pub mod disk;
 pub mod error_category;
 pub mod events;
+pub mod first_sync_running;
 mod frames;
 pub mod gate;
 pub mod ops;

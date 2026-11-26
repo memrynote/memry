@@ -1,7 +1,10 @@
 import { z } from 'zod'
 
 import { createLogger } from '../lib/logger'
-import { compactVault, type PackCompactionMessageBody, type VaultScope } from './pack-compaction'
+import { runBackfillMessage } from './pack-backfill'
+import { compactVault } from './pack-compaction'
+import type { PackCompactionMessageBody } from './pack-queue'
+import type { VaultScope } from './pack-index-write'
 
 const logger = createLogger('PackConsumer')
 
@@ -15,9 +18,12 @@ const logger = createLogger('PackConsumer')
  * harness, never a real `Message`.
  *
  * RETRY SEMANTICS (documented contract):
- * - Message bodies are unversioned `{userId, vaultId}`: there is no version
- *   field to branch on, only the zod shape check below, so any future message
- *   evolution must stay backward-compatible with this parser.
+ * - Message bodies are unversioned `{userId, vaultId, backfill?}`: there is no
+ *   version field to branch on, only the zod shape check below, so any future
+ *   message evolution must stay backward-compatible with this parser. A body
+ *   without `backfill` is a push nudge (compactVault); one with it is a cron
+ *   backfill message (runBackfillMessage, #5278). A build that predates
+ *   `backfill` strips it and runs the message as a nudge.
  * - Malformed body (wrong shape) -> ACK. The message can never succeed; a
  *   throw would burn max_retries on a poison message.
  * - Core failure (R2/D1 error) -> THROW. Cloudflare Queues redelivers up to
@@ -30,7 +36,13 @@ const logger = createLogger('PackConsumer')
 
 const PackCompactionMessageSchema = z.object({
   userId: z.string().min(1),
-  vaultId: z.string().min(1)
+  vaultId: z.string().min(1),
+  backfill: z
+    .object({
+      kind: z.enum(['record', 'crdt_snapshot', 'crdt_update']),
+      hop: z.number().int().min(0)
+    })
+    .optional()
 })
 
 export const parsePackCompactionBody = (body: unknown): PackCompactionMessageBody | null => {
@@ -53,7 +65,11 @@ export const handlePackCompactionMessage = async (
 
 /** ExportedHandlerQueueHandler body used by src/index.ts. */
 export const handlePackQueueMessage = async (
-  env: { DB: D1Database; STORAGE: R2Bucket },
+  env: {
+    DB: D1Database
+    STORAGE: R2Bucket
+    PACK_BACKFILL_QUEUE?: Queue<PackCompactionMessageBody>
+  },
   body: unknown
 ): Promise<void> => {
   const parsed = parsePackCompactionBody(body)
@@ -61,5 +77,11 @@ export const handlePackQueueMessage = async (
     logger.warn('discarding malformed pack compaction message', { body })
     return // ack — poison messages must not consume retries
   }
-  await handlePackCompactionMessage(env.DB, env.STORAGE, parsed) // throw -> retry
+  const scope = { userId: parsed.userId, vaultId: parsed.vaultId }
+  // throw -> retry
+  if (parsed.backfill) {
+    await runBackfillMessage(env.DB, env.STORAGE, env.PACK_BACKFILL_QUEUE, scope, parsed.backfill)
+  } else {
+    await handlePackCompactionMessage(env.DB, env.STORAGE, scope)
+  }
 }

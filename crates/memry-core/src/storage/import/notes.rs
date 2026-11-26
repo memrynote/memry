@@ -9,6 +9,7 @@ use rusqlite::params;
 use super::{ImportWriter, failed};
 use crate::api::errors::StorageError;
 use crate::domain::note_files::{self, NoteFileStat, StampMark};
+use crate::storage::nested_tx;
 
 /// One Electron `note_metadata` row's file state.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -57,7 +58,7 @@ impl ImportWriter {
             })
             .collect();
         note_files::upsert_stats_as(&mut self.data, &stats, StampMark::Now)?;
-        let tx = self.data.transaction().map_err(failed)?;
+        let tx = nested_tx::begin(&self.data).map_err(failed)?;
         for file in files.iter().filter(|file| file.local_only) {
             note_files::set_local_only(&tx, &file.note_id, true)?;
         }
@@ -69,7 +70,7 @@ impl ImportWriter {
         &mut self,
         rows: &[(String, String, i64)],
     ) -> Result<(), StorageError> {
-        let tx = self.data.transaction().map_err(failed)?;
+        let tx = nested_tx::begin(&self.data).map_err(failed)?;
         for (path, folder_path, position) in rows {
             tx.execute(
                 "INSERT INTO note_positions (path, folder_path, position) VALUES (?1, ?2, ?3)",
@@ -81,7 +82,7 @@ impl ImportWriter {
     }
 
     pub fn put_note_snapshots(&mut self, rows: &[ImportNoteSnapshot]) -> Result<(), StorageError> {
-        let tx = self.data.transaction().map_err(failed)?;
+        let tx = nested_tx::begin(&self.data).map_err(failed)?;
         for row in rows {
             tx.execute(
                 "INSERT INTO note_snapshots
@@ -106,7 +107,7 @@ impl ImportWriter {
     /// `(note_id, tag, pinned_at_ms)`: the instant Electron pinned each tag, over the apply
     /// time the record projection gives a pin. Only a tag the projection pinned changes.
     pub fn put_pinned_at(&mut self, rows: &[(String, String, i64)]) -> Result<(), StorageError> {
-        let tx = self.data.transaction().map_err(failed)?;
+        let tx = nested_tx::begin(&self.data).map_err(failed)?;
         for (note_id, tag, pinned_at) in rows {
             tx.execute(
                 "UPDATE note_tags SET pinned_at = ?3

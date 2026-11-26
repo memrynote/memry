@@ -11,6 +11,7 @@ use std::time::Duration;
 use memry_core::api::editor::Editor;
 use memry_core::api::errors::SecureStoreError;
 use memry_core::api::errors::StorageError;
+use memry_core::crdt::epoch::HeldBody;
 use memry_core::crdt::{body_writes, update_log};
 use memry_core::domain::external_feed::{FeedInput, FeedOutcome};
 use memry_core::domain::vault_locks::TargetKind;
@@ -769,11 +770,11 @@ fn a_note_is_busy_while_a_window_holds_it_and_after_a_server_update() {
     let db = env.session.current().unwrap().vault.db_handle();
     let id = note.clone();
     db.call_blocking(move |conn| {
-        update_log::append_server_update(conn, &id, 1, &update, 1).map_err(|error| {
-            StorageError::Failed {
+        HeldBody::never_purged(conn, &id)
+            .and_then(|held| held.append_server_update(1, &update, 1))
+            .map_err(|error| StorageError::Failed {
                 what: error.to_string(),
-            }
-        })
+            })
     })
     .unwrap();
     assert_eq!(kinds(&frames), [(1, None)]);

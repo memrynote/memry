@@ -1,6 +1,7 @@
 //! The write-back side of [`VaultTier`]: what reaches the open vault's write-back from outside
 //! (schedules, flushes, the quit steps) and the reconcile that ends each walk.
 
+use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -47,6 +48,28 @@ impl VaultTier {
         match self.current() {
             Some(open) if Arc::ptr_eq(&open.view.vault, vault) => open.owed.take(note_id),
             _ => Taken::NotOwed,
+        }
+    }
+
+    /// Schedules again, when `vault` is the open one, every note whose write-back kept its file
+    /// for a server body not pulled yet and no longer owes it ([`WriteBack::schedule_body_waits`]).
+    pub fn schedule_body_waits(&self, vault: &Arc<Vault>) {
+        if let Some(open) = self.current()
+            && Arc::ptr_eq(&open.view.vault, vault)
+        {
+            open.writeback.schedule_body_waits(|waits| {
+                // Unread, every note runs: its pass reads the debt again and keeps the file.
+                vault
+                    .note_files()
+                    .server_bodies_owed(waits)
+                    .unwrap_or_else(|error| {
+                        tracing::error!(
+                            scope = "vault_writeback",
+                            "the owed bodies were not read, every waiting note runs: {error}"
+                        );
+                        HashSet::new()
+                    })
+            });
         }
     }
 

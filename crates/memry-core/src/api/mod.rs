@@ -15,13 +15,16 @@ pub mod canvas;
 pub mod conformance;
 pub mod content_admin;
 pub mod crypto;
+pub mod diagnostics;
 #[cfg(feature = "markdown")]
 pub mod editor;
+pub mod embedding_input_conformance;
 pub mod errors;
 #[cfg(feature = "markdown")]
 pub mod excluded_paths;
 #[cfg(feature = "markdown")]
 pub mod external_feed;
+pub mod feedback;
 pub mod home_pages;
 pub mod inbox;
 pub mod inbox_conformance;
@@ -48,6 +51,7 @@ pub mod relation_targets;
 pub mod runtime;
 pub mod search;
 pub mod search_recents;
+pub mod semantic;
 pub mod settings;
 pub mod sticky_store;
 pub mod sync;

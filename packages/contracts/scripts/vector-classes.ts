@@ -15,6 +15,8 @@ import { buildCrdtUpdate } from './vectors/crdt-update'
 import { buildDeviceLinking } from './vectors/device-linking'
 import { buildFieldMerge } from './vectors/field-merge'
 import { buildJournal } from './vectors/journal'
+import { buildJournalMerge } from './vectors/journal-merge'
+import { buildJournalMergeSim } from './vectors/journal-merge-sim'
 import { buildMarkdownRoundtrip } from './vectors/markdown-roundtrip'
 import { buildMarkdownSeed } from './vectors/markdown-seed'
 import { buildAttachmentManifest } from './vectors/attachment-manifest'
@@ -23,6 +25,7 @@ import { buildBlockEdit } from './vectors/block-edit'
 import { buildCalendar } from './vectors/calendar'
 import { buildCalendarIcal } from './vectors/calendar-ical'
 import { buildCalendarWrite } from './vectors/calendar-write'
+import { buildEmbeddingInput } from './vectors/embedding-input'
 import { buildInbox } from './vectors/inbox'
 import { buildDeleteAttestation } from './vectors/delete-attestation'
 import { buildDeleteKeep } from './vectors/delete-keep'
@@ -87,6 +90,13 @@ export const CLASSES: readonly VectorClass[] = [
     files: [{ path: 'settings-groups.json', build: buildSettingsGroups }]
   },
   { name: 'settings-merge', files: [{ path: 'settings-merge.json', build: buildSettingsMerge }] },
+  {
+    name: 'journal-merge',
+    files: [
+      { path: 'journal-merge.json', build: buildJournalMerge },
+      { path: 'journal-merge-sim.json', build: buildJournalMergeSim }
+    ]
+  },
   { name: 'recreate-clock', files: [{ path: 'recreate-clock.json', build: buildRecreateClock }] },
   {
     name: 'versioned-values',
@@ -135,6 +145,10 @@ export const CLASSES: readonly VectorClass[] = [
   {
     name: 'calendar-write',
     files: [{ path: 'calendar-write.json', build: buildCalendarWrite }]
+  },
+  {
+    name: 'embedding-input',
+    files: [{ path: 'embedding-input.json', build: buildEmbeddingInput }]
   },
   {
     name: 'attachment-manifest',

@@ -17,6 +17,11 @@ protocol WhiteboardBoards: Sendable {
     func board(_ id: String) async throws -> CanvasRecord?
     func create(title: String, ownerNoteId: String) async throws -> CanvasRecord
     func save(_ id: String, scene: String) async throws
+    /// Writes `scene` only while the stored scene is still `expected`, the
+    /// scene the edit was made over (#4820).
+    func save(_ id: String, scene: String, expected: String) async throws -> CanvasSceneWrite
+    /// The note's live canvases: its whiteboards and their conflict copies.
+    func boards(ownedBy noteId: String) async throws -> [CanvasRecord]
 }
 
 /// The production surface: the core's `Canvases`, over the shell's one
@@ -44,6 +49,14 @@ struct CoreWhiteboardBoards: WhiteboardBoards {
 
     func save(_ id: String, scene: String) async throws {
         _ = try await executor.run { try canvases().setScene(id: id, scene: scene) }
+    }
+
+    func save(_ id: String, scene: String, expected: String) async throws -> CanvasSceneWrite {
+        try await executor.run { try canvases().setSceneExpecting(id: id, scene: scene, expected: expected) }
+    }
+
+    func boards(ownedBy noteId: String) async throws -> [CanvasRecord] {
+        try await executor.run { try canvases().list(ownerNoteId: noteId) }
     }
 }
 
@@ -87,7 +100,7 @@ enum WhiteboardBoard: Equatable {
 struct WhiteboardBlockView: View {
     let canvasId: String
     /// Opens the editor. `nil` on a read-only page.
-    var edit: ((String, String) -> Void)?
+    var edit: ((WhiteboardEditRequest) -> Void)?
     /// Re-reads the canvas when it changes: a finished sync pass, a closed
     /// editor.
     var revision: Int = 0
@@ -139,7 +152,7 @@ struct WhiteboardBlockView: View {
             case let .ready(title, scene):
                 let name = title.flatMap { $0.isEmpty ? nil : $0 } ?? WhiteboardCopy.untitled
                 if let edit {
-                    Button { edit(canvasId, name) } label: { WhiteboardCard(title: name, scene: scene) }
+                    Button { edit(WhiteboardEditRequest(canvasId: canvasId, title: name, ink: scene.opensAsInk)) } label: { WhiteboardCard(title: name, scene: scene) }
                         .buttonStyle(.plain)
                         .accessibilityHint("Opens the board to draw")
                 } else {

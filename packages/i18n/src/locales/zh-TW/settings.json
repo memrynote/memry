@@ -1232,6 +1232,10 @@
     "loadingAria": "正在載入裝置",
     "none": "尚未連結任何裝置",
     "linkNew": "連結新裝置",
+    "linkNeedsPlan": {
+      "title": "連結裝置需要同步方案",
+      "description": "已連結的裝置只有在開啟同步時才能看到你的筆記。沒有方案時，請在該裝置上以復原片語登入，它會保留自己的儲存庫。"
+    },
     "thisDevice": "此裝置",
     "lastSeen": "上次上線：{time} 前",
     "linked": "連結於 {time} 前",

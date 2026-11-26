@@ -16,10 +16,14 @@ import { getNoteCacheById } from '../database/queries/notes/note-crud'
 import { getStatus } from './status'
 import { VaultError, VaultErrorCode } from '../lib/errors'
 import { createLogger } from '../lib/logger'
+import { getMainI18n } from '../lib/main-i18n'
 import { trackMainError } from '../telemetry/diagnostics'
 import { findNotesReferencingAttachment } from './attachment-reference-scan'
 import { assertNoteWritable, isNoteLocked, isLockedWriteAllowed } from '../vault-locks/registry'
 import { VAULT_LOCKED_NOTE_MESSAGE } from '@memry/contracts/vault-locks-api'
+import { ATTACHMENTS_DIR, isAttachmentStoreRow } from '@memry/shared/attachment-store'
+import { getNoteMetadataById } from '@memry/storage-data'
+import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 
 const logger = createLogger('VaultAttachments')
 
@@ -271,15 +275,14 @@ export function formatFileSize(bytes: number): string {
 // Path Utilities
 // ============================================================================
 
-/**
- * The vault folder that holds every note's attachments folder. Fixed, whatever
- * the vault config's `attachmentsFolder` says: older configs may carry another
- * value, and desktop and the CLI ignore it.
- */
-export const ATTACHMENTS_DIR = 'attachments'
-
 export function getAttachmentsRoot(vaultPath: string): string {
   return path.join(vaultPath, ATTACHMENTS_DIR)
+}
+
+/** `isAttachmentStoreRow` of the note's canonical row; false when it has none. */
+export function isStrayAttachmentNote(db: DrizzleDb, noteId: string): boolean {
+  const row = getNoteMetadataById(db, noteId)
+  return row !== undefined && isAttachmentStoreRow(row)
 }
 
 /**
@@ -450,6 +453,15 @@ export async function saveAttachment(
       return { success: false, error: error.message }
     }
     throw error
+  }
+
+  // A paste can hand over an image with no bytes: on Windows, Chromium reads
+  // the clipboard image as nothing when it cannot open the clipboard or decode
+  // what is on it, and still names it `image.png`. Written, the empty file
+  // embedded as a broken image and could never upload (#5606).
+  if (data.length === 0) {
+    logger.warn('Refused to save an empty attachment', { noteId, extension: ext })
+    return { success: false, error: getMainI18n().t('errors:attachment.emptyNotAttached') }
   }
 
   try {

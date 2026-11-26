@@ -17,6 +17,7 @@
 use rusqlite::Connection;
 
 use crate::api::errors::StorageError;
+use crate::storage::nested_tx;
 
 use super::first_sync_store::{read_meta, write_meta};
 use super::store::{self, RECORD_CURSOR_SCOPE};
@@ -73,7 +74,7 @@ pub(super) fn begin_cursor_skip_repair(
         write_meta(conn, META_CURSOR_SKIP_REPAIR, REPAIR_DONE)?;
         return Ok(false);
     };
-    let txn = conn.unchecked_transaction().map_err(failed)?;
+    let txn = nested_tx::begin(conn).map_err(failed)?;
     store::write_cursor(&txn, RECORD_CURSOR_SCOPE, None, now_ms)?;
     write_meta(&txn, META_CURSOR_SKIP_REPAIR, &format!("pending:{cursor}"))?;
     txn.commit().map_err(failed)?;
@@ -88,7 +89,8 @@ pub(super) fn finish_cursor_skip_repair(conn: &Connection) -> Result<(), Storage
 
 /// Leaves the repair unstarted, so the next run that holds a cursor reads the
 /// feed from the start once. A first sync calls it when its metadata pass left
-/// rows `metadata-only`: that re-read is the only retry they get.
+/// rows `metadata-only`, or when a pull of its refs pass's `deleted` ids got no
+/// pull envelope: that re-read is the only retry those rows and deletes get.
 pub(super) fn reopen_cursor_skip_repair(conn: &Connection) -> Result<(), StorageError> {
     conn.execute("DELETE FROM meta WHERE key = ?1", [META_CURSOR_SKIP_REPAIR])
         .map_err(failed)?;
