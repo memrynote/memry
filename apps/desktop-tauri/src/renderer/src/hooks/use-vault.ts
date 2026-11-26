@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import type {
+  AccountVaultInfo,
   VaultStatus,
   VaultConfig,
   VaultInfo,
@@ -41,8 +42,21 @@ import {
   type VaultSwitchSource
 } from '@/lib/vault-switch-state'
 import { createLogger } from '@/lib/logger'
+import { vaultFolderPath } from '@/lib/vault-folder-path'
 
 const log = createLogger('Vault')
+
+/**
+ * Writes the edits still in their debounce, which belong to the vault being
+ * left. Every call that makes main close the open vault runs this first: the
+ * vault's workspace stays mounted (hidden) after a switch, so nothing else would
+ * write them before main closes it. Editors first: their flush hands markdown to
+ * the page saves the registry then writes.
+ */
+async function flushVaultBeforeLeaving(): Promise<void> {
+  await runVaultLeaveFlushes()
+  await flushAllPendingSaves()
+}
 
 export interface SwitchVaultOptions {
   /** Display name for the in-between screen; defaults to the folder name. */
@@ -203,6 +217,7 @@ export function useVault() {
     setError(null)
 
     try {
+      await flushVaultBeforeLeaving()
       const result = await vaultService.select(path)
 
       if (!result.success) {
@@ -239,6 +254,7 @@ export function useVault() {
     setError(null)
 
     try {
+      await flushVaultBeforeLeaving()
       await vaultService.close()
       setConfig(null)
     } catch (err) {
@@ -253,10 +269,16 @@ export function useVault() {
   }, [])
 
   /**
-   * Switch to a different vault.
+   * Leaves the open vault for `vaultPath` through `open`, the call after which
+   * main has closed it and opened the next. With no `vaultPath` the edits are
+   * still written first, but no switch is marked.
    */
-  const switchVault = useCallback(
-    async (vaultPath: string, options: SwitchVaultOptions = {}): Promise<SelectVaultResponse> => {
+  const runSwitch = useCallback(
+    async (
+      vaultPath: string | null,
+      options: SwitchVaultOptions,
+      open: () => Promise<SelectVaultResponse>
+    ): Promise<SelectVaultResponse> => {
       log.info('Vault switch requested', {
         source: options.source ?? 'unknown',
         from: latestStatusRef.current?.path ?? null,
@@ -276,25 +298,22 @@ export function useVault() {
       setError(null)
       // Marks the closed-vault gap as a switch, so App keeps the shell up instead
       // of onboarding, and the incoming vault restores its whole tab session.
-      beginVaultSwitch(
-        {
-          path: vaultPath,
-          name: options.name ?? (vaultPath.split(/[\\/]/).pop() || vaultPath),
-          accentColor: options.accentColor,
-          icon: options.icon
-        },
-        options.direction ?? null
-      )
+      if (vaultPath !== null) {
+        beginVaultSwitch(
+          {
+            path: vaultPath,
+            name: options.name ?? (vaultPath.split(/[\\/]/).pop() || vaultPath),
+            accentColor: options.accentColor,
+            icon: options.icon
+          },
+          options.direction ?? null
+        )
+      }
       let switched = false
 
       try {
-        // Edits still in their debounce belong to the vault being left. Its
-        // workspace stays mounted (hidden) after the switch, so nothing else
-        // would write them before main closes the vault. Editors first: their
-        // flush hands markdown to the page saves the registry then writes.
-        await runVaultLeaveFlushes()
-        await flushAllPendingSaves()
-        const result = await vaultService.switch(vaultPath)
+        await flushVaultBeforeLeaving()
+        const result = await open()
         switched = result.success
 
         if (!result.success) {
@@ -318,11 +337,56 @@ export function useVault() {
         setError(message)
         return { success: false, vault: null, error: message }
       } finally {
-        endVaultSwitch(switched)
+        if (vaultPath !== null) endVaultSwitch(switched)
         setIsLoading(false)
       }
     },
     []
+  )
+
+  /**
+   * Switch to a different vault.
+   */
+  const switchVault = useCallback(
+    (vaultPath: string, options: SwitchVaultOptions = {}): Promise<SelectVaultResponse> =>
+      runSwitch(vaultPath, options, () => vaultService.switch(vaultPath)),
+    [runSwitch]
+  )
+
+  /**
+   * Download an account vault into `parentPath` (default: main's choice) and
+   * open it. Main closes the open vault, so this is a switch like
+   * `switchVault`. The switch names the folder the download is expected to
+   * make; main takes the next free name when that one appeared meanwhile. A
+   * stale suggestion can name the open vault itself, and a switch to the open
+   * path would not mark it as left, so that download starts no switch.
+   */
+  const downloadVault = useCallback(
+    (
+      vault: AccountVaultInfo,
+      parentPath?: string,
+      options: SwitchVaultOptions = {}
+    ): Promise<SelectVaultResponse> => {
+      const folder = vault.suggestedPath.split(/[\\/]/).pop() || vault.suggestedPath
+      const target = parentPath ? `${parentPath}/${folder}` : vault.suggestedPath
+      const leaving = target === latestStatusRef.current?.path ? null : target
+      return runSwitch(leaving, { name: vault.name ?? folder, ...options }, () =>
+        vaultService.downloadRemote(vault.vaultUuid, parentPath)
+      )
+    },
+    [runSwitch]
+  )
+
+  /**
+   * Create `<parentPath>/<name>` and open it. Main closes the open vault, so this
+   * is a switch like `switchVault`.
+   */
+  const createVault = useCallback(
+    (parentPath: string, name: string): Promise<SelectVaultResponse> =>
+      runSwitch(vaultFolderPath(parentPath, name), { name, source: 'menu' }, () =>
+        vaultService.create(parentPath, name)
+      ),
+    [runSwitch]
   )
 
   /**
@@ -399,6 +463,8 @@ export function useVault() {
     selectVault,
     closeVault,
     switchVault,
+    downloadVault,
+    createVault,
     updateConfig,
     reindex,
     clearError,

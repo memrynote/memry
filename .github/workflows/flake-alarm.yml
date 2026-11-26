@@ -1,0 +1,67 @@
+# The merge queue's flake alarm and the quarantine list's online check (#5221, #4893).
+#
+# A test that fails every retry on its runner ejects each merge group it runs in, whatever the PR. After
+# each failed merge-queue run of Rust CI, `report-flaky-tests.mjs --alarm` reads the nextest JUnit of the
+# failed merge-queue runs of the last 24 hours and opens (or comments on) an issue labelled `flaky`, with
+# a quarantine entry ready to paste, for a test that failed every retry in two different PRs' groups.
+# Daily, the quarantine list (crates/.config/quarantine.toml) is checked against its issues: an entry
+# whose issue is closed fails this run. Neither job gates a merge.
+name: Flake alarm
+
+on:
+  workflow_run:
+    workflows: [Rust CI]
+    types: [completed]
+  schedule:
+    - cron: '17 7 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  alarm:
+    name: Alarm on a test that fails every retry for two PRs
+    if: ${{ github.event_name != 'workflow_run' || (github.event.workflow_run.event == 'merge_group' && github.event.workflow_run.conclusion == 'failure') }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    concurrency:
+      group: flake-alarm
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      actions: read
+      issues: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          sparse-checkout: scripts
+
+      - name: Open or update the flaky issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/report-flaky-tests.mjs --alarm
+
+  quarantine:
+    name: Quarantine entries have open issues
+    if: ${{ github.event_name != 'workflow_run' }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          sparse-checkout: |
+            scripts
+            crates/.config
+
+      - name: Check the quarantine list
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/check-quarantine.mjs --online

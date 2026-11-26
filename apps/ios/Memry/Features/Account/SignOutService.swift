@@ -96,15 +96,19 @@ struct SignOutService: Sendable {
     private let session: any AuthSessionProtocol
     private let content: any VaultContentRemoval
     private let executor: CoreExecutor
+    /// The ⌘N requests and the keys typed after them not yet in the vault.
+    private let newNotes: @MainActor @Sendable () -> NotesLinks
 
     init(
         session: any AuthSessionProtocol,
         content: any VaultContentRemoval,
-        executor: CoreExecutor = .shared
+        executor: CoreExecutor = .shared,
+        newNotes: @escaping @MainActor @Sendable () -> NotesLinks = { .shared }
     ) {
         self.session = session
         self.content = content
         self.executor = executor
+        self.newNotes = newNotes
     }
 
     /// FR-025. The user signed out.
@@ -125,10 +129,10 @@ struct SignOutService: Sendable {
         } catch {
             guard session.state() == .signedOut else { throw error }
             Log.auth.error("signed out; keychain entries survived", .code(ErrorMapping.userFacing(error).code))
-            return wipe(.signedOutByUser, leaving: .signedOut, keysSurvived: true)
+            return await wipe(.signedOutByUser, leaving: .signedOut, keysSurvived: true)
         }
         Log.auth.notice("signed out; removing local vault content")
-        return wipe(.signedOutByUser, leaving: state)
+        return await wipe(.signedOutByUser, leaving: state)
     }
 
     /// FR-026. The server refused this device, and the refusal arrived on a
@@ -146,7 +150,7 @@ struct SignOutService: Sendable {
         let session = session
         let state = try await executor.run { try session.markRevoked() }
         Log.auth.notice("this device was revoked; removing local vault content")
-        return wipe(.deviceRevoked, leaving: state)
+        return await wipe(.deviceRevoked, leaving: state)
     }
 
     /// The filesystem half, which runs only after the core's half returned.
@@ -154,9 +158,13 @@ struct SignOutService: Sendable {
     /// It does not throw. By the time it runs the core has signed out and the
     /// state has moved, so a failure here is a fact about the phone's disk and not a
     /// reason to tell the user their sign-out did not happen.
-    private func wipe(_ reason: LocalWipeReason, leaving state: AuthState, keysSurvived: Bool = false) -> LocalWipe {
+    private func wipe(_ reason: LocalWipeReason, leaving state: AuthState, keysSurvived: Bool = false) async -> LocalWipe {
         // Where the user was names the account's vaults and notes by id.
         LaunchSnapshot.shared.clear()
+        // Plaintext keys of this account's notes, and a ⌘N that would make a
+        // note for them in the next account's vault.
+        let kept = content.survivingVault()
+        await MainActor.run { newNotes().signedOut(keeping: kept) }
         do {
             try content.removeAllVaultContent()
             return LocalWipe(reason: reason, state: state, residue: keysSurvived ? AccountCopy.keysSurvived : nil)

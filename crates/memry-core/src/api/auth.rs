@@ -22,6 +22,7 @@ use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
 
 use crate::api::errors::{ApiError, AuthError, SecureStoreError};
+use crate::api::sync::NotFoundMemory;
 use crate::protocol::auth::{
     AuthRoutes, DeviceFormFactor, DevicePlatform, DeviceRegisterRequest, RenewSetupTokenRequest,
     TokenClaims, TokenManager, random_nonce, sign_device_challenge,
@@ -30,7 +31,10 @@ use crate::protocol::http::{ClientIdentity, HttpClient};
 use crate::seams::secure_store::{SecureStore, SecureStoreKey};
 use crate::seams::transport::Transport;
 
+#[cfg(feature = "e2e")]
+mod e2e;
 mod identity;
+mod machine;
 mod oauth;
 mod otp;
 mod recovery;
@@ -38,9 +42,11 @@ mod restore;
 mod sign_out_marker;
 mod token;
 
+use machine::state_name;
 use sign_out_marker::SignOutMarker;
 
 pub use identity::ensure_device_identity;
+pub use machine::transition;
 pub use oauth::{AuthProvider, ProviderSignInOutcome, WebSignInOutcome};
 
 /// Data-model §C.1, one variant per drawn state.
@@ -97,74 +103,6 @@ pub enum AuthEvent {
     SessionRestored,
 }
 
-/// The transition table. `None` is "not an edge", which the caller reports
-/// rather than swallows.
-pub fn transition(state: &AuthState, event: &AuthEvent) -> Option<AuthState> {
-    use AuthEvent as E;
-    use AuthState as S;
-    Some(match (state, event) {
-        (S::SignedOut, E::OtpRequested { email }) => S::AwaitingOtp {
-            email: email.clone(),
-        },
-        (S::SignedOut, E::ProviderSheetOpened { provider }) => S::AwaitingProviderToken {
-            provider: provider.clone(),
-        },
-        // spec-defect 121. The third and last edge out of `SignedOut`, and the
-        // only one that is not a user action: the other two need an OTP or a
-        // consent sheet, so before this a registered user who quit the app was
-        // shown the sign-in screen with a working session in their keychain.
-        //
-        // It lands in `Registered` rather than in a tenth "maybe signed in"
-        // state because `Registered` is a *claim* the server adjudicates, not
-        // an assertion that the token is good: `SessionExpired` and `Revoked`
-        // are both edges **out of** `Registered`, so restoring here is what
-        // makes them reachable at all. Restoring into `SignedOut` — today's
-        // behaviour — is what collapses the three.
-        (S::SignedOut, E::SessionRestored) => S::Registered,
-
-        (S::AwaitingOtp { .. } | S::AwaitingProviderToken { .. }, E::SetupTokenIssued) => {
-            S::SetupPending
-        }
-        (S::AwaitingOtp { .. } | S::AwaitingProviderToken { .. }, E::SignInFailed) => S::SignedOut,
-
-        (S::SetupPending, E::DeviceRegistered) => S::Registered,
-        (S::SetupPending, E::SetupTokenExpired) => S::SetupExpired,
-
-        (S::SetupExpired, E::SetupTokenRenewed) => S::SetupPending,
-        (S::SetupExpired, E::SetupNotRenewable) => S::SignedOut,
-
-        (S::Registered, E::RefreshStarted) => S::Refreshing,
-        (S::Registered, E::RefreshRefused) => S::SessionExpired,
-        (S::Registered, E::DeviceRevoked) => S::Revoked,
-        (S::Registered, E::SignedOutByUser) => S::SignedOut,
-
-        (S::Refreshing, E::RefreshSucceeded) => S::Registered,
-        (S::Refreshing, E::RefreshRefused) => S::SessionExpired,
-
-        (S::SessionExpired, E::RefreshSucceeded) => S::Registered,
-        (S::SessionExpired, E::SignedOutByUser) => S::SignedOut,
-
-        (S::Revoked, E::SignedOutByUser) => S::SignedOut,
-
-        _ => return None,
-    })
-}
-
-fn state_name(state: &AuthState) -> String {
-    match state {
-        AuthState::SignedOut => "SignedOut",
-        AuthState::AwaitingOtp { .. } => "AwaitingOtp",
-        AuthState::AwaitingProviderToken { .. } => "AwaitingProviderToken",
-        AuthState::SetupPending => "SetupPending",
-        AuthState::SetupExpired => "SetupExpired",
-        AuthState::Registered => "Registered",
-        AuthState::Refreshing => "Refreshing",
-        AuthState::SessionExpired => "SessionExpired",
-        AuthState::Revoked => "Revoked",
-    }
-    .to_string()
-}
-
 /// What `POST /auth/devices` needs that only the shell knows.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct DeviceDescriptor {
@@ -206,6 +144,8 @@ pub struct AuthSession {
     /// refresh token a refused keychain delete left behind never restores the session the user
     /// ended ([`Self::restore`]).
     sign_out_marker: SignOutMarker,
+    /// The manifests a note open was answered 404 for (#5247).
+    pub(crate) manifest_not_found: NotFoundMemory,
 }
 
 impl AuthSession {
@@ -271,11 +211,32 @@ impl AuthSession {
         self.state.lock().unwrap_or_else(|e| e.into_inner()).clone()
     }
 
-    /// Applies an edge, or reports that the call was not one.
+    /// The last sign-out marker file operation that failed (#4767), once, for the shell to log
+    /// or report. A failed write matters when the store also kept a secret: the next launch
+    /// then restores the session the user ended. Not part of the FFI surface.
+    pub fn take_sign_out_marker_fault(&self) -> Option<String> {
+        self.sign_out_marker.take_fault()
+    }
+
+    /// The shell deleted every entry on its own after a failed clear: the store holds nothing of
+    /// the signed-out account, so the next sign-in has nothing to delete. Not part of the FFI
+    /// surface.
+    pub fn note_store_cleared(&self) {
+        self.sign_out_marker.store_cleared();
+    }
+
+    /// Applies an edge, or reports that the call was not one. A new sign-in first deletes what
+    /// a refused sign-out left ([`Self::forget_last_account`]).
     fn apply(&self, event: AuthEvent, action: &str) -> Result<AuthState, AuthError> {
         let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
         match transition(&state, &event) {
             Some(next) => {
+                if matches!(
+                    event,
+                    AuthEvent::OtpRequested { .. } | AuthEvent::ProviderSheetOpened { .. }
+                ) {
+                    self.forget_last_account()?;
+                }
                 if event == AuthEvent::DeviceRegistered {
                     self.sign_out_marker.clear();
                 }
@@ -389,6 +350,7 @@ impl AuthSession {
             state: Mutex::new(AuthState::SignedOut),
             pending: Mutex::new(PendingSignIn::default()),
             sign_out_marker: SignOutMarker::new(sign_out_marker),
+            manifest_not_found: NotFoundMemory::default(),
         })
     }
 

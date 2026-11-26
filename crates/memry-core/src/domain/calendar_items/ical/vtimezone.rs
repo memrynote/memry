@@ -3,7 +3,8 @@
 //! DAYLIGHT observance's onsets, from its DTSTART, RRULE and RDATEs, become
 //! transitions of a [`CalendarZone`].
 
-use super::parse::{Component, time_of, times_of};
+use super::budget;
+use super::parse::{Component, MAX_TZID_LEN, time_of, times_of};
 use super::rrule::{Occurrences, Until, parse_rule};
 use crate::api::calendar_records::{CalendarZone, CalendarZoneTransition};
 use crate::domain::calendar::CivilDate;
@@ -30,7 +31,8 @@ struct Onset {
 /// The zone a VTIMEZONE describes through `last_year`; `None` without a
 /// usable observance.
 pub fn zone_from_vtimezone(tz: &Component, last_year: i64) -> Option<CalendarZone> {
-    let tzid = tz.text("TZID")?;
+    // A TZID no time keeps (see `MAX_TZID_LEN`) names a zone nothing uses.
+    let tzid = tz.text("TZID").filter(|id| id.len() <= MAX_TZID_LEN)?;
     let mut onsets: Vec<Onset> = Vec::new();
     let mut earliest: Option<(i64, i64)> = None;
     let limit = CivilDate::new(last_year + 1, 1, 1)?.days_since_epoch() * 86_400;
@@ -78,12 +80,11 @@ pub fn zone_from_vtimezone(tz: &Component, last_year: i64) -> Option<CalendarZon
                 .take(2_000)
                 .collect();
         }
-        for rdate in observance.all("RDATE") {
-            walls.extend(
-                times_of(rdate)
-                    .iter()
-                    .map(super::parse::IcalTime::wall_seconds),
-            );
+        for time in observance.all("RDATE").flat_map(times_of) {
+            if !budget::step(1) {
+                return None;
+            }
+            walls.push(time.wall_seconds());
         }
         onsets.extend(walls.into_iter().filter(|w| *w < limit).map(|wall| Onset {
             utc: wall - from,

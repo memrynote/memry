@@ -3,7 +3,10 @@
 //! source record (`markdown-source.ts`), CriticMarkup marks
 //! (`critic-markup/yjs.ts`) and link reference definitions and usages
 //! (`link-references.ts`). Reads normalize every entry and drop what is
-//! malformed; writes replace a root only when its content changed.
+//! malformed; writes replace a root only when its content changed, except the
+//! marks, which are written one element at a time (protocol 12.5.1).
+
+use std::collections::{HashMap, HashSet};
 
 use serde_json::Value as Json;
 use yrs::{Any, Array as _, ArrayRef, Map as _, MapRef, Out, ReadTxn, TransactionMut, WriteTxn};
@@ -152,24 +155,189 @@ fn normalize_mark(value: &Json) -> Option<CriticMarkupMark> {
     })
 }
 
-/// `readCriticMarkupMarksFromYDoc`.
+/// The element keys this build writes. Any other key belongs to a newer build
+/// and is kept (`MARK_KEYS` of `critic-markup/yjs.ts`).
+const MARK_KEYS: [&str; 12] = [
+    "id",
+    "kind",
+    "visibleText",
+    "start",
+    "end",
+    "originalText",
+    "body",
+    "metadata",
+    "createdAt",
+    "mentions",
+    "attachments",
+    "formatRanges",
+];
+
+/// `readCriticMarkupMarksFromYDoc`: the valid marks in array order, one per
+/// id, the first copy winning (protocol 12.5.1).
 pub fn read_critic_marks<T: ReadTxn>(txn: &T) -> Vec<CriticMarkupMark> {
+    let mut seen = HashSet::new();
     read_array_json(txn, CRITIC_MARKUP_MARKS_ARRAY)
         .iter()
         .filter_map(normalize_mark)
+        .filter(|mark| seen.insert(mark.id.clone()))
         .collect()
 }
 
-/// `writeCriticMarkupMarksToYDoc`.
+thread_local! {
+    static ARRAY_OPERATIONS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+/// The array operations `write_critic_marks` made on this thread: the step
+/// counter of its complexity test.
+#[doc(hidden)]
+pub fn critic_mark_array_operations() -> usize {
+    ARRAY_OPERATIONS.with(std::cell::Cell::get)
+}
+
+fn remove(array: &ArrayRef, txn: &mut TransactionMut, start: usize, end: usize) {
+    ARRAY_OPERATIONS.with(|count| count.set(count.get() + 1));
+    array.remove_range(txn, start as u32, (end - start) as u32);
+}
+
+fn insert(array: &ArrayRef, txn: &mut TransactionMut, at: usize, values: Vec<Any>) {
+    ARRAY_OPERATIONS.with(|count| count.set(count.get() + 1));
+    array.insert_range(txn, at as u32, values);
+}
+
+/// `writeCriticMarkupMarksToYDoc`: deletes later copies of an id and ids
+/// `marks` drops, and keeps every element this build cannot read (a newer
+/// build's, #5574); inserts a new id after the furthest existing
+/// mark before it in `marks`; replaces an element only when the stored mark,
+/// read as this build reads it, differs from the new one in more than its
+/// offsets (the window moves offsets with its typing and never writes them
+/// alone, #4425), keeping the keys this build does not know. Adjacent deletes
+/// and adjacent replacements are one operation each. Untouched elements are
+/// never deleted and inserted again: a stale copy would precede a concurrent
+/// device's copy of that id and hide its change.
 pub fn write_critic_marks(txn: &mut TransactionMut, marks: &[CriticMarkupMark]) {
-    let next: Vec<Json> = marks
-        .iter()
-        .filter_map(|mark| {
-            let json = serde_json::to_value(mark).ok()?;
-            normalize_mark(&json).map(|m| serde_json::to_value(m).unwrap_or(Json::Null))
-        })
-        .collect();
-    replace_array(txn, CRITIC_MARKUP_MARKS_ARRAY, &next);
+    let mut next: Vec<(String, Json)> = Vec::new();
+    let mut next_ids = HashSet::new();
+    for mark in marks {
+        let normalized = serde_json::to_value(mark)
+            .ok()
+            .and_then(|json| normalize_mark(&json));
+        let Some(normalized) = normalized else {
+            continue;
+        };
+        if !next_ids.insert(normalized.id.clone()) {
+            continue;
+        }
+        if let Ok(json) = serde_json::to_value(&normalized) {
+            next.push((normalized.id, json));
+        }
+    }
+
+    let array: ArrayRef = txn.get_or_insert_array(CRITIC_MARKUP_MARKS_ARRAY);
+    let values: Vec<Out> = array.iter(txn).collect();
+    let length = values.len();
+    // Each kept element: what it holds, and its mark as read (`None`: an
+    // element this build cannot read, which is kept, #5574).
+    let mut kept: Vec<(Any, Option<CriticMarkupMark>)> = Vec::new();
+    let mut index_of: HashMap<String, usize> = HashMap::new();
+    let mut keep = Vec::with_capacity(length);
+    for value in values {
+        let json = out_json(value.clone(), txn);
+        let mark = normalize_mark(&json);
+        if let Some(mark) = &mark {
+            if !next_ids.contains(&mark.id) || index_of.contains_key(&mark.id) {
+                keep.push(false);
+                continue;
+            }
+            index_of.insert(mark.id.clone(), kept.len());
+        }
+        keep.push(true);
+        let stored = match value {
+            Out::Any(any) => any,
+            _ => json_to_any(&json),
+        };
+        kept.push((stored, mark));
+    }
+
+    let mut result: Vec<Any> = kept.iter().map(|(stored, _)| stored.clone()).collect();
+    let mut replaced = vec![false; kept.len()];
+    // New marks keyed by the kept element they follow (`None`: the start).
+    let mut inserts: Vec<(Option<usize>, Vec<Any>)> = Vec::new();
+    let mut anchor: Option<usize> = None;
+    for (id, mark) in &next {
+        let Some(&index) = index_of.get(id.as_str()) else {
+            match inserts.last_mut() {
+                Some((after, group)) if *after == anchor => group.push(json_to_any(mark)),
+                _ => inserts.push((anchor, vec![json_to_any(mark)])),
+            }
+            continue;
+        };
+        let (stored, current) = &kept[index];
+        if !current
+            .as_ref()
+            .is_some_and(|current| same_mark_apart_from_offsets(current, mark))
+        {
+            result[index] = with_unknown_keys(mark, stored);
+            replaced[index] = true;
+        }
+        anchor = anchor.max(Some(index));
+    }
+
+    for (start, end) in runs_of(keep.iter().map(|kept| !kept)).into_iter().rev() {
+        remove(&array, txn, start, end);
+    }
+    for (start, end) in runs_of(replaced.iter().copied()) {
+        remove(&array, txn, start, end);
+        insert(&array, txn, start, result[start..end].to_vec());
+    }
+    for (after, group) in inserts.into_iter().rev() {
+        insert(&array, txn, after.map_or(0, |index| index + 1), group);
+    }
+}
+
+/// The `[start, end)` runs of `true`, in order.
+fn runs_of(flags: impl Iterator<Item = bool>) -> Vec<(usize, usize)> {
+    let mut runs: Vec<(usize, usize)> = Vec::new();
+    for (index, flag) in flags.enumerate() {
+        if !flag {
+            continue;
+        }
+        match runs.last_mut() {
+            Some((_, end)) if *end == index => *end = index + 1,
+            _ => runs.push((index, index + 1)),
+        }
+    }
+    runs
+}
+
+/// Whether the stored mark equals `mark` (as this build writes it) apart from
+/// the offsets.
+fn same_mark_apart_from_offsets(current: &CriticMarkupMark, mark: &Json) -> bool {
+    let without_offsets = |value: Json| match value {
+        Json::Object(mut fields) => {
+            fields.remove("start");
+            fields.remove("end");
+            Some(fields)
+        }
+        _ => None,
+    };
+    let current = serde_json::to_value(current).ok().and_then(without_offsets);
+    current.is_some() && current == without_offsets(mark.clone())
+}
+
+/// `mark` with the keys of `stored` that are not in `MARK_KEYS`.
+fn with_unknown_keys(mark: &Json, stored: &Any) -> Any {
+    let mut fields: HashMap<String, Any> = match json_to_any(mark) {
+        Any::Map(known) => (*known).clone(),
+        other => return other,
+    };
+    if let Any::Map(stored) = stored {
+        for (key, value) in stored.iter() {
+            if !MARK_KEYS.contains(&key.as_str()) {
+                fields.insert(key.clone(), value.clone());
+            }
+        }
+    }
+    Any::from(fields)
 }
 
 fn normalize_definition(value: &Json) -> Option<LinkReferenceDefinition> {

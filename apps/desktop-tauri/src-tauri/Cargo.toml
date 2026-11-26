@@ -36,6 +36,8 @@ tauri-build = { version = "2.7", features = [] }
 
 [dependencies]
 memry-desktop = { path = "../../../crates/memry-desktop" }
+# `--cli` runs the command line in this binary (legacy shims) before any Tauri type exists.
+memrynote-cli = { path = "../../../crates/memrynote-cli" }
 # No `devtools`: a release build compiles no web inspector (wry and Tauri enable it in debug builds
 # only). With the feature on, a release build would inject Tauri's inspector hotkey, let page
 # script open it, and make the macOS webview inspectable from Safari. Rust CI fails when any crate
@@ -164,6 +166,8 @@ objc2-web-kit = { version = "0.3.2", default-features = false, features = ["std"
 async-trait = { workspace = true }
 keyring-core = "1.0.1"
 memry-core = { path = "../../../crates/memry-core" }
+# `tests/vault_reindex.rs` breaks the index database under a held reindex.
+rusqlite = { workspace = true }
 tauri = { version = "2.12", features = ["specta", "test"] }
 tempfile = "3"
 # A test reads what a command logged.

@@ -161,6 +161,7 @@ fn coordinator_sealing(
         db.clone(),
         Declaration::subscribed(),
         sealer,
+        "device-a",
     )
 }
 
@@ -429,7 +430,7 @@ async fn a_parked_batch_is_released_by_the_next_edit_of_its_document() {
     // An edit of another document does not release it; an edit of this one does.
     queue(&db, "other", 100);
     let batch = |db: &Db| {
-        db.call_blocking(|conn| outbox::next_batch(conn, now_ms(), 100, &[]))
+        db.call_blocking(|conn| outbox::next_batch(conn, now_ms(), 100, &[], &[]))
             .expect("a batch")
     };
     assert!(matches!(batch(&db), Some(outbox::Batch::Crdt { doc_id, .. }) if doc_id == "other"));

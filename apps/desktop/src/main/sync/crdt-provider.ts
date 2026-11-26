@@ -1,7 +1,12 @@
 import * as Y from 'yjs'
 import type { FileHandle } from 'fs/promises'
 import { BrowserWindow } from 'electron'
-import { CRDT_EVENTS, CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
+import {
+  CRDT_EVENTS,
+  CRDT_FRAGMENT_NAME,
+  type CrdtDocWaitEvent,
+  type CrdtRemoteBodyWait
+} from '@memry/contracts/ipc-crdt'
 import { createLogger } from '../lib/logger'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
 import {
@@ -13,7 +18,7 @@ import {
 import { getOrCreateVaultUuid } from '../agent/storage/vault-id'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { crdtBodyDebtStore } from './engine/crdt-body-debts'
-import { getNoteCacheById, updateNoteCache } from '@main/database/queries/notes'
+import { getNoteCacheById } from '@main/database/queries/notes'
 import type { NoteBodyOutbox } from './note-body-outbox'
 import { NOTE_BODY_FULL_STATE_PAYLOAD, SyncQueueManager } from '@memry/sync-client/queue'
 import { MicrotaskBatchBroadcaster } from '@memry/sync-client/microtask-batch-broadcaster'
@@ -21,7 +26,12 @@ import { parallelWithLimit } from '@memry/sync-client/concurrency'
 import { MAX_CRDT_SNAPSHOT_BATCH_ENTRIES } from '@memry/sync-client/crdt-payload'
 import { crdtWriteback } from './crdt-writeback-port'
 import { recordNetworkUpdate } from './crdt-network-update'
-import { openCrdtPersistence, type CrdtPersistence } from './crdt-persistence'
+import {
+  openCrdtPersistence,
+  readOnlyStore,
+  type CrdtPersistence,
+  type CrdtStoreReader
+} from './crdt-persistence'
 import {
   readSnapshotWatermark,
   writeSnapshotWatermark,
@@ -33,14 +43,18 @@ import { prepareVaultCrdtStore } from './crdt-store-path'
 import { reconcileCrdtStoreEpoch } from './crdt-store-epoch'
 import { clearOwedFileBody, owesFileBody } from './crdt-owed-file-body'
 import { getVaultRoot } from '../vault/notes-io'
+import { refusesCaseTwinFile } from '../vault/note-sync'
 import { openVaultFile } from '../lib/paths'
+import { completeWithin, SHUTDOWN_CLOSE_VAULT_RESERVE_MS } from '../shutdown-sequence'
 import { OutsideVaultError } from '../lib/errors'
-import { generateContentHash, parseNote } from '../vault/frontmatter'
+import { parseNote } from '../vault/frontmatter'
+import { holdsUnstoredFile, recordBaseline } from './writeback-baseline'
+import { isBinaryNote } from './note-body-apply'
 import { loadBlockNoteConverter } from './blocknote-converter-loader'
 import { seedFragment } from './converter-worker-bridge'
 import { repairEmptyBlockIds } from './repair-block-ids'
 import { compactYDoc } from '@memry/sync-client/crdt-compact-utils'
-import { isBinaryFileType } from '@memry/shared/file-types'
+import { isBinaryNoteRow } from '@memry/shared/file-types'
 import { classifyMarkdownContent, classifyMarkdownStat } from '@memry/shared/markdown-class'
 import {
   CRITIC_MARKUP_MARKS_ARRAY,
@@ -66,6 +80,8 @@ interface IpcOrigin {
 
 const ORIGIN_NETWORK = 'network'
 export const ORIGIN_LOCAL = 'local'
+/** Store meta key of the seed-duplicate repair's per-note marker (#5289). */
+const SEED_REPAIR_META_KEY = 'seedDuplicateRepairedAt'
 /**
  * An update this size or smaller holds no items and no deletes: an empty doc
  * encodes to 2 bytes, and any struct or delete adds more than 2.
@@ -75,8 +91,34 @@ const SIZE_CHECK_INTERVAL_MS = 60_000
 const ENCODED_SIZE_COMPACTION_THRESHOLD = 1024 * 1024
 const ACCUMULATED_BYTES_RECHECK_THRESHOLD = 512 * 1024
 const DEFAULT_INACTIVE_DOC_LIMIT = 32
-/** How long an editor open with no store waits for the server body before it seeds (#2544). */
+/**
+ * How long a vault close waits for one CRDT store call (#5698). A call past it
+ * is stalled, not slow: a quit reserves this much for the provider's store
+ * flush and the whole vault close behind it, and the close's other bounded
+ * waits sit at the same scale (`HELD_WORK_CAP_MS`, 1,500 ms;
+ * `FLUSH_WINDOW_TIMEOUT_MS`, 2,000 ms). Per call, so a close that stores many
+ * docs is never cut short while the store makes progress.
+ */
+const STORE_CALL_CLOSE_WAIT_MS = SHUTDOWN_CLOSE_VAULT_RESERVE_MS
+/** How long an editor open with no store waits for the server body merge to answer (#2544). */
 export const EDITOR_OPEN_MERGE_TIMEOUT_MS = 3_000
+
+/** What the sync coordinator knows about a note's server body; see `waitsForRemoteBody`. */
+export interface RemoteBodyQuery {
+  /** The server holds state for the note that this device has not merged. */
+  hasUnmerged: (noteId: string) => boolean
+  /** The note's pulls keep failing on a server answer, so merging may never finish. */
+  isStuck: (noteId: string) => boolean
+  /** The session ended: no pull runs as this user until they sign in again. */
+  signedOut: () => boolean
+  /** The last pull found no vault key (a locked keychain); signing in does not fix it. */
+  vaultLocked: () => boolean
+  /**
+   * Durable proof that the server holds nothing of the note: created here,
+   * never synced, and no sign of a server body (#5371).
+   */
+  neverSynced: (noteId: string) => boolean
+}
 
 /**
  * What a snapshot push may claim about the state it carries (#2299, protocol 07
@@ -117,6 +159,7 @@ export interface SnapshotRefusal {
 
 const NO_COVERAGE: SnapshotCoverageReader = () => ({ unmerged: false })
 const NOT_PAUSED = (): boolean => false
+const ALWAYS_ONLINE = (): boolean => true
 
 /** The pre-encode read `encodeForPush` needs; only `readPushBase` makes one. */
 interface PushBase {
@@ -207,19 +250,45 @@ interface ActiveDoc {
    * same function that writes the flag to both databases. A doc that is closed
    * when the toggle happens needs nothing: its next doOpen re-reads the row.
    *
-   * Every path that would send this doc's bytes to the server reads it: the
-   * update-queue branch of `onDocUpdate`, and the three snapshot pushes in
-   * `close`, `pushAllSnapshots` and `compactDoc`. `pushSnapshotForNote` is
-   * reached for notes with no open doc at all and re-reads the row instead.
+   * Every path that would send this doc's bytes to the server reads it, through
+   * `sendsBody`: the update-queue branch of `onDocUpdate`, and the three
+   * snapshot pushes in `close`, `pushAllSnapshots` and `compactDoc`.
+   * `pushSnapshotForNote` is reached for notes with no open doc at all and
+   * re-reads the row instead.
    */
   localOnly: boolean
+  /**
+   * A binary note's doc (`isBinaryNote`), cached at doOpen like `localOnly`.
+   * Its file is the blob, so nothing written to the doc is the note's body,
+   * and none of it may reach the server (#5607).
+   */
+  binary: boolean
   closing?: boolean
+  /**
+   * Set by `purge` before it awaits anything. `onDocUpdate` neither stores,
+   * queues nor broadcasts an edit to a doc being purged, whatever its source
+   * (an editor keystroke, a body save's feed): it would land an old-generation
+   * row after the purge dropped the rest (#5359). A plain `close` leaves this
+   * unset and keeps the edits that reach it, so the flush still persists them.
+   */
+  purging?: boolean
   /**
    * Opened unseeded with no store, and neither a remote update, a seed nor
    * `takeFileAfterMerge` has reached it yet. A body fed into such a doc shares
-   * no Yjs items with the server body (#2536, #2646).
+   * no Yjs items with the server body (#2536, #2646). An editor bound to it
+   * shows its loading state until it ends (`crdt:doc-loaded`, #5290).
    */
   awaitingMerge: boolean
+  /**
+   * Callers of `whenStored(noteId, doc)` for this entry's doc instance. A
+   * caller names the instance it serialized, and is answered only by a store
+   * of that instance: a doc reopened from the store may lack what this one
+   * held, so a store of it says nothing about this one's bytes. A caller
+   * naming another instance is never queued here. A close answers them once
+   * a store of this doc's whole state lands, and drops them unanswered when
+   * none does (`settleStoreBeforeDestroy`, `recordDocFile`, #5698).
+   */
+  storedWaiters: Array<() => void>
 }
 
 export class CrdtProvider {
@@ -232,6 +301,10 @@ export class CrdtProvider {
    */
   private applyingRemoteEditedAtMs: number | undefined
   private openLocks = new Map<string, Promise<Y.Doc>>()
+  /** In-flight closes by note. An open of the note waits for its close (`close`). */
+  private closeLocks = new Map<string, Promise<void>>()
+  /** Docs whose close landed a store of their whole state before destroying them. */
+  private storedAtClose = new WeakSet<Y.Doc>()
   private persistence: CrdtPersistence | null = null
   /** See `storeId`. Minted on every successful open, dropped on `destroy()`. */
   private storeIdentity: string | null = null
@@ -242,6 +315,8 @@ export class CrdtProvider {
   private snapshotBatchPushFn: SnapshotBatchPushFn | null = null
   /** See `setSyncPaused`. */
   private syncPaused: () => boolean = NOT_PAUSED
+  /** See `setNetworkOnline`. */
+  private networkOnline: () => boolean = ALWAYS_ONLINE
   private snapshotCoverage: SnapshotCoverageReader = NO_COVERAGE
   /** See `setSnapshotDeferral`. */
   private deferSnapshot: ((noteId: string) => void) | null = null
@@ -251,6 +326,10 @@ export class CrdtProvider {
     | null = null
   /** See `setRemoteMerge`. */
   private mergeRemote: ((noteId: string) => Promise<boolean>) | null = null
+  /** See `setRemoteBodyQuery`. */
+  private remoteBody: RemoteBodyQuery | null = null
+  /** Notes whose file this session compared with the baseline at open (#5319). */
+  private offlineEditChecked = new Set<string>()
   /**
    * The data DB handle and vault the open store belongs to, bound at init
    * (#2421): a detached compaction owes its debt there, and never to a vault
@@ -289,6 +368,15 @@ export class CrdtProvider {
   private readonly now: () => number
   private compactingDocs = new Set<string>()
   private compactionBuffers = new Map<string, Uint8Array[]>()
+  /** Each note's updates on their way to the store, chained in order (`whenPersisted`). */
+  private persisting = new Map<string, Promise<void>>()
+  /** Aborted when a vault close starts: `whenPersisted` stops waiting on a stalled store. */
+  private closing = new AbortController()
+  /**
+   * Notes whose store missed an update: a later update alone leaves the gap,
+   * so the next store writes the doc's whole state (`persistUpdate`).
+   */
+  private storeOwed = new Set<string>()
   private networkBatcher = new MicrotaskBatchBroadcaster((noteId, merged) => {
     this.broadcastToWindows(noteId, merged, ORIGIN_NETWORK, undefined)
   })
@@ -387,6 +475,48 @@ export class CrdtProvider {
   }
 
   /**
+   * Wired by the sync runtime: what the coordinator knows about a note's
+   * server body, asked instead of reading it off a merge result (#5290).
+   */
+  setRemoteBodyQuery(query: RemoteBodyQuery | null): void {
+    this.remoteBody = query
+  }
+
+  /**
+   * With no store, whether an empty doc must wait for the server body instead
+   * of seeding from the file (#5290). A seed beside a body the server holds
+   * duplicates it once the body merges (#2536). So the doc waits while the
+   * merge did not complete or left server state unmerged. It seeds only when
+   * the server provably holds nothing this device lacks, or for a local-only
+   * note. An editor open (`editorOpen`) also seeds a note created here that
+   * provably never synced, which opens editable offline (#5371); a seeded
+   * push of one keeps waiting, so the push stays owed. Every other offline or
+   * stuck note keeps waiting, and its editors show the vault file read-only
+   * (D-UNMERGED-OPEN-EXIT-2).
+   */
+  private waitsForRemoteBody(noteId: string, merged: boolean, editorOpen = false): boolean {
+    const query = this.remoteBody
+    if (!query || this.isNoteLocalOnly(noteId)) return false
+    if (query.hasUnmerged(noteId)) return true
+    return !merged && !(editorOpen && query.neverSynced(noteId))
+  }
+
+  /**
+   * What an editor of `noteId` waits on (#5290): null when its doc is ready,
+   * `signed-out` when the session ended, `vault-locked` when the last pull
+   * found no vault key (#5342), `stuck` when the note's pulls keep failing on
+   * a server answer, else `merging`. The editor shows the vault file
+   * read-only for every reason but `merging`, or while offline, and binds
+   * once the wait ends.
+   */
+  remoteBodyWait(noteId: string): CrdtRemoteBodyWait | null {
+    if (!this.isAwaitingMerge(noteId)) return null
+    if (this.remoteBody?.signedOut()) return 'signed-out'
+    if (this.remoteBody?.vaultLocked()) return 'vault-locked'
+    return this.remoteBody?.isStuck(noteId) ? 'stuck' : 'merging'
+  }
+
+  /**
    * Wired by the sync runtime to the user's pause (#3382), which holds note
    * bodies as well as records. While it is on, every snapshot path takes its
    * no-push branch, the one a provider with no runtime takes, and sends
@@ -398,14 +528,31 @@ export class CrdtProvider {
     this.syncPaused = isPaused ?? NOT_PAUSED
   }
 
-  /** The snapshot push, or none while sync is paused. */
-  private snapshotSender(): SnapshotPushFn | null {
-    return this.snapshotPushFn && !this.syncPaused() ? this.snapshotPushFn : null
+  /**
+   * Wired by the sync runtime to its network monitor. While offline every
+   * snapshot path takes the same no-push branch as the pause: the runtime's
+   * push records `sent` before its request, so a send that can only fail
+   * would make a note created here look synced and reopen read-only offline
+   * (#5371). The edits wait in the outbox, which pauses offline, and its
+   * flush once online requests the snapshot again.
+   */
+  setNetworkOnline(isOnline: (() => boolean) | null): void {
+    this.networkOnline = isOnline ?? ALWAYS_ONLINE
   }
 
-  /** The batch snapshot push, or none while sync is paused. */
+  /** True while every snapshot path sends nothing (sync paused or offline). */
+  snapshotsHeld(): boolean {
+    return this.syncPaused() || !this.networkOnline()
+  }
+
+  /** The snapshot push, or none while sync is paused or offline. */
+  private snapshotSender(): SnapshotPushFn | null {
+    return this.snapshotPushFn && !this.snapshotsHeld() ? this.snapshotPushFn : null
+  }
+
+  /** The batch snapshot push, or none while sync is paused or offline. */
   private snapshotBatchSender(): SnapshotBatchPushFn | null {
-    return this.snapshotBatchPushFn && !this.syncPaused() ? this.snapshotBatchPushFn : null
+    return this.snapshotBatchPushFn && !this.snapshotsHeld() ? this.snapshotBatchPushFn : null
   }
 
   /**
@@ -577,6 +724,12 @@ export class CrdtProvider {
     // Preflight, quarantine and probe live in crdt-persistence.ts; null means
     // the store could not be trusted and this provider runs in-memory.
     this.persistence = await openCrdtPersistence(target.storagePath)
+    if (!this.persistence && stalledStoreAtClose !== null) {
+      log.warn('A store call stalled at the last vault close; this session runs in memory', {
+        stalledFlushNoteId: stalledStoreAtClose
+      })
+    }
+    if (this.persistence) stalledStoreAtClose = null
     this.boundVault = { db: getDatabase(), vaultUuid: target.vaultUuid }
     this.servedVaultPath = readyVaultPath
     if (this.persistence) {
@@ -636,6 +789,25 @@ export class CrdtProvider {
    */
   hasPersistence(): boolean {
     return this.persistence !== null
+  }
+
+  /** The open store, for read-only scans. Null in in-memory mode. */
+  readOnlyStore(): CrdtStoreReader | null {
+    return this.persistence ? readOnlyStore(this.persistence) : null
+  }
+
+  /**
+   * Whether the seed-duplicate repair (#5289) already removed a copy from this
+   * note. Kept in the note's store meta, which a purge drops with the note.
+   * True with no store, so an in-memory session never repairs.
+   */
+  async seedRepairDone(noteId: string): Promise<boolean> {
+    if (!this.persistence) return true
+    return (await this.persistence.getMeta(noteId, SEED_REPAIR_META_KEY)) !== undefined
+  }
+
+  async markSeedRepairDone(noteId: string): Promise<void> {
+    await this.persistence?.setMeta(noteId, SEED_REPAIR_META_KEY, Date.now())
   }
 
   /**
@@ -743,7 +915,25 @@ export class CrdtProvider {
   }
 
   async open(noteId: string, windowId?: number, options?: { skipSeed?: boolean }): Promise<Y.Doc> {
-    const existing = this.docs.get(noteId)
+    // A close in flight first: it may still write the closing doc's file,
+    // which this open must find marked to take in (`close`, #5698). Inside
+    // the note's write-back turn the close may be waiting for that turn, so
+    // the open goes ahead. A close stalled on its store is waited for as long
+    // as a vault close waits for one store call, then the open goes ahead.
+    // It still finds the mark of a file the close already wrote; a file the
+    // close writes after it is not taken in by this doc.
+    const closing = this.closeLocks.get(noteId)
+    if (closing && !crdtWriteback().insideWritebackTurn(noteId)) {
+      if (await completeWithin(closing, STORE_CALL_CLOSE_WAIT_MS)) {
+        return this.open(noteId, windowId, options)
+      }
+      log.warn('An open stopped waiting for a close stalled on its store', { noteId })
+    }
+    // An open in flight first: its doc is in `docs` before the open takes in
+    // an offline edit, and a remote update applied meanwhile would be
+    // replaced by it (#5319).
+    const pending = this.openLocks.get(noteId)
+    const existing = pending ? undefined : this.docs.get(noteId)
     if (existing && !existing.closing) {
       if (windowId) existing.windowIds.add(windowId)
       this.touchDoc(existing)
@@ -754,7 +944,6 @@ export class CrdtProvider {
       return existing.doc
     }
 
-    const pending = this.openLocks.get(noteId)
     if (pending) {
       const doc = await pending
       const entry = this.docs.get(noteId)
@@ -791,8 +980,13 @@ export class CrdtProvider {
    * So with no store and a running sync runtime (`mergeRemote` set), the doc
    * opens unseeded, the server state is merged first, and the file seeds only
    * a doc that is still empty. The pull seeds on its own when the server holds
-   * nothing. A merge that fails or outlasts the timeout (offline) falls back to
-   * the seed, which is the behavior before this change.
+   * nothing. A merge that fails, outlasts the timeout (offline), or leaves
+   * server state unmerged opens the doc empty and waiting (#5290,
+   * `waitsForRemoteBody`): the IPC handler tells the editor, which shows its
+   * loading state, or the vault file read-only once the note is stuck or the
+   * device is offline, until `crdt:doc-loaded`. The pull that later merges, or
+   * the seed when it proves the server empty, ends the wait. A reconnect
+   * retries the merge (`resumeWaitingEditorDocs`).
    *
    * A note that owes its file body (#2646) takes the file on top of the
    * merged server body (`takeFileAfterMerge`), and only after a merge that
@@ -809,7 +1003,20 @@ export class CrdtProvider {
 
     const doc = await this.open(noteId, windowId, { skipSeed: true })
     if (doc.getXmlFragment(CRDT_FRAGMENT_NAME).length > 0) return doc
+    await this.settleEditorDoc(noteId, doc, mergeRemote, timeoutMs)
+    return doc
+  }
 
+  /**
+   * Merges the server body into an editor's empty doc, then waits, takes the
+   * owed file, or seeds; see `openForEditor`.
+   */
+  private async settleEditorDoc(
+    noteId: string,
+    doc: Y.Doc,
+    mergeRemote: (noteId: string) => Promise<boolean>,
+    timeoutMs: number
+  ): Promise<void> {
     let timer: ReturnType<typeof setTimeout> | undefined
     let merged = false
     try {
@@ -820,21 +1027,67 @@ export class CrdtProvider {
         })
       ])
     } catch (err) {
-      log.warn('Server CRDT merge failed before editor open; seeding from vault file', {
-        noteId,
-        error: err
-      })
+      log.warn('Server CRDT merge failed before editor open', { noteId, error: err })
     } finally {
       clearTimeout(timer)
     }
 
     // The window may have closed the doc while the merge ran.
-    if (this.docs.get(noteId)?.doc !== doc) return doc
-    if (merged) await this.takeFileAfterMerge(noteId, doc)
-    else if (doc.getXmlFragment(CRDT_FRAGMENT_NAME).length === 0) {
-      await this.seedFromMarkdown(noteId, doc)
+    const entry = this.docs.get(noteId)
+    if (entry?.doc !== doc) return
+    const empty = doc.getXmlFragment(CRDT_FRAGMENT_NAME).length === 0
+    if (empty && this.waitsForRemoteBody(noteId, merged, true)) {
+      // Still waiting even if something ended the wait without filling the doc.
+      entry.awaitingMerge = true
+      log.info('Editor opened empty until the server body merges', { noteId, merged })
+      return
     }
-    return doc
+    if (merged) await this.takeFileAfterMerge(noteId, doc)
+    else if (empty) await this.seedFromMarkdownPublic(noteId)
+  }
+
+  /**
+   * Retries the merge of every editor doc still waiting for its server body,
+   * for the sync runtime once the network is back (#5290). A note the server
+   * never saw seeds here, since no pull would ever name it.
+   */
+  async resumeWaitingEditorDocs(): Promise<void> {
+    const merge = this.mergeRemote
+    if (this.persistence || !merge) return
+    const waiting = [...this.docs].filter(
+      ([, entry]) => entry.awaitingMerge && !entry.closing && entry.windowIds.size > 0
+    )
+    for (const [noteId, entry] of waiting) {
+      await this.settleEditorDoc(noteId, entry.doc, merge, EDITOR_OPEN_MERGE_TIMEOUT_MS)
+    }
+  }
+
+  /**
+   * Tells a waiting note's editors what they now wait on (`remoteBodyWait`):
+   * for the coordinator once its pulls are stuck (#5290). Each reason but
+   * `merging` switches them to the vault file, read-only. The doc is never
+   * seeded here: a seed beside the server body would duplicate it once the
+   * body merges (D-UNMERGED-OPEN-EXIT-2).
+   */
+  reportEditorWait(noteId: string): void {
+    const entry = this.docs.get(noteId)
+    if (!entry || entry.closing || entry.windowIds.size === 0) return
+    const wait = this.remoteBodyWait(noteId)
+    if (!wait) return
+    log.warn('A waiting editor shows its file read-only', { noteId, wait })
+    broadcastToAllWindows(CRDT_EVENTS.DOC_WAIT, { noteId, wait } satisfies CrdtDocWaitEvent)
+  }
+
+  /** `reportEditorWait` for every waiting doc, for the runtime once the session ends (#5342). */
+  reportEditorWaits(): void {
+    for (const noteId of this.docs.keys()) this.reportEditorWait(noteId)
+  }
+
+  /** Ends a doc's wait for the server body, and tells its editors (#5290). */
+  private endAwaitingMerge(noteId: string, entry: ActiveDoc): void {
+    if (!entry.awaitingMerge) return
+    entry.awaitingMerge = false
+    if (entry.windowIds.size > 0) broadcastToAllWindows(CRDT_EVENTS.DOC_LOADED, { noteId })
   }
 
   /**
@@ -846,8 +1099,9 @@ export class CrdtProvider {
    * differs from the merged body, the write-back that the merge schedules keeps
    * the file as a version before it replaces it, so neither side is lost.
    *
-   * A merge that fails or throws falls back to the seed. The failed pull leaves
-   * the note flagged unmerged, so the push takes the non-pruning update route.
+   * A merge that fails, throws, or leaves server state unmerged pushes nothing
+   * (#5290): the doc stays empty and the caller keeps the push owed. The seed
+   * is taken only where `waitsForRemoteBody` allows it.
    *
    * The caller holds the doc (`holdDoc`) from before this open to after its
    * encode: with no store, a doc closed in between drops the merged body.
@@ -862,10 +1116,12 @@ export class CrdtProvider {
     try {
       merged = await merge(noteId)
     } catch (err) {
-      log.warn('Server CRDT merge failed before a seeded push; seeding from vault file', {
-        noteId,
-        error: err
-      })
+      log.warn('Server CRDT merge failed before a seeded push', { noteId, error: err })
+    }
+    if (this.waitsForRemoteBody(noteId, merged)) {
+      const entry = this.docs.get(noteId)
+      if (entry?.doc === doc) entry.awaitingMerge = true
+      return doc
     }
     if (merged && (await this.takeFileAfterMerge(noteId, doc))) return doc
     return this.open(noteId)
@@ -893,8 +1149,13 @@ export class CrdtProvider {
       if (!owesFileBody(noteId)) return true
       const cached = getNoteCacheById(getIndexDatabase(), noteId)
       if (!cached) return true
+      // A binary note owes no body: its file is the blob (#5412).
+      if (isBinaryNoteRow(cached)) {
+        clearOwedFileBody(noteId)
+        return true
+      }
       const file = await openNoteFile(noteId, cached.path)
-      if (file === OUTSIDE_VAULT) return true
+      if (file === REFUSED) return true
       const raw = file === null ? null : await readAndClose(file)
       if (raw === null) {
         clearOwedFileBody(noteId)
@@ -908,7 +1169,7 @@ export class CrdtProvider {
       return true
     } finally {
       const entry = this.docs.get(noteId)
-      if (entry?.doc === doc) entry.awaitingMerge = false
+      if (entry?.doc === doc) this.endAwaitingMerge(noteId, entry)
     }
   }
 
@@ -967,7 +1228,9 @@ export class CrdtProvider {
       lastSizeCheckAt: 0,
       lastTouchedAt: this.now(),
       localOnly: this.isNoteLocalOnly(noteId),
-      awaitingMerge: !this.persistence && options?.skipSeed === true
+      binary: this.isBinary(noteId),
+      awaitingMerge: !this.persistence && options?.skipSeed === true,
+      storedWaiters: []
     }
     this.docs.set(noteId, entry)
 
@@ -975,9 +1238,38 @@ export class CrdtProvider {
       this.onDocUpdate(noteId, update, origin)
     })
 
+    if (loaded) await this.takeOfflineEdit(noteId, doc)
+
     await this.evictInactiveDocsIfNeeded()
 
     return doc
+  }
+
+  /**
+   * A file edited outside Memry while the app was closed raised no watcher
+   * event (`ignoreInitial`), so its first open this session feeds it into the
+   * stored doc, before any remote update lands (#5319). Taken after one, the
+   * full-body replace would delete that edit. The write-back's outside-edit
+   * ingest decides and feeds, against the baseline (`writeback-baseline.ts`).
+   * A failure leaves the file to that same check on the next write-back.
+   *
+   * A file marked unstored (`holdsUnstoredFile`) is taken in at every open,
+   * not only the first: the store this doc was read from may lack the file's
+   * bytes, in this session too, once an earlier doc of the note closed with
+   * a store that failed (#5698).
+   */
+  private async takeOfflineEdit(noteId: string, doc: Y.Doc): Promise<void> {
+    if (this.offlineEditChecked.has(noteId) && !this.holdsUnstoredFile(noteId)) return
+    if (doc.getXmlFragment(CRDT_FRAGMENT_NAME).length === 0) return
+    this.offlineEditChecked.add(noteId)
+    try {
+      await crdtWriteback().ingestOfflineEdit(noteId, doc)
+    } catch (err) {
+      log.warn('Could not check the file for an edit made while the app was closed', {
+        noteId,
+        error: err
+      })
+    }
   }
 
   /**
@@ -1005,6 +1297,24 @@ export class CrdtProvider {
       })
       return false
     }
+  }
+
+  /** `isBinaryNote`; false when the row cannot be read, as `isNoteLocalOnly` falls back. */
+  private isBinary(noteId: string): boolean {
+    try {
+      return isBinaryNote(getDatabase(), noteId)
+    } catch (err) {
+      log.warn('Could not read whether a note is binary; treating it as markdown', {
+        noteId,
+        error: err
+      })
+      return false
+    }
+  }
+
+  /** May this doc's bytes leave the device? Never a local-only note's, nor a binary note's. */
+  private sendsBody(entry: ActiveDoc): boolean {
+    return !entry.localOnly && !entry.binary
   }
 
   /**
@@ -1059,12 +1369,34 @@ export class CrdtProvider {
     }
 
     entry.closing = true
+    const closed = this.closeDoc(noteId, entry, options)
+    this.closeLocks.set(noteId, closed)
+    try {
+      await closed
+    } finally {
+      if (this.closeLocks.get(noteId) === closed) this.closeLocks.delete(noteId)
+    }
+  }
 
+  /**
+   * The body of `close`, while `closeLocks` holds the note: an open of the
+   * note waits for it, so the doc stays the note's until it is destroyed.
+   * Before destroying the doc it waits for the note's running write-back
+   * turn, and when the store does not hold the doc it runs the note's armed
+   * pass against it inside that turn: the doc is then the only holder of what
+   * the store missed, and the write-back marks its file for the next open to
+   * take in (`recordDocFile`, #5698).
+   */
+  private async closeDoc(
+    noteId: string,
+    entry: ActiveDoc,
+    options: { deferSnapshot?: boolean }
+  ): Promise<void> {
     this.flushNetworkBroadcast(noteId)
 
     const push = this.snapshotSender()
     const defer = options.deferSnapshot ? this.deferSnapshot : null
-    if (push && entry.pendingSnapshotBytes > 0 && !entry.localOnly) {
+    if (push && entry.pendingSnapshotBytes > 0 && this.sendsBody(entry)) {
       if (defer) {
         // Pushed later from the store, which flushDoc below brings up to date.
         defer(noteId)
@@ -1085,28 +1417,16 @@ export class CrdtProvider {
     await this.flushDoc(noteId).catch((err: unknown) => {
       log.error('Failed to flush doc on close', { noteId, error: err })
     })
-
-    if (this.docs.get(noteId) !== entry) {
-      // The note was reopened while the flush above was in flight, so doOpen()
-      // put a *different* entry — with its own Y.Doc — in the map. That
-      // replacement is what the editor is typing into, so the map entry must
-      // stay exactly as it is. Only the superseded doc is retired here, and it
-      // is provably unreachable: every routing path (applyIpcUpdate,
-      // applyIpcSyncStep2, applyRemoteUpdate, getDoc, getDiff, getStateVector,
-      // updateMeta, onDocUpdate, broadcastToWindows) re-reads this.docs by
-      // noteId and therefore resolves the replacement; nothing outside the
-      // provider retains a Y.Doc across awaits; and entry.doc is assigned only
-      // in doOpen and in compactDoc's in-place swap, so one doc belongs to
-      // exactly one entry and can never be shared with the replacement.
-      // Destroying it detaches its 'update' listener instead of leaving it for
-      // GC to notice.
-      log.debug('Doc reopened during async close, destroying the superseded doc', { noteId })
-      entry.doc.destroy()
-      return
-    }
+    const stored = await this.settleStoreBeforeDestroy(noteId, entry)
+    await crdtWriteback().writeBackBeforeClose(noteId, entry.doc, !stored)
+    // A pass that ran meanwhile may have fed the doc; it is stored only once
+    // nothing of it is storing.
+    if (stored && this.holdsDoc(noteId, entry.doc)) this.storedAtClose.add(entry.doc)
 
     entry.doc.destroy()
-    this.docs.delete(noteId)
+    // An open inside the note's write-back turn replaced the entry meanwhile,
+    // or a vault close dropped it.
+    if (this.docs.get(noteId) === entry) this.docs.delete(noteId)
     log.debug('Doc closed', { noteId })
   }
 
@@ -1224,7 +1544,10 @@ export class CrdtProvider {
     clearOwedFileBody(noteId)
 
     const entry = this.docs.get(noteId)
-    if (entry) entry.pendingSnapshotBytes = 0
+    if (entry) {
+      entry.purging = true
+      entry.pendingSnapshotBytes = 0
+    }
 
     await this.close(noteId)
     await this.persistence?.clearDocument(noteId).catch((err: unknown) => {
@@ -1288,7 +1611,13 @@ export class CrdtProvider {
     } finally {
       this.applyingRemoteEditedAtMs = undefined
     }
-    entry.awaitingMerge = false
+    // An update Yjs parks as pending structs fills nothing, and an editor
+    // bound to the empty doc would type a second body beside the server's
+    // (#5290). With nothing pending, an empty fragment is the server's body.
+    const { pendingStructs } = entry.doc.store
+    if (entry.doc.getXmlFragment(CRDT_FRAGMENT_NAME).length > 0 || pendingStructs === null) {
+      this.endAwaitingMerge(noteId, entry)
+    }
     return true
   }
 
@@ -1416,29 +1745,47 @@ export class CrdtProvider {
     // Read before the map is cleared below: after that the count is gone, and
     // the reset that follows destroy() is where it has to be reported.
     this.attachedDocsAtDestroy = this.strandedEditorDocCount
-    await crdtWriteback().flushPendingWritebacks()
-    this.networkBatcher.flushAll()
+    this.beginClose()
+    // The note whose store call stalled. y-leveldb runs every store call
+    // through one queue, so each later call waits behind it: the close stops
+    // asking the store, and the write-back puts the edits in this vault's files.
+    let stalledOn: string | null = null
+    // An editor update that lands while the docs are stored arms another
+    // write-back pass, which belongs to this vault's file.
+    do {
+      await crdtWriteback().flushPendingWritebacks()
+      this.networkBatcher.flushAll()
 
-    for (const [noteId] of this.docs) {
-      try {
-        await this.flushDoc(noteId)
-      } catch (err) {
-        log.warn('Failed to flush doc during CRDT destroy', { noteId, error: err })
+      if (stalledOn === null) {
+        stalledOn = await this.storeOpenDocsForClose()
+        // A debounce that fired during the wait started a pass the flush above
+        // never saw. This flush awaits it, so no pass outlives the close.
+        if (stalledOn !== null) await crdtWriteback().flushPendingWritebacks()
       }
-    }
+    } while (crdtWriteback().hasArmedWritebacks())
+    // No await from the check above to the clear below: an update after the
+    // clear finds no doc and cannot arm a pass.
     for (const [, entry] of this.docs) {
       entry.doc.destroy()
     }
     this.docs.clear()
 
     if (this.persistence) {
-      try {
-        await this.persistence.destroy()
-      } catch (err) {
-        log.warn('Failed to close CRDT persistence on destroy', { error: err })
-      }
+      const persistence = this.persistence
+      // Queued behind every write still in the store, which lands first if
+      // the store recovers.
+      const closing = Promise.resolve()
+        .then(() => persistence.destroy())
+        .catch((err: unknown) => {
+          log.warn('Failed to close CRDT persistence on destroy', { error: err })
+        })
+      // A store that stalled already holds its close behind the stalled call,
+      // so the log goes out first: a quit's budget can end during the wait.
+      const closed = stalledOn === null && (await completeWithin(closing, STORE_CALL_CLOSE_WAIT_MS))
+      if (!closed) this.reportStalledStore(stalledOn)
       this.persistence = null
     }
+    this.closing = new AbortController()
     // Dropped with the store, in the same operation. Anything still holding
     // watermarks read out of that store now sees a different `storeId` and has
     // to throw its copy away — see the getter.
@@ -1452,12 +1799,14 @@ export class CrdtProvider {
     this.snapshotPushFn = null
     this.snapshotBatchPushFn = null
     this.syncPaused = NOT_PAUSED
+    this.networkOnline = ALWAYS_ONLINE
     this.snapshotCoverage = NO_COVERAGE
     this.deferSnapshot = null
     this.oweRemoteMerge = null
     this.mergeRemote = null
     this.storeUnreconciled = false
     this.unvouchedNotes.clear()
+    this.storeOwed.clear()
 
     // Write-back keeps its own module-level per-note maps, keyed by ids and
     // absolute paths belonging to the vault being torn down here.
@@ -1507,7 +1856,7 @@ export class CrdtProvider {
     let pushed = 0
     for (const [noteId, entry] of this.docs) {
       if (signal?.aborted) break
-      if (entry.localOnly) continue
+      if (!this.sendsBody(entry)) continue
       if (entry.pendingSnapshotBytes <= 0) continue
       try {
         const base = await this.readPushBase(noteId)
@@ -1522,6 +1871,15 @@ export class CrdtProvider {
       }
     }
     return pushed
+  }
+
+  /** Notes whose snapshot bytes no push has sent yet. */
+  unpushedSnapshotNoteIds(): string[] {
+    const ids: string[] = []
+    for (const [noteId, entry] of this.docs) {
+      if (entry.pendingSnapshotBytes > 0 && this.sendsBody(entry)) ids.push(noteId)
+    }
+    return ids
   }
 
   /**
@@ -1543,7 +1901,7 @@ export class CrdtProvider {
   ): Promise<PreparedSnapshot | null> {
     const indexDb = getIndexDatabase()
     const cached = getNoteCacheById(indexDb, noteId)
-    if (cached?.fileType && isBinaryFileType(cached.fileType)) {
+    if (cached && isBinaryNoteRow(cached)) {
       log.debug('Skipping CRDT snapshot push for binary note', {
         noteId,
         fileType: cached.fileType
@@ -1857,9 +2215,9 @@ export class CrdtProvider {
     const indexDb = getIndexDatabase()
     const cached = getNoteCacheById(indexDb, noteId)
     if (!cached) return
-    if (cached.fileType && isBinaryFileType(cached.fileType)) return
+    if (isBinaryNoteRow(cached)) return
     const file = await openNoteFile(noteId, cached.path)
-    if (file === OUTSIDE_VAULT) return
+    if (file === REFUSED) return
 
     // Classify from `stat` before reading. The byte ceiling settles a large
     // file on its own, and the vault-wide sweep reaches every note on every
@@ -1884,7 +2242,7 @@ export class CrdtProvider {
       // first keystroke into an empty foreign note reach the file — without it
       // the write-back's never-read guard would refuse that save forever,
       // since nothing else fills the column in (#1909).
-      if (raw === '') this.recordSeedRead(indexDb, noteId, cached.contentHash, raw)
+      if (raw === '') this.recordSeedRead(indexDb, noteId, raw)
       return
     }
 
@@ -1909,7 +2267,7 @@ export class CrdtProvider {
       // Frontmatter-only or whitespace-only: nothing to seed, but the bytes
       // WERE read and the empty doc represents the empty body faithfully, so
       // the same recording applies as for an empty file above.
-      this.recordSeedRead(indexDb, noteId, cached.contentHash, raw)
+      this.recordSeedRead(indexDb, noteId, raw)
       return
     }
 
@@ -1935,7 +2293,7 @@ export class CrdtProvider {
     // row. The bytes ARE read here, and the doc is built from them, so this is
     // the honest place to say so.
     if (ok) {
-      this.recordSeedRead(indexDb, noteId, cached.contentHash, raw)
+      this.recordSeedRead(indexDb, noteId, raw)
     }
 
     if (ok && this.persistence) {
@@ -1948,36 +2306,41 @@ export class CrdtProvider {
   }
 
   // The doc now represents the file: a note that owed its file body owes it no
-  // longer (#2646). A hash the indexer already measured is left alone; this
-  // only ever fills a hole, and only with the hash of bytes the seed read.
+  // longer (#2646), and the bytes the seed read are the write-back's baseline,
+  // over any hash measured before an edit made while the app was closed (#5296).
   private recordSeedRead(
     indexDb: ReturnType<typeof getIndexDatabase>,
     noteId: string,
-    existingHash: string | null | undefined,
     raw: string
   ): void {
     clearOwedFileBody(noteId)
     const entry = this.docs.get(noteId)
-    if (entry) entry.awaitingMerge = false
-    if (existingHash) return
+    if (entry) this.endAwaitingMerge(noteId, entry)
     try {
-      updateNoteCache(indexDb, noteId, { contentHash: generateContentHash(raw) })
+      recordBaseline(indexDb, noteId, raw)
     } catch (err) {
       log.warn('Failed to record the seeded content hash', { noteId, error: err })
     }
   }
 
+  /**
+   * Seeds an empty doc from its file and ends its wait for the server body,
+   * also when the file gave nothing to seed (missing, large-file class).
+   */
   async seedFromMarkdownPublic(noteId: string): Promise<void> {
     const entry = this.docs.get(noteId)
     if (!entry) return
     await this.seedFromMarkdown(noteId, entry.doc)
+    if (this.docs.get(noteId) === entry) this.endAwaitingMerge(noteId, entry)
   }
 
+  /** Null for a binary note, which gets no doc (#5607). */
   async initForNote(
     noteId: string,
     meta: { title?: string; date?: string },
     tags?: string[]
-  ): Promise<Y.Doc> {
+  ): Promise<Y.Doc | null> {
+    if (this.isBinary(noteId)) return null
     const doc = await this.open(noteId)
 
     doc.transact(() => {
@@ -2064,6 +2427,14 @@ export class CrdtProvider {
   private onDocUpdate(noteId: string, update: Uint8Array, origin: unknown): void {
     const entry = this.docs.get(noteId)
     if (!entry) return
+    if (entry.purging) {
+      log.warn('Dropping an update to a doc being purged', {
+        noteId,
+        origin: isIpcOrigin(origin) ? `ipc:${origin.windowId}` : String(origin),
+        bytes: update.byteLength
+      })
+      return
+    }
 
     this.touchDoc(entry)
     // Both counters stay honest for a local-only note. accumulatedBytes drives
@@ -2094,7 +2465,7 @@ export class CrdtProvider {
     // refuses for the same notes (`seedUnclockedNotes`, `offline-clock`).
     // Recording a full-state row is skipped for the same reason the push is:
     // that row exists to get a body to the server.
-    if (origin !== ORIGIN_NETWORK && !entry.localOnly) {
+    if (origin !== ORIGIN_NETWORK && this.sendsBody(entry)) {
       if (this.updateQueue) {
         this.updateQueue.enqueue(noteId, update)
       } else {
@@ -2214,9 +2585,164 @@ export class CrdtProvider {
 
   private persistUpdate(noteId: string, update: Uint8Array): void {
     if (!this.persistence) return
-    this.persistence.storeUpdate(noteId, update).catch((err: unknown) => {
-      log.error('Failed to persist CRDT update', { noteId, error: err })
+    const owedDoc = this.storeOwed.delete(noteId) ? this.docs.get(noteId)?.doc : undefined
+    const stored = this.persistence
+      .storeUpdate(noteId, owedDoc ? Y.encodeStateAsUpdate(owedDoc) : update)
+      .catch((err: unknown) => {
+        this.storeOwed.add(noteId)
+        log.error('Failed to persist CRDT update; the next store writes the whole doc', {
+          noteId,
+          error: err
+        })
+        throw err
+      })
+    // An earlier failure is `storeOwed`'s to report, not every later store's.
+    const previous = this.persisting.get(noteId)?.catch(() => {}) ?? Promise.resolve()
+    const chained = previous.then(() => stored)
+    this.persisting.set(noteId, chained)
+    chained
+      .catch(() => {})
+      .finally(() => {
+        if (this.persisting.get(noteId) === chained) this.persisting.delete(noteId)
+        const entry = this.docs.get(noteId)
+        if (entry && this.persistence && !this.isStoring(noteId)) answerStored(entry)
+      })
+  }
+
+  /**
+   * Whether the store holds every update `doc`, an instance of the note's doc,
+   * has made so far: it is the open doc and nothing of it is storing, or its
+   * close landed a store of its whole state. Any other instance is unknown to
+   * the store's side, so a store of the note says nothing about it.
+   */
+  holdsDoc(noteId: string, doc: Y.Doc): boolean {
+    if (this.storedAtClose.has(doc)) return true
+    return this.docs.get(noteId)?.doc === doc && !this.isStoring(noteId)
+  }
+
+  /**
+   * Resolves once the store holds every update `doc` had when it was called,
+   * however late: after a failed store, once a store of its whole state
+   * lands. Tied to the instance, never to the note: a doc that is not the
+   * note's open doc (closed, or replaced by a later instance read from a
+   * store that missed this one's updates) never answers unless its close
+   * stored it. Never rejects. Never resolves while the store keeps failing or
+   * after the store is torn down (`ActiveDoc.storedWaiters`, `recordDocFile`,
+   * #5698).
+   */
+  whenStored(noteId: string, doc: Y.Doc): Promise<void> {
+    if (this.holdsDoc(noteId, doc)) return Promise.resolve()
+    const entry = this.docs.get(noteId)
+    if (entry?.doc !== doc) return new Promise(() => {})
+    return new Promise((resolve) => entry.storedWaiters.push(resolve))
+  }
+
+  /**
+   * Before a closing doc is destroyed: waits for its stores, stores its whole
+   * state again when the store missed an update, then answers its `whenStored`
+   * callers if the store holds it, or drops them unanswered. The doc is the
+   * only holder of what the store missed; once destroyed, nothing stores it.
+   * Resolves whether the store holds the doc.
+   */
+  private async settleStoreBeforeDestroy(noteId: string, entry: ActiveDoc): Promise<boolean> {
+    const landed = (stored: Promise<void> | undefined): Promise<boolean> =>
+      this.untilStoredOrClose(noteId, stored).then(
+        () => true,
+        () => false
+      )
+    let stored = await landed(this.persisting.get(noteId))
+    if (this.persistence && this.storeOwed.delete(noteId)) {
+      this.persistUpdate(noteId, Y.encodeStateAsUpdate(entry.doc))
+      stored = await landed(this.persisting.get(noteId))
+    }
+    const holds = stored && !this.storeOwed.has(noteId)
+    if (holds) answerStored(entry)
+    entry.storedWaiters = []
+    return holds
+  }
+
+  /** Whether the note's file holds bytes its store may lack (`holdsUnstoredFile`). */
+  private holdsUnstoredFile(noteId: string): boolean {
+    try {
+      return holdsUnstoredFile(getNoteCacheById(getIndexDatabase(), noteId))
+    } catch (err) {
+      log.warn('Could not read whether the file holds unstored bytes; taking it in', {
+        noteId,
+        error: err
+      })
+      return true
+    }
+  }
+
+  /**
+   * Resolves once the store holds every update of the note handed to it so
+   * far, and rejects when one failed. After a failure it resolves only once a
+   * store of the doc's whole state lands. A writer that feeds the doc before
+   * it writes the file, or moves the baseline, waits here, so neither runs
+   * ahead of what a restart's doc holds (sync/writeback-baseline.ts).
+   */
+  async whenPersisted(noteId: string): Promise<void> {
+    await this.untilStoredOrClose(noteId, this.persisting.get(noteId))
+    // A closed doc reopens from the store, so only a live doc holds the gap.
+    const doc = this.docs.get(noteId)?.doc
+    if (doc && this.storeOwed.delete(noteId)) {
+      this.persistUpdate(noteId, Y.encodeStateAsUpdate(doc))
+    }
+    await this.untilStoredOrClose(noteId, this.persisting.get(noteId))
+  }
+
+  /**
+   * Whether an update of the note is still on its way to the store, or the
+   * store missed one: a restart's doc may lack what the live doc holds
+   * (`recordDocFile`, sync/writeback-baseline.ts).
+   */
+  private isStoring(noteId: string): boolean {
+    return this.persistence !== null && (this.persisting.has(noteId) || this.storeOwed.has(noteId))
+  }
+
+  /**
+   * Starts a close: from here every `whenPersisted` wait gives up after
+   * `STORE_CALL_CLOSE_WAIT_MS` and logs its note. A quit calls it before it
+   * flushes the write-backs, whose passes wait on the store, so a stalled
+   * store cannot eat the quit's budget (#5698); `destroy` calls it too.
+   */
+  beginClose(): void {
+    this.closing.abort()
+  }
+
+  /**
+   * `stored`, or a rejection once a close has waited
+   * `STORE_CALL_CLOSE_WAIT_MS` for it: a write-back pass that took in an
+   * outside edit waited here behind a stalled store, and held the close
+   * forever (#5698). The note stays unstored, and its baseline says so.
+   */
+  private async untilStoredOrClose(
+    noteId: string,
+    stored: Promise<void> | undefined
+  ): Promise<void> {
+    if (!stored) return
+    const closing = this.closing.signal
+    let timer: ReturnType<typeof setTimeout> | undefined
+    let giveUp!: () => void
+    const gaveUp = new Promise<never>((_, reject) => {
+      giveUp = () => {
+        timer = setTimeout(() => {
+          log.warn('A store wait gave up: the CRDT store stalled while the vault closed', {
+            noteId,
+            waitMs: STORE_CALL_CLOSE_WAIT_MS
+          })
+          reject(new Error('The CRDT store stalled while the vault closed'))
+        }, STORE_CALL_CLOSE_WAIT_MS)
+      }
+      if (closing.aborted) giveUp()
+      else closing.addEventListener('abort', giveUp, { once: true })
     })
+    try {
+      await Promise.race([stored, gaveUp])
+    } finally {
+      clearTimeout(timer)
+      closing.removeEventListener('abort', giveUp)
+    }
   }
 
   private maybeCompact(noteId: string): void {
@@ -2250,6 +2776,37 @@ export class CrdtProvider {
         log.error('Failed to flush doc', { noteId, error: err })
       })
     }
+  }
+
+  /**
+   * Logs the notes whose writes a stalled store never confirmed. Their files
+   * already say so: the write-back records a file as stored only once the
+   * store holds its bytes (`recordDocFile`, sync/writeback-baseline.ts).
+   */
+  private reportStalledStore(stalledOn: string | null): void {
+    const unstoredNoteIds = [...new Set([...this.persisting.keys(), ...this.storeOwed])]
+    log.error('CRDT store stalled; the vault closed without waiting for it', {
+      stalledFlushNoteId: stalledOn ?? undefined,
+      unstoredNoteIds,
+      waitMs: STORE_CALL_CLOSE_WAIT_MS
+    })
+    stalledStoreAtClose = stalledOn ?? unstoredNoteIds[0] ?? null
+  }
+
+  /**
+   * Stores each open doc for a close, one call at a time. Resolves the note
+   * whose call outlived `STORE_CALL_CLOSE_WAIT_MS`, or null.
+   */
+  private async storeOpenDocsForClose(): Promise<string | null> {
+    for (const [noteId, entry] of this.docs) {
+      const flushed = this.flushDoc(noteId)
+        .catch((err: unknown) => {
+          log.warn('Failed to flush doc during CRDT destroy', { noteId, error: err })
+        })
+        .then(() => this.settleStoreBeforeDestroy(noteId, entry))
+      if (!(await completeWithin(flushed, STORE_CALL_CLOSE_WAIT_MS))) return noteId
+    }
+    return null
   }
 
   private async flushDoc(noteId: string): Promise<void> {
@@ -2330,7 +2887,7 @@ export class CrdtProvider {
 
     try {
       const push = this.snapshotSender()
-      if (push && entry.pendingSnapshotBytes > 0 && !entry.localOnly) {
+      if (push && entry.pendingSnapshotBytes > 0 && this.sendsBody(entry)) {
         // Credit only the bytes this payload actually covers. result.compacted
         // was encoded before the await, and applyIpcUpdate writes straight to
         // entry.doc with no compaction guard (only remote updates are
@@ -2501,7 +3058,7 @@ export class CrdtProvider {
     const indexDb = getIndexDatabase()
     const cached = getNoteCacheById(indexDb, noteId)
     if (!cached) return { ok: false, error: `Note not found: ${noteId}` }
-    if (cached.fileType && isBinaryFileType(cached.fileType)) {
+    if (isBinaryNoteRow(cached)) {
       return { ok: false, error: `Binary notes do not use CRDT: ${noteId}` }
     }
     return { ok: true }
@@ -2537,22 +3094,25 @@ export class CrdtProvider {
   }
 }
 
-const OUTSIDE_VAULT = Symbol('outside vault')
+const REFUSED = Symbol('refused')
 
 /**
  * The note file opened for reading, or null when it is missing. A file linked
- * outside the vault gives the doc nothing: refuse, never follow (#2804).
+ * outside the vault gives the doc nothing: refuse, never follow (#2804). So
+ * does a file shared with a case twin (#5297).
  */
 async function openNoteFile(
   noteId: string,
   relativePath: string
-): Promise<FileHandle | null | typeof OUTSIDE_VAULT> {
+): Promise<FileHandle | null | typeof REFUSED> {
+  const vaultRoot = getVaultRoot()
+  if (refusesCaseTwinFile(vaultRoot, relativePath, noteId)) return REFUSED
   try {
-    return await openVaultFile(getVaultRoot(), relativePath)
+    return await openVaultFile(vaultRoot, relativePath)
   } catch (err) {
     if (!(err instanceof OutsideVaultError)) throw err
     log.warn('Refusing a note file that links outside the vault', { noteId })
-    return OUTSIDE_VAULT
+    return REFUSED
   }
 }
 
@@ -2564,6 +3124,12 @@ async function readAndClose(file: FileHandle): Promise<string> {
   }
 }
 
+function answerStored(entry: ActiveDoc): void {
+  const waiters = entry.storedWaiters
+  entry.storedWaiters = []
+  for (const resolve of waiters) resolve()
+}
+
 function isIpcOrigin(origin: unknown): origin is IpcOrigin {
   return (
     typeof origin === 'object' &&
@@ -2573,6 +3139,13 @@ function isIpcOrigin(origin: unknown): origin is IpcOrigin {
     (origin as IpcOrigin).source === 'ipc'
   )
 }
+
+/**
+ * The note a vault close's stalled store call was on. Its LevelDB lock stays
+ * held until that call returns, so a reopen of the vault meanwhile runs in
+ * memory, and says why.
+ */
+let stalledStoreAtClose: string | null = null
 
 let sessionOutcomeRecorded = false
 

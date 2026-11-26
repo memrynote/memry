@@ -133,6 +133,7 @@ describe('desktop writer parity with the committed protocol vectors', () => {
         const signer = sodium.crypto_sign_seed_keypair(fromHex(entry.input.signingSeedHex))
 
         const { pushItem, sizeBytes } = encryptItemForPush({
+          vaultId: null,
           id: entry.input.id,
           type: entry.input.type as never,
           operation: entry.input.operation as never,

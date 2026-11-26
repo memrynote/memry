@@ -31,10 +31,12 @@
 use rusqlite::Connection;
 
 use crate::api::errors::StorageError;
+use crate::storage::nested_tx;
 use crate::storage::repositories::{Change, sync_items};
 use crate::sync::outbox::{self, Durable};
 use crate::sync::store;
 
+use super::journal::not_a_journal_day;
 use super::note_positions;
 use super::notes::link_rewrite::{self, LinkNames, Renamed};
 use super::notes::{self, failed, iso, object, stamp, tombstone_local};
@@ -184,9 +186,9 @@ pub fn delete(
     now_ms: i64,
 ) -> Result<Removal, StorageError> {
     let path = valid_path(path)?;
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
 
-    let held = notes_within(&tx, path)?;
+    let held = notes_within_but_days(&tx, path)?;
     if !held.is_empty() {
         return Err(StorageError::Failed {
             what: format!(
@@ -239,7 +241,7 @@ pub fn delete_tree(
     now_ms: i64,
 ) -> Result<Removal, StorageError> {
     let path = valid_path(path)?;
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let removal = delete_tree_in(&tx, path, device_id, now_ms)?;
     tx.commit().map_err(failed)?;
     Ok(removal)
@@ -291,8 +293,8 @@ fn relocate(
         });
     }
 
-    let tx = conn.unchecked_transaction().map_err(failed)?;
-    if !folders_within(&tx, to)?.is_empty() || !notes_within(&tx, to)?.is_empty() {
+    let tx = nested_tx::begin(conn).map_err(failed)?;
+    if !folders_within(&tx, to)?.is_empty() || !note_rows_within(&tx, to)?.is_empty() {
         return Err(StorageError::Failed {
             what: format!("`{to}` is already in use"),
         });
@@ -307,7 +309,7 @@ fn relocate(
 
     let mut moved = Vec::new();
     let mut renamed = Vec::new();
-    for (note_id, folder_path) in notes_within(&tx, from)? {
+    for (note_id, folder_path) in notes_within_but_days(&tx, from)? {
         let target = rewritten(&folder_path, from, to);
         if let Some(names) = LinkNames::of(&tx, &note_id)? {
             renamed.push(Renamed {
@@ -414,13 +416,34 @@ fn folders_within(tx: &Connection, root: &str) -> Result<Vec<String>, StorageErr
     Ok(found)
 }
 
-/// Every live note at or under `root`, as `(id, folder_path)`.
-fn notes_within(tx: &Connection, root: &str) -> Result<Vec<(String, String)>, StorageError> {
+/// Every live note at or under `root`, as `(id, folder_path)`. A journal
+/// day's `notes` row is not a note: desktop's folder move leaves a day where
+/// it is (`moveIndexedNotesWithFolder`), so a folder named `journal` moves
+/// without it.
+fn notes_within_but_days(
+    tx: &Connection,
+    root: &str,
+) -> Result<Vec<(String, String)>, StorageError> {
+    live_rows_within(tx, root, &not_a_journal_day("id"))
+}
+
+/// Every live `notes` row at or under `root`, a journal day's included: a
+/// folder holding only a day is still in use, as desktop refuses to move a
+/// folder onto an existing directory (`move-directory.ts`).
+fn note_rows_within(tx: &Connection, root: &str) -> Result<Vec<(String, String)>, StorageError> {
+    live_rows_within(tx, root, "1")
+}
+
+fn live_rows_within(
+    tx: &Connection,
+    root: &str,
+    filter: &str,
+) -> Result<Vec<(String, String)>, StorageError> {
     let mut statement = tx
-        .prepare(
+        .prepare(&format!(
             "SELECT id, folder_path FROM notes
-              WHERE deleted_at IS NULL AND folder_path IS NOT NULL ORDER BY id",
-        )
+              WHERE deleted_at IS NULL AND folder_path IS NOT NULL AND {filter} ORDER BY id"
+        ))
         .map_err(failed)?;
     let rows = statement
         .query_map([], |row| {

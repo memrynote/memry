@@ -1,5 +1,6 @@
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { toast } from 'sonner'
 import { ProjectOverviewNote } from './project-overview-note'
 import type * as VaultLocksStoreModule from '@/lib/vault-locks-store'
 
@@ -251,5 +252,77 @@ describe('ProjectOverviewNote', () => {
       await flushN2?.()
     })
     expect(mocks.notesUpdate).not.toHaveBeenCalledWith(expect.objectContaining({ id: 'n2' }))
+  })
+
+  // A refused write (a case twin's body, #5742) resolves `{ success: false }`.
+  it('#then shows a refused debounced save once and keeps the text for the unmount flush', async () => {
+    mocks.notesGet.mockResolvedValue(homeNote)
+    mocks.notesUpdate.mockResolvedValue({ success: false, error: 'Edit refused' })
+
+    const { unmount } = render(
+      <ProjectOverviewNote projectId="p1" homeNoteId="n1" onHomeNoteChange={vi.fn()} />
+    )
+    const changeButton = await screen.findByRole('button', { name: 'Change markdown' })
+
+    vi.useFakeTimers()
+    try {
+      fireEvent.click(changeButton)
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1000)
+      })
+      expect(toast.error).toHaveBeenCalledTimes(1)
+      expect(toast.error).toHaveBeenCalledWith('Edit refused')
+
+      unmount()
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0)
+      })
+    } finally {
+      vi.useRealTimers()
+    }
+
+    expect(mocks.notesUpdate).toHaveBeenCalledTimes(2)
+    expect(mocks.notesUpdate).toHaveBeenLastCalledWith({ id: 'n1', content: '# Changed' })
+    // The same run of refusals: one toast, not one per retry.
+    expect(toast.error).toHaveBeenCalledTimes(1)
+  })
+
+  it('#then shows a refused save from the registry flush and keeps the text', async () => {
+    mocks.notesGet.mockResolvedValue(homeNote)
+    mocks.notesUpdate.mockResolvedValue({ success: false, error: 'Edit refused' })
+
+    render(<ProjectOverviewNote projectId="p1" homeNoteId="n1" onHomeNoteChange={vi.fn()} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Change markdown' }))
+    const flush = mocks.registerPendingSave.mock.calls.find(
+      ([key]) => key === 'project-overview:n1'
+    )?.[1] as () => Promise<void>
+
+    await act(async () => {
+      await flush()
+    })
+    expect(toast.error).toHaveBeenCalledWith('Edit refused')
+
+    mocks.notesUpdate.mockResolvedValue({ success: true, note: null })
+    await act(async () => {
+      await flush()
+    })
+    expect(mocks.notesUpdate).toHaveBeenCalledTimes(2)
+    expect(mocks.notesUpdate).toHaveBeenLastCalledWith({ id: 'n1', content: '# Changed' })
+  })
+
+  it('#then shows a refused save of a late edit after the home note switched', async () => {
+    mocks.notesGet.mockImplementation((id: string) => Promise.resolve({ ...homeNote, id }))
+    mocks.notesUpdate.mockResolvedValue({ success: false, error: 'Edit refused' })
+
+    const { rerender } = render(
+      <ProjectOverviewNote projectId="p1" homeNoteId="n1" onHomeNoteChange={vi.fn()} />
+    )
+    await screen.findByRole('button', { name: 'Change markdown' })
+    const reportLateEdit = mocks.onMarkdownChange!
+
+    rerender(<ProjectOverviewNote projectId="p1" homeNoteId="n2" onHomeNoteChange={vi.fn()} />)
+    reportLateEdit('# Typed in n1')
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Edit refused'))
   })
 })

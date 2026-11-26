@@ -8,12 +8,13 @@
 use std::collections::HashSet;
 
 use rusqlite::Connection;
-use serde_json::{Value, json};
+use serde_json::{Map, Value, json};
 
 use crate::api::errors::StorageError;
 use crate::storage::repositories::schema::Object;
 use crate::sync::field_merge::{TASK_SYNCABLE_FIELDS, init_all_field_clocks};
 use crate::sync::outbox::{self, Durable};
+use crate::sync::versioned;
 
 use super::super::notes::{insert_local, iso, next_clock, object};
 use super::super::task_merge;
@@ -44,6 +45,10 @@ pub struct TaskDetails<'a> {
     pub source_note_id: Option<&'a str>,
     /// `None` is `getNextTaskPosition(projectId, parentId)`.
     pub position: Option<i64>,
+    /// Kept only with a due time, as desktop's `createTask` keeps it.
+    pub duration_minutes: Option<i64>,
+    /// Field values by name; a `null` value sets nothing.
+    pub fields: Option<&'a Map<String, Value>>,
 }
 
 /// Creates a task with every field desktop's `createTask` accepts, its
@@ -94,6 +99,15 @@ pub fn create_detailed(
             for (key, value) in optional {
                 if let Some(value) = value {
                     fields.insert(key.to_owned(), json!(value));
+                }
+            }
+            if let Some(minutes) = details.duration_minutes.filter(|_| task.due_time.is_some()) {
+                fields.insert("durationMinutes".to_owned(), json!(minutes));
+            }
+            if let Some(values) = details.fields {
+                let stamped = versioned::stamp_map(None, values, 0);
+                if stamped.as_object().is_some_and(|map| !map.is_empty()) {
+                    fields.insert("fields".to_owned(), stamped);
                 }
             }
             if let Some(repeat) = task.repeat_config {

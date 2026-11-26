@@ -238,9 +238,11 @@ describe('ObjectPreviewBody', () => {
       source: string
     }) => void
 
+    // The card also reads once more when its listener goes live (#4270).
+    await waitFor(() => expect(api.properties.get).toHaveBeenCalledTimes(2))
     api.properties.get.mockResolvedValue([{ name: 'Job title', value: 'Engineer', type: 'text' }])
     act(() => emit({ id: 'someone-else', changes: {}, source: 'external' }))
-    expect(api.properties.get).toHaveBeenCalledTimes(1)
+    expect(api.properties.get).toHaveBeenCalledTimes(2)
 
     act(() => emit({ id: 'person-1', changes: {}, source: 'external' }))
     expect(await screen.findByText('Engineer')).toBeInTheDocument()

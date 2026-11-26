@@ -77,6 +77,10 @@ describe('tag-utils', () => {
       expect(sanitizeTagInput('project2024')).toBe('project2024')
     })
 
+    it('should keep letters and marks in every script', () => {
+      expect(sanitizeTagInput('#퓨리, привет! हिन्दी')).toBe('퓨리приветहिन्दी')
+    })
+
     it('should handle combined operations', () => {
       expect(sanitizeTagInput('#my tag@2024!')).toBe('mytag2024')
     })

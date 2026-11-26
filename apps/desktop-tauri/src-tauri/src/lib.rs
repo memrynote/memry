@@ -16,6 +16,7 @@ pub mod instance;
 pub mod menu;
 pub mod ml_worker;
 pub mod notifications;
+pub mod post_reveal;
 pub mod power;
 pub mod protocols;
 pub mod registry;
@@ -84,6 +85,11 @@ fn register_stages() {
     commands::attachment_sources::register_stages();
     startup::register(Stage::Handlers, "mount events", mount_events);
     startup::register(Stage::Handlers, "drop staging", shell::drop_stage::init);
+    startup::register(
+        Stage::Handlers,
+        "import grants",
+        commands::notes_import::init,
+    );
     shell::vault_boot::register_stages();
     shell::account_sync::register_stages();
     shutdown::register_stages();
@@ -92,6 +98,7 @@ fn register_stages() {
     tray::register_stages();
     windows::close::register_stages();
     deep_link::register_stages();
+    shell::capture::register_stages();
     notifications::register_stages();
     shortcuts::register_stages();
     windows::sticky::register_stages();

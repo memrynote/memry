@@ -39,6 +39,7 @@ use crate::markdown::frontmatter::{YamlMap, YamlValue, gray_matter_data, split_f
 use crate::markdown::shared::cover_image::is_cover_text;
 use crate::markdown::shared::markdown_code::strip_markdown_comments;
 use crate::markdown::shared::task_block::scan_task_checkbox_states;
+use crate::storage::nested_tx;
 
 /// `createSnippet`'s default `maxLength`, which `syncNoteToCache` uses.
 pub const SNIPPET_LENGTH: usize = 200;
@@ -224,7 +225,7 @@ pub fn write(
     rows: &[NoteStatsRow],
     now_ms: i64,
 ) -> Result<LinkChanges, StorageError> {
-    let transaction = index.unchecked_transaction().map_err(failed)?;
+    let transaction = nested_tx::begin(index).map_err(failed)?;
     for row in rows {
         let stats = &row.stats;
         transaction
@@ -285,7 +286,7 @@ pub fn prune(data: &Connection, index: &Connection) -> Result<usize, StorageErro
         .filter(|note_id| note_id.as_ref().map_or(true, |id| !live.contains(id)))
         .collect::<Result<Vec<String>, _>>()
         .map_err(failed)?;
-    let transaction = index.unchecked_transaction().map_err(failed)?;
+    let transaction = nested_tx::begin(index).map_err(failed)?;
     for note_id in &gone {
         transaction
             .execute(
@@ -300,7 +301,7 @@ pub fn prune(data: &Connection, index: &Connection) -> Result<usize, StorageErro
 }
 
 pub fn forget(index: &Connection, note_id: &str) -> Result<bool, StorageError> {
-    let transaction = index.unchecked_transaction().map_err(failed)?;
+    let transaction = nested_tx::begin(index).map_err(failed)?;
     let removed = transaction
         .execute(
             "DELETE FROM note_stats WHERE note_id = ?1",

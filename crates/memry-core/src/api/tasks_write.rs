@@ -263,6 +263,7 @@ impl Tasks {
                 linked_canvas_ids: &input.linked_canvas_ids,
                 source_note_id: input.source_note_id.as_deref(),
                 position: input.position,
+                ..TaskDetails::default()
             };
             tasks::create_detailed(conn, &task, &details, device, now)?.acknowledge();
             Ok(TaskWrite {

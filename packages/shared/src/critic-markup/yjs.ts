@@ -14,11 +14,12 @@ interface YArrayLike {
   get(index: number): unknown
   toArray?: () => unknown[]
   delete(index: number, length: number): void
-  push(values: unknown[]): void
+  insert(index: number, values: unknown[]): void
 }
 
 interface YDocLike {
   getArray(name: string): YArrayLike
+  transact?: (fn: () => void) => void
 }
 
 const VALID_KINDS: ReadonlySet<unknown> = new Set<CriticMarkupKind>([
@@ -28,30 +29,215 @@ const VALID_KINDS: ReadonlySet<unknown> = new Set<CriticMarkupKind>([
   'comment'
 ])
 
+/** The element keys this build writes. Any other key belongs to a newer build and is kept. */
+const MARK_KEYS: ReadonlySet<string> = new Set([
+  'id',
+  'kind',
+  'visibleText',
+  'start',
+  'end',
+  'originalText',
+  'body',
+  'metadata',
+  'createdAt',
+  'mentions',
+  'attachments',
+  'formatRanges'
+])
+
 function isCriticMarkupKind(value: unknown): value is CriticMarkupKind {
   return VALID_KINDS.has(value)
 }
 
+/**
+ * The valid marks in array order, one per id: the first copy wins (protocol
+ * 12.5.1). Concurrent edits of one mark leave two copies, and Yjs orders them
+ * the same on every replica.
+ */
 export function readCriticMarkupMarksFromYDoc(doc: YDocLike): CriticMarkupMark[] {
-  const array = doc.getArray(CRITIC_MARKUP_MARKS_ARRAY)
-  const values = array.toArray ? array.toArray() : readArrayLike(array)
-  return values.flatMap((value) => {
+  const seen = new Set<string>()
+  return readArray(doc.getArray(CRITIC_MARKUP_MARKS_ARRAY)).flatMap((value) => {
     const mark = normalizeCriticMarkupMark(value)
-    return mark ? [mark] : []
+    if (!mark || seen.has(mark.id)) return []
+    seen.add(mark.id)
+    return [mark]
   })
 }
 
+/**
+ * Makes the root hold `marks`, touching only the elements that change
+ * (protocol 12.5.1): it deletes later copies of an id and ids `marks` drops,
+ * keeps every element this build cannot read (a newer build's, #5574), and
+ * inserts a new id after the furthest existing mark
+ * before it in `marks`. It replaces an element only when the stored mark, read
+ * as this build reads it, differs from the new one in more than its offsets:
+ * the window moves offsets with its typing and never writes them alone
+ * (#4425). A replaced element keeps the keys this build does not know.
+ * Adjacent deletes and adjacent replacements are one operation each. Untouched
+ * elements are never deleted and inserted again: a stale copy would precede a
+ * concurrent device's copy of that id and hide its change.
+ */
 export function writeCriticMarkupMarksToYDoc(doc: YDocLike, marks: CriticMarkupMark[]): void {
   const array = doc.getArray(CRITIC_MARKUP_MARKS_ARRAY)
-  const next = marks.flatMap((mark) => {
+  const next = new Map<string, Record<string, unknown>>()
+  for (const mark of marks) {
     const normalized = normalizeCriticMarkupMark(mark)
-    return normalized ? [toSerializableMark(normalized)] : []
-  })
-  const current = array.toArray ? array.toArray() : readArrayLike(array)
-  if (JSON.stringify(current) === JSON.stringify(next)) return
+    if (normalized && !next.has(normalized.id)) {
+      next.set(normalized.id, toSerializableMark(normalized))
+    }
+  }
 
-  if (array.length > 0) array.delete(0, array.length)
-  if (next.length > 0) array.push(next)
+  const values = readArray(array)
+  const stored: unknown[] = []
+  const indexOf = new Map<string, number>()
+  const keep = values.map((value) => {
+    const id = normalizeCriticMarkupMark(value)?.id
+    if (id !== undefined && (!next.has(id) || indexOf.has(id))) return false
+    if (id !== undefined) indexOf.set(id, stored.length)
+    stored.push(value)
+    return true
+  })
+
+  const result = [...stored]
+  const replaced = stored.map(() => false)
+  // New marks keyed by the kept element they follow (-1: the start).
+  const inserts = new Map<number, Record<string, unknown>[]>()
+  let anchor = -1
+  for (const [id, mark] of next) {
+    const index = indexOf.get(id)
+    if (index === undefined) {
+      const group = inserts.get(anchor)
+      if (group) group.push(mark)
+      else inserts.set(anchor, [mark])
+      continue
+    }
+    if (!sameMarkApartFromOffsets(stored[index], mark)) {
+      result[index] = { ...mark, ...unknownKeys(stored[index]) }
+      replaced[index] = true
+    }
+    anchor = Math.max(anchor, index)
+  }
+
+  for (const [start, end] of runsOf(keep.map((kept) => !kept)).toReversed()) {
+    array.delete(start, end - start)
+  }
+  for (const [start, end] of runsOf(replaced)) {
+    array.delete(start, end - start)
+    array.insert(start, result.slice(start, end))
+  }
+  for (const [after, group] of [...inserts].toSorted(([a], [b]) => b - a)) {
+    array.insert(after + 1, group)
+  }
+}
+
+/**
+ * Adds or replaces the `upsert` marks and removes the `remove` ids; leaves
+ * every other mark. Unlike `writeCriticMarkupMarksToYDoc` it writes a mark
+ * whose offsets alone changed (the main-process write-back re-anchors marks,
+ * #5574) and keeps elements this build cannot read.
+ */
+export function updateCriticMarkupMarksInYDoc(
+  doc: YDocLike,
+  { upsert = [], remove = [] }: { upsert?: CriticMarkupMark[]; remove?: string[] }
+): void {
+  const removed = new Set(remove)
+  updateMarks(doc, upsert, (id) => removed.has(id))
+}
+
+/**
+ * One transaction of element edits, never a rewrite of the array: an element
+ * whose mark does not change is not touched, so a concurrent edit to another
+ * mark merges instead of being replaced by this writer's copy of it. A changed
+ * mark is replaced where it stands, keeping fields this build does not know.
+ * Elements the reader drops are left alone, so a newer build's marks survive.
+ */
+function updateMarks(
+  doc: YDocLike,
+  upsert: CriticMarkupMark[],
+  isRemoved: (id: string) => boolean
+): void {
+  const array = doc.getArray(CRITIC_MARKUP_MARKS_ARRAY)
+  const pending = new Map<string, Record<string, unknown>>()
+  for (const mark of upsert) {
+    const normalized = normalizeCriticMarkupMark(mark)
+    if (normalized && !pending.has(normalized.id)) {
+      pending.set(normalized.id, toSerializableMark(normalized))
+    }
+  }
+  const values = readArray(array)
+  const marks = values.map((value) => normalizeCriticMarkupMark(value))
+  const firstIndex = new Map<string, number>()
+  marks.forEach((mark, index) => {
+    if (mark && !firstIndex.has(mark.id)) firstIndex.set(mark.id, index)
+  })
+
+  const apply = (): void => {
+    for (let index = values.length - 1; index >= 0; index--) {
+      const mark = marks[index]
+      if (!mark) continue
+      if (firstIndex.get(mark.id) !== index || isRemoved(mark.id)) {
+        array.delete(index, 1)
+        continue
+      }
+      const next = pending.get(mark.id)
+      if (!next) continue
+      pending.delete(mark.id)
+      if (JSON.stringify(toSerializableMark(mark)) === JSON.stringify(next)) continue
+      array.delete(index, 1)
+      array.insert(index, [{ ...unknownKeys(values[index]), ...next }])
+    }
+    if (pending.size > 0) array.insert(array.length, [...pending.values()])
+  }
+  if (doc.transact) doc.transact(apply)
+  else apply()
+}
+
+/** The `[start, end)` runs of `true`, in order. */
+function runsOf(flags: boolean[]): Array<[number, number]> {
+  const runs: Array<[number, number]> = []
+  flags.forEach((flag, index) => {
+    if (!flag) return
+    const last = runs.at(-1)
+    if (last?.[1] === index) last[1] = index + 1
+    else runs.push([index, index + 1])
+  })
+  return runs
+}
+
+/** Whether `stored`, read as this build reads it, equals `mark` apart from the offsets. */
+function sameMarkApartFromOffsets(stored: unknown, mark: Record<string, unknown>): boolean {
+  const current = normalizeCriticMarkupMark(stored)
+  if (!current) return false
+  const { start: _start, end: _end, ...rest } = toSerializableMark(current)
+  const { start: _nextStart, end: _nextEnd, ...nextRest } = mark
+  return sameValue(rest, nextRest)
+}
+
+function unknownKeys(element: unknown): Record<string, unknown> {
+  if (!isObject(element)) return {}
+  return Object.fromEntries(Object.entries(element).filter(([key]) => !MARK_KEYS.has(key)))
+}
+
+/** Deep equality that ignores object key order. */
+function sameValue(a: unknown, b: unknown): boolean {
+  if (Array.isArray(a) || Array.isArray(b)) {
+    return (
+      Array.isArray(a) &&
+      Array.isArray(b) &&
+      a.length === b.length &&
+      a.every((item, index) => sameValue(item, b[index]))
+    )
+  }
+  if (!isObject(a) || !isObject(b)) return Object.is(a, b)
+  const keys = Object.keys(a)
+  return (
+    keys.length === Object.keys(b).length &&
+    keys.every((key) => Object.hasOwn(b, key) && sameValue(a[key], b[key]))
+  )
+}
+
+function readArray(array: YArrayLike): unknown[] {
+  return array.toArray ? array.toArray() : readArrayLike(array)
 }
 
 function readArrayLike(array: YArrayLike): unknown[] {

@@ -205,8 +205,11 @@ fn a_save_sets_the_days_date_in_a_file_that_lacks_it() {
     );
 }
 
+/// A tag edit writes the record and the file's `tags:` (Electron's `composeJournalEntry` writes
+/// `tags ?? existing.tags`; #5509 reverses #3530's "a tag edit never writes the file"), every
+/// other line of the block and the body staying.
 #[test]
-fn tags_go_to_the_record_and_the_body_tags_join_them_but_the_file_keeps_its_own() {
+fn tags_go_to_the_record_and_the_file_and_the_body_tags_join_them() {
     let (mut e, notes, _) = opened();
     made(&mut e, &notes);
     let open = e.session.current().unwrap();
@@ -227,8 +230,8 @@ fn tags_go_to_the_record_and_the_body_tags_join_them_but_the_file_keeps_its_own(
     assert_eq!(record(&e).0, r#"["daily"]"#);
     assert_eq!(
         e.read(DAY_FILE),
-        NEW_FILE,
-        "a tag edit never writes the file"
+        NEW_FILE.replacen("tags:\n  - work\n  - Ideas\n", "tags:\n  - daily\n", 1),
+        "the file's tags follow the record"
     );
 
     let inline = notes
@@ -247,6 +250,28 @@ fn tags_go_to_the_record_and_the_body_tags_join_them_but_the_file_keeps_its_own(
         inline.entry.tags,
         ["daily", "reflection"],
         "on top of the record's"
+    );
+    assert!(
+        e.read(DAY_FILE)
+            .contains("tags:\n  - daily\n  - reflection\n"),
+        "{}",
+        e.read(DAY_FILE)
+    );
+
+    let spelled = notes
+        .update_day(
+            &open,
+            DayUpdate {
+                tags: Some(vec!["DAILY".into(), "Reflection".into()]),
+                ..update(DAY)
+            },
+        )
+        .unwrap();
+    assert_eq!(spelled.entry.tags, ["DAILY", "Reflection"]);
+    assert!(
+        e.read(DAY_FILE)
+            .contains("tags:\n  - daily\n  - reflection\n"),
+        "the same tags in another case keep the file's spelling"
     );
 }
 

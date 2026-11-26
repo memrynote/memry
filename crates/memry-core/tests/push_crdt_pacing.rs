@@ -75,6 +75,7 @@ fn rig(
         db.clone(),
         Declaration::subscribed(),
         sealer.clone(),
+        "device-a",
     )
     .with_crdt_pacing(Arc::clone(&admission), Arc::clone(&requests));
     Rig {
@@ -102,6 +103,25 @@ fn queue_update(db: &Db, doc_id: &str) {
 }
 
 /// `(item_id, attempt_count, last_error, next_attempt_at)` of every queued row.
+/// The documents `note_body_sync` holds a row for.
+fn body_sync(db: &Db) -> Vec<String> {
+    db.call_blocking(|conn| {
+        let mut statement = conn
+            .prepare("SELECT note_id FROM note_body_sync ORDER BY note_id")
+            .map_err(|e| StorageError::Failed {
+                what: e.to_string(),
+            })?;
+        let ids = statement
+            .query_map([], |row| row.get(0))
+            .and_then(Iterator::collect)
+            .map_err(|e| StorageError::Failed {
+                what: e.to_string(),
+            })?;
+        Ok(ids)
+    })
+    .expect("note_body_sync")
+}
+
 fn rows(db: &Db) -> Vec<(String, i64, Option<String>, Option<i64>)> {
     db.call_blocking(|conn| {
         let failed = |e: rusqlite::Error| StorageError::Failed {
@@ -143,6 +163,8 @@ async fn a_429_holds_every_document_until_its_retry_after_then_acks_and_requests
     let failed = rig.push.drain_wave().await;
     assert!(failed.is_err(), "the 429 fails the wave");
     assert_eq!(rows(&rig.db), before, "both documents' rows untouched");
+    // Marked sent after admission: a mark moved above it would stamp doc-b, never sent.
+    assert_eq!(body_sync(&rig.db), ["doc-a"]);
     // Still cooling down: the next wave sends nothing.
     rig.push.drain_wave().await.expect("a wave that skips");
     assert_eq!(rig.transport.calls_to("/sync/crdt/updates").len(), 1);
@@ -199,6 +221,7 @@ async fn a_cooldown_seals_no_document_and_the_record_rows_still_go() {
     rig.push.drain_wave().await.expect("the wave");
 
     assert_eq!(rig.sealer.0.load(Ordering::SeqCst), 0, "no CRDT row sealed");
+    assert!(body_sync(&rig.db).is_empty(), "no document marked sent");
     assert!(rig.transport.calls_to("/sync/crdt/updates").is_empty());
     assert_eq!(rig.transport.calls_to("/sync/push").len(), 1);
     let left = rows(&rig.db);
