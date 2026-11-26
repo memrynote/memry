@@ -284,4 +284,47 @@ struct NoteBodyFetchTests {
         await model.fetchBody()
         #expect(model.blocksRead)
     }
+
+    /// A new note's body is not pulled yet, so its page fetches the body while
+    /// the title holds the caret. The re-read after the fetch kept the page on
+    /// screen: a `.loading` swap drew the spinner in the title's place, and the
+    /// title's focus state let go of the caret it still drew, so the keys
+    /// typed next went to no edit (#4893).
+    @Test("the read after a fetch keeps the page on screen")
+    func theReadAfterAFetchKeepsThePage() async throws {
+        let store = NoteStore()
+        let phases = PhaseLog()
+        let model = NoteReadViewModel(
+            route: Self.route, reader: PhaseWatchingReads(note: ScriptedNote(store: store), log: phases),
+            filler: NoteFiller(store: store)
+        )
+        await model.loadIfNeeded()
+        phases.model = model
+        #expect(!model.blocksRead)
+
+        await model.fetchBody()
+        #expect(phases.seen.allSatisfy { if case .ready = $0 { true } else { false } }, "\(phases.seen)")
+        #expect(model.preview == .text("the body arrived"))
+        #expect(model.blocksRead)
+    }
+}
+
+/// The page's phase each time the note is read.
+@MainActor
+private final class PhaseLog {
+    weak var model: NoteReadViewModel?
+    var seen: [NoteReadViewModel.Phase] = []
+}
+
+private struct PhaseWatchingReads: NotesReading {
+    let note: ScriptedNote
+    let log: PhaseLog
+
+    func folders() async throws -> [FolderSummary] { [] }
+    func list() async throws -> [NoteSummary] { [] }
+
+    func read(id: String) async throws -> NoteDetail? {
+        await MainActor.run { if let phase = log.model?.phase { log.seen.append(phase) } }
+        return try await note.read(id: id)
+    }
 }

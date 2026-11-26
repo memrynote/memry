@@ -542,6 +542,14 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
     /// draws them from the core.
     private func takeOver(from old: BlockField) {
         typed = typed || old.typed
+        // Moving into the window as the old row resigns, this row takes the
+        // caret before the old row ends editing, and then never ends editing
+        // itself (#5817). The old row commits first, as it does when it ends
+        // editing before, so the typing is not left in a row nothing commits.
+        if old.dirty {
+            session?.returnBurstEnded(in: old)
+            old.commitTyping()
+        }
         written = max(written, old.written)
         let source = old.textView
         if source.text != textView.text {

@@ -5,10 +5,12 @@
 use serde_json::{Value as Json, json};
 
 use super::{MAX_PULL_IDS, PullError, PullLoop, PullReport, typed_covers};
+use crate::api::errors::StorageError;
 use crate::crypto::agent_envelope::AtRestKey;
 use crate::protocol::http::SYNC_TYPES_HEADER;
 use crate::protocol::types::{ArrivingItemType, PURGED_TOMBSTONES_SYNC_TYPE};
 use crate::sync::apply::{self, Pending};
+use crate::sync::delete_keep::VaultFiles;
 use crate::sync::driver::observer::AppliedFeed;
 use crate::sync::hardening::purged;
 
@@ -40,6 +42,7 @@ impl PullLoop {
         let mut pending: Vec<Pending> = Vec::with_capacity(ids.len());
         let mut markers = purged::Entries::default();
         let mut entries = Vec::new();
+        let mut attested = false;
         // A chunk with no envelope is a server fault counted in
         // `dropped_pages`, so only the answered chunks' ids can be uncovered.
         let mut answered: Vec<String> = Vec::with_capacity(ids.len());
@@ -61,6 +64,14 @@ impl PullLoop {
                 markers.read(&body, chunk);
                 body
             };
+            attested |= body
+                .get("purgedTombstones")
+                .and_then(Json::as_array)
+                .is_some_and(|marked| {
+                    marked
+                        .iter()
+                        .any(|e| e.get("deleteAttestation").and_then(Json::as_str).is_some())
+                });
             let Some(items) = Self::pulled_items(&mut body) else {
                 report.dropped_pages += 1;
                 continue;
@@ -70,6 +81,16 @@ impl PullLoop {
                 entries.append(marked);
             }
             decoding.push(self.start_items(items, &mut report).await?);
+        }
+        // A v2 attestation names this vault: checked as v1 only, a valid
+        // marker is refused and its row kept (chapter 04 §4.8.4, #5247). The
+        // ids are held instead, as for a failed pull, on both paths.
+        if self.vault_id().is_none() && attested {
+            return Err(StorageError::Failed {
+                what: "a purged marker is attested and this pull has no vault id to check it in"
+                    .to_owned(),
+            }
+            .into());
         }
         pending.extend(self.take_decoded(decoding, &mut report).await?);
         Ok(IdItems {
@@ -136,9 +157,26 @@ impl PullLoop {
     }
 
     /// The vault folder a delete reads a note's file in, as the pull's own
-    /// deletes do ([`PullLoop::with_vault_root`]).
-    pub(crate) fn vault_root(&self) -> Option<std::path::PathBuf> {
-        self.vault_root.clone()
+    /// deletes do ([`PullLoop::with_vault_files`]).
+    pub(crate) fn vault_files(&self) -> Option<VaultFiles> {
+        self.vault_files.clone()
+    }
+
+    /// The vault folder whose files hold the notes' bodies (desktop). A delete
+    /// over a body log that does not replay keeps the note's file text
+    /// instead ([`crate::sync::delete_keep`], #5343).
+    pub fn with_vault_root(self, root: std::path::PathBuf) -> Self {
+        self.with_vault_files(VaultFiles {
+            root,
+            own_writes: None,
+        })
+    }
+
+    /// The vault folder whose files hold the notes' bodies, and the bytes this device writes
+    /// to them itself, which a delete reads as taken ([`crate::sync::delete_keep`]).
+    pub fn with_vault_files(mut self, files: VaultFiles) -> Self {
+        self.vault_files = Some(files);
+        self
     }
 
     /// Whether this loop's declaration subscribes `item_type` (§5.3). A record

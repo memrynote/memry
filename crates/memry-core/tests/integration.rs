@@ -15,6 +15,7 @@ mod editor_support;
 mod http_fakes;
 #[cfg(feature = "markdown")]
 mod note_identity_support;
+mod stamp_gate;
 mod support;
 
 #[path = "account_setup.rs"]
@@ -44,6 +45,8 @@ mod api_search_cjk;
 #[cfg(feature = "markdown")]
 #[path = "api_search_file_text.rs"]
 mod api_search_file_text;
+#[path = "api_search_reindex_batches.rs"]
+mod api_search_reindex_batches;
 #[path = "api_sticky_store.rs"]
 mod api_sticky_store;
 #[path = "api_sync_declaration.rs"]
@@ -90,6 +93,8 @@ mod auth_session;
 mod auth_sign_out_marker;
 #[path = "auth_web_callback.rs"]
 mod auth_web_callback;
+#[path = "binary_note_files.rs"]
+mod binary_note_files;
 #[path = "block_edit_vectors.rs"]
 mod block_edit_vectors;
 #[path = "block_refs.rs"]
@@ -112,6 +117,8 @@ mod body_edit_restore;
 mod body_edit_split;
 #[path = "body_tags_reindex.rs"]
 mod body_tags_reindex;
+#[path = "body_write_handles.rs"]
+mod body_write_handles;
 #[path = "calendar_cursor_device_local.rs"]
 mod calendar_cursor_device_local;
 #[path = "calendar_external_relation.rs"]
@@ -325,6 +332,9 @@ mod editor_locked_refuses;
 mod editor_open_apply;
 #[path = "editor_origin_fanout.rs"]
 mod editor_origin_fanout;
+#[cfg(feature = "markdown")]
+#[path = "editor_search_stamp.rs"]
+mod editor_search_stamp;
 #[path = "embedding_input_vectors.rs"]
 mod embedding_input_vectors;
 #[path = "embedding_parity.rs"]
@@ -351,10 +361,22 @@ mod inbox_vectors;
 mod journal_body;
 #[path = "journal_day_merge.rs"]
 mod journal_day_merge;
+#[path = "journal_day_merge_devices.rs"]
+mod journal_day_merge_devices;
+#[path = "journal_day_note_reads.rs"]
+mod journal_day_note_reads;
+#[path = "journal_day_pictures_devices.rs"]
+mod journal_day_pictures_devices;
+#[path = "journal_embedded_attachments.rs"]
+mod journal_embedded_attachments;
+#[path = "journal_field_merge.rs"]
+mod journal_field_merge;
 #[path = "journal_ghost_refs.rs"]
 mod journal_ghost_refs;
 #[path = "journal_links.rs"]
 mod journal_links;
+#[path = "journal_merge_vectors.rs"]
+mod journal_merge_vectors;
 #[path = "journal_metadata.rs"]
 mod journal_metadata;
 #[path = "journal_reads.rs"]
@@ -435,6 +457,8 @@ mod mention_mask_untrusted;
 mod note_aliases;
 #[path = "note_blocks_vectors.rs"]
 mod note_blocks_vectors;
+#[path = "note_embedded_attachments.rs"]
+mod note_embedded_attachments;
 #[path = "note_header_status.rs"]
 mod note_header_status;
 #[path = "note_link_display.rs"]
@@ -499,6 +523,8 @@ mod search_body_cache;
 mod session_refresh_errors;
 #[path = "snapshot_embeds.rs"]
 mod snapshot_embeds;
+#[path = "stamp_inside_hold.rs"]
+mod stamp_inside_hold;
 #[path = "sync_applied_records.rs"]
 mod sync_applied_records;
 #[path = "sync_body_heal.rs"]
@@ -562,6 +588,8 @@ mod sync_outbox;
 #[cfg(feature = "markdown")]
 #[path = "sync_project_nested_arrays.rs"]
 mod sync_project_nested_arrays;
+#[path = "sync_pull_search_stamp.rs"]
+mod sync_pull_search_stamp;
 #[path = "sync_realtime.rs"]
 mod sync_realtime;
 #[path = "sync_realtime_run.rs"]

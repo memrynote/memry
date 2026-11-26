@@ -48,6 +48,8 @@ use memry_core::markdown::frontmatter::{YamlMap, YamlValue, json_to_yaml, parse_
 
 use super::Pass;
 use crate::locks::Locks;
+use crate::notes::aliases::with_aliases;
+use crate::notes::error::NotesError;
 use crate::notes::frontmatter::{aliases, is_reserved_key};
 use crate::notes::moves::{free_target, name_for, plain_folder};
 use crate::notes::properties::{definition_types, text_values};
@@ -133,6 +135,23 @@ impl Pulled {
 pub(crate) struct Patch<'a> {
     pub(super) record: &'a Unfiled,
     pub(super) types: HashMap<String, String>,
+}
+
+/// The file `output` with its `aliases` key set to the record's list, as the in-app alias edit
+/// writes it ([`with_aliases`]): every other key, comment and the body as `output` has them. A
+/// record with no list, or a frontmatter that is not a map, leaves `output` as it is. The
+/// pass gives it a file that owes its record's aliases
+/// ([`memry_core::domain::owed_file_aliases`]).
+pub(super) fn owed_aliases(output: String, record: &Unfiled) -> Result<String, String> {
+    let Some(held) = &record.aliases else {
+        return Ok(output);
+    };
+    let name = record.date.as_deref().unwrap_or(&record.title);
+    match with_aliases(&output, name, |_| normalize_aliases(name, held)) {
+        Ok((_, Some(written))) => Ok(written),
+        Ok((_, None)) | Err(NotesError::FrontmatterNotAMap) => Ok(output),
+        Err(error) => Err(format!("the aliases could not be written: {error}")),
+    }
 }
 
 /// The header tags of the file `text`, case folded; `None` when its frontmatter does not read.

@@ -32,10 +32,13 @@ pub struct Unfiled {
 
 /// A live markdown note, or a live day not owed a move of its file, that no row names.
 ///
-/// Invariant (#5766): an id a live journal day holds reads as the day, never as the `notes` row
-/// a peer's same-id `note` record keeps beside it (Electron names a day's pictures that way,
-/// #5731). The journal layer alone places a day's file, at its date's path under the vault's
-/// format; the note's title and folder would place it elsewhere and patch it as a note.
+/// Invariant, a live day owns its file (#5766, #5786): an id a live journal day holds reads as
+/// the day, never as the `notes` row a peer's same-id `note` record keeps beside it (Electron
+/// names a day's pictures that way, #5731). That row never names the day's first file (here),
+/// never places or patches it ([`placed`]), and its tombstone never sends the day's file to the
+/// trash ([`super::rows_of_deleted_notes`]). The journal layer alone places a day's file, at its
+/// date's path under the vault's format, and moves it there when a note record named it first
+/// (the desktop write-back's `day_place`).
 const UNFILED: &str = "SELECT id, title, folder_path, 0 AS is_day, aliases FROM notes n
   WHERE n.deleted_at IS NULL AND n.file_type = 'markdown'
     AND NOT EXISTS (SELECT 1 FROM note_files f WHERE f.note_id = n.id)

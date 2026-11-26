@@ -7,7 +7,7 @@ description: >-
   cargo build of memry-ml-worker with its `native` feature, which the cache then holds.
 inputs:
   save:
-    description: Save the cache after the job on a miss ('true' or 'false').
+    description: Save the cache after the job on a miss ('true' or 'false'); only feat/tauri-v2 ever saves.
     required: true
 runs:
   using: composite
@@ -25,14 +25,14 @@ runs:
     # actions/cache saves in its post step, after the job's cargo build ran cmake, and only when
     # the job succeeded, so a cut-off build is never saved.
     - name: Restore and save the Tesseract build
-      if: inputs.save == 'true'
+      if: inputs.save == 'true' && github.ref == 'refs/heads/feat/tauri-v2'
       uses: actions/cache@v4
       with:
         path: ${{ runner.temp }}/memry-tesseract
         key: tesseract-${{ runner.os }}-${{ runner.arch }}-${{ steps.dir.outputs.image }}-${{ hashFiles('scripts/fetch-tesseract-sources.mjs', 'crates/memry-ml-worker/build.rs') }}
 
     - name: Restore the Tesseract build
-      if: inputs.save != 'true'
+      if: inputs.save != 'true' || github.ref != 'refs/heads/feat/tauri-v2'
       uses: actions/cache/restore@v4
       with:
         path: ${{ runner.temp }}/memry-tesseract

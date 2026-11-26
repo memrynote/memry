@@ -118,10 +118,11 @@ impl VaultSync {
     ) -> Result<InboxFileAttachment, SyncError> {
         let device_id = self.session.device_id()?;
         let (item, note) = (item_id.clone(), note_id.clone());
-        let now = now_ms();
         let reused = self
             .db
             .call(move |conn| {
+                // #5849: stamped inside the hold that writes the note.
+                let now = now_ms();
                 let capture = inbox::get(conn, &item)?.ok_or_else(|| StorageError::NotFound {
                     what: format!("no capture {item}"),
                 })?;
@@ -250,10 +251,12 @@ impl VaultSync {
         };
         self.write_bytes(&uploaded.attachment_id, &bytes)?;
 
-        let (id, device_id, now) = (item_id.to_owned(), device_id.to_owned(), now_ms());
+        let (id, device_id) = (item_id.to_owned(), device_id.to_owned());
         let recorded = self
             .db
             .call(move |conn| {
+                // #5849: stamped inside the hold that writes the capture.
+                let now = now_ms();
                 uploaded.cache(conn, now)?;
                 let recorded = match inbox_files::set_attachment_id(
                     conn,
@@ -311,12 +314,13 @@ impl VaultSync {
         reachable: Reachable,
     ) -> Result<bool, SyncError> {
         let id = attachment_id.to_owned();
+        // A torn cached file goes through the fetch, which downloads it over.
         let cached = self
             .db
             .call(move |conn| attachments::get(conn, &id))
             .await?
-            .and_then(|row| row.local_path)
-            .filter(|local| self.images_file(local).is_file());
+            .and_then(|row| self.intact_file(&row))
+            .map(|(local, _)| local);
         let local = match cached {
             Some(local) => local,
             None => {
@@ -333,7 +337,7 @@ impl VaultSync {
         Ok(true)
     }
 
-    fn images_file(&self, local_path: &str) -> std::path::PathBuf {
+    pub(super) fn images_file(&self, local_path: &str) -> std::path::PathBuf {
         std::path::PathBuf::from(&self.directory)
             .join("images")
             .join(local_path)

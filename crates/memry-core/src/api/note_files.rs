@@ -16,8 +16,8 @@ use crate::domain::inbox::queries::FiledVoice;
 use crate::domain::note_files::{self, FiledTextFile, NoteFile, NoteFileStat, StampMark};
 use crate::domain::note_list::{self, ListedNote, NoteListPage, NoteListQuery};
 use crate::domain::notes::local_only::{self, LocalOnlyChange};
-use crate::domain::owed_file_body;
 use crate::domain::properties;
+use crate::domain::{owed_file_aliases, owed_file_body};
 use crate::storage::Db;
 
 pub struct NoteFiles {
@@ -148,6 +148,25 @@ impl NoteFiles {
         let note_id = note_id.to_owned();
         self.db
             .call_blocking(move |conn| owed_file_body::clear(conn, &note_id))
+    }
+
+    /// Whether the note's file owes its record's aliases ([`owed_file_aliases`]).
+    pub fn owes_file_aliases(&self, note_id: &str) -> Result<bool, StorageError> {
+        let note_id = note_id.to_owned();
+        self.db
+            .read_blocking(move |conn| owed_file_aliases::owes(conn, &note_id))
+    }
+
+    /// Every note whose file owes its record's aliases, in id order.
+    pub fn owed_file_aliases(&self) -> Result<Vec<String>, StorageError> {
+        self.db.read_blocking(owed_file_aliases::list)
+    }
+
+    /// The file holds its record's aliases: the debt is paid. True when there was one.
+    pub fn clear_owed_file_aliases(&self, note_id: &str) -> Result<bool, StorageError> {
+        let note_id = note_id.to_owned();
+        self.db
+            .call_blocking(move |conn| owed_file_aliases::clear(conn, &note_id))
     }
 
     /// Whether the last read of the note's file found it large-file class

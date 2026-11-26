@@ -19,7 +19,7 @@ function server() {
     return Response.json({ manifests: Object.fromEntries(ids.map((id) => [id, manifestOf(id)])) })
   })
   const prefetch = new AttachmentDownloadPrefetch({
-    chunkHashesOf: async (m) => [`hash-${m.encryptedManifest}`]
+    chunkHashesOf: async (_id, m) => [`hash-${m.encryptedManifest}`]
   })
   return { batches, postBatch, prefetch }
 }

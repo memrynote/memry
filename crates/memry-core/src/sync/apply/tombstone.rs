@@ -1,8 +1,6 @@
 //! The delete half of [`super::apply_page_into`]: a typed tombstone and the
 //! clock weighing #2409 adds to it.
 
-use std::path::Path;
-
 use rusqlite::Connection;
 
 use crate::api::errors::StorageError;
@@ -12,6 +10,7 @@ use crate::domain::{attachment_uploads, journal, notes, settings};
 use crate::storage::nested_tx;
 use crate::storage::repositories::{projectors, sync_items};
 use crate::sync::clock::{ClockOrder, VectorClock, compare};
+use crate::sync::delete_keep::VaultFiles;
 use crate::sync::{body_debt, delete_keep, journal_day_merge, outbox, store};
 
 use super::{ApplyTotals, DOCUMENT_TYPES, feed, sqlite_failed};
@@ -58,7 +57,7 @@ pub(super) fn apply_tombstone(
     body_state_vector: Option<&str>,
     now_ms: i64,
     clock_device: Option<&str>,
-    vault_root: Option<&Path>,
+    vault: Option<&VaultFiles>,
     totals: &mut ApplyTotals,
 ) -> Result<(), StorageError> {
     // Settings are never deleted (#5433), as desktop's settings handler skips
@@ -90,23 +89,26 @@ pub(super) fn apply_tombstone(
         clock,
         body_state_vector,
         clock_device,
-        vault_root,
+        vault,
         now_ms,
     )?;
     store::mark_deleted(&txn, item_type, item_id, deleted_at, server_cursor, now_ms)?;
+    // A live foreign row keeps its row and body for the drain (#2984). Held
+    // before the queue drops: a queued edit holds tags never pushed. Defense
+    // in depth (VERIFY-5656): no test goes red with the order reversed.
+    let held = item_type == journal::ITEM_TYPE && {
+        journal_day_merge::mark_deleted(&txn, item_id)?;
+        journal_day_merge::hold_for_merge(&txn, item_id, clock)?
+    };
     // Sent, the queued edit would undelete the item (VERIFY-5426). After
     // `delete_keep::keep`, which reads the queue (rule 1). A re-create whose
     // clock is after the delete returned above, still queued.
     drop_queued_edits(&txn, item_type, item_id)?;
-    if item_type == journal::ITEM_TYPE {
-        journal_day_merge::mark_deleted(&txn, item_id)?;
-        // A live foreign row keeps its row and body for the drain (#2984).
-        if journal_day_merge::hold_for_merge(&txn, item_id, clock)? {
-            txn.commit().map_err(sqlite_failed)?;
-            count(totals, was_live);
-            feed::deleted(&mut totals.feed, item_type, item_id, was_live);
-            return Ok(());
-        }
+    if held {
+        txn.commit().map_err(sqlite_failed)?;
+        count(totals, was_live);
+        feed::deleted(&mut totals.feed, item_type, item_id, was_live);
+        return Ok(());
     }
     projectors::delete(&txn, item_type, item_id, deleted_at)?;
     let purged = if DOCUMENT_TYPES.contains(&item_type) {

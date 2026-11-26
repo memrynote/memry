@@ -45,6 +45,12 @@
     }
   },
   "page": {
+    "noteFiles": {
+      "downloading": "Se descarcă fișierele acestei notițe…",
+      "failed": "Nu s-au putut descărca fișierele acestei notițe: {error}",
+      "failedFallback": "descărcarea a eșuat",
+      "retry": "Încearcă din nou"
+    },
     "empty": {
       "title": "Nicio notiță selectată",
       "body": "Selectați o notiță din bara laterală pentru a o vizualiza"

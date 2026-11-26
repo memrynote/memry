@@ -24,8 +24,8 @@ pub struct BodyDrainSummary {
     pub documents: u32,
     pub requests: u32,
     /// Live documents still owed a body. Some may be backing off after a
-    /// failure, so a round that pulled nothing pauses the drain even when
-    /// this is above 0.
+    /// failure, so a round that pulled nothing tells the shell to wait and ask
+    /// again even when this is above 0.
     pub remaining: u32,
     /// Whether a bootstrap session widened the round (chapter 10 §10.7).
     pub elevated: bool,
@@ -43,8 +43,10 @@ impl VaultSync {
     /// makes no request, and so does a round before the `Retry-After` of a
     /// `429` the last one met, whether it ended that round or only answered
     /// its probe or bootstrap open, or one the first sync's bodies pass gave
-    /// up on: it pulls nothing, which pauses the shell's drain until the next
-    /// foreground. It opens a bootstrap session
+    /// up on: it pulls nothing. The shell then waits a few seconds and asks
+    /// again, and pauses its drain until the next foreground only once the
+    /// rounds have pulled nothing for longer than the longest `429` hold.
+    /// It opens a bootstrap session
     /// for the round and pulls four documents at a time when the server
     /// grants one (a device's first day, §10.9), one at a time otherwise.
     ///

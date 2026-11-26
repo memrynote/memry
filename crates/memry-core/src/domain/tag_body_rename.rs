@@ -167,11 +167,13 @@ pub(crate) fn rewrite_bodies(
 
 fn sources(conn: &Connection) -> Result<Vec<(String, &'static str)>, StorageError> {
     let mut statement = conn
-        .prepare(
+        .prepare(&format!(
             "SELECT id, 0 FROM notes WHERE deleted_at IS NULL AND file_type = 'markdown' \
-             UNION ALL SELECT id, 1 FROM journal_entries WHERE deleted_at IS NULL \
-             ORDER BY 1",
-        )
+                 AND {} \
+                 UNION ALL SELECT id, 1 FROM journal_entries WHERE deleted_at IS NULL \
+                 ORDER BY 1",
+            journal::not_a_journal_day("id")
+        ))
         .map_err(failed)?;
     let rows = statement
         .query_map([], |row| {
@@ -209,13 +211,13 @@ fn rewrite_source(
     if !may_hold {
         return Ok(());
     }
-    let Some(update) = body_write::author_with(conn, id, device_id, |document| {
+    let tx = nested_tx::begin(conn).map_err(failed)?;
+    let Some(update) = body_write::author_with(&tx, id, device_id, |document| {
         document.write(|txn| rewrite_document(txn, from, to))
     })?
     else {
         return Ok(());
     };
-    let tx = nested_tx::begin(conn).map_err(failed)?;
     body_write::append_in(&tx, item_type, id, &update, now_ms)?;
     // `note_body_tags` caches the body's parse; refresh it with the body so
     // tag counts follow the rename before the next search reindex.

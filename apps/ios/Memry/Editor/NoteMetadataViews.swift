@@ -29,7 +29,7 @@ struct NoteCoverView: View {
         if let cover, let resolve {
             switch resolve(cover.url) {
             case let .bound(attachment):
-                if let path = attachment.localPath,
+                if let path = attachment.intactPath,
                     let image = UIImage(
                         contentsOfFile: AttachmentPaths.url(for: path)
                             .path(percentEncoded: false)
@@ -100,6 +100,7 @@ struct NoteTitleEditor: View {
     @State private var host = TitleWindow()
     @FocusState private var focused: Bool
     @Environment(NotesSplitRouter.self) private var split: NotesSplitRouter?
+    @Environment(\.appLifecycle) private var appLifecycle
 
     private func commit() {
         guard commits.editing else { return }
@@ -513,17 +514,21 @@ struct NoteTitleEditor: View {
                 // while an input method composes: Control Center resigns the
                 // app too, and the draft holds the half-made text. Going to
                 // the background ends the composition as it stands, as a
-                // Return in the body does, and saves it.
-                .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
-                    host.confirmed = nil
-                    if titleTextView?.markedTextRange == nil { save() }
-                }
-                .onReceive(NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in
-                    if let view = titleTextView, view.markedTextRange != nil {
-                        view.unmarkText()
-                        typed(view.text)
+                // Return in the body does, and saves it. The title's own
+                // window leaving counts too: an iPad window can go to the
+                // background while others stay (#5820).
+                .onReceive(SceneLeaving.publisher(of: { host.window?.windowScene }, center: appLifecycle)) { leave in
+                    switch leave {
+                    case .resign:
+                        host.confirmed = nil
+                        if titleTextView?.markedTextRange == nil { save() }
+                    case .background:
+                        if let view = titleTextView, view.markedTextRange != nil {
+                            view.unmarkText()
+                            typed(view.text)
+                        }
+                        save()
                     }
-                    save()
                 }
                 .background(TitleWindowReader(host: host))
                 // The notes list moves no focus to the note's row while the
@@ -985,6 +990,9 @@ struct PropertyNameWidthKey: PreferenceKey {
 
 extension EnvironmentValues {
     @Entry var widestPropertyName: CGFloat = 0
+    /// Where a page's title and first line hear the app resign active and
+    /// enter the background: the page's `NoteEditorViewModel.notifications`.
+    @Entry var appLifecycle: NotificationCenter = .default
 }
 
 private struct SharedPropertyNameWidth: ViewModifier {

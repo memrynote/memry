@@ -89,10 +89,10 @@ protocol VaultFilling: Sendable {
 
     /// Fetches one attachment's bytes (chapter 14, FR-045).
     ///
-    /// - Parameter reachable: **the shell's observation, not its policy.**
-    ///   Only the shell can see the current path; the core decides what that
-    ///   means, so the unmetered-by-default rule and its per-item override
-    ///   live in one place rather than being re-argued here.
+    /// - Parameter reachable: the path the core's metered policy judges this
+    ///   download against: the shell's observation, as this device's Download
+    ///   attachments setting reads it (`AttachmentDownloadPath.swift`). The
+    ///   unmetered-by-default rule and its per-item override stay the core's.
     ///
     /// **A deferred fetch is not a failure.** A picture waiting for an
     /// unmetered path is FR-045 working, and the summary says so rather than
@@ -102,6 +102,11 @@ protocol VaultFilling: Sendable {
         attachmentId: String,
         reachable: Reachable
     ) async throws -> AttachmentFetchSummary
+
+    /// Reads the manifests of the attachments `noteId` names that have no
+    /// filename here yet, so their blocks bind (#5675). Answers how many it
+    /// named; no request when none is unnamed. Bytes: ``fetchAttachment(attachmentId:reachable:)``.
+    func fetchNoteManifests(noteId: String) async throws -> UInt32
 
     /// Uploads a file and attaches it to a note (chapter 14 §14.2–§14.5).
     ///
@@ -265,6 +270,8 @@ struct CoreVaultFiller: VaultFilling {
     ) async throws -> AttachmentFetchSummary {
         try await sync.fetchAttachment(attachmentId: attachmentId, reachable: reachable)
     }
+
+    func fetchNoteManifests(noteId: String) async throws -> UInt32 { try await sync.fetchNoteManifests(noteId: noteId) }
 
     func uploadAttachment(
         noteId: String,

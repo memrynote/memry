@@ -256,274 +256,298 @@ private func pull(_ element: String) -> (String) -> String {
     }
 }
 
-@MainActor
-@Suite("the drawing surface's saves")
-struct InkBoardSaveTests {
-    /// Strokes on the surface, each drawn at its own `created` date.
-    private func drawing(_ board: InkBoard, _ strokes: [(created: Double, ink: InkStroke)]) -> PKDrawing {
-        PKDrawing(strokes: strokes.map { $0.ink.stroke(created: Date(timeIntervalSinceReferenceDate: $0.created), offset: board.offset) })
-    }
-
-    /// The suite's own center: a post on `.default` reaches every suite
-    /// running in parallel.
-    private let notifications = NotificationCenter()
-
-    private func open(_ fake: FakeInkBoards) async -> InkBoard {
-        let board = InkBoard(canvasId: "c1", boards: fake, notifications: notifications)
-        board.stamp = pinned()
-        board.settleDelay = .seconds(3600)
-        await board.load()
-        return board
-    }
-
-    @Test(.timeLimit(.minutes(1))) func resigning_active_saves_under_a_background_task() async {
-        let fake = FakeInkBoards(scene: scene([]))
-        let board = await open(fake)
-        var ended: [UIBackgroundTaskIdentifier] = []
-        board.beginBackgroundTask = { _ in UIBackgroundTaskIdentifier(rawValue: 7) }
-        board.endBackgroundTask = { ended.append($0) }
-        board.changed(drawing(board, [(1, pen)]))
-
-        notifications.post(name: UIApplication.willResignActiveNotification, object: nil)
-        while ended.isEmpty { try? await Task.sleep(for: .milliseconds(10)) }
-
-        #expect(fake.saves == 1)
-        #expect(ended == [UIBackgroundTaskIdentifier(rawValue: 7)], "the task ends once the save lands")
-        #expect(InkScene.strokes(in: fake.scene ?? "")?.map(\.ink) == [pen])
-    }
-
-    @Test func desktopEraseSurvivesIPadSave() async throws {
-        let fake = FakeInkBoards(scene: scene([]))
-        let board = await open(fake)
-        var syncs = 0
-        board.requestSync = { syncs += 1 }
-        var second = pen
-        second.color = "#2f9e44"
-        var third = pen
-        third.width = 2
-
-        board.changed(drawing(board, [(1, pen)]))
-        #expect(await board.flush())
-        #expect(syncs == 1, "a save asks for a sync pass")
-        // Desktop erased the stroke and drew a shape. It saves the scene's
-        // live elements, so the erase leaves no tombstone. A pull that moved
-        // this canvas into a conflict copy leaves the same scene.
-        fake.scene = scene([foreignRect])
-        let loads = board.loads
-        board.changed(drawing(board, [(1, pen), (2, second)]))
-        #expect(await board.flush())
-        let stored = try #require(fake.scene)
-        #expect(stored.contains(foreignRect))
-        #expect(try #require(InkScene.strokes(in: stored)).map(\.ink) == [second], "the erased stroke stays erased")
-        #expect(syncs == 2)
-        #expect(board.loads == loads + 1, "the surface shows the board as stored")
-        #expect(board.drawing.strokes.map { InkStroke($0, offset: board.offset) } == [second])
-
-        // An erase desktop left as a tombstone stays erased too.
-        let secondId = try #require(InkScene.strokes(in: stored)?.first?.id)
-        fake.scene = try #require(InkScene.apply(InkEdit(erased: [secondId]), to: stored, stamp: pinned())).scene
-        board.changed(PKDrawing(strokes: board.drawing.strokes + [third.stroke(created: Date(timeIntervalSinceReferenceDate: 3), offset: board.offset)]))
-        #expect(await board.flush())
-        #expect(try #require(InkScene.strokes(in: fake.scene ?? "")).map(\.ink) == [third])
-    }
-
-    @Test func a_save_over_an_unchanged_board_keeps_the_surface_as_drawn() async {
-        let fake = FakeInkBoards(scene: scene([foreignRect]))
-        let board = await open(fake)
-        let loads = board.loads
-        board.changed(drawing(board, [(1, pen)]))
-        #expect(await board.flush())
-        board.changed(drawing(board, [(1, pen), (2, pen)]))
-        #expect(await board.flush())
-        #expect(InkScene.strokes(in: fake.scene ?? "")?.count == 2)
-        #expect(board.loads == loads, "no reload while only this surface wrote")
-    }
-
-    @Test func pixelEraseSplit() async throws {
-        let fake = FakeInkBoards(scene: scene([]))
-        let board = await open(fake)
-        let line = InkStroke(
-            points: (0 ... 10).map { CGPoint(x: Double($0) * 10, y: 50) }, pressures: Array(repeating: 0.5, count: 11),
-            color: "#1e1e1e", width: 1, opacity: 100, inkType: PKInk.InkType.pen.rawValue
-        )
-        board.changed(drawing(board, [(1, line)]))
-        #expect(await board.flush())
-        // A pixel eraser through the middle leaves the stroke twice, each
-        // copy masked to one side, under the one creation date.
-        let whole = line.stroke(created: Date(timeIntervalSinceReferenceDate: 1), offset: board.offset)
-        let side = { (minX: Double, maxX: Double) in
-            PKStroke(ink: whole.ink, path: whole.path, transform: .identity, mask: UIBezierPath(rect: CGRect(
-                x: minX - board.offset.x, y: 0 - board.offset.y, width: maxX - minX, height: 100
-            )))
+extension KeyWindowSuites {
+    @MainActor
+    @Suite("the drawing surface's saves")
+    struct InkBoardSaveTests {
+        /// Strokes on the surface, each drawn at its own `created` date.
+        private func drawing(_ board: InkBoard, _ strokes: [(created: Double, ink: InkStroke)]) -> PKDrawing {
+            PKDrawing(strokes: strokes.map { $0.ink.stroke(created: Date(timeIntervalSinceReferenceDate: $0.created), offset: board.offset) })
         }
-        board.changed(PKDrawing(strokes: [side(62, 120), side(-20, 38)]))
-        #expect(await board.flush())
-        let stored = try #require(InkScene.strokes(in: fake.scene ?? ""))
-        #expect(stored.count == 2, "each visible part is one stroke")
-        let spans = stored.map { ($0.ink.points.map(\.x).min() ?? 0, $0.ink.points.map(\.x).max() ?? 0) }
-        #expect(spans.allSatisfy { $0.1 <= 40 || $0.0 >= 60 }, "nothing erased comes back: \(spans)")
-        #expect(spans.contains { $0.0 < 1 } && spans.contains { $0.1 > 99 })
-    }
 
-    @Test("a marker reopens with the tilt and opacity PencilKit drew it with")
-    func markerTilt() throws {
-        let points = [CGPoint(x: 0, y: 0), CGPoint(x: 40, y: 10)].map {
-            PKStrokePoint(location: $0, timeOffset: 0, size: CGSize(width: 13.75, height: 13.75), opacity: 1.5, force: 0, azimuth: 1.8157, altitude: .pi / 2)
+        /// The suite's own center: a post on `.default` reaches every suite
+        /// running in parallel.
+        private let notifications = NotificationCenter()
+
+        private func open(_ fake: FakeInkBoards) async -> InkBoard {
+            let board = InkBoard(canvasId: "c1", boards: fake, notifications: notifications)
+            board.stamp = pinned()
+            board.settleDelay = .seconds(3600)
+            await board.load()
+            return board
         }
-        let drawn = PKStroke(ink: PKInk(.marker, color: UIColor(red: 1, green: 0.8, blue: 0.2, alpha: 0.8)), path: PKStrokePath(controlPoints: points, creationDate: .now))
-        let ink = InkStroke(drawn, offset: .zero)
-        #expect(ink.tilt == InkTilt(azimuth: 1.816, altitude: 1.571, opacity: 1.5))
-        let written = try #require(InkScene.apply(InkEdit(added: [ink]), to: "", stamp: pinned()))
-        let read = try #require(InkScene.strokes(in: written.scene)?.first?.ink)
-        #expect(read == ink)
-        let reopened = read.stroke(created: .now, offset: .zero)
-        let point = try #require(reopened.path.first)
-        #expect(abs(point.azimuth - 1.816) < 0.001 && abs(point.opacity - 1.5) < 0.001)
-        #expect(abs(point.size.width - 13.75) < 0.1, "the width keeps Excalidraw's 0.01 rounding")
-    }
 
-    @Test("a save tells added, changed and erased strokes apart, and a lasso copy is new")
-    func addedChangedErased() async throws {
-        let fake = FakeInkBoards(scene: scene([]))
-        let board = await open(fake)
-        var moved = pen
-        moved.width = 2
-        board.changed(drawing(board, [(1, pen), (2, pen), (3, pen)]))
-        #expect(await board.flush())
-        let strokes: [(created: Double, ink: InkStroke)] = [(1, pen), (2, moved), (2, moved), (99, pen)]
-        board.changed(drawing(board, strokes))
-        #expect(await board.flush())
-        let stored = try elements(try #require(fake.scene))
-        #expect(stored.map { $0["id"] as? String } == ["ink-1", "ink-2", "ink-3", "ink-4", "ink-5"])
-        #expect(stored.map { $0["isDeleted"] as? Bool } == [false, false, true, false, false])
-        #expect(stored.map { $0["version"] as? Int } == [1, 2, 2, 1, 1], "only the changed and erased strokes are rewritten")
-        #expect(try #require(InkScene.strokes(in: fake.scene ?? "")).map(\.ink) == [pen, moved, moved, pen])
-        let saves = fake.saves
-        board.changed(drawing(board, strokes))
-        #expect(await board.flush())
-        #expect(fake.saves == saves, "nothing changed, nothing saved")
-    }
+        @Test(.timeLimit(.minutes(1))) func resigning_active_saves_under_a_background_task() async {
+            let fake = FakeInkBoards(scene: scene([]))
+            let board = await open(fake)
+            var ended: [UIBackgroundTaskIdentifier] = []
+            board.beginBackgroundTask = { _ in UIBackgroundTaskIdentifier(rawValue: 7) }
+            board.endBackgroundTask = { ended.append($0) }
+            board.changed(drawing(board, [(1, pen)]))
 
-    /// Drawing A starts saving and waits in the store; B is handed over and
-    /// queued behind it; then the store fails the next `failures` saves.
-    private func saveAThenB(_ fake: FakeInkBoards, failures: Int) async -> (board: InkBoard, a: Bool, b: Bool) {
-        let board = await open(fake)
-        var second = pen
-        second.color = "#2f9e44"
-        fake.holding = true
-        fake.failures = failures
-        board.changed(drawing(board, [(1, pen)]))
-        let settled = Task { await board.flush() }
-        while fake.held.isEmpty { try? await Task.sleep(for: .milliseconds(10)) }
-        board.changed(drawing(board, [(1, pen), (2, second)]))
-        let done = Task { await board.flush() }
-        // Lets Done's flush queue B behind A before A's save goes on.
-        try? await Task.sleep(for: .milliseconds(10))
-        fake.resume()
-        return (board, await settled.value, await done.value)
-    }
+            notifications.post(name: UIApplication.willResignActiveNotification, object: nil)
+            while ended.isEmpty { try? await Task.sleep(for: .milliseconds(10)) }
 
-    @Test(.timeLimit(.minutes(1)))
-    func a_failed_save_never_brings_back_an_older_drawing_than_a_newer_save() async throws {
-        let fake = FakeInkBoards(scene: scene([]))
-        let (board, a, b) = await saveAThenB(fake, failures: 1)
-        #expect(a == false)
-        #expect(b)
-        #expect(InkScene.strokes(in: fake.scene ?? "")?.count == 2)
-        #expect(board.saveFailure == nil, "the newer save landed, so no alert says it did not")
-        // onDisappear after Done: nothing new to save.
-        #expect(await board.flush())
-        #expect(InkScene.strokes(in: fake.scene ?? "")?.count == 2, "the stroke drawn after the failed save stays")
-    }
+            #expect(fake.saves == 1)
+            #expect(ended == [UIBackgroundTaskIdentifier(rawValue: 7)], "the task ends once the save lands")
+            #expect(InkScene.strokes(in: fake.scene ?? "")?.map(\.ink) == [pen])
+        }
 
-    @Test(.timeLimit(.minutes(1)))
-    func when_both_saves_fail_the_retry_saves_the_newest_drawing() async throws {
-        let fake = FakeInkBoards(scene: scene([]))
-        let (board, a, b) = await saveAThenB(fake, failures: 2)
-        #expect(a == false)
-        #expect(b == false)
-        #expect(await board.flush())
-        #expect(InkScene.strokes(in: fake.scene ?? "")?.count == 2, "the retry saves both strokes")
-    }
+        /// #5820: an iPad window resigning while others stay active posts only
+        /// its scene's notification, which saves the canvas's drawing.
+        @Test(.timeLimit(.minutes(1))) func its_window_resigning_saves_under_a_background_task() async throws {
+            let fake = FakeInkBoards(scene: scene([]))
+            let board = await open(fake)
+            let window = UIWindow(windowScene: try #require(UIApplication.shared.connectedScenes.first as? UIWindowScene))
+            let canvas = UIView()
+            window.addSubview(canvas)
+            board.canvas = canvas
+            defer { window.isHidden = true; canvas.removeFromSuperview() }
+            var ended: [UIBackgroundTaskIdentifier] = []
+            board.beginBackgroundTask = { _ in UIBackgroundTaskIdentifier(rawValue: 7) }
+            board.endBackgroundTask = { ended.append($0) }
+            board.changed(drawing(board, [(1, pen)]))
 
-    @Test func a_pull_landing_between_the_read_and_the_write_is_kept() async throws {
-        // #4820: the save read the board, then a pull stored a desktop shape.
-        let fake = FakeInkBoards(scene: scene([]))
-        let board = await open(fake)
-        fake.pulls = [pull(foreignRect)]
-        board.changed(drawing(board, [(1, pen)]))
-        #expect(await board.flush())
-        let stored = try #require(fake.scene)
-        #expect(stored.contains(foreignRect), "the pulled desktop shape stays")
-        #expect(try #require(InkScene.strokes(in: stored)).map(\.ink) == [pen])
-        #expect(board.background?.elements.map(\.id) == ["rect-1"], "the surface shows the board as stored")
-    }
+            notifications.post(name: UIScene.willDeactivateNotification, object: window.windowScene)
+            while ended.isEmpty { try? await Task.sleep(for: .milliseconds(10)) }
 
-    @Test func a_save_that_keeps_meeting_pulls_retries_and_keeps_every_stroke() async throws {
-        let fake = FakeInkBoards(scene: scene([]))
-        let board = await open(fake)
-        var second = pen
-        second.color = "#2f9e44"
-        let rect2 = foreignRect.replacingOccurrences(of: "rect-1", with: "rect-2")
-        fake.pulls = [pull(foreignRect), pull(rect2)]
-        board.changed(drawing(board, [(1, pen), (2, second)]))
-        #expect(await board.flush())
-        let stored = try #require(fake.scene)
-        #expect(stored.contains(foreignRect) && stored.contains(rect2))
-        #expect(try #require(InkScene.strokes(in: stored)).map(\.ink) == [pen, second], "each stroke written once")
-        #expect(fake.saves == 1)
-    }
+            #expect(fake.saves == 1)
+            #expect(InkScene.strokes(in: fake.scene ?? "")?.map(\.ink) == [pen])
+        }
 
-    @Test func a_save_that_never_lands_keeps_the_strokes_for_the_next_one() async throws {
-        let fake = FakeInkBoards(scene: scene([]))
-        let board = await open(fake)
-        fake.pulls = (0 ..< InkBoard.saveAttempts).map { pull(foreignRect.replacingOccurrences(of: "rect-1", with: "rect-\($0)")) }
-        board.changed(drawing(board, [(1, pen)]))
-        #expect(await board.flush() == false)
-        #expect(board.saveFailure != nil)
-        #expect(board.canvasLost == false, "the canvas is still there: Done tries again")
-        #expect(try #require(InkScene.strokes(in: fake.scene ?? "")).isEmpty)
-        #expect(await board.flush())
-        let stored = try #require(fake.scene)
-        #expect(try #require(InkScene.strokes(in: stored)).map(\.ink) == [pen])
-        #expect(stored.contains("rect-0") && stored.contains("rect-2"))
-    }
+        @Test func desktopEraseSurvivesIPadSave() async throws {
+            let fake = FakeInkBoards(scene: scene([]))
+            let board = await open(fake)
+            var syncs = 0
+            board.requestSync = { syncs += 1 }
+            var second = pen
+            second.color = "#2f9e44"
+            var third = pen
+            third.width = 2
 
-    @Test func a_save_landing_after_a_stale_retry_clears_an_earlier_failure() async throws {
-        let fake = FakeInkBoards(scene: scene([]))
-        let board = await open(fake)
-        fake.failures = 1
-        board.changed(drawing(board, [(1, pen)]))
-        #expect(await board.flush() == false)
-        #expect(board.saveFailure != nil)
-        fake.pulls = [pull(foreignRect)]
-        #expect(await board.flush())
-        #expect(try #require(InkScene.strokes(in: fake.scene ?? "")).map(\.ink) == [pen])
-        #expect(board.saveFailure == nil, "the retried save landed, so no alert says it did not")
-        #expect(board.canvasLost == false)
-    }
+            board.changed(drawing(board, [(1, pen)]))
+            #expect(await board.flush())
+            #expect(syncs == 1, "a save asks for a sync pass")
+            // Desktop erased the stroke and drew a shape. It saves the scene's
+            // live elements, so the erase leaves no tombstone. A pull that moved
+            // this canvas into a conflict copy leaves the same scene.
+            fake.scene = scene([foreignRect])
+            let loads = board.loads
+            board.changed(drawing(board, [(1, pen), (2, second)]))
+            #expect(await board.flush())
+            let stored = try #require(fake.scene)
+            #expect(stored.contains(foreignRect))
+            #expect(try #require(InkScene.strokes(in: stored)).map(\.ink) == [second], "the erased stroke stays erased")
+            #expect(syncs == 2)
+            #expect(board.loads == loads + 1, "the surface shows the board as stored")
+            #expect(board.drawing.strokes.map { InkStroke($0, offset: board.offset) } == [second])
 
-    @Test func the_boards_conflict_copy_is_listed_and_another_whiteboard_is_not() async {
-        let fake = FakeInkBoards(scene: scene([]))
-        fake.others = [CanvasRecord(id: "c3", title: "Sketches", ownerNoteId: "n1", scene: scene([]))]
-        let board = await open(fake)
-        #expect(board.conflictCopy == nil)
-        // A pull moved this board's iPad ink into a copy while it was open.
-        fake.others.append(CanvasRecord(id: "c2", title: "Drawing (conflict copy)", ownerNoteId: "n1", scene: scene([])))
-        fake.others.append(CanvasRecord(id: "c4", title: "Drawing (conflict copy)", ownerNoteId: "n9", scene: scene([])))
-        await board.findCopies()
-        #expect(board.conflictCopy?.id == "c2")
-    }
+            // An erase desktop left as a tombstone stays erased too.
+            let secondId = try #require(InkScene.strokes(in: stored)?.first?.id)
+            fake.scene = try #require(InkScene.apply(InkEdit(erased: [secondId]), to: stored, stamp: pinned())).scene
+            board.changed(PKDrawing(strokes: board.drawing.strokes + [third.stroke(created: Date(timeIntervalSinceReferenceDate: 3), offset: board.offset)]))
+            #expect(await board.flush())
+            #expect(try #require(InkScene.strokes(in: fake.scene ?? "")).map(\.ink) == [third])
+        }
 
-    @Test func a_canvas_deleted_while_open_lets_the_surface_close() async {
-        let fake = FakeInkBoards(scene: scene([]))
-        let board = await open(fake)
-        #expect(board.canvasLost == false)
-        fake.scene = nil
-        board.changed(drawing(board, [(1, pen)]))
-        #expect(await board.flush() == false)
-        #expect(board.saveFailure != nil)
-        #expect(board.canvasLost, "Done can never save, so the alert offers to close")
+        @Test func a_save_over_an_unchanged_board_keeps_the_surface_as_drawn() async {
+            let fake = FakeInkBoards(scene: scene([foreignRect]))
+            let board = await open(fake)
+            let loads = board.loads
+            board.changed(drawing(board, [(1, pen)]))
+            #expect(await board.flush())
+            board.changed(drawing(board, [(1, pen), (2, pen)]))
+            #expect(await board.flush())
+            #expect(InkScene.strokes(in: fake.scene ?? "")?.count == 2)
+            #expect(board.loads == loads, "no reload while only this surface wrote")
+        }
+
+        @Test func pixelEraseSplit() async throws {
+            let fake = FakeInkBoards(scene: scene([]))
+            let board = await open(fake)
+            let line = InkStroke(
+                points: (0 ... 10).map { CGPoint(x: Double($0) * 10, y: 50) }, pressures: Array(repeating: 0.5, count: 11),
+                color: "#1e1e1e", width: 1, opacity: 100, inkType: PKInk.InkType.pen.rawValue
+            )
+            board.changed(drawing(board, [(1, line)]))
+            #expect(await board.flush())
+            // A pixel eraser through the middle leaves the stroke twice, each
+            // copy masked to one side, under the one creation date.
+            let whole = line.stroke(created: Date(timeIntervalSinceReferenceDate: 1), offset: board.offset)
+            let side = { (minX: Double, maxX: Double) in
+                PKStroke(ink: whole.ink, path: whole.path, transform: .identity, mask: UIBezierPath(rect: CGRect(
+                    x: minX - board.offset.x, y: 0 - board.offset.y, width: maxX - minX, height: 100
+                )))
+            }
+            board.changed(PKDrawing(strokes: [side(62, 120), side(-20, 38)]))
+            #expect(await board.flush())
+            let stored = try #require(InkScene.strokes(in: fake.scene ?? ""))
+            #expect(stored.count == 2, "each visible part is one stroke")
+            let spans = stored.map { ($0.ink.points.map(\.x).min() ?? 0, $0.ink.points.map(\.x).max() ?? 0) }
+            #expect(spans.allSatisfy { $0.1 <= 40 || $0.0 >= 60 }, "nothing erased comes back: \(spans)")
+            #expect(spans.contains { $0.0 < 1 } && spans.contains { $0.1 > 99 })
+        }
+
+        @Test("a marker reopens with the tilt and opacity PencilKit drew it with")
+        func markerTilt() throws {
+            let points = [CGPoint(x: 0, y: 0), CGPoint(x: 40, y: 10)].map {
+                PKStrokePoint(location: $0, timeOffset: 0, size: CGSize(width: 13.75, height: 13.75), opacity: 1.5, force: 0, azimuth: 1.8157, altitude: .pi / 2)
+            }
+            let drawn = PKStroke(ink: PKInk(.marker, color: UIColor(red: 1, green: 0.8, blue: 0.2, alpha: 0.8)), path: PKStrokePath(controlPoints: points, creationDate: .now))
+            let ink = InkStroke(drawn, offset: .zero)
+            #expect(ink.tilt == InkTilt(azimuth: 1.816, altitude: 1.571, opacity: 1.5))
+            let written = try #require(InkScene.apply(InkEdit(added: [ink]), to: "", stamp: pinned()))
+            let read = try #require(InkScene.strokes(in: written.scene)?.first?.ink)
+            #expect(read == ink)
+            let reopened = read.stroke(created: .now, offset: .zero)
+            let point = try #require(reopened.path.first)
+            #expect(abs(point.azimuth - 1.816) < 0.001 && abs(point.opacity - 1.5) < 0.001)
+            #expect(abs(point.size.width - 13.75) < 0.1, "the width keeps Excalidraw's 0.01 rounding")
+        }
+
+        @Test("a save tells added, changed and erased strokes apart, and a lasso copy is new")
+        func addedChangedErased() async throws {
+            let fake = FakeInkBoards(scene: scene([]))
+            let board = await open(fake)
+            var moved = pen
+            moved.width = 2
+            board.changed(drawing(board, [(1, pen), (2, pen), (3, pen)]))
+            #expect(await board.flush())
+            let strokes: [(created: Double, ink: InkStroke)] = [(1, pen), (2, moved), (2, moved), (99, pen)]
+            board.changed(drawing(board, strokes))
+            #expect(await board.flush())
+            let stored = try elements(try #require(fake.scene))
+            #expect(stored.map { $0["id"] as? String } == ["ink-1", "ink-2", "ink-3", "ink-4", "ink-5"])
+            #expect(stored.map { $0["isDeleted"] as? Bool } == [false, false, true, false, false])
+            #expect(stored.map { $0["version"] as? Int } == [1, 2, 2, 1, 1], "only the changed and erased strokes are rewritten")
+            #expect(try #require(InkScene.strokes(in: fake.scene ?? "")).map(\.ink) == [pen, moved, moved, pen])
+            let saves = fake.saves
+            board.changed(drawing(board, strokes))
+            #expect(await board.flush())
+            #expect(fake.saves == saves, "nothing changed, nothing saved")
+        }
+
+        /// Drawing A starts saving and waits in the store; B is handed over and
+        /// queued behind it; then the store fails the next `failures` saves.
+        private func saveAThenB(_ fake: FakeInkBoards, failures: Int) async -> (board: InkBoard, a: Bool, b: Bool) {
+            let board = await open(fake)
+            var second = pen
+            second.color = "#2f9e44"
+            fake.holding = true
+            fake.failures = failures
+            board.changed(drawing(board, [(1, pen)]))
+            let settled = Task { await board.flush() }
+            while fake.held.isEmpty { try? await Task.sleep(for: .milliseconds(10)) }
+            board.changed(drawing(board, [(1, pen), (2, second)]))
+            let done = Task { await board.flush() }
+            // Lets Done's flush queue B behind A before A's save goes on.
+            try? await Task.sleep(for: .milliseconds(10))
+            fake.resume()
+            return (board, await settled.value, await done.value)
+        }
+
+        @Test(.timeLimit(.minutes(1)))
+        func a_failed_save_never_brings_back_an_older_drawing_than_a_newer_save() async throws {
+            let fake = FakeInkBoards(scene: scene([]))
+            let (board, a, b) = await saveAThenB(fake, failures: 1)
+            #expect(a == false)
+            #expect(b)
+            #expect(InkScene.strokes(in: fake.scene ?? "")?.count == 2)
+            #expect(board.saveFailure == nil, "the newer save landed, so no alert says it did not")
+            // onDisappear after Done: nothing new to save.
+            #expect(await board.flush())
+            #expect(InkScene.strokes(in: fake.scene ?? "")?.count == 2, "the stroke drawn after the failed save stays")
+        }
+
+        @Test(.timeLimit(.minutes(1)))
+        func when_both_saves_fail_the_retry_saves_the_newest_drawing() async throws {
+            let fake = FakeInkBoards(scene: scene([]))
+            let (board, a, b) = await saveAThenB(fake, failures: 2)
+            #expect(a == false)
+            #expect(b == false)
+            #expect(await board.flush())
+            #expect(InkScene.strokes(in: fake.scene ?? "")?.count == 2, "the retry saves both strokes")
+        }
+
+        @Test func a_pull_landing_between_the_read_and_the_write_is_kept() async throws {
+            // #4820: the save read the board, then a pull stored a desktop shape.
+            let fake = FakeInkBoards(scene: scene([]))
+            let board = await open(fake)
+            fake.pulls = [pull(foreignRect)]
+            board.changed(drawing(board, [(1, pen)]))
+            #expect(await board.flush())
+            let stored = try #require(fake.scene)
+            #expect(stored.contains(foreignRect), "the pulled desktop shape stays")
+            #expect(try #require(InkScene.strokes(in: stored)).map(\.ink) == [pen])
+            #expect(board.background?.elements.map(\.id) == ["rect-1"], "the surface shows the board as stored")
+        }
+
+        @Test func a_save_that_keeps_meeting_pulls_retries_and_keeps_every_stroke() async throws {
+            let fake = FakeInkBoards(scene: scene([]))
+            let board = await open(fake)
+            var second = pen
+            second.color = "#2f9e44"
+            let rect2 = foreignRect.replacingOccurrences(of: "rect-1", with: "rect-2")
+            fake.pulls = [pull(foreignRect), pull(rect2)]
+            board.changed(drawing(board, [(1, pen), (2, second)]))
+            #expect(await board.flush())
+            let stored = try #require(fake.scene)
+            #expect(stored.contains(foreignRect) && stored.contains(rect2))
+            #expect(try #require(InkScene.strokes(in: stored)).map(\.ink) == [pen, second], "each stroke written once")
+            #expect(fake.saves == 1)
+        }
+
+        @Test func a_save_that_never_lands_keeps_the_strokes_for_the_next_one() async throws {
+            let fake = FakeInkBoards(scene: scene([]))
+            let board = await open(fake)
+            fake.pulls = (0 ..< InkBoard.saveAttempts).map { pull(foreignRect.replacingOccurrences(of: "rect-1", with: "rect-\($0)")) }
+            board.changed(drawing(board, [(1, pen)]))
+            #expect(await board.flush() == false)
+            #expect(board.saveFailure != nil)
+            #expect(board.canvasLost == false, "the canvas is still there: Done tries again")
+            #expect(try #require(InkScene.strokes(in: fake.scene ?? "")).isEmpty)
+            #expect(await board.flush())
+            let stored = try #require(fake.scene)
+            #expect(try #require(InkScene.strokes(in: stored)).map(\.ink) == [pen])
+            #expect(stored.contains("rect-0") && stored.contains("rect-2"))
+        }
+
+        @Test func a_save_landing_after_a_stale_retry_clears_an_earlier_failure() async throws {
+            let fake = FakeInkBoards(scene: scene([]))
+            let board = await open(fake)
+            fake.failures = 1
+            board.changed(drawing(board, [(1, pen)]))
+            #expect(await board.flush() == false)
+            #expect(board.saveFailure != nil)
+            fake.pulls = [pull(foreignRect)]
+            #expect(await board.flush())
+            #expect(try #require(InkScene.strokes(in: fake.scene ?? "")).map(\.ink) == [pen])
+            #expect(board.saveFailure == nil, "the retried save landed, so no alert says it did not")
+            #expect(board.canvasLost == false)
+        }
+
+        @Test func the_boards_conflict_copy_is_listed_and_another_whiteboard_is_not() async {
+            let fake = FakeInkBoards(scene: scene([]))
+            fake.others = [CanvasRecord(id: "c3", title: "Sketches", ownerNoteId: "n1", scene: scene([]))]
+            let board = await open(fake)
+            #expect(board.conflictCopy == nil)
+            // A pull moved this board's iPad ink into a copy while it was open.
+            fake.others.append(CanvasRecord(id: "c2", title: "Drawing (conflict copy)", ownerNoteId: "n1", scene: scene([])))
+            fake.others.append(CanvasRecord(id: "c4", title: "Drawing (conflict copy)", ownerNoteId: "n9", scene: scene([])))
+            await board.findCopies()
+            #expect(board.conflictCopy?.id == "c2")
+        }
+
+        @Test func a_canvas_deleted_while_open_lets_the_surface_close() async {
+            let fake = FakeInkBoards(scene: scene([]))
+            let board = await open(fake)
+            #expect(board.canvasLost == false)
+            fake.scene = nil
+            board.changed(drawing(board, [(1, pen)]))
+            #expect(await board.flush() == false)
+            #expect(board.saveFailure != nil)
+            #expect(board.canvasLost, "Done can never save, so the alert offers to close")
+        }
     }
 }
 

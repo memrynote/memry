@@ -51,7 +51,8 @@ struct NoteReadView: View {
         search: (any VaultSearching)? = nil,
         open: ((NoteRoute) -> Void)? = nil,
         openTag: ((String) -> Void)? = nil,
-        noteTasks: (any NoteTaskWriting)? = nil
+        noteTasks: (any NoteTaskWriting)? = nil,
+        notifications: NotificationCenter = .default
     ) {
         self.open = open
         self.openTag = openTag
@@ -86,7 +87,9 @@ struct NoteReadView: View {
             initialValue: NoteAttachmentComposer(noteId: route.id, filler: filler)
         )
         _editorModel = State(
-            initialValue: NoteEditorViewModel(noteId: route.id, editor: editor, notes: writer)
+            initialValue: NoteEditorViewModel(
+                noteId: route.id, editor: editor, notes: writer, notifications: notifications
+            )
         )
         _metadataModel = State(
             initialValue: NoteMetadataViewModel(noteId: route.id, writer: metadataWriter)
@@ -101,7 +104,8 @@ struct NoteReadView: View {
         search: (any VaultSearching)? = nil,
         open: ((NoteRoute) -> Void)? = nil,
         openTag: ((String) -> Void)? = nil,
-        noteTasks: (any NoteTaskWriting)? = nil
+        noteTasks: (any NoteTaskWriting)? = nil,
+        notifications: NotificationCenter = .default
     ) {
         self.open = open
         self.openTag = openTag
@@ -136,7 +140,9 @@ struct NoteReadView: View {
         // this page's rows start with none, so an old stamp draws for them;
         // `loadBlocks` stamps from this session from its next read on.
         _editorModel = State(
-            initialValue: NoteEditorViewModel(noteId: model.route.id, editor: editor, notes: writer)
+            initialValue: NoteEditorViewModel(
+                noteId: model.route.id, editor: editor, notes: writer, notifications: notifications
+            )
         )
         _metadataModel = State(
             initialValue: NoteMetadataViewModel(noteId: model.route.id, writer: metadataWriter)
@@ -280,7 +286,9 @@ struct NoteReadView: View {
                         model: model, detail: detail, metadataModel: metadataModel,
                         // Immediate: a drawn first block takes the caret in
                         // the Return's own turn, before the title lets go.
-                        returnToBody: editorModel.canEdit ? { held in Task.immediate { await focusBody(atEnd: false, carrying: held) } } : nil
+                        // A binary note has no body to type into.
+                        returnToBody: editorModel.canEdit && model.file == nil
+                            ? { held in Task.immediate { await focusBody(atEnd: false, carrying: held) } } : nil
                     )
                     NotePageContent(
                         model: model,
@@ -309,7 +317,7 @@ struct NoteReadView: View {
                             )
                             }
                         },
-                        tapBelowBody: editorModel.canEdit && model.preview != .notPulled
+                        tapBelowBody: model.tapStartsParagraph(canEdit: editorModel.canEdit)
                             ? { Task { await focusBody(atEnd: true) } } : nil
                     )
                 }
@@ -321,6 +329,7 @@ struct NoteReadView: View {
             .padding(.vertical, Tokens.Space.screenBlock)
         }
         .restoresScroll(scrollKey)
+        .environment(\.appLifecycle, editorModel.notifications)
         .modifier(NoteHeadingScroll(heading: model.route.heading, blocks: model.blocks, jump: $outlineJump))
         .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.top } action: { topInset = $0 }
         // A cover runs under the navigation bar; the edge blur would smear it.

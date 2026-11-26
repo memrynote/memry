@@ -21,6 +21,7 @@ import { secureCleanup } from '../crypto/index'
 import { getFromServer } from './http-client'
 import { classifyError } from './sync-errors'
 import { syncState } from '@memry/db-schema/schema/sync-state'
+import { sessionState } from './device-local-state'
 import { ItemApplier } from './apply-item'
 import { FullSyncRunner } from './engine/full-sync-runner'
 import type {
@@ -47,7 +48,7 @@ import {
 } from './engine/sync-run-outcome'
 import { QuarantineManager } from './engine/quarantine-manager'
 import { CrdtSyncCoordinator } from './engine/crdt-sync-coordinator'
-import { isKnownNote } from './note-body-apply'
+import { isBinaryNote, isKnownNote } from './note-body-apply'
 import { crdtBodyDebtStore } from './engine/crdt-body-debts'
 import { PushCoordinator } from './engine/push-coordinator'
 import { PullCoordinator } from './engine/pull-coordinator'
@@ -209,7 +210,7 @@ export class SyncEngine extends SyncEventEmitter {
     this.crdtSync = new CrdtSyncCoordinator(
       this.ctx,
       (id) => this.pullCoordinator.resolveDeviceKey(id),
-      (id) => isKnownNote(this.ctx.deps.db, id),
+      (id) => isKnownNote(this.ctx.deps.db, id) && !isBinaryNote(this.ctx.deps.db, id),
       crdtBodyDebtStore(this.ctx.deps.db)
     )
     this.pushCoordinator = new PushCoordinator(this.ctx, this.stateManager)
@@ -770,9 +771,12 @@ export class SyncEngine extends SyncEventEmitter {
     this.pullCoordinator.clearCaches()
     this.quarantine.clear()
 
+    // A session reset: the IPC handler follows with an integrity teardown that
+    // keeps the vault files and the CRDT store, so the rows that describe them
+    // stay too (device-local-state.ts).
     try {
       this.ctx.deps.db.transaction((tx) => {
-        tx.delete(syncState).run()
+        tx.delete(syncState).where(sessionState()).run()
       })
     } catch (err) {
       log.error('Emergency wipe: failed to clear sync state', {

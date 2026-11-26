@@ -233,6 +233,8 @@ mod index_tag_definitions;
 mod indexer_facts;
 #[path = "indexer_open_status.rs"]
 mod indexer_open_status;
+#[path = "indexer_reindex_coalesce.rs"]
+mod indexer_reindex_coalesce;
 #[path = "indexer_scan.rs"]
 mod indexer_scan;
 #[path = "ios_beta_join.rs"]
@@ -317,6 +319,8 @@ mod note_properties_outside;
 mod note_versions;
 #[path = "notes_aliases.rs"]
 mod notes_aliases;
+#[path = "notes_aliases_owed.rs"]
+mod notes_aliases_owed;
 #[path = "notes_append_blocks.rs"]
 mod notes_append_blocks;
 #[path = "notes_apply_template.rs"]

@@ -616,6 +616,7 @@ impl Desktop {
                 first_sync: FirstSyncLimits::ALL,
                 max_pages_per_pass: MAX_PAGES_PER_PASS,
                 vault_root: None,
+                own_writes: None,
             },
             seeds: Vec::new(),
             pass_gate: Arc::default(),

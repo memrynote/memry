@@ -1,7 +1,8 @@
 //! One write-back pass for one note; the rules are the module invariants.
 
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use memry_core::api::vault::Vault;
 use memry_core::domain::app_settings::AppSettings;
@@ -16,7 +17,7 @@ use memry_core::markdown::shared::writing_tools::{WritingFrontmatter, merge_writ
 use memry_core::seams::secure_store::SecureStore;
 
 use super::journal::{Dated, dated_block, set_date};
-use super::place::{Found, Mark, Patch, Pulled, header_tags_of, patch};
+use super::place::{Found, Mark, Patch, Pulled, header_tags_of, owed_aliases, patch};
 use crate::attachments;
 use crate::locks::Locks;
 use crate::vault::app_edit::OwnFiles;
@@ -107,6 +108,9 @@ pub struct Pass {
     pub(super) store: Arc<dyn SecureStore>,
     /// The notes a pull changed whose pass has not taken the change yet (`place`).
     pub(super) pulled: Pulled,
+    /// The days whose file a pass left off its date's path this session, logged once
+    /// (`day_place`).
+    pub(super) refused_days: Mutex<HashSet<String>>,
 }
 
 impl Pass {
@@ -131,6 +135,7 @@ impl Pass {
             own_files,
             store,
             pulled: Pulled::default(),
+            refused_days: Mutex::default(),
         }
     }
 
@@ -180,7 +185,14 @@ impl Pass {
             self.pulled.take(note_id);
             return Outcome::Kept(Keep::NotMarkdown);
         }
-        let Some(row_hash) = row.content_hash else {
+        // A large file owing its record's aliases gets its `aliases` key alone (`owed`).
+        if row.content_hash.is_none()
+            && let Some(outcome) =
+                self.owed_large(&mut lane, note_id, &row, (read_at, read_mark), between)
+        {
+            return outcome;
+        }
+        let Some(row_hash) = row.content_hash.clone() else {
             return Outcome::Kept(Keep::NotRead);
         };
         let file = match read_note(&self.root, &row.path) {
@@ -194,6 +206,8 @@ impl Pass {
         if file.hash != row_hash {
             return Outcome::Kept(Keep::FileChanged);
         }
+        // A live day's file stands at its date's path (`day_place`, #5786).
+        let day_place = self.place_day(&mut lane, &row);
         // A pulled change: taken here, and given back to the next pass when this one stops.
         let pulled = match self.pulled.take(note_id) {
             None => None,
@@ -210,8 +224,21 @@ impl Pass {
         // gives it back only for a failed move to be tried again.
         let mut waiting = pulled.as_ref().map(|(mark, _)| mark.clone());
         let mut move_again = false;
+        // A file owing its record's aliases (`owed`) gets them from a pull's patch, or alone.
+        let owed = match pulled {
+            Some(_) => None,
+            None => match self.owed_record(note_id) {
+                Ok(owed) => owed,
+                Err(why) => return Outcome::Failed(why),
+            },
+        };
+        let pays =
+            owed.is_some() || (pulled.as_ref()).is_some_and(|(_, record)| record.aliases.is_some());
         let wait = |waiting: Option<Mark>, move_again: bool, outcome: Outcome| {
             let wrote = matches!(outcome, Outcome::Wrote { .. } | Outcome::Unchanged);
+            if wrote && pays {
+                self.paid(note_id);
+            }
             // A deleted note's mark goes: one that comes back is pulled again.
             let gone = outcome == Outcome::Kept(Keep::NoNote);
             if let Some(mark) = waiting.filter(|_| !gone && (!wrote || move_again)) {
@@ -219,9 +246,9 @@ impl Pass {
             }
             outcome
         };
-        let mut path = row.path.clone();
-        let mut moved = false;
-        // A day's path is its date's: it is never placed.
+        let mut moved = day_place.is_some();
+        let mut path = day_place.unwrap_or_else(|| row.path.clone());
+        // A day's path is its date's (`day_place`): a pulled record never places it.
         let places = pulled
             .as_ref()
             .zip(waiting.as_mut())
@@ -250,8 +277,15 @@ impl Pass {
         });
         let made = (&*self.vault, self.settings.as_ref(), self.root.as_path());
         let output = match output_over(made, note_id, &path, &file, patch.as_ref()) {
-            Ok(output) => output,
+            Ok(output) => match &owed {
+                Some(record) => owed_aliases(output, record),
+                None => Ok(output),
+            },
             Err(outcome) => return wait(waiting, move_again, outcome),
+        };
+        let output = match output {
+            Ok(output) => output,
+            Err(why) => return wait(waiting, move_again, Outcome::Failed(why)),
         };
         let patched = pulled.is_some()
             && split_frontmatter_block(&file.raw).block != split_frontmatter_block(&output).block;
@@ -300,6 +334,8 @@ impl Pass {
             }
         };
         self.echo.will_write(&path, &hash);
+        // Until the pass ends: the row names the old bytes until it is stamped below.
+        let _writing = self.own_files.writing(note_id, &hash);
         // A locked note's document takes only another device's edits (the core refuses local
         // ones), so its write-back goes through the lock, and its text becomes the baseline.
         let written = Locks::new(&self.root, &self.vault).write_through(&path, &output, || {

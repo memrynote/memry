@@ -134,16 +134,19 @@
 //!
 //! A journal day's file is written as a note's is, by the same rules (Step 13m): its row says
 //! the document holds it once the consumer fed it. A body write sets the day's `date` in its
-//! frontmatter, in place, and never writes the day's tags (`journal`).
+//! frontmatter, in place, and never writes the day's tags (`journal`). A live day owns its
+//! file: a pass moves a day's file that is off its date's path there (`day_place`, #5786).
 //!
 //! A note or day no row names (a record pulled from another device) gets its first file from
 //! its pass, once its body is here, under a free name and never over a file (`unfiled`). A row
 //! that names a missing file gets none: the removal is the user's.
 
+mod day_place;
 #[cfg(feature = "e2e")]
 mod debug;
 mod deleted;
 pub(crate) mod journal;
+mod owed;
 mod pass;
 mod place;
 mod reconcile;

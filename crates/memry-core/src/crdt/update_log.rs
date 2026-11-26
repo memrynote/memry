@@ -32,6 +32,7 @@
 use rusqlite::{Connection, OptionalExtension as _, params};
 
 use crate::api::errors::StorageError;
+use crate::storage::nested_tx;
 
 use super::body_writes::{self, LogRow, Wrote};
 use super::errors::CrdtError;
@@ -155,14 +156,12 @@ pub(super) fn append_server_update(
 /// The `MAX(seq) + 1` read and the insert are **one** transaction, which is
 /// what makes two concurrent appends take two sequences rather than one.
 pub fn append_local_update(
-    conn: &mut Connection,
+    conn: &Connection,
     doc_id: &str,
     update_blob: &[u8],
     created_at: i64,
 ) -> Result<i64, CrdtError> {
-    let txn = conn
-        .transaction()
-        .map_err(failed("open the append transaction"))?;
+    let txn = nested_tx::begin(conn).map_err(failed("open the append transaction"))?;
     let next = append_local_update_in(&txn, doc_id, update_blob, created_at)?;
     txn.commit().map_err(failed("commit the append"))?;
     Ok(next)
@@ -406,10 +405,8 @@ pub fn load_plan(conn: &Connection, doc_id: &str) -> Result<LoadPlan, CrdtError>
 /// What a tombstone requires: on applying one, the local Y.Doc and the local
 /// update log go (chapter 07 §7.15). The server keeps its rows and that is not
 /// evidence the delete failed.
-pub fn purge(conn: &mut Connection, doc_id: &str) -> Result<(), CrdtError> {
-    let txn = conn
-        .transaction()
-        .map_err(failed("open the purge transaction"))?;
+pub fn purge(conn: &Connection, doc_id: &str) -> Result<(), CrdtError> {
+    let txn = nested_tx::begin(conn).map_err(failed("open the purge transaction"))?;
     purge_in(&txn, doc_id)?;
     txn.commit().map_err(failed("commit the purge"))?;
     Ok(())
@@ -443,6 +440,7 @@ pub fn purge_in(conn: &Connection, doc_id: &str) -> Result<usize, CrdtError> {
             .map_err(failed("purge a snapshot"))?;
     }
     super::epoch::bump_in(conn, doc_id)?;
+    super::resident::release_document(conn, doc_id);
     // The document's body cursor goes with its log. Kept, it would make a
     // later pull of a revived document ask only for what came after it, and
     // the history the server still holds would never come back to this

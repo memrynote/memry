@@ -14,6 +14,7 @@ import { randomUUID } from 'node:crypto'
 import os from 'node:os'
 import sodium from 'libsodium-wrappers-sumo'
 import * as Y from 'yjs'
+import type * as LoggerModule from '../../lib/logger'
 
 type Recorded = { method: string; path: string; body: unknown }
 const requests = vi.hoisted(() => [] as Recorded[])
@@ -21,6 +22,29 @@ const requests = vi.hoisted(() => [] as Recorded[])
 const afterResponse = vi.hoisted(() => ({
   hook: null as ((request: Recorded) => Promise<void>) | null
 }))
+const coordinatorLogs = vi.hoisted(
+  () => [] as Array<{ level: 'info' | 'debug'; message: string; meta: unknown }>
+)
+
+// Records the coordinator's info and debug lines and still writes every line,
+// so a failing run keeps its log output.
+vi.mock('../../lib/logger', async (importOriginal) => {
+  const actual = await importOriginal<typeof LoggerModule>()
+  return {
+    ...actual,
+    createLogger: (scope: string) => {
+      const logger = actual.createLogger(scope)
+      if (scope !== 'CrdtSyncCoordinator') return logger
+      const recorded =
+        (level: 'info' | 'debug') =>
+        (message: string, ...rest: unknown[]): void => {
+          coordinatorLogs.push({ level, message, meta: rest[0] })
+          logger[level](message, ...rest)
+        }
+      return { ...logger, info: recorded('info'), debug: recorded('debug') }
+    }
+  }
+})
 
 vi.mock('electron', () => ({
   net: {
@@ -200,18 +224,30 @@ describe('CRDT body pull against a real sync server', () => {
     return paced(() => pushCrdtSnapshot(noteId, encrypted, token))
   }
 
-  /** An update from a second, independent author: no struct of it waits on the first. */
-  const pushForeignUpdate = (noteId: string, text: string): Promise<unknown> => {
+  /** Updates from a second, independent author: no struct of them waits on the first. */
+  const pushForeignUpdates = async (noteId: string, texts: string[]): Promise<void> => {
     const doc = new Y.Doc()
-    doc.getText('body').insert(0, text)
-    const update = Buffer.from(
-      encryptCrdtUpdate(Y.encodeStateAsUpdate(doc), vaultKey, noteId, signing.privateKey)
-    ).toString('base64')
-    return paced(() => postToServer('/sync/crdt/updates', { noteId, updates: [update] }, token))
+    const updates = texts.map((text) => {
+      const before = Y.encodeStateVector(doc)
+      doc.getText('body').insert(doc.getText('body').length, text)
+      const update = Y.encodeStateAsUpdate(doc, before)
+      return Buffer.from(encryptCrdtUpdate(update, vaultKey, noteId, signing.privateKey)).toString(
+        'base64'
+      )
+    })
+    // The server takes at most 100 updates per push.
+    for (let i = 0; i < updates.length; i += 100) {
+      const chunk = updates.slice(i, i + 100)
+      await paced(() => postToServer('/sync/crdt/updates', { noteId, updates: chunk }, token))
+    }
   }
 
   /** `fullSyncActive` probes every chunk; outside one a small cold chunk is not probed. */
-  const coordinatorOver = (provider: CrdtProvider, fullSyncActive = false): CrdtSyncCoordinator => {
+  const coordinatorOver = (
+    provider: CrdtProvider,
+    fullSyncActive = false,
+    takesBody?: (noteId: string) => boolean
+  ): CrdtSyncCoordinator => {
     const ctx = {
       fullSyncActive,
       deps: {
@@ -221,12 +257,16 @@ describe('CRDT body pull against a real sync server', () => {
       },
       abortController: new AbortController()
     } as unknown as SyncContext
-    return new CrdtSyncCoordinator(ctx, async () => signing.publicKey)
+    return new CrdtSyncCoordinator(ctx, async () => signing.publicKey, takesBody)
   }
 
+  const isSnapshotGet = (r: Recorded): boolean =>
+    r.method === 'GET' && r.path.startsWith('/sync/crdt/snapshot/')
+  const isProbe = (r: Recorded): boolean =>
+    r.path === '/sync/crdt/updates/batch' && (r.body as { limit?: number }).limit === 1
   const snapshotGets = (): string[] =>
     requests
-      .filter((r) => r.method === 'GET' && r.path.startsWith('/sync/crdt/snapshot/'))
+      .filter(isSnapshotGet)
       .map((r) => decodeURIComponent(r.path.slice('/sync/crdt/snapshot/'.length)))
 
   it('sends a snapshot GET only for the notes the server holds a snapshot of', async () => {
@@ -377,8 +417,14 @@ describe('CRDT body pull against a real sync server', () => {
 
   // #5477: the walk holds snapshot S1 as its baseline, and a peer's S2 prunes
   // the updates between them. `tail.` comes from an independent author, so no
-  // pending struct flags the note: only the page's `snapshotMeta` can.
+  // pending struct flags the note: only the page's `snapshotMeta` can. The
+  // tail is one update more than a page holds, so the page that names S2 says
+  // `hasMore` and only the owe ends the walk there (#5247).
   const fragments = ['base. ', 'mid. ', 'late. ', 'tail.']
+  const tail = ['tail.', ...Array.from({ length: 100 }, () => '+')]
+  const isUpdatePage = (r: Recorded): boolean =>
+    (r.path === '/sync/crdt/updates/batch' && (r.body as { limit?: number }).limit === 100) ||
+    (r.method === 'GET' && r.path === '/sync/crdt/updates')
   it.each(['single', 'batch'] as const)(
     'owes a %s walk whose held snapshot a newer peer snapshot replaces before the walk',
     async (mode) => {
@@ -390,7 +436,7 @@ describe('CRDT body pull against a real sync server', () => {
         if (request.method !== 'GET' || !request.path.startsWith('/sync/crdt/snapshot/')) return
         afterResponse.hook = null
         await pushSnapshot(noteId, 'late. ')
-        await pushForeignUpdate(noteId, 'tail.')
+        await pushForeignUpdates(noteId, tail)
       }
 
       const provider = memoryProvider()
@@ -408,7 +454,10 @@ describe('CRDT body pull against a real sync server', () => {
       }
 
       expect(merged).toBe(mode === 'single' ? false : undefined)
-      expect(provider.text(noteId)).not.toContain('late.')
+      // The page naming S2 ends the walk: none of its updates reaches the doc,
+      // and the walk asks for no further page.
+      expect(requests.filter(isUpdatePage)).toHaveLength(1)
+      expect(provider.text(noteId)).toBe('base. ')
       expect(coordinator.hasUnmergedRemoteState(noteId)).toBe(true)
       expect(coordinator.drainPendingPulls()).toEqual([noteId])
 
@@ -435,11 +484,10 @@ describe('CRDT body pull against a real sync server', () => {
     // before the walk and prunes `more.`.
     await pushUpdate(noteId, 'more. ')
     afterResponse.hook = async (request) => {
-      const body = request.body as { limit?: number } | undefined
-      if (request.path !== '/sync/crdt/updates/batch' || body?.limit !== 1) return
+      if (!isProbe(request)) return
       afterResponse.hook = null
       await pushSnapshot(noteId, 'late. ')
-      await pushForeignUpdate(noteId, 'tail.')
+      await pushForeignUpdates(noteId, ['tail.'])
     }
     requests.length = 0
     try {
@@ -459,6 +507,97 @@ describe('CRDT body pull against a real sync server', () => {
     for (const text of [...fragments, 'more. ']) expect(provider.text(noteId)).toContain(text)
     expect(coordinator.hasUnmergedRemoteState(noteId)).toBe(false)
   }, 60_000)
+
+  // #5247: that owe counts no failed pull, so a note a peer keeps snapshotting
+  // could stay owed walk after walk with no other trace.
+  /**
+   * One pass over `noteId`; `churnAfter` names the read a peer's snapshot lands
+   * right after. Returns every owed-again line logged for the note so far.
+   */
+  const churnPass = async (
+    coordinator: CrdtSyncCoordinator,
+    noteId: string,
+    churnAfter?: (request: Recorded) => boolean,
+    mode: 'single' | 'batch' = 'batch'
+  ): Promise<Array<[string, number]>> => {
+    afterResponse.hook = async (request) => {
+      if (!churnAfter?.(request)) return
+      afterResponse.hook = null
+      await pushSnapshot(noteId, 'churn. ')
+    }
+    try {
+      if (mode === 'single') await coordinator.pullCrdtForNote(noteId)
+      else await coordinator.pullCrdtForNotes([noteId])
+    } finally {
+      afterResponse.hook = null
+    }
+    coordinator.drainPendingPulls()
+    return coordinatorLogs
+      .filter((entry) => entry.message.startsWith('CRDT walk owed again'))
+      .map((entry) => ({
+        level: entry.level,
+        ...(entry.meta as { noteId: string; owedWalksInARow: number })
+      }))
+      .filter((entry) => entry.noteId === noteId)
+      .map((entry) => [entry.level, entry.owedWalksInARow])
+  }
+
+  it('logs a note owed again for a newer peer snapshot, and counts afresh once a walk settles it', async () => {
+    const noteId = `churn-${randomUUID().slice(0, 8)}`
+    await pushSnapshot(noteId, 'base. ')
+    const coordinator = coordinatorOver(memoryProvider())
+
+    expect(await churnPass(coordinator, noteId, isSnapshotGet)).toEqual([])
+    expect(await churnPass(coordinator, noteId, isSnapshotGet)).toEqual([['debug', 2]])
+    expect(await churnPass(coordinator, noteId)).toEqual([['debug', 2]])
+    expect(coordinator.hasUnmergedRemoteState(noteId)).toBe(false)
+
+    // The probe proves the merged snapshot current, so the walk starts without
+    // a GET; the update above it keeps the probe from settling the note.
+    await pushUpdate(noteId, 'more. ')
+    expect(await churnPass(coordinator, noteId, isProbe)).toEqual([['debug', 2]])
+    expect(coordinator.hasUnmergedRemoteState(noteId)).toBe(true)
+  }, 60_000)
+
+  // The single-note pull sends no batch POST, so the passes below leave the
+  // 30-per-minute batch bucket to the tests after them.
+  it('logs the third owe in a row at info, since packaged builds drop debug lines', async () => {
+    const noteId = `churn-info-${randomUUID().slice(0, 8)}`
+    await pushSnapshot(noteId, 'base. ')
+    const coordinator = coordinatorOver(memoryProvider())
+
+    await churnPass(coordinator, noteId, isSnapshotGet, 'single')
+    await churnPass(coordinator, noteId, isSnapshotGet, 'single')
+
+    expect(await churnPass(coordinator, noteId, isSnapshotGet, 'single')).toEqual([
+      ['debug', 2],
+      ['info', 3]
+    ])
+  }, 60_000)
+
+  it.each(['rowless', 'no longer synced'] as const)(
+    'counts afresh for a note the pull drops as %s',
+    async (how) => {
+      const noteId = `churn-dropped-${randomUUID().slice(0, 8)}`
+      await pushSnapshot(noteId, 'base. ')
+      let hasRow = true
+      const coordinator = coordinatorOver(memoryProvider(), false, () => hasRow)
+      await churnPass(coordinator, noteId, isSnapshotGet, 'single')
+      expect(await churnPass(coordinator, noteId, isSnapshotGet, 'single')).toEqual([['debug', 2]])
+
+      if (how === 'rowless') {
+        hasRow = false
+        await coordinator.pullCrdtForNote(noteId)
+        hasRow = true
+      } else {
+        coordinator.clearUnmergedForDroppedNote(noteId)
+      }
+
+      expect(await churnPass(coordinator, noteId, isSnapshotGet, 'single')).toEqual([['debug', 2]])
+      expect(coordinator.hasUnmergedRemoteState(noteId)).toBe(true)
+    },
+    60_000
+  )
 
   // #5286: a fresh device seeded 31 notes from markdown whose updates the
   // server returned, because the doc cache closed each doc mid-pass and the
