@@ -121,7 +121,7 @@ jobs:
           repository: memrynote/memry
       - uses: ./.github/actions/tesseract-sources
         with:
-          save: 'true'
+          save: ${{ github.ref == 'refs/heads/feat/tauri-v2' }}
       - name: Build the sidecars and fetch pdfium
         run: node apps/desktop-tauri/scripts/build-sidecars.mjs --target ${{ matrix.triple }}
       - name: Build
@@ -192,7 +192,7 @@ jobs:
           repository: memrynote/memry
       - uses: ./.github/actions/tesseract-sources
         with:
-          save: 'true'
+          save: ${{ github.ref == 'refs/heads/feat/tauri-v2' }}
       - name: Build the sidecars and fetch pdfium
         run: node apps/desktop-tauri/scripts/build-sidecars.mjs --target ${{ matrix.triple }}
       - name: Build bundle (unsigned)
@@ -346,7 +346,7 @@ jobs:
           repository: memrynote/memry
       - uses: ./.github/actions/tesseract-sources
         with:
-          save: 'true'
+          save: ${{ github.ref == 'refs/heads/feat/tauri-v2' }}
       - name: Build the sidecars and fetch pdfium
         run: node apps/desktop-tauri/scripts/build-sidecars.mjs --target x86_64-unknown-linux-gnu
       - name: Build AppImage

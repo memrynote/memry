@@ -10,6 +10,7 @@ use crate::crypto::agent_envelope::AtRestKey;
 use crate::protocol::http::SYNC_TYPES_HEADER;
 use crate::protocol::types::{ArrivingItemType, PURGED_TOMBSTONES_SYNC_TYPE};
 use crate::sync::apply::{self, Pending};
+use crate::sync::delete_keep::VaultFiles;
 use crate::sync::driver::observer::AppliedFeed;
 use crate::sync::hardening::purged;
 
@@ -156,9 +157,26 @@ impl PullLoop {
     }
 
     /// The vault folder a delete reads a note's file in, as the pull's own
-    /// deletes do ([`PullLoop::with_vault_root`]).
-    pub(crate) fn vault_root(&self) -> Option<std::path::PathBuf> {
-        self.vault_root.clone()
+    /// deletes do ([`PullLoop::with_vault_files`]).
+    pub(crate) fn vault_files(&self) -> Option<VaultFiles> {
+        self.vault_files.clone()
+    }
+
+    /// The vault folder whose files hold the notes' bodies (desktop). A delete
+    /// over a body log that does not replay keeps the note's file text
+    /// instead ([`crate::sync::delete_keep`], #5343).
+    pub fn with_vault_root(self, root: std::path::PathBuf) -> Self {
+        self.with_vault_files(VaultFiles {
+            root,
+            own_writes: None,
+        })
+    }
+
+    /// The vault folder whose files hold the notes' bodies, and the bytes this device writes
+    /// to them itself, which a delete reads as taken ([`crate::sync::delete_keep`]).
+    pub fn with_vault_files(mut self, files: VaultFiles) -> Self {
+        self.vault_files = Some(files);
+        self
     }
 
     /// Whether this loop's declaration subscribes `item_type` (§5.3). A record

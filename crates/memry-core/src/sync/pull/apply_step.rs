@@ -41,7 +41,7 @@ impl PullLoop {
         feed: &mut AppliedFeed,
     ) -> Result<(ApplyTotals, Vec<String>), PullError> {
         let clock_device = self.clock_device.clone();
-        let vault_root = self.vault_root.clone();
+        let vault_files = self.vault_files();
         let at_rest = self.at_rest.clone();
         let (mut totals, advanced) = self
             .db
@@ -63,7 +63,7 @@ impl PullLoop {
                     pending,
                     now,
                     clock_device.as_deref(),
-                    vault_root.as_deref(),
+                    vault_files.as_ref(),
                     &at_rest,
                     &mut totals,
                 )?;

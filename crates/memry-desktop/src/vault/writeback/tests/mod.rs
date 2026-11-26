@@ -368,6 +368,7 @@ mod attachments;
 mod body_waits;
 mod day_note;
 mod day_place;
+mod delete_keep;
 mod deleted;
 mod embeds;
 mod failures;
