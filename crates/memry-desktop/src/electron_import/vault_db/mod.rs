@@ -57,6 +57,11 @@ pub struct VaultImportInput<'a> {
     pub docs: Vec<FoldedDoc>,
     pub extra_owed_docs: Vec<String>,
     pub vault_key: Option<VaultKey>,
+    /// `memry-config.json` `sync.deviceId` ([`crate::electron_import::ElectronConfig::device_id`]).
+    /// A queued delete without a clock is stamped with it, as Electron's push does
+    /// (`ensureRequiredClock`); without it such a delete fails
+    /// [`ImportError::DeleteWithoutDevice`].
+    pub electron_device_id: Option<String>,
     pub now_ms: i64,
     pub progress: Option<Box<dyn Fn(ImportProgress) + Send>>,
 }
@@ -130,6 +135,8 @@ pub struct TableCtx<'a> {
     pub vault_id: &'a str,
     pub writer: &'a mut ImportWriter,
     pub now_ms: i64,
+    /// [`VaultImportInput::electron_device_id`].
+    pub electron_device_id: Option<&'a str>,
 }
 
 #[derive(Debug, Clone)]
@@ -251,6 +258,7 @@ fn stage(input: &VaultImportInput<'_>, paths: &Paths) -> Result<VaultStageReport
                     vault_id: &input.vault_id,
                     writer: &mut writer,
                     now_ms: input.now_ms,
+                    electron_device_id: input.electron_device_id.as_deref(),
                 };
                 let stats = import(&mut ctx)?;
                 table.target_count = stats.written;
@@ -271,7 +279,12 @@ fn stage(input: &VaultImportInput<'_>, paths: &Paths) -> Result<VaultStageReport
             .insert(format!("{}/{}", mapping.db.name(), mapping.table), table);
     }
 
-    checks::run(&mut report, &sources, &writer)?;
+    checks::run(
+        &mut report,
+        &sources,
+        &writer,
+        input.electron_device_id.as_deref(),
+    )?;
     drop(sources);
     source::remove(&paths.staging)?;
     writer.finish(&marker(&report, input.now_ms))?;

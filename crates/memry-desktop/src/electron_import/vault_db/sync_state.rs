@@ -56,14 +56,20 @@ impl SyncStateKey {
     }
 }
 
-/// A key carried to the core once stage 36c writes its handler.
+/// A key carried to the core once stage 36c3 writes its handler.
 const fn convert(key: KeyMatch, reason: &'static str) -> SyncStateKey {
+    pending("36c3", key, reason)
+}
+
+/// A key the documents carry (36c4).
+const fn document(key: KeyMatch, reason: &'static str) -> SyncStateKey {
+    pending("36c4", key, reason)
+}
+
+const fn pending(stage: &'static str, key: KeyMatch, reason: &'static str) -> SyncStateKey {
     SyncStateKey {
         key,
-        rule: KeyRule::Pending {
-            stage: "36c",
-            reason,
-        },
+        rule: KeyRule::Pending { stage, reason },
     }
 }
 
@@ -134,7 +140,7 @@ pub const SYNC_STATE_KEYS: &[SyncStateKey] = &[
         Exact("crdtBodyDebtMirrorAt"),
         "store and database come from one snapshot, nothing left to mismatch",
     ),
-    convert(
+    document(
         Exact("crdtUnmergedDebt"),
         "marks every document owed as a core body debt",
     ),
@@ -142,13 +148,13 @@ pub const SYNC_STATE_KEYS: &[SyncStateKey] = &[
         Exact("lastCrdtSweepAt"),
         "retired in #2421; the row stays only for older Electron builds",
     ),
-    convert(
+    document(
         Prefix("journalDayMerge:"),
-        "an owed journal day merge (sync/journal-day-merge.ts); destination set by 36c",
+        "an owed journal day merge (sync/journal-day-merge.ts); destination set by 36c4",
     ),
-    convert(
+    document(
         Prefix("note-cover:"),
-        "an owed note cover sync marker (item-handlers/note-cover-sync.ts); destination set by 36c",
+        "an owed note cover sync marker (item-handlers/note-cover-sync.ts); destination set by 36c4",
     ),
 ];
 

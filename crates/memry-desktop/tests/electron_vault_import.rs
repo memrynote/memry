@@ -26,12 +26,17 @@ mod electron_db;
 mod ledger_ends;
 #[path = "electron_vault_import/notes.rs"]
 mod notes;
+#[path = "electron_vault_import/queue.rs"]
+mod queue;
+#[path = "electron_vault_import/queue_deletes.rs"]
+mod queue_deletes;
 #[path = "electron_vault_import/records.rs"]
 mod records;
 #[path = "electron_vault_import/tag_template_records.rs"]
 mod tag_template_records;
 
 const NOW_MS: i64 = 1_800_000_000_000;
+const ELECTRON_DEVICE: &str = "device-electron";
 
 struct Vault {
     _dir: tempfile::TempDir,
@@ -39,6 +44,8 @@ struct Vault {
     pair: electron_db::ElectronPair,
     profile: ElectronProfile,
     lock: ProfileLock,
+    /// `memry-config.json` `sync.deviceId`.
+    device_id: Option<&'static str>,
 }
 
 /// An Electron profile whose localStorage store has a free LOCK file.
@@ -75,6 +82,7 @@ impl Vault {
             pair,
             profile,
             lock,
+            device_id: Some(ELECTRON_DEVICE),
         }
     }
 
@@ -88,6 +96,7 @@ impl Vault {
             docs: Vec::new(),
             extra_owed_docs: Vec::new(),
             vault_key: None,
+            electron_device_id: self.device_id.map(str::to_owned),
             now_ms: NOW_MS,
             progress: None,
         }
@@ -156,7 +165,7 @@ fn installed_marker(vault: &Vault) -> Option<String> {
 fn an_empty_electron_pair_installs_a_core_pair_that_opens() {
     let vault = Vault::new();
     let report = import(&vault);
-    assert_eq!(report.checks_passed, vec![1, 2, 5, 6]);
+    assert_eq!(report.checks_passed, vec![1, 2, 4, 5, 6]);
     assert!(report.tables.values().all(|t| t.source_count == 0));
     assert!(!vault.staging().exists(), "staging removed after install");
 
@@ -287,7 +296,7 @@ fn rows_whose_importer_is_pending_abort_before_any_write() {
     );
     assert_refused(
         &vault,
-        |e| matches!(e, ImportError::NotReady(what) if what.contains("data.db/settings")),
+        |e| matches!(e, ImportError::NotReady { detail, .. } if detail.contains("data.db/settings")),
     );
 
     let vault = Vault::new();
@@ -298,7 +307,7 @@ fn rows_whose_importer_is_pending_abort_before_any_write() {
     );
     assert_refused(
         &vault,
-        |e| matches!(e, ImportError::NotReady(what) if what.contains("lastCursor")),
+        |e| matches!(e, ImportError::NotReady { detail, .. } if detail.contains("lastCursor")),
     );
 }
 
