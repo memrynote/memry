@@ -260,6 +260,11 @@ jobs:
           node --test scripts/check-test-timing.test.mjs
           node scripts/check-test-timing.mjs
 
+      - name: Merge-queue quarantine list
+        if: matrix.lint && runner.os == 'Linux'
+        working-directory: .
+        run: node --test scripts/check-quarantine.test.mjs && node scripts/check-quarantine.mjs
+
       # Linux linking needs tens of GB; the image ships ~20 GB of toolchains we never use.
       - name: Free disk space
         uses: ./.github/actions/free-disk
@@ -394,7 +399,10 @@ jobs:
         if: matrix.tests
         env:
           PARTITION: ${{ matrix.partition }}
-        run: cargo nextest run -p memry-core -p memry-desktop -p memry-media -p memry-tauri -p memry-test-kit -p xtask -p memrynote-cli --no-fail-fast --features memry-core/markdown ${PARTITION:+--partition "hash:$PARTITION"}
+        run: |
+          FILTER=
+          if [ "$NEXTEST_PROFILE" = merge-queue ]; then FILTER=$(node ../scripts/check-quarantine.mjs --filter); fi
+          cargo nextest run -p memry-core -p memry-desktop -p memry-media -p memry-tauri -p memry-test-kit -p xtask -p memrynote-cli --no-fail-fast --features memry-core/markdown ${PARTITION:+--partition "hash:$PARTITION"} ${FILTER:+-E "$FILTER"}
 
       - name: Upload the JUnit report (merge queue)
         if: ${{ !cancelled() && (matrix.tests || matrix.seams) && github.event_name == 'merge_group' }}
