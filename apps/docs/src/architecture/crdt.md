@@ -1143,6 +1143,10 @@ document to its vault `.md` file and re-indexes it for search.
   the file restore), because the parse reads a `\r` as a space. Seeded as it was, a CRLF note
   had a trailing space on every line of the doc, so its first edit wrote the whole note in
   house style. The pass puts the file's own line endings back when it writes.
+  The renderer parses a vault body itself in the journal's On this day entries, canvas note
+  cards, the embedded note editor and the agent review diff. Each passes it through
+  `normalizeLoadedMarkdown` first, which gives it LF line endings too. Without that, a CRLF
+  body showed its lists and code fences as literal `- item` text.
   The proof accepts a merge that re-parses to the doc's house style, or to what that house
   style itself re-parses to. Markdown drops the space or tab a paragraph ends in, so a doc
   saved mid-sentence (`last word `) fails its own re-parse, and that used to fail every

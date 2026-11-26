@@ -5,11 +5,7 @@ import { useCallback, useEffect, useRef } from 'react'
 import { removeAndInsertBlocks, type Block } from '@blocknote/core'
 import { ySyncPluginKey, yUndoPluginKey } from 'y-prosemirror'
 import type * as Y from 'yjs'
-import {
-  extractHeadings,
-  normalizeWikiLinks,
-  normalizeMarkdownHardBreaks
-} from '../wiki-link-utils'
+import { extractHeadings, normalizeWikiLinks, normalizeLoadedMarkdown } from '../wiki-link-utils'
 import { normalizeHashTags, extractInlineTags } from '../hash-tag'
 import { normalizeNoteBlocks } from '../normalize-note-blocks'
 import { normalizeInlineCheckboxes } from '../inline-checkbox-utils'
@@ -581,7 +577,7 @@ export function useEditorSync({
             let content = initialContent
 
             if (contentType === 'markdown') {
-              content = normalizeMarkdownHardBreaks(content)
+              content = normalizeLoadedMarkdown(content)
             }
 
             let blocks
