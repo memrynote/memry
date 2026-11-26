@@ -216,17 +216,15 @@ describe('Rust CI gate', () => {
       assert.doesNotMatch(lintAndTest, /--partition/)
     })
 
-    it('runs every partition from the archive of its OS, with no compiler', () => {
+    it('runs every partition from the archive of its OS, with no build', () => {
       assert.match(partitions, /^ {4}needs: \[plan, test-archive\]$/m)
       assert.match(
         partitions,
         /name: nextest-archive-\$\{\{ matrix\.os \}\}\n {10}path: \$\{\{ runner\.temp \}\}\/nextest-archive\n/
       )
-      const runs = [...partitions.matchAll(/^ {10}(cargo(?:-nextest)? nextest .*)$/gm)].map(
-        (m) => m[1]
-      )
+      const runs = [...partitions.matchAll(/^ {10}(cargo nextest .*)$/gm)].map((m) => m[1])
       assert.deepEqual(runs, [
-        'cargo-nextest nextest run --archive-file "$RUNNER_TEMP/nextest-archive/nextest-archive.tar.zst" --workspace-remap . --extract-to . --extract-overwrite --no-fail-fast --partition "count:$PARTITION" ${FILTER:+-E "$FILTER"}'
+        'cargo nextest run --archive-file "$RUNNER_TEMP/nextest-archive/nextest-archive.tar.zst" --workspace-remap . --extract-to . --extract-overwrite --no-fail-fast --partition "count:$PARTITION" ${FILTER:+-E "$FILTER"}'
       ])
       assert.match(
         partitions,
@@ -234,7 +232,7 @@ describe('Rust CI gate', () => {
       )
       assert.doesNotMatch(
         partitions,
-        /dtolnay\/rust-toolchain|rust-cache|cargo (build|test|check|clippy)\b/
+        /rust-cache|cargo (build|test|check|clippy|nextest archive)\b/
       )
       // Every merge-queue partition keeps its JUnit report for the flaky-report job, under a name
       // lint-and-test's reports do not take.
@@ -382,10 +380,10 @@ describe('Rust CI gate', () => {
       const start = jobs.indexOf(`\n  ${id}:\n`)
       const end = i + 1 < ids.length ? jobs.indexOf(`\n  ${ids[i + 1]}:\n`) : undefined
       const job = jobs.slice(start, end)
-      if (!/cargo(?:-nextest)? nextest run/.test(job)) continue
+      if (!/cargo nextest run/.test(job)) continue
       assert.ok(job.includes(`\n      ${profile}\n`), id)
       // Only the live seams pick another profile; nothing pins `default` past the job env.
-      for (const [run] of job.matchAll(/cargo(?:-nextest)? nextest run[^\n']*/g))
+      for (const [run] of job.matchAll(/cargo nextest run[^\n']*/g))
         if (/--profile/.test(run)) assert.match(run, /--profile live /, run)
     }
   })

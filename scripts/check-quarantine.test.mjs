@@ -105,9 +105,7 @@ test("the packages match rust-ci.yml's suite, and every merge-queue run of it ap
       PACKAGES
     )
   const runs = [
-    ...workflow.matchAll(
-      /^ {10}(cargo(?:-nextest)? nextest run .*\$\{FILTER:\+-E "\$FILTER"\}.*)$/gm
-    )
+    ...workflow.matchAll(/^ {10}(cargo nextest run .*\$\{FILTER:\+-E "\$FILTER"\}.*)$/gm)
   ]
   assert.equal(runs.length, 2, 'test-partitions and the macOS Test step apply the filter')
   const sets = [

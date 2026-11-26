@@ -1091,7 +1091,7 @@ jobs:
           retention-days: 1
 
   # The nextest suite of the Linux and Windows legs in four count partitions, each run from its OS's
-  # archive. The checkout is the workspace the tests read their fixtures from, and the archive unpacks
+  # archive, with no compile. The checkout is the workspace the tests read their fixtures from, and the archive unpacks
   # into crates/target, the path the build compiled into CARGO_BIN_EXE_*.
   test-partitions:
     name: Rust tests ${{ matrix.partition }} (${{ matrix.os }})
@@ -1126,6 +1126,23 @@ jobs:
         timeout-minutes: 12
         with: *linux-libraries
 
+      # No build here: memry-desktop's tests/http.rs runs `cargo tree` through the toolchain the
+      # archive was built with (env!("CARGO")).
+      - name: Setup Rust
+        id: rust
+        uses: dtolnay/rust-toolchain@stable
+        timeout-minutes: 5
+        continue-on-error: true
+        with:
+          toolchain: '1.98.1'
+
+      - name: Setup Rust (retry)
+        if: steps.rust.outcome == 'failure'
+        uses: dtolnay/rust-toolchain@stable
+        timeout-minutes: 5
+        with:
+          toolchain: '1.98.1'
+
       - name: Install cargo-nextest
         uses: taiki-e/install-action@v2
         with:
@@ -1138,15 +1155,14 @@ jobs:
           path: ${{ runner.temp }}/nextest-archive
 
       # The merge queue skips the quarantined tests (#5846), and the flaky-report job posts every test
-      # of this step that passed only on retry to #3967. `cargo-nextest nextest`: running an archive
-      # needs no Rust toolchain, and this job installs none.
+      # of this step that passed only on retry to #3967.
       - name: Test
         env:
           PARTITION: ${{ matrix.partition }}
         run: |
           FILTER=
           if [ "$NEXTEST_PROFILE" = merge-queue ]; then FILTER=$(node ../scripts/check-quarantine.mjs --filter); fi
-          cargo-nextest nextest run --archive-file "$RUNNER_TEMP/nextest-archive/nextest-archive.tar.zst" --workspace-remap . --extract-to . --extract-overwrite --no-fail-fast --partition "count:$PARTITION" ${FILTER:+-E "$FILTER"}
+          cargo nextest run --archive-file "$RUNNER_TEMP/nextest-archive/nextest-archive.tar.zst" --workspace-remap . --extract-to . --extract-overwrite --no-fail-fast --partition "count:$PARTITION" ${FILTER:+-E "$FILTER"}
 
       - name: Upload the JUnit report (merge queue)
         if: ${{ !cancelled() && github.event_name == 'merge_group' }}
