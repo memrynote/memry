@@ -638,12 +638,10 @@ extension KeyWindowSuites {
         private func uninterrupted<T>(
             typingAtOnce atOnce: Bool, _ scenario: @MainActor (UIWindow, @MainActor () -> Bool) async throws -> T
         ) async throws -> T {
-            var attempt = 0
-            while true {
-                attempt += 1
+            try await Resigned.uninterrupted { watch in
                 let window = try sceneWindow()
+                watch(window)
                 var typedAtOnce = false
-                var resigned = false
                 let began = NotificationCenter.default.addObserver(
                     forName: UITextView.textDidBeginEditingNotification, object: nil, queue: nil
                 ) { note in
@@ -656,17 +654,8 @@ extension KeyWindowSuites {
                         view.insertText("s")
                     }
                 }
-                let resign = NotificationCenter.default.addObserver(
-                    forName: UIWindow.didResignKeyNotification, object: window, queue: nil
-                ) { _ in
-                    MainActor.assumeIsolated { resigned = true }
-                }
-                let seen = try await scenario(window) { typedAtOnce }
-                NotificationCenter.default.removeObserver(began)
-                NotificationCenter.default.removeObserver(resign)
-                window.isHidden = true
-                if !resigned || attempt == 10 { return seen }
-                try await Task.sleep(for: .milliseconds(200 * attempt))
+                defer { NotificationCenter.default.removeObserver(began) }
+                return try await scenario(window) { typedAtOnce }
             }
         }
 
