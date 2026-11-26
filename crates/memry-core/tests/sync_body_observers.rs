@@ -10,6 +10,7 @@ use std::sync::Arc;
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use http_fakes::{FakeTransport, response};
+use memry_core::api::errors::TransportError;
 use memry_core::crdt::registry::UpdateSink;
 use memry_core::crdt::update_log;
 use memry_core::crdt::{DocumentRegistry, extract_text};
@@ -17,6 +18,7 @@ use memry_core::protocol::crdt_envelope::{CrdtMaterial, CrdtRequest, pack, unpac
 use memry_core::protocol::envelope::EnvelopeError;
 use memry_core::protocol::http::{ClientIdentity, HttpClient};
 use memry_core::protocol::types::Declaration;
+use memry_core::seams::transport::HttpResponse;
 use memry_core::storage::{Db, open_data};
 use memry_core::sync::body_pull::{BodyPull, CrdtCipher, PackedUpdate, crdt_cursor_scope};
 use memry_core::sync::driver::observer::{ApplyObserver, Observers};
@@ -29,6 +31,9 @@ use yrs::{
 
 const NOTE: &str = "abc123def456";
 const VAULT_KEY: [u8; 32] = [3u8; 32];
+
+/// One scripted answer of the fake transport.
+type Scripted = Result<HttpResponse, TransportError>;
 
 fn scratch_db(label: &str) -> Db {
     let dir: PathBuf = tempfile::Builder::new()
@@ -180,5 +185,91 @@ async fn a_failed_later_page_still_tells_the_observers_of_the_update_already_sto
         *watcher.heard.lock().unwrap(),
         [(vec![NOTE.to_owned()], Some("1".to_owned()))],
         "the committed update is told although the pull failed"
+    );
+}
+
+/// A body pull over `script`, its observers one [`BodyWatcher`].
+fn observed_pull(db: &Db, script: Vec<Scripted>) -> (BodyPull, Arc<BodyWatcher>) {
+    let http = Arc::new(
+        HttpClient::new(
+            FakeTransport::new(script),
+            "https://sync.example",
+            ClientIdentity::new("ios", "1.2.3").expect("a valid identity"),
+        )
+        .with_sleeper(http_fakes::RecordingSleeper::new()),
+    );
+    let (public_key, _) =
+        memry_core::crypto::sodium::sign_seed_keypair(&[7u8; 32]).expect("keypair");
+    let observers = Arc::new(Observers::default());
+    let watcher = Arc::new(BodyWatcher {
+        db: db.clone(),
+        heard: std::sync::Mutex::default(),
+    });
+    observers.register(watcher.clone());
+    let bodies = BodyPull::new(
+        http,
+        db.clone(),
+        Declaration::subscribed(),
+        Arc::new(Directory {
+            device_id: "device-a".into(),
+            public_key,
+        }),
+    )
+    .with_observers(observers);
+    (bodies, watcher)
+}
+
+/// One pull of a document with no snapshot and one update, `hasMore: false`.
+fn one_update_pull() -> Vec<Scripted> {
+    let (_, secret_key) =
+        memry_core::crypto::sodium::sign_seed_keypair(&[7u8; 32]).expect("keypair");
+    let update = BASE64.encode(packed(NOTE, &body_update("Page one"), &secret_key));
+    vec![
+        http_fakes::probe_refused(),
+        response(200, &json!({"snapshot": null}).to_string()),
+        response(
+            200,
+            &json!({"updates": [{"sequenceNum": 1, "data": update, "signerDeviceId": "device-a"}],
+                    "hasMore": false})
+            .to_string(),
+        ),
+    ]
+}
+
+/// A pulled update is told once, after it committed: the observer reads its
+/// cursor.
+#[tokio::test]
+async fn a_pulled_document_tells_its_update_once_after_commit() {
+    let db = scratch_db("observers-told-once");
+    let (bodies, watcher) = observed_pull(&db, one_update_pull());
+
+    bodies.pull_document(NOTE).await.expect("the pull");
+
+    assert_eq!(text_of(&db, NOTE), "Page one");
+    assert_eq!(
+        *watcher.heard.lock().unwrap(),
+        [(vec![NOTE.to_owned()], Some("1".to_owned()))]
+    );
+}
+
+/// A pull that finds nothing past the held cursor tells no one.
+#[tokio::test]
+async fn a_pull_with_nothing_new_tells_no_one() {
+    let db = scratch_db("observers-nothing-new");
+    let mut script = one_update_pull();
+    script.extend([
+        http_fakes::probe_refused(),
+        response(200, &json!({"snapshot": null}).to_string()),
+        response(200, &json!({"updates": [], "hasMore": false}).to_string()),
+    ]);
+    let (bodies, watcher) = observed_pull(&db, script);
+
+    bodies.pull_document(NOTE).await.expect("the first pull");
+    bodies.pull_document(NOTE).await.expect("the second pull");
+
+    assert_eq!(
+        *watcher.heard.lock().unwrap(),
+        [(vec![NOTE.to_owned()], Some("1".to_owned()))],
+        "the second pull stored nothing"
     );
 }
