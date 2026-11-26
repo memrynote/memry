@@ -472,14 +472,16 @@ final class EditorSession {
         var typed = range.length == 0 && !inCode ? InlineTrigger.active(in: textView.text, caret: range.location) : nil
         var typedTag = range.length == 0 && !inCode
             ? HashTagTrigger.active(in: textView.text, caret: range.location) : nil
-        if placed {
-            if typed.map(Self.dismissable) != trigger.map(Self.dismissable) { typed = nil }
-            if typedTag?.range.location != tagTrigger?.range.location { typedTag = nil }
-        }
+        // An Esc-closed menu stays closed while the caret is in its trigger,
+        // placed or typing: UIKit reports a keystroke's caret move first.
         let typedMenu = typed.map(Self.dismissable)
         let typedTagMenu = typedTag.map { DismissedMenu(trigger: "#", location: $0.range.location) }
         if let dismissed = dismissedMenu, typedMenu != dismissed, typedTagMenu != dismissed {
             dismissedMenu = nil
+        }
+        if placed {
+            if typedMenu != trigger.map(Self.dismissable) { typed = nil }
+            if typedTag?.range.location != tagTrigger?.range.location { typedTag = nil }
         }
         let next = typedMenu == dismissedMenu ? nil : typed
         if next != trigger {
