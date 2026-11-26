@@ -434,3 +434,25 @@ pub fn map_pages(
     }
     Ok(plans)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::web::extract::utils::json;
+
+    /// `map_pages` also checks per page, which a token cancelled up front reaches first, so this
+    /// holds `convert_blocks` itself to stopping before the next block's scrub.
+    #[test]
+    fn a_cancelled_page_stops_before_it_scrubs_the_next_block() {
+        let block = format!(r#"{{"string":"{}"}}"#, "{{a}} ".repeat(10_000));
+        let page = json::parse(&format!("[{block},{block}]")).unwrap();
+        let cancel = CancellationToken::new();
+        cancel.cancel();
+        let before = template_bytes_scanned();
+
+        let converted = convert_blocks(Some(&page), &mut Budget(usize::MAX), &cancel);
+
+        assert_eq!(converted, Err(MapError::Cancelled));
+        assert_eq!(template_bytes_scanned(), before, "a block was scrubbed");
+    }
+}

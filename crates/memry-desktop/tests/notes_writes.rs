@@ -61,6 +61,7 @@ fn plan() -> NewNoteFile {
         properties: json!({ "status": "open" }).as_object().unwrap().clone(),
         emoji: Some(Some("🙂".into())),
         template: None,
+        plain_checklists: false,
     }
 }
 
@@ -305,6 +306,7 @@ fn a_note_made_from_a_note_carries_its_tags_properties_and_icon_beside_it() {
         properties: source.properties.clone(),
         emoji: Some(source.emoji.clone()),
         template: None,
+        plain_checklists: false,
     };
     let copy = notes.create(&open, from("Plan")).unwrap();
     assert_eq!(copy.path, "work/Plan 1.md", "the taken name was reused");

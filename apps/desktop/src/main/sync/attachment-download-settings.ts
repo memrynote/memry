@@ -1,6 +1,7 @@
 import { getSetting } from '../database/queries/settings'
 import { createLogger } from '../lib/logger'
 import type { DataDb } from '../database'
+import { holdsCaseTwinForeignBytes } from '../vault/case-twin-bytes'
 
 const log = createLogger('AttachmentDownloadSettings')
 
@@ -26,4 +27,14 @@ export function isAttachmentAutoDownloadEnabled(db: DataDb): boolean {
     log.warn('Could not read sync settings; keeping attachment auto-download on', { error: err })
     return true
   }
+}
+
+/**
+ * Whether a background download of note `noteId`'s attachment runs. With
+ * auto-download off, only the bytes a binary note's held file waits for do
+ * (#5560, #5580): until they land, the file holds stale or another note's
+ * bytes, and none of its changes sync.
+ */
+export function downloadsInBackground(db: DataDb, noteId: string, intoDir: boolean): boolean {
+  return isAttachmentAutoDownloadEnabled(db) || (!intoDir && holdsCaseTwinForeignBytes(db, noteId))
 }

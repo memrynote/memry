@@ -1,5 +1,6 @@
 import * as Y from 'yjs'
 import { Observable } from 'lib0/observable'
+import type { CrdtRemoteBodyWait as RemoteBodyWait } from '@memry/contracts/ipc-crdt'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('YjsIpcProvider')
@@ -22,6 +23,8 @@ export interface YjsIpcProviderConfig {
    * it when its provider serves another vault. Null outside a workspace.
    */
   vaultPath?: string | null
+  /** Told each change of `remoteWait` (#5290). */
+  onRemoteWait?: (wait: RemoteBodyWait | null) => void
 }
 
 // oxlint-disable-next-line typescript/no-deprecated -- lib0 Observable is deprecated for ObservableV2; migrating changes the event typing of every consumer
@@ -34,6 +37,9 @@ export class YjsIpcProvider extends Observable<string> {
   private ipcCleanup: (() => void) | null = null
   private resetCleanup: (() => void) | null = null
   private readyCleanup: (() => void) | null = null
+  /** Ends `openDoc`'s wait for the server body when this provider is destroyed. */
+  private endLoadWait: (() => void) | null = null
+  private remoteWaitState: RemoteBodyWait | null = null
   /**
    * Main dropped the provider this binding pointed at, and no replacement has
    * served us since. Set by the reset event, cleared only by a handshake that
@@ -45,6 +51,7 @@ export class YjsIpcProvider extends Observable<string> {
   private rebinding: Promise<void> | null = null
   private readonly canRebind: (readyVaultPath: string | null | undefined) => boolean
   private readonly vaultPath: string | null
+  private readonly onRemoteWait: ((wait: RemoteBodyWait | null) => void) | undefined
   /** Vault of the provider main last announced ready; cleared on reset. */
   private readyVaultPath: string | null | undefined = undefined
 
@@ -55,6 +62,7 @@ export class YjsIpcProvider extends Observable<string> {
     this.doc = config.doc
     this.canRebind = config.canRebind ?? (() => true)
     this.vaultPath = config.vaultPath ?? null
+    this.onRemoteWait = config.onRemoteWait
   }
 
   /**
@@ -149,12 +157,29 @@ export class YjsIpcProvider extends Observable<string> {
     this.emit('status', [{ status: 'disconnected' }])
   }
 
+  /**
+   * What `connect()` waits on before it binds (#5290): main's doc waits for
+   * the server body (`merging`), or main pushed a reason it cannot merge for
+   * now (`crdt:doc-wait`: `stuck`, `signed-out`, `vault-locked`). Reported to
+   * `YjsIpcProviderConfig.onRemoteWait` when it changes.
+   */
+  get remoteWait(): RemoteBodyWait | null {
+    return this.remoteWaitState
+  }
+
+  private setRemoteWait(next: RemoteBodyWait | null): void {
+    if (this.remoteWaitState === next) return
+    this.remoteWaitState = next
+    this.onRemoteWait?.(next)
+  }
+
   get isSynced(): boolean {
     return this.synced
   }
 
   destroy(): void {
     this.destroyed = true
+    this.endLoadWait?.()
     this.disconnect()
     // oxlint-disable-next-line typescript/no-deprecated -- same lib0 Observable base class as above
     super.destroy()
@@ -225,7 +250,27 @@ export class YjsIpcProvider extends Observable<string> {
     }
   }
 
+  /**
+   * Resolves once main's doc is ready to bind. A doc main opened empty to wait
+   * for the server body (`awaitingRemote`, #5290) is not: the binding waits
+   * for `crdt:doc-loaded`, so the editor shows its loading state instead of an
+   * empty note. The listener is attached before the open, so an event sent
+   * before the reply is not missed.
+   */
   private async openDoc(): Promise<void> {
+    let loaded = false
+    let pushedWait: RemoteBodyWait | null = null
+    let onLoaded: (() => void) | null = null
+    const stopListening = window.api.onCrdtDocLoaded(({ noteId }) => {
+      if (noteId !== this.noteId) return
+      loaded = true
+      onLoaded?.()
+    })
+    const stopWait = window.api.onCrdtDocWait(({ noteId, wait }) => {
+      if (noteId !== this.noteId) return
+      pushedWait = wait
+      if (this.remoteWaitState) this.setRemoteWait(wait)
+    })
     try {
       const result = await window.api.syncCrdt.openDoc(
         this.vaultPath === null
@@ -235,9 +280,22 @@ export class YjsIpcProvider extends Observable<string> {
       if (!result.success) {
         throw new Error(result.error ?? 'Failed to open CRDT doc')
       }
+      if (result.awaitingRemote && !loaded && !this.destroyed) {
+        log.info('Waiting for the server body before binding', { noteId: this.noteId })
+        this.setRemoteWait(pushedWait ?? result.awaitingRemote)
+        await new Promise<void>((resolve) => {
+          onLoaded = resolve
+          this.endLoadWait = resolve
+        })
+      }
     } catch (err) {
       log.error('Failed to open doc', { noteId: this.noteId, error: err })
       throw err
+    } finally {
+      this.endLoadWait = null
+      stopListening()
+      stopWait()
+      if (!this.destroyed) this.setRemoteWait(null)
     }
   }
 

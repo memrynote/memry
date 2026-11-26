@@ -9,12 +9,11 @@
 //! correctly here and is missing a paragraph everywhere else, with nothing to
 //! detect it.
 //!
-//! **The document is rebuilt from the log for every edit.** It is the same
-//! document [`crate::domain::reads::body`] reads, opened under this device's
-//! id so the update is authored by it rather than by the reader identity. A
-//! cached document would be faster and would also be a second writer to keep in
-//! step with the log; that is a cache with a correctness problem, and this path
-//! is a local SQLite read plus a `yrs` apply.
+//! **The document is the log's, opened under this device's id** so the update
+//! is authored by it rather than by the reader identity. The last write's
+//! document stays decoded while the log holds nothing it lacks
+//! ([`crate::crdt::resident`], #5692), so an edit costs the change and not a
+//! replay of the note's history.
 //!
 //! **The update is what the transaction authored** (chapter 12 §12.5.1), taken
 //! from the registry's sink rather than recovered by diffing two copies of the
@@ -28,13 +27,14 @@ use crate::api::errors::StorageError;
 use crate::crdt::body_edit::{self, BlockEdit};
 use crate::crdt::errors::CrdtError;
 use crate::crdt::registry::UpdateSink;
-use crate::crdt::{epoch, markdown_seed, update_log};
+use crate::crdt::{epoch, markdown_seed, resident, update_log};
 use crate::domain::notes::ITEM_TYPE;
 #[cfg(feature = "markdown")]
 use crate::domain::notes::journal_day::body_owner;
 use crate::domain::reads;
 #[cfg(feature = "markdown")]
 use crate::portal;
+use crate::storage::nested_tx;
 use crate::sync::outbox;
 
 /// Applies one block edit to a note's body. A locked note refuses it
@@ -56,22 +56,22 @@ pub fn edit_block(
     }
     refuse_locked(conn, note_id)?;
 
-    let Some(update) = author(conn, note_id, edit, device_id)? else {
+    let tx = nested_tx::begin(conn).map_err(storage_failed)?;
+    let Some(update) = author(&tx, note_id, edit, device_id)? else {
         // A write that authored nothing: setting an attribute to the value it
         // already holds. Nothing is stored and nothing is pushed — an edit
         // that changed nothing must not ship a clock and win a conflict it had
         // no business winning.
         return Ok(true);
     };
-
-    let tx = conn.unchecked_transaction().map_err(storage_failed)?;
     append_in(&tx, ITEM_TYPE, note_id, &update, now_ms)?;
     tx.commit().map_err(storage_failed)?;
     Ok(true)
 }
 
 /// Replays `doc_id`'s durable log into a document opened under `device_id`
-/// and applies `edit` to it, **without writing anything**.
+/// and applies `edit` to it, **without writing anything**. Called inside the
+/// transaction that stores the update ([`epoch::require_write_lock`]).
 ///
 /// - Returns: the update the edit authored, or `None` when it authored nothing.
 ///   A refused edit (a block the body does not hold) is an error, and nothing
@@ -105,13 +105,13 @@ pub fn append_snapshot(
         return Ok(false);
     }
     refuse_locked(conn, note_id)?;
-    let Some(update) = author_with(conn, note_id, device_id, |document| {
+    let tx = nested_tx::begin(conn).map_err(storage_failed)?;
+    let Some(update) = author_with(&tx, note_id, device_id, |document| {
         body_edit::append_snapshot(document, snapshot)
     })?
     else {
         return Ok(true);
     };
-    let tx = conn.unchecked_transaction().map_err(storage_failed)?;
     append_in(&tx, ITEM_TYPE, note_id, &update, now_ms)?;
     tx.commit().map_err(storage_failed)?;
     Ok(true)
@@ -131,13 +131,13 @@ pub fn append_markdown(
         return Ok(false);
     }
     refuse_locked(conn, note_id)?;
-    let Some(update) = author_with(conn, note_id, device_id, |document| {
+    let tx = nested_tx::begin(conn).map_err(storage_failed)?;
+    let Some(update) = author_with(&tx, note_id, device_id, |document| {
         document.write(|txn| markdown_seed::append_markdown_in(txn, markdown).map(|_| ()))?
     })?
     else {
         return Ok(true);
     };
-    let tx = conn.unchecked_transaction().map_err(storage_failed)?;
     append_in(&tx, ITEM_TYPE, note_id, &update, now_ms)?;
     tx.commit().map_err(storage_failed)?;
     Ok(true)
@@ -177,15 +177,16 @@ pub fn stamp_anchor(
     }
     refuse_locked(conn, note_id)?;
     let mut outcome = portal::StampOutcome::MissingBlock;
-    let update = author_with(conn, note_id, device_id, |document| {
+    // Authored and stored in one write-locked transaction (#5734).
+    let tx = nested_tx::begin(conn).map_err(storage_failed)?;
+    let update = author_with(&tx, note_id, device_id, |document| {
         outcome = portal::stamp_anchor(document, block_id)?;
         Ok(())
     })?;
     if let Some(update) = update {
-        let tx = conn.unchecked_transaction().map_err(storage_failed)?;
         append_in(&tx, owner.item_type, note_id, &update, now_ms)?;
-        tx.commit().map_err(storage_failed)?;
     }
+    tx.commit().map_err(storage_failed)?;
     Ok(Some(outcome))
 }
 
@@ -208,6 +209,30 @@ pub(crate) fn author_appends(
     })
 }
 
+/// Applies `write` to `doc_id`'s body and stores the update it authored, with
+/// its outbox row as `item_type`, in one write-locked transaction (#5734): the
+/// body write for a caller outside the core, `memry notes edit`. The replay
+/// authors under the document's epoch client id, as every core write does.
+///
+/// - Returns: the local sequence the update took and its size, or `None` when
+///   the write authored nothing, which stores nothing.
+pub fn write_body(
+    conn: &Connection,
+    item_type: &str,
+    doc_id: &str,
+    device_id: &str,
+    now_ms: i64,
+    write: impl FnOnce(&crate::crdt::Document) -> Result<(), CrdtError>,
+) -> Result<Option<(i64, usize)>, CrdtError> {
+    let tx = nested_tx::begin(conn).map_err(storage_failed)?;
+    let Some(update) = author_with(&tx, doc_id, device_id, write)? else {
+        return Ok(None);
+    };
+    let seq = append_in(&tx, item_type, doc_id, &update, now_ms)?;
+    tx.commit().map_err(storage_failed)?;
+    Ok(Some((seq, update.len())))
+}
+
 /// [`author`] for any write against the replayed document.
 pub(crate) fn author_with(
     conn: &Connection,
@@ -215,38 +240,33 @@ pub(crate) fn author_with(
     device_id: &str,
     write: impl FnOnce(&crate::crdt::Document) -> Result<(), CrdtError>,
 ) -> Result<Option<Vec<u8>>, CrdtError> {
-    let authored: Arc<Mutex<Vec<Vec<u8>>>> = Arc::new(Mutex::new(Vec::new()));
-    let sink: UpdateSink = {
-        let authored = Arc::clone(&authored);
-        Arc::new(move |_, bytes: &[u8]| {
-            authored
-                .lock()
-                .unwrap_or_else(PoisonError::into_inner)
-                .push(bytes.to_vec())
-        })
-    };
-    let document = epoch::open_for_write(conn, device_id, doc_id, sink)?;
-
-    write(&document)?;
-
-    let mut updates = authored.lock().unwrap_or_else(PoisonError::into_inner);
-    Ok((!updates.is_empty()).then(|| updates.swap_remove(0)))
+    let body = resident::checkout(conn, device_id, doc_id)?;
+    write(body.document())?;
+    let mut updates = body.take_authored();
+    // The caller stores one update. A write that authored more holds changes
+    // the log will not, so its document is not kept.
+    if updates.len() > 1 {
+        return Ok(Some(updates.swap_remove(0)));
+    }
+    let update = updates.pop();
+    body.keep(update.clone());
+    Ok(update)
 }
 
 /// Stores an authored update and queues it as `(item_type, doc_id)`, inside
 /// the caller's transaction: the update row and its outbox row commit together
-/// or not at all (FR-030, data-model §A.2).
+/// or not at all (FR-030, data-model §A.2). Returns the local sequence.
 pub(crate) fn append_in(
     tx: &Connection,
     item_type: &str,
     doc_id: &str,
     update: &[u8],
     now_ms: i64,
-) -> Result<(), CrdtError> {
-    update_log::append_local_update_in(tx, doc_id, update, now_ms)?;
+) -> Result<i64, CrdtError> {
+    let seq = update_log::append_local_update_in(tx, doc_id, update, now_ms)?;
     let change = outbox::Change::crdt_update(item_type, doc_id, update.to_vec());
     outbox::enqueue(tx, &change, now_ms)?;
-    Ok(())
+    Ok(seq)
 }
 
 /// Refuses a write made on this device to a locked note or journal day
@@ -343,7 +363,8 @@ mod tests {
     const DAY: &str = "j2026-04-16";
 
     fn appended(conn: &Connection, markdown: &str) -> Vec<u8> {
-        author_with(conn, DAY, "device-a", |document| {
+        let tx = nested_tx::begin(conn).expect("begin");
+        author_with(&tx, DAY, "device-a", |document| {
             document.write(|txn| markdown_seed::append_markdown_in(txn, markdown).map(|_| ()))?
         })
         .expect("author")

@@ -21,10 +21,15 @@
 //! is tried once more after the write-back ran; one still kept is answered in `kept` and holds
 //! the job for the next open. A locked note is left as it is and counted in `skipped_locked`,
 //! and it holds the job too, until an unlock ([`crate::locks`]) or the next open resumes it.
+//! Step 5 finds its notes in the note index, so the open's resume waits for the open's index
+//! build ([`NoteIndex::wait_built`]): a note the index has not read yet is not found, so it
+//! neither takes the rename nor holds the job.
 //!
 //! [`Tasks::rename_field`]: memry_core::api::tasks::Tasks
 
-use std::sync::{Arc, Mutex, MutexGuard, PoisonError, TryLockError};
+#[cfg(feature = "test-hooks")]
+use std::sync::PoisonError;
+use std::sync::{Arc, Mutex, MutexGuard, TryLockError};
 use std::time::{Duration, Instant};
 
 use memry_core::api::errors::StorageError;
@@ -32,17 +37,16 @@ pub use memry_core::domain::tag_schema::rename::FieldRenameJob;
 use memry_core::domain::tag_schema::rename::RecordedRename;
 use memry_core::domain::tasks::FieldRenamed;
 use serde::Serialize;
-use tokio::sync::broadcast::Receiver;
 
 use super::edit::field_name;
 use super::{SchemaError, Schemas};
 use crate::notes::error::{NotesError, kept_is_retryable};
+use crate::notes::index::NoteIndex;
 use crate::notes::properties::FieldInNote;
 use crate::notes::service::NotesService;
-use crate::notes::tag_rename::{SETTLE, walked};
-use crate::session::{OpenStage, OpenVault, Session};
+use crate::notes::tag_rename::SETTLE;
+use crate::session::{OpenVault, Session};
 use crate::vault::app_edit::Kept;
-use crate::vault::consumer::Applied;
 
 #[cfg(doc)]
 use crate::notes::property_definitions::PropertyDefinitions;
@@ -326,33 +330,20 @@ fn claim(lock: &Mutex<()>) -> Option<MutexGuard<'_, ()>> {
     }
 }
 
-/// Finishes a recorded field rename in the background of every open, once the open walk
-/// offered every file, so the index rows the rename reads are read. `finished` runs after a
-/// resume that ran (the shell tells the renderer the schemas changed).
+/// Finishes a recorded field rename in the background of every open, once the open's index
+/// build ended, so the rename finds every note holding the field (Electron resumes after
+/// `indexVault`). `finished` runs after a resume that ran (the shell tells the renderer the
+/// schemas changed).
 pub fn register_resume(
     notes: &Arc<NotesService>,
+    index: &Arc<NoteIndex>,
     session: &Session,
     finished: Arc<dyn Fn() + Send + Sync>,
 ) {
-    let facts: Arc<Mutex<Option<Receiver<Applied>>>> = Arc::default();
-    let (tier, slot) = (notes.tier.clone(), facts.clone());
-    // Before the `Watcher` stage, whose walk publishes `Indexed`.
-    session.on_open(
-        "field-rename-resume",
-        OpenStage::LockGuard,
-        Arc::new(move |_| {
-            *slot.lock().unwrap_or_else(PoisonError::into_inner) = Some(tier.subscribe());
-            Ok(())
-        }),
-    );
-    let notes = notes.clone();
+    let (notes, index) = (notes.clone(), index.clone());
     session.on_background(
         "field-rename-resume",
         Arc::new(move |open, cancel| {
-            let taken = facts.lock().unwrap_or_else(PoisonError::into_inner).take();
-            let Some(mut facts) = taken else {
-                return Ok(());
-            };
             if cancel.is_cancelled() {
                 return Ok(());
             }
@@ -360,10 +351,9 @@ pub fn register_resume(
             if matches!(open.vault.field_rename_recorded(), Ok(None)) {
                 return Ok(());
             }
-            if !walked(&mut facts, &|| cancel.is_cancelled()) {
+            if !index.wait_built(&|| cancel.is_cancelled()) {
                 return Ok(());
             }
-            drop(facts);
             if resume_recorded(open, &notes, &|| cancel.is_cancelled())? {
                 finished();
             }

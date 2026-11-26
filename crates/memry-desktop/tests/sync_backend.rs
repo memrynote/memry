@@ -15,6 +15,7 @@ use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_core::storage::open_data;
 use memry_desktop::seams::tls::{PinFailure, PinFailureSink};
 use memry_desktop::seams::transport::app_transport;
+use memry_desktop::session::at_rest_key::AtRestKeys;
 use memry_desktop::sync::backend::{SyncBackend, VaultSyncBackend};
 use memry_desktop::sync::error_category::SyncErrorCategory;
 use memry_desktop::sync::gate::{Entitlement, SyncStartGate, VaultBinding};
@@ -41,6 +42,16 @@ impl Reachability for Online {
 
 /// A vault bound to no server vault, over `store`: `sync_driver` fails after the key went in.
 fn unbound(dir: &std::path::Path, store: Arc<dyn SecureStore>) -> (Arc<Vault>, VaultSyncBackend) {
+    let keys = AtRestKeys::new(Arc::clone(&store));
+    unbound_with(dir, store, keys)
+}
+
+/// [`unbound`] over the session's key owner `keys`.
+fn unbound_with(
+    dir: &std::path::Path,
+    store: Arc<dyn SecureStore>,
+    keys: Arc<AtRestKeys>,
+) -> (Arc<Vault>, VaultSyncBackend) {
     let data = dir.join("vault").join(".memry").join("core");
     std::fs::create_dir_all(&data).unwrap();
     let vault =
@@ -64,10 +75,11 @@ fn unbound(dir: &std::path::Path, store: Arc<dyn SecureStore>) -> (Arc<Vault>, V
     let backend = VaultSyncBackend::new(
         Arc::clone(&vault),
         Arc::new(session),
-        store,
+        Arc::clone(&store),
         Arc::new(Online),
         Vec::new(),
         Arc::new(|| (true, true)),
+        keys,
     );
     (vault, backend)
 }
@@ -80,7 +92,7 @@ async fn a_failed_open_leaves_no_at_rest_key() {
     let (vault, backend) = unbound(dir.path(), store);
 
     assert!(
-        backend.open().await.is_err(),
+        backend.open(Vec::new()).await.is_err(),
         "an unbound vault does not sync"
     );
     assert!(
@@ -90,6 +102,119 @@ async fn a_failed_open_leaves_no_at_rest_key() {
             .is_err(),
         "the key installed for the open is gone"
     );
+}
+
+fn installed(vault: &Vault) -> bool {
+    vault
+        .at_rest_key()
+        .seal(Purpose::MessageContent, "x")
+        .is_ok()
+}
+
+/// Sync stopping keeps the key the agent still holds (#3545 D3): the session owner removes it
+/// only when the last hold goes or the vault closes.
+#[tokio::test]
+async fn sync_letting_go_keeps_the_key_another_holder_needs() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = device_key::with_device_key();
+    store.set(SecureStoreKey::MasterKey, vec![9u8; 32]).unwrap();
+    let keys = AtRestKeys::new(Arc::clone(&store));
+    let (vault, backend) = unbound_with(dir.path(), store, Arc::clone(&keys));
+    let agent = keys.acquire(&vault).expect("the agent's hold");
+
+    assert!(
+        backend.open(Vec::new()).await.is_err(),
+        "an unbound vault does not sync"
+    );
+    backend.close();
+    assert!(installed(&vault), "the agent's hold keeps the key");
+
+    let again = keys.acquire(&vault).expect("a second hold");
+    drop(agent);
+    assert!(installed(&vault), "one hold is left");
+    drop(again);
+    assert!(!installed(&vault), "the last hold removes the key");
+
+    let late = keys.acquire(&vault).expect("a hold after the key went");
+    assert!(installed(&vault));
+    keys.close(&vault);
+    assert!(!installed(&vault), "closing the vault removes the key");
+    drop(late);
+    assert!(
+        !installed(&vault),
+        "a hold of the closed vault installs nothing"
+    );
+}
+
+/// A late hold for a vault that closed gets no key, and a hold for another vault never takes
+/// the key from one that still has holders (REVIEW-4884 item 3).
+#[test]
+fn probe_a_closed_vault_never_takes_the_open_vault_key() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = device_key::with_device_key();
+    store.set(SecureStoreKey::MasterKey, vec![9u8; 32]).unwrap();
+    let keys = AtRestKeys::new(Arc::clone(&store));
+    let open = |name: &str| {
+        let data = dir.path().join(name).join(".memry").join("core");
+        std::fs::create_dir_all(&data).unwrap();
+        Arc::new(Vault::open(name.into(), data.to_string_lossy().into_owned()).unwrap())
+    };
+    let (closed, current) = (open("a"), open("b"));
+
+    let early = keys.acquire(&closed).expect("a hold of the first vault");
+    keys.close(&closed);
+    let held = keys.acquire(&current).expect("the open vault's hold");
+    drop(early);
+    assert!(keys.acquire(&closed).is_err(), "a closed vault gets no key");
+    assert!(installed(&current), "the open vault keeps its key");
+    assert!(!installed(&closed));
+
+    let other = open("c");
+    assert!(
+        keys.acquire(&other).is_err(),
+        "the key stays with the vault that holds it"
+    );
+    assert!(installed(&current));
+    drop(held);
+    assert!(!installed(&current));
+    let _later = keys.acquire(&other).expect("free once nobody holds it");
+    assert!(installed(&other));
+}
+
+/// An account switch never leaves the key of the account that signed out: sign-out removes it
+/// under the agent's hold, the next acquire reads the new account's key, and the vault's
+/// verifier refuses it (VERIFY-4884 item 1).
+#[test]
+fn an_account_switch_never_keeps_the_previous_accounts_key() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = device_key::with_device_key();
+    store.set(SecureStoreKey::MasterKey, vec![9u8; 32]).unwrap();
+    let keys = AtRestKeys::new(Arc::clone(&store));
+    let data = dir.path().join("a").join(".memry").join("core");
+    std::fs::create_dir_all(&data).unwrap();
+    let vault = Arc::new(Vault::open("a".into(), data.to_string_lossy().into_owned()).unwrap());
+    let agent = keys.acquire(&vault).expect("account A's hold");
+    assert!(installed(&vault));
+
+    keys.clear();
+    assert!(!installed(&vault), "sign-out removes A's key");
+    store.set(SecureStoreKey::MasterKey, vec![7u8; 32]).unwrap();
+    assert!(
+        keys.acquire(&vault).is_err(),
+        "the verifier refuses B's key for A's vault"
+    );
+    assert!(!installed(&vault), "neither A's key nor B's is installed");
+
+    store.set(SecureStoreKey::MasterKey, vec![9u8; 32]).unwrap();
+    let again = keys.acquire(&vault).expect("A signs in again");
+    assert!(installed(&vault));
+    drop(again);
+    assert!(
+        installed(&vault),
+        "the agent's hold from before the sign-out"
+    );
+    drop(agent);
+    assert!(!installed(&vault));
 }
 
 /// A keychain that answers `Locked` while `locked` is set, counting every call.
@@ -145,7 +270,7 @@ async fn a_locked_keychain_is_only_read_again_never_written() {
         "{facts:?}"
     );
     assert!(matches!(
-        backend.open().await,
+        backend.open(Vec::new()).await,
         Err(SyncError::SecureStore { .. })
     ));
 
@@ -165,6 +290,7 @@ async fn a_locked_keychain_is_only_read_again_never_written() {
             telemetry: None,
             signals: memry_desktop::sync::signals::AuthSignals::new(),
             on_status: Arc::new(|_| {}),
+            on_event: Arc::new(|_| {}),
         },
     );
     let before = store.reads.load(Ordering::SeqCst);

@@ -204,6 +204,7 @@ impl VaultCalendar {
                 is_all_day: changes.is_all_day,
                 target_calendar_id: changes.target_calendar_id.into_patch(),
                 color: changes.color.into_patch(),
+                ..EventPatch::default()
             };
             write::update_event(conn, &id, &patch, device, now)?;
             reads::event(conn, &id)?.ok_or_else(|| invalid("the event could not be read back"))

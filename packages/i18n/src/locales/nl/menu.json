@@ -102,7 +102,6 @@
   "commands": {
     "goHome": "Naar Start",
     "goInbox": "Naar Inbox",
-    "goJournal": "Naar Dagboek",
     "goCalendar": "Naar Agenda",
     "goTasks": "Naar Taken",
     "goGraph": "Naar Grafiek",

@@ -11,10 +11,13 @@ mod adopt;
 pub mod binding;
 pub mod device;
 mod devices;
+#[cfg(feature = "e2e")]
+pub mod e2e_bootstrap;
 mod linking;
 mod oauth;
 pub mod otp_clipboard;
 mod recovery;
+mod repair;
 pub mod session_events;
 mod teardown;
 pub mod vault_directory;
@@ -24,6 +27,7 @@ pub use devices::DeviceList;
 pub use linking::{LinkPoll, LinkScanned, LinkingQr, VaultChoice, dormant_vault_folder_name};
 pub use memry_core::protocol::auth::DeviceFormFactor;
 pub use oauth::{FirstDevice, OAUTH_ATTEMPT_TTL, OAuthEvent, OAuthStarted};
+pub use repair::KeyRepair;
 pub use teardown::SignedOut;
 
 use std::sync::{Arc, Mutex};
@@ -38,6 +42,7 @@ use zeroize::Zeroizing;
 
 use crate::error::{CoreError, FailureKind};
 use crate::registry::config::{AppConfig, ConfigError};
+use crate::session::at_rest_key::AtRestKeys;
 
 /// Why an account call failed. Messages never carry a phrase, a key or a token.
 #[derive(Debug, thiserror::Error)]
@@ -202,6 +207,8 @@ pub struct AccountService {
     /// One vault directory refresh at a time, and when the last one read the account's list
     /// (`lastRefreshAt`, `sync/vault-directory.ts:54`).
     directory: tokio::sync::Mutex<Option<tokio::time::Instant>>,
+    /// The open vault's at-rest key, over the same keychain; sign-out clears it.
+    at_rest_keys: Arc<AtRestKeys>,
     /// Which signed-in account a write that waits on the network started under.
     epoch: AccountEpoch,
     /// One vault download at a time, from the registry lookup to the registered folder: two
@@ -290,6 +297,7 @@ impl AccountService {
                     .into_owned(),
             ),
         )?);
+        let at_rest_keys = AtRestKeys::new(Arc::clone(&store));
         let service = Self {
             linking: linking::Linking::new(session.device_approver()),
             session,
@@ -304,6 +312,7 @@ impl AccountService {
             oauth_start: tokio::sync::Mutex::new(()),
             oauth_cancels: std::sync::atomic::AtomicU64::new(0),
             directory: tokio::sync::Mutex::new(None),
+            at_rest_keys,
             epoch: AccountEpoch::default(),
             downloads: Mutex::new(()),
         };
@@ -316,9 +325,26 @@ impl AccountService {
         &self.session
     }
 
+    /// The session's at-rest key owner, shared by sync and the agent (#3545 D3).
+    pub fn at_rest_keys(&self) -> Arc<AtRestKeys> {
+        Arc::clone(&self.at_rest_keys)
+    }
+
     /// The session shared, for the sync backend of each open vault.
     pub fn shared_session(&self) -> Arc<AuthSession> {
         Arc::clone(&self.session)
+    }
+
+    /// The signed-in account's term, for a write that waits on the network (billing's plan
+    /// answers); `None` signed out or while a sign-out runs.
+    pub fn term(&self) -> Option<u64> {
+        self.signed_in_epoch()
+    }
+
+    /// Runs `write` while `term` is still the account's, `None` after any sign-out (the IPC one or
+    /// a repair's) ended it.
+    pub fn write_in_term<T>(&self, term: u64, write: impl FnOnce() -> T) -> Option<T> {
+        self.epoch.write_if(term, write)
     }
 
     /// A launch probe; a locked keychain leaves the session signed out until the next probe.

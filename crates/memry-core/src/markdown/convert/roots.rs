@@ -204,8 +204,9 @@ fn insert(array: &ArrayRef, txn: &mut TransactionMut, at: usize, values: Vec<Any
     array.insert_range(txn, at as u32, values);
 }
 
-/// `writeCriticMarkupMarksToYDoc`: deletes invalid elements, later copies of
-/// an id and ids `marks` drops; inserts a new id after the furthest existing
+/// `writeCriticMarkupMarksToYDoc`: deletes later copies of an id and ids
+/// `marks` drops, and keeps every element this build cannot read (a newer
+/// build's, #5574); inserts a new id after the furthest existing
 /// mark before it in `marks`; replaces an element only when the stored mark,
 /// read as this build reads it, differs from the new one in more than its
 /// offsets (the window moves offsets with its typing and never writes them
@@ -234,30 +235,30 @@ pub fn write_critic_marks(txn: &mut TransactionMut, marks: &[CriticMarkupMark]) 
     let array: ArrayRef = txn.get_or_insert_array(CRITIC_MARKUP_MARKS_ARRAY);
     let values: Vec<Out> = array.iter(txn).collect();
     let length = values.len();
-    // Each kept element: its id, what it holds, and its mark as read.
-    let mut kept: Vec<(String, Any, CriticMarkupMark)> = Vec::new();
-    let mut kept_ids = HashSet::new();
+    // Each kept element: what it holds, and its mark as read (`None`: an
+    // element this build cannot read, which is kept, #5574).
+    let mut kept: Vec<(Any, Option<CriticMarkupMark>)> = Vec::new();
+    let mut index_of: HashMap<String, usize> = HashMap::new();
     let mut keep = Vec::with_capacity(length);
     for value in values {
         let json = out_json(value.clone(), txn);
-        let mark = normalize_mark(&json)
-            .filter(|mark| next_ids.contains(&mark.id) && kept_ids.insert(mark.id.clone()));
-        keep.push(mark.is_some());
-        if let Some(mark) = mark {
-            let stored = match value {
-                Out::Any(any) => any,
-                _ => json_to_any(&json),
-            };
-            kept.push((mark.id.clone(), stored, mark));
+        let mark = normalize_mark(&json);
+        if let Some(mark) = &mark {
+            if !next_ids.contains(&mark.id) || index_of.contains_key(&mark.id) {
+                keep.push(false);
+                continue;
+            }
+            index_of.insert(mark.id.clone(), kept.len());
         }
+        keep.push(true);
+        let stored = match value {
+            Out::Any(any) => any,
+            _ => json_to_any(&json),
+        };
+        kept.push((stored, mark));
     }
 
-    let index_of: HashMap<&str, usize> = kept
-        .iter()
-        .enumerate()
-        .map(|(index, (id, _, _))| (id.as_str(), index))
-        .collect();
-    let mut result: Vec<Any> = kept.iter().map(|(_, stored, _)| stored.clone()).collect();
+    let mut result: Vec<Any> = kept.iter().map(|(stored, _)| stored.clone()).collect();
     let mut replaced = vec![false; kept.len()];
     // New marks keyed by the kept element they follow (`None`: the start).
     let mut inserts: Vec<(Option<usize>, Vec<Any>)> = Vec::new();
@@ -270,8 +271,11 @@ pub fn write_critic_marks(txn: &mut TransactionMut, marks: &[CriticMarkupMark]) 
             }
             continue;
         };
-        let (_, stored, current) = &kept[index];
-        if !same_mark_apart_from_offsets(current, mark) {
+        let (stored, current) = &kept[index];
+        if !current
+            .as_ref()
+            .is_some_and(|current| same_mark_apart_from_offsets(current, mark))
+        {
             result[index] = with_unknown_keys(mark, stored);
             replaced[index] = true;
         }

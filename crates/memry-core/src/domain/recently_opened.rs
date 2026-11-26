@@ -2,7 +2,7 @@
 //! (`apps/desktop/src/main/ipc/recents-handlers.ts`,
 //! `main/database/queries/recently-opened.ts`).
 //!
-//! Device-local UI state in `data.db` (migration 0035): never synced, gone
+//! Device-local UI state in `data.db` (migration 0036): never synced, gone
 //! with the vault on sign-out. A row names an item and stores no title, so
 //! [`list`] resolves each item when it reads and skips one that is gone.
 
@@ -12,6 +12,7 @@ use serde_json::Value;
 use crate::api::errors::StorageError;
 use crate::domain::canvas;
 use crate::domain::inbox::filing::note_path;
+use crate::storage::nested_tx;
 use crate::storage::repositories::{StoredPayload, sync_items};
 
 /// Rows kept per device (`RECENTLY_OPENED_LIMIT`, `recents-api.ts:50`).
@@ -57,7 +58,7 @@ pub fn record(
             what: format!("not a recently opened item: {item_type}"),
         });
     }
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     tx.execute(
         "INSERT INTO recently_opened (item_type, item_id, opened_at)
          VALUES (?1, ?2, max(?3, COALESCE((SELECT max(opened_at) + 1 FROM recently_opened), ?3)))
@@ -185,7 +186,7 @@ fn resolve_canvas(conn: &Connection, id: &str) -> Result<Option<Resolution>, Sto
 mod tests {
     use super::*;
     use crate::storage::Db;
-    use crate::storage::migrations::{DATA_MIGRATIONS, run};
+    use crate::storage::migrations::{DATA_MIGRATIONS, latest_version, run};
 
     fn with_db(test: impl FnOnce(&Connection) -> Result<(), StorageError>) {
         let db = Db::open_in_memory().expect("open");
@@ -297,6 +298,8 @@ mod tests {
                 .map_err(failed)?;
                 record(conn, "canvas", id, 1)?;
             }
+            // The raw rows bypass the projector; project them as an open does.
+            sync_items::heal_projections(conn)?;
             let items = list(conn, 50)?;
             assert_eq!(items.len(), 1);
             assert_eq!(items[0].item_id, "c1");
@@ -316,7 +319,7 @@ mod tests {
         });
     }
 
-    /// 0035 adds the trail to a `data.db` an older build wrote, and it works
+    /// 0036 adds the trail to a `data.db` an older build wrote, and it works
     /// on it straight away.
     #[test]
     fn an_older_data_database_gains_an_empty_trail() {
@@ -324,7 +327,7 @@ mod tests {
         db.call_blocking(|conn| {
             run(conn, &DATA_MIGRATIONS[..34])?;
             note(conn, "a");
-            assert_eq!(run(conn, DATA_MIGRATIONS)?, 35);
+            assert_eq!(run(conn, DATA_MIGRATIONS)?, latest_version(DATA_MIGRATIONS));
             assert!(list(conn, 50)?.is_empty());
             record(conn, "note", "a", 1)?;
             assert_eq!(ids(conn, 50), ["a"]);

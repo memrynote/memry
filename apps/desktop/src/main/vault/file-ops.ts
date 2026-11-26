@@ -6,7 +6,7 @@
  */
 
 import { writeFile, readFile, rename, unlink, mkdir, stat, readdir } from 'fs/promises'
-import { existsSync } from 'fs'
+import { existsSync, lstatSync } from 'fs'
 import { randomBytes } from 'crypto'
 import path from 'path'
 import { NoteError, NoteErrorCode } from '../lib/errors'
@@ -391,10 +391,18 @@ export async function listDirectories(dirPath: string, relativeTo?: string): Pro
  * Delete a file safely.
  *
  * @param filePath - Absolute path to the file
+ * @param stillDeletes - Asked with no await before the unlink: false keeps the file
  * @throws NoteError if delete fails
  */
-export async function deleteFile(filePath: string): Promise<void> {
+export async function deleteFile(
+  filePath: string,
+  stillDeletes: () => boolean = () => true
+): Promise<void> {
   const lockedPath = (await writeGuard?.beforeWrite(filePath)) ?? null
+  if (!stillDeletes()) {
+    await restoreReadOnlyAfterFailedWrite(filePath, lockedPath)
+    return
+  }
   try {
     await unlink(filePath)
   } catch (error) {
@@ -567,11 +575,26 @@ export async function generateUniquePath(basePath: string): Promise<string> {
   return newPath
 }
 
+/**
+ * Whether anything is at `p`. A dangling symlink is: `existsSync` follows it
+ * and reads the path as free, and a copy or write there then fails or lands
+ * at the link's target (VERIFY-5602R3).
+ */
+function isPathOccupied(p: string): boolean {
+  try {
+    lstatSync(p)
+    return true
+  } catch (error) {
+    if (isNodeError(error) && (error.code === 'ENOENT' || error.code === 'ENOTDIR')) return false
+    throw error
+  }
+}
+
 export function generateUniquePathSync(
   basePath: string,
   isPathTaken?: (p: string) => boolean
 ): string {
-  const taken = (p: string) => existsSync(p) || (isPathTaken?.(p) ?? false)
+  const taken = (p: string) => isPathOccupied(p) || (isPathTaken?.(p) ?? false)
   if (!taken(basePath)) return basePath
 
   const dir = path.dirname(basePath)

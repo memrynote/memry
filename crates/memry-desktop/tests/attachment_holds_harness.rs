@@ -27,7 +27,7 @@ use memry_core::protocol::attachment_upload::{
     complete, dereference, frame_chunks, initiate, put_chunk,
 };
 use memry_core::protocol::auth::DevicePlatform;
-use memry_core::protocol::http::HttpClient;
+use memry_core::protocol::http::{HttpClient, RetryPolicy};
 use memry_core::seams::secure_store::SecureStoreKey;
 use memry_core::sync::attachments::holds::{
     self, AttachmentChunks, HoldOutcome, Holder, canvas_asset_holder_id,
@@ -77,7 +77,11 @@ async fn upload(http: &HttpClient, attachment_id: &str, len: usize, seed: u8) ->
         attachment_id,
         "file.bin",
         len as u64,
-        &chunks,
+        &chunks
+            .iter()
+            .map(|c| c.reference.clone())
+            .collect::<Vec<_>>(),
+        RetryPolicy::polled(),
     )
     .await
     .expect("initiate");

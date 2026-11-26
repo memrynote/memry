@@ -36,11 +36,13 @@ export interface EncryptRecordInput {
   clock?: VectorClock
   stateVector?: string
   deletedAt?: number
+  /** The vault the push is routed to; a delete attestation binds it (#5247). */
+  vaultId: string | null
 }
 
-/** The bytes a delete attestation signs (protocol 04 §4.8.4, #2408). */
-export const deleteAttestationMessage = (claim: DeleteClaim): Uint8Array =>
-  encodeCbor(deleteAttestationPayload(claim), CBOR_FIELD_ORDER.DELETE_ATTESTATION)
+/** The bytes a delete attestation signs (protocol 04 §4.8.4, #2408, #5247). */
+export const deleteAttestationMessage = (claim: DeleteClaim, vaultId: string | null): Uint8Array =>
+  encodeCbor(deleteAttestationPayload(claim, vaultId), CBOR_FIELD_ORDER.DELETE_ATTESTATION)
 
 export async function encryptRecordForPush(
   crypto: SyncPushCryptoProvider,
@@ -99,7 +101,10 @@ export async function encryptRecordForPush(
     const claim = deleteClaimOf(input)
     const deleteAttestation = claim
       ? crypto.toBase64(
-          crypto.signDetached(deleteAttestationMessage(claim), input.signingSecretKey)
+          crypto.signDetached(
+            deleteAttestationMessage(claim, input.vaultId),
+            input.signingSecretKey
+          )
         )
       : undefined
 

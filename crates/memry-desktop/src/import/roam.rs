@@ -88,7 +88,7 @@ impl Importer for RoamImporter {
                 read_bytes = read_bytes.saturating_add(text.len());
                 if read_bytes > MAX_TOTAL_SOURCE_BYTES {
                     return Err(io::Error::other(format!(
-                        "The picked Roam files hold more than {} MB",
+                        "The picked Roam files hold more than {} MB. Import fewer files at a time.",
                         MAX_TOTAL_SOURCE_BYTES / (1024 * 1024)
                     ))
                     .into());

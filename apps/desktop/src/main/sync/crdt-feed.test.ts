@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import * as Y from 'yjs'
 
 const getDoc = vi.fn()
 const prepareFragmentSeed = vi.fn()
-const applyFragmentSeed = vi.fn()
+const applyFragmentSideChannels = vi.fn()
 const recordMarkdownSourceInYDoc = vi.fn()
 
 vi.mock('../sync/crdt-provider', () => ({
@@ -12,11 +13,29 @@ vi.mock('../sync/crdt-provider', () => ({
 vi.mock('../sync/blocknote-converter', () => ({
   setVaultEmbedResolver: () => {},
   prepareFragmentSeed: (...a: unknown[]) => prepareFragmentSeed(...a),
-  applyFragmentSeed: (...a: unknown[]) => applyFragmentSeed(...a),
+  applyFragmentSideChannels: (...a: unknown[]) => applyFragmentSideChannels(...a),
+  blocksToYFragment: (blocks: Array<{ text: string }>, fragment: Y.XmlFragment) => {
+    fragment.insert(0, [blockGroup(blocks.map((b) => b.text))])
+    return true
+  },
   recordMarkdownSourceInYDoc: (...a: unknown[]) => recordMarkdownSourceInYDoc(...a)
 }))
 
 import { replaceNoteBodyInCrdt, replaceNoteTagsInCrdt } from './crdt-feed'
+
+/** A BlockNote-shaped block group: one blockContainer per paragraph text. */
+function blockGroup(texts: string[]): Y.XmlElement {
+  const group = new Y.XmlElement('blockGroup')
+  group.insert(
+    0,
+    texts.map((text) => {
+      const container = new Y.XmlElement('blockContainer')
+      container.insert(0, [new Y.XmlText(text)])
+      return container
+    })
+  )
+  return group
+}
 
 function makeDoc() {
   const fragment = { delete: vi.fn(), length: 3 }
@@ -43,7 +62,7 @@ function makeTagDoc(initialTags: string[] = ['work', 'daily']) {
 beforeEach(() => {
   getDoc.mockReset()
   prepareFragmentSeed.mockReset()
-  applyFragmentSeed.mockReset()
+  applyFragmentSideChannels.mockReset()
   recordMarkdownSourceInYDoc.mockReset()
 })
 
@@ -77,19 +96,37 @@ describe('replaceNoteBodyInCrdt', () => {
     expect(doc.transact).not.toHaveBeenCalled()
   })
 
-  it('clears the fragment then rebuilds it once when a doc is open', async () => {
-    const doc = makeDoc()
+  it('replaces the body in one transaction and keeps the unchanged blocks', async () => {
+    // #given an open doc holding A, B, C
+    const doc = new Y.Doc()
+    const fragment = doc.getXmlFragment('prosemirror')
+    fragment.insert(0, [blockGroup(['A', 'B', 'C'])])
+    const group = fragment.get(0) as Y.XmlElement
+    const [keptStart, , keptEnd] = group.toArray()
     getDoc.mockReturnValue(doc)
-    const prepared = { blocks: [{ type: 'paragraph' }], plainText: '# hi' }
+    const prepared = {
+      blocks: [{ text: 'A' }, { text: 'X' }, { text: 'C' }],
+      plainText: 'A\n\nX\n\nC'
+    }
     prepareFragmentSeed.mockResolvedValue(prepared)
-    applyFragmentSeed.mockReturnValue(true)
-    const ok = await replaceNoteBodyInCrdt('n1', '# hi')
+    const transactions = vi.fn()
+    doc.on('afterTransaction', transactions)
+
+    // #when the file's body changes only the middle block
+    const ok = await replaceNoteBodyInCrdt('n1', 'A\n\nX\n\nC')
+
+    // #then the doc holds the new body, and A and C keep their Yjs items, so a
+    // peer edit inside them still lands (#5319)
     expect(ok).toBe(true)
-    expect(doc._fragment.delete).toHaveBeenCalledWith(0, 3)
-    expect(applyFragmentSeed).toHaveBeenCalledWith(prepared, doc._fragment)
-    expect(doc.transact).toHaveBeenCalledTimes(1)
+    expect(
+      group.toArray().map((block) => ((block as Y.XmlElement).get(0) as Y.XmlText).toJSON())
+    ).toEqual(['A', 'X', 'C'])
+    expect(group.get(0)).toBe(keptStart)
+    expect(group.get(2)).toBe(keptEnd)
+    expect(transactions).toHaveBeenCalledTimes(1)
+    expect(applyFragmentSideChannels).toHaveBeenCalledWith(prepared, fragment)
     // The file's new bytes become the source the write-back preserves (#1915).
-    expect(recordMarkdownSourceInYDoc).toHaveBeenCalledWith(doc, '# hi', 'prosemirror')
+    expect(recordMarkdownSourceInYDoc).toHaveBeenCalledWith(doc, 'A\n\nX\n\nC', 'prosemirror')
   })
 })
 

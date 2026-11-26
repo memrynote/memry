@@ -50,6 +50,7 @@ use crate::domain::journal_ops::metadata;
 use crate::domain::{journal, note_files};
 use crate::markdown::convert::EmbedResolver;
 use crate::markdown::convert::api::Converter;
+use crate::storage::nested_tx;
 
 const UNDECIDED: Adopted = Adopted::Deferred(Deferral::Undecided);
 
@@ -94,7 +95,7 @@ pub fn adopt_day(
     device_id: &str,
     now_ms: i64,
 ) -> Result<Adopted, CrdtError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let claimants = unfiled_notes(&tx, file.title, file.folder_path)?;
     if !claimants.is_empty() {
         let text = (file.path, file.body);

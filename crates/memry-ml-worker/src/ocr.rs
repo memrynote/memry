@@ -50,11 +50,23 @@ impl Engine {
     /// Tesseract opens `<datapath>/<lang>.traineddata` with narrow `fopen`, which MSVC reads in
     /// the ANSI code page, so a profile dir like `C:\Users\Çağrı` would never open. The worker
     /// moves into `datapath` with the wide-character API and hands Tesseract `.`; Init2 reads
-    /// every language's data before it returns. No other path in the worker is relative.
+    /// every language's data before it returns. No other path in the worker is relative. The
+    /// worker then moves back, since Windows refuses to delete a dir a process runs in.
     fn new(datapath: &str, languages: &str) -> Result<Self, String> {
         let langs = CString::new(languages).map_err(|_| "a language holds a NUL byte")?;
+        let home = std::env::current_dir()
+            .map_err(|error| format!("the worker's dir could not be read: {error}"))?;
         std::env::set_current_dir(datapath)
             .map_err(|error| format!("the OCR data dir could not be opened: {error}"))?;
+        let engine = Self::init(languages, &langs);
+        if let Err(error) = std::env::set_current_dir(&home) {
+            eprintln!("could not leave the OCR data dir: {error}");
+        }
+        engine
+    }
+
+    /// Creates and initialises the engine from the data in the cwd.
+    fn init(languages: &str, langs: &CString) -> Result<Self, String> {
         // SAFETY: Create returns an owned handle, freed by `Drop`; Init2 reads the two C strings,
         // which outlive the call.
         let engine = Self(unsafe { TessBaseAPICreate() });

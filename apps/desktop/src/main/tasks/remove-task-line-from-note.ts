@@ -13,7 +13,7 @@
  * same unresolved-task state the editor already renders for an unknown id.
  *
  * The write lands in the order proven by `vault/append-blocks.ts` and
- * `vault/rename-link-rewrite.ts`: ignore the watcher, write the file,
+ * `vault/rename-link-rewrite.ts`: record the bytes for the watcher, write the file,
  * re-project the index rows, tell the renderer, then feed the CRDT body so a
  * persisted doc (and every other device) sees the removal instead of
  * overwriting it on the next writeback.
@@ -110,8 +110,9 @@ async function rewriteSourceNote(taskId: string, noteId: string): Promise<void> 
   const { syncNoteToCache } = await import('../vault/note-sync')
   const { emitNoteEvent, getVaultRoot, toAbsolutePath } = await import('../vault/notes-io')
   const { readVaultFile } = await import('../lib/paths')
-  const { markWritebackIgnored } = await import('../sync/crdt-writeback')
+  const { recordAppWrite } = await import('../vault/app-writes')
   const { feedExternalEditToCrdt } = await import('../sync/crdt-external-feed')
+  const { landBodyEdit } = await import('../sync/writeback-baseline')
 
   const db = getIndexDatabase()
   const cached = getNoteCacheById(db, noteId)
@@ -131,17 +132,26 @@ async function rewriteSourceNote(taskId: string, noteId: string): Promise<void> 
 
   const nextFile = serializeParsedNote(parsedOriginal, nextContent, { frontmatterEdited: false })
 
-  markWritebackIgnored(absolutePath)
-  await atomicWrite(absolutePath, nextFile)
+  const parsed = parseNote(nextFile, cached.path)
+  const contentHash = await landBodyEdit(db, noteId, nextFile, {
+    notePath: cached.path,
+    feed: () =>
+      feedExternalEditToCrdt(noteId, parsed.content, writingFrontmatterOf(parsed.frontmatter)),
+    write: async () => {
+      const landed = recordAppWrite(absolutePath, nextFile)
+      await atomicWrite(absolutePath, nextFile)
+      landed()
+    }
+  })
 
   const now = new Date().toISOString()
-  const parsed = parseNote(nextFile, cached.path)
   const syncResult = syncNoteToCache(
     db,
     {
       id: noteId,
       path: cached.path,
       fileContent: nextFile,
+      contentHash,
       frontmatter: parsed.frontmatter,
       parsedContent: parsed.content,
       title: cached.title,
@@ -163,8 +173,6 @@ async function rewriteSourceNote(taskId: string, noteId: string): Promise<void> 
     source: 'external'
   }
   emitNoteEvent(NotesChannels.events.UPDATED, event)
-
-  await feedExternalEditToCrdt(noteId, parsed.content, writingFrontmatterOf(parsed.frontmatter))
 
   log.info('Removed a deleted task line from its source note', { taskId, noteId })
 }
