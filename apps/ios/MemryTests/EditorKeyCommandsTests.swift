@@ -127,12 +127,15 @@ private final class Page {
         field.textView.keyCommands?.contains { $0.input == input && $0.modifierFlags == modifiers } ?? false
     }
 
-    /// Typing, in UIKit's order: the selection callback, then the change one.
+    /// Typing over the block's text to make it `text`, as the keyboard does:
+    /// one deletion back to the part they share, then a key per character.
     func type(_ text: String) {
-        field.textView.text = text
-        field.textView.selectedRange = NSRange(location: (text as NSString).length, length: 0)
-        field.textViewDidChangeSelection(field.textView)
-        field.textViewDidChange(field.textView)
+        let old = field.textView.text as NSString
+        let kept = (old.commonPrefix(with: text, options: .literal) as NSString).length
+        place(old.length)
+        if kept < old.length { field.press("", replacing: NSRange(location: kept, length: old.length - kept)) }
+        field.typeKeys((text as NSString).substring(from: kept))
+        if kept == (text as NSString).length { place(kept) }
     }
 
     /// A tap or arrow key: the caret moves, the text does not.
@@ -675,16 +678,76 @@ extension KeyWindowSuites {
             let page = Page(text: "")
             let window = try page.showInWindow()
             defer { window.isHidden = true }
-            page.field.textView.insertText("/")
+            page.field.typeKeys("/")
             #expect(page.session.menuOpen)
             await page.press(UIKeyCommand.inputEscape, writes: false)
             #expect(!page.session.menuOpen)
-            page.field.textView.insertText("h")
+            page.field.typeKeys("h")
             #expect(!page.session.menuOpen, "typing on in the closed trigger keeps it closed")
-            page.field.textView.insertText("e")
+            page.field.typeKeys("e")
             #expect(!page.session.menuOpen)
-            page.field.textView.insertText(" /")
+            page.field.typeKeys(" /")
             #expect(page.session.menuOpen, "a new trigger opens again")
+        }
+
+        /// Desktop opens a menu only on the keystroke that types its trigger
+        /// (BlockNote's `handleTextInput`): a key typed beside a `/`, `@` or
+        /// `#` already in the text opens nothing.
+        @Test(arguments: [("a /", "h"), ("a @", "D"), ("a #", "w")])
+        func typingBesideALeftoverTriggerOpensNoMenu(text: String, key: String) throws {
+            let page = Page(text: text)
+            page.session.tags = ["work"]
+            page.session.linkNotes = [NoteSummary(id: "Dune", title: "Dune", folderPath: nil, emoji: nil, createdAt: nil, modifiedAt: nil, aliases: [])]
+            let window = try page.showInWindow()
+            defer { window.isHidden = true }
+            page.field.typeKeys(key)
+            #expect(page.field.textView.text == text + key)
+            #expect(!page.session.menuOpen)
+        }
+
+        /// Backspace back to a leftover trigger, or text arriving in one run
+        /// (dictation, a paste), types no trigger, so no menu opens.
+        @Test func deletingBackToATriggerOrInsertingOneInARunOpensNoMenu() throws {
+            let page = Page(text: "a /h")
+            let window = try page.showInWindow()
+            defer { window.isHidden = true }
+            page.field.pressBackspace()
+            #expect(page.field.textView.text == "a /")
+            #expect(!page.session.menuOpen, "backspace into a leftover slash")
+            page.field.press(" /hea")
+            #expect(page.field.textView.text == "a / /hea")
+            #expect(!page.session.menuOpen, "a run that holds a slash")
+        }
+
+        /// Each trigger typed a key at a time opens its menu, and the open
+        /// menu follows its query as keys are typed and deleted, until
+        /// Backspace takes the trigger itself.
+        @Test func typedTriggersOpenAndFollowTheirQuery() throws {
+            let page = Page(text: "")
+            page.session.tags = ["work"]
+            page.session.linkNotes = [NoteSummary(id: "Dune", title: "Dune", folderPath: nil, emoji: nil, createdAt: nil, modifiedAt: nil, aliases: [])]
+            let window = try page.showInWindow()
+            defer { window.isHidden = true }
+            let field = page.field
+            field.typeKeys("/")
+            #expect(page.session.trigger == .slash(range: NSRange(location: 0, length: 1), query: ""))
+            field.typeKeys("he")
+            #expect(page.session.trigger == .slash(range: NSRange(location: 0, length: 3), query: "he"))
+            field.pressBackspace()
+            #expect(page.session.trigger == .slash(range: NSRange(location: 0, length: 2), query: "h"))
+            field.pressBackspace()
+            #expect(page.session.trigger == .slash(range: NSRange(location: 0, length: 1), query: ""))
+            field.pressBackspace()
+            #expect(!page.session.menuOpen, "Backspace took the slash")
+            field.typeKeys("@")
+            #expect(page.session.menuOpen, "@")
+            field.typeKeys(" #")
+            #expect(page.session.tagTrigger != nil, "#")
+            field.typeKeys(" [[")
+            guard case .wiki = page.session.trigger else {
+                Issue.record("[[ opened no link menu")
+                return
+            }
         }
 
         /// Esc closes one kind of menu: another trigger typed at the same place

@@ -182,10 +182,10 @@ struct EditorDropTests {
     @Test func a_link_chosen_after_a_typed_link_lands_where_the_query_was() async throws {
         let f = try await fixture()
         f.session.focusChanged(to: f.field)
-        f.field.textView.textStorage.append(NSAttributedString(string: "[[Foo]] and [[Agent"))
+        f.field.textView.textStorage.append(NSAttributedString(string: "[[Foo]] and "))
         f.field.dirty = true
-        f.field.textView.selectedRange = NSRange(location: 23, length: 0)
-        f.session.selectionChanged(in: f.field)
+        f.field.textView.selectedRange = NSRange(location: 16, length: 0)
+        f.field.typeKeys("[[Agent")
         let row = try #require(f.session.suggestions.first { $0.kind == .note(title: "Agent Dune", alias: "") })
 
         await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in

@@ -249,9 +249,9 @@ extension KeyWindowSuites {
             await commit(fieldA, in: a)
             b.session.tags = ["task"]
             b.session.focusChanged(to: fieldB)
-            type("hello #ta", in: fieldB)
-            fieldB.textView.selectedRange = NSRange(location: 9, length: 0)
-            b.session.selectionChanged(in: fieldB)
+            type("hello ", in: fieldB)
+            fieldB.textView.selectedRange = NSRange(location: 6, length: 0)
+            fieldB.typeKeys("#ta")
             b.session.chooseTag(try #require(b.session.tagSuggestions.first { $0.tag == "task" }))
             await b.session.tail?.value
 

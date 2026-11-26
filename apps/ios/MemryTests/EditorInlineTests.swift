@@ -64,9 +64,8 @@ struct InlineTriggerTests {
         session.tags = ["work"]
         session.focusChanged(to: field)
         for text in ["[[Du", "@", "/", "#wo"] {
-            field.textView.text = text
-            field.textView.selectedRange = NSRange(location: (text as NSString).length, length: 0)
-            session.selectionChanged(in: field)
+            field.textView.text = ""
+            field.typeKeys(text)
             #expect(session.trigger == nil, "\(text) stays literal in code")
             #expect(session.tagTrigger == nil)
         }
@@ -440,10 +439,9 @@ extension KeyWindowSuites {
             let field = BlockField(block: paragraph("a "), session: session, style: style, alignment: .natural)
             field.render()
             session.focusChanged(to: field)
-            field.textView.text = "a [[Du]]"
-            field.dirty = true
-            field.textView.selectedRange = NSRange(location: 6, length: 0)
-            session.selectionChanged(in: field)
+            field.textView.selectedRange = NSRange(location: 2, length: 0)
+            field.typeKeys("[[Du")
+            #expect(field.textView.text == "a [[Du]]")
 
             await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
                 session.reload = { done.resume() }
