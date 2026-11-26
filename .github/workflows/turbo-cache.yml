@@ -1,0 +1,143 @@
+# Turbo remote task cache on Cloudflare R2 (#5221, tools/turbo-cache). Two jobs:
+# - `worker`: the Worker's tests, on a pull request that touches it or the cache key.
+# - `write`: the only writer. A push to feat/tauri-v2 runs every CI typecheck with the write token,
+#   so the next PR and merge-group runs replay those results. The token lives in the
+#   `turbo-cache-write` environment, whose deployment branches are limited to feat/tauri-v2: a
+#   pull request that edits this file cannot read it. Every other workflow gets the read token.
+name: Turbo cache
+
+on:
+  pull_request:
+    paths:
+      - 'tools/turbo-cache/**'
+      - 'turbo.json'
+      - '**/turbo.json'
+      - '.github/workflows/turbo-cache.yml'
+  push:
+    branches:
+      - feat/tauri-v2
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: turbo-cache-${{ github.workflow }}-${{ github.ref }}
+  # A running write finishes; a newer push waits as the one pending run.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CI: true
+  HUSKY: 0
+  NODE_OPTIONS: --max-old-space-size=4096
+  TURBO_TELEMETRY_DISABLED: 1
+  CARGO_TERM_COLOR: always
+  CARGO_PROFILE_DEV_DEBUG: line-tables-only
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  worker:
+    name: Turbo cache worker
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /*
+            !/marketing/**
+
+      - name: Setup pnpm
+        uses: ./.github/actions/setup-pnpm
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Typecheck the worker
+        working-directory: tools/turbo-cache
+        run: node ../../scripts/typecheck.mjs tsconfig.json tsconfig.test.json
+
+      # workerd with a local R2 bucket: read token reads, only the write token writes.
+      - name: Test the worker
+        run: pnpm exec vitest run --root tools/turbo-cache
+
+      - name: Turbo typecheck inputs are complete
+        run: node tools/turbo-cache/check-task-inputs.mjs
+
+  write:
+    name: Write the remote cache
+    # Trusted pushes only, and only once the Worker is deployed (TURBO_API set).
+    if: github.event_name == 'push' && github.ref == 'refs/heads/feat/tauri-v2' && github.repository == 'memrynote/memry' && vars.TURBO_API != ''
+    environment: turbo-cache-write
+    runs-on: ubuntu-22.04
+    timeout-minutes: 40
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /*
+            !/marketing/**
+
+      - name: Setup pnpm
+        uses: ./.github/actions/setup-pnpm
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      # @memry/desktop-tauri's pretypecheck runs `ipc:check`, which builds the memry-tauri bindings exporter.
+      - name: Install Linux system libraries
+        uses: ./.github/actions/apt-install
+        timeout-minutes: 12
+        with:
+          packages: >-
+            libwebkit2gtk-4.1-dev libsoup-3.0-dev libayatana-appindicator3-dev librsvg2-dev libssl-dev libxdo-dev libsecret-1-dev libfontconfig1-dev patchelf
+
+      - name: Setup Rust
+        id: rust
+        uses: dtolnay/rust-toolchain@stable
+        timeout-minutes: 5
+        continue-on-error: true
+        with:
+          toolchain: '1.98.1'
+
+      # One retry: a stalled rustup download is cut at 5 min and run again.
+      - name: Setup Rust (retry)
+        if: steps.rust.outcome == 'failure'
+        uses: dtolnay/rust-toolchain@stable
+        timeout-minutes: 5
+        with:
+          toolchain: '1.98.1'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      # Fail closed: a typecheck whose hash misses a file it loads is never written.
+      - name: Turbo typecheck inputs are complete
+        run: node tools/turbo-cache/check-task-inputs.mjs
+
+      # Root `pnpm typecheck` is a superset of the typecheck sets desktop-ci, desktop-tauri-ci and
+      # sync-server-ci read. A missing signature key leaves the token empty: nothing is written.
+      - name: Typecheck and write the cache
+        env:
+          TURBO_API: ${{ vars.TURBO_API }}
+          TURBO_TEAM: ${{ vars.TURBO_TEAM }}
+          TURBO_TOKEN: ${{ secrets.TURBO_REMOTE_CACHE_SIGNATURE_KEY != '' && secrets.TURBO_WRITE_TOKEN || '' }}
+          TURBO_REMOTE_CACHE_SIGNATURE_KEY: ${{ secrets.TURBO_REMOTE_CACHE_SIGNATURE_KEY }}
+          TURBO_CACHE: local:rw,remote:rw
+        run: pnpm typecheck

@@ -1,0 +1,13 @@
+# Turbo remote task cache for CI (#5221). A separate Worker from the sync server: it shares no
+# binding, secret or route with it. Deploy and secrets: see README.md.
+name = "memry-turbo-cache"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+workers_dev = true
+
+[[r2_buckets]]
+binding = "CACHE"
+bucket_name = "memry-turbo-cache"
+
+[observability.logs]
+enabled = true
