@@ -432,12 +432,14 @@ package executable path directly instead of importing `electron/index.js`.
 Because several processes can reach that helper at once on one machine — `ensure-native.sh` from
 `predev` / `prebuild` / `pretest:e2e`, plus each Playwright worker (`workers: 2`) — the
 install is serialised with a lock file next to the `electron` package, and only one process
-downloads: the others wait and reuse the finished install. The archive is extracted into a staging
-directory beside `dist/` and swapped in with a rename, and `path.txt` is written last and never
-deleted, so a concurrent `require('electron')` always sees either the previous install or the new
-one. Without that, an install in flight makes unrelated Vitest suites fail at import time with
+downloads: the others wait and reuse the finished install. Under the lock the helper checks the
+install again and leaves a working one alone, because a caller's check can go stale before it gets
+the lock. A broken install is replaced by extracting the archive into a staging directory beside
+`dist/` and swapping it in with a rename. `path.txt` is renamed into place last and never deleted,
+so a concurrent `require('electron')` that has seen the new install never loses it. Without that,
+an install in flight makes unrelated Vitest suites fail at import time with
 `Electron failed to install correctly`, which reads like a code regression rather than an
-environment problem. A failed download now also leaves an existing install untouched. The behaviour
+environment problem. A failed download also leaves an existing `dist/` untouched. The behaviour
 is covered by `node --test apps/desktop/scripts/install-electron-binary.test.cjs`, which runs
 offline against a fixture archive.
 

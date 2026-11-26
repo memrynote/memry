@@ -277,7 +277,7 @@ test(
 
       // Exactly one process should have done the work; the other waits and no-ops.
       const combined = `${first.output}${second.output}`
-      assert.match(combined, /already installed by a concurrent run/)
+      assert.match(combined, /already installed/)
       assert.equal(combined.match(/installing 0\.0\.0-test/g).length, 1)
 
       // The waiter returns before the download block, so its scratch dir has to be
@@ -306,17 +306,22 @@ test(
   }
 )
 
-test('a failed download leaves the previous install intact', { skip: unsupported }, async () => {
-  await withFixture(async ({ root, electronDir, fixtureZip, tmpDir: _tmpDir, install }) => {
+test('a failed download leaves the existing dist/ intact', { skip: unsupported }, async () => {
+  await withFixture(async ({ root, electronDir, fixtureZip, install }) => {
     const workingBin = buildCurlShim(path.join(root, 'ok'), fixtureZip)
     const seed = await settled(install(workingBin))
     assert.equal(seed.code, 0, seed.output)
+    // A working install is never replaced, so lose the marker to force a reinstall.
+    fs.rmSync(path.join(electronDir, 'path.txt'))
 
     const failingBin = buildCurlShim(path.join(root, 'bad'), fixtureZip, { fail: true })
     const failed = await settled(install(failingBin))
 
     assert.notEqual(failed.code, 0, 'expected the install to fail')
-    assert.ok(readerSeesValidInstall(electronDir), 'a failed install destroyed the good one')
+    assert.ok(
+      fs.existsSync(path.join(electronDir, 'dist', platformPath)),
+      'a failed install destroyed the existing dist/'
+    )
     assert.equal(
       fs.existsSync(path.join(electronDir, '.install-electron-binary.lock')),
       false,
@@ -359,6 +364,9 @@ test('a cache hit installs with no network access at all', { skip: unsupported }
     const workingBin = buildCurlShim(path.join(root, 'ok'), fixtureZip)
     const seed = await settled(install(workingBin, { MEMRY_ELECTRON_CACHE_DIR: cacheDir }))
     assert.equal(seed.code, 0, seed.output)
+    // A fresh package, as after a version bump, with the cache already warm.
+    fs.rmSync(path.join(electronDir, 'dist'), { recursive: true })
+    fs.rmSync(path.join(electronDir, 'path.txt'))
 
     // Any download at all now fails, so a passing install proves the cache was used.
     const failingBin = buildCurlShim(path.join(root, 'bad'), fixtureZip, { fail: true })

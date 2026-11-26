@@ -198,9 +198,8 @@ function isLockAbandoned(lockPath) {
 }
 
 /**
- * Take an exclusive install lock for `electronDir`. Returns `{ contended }` so the
- * caller can skip a redundant download when another process just did the work.
- * Recovers from a lock left behind by a killed process.
+ * Take an exclusive install lock for `electronDir`. Recovers from a lock left behind
+ * by a killed process.
  */
 function acquireInstallLock(lockPath) {
   let contended = false
@@ -210,7 +209,7 @@ function acquireInstallLock(lockPath) {
       const handle = fs.openSync(lockPath, 'wx')
       fs.writeFileSync(handle, JSON.stringify({ pid: process.pid, startedAt: Date.now() }))
       fs.closeSync(handle)
-      return { contended }
+      return
     } catch (error) {
       if (error.code !== 'EEXIST') {
         throw error
@@ -290,13 +289,18 @@ function main() {
   // the same filesystem; `os.tmpdir()` can be a different device (EXDEV).
   const stagingDir = path.join(electronDir, `.dist-staging-${process.pid}`)
   const retiredDir = path.join(electronDir, `.dist-retired-${process.pid}`)
+  // Shares the staging prefix, so `sweepStaleWorkDirs` clears it after a crash.
+  const pendingPathFile = `${stagingDir}.path.txt`
 
-  const { contended } = acquireInstallLock(lockPath)
+  acquireInstallLock(lockPath)
 
   try {
-    // Another process held the lock and may have just completed the install.
-    if (contended && hasValidInstall(distDir, pathFile, platformPath)) {
-      console.log(`[electron] ${version} already installed by a concurrent run: ${executablePath}`)
+    // Callers only spawn this after finding the install broken, but another run can
+    // finish between their check and our lock. Replacing a working install would
+    // take `dist/` away from its readers for the length of the swap, so re-check
+    // under the lock and leave a working install alone.
+    if (hasValidInstall(distDir, pathFile, platformPath)) {
+      console.log(`[electron] ${version} already installed: ${executablePath}`)
       return
     }
 
@@ -334,19 +338,22 @@ function main() {
       }
 
       // Swap: two renames, so the window where `dist/` is absent is microseconds
-      // instead of the whole download+extract. `path.txt` is the commit marker and
-      // is written last — and never removed — so a reader either sees the previous
-      // install or the new one.
+      // instead of the whole download+extract. Only a broken install is replaced
+      // (checked above), so readers lose nothing in that window. `path.txt` is the
+      // commit marker: written last, renamed into place so it is never seen empty,
+      // and never removed, so once a reader sees the new install it keeps seeing it.
       if (fs.existsSync(distDir)) {
         fs.renameSync(distDir, retiredDir)
       }
       fs.renameSync(stagingDir, distDir)
-      fs.writeFileSync(pathFile, platformPath)
+      fs.writeFileSync(pendingPathFile, platformPath)
+      fs.renameSync(pendingPathFile, pathFile)
 
       console.log(`[electron] installed ${version} for ${platform}-${arch}: ${executablePath}`)
     } finally {
       fs.rmSync(stagingDir, { recursive: true, force: true })
       fs.rmSync(retiredDir, { recursive: true, force: true })
+      fs.rmSync(pendingPathFile, { force: true })
     }
   } finally {
     // `tempDir` is created before the lock, so it must be cleaned up on the
