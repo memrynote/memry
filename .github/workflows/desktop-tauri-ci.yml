@@ -131,11 +131,12 @@ jobs:
         run: |
           matrix=$(jq -cn --arg full "$FULL" --arg macos "$MACOS" --arg intel "$INTEL" --arg queue "$QUEUE" --arg post_merge "$POST_MERGE" --arg win "$WINDOWS_LEGS" --arg mac "$MACOS_LEGS" \
             -f .github/actions/ci-tier/tauri-builds.jq)
+          split=$(jq -c -f .github/actions/ci-tier/tauri-split.jq <<<"$matrix")
           {
-            echo "build=$(jq -c '{include: [.include[] | select(.shard == null)]}' <<<"$matrix")"
-            echo "e2e_build=$(jq -c '{include: [.include[] | select(.shard == 1) | del(.shard)]}' <<<"$matrix")"
-            echo "e2e=$(jq -c '{include: [.include[] | select(.shard != null)]}' <<<"$matrix")"
-            echo "e2e_any=$(jq -c 'any(.include[]; .shard != null)' <<<"$matrix")"
+            echo "build=$(jq -c .build <<<"$split")"
+            echo "e2e_build=$(jq -c .e2e_build <<<"$split")"
+            echo "e2e=$(jq -c .e2e <<<"$split")"
+            echo "e2e_any=$(jq -c .e2e_any <<<"$split")"
           } >> "$GITHUB_OUTPUT"
           echo "Build matrix: $matrix"
 
@@ -630,6 +631,14 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 5
     steps:
+      # The e2e rule's script only; a failed checkout fails the gate.
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          sparse-checkout-cone-mode: false
+          sparse-checkout: /.github/actions/ci-tier/
+
       - name: Fail when a needed job failed or was cancelled
         env:
           RESULTS: ${{ join(needs.*.result, ' ') }}
@@ -641,8 +650,7 @@ jobs:
           # A skipped detection job (a noop `labeled` or `opened` run) must not read as a pass.
           if [ "$DETECT_RESULT" != success ]; then echo "::error::plan job result was $DETECT_RESULT"; exit 1; fi
           case " $RESULTS " in *" failure "*|*" cancelled "*) exit 1 ;; esac
-          # A built e2e app whose shards were skipped ran no specs.
-          if [ "$E2E_BUILD_RESULT" = success ] && [ "$E2E_RESULT" != success ]; then echo "::error::e2e-build passed but the e2e specs result was $E2E_RESULT"; exit 1; fi
+          bash .github/actions/ci-tier/e2e-gate.sh "$E2E_BUILD_RESULT" "$E2E_RESULT"
 
   # A failed scheduled run opens (or comments on) one issue: nothing else reads its result. Write access
   # to issues only, and no checkout, so nothing from the repo runs with it.

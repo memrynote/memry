@@ -743,7 +743,7 @@ const modelLegs = (out) =>
     .filter((l) => l.models)
     .map(legName)
 
-function tauriBuilds(out, queue = false) {
+function tauriMatrix(out, queue = false) {
   const result = spawnSync(
     'jq',
     [
@@ -775,9 +775,22 @@ function tauriBuilds(out, queue = false) {
     { encoding: 'utf8' }
   )
   assert.equal(result.status, 0, result.stderr)
-  return JSON.parse(result.stdout).include.map(
+  return result.stdout
+}
+
+const tauriBuilds = (out, queue = false) =>
+  JSON.parse(tauriMatrix(out, queue)).include.map(
     (b) => `${b.platform} ${b.variant}${b.shard ? ` ${b.shard}` : ''}`
   )
+
+// Desktop Tauri CI's build, e2e_build and e2e matrices (tauri-split.jq).
+function tauriSplit(matrix) {
+  const result = spawnSync('jq', ['-c', '-f', join(tierDir, 'tauri-split.jq')], {
+    input: matrix,
+    encoding: 'utf8'
+  })
+  assert.equal(result.status, 0, result.stderr)
+  return JSON.parse(result.stdout)
 }
 
 const linuxRust = [
@@ -1445,4 +1458,75 @@ describe('ci tier cache-warm legs', () => {
     assert.ok(crons.includes(named[0]), `${named[0]} is not in ${crons}`)
     assert.ok(crons.length >= 2, 'the warm cron is not the 6-hourly one')
   })
+})
+
+describe('tauri e2e split', () => {
+  const shell = 'crates/memry-desktop/src/shell/paths.rs'
+  const key = (b) => `${b.platform} ${b.variant}`
+  const tiers = {
+    'full-ci PR': [tier({ labels: 'full-ci', files: [shell], patches: {} })],
+    'merge queue': [tier({ event: 'merge_group', base: '', files: [shell] }), true],
+    'main push': [
+      tier({ event: 'push', ref: 'refs/heads/main', base: '', listed: false, files: [] })
+    ]
+  }
+
+  for (const [name, [out, queue]] of Object.entries(tiers)) {
+    it(`puts every leg of a ${name} in build or e2e_build once, and runs each shard once`, () => {
+      const matrix = tauriMatrix(out, queue)
+      const split = tauriSplit(matrix)
+      const byName = (a, b) => a.localeCompare(b)
+      const planned = [...new Set(JSON.parse(matrix).include.map(key))].toSorted(byName)
+      const built = [...split.build.include, ...split.e2e_build.include].map(key).toSorted(byName)
+      assert.deepEqual(built, planned)
+      assert.ok(split.build.include.every((b) => b.shard === undefined && b.shards === undefined))
+      assert.ok(split.e2e_build.include.length > 0)
+      assert.equal(split.e2e_any, true)
+      for (const b of split.e2e_build.include) {
+        assert.equal(b.shard, undefined)
+        const shards = split.e2e.include.filter((e) => e.platform === b.platform)
+        assert.deepEqual(
+          shards.map((e) => e.shard),
+          Array.from({ length: b.shards }, (_, i) => i + 1)
+        )
+        assert.ok(shards.every((e) => e.shards === b.shards && e.variant === 'e2e'))
+      }
+    })
+  }
+
+  it('builds a one-shard platform once and runs its one shard', () => {
+    const e2e = { platform: 'p', os: 'o', variant: 'e2e', shards: 1, shard: 1 }
+    const split = tauriSplit(
+      JSON.stringify({ include: [{ platform: 'p', variant: 'debug' }, e2e] })
+    )
+    assert.deepEqual(split.build.include, [{ platform: 'p', variant: 'debug' }])
+    assert.deepEqual(split.e2e_build.include, [
+      { platform: 'p', os: 'o', variant: 'e2e', shards: 1 }
+    ])
+    assert.deepEqual(split.e2e.include, [e2e])
+  })
+
+  it('has no e2e leg when nothing is sharded', () => {
+    const split = tauriSplit(JSON.stringify({ include: [{ platform: 'p', variant: 'e2e' }] }))
+    assert.deepEqual(split.e2e_build.include, [])
+    assert.deepEqual(split.e2e.include, [])
+    assert.equal(split.e2e_any, false)
+  })
+
+  // The gate's rule for e2e-build and its e2e shards (e2e-gate.sh).
+  const gate = (build, specs) =>
+    spawnSync('bash', [join(tierDir, 'e2e-gate.sh'), build, specs], { encoding: 'utf8' }).status
+  for (const [build, specs, status] of [
+    ['skipped', 'skipped', 0],
+    ['success', 'success', 0],
+    ['success', 'skipped', 1],
+    ['success', 'cancelled', 1],
+    ['success', 'failure', 1],
+    ['failure', 'skipped', 1],
+    ['cancelled', 'skipped', 1]
+  ]) {
+    it(`gate: e2e-build ${build}, e2e ${specs} ${status ? 'fails' : 'passes'}`, () => {
+      assert.equal(gate(build, specs), status)
+    })
+  }
 })
