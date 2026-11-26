@@ -49,7 +49,7 @@ use rusqlite::Connection;
 
 use crate::api::errors::StorageError;
 use crate::crypto::agent_envelope::AtRestKey;
-use crate::domain::settings;
+use crate::domain::{attachment_refs, notes, settings};
 use crate::storage::repositories::sync_items::{ApplyOutcome, InboundRecord};
 
 use super::clock::VectorClock;
@@ -200,7 +200,7 @@ pub fn apply_pulled_delete(
 /// Applies one page's decoded items, in the order they were handed over.
 ///
 /// `clock_device` is this device's clock id (chapter 01 §1.5), which a canvas
-/// conflict copy is clocked under. `at_rest` seals the agent records
+/// conflict copy and a re-queued journal merge are clocked under. `at_rest` seals the agent records
 /// ([`crate::crypto::agent_payload`]). `vault_root` is where a deleted
 /// note's vault file is read when its body log does not replay
 /// ([`super::delete_keep`]); `None` in a shell with no vault files.
@@ -209,6 +209,9 @@ pub fn apply_pulled_delete(
 /// so on an error `totals` (its `feed` above all) still holds every record
 /// that committed before it: the pull tells the observers that part, because
 /// a re-pull reports those rows `Skipped` and a write-back would never run.
+///
+/// The attachment rows of the notes it applied are written once, after the
+/// last record and outside each record's savepoint (#5675).
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn apply_page_into(
     conn: &Connection,
@@ -219,6 +222,15 @@ pub(crate) fn apply_page_into(
     at_rest: &AtRestKey,
     totals: &mut ApplyTotals,
 ) -> Result<(), StorageError> {
+    let note_ids: Vec<&str> = pending
+        .iter()
+        .filter(
+            |item| matches!(item, Pending::Record(record) if record.item_type == notes::ITEM_TYPE),
+        )
+        .map(Pending::item_id)
+        .collect();
+    let stored_lists = attachment_refs::stored_lists(conn, &note_ids)?;
+    let mut applied_notes = Vec::new();
     for item in pending {
         match item {
             Pending::Tombstone {
@@ -279,6 +291,9 @@ pub(crate) fn apply_page_into(
                         if DOCUMENT_TYPES.contains(&record.item_type.as_str()) {
                             totals.applied_documents.push(record.item_id.clone());
                         }
+                        if record.item_type == notes::ITEM_TYPE {
+                            applied_notes.push(record.item_id.clone());
+                        }
                     }
                     ApplyOutcome::Skipped | ApplyOutcome::Refused => totals.skipped += 1,
                     ApplyOutcome::Corrupt { .. } => totals.corrupt += 1,
@@ -287,6 +302,7 @@ pub(crate) fn apply_page_into(
             }
         }
     }
+    attachment_refs::merge_page(conn, &stored_lists, &applied_notes)?;
     Ok(())
 }
 

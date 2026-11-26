@@ -28,7 +28,6 @@ use crate::api::task_records::{ProjectItem, TaskGroupItem, TaskItem};
 use crate::crypto::keys;
 use crate::domain::calendar::LocalDateTime;
 use crate::domain::notes::failed;
-use crate::domain::projects;
 use crate::domain::task_filter::{
     self, CompletionFilter, FilterProject, FilterStatus, SortDirection, SortField, StatusType,
     TaskFilters, TaskNoteInfo, TaskSort,
@@ -36,6 +35,7 @@ use crate::domain::task_filter::{
 use crate::domain::task_records::{self, TaskRecord};
 use crate::domain::task_tree::TaskTree;
 use crate::domain::task_views::{self, DueWindow, Selection, ViewTask};
+use crate::domain::{journal, projects};
 use crate::seams::secure_store::{SecureStore, SecureStoreKey};
 use crate::storage::Db;
 
@@ -402,10 +402,11 @@ pub(crate) fn filter_projects(conn: &Connection) -> Result<Vec<FilterProject>, S
 /// The note index the folder and note groupings resolve source notes with.
 fn note_index(conn: &Connection) -> Result<HashMap<String, TaskNoteInfo>, StorageError> {
     let mut statement = conn
-        .prepare(
+        .prepare(&format!(
             "SELECT id, COALESCE(title, ''), COALESCE(folder_path, '')
-               FROM notes WHERE deleted_at IS NULL",
-        )
+                   FROM notes WHERE deleted_at IS NULL AND {}",
+            journal::not_a_journal_day("id")
+        ))
         .map_err(failed)?;
     let rows = statement
         .query_map(params![], |row| {

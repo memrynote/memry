@@ -19,7 +19,7 @@ import {
   createTestIndexDb,
   type TestDatabaseResult
 } from '@tests/utils/test-db'
-import { insertNoteCache } from '@main/database/queries/notes'
+import { insertNoteCache, UNSTORED_FILE } from '@main/database/queries/notes'
 import { upsertNoteMetadata } from '@memry/storage-data'
 
 vi.mock('electron', () => ({
@@ -67,6 +67,7 @@ vi.mock('../sync/crdt-provider', () => {
     open: async (id: string) => docs.get(id),
     closeIfInactive: async () => {},
     whenPersisted: async () => {},
+    holdsDoc: () => true,
     withDocLoaded: async (_id: string, enqueue: () => void) => enqueue(),
     purge: vi.fn()
   }
@@ -90,6 +91,7 @@ import {
   getIndexDatabase as getClientIndexDatabase
 } from '../database/client'
 import { getStatus } from './index'
+import { enqueueLocalSyncDelete } from '../sync/local-mutations'
 import { markdownToYFragment, yDocToMarkdown } from '../sync/blocknote-converter'
 import { writebackNow } from '../sync/crdt-writeback'
 import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
@@ -208,5 +210,49 @@ describe('a note moved while the app was closed and edited as the vault opens (#
     expect(await yDocToMarkdown(doc, 'prosemirror', { notePath: 'Archive/plan.md' })).toContain(
       'Edited offline.'
     )
+  }, 30_000)
+
+  it('keeps a note the store never held when its file moves before the next open (#5698)', async () => {
+    // #given a note the last session wrote while its store stalled: the file's
+    // real hash, marked as bytes the store may lack
+    const fields = {
+      id: 'moved',
+      path: 'Drafts/plan.md',
+      title: 'plan',
+      fileType: 'markdown' as const,
+      localOnly: false,
+      createdAt: '2026-01-10T00:00:00.000Z',
+      modifiedAt: '2026-01-12T00:00:00.000Z',
+      syncedAt: '2026-01-12T00:00:00.000Z',
+      fileSize: Buffer.byteLength(EDITED)
+    }
+    upsertNoteMetadata(asClientDb(data.db), fields)
+    insertNoteCache(index.db, {
+      ...fields,
+      contentHash: generateContentHash(EDITED),
+      pendingWriteHash: UNSTORED_FILE
+    })
+    fs.mkdirSync(path.join(vault.path, 'Drafts'))
+    fs.mkdirSync(path.join(vault.path, 'Archive'))
+    fs.writeFileSync(path.join(vault.path, 'Drafts/plan.md'), EDITED)
+    docs.set('moved', await docHolding(BODY, 'Drafts/plan.md'))
+
+    // #when the user moves the file before the next open
+    fs.renameSync(path.join(vault.path, 'Drafts/plan.md'), path.join(vault.path, 'Archive/plan.md'))
+    await startWatcher(vault.path)
+    await getWatcher().replayMissedRemovals()
+    await indexVault(vault.path)
+    await flushProjectionEvents()
+    await drainIngestBackfill()
+    await flushProjectionEvents()
+
+    // #then the move keeps the note, its marker, and syncs no delete
+    const moved = index.db
+      .select({ path: noteCache.path, pendingWriteHash: noteCache.pendingWriteHash })
+      .from(noteCache)
+      .where(eq(noteCache.id, 'moved'))
+      .get()
+    expect(moved).toEqual({ path: 'Archive/plan.md', pendingWriteHash: UNSTORED_FILE })
+    expect(enqueueLocalSyncDelete).not.toHaveBeenCalled()
   }, 30_000)
 })

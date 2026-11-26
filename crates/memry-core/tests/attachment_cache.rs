@@ -14,6 +14,7 @@
 //! | a manifest re-fetch keeps the user's settings         | a pin is the user's         |
 
 use memry_core::api::vault::Vault;
+use memry_core::domain::attachment_refs;
 use memry_core::domain::attachments;
 use memry_core::domain::notes::{self, NewNote};
 use memry_core::seams::reachability::Reachable;
@@ -46,6 +47,21 @@ fn cached(db: &Db, id: &str, size: i64, path: &str, downloaded_at: i64) {
     .expect("the write");
 }
 
+/// `notes` rows whose list never arrived. A merge drops a note only from rows
+/// a projected note can name, and in production every merge is for one.
+fn known_notes(
+    conn: &Connection,
+    ids: &[&str],
+) -> Result<(), memry_core::api::errors::StorageError> {
+    for id in ids {
+        conn.execute("INSERT INTO notes (id, title) VALUES (?1, '')", [id])
+            .map_err(|error| memry_core::api::errors::StorageError::Failed {
+                what: error.to_string(),
+            })?;
+    }
+    Ok(())
+}
+
 // MARK: - N204, absence is not emptiness
 
 /// §14.7: `attachmentReferences` is nullable and optional, so absent means
@@ -56,14 +72,14 @@ fn an_absent_reference_list_changes_nothing() {
     let db = vault("absent");
     cached(&db, "att-1", 100, "a.png", 1);
     db.call_blocking(|conn: &mut Connection| {
-        attachments::merge_note_references(conn, "note-1", Some(&["att-1".to_owned()]))?;
+        attachment_refs::merge_note_references(conn, "note-1", Some(&["att-1".to_owned()]))?;
         Ok(())
     })
     .expect("the first merge");
 
     db.call_blocking(|conn: &mut Connection| {
         // The shape an older client's push has.
-        attachments::merge_note_references(conn, "note-1", None)?;
+        attachment_refs::merge_note_references(conn, "note-1", None)?;
         let still = attachments::for_note(conn, "note-1")?;
         assert_eq!(
             still.len(),
@@ -82,10 +98,11 @@ fn an_explicitly_empty_list_clears() {
     let db = vault("empty");
     cached(&db, "att-1", 100, "a.png", 1);
     db.call_blocking(|conn: &mut Connection| {
-        attachments::merge_note_references(conn, "note-1", Some(&["att-1".to_owned()]))?;
+        known_notes(conn, &["note-1"])?;
+        attachment_refs::merge_note_references(conn, "note-1", Some(&["att-1".to_owned()]))?;
         assert_eq!(attachments::for_note(conn, "note-1")?.len(), 1);
 
-        attachments::merge_note_references(conn, "note-1", Some(&[]))?;
+        attachment_refs::merge_note_references(conn, "note-1", Some(&[]))?;
         assert!(
             attachments::for_note(conn, "note-1")?.is_empty(),
             "a sender that knows there are none is believed"
@@ -103,7 +120,7 @@ fn an_explicitly_empty_list_clears() {
 fn a_reference_to_an_unfetched_attachment_still_gets_a_row() {
     let db = vault("unfetched");
     db.call_blocking(|conn: &mut Connection| {
-        attachments::merge_note_references(conn, "note-1", Some(&["att-new".to_owned()]))?;
+        attachment_refs::merge_note_references(conn, "note-1", Some(&["att-new".to_owned()]))?;
         let row = attachments::get(conn, "att-new")?.expect("a row");
         assert_eq!(row.note_refs, vec!["note-1".to_owned()]);
         assert!(row.manifest.is_none(), "known about, not yet pulled");
@@ -121,7 +138,8 @@ fn a_dropped_reference_stops_pointing_at_the_note() {
     cached(&db, "att-1", 100, "a.png", 1);
     cached(&db, "att-2", 100, "b.png", 2);
     db.call_blocking(|conn: &mut Connection| {
-        attachments::merge_note_references(
+        known_notes(conn, &["note-1"])?;
+        attachment_refs::merge_note_references(
             conn,
             "note-1",
             Some(&["att-1".to_owned(), "att-2".to_owned()]),
@@ -129,7 +147,7 @@ fn a_dropped_reference_stops_pointing_at_the_note() {
         assert_eq!(attachments::for_note(conn, "note-1")?.len(), 2);
 
         // The user deleted one picture from the note.
-        attachments::merge_note_references(conn, "note-1", Some(&["att-1".to_owned()]))?;
+        attachment_refs::merge_note_references(conn, "note-1", Some(&["att-1".to_owned()]))?;
         let remaining = attachments::for_note(conn, "note-1")?;
         assert_eq!(remaining.len(), 1);
         assert_eq!(remaining[0].attachment_id, "att-1");
@@ -145,9 +163,10 @@ fn an_attachment_shared_by_two_notes_keeps_the_other_reference() {
     let db = vault("shared");
     cached(&db, "att-1", 100, "a.png", 1);
     db.call_blocking(|conn: &mut Connection| {
-        attachments::merge_note_references(conn, "note-1", Some(&["att-1".to_owned()]))?;
-        attachments::merge_note_references(conn, "note-2", Some(&["att-1".to_owned()]))?;
-        attachments::merge_note_references(conn, "note-1", Some(&[]))?;
+        known_notes(conn, &["note-1", "note-2"])?;
+        attachment_refs::merge_note_references(conn, "note-1", Some(&["att-1".to_owned()]))?;
+        attachment_refs::merge_note_references(conn, "note-2", Some(&["att-1".to_owned()]))?;
+        attachment_refs::merge_note_references(conn, "note-1", Some(&[]))?;
 
         assert!(attachments::for_note(conn, "note-1")?.is_empty());
         assert_eq!(
@@ -265,16 +284,17 @@ fn removing_a_reference_prunes_only_that_one() {
 fn a_shared_attachment_is_still_referenced_after_one_note_drops_it() {
     let db = vault("shared-release");
     db.call_blocking(|conn: &mut Connection| {
+        known_notes(conn, &["note-1", "note-2"])?;
         attachments::put_manifest(conn, "att-1", "{}", 10, "a.png", "image/png")?;
-        attachments::merge_note_references(conn, "note-1", Some(&["att-1".to_owned()]))?;
-        attachments::merge_note_references(conn, "note-2", Some(&["att-1".to_owned()]))?;
+        attachment_refs::merge_note_references(conn, "note-1", Some(&["att-1".to_owned()]))?;
+        attachment_refs::merge_note_references(conn, "note-2", Some(&["att-1".to_owned()]))?;
 
         assert_eq!(
             attachments::for_note_count_excluding(conn, "att-1", "note-1")?,
             1,
             "note-2 still holds it, so the chunks must not be released"
         );
-        attachments::merge_note_references(conn, "note-2", Some(&[]))?;
+        attachment_refs::merge_note_references(conn, "note-2", Some(&[]))?;
         assert_eq!(
             attachments::for_note_count_excluding(conn, "att-1", "note-1")?,
             0,
@@ -295,7 +315,7 @@ fn a_block_url_binds_by_the_manifest_basename() {
     let db = vault("bind");
     db.call_blocking(|conn: &mut Connection| {
         attachments::put_manifest(conn, "att-1", "{}", 10, "diagram.png", "image/png")?;
-        attachments::merge_note_references(conn, "note-1", Some(&["att-1".to_owned()]))?;
+        attachment_refs::merge_note_references(conn, "note-1", Some(&["att-1".to_owned()]))?;
 
         // The url form desktop writes for an embedded attachment.
         let bound =
@@ -316,7 +336,7 @@ fn a_percent_encoded_url_still_binds() {
     let db = vault("encoded");
     db.call_blocking(|conn: &mut Connection| {
         attachments::put_manifest(conn, "att-1", "{}", 10, "my file.pdf", "application/pdf")?;
-        attachments::merge_note_references(conn, "note-1", Some(&["att-1".to_owned()]))?;
+        attachment_refs::merge_note_references(conn, "note-1", Some(&["att-1".to_owned()]))?;
 
         let bound = attachments::resolve_for_block(conn, "note-1", "my%20file.pdf")?;
         assert!(matches!(bound, attachments::BlockAttachment::Bound { .. }));
@@ -334,8 +354,8 @@ fn two_notes_with_the_same_basename_do_not_collide() {
     db.call_blocking(|conn: &mut Connection| {
         attachments::put_manifest(conn, "att-a", "{}", 10, "screenshot.png", "image/png")?;
         attachments::put_manifest(conn, "att-b", "{}", 10, "screenshot.png", "image/png")?;
-        attachments::merge_note_references(conn, "note-a", Some(&["att-a".to_owned()]))?;
-        attachments::merge_note_references(conn, "note-b", Some(&["att-b".to_owned()]))?;
+        attachment_refs::merge_note_references(conn, "note-a", Some(&["att-a".to_owned()]))?;
+        attachment_refs::merge_note_references(conn, "note-b", Some(&["att-b".to_owned()]))?;
 
         for (note, expected) in [("note-a", "att-a"), ("note-b", "att-b")] {
             match attachments::resolve_for_block(conn, note, "screenshot.png")? {
@@ -359,7 +379,7 @@ fn an_ambiguous_basename_is_refused_rather_than_guessed() {
     db.call_blocking(|conn: &mut Connection| {
         attachments::put_manifest(conn, "att-a", "{}", 10, "a/shot.png", "image/png")?;
         attachments::put_manifest(conn, "att-b", "{}", 10, "b/shot.png", "image/png")?;
-        attachments::merge_note_references(
+        attachment_refs::merge_note_references(
             conn,
             "note-1",
             Some(&["att-a".to_owned(), "att-b".to_owned()]),
@@ -548,7 +568,7 @@ fn a_manifest_refetch_keeps_the_users_settings_and_references() {
     cached(&db, "att-1", 100, "a.png", 1);
 
     db.call_blocking(|conn: &mut Connection| {
-        attachments::merge_note_references(conn, "note-1", Some(&["att-1".to_owned()]))?;
+        attachment_refs::merge_note_references(conn, "note-1", Some(&["att-1".to_owned()]))?;
         attachments::set_pinned(conn, "att-1", true)?;
         attachments::set_unmetered_only(conn, "att-1", false)?;
 

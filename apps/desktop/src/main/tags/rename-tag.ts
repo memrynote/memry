@@ -9,7 +9,7 @@ import {
 } from '@memry/shared/inline-tags'
 import { suffixBelow, tagKey } from '@memry/shared/tag-fold'
 import type { DataDb, IndexDb } from '../database/types'
-import { renameTag, renameTagDefinition } from '@main/database/queries/notes'
+import { getNoteCacheById, renameTag, renameTagDefinition } from '@main/database/queries/notes'
 import { deleteSetting, getSetting, setSetting } from '@main/database/queries/settings'
 import { mergeTagInNotes, mergeTagInTasks } from '@main/database/queries/tags'
 import { tagIs, tagOrUnder, tagUnder } from '@main/database/queries/tag-match'
@@ -17,6 +17,8 @@ import { createLogger } from '../lib/logger'
 import { trackMainError } from '../telemetry/diagnostics'
 import { updateNoteCommand } from '../notes/domain'
 import { getNoteById } from '../vault/notes'
+import { getVaultRoot } from '../vault/notes-io'
+import { isCaseTwinOffFile } from '../vault/case-twin-shared-file'
 import { getCrdtProvider } from '../sync/crdt-provider'
 import { scheduleWriteback } from '../sync/crdt-writeback'
 import { keepLockedNoteTags, writableTagCarrier } from './note-tag-edits'
@@ -106,10 +108,24 @@ async function renameInNote(
 ): Promise<boolean> {
   if (!writableTagCarrier(indexDb, noteId)) return false
   const headerTags = { rename: pairs }
-  const doc = getCrdtProvider().getDoc(noteId)
+  const provider = getCrdtProvider()
+  const doc = provider.getDoc(noteId)
   if (doc) {
     await updateNoteCommand({ id: noteId, headerTags })
     if (renameTagsInDoc(doc, bodyRename)) scheduleWriteback(noteId, doc, 'local')
+    return true
+  }
+  const path = getNoteCacheById(indexDb, noteId)?.path
+  if (path !== undefined && isCaseTwinOffFile(getVaultRoot(), path, noteId)) {
+    // A case twin off its shared file (#5742): the file's body is the other
+    // twin's, so its own body, its doc, takes the rename.
+    await updateNoteCommand({ id: noteId, headerTags })
+    const opened = await provider.open(noteId, undefined, { skipSeed: true })
+    try {
+      renameTagsInDoc(opened, bodyRename)
+    } finally {
+      await provider.closeIfInactive(noteId)
+    }
     return true
   }
   const note = await getNoteById(noteId)

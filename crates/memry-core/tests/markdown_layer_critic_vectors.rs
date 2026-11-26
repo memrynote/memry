@@ -343,3 +343,40 @@ fn critic_mark_writes_make_one_array_operation_per_changed_run() {
         );
     }
 }
+
+/// REVIEW-5839B: the whole-list write (`apply_fragment_side_channels`) keeps
+/// an element this build cannot read, such as a newer build's `kind`, and the
+/// unknown fields of a known mark, as `updateCriticMarkupMarksInYDoc` does.
+#[test]
+fn critic_mark_write_keeps_unreadable_elements_and_unknown_fields() {
+    let c1 = json!({"id": "c1", "kind": "comment", "visibleText": "alpha", "body": "one", "start": 0, "end": 5, "future": 1});
+    let newer = json!({"id": "n1", "kind": "highlight", "visibleText": "x", "start": 0, "end": 1, "tone": "y"});
+    let unreadable = [
+        Json::Null,
+        json!("x"),
+        json!({"id": "c2", "kind": "comment", "visibleText": "b", "start": 0, "end": -1}),
+    ];
+    let mut base = vec![c1.clone(), newer.clone()];
+    base.extend(unreadable.iter().cloned());
+    let doc = Doc::new();
+    doc.get_or_insert_array(CRITIC_MARKUP_MARKS_ARRAY)
+        .insert_range(
+            &mut doc.transact_mut(),
+            0,
+            base.iter().map(json_to_any).collect::<Vec<Any>>(),
+        );
+    let mut edited: CriticMarkupMark = serde_json::from_value(c1.clone()).expect("mark");
+    edited.body = Some("edit".into());
+
+    write_critic_marks(&mut doc.transact_mut(), &[edited]);
+
+    let mut expected = vec![
+        json!({"id": "c1", "kind": "comment", "visibleText": "alpha", "body": "edit", "start": 0, "end": 5, "future": 1}),
+        newer,
+    ];
+    expected.extend(unreadable);
+    assert_eq!(
+        read_array_json(&doc.transact(), CRITIC_MARKUP_MARKS_ARRAY),
+        expected
+    );
+}

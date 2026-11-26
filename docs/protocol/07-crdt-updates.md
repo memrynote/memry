@@ -18,7 +18,7 @@ as a note**. **Its document id is the journal record's `id`.**
 
 Desktop mints that id as `j<YYYY-MM-DD>` when it creates a day
 (`apps/desktop/src/main/lib/id.ts:20`), but an existing canonical row's id wins
-(`apps/desktop/src/main/journal/create-entry.ts:40-46`:
+(`apps/desktop/src/main/journal/create-entry.ts:49-65`:
 `canonical?.id ?? cached?.id ?? generateJournalId(date)`).
 
 **A client MUST use the id carried by the `journal` record and MUST NOT derive
@@ -31,12 +31,12 @@ satisfies, and every CRDT route treats `note_id` as an opaque string.
 
 Supporting evidence: journals are `note_metadata` rows on the note clock path
 (`packages/sync-client/src/offline-clock.ts:325-328`); the Y.Doc opens under that
-id (`apps/desktop/src/main/journal/runtime-effects.ts:23-33`); pull routes both
+id (`apps/desktop/src/main/journal/runtime-effects.ts:34-44`); pull routes both
 `note` and `journal` records into the CRDT body feed
 (`packages/sync-client/src/pull/engine.ts:305`); `journalHandler` defers
 concurrent body merges to the CRDT
-(`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:57-64`) and purges
-the Y.Doc on a remote delete (`:175-181`).
+(`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:150-151`) and purges
+the Y.Doc on a remote delete (`:238-245`).
 
 ### 7.1.0 Minting a note id
 
@@ -1089,7 +1089,7 @@ Consequences a conforming client MUST implement:
 
 - On applying a tombstone for a document, **delete the local Y.Doc and the local
   update log**, as desktop does
-  (`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:175-181`).
+  (`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:298-302`).
 - **Do not pull bodies for a tombstoned id.** The server will still answer with
   the surviving log, and re-applying it would resurrect body state for a document
   the record feed says is deleted.
@@ -1130,7 +1130,7 @@ Consequences a conforming client MUST implement:
   pushes only when that body is pending and its own full state completes it
   (`crates/memry-core/src/sync/revive_heal.rs:65`, `:100`, `:187`). The pass
   runs the heal after the body step and before the push
-  (`crates/memry-core/src/api/sync/pass.rs:145`). Desktop, whose builds
+  (`crates/memry-core/src/api/sync/pass.rs:150`). Desktop, whose builds
   before #5358 kept the deleted doc the same way, judges the same candidates
   (it keeps no epoch, so a day revived since then is read once and found
   healthy) and queues a full-state row on its note-body outbox
@@ -1161,7 +1161,7 @@ update authored on the purged body and pushed after the delete lands on the
 server's dead document, and a later revive of the id pulls it back. The core
 deletes the document's `crdt-update` outbox rows in the tombstone's
 transaction, after the delete-keep copy has read the queue
-(`crates/memry-core/src/sync/apply.rs:299`); desktop drops them in the
+(`crates/memry-core/src/sync/apply.rs:318`); desktop drops them in the
 purge (`apps/desktop/src/main/sync/crdt-provider.ts:1448`, `:2395`). A delete
 the clock rule skips, and a journal day held for the day merge, keep their
 queued updates with their body.

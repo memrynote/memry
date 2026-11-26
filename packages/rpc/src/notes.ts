@@ -671,6 +671,10 @@ export const notesRpc = defineDomain({
       params: ['oldPath', 'newPath'],
       invokeArgs: ['{ oldPath, newPath }']
     }),
+    checkFolderDelete: defineMethod<(path: string) => SuccessResponse>({
+      channel: NotesChannels.invoke.CHECK_FOLDER_DELETE,
+      params: ['path']
+    }),
     deleteFolder: defineMethod<(path: string) => SuccessResponse>({
       channel: NotesChannels.invoke.DELETE_FOLDER,
       params: ['path']

@@ -10,6 +10,15 @@
 //! cursor, which is why the test below holds the rule for the whole crate. Committing an inner one releases the
 //! savepoint, and dropping it uncommitted rolls back to it, so an item that
 //! fails leaves no half-written rows in the page and the page goes on.
+//!
+//! The outermost one on a writable connection is `BEGIN IMMEDIATE`: it takes the database's write lock
+//! before its first read, waiting out another connection's (the busy
+//! timeout). A body write reads the log and appends the update it authored
+//! from it, and the lock is what keeps a second connection, in this process
+//! or another, from authoring over the same log in between (#5734). A
+//! deferred transaction would instead fail its first write with
+//! `SQLITE_BUSY` whenever another connection wrote since its read. On a
+//! read-only connection it is `BEGIN DEFERRED`, a read snapshot.
 
 use std::ops::Deref;
 
@@ -29,8 +38,12 @@ pub fn begin(conn: &Connection) -> rusqlite::Result<NestedTx<'_>> {
     let savepoint = !conn.is_autocommit();
     if savepoint {
         conn.execute_batch(&format!("SAVEPOINT {SAVEPOINT}"))?;
-    } else {
+    } else if conn.is_readonly(rusqlite::MAIN_DB)? {
+        // A read pool connection (feat/tauri-v2) cannot take the write lock;
+        // its transaction is a read snapshot only.
         conn.execute_batch("BEGIN DEFERRED")?;
+    } else {
+        conn.execute_batch("BEGIN IMMEDIATE")?;
     }
     Ok(NestedTx {
         conn,
@@ -147,16 +160,14 @@ mod tests {
     /// same file still fails (#5423 C5: a whole-file entry for `recovery.rs`
     /// would have hidden its production salvage's `.transaction()`).
     ///
-    /// The `&mut Connection` openers (`update_log.rs`, `compact.rs`,
-    /// `migrations.rs`, `legacy_numbering.rs`) cannot be reached from a page's
+    /// The `&mut Connection` openers (`compact.rs`, `migrations.rs`,
+    /// `legacy_numbering.rs`) cannot be reached from a page's
     /// shared `&Connection`. The tests hold a lock or leave a transaction open
     /// on a second connection on purpose. `begin` is the one nesting opener.
-    const RAW_TRANSACTION_ALLOWED: [(&str, &str); 15] = [
+    const RAW_TRANSACTION_ALLOWED: [(&str, &str); 13] = [
         // First: the test module holds these headers as text.
         ("storage/nested_tx.rs", "#[cfg(test)]\nmod tests"),
         ("storage/nested_tx.rs", "pub fn begin("),
-        ("crdt/update_log.rs", "pub fn append_local_update("),
-        ("crdt/update_log.rs", "pub fn purge("),
         ("crdt/compact.rs", "pub fn fold_compacted("),
         ("storage/migrations.rs", "pub fn run_atomic("),
         (

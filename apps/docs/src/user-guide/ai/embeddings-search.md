@@ -48,6 +48,13 @@ other notes. Similar notes, suggested tags, canvas groups and inbox filing read 
 until the pass reaches a note it is left out of those lists. If you quit before it finishes, the next launch continues with the notes it
 has not reached yet instead of starting over.
 
+Embedding runs at low priority. On a Mac it runs on the efficiency cores, so a long pass keeps the
+fans quiet. That makes it about four times slower, and it waits while other apps keep the Mac busy.
+Search does not wait with it: a query is embedded at normal priority, and when its vector takes
+longer than two seconds the search answers from keywords alone. A
+note is embedded again only when its title or text changes. A sync that brings no new text, or an
+edit to its tags, leaves its vectors as they are.
+
 ## How Search Uses It
 
 Typing in the search box runs two searches and merges them. The keyword search is unchanged. In

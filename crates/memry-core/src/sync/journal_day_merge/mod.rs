@@ -18,10 +18,11 @@
 //!   merge tombstones the foreign id. Every step converges on a re-run.
 
 mod owed;
+mod pictures;
 
-use owed::owe_holder;
 pub use owed::owed;
-pub(crate) use owed::{hold_for_merge, mark_deleted, plan_inbound};
+use owed::{drop_synced_tags, owe_holder, owed_now, read_owed};
+pub(crate) use owed::{hold_for_merge, mark_deleted, note_acked, note_local_edit, plan_inbound};
 
 use rusqlite::{Connection, params};
 use serde_json::json;
@@ -65,10 +66,14 @@ pub struct OwedMerge {
     /// The newest foreign record's `tags`. Added to `j<date>` unless
     /// `deleted`: the deleting device added them already (§1.9.1 step 6).
     pub record_tags: Vec<String>,
-    /// A foreign local holder's stored tags, which may never have been
-    /// pushed: always added. Both lists are empty in a merge an older build
-    /// recorded.
+    /// A foreign local holder's stored tags, unioned across sightings: added
+    /// unless `deleted`, as record tags are.
     pub holder_tags: Vec<String>,
+    /// The holder tags the deleting device may never have seen, weighed
+    /// against its tombstone's clock: added even when `deleted`. Equal to
+    /// `holder_tags` in a merge an older build recorded; every list is empty
+    /// in one recorded before tags were kept.
+    pub unpushed_holder_tags: Vec<String>,
 }
 
 /// What one [`drain`] did.
@@ -126,6 +131,15 @@ async fn drain_one(
     device_id: &str,
     merge: OwedMerge,
 ) -> Result<bool, DrainError> {
+    // Invariant (#5694): every step reads `F`'s tags as `F` holds them when
+    // it runs, never as they were when the merge was owed. A held `F` stays
+    // editable until `ensure_canonical` removes it, so the probe reads it
+    // here, and `settle` takes the owed merge `ensure_canonical` reads back in
+    // the transaction that removes `F`. A merge a user delete forgot since
+    // the drain listed it is gone, and so is every step.
+    let Some(merge) = db.call(move |conn| owed_now(conn, merge)).await? else {
+        return Ok(true);
+    };
     // A deleted id's server body is already in the day, merged by the device
     // that deleted it: only what this device holds is left to fold in.
     let body_pulled = merge.deleted
@@ -135,18 +149,11 @@ async fn drain_one(
             .map_err(|error| DrainError::Step(error.to_string()))?
             .merged();
     let canonical = canonical_journal_id(&merge.date);
-    let (foreign, day, date) = (
-        merge.foreign_id.clone(),
-        canonical.clone(),
-        merge.date.clone(),
-    );
-    let has_text = build_text(&merge).is_some();
+    let (day, date) = (canonical.clone(), merge.date.clone());
+    let probe = merge.clone();
     let (has_body, day_deleted) = db
         .call(move |conn| {
-            let has_body = has_text
-                || !update_log::load_plan(conn, &foreign)
-                    .map_err(crdt_failed)?
-                    .is_empty();
+            let has_body = holds_body(conn, &probe, &day)?;
             let day_deleted = journal::live_entry(conn, &date)?.as_deref() != Some(day.as_str())
                 && sync_items::load(conn, ITEM_TYPE, &day)?
                     .is_some_and(|row| row.deleted_at.is_some());
@@ -164,14 +171,26 @@ async fn drain_one(
         JournalDayMergeAction::Wait => return Ok(false),
         // Neither tombstones `F` (§1.9.1): a device that holds its text may
         // not have pushed it.
+        // `F` is read again in the forget's transaction: the user may have
+        // typed or tagged into it during the body fetch, and the next drain
+        // merges that instead (desktop: `holdsTextNow`).
         JournalDayMergeAction::Forget => {
-            db.call(move |conn| {
-                let tx = nested_tx::begin(conn).map_err(failed)?;
-                forget(&tx, &merge.foreign_id, now_ms())?;
-                tx.commit().map_err(failed)
-            })
-            .await?;
-            return Ok(true);
+            let forgotten = db
+                .call(move |conn| {
+                    let tx = nested_tx::begin(conn).map_err(failed)?;
+                    let Some(merge) = owed_now(&tx, merge)? else {
+                        return Ok(true);
+                    };
+                    let day = canonical_journal_id(&merge.date);
+                    let forgotten = !holds_body(&tx, &merge, &day)?;
+                    if forgotten {
+                        forget(&tx, &merge.foreign_id, now_ms())?;
+                    }
+                    tx.commit().map_err(failed)?;
+                    Ok(forgotten)
+                })
+                .await?;
+            return Ok(forgotten);
         }
         // A deleted day is not re-created (#2986). `F` stays live with its
         // row and body: only the owed merge goes.
@@ -185,11 +204,14 @@ async fn drain_one(
 
     // The canonical day, created empty if missing. A foreign live holder is
     // swept in the same transaction, as an incoming canonical record would.
-    let (date, device) = (merge.date.clone(), device_id.to_owned());
-    let opened = db
-        .call(move |conn| ensure_canonical(conn, &date, &device, now_ms()))
+    let device = device_id.to_owned();
+    let Some((opened, merge)) = db
+        .call(move |conn| ensure_canonical(conn, merge, &device, now_ms()))
         .await
-        .map_err(|error| DrainError::Step(error.to_string()))?;
+        .map_err(|error| DrainError::Step(error.to_string()))?
+    else {
+        return Ok(true);
+    };
     if opened != canonical {
         return Err(DrainError::Step(format!(
             "day {} is held by {opened}, not {canonical}",
@@ -207,16 +229,31 @@ async fn drain_one(
         })
 }
 
+/// Opens `j<date>` and returns it with `merge` read back in the same
+/// transaction, after a holder `F` is owed again and removed. `None`, with
+/// nothing written, when a user delete of the held day forgot the merge
+/// during the body fetch: `j<D>` is never built from a deleted day.
 fn ensure_canonical(
     conn: &Connection,
-    date: &str,
+    merge: OwedMerge,
     device_id: &str,
     now_ms: i64,
-) -> Result<String, StorageError> {
+) -> Result<Option<(String, OwedMerge)>, StorageError> {
+    let date = merge.date.as_str();
     let canonical = canonical_journal_id(date);
-    let holder = journal::live_entry(conn, date)?;
-    let plan = plan_journal_day_apply(&canonical, date, holder.as_deref());
     let tx = nested_tx::begin(conn).map_err(failed)?;
+    if read_owed(&tx, &merge.foreign_id)?.is_none() {
+        return Ok(None);
+    }
+    // Defense in depth (#5763): a local edit never soft-deletes a held `F`
+    // (`sync_items::shown_deleted_at`), but one an older build soft-deleted
+    // still holds the day (`owed_now`); left in place, `open_day_in` would
+    // revive it.
+    let holder = match journal::entry_for(&tx, date)? {
+        Some((id, _)) if id == merge.foreign_id => Some(id),
+        _ => journal::live_entry(&tx, date)?,
+    };
+    let plan = plan_journal_day_apply(&canonical, date, holder.as_deref());
     if let (true, Some(holder)) = (plan.remove_holder, holder.as_deref()) {
         owe_holder(&tx, holder, date)?;
         tx.execute("DELETE FROM journal_entries WHERE id = ?1", params![holder])
@@ -225,8 +262,9 @@ fn ensure_canonical(
             .map_err(failed)?;
     }
     let opened = journal::open_day_in(&tx, date, device_id, now_ms)?;
+    let merge = read_owed(&tx, &merge.foreign_id)?.unwrap_or(merge);
     tx.commit().map_err(failed)?;
-    Ok(opened.id)
+    Ok(Some((opened.id, merge)))
 }
 
 /// Relink, fold and tombstone for a foreign body already local. `Ok(false)`
@@ -242,8 +280,11 @@ fn settle(
     let foreign = &merge.foreign_id;
     let plan = update_log::load_plan(conn, foreign).map_err(crdt_failed)?;
     let state = match (plan.is_empty(), build_text(merge)) {
-        (false, _) => folded_state(foreign, &plan.blobs()).map_err(crdt_failed)?,
-        (true, Some(markdown)) => built_state(foreign, device_id, markdown).map_err(crdt_failed)?,
+        (false, _) => Some(folded_state(foreign, &plan.blobs()).map_err(crdt_failed)?),
+        (true, Some(markdown)) => {
+            Some(built_state(foreign, device_id, markdown).map_err(crdt_failed)?)
+        }
+        (true, None) if carries_tags(conn, merge, canonical) => None,
         (true, None) => return Ok(false),
     };
 
@@ -268,28 +309,29 @@ fn settle(
     // The foreign state as a local edit of the canonical day: what it
     // authors is exactly the part the day does not hold yet, so a repeat
     // authors nothing and queues nothing.
-    let update = body_write::author_with(conn, canonical, device_id, |document| {
-        document.apply_local_update(&state)
-    })
-    .map_err(crdt_failed)?;
-
     let tx = nested_tx::begin(conn).map_err(failed)?;
+    let update = match state {
+        Some(state) => body_write::author_with(&tx, canonical, device_id, |document| {
+            document.apply_local_update(&state)
+        })
+        .map_err(crdt_failed)?,
+        None => None,
+    };
     if let Some(update) = update {
         body_write::append_in(&tx, ITEM_TYPE, canonical, &update, now_ms).map_err(crdt_failed)?;
     }
     // The day's payload owns its tags; the fold carried only the body. A
     // set union over the tags the day holds now, read in this transaction,
     // so a re-run or a tag the day holds writes nothing (§1.9.1 step 6).
-    let record_tags = if merge.deleted {
-        &[][..]
-    } else {
-        &merge.record_tags[..]
-    };
-    if !(record_tags.is_empty() && merge.holder_tags.is_empty()) {
+    let added = added_tags(merge);
+    if !added.is_empty() {
         let mut union = tags::list(&tx, ITEM_TYPE, canonical)?;
-        union.extend(merge.holder_tags.iter().chain(record_tags).cloned());
+        union.extend(added.into_iter().cloned());
         metadata::set_tags(&tx, &merge.date, &union, device_id, now_ms)?;
     }
+    // A day's pictures are fetchable wherever the day is: `F`'s references
+    // go to `j<D>`'s note record in this transaction (§14.7, #5777).
+    pictures::carry(&tx, foreign, canonical, device_id, now_ms)?;
     // The foreign id's tombstone when it is live and clocked, then its body
     // and its debts, in one transaction.
     if tombstone {
@@ -314,12 +356,68 @@ fn drop_owed(conn: &Connection, foreign: &str) -> Result<(), StorageError> {
     Ok(())
 }
 
-/// The foreign id's projection, local body, body debt and owed-merge row.
+/// The foreign id's projection, local body, body debt, queued record edits
+/// and owed-merge row. An edit of a held `F` queued an upsert; its content is
+/// the day's now, and sent it would re-create `F` over its tombstone (#5763).
 fn forget(tx: &Connection, foreign: &str, now_ms: i64) -> Result<(), StorageError> {
     projectors::delete(tx, ITEM_TYPE, foreign, now_ms)?;
+    outbox::drop_upserts(tx, ITEM_TYPE, foreign)?;
     update_log::purge_in(tx, foreign).map_err(crdt_failed)?;
     body_debt::settle(tx, foreign)?;
+    drop_synced_tags(tx, foreign)?;
     drop_owed(tx, foreign)
+}
+
+/// A user delete of a journal day (`journal::delete_day`), in its
+/// transaction. When the deleted id is a held `F`, its owed merge goes with
+/// its body, debt and queued edits: the user deleted the day, and the drain
+/// must not build `j<D>` from it and push the day back to every device
+/// (§1.9.1). No-op for an id with no owed merge.
+pub(crate) fn forget_deleted_day(
+    tx: &Connection,
+    id: &str,
+    now_ms: i64,
+) -> Result<(), StorageError> {
+    if read_owed(tx, id)?.is_none() {
+        return Ok(());
+    }
+    forget(tx, id, now_ms)
+}
+
+/// Whether `F` has anything to fold into `j<D>`: record text, a tag the day
+/// lacks, or a local Yjs body.
+fn holds_body(conn: &Connection, merge: &OwedMerge, canonical: &str) -> Result<bool, StorageError> {
+    Ok(build_text(merge).is_some()
+        || carries_tags(conn, merge, canonical)
+        || !update_log::load_plan(conn, &merge.foreign_id)
+            .map_err(crdt_failed)?
+            .is_empty())
+}
+
+/// The tags `settle` adds to `j<D>` (§1.9.1 step 6). A deleted `F`'s tags its
+/// deleter saw were added by that device.
+fn added_tags(merge: &OwedMerge) -> Vec<&String> {
+    if merge.deleted {
+        merge.unpushed_holder_tags.iter().collect()
+    } else {
+        merge.holder_tags.iter().chain(&merge.record_tags).collect()
+    }
+}
+
+/// Whether `F` brings `j<D>` a tag it lacks. Such a tag may exist nowhere
+/// else, as one added offline to a blank holder, so `F` merges with no body
+/// to fold rather than being forgotten (#5659, #5699). A day whose tags will
+/// not read lacks them all: `settle` reads them again, fails, and leaves `F`
+/// owed.
+fn carries_tags(conn: &Connection, merge: &OwedMerge, canonical: &str) -> bool {
+    let added = added_tags(merge);
+    if added.is_empty() {
+        return false;
+    }
+    let day = tags::list(conn, ITEM_TYPE, canonical).unwrap_or_default();
+    added
+        .into_iter()
+        .any(|tag| !day.iter().any(|held| tags::same_tag(held, tag)))
 }
 
 /// The record text a live foreign id with no Yjs history is built from. A

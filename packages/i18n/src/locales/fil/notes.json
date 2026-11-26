@@ -45,6 +45,12 @@
     }
   },
   "page": {
+    "noteFiles": {
+      "downloading": "Dina-download ang mga file ng talang ito…",
+      "failed": "Hindi ma-download ang mga file ng talang ito: {error}",
+      "failedFallback": "nabigo ang pag-download",
+      "retry": "Subukan ulit"
+    },
     "empty": {
       "title": "Walang napiling tala",
       "body": "Pumili ng tala sa sidebar para makita ito"

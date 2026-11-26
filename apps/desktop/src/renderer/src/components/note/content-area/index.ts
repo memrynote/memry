@@ -16,6 +16,7 @@ export type {
   HighlightInfo,
   InlineTagsOrigin,
   SelectionInfo,
+  ReviewDocBinding,
   ReviewSelection,
   Block
 } from './types'

@@ -18,7 +18,7 @@ use crate::crdt::errors::CrdtError;
 use crate::crdt::registry::{Document, UpdateSink};
 use crate::crdt::snapshots::SnapshotError;
 use crate::crdt::{Refusal, SnapshotGate, SnapshotOutcome, SnapshotPusher};
-use crate::storage::Db;
+use crate::storage::{Db, nested_tx};
 use crate::sync::admission::CrdtAdmission;
 use crate::sync::engine::PullSink;
 use crate::sync::pull::PullReport;
@@ -90,11 +90,20 @@ impl PassSnapshots {
         let opened = self
             .db
             .call(move |conn| {
-                // The replay is durable, so the sink sees nothing.
+                // The replay is durable, so the sink sees nothing. Opened
+                // under the write lock `open_for_write` asks for (#5734); it
+                // writes nothing, so the transaction commits empty.
                 let sink: UpdateSink = Arc::new(|_, _| {});
-                Ok(epoch::capture(conn, &id).and_then(|opened_at| {
-                    epoch::open_for_write(conn, &device_id, &id, sink).map(|doc| (doc, opened_at))
-                }))
+                let tx = nested_tx::begin(conn).map_err(|error| StorageError::Failed {
+                    what: error.to_string(),
+                })?;
+                let opened = epoch::capture(&tx, &id).and_then(|opened_at| {
+                    epoch::open_for_write(&tx, &device_id, &id, sink).map(|doc| (doc, opened_at))
+                });
+                tx.commit().map_err(|error| StorageError::Failed {
+                    what: error.to_string(),
+                })?;
+                Ok(opened)
             })
             .await
             .map_err(local)?;
