@@ -72,7 +72,8 @@ struct SlashMenuConvertTests {
     @Test func aHeadingRowTurnsTheLineThatHoldsTextAndKeepsIt() async throws {
         let chosen = try await pick("heading_2", query: "h2", after: "Intro ", changes: 2)
         #expect(inserted(chosen.edits).isEmpty)
-        #expect(chosen.edits.contains(.replaceText(blockId: "a", text: "Intro ", base: "Intro /h2")))
+        // The space before the `/` goes with it, as on desktop.
+        #expect(chosen.edits.contains(.replaceText(blockId: "a", text: "Intro", base: "Intro /h2")))
         #expect(chosen.edits.contains(.turnInto(blockId: "a", kind: "heading")))
         #expect(chosen.edits.contains(.setProp(blockId: "a", name: "level", value: "2")))
         #expect(chosen.focus == "a")
@@ -104,6 +105,56 @@ struct SlashMenuConvertTests {
     @Test func aTableRowStillGoesAfterTheLine() async throws {
         let chosen = try await pick("table", query: "tab", after: "Intro ", changes: 1)
         #expect(inserted(chosen.edits) == ["table"])
+    }
+
+    /// On the real core: undo puts the line back as it was before the `/`,
+    /// in one step, and redo turns it again (desktop's
+    /// `slash-menu-convert.integration.test.ts` holds desktop to the same).
+    @Test(.timeLimit(.minutes(1))) func undoPutsTheLineBackAsItWasBeforeTheSlashAndRedoTurnsItAgain() async throws {
+        let vault = try TasksTestVault()
+        let writer = try vault.vault.notesWriter(store: TaskTestKeychain())
+        let noteId = try writer.create(title: "Agent Slash", folderPath: nil)
+        let blockId = UUID().uuidString.lowercased()
+        let typed = "Milk /numbered"
+        _ = try writer.editBlock(
+            noteId: noteId, edit: .insertBlock(kind: "bulletListItem", afterBlockId: nil, text: typed, newBlockId: blockId)
+        )
+        let editor = CoreBlockEditor(vault: vault.vault, store: TaskTestKeychain(), executor: .shared)
+        let model = NoteEditorViewModel(noteId: noteId, editor: editor)
+        let session = model.session
+        session.model = model
+        let reader = CoreNotesReader(vault: vault.vault, executor: .shared)
+        func line() async throws -> String {
+            let blocks = try #require(try await reader.blocks(id: noteId))
+            session.blocks = { blocks }
+            let block = try #require(blocks.first { $0.id == blockId })
+            return "\(block.kind) \(BlockText.shown(block.inline))"
+        }
+        func settle() async {
+            session.enqueue {}
+            await session.tail?.value
+        }
+
+        _ = try await line()
+        let block = try #require(session.blocks().first)
+        let style = BlockText.Style(font: .systemFont(ofSize: 17), ink: .label, titleExists: nil)
+        let field = BlockField(block: block, session: session, style: style, alignment: .natural)
+        field.render()
+        session.focusChanged(to: field)
+        field.textView.selectedRange = NSRange(location: (typed as NSString).length, length: 0)
+        session.selectionChanged(in: field)
+        session.choose(try #require(session.suggestions.first { $0.id == "slash:numbered_list" }))
+        await settle()
+        #expect(try await line() == "numberedListItem Milk")
+
+        session.undo()
+        await settle()
+        #expect(try await line() == "bulletListItem Milk")
+
+        session.redo()
+        await settle()
+        #expect(try await line() == "numberedListItem Milk")
+        withExtendedLifetime((field, model, vault)) {}
     }
 
     @Test func aRowOnAnEmptyLineStillTurnsIt() async throws {
