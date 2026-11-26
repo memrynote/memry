@@ -457,5 +457,5 @@ async fn a_card_serves_its_arguments_to_its_own_conversation_only() {
     );
 }
 
-#[path = "agent_gate_wiring_host.rs"]
+#[path = "agent_gate_wiring/host.rs"]
 mod host;
