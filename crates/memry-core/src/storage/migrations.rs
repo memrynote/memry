@@ -254,6 +254,11 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "manifest_watermark",
         sql: include_str!("migrations/data/0040_manifest_watermark.sql"),
     },
+    Migration {
+        version: 41,
+        name: "note_snapshot_outside_writes",
+        sql: include_str!("migrations/data/0041_note_snapshot_outside_writes.sql"),
+    },
 ];
 
 /// `index.db`: the rebuildable search and link index.

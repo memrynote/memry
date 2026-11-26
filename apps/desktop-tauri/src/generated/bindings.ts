@@ -5684,12 +5684,14 @@ export type VersionDetailView = {
 	wordCount: number,
 	reason: string,
 	createdAt: string,
+	outsideWrite: boolean,
 	fileContent: string,
 };
 
 /**
  *  `SnapshotListItem`. `reason` is the stored column, which the renderer reads as
- *  `SnapshotReason`.
+ *  `SnapshotReason`; `outside_write` tells an outside-write version from the other
+ *  `significant` ones, which Electron never did ([`Listed::outside_write`]).
  */
 export type VersionView = {
 	id: string,
@@ -5698,6 +5700,7 @@ export type VersionView = {
 	wordCount: number,
 	reason: string,
 	createdAt: string,
+	outsideWrite: boolean,
 };
 
 /**  `ViewScope`. */
