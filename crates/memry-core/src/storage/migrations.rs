@@ -249,6 +249,11 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "readwise",
         sql: include_str!("migrations/data/0039_readwise.sql"),
     },
+    Migration {
+        version: 40,
+        name: "manifest_watermark",
+        sql: include_str!("migrations/data/0040_manifest_watermark.sql"),
+    },
 ];
 
 /// `index.db`: the rebuildable search and link index.

@@ -576,6 +576,8 @@ mod sync_journal_day_pictures;
 #[cfg(feature = "markdown")]
 #[path = "sync_list_fields_union.rs"]
 mod sync_list_fields_union;
+#[path = "sync_manifest_watermark.rs"]
+mod sync_manifest_watermark;
 #[cfg(feature = "markdown")]
 #[path = "sync_note_attachment_union.rs"]
 mod sync_note_attachment_union;
