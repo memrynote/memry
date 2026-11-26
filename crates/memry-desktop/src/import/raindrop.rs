@@ -11,24 +11,21 @@
 //! only Raindrop's columns, and the plans of one run share a [`MAX_PLANNED_BYTES`] budget. A
 //! file past it fails before any of its bookmarks is saved, and the other files still import.
 
-use std::cell::Cell;
 use std::collections::HashSet;
 use std::path::Path;
 
 use memry_core::markdown::frontmatter::js_trim;
 use tokio_util::sync::CancellationToken;
 
+use super::csv_lex::{lex, step};
 use super::messages::{ImportMessage, ImportText, codes, status};
 use super::{
     BookmarkMetadata, FileSpec, ImportContext, ImportError, ImportInput, ImportPhase,
-    ImportPreview, ImportSink, ImportedBookmark, Importer, ImporterMeta, PreviewCount,
-    PreviewGroup, base_name, read_source_text,
+    ImportPreview, ImportSink, ImportedBookmark, Importer, ImporterMeta, MAX_PLANNED_BYTES,
+    PreviewCount, PreviewGroup, base_name, read_source_text,
 };
 use crate::web::extract::utils::date::parse_date;
 
-/// The memory one run's plans may take, summed over every picked file. It holds about 300,000
-/// bookmarks of a typical size; Electron had no bound.
-pub const MAX_PLANNED_BYTES: usize = 512 * 1024 * 1024;
 /// What a planned bookmark costs besides the text it stores: the struct, its strings' headers
 /// and the allocator's overhead.
 const ITEM_COST: usize = 1024;
@@ -67,74 +64,6 @@ const CREATED: usize = 7;
 const COVER: usize = 8;
 const HIGHLIGHTS: usize = 9;
 const FAVORITE: usize = 10;
-
-thread_local! {
-    static STEPS: Cell<usize> = const { Cell::new(0) };
-}
-
-/// Steps of this thread's Raindrop reader: one per character of an export and one per piece of
-/// a tags cell.
-#[doc(hidden)]
-pub fn steps() -> usize {
-    STEPS.with(Cell::get)
-}
-
-fn step() {
-    STEPS.with(|steps| steps.set(steps.get() + 1));
-}
-
-/// `tokenizeCsv`, one field at a time: `emit(Some(field))` for each field and `emit(None)` after
-/// a row's last one. Stops when `emit` returns false.
-fn lex(text: &str, mut emit: impl FnMut(Option<&str>) -> bool) {
-    let mut field = String::new();
-    let mut fields_in_row = 0usize;
-    let mut in_quotes = false;
-    let mut chars = text.chars().peekable();
-    while let Some(c) = chars.next() {
-        step();
-        if in_quotes {
-            if c == '"' {
-                if chars.peek() == Some(&'"') {
-                    chars.next();
-                    field.push('"');
-                } else {
-                    in_quotes = false;
-                }
-            } else {
-                field.push(c);
-            }
-            continue;
-        }
-        let go_on = match c {
-            '"' => {
-                in_quotes = true;
-                true
-            }
-            ',' => {
-                fields_in_row += 1;
-                emit(Some(&field))
-            }
-            '\r' => true,
-            '\n' => {
-                fields_in_row = 0;
-                emit(Some(&field)) && emit(None)
-            }
-            _ => {
-                field.push(c);
-                true
-            }
-        };
-        if c == ',' || c == '\n' {
-            field.clear();
-        }
-        if !go_on {
-            return;
-        }
-    }
-    if !field.is_empty() || fields_in_row > 0 {
-        let _ = emit(Some(&field)) && emit(None);
-    }
-}
 
 /// `RaindropImportPlan`, with each skipped row kept as its number.
 #[derive(Default)]

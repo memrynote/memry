@@ -42,6 +42,7 @@ pub mod ocr_languages;
 pub mod portals;
 pub mod properties;
 pub mod property_definitions;
+pub mod readwise;
 pub mod search;
 pub mod settings;
 pub mod shell;
