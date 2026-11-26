@@ -193,6 +193,12 @@ struct NotesListView: View {
                 .onChange(of: notesLinks.pending, initial: true) {
                     if let id = notesLinks.take() { path = NavigationPath([NoteRoute(id: id)]) }
                 }
+                // A title still holding the caret commits as its page leaves,
+                // after the re-read on Back. The split view re-reads after
+                // every write instead (`NotesDetailColumn`).
+                .onReceive(NotificationCenter.default.publisher(for: NoteReadViewModel.titleSaved)) { _ in
+                    Task { await model.refresh() }
+                }
             }
         }
         // A window that narrows to compact width keeps its place (#4344).
