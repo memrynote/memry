@@ -230,7 +230,20 @@ jobs:
           pnpm --filter @memry/extension exec wxt prepare
           pnpm lint
 
+      # A cache hit skips a typecheck, so every file a cached typecheck loads must be in its hash.
+      - name: Turbo typecheck inputs are complete
+        run: node tools/turbo-cache/check-task-inputs.mjs
+
       - name: Typecheck
+        # Turbo remote cache (tools/turbo-cache), read-only: a hit replays a typecheck the push-to-feat
+        # writer ran on the same inputs. No remote cache when TURBO_API or the signature key is unset,
+        # and none for a fork's pull request.
+        env:
+          TURBO_API: ${{ vars.TURBO_API }}
+          TURBO_TEAM: ${{ vars.TURBO_TEAM }}
+          TURBO_TOKEN: ${{ vars.TURBO_API != '' && secrets.TURBO_REMOTE_CACHE_SIGNATURE_KEY != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && secrets.TURBO_READ_TOKEN || '' }}
+          TURBO_REMOTE_CACHE_SIGNATURE_KEY: ${{ secrets.TURBO_REMOTE_CACHE_SIGNATURE_KEY }}
+          TURBO_CACHE: local:rw,remote:r
         run: pnpm typecheck
 
       - name: Format

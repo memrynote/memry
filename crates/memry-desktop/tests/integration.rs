@@ -319,6 +319,8 @@ mod note_properties_outside;
 mod note_versions;
 #[path = "notes_aliases.rs"]
 mod notes_aliases;
+#[path = "notes_aliases_owed.rs"]
+mod notes_aliases_owed;
 #[path = "notes_append_blocks.rs"]
 mod notes_append_blocks;
 #[path = "notes_apply_template.rs"]
