@@ -17,6 +17,7 @@ const crypto = require('node:crypto')
 const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
+const { Worker } = require('node:worker_threads')
 
 const INSTALLER = path.join(__dirname, 'install-electron-binary.cjs')
 const VERSION = '0.0.0-test'
@@ -75,7 +76,7 @@ function installedExecutableByte(electronDir) {
 }
 
 /** A `curl` earlier on PATH that serves the fixture instead of hitting GitHub. */
-function buildCurlShim(root, fixtureZip, { fail = false } = {}) {
+function buildCurlShim(root, fixtureZip, { fail = false, delayMs = CURL_DELAY_MS } = {}) {
   const binDir = path.join(root, 'bin')
   fs.mkdirSync(binDir, { recursive: true })
   const shim = path.join(binDir, 'curl')
@@ -88,7 +89,7 @@ for a in "$@"; do
   if [ "$prev" = "--output" ]; then out="$a"; fi
   prev="$a"
 done
-sleep ${CURL_DELAY_MS / 1000}
+sleep ${delayMs / 1000}
 ${fail ? 'echo "curl: (22) simulated download failure" >&2; exit 22' : 'cp ' + JSON.stringify(fixtureZip) + ' "$out"'}
 `
   )
@@ -143,6 +144,46 @@ function readerSeesValidInstall(electronDir) {
   }
 }
 
+// A reader on its own thread checks the install in a tight loop, so it lands inside
+// windows a few syscalls wide that a timer-driven poll on the main thread misses.
+const READER_SOURCE = `
+const { parentPort, workerData } = require('node:worker_threads')
+const fs = require('node:fs')
+const path = require('node:path')
+${readerSeesValidInstall}
+let samples = 0
+let broken = 0
+let regressed = 0
+let seenValid = false
+while (Atomics.load(workerData.stop, 0) === 0) {
+  samples++
+  if (readerSeesValidInstall(workerData.electronDir)) {
+    seenValid = true
+  } else {
+    broken++
+    if (seenValid) regressed++
+  }
+}
+parentPort.postMessage({ samples, broken, regressed })
+`
+
+/**
+ * Run `action` while a concurrent reader checks the install. `broken` counts every
+ * invalid read; `regressed` counts invalid reads after the reader had seen a valid one.
+ */
+async function readWhile(electronDir, action) {
+  const stop = new Int32Array(new SharedArrayBuffer(4))
+  const reader = new Worker(READER_SOURCE, { eval: true, workerData: { electronDir, stop } })
+  const counts = new Promise((resolve, reject) => {
+    reader.once('message', resolve)
+    reader.once('error', reject)
+  })
+  await new Promise((resolve) => reader.once('online', resolve))
+  const result = await action()
+  Atomics.store(stop, 0, 1)
+  return { result, ...(await counts) }
+}
+
 async function withFixture(run, options) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-install-electron-test-'))
   try {
@@ -169,8 +210,11 @@ async function withFixture(run, options) {
   }
 }
 
+// A caller checks the install, finds it missing, and spawns the installer. Another
+// installer can finish in between, so the late one starts against a working install
+// that other processes are already reading.
 test(
-  'a reinstall never exposes a half-written install to concurrent readers',
+  're-running the installer never breaks a working install for concurrent readers',
   { skip: unsupported },
   async () => {
     await withFixture(async ({ electronDir, install }) => {
@@ -178,20 +222,45 @@ test(
       assert.equal(seed.code, 0, seed.output)
       assert.ok(readerSeesValidInstall(electronDir))
 
-      let samples = 0
-      let broken = 0
-      const poll = setInterval(() => {
-        samples++
-        if (!readerSeesValidInstall(electronDir)) broken++
-      }, 5)
+      const { result, samples, broken } = await readWhile(electronDir, () => settled(install()))
 
-      const reinstall = await settled(install())
-      clearInterval(poll)
-
-      assert.equal(reinstall.code, 0, reinstall.output)
+      assert.equal(result.code, 0, result.output)
       assert.ok(samples > 20, `expected a meaningful sample window, got ${samples}`)
       assert.equal(broken, 0, `reader saw a broken install in ${broken}/${samples} samples`)
     })
+  }
+)
+
+// `require('electron')` re-runs Electron's own unlocked downloader on any invalid read,
+// so a repair must never flip a reader that already sees the new install back to broken.
+test(
+  'repairing a lost dist/ never takes the new install away from a reader',
+  { skip: unsupported },
+  async () => {
+    await withFixture(
+      async ({ electronDir, install }) => {
+        const seed = await settled(install())
+        assert.equal(seed.code, 0, seed.output)
+
+        // The window is a few syscalls wide, so one repair can miss it by luck.
+        for (let repair = 0; repair < 10; repair++) {
+          fs.rmSync(path.join(electronDir, 'dist'), { recursive: true, force: true })
+
+          const { result, samples, regressed } = await readWhile(electronDir, () =>
+            settled(install())
+          )
+
+          assert.equal(result.code, 0, result.output)
+          assert.ok(readerSeesValidInstall(electronDir), 'the repair left dist/ unusable')
+          assert.equal(
+            regressed,
+            0,
+            `repair ${repair}: reader lost the new install in ${regressed}/${samples} samples`
+          )
+        }
+      },
+      { delayMs: 0 }
+    )
   }
 )
 
@@ -208,7 +277,7 @@ test(
 
       // Exactly one process should have done the work; the other waits and no-ops.
       const combined = `${first.output}${second.output}`
-      assert.match(combined, /already installed by a concurrent run/)
+      assert.match(combined, /already installed/)
       assert.equal(combined.match(/installing 0\.0\.0-test/g).length, 1)
 
       // The waiter returns before the download block, so its scratch dir has to be
@@ -237,17 +306,22 @@ test(
   }
 )
 
-test('a failed download leaves the previous install intact', { skip: unsupported }, async () => {
-  await withFixture(async ({ root, electronDir, fixtureZip, tmpDir: _tmpDir, install }) => {
+test('a failed download leaves the existing dist/ intact', { skip: unsupported }, async () => {
+  await withFixture(async ({ root, electronDir, fixtureZip, install }) => {
     const workingBin = buildCurlShim(path.join(root, 'ok'), fixtureZip)
     const seed = await settled(install(workingBin))
     assert.equal(seed.code, 0, seed.output)
+    // A working install is never replaced, so lose the marker to force a reinstall.
+    fs.rmSync(path.join(electronDir, 'path.txt'))
 
     const failingBin = buildCurlShim(path.join(root, 'bad'), fixtureZip, { fail: true })
     const failed = await settled(install(failingBin))
 
     assert.notEqual(failed.code, 0, 'expected the install to fail')
-    assert.ok(readerSeesValidInstall(electronDir), 'a failed install destroyed the good one')
+    assert.ok(
+      fs.existsSync(path.join(electronDir, 'dist', platformPath)),
+      'a failed install destroyed the existing dist/'
+    )
     assert.equal(
       fs.existsSync(path.join(electronDir, '.install-electron-binary.lock')),
       false,
@@ -290,6 +364,9 @@ test('a cache hit installs with no network access at all', { skip: unsupported }
     const workingBin = buildCurlShim(path.join(root, 'ok'), fixtureZip)
     const seed = await settled(install(workingBin, { MEMRY_ELECTRON_CACHE_DIR: cacheDir }))
     assert.equal(seed.code, 0, seed.output)
+    // A fresh package, as after a version bump, with the cache already warm.
+    fs.rmSync(path.join(electronDir, 'dist'), { recursive: true })
+    fs.rmSync(path.join(electronDir, 'path.txt'))
 
     // Any download at all now fails, so a passing install proves the cache was used.
     const failingBin = buildCurlShim(path.join(root, 'bad'), fixtureZip, { fail: true })
