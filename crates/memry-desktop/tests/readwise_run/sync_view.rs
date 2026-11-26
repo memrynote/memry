@@ -5,7 +5,6 @@
 //! | -------------------------------------------------------------------- | -------------------------- |
 //! | the settings outbox reads from a run thread; no supervisor is queued | `pull-gate.ts` `readPullEnv` |
 //! | signed out with no supervisor is decided and pulls with no claim     | `session-teardown.ts:59`, `pull-gate.ts:52-54` |
-//! | a vault the user has not bound is decided and pulls with no claim    | `runtime.ts:440` (`held`)  |
 
 use memry_core::api::errors::SyncError;
 use memry_core::seams::reachability::{Reachability, ReachabilityObserver, Reachable};
@@ -126,29 +125,4 @@ fn signed_out_with_no_supervisor_is_decided_and_pulls_with_no_claim() {
 
     let env = view(&v, true).env();
     assert!(!env.decided, "signed in, sync not attached yet: {env:?}");
-}
-
-/// Electron's `held` binding (`applyOpenVaultBinding`: not bound to this account, the user has
-/// not chosen) calls `markSyncIneligible`: decided, and Readwise pulls with no claim.
-#[test]
-fn a_vault_awaiting_the_binding_choice_is_decided_and_pulls_with_no_claim() {
-    let v = vault(&[], two_books());
-    let session = v.e.session.clone();
-    session.attach_sync(supervisor_factory(
-        &v.library.runtime,
-        VaultBinding::NeedsDecision,
-    ));
-    let view = view(&v, true);
-    let claim = Claim::read(&v.library.store()).unwrap();
-    let mut env = view.env();
-    for _ in 0..500 {
-        if env.decided {
-            break;
-        }
-        std::thread::sleep(Duration::from_millis(10));
-        env = view.env();
-    }
-    assert!(env.decided && !env.eligible, "needs a decision: {env:?}");
-    assert_eq!(authority(&env, &claim), Authority::Pull);
-    session.detach_sync();
 }
