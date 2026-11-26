@@ -61,6 +61,16 @@ const ALLOWED: &[&str] = &[
 ];
 
 #[test]
+fn a_crlf_checkout_still_skips_the_inline_test_module() {
+    let source = "fn write(db: &Db) {\n    db.with(|conn| {\n        let now = now_ms();\n        save(conn, now)\n    });\n}\n\n#[cfg(test)]\nmod tests {\n    fn kept_row() {\n        let now = now_ms();\n        db.with(|conn| save(conn, now));\n    }\n}\n";
+    assert_eq!(
+        captured_stamps(source),
+        [("kept_row".to_owned(), "now".to_owned())]
+    );
+    assert_eq!(scan(&source.replace('\n', "\r\n")), []);
+}
+
+#[test]
 fn no_writer_closure_captures_a_stamp_taken_outside_it() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
     let mut found = Vec::new();
@@ -72,7 +82,7 @@ fn no_writer_closure_captures_a_stamp_taken_outside_it() {
                 .expect("under the crate")
                 .to_string_lossy()
                 .replace('\\', "/");
-            for (function, binding) in captured_stamps(&without_comments(production(&source))) {
+            for (function, binding) in scan(&source) {
                 found.push(format!("{relative}::{function}::{binding}"));
             }
         }
@@ -117,6 +127,13 @@ fn rust_files(path: &Path) -> Vec<PathBuf> {
     }
     files.sort();
     files
+}
+
+/// `(enclosing fn, binding)` for every stamp a writer closure in `source`'s
+/// production code captures. A Windows checkout has CRLF line endings, and
+/// every match here expects `\n`.
+fn scan(source: &str) -> Vec<(String, String)> {
+    captured_stamps(&without_comments(production(&source.replace("\r\n", "\n"))))
 }
 
 /// The file without its inline `#[cfg(test)] mod tests`.
