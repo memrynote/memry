@@ -129,7 +129,7 @@ async fn sent_body(db: &Db) -> serde_json::Value {
         &json!({"sequenceNum": 1, "revision": "rev-pushed"}).to_string(),
     )]);
     let outcome = pusher(db, transport.clone())
-        .push(&document, opened(db, NOTE), SnapshotGate::clean(), 1)
+        .push(&document, opened(db, NOTE), SnapshotGate::clean())
         .await
         .expect("the push");
     assert!(
@@ -177,11 +177,11 @@ async fn a_not_covered_refusal_owes_the_document_and_is_never_retried_hot() {
     let pusher = pusher(&db, transport.clone());
 
     let first = pusher
-        .push(&document, opened(&db, NOTE), SnapshotGate::clean(), 1)
+        .push(&document, opened(&db, NOTE), SnapshotGate::clean())
         .await
         .expect("a refusal, not an error");
     let second = pusher
-        .push(&document, opened(&db, NOTE), SnapshotGate::clean(), 2)
+        .push(&document, opened(&db, NOTE), SnapshotGate::clean())
         .await
         .expect("refused locally");
 

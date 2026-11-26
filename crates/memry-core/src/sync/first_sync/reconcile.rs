@@ -174,12 +174,13 @@ impl FirstSync {
         if stale.is_empty() {
             return Ok((0, 0, 0));
         }
-        let now = now_ms();
         let at_rest = self.pull.at_rest_key();
         let vault_files = self.pull.vault_files();
         let (counts, feed) = self
             .db
             .call(move |conn| {
+                // #5849: stamped inside the hold that writes the rows.
+                let now = now_ms();
                 let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
                 // An edit made while the pull was in flight keeps its row.
                 let still: HashSet<(String, String, Option<i64>)> = held_rows(&txn)?

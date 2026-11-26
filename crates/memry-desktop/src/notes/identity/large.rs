@@ -4,7 +4,8 @@
 //! the class and offers the text to the feed, which refuses it, as for a note that grew into
 //! the class. The app opens it in the large-file viewer (`notes::read`). Its body is never
 //! parsed: no tags or properties reach the record, as Electron keeps none for it. Its
-//! frontmatter `aliases` do, as every first-named file's do ([`aliases::found`]).
+//! frontmatter `aliases` do, as every first-named file's do ([`aliases::found`]), and a newer
+//! record's names are written into its `aliases` key (`vault::writeback`, #5825).
 //!
 //! Once its file shrinks under the class, it is a new note's file ([`left`]). Its file's
 //! removal deletes it while it has no text anywhere (`large_file::is_bare`).
@@ -47,23 +48,27 @@ pub(super) fn adopt(
     let adopted = writer
         .adopt_large_file(note)
         .map_err(|error| IdentityError::Other(error.to_string()))?;
+    let mut owes_file = false;
     if let (Adopted::Created(id) | Adopted::Existing(id), Some(text)) = (&adopted, file.file) {
         let matched = matches!(adopted, Adopted::Existing(_)).then_some(file.modified_ms);
-        // A strictly newer record that keeps its names is not written into the file here: no
-        // write-back writes a large file, whose body the note does not hold. Its note reads the
-        // file's names again when it leaves the class ([`left`]), and the file then takes the
-        // record's `aliases` key alone.
-        aliases::found(writer, id, text, matched);
+        // A strictly newer record that keeps its names owes them to the file: the write-back
+        // writes its `aliases` key alone and copies the body it does not hold byte for byte
+        // (#5825). Until then, the debt keeps the names when the file leaves the class ([`left`]).
+        owes_file = aliases::found(writer, id, text, matched);
     }
-    Ok(identity.adoption(adopted, ctx.root, file.path))
+    Ok(match identity.adoption(adopted, ctx.root, file.path) {
+        Adoption::Existing(id) if owes_file => Adoption::ExistingNewer(id),
+        adoption => adoption,
+    })
 }
 
 /// The note's file left the class: its record is queued ahead of the body the feed gives it
 /// next, and takes the file's property values, as a new note's file gives them
 /// ([`properties::found`]), and its aliases as a matched file's, the file read as a note's for
 /// the first time: a record modified after the file, `modified_ms`, keeps its names
-/// ([`aliases::found`]). `true` when it did: the file owes them, and the consumer has the
-/// write-back give the file the record's frontmatter.
+/// ([`aliases::found`]), as does a record whose names the file owed since it was adopted and
+/// still holds the list it had then. `true` when it did: the file owes them, and the consumer
+/// has the write-back write its `aliases` key.
 pub(super) fn left(
     identity: &NotesIdentity,
     ctx: &IdentityCtx<'_>,

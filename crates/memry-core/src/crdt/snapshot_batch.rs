@@ -45,7 +45,6 @@ impl SnapshotPusher {
     pub async fn push_batch(
         &self,
         documents: &[(&Document, Epoch, SnapshotGate)],
-        now_ms: i64,
     ) -> Vec<BatchOutcome> {
         // `None` until the request carrying the document answers.
         let mut outcomes: Vec<(String, Option<Result<SnapshotOutcome, SnapshotError>>)> =
@@ -67,7 +66,7 @@ impl SnapshotPusher {
         while ready.peek().is_some() {
             let chunk: Vec<(usize, Prepared)> =
                 ready.by_ref().take(MAX_SNAPSHOT_BATCH_ENTRIES).collect();
-            for (at, outcome) in self.push_chunk(chunk, now_ms).await {
+            for (at, outcome) in self.push_chunk(chunk).await {
                 outcomes[at].1 = Some(outcome);
             }
         }
@@ -80,10 +79,9 @@ impl SnapshotPusher {
     async fn push_chunk(
         &self,
         chunk: Vec<(usize, Prepared)>,
-        now_ms: i64,
     ) -> Vec<(usize, Result<SnapshotOutcome, SnapshotError>)> {
         if self.batch_unsupported.load(Ordering::Relaxed) {
-            return self.push_one_by_one(chunk, now_ms).await;
+            return self.push_one_by_one(chunk).await;
         }
         let entries: Vec<&Json> = chunk.iter().map(|(_, p)| &p.payload).collect();
         let request = self
@@ -95,10 +93,10 @@ impl SnapshotPusher {
             Ok(body) => body,
             Err(ApiError::Status { status: 404, .. }) => {
                 self.batch_unsupported.store(true, Ordering::Relaxed);
-                return self.push_one_by_one(chunk, now_ms).await;
+                return self.push_one_by_one(chunk).await;
             }
             Err(ApiError::Status { status: 413, .. }) => {
-                return self.push_one_by_one(chunk, now_ms).await;
+                return self.push_one_by_one(chunk).await;
             }
             Err(error) => {
                 return chunk
@@ -118,7 +116,7 @@ impl SnapshotPusher {
             let answer = results
                 .iter()
                 .find(|r| r.get("noteId").and_then(Json::as_str) == Some(&prepared.doc_id));
-            out.push((at, self.apply_result(prepared, answer, now_ms).await));
+            out.push((at, self.apply_result(prepared, answer).await));
         }
         out
     }
@@ -127,7 +125,6 @@ impl SnapshotPusher {
         &self,
         prepared: Prepared,
         answer: Option<&Json>,
-        now_ms: i64,
     ) -> Result<SnapshotOutcome, SnapshotError> {
         // A document the response never mentioned did not land. Reporting it
         // as stored would drop a body with nothing left to retry it.
@@ -139,7 +136,7 @@ impl SnapshotPusher {
             .into());
         };
         if answer.get("accepted").and_then(Json::as_bool) == Some(true) {
-            return self.settle(prepared, answer, now_ms).await;
+            return self.settle(prepared, answer).await;
         }
         let reason = answer
             .get("reason")
@@ -155,11 +152,10 @@ impl SnapshotPusher {
     async fn push_one_by_one(
         &self,
         chunk: Vec<(usize, Prepared)>,
-        now_ms: i64,
     ) -> Vec<(usize, Result<SnapshotOutcome, SnapshotError>)> {
         let mut out = Vec::with_capacity(chunk.len());
         for (at, prepared) in chunk {
-            out.push((at, self.push_prepared(prepared, now_ms).await));
+            out.push((at, self.push_prepared(prepared).await));
         }
         out
     }

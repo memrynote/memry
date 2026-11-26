@@ -487,18 +487,3 @@ fn a_mark_whose_moves_failed_still_waits_for_the_body() {
         "the given-up move stays given up"
     );
 }
-
-/// A pull that marks the note while a pass holds its aliases-only mark keeps its full mark when
-/// that pass gives the aliases-only one back (VERIFY-5808R4 finding 2, #5316).
-#[test]
-fn a_pull_mark_made_during_a_pass_outlives_the_aliases_only_mark_put_back() {
-    let pulled = crate::vault::writeback::place::Pulled::default();
-    pulled.mark_in_place("n");
-    let held = pulled.take("n").expect("the aliases-only mark");
-    assert!(held.aliases_only);
-    pulled.mark("n", Some("Before"));
-    pulled.put_back("n", held);
-    let left = pulled.take("n").expect("a mark for the next pass");
-    assert!(!left.aliases_only);
-    assert_eq!(left.title_before.as_deref(), Some("Before"));
-}

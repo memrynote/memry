@@ -40,7 +40,8 @@ final class JournalDayPageModel {
 
     init(
         store: JournalStore, date: String, context: JournalVaultContext,
-        notifications: NotificationCenter = .default
+        notifications: NotificationCenter = .default,
+        attachmentURL: @escaping @Sendable (String) -> URL = AttachmentPaths.url(for:)
     ) {
         self.date = date
         let id = store.cachedDay(date)?.id ?? JournalNoteBridge.newDayId(date)
@@ -50,7 +51,8 @@ final class JournalDayPageModel {
             route: NoteRoute(id: id),
             reader: bridge,
             filler: context.filler,
-            reachability: PathReachability.forAttachments
+            reachability: PathReachability.forAttachments,
+            attachmentURL: attachmentURL
         )
         editor = NoteEditorViewModel(
             noteId: id, editor: bridge, notes: context.writer, notifications: notifications
