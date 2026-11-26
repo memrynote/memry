@@ -525,7 +525,7 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
             if focused {
                 textView.inputDelegate?.textDidChange(textView)
                 textView.inputDelegate?.selectionDidChange(textView)
-                session?.selectionChanged(in: self)
+                session?.selectionChanged(in: self, placed: true)
             }
         }
         let text = NSMutableAttributedString(attributedString: BlockText.attributed(block.inline, style: style))
@@ -755,7 +755,7 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
             textView.typingAttributes[.memryTag] = nil
             textView.typingAttributes[.foregroundColor] = style.ink
         }
-        if !rendering { session?.selectionChanged(in: self) }
+        if !rendering { session?.selectionChanged(in: self, placed: true) }
     }
 
     func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
