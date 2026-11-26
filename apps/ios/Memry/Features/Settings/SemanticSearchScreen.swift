@@ -33,7 +33,10 @@ private struct SemanticSearchPage: View {
                     SettingsToggleRow(
                         title: SemanticSearchCopy.toggle,
                         detail: SemanticSearchCopy.toggleDetail,
-                        isOn: Binding(get: { display.isOn }, set: toggle),
+                        // A closure, not `set: toggle`: Swift 6.3.3 (Xcode 26.6)
+                        // crashes in IRGen on a method passed as Binding's
+                        // `@isolated(any)` setter in a Release build.
+                        isOn: Binding(get: { display.isOn }, set: { toggle($0) }),
                         identifier: "settings.semanticSearch.toggle"
                     )
                     .disabled(model.pending != nil)
