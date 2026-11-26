@@ -10,52 +10,88 @@
 //!    (`nodeToBlock.ts`): marks from the tags (a code mark excludes every
 //!    other mark), a hard break appended to the run before it as `\n`;
 //! 4. desktop's repair (`@memry/editor-schema/parse-markdown`): the break
-//!    artifact after a newline, the first run's leading blank, the hard-break
-//!    tokens — on plain text runs only, never inside a link.
+//!    artifact after a newline, the leading blank of a run that opens a
+//!    line, the hard-break tokens, in link text too.
 
-use crate::domain::journal_rules::is_js_whitespace;
+use crate::domain::journal_rules::js_trim;
 
-use super::links::{allowed_href, link};
-use super::prepare::unmask_hard_breaks;
-use super::{SeedInline, SeedMarks, Unsupported};
+use super::closers::Closers;
+use super::links::{destination_and_title, link};
+use super::media::{self, Media};
+use super::runs;
+use super::{SeedInline, Unsupported};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Tag {
+pub(super) enum Tag {
     Strong,
     Em,
     Del,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-enum Html {
+pub(super) enum Html {
     Text(String),
     Br,
     Wrap(Tag, Vec<Html>),
     Code(String),
-    Link { href: String, children: Vec<Html> },
+    Link {
+        href: String,
+        children: Vec<Html>,
+    },
+    /// An `<img>` or a `<video>`.
+    Media(Media),
 }
 
-/// One stage-3 run: styled text, or a link holding styled text.
-#[derive(Debug, Clone, PartialEq, Eq)]
-enum Run {
-    Text(String, SeedMarks),
-    Link(String, Vec<(String, SeedMarks)>),
-}
-
-/// The inline content of one text block. `breaks` are the hard-break
-/// spellings `mask_hard_breaks` took, which decides whether tokens unmask.
+/// The inline content of a text block nested in a list or a quote, where an
+/// image has no block to become. `breaks` are the hard-break spellings
+/// `mask_hard_breaks` took, which decides whether tokens unmask.
 pub(super) fn inline_content(
     text: &str,
     breaks: &[String],
 ) -> Result<Vec<SeedInline>, Unsupported> {
+    let html = parse(text)?;
+    if holds_media(&html) {
+        // Desktop's parse drops it, or makes it a child block of a list item.
+        return Err(Unsupported("image in a list or quote"));
+    }
+    Ok(runs::block_content(html, breaks))
+}
+
+/// `parseInline` on one block's text.
+pub(super) fn parse(text: &str) -> Result<Vec<Html>, Unsupported> {
     let chars: Vec<char> = text.chars().collect();
-    let mut html = parse_inline(&chars)?;
-    normalize_whitespace(&mut html);
-    let mut nodes = Vec::new();
-    flatten(&html, &SeedMarks::default(), false, &mut nodes);
-    let mut runs = to_runs(nodes);
-    repair(&mut runs, breaks);
-    Ok(expand(runs))
+    parse_inline(&chars)
+}
+
+pub(super) fn holds_media(nodes: &[Html]) -> bool {
+    holds(nodes, &|_| true)
+}
+
+fn holds(nodes: &[Html], test: &dyn Fn(&Media) -> bool) -> bool {
+    nodes.iter().any(|node| match node {
+        Html::Media(media) => test(media),
+        Html::Wrap(_, children) | Html::Link { children, .. } => holds(children, test),
+        _ => false,
+    })
+}
+
+/// The inline content of one table cell (`Table/block.ts`
+/// `parseTableContent`). `code_kept` is whether `maskCellCodeSpaces` masked
+/// the whitespace of the cell's row, which keeps its code spans' spaces.
+pub(super) fn cell_content(
+    text: &str,
+    breaks: &[String],
+    code_kept: bool,
+) -> Result<Vec<SeedInline>, Unsupported> {
+    let html = parse(text)?;
+    if holds(&html, &|media| match media {
+        Media::Image { url, .. } => js_trim(url).is_empty(),
+        Media::Video { .. } => true,
+    }) {
+        // `inlineImage` claims an `<img>` with a `src` only.
+        return Err(Unsupported("video or empty image in a table cell"));
+    }
+    Ok(runs::cell_content(html, breaks, code_kept))
 }
 
 fn push_text(nodes: &mut Vec<Html>, text: &str) {
@@ -76,6 +112,7 @@ const ESCAPABLE: &str = "\\`*_{}[]()#+-.!~|>";
 /// `parseInline`.
 fn parse_inline(text: &[char]) -> Result<Vec<Html>, Unsupported> {
     let mut nodes = Vec::new();
+    let mut closers = Closers::new(text);
     let mut i = 0;
     while i < text.len() {
         if text[i] == '\n' && i >= 2 && text[i - 1] == ' ' && text[i - 2] == ' ' {
@@ -89,7 +126,7 @@ fn parse_inline(text: &[char]) -> Result<Vec<Html>, Unsupported> {
             continue;
         }
         if SPECIAL.contains(&text[i])
-            && let Some(end) = inline_token(text, i, &mut nodes)?
+            && let Some(end) = inline_token(&mut closers, i, &mut nodes)?
         {
             i = end;
             continue;
@@ -107,10 +144,11 @@ fn parse_inline(text: &[char]) -> Result<Vec<Html>, Unsupported> {
 /// The tokenizers of `parseInline`, in priority order. Pushes what matched
 /// and returns where it ends.
 fn inline_token(
-    text: &[char],
+    closers: &mut Closers,
     i: usize,
     nodes: &mut Vec<Html>,
 ) -> Result<Option<usize>, Unsupported> {
+    let text = closers.text();
     let at = |offset: usize| text.get(i + offset).copied();
 
     if text[i] == '\\' && i + 1 < text.len() {
@@ -131,12 +169,15 @@ fn inline_token(
         nodes.push(Html::Code(code));
         return Ok(Some(end));
     }
-    if text[i] == '!' && at(1) == Some('[') {
-        // Line-level fallback catches `![` first; this is the backstop.
-        return Err(Unsupported("image or embed"));
+    if text[i] == '!'
+        && at(1) == Some('[')
+        && let Some((found, end)) = image(closers, i)?
+    {
+        nodes.push(Html::Media(found));
+        return Ok(Some(end));
     }
     if text[i] == '['
-        && let Some((href, inner, end)) = link(text, i)
+        && let Some((href, inner, end)) = link(closers, i)
     {
         let children = parse_inline(inner)?;
         if contains_link(&children) {
@@ -147,13 +188,13 @@ fn inline_token(
     }
     if text[i] == '~'
         && at(1) == Some('~')
-        && let Some(end) = delimited(text, i, 2, Tag::Del, nodes)?
+        && let Some(end) = delimited(closers, i, 2, Tag::Del, nodes)?
     {
         return Ok(Some(end));
     }
     let run3 = |c: char| at(0) == Some(c) && at(1) == Some(c) && at(2) == Some(c);
     if (run3('*') || (run3('_') && !intraword(text, i, 3)))
-        && let Some(end) = delimited_with(text, i, 3, nodes, |children| {
+        && let Some(end) = delimited_with(closers, i, 3, nodes, |children| {
             Html::Wrap(Tag::Strong, vec![Html::Wrap(Tag::Em, children)])
         })?
     {
@@ -161,12 +202,12 @@ fn inline_token(
     }
     let run2 = |c: char| at(0) == Some(c) && at(1) == Some(c);
     if (run2('*') || (run2('_') && !intraword(text, i, 2)))
-        && let Some(end) = delimited(text, i, 2, Tag::Strong, nodes)?
+        && let Some(end) = delimited(closers, i, 2, Tag::Strong, nodes)?
     {
         return Ok(Some(end));
     }
     if (text[i] == '*' || (text[i] == '_' && !intraword(text, i, 1)))
-        && let Some(end) = delimited(text, i, 1, Tag::Em, nodes)?
+        && let Some(end) = delimited(closers, i, 1, Tag::Em, nodes)?
     {
         return Ok(Some(end));
     }
@@ -181,6 +222,23 @@ fn inline_token(
         return Ok(Some(i + 1));
     }
     Ok(None)
+}
+
+/// `parseImage`: `![alt](url "title")`, the alt as written.
+fn image(closers: &mut Closers, start: usize) -> Result<Option<(Media, usize)>, Unsupported> {
+    let text = closers.text();
+    let Some(alt_end) = closers.closing(start + 1, '[', ']') else {
+        return Ok(None);
+    };
+    if text.get(alt_end + 1) != Some(&'(') {
+        return Ok(None);
+    }
+    let Some(paren_end) = closers.closing(alt_end + 1, '(', ')') else {
+        return Ok(None);
+    };
+    let (url, title) = destination_and_title(&text[alt_end + 2..paren_end]);
+    let alt = collect(&text[start + 2..alt_end]);
+    Ok(Some((media::media(url, alt, title)?, paren_end + 1)))
 }
 
 fn contains_link(nodes: &[Html]) -> bool {
@@ -230,264 +288,42 @@ fn inline_code(text: &[char], start: usize) -> Option<(String, usize)> {
 }
 
 fn delimited(
-    text: &[char],
+    closers: &mut Closers,
     start: usize,
     len: usize,
     tag: Tag,
     nodes: &mut Vec<Html>,
 ) -> Result<Option<usize>, Unsupported> {
-    delimited_with(text, start, len, nodes, |children| {
+    delimited_with(closers, start, len, nodes, |children| {
         Html::Wrap(tag, children)
     })
 }
 
 /// `parseDelimited`.
 fn delimited_with(
-    text: &[char],
+    closers: &mut Closers,
     start: usize,
     len: usize,
     nodes: &mut Vec<Html>,
     wrap: impl FnOnce(Vec<Html>) -> Html,
 ) -> Result<Option<usize>, Unsupported> {
-    let delimiter = &text[start..start + len];
+    let text = closers.text();
     let after_open = start + len;
     if after_open >= text.len() || matches!(text[after_open], ' ' | '\t') {
         return Ok(None);
     }
-    let mut j = after_open;
-    while j < text.len() {
-        if text[j] == '\\' && j + 1 < text.len() {
-            j += 2;
-            continue;
-        }
-        if text.get(j..j + len) == Some(delimiter) {
-            let before = text[j - 1];
-            let single_in_run = len == 1
-                && ((before == delimiter[0] && !(j >= 2 && text[j - 2] == '\\'))
-                    || text.get(j + len) == Some(&delimiter[0]));
-            if matches!(before, ' ' | '\t') || single_in_run || j == after_open {
-                j += 1;
-                continue;
-            }
-            let children = parse_inline(&text[after_open..j])?;
-            nodes.push(wrap(children));
-            return Ok(Some(j + len));
-        }
-        j += 1;
-    }
-    Ok(None)
-}
-
-/// Stage 2: a text node holding a newline has each whitespace run collapsed.
-fn normalize_whitespace(nodes: &mut [Html]) {
-    for node in nodes {
-        match node {
-            Html::Text(text) if text.contains('\n') => {
-                let mut out = String::with_capacity(text.len());
-                let mut in_run = false;
-                for c in text.chars() {
-                    if matches!(c, ' ' | '\t' | '\r' | '\n' | '\u{000C}') {
-                        if !in_run {
-                            out.push(' ');
-                        }
-                        in_run = true;
-                    } else {
-                        out.push(c);
-                        in_run = false;
-                    }
-                }
-                *text = out;
-            }
-            Html::Wrap(_, children) | Html::Link { children, .. } => normalize_whitespace(children),
-            _ => {}
-        }
-    }
-}
-
-/// A ProseMirror inline node: marked text, or a hard break (which carries no
-/// mark: BlockNote rebuilds it with `createChecked()`).
-enum PmNode {
-    Text(String, SeedMarks),
-    Break,
-}
-
-/// The CommonMark code span for `code`: a fence no backtick run in it
-/// matches, padded when needed (`link-code-spans.ts` `codeSpan`).
-fn code_span(code: &str) -> String {
-    let mut fence = "`".to_owned();
-    while code.split(|c| c != '`').any(|run| run.len() == fence.len()) {
-        fence.push('`');
-    }
-    let pad = code.chars().any(|c| c != ' ')
-        && ((code.starts_with(' ') && code.ends_with(' '))
-            || code.starts_with('`')
-            || code.ends_with('`'));
-    if pad {
-        format!("{fence} {code} {fence}")
-    } else {
-        format!("{fence}{code}{fence}")
-    }
-}
-
-/// Stage 3a: ProseMirror's marks. A code mark excludes every other mark, the
-/// way tiptap's `Code` declares `excludes: "_"`, so a code span inside a link
-/// is the link's own text with its backticks (desktop's `linkCodeAsText`).
-fn flatten(nodes: &[Html], marks: &SeedMarks, in_link: bool, out: &mut Vec<PmNode>) {
-    for node in nodes {
-        match node {
-            Html::Text(text) if !text.is_empty() => {
-                out.push(PmNode::Text(text.clone(), marks.clone()))
-            }
-            Html::Text(_) => {}
-            Html::Br => out.push(PmNode::Break),
-            Html::Code(code) if in_link => out.push(PmNode::Text(code_span(code), marks.clone())),
-            Html::Code(code) => {
-                if !code.is_empty() {
-                    let code_only = SeedMarks {
-                        code: true,
-                        ..SeedMarks::default()
-                    };
-                    out.push(PmNode::Text(code.clone(), code_only));
-                }
-            }
-            Html::Wrap(tag, children) => {
-                let mut inner = marks.clone();
-                if !inner.code {
-                    match tag {
-                        Tag::Strong => inner.bold = true,
-                        Tag::Em => inner.italic = true,
-                        Tag::Del => inner.strike = true,
-                    }
-                }
-                flatten(children, &inner, in_link, out);
-            }
-            Html::Link { href, children } => {
-                let mut inner = marks.clone();
-                if !href.is_empty() && allowed_href(href) && !inner.code {
-                    inner.link = Some(href.clone());
-                }
-                flatten(children, &inner, true, out);
-            }
-        }
-    }
-}
-
-/// Stage 3b: `contentNodeToInlineContent`.
-fn to_runs(nodes: Vec<PmNode>) -> Vec<Run> {
-    let mut runs = Vec::new();
-    let mut current: Option<Run> = None;
-    for node in nodes {
-        let (text, marks) = match node {
-            PmNode::Break => {
-                match &mut current {
-                    Some(Run::Text(text, _)) => text.push('\n'),
-                    Some(Run::Link(_, content)) => {
-                        if let Some((text, _)) = content.last_mut() {
-                            text.push('\n');
-                        }
-                    }
-                    None => current = Some(Run::Text("\n".to_owned(), SeedMarks::default())),
-                }
-                continue;
-            }
-            PmNode::Text(text, marks) => (text, marks),
-        };
-        let mut styles = marks.clone();
-        let href = styles.link.take();
-        current = Some(match (current.take(), href) {
-            (Some(Run::Text(mut run, run_styles)), None) if run_styles == styles => {
-                run.push_str(&text);
-                Run::Text(run, run_styles)
-            }
-            (Some(Run::Link(run_href, mut content)), Some(href)) if run_href == href => {
-                match content.last_mut() {
-                    Some((last, last_styles)) if *last_styles == styles => last.push_str(&text),
-                    _ => content.push((text, styles)),
-                }
-                Run::Link(run_href, content)
-            }
-            (previous, href) => {
-                runs.extend(previous);
-                match href {
-                    Some(href) => Run::Link(href, vec![(text, styles)]),
-                    None => Run::Text(text, styles),
-                }
-            }
-        });
-    }
-    runs.extend(current);
-    runs
-}
-
-/// Stage 4: `repairRuns` for prose.
-fn repair(runs: &mut [Run], breaks: &[String]) {
-    for (index, run) in runs.iter_mut().enumerate() {
-        let Run::Text(text, _) = run else {
-            continue;
-        };
-        let mut stripped = String::with_capacity(text.len());
-        let mut chars = text.chars().peekable();
-        while let Some(c) = chars.next() {
-            stripped.push(c);
-            if c == '\n'
-                && chars
-                    .peek()
-                    .is_some_and(|next| *next != '\n' && is_js_whitespace(*next))
-            {
-                chars.next();
-            }
-        }
-        if index == 0
-            && let Some(first) = stripped.chars().next()
-            && first != '\n'
-            && is_js_whitespace(first)
-        {
-            stripped.remove(0);
-        }
-        *text = if breaks.is_empty() {
-            stripped
-        } else {
-            unmask_hard_breaks(&stripped)
-        };
-    }
-}
-
-/// `inlineContentToNodes`: text split on `\n` into hard breaks, empty pieces
-/// dropped, a link's mark added to its text.
-fn expand(runs: Vec<Run>) -> Vec<SeedInline> {
-    let mut out = Vec::new();
-    let mut split = |text: &str, marks: &SeedMarks| {
-        for (index, piece) in text.split('\n').enumerate() {
-            if index > 0 {
-                out.push(SeedInline::HardBreak);
-            }
-            if !piece.is_empty() {
-                out.push(SeedInline::Text {
-                    text: piece.to_owned(),
-                    marks: marks.clone(),
-                });
-            }
-        }
+    let Some(close) = closers.delimiter(start, len) else {
+        return Ok(None);
     };
-    for run in runs {
-        match run {
-            Run::Text(text, marks) => split(&text, &marks),
-            Run::Link(href, content) => {
-                for (text, marks) in content {
-                    let marks = SeedMarks {
-                        link: Some(href.clone()),
-                        ..marks
-                    };
-                    split(&text, &marks);
-                }
-            }
-        }
-    }
-    out
+    let children = parse_inline(&text[after_open..close])?;
+    nodes.push(wrap(children));
+    Ok(Some(close + len))
 }
 
 #[cfg(test)]
 mod tests {
+    use super::super::SeedMarks;
+    use super::super::links::allowed_href;
     use super::*;
 
     fn plain(text: &str) -> SeedInline {
@@ -531,5 +367,24 @@ mod tests {
         assert!(allowed_href("mailto:a@b.c"));
         let content = inline_content("[a](javascript:x)", &[]).expect("supported");
         assert_eq!(content, vec![plain("a")]);
+    }
+
+    /// A paste is planned on the main thread, so a long run of openers no
+    /// closer matches must not cost a scan to the end per opener. At 200k
+    /// characters a quadratic scan takes seconds even in release; a linear
+    /// one stays far under the bound in a debug build.
+    #[test]
+    fn a_long_run_of_unclosed_openers_plans_in_linear_time() {
+        for opener in ["![", "![a](", "[a](x ", "*a ", "**a ", "~~a "] {
+            let text = opener.repeat(200_000 / opener.len());
+            let started = std::time::Instant::now();
+            let plan = super::super::plan(&text);
+            let elapsed = started.elapsed();
+            assert_eq!(plan.blocks.len(), 1, "{opener:?}");
+            assert!(
+                elapsed < std::time::Duration::from_secs(3),
+                "{opener:?} repeated took {elapsed:?}"
+            );
+        }
     }
 }

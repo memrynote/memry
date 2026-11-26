@@ -22,7 +22,7 @@ pub(super) fn paste_markdown(
     if !node_shapes::holds_inline(&kind) || node_shapes::holds_plain_text(&kind) {
         return Err(refused("markdown pastes only into a block of marked text"));
     }
-    let blocks = markdown_seed::paste_plan(markdown).blocks;
+    let blocks = markdown_seed::plan(markdown).blocks;
     if blocks.is_empty() {
         return Err(refused("the pasted text makes no blocks"));
     }

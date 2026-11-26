@@ -29816,7 +29816,7 @@ public enum BlockEdit: Equatable, Hashable {
      * and the text after it moves to a block of `block_id`'s type below
      * them; at the start of the block they go above it, and an empty block
      * is replaced. `new_block_ids` holds one id per block the paste writes
-     * ([`crate::crdt::markdown_seed::paste_plan`]), then the moved text's
+     * ([`crate::crdt::markdown_seed::plan`]), then the moved text's
      * when there is any. A code block, and a block with nested blocks split
      * mid-text, are refused. Last, to keep earlier FFI indices.
      */
@@ -38320,7 +38320,7 @@ public func journalConformance(fileJson: String) -> String  {
 /**
  * How many blocks `markdown` pasted into a block writes: the ids
  * [`crate::crdt::body_edit::BlockEdit::PasteMarkdown`] takes, before the
- * moved text's ([`crate::crdt::markdown_seed::paste_plan`]).
+ * moved text's ([`crate::crdt::markdown_seed::plan`]).
  */
 public func markdownPasteBlockCount(markdown: String) -> UInt32  {
     return try!  FfiConverterUInt32.lift(try! rustCall() {
@@ -38562,7 +38562,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_func_journal_conformance() != 2227) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_func_markdown_paste_block_count() != 62645) {
+    if (uniffi_memry_core_checksum_func_markdown_paste_block_count() != 49171) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_func_wiki_link_candidates() != 17581) {

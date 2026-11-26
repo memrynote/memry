@@ -338,7 +338,7 @@ pub enum BlockEdit {
     /// and the text after it moves to a block of `block_id`'s type below
     /// them; at the start of the block they go above it, and an empty block
     /// is replaced. `new_block_ids` holds one id per block the paste writes
-    /// ([`crate::crdt::markdown_seed::paste_plan`]), then the moved text's
+    /// ([`crate::crdt::markdown_seed::plan`]), then the moved text's
     /// when there is any. A code block, and a block with nested blocks split
     /// mid-text, are refused. Last, to keep earlier FFI indices.
     PasteMarkdown {

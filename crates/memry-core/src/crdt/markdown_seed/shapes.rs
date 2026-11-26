@@ -234,19 +234,6 @@ pub(super) fn heading(line: &str) -> Option<(u8, String)> {
         .map(|end| (hashes as u8, rest[from..end].iter().collect()))
 }
 
-/// `tryParseTable`, recognition only: the line after the table, or `None`.
-pub(super) fn table_end(lines: &[&str], start: usize) -> Option<usize> {
-    let separator = lines.get(start + 1)?;
-    if !separator.contains('|') || !is_table_separator(separator) || !lines[start].contains('|') {
-        return None;
-    }
-    let mut end = start + 2;
-    while end < lines.len() && lines[end].contains('|') {
-        end += 1;
-    }
-    Some(end)
-}
-
 /// `/^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/`
 pub(super) fn is_table_separator(line: &str) -> bool {
     let trimmed = line.trim_matches(is_js_whitespace);

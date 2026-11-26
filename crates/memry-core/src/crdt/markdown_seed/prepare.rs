@@ -1,12 +1,11 @@
-//! Desktop's text passes around BlockNote's parser, for the constructs this
-//! seed supports.
+//! Desktop's text passes around BlockNote's parser.
 //!
 //! Each function mirrors one step of `blocknote-converter.ts`'s
 //! `markdownToYFragment` path and names its source. Steps that only act on a
-//! construct this seed does not support (toggles, callouts, colour spans,
-//! link references, CriticMarkup, inline tokens) are not ported: their
-//! presence routes the text to the fallback instead ([`document_fallback`],
-//! [`line_fallback`]).
+//! construct this seed does not build (colour spans, link references,
+//! CriticMarkup, column regions, HTML comments, inline tokens) are not
+//! ported: their presence routes the text to the fallback instead
+//! ([`document_fallback`], [`line_fallback`]).
 
 use crate::domain::journal_rules::js_trim;
 
@@ -18,7 +17,7 @@ pub(super) fn document_fallback(markdown: &str) -> Option<&'static str> {
     // JS line terminators other than `\n`, which the desktop regexes treat as
     // line ends while `split('\n')` does not; NUL and the object replacement
     // character, which the HTML parser and BlockNote rewrite.
-    if markdown.contains(['\r', '\0', '\u{2028}', '\u{2029}', '\u{FFFC}']) {
+    if markdown.contains(['\0', '\u{2028}', '\u{2029}', '\u{FFFC}']) {
         return Some("line terminator or control character");
     }
     // The masking tokens desktop inserts and restores (`MEMRYHBK`, `MEMRYICO`,
@@ -32,14 +31,28 @@ pub(super) fn document_fallback(markdown: &str) -> Option<&'static str> {
     {
         return Some("CriticMarkup");
     }
-    let lower = markdown.to_ascii_lowercase();
-    if lower.contains("<details") || lower.contains("</details") || lower.contains("<summary") {
-        return Some("toggle");
+    if markdown.split('\n').any(opens_column_region) {
+        return Some("columns");
     }
     if markdown.split('\n').any(is_link_reference_definition) {
         return Some("link reference definition");
     }
     None
+}
+
+/// A superset of the lines `readColumnRegion` (`blocks/columns.ts`) opens a
+/// region on, matched on the raw line as it is: `MCM_START_REGEX`, and a
+/// Pandoc `:::` fence whose descriptor names a columns class.
+fn opens_column_region(line: &str) -> bool {
+    let lower = line.to_ascii_lowercase();
+    if let Some(rest) = lower
+        .strip_prefix("---")
+        .or_else(|| lower.strip_prefix("==="))
+    {
+        let rest = rest.trim_start_matches(crate::domain::journal_rules::is_js_whitespace);
+        return rest.starts_with("start-multi-column") || rest.starts_with("multi-column-start");
+    }
+    lower.starts_with(":::") && lower.contains("column")
 }
 
 /// A superset of `DEFINITION_LINE` (`shared/link-references.ts`): up to three
@@ -76,20 +89,11 @@ fn is_link_reference_definition(line: &str) -> bool {
 /// superset of the line shapes desktop claims outside BlockNote's parser or
 /// that BlockNote turns into a block this seed does not build.
 pub(super) fn line_fallback(line: &str) -> Option<&'static str> {
-    if line.contains("![") {
-        return Some("image or embed");
-    }
     let chars: Vec<char> = line.chars().collect();
     if chars.windows(2).any(|pair| {
         pair[0] == '<' && (pair[1].is_ascii_alphabetic() || matches!(pair[1], '/' | '!' | '?'))
     }) {
         return Some("HTML");
-    }
-    if line.contains("[!") {
-        return Some("callout");
-    }
-    if line.contains("$$") {
-        return Some("math");
     }
     if line.contains("((mention:") || line.contains("((date:") {
         return Some("inline token");
@@ -106,32 +110,7 @@ pub(super) fn line_fallback(line: &str) -> Option<&'static str> {
     if line == ">" || line.starts_with("> >") {
         return Some("structured quote");
     }
-    let trimmed = js_trim(line);
-    if trimmed.len() >= 2 && trimmed.starts_with('|') && trimmed.ends_with('|') {
-        return Some("table");
-    }
     None
-}
-
-/// The markdown half of `splitMarkdownByToggles` for a document with no
-/// toggle: the text between leading and trailing blank lines, `trim()`med,
-/// and the empty paragraphs the trailing blank lines beyond the first carry.
-pub(super) fn toggle_segment(markdown: &str) -> Option<(String, usize)> {
-    let lines: Vec<&str> = markdown.split('\n').collect();
-    let first = lines
-        .iter()
-        .take_while(|line| js_trim(line).is_empty())
-        .count();
-    let mut after_last = lines.len();
-    while after_last > first && js_trim(lines[after_last - 1]).is_empty() {
-        after_last -= 1;
-    }
-    let text = js_trim(&lines[first..after_last].join("\n")).to_owned();
-    if text.is_empty() {
-        return None;
-    }
-    let trailing = lines.len() - after_last;
-    Some((text, trailing.saturating_sub(1)))
 }
 
 /// One piece of `splitMarkdownPreservingBlanks`.
@@ -431,14 +410,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn trailing_blank_lines_beyond_the_first_become_empty_paragraphs() {
-        assert_eq!(toggle_segment("a\n"), Some(("a".to_owned(), 0)));
-        assert_eq!(toggle_segment("a\n\n"), Some(("a".to_owned(), 1)));
-        assert_eq!(toggle_segment("\n\n  a  \n\n\n"), Some(("a".to_owned(), 2)));
-        assert_eq!(toggle_segment(" \n\n"), None);
-    }
-
-    #[test]
     fn three_newlines_outside_a_fence_split_a_gap() {
         assert_eq!(
             split_preserving_blanks("a\n\n\n\nb"),
@@ -465,6 +436,26 @@ mod tests {
             restore_hard_break_spelling(&masked, &breaks),
             "a  \nb\\\nc  \n\nd"
         );
+    }
+
+    #[test]
+    fn only_a_column_region_opener_sends_the_document_to_columns() {
+        for opener in [
+            "--- start-multi-column: a1",
+            "=== MULTI-COLUMN-START",
+            "::: columns",
+            ":::: {.two-columns}",
+        ] {
+            let markdown = format!("# T\n\n{opener}\nleft");
+            assert_eq!(document_fallback(&markdown), Some("columns"), "{opener}");
+        }
+        for prose in [
+            "a multi-column layout",
+            "::: note\nbody\n:::",
+            " --- start-multi-column: a1",
+        ] {
+            assert_eq!(document_fallback(prose), None, "{prose}");
+        }
     }
 
     #[test]

@@ -7,7 +7,7 @@ use std::sync::Arc;
 use memry_core::crdt::DocumentRegistry;
 use memry_core::crdt::blocks::extract_blocks;
 use memry_core::crdt::body_edit::{BlockEdit, apply};
-use memry_core::crdt::markdown_seed::paste_plan;
+use memry_core::crdt::markdown_seed::plan;
 use memry_core::crdt::registry::Document;
 use memry_core::crdt::registry::UpdateSink;
 use yrs::{
@@ -43,7 +43,7 @@ fn opened(blocks: &[(&str, &str, &str)]) -> Arc<Document> {
 /// The edit with one id per block the paste writes, `p0`, `p1`, …, then
 /// `tail` when the caret is inside the block's text.
 fn paste(block_id: &str, at: u32, markdown: &str, tail: bool) -> BlockEdit {
-    let count = paste_plan(markdown).blocks.len();
+    let count = plan(markdown).blocks.len();
     let mut ids: Vec<String> = (0..count).map(|index| format!("p{index}")).collect();
     if tail {
         ids.push("tail".to_owned());
@@ -178,4 +178,39 @@ fn a_code_block_or_a_wrong_id_count_is_refused_and_nothing_changes() {
     let document = opened(&[("a", "paragraph", "abcd")]);
     assert!(apply(&document, &paste("a", 2, "# x\ny", false)).is_err());
     assert_eq!(shown(&document), ["a paragraph \"abcd\""]);
+}
+
+/// What an assistant's answer copied as markdown holds: each construct is the
+/// block desktop's converter builds, not its source lines as text.
+const ASSISTANT: &str = "| Name | Value |\n|---|---|\n| alpha | 1 |\n\n\
+> [!note]\n> Callout body\n\n\
+$$\nE = mc^2\n$$\n\n\
+![chart](https://e.com/c.png)\n\n\
+<details data-memry-toggle>\n<summary>Toggle title</summary>\n\nHidden body\n\n</details>\n\n\
+```mermaid\ngraph TD\n```";
+
+#[test]
+fn an_assistant_answer_pasted_becomes_memry_blocks() {
+    let document = opened(&[("a", "paragraph", "")]);
+    edit(&document, paste("a", 0, ASSISTANT, false));
+    let shown = shown(&document);
+    let pasted: Vec<&str> = shown
+        .iter()
+        .map(String::as_str)
+        .filter(|line| line.starts_with('p'))
+        .collect();
+    assert_eq!(
+        pasted,
+        [
+            "p0 table \"\"",
+            "p1 callout \"Callout body\"",
+            "p2 mathBlock \"\"",
+            "p3 image \"\"",
+            "p4 toggleListItem \"Toggle title\"",
+            "p5 diagram \"graph TD\"",
+        ]
+    );
+    for nested in [" tableParagraph \"alpha\"", " paragraph \"Hidden body\""] {
+        assert!(shown.iter().any(|line| line.ends_with(nested)), "{shown:?}");
+    }
 }

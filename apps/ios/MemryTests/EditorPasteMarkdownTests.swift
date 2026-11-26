@@ -101,6 +101,54 @@ struct EditorPasteMarkdownTests {
         #expect(redone.map(\.id) == pasted.map(\.id), "redo makes the same blocks again")
     }
 
+    /// An assistant's answer copied as markdown: each construct is the block
+    /// desktop builds from it, none of its source lines is left as text.
+    private static let assistantAnswer = """
+    | Name | Value |
+    |---|---|
+    | alpha | 1 |
+
+    > [!note]
+    > Callout body
+
+    $$
+    E = mc^2
+    $$
+
+    ![chart](https://example.com/c.png)
+
+    <details data-memry-toggle>
+    <summary>Toggle title</summary>
+
+    Hidden body
+
+    </details>
+
+    ```mermaid
+    graph TD
+    ```
+    """
+
+    @Test(.timeLimit(.minutes(1))) func tables_callouts_math_images_toggles_and_diagrams_paste_as_blocks() async throws {
+        let f = try fixture(text: "")
+        let field = draw(try await blocks(f)[0], in: f, caret: 0)
+
+        UIPasteboard.general.string = Self.assistantAnswer
+        field.textView.paste(nil)
+        await settle(f)
+        let pasted = try await blocks(f)
+        let kinds = pasted.map(\.kind)
+        for kind in ["table", "callout", "mathBlock", "image", "toggleListItem", "diagram"] {
+            #expect(kinds.contains(kind), "\(kind) missing from \(kinds)")
+        }
+        let literal = shown(pasted).filter { line in
+            ["| Name", "[!note]", "$$", "![chart]", "<details", "```"].contains { line.contains($0) }
+        }
+        #expect(literal.isEmpty, "source lines left as text: \(literal)")
+        #expect(shown(pasted).contains("callout Callout body"))
+        #expect(shown(pasted).contains("toggleListItem Toggle title"))
+    }
+
     @Test(.timeLimit(.minutes(1))) func the_text_after_the_caret_goes_below_the_pasted_blocks() async throws {
         let f = try fixture(text: "abcd")
         let field = draw(try await blocks(f)[0], in: f, caret: 2)

@@ -1,38 +1,20 @@
 //! Links: BlockNote's `parseLink` and `parseDestinationAndTitle`, and the
 //! `isAllowedUri` check its link mark applies when parsing HTML.
 
+use super::closers::Closers;
 use super::inline::collect;
 
-/// `findClosingBracket` / `findClosingParen`.
-pub(super) fn closing(text: &[char], open_at: usize, open: char, close: char) -> Option<usize> {
-    let mut depth = 0i32;
-    let mut i = open_at;
-    while i < text.len() {
-        if text[i] == '\\' && i + 1 < text.len() {
-            i += 2;
-            continue;
-        }
-        if text[i] == open {
-            depth += 1;
-        }
-        if text[i] == close {
-            depth -= 1;
-            if depth == 0 {
-                return Some(i);
-            }
-        }
-        i += 1;
-    }
-    None
-}
-
 /// `parseLink`: the destination, the link text and where the link ends.
-pub(super) fn link(text: &[char], start: usize) -> Option<(String, &[char], usize)> {
-    let text_end = closing(text, start, '[', ']')?;
+pub(super) fn link<'t>(
+    closers: &mut Closers<'t>,
+    start: usize,
+) -> Option<(String, &'t [char], usize)> {
+    let text = closers.text();
+    let text_end = closers.closing(start, '[', ']')?;
     if text.get(text_end + 1) != Some(&'(') {
         return None;
     }
-    let paren_end = closing(text, text_end + 1, '(', ')')?;
+    let paren_end = closers.closing(text_end + 1, '(', ')')?;
     let raw = &text[text_end + 2..paren_end];
     let href = kept_whole(raw).unwrap_or_else(|| destination(raw));
     Some((href, &text[start + 1..text_end], paren_end + 1))
@@ -58,17 +40,41 @@ fn kept_whole(raw: &[char]) -> Option<String> {
 /// The URL half of `parseDestinationAndTitle`. The title is dropped: the link
 /// mark keeps only `href`.
 pub(crate) fn destination(raw: &[char]) -> String {
+    destination_and_title(raw).0
+}
+
+/// `parseDestinationAndTitle`: the URL, and a title quoted `"…"`, `'…'` or
+/// `(…)` after it.
+pub(super) fn destination_and_title(raw: &[char]) -> (String, Option<String>) {
     let raw = collect(raw);
     let raw: Vec<char> = crate::domain::journal_rules::js_trim(&raw)
         .chars()
         .collect();
-    if raw.first() == Some(&'<') {
-        return match raw.iter().position(|c| *c == '>') {
-            Some(close) => collect(&raw[1..close]),
-            None => collect(&raw[1..]),
-        };
-    }
-    let mut split = raw.len();
+    let (url, rest) = if raw.first() == Some(&'<') {
+        match raw.iter().position(|c| *c == '>') {
+            Some(close) => (collect(&raw[1..close]), collect(&raw[close + 1..])),
+            None => (collect(&raw[1..]), String::new()),
+        }
+    } else {
+        let split = url_end(&raw);
+        (collect(&raw[..split]), collect(&raw[split..]))
+    };
+    let rest = crate::domain::journal_rules::js_trim(&rest);
+    let quoted = |open: char, close: char| {
+        rest.strip_prefix(open)
+            .and_then(|inner| inner.strip_suffix(close))
+            .filter(|inner| !inner.contains(close))
+    };
+    let title = quoted('"', '"')
+        .or_else(|| quoted('\'', '\''))
+        .or_else(|| quoted('(', ')'))
+        .map(str::to_owned);
+    (url, title)
+}
+
+/// Where an unbracketed destination ends: its first unescaped space, tab or
+/// newline.
+fn url_end(raw: &[char]) -> usize {
     let mut i = 0;
     while i < raw.len() {
         if raw[i] == '\\' && i + 1 < raw.len() {
@@ -76,12 +82,11 @@ pub(crate) fn destination(raw: &[char]) -> String {
             continue;
         }
         if matches!(raw[i], ' ' | '\t' | '\n') {
-            split = i;
-            break;
+            return i;
         }
         i += 1;
     }
-    collect(&raw[..split])
+    raw.len()
 }
 
 /// `isAllowedUri` of BlockNote's link mark, after its `!href` check.

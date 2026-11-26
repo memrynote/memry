@@ -311,9 +311,9 @@ pub fn wiki_link_candidates(
 
 /// How many blocks `markdown` pasted into a block writes: the ids
 /// [`crate::crdt::body_edit::BlockEdit::PasteMarkdown`] takes, before the
-/// moved text's ([`crate::crdt::markdown_seed::paste_plan`]).
+/// moved text's ([`crate::crdt::markdown_seed::plan`]).
 #[uniffi::export]
 pub fn markdown_paste_block_count(markdown: String) -> u32 {
-    let blocks = crate::crdt::markdown_seed::paste_plan(&markdown).blocks;
+    let blocks = crate::crdt::markdown_seed::plan(&markdown).blocks;
     u32::try_from(blocks.len()).unwrap_or(u32::MAX)
 }
