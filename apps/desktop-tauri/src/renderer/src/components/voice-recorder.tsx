@@ -17,7 +17,7 @@ import { getI18n } from 'react-i18next'
 const log = createLogger('Component:VoiceRecorder')
 
 interface VoiceRecorderProps {
-  onRecordingComplete: (audioBlob: Blob, duration: number) => void
+  onRecordingComplete: (audio: AudioBuffer, duration: number) => void
   onCancel: () => void
   maxDuration?: number
   className?: string

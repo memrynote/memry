@@ -17,7 +17,10 @@
 //! - **Gated before every inference** (`canContinue`, :216-218): the session's cancel token
 //!   (set when the vault closes, before its close hooks stop the model), the vault still being
 //!   the one the work started on, the AI setting, and no newer event on the note. An event the
-//!   close drains therefore embeds nothing and starts no model thread (REVIEW-4548). The last
+//!   close drains therefore embeds nothing and starts no model thread (REVIEW-4548), and the
+//!   service reads the token again when it takes each request
+//!   ([`EmbeddingService::embed_in_lane`]), so a check that passed just before the close cannot
+//!   load the model after the close hook stopped it. The last
 //!   check and the store are two steps: an edit published between them gets the older
 //!   vector stored, with the hash of the older bytes, so the edit stays owed. Its queued event
 //!   replaces that vector, or the next reconcile does.
@@ -217,7 +220,7 @@ impl NoteEmbeddingProjector {
             if !current() {
                 return Ok(false);
             }
-            let Some(vector) = self.service.embed(window) else {
+            let Some(vector) = self.service.embed_in_lane(window, work.cancel) else {
                 tracing::warn!(
                     note_id = note.note_id,
                     "note embedding remains owed after inference failed"
@@ -231,7 +234,7 @@ impl NoteEmbeddingProjector {
         }
         let similar_input =
             build_embedding_input(Some(&note.title), Some(content), EmbeddingTask::Similarity);
-        let Some(similar) = self.service.embed(&similar_input) else {
+        let Some(similar) = self.service.embed_in_lane(&similar_input, work.cancel) else {
             tracing::warn!(
                 note_id = note.note_id,
                 "note similarity embedding remains owed after inference failed"

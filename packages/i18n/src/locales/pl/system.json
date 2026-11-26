@@ -17,6 +17,7 @@
       "filterAll": "Wszystkie pliki"
     },
     "exportCancelled": "Anulowano eksport",
+    "exportVaultChanged": "Podczas wybierania miejsca zapisu otwarto inny sejf. Wyeksportuj notatkę ponownie.",
     "dataDbRecovery": {
       "title": "Napraw bazę danych sejfu",
       "message": "Baza danych Memry dla tego sejfu jest uszkodzona.",

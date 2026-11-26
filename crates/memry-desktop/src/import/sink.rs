@@ -14,9 +14,9 @@
 //!   importer vectors (`packages/contracts/test-vectors/importers/`) are those recordings, made
 //!   by the TypeScript importers with the same seams mocked.
 //!
-//! The trait grows with the importers that need more writes (journal entries, tasks and
-//! projects, inbox links): each later stage adds the method it uses, with a default only when
-//! a no-op is a correct answer.
+//! The trait grows with the importers that need more writes (NotePlan added tasks and journal
+//! entries; projects and inbox links follow): each later stage adds the method it uses, with a
+//! default only when a no-op is a correct answer.
 
 use memry_core::markdown::frontmatter::YamlMap;
 
@@ -46,6 +46,62 @@ pub struct ImportedNote {
     pub modified: Option<String>,
 }
 
+/// `NotePlanTaskDeps.createTask` input: one task row an importer lifts out of a note body.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ImportedTask {
+    pub project_id: String,
+    pub title: String,
+    /// `YYYY-MM-DD`.
+    pub due_date: Option<String>,
+    /// A task id [`ImportSink::create_task`] returned earlier in this run.
+    pub parent_id: Option<String>,
+    /// The note or journal entry the task line lives in.
+    pub source_note_id: String,
+}
+
+/// The parts of a stored journal entry an importer merges into (`readJournalEntry`).
+#[derive(Debug, Clone, PartialEq)]
+pub struct JournalEntry {
+    pub content: String,
+    pub tags: Vec<String>,
+    pub properties: YamlMap,
+}
+
+/// `createJournalEntry` input: writes the day's entry, replacing its body.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ImportedJournalEntry {
+    /// `YYYY-MM-DD`.
+    pub date: String,
+    pub content: String,
+    pub tags: Vec<String>,
+    /// `None` keeps the entry's stored properties; `Some` replaces them.
+    pub properties: Option<YamlMap>,
+}
+
+/// `InboxItemPlan` (`packages/importers/src/raindrop/types.ts`): one bookmark for the inbox.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ImportedBookmark {
+    pub title: String,
+    pub content: Option<String>,
+    pub source_url: String,
+    /// The source's ISO 8601 creation time; `None` is the import time.
+    pub created_at: Option<String>,
+    pub tags: Vec<String>,
+    pub metadata: BookmarkMetadata,
+}
+
+/// `InboxItemPlan.metadata`, kept when the article extraction later rewrites the content.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BookmarkMetadata {
+    pub url: String,
+    pub excerpt: String,
+    pub note: String,
+    pub folder: String,
+    pub favorite: bool,
+    pub hero_image: String,
+    pub highlights: String,
+}
+
 /// The writes of one import run. Called from the blocking thread the runner runs the importer
 /// on, one call at a time.
 pub trait ImportSink: Send + Sync {
@@ -65,6 +121,46 @@ pub trait ImportSink: Send + Sync {
 
     /// `createImportedNote`: creates the note. `Err` fails that item; the import goes on.
     fn create_note(&self, note: ImportedNote) -> Result<(), SinkError>;
+
+    /// `createNote` without `createImportedNote`'s checklist step: the body is written as
+    /// given. For an importer that lifts its own tasks out of the body (NotePlan, whose `+`
+    /// checklist lines must stay plain checkboxes).
+    fn create_note_as_written(&self, note: ImportedNote) -> Result<(), SinkError>;
+
+    /// The Inbox project's id (`getInboxProject`); `None` when the vault has none.
+    fn inbox_project_id(&self) -> Option<String>;
+
+    /// The `tasks.nestedSubtasks` setting: whether a subtask may parent a task.
+    fn nested_subtasks(&self) -> bool;
+
+    /// Creates an open task and returns its id. `Err` fails that task; the note goes on.
+    fn create_task(&self, task: ImportedTask) -> Result<String, SinkError>;
+
+    /// `completeTask({ id, completedAt, recordOnly: true })`: marks a task created in this run
+    /// done at `completed_at` (`YYYY-MM-DD`), or now.
+    fn complete_task(&self, id: &str, completed_at: Option<&str>) -> Result<(), SinkError>;
+
+    /// `archiveTask`: Memry has no cancelled state.
+    fn archive_task(&self, id: &str) -> Result<(), SinkError>;
+
+    /// `resolveJournalEntryId`: the id the entry of `date` has or will be created under. `Err`
+    /// fails that entry, as Electron's throw did.
+    fn journal_entry_id(&self, date: &str) -> Result<String, SinkError>;
+
+    /// `readJournalEntry`: the stored entry of `date`, if any.
+    fn read_journal_entry(&self, date: &str) -> Result<Option<JournalEntry>, SinkError>;
+
+    /// `createJournalEntry`: writes the entry of `entry.date`.
+    fn create_journal_entry(&self, entry: ImportedJournalEntry) -> Result<(), SinkError>;
+
+    /// Raindrop's `saveBookmark`: `insertItemWithTags` inserts a `link` inbox item with its tags
+    /// (processing complete, captured by `api`, modified now), then `emitCapturedAndSync` emits
+    /// the inbox's captured event and writes the item to sync. Both run for every bookmark. Only
+    /// when `source_url` matches `/^https?:\/\//i` (`http://` or `https://` at the start, the
+    /// scheme ASCII case-insensitive) does `queueInboxArticleExtractJob` run too. A sink that
+    /// skips the event or the sync write, or tests the URL any other way, departs from
+    /// Electron. `Err` fails that bookmark; the import goes on.
+    fn save_bookmark(&self, bookmark: ImportedBookmark) -> Result<(), SinkError>;
 
     /// Runs once after the importer returned, before the runner reports `done`: the production
     /// sink waits for the index to hold every note it wrote (`flushProjectionEvents`), so a

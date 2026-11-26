@@ -167,7 +167,7 @@ describe('notes cache queries', () => {
       '[{"id":"proj-1","path":"notes/proj-1.md","title":"Projection proj-1","fileType":"markdown",' +
         '"mimeType":"text/markdown","fileSize":4096,"attachmentId":null,"emoji":"📝","cover":null,"taskIds":null,' +
         '"taskChecks":null,"localOnly":false,' +
-        '"contentHash":"hash-proj-1","wordCount":320,"characterCount":1800,"snippet":"' +
+        '"contentHash":"hash-proj-1","pendingWriteHash":null,"wordCount":320,"characterCount":1800,"snippet":"' +
         'x'.repeat(200) +
         '","date":null,"clock":null,"syncedAt":null,"createdAt":"2026-01-10T00:00:00.000Z",' +
         '"modifiedAt":"2026-01-12T00:00:00.000Z","indexedAt":"2026-01-14T00:00:00.000Z"}]'
@@ -434,7 +434,8 @@ describe('notes cache queries', () => {
       db,
       'note-20',
       { priority: 5, archived: false, date: '2026-01-10' },
-      inferType
+      inferType,
+      'file'
     )
 
     const properties = getNoteProperties(db, 'note-20')
@@ -471,7 +472,8 @@ describe('notes cache queries', () => {
       db,
       'note-21',
       { status: 'open', score: 3, due: '2026-01-20', kind: 'alpha' },
-      (_name, value) => (typeof value === 'number' ? 'number' : 'text')
+      (_name, value) => (typeof value === 'number' ? 'number' : 'text'),
+      'file'
     )
 
     expect(filterNotesByProperty(db, 'status', 'open').map((n) => n.id)).toEqual(['note-21'])

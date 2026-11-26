@@ -47,6 +47,7 @@ Chapters:
 | 12  | `12-note-body-format.md`              | the Y.Doc, its roots, markdown ownership      |
 | 13  | `13-payload-schemas.md`               | per-type payloads and verbatim preservation   |
 | 14  | `14-attachments.md`                   | blobs, chunking, manifests                    |
+| 15  | `15-embedding-input.md`               | embedding model input, device-local           |
 
 ## 0.2 The four independent version numbers
 
@@ -113,14 +114,14 @@ Top-level mounts, verbatim from `apps/sync-server/src/index.ts:216-226`:
 (`apps/sync-server/src/index.ts:214`).
 
 Inside the sync router there are two sub-mounts, `/sync/records`
-(`apps/sync-server/src/routes/sync.ts:557`) and `/sync/crdt`
-(`apps/sync-server/src/routes/sync.ts:1146`).
+(`apps/sync-server/src/routes/sync.ts:558`) and `/sync/crdt`
+(`apps/sync-server/src/routes/sync.ts:1156`).
 
 ### 0.3.1 The record handlers are mounted twice — Q00.2
 
 The same five record handlers are reachable under two prefixes: once through the
-`/sync/records` sub-mount (`apps/sync-server/src/routes/sync.ts:557`) and once
-directly on `/sync` (`apps/sync-server/src/routes/sync.ts:559-565`).
+`/sync/records` sub-mount (`apps/sync-server/src/routes/sync.ts:558`) and once
+directly on `/sync` (`apps/sync-server/src/routes/sync.ts:560-566`).
 
 **Normative.** The **unprefixed** form is canonical for a new client:
 `GET /sync/status`, `GET /sync/manifest`, `GET /sync/changes`, `POST /sync/push`,
@@ -145,7 +146,7 @@ Some fields ride **inside** the `error` object rather than beside it; the
 
 **A client MUST also tolerate a bare-string form**, `{ "error": "some message" }`.
 Several routes emit it directly — for example
-`apps/sync-server/src/routes/sync.ts:94` and `:99` — and the reference client
+`apps/sync-server/src/routes/sync.ts:95` and `:99` — and the reference client
 handles both shapes (`packages/sync-client/src/pull/http.ts:107-114`): a string
 `error` becomes the message with no code, an object `error` yields `code` and
 `message`. A non-JSON body degrades to `HTTP <status>` as the message
@@ -159,72 +160,73 @@ site and defaults to 500 (`apps/sync-server/src/lib/errors.ts:101-111`). The
 table below lists every code with the status or statuses actually produced,
 read from every non-test throw site under `apps/sync-server/src`.
 
-| Code                          | Status(es)                | Meaning to a client                                                                                                                                                              |
-| ----------------------------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `AUTH_INVALID_TOKEN`          | 401                       | token unusable; re-authenticate. Also the answer to a spent setup token                                                                                                          |
-| `AUTH_TOKEN_EXPIRED`          | 401                       | refresh                                                                                                                                                                          |
-| `AUTH_DEVICE_REVOKED`         | 403, 409                  | terminal for this device                                                                                                                                                         |
-| `AUTH_INVALID_OTP`            | 401                       | wrong code                                                                                                                                                                       |
-| `AUTH_OTP_EXPIRED`            | 401                       | request a new code                                                                                                                                                               |
-| `AUTH_OTP_MAX_ATTEMPTS`       | 401                       | request a new code                                                                                                                                                               |
-| `AUTH_RATE_LIMITED`           | —                         | **no producer**; see §0.5.1                                                                                                                                                      |
-| `AUTH_INVALID_PROVIDER`       | 400, 501                  | unknown OAuth provider, or provider not configured                                                                                                                               |
-| `AUTH_DEVICE_NOT_FOUND`       | 401, 404                  | signer device unknown                                                                                                                                                            |
-| `AUTH_TOKEN_ROTATION_FAILED`  | 500                       | retry the refresh once, then treat as terminal                                                                                                                                   |
-| `AUTH_DEVICE_LIMIT_REACHED`   | 409                       | the account holds 50 active devices; revoke one from a signed-in device (chapter 02 §2.3.3)                                                                                      |
-| `LINKING_SESSION_NOT_FOUND`   | 404                       | bad or consumed session id                                                                                                                                                       |
-| `LINKING_SESSION_EXPIRED`     | 410                       | restart from a new QR                                                                                                                                                            |
-| `LINKING_INVALID_TRANSITION`  | 409                       | out-of-order linking call                                                                                                                                                        |
-| `LINKING_DUPLICATE_SESSION`   | —                         | **no producer with an explicit status**                                                                                                                                          |
-| `LINKING_CONCURRENT_ATTEMPT`  | 409                       | another device is mid-link                                                                                                                                                       |
-| `LINKING_SECRET_INVALID`      | 403                       | wrong `linkingSecret` or wrong scan MAC                                                                                                                                          |
-| `LINKING_IP_MISMATCH`         | 403                       | **no producer since #2184**; only an older server can still send it. See chapter 03 §3.11                                                                                        |
-| `SYNC_ITEM_NOT_FOUND`         | 404                       |                                                                                                                                                                                  |
-| `SYNC_VERSION_CONFLICT`       | —                         | **classified in telemetry only** (`apps/sync-server/src/services/sync-telemetry.ts:188`); no route returns it. See chapter 05, Q05.5                                             |
-| `SYNC_INVALID_SIGNATURE`      | 403                       | the item's signature did not verify                                                                                                                                              |
-| `SYNC_INVALID_CURSOR`         | 400                       | a non-integer or negative `cursor` on `/sync/manifest` or `/sync/changes` (`apps/sync-server/src/routes/sync.ts:173-181`, `:324`, `:349`)                                        |
-| `SYNC_BATCH_TOO_LARGE`        | —                         | **no producer**                                                                                                                                                                  |
-| `SYNC_INVALID_ITEM`           | per item                  | a **per-item rejection reason** in the push response, never an HTTP status: one item `RecordPushItemSchema` refuses (`apps/sync-server/src/routes/sync.ts`). See chapter 05 §5.4 |
-| `SYNC_REPLAY_DETECTED`        | per item                  | a **per-item rejection reason** in the push response, never an HTTP status (`apps/sync-server/src/services/sync.ts:542`)                                                         |
-| `SYNC_DELETE_WINS`            | per item                  | same (`apps/sync-server/src/services/sync.ts:554`)                                                                                                                               |
-| `SYNC_VERSION_INCOMPATIBLE`   | 426 (WebSocket handshake) | `apps/sync-server/src/durable-objects/user-sync-state.ts:104`, `:115`                                                                                                            |
-| `SYNC_PAYMENT_REQUIRED`       | 402                       | no active sync subscription                                                                                                                                                      |
-| `SYNC_VAULT_LIMIT_EXCEEDED`   | 402                       |                                                                                                                                                                                  |
-| `SYNC_VAULT_NOT_FOUND`        | 404                       |                                                                                                                                                                                  |
-| `BOOTSTRAP_NOT_ELIGIBLE`      | 409                       | already synced this vault; fall back to steady state                                                                                                                             |
-| `BOOTSTRAP_SESSION_LIMIT`     | 429                       | concurrent cap; fall back                                                                                                                                                        |
-| `BOOTSTRAP_SESSION_INVALID`   | 401                       | fall back                                                                                                                                                                        |
-| `BOOTSTRAP_IDENTITY_MISMATCH` | 403                       | fall back                                                                                                                                                                        |
-| `BOOTSTRAP_SESSION_EXPIRED`   | 403                       | fall back                                                                                                                                                                        |
-| `BOOTSTRAP_UNAVAILABLE`       | 501                       | deployment has no bootstrap key; fall back                                                                                                                                       |
-| `CRYPTO_INVALID_PAYLOAD`      | 400                       | a length precondition failed before signature check                                                                                                                              |
-| `CRYPTO_DECRYPTION_FAILED`    | —                         | **no producer**                                                                                                                                                                  |
-| `CRYPTO_INVALID_VERSION`      | —                         | **no producer**                                                                                                                                                                  |
-| `STORAGE_QUOTA_EXCEEDED`      | 413                       |                                                                                                                                                                                  |
-| `STORAGE_FILE_TOO_LARGE`      | 413                       |                                                                                                                                                                                  |
-| `STORAGE_BLOB_NOT_FOUND`      | 404                       |                                                                                                                                                                                  |
-| `STORAGE_UPLOAD_FAILED`       | 500                       |                                                                                                                                                                                  |
-| `STORAGE_UNAUTHORIZED`        | 403                       |                                                                                                                                                                                  |
-| `STORAGE_VERSION_CONFLICT`    | 409                       |                                                                                                                                                                                  |
-| `STORAGE_HASH_MISMATCH`       | —                         | **no producer**                                                                                                                                                                  |
-| `STORAGE_PRESIGN_UNAVAILABLE` | 501                       | permanent; use the proxied blob path                                                                                                                                             |
-| `UPLOAD_SESSION_NOT_FOUND`    | 404                       |                                                                                                                                                                                  |
-| `UPLOAD_SESSION_EXPIRED`      | 410                       |                                                                                                                                                                                  |
-| `UPLOAD_CHUNK_CONFLICT`       | 409                       |                                                                                                                                                                                  |
-| `UPLOAD_INCOMPLETE`           | 400                       |                                                                                                                                                                                  |
-| `ATTACHMENT_NOT_FOUND`        | 404                       |                                                                                                                                                                                  |
-| `CLIENT_UPGRADE_REQUIRED`     | 426                       | chapter 11                                                                                                                                                                       |
-| `PLATFORM_WRITES_DISABLED`    | 403                       | chapter 11                                                                                                                                                                       |
-| `VALIDATION_ERROR`            | 400, 409, 413, 426        | generic; the status carries the meaning                                                                                                                                          |
-| `VALIDATION_INVALID_EMAIL`    | 400                       |                                                                                                                                                                                  |
-| `VALIDATION_BODY_TOO_LARGE`   | 413                       |                                                                                                                                                                                  |
-| `INTERNAL_ERROR`              | 500, 502, 503             | retryable                                                                                                                                                                        |
-| `NOT_FOUND`                   | 404                       |                                                                                                                                                                                  |
-| `RATE_LIMITED`                | 429                       | carries `retry-after`                                                                                                                                                            |
-| `PACK_ENQUEUE_RATE_LIMITED`   | 429                       | **never reaches a client** (`apps/sync-server/src/lib/errors.ts:89-92`)                                                                                                          |
-| `WS_RATE_LIMITED`             | WebSocket `error` frame   | `apps/sync-server/src/durable-objects/user-sync-state.ts:296`                                                                                                                    |
-| `WS_TOKEN_EXPIRED`            | WebSocket `error` frame   | `apps/sync-server/src/durable-objects/user-sync-state.ts:404`                                                                                                                    |
-| `WS_INVALID_CONNECTION`       | —                         | **no producer**                                                                                                                                                                  |
+| Code                              | Status(es)                | Meaning to a client                                                                                                                                                                                                                                      |
+| --------------------------------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AUTH_INVALID_TOKEN`              | 401                       | token unusable; re-authenticate. Also the answer to a spent setup token                                                                                                                                                                                  |
+| `AUTH_TOKEN_EXPIRED`              | 401                       | refresh                                                                                                                                                                                                                                                  |
+| `AUTH_DEVICE_REVOKED`             | 403, 409                  | terminal for this device                                                                                                                                                                                                                                 |
+| `AUTH_INVALID_OTP`                | 401                       | wrong code                                                                                                                                                                                                                                               |
+| `AUTH_OTP_EXPIRED`                | 401                       | request a new code                                                                                                                                                                                                                                       |
+| `AUTH_OTP_MAX_ATTEMPTS`           | 401                       | request a new code                                                                                                                                                                                                                                       |
+| `AUTH_RATE_LIMITED`               | —                         | **no producer**; see §0.5.1                                                                                                                                                                                                                              |
+| `AUTH_INVALID_PROVIDER`           | 400, 501                  | unknown OAuth provider, or provider not configured                                                                                                                                                                                                       |
+| `AUTH_DEVICE_NOT_FOUND`           | 401, 404                  | signer device unknown                                                                                                                                                                                                                                    |
+| `AUTH_TOKEN_ROTATION_FAILED`      | 500                       | retry the refresh once, then treat as terminal                                                                                                                                                                                                           |
+| `AUTH_DEVICE_LIMIT_REACHED`       | 409                       | the account holds 50 active devices; revoke one from a signed-in device (chapter 02 §2.3.3)                                                                                                                                                              |
+| `LINKING_SESSION_NOT_FOUND`       | 404                       | bad or consumed session id                                                                                                                                                                                                                               |
+| `LINKING_SESSION_EXPIRED`         | 410                       | restart from a new QR                                                                                                                                                                                                                                    |
+| `LINKING_INVALID_TRANSITION`      | 409                       | out-of-order linking call                                                                                                                                                                                                                                |
+| `LINKING_DUPLICATE_SESSION`       | —                         | **no producer with an explicit status**                                                                                                                                                                                                                  |
+| `LINKING_CONCURRENT_ATTEMPT`      | 409                       | another device is mid-link                                                                                                                                                                                                                               |
+| `LINKING_SECRET_INVALID`          | 403                       | wrong `linkingSecret` or wrong scan MAC                                                                                                                                                                                                                  |
+| `LINKING_IP_MISMATCH`             | 403                       | **no producer since #2184**; only an older server can still send it. See chapter 03 §3.11                                                                                                                                                                |
+| `SYNC_ITEM_NOT_FOUND`             | 404                       |                                                                                                                                                                                                                                                          |
+| `SYNC_VERSION_CONFLICT`           | —                         | **classified in telemetry only** (`apps/sync-server/src/services/sync-telemetry.ts:188`); no route returns it. See chapter 05, Q05.5                                                                                                                     |
+| `SYNC_INVALID_SIGNATURE`          | 403                       | the item's signature did not verify                                                                                                                                                                                                                      |
+| `SYNC_INVALID_CURSOR`             | 400                       | a non-integer or negative `cursor` on `/sync/manifest` or `/sync/changes` (`apps/sync-server/src/routes/sync.ts:174-182`, `:324`, `:349`)                                                                                                                |
+| `SYNC_BATCH_TOO_LARGE`            | —                         | **no producer**                                                                                                                                                                                                                                          |
+| `SYNC_INVALID_ITEM`               | per item                  | a **per-item rejection reason** in the push response, never an HTTP status: one item `RecordPushItemSchema` refuses (`apps/sync-server/src/routes/sync.ts`). See chapter 05 §5.4                                                                         |
+| `SYNC_REPLAY_DETECTED`            | per item                  | a **per-item rejection reason** in the push response, never an HTTP status (`apps/sync-server/src/services/sync.ts:552`)                                                                                                                                 |
+| `SYNC_DELETE_WINS`                | per item                  | same (`apps/sync-server/src/services/sync.ts:564`)                                                                                                                                                                                                       |
+| `SYNC_INVALID_DELETE_ATTESTATION` | per item                  | a **per-item rejection reason** in the push response: the item signature verified, its delete attestation (chapter 04 §4.8.4) did not. A plain refusal of that item, never a device-key failure. Servers before #5247 sent `SYNC_INVALID_SIGNATURE` here |
+| `SYNC_VERSION_INCOMPATIBLE`       | 426 (WebSocket handshake) | `apps/sync-server/src/durable-objects/user-sync-state.ts:104`, `:115`                                                                                                                                                                                    |
+| `SYNC_PAYMENT_REQUIRED`           | 402                       | no active sync subscription                                                                                                                                                                                                                              |
+| `SYNC_VAULT_LIMIT_EXCEEDED`       | 402                       |                                                                                                                                                                                                                                                          |
+| `SYNC_VAULT_NOT_FOUND`            | 404                       |                                                                                                                                                                                                                                                          |
+| `BOOTSTRAP_NOT_ELIGIBLE`          | 409                       | already synced this vault; fall back to steady state                                                                                                                                                                                                     |
+| `BOOTSTRAP_SESSION_LIMIT`         | 429                       | concurrent cap; fall back                                                                                                                                                                                                                                |
+| `BOOTSTRAP_SESSION_INVALID`       | 401                       | fall back                                                                                                                                                                                                                                                |
+| `BOOTSTRAP_IDENTITY_MISMATCH`     | 403                       | fall back                                                                                                                                                                                                                                                |
+| `BOOTSTRAP_SESSION_EXPIRED`       | 403                       | fall back                                                                                                                                                                                                                                                |
+| `BOOTSTRAP_UNAVAILABLE`           | 501                       | deployment has no bootstrap key; fall back                                                                                                                                                                                                               |
+| `CRYPTO_INVALID_PAYLOAD`          | 400                       | a length precondition failed before signature check                                                                                                                                                                                                      |
+| `CRYPTO_DECRYPTION_FAILED`        | —                         | **no producer**                                                                                                                                                                                                                                          |
+| `CRYPTO_INVALID_VERSION`          | —                         | **no producer**                                                                                                                                                                                                                                          |
+| `STORAGE_QUOTA_EXCEEDED`          | 413                       |                                                                                                                                                                                                                                                          |
+| `STORAGE_FILE_TOO_LARGE`          | 413                       |                                                                                                                                                                                                                                                          |
+| `STORAGE_BLOB_NOT_FOUND`          | 404                       |                                                                                                                                                                                                                                                          |
+| `STORAGE_UPLOAD_FAILED`           | 500                       |                                                                                                                                                                                                                                                          |
+| `STORAGE_UNAUTHORIZED`            | 403                       |                                                                                                                                                                                                                                                          |
+| `STORAGE_VERSION_CONFLICT`        | 409                       |                                                                                                                                                                                                                                                          |
+| `STORAGE_HASH_MISMATCH`           | —                         | **no producer**                                                                                                                                                                                                                                          |
+| `STORAGE_PRESIGN_UNAVAILABLE`     | 501                       | permanent; use the proxied blob path                                                                                                                                                                                                                     |
+| `UPLOAD_SESSION_NOT_FOUND`        | 404                       |                                                                                                                                                                                                                                                          |
+| `UPLOAD_SESSION_EXPIRED`          | 410                       |                                                                                                                                                                                                                                                          |
+| `UPLOAD_CHUNK_CONFLICT`           | 409                       |                                                                                                                                                                                                                                                          |
+| `UPLOAD_INCOMPLETE`               | 400                       |                                                                                                                                                                                                                                                          |
+| `ATTACHMENT_NOT_FOUND`            | 404                       |                                                                                                                                                                                                                                                          |
+| `CLIENT_UPGRADE_REQUIRED`         | 426                       | chapter 11                                                                                                                                                                                                                                               |
+| `PLATFORM_WRITES_DISABLED`        | 403                       | chapter 11                                                                                                                                                                                                                                               |
+| `VALIDATION_ERROR`                | 400, 409, 413, 426        | generic; the status carries the meaning                                                                                                                                                                                                                  |
+| `VALIDATION_INVALID_EMAIL`        | 400                       |                                                                                                                                                                                                                                                          |
+| `VALIDATION_BODY_TOO_LARGE`       | 413                       |                                                                                                                                                                                                                                                          |
+| `INTERNAL_ERROR`                  | 500, 502, 503             | retryable                                                                                                                                                                                                                                                |
+| `NOT_FOUND`                       | 404                       |                                                                                                                                                                                                                                                          |
+| `RATE_LIMITED`                    | 429                       | carries `retry-after`                                                                                                                                                                                                                                    |
+| `PACK_ENQUEUE_RATE_LIMITED`       | 429                       | **never reaches a client** (`apps/sync-server/src/lib/errors.ts:89-92`)                                                                                                                                                                                  |
+| `WS_RATE_LIMITED`                 | WebSocket `error` frame   | `apps/sync-server/src/durable-objects/user-sync-state.ts:296`                                                                                                                                                                                            |
+| `WS_TOKEN_EXPIRED`                | WebSocket `error` frame   | `apps/sync-server/src/durable-objects/user-sync-state.ts:404`                                                                                                                                                                                            |
+| `WS_INVALID_CONNECTION`           | —                         | **no producer**                                                                                                                                                                                                                                          |
 
 ### 0.5.1 Codes with no producer
 
@@ -252,6 +254,39 @@ unrecognised code as "an error with this HTTP status", never as a parse failure.
   frozen by an OS backgrounding the app otherwise never resolves and latches the
   engine's in-flight guard permanently
   (`packages/sync-client/src/pull/http.ts:32-38`);
+- in the Rust core and its shells, also applies an **idle timeout of 60
+  seconds** to every request: a request that receives no bytes for that long
+  fails as a timeout, whatever its ceiling
+  (`IDLE_TIMEOUT_MS = 60_000`, `crates/memry-core/src/protocol/http.rs:40-42`;
+  `crates/memry-cli/src/transport.rs:49-52`;
+  `apps/ios/Memry/Seams/Transport.swift:124-131`);
+- in the Rust core, replaces the ceiling of a pack GET (chapter 08 §8.9) with a
+  deadline scaled to the listed `byteSize`: 60 s plus `byteSize` at a third
+  of 0.25 Mbit/s (31,250 bytes a second), because three packs download at once
+  (`RECORD_DOWNLOAD_WIDTH = 3`,
+  `crates/memry-core/src/sync/pack_bootstrap/records.rs:44`). The deadline is
+  capped at **3,300 seconds**, which covers three packs at
+  `PACK_HARD_MAX_BYTES` (32 MiB, 3,281 s,
+  `apps/sync-server/src/services/pack-compaction.ts:88`). A listing without
+  `byteSize` gets the cap. A pack at `PACK_TARGET_BYTES` (24 MiB,
+  `apps/sync-server/src/services/pack-sizing.ts:15`) gets 2,476 s. Three of
+  them sharing 0.5 Mbit/s take 1,208 s each
+  (`crates/memry-core/src/sync/pack_bootstrap/download.rs:38-66`, #5331). A
+  pack GET that times out at its deadline is not retried, because a retry
+  restarts from byte 0. One that times out idle is retried on the §0.6.1 ladder.
+  In the Rust core, a pack GET that the ladder gives up on with an error the
+  network may cure (offline, a failed connection, an idle timeout, a 500,
+  502, 503 or 504, or a 429, which waits at least its `Retry-After`) pauses
+  the pack phase: no new pack GET starts until the running ones end, then the
+  lost packs download again after 30, 60, 120 and 240 s, the fourth pause the
+  last (chapter 08 §8.12, `PACK_RETRY_PAUSES`,
+  `crates/memry-core/src/sync/pack_bootstrap/download.rs:46-52`, `:257-268`, #5374). Desktop pauses the same
+  way (`apps/desktop/src/main/sync/packs/pack-downloads.ts:13`, #5389).
+  A shell reports a deadline timeout with `elapsed_ms` at or past the request's
+  `timeout_ms`
+  (`crates/memry-core/src/protocol/http.rs:112-119`, `:369-375`).
+  Desktop's pack GET has no ceiling and resumes a partial file with `Range`
+  (`apps/desktop/src/main/sync/packs/pack-download.ts:24-26`);
 - reads `retry-after` from a `429` response **in lowercase**
   (`packages/sync-client/src/pull/http.ts:98-100`);
 - treats a timeout as a transient transport failure and an outer-caller abort as
@@ -352,7 +387,7 @@ Four obligations bind every chapter.
    edit to this chapter — and a reviewer is then looking at the fact tables.
 
    ```
-   protocol-constants-sha256: 4f81f42f17ad22ac8aec4f062b56346bea07ea799dee02d71598877a70eb8e80
+   protocol-constants-sha256: 81f6dd44792cffdc5b311e354d662fb4999a2b63ab060f1e6554c86fadcb6b50
    ```
 
    To update it: change the constant, run

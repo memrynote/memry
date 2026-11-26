@@ -19,7 +19,6 @@ vi.mock('./crdt-writeback-port', async () => {
   const writeback = await import('./crdt-writeback')
   return { crdtWriteback: () => writeback }
 })
-vi.mock('./crdt-writeback', () => ({ markWritebackIgnored: vi.fn() }))
 vi.mock('../database/client', () => ({
   isIndexDatabaseInitialized: vi.fn(() => false),
   getRawIndexDatabase: vi.fn(() => null)

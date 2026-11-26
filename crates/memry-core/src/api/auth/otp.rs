@@ -5,7 +5,7 @@
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
 
-use crate::api::errors::{ApiError, AuthError};
+use crate::api::errors::{ApiError, AuthError, SecureStoreError};
 use crate::protocol::auth::{AuthRoutes, VerifyOtpRequest, VerifyOtpResponse, random_nonce};
 use crate::seams::secure_store::SecureStoreKey;
 
@@ -190,8 +190,11 @@ impl AuthSession {
         let cleared = self.tokens.clear();
         if cleared.is_ok() {
             self.sign_out_marker.store_cleared();
+        } else {
+            self.sign_out_marker.store_kept();
         }
         *pending = PendingSignIn::default();
+        self.manifest_not_found.clear();
         *state = next.clone();
         cleared?;
         Ok(next)
@@ -202,8 +205,48 @@ impl AuthSession {
     /// refused delete left. Rust-only.
     pub fn clear_without_edge(&self) -> Result<(), AuthError> {
         self.sign_out_marker.set();
-        self.tokens.clear()?;
+        if let Err(error) = self.tokens.clear() {
+            self.sign_out_marker.store_kept();
+            return Err(error);
+        }
         self.sign_out_marker.store_cleared();
         Ok(())
+    }
+
+    /// The `integrity` sign-out (`session-teardown.ts:83-93`): the device key and the three
+    /// tokens go, the master key stays (it is the one secret a sign-in cannot issue again), and
+    /// no server call is made. Takes the sign-out edge where the state has one, else none, and
+    /// latches the sign-out marker as [`Self::clear_and_sign_out`] does. Every entry is tried;
+    /// the ones that stayed come back with their errors. The refresh latch resets at the next
+    /// sign-in's `store_session`. Rust-only.
+    pub fn sign_out_keeping_master_key(&self) -> Vec<(SecureStoreKey, SecureStoreError)> {
+        let mut pending = self.pending.lock().unwrap_or_else(|e| e.into_inner());
+        let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
+        let event = match *state {
+            AuthState::AwaitingOtp { .. } | AuthState::AwaitingProviderToken { .. } => {
+                AuthEvent::SignInFailed
+            }
+            _ => AuthEvent::SignedOutByUser,
+        };
+        self.sign_out_marker.set();
+        let kept: Vec<_> = [
+            SecureStoreKey::AccessToken,
+            SecureStoreKey::RefreshToken,
+            SecureStoreKey::SetupToken,
+            SecureStoreKey::DeviceSigningKey,
+        ]
+        .into_iter()
+        .filter_map(|key| self.store.delete(key).err().map(|error| (key, error)))
+        .collect();
+        if kept.is_empty() {
+            self.sign_out_marker.store_cleared();
+        } else {
+            self.sign_out_marker.store_kept();
+        }
+        *pending = PendingSignIn::default();
+        if let Some(next) = super::transition(&state, &event) {
+            *state = next;
+        }
+        kept
     }
 }

@@ -2,32 +2,41 @@
 //! (#4052).
 //!
 //! main shipped data migrations 13 `calendar_cursor_reset`, 14 `calendar_foreign_cursor_reset`,
-//! 15 `saved_filter_expressions`, 16 `inbox_attachments` and 17 `search_recents`. feat/tauri-v2's
-//! first ten own migrations now run as 18..27. Earlier feat/tauri-v2 builds numbered them 13..22
-//! (generation A, before #4052), then 15..24 (generation B, before main's 15 and 16 were merged).
-//! Then 17..28 (generation C, before main's 17 was merged, #4438). Those builds ran on test
-//! machines only, but their files must still open with every row, and they never ran the main
-//! migrations their own numbers took.
+//! 15 `saved_filter_expressions`, 16 `inbox_attachments`, 17 `search_recents` and 18
+//! `note_attachment_uploads`. feat/tauri-v2's first ten own migrations now run as 19..28.
+//! Earlier feat/tauri-v2 builds numbered them 13..22 (generation A, before #4052), then 15..24
+//! (generation B, before main's 15 and 16 were merged), then 17..26 (generation C, before main's
+//! 17 was merged, #4438), then 18..27 (generation D, before main's 18 was merged, #5221). Those
+//! builds ran on test machines only, but their files must still open with every row, and they
+//! never ran the main migrations their own numbers took.
 //!
-//! The counter alone cannot tell the numberings apart: a file at 19 can be any of them. The
+//! The counter alone cannot tell the numberings apart: a file at 20 can be any of them. The
 //! schema can. A migration commits before its counter moves, so a generation whose own first
 //! version is F holds `OWN_TABLES[V - F]` at V. The crash window of §A.0 adds at most the next
 //! table. So at V a generation-A file (F = 13) holds `OWN_TABLES[V - 13]`, a generation-B file
-//! (F = 15) holds at most `OWN_TABLES[V - 14]`, and a file of this numbering (F = 18) at most
-//! `OWN_TABLES[V - 17]`. Generation A is checked first: a generation-A file also holds
+//! (F = 15) holds at most `OWN_TABLES[V - 14]`, and a file of this numbering (F = 19) at most
+//! `OWN_TABLES[V - 18]`. Generation A is checked first: a generation-A file also holds
 //! generation B's table for its version, so the order decides. A renumbered file lands where
 //! both checks read the table of a later migration, which it lacks, so a later open leaves the
 //! file alone.
 //!
-//! Generation C is one step behind, so its own tables cannot tell it apart: old V's table belongs
-//! to new V + 1, which a file at new V holds in its crash window. Main's 17 can: a generation-C
-//! file at 17 or later holds `note_snapshots` and not `search_recents`, while every file of this
-//! numbering past 16 holds `search_recents`, and generations A and B are matched first. That
-//! check holds only because no migration ever drops `search_recents` or `note_snapshots`.
+//! Generations C and D own more migrations than `OWN_TABLES` lists, so their tables cannot place
+//! a file past the tenth, and generation D is one step behind: old V's table belongs to new V + 1,
+//! which a file at new V holds in its crash window. The main migration each one skipped can
+//! (`SKIPPED`): a generation-C file at 17 or later holds `note_snapshots` and neither
+//! `search_recents` nor `note_attachment_uploads`; a generation-D file at 18 or later holds
+//! `note_snapshots` and `search_recents` but not `note_attachment_uploads`. Every file of this
+//! numbering past 16 holds `search_recents`, past 17 `note_attachment_uploads`, and generations
+//! A and B are matched first. A file main took to 18 that a generation-D build then opened ran
+//! that build's own migrations from its 19 and never `note_snapshots`: past 18 it holds
+//! `note_attachment_uploads` and `local_settings` without `note_snapshots`, which no other
+//! numbering leaves, so it moves up one and runs `note_snapshots`. Those checks hold only because no migration ever drops
+//! `search_recents`, `note_attachment_uploads` or `note_snapshots`.
 //!
 //! The next clash: main keeps its number and feat/tauri-v2 shifts its own above it in the merge
-//! (#4438). A shift of two or more needs one more `GENERATIONS` entry; a one-step shift is told
-//! apart by the main table it skipped, as generation C is.
+//! (#4438, #5221). `OWN_FIRST` moves up, each `GENERATIONS` range of missed migrations grows to
+//! end below it, and the main migration the previous numbering skipped joins `SKIPPED`, as
+//! generation D's did.
 
 use std::ops::RangeInclusive;
 
@@ -51,10 +60,12 @@ const OWN_TABLES: [&str; 10] = [
 ];
 
 /// The version this numbering gives `OWN_TABLES[0]`.
-const OWN_FIRST: u32 = 18;
+const OWN_FIRST: u32 = 19;
 
-/// main's migration that generation C (own migrations from 17) never ran.
-const SEARCH_RECENTS: u32 = 17;
+/// Generations C and D, oldest first: the main migration whose number each one gave
+/// `OWN_TABLES[0]`, and the table only that migration creates. Such a file never ran that
+/// migration or any later main one (see the module comment).
+const SKIPPED: [(u32, &str); 2] = [(17, "search_recents"), (18, "note_attachment_uploads")];
 
 /// An earlier numbering: the version it gave `OWN_TABLES[0]`, and the main migrations it never
 /// ran, by version.
@@ -67,11 +78,11 @@ struct Generation {
 const GENERATIONS: [Generation; 2] = [
     Generation {
         first: 13,
-        missed: 13..=17,
+        missed: 13..=18,
     },
     Generation {
         first: 15,
-        missed: 15..=17,
+        missed: 15..=18,
     },
 ];
 
@@ -138,10 +149,21 @@ fn move_of(
     if let Some(generation) = generation_of(conn, version)? {
         return Ok(Some((generation.shift(), generation.missed.clone())));
     }
-    let generation_c = version >= SEARCH_RECENTS
-        && has_table(conn, OWN_TABLES[0])?
-        && !has_table(conn, "search_recents")?;
-    Ok(generation_c.then_some((1, SEARCH_RECENTS..=SEARCH_RECENTS)))
+    if !has_table(conn, OWN_TABLES[0])? {
+        // main took the file to 18, then a generation-D build took 18 for its own
+        // `note_snapshots` and ran the rest from 19: one short, without `note_snapshots`.
+        let (main_last, main_table) = SKIPPED[1];
+        if version >= OWN_FIRST && has_table(conn, main_table)? && has_table(conn, OWN_TABLES[1])? {
+            return Ok(Some((OWN_FIRST - main_last, OWN_FIRST..=OWN_FIRST)));
+        }
+        return Ok(None);
+    }
+    for (first, table) in SKIPPED {
+        if version >= first && !has_table(conn, table)? {
+            return Ok(Some((OWN_FIRST - first, first..=OWN_FIRST - 1)));
+        }
+    }
+    Ok(None)
 }
 
 /// The earlier generation whose table for `version` the file holds, if any. Such a file must
@@ -210,14 +232,25 @@ mod tests {
                     (15, "saved_filter_expressions"),
                     (16, "inbox_attachments"),
                     (17, "search_recents"),
+                    (18, "note_attachment_uploads"),
                 ],
                 vec![
                     (15, "saved_filter_expressions"),
                     (16, "inbox_attachments"),
                     (17, "search_recents"),
+                    (18, "note_attachment_uploads"),
                 ],
             ]
         );
+        for (version, table) in SKIPPED {
+            let creates = format!("CREATE TABLE IF NOT EXISTS {table} ");
+            let creators: Vec<_> = DATA_MIGRATIONS
+                .iter()
+                .filter(|m| m.sql.contains(&creates))
+                .map(|m| m.version)
+                .collect();
+            assert_eq!(creators, [version], "{table}");
+        }
         for (index, table) in (0u32..).zip(OWN_TABLES) {
             let creates = format!("CREATE TABLE IF NOT EXISTS {table} ");
             let creators: Vec<_> = DATA_MIGRATIONS

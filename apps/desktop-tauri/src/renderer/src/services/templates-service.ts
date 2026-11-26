@@ -9,11 +9,13 @@
 import {
   commands,
   events,
+  type SyncItemOperation,
   type TemplateCreateInput as CreateArgs,
   type TemplateUpdateInput as UpdateArgs,
   type TemplateView
 } from '../../../generated/bindings'
 import { extractErrorMessage } from '../lib/ipc-error'
+import { withSyncedRecords } from './sync-service'
 import { subscribeToEvent } from './tauri-event'
 
 type TemplatePropertyType =
@@ -159,17 +161,34 @@ export function duplicateTemplate(id: string, newName: string): Promise<Template
   return written(() => commands.templatesDuplicate(id, newName))
 }
 
+/** A template event, and the templates sync pulled with the same operation. */
+function onTemplate(
+  event: Parameters<typeof subscribeToEvent<{ id: string }>>[0],
+  operation: SyncItemOperation,
+  callback: (event: { id: string }) => void
+): () => void {
+  return withSyncedRecords(
+    (live) => subscribeToEvent(event, callback, live),
+    ['template'],
+    (items) => {
+      for (const item of items) {
+        if (item.itemOperation === operation) callback({ id: item.itemId })
+      }
+    }
+  )
+}
+
 // Event listeners: each carries the template's id; the list refetches.
 export function onTemplateCreated(callback: (event: { id: string }) => void): () => void {
-  return subscribeToEvent(events.templateCreatedEvent, callback)
+  return onTemplate(events.templateCreatedEvent, 'create', callback)
 }
 
 export function onTemplateUpdated(callback: (event: { id: string }) => void): () => void {
-  return subscribeToEvent(events.templateUpdatedEvent, callback)
+  return onTemplate(events.templateUpdatedEvent, 'update', callback)
 }
 
 export function onTemplateDeleted(callback: (event: { id: string }) => void): () => void {
-  return subscribeToEvent(events.templateDeletedEvent, callback)
+  return onTemplate(events.templateDeletedEvent, 'delete', callback)
 }
 
 // Default export

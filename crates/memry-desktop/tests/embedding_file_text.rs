@@ -75,8 +75,7 @@ fn a_read_whose_event_never_came_is_owed_and_reconciled() {
     let mut l = lane();
     let id = l.write("a.md", ALPHA);
     l.embedded(&id);
-    l.settled();
-    assert!(l.owed().is_empty());
+    l.all_embedded();
 
     read(&l, source(&id, "shot.png"), SHOT);
     l.owes(&id);

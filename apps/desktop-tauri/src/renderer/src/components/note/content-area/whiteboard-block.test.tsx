@@ -57,10 +57,12 @@ vi.mock('@/services/canvas-service', () => ({
 vi.mock('@/pages/canvas/canvas-editor', () => ({
   CanvasEditor: ({
     initialScene,
+    initialSha256,
     embed,
     ref
   }: {
     initialScene: string
+    initialSha256: string | null
     embed?: { editing: boolean }
     ref?: React.Ref<{ flush: () => Promise<void> }>
   }) => {
@@ -75,6 +77,7 @@ vi.mock('@/pages/canvas/canvas-editor', () => ({
       <div
         data-testid="canvas-editor"
         data-scene={initialScene}
+        data-sha={initialSha256 ?? ''}
         data-editing={String(embed?.editing)}
       />
     )
@@ -95,6 +98,7 @@ function canvas(overrides: Partial<Canvas> = {}): Canvas {
     createdAt: 1,
     updatedAt: 1,
     scene: 'scene-a',
+    sha256: 'sha-a',
     ...overrides
   }
 }
@@ -157,6 +161,16 @@ describe('WhiteboardBlockRenderer', () => {
     )
     expect(mocks.mounts).toBe(2)
 
+    // #when only the bytes on disk changed, the drawing did not
+    mocks.get.mockResolvedValue(canvas({ scene: 'scene-b', sha256: 'sha-b' }))
+    act(() => changedElsewhere())
+
+    // #then the editor is rebuilt over those bytes, so its next save is not a stale one
+    await waitFor(() =>
+      expect(screen.getByTestId('canvas-editor')).toHaveAttribute('data-sha', 'sha-b')
+    )
+    expect(mocks.mounts).toBe(3)
+
     // #when it changes again while the author is drawing here
     await user.click(screen.getByRole('button', { name: 'Edit' }))
     mocks.get.mockClear()
@@ -167,7 +181,7 @@ describe('WhiteboardBlockRenderer', () => {
     // echoing back, or loses to it anyway
     expect(mocks.get).not.toHaveBeenCalled()
     expect(screen.getByTestId('canvas-editor')).toHaveAttribute('data-scene', 'scene-b')
-    expect(mocks.mounts).toBe(2)
+    expect(mocks.mounts).toBe(3)
   })
 
   it('never mounts an editor over a canvas this device cannot read', async () => {

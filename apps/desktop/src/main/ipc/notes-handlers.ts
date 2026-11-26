@@ -88,6 +88,7 @@ import {
   getNoteLinks,
   getFolders,
   createFolder,
+  checkFolderDelete,
   noteExists,
   openExternal,
   revealInFinder,
@@ -558,6 +559,18 @@ export function registerNotesHandlers(): void {
       return { success: true as const }
     },
     'errors:folder.renameFailed'
+  )
+
+  // notes:check-folder-delete - The refusal a folder delete would meet, before
+  // the dialog deletes the notes that go with the folder
+  ipcMain.handle(
+    NotesChannels.invoke.CHECK_FOLDER_DELETE,
+    createStringHandler(
+      withErrorHandler((folderPath) => {
+        checkFolderDelete(folderPath)
+        return { success: true }
+      }, 'errors:folder.deleteFailed')
+    )
   )
 
   // notes:delete-folder - Delete a folder and all its contents

@@ -118,6 +118,7 @@ fn a_new_tag_is_defined_before_notes_tags_changed() {
         properties: None,
         emoji: None,
         template: None,
+        plain_checklists: None,
     };
     let note = tauri::async_runtime::block_on(notes_create(app.handle().clone(), input)).unwrap();
     assert_eq!(

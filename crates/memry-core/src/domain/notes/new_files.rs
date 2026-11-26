@@ -24,6 +24,7 @@ use crate::crdt::epoch;
 use crate::crdt::errors::CrdtError;
 use crate::domain::body_write::append_in;
 use crate::domain::external_feed::FirstBody;
+use crate::storage::nested_tx;
 use crate::sync::outbox;
 
 /// A file no row names, the id its note is to get, and the body authored for that id.
@@ -43,7 +44,7 @@ pub fn adopt_new(
     device_id: &str,
     now_ms: i64,
 ) -> Result<Vec<bool>, CrdtError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let mut mints = None;
     let mut created = Vec::with_capacity(files.len());
     for new in files {

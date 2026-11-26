@@ -1,0 +1,5 @@
+{
+  "extends": "@memry/typescript-config/node.json",
+  "include": ["test/**/*.ts", "vitest.config.ts"],
+  "exclude": ["node_modules"]
+}

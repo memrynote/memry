@@ -86,7 +86,9 @@ use crate::vault::journal_format::JournalDays;
 use crate::vault::note_file::NoteFile;
 use crate::vault::notices::{Listed, VaultNotices};
 
-mod file;
+pub(crate) mod aliases;
+pub(crate) mod file;
+mod found;
 mod large;
 mod moving;
 mod new_files;
@@ -362,7 +364,10 @@ impl NoteIdentity for NotesIdentity {
                 } else {
                     None
                 };
-                let (converter, embeds) = parts(reader.as_ref());
+                let (converter, embeds) = reader
+                    .as_ref()
+                    .map(|(converter, embeds)| (converter, embeds as &dyn EmbedResolver))
+                    .unzip();
                 let adopted = writer.adopt_day(day, converter, embeds);
                 if let (Ok(Adopted::Created(id) | Adopted::Existing(id)), Some(declared)) =
                     (&adopted, &declared)
@@ -386,15 +391,15 @@ impl NoteIdentity for NotesIdentity {
                 } else {
                     None
                 };
-                let (converter, embeds) = parts(reader.as_ref());
+                let (converter, embeds) = reader
+                    .as_ref()
+                    .map(|(converter, embeds)| (converter, embeds as &dyn EmbedResolver))
+                    .unzip();
                 writer.adopt_file(note, converter, embeds)
             }
         };
         let adopted = adopted.map_err(|error| IdentityError::Other(error.to_string()))?;
-        if let Adopted::Created(id) | Adopted::Existing(id) = &adopted {
-            properties::found(&writer, ctx, self.store.clone(), id, text)?;
-        }
-        Ok(self.adoption(adopted, ctx.root, file.path))
+        self.found(ctx, &writer, adopted, file, text)
     }
 
     fn may_be_new(&self, ctx: &IdentityCtx<'_>, files: &[Candidate<'_>]) -> Vec<bool> {
@@ -444,8 +449,8 @@ impl NoteIdentity for NotesIdentity {
         })
     }
 
-    /// The file's frontmatter `tags` and property values reach the record ([`tags::edited`],
-    /// [`properties::edited`]).
+    /// The file's frontmatter reaches the record: [`tags::edited`], [`aliases::edited`],
+    /// [`properties::edited`].
     fn on_changed(
         &self,
         ctx: &IdentityCtx<'_>,
@@ -455,6 +460,7 @@ impl NoteIdentity for NotesIdentity {
     ) -> Result<(), IdentityError> {
         let writer = self.writer(ctx)?;
         tags::edited(&writer, ctx.search, note_id, previous, file)?;
+        aliases::edited(&writer, note_id, file)?;
         properties::edited(&writer, ctx, self.store.clone(), note_id, previous, file)
     }
 
@@ -464,8 +470,9 @@ impl NoteIdentity for NotesIdentity {
         ctx: &IdentityCtx<'_>,
         note_id: &str,
         file: &NoteFile,
-    ) -> Result<(), IdentityError> {
-        large::left(self, ctx, note_id, file)
+        modified_ms: i64,
+    ) -> Result<bool, IdentityError> {
+        large::left(self, ctx, note_id, file, modified_ms)
     }
 
     /// A move that keeps what the file is reaches the record (`renameKeepsJournalDate`). One
@@ -586,15 +593,5 @@ impl NoteIdentity for NotesIdentity {
             Some(journal) => keeps_kind(&journal, &*self.writer(ctx)?, note_id, new_path),
             None => Ok(false),
         }
-    }
-}
-
-/// The converter and the embed lookup of a reader, borrowed.
-fn parts(
-    reader: Option<&(Converter, Resolved)>,
-) -> (Option<&Converter>, Option<&dyn EmbedResolver>) {
-    match reader {
-        Some((converter, embeds)) => (Some(converter), Some(embeds as &dyn EmbedResolver)),
-        None => (None, None),
     }
 }

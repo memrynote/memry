@@ -1,0 +1,11 @@
+-- Home board banner (#3384).
+--
+-- Additive only: one nullable JSON column, no backfill, no rewrite. Existing
+-- boards gain a NULL, which reads as "no cover".
+--
+-- Rollback is inert: every older query is column-listed or `select()` through
+-- a model that does not know the column, so an older build never reads it and
+-- its pushes omit `cover`, which a newer receiver reads as "keep yours".
+--
+-- Hand-written (project switched off the Drizzle generator after 0020).
+ALTER TABLE `home_pages` ADD `cover` text;

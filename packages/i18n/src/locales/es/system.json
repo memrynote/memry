@@ -17,6 +17,7 @@
       "filterAll": "Todos los archivos"
     },
     "exportCancelled": "Exportación cancelada",
+    "exportVaultChanged": "Se abrió otra bóveda mientras elegías dónde guardar. Vuelve a exportar la nota.",
     "dataDbRecovery": {
       "title": "Reparar la base de datos de la bóveda",
       "message": "La base de datos de Memry para esta bóveda está dañada.",

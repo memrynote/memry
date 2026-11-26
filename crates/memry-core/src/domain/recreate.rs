@@ -138,7 +138,6 @@ mod tests {
             let totals = apply_page(
                 conn,
                 vec![remote_delete("journal", &opened.id, tombstone.clone())],
-                vec![],
                 NOW + 1,
                 None,
                 &crate::crypto::agent_envelope::AtRestKey::default(),
@@ -166,7 +165,6 @@ mod tests {
             apply_page(
                 conn,
                 vec![remote_delete("folder_config", "Notes", tombstone.clone())],
-                vec![],
                 NOW + 1,
                 None,
                 &crate::crypto::agent_envelope::AtRestKey::default(),
@@ -192,7 +190,6 @@ mod tests {
             apply_page(
                 conn,
                 vec![remote_delete("tag_definition", "Work", tombstone.clone())],
-                vec![],
                 NOW + 1,
                 None,
                 &crate::crypto::agent_envelope::AtRestKey::default(),
@@ -217,7 +214,6 @@ mod tests {
             apply_page(
                 conn,
                 vec![remote_delete("tag_definition", "work", tombstone.clone())],
-                vec![],
                 NOW + 1,
                 None,
                 &crate::crypto::agent_envelope::AtRestKey::default(),
@@ -249,7 +245,6 @@ mod tests {
                     "WORK",
                     clock_of([("device-b", 1)]),
                 )],
-                vec![],
                 NOW + 1,
                 None,
                 &crate::crypto::agent_envelope::AtRestKey::default(),

@@ -64,7 +64,7 @@ const DIFFERENTIATORS: readonly { title: string; body: string }[] = [
   },
   {
     title: 'Zero-knowledge encryption, not just TLS',
-    body: 'memrynote Sync encrypts every note on your device before upload, so the server stores only ciphertext and never holds the keys. Notion and Evernote encrypt data in transit and at rest, but their servers can still read your content.'
+    body: 'memrynote Sync encrypts every note on your device before upload, so the server stores your notes only as ciphertext and never holds the keys. Notion and Evernote encrypt data in transit and at rest, but their servers can still read your content.'
   },
   {
     title: 'Plain Markdown files you own',
@@ -240,7 +240,7 @@ const ABOUT_FAQS: readonly { question: string; answer: string }[] = [
   {
     question: 'Can memrynote read my notes?',
     answer:
-      'No. Local notes never leave your device, and synced notes are encrypted on your device before upload, so the server only stores ciphertext. The keys that decrypt them never reach memrynote’s servers.'
+      'No. Local notes never leave your device, and synced notes are encrypted on your device before upload, so the server only stores them as ciphertext. The keys that decrypt them never reach memrynote’s servers.'
   },
   {
     question: 'What happens to my notes if memrynote shuts down?',
@@ -250,7 +250,7 @@ const ABOUT_FAQS: readonly { question: string; answer: string }[] = [
   {
     question: 'Is there a mobile app?',
     answer:
-      'memrynote is desktop-first on macOS, Windows, and Linux today. Mobile apps for iOS and Android are targeting late 2026, and in the meantime your vault folder works with any file sync you already use.'
+      'memrynote is desktop-first on macOS, Windows, and Linux. An iPhone app is in beta on TestFlight, on the same vault as your desktop (join at memrynote.com/ios-beta). There is no Android app yet.'
   },
   {
     question: 'How do I contact the team?',

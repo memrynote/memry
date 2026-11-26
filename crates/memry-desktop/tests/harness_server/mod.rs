@@ -71,6 +71,15 @@ impl Server {
             .expect("a marker count")
     }
 
+    /// Deletes every server row of `item_id`, record and body, as a server that lost its create.
+    /// Returns how many record rows went.
+    #[allow(dead_code)] // One binary loses.
+    pub fn lose(&mut self, item_id: &str) -> u64 {
+        self.command(&format!("lose {item_id}"))["harnessLost"]
+            .as_u64()
+            .expect("a row count")
+    }
+
     /// Registers one more device for the same user, now, and returns it in the bootstrap's
     /// device shape.
     #[allow(dead_code)] // One binary registers.
@@ -136,6 +145,7 @@ impl PinFailureSink for NoPins {
     }
 }
 
+#[allow(dead_code)] // Not every binary goes online.
 pub struct Online;
 
 impl Reachability for Online {

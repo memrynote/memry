@@ -554,7 +554,9 @@ fn a_bound_occurrence_follows_the_server_and_the_rest_of_the_series_mirrors() {
             json!({}),
             "phone",
             NOW,
-        )
+        )?;
+        // The push landed: the item left the queue, as `push_done` does.
+        providers::dequeue(conn, &t)
     })
     .expect("bound");
 
@@ -609,4 +611,438 @@ fn a_bound_occurrence_follows_the_server_and_the_rest_of_the_series_mirrors() {
         "SELECT id FROM calendar_bindings WHERE archived_at IS NULL",
     );
     assert!(bound.is_empty());
+}
+
+/// An edit made while the push of the one before was in flight: the push lands with the
+/// queue stamp it was planned from, so the newer edit stays queued and the next plan sends it.
+#[test]
+fn an_edit_made_during_a_push_stays_queued_and_is_sent_next() {
+    let db = open();
+    connect_work(&db);
+    let event_id = db
+        .call_blocking(|conn| {
+            write::create_event(
+                conn,
+                &NewEvent {
+                    title: "Standup".into(),
+                    start_at: "2026-03-10T09:00:00.000Z".into(),
+                    end_at: Some("2026-03-10T10:00:00.000Z".into()),
+                    timezone: "UTC".into(),
+                    target_calendar_id: Some(CAL.into()),
+                    ..NewEvent::default()
+                },
+                "phone",
+                NOW,
+            )
+        })
+        .expect("create");
+    let target = Target {
+        source_type: "event".into(),
+        source_id: event_id.clone(),
+    };
+    let planned = db
+        .call_blocking(|conn| providers::queue(conn))
+        .expect("queue")
+        .into_iter()
+        .find(|q| q.target == target)
+        .expect("queued")
+        .queued_at;
+
+    // The PUT of "Standup" is in flight; the user retitles the event.
+    let id = event_id.clone();
+    db.call_blocking(move |conn| {
+        write::update_event(
+            conn,
+            &id,
+            &EventPatch {
+                title: Some("Retro".into()),
+                ..EventPatch::default()
+            },
+            "phone",
+            NOW + 5,
+        )
+    })
+    .expect("update");
+
+    let (t, href) = (target.clone(), format!("{CAL}memry-1.ics"));
+    db.call_blocking(move |conn| {
+        providers::push_landed(
+            conn,
+            "caldav",
+            &t,
+            &bindings::Written {
+                calendar_id: CAL.into(),
+                event_id: href,
+                etag: Some("\"e1\"".into()),
+            },
+            Some("BEGIN:VCALENDAR\r\nSUMMARY:Standup\r\nEND:VCALENDAR\r\n".into()),
+            planned,
+            &FixedZone(0),
+            "UTC",
+            &Default::default(),
+            "phone",
+            NOW + 10,
+        )
+    })
+    .expect("landed");
+
+    let t = target.clone();
+    let queued = db
+        .call_blocking(|conn| providers::queue(conn))
+        .expect("queue");
+    assert!(
+        queued.iter().any(|q| q.target == t),
+        "the edit made during the push stays queued"
+    );
+    let (input, binding) = db
+        .call_blocking(move |conn| {
+            let input =
+                providers::upsert_input(conn, &t, &FixedZone(0), "UTC", &Default::default())?;
+            Ok((input, bindings::find(conn, "caldav", &t)?))
+        })
+        .expect("read");
+    let (input, binding) = (input.expect("on the calendar"), binding.expect("bound"));
+    assert_eq!(input["title"], "Retro");
+    assert!(
+        !bindings::same_as_snapshot(&binding, &input),
+        "the next plan sends the edit"
+    );
+}
+
+/// An edit in the same millisecond as the change before it still re-stamps the queue row, so a
+/// push planned from the first stamp leaves the edit queued.
+#[test]
+fn an_edit_in_the_same_millisecond_as_the_create_still_restamps_the_queue() {
+    let db = open();
+    connect_work(&db);
+    let event_id = db
+        .call_blocking(|conn| {
+            write::create_event(
+                conn,
+                &NewEvent {
+                    title: "Standup".into(),
+                    start_at: "2026-03-10T09:00:00.000Z".into(),
+                    end_at: Some("2026-03-10T10:00:00.000Z".into()),
+                    timezone: "UTC".into(),
+                    target_calendar_id: Some(CAL.into()),
+                    ..NewEvent::default()
+                },
+                "phone",
+                NOW,
+            )
+        })
+        .expect("create");
+    let stamp = |db: &Db, id: String| {
+        db.call_blocking(move |conn| providers::queue(conn))
+            .expect("queue")
+            .into_iter()
+            .find(|q| q.target.source_id == id)
+            .expect("queued")
+            .queued_at
+    };
+    let planned = stamp(&db, event_id.clone());
+    let id = event_id.clone();
+    db.call_blocking(move |conn| {
+        write::update_event(
+            conn,
+            &id,
+            &EventPatch {
+                title: Some("Retro".into()),
+                ..EventPatch::default()
+            },
+            "phone",
+            NOW,
+        )
+    })
+    .expect("update");
+    assert!(stamp(&db, event_id) > planned, "the same-ms edit re-stamps");
+}
+
+/// A task Memry wrote to CalDAV (`broad` binding) takes the server's title and description on a
+/// pull, as `applyProviderWriteback` writes them for `broad` and `time_and_text`.
+#[test]
+fn a_bound_task_takes_the_server_title_and_description_in_broad_mode() {
+    use memry_core::domain::tasks::{self, NewTask};
+    let db = open();
+    connect_work(&db);
+    let target = Target {
+        source_type: "task".into(),
+        source_id: "task-1".into(),
+    };
+    let href = format!("{CAL}task-1.ics");
+    let (t, h) = (target.clone(), href.clone());
+    db.call_blocking(move |conn| {
+        let task = NewTask {
+            id: "task-1",
+            title: "Local title",
+            project_id: "proj-1",
+            due_date: Some("2026-09-22"),
+            due_time: Some("09:00"),
+            priority: 1,
+            repeat_config: None,
+            tags: &[],
+        };
+        tasks::create(conn, &task, "phone", NOW)?;
+        bindings::record_push(
+            conn,
+            "caldav",
+            &t,
+            &bindings::Written {
+                calendar_id: CAL.into(),
+                event_id: h,
+                etag: Some("\"e1\"".into()),
+            },
+            json!({}),
+            "phone",
+            NOW,
+        )?;
+        providers::dequeue(conn, &t)
+    })
+    .expect("bound task");
+
+    let data = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:task-1\r\n\
+                DTSTART:20260922T090000Z\r\nDTEND:20260922T100000Z\r\nSUMMARY:Server title\r\n\
+                DESCRIPTION:Server notes\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
+    pull(
+        &db,
+        vec![caldav::Object {
+            href,
+            etag: Some("\"e2\"".into()),
+            data: data.into(),
+        }],
+        vec![],
+    );
+    let row: Vec<(String, Option<String>)> = db
+        .call_blocking(|conn| {
+            Ok(conn
+                .prepare("SELECT title, description FROM tasks WHERE id = 'task-1'")
+                .expect("prepare")
+                .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
+                .expect("query")
+                .collect::<Result<_, _>>()
+                .expect("rows"))
+        })
+        .expect("task");
+    assert_eq!(
+        row,
+        [("Server title".to_owned(), Some("Server notes".to_owned()))]
+    );
+}
+
+/// Binds `target` to `href` as a push would, in `mode`, then pulls the server's copy of it with
+/// a new title and description.
+fn pull_retitled(db: &Db, target: &Target, mode: &str) {
+    pull_text(db, target, mode, "Server title", "Server notes");
+}
+
+/// [`pull_retitled`] with the server's SUMMARY and DESCRIPTION given.
+fn pull_text(db: &Db, target: &Target, mode: &str, summary: &str, description: &str) {
+    let href = format!("{CAL}{}.ics", target.source_id);
+    let (t, h, mode) = (target.clone(), href.clone(), mode.to_owned());
+    db.call_blocking(move |conn| {
+        bindings::record_push(
+            conn,
+            "caldav",
+            &t,
+            &bindings::Written {
+                calendar_id: CAL.into(),
+                event_id: h,
+                etag: Some("\"e1\"".into()),
+            },
+            json!({}),
+            "phone",
+            NOW,
+        )?;
+        conn.execute("UPDATE calendar_bindings SET writeback_mode = ?1", [&mode])
+            .expect("mode");
+        providers::dequeue(conn, &t)
+    })
+    .expect("bound item");
+    let data = format!(
+        "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:{}\r\n\
+         DTSTART:20260922T090000Z\r\nDTEND:20260922T100000Z\r\nSUMMARY:{summary}\r\n\
+         DESCRIPTION:{description}\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+        target.source_id
+    );
+    pull(
+        db,
+        vec![caldav::Object {
+            href,
+            etag: Some("\"e2\"".into()),
+            data,
+        }],
+        vec![],
+    );
+}
+
+/// A bound reminder takes the server's title and note in `broad` and `time_and_text`
+/// (`applyProviderWriteback`'s `reminder` case), and keeps its own in another mode.
+#[test]
+fn a_bound_reminder_takes_the_server_title_and_note_in_broad_and_time_and_text() {
+    use memry_core::domain::reminders;
+    for (mode, takes) in [
+        ("broad", true),
+        ("time_and_text", true),
+        ("schedule_only", false),
+    ] {
+        let db = open();
+        connect_work(&db);
+        db.call_blocking(|conn| {
+            reminders::create(
+                conn,
+                "rem-1",
+                "note-1",
+                "2026-09-22T09:00:00.000Z",
+                Some("Local title"),
+                "phone",
+                NOW,
+            )
+            .map(|_| ())
+        })
+        .expect("reminder");
+        let target = Target {
+            source_type: "reminder".into(),
+            source_id: "rem-1".into(),
+        };
+        pull_retitled(&db, &target, mode);
+        let row = db
+            .call_blocking(|conn| reminders::get(conn, "rem-1"))
+            .expect("read")
+            .expect("reminder");
+        let want = if takes {
+            (Some("Server title"), Some("Server notes"))
+        } else {
+            (Some("Local title"), None)
+        };
+        assert_eq!((row.title.as_deref(), row.note.as_deref()), want, "{mode}");
+    }
+}
+
+/// A bound inbox snooze takes the server's title and text in `broad` and `time_and_text`
+/// (`applyProviderWriteback`'s `inbox_snooze` case), and keeps its own in another mode.
+#[test]
+fn a_bound_inbox_snooze_takes_the_server_title_and_text_in_broad_and_time_and_text() {
+    use memry_core::domain::inbox::{self, states, write};
+    for (mode, takes) in [
+        ("broad", true),
+        ("time_and_text", true),
+        ("schedule_only", false),
+    ] {
+        let db = open();
+        connect_work(&db);
+        let id = db
+            .call_blocking(|conn| {
+                let write::Captured::Created(item) = write::capture_text(
+                    conn,
+                    "Local text",
+                    Some("Local title"),
+                    None,
+                    true,
+                    "phone",
+                    NOW,
+                )?
+                else {
+                    unreachable!("forced capture")
+                };
+                states::snooze(conn, &item.id, NOW + 86_400_000, None, "phone", NOW)?;
+                Ok(item.id)
+            })
+            .expect("snoozed capture");
+        let target = Target {
+            source_type: "inbox_snooze".into(),
+            source_id: id.clone(),
+        };
+        pull_retitled(&db, &target, mode);
+        let item = db
+            .call_blocking(move |conn| inbox::get(conn, &id))
+            .expect("read")
+            .expect("capture");
+        let want = if takes {
+            ("Server title", Some("Server notes"))
+        } else {
+            ("Local title", Some("Local text"))
+        };
+        assert_eq!(
+            (item.title.as_str(), item.content.as_deref()),
+            want,
+            "{mode}"
+        );
+    }
+}
+
+/// Server text skips the user-input caps (`applyProviderWriteback` writes it as it is): a
+/// reminder in `broad` takes a 201-character title and a 1001-character note, and the pull that
+/// carries them succeeds instead of failing on every pass.
+#[test]
+fn a_bound_reminder_takes_server_text_past_the_input_caps() {
+    use memry_core::domain::reminders;
+    let (title, note) = ("t".repeat(201), "n".repeat(1001));
+    let db = open();
+    connect_work(&db);
+    db.call_blocking(|conn| {
+        reminders::create(
+            conn,
+            "rem-1",
+            "note-1",
+            "2026-09-22T09:00:00.000Z",
+            Some("Local title"),
+            "phone",
+            NOW,
+        )
+        .map(|_| ())
+    })
+    .expect("reminder");
+    let target = Target {
+        source_type: "reminder".into(),
+        source_id: "rem-1".into(),
+    };
+    pull_text(&db, &target, "broad", &title, &note);
+    let row = db
+        .call_blocking(|conn| reminders::get(conn, "rem-1"))
+        .expect("read")
+        .expect("reminder");
+    assert_eq!(
+        (row.title.as_deref(), row.note.as_deref()),
+        (Some(title.as_str()), Some(note.as_str()))
+    );
+}
+
+/// A blank server title on a bound inbox snooze (`handleUpdate` refuses a blank title from the
+/// user) arrives as the parser's "Untitled event", and the pull succeeds.
+#[test]
+fn a_bound_inbox_snooze_takes_a_blank_server_title_as_untitled() {
+    use memry_core::domain::inbox::{self, states, write};
+    let db = open();
+    connect_work(&db);
+    let id = db
+        .call_blocking(|conn| {
+            let write::Captured::Created(item) = write::capture_text(
+                conn,
+                "Local text",
+                Some("Local title"),
+                None,
+                true,
+                "phone",
+                NOW,
+            )?
+            else {
+                unreachable!("forced capture")
+            };
+            states::snooze(conn, &item.id, NOW + 86_400_000, None, "phone", NOW)?;
+            Ok(item.id)
+        })
+        .expect("snoozed capture");
+    let target = Target {
+        source_type: "inbox_snooze".into(),
+        source_id: id.clone(),
+    };
+    pull_text(&db, &target, "broad", " ", "Server notes");
+    let item = db
+        .call_blocking(move |conn| inbox::get(conn, &id))
+        .expect("read")
+        .expect("capture");
+    assert_eq!(
+        (item.title.as_str(), item.content.as_deref()),
+        ("Untitled event", Some("Server notes"))
+    );
 }
