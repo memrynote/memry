@@ -184,20 +184,30 @@ struct JournalDayTests {
         #expect(try vault.journal.entryId(date: JournalTestVault.today) == nil)
     }
 
-    @Test func hidden_metadata_reads_as_none() async throws {
+    @Test func tags_and_properties_written_through_the_writer_land_on_the_day_and_read_back() async throws {
         let vault = try JournalTestVault()
-        try vault.write("text", on: JournalTestVault.today)
-        _ = try vault.journal.setTags(date: JournalTestVault.today, tags: ["a"])
-        let hidden = JournalNoteBridge(store: vault.store, date: JournalTestVault.today, exposesMetadata: false)
-        #expect(try await hidden.metadata(id: "j2099-06-15")?.tags.isEmpty == true)
-        let shown = JournalNoteBridge(store: vault.store, date: JournalTestVault.today)
-        #expect(try await shown.metadata(id: "j2099-06-15")?.tags == ["a"])
+        let bridge = JournalNoteBridge(store: vault.store, date: JournalTestVault.today)
+        let writer = JournalMetadataWriter(bridge: bridge, definitions: nil)
+        try await writer.setTags(id: "j2099-06-15", tags: ["morning"])
+        #expect(try vault.journal.entryId(date: JournalTestVault.today) == "j2099-06-15")
+        try await writer.setProperty(id: "j2099-06-15", name: "Mood", valueJson: "\"Calm\"")
+        let metadata = try #require(try await bridge.metadata(id: "j2099-06-15"))
+        #expect(metadata.tags == ["morning"])
+        #expect(metadata.properties.map(\.name) == ["Mood"])
+        #expect(metadata.properties.first?.valueJson == "\"Calm\"")
+        try await writer.renameProperty(id: "j2099-06-15", from: "Mood", to: "Feeling")
+        let renamed = try await bridge.metadata(id: "j2099-06-15")?.properties
+        #expect(renamed?.map(\.name) == ["Feeling"])
+        #expect(renamed?.first?.valueJson == "\"Calm\"")
+        // Clearing keeps the key with a null value, as on a note (§13.4).
+        try await writer.clearProperty(id: "j2099-06-15", name: "Feeling")
+        #expect(try await bridge.metadata(id: "j2099-06-15")?.properties.first?.valueJson == "null")
     }
 
     @Test func a_name_written_through_the_writer_lands_on_the_day_and_reads_back() async throws {
         let vault = try JournalTestVault()
         let bridge = JournalNoteBridge(store: vault.store, date: JournalTestVault.today)
-        let writer = JournalMetadataWriter(bridge: bridge)
+        let writer = JournalMetadataWriter(bridge: bridge, definitions: nil)
         try await writer.setAliases(id: "j2099-06-15", aliases: [" Launch day ", "2099-06-15"])
         #expect(try vault.journal.entryId(date: JournalTestVault.today) == "j2099-06-15")
         #expect(try await bridge.metadata(id: "j2099-06-15")?.aliases == ["Launch day"])

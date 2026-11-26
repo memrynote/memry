@@ -1,6 +1,6 @@
 //! `canvas_folder`: a canvas folder's existence and icon
 //! (`CanvasFolderSyncPayloadSchema`, `packages/contracts/src/sync-payloads.ts`,
-//! migration `0028`).
+//! migration `0029`).
 //!
 //! Six fields under a whole-row clock. Placement of a canvas lives on the
 //! canvas, so this record carries only what a directory cannot: the icon and

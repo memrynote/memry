@@ -178,6 +178,7 @@ describe('foreign-provider calendar rows through the shared sync handlers (#1396
       const keyPair = sodium.crypto_sign_keypair()
       const vaultKey = sodium.randombytes_buf(32)
       const { pushItem } = encryptItemForPush({
+        vaultId: null,
         id: sourceId,
         type: 'calendar_source',
         operation: 'update',

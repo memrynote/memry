@@ -443,7 +443,7 @@ export function QuickCapture(): React.JSX.Element {
   )
 
   const handleRecordingComplete = useCallback(
-    (audioBlob: Blob, duration: number): void => {
+    (audio: AudioBuffer, duration: number): void => {
       if (!aiEnabled) {
         setIsRecording(false)
         setCaptureState('idle')
@@ -454,7 +454,7 @@ export function QuickCapture(): React.JSX.Element {
       setCaptureState('capturing')
       void (async () => {
         try {
-          const preparedAudio = await prepareVoiceMemoAudio(audioBlob)
+          const preparedAudio = await prepareVoiceMemoAudio(audio)
           const result = await captureVoice.mutateAsync({
             data: preparedAudio.data,
             duration: duration || preparedAudio.duration,

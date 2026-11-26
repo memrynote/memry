@@ -4,7 +4,8 @@ import type { DecryptedPullItem } from '@memry/sync-client/worker-protocol'
 import {
   applicablePurgedTombstones,
   parsePullItems,
-  purgedTombstoneToApplyItem
+  purgedTombstoneToApplyItem,
+  type PurgedTombstone
 } from './pull-envelope'
 import { decryptPullBatch } from '../sync-crypto-batch'
 import { withRetry } from '@memry/sync-client/retry'
@@ -49,6 +50,12 @@ export interface RefetchResult {
    * caller must treat these as unknown, never as gone.
    */
   skipped: ItemRef[]
+  /**
+   * Never answered (#5390): on the cooldown, or the request failed (an HTTP
+   * error, an unreadable response, a cancel). Absence here says nothing about
+   * the row.
+   */
+  unanswered: ItemRef[]
 }
 
 const emptyRefetchResult = (): RefetchResult => ({
@@ -57,7 +64,8 @@ const emptyRefetchResult = (): RefetchResult => ({
   missing: [],
   invalid: [],
   blobMissing: [],
-  skipped: []
+  skipped: [],
+  unanswered: []
 })
 
 export class CorruptItemTracker {
@@ -67,7 +75,7 @@ export class CorruptItemTracker {
    * Insertion order is kept equal to `failedAt` order (see `markFailed`), so
    * eviction is "delete from the front" without a sort.
    */
-  private corruptItems = new Map<string, { failedAt: number; attempts: number }>()
+  private corruptItems = new Map<string, { failedAt: number }>()
   private evictionLogged = false
   private ctx: SyncContext
   private quarantine: QuarantineManager
@@ -93,7 +101,6 @@ export class CorruptItemTracker {
     const key = itemRefKey(ref.type, ref.id)
     const entry = this.corruptItems.get(key)
     if (entry) {
-      entry.attempts++
       entry.failedAt = Date.now()
       // Re-insert so Map iteration order stays `failedAt` order. `set` on an
       // existing key does not move it, and `failedAt` is mutated in place, so
@@ -102,9 +109,14 @@ export class CorruptItemTracker {
       this.corruptItems.delete(key)
       this.corruptItems.set(key, entry)
     } else {
-      this.corruptItems.set(key, { failedAt: Date.now(), attempts: 1 })
+      this.corruptItems.set(key, { failedAt: Date.now() })
     }
     this.evictOverflow()
+  }
+
+  /** Lifts the cooldown on `refs`, so the next re-fetch requests them. */
+  forget(refs: readonly ItemRef[]): void {
+    for (const ref of refs) this.corruptItems.delete(itemRefKey(ref.type, ref.id))
   }
 
   clearExpired(): void {
@@ -156,16 +168,20 @@ export class CorruptItemTracker {
    * the envelope schema. An admitted purged tombstone (#2302) is `recovered`
    * as a delete, applied under the same clock guard as a signed one, unless
    * this device refuses it locally, which lands it in `skipped` with every ref
-   * the cooldown kept from being requested.
+   * the cooldown kept from being requested. A marker `skipMarker` names is
+   * not applied and counts as `missing`.
    */
   async refetch(
     failedItems: ItemRef[],
     token: string,
-    vaultKey: Uint8Array
+    vaultKey: Uint8Array,
+    skipMarker?: (marker: PurgedTombstone) => boolean
   ): Promise<RefetchResult> {
     const eligible = failedItems.filter((ref) => this.shouldRetry(ref))
     const total = emptyRefetchResult()
-    total.skipped.push(...failedItems.filter((ref) => !eligible.includes(ref)))
+    const cooling = failedItems.filter((ref) => !eligible.includes(ref))
+    total.skipped.push(...cooling)
+    total.unanswered.push(...cooling)
     if (eligible.length === 0) return total
 
     log.info('Attempting re-fetch for corrupt items', { count: eligible.length })
@@ -173,7 +189,8 @@ export class CorruptItemTracker {
       const chunk = await this.refetchChunk(
         eligible.slice(i, i + PULL_REQUEST_MAX_IDS),
         token,
-        vaultKey
+        vaultKey,
+        skipMarker
       )
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Object.keys of a RefetchResult-keyed record; keys are exactly keyof RefetchResult
       for (const key of Object.keys(total) as Array<keyof RefetchResult>) {
@@ -186,7 +203,8 @@ export class CorruptItemTracker {
   private async refetchChunk(
     eligible: ItemRef[],
     token: string,
-    vaultKey: Uint8Array
+    vaultKey: Uint8Array,
+    skipMarker?: (marker: PurgedTombstone) => boolean
   ): Promise<RefetchResult> {
     try {
       const pullResult = await withRetry(
@@ -210,7 +228,7 @@ export class CorruptItemTracker {
       if (parsed.kind === 'not_envelope') {
         log.error('Re-fetch: invalid response')
         for (const ref of eligible) this.markFailed(ref)
-        return { ...emptyRefetchResult(), permanentFailures: eligible }
+        return { ...emptyRefetchResult(), permanentFailures: eligible, unanswered: eligible }
       }
 
       // The pull endpoint matches ids across ALL negotiated types, so an id
@@ -232,7 +250,8 @@ export class CorruptItemTracker {
       const tombstones = await applicablePurgedTombstones(
         this.ctx.deps.db,
         parsed.purgedTombstones.filter((t) => requested.has(itemRefKey(t.type, t.id))),
-        this.resolveDeviceKey
+        this.resolveDeviceKey,
+        skipMarker
       )
       const blobMissing = parsed.blobMissing.filter((ref) =>
         requested.has(itemRefKey(ref.type, ref.id))
@@ -289,14 +308,15 @@ export class CorruptItemTracker {
         missing,
         invalid,
         blobMissing,
-        skipped: tombstones.refused.map(({ id, type }) => ({ id, type }))
+        skipped: tombstones.refused.map(({ id, type }) => ({ id, type })),
+        unanswered: []
       }
     } catch (error) {
       log.error('Re-fetch request failed', {
         error: error instanceof Error ? error.message : String(error)
       })
       for (const ref of eligible) this.markFailed(ref)
-      return { ...emptyRefetchResult(), permanentFailures: eligible }
+      return { ...emptyRefetchResult(), permanentFailures: eligible, unanswered: eligible }
     }
   }
 }

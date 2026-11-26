@@ -12,6 +12,7 @@ import { extractErrorMessage } from '@/lib/ipc-error'
 import { flushAllPendingSaves } from '@/lib/save-registry'
 import { onJournalEntryUpdated, onJournalExternalChange } from '@/services/journal-service'
 import { onNoteUpdated } from '@/services/notes-service'
+import { subscribeToEvents } from '@/services/tauri-event'
 
 /** Coalesces the burst of events one external write produces. */
 const REFRESH_DEBOUNCE_MS = 250
@@ -140,24 +141,31 @@ export function useAgentBodyReview(target: AgentReviewTarget | null): AgentBodyR
       if (timer) clearTimeout(timer)
       timer = setTimeout(() => setRevision((value) => value + 1), REFRESH_DEBOUNCE_MS)
     }
-    const unsubscribers =
+    // The preview is read on mount, and a change before these listeners went live sent its event
+    // to nobody (#4270): it is read again then.
+    const stop = subscribeToEvents(
       target.kind === 'note'
         ? [
-            onNoteUpdated((event) => {
-              if (event.id === target.id) bump()
-            })
+            (listening) =>
+              onNoteUpdated((event) => {
+                if (event.id === target.id) bump()
+              }, listening)
           ]
         : [
-            onJournalEntryUpdated((event) => {
-              if (event.date === target.date) bump()
-            }),
-            onJournalExternalChange((event) => {
-              if (event.date === target.date) bump()
-            })
-          ]
+            (listening) =>
+              onJournalEntryUpdated((event) => {
+                if (event.date === target.date) bump()
+              }, listening),
+            (listening) =>
+              onJournalExternalChange((event) => {
+                if (event.date === target.date) bump()
+              }, listening)
+          ],
+      bump
+    )
     return () => {
       if (timer) clearTimeout(timer)
-      for (const unsubscribe of unsubscribers) unsubscribe()
+      stop()
     }
   }, [toolCallId, target])
 

@@ -4,7 +4,7 @@ description: Download and install memrynote on macOS, Windows, or Linux, includi
 
 # Install memrynote
 
-Download the desktop app from **[memrynote.com/download/desktop](https://memrynote.com/download/desktop)**.
+Download the desktop app from **[memrynote.com/download/desktop](https://memrynote.com/download/desktop?utm_source=docs&utm_medium=referral&utm_campaign=install)**.
 The download page detects your platform and offers installers for:
 
 - **macOS** — Apple Silicon and Intel
@@ -28,6 +28,9 @@ On macOS you can also install with [Homebrew](https://brew.sh):
 ```sh
 brew install --cask memrynote/tap/memry
 ```
+
+The cask needs macOS 13 (Ventura) or later. On macOS 12, `brew upgrade` refuses the cask and
+stops with an error, so Homebrew keeps the version you already have installed.
 
 After installing, head to [First Run & Vault Setup](./first-run) to create your encrypted vault.
 

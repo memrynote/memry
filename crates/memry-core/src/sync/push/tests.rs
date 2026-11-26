@@ -1,6 +1,7 @@
 //! Unit tests of the push wave's pure helpers.
 
 use super::*;
+use crate::protocol::http::DEFAULT_BASE_DELAY_MS;
 use crate::sync::outbox::RecordOp;
 
 #[test]

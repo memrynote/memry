@@ -93,20 +93,35 @@ export async function readyWritebackConverter(
 ): Promise<ConvertWriteback> {
   const handle = options.mainUnlessReady && !current?.isReady ? null : await readyWorker()
   if (handle) {
-    return (doc, notePath, readFileBody) =>
-      runJob(handle, { kind: 'writeback', notePath }, doc, readFileBody).catch(
+    return (doc, notePath, readFileBody) => {
+      const update = Y.encodeStateAsUpdate(doc)
+      return runJob(handle, { kind: 'writeback', notePath }, update, readFileBody).catch(
         async (error: unknown) => {
           log.warn('Write-back conversion failed on the worker, converting on main', {
             notePath,
             error
           })
-          return convertForWriteback(doc, notePath, readFileBody, await loadBlockNoteConverter())
+          const converter = await loadBlockNoteConverter()
+          return convertForWriteback(docOf(update), notePath, readFileBody, converter)
         }
       )
+    }
   }
   const converter = await loadBlockNoteConverter()
   return (doc, notePath, readFileBody) =>
-    convertForWriteback(doc, notePath, readFileBody, converter)
+    convertForWriteback(docOf(Y.encodeStateAsUpdate(doc)), notePath, readFileBody, converter)
+}
+
+/**
+ * A doc of its own holding `update`, the state a write-back conversion was
+ * called with. The conversion reads the doc across awaits, and must serialize
+ * exactly the state its caller recorded for the file (`SerializedDoc`), as the
+ * worker's copy does.
+ */
+function docOf(update: Uint8Array): Y.Doc {
+  const doc = new Y.Doc()
+  Y.applyUpdate(doc, update)
+  return doc
 }
 
 /**
@@ -125,7 +140,11 @@ export async function seedFragment(
   const handle = fragment === doc?.getXmlFragment(CRDT_FRAGMENT_NAME) ? await readyWorker() : null
   if (doc && handle) {
     try {
-      const update = await runJob(handle, { kind: 'seed', markdown, notePath, writing }, doc)
+      const update = await runJob(
+        handle,
+        { kind: 'seed', markdown, notePath, writing },
+        Y.encodeStateAsUpdate(doc)
+      )
       if (!update) return false
       if (fragment.length > 0) {
         log.info('Seed dropped: the note filled while it was seeding', { notePath })
@@ -196,14 +215,13 @@ function startWorker(): WorkerHandle | null {
 function runJob<K extends ConverterJob['kind']>(
   handle: WorkerHandle,
   job: Extract<ConverterJob, { kind: K }>,
-  doc: Y.Doc,
+  update: Uint8Array,
   readFileBody?: () => Promise<string | null>
 ): Promise<ConverterJobResults[K]> {
   if (current !== handle) return Promise.reject(new Error('worker is gone'))
   if (idleTimer) clearTimeout(idleTimer)
   idleTimer = null
   const jobId = ++nextJobId
-  const update = Y.encodeStateAsUpdate(doc)
   return new Promise<ConverterJobResults[K]>((resolve, reject) => {
     const timer = setTimeout(() => {
       // A job that never answers would hold its note forever; the worker

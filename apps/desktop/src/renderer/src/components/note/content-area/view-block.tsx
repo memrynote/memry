@@ -137,7 +137,8 @@ type FolderViewResult = ReturnType<typeof useFolderView>
 function applyDefinition(
   notes: NoteWithProperties[],
   definition: ViewBlockDefinition,
-  activeView: FolderViewResult['activeView']
+  activeView: FolderViewResult['activeView'],
+  formulas?: Record<string, string>
 ): NoteWithProperties[] {
   let matched = notes
   const filters = definition.filters
@@ -148,7 +149,7 @@ function applyDefinition(
       log.warn('View block filter failed; showing unfiltered rows', err)
     }
   }
-  const sorted = sortNotes(matched, definition.order ?? activeView?.order)
+  const sorted = sortNotes(matched, definition.order ?? activeView?.order, formulas)
   const limit = definition.limit ?? activeView?.limit
   return limit ? sorted.slice(0, limit) : sorted
 }
@@ -380,7 +381,8 @@ function FolderViewBlockBody(props: ViewBlockBodyProps & { scope: ViewScope }): 
     scope,
     initialViewName: definition.view
   })
-  const { views, activeView, notes, unfilteredCount, hasMore, loadMore, isLoading } = folderView
+  const { views, activeView, notes, unfilteredCount, hasMore, loadMore, isLoading, formulasMap } =
+    folderView
 
   // A view is a query over the whole source, not over its first page.
   useEffect(() => {
@@ -389,8 +391,8 @@ function FolderViewBlockBody(props: ViewBlockBodyProps & { scope: ViewScope }): 
 
   const layout: ViewBlockLayout = definition.layout ?? activeView?.type ?? 'list'
   const rows = useMemo(
-    () => applyDefinition(notes, definition, activeView),
-    [notes, definition, activeView]
+    () => applyDefinition(notes, definition, activeView, formulasMap),
+    [notes, definition, activeView, formulasMap]
   )
   // A chart plots every matching note: order and limit shape a list, not a range.
   const chartNotes = useMemo(

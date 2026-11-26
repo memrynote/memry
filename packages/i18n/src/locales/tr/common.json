@@ -1,4 +1,7 @@
 {
+  "wikiLink": {
+    "openFailed": "Bu bağlantı açılamadı"
+  },
   "portalBlock": {
     "copyFailed": "Portal kopyalanamadı",
     "hiddenCount": "{count} gizli",
@@ -956,6 +959,8 @@
     "componentsVaultSwitcher": {
       "noVaultsYet": "Henüz kasa yok",
       "openVault": "Kasayı aç",
+      "createVault": "Kasa oluştur",
+      "openFolderAsVault": "Klasörü kasa olarak aç",
       "settings": "Ayarlar",
       "remove": "Kaldır “",
       "removeVaultTitle": "“{name}” listeden kaldırılsın mı?",

@@ -480,10 +480,10 @@ async fn a_feed_page_that_applies_the_record_resolves_the_entry() {
     assert!(ledger(&db).is_empty());
 }
 
-/// Review item 5: an id in `deleted` with no type deletes every row under it,
-/// and with them every ledger entry.
+/// An id in `deleted` with no item is unsigned and deletes nothing (§5.12.1,
+/// #5340), so the ledger entry stays.
 #[tokio::test]
-async fn an_untyped_tombstone_resolves_the_entry() {
+async fn a_bare_deleted_id_leaves_the_entry() {
     let db = scratch_db();
     let id = local_draft(&db);
     run(
@@ -502,7 +502,7 @@ async fn an_untyped_tombstone_resolves_the_entry() {
     )
     .await;
 
-    assert!(ledger(&db).is_empty());
+    assert_eq!(ledger(&db).len(), 1);
 }
 
 /// Review item 4 and its closing note: each schema refusal outside

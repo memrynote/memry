@@ -86,7 +86,10 @@ vi.mock('../sync/crdt-writeback-port', async () => {
   const writeback = await import('../sync/crdt-writeback')
   return { crdtWriteback: () => writeback }
 })
-vi.mock('../sync/crdt-writeback', () => ({ hasPendingWriteback: vi.fn(() => false) }))
+vi.mock('../sync/crdt-writeback', () => ({
+  hasPendingWriteback: vi.fn(() => false),
+  holdFlushUntil: vi.fn()
+}))
 vi.mock('../tasks/reconcile-markdown-tasks', () => ({
   reconcileTaskCheckboxesFromMarkdown: vi.fn(async () => undefined)
 }))
@@ -165,7 +168,8 @@ describe('sidebar order across the note lifecycle (#1646)', () => {
       fileType: 'markdown'
     })
 
-    await deleteNote('note-1')
+    // No sync here: the delete's step runs, and queues no tombstone.
+    await deleteNote('note-1', async (inStep) => inStep?.(() => {}))
 
     expect(getAllNotePositions(db).map((r) => r.path)).toEqual(['Work/a.md'])
   })

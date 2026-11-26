@@ -1,23 +1,25 @@
-//! "This day in other years" (`packages/domain-notes/src/journal/same-day.ts`): the days the On
-//! this day section and the All years view put next to a journal day.
+//! "This day in other years" (`packages/domain-notes/src/journal/same-day.ts`):
+//! the days the On this day section and the All years view put next to a journal day.
 //!
-//! Feb 29 has no day of its own in a non-leap year. Its entries show on Feb 28 of a non-leap
-//! year, and a Feb 29 shows the Feb 28 of non-leap years, so a leap-day entry never drops out of
-//! sight for three years. Dates are valid `YYYY-MM-DD`.
+//! Feb 29 has no day of its own in a non-leap year. Its entries show on Feb 28
+//! of a non-leap year, and a Feb 29 shows the Feb 28 of non-leap years, so a
+//! leap-day entry never drops out of sight for three years.
+//!
+//! Dates are `YYYY-MM-DD`.
+
+use crate::domain::calendar::is_leap_year;
 
 const LEAP_DAY: &str = "02-29";
 const DAY_BEFORE_LEAP_DAY: &str = "02-28";
 
-fn is_leap_year(year: u32) -> bool {
-    (year.is_multiple_of(4) && !year.is_multiple_of(100)) || year.is_multiple_of(400)
+/// `(year, "MM-DD")`. Callers validate the date first.
+fn split(date: &str) -> (i64, &str) {
+    let year = date.get(..4).and_then(|y| y.parse().ok()).unwrap_or(0);
+    (year, date.get(5..).unwrap_or(""))
 }
 
-/// `(year, "MM-DD")` of a valid `YYYY-MM-DD`.
-fn split(date: &str) -> (u32, &str) {
-    (date[..4].parse().unwrap_or(0), &date[5..])
-}
-
-/// The `MM-DD` values whose entries can match `date` in another year (`sameDayMonthDays`).
+/// `sameDayMonthDays`: the `MM-DD` values whose entries can match `date` in
+/// another year.
 pub fn same_day_month_days(date: &str) -> Vec<&str> {
     let (year, month_day) = split(date);
     if month_day == LEAP_DAY {
@@ -29,8 +31,8 @@ pub fn same_day_month_days(date: &str) -> Vec<&str> {
     vec![month_day]
 }
 
-/// True when `candidate` is in another year and shows as the same day as `date`
-/// (`isSameDayInOtherYear`).
+/// `isSameDayInOtherYear`: `candidate` is in another year and shows as the
+/// same day as `date`.
 pub fn is_same_day_in_other_year(date: &str, candidate: &str) -> bool {
     let (year, month_day) = split(date);
     let (other_year, other_month_day) = split(candidate);

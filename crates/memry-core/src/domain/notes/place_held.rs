@@ -63,6 +63,20 @@ pub(super) fn held(conn: &Connection) -> Result<BTreeSet<String>, StorageError> 
     ids.collect::<Result<_, _>>().map_err(failed)
 }
 
+/// Whether any day's owed move is held: [`held`] read without dropping a stale hold, which
+/// counts only while its owed move names the path it was made for.
+#[cfg(feature = "markdown")]
+pub fn any_held(conn: &Connection) -> Result<bool, StorageError> {
+    conn.query_row(
+        "SELECT EXISTS (SELECT 1 FROM meta m JOIN note_place_owed o
+                          ON o.note_id = substr(m.key, ?3) AND o.from_path = m.value
+                         WHERE m.key >= ?1 AND m.key < ?2)",
+        params![PREFIX, PREFIX_END, PREFIX.len() as i64 + 1],
+        |row| row.get(0),
+    )
+    .map_err(failed)
+}
+
 /// Whether the owed move of `note_id` is held: [`held`] for one note, read by its keys alone.
 #[cfg(feature = "markdown")]
 pub(super) fn is_held(conn: &Connection, note_id: &str) -> Result<bool, StorageError> {

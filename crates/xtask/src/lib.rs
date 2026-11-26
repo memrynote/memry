@@ -6,3 +6,4 @@
 pub mod bulk_notes;
 pub mod measure_memory;
 pub mod seed;
+pub mod seed_template;

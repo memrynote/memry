@@ -1,8 +1,8 @@
 //! `packages/contracts/test-vectors/pixel-tensors.json`: the pixels Electron's image path hands the
 //! vision encoder (`crates/memry-ml/tests/golden/generate-image.mjs`). PNG, WebP and GIF inputs
 //! match bit for bit. JPEG decoding, ICC conversion and CMYK conversion are a known divergence
-//! (test-vectors README): those cases, found from the input bytes, match in every size and position and stay
-//! within `maxLevelDiff` per channel of Electron's decoded pixels, which never exceeds
+//! (test-vectors README): those cases, found from the input bytes, match in every size and position
+//! and stay within `maxLevelDiff` per channel of Electron's decoded pixels, which never exceeds
 //! `MAX_LEVEL_DIFF`.
 
 mod common;
@@ -15,8 +15,8 @@ use serde_json::Value;
 use sha2::{Digest, Sha256};
 
 /// Ceilings on the file's `maxLevelDiff`, a margin over the measured maxima (jpeg 4, icc 1,
-/// jpeg+icc 6, cmyk 46, cmyk+icc 46). The file may hold tighter bounds, never looser ones; raising a ceiling needs
-/// Kaan's approval.
+/// jpeg+icc 6, cmyk 46, cmyk+icc 46). The file may hold tighter bounds, never looser ones; raising a
+/// ceiling needs Kaan's approval.
 const MAX_LEVEL_DIFF: [(&str, u64); 5] = [
     ("jpeg", 6),
     ("icc", 2),

@@ -4,11 +4,12 @@ import SwiftUI
 // Spec 006 ST40 / ST41, artboards 09 / 09b / 10. Language is synced (F5) and
 // takes effect at the next launch; everything else here is this iPhone's
 // (§5.2): time and date format with a live example, week start, the new-notes
-// folder, spell check and usage metrics. The diagnostic report (11) is not
-// offered: iOS has no report channel (§7).
+// folder, spell check and usage metrics. The diagnostic report (11) is in-app
+// feedback with the diagnostic log attached on request (`Features/Feedback`).
 struct GeneralScreen: View {
     let context: SettingsContext
     @State private var local = LocalSettings.shared
+    @AppStorage(HandoffActivity.settingKey) private var handoff = true
 
     var body: some View {
         List {
@@ -57,18 +58,31 @@ struct GeneralScreen: View {
                                 route: .newNotesFolder)
                 SettingsToggleRow(title: SettingsCopy.checkSpelling, isOn: $local.spellCheck,
                                   identifier: "settings.general.spell")
+                Picker(SettingsCopy.editorWidth, selection: $local.editorWidth) {
+                    Text(SettingsCopy.editorWidthNormal).tag(EditorWidth.normal)
+                    Text(SettingsCopy.editorWidthFull).tag(EditorWidth.full)
+                }
+                .pickerStyle(.menu)
+                .accessibilityIdentifier("settings.general.editorWidth")
             } header: {
                 Text(SettingsCopy.editing)
             } footer: {
                 SettingsFooter(SettingsCopy.newNotesFooter)
             }
             Section {
+                SettingsToggleRow(title: SettingsCopy.handoff, isOn: $handoff,
+                                  identifier: "settings.general.handoff")
                 SettingsToggleRow(title: SettingsCopy.usageMetrics, isOn: $local.usageMetrics,
                                   identifier: "settings.general.metrics")
             } header: {
                 Text(SettingsCopy.privacy)
             } footer: {
                 SettingsFooter(SettingsCopy.privacyFooter)
+            }
+            Section {
+                SettingsLinkRow(title: FeedbackCopy.title, symbol: "bubble.left", route: .feedback)
+            } footer: {
+                SettingsFooter(FeedbackCopy.generalFooter)
             }
         }
         .settingsList()

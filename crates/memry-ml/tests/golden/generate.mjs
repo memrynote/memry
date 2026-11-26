@@ -17,7 +17,7 @@
  * `handleEmbed` cuts the text to 4000 UTF-16 units, `loadEmbeddingPipeline` builds the text-only
  * model, `embed` tokenizes one text with `padding` and `truncation` and runs the model,
  * and `truncateEmbedding` keeps the first 256 values and divides them by their norm. Most texts come
- * from `embedding-input.json`, the shaped inputs Electron's `embedding-input.ts` produces.
+ * from `embedding-input-electron.json`, the shaped inputs Electron's `embedding-input.ts` produces.
  */
 import { readFileSync } from 'node:fs'
 import os from 'node:os'
@@ -76,7 +76,7 @@ const filler = (length) => {
 }
 
 /**
- * The 31 golden texts. Thirty come from `embedding-input.json` by case name: 16 distinct windows
+ * The 31 golden texts. Thirty come from `embedding-input-electron.json` by case name: 16 distinct windows
  * of six long notes (the sentence pools repeat, so one note gives at most four distinct windows),
  * note documents and similarity inputs (English, Turkish, mixed, untitled, emoji, CJK, full
  * 4000-unit windows) and typed queries. Cases with a lone surrogate are skipped there: the JSON
@@ -84,11 +84,12 @@ const filler = (length) => {
  * last text is longer than 4000 units, so `handleEmbed`'s cut runs.
  */
 function goldenTexts() {
-  const input = JSON.parse(readFileSync(join(VECTORS, 'embedding-input.json'), 'utf8'))
+  const input = JSON.parse(readFileSync(join(VECTORS, 'embedding-input-electron.json'), 'utf8'))
   const byName = new Map(input.cases.map((item) => [item.name, item]))
   const pick = (name, field, index) => {
     const item = byName.get(name)
-    if (!item || item.loneSurrogate) throw new Error(`embedding-input.json has no usable ${name}`)
+    if (!item || item.loneSurrogate)
+      throw new Error(`embedding-input-electron.json has no usable ${name}`)
     const value = index === undefined ? item.expected[field] : item.expected[field][index]
     if (typeof value !== 'string' || value === '') throw new Error(`${name} ${field} is empty`)
     return { name: `${name} / ${field}${index === undefined ? '' : ` ${index}`}`, text: value }

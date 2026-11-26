@@ -47,8 +47,8 @@ pub(super) fn read_replies(
     };
     // The state forgets the child before its callers hear of the failure, so a caller that
     // calls again at once starts a new child instead of writing to the dead one. A child that
-    // never sent `Ready` is not in the state: `start` holds the state lock while it waits for
-    // `Ready`, and accounts for the failure itself.
+    // never sent `Ready` is left to `start_if_needed`, which waits for it and accounts for the
+    // failure itself.
     let starting = lock(&pending).contains_key(&READY_ID);
     let in_flight = !lock(&pending).is_empty();
     let shared = shared.upgrade();

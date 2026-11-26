@@ -128,7 +128,9 @@ impl VaultRegistry {
     /// Records the id the account knows the vault at `path` by, so the account vault directory
     /// matches it without opening its database (`vault/index.ts:966-971`). A server id the vault
     /// is bound to always wins; the vault's own id fills only an empty entry, so an id another
-    /// build stamped stays until this build binds the vault.
+    /// build stamped (an imported Electron entry's server id) stays until this build binds the
+    /// vault. Departure: Electron re-stamps each open, so a new vault made at a registered path
+    /// replaces the old id there; here it keeps it until it binds.
     pub fn stamp_vault_uuid(
         &self,
         path: &str,
@@ -171,6 +173,33 @@ impl VaultRegistry {
     /// keeps every unknown one; it never erases a stored `vaultUuid` or `accountBinding`.
     pub fn upsert(&self, stored: &StoredVault) -> Result<(), RegistryError> {
         self.config.update(|map| upsert_in(map, stored))
+    }
+
+    /// Mirrors the vault's account binding onto its entry (`writeVaultAccountBinding`), and the
+    /// server id a sync binding binds to in the same write. Only `accountBinding` and
+    /// `vaultUuid` of the entry on disk change: the rest of the entry, and whether it is there
+    /// at all, may have changed in another process (the command line) since the load.
+    pub fn set_account_binding(
+        &self,
+        path: &str,
+        binding: &AccountBinding,
+        server_vault: Option<&str>,
+    ) -> Result<(), RegistryError> {
+        let value = serde_json::json!({ "userId": binding.user_id, "mode": binding.mode });
+        self.config.update(|map| {
+            if let Some(entry) = vaults_mut(map)?
+                .into_iter()
+                .flatten()
+                .filter_map(Value::as_object_mut)
+                .find(|o| path_of(o) == Some(path))
+            {
+                entry.insert("accountBinding".into(), value);
+                if let Some(id) = server_vault {
+                    entry.insert("vaultUuid".into(), Value::String(id.to_owned()));
+                }
+            }
+            Ok::<_, RegistryError>(())
+        })
     }
 
     /// A vault was opened: registers it when new (first vault becomes the default), stamps

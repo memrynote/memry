@@ -13,7 +13,9 @@
 //! - [`land_and_advance`] is **one transaction**: the bodies stored, the
 //!   debts recorded, then the record cursor. A body that cannot land is owed
 //!   before the cursor moves past it, and a storage failure rolls the whole
-//!   thing back with the cursor unmoved (§5.11).
+//!   thing back with the cursor unmoved (§5.11). A body purged since
+//!   [`held_bodies`] read its epoch, by a delete or a revive, is owed rather
+//!   than landed (#5356): what was fetched is the purged body's.
 //!
 //! Landing appends to the server namespace of the update log, the same rows
 //! [`super::body_pull`] writes; a resident document merges them on its next
@@ -32,8 +34,10 @@ use yrs::Update;
 use yrs::updates::decoder::Decode as _;
 
 use crate::api::errors::{ApiError, StorageError};
+use crate::crdt::epoch::{self, Epoch, HeldBody};
 use crate::crdt::update_log::{self, Namespace};
 use crate::protocol::http::{ApiRequest, HttpClient, RetryPolicy};
+use crate::storage::nested_tx;
 
 use super::body_debt;
 use super::body_pull::{CrdtCipher, PackedUpdate, crdt_cursor_scope};
@@ -76,6 +80,8 @@ pub(super) struct FetchedBodies {
     pub(super) owed: Vec<String>,
     /// The page carried `noteBodies` at all, so the server serves bodies.
     pub(super) served: bool,
+    /// [`HeldBodies::epochs`], checked again where the bodies land.
+    pub(super) epochs: HashMap<String, Epoch>,
 }
 
 /// The request builder and client [`fetch`] sends through, so its requests
@@ -109,6 +115,7 @@ pub(super) async fn fetch(
 ) -> FetchedBodies {
     let mut fetched = FetchedBodies {
         served: entries.is_some(),
+        epochs: held.epochs.clone(),
         ..FetchedBodies::default()
     };
     let mut rate_limited = false;
@@ -296,6 +303,8 @@ pub(super) struct HeldBodies {
     pub(super) cursors: HashMap<String, i64>,
     /// The server snapshot revision, where one is stored.
     pub(super) revisions: HashMap<String, String>,
+    /// Each known document's epoch (§7.16), read before the fetch (#5356).
+    pub(super) epochs: HashMap<String, Epoch>,
 }
 
 pub(super) fn held_bodies(
@@ -326,13 +335,12 @@ pub(super) fn held_bodies(
             continue;
         }
         held.known.insert(doc_id.to_owned());
+        let epoch = epoch::capture(conn, doc_id).map_err(crdt_failed)?;
+        held.epochs.insert(doc_id.to_owned(), epoch);
         if let Some(at) = cursor.and_then(|text| text.parse::<i64>().ok()) {
             held.cursors.insert(doc_id.to_owned(), at);
         }
-        let revision = update_log::snapshot(conn, Namespace::Server, doc_id)
-            .map_err(crdt_failed)?
-            .and_then(|row| row.server_revision);
-        if let Some(revision) = revision {
+        if let Some(revision) = update_log::server_revision(conn, doc_id)? {
             held.revisions.insert(doc_id.to_owned(), revision);
         }
     }
@@ -349,7 +357,7 @@ pub(super) fn land_and_advance(
     at_head: bool,
     now_ms: i64,
 ) -> Result<Vec<String>, StorageError> {
-    let txn = conn.unchecked_transaction().map_err(sqlite_failed)?;
+    let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
     let mut advanced: Vec<String> = Vec::new();
     for landing in fetched.landings {
         let doc_id = match &landing {
@@ -358,6 +366,15 @@ pub(super) fn land_and_advance(
         if body_debt::is_deleted_document(&txn, &doc_id)? {
             continue;
         }
+        let epoch = fetched.epochs.get(&doc_id).copied();
+        let body = match epoch {
+            Some(epoch) => HeldBody::check(&txn, &doc_id, epoch).map_err(crdt_failed)?,
+            None => None,
+        };
+        let Some(body) = body else {
+            body_debt::owe(&txn, &doc_id)?;
+            continue;
+        };
         let scope = crdt_cursor_scope(&doc_id);
         let at = store::read_cursor(&txn, &scope)?
             .and_then(|text| text.parse::<i64>().ok())
@@ -374,7 +391,7 @@ pub(super) fn land_and_advance(
                 // Stamped with this device's clock, as the per-note pull does:
                 // the search index re-reads log rows newer than its own
                 // epoch-ms watermark (`domain::search::maintenance`).
-                update_log::append_server_update(&txn, &doc_id, sequence_num, &update, now_ms)
+                body.append_server_update(sequence_num, &update, now_ms)
                     .map_err(crdt_failed)?;
                 if sequence_num == at + 1 {
                     store::write_cursor(&txn, &scope, Some(&sequence_num.to_string()), now_ms)?;
@@ -388,15 +405,8 @@ pub(super) fn land_and_advance(
                 snapshot,
                 ..
             } => {
-                update_log::put_server_snapshot(
-                    &txn,
-                    &doc_id,
-                    &snapshot,
-                    sequence_num,
-                    revision.as_deref(),
-                    now_ms,
-                )
-                .map_err(crdt_failed)?;
+                body.put_server_snapshot(&snapshot, sequence_num, revision.as_deref(), now_ms)
+                    .map_err(crdt_failed)?;
                 if sequence_num > at {
                     store::write_cursor(&txn, &scope, Some(&sequence_num.to_string()), now_ms)?;
                 }
@@ -414,10 +424,8 @@ pub(super) fn land_and_advance(
     // The one-time legacy pull, as debts: every held document is owed once,
     // and the pass's body step works them off with per-document progress.
     if fetched.served && read_meta(&txn, META_NOTE_BODY_LEGACY_PULL)?.is_none() {
-        for doc_id in documents_with_body_state(&txn)? {
-            body_debt::owe(&txn, &doc_id)?;
-        }
-        write_meta(&txn, META_NOTE_BODY_LEGACY_PULL, "done")?;
+        owe_held_bodies(&txn)?;
+        finish_legacy_pull(&txn)?;
     } else if !fetched.served && store::read_cursor(&txn, RECORD_CURSOR_SCOPE)?.as_deref() != cursor
     {
         rearm_legacy_pull(&txn)?;
@@ -443,6 +451,27 @@ pub(super) fn rearm_legacy_pull(conn: &Connection) -> Result<(), StorageError> {
     )
     .map_err(sqlite_failed)?;
     Ok(())
+}
+
+/// Owes a body pull for every held document: the legacy pull, and a first sync
+/// resumed past its body packs, whose re-run refs pass moved the record cursor
+/// past body rows the packs never saw.
+pub(super) fn owe_held_bodies(conn: &Connection) -> Result<(), StorageError> {
+    for doc_id in documents_with_body_state(conn)? {
+        body_debt::owe(conn, &doc_id)?;
+    }
+    Ok(())
+}
+
+/// A completed first sync is the legacy pull: after its refs pass moved the
+/// record cursor, every live document was pulled to the server's head or owed,
+/// so every body row at or below the cursor is held or its document is owed.
+/// `bodies_pass` keeps the window half of that, `body_packs_pass` the resumed
+/// half.
+/// Without this, the first page that serves `noteBodies` owes every document
+/// again.
+pub(super) fn finish_legacy_pull(conn: &Connection) -> Result<(), StorageError> {
+    write_meta(conn, META_NOTE_BODY_LEGACY_PULL, "done")
 }
 
 /// The `coversThrough` a snapshot push of `doc_id` may claim (chapter 07

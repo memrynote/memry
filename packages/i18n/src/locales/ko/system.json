@@ -17,6 +17,7 @@
       "filterAll": "모든 파일"
     },
     "exportCancelled": "내보내기가 취소되었습니다.",
+    "exportVaultChanged": "저장 위치를 고르는 동안 다른 볼트가 열렸습니다. 노트를 다시 내보내세요.",
     "dataDbRecovery": {
       "title": "볼트 데이터베이스 복구",
       "message": "이 볼트의 Memry 데이터베이스가 손상되었습니다.",

@@ -6,10 +6,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { toast } from 'sonner'
 import type * as Bindings from '../../../../generated/bindings'
+import type * as IpcBinary from '@/lib/ipc-binary'
 
 const mockUseAgentOptional = vi.hoisted(() => vi.fn())
 const mockUseActiveTab = vi.hoisted(() => vi.fn())
 const mockPrepareVoiceMemoAudio = vi.hoisted(() => vi.fn())
+// Dictation's `inbox_transcribe_audio` is a binary command, sent through `invokeBinary`.
+const mockInvokeBinary = vi.hoisted(() => vi.fn())
 const localProvider = vi.hoisted(() => ({
   agentGetLocalProviderSettings: vi.fn(),
   agentListLocalModels: vi.fn(),
@@ -36,38 +39,22 @@ vi.mock('sonner', () => ({
   toast: { error: vi.fn(), success: vi.fn() }
 }))
 
+vi.mock('@/lib/ipc-binary', async (importOriginal) => ({
+  ...(await importOriginal<typeof IpcBinary>()),
+  invokeBinary: mockInvokeBinary
+}))
+
 vi.mock('@/lib/voice-memo-audio', () => ({
   prepareVoiceMemoAudio: mockPrepareVoiceMemoAudio
 }))
 
+vi.mock(
+  '@/lib/pcm-capture',
+  async () => (await import('@tests/utils/fake-pcm-capture')).pcmCaptureModule
+)
+
 import { SettingsModalProvider } from '@/contexts/settings-modal-context'
 import { Composer, type ComposerHandle } from '../composer'
-
-class MockMediaRecorder {
-  static isTypeSupported = vi.fn(() => true)
-
-  state: 'inactive' | 'recording' = 'inactive'
-  ondataavailable: ((event: { data: Blob }) => void) | null = null
-  onstop: (() => void) | null = null
-  onerror: ((event: unknown) => void) | null = null
-
-  constructor(
-    public stream: MediaStream,
-    public options: MediaRecorderOptions
-  ) {}
-
-  start(): void {
-    this.state = 'recording'
-  }
-
-  stop(): void {
-    this.state = 'inactive'
-    queueMicrotask(() => {
-      this.ondataavailable?.({ data: new Blob(['voice'], { type: 'audio/webm' }) })
-      this.onstop?.()
-    })
-  }
-}
 
 const mockSendTurn = vi.fn()
 const mockCancelTurn = vi.fn()
@@ -155,10 +142,6 @@ describe('Composer', () => {
       configurable: true,
       value: { getUserMedia: mockGetUserMedia }
     })
-    Object.defineProperty(globalThis, 'MediaRecorder', {
-      configurable: true,
-      value: MockMediaRecorder
-    })
     mockPrepareVoiceMemoAudio.mockReset()
     mockPrepareVoiceMemoAudio.mockResolvedValue({
       data: new ArrayBuffer(8),
@@ -170,7 +153,7 @@ describe('Composer', () => {
       ready: true,
       provider: 'local'
     })
-    vi.mocked(window.api.inbox.transcribeAudio).mockReset()
+    mockInvokeBinary.mockReset()
     mockSendTurn.mockReset()
     mockCancelTurn.mockReset()
     mockCreateConversation.mockReset()
@@ -366,7 +349,7 @@ describe('Composer', () => {
 
   it('records, transcribes, and inserts the transcript into the prompt', async () => {
     let resolveTranscription: (value: { success: boolean; text: string }) => void = () => {}
-    vi.mocked(window.api.inbox.transcribeAudio).mockImplementation(
+    mockInvokeBinary.mockImplementation(
       () =>
         new Promise((resolve) => {
           resolveTranscription = resolve
@@ -386,11 +369,14 @@ describe('Composer', () => {
       name: 'Transcribing voice input'
     })
     expect(transcribingMic).toHaveClass('size-7')
-    expect(window.api.inbox.transcribeAudio).toHaveBeenCalledWith({
-      data: expect.any(ArrayBuffer),
-      duration: 1.5,
-      format: 'wav'
-    })
+    expect(mockInvokeBinary).toHaveBeenCalledWith(
+      'inbox_transcribe_audio',
+      expect.any(Uint8Array),
+      {
+        duration: 1.5,
+        format: 'wav'
+      }
+    )
 
     await act(async () => {
       resolveTranscription({ success: true, text: 'call the vet' })
@@ -413,7 +399,7 @@ describe('Composer', () => {
   })
 
   it('returns to idle and surfaces the error when transcription fails', async () => {
-    vi.mocked(window.api.inbox.transcribeAudio).mockResolvedValue({
+    mockInvokeBinary.mockResolvedValue({
       success: false,
       text: '',
       error: 'Whisper is unavailable'

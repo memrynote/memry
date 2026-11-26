@@ -89,6 +89,17 @@ impl ProjectStatuses {
         self.first_of(StatusKind::Done)
     }
 
+    /// The open status a reopened task and a repeating task's next occurrence
+    /// land in: the open status flagged default, else the first open one
+    /// (`openStatusIdOnReopen`, `completion.ts:39-49`; `defaultOpenStatusId`,
+    /// `repeat-completion.ts:47-53`).
+    pub(super) fn default_open(&self) -> Option<&Status> {
+        let mut open = self.0.iter().filter(|status| !status.is_done);
+        open.clone()
+            .find(|status| status.is_default)
+            .or_else(|| open.next())
+    }
+
     /// The status a new task starts in: the default todo status, else the
     /// first column (`getDefaultTodoStatus(project)?.id || statuses[0]?.id`).
     pub(super) fn initial(&self) -> Option<&Status> {
@@ -141,20 +152,12 @@ pub(super) fn status_by_id(
     status_id: &str,
 ) -> Result<Option<Status>, StorageError> {
     conn.query_row(
-        "SELECT id, name, color, position, COALESCE(is_default, 0), COALESCE(is_done, 0)
+        "SELECT id, project_id, name, color, position, COALESCE(is_default, 0),
+                COALESCE(is_done, 0), created_at
            FROM project_statuses
           WHERE id = ?1 AND deleted_at IS NULL",
         params![status_id],
-        |row| {
-            Ok(Status {
-                id: row.get(0)?,
-                name: row.get(1)?,
-                color: row.get(2)?,
-                position: row.get(3)?,
-                is_default: row.get::<_, i64>(4)? != 0,
-                is_done: row.get::<_, i64>(5)? != 0,
-            })
-        },
+        projects::read_status,
     )
     .optional()
     .map_err(failed)
@@ -298,11 +301,13 @@ mod tests {
     fn status(position: i64, is_default: bool, is_done: bool) -> Status {
         Status {
             id: format!("s{position}"),
+            project_id: String::new(),
             name: String::new(),
             color: String::new(),
             position,
             is_default,
             is_done,
+            created_at: None,
         }
     }
 

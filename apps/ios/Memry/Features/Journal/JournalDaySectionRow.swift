@@ -42,6 +42,7 @@ struct JournalDayTaskRow: View {
                 .buttonStyle(.plain)
         }
         .padding(.leading, edge)
+        .modifier(TaskDragSource(id: task.id))
         .sensoryFeedback(.success, trigger: completions)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(tasks.rowAccessibilityLabel(task))
