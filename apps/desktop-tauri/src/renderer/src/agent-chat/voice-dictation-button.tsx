@@ -65,12 +65,12 @@ export function VoiceDictationButton({
   )
 
   const handleComplete = useCallback(
-    (audioBlob: Blob) => {
+    (audio: AudioBuffer) => {
       setTranscribing(true)
 
       void (async () => {
         try {
-          const prepared = await prepareVoiceMemoAudio(audioBlob)
+          const prepared = await prepareVoiceMemoAudio(audio)
           const result = await inboxService.transcribeAudio({
             data: prepared.data,
             format: prepared.format,

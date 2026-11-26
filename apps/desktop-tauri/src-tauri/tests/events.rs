@@ -5,9 +5,10 @@ use memry_desktop::sync::events::{ItemOperation, PulledItem, SyncEvent};
 use memry_desktop::tasks::service::{TaskEvent, TaskWritten};
 use memry_tauri::commands::tasks::announce;
 use memry_tauri::events::{
-    NoteLinksChangedEvent, NoteTagsChangedEvent, PortalsUsageChangedEvent, SyncItemSyncedEvent,
-    TaskActivityCreatedEvent, TaskCompletedEvent, TaskCreatedEvent, TaskDeletedEvent,
-    TaskMovedEvent, TaskUpdatedEvent, announce_links, broadcast, broadcast_sync_event, send_to,
+    NoteLinksChangedEvent, NoteTagsChangedEvent, PortalsUsageChangedEvent, ProjectCreatedEvent,
+    ProjectDeletedEvent, ProjectUpdatedEvent, SyncItemSyncedEvent, TaskActivityCreatedEvent,
+    TaskCompletedEvent, TaskCreatedEvent, TaskDeletedEvent, TaskMovedEvent, TaskUpdatedEvent,
+    announce_links, broadcast, broadcast_sync_event, send_to,
 };
 use serde::{Deserialize, Serialize};
 use tauri::test::mock_app;
@@ -229,5 +230,53 @@ fn a_task_write_reaches_the_renderer_as_the_publishers_events_in_order() {
             (TaskUpdatedEvent::NAME, serde_json::json!({ "id": "t5" })),
         ],
         "each event once, in the write's order; a refusal sends nothing"
+    );
+}
+
+#[test]
+fn a_project_write_reaches_the_renderer_before_the_tasks_it_took() {
+    let app = mock_app();
+    let names = [
+        ProjectCreatedEvent::NAME,
+        ProjectUpdatedEvent::NAME,
+        ProjectDeletedEvent::NAME,
+        TaskDeletedEvent::NAME,
+        NoteTagsChangedEvent::NAME,
+    ];
+    let heard = hear(&app, &names);
+    let id = |id: &str| id.to_owned();
+    let deleted = TaskWritten {
+        mutation: (),
+        events: vec![
+            TaskEvent::ProjectDeleted(id("p1")),
+            TaskEvent::Deleted(id("t1")),
+            TaskEvent::TagsChanged,
+            TaskEvent::Deleted(id("t2")),
+        ],
+    };
+    let created = TaskWritten {
+        mutation: (),
+        events: vec![
+            TaskEvent::ProjectCreated(id("p2")),
+            TaskEvent::ProjectUpdated(id("p2")),
+        ],
+    };
+
+    announce(app.handle(), &deleted);
+    announce(app.handle(), &created);
+    announce(app.handle(), &TaskWritten::quiet(()));
+
+    let heard = heard.lock().expect("lock");
+    assert_eq!(
+        *heard,
+        [
+            (ProjectDeletedEvent::NAME, serde_json::json!({ "id": "p1" })),
+            (TaskDeletedEvent::NAME, serde_json::json!({ "id": "t1" })),
+            (NoteTagsChangedEvent::NAME, serde_json::Value::Null),
+            (TaskDeletedEvent::NAME, serde_json::json!({ "id": "t2" })),
+            (ProjectCreatedEvent::NAME, serde_json::json!({ "id": "p2" })),
+            (ProjectUpdatedEvent::NAME, serde_json::json!({ "id": "p2" })),
+        ],
+        "the project's event, then each task's, in the write's order; a refusal sends nothing"
     );
 }

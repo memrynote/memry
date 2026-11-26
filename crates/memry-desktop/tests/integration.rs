@@ -44,6 +44,8 @@ mod agent_mcp_http;
 mod agent_mcp_parts;
 #[path = "agent_store.rs"]
 mod agent_store;
+#[path = "agent_write_gate.rs"]
+mod agent_write_gate;
 #[path = "ai_catalog.rs"]
 mod ai_catalog;
 #[path = "ai_features.rs"]
@@ -221,6 +223,8 @@ mod importer_bear;
 mod importer_google_keep;
 #[path = "importer_noteplan.rs"]
 mod importer_noteplan;
+#[path = "importer_raindrop.rs"]
+mod importer_raindrop;
 #[path = "importer_roam.rs"]
 mod importer_roam;
 #[path = "importer_untrusted.rs"]
@@ -395,6 +399,10 @@ mod path_collision;
 mod paths;
 #[path = "portals.rs"]
 mod portals;
+#[path = "project_note_files.rs"]
+mod project_note_files;
+#[path = "project_writes.rs"]
+mod project_writes;
 #[path = "properties_file.rs"]
 mod properties_file;
 #[path = "property_definitions.rs"]
