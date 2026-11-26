@@ -100,3 +100,13 @@ describe('seed scripts', () => {
     assert.equal(rootPackage.scripts['seed:2'], 'cd crates && cargo xtask seed small --variant 2')
   })
 })
+
+describe('turbo env', () => {
+  // desktop-tauri's pretypecheck builds export-bindings under turbo. Strict env mode dropped the
+  // CI cargo profile (CARGO_PROFILE_DEV_DEBUG), so "IPC bindings are current" rebuilt all 633
+  // crates under the other profile: 7.5 minutes per Static checks run.
+  it('passes the cargo env through to typecheck', () => {
+    const turbo = JSON.parse(readFileSync(new URL('../turbo.json', import.meta.url), 'utf8'))
+    assert.ok(turbo.tasks.typecheck.passThroughEnv?.includes('CARGO_*'))
+  })
+})

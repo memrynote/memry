@@ -14,7 +14,8 @@
       "cache": true,
       "dependsOn": ["^typecheck"],
       "inputs": ["**/*.ts", "**/*.tsx", "tsconfig*.json", "package.json"],
-      "outputs": ["**/*.tsbuildinfo"]
+      "outputs": ["**/*.tsbuildinfo"],
+      "passThroughEnv": ["CARGO_*"]
     },
     "test": {
       "cache": true,
