@@ -17,6 +17,7 @@ on:
       - 'packages/**'
       - 'pnpm-lock.yaml'
       - 'oxlint.config.mts'
+      - 'turbo.json'
       - '.github/workflows/desktop-tauri-ci.yml'
       - '.github/actions/apt-install/**'
       - '.github/actions/ci-tier/**'
@@ -137,7 +138,7 @@ jobs:
         uses: ./.github/actions/paths-changed
         with:
           token: ${{ github.token }}
-          include: '^(apps/desktop-tauri/|crates/|packages/|pnpm-lock\.yaml$|oxlint\.config\.mts$|\.github/workflows/desktop-tauri-ci\.yml$|\.github/actions/(apt-install|ci-tier|free-disk|libsodium-dist|paths-changed|setup-pnpm|tesseract-sources)/|scripts/check-renderer-no-sync-host(\.test)?\.mjs$|scripts/(release|rehearsal)/)'
+          include: '^(apps/desktop-tauri/|crates/|packages/|pnpm-lock\.yaml$|oxlint\.config\.mts$|turbo\.json$|\.github/workflows/desktop-tauri-ci\.yml$|\.github/actions/(apt-install|ci-tier|free-disk|libsodium-dist|paths-changed|setup-pnpm|tesseract-sources)/|scripts/check-renderer-no-sync-host(\.test)?\.mjs$|scripts/(release|rehearsal)/)'
 
   static:
     name: Static checks
@@ -228,6 +229,9 @@ jobs:
         # Turbo remote cache (tools/turbo-cache), read-only: a hit replays a typecheck the push-to-feat
         # writer ran on the same inputs. No remote cache when TURBO_API or the signature key is unset,
         # and none for a fork's pull request.
+        # This step is also the IPC bindings check: desktop and desktop-tauri run `pnpm ipc:check` in
+        # pretypecheck, and their typecheck hash covers every file it reads (crates/**, the toolchain,
+        # contracts, i18n). A hit means ipc:check passed on identical inputs; a miss runs it here.
         env:
           TURBO_API: ${{ vars.TURBO_API }}
           TURBO_TEAM: ${{ vars.TURBO_TEAM }}
@@ -238,9 +242,6 @@ jobs:
 
       - name: Format
         run: pnpm format:check
-
-      - name: IPC bindings are current
-        run: pnpm ipc:check
 
       # The certificate pins live in the Rust transport; a webview request to a memry host skips them.
       - name: Renderer makes no memry-host request

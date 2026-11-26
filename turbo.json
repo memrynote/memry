@@ -30,7 +30,8 @@
       "cache": true,
       "dependsOn": ["^typecheck"],
       "inputs": ["$TURBO_DEFAULT$"],
-      "outputs": ["**/*.tsbuildinfo"]
+      "outputs": ["**/*.tsbuildinfo"],
+      "passThroughEnv": ["CARGO_*", "ANDROID_NDK_HOME"]
     },
     "test": {
       "cache": true,
