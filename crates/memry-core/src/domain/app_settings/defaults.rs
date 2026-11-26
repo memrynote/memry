@@ -78,8 +78,8 @@ pub(super) fn backup() -> Value {
     })
 }
 
-/// The base group only. The provider sub-groups and their synced paths belong
-/// to the calendar settings step.
+/// `CALENDAR_SETTINGS_DEFAULTS`. `defaultWriteTarget` has no default: it syncs
+/// whole and is absent until a device picks a target.
 pub(super) fn calendar() -> Value {
     json!({
         "dayCellClickBehavior": "journal",
@@ -87,6 +87,27 @@ pub(super) fn calendar() -> Value {
         "weekStartDay": "monday",
         "showNotesOnCalendar": false
     })
+}
+
+/// `CALENDAR_GOOGLE_SETTINGS_DEFAULTS` (`calendar.google`).
+pub(super) fn calendar_google() -> Value {
+    json!({
+        "defaultTargetCalendarId": null,
+        "onboardingCompleted": false,
+        "promoteConfirmDismissed": false,
+        "pushEventsToGoogle": true,
+        "agentReadEventsConsent": null
+    })
+}
+
+/// `CALENDAR_WRITABLE_PROVIDER_SETTINGS_DEFAULTS`: a provider that can write.
+pub(super) fn calendar_writable_provider() -> Value {
+    json!({ "agentReadEventsConsent": null, "pushEventsToProvider": true })
+}
+
+/// `CALENDAR_PROVIDER_BASE_SETTINGS_DEFAULTS`: a read-only provider.
+pub(super) fn calendar_provider() -> Value {
+    json!({ "agentReadEventsConsent": null })
 }
 
 pub(super) fn features() -> Value {

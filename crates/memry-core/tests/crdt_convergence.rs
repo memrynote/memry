@@ -41,6 +41,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use memry_core::api::errors::StorageError;
+use memry_core::crdt::epoch::HeldBody;
 use memry_core::crdt::registry::{UpdateSink, client_id_from_device_id};
 use memry_core::crdt::update_log::{self, Namespace};
 use memry_core::crdt::{Document, DocumentRegistry, extract_text};
@@ -223,7 +224,9 @@ fn record_local(db: &Db, update: &[u8]) -> i64 {
 fn record_server(db: &Db, seq: i64, update: &[u8]) {
     let blob = update.to_vec();
     db.call_blocking(move |conn| {
-        update_log::append_server_update(conn, NOTE, seq, &blob, NOW).map_err(storage_failure)
+        HeldBody::never_purged(conn, NOTE)
+            .and_then(|held| held.append_server_update(seq, &blob, NOW))
+            .map_err(storage_failure)
     })
     .expect("the server update is stored");
 }

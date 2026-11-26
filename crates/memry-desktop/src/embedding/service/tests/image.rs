@@ -63,11 +63,14 @@ fn a_failed_vision_download_backs_off_images_but_a_cancelled_one_does_not() {
     lock(&c.script.downloads).push_back(Step::AwaitAbort(gate));
     let service = c.service.clone();
     let pending = background(move || {
-        service.embed_image(ImageInput {
-            bytes: vec![1],
-            text: None,
-            soft_tokens: None,
-        })
+        service.embed_image(
+            ImageInput {
+                bytes: vec![1],
+                text: None,
+                soft_tokens: None,
+            },
+            &CancelToken::default(),
+        )
     });
     reached.recv_timeout(HANG).expect("the download started");
     c.service.stop();
@@ -98,11 +101,14 @@ fn an_empty_image_is_not_embedded() {
     let c = case(long_deadline());
     let service = c.service.clone();
     let got = returns(move || {
-        service.embed_image(ImageInput {
-            bytes: Vec::new(),
-            text: None,
-            soft_tokens: None,
-        })
+        service.embed_image(
+            ImageInput {
+                bytes: Vec::new(),
+                text: None,
+                soft_tokens: None,
+            },
+            &CancelToken::default(),
+        )
     });
     assert_eq!(got, None);
     assert_eq!(c.loads(), 0);

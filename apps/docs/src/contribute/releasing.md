@@ -87,7 +87,7 @@ The Velopack set is what new installs and the Velopack updater use:
 
 - `MemryNote-Setup-win-x64.exe`
 - `MemryNote-<version>-full.nupkg`
-- a `-delta.nupkg`, written only when the previous release's full package was available
+- a `-delta.nupkg`, written only when the previous release's full package was available. The previous release is the newest published release that is not a prerelease, so build-input prereleases such as `ort-pod-*` are skipped
 - `releases.win.json`
 - `RELEASES`
 
@@ -103,11 +103,12 @@ v2026-10-25 keep the old name; the landing download and the smoke test accept bo
 
 ## Downloads and the Homebrew cask
 
-Two consumers outside the app read release asset names. Both read the latest published release, so
-each one works whether that release came from the Electron or the Tauri pipeline.
+Two consumers outside the app read release asset names: the landing download endpoint and the
+Homebrew cask.
 
 The landing download endpoint, `apps/landing/api/download.ts`, redirects
-`/api/download?platform=<platform>` to the matching asset. The first matcher that hits wins, and a
+`/api/download?platform=<platform>` to the matching asset of the latest published release, so it
+works whether that release came from the Electron or the Tauri pipeline. The first matcher that hits wins, and a
 platform without a match redirects to the releases page. `api/download.test.ts` pins both asset
 sets.
 
@@ -120,9 +121,16 @@ sets.
 | `linux`         | `*.AppImage`. Only the versioned AppImage may be uploaded                                                                              |
 | `linux-deb`     | `*.deb`                                                                                                                                |
 
-`publish-homebrew-cask.yml` renders the cask with `scripts/generate-homebrew-cask.mjs` from the two
-`MemryNote-<version>-<arch>.dmg` files and pushes it to `memrynote/homebrew-tap`. The cask sets
-`depends_on macos: :ventura`, because the Tauri app needs macOS 13. Its `zap` list removes the
+After `pnpm release` publishes a release, it dispatches `publish-homebrew-cask.yml` on `main` with
+that release's tag and app version. If the dispatch fails, it prints the `gh workflow run` command
+to run by hand. The workflow downloads the two `MemryNote-<version>-<arch>.dmg` files from that
+tag, renders the cask with `scripts/generate-homebrew-cask.mjs` as it is on `main`, and pushes it
+to `memrynote/homebrew-tap`. The cask's `url` and `sha256` pin that tag. Only the landing endpoint
+and the cask's `livecheck` block (`strategy :github_latest`) read the latest release.
+
+The cask sets `depends_on macos: :ventura`, because the Tauri app needs macOS 13. On macOS 12,
+`brew upgrade` refuses the cask, so Homebrew users there keep the last Electron build they
+installed. Its `zap` list removes the
 Tauri app's directories (`com.memrynote.memry` under `Application Support`, `Logs` and `WebKit`,
 and Velopack's `Caches/velopack/MemryNote`) and every directory an Electron build wrote. It never
 removes the vault. The generator's self-check runs in `pnpm test:release`

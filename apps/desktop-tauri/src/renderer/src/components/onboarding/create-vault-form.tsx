@@ -4,6 +4,7 @@ import { Loader2 } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { vaultService } from '@/services/vault-service'
+import { vaultFolderPath } from '@/lib/vault-folder-path'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
@@ -17,12 +18,9 @@ type Translate = (key: string) => string
 const INVALID_NAME = /[/\\:*?"<>|\0]/
 const isInvalidName = (name: string): boolean => name.startsWith('.') || INVALID_NAME.test(name)
 
-const joinPath = (parent: string, name: string): string => {
-  const sep = parent.includes('\\') && !parent.includes('/') ? '\\' : '/'
-  return parent.endsWith(sep) ? `${parent}${name}` : `${parent}${sep}${name}`
-}
-
 type FormError = { kind: 'exists' | 'invalid' | 'other'; message: string } | null
+
+type CreateVault = (parent: string, name: string) => Promise<SelectVaultResponse>
 
 const KEY = 'phaseF.componentsVaultOnboarding.flow'
 
@@ -63,7 +61,11 @@ interface CreateVaultState {
   create: (parent: string, name: string) => Promise<void>
 }
 
-function useCreateVault(onCreated: () => void, t: Translate): CreateVaultState {
+function useCreateVault(
+  createVault: CreateVault,
+  onCreated: () => void,
+  t: Translate
+): CreateVaultState {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<FormError>(null)
 
@@ -71,7 +73,7 @@ function useCreateVault(onCreated: () => void, t: Translate): CreateVaultState {
     setSubmitting(true)
     setError(null)
     try {
-      const result = await vaultService.create(parent, name)
+      const result = await createVault(parent, name)
       if (result.success) onCreated()
       else setError(toFormError(result, t))
     } catch (err) {
@@ -85,13 +87,19 @@ function useCreateVault(onCreated: () => void, t: Translate): CreateVaultState {
 }
 
 interface CreateVaultFormProps {
-  onBack: () => void
+  /** Creates and opens the vault: a plain open in onboarding, a vault switch from an open vault */
+  create: CreateVault
+  onCancel: () => void
+  /** Shows the back link when set */
+  onBack?: () => void
   onCreated: () => void
   /** "Open it as a vault instead" when the target folder already exists */
   onOpenExisting: (path: string) => void
 }
 
 export function CreateVaultForm({
+  create: createVault,
+  onCancel,
   onBack,
   onCreated,
   onOpenExisting
@@ -99,11 +107,11 @@ export function CreateVaultForm({
   const { t } = useT('common')
   const [name, setName] = useState('')
   const [parent, setParent] = useParentFolder()
-  const { submitting, error, setError, create } = useCreateVault(onCreated, t)
+  const { submitting, error, setError, create } = useCreateVault(createVault, onCreated, t)
 
   const trimmed = name.trim()
   const nameInvalid = trimmed.length > 0 && isInvalidName(trimmed)
-  const target = parent && trimmed ? joinPath(parent, trimmed) : null
+  const target = parent && trimmed ? vaultFolderPath(parent, trimmed) : null
   const canSubmit = !!target && !nameInvalid && !submitting
   const nameError = nameInvalid
     ? t(`${KEY}.errorInvalidName`)
@@ -125,7 +133,7 @@ export function CreateVaultForm({
         subtitle={t(`${KEY}.createSubtitle`)}
         footer={
           <>
-            <Button type="button" variant="outline" size="sm" onClick={onBack}>
+            <Button type="button" variant="outline" size="sm" onClick={onCancel}>
               {t(`${KEY}.cancel`)}
             </Button>
             <Button type="submit" size="sm" disabled={!canSubmit}>

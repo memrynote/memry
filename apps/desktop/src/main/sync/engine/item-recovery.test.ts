@@ -55,6 +55,7 @@ function harness(results: Record<string, string | Error>, refetch: Partial<Refet
       invalid: [],
       blobMissing: [],
       skipped: [],
+      unanswered: [],
       ...refetch
     })),
     markFailed: vi.fn(),
@@ -288,6 +289,7 @@ describe('fetchMissingItems', () => {
     invalid: [],
     blobMissing: [],
     skipped: [],
+    unanswered: [],
     ...overrides
   })
   function setup(respond: (refs: ItemRef[]) => RefetchResult, token: string | null = 'token') {
@@ -316,6 +318,7 @@ describe('fetchMissingItems', () => {
       deps,
       [...tasks(250), { id: 'project-1', type: 'project' }],
       { vaultKey: new Uint8Array(32), signal: run.signal },
+      undefined,
       async () => {}
     )
 
@@ -342,6 +345,7 @@ describe('fetchMissingItems', () => {
         { id: 'task-blob', type: 'task' }
       ],
       { vaultKey: new Uint8Array(32), signal: new AbortController().signal },
+      undefined,
       apply
     )
 
@@ -359,6 +363,7 @@ describe('fetchMissingItems', () => {
       deps,
       tasks(3),
       { vaultKey: new Uint8Array(32), signal: new AbortController().signal },
+      undefined,
       async () => {}
     )
 

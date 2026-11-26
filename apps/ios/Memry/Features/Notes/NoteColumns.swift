@@ -185,15 +185,14 @@ struct NoteBlockItemsView: View {
 
 /// One column list.
 ///
-/// Stacked on a compact width, column one's blocks then column two's, each
-/// column marked by a quiet leading rule so the grouping survives the stack.
-/// Side by side on a regular width, sized by each column's `width` weight as
-/// desktop sizes them. No animation either way.
+/// Side by side when the width it gets holds every column at
+/// `NoteColumnsLayout.minimumColumn`, sized by each column's `width` weight
+/// as desktop sizes them. Stacked otherwise, column one's blocks then column
+/// two's, each column marked by a quiet leading rule so the grouping
+/// survives the stack. No animation either way.
 struct NoteColumnsView: View {
     let group: NoteColumns.Group
     let row: (NoteBlockList.Row) -> NoteBlockView
-
-    @Environment(\.horizontalSizeClass) private var sizeClass
 
     var body: some View {
         content
@@ -204,16 +203,13 @@ struct NoteColumnsView: View {
             .accessibilityLabel("\(group.columns.count) columns")
     }
 
-    @ViewBuilder
     private var content: some View {
-        if sizeClass == .regular, group.columns.count > 1 {
-            NoteColumnsLayout(weights: group.columns.map(\.weight), spacing: Tokens.Space.section) {
-                columns
-            }
-        } else {
-            VStack(alignment: .leading, spacing: Tokens.Space.medium) {
-                columns
-            }
+        NoteColumnsLayout(
+            weights: group.columns.map(\.weight),
+            spacing: Tokens.Space.section,
+            stackSpacing: Tokens.Space.medium
+        ) {
+            columns
         }
     }
 
@@ -237,19 +233,33 @@ struct NoteColumnsView: View {
 }
 
 /// Columns side by side, each given its `weight`'s share of the width left
-/// after the gaps, as CSS `flex-grow` shares it on desktop.
+/// after the gaps, as CSS `flex-grow` shares it on desktop. When the width
+/// it is offered would give a column less than `minimumColumn`, the columns
+/// stack instead, each the full width. The width decides, not the size
+/// class: a half-width iPad window is regular and still too narrow for three.
 ///
 /// Placed in the layout's own coordinate space, which SwiftUI mirrors for a
 /// right-to-left layout, so the first column sits on the leading side.
 struct NoteColumnsLayout: Layout {
+    /// The narrowest column worth drawing beside another.
+    static let minimumColumn: CGFloat = 220
+
     let weights: [Double]
     let spacing: CGFloat
+    let stackSpacing: CGFloat
 
-    private func widths(for total: CGFloat, count: Int) -> [CGFloat] {
-        let shares = (0..<count).map { $0 < weights.count ? weights[$0] : 1 }
-        let sum = shares.reduce(0, +)
-        let available = max(0, total - spacing * CGFloat(max(0, count - 1)))
-        return shares.map { sum > 0 ? available * CGFloat($0 / sum) : available / CGFloat(count) }
+    /// The width each column gets side by side, or `nil` when one would be
+    /// narrower than `minimumColumn` and the columns stack.
+    static func sideBySide(_ weights: [Double], width total: CGFloat, spacing: CGFloat) -> [CGFloat]? {
+        guard weights.count > 1 else { return nil }
+        let sum = weights.reduce(0, +)
+        let available = max(0, total - spacing * CGFloat(weights.count - 1))
+        let widths = weights.map { sum > 0 ? available * CGFloat($0 / sum) : available / CGFloat(weights.count) }
+        return widths.allSatisfy { $0 >= minimumColumn } ? widths : nil
+    }
+
+    private func shares(_ count: Int) -> [Double] {
+        (0..<count).map { $0 < weights.count ? weights[$0] : 1 }
     }
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
@@ -260,7 +270,10 @@ struct NoteColumnsLayout: Layout {
             subviews.reduce(0) { $0 + $1.sizeThatFits(.unspecified).width }
                 + spacing * CGFloat(subviews.count - 1)
         }
-        let widths = widths(for: total, count: subviews.count)
+        guard let widths = Self.sideBySide(shares(subviews.count), width: total, spacing: spacing) else {
+            let heights = subviews.map { $0.sizeThatFits(ProposedViewSize(width: total, height: nil)).height }
+            return CGSize(width: total, height: heights.reduce(0, +) + stackSpacing * CGFloat(subviews.count - 1))
+        }
         let height = zip(subviews, widths)
             .map { $0.sizeThatFits(ProposedViewSize(width: $1, height: nil)).height }
             .max() ?? 0
@@ -268,7 +281,15 @@ struct NoteColumnsLayout: Layout {
     }
 
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        let widths = widths(for: bounds.width, count: subviews.count)
+        guard let widths = Self.sideBySide(shares(subviews.count), width: bounds.width, spacing: spacing) else {
+            let column = ProposedViewSize(width: bounds.width, height: nil)
+            var top = bounds.minY
+            for subview in subviews {
+                subview.place(at: CGPoint(x: bounds.minX, y: top), anchor: .topLeading, proposal: column)
+                top += subview.sizeThatFits(column).height + stackSpacing
+            }
+            return
+        }
         var edge = bounds.minX
         for (subview, width) in zip(subviews, widths) {
             subview.place(

@@ -4,7 +4,11 @@ import { renderWithProviders } from '@tests/utils/render'
 import type { NoteSyncState } from '@memry/contracts/ipc-sync-ops'
 import { OutlineInfoPanel } from './outline-info-panel'
 
-const getNoteSyncState = vi.fn<(noteId: string) => Promise<NoteSyncState | null>>()
+const { getNoteSyncState } = vi.hoisted(() => ({
+  getNoteSyncState: vi.fn<(noteId: string) => Promise<NoteSyncState | null>>()
+}))
+
+vi.mock('@/services/sync-service', () => ({ syncService: { getNoteSyncState } }))
 
 const stats = {
   wordCount: 12,
@@ -15,11 +19,6 @@ const stats = {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  const api = window.api as typeof window.api & {
-    syncOps?: { getNoteSyncState?: typeof getNoteSyncState }
-  }
-  api.syncOps = api.syncOps ?? {}
-  api.syncOps.getNoteSyncState = getNoteSyncState
   getNoteSyncState.mockResolvedValue({
     state: 'pending',
     waitingSince: Date.now() - 60_000,

@@ -4,7 +4,7 @@
 
 use std::collections::HashMap;
 
-use serde_json::{Value, json};
+use serde_json::Value;
 
 use crate::api::calendar::VaultCalendar;
 use crate::api::calendar_providers::CalendarFeedZones;
@@ -24,6 +24,8 @@ pub struct CalendarPushItem {
     pub source_type: String,
     pub source_id: String,
     pub attempts: i64,
+    /// When the change was queued; `push_done` takes it back.
+    pub queued_at: i64,
 }
 
 /// What to send for one item.
@@ -56,6 +58,13 @@ pub struct CalendarCaldavObject {
     pub href: String,
     pub etag: Option<String>,
     pub data: String,
+}
+
+/// An object of a CalDAV calendar and its ETag.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct CalendarCaldavEtag {
+    pub href: String,
+    pub etag: Option<String>,
 }
 
 /// A calendar discovery found.
@@ -145,6 +154,7 @@ impl VaultCalendar {
                     source_type: q.target.source_type,
                     source_id: q.target.source_id,
                     attempts: q.attempts,
+                    queued_at: q.queued_at,
                 })
                 .collect())
         })
@@ -320,12 +330,15 @@ impl VaultCalendar {
     }
 
     /// A push landed: the binding records the remote (`body` is what was
-    /// sent; CalDAV keeps it as `caldavRaw`), the item leaves the queue.
+    /// sent; CalDAV keeps it as `caldavRaw`). `queued_at` is the item's
+    /// `CalendarPushItem.queued_at`: the item leaves the queue only if no
+    /// change was queued since, so an edit made during the request stays.
     #[allow(clippy::too_many_arguments)]
     pub fn push_done(
         &self,
         source_type: String,
         source_id: String,
+        queued_at: i64,
         provider: String,
         calendar_id: String,
         remote_event_id: String,
@@ -335,27 +348,44 @@ impl VaultCalendar {
     ) -> Result<(), StorageError> {
         let target = target(source_type, source_id);
         self.write(move |conn, device, now| {
-            let local: &dyn crate::domain::calendar_items::zone::LocalZone = &zones.local;
             let named: HashMap<String, CalendarZone> = zones
                 .named
                 .iter()
                 .map(|z| (z.identifier.clone(), z.clone()))
                 .collect();
-            let mut snapshot =
-                providers::upsert_input(conn, &target, local, &zones.local.identifier, &named)?
-                    .unwrap_or_else(|| json!({}));
-            if provider == CALDAV
-                && let Some(body) = body
-            {
-                snapshot["caldavRaw"] = json!(body);
-            }
             let written = bindings::Written {
                 calendar_id,
                 event_id: remote_event_id,
                 etag,
             };
-            bindings::record_push(conn, &provider, &target, &written, snapshot, device, now)?;
-            providers::dequeue(conn, &target)
+            providers::push_landed(
+                conn,
+                &provider,
+                &target,
+                &written,
+                body,
+                queued_at,
+                &zones.local,
+                &zones.local.identifier,
+                &named,
+                device,
+                now,
+            )
+        })
+    }
+
+    /// The objects of one CalDAV calendar Memry items are bound to, with
+    /// the ETag each binding holds. A pull checks those it did not see
+    /// against the server's listing: bound objects have no mirror rows.
+    pub fn caldav_bound_objects(
+        &self,
+        calendar_url: String,
+    ) -> Result<Vec<CalendarCaldavEtag>, StorageError> {
+        self.write(move |conn, _, _| {
+            Ok(bindings::caldav_objects(conn, &calendar_url)?
+                .into_iter()
+                .map(|(href, etag)| CalendarCaldavEtag { href, etag })
+                .collect())
         })
     }
 

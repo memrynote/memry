@@ -32,6 +32,7 @@
 use rusqlite::{Connection, OptionalExtension as _, params};
 
 use crate::api::errors::StorageError;
+use crate::storage::nested_tx;
 
 use super::body_writes::{self, LogRow, Wrote};
 use super::errors::CrdtError;
@@ -122,12 +123,13 @@ impl LoadPlan {
     }
 }
 
-/// Records an update the server numbered.
+/// Records an update the server numbered. Written only through
+/// [`super::epoch::HeldBody`] (#5356).
 ///
 /// `sequence_num` comes from the server and from nowhere else: a client never
 /// proposes one (chapter 07 §7.4). `INSERT OR IGNORE`, because a replayed pull
 /// answering the same sequence twice is a duplicate delivery, not new data.
-pub fn append_server_update(
+pub(super) fn append_server_update(
     conn: &Connection,
     doc_id: &str,
     sequence_num: i64,
@@ -154,14 +156,12 @@ pub fn append_server_update(
 /// The `MAX(seq) + 1` read and the insert are **one** transaction, which is
 /// what makes two concurrent appends take two sequences rather than one.
 pub fn append_local_update(
-    conn: &mut Connection,
+    conn: &Connection,
     doc_id: &str,
     update_blob: &[u8],
     created_at: i64,
 ) -> Result<i64, CrdtError> {
-    let txn = conn
-        .transaction()
-        .map_err(failed("open the append transaction"))?;
+    let txn = nested_tx::begin(conn).map_err(failed("open the append transaction"))?;
     let next = append_local_update_in(&txn, doc_id, update_blob, created_at)?;
     txn.commit().map_err(failed("commit the append"))?;
     Ok(next)
@@ -273,12 +273,27 @@ pub fn snapshot(
     .map_err(CrdtError::from)
 }
 
+/// The server revision of the document's server snapshot: `None` when it has
+/// none, or holds a snapshot this device pushed (§7.13.4). Reads no snapshot
+/// bytes.
+pub fn server_revision(conn: &Connection, doc_id: &str) -> Result<Option<String>, StorageError> {
+    conn.prepare_cached("SELECT server_revision FROM yjs_snapshots WHERE doc_id = ?1")
+        .and_then(|mut statement| {
+            statement
+                .query_row(params![Namespace::Server.row_id(doc_id)], |row| row.get(0))
+                .optional()
+        })
+        .map(Option::flatten)
+        .map_err(failed("read a snapshot revision"))
+}
+
 /// Stores the snapshot the server answered with, at the sequence the server
-/// gave it and under the server's opaque `revision` token.
+/// gave it and under the server's opaque `revision` token. Written only
+/// through [`super::epoch::HeldBody`] (#5356).
 ///
 /// The revision is compared for equality and for nothing else (chapter 07
 /// §7.5).
-pub fn put_server_snapshot(
+pub(super) fn put_server_snapshot(
     conn: &Connection,
     doc_id: &str,
     snapshot_bytes: &[u8],
@@ -390,10 +405,8 @@ pub fn load_plan(conn: &Connection, doc_id: &str) -> Result<LoadPlan, CrdtError>
 /// What a tombstone requires: on applying one, the local Y.Doc and the local
 /// update log go (chapter 07 §7.15). The server keeps its rows and that is not
 /// evidence the delete failed.
-pub fn purge(conn: &mut Connection, doc_id: &str) -> Result<(), CrdtError> {
-    let txn = conn
-        .transaction()
-        .map_err(failed("open the purge transaction"))?;
+pub fn purge(conn: &Connection, doc_id: &str) -> Result<(), CrdtError> {
+    let txn = nested_tx::begin(conn).map_err(failed("open the purge transaction"))?;
     purge_in(&txn, doc_id)?;
     txn.commit().map_err(failed("commit the purge"))?;
     Ok(())
@@ -427,6 +440,7 @@ pub fn purge_in(conn: &Connection, doc_id: &str) -> Result<usize, CrdtError> {
             .map_err(failed("purge a snapshot"))?;
     }
     super::epoch::bump_in(conn, doc_id)?;
+    super::resident::release_document(conn, doc_id);
     // The document's body cursor goes with its log. Kept, it would make a
     // later pull of a revived document ask only for what came after it, and
     // the history the server still holds would never come back to this

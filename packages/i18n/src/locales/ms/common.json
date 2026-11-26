@@ -1,4 +1,7 @@
 {
+  "wikiLink": {
+    "openFailed": "Tidak dapat membuka pautan ini"
+  },
   "portalBlock": {
     "copyFailed": "Tidak dapat menyalin portal",
     "hiddenCount": "{count} disembunyikan",
@@ -956,6 +959,8 @@
     "componentsVaultSwitcher": {
       "noVaultsYet": "Belum ada bilik kebal",
       "openVault": "Buka bilik kebal",
+      "createVault": "Buat bilik kebal",
+      "openFolderAsVault": "Buka folder sebagai bilik kebal",
       "settings": "Tetapan",
       "remove": "Alih keluar “",
       "removeVaultTitle": "Alih keluar “{name}” daripada senarai?",

@@ -65,7 +65,7 @@ const toEpochSeconds = (value: unknown): number | null => {
   return null
 }
 
-const hasPendingWrite = (db: DrizzleDb, type: string, itemId: string): boolean =>
+export const hasPendingWrite = (db: DrizzleDb, type: string, itemId: string): boolean =>
   db
     .select({ id: syncQueue.id })
     .from(syncQueue)

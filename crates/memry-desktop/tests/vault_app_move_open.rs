@@ -414,7 +414,7 @@ fn a_recorded_move_whose_name_is_stored_decomposed_is_finished() {
 const STAYS: &str = "an interrupted app move stays for the next open";
 
 /// What `f` logged at `level` and above on this thread, where the open's hooks run.
-fn logged(level: tracing::Level, f: impl FnOnce()) -> String {
+pub(crate) fn logged(level: tracing::Level, f: impl FnOnce()) -> String {
     let log = Log::default();
     let subscriber = tracing_subscriber::fmt()
         .with_writer(log.clone())

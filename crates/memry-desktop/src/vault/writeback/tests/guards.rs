@@ -195,11 +195,13 @@ fn a_pass_of_a_closed_session_writes_nothing() {
     assert_kept(&mut f, &outcome, Keep::Closed, "n.md", "first words\n");
 }
 
+/// A row whose file is gone gets no new file, and an id with no record gets none, with the open
+/// walk ended: the removal is the user's. A record no row names gets its first file
+/// (`tests::unfiled`).
 #[test]
-fn a_note_without_a_row_or_a_file_creates_none() {
+fn a_row_whose_file_is_gone_gets_no_new_file() {
     let mut f = fixture();
-    let id = f.writer.create("No file".into(), None).unwrap();
-    assert_eq!(f.run(&id), Outcome::Kept(Keep::NoRow));
+    f.rows.lane_of(f.pass.session).unwrap().set_walked(true);
     let id = f.adopt("gone.md", "first words\n");
     std::fs::remove_file(f.root.join("gone.md")).unwrap();
     assert_eq!(f.run(&id), Outcome::Kept(Keep::NoFile));

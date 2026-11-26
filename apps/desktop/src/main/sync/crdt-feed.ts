@@ -5,9 +5,10 @@
  * @module sync/crdt-feed
  */
 
-import type * as Y from 'yjs'
+import * as Y from 'yjs'
 import { getCrdtProvider, ORIGIN_LOCAL } from './crdt-provider'
 import { loadBlockNoteConverter } from './blocknote-converter-loader'
+import { replaceKeepingUnchangedBlocks } from './fragment-reconcile'
 import { classifyMarkdownContent } from '@memry/shared/markdown-class'
 import { getIndexDatabase } from '../database'
 import { getNoteCacheById } from '@main/database/queries/notes'
@@ -30,10 +31,10 @@ function noteCachePath(noteId: string): string | undefined {
 }
 
 /**
- * Full XML-fragment replace of a note's body inside its live Y.Doc.
- * No-op (returns false) when the doc is not open, the markdown is large-file
- * class, or the markdown is unparseable.
- * Lossy re: Yjs history, but round-tripping through markdown discards it anyway.
+ * Replace of a note's body inside its live Y.Doc. Blocks the markdown leaves
+ * unchanged at the start and end keep their Yjs items; the rest is replaced
+ * (`replaceKeepingUnchangedBlocks`). No-op (returns false) when the doc is not
+ * open, the markdown is large-file class, or the markdown is unparseable.
  *
  * `writing` is the file's `writing` frontmatter, when the caller read the whole
  * file; without it the doc keeps its own alternative versions and overflow.
@@ -82,7 +83,7 @@ export async function replaceDocBody(
   // CriticMarkup marks the same way a freshly seeded note does, instead of
   // leaving the previous body's copies in place (#1959).
   const converter = await loadBlockNoteConverter()
-  const { prepareFragmentSeed, applyFragmentSeed, recordMarkdownSourceInYDoc } = converter
+  const { prepareFragmentSeed, applyFragmentSideChannels, recordMarkdownSourceInYDoc } = converter
   const prepared = await prepareFragmentSeed(markdown, noteCachePath(noteId), writing)
   if (!prepared) return false
   // An open editor always holds at least one block, and its binding stops
@@ -90,13 +91,17 @@ export async function replaceDocBody(
   // lands in the doc but never on screen, and the editor's stale empty body is
   // what it saves next. An empty body is BlockNote's empty document instead.
   if (prepared.blocks.length === 0) prepared.blocks = converter.emptyDocumentBlocks()
+  // Built apart and then reconciled, so the blocks the edit left alone keep
+  // their Yjs items and a peer's concurrent edit inside them (#5319).
+  const next = new Y.Doc().getXmlFragment('prosemirror')
+  if (!converter.blocksToYFragment(prepared.blocks, next)) return false
 
   const fragment = doc.getXmlFragment('prosemirror')
   let replaced = false
   doc.transact(() => {
     if (unlessChangedFrom !== undefined && fragment.toJSON() !== unlessChangedFrom) return
-    fragment.delete(0, fragment.length)
-    applyFragmentSeed(prepared, fragment)
+    replaceKeepingUnchangedBlocks(fragment, next)
+    applyFragmentSideChannels(prepared, fragment)
     replaced = true
   }, ORIGIN_LOCAL)
   if (!replaced) return false

@@ -9,6 +9,8 @@
 //! | a mint tells the shell once its definition reads            | the renderer reads the tags again    |
 //! | a later pass defines only the tags of the files it read     | `ensureTagDefinitions` per file      |
 //! | an open defines the tags an older build indexed without one | existing vaults catch up on open     |
+//! | an open's sweep that failed is run by the next pass         | the sweep stays owed until it ran    |
+//! | a tag written while a first sync held the pass is defined   | a held pass owes the sweep (#5409)   |
 //!
 //! A definition is minted on this device only, unclocked; `tag_definitions_sync` covers the
 //! sync pass that seeds it.
@@ -28,7 +30,7 @@ use index_support::until;
 use memry_core::domain::tag_admin::definitions;
 use memry_core::seams::secure_store::SecureStore;
 use memry_desktop::notes::identity::NotesIdentity;
-use memry_desktop::notes::index::{IndexReport, NoteIndex};
+use memry_desktop::notes::index::{IDLE_DELAY, IndexReport, NoteIndex};
 use serde_json::Value;
 use vault_env::{Env, env, indexed};
 
@@ -222,4 +224,66 @@ fn an_open_defines_the_tags_an_older_build_indexed_without_one() {
     until("every tag defined again", || colors(&e).len() == 6);
     assert_eq!(color(&e, "meeting").as_deref(), Some("rose"));
     assert_eq!(color(&e, "walk").as_deref(), Some("indigo"));
+}
+
+/// The open's sweep (every note's tags) that failed stays owed: the next pass, which reads one
+/// file, defines every note's tags, not only that file's (#4278). The fault is a trigger on
+/// the real `data.db` that refuses every mint until the open's build ended.
+#[test]
+fn an_opens_sweep_that_failed_is_run_by_the_next_pass() {
+    let mut e = env(|s| Some(NotesIdentity::new(s)));
+    for (rel, text) in FILES {
+        e.write(rel, text);
+    }
+    let index = NoteIndex::new(e.tier.clone(), |_| {}, |_| {}, |_| {});
+    index.register(&e.session);
+    e.open();
+    e.facts_until(indexed);
+    until("every tag defined", || colors(&e).len() == 6);
+    e.close();
+    let data = e.vault.join(".memry/core/data.db");
+    let conn = rusqlite::Connection::open(&data).unwrap();
+    conn.execute_batch(
+        "DELETE FROM tag_definitions;
+         DELETE FROM sync_items WHERE item_type = 'tag_definition';
+         DELETE FROM outbox WHERE item_type = 'tag_definition';
+         CREATE TRIGGER refuse_mints BEFORE INSERT ON sync_items
+          WHEN NEW.item_type = 'tag_definition'
+          BEGIN SELECT RAISE(ABORT, 'mint refused'); END;",
+    )
+    .unwrap();
+    drop(conn);
+
+    e.open();
+    e.facts_until(indexed);
+    until("the open's build ended", || index.indexing().is_none());
+    assert!(colors(&e).is_empty(), "the open's sweep was refused");
+    e.core()
+        .db_handle()
+        .call_blocking(|conn| {
+            conn.execute_batch("DROP TRIGGER refuse_mints").unwrap();
+            Ok(())
+        })
+        .unwrap();
+    e.write("z.md", "---\ntags: [later]\n---\n");
+
+    until("later defined", || color(&e, "later").is_some());
+    assert_eq!(colors(&e).len(), 7, "{:?}", colors(&e));
+    assert_eq!(color(&e, "walk").as_deref(), Some("indigo"));
+}
+
+/// A pass a first sync held mints nothing, as its search reindex is deferred, and the reindex
+/// that runs once the first sync ended reads no file: the held pass owes the sweep, so a tag
+/// written meanwhile is defined then (#5409).
+#[test]
+fn a_tag_written_while_a_first_sync_held_the_pass_is_defined_once_it_ended() {
+    let (e, _) = opened(&[("seed.md", "---\ntags: [seed]\n---\nBody.\n")]);
+    until("seed defined", || color(&e, "seed").is_some());
+    let hold = e.session.current().unwrap().first_sync.hold();
+    e.write("late.md", "Late #idea\n");
+    std::thread::sleep(IDLE_DELAY * 4);
+    until("late.md measured", || index_support::all_indexed(&e));
+    assert_eq!(color(&e, "idea"), None, "held by the first sync");
+    drop(hold);
+    until("idea defined", || color(&e, "idea").is_some());
 }

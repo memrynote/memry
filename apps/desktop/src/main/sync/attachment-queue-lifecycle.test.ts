@@ -196,7 +196,7 @@ describe('attachment upload queue lifecycle', () => {
       const dispose = vi.fn()
       registerAttachmentQueueReset(dispose)
 
-      resetAttachmentQueue()
+      void resetAttachmentQueue()
 
       expect(dispose).toHaveBeenCalledTimes(1)
     })
@@ -204,10 +204,10 @@ describe('attachment upload queue lifecycle', () => {
     it('stops invoking the disposer once deregistered', () => {
       const dispose = vi.fn()
       registerAttachmentQueueReset(dispose)
-      resetAttachmentQueue()
+      void resetAttachmentQueue()
 
       registerAttachmentQueueReset(null)
-      resetAttachmentQueue()
+      void resetAttachmentQueue()
 
       expect(dispose).toHaveBeenCalledTimes(1)
     })
@@ -217,13 +217,13 @@ describe('attachment upload queue lifecycle', () => {
       // runtime resets.
       const monitor = makeMonitor()
       let queue: UploadQueue | null = new UploadQueue(okUpload(), monitor)
-      registerAttachmentQueueReset(() => {
+      registerAttachmentQueueReset(async () => {
         queue?.dispose()
         queue = null
       })
       expect(monitor.listenerCount('status-changed')).toBe(1)
 
-      resetAttachmentQueue()
+      void resetAttachmentQueue()
 
       expect(queue).toBeNull()
       expect(monitor.listenerCount('status-changed')).toBe(0)

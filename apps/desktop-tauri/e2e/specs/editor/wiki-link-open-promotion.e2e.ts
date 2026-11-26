@@ -3,20 +3,18 @@
 // editor before asserting: a keystroke would promote the links through the change handler and
 // the assertions would say nothing about the open path.
 //
-// Two of Electron's main-process probes have no Tauri command yet, so those steps read the same
-// outcome another way:
-// - Electron waits for the write-back counter. Here the spec schedules a write-back pass of the
-//   promoted note and quits; the quit runs every scheduled pass, so once the app is gone the
-//   file holds whatever the promoted document serializes to.
-// - Electron waits for main to unload the note's document before the outside edit. The Tauri
-//   host unloads a released document on its sweep, and no command reports that, so the outside
-//   edit may reach a document still in memory. The reopen assertion is the same.
+// Electron waits for the write-back counter. Here the spec schedules a write-back pass of the
+// promoted note and quits; the quit runs every scheduled pass, so once the app is gone the file
+// holds whatever the promoted document serializes to. Before the outside edit Electron waits for
+// main to let the note's document go; here `e2e_get_crdt_doc_body` answers null once no window
+// holds it. The host unloads a released document only on its sweep, so the outside edit may still
+// reach a document in memory, with no editor bound to it.
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { noteBody } from '../../harness/editor'
 import { invokeTest } from '../../harness/invoke-test'
-import { openNoteByTitle } from '../../harness/note-sync-helpers'
+import { getCrdtDocBodyById, openNoteByTitle } from '../../harness/note-sync-helpers'
 import { createNote, NOTE_EDITOR, NOTE_TITLE, vaultOpen } from '../../harness/notes'
 import type { Page } from '../../harness/pw-compat/page'
 import { gracefulClose } from '../../harness/tauri-lifecycle'
@@ -118,6 +116,7 @@ test.describe('Wiki links on open', () => {
   // An edit made outside Memry reaches the note's document with no editor mounted, so the
   // editor is created over text that is already there and gets no change event to promote from.
   test('links written into the file from outside are chips when the note is reopened', async ({
+    app,
     page,
     testVaultPath
   }) => {
@@ -129,8 +128,11 @@ test.describe('Wiki links on open', () => {
     await openWithoutTyping(page, title)
     await expect(page.locator('[data-wiki-link]')).toHaveCount(0)
 
-    // Switch away so no editor is bound to the note while it changes on disk.
+    // Switch away so no editor is bound to the note while it changes on disk, and wait until no
+    // window holds its document: until then the outside edit reaches a bound editor, the easy
+    // half of this path.
     await openWithoutTyping(page, target)
+    await expect.poll(() => getCrdtDocBodyById(app, note.id), { timeout: 30_000 }).toBeNull()
 
     const file = join(testVaultPath, note.path)
     const before = readFileSync(file, 'utf8')
@@ -139,19 +141,19 @@ test.describe('Wiki links on open', () => {
 
     await openWithoutTyping(page, title)
 
-    // Both ends in one read, so a failure names the one that gave way: the file is what the other
-    // program wrote, the chip is what the editor made of the document. The document itself has no
-    // markdown probe yet (`e2e_crdt_doc_markdown`); `e2e_note_body` reads run text only, and a
-    // promoted wikiLink node carries its target outside the text.
+    // All three layers in one read, so a failure names the one that gave way: the file is what
+    // the other program wrote, the document is what the app made of it, and the chip is what the
+    // editor did with that.
     await expect
       .poll(
         async () => ({
           file: (await noteBody(page, note.id))?.includes(`[[${target}]]`) ?? false,
+          doc: (await getCrdtDocBodyById(app, note.id))?.includes(`[[${target}]]`) ?? false,
           chips: await chipFor(page, target).count()
         }),
         { timeout: 60_000 }
       )
-      .toEqual({ file: true, chips: 1 })
+      .toEqual({ file: true, doc: true, chips: 1 })
   })
 
   test('the chips survive a reload, and the second open rewrites nothing', async ({ page }) => {

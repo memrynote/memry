@@ -35,7 +35,9 @@ impl Failure {
 }
 
 /// The `.part` file of a download in progress, deleted unless [`Self::keep`] ran: on an error and
-/// when a cancelled download is dropped mid-write.
+/// when a cancelled download is dropped mid-write. A cancel can still leave it, since
+/// `tokio::fs::write` runs on in its blocking thread after the future is dropped; the next pass
+/// deletes it, as it keeps no name in the data dir but a chosen language's pack.
 struct PartFile(Option<PathBuf>);
 
 impl PartFile {

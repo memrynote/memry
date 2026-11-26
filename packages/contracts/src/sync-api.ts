@@ -535,8 +535,17 @@ export const SyncManifestSchema = z.object({
   serverTime: z.number().int().min(0)
 })
 
+/**
+ * A `GET /sync/manifest` item. `serverCursor` is the row's `server_cursor`,
+ * which a record pack reader reconciles on (protocol 08 §8.10). Absent from
+ * every server before step 04 of #5221.
+ */
+export const RecordSyncManifestItemSchema = RecordSyncItemRefSchema.extend({
+  serverCursor: z.number().int().min(0).optional()
+})
+
 export const RecordSyncManifestSchema = z.object({
-  items: z.array(RecordSyncItemRefSchema),
+  items: z.array(RecordSyncManifestItemSchema),
   serverTime: z.number().int().min(0),
   /**
    * Present only on a paginated response (`GET /sync/manifest?limit=N`) that
@@ -711,8 +720,8 @@ export const DeviceSyncStateSchema = z.object({
  * What a pack file compacts. `record` packs hold sync-item payload blobs and
  * their min/max are server_cursor values; `crdt_snapshot` packs hold note-body
  * snapshots and their min/max are created_at epoch-second bounds.
- * `crdt_update` is reserved: updates live in D1 today and have no R2
- * small-object GET floor to kill.
+ * `crdt_update` has no writer yet; its entries and min/max use server_cursor
+ * (protocol 08 §8.4.3).
  */
 export const PACK_KINDS = ['record', 'crdt_snapshot', 'crdt_update'] as const
 
@@ -727,13 +736,12 @@ export const PackKindSchema = z.enum(PACK_KINDS)
  * present only when the deployment opted into presigned transfers (#1836);
  * absent means "use the item-granular endpoints".
  *
- * Tail semantics: packs cover the cursor ranges they advertise. Records tile
- * their axis completely; snapshot coverage can under-cover same-second writes
- * (a note written the same second as an already-packed tie group with a
- * smaller note_id sorts below the watermark and stays item-granular forever).
- * Holes inside a range (replaced/deleted items are dead bytes) also fall back
- * to item GETs — membership is verified against the pack's own index block,
- * never assumed, and individual blobs remain the source of truth throughout.
+ * Coverage (protocol 08 §8.10): `coverFrom`/`coverThrough` are the pack's
+ * coverage range on the server_cursor axis, for every kind. `minCursor` and
+ * `maxCursor` keep their per-kind meaning for released readers. A pack without
+ * a coverage range is a cache only: it never moves where a reader's tail
+ * starts. Membership is verified against the pack's own index block, never
+ * assumed, and individual blobs remain the source of truth throughout.
  */
 export const PackSummarySchema = z.object({
   id: z.string().min(1),
@@ -751,12 +759,68 @@ export const PackSummarySchema = z.object({
   createdAt: z.number().int().min(0),
   url: z.url().optional(),
   /** Epoch seconds at which `url` stops working; mirrors the presign TTL. */
-  expiresAt: z.number().int().min(0).optional()
+  expiresAt: z.number().int().min(0).optional(),
+  /** Exclusive lower bound of the coverage range, a server_cursor. */
+  coverFrom: z.number().int().min(0).optional(),
+  /** Inclusive upper bound of the coverage range, a server_cursor. */
+  coverThrough: z.number().int().min(0).optional()
 })
+
+/**
+ * What the listed packs of one kind cover (protocol 08 §8.10), read in the
+ * same D1 batch as the first page. Every row of the kind a reader needs whose
+ * server_cursor is inside a listed pack's range is held by that pack, and none
+ * has a server_cursor in `(packedThrough, coveredThrough]`.
+ */
+export const PackCoverageSchema = z.object({
+  itemKind: PackKindSchema,
+  /**
+   * `coverThrough` of the newest pack the writer committed for this kind, 0
+   * when none. A rollup or purge that takes packs out of the listing never
+   * lowers it, so a reader whose packs do not chain up to it sees the gap.
+   */
+  packedThrough: z.number().int().min(0),
+  coveredThrough: z.number().int().min(0)
+})
+
+/**
+ * The `coverage` statement of the first listing page and of the bootstrap open
+ * response. An entry of a kind this build does not know, or a malformed one,
+ * leaves that kind uncovered (its tail starts at 0) instead of failing the
+ * response (§8.9).
+ */
+export const PackCoverageListSchema = z.array(z.unknown()).transform((entries) =>
+  entries.flatMap((entry) => {
+    const parsed = PackCoverageSchema.safeParse(entry)
+    return parsed.success ? [parsed.data] : []
+  })
+)
+
+/**
+ * A replaced or purged pack's object outlives its listing row by at least this
+ * long, twice the presigned URL lifetime (`DEFAULT_PRESIGN_TTL_SECONDS`, 300),
+ * so a URL handed out before the row went away still reads (protocol 08 §8.12).
+ */
+export const PACK_REPLACED_GRACE_SECONDS = 600
+
+/** A deleted document's ciphertext leaves every pack object within this (§8.13). */
+export const PACK_PURGE_DEADLINE_SECONDS = 900
+
+/**
+ * Listed packs per vault stay at or below this, so a released reader's
+ * 20-page walk of 50 never ends truncated (protocol 08 §8.14).
+ */
+export const PACK_LIST_MAX_PACKS_PER_VAULT = 999
 
 export const PackListResponseSchema = z.object({
   packs: z.array(PackSummarySchema),
   serverTime: z.number().int().min(0),
+  /**
+   * Present on the first page only, from a server that keeps the §8.10
+   * invariant. A kind it omits, or no `coverage` at all, means nothing of that
+   * kind is covered: the reader's tail for it starts at 0.
+   */
+  coverage: PackCoverageListSchema.optional(),
   /**
    * Opaque keyset token (max_cursor + row id of the last returned pack).
    * Pass back as `cursor` on GET /sync/packs to fetch the next (older) page;
@@ -767,6 +831,7 @@ export const PackListResponseSchema = z.object({
 
 export type PackKind = z.infer<typeof PackKindSchema>
 export type PackSummary = z.infer<typeof PackSummarySchema>
+export type PackCoverage = z.infer<typeof PackCoverageSchema>
 export type PackListResponse = z.infer<typeof PackListResponseSchema>
 
 // ============================================================================
@@ -792,6 +857,66 @@ export const RecordPullItemResponseSchema = PullItemResponseSchema.omit({
 }).extend({
   type: z.enum(RECORD_SYNC_ITEM_TYPES)
 })
+
+/**
+ * `metaBytes` of a `record` pack entry (protocol 08 §8.4.2): the `/sync/pull`
+ * item minus what the entry already holds. `id` and `type` are the entry's
+ * `type:id` identity and `blob` is its payload, so meta plus payload rebuild
+ * the pull item exactly. Derived, so a field added to the pull item reaches
+ * packs too. Unknown keys are stripped: a newer writer may add keys.
+ */
+export const RecordPackEntryMetaSchema = RecordPullItemResponseSchema.omit({
+  id: true,
+  type: true,
+  blob: true
+})
+
+/**
+ * `metaBytes` of a `crdt_update` pack entry (protocol 08 §8.4.3): the update
+ * entry of `GET /sync/crdt/updates` (protocol 07 §7.11) minus `data`, which is
+ * the entry's payload.
+ */
+export const CrdtUpdatePackEntryMetaSchema = z.object({
+  sequenceNum: z.number().int().min(1),
+  signerDeviceId: z.string().min(1),
+  createdAt: z.number().int().min(0)
+})
+
+export type RecordPackEntryMeta = z.infer<typeof RecordPackEntryMetaSchema>
+export type CrdtUpdatePackEntryMeta = z.infer<typeof CrdtUpdatePackEntryMetaSchema>
+
+/** Most documents one `GET /sync/crdt/manifest` page answers (protocol 07 §7.4.1). */
+export const CRDT_MANIFEST_PAGE_LIMIT = 1000
+
+/**
+ * One document of `GET /sync/crdt/manifest` (protocol 07 §7.4.1, #5232). `floor`
+ * is 0 when the document was never purged, `snapshot` null when it has none,
+ * and `maxSequenceNum` its highest stored update, 0 when it stores none. The
+ * three are one D1 read.
+ */
+export const CrdtManifestDocumentSchema = z.object({
+  noteId: z.string().min(1),
+  floor: z.number().int().min(0),
+  snapshot: z
+    .object({
+      revision: z.string().min(1),
+      sequenceNum: z.number().int().min(0)
+    })
+    .nullable(),
+  maxSequenceNum: z.number().int().min(0)
+})
+
+/**
+ * A page of `GET /sync/crdt/manifest`, documents in ascending `noteId`.
+ * `nextCursor` is the `cursor` of the next page, null on the last one.
+ */
+export const CrdtManifestResponseSchema = z.object({
+  documents: z.array(CrdtManifestDocumentSchema),
+  nextCursor: z.string().min(1).nullable()
+})
+
+export type CrdtManifestDocument = z.infer<typeof CrdtManifestDocumentSchema>
+export type CrdtManifestResponse = z.infer<typeof CrdtManifestResponseSchema>
 
 export const PullResponseSchema = z.object({
   items: z.array(PullItemResponseSchema)

@@ -7,14 +7,17 @@
 //! [`crate::domain::note_files`]. Every method blocks; the shell runs them in
 //! `spawn_blocking`.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashSet};
+
+use serde_json::{Map, Value};
 
 use crate::api::errors::StorageError;
 use crate::domain::inbox::queries::FiledVoice;
 use crate::domain::note_files::{self, FiledTextFile, NoteFile, NoteFileStat, StampMark};
 use crate::domain::note_list::{self, ListedNote, NoteListPage, NoteListQuery};
 use crate::domain::notes::local_only::{self, LocalOnlyChange};
-use crate::domain::owed_file_body;
+use crate::domain::properties;
+use crate::domain::{owed_file_aliases, owed_file_body};
 use crate::storage::Db;
 
 pub struct NoteFiles {
@@ -112,6 +115,28 @@ impl NoteFiles {
             .read_blocking(move |conn| owed_file_body::owes(conn, &note_id))
     }
 
+    /// Whether the note's server body is still to be pulled ([`crate::sync::body_debt`]): a file
+    /// it owes cannot be taken before.
+    pub fn server_body_owed(&self, note_id: &str) -> Result<bool, StorageError> {
+        let note_id = note_id.to_owned();
+        self.db
+            .read_blocking(move |conn| crate::sync::body_debt::is_owed(conn, &note_id))
+    }
+
+    /// Which of `note_ids` still owe their server body ([`Self::server_body_owed`]), in one read.
+    pub fn server_bodies_owed(&self, note_ids: &[String]) -> Result<HashSet<String>, StorageError> {
+        let note_ids = note_ids.to_vec();
+        self.db.read_blocking(move |conn| {
+            let mut owed = HashSet::new();
+            for note_id in note_ids {
+                if crate::sync::body_debt::is_owed(conn, &note_id)? {
+                    owed.insert(note_id);
+                }
+            }
+            Ok(owed)
+        })
+    }
+
     /// Every live note that owes its file body, in id order.
     pub fn owed_file_bodies(&self) -> Result<Vec<String>, StorageError> {
         self.db.read_blocking(owed_file_body::list)
@@ -123,6 +148,25 @@ impl NoteFiles {
         let note_id = note_id.to_owned();
         self.db
             .call_blocking(move |conn| owed_file_body::clear(conn, &note_id))
+    }
+
+    /// Whether the note's file owes its record's aliases ([`owed_file_aliases`]).
+    pub fn owes_file_aliases(&self, note_id: &str) -> Result<bool, StorageError> {
+        let note_id = note_id.to_owned();
+        self.db
+            .read_blocking(move |conn| owed_file_aliases::owes(conn, &note_id))
+    }
+
+    /// Every note whose file owes its record's aliases, in id order.
+    pub fn owed_file_aliases(&self) -> Result<Vec<String>, StorageError> {
+        self.db.read_blocking(owed_file_aliases::list)
+    }
+
+    /// The file holds its record's aliases: the debt is paid. True when there was one.
+    pub fn clear_owed_file_aliases(&self, note_id: &str) -> Result<bool, StorageError> {
+        let note_id = note_id.to_owned();
+        self.db
+            .call_blocking(move |conn| owed_file_aliases::clear(conn, &note_id))
     }
 
     /// Whether the last read of the note's file found it large-file class
@@ -152,6 +196,44 @@ impl NoteFiles {
     /// Every note whose file may be behind its body ([`note_files::behind_bodies`]).
     pub fn behind_bodies(&self) -> Result<Vec<String>, StorageError> {
         self.db.read_blocking(note_files::behind_bodies)
+    }
+
+    /// Every live note and day no row names ([`note_files::unfiled_bodies`]).
+    pub fn unfiled_bodies(&self) -> Result<Vec<String>, StorageError> {
+        self.db.read_blocking(note_files::unfiled_bodies)
+    }
+
+    /// The record `id` when no row names it ([`note_files::unfiled`]).
+    pub fn unfiled(&self, id: &str) -> Result<Option<note_files::Unfiled>, StorageError> {
+        let id = id.to_owned();
+        self.db
+            .read_blocking(move |conn| note_files::unfiled(conn, &id))
+    }
+
+    /// The live markdown note or journal day `id` as its record reads now
+    /// ([`note_files::placed`]).
+    pub fn placed(&self, id: &str) -> Result<Option<note_files::Unfiled>, StorageError> {
+        let id = id.to_owned();
+        self.db
+            .read_blocking(move |conn| note_files::placed(conn, &id))
+    }
+
+    /// The write-back wrote the record's property `values` into the note's file
+    /// ([`properties::file_written`]).
+    pub fn file_properties_written(
+        &self,
+        id: &str,
+        values: Map<String, Value>,
+    ) -> Result<(), StorageError> {
+        let id = id.to_owned();
+        self.db
+            .call_blocking(move |conn| properties::file_written(conn, &id, values))
+    }
+
+    /// Whether a day's file must wait to be named ([`note_files::days_wait`]).
+    #[cfg(feature = "markdown")]
+    pub fn days_wait(&self) -> Result<bool, StorageError> {
+        self.db.read_blocking(note_files::days_wait)
     }
 
     /// [`note_files::mark_unmarked`], once the vault opened.

@@ -54,7 +54,9 @@ pub enum BodyRead {
 }
 
 /// The body for the file at `note_path`, whose body is `file_body` (read with the bytes the
-/// caller compared): the serializer restores the author's spelling from it. `embeds` is the
+/// caller compared): the serializer restores the author's spelling from it. `None` is a write
+/// with no file there (a kept note's restore and trash copy, a held day's first file): no
+/// spelling is restored and no mark is mapped against a file. `embeds` is the
 /// vault's image embed lookup for the proof parse, the one the body was seeded with. It runs
 /// while this database's writer is held, so it must not read this database.
 pub fn body_for_file(
@@ -62,7 +64,7 @@ pub fn body_for_file(
     converter: &Converter,
     note_id: &str,
     note_path: &str,
-    file_body: &str,
+    file_body: Option<&str>,
     embeds: &dyn EmbedResolver,
 ) -> Result<BodyRead, CrdtError> {
     if body_owner(conn, note_id)?.is_none() {
@@ -75,7 +77,7 @@ pub fn body_for_file(
         return Ok(BodyRead::BodyNotPulled);
     }
     let document = reads::document_of(conn, note_id)?;
-    let read_file_body = || Ok(Some(file_body.to_owned()));
+    let read_file_body = || Ok(file_body.map(str::to_owned));
     let options = SerializeOptions {
         note_path: Some(note_path),
         read_file_body: Some(&read_file_body),
@@ -83,9 +85,12 @@ pub fn body_for_file(
         ..SerializeOptions::default()
     };
     // `None` too when the author's spelling could not be restored from the file
-    // (`SourceRestoreOutcome::FileUnreadable`, `RestoreThrew`).
+    // (`SourceRestoreOutcome::FileUnreadable`, `RestoreThrew`), or when a suggestion has no
+    // place in the body: writing it would drop the suggestion and the text it replaced.
     let Some(body) = converter.serialize_note_body(&document, BODY_FRAGMENT, &options) else {
-        return Ok(BodyRead::Failed("the body did not serialize"));
+        return Ok(BodyRead::Failed(
+            "the body did not serialize, or a suggestion it holds has no place in it",
+        ));
     };
     // One structural check: the read keeps every element, text run, mark and attribute. A
     // node the schema cannot build and an element the read drops both fail it.

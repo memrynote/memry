@@ -436,7 +436,7 @@ describe('old-client compat matrix', () => {
       await buildItem({ id: 'note-1', type: 'note', clock: { [DEVICE_A]: 1 } })
     ])
 
-    // `outcomes`, `committedItems` and `committedAtMs` are internal: the route
+    // `outcomes`, `committedItems`, `committedAtMs` and `purgeRetry` are internal: the route
     // builds the push response from the other four, field by field.
     expect(Object.keys(first).toSorted()).toEqual([
       'accepted',
@@ -444,6 +444,7 @@ describe('old-client compat matrix', () => {
       'committedItems',
       'maxCursor',
       'outcomes',
+      'purgeRetry',
       'rejected',
       'serverTime'
     ])

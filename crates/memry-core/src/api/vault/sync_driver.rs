@@ -8,7 +8,7 @@ use crate::api::auth::AuthSession;
 use crate::api::errors::{StorageError, SyncError};
 use crate::api::vault::Vault;
 use crate::seams::reachability::Reachability;
-use crate::sync::driver::{DriverConfig, DriverParts, SyncDriver};
+use crate::sync::driver::{ApplyObserver, DriverConfig, DriverParts, SyncDriver};
 use crate::sync::engine::PassSeed;
 use crate::sync::{account_binding, server_vault};
 
@@ -22,6 +22,23 @@ impl Vault {
         let id = id.to_owned();
         self.db
             .call_blocking(move |conn| server_vault::bind(conn, &id))
+    }
+
+    /// Makes the records this vault stated its local id in state the bound server id, once
+    /// ([`server_vault::restamp`], #5535). The shell calls it whenever the vault is bound for
+    /// sync, before the first push; `device_id` ticks each record's clock. Returns how many it
+    /// restamped.
+    #[doc(hidden)]
+    pub fn restamp_record_vaults(&self, device_id: &str) -> Result<usize, StorageError> {
+        let local = self.id.clone();
+        let device_id = device_id.to_owned();
+        let now_ms = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |elapsed| {
+                i64::try_from(elapsed.as_millis()).unwrap_or(i64::MAX)
+            });
+        self.db
+            .call_blocking(move |conn| server_vault::restamp(conn, &local, &device_id, now_ms))
     }
 
     /// The bound server vault id, if any.
@@ -65,7 +82,8 @@ impl Vault {
     }
 
     /// A [`SyncDriver`] over this vault and `session`. `seeds` run after the
-    /// driver's own tag and lock seeds. Its passes share the vault's one pass
+    /// driver's own tag and lock seeds; `observers` hear every page it applies,
+    /// the re-pull its open runs included. Its passes share the vault's one pass
     /// gate with every other driver and [`crate::api::sync::VaultSync`] of it.
     /// Refused while no server vault is bound.
     #[doc(hidden)]
@@ -75,6 +93,7 @@ impl Vault {
         reachability: Arc<dyn Reachability>,
         config: DriverConfig,
         seeds: Vec<Arc<dyn PassSeed>>,
+        observers: Vec<Arc<dyn ApplyObserver>>,
     ) -> Result<SyncDriver, SyncError> {
         SyncDriver::open(DriverParts {
             db: self.db.clone(),
@@ -84,6 +103,9 @@ impl Vault {
             config,
             seeds,
             pass_gate: crate::api::sync::pass_gate(&self.id),
+            observers,
+            // Beside `data.db`, as `VaultSync::first_sync` holds it.
+            spill_dir: Some(std::path::Path::new(&self.directory).join("pack-spill")),
         })
         .await
     }

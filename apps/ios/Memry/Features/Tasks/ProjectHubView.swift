@@ -17,6 +17,7 @@ struct ProjectHubView: View {
     let store: TasksStore
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(TasksRouter.self) private var router: TasksRouter?
     @State private var hub = ProjectHubData()
     @State private var picker: ProjectLinkPickerMode?
     @State private var editing: ProjectEditorTarget?
@@ -94,7 +95,7 @@ struct ProjectHubView: View {
         .overlay(alignment: .bottom) {
             HStack(alignment: .center, spacing: Tokens.Space.medium) {
                 TasksToast(store: store)
-                if composer == nil {
+                if composer == nil, router?.tasksSplit != true {
                     FloatingAddButton(
                         label: TasksCopy.addTask,
                         hint: TasksCopy.addButtonHint,
@@ -134,6 +135,11 @@ struct ProjectHubView: View {
 
     @ToolbarContentBuilder
     private func toolbar(_ project: ProjectItem) -> some ToolbarContent {
+        if router?.tasksSplit == true {
+            ToolbarItem(placement: .topBarTrailing) {
+                TaskAddToolbarButton { composer = TaskComposerRequest(projectId: project.id) }
+            }
+        }
         ToolbarItem(placement: .primaryAction) {
             Menu {
                 Button(Copy.editProject, systemImage: "pencil") {

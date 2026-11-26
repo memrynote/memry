@@ -1232,6 +1232,10 @@
     "loadingAria": "Laster inn enheter",
     "none": "Ingen enheter koblet til ennå",
     "linkNew": "Koble til ny enhet",
+    "linkNeedsPlan": {
+      "title": "Tilkobling krever et synkroniseringsabonnement",
+      "description": "En tilkoblet enhet ser bare notatene dine når synkronisering er på. Uten abonnement logger du på der med gjenopprettingsfrasen din, og enheten beholder sitt eget hvelv."
+    },
     "thisDevice": "Denne enheten",
     "lastSeen": "Sist sett for {time} siden",
     "linked": "Koblet til for {time} siden",
@@ -1398,6 +1402,7 @@
       "selectModel": "Velg en modell",
       "apiKey": "API-nøkkel",
       "apiKeyDescription": "Lagret lokalt, sendes bare til leverandøren",
+      "apiKeyKeychainDescription": "Lagret i nøkkelringen i operativsystemet, sendes bare til leverandøren",
       "apiKeyPlaceholder": "Skriv inn API-nøkkel for {provider}",
       "ollamaUrl": "Ollama-URL",
       "ollamaUrlDescription": "Lokal serveradresse",
@@ -2238,6 +2243,10 @@
         "prevVault": {
           "label": "Forrige hvelv",
           "description": "Gå til forrige hvelv i sidefeltet"
+        },
+        "todayJournal": {
+          "label": "Dagens dagbok",
+          "description": "Åpne dagboken på dagens innlegg"
         }
       },
       "tabs": {
@@ -2431,7 +2440,8 @@
         "vault-binding": "Nøklene til denne enheten er gjenopprettet, men denne vaulten er ikke satt opp til å synkroniseres med kontoen din ennå. Velg hvordan den skal synkroniseres i synkroniseringsmenyen.",
         "vault-foreign": "Nøklene til denne enheten er gjenopprettet, men denne vaulten tilhører en annen konto. Den forblir lokal på denne enheten.",
         "entitlement": "Nøklene til denne enheten er gjenopprettet, men synkronisering krever en aktiv Sync-plan.",
-        "unavailable": "Nøklene til denne enheten er gjenopprettet, men synkroniseringen kunne ikke starte. Den prøver igjen; start Memry på nytt hvis det ikke skjer."
+        "unavailable": "Nøklene til denne enheten er gjenopprettet, men synkroniseringen kunne ikke starte. Den prøver igjen; start Memry på nytt hvis det ikke skjer.",
+        "unavailable-restart": "Nøklene til denne enheten er gjenopprettet, men synkroniseringen kunne ikke starte. Start Memry på nytt; hvis synkroniseringen fortsatt ikke starter, logg ut og logg inn igjen."
       }
     },
     "pagesSettingsAiInlineSection": {

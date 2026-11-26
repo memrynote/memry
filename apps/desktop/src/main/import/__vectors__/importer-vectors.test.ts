@@ -32,12 +32,32 @@ import type { NoteCreateInput } from '../../vault/notes-crud'
 import type * as IdModule from '../../lib/id'
 import type * as AttachmentsModule from '../../vault/attachments'
 import type * as FsPromises from 'fs/promises'
-import type { Importer, ImportInput } from '../types'
+import type * as NotesCrudModule from '../../vault/notes-crud'
+import type * as JournalModule from '../../vault/journal'
+import type { Importer, ImportContext, ImportInput, ImportSummary } from '../types'
 import { createImportContext } from '../import-context'
+import { bearImporter } from '../bear/bear-importer'
 import { markdownImporter } from '../markdown/markdown-importer'
 import { csvImporter } from '../csv/csv-importer'
+import { googleKeepImporter } from '../google-keep/google-keep-importer'
+import { roamImporter } from '../roam/roam-importer'
+import { notePlanImporter, runNotePlanImport } from '../noteplan/noteplan-importer'
+import type { NotePlanTaskDeps } from '../noteplan/noteplan-importer'
+import { raindropImporter, runRaindropImport } from '../raindrop/raindrop-importer'
+import type { ApplyDeps as RaindropDeps } from '../raindrop/raindrop-importer'
 
-const rec = vi.hoisted(() => ({ timeline: [] as unknown[], noteCounter: 0 }))
+interface StoredJournal {
+  content: string
+  tags: string[]
+  properties: Record<string, unknown>
+}
+
+const rec = vi.hoisted(() => ({
+  timeline: [] as unknown[],
+  noteCounter: 0,
+  taskCounter: 0,
+  journals: {} as Record<string, StoredJournal>
+}))
 
 vi.mock('../../lib/window-broadcast', () => ({
   broadcastToAllWindows: (_channel: string, payload: unknown) => {
@@ -55,6 +75,41 @@ vi.mock('../_shared/imported-note', () => ({
     rec.timeline.push({ op: 'createNote', input })
     return {}
   }
+}))
+
+// NotePlan creates its notes without `createImportedNote`'s checklist step.
+vi.mock('../../vault/notes-crud', async (importOriginal) => ({
+  ...(await importOriginal<typeof NotesCrudModule>()),
+  createNote: async (input: NoteCreateInput) => {
+    rec.timeline.push({ op: 'createNoteAsWritten', input })
+    return {}
+  }
+}))
+
+vi.mock('../../journal/create-entry', () => ({
+  resolveJournalEntryId: (date: string) => `j${date}`,
+  createJournalEntry: async (input: {
+    date: string
+    content: string
+    tags?: string[]
+    properties?: Record<string, unknown>
+  }) => {
+    rec.timeline.push({
+      op: 'createJournalEntry',
+      date: input.date,
+      tags: input.tags ?? [],
+      properties: input.properties
+        ? Object.entries(input.properties).map(([key, value]) => [key, tagValue(value)])
+        : null,
+      content: input.content
+    })
+    return {}
+  }
+}))
+
+vi.mock('../../vault/journal', async (importOriginal) => ({
+  ...(await importOriginal<typeof JournalModule>()),
+  readJournalEntry: async (date: string) => rec.journals[date] ?? null
 }))
 
 vi.mock('../../vault/attachments', async (importOriginal) => {
@@ -106,9 +161,60 @@ interface VectorCase {
   /** Picked paths, relative to the source's `input/` folder. */
   sources: string[]
   preview?: boolean
+  /** NotePlan: the Inbox project's id, `null` for none. Default `inbox`. */
+  inboxProjectId?: string | null
+  /** NotePlan: the `tasks.nestedSubtasks` setting. Default true. */
+  nestedSubtasks?: boolean
+  /** NotePlan: the journal entries `readJournalEntry` finds, by date. */
+  journals?: Record<string, StoredJournal>
 }
 
-const SOURCES: { source: string; importer: Importer; cases: VectorCase[] }[] = [
+/** NotePlan's task side, recorded: ids come from a counter. */
+const recordingTaskDeps = (c: VectorCase): NotePlanTaskDeps => ({
+  async createTask(a) {
+    rec.timeline.push({ op: 'createTask', ...a })
+    return { success: true, task: { id: `task-${++rec.taskCounter}` } }
+  },
+  async completeTask(a) {
+    rec.timeline.push({
+      op: 'completeTask',
+      id: a.id,
+      completedAt: a.completedAt ?? null,
+      recordOnly: a.recordOnly ?? false
+    })
+    return {}
+  },
+  async archiveTask(id) {
+    rec.timeline.push({ op: 'archiveTask', id })
+    return {}
+  },
+  getInboxProjectId: () =>
+    c.inboxProjectId === undefined ? 'inbox' : (c.inboxProjectId ?? undefined),
+  nestedSubtasks: () => c.nestedSubtasks ?? true
+})
+
+/** Raindrop's `saveBookmark`, recorded. */
+const recordingBookmarks: RaindropDeps = {
+  saveBookmark(item) {
+    rec.timeline.push({ op: 'saveBookmark', ...item })
+  }
+}
+
+const SOURCES: {
+  source: string
+  importer: Importer
+  /** Runs one case; the importer's own `run` when absent. */
+  run?: (input: ImportInput, ctx: ImportContext, c: VectorCase) => Promise<unknown>
+  cases: VectorCase[]
+}[] = [
+  {
+    source: 'bear',
+    importer: bearImporter,
+    cases: [
+      { name: 'backup', sources: ['export.bear2bk'] },
+      { name: 'two-zips', sources: ['export.bear2bk', 'more.zip'] }
+    ]
+  },
   {
     source: 'markdown',
     importer: markdownImporter,
@@ -131,6 +237,63 @@ const SOURCES: { source: string; importer: Importer; cases: VectorCase[] }[] = [
         sources: ['edge.csv', 'crlf.csv', 'empty.csv', 'keys.csv'],
         preview: true
       }
+    ]
+  },
+  {
+    source: 'google-keep',
+    importer: googleKeepImporter,
+    cases: [
+      { name: 'takeout', sources: ['Takeout.zip'] },
+      {
+        name: 'loose',
+        sources: ['loose/Loose note.json', 'loose/bad.json', 'loose/readme.txt', 'loose/array.json']
+      },
+      { name: 'mixed', sources: ['loose/Loose note.json', 'Takeout.zip'] }
+    ]
+  },
+  {
+    source: 'noteplan',
+    importer: notePlanImporter,
+    run: (input, ctx, c) => runNotePlanImport(input, ctx, recordingTaskDeps(c)),
+    cases: [
+      { name: 'sample', sources: ['sample'] },
+      {
+        name: 'edge',
+        sources: ['edge'],
+        journals: {
+          '2026-01-01': {
+            content: '  My own words\n',
+            tags: ['mine', 'daily'],
+            properties: { weather: 'sun', mood: 'calm' }
+          }
+        }
+      },
+      { name: 'flat-subtasks', sources: ['bare'], nestedSubtasks: false },
+      { name: 'no-inbox', sources: ['bare', 'sample/Notes'], inboxProjectId: null }
+    ]
+  },
+  {
+    source: 'raindrop',
+    importer: raindropImporter,
+    // `raindropImporter.run` with the recording deps, and `<now>` as the run's clock: the Rust
+    // sink fills in the import time where the plan falls back to it.
+    run: async (input, ctx) => {
+      ctx.setPhase('importing')
+      ctx.status(IMPORT_STATUS.raindropImporting)
+      await runRaindropImport(input.sourcePaths, recordingBookmarks, ctx, '<now>')
+    },
+    cases: [
+      { name: 'export', sources: ['export.csv'] },
+      { name: 'many', sources: ['edge.csv', 'bad-header.csv', 'empty.csv', 'clean.csv'] },
+      { name: 'preview', sources: ['clean.csv', 'bad-header.csv', 'empty.csv'], preview: true }
+    ]
+  },
+  {
+    source: 'roam',
+    importer: roamImporter,
+    cases: [
+      { name: 'graph', sources: ['graph.json'] },
+      { name: 'two-files', sources: ['not-pages.json', 'graph.json', 'edge.json'] }
     ]
   }
 ]
@@ -173,7 +336,12 @@ function setTimes(dir: string): void {
   }
 }
 
-async function runCase(source: string, importer: Importer, c: VectorCase): Promise<unknown> {
+async function runCase(
+  source: string,
+  importer: Importer,
+  c: VectorCase,
+  run?: (input: ImportInput, ctx: ImportContext, c: VectorCase) => Promise<unknown>
+): Promise<unknown> {
   const work = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-import-vectors-'))
   try {
     fs.cpSync(path.join(VECTORS, source, 'input'), work, { recursive: true })
@@ -188,23 +356,30 @@ async function runCase(source: string, importer: Importer, c: VectorCase): Promi
 
     rec.timeline = []
     rec.noteCounter = 0
+    rec.taskCounter = 0
+    rec.journals = c.journals ?? {}
     const controller = new AbortController()
     const input: ImportInput = { sourcePaths: c.sources.map((s) => path.join(work, s)) }
     const preview = c.preview ? await importer.preview?.(input, controller.signal) : undefined
     const ctx = createImportContext('vector', controller.signal)
-    await importer.run(input, ctx)
-    const summary = ctx.toSummary()
+    await (run ? run(input, ctx, c) : importer.run(input, ctx))
+    // A failed item names the picked file; a `done` snapshot an importer emits carries it too.
+    const unrootSummary = (summary: ImportSummary): ImportSummary => ({
+      ...summary,
+      failed: summary.failed.map(({ item, error }) => ({ item: unroot(item), error }))
+    })
     return {
       ...c,
       ...(preview ? { preview } : {}),
       timeline: rec.timeline.map((entry) => {
-        const e = entry as { op: string; input?: NoteCreateInput }
-        return e.op === 'createNote' && e.input ? noteRecord(e.input) : entry
+        const e = entry as { op: string; input?: NoteCreateInput; summary?: ImportSummary }
+        if (e.op === 'createNote' && e.input) return noteRecord(e.input)
+        if (e.op === 'createNoteAsWritten' && e.input) {
+          return { ...(noteRecord(e.input) as object), op: 'createNoteAsWritten' }
+        }
+        return e.summary ? { ...e, summary: unrootSummary(e.summary) } : entry
       }),
-      summary: {
-        ...summary,
-        failed: summary.failed.map(({ item, error }) => ({ item: unroot(item), error }))
-      }
+      summary: unrootSummary(ctx.toSummary())
     }
   } finally {
     fs.rmSync(work, { recursive: true, force: true })
@@ -234,10 +409,10 @@ describe('importer vectors', () => {
     expect(fs.readFileSync(file, 'utf8'), STALE).toBe(text)
   })
 
-  for (const { source, importer, cases } of SOURCES) {
+  for (const { source, importer, run, cases } of SOURCES) {
     it(`${source}/expected.json matches the TypeScript importer`, async () => {
       const recorded: unknown[] = []
-      for (const c of cases) recorded.push(await runCase(source, importer, c))
+      for (const c of cases) recorded.push(await runCase(source, importer, c, run))
       const file = path.join(VECTORS, source, 'expected.json')
       const text = vectorText(file, { source, cases: recorded })
       expect(fs.readFileSync(file, 'utf8'), STALE).toBe(text)

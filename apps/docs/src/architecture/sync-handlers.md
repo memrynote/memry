@@ -86,7 +86,32 @@ setting everywhere. Before #2383 settings picked the larger single tick and kept
 peer still on that rule converges through the re-queue a concurrent merge triggers. The shared
 `settings-merge.json` vectors run against both desktop and the Rust core, including the re-queue
 flag; since #2399 the Rust core also keeps the local value on an absent winner and re-queues after a
-concurrent merge.
+concurrent merge. Since #5506 both also re-queue when a local path clock is ahead of the pulled
+one: a peer can push a payload it built before pulling this device's tick, and the server, with no
+record clock for settings, stores it whole. Without the re-queue the device that holds the newer
+value is the only one that ever has it. A merge where every local clock is equal or behind queues
+nothing, so pulling back your own push does not loop.
+
+Journals keep the document-level rule for every key but `tags` and `properties`, which merge per
+unit since #5508 (chapter 06 §6.12): `mergeJournalFields()` (`journal-merge.ts`) decides each
+`tags.<tagKey>` and `properties.<key>` unit by its claims, and a winner with no value removes the
+unit, so a removed tag stays removed. A unit's clock is the document clock its writer last wrote it
+at, and a side's unit clocks count only while `fieldClocksAt` equals its `clock`. An older build keeps
+the keys but ticks the clock past the stamp, so its payload is read whole at its clock. An untrusted
+side, local or remote, clocks no unit, and its clock is its floor on every unit. A floor beats only a
+claim it strictly dominates, so a concurrent write its writer never saw survives. A record's clock
+never becomes a unit clock: a day applied whole from an untrusted record is kept with no unit clocks
+and the record's clock as `fieldClocksFloor`, which covers every unit `fieldClocks` does not name.
+The next edit carries that floor, so a device that still holds a tag the older build removed drops
+it too (#5572). A merge keeps, per unit no stamped write won, the floor its value supersedes, and
+stores it in `fieldFloors` where it differs from the record floor, so the record floor never claims
+the losing side's copy. A merge that changed the remote's fields is stored at the union clock ticked
+for this device and re-queued (`'conflict'` on desktop); one that holds the remote's fields is stored
+at the union clock and not pushed. Desktop diffs the day file against the last synced fields it keeps
+in `sync_state` (`journal-fields.ts`); a day with no such base, last synced by an older build, is
+pushed whole without unit clocks until a pull writes the base. The Rust core restamps in
+`apply_local_edit_in`. The shared `journal-merge.json` and `journal-merge-sim.json` vectors run
+against both.
 
 Agent message sync is append-only. If a message id already exists locally, the handler treats the
 remote item as idempotent instead of overwriting a terminal message.
@@ -187,6 +212,20 @@ local clock is concurrent with the tombstone, or the last confirmed body push la
 `deletedAt` minus 60 s. When one holds and the body is not blank, it inserts an inbox `note` capture
 with the body on the page db, queues its create, and the delete then runs as before. The Rust core
 mirrors the rule in `crates/memry-core/src/sync/delete_keep.rs`.
+
+When a pulled delete applies, `ItemApplier` (`apps/desktop/src/main/sync/apply-item.ts`) drops the
+item's queued non-delete rows in the same transaction (#5428). Pushed, such a row is the frozen
+pre-delete payload sent as an `update`; the server stores it over the tombstone, and for a type
+without a required clock or a tombstone stored without one nothing refuses it, so the item comes
+back on every device. A skipped delete (local clock after the tombstone) leaves the row queued, so a
+re-create is still sent. A delete skipped because the item has no local row drops the rows too: an
+older build applied that delete and kept the edit, which would push frozen. Settings are excluded:
+they live in `config.json`, so the handler cannot tell a missing row. When that delete is never
+re-delivered, the push retires the edit instead (`engine/push-undelete-guard.ts`): a non-delete row
+whose local row is missing, with a recorded tombstone clock, or a soft-deleted `tag_category` or
+`canvas` row, whose `clock` holds the applied delete's clock, is removed from the queue and logged
+unless the edit's clock happens after that delete. Core does the same in `push.rs` `build`. The Rust core does the same in `outbox::drop_upserts`. A pulled `settings`
+delete is skipped: no client issues one, and applying it would wipe every preference.
 
 That mirrors the server. `shouldRejectResurrection` (`apps/sync-server/src/services/sync.ts`) refuses
 any non-delete push against a tombstoned id unless the incoming clock happens strictly after the
