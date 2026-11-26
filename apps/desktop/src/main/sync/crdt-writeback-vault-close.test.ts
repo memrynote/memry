@@ -456,20 +456,34 @@ async function restart(): Promise<void> {
   await getCrdtProvider().initPersistence()
 }
 
-/** Types into the day while the store stalls, and lets its pass write `file`. */
-async function typeIntoStalledStore(id: string, text: string, file: string): Promise<Hold> {
-  const storing = holdNextStoreUpdate()
-  type(id, text)
-  await storing.reached
+/**
+ * Waits until the day's pass wrote `text` to `file` and recorded that file in
+ * the row. The pass marks the row before its write (write-ahead mark) and
+ * records the file's hash only once the write resolves, so neither the bytes
+ * in the file nor the mark says the pass is done.
+ */
+async function waitForRecordedWrite(id: string, text: string, file: string): Promise<void> {
   // The pass's file write is real I/O: a loaded runner needs more event-loop
   // turns than a fixed count, so wait on real time and step the fake clock.
   await vi.waitFor(
     async () => {
       await tick()
-      expect(fs.readFileSync(file, 'utf8')).toContain(text.trim())
+      const raw = fs.readFileSync(file, 'utf8')
+      expect(raw).toContain(text.trim())
+      expect(getNoteCacheById(database.getIndexDatabase(), id)?.contentHash).toBe(
+        generateContentHash(raw)
+      )
     },
     { timeout: 10_000, interval: 10 }
   )
+}
+
+/** Types into the day while the store stalls, and lets its pass write and record `file`. */
+async function typeIntoStalledStore(id: string, text: string, file: string): Promise<Hold> {
+  const storing = holdNextStoreUpdate()
+  type(id, text)
+  await storing.reached
+  await waitForRecordedWrite(id, text, file)
   return storing
 }
 
@@ -927,15 +941,8 @@ describe('a CRDT store that stalls while the vault closes (#5698)', () => {
   async function typeIntoFailedStore(id: string, file: string, text = ' More.') {
     const disk = failStore()
     type(id, text)
-    // The pass marks the row after its write lands: wait for both.
-    await vi.waitFor(
-      async () => {
-        await tick()
-        expect(fs.readFileSync(file, 'utf8')).toContain(text.trim())
-        expect(getNoteCacheById(vaultA.indexDb.db, id)?.pendingWriteHash).toMatch(/^unstored-file/)
-      },
-      { timeout: 10_000, interval: 10 }
-    )
+    await waitForRecordedWrite(id, text, file)
+    expect(getNoteCacheById(vaultA.indexDb.db, id)?.pendingWriteHash).toMatch(/^unstored-file/)
     await Promise.all(store.queues)
     return disk
   }
