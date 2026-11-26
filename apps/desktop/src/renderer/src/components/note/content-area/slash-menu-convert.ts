@@ -43,7 +43,7 @@ const TURN_INTO_TYPES: ReadonlySet<string> = new Set(TURN_INTO_TARGETS.map((targ
 // `type` is optional so BlockNote's own `updateBlock`, which takes a partial
 // block, fits this shape.
 type ConvertEditor = {
-  getTextCursorPosition(): { block: { id: string; type: string } }
+  getTextCursorPosition(): { block: { id: string; type: string; content?: unknown } }
   updateBlock(block: string, update: Partial<BlockSpec>): unknown
 }
 
@@ -52,8 +52,9 @@ type Row = { id: string; onItemClick: () => void }
 /**
  * `rows` with each converting row's click changed to turn the caret's block
  * into the row's type, keeping its text and children. A row that is not in
- * the converting list, or a caret in a block Turn into does not offer, runs
- * the row's own click.
+ * the converting list, a caret in a block Turn into does not offer, or an
+ * empty line (which BlockNote's own click already converts) runs the row's
+ * own click.
  */
 export function convertCurrentBlockOnPick<T extends Row>(editor: ConvertEditor, rows: T[]): T[] {
   return rows.map((row) => {
@@ -63,7 +64,8 @@ export function convertCurrentBlockOnPick<T extends Row>(editor: ConvertEditor, 
       ...row,
       onItemClick: () => {
         const current = editor.getTextCursorPosition().block
-        if (!TURN_INTO_TYPES.has(current.type)) return row.onItemClick()
+        const empty = Array.isArray(current.content) && current.content.length === 0
+        if (empty || !TURN_INTO_TYPES.has(current.type)) return row.onItemClick()
         editor.updateBlock(current.id, spec)
       }
     }
