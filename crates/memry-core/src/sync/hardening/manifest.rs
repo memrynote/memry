@@ -182,6 +182,7 @@ impl ManifestCheck {
         if let Some(last) = asked.last() {
             *self.last_asked() = Some(last.clone());
         }
+        let mut pulled_all = true;
         if !outcome.server_only.is_empty() {
             let ids: Vec<String> = outcome
                 .server_only
@@ -189,12 +190,29 @@ impl ManifestCheck {
                 .map(|(_, id)| id.clone())
                 .collect();
             pull.fetch_ids(&ids).await?;
+            let wanted = outcome.server_only.clone();
+            let unheld = pull
+                .db()
+                .call(move |conn| {
+                    let held = held(conn)?;
+                    Ok(wanted.iter().filter(|key| !held.contains(*key)).count())
+                })
+                .await?;
+            if unheld > 0 {
+                eprintln!(
+                    "memry-core: {unheld} listed record(s) are still not held after the pull"
+                );
+            }
+            pulled_all = unheld == 0;
         }
         if asked.is_empty() {
             // Only a check that left nothing to retry founds a watermark: a
-            // blocked row may be pulled once its block lifts, and an asked
-            // row is asked again.
-            if let Some(top) = listing.top.filter(|_| !blocked) {
+            // blocked row may be pulled once its block lifts, an asked row is
+            // asked again, and a listed row the pull left unheld is listed
+            // again. Held is read back from `sync_items`, not the report, so
+            // no answer the report does not count can skip a row. A row held
+            // corrupt is refetched by `super::corrupt`.
+            if let Some(top) = listing.top.filter(|_| !blocked && pulled_all) {
                 let next = Watermark {
                     v: FORMAT_VERSION,
                     vault,
@@ -462,10 +480,7 @@ fn diff(
     now_ms: i64,
     every_row: bool,
 ) -> Result<(ManifestOutcome, Keys, bool), StorageError> {
-    let held: BTreeSet<(String, String)> = keys(conn, "SELECT item_type, item_id FROM sync_items")?
-        .iter()
-        .flat_map(|(item_type, id)| spellings(item_type, id))
-        .collect();
+    let held = held(conn)?;
     let mut blocked: Vec<(String, String)> = refused_items::entries(conn)?
         .into_iter()
         .map(|item| (item.item_type, item.item_id))
@@ -545,6 +560,14 @@ fn diff(
         unknown,
         !left_alone.is_empty(),
     ))
+}
+
+/// Every local row, of any state, in both spellings.
+fn held(conn: &Connection) -> Result<BTreeSet<(String, String)>, StorageError> {
+    Ok(keys(conn, "SELECT item_type, item_id FROM sync_items")?
+        .iter()
+        .flat_map(|(item_type, id)| spellings(item_type, id))
+        .collect())
 }
 
 fn log_server_only(server_only: &[(String, String)]) {

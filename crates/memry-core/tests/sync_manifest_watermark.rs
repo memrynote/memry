@@ -340,6 +340,49 @@ async fn a_check_that_must_ask_about_a_note_founds_no_watermark() {
     assert!(stored(&db).expect("the token").starts_with("pending:"));
 }
 
+/// A check from the watermark lists `t9` at 57 and `/sync/pull` answers
+/// `answer`, which leaves `t9` unheld: the watermark stays before `t9`, and the
+/// next check lists every row and pulls `t9` again.
+async fn an_unheld_pull_keeps_the_row_listed(answer: &str) {
+    let at = now_ms();
+    let (db, _) = checked_vault(at).await;
+    reopen_check(
+        &db,
+        vec![&listed(&[("task", "t9", 57)]), answer],
+        at + MINUTE_MS,
+    )
+    .await;
+    assert!(
+        stored(&db).expect("the token").starts_with("pending:"),
+        "{answer}"
+    );
+
+    let pulled = json!({ "items": [envelope("t9", "task")] }).to_string();
+    let transport = reopen_check(
+        &db,
+        vec![
+            &listed(&[("task", "t1", 40), ("task", "t2", 41), ("task", "t9", 57)]),
+            &pulled,
+        ],
+        at + 2 * MINUTE_MS,
+    )
+    .await;
+
+    assert_eq!(transport.calls_to("&cursor=0").len(), 1, "{answer}");
+    assert_eq!(transport.calls_to("/sync/pull").len(), 1, "{answer}");
+    assert_eq!(watermark(&db).cursor, 57);
+}
+
+#[tokio::test]
+async fn a_pull_that_serves_nothing_never_moves_the_watermark_past_the_row() {
+    an_unheld_pull_keeps_the_row_listed(r#"{"items":[]}"#).await;
+}
+
+#[tokio::test]
+async fn a_pull_that_serves_an_unreadable_entry_never_moves_the_watermark_past_the_row() {
+    an_unheld_pull_keeps_the_row_listed(r#"{"items":[{"id":"t9"}]}"#).await;
+}
+
 /// Through the desktop driver: a reopen reads the record feed from its
 /// cursor, which applies a create, a change and a delete made while the app
 /// was closed, and lists the manifest from the watermark in one request.
