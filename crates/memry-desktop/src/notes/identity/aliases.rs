@@ -7,10 +7,12 @@
 //! `vault/note-sync.ts` and `vault/journal.ts`). An alias the record lacks is pushed with it, so
 //! a pull of that record never writes it out of the file, and it resolves wiki-links. The core
 //! normalizes the list against the title or the day's date, and an unchanged list writes nothing,
-//! so a body edit queues no push ([`NotesWriter::file_aliases`]).
+//! so a body edit queues no push ([`NotesWriter::file_aliases`]). A file that owes its record's
+//! names ([`memry_core::domain::owed_file_aliases`]) answers with the record's list until it
+//! holds it or its own list changes.
 
 use memry_core::api::notes_write::NotesWriter;
-use memry_core::domain::notes::MatchedAliases;
+use memry_core::domain::notes::{EditedAliases, MatchedAliases};
 use memry_core::markdown::frontmatter::{YamlValue, gray_matter_data};
 
 use super::SCOPE;
@@ -24,7 +26,12 @@ use crate::vault::note_file::NoteFile;
 /// with no `aliases` key, which says nothing of them; an explicit `aliases: []` is the file's
 /// answer, an empty list. `None` for a block that does not parse or is not a map.
 fn of_file(file: &NoteFile) -> Option<Option<Vec<String>>> {
-    match file.split().block.map(gray_matter_data) {
+    declared(file.split().block)
+}
+
+/// [`of_file`] of a file's frontmatter `block`, `None` for a file with no block.
+pub(crate) fn declared(block: Option<&str>) -> Option<Option<Vec<String>>> {
+    match block.map(gray_matter_data) {
         None | Some(Ok(YamlValue::Null)) => Some(None),
         Some(Ok(YamlValue::Map(map))) => Some(map.contains_key("aliases").then(|| aliases(&map))),
         Some(_) => None,
@@ -79,15 +86,17 @@ pub(super) fn found(writer: &NotesWriter, id: &str, file: &NoteFile, matched: Op
 }
 
 /// An edit outside the app replaced the file of the note or day `note_id`: its record takes the
-/// file's `aliases`. A frontmatter that does not parse, or is not a map, says nothing of them:
-/// the record stays as it was.
+/// file's `aliases`, a missing key an empty list. A frontmatter that does not parse, or is not a
+/// map, says nothing of them: the record stays as it was. So does a file that owes its record's
+/// names and still holds the list it had then, an edit of its body alone
+/// ([`NotesWriter::edited_file_aliases`]): the write-back writes them.
 pub(super) fn edited(
     writer: &NotesWriter,
     note_id: &str,
     file: &NoteFile,
 ) -> Result<(), IdentityError> {
     let names = match of_file(file) {
-        Some(names) => names.unwrap_or_default(),
+        Some(names) => names,
         None => {
             tracing::info!(
                 scope = SCOPE,
@@ -97,7 +106,7 @@ pub(super) fn edited(
             return Ok(());
         }
     };
-    if !writer.file_aliases(note_id, &names)? {
+    if writer.edited_file_aliases(note_id, names.as_deref())? == EditedAliases::NoNote {
         tracing::warn!(
             scope = SCOPE,
             note_id,
