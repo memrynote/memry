@@ -796,22 +796,34 @@ function tauriSplit(matrix) {
 const linuxRust = [
   'ubuntu-22.04 lint',
   'ubuntu-22.04 seams',
-  'ubuntu-22.04 tests 1/2',
-  'ubuntu-22.04 tests 2/2'
+  'ubuntu-22.04 tests 1/6',
+  'ubuntu-22.04 tests 2/6',
+  'ubuntu-22.04 tests 3/6',
+  'ubuntu-22.04 tests 4/6',
+  'ubuntu-22.04 tests 5/6',
+  'ubuntu-22.04 tests 6/6'
 ]
 const windowsRust = [
   'windows-2022 lint',
   'windows-2022 seams',
-  'windows-2022 tests 1/2',
-  'windows-2022 tests 2/2'
+  'windows-2022 tests 1/6',
+  'windows-2022 tests 2/6',
+  'windows-2022 tests 3/6',
+  'windows-2022 tests 4/6',
+  'windows-2022 tests 5/6',
+  'windows-2022 tests 6/6'
 ]
 // Off the PR and merge-queue path: the post-merge schedule, pushes and dispatch.
 const perfRust = ['ubuntu-22.04 perf']
 const armRust = [
   'windows-11-arm lint',
   'windows-11-arm seams',
-  'windows-11-arm tests 1/2',
-  'windows-11-arm tests 2/2',
+  'windows-11-arm tests 1/6',
+  'windows-11-arm tests 2/6',
+  'windows-11-arm tests 3/6',
+  'windows-11-arm tests 4/6',
+  'windows-11-arm tests 5/6',
+  'windows-11-arm tests 6/6',
   'windows-11-arm models'
 ]
 // linux-x64 and windows-x64 run their e2e specs in four shards of one build (tauri-builds.jq).

@@ -12,8 +12,9 @@ import { pathToFileURL } from 'node:url'
 
 export const QUARANTINE = new URL('../crates/.config/quarantine.toml', import.meta.url)
 export const MAX_DAYS = 30
-// The packages of rust-ci.yml's main Test step (`cargo nextest run -p ...`), the
-// only step the filter reaches. check-quarantine.test.mjs checks that the two agree.
+// The packages of rust-ci.yml's nextest suite (test-archive's `cargo nextest archive -p ...`, run by
+// test-partitions, and the macOS Test step), the only runs the filter reaches.
+// check-quarantine.test.mjs checks that they agree.
 export const PACKAGES = [
   'memry-core',
   'memry-desktop',

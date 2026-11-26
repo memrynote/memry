@@ -108,6 +108,8 @@ jobs:
       macos: ${{ steps.tier.outputs.macos }}
       linux_arm64: ${{ steps.tier.outputs.rust_linux_arm64 }}
       legs: ${{ steps.matrix.outputs.legs }}
+      archives: ${{ steps.matrix.outputs.archives }}
+      partitions: ${{ steps.matrix.outputs.partitions }}
       warm: ${{ steps.matrix.outputs.warm }}
       paths: ${{ steps.paths.outputs.changed }}
     steps:
@@ -135,7 +137,9 @@ jobs:
       # The OS matrix (rules in .github/actions/ci-tier/rust-legs.jq). Post-merge (#5035): the scheduled
       # run of feat/tauri-v2 runs the legs the queue skips (Apple Silicon, windows-11-arm, the Linux perf
       # budgets), a push the merge queue passed runs nothing. The daily cache-warm run (WARM) adds the
-      # `seams` leg of each merge-queue OS to either.
+      # `seams` leg of each merge-queue OS to either. The nextest partitions (the legs with a
+      # `partition`) go to test-partitions, and each of their OSes to test-archive, which builds the
+      # suite once for them.
       - name: Build the OS matrix
         id: matrix
         env:
@@ -148,11 +152,19 @@ jobs:
           EVENT: ${{ github.event_name }}
           WARM: ${{ github.event_name == 'schedule' && github.event.schedule == '27 3 * * *' }}
         run: |
-          legs=$(jq -cn --arg full "$FULL" --arg macos "$MACOS" --arg intel "$INTEL" --arg post_merge "$POST_MERGE" --arg win "$WINDOWS_LEGS" --arg mac "$MACOS_LEGS" --arg event "$EVENT" --arg warm "$WARM" \
+          all=$(jq -cn --arg full "$FULL" --arg macos "$MACOS" --arg intel "$INTEL" --arg post_merge "$POST_MERGE" --arg win "$WINDOWS_LEGS" --arg mac "$MACOS_LEGS" --arg event "$EVENT" --arg warm "$WARM" \
             -f .github/actions/ci-tier/rust-legs.jq)
-          echo "legs=$legs" >> "$GITHUB_OUTPUT"
-          echo "warm=$WARM" >> "$GITHUB_OUTPUT"
+          legs=$(jq -c 'map(select(.partition | not))' <<<"$all")
+          partitions=$(jq -c 'map(select(.partition))' <<<"$all")
+          archives=$(jq -c 'map(.os) | unique | map({os: .})' <<<"$partitions")
+          {
+            echo "legs=$legs"
+            echo "partitions=$partitions"
+            echo "archives=$archives"
+            echo "warm=$WARM"
+          } >> "$GITHUB_OUTPUT"
           echo "Legs: $legs"
+          echo "Test partitions: $partitions"
 
       # Replaces the `pull_request.paths` filter: a filtered workflow never runs, so its required gate
       # would never report. Pushes keep their own `paths`; every other event outputs true. Of
@@ -166,7 +178,7 @@ jobs:
           include: '^(crates/|apps/desktop-tauri/(src-tauri|scripts)/|tests/sync-harness/scripts/serve\.ts$|tests/sync-harness/src/|apps/sync-server/|pnpm-lock\.yaml$|packages/swift/|packages/contracts/test-vectors/|packages/article-extract/|scripts/check-line-ceilings\.mjs$|scripts/(report-flaky-tests|check-quarantine)(\.test)?\.mjs$|scripts/check-test-timing(\.test)?\.mjs$|scripts/check-uniffi-not-gated\.mjs$|scripts/fetch-pdfium\.mjs$|scripts/fetch-tesseract-sources\.mjs$|\.github/workflows/rust-ci\.yml$|\.github/actions/(apt-install|ci-tier|free-disk|libsodium-dist|ort-static|paths-changed|setup-pnpm|tesseract-sources)/)'
 
   lint-and-test:
-    name: Rust ${{ matrix.part }}${{ matrix.partition && format(' {0}', matrix.partition) || '' }} (${{ matrix.os }})
+    name: Rust ${{ matrix.part }} (${{ matrix.os }})
     needs: plan
     if: ${{ !cancelled() && (needs.plan.outputs.post_merge != 'covered' || needs.plan.outputs.warm == 'true') && (needs.plan.outputs.paths == 'true' || needs.plan.result == 'failure') }}
     runs-on: ${{ matrix.os }}
@@ -202,7 +214,7 @@ jobs:
         # job that failed. macOS is the scarcest runner pool: no Mac in the merge queue, Apple
         # Silicon on a PR whose diff can break macOS, from `full-ci` up and on a push to feat/tauri-v2,
         # Intel only on main and dispatch.
-        include: ${{ fromJSON(needs.plan.outputs.legs || '[{"os":"ubuntu-22.04","part":"lint","lint":true},{"os":"ubuntu-22.04","part":"seams","seams":true},{"os":"ubuntu-22.04","part":"tests","partition":"1/2","tests":true},{"os":"ubuntu-22.04","part":"tests","partition":"2/2","tests":true}]') }}
+        include: ${{ fromJSON(needs.plan.outputs.legs || '[{"os":"ubuntu-22.04","part":"lint","lint":true},{"os":"ubuntu-22.04","part":"seams","seams":true}]') }}
     defaults:
       run:
         shell: bash
@@ -274,7 +286,7 @@ jobs:
         if: runner.os == 'Linux'
         uses: ./.github/actions/apt-install
         timeout-minutes: 12
-        with:
+        with: &linux-libraries
           packages: >-
             libwebkit2gtk-4.1-dev libsoup-3.0-dev libayatana-appindicator3-dev librsvg2-dev libssl-dev libxdo-dev libsecret-1-dev libfontconfig1-dev patchelf gnome-keyring libsecret-tools dbus-x11
 
@@ -304,7 +316,7 @@ jobs:
         uses: ilammy/setup-nasm@72793074d3c8cdda771dba85f6deafe00623038b # v1.5.2
 
       # The repo's cache cap is 10 GB and an OS's entry is 2.5-3.5 GB, so each merge-queue OS has one
-      # entry and only its `seams` leg saves it: lint and the test partitions restore it and write
+      # entry and only its `seams` leg saves it: lint and test-archive restore it and write
       # nothing. macOS (`all`, `checks`) and windows-11-arm legs restore and never save: theirs would not
       # fit the cap beside the queue's. Only runs on refs/heads/feat/tauri-v2 save (the daily warm run,
       # dispatch there, and a push the queue did not cover or that changed a cache-key input such as
@@ -341,8 +353,7 @@ jobs:
 
       # memry-ml links ONNX Runtime statically. macOS x64, Windows and Linux x64 link the archive
       # of build-ort-static.yml (ORT_LIB_LOCATION); macOS arm64 downloads ort-sys's prebuilt one.
-      # The test partitions need it too: on Windows every memry-tauri test links memry-ml
-      # (tests/ml_link.rs).
+      # test-archive needs it too: on Windows every memry-tauri test links memry-ml (tests/ml_link.rs).
       - name: ONNX Runtime static library
         uses: ./.github/actions/ort-static
         with:
@@ -351,7 +362,7 @@ jobs:
       # memry-ml-worker links Tesseract, which its build.rs builds with cmake from these sources
       # (crates/AGENTS.md, PDF worker). Before Clippy: a workspace lint builds the worker's
       # `native` feature, so the cmake build runs once there and the worker steps below reuse it.
-      # The test partitions build no worker.
+      # test-archive builds no worker.
       - name: Tesseract sources
         if: matrix.lint || matrix.seams || matrix.models || matrix.perf
         uses: ./.github/actions/tesseract-sources
@@ -393,16 +404,15 @@ jobs:
         with:
           tool: nextest
 
-      # NEXTEST_PROFILE (job env) retries in the merge queue. The flaky-report job posts every test of
-      # this step that passed only on retry to #3967.
+      # The macOS `all` leg builds and runs the suite in this job; Linux and Windows run it from the
+      # archive of test-archive, in test-partitions. NEXTEST_PROFILE (job env) retries in the merge
+      # queue. The flaky-report job posts every test of this step that passed only on retry to #3967.
       - name: Test
         if: matrix.tests
-        env:
-          PARTITION: ${{ matrix.partition }}
         run: |
           FILTER=
           if [ "$NEXTEST_PROFILE" = merge-queue ]; then FILTER=$(node ../scripts/check-quarantine.mjs --filter); fi
-          cargo nextest run -p memry-core -p memry-desktop -p memry-media -p memry-tauri -p memry-test-kit -p xtask -p memrynote-cli --no-fail-fast --features memry-core/markdown ${PARTITION:+--partition "hash:$PARTITION"} ${FILTER:+-E "$FILTER"}
+          cargo nextest run -p memry-core -p memry-desktop -p memry-media -p memry-tauri -p memry-test-kit -p xtask -p memrynote-cli --no-fail-fast --features memry-core/markdown ${FILTER:+-E "$FILTER"}
 
       - name: Upload the JUnit report (merge queue)
         if: ${{ !cancelled() && (matrix.tests || matrix.seams) && github.event_name == 'merge_group' }}
@@ -971,6 +981,206 @@ jobs:
         working-directory: .
         run: node scripts/check-uniffi-not-gated.mjs
 
+  # The nextest suite of the Linux and Windows legs, compiled once per OS. Each test partition used
+  # to build the whole workspace itself, about 12 of a windows-2022 partition's 32 minutes (run
+  # 45763658725), which made that partition the merge queue's critical path. This job builds the
+  # suite into a `cargo nextest archive` (about 1.1 GB on Windows, 5.2 GB on Linux, whose binaries
+  # carry their line tables), and test-partitions runs it with no compile.
+  test-archive:
+    name: Rust tests build (${{ matrix.os }})
+    needs: plan
+    if: ${{ !cancelled() && needs.plan.outputs.partitions != '[]' && (needs.plan.outputs.post_merge != 'covered' || needs.plan.outputs.warm == 'true') && (needs.plan.outputs.paths == 'true' || needs.plan.result == 'failure') }}
+    runs-on: ${{ matrix.os }}
+    # windows-11-arm restores no cargo cache and builds BoringSSL from scratch (see lint-and-test).
+    timeout-minutes: ${{ matrix.os == 'windows-11-arm' && 90 || 65 }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # The OSes of the plan job's test partitions. The fallback is the fast tier's, for a plan job
+        # that failed.
+        include: ${{ fromJSON(needs.plan.outputs.archives || '[{"os":"ubuntu-22.04"}]') }}
+    defaults:
+      run:
+        shell: bash
+        working-directory: crates
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with: *lean-checkout
+
+      - name: Free disk space
+        uses: ./.github/actions/free-disk
+
+      # memry-tauri's tests link the webview libraries.
+      - name: Install Linux system libraries
+        if: runner.os == 'Linux'
+        uses: ./.github/actions/apt-install
+        timeout-minutes: 12
+        with: *linux-libraries
+
+      - name: Setup Rust
+        id: rust
+        uses: dtolnay/rust-toolchain@stable
+        timeout-minutes: 5
+        continue-on-error: true
+        with:
+          toolchain: '1.98.1'
+
+      - name: Setup Rust (retry)
+        if: steps.rust.outcome == 'failure'
+        uses: dtolnay/rust-toolchain@stable
+        timeout-minutes: 5
+        with:
+          toolchain: '1.98.1'
+
+      - name: Install NASM
+        if: runner.os == 'Windows' && runner.arch == 'X64'
+        uses: ilammy/setup-nasm@72793074d3c8cdda771dba85f6deafe00623038b # v1.5.2
+
+      # Restores the entry lint-and-test's `seams` leg of this OS saves, and saves nothing (the cache
+      # cap, see lint-and-test). rust-cache puts the job id in its key, so this job names that job's
+      # id itself.
+      - name: Cache cargo
+        id: cargo-cache
+        uses: Swatinem/rust-cache@v2
+        timeout-minutes: 8
+        continue-on-error: true
+        env:
+          SEGMENT_DOWNLOAD_TIMEOUT_MINS: 3
+        with:
+          workspaces: crates
+          key: ${{ matrix.os }}-checks-lint-and-test
+          add-job-id-key: false
+          save-if: false
+
+      - name: Drop a partial cargo cache
+        if: steps.cargo-cache.outcome == 'failure'
+        run: rm -rf target "$HOME/.cargo/registry/cache" "$HOME/.cargo/registry/index" "$HOME/.cargo/git/db"
+
+      - name: libsodium archives
+        uses: ./.github/actions/libsodium-dist
+
+      # On Windows every memry-tauri test links memry-ml (tests/ml_link.rs).
+      - name: ONNX Runtime static library
+        uses: ./.github/actions/ort-static
+        with:
+          token: ${{ github.token }}
+
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@v2
+        with:
+          tool: nextest
+
+      # The test binaries, the binaries they run (CARGO_BIN_EXE_*) and the build scripts' runtime
+      # outputs, with the markdown feature on for memry-core as in lint-and-test's Test step.
+      - name: Build the nextest archive
+        run: |
+          cargo nextest archive -p memry-core -p memry-desktop -p memry-media -p memry-tauri -p memry-test-kit -p xtask -p memrynote-cli --features memry-core/markdown --archive-file "$RUNNER_TEMP/nextest-archive.tar.zst"
+          ls -l "$RUNNER_TEMP/nextest-archive.tar.zst"
+
+      # Already zstd: no second compression. A rerun of this job replaces the archive of the attempt
+      # before it.
+      - name: Upload the nextest archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: nextest-archive-${{ matrix.os }}
+          path: ${{ runner.temp }}/nextest-archive.tar.zst
+          if-no-files-found: error
+          compression-level: 0
+          overwrite: true
+          retention-days: 3
+
+  # The nextest suite of the Linux and Windows legs in six slices (nextest deals the tests of every
+  # binary round-robin; `count:` dealt per binary and put each one-test binary in partition 1), each
+  # run from its OS's archive, with no compile. The checkout is the workspace the tests read their fixtures from, and the archive unpacks
+  # into crates/target, the path the build compiled into CARGO_BIN_EXE_*.
+  test-partitions:
+    name: Rust tests ${{ matrix.partition }} (${{ matrix.os }})
+    needs: [plan, test-archive]
+    # An OS whose archive failed fails at the download; the other OSes still run.
+    if: ${{ !cancelled() && needs.test-archive.result != 'skipped' }}
+    runs-on: ${{ matrix.os }}
+    # A windows-2022 slice runs about 6 minutes; nextest kills a hung test after 5
+    # (15 for markdown_depth, crates/.config/nextest.toml).
+    timeout-minutes: ${{ matrix.os == 'windows-11-arm' && 45 || 30 }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.partitions || '[{"os":"ubuntu-22.04","part":"tests","partition":"1/6","tests":true},{"os":"ubuntu-22.04","part":"tests","partition":"2/6","tests":true},{"os":"ubuntu-22.04","part":"tests","partition":"3/6","tests":true},{"os":"ubuntu-22.04","part":"tests","partition":"4/6","tests":true},{"os":"ubuntu-22.04","part":"tests","partition":"5/6","tests":true},{"os":"ubuntu-22.04","part":"tests","partition":"6/6","tests":true}]') }}
+    defaults:
+      run:
+        shell: bash
+        working-directory: crates
+    env:
+      # Retries in the merge queue, as in lint-and-test.
+      NEXTEST_PROFILE: ${{ github.event_name == 'merge_group' && 'merge-queue' || 'default' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with: *lean-checkout
+
+      # The extracted archive and the target dir fill the runner's disk.
+      - name: Free disk space
+        uses: ./.github/actions/free-disk
+
+      # memry-tauri's test binaries load the webview libraries.
+      - name: Install Linux system libraries
+        if: runner.os == 'Linux'
+        uses: ./.github/actions/apt-install
+        timeout-minutes: 12
+        with: *linux-libraries
+
+      # No build here: memry-desktop's tests/http.rs runs `cargo tree` through the toolchain the
+      # archive was built with (env!("CARGO")).
+      - name: Setup Rust
+        id: rust
+        uses: dtolnay/rust-toolchain@stable
+        timeout-minutes: 5
+        continue-on-error: true
+        with:
+          toolchain: '1.98.1'
+
+      - name: Setup Rust (retry)
+        if: steps.rust.outcome == 'failure'
+        uses: dtolnay/rust-toolchain@stable
+        timeout-minutes: 5
+        with:
+          toolchain: '1.98.1'
+
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@v2
+        with:
+          tool: nextest
+
+      - name: Download the nextest archive
+        uses: actions/download-artifact@v4
+        with:
+          name: nextest-archive-${{ matrix.os }}
+          path: ${{ runner.temp }}/nextest-archive
+
+      # The merge queue skips the quarantined tests (#5846), and the flaky-report job posts every test
+      # of this step that passed only on retry to #3967.
+      - name: Test
+        env:
+          PARTITION: ${{ matrix.partition }}
+        run: |
+          FILTER=
+          if [ "$NEXTEST_PROFILE" = merge-queue ]; then FILTER=$(node ../scripts/check-quarantine.mjs --filter); fi
+          cargo nextest run --archive-file "$RUNNER_TEMP/nextest-archive/nextest-archive.tar.zst" --workspace-remap . --extract-to . --extract-overwrite --no-fail-fast --partition "slice:$PARTITION" ${FILTER:+-E "$FILTER"}
+
+      - name: Upload the JUnit report (merge queue)
+        if: ${{ !cancelled() && github.event_name == 'merge_group' }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          # `-tests-`: lint-and-test's legs number their reports from the same job index.
+          name: nextest-junit-${{ matrix.os }}-tests-${{ strategy.job-index }}
+          path: crates/target/nextest/merge-queue/junit.xml
+          if-no-files-found: ignore
+          retention-days: 7
+
   # memry-ml-worker on Linux arm64, a release target (#4775): the cmake build of Tesseract and
   # Leptonica, the ORT static archive of that triple, pdfium, OCR, the linked libraries and the real
   # embed, on the release image (glibc 2.35 floor). One job, worker only: the rest of the workspace
@@ -1310,7 +1520,7 @@ jobs:
   # tolerates failure: logging a flake never ejects a PR.
   flaky-report:
     name: Report flaky tests
-    needs: lint-and-test
+    needs: [lint-and-test, test-partitions]
     if: ${{ !cancelled() && github.event_name == 'merge_group' }}
     runs-on: ubuntu-22.04
     timeout-minutes: 5
@@ -1348,6 +1558,8 @@ jobs:
       [
         plan,
         lint-and-test,
+        test-archive,
+        test-partitions,
         ml-worker-linux-arm64,
         article-extract-oracle-fresh,
         swift-bindings-fresh
@@ -1370,7 +1582,8 @@ jobs:
           DETECT_RESULT: ${{ needs.plan.result }}
           EVENT: ${{ github.event_name }}
           CHANGED: ${{ needs.plan.outputs.paths }}
-          RUST_RESULT: ${{ needs.lint-and-test.result }}
+          # lint-and-test, test-archive and test-partitions: the Rust legs.
+          RUST_RESULTS: ${{ needs.lint-and-test.result }} ${{ needs.test-archive.result }} ${{ needs.test-partitions.result }}
         run: |
           if [ "$MIRROR" = true ]; then
             # A run that has not finished yet reports its own gate later, which supersedes this one.
@@ -1381,15 +1594,16 @@ jobs:
             echo "::error::No passed Rust CI gate of a real run on this commit to report."
             exit 1
           fi
-          echo "needed job results: $RESULTS, Rust CI path changed: $CHANGED, Rust legs: $RUST_RESULT"
+          echo "needed job results: $RESULTS, Rust CI path changed: $CHANGED, Rust legs: $RUST_RESULTS"
           # A skipped detection job (a noop `labeled` or `opened` run) must not read as a pass.
           if [ "$DETECT_RESULT" != success ]; then echo "::error::plan job result was $DETECT_RESULT"; exit 1; fi
           case "$CHANGED" in true | false) ;; *) echo "::error::the plan job reported no paths decision"; exit 1 ;; esac
           case " $RESULTS " in *" failure "*|*" cancelled "*) exit 1 ;; esac
           # Tiers skip legs on purpose, and a push the merge queue passed skips the Rust legs. A pull
-          # request that changes a Rust CI path always runs them, so there a skip is no pass (#5613).
-          if [ "$EVENT" = pull_request ] && [ "$CHANGED" = true ] && [ "$RUST_RESULT" != success ]; then
-            echo "::error::A Rust CI path changed but the Rust legs did not pass ($RUST_RESULT)."
+          # request or merge group that changes a Rust CI path always runs them, so there a skip is no
+          # pass (#5613).
+          if { [ "$EVENT" = pull_request ] || [ "$EVENT" = merge_group ]; } && [ "$CHANGED" = true ] && [ "$RUST_RESULTS" != 'success success success' ]; then
+            echo "::error::A Rust CI path changed but the Rust legs did not pass ($RUST_RESULTS)."
             exit 1
           fi
 
