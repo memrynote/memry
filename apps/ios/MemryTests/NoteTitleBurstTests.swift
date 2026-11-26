@@ -430,7 +430,7 @@ extension KeyWindowSuites {
         /// The edit ended while the title kept the caret, as when the app
         /// resumes: the next keys still land, and Return still moves to the body.
         @Test(.timeLimit(.minutes(2))) func keys_after_an_edit_ended_under_the_caret_land() async throws {
-            let seen = try await uninterrupted(note: fixture) { f, window, field in
+            let seen = try await onNewNote(note: fixture) { f, window, field in
                 for key in "F1 par" { field.insertText(String(key)) }
                 field.resignFirstResponder()
                 field.becomeFirstResponder()
@@ -529,7 +529,7 @@ extension KeyWindowSuites {
         private func expectChecklistBurst(
             late: String = "", delivered: String? = nil, newline: Bool = false, gap: Int
         ) async throws {
-            let seen = try await uninterrupted { f, window, field in
+            let seen = try await onNewNote { f, window, field in
                 if delivered != nil {
                     for character in "title" { field.next?.pressesBegan([HardwarePress(character)], with: nil) }
                 }
@@ -578,7 +578,7 @@ extension KeyWindowSuites {
         /// again: those stay.
         @Test(.timeLimit(.minutes(2)), arguments: [false, true])
         func keys_the_titles_line_put_back_reach_the_note_once(pressedInBody: Bool) async throws {
-            let seen = try await uninterrupted { f, window, field in
+            let seen = try await onNewNote { f, window, field in
                 for character in "title" { field.next?.pressesBegan([HardwarePress(character)], with: nil) }
                 for character in "tit" { key(String(character), in: window, title: field) }
                 let press = HardwarePress(.keyboardReturnOrEnter, "\r")
@@ -607,20 +607,15 @@ extension KeyWindowSuites {
             #expect(seen.1.body == [expected], "\(seen.1)")
         }
 
-        /// Runs `scenario` on a new note until no other suite made its window
-        /// key meanwhile, and returns what it saw. Suites run in parallel in this
-        /// process, and a window made key elsewhere takes the caret mid-burst:
-        /// such a run proves nothing either way (as in `EditorReturnBurstTests`).
-        private func uninterrupted<T>(
+        /// Runs `scenario` on a new note's page and returns what it saw.
+        private func onNewNote<T>(
             note: (() async throws -> Fixture)? = nil,
             _ scenario: (Fixture, UIWindow, UITextView) async throws -> T
         ) async throws -> T {
-            try await Resigned.uninterrupted { watch in
-                let f = if let note { try await note() } else { try await newNote() }
-                let (window, field) = try await open(f)
-                watch(window)
-                return try await scenario(f, window, field)
-            }
+            let f = if let note { try await note() } else { try await newNote() }
+            let (window, field) = try await open(f)
+            defer { window.isHidden = true }
+            return try await scenario(f, window, field)
         }
 
         /// #4756: a hardware Return while an input method composes in the title
@@ -1133,7 +1128,7 @@ extension KeyWindowSuites {
         /// dropped there: no key is lost or typed twice.
         @Test(.timeLimit(.minutes(2)), arguments: [false, true])
         func a_steal_mid_burst_then_return_keeps_every_key_once(lateIntoBody: Bool) async throws {
-            let seen = try await uninterrupted { f, window, field in
+            let seen = try await onNewNote { f, window, field in
                 for character in "title" { field.next?.pressesBegan([HardwarePress(character)], with: nil) }
                 for character in "tit" { key(String(character), in: window, title: field) }
                 listSteals(from: field, in: window)

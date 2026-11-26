@@ -171,42 +171,18 @@ private final class Screen {
         window.frame = CGRect(x: 0, y: 0, width: 400, height: 800)
         window.rootViewController = UIHostingController(rootView: Body(page: page, model: model, editor: editor))
         window.makeKeyAndVisible()
-        observer = NotificationCenter.default.addObserver(
-            forName: UIWindow.didResignKeyNotification, object: window, queue: .main
-        ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.interrupted = true }
-        }
     }
 
-    /// Another suite made its window key while this screen was up. Suites
-    /// run in parallel in this process, and that takes the caret from the
-    /// old block for a reason other than its Return's new block, which
-    /// leaves the held keys where they were typed (by design).
-    private(set) var interrupted = false
-    private var observer: NSObjectProtocol?
-
-    func close() {
-        observer.map(NotificationCenter.default.removeObserver)
-        window.isHidden = true
-    }
-
-    /// Runs `scenario` on a new screen until a run is not interrupted, and
-    /// returns what it saw. An interrupted run proves nothing either way.
+    /// Runs `scenario` on a new screen and returns what it saw. No other
+    /// suite takes the key window meanwhile: `KeyWindowSuites` runs them one
+    /// at a time.
     static func run<T>(
         _ kind: String = "paragraph", depth: UInt32 = 0, text: String, below: [String] = [],
         _ scenario: (Screen) async throws -> T
     ) async throws -> T {
-        var attempt = 0
-        while true {
-            attempt += 1
-            let screen = try Screen(kind, depth: depth, text: text, below: below)
-            defer { screen.close() }
-            let seen = try await scenario(screen)
-            if !screen.interrupted || attempt == 10 { return seen }
-            print("EditorReturnBurstTests: another suite took the caret, run \(attempt) discarded")
-            // The other suite types for a while: wait it out.
-            try await Task.sleep(for: .milliseconds(200 * attempt))
-        }
+        let screen = try Screen(kind, depth: depth, text: text, below: below)
+        defer { screen.window.isHidden = true }
+        return try await scenario(screen)
     }
 
     func textViews(in view: UIView? = nil) -> [BlockTextView] {
@@ -232,7 +208,7 @@ private final class Screen {
     func keys(_ text: String) {
         for character in text {
             guard let view = focused else {
-                if !interrupted { Issue.record("no text view holds the caret") }
+                Issue.record("no text view holds the caret")
                 return
             }
             let key = String(character)

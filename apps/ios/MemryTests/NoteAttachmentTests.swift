@@ -379,20 +379,22 @@ extension KeyWindowSuites {
                 ]
             )
             // The landed file is on disk: `intactPath` reads a missing one as not downloaded.
-            let run = UUID().uuidString
-            let written = Mutex<[URL]>([])
-            defer { written.withLock { $0 }.forEach { try? FileManager.default.removeItem(at: $0) } }
+            // In a directory of its own: a parallel suite's vault open moves
+            // `AttachmentPaths.imagesDirectory` between the write and the read (#5847).
+            let images = URL.temporaryDirectory
+                .appending(path: "memry-images-\(UUID().uuidString)", directoryHint: .isDirectory)
+            try? FileManager.default.createDirectory(at: images, withIntermediateDirectories: true)
+            defer { try? FileManager.default.removeItem(at: images) }
             let filler = FirstFetchGatedFiller { id in
                 guard let url = urls[id] else { return }
-                let path = "\(run)-\(id)"
-                let file = AttachmentPaths.url(for: path)
-                FileManager.default.createFile(atPath: file.path(percentEncoded: false), contents: Data())
-                written.withLock { $0.append(file) }
-                reader.rebind(url, to: .bound(attachment: cached(id: id, localPath: path)))
+                let file = images.appending(path: id).path(percentEncoded: false)
+                FileManager.default.createFile(atPath: file, contents: Data())
+                reader.rebind(url, to: .bound(attachment: cached(id: id, localPath: id)))
             }
             let model = NoteReadViewModel(
                 route: route, reader: reader, filler: filler,
-                reachability: FixedPath(path: .wifi)
+                reachability: FixedPath(path: .wifi),
+                attachmentURL: { images.appending(path: $0) }
             )
             await model.loadIfNeeded()
 
