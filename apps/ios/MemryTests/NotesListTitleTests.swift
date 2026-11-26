@@ -17,28 +17,29 @@ extension KeyWindowSuites {
         func aTitleLandingAfterTheReadShowsInTheRow() async throws {
             let vault = try TasksTestVault()
             let store = TaskTestKeychain()
-            let noteId = try vault.vault.notesWriter(store: store).create(title: "", folderPath: nil)
+            let writer = try vault.vault.notesWriter(store: store)
+            let noteId = try writer.create(title: "", folderPath: nil)
             let model = VaultBrowseViewModel(vault: vault.vault, executor: .shared, store: store)
             await model.loadIfNeeded()
+            // Written after the first read, so only the list's re-read on
+            // appear shows it: its row marks that re-read as done.
+            _ = try writer.create(title: "Milk", folderPath: nil)
             let scene = try #require(UIApplication.shared.connectedScenes.first as? UIWindowScene)
             let window = UIWindow(windowScene: scene)
             window.rootViewController = UIHostingController(rootView: NotesListView(model: model))
             window.makeKeyAndVisible()
             defer { window.isHidden = true }
 
-            // The reads share one serial executor: these return once the
-            // list's own reads, the re-read on appear among them, have run.
-            for _ in 0 ..< 10 {
-                _ = try await model.reader.list()
-                await Task.yield()
-            }
-            #expect(model.outline?.rootNotes.map(\.title) == [""])
+            func title() -> String? { model.outline?.rootNotes.first { $0.id == noteId }?.title }
+            try await wait(10) { model.outline?.rootNotes.count == 2 }
+            try #require(model.outline?.rootNotes.count == 2)
+            #expect(title() == "")
 
             let page = NoteMetadataViewModel(noteId: noteId, writer: model.metadataWriter)
             await page.rename(to: "Groceries", current: "")
 
-            try await wait { model.outline?.rootNotes.map(\.title) == ["Groceries"] }
-            #expect(model.outline?.rootNotes.map(\.title) == ["Groceries"])
+            try await wait(10) { title() == "Groceries" }
+            #expect(title() == "Groceries")
         }
     }
 }
