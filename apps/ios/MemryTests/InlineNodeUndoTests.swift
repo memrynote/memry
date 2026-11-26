@@ -74,6 +74,13 @@ extension KeyWindowSuites {
             f.field.textView.selectedRange = NSRange(location: f.field.textView.textStorage.length, length: 0)
         }
 
+        /// Keys typed at UTF-16 `location`, or at the end: they open the menu
+        /// their trigger types.
+        private func typeKeys(_ text: String, at location: Int? = nil, in f: Fixture) {
+            f.field.textView.selectedRange = NSRange(location: location ?? f.field.textView.textStorage.length, length: 0)
+            f.field.typeKeys(text)
+        }
+
         private func undo(_ f: Fixture) async {
             f.session.undo()
             await f.session.tail?.value
@@ -86,8 +93,7 @@ extension KeyWindowSuites {
 
         @Test(.timeLimit(.minutes(1))) func a_link_chosen_from_the_menu_is_undone_with_its_space() async throws {
             let f = try await fixture("see ")
-            type("[[Agent", in: f)
-            f.session.selectionChanged(in: f.field)
+            typeKeys("[[Agent", in: f)
             let row = try #require(f.session.suggestions.first { $0.kind == .note(title: "Agent Dune", alias: "") })
             f.session.choose(row)
             await f.session.tail?.value
@@ -219,8 +225,7 @@ extension KeyWindowSuites {
 
         private func pickTag(_ typed: String, in f: Fixture) throws {
             f.session.tags = ["task"]
-            type(typed, in: f)
-            f.session.selectionChanged(in: f.field)
+            typeKeys(typed, in: f)
             f.session.chooseTag(try #require(f.session.tagSuggestions.first { $0.tag == "task" }))
         }
 
@@ -292,8 +297,7 @@ extension KeyWindowSuites {
         @Test(.timeLimit(.minutes(1))) func a_tag_picked_before_a_node_keeps_the_node() async throws {
             let f = try await linked(" ")
             f.session.tags = ["wo"]
-            type("#wo", at: 3, in: f)
-            f.session.selectionChanged(in: f.field)
+            typeKeys("#wo", at: 3, in: f)
             f.session.chooseTag(try #require(f.session.tagSuggestions.first { $0.tag == "wo" }))
             await f.session.tail?.value
             #expect(try await shown(f) == "qq \u{FFFC} \u{FFFC} ")
@@ -317,8 +321,7 @@ extension KeyWindowSuites {
             let f = try await linked("")
             type(" ", in: f)
             f.session.tags = ["wo"]
-            type("#wo", at: 3, in: f)
-            f.session.selectionChanged(in: f.field)
+            typeKeys("#wo", at: 3, in: f)
             f.session.chooseTag(try #require(f.session.tagSuggestions.first { $0.tag == "wo" }))
             await f.session.tail?.value
             #expect(try await shown(f) == "qq \u{FFFC} \u{FFFC} ")
@@ -343,8 +346,7 @@ extension KeyWindowSuites {
             let f = try await fixture("q ")
             type("abc", in: f)
             f.session.tags = ["task"]
-            type("#ta", at: 2, in: f)
-            f.session.selectionChanged(in: f.field)
+            typeKeys("#ta", at: 2, in: f)
             f.session.chooseTag(try #require(f.session.tagSuggestions.first { $0.tag == "task" }))
             await f.session.tail?.value
             #expect(try await shown(f) == "q \u{FFFC} abc")
@@ -391,8 +393,7 @@ extension KeyWindowSuites {
             window.makeKeyAndVisible()
             #expect(f.field.textView.becomeFirstResponder())
             f.session.tags = ["wo"]
-            type("#wo", at: 3, in: f)
-            f.session.selectionChanged(in: f.field)
+            typeKeys("#wo", at: 3, in: f)
             f.session.chooseTag(try #require(f.session.tagSuggestions.first { $0.tag == "wo" }))
             await f.session.tail?.value
             await undo(f)
@@ -415,8 +416,7 @@ extension KeyWindowSuites {
             await f.session.tail?.value
             #expect(try await shown(f) == "qq \u{FFFC} \u{FFFC}")
             f.session.tags = ["wo"]
-            type("#wo", at: 5, in: f)
-            f.session.selectionChanged(in: f.field)
+            typeKeys("#wo", at: 5, in: f)
             f.session.chooseTag(try #require(f.session.tagSuggestions.first { $0.tag == "wo" }))
             await f.session.tail?.value
             #expect(try await shown(f) == "qq \u{FFFC} \u{FFFC} \u{FFFC}")
@@ -451,8 +451,7 @@ extension KeyWindowSuites {
 
         @Test(.timeLimit(.minutes(1))) func a_link_chosen_before_a_node_keeps_the_node() async throws {
             let f = try await linked("")
-            type("[[Agent", at: 3, in: f)
-            f.session.selectionChanged(in: f.field)
+            typeKeys("[[Agent", at: 3, in: f)
             let row = try #require(f.session.suggestions.first { $0.kind == .note(title: "Agent Dune", alias: "") })
             f.session.choose(row)
             await f.session.tail?.value
@@ -497,8 +496,7 @@ extension KeyWindowSuites {
         /// undo the uncommitted `z` (#4804), and redo puts them back in order.
         @Test(.timeLimit(.minutes(1))) func a_tag_picked_right_after_a_picked_link_is_undone_and_redone_exactly() async throws {
             let f = try await fixture("q ")
-            type("[[Agent", in: f)
-            f.session.selectionChanged(in: f.field)
+            typeKeys("[[Agent", in: f)
             let row = try #require(f.session.suggestions.first { $0.kind == .note(title: "Agent Dune", alias: "") })
             f.session.choose(row)
             await f.session.tail?.value
@@ -507,8 +505,7 @@ extension KeyWindowSuites {
 
             type("z", in: f)
             f.session.tags = ["vtag"]
-            type("#vt", at: 3, in: f)
-            f.session.selectionChanged(in: f.field)
+            typeKeys("#vt", at: 3, in: f)
             f.session.chooseTag(try #require(f.session.tagSuggestions.first { $0.tag == "vtag" }))
             await f.session.tail?.value
             #expect(try await shown(f) == "q \u{FFFC}\u{FFFC} z")
@@ -528,8 +525,7 @@ extension KeyWindowSuites {
         }
 
         private func pickNote(_ typed: String, in f: Fixture) throws {
-            type(typed, in: f)
-            f.session.selectionChanged(in: f.field)
+            typeKeys(typed, in: f)
             f.session.choose(try #require(f.session.suggestions.first { $0.kind == .note(title: "Agent Dune", alias: "") }))
         }
 
@@ -619,7 +615,9 @@ extension KeyWindowSuites {
             #expect(f.field.textView.text == "Next \u{FFFC} ")
 
             f.field.textView.textStorage.deleteCharacters(in: NSRange(location: 6, length: 1))
-            type("[[Age", in: f)
+            typeKeys("[[Age", in: f)
+            // The `]]` the `[[` key put after the caret goes: the menu stays open.
+            f.field.press("", replacing: NSRange(location: 11, length: 2))
             f.session.commit(f.field)
             await f.session.tail?.value
             #expect(try await shown(f) == "Next \u{FFFC}[[Age")
@@ -757,8 +755,7 @@ extension KeyWindowSuites {
         @Test(.timeLimit(.minutes(1))) func a_tag_query_before_matching_text_is_undone_in_one_step() async throws {
             let f = try await fixture("#task")
             f.session.tags = ["task"]
-            type("#ta", at: 0, in: f)
-            f.session.selectionChanged(in: f.field)
+            typeKeys("#ta", at: 0, in: f)
             f.session.chooseTag(try #require(f.session.tagSuggestions.first { $0.tag == "task" }))
             await f.session.tail?.value
             #expect(try await shown(f) == "\u{FFFC} #task")

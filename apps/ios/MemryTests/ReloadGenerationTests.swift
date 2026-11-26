@@ -441,9 +441,9 @@ extension KeyWindowSuites {
                 NoteSummary(id: "pane", title: "Pane", folderPath: nil, emoji: nil, createdAt: nil, modifiedAt: nil, aliases: []),
             ]
             session.focusChanged(to: pane.field)
-            pane.type("a see [[pan")
-            pane.field.textView.selectedRange = NSRange(location: 11, length: 0)
-            session.selectionChanged(in: pane.field)
+            pane.type("a see ")
+            pane.field.textView.selectedRange = NSRange(location: 6, length: 0)
+            pane.field.typeKeys("[[pan")
             editor.failures.withLock { $0 = 1 }
 
             session.choose(try #require(session.suggestions.first))
@@ -473,9 +473,9 @@ extension KeyWindowSuites {
                 NoteSummary(id: "pane", title: "Pane", folderPath: nil, emoji: nil, createdAt: nil, modifiedAt: nil, aliases: []),
             ]
             session.focusChanged(to: pane.field)
-            pane.type("a see [[pan")
-            pane.field.textView.selectedRange = NSRange(location: 11, length: 0)
-            session.selectionChanged(in: pane.field)
+            pane.type("a see ")
+            pane.field.textView.selectedRange = NSRange(location: 6, length: 0)
+            pane.field.typeKeys("[[pan")
             editor.failures.withLock { $0 = 1 }
             let gate = Gate(session)
 

@@ -48,9 +48,9 @@ struct SlashMenuConvertTests {
         field.render()
         session.focusChanged(to: field)
 
-        field.textView.text = typed
-        field.textView.selectedRange = NSRange(location: (typed as NSString).length, length: 0)
-        session.selectionChanged(in: field)
+        field.textView.text = text
+        field.textView.selectedRange = NSRange(location: (text as NSString).length, length: 0)
+        field.typeKeys("/" + query)
         let suggestion = try #require(session.suggestions.first { $0.id == "slash:\(id)" })
 
         var seen = 0
