@@ -106,6 +106,11 @@ describe('turbo cache worker', () => {
     expect(none.status).toBe(400)
   })
 
+  it('refuses an artifact name that is not a plain hash', async () => {
+    expect((await upload('..%2Fother%2Faaaa1111', WRITE)).status).toBe(404)
+    expect((await upload('not-a-hash.txt', WRITE)).status).toBe(404)
+  })
+
   it('answers the status probe for either token', async () => {
     for (const token of [READ, WRITE]) {
       const res = await worker.fetch('/v8/artifacts/status', {

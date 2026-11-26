@@ -69,6 +69,9 @@ async function putArtifact(request: Request, env: Env, key: string): Promise<Res
     )
   // Buffered: R2 takes a stream only with a known length, and turbo may upload chunked. CI caches
   // only typecheck tasks, whose artifacts are logs of a few KB.
+  if (Number(request.headers.get('content-length')) > MAX_ARTIFACT_BYTES) {
+    return error(413, 'too_large', 'artifact too large')
+  }
   const body = await request.arrayBuffer()
   if (body.byteLength === 0) return error(400, 'empty', 'empty artifact')
   if (body.byteLength > MAX_ARTIFACT_BYTES) return error(413, 'too_large', 'artifact too large')
