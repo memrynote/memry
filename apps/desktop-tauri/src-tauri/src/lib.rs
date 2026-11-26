@@ -92,6 +92,7 @@ fn register_stages() {
     );
     shell::vault_boot::register_stages();
     shell::account_sync::register_stages();
+    shell::readwise::register_stages();
     shutdown::register_stages();
     ml_worker::register_stages();
     commands::voice::register_stages();

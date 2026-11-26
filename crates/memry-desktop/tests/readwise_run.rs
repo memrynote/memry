@@ -56,10 +56,14 @@ use memry_desktop::readwise::limiter::RequestLimiter;
 mod after;
 #[path = "readwise_run/claim.rs"]
 mod claim;
+#[path = "readwise_run/connect.rs"]
+mod connect;
 #[path = "readwise_run/gate.rs"]
 mod gate;
 #[path = "readwise_run/schedule.rs"]
 mod schedule;
+#[path = "readwise_run/slot.rs"]
+mod slot;
 #[path = "readwise_run/sync_view.rs"]
 mod sync_view;
 
