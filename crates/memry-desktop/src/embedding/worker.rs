@@ -32,6 +32,7 @@
 
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, OnceLock};
 use std::time::Duration;
 
@@ -66,6 +67,9 @@ struct Shared {
     text: OnceLock<ModelSource>,
     audio: OnceLock<ModelSource>,
     vision: OnceLock<ModelSource>,
+    /// The last recording handle handed out. Shared by every engine this loader loads, so an
+    /// engine reloaded after a crash never reuses a handle a caller still holds.
+    opened: AtomicU64,
 }
 
 impl WorkerModel {
@@ -101,6 +105,7 @@ impl WorkerModel {
             text: OnceLock::new(),
             audio: OnceLock::new(),
             vision: OnceLock::new(),
+            opened: AtomicU64::new(0),
         })))
     }
 
@@ -171,7 +176,6 @@ impl ModelLoader for WorkerModel {
         Ok(Box::new(WorkerEngine {
             shared: shared.clone(),
             recording: None,
-            opened: 0,
         }))
     }
 
@@ -186,9 +190,8 @@ impl ModelLoader for WorkerModel {
 
 struct WorkerEngine {
     shared: Arc<Shared>,
-    /// The open recording and its handle, from `opened`.
+    /// The open recording and its handle, from [`Shared::opened`].
     recording: Option<(u64, AudioRecording)>,
-    opened: u64,
 }
 
 impl WorkerEngine {
@@ -219,9 +222,8 @@ impl Engine for WorkerEngine {
                 WorkerError::Failed(message) => EmbedError::Input(message),
                 other => embed_error(other),
             })?;
-        self.opened += 1;
         let opened = AudioOpened {
-            recording: self.opened,
+            recording: self.shared.opened.fetch_add(1, Ordering::Relaxed) + 1,
             windows: recording.windows(),
         };
         self.recording = Some((opened.recording, recording));
@@ -332,7 +334,7 @@ fn plain_path(path: &str) -> bool {
         })
 }
 
-/// `CON`, `aux.json`, `com1.txt`: Windows opens the device whatever the extension or case.
+/// `CON`, `aux.json`, `com1.txt`, `LPT0`: Windows opens the device whatever the extension or case.
 fn windows_device(part: &str) -> bool {
     let stem = part
         .split('.')
@@ -342,7 +344,7 @@ fn windows_device(part: &str) -> bool {
     matches!(stem.as_str(), "CON" | "PRN" | "AUX" | "NUL")
         || ((stem.starts_with("COM") || stem.starts_with("LPT"))
             && stem.len() == 4
-            && matches!(stem.as_bytes()[3], b'1'..=b'9'))
+            && stem.as_bytes()[3].is_ascii_digit())
 }
 
 fn is_lower_hex(text: &str) -> bool {
@@ -434,6 +436,8 @@ mod tests {
             Box::new(|m| m.files[0].path = "CON".into()),
             Box::new(|m| m.files[0].path = "onnx/aux.json".into()),
             Box::new(|m| m.files[0].path = "lpt9.bin".into()),
+            Box::new(|m| m.files[0].path = "COM0".into()),
+            Box::new(|m| m.files[0].path = "onnx/lpt0.json".into()),
             Box::new(|m| m.files[0].path = "onnx/model.".into()),
         ];
         for (index, case) in cases.iter().enumerate() {

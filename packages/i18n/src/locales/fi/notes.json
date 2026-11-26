@@ -45,6 +45,12 @@
     }
   },
   "page": {
+    "noteFiles": {
+      "downloading": "Ladataan tämän muistiinpanon tiedostoja…",
+      "failed": "Tämän muistiinpanon tiedostojen lataaminen epäonnistui: {error}",
+      "failedFallback": "lataus epäonnistui",
+      "retry": "Yritä uudelleen"
+    },
     "empty": {
       "title": "Muistiinpanoa ei ole valittu",
       "body": "Valitse muistiinpano sivupalkista nähdäksesi sen"
@@ -196,6 +202,10 @@
   "editor": {
     "bodySyncPending": "Synkronoidaan – muistiinpanon sisältö voi olla vielä tulossa",
     "databaseReadOnly": "Vain luku. Tämä laite ei voi tallentaa muutoksia.",
+    "remoteBodyStuck": "Odotetaan synkronointia — vain luku, kunnes muistiinpanon synkronoitu sisältö saapuu",
+    "remoteBodyOffline": "Offline-tilassa — vain luku, kunnes muistiinpano synkronoituu",
+    "remoteBodySignedOut": "Uloskirjautunut — vain luku, kunnes kirjaudut sisään ja muistiinpano synkronoituu",
+    "remoteBodyVaultLocked": "Holvin salausavainta ei voi lukea — vain luku, kunnes muistiinpano synkronoituu",
     "taskRemoval": {
       "title": "{count, plural, one {Tehtävä poistettu tästä muistiinpanosta} other {# tehtävää poistettu tästä muistiinpanosta}}",
       "description": "{count, plural, one {Säilytetäänkö se Tehtävissä vai poistetaanko se kaikkialta?} other {Säilytetäänkö ne Tehtävissä vai poistetaanko ne kaikkialta?}}",

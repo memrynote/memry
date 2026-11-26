@@ -16,6 +16,7 @@ import { fuzzySearch } from '@/lib/fuzzy-search'
 import { notesService } from '@/services/notes-service'
 import { createLogger } from '@/lib/logger'
 import { useT } from '@memry/i18n/renderer'
+import { isBinaryNoteRow } from '@memry/shared/file-types'
 import { cn } from '@/lib/utils'
 
 const log = createLogger('MoveBlockDialog')
@@ -29,7 +30,10 @@ interface NoteOption {
 export interface MoveBlockDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  /** The note the block is being moved OUT of; never offered as a target. */
+  /**
+   * The note the block is being moved OUT of; never offered as a target, nor
+   * is an image, PDF, audio or video file, which main refuses.
+   */
   currentNoteId: string
   onSelect: (targetNoteId: string) => void
 }
@@ -55,8 +59,8 @@ export function MoveBlockDialog({
         if (cancelled) return
         setNotes(
           (result?.notes ?? [])
-            .filter((note: { id: string }) => note.id !== currentNoteId)
-            .map((note: { id: string; title: string; path: string }) => ({
+            .filter((note) => note.id !== currentNoteId && !isBinaryNoteRow(note))
+            .map((note) => ({
               id: note.id,
               title: note.title,
               path: note.path

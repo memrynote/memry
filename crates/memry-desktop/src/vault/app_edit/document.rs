@@ -57,10 +57,10 @@ impl AppEdit {
         let body = split_frontmatter_block(read).body;
         // Outside the read: the lookup reads the database the read holds.
         let embeds = Resolved::of_markdown(&self.root, &self.vault.note_files(), body, path);
-        let read = self
-            .vault
-            .write_back()
-            .body(&self.converter, note_id, path, body, &embeds)?;
+        let read =
+            self.vault
+                .write_back()
+                .body(&self.converter, note_id, path, Some(body), &embeds)?;
         Ok(match read {
             BodyRead::Body(held)
                 if same_text(&held.markdown, body)

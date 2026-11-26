@@ -38,24 +38,38 @@ struct VaultListView: View {
 
     /// T237, and the answer to spec-defect 136.
     ///
-    /// **The browse screen is on the far side of the pull.** Before this, an
-    /// opened vault went straight to `NotesListView`, which reads a local
-    /// database that nothing on the FFI surface had ever put a row in — so a
-    /// phone that had never synced showed "no notes" against an account
-    /// holding ninety-four. `VaultFillView` is the gate; it asks
-    /// `isFirstSyncComplete()` first, which makes no request, so a vault this
-    /// phone already has is reached without waiting on a network.
+    /// **The browse screen sits under the pull.** Before this, an opened vault
+    /// went straight to `NotesListView`, which reads a local database that
+    /// nothing on the FFI surface had ever put a row in — so a phone that had
+    /// never synced showed "no notes" against an account holding ninety-four.
+    /// `VaultFillView` runs the first sync when `isFirstSyncComplete()` (one
+    /// local row, no request) says it has not finished, and shows the browse
+    /// screen the whole time, with the run as a strip above it.
     ///
     /// With no filler — a caller that supplied no `VaultFillerMinting` — the
     /// old path is what runs. That is deliberate: browsing what is already on
     /// the phone is still correct, it is simply not the whole story.
-    @ViewBuilder
     private func opened(_ vault: Vault, _ summary: VaultSummary) -> some View {
-        if let filler = model.filler {
-            VaultFillView(filler: filler) { browse(vault, summary, filler) }
-        } else {
-            browse(vault, summary, nil)
+        VStack(spacing: 0) {
+            if let removed = model.removedVault {
+                RemovedVaultNotice(export: removed, dismiss: model.dismissRemovedVaultNotice)
+                    .padding(.horizontal, Tokens.Space.screenInline)
+                    .padding(.vertical, Tokens.Space.inset)
+            }
+            if let notice = model.registryNotice {
+                RegistryNotice(error: notice, isRechecking: model.isRecheckingRegistry) {
+                    Task { await model.registryReachable() }
+                }
+                .transition(.opacity)
+            }
+            if let filler = model.filler {
+                VaultFillView(filler: filler) { browse(vault, summary, filler) }
+            } else {
+                browse(vault, summary, nil)
+            }
         }
+        .calmAnimation(.normal, value: model.registryNotice == nil)
+        .task { await model.watchRegistryTriggers() }
     }
 
     private func browse(
@@ -69,6 +83,13 @@ struct VaultListView: View {
             VaultCalendarScope(vault: vault, secureStore: model.secureStore, filler: filler, tasks: tasksStore) {
             VaultInboxScope(vault: vault, secureStore: model.secureStore, filler: filler) {
                 VaultSettingsScope(vault: vault, model: model, tasks: tasksStore) { settings, browse in
+                VaultJournalScope(
+                    vault: vault,
+                    secureStore: model.secureStore,
+                    isSyncing: tasksStore?.isSyncing ?? false,
+                    tasksStore: tasksStore,
+                    filler: filler
+                ) {
                     VaultTabsView(
                         switchVault: model.isSwitchable ? { Task { await model.chooseAgain() } } : nil,
                         vaultName: VaultLabel(summary).text,
@@ -86,26 +107,26 @@ struct VaultListView: View {
                     }, tasks: {
                         TasksTabContent(store: tasksStore, failure: tasksFailure)
                     }, journal: {
-                        JournalTabContent(
-                            vault: vault,
-                            secureStore: model.secureStore,
-                            isSyncing: tasksStore?.isSyncing ?? false,
-                            tasksStore: tasksStore,
-                            filler: filler
-                        )
+                        JournalTabContent()
                     }, more: {
                         // Settings spec: More › Settings, built next to the tasks store.
                         MoreTabView(context: settings, browse: browse)
                     })
+                    .environment(\.handoffVaultId, summary.id)
+                }
                 }
             }
             }
         }
+        .semanticEmbedding(vault: vault)
     }
 
     private var selection: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Tokens.Space.section) {
+                if let removed = model.removedVault {
+                    RemovedVaultNotice(export: removed, dismiss: model.dismissRemovedVaultNotice)
+                }
                 switch model.phase {
                 case .loading:
                     working("Looking for your vaults")
@@ -122,6 +143,12 @@ struct VaultListView: View {
                     // local vault, which the signed-in one creates for an
                     // empty account. A retry reads the registry again.
                     header("Your vault could not be opened", nil)
+                    retry("Try again")
+                case .offline:
+                    header(
+                        "Connect to the internet to load your vaults",
+                        "This \(ThisDevice.noun) has no vault yet. Memry needs a connection to download one the first time."
+                    )
                     retry("Try again")
                 case let .unreadable(error):
                     header("Your vaults could not be loaded", nil)
@@ -181,6 +208,28 @@ struct VaultListView: View {
     private func retry(_ title: String) -> some View {
         Button(title) { Task { await model.chooseAgain() } }
             .memrySecondaryAction()
+    }
+}
+
+/// The registry could not be read, and the vault opened from this device.
+/// Above the vault, never in its way. It goes once the account answers: on
+/// Try again, or on a trigger the model watches (#5524).
+private struct RegistryNotice: View {
+    let error: UserFacingError
+    let isRechecking: Bool
+    let recheck: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Tokens.Space.small) {
+            ErrorNotice(error: error, code: nil)
+            Button(isRechecking ? "Checking…" : "Try again", action: recheck)
+                .memrySecondaryAction()
+                .disabled(isRechecking)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, Tokens.Space.screenInline)
+        .padding(.vertical, Tokens.Space.inset)
+        .background(Tokens.Canvas.background.color)
     }
 }
 

@@ -37,8 +37,7 @@ enum NoteInstants {
 final class NoteRemindersViewModel {
     private(set) var reminders: [ReminderSummary] = []
     private(set) var failure: UserFacingError?
-    /// The add sheet, raised from the section or the page menu (the section
-    /// is hidden while the note has no reminder).
+    /// The add sheet, raised from the page menu.
     var adding = false
 
     /// The vault's debounced sync request, asked after every write that
@@ -115,84 +114,73 @@ final class NoteRemindersViewModel {
     }
 }
 
-struct NoteRemindersSection: View {
-    @Bindable var model: NoteRemindersViewModel
+/// One live reminder in the connections card: its title and when it fires.
+/// Dismiss sits in the row's context menu and its accessibility actions.
+struct NoteReminderRow: View {
+    let model: NoteRemindersViewModel
+    let reminder: ReminderSummary
+
+    var body: some View {
+        ConnectionRow(
+            symbol: "bell",
+            tint: Tokens.Task.tokenTag.color,
+            title: reminder.title ?? "Reminder",
+            // An anchored `note_date` reminder carries no instant on the
+            // wire: each device derives it from the date pill it belongs to
+            // (`reminder-handler.ts`). Said in words rather than left as an
+            // empty line.
+            detail: reminder.remindAt.isEmpty
+                ? "Set by a date in this note"
+                : NoteInstants.label(for: reminder.remindAt)
+        )
+        .accessibilityElement(children: .combine)
+        .contextMenu {
+            if model.canWrite {
+                Button("Dismiss", systemImage: "bell.slash", action: dismiss)
+            }
+        }
+        .accessibilityActions {
+            if model.canWrite { Button("Dismiss", action: dismiss) }
+        }
+    }
+
+    private func dismiss() {
+        Task { await model.dismiss(reminder.id) }
+    }
+}
+
+/// The add sheet, raised from the page menu. Attached whether or not the note
+/// has a reminder yet, since the first one is added through it.
+struct NoteReminderAddSheet: ViewModifier {
+    let model: NoteRemindersViewModel?
 
     @State private var when = Date()
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: Tokens.Space.small) {
-            // Nothing at all until there is a reminder to show.
-            if !model.live.isEmpty { content }
+    func body(content: Content) -> some View {
+        if let model {
+            content.sheet(isPresented: Bindable(model).adding) { sheet(model) }
+        } else {
+            content
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .task { await model.load() }
-        .sheet(isPresented: $model.adding) { addSheet }
     }
 
-    @ViewBuilder
-    private var content: some View {
-            HStack {
-                Text("Reminders")
-                    .font(Tokens.Typography.heading.font)
-                    .foregroundStyle(Tokens.Text.primary.color)
-                Spacer()
-                if model.canWrite {
-                    Button {
-                        model.adding = true
-                    } label: {
-                        Image(systemName: "plus")
-                    }
-                    .accessibilityLabel("Add a reminder")
-                }
+    private func sheet(_ model: NoteRemindersViewModel) -> some View {
+        NavigationStack {
+            Form {
+                DatePicker("Remind me at", selection: $when)
             }
-
-                ForEach(model.live, id: \.id) { reminder in
-                    HStack {
-                        VStack(alignment: .leading, spacing: Tokens.Space.tight) {
-                            Text(reminder.title ?? "Reminder")
-                                .font(Tokens.Typography.body.font)
-                                .foregroundStyle(Tokens.Text.primary.color)
-                            // An anchored `note_date` reminder carries no
-                            // instant on the wire: each device derives it
-                            // from the date pill it belongs to
-                            // (`reminder-handler.ts`). Said in words rather
-                            // than left as an empty line.
-                            Text(reminder.remindAt.isEmpty
-                                ? "Set by a date in this note"
-                                : NoteInstants.label(for: reminder.remindAt))
-                                .font(Tokens.Typography.caption.font)
-                                .foregroundStyle(Tokens.Text.secondary.color)
-                        }
-                        Spacer()
-                        if model.canWrite {
-                            Button("Dismiss") {
-                                Task { await model.dismiss(reminder.id) }
-                            }
-                            .font(Tokens.Typography.caption.font)
-                        }
-                    }
-                    .accessibilityElement(children: .combine)
+            .navigationTitle("Add a reminder")
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cancel") { model.adding = false }
                 }
-    }
-
-    private var addSheet: some View {
-            NavigationStack {
-                Form {
-                    DatePicker("Remind me at", selection: $when)
-                }
-                .navigationTitle("Add a reminder")
-                .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
-                        Button("Cancel") { model.adding = false }
-                    }
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button("Add") {
-                            model.adding = false
-                            Task { await model.add(at: when, title: nil) }
-                        }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Add") {
+                        model.adding = false
+                        Task { await model.add(at: when, title: nil) }
                     }
                 }
             }
+        }
     }
 }

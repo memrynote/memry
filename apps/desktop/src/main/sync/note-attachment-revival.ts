@@ -26,7 +26,7 @@ import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import type { AttachmentChunks, HoldOutcome } from '../canvas/assets/chunk-holds'
 import { createLogger } from '../lib/logger'
 import { filesOfAttachments } from './attachment-files'
-import { enqueueUpload } from './attachment-outbox'
+import { queueUploadIfAbsent } from './attachment-outbox'
 
 const log = createLogger('NoteAttachmentRevival')
 
@@ -95,10 +95,11 @@ async function reuploadFreedAttachments(deps: RevivalDeps, noteId: string): Prom
   if (note.fileType !== 'markdown' && note.attachmentId && gone.has(note.attachmentId)) {
     files.push(path.join(deps.vaultPath, note.path))
   }
-  const queued = new Set(files)
-  for (const file of queued) enqueueUpload(deps.db, noteId, file)
-  const logged = { noteId, freed: gone.size, queued: queued.size }
-  if (queued.size === 0)
+  const found = new Set(files)
+  // A file the uploader refused, unwritten since, would be refused again (#5606).
+  const queued = [...found].filter((file) => queueUploadIfAbsent(deps.db, noteId, file))
+  const logged = { noteId, freed: gone.size, found: found.size, queued: queued.length }
+  if (found.size === 0)
     log.warn('A revived note names freed attachments this device has no copy of', logged)
   else log.info("Queued a revived note's freed attachments for upload", logged)
   return true

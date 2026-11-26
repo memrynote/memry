@@ -52,7 +52,7 @@ fn holds_file(outcome: FeedOutcome) -> bool {
 
 /// The writing tools data the whole file says (none without the key, or with the author's
 /// own), or `None` when its frontmatter does not parse and may hold some.
-pub(super) fn writing_of(file: &NoteFile) -> Option<WritingFrontmatter> {
+pub(crate) fn writing_of(file: &NoteFile) -> Option<WritingFrontmatter> {
     if file.split().block.is_none() {
         return Some(WritingFrontmatter::default());
     }
@@ -215,7 +215,7 @@ impl Applier {
             // row named.
             Ok(None) => {
                 let made = (&*self.vault, self.settings.as_ref(), self.root.as_path());
-                !output_over(made, note_id, path, file)
+                !output_over(made, note_id, path, file, None)
                     .is_ok_and(|output| content_hash(&output) == previous)
             }
             Err(error) => {

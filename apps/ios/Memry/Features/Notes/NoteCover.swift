@@ -145,6 +145,7 @@ struct NoteCoverBand: View {
     var height: CGFloat?
 
     @State private var picture: NoteCoverPicture = .pending
+    @Environment(\.vaultSyncPasses) private var syncPasses
 
     /// On the page the band already reaches under the navigation bar, so its
     /// own slot is half the token; the reposition sheet keeps the full band.
@@ -177,6 +178,13 @@ struct NoteCoverBand: View {
         .accessibilityElement()
         .accessibilityLabel(accessibilityLabel)
         .task(id: cover.ref) { await load() }
+        // Opened offline, a waiting cover downloads once a pass runs (#5644).
+        // `.pending` while it does, so the next pass does not ask twice.
+        .onChange(of: syncPasses) {
+            guard picture == .waiting else { return }
+            picture = .pending
+            Task { await load() }
+        }
     }
 
     private var seedWash: some View {
@@ -215,7 +223,7 @@ struct NoteCoverBand: View {
             return .missing
         }
         guard case let .bound(attachment) = binding else { return .missing }
-        if let path = attachment.localPath {
+        if let path = attachment.intactPath {
             let file = AttachmentPaths.url(for: path).path(percentEncoded: false)
             return UIImage(contentsOfFile: file).map(NoteCoverPicture.image) ?? .missing
         }
@@ -223,13 +231,19 @@ struct NoteCoverBand: View {
         do {
             let summary = try await filler.fetchAttachment(
                 attachmentId: attachment.attachmentId,
-                reachable: reachability?.current() ?? PathReachability.unknownPath
+                // The note is open, so its cover downloads on any usable path (#5644).
+                reachable: AttachmentDownload.openedPath(
+                    on: reachability?.current() ?? PathReachability.unknownPath
+                )
             )
-            // Deferred on a metered path is the policy working: the wash stays.
+            // Deferred offline: the wash stays.
             guard summary.downloaded else { return .waiting }
         } catch {
-            Log.sync.error("a cover could not be fetched", .code(ErrorMapping.userFacing(error).code))
-            return .waiting
+            let mapped = ErrorMapping.userFacing(error)
+            Log.sync.error("a cover could not be fetched", .code(mapped.code))
+            // A pass asks again only when waiting can fix it; opening the
+            // note again asks for the rest.
+            return AttachmentFetchState.failed(mapped).asksOnSync ? .waiting : .missing
         }
         return await resolve(owner: owner, url: url, fetching: false)
     }

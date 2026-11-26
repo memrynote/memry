@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
-use memry_desktop::account::{AccountService, device};
+use memry_desktop::account::{AccountService, KeyRepair, device};
 use memry_desktop::billing::dto::{
     BillingStatusResult, CheckoutCadence, CheckoutPlan, PlanChangePeriod, PlanChangePlan,
     PlanChangePreviewResult, PlanChangeTarget, PortalFailureReason, StartCheckoutInput,
@@ -283,7 +283,7 @@ async fn opens_the_checkout_page_with_the_token_in_the_hash() {
         }))
         .await
         .unwrap();
-    let url = "https://memrynote.com/account/sync?plan=plus&cadence=monthly#token=tok.sig";
+    let url = "https://memrynote.com/account/sync?plan=plus&cadence=monthly&utm_source=app&utm_medium=desktop&utm_campaign=checkout#token=tok.sig";
     assert!(result.success);
     assert_eq!(result.checkout_url.as_deref(), Some(url));
     assert_eq!(*f.browser.opened.lock().unwrap(), vec![url.to_owned()]);
@@ -465,7 +465,8 @@ async fn a_reconcile_failure_ends_the_loop_and_keeps_the_session() {
 }
 
 /// The checkout URL carries a token valid for ten minutes and the portal URL a Paddle session:
-/// a browser that cannot open them leaves neither in the log, whatever its error says.
+/// a browser that cannot open them leaves neither in the log. This holds the log lines; an
+/// opener's own error cannot name the URL because `OpenFailed` carries no text.
 #[test]
 fn a_browser_that_cannot_open_logs_neither_the_token_nor_the_portal_url() {
     let runtime = tokio::runtime::Builder::new_current_thread()
@@ -541,7 +542,27 @@ async fn an_answer_landing_after_sign_out_is_not_kept() {
 
     f.script.answer(200, json!({}));
     f.account.sign_out(&f.session).await.unwrap();
-    f.billing.forget();
+    late.notify_one();
+    asked.await.unwrap().unwrap();
+
+    assert_eq!(f.entitlement(), Value::Null);
+    assert_eq!(f.billing.max_file_size(), None);
+}
+
+/// The repair's `integrity` sign-out (no listed device key) ends the account's term as the
+/// user's sign-out does: A's status landing after it is not kept for the next sign-in.
+#[tokio::test]
+async fn an_answer_landing_after_a_repair_sign_out_is_not_kept() {
+    let f = fixture(true);
+    let late = f.script.held_answer(200, status("plus", "active"));
+    let billing = f.billing.clone();
+    let asked = tokio::spawn(async move { billing.status().await });
+    settle().await;
+    assert_eq!(f.script.count(STATUS), 1, "the status is in flight");
+
+    f.script.answer(200, json!({ "devices": [] }));
+    let repaired = f.account.repair_device_keys(&f.session).await.unwrap();
+    assert_eq!(repaired, KeyRepair::SignInRequired);
     late.notify_one();
     asked.await.unwrap().unwrap();
 

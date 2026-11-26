@@ -4,6 +4,7 @@
 //! | Test                                              | Desktop reference                      |
 //! | ------------------------------------------------- | -------------------------------------- |
 //! | a `fields` update logs one plain row per entry    | `fieldRows` (`activity-log.test.ts`)   |
+//! | reads run on the pooled readers                   | `createTasksQueries`                   |
 
 #[allow(unused_imports)]
 use crate::http_fakes;
@@ -12,16 +13,20 @@ use std::sync::Arc;
 
 use http_fakes::FakeSecureStore;
 use memry_core::api::projects::ProjectDraft;
+use memry_core::api::task_store::TaskStore;
+use memry_core::api::tasks::Tasks;
 use memry_core::api::tasks_write::NewTaskInput;
 use memry_core::api::vault::Vault;
 use memry_core::crypto::sodium;
 use memry_core::domain::calendar::LocalDateTime;
 use memry_core::domain::tasks::TaskPatch;
+use memry_core::domain::tasks::list::ListQuery;
+use memry_core::domain::tasks::stats::TaskStats;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use serde_json::{Map, Value, json};
 
-#[test]
-fn a_fields_update_logs_one_plain_row_per_changed_entry() {
+/// A vault with one project holding one task titled "Plan", due `due`.
+fn one_task(due: Option<&str>) -> (Vault, Arc<Tasks>, TaskStore, String) {
     let dir = tempfile::Builder::new()
         .prefix("memry-api-task-store-")
         .tempdir()
@@ -52,7 +57,7 @@ fn a_fields_update_logs_one_plain_row_per_changed_entry() {
             parent_id: None,
             priority: 0,
             description: None,
-            due_date: None,
+            due_date: due.map(str::to_owned),
             due_time: None,
             start_date: None,
             repeat: None,
@@ -66,6 +71,12 @@ fn a_fields_update_logs_one_plain_row_per_changed_entry() {
         .expect("create")
         .created[0]
         .clone();
+    (vault, tasks, task_store, id)
+}
+
+#[test]
+fn a_fields_update_logs_one_plain_row_per_changed_entry() {
+    let (_vault, tasks, task_store, id) = one_task(None);
     let now = LocalDateTime::parse("2026-01-14T12:00:00").expect("a local instant");
     let patch = |pairs: &[(&str, Value)]| TaskPatch {
         fields: Some(
@@ -113,4 +124,33 @@ fn a_fields_update_logs_one_plain_row_per_changed_entry() {
             ),
         ]
     );
+}
+
+#[test]
+fn reads_run_on_the_pooled_readers_and_see_the_last_commit() {
+    let (_vault, _tasks, task_store, id) = one_task(Some("2026-01-14"));
+    let now = LocalDateTime::parse("2026-01-14T12:00:00").expect("a local instant");
+
+    let page = task_store.list(&ListQuery::default()).expect("list");
+    assert_eq!(page.tasks.len(), 1);
+    assert_eq!(page.tasks[0].task.id, id);
+    assert_eq!(
+        task_store.get(&id).expect("get").expect("live").task.title,
+        "Plan"
+    );
+    assert!(task_store.subtasks(&id).expect("subtasks").is_empty());
+    assert!(task_store.tag_counts().expect("tags").is_empty());
+    assert_eq!(
+        task_store.stats(now).expect("stats"),
+        TaskStats {
+            total: 1,
+            completed: 0,
+            overdue: 0,
+            due_today: 1,
+            due_this_week: 1
+        }
+    );
+    assert_eq!(task_store.today(now).expect("today").len(), 1);
+    assert_eq!(task_store.upcoming(now, 7).expect("upcoming").len(), 1);
+    assert!(task_store.overdue(now).expect("overdue").is_empty());
 }

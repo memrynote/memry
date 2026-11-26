@@ -31,7 +31,7 @@ fn open_vault(dir: &Path) -> Vault {
 
 fn open(dir: &Path) -> (Vault, Arc<Search>) {
     let vault = open_vault(dir);
-    let search = vault.search().expect("index.db");
+    let search = vault.search(None).expect("index.db");
     (vault, search)
 }
 

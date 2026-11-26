@@ -10,6 +10,7 @@ use std::sync::Arc;
 use super::EmbeddingService;
 use super::encoder::Encoder;
 use super::thread::{Reply, Request};
+use crate::session::projection::CancelToken;
 
 /// An image file's bytes or a rendered page, and how to embed it (`ImageEmbedOptions`): the
 /// text interleaved with it and the encoder's soft-token budget (its default when `None`).
@@ -22,14 +23,19 @@ pub struct ImageInput {
 
 impl EmbeddingService {
     /// `generateImageEmbedding` past its settings gate: the image's vector, or `None` when it is
-    /// empty, text or images back off, or the encoder failed. Blocks on the vision download:
-    /// call it from a blocking thread.
-    pub fn embed_image(self: &Arc<Self>, image: ImageInput) -> Option<Vec<f32>> {
+    /// empty, text or images back off, the encoder failed, or `lane` is cancelled (as
+    /// [`EmbeddingService::embed_in_lane`]). Blocks on the vision download: call it from a
+    /// blocking thread.
+    pub fn embed_image(
+        self: &Arc<Self>,
+        image: ImageInput,
+        lane: &CancelToken,
+    ) -> Option<Vec<f32>> {
         if image.bytes.is_empty() || !self.prepare_encoder(Encoder::Vision) {
             return None;
         }
         let request = Request::EmbedImage(Box::new(image));
-        match self.encoder_request(Encoder::Vision, request, None)? {
+        match self.encoder_request(Encoder::Vision, request, None, Some(lane))? {
             (generation, Reply::Embedded(vector)) => self
                 .encoder_succeeded(Encoder::Vision, generation)
                 .then_some(vector),

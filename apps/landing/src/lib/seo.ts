@@ -48,9 +48,9 @@ export const PAGE_META: Record<string, PageMeta> = {
     path: '/features'
   },
   notes: {
-    title: 'Markdown Notes with Wiki-Links & Backlinks — memrynote',
+    title: 'Markdown Notes App with Wiki-Links & Backlinks — memrynote',
     description:
-      'A file-first, markdown-native notes app. Wiki-links, backlinks, 8 property types, version history. Plain .md files in a folder you own, local-first.',
+      'A Markdown notes app that saves every note as a plain .md file in a folder you own. Wiki-links, backlinks, typed properties, version history, and encrypted sync.',
     path: '/features/notes'
   },
   inbox: {
@@ -60,9 +60,9 @@ export const PAGE_META: Record<string, PageMeta> = {
     path: '/features/inbox'
   },
   journal: {
-    title: 'Daily Journal & Markdown Diary, Private by Default',
+    title: 'Journaling App for a Private Daily Journal — memrynote',
     description:
-      'A reflective daily writing ritual. Day context sidebar, activity heatmap, time-based greetings, monthly stats, and templates. Reflect. Daily.',
+      'memrynote is a private journal app: one Markdown file per day, templates per weekday, On this day, and your tasks beside each entry. Encrypted sync, free locally.',
     path: '/features/journal'
   },
   tasks: {
@@ -206,16 +206,34 @@ export const PAGE_META: Record<string, PageMeta> = {
     path: '/blog/best-end-to-end-encrypted-notes-apps'
   },
   blogPrivateNotionAlternatives: {
-    title: 'Private Notion alternatives that work offline — memrynote',
+    title: 'Notion alternatives that are private and work offline — memrynote',
     description:
-      'A Notion alternative that stays private and works offline: what to check, how memrynote does it, and how Anytype, AFFiNE, and Obsidian differ.',
+      'Notion alternatives that keep your notes private and work offline: memrynote, AppFlowy, AFFiNE, Anytype, and Obsidian compared, including which are open source.',
     path: '/blog/private-notion-alternatives-that-work-offline'
   },
   blogPrivateJournalingApps: {
-    title: 'The most private journaling apps in 2026 — memrynote',
+    title: 'Private journal apps: the most private journaling apps in 2026 — memrynote',
     description:
-      'What makes a journaling app private: encryption, local storage, and files you can read without the app. memrynote, Day One, and Apple Journal compared.',
+      'Which private journal app keeps entries readable only by you? Encryption, offline use, open source code, and plain files compared for memrynote, Day One, Apple Journal, and more.',
     path: '/blog/most-private-journaling-apps'
+  },
+  blogBestJournalingApps: {
+    title: 'The best journaling apps in 2026 — memrynote',
+    description:
+      'Day One, Apple Journal, Journey, Diarium, Obsidian daily notes, and memrynote compared: platforms, privacy, where entries live, price, and where each falls short.',
+    path: '/blog/best-journaling-apps'
+  },
+  blogOpenSourceNoteApps: {
+    title: 'The best open source note-taking apps in 2026 — memrynote',
+    description:
+      'Joplin, Logseq, Standard Notes, Notesnook, Trilium, SiYuan, and memrynote compared: license, platforms, where notes live, encryption, and what sync costs.',
+    path: '/blog/open-source-note-taking-apps'
+  },
+  encryptedNotesApp: {
+    title: 'Encrypted notes app for private, secure notes — memrynote',
+    description:
+      'memrynote is an end-to-end encrypted notes app. Notes stay on your device as Markdown files, and sync uploads only ciphertext the server cannot read. Free locally.',
+    path: '/encrypted-notes-app'
   },
   compare: {
     title: 'Compare memrynote — how it stacks up',
@@ -230,9 +248,9 @@ export const PAGE_META: Record<string, PageMeta> = {
     path: '/obsidian-alternative'
   },
   notionAlternative: {
-    title: 'Private Notion alternative — memrynote',
+    title: 'Private Notion alternative that works offline — memrynote',
     description:
-      'A private, end-to-end encrypted Notion alternative. memrynote stores notes as local Markdown files on your device — offline-first, open source.',
+      'A private Notion alternative: notes, tasks, and a journal as local Markdown files, end-to-end encrypted sync, and a built-in Notion importer. Free for local use.',
     path: '/notion-alternative'
   },
   noteplanAlternative: {
@@ -248,9 +266,9 @@ export const PAGE_META: Record<string, PageMeta> = {
     path: '/capacities-alternative'
   },
   evernoteAlternative: {
-    title: 'Evernote alternative — memrynote',
+    title: 'Evernote alternative with end-to-end encryption — memrynote',
     description:
-      'Switch from Evernote to memrynote: end-to-end encrypted, local Markdown files, no note cap, built-in tasks and calendar. Free for local use.',
+      'Comparing Evernote alternatives? memrynote imports your .enex files as Markdown, encrypts sync end to end, and has no note cap. Tasks, calendar, and journal built in.',
     path: '/evernote-alternative'
   },
   logseqAlternative: {
@@ -284,9 +302,9 @@ export const PAGE_META: Record<string, PageMeta> = {
     path: '/roam-research-alternative'
   },
   onenoteAlternative: {
-    title: 'OneNote alternative — memrynote',
+    title: 'OneNote alternative with a built-in OneNote importer — memrynote',
     description:
-      'Leave Microsoft OneNote for memrynote: plain Markdown files you own, end-to-end encrypted sync, plus built-in tasks, calendar, and journal.',
+      'Comparing OneNote alternatives? memrynote imports your OneNote notebooks into Markdown files you own, with encrypted sync and built-in tasks, calendar, and journal.',
     path: '/onenote-alternative'
   },
   upnoteAlternative: {

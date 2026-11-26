@@ -26,6 +26,8 @@ mod device_key;
 mod docs;
 #[path = "support/electron_db.rs"]
 mod electron_db;
+#[path = "electron_vault_import/ledger_ends.rs"]
+mod ledger_ends;
 #[path = "electron_vault_import/notes.rs"]
 mod notes;
 #[path = "electron_vault_import/queue.rs"]
@@ -123,7 +125,7 @@ impl Vault {
 
 fn staged(outcome: StageOutcome) -> memry_desktop::electron_import::vault_db::StagedVault {
     match outcome {
-        StageOutcome::Staged(staged) => staged,
+        StageOutcome::Staged(staged) => *staged,
         StageOutcome::AlreadyImported => panic!("AlreadyImported"),
         StageOutcome::NativeFirst => panic!("NativeFirst"),
     }

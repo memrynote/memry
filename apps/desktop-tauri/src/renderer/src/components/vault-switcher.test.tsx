@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import React from 'react'
 import type * as UseVaultModule from '@/hooks/use-vault'
@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   ],
   switchVault: vi.fn(),
   selectVault: vi.fn(),
+  createVault: vi.fn(),
   openSettings: vi.fn(),
   refresh: vi.fn()
 }))
@@ -68,7 +69,8 @@ vi.mock('@/hooks/use-vault', async (importOriginal) => ({
     status: mocks.status,
     isLoading: false,
     selectVault: mocks.selectVault,
-    switchVault: mocks.switchVault
+    switchVault: mocks.switchVault,
+    createVault: mocks.createVault
   })
 }))
 vi.mock('@/hooks/use-account-vaults', () => ({
@@ -266,6 +268,47 @@ describe('VaultSwitcher during a vault switch', () => {
   })
 })
 
+describe('VaultSwitcher new vault entries', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    resetVaultSwitchState()
+    serveVaults([ACTIVE, OLD])
+    mocks.createVault.mockResolvedValue({ success: true, vault: null })
+  })
+
+  it('opens a folder as a vault through the folder picker', async () => {
+    render(<VaultSwitcher />)
+    fireEvent.click(await screen.findByText('phaseF.componentsVaultSwitcher.openFolderAsVault'))
+    expect(mocks.selectVault).toHaveBeenCalledWith(undefined)
+  })
+
+  it('creates a vault with the onboarding create form, and cancels without creating', async () => {
+    render(<VaultSwitcher />)
+    fireEvent.click(await screen.findByText('phaseF.componentsVaultSwitcher.createVault'))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).queryByText('phaseF.componentsVaultOnboarding.flow.back')).toBeNull()
+
+    fireEvent.click(within(dialog).getByText('phaseF.componentsVaultOnboarding.flow.cancel'))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(mocks.createVault).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByText('phaseF.componentsVaultSwitcher.createVault'))
+    const reopened = await screen.findByRole('dialog')
+    fireEvent.change(within(reopened).getByRole('textbox'), { target: { value: 'Work' } })
+    await within(reopened).findByText('/mock/Documents/Memry/Work')
+    fireEvent.click(
+      within(reopened).getByRole('button', {
+        name: 'phaseF.componentsVaultOnboarding.flow.createVault'
+      })
+    )
+
+    await waitFor(() =>
+      expect(mocks.createVault).toHaveBeenCalledWith('/mock/Documents/Memry', 'Work')
+    )
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  })
+})
+
 describe('VaultSwitcher sandbox vault', () => {
   const SANDBOX_PATH = '/userData/Sandbox'
 
@@ -284,7 +327,7 @@ describe('VaultSwitcher sandbox vault', () => {
     mocks.switchVault.mockResolvedValue({ success: true, vault: null })
   })
 
-  it('sits between the vault sections and Open vault, each behind a divider', async () => {
+  it('sits between the vault sections and Create vault, each behind a divider', async () => {
     serveSandbox(true)
     const { container } = render(<VaultSwitcher />)
     const sandbox = await screen.findByText('phaseF.componentsVaultSwitcher.sandboxVault')
@@ -295,7 +338,7 @@ describe('VaultSwitcher sandbox vault', () => {
     const at = order.findIndex((entry) => entry.includes(sandbox.textContent ?? ''))
     expect(order[at - 1]).toBe('divider')
     expect(order[at + 1]).toBe('divider')
-    expect(order[at + 2]).toBe('phaseF.componentsVaultSwitcher.openVault')
+    expect(order[at + 2]).toBe('phaseF.componentsVaultSwitcher.createVault')
   })
 
   it('invites the first try, then generates and switches into it', async () => {

@@ -1,4 +1,7 @@
 {
+  "wikiLink": {
+    "openFailed": "無法開啟此連結"
+  },
   "portalBlock": {
     "copyFailed": "無法複製傳送門",
     "hiddenCount": "已隱藏 {count} 個",
@@ -956,6 +959,8 @@
     "componentsVaultSwitcher": {
       "noVaultsYet": "尚無儲存庫",
       "openVault": "開啟儲存庫",
+      "createVault": "建立儲存庫",
+      "openFolderAsVault": "將資料夾開啟為儲存庫",
       "settings": "設定",
       "remove": "移除「",
       "removeVaultTitle": "要將「{name}」從清單中移除嗎？",

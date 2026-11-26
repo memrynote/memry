@@ -35,7 +35,7 @@ The setup replaces the sidebar tour, so the tour does not run afterwards.
 
 With **Sync across my devices**, setup asks for your email and a six-digit code, then shows a new account's 24-word recovery phrase and asks for three of its words back (see [Recovery Phrase](#recovery-phrase)). If the email already has an account, setup switches to unlocking that account on this computer instead.
 
-Next comes the plan: Plus, Pro or Believer, monthly or yearly. **Continue to checkout** opens the payment page in your browser with that plan already chosen. Setup waits for the payment and moves on by itself once it goes through. **Not now** continues without a plan: everything stays on this computer, and the Ready screen offers **Choose a plan** to go back. Plans and prices are on [memrynote.com/pricing](https://memrynote.com/pricing).
+Next comes the plan: Plus, Pro or Believer, monthly or yearly. **Continue to checkout** opens the payment page in your browser with that plan already chosen. Setup waits for the payment and moves on by itself once it goes through. **Not now** continues without a plan: everything stays on this computer, and the Ready screen offers **Choose a plan** to go back. Plans and prices are on [memrynote.com/pricing](https://memrynote.com/pricing?utm_source=docs&utm_medium=referral&utm_campaign=first_run).
 
 ## Signing In on Another Computer
 
@@ -69,6 +69,8 @@ When **Open folder as vault** picks an Obsidian vault that memrynote has never o
 
 **Open from Memrynote Sync** lists your account's vaults by name. Choose one and where it should be downloaded; a vault that is already on this computer opens its local copy. The other vaults stay in your account and can be downloaded later from the vault switcher. A new account with no vaults continues to **Create new vault**.
 
+Once a vault is open, the same two ways to add another one sit at the bottom of the vault switcher (click the vault name at the top of the sidebar panel): **Create vault** opens the same name-and-location form in a dialog, and **Open folder as vault** opens the folder picker. Either one switches to the new vault.
+
 Pick a location of your own if you want to:
 
 - Sync the **vault** itself with iCloud / Dropbox (not recommended — sync conflicts with memrynote's own sync; use memrynote sync instead)
@@ -81,7 +83,7 @@ You can move the vault later from [Settings → Vault](/user-guide/settings#vaul
 
 A new vault is empty, which makes it hard to judge what memrynote can do. The sandbox vault is a ready-made vault full of notes, journal entries, projects, tasks, calendar events, inbox items and files, so you can look around before you fill your own.
 
-Open the vault switcher and choose **Try the sandbox vault**. It sits in a section of its own, between your vaults and **Open vault**. The first time, memrynote builds it on your computer, which takes a few seconds, and then switches to it. Dates in the sandbox are relative to the moment it is built, so there are tasks due today, overdue items and an unbroken journal streak.
+Open the vault switcher and choose **Try the sandbox vault**. It sits in a section of its own, between your vaults and **Create vault**. The first time, memrynote builds it on your computer, which takes a few seconds, and then switches to it. Dates in the sandbox are relative to the moment it is built, so there are tasks due today, overdue items and an unbroken journal streak.
 
 The sandbox is not one of your vaults:
 
@@ -156,7 +158,7 @@ After setup completes, your vault directory looks like this:
 └─ vault.json           # public metadata (version, salt — not the key)
 ```
 
-All the heavy data is **encrypted at rest** with the vault key. The salt and version metadata are not sensitive.
+Your notes and journals are plain Markdown files, and the local databases are not encrypted. Anyone who can read your disk can read them. Agent chat is the one exception: it is encrypted with the vault key before it is written to `data.db`. What sync uploads is encrypted end to end, so the sync server stores only ciphertext. To protect the files on this computer, turn on full-disk encryption: FileVault on macOS, BitLocker on Windows, or LUKS on Linux. The salt and version metadata in `vault.json` are not sensitive.
 
 ## Onboarding Tour
 

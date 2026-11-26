@@ -314,6 +314,16 @@ export function recordedFileOf(
   return fs.existsSync(file) ? file : null
 }
 
+/** Whether a record names this attachment of a note, wherever its file is now. */
+export function isRecordedAttachment(db: DrizzleDb, noteId: string, attachmentId: string): boolean {
+  const row = db
+    .select({ path: attachmentFiles.path })
+    .from(attachmentFiles)
+    .where(and(eq(attachmentFiles.noteId, noteId), eq(attachmentFiles.attachmentId, attachmentId)))
+    .get()
+  return row !== undefined
+}
+
 /**
  * The files on disk that hold these attachments of a note (#3054). An id no
  * record names (a note from before the record) can be any of the note's files

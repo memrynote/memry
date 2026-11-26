@@ -82,7 +82,7 @@ pub struct ImportProgress {
 }
 
 pub enum StageOutcome {
-    Staged(StagedVault),
+    Staged(Box<StagedVault>),
     /// `core/data.db` carries the import marker: an earlier run installed this vault.
     AlreadyImported,
     /// `core/data.db` exists without the marker: the vault was first opened natively. It is
@@ -184,7 +184,10 @@ pub fn stage_vault_import(input: VaultImportInput<'_>) -> Result<StageOutcome, I
     // A failure discards the staging directory here, explicitly and not on drop, so a crash
     // point (a panic) leaves it behind the way a real crash would.
     match stage(&input, &paths) {
-        Ok(report) => Ok(StageOutcome::Staged(StagedVault { paths, report })),
+        Ok(report) => Ok(StageOutcome::Staged(Box::new(StagedVault {
+            paths,
+            report,
+        }))),
         Err(error) => {
             if let Err(cleanup) = remove_staging(&paths) {
                 tracing::warn!(%cleanup, "could not remove the import staging directory");

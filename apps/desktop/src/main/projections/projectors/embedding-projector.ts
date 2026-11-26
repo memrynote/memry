@@ -1,3 +1,4 @@
+import { createHash } from 'crypto'
 import { sql } from 'drizzle-orm'
 import type Database from 'better-sqlite3'
 import { SettingsChannels } from '@memry/contracts/ipc-channels'
@@ -65,7 +66,8 @@ function deleteNoteChunks(rawDb: Database.Database, noteId: string): void {
 function storeNoteEmbeddings(
   noteId: string,
   embeddings: Float32Array[],
-  similar: Float32Array
+  similar: Float32Array,
+  inputHash: string
 ): void {
   const rawDb = getRawIndexDatabase()
   const [head, ...later] = embeddings
@@ -84,9 +86,9 @@ function storeNoteEmbeddings(
     })
     rawDb
       .prepare(
-        'INSERT OR REPLACE INTO note_embedding_state (note_id, input_version, chunk_count) VALUES (?, ?, ?)'
+        'INSERT OR REPLACE INTO note_embedding_state (note_id, input_version, chunk_count, input_hash) VALUES (?, ?, ?, ?)'
       )
-      .run(noteId, EMBEDDING_INPUT_VERSION, later.length)
+      .run(noteId, EMBEDDING_INPUT_VERSION, later.length, inputHash)
   })()
 }
 
@@ -160,6 +162,13 @@ interface NoteText {
   content: string
 }
 
+/** Every vector of a note is a function of its title and text alone. */
+function embeddingInputHash(text: NoteText): string {
+  return createHash('sha256')
+    .update(JSON.stringify([text.title ?? null, text.content]))
+    .digest('hex')
+}
+
 interface EmbeddingWork {
   note: EmbeddableNote
   revision: symbol | undefined
@@ -213,6 +222,25 @@ export function createEmbeddingProjector(
     return revision
   }
 
+  /**
+   * True when the note's vectors were computed from `text` under the current
+   * input version. Sync applies, renames, link rewrites and text extraction
+   * republish notes whose text did not change, and each re-embed costs every
+   * window of the note in inference. Any older computation still running for the
+   * note is cut off, so it cannot replace the vectors that match.
+   */
+  const keepIfCurrent = (noteId: string, text: NoteText): boolean => {
+    if (!ownsDatabase()) return false
+    const current = getRawIndexDatabase()
+      .prepare(
+        'SELECT 1 FROM note_embedding_state WHERE note_id = ? AND input_version = ? AND input_hash = ?'
+      )
+      .get(noteId, EMBEDDING_INPUT_VERSION, embeddingInputHash(text))
+    if (!current) return false
+    revisions.set(noteId, Symbol(noteId))
+    return true
+  }
+
   const captureWork = (notes: EmbeddableNote[]): EmbeddingWork[] =>
     notes.map((note) => ({ note, revision: revisions.get(note.id) }))
 
@@ -253,7 +281,7 @@ export function createEmbeddingProjector(
     }
     if (!canContinue()) return false
 
-    storeNoteEmbeddings(noteId, embeddings, similar)
+    storeNoteEmbeddings(noteId, embeddings, similar, embeddingInputHash(text))
     return true
   }
 
@@ -374,6 +402,7 @@ export function createEmbeddingProjector(
       deleteNoteEmbedding(noteId)
       return
     }
+    if (keepIfCurrent(noteId, { title, content })) return
     const revision = markDirty(noteId)
     if (isIndexing()) return
     await updateEmbedding(noteId, { title, content }, revision)
@@ -411,17 +440,21 @@ export function createEmbeddingProjector(
           return
         }
         // Text read from the note's attachments changed.
-        const revision = markDirty(note.id)
         const vaultPath = getVaultPath()
         if (!isIndexing() && vaultPath && isAIEnabled()) {
           try {
             const content = await readEmbeddableContent(vaultPath, note, ownsDatabase)
             if (content === null) return
-            await updateEmbedding(note.id, { title: note.title, content }, revision)
+            const text = { title: note.title, content }
+            if (keepIfCurrent(note.id, text)) return
+            await updateEmbedding(note.id, text, markDirty(note.id))
           } catch (error) {
+            markDirty(note.id)
             logger.warn('Failed to embed attachment text', { noteId: note.id, error })
           }
+          return
         }
+        markDirty(note.id)
         return
       }
 
@@ -443,15 +476,16 @@ export function createEmbeddingProjector(
         return
       }
 
+      const text = {
+        title: note.title,
+        content: withAttachmentText(note.noteId, note.parsedContent)
+      }
+      if (keepIfCurrent(note.noteId, text)) return
       const revision = markDirty(note.noteId)
       // Indexing records debt without loading the model on the vault-open path.
       if (isIndexing()) return
 
-      await updateEmbedding(
-        note.noteId,
-        { title: note.title, content: withAttachmentText(note.noteId, note.parsedContent) },
-        revision
-      )
+      await updateEmbedding(note.noteId, text, revision)
     },
 
     rebuild: runRebuild,

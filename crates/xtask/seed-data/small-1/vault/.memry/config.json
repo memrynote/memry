@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "title": "Home & Garden",
+  "excludePatterns": [
+    ".git",
+    "node_modules",
+    ".DS_Store"
+  ]
+}
