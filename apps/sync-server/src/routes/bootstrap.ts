@@ -12,6 +12,9 @@ import {
   openBootstrapSession,
   renewBootstrapSession
 } from '../services/bootstrap-session'
+import { waitUntilCaptured } from '../services/analytics'
+import { reportBootstrapCoverage } from '../services/pack-coverage'
+import { listPacks, MAX_PACK_PAGE_LIMIT } from '../services/pack-list'
 import { getManifest, MAX_MANIFEST_PAGE_LIMIT } from '../services/sync'
 import { resolveR2PresignConfig } from '../services/r2-presign'
 import type { AppContext } from '../types'
@@ -118,7 +121,7 @@ bootstrap.post('/', bootstrapSessionLimit, async (c) => {
   // no matter how attachment-heavy the vault is. Absent entirely on
   // deployments without R2 presign credentials (#1836 graceful degradation).
   //
-  // RESERVED-for-future, same spirit as `packs`: this is the FIRST keyset page
+  // RESERVED-for-future: this is the FIRST keyset page
   // only. No continuation endpoint ships in #1837, so a vault with more than
   // CHUNK_HASH_PAGE_LIMIT chunks gets an informational overview whose
   // `nextChunkCursor` names where continuation WILL start once the pack
@@ -142,8 +145,22 @@ bootstrap.post('/', bootstrapSessionLimit, async (c) => {
     }
   }
 
-  // RESERVED for #1839/#1840 (vault packs). Always present and empty until the
-  // pack pipeline lands, so #1840 plugs in without a protocol change.
+  // The first page of GET /sync/packs with its coverage statement, one D1
+  // batch (protocol 08 §8.9-8.10), so a client starts without a listing request.
+  const packPage = await listPacks(
+    c.env.DB,
+    userId,
+    vaultId,
+    { limit: MAX_PACK_PAGE_LIMIT, coverageDisabled: c.env.PACK_COVERAGE_DISABLED },
+    resolveR2PresignConfig(c.env)
+  )
+  // After the response: the per-bootstrap coverage log line, and compaction
+  // for each kind a build can extend, at most once per window (#5230).
+  waitUntilCaptured(c, reportBootstrapCoverage(c.env, { userId, vaultId }), {
+    source: 'PackCoverage',
+    action: 'bootstrap_coverage_failed'
+  })
+
   return c.json({
     session: {
       token,
@@ -153,7 +170,9 @@ bootstrap.post('/', bootstrapSessionLimit, async (c) => {
     manifest,
     tailCursor: tailRow?.max_cursor ?? 0,
     ...(attachments ? { attachments } : {}),
-    packs: []
+    packs: packPage.packs,
+    ...(packPage.nextCursor ? { packsNextCursor: packPage.nextCursor } : {}),
+    coverage: packPage.coverage ?? []
   })
 })
 

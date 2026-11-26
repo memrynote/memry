@@ -53,15 +53,7 @@ fn source(title: &str, clock: Value) -> Value {
 }
 
 fn page(conn: &Connection, items: Vec<Pending>) -> ApplyTotals {
-    apply_page(
-        conn,
-        items,
-        vec![],
-        10,
-        Some("device-a"),
-        &AtRestKey::default(),
-    )
-    .expect("the page applies")
+    apply_page(conn, items, 10, Some("device-a"), &AtRestKey::default()).expect("the page applies")
 }
 
 fn outcomes(totals: &ApplyTotals) -> Vec<(String, AppliedOutcome)> {
@@ -121,6 +113,38 @@ fn every_item_of_a_page_is_one_record_with_its_outcome() {
         Ok(())
     })
     .expect("the pages");
+}
+
+/// A pulled note carries the title this device held before it applied: none for a create, the
+/// old title for a rename, the same title for a change that keeps it (#5316).
+#[test]
+fn a_pulled_note_says_the_title_it_had_before() {
+    let dir = temp_dir("feed-title-before");
+    let db = open_data(&dir.path().join("data.db")).expect("open data.db");
+    db.call_blocking(|conn| {
+        let renamed = |title: &str, clock: Value| {
+            let mut payload = note(clock);
+            payload["title"] = json!(title);
+            record("note", "note00000001", payload)
+        };
+        let totals = page(
+            conn,
+            vec![
+                renamed("Plan", json!({"peer": 1})),
+                renamed("Later", json!({"peer": 2})),
+                renamed("Later", json!({"peer": 3})),
+            ],
+        );
+        let before: Vec<_> = totals
+            .feed
+            .records
+            .iter()
+            .map(|r| r.title_before.as_deref())
+            .collect();
+        assert_eq!(before, [None, Some("Plan"), Some("Later")]);
+        Ok(())
+    })
+    .expect("the page");
 }
 
 /// Electron's `note-handler.ts:740-746`: a tombstone older than the local edit
@@ -227,6 +251,97 @@ fn a_concurrent_calendar_source_is_merged_with_the_field_it_decided() {
         assert_eq!(
             (&title.losing, &title.winning, &title.merged_clock),
             (&json!("Work"), &json!("Office"), &json!({"a": 1, "b": 1}))
+        );
+        Ok(())
+    })
+    .expect("the pages");
+}
+
+fn task(title: &str, clock: Value) -> Value {
+    json!({
+        "title": title, "projectId": "proj-1", "priority": 1,
+        "clock": clock.clone(), "fieldClocks": {"title": clock},
+        "createdAt": ISO, "modifiedAt": ISO,
+    })
+}
+
+fn project(name: &str, clock: Value) -> Value {
+    json!({
+        "name": name, "color": "#fff", "position": 0, "isInbox": false,
+        "clock": clock.clone(), "fieldClocks": {"name": clock},
+        "createdAt": ISO, "modifiedAt": ISO,
+    })
+}
+
+/// The decided fields of the one record of a concurrent page.
+fn merged_conflicts(conn: &Connection, item_type: &str, first: Value, second: Value) -> Vec<Value> {
+    page(conn, vec![record(item_type, "item-1", first)]);
+    let totals = page(conn, vec![record(item_type, "item-1", second)]);
+    let merged = &totals.feed.records[0];
+    assert_eq!(merged.outcome, AppliedOutcome::Merged);
+    merged
+        .conflicts
+        .iter()
+        .map(|c| json!([c.field, c.losing, c.winning, c.merged_clock, c.local_lost]))
+        .collect()
+}
+
+/// Electron's `task-handler.ts` and `project-handler.ts` merge concurrent
+/// rows field by field; a tied field the remote won is this device's loss.
+#[test]
+fn a_concurrent_task_or_project_reports_the_field_this_device_lost() {
+    let dir = temp_dir("feed-task");
+    let db = open_data(&dir.path().join("data.db")).expect("open data.db");
+    db.call_blocking(|conn| {
+        let conflicts = merged_conflicts(
+            conn,
+            "task",
+            task("Mine", json!({"a": 1})),
+            task("Theirs", json!({"b": 1})),
+        );
+        assert_eq!(
+            conflicts,
+            [json!(["title", "Mine", "Theirs", {"a": 1, "b": 1}, true])]
+        );
+        Ok(())
+    })
+    .expect("the task pages");
+
+    let dir = temp_dir("feed-project");
+    let db = open_data(&dir.path().join("data.db")).expect("open data.db");
+    db.call_blocking(|conn| {
+        let conflicts = merged_conflicts(
+            conn,
+            "project",
+            project("Mine", json!({"a": 1})),
+            project("Theirs", json!({"b": 1})),
+        );
+        assert_eq!(
+            conflicts,
+            [json!(["name", "Mine", "Theirs", {"a": 1, "b": 1}, true])]
+        );
+        Ok(())
+    })
+    .expect("the project pages");
+}
+
+/// §6.3's tie rule keeps a value clocked under `_offline` against a remote
+/// without it: the field is a conflict this device won, so nothing of its own
+/// was lost (Electron skips `mergedValue === localValue`).
+#[test]
+fn a_tie_this_device_won_is_not_its_loss() {
+    let dir = temp_dir("feed-offline");
+    let db = open_data(&dir.path().join("data.db")).expect("open data.db");
+    db.call_blocking(|conn| {
+        let conflicts = merged_conflicts(
+            conn,
+            "task",
+            task("Mine", json!({"_offline": 1})),
+            task("Theirs", json!({"b": 1})),
+        );
+        assert_eq!(
+            conflicts,
+            [json!(["title", "Theirs", "Mine", {"_offline": 1, "b": 1}, false])]
         );
         Ok(())
     })

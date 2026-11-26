@@ -1,0 +1,96 @@
+name: libsodium archives
+description: >-
+  Windows only; does nothing on other OSes, where libsodium-sys-stable builds from the source tarball
+  its crate ships. On Windows MSVC its build.rs downloads libsodium-<version>-stable-msvc.zip from
+  download.libsodium.org with one request and no retry, so a dropped connection fails the job
+  ("Peer disconnected", build.rs:405). This restores the archives from a cache keyed on the crate
+  version, fetches them with retries on a miss (the zip from download.libsodium.org, the source tarball
+  from the crate on static.crates.io, checked against the Cargo.lock checksum), and sets
+  SODIUM_DIST_DIR, which build.rs reads in place of the download. build.rs still verifies each
+  archive's minisign signature against the key compiled into the crate, so a bad or swapped archive
+  fails the build.
+runs:
+  using: composite
+  steps:
+    - name: Read the libsodium-sys-stable pin
+      if: runner.os == 'Windows'
+      id: crate
+      shell: bash
+      run: |
+        lock="$GITHUB_WORKSPACE/crates/Cargo.lock"
+        block=$(grep -A3 '^name = "libsodium-sys-stable"' "$lock" | tr -d '\r')
+        version=$(sed -n 's/^version = "\(.*\)"$/\1/p' <<<"$block")
+        checksum=$(sed -n 's/^checksum = "\(.*\)"$/\1/p' <<<"$block")
+        if [ "$(grep -c '^name = "libsodium-sys-stable"' "$lock")" != 1 ] || [ -z "$version" ] || [ -z "$checksum" ]; then
+          echo "::error::crates/Cargo.lock must hold exactly one registry libsodium-sys-stable with a checksum"
+          exit 1
+        fi
+        echo "version=$version" >> "$GITHUB_OUTPUT"
+        echo "checksum=$checksum" >> "$GITHUB_OUTPUT"
+
+    # actions/cache saves in its post step, and only when the job succeeded, so archives that failed
+    # build.rs's signature check are never saved. One saver per key (apt-install has the reason): only
+    # a push to feat/tauri-v2 or main, or a scheduled run, uses actions/cache; every other ref restores
+    # with actions/cache/restore and writes nothing. The two steps are exclusive and take the same
+    # path and key, so exactly one of them sets cache-hit.
+    - name: Restore and save the libsodium archives
+      if: runner.os == 'Windows' && (github.event_name == 'schedule' || (github.event_name == 'push' && (github.ref == 'refs/heads/feat/tauri-v2' || github.ref == 'refs/heads/main')))
+      id: cache-save
+      uses: actions/cache@v4
+      with:
+        path: ${{ runner.temp }}/libsodium-dist
+        key: libsodium-dist-${{ steps.crate.outputs.version }}-${{ hashFiles('.github/actions/libsodium-dist/action.yml') }}
+
+    - name: Restore the libsodium archives
+      if: runner.os == 'Windows' && !(github.event_name == 'schedule' || (github.event_name == 'push' && (github.ref == 'refs/heads/feat/tauri-v2' || github.ref == 'refs/heads/main')))
+      id: cache-restore
+      uses: actions/cache/restore@v4
+      with:
+        path: ${{ runner.temp }}/libsodium-dist
+        key: libsodium-dist-${{ steps.crate.outputs.version }}-${{ hashFiles('.github/actions/libsodium-dist/action.yml') }}
+
+    # build.rs reads LATEST.tar.gz (the source tarball its crate ships) before it falls back to the
+    # MSVC zip, and reads both from SODIUM_DIST_DIR once that is set. The zip name is read from the
+    # crate's build.rs, so a crate bump needs no edit here.
+    - name: Fetch the libsodium archives
+      if: runner.os == 'Windows' && steps.cache-save.outputs.cache-hit != 'true' && steps.cache-restore.outputs.cache-hit != 'true'
+      shell: bash
+      env:
+        VERSION: ${{ steps.crate.outputs.version }}
+        CHECKSUM: ${{ steps.crate.outputs.checksum }}
+      run: |
+        set -euo pipefail
+        dist="$(cygpath -m "$RUNNER_TEMP")/libsodium-dist"
+        work=$(mktemp -d)
+        trap 'rm -rf "$work"' EXIT
+        fetch() {
+          curl --fail --silent --show-error --location --retry 6 --retry-all-errors --retry-delay 5 \
+            --retry-max-time 600 --connect-timeout 30 --max-time 300 --output "$2" "$1"
+        }
+        crate="libsodium-sys-stable-$VERSION"
+        cd "$work"
+        fetch "https://static.crates.io/crates/libsodium-sys-stable/$crate.crate" crate.tar.gz
+        actual=$(sha256sum crate.tar.gz | cut -d' ' -f1)
+        if [ "$actual" != "$CHECKSUM" ]; then
+          echo "::error::$crate.crate has sha256 $actual, Cargo.lock pins $CHECKSUM"
+          exit 1
+        fi
+        tar -xzf crate.tar.gz "$crate/build.rs" "$crate/LATEST.tar.gz" "$crate/LATEST.tar.gz.minisig"
+        zip=$(grep -oE 'libsodium-[0-9]+(\.[0-9]+)*-stable-msvc' "$crate/build.rs" | sort -u)
+        if [ -z "$zip" ] || [ "$(printf '%s\n' "$zip" | wc -l)" -ne 1 ]; then
+          echo "::error::$crate/build.rs does not name exactly one MSVC archive: $zip"
+          exit 1
+        fi
+        base=https://download.libsodium.org/libsodium/releases
+        fetch "$base/$zip.zip" "$zip.zip"
+        fetch "$base/$zip.zip.minisig" "$zip.zip.minisig"
+        mkdir -p "$dist"
+        mv "$zip.zip" "$zip.zip.minisig" "$crate/LATEST.tar.gz" "$crate/LATEST.tar.gz.minisig" "$dist/"
+
+    - name: Point libsodium-sys-stable at the archives
+      if: runner.os == 'Windows'
+      shell: bash
+      run: |
+        dist="$(cygpath -m "$RUNNER_TEMP")/libsodium-dist"
+        echo "SODIUM_DIST_DIR=$dist (cache hit: ${{ steps.cache-save.outputs.cache-hit || steps.cache-restore.outputs.cache-hit || 'false' }}): $(ls "$dist" | tr '\n' ' ')"
+        echo "SODIUM_DIST_DIR=$dist" >> "$GITHUB_ENV"

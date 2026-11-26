@@ -114,11 +114,14 @@ fn paste(webview: tauri::webview::PlatformWebview, done: PasteDone) {
     done.send(Ok(())).ok();
 }
 
-/// The key events of a Ctrl+V press whose `rawKeyDown` runs the `paste` editing command.
+/// The key events of a Ctrl+V press whose `rawKeyDown` runs the `paste` editing command. The last
+/// releases Ctrl, as a real press does: without it the page still sees Ctrl held and the sidebar
+/// rail swaps its icons for the Ctrl+digit numbers.
 #[cfg(windows)]
-static PASTE_KEYS: [&str; 2] = [
+static PASTE_KEYS: [&str; 3] = [
     r#"{"type":"rawKeyDown","modifiers":2,"key":"v","code":"KeyV","windowsVirtualKeyCode":86,"commands":["paste"]}"#,
     r#"{"type":"keyUp","modifiers":2,"key":"v","code":"KeyV","windowsVirtualKeyCode":86}"#,
+    r#"{"type":"keyUp","modifiers":0,"key":"Control","code":"ControlLeft","windowsVirtualKeyCode":17}"#,
 ];
 
 /// `done` is shared by the completion handlers and the call sites, which all run on the main
@@ -170,7 +173,7 @@ fn send_keys(
 }
 
 /// WebView2 has no paste call; CDP's `commands` runs the editing command a key binding runs.
-/// `done` resolves when the `keyUp` completes.
+/// `done` resolves when the last key event completes.
 #[cfg(windows)]
 fn paste(webview: tauri::webview::PlatformWebview, done: PasteDone) {
     let done = SharedDone::new(std::cell::Cell::new(Some(done)));

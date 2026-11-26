@@ -1,6 +1,6 @@
 import { createLogger } from '../lib/logger'
 import { NetworkError, RateLimitError } from './http-client'
-import { DeadLetterError } from '@memry/sync-client/retry'
+import { DeadLetterError, sleep } from '@memry/sync-client/retry'
 import type { NetworkMonitor } from './network'
 import type { DownloadResult, ProgressCallback } from './attachments'
 
@@ -61,10 +61,12 @@ export class DownloadPacer {
     return Math.max(1, Math.floor(this.maxRequests * this.multiplier))
   }
 
-  async acquire(): Promise<void> {
+  /** Rejects once `signal` aborts, a wait for the window included. */
+  async acquire(signal?: AbortSignal): Promise<void> {
     // Loop instead of a single wait: several callers can be parked on the same
     // window, and only as many as fit may proceed when it slides.
     for (;;) {
+      signal?.throwIfAborted()
       const now = Date.now()
       while (this.stamps.length > 0 && this.stamps[0] <= now - this.windowMs) {
         this.stamps.shift()
@@ -74,7 +76,7 @@ export class DownloadPacer {
         return
       }
       const waitMs = Math.max(1, this.stamps[0] + this.windowMs - now)
-      await new Promise<void>((resolve) => setTimeout(resolve, waitMs))
+      await sleep(waitMs, signal)
     }
   }
 }
@@ -97,6 +99,8 @@ export interface DownloadRequest {
   attachmentId: string
   targetPath: string
   targetIsDir?: boolean
+  /** The binary note whose own file `targetPath` is: a landing it no longer names is dropped (#5580). */
+  fileOwnerId?: string
   onProgress?: ProgressCallback
   /**
    * 'interactive' (a user or renderer is waiting) jumps the queue; 'eager'
@@ -118,6 +122,9 @@ export type DownloadFn = (
     onProgress?: ProgressCallback
     pace?: () => Promise<void>
     isOnline?: () => boolean
+    upcoming?: () => string[]
+    fileOwnerId?: string
+    signal?: AbortSignal
   }
 ) => Promise<DownloadResult>
 
@@ -165,12 +172,16 @@ export class DownloadQueue {
   /** keyOf(request) -> unsettled item, for dedupe (queued or running). */
   private byKey = new Map<string, QueueItem>()
   private running = 0
+  /** Items whose download has started and not settled. */
+  private readonly started = new Set<QueueItem>()
   private backoffUntil = 0
   /** Global network-error backoff deadline — one blip pauses ALL items. */
   private networkBackoffUntil = 0
   private wakeBackoff: (() => void) | null = null
   private draining = false
   private disposed = false
+  /** Aborts every running transfer when the queue is disposed. */
+  private readonly aborter = new AbortController()
   private readonly downloadFn: DownloadFn
   private readonly network?: NetworkMonitor
   private readonly pacer: DownloadPacer
@@ -269,8 +280,19 @@ export class DownloadQueue {
     this.pacer.setMultiplier(multiplier)
   }
 
+  /** One pacing token for a manifest read outside the queue: a binary note's check (#5608). */
+  pace(): Promise<void> {
+    return this.pacer.acquire()
+  }
+
+  /**
+   * Rejects queued items, and aborts running transfers, which then settle as
+   * cleared: a vault switch waits for their outcomes before its databases
+   * close (REVIEW-5700).
+   */
   dispose(): void {
     this.disposed = true
+    this.aborter.abort()
     if (this.network && this.boundHandler) {
       this.network.removeListener('status-changed', this.boundHandler)
     }
@@ -343,13 +365,29 @@ export class DownloadQueue {
     this.wakeBackoff?.()
   }
 
+  /**
+   * Attachment ids in flight, then queued in the order takeNext starts them, so
+   * the service fetches their manifests in one batch (#5329). Downloads that
+   * started together are included: with three in flight, the first one's batch
+   * covers the other two. The service leaves out ids whose manifest it already
+   * handed to a download.
+   */
+  private upcomingAttachmentIds(): string[] {
+    const queued = this.queue.toSorted(compareItems)
+    return [...this.started, ...queued].map((item) => item.request.attachmentId)
+  }
+
   private async processItem(item: QueueItem): Promise<void> {
     const { request } = item
+    this.started.add(item)
     try {
       const result = await this.downloadFn(request.attachmentId, request.targetPath, {
         ...(request.targetIsDir ? { targetIsDir: true } : {}),
+        ...(request.fileOwnerId ? { fileOwnerId: request.fileOwnerId } : {}),
         ...(request.onProgress ? { onProgress: request.onProgress } : {}),
-        pace: () => this.pacer.acquire(),
+        pace: () => this.pacer.acquire(this.aborter.signal),
+        signal: this.aborter.signal,
+        upcoming: () => this.upcomingAttachmentIds(),
         ...(this.network ? { isOnline: () => this.network!.online } : {})
       })
       // A completed transfer proves the network works (see UploadQueue).
@@ -392,6 +430,8 @@ export class DownloadQueue {
       }
       this.byKey.delete(this.keyOf(request))
       item.reject(err instanceof Error ? err : new Error(String(err)))
+    } finally {
+      this.started.delete(item)
     }
   }
 }

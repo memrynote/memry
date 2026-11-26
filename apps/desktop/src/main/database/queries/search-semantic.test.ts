@@ -87,7 +87,7 @@ describe('hybrid search', () => {
 
   it('files journal hits under the journal group and honours the type filter', () => {
     seed('day', '2026-02-01', 'kitten day', '2026-02-01')
-    const hits = [{ id: 'day', cosine: 0.7 }]
+    const hits = [{ id: 'day', cosine: 0.73 }]
     expect(ids(search('cat', hits), 'journal')).toEqual(['day'])
     expect(search('cat', hits, { types: ['note'] }).groups).toEqual([])
   })
@@ -99,7 +99,7 @@ describe('hybrid search', () => {
       'cat',
       [
         { id: 'in', cosine: 0.8 },
-        { id: 'out', cosine: 0.7 }
+        { id: 'out', cosine: 0.73 }
       ],
       { folderPath: 'vault/in' }
     )

@@ -147,6 +147,62 @@ function tableCells(editor: BlockNoteEditor): string[][] {
   )
 }
 
+describe('pasting markdown with Windows line endings', () => {
+  // A markdown document copied from Claude or bolt.new on Windows carries
+  // `\r\n` line endings. It has to land as the same blocks as its `\n` twin,
+  // not as paragraphs reading `- Ship the editor` and ```` ```ts ````.
+  const doc = [
+    '## Goals',
+    '',
+    '- Ship the editor',
+    '- Fix sync',
+    '',
+    '1. First',
+    '2. Second',
+    '',
+    '```ts',
+    'const x = 1',
+    '```',
+    ''
+  ].join('\r\n')
+
+  function pastedBlocks(clipboard: Record<string, string>): Array<[string, string]> {
+    const editor = mountEditor()
+    const intro = findText(editor, 'Intro')
+    select(editor, intro.to, intro.to)
+
+    const data = new FakeDataTransfer()
+    for (const [type, value] of Object.entries(clipboard)) data.setData(type, value)
+    dispatchClipboardEvent(editor, 'paste', data)
+
+    return editor.document
+      .filter((block) => block.type !== 'table')
+      .map((block: any) => [
+        block.type,
+        (Array.isArray(block.content) ? block.content : []).map((c: any) => c.text).join('')
+      ])
+  }
+
+  // The first pasted line joins the paragraph holding the cursor, as any
+  // paste does, so the check starts at the list.
+  const expected = [
+    ['bulletListItem', 'Ship the editor'],
+    ['bulletListItem', 'Fix sync'],
+    ['numberedListItem', 'First'],
+    ['numberedListItem', 'Second'],
+    ['codeBlock', 'const x = 1']
+  ]
+
+  it('parses plain text into lists and code blocks', () => {
+    expect(pastedBlocks({ 'text/plain': doc })).toEqual(expect.arrayContaining(expected))
+  })
+
+  it('parses the markdown when the clipboard also carries HTML', () => {
+    const blocks = pastedBlocks({ 'text/html': '<p>rendered</p>', 'text/plain': doc })
+    expect(blocks).toEqual(expect.arrayContaining(expected))
+  })
+})
+
 describe('pasting into a table cell', () => {
   it('drops a plain sentence into the cell holding the cursor', () => {
     const editor = mountEditor()

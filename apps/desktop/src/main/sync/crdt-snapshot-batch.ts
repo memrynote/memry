@@ -58,6 +58,8 @@ export interface CrdtSnapshotBatchDeps {
   onPushed?: (noteId: string, pushed: { sequenceNum?: number; revision?: string }) => unknown
   /** A per-note CRDT_SNAPSHOT_NOT_COVERED refusal (#2299); see `CrdtSnapshotPushDeps`. */
   onNotCovered?: (noteId: string, refusal: SnapshotRefusal) => void
+  /** Before each batch request leaves; see `CrdtSnapshotPushDeps.onSending`. */
+  onSending?: (noteIds: readonly string[]) => void
 }
 
 /**
@@ -154,6 +156,7 @@ export function createCrdtSnapshotBatchPush(deps: CrdtSnapshotBatchDeps): Snapsh
         }))
 
         try {
+          deps.onSending?.(slice.map((e) => e.noteId))
           const response = await withRetry(
             () =>
               withAuthRetry(

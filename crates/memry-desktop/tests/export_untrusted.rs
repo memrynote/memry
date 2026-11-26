@@ -11,7 +11,7 @@ use std::path::Path;
 use chrono::NaiveDate;
 use memry_desktop::export::{
     ImageSource, MAX_DATA_URI_LEN, NoteExport, RenderOptions, image_reads, inline_export_images,
-    inline_export_images_between, render_note_as_html, steps,
+    render_note_as_html, steps,
 };
 use memry_test_kit::{assert_steps_at_most, on_small_stack, proptest_config};
 use proptest::prelude::*;
@@ -229,6 +229,7 @@ fn a_link_named_like_an_image_to_another_file_stays_as_written() {
 #[cfg(unix)]
 #[test]
 fn a_link_swapped_to_another_file_during_the_open_stays_as_written() {
+    use memry_desktop::export::inline_export_images_between;
     use std::os::unix::fs::symlink;
     let roots = Roots::new();
     let vault = roots.vault.path().to_path_buf();

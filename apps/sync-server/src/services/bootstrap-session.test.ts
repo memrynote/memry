@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
   BOOTSTRAP_ELEVATION_MULTIPLIERS,
   BOOTSTRAP_RENEW_LEAD_SECONDS,
+  BOOTSTRAP_RESUME_WINDOW_SECONDS,
   BOOTSTRAP_SESSION_TTL_SECONDS,
   MAX_BOOTSTRAP_SESSION_LIFETIME_SECONDS,
   bootstrapRateLimitElevation,
@@ -153,6 +154,7 @@ describe('bootstrapRateLimitElevation', () => {
     expect(BOOTSTRAP_ELEVATION_MULTIPLIERS.crdt_pull).toBe(5)
     expect(BOOTSTRAP_ELEVATION_MULTIPLIERS.blob_download).toBe(5)
     expect(BOOTSTRAP_ELEVATION_MULTIPLIERS.sync_pull).toBe(3)
+    expect(BOOTSTRAP_ELEVATION_MULTIPLIERS.crdt_manifest).toBe(3)
   })
 
   it('does nothing on unrelated buckets even with a valid token', async () => {
@@ -204,9 +206,15 @@ describe('bootstrapRateLimitElevation', () => {
 
 const seedDevice = (
   harness: SqliteD1,
-  opts: { deviceId?: string; lastCursor?: number | null; vaultId?: string } = {}
+  opts: {
+    deviceId?: string
+    lastCursor?: number | null
+    vaultId?: string
+    registeredAgoSeconds?: number
+  } = {}
 ): void => {
   const now = Math.floor(Date.now() / 1000)
+  const registeredAt = now - (opts.registeredAgoSeconds ?? 0)
   const deviceId = opts.deviceId ?? 'd1'
   const vaultId = opts.vaultId ?? 'v1'
   // device_sync_state carries an FK to devices.
@@ -215,7 +223,7 @@ const seedDevice = (
       `INSERT OR IGNORE INTO devices (id, user_id, name, platform, app_version, auth_public_key, vault_id, created_at, updated_at)
        VALUES (?, 'u1', ?, 'desktop', '0.0.0-test', ?, ?, ?, ?)`
     )
-    .run(deviceId, `dev-${deviceId}`, `pk-${deviceId}`, vaultId, now, now)
+    .run(deviceId, `dev-${deviceId}`, `pk-${deviceId}`, vaultId, registeredAt, registeredAt)
   if (opts.lastCursor !== null) {
     harness.raw
       .prepare(
@@ -269,13 +277,58 @@ describe('open/renew/close over real SQLite', () => {
   })
 
   it('refuses a device that has already pulled this vault', async () => {
-    // #given
-    seedDevice(harness, { lastCursor: 42 })
+    // #given — registered past the resume window
+    seedDevice(harness, { lastCursor: 42, registeredAgoSeconds: BOOTSTRAP_RESUME_WINDOW_SECONDS })
 
     // #when / #then — typed 409, the client's silent-fallback signal
     await expect(
       openBootstrapSession(harness.db, SECRET, { userId: 'u1', deviceId: 'd1', vaultId: 'v1' })
     ).rejects.toMatchObject({ code: 'BOOTSTRAP_NOT_ELIGIBLE', statusCode: 409 })
+  })
+
+  it('reopens for a device resuming an interrupted first sync', async () => {
+    // #given — the first refs page moved the cursor, then the app was killed
+    seedDevice(harness, { lastCursor: 42, registeredAgoSeconds: 8 * 60 * 60 })
+    const identity = { userId: 'u1', deviceId: 'd1', vaultId: 'v1' }
+    const first = await openBootstrapSession(harness.db, SECRET, identity)
+    await closeBootstrapSession(harness.db, SECRET, first.token, identity)
+
+    // #when — the relaunched first sync opens again
+    const { token } = await openBootstrapSession(harness.db, SECRET, identity)
+
+    // #then — elevated, not 409 BOOTSTRAP_NOT_ELIGIBLE (production: 18 refusals)
+    expect(await verifyBootstrapSession(SECRET, token)).toMatchObject(identity)
+  })
+
+  it('still caps a resuming device at the per-user concurrent limit', async () => {
+    // #given — two other devices of the user hold sessions
+    seedDevice(harness, { lastCursor: 42, registeredAgoSeconds: 60 })
+    seedDevice(harness, { deviceId: 'd2', lastCursor: null })
+    seedDevice(harness, { deviceId: 'd3', lastCursor: null })
+    await openBootstrapSession(harness.db, SECRET, { userId: 'u1', deviceId: 'd2', vaultId: 'v1' })
+    await openBootstrapSession(harness.db, SECRET, { userId: 'u1', deviceId: 'd3', vaultId: 'v1' })
+
+    // #when / #then
+    await expect(
+      openBootstrapSession(harness.db, SECRET, { userId: 'u1', deviceId: 'd1', vaultId: 'v1' })
+    ).rejects.toMatchObject({ code: 'BOOTSTRAP_SESSION_LIMIT', statusCode: 429 })
+  })
+
+  it('a relaunch replaces the session its killed process never closed (#5328)', async () => {
+    // #given — a resuming device whose sessions were never closed
+    seedDevice(harness, { lastCursor: 42, registeredAgoSeconds: 60 })
+    const identity = { userId: 'u1', deviceId: 'd1', vaultId: 'v1' }
+    await openBootstrapSession(harness.db, SECRET, identity)
+    await openBootstrapSession(harness.db, SECRET, identity)
+
+    // #when
+    const { session } = await openBootstrapSession(harness.db, SECRET, identity)
+
+    // #then — one slot, held by the newest session
+    const rows = harness.raw.prepare('SELECT jti FROM bootstrap_sessions').all() as Array<{
+      jti: string
+    }>
+    expect(rows).toEqual([{ jti: session.jti }])
   })
 
   it('enforces the per-user concurrent session cap', async () => {
@@ -511,40 +564,25 @@ describe('open/renew/close over real SQLite', () => {
     seedDevice(harness, { deviceId: 'd3', lastCursor: null })
     seedDevice(harness, { deviceId: 'd4', lastCursor: null })
 
-    const realPrepare = harness.db.prepare.bind(harness.db)
+    // The ledger INSERT runs inside the open's D1 batch: park that batch.
+    const realBatch = harness.db.batch.bind(harness.db)
     let gatedCallsLeft = 1
-    const released = false
     let parkedAtInsert = false
     let releasePark!: () => void
     const parkGate = new Promise<void>((resolve) => {
       releasePark = resolve
     })
-    ;(harness.db as unknown as { prepare: typeof realPrepare }).prepare = (sql: string) => {
-      const inner = realPrepare(sql)
-      if (!sql.includes('INSERT INTO bootstrap_sessions')) return inner
-      const wrapped = {
-        bind: (...args: unknown[]) => {
-          inner.bind(...args)
-          return wrapped
-        },
-        first: inner.first.bind(inner),
-        all: inner.all.bind(inner),
-        raw: inner.raw.bind(inner),
-        run: async () => {
-          const shouldPark = !released && gatedCallsLeft > 0
-          if (gatedCallsLeft > 0) gatedCallsLeft--
-          if (shouldPark) {
-            parkedAtInsert = true
-            await parkGate
-          }
-          return inner.run()
-        }
+    ;(harness.db as unknown as { batch: typeof realBatch }).batch = async (statements) => {
+      if (gatedCallsLeft > 0) {
+        gatedCallsLeft--
+        parkedAtInsert = true
+        await parkGate
       }
-      return wrapped as unknown as D1PreparedStatement
+      return realBatch(statements)
     }
 
     try {
-      // #when — d3 parks at its INSERT…
+      // #when — d3 parks at its ledger batch…
       const third = openBootstrapSession(harness.db, SECRET, {
         userId: 'u1',
         deviceId: 'd3',
@@ -575,18 +613,28 @@ describe('open/renew/close over real SQLite', () => {
         .all(Math.floor(Date.now() / 1000)) as { device_id: string }[]
       expect(holders.map((r) => r.device_id)).toEqual(['d2', 'd4'])
     } finally {
-      ;(harness.db as unknown as { prepare: typeof realPrepare }).prepare = realPrepare
+      ;(harness.db as unknown as { batch: typeof realBatch }).batch = realBatch
     }
   })
 
   it('isFreshDeviceForVault reads the same signal the client cursor gate uses', async () => {
     // #given
-    seedDevice(harness, { lastCursor: 42 })
-    seedDevice(harness, { deviceId: 'd-zero', lastCursor: 0 })
+    seedDevice(harness, { lastCursor: 42, registeredAgoSeconds: BOOTSTRAP_RESUME_WINDOW_SECONDS })
+    seedDevice(harness, {
+      deviceId: 'd-zero',
+      lastCursor: 0,
+      registeredAgoSeconds: BOOTSTRAP_RESUME_WINDOW_SECONDS
+    })
+    seedDevice(harness, {
+      deviceId: 'd-young',
+      lastCursor: 42,
+      registeredAgoSeconds: BOOTSTRAP_RESUME_WINDOW_SECONDS - 1
+    })
 
     // #when / #then
     expect(await isFreshDeviceForVault(harness.db, 'u1', 'd-none', 'v1')).toBe(true)
     expect(await isFreshDeviceForVault(harness.db, 'u1', 'd-zero', 'v1')).toBe(true)
+    expect(await isFreshDeviceForVault(harness.db, 'u1', 'd-young', 'v1')).toBe(true)
     expect(await isFreshDeviceForVault(harness.db, 'u1', 'd1', 'v1')).toBe(false)
   })
 

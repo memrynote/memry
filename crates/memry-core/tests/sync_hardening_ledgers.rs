@@ -21,7 +21,9 @@ use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope};
 use memry_core::protocol::http::{ClientIdentity, HttpClient};
 use memry_core::protocol::types::Declaration;
 use memry_core::storage::{Db, open_data};
-use memry_core::sync::driver::{ApplyObserver, Observers, SecurityWarning};
+use memry_core::sync::driver::{
+    AppliedRecord, ApplyObserver, CorruptItem, Observers, SecurityWarning,
+};
 use memry_core::sync::pull::{PullLoop, PullReport, RecordCipher};
 use serde_json::{Value as Json, json};
 
@@ -67,8 +69,10 @@ impl RecordCipher for FakeCipher {
     }
 }
 
+/// Every quarantine, and each corrupt and recovered row as `corrupt <id>`
+/// or `recovered <id>`.
 #[derive(Default)]
-struct Warnings(Mutex<Vec<SecurityWarning>>);
+struct Warnings(Mutex<Vec<SecurityWarning>>, Mutex<Vec<String>>);
 
 impl ApplyObserver for Warnings {
     fn name(&self) -> &'static str {
@@ -78,9 +82,24 @@ impl ApplyObserver for Warnings {
     fn security_warning(&self, warning: &SecurityWarning) {
         self.0.lock().unwrap().push(warning.clone());
     }
+
+    fn item_corrupt(&self, item: &CorruptItem) {
+        assert!(!item.reason.is_empty(), "{item:?}");
+        let mark = format!("corrupt {}", item.item_id);
+        self.1.lock().unwrap().push(mark);
+    }
+
+    fn item_recovered(&self, record: &AppliedRecord) {
+        let mark = format!("recovered {}", record.item_id);
+        self.1.lock().unwrap().push(mark);
+    }
 }
 
 impl Warnings {
+    fn marks(&self) -> Vec<String> {
+        self.1.lock().unwrap().clone()
+    }
+
     fn attempts(&self) -> Vec<(i64, bool)> {
         self.0
             .lock()
@@ -276,6 +295,7 @@ async fn a_bad_signature_is_quarantined_three_times_then_skipped_undecoded() {
         vec![(1, false), (2, false), (3, true)],
         "one warning per failure, the third permanent, none for the skip"
     );
+    assert_eq!(warnings.marks(), vec![format!("corrupt {id}"); 3]);
     assert_eq!(quarantine_rows(&db), vec![(id.to_owned(), 3)]);
     assert_eq!(content(&db, id), None, "nothing forged reached the vault");
 }
@@ -320,6 +340,40 @@ async fn a_row_corrupt_for_an_hour_is_refetched_first_and_applies() {
         None,
         "the applied row is no longer corrupt"
     );
+}
+
+#[tokio::test]
+async fn a_corrupt_row_tells_item_corrupt_and_its_applied_refetch_item_recovered() {
+    let db = scratch_db();
+    let warnings = Arc::new(Warnings::default());
+    let id = "draft-repaired";
+    let observed = |opens| Run {
+        warnings: Some(warnings.clone()),
+        ..hardened(&db, opens)
+    };
+    observed(Opens::Malformed)
+        .first_page(page_of(id, "10"))
+        .await;
+    corrupt_since(&db, id, 61);
+    // Refetched and still corrupt: corrupt again, not recovered.
+    observed(Opens::Malformed)
+        .first_page(vec![pulled(&[id]), changes(&[], "11")])
+        .await;
+    corrupt_since(&db, id, 61);
+    observed(Opens::Accepted)
+        .first_page(vec![pulled(&[id]), changes(&[], "12")])
+        .await;
+
+    assert_eq!(
+        warnings.marks(),
+        [
+            format!("corrupt {id}"),
+            format!("corrupt {id}"),
+            format!("recovered {id}")
+        ]
+    );
+    assert!(warnings.attempts().is_empty(), "not a signature failure");
+    assert_eq!(content(&db, id).as_deref(), Some("from the peer"));
 }
 
 #[tokio::test]

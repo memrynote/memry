@@ -1,0 +1,3 @@
+# Has Pic
+![shot](Has%20Pic_attachments/shot.png)
+See [[Nested]] and [[Real Title|alias]].

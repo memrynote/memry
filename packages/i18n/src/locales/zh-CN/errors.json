@@ -44,6 +44,9 @@
     "moveFailed": "移动笔记失败",
     "applyTemplateFailed": "应用模板失败",
     "appendBlocksFailed": "无法将此块移到该笔记",
+    "appendIntoCaseTwin": "该笔记与另一篇仅名称大小写不同的笔记共用同一个文件。请重命名其中一篇，然后再次移动此块。",
+    "appendIntoBinary": "只能将块移到笔记中，不能移到图片、PDF、音频或视频文件。",
+    "caseTwinMoveRefused": "此笔记与另一篇仅名称大小写不同的笔记共用一个文件，因此无法以这种方式移动。请重命名或移动另一篇笔记，或删除不需要的副本。",
     "exportPdfFailed": "导出 PDF 失败",
     "exportHtmlFailed": "导出 HTML 失败",
     "restoreVersionFailed": "恢复版本失败",
@@ -75,10 +78,15 @@
     "uploadFailed": "附件上传失败",
     "uploadProgressFailed": "获取上传进度失败",
     "downloadFailed": "附件下载失败",
+    "downloadGone": "此文件已不在同步服务器上。如果其他设备上仍有此文件，请从那台设备重新添加。",
+    "downloadMissing": "此文件还不在同步服务器上。请明天再打开查看。",
+    "downloadNeedsSync": "同步未运行，因此无法下载此文件。同步开始运行后，它会自动下载。",
     "downloadProgressFailed": "获取下载进度失败",
     "exceedsMaxSize": "文件太大：{size} 超过 {limit} 的上限",
     "exceedsPlanLimit": "文件超出你的套餐允许的大小：{size} 超过 {limit}",
-    "emptyFile": "无法上传空文件"
+    "emptyFile": "无法上传空文件",
+    "emptyNotAttached": "此文件为空，因此未附加。如果你粘贴的是图片，请重新复制后再粘贴。",
+    "textInMediaFile": "此文件包含文本，而不是其名称所示的媒体"
   },
   "crdt": {
     "persistenceDegradedTitle": "此设备未保留编辑历史",
@@ -233,10 +241,13 @@
   "folder": {
     "createFailed": "创建文件夹失败",
     "renameFailed": "重命名文件夹失败",
+    "renameCaseTwins": "此文件夹中有笔记与另一篇仅文件夹名称大小写不同的笔记共用一个文件。请先重命名或移动这些笔记，然后再重命名文件夹。",
     "deleteFailed": "删除文件夹失败",
     "keptNotPulled": "此文件夹中有一条笔记，其文件已在 memrynote 之外被删除，且其内容尚未同步到此设备，因此无法移到废纸篓。没有删除任何内容。请等待同步完成，或先单独删除该笔记。",
     "keptUnwritable": "此文件夹中有一条笔记，其文件已在 memrynote 之外被删除，且其内容无法保存为文件以移到废纸篓。没有删除任何内容。请先单独删除该笔记。",
     "trashUnavailable": "无法将此文件夹移到废纸篓。其中仍有的内容未被删除。",
+    "deleteCaseTwins": "此文件夹与另一个同名但写法不同（例如大小写不同）的文件夹在磁盘上是同一个文件夹，删除它会同时删除两者中的笔记。请改为逐一删除不需要的笔记。",
+    "deleteWindowsName": "此文件夹的名称以句点或空格结尾，而 Windows 会忽略它们，因此删除它可能会同时删除另一个文件夹。请改为逐一删除其中的笔记。",
     "setConfigFailed": "保存文件夹配置失败"
   },
   "folderView": {

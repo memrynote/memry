@@ -14,12 +14,16 @@ use memry_core::api::errors::{SecureStoreError, StorageError};
 use memry_core::api::journal::{Journal, SeedOutcome};
 use memry_core::api::journal_records::{JournalBody, JournalTemplateStrings};
 use memry_core::api::vault::Vault;
+use memry_core::crdt::DocumentRegistry;
 use memry_core::crdt::body_edit::BlockEdit;
+use memry_core::crdt::text_extract::extract_text;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_core::storage::repositories::sync_items;
 use memry_core::storage::{Db, open_data};
 use rusqlite::Connection;
 use serde_json::{Value, json};
+use yrs::updates::decoder::Decode as _;
+use yrs::{ReadTxn as _, Transact as _};
 
 const TODAY: &str = "2099-06-15";
 
@@ -434,4 +438,74 @@ fn a_days_values_leave_out_a_date_property_a_payload_carries() {
     assert_eq!(days.len(), 1);
     assert_eq!(days[0].date, TODAY);
     assert_eq!(Value::Object(days[0].values.clone()), json!({ "mood": 3 }));
+}
+
+/// #5351: a day deleted and written again here starts a new body. The server
+/// purged the deleted body (chapter 07 §7.15), so a fresh device bootstraps
+/// only what this device pushes after the delete, and that must integrate on
+/// its own and read as the new text.
+#[test]
+fn a_revived_day_pushes_a_body_a_fresh_device_can_read_without_the_purged_one() {
+    let (dir, _vault, journal) = open("revive-fresh-generation");
+    let db = behind(&dir);
+    let pushed = |db: &Db| {
+        db.call_blocking(|conn: &mut Connection| {
+            conn.execute("DELETE FROM outbox", [])
+                .map_err(|error| StorageError::Failed {
+                    what: error.to_string(),
+                })
+        })
+        .expect("push");
+    };
+    journal
+        .edit_day(TODAY.into(), paragraph("Deleted words.", "b1"))
+        .expect("edit");
+    pushed(&db);
+    assert!(journal.delete_day(TODAY.into()).expect("delete"));
+    pushed(&db);
+
+    let revived = journal
+        .edit_day(TODAY.into(), paragraph("Back again.", "b2"))
+        .expect("revive");
+    assert!(revived.revived && revived.changed);
+
+    let server: Vec<Vec<u8>> = db
+        .call_blocking(|conn: &mut Connection| {
+            let mut read = conn
+                .prepare("SELECT payload FROM outbox WHERE op = 'crdt-update' ORDER BY id")
+                .expect("prepare");
+            let rows = read
+                .query_map([], |row| row.get::<_, Vec<u8>>(0))
+                .expect("query")
+                .map(|row| row.expect("row"))
+                .collect();
+            Ok::<_, StorageError>(rows)
+        })
+        .expect("read");
+    assert!(!server.is_empty(), "the revive pushes its body");
+
+    let fresh = yrs::Doc::new();
+    {
+        let mut txn = fresh.transact_mut();
+        for update in &server {
+            txn.apply_update(yrs::Update::decode_v1(update).expect("decode"))
+                .expect("apply");
+        }
+        assert!(
+            txn.store().pending_update().is_none(),
+            "every pushed update integrates without the purged body"
+        );
+    }
+    let reader = DocumentRegistry::new("fresh-device", Arc::new(|_, _| {}))
+        .get_or_open("j2099-06-15")
+        .expect("open");
+    for update in &server {
+        reader.apply_durable_update(update).expect("apply");
+    }
+    let text = extract_text(&reader).expect("text");
+    assert!(text.contains("Back again."), "{text:?}");
+    assert!(!text.contains("Deleted words."), "{text:?}");
+
+    let local = journal.day(TODAY.into()).expect("day").expect("live");
+    assert_eq!(local.id, "j2099-06-15");
 }

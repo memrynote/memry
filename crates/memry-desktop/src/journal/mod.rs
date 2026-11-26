@@ -8,7 +8,13 @@
 //! - a read takes the file of the day's row, and the config's path only for a day no row
 //!   names; the text, aliases and properties come from the file, as Electron reads them
 //!   (`readJournalEntry`), the id, tags and instants from the record (`findStoredJournalEntry`);
-//!   journal tags live on the record, never written back to the file (#3530, decided);
+//!   a tag edit and a pulled record write the file's `tags:` too, as Electron's do (#5509,
+//!   reversing #3530's "journal tags are never written back to the file");
+//! - the page's read ([`NotesService::day_entry`]), an update's and a create's answer, the
+//!   journal events and the Properties panel give the file's properties the values the record
+//!   holds that the file does not say yet (a pull whose write-back waits for the day's body,
+//!   #5509), as Electron's pull writes them into the file (`journal-handler.ts`
+//!   `buildJournalEntryWrite`) before its read;
 //! - a create ([`write`]) writes the file Electron's `createJournalEntry` writes, in the order
 //!   13f's note create uses;
 //! - an update ([`update`]) edits the file through the app-edit seam and the record's tags and
@@ -31,6 +37,7 @@ pub mod same_day;
 pub mod update;
 pub mod write;
 
+use std::collections::HashMap;
 use std::io::Read as _;
 use std::path::Path;
 
@@ -47,9 +54,11 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
 use crate::notes::error::NotesError;
-use crate::notes::frontmatter::{FileFields, file_fields};
+use crate::notes::frontmatter::{FileFields, file_fields, is_reserved_key};
+use crate::notes::properties::text_values;
+use crate::notes::service::NotesService;
 use crate::session::OpenVault;
-use crate::vault::config::read_vault_config;
+use crate::vault::config::{VaultConfig, read_vault_config};
 use crate::vault::journal_format::JournalDays;
 use crate::vault::paths::open_vault_file;
 
@@ -92,6 +101,15 @@ pub fn entry(
     journal: &Journal,
     date: &str,
 ) -> Result<Option<JournalEntryView>, NotesError> {
+    Ok(read_entry(open, journal, date)?.map(|(view, _)| view))
+}
+
+/// [`entry`], and the file's text it was read from.
+fn read_entry(
+    open: &OpenVault,
+    journal: &Journal,
+    date: &str,
+) -> Result<Option<(JournalEntryView, String)>, NotesError> {
     let date = valid_date(date)?;
     let stamp = journal.stamp(date)?;
     let path = match stamp.as_ref().and_then(|stamp| stamp.path.clone()) {
@@ -107,7 +125,57 @@ pub fn entry(
     {
         view.id = row.note_id;
     }
-    Ok(Some(view))
+    Ok(Some((view, raw)))
+}
+
+impl NotesService {
+    /// [`entry`] with the record's property values over the file's ([`with_record`]). A record
+    /// whose values do not read leaves the file's, with a warning.
+    pub fn day_entry(
+        &self,
+        open: &OpenVault,
+        journal: &Journal,
+        date: &str,
+    ) -> Result<Option<JournalEntryView>, NotesError> {
+        let Some((mut view, raw)) = read_entry(open, journal, date)? else {
+            return Ok(None);
+        };
+        match journal.day_properties(&view.id) {
+            Ok(record) => {
+                let types = self.definition_types(open);
+                view.properties = with_record(view.properties.take(), &record, &raw, &types);
+            }
+            Err(error) => tracing::warn!(
+                scope = SCOPE,
+                date,
+                "the day's record properties did not read; the file's are shown: {error}"
+            ),
+        }
+        Ok(Some(view))
+    }
+}
+
+/// The file's properties `file`, with each value the record holds where the file lacks its
+/// key or says another value once read as the record stores it ([`text_values`] of `raw`).
+/// The file's own spelling stays for a value the record agrees with (a list stays a list), and
+/// a key only the file holds stays (an outside edit not fed yet, `aliases`, a cover).
+fn with_record(
+    file: Option<Map<String, Value>>,
+    record: &Map<String, Value>,
+    raw: &str,
+    types: &HashMap<String, String>,
+) -> Option<Map<String, Value>> {
+    let mut out = file.unwrap_or_default();
+    let read = text_values(raw, types).unwrap_or_default();
+    for (name, value) in record {
+        if is_reserved_day_key(name) || is_reserved_key(name, value) {
+            continue;
+        }
+        if read.get(name) != Some(value) {
+            out.insert(name.clone(), value.clone());
+        }
+    }
+    (!out.is_empty()).then_some(out)
 }
 
 /// The day the vault file at `path` is under the vault's config (`extractJournalDate`), `None`
@@ -119,7 +187,11 @@ pub fn day_of_file(root: &Path, path: &str) -> Option<String> {
 
 /// Where the file of `date` goes under the vault's config (`getJournalRelativePath`).
 pub(crate) fn day_path(root: &Path, date: &str) -> Result<String, NotesError> {
-    let config = read_vault_config(root);
+    day_path_in(&read_vault_config(root), date)
+}
+
+/// [`day_path`] under `config`.
+pub(crate) fn day_path_in(config: &VaultConfig, date: &str) -> Result<String, NotesError> {
     JournalDays::new(&config.journal_folder, &config.journal_date_format)
         .path_of(date)
         .ok_or_else(|| NotesError::NotFound(date.to_owned()))
@@ -180,7 +252,7 @@ pub(crate) fn view_of(date: &str, raw: &str, stamp: Option<&DayStamp>) -> Journa
 }
 
 /// `extractJournalProperties`: the legacy nested envelope first, then the top level, which wins.
-fn properties_of(frontmatter: &Map<String, Value>) -> Map<String, Value> {
+pub(crate) fn properties_of(frontmatter: &Map<String, Value>) -> Map<String, Value> {
     let mut out = Map::new();
     if let Some(Value::Object(nested)) = frontmatter.get("properties") {
         for (name, value) in nested {

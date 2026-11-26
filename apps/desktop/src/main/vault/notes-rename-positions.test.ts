@@ -52,7 +52,8 @@ vi.mock('./notes-io', () => ({
 }))
 vi.mock('./note-sync', () => ({ syncNoteToCache: vi.fn(), syncFileToCache: vi.fn() }))
 vi.mock('./frontmatter', () => ({
-  parseNote: vi.fn(() => ({ frontmatter: {}, content: '' }))
+  parseNote: vi.fn(() => ({ frontmatter: {}, content: '' })),
+  generateContentHash: vi.fn(() => 'hash')
 }))
 vi.mock('@memry/editor-schema/note-refs', async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
@@ -64,7 +65,7 @@ vi.mock('../sync/crdt-writeback-port', async () => {
   const writeback = await import('../sync/crdt-writeback')
   return { crdtWriteback: () => writeback }
 })
-vi.mock('../sync/crdt-writeback', () => ({ markWritebackIgnored: vi.fn() }))
+vi.mock('../sync/crdt-writeback', () => ({}))
 vi.mock('@memry/storage-data', () => ({ updateNoteMetadata: vi.fn() }))
 
 import { moveNote, renameNote } from './notes-rename'

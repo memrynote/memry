@@ -1,4 +1,7 @@
 {
+  "wikiLink": {
+    "openFailed": "Kan deze link niet openen"
+  },
   "portalBlock": {
     "copyFailed": "Kan het portaal niet kopiëren",
     "hiddenCount": "{count} verborgen",
@@ -956,6 +959,8 @@
     "componentsVaultSwitcher": {
       "noVaultsYet": "Nog geen kluizen",
       "openVault": "Kluis openen",
+      "createVault": "Kluis maken",
+      "openFolderAsVault": "Map openen als kluis",
       "settings": "Instellingen",
       "remove": "Verwijder “",
       "removeVaultTitle": "“{name}” uit de lijst verwijderen?",

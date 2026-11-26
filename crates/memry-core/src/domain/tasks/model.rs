@@ -89,6 +89,17 @@ impl ProjectStatuses {
         self.first_of(StatusKind::Done)
     }
 
+    /// The open status a reopened task and a repeating task's next occurrence
+    /// land in: the open status flagged default, else the first open one
+    /// (`openStatusIdOnReopen`, `completion.ts:39-49`; `defaultOpenStatusId`,
+    /// `repeat-completion.ts:47-53`).
+    pub(super) fn default_open(&self) -> Option<&Status> {
+        let mut open = self.0.iter().filter(|status| !status.is_done);
+        open.clone()
+            .find(|status| status.is_default)
+            .or_else(|| open.next())
+    }
+
     /// The status a new task starts in: the default todo status, else the
     /// first column (`getDefaultTodoStatus(project)?.id || statuses[0]?.id`).
     pub(super) fn initial(&self) -> Option<&Status> {
@@ -100,6 +111,32 @@ impl ProjectStatuses {
     /// (`use-drag-handlers.ts` / `use-bulk-actions.ts` `bulkMoveToProject`).
     pub(super) fn equivalent(&self, kind: StatusKind) -> Option<&Status> {
         self.first_of(kind).or_else(|| self.initial())
+    }
+
+    /// `getEquivalentStatus` (`queries/projects.ts`), the status a project
+    /// change in `updateTask` lands in. It reads the flags, not the column: a
+    /// done source takes the first done status, a default source the default,
+    /// and anything else the first status that is neither, each falling back
+    /// to the default. No source status takes the default.
+    pub(super) fn equivalent_to(&self, source: Option<&Status>) -> Option<&Status> {
+        let default = || self.0.iter().find(|status| status.is_default);
+        let Some(source) = source else {
+            return default();
+        };
+        if source.is_done
+            && let Some(done) = self.0.iter().find(|status| status.is_done)
+        {
+            return Some(done);
+        }
+        if source.is_default
+            && let Some(status) = default()
+        {
+            return Some(status);
+        }
+        self.0
+            .iter()
+            .find(|status| !status.is_default && !status.is_done)
+            .or_else(default)
     }
 
     /// The type of `status_id` in this project, `None` when it is not one of
@@ -115,20 +152,12 @@ pub(super) fn status_by_id(
     status_id: &str,
 ) -> Result<Option<Status>, StorageError> {
     conn.query_row(
-        "SELECT id, name, color, position, COALESCE(is_default, 0), COALESCE(is_done, 0)
+        "SELECT id, project_id, name, color, position, COALESCE(is_default, 0),
+                COALESCE(is_done, 0), created_at
            FROM project_statuses
           WHERE id = ?1 AND deleted_at IS NULL",
         params![status_id],
-        |row| {
-            Ok(Status {
-                id: row.get(0)?,
-                name: row.get(1)?,
-                color: row.get(2)?,
-                position: row.get(3)?,
-                is_default: row.get::<_, i64>(4)? != 0,
-                is_done: row.get::<_, i64>(5)? != 0,
-            })
-        },
+        projects::read_status,
     )
     .optional()
     .map_err(failed)
@@ -272,11 +301,13 @@ mod tests {
     fn status(position: i64, is_default: bool, is_done: bool) -> Status {
         Status {
             id: format!("s{position}"),
+            project_id: String::new(),
             name: String::new(),
             color: String::new(),
             position,
             is_default,
             is_done,
+            created_at: None,
         }
     }
 

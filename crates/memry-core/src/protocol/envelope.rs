@@ -42,6 +42,7 @@ use zeroize::Zeroizing;
 use crate::api::errors::{CborError, CompressError, CryptoError};
 use crate::crypto::{cbor, keys, sodium};
 use crate::protocol::compress;
+use crate::sync::clock;
 
 /// The literal a conforming client signs, chapter 04 §4.10.
 ///
@@ -528,8 +529,8 @@ pub fn from_json(value: &Json) -> Result<RecordEnvelope, EnvelopeError> {
         Some(Json::Object(ticks)) => {
             let mut parsed = BTreeMap::new();
             for (device, tick) in ticks {
-                let tick = tick.as_u64().ok_or_else(|| EnvelopeError::Malformed {
-                    what: format!("clock tick for `{device}` is not a non-negative integer"),
+                let tick = clock::read_tick(tick).ok_or_else(|| EnvelopeError::Malformed {
+                    what: format!("clock tick for `{device}` is not a safe non-negative integer"),
                 })?;
                 parsed.insert(device.clone(), tick);
             }

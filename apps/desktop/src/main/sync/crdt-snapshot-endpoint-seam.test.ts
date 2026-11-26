@@ -187,7 +187,9 @@ const runtimeMocks = vi.hoisted(() => {
       setSnapshotDeferral: vi.fn(),
       setOweRemoteMerge: vi.fn(),
       setRemoteMerge: vi.fn(),
+      setRemoteBodyQuery: vi.fn(),
       setSyncPaused: vi.fn(),
+      setNetworkOnline: vi.fn(),
       seedExistingDocs: vi.fn(),
       pushSnapshotForNote: vi.fn(),
       pushAllSnapshots: vi.fn(),
@@ -278,7 +280,10 @@ vi.mock('../lib/logger', () => ({
   })
 }))
 
-vi.mock('@memry/sync-client/queue', () => ({ SyncQueueManager: runtimeMocks.SyncQueueManager }))
+vi.mock('@memry/sync-client/queue', () => ({
+  SyncQueueManager: runtimeMocks.SyncQueueManager,
+  NOTE_BODY_QUEUE_TYPE: 'note_body'
+}))
 vi.mock('./network', () => ({ NetworkMonitor: runtimeMocks.NetworkMonitor }))
 vi.mock('./websocket', () => ({ WebSocketManager: runtimeMocks.WebSocketManager }))
 /**
@@ -486,7 +491,8 @@ vi.mock('./token-manager', () => ({
   getValidAccessToken: runtimeMocks.getValidAccessToken,
   refreshAccessToken: runtimeMocks.refreshAccessToken,
   retrieveToken: runtimeMocks.retrieveToken,
-  setOnTokenRefreshed: runtimeMocks.setOnTokenRefreshed
+  setOnTokenRefreshed: runtimeMocks.setOnTokenRefreshed,
+  setOnSessionEnded: vi.fn()
 }))
 
 vi.mock('./vault-account-binding', () => ({

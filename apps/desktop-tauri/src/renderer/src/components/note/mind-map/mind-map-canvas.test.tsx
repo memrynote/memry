@@ -21,7 +21,8 @@
 
 import { useEffect } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, type RenderOptions } from '@testing-library/react'
+import { MotionConfig } from 'motion/react'
 import { exportToBlob, exportToSvg } from '@excalidraw/excalidraw'
 import { MindMapCanvas, type MindMapControls, type MindMapHoverLabel } from './mind-map-canvas'
 import type { MindMapElement } from './mind-map-types'
@@ -105,7 +106,10 @@ const BUILT_ELEMENTS = [
   { type: 'rectangle', id: 'built-1' }
 ] as unknown as readonly MindMapElement[]
 
-function mountSurface(initialFocusHref: string | null = null): {
+function mountSurface(
+  initialFocusHref: string | null = null,
+  wrapper?: RenderOptions['wrapper']
+): {
   controls: () => MindMapControls
   unmount: () => void
 } {
@@ -119,7 +123,8 @@ function mountSurface(initialFocusHref: string | null = null): {
       onControlsChange={(next) => {
         latest = next
       }}
-    />
+    />,
+    { wrapper }
   )
   return {
     controls: () => {
@@ -239,6 +244,21 @@ describe('MindMapCanvas controls', () => {
     })
   })
 
+  it('jumps to the box without the flight when the app reduces motion', () => {
+    // #given the app's Reduce motion setting, which reaches components as this MotionConfig
+    const surface = mountSurface(null, ({ children }) => (
+      <MotionConfig reducedMotion="always">{children}</MotionConfig>
+    ))
+    mocks.scrollToContent.mockClear()
+
+    expect(surface.controls().focus(WIKI_HREF)).toBe(true)
+
+    expect(mocks.scrollToContent).toHaveBeenCalledWith(LIVE_ELEMENTS[2], {
+      animate: false,
+      duration: 250
+    })
+  })
+
   it('rings the box it focused, so the reader can see what the click landed on', () => {
     const surface = mountSurface()
 
@@ -341,6 +361,20 @@ describe('MindMapCanvas controls', () => {
     expect(mocks.scrollToContent).toHaveBeenCalledWith(undefined, {
       fitToContent: true,
       animate: true
+    })
+  })
+
+  it('frames the whole drawing without the flight when the app reduces motion', () => {
+    const surface = mountSurface(null, ({ children }) => (
+      <MotionConfig reducedMotion="always">{children}</MotionConfig>
+    ))
+    mocks.scrollToContent.mockClear()
+
+    act(() => surface.controls().fit())
+
+    expect(mocks.scrollToContent).toHaveBeenCalledWith(undefined, {
+      fitToContent: true,
+      animate: false
     })
   })
 

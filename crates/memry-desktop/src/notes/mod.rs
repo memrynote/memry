@@ -14,6 +14,7 @@ pub mod folders;
 pub mod frontmatter;
 pub mod icons;
 pub mod identity;
+pub mod import_files;
 pub mod index;
 pub mod kept;
 pub mod link_mention;

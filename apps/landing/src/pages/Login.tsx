@@ -10,6 +10,8 @@ import { authErrorMessage } from '@/lib/account/auth-error'
 import { SYNC_SERVER_URL, WEB_OAUTH_REDIRECT_PATH } from '@/lib/account/config'
 import { OAUTH_NEXT_STORAGE_KEY, safeNextPath } from '@/lib/account/next-path'
 import { trackLandingEvent } from '@/lib/analytics'
+import { getCheckoutSummary, type CheckoutSummary } from '@/lib/checkout-summary'
+import { parseCheckoutCadence, parseCheckoutPlan } from '@/lib/paddle-checkout'
 
 const EASE = [0.16, 1, 0.3, 1] as const
 
@@ -39,6 +41,44 @@ function GoogleIcon() {
         fill="#EA4335"
       />
     </svg>
+  )
+}
+
+const PRICE_SUFFIX: Record<CheckoutSummary['billingFrequencyLabel'], string> = {
+  Monthly: '/ month',
+  Yearly: '/ year',
+  'One-time': 'one-time'
+}
+
+/** The plan a visitor picked on /pricing, read back from the `next=/checkout?plan=...` link. */
+function checkoutSummaryFor(nextPath: string): CheckoutSummary | null {
+  const params = new URL(nextPath, 'https://memrynote.com').searchParams
+  const plan = parseCheckoutPlan(params.get('plan'))
+  if (!plan) return null
+  return getCheckoutSummary(plan, parseCheckoutCadence(params.get('cadence')) ?? 'annual')
+}
+
+/**
+ * Shown above the sign-in form on the way to checkout. Visitors who picked a plan were
+ * landing on a bare sign-in screen and leaving: it did not say what they were buying, or
+ * that a first-time email creates the account.
+ */
+function CheckoutPlanSummary({ summary }: { summary: CheckoutSummary }) {
+  return (
+    <div className="mt-6 flex items-center justify-between gap-4 rounded-xl border border-border bg-card px-4 py-3 text-sm">
+      <div className="text-start">
+        <p className="font-medium text-ink">{summary.planName}</p>
+        <p className="text-muted">
+          ${summary.amount} {PRICE_SUFFIX[summary.billingFrequencyLabel]}
+        </p>
+      </div>
+      <Link
+        to="/pricing"
+        className="text-xs text-muted underline underline-offset-2 transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta/60"
+      >
+        Change plan
+      </Link>
+    </div>
   )
 }
 
@@ -83,6 +123,7 @@ export function LoginPage() {
   const [params] = useSearchParams()
   const next = params.get('next')
   const toCheckout = safeNextPath(next).startsWith('/checkout')
+  const checkoutSummary = toCheckout ? checkoutSummaryFor(safeNextPath(next)) : null
   const [email, setEmail] = useState('')
   const [code, setCode] = useState('')
   const [step, setStep] = useState<'email' | 'code'>('email')
@@ -146,11 +187,11 @@ export function LoginPage() {
             <div className="flex flex-1 items-center justify-center py-12">
               <div className="w-full max-w-sm animate-fade-up">
                 <h1 className="text-center font-editorial text-2xl font-medium tracking-[-0.02em]">
-                  {toCheckout ? 'Sign in to continue' : 'Sign in to memrynote'}
+                  {toCheckout ? 'Sign in or create your account' : 'Sign in to memrynote'}
                 </h1>
                 <p className="mt-2 text-center text-sm text-muted text-balance">
-                  {toCheckout ? (
-                    'Log in first to choose your plan and check out.'
+                  {toCheckout && step === 'email' ? (
+                    'Sync is tied to your account. New here? Enter your email and we create one. Use the same email in the desktop app.'
                   ) : step === 'email' ? (
                     'Welcome back. Pick up where you left off.'
                   ) : (
@@ -160,6 +201,8 @@ export function LoginPage() {
                     </>
                   )}
                 </p>
+
+                {checkoutSummary ? <CheckoutPlanSummary summary={checkoutSummary} /> : null}
 
                 <AnimatePresence>
                   {error ? (

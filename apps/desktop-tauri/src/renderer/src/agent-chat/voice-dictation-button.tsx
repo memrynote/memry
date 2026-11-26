@@ -15,6 +15,7 @@ import {
   ensureVoiceRecordingReady,
   getVoiceRecordingSettingsTarget
 } from '@/lib/voice-recording-readiness'
+import { inboxService } from '@/services/inbox-service'
 
 const log = createLogger('AgentChat:VoiceDictation')
 
@@ -64,13 +65,13 @@ export function VoiceDictationButton({
   )
 
   const handleComplete = useCallback(
-    (audioBlob: Blob) => {
+    (audio: AudioBuffer) => {
       setTranscribing(true)
 
       void (async () => {
         try {
-          const prepared = await prepareVoiceMemoAudio(audioBlob)
-          const result = await window.api.inbox.transcribeAudio({
+          const prepared = await prepareVoiceMemoAudio(audio)
+          const result = await inboxService.transcribeAudio({
             data: prepared.data,
             format: prepared.format,
             duration: prepared.duration

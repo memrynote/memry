@@ -23,8 +23,7 @@ vi.mock('@/services/notes-service', () => {
     onNoteDeleted: subscribe('deleted'),
     onNoteCreated: subscribe('created'),
     onNoteUpdated: subscribe('updated'),
-    onNoteRenamed: subscribe('renamed'),
-    onNoteExternalChange: subscribe('external')
+    onNoteRenamed: subscribe('renamed')
   }
 })
 
@@ -105,7 +104,7 @@ describe('useFolderViewEvents', () => {
     expect(listNotes).toHaveBeenCalledTimes(2)
   })
 
-  it.each(['created', 'renamed', 'moved', 'deleted', 'external'])(
+  it.each(['created', 'renamed', 'moved', 'deleted'])(
     'refetches the listing immediately on note %s',
     async (event) => {
       const { listNotes } = renderHarness()
@@ -142,6 +141,6 @@ describe('useFolderViewEvents', () => {
 
     expect(listNotes).toHaveBeenCalledTimes(1)
     expect(invalidateQueries).not.toHaveBeenCalled()
-    expect(mocks.unsubscribe).toHaveBeenCalledTimes(6)
+    expect(mocks.unsubscribe).toHaveBeenCalledTimes(5)
   })
 })

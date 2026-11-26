@@ -102,7 +102,6 @@
   "commands": {
     "goHome": "Ir para Início",
     "goInbox": "Ir para Caixa de entrada",
-    "goJournal": "Ir para Diário",
     "goCalendar": "Ir para Calendário",
     "goTasks": "Ir para Tarefas",
     "goGraph": "Ir para Grafo",

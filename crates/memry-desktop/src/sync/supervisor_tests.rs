@@ -39,6 +39,26 @@ async fn the_gate_decides_whether_a_pass_runs_and_a_change_starts_one() {
     assert_eq!(supervisor.status().status, SyncStatusValue::LocalOnly);
 }
 
+/// A `402` demotes the driver's policy tier while the gate still says `Entitled`; billing's next
+/// paid answer repeats `Entitled`, and that has to reach the driver (§11.7.1), with no new pass.
+#[tokio::test(start_paused = true)]
+async fn a_repeated_paid_verdict_reaches_a_driver_a_402_demoted() {
+    let rig = Rig::new();
+    let _supervisor = rig.start().await;
+    let passes = rig.passes();
+    *lock(&rig.backend.driver.entitled) = Some(false);
+
+    rig.gate.set_entitlement(Entitlement::Entitled);
+    settle().await;
+
+    assert_eq!(*lock(&rig.backend.driver.entitled), Some(true));
+    assert_eq!(
+        rig.passes(),
+        passes,
+        "the gate did not change, so no start pass"
+    );
+}
+
 /// Leading edge with a trailing guard (`push-coordinator.ts:585-609`, #2289): a push after a
 /// quiet window goes out at once, and steady writes push once per 300 ms instead of never.
 #[tokio::test(start_paused = true)]
@@ -291,10 +311,7 @@ async fn closing_clears_the_key_when_the_open_failed_or_its_pass_was_cut() {
     assert_eq!(rig.backend.opens(), 1);
     rig.gate.set_entitlement(Entitlement::Unentitled);
     settle().await;
-    assert!(
-        rig.backend.closes.load(Ordering::SeqCst) >= 1,
-        "a failed open"
-    );
+    assert_eq!(rig.closes(), 1, "a failed open");
 
     let rig = Rig::new();
     rig.gate.set_binding(VaultBinding::Unknown);
@@ -308,7 +325,8 @@ async fn closing_clears_the_key_when_the_open_failed_or_its_pass_was_cut() {
     );
     rig.gate.set_entitlement(Entitlement::Unentitled);
     settle().await;
-    assert!(rig.backend.closes.load(Ordering::SeqCst) >= 1, "a cut pass");
+    // Exactly one: the unbound start closed nothing it had not opened.
+    assert_eq!(rig.closes(), 1, "a cut pass");
 }
 
 /// A `Refused` pass pushed nothing: it is a failure, never "synced just now".

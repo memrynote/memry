@@ -1,5 +1,5 @@
 import { foldTag } from '@memry/shared/tag-fold'
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import type { ResolvedTag } from '@memry/contracts/tag-schema'
 import type {
@@ -9,6 +9,8 @@ import type {
 } from '@memry/contracts/tag-schema-api'
 import { onPropertyDefinitionChanged, tagsService } from '@/services/tags-service'
 import { onTagsChanged } from '@/services/notes-service'
+import { subscribeToEvents } from '@/services/tauri-event'
+import { rereadQueries } from '@/hooks/use-notes-query'
 
 export const tagSchemaQueryKey = ['tags', 'schema-snapshot'] as const
 
@@ -16,9 +18,14 @@ const INVALIDATE_DEBOUNCE_MS = 250
 
 let subscribers = 0
 let unsubscribe: (() => void) | null = null
+/** Whether the listeners below are live; the consumers waiting for that to read. */
+let listening = false
+const waiting = new Set<() => void>()
 
-function subscribeInvalidation(queryClient: QueryClient): () => void {
+function subscribeInvalidation(queryClient: QueryClient, onListening: () => void): () => void {
   subscribers += 1
+  if (listening) onListening()
+  else waiting.add(onListening)
   if (subscribers === 1) {
     let timer: ReturnType<typeof setTimeout> | undefined
     const invalidate = (): void => {
@@ -27,15 +34,30 @@ function subscribeInvalidation(queryClient: QueryClient): () => void {
         void queryClient.invalidateQueries({ queryKey: tagSchemaQueryKey })
       }, INVALIDATE_DEBOUNCE_MS)
     }
-    const offTags = onTagsChanged(invalidate)
-    const offDefinitions = onPropertyDefinitionChanged(invalidate)
+    const stop = subscribeToEvents(
+      [
+        (live) => onTagsChanged(invalidate, live),
+        (live) => onPropertyDefinitionChanged(invalidate, live)
+      ],
+      () => {
+        listening = true
+        // A snapshot cached before then (the tab icons prefetch one, `use-optional-object-identity`)
+        // may predate a change whose event went to nobody (#4270).
+        if (queryClient.getQueryData(tagSchemaQueryKey) !== undefined) {
+          rereadQueries(queryClient, tagSchemaQueryKey)
+        }
+        for (const notify of waiting) notify()
+        waiting.clear()
+      }
+    )
     unsubscribe = () => {
       clearTimeout(timer)
-      offTags()
-      offDefinitions()
+      stop()
+      listening = false
     }
   }
   return () => {
+    waiting.delete(onListening)
     subscribers -= 1
     if (subscribers === 0) {
       unsubscribe?.()
@@ -46,13 +68,17 @@ function subscribeInvalidation(queryClient: QueryClient): () => void {
 
 export function useTagSchemas(): { data: TagSchemaSnapshot | undefined; isLoading: boolean } {
   const queryClient = useQueryClient()
-  useEffect(() => subscribeInvalidation(queryClient), [queryClient])
+  // The first read waits for the listeners: a change between a read and the listeners going live
+  // sent its event to nobody (#4270), and the snapshot stays fresh until an event says otherwise.
+  const [live, setLive] = useState(listening)
+  useEffect(() => subscribeInvalidation(queryClient, () => setLive(true)), [queryClient])
   const query = useQuery({
     queryKey: tagSchemaQueryKey,
     queryFn: () => tagsService.getSchemaSnapshot(),
-    staleTime: Infinity
+    staleTime: Infinity,
+    enabled: live
   })
-  return { data: query.data, isLoading: query.isLoading }
+  return { data: query.data, isLoading: query.isLoading || (!live && query.isPending) }
 }
 
 export function resolveTag(

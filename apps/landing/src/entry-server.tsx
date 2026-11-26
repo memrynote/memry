@@ -19,6 +19,7 @@ import { CliPage } from '@/pages/Cli'
 import { UseCasesPage } from '@/pages/UseCases'
 import { AboutPage } from '@/pages/About'
 import { SecurityPage } from '@/pages/Security'
+import { EncryptedNotesAppPage } from '@/pages/EncryptedNotesApp'
 import { PricingPage } from '@/pages/Pricing'
 import { FaqPage } from '@/pages/Faq'
 import { ChangelogPage } from '@/pages/Changelog'
@@ -63,7 +64,9 @@ import {
   MarkdownMigrationPostPage,
   BestE2EENotesPostPage,
   PrivateNotionAlternativesPostPage,
-  PrivateJournalingAppsPostPage
+  PrivateJournalingAppsPostPage,
+  BestJournalingAppsPostPage,
+  OpenSourceNoteAppsPostPage
 } from '@/pages/BlogPost'
 import { NotFound } from '@/pages/NotFound'
 
@@ -92,6 +95,7 @@ const ROUTE_MAP: Record<string, () => ReactNode> = {
   '/use-cases': () => <UseCasesPage />,
   '/about': () => <AboutPage />,
   '/security': () => <SecurityPage />,
+  '/encrypted-notes-app': () => <EncryptedNotesAppPage />,
   '/compare': () => <ComparePage />,
   '/obsidian-alternative': () => <ObsidianAlternativePage />,
   '/notion-alternative': () => <NotionAlternativePage />,
@@ -133,6 +137,8 @@ const ROUTE_MAP: Record<string, () => ReactNode> = {
     <PrivateNotionAlternativesPostPage />
   ),
   '/blog/most-private-journaling-apps': () => <PrivateJournalingAppsPostPage />,
+  '/blog/best-journaling-apps': () => <BestJournalingAppsPostPage />,
+  '/blog/open-source-note-taking-apps': () => <OpenSourceNoteAppsPostPage />,
   // Client-only app routes: no SEO value, but they must be prerendered as static
   // shells so direct loads (e.g. the desktop "Upgrade" deep link to /checkout#token,
   // the Google OAuth redirect to /auth/oauth/callback) resolve instead of 404ing.

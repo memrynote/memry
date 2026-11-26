@@ -76,7 +76,22 @@ pub struct Fake {
     pub targets: Arc<Mutex<Vec<Option<String>>>>,
     /// Fails every write with this error, while reads and deletes answer.
     pub fail_writes: BuildError,
+    /// Fails every read with this error, while writes and deletes answer.
+    pub fail_reads: BuildError,
     pub writes: Arc<AtomicUsize>,
+    /// Refuses a longer value with `TooLong`, as Windows Credential Manager does over 2560 bytes.
+    pub max_blob: Arc<Mutex<Option<usize>>>,
+    /// Fails every write to this account with `NoStorageAccess`, while every other call answers.
+    pub locked_account: Arc<Mutex<Option<String>>>,
+    /// Stores every write to this account, then fails it with `TooLong`: a write whose outcome
+    /// the caller cannot tell from the answer.
+    pub lost_ack_account: Arc<Mutex<Option<String>>>,
+    /// Stores these bytes in place of every written value.
+    pub replace_writes: Arc<Mutex<Option<Vec<u8>>>>,
+    /// Fails every delete with this error.
+    pub fail_deletes: BuildError,
+    /// Fails every read with this error once any write was made.
+    pub fail_reads_after_a_write: BuildError,
 }
 
 pub struct FakeCred {
@@ -93,7 +108,14 @@ impl Fake {
             reader_threads: Arc::default(),
             targets: Arc::default(),
             fail_writes: Arc::default(),
+            fail_reads: Arc::default(),
             writes: Arc::default(),
+            max_blob: Arc::default(),
+            locked_account: Arc::default(),
+            lost_ack_account: Arc::default(),
+            replace_writes: Arc::default(),
+            fail_deletes: Arc::default(),
+            fail_reads_after_a_write: Arc::default(),
         }
     }
 
@@ -105,7 +127,14 @@ impl Fake {
             reader_threads: self.reader_threads.clone(),
             targets: self.targets.clone(),
             fail_writes: self.fail_writes.clone(),
+            fail_reads: self.fail_reads.clone(),
             writes: self.writes.clone(),
+            max_blob: self.max_blob.clone(),
+            locked_account: self.locked_account.clone(),
+            lost_ack_account: self.lost_ack_account.clone(),
+            replace_writes: self.replace_writes.clone(),
+            fail_deletes: self.fail_deletes.clone(),
+            fail_reads_after_a_write: self.fail_reads_after_a_write.clone(),
         }
     }
 
@@ -156,11 +185,26 @@ impl CredentialApi for FakeCred {
         if let Some(error) = *self.fake.fail_writes.lock().unwrap() {
             return Err(error());
         }
+        if self.fake.locked_account.lock().unwrap().as_deref() == Some(self.key.1.as_str()) {
+            return Err(Error::NoStorageAccess("locked".into()));
+        }
+        if let Some(max) = *self.fake.max_blob.lock().unwrap()
+            && secret.len() > max
+        {
+            return Err(Error::TooLong("password".to_owned(), max as u32));
+        }
+        let stored = match &*self.fake.replace_writes.lock().unwrap() {
+            Some(replacement) => replacement.clone(),
+            None => secret.to_vec(),
+        };
         self.fake
             .data
             .lock()
             .unwrap()
-            .insert(self.key.clone(), secret.to_vec());
+            .insert(self.key.clone(), stored);
+        if self.fake.lost_ack_account.lock().unwrap().as_deref() == Some(self.key.1.as_str()) {
+            return Err(Error::TooLong("password".to_owned(), 0));
+        }
         Ok(())
     }
 
@@ -172,6 +216,14 @@ impl CredentialApi for FakeCred {
             .unwrap()
             .push(std::thread::current().name().map(str::to_owned));
         self.fake.act()?;
+        if let Some(error) = *self.fake.fail_reads.lock().unwrap() {
+            return Err(error());
+        }
+        if let Some(error) = *self.fake.fail_reads_after_a_write.lock().unwrap()
+            && self.fake.writes.load(Ordering::SeqCst) > 0
+        {
+            return Err(error());
+        }
         self.fake
             .data
             .lock()
@@ -183,6 +235,9 @@ impl CredentialApi for FakeCred {
 
     fn delete_credential(&self) -> keyring_core::Result<()> {
         self.fake.act()?;
+        if let Some(error) = *self.fake.fail_deletes.lock().unwrap() {
+            return Err(error());
+        }
         match self.fake.data.lock().unwrap().remove(&self.key) {
             Some(_) => Ok(()),
             None => Err(Error::NoEntry),

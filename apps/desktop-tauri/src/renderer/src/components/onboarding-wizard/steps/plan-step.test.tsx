@@ -9,22 +9,22 @@ vi.mock('@/contexts/auth-context', () => ({
   useAuth: () => ({ state: { email: 'kaan@example.com' } })
 }))
 
+const account = vi.hoisted(() => ({
+  accountStartCheckout: vi.fn(),
+  accountRefreshBillingStatus: vi.fn()
+}))
+vi.mock('../../../../../generated/bindings', () => ({ commands: account }))
+
 import { initialDraft, type WizardState } from '../wizard-model'
 import { PlanStep } from './plan-step'
-
-const account = {
-  startCheckout: vi.fn(),
-  refreshBillingStatus: vi.fn()
-}
-;(window.api as unknown as { account: typeof account }).account = account
 
 const state: WizardState = { path: 'new', step: 'plan', draft: initialDraft(true) }
 
 describe('plan step', () => {
   beforeEach(() => {
     vi.useRealTimers()
-    account.startCheckout.mockReset().mockResolvedValue({ success: true })
-    account.refreshBillingStatus
+    account.accountStartCheckout.mockReset().mockResolvedValue({ success: true })
+    account.accountRefreshBillingStatus
       .mockReset()
       .mockResolvedValue({ plan: 'free', status: 'active', expiresAt: null })
   })
@@ -37,11 +37,11 @@ describe('plan step', () => {
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /plan\.continue/ }))
     })
-    expect(account.startCheckout).toHaveBeenCalledWith({ plan: 'pro', cadence: 'annual' })
+    expect(account.accountStartCheckout).toHaveBeenCalledWith({ plan: 'pro', cadence: 'annual' })
     expect(screen.getByText('onboardingWizard.plan.waiting')).toBeInTheDocument()
     expect(dispatch).not.toHaveBeenCalledWith({ type: 'next' })
 
-    account.refreshBillingStatus.mockResolvedValue({
+    account.accountRefreshBillingStatus.mockResolvedValue({
       plan: 'pro',
       status: 'active',
       expiresAt: null
@@ -56,6 +56,38 @@ describe('plan step', () => {
     expect(dispatch).toHaveBeenCalledWith({ type: 'next' })
   })
 
+  // The server sends `expiresAt` in epoch seconds; a subscription always has one.
+  it('moves on for a paid subscription that renews later', async () => {
+    const renewsAt = Math.floor(Date.now() / 1000) + 30 * 24 * 3600
+    account.accountRefreshBillingStatus.mockResolvedValue({
+      plan: 'plus',
+      status: 'active',
+      expiresAt: renewsAt
+    })
+    const dispatch = vi.fn()
+    render(<PlanStep state={state} dispatch={dispatch} />)
+
+    await waitFor(() =>
+      expect(dispatch).toHaveBeenCalledWith({ type: 'update', patch: { paidPlan: 'plus' } })
+    )
+  })
+
+  it('stays on the step when the plan has expired', async () => {
+    account.accountRefreshBillingStatus.mockResolvedValue({
+      plan: 'plus',
+      status: 'active',
+      expiresAt: Math.floor(Date.now() / 1000) - 60
+    })
+    const dispatch = vi.fn()
+    render(<PlanStep state={state} dispatch={dispatch} />)
+
+    await waitFor(() => expect(account.accountRefreshBillingStatus).toHaveBeenCalledWith(null))
+    await act(async () => {
+      await Promise.resolve()
+    })
+    expect(dispatch).not.toHaveBeenCalled()
+  })
+
   it('continues without a plan when the user skips', async () => {
     const dispatch = vi.fn()
     render(<PlanStep state={state} dispatch={dispatch} />)
@@ -63,6 +95,6 @@ describe('plan step', () => {
       fireEvent.click(screen.getByRole('button', { name: /plan\.notNow/ }))
     })
     expect(dispatch).toHaveBeenCalledWith({ type: 'update', patch: { paidPlan: null } })
-    expect(account.startCheckout).not.toHaveBeenCalled()
+    expect(account.accountStartCheckout).not.toHaveBeenCalled()
   })
 })
