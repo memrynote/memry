@@ -40,13 +40,16 @@ impl PullLoop {
         advance: Option<Advance>,
         feed: &mut AppliedFeed,
     ) -> Result<(ApplyTotals, Vec<String>), PullError> {
-        let now = now_ms();
         let clock_device = self.clock_device.clone();
         let vault_root = self.vault_root.clone();
         let at_rest = self.at_rest.clone();
         let (mut totals, advanced) = self
             .db
             .call(move |conn| {
+                // #5849: stamped inside the hold that writes the rows, so no
+                // search watermark written while this page waited for the
+                // lock can pass them.
+                let now = now_ms();
                 let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
                 let mut totals = ApplyTotals::default();
                 unknown_signer::resolve_verified(&txn, &pending)?;

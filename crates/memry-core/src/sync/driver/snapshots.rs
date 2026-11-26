@@ -103,7 +103,7 @@ impl SyncDriver {
             })
             .collect();
         let mut stored = Vec::new();
-        for (doc_id, outcome) in self.snapshots.pusher.push_batch(&pairs, now).await {
+        for (doc_id, outcome) in self.snapshots.pusher.push_batch(&pairs).await {
             if let Err(crate::crdt::snapshots::SnapshotError::Api { source }) = &outcome {
                 self.admission.note(source);
             }

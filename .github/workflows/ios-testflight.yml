@@ -36,6 +36,7 @@ jobs:
         with:
           workspaces: crates
           key: macos-26
+          save-if: ${{ github.ref == 'refs/heads/feat/tauri-v2' }}
 
       - name: Select Xcode 26
         run: |
@@ -47,8 +48,17 @@ jobs:
           sudo xcode-select -s "$app"
           xcodebuild -version
 
-      - name: Cache ONNX Runtime archive
+      # Only feat/tauri-v2 saves; other refs restore its entry and write nothing. The two steps are exclusive.
+      - name: Restore and save the ONNX Runtime archive
+        if: github.ref == 'refs/heads/feat/tauri-v2'
         uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/memry/onnxruntime
+          key: onnxruntime-${{ hashFiles('crates/memry-core/onnxruntime.lock') }}
+
+      - name: Restore the ONNX Runtime archive
+        if: github.ref != 'refs/heads/feat/tauri-v2'
+        uses: actions/cache/restore@v4
         with:
           path: ~/Library/Caches/memry/onnxruntime
           key: onnxruntime-${{ hashFiles('crates/memry-core/onnxruntime.lock') }}

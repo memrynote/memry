@@ -417,6 +417,72 @@ async fn a_kill_mid_first_sync_resumes_without_re_pulling_or_skipping() {
     assert_eq!(ids, vec![NOTE.to_owned(), other.to_owned()]);
 }
 
+/// #5840: a first sync claims the feed before its first page. One whose
+/// first refs page fails holds no cursor yet, so the rerun reads the whole
+/// feed from the start and finishes with the repair `done`.
+#[tokio::test]
+async fn a_first_sync_whose_first_refs_page_fails_re_reads_from_no_cursor() {
+    const REPAIR: &str = "sync.cursor_skip_repair";
+    let db = scratch_db("claim-then-fail");
+    let (public_key, _secret) =
+        memry_core::crypto::sodium::sign_seed_keypair(&[43u8; 32]).expect("keypair");
+
+    let failing = FakeTransport::new(vec![Err(
+        memry_core::api::errors::TransportError::Cancelled,
+    )]);
+    let failed = first_sync(&db, failing, public_key.clone(), RecordedProgress::new())
+        .run(epoch(MODIFIED_AT) + 1_000)
+        .await;
+    assert!(failed.is_err(), "the first refs page failed");
+    let (repair, cursor) = db
+        .call_blocking(|conn| {
+            Ok((
+                read_meta(conn, REPAIR)?,
+                store::read_cursor(conn, RECORD_CURSOR_SCOPE)?,
+            ))
+        })
+        .expect("the state");
+    assert_eq!(repair.as_deref(), Some("done"), "claimed before the page");
+    assert_eq!(cursor, None);
+
+    let rerun = FakeTransport::new(vec![
+        response(200, &changes_page(&[(NOTE, "note")], &[], 10, false)),
+        response(
+            200,
+            &json!({"items": [record_envelope(NOTE, "note")]}).to_string(),
+        ),
+        response(
+            200,
+            &json!({"notes": {NOTE: {"updates": [], "hasMore": false, "floor": 0}},
+                "snapshotMeta": {}})
+            .to_string(),
+        ),
+    ]);
+    let report = first_sync(&db, rerun.clone(), public_key, RecordedProgress::new())
+        .run(epoch(MODIFIED_AT) + 2_000)
+        .await
+        .expect("the rerun");
+
+    assert_eq!(report.refs_recorded, 1);
+    assert_eq!(report.metadata_applied, 1);
+    let changes = rerun.calls_to("/sync/changes?limit=500");
+    assert_eq!(
+        changes.len(),
+        1,
+        "the rerun reads the feed from the start, with no cursor"
+    );
+    let (repair, cursor) = db
+        .call_blocking(|conn| {
+            Ok((
+                read_meta(conn, REPAIR)?,
+                store::read_cursor(conn, RECORD_CURSOR_SCOPE)?,
+            ))
+        })
+        .expect("the state");
+    assert_eq!(repair.as_deref(), Some("done"));
+    assert_eq!(cursor.as_deref(), Some("10"));
+}
+
 #[tokio::test]
 async fn an_update_this_client_cannot_open_stops_the_document_at_that_update() {
     let db = scratch_db("stop-at-gap");

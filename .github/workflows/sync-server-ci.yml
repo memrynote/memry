@@ -166,7 +166,7 @@ jobs:
         with:
           workspaces: crates
           key: harness-${{ steps.image.outputs.os }}
-          save-if: ${{ github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref == 'main') }}
+          save-if: ${{ github.ref == 'refs/heads/feat/tauri-v2' }}
 
       - name: Build the core device
         if: steps.paths.outputs.changed == 'true'

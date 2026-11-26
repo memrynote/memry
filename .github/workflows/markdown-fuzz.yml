@@ -62,6 +62,7 @@ jobs:
         with:
           workspaces: crates
           key: ubuntu-22.04
+          save-if: ${{ github.ref == 'refs/heads/feat/tauri-v2' }}
 
       - name: Differential, 20000 inputs
         working-directory: crates
@@ -143,6 +144,7 @@ jobs:
         with:
           workspaces: crates/memry-core/fuzz
           key: ubuntu-22.04
+          save-if: ${{ github.ref == 'refs/heads/feat/tauri-v2' }}
 
       - name: Fuzz, 10 minutes
         working-directory: crates/memry-core
@@ -181,6 +183,7 @@ jobs:
         with:
           workspaces: crates
           key: ${{ matrix.os }}
+          save-if: ${{ github.ref == 'refs/heads/feat/tauri-v2' }}
 
       - name: libsodium archives
         uses: ./.github/actions/libsodium-dist

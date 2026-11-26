@@ -5,7 +5,7 @@
 //! Real `HttpClient`, `AuthSession`, SQLite, the filesystem and chapter 14
 //! crypto; only the transport and secure store are fakes.
 
-use crate::http_fakes;
+use crate::{http_fakes, stamp_gate};
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -300,6 +300,48 @@ async fn a_picture_detached_before_its_upload_never_uploads() {
         0
     );
     assert_eq!(app.transport.call_count(), 1, "only the first try went out");
+}
+
+/// #5849: a detach that waited on `data.db` while a reindex wrote its
+/// watermark stamps the note at or after it, so the next incremental reindex
+/// reads the note again.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_detach_that_waited_through_a_reindex_is_stamped_at_or_after_its_watermark() {
+    let (dir, store) = (scratch_dir(), store());
+    let mut script = upload_script();
+    script.push(response(200, &json!({"success": true}).to_string()));
+    let app = launch(&dir, &store, script);
+    let note = app.note(&store);
+    let id = app.attach(&note).await.expect("uploaded");
+    assert_eq!(app.references(&note), vec![id.clone()]);
+    let db = app.vault.db_handle();
+    let search = stamp_gate::Search::new(&db);
+
+    let gate = search.gate();
+    app.sync
+        .detach_attachment(note.clone(), id)
+        .await
+        .expect("detach");
+    gate.join();
+    assert!(search.indexed(stamp_gate::RIVAL_NOTE), "the gate reindexed");
+
+    let stamp: i64 = db
+        .call_blocking(move |conn| {
+            conn.query_row(
+                "SELECT synced_at FROM notes WHERE id = ?1",
+                [&note],
+                |row| row.get(0),
+            )
+            .map_err(|error| memry_core::api::errors::StorageError::Failed {
+                what: error.to_string(),
+            })
+        })
+        .expect("the note's stamp");
+    let watermark = search.watermark();
+    assert!(
+        stamp >= watermark,
+        "the detach stamped {stamp}, below the watermark {watermark} written while it waited"
+    );
 }
 
 /// The pass uploads a kept attachment before its push, so the note leaves with

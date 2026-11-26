@@ -110,6 +110,7 @@ jobs:
         with:
           workspaces: crates
           key: ${{ matrix.os }}
+          save-if: ${{ github.ref == 'refs/heads/feat/tauri-v2' }}
       - run: pnpm install --frozen-lockfile --ignore-scripts
       # The release bundle (#3556 S1): the memry-ml-worker sidecar links ONNX Runtime and Tesseract
       # statically. The ONNX Runtime archives are releases of memrynote/memry, not of the repo the
@@ -175,6 +176,7 @@ jobs:
         with:
           workspaces: crates
           key: ${{ matrix.os }}
+          save-if: ${{ github.ref == 'refs/heads/feat/tauri-v2' }}
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - uses: actions/setup-dotnet@v4
         with:
@@ -324,6 +326,7 @@ jobs:
         with:
           workspaces: crates
           key: ubuntu-22.04
+          save-if: ${{ github.ref == 'refs/heads/feat/tauri-v2' }}
       - name: Install system libraries
         run: |
           sudo apt-get update

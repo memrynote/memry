@@ -306,7 +306,7 @@ jobs:
           # (26.04) save restored here and its build scripts needed GLIBC_2.39 (#3846).
           # No partition in the key: tests and models restore the entry their OS's checks leg saved.
           key: ${{ matrix.os }}-checks
-          save-if: ${{ matrix.part == 'checks' && github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref == 'main') }}
+          save-if: ${{ matrix.part == 'checks' && github.ref == 'refs/heads/feat/tauri-v2' }}
           # The warm run exists to save: a flaky step must not lose its entry.
           cache-on-failure: ${{ needs.plan.outputs.warm == 'true' }}
 
@@ -706,7 +706,7 @@ jobs:
           EOF
 
       - name: Save the text model (memry-ml smoke)
-        if: matrix.models && steps.model-cache.outputs.cache-hit != 'true' && github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref == 'main')
+        if: matrix.models && steps.model-cache.outputs.cache-hit != 'true' && github.ref == 'refs/heads/feat/tauri-v2'
         uses: actions/cache/save@v4
         with:
           path: ${{ runner.temp }}/models
@@ -763,7 +763,7 @@ jobs:
           EOF
 
       - name: Save the vision encoder (memry-ml golden image)
-        if: matrix.models && steps.vision-cache.outputs.cache-hit != 'true' && github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref == 'main')
+        if: matrix.models && steps.vision-cache.outputs.cache-hit != 'true' && github.ref == 'refs/heads/feat/tauri-v2'
         uses: actions/cache/save@v4
         with:
           path: |
@@ -814,7 +814,7 @@ jobs:
           EOF
 
       - name: Save the audio encoder (memry-ml golden audio)
-        if: matrix.models && steps.audio-model-cache.outputs.cache-hit != 'true' && github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref == 'main')
+        if: matrix.models && steps.audio-model-cache.outputs.cache-hit != 'true' && github.ref == 'refs/heads/feat/tauri-v2'
         uses: actions/cache/save@v4
         with:
           path: |
@@ -990,7 +990,7 @@ jobs:
         with:
           workspaces: crates
           key: ubuntu-22.04-arm-ml-worker
-          save-if: ${{ github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref == 'main') }}
+          save-if: ${{ github.ref == 'refs/heads/feat/tauri-v2' }}
 
       - name: Drop a partial cargo cache
         if: steps.cargo-cache.outcome == 'failure'
@@ -1136,7 +1136,7 @@ jobs:
         with:
           workspaces: crates
           key: macos-26
-          save-if: ${{ github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref == 'main') }}
+          save-if: ${{ github.ref == 'refs/heads/feat/tauri-v2' }}
 
       # Glob, not a fixed path: the runner image names it Xcode_26.x.app and the
       # patch version moves. Failing loudly with the available list beats a bare
@@ -1180,8 +1180,17 @@ jobs:
             exit 1
           fi
 
-      - name: Cache ONNX Runtime archive
+      # Only feat/tauri-v2 saves; other refs restore its entry and write nothing. The two steps are exclusive.
+      - name: Restore and save the ONNX Runtime archive
+        if: github.ref == 'refs/heads/feat/tauri-v2'
         uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/memry/onnxruntime
+          key: onnxruntime-${{ hashFiles('crates/memry-core/onnxruntime.lock') }}
+
+      - name: Restore the ONNX Runtime archive
+        if: github.ref != 'refs/heads/feat/tauri-v2'
+        uses: actions/cache/restore@v4
         with:
           path: ~/Library/Caches/memry/onnxruntime
           key: onnxruntime-${{ hashFiles('crates/memry-core/onnxruntime.lock') }}
