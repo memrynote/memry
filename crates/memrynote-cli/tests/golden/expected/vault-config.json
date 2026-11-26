@@ -24,10 +24,10 @@
       "argv": [
         "vault",
         "update-config",
-        "{\"journalFolder\":\" daily/ \",\"custom\":1,\"journalShowInSidebar\":true}"
+        "{\"journalFolder\":\" daily/\",\"custom\":1,\"journalShowInSidebar\":true}"
       ],
       "exit": 0,
-      "stdout": "{\n  \"defaultNoteFolder\": \"\",\n  \"journalFolder\": \" daily/ \",\n  \"journalDateFormat\": \"YYYY-MM-DD\",\n  \"attachmentsFolder\": \"attachments\",\n  \"excludePatterns\": [\n    \".git\",\n    \"node_modules\",\n    \".trash\",\n    \".obsidian\",\n    \".memry\"\n  ],\n  \"journalShowInSidebar\": true,\n  \"theme\": \"kept\",\n  \"custom\": 1\n}\n",
+      "stdout": "{\n  \"defaultNoteFolder\": \"\",\n  \"journalFolder\": \" daily/\",\n  \"journalDateFormat\": \"YYYY-MM-DD\",\n  \"attachmentsFolder\": \"attachments\",\n  \"excludePatterns\": [\n    \".git\",\n    \"node_modules\",\n    \".trash\",\n    \".obsidian\",\n    \".memry\"\n  ],\n  \"journalShowInSidebar\": true,\n  \"theme\": \"kept\",\n  \"custom\": 1\n}\n",
       "stderr": ""
     },
     {

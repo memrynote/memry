@@ -478,6 +478,32 @@ fn update_config_puts_an_absolute_folder_inside_the_vault() {
     );
 }
 
+/// On Windows a folder name ending in a dot or a space is refused (`vaultFolder`): Windows drops
+/// it, so the folder on disk would be another one than the config names.
+#[cfg(windows)]
+#[test]
+fn update_config_refuses_a_folder_windows_trims() {
+    let rig = Rig::new();
+    write(&rig.path("vault/.memry/config.json"), b"{}");
+    let vault = rig.path("vault");
+    let (code, _, err) = rig.run(&[
+        "--vault",
+        vault.to_str().expect("utf-8"),
+        "vault",
+        "update-config",
+        r#"{"journalFolder":"daily./x"}"#,
+    ]);
+    assert_eq!(code, 1);
+    assert_eq!(
+        err,
+        "Refusing to set journalFolder: \"daily./x\" ends in a dot or a space, which Windows drops, so it names another folder.\n"
+    );
+    assert_eq!(
+        std::fs::read(vault.join(".memry/config.json")).expect("config"),
+        b"{}"
+    );
+}
+
 /// A reindex that meets the app's write on `index.db` says the index is busy, not damaged,
 /// and commits nothing.
 #[test]
