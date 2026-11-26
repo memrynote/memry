@@ -18,9 +18,11 @@ use crate::storage::migrations::{self, INDEX_MIGRATIONS};
 use crate::storage::pragmas::{self, Profile};
 
 mod notes;
+mod outbox;
 mod records;
 
 pub use notes::{ImportNoteFile, ImportNoteSnapshot};
+pub use outbox::{ImportDeleted, ImportQueued, ImportTombstoneClock};
 pub use records::ImportRecord;
 
 /// `meta` key a finished import writes into the staged `data.db`, last. Its

@@ -847,3 +847,68 @@ async fn every_body_a_pack_applies_is_told_to_the_observers_after_it_commits() {
         assert!(!last.2, "{id}: told once its debt settled: {heard:?}");
     }
 }
+
+/// A snapshot entry and an update entry sealed under a key outside the
+/// account, both naming the account's device as signer, are confirmed by the
+/// manifest but fail the signature (§7.9's stop-at-gap): neither is stored
+/// or counted, `forgedupd001` keeps its update 1 and nothing past the forged
+/// update 2, both documents stay owed, and no observer hears of a forged
+/// entry. The honest document in the same pack settles.
+#[tokio::test]
+async fn a_forged_snapshot_or_update_in_a_body_pack_is_not_seeded_told_or_settled() {
+    let (db, dir) = body_pack_server::scratch("forged");
+    let good = ServerDoc::new("gooddoc00001", 3);
+    let forged_snapshot = ServerDoc::new("forgedsnap01", 3)
+        .snapshot_only()
+        .snapshot_forged();
+    let forged_update = ServerDoc::new("forgedupd001", 3).update_forged(2);
+    let packs = vec![
+        BodyPack::new("s1", snapshot_items(&[&forged_snapshot])),
+        BodyPack::new("u1", update_items(&[&good, &forged_update])),
+    ];
+    let mut server = Server::new(vec![good, forged_snapshot, forged_update], packs);
+    server.records = true;
+    let routes = Routes::new(server);
+    let observers = Arc::new(Observers::default());
+    let watcher = Arc::new(BodyWatcher {
+        db: db.clone(),
+        heard: std::sync::Mutex::default(),
+    });
+    observers.register(watcher.clone());
+
+    let report = body_pack_server::first_sync_observed(&db, &routes, &dir, observers)
+        .run(NOW_MS)
+        .await
+        .expect("the first sync");
+
+    // The honest document's three updates and `forgedupd001`'s first.
+    let packs = &report.body_packs;
+    assert!(packs.ran && packs.manifest, "{packs:?}");
+    assert_eq!(
+        (packs.snapshots_applied, packs.updates_applied),
+        (0, 4),
+        "{packs:?}"
+    );
+    holds_exactly(&db, routes.server.lock().unwrap().doc("gooddoc00001"), 3);
+    assert!(!is_owed(&db, "gooddoc00001"));
+
+    let heard = watcher.heard.lock().unwrap().clone();
+    assert!(!has_snapshot(&db, "forgedsnap01"));
+    assert_eq!(update_seqs(&db, "forgedsnap01"), Vec::<i64>::new());
+    assert!(is_owed(&db, "forgedsnap01"));
+    assert!(
+        heard.iter().all(|(told, ..)| told != "forgedsnap01"),
+        "{heard:?}"
+    );
+
+    assert_eq!(update_seqs(&db, "forgedupd001"), [1]);
+    assert_eq!(cursor_of(&db, "forgedupd001"), Some(1));
+    assert!(is_owed(&db, "forgedupd001"));
+    assert!(
+        heard
+            .iter()
+            .filter(|(told, ..)| told == "forgedupd001")
+            .all(|(_, cursor, _)| *cursor == Some(1)),
+        "told only of update 1: {heard:?}"
+    );
+}
