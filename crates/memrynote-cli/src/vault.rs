@@ -135,6 +135,12 @@ fn update_config(
     vault: &VaultContext,
     updates: &Map<String, Value>,
 ) -> Result<Map<String, Value>, CliError> {
+    // Validated before saving (`updateConfig`, `apps/cli/src/app-core/memry-app.ts`).
+    for key in ["defaultNoteFolder", "journalFolder"] {
+        if let Some(requested) = updates.get(key).and_then(Value::as_str) {
+            vault_folder(&vault.root, requested, &format!("set {key}"))?;
+        }
+    }
     let written = config::update(&vault.root, |file| {
         for (key, value) in DEFAULTS {
             file.entry(key).or_insert_with(|| value.into());
@@ -160,8 +166,60 @@ fn update_config(
     Ok(view)
 }
 
+/// `vaultFolder(vaultPath, requested, action, { allowRoot: true })` (`apps/cli/src/app-core/paths.ts`):
+/// refuses what `parseVaultFolder` reads as outside the vault, a name Windows trims, and a path
+/// through a link (#5678, #5723). The links are found by `lstat` of each existing segment.
+fn vault_folder(root: &Path, requested: &str, action: &str) -> CliResult {
+    let slashed = requested.replace('\\', "/");
+    let mut parts: Vec<&str> = Vec::new();
+    let mut climbs_out = false;
+    for segment in slashed.trim_matches('/').split('/') {
+        match segment {
+            "" | "." => {}
+            ".." => climbs_out |= parts.pop().is_none(),
+            name => parts.push(name),
+        }
+    }
+    let folder = parts.join("/");
+    // `path.win32.isAbsolute` of what is left: a drive root such as `C:/`.
+    let drive = folder.as_bytes();
+    let absolute = drive.len() > 2 && drive[0].is_ascii_alphabetic() && &drive[1..3] == b":/";
+    if climbs_out || absolute {
+        return Err(CliError(format!(
+            "Refusing to {action}: \"{requested}\" is the vault itself or outside it."
+        )));
+    }
+    if cfg!(windows) && parts.iter().any(|part| part.ends_with(['.', ' '])) {
+        return Err(CliError(format!(
+            "Refusing to {action}: \"{requested}\" ends in a dot or a space, which Windows drops, so it names another folder."
+        )));
+    }
+    for index in 1..=parts.len() {
+        let walked = parts[..index].join("/");
+        match std::fs::symlink_metadata(root.join(&walked)) {
+            Ok(meta) if meta.file_type().is_symlink() => {
+                return Err(CliError(format!(
+                    "Refusing to {action}: \"{walked}\" is a link, and a path through a link can lead outside the vault."
+                )));
+            }
+            Ok(_) => {}
+            // The rest does not exist yet, so the write creates plain folders there.
+            Err(error)
+                if matches!(
+                    error.kind(),
+                    std::io::ErrorKind::NotFound | std::io::ErrorKind::NotADirectory
+                ) =>
+            {
+                break;
+            }
+            Err(error) => return Err(CliError(format!("{walked}: {error}"))),
+        }
+    }
+    Ok(())
+}
+
 /// `ensureVaultFolders` (`paths.ts:128-134`). A folder that would land outside the vault is not
-/// created (`deliberate-differences.json`).
+/// created: a held value that [`vault_folder`] never checked may still lead out.
 fn create_folders(root: &Path, config: &Map<String, Value>) -> CliResult {
     let named = ["defaultNoteFolder", "journalFolder"]
         .into_iter()

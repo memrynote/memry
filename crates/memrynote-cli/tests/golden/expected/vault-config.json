@@ -66,9 +66,9 @@
         "update-config",
         "{\"defaultNoteFolder\":\"../outside\"}"
       ],
-      "exit": 0,
-      "stdout": "{\n  \"defaultNoteFolder\": \"../outside\",\n  \"journalFolder\": \"daily\",\n  \"journalDateFormat\": \"YYYY-MM-DD\",\n  \"attachmentsFolder\": \"attachments\",\n  \"excludePatterns\": [\n    \"a\",\n    \"b\"\n  ],\n  \"journalShowInSidebar\": true,\n  \"theme\": \"kept\",\n  \"custom\": 1\n}\n",
-      "stderr": ""
+      "exit": 1,
+      "stdout": "",
+      "stderr": "Refusing to set defaultNoteFolder: \"../outside\" is the vault itself or outside it.\n"
     },
     {
       "argv": [

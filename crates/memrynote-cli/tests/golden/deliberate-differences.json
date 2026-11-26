@@ -21,13 +21,6 @@
     "test": "crates/memrynote-cli/tests/context.rs a_reindex_refuses_a_damaged_index_and_leaves_it, a_reindex_beside_a_writer_says_the_index_is_busy; crates/memry-core/tests/domain_search.rs a_second_pass_touches_only_what_moved"
   },
   {
-    "case": "`vault update-config` with a defaultNoteFolder or journalFolder that leads outside the vault (`..` that climbs out, a link out of the vault)",
-    "typescript": "ensureVaultFolders created path.join(vaultPath, folder) wherever it led: `..` could climb out of the vault and a symlinked folder could lead out. An absolute folder was joined inside the vault (`/abs` became `<vault>/abs`).",
-    "rust": "Writes the key as given and prints the same config. Folders are joined as Node joins them (an absolute folder lands inside the vault), but none is created when `..` climbs out, a drive prefix names another root, or the nearest existing folder on the way resolves outside the vault through a link (the app's resolve_vault_file).",
-    "approval": "Pending Kaan's review on the Step 35 B2a PR (#3552); conservative default meanwhile.",
-    "test": "crates/memrynote-cli/tests/context.rs update_config_creates_no_folder_outside_the_vault, update_config_creates_no_folder_through_a_link_out_of_the_vault, update_config_puts_an_absolute_folder_inside_the_vault"
-  },
-  {
     "case": "the .memry/config.json that `vault config`, `vault update-config` and `vault set-icon` leave on disk",
     "typescript": "Every command, read commands included, rewrote a config.json that lacked a default key (defaultNoteFolder, journalFolder, journalDateFormat, attachmentsFolder) as `{...defaults, ...file}`, defaults first. Every write ended the file with a newline.",
     "rust": "A read command (`vault config`) leaves the file as it is and prints the same view. `vault update-config` and `vault set-icon` write through the app's own writer (memry_desktop::vault::config::update): the same keys and values as the TypeScript, in the file's own key order with any missing defaults after it, and no trailing newline. On a config the app wrote (excludePatterns first, every default present) the trailing newline is the only difference.",

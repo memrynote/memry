@@ -352,9 +352,10 @@ fn a_reindex_refuses_a_damaged_index_and_leaves_it() {
     assert!(siblings.is_empty(), "set aside: {siblings:?}");
 }
 
-/// `vault update-config` never creates a folder outside the vault, while it still writes the key.
+/// `vault update-config` refuses a folder outside the vault (`vaultFolder`, #5678): nothing is
+/// written or created.
 #[test]
-fn update_config_creates_no_folder_outside_the_vault() {
+fn update_config_refuses_a_folder_outside_the_vault() {
     let rig = Rig::new();
     write(&rig.path("vault/.memry/config.json"), b"{}");
     let vault = rig.path("vault");
@@ -365,12 +366,15 @@ fn update_config_creates_no_folder_outside_the_vault() {
         "update-config",
         r#"{"defaultNoteFolder":"../outside"}"#,
     ]);
-    assert_eq!(code, 0, "{err}");
+    assert_eq!(code, 1);
+    assert_eq!(
+        err,
+        "Refusing to set defaultNoteFolder: \"../outside\" is the vault itself or outside it.\n"
+    );
     assert!(!rig.path("outside").exists(), "a folder outside the vault");
-    let file = std::fs::read_to_string(vault.join(".memry/config.json")).expect("config");
-    assert!(
-        file.contains(r#""defaultNoteFolder": "../outside""#),
-        "{file}"
+    assert_eq!(
+        std::fs::read(vault.join(".memry/config.json")).expect("config"),
+        b"{}"
     );
 }
 
@@ -423,10 +427,10 @@ fn update_config_keeps_what_the_app_wrote_while_it_waited() {
     assert_eq!(file["custom"], 1, "{file}");
 }
 
-/// A folder whose nearest existing ancestor is a link out of the vault is not created.
+/// A folder through a link is refused (`vaultFolder`, #5723): a link can lead out of the vault.
 #[cfg(unix)]
 #[test]
-fn update_config_creates_no_folder_through_a_link_out_of_the_vault() {
+fn update_config_refuses_a_folder_through_a_link() {
     let rig = Rig::new();
     write(&rig.path("vault/.memry/config.json"), b"{}");
     std::fs::create_dir(rig.path("elsewhere")).expect("elsewhere");
@@ -439,10 +443,18 @@ fn update_config_creates_no_folder_through_a_link_out_of_the_vault() {
         "update-config",
         r#"{"defaultNoteFolder":"link/sub"}"#,
     ]);
-    assert_eq!(code, 0, "{err}");
+    assert_eq!(code, 1);
+    assert_eq!(
+        err,
+        "Refusing to set defaultNoteFolder: \"link\" is a link, and a path through a link can lead outside the vault.\n"
+    );
     assert!(
         !rig.path("elsewhere/sub").exists(),
         "created outside the vault"
+    );
+    assert_eq!(
+        std::fs::read(vault.join(".memry/config.json")).expect("config"),
+        b"{}"
     );
 }
 
