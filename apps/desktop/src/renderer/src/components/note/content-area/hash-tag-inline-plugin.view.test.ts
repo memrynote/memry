@@ -1,8 +1,10 @@
 /**
  * The hash-tag plugin on a real ProseMirror view: typing, and text an input
  * method composes and then commits, the way Korean, Japanese and Chinese
- * keyboards write. ProseMirror marks every transaction it reads from the DOM
+ * keyboards write. ProseMirror marks most transactions it reads from the DOM
  * mid-composition with the `composition` meta, so these tests dispatch the same.
+ * WebKit inserts each committed syllable as a plain input before compositionend
+ * (recorded in the Tauri app with the macOS Korean 2-Set keyboard).
  */
 import { afterEach, describe, expect, it } from 'vitest'
 import { Schema } from '@tiptap/pm/model'
@@ -57,9 +59,41 @@ function compose(view: EditorView, steps: string[]): void {
   }
 }
 
-async function endComposition(view: EditorView): Promise<void> {
+const settled = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 100))
+
+function startComposition(view: EditorView): void {
+  view.dom.dispatchEvent(new CompositionEvent('compositionstart', { data: '' }))
+}
+
+function fireCompositionEnd(view: EditorView): void {
   view.dom.dispatchEvent(new CompositionEvent('compositionend', { data: '' }))
-  await new Promise((resolve) => setTimeout(resolve))
+}
+
+async function endComposition(view: EditorView): Promise<void> {
+  fireCompositionEnd(view)
+  await settled()
+}
+
+/** Replaces the `length` characters before the cursor, as an input method rewriting its text. */
+function rewriteBeforeCursor(view: EditorView, length: number, text: string): void {
+  const end = view.state.selection.from
+  view.dispatch(view.state.tr.insertText(text, end - length, end))
+}
+
+/**
+ * One Korean syllable as WebKit writes it: composing steps with the meta, then
+ * the composed text deleted and the syllable inserted without it, then
+ * compositionend.
+ */
+function composeSyllableAsWebKit(view: EditorView, steps: string[]): void {
+  startComposition(view)
+  compose(view, steps)
+  const syllable = steps[steps.length - 1]
+  const end = view.state.selection.from
+  const start = end - syllable.length
+  view.dispatch(view.state.tr.delete(start, end).setMeta('composition', 1))
+  view.dispatch(view.state.tr.insertText(syllable, start))
+  fireCompositionEnd(view)
 }
 
 /** The paragraph as `[text]` and `{tag}` runs. */
@@ -107,6 +141,98 @@ describe('hash-tag chips on a real editor', () => {
     expect(content(view)).toBe('x {タグ} ')
     await endComposition(view)
     expect(content(view)).toBe('x {タグ} ')
+  })
+
+  it('reads a WebKit commit only once the word settles', async () => {
+    const view = createView()
+    type(view, 'x #')
+    composeSyllableAsWebKit(view, ['ㅍ', '퓨'])
+    composeSyllableAsWebKit(view, ['ㄹ', '리'])
+    expect(content(view)).toBe('x #퓨리')
+
+    await settled()
+
+    expect(content(view)).toBe('x {퓨리}')
+  })
+
+  it('chips a WebKit commit ended by a space', async () => {
+    const view = createView()
+    type(view, '#')
+    composeSyllableAsWebKit(view, ['ㅍ', '퓨'])
+    composeSyllableAsWebKit(view, ['ㄹ', '리'])
+    type(view, ' ')
+
+    expect(content(view)).toBe('{퓨리} ')
+    await settled()
+    expect(content(view)).toBe('{퓨리} ')
+  })
+
+  it('leaves a jamo the Korean input method typed as plain text for it to take back', async () => {
+    const view = createView()
+    type(view, '#')
+    // The first jamo arrives as plain text, then the next key composes it into a syllable.
+    type(view, 'ㅍ')
+    expect(content(view)).toBe('#ㅍ')
+    startComposition(view)
+    const end = view.state.selection.from
+    view.dispatch(view.state.tr.insertText('퓨', end - 1, end).setMeta('composition', 1))
+    fireCompositionEnd(view)
+    composeSyllableAsWebKit(view, ['ㄹ', '리'])
+
+    await settled()
+
+    expect(content(view)).toBe('{퓨리}')
+  })
+
+  it('chips a Korean word the input method rewrites without composing once a space ends it', () => {
+    const view = createView()
+    type(view, 'x #')
+    // Each key rewrites the text before the cursor, with no composition events.
+    type(view, 'ㅍ')
+    rewriteBeforeCursor(view, 1, '퓨')
+    rewriteBeforeCursor(view, 1, '퓰')
+    rewriteBeforeCursor(view, 1, '퓨리')
+    expect(content(view)).toBe('x #퓨리')
+
+    type(view, ' ')
+
+    expect(content(view)).toBe('x {퓨리} ')
+  })
+
+  it('chips a Korean word that Enter ends on the line above', () => {
+    const view = createView()
+    type(view, '#')
+    type(view, 'ㅌ')
+    rewriteBeforeCursor(view, 1, '태')
+    rewriteBeforeCursor(view, 1, '태그')
+
+    view.dispatch(view.state.tr.split(view.state.selection.from))
+
+    expect(content(view)).toBe('{태그}')
+    expect(view.state.doc.childCount).toBe(2)
+  })
+
+  it('extends a chip with a Korean word once a space ends it', () => {
+    const view = createView()
+    type(view, '#fuy')
+    type(view, 'ㄱ')
+    rewriteBeforeCursor(view, 1, '가')
+    expect(content(view)).toBe('{fuy}가')
+
+    type(view, ' ')
+
+    expect(content(view)).toBe('{fuy가} ')
+  })
+
+  it('chips a committed tag of jamo alone', async () => {
+    const view = createView()
+    type(view, '#')
+    composeSyllableAsWebKit(view, ['ㅋ'])
+    composeSyllableAsWebKit(view, ['ㅋ'])
+
+    await settled()
+
+    expect(content(view)).toBe('{ㅋㅋ}')
   })
 
   it('extends a chip with committed text', async () => {
