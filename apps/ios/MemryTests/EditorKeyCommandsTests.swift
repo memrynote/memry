@@ -132,6 +132,12 @@ private final class Page {
         field.textView.selectedRange = NSRange(location: (text as NSString).length, length: 0)
         field.textViewDidChange(field.textView)
     }
+
+    /// A tap or arrow key: the caret moves, the text does not.
+    func place(_ location: Int) {
+        field.textView.selectedRange = NSRange(location: location, length: 0)
+        field.textViewDidChangeSelection(field.textView)
+    }
 }
 
 extension KeyWindowSuites {
@@ -670,6 +676,57 @@ extension KeyWindowSuites {
             await page.press(UIKeyCommand.inputEscape, writes: false)
             page.type("#wo")
             #expect(!page.session.tagSuggestions.isEmpty, "the # menu opened where the / menu was closed")
+        }
+
+        /// A `/` left in the text reopens nothing when the caret is placed
+        /// beside it: only typing the trigger opens a menu.
+        @Test func placingTheCaretBesideALeftoverSlashDoesNotReopenTheMenu() {
+            let page = Page(text: "")
+            page.type("a /")
+            #expect(page.session.menuOpen, "typing the slash opens the menu")
+            page.place(1)
+            #expect(!page.session.menuOpen, "the caret left the trigger")
+            page.place(3)
+            #expect(!page.session.menuOpen, "returning to the leftover slash does not reopen it")
+            page.place(2)
+            #expect(!page.session.menuOpen)
+        }
+
+        /// A tap into a block that ends in a leftover `/` opens no menu.
+        @Test func focusingABlockBesideALeftoverSlashOpensNoMenu() {
+            let page = Page(text: "a /")
+            page.session.focusChanged(to: nil)
+            page.field.textView.selectedRange = NSRange(location: 3, length: 0)
+            page.field.textViewDidBeginEditing(page.field.textView)
+            #expect(!page.session.menuOpen)
+        }
+
+        @Test func placingTheCaretBesideALeftoverTagOrMentionDoesNotReopenTheirMenus() {
+            let page = Page(text: "")
+            page.session.tags = ["work"]
+            page.session.linkNotes = [NoteSummary(id: "Dune", title: "Dune", folderPath: nil, emoji: nil, createdAt: nil, modifiedAt: nil, aliases: [])]
+            page.type("a #wo")
+            #expect(page.session.menuOpen)
+            page.place(1)
+            page.place(5)
+            #expect(!page.session.menuOpen, "# menu")
+            page.type("a @Du")
+            #expect(page.session.menuOpen)
+            page.place(1)
+            page.place(5)
+            #expect(!page.session.menuOpen, "@ menu")
+        }
+
+        /// The caret moving inside the open trigger re-reads its query, and the
+        /// next typed character carries on from it.
+        @Test func theCaretMovingInsideAnOpenSlashKeepsItsMenuAndQuery() {
+            let page = Page(text: "")
+            page.type("/hea")
+            #expect(page.session.menuOpen)
+            page.place(2)
+            #expect(page.session.trigger == .slash(range: NSRange(location: 0, length: 2), query: "h"))
+            page.type("/hea")
+            #expect(page.session.trigger == .slash(range: NSRange(location: 0, length: 4), query: "hea"))
         }
     }
 }
