@@ -91,7 +91,7 @@ pub fn with_transient_retry<T>(
     operation()
 }
 
-fn temp_name() -> String {
+pub(super) fn temp_name() -> String {
     let id = uuid::Uuid::new_v4().simple().to_string();
     format!(".{}.tmp", &id[..12])
 }
@@ -137,7 +137,7 @@ fn write_once(
     result
 }
 
-fn open_temp(temp: &Path) -> io::Result<fs::File> {
+pub(super) fn open_temp(temp: &Path) -> io::Result<fs::File> {
     let mut options = OpenOptions::new();
     options.write(true).create_new(true);
     #[cfg(unix)]
@@ -150,7 +150,7 @@ fn open_temp(temp: &Path) -> io::Result<fs::File> {
 
 /// Best effort: a write error is the one to report. After a create the temp file was moved,
 /// or is the second name of the new file and has done its job.
-fn remove_temp(temp: &Path, written: bool) {
+pub(super) fn remove_temp(temp: &Path, written: bool) {
     let removed = fs::remove_file(temp);
     // A Windows create moves the temp file, so there is nothing left to remove.
     if written
@@ -167,7 +167,7 @@ fn remove_temp(temp: &Path, written: bool) {
 
 /// The replaced file's permissions, owner, group and extended attributes, put on the temp
 /// file. A failure is logged and does not stop the save: the content matters more than a tag.
-fn carry_over_attributes(target: &Path, temp: &Path) {
+pub(super) fn carry_over_attributes(target: &Path, temp: &Path) {
     let Ok(existing) = fs::metadata(target) else {
         return;
     };
@@ -210,7 +210,7 @@ fn carry_over_attributes(target: &Path, temp: &Path) {
 /// rename of `SetFileInformationByHandle`, which, unlike `MoveFileExW(REPLACE_EXISTING)`
 /// (access denied), replaces a file another process holds open with `FILE_SHARE_DELETE`:
 /// the antivirus-style reader the retry table exists for.
-fn replace_file(temp: &Path, target: &Path) -> io::Result<()> {
+pub(super) fn replace_file(temp: &Path, target: &Path) -> io::Result<()> {
     fs::rename(temp, target)
 }
 

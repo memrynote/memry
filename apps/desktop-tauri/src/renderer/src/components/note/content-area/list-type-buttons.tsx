@@ -1,6 +1,7 @@
 import { useBlockNoteEditor, useComponentsContext, useEditorState } from '@blocknote/react'
 import { List, ListChecks, ListOrdered } from '@/lib/icons'
 import { useT } from '@memry/i18n/renderer'
+import { editorKeyBinding, formatBinding } from '@/lib/shortcut-catalog'
 import {
   canToggleListType,
   isListTypeActive,
@@ -13,24 +14,29 @@ const LIST_BUTTONS: Array<{
   icon: typeof List
   labelKey: 'editor.list.bulleted' | 'editor.list.numbered' | 'editor.list.checklist'
   testId: string
+  /** BlockNote's own key for the list type. */
+  keys: string
 }> = [
   {
     type: 'bulletListItem',
     icon: List,
     labelKey: 'editor.list.bulleted',
-    testId: 'list-type-bulleted'
+    testId: 'list-type-bulleted',
+    keys: 'Mod-Shift-8'
   },
   {
     type: 'numberedListItem',
     icon: ListOrdered,
     labelKey: 'editor.list.numbered',
-    testId: 'list-type-numbered'
+    testId: 'list-type-numbered',
+    keys: 'Mod-Shift-7'
   },
   {
     type: 'checkListItem',
     icon: ListChecks,
     labelKey: 'editor.list.checklist',
-    testId: 'list-type-checklist'
+    testId: 'list-type-checklist',
+    keys: 'Mod-Shift-9'
   }
 ]
 
@@ -61,7 +67,7 @@ export function ListTypeButtons() {
 
   return (
     <>
-      {LIST_BUTTONS.map(({ type, icon: Icon, labelKey, testId }) => {
+      {LIST_BUTTONS.map(({ type, icon: Icon, labelKey, testId, keys }) => {
         const label = t(labelKey)
         return (
           <Components.FormattingToolbar.Button
@@ -70,6 +76,7 @@ export function ListTypeButtons() {
             data-test={testId}
             label={label}
             mainTooltip={label}
+            secondaryTooltip={formatBinding(editorKeyBinding(keys))}
             isDisabled={!state.canToggle}
             isSelected={state.active.includes(type)}
             icon={<Icon size={16} />}

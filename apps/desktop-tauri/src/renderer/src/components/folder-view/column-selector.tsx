@@ -333,6 +333,7 @@ export function ColumnSelector({
                 variant="ghost"
                 size="sm"
                 className={cn('gap-1.5 px-2 text-muted-foreground', className)}
+                aria-label={tPhaseF('phaseF.componentsFolderViewColumnSelector.properties')}
               >
                 <SlidersHorizontal className="h-3.5 w-3.5" />
               </Button>

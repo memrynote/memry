@@ -1,0 +1,1010 @@
+{
+  "source": "roam",
+  "cases": [
+    {
+      "name": "graph",
+      "sources": [
+        "graph.json"
+      ],
+      "timeline": [
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": "",
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": {
+            "code": "status.roam.reading",
+            "message": "Reading Roam export…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": {
+            "code": "status.roam.reading",
+            "message": "Reading Roam export…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 3,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.roam.reading",
+            "message": "Reading Roam export…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 3,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Project Plan",
+            "params": {
+              "title": "Project Plan"
+            }
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 3,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": null,
+          "title": "Project Plan",
+          "folder": "Roam",
+          "tags": [],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "2024-03-06T00:00:00.000Z",
+          "content": "- # Overview\n  - Goals are *important* and ==urgent==\n    - [ ] Ship the importer\n    - [x] Write the parser\n- Distraction  and a  widget"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Project Plan",
+            "params": {
+              "title": "Project Plan"
+            }
+          },
+          "imported": 1,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 3,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Project Plan",
+            "params": {
+              "title": "Project Plan"
+            }
+          },
+          "imported": 1,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 1,
+          "total": 3,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Meeting Notes",
+            "params": {
+              "title": "Meeting Notes"
+            }
+          },
+          "imported": 1,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 1,
+          "total": 3,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": null,
+          "title": "Meeting Notes",
+          "folder": "Roam",
+          "tags": [],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "2024-03-06T04:40:00.000Z",
+          "content": "- Discussed: [[Project Plan]]: \"Goals are *important* and ==urgent==\""
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Meeting Notes",
+            "params": {
+              "title": "Meeting Notes"
+            }
+          },
+          "imported": 2,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 1,
+          "total": 3,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Meeting Notes",
+            "params": {
+              "title": "Meeting Notes"
+            }
+          },
+          "imported": 2,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 2,
+          "total": 3,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing 2024-01-01",
+            "params": {
+              "title": "2024-01-01"
+            }
+          },
+          "imported": 2,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 2,
+          "total": 3,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": null,
+          "title": "2024-01-01",
+          "folder": "Roam",
+          "tags": [],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "2024-01-01T00:00:00.000Z",
+          "content": "- First entry of the year"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing 2024-01-01",
+            "params": {
+              "title": "2024-01-01"
+            }
+          },
+          "imported": 3,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 2,
+          "total": 3,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing 2024-01-01",
+            "params": {
+              "title": "2024-01-01"
+            }
+          },
+          "imported": 3,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 3,
+          "total": 3,
+          "done": false
+        }
+      ],
+      "summary": {
+        "imported": 3,
+        "attachments": 0,
+        "skipped": 0,
+        "failed": []
+      }
+    },
+    {
+      "name": "two-files",
+      "sources": [
+        "not-pages.json",
+        "graph.json",
+        "edge.json"
+      ],
+      "timeline": [
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": "",
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": {
+            "code": "status.roam.reading",
+            "message": "Reading Roam export…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": {
+            "code": "status.roam.reading",
+            "message": "Reading Roam export…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 1,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": {
+            "code": "status.roam.reading",
+            "message": "Reading Roam export…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 1,
+          "completed": 3,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": {
+            "code": "status.roam.reading",
+            "message": "Reading Roam export…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 1,
+          "completed": 9,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.roam.reading",
+            "message": "Reading Roam export…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 1,
+          "completed": 9,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Project Plan",
+            "params": {
+              "title": "Project Plan"
+            }
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 1,
+          "completed": 9,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": null,
+          "title": "Project Plan",
+          "folder": "Roam",
+          "tags": [],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "2024-03-06T00:00:00.000Z",
+          "content": "- # Overview\n  - Goals are *important* and ==urgent==\n    - [ ] Ship the importer\n    - [x] Write the parser\n- Distraction  and a  widget"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Project Plan",
+            "params": {
+              "title": "Project Plan"
+            }
+          },
+          "imported": 1,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 1,
+          "completed": 9,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Project Plan",
+            "params": {
+              "title": "Project Plan"
+            }
+          },
+          "imported": 1,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 1,
+          "completed": 1,
+          "total": 9,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Meeting Notes",
+            "params": {
+              "title": "Meeting Notes"
+            }
+          },
+          "imported": 1,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 1,
+          "completed": 1,
+          "total": 9,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": null,
+          "title": "Meeting Notes",
+          "folder": "Roam",
+          "tags": [],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "2024-03-06T04:40:00.000Z",
+          "content": "- Discussed: [[Project Plan]]: \"Goals are *important* and ==urgent==\""
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Meeting Notes",
+            "params": {
+              "title": "Meeting Notes"
+            }
+          },
+          "imported": 2,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 1,
+          "completed": 1,
+          "total": 9,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Meeting Notes",
+            "params": {
+              "title": "Meeting Notes"
+            }
+          },
+          "imported": 2,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 1,
+          "completed": 2,
+          "total": 9,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing 2024-01-01",
+            "params": {
+              "title": "2024-01-01"
+            }
+          },
+          "imported": 2,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 1,
+          "completed": 2,
+          "total": 9,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": null,
+          "title": "2024-01-01",
+          "folder": "Roam",
+          "tags": [],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "2024-01-01T00:00:00.000Z",
+          "content": "- First entry of the year"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing 2024-01-01",
+            "params": {
+              "title": "2024-01-01"
+            }
+          },
+          "imported": 3,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 1,
+          "completed": 2,
+          "total": 9,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing 2024-01-01",
+            "params": {
+              "title": "2024-01-01"
+            }
+          },
+          "imported": 3,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 1,
+          "completed": 3,
+          "total": 9,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Leaf",
+            "params": {
+              "title": "Leaf"
+            }
+          },
+          "imported": 3,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 1,
+          "completed": 3,
+          "total": 9,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": null,
+          "title": "Leaf",
+          "folder": "Roam/Area/Project",
+          "tags": [],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": null,
+          "content": "- ## Embed [[Project Plan]]: \"Goals are *important* and ==urgent==\" and [[Project Plan]]: \"[ ] Ship the importer\"\n- Unknown missing-uid and empty [[Area/ Project / Leaf]]\n  -\n  - ###### [x] done [ ] todo *a* __ ==b== {{embed:raw}}\n  - nested ref [[Area/ Project / Leaf]]: \"Embed {{embed:((blk-goals))}} and {{embed:((blk-ship))}}\"\n    -\n    -\n- ###\n-"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Leaf",
+            "params": {
+              "title": "Leaf"
+            }
+          },
+          "imported": 4,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 1,
+          "completed": 3,
+          "total": 9,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Leaf",
+            "params": {
+              "title": "Leaf"
+            }
+          },
+          "imported": 4,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 1,
+          "completed": 4,
+          "total": 9,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing 2023-03-15",
+            "params": {
+              "title": "2023-03-15"
+            }
+          },
+          "imported": 4,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 1,
+          "completed": 4,
+          "total": 9,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": null,
+          "title": "2023-03-15",
+          "folder": "Roam",
+          "tags": [],
+          "properties": [],
+          "created": null,
+          "modified": null,
+          "content": ""
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing 2023-03-15",
+            "params": {
+              "title": "2023-03-15"
+            }
+          },
+          "imported": 5,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 1,
+          "completed": 4,
+          "total": 9,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing 2023-03-15",
+            "params": {
+              "title": "2023-03-15"
+            }
+          },
+          "imported": 5,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 1,
+          "completed": 5,
+          "total": 9,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing 2023-03-05",
+            "params": {
+              "title": "2023-03-05"
+            }
+          },
+          "imported": 5,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 1,
+          "completed": 5,
+          "total": 9,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": null,
+          "title": "2023-03-05",
+          "folder": "Roam",
+          "tags": [],
+          "properties": [],
+          "created": null,
+          "modified": null,
+          "content": ""
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing 2023-03-05",
+            "params": {
+              "title": "2023-03-05"
+            }
+          },
+          "imported": 6,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 1,
+          "completed": 5,
+          "total": 9,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing 2023-03-05",
+            "params": {
+              "title": "2023-03-05"
+            }
+          },
+          "imported": 6,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 1,
+          "completed": 6,
+          "total": 9,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing February 30th, 2024",
+            "params": {
+              "title": "February 30th, 2024"
+            }
+          },
+          "imported": 6,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 1,
+          "completed": 6,
+          "total": 9,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": null,
+          "title": "February 30th, 2024",
+          "folder": "Roam",
+          "tags": [],
+          "properties": [],
+          "created": null,
+          "modified": null,
+          "content": ""
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing February 30th, 2024",
+            "params": {
+              "title": "February 30th, 2024"
+            }
+          },
+          "imported": 7,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 1,
+          "completed": 6,
+          "total": 9,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing February 30th, 2024",
+            "params": {
+              "title": "February 30th, 2024"
+            }
+          },
+          "imported": 7,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 1,
+          "completed": 7,
+          "total": 9,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing January 1st, 0024",
+            "params": {
+              "title": "January 1st, 0024"
+            }
+          },
+          "imported": 7,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 1,
+          "completed": 7,
+          "total": 9,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": null,
+          "title": "January 1st, 0024",
+          "folder": "Roam",
+          "tags": [],
+          "properties": [],
+          "created": null,
+          "modified": null,
+          "content": ""
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing January 1st, 0024",
+            "params": {
+              "title": "January 1st, 0024"
+            }
+          },
+          "imported": 8,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 1,
+          "completed": 7,
+          "total": 9,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing January 1st, 0024",
+            "params": {
+              "title": "January 1st, 0024"
+            }
+          },
+          "imported": 8,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 1,
+          "completed": 8,
+          "total": 9,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing    ",
+            "params": {
+              "title": "   "
+            }
+          },
+          "imported": 8,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 1,
+          "completed": 8,
+          "total": 9,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": null,
+          "title": "   ",
+          "folder": "Roam",
+          "tags": [],
+          "properties": [],
+          "created": null,
+          "modified": null,
+          "content": ""
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing    ",
+            "params": {
+              "title": "   "
+            }
+          },
+          "imported": 9,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 1,
+          "completed": 8,
+          "total": 9,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing    ",
+            "params": {
+              "title": "   "
+            }
+          },
+          "imported": 9,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 1,
+          "completed": 9,
+          "total": 9,
+          "done": false
+        }
+      ],
+      "summary": {
+        "imported": 9,
+        "attachments": 0,
+        "skipped": 0,
+        "failed": [
+          {
+            "item": "<input>/not-pages.json",
+            "error": "Not a Roam JSON export (expected an array of pages)"
+          }
+        ]
+      }
+    }
+  ]
+}

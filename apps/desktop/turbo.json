@@ -1,0 +1,22 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "typecheck": {
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/scripts/check-contract-boundaries.js",
+        "$TURBO_ROOT$/scripts/check-architecture-boundaries.js",
+        "$TURBO_ROOT$/packages/**",
+        "$TURBO_ROOT$/apps/desktop-tauri/src/renderer/**",
+        "$TURBO_ROOT$/apps/sync-server/*.ts",
+        "$TURBO_ROOT$/apps/sync-server/schema/**",
+        "$TURBO_ROOT$/apps/sync-server/scripts/**",
+        "$TURBO_ROOT$/apps/sync-server/src/**",
+        "$TURBO_ROOT$/apps/extension/src/**",
+        "$TURBO_ROOT$/apps/landing/src/**",
+        "!$TURBO_ROOT$/**/node_modules/**"
+      ]
+    }
+  }
+}

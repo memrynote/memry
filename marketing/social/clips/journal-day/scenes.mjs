@@ -52,7 +52,7 @@ export const scenes = {
     const head = await dayPanel(page)
       .getByRole('button', { name: 'Today', exact: true })
       .boundingBox()
-    zoom(1600, head.y - 40 + 225, 2.0)
+    zoom(1440, head.y - 40 + 810 / 4, 2.0)
     await at(0.8)
     for (const text of [
       'Design review with Studio North',
@@ -122,7 +122,7 @@ export const checks = [
       // Links live in the index database, which query() does not read; the page's own file is
       // the source of truth anyway. The slot's app records its vault copy in its state file.
       const { vaultPath } = JSON.parse(
-        fs.readFileSync(path.join(os.tmpdir(), 'memry-agent-app.json'), 'utf8')
+        fs.readFileSync(path.join(os.tmpdir(), 'memry-agent-app-tauri.json'), 'utf8')
       )
       const text = fs.readFileSync(path.join(vaultPath, 'journal', `${day(0)}.md`), 'utf8')
       return /Design review went well\./.test(text) && /\[\[Sam Okafor\]\]/.test(text)

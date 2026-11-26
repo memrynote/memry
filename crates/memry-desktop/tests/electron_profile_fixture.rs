@@ -337,7 +337,14 @@ fn reading_the_profile_leaves_the_electron_data_untouched() {
 
 #[test]
 fn the_snapshot_sees_a_change_anywhere_in_the_electron_data() {
-    for change in ["profile file", "profile dir", "data.db", "index.db"] {
+    for change in [
+        "profile file",
+        "profile dir",
+        "data.db",
+        "index.db",
+        "data.db-wal",
+        "index.db-journal",
+    ] {
         let f = ElectronProfileFixture::install();
         let before = f.snapshot();
         match change {
@@ -347,7 +354,8 @@ fn the_snapshot_sees_a_change_anywhere_in_the_electron_data() {
                 "INSERT INTO settings (key, value) VALUES ('touched', '1')",
                 [],
             )),
-            _ => fs::write(f.index_db(), b"").unwrap(),
+            "index.db" => fs::write(f.index_db(), b"").unwrap(),
+            sidecar => fs::write(f.vault.join(".memry").join(sidecar), b"").unwrap(),
         }
         assert_ne!(f.snapshot(), before, "{change}");
     }

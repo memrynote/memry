@@ -6,6 +6,7 @@ import { JournalChannels, NotesChannels } from '@memry/contracts/ipc-channels'
 import { noteCache, noteTags, noteLinks } from '@memry/db-schema/schema/notes-cache'
 import { noteMetadata, canvases } from '@memry/db-schema/data-schema'
 import { folderConfigs } from '@memry/db-schema/schema/folder-configs'
+import { markRecordsPulled, resetSyncDecision } from '@memry/sync-client/sync-eligibility'
 import { createTestVault, createTestNote } from '@tests/utils/test-vault'
 import {
   createTestDataDb,
@@ -160,6 +161,7 @@ import { setJournalConfig } from './journal-config'
 import {
   queueEmbeddedVaultFiles,
   syncNoteCreate,
+  syncNoteDelete,
   unlinkTasksFromDeletedNote
 } from '../notes/runtime-effects'
 import { updateNoteEmbedding } from '../inbox/suggestions'
@@ -170,7 +172,8 @@ import { scanMarkdownFile } from './file-scan'
 import { clearIngestBackfill, drainIngestBackfill } from './ingest-backfill'
 import { trackMainError } from '../telemetry/diagnostics'
 import { VaultWatcher, getWatcher, startWatcher, stopWatcher } from './watcher'
-import { syncFolderConfigRename, withAppFolderChange } from '../notes/folder-config-effects'
+import { syncFolderConfigRename } from '../notes/folder-config-effects'
+import { withAppFolderChange } from './app-folder-changes'
 import { closeActivityLog, listActivity, openActivityLog } from './activity-log'
 import { CanvasChannels } from '@memry/contracts/canvas-api'
 import { createCanvas } from '../canvas/store'
@@ -212,9 +215,12 @@ describe('vault watcher', () => {
     mockWatch.mockReset()
 
     startProjectionRuntime([createNoteDerivedStateProjector(() => vault.path)])
+    // A device that has pulled: a folder it finds is synced at once (#5255).
+    markRecordsPulled()
   })
 
   afterEach(async () => {
+    resetSyncDecision()
     await closeActivityLog()
     await stopProjectionRuntime({ drain: true })
     clearIngestBackfill()
@@ -444,6 +450,69 @@ describe('vault watcher', () => {
     expect(syncNoteCreate).toHaveBeenCalledWith(noteId, 'body-only-tag-note', [], {
       sizeClass: expect.any(String)
     })
+  })
+
+  // A folder rename re-keys the canonical rows at once and the index in
+  // batches, so an old path's unlink can find the index row still there.
+  it('syncs no delete for a note moved before its index row followed', async () => {
+    vi.useFakeTimers()
+    const watcher = new VaultWatcher() as any
+    watcher.vaultPath = vault.path
+    const oldPath = createTestNote(vault, { title: 'moved-note', content: 'Body' })
+    await watcher.handleFileAdd(oldPath)
+    const noteId = indexDb.db
+      .select()
+      .from(noteCache)
+      .where(eq(noteCache.path, 'notes/moved-note.md'))
+      .get()!.id
+
+    fs.mkdirSync(path.join(vault.path, 'Archive'))
+    fs.renameSync(oldPath, path.join(vault.path, 'Archive', 'moved-note.md'))
+    dataDb.db
+      .update(noteMetadata)
+      .set({ path: 'Archive/moved-note.md' })
+      .where(eq(noteMetadata.id, noteId))
+      .run()
+    watcher.handleFileDelete(oldPath)
+    await vi.advanceTimersByTimeAsync(1000)
+    // The settled delete checks the disk before it syncs anything.
+    vi.useRealTimers()
+    await new Promise((resolve) => setTimeout(resolve, 300))
+
+    expect(syncNoteDelete).not.toHaveBeenCalled()
+    expect(
+      dataDb.db.select().from(noteMetadata).where(eq(noteMetadata.id, noteId)).get()?.path
+    ).toBe('Archive/moved-note.md')
+  })
+
+  it('queues no create for the add of a note the app is moving with its folder', async () => {
+    const watcher = new VaultWatcher() as any
+    watcher.vaultPath = vault.path
+    const oldPath = createTestNote(vault, { title: 'carried', content: 'Body' })
+    await watcher.handleFileAdd(oldPath)
+    await drainIngestBackfill()
+    const noteId = indexDb.db
+      .select()
+      .from(noteCache)
+      .where(eq(noteCache.path, 'notes/carried.md'))
+      .get()!.id
+    vi.mocked(syncNoteCreate).mockClear()
+
+    // The rename has moved the file and the canonical row; the index lags.
+    const newPath = path.join(vault.path, 'Archive', 'notes', 'carried.md')
+    fs.mkdirSync(path.dirname(newPath), { recursive: true })
+    fs.renameSync(oldPath, newPath)
+    dataDb.db
+      .update(noteMetadata)
+      .set({ path: 'Archive/notes/carried.md' })
+      .where(eq(noteMetadata.id, noteId))
+      .run()
+    await withAppFolderChange(['notes', 'Archive/notes'], async () => {
+      await watcher.handleFileAdd(newPath)
+      await drainIngestBackfill()
+    })
+
+    expect(syncNoteCreate).not.toHaveBeenCalled()
   })
 
   // ==========================================================================
@@ -773,36 +842,21 @@ describe('vault watcher', () => {
     await watcher.stop()
   })
 
-  it('skips attachments/ and watches the folder a non-default attachmentsFolder names', async () => {
-    vi.mocked(getConfig).mockReturnValue({ ...baseConfig, attachmentsFolder: 'files' })
-    const mockWatcher = {
-      on: vi.fn(() => mockWatcher),
-      once: vi.fn((event: string, handler: () => void) => {
-        if (event === 'ready') handler()
-        return mockWatcher
-      }),
-      close: vi.fn().mockResolvedValue(undefined)
-    }
-    mockWatch.mockReturnValue(mockWatcher)
+  // `ignored` keeps the store out (watcher-windows-paths.test.ts); this is the
+  // add path's own check, for an event that gets past it (#5607).
+  it('makes no note of a file in the root attachments folder', async () => {
+    const watcher = new VaultWatcher() as any
+    watcher.vaultPath = vault.path
+    const imagePath = path.join(vault.path, 'attachments', 'host-note', 'pasted.png')
+    fs.mkdirSync(path.dirname(imagePath), { recursive: true })
+    fs.writeFileSync(imagePath, Buffer.from('image'))
 
-    const watcher = new VaultWatcher()
-    await watcher.start({ vaultPath: vault.path })
-    const ignored = mockWatch.mock.calls[0][1].ignored as (
-      filePath: string,
-      stats?: { isFile: () => boolean }
-    ) => boolean
-    const file = { isFile: () => true }
-    const dir = { isFile: () => false }
+    await watcher.handleFileChange(imagePath)
+    await flushProjectionEvents()
 
-    expect(ignored(path.join(vault.path, 'attachments'), dir)).toBe(true)
-    expect(ignored(path.join(vault.path, 'attachments', 'n1', 'a.md'), file)).toBe(true)
-    expect(ignored(path.join(vault.path, 'files'), dir)).toBe(false)
-    expect(ignored(path.join(vault.path, 'files', 'note.md'), file)).toBe(false)
-    // #3161: a nested attachments folder is the user's, not the app's.
-    expect(ignored(path.join(vault.path, 'Projects', 'attachments'), dir)).toBe(false)
-    expect(ignored(path.join(vault.path, 'Projects', 'attachments', 'a.md'), file)).toBe(false)
-    expect(ignored(path.join(vault.path, 'attachments-old', 'a.md'), file)).toBe(false)
-    await watcher.stop()
+    expect(indexDb.db.select().from(noteCache).all()).toEqual([])
+    expect(dataDb.db.select().from(noteMetadata).all()).toEqual([])
+    expect(syncNoteCreate).not.toHaveBeenCalled()
   })
 
   it('logs an unsupported file dropped in after the initial walk, once', async () => {
@@ -1938,7 +1992,7 @@ describe('vault watcher', () => {
         uploadAttachment: vi.fn(),
         downloadAttachment: vi.fn(),
         dereference,
-        markWritebackIgnored: vi.fn(),
+        recordAppWrite: vi.fn(() => () => {}),
         trackEvent: vi.fn()
       })
       recordAsset(db, {

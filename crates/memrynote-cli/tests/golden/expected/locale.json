@@ -1,0 +1,53 @@
+{
+  "name": "locale",
+  "steps": [
+    {
+      "argv": [
+        "locale",
+        "list"
+      ],
+      "exit": 0,
+      "stdout": "[\n  \"ar\",\n  \"cs\",\n  \"da\",\n  \"en\",\n  \"de\",\n  \"el\",\n  \"es\",\n  \"fi\",\n  \"fil\",\n  \"fr\",\n  \"he\",\n  \"hr\",\n  \"hu\",\n  \"id\",\n  \"it\",\n  \"ja\",\n  \"ko\",\n  \"ms\",\n  \"nl\",\n  \"no\",\n  \"pl\",\n  \"pt\",\n  \"ro\",\n  \"ru\",\n  \"sk\",\n  \"sv\",\n  \"th\",\n  \"tr\",\n  \"uk\",\n  \"vi\",\n  \"zh-CN\",\n  \"zh-TW\"\n]\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "--json",
+        "locale",
+        "list"
+      ],
+      "exit": 0,
+      "stdout": "[\"ar\",\"cs\",\"da\",\"en\",\"de\",\"el\",\"es\",\"fi\",\"fil\",\"fr\",\"he\",\"hr\",\"hu\",\"id\",\"it\",\"ja\",\"ko\",\"ms\",\"nl\",\"no\",\"pl\",\"pt\",\"ro\",\"ru\",\"sk\",\"sv\",\"th\",\"tr\",\"uk\",\"vi\",\"zh-CN\",\"zh-TW\"]\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "locale"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "Usage: memrynote [--vault <path>] locale get|set|list\n"
+    },
+    {
+      "argv": [
+        "locale",
+        "bogus"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "Usage: memrynote [--vault <path>] locale get|set|list\n"
+    },
+    {
+      "argv": [
+        "--vault",
+        "{vault}",
+        "locale",
+        "list",
+        "--json"
+      ],
+      "exit": 0,
+      "stdout": "[\"ar\",\"cs\",\"da\",\"en\",\"de\",\"el\",\"es\",\"fi\",\"fil\",\"fr\",\"he\",\"hr\",\"hu\",\"id\",\"it\",\"ja\",\"ko\",\"ms\",\"nl\",\"no\",\"pl\",\"pt\",\"ro\",\"ru\",\"sk\",\"sv\",\"th\",\"tr\",\"uk\",\"vi\",\"zh-CN\",\"zh-TW\"]\n",
+      "stderr": ""
+    }
+  ]
+}

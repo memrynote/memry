@@ -231,13 +231,37 @@ struct InboxDetailContent: View {
             .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private var fileElsewhere: some View {
-        Label(InboxCopy.fileNotHere, systemImage: ThisDevice.symbolSlash)
-            .font(Tokens.Typography.supporting.font)
-            .foregroundStyle(Tokens.Text.secondary.color)
-            .padding(Tokens.Space.inset)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Tokens.Canvas.surface.color, in: .rect(cornerRadius: Tokens.Radius.card))
+    /// No file here: downloading it, why it did not download, or where it is (#5644).
+    @ViewBuilder private var fileElsewhere: some View {
+        switch store.fileDownloads[item.id] {
+        case .downloading:
+            HStack {
+                Label(InboxCopy.fileDownloading, systemImage: "arrow.down.circle")
+                Spacer(minLength: 0)
+                ProgressView().accessibilityHidden(true)
+            }
+            .modifier(FileNoticeStyle())
+        case let .failed(error):
+            ErrorNotice(error: error, code: nil)
+            if error.recourse == .retry {
+                Button(InboxCopy.tryAgain) { Task { await store.downloadFile(of: item) } }
+                    .memrySecondaryAction()
+            }
+        case nil:
+            Label(InboxCopy.fileNotHere, systemImage: ThisDevice.symbolSlash)
+                .modifier(FileNoticeStyle())
+        }
+    }
+
+    private struct FileNoticeStyle: ViewModifier {
+        func body(content: Content) -> some View {
+            content
+                .font(Tokens.Typography.supporting.font)
+                .foregroundStyle(Tokens.Text.secondary.color)
+                .padding(Tokens.Space.inset)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Tokens.Canvas.surface.color, in: .rect(cornerRadius: Tokens.Radius.card))
+        }
     }
 
     private func facts(_ rows: [(String, String?)]) -> some View {

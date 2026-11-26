@@ -12,18 +12,26 @@
 
 pub mod apple_journal;
 pub mod assets;
+pub mod bear;
 pub mod context;
 pub mod csv;
 pub mod enex;
 pub mod evernote;
+pub mod google_keep;
 pub mod html;
 pub mod html_md;
 pub mod markdown;
 pub mod messages;
+pub mod noteplan;
+pub mod obsidian_tasks;
+pub mod raindrop;
 pub mod registry;
 pub mod remote;
+pub mod roam;
 pub mod runner;
 pub mod sink;
+pub mod source_paths;
+pub mod zip;
 
 use std::fs::{File, OpenOptions};
 use std::io::{self, Read};
@@ -38,11 +46,19 @@ pub use context::{
 };
 pub use messages::{ImportMessage, ImportText};
 pub use registry::Registry;
-pub use sink::{ImportSink, ImportedNote, SinkError};
+pub use sink::{
+    BookmarkMetadata, ImportSink, ImportedBookmark, ImportedJournalEntry, ImportedNote,
+    ImportedTask, JournalEntry, SinkError,
+};
 
 /// The largest source file an importer reads into memory. Electron read any size; a larger file
 /// fails its item before it is read.
 pub const MAX_SOURCE_BYTES: u64 = 100 * 1024 * 1024;
+
+/// Bytes of note files one zip scan reads and holds until the import ends. Google Keep caps a
+/// note at 20,000 characters (at most about 80 KB of JSON), so this holds over 6,500 notes of
+/// maximal length and far more of the usual few KB; Electron held any amount.
+pub const MAX_NOTE_JSON_BYTES: u64 = 512 * 1024 * 1024;
 
 /// `ImportInput`: the picked paths and the importer's own options.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]

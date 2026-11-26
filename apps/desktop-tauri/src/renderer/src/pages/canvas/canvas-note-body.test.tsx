@@ -42,4 +42,31 @@ describe('CanvasNoteBody', () => {
       })
     })
   })
+
+  it('renders a body written with Windows line endings as blocks, not marker text', async () => {
+    const markdown = [
+      '## Goals',
+      '',
+      '- Ship the editor',
+      '1. First',
+      '',
+      '- [ ] Call Ada {task:t2}',
+      '',
+      '```ts',
+      'const x = 1',
+      '```',
+      ''
+    ].join('\r\n')
+    render(<CanvasNoteBody markdown={markdown} noteId="n1" />)
+
+    await waitFor(() => {
+      expect(created.editor?.document).toMatchObject([
+        { type: 'heading' },
+        { type: 'bulletListItem', content: [{ text: 'Ship the editor' }] },
+        { type: 'numberedListItem', content: [{ text: 'First' }] },
+        { type: 'taskBlock', props: { taskId: 't2', title: 'Call Ada' } },
+        { type: 'codeBlock', content: [{ text: 'const x = 1' }] }
+      ])
+    })
+  })
 })

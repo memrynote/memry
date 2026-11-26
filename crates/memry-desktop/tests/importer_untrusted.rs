@@ -18,8 +18,8 @@ use memry_desktop::import::assets::{
 use memry_desktop::import::csv::{CsvImporter, map_rows, parse_csv, steps};
 use memry_desktop::import::markdown::{MarkdownImporter, parse_frontmatter};
 use memry_desktop::import::{
-    ImportContext, ImportInput, ImportSink, ImportSummary, ImportedNote, Importer,
-    MAX_SOURCE_BYTES, SinkError,
+    ImportContext, ImportInput, ImportSink, ImportSummary, ImportedBookmark, ImportedJournalEntry,
+    ImportedNote, ImportedTask, Importer, JournalEntry, MAX_SOURCE_BYTES, SinkError,
 };
 use memry_test_kit::{assert_steps_at_most, on_small_stack, output_bound, proptest_config};
 use proptest::prelude::*;
@@ -73,6 +73,65 @@ fn deep_frontmatter_fails_its_note_on_a_small_stack() {
     assert!(summary.failed[0].item.ends_with("deep.md"));
     assert_eq!(summary.imported, 1, "the other note still imports");
     assert_eq!(ops(&calls, "createNote"), 1);
+}
+
+/// The language line picks gray-matter's engine as in Electron: YAML and JSON (name trimmed,
+/// `json` exact) import; `javascript` (refused, never run), an unregistered name and invalid JSON
+/// fail the file with unreadable frontmatter.
+#[test]
+fn a_frontmatter_language_line_imports_as_gray_matter_reads_it() {
+    let json = "{\"title\": \"T\", \"k\": 1}";
+    let failing = [
+        ("---JSON", json),
+        ("---Json", json),
+        ("---js", json),
+        ("---JS", json),
+        ("--- javascript", json),
+        ("---Javascript ", json),
+        ("---coffee", json),
+        ("---toml", json),
+        ("---json", "title: T"),
+    ];
+    let importing = [
+        ("---json", json),
+        ("---json  ", json),
+        ("--- json", json),
+        ("---json\r", json),
+        ("---", "title: T\nk: 1"),
+        ("---yaml", "title: T\nk: 1"),
+        ("--- YML ", "title: T\nk: 1"),
+    ];
+    let dir = tempfile::tempdir().unwrap();
+    let write = |name: String, (open, matter): &(&str, &str)| {
+        let file = format!("{open}\n{matter}\n---\nbody\n");
+        fs::write(dir.path().join(name), file).unwrap();
+    };
+    for (at, case) in failing.iter().enumerate() {
+        write(format!("failing-{at}.md"), case);
+    }
+    for (at, case) in importing.iter().enumerate() {
+        write(format!("importing-{at}.md"), case);
+    }
+
+    let (summary, calls) = run(&MarkdownImporter, &[dir.path()]);
+    let mut failed: Vec<&str> = summary
+        .failed
+        .iter()
+        .map(|f| f.item.rsplit(['/', '\\']).next().unwrap())
+        .collect();
+    failed.sort_unstable();
+    let mut expected: Vec<String> = (0..failing.len())
+        .map(|at| format!("failing-{at}.md"))
+        .collect();
+    expected.sort_unstable();
+    assert_eq!(failed, expected, "{summary:?}");
+    assert_eq!(summary.imported, importing.len(), "{summary:?}");
+    let notes: Vec<&Value> = calls.iter().filter(|c| c["op"] == "createNote").collect();
+    assert_eq!(notes.len(), importing.len());
+    for note in notes {
+        assert_eq!(note["title"], "T", "{note}");
+        assert_eq!(note["properties"], serde_json::json!([["k", 1]]), "{note}");
+    }
 }
 
 #[test]
@@ -233,6 +292,46 @@ impl ImportSink for CancelOnSave {
 
     fn create_note(&self, note: ImportedNote) -> Result<(), SinkError> {
         self.inner.create_note(note)
+    }
+
+    fn create_note_as_written(&self, note: ImportedNote) -> Result<(), SinkError> {
+        self.inner.create_note_as_written(note)
+    }
+
+    fn inbox_project_id(&self) -> Option<String> {
+        self.inner.inbox_project_id()
+    }
+
+    fn nested_subtasks(&self) -> bool {
+        self.inner.nested_subtasks()
+    }
+
+    fn create_task(&self, task: ImportedTask) -> Result<String, SinkError> {
+        self.inner.create_task(task)
+    }
+
+    fn complete_task(&self, id: &str, completed_at: Option<&str>) -> Result<(), SinkError> {
+        self.inner.complete_task(id, completed_at)
+    }
+
+    fn archive_task(&self, id: &str) -> Result<(), SinkError> {
+        self.inner.archive_task(id)
+    }
+
+    fn journal_entry_id(&self, date: &str) -> Result<String, SinkError> {
+        self.inner.journal_entry_id(date)
+    }
+
+    fn read_journal_entry(&self, date: &str) -> Result<Option<JournalEntry>, SinkError> {
+        self.inner.read_journal_entry(date)
+    }
+
+    fn create_journal_entry(&self, entry: ImportedJournalEntry) -> Result<(), SinkError> {
+        self.inner.create_journal_entry(entry)
+    }
+
+    fn save_bookmark(&self, bookmark: ImportedBookmark) -> Result<(), SinkError> {
+        self.inner.save_bookmark(bookmark)
     }
 }
 

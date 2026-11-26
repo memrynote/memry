@@ -24,6 +24,7 @@ mod encoder;
 mod image;
 #[cfg(test)]
 mod tests;
+mod text;
 mod thread;
 
 use std::path::Path;
@@ -41,14 +42,13 @@ use self::thread::{Fault, Job, Reply, Request, Slot, work};
 use super::breaker::{Breaker, EncoderBreaker, RETRY_BASE};
 use super::download::Abort;
 use crate::session::Session;
+use crate::session::projection::CancelToken;
 use crate::shell::shutdown::StepFn;
 
 /// `MODEL_NAME`.
 pub const MODEL_NAME: &str = "EmbeddingGemma 2";
 /// Stored vector width (`EMBEDDING_DIMENSION`).
 pub const EMBEDDING_DIMENSION: usize = 256;
-/// `MIN_CONTENT_LENGTH`: shorter text, in UTF-16 units after a JS `trim`, is not embedded.
-const MIN_CONTENT_LENGTH: usize = 10;
 
 /// `EmbeddingProgressPhase`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
@@ -215,11 +215,6 @@ fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
     mutex.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
-/// JS `String.prototype.trim`: Rust's `White_Space` without U+0085, plus U+FEFF.
-fn js_trim(text: &str) -> &str {
-    text.trim_matches(|c: char| (c.is_whitespace() && c != '\u{85}') || c == '\u{feff}')
-}
-
 impl EmbeddingService {
     pub fn new(loader: Arc<dyn ModelLoader>, progress: ProgressSink, timing: Timing) -> Arc<Self> {
         Arc::new(Self {
@@ -256,7 +251,7 @@ impl EmbeddingService {
         if lock(&self.state).breaker.is_open(Instant::now()) {
             return false;
         }
-        let (generation, result) = self.request(Request::Load);
+        let (generation, result) = self.request(Request::Load, None);
         let mut state = lock(&self.state);
         if state.generation != generation {
             return false;
@@ -274,69 +269,6 @@ impl EmbeddingService {
             Err(fault) => {
                 Self::load_failed(&mut state, fault);
                 false
-            }
-        }
-    }
-
-    /// `generateEmbedding`: the text's vector, or `None` when it is too short, loads back off, or
-    /// the model failed.
-    pub fn embed(self: &Arc<Self>, text: &str) -> Option<Vec<f32>> {
-        if js_trim(text).encode_utf16().count() < MIN_CONTENT_LENGTH {
-            return None;
-        }
-        match self.infer(Request::Embed(text.to_owned()))? {
-            Reply::Embedded(vector) => Some(vector),
-            Reply::Loaded | Reply::AudioOpened(_) => None,
-        }
-    }
-
-    /// One inference with the bridge's bookkeeping: a success clears the embed failures, a crash
-    /// drops the model and counts (`failProcess`), and a failure counts when the model was not
-    /// loaded before the request.
-    fn infer(self: &Arc<Self>, request: Request) -> Option<Reply> {
-        let was_loaded = {
-            let state = lock(&self.state);
-            if state.breaker.is_open(Instant::now()) {
-                return None;
-            }
-            state.loaded
-        };
-        let (generation, result) = self.request(request);
-        let mut state = lock(&self.state);
-        if state.generation != generation {
-            return None;
-        }
-        match result {
-            Ok(Reply::Loaded | Reply::AudioOpened(_)) | Err(Fault::Retired | Fault::TimedOut) => {
-                None
-            }
-            Ok(reply) => {
-                if let Some(width) = reply.wrong_width() {
-                    tracing::error!(
-                        scope = "Embeddings",
-                        "Unexpected dimension: {width} (expected {EMBEDDING_DIMENSION})"
-                    );
-                    return None;
-                }
-                state.loaded = true;
-                state.loading = false;
-                state.error = None;
-                state.breaker.embed_failures = 0;
-                state.breaker.record_success();
-                Some(reply)
-            }
-            Err(Fault::Crashed(message)) => {
-                // The thread dropped the model: the bridge's crashed worker (:709-735, :826-830).
-                state.loaded = false;
-                state.loading = false;
-                tracing::error!(scope = "Embeddings", "Generation failed: {message}");
-                state.error = Some(message);
-                state.breaker.embed_failures += 1;
-                Self::record_failure(&mut state);
-                None
-            }
-            Err(Fault::Load(message) | Fault::Inference(message) | Fault::Input(message)) => {
-                Self::failed(&mut state, message, !was_loaded)
             }
         }
     }
@@ -414,7 +346,12 @@ impl EmbeddingService {
         state.retired.is_empty()
     }
 
-    fn request(self: &Arc<Self>, request: Request) -> (u64, Result<Reply, Fault>) {
+    /// A request of a cancelled `lane` is refused before it can start the thread or the model.
+    fn request(
+        self: &Arc<Self>,
+        request: Request,
+        lane: Option<&CancelToken>,
+    ) -> (u64, Result<Reply, Fault>) {
         let deadline = Instant::now() + self.timing.request_deadline;
         let counts = match request {
             Request::Load => Counts::Load,
@@ -425,6 +362,9 @@ impl EmbeddingService {
         let slot = Arc::new(Slot::default());
         let generation = {
             let mut state = lock(&self.state);
+            if lane.is_some_and(CancelToken::is_cancelled) {
+                return (state.generation, Err(Fault::Retired));
+            }
             if let Err(error) = self.ensure_worker(&mut state) {
                 return (
                     state.generation,

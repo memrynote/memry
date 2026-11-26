@@ -1,6 +1,7 @@
 import Foundation
 import MemryCore
 import Observation
+import UIKit
 
 // T155. Choosing which vault this phone opens (FR-021, data-model §C.2).
 //
@@ -27,43 +28,10 @@ import Observation
 // `StaticString` plus a closed `LogDetail`, so there is nowhere to put one, and
 // a count is the only thing worth saying anyway.
 
-/// What one registry row is called on screen.
-///
-/// Three cases, not two, because `VaultSummary.name` is `Optional` on purpose:
-/// absent means the row carries no name at all, which is a different fact from
-/// a row whose name is empty. Coalescing either to `""` renders a blank row and
-/// loses the distinction the registry went to the trouble of keeping.
-enum VaultLabel: Equatable, Sendable {
-    case named(String)
-    /// The registry row carries no name.
-    case unnamed
-    /// The registry row carries a name, and it is empty.
-    case blankName
-
-    init(_ summary: VaultSummary) {
-        switch summary.name {
-        case .none: self = .unnamed
-        case let .some(name) where name.isEmpty: self = .blankName
-        case let .some(name): self = .named(name)
-        }
-    }
-
-    /// The row's title. Never empty, and never the vault id: an id identifies
-    /// content and is noise to read, so a vault without a usable name says so
-    /// in words instead.
-    var text: String {
-        switch self {
-        case let .named(name): name
-        case .unnamed: "Unnamed vault"
-        case .blankName: "Vault with a blank name"
-        }
-    }
-
-    /// Whether the title is the user's own words or this file's.
-    var isPlaceholder: Bool {
-        if case .named = self { return false }
-        return true
-    }
+extension Notification.Name {
+    /// A vault's sync pass got through, so the server answered. The vault
+    /// screen re-reads the registry when it is showing an offline notice.
+    static let vaultSyncPassSucceeded = Notification.Name("memry.vaultSyncPassSucceeded")
 }
 
 @MainActor
@@ -80,12 +48,39 @@ final class VaultSelectionViewModel {
         case empty
         /// The registry could not be read. Not an empty account.
         case unreadable(UserFacingError)
+        /// Offline, and this device has opened no vault yet (#5524).
+        case offline
         case opening(VaultSummary)
         case opened(VaultSummary)
         case failedToOpen(VaultSummary, UserFacingError)
     }
 
     private(set) var phase: Phase = .loading
+
+    /// Why the registry could not be read while the last vault opened from
+    /// this device anyway. Shown over the vault, never instead of it (#5524).
+    private(set) var registryNotice: UserFacingError?
+
+    /// The vault open offline is gone from the account. Its files stay on
+    /// this device; the screen says so, and offers to export them, until
+    /// dismissed or left (#5600).
+    private(set) var removedVault: RemovedVaultExport?
+
+    /// A re-read is out. Other triggers wait for its answer instead of
+    /// queueing reads of their own, and Try again shows it.
+    private(set) var isRecheckingRegistry = false
+
+    /// Bumped by every ``load()`` and ``open(_:source:)``. A registry read
+    /// that started under an older value belongs to a screen that has since
+    /// been replaced, so its answer is dropped. The phase cannot say this: a
+    /// reload that ends where it started (the same vault, offline again) has
+    /// the same phase and notice as the screen the stale read was for.
+    private var loadGeneration = 0
+
+    /// The latest registry read. ``readRegistry()`` runs the next one after
+    /// it, because the signed-in registry writes (it creates and registers
+    /// the local vault) and two overlapping calls would race those writes.
+    private var registryReads: Task<Void, Never>?
 
     /// The open handle, for the screens that read it (T156, T157).
     ///
@@ -141,6 +136,9 @@ final class VaultSelectionViewModel {
     /// the running app share.
     private let snapshot: LaunchSnapshot
 
+    /// A vault's folder on this device, for exporting a removed one.
+    private let removedVaultSource: @Sendable (String) throws -> URL
+
     init(
         registry: any VaultRegistry,
         opener: any VaultOpening,
@@ -148,9 +146,13 @@ final class VaultSelectionViewModel {
         secureStore: (any SecureStore)? = nil,
         session: (any AuthSessionProtocol)? = nil,
         snapshot: LaunchSnapshot = .shared,
-        syncable: @escaping @Sendable (String) -> Bool = { _ in true }
+        syncable: @escaping @Sendable (String) -> Bool = { _ in true },
+        removedVaultSource: @escaping @Sendable (String) throws -> URL = {
+            try VaultFiles(emitter: CoreEventEmitter { _ in }).vaultDirectory($0)
+        }
     ) {
         self.snapshot = snapshot
+        self.removedVaultSource = removedVaultSource
         self.syncable = syncable
         self.registry = registry
         self.opener = opener
@@ -161,7 +163,7 @@ final class VaultSelectionViewModel {
 
     /// Every vault on the account, for Settings › Vaults.
     func accountVaults() async throws -> [VaultSummary] {
-        try await registry.vaults()
+        try await readRegistry()
     }
 
     /// Whether a second vault exists to switch to. The switch is offered only
@@ -176,19 +178,32 @@ final class VaultSelectionViewModel {
     /// it cannot be cancelled (spec-defect 108), so the screen shows what is
     /// happening and offers no button that would lie about stopping it.
     func load() async {
+        loadGeneration += 1
+        dismissRemovedVaultNotice()
         phase = .loading
         vault = nil
         filler = nil
         let summaries: [VaultSummary]
         do {
-            summaries = try await registry.vaults()
+            summaries = try await readRegistry()
         } catch {
             let mapped = ErrorMapping.userFacing(error)
             Log.sync.error("the vault registry could not be read", .code(mapped.code))
+            // Local first: the vault this device last opened is on disk, and
+            // its sync waits for the network (#5524). Only a transport or
+            // server fault says nothing about the account. A refusal (signed
+            // out, revoked, too old, too many devices) keeps its own screen:
+            // opening the vault over it would hide the action it asks for.
+            if Self.localFirstCodes.contains(mapped.code), let last = snapshot.lastVaultSummary {
+                await open(registry.named(last), source: "auto")
+                if case .opened = phase { registryNotice = mapped }
+                return
+            }
             // **Not** `.empty`. The account may hold four.
-            phase = .unreadable(mapped)
+            phase = mapped.code == Self.offlineCode ? .offline : .unreadable(mapped)
             return
         }
+        registryNotice = nil
 
         isSwitchable = summaries.count > 1
         Log.sync.info("read the vault registry", .count(summaries.count))
@@ -211,11 +226,112 @@ final class VaultSelectionViewModel {
         phase = .choosing(summaries)
     }
 
+    private static let offlineCode: ErrorCode = "transport.offline"
+
+    /// A registry failure that is the network or the server being away, not
+    /// an answer about the account (`ErrorMapping`: offline, timeout, failed,
+    /// 5xx and 408).
+    private static let localFirstCodes: Set<ErrorCode> = [
+        offlineCode, "transport.timeout", "transport.failed", "api.statusServerFault",
+    ]
+
+    /// A vault is open without the registry: one read, from the notice's
+    /// Try again or a trigger in ``watchRegistryTriggers(_:)``. Once the
+    /// account answers it reconciles the open vault with the list: pruned
+    /// snapshot, refreshed name, notice gone, sync started for a vault that
+    /// joined the account meanwhile. A vault the account no longer lists goes
+    /// through ``load()`` with ``removedVault`` set. Its files stay on
+    /// disk, so nothing written offline is deleted.
+    func registryReachable() async {
+        guard !isRecheckingRegistry, registryNotice != nil, case let .opened(open) = phase else { return }
+        isRecheckingRegistry = true
+        defer { isRecheckingRegistry = false }
+        let generation = loadGeneration
+        let summaries: [VaultSummary]
+        do {
+            summaries = try await readRegistry()
+        } catch {
+            guard generation == loadGeneration else { return }
+            let mapped = ErrorMapping.userFacing(error)
+            // A refusal is not the notice's to show over a working vault. A
+            // revocation wipes through `RevocationWatch` regardless.
+            guard Self.localFirstCodes.contains(mapped.code) else {
+                Log.sync.error("a vault registry re-read was refused", .code(mapped.code))
+                return
+            }
+            registryNotice = mapped
+            Log.sync.info("the vault registry is still unreachable", .code(mapped.code))
+            return
+        }
+        // A switch or a reload while the read was out decided the screen anew.
+        guard generation == loadGeneration else { return }
+        snapshot.prune(keeping: Set(summaries.map(\.id)))
+        guard let row = summaries.first(where: { $0.id == open.id }) else {
+            await load()
+            let source = removedVaultSource
+            removedVault = RemovedVaultExport(summary: open) { try source(open.id) }
+            return
+        }
+        registryNotice = nil
+        isSwitchable = summaries.count > 1
+        if row != open {
+            snapshot.vaultOpened(row)
+            phase = .opened(row)
+        }
+        // The local vault opened with no filler and may have joined the
+        // account during this read: the signed-in registry registers it.
+        guard filler == nil, let mint, let vault, syncable(row.id) else { return }
+        do {
+            let minted = try await mint.filler(for: vault, named: VaultLabel(row).text)
+            if generation == loadGeneration { filler = minted }
+        } catch {
+            Log.sync.error("a vault filler could not be made", .code(ErrorMapping.userFacing(error).code))
+        }
+    }
+
+    /// Re-reads the registry while the notice is up, on the triggers that say
+    /// the server may answer now: the foreground, a network path change, a
+    /// sync pass that got through. Runs until its task is cancelled.
+    func watchRegistryTriggers(_ center: NotificationCenter = .default) async {
+        let triggers = [
+            UIApplication.didBecomeActiveNotification,
+            PathReachability.attachmentPathChanged,
+            Notification.Name.vaultSyncPassSucceeded,
+        ]
+        await withDiscardingTaskGroup { group in
+            for name in triggers {
+                group.addTask {
+                    for await _ in center.notifications(named: name) { await self.registryReachable() }
+                }
+            }
+        }
+    }
+
+    /// Hides the notice. An export still copying stops; its partial copy goes,
+    /// the vault's own files never do.
+    func dismissRemovedVaultNotice() {
+        removedVault?.cancel()
+        removedVault = nil
+    }
+
+    /// `registry.vaults()`, one call at a time and in the order asked.
+    private func readRegistry() async throws -> [VaultSummary] {
+        let previous = registryReads
+        let registry = registry
+        let read = Task {
+            await previous?.value
+            return try await registry.vaults()
+        }
+        registryReads = Task { _ = await read.result }
+        return try await read.value
+    }
+
     // MARK: - The open
 
     /// Opens one vault through `VaultFiles.openingVault`, which is the whole
     /// security half of this task. See `VaultOpening.swift`.
     func open(_ summary: VaultSummary, source: StaticString = "select") async {
+        loadGeneration += 1
         phase = .opening(summary)
         do {
             let opened = try await opener.open(summary.id)
@@ -223,10 +339,10 @@ final class VaultSelectionViewModel {
             // that a vault which cannot be **filled** is never presented as a
             // vault that can only be read. `sync(session:)` blocks and does no
             // I/O, so this costs one trip through the core queue.
-            filler = syncable(summary.id) ? try await mint?.filler(for: opened) : nil
+            filler = syncable(summary.id) ? try await mint?.filler(for: opened, named: VaultLabel(summary).text) : nil
             // Before `vault` is published, so the shell built from it reads
             // this vault's saved tab and stacks.
-            snapshot.vaultOpened(summary.id)
+            snapshot.vaultOpened(summary)
             vault = opened
             phase = .opened(summary)
             Log.storage.notice("a vault was opened")
@@ -259,6 +375,7 @@ final class VaultSelectionViewModel {
         }
         vault = nil
         filler = nil
+        registryNotice = nil
         await load()
     }
 }

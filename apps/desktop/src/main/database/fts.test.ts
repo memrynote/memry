@@ -8,7 +8,8 @@ import {
   deleteFtsNote,
   clearFtsTable,
   getFtsCount,
-  ftsNoteExists
+  ftsNoteExists,
+  resetFtsTable
 } from './fts'
 
 describe('fts integration', () => {
@@ -103,5 +104,42 @@ describe('fts integration', () => {
     expect(getFtsCount(db)).toBe(2)
     clearFtsTable(db)
     expect(getFtsCount(db)).toBe(0)
+  })
+
+  // `DELETE ... WHERE id = ?` on the fts5 table scans every row (`id` is
+  // UNINDEXED), so indexing a fresh vault note by note was quadratic: 177 s for
+  // 17k notes against 15 s with the lookup index (#5390).
+  it.each([
+    ['a table created with it', (d: TestDb) => createFtsTable(d)],
+    [
+      'a table an older build created without it',
+      (d: TestDb) => {
+        d.run(
+          sql`CREATE VIRTUAL TABLE fts_notes USING fts5(id UNINDEXED, title, content, tags, tokenize='porter unicode61')`
+        )
+        createFtsTable(d)
+      }
+    ],
+    [
+      'a reset table',
+      (d: TestDb) => {
+        createFtsTable(d)
+        resetFtsTable(d)
+      }
+    ]
+  ])('finds a note by id through an index on %s', (_, setup) => {
+    setup(db)
+    insertFtsNote(db, 'note-1', 'Title', 'alpha', [])
+    insertFtsNote(db, 'note-2', 'Title', 'beta', [])
+    insertFtsNote(db, 'note-1', 'Title', 'gamma', [])
+    deleteFtsNote(db, 'note-2')
+
+    const plan = db.all<{ detail: string }>(
+      sql`EXPLAIN QUERY PLAN SELECT id FROM fts_notes_content WHERE c0 = ${'note-1'}`
+    )
+    expect(plan.map((row) => row.detail).join(' ')).toMatch(/USING (COVERING )?INDEX/)
+    expect(db.all<{ id: string }>(sql`SELECT id FROM fts_notes`)).toEqual([{ id: 'note-1' }])
+    expect(ftsNoteExists(db, 'note-1')).toBe(true)
+    expect(ftsNoteExists(db, 'note-2')).toBe(false)
   })
 })

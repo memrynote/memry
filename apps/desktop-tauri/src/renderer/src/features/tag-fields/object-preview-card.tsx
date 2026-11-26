@@ -7,6 +7,8 @@ import { parseRelationValue } from '@memry/contracts/relation-uri'
 import { propertiesService } from '@/services/properties-service'
 import { tagsService } from '@/services/tags-service'
 import { onNoteUpdated } from '@/services/notes-service'
+import { subscribeToEvents } from '@/services/tauri-event'
+import { rereadQueries } from '@/hooks/use-notes-query'
 import { getActiveLocale } from '@/lib/active-locale'
 import { ArrowUpRight, CheckSquare, Mail, Phone, Users, type AppIcon } from '@/lib/icons'
 import { ObjectAvatar, type ObjectLook } from './object-avatar'
@@ -73,12 +75,20 @@ export function ObjectPreviewBody({
     staleTime: 30_000
   })
 
+  // The card reads on mount, and a change before its listener went live sent its event to
+  // nobody (#4270): it reads again then.
   useEffect(
     () =>
-      onNoteUpdated((event) => {
-        if (event.id === noteId)
-          void queryClient.invalidateQueries({ queryKey: objectPreviewKey(noteId) })
-      }),
+      subscribeToEvents(
+        [
+          (live) =>
+            onNoteUpdated((event) => {
+              if (event.id === noteId)
+                void queryClient.invalidateQueries({ queryKey: objectPreviewKey(noteId) })
+            }, live)
+        ],
+        () => rereadQueries(queryClient, objectPreviewKey(noteId))
+      ),
     [noteId, queryClient]
   )
 

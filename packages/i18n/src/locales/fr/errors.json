@@ -44,6 +44,9 @@
     "moveFailed": "Impossible de déplacer la note",
     "applyTemplateFailed": "Impossible d'appliquer le modèle",
     "appendBlocksFailed": "Impossible de déplacer le bloc vers cette note",
+    "appendIntoCaseTwin": "Cette note partage son fichier avec une note dont le nom ne diffère que par la casse. Renommez l’une des deux, puis déplacez à nouveau le bloc.",
+    "appendIntoBinary": "Un bloc ne peut être déplacé que vers une note, pas vers une image, un PDF ou un fichier audio ou vidéo.",
+    "caseTwinMoveRefused": "Cette note partage son fichier avec une note dont le nom ne diffère que par la casse : elle ne peut donc pas être déplacée ainsi. Renommez ou déplacez l’autre note, ou supprimez la copie dont vous n’avez pas besoin.",
     "exportPdfFailed": "Impossible d'exporter en PDF",
     "exportHtmlFailed": "Impossible d'exporter en HTML",
     "restoreVersionFailed": "Impossible de restaurer la version",
@@ -75,10 +78,15 @@
     "uploadFailed": "Échec de l'envoi de la pièce jointe",
     "uploadProgressFailed": "Impossible de récupérer la progression de l'envoi",
     "downloadFailed": "Échec du téléchargement de la pièce jointe",
+    "downloadGone": "Ce fichier n'est plus sur le serveur de synchronisation. Si un autre appareil l'a encore, ajoutez-le de nouveau depuis cet appareil.",
+    "downloadMissing": "Ce fichier n'est pas encore sur le serveur de synchronisation. Rouvrez-le demain pour vérifier.",
+    "downloadNeedsSync": "La synchronisation n'est pas active, ce fichier ne peut donc pas être téléchargé. Il sera téléchargé automatiquement dès que la synchronisation sera active.",
     "downloadProgressFailed": "Impossible de récupérer la progression du téléchargement",
     "exceedsMaxSize": "Fichier trop volumineux : {size} dépasse la limite de {limit}",
     "exceedsPlanLimit": "Fichier plus volumineux que ne l'autorise votre forfait : {size} dépasse {limit}",
-    "emptyFile": "Impossible d'envoyer un fichier vide"
+    "emptyFile": "Impossible d'envoyer un fichier vide",
+    "emptyNotAttached": "Ce fichier est vide, il n'a donc pas été joint. Si vous avez collé une image, copiez-la à nouveau puis collez-la.",
+    "textInMediaFile": "Ce fichier contient du texte au lieu du média qu’indique son nom"
   },
   "crdt": {
     "persistenceDegradedTitle": "L'historique des modifications n'est pas conservé sur cet appareil",
@@ -233,10 +241,13 @@
   "folder": {
     "createFailed": "Impossible de créer le dossier",
     "renameFailed": "Impossible de renommer le dossier",
+    "renameCaseTwins": "Ce dossier contient des notes qui partagent un fichier avec une note dont le nom de dossier ne diffère que par la casse. Renommez ou déplacez d’abord ces notes, puis renommez le dossier.",
     "deleteFailed": "Impossible de supprimer le dossier",
     "keptNotPulled": "Ce dossier contient une note dont le fichier a été supprimé en dehors de memrynote, et son texte n'a pas encore été synchronisé sur cet appareil : elle ne peut donc pas aller dans la corbeille. Rien n'a été supprimé. Attendez la synchronisation, ou supprimez d'abord cette note séparément.",
     "keptUnwritable": "Ce dossier contient une note dont le fichier a été supprimé en dehors de memrynote, et son texte ne peut pas être enregistré dans un fichier pour la corbeille. Rien n'a été supprimé. Supprimez d'abord cette note séparément.",
     "trashUnavailable": "Ce dossier n'a pas pu être déplacé vers la corbeille. Ce qu'il contient encore n'a pas été supprimé.",
+    "deleteCaseTwins": "Ce dossier et un dossier portant le même nom écrit autrement, par exemple avec une autre casse, ne forment qu’un seul dossier sur le disque, donc le supprimer supprimerait les notes des deux. Supprimez plutôt une à une les notes dont vous n’avez pas besoin.",
+    "deleteWindowsName": "Le nom de ce dossier se termine par un point ou un espace, que Windows ignore, donc le supprimer pourrait aussi supprimer un autre dossier. Supprimez plutôt une à une les notes qu’il contient.",
     "setConfigFailed": "Impossible d'enregistrer la configuration du dossier"
   },
   "folderView": {

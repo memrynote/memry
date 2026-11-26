@@ -21,7 +21,12 @@ impl Registry {
         let mut registry = Self::new();
         for importer in [
             Arc::new(super::markdown::MarkdownImporter) as Arc<dyn Importer>,
+            Arc::new(super::bear::BearImporter),
             Arc::new(super::csv::CsvImporter),
+            Arc::new(super::google_keep::GoogleKeepImporter),
+            Arc::new(super::noteplan::NotePlanImporter),
+            Arc::new(super::raindrop::RaindropImporter::default()),
+            Arc::new(super::roam::RoamImporter),
             Arc::new(super::html::HtmlImporter::default()),
             Arc::new(super::evernote::EvernoteImporter),
             Arc::new(super::apple_journal::AppleJournalImporter),

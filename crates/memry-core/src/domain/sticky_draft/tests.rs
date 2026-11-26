@@ -292,7 +292,6 @@ fn a_remote_without_created_at_keeps_the_time_the_draft_first_projected() {
         apply_page(
             conn,
             vec![remote(ITEM_TYPE, ID, &first)],
-            vec![],
             NOW + 10,
             Some(DEVICE),
             &crate::crypto::agent_envelope::AtRestKey::default(),
@@ -302,7 +301,6 @@ fn a_remote_without_created_at_keeps_the_time_the_draft_first_projected() {
         apply_page(
             conn,
             vec![remote(ITEM_TYPE, ID, &second)],
-            vec![],
             NOW + 20,
             Some(DEVICE),
             &crate::crypto::agent_envelope::AtRestKey::default(),

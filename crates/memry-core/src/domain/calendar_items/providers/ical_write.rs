@@ -7,6 +7,7 @@ use serde_json::Value;
 
 use crate::api::calendar_records::CalendarZone;
 use crate::domain::calendar::CivilDate;
+use crate::domain::calendar_items::colors::{color_id_for_ical_color, ical_color_name};
 use crate::domain::calendar_items::ical::IcalZones;
 use crate::domain::calendar_items::ical::occurrence::ObjectTimes;
 use crate::domain::calendar_items::ical::parse::{Component, NotACalendar, parse_calendar};
@@ -19,24 +20,6 @@ const MEMRY_SOURCE_TYPE: &str = "X-MEMRY-SOURCE-TYPE";
 const MEANINGFUL: [&str; 7] = [
     "DTSTART", "DTEND", "DURATION", "RRULE", "EXDATE", "SUMMARY", "LOCATION",
 ];
-
-/// RFC 7986 COLOR names per Google colour id (`COLOR_NAME_BY_ID`).
-fn color_name(id: &str) -> Option<&'static str> {
-    Some(match id {
-        "11" => "tomato",
-        "4" => "lightcoral",
-        "6" => "darkorange",
-        "5" => "gold",
-        "2" => "mediumseagreen",
-        "10" => "seagreen",
-        "7" => "deepskyblue",
-        "9" => "royalblue",
-        "1" => "mediumpurple",
-        "3" => "darkviolet",
-        "8" => "gray",
-        _ => return None,
-    })
-}
 
 fn stamp(ms: i64) -> String {
     let iso = instants::to_iso8601(ms).unwrap_or_default();
@@ -230,28 +213,12 @@ fn apply_owned(
         };
         vevent.set_text("CLASS", class);
     }
-    match event["colorId"].as_str().and_then(color_name) {
+    match event["colorId"].as_str().and_then(ical_color_name) {
         Some(name) => vevent.set_text("COLOR", Some(name)),
         None if event["colorId"].is_null() => {
             let known = vevent
                 .text("COLOR")
-                .map(|c| c.to_ascii_lowercase())
-                .is_some_and(|c| {
-                    [
-                        "tomato",
-                        "lightcoral",
-                        "darkorange",
-                        "gold",
-                        "mediumseagreen",
-                        "seagreen",
-                        "deepskyblue",
-                        "royalblue",
-                        "mediumpurple",
-                        "darkviolet",
-                        "gray",
-                    ]
-                    .contains(&c.as_str())
-                });
+                .is_some_and(|c| color_id_for_ical_color(&c).is_some());
             if known {
                 vevent.remove("COLOR");
             }

@@ -37,6 +37,31 @@ enum InboxErrors {
         "Nothing was captured."
     )
 
+    /// The row for a file `checkFile` refused: its size, else its type.
+    static func fileRefusal(size: UInt64) -> UserFacingError {
+        size > 50 * 1024 * 1024 ? tooLarge : unsupportedType
+    }
+
+    /// A dropped file the provider would not hand over or that would not copy.
+    static let dropUnreadable = make(
+        "inbox.dropUnreadable",
+        "A dropped file couldn't be copied.",
+        "Nothing was captured. Try dropping it again."
+    )
+
+    /// A dropped file copied but would not open.
+    static let dropUnopenable = make(
+        "inbox.dropUnopenable",
+        "A dropped file couldn't be opened.",
+        "Nothing was captured from it. Try dropping it again."
+    )
+
+    /// More than one item of a drop failed, for whatever reasons; `first`
+    /// is the first one's row, when it has one.
+    static func dropFailed(_ count: Int, first: UserFacingError?) -> UserFacingError {
+        make("inbox.dropFailed", "\(count) items couldn't be added.", first.map { "One reason: \($0.title)" })
+    }
+
     static let microphoneDenied = make(
         "inbox.microphoneDenied",
         "Microphone access denied.",

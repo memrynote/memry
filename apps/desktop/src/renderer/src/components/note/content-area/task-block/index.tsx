@@ -83,7 +83,9 @@ export function getTaskSlashMenuItem(editor: unknown, noteId?: string) {
       // the IPC shape and the renderer view model spell identically; the rest
       // of the view model (statuses, counts) is never touched.
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- IPC project rows are not the view model; the parser reads only id and name
-      const parsed = parseQuickAdd(text, projects as unknown as Project[])
+      const parsed = parseQuickAdd(text, projects as unknown as Project[], new Date(), {
+        keepNoteLinks: true
+      })
       // Quick-add lifts its own tokens off the line, so a line of nothing but
       // tokens ("#tag", "!!high") leaves no title behind. Same draft handoff as
       // the empty-line case above.

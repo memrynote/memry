@@ -27,6 +27,10 @@
  * plan, so it can add vaults to its account (`POST /sync/vaults`). It answers
  * `{ harnessEntitled: true }`.
  *
+ * A `lose <itemId>` line deletes the user's every server row of `<itemId>`: its records and its
+ * body (`sync_items`, `crdt_updates`, `crdt_snapshots`), as a server that lost the create (a D1
+ * restore, a lost write). It answers `{ harnessLost }`, the record rows deleted.
+ *
  * A `policy <writesEnabled 0|1> [minWriteVersion]` line upserts the `desktop` row of
  * `client_policies` (chapter 11 §11.8), which the Worker reads on every request. It answers
  * `{ harnessPolicy: true }`.
@@ -125,6 +129,20 @@ const renameVault = async (from: string, to: string): Promise<void> => {
     .run()
   process.stdout.write(`${JSON.stringify({ harnessRenamed: meta.changes > 0 })}\n`)
 }
+const lose = async (itemId: string): Promise<void> => {
+  const db = await server.getD1()
+  const { meta } = await db
+    .prepare('DELETE FROM sync_items WHERE user_id = ? AND item_id = ?')
+    .bind(userId, itemId)
+    .run()
+  for (const table of ['crdt_updates', 'crdt_snapshots']) {
+    await db
+      .prepare(`DELETE FROM ${table} WHERE user_id = ? AND note_id = ?`)
+      .bind(userId, itemId)
+      .run()
+  }
+  process.stdout.write(`${JSON.stringify({ harnessLost: meta.changes })}\n`)
+}
 const policy = async (writesEnabled: string, minWriteVersion?: string): Promise<void> => {
   const db = await server.getD1()
   await db
@@ -145,6 +163,7 @@ commands.on('line', (line) => {
   if (command === 'otp' && args.length === 2) void otp(args[0], args[1])
   if (command === 'entitle' && args.length === 1) void entitle(args[0])
   if (command === 'rename-vault' && args.length === 2) void renameVault(args[0], args[1])
+  if (command === 'lose' && args.length === 1) void lose(args[0])
   if (command === 'policy' && args.length >= 1) void policy(args[0], args[1])
   if (command === 'register') {
     void register(devices.length).then((device) => {
