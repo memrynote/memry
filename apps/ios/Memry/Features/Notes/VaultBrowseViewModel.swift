@@ -104,7 +104,8 @@ final class VaultBrowseViewModel {
         vault: Vault,
         executor: CoreExecutor,
         filler: (any VaultFilling)? = nil,
-        store: (any SecureStore)? = nil
+        store: (any SecureStore)? = nil,
+        semantic: SemanticSearch? = nil
     ) {
         self.init(
             reader: CoreNotesReader(vault: vault, executor: executor),
@@ -118,7 +119,7 @@ final class VaultBrowseViewModel {
             // A vault whose index will not open is still a vault worth
             // browsing, so this failure is absorbed into "no full-text search"
             // rather than into "no screen".
-            search: try? CoreVaultSearch(vault: vault, executor: executor),
+            search: try? CoreVaultSearch(vault: vault, executor: executor, semantic: semantic),
             recents: CoreSearchRecents(vault: vault, executor: executor),
             noteTasks: store.map { CoreNoteTasks(vault: vault, store: $0, executor: executor) }
         )
@@ -149,8 +150,12 @@ final class VaultBrowseViewModel {
     /// Re-reads a loaded outline when the list comes back on screen, so a note
     /// made elsewhere (the Inbox files into folders) shows without a relaunch.
     /// Quiet: no loading phase, and a failed read keeps the outline it had.
+    /// An empty vault re-reads too: a first sync fills it while it is shown.
     func refresh() async {
-        guard case .ready = phase else { return }
+        switch phase {
+        case .ready, .empty: break
+        case .loading, .unreadable: return
+        }
         guard let folders = try? await reader.folders(), let notes = try? await reader.list() else { return }
         phase = folders.isEmpty && notes.isEmpty ? .empty : .ready(.build(folders: folders, notes: notes))
         await loadShortcuts()

@@ -152,6 +152,38 @@ describe('TelemetryBatchSchema', () => {
     })
   })
 
+  describe('Electron migration events', () => {
+    it('accepts the three migration_* events with counts and a check name', () => {
+      // #given the first-launch migration's start, completion and failure events
+      const events = [
+        { ...baseEvent, name: 'migration_started', action: 'started' },
+        {
+          ...baseEvent,
+          name: 'migration_completed',
+          action: 'completed',
+          metrics: { durationMs: 1200, itemCount: 3, queueCount: 1 }
+        },
+        {
+          ...baseEvent,
+          name: 'migration_failed',
+          action: 'failed',
+          result: 'failed',
+          errorCode: 'key_verifier_mismatch'
+        }
+      ]
+
+      // #when each is validated on its own and in a batch
+      const parsed = events.map((event) => TelemetryEventSchema.safeParse(event))
+
+      // #then every one is a known, valid event
+      expect(parsed.map((result) => result.success)).toEqual([true, true, true])
+      expect(TelemetryBatchSchema.safeParse({ ...baseBatch, events }).success).toBe(true)
+      for (const name of ['migration_started', 'migration_completed', 'migration_failed']) {
+        expect(TelemetryEventNameSchema.options).toContain(name)
+      }
+    })
+  })
+
   describe('rejects unsafe event names', () => {
     it('rejects an unknown event name', () => {
       // #given a batch with an event name not in the allowlist

@@ -11,15 +11,23 @@
 //! TypeScript importers and `tests/importer_vectors.rs` replays here.
 
 pub mod assets;
+pub mod bear;
 pub mod context;
 pub mod csv;
+pub mod google_keep;
 pub mod markdown;
 pub mod messages;
+pub mod noteplan;
+pub mod obsidian_tasks;
 pub mod registry;
+pub mod roam;
 pub mod runner;
 pub mod sink;
+pub mod source_paths;
+pub mod zip;
 
-use std::io;
+use std::fs::{File, OpenOptions};
+use std::io::{self, Read};
 use std::path::Path;
 
 use serde::{Deserialize, Serialize};
@@ -31,11 +39,18 @@ pub use context::{
 };
 pub use messages::{ImportMessage, ImportText};
 pub use registry::Registry;
-pub use sink::{ImportSink, ImportedNote, SinkError};
+pub use sink::{
+    ImportSink, ImportedJournalEntry, ImportedNote, ImportedTask, JournalEntry, SinkError,
+};
 
 /// The largest source file an importer reads into memory. Electron read any size; a larger file
 /// fails its item before it is read.
 pub const MAX_SOURCE_BYTES: u64 = 100 * 1024 * 1024;
+
+/// Bytes of note files one zip scan reads and holds until the import ends. Google Keep caps a
+/// note at 20,000 characters (at most about 80 KB of JSON), so this holds over 6,500 notes of
+/// maximal length and far more of the usual few KB; Electron held any amount.
+pub const MAX_NOTE_JSON_BYTES: u64 = 512 * 1024 * 1024;
 
 /// `ImportInput`: the picked paths and the importer's own options.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -115,6 +130,10 @@ pub enum ImportError {
     NoPreview(String),
     #[error("Importer \"{0}\" already registered")]
     AlreadyRegistered(String),
+    /// A run or preview with this `importId` is still in flight; the new one is refused, so a
+    /// cancel keeps reaching the first.
+    #[error("Import \"{0}\" is already running")]
+    DuplicateImport(String),
     /// The whole run failed: a folder of the selection could not be listed, say.
     #[error(transparent)]
     Io(#[from] io::Error),
@@ -147,17 +166,49 @@ pub trait Importer: Send + Sync {
     ) -> Result<(), ImportError>;
 }
 
+/// Opens a regular file for reading, with its size. Anything else (a FIFO, a device, a
+/// directory) is refused from the open handle before a read: a FIFO blocks the read until a
+/// writer comes, holding the run and its vault, and `/dev/zero` never ends. The open itself
+/// does not block on a FIFO (`O_NONBLOCK`, which a regular file ignores).
+pub(crate) fn open_regular(path: &Path) -> io::Result<(File, u64)> {
+    let mut options = OpenOptions::new();
+    options.read(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.custom_flags(libc::O_NONBLOCK);
+    }
+    let file = options.open(path)?;
+    let meta = file.metadata()?;
+    if !meta.is_file() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "Not a regular file",
+        ));
+    }
+    Ok((file, meta.len()))
+}
+
 /// Reads a source file as text the way Node's `readFile(path, 'utf8')` does (malformed UTF-8
-/// becomes U+FFFD), refusing one over [`MAX_SOURCE_BYTES`] before it is read.
+/// becomes U+FFFD), refusing one over [`MAX_SOURCE_BYTES`] before it is read, and one that is
+/// not a regular file ([`open_regular`]).
 pub(crate) fn read_source_text(path: &Path) -> io::Result<String> {
-    let size = std::fs::metadata(path)?.len();
-    if size > MAX_SOURCE_BYTES {
-        return Err(io::Error::other(format!(
+    let too_large = || {
+        io::Error::other(format!(
             "File is larger than {} MB",
             MAX_SOURCE_BYTES / (1024 * 1024)
-        )));
+        ))
+    };
+    let (file, size) = open_regular(path)?;
+    if size > MAX_SOURCE_BYTES {
+        return Err(too_large());
     }
-    let bytes = std::fs::read(path)?;
+    let mut bytes = Vec::new();
+    // A file that grew since the open is still cut off at the cap.
+    file.take(MAX_SOURCE_BYTES + 1).read_to_end(&mut bytes)?;
+    if bytes.len() as u64 > MAX_SOURCE_BYTES {
+        return Err(too_large());
+    }
     Ok(match String::from_utf8(bytes) {
         Ok(text) => text,
         Err(error) => String::from_utf8_lossy(error.as_bytes()).into_owned(),

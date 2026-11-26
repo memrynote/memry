@@ -78,7 +78,7 @@ struct DateMentionWriteTests {
         var value = DateMentionValue(dateISO: "2026-09-23T06:00:00.000Z", hasTime: false)
         value.remind = "at"
 
-        await model.insertDateMention(in: "block-1", from: 4, to: 4, value: value)
+        await model.insertDateMention(in: "block-1", at: NodeAnchor(typed: "", location: 0, replaces: false, paneRange: 4 ..< 4), value: value)
 
         guard case let .insertInline(blockId, start, end, kind, text, attrs) = editor.all.first
         else {
@@ -112,7 +112,7 @@ struct WikiLinkWriteTests {
         let editor = ScriptedInlineEditor()
         let model = NoteEditorViewModel(noteId: "note-1", editor: editor)
 
-        await model.insertWikiLink(in: "b", from: 2, to: 2, title: "Cardamom")
+        await model.insertWikiLink(in: "b", at: NodeAnchor(typed: "", location: 0, replaces: false, paneRange: 2 ..< 2), title: "Cardamom")
 
         guard case let .insertInline(_, _, _, kind, text, attrs) = editor.all.first else {
             Issue.record("expected an insertInline")

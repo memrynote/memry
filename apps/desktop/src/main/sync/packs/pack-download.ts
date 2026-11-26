@@ -150,10 +150,18 @@ export const downloadPackToFile = async (
 
     const handle = await fs.open(options.destPath, appending ? 'a' : 'w')
     let written = appending ? have : 0
+    // A disk error (ENOSPC, EIO) is not the network's: it leaves the loop as
+    // itself, so the caller makes the pack a gap instead of pausing for it.
+    let writeError: Error | null = null
     try {
       for await (const chunk of iterateBody(response.body)) {
         if (options.signal?.aborted) throw new NetworkError('pack download aborted')
-        await handle.write(chunk)
+        try {
+          await handle.write(chunk)
+        } catch (error) {
+          writeError = error instanceof Error ? error : new Error(String(error))
+          break
+        }
         written += chunk.byteLength
         options.onBytes?.(chunk.byteLength)
       }
@@ -174,6 +182,7 @@ export const downloadPackToFile = async (
       continue
     }
     await handle.close()
+    if (writeError !== null) throw writeError
 
     return { bytes: written, resumed }
   }

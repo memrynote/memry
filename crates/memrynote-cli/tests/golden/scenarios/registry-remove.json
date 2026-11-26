@@ -1,0 +1,64 @@
+{
+  "name": "registry-remove",
+  "registry": {
+    "currentVault": "{tmp}/a",
+    "vaults": [
+      {
+        "path": "{tmp}/a",
+        "name": "Alpha",
+        "noteCount": 3,
+        "taskCount": 1,
+        "lastOpened": "2026-01-02T03:04:05.678Z",
+        "isDefault": true
+      },
+      {
+        "path": "{tmp}/b",
+        "name": "Beta",
+        "noteCount": 3,
+        "taskCount": 1,
+        "lastOpened": "2026-01-02T03:04:05.678Z",
+        "isDefault": false
+      },
+      {
+        "path": "{tmp}/c",
+        "name": "Gamma",
+        "noteCount": 3,
+        "taskCount": 1,
+        "lastOpened": "2026-01-02T03:04:05.678Z",
+        "isDefault": false
+      }
+    ]
+  },
+  "steps": [
+    {
+      "argv": ["vault", "remove"]
+    },
+    {
+      "argv": ["vault", "remove", "Alpha"]
+    },
+    {
+      "argv": ["vault", "remove", "nope", "--yes"]
+    },
+    {
+      "argv": ["--json", "vault", "remove", "Alpha", "--yes"]
+    },
+    {
+      "argv": ["vault", "remove", "{tmp}/c", "--yes"]
+    },
+    {
+      "argv": ["--json", "vault", "list"]
+    },
+    {
+      "argv": ["vault", "current"]
+    },
+    {
+      "argv": ["vault", "remove", "Beta", "--yes", "--json"]
+    },
+    {
+      "argv": ["vault", "list"]
+    },
+    {
+      "argv": ["vault", "current"]
+    }
+  ]
+}

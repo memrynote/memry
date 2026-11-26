@@ -1,0 +1,5 @@
+# Assets
+![pic](pic.png)
+![out](../../outside.png)
+![gone](missing.png)
+* Task with pic

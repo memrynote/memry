@@ -14,6 +14,7 @@ use serde_json::{Value, json};
 
 use crate::api::errors::StorageError;
 use crate::crypto::sodium::random_bytes;
+use crate::storage::nested_tx;
 use crate::storage::repositories::schema::Object;
 use crate::storage::repositories::{Change, sync_items};
 use crate::sync::field_merge::{PROJECT_SYNCABLE_FIELDS, init_all_field_clocks};
@@ -168,7 +169,7 @@ fn first_clocks(device_id: &str) -> Result<(Value, Value), StorageError> {
 /// desktop's `seedUnclocked` does, so every device still meets on the one id.
 /// Returns whether it wrote one.
 pub fn ensure_inbox(conn: &Connection, now_ms: i64) -> Result<bool, StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let exists: bool = tx
         .query_row(
             "SELECT EXISTS(SELECT 1 FROM projects WHERE id = ?1 OR is_inbox = 1)
@@ -201,20 +202,22 @@ pub fn ensure_inbox(conn: &Connection, now_ms: i64) -> Result<bool, StorageError
 /// field clocks, and is queued as a `create`. Run by the sync pass after a
 /// pull that reached the feed head ([`crate::sync::engine::PassSeed`]), so an
 /// Inbox another device pushed first has already replaced the seed.
+/// A seed first sync's refs pass found on the server too waits `metadata-only`
+/// for the server's body, so it is never seeded, even when that fetch failed.
 /// Idempotent: a seeded record has a clock. Returns the seeded ids.
 pub fn seed_unclocked(
     conn: &Connection,
     device_id: &str,
     now_ms: i64,
 ) -> Result<Vec<String>, StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let ids: Vec<String> = {
         let mut statement = tx
             .prepare(
                 "SELECT item_id FROM sync_items
                   WHERE item_type = ?1 AND clock IS NULL AND signer_device_id IS NULL
                     AND server_cursor IS NULL AND deleted_at IS NULL AND payload IS NOT NULL
-                    AND corrupt_at IS NULL
+                    AND corrupt_at IS NULL AND payload_state <> 'metadata-only'
                   ORDER BY rowid",
             )
             .map_err(failed)?;

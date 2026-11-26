@@ -1,7 +1,7 @@
 /**
  * The seam under test is the real one: a real `TabProvider`, the real reducer,
  * the real `useHomeBoards` (including the shared active-board store) and the
- * real `updateTabTitle`. Only `window.api.homePages` and the home-page events —
+ * real `updateTabTitle`. Only `home-pages-service` and the home-page events —
  * the IPC boundary the renderer cannot own — are mocks, so an assertion here is
  * about the tab title a user would read off the tab strip.
  */
@@ -14,6 +14,15 @@ import { TabProvider, useTabs } from '@/contexts/tabs/context'
 import type { Tab, TabGroup, TabSystemState } from '@/contexts/tabs/types'
 import { useHomeBoards } from '@/hooks/use-home-boards'
 import { HomeTabTitleSync } from './home-tab-title-sync'
+
+const service = vi.hoisted(() => ({
+  homePagesService: { list: vi.fn() },
+  onHomePageCreated: vi.fn(),
+  onHomePageUpdated: vi.fn(),
+  onHomePageDeleted: vi.fn()
+}))
+vi.mock('@/services/home-pages-service', () => service)
+const listMock = service.homePagesService.list
 
 interface TestBoard {
   id: string
@@ -132,19 +141,13 @@ beforeEach(() => {
   listBoards = async () => boards
 
   window.api.onSettingsChanged = vi.fn(() => vi.fn())
-  window.api.homePages = {
-    list: vi.fn(() => listBoards()),
-    create: vi.fn(),
-    update: vi.fn(),
-    delete: vi.fn(),
-    reorder: vi.fn()
-  } as unknown as typeof window.api.homePages
-  window.api.onHomePageCreated = vi.fn(() => () => {})
-  window.api.onHomePageUpdated = vi.fn((callback: (event: { id: string }) => void) => {
+  listMock.mockImplementation(() => listBoards())
+  service.onHomePageCreated.mockImplementation(() => () => {})
+  service.onHomePageUpdated.mockImplementation((callback: (event: { id: string }) => void) => {
     emitHomePageUpdated = () => callback({ id: 'b1' })
     return () => {}
   })
-  window.api.onHomePageDeleted = vi.fn(() => () => {})
+  service.onHomePageDeleted.mockImplementation(() => () => {})
 })
 
 describe('HomeTabTitleSync', () => {
@@ -161,7 +164,7 @@ describe('HomeTabTitleSync', () => {
     localStorage.setItem(ACTIVE_KEY, 'b1')
     const view = mount(makeState([makeGroup('main', [homeTab()])]))
 
-    await waitFor(() => expect(window.api.homePages.list).toHaveBeenCalled())
+    await waitFor(() => expect(listMock).toHaveBeenCalled())
     await Promise.resolve()
 
     expect(view.titleOf('main', 'tab-home')).toBe('Home')
@@ -243,7 +246,7 @@ describe('HomeTabTitleSync', () => {
     listBoards = () => new Promise<TestBoard[]>(() => {})
     const view = mount(makeState([makeGroup('main', [homeTab({ title: 'Work' })])]))
 
-    await waitFor(() => expect(window.api.homePages.list).toHaveBeenCalled())
+    await waitFor(() => expect(listMock).toHaveBeenCalled())
 
     expect(view.titleOf('main', 'tab-home')).toBe('Work')
   })
@@ -257,7 +260,7 @@ describe('HomeTabTitleSync', () => {
     const before = view.groups
 
     act(() => emitHomePageUpdated?.())
-    await waitFor(() => expect(window.api.homePages.list).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(listMock).toHaveBeenCalledTimes(2))
 
     expect(view.groups).toBe(before)
   })
@@ -266,7 +269,7 @@ describe('HomeTabTitleSync', () => {
     localStorage.setItem(ACTIVE_KEY, 'b2')
     const view = mount(makeState([makeGroup('main', [noteTab()])]))
 
-    await waitFor(() => expect(window.api.homePages.list).toHaveBeenCalled())
+    await waitFor(() => expect(listMock).toHaveBeenCalled())
 
     expect(view.titleOf('main', 'tab-note')).toBe('Some note')
   })

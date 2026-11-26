@@ -1,42 +1,40 @@
-import type * as Y from 'yjs'
+import { AsyncLocalStorage } from 'node:async_hooks'
+import * as Y from 'yjs'
 import { createLogger } from '../lib/logger'
+import { completeWithin } from '../shutdown-sequence'
 import { trackMainError, trackMainLog } from '../telemetry/diagnostics'
 import { shouldEmitThrottled } from '../telemetry/throttle'
 import { getCrdtProvider } from './crdt-provider'
-import { feedExternalEditToCrdt } from './crdt-external-feed'
+import { ingestOfflineEdit, ingestOutsideEditFirst } from './crdt-writeback-ingest'
 import { registerCrdtWritebackPort } from './crdt-writeback-port'
-import { networkUpdateCount, resetNetworkUpdateState, sweepExpired } from './crdt-network-update'
+import { networkUpdateCount, resetNetworkUpdateState } from './crdt-network-update'
 import { owesFileBody } from './crdt-owed-file-body'
+import { recordUnchangedFile, writeDocWithBaseline, type SerializedDoc } from './writeback-baseline'
 import type { SourceRestoreOutcome } from './blocknote-converter'
 import type { NoteBody } from './writing-markdown'
+import { applyCriticMarkMoves } from './critic-mark-anchors'
 import { readyWritebackConverter } from './converter-worker-bridge'
 import { emitNoteUpdated } from '@memry/sync-client/note-events'
-import {
-  isWritingFrontmatterValue,
-  writingFrontmatterOf,
-  toWritingFrontmatterValue,
-  WRITING_FRONTMATTER_KEY,
-  type WritingFrontmatter
-} from '@memry/shared'
+import { mergeFrontmatter, mergeJournalFrontmatter } from './crdt-writeback-frontmatter'
 import { classifyMarkdownContent } from '@memry/shared/markdown-class'
-import { utcNow } from '@memry/shared/utc'
-import { atomicWrite, ensureDirectory, deleteFile } from '../vault/file-ops'
+import { isBinaryNoteRow } from '@memry/shared/file-types'
+import { laterEditTime, writebackModifiedAt } from './crdt-writeback-edit-time'
+import { atomicWrite, ensureDirectory } from '../vault/file-ops'
+import { appWriteCount, recordAppWrite, resetAppWrites } from '../vault/app-writes'
 import { readVaultFile, refuseOutsideVaultSync } from '../lib/paths'
 import { runWithLockedWritesAllowed } from '../vault-locks/registry'
-import { restoreLockedNoteFile } from '../vault-locks/service'
 import {
   generateContentHash,
   parseNote,
   serializeNote,
-  serializeParsedNote,
-  type NoteFrontmatter
+  serializeParsedNote
 } from '../vault/frontmatter'
 import { splitFrontmatterBlock } from '@memry/shared/frontmatter-split'
 import { getVaultRoot, toAbsolutePath } from '../vault/notes-io'
 import { createSnapshot, maybeCreateSignificantSnapshot } from '../vault/notes-versions'
 import { SnapshotReasons } from '@memry/db-schema/schema/notes-cache'
 import { getJournalPath } from '../vault/journal'
-import { syncNoteToCache, deleteNoteFromCache } from '../vault/note-sync'
+import { syncNoteToCache, refusesCaseTwinFile } from '../vault/note-sync'
 import { reconcileRenamedAttachments } from '../vault/attachment-rename-reconcile'
 import { placeLinkedDownloads } from './attachment-files'
 import { flushProjectionEvents } from '../projections'
@@ -44,12 +42,10 @@ import { getIndexDatabase, getDatabase } from '../database/client'
 import { getNoteCacheById } from '@main/database/queries/notes'
 import { getNoteMetadataById } from '@memry/storage-data'
 import { createRemindersService, type RemindersServiceHooks } from '@memry/app-core/reminders'
-import { syncNoteDateReminders, clearNoteDateReminders } from '../notes/note-date-reminders'
-import { NotesChannels, JournalChannels } from '@memry/contracts/ipc-channels'
+import { syncNoteDateReminders } from '../notes/note-date-reminders'
 import { CRDT_EVENTS, type CrdtWriteBackFailedEvent } from '@memry/contracts/ipc-crdt'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
 import path from 'path'
-import { isDeepStrictEqual } from 'node:util'
 import {
   enqueueLocalSyncCreate,
   enqueueLocalSyncDelete,
@@ -91,8 +87,6 @@ const WRITEBACK_COOLDOWN_FACTOR = 9
  */
 const WRITEBACK_MAX_COOLDOWN_MS = 5000
 
-const IGNORED_WRITE_TTL_MS = 5000
-
 /**
  * Whose edit a pass writes: `local` for this device's editor, `remote` for
  * state merged from the server. Only a local edit may put the reminders it
@@ -116,8 +110,20 @@ interface WritebackCost {
 
 const lastWritebackCost = new Map<string, WritebackCost>()
 const pendingTimers = new Map<string, PendingWriteback>()
-/** The pass running, or queued behind a running one, for each note. */
-const runningPasses = new Map<string, Promise<void>>()
+/** Closed notes whose doc a failed body write left ahead of the file (`retryWriteback`). */
+const pendingRetries = new Map<string, ReturnType<typeof setTimeout>>()
+/** The turn (a pass or a frontmatter writer) running, or queued behind a running one, for each note. */
+const runningPasses = new Map<string, Promise<unknown>>()
+/** Repairs that run at the start of a note's next turn (`repairAfterRunningTurn`). */
+const pendingRepairs = new Map<string, Array<() => Promise<void>>>()
+/** Work a flush waits for after the turns (`holdFlushUntil`), to the label the log names it by. */
+const heldWork = new Map<Promise<unknown>, string>()
+/**
+ * How long a flush waits for held work. A held journal create waits on the
+ * projection lane, which a stuck projection holds for good, and a quit, a vault
+ * close and a journal format change all flush.
+ */
+const HELD_WORK_CAP_MS = 1_500
 /**
  * Bumped by `cancelWriteback`. A pass that was already converting when its
  * note was deleted sees the change and does not write the file back.
@@ -127,9 +133,10 @@ const cancelGenerations = new Map<string, number>()
 let flushing = false
 /** Notes whose last pass failed and whose user has been told so. */
 const failingWritebacks = new Set<string>()
-const ignoredWrites = new Map<string, number>()
 /** Note id to the content hash of the file bytes this module last wrote for it. */
 const lastWrittenHash = new Map<string, string>()
+/** Note id to the review marks its file could not hold, as last logged. */
+const unplacedCriticMarks = new Map<string, string>()
 
 /**
  * True while this note's on-disk markdown is known to be behind the live doc —
@@ -185,50 +192,6 @@ function journalIdToDate(journalId: string): string {
   return journalId.slice(1)
 }
 
-/**
- * Amortized TTL eviction, at most one full pass per TTL window.
- *
- * Both maps below are keyed per file/per note and are only ever written, so
- * they need a sweep to stay bounded — but the sweep must not run per call:
- * `isWritebackIgnored` fires on every watcher file event, where an inline pass
- * cost O(map) each time. Gating the pass on its own TTL keeps both maps to the
- * entries written in the last two windows at amortized O(1) per call.
- */
-let ignoredWritesSweptAt = 0
-
-export function isWritebackIgnored(absolutePath: string): boolean {
-  const now = Date.now()
-  if (now - ignoredWritesSweptAt >= IGNORED_WRITE_TTL_MS) {
-    ignoredWritesSweptAt = now
-    sweepExpired(ignoredWrites, IGNORED_WRITE_TTL_MS, now)
-  }
-  const ts = ignoredWrites.get(absolutePath)
-  if (!ts) return false
-  return now - ts < IGNORED_WRITE_TTL_MS
-}
-
-export function clearWritebackIgnore(_absolutePath: string): void {
-  // no-op: auto-evicted by TTL in isWritebackIgnored
-}
-
-/**
- * Sweeping on the write path too, so a stopped watcher (which is what stops
- * `isWritebackIgnored` from being called at all) cannot leave the map growing
- * one entry per written file for the rest of the session.
- */
-function rememberIgnoredWrite(absolutePath: string): void {
-  const now = Date.now()
-  if (now - ignoredWritesSweptAt >= IGNORED_WRITE_TTL_MS) {
-    ignoredWritesSweptAt = now
-    sweepExpired(ignoredWrites, IGNORED_WRITE_TTL_MS, now)
-  }
-  ignoredWrites.set(absolutePath, now)
-}
-
-export function markWritebackIgnored(absolutePath: string): void {
-  rememberIgnoredWrite(absolutePath)
-}
-
 function emitToRenderer(channel: string, data: unknown): void {
   broadcastToAllWindows(channel, data)
 }
@@ -274,36 +237,6 @@ function resolveWritebackDoc(noteId: string, captured: Y.Doc): Y.Doc {
 }
 
 /**
- * The edit time a pass stamps on the note (#2515). A local edit happened now.
- * A remote pass is no edit made here: it keeps the row's time, moved forward
- * only to the server time of the remote edit it merged, never backwards. A
- * snapshot, a pack or an older peer's update carries no such time, so a
- * re-pull or a re-serialized body leaves the note where it was.
- */
-function writebackModifiedAt(
-  current: string | null | undefined,
-  local: boolean,
-  remoteEditedAtMs: number | undefined
-): string {
-  if (local) return utcNow()
-  const remoteMs =
-    remoteEditedAtMs !== undefined && Number.isFinite(remoteEditedAtMs) && remoteEditedAtMs > 0
-      ? remoteEditedAtMs
-      : undefined
-  const currentMs = current ? Date.parse(current) : NaN
-  if (!current || !Number.isFinite(currentMs)) {
-    return remoteMs !== undefined ? new Date(remoteMs).toISOString() : utcNow()
-  }
-  return remoteMs !== undefined && remoteMs > currentMs ? new Date(remoteMs).toISOString() : current
-}
-
-function laterEditTime(a: number | undefined, b: number | undefined): number | undefined {
-  if (a === undefined) return b
-  if (b === undefined) return a
-  return Math.max(a, b)
-}
-
-/**
  * Runs a pass once the note's previous pass has finished.
  *
  * One pass per note at a time. A pass reads the note's row, converts on the
@@ -318,17 +251,91 @@ async function runWriteback(
   local: boolean,
   remoteEditedAtMs: number | undefined
 ): Promise<void> {
-  const previous = runningPasses.get(noteId)
-  const pass = (previous ?? Promise.resolve())
-    // The previous pass reported its own failure; this one runs regardless.
+  await takeWritebackTurn(noteId, () => runPass(noteId, doc, local, remoteEditedAtMs))
+}
+
+/** Whether a turn of this note (a pass or a frontmatter writer) is running or queued. */
+export function hasWritebackTurn(noteId: string): boolean {
+  return runningPasses.has(noteId)
+}
+
+/**
+ * Runs `run` once the note's earlier turns have settled. A pass writes back
+ * the frontmatter it read, and a writer that changes only frontmatter (tags,
+ * properties) leaves the doc as it was, so the re-arm after a pass cannot see
+ * it: landing between a pass's read and its write lost it (#5472). Those
+ * writers take a turn here too. `run` must not wait on a pass of the note.
+ */
+export function takeWritebackTurn<T>(noteId: string, run: () => Promise<T>): Promise<T> {
+  const token = {}
+  const held = new Map(heldTurns.getStore())
+  held.set(noteId, token)
+  const turn = (runningPasses.get(noteId) ?? Promise.resolve())
+    // The previous turn reported its own failure; this one runs regardless.
     .catch(() => {})
-    .then(() => runPass(noteId, doc, local, remoteEditedAtMs))
-  runningPasses.set(noteId, pass)
-  try {
-    await pass
-  } finally {
-    if (runningPasses.get(noteId) === pass) runningPasses.delete(noteId)
+    .then(async () => {
+      await runRepairs(noteId)
+      runningTurns.set(noteId, token)
+      try {
+        return await heldTurns.run(held, run)
+      } finally {
+        if (runningTurns.get(noteId) === token) runningTurns.delete(noteId)
+      }
+    })
+  runningPasses.set(noteId, turn)
+  const clear = (): void => {
+    if (runningPasses.get(noteId) === turn) runningPasses.delete(noteId)
   }
+  turn.then(clear, clear)
+  return turn
+}
+
+/**
+ * The turns the running code is inside of, by note, and the turn each note
+ * runs now. A timer armed inside a turn inherits its context after the turn
+ * ended, so only a match with the running turn counts (`insideWritebackTurn`).
+ */
+const heldTurns = new AsyncLocalStorage<ReadonlyMap<string, object>>()
+const runningTurns = new Map<string, object>()
+
+export function insideWritebackTurn(noteId: string): boolean {
+  const token = heldTurns.getStore()?.get(noteId)
+  return token !== undefined && runningTurns.get(noteId) === token
+}
+
+/**
+ * Runs `repair` as soon as the note's running turn ends, ahead of the turns
+ * already queued behind it. A writer that cannot wait for a turn (the sync
+ * apply's frontmatter rewrite) repairs what a pass that read the file before
+ * it wrote back, before a later local edit builds on that file (#5479).
+ * `repair` reports its own failure and must not wait on a pass of the note.
+ */
+export function repairAfterRunningTurn(noteId: string, repair: () => Promise<void>): void {
+  const queued = pendingRepairs.get(noteId)
+  if (queued) queued.push(repair)
+  else pendingRepairs.set(noteId, [repair])
+  void takeWritebackTurn(noteId, async () => {})
+}
+
+/**
+ * Makes a flush wait for `work` after the turns, for up to `HELD_WORK_CAP_MS`.
+ * For a writer's step that must land before a quit but can run outside a turn:
+ * a new journal day's sync enqueue (`writeJournalEntryCreate`). Call it before
+ * the writer starts, so a flush that begins meanwhile finds it. `label` names
+ * the work in the log when a flush stops waiting for it. `work` must not wait
+ * on the CRDT store, since a flush runs while the store can be stuck (#5475).
+ */
+export function holdFlushUntil(work: Promise<unknown>, label: string): void {
+  heldWork.set(work, label)
+  const release = (): void => void heldWork.delete(work)
+  work.then(release, release)
+}
+
+async function runRepairs(noteId: string): Promise<void> {
+  const queued = pendingRepairs.get(noteId)
+  if (!queued) return
+  pendingRepairs.delete(noteId)
+  for (const repair of queued) await repair()
 }
 
 /** Runs a pass and records what it cost, which is what paces the next one. */
@@ -336,11 +343,13 @@ async function runPass(
   noteId: string,
   doc: Y.Doc,
   local: boolean,
-  remoteEditedAtMs: number | undefined
+  remoteEditedAtMs: number | undefined,
+  ownDoc = false
 ): Promise<void> {
   const startedAt = Date.now()
   try {
-    await performWriteback(noteId, resolveWritebackDoc(noteId, doc), local, remoteEditedAtMs)
+    const serialized = ownDoc ? doc : resolveWritebackDoc(noteId, doc)
+    await performWriteback(noteId, serialized, local, remoteEditedAtMs)
     failingWritebacks.delete(noteId)
   } finally {
     const finishedAt = Date.now()
@@ -460,28 +469,66 @@ export async function settleWriteback(noteId: string): Promise<void> {
   )
 }
 
+/**
+ * Before a close destroys the note's doc: waits for the note's running turn,
+ * so a pass that serialized `doc` records its file while `doc` is still the
+ * note's. With `runArmed` (the store does not hold `doc`) it then runs the
+ * armed pass against `doc` itself inside the note's turn: once destroyed,
+ * nothing else writes what the store missed (#5698, `recordDocFile`). A close
+ * inside the note's own turn (a writer's feed closing the doc it opened) runs
+ * the pass in place: waiting for the turn would wait for itself. Never
+ * throws; a failed pass is reported as a timed one is.
+ */
+export async function writeBackBeforeClose(
+  noteId: string,
+  doc: Y.Doc,
+  runArmed: boolean
+): Promise<void> {
+  const pending = runArmed ? pendingTimers.get(noteId) : undefined
+  if (pending) {
+    clearTimeout(pending.timer)
+    pendingTimers.delete(noteId)
+  }
+  const pass = async (): Promise<void> => {
+    if (pending) await runPass(noteId, doc, pending.local, pending.remoteEditedAtMs, true)
+  }
+  const done = insideWritebackTurn(noteId)
+    ? pass()
+    : pending || runningPasses.has(noteId)
+      ? takeWritebackTurn(noteId, pass)
+      : Promise.resolve()
+  await done.catch((err: unknown) => reportWritebackFailure(noteId, err))
+}
+
 export function cancelPendingWritebacks(): void {
   for (const { timer } of pendingTimers.values()) {
     clearTimeout(timer)
   }
   pendingTimers.clear()
+  for (const timer of pendingRetries.values()) clearTimeout(timer)
+  pendingRetries.clear()
   lastWritebackCost.clear()
+}
+
+/** Whether a pass is armed: a debounced one, or a closed note's retry. */
+export function hasArmedWritebacks(): boolean {
+  return pendingTimers.size > 0 || pendingRetries.size > 0
 }
 
 /**
  * Sizes of the module-level maps. Diagnostics only — the growth of these maps
- * is the bug this bookkeeping exists to keep regression-testable, and neither
- * `isWritebackIgnored` nor `wasRecentNetworkUpdate` can distinguish "entry
- * expired" from "entry evicted", so a leak is otherwise unobservable.
+ * is the bug this bookkeeping exists to keep regression-testable, and
+ * `wasRecentNetworkUpdate` cannot distinguish "entry expired" from "entry
+ * evicted", so a leak is otherwise unobservable.
  */
 export function getWritebackStateSizes(): {
-  ignoredWrites: number
+  appWrites: number
   networkUpdates: number
   lastWrittenHashes: number
   debugState: number
 } {
   return {
-    ignoredWrites: ignoredWrites.size,
+    appWrites: appWriteCount(),
     networkUpdates: networkUpdateCount(),
     lastWrittenHashes: lastWrittenHash.size,
     debugState: debugState.size
@@ -494,16 +541,27 @@ export function getWritebackStateSizes(): {
  * ids that no longer exist here — into the next session, and each successive
  * vault would add to it. Called from `CrdtProvider.destroy()`, which is the
  * one point every vault close, vault switch and sync-runtime stop goes through.
+ *
+ * `destroy()` flushes until no pass is armed and drops its docs without an
+ * await in between, so none is armed here. The cancel guards that: left
+ * armed, a pass would fire into whichever vault is open by then, and a journal
+ * day has the same id in every vault.
  */
 export function resetWritebackState(): void {
-  lastWritebackCost.clear()
-  ignoredWrites.clear()
+  if (hasArmedWritebacks()) {
+    log.warn('Vault teardown dropped armed write-backs; their docs are in the CRDT store', {
+      noteIds: [...pendingTimers.keys(), ...pendingRetries.keys()]
+    })
+  }
+  cancelPendingWritebacks()
+  resetAppWrites()
   resetNetworkUpdateState()
   lastWrittenHash.clear()
+  pendingRepairs.clear()
   cancelGenerations.clear()
   debugState.clear()
   failingWritebacks.clear()
-  ignoredWritesSweptAt = 0
+  unplacedCriticMarks.clear()
 }
 
 export async function flushPendingWritebacks(): Promise<void> {
@@ -516,20 +574,34 @@ export async function flushPendingWritebacks(): Promise<void> {
 }
 
 async function flushAll(): Promise<void> {
-  const pending = Array.from(pendingTimers.entries())
-  pendingTimers.clear()
-  for (const [, { timer }] of pending) clearTimeout(timer)
-  // Passes already running are awaited too: one converting on the worker is
-  // seconds from its write, and a quit that skipped it would lose that edit.
-  const running = Array.from(runningPasses.values(), (pass) => pass.catch(() => {}))
-  await Promise.all([
-    ...running,
-    ...pending.map(([noteId, { doc, local, remoteEditedAtMs }]) =>
-      runWriteback(noteId, doc, local, remoteEditedAtMs).catch((err: unknown) => {
-        log.error('Write-back failed during shutdown flush', { noteId, error: err })
-      })
-    )
-  ])
+  // Until none is armed: a keystroke that lands while a pass converts arms
+  // the next one, and a vault close that left it armed would drop it.
+  do {
+    const pending = Array.from(pendingTimers.entries())
+    pendingTimers.clear()
+    for (const [, { timer }] of pending) clearTimeout(timer)
+    const retries = Array.from(pendingRetries.entries())
+    pendingRetries.clear()
+    for (const [, timer] of retries) clearTimeout(timer)
+    // Passes already running are awaited too: one converting on the worker is
+    // seconds from its write, and a quit that skipped it would lose that edit.
+    const running = Array.from(runningPasses.values(), (pass) => pass.catch(() => {}))
+    await Promise.all([
+      ...running,
+      ...pending.map(([noteId, { doc, local, remoteEditedAtMs }]) =>
+        runWriteback(noteId, doc, local, remoteEditedAtMs).catch((err: unknown) => {
+          log.error('Write-back failed during shutdown flush', { noteId, error: err })
+        })
+      ),
+      ...retries.map(([noteId]) => materializeRetry(noteId))
+    ])
+  } while (hasArmedWritebacks())
+  if (heldWork.size === 0) return
+  // Its owner reports a failure; the flush only waits for it.
+  const held = Promise.all(Array.from(heldWork.keys(), (work) => work.catch(() => {})))
+  if (!(await completeWithin(held, HELD_WORK_CAP_MS))) {
+    log.warn('Flush stopped waiting for held work', { held: Array.from(heldWork.values()) })
+  }
 }
 
 /**
@@ -586,6 +658,17 @@ async function performWriteback(
     log.debug('Write-back skipped: no note row', { noteId })
     return
   }
+  // A binary note's file is its downloaded blob, and its row names the blob's
+  // type. The server holds a CRDT body for binary notes too, so a fresh device
+  // settles one into a doc; writing it would put markdown over the image, PDF
+  // or recording and turn the row into a markdown note (#5412). A shipped
+  // build already saved some of these rows as markdown; `isBinaryNoteRow`
+  // reads the path's type too until the index walk repairs the row.
+  if (isBinaryNoteRow(cached)) {
+    updateDebugState(noteId, { pending: false })
+    log.debug('Write-back skipped: binary note', { noteId, fileType: cached.fileType })
+    return
+  }
   // A file linked outside the vault is neither read nor written over (#2804).
   refuseOutsideVaultSync(getVaultRoot(), cached.path)
 
@@ -595,6 +678,9 @@ async function performWriteback(
   // would push it to every other device. Keeping the file costs the user a
   // stale body until a build that knows the type runs; writing costs them the
   // content.
+  const converted = Y.encodeStateVector(doc)
+  // The state the conversion reads, which a file written from it records (`recordDocFile`).
+  const written: SerializedDoc = { doc, state: Y.snapshot(doc) }
   const conversion = await convert(doc, cached.path, async () => {
     const raw = await readVaultFile(getVaultRoot(), cached.path)
     return raw === null ? null : splitFrontmatterBlock(raw).body
@@ -658,10 +744,12 @@ async function performWriteback(
   // doc (`CrdtProvider.takeFileAfterMerge`), never by a pass that may run in
   // the middle of one. The full-state row is owed again so the marker has a
   // flush to resolve it. Not for a doc the take refuses (the two fail-closed
-  // returns above) or a note with no index row the take can read: each flush
-  // would queue the next one.
+  // returns above, and a file shared with a case twin, which the take never
+  // reads: `refusesCaseTwinFile`, #5297) or a note with no index row the take
+  // can read: each flush would queue the next one.
   if (owesFileBody(noteId)) {
-    if (indexed) getCrdtProvider().recordOwedFullState(noteId)
+    if (indexed && !refusesCaseTwinFile(getVaultRoot(), cached.path, noteId))
+      getCrdtProvider().recordOwedFullState(noteId)
     log.debug('Write-back skipped: the note owes its file body', { noteId })
     return
   }
@@ -683,10 +771,12 @@ async function performWriteback(
   }
 
   const modifiedAt = writebackModifiedAt(cached.modifiedAt, local, remoteEditedAtMs)
-  if (isJournalId(noteId)) {
-    await writebackJournal(noteId, doc, body, cached, indexDb, modifiedAt)
-  } else {
-    await writebackExisting(noteId, cached, doc, body, indexDb, isLargeFileBody, modifiedAt)
+  const journal = isJournalId(noteId)
+  const holdsBody = journal
+    ? await writebackJournal(noteId, written, body, cached, indexDb, modifiedAt)
+    : await writebackExisting(noteId, cached, written, body, indexDb, isLargeFileBody, modifiedAt)
+  settleCriticMarks(noteId, doc, body.criticMarks, local && holdsBody)
+  if (!journal) {
     // The reminders a body's date pills derive belong to every device that
     // holds the body, and each derives its own. Only this device's edit may
     // stamp and push them. A row derived from a remote body stays unclocked,
@@ -703,6 +793,46 @@ async function performWriteback(
       log.warn('Failed to sync note_date reminders on write-back', { noteId, err })
     }
   }
+  // A body writer that fed the doc while this pass converted wrote its file
+  // first, and this pass then wrote the older body over it (REVIEW-5465). Doc
+  // updates from the editor or the network arm their own pass; a feed does not.
+  if (!pendingTimers.has(noteId) && !Buffer.from(converted).equals(Y.encodeStateVector(doc))) {
+    scheduleWriteback(noteId, doc, 'local')
+  }
+}
+
+/**
+ * What became of the doc's review marks in the body just written. The doc
+ * takes the marks the pass moved only once the file holds them, and only on
+ * the device whose edit the pass wrote: every other device places the same
+ * marks in its own file and gets the doc's copy from that one, so two devices
+ * do not both rewrite them (critic-mark-anchors.ts).
+ */
+function settleCriticMarks(
+  noteId: string,
+  doc: Y.Doc,
+  marks: NoteBody['criticMarks'],
+  movesDoc: boolean
+): void {
+  if (marks.orphaned.length > 0) {
+    log.warn('Comments whose text was deleted stay as a point where it was', {
+      noteId,
+      markIds: marks.orphaned
+    })
+  }
+  const unplaced = marks.unplaced.join(',')
+  if (unplaced !== (unplacedCriticMarks.get(noteId) ?? '')) {
+    if (unplaced) {
+      unplacedCriticMarks.set(noteId, unplaced)
+      log.warn('Review marks the file cannot hold stay in the doc only', {
+        noteId,
+        markIds: marks.unplaced
+      })
+    } else {
+      unplacedCriticMarks.delete(noteId)
+    }
+  }
+  if (movesDoc) applyCriticMarkMoves(doc, marks.moves)
 }
 
 /**
@@ -763,15 +893,17 @@ function keepVersionBeforeWriteback(
   }
 }
 
+/** Resolves true when the file holds `body` afterwards: written now, or already. */
 async function writebackExisting(
   noteId: string,
   cached: NonNullable<ReturnType<typeof getNoteCacheById>>,
-  doc: Y.Doc,
+  written: SerializedDoc,
   body: NoteBody,
   indexDb: ReturnType<typeof getIndexDatabase>,
   isLargeFileBody: boolean,
   modifiedAt: string
-): Promise<void> {
+): Promise<boolean> {
+  const { doc } = written
   const { markdown } = body
   const relativePath = cached.path
   const absolutePath = toAbsolutePath(relativePath)
@@ -792,15 +924,16 @@ async function writebackExisting(
 
   // No byte change → no write, no mtime churn, no snapshot, no downstream signal
   if (existingRaw !== null && fileContent === existingRaw) {
+    recordUnchangedFile(indexDb, noteId, cached, existingRaw, written, getCrdtProvider())
     log.debug('Write-back is a no-op, skipping', { noteId })
-    return
+    return true
   }
 
   // The file changed under this doc, and the change has not been ingested yet.
   //
-  // `contentHash` is what the index last read off disk, so a mismatch means an
-  // edit made somewhere else — Obsidian, a script, a file another device wrote —
-  // that this doc has never seen. Writing here replaces those bytes with a body
+  // The baseline (`writeback-baseline.ts`) is the bytes this doc holds, so a
+  // mismatch means an edit made somewhere else — Obsidian, a script, a file
+  // another device wrote — that this doc has never seen. Writing here replaces those bytes with a body
   // that predates them, and nothing keeps a copy: the edit is simply gone. It is
   // reachable from an ordinary sequence, too — edit the file while its note is
   // not the one on screen, then open that note, and the doc loaded from
@@ -811,7 +944,8 @@ async function writebackExisting(
   // the next pass writes from a doc that holds them. The watcher runs that
   // ingest for an edit made while the app is open. An edit made while it was
   // closed raises no event, and no launch pass re-reads a file the index
-  // already lists (#2539), so the pass that finds the mismatch runs it here.
+  // already lists (#2539), so the pass that finds the mismatch runs it here,
+  // keeping the body this doc serialized as a version first.
   //
   // A note whose hash was never measured used to be the exception: a tier-0
   // sidebar row, listed from `stat` alone, had nothing to compare and wrote as
@@ -835,56 +969,39 @@ async function writebackExisting(
         noteId,
         path: relativePath
       })
-      return
+      return false
     }
-    const onDisk = cached.contentHash ? generateContentHash(existingRaw) : null
-    if (onDisk !== null && onDisk !== cached.contentHash && parsed) {
-      // A locked note's outside edit is never taken in: its locked text goes
-      // back on disk and the edit is kept as a version (#2606).
-      if (await restoreLockedNoteFile(noteId, existingRaw)) return
-      const ingested = await feedExternalEditToCrdt(
-        noteId,
-        parsed.content,
-        writingFrontmatterOf(parsed.frontmatter)
-      )
-      // The index row moves to the new bytes only once the doc holds them.
-      // Moved first, the next pass would write a doc that never saw them.
-      if (ingested) {
-        syncNoteToCache(
-          indexDb,
-          {
-            id: noteId,
-            path: relativePath,
-            fileContent: existingRaw,
-            frontmatter: parsed.frontmatter,
-            parsedContent: parsed.content,
-            title: cached.title,
-            createdAt: cached.createdAt,
-            modifiedAt: cached.modifiedAt,
-            localOnly: cached.localOnly ?? false,
-            emoji: cached.emoji ?? null
-          },
-          { isNew: false }
-        )
-        void flushProjectionEvents()
-      }
-      log.warn(
-        ingested
-          ? 'Write-back deferred: ingested the file that changed outside the app'
-          : 'Write-back skipped: the file changed outside the app',
-        { noteId, path: relativePath }
-      )
-      return
+    if (
+      parsed &&
+      (await ingestOutsideEditFirst(indexDb, noteId, cached, existingRaw, parsed, {
+        body: markdown,
+        file: fileContent
+      }))
+    ) {
+      return false
     }
   }
 
   if (existingRaw !== null)
     keepVersionBeforeWriteback(noteId, existingRaw, fileContent, cached.title)
 
-  rememberIgnoredWrite(absolutePath)
   // A locked note's doc only ever takes another device's edits (local updates
   // are refused at crdt:apply-update), so its write-back is allowed (#2606).
-  await runWithLockedWritesAllowed(() => atomicWrite(absolutePath, fileContent))
+  await writeDocWithBaseline(
+    indexDb,
+    noteId,
+    fileContent,
+    {
+      write: async () => {
+        const landed = recordAppWrite(absolutePath, fileContent)
+        await runWithLockedWritesAllowed(() => atomicWrite(absolutePath, fileContent))
+        landed()
+      },
+      read: () => readVaultFile(getVaultRoot(), cached.path)
+    },
+    written,
+    getCrdtProvider()
+  )
   lastWrittenHash.set(noteId, generateContentHash(fileContent))
 
   // An attachment rename that arrived in this body (#1714): the file is still
@@ -908,7 +1025,7 @@ async function writebackExisting(
       localOnly: cached.localOnly ?? false,
       emoji: cached.emoji ?? null
     },
-    { isNew: false }
+    { isNew: false, source: 'sync' }
   )
   void flushProjectionEvents()
 
@@ -928,16 +1045,19 @@ async function writebackExisting(
     source: 'sync'
   })
   log.debug('Write-back complete', { noteId })
+  return true
 }
 
+/** Resolves true when the file holds `body` afterwards: written now, or already. */
 async function writebackJournal(
   noteId: string,
-  doc: Y.Doc,
+  written: SerializedDoc,
   body: NoteBody,
   cached: NonNullable<ReturnType<typeof getNoteCacheById>>,
   indexDb: ReturnType<typeof getIndexDatabase>,
   modifiedAt: string
-): Promise<void> {
+): Promise<boolean> {
+  const { doc } = written
   const { markdown } = body
   const date = journalIdToDate(noteId)
 
@@ -961,17 +1081,43 @@ async function writebackJournal(
 
   // No byte change → no write, no mtime churn, no snapshot, no downstream signal
   if (existingRaw !== null && fileContent === existingRaw) {
+    recordUnchangedFile(indexDb, noteId, cached, existingRaw, written, getCrdtProvider())
     log.debug('Journal write-back is a no-op, skipping', { noteId, date })
-    return
+    return true
+  }
+
+  // A journal file edited outside the app is taken in the same way as a note's.
+  if (
+    existingRaw !== null &&
+    parsed &&
+    (await ingestOutsideEditFirst(indexDb, noteId, cached, existingRaw, parsed, {
+      body: markdown,
+      file: fileContent
+    }))
+  ) {
+    return false
   }
 
   if (existingRaw !== null)
     keepVersionBeforeWriteback(noteId, existingRaw, fileContent, cached.title)
 
-  rememberIgnoredWrite(absolutePath)
   // A locked note's doc only ever takes another device's edits (local updates
   // are refused at crdt:apply-update), so its write-back is allowed (#2606).
-  await runWithLockedWritesAllowed(() => atomicWrite(absolutePath, fileContent))
+  await writeDocWithBaseline(
+    indexDb,
+    noteId,
+    fileContent,
+    {
+      write: async () => {
+        const landed = recordAppWrite(absolutePath, fileContent)
+        await runWithLockedWritesAllowed(() => atomicWrite(absolutePath, fileContent))
+        landed()
+      },
+      read: () => readVaultFile(getVaultRoot(), cached.path)
+    },
+    written,
+    getCrdtProvider()
+  )
   lastWrittenHash.set(noteId, generateContentHash(fileContent))
 
   // Journals hold file/image blocks like any other note — see the note path.
@@ -991,155 +1137,46 @@ async function writebackJournal(
       localOnly: cached.localOnly ?? false,
       emoji: cached.emoji ?? null
     },
-    { isNew: false }
+    { isNew: false, source: 'sync' }
   )
   void flushProjectionEvents()
 
   log.debug('Journal write-back complete', { noteId, date })
-}
-
-export async function handleSyncDeletion(noteId: string): Promise<void> {
-  // Ahead of the no-row exit, because the row is exactly what this device may
-  // already have dropped — a note deleted here first, then tombstoned by the
-  // peer. The doc is what nothing else is left pointing at, and a doc that
-  // outlives its note is what the inactive-doc sweep resurrects.
-  await getCrdtProvider().purge(noteId)
-
-  const indexDb = getIndexDatabase()
-  const cached = getNoteCacheById(indexDb, noteId)
-  if (!cached) return
-
-  const absolutePath = toAbsolutePath(cached.path)
-  deleteNoteFromCache(indexDb, noteId)
-  void flushProjectionEvents()
-
-  rememberIgnoredWrite(absolutePath)
-  await deleteFile(absolutePath).catch((err: unknown) => {
-    log.error('Failed to delete synced note file', { noteId, error: err })
-  })
-
-  if (!isJournalId(noteId)) {
-    try {
-      await clearNoteDateReminders(noteId, createRemindersService(getDatabase(), reminderSyncHooks))
-    } catch (err) {
-      log.warn('Failed to clear note_date reminders on sync deletion', { noteId, err })
-    }
-  }
-
-  const channel = isJournalId(noteId)
-    ? JournalChannels.events.ENTRY_DELETED
-    : NotesChannels.events.DELETED
-
-  emitToRenderer(channel, {
-    id: noteId,
-    path: cached.path,
-    date: isJournalId(noteId) ? journalIdToDate(noteId) : undefined,
-    source: 'sync'
-  })
-
-  log.info('Deleted from sync', { noteId })
-}
-
-interface MergedFrontmatter {
-  frontmatter: NoteFrontmatter
-  /** True only when the merge actually altered a frontmatter value */
-  changed: boolean
-}
-
-/**
- * Merge write-back frontmatter: user keys pass through verbatim. No Memry keys
- * are ever injected. `changed` stays false when the CRDT state matches the
- * file, so the raw block survives verbatim.
- *
- * The file owns its `tags:` list: header edits land in the file and sync with
- * the note record. The doc's `tags` array can be stale (a header edit made
- * while the note was closed never reaches its stored doc) or hold body tags (a
- * doc an older build seeded with header and inline tags), so it only seeds the
- * list of a file the write-back creates.
- */
-function mergeFrontmatter(
-  existing: NoteFrontmatter | null,
-  doc: Y.Doc,
-  writing: WritingFrontmatter
-): MergedFrontmatter {
-  const merged: NoteFrontmatter = { ...existing }
-  let changed = mergeWritingFrontmatter(merged, writing)
-  const yjsTags = existing === null ? getYjsTags(doc) : []
-  if (yjsTags.length > 0) {
-    merged.tags = yjsTags
-    changed = true
-  }
-  return { frontmatter: merged, changed }
-}
-
-function mergeJournalFrontmatter(
-  date: string,
-  existing: NoteFrontmatter | null,
-  doc: Y.Doc,
-  writing: WritingFrontmatter
-): MergedFrontmatter {
-  const yjsTags = getYjsTags(doc)
-  const merged: NoteFrontmatter = { ...existing, date }
-  let changed = normalizeDateValue(existing?.date) !== date
-  if (mergeWritingFrontmatter(merged, writing)) changed = true
-  if (yjsTags.length > 0 && !sameTags(existing?.tags, yjsTags)) {
-    merged.tags = yjsTags
-    changed = true
-  }
-  return { frontmatter: merged, changed }
-}
-
-/**
- * The doc's writing tools data onto `frontmatter.writing`; true when that
- * changed it. A `writing` key that is not writing tools data is the author's
- * property and is left alone, at the cost of not writing ours.
- */
-function mergeWritingFrontmatter(
-  frontmatter: NoteFrontmatter,
-  writing: WritingFrontmatter
-): boolean {
-  const current = frontmatter[WRITING_FRONTMATTER_KEY]
-  if (current !== undefined && !isWritingFrontmatterValue(current)) return false
-  const next = toWritingFrontmatterValue(writing)
-  if (isDeepStrictEqual(current, next)) return false
-  if (next === undefined) delete frontmatter[WRITING_FRONTMATTER_KEY]
-  else frontmatter[WRITING_FRONTMATTER_KEY] = next
   return true
 }
 
-function sameTags(existing: unknown, next: string[]): boolean {
-  return (
-    Array.isArray(existing) &&
-    existing.length === next.length &&
-    existing.every((v, i) => String(v) === next[i])
-  )
+/**
+ * A body writer fed the doc and then failed to write the file
+ * (`landBodyEdit`): the next pass writes it. A closed doc is opened for it.
+ */
+function retryWriteback(noteId: string): void {
+  const doc = getCrdtProvider().getDoc(noteId)
+  if (doc) return scheduleWriteback(noteId, doc, 'local')
+  clearTimeout(pendingRetries.get(noteId))
+  const timer = setTimeout(() => {
+    pendingRetries.delete(noteId)
+    void materializeRetry(noteId)
+  }, writebackDelayMs(noteId))
+  pendingRetries.set(noteId, timer)
 }
 
-/** YAML gives `date: 2026-07-05` back as a Date object — compare by day. */
-function normalizeDateValue(value: unknown): string | null {
-  if (value instanceof Date) return value.toISOString().slice(0, 10)
-  if (typeof value === 'string') return value
-  if (value == null) return null
-  if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') {
-    return String(value)
+async function materializeRetry(noteId: string): Promise<void> {
+  try {
+    await getCrdtProvider().materialize(noteId)
+  } catch (err) {
+    reportWritebackFailure(noteId, err)
   }
-  return JSON.stringify(value)
-}
-
-function getYjsTags(doc: Y.Doc): string[] {
-  const tagArray = doc.getArray('tags')
-  const tags: string[] = []
-  for (let i = 0; i < tagArray.length; i++) {
-    const val = tagArray.get(i)
-    if (typeof val === 'string') tags.push(val)
-  }
-  return tags
 }
 
 registerCrdtWritebackPort({
+  ingestOfflineEdit,
+  retryWriteback,
   scheduleWriteback,
   cancelWriteback,
   flushPendingWritebacks,
+  hasArmedWritebacks,
   resetWritebackState,
+  insideWritebackTurn,
+  writeBackBeforeClose,
   writebackNow
 })

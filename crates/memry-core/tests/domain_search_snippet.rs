@@ -13,9 +13,9 @@
 use std::sync::{Arc, Mutex};
 
 use memry_core::crdt::DocumentRegistry;
+use memry_core::crdt::epoch::HeldBody;
 use memry_core::crdt::markdown_seed::seed_document;
 use memry_core::crdt::registry::UpdateSink;
-use memry_core::crdt::update_log::append_server_update;
 use memry_core::domain::search::{self, SearchHit, SnippetSegment};
 use memry_core::storage::migrations::{self, DATA_MIGRATIONS, INDEX_MIGRATIONS};
 use memry_core::storage::repositories::sync_items::{self, InboundRecord};
@@ -61,7 +61,9 @@ fn note(data: &Connection, id: &str, title: &str, markdown: &str) {
         .expect("open the body");
     seed_document(&document, markdown).expect("seed the body");
     for (seq, update) in seen.lock().expect("sink").iter().enumerate() {
-        append_server_update(data, id, seq as i64 + 1, update, NOW).expect("append the body");
+        HeldBody::never_purged(data, id)
+            .and_then(|held| held.append_server_update(seq as i64 + 1, update, NOW))
+            .expect("append the body");
     }
 }
 

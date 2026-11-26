@@ -16,7 +16,8 @@ vi.mock('../sync/crdt-provider', () => ({
     initForNote: mocks.initForNote,
     setNoteLocalOnly: mocks.setNoteLocalOnly,
     purge: mocks.purge,
-    withDocLoaded: mocks.withDocLoaded
+    withDocLoaded: mocks.withDocLoaded,
+    getStateVector: () => null
   })
 }))
 
@@ -24,10 +25,19 @@ vi.mock('../sync/local-mutations', () => ({
   enqueueLocalSyncCreate: mocks.enqueueLocalSyncCreate,
   enqueueLocalSyncDelete: mocks.enqueueLocalSyncDelete,
   enqueueLocalSyncUpdate: mocks.enqueueLocalSyncUpdate,
-  removePendingNoteSyncItems: mocks.removePendingNoteSyncItems
+  removePendingNoteSyncItems: mocks.removePendingNoteSyncItems,
+  sendPendingContentDelete: vi.fn()
 }))
 
-vi.mock('@memry/storage-data', () => ({ updateNoteMetadata: vi.fn() }))
+vi.mock('@memry/storage-data', () => ({
+  updateNoteMetadata: vi.fn(),
+  getNoteMetadataById: vi.fn(() => ({ id: 'row' }))
+}))
+vi.mock('../sync/pending-deletes', () => ({
+  coverPendingContentDeletes: vi.fn(() => []),
+  isSupersededByLiveRow: vi.fn(),
+  listUncoveredContentDeletes: vi.fn(() => [])
+}))
 vi.mock('@main/database/queries/notes', () => ({ updateNoteCache: vi.fn() }))
 vi.mock('../database', () => ({ getDatabase: vi.fn(), getIndexDatabase: vi.fn() }))
 vi.mock('@memry/sync-client/attachment-events', () => ({ attachmentEvents: { emit: vi.fn() } }))

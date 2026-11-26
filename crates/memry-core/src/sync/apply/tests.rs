@@ -2,7 +2,7 @@ use super::record::outcome;
 use super::*;
 use crate::domain::tasks::Inbound;
 use crate::domain::{projects, settings, tasks};
-use crate::storage::repositories::sync_items;
+use crate::storage::repositories::{projectors, sync_items};
 
 #[test]
 fn the_apply_order_ranks_the_four_tiers_and_defaults_to_one() {
@@ -56,7 +56,6 @@ fn a_tombstone_older_than_a_revived_row_is_skipped_and_a_clockless_one_still_app
             apply_page(
                 conn,
                 vec![delete(Some(first.clone()))],
-                vec![],
                 2,
                 None,
                 &crate::crypto::agent_envelope::AtRestKey::default()
@@ -69,7 +68,6 @@ fn a_tombstone_older_than_a_revived_row_is_skipped_and_a_clockless_one_still_app
         let late = apply_page(
             conn,
             vec![delete(Some(first))],
-            vec![],
             4,
             None,
             &crate::crypto::agent_envelope::AtRestKey::default(),
@@ -80,7 +78,6 @@ fn a_tombstone_older_than_a_revived_row_is_skipped_and_a_clockless_one_still_app
         let clockless = apply_page(
             conn,
             vec![delete(None)],
-            vec![],
             5,
             None,
             &crate::crypto::agent_envelope::AtRestKey::default(),
@@ -111,4 +108,282 @@ fn a_merge_outcome_maps_onto_the_pull_vocabulary_without_a_silent_skip() {
             reason: "bad".to_owned(),
         }
     );
+}
+
+// #5433: desktop skips a pulled settings delete (settings-handler.ts
+// applyDelete); the core follows. The row stays live and the queued edit
+// stays queued, clocked or not.
+#[test]
+fn a_pulled_settings_delete_is_skipped_and_keeps_the_queued_edit() {
+    use crate::domain::settings::{self as settings_domain, SETTINGS_ITEM_TYPE};
+    use crate::storage::repositories::projectors::settings::SETTINGS_ITEM_ID;
+    use crate::storage::{open_data, test_support::temp_dir};
+    use crate::sync::clock::clock_of;
+
+    let dir = temp_dir("apply-settings-delete");
+    let db = open_data(&dir.path().join("data.db")).expect("open data.db");
+    let delete = |clock| Pending::Tombstone {
+        item_type: SETTINGS_ITEM_TYPE.to_owned(),
+        item_id: SETTINGS_ITEM_ID.to_owned(),
+        deleted_at: 5,
+        server_cursor: None,
+        clock,
+        body_state_vector: None,
+    };
+    db.call_blocking(|conn| {
+        let live = |conn: &Connection| -> bool {
+            sync_items::load(conn, SETTINGS_ITEM_TYPE, SETTINGS_ITEM_ID)
+                .expect("read")
+                .is_some_and(|row| row.deleted_at.is_none())
+        };
+        let queued = |conn: &Connection| -> i64 {
+            conn.query_row(
+                "SELECT COUNT(*) FROM outbox WHERE item_type = ?1",
+                [SETTINGS_ITEM_TYPE],
+                |row| row.get(0),
+            )
+            .expect("count")
+        };
+        settings_domain::set(conn, "editor.font", "serif".into(), "device-a", 1)?;
+        let clocked = clock_of([("device-b", 9)]);
+        for tombstone in [delete(Some(clocked)), delete(None)] {
+            let totals = apply_page(
+                conn,
+                vec![tombstone],
+                6,
+                None,
+                &crate::crypto::agent_envelope::AtRestKey::default(),
+            )?;
+            assert_eq!((totals.deleted, totals.skipped), (0, 1));
+            assert!(live(conn));
+            assert_eq!(queued(conn), 1);
+        }
+
+        // A later pulled settings record still merges.
+        let record = InboundRecord {
+            item_type: SETTINGS_ITEM_TYPE.to_owned(),
+            item_id: SETTINGS_ITEM_ID.to_owned(),
+            payload_json: r#"{"settings":{"theme":"dark"},"fieldClocks":{"theme":{"device-b":1}}}"#
+                .to_owned(),
+            server_cursor: None,
+            signer_device_id: None,
+            updated_at: 8,
+            deleted_at: None,
+        };
+        let totals = apply_page(
+            conn,
+            vec![Pending::Record(record)],
+            8,
+            None,
+            &crate::crypto::agent_envelope::AtRestKey::default(),
+        )?;
+        assert_eq!((totals.applied, totals.deleted), (1, 0));
+        assert!(live(conn));
+        Ok(())
+    })
+    .expect("settings delete");
+}
+
+// #5433: a settings row an earlier build marked deleted comes back live on the
+// next local edit, as desktop's undeletes on its next edit, so the edit syncs
+// instead of retiring unsent (push/settle.rs `undeletes`).
+#[test]
+fn a_settings_row_an_earlier_build_deleted_revives_on_the_next_edit() {
+    use crate::domain::settings::{self as settings_domain, SETTINGS_ITEM_TYPE};
+    use crate::storage::repositories::projectors::settings::SETTINGS_ITEM_ID;
+    use crate::storage::{open_data, test_support::temp_dir};
+
+    let dir = temp_dir("apply-settings-revive");
+    let db = open_data(&dir.path().join("data.db")).expect("open data.db");
+    db.call_blocking(|conn| {
+        settings_domain::set(conn, "editor.font", "serif".into(), "device-a", 1)?;
+        store::mark_deleted(conn, SETTINGS_ITEM_TYPE, SETTINGS_ITEM_ID, 2, None, 2)?;
+        projectors::delete(conn, SETTINGS_ITEM_TYPE, SETTINGS_ITEM_ID, 2)?;
+
+        settings_domain::set(conn, "editor.font", "mono".into(), "device-a", 3)?;
+        let row = sync_items::load(conn, SETTINGS_ITEM_TYPE, SETTINGS_ITEM_ID)?.expect("row");
+        assert_eq!(row.deleted_at, None);
+        let projected: Option<i64> = conn
+            .query_row(
+                "SELECT deleted_at FROM settings WHERE key = 'font'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(sqlite_failed)?;
+        assert_eq!(projected, None);
+
+        // The pulled-record merge revives it too.
+        store::mark_deleted(conn, SETTINGS_ITEM_TYPE, SETTINGS_ITEM_ID, 4, None, 4)?;
+        let record = InboundRecord {
+            item_type: SETTINGS_ITEM_TYPE.to_owned(),
+            item_id: SETTINGS_ITEM_ID.to_owned(),
+            payload_json: r#"{"settings":{"editor":{"font":"sans"}},"fieldClocks":{"editor.font":{"device-a":2,"device-b":1}}}"#
+                .to_owned(),
+            server_cursor: None,
+            signer_device_id: None,
+            updated_at: 5,
+            deleted_at: None,
+        };
+        let totals = apply_page(
+            conn,
+            vec![Pending::Record(record)],
+            5,
+            None,
+            &crate::crypto::agent_envelope::AtRestKey::default(),
+        )?;
+        assert_eq!(totals.applied, 1);
+        let row = sync_items::load(conn, SETTINGS_ITEM_TYPE, SETTINGS_ITEM_ID)?.expect("row");
+        assert_eq!(row.deleted_at, None);
+        Ok(())
+    })
+    .expect("settings revive");
+}
+
+// REVIEW-5434 #1: the verified re-pull of a settings delete is skipped, and
+// ending the wait clears the row's stale unknown-signer flag. Any other
+// corrupt reason stays: the delete says nothing about the payload.
+#[test]
+fn a_verified_settings_delete_clears_only_an_unknown_signer_flag() {
+    use crate::domain::settings::{self as settings_domain, SETTINGS_ITEM_TYPE};
+    use crate::protocol::account::UNKNOWN_SIGNER;
+    use crate::storage::repositories::projectors::settings::SETTINGS_ITEM_ID;
+    use crate::storage::{open_data, test_support::temp_dir};
+    use crate::sync::unknown_signer;
+
+    let dir = temp_dir("apply-settings-delete-signer");
+    let db = open_data(&dir.path().join("data.db")).expect("open data.db");
+    db.call_blocking(|conn| {
+        settings_domain::set(conn, "editor.font", "serif".into(), "device-a", 1)?;
+        let delete = || Pending::Tombstone {
+            item_type: SETTINGS_ITEM_TYPE.to_owned(),
+            item_id: SETTINGS_ITEM_ID.to_owned(),
+            deleted_at: 5,
+            server_cursor: None,
+            clock: None,
+            body_state_vector: None,
+        };
+        let reason = |conn: &Connection| {
+            sync_items::load(conn, SETTINGS_ITEM_TYPE, SETTINGS_ITEM_ID)
+                .expect("read")
+                .expect("row")
+                .corrupt_reason
+        };
+        let refused = format!("device-new{UNKNOWN_SIGNER}");
+        for (flag, kept) in [(refused.as_str(), None), ("bad schema", Some("bad schema"))] {
+            sync_items::mark_corrupt(conn, SETTINGS_ITEM_TYPE, SETTINGS_ITEM_ID, flag, 2)?;
+            unknown_signer::refused(conn, SETTINGS_ITEM_TYPE, SETTINGS_ITEM_ID)?;
+            unknown_signer::resolve_verified(conn, &[delete()])?;
+            assert_eq!(
+                apply_page(
+                    conn,
+                    vec![delete()],
+                    6,
+                    None,
+                    &crate::crypto::agent_envelope::AtRestKey::default()
+                )?
+                .skipped,
+                1
+            );
+            assert_eq!(reason(conn).as_deref(), kept);
+            assert!(!unknown_signer::holds(
+                conn,
+                SETTINGS_ITEM_TYPE,
+                SETTINGS_ITEM_ID
+            )?);
+        }
+        Ok(())
+    })
+    .expect("settings delete signer");
+}
+
+// REVIEW-5434 #2: an older build applied a settings tombstone before this
+// device ever pulled the item, leaving a deleted metadata-only row. A local
+// edit seeds the empty payload, revives the row and queues the push.
+#[test]
+fn a_settings_edit_over_a_metadata_only_deleted_row_seeds_and_syncs() {
+    use crate::domain::settings::{self as settings_domain, SETTINGS_ITEM_TYPE};
+    use crate::storage::repositories::projectors::settings::SETTINGS_ITEM_ID;
+    use crate::storage::{open_data, test_support::temp_dir};
+
+    let dir = temp_dir("apply-settings-metadata-only");
+    let db = open_data(&dir.path().join("data.db")).expect("open data.db");
+    db.call_blocking(|conn| {
+        store::mark_deleted(conn, SETTINGS_ITEM_TYPE, SETTINGS_ITEM_ID, 2, None, 2)?;
+        settings_domain::set(conn, "editor.font", "mono".into(), "device-a", 3)?;
+        let row = sync_items::load(conn, SETTINGS_ITEM_TYPE, SETTINGS_ITEM_ID)?.expect("row");
+        assert_eq!(row.deleted_at, None);
+        assert_eq!(row.payload_state, sync_items::PAYLOAD_STATE_FULL);
+        let payload: serde_json::Value =
+            serde_json::from_str(&row.payload.expect("payload")).expect("json");
+        assert_eq!(payload["settings"]["editor"]["font"], "mono");
+        let queued: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM outbox WHERE item_type = ?1",
+                [SETTINGS_ITEM_TYPE],
+                |row| row.get(0),
+            )
+            .map_err(sqlite_failed)?;
+        assert_eq!(queued, 1);
+
+        // The hold is recorded once, by the seed. Later edits find the row
+        // live with a payload and leave the re-pull budget where it is.
+        let budget = |conn: &Connection| {
+            crate::sync::first_sync_store::read_meta(
+                conn,
+                "sync.unknown_signer_wait:settings:synced_settings",
+            )
+        };
+        assert_eq!(budget(conn)?.as_deref(), Some("0"));
+        crate::sync::first_sync_store::write_meta(
+            conn,
+            "sync.unknown_signer_wait:settings:synced_settings",
+            "3/7",
+        )?;
+        settings_domain::set(conn, "editor.font", "serif".into(), "device-a", 4)?;
+        assert_eq!(budget(conn)?.as_deref(), Some("3/7"));
+        Ok(())
+    })
+    .expect("settings metadata-only");
+}
+
+// §5.12.2: a `_tombstone` row an older build filed still outranks the typed
+// item that arrives after it, though no current path files one.
+#[test]
+fn an_older_builds_bare_tombstone_outranks_a_later_typed_record() {
+    use crate::crypto::agent_envelope::AtRestKey;
+    use crate::storage::{open_data, test_support::temp_dir};
+
+    let dir = temp_dir("apply-legacy-bare-tombstone");
+    let db = open_data(&dir.path().join("data.db")).expect("open data.db");
+    db.call_blocking(|conn| {
+        conn.execute(
+            "INSERT INTO sync_items (item_type, item_id, payload_state, updated_at, deleted_at)
+             VALUES ('_tombstone', 'work', 'metadata-only', 1, 1)",
+            [],
+        )
+        .map_err(sqlite_failed)?;
+        let record = InboundRecord {
+            item_type: "tag_definition".to_owned(),
+            item_id: "work".to_owned(),
+            payload_json: r#"{"name":"work","color":"blue"}"#.to_owned(),
+            server_cursor: Some(2),
+            signer_device_id: None,
+            updated_at: 2,
+            deleted_at: None,
+        };
+        let totals = apply_page(
+            conn,
+            vec![Pending::Record(record)],
+            3,
+            None,
+            &AtRestKey::default(),
+        )?;
+        // The typed row was never live here, so feat counts its delete as
+        // skipped (S17-5); what matters is that the record is not applied.
+        assert_eq!((totals.applied, totals.deleted, totals.skipped), (0, 0, 1));
+        let row = sync_items::load(conn, "tag_definition", "work")?.expect("the row");
+        assert!(row.deleted_at.is_some(), "the typed row stays deleted");
+        Ok(())
+    })
+    .expect("legacy bare tombstone");
 }

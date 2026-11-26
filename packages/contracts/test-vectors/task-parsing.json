@@ -7495,6 +7495,112 @@
       }
     },
     {
+      "input": "fix #12 and #2024/12 but #2024년 #1st",
+      "now": "2026-01-14T12:00:00",
+      "expected": {
+        "title": "fix #12 and #2024/12 but",
+        "dueDate": null,
+        "dueTime": null,
+        "priority": "none",
+        "projectId": null,
+        "repeat": null,
+        "tags": [
+          "2024년",
+          "1st"
+        ],
+        "noteTitles": [],
+        "spans": [
+          {
+            "start": 25,
+            "end": 31,
+            "kind": "tag"
+          },
+          {
+            "start": 32,
+            "end": 36,
+            "kind": "tag"
+          }
+        ],
+        "hasSpecialSyntax": true
+      }
+    },
+    {
+      "input": "할 일 #퓨리 #привет, #タグ。 #हिन्दी #ภาษาไทย #İş/alt #café",
+      "now": "2026-01-14T12:00:00",
+      "expected": {
+        "title": "할 일 , 。",
+        "dueDate": null,
+        "dueTime": null,
+        "priority": "none",
+        "projectId": null,
+        "repeat": null,
+        "tags": [
+          "퓨리",
+          "привет",
+          "タグ",
+          "हिन्दी",
+          "ภาษาไทย",
+          "İş/alt",
+          "café"
+        ],
+        "noteTitles": [],
+        "spans": [
+          {
+            "start": 4,
+            "end": 7,
+            "kind": "tag"
+          },
+          {
+            "start": 8,
+            "end": 15,
+            "kind": "tag"
+          },
+          {
+            "start": 17,
+            "end": 20,
+            "kind": "tag"
+          },
+          {
+            "start": 22,
+            "end": 29,
+            "kind": "tag"
+          },
+          {
+            "start": 30,
+            "end": 38,
+            "kind": "tag"
+          },
+          {
+            "start": 39,
+            "end": 46,
+            "kind": "tag"
+          },
+          {
+            "start": 47,
+            "end": 52,
+            "kind": "tag"
+          }
+        ],
+        "hasSpecialSyntax": true
+      }
+    },
+    {
+      "input": "日本語#タグ #_x #-y #́a",
+      "now": "2026-01-14T12:00:00",
+      "expected": {
+        "title": "日本語#タグ #_x #-y #́a",
+        "dueDate": null,
+        "dueTime": null,
+        "priority": "none",
+        "projectId": null,
+        "repeat": null,
+        "tags": [],
+        "noteTitles": [],
+        "spans": [],
+        "hasSpecialSyntax": false
+      }
+    },
+    {
       "input": "#first thing",
       "now": "2026-01-14T12:00:00",
       "expected": {

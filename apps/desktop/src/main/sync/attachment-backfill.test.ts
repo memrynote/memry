@@ -1,20 +1,31 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
 import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
+import sodium from 'libsodium-wrappers-sumo'
 import { upsertNoteMetadata } from '@memry/storage-data'
 import { runMigrations } from '../database/migrate'
 import { attachmentEvents } from '@memry/sync-client/attachment-events'
 import { backfillUnsyncedAttachmentsWith, queueEmbeddedVaultFilesWith } from './attachment-backfill'
-import { clearUpload, listPendingUploads, markUploadFailed } from './attachment-outbox'
+import {
+  clearUpload,
+  drainOutboxWith,
+  enqueueUpload,
+  listPendingUploads,
+  markUploadFailed
+} from './attachment-outbox'
+import { noteRevived, settleRevivedNotes } from './note-attachment-revival'
+import { AttachmentSyncService } from './attachments'
+import { generateFileKey } from '../crypto/keys'
 import { recordAttachmentFile, recordedFileOf, referencedVaultFiles } from './attachment-files'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
 describe('attachment backfill', () => {
   let tempDir: string
   let vaultPath: string
+  let dbPath: string
   let sqlite: Database.Database
   let db: DrizzleDb
 
@@ -45,7 +56,7 @@ describe('attachment backfill', () => {
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-backfill-'))
     vaultPath = path.join(tempDir, 'vault')
     fs.mkdirSync(path.join(vaultPath, 'attachments'), { recursive: true })
-    const dbPath = path.join(tempDir, 'data.db')
+    dbPath = path.join(tempDir, 'data.db')
     runMigrations(dbPath)
     sqlite = new Database(dbPath)
     db = drizzle(sqlite) as unknown as DrizzleDb
@@ -468,5 +479,148 @@ describe('attachment backfill', () => {
     fs.rmSync(path.join(vaultPath, 'attachments'), { recursive: true, force: true })
 
     expect(backfillUnsyncedAttachmentsWith({ db, vaultPath })).toEqual({ scanned: 0, queued: 0 })
+  })
+
+  // #5606: the drain dropped a file the uploader refused and remembered
+  // nothing, so the next re-drive's backfill queued it again, every five
+  // minutes, forever. The real uploader runs here, so its own checks decide.
+  describe('files the uploader refuses (#5606)', () => {
+    const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3])
+    let refusals: string[]
+
+    /** Accepts every upload, as the sync server does for a valid session. */
+    const acceptingServer = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      const target = typeof url === 'string' ? url : url instanceof URL ? url.href : url.url
+      const method = init?.method ?? 'GET'
+      const json = (body: unknown): Response =>
+        new Response(JSON.stringify(body), { headers: { 'Content-Type': 'application/json' } })
+      if (method === 'POST' && target.endsWith('/upload/initiate')) {
+        return json({ sessionId: 'session-1', expiresAt: Date.now() + 3600000 })
+      }
+      if (method === 'GET' && target.endsWith('/upload/session-1')) {
+        return json({ sessionId: 'session-1', uploadedChunks: [], chunkCount: 1 })
+      }
+      if (method === 'PUT') return json({ success: true, uploadedChunks: 1 })
+      if (method === 'POST' && target.endsWith('/complete')) return json({ success: true })
+      return new Response(null, { status: 404 })
+    })
+
+    const uploader = (): AttachmentSyncService =>
+      new AttachmentSyncService({
+        getAccessToken: async () => 'token',
+        getVaultKey: async () => generateFileKey(),
+        getSigningKeys: async () => {
+          const { privateKey, publicKey } = sodium.crypto_sign_keypair()
+          return { secretKey: privateKey, publicKey, deviceId: 'device-1' }
+        },
+        getDevicePublicKey: async () => null,
+        getSyncServerUrl: () => 'http://sync.invalid',
+        getVaultPath: () => vaultPath,
+        fetchFn: acceptingServer
+      })
+
+    /** One upload re-drive: the backfill, then the drain. */
+    const redrive = async (): Promise<{ queued: number; uploaded: number; dropped: number }> => {
+      const { queued } = backfillUnsyncedAttachmentsWith({ db, vaultPath })
+      const service = uploader()
+      const { uploaded, dropped } = await drainOutboxWith({
+        db,
+        vaultPath,
+        upload: async (noteId, diskPath) => {
+          try {
+            const result = await service.uploadAttachment(noteId, diskPath)
+            return { attachmentId: result.attachmentId, sha256: result.manifest.checksum }
+          } catch (error) {
+            refusals.push(error instanceof Error ? error.name : String(error))
+            throw error
+          }
+        }
+      })
+      return { queued, uploaded, dropped }
+    }
+
+    beforeEach(async () => {
+      // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is a CJS default-export object and sibling crypto tests mock it as default-only
+      await sodium.ready
+      refusals = []
+      acceptingServer.mockClear()
+    })
+
+    it('never offers an empty file, and offers it once it has bytes', async () => {
+      addNote('note-paste')
+      const pasted = addFile('note-paste', 'abc123-image.png')
+      fs.writeFileSync(pasted, '')
+      const fileNotePath = writeVaultFile('sources/scan.png')
+      fs.writeFileSync(fileNotePath, '')
+      upsertNoteMetadata(db, {
+        id: 'file-note',
+        path: 'sources/scan.png',
+        title: 'scan',
+        fileType: 'image',
+        createdAt: '2026-08-21T00:00:00.000Z',
+        modifiedAt: '2026-08-21T00:00:00.000Z'
+      })
+
+      for (let pass = 0; pass < 3; pass++) {
+        expect(await redrive()).toEqual({ queued: 0, uploaded: 0, dropped: 0 })
+      }
+      expect(refusals).toEqual([])
+
+      fs.writeFileSync(pasted, PNG)
+      fs.writeFileSync(fileNotePath, PNG)
+      expect(await redrive()).toEqual({ queued: 2, uploaded: 2, dropped: 0 })
+    })
+
+    it('offers a media file holding text once, and again only after a write', async () => {
+      addNote('note-text')
+      const textInPng = addFile('note-text', 'def456-photo.png')
+      fs.writeFileSync(textInPng, '# a note body written over the image')
+
+      expect(await redrive()).toEqual({ queued: 1, uploaded: 0, dropped: 1 })
+      expect(await redrive()).toEqual({ queued: 0, uploaded: 0, dropped: 0 })
+      // The refusal is kept in the data DB, so a restart does not forget it.
+      sqlite.close()
+      sqlite = new Database(dbPath)
+      db = drizzle(sqlite) as unknown as DrizzleDb
+      expect(await redrive()).toEqual({ queued: 0, uploaded: 0, dropped: 0 })
+      // One refusal is one upload-failed toast (#5441); it is not repeated.
+      expect(refusals).toEqual(['TextInMediaFileError'])
+
+      fs.writeFileSync(textInPng, PNG)
+      expect(await redrive()).toEqual({ queued: 1, uploaded: 1, dropped: 0 })
+    })
+
+    // A note revived after the server freed its attachment queues the note's
+    // files again (#3054). One the uploader refused would only be refused again.
+    it('a revived note does not queue a file the uploader refused and nobody wrote since', async () => {
+      addNote('note-revived', { attachmentReferences: ['attachment-freed'] })
+      const textInPng = addFile('note-revived', 'ghi789-photo.png')
+      fs.writeFileSync(textInPng, '# a note body written over the image')
+      const image = addFile('note-revived', 'jkl012-chart.png')
+      fs.writeFileSync(image, PNG)
+      // A save queued it, and the drain's real uploader refused it.
+      enqueueUpload(db, 'note-revived', textInPng)
+      const service = uploader()
+      await drainOutboxWith({
+        db,
+        vaultPath,
+        upload: async (noteId, diskPath) => {
+          const result = await service.uploadAttachment(noteId, diskPath)
+          return { attachmentId: result.attachmentId, sha256: result.manifest.checksum }
+        }
+      })
+      expect(listPendingUploads(db)).toEqual([])
+
+      noteRevived('note-revived')
+      await settleRevivedNotes({
+        db,
+        vaultPath,
+        // The server has no manifest left for the note's attachment: it is gone.
+        chunkHashesOf: async () => [],
+        probe: async () => ({ status: 'unsupported' })
+      })
+
+      expect(listPendingUploads(db).map((row) => row.diskPath)).toEqual([image])
+    })
   })
 })

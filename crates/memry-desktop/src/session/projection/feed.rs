@@ -28,7 +28,8 @@ pub fn event(fact: Applied) -> Option<ProjectionEvent> {
         Applied::Indexed { .. }
         | Applied::Vault(_)
         | Applied::JournalFollowed
-        | Applied::OutsideEditKept { .. } => None,
+        | Applied::OutsideEditKept { .. }
+        | Applied::TagsPulled { .. } => None,
     }
 }
 

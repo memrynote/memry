@@ -3,18 +3,19 @@
 //! each answers as Electron answers with no engine: idle, nothing queued, empty lists.
 
 use std::collections::BTreeMap;
-use std::sync::Arc;
 
 use memry_core::api::errors::StorageError;
-use memry_core::seams::secure_store::SecureStore;
+use memry_core::domain::app_settings::SettingsChange;
 use memry_core::sync::hardening::{body_state, history, quarantine};
-use memry_core::sync::{outbox, pause};
+use memry_core::sync::note_body_feed::NOTE_BODY_SYNC_TYPE;
+use memry_core::sync::{outbox, refused_items};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
 use super::result::{SyncNowBlockedReason, TriggerSyncResult};
 use super::status::SyncStatus;
 use crate::session::{OpenVault, Session};
+use crate::settings::{SettingsError, SettingsService};
 use crate::telemetry::Service;
 
 /// `GET_STATUS` with no engine (`sync-core-handlers.ts:205-216`): idle. The keychain and plan
@@ -74,7 +75,8 @@ pub struct ResumeSyncResult {
 }
 
 /// `pause` (`engine.ts:663-668`, `sync-state-manager.ts:139-152`): persisted before the driver
-/// stops, and a change is counted as `setting_changed`.
+/// stops, and a change is counted as `setting_changed`. `wasPaused` is the pause the loop
+/// replaced, so of two concurrent pauses only one reports sync running.
 pub async fn pause(
     session: &Session,
     surface: SyncControlSurface,
@@ -86,9 +88,7 @@ pub async fn pause(
             was_paused: false,
         });
     };
-    let db = supervisor_db(session)?;
-    let was_paused = db.read(pause::read).await?;
-    supervisor.set_paused(true).await?;
+    let was_paused = supervisor.set_paused(true).await?;
     if !was_paused {
         track_pause(telemetry, true, surface);
     }
@@ -98,7 +98,8 @@ pub async fn pause(
     })
 }
 
-/// `resume` (`engine.ts:670-676`): the pause ends and a pass runs; `pendingCount` is the queue.
+/// `resume` (`engine.ts:670-676`): the pause ends and a pass runs; `pendingCount` is the
+/// record rows queued (`queue.ts` `getPendingCount`), note bodies left out.
 pub async fn resume(
     session: &Session,
     surface: SyncControlSurface,
@@ -111,15 +112,14 @@ pub async fn resume(
         });
     };
     let db = supervisor_db(session)?;
-    let was_paused = db.read(pause::read).await?;
-    supervisor.set_paused(false).await?;
+    let was_paused = supervisor.set_paused(false).await?;
     if was_paused {
         track_pause(telemetry, false, surface);
     }
-    let depth = db.read(outbox::depth).await?;
+    let stats = db.read(outbox::record_stats).await?;
     Ok(ResumeSyncResult {
         success: true,
-        pending_count: u32::try_from(depth).unwrap_or(u32::MAX),
+        pending_count: u32::try_from(stats.pending + stats.failed).unwrap_or(u32::MAX),
     })
 }
 
@@ -162,7 +162,8 @@ pub struct SyncHistoryEntry {
     pub item_count: i64,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub direction: Option<String>,
-    /// Parsed JSON, or the stored text when it does not parse (`parseSyncHistoryDetails`).
+    /// Parsed JSON, or the stored text when it does not parse (`parseSyncHistoryDetails`);
+    /// absent for empty text, as Electron's `r.details ? ... : undefined`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub details: Option<Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -207,6 +208,7 @@ pub fn history(
         .map(|row| SyncHistoryEntry {
             details: row
                 .details
+                .filter(|text| !text.is_empty())
                 .map(|text| serde_json::from_str(&text).unwrap_or(Value::String(text))),
             id: row.id,
             kind: row.kind,
@@ -253,8 +255,10 @@ pub struct QuarantinedItemInfo {
     pub permanent: bool,
 }
 
-/// `GET_QUARANTINED_ITEMS`: every live ledger entry, oldest failure first. The ledger is the
-/// vault's, so it reads without a supervisor too.
+/// `GET_QUARANTINED_ITEMS` (`engine.ts:765-769`): every live quarantine entry, oldest failure
+/// first, then the refused-items ledger as Electron lists its schema-invalid ledger
+/// (`schema-invalid-ledger.ts:104-117`, note bodies left out). Both are the vault's, so they read
+/// without a supervisor too.
 pub fn quarantined(
     open: Option<&OpenVault>,
     now_ms: i64,
@@ -262,22 +266,34 @@ pub fn quarantined(
     let Some(open) = open else {
         return Ok(Vec::new());
     };
-    let items = open
-        .vault
-        .db_handle()
-        .read_blocking(move |conn| quarantine::entries(conn, now_ms))?;
-    Ok(items
+    let (items, refused) = open.vault.db_handle().read_blocking(move |conn| {
+        Ok((
+            quarantine::entries(conn, now_ms)?,
+            refused_items::entries_refused_at(conn)?,
+        ))
+    })?;
+    let quarantined = items.into_iter().map(|item| QuarantinedItemInfo {
+        item_id: item.item_id,
+        item_type: item.item_type,
+        signer_device_id: item.signer_device_id,
+        failed_at: item.failed_at,
+        attempt_count: item.attempt_count,
+        last_error: item.last_error,
+        permanent: item.permanent,
+    });
+    let refused = refused
         .into_iter()
-        .map(|item| QuarantinedItemInfo {
+        .filter(|(item, _)| item.item_type != NOTE_BODY_SYNC_TYPE)
+        .map(|(item, refused_at)| QuarantinedItemInfo {
+            last_error: format!("schema_invalid:payload (app {})", item.refused_by_version),
             item_id: item.item_id,
             item_type: item.item_type,
-            signer_device_id: item.signer_device_id,
-            failed_at: item.failed_at,
-            attempt_count: item.attempt_count,
-            last_error: item.last_error,
-            permanent: item.permanent,
-        })
-        .collect())
+            signer_device_id: String::new(),
+            failed_at: refused_at,
+            attempt_count: 1,
+            permanent: false,
+        });
+    Ok(quarantined.chain(refused).collect())
 }
 
 /// Past every gate (`isSyncEligible`): a supervisor runs and its gate said start.
@@ -502,39 +518,23 @@ pub struct UpdateSyncedSettingResult {
     pub error: Option<String>,
 }
 
-/// A synced-settings write failed.
-#[derive(Debug)]
-pub enum SettingsWriteError {
-    Storage(StorageError),
-    Auth(memry_core::api::errors::AuthError),
-}
-
-/// `UPDATE_SYNCED_SETTING` (`settings-sync.ts` `updateField`): one dotted path written and
-/// queued in one transaction, then a push is asked for.
+/// `UPDATE_SYNCED_SETTING` (`settings-sync.ts` `updateField`) through the settings owner: the
+/// device key minted on the first synced write, the value validated, the vault preferences
+/// mirrored; then a push is asked for. `None` is Electron's answer with no settings manager: no
+/// vault open, or this device's key is gone from the keychain.
 pub fn update_synced_setting(
     session: &Session,
-    store: Arc<dyn SecureStore>,
-    field_path: String,
+    settings: &SettingsService,
+    field_path: &str,
     value: Value,
-) -> Result<UpdateSyncedSettingResult, SettingsWriteError> {
-    let Some(open) = session.current() else {
-        return Ok(UpdateSyncedSettingResult {
-            success: false,
-            error: Some("errors:sync.settingsNotInitialized".to_owned()),
-        });
+) -> Result<Option<SettingsChange>, SettingsError> {
+    let change = match settings.write_path(session.current().as_ref(), field_path, value) {
+        Ok(change) => change,
+        Err(SettingsError::NoVault | SettingsError::DeviceIdentityMissing) => return Ok(None),
+        Err(error) => return Err(error),
     };
-    let settings = open
-        .vault
-        .settings(store)
-        .map_err(SettingsWriteError::Auth)?;
-    settings
-        .set(field_path, value.to_string())
-        .map_err(SettingsWriteError::Storage)?;
     if let Some(supervisor) = session.sync_supervisor() {
         supervisor.request_push();
     }
-    Ok(UpdateSyncedSettingResult {
-        success: true,
-        error: None,
-    })
+    Ok(Some(change))
 }

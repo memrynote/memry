@@ -10,6 +10,7 @@ use std::path::Path;
 
 use super::Pass;
 use crate::vault::consumer::{Applied, ChangeSource};
+use crate::vault::fs_atomic::RETRY_DELAYS_MS;
 use crate::vault::note_file::read_note;
 
 const SCOPE: &str = "vault_writeback";
@@ -70,6 +71,7 @@ impl Pass {
             );
         }
         let mut done = Vec::with_capacity(rows.len());
+        let mut refused = 0;
         for (row, _) in rows {
             if stopped() {
                 break;
@@ -91,6 +93,7 @@ impl Pass {
                         Err(error) => {
                             // Still there: a later removal of it is an outside one.
                             self.echo.cancel_removal(&row.path);
+                            refused += 1;
                             Leftover::Failed(format!("the trash refused it: {error}"))
                         }
                     }
@@ -140,6 +143,17 @@ impl Pass {
                 ),
             }
             done.push((row.note_id, leftover));
+        }
+        // Each refusal waited out the OS trash's retries under the rows' lane, and does again on
+        // every open while the trash refuses it: one line per reconcile says what that cost.
+        if refused > 0 {
+            tracing::warn!(
+                scope = SCOPE,
+                count = refused,
+                attempts_each = RETRY_DELAYS_MS.len() + 1,
+                "the trash refused files of deleted notes after its retries; they stay for the \
+                 next open"
+            );
         }
         done
     }

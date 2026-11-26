@@ -185,8 +185,11 @@ pub fn outgoing_links(
 pub(crate) fn live_item(data: &Connection, id: &str) -> Result<Option<Item>, StorageError> {
     let note = data
         .query_row(
-            "SELECT title, COALESCE(modified_at, created_at, 0) FROM notes \
-             WHERE id = ?1 AND deleted_at IS NULL",
+            &format!(
+                "SELECT title, COALESCE(modified_at, created_at, 0) FROM notes \
+                 WHERE id = ?1 AND deleted_at IS NULL AND {}",
+                crate::domain::journal::not_a_journal_day("id")
+            ),
             params![id],
             |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?)),
         )
@@ -240,15 +243,16 @@ pub(crate) fn live_items<'a>(
 ) -> Result<HashMap<String, Source>, StorageError> {
     let ids = id_list(ids)?;
     let mut statement = data
-        .prepare(
+        .prepare(&format!(
             "SELECT n.id, n.title, COALESCE(n.modified_at, n.created_at, 0), 0, f.path \
              FROM notes n LEFT JOIN note_files f ON f.note_id = n.id \
-             WHERE n.deleted_at IS NULL AND n.id IN (SELECT value FROM json_each(?1)) \
+             WHERE n.deleted_at IS NULL AND n.id IN (SELECT value FROM json_each(?1)) AND {} \
              UNION ALL \
              SELECT j.id, j.date, COALESCE(j.modified_at, j.created_at, 0), 1, f.path \
              FROM journal_entries j LEFT JOIN note_files f ON f.note_id = j.id \
              WHERE j.deleted_at IS NULL AND j.id IN (SELECT value FROM json_each(?1))",
-        )
+            crate::domain::journal::not_a_journal_day("n.id")
+        ))
         .map_err(failed)?;
     let found = statement
         .query_map(params![ids], |row| {

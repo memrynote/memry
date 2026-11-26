@@ -222,6 +222,8 @@ interface TestApi<F> {
     (name: string, fn: (fixtures: F) => Promise<void> | void): void
     (condition: boolean, reason?: string): void
   }
+  /** A case known to fail on Tauri for a reason another step owns; reported as pending. */
+  fixme(name: string, fn: (fixtures: F) => Promise<void> | void): void
   slow(): void
   setTimeout(ms: number): void
   use(options: LaunchOptions): void
@@ -254,6 +256,9 @@ function createTest<F>(recipes: Record<string, Recipe>): TestApi<F> {
   api.skip = (first: string | boolean) => {
     if (typeof first === 'string') it.skip(first, () => {})
     else if (first) current?.skip()
+  }
+  api.fixme = (name) => {
+    it.skip(name, () => {})
   }
   api.slow = () => {
     current?.timeout(TEST_TIMEOUT_MS * 3)

@@ -383,6 +383,7 @@ snapshot push so `close-vault` always keeps at least 2s of the shared budget.
 | Agent chat      | `agent_chat_started`, `agent_chat_message_sent`, `ai_action_completed` (turn result + duration)                                                                                                                                  |
 | Sync health     | `sync_enabled`, `sync_run_completed`, `sync_error` (counts/status only, plus the [failure detail](#failure-detail-on-a-failed-request)); see [Sync runs](#sync-runs)                                                             |
 | Auth            | `signin_started`, `signin_succeeded`                                                                                                                                                                                             |
+| Migration       | `migration_started`, `migration_completed`, `migration_failed` — the Tauri build's first launch over an Electron install: duration, vault and deferred counts, the failing check as `errorCode`; never a path                    |
 | Diagnostics     | `app_log_recorded`, `app_error_seen`, `app_launch_phase_completed`, `app_crashed` (see [Crash & Unclean-Shutdown Detection](#crash-unclean-shutdown-detection))                                                                  |
 
 ### Onboarding on Tauri
@@ -745,6 +746,27 @@ Additional events in the same pipeline:
 | `server_log_recorded`             | Structured sync-server diagnostic logs                       |
 | `release_download_count_snapshot` | Daily GitHub Releases download-count pull (not a user event) |
 
+### IP addresses and location
+
+PostHog records the address each event arrives from as `$ip`, and its GeoIP transformation adds
+`$geoip_*` location properties from that address. What they hold depends on who sends the event:
+
+| Events                                                                    | Sender PostHog sees                                                                                   | `$ip`                                                 | GeoIP location                                                                        |
+| ------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Desktop and iOS (`/telemetry/batch`), server business and error events    | The sync-server Worker (`capturePostHogEvents`)                                                       | A Cloudflare Workers egress address, never the user's | Always `US`, the egress address's country, so it says nothing about where the user is |
+| Landing (`posthog-js`, [Landing Site Telemetry](#landing-site-telemetry)) | The visitor's browser, through the `e.memrynote.com` managed proxy, which forwards the client address | The visitor's IP address                              | The visitor's country and city                                                        |
+
+The sync server reads the client address (`CF-Connecting-IP`) only to key rate limits.
+`middleware/rate-limit.ts` falls back to it when a request has no user id, which includes
+`/telemetry/batch`, and the Durable Object counter it names lasts one window (60 seconds for
+telemetry). No route forwards the address to PostHog.
+
+The PostHog project setting **Discard client IP data** (Settings > Project > IP data capture)
+decides whether PostHog stores `$ip`. It is off, so landing events keep the visitor's address.
+With it on, PostHog drops `$ip` after GeoIP and bot detection have read it, so landing country and
+city stay, and desktop location stays `US` either way. posthog-js has no client option for this:
+its `ip` config option does nothing.
+
 ### Batch Validation & Retry
 
 Each `/telemetry/batch` payload is schema-validated on the sync server. A malformed batch is
@@ -810,6 +832,10 @@ Downloads happen on GitHub Releases, where PostHog cannot see them — the landi
 download-click event measures intent, not a download. A daily cron on the sync server
 (`services/release-downloads.ts`, run from the `scheduled` handler at 04:00 UTC) reads
 `GET /repos/memrynote/memry/releases` and emits one `release_download_count_snapshot` event per asset.
+It skips `ort-static-*` and `ort-pod-*` prereleases: they hold the ONNX Runtime archives that CI
+downloads on every memry-ml and iOS build, and their filenames (`...-apple-darwin.tar.zst`,
+`...-windows-msvc.tar.zst`, `pod-archive-onnxruntime-c-*.zip`) would otherwise count CI runs as
+installer or update downloads.
 
 **It is a metric snapshot, not a user event.** One emission per poll per asset, from a fixed
 service `distinct_id` — nobody downloaded anything at the moment it fired. Person and user counts

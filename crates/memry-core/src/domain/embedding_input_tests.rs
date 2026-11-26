@@ -1,4 +1,4 @@
-//! Reproduces `packages/contracts/test-vectors/embedding-input.json`, which Electron's
+//! Reproduces `packages/contracts/test-vectors/embedding-input-electron.json`, which Electron's
 //! `embedding-input.ts` generates (`apps/desktop/scripts/embedding-input-oracle/`).
 
 use super::*;
@@ -7,9 +7,9 @@ use serde_json::Value;
 fn vectors() -> Value {
     let path = concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../../packages/contracts/test-vectors/embedding-input.json"
+        "/../../packages/contracts/test-vectors/embedding-input-electron.json"
     );
-    serde_json::from_str(&std::fs::read_to_string(path).expect("embedding-input.json"))
+    serde_json::from_str(&std::fs::read_to_string(path).expect("embedding-input-electron.json"))
         .expect("json")
 }
 
