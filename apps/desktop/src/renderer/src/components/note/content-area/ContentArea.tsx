@@ -71,6 +71,7 @@ import { BlockDropIndicator, EmptyDocumentDropIndicator } from './block-drop-ind
 import { BodySyncPendingHint } from './body-sync-pending-hint'
 import { RemoteBodyWaitNotice, useRemoteBodyReadOnly } from './remote-body-wait-notice'
 import { getCalloutSlashMenuItem, getCustomCalloutSlashMenuItems } from './callout-block'
+import { convertCurrentBlockOnPick } from './slash-menu-convert'
 import { useCalloutTypes } from './callout-types-store'
 import { getMathSlashMenuItem } from './math-block'
 import { getWhiteboardSlashMenuItem } from './whiteboard-block'
@@ -3666,7 +3667,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                     ...templateItems
                   ]
                   return buildSlashMenuItems({
-                    items: withSecondaryActions(items, [
+                    items: withSecondaryActions(convertCurrentBlockOnPick(editor, items), [
                       {
                         from: 'check_list',
                         to: 'task',

@@ -62,6 +62,7 @@ import { getBlockSelection, getMarqueeSelectedBlocks } from './marquee-block-reg
 import { getCheckboxTaskActions } from './checkbox-task-actions'
 import { useTaskBlockDragData } from './task-block/task-block-drag'
 import type { ReviewSelection } from './types'
+import { TURN_INTO_TARGETS } from './turn-into-targets'
 
 type AnyBlock = { id: string; type: string; props?: Record<string, unknown>; content?: unknown }
 
@@ -97,24 +98,6 @@ const NON_TEXT_BLOCK_TYPES = new Set([
  * accident — see the plan's Move to section.
  */
 const ATTACHMENT_BLOCK_TYPES = new Set(['file', 'image', 'video', 'audio'])
-
-/** Turn-into targets, in menu order. Heading carries its level as a prop. */
-const TURN_INTO_TARGETS: Array<{ key: string; type: string; props?: Record<string, unknown> }> = [
-  { key: 'paragraph', type: 'paragraph' },
-  { key: 'heading1', type: 'heading', props: { level: 1 } },
-  { key: 'heading2', type: 'heading', props: { level: 2 } },
-  { key: 'heading3', type: 'heading', props: { level: 3 } },
-  { key: 'bulletList', type: 'bulletListItem' },
-  { key: 'numberedList', type: 'numberedListItem' },
-  // A checkbox that stays one, and one that becomes a task. `Task` goes through
-  // the editor's own converter after the retype (`checkbox-task-actions.ts`).
-  { key: 'checkbox', type: 'checkListItem', props: { plain: true } },
-  { key: 'task', type: 'checkListItem', props: { plain: false } },
-  { key: 'toggleList', type: 'toggleListItem' },
-  { key: 'quote', type: 'quote' },
-  { key: 'codeBlock', type: 'codeBlock' },
-  { key: 'callout', type: 'callout' }
-]
 
 function useCurrentBlock(): AnyBlock | undefined {
   const editor = useBlockNoteEditor<any, any, any>()
