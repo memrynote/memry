@@ -981,10 +981,11 @@ jobs:
         working-directory: .
         run: node scripts/check-uniffi-not-gated.mjs
 
-  # The nextest suite of the Linux and Windows legs, compiled once per OS. Each of the four test
-  # partitions used to build the whole workspace itself, about 12 of a windows-2022 partition's 32
-  # minutes (run 45763658725), which made that partition the merge queue's critical path. This job
-  # builds the suite into a `cargo nextest archive`, and test-partitions runs it with no compiler.
+  # The nextest suite of the Linux and Windows legs, compiled once per OS. Each test partition used
+  # to build the whole workspace itself, about 12 of a windows-2022 partition's 32 minutes (run
+  # 45763658725), which made that partition the merge queue's critical path. This job builds the
+  # suite into a `cargo nextest archive` (about 1.1 GB on Windows, 5.2 GB on Linux, whose binaries
+  # carry their line tables), and test-partitions runs it with no compile.
   test-archive:
     name: Rust tests build (${{ matrix.os }})
     needs: plan
@@ -1090,7 +1091,7 @@ jobs:
           overwrite: true
           retention-days: 1
 
-  # The nextest suite of the Linux and Windows legs in four slices (nextest deals the tests of every
+  # The nextest suite of the Linux and Windows legs in six slices (nextest deals the tests of every
   # binary round-robin; `count:` dealt per binary and put each one-test binary in partition 1), each
   # run from its OS's archive, with no compile. The checkout is the workspace the tests read their fixtures from, and the archive unpacks
   # into crates/target, the path the build compiled into CARGO_BIN_EXE_*.
@@ -1100,13 +1101,13 @@ jobs:
     # An OS whose archive failed fails at the download; the other OSes still run.
     if: ${{ !cancelled() && needs.test-archive.result != 'skipped' }}
     runs-on: ${{ matrix.os }}
-    # The slowest partition runs about 8 minutes on windows-2022; nextest kills a hung test after 5
+    # A windows-2022 slice runs about 6 minutes; nextest kills a hung test after 5
     # (15 for markdown_depth, crates/.config/nextest.toml).
     timeout-minutes: ${{ matrix.os == 'windows-11-arm' && 45 || 30 }}
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(needs.plan.outputs.partitions || '[{"os":"ubuntu-22.04","part":"tests","partition":"1/4","tests":true},{"os":"ubuntu-22.04","part":"tests","partition":"2/4","tests":true},{"os":"ubuntu-22.04","part":"tests","partition":"3/4","tests":true},{"os":"ubuntu-22.04","part":"tests","partition":"4/4","tests":true}]') }}
+        include: ${{ fromJSON(needs.plan.outputs.partitions || '[{"os":"ubuntu-22.04","part":"tests","partition":"1/6","tests":true},{"os":"ubuntu-22.04","part":"tests","partition":"2/6","tests":true},{"os":"ubuntu-22.04","part":"tests","partition":"3/6","tests":true},{"os":"ubuntu-22.04","part":"tests","partition":"4/6","tests":true},{"os":"ubuntu-22.04","part":"tests","partition":"5/6","tests":true},{"os":"ubuntu-22.04","part":"tests","partition":"6/6","tests":true}]') }}
     defaults:
       run:
         shell: bash

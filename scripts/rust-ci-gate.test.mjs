@@ -319,7 +319,7 @@ describe('Rust CI gate', () => {
         )
         for (const p of parts)
           assert.deepEqual(Object.keys(p).toSorted(), ['os', 'part', 'partition', 'tests'], where)
-        // Every OS with partitions has all four of them and one archive; macOS runs its suite whole.
+        // Every OS with partitions has all six of them and one archive; macOS runs its suite whole.
         // jq's `unique` orders by code point.
         const oses = [...new Set(parts.map((p) => p.os))].toSorted((a, b) => (a < b ? -1 : 1))
         assert.deepEqual(
@@ -331,7 +331,7 @@ describe('Rust CI gate', () => {
           assert.ok(!os.startsWith('macos'), where)
           assert.deepEqual(
             parts.filter((p) => p.os === os).map((p) => p.partition),
-            ['1/4', '2/4', '3/4', '4/4'],
+            ['1/6', '2/6', '3/6', '4/6', '5/6', '6/6'],
             `${where} ${os}`
           )
         }
