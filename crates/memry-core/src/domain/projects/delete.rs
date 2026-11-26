@@ -38,6 +38,22 @@ pub fn delete(
     now_ms: i64,
 ) -> Result<Durable<()>, StorageError> {
     let project = require_live(conn, project_id)?;
+    let note_ids = links::markdown_note_ids(conn, project_id)?;
+    let deleted = delete_leaving_notes(conn, project_id, disposition, device_id, now_ms)?;
+    links::remove_name_from_notes(conn, &note_ids, &project.name, device_id, now_ms)?;
+    Ok(deleted)
+}
+
+/// [`delete`] without the name leaving the linked notes: for a shell that rewrites each note
+/// itself through its own property writer, from the [`super::targets`] it took before.
+pub fn delete_leaving_notes(
+    conn: &Connection,
+    project_id: &str,
+    disposition: TaskDisposition,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<Durable<()>, StorageError> {
+    let project = require_live(conn, project_id)?;
     if project.is_inbox {
         return Err(StorageError::Invalid {
             what: "cannot delete the inbox project".to_owned(),
@@ -51,8 +67,6 @@ pub fn delete(
             })?)
         }
     };
-    let note_ids = links::markdown_note_ids(conn, project_id)?;
-
     for (task_id, status_id) in live_tasks(conn, project_id)? {
         // Re-read: a task write may cascade to subtasks listed after it.
         if !task_is_live(conn, &task_id)? {
@@ -70,14 +84,12 @@ pub fn delete(
         }
     }
 
-    let deleted = outbox::commit(
+    outbox::commit(
         conn,
         &outbox::Change::delete(ITEM_TYPE, project_id),
         now_ms,
         |tx| notes::tombstone_local(tx, ITEM_TYPE, project_id, device_id, now_ms),
-    )?;
-    links::remove_name_from_notes(conn, &note_ids, &project.name, device_id, now_ms)?;
-    Ok(deleted)
+    )
 }
 
 /// Every live task filed under the project, with its status id: parents

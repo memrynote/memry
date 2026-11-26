@@ -43,6 +43,8 @@ import { googleKeepImporter } from '../google-keep/google-keep-importer'
 import { roamImporter } from '../roam/roam-importer'
 import { notePlanImporter, runNotePlanImport } from '../noteplan/noteplan-importer'
 import type { NotePlanTaskDeps } from '../noteplan/noteplan-importer'
+import { raindropImporter, runRaindropImport } from '../raindrop/raindrop-importer'
+import type { ApplyDeps as RaindropDeps } from '../raindrop/raindrop-importer'
 
 interface StoredJournal {
   content: string
@@ -191,6 +193,13 @@ const recordingTaskDeps = (c: VectorCase): NotePlanTaskDeps => ({
   nestedSubtasks: () => c.nestedSubtasks ?? true
 })
 
+/** Raindrop's `saveBookmark`, recorded. */
+const recordingBookmarks: RaindropDeps = {
+  saveBookmark(item) {
+    rec.timeline.push({ op: 'saveBookmark', ...item })
+  }
+}
+
 const SOURCES: {
   source: string
   importer: Importer
@@ -261,6 +270,22 @@ const SOURCES: {
       },
       { name: 'flat-subtasks', sources: ['bare'], nestedSubtasks: false },
       { name: 'no-inbox', sources: ['bare', 'sample/Notes'], inboxProjectId: null }
+    ]
+  },
+  {
+    source: 'raindrop',
+    importer: raindropImporter,
+    // `raindropImporter.run` with the recording deps, and `<now>` as the run's clock: the Rust
+    // sink fills in the import time where the plan falls back to it.
+    run: async (input, ctx) => {
+      ctx.setPhase('importing')
+      ctx.status(IMPORT_STATUS.raindropImporting)
+      await runRaindropImport(input.sourcePaths, recordingBookmarks, ctx, '<now>')
+    },
+    cases: [
+      { name: 'export', sources: ['export.csv'] },
+      { name: 'many', sources: ['edge.csv', 'bad-header.csv', 'empty.csv', 'clean.csv'] },
+      { name: 'preview', sources: ['clean.csv', 'bad-header.csv', 'empty.csv'], preview: true }
     ]
   },
   {

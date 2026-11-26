@@ -1,10 +1,11 @@
 //! The task domain's commands and events, kept out of `registry.rs`'s single list by a
 //! callback: `with_task_commands!(collect_commands![...])` hands `collect_commands!` the list
-//! with these appended, and `with_task_events!` does the same for `collect_events!`.
+//! with these appended, and `with_task_events!` does the same for `collect_events!`. Each hands
+//! its list on to `registry/projects.rs`, which appends the project ones.
 
 macro_rules! with_task_commands {
     ($collect:ident![$($commands:tt)*]) => {
-        $collect![
+        with_project_commands!($collect![
             $($commands)*
             crate::commands::task_writes::tasks_archive::<Wry>,
             crate::commands::task_writes::tasks_bulk_archive::<Wry>,
@@ -37,13 +38,13 @@ macro_rules! with_task_commands {
             crate::commands::task_writes::tasks_unarchive::<Wry>,
             crate::commands::task_writes::tasks_uncomplete::<Wry>,
             crate::commands::tasks::tasks_update::<Wry>,
-        ]
+        ])
     };
 }
 
 macro_rules! with_task_events {
     ($collect:ident![$($events:tt)*]) => {
-        $collect![
+        with_project_events!($collect![
             $($events)*
             crate::events::TaskActivityCreatedEvent,
             crate::events::TaskCompletedEvent,
@@ -51,6 +52,6 @@ macro_rules! with_task_events {
             crate::events::TaskDeletedEvent,
             crate::events::TaskMovedEvent,
             crate::events::TaskUpdatedEvent,
-        ]
+        ])
     };
 }

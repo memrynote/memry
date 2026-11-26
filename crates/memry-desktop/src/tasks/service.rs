@@ -45,6 +45,12 @@ pub enum TaskEvent {
     Moved(String),
     /// `notes:tags-changed`: task tags share the global tag list.
     TagsChanged,
+    /// `tasks:project-created`.
+    ProjectCreated(String),
+    /// `tasks:project-updated`.
+    ProjectUpdated(String),
+    /// `tasks:project-deleted`.
+    ProjectDeleted(String),
 }
 
 /// A task command's answer and the events the shell sends for it, in Electron's order. A
