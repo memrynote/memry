@@ -123,11 +123,16 @@ test('a call carrying outputPath is refused and writes nothing', async ({ page }
   const dir = mkdtempSync(join(tmpdir(), 'memry-export-pdf-'))
   try {
     const out = join(dir, 'planted.pdf')
-    const outcome = await invoke(page, 'notes_export_pdf', {
-      input: { noteId: note.id, outputPath: out }
-    }).then(
-      () => 'resolved',
-      (error: unknown) => `rejected: ${typeof error === 'string' ? error : JSON.stringify(error)}`
+    // Caught in the page: past `page.evaluate` the rejection is a HarnessError without the
+    // command's text.
+    const outcome = await page.evaluate(
+      ([noteId, outputPath]: [string, string]) =>
+        window.__TAURI__.core.invoke('notes_export_pdf', { input: { noteId, outputPath } }).then(
+          () => 'resolved',
+          (error: unknown) =>
+            `rejected: ${typeof error === 'string' ? error : JSON.stringify(error)}`
+        ),
+      [note.id, out]
     )
     expect(outcome).toMatch(/^rejected: .*outputPath/)
     expect(existsSync(out)).toBe(false)
