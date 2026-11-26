@@ -176,7 +176,7 @@ impl FirstSync {
         }
         let now = now_ms();
         let at_rest = self.pull.at_rest_key();
-        let vault_root = self.pull.vault_root();
+        let vault_files = self.pull.vault_files();
         let (counts, feed) = self
             .db
             .call(move |conn| {
@@ -214,7 +214,7 @@ impl FirstSync {
                     gone,
                     now,
                     None,
-                    vault_root.as_deref(),
+                    vault_files.as_ref(),
                     &at_rest,
                     &mut totals,
                 )?;

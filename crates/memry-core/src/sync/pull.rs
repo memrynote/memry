@@ -39,7 +39,6 @@
 //! (chapter 13 §13.2). **This file must not learn an item type's name**: the
 //! one dispatch lives there, so that a route added later cannot forget it.
 
-use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 
@@ -134,8 +133,8 @@ pub struct PullLoop {
     orphans: Arc<OrphanRepair>,
     /// The keys purged tombstones verify under ([`PullLoop::with_signer_keys`]).
     signer_keys: Option<Arc<dyn SignerKeys>>,
-    /// The vault a delete reads a note's file in ([`PullLoop::with_vault_root`]).
-    vault_root: Option<PathBuf>,
+    /// The vault a delete reads a note's file in ([`PullLoop::with_vault_files`]).
+    vault_files: Option<super::delete_keep::VaultFiles>,
 }
 
 impl PullLoop {
@@ -160,7 +159,7 @@ impl PullLoop {
             stale_cursor: None,
             orphans: Arc::default(),
             signer_keys: None,
-            vault_root: None,
+            vault_files: None,
         }
     }
 
@@ -245,14 +244,6 @@ impl PullLoop {
     /// stored plain and pending until `Vault::set_at_rest_key` seals them.
     pub fn with_at_rest_key(mut self, key: AtRestKey) -> Self {
         self.at_rest = key;
-        self
-    }
-
-    /// The vault folder whose files hold the notes' bodies (desktop). A delete
-    /// over a body log that does not replay keeps the note's file text
-    /// instead ([`super::delete_keep`], #5343).
-    pub fn with_vault_root(mut self, root: PathBuf) -> Self {
-        self.vault_root = Some(root);
         self
     }
 

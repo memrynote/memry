@@ -29,9 +29,7 @@ use super::late_writes::{Replaced, holds_across_rename};
 use super::paths::{open_vault_file, resolve_vault_file};
 use crate::shell::file_open::{OpenError, Resolution};
 
-/// Largest note file read into memory. Bigger files are handled by the large-file class and
-/// stream; a read that has to hold one as a string refuses instead of exhausting memory.
-pub const MAX_NOTE_BYTES: u64 = 256 * 1024 * 1024;
+pub use memry_core::domain::note_files::MAX_NOTE_BYTES;
 
 #[derive(Debug, thiserror::Error)]
 pub enum NoteFileError {
