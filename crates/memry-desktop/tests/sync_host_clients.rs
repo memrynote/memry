@@ -58,6 +58,10 @@ const ALLOWED: &[(&str, &str)] = &[
     ),
     ("crates/memry-desktop/src/readwise/client.rs", "readwise.io"),
     (
+        "crates/memry-desktop/src/import/remote.rs",
+        "the image hosts an imported HTML page names: https only, public addresses only (PublicOnly resolver, each redirect rechecked), no credentials",
+    ),
+    (
         "crates/memry-desktop/src/calendar_providers/ics_fetch.rs",
         "user-chosen ICS feed hosts: a conditional GET with no credentials, redirects followed by hand over http(s)",
     ),
