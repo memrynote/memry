@@ -235,6 +235,32 @@ export const MARKDOWN_SEED_CASES: ReadonlyArray<{ name: string; markdown: string
       pins: 'a mermaid fence is a diagram block with its source as plain content'
     },
     {
+      name: 'columns: prose and a non-column div stay markdown',
+      markdown:
+        '# Title\n\n**bold** and a multi-column layout\n\n::: note\nThis is a note\n:::\n\n- item',
+      pins: 'only a line-anchored column region opener changes the whole read; the word or a `:::` div of another class does not'
+    },
+    {
+      name: 'soft break: after a styled, coded or linked run',
+      markdown: '**b**\nfoo\n\n[l](https://e.com)\nfoo\n\n*a*\n`c`\nd\n\n**a**\n[b](https://e.com)',
+      pins: "the line after a run that ends in a soft break loses the parser's leading space, whatever the run's marks"
+    },
+    {
+      name: 'soft break: inside link text',
+      markdown: '[a\nb](https://e.com)\n\n**[a](https://e.com)\n[b](https://e.com)**',
+      pins: 'link text is repaired too, and a run left holding only the artifact is removed'
+    },
+    {
+      name: 'callout: styled first body line',
+      markdown: '> [!note]\n> **b**\n> plain\n\n> `c`\n> [!tip] x',
+      pins: 'a body line after a styled run serializes back to its bytes, so the callout is claimed; a marker on a later line stays a quote'
+    },
+    {
+      name: 'hard break: inside a fence another fence closed',
+      markdown: '```\ncode\n```mermaid\na  \nb',
+      pins: 'a hard-break token that lands in a code block gets its spelling back, never the token'
+    },
+    {
       name: 'line endings: CRLF and CR',
       markdown: '# Title\r\n\r\n| a |\r\n|---|\r\n| 1 |\r\nlast\rline',
       pins: 'CRLF and a lone CR read as LF'

@@ -114,7 +114,9 @@ function refuseUnreproduced(name: string, markdown: string): void {
       /<(?!details[\s>]|\/details>|summary>|\/summary>|!-- file:\{)[A-Za-z/!?]/
     ],
     ['wiki embed', /!\[\[/],
-    ['column region', /multi-column|^:::/im],
+    // `blocks/columns.ts` `readColumnRegion`: an MCM start line, or a
+    // Pandoc `:::` opener naming a columns class.
+    ['column region', /^(?:---|===)\s*(?:start-multi-column|multi-column-start)|^:{3,}.*column/im],
     ['inline token', /\(\((mention|date):/],
     ['task block', /\{task:/],
     ['plain checkbox', /\{check\}/],

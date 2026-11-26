@@ -427,6 +427,26 @@ mod tests {
     }
 
     #[test]
+    fn only_a_column_region_opener_sends_the_document_to_columns() {
+        for opener in [
+            "--- start-multi-column: a1",
+            "=== MULTI-COLUMN-START",
+            "::: columns",
+            ":::: {.two-columns}",
+        ] {
+            let markdown = format!("# T\n\n{opener}\nleft");
+            assert_eq!(document_fallback(&markdown), Some("columns"), "{opener}");
+        }
+        for prose in [
+            "a multi-column layout",
+            "::: note\nbody\n:::",
+            " --- start-multi-column: a1",
+        ] {
+            assert_eq!(document_fallback(prose), None, "{prose}");
+        }
+    }
+
+    #[test]
     fn indented_code_after_a_blank_line_is_fenced() {
         assert_eq!(fence_indented_code("p\n\n    x"), "p\n\n```\nx\n```");
         assert_eq!(fence_indented_code("- a\n\n    x"), "- a\n\n    x");

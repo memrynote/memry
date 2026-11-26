@@ -380,4 +380,23 @@ mod tests {
         let content = inline_content("[a](javascript:x)", &[]).expect("supported");
         assert_eq!(content, vec![plain("a")]);
     }
+
+    /// A paste is planned on the main thread, so a long run of openers no
+    /// closer matches must not cost a scan to the end per opener. At 200k
+    /// characters a quadratic scan takes seconds even in release; a linear
+    /// one stays far under the bound in a debug build.
+    #[test]
+    fn a_long_run_of_unclosed_openers_plans_in_linear_time() {
+        for opener in ["![", "![a](", "[a](x ", "*a ", "**a ", "~~a "] {
+            let text = opener.repeat(200_000 / opener.len());
+            let started = std::time::Instant::now();
+            let plan = super::super::plan(&text);
+            let elapsed = started.elapsed();
+            assert_eq!(plan.blocks.len(), 1, "{opener:?}");
+            assert!(
+                elapsed < std::time::Duration::from_secs(3),
+                "{opener:?} repeated took {elapsed:?}"
+            );
+        }
+    }
 }
