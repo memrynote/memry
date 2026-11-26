@@ -127,7 +127,7 @@ async fn many_documents_ride_one_request_and_each_stores_its_own_watermark() {
     )]);
 
     let outcomes = pusher(&db, transport.clone())
-        .push_batch(&clean(&db, &docs), 1)
+        .push_batch(&clean(&db, &docs))
         .await;
 
     assert_eq!(transport.call_count(), 1);
@@ -164,8 +164,8 @@ async fn a_server_without_the_route_latches_the_single_note_route_for_the_sessio
     ]);
     let pusher = pusher(&db, transport.clone());
 
-    let first = pusher.push_batch(&clean(&db, &docs), 1).await;
-    let second = pusher.push_batch(&clean(&db, &docs), 2).await;
+    let first = pusher.push_batch(&clean(&db, &docs)).await;
+    let second = pusher.push_batch(&clean(&db, &docs)).await;
 
     for (_, outcome) in first.iter().chain(&second) {
         assert!(
@@ -191,7 +191,7 @@ async fn a_document_with_unmerged_remote_state_never_rides_the_batch() {
     )]);
 
     let outcomes = pusher(&db, transport.clone())
-        .push_batch(&clean(&db, &docs), 1)
+        .push_batch(&clean(&db, &docs))
         .await;
 
     assert_eq!(outcomes[0].0, A);
@@ -218,9 +218,7 @@ async fn per_note_rejections_stay_per_note() {
         .to_string(),
     )]);
 
-    let outcomes = pusher(&db, transport)
-        .push_batch(&clean(&db, &docs), 1)
-        .await;
+    let outcomes = pusher(&db, transport).push_batch(&clean(&db, &docs)).await;
 
     // Not covered: the document is owed a pull, so the next push refuses locally.
     assert!(matches!(
