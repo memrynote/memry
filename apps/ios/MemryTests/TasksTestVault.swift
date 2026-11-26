@@ -28,6 +28,7 @@ final class TaskTestKeychain: SecureStore, @unchecked Sendable {
 /// A scratch vault, its task surface and a store over it.
 @MainActor
 struct TasksTestVault {
+    let directory: URL
     let vault: Vault
     let tasks: Tasks
     let store: TasksStore
@@ -43,7 +44,7 @@ struct TasksTestVault {
     }()
 
     init(filler: (any VaultFilling)? = nil) throws {
-        let directory = FileManager.default.temporaryDirectory
+        directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("memry-tasks-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         vault = try Vault.open(vaultId: "vault-test", directory: directory.path)

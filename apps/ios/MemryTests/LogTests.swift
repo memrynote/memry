@@ -54,6 +54,16 @@ struct LogTests {
         #expect(Log.line("pull finished", .milliseconds(32_000)) == "pull finished [ms=32000]")
         #expect(Log.line("push refused", .status(400)) == "push refused [status=400]")
         #expect(Log.line("push refused", .code("api.statusRefused")) == "push refused [code=api.statusRefused]")
+        #expect(Log.line("bodies phase", .metric("p95_ms", 900)) == "bodies phase [p95_ms=900]")
+    }
+
+    @Test("several details render in order in one line")
+    func lineWithSeveralDetails() {
+        let sink = Sink()
+        let log = sink.log()
+        log.notice("bodies phase", .metric("requests", 812), .metric("p50_ms", 140), .status(429))
+        #expect(sink.lines.map { $0.text } == ["bodies phase [requests=812 p50_ms=140 status=429]"])
+        #expect(sink.lines.map { $0.level.rawValue } == [OSLogType.default.rawValue])
     }
 
     @Test("every level reaches the sink as itself")
@@ -120,7 +130,8 @@ struct LogTests {
     func linesAreBareIdentifiers() {
         let allowed = Set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 .=[]_-")
         let details: [LogDetail] = [
-            .code("secureStore.locked"), .count(-1), .milliseconds(0), .status(503)
+            .code("secureStore.locked"), .count(-1), .milliseconds(0), .status(503),
+            .metric("rate_limit_wait_ms", 4_000)
         ]
         for detail in details {
             let line = Log.line("seam reported", detail)

@@ -21,13 +21,20 @@ const captureSendFailure = async (env: AnalyticsEnv | undefined, error: unknown)
   })
 }
 
+/** A file on the email. `content` is base64, as Resend's API takes it. */
+export interface EmailAttachment {
+  filename: string
+  content: string
+}
+
 export const sendEmail = async (
   to: string,
   subject: string,
   html: string,
   apiKey: string,
   replyTo?: string,
-  env?: AnalyticsEnv
+  env?: AnalyticsEnv,
+  attachments?: EmailAttachment[]
 ): Promise<void> => {
   if (!EMAIL_RE.test(to)) {
     throw new AppError(ErrorCodes.VALIDATION_INVALID_EMAIL, `Invalid email address: ${to}`, 400)
@@ -50,7 +57,8 @@ export const sendEmail = async (
         to,
         subject,
         html,
-        ...(replyTo && EMAIL_RE.test(replyTo) ? { reply_to: replyTo } : {})
+        ...(replyTo && EMAIL_RE.test(replyTo) ? { reply_to: replyTo } : {}),
+        ...(attachments?.length ? { attachments } : {})
       })
     })
 

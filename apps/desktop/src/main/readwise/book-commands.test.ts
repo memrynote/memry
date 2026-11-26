@@ -286,7 +286,7 @@ describe('Readwise book commands (D16)', () => {
     it('lists a deleted book with its title and live highlight count, and restores the note once', async () => {
       const source = book(1, { highlights: [...three(), highlight(9, { is_deleted: true })] })
       const noteId = await synced(source)
-      await notes.deleteNote(noteId)
+      await notes.deleteNote(noteId, async (inStep) => inStep?.(() => {}))
       await writer.upsertReadwiseNote(source, planNote(source, OPTIONS) as NotePlan, {
         planOptions: OPTIONS
       })

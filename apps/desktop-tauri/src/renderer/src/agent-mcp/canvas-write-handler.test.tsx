@@ -2,7 +2,11 @@ import { renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AgentMcpCanvasWriteChannel } from '@memry/contracts/agent-mcp-channels'
 
-const mocks = vi.hoisted(() => ({ logError: vi.fn() }))
+const mocks = vi.hoisted(() => ({ logError: vi.fn(), canvasGet: vi.fn(), canvasUpdate: vi.fn() }))
+
+vi.mock('@/services/canvas-service', () => ({
+  canvasService: { get: mocks.canvasGet, update: mocks.canvasUpdate }
+}))
 
 vi.mock('@/lib/logger', () => ({
   createLogger: () => ({ error: mocks.logError })
@@ -60,8 +64,8 @@ describe('useAgentMcpCanvasWriteResponder', () => {
   beforeEach(() => {
     onMainInvokeCallback = undefined
     respondToMainInvoke = vi.fn()
-    canvasGet = vi.fn()
-    canvasUpdate = vi.fn()
+    canvasGet = mocks.canvasGet.mockReset()
+    canvasUpdate = mocks.canvasUpdate.mockReset()
     notesGet = vi.fn().mockResolvedValue({ id: 'n1', content: 'hello' })
     mocks.logError.mockReset()
     unregisterLiveCanvas('c1')
@@ -71,7 +75,6 @@ describe('useAgentMcpCanvasWriteResponder', () => {
         return vi.fn()
       }),
       respondToMainInvoke,
-      canvas: { get: canvasGet, update: canvasUpdate },
       notes: { get: notesGet }
     }
   })

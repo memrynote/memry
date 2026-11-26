@@ -16,7 +16,7 @@ use tokio::time::Instant;
 
 use super::backend::{SyncBackend, SyncPasses};
 use super::error_category::SyncErrorCategory;
-use super::events::OnSyncEvent;
+use super::events::{OnSyncEvent, ProgressEvents};
 use super::gate::{self, AuthFacts, Entitlement, GateDecision, SyncStartGate};
 use super::realtime::SocketEnd;
 use super::result::{SyncNowBlockedReason as Blocked, TriggerSyncResult};
@@ -341,6 +341,7 @@ impl Loop {
     fn reevaluate_with(&mut self, facts: AuthFacts) {
         let inputs = self.gate.inputs(facts);
         let decision = gate::evaluate(&inputs);
+        self.signals.decide(&inputs, facts.keychain_unavailable);
         let was = std::mem::replace(&mut self.decision, decision);
         // The keychain only holds sync back when everything else would start it
         // (`runtime.ts:982`); otherwise the gate's own status shows.
@@ -435,6 +436,7 @@ impl Loop {
             Arc::clone(&self.backend),
             self.db.clone(),
             self.pause.subscribe(),
+            Arc::new(ProgressEvents(Arc::clone(&self.on_event))),
         );
         let mut stopping = self.stopping.clone();
         self.running = Some(tokio::spawn(async move {

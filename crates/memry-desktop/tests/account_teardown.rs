@@ -7,6 +7,7 @@ use std::time::Duration;
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use memry_core::api::auth::AuthState;
+use memry_core::crypto::agent_envelope::Purpose;
 use memry_core::crypto::keys;
 use memry_core::seams::reachability::{Reachability, ReachabilityObserver, Reachable};
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
@@ -140,6 +141,33 @@ async fn sign_out_deletes_the_five_secrets_and_empties_sync_and_keeps_the_queue(
     assert_eq!(count(&s.open, "outbox"), 2, "queued edits stay");
     assert_eq!(count(&s.open, "sync_history"), 0);
     assert!(s.open.vault.account_binding().unwrap().is_some());
+}
+
+/// Sign-out takes the at-rest key from the open vault while the agent still holds it
+/// (REVIEW-4884 item 5).
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn probe_sign_out_clears_the_key_an_agent_holds() {
+    let s = signed_in();
+    s.script.answer(200, json!({}));
+    let agent = s
+        .account
+        .at_rest_keys()
+        .acquire(&s.open.vault)
+        .expect("the agent's hold");
+    assert!(sealable(&s.open));
+
+    s.account.sign_out(&s.session).await.unwrap();
+
+    assert!(!sealable(&s.open), "the key outlived the sign-out");
+    drop(agent);
+    assert!(!sealable(&s.open));
+}
+
+fn sealable(open: &OpenVault) -> bool {
+    open.vault
+        .at_rest_key()
+        .seal(Purpose::MessageContent, "x")
+        .is_ok()
 }
 
 /// A keychain that refuses some deletes still signs out (`teardownSession` signs out whatever
@@ -317,6 +345,7 @@ async fn an_unknown_binding_is_checked_again_after_a_minute_and_reported_once() 
         bindings: Arc::new(OpenVaultBinding::default()),
         on_binding: Arc::new(move |state| seen.lock().unwrap().push(state.clone())),
         on_vault_list_changed: Arc::new(|| {}),
+        tier: None,
         on_gate: Arc::new(|_| {}),
     });
     let start = tokio::time::Instant::now();

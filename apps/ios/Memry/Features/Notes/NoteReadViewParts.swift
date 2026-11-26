@@ -71,6 +71,10 @@ struct NoteBodyView: View {
             // shown and the gap is said beside it rather than instead of it.
             NoteTextPreview(text: text)
             NoteFetchState(fetch: fetch, download: download)
+        case .notPulled where fetch == .fetching:
+            // Opening the note asked for its text, which is a load and not a
+            // gap: a first sync still running, or a body outside its window.
+            NoteFetchState(fetch: fetch, download: download)
         case .notPulled:
             // The note is here. Its body is not, and that is neither an empty
             // note nor a failure — nothing went wrong, it is simply outside
@@ -108,13 +112,14 @@ struct NoteTextPreview: View {
     let text: String
 
     var body: some View {
+        let shown = Self.shown(text)
         VStack(alignment: .leading, spacing: Tokens.Space.medium) {
-            Text(text)
+            Text(shown)
                 .font(Tokens.Typography.body.font)
                 .foregroundStyle(Tokens.Text.primary.color)
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            Text(Self.caption)
+            Text(shown.endIndex < text.endIndex ? Self.caption + " " + Self.shortened : Self.caption)
                 .font(Tokens.Typography.supporting.font)
                 .foregroundStyle(Tokens.Text.secondary.color)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -123,6 +128,18 @@ struct NoteTextPreview: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(Tokens.Space.inset)
         .blockSurface()
+    }
+
+    /// The most characters one `Text` draws. Laying out a whole large
+    /// note's text in one `Text` held the main thread for minutes (#5507).
+    static let limit = 10_000
+
+    static let shortened = "Only the start of this note is shown."
+
+    /// Walks at most `limit` characters: counting a whole large body on
+    /// every redraw is the cost the cap is there to avoid.
+    static func shown(_ text: String) -> Substring {
+        text.prefix(limit)
     }
 
     /// True of every note this view can show text for, and of no other screen
@@ -203,4 +220,65 @@ struct NoteFetchState: View {
         Part of this note's text could not be opened on this \(ThisDevice.noun). \
         Nothing was lost, and Memry carries on from where it stopped.
         """
+}
+
+/// Reads the note on open, reports the open once, fetches the attachments
+/// still waiting, and re-reads after each sync pass. Split from
+/// `NoteReadView`.
+struct NotePageLoad: ViewModifier {
+    let model: NoteReadViewModel
+    /// This page's own writes, which it has drawn already.
+    let source: UUID
+    @State private var reportedOpen = false
+    @Environment(\.vaultSyncPasses) private var vaultSyncPasses
+    @Environment(\.firstSyncLanded) private var firstSyncLanded
+
+    func body(content: Content) -> some View {
+        content
+            // The open: the local read and walk, then the report and the
+            // waiting pictures, with no network round trip before them. A sync
+            // pass joins the read instead of restarting it (#5247).
+            .task {
+                await model.open()
+                reportOpen()
+                // After the body and its bindings are on screen, not before: the
+                // placeholders are what FR-045 asks to be visible first, and a
+                // fetch that finished early would still only re-render them.
+                await model.fetchWaitingAttachments()
+            }
+            // On open and after each sync pass: another device's edits reach this
+            // page only through a body pull and a re-read, which can bind
+            // pictures still to fetch.
+            .task(id: vaultSyncPasses) {
+                guard await model.refreshFromRemote() else { return }
+                reportOpen()
+                await model.fetchWaitingAttachments()
+            }
+            // Opened, or restored at launch, before the first sync brought
+            // its record in (`VaultFillView`): read again as records land.
+            .onChange(of: firstSyncLanded) {
+                guard case .missing = model.phase else { return }
+                Task {
+                    await model.reload()
+                    await model.refreshFromRemote()
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: NoteReadViewModel.titleSaved)) { note in
+                guard note.object as? String == model.route.id else { return }
+                Task { await model.reload() }
+            }
+            // Another page on this note wrote its body (#4377: a second pane).
+            .onReceive(NotificationCenter.default.publisher(for: AnnouncedEdits.bodyChanged)) { note in
+                guard note.object as? String == model.route.id,
+                      note.userInfo?[AnnouncedEdits.sourceKey] as? UUID != source
+                else { return }
+                Task { await model.reload() }
+            }
+    }
+
+    private func reportOpen() {
+        guard !reportedOpen, case .ready = model.phase else { return }
+        reportedOpen = true
+        Telemetry.shared.track(.noteOpened, surface: .notes, action: "opened", objectType: "note", result: .success)
+    }
 }

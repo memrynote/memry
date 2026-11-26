@@ -198,6 +198,42 @@ enum WikiLinkText {
         }
     }
 
+    /// A typed link as its commit writes it: the literal, starting `start`
+    /// core bytes into the pane's text.
+    struct Typed: Equatable {
+        let start: Int
+        let literal: String
+        let target: String
+        let alias: String
+    }
+
+    /// Where each literal starts in `live`, the block's text as the core
+    /// holds it after the write, in core bytes; `nil` for one it no longer
+    /// holds. Each `start` is in the written text, `typedLength` bytes.
+    /// Another pane's edit before a literal moves it by the length
+    /// difference, and one after it moves it not at all, so of several
+    /// copies of a literal the one nearest either place is the typed one.
+    /// Literals come in order and stay in order.
+    static func locate(_ links: [(start: Int, literal: String)], in live: String, typedLength: Int) -> [Int?] {
+        let bytes = Array(live.utf8)
+        let shift = bytes.count - typedLength
+        var from = 0
+        return links.map { link in
+            let needle = Array(link.literal.utf8)
+            var best: (start: Int, distance: Int)?
+            var index = from
+            while index + needle.count <= bytes.count {
+                if bytes[index ..< index + needle.count].elementsEqual(needle) {
+                    let distance = min(abs(index - link.start), abs(index - link.start - shift))
+                    if distance < best?.distance ?? .max { best = (index, distance) }
+                }
+                index += 1
+            }
+            if let best { from = best.start + needle.count }
+            return best?.start
+        }
+    }
+
     /// `search|alias`, desktop's `parseWikiLinkQuery` without headings.
     static func parseQuery(_ query: String) -> (search: String, alias: String) {
         let parts = query.split(separator: "|", maxSplits: 1, omittingEmptySubsequences: false)

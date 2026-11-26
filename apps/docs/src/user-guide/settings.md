@@ -38,6 +38,19 @@ On the free plan sync stays local-only, so the status shows **Local only** and t
 toggle for an upgrade card with an **Unlock Sync** button that opens the plan picker in your
 browser.
 
+**Auto-download attachments** is on by default: images, PDFs and other files from your other devices
+download in the background as notes sync. Turn it off to save disk space and bandwidth. Then a file
+downloads only when you open the note that holds it, or the file itself. The note shows
+**Downloading this note's files…** while it waits. If a download fails, the note says why and
+offers **Try again**. A file page shows the error with a retry button. Sync must be running for a
+file to download. A note or file you open before sync runs, such as one restored at launch, downloads
+its files on its own once sync starts. An open note also downloads a file that sync adds to it.
+A file the sync server does not have yet is checked again when you open it the
+next day, and a file the server no longer has shows that message with no retry button. To get
+such a file back, add it again from a device that still has it.
+Known limits: while the device is offline the message stays until it is back online,
+and opening a journal day does not download its files.
+
 When some notes have changes the server has not stored yet, the group adds **Notes with unsent
 changes**. Expand it to see each note, why it is listed (**Text**, **Details**, **File not merged
 yet**, or **Refused by the server**) and how long its changes have waited. See
@@ -49,7 +62,7 @@ Shows the current sync plan, activation state, storage limit, max file size, syn
 version-history window. **Upgrade** (labelled **Unlock Sync** on the free plan) opens the plan
 picker at `memrynote.com/account/sync` in your browser — no separate web login needed — where you
 choose a plan (Plus, Pro, or Believer) and billing frequency (monthly or yearly) before continuing
-to Paddle checkout. When the payment goes through, the success page's **Open Memry** link
+to Paddle checkout. When the payment goes through, the success page's **Open Memrynote** link
 (`memry://billing/complete`) brings Memry to the front on Settings > Account; Memry checks the plan
 with the sync server and starts sync without a restart. **Refresh status** asks the sync server to reconcile the latest Paddle transaction, and
 **Manage billing** opens Paddle's hosted customer portal when the account has a Paddle customer id.
@@ -228,6 +241,26 @@ dialog lists exactly what is sent so nothing is collected out of sight:
   account on the server rather than sent by the app; signed-out feedback carries no plan.
 
 Note content, titles, tags and file paths are never included.
+
+The team's email also shows the account email and user id (read from your sign-in on the server,
+not sent by the app), and the time the feedback arrived, in UTC.
+
+### On iPhone and iPad
+
+The iPhone app sends feedback through the same form. Open **Settings → General → Send feedback**
+or **Settings → About → Send feedback**. While a vault is setting up for the first time, the
+**Send feedback** button under the progress bar opens the same form.
+
+On top of what the desktop dialog sends, the iPhone form adds the app build number, the iOS version
+and the device model (such as `iPhone17,3`), and offers one more item:
+
+- **Diagnostic logs**, only when you turn on **Attach diagnostic logs**. It is off every time the
+  form opens. **Preview logs** shows the exact text that would be attached. The log is the app's
+  own record of what it did over recent launches: event names, counts, durations, HTTP status
+  codes and error codes. It never holds note text, titles, keys, tokens or your recovery phrase,
+  because the app's logger only accepts fixed messages and numbers. The phone keeps at most about
+  400 KB of it and drops the oldest lines first. The logs arrive as a text file attached to the
+  team's email.
 
 ---
 

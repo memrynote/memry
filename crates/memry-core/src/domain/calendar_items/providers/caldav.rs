@@ -5,15 +5,12 @@
 //! its instances keyed `<href>` or `<href>::<recurrence-id>`), with objects
 //! Memry wrote flowing back into their items instead.
 
-use std::collections::HashMap;
-
 use rusqlite::Connection;
 use serde_json::{Map, Value, json};
 use sha2::{Digest, Sha256};
 
+use super::CALDAV;
 use super::bindings;
-use super::{CALDAV, Target};
-use crate::api::calendar_records::CalendarZone;
 use crate::api::errors::StorageError;
 use crate::domain::calendar_items::ical::{
     IcalInstance, IcalWindow, IcalZones, expand_calendar_events, parse::parse_calendar,
@@ -25,7 +22,7 @@ use crate::domain::calendar_items::zone::LocalZone;
 use crate::domain::calendar_items::{EXTERNAL_TYPE, SOURCE_TYPE};
 use crate::domain::notes::{failed, insert_local, iso, next_clock, tombstone_local};
 use crate::domain::recreate::write_over_tombstone;
-use crate::storage::repositories::instants;
+use crate::storage::nested_tx;
 use crate::storage::repositories::{Change, sync_items};
 use crate::sync::outbox;
 
@@ -150,7 +147,7 @@ pub fn connect(
     let username = input.username.trim().to_owned();
     let account = account_id(&input.server_url, &username);
     let at = iso(now_ms)?;
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     upsert_source(
         &tx,
         &account_source_id(&account),
@@ -265,7 +262,7 @@ pub fn disconnect(
     device_id: &str,
     now_ms: i64,
 ) -> Result<(), StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let mut sources = account_calendars(&tx, account)?;
     sources.push((account_source_id(account), String::new()));
     archive(&tx, &sources, device_id, now_ms)?;
@@ -446,69 +443,43 @@ pub fn apply_pull(
         };
         // Objects a Memry item is bound to flow back into that item; only the
         // unbound rest of a series mirrors (`applyBoundCaldavObject`).
-        let bound = bindings::for_object(conn, calendar_url, &object.href)?;
-        let mut whole = false;
-        let mut handled: Vec<&str> = Vec::new();
-        for (target, binding) in &bound {
-            handled.push(&binding.remote_event_id);
-            whole |= binding.remote_event_id == object.href;
-            // Our own write, read back.
-            if binding.remote_version.is_some() && binding.remote_version == object.etag {
-                continue;
-            }
-            let (_, rid) = bindings::caldav_parts(&binding.remote_event_id);
-            let instance = instances
-                .iter()
-                .find(|i| i.remote_event_id == binding.remote_event_id)
-                .or_else(|| rid.is_none().then(|| instances.first()).flatten());
-            match instance {
-                Some(instance) => write_back(
-                    conn,
-                    target,
-                    binding,
-                    calendar_url,
-                    object,
-                    instance,
-                    device_zone,
-                    zone_id,
-                    &zones.named,
-                    device_id,
-                    now_ms,
-                )?,
-                // An occurrence the series no longer produces (EXDATE, a
-                // cancelled override) inside the window is gone; one outside
-                // it is left for a later pull.
-                None => {
-                    let inside = rid
-                        .and_then(instants::to_epoch_ms)
-                        .is_some_and(|ms| ms >= window.start_ms && ms < window.end_ms);
-                    if !inside {
-                        continue;
-                    }
-                    super::apply_remote_delete(conn, target, &binding.id, device_id, now_ms)?;
-                }
-            }
-            changed += 1;
-        }
-        if whole {
+        let bound = super::caldav_bound::apply(
+            conn,
+            calendar_url,
+            object,
+            &root,
+            &instances,
+            window,
+            zones,
+            device_zone,
+            zone_id,
+            device_id,
+            now_ms,
+        )?;
+        changed += bound.changed;
+        if bound.whole {
             continue;
         }
         let instances: Vec<IcalInstance> = instances
             .into_iter()
-            .filter(|i| !handled.contains(&i.remote_event_id.as_str()))
+            .filter(|i| !bound.handled.contains(&i.remote_event_id))
             .collect();
-        let tx = conn.unchecked_transaction().map_err(failed)?;
+        let tx = nested_tx::begin(conn).map_err(failed)?;
         changed += replace_object(&tx, source_id, object, &instances, device_id, now_ms)?;
         tx.commit().map_err(failed)?;
     }
-    // A bound object deleted on the server deletes (or unschedules) its item.
+    // A bound object deleted on the server deletes (or unschedules) its item, as Electron does
+    // even over a local edit not sent yet (`applyBoundCaldavObject`); the source's sync state
+    // then shows `error`, so the dropped edit is not silent.
+    let mut dropped = false;
     for href in &pull.removed {
         for (target, binding) in bindings::for_object(conn, calendar_url, href)? {
+            dropped |= super::caldav_bound::queued(conn, &target)?;
             super::apply_remote_delete(conn, &target, &binding.id, device_id, now_ms)?;
             changed += 1;
         }
     }
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let window_start = crate::domain::calendar_items::projection::iso(window.start_ms);
     let stale: Vec<String> = object_rows(&tx, source_id)?
         .into_iter()
@@ -528,43 +499,11 @@ pub fn apply_pull(
         conn,
         source_id,
         pull.cursor.as_deref(),
-        "ok",
+        if dropped { "error" } else { "ok" },
         device_id,
         now_ms,
     )?;
     Ok(changed)
-}
-
-#[allow(clippy::too_many_arguments)]
-fn write_back(
-    conn: &Connection,
-    target: &Target,
-    binding: &bindings::Binding,
-    calendar_url: &str,
-    object: &Object,
-    instance: &IcalInstance,
-    zone: &dyn LocalZone,
-    zone_id: &str,
-    named: &HashMap<String, CalendarZone>,
-    device_id: &str,
-    now_ms: i64,
-) -> Result<(), StorageError> {
-    let remote = json!({
-        "title": instance.title, "description": instance.description, "location": instance.location,
-        "startAt": instance.start_at, "endAt": instance.end_at, "timezone": instance.timezone,
-        "isAllDay": instance.is_all_day,
-    });
-    super::google::apply_remote_fields(conn, target, &remote, zone, device_id, now_ms)?;
-    if let Some(mut input) = super::upsert_input(conn, target, zone, zone_id, named)? {
-        input["caldavRaw"] = json!(object.data);
-        let written = bindings::Written {
-            calendar_id: calendar_url.to_owned(),
-            event_id: binding.remote_event_id.clone(),
-            etag: object.etag.clone(),
-        };
-        bindings::record_push(conn, CALDAV, target, &written, input, device_id, now_ms)?;
-    }
-    super::dequeue(conn, target)
 }
 
 #[cfg(test)]

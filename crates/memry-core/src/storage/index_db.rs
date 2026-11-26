@@ -33,7 +33,9 @@
 //! two builds alternating would otherwise wipe it each time. Only the newest of
 //! each kind is kept.
 
-use std::path::Path;
+use std::ffi::OsString;
+use std::fs;
+use std::path::{Path, PathBuf};
 
 use crate::api::errors::StorageError;
 use crate::storage::connection::{Db, Profile};
@@ -249,6 +251,33 @@ fn build(path: &Path) -> Result<Db, StorageError> {
         Ok(())
     })?;
     Ok(db)
+}
+
+/// Removes the database and its `-wal` and `-shm` sidecars. A path that is
+/// already absent is not an error.
+pub(super) fn delete(path: &Path) -> Result<(), StorageError> {
+    for target in [
+        path.to_path_buf(),
+        sidecar(path, "-wal"),
+        sidecar(path, "-shm"),
+    ] {
+        match fs::remove_file(&target) {
+            Ok(()) => {}
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
+            Err(err) => {
+                return Err(StorageError::Failed {
+                    what: format!("could not delete {}: {err}", target.display()),
+                });
+            }
+        }
+    }
+    Ok(())
+}
+
+fn sidecar(path: &Path, suffix: &str) -> PathBuf {
+    let mut name = OsString::from(path.as_os_str());
+    name.push(suffix);
+    PathBuf::from(name)
 }
 
 #[cfg(test)]

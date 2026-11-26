@@ -110,6 +110,7 @@ struct CalendarTimeGrid: View {
                 chip(lane, width: width)
             }
         }
+        .modifier(TaskDayDropTarget(day: day))
     }
 
     private func chip(_ lane: CalendarLayout.Lane<CalendarItem>, width: CGFloat) -> some View {

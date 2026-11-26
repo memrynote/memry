@@ -23,6 +23,7 @@ import { syncNoteToCache, deleteNoteFromCache } from '../../vault/note-sync'
 import { getCrdtProvider } from '../crdt-provider'
 import { deleteSyncedVaultFile, writeSyncedVaultFile } from '../bulk-apply'
 import { flushProjectionEvents } from '../../projections'
+import { baselineAfterWrite, holdsUningestedEdit } from '../writeback-baseline'
 import { createLogger } from '../../lib/logger'
 import { BaseItemHandler } from '@memry/sync-client/item-handlers/base-handler'
 import { belongsToOtherType } from './note-row-type'
@@ -33,20 +34,37 @@ import { seedSkipsDeletedNote } from '../pending-deletes'
 import type { ApplyContext, ApplyResult, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { forgetBaselineOfRemotelyDeletedNote } from '../../vault-locks/files'
 import {
+  holderTags,
   journalTombstonedPast,
   markOwedJournalDayMergeDeleted,
   oweJournalDayMerge,
   readDayBody,
+  readDayTags,
   removeJournalRow
 } from '../journal-day-merge'
 import { generateJournalId } from '@memry/contracts/journal-api'
+import { getJournalSyncService } from '../journal-sync'
 import { keepUnseenText } from '../keep-unseen-text'
+import {
+  journalFieldClocksForWholesale,
+  mergeJournalFields,
+  type JournalFields
+} from '@memry/sync-client/journal-merge'
+import { valuesEqual } from '@memry/sync-client/field-merge'
+import {
+  forgetJournalFieldsBase,
+  localJournalFields,
+  readDayFields,
+  writeJournalFieldsBase
+} from '../journal-fields'
 
 const log = createLogger('JournalHandler')
 
 class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
   readonly type = 'journal' as const
   readonly schema = JournalSyncPayloadSchema
+  /** Each journal's `modifiedAt` as its last push payload read it, until the ack. */
+  private readonly pushedModifiedAt = new Map<string, string>()
 
   applyUpsert(
     ctx: ApplyContext,
@@ -82,7 +100,8 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
           foreignId,
           date,
           clock: remoteClock,
-          recordMarkdown: data.content || null
+          recordMarkdown: data.content || null,
+          recordTags: data.tags
         })
         continue
       }
@@ -91,7 +110,8 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
         date,
         clock: holder?.clock ?? null,
         // The day's file is about to be written over.
-        fallbackMarkdown: plan.removeHolder ? readDayBody(date) : null
+        fallbackMarkdown: plan.removeHolder ? readDayBody(date) : null,
+        ...(plan.removeHolder ? holderTags(ctx.db, foreignId, readDayTags(date), holder) : {})
       })
     }
     if (plan.removeHolder && holder) removeJournalRow(ctx.db, holder.id)
@@ -105,17 +125,59 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
 
     let mergedClock = remoteClock
     let result: ApplyResult = 'applied'
+    let tags = data.tags
+    let properties = data.properties ?? undefined
+    // The fields as synced: the remote's, or the merge's under the union clock.
+    // An untrusted remote applied whole is stamped with its clock as the floor,
+    // so this device's next edit carries its removals (§6.12.1, #5572).
+    const remoteWithClock = { ...data, clock: data.clock ?? remoteClock }
+    let synced: Omit<JournalFields, 'tags' | 'properties'> = {
+      clock: remoteWithClock.clock,
+      ...(journalFieldClocksForWholesale(remoteWithClock) ?? {
+        fieldClocks: data.fieldClocks,
+        fieldClocksAt: data.fieldClocksAt,
+        fieldClocksFloor: data.fieldClocksFloor,
+        fieldFloors: data.fieldFloors
+      })
+    }
     if (existing) {
       const resolution = this.resolveUpsertClock(ctx, itemId, existing.clock, remoteClock, data)
       if (resolution.action === 'skip') {
         log.info('Skipping remote journal update, local is newer', { itemId })
         return 'skipped'
       }
-      if (resolution.action === 'merge') {
-        log.warn('Concurrent journal edit, applying (CRDT handles merge)', { itemId })
-        result = 'conflict'
-      }
       mergedClock = resolution.mergedClock
+      if (resolution.action === 'merge') {
+        // Tags and properties merge per unit (§6.12); the body is the CRDT's.
+        const day = readDayFields(date)
+        if (day) {
+          const deviceId = getJournalSyncService()?.getDeviceId()
+          const local = localJournalFields(ctx.db, itemId, day, existing.clock ?? {})
+          const {
+            tags: mergedTags,
+            properties: mergedProperties,
+            requeue,
+            ...stamp
+          } = mergeJournalFields(local, remoteWithClock, deviceId ?? '')
+          if (requeue && !deviceId) {
+            // A re-queued merge is ticked for this device; a pull with no
+            // device id retries rather than store a merge it cannot clock.
+            throw new Error(`Journal ${itemId} merged with no device clock id`)
+          }
+          tags = mergedTags
+          properties = mergedProperties
+          mergedClock = stamp.clock
+          synced = stamp
+          // `'conflict'` re-queues the day: only a merge that changed the
+          // remote's fields has anything to push (§6.12.3).
+          if (requeue) result = 'conflict'
+        } else {
+          result = 'conflict'
+          log.warn('Concurrent journal edit with no readable day file; remote fields apply', {
+            itemId
+          })
+        }
+      }
     }
 
     // Everything below stays synchronous: it runs inside the pull's page
@@ -125,8 +187,8 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
       write = buildJournalEntryWrite(
         date,
         data.content,
-        data.tags,
-        data.properties ?? undefined,
+        tags,
+        properties,
         remoteAliases(data.aliases, date)
       )
     } catch (error) {
@@ -134,7 +196,7 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
       log.warn('Skipping remote journal upsert: its file links outside the vault', { itemId })
       return 'skipped'
     }
-    const { absolutePath, entry, fileContent, frontmatter } = write
+    const { absolutePath, entry, fileContent, frontmatter, previousFile } = write
     const path = getJournalRelativePath(entry.date)
     const modifiedAt = existing ? (data.modifiedAt ?? entry.modifiedAt) : entry.modifiedAt
     const syncedAt = pulledRowSyncedAt(modifiedAt, now)
@@ -156,15 +218,22 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
         id: itemId,
         path,
         fileContent,
+        // The doc takes the body over CRDT sync, not from this file.
+        contentHash: baselineAfterWrite(indexDb, itemId, previousFile, fileContent),
         frontmatter,
         parsedContent: entry.content,
         title: entry.date,
         createdAt: entry.createdAt,
         modifiedAt
       },
-      { isNew: !existing }
+      { isNew: !existing, source: 'sync' }
     )
     writeSyncedVaultFile(absolutePath, fileContent)
+    writeJournalFieldsBase(ctx.db, itemId, {
+      tags: frontmatter.tags ?? [],
+      properties: extractJournalProperties(frontmatter) ?? {},
+      ...synced
+    })
     void flushProjectionEvents()
 
     ctx.emit(
@@ -185,7 +254,7 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
     bodyStateVector?: string
   ): 'applied' | 'skipped' {
     const indexDb = getIndexDatabase()
-    markOwedJournalDayMergeDeleted(ctx.db, itemId)
+    markOwedJournalDayMergeDeleted(ctx.db, itemId, clock)
     const existing = getNoteMetadataById(ctx.db, itemId)
     if (!existing || belongsToOtherType(itemId, 'journal', existing)) return 'skipped'
 
@@ -200,12 +269,14 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
     // A foreign row a pre-fix build left: another device merged it into the
     // day. Its row, doc and file stay for the drain, which folds them, unpushed
     // edits included, into `j<date>` (#2984); a purge here would lose them.
+    // Its tags are weighed while its queued edit is still queued.
     if (existing.journalDate && existing.id !== generateJournalId(existing.journalDate)) {
       oweJournalDayMerge(ctx.db, {
         foreignId: itemId,
         date: existing.journalDate,
         clock: existing.clock ?? null,
-        deleted: true
+        deleted: true,
+        ...holderTags(ctx.db, itemId, readDayTags(existing.journalDate), existing, clock ?? {})
       })
       return 'applied'
     }
@@ -219,6 +290,7 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
         tombstoneClock: clock,
         deletedAt,
         bodyStateVector,
+        unseenFile: holdsUningestedEdit(indexDb, itemId, () => readJournalTextSync(date)),
         readBody: () => readDayBody(date)
       })
     }
@@ -237,6 +309,7 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
 
     deleteNoteFromCache(indexDb, itemId)
     forgetBaselineOfRemotelyDeletedNote(ctx.db, itemId)
+    forgetJournalFieldsBase(ctx.db, itemId)
     // After the row delete, and journaled with the page (#2385): see
     // `noteHandler.applyDelete`.
     if (existing.journalDate) deleteSyncedVaultFile(getJournalPath(existing.journalDate))
@@ -254,19 +327,77 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
     return cached
   }
 
+  /**
+   * Stamp the journal as "the server has this state", as notes do. Without it
+   * `syncedAt` recorded only pulls, so every journal minted here read as
+   * edited to the dirty sweep and to the day merge's holder weighing (#5659).
+   *
+   * The stamp is the `modifiedAt` the pushed payload was read at, not the ack
+   * time: an edit made outside the app between the read and the ack (in the
+   * ack's millisecond too) is not on the server, so it must still read as
+   * edited (VERIFY-5691R2). An ack with no payload read here stamps the time.
+   */
+  markPushSynced(db: DrizzleDb, itemId: string): void {
+    const pushed = this.pushedModifiedAt.get(itemId)
+    this.pushedModifiedAt.delete(itemId)
+    updateNoteMetadata(db, itemId, { syncedAt: pushed ?? utcNow() })
+  }
+
   buildPushPayload(
     db: DrizzleDb,
     itemId: string,
     _deviceId: string,
     operation: string
   ): string | null {
+    return this.buildPayload(db, itemId, operation, true)
+  }
+
+  /**
+   * §6.5.2 P4 compares the day's fields, not its unit clocks: a legacy row this
+   * device already holds carries none, and building them would also advance
+   * the synced base outside a push (REVIEW-5529).
+   */
+  protected matchesLocalPayload(
+    db: DrizzleDb,
+    itemId: string,
+    remote: JournalSyncPayload
+  ): boolean {
+    const {
+      fieldClocks: _clocks,
+      fieldClocksAt: _at,
+      fieldClocksFloor: _floor,
+      fieldFloors: _floors,
+      ...fields
+    } = remote
+    try {
+      const local = this.buildPayload(db, itemId, 'update', false)
+      if (local == null) return false
+      const parsed = this.schema.safeParse(JSON.parse(local))
+      return parsed.success && valuesEqual(parsed.data, fields)
+    } catch {
+      return false
+    }
+  }
+
+  /** `stamp`: add unit clocks and record them as the synced base (the push path only). */
+  private buildPayload(
+    db: DrizzleDb,
+    itemId: string,
+    operation: string,
+    stamp: boolean
+  ): string | null {
     const cached = getNoteMetadataById(db, itemId)
     if (!cached?.journalDate) return null
+    this.pushedModifiedAt.set(itemId, cached.modifiedAt)
 
     let content: string | null = null
     let tags: string[] = []
     let properties: Record<string, unknown> | null = null
     let aliases: string[] | undefined
+    let unitClocks: Pick<
+      JournalFields,
+      'fieldClocks' | 'fieldClocksAt' | 'fieldClocksFloor' | 'fieldFloors'
+    > = {}
     try {
       const raw = readJournalTextSync(cached.journalDate)
       if (raw === null) throw new Error(`Journal file is missing: ${cached.journalDate}`)
@@ -275,6 +406,26 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
       tags = parsed.frontmatter.tags ?? []
       properties = extractJournalProperties(parsed.frontmatter) ?? null
       aliases = extractAliases(parsed.frontmatter, cached.journalDate)
+      // Unit clocks only for fields read from the file and diffed against a
+      // synced base (§6.12.2): a push without them is read whole at its clock,
+      // today's rule.
+      if (stamp) {
+        const fields = localJournalFields(
+          db,
+          cached.id,
+          { tags, properties: properties ?? {} },
+          cached.clock ?? {}
+        )
+        if (fields.fieldClocks) {
+          writeJournalFieldsBase(db, cached.id, fields)
+          unitClocks = {
+            fieldClocks: fields.fieldClocks,
+            fieldClocksAt: fields.fieldClocksAt,
+            fieldClocksFloor: fields.fieldClocksFloor,
+            fieldFloors: fields.fieldFloors
+          }
+        }
+      }
     } catch {
       log.warn('Could not read journal file for push payload', {
         noteId: cached.id,
@@ -289,6 +440,7 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
       properties,
       ...(aliases !== undefined ? { aliases } : {}),
       clock: cached.clock ?? {},
+      ...unitClocks,
       createdAt: cached.createdAt,
       modifiedAt: cached.modifiedAt
     })

@@ -5,6 +5,9 @@
 //! `tests/readwise_vectors.rs` holds every function here to the vectors the TypeScript writes
 //! (`packages/contracts/test-vectors/readwise/`).
 //!
+//! The I/O seams beside them: the HTTP client (`client`), the Reader request budget
+//! (`limiter`) and the token in the keychain (`token`).
+//!
 //! Strings are Rust strings where TypeScript has UTF-16: offsets are bytes, the hash and every
 //! ordering of text run over UTF-16 code units as in JS. A Readwise payload with a lone
 //! surrogate cannot reach here (`serde_json` refuses it), so no JS string the planners see is
@@ -33,15 +36,37 @@
 //!   zero-width space after every `[` that a `[` or `\[` follows; any other line keeps
 //!   TypeScript's bytes (`text::escape_line`).
 
+pub mod claim;
+pub mod client;
+pub mod cursor;
+pub mod engine;
 pub mod highlights;
 pub mod images;
 pub mod journal;
+pub mod journal_sync;
+pub mod library;
+pub mod limiter;
+pub mod options;
 pub mod plan_append;
 pub mod plan_note;
+pub mod pull_gate;
 pub mod reader;
+pub mod reader_notes;
+pub mod reader_sync;
+pub mod release;
+mod run_end;
+pub mod run_state;
+pub mod run_status;
+pub mod run_types;
+pub mod scheduler;
 pub mod section;
+pub mod status_publish;
+pub mod sync_view;
+pub mod telemetry;
 pub mod text;
+pub mod token;
 pub mod types;
+pub mod writer;
 
 use std::cell::Cell;
 
@@ -64,6 +89,11 @@ thread_local! {
 /// One unit of planner work: a line read, a highlight rendered, a URL or id looked up.
 pub(crate) fn step() {
     STEPS.with(|steps| steps.set(steps.get() + 1));
+}
+
+/// `n` units of planner work: the bytes a scan passed over.
+pub(crate) fn steps(n: usize) {
+    STEPS.with(|steps| steps.set(steps.get() + n));
 }
 
 /// Steps the planners took on this thread, for the complexity tests (`memry-test-kit`).

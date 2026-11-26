@@ -1,18 +1,17 @@
 import { deleteByPrefix } from './blob'
+import { cancelPaddleSubscriptionForDeletion } from './paddle-billing'
 import { normalizeEmail } from './user'
+import type { Bindings } from '../types'
 
 /**
  * Irreversibly delete all data for a user across R2 (encrypted payloads) and
- * D1 (sync + auth rows). Child rows are deleted before the parent `users` row
- * to avoid foreign-key violations.
+ * D1 (sync + auth rows), after canceling the Paddle subscription. Child rows
+ * are deleted before the parent `users` row to avoid foreign-key violations.
  */
-export async function deleteUserData(
-  db: D1Database,
-  bucket: R2Bucket,
-  userId: string,
-  email: string
-): Promise<void> {
-  await deleteByPrefix(bucket, `${userId}/`, userId)
+export async function deleteUserData(env: Bindings, userId: string, email: string): Promise<void> {
+  const db = env.DB
+  await cancelPaddleSubscriptionForDeletion(env, userId)
+  await deleteByPrefix(env.STORAGE, `${userId}/`, userId)
 
   await db.batch([
     // deepest children first (tables that reference devices or sync_items)

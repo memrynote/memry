@@ -2,10 +2,13 @@
 //! `apps/desktop-tauri/src-tauri` call it.
 
 pub mod account;
+pub mod agent;
 pub mod ai;
 pub mod attachments;
 pub mod billing;
 pub mod bookmarks;
+pub mod calendar_providers;
+pub mod canvas;
 pub mod command_failure;
 pub mod config;
 pub mod e2e;
@@ -16,6 +19,7 @@ pub mod error;
 pub mod export;
 pub mod fold;
 pub mod folder_view;
+pub mod home;
 pub mod http;
 pub mod i18n;
 pub mod import;

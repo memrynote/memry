@@ -232,7 +232,9 @@ fn the_profile_state_lands_in_the_tauri_data_dir_and_the_profile_is_untouched() 
     assert_eq!(report.models.copied, 2);
     assert_eq!(report.ocr_languages.copied, 1);
 
-    // Nothing else: no sandbox, updater markers, sync packs, voice model, temp file.
+    // Nothing else: no sandbox, updater markers, sync packs, voice model, temp file. The
+    // `.lock` is the config's cross-process advisory lock (registry/config_lock.rs), kept on
+    // purpose; Electron's own config writes take no lock, so the profile never gets one.
     let top: BTreeSet<String> = fs::read_dir(tauri.data())
         .unwrap()
         .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
@@ -244,6 +246,7 @@ fn the_profile_state_lands_in_the_tauri_data_dir_and_the_profile_is_untouched() 
                 "electron-dictionary.json",
                 "electron-localstorage.json",
                 "memry-config.json",
+                "memry-config.json.lock",
                 "models",
                 "ocr-languages",
                 "telemetry.json"

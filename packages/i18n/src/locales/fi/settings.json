@@ -1232,6 +1232,10 @@
     "loadingAria": "Ladataan laitteita",
     "none": "Ei vielä linkitettyjä laitteita",
     "linkNew": "Linkitä uusi laite",
+    "linkNeedsPlan": {
+      "title": "Linkittäminen vaatii synkronointitilauksen",
+      "description": "Linkitetty laite näkee muistiinpanosi vain, kun synkronointi on päällä. Ilman tilausta kirjaudu sillä sisään palautuslauseellasi, jolloin laite säilyttää oman holvinsa."
+    },
     "thisDevice": "Tämä laite",
     "lastSeen": "Viimeksi nähty {time} sitten",
     "linked": "Linkitetty {time} sitten",
@@ -1398,6 +1402,7 @@
       "selectModel": "Valitse malli",
       "apiKey": "API-avain",
       "apiKeyDescription": "Tallennetaan paikallisesti, lähetetään vain palveluntarjoajalle",
+      "apiKeyKeychainDescription": "Tallennetaan käyttöjärjestelmän avainnippuun, lähetetään vain palveluntarjoajalle",
       "apiKeyPlaceholder": "Anna palvelun {provider} API-avain",
       "ollamaUrl": "Ollaman URL-osoite",
       "ollamaUrlDescription": "Paikallisen palvelimen osoite",

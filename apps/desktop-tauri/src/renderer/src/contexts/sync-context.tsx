@@ -11,7 +11,6 @@ import {
 import { toast } from 'sonner'
 import { useAuth } from './auth-context'
 import { onVaultStatusChanged } from '@/services/vault-service'
-import { onSyncedRecords } from '@/services/sync-service'
 import {
   onDeviceRevoked,
   onLinkingApproved,
@@ -20,6 +19,16 @@ import {
   onVaultBindingChanged,
   syncAccountService
 } from '@/services/sync-account-service'
+import {
+  onCertificatePinFailed,
+  onClockSkewWarning,
+  onInitialSyncProgress,
+  onQueueCleared,
+  onSecurityWarning,
+  onSyncStatusChanged,
+  onSyncedRecords,
+  syncService
+} from '@/services/sync-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { requestOpenSettings } from '@/lib/settings-navigation'
 import { DeviceRevokedDialog } from '@/components/sync/device-revoked-dialog'
@@ -329,7 +338,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
 
     const init = async (): Promise<void> => {
       try {
-        const status = await window.api.syncOps.getStatus()
+        const status = await syncService.getStatus()
         if (cancelled) return
         const error = status.error ? extractErrorMessage(status.error, '') : undefined
         dispatch({
@@ -373,36 +382,41 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
     })
 
     cleanups.push(
-      window.api.onSyncStatusChanged((event) => {
-        if (cancelled) return
-        const error = event.error ? extractErrorMessage(event.error, '') : undefined
-        dispatch({
-          type: 'STATUS_CHANGED',
-          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- IPC status event type is unresolved here; main emits the SyncStatus set
-          status: event.status as SyncStatus,
-          lastSyncAt: event.lastSyncAt,
-          pendingCount: event.pendingCount,
-          error,
-          errorCategory: event.errorCategory,
-          offlineSince: event.offlineSince
-        })
-        if (event.errorCategory === 'storage_quota_exceeded') {
-          toast.error(t('sync.storageQuotaExceeded'), { duration: 10000 })
+      onSyncStatusChanged(
+        (event) => {
+          if (cancelled) return
+          const error = event.error ? extractErrorMessage(event.error, '') : undefined
+          dispatch({
+            type: 'STATUS_CHANGED',
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- IPC status event type is unresolved here; main emits the SyncStatus set
+            status: event.status as SyncStatus,
+            lastSyncAt: event.lastSyncAt,
+            pendingCount: event.pendingCount,
+            error,
+            errorCategory: event.errorCategory,
+            offlineSince: event.offlineSince
+          })
+          if (event.errorCategory === 'storage_quota_exceeded') {
+            toast.error(t('sync.storageQuotaExceeded'), { duration: 10000 })
+          }
+          if (event.errorCategory === 'file_too_large') {
+            toast.error(t('sync.fileTooLarge'), { duration: 10000 })
+          }
+          if (event.errorCategory === 'note_too_large') {
+            // An older main process sends no title; the unnamed message is the
+            // fallback, not the default.
+            toast.error(
+              event.errorNoteTitle
+                ? t('sync.noteTooLargeNamed', { title: event.errorNoteTitle })
+                : t('sync.noteTooLarge'),
+              { duration: 10000, action: activityAction() }
+            )
+          }
+        },
+        () => {
+          if (!cancelled) void init()
         }
-        if (event.errorCategory === 'file_too_large') {
-          toast.error(t('sync.fileTooLarge'), { duration: 10000 })
-        }
-        if (event.errorCategory === 'note_too_large') {
-          // An older main process sends no title; the unnamed message is the
-          // fallback, not the default.
-          toast.error(
-            event.errorNoteTitle
-              ? t('sync.noteTooLargeNamed', { title: event.errorNoteTitle })
-              : t('sync.noteTooLarge'),
-            { duration: 10000, action: activityAction() }
-          )
-        }
-      })
+      )
     )
 
     // Attachment upload failures were emitted to this channel with no listener,
@@ -473,14 +487,14 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
     )
 
     cleanups.push(
-      window.api.onQueueCleared(() => {
+      onQueueCleared(() => {
         if (cancelled) return
         dispatch({ type: 'QUEUE_CLEARED' })
       })
     )
 
     cleanups.push(
-      window.api.onClockSkewWarning(() => {
+      onClockSkewWarning(() => {
         if (cancelled) return
         dispatch({ type: 'CLOCK_SKEW_WARNING' })
       })
@@ -494,7 +508,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
     )
 
     cleanups.push(
-      window.api.onInitialSyncProgress((event) => {
+      onInitialSyncProgress((event) => {
         if (cancelled) return
         dispatch({
           type: 'INITIAL_SYNC_PROGRESS',
@@ -520,7 +534,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
     )
 
     cleanups.push(
-      window.api.onSecurityWarning((event) => {
+      onSecurityWarning((event) => {
         if (cancelled) return
         const message = event.permanent
           ? t('sync.securityQuarantinePermanent')
@@ -530,9 +544,12 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
     )
 
     cleanups.push(
-      window.api.onCertificatePinFailed(() => {
+      onCertificatePinFailed(() => {
         if (cancelled) return
-        toast.error(t('sync.certificatePinPaused'), { duration: 15000 })
+        toast.error(t('sync.certificatePinPaused'), {
+          id: 'sync-certificate-pin-failed',
+          duration: 15000
+        })
       })
     )
 
@@ -563,7 +580,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
   useEffect(() => {
     if (authState.status === 'authenticated' && state.sessionExpired) {
       dispatch({ type: 'CLEAR_ERROR' })
-      void window.api.syncOps.triggerSync().catch(() => {})
+      void syncService.triggerSync().catch(() => {})
     }
   }, [authState.status, state.sessionExpired])
 
@@ -588,7 +605,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
   const triggerSync = useCallback(async (): Promise<void> => {
     if (authState.status !== 'authenticated') return
     try {
-      announceSyncNowResult(await window.api.syncOps.triggerSync(), t)
+      announceSyncNowResult(await syncService.triggerSync(), t)
     } catch (err) {
       dispatch({ type: 'SET_ERROR', error: extractErrorMessage(err, t('sync.triggerFailed')) })
     }
@@ -599,7 +616,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
     async (surface: SyncControlSurface): Promise<void> => {
       if (authState.status !== 'authenticated') return
       try {
-        const result = await window.api.syncOps.pause(surface)
+        const result = await syncService.pause(surface)
         if (!result.success) toast.error(t('sync.pauseFailed'))
       } catch (err) {
         dispatch({ type: 'SET_ERROR', error: extractErrorMessage(err, t('sync.pauseFailed')) })
@@ -612,7 +629,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
     async (surface: SyncControlSurface): Promise<void> => {
       if (authState.status !== 'authenticated') return
       try {
-        const result = await window.api.syncOps.resume(surface)
+        const result = await syncService.resume(surface)
         if (!result.success) toast.error(t('sync.resumeFailed'))
       } catch (err) {
         dispatch({ type: 'SET_ERROR', error: extractErrorMessage(err, t('sync.resumeFailed')) })
@@ -715,7 +732,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
   const handleVaultRecovered = useCallback(() => {
     setVaultRecovery(null)
     toast.success(t('sync.vaultRecovered'), { duration: 6000 })
-    void window.api.syncOps.triggerSync().catch(() => {})
+    void syncService.triggerSync().catch(() => {})
   }, [t])
 
   return (

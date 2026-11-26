@@ -348,7 +348,10 @@ export function AIInlineSettings(): React.JSX.Element {
       )}
 
       {settings.enabled && settings.provider !== 'ollama' && (
-        <SettingRow label={t('ai.inline.apiKey')} description={t('ai.inline.apiKeyDescription')}>
+        <SettingRow
+          label={t('ai.inline.apiKey')}
+          description={t('ai.inline.apiKeyKeychainDescription')}
+        >
           <div className="flex items-center gap-2">
             <Input
               type={showApiKey ? 'text' : 'password'}

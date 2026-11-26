@@ -1232,6 +1232,10 @@
     "loadingAria": "Geräte werden geladen",
     "none": "Noch keine Geräte gekoppelt",
     "linkNew": "Neues Gerät koppeln",
+    "linkNeedsPlan": {
+      "title": "Koppeln erfordert einen Synchronisierungstarif",
+      "description": "Ein gekoppeltes Gerät sieht deine Notizen nur, wenn die Synchronisierung aktiv ist. Ohne Tarif meldest du dich dort mit deiner Wiederherstellungsphrase an, und es behält seinen eigenen Tresor."
+    },
     "thisDevice": "Dieses Gerät",
     "lastSeen": "Zuletzt gesehen vor {time}",
     "linked": "Vor {time} gekoppelt",
@@ -1398,6 +1402,7 @@
       "selectModel": "Modell auswählen",
       "apiKey": "API-Schlüssel",
       "apiKeyDescription": "Lokal gespeichert, nur an den Anbieter gesendet",
+      "apiKeyKeychainDescription": "Im Schlüsselbund deines Betriebssystems gespeichert, nur an den Anbieter gesendet",
       "apiKeyPlaceholder": "API-Schlüssel für {provider} eingeben",
       "ollamaUrl": "Ollama-URL",
       "ollamaUrlDescription": "Lokale Serveradresse",

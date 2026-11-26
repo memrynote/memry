@@ -252,10 +252,11 @@ fn missing_candidates_skip_attachments_that_never_arrived() {
 #[test]
 fn the_migration_runs_again_over_a_file_that_already_has_the_table() {
     // A crash between the migration's commit and the `user_version` pragma leaves the
-    // table in place at the old version; the next open runs 0020 again. Nothing past 0020
-    // has run in that window, so 0021's `note_positions`, 0022's `note_file_hashes`, 0023's
-    // `note_place_owed` and 0024's `wiki_name_keys` are not there either: a file at 19 that has
-    // one reads as one an earlier desktop build numbered (`legacy_numbering`).
+    // table in place at the old version; the next open runs 0021 again. Nothing past 0021
+    // has run in that window, so 0022's `note_positions`, 0023's `note_file_hashes`, 0024's
+    // `note_place_owed`, 0025's `wiki_name_keys` and 0026's `vault_locks` are not there either:
+    // a file at 20 that has one reads as one an earlier desktop build numbered
+    // (`legacy_numbering`).
     let Fixture { dir, vault } = fixture();
     vault
         .note_files()
@@ -266,7 +267,7 @@ fn the_migration_runs_again_over_a_file_that_already_has_the_table() {
         .call_blocking(|conn| {
             conn.execute_batch(
                 "DROP TABLE note_positions; DROP TABLE note_file_hashes; DROP TABLE note_place_owed;
-                 DROP TABLE wiki_name_keys; PRAGMA user_version = 19",
+                 DROP TABLE wiki_name_keys; DROP TABLE vault_locks; PRAGMA user_version = 20",
             )
             .map_err(|err| StorageError::Failed {
                 what: err.to_string(),
@@ -381,9 +382,9 @@ fn an_entry_stored_after_the_row_in_its_millisecond_puts_the_note_behind() {
 }
 
 /// The rows the open reconcile moves to the trash: markdown rows of a tombstoned note or
-/// journal day. A live note, a note this device has no record of (its record may not be
-/// pulled yet) and a file that is not markdown are not among them. A row whose note is owed a
-/// move is marked so.
+/// journal day. A live note, a live day whose id a tombstoned `note` record holds too (#5786),
+/// a note this device has no record of (its record may not be pulled yet) and a file that is
+/// not markdown are not among them. A row whose note is owed a move is marked so.
 #[test]
 fn the_rows_of_deleted_notes_are_the_markdown_rows_of_tombstoned_notes_and_days() {
     let Fixture { vault, .. } = fixture();
@@ -393,6 +394,7 @@ fn the_rows_of_deleted_notes_are_the_markdown_rows_of_tombstoned_notes_and_days(
         ("j2024-01-02", "journal/2024-01-02.md"),
         ("live", "live.md"),
         ("live-day", "journal/2024-01-03.md"),
+        ("j2024-01-04", "journal/2024-01-04.md"),
         ("unknown", "unknown.md"),
     ] {
         files.upsert_stat(stat(id, path)).unwrap();
@@ -403,9 +405,11 @@ fn the_rows_of_deleted_notes_are_the_markdown_rows_of_tombstoned_notes_and_days(
     exec(
         &vault,
         "INSERT INTO notes (id, title, deleted_at) VALUES
-           ('deleted', 'a', 5), ('live', 'b', NULL), ('deleted-image', 'c', 5);
+           ('deleted', 'a', 5), ('live', 'b', NULL), ('deleted-image', 'c', 5),
+           ('j2024-01-04', '2024-01-04', 5);
          INSERT INTO journal_entries (id, date, deleted_at) VALUES
-           ('j2024-01-02', '2024-01-02', 5), ('live-day', '2024-01-03', NULL);",
+           ('j2024-01-02', '2024-01-02', 5), ('live-day', '2024-01-03', NULL),
+           ('j2024-01-04', '2024-01-04', NULL);",
     );
 
     let ids = || -> Vec<(String, bool)> {
@@ -670,4 +674,70 @@ fn a_note_is_gone_with_no_row_and_no_live_record() {
         .gone_notes(ids.iter().map(|id| (*id).to_owned()).collect())
         .unwrap();
     assert_eq!(gone, ["dead-day", "deleted", "never"]);
+}
+
+/// The unfiled records are the live markdown notes and the live days no row names, a day owed
+/// a move of its file left out: each gets its first file from the desktop write-back (#3534
+/// L5b). A deleted note, a file note and a filed note are not unfiled.
+#[test]
+fn unfiled_lists_live_notes_and_days_no_row_names() {
+    let Fixture { vault, .. } = fixture();
+    let files = vault.note_files();
+    exec(
+        &vault,
+        "INSERT INTO notes (id, title, folder_path, file_type, deleted_at, aliases) VALUES
+           ('n-pulled', 'Remote plan', 'Work', 'markdown', NULL, '[\"PM\",\"Roadmap\"]'),
+           ('n-filed', 'Filed', NULL, 'markdown', NULL, NULL),
+           ('n-deleted', 'Gone', NULL, 'markdown', 5, NULL),
+           ('n-image', 'Photo', NULL, 'image', NULL, NULL);
+         INSERT INTO journal_entries (id, date, deleted_at) VALUES
+           ('d-pulled', '2026-11-02', NULL),
+           ('d-owed', '2026-11-03', NULL),
+           ('d-deleted', '2026-11-04', 5);
+         INSERT INTO journal_aliases (journal_id, aliases) VALUES ('d-pulled', '[\"Launch\"]');
+         INSERT INTO note_place_owed (note_id, from_path, marked_at) VALUES
+           ('d-owed', 'journal/2026-11-03.md', 1);",
+    );
+    files.upsert_stat(stat("n-filed", "Filed.md")).unwrap();
+
+    assert_eq!(files.unfiled_bodies().unwrap(), ["d-pulled", "n-pulled"]);
+    let note = files.unfiled("n-pulled").unwrap().expect("unfiled");
+    assert_eq!(
+        (note.title.as_str(), note.folder_path.as_deref(), note.date),
+        ("Remote plan", Some("Work"), None)
+    );
+    assert_eq!(
+        note.aliases.as_deref(),
+        Some(&["PM".to_owned(), "Roadmap".to_owned()][..])
+    );
+    let day = files.unfiled("d-pulled").unwrap().expect("unfiled");
+    assert_eq!(day.date.as_deref(), Some("2026-11-02"));
+    assert_eq!(day.aliases.as_deref(), Some(&["Launch".to_owned()][..]));
+    assert_eq!(day.cover, None);
+    for id in ["n-filed", "n-deleted", "n-image", "d-owed", "d-deleted"] {
+        assert_eq!(files.unfiled(id).unwrap(), None, "{id}");
+    }
+}
+
+/// A day's file waits while a moved journal folder's day is held, and not for a hold whose owed
+/// move names another path (desktop `create_day_now`, #3534 L5b).
+#[cfg(feature = "markdown")]
+#[test]
+fn days_wait_while_a_day_is_held() {
+    let Fixture { vault, .. } = fixture();
+    let files = vault.note_files();
+    assert!(!files.days_wait().unwrap());
+    exec(
+        &vault,
+        "INSERT INTO note_place_owed (note_id, from_path, marked_at) VALUES
+           ('d-held', 'journal/2026-11-03.md', 1);
+         INSERT INTO meta (key, value) VALUES
+           ('notes.place_held.v1:d-held', 'journal/old.md');",
+    );
+    assert!(!files.days_wait().unwrap(), "a stale hold");
+    exec(
+        &vault,
+        "UPDATE meta SET value = 'journal/2026-11-03.md' WHERE key = 'notes.place_held.v1:d-held'",
+    );
+    assert!(files.days_wait().unwrap());
 }

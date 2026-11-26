@@ -161,7 +161,8 @@ describe('worker', () => {
         ],
         vaultKey: new Uint8Array(32),
         signingSecretKey: new Uint8Array(64),
-        signerDeviceId: 'device-1'
+        signerDeviceId: 'device-1',
+        vaultId: null
       }
 
       // #when
@@ -189,7 +190,8 @@ describe('worker', () => {
         items: [],
         vaultKey,
         signingSecretKey,
-        signerDeviceId: 'device-1'
+        signerDeviceId: 'device-1',
+        vaultId: null
       }
 
       // #when
@@ -472,6 +474,39 @@ describe('worker', () => {
       expect(result.results).toHaveLength(0)
       expect(result.failures[0].error).toContain('No public key')
       expect(result.failures[0].noteId).toBe('n6')
+    })
+
+    // The pack snapshot key walk sends one item per candidate key: once one
+    // verifies, every later key is a wasted Ed25519 pass over the blob.
+    it('#then stops after the first item that opens, never after a refusal', async () => {
+      // #given the first key refuses, the second opens, the third is never tried
+      mockDecryptCrdtFn
+        .mockImplementationOnce(() => {
+          throw new SignatureVerificationError('n7', 'device-1')
+        })
+        .mockReturnValueOnce(new Uint8Array([4, 2]))
+      const item = (index: number) => ({
+        index,
+        noteId: 'n7',
+        data: new Uint8Array([1]),
+        signerDeviceId: 'device-1'
+      })
+
+      // #when
+      const resultPromise = captureNextPostMessage()
+      mockPort.emit('message', {
+        ...crdtMsg([item(0), item(1), item(2)]),
+        stopAtFirstOpen: true
+      })
+      const result = await resultPromise
+
+      // #then
+      if (result.type !== 'decrypt-crdt-batch-result') {
+        throw new Error(`unexpected reply ${result.type}`)
+      }
+      expect(mockDecryptCrdtFn).toHaveBeenCalledTimes(2)
+      expect(result.failures.map((f) => f.index)).toEqual([0])
+      expect(result.results).toEqual([{ index: 1, update: new Uint8Array([4, 2]) }])
     })
 
     it('#then cleans up the vault key', async () => {

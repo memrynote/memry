@@ -1232,6 +1232,10 @@
     "loadingAria": "Cargando dispositivos",
     "none": "Aún no hay dispositivos vinculados",
     "linkNew": "Vincular nuevo dispositivo",
+    "linkNeedsPlan": {
+      "title": "Vincular requiere un plan de sincronización",
+      "description": "Un dispositivo vinculado solo ve tus notas cuando la sincronización está activada. Sin un plan, inicia sesión allí con tu frase de recuperación y conservará su propia bóveda."
+    },
     "thisDevice": "Este dispositivo",
     "lastSeen": "Visto por última vez hace {time}",
     "linked": "Vinculado hace {time}",
@@ -1398,6 +1402,7 @@
       "selectModel": "Seleccionar un modelo",
       "apiKey": "Clave de API",
       "apiKeyDescription": "Se guarda localmente y solo se envía al proveedor",
+      "apiKeyKeychainDescription": "Se guarda en el llavero de tu sistema operativo y solo se envía al proveedor",
       "apiKeyPlaceholder": "Introducir la clave de API de {provider}",
       "ollamaUrl": "URL de Ollama",
       "ollamaUrlDescription": "Dirección del servidor local",

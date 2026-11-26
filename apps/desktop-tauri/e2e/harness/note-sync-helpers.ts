@@ -1,4 +1,5 @@
 import { invokeTest } from './invoke-test'
+import { createNote, getNote } from './notes'
 import { SELECTORS } from './app-helpers'
 import { expect } from './pw-compat/expect'
 import type { Page } from './pw-compat/page'
@@ -145,8 +146,7 @@ async function waitForPersistedNoteBody(page: Page, noteId: string, body: string
   const requiredSnippets = body.split('\n').filter((line) => line.length > 0)
   await expect
     .poll(async () => {
-      const note = await page.evaluate(async (id) => window.api.notes.get(id), noteId)
-      const content = note?.content ?? ''
+      const content = (await getNote(page, noteId))?.content ?? ''
       return requiredSnippets.every((snippet) => content.includes(snippet))
     })
     .toBe(true)
@@ -171,17 +171,8 @@ export async function createNoteWithBody(
   title: string,
   body: string
 ): Promise<NoteHandle> {
-  const note = await page.evaluate(async (inputTitle) => {
-    const result = await window.api.notes.create({ title: inputTitle, content: '' })
-    if (!result.success || !result.note) {
-      throw new Error(result.error || `Failed to create note "${inputTitle}"`)
-    }
-    return {
-      id: result.note.id,
-      title: result.note.title,
-      emoji: result.note.emoji ?? null
-    }
-  }, title)
+  const created = await createNote(page, { title, content: '' })
+  const note: NoteHandle = { id: created.id, title: created.title, emoji: created.emoji ?? null }
 
   await openNoteInUi(page, note)
   await replaceNoteBody(page, body)
@@ -252,11 +243,34 @@ export async function getNoteFileBodyByTitle(page: Page, title: string): Promise
 }
 
 export async function getNoteFileBodyById(page: Page, noteId: string): Promise<string | null> {
-  const body = await page.evaluate(async (id) => {
-    const loaded = await window.api.notes.get(id)
-    return loaded?.content ?? null
-  }, noteId)
+  const body = (await getNote(page, noteId))?.content ?? null
   return body === null ? null : normalizeBodyText(body)
+}
+
+export async function getCrdtDocBodyByTitle(
+  page: Page,
+  app: TauriApp,
+  title: string
+): Promise<string | null> {
+  const note = await getNoteHandleByTitle(page, title)
+  return getCrdtDocBodyById(app, note.id)
+}
+
+/** The open document as markdown, null when no window has the note open. */
+export async function getCrdtDocBodyById(app: TauriApp, noteId: string): Promise<string | null> {
+  const body = await invokeTest<string | null>(app, 'e2e_get_crdt_doc_body', { noteId })
+  return body === null ? null : normalizeBodyText(body)
+}
+
+/**
+ * The author's bytes kept beside the open doc (#1915) and the house style the
+ * doc serializes to now, or null when no record exists.
+ */
+export async function getCrdtMarkdownSourceById(
+  app: TauriApp,
+  noteId: string
+): Promise<{ source: string; current: string | null } | null> {
+  return invokeTest(app, 'e2e_get_crdt_markdown_source', { noteId })
 }
 
 export async function getWritebackDebugByTitle(

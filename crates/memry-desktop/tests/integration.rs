@@ -6,6 +6,7 @@
 //! keeps a new file from being left out of both: with `autotests = false` it would never compile.
 
 mod ai_fake;
+mod caldav_server;
 mod capture_support;
 mod device_key;
 mod electron_profile;
@@ -35,6 +36,14 @@ mod account_vault_download;
 mod activity_log;
 #[path = "activity_scan.rs"]
 mod activity_scan;
+#[path = "agent_mcp.rs"]
+mod agent_mcp;
+#[path = "agent_mcp_http.rs"]
+mod agent_mcp_http;
+#[path = "agent_mcp_parts.rs"]
+mod agent_mcp_parts;
+#[path = "agent_store.rs"]
+mod agent_store;
 #[path = "ai_catalog.rs"]
 mod ai_catalog;
 #[path = "ai_features.rs"]
@@ -109,6 +118,28 @@ mod billing_service;
 mod block_refs;
 #[path = "byte_preservation.rs"]
 mod byte_preservation;
+#[path = "calendar_caldav.rs"]
+mod calendar_caldav;
+#[path = "calendar_caldav_connect.rs"]
+mod calendar_caldav_connect;
+#[path = "calendar_caldav_sync.rs"]
+mod calendar_caldav_sync;
+#[path = "calendar_eventkit.rs"]
+mod calendar_eventkit;
+#[path = "calendar_feeds.rs"]
+mod calendar_feeds;
+#[path = "calendar_ics_fetch.rs"]
+mod calendar_ics_fetch;
+#[path = "calendar_settings.rs"]
+mod calendar_settings;
+#[path = "canvas_files.rs"]
+mod canvas_files;
+#[path = "canvas_folders.rs"]
+mod canvas_folders;
+#[path = "canvas_service.rs"]
+mod canvas_service;
+#[path = "canvas_vault_id.rs"]
+mod canvas_vault_id;
 #[path = "capture_pairing.rs"]
 mod capture_pairing;
 #[path = "capture_requests.rs"]
@@ -166,6 +197,8 @@ mod folder_prune;
 mod folder_view;
 #[path = "fs_atomic.rs"]
 mod fs_atomic;
+#[path = "home_boards.rs"]
+mod home_boards;
 #[path = "home_covers.rs"]
 mod home_covers;
 #[path = "http.rs"]
@@ -182,6 +215,14 @@ mod image_processing;
 mod import_copy;
 #[path = "import_runner.rs"]
 mod import_runner;
+#[path = "importer_bear.rs"]
+mod importer_bear;
+#[path = "importer_google_keep.rs"]
+mod importer_google_keep;
+#[path = "importer_noteplan.rs"]
+mod importer_noteplan;
+#[path = "importer_roam.rs"]
+mod importer_roam;
 #[path = "importer_untrusted.rs"]
 mod importer_untrusted;
 #[path = "importer_vectors.rs"]
@@ -192,6 +233,8 @@ mod index_tag_definitions;
 mod indexer_facts;
 #[path = "indexer_open_status.rs"]
 mod indexer_open_status;
+#[path = "indexer_reindex_coalesce.rs"]
+mod indexer_reindex_coalesce;
 #[path = "indexer_scan.rs"]
 mod indexer_scan;
 #[path = "ios_beta_join.rs"]
@@ -276,6 +319,8 @@ mod note_properties_outside;
 mod note_versions;
 #[path = "notes_aliases.rs"]
 mod notes_aliases;
+#[path = "notes_aliases_owed.rs"]
+mod notes_aliases_owed;
 #[path = "notes_append_blocks.rs"]
 mod notes_append_blocks;
 #[path = "notes_apply_template.rs"]
@@ -310,6 +355,8 @@ mod notes_moves;
 mod notes_moves_edges;
 #[path = "notes_outside_after_reopen.rs"]
 mod notes_outside_after_reopen;
+#[path = "notes_outside_aliases.rs"]
+mod notes_outside_aliases;
 #[path = "notes_outside_tags.rs"]
 mod notes_outside_tags;
 #[path = "notes_plain_checklists.rs"]
@@ -340,6 +387,8 @@ mod oauth_loopback;
 mod obsidian_task_import;
 #[path = "ocr_languages.rs"]
 mod ocr_languages;
+#[path = "owed_take.rs"]
+mod owed_take;
 #[path = "path_collision.rs"]
 mod path_collision;
 #[path = "paths.rs"]
@@ -376,6 +425,8 @@ mod sticky_drafts;
 mod sync_backend;
 #[path = "sync_host_clients.rs"]
 mod sync_host_clients;
+#[path = "sync_pack_files.rs"]
+mod sync_pack_files;
 #[path = "tag_definitions_sync.rs"]
 mod tag_definitions_sync;
 #[path = "tag_field_rename.rs"]
@@ -390,6 +441,12 @@ mod tag_schema;
 mod tags;
 #[path = "task_defaults.rs"]
 mod task_defaults;
+#[path = "task_reopen.rs"]
+mod task_reopen;
+#[path = "task_writes.rs"]
+mod task_writes;
+#[path = "tasks_service.rs"]
+mod tasks_service;
 #[path = "telemetry_flush.rs"]
 mod telemetry_flush;
 #[path = "telemetry_report_posts.rs"]
@@ -445,6 +502,14 @@ mod vault_watch_session;
 mod vault_writeback;
 #[path = "vault_writes.rs"]
 mod vault_writes;
+#[path = "voice_embedding_lane.rs"]
+mod voice_embedding_lane;
+#[path = "voice_engine.rs"]
+mod voice_engine;
+#[path = "voice_service.rs"]
+mod voice_service;
+#[path = "web_fetch.rs"]
+mod web_fetch;
 
 #[test]
 fn every_test_file_is_built() {

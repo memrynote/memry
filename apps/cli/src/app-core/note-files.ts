@@ -11,8 +11,15 @@ import { replaceWikiLinks } from '@memry/shared/wiki-target'
 import { createId } from '@memry/app-core/ids'
 import type { DataDb } from './database.ts'
 import { parseMarkdownNote } from '@memry/app-core/markdown'
-import { ATTACHMENTS_DIR, normalizePath, safeFilename, type VaultConfig } from './paths.ts'
-import type { NotesService } from './notes.ts'
+import {
+  ATTACHMENTS_DIR,
+  isPlainSegment,
+  normalizePath,
+  safeFilename,
+  vaultFolder,
+  type VaultConfig
+} from './paths.ts'
+import { getMetadata, type NotesService } from './notes.ts'
 import { propertiesFromFrontmatter } from './note-properties.ts'
 import { errorCode } from './errno.ts'
 
@@ -216,16 +223,16 @@ async function uniqueDestination(
 // `targetFolder` is vault-relative, the same contract as desktop's
 // `importFiles` since #1204; an import with no target lands under
 // `defaultNoteFolder`.
-function resolveTargetFolder(vaultPath: string, config: VaultConfig, targetFolder = ''): string {
-  const vaultRoot = path.resolve(vaultPath)
-  const target = path.resolve(
-    vaultRoot,
-    normalizePath(targetFolder) || normalizePath(config.defaultNoteFolder)
+async function resolveTargetFolder(
+  vaultPath: string,
+  config: VaultConfig,
+  targetFolder = ''
+): Promise<string> {
+  const requested = normalizePath(targetFolder) ? targetFolder : config.defaultNoteFolder
+  return path.join(
+    vaultPath,
+    await vaultFolder(vaultPath, requested, 'import files', { allowRoot: true })
   )
-  if (target !== vaultRoot && !target.startsWith(`${vaultRoot}${path.sep}`)) {
-    throw new Error('Import target must stay inside the vault')
-  }
-  return target
 }
 
 function escapeHtml(text: string): string {
@@ -451,7 +458,12 @@ export function createAttachmentsService({
       }
 
       const filename = uniqueAttachmentFilename(originalName)
-      const relativePath = normalizePath(path.join(ATTACHMENTS_DIR, noteId, filename))
+      const folder = await vaultFolder(
+        vaultPath,
+        `${ATTACHMENTS_DIR}/${note.id}`,
+        `attach "${originalName}"`
+      )
+      const relativePath = `${folder}/${filename}`
       const absolutePath = path.join(vaultPath, relativePath)
       await fs.mkdir(path.dirname(absolutePath), { recursive: true })
       await fs.copyFile(sourcePath, absolutePath)
@@ -499,7 +511,15 @@ export function createAttachmentsService({
     },
 
     async list(noteId) {
-      const dir = path.join(vaultPath, ATTACHMENTS_DIR, noteId)
+      // `add` stores under the note's id, so a path resolves to it through the index row,
+      // which still lists a note whose file is gone. A plain id with no note still names
+      // its folder, which outlives a deleted note.
+      const owner = getMetadata(dataDb, noteId)?.id ?? noteId
+      if (!isPlainSegment(owner)) {
+        throw new Error(`Refusing to list attachments: "${noteId}" is not a note id.`)
+      }
+      const folder = await vaultFolder(vaultPath, `${ATTACHMENTS_DIR}/${owner}`, 'list attachments')
+      const dir = path.join(vaultPath, folder)
       try {
         const entries = await fs.readdir(dir, { withFileTypes: true })
         const attachments: AttachmentInfo[] = []
@@ -509,7 +529,7 @@ export function createAttachmentsService({
           const stats = await fs.stat(absolutePath)
           attachments.push({
             filename: entry.name,
-            path: normalizePath(path.join(ATTACHMENTS_DIR, noteId, entry.name)),
+            path: `${folder}/${entry.name}`,
             absolutePath,
             size: stats.size,
             mimeType: mimeType(entry.name),
@@ -525,8 +545,16 @@ export function createAttachmentsService({
 
     async delete(noteId, filename) {
       const safeName = path.basename(filename)
-      const absolutePath = path.join(vaultPath, ATTACHMENTS_DIR, noteId, safeName)
-      await fs.rm(absolutePath, { force: true })
+      const action = `delete attachment "${filename}"`
+      // Joined unchecked, the id `../SuperNotes` deletes a note file (#5658).
+      if (!isPlainSegment(noteId)) {
+        throw new Error(`Refusing to ${action}: "${noteId}" is not a note id.`)
+      }
+      if (!isPlainSegment(safeName)) {
+        throw new Error(`Refusing to ${action}: "${filename}" is not an attachment file name.`)
+      }
+      const folder = await vaultFolder(vaultPath, `${ATTACHMENTS_DIR}/${noteId}`, action)
+      await fs.rm(path.join(vaultPath, folder, safeName), { force: true })
       return true
     }
   }
@@ -542,7 +570,7 @@ export function createImportFilesService({
   dataDb: DataDb
 }) {
   return async function importFiles(input: ImportFilesInput): Promise<ImportFilesResult> {
-    const targetDir = resolveTargetFolder(vaultPath, config, input.targetFolder)
+    const targetDir = await resolveTargetFolder(vaultPath, config, input.targetFolder)
     await fs.mkdir(targetDir, { recursive: true })
 
     const errors: string[] = []

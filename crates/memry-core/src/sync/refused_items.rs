@@ -123,17 +123,6 @@ pub(crate) fn take_retryable(
     Ok(pairs)
 }
 
-/// Drops every entry under `item_id`: an untyped tombstone deleted every row
-/// under it (§5.12.1).
-pub(crate) fn resolve_id(conn: &Connection, item_id: &str) -> Result<(), StorageError> {
-    conn.execute(
-        "DELETE FROM sync_refused_items WHERE item_id = ?1",
-        params![item_id],
-    )
-    .map(drop)
-    .map_err(failed)
-}
-
 /// Every ledger row, ordered by type and id.
 pub fn entries(conn: &Connection) -> Result<Vec<RefusedItem>, StorageError> {
     Ok(entries_refused_at(conn)?

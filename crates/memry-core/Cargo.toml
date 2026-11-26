@@ -19,6 +19,9 @@ default = []
 # enables it: on device the transport is a foreign trait the Swift side fills in
 # (Constitution I, no Rust networking on device).
 native-transport = []
+# `AuthSession::accept_e2e_setup_token`, the desktop e2e build's sign-in (`e2e_bootstrap_sync_device`).
+# memry-desktop's `e2e` feature turns it on; the iOS build and every release build keep it off.
+e2e = []
 # The markdown converter (`src/markdown`), the Rust port of the Electron one.
 # Desktop turns it on; the iOS build keeps it off and links none of it.
 markdown = ["dep:html5ever", "dep:markup5ever", "dep:regex", "dep:url", "dep:uuid"]
@@ -26,6 +29,13 @@ markdown = ["dep:html5ever", "dep:markup5ever", "dep:regex", "dep:url", "dep:uui
 # turns it on; the iOS build keeps it off and has no vector search. Note vectors embed the
 # text read out of files (`domain::file_text`), which is desktop's, so it needs `markdown`.
 vec = ["dep:sqlite-vec", "markdown"]
+# On-device semantic search (#4505): ONNX Runtime and tokenizers. On for the
+# iOS xcframework (build-xcframework.sh), off for host builds, which then link
+# no ONNX Runtime and `semantic::load` answers `Unavailable`.
+semantic = ["dep:ort", "dep:tokenizers"]
+# Test fixtures that seed a body without a fetch (`HeldBody::never_purged`).
+# Off in every shipped build: production rows need a captured epoch (#5356).
+test-support = []
 
 [dependencies]
 # Library mode: the proc-macro attributes are the only interface. `tokio` lets
@@ -44,7 +54,7 @@ flate2 = { workspace = true }
 serde = { workspace = true }
 # `float_roundtrip`: JSON.parse reads every float to the nearest f64; the default parser
 # can land one ULP off (a `---json` frontmatter block, and iOS reading what desktop wrote).
-serde_json = { workspace = true, features = ["float_roundtrip"] }
+serde_json = { workspace = true, features = ["float_roundtrip", "raw_value"] }
 thiserror = { workspace = true }
 base64 = { workspace = true }
 hex = { workspace = true }
@@ -78,8 +88,14 @@ regex = { version = "1.13", optional = true }
 # needs `markdown_bn_parse_vectors` (the `url-reflect/*` cases) and the nightly
 # differential rerun first.
 url = { version = "=2.5.8", optional = true }
+# Pinned with `=`: the 2.0 release candidates change API between candidates.
+# No `download-binaries`, which would fetch a different ONNX Runtime from
+# pyke's CDN; the archive pinned in onnxruntime.lock is linked instead.
+ort = { version = "=2.0.0-rc.15", default-features = false, features = ["std", "api-24"], optional = true }
+tokenizers = { version = "=0.23.2", default-features = false, features = ["onig"], optional = true }
 
 [dev-dependencies]
+memry-core = { path = ".", features = ["test-support"] }
 dryoc = "1.0.0"
 # `test-util` only: the auth tier's own backoff ladder sleeps on tokio's
 # timer, and a paused clock is what keeps asserting it from costing seven
@@ -109,8 +125,16 @@ name = "integration"
 path = "tests/integration.rs"
 
 [[test]]
+name = "api_sync_diagnostics"
+path = "tests/api_sync_diagnostics.rs"
+
+[[test]]
 name = "calendar_feed_memory"
 path = "tests/calendar_feed_memory.rs"
+
+[[test]]
+name = "large_note_bench"
+path = "tests/large_note_bench.rs"
 
 [[test]]
 name = "markdown_corpus"
@@ -151,3 +175,23 @@ path = "tests/outbox_durability.rs"
 [[test]]
 name = "read_pool_contention"
 path = "tests/read_pool_contention.rs"
+
+[[test]]
+name = "sync_apply_bench"
+path = "tests/sync_apply_bench.rs"
+
+[[test]]
+name = "sync_apply_kill"
+path = "tests/sync_apply_kill.rs"
+
+[[test]]
+name = "sync_body_apply_kill"
+path = "tests/sync_body_apply_kill.rs"
+
+[[test]]
+name = "sync_body_apply_races"
+path = "tests/sync_body_apply_races.rs"
+
+[[test]]
+name = "task_completion_spawn_vectors"
+path = "tests/task_completion_spawn_vectors.rs"

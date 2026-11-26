@@ -58,6 +58,7 @@
 mod contents;
 mod delete;
 mod links;
+mod note_property;
 mod propagate;
 mod status_list;
 mod statuses;
@@ -79,7 +80,10 @@ pub use contents::{
 };
 pub use delete::{TaskDisposition, delete};
 pub(crate) use links::keep_markdown_members;
-pub use links::{LinkItemType, ProjectLink, link, links, set_link_pinned, unlink};
+pub use links::{
+    LinkItemType, PROJECT_PROPERTY_KEY, ProjectLink, link, links, set_link_pinned, unlink,
+};
+pub use note_property::sync_links_from_property;
 pub use propagate::{PropagationTargets, project_names, renamed, targets, without_name};
 pub use status_list::{StatusInput, StatusType};
 pub use statuses::{
@@ -351,7 +355,10 @@ pub fn apply_remote(
 }
 
 /// One live status by id, in any live project.
-fn status_by_id(conn: &Connection, status_id: &str) -> Result<Option<Status>, StorageError> {
+pub(crate) fn status_by_id(
+    conn: &Connection,
+    status_id: &str,
+) -> Result<Option<Status>, StorageError> {
     conn.query_row(
         "SELECT s.id, s.project_id, s.name, s.color, s.position, COALESCE(s.is_default, 0),
                 COALESCE(s.is_done, 0), s.created_at

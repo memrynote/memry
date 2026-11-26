@@ -56,6 +56,8 @@ fn fail(what: &str, err: rusqlite::Error) -> StorageError {
     }
 }
 
+const STATEMENT_CACHE_CAPACITY: usize = 64;
+
 /// Pragmas and functions for the one connection that writes.
 pub fn configure_writer(conn: &Connection, profile: Profile) -> Result<(), StorageError> {
     // Asserted here rather than discovered on the first search: a core without
@@ -68,6 +70,9 @@ pub fn configure_writer(conn: &Connection, profile: Profile) -> Result<(), Stora
         .map_err(|err| fail("synchronous", err))?;
     conn.pragma_update(None, "journal_size_limit", 67_108_864_i64)
         .map_err(|err| fail("journal_size_limit", err))?;
+    // The record apply reuses its hot statements through `prepare_cached`
+    // (#5231); rusqlite's default of 16 would evict them between items.
+    conn.set_prepared_statement_cache_capacity(STATEMENT_CACHE_CAPACITY);
     register_functions(conn)
 }
 
@@ -92,6 +97,21 @@ fn set_wal(conn: &Connection) -> Result<(), StorageError> {
             Err(err) => return Err(fail("journal_mode", err)),
         }
     }
+}
+
+/// Pragmas and functions for a database staged by the Electron import
+/// ([`crate::storage::import`]): no journal and no syncs, because a staged file
+/// that did not finish is deleted, never repaired. The installed file is reopened
+/// through [`configure_writer`], which sets WAL again.
+pub fn configure_staging(conn: &Connection, profile: Profile) -> Result<(), StorageError> {
+    assert_fts5(conn)?;
+    common(conn, profile)?;
+    let _mode: String = conn
+        .query_row("PRAGMA journal_mode=OFF", [], |row| row.get(0))
+        .map_err(|err| fail("journal_mode", err))?;
+    conn.pragma_update(None, "synchronous", "OFF")
+        .map_err(|err| fail("synchronous", err))?;
+    register_functions(conn)
 }
 
 /// Pragmas and functions for a pooled reader. The connection is already opened

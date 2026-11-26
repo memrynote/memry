@@ -140,6 +140,63 @@ export const commands = {
 	bookmarksReorder: (bookmarkIds: string[]) => __TAURI_INVOKE<null>("bookmarks_reorder", { bookmarkIds }),
 	/**  Bookmarks an unbookmarked item, or removes every bookmark of a bookmarked one. */
 	bookmarksToggle: (input: BookmarkItemInput) => __TAURI_INVOKE<BookmarkToggleView>("bookmarks_toggle", { input }),
+	/**
+	 *  `calendar_eventkit_request_access`: the status after the request; a failure throws its code
+	 *  (`unsupported_platform`, `unavailable`, `permission_denied`, `sync_failed`).
+	 */
+	calendarEventkitRequestAccess: () => __TAURI_INVOKE<EventKitAuthorizationStatus>("calendar_eventkit_request_access"),
+	/**  `calendar:refresh-ics`: a feed failure is already recorded on the source, which shows it. */
+	calendarRefreshIcs: (input: IcsSourceInput) => __TAURI_INVOKE<IcsMutationView>("calendar_refresh_ics", { input }),
+	/**  `calendar:subscribe-ics`. */
+	calendarSubscribeIcs: (input: IcsSubscribeInput) => __TAURI_INVOKE<IcsMutationView>("calendar_subscribe_ics", { input }),
+	/**  `calendar:unsubscribe-ics`. */
+	calendarUnsubscribeIcs: (input: IcsSourceInput) => __TAURI_INVOKE<IcsMutationView>("calendar_unsubscribe_ics", { input }),
+	/**  `calendar:check-provider-writer-compat`. */
+	calendarCheckProviderWriterCompat: (input: WriterCompatInput) => __TAURI_INVOKE<WriterCompat>("calendar_check_provider_writer_compat", { input }),
+	/**  `calendar:connect-provider`. */
+	calendarConnectProvider: (input: ProviderRequestInput) => __TAURI_INVOKE<ProviderMutationView>("calendar_connect_provider", { input }),
+	/**  `calendar:disconnect-provider`. */
+	calendarDisconnectProvider: (input: ProviderRequestInput) => __TAURI_INVOKE<ProviderMutationView>("calendar_disconnect_provider", { input }),
+	/**  `calendar:discover-provider-calendars`: the form's "Test connection"; saves nothing. */
+	calendarDiscoverProviderCalendars: (input: DiscoverProviderInput) => __TAURI_INVOKE<DiscoverView>("calendar_discover_provider_calendars", { input }),
+	/**
+	 *  `calendar:refresh-provider` (`caldav-provider.ts:91-115`): the push drain, then with `sourceId`
+	 *  that calendar's pull (its Retry), otherwise every account's (or `accountId`'s). A failure
+	 *  answers `sync_failed`. The answer carries no `source` until the source view lands (#4894).
+	 */
+	calendarRefreshProvider: (input: ProviderRequestInput) => __TAURI_INVOKE<ProviderMutationView>("calendar_refresh_provider", { input }),
+	/**  `canvas:create`. */
+	canvasCreate: (input: CanvasCreateInput) => __TAURI_INVOKE<CanvasView>("canvas_create", { input }),
+	/**  `canvas:delete`: the document goes to the OS trash. */
+	canvasDelete: (id: string) => __TAURI_INVOKE<CanvasDeleteResponse>("canvas_delete", { id }),
+	/**  `canvas:duplicate`: `null` when the original is gone or its document cannot be read. */
+	canvasDuplicate: (id: string) => __TAURI_INVOKE<CanvasSummaryView | null>("canvas_duplicate", { id }),
+	/**  `canvas:get`: `null` for a deleted canvas. */
+	canvasGet: (id: string) => __TAURI_INVOKE<CanvasView | null>("canvas_get", { id }),
+	/**  `canvas:library-list`. */
+	canvasLibraryList: () => __TAURI_INVOKE<CanvasLibraryListResponse>("canvas_library_list"),
+	/**  `canvas:library-save`. */
+	canvasLibrarySave: (input: CanvasLibrarySaveInput) => __TAURI_INVOKE<CanvasLibrarySaveResponse>("canvas_library_save", { input }),
+	/**  `canvas:list`. */
+	canvasList: () => __TAURI_INVOKE<CanvasListResponse>("canvas_list"),
+	/**  `canvas:open-external`: the document in the OS default app. */
+	canvasOpenExternal: (id: string) => __TAURI_INVOKE<null>("canvas_open_external", { id }),
+	/**  `canvas:reveal-in-finder`. */
+	canvasRevealInFinder: (id: string) => __TAURI_INVOKE<null>("canvas_reveal_in_finder", { id }),
+	/**  `canvas:update`. A conflict or a missing canvas fails with Electron's message. */
+	canvasUpdate: (input: CanvasUpdateInput) => __TAURI_INVOKE<CanvasUpdateResponse>("canvas_update", { input }),
+	/**  `canvasFolder:create`: a directory and its record under `parent` (`null` the root). */
+	canvasFolderCreate: (parent: string | null, name: string) => __TAURI_INVOKE<CanvasFolderMutationResponse>("canvas_folder_create", { parent, name }),
+	/**  `canvasFolder:delete`: one [`CanvasDeletedEvent`] per canvas it took, then the folder's. */
+	canvasFolderDelete: (path: string) => __TAURI_INVOKE<CanvasFolderDeleteResponse>("canvas_folder_delete", { path }),
+	/**  `canvasFolder:list`. */
+	canvasFolderList: () => __TAURI_INVOKE<CanvasFolderListResponse>("canvas_folder_list"),
+	/**  `canvasFolder:move`: the same name under `parent` (`null` the root). */
+	canvasFolderMove: (path: string, parent: string | null) => __TAURI_INVOKE<CanvasFolderMutationResponse>("canvas_folder_move", { path, parent }),
+	/**  `canvasFolder:rename`: a new name under the same parent. */
+	canvasFolderRename: (path: string, name: string) => __TAURI_INVOKE<CanvasFolderMutationResponse>("canvas_folder_rename", { path, name }),
+	/**  `canvasFolder:set-icon`: `null` clears it. */
+	canvasFolderSetIcon: (path: string, icon: string | null) => __TAURI_INVOKE<CanvasFolderMutationResponse>("canvas_folder_set_icon", { path, icon }),
 	/**  The calling window closed its editor of `note_id`. */
 	crdtCloseDoc: (noteId: string) => __TAURI_INVOKE<null>("crdt_close_doc", { noteId }),
 	crdtGetHealth: () => __TAURI_INVOKE<CrdtHealth>("crdt_get_health"),
@@ -229,6 +286,28 @@ export const commands = {
 	 *  own name).
 	 */
 	folderViewSetView: (scope: ViewScope, view: { [key in string]: Value }, previousName: string | null) => __TAURI_INVOKE<null>("folder_view_set_view", { scope, view, previousName }),
+	homePagesCreate: (input: HomePageCreateInput) => __TAURI_INVOKE<HomePageView>("home_pages_create", { input }),
+	/**  `false` when there was no such board. */
+	homePagesDelete: (id: string) => __TAURI_INVOKE<boolean>("home_pages_delete", { id }),
+	homePagesGet: (id: string) => __TAURI_INVOKE<HomePageView | null>("home_pages_get", { id }),
+	/**  Every live board in the order every device agrees on. */
+	homePagesList: () => __TAURI_INVOKE<HomePageView[]>("home_pages_list"),
+	/**
+	 *  Brings the board's cover files in line with its cover. Until Step 30f syncs cover bytes,
+	 *  this only prunes files the cover no longer names.
+	 */
+	homePagesMaterializeCover: (id: string) => __TAURI_INVOKE<null>("home_pages_materialize_cover", { id }),
+	homePagesRemoveCover: (id: string) => __TAURI_INVOKE<HomePageView>("home_pages_remove_cover", { id }),
+	/**  Puts the boards in the order of `ids`. */
+	homePagesReorder: (ids: string[]) => __TAURI_INVOKE<null>("home_pages_reorder", { ids }),
+	/**
+	 *  A board's new banner from a wash, a link, Unsplash or an image already in the vault. Every
+	 *  image is copied into the board's own folder and the board saved in the same call.
+	 */
+	homePagesSetCover: (id: string, source: HomePageCoverSourceInput) => __TAURI_INVOKE<SetCoverOutcome>("home_pages_set_cover", { id, source }),
+	/**  Saves how the cover sits in its band; only the fields that changed are sent. */
+	homePagesSetCoverFraming: (id: string, changes: CoverFramingInput) => __TAURI_INVOKE<HomePageView>("home_pages_set_cover_framing", { id, changes }),
+	homePagesUpdate: (input: HomePageUpdateInput) => __TAURI_INVOKE<HomePageView>("home_pages_update", { input }),
 	/**  With the account's token when signed in. */
 	iosBetaJoin: (input: IosBetaJoinInput) => __TAURI_INVOKE<IosBetaJoinResult>("ios_beta_join", { input }),
 	/**
@@ -341,6 +420,8 @@ export const commands = {
 	 *  on the size, the type or the note id before any byte is sent. Returns the upload's id.
 	 */
 	notesUploadAttachmentBegin: (noteId: string, fileName: string, size: number) => __TAURI_INVOKE<string>("notes_upload_attachment_begin", { noteId, fileName, size }),
+	/**  `notes:export-html`: the note as a self-contained HTML file where the save dialog says. */
+	notesExportHtml: (input: ExportNoteInput) => __TAURI_INVOKE<ExportResult>("notes_export_html", { input }),
 	/**  `notes:create-folder`: the folder (vault-relative, `/`-separated) and the parents it needs. */
 	notesCreateFolder: (path: string) => __TAURI_INVOKE<null>("notes_create_folder", { path }),
 	/**
@@ -649,6 +730,11 @@ export const commands = {
 	appSetZoomFactor: (factor: number | null) => __TAURI_INVOKE<null>("app_set_zoom_factor", { factor }),
 	/**  `settings:getAISettings`: the AI switches of the open vault, or their defaults. */
 	settingsGetAi: () => __TAURI_INVOKE<AiSettings>("settings_get_ai"),
+	/**
+	 *  A calendar provider's `calendar.<provider>` group with its defaults, `null` for a provider
+	 *  this build does not know (`settings:getCalendarProviderSettings`).
+	 */
+	settingsGetCalendarProvider: (provider: string) => __TAURI_INVOKE<Value | null>("settings_get_calendar_provider", { provider }),
 	/**  A group of the open vault, or its defaults while no vault is open. */
 	settingsGetGroup: (group: string) => __TAURI_INVOKE<Value>("settings_get_group", { group }),
 	/**  A flat device-local key (`tagSearches`, `graphViews`). */
@@ -669,6 +755,12 @@ export const commands = {
 	 *  projectors; turning it off stops the model (ai-settings.ts:72-74, :105-119).
 	 */
 	settingsSetAi: (patch: AiSettingsPatch) => __TAURI_INVOKE<null>("settings_set_ai", { patch }),
+	/**
+	 *  Writes the fields a provider's group declares; the rest of `updates` is dropped. An unknown
+	 *  provider rejects with `Unsupported calendar provider: <id>`, a wrong type with
+	 *  `settings_invalid_value`, and nothing is written.
+	 */
+	settingsSetCalendarProvider: (provider: string, updates: Value) => __TAURI_INVOKE<null>("settings_set_calendar_provider", { provider, updates }),
 	/**
 	 *  Merges `patch` into a group. A value the group refuses rejects with `settings_invalid_value`
 	 *  and nothing is written.
@@ -815,6 +907,10 @@ export const commands = {
 	templatesList: () => __TAURI_INVOKE<TemplateListItem[]>("templates_list"),
 	/**  Saves the fields `input` names; a built-in is refused. */
 	templatesUpdate: (input: TemplateUpdateInput) => __TAURI_INVOKE<TemplateView>("templates_update", { input }),
+	settingsGetTerminalCommandStatus: () => __TAURI_INVOKE<TerminalCommandStatus>("settings_get_terminal_command_status"),
+	settingsInstallTerminalCommand: () => __TAURI_INVOKE<TerminalCommandMutationResult>("settings_install_terminal_command"),
+	settingsSetTerminalCommandDefaultVault: (vaultPath: string) => __TAURI_INVOKE<TerminalCommandMutationResult>("settings_set_terminal_command_default_vault", { vaultPath }),
+	settingsUninstallTerminalCommand: () => __TAURI_INVOKE<TerminalCommandMutationResult>("settings_uninstall_terminal_command"),
 	/**
 	 *  Searches photos. An empty `query` is the capability probe: it answers from the key alone
 	 *  without a request.
@@ -886,8 +982,12 @@ export const commands = {
 	/**  Keeps entries for `days` (7, 30 or 90). */
 	vaultActivitySetRetention: (days: number) => __TAURI_INVOKE<null>("vault_activity_set_retention", { days }),
 	/**
-	 *  Measures every note of the open vault again; resolves once the last progress went out.
-	 *  The index sends the vault status, indexing, from the request to the answer.
+	 *  Measures every note of the open vault again; resolves once the index took the request, not
+	 *  when the reindex ends: a first sync holds a reindex until it ends (#5409), and a renderer
+	 *  awaiting the answer would hang that long (#5423 C9). The progress goes out as
+	 *  [`VaultIndexProgressEvent`], and the vault status says indexing from the request to the
+	 *  reindex's end. A reindex that fails after the request is logged, and the vault status carries
+	 *  its message as the error, as Electron's `reindex` sets it (`main/vault/index.ts`).
 	 */
 	vaultReindex: () => __TAURI_INVOKE<null>("vault_reindex"),
 	/**
@@ -916,6 +1016,8 @@ export const commands = {
 	 *  that is not here (the note stays kept).
 	 */
 	vaultNoticesRestoreKept: (noteId: string) => __TAURI_INVOKE<null>("vault_notices_restore_kept", { noteId }),
+	/**  `inbox:retry-transcription`: transcribes a voice memo again and resolves when it is done. */
+	inboxRetryTranscription: (itemId: string) => __TAURI_INVOKE<TranscriptionResult>("inbox_retry_transcription", { itemId }),
 	/**
 	 *  `settings:downloadVoiceModel`: downloads and verifies Whisper Small, with progress on
 	 *  `VoiceModelProgressEvent`. A failure rejects with the download's reason.
@@ -942,6 +1044,37 @@ export const commands = {
 	windowSetCaptionRects: (min: CaptionRect, max: CaptionRect, close: CaptionRect) => __TAURI_INVOKE<null>("window_set_caption_rects", { min, max, close }),
 	/**  Maximizes the calling window, or restores it when it is maximized. */
 	windowToggleMaximize: () => __TAURI_INVOKE<null>("window_toggle_maximize"),
+	tasksArchive: (id: string) => __TAURI_INVOKE<TaskAck>("tasks_archive", { id }),
+	tasksBulkArchive: (input: BulkIdsInput) => __TAURI_INVOKE<BulkMutation>("tasks_bulk_archive", { input }),
+	tasksBulkComplete: (input: BulkIdsInput) => __TAURI_INVOKE<BulkMutation>("tasks_bulk_complete", { input }),
+	tasksBulkDelete: (input: BulkIdsInput) => __TAURI_INVOKE<BulkMutation>("tasks_bulk_delete", { input }),
+	tasksBulkMove: (input: BulkMoveInput) => __TAURI_INVOKE<BulkMutation>("tasks_bulk_move", { input }),
+	tasksComplete: (input: TaskCompleteInput) => __TAURI_INVOKE<TaskCompletion>("tasks_complete", { input }),
+	tasksConvertToSubtask: (input: ConvertToSubtaskInput) => __TAURI_INVOKE<TaskMutation>("tasks_convert_to_subtask", { input }),
+	tasksConvertToTask: (id: string) => __TAURI_INVOKE<TaskMutation>("tasks_convert_to_task", { id }),
+	tasksCreate: (input: TaskCreateInput) => __TAURI_INVOKE<TaskMutation>("tasks_create", { input }),
+	tasksDelete: (id: string) => __TAURI_INVOKE<TaskAck>("tasks_delete", { id }),
+	tasksDuplicate: (id: string) => __TAURI_INVOKE<TaskMutation>("tasks_duplicate", { id }),
+	tasksGet: (id: string) => __TAURI_INVOKE<TaskListItemView | null>("tasks_get", { id }),
+	tasksGetActivity: (input: TaskActivityListInput) => __TAURI_INVOKE<TaskActivityPageView>("tasks_get_activity", { input }),
+	tasksGetLinkedTasks: (noteId: string) => __TAURI_INVOKE<TaskView[]>("tasks_get_linked_tasks", { noteId }),
+	tasksGetOverdue: () => __TAURI_INVOKE<TaskListItemView[]>("tasks_get_overdue"),
+	tasksGetStats: () => __TAURI_INVOKE<TaskStatsView>("tasks_get_stats"),
+	tasksGetSubtasks: (parentId: string) => __TAURI_INVOKE<TaskListItemView[]>("tasks_get_subtasks", { parentId }),
+	tasksGetTags: () => __TAURI_INVOKE<TaskTagCount[]>("tasks_get_tags"),
+	tasksGetToday: () => __TAURI_INVOKE<TaskListItemView[]>("tasks_get_today"),
+	tasksGetUpcoming: (days: number | null) => __TAURI_INVOKE<TaskListItemView[]>("tasks_get_upcoming", { days }),
+	tasksList: (input: TaskListInput) => __TAURI_INVOKE<TaskPageView>("tasks_list", { input }),
+	tasksMove: (input: TaskMoveInput) => __TAURI_INVOKE<TaskMutation>("tasks_move", { input }),
+	tasksReorder: (input: TaskReorderInput) => __TAURI_INVOKE<TaskAck>("tasks_reorder", { input }),
+	tasksStatusCreate: (input: StatusCreateInput) => __TAURI_INVOKE<StatusMutation>("tasks_status_create", { input }),
+	tasksStatusDelete: (id: string) => __TAURI_INVOKE<StatusMutation>("tasks_status_delete", { id }),
+	tasksStatusList: (projectId: string) => __TAURI_INVOKE<StatusView[]>("tasks_status_list", { projectId }),
+	tasksStatusReorder: (input: StatusReorderInput) => __TAURI_INVOKE<StatusMutation>("tasks_status_reorder", { input }),
+	tasksStatusUpdate: (input: StatusUpdateInput) => __TAURI_INVOKE<StatusMutation>("tasks_status_update", { input }),
+	tasksUnarchive: (id: string) => __TAURI_INVOKE<TaskAck>("tasks_unarchive", { id }),
+	tasksUncomplete: (id: string) => __TAURI_INVOKE<TaskMutation>("tasks_uncomplete", { id }),
+	tasksUpdate: (input: TaskUpdateInput) => __TAURI_INVOKE<TaskMutation>("tasks_update", { input }),
 };
 
 /** Events */
@@ -957,12 +1090,22 @@ export const events = {
 	bookmarkCreatedEvent: makeEvent<BookmarkCreatedEvent, BookmarkCreatedEvent>("bookmark-created-event"),
 	bookmarkDeletedEvent: makeEvent<BookmarkDeletedEvent, BookmarkDeletedEvent>("bookmark-deleted-event"),
 	bookmarksReorderedEvent: makeEvent<BookmarksReorderedEvent, BookmarksReorderedEvent>("bookmarks-reordered-event"),
+	canvasCreatedEvent: makeEvent<CanvasCreatedEvent, CanvasCreatedEvent>("canvas-created-event"),
+	canvasDeletedEvent: makeEvent<CanvasDeletedEvent, CanvasDeletedEvent>("canvas-deleted-event"),
+	canvasFolderCreatedEvent: makeEvent<CanvasFolderCreatedEvent, CanvasFolderCreatedEvent>("canvas-folder-created-event"),
+	canvasFolderDeletedEvent: makeEvent<CanvasFolderDeletedEvent, CanvasFolderDeletedEvent>("canvas-folder-deleted-event"),
+	canvasFolderUpdatedEvent: makeEvent<CanvasFolderUpdatedEvent, CanvasFolderUpdatedEvent>("canvas-folder-updated-event"),
+	canvasTooLargeEvent: makeEvent<CanvasTooLargeEvent, CanvasTooLargeEvent>("canvas-too-large-event"),
+	canvasUpdatedEvent: makeEvent<CanvasUpdatedEvent, CanvasUpdatedEvent>("canvas-updated-event"),
 	crdtProviderReadyEvent: makeEvent<CrdtProviderReadyEvent, CrdtProviderReadyEvent>("crdt-provider-ready-event"),
 	crdtProviderResetEvent: makeEvent<CrdtProviderResetEvent, CrdtProviderResetEvent>("crdt-provider-reset-event"),
 	crdtWriteBackFailedEvent: makeEvent<CrdtWriteBackFailedEvent, CrdtWriteBackFailedEvent>("crdt-write-back-failed-event"),
 	customIconsUpdatedEvent: makeEvent<CustomIconsUpdatedEvent, CustomIconsUpdatedEvent>("custom-icons-updated-event"),
 	flushRequestedEvent: makeEvent<FlushRequestedEvent, FlushRequestedEvent>("flush-requested-event"),
 	folderConfigUpdatedEvent: makeEvent<FolderConfigUpdatedEvent, FolderConfigUpdatedEvent>("folder-config-updated-event"),
+	homePageCreatedEvent: makeEvent<HomePageCreatedEvent, HomePageCreatedEvent>("home-page-created-event"),
+	homePageDeletedEvent: makeEvent<HomePageDeletedEvent, HomePageDeletedEvent>("home-page-deleted-event"),
+	homePageUpdatedEvent: makeEvent<HomePageUpdatedEvent, HomePageUpdatedEvent>("home-page-updated-event"),
 	inboxOpenItemEvent: makeEvent<InboxOpenItemEvent, InboxOpenItemEvent>("inbox-open-item-event"),
 	journalEntryCreatedEvent: makeEvent<JournalEntryCreatedEvent, JournalEntryCreatedEvent>("journal-entry-created-event"),
 	journalEntryDeletedEvent: makeEvent<JournalEntryDeletedEvent, JournalEntryDeletedEvent>("journal-entry-deleted-event"),
@@ -1007,6 +1150,12 @@ export const events = {
 	tagNotesChangedEvent: makeEvent<TagNotesChangedEvent, TagNotesChangedEvent>("tag-notes-changed-event"),
 	tagRenamedEvent: makeEvent<TagRenamedEvent, TagRenamedEvent>("tag-renamed-event"),
 	tagsProgressEvent: makeEvent<TagsProgressEvent, TagsProgressEvent>("tags-progress-event"),
+	taskActivityCreatedEvent: makeEvent<TaskActivityCreatedEvent, TaskActivityCreatedEvent>("task-activity-created-event"),
+	taskCompletedEvent: makeEvent<TaskCompletedEvent, TaskCompletedEvent>("task-completed-event"),
+	taskCreatedEvent: makeEvent<TaskCreatedEvent, TaskCreatedEvent>("task-created-event"),
+	taskDeletedEvent: makeEvent<TaskDeletedEvent, TaskDeletedEvent>("task-deleted-event"),
+	taskMovedEvent: makeEvent<TaskMovedEvent, TaskMovedEvent>("task-moved-event"),
+	taskUpdatedEvent: makeEvent<TaskUpdatedEvent, TaskUpdatedEvent>("task-updated-event"),
 	templateCreatedEvent: makeEvent<TemplateCreatedEvent, TemplateCreatedEvent>("template-created-event"),
 	templateDeletedEvent: makeEvent<TemplateDeletedEvent, TemplateDeletedEvent>("template-deleted-event"),
 	templateUpdatedEvent: makeEvent<TemplateUpdatedEvent, TemplateUpdatedEvent>("template-updated-event"),
@@ -1028,6 +1177,9 @@ export const events = {
 };
 
 /* Types */
+/**  `CalendarProviderAccountConnectionStatus` (`disconnected` is never built, as in Electron). */
+export type AccountConnection = "connected" | "reconnect_required" | "error";
+
 export type AccountDevice = {
 	deviceId: string,
 };
@@ -1037,6 +1189,20 @@ export type AccountInfoView = {
 	email: string | null,
 	deviceId: string | null,
 	needsRecoveryConfirmation: boolean,
+};
+
+/**  `CalendarProviderAccountStatus`. */
+export type AccountStatus = {
+	accountId: string,
+	email: string,
+	status: AccountConnection,
+	lastSyncedAt: string | null,
+	lastError: string | null,
+	reconnectReason?: ReconnectReason | null,
+	/**  Basic-auth accounts only: what a reconnect form prefills. Never a password. */
+	serverUrl?: string | null,
+	username?: string | null,
+	preset?: string | null,
 };
 
 /**  `AccountVaultInfo` of `packages/contracts/src/vault-api.ts`. */
@@ -1384,6 +1550,16 @@ export type BacklinkView = {
 	via?: LinkViaView | null,
 };
 
+/**  `kind: 'basic'`. No `Debug`: it carries the password. */
+export type BasicConnectionInput = {
+	serverUrl: string,
+	username: string,
+	password: string,
+	preset?: string | null,
+	selectedCalendarIds?: string[] | null,
+	acknowledgeOutdatedDevices?: boolean | null,
+};
+
 /**  `BillingActionResult`: the envelope of a call that did not reach the server (signed out). */
 export type BillingActionResult = {
 	success: boolean,
@@ -1517,6 +1693,176 @@ export type BuiltInColumnView = {
 	type: string,
 };
 
+/**  `BulkIdsSchema`. */
+export type BulkIdsInput = {
+	ids: string[],
+};
+
+/**  `BulkMoveSchema`. */
+export type BulkMoveInput = {
+	ids: string[],
+	projectId: string,
+};
+
+/**  A bulk write's envelope: `{ success, count }`, or `{ success: false, error }`. */
+export type BulkMutation = {
+	success: boolean,
+	count: number,
+	error?: string | null,
+};
+
+export type CalendarCounts = {
+	total: number,
+	selected: number,
+	memryManaged: number,
+};
+
+/**  `CanvasCreateSchema`. */
+export type CanvasCreateInput = {
+	title?: string | null,
+	scene?: string | null,
+	folder?: string | null,
+	icon?: string | null,
+	ownerNoteId?: string | null,
+};
+
+/**  A canvas was created, duplicated or kept as a conflict copy (`canvas:created`). */
+export type CanvasCreatedEvent = {
+	canvas: CanvasSummaryView,
+};
+
+export type CanvasDeleteResponse = {
+	success: boolean,
+};
+
+/**  A canvas was deleted, alone or with its folder (`canvas:deleted`). */
+export type CanvasDeletedEvent = {
+	id: string,
+};
+
+/**  `canvasFolder:created`. */
+export type CanvasFolderCreatedEvent = {
+	folder: CanvasFolderView,
+};
+
+export type CanvasFolderDeleteResponse = {
+	success: boolean,
+	deletedCanvasIds: string[],
+};
+
+/**  `canvasFolder:deleted`. */
+export type CanvasFolderDeletedEvent = {
+	path: string,
+};
+
+export type CanvasFolderListResponse = {
+	folders: CanvasFolderView[],
+};
+
+export type CanvasFolderMutationResponse = {
+	folder: CanvasFolderView | null,
+};
+
+/**
+ *  `canvasFolder:updated`: `previousPath` on a rename or move, so a listener re-keys state filed
+ *  under the old path.
+ */
+export type CanvasFolderUpdatedEvent = {
+	folder: CanvasFolderView,
+	previousPath?: string | null,
+};
+
+/**  `CanvasFolder`. */
+export type CanvasFolderView = {
+	id: string,
+	path: string,
+	icon: string | null,
+	createdAt: number,
+	updatedAt: number,
+};
+
+/**  `CanvasLibraryListResponse`. */
+export type CanvasLibraryListResponse = {
+	libraryItems: Value[],
+};
+
+/**  `CanvasLibrarySaveSchema`: Excalidraw's full item list; absence is how a delete arrives. */
+export type CanvasLibrarySaveInput = {
+	libraryItems: Value[],
+};
+
+/**  `CanvasLibrarySaveResponse`: the item count when the file was written, else 0. */
+export type CanvasLibrarySaveResponse = {
+	changed: number,
+};
+
+export type CanvasListResponse = {
+	canvases: CanvasSummaryView[],
+};
+
+/**  `CanvasSummary`. */
+export type CanvasSummaryView = {
+	id: string,
+	title: string | null,
+	folder: string | null,
+	icon: string | null,
+	ownerNoteId: string | null,
+	createdAt: number,
+	updatedAt: number,
+};
+
+/**
+ *  A canvas was saved here and held back from sync: its scene is over the cap
+ *  (`canvas:too-large`).
+ */
+export type CanvasTooLargeEvent = {
+	id: string,
+};
+
+/**
+ *  `CanvasUpdateSchema`. Absent leaves a field; `null` clears it (the root, for `folder`).
+ *  `entityRefs` is not read: the refs are derived from the scene.
+ */
+export type CanvasUpdateInput = {
+	id: string,
+	title?: string | null,
+	scene?: string | null,
+	folder?: string | null,
+	icon?: string | null,
+	expectedUpdatedAt?: number | null,
+	/**
+	 *  The `sha256` of the [`CanvasView`] the scene was drawn over; absent or `null` when the
+	 *  reader got no document. A scene saved over other bytes first keeps them as a copy.
+	 */
+	expectedSha256?: string | null,
+};
+
+/**  `CanvasUpdateResponse`. */
+export type CanvasUpdateResponse = {
+	tooLarge: boolean,
+	/**  The document's sha256 after the save: the saver's next `expectedSha256`. */
+	sha256: string | null,
+} & CanvasSummaryView;
+
+/**  A canvas was saved, renamed or moved (`canvas:updated`). */
+export type CanvasUpdatedEvent = {
+	canvas: CanvasSummaryView,
+};
+
+/**
+ *  `Canvas`: the summary and the scene without the file's sidecar. `unreadable` when the
+ *  document links outside the vault; its scene is then empty and never saved over.
+ */
+export type CanvasView = {
+	scene: string,
+	/**
+	 *  The sha256 of the document bytes this reader got, `null` when it got none. The reader
+	 *  sends it back as `expectedSha256`, so its save never replaces bytes it did not see.
+	 */
+	sha256: string | null,
+	unreadable?: boolean | null,
+} & CanvasSummaryView;
+
 /**  A caption button's rectangle in client coordinates, physical pixels. */
 export type CaptionRect = {
 	x: number | null,
@@ -1561,6 +1907,9 @@ export type CommandError = {
 	message: string,
 };
 
+/**  `CaldavConnectErrorCode`. */
+export type ConnectCode = "invalid_url" | "unauthorized" | "unreachable" | "not_caldav" | "no_calendars" | "outdated_devices" | "sync_failed";
+
 /**  `ContentType`. */
 export type ContentType = "note" | "journal" | "task" | "inbox";
 
@@ -1574,6 +1923,26 @@ export type ContextMenuItem = {
 	accelerator?: string | null,
 	disabled?: boolean | null,
 	type?: ItemKind | null,
+};
+
+/**  `ConvertToSubtaskSchema`. */
+export type ConvertToSubtaskInput = {
+	taskId: string,
+	parentId: string,
+};
+
+/**
+ *  `HomePageCoverFailure`: why a picked cover was not set. Each picker tab
+ *  shows the ones it knows.
+ */
+export type CoverFailure = "not-configured" | "offline" | "rate-limited" | "failed" | "write-failed" | "not-an-image" | "too-large";
+
+/**  `HomePageSetCoverFramingSchema.changes`: only the fields that changed. */
+export type CoverFramingInput = {
+	focusX?: number | null,
+	focusY?: number | null,
+	zoom?: number | null,
+	height?: number | null,
 };
 
 /**
@@ -1778,6 +2147,28 @@ export type DiagnosticTrigger = {
 	stack?: string | null,
 };
 
+/**  `DiscoverProviderCalendarsSchema`. */
+export type DiscoverProviderInput = {
+	provider: string,
+	connection: ProviderConnectionInput,
+};
+
+/**  `DiscoverProviderCalendarsResponse`. */
+export type DiscoverView = {
+	success: boolean,
+	calendars: DiscoveredCalendarView[],
+	errorCode?: ConnectCode | null,
+	error?: string | null,
+};
+
+/**  `DiscoveredProviderCalendar`. */
+export type DiscoveredCalendarView = {
+	/**  The collection URL. */
+	id: string,
+	title: string,
+	color: string | null,
+};
+
 /**  The types `notes:ensure-property-definition` creates. */
 export type EnsuredType = "status" | "select" | "multiselect";
 
@@ -1790,15 +2181,54 @@ export type ErrorDetail = {
 /**  The class of a failure. Fixed set; the renderer branches on `kind`, never on message text. */
 export type ErrorKind = "storage" | "crypto" | "auth" | "api" | "sync" | "crdt" | "recovery" | "propertyWrite" | "secureStore" | "transport" | "locked" | "notFound" | "invalid" | "internal";
 
+/**  `EKAuthorizationStatus` for events. `write_only` (macOS 14+) cannot read. */
+export type EventKitAuthorizationStatus = "not_determined" | "restricted" | "denied" | "write_only" | "full_access";
+
 export type ExistingTagView = {
 	key: string,
 	usage: number,
+};
+
+/**  Why an export wrote nothing; `cancelled` when the user dismissed the save dialog. */
+export type ExportFailure = "cancelled" | "not_found" | "failed";
+
+/**
+ *  `ExportNoteSchema` (`packages/contracts/src/notes-api.ts`) without its `outputPath`: a
+ *  webview never names the file to write, so the command always asks the user through the save
+ *  dialog. `deny_unknown_fields` rejects a call that still carries one (a departure from
+ *  Electron, whose handler writes to the renderer's `outputPath`). The headless export is
+ *  [`export_html_to`], reachable in process only.
+ */
+export type ExportNoteInput = {
+	noteId: string,
+	/**  On when absent. */
+	includeMetadata?: boolean | null,
+	/**  The PDF page; the HTML export ignores it. */
+	pageSize?: PageSize | null,
+	/**  Off when absent. */
+	includeTaskMarkers?: boolean | null,
+};
+
+/**  `{ success: true, path }` or `{ success: false, code, error }`. */
+export type ExportResult = {
+	success: boolean,
+	path?: string | null,
+	code?: ExportFailure | null,
+	/**  Localized, for the failure toast. */
+	error?: string | null,
 };
 
 export type FailureDetail = {
 	httpStatus?: number | null,
 	serverCode?: string | null,
 	retryable?: boolean | null,
+};
+
+/**  `IcsCalendarFeedSummary`: what this device mirrored from a feed. */
+export type FeedSummary = {
+	eventCount: number,
+	firstStartAt: string | null,
+	lastStartAt: string | null,
 };
 
 /**
@@ -2136,7 +2566,90 @@ export type HeatmapEntryView = {
 	level: number,
 };
 
+/**  `HomePageCoverSource` less `upload`, which is the binary command. */
+export type HomePageCoverSourceInput = { kind: "wash"; id: string } | { kind: "url"; url: string } | { kind: "unsplash"; photo: UnsplashPhoto } | { kind: "vaultFile"; ownerNoteId: string; filename: string };
+
+/**
+ *  `HomePageCoverSync`: the fields the band reads. The record keeps every
+ *  other key a newer build wrote.
+ */
+export type HomePageCoverView = {
+	ref: string,
+	focus?: number | null,
+	focusX?: number | null,
+	zoom?: number | null,
+	height?: number | null,
+	credit?: string | null,
+	creditUrl?: string | null,
+	attachmentId?: string | null,
+};
+
+/**  `HomePageCreateSchema`. */
+export type HomePageCreateInput = {
+	name: string,
+	icon?: string | null,
+	position?: number | null,
+	widgets?: WidgetInput[] | null,
+};
+
+/**  A board was made (`home-pages:created`). */
+export type HomePageCreatedEvent = {
+	id: string,
+};
+
+/**  A board was deleted (`home-pages:deleted`). */
+export type HomePageDeletedEvent = {
+	id: string,
+};
+
+/**  `HomePageUpdateSchema`: an absent field stays as it is. */
+export type HomePageUpdateInput = {
+	id: string,
+	name?: string | null,
+	icon?: string | null,
+	position?: number | null,
+	widgets?: WidgetInput[] | null,
+};
+
+/**  A board's name, widgets, position or cover changed (`home-pages:updated`). */
+export type HomePageUpdatedEvent = {
+	id: string,
+};
+
+/**  `HomePage`. */
+export type HomePageView = {
+	id: string,
+	name: string,
+	icon?: string | null,
+	position: number | null,
+	widgets: WidgetView[],
+	cover?: HomePageCoverView | null,
+};
+
 export type HttpMethod = "GET" | "POST";
+
+/**  `IcsFeedErrorCode` (`packages/contracts/src/calendar-api.ts`). */
+export type IcsFeedCode = "invalid_url" | "unreachable" | "timeout" | "not_found" | "unauthorized" | "http_error" | "too_large" | "not_a_calendar" | "too_many_redirects" | "unsupported_redirect";
+
+/**  `IcsCalendarMutationResponse`, with the source's id where the handlers send the whole row. */
+export type IcsMutationView = {
+	success: boolean,
+	sourceId: string | null,
+	errorCode?: IcsFeedCode | null,
+	error?: string | null,
+	summary?: FeedSummary | null,
+};
+
+/**  `IcsCalendarSourceRequestSchema`. */
+export type IcsSourceInput = {
+	sourceId: string,
+};
+
+/**  `SubscribeIcsCalendarSchema`. */
+export type IcsSubscribeInput = {
+	url: string,
+	title?: string | null,
+};
 
 /**  `ImpactQuery`. */
 export type ImpactQuery = { kind: "remove-field"; tag: string; name: string } | { kind: "rename-field"; name: string } | { kind: "delete-tag"; tag: string } | { kind: "set-extends"; tag: string; parent: string | null } | { kind: "become-objects"; tag: string };
@@ -2755,8 +3268,11 @@ export type NoteDeletedEvent = {
 	source: NoteEventSource,
 };
 
-/**  Who made a note change (`NoteEventSource`): the app, or an edit outside it. */
-export type NoteEventSource = "internal" | "external";
+/**
+ *  Who made a note change (`NoteEventSource`): the app, an edit outside it, or a change pulled
+ *  from another device, which an open editor does not remount for (Electron `source: 'sync'`).
+ */
+export type NoteEventSource = "internal" | "external" | "sync";
 
 /**
  *  Note events were dropped because their forwarder fell behind (no Electron channel: Electron
@@ -3084,6 +3600,8 @@ export type OptionInput = {
 	default?: boolean | null,
 };
 
+export type PageSize = "A4" | "Letter" | "Legal";
+
 /**  `PauseSyncResult`. */
 export type PauseSyncResult = {
 	success: boolean,
@@ -3272,6 +3790,42 @@ export type PropertyValueView = {
 	type: string,
 };
 
+/**  `CalendarProviderConnectionSchema`. */
+export type ProviderConnectionInput = {
+	kind: "url",
+} & UrlConnectionInput | {
+	kind: "basic",
+} & BasicConnectionInput;
+
+/**  `CalendarProviderMutationResponse`. */
+export type ProviderMutationView = {
+	success: boolean,
+	status: ProviderStatus,
+	error?: string | null,
+	errorCode?: ConnectCode | null,
+};
+
+/**  `CalendarProviderRequestSchema`. */
+export type ProviderRequestInput = {
+	provider: string,
+	accountId?: string | null,
+	sourceId?: string | null,
+	connection?: ProviderConnectionInput | null,
+	/**  Read by `get-provider-status` only. */
+	includeCapabilities?: boolean | null,
+};
+
+/**  `CalendarProviderStatus`, without `capabilities` (only `get-provider-status` attaches them). */
+export type ProviderStatus = {
+	provider: string,
+	connected: boolean,
+	hasLocalAuth: boolean,
+	account: StatusAccount | null,
+	accounts: AccountStatus[],
+	calendars: CalendarCounts,
+	lastSyncedAt: string | null,
+};
+
 /**  `QuarantinedItemInfo`. */
 export type QuarantinedItemInfo = {
 	itemId: string,
@@ -3304,6 +3858,12 @@ export type RecentlyOpenedView = {
 	/**  The note's file type (`markdown`, `pdf`, ...), or `canvas`. */
 	fileType: string,
 };
+
+/**
+ *  Why a `reconnect_required` account needs attention on this device. `rejected` comes with the
+ *  sync pass's auth-failure marker (29e2).
+ */
+export type ReconnectReason = "missing";
 
 /**  `RecordRecentlyOpenedSchema`. */
 export type RecordRecentInput = {
@@ -3636,6 +4196,9 @@ export type SelectVaultResponse = {
 /**  Why the session ended (`SessionExpiredReason`); sync reports only a refused refresh. */
 export type SessionExpiredReason = "refresh_rejected";
 
+/**  What a set-cover call came to: `HomePageSetCoverResult`. */
+export type SetCoverOutcome = { status: "saved"; page: HomePageView } | { status: "failed"; reason: CoverFailure };
+
 /**
  *  A set's or a merge's answer (`SetPropertiesResponse` on success): the values as stored, and
  *  the names the edit removed.
@@ -3751,7 +4314,55 @@ export type StartupState = {
 	startupVault: string | null,
 };
 
+export type StatusAccount = {
+	id: string,
+	title: string,
+};
+
 export type StatusCategoryKey = "todo" | "in_progress" | "done";
+
+/**  `StatusCreateSchema`. */
+export type StatusCreateInput = {
+	projectId: string,
+	name: string,
+	color?: string | null,
+	isDone?: boolean | null,
+};
+
+/**  The `withDb` envelope of a status write: `{ success, status?, error? }`. */
+export type StatusMutation = {
+	success: boolean,
+	status?: StatusView | null,
+	error?: string | null,
+};
+
+/**  `StatusReorderSchema`. */
+export type StatusReorderInput = {
+	statusIds: string[],
+	positions: number[],
+};
+
+/**  `StatusUpdateSchema`. */
+export type StatusUpdateInput = {
+	id: string,
+	name?: string | null,
+	color?: string | null,
+	position?: number | null,
+	isDefault?: boolean | null,
+	isDone?: boolean | null,
+};
+
+/**  `Status`. `createdAt` is empty for an entry that carries none. */
+export type StatusView = {
+	id: string,
+	projectId: string,
+	name: string,
+	color: string,
+	position: number,
+	isDefault: boolean,
+	isDone: boolean,
+	createdAt: string,
+};
 
 /**  `StickyDraft` of `@memry/contracts/sticky-api`. */
 export type StickyDraftView = {
@@ -4076,6 +4687,168 @@ export type TagsProgressEvent = {
 	total: number,
 };
 
+/**  The `{ success, error? }` envelope of a write that answers no task. */
+export type TaskAck = {
+	success: boolean,
+	error?: string | null,
+};
+
+/**
+ *  A task's activity log grew (`task-activity:created`): a pulled peer row or a `superseded` row
+ *  this device wrote, sent once its row committed (`SyncEvent::TaskActivityCreated`), so the
+ *  open activity list refetches.
+ */
+export type TaskActivityCreatedEvent = {
+	taskId: string,
+};
+
+/**  `TaskActivityEntry`. */
+export type TaskActivityEntryView = {
+	id: string,
+	taskId: string,
+	action: string,
+	field: string | null,
+	oldValue: string | null,
+	newValue: string | null,
+	actor: string,
+	isThisDevice: boolean,
+	/**  Empty for a row that carries no time. */
+	createdAt: string,
+};
+
+/**  `TaskActivityListSchema`. */
+export type TaskActivityListInput = {
+	taskId: string,
+	limit?: number | null,
+	offset?: number | null,
+	actions?: string[] | null,
+};
+
+/**  `TaskActivityListResponse`. */
+export type TaskActivityPageView = {
+	entries: TaskActivityEntryView[],
+	total: number,
+	hasMore: boolean,
+};
+
+/**  `TaskCompleteSchema`. */
+export type TaskCompleteInput = {
+	id: string,
+	/**  An ISO instant (`z.iso.datetime()`); absent is now. */
+	completedAt?: string | null,
+	/**  A completion recorded from elsewhere: closes without rolling a repeat series. */
+	recordOnly?: boolean | null,
+};
+
+/**  A task was completed (`tasks:completed`). */
+export type TaskCompletedEvent = {
+	id: string,
+};
+
+/**  `completeTask`'s envelope: `{ success, task, nextOccurrence }`, or the refusal. */
+export type TaskCompletion = {
+	success: boolean,
+	task: TaskListItemView | null,
+	nextOccurrence: TaskListItemView | null,
+	error?: string | null,
+};
+
+/**  `TaskCreateSchema`. Nullish fields are `None` for both absent and `null`. */
+export type TaskCreateInput = {
+	projectId: string,
+	title: string,
+	description?: string | null,
+	priority?: number | null,
+	statusId?: string | null,
+	parentId?: string | null,
+	dueDate?: string | null,
+	dueTime?: string | null,
+	durationMinutes?: number | null,
+	startDate?: string | null,
+	/**  Derived from `repeatConfig`; a sent value is ignored. */
+	isRepeating?: boolean | null,
+	repeatConfig?: Value | null,
+	repeatFrom?: string | null,
+	tags?: string[] | null,
+	linkedNoteIds?: string[] | null,
+	linkedCanvasIds?: string[] | null,
+	sourceNoteId?: string | null,
+	position?: number | null,
+	fields?: { [key in string]: Value } | null,
+};
+
+/**
+ *  A task was made, by a create or as the next occurrence of a completed repeating task
+ *  (`tasks:created`).
+ */
+export type TaskCreatedEvent = {
+	id: string,
+};
+
+/**  A task was deleted (`tasks:deleted`). */
+export type TaskDeletedEvent = {
+	id: string,
+};
+
+/**  `TaskListSchema`. Absent `statusId`/`parentId` match any value, `null` matches none. */
+export type TaskListInput = {
+	projectId?: string | null,
+	statusId?: string | null,
+	parentId?: string | null,
+	includeCompleted?: boolean | null,
+	includeArchived?: boolean | null,
+	dueBefore?: string | null,
+	dueAfter?: string | null,
+	tags?: string[] | null,
+	/**  Accepted and ignored, as desktop's `listTasks` reads no search. */
+	search?: string | null,
+	sortBy?: TaskSortBy | null,
+	sortOrder?: TaskSortOrder | null,
+	limit?: number | null,
+	offset?: number | null,
+};
+
+/**  `TaskListItem`: the task and its direct subtasks' counts. */
+export type TaskListItemView = {
+	hasSubtasks: boolean,
+	subtaskCount: number,
+	completedSubtaskCount: number,
+} & TaskView;
+
+/**  `TaskMoveSchema`. Absent `targetStatusId`/`targetParentId` keep the value, `null` clears it. */
+export type TaskMoveInput = {
+	taskId: string,
+	targetProjectId?: string | null,
+	targetStatusId?: string | null,
+	targetParentId?: string | null,
+	position: number,
+};
+
+/**  A task changed project, status, parent or position through a move (`tasks:moved`). */
+export type TaskMovedEvent = {
+	id: string,
+};
+
+/**  The `withDb` envelope of a task write: `{ success, task, error }`. */
+export type TaskMutation = {
+	success: boolean,
+	task: TaskListItemView | null,
+	error?: string | null,
+};
+
+/**  `TaskListResponse`. */
+export type TaskPageView = {
+	tasks: TaskListItemView[],
+	total: number,
+	hasMore: boolean,
+};
+
+/**  `TaskReorderSchema`. */
+export type TaskReorderInput = {
+	taskIds: string[],
+	positions: number[],
+};
+
 /**  `TaskResultMetadata`. */
 export type TaskResultMetadata = {
 	projectId: string,
@@ -4087,6 +4860,83 @@ export type TaskResultMetadata = {
 	priority: number,
 	completedAt: string | null,
 	createdAt: string | null,
+};
+
+/**  `TaskListSchema.sortBy`. */
+export type TaskSortBy = "position" | "dueDate" | "priority" | "created" | "modified";
+
+/**  `TaskListSchema.sortOrder`. */
+export type TaskSortOrder = "asc" | "desc";
+
+/**  `TaskStats`. */
+export type TaskStatsView = {
+	total: number,
+	completed: number,
+	overdue: number,
+	dueToday: number,
+	dueThisWeek: number,
+};
+
+/**  One entry of `tasks:get-tags`. */
+export type TaskTagCount = {
+	tag: string,
+	count: number,
+};
+
+/**  `TaskUpdateSchema`. A nullish field is absent (keep), `null` (clear) or a value. */
+export type TaskUpdateInput = {
+	id: string,
+	title?: string | null,
+	description?: string | null,
+	priority?: number | null,
+	projectId?: string | null,
+	statusId?: string | null,
+	parentId?: string | null,
+	dueDate?: string | null,
+	dueTime?: string | null,
+	durationMinutes?: number | null,
+	startDate?: string | null,
+	/**  `isRepeating` is derived from `repeatConfig`; a sent value is ignored. */
+	isRepeating?: boolean | null,
+	repeatConfig?: Value | null,
+	repeatFrom?: string | null,
+	tags?: string[] | null,
+	linkedNoteIds?: string[] | null,
+	linkedCanvasIds?: string[] | null,
+	fields?: { [key in string]: Value } | null,
+};
+
+/**  A task's fields changed (`tasks:updated`). */
+export type TaskUpdatedEvent = {
+	id: string,
+};
+
+/**  `Task`. `createdAt`/`modifiedAt` are empty for a payload that carries none. */
+export type TaskView = {
+	id: string,
+	projectId: string,
+	statusId: string | null,
+	parentId: string | null,
+	title: string,
+	description: string | null,
+	priority: number,
+	position: number,
+	dueDate: string | null,
+	dueTime: string | null,
+	durationMinutes: number | null,
+	startDate: string | null,
+	isRepeating: boolean,
+	repeatConfig: Value | null,
+	repeatFrom: string | null,
+	sourceNoteId: string | null,
+	completedAt: string | null,
+	archivedAt: string | null,
+	createdAt: string,
+	modifiedAt: string,
+	tags: string[],
+	linkedNoteIds: string[],
+	linkedCanvasIds: string[],
+	fields: { [key in string]: Value },
 };
 
 export type TelemetryEvent = {
@@ -4200,6 +5050,39 @@ export type TemplateView = {
 };
 
 /**
+ *  `TerminalCommandMutationResult`: `{ success: true, status }` or
+ *  `{ success: false, error, status? }`.
+ */
+export type TerminalCommandMutationResult = {
+	success: boolean,
+	error?: string | null,
+	status?: TerminalCommandStatus | null,
+};
+
+export type TerminalCommandPlatform = "darwin" | "linux" | "win32";
+
+/**  `TerminalCommandStatus` (`packages/rpc/src/settings.ts`). */
+export type TerminalCommandStatus = {
+	supported: boolean,
+	installed: boolean,
+	command: string,
+	platform: TerminalCommandPlatform,
+	shimPath: string,
+	binDir: string,
+	targetPath: string,
+	inPath: boolean,
+	pathHint: string | null,
+	defaultVaultPath: string | null,
+	vaults: TerminalCommandVault[],
+};
+
+export type TerminalCommandVault = {
+	path: string,
+	name: string,
+	isDefault: boolean,
+};
+
+/**
  *  The outcome of the settings screen's Test button. `detail` is the translated reason of a
  *  failure, `None` when `ok`.
  */
@@ -4212,6 +5095,13 @@ export type TestConnectionResult = {
 export type TitleMatchView = {
 	id: string,
 	path: string,
+};
+
+/**  `TranscriptionResult`. */
+export type TranscriptionResult = {
+	success: boolean,
+	transcription?: string | null,
+	error?: string | null,
 };
 
 /**  `FileMetadata.transcriptionStatus`. */
@@ -4341,6 +5231,12 @@ export type UpdateSyncedSettingResult = {
 export type UpdaterStateChangedEvent = AppUpdateState;
 
 export type UpdaterStatus = "unavailable" | "idle" | "checking" | "available" | "downloading" | "downloaded" | "installing" | "up-to-date" | "error";
+
+/**  `kind: 'url'` of `CalendarProviderConnectionSchema`. */
+export type UrlConnectionInput = {
+	url: string,
+	title?: string | null,
+};
 
 /**  What a URL download came to: `DownloadAttachmentFromUrlResult` without its `ok` flag. */
 export type UrlDownload = { status: "saved"; ref: string } | { status: "failed"; reason: RemoteFailure };
@@ -4679,6 +5575,34 @@ export type WaitingMove = {
 	path: string,
 };
 
+/**
+ *  `WidgetInstanceSchema`. Written back in its key order, which is the order
+ *  `JSON.stringify` gives the parsed object in Electron.
+ */
+export type WidgetInput = {
+	id: string,
+	type: string,
+	x: number,
+	y: number,
+	w: number,
+	h: number,
+	config?: { [key in string]: Value },
+};
+
+/**
+ *  `WidgetInstance` as the grid reads it. A widget of a type this build does
+ *  not know comes through like any other.
+ */
+export type WidgetView = {
+	id: string,
+	type: string,
+	x: number | null,
+	y: number | null,
+	w: number | null,
+	h: number | null,
+	config: { [key in string]: Value },
+};
+
 /**  `WikiLinkPreview`, with the body in place of `bodyText`. */
 export type WikiLinkPreviewView = {
 	id: string,
@@ -4730,6 +5654,29 @@ export type WindowChromeStateChangedEvent = {
  *  alone until it is fixed).
  */
 export type WriteBackFailureReason = "write" | "frontmatter";
+
+/**  `CalendarWriterCompatResponse`. */
+export type WriterCompat = {
+	/**  `false` when connecting this provider adds no second writer. */
+	required: boolean,
+	/**  `false` when the device list could not be read; the user must acknowledge blind. */
+	verified: boolean,
+	minVersion: string,
+	outdatedDevices: WriterCompatDevice[],
+};
+
+/**  `CalendarWriterCompatDevice`. */
+export type WriterCompatDevice = {
+	id: string,
+	name: string,
+	platform: string,
+	appVersion: string | null,
+};
+
+/**  `CheckProviderWriterCompatSchema`. */
+export type WriterCompatInput = {
+	provider: string,
+};
 
 /**  `WritingAssistInput` of `@memry/contracts/writing-tools-api`. */
 export type WritingAssistInput = { kind: "alternatives"; text: string; context: string };

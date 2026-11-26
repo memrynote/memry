@@ -2,7 +2,9 @@
 //!
 //! Stops the open vault's sync, revokes the server session (best effort), deletes the five
 //! keychain secrets (the session's store holds exactly them: master key, device key and the three
-//! tokens; a keychain error still signs out and names the entries that stay), ends the open vault's sync session state, and empties `memry-config.json` `sync`
+//! tokens; a keychain error still signs out and names the entries that stay), removes the open
+//! vault's at-rest key even while the agent holds it, ends the open vault's sync session state,
+//! and empties `memry-config.json` `sync`
 //! (`store.set('sync', {})`, `:119`). Vault files, the outbox and the CRDT store stay: editing
 //! never depends on a session. The Google Calendar disconnect (Step 29) is not here.
 //!
@@ -124,6 +126,8 @@ impl AccountService {
                 result.restore_risk = Some(fault);
             }
         }
+        // After the keychain is cleared, so no hold taken meanwhile reinstalls the key.
+        self.at_rest_keys.clear();
         if reason == Reason::Logout
             && let Some(open) = session.current()
             && let Err(error) = open.vault.clear_sync_session_state()

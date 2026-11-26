@@ -17,6 +17,7 @@ use rusqlite::{Connection, params};
 use crate::api::errors::StorageError;
 use crate::domain::embedding_input::IMAGE_EMBEDDING_INPUT_VERSION;
 use crate::domain::file_text::OWN_FILE;
+use crate::storage::nested_tx;
 use crate::storage::vec::{VecTable, nearest, to_blob};
 
 /// `MAX_EMBEDDED_PDF_PAGES`: pages of one PDF that get a vector.
@@ -252,7 +253,7 @@ pub fn state(
 /// in one transaction.
 pub fn store(index: &Connection, image: &ImageSource, vector: &[f32]) -> Result<(), StorageError> {
     let key = image_key(&image.note_id, &image.source);
-    let transaction = index.unchecked_transaction().map_err(failed)?;
+    let transaction = nested_tx::begin(index).map_err(failed)?;
     transaction
         .execute("DELETE FROM vec_images WHERE image_key = ?1", [&key])
         .map_err(failed)?;
@@ -279,7 +280,7 @@ pub fn store(index: &Connection, image: &ImageSource, vector: &[f32]) -> Result<
 
 /// `deleteImageEmbedding`: the vector and state row of each `(note_id, source)`.
 pub fn delete(index: &Connection, images: &[(String, String)]) -> Result<(), StorageError> {
-    let transaction = index.unchecked_transaction().map_err(failed)?;
+    let transaction = nested_tx::begin(index).map_err(failed)?;
     for (note_id, source) in images {
         transaction
             .execute(

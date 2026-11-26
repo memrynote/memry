@@ -60,6 +60,10 @@ pub struct AppliedRecord {
     pub item_id: String,
     pub outcome: AppliedOutcome,
     pub conflicts: Vec<FieldConflict>,
+    /// A note's title as this device held it before the record applied, `None` for a note
+    /// that was not here and for every other type: a pulled change that keeps the title never
+    /// renames the note's file (Electron's `titleChanged`, `note-handler.ts:349`).
+    pub title_before: Option<String>,
 }
 
 /// An attachment an applied record references (Electron's
@@ -103,6 +107,14 @@ pub trait ApplyObserver: Send + Sync {
     /// Every record of one committed page, in apply order. One call per page.
     fn records_applied(&self, _batch: &[AppliedRecord]) {}
 
+    /// These tasks' activity logs grew in one committed page, by a pulled
+    /// `task_activity` row or a `superseded` row this device wrote, each task
+    /// once. Told by [`SupersededObserver`] after its own write committed, so
+    /// a read at this call sees every row.
+    ///
+    /// [`SupersededObserver`]: crate::domain::task_activity::superseded::SupersededObserver
+    fn task_activity_created(&self, _task_ids: &[String]) {}
+
     /// A pulled tombstone of `note_id` was skipped because the local edit is
     /// newer, so the note lives on (Electron's `note-handler.ts:740`).
     fn note_revived(&self, _note_id: &str) {}
@@ -115,6 +127,12 @@ pub trait ApplyObserver: Send + Sync {
     /// Record pages carry no body change, and `Editor::subscribe` sees only
     /// resident documents, so this is how a non-resident body reaches its file.
     fn bodies_applied(&self, _doc_ids: &[String]) {}
+
+    /// The pass's body step finished and every debt it pulled is settled or
+    /// re-owed, committed. `bodies_applied` fires before a document's debt is
+    /// settled, so work that needs a settled body (an owed file's take) runs
+    /// here.
+    fn bodies_settled(&self) {}
 
     /// A pulled record's signature did not verify, and its quarantine
     /// counted it (desktop's `SecurityWarningEvent`).
@@ -202,6 +220,14 @@ impl Observers {
             guarded(observer, "bodies_applied", size, || {
                 observer.bodies_applied(&doc_ids)
             });
+        })
+        .await;
+    }
+
+    /// Tells every observer that the body step settled, on `spawn_blocking`.
+    pub async fn bodies_settled(&self) {
+        self.each("bodies_settled", |observer| {
+            guarded(observer, "bodies_settled", 0, || observer.bodies_settled());
         })
         .await;
     }
@@ -330,6 +356,7 @@ mod tests {
             item_id: id.into(),
             outcome: AppliedOutcome::Created,
             conflicts: Vec::new(),
+            title_before: None,
         }
     }
 

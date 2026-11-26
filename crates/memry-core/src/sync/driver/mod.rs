@@ -41,9 +41,11 @@ mod lock_seed;
 pub mod observer;
 mod pause;
 pub mod progress;
+mod refusals;
 mod repairs;
 mod snapshots;
 
+use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 
 use zeroize::Zeroizing;
@@ -65,7 +67,7 @@ use crate::protocol::types::Declaration;
 use crate::seams::reachability::{Reachability, ReachabilityObserver};
 use crate::seams::transport::Transport;
 use crate::storage::Db;
-use crate::storage::repositories::sync_items;
+use crate::sync::delete_keep::{OwnWrites, VaultFiles};
 use pause::PauseSwitch;
 
 use super::admission::CrdtAdmission;
@@ -102,20 +104,24 @@ pub struct DriverConfig {
     pub first_sync: FirstSyncLimits,
     /// Pages one pass walks before it yields the gate.
     pub max_pages_per_pass: u32,
-    /// Packs the first sync downloads at once.
-    pub pack_concurrency: usize,
+    /// The vault folder a delete reads a note's file in when its body log
+    /// does not replay ([`PullLoop::with_vault_root`]).
+    pub vault_root: Option<PathBuf>,
+    /// The bytes this device writes to that folder's files itself
+    /// ([`PullLoop::with_vault_files`]).
+    pub own_writes: Option<Arc<dyn OwnWrites>>,
 }
 
 impl DriverConfig {
-    /// Desktop: its declaration, every body (Electron's first sync), and
-    /// three packs at once (`pack-bootstrap.ts`).
+    /// Desktop: its declaration and every body (Electron's first sync).
     #[cfg(feature = "markdown")]
     pub fn desktop() -> Self {
         Self {
             declaration: Declaration::desktop(),
             first_sync: FirstSyncLimits::ALL,
             max_pages_per_pass: super::engine::MAX_PAGES_PER_PASS,
-            pack_concurrency: 3,
+            vault_root: None,
+            own_writes: None,
         }
     }
 }
@@ -149,6 +155,9 @@ pub struct DriverParts {
     pub pass_gate: Arc<tokio::sync::Mutex<()>>,
     /// Hear every page applied from the open on, its re-pull included.
     pub observers: Vec<Arc<dyn ApplyObserver>>,
+    /// Where the first sync holds body packs until their checks
+    /// ([`PackBootstrap::with_spill_dir`]). `None` uses no body pack.
+    pub spill_dir: Option<std::path::PathBuf>,
 }
 
 /// The first sync's parts, built once and run under the pass gate.
@@ -179,6 +188,8 @@ pub struct SyncDriver {
     snapshots: Arc<PassSnapshots>,
     snapshot_requests: Arc<SnapshotRequests>,
     admission: Arc<CrdtAdmission>,
+    /// The observers every pull tells, for the body step's `bodies_settled`.
+    observers: Arc<Observers>,
 }
 
 impl SyncDriver {
@@ -195,6 +206,7 @@ impl SyncDriver {
             seeds,
             pass_gate,
             observers: listeners,
+            spill_dir,
         } = parts;
         let server_vault = db
             .call(|conn| super::server_vault::bound(conn))
@@ -221,13 +233,13 @@ impl SyncDriver {
         })?;
         let sealer = Arc::new(AccountSealer::new(vault_key.to_vec(), signer));
         let observers = Arc::new(Observers::default());
-        for listener in listeners {
-            observers.register(listener);
+        for listener in &listeners {
+            observers.register(Arc::clone(listener));
         }
         let declaration = config.declaration.clone();
 
         let pull_loop = || {
-            PullLoop::new(
+            let pull = PullLoop::new(
                 Arc::clone(&http),
                 db.clone(),
                 declaration.clone(),
@@ -238,7 +250,14 @@ impl SyncDriver {
             .with_observers(Arc::clone(&observers))
             .with_vault(&server_vault)
             .with_hardening()
-            .with_signer_keys(cipher.clone())
+            .with_signer_keys(cipher.clone());
+            match &config.vault_root {
+                Some(root) => pull.with_vault_files(VaultFiles {
+                    root: root.clone(),
+                    own_writes: config.own_writes.clone(),
+                }),
+                None => pull,
+            }
         };
         let stale_cursor = Arc::new(StaleCursor::default());
         reachability.observe(Arc::clone(&stale_cursor) as Arc<dyn ReachabilityObserver>);
@@ -261,11 +280,20 @@ impl SyncDriver {
             pull: Arc::new(RwLock::new(LastPull::default())),
             admission: Some(Arc::clone(&admission)),
         });
-        let push = PushCoordinator::new(Arc::clone(&http), db.clone(), declaration.clone(), sealer)
-            .with_at_rest_key(at_rest.clone())
-            .with_vault(&server_vault)
-            .with_snapshot_fallback(Arc::clone(&snapshots) as _)
-            .with_crdt_pacing(Arc::clone(&admission), Arc::clone(&snapshot_requests));
+        let push = PushCoordinator::new(
+            Arc::clone(&http),
+            db.clone(),
+            declaration.clone(),
+            sealer,
+            &device_id,
+        )
+        .with_at_rest_key(at_rest.clone())
+        .with_vault(&server_vault)
+        .with_snapshot_fallback(Arc::clone(&snapshots) as _)
+        .with_crdt_pacing(Arc::clone(&admission), Arc::clone(&snapshot_requests))
+        // A `SYNC_DELETE_WINS` answer is pulled by id with its markers, so
+        // only a verified delete removes the local row (#5407).
+        .with_pull(Arc::new(pull_loop().with_note_bodies(cipher.clone())));
         let bootstrap = Arc::new(BootstrapClient::new(Arc::clone(&http)).with_vault(&server_vault));
         let bodies = Arc::new(
             BodyPull::new(
@@ -278,9 +306,11 @@ impl SyncDriver {
             .with_vault(&server_vault)
             .with_bootstrap(Arc::clone(&bootstrap)),
         );
-        let packs = PackBootstrap::new(Arc::clone(&http), db.clone(), Arc::clone(&bodies))
-            .with_concurrency(config.pack_concurrency)
+        let mut packs = PackBootstrap::new(Arc::clone(&http), db.clone(), Arc::clone(&bodies))
             .with_vault(&server_vault);
+        if let Some(dir) = spill_dir {
+            packs = packs.with_spill_dir(dir);
+        }
 
         let tags = TagHub::over(db.clone(), &session.store)?;
         let mut engine = SyncEngine::new(Arc::new(feed), Arc::clone(&http), reachability)
@@ -304,7 +334,11 @@ impl SyncDriver {
         }
         let tasks = Arc::new(TasksPhase::new(db.clone()));
         engine = engine.with_seed(Arc::clone(&tasks) as Arc<dyn PassSeed>);
-        observers.register(SupersededObserver::new(db.clone(), device_id.clone()));
+        observers.register(SupersededObserver::new(
+            db.clone(),
+            device_id.clone(),
+            listeners,
+        ));
 
         let driver = Self {
             engine,
@@ -326,6 +360,7 @@ impl SyncDriver {
             snapshots,
             snapshot_requests,
             admission,
+            observers,
         };
         driver.repull_unknown_signers().await?;
         Ok(driver)
@@ -337,9 +372,12 @@ impl SyncDriver {
             return None;
         }
         self.settle_misses().await;
+        if let Err(error) = self.retry_refusals(true).await {
+            eprintln!("memry-core: re-pulling records of an unknown signer failed: {error}");
+        }
         let started = super::pull::now_ms();
-        let pass = self.engine.run_pass(trigger).await;
-        self.pull_bodies(&pass).await;
+        let mut pass = self.engine.run_pass(trigger).await;
+        pass.bodies_left = self.pull_bodies(&pass).await;
         self.record_history(&pass, started).await;
         self.settle_misses().await;
         self.check_manifest(&pass).await;
@@ -512,33 +550,15 @@ impl SyncDriver {
     }
 
     /// Re-pulls, under the pass gate and over the directory `open` just
-    /// fetched, every record stored corrupt for an unknown signer (chapter 01
+    /// fetched, every record refused for an unknown signer (chapter 01
     /// §1.4.0). The cipher's list of misses lives only as long as a driver, so
-    /// after a quit between the page that stored such a record and
-    /// [`SyncDriver::settle_misses`], the row is the only trace. A failed
-    /// re-pull is logged and left to the next pass's settle.
+    /// after a quit between the page that refused such a record and
+    /// [`SyncDriver::settle_misses`], the refusal's `meta` row is the only
+    /// trace ([`super::unknown_signer`], which also adopts a row an older
+    /// build left only corrupt). A failed re-pull is logged and left to the
+    /// next pass ([`SyncDriver::retry_refusals`]).
     async fn repull_unknown_signers(&self) -> Result<(), SyncError> {
-        let _gate = self.engine.hold_gate().await;
-        let ids = self
-            .db
-            .call(|conn| sync_items::unknown_signer_ids(conn))
-            .await?;
-        if ids.is_empty() {
-            return Ok(());
-        }
-        match self.first.pull.fetch_ids(&ids).await {
-            // A signer still missing from a fresh directory is not in the
-            // account, as in `settle_misses`.
-            Ok(_) => self.cipher.forget_missed(),
-            Err(error) => {
-                eprintln!(
-                    "memry-core: re-pulling {} record(s) of an unknown signer failed: {error}",
-                    ids.len()
-                );
-                self.cipher.keep_missed(ids);
-            }
-        }
-        Ok(())
+        Ok(self.retry_refusals(false).await?)
     }
 
     /// After a lookup missed (chapter 01 §1.4.0): refetches the directory and

@@ -22,7 +22,11 @@ import { DELIVERED, INCOMPLETE } from './sync-run-outcome'
 import { CrdtSyncCoordinator } from './crdt-sync-coordinator'
 import { crdtBodyDebtStore, listCrdtBodyDebts, oweCrdtBodyDebts } from './crdt-body-debts'
 import { SyncServerError } from '@memry/sync-client/http-errors'
-import { hasCompletedPullSinceStart, resetSyncDecision } from '@memry/sync-client/sync-eligibility'
+import {
+  hasCompletedPullSinceStart,
+  hasPulledRecordsSinceStart,
+  resetSyncDecision
+} from '@memry/sync-client/sync-eligibility'
 import * as httpClient from '../http-client'
 import { syncState } from '@memry/db-schema/schema/sync-state'
 import { asSyncDb, createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
@@ -48,7 +52,8 @@ const mocks = vi.hoisted(() => ({
   abandonBootstrap: vi.fn(),
   openBootstrapSession: vi.fn(),
   closeBootstrapSession: vi.fn(),
-  trackMainEvent: vi.fn()
+  trackMainEvent: vi.fn(),
+  scheduleSeedDuplicateRepair: vi.fn()
 }))
 
 vi.mock('../../lib/logger', () => ({
@@ -76,6 +81,10 @@ vi.mock('../bootstrap-metrics', () => ({
 vi.mock('../bootstrap-session', () => ({
   openBootstrapSession: (...args: unknown[]) => mocks.openBootstrapSession(...args),
   closeBootstrapSession: (...args: unknown[]) => mocks.closeBootstrapSession(...args)
+}))
+
+vi.mock('../crdt-seed-duplicates', () => ({
+  scheduleSeedDuplicateRepair: (...args: unknown[]) => mocks.scheduleSeedDuplicateRepair(...args)
 }))
 
 vi.mock('../initial-seed', () => ({
@@ -191,8 +200,8 @@ interface Harness {
     scheduleSync: ReturnType<typeof vi.fn>
   }
   emitToRenderer: ReturnType<typeof vi.fn>
-  setStateValue: ReturnType<typeof vi.fn>
-  getStateValue: ReturnType<typeof vi.fn>
+  setStateValue: Mock<(key: string, value: string) => void>
+  getStateValue: Mock<(key: string) => string | undefined>
   isPaused: ReturnType<typeof vi.fn>
   clearPendingAfterFullSync: ReturnType<typeof vi.fn>
   purgeOldErrors: ReturnType<typeof vi.fn>
@@ -275,12 +284,20 @@ function createHarness(
     fullSyncActive: false
   } as unknown as SyncContext
 
-  const setStateValue = vi.fn((key: string) => {
+  const state = new Map<string, string>()
+  const setStateValue = vi.fn((key: string, value: string) => {
     calls.push(`setState:${key}`)
+    state.set(key, value)
   })
-  const getStateValue = vi.fn((_key: string) => undefined as string | undefined)
+  const getStateValue = vi.fn((key: string) => state.get(key))
+  const deleteStateValue = vi.fn((key: string) => state.delete(key))
   const isPaused = vi.fn(() => false)
-  const stateManager = { setStateValue, getStateValue, isPaused } as unknown as SyncStateManager
+  const stateManager = {
+    setStateValue,
+    getStateValue,
+    deleteStateValue,
+    isPaused
+  } as unknown as SyncStateManager
 
   const clearPendingAfterFullSync = vi.fn(() => {
     calls.push('clearPendingAfterFullSync')
@@ -372,6 +389,7 @@ describe('FullSyncRunner', () => {
 
       expect(h.calls).toEqual([
         `setState:${SYNC_STATE_KEYS.CURSOR_SKIP_REPAIR}`,
+        'setState:bootstrapPending',
         'pull',
         'seed',
         'push',
@@ -513,6 +531,22 @@ describe('FullSyncRunner', () => {
 
       resetSyncDecision()
       expect(hasCompletedPullSinceStart()).toBe(false)
+    })
+
+    // #5255 review: folder discovery is ungated once the records land, but the
+    // Readwise gate (#1408 D8) still waits for the run to finish its manifest check.
+    it('#then a push that throws after a delivered pull ungates folder discovery only', async () => {
+      resetSyncDecision()
+      const h = createHarness()
+      h.actions.push.mockRejectedValue(new Error('push exploded'))
+
+      await expect(h.runner.run()).rejects.toThrow('push exploded')
+
+      expect(hasPulledRecordsSinceStart()).toBe(true)
+      expect(hasCompletedPullSinceStart()).toBe(false)
+
+      resetSyncDecision()
+      expect(hasPulledRecordsSinceStart()).toBe(false)
     })
 
     it('#then the check is handed the quarantine predicate and the live online flag', async () => {
@@ -784,7 +818,11 @@ describe('FullSyncRunner', () => {
 
     it('#then a pause during the run skips the manifest check and the follow-up push', async () => {
       const h = createHarness({ pendingCounts: [0, 0, 0, 5] })
-      h.isPaused.mockReturnValueOnce(false).mockReturnValue(true)
+      // During the pull: a pause before it ends the run before any pull (#5389).
+      h.actions.pull.mockImplementationOnce(async () => {
+        h.isPaused.mockReturnValue(true)
+        return DELIVERED
+      })
 
       await h.runner.run()
 
@@ -964,6 +1002,76 @@ describe('FullSyncRunner', () => {
 
       expect(h.crdtSync.pullCrdtForNotes).toHaveBeenCalledWith(['note-owed'], expect.anything())
       expect(mocks.getAllCrdtNoteIds).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('#given the seed-duplicate repair (#5289) #when a full sync ends', () => {
+    function settledHarness(options: { online?: boolean } = {}): Harness {
+      const h = createHarness({ crdtProvider: fakeCrdtProvider(), ...options })
+      h.getStateValue.mockImplementation((key: string) =>
+        key === SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP ? 'done' : undefined
+      )
+      mocks.isIndexDatabaseInitialized.mockReturnValue(true)
+      return h
+    }
+
+    it('#then a delivered run with no body owed schedules it', async () => {
+      const h = settledHarness()
+
+      await h.runner.run()
+
+      expect(mocks.scheduleSeedDuplicateRepair).toHaveBeenCalledWith(
+        h.ctx.deps.crdtProvider,
+        expect.any(Function)
+      )
+    })
+
+    it('#then the readiness it hands over is read live when the timer fires', async () => {
+      const h = settledHarness()
+      await h.runner.run()
+      const settled = mocks.scheduleSeedDuplicateRepair.mock.calls[0][1] as () => boolean
+      expect(settled()).toBe(true)
+
+      h.crdtSync.addPendingPull('note-owed')
+
+      expect(settled()).toBe(false)
+    })
+
+    it('#then a failed run does not', async () => {
+      const h = settledHarness()
+      h.actions.push.mockRejectedValue(new Error('push exploded'))
+
+      await expect(h.runner.run()).rejects.toThrow('push exploded')
+
+      expect(mocks.scheduleSeedDuplicateRepair).not.toHaveBeenCalled()
+    })
+
+    it('#then a run that still owes a note body does not', async () => {
+      const h = settledHarness()
+      h.crdtSync.addPendingPull('note-owed')
+
+      await h.runner.run()
+
+      expect(mocks.scheduleSeedDuplicateRepair).not.toHaveBeenCalled()
+    })
+
+    it('#then a run with a pending legacy sweep does not', async () => {
+      const h = settledHarness()
+      h.getStateValue.mockImplementation((key: string) =>
+        key === SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP ? 'pending' : undefined
+      )
+
+      await h.runner.run()
+
+      expect(mocks.scheduleSeedDuplicateRepair).not.toHaveBeenCalled()
+    })
+
+    it('#then an offline run does not', async () => {
+      const h = settledHarness({ online: false })
+
+      await h.runner.run()
+
+      expect(mocks.scheduleSeedDuplicateRepair).not.toHaveBeenCalled()
     })
   })
 
@@ -1974,9 +2082,28 @@ describe('FullSyncRunner', () => {
       return h
     }
 
+    // #5328: the key now outlives the record pull, so a reconnect, a manual sync
+    // or a retry timer during the body drain must not reopen the bootstrap.
+    it('#then a second full sync during the body phase opens no second session and keeps the key', async () => {
+      const h = sweepingHarness(CRDT_SWEEP_CHUNK_NOTES + 5)
+      mocks.openBootstrapSession.mockClear()
+      await h.runner.run()
+      expect(mocks.openBootstrapSession).toHaveBeenCalledTimes(1)
+      expect(h.getStateValue('bootstrapPending')).toBe('1')
+
+      mocks.beginBootstrap.mockClear()
+      await h.runner.run()
+      expect(mocks.openBootstrapSession).toHaveBeenCalledTimes(1)
+      expect(mocks.beginBootstrap).not.toHaveBeenCalled()
+      expect(h.getStateValue('bootstrapPending')).toBe('1')
+
+      await vi.advanceTimersByTimeAsync(CRDT_SWEEP_CHUNK_INTERVAL_MS * 20)
+      expect(mocks.markBootstrapFullText).toHaveBeenCalled()
+      expect(h.getStateValue('bootstrapPending')).toBeUndefined()
+    })
+
     it('#then a run with no persisted cursor arms a first_full_sync bootstrap', async () => {
       const h = createHarness()
-      h.getStateValue.mockReturnValue(undefined)
 
       await h.runner.run()
 
@@ -1991,6 +2118,52 @@ describe('FullSyncRunner', () => {
 
       await h.runner.run()
 
+      expect(mocks.beginBootstrap).not.toHaveBeenCalled()
+    })
+
+    /** A pull that lands pages but never reaches the head of the feed. */
+    function interruptedPull(h: Harness): void {
+      h.actions.pull.mockImplementation(async (): Promise<SyncRunOutcome> => {
+        h.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, '42')
+        return { status: 'incomplete' }
+      })
+    }
+
+    it('#then a key without a timestamp from an earlier build still resumes a bootstrap that started on this build', async () => {
+      const h = createHarness()
+      h.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, '42')
+      h.setStateValue('bootstrapPending', '1')
+
+      await h.runner.run()
+
+      expect(mocks.beginBootstrap).toHaveBeenCalledWith('first_full_sync')
+    })
+
+    it('#then a clock corrected forward after the first launch does not end the resume window early', async () => {
+      const now = Date.now()
+      const h = createHarness()
+      interruptedPull(h)
+      vi.setSystemTime(now - 48 * 60 * 60 * 1000)
+      await h.runner.run()
+
+      vi.setSystemTime(now + 60_000)
+      mocks.beginBootstrap.mockClear()
+      await h.runner.run()
+
+      expect(mocks.beginBootstrap).toHaveBeenCalledWith('first_full_sync')
+    })
+
+    it('#then a server that refuses the bootstrap (409) ends the resume', async () => {
+      const h = createHarness()
+      interruptedPull(h)
+      await h.runner.run()
+
+      mocks.openBootstrapSession.mockResolvedValueOnce('ineligible')
+      await h.runner.run()
+      expect(h.getStateValue('bootstrapPending')).toBeUndefined()
+
+      mocks.beginBootstrap.mockClear()
+      await h.runner.run()
       expect(mocks.beginBootstrap).not.toHaveBeenCalled()
     })
 

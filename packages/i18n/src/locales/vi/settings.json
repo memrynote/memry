@@ -1232,6 +1232,10 @@
     "loadingAria": "Đang tải thiết bị",
     "none": "Chưa có thiết bị nào được liên kết",
     "linkNew": "Liên kết thiết bị mới",
+    "linkNeedsPlan": {
+      "title": "Liên kết cần gói đồng bộ",
+      "description": "Thiết bị đã liên kết chỉ thấy ghi chú của bạn khi bật đồng bộ. Nếu không có gói, hãy đăng nhập trên thiết bị đó bằng cụm từ khôi phục và thiết bị sẽ giữ kho riêng."
+    },
     "thisDevice": "Thiết bị này",
     "lastSeen": "Hoạt động lần cuối {time} trước",
     "linked": "Đã liên kết {time} trước",
@@ -1398,6 +1402,7 @@
       "selectModel": "Chọn một mô hình",
       "apiKey": "Khóa API",
       "apiKeyDescription": "Lưu cục bộ, chỉ gửi đến nhà cung cấp",
+      "apiKeyKeychainDescription": "Lưu trong chuỗi khóa của hệ điều hành, chỉ gửi đến nhà cung cấp",
       "apiKeyPlaceholder": "Nhập khóa API {provider}",
       "ollamaUrl": "URL Ollama",
       "ollamaUrlDescription": "Địa chỉ máy chủ cục bộ",

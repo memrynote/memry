@@ -20,8 +20,15 @@ export function AuthCallbackPage() {
   const missingParams = !code || !state
 
   useEffect(() => {
-    if (missingParams || ran.current) return
+    if (ran.current) return
     ran.current = true
+    // Reported from the effect, not the render: the prerendered shell has no query string,
+    // so a render-time branch on it would never match the server HTML (React error #418).
+    if (missingParams) {
+      // oxlint-disable-next-line react/set-state-in-effect -- the query string is only trustworthy after hydration; see above
+      setCallbackError('Missing OAuth parameters')
+      return
+    }
     void (async () => {
       try {
         const res = await api.publicJson<{ setupToken: string }>('/auth/oauth/google/callback', {
@@ -40,9 +47,7 @@ export function AuthCallbackPage() {
     })()
   }, [missingParams, code, state, api, storage, navigate, refreshSignedIn])
 
-  const message = missingParams
-    ? 'Missing OAuth parameters'
-    : (callbackError ?? 'Finishing sign-in…')
+  const message = callbackError ?? 'Finishing sign-in…'
 
   return (
     <main className="py-24">

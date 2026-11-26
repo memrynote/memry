@@ -22,12 +22,12 @@ Electron suite.
 | `bootstrapSyncDevice`                       | `e2e_bootstrap_sync_device`               | Step 17 (#3534) |
 | `setNetworkOnlineForTests`                  | `e2e_set_network_online`                  | Step 17 (#3534) |
 | `resetVaultDirectoryThrottle`               | `e2e_reset_vault_directory_throttle`      | Step 17 (#3534) |
-| `getCrdtPendingCount`                       | `e2e_crdt_pending_count`                  | Step 14 (#3531) |
+| `getCrdtPendingCount`                       | `e2e_crdt_pending_count`                  | Step 17 (#3534) |
 | `seedCalendarProjection`                    | `e2e_seed_calendar_projection`            | Step 29 (#3546) |
-| `getCrdtDocMarkdown`                        | none, see Hooks without a command         | Step 14 (#3531) |
+| `getCrdtDocMarkdown`                        | `e2e_get_crdt_doc_body`                   | Step 17 (#3534) |
 | `hasNoteOnDevice`                           | `e2e_has_note_on_device`                  | Step 14 (#3531) |
 | `getWritebackDebugState`                    | `e2e_writeback_debug_state`               | Step 14 (#3531) |
-| `getCrdtMarkdownSourceState`                | none, see Hooks without a command         | Step 14 (#3531) |
+| `getCrdtMarkdownSourceState`                | `e2e_get_crdt_markdown_source`            | Step 17 (#3534) |
 | `simulateCrdtTeardownForTests`              | `sync_logout` (the real teardown)         | Step 19 (#3536) |
 | `seedGoogleCalendarTokens`                  | `e2e_seed_google_calendar_tokens`         | Step 29 (#3546) |
 | `getGooglePushChannelProbe`                 | `e2e_google_push_channel_probe`           | Step 29 (#3546) |
@@ -48,7 +48,7 @@ Electron suite.
 | `triggerQuickCaptureShortcutForE2E`         | `e2e_trigger_quick_capture_shortcut`      | Step 11 (#3528) |
 | `getQuickCaptureShortcutRegistrationForE2E` | `e2e_quick_capture_shortcut_registration` | Step 11 (#3528) |
 | `disconnectSyncSocketForTests`              | `e2e_disconnect_sync_socket`              | Step 17 (#3534) |
-| `getSyncStateValueForTests`                 | `e2e_sync_state_value`                    | Step 17 (#3534) |
+| `getSyncStateValueForTests`                 | `e2e_debug_query` over `meta`             | Step 17 (#3534) |
 | `pauseSyncForTests`                         | `e2e_pause_sync`                          | Step 17 (#3534) |
 | `pushQueuedSyncRowsForTests`                | `e2e_push_queued_sync_rows`               | Step 17 (#3534) |
 | `startSyncWakeProbeForTests`                | `e2e_start_sync_wake_probe`               | Step 17 (#3534) |
@@ -58,15 +58,16 @@ Electron suite.
 | `getCrdtBodyDebtsForTests`                  | `e2e_crdt_body_debts`                     | Step 14 (#3531) |
 | `pullSyncForTests`                          | `e2e_pull_sync`                           | Step 17 (#3534) |
 | `getSyncWakeProbeForTests`                  | `e2e_sync_wake_probe`                     | Step 17 (#3534) |
-| `listCrdtStoreDirsForTests`                 | `e2e_list_crdt_store_dirs`                | Step 14 (#3531) |
+| `listCrdtStoreDirsForTests`                 | none: the store is `data.db`; see below   | Step 17 (#3534) |
 | `restartSyncRuntimeForTests`                | `e2e_restart_sync_runtime`                | Step 17 (#3534) |
 
-## Hooks without a command
+## Open document reads
 
-`getCrdtDocMarkdown` and `getCrdtMarkdownSourceState` read Electron's shared document as
-markdown and the author's bytes kept beside it. The Tauri app keeps the author's spelling
-without a separate restore step, so a spec asserts on the note file the write-back saved: it
-reads the file (`fs`, `e2e_vault_read_file`) after waiting on `e2e_writeback_debug_state`.
+`e2e_get_crdt_doc_body` and `e2e_get_crdt_markdown_source` (`src-tauri/src/e2e/editor.rs`) read
+the document of a note a window holds open: its markdown, and the author's bytes kept beside it
+with the house style it serializes to now. Both answer null once no window holds the note, as
+Electron's provider did after the editor unmounted, so a spec polls them for null after closing a
+tab. `harness/note-sync-helpers.ts` wraps them (`getCrdtDocBodyById`, `getCrdtMarkdownSourceById`).
 
 ## Debug handles
 
@@ -112,6 +113,45 @@ never opens one. The Rust dialog wrapper (`src-tauri/src/shell/dialogs.rs`, over
   `{ "kind": "OpenFolder", "paths": ["/tmp/x"] }` objects is queued in order.
 - With an open gate `vault_reveal` and `vault_activity_reveal` record the path instead of
   opening a file manager; `e2e_revealed_paths` reads it back.
+
+## Sync sign-in
+
+`e2e_bootstrap_sync_device { input }` (`src-tauri/src/e2e/sync.rs`, over
+`AccountService::bootstrap_e2e_device`) signs the instance into the account
+`startSharedSyncBootstrap()` (`harness/sync-backend.ts`) made on the local test server, with no
+email code or phrase, and answers `{ deviceId }`. `input` is one of its devices. It registers the
+device with the setup token the harness signed, binds the open vault to the account's vault for
+this account whatever the vault holds, publishes the key material unless `skipSetup`, keeps the
+master key with a confirmed phrase and attaches sync. The device keeps the signing key it minted at launch; `signingSecretKeyBase64` is
+not read. The server is the control file's `syncServerUrl`: a fixture that sets
+`syncServerUrl` makes `fresh()` check that the app runs against it (`e2e_app_info`).
+`fixtures/sync-auth-fixtures.ts` wraps it (`bootstrapSyncDevice`, `bootstrappedSyncPair`), and
+`specs/sync/sync-bootstrap.e2e.ts` waits for the first sync pass after it. The sign-in exists
+only in the e2e build (`memry-core` and `memry-desktop` feature `e2e`).
+
+`e2e_restart_sync_runtime` (`src-tauri/src/e2e/sync.rs`) is Electron's
+`restartSyncRuntimeForTests`, done the way an app restart does it: it closes the open vault,
+which stops its supervisor without the shutdown's final rounds, and opens the launch vault again
+through `Session::open_startup`. The reopen reads `vault.id` and `sync.server_vault_id` from
+disk, stamps the registry entry, and starts a new supervisor. The hook answers once that
+supervisor runs, and fails while the account is signed out. Its bind and first pass run after,
+so a spec waits for `sync_get_status` to report `idle` with a `lastSyncAt` (plain `idle` also
+means no supervisor runs) before it reads the state.
+
+Electron's sync state keys live in the vault's `data.db` `meta` table, which a spec reads with
+`e2e_debug_query`. `specs/two-device/sync-adoption-store-restart.e2e.ts` reads three:
+
+| Electron                                  | `meta` key                   |
+| ----------------------------------------- | ---------------------------- |
+| `noteBodyLegacySweep`                     | `sync.note_body_legacy_pull` |
+| `crdtStoreEpoch`                          | `vault.id`                   |
+| `listCrdtStoreDirsForTests` (the one dir) | `sync.server_vault_id`       |
+
+Electron names the CRDT store directory after the vault uuid and renames it on adoption. The
+Tauri store is the vault's `data.db`, so there is no directory to list: the adopted id is the
+binding `sync.server_vault_id`, and `vault.id` is the database's own identity, minted once. A
+reopen that lost either one fails the spec: `vault.id` would be minted again and the binding
+would be gone.
 
 ## Spelling
 

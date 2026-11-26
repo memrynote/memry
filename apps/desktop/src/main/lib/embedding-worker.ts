@@ -8,7 +8,7 @@ import {
   EMBEDDING_MODEL_REPO,
   transformersCacheDir
 } from './embeddings-constants'
-import { MAX_EMBEDDING_INPUT_LENGTH } from './embedding-input'
+import { capEmbeddingTokens, MAX_EMBEDDING_INPUT_LENGTH } from './embedding-input'
 import type {
   EmbeddingEncoderModality,
   EmbeddingMainToWorkerMessage,
@@ -123,7 +123,7 @@ async function loadEmbeddingPipeline(
   emitProgress('loading', 0, `Initializing ${label}model...`, modality)
 
   loadPromise = (async () => {
-    const { AutoConfig, AutoModel, AutoProcessor, AutoTokenizer, RawImage, env } =
+    const { AutoConfig, AutoModel, AutoProcessor, AutoTokenizer, RawImage, Tensor, env } =
       await import('@huggingface/transformers')
     env.cacheDir = getTransformersCacheDir()
 
@@ -205,7 +205,16 @@ async function loadEmbeddingPipeline(
       embed: (text: string): Promise<Float32Array> =>
         track(
           (async () => {
-            const inputs = tokenizer([text], { padding: true, truncation: true })
+            const ids = capEmbeddingTokens(tokenizer.encode(text))
+            const shape = [1, ids.length]
+            const inputs = {
+              input_ids: new Tensor(
+                'int64',
+                BigInt64Array.from(ids, (id) => BigInt(id)),
+                shape
+              ),
+              attention_mask: new Tensor('int64', new BigInt64Array(ids.length).fill(1n), shape)
+            }
             // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- transformers.js model call returns an untyped output; shape is fixed by the loaded model
             const output = (await model(inputs)) as ModelOutput
             return truncateEmbedding(output.sentence_embedding.data)

@@ -36,7 +36,7 @@ use crate::protocol::attachment_upload::{
     put_chunk_presigned, status,
 };
 use crate::protocol::attachments::{AttachmentError, fetch_manifest};
-use crate::protocol::http::HttpClient;
+use crate::protocol::http::{HttpClient, RetryPolicy};
 
 /// `MAX_ATTACHMENT_SIZE`.
 pub const MAX_ATTACHMENT_SIZE: u64 = 500 * 1024 * 1024;
@@ -101,6 +101,7 @@ impl AttachmentTransfer {
             filename,
             summary.size,
             &summary.chunks,
+            RetryPolicy::polled(),
         )
         .await?;
         // `checkResumableSession`: fails open, a fresh session has nothing.

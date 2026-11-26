@@ -10,6 +10,7 @@ use serde_json::{Map, Value, json};
 
 use crate::api::errors::StorageError;
 use crate::domain::notes::{failed, insert_local, iso, next_clock};
+use crate::storage::nested_tx;
 use crate::storage::repositories::{Change, sync_items};
 use crate::sync::outbox;
 
@@ -91,7 +92,7 @@ pub fn subscribe(
             .map(str::to_owned)
             .or_else(|| feed.name.clone())
             .unwrap_or_else(|| host(url));
-        let tx = conn.unchecked_transaction().map_err(failed)?;
+        let tx = nested_tx::begin(conn).map_err(failed)?;
         match &existing {
             None => {
                 let payload = crate::domain::notes::object(json!({
@@ -233,7 +234,7 @@ pub fn record_fetch(
     outcome: Outcome<'_>,
     now_ms: i64,
 ) -> Result<usize, StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let previous = state_row(&tx, source_id)?;
     let changed = match outcome {
         Ok((feed, validators)) => {
@@ -362,7 +363,7 @@ pub fn update(
     device_id: &str,
     now_ms: i64,
 ) -> Result<(), StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let Some(stored) = live_payload(&tx, SOURCE_TYPE, source_id)?
         .filter(|s| s.get("provider").and_then(Value::as_str) == Some(PROVIDER))
     else {
@@ -412,7 +413,7 @@ pub fn unsubscribe(
     device_id: &str,
     now_ms: i64,
 ) -> Result<(), StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     if let Some(stored) = live_payload(&tx, SOURCE_TYPE, source_id)?
         && stored.get("archivedAt").is_none_or(Value::is_null)
     {
