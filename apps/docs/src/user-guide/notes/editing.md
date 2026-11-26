@@ -826,6 +826,10 @@ The link it leaves behind is ordinary text. You can put the cursor on either sid
 
 This works inside a table cell too. **Mention** replaces the pasted URL in that one cell and leaves the rest of the table alone. **Embed** and **Bookmark** are blocks in their own right and a cell holds text only, so they take the URL out of the cell and place the card after the whole table.
 
+## Pasting Markdown
+
+A Markdown document you copy from an AI chat such as Claude or bolt.new, or from a text editor, pastes as formatted blocks: headings, bulleted and numbered lists, quotes, tables, and code blocks. This works with either line ending, so text copied on Windows (where lines end in `\r\n`) gives the same blocks as text copied on macOS or Linux.
+
 ## Pasting into a Table Cell
 
 Pasted text is normally read as Markdown, so a pasted `# Heading` becomes a heading and a pasted `| a | b |` becomes a table. Inside a table cell that reading is switched off: a cell holds text, and text is what you get. Paste a row of pipes into a cell and you get a row of pipes, not a second table spliced over the one you are editing.
