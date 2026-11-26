@@ -13,8 +13,9 @@
 //!   equal-clock identical skip (§6.5.2 P4) is the one every type uses.
 //! - **A concurrent clock over a different scene keeps both drawings.** The
 //!   local scene is copied to a new canvas titled `<title> (conflict copy)`,
-//!   owned by the same note, under a fresh clock of this device's, and queued
-//!   for push. The remote scene then wins under the merged clock. Identical
+//!   owned by the same note, in the merge's vault
+//!   ([`server_vault::merged_vault_id`]), under a fresh clock of this device's,
+//!   and queued for push. The remote scene then wins under the merged clock. Identical
 //!   scenes merge the clocks and copy nothing. A tombstoned local row has no
 //!   drawing to save (desktop's file is gone), so it gets no copy; it stays
 //!   deleted while its `delete` is queued and is revived once that delete has
@@ -102,6 +103,7 @@ pub fn apply_remote(
         && server_vault::restamp_superseded(remote.object(), &clock_in(local.object())?);
     let restamped_local =
         server_vault::restamp_superseded(local.object(), &clock_in(remote.object())?);
+    let vault_id = server_vault::merged_vault_id(&tx, local.object(), remote.object())?;
     let local_scene = local.object().get("scene").and_then(Value::as_str);
     if merged_clock.is_some()
         && live
@@ -115,11 +117,10 @@ pub fn apply_remote(
                 record.item_id
             ),
         })?;
-        write_conflict_copy(&tx, local.object(), device, now_ms)?;
+        write_conflict_copy(&tx, local.object(), vault_id.as_ref(), device, now_ms)?;
     }
 
     let winner = if restamped_remote { &local } else { &remote };
-    let vault_id = server_vault::merged_vault_id(&tx, local.object(), remote.object())?;
     let changes = kept_changes(
         local.object(),
         winner.object(),
@@ -160,10 +161,12 @@ fn kept_changes(
     Ok(changes)
 }
 
-/// `createConflictCopy`: the losing local drawing as a new canvas, queued.
+/// `createConflictCopy`: the losing local drawing as a new canvas, queued, in the merge's vault:
+/// a copy on the stored pre-bind id would be hidden on every fresh device (#5784, desktop #5788).
 fn write_conflict_copy(
     tx: &Connection,
     local: &Object,
+    vault_id: Option<&Value>,
     device_id: &str,
     now_ms: i64,
 ) -> Result<(), StorageError> {
@@ -174,7 +177,7 @@ fn write_conflict_copy(
     let copy_id = mint_id();
     let payload = object(json!({
         "id": copy_id,
-        "vaultId": local.get("vaultId"),
+        "vaultId": vault_id.or(local.get("vaultId")),
         "title": format!("{title} (conflict copy)"),
         "scene": local.get("scene"),
         "folder": local.get("folder"),

@@ -19,6 +19,7 @@ import { stickyDrafts } from '@memry/db-schema/schema/sticky-drafts'
 import { reminders } from '@memry/db-schema/schema/reminders'
 import { canvasFolders } from '@memry/db-schema/schema/canvas-folder'
 import { taskActivity } from '@memry/db-schema/schema/task-activity'
+import { syncState } from '@memry/db-schema/schema/sync-state'
 import { RECORD_SYNC_ITEM_TYPES, type RecordSyncItemType } from '@memry/contracts/sync-api'
 import type { DataDb } from '../database/client'
 import { incrementNoteClockOffline } from '@memry/sync-client/offline-clock'
@@ -58,6 +59,7 @@ import { syncIntents } from '@memry/db-schema/schema/sync-intents'
 import { syncQueue } from '@memry/db-schema/schema/sync-queue'
 import { trackMainEvent } from '../telemetry/track'
 import { DIRTY_RECOVERY, recoverDirtyItems } from './dirty-recovery'
+import { sessionState } from './device-local-state'
 
 const TEST_PROJECT = {
   id: 'proj-1',
@@ -698,12 +700,28 @@ describe('dirty-recovery', () => {
   // marker, no sweep.
   describe('journals', () => {
     const recovered: string[] = []
+    const enqueued: Array<[string, 'reclock' | 'replay']> = []
     const journalAdapters = {
       getLocal: (type: string) =>
         type === 'journal'
-          ? { enqueueRecoveredUpdate: (id: string) => recovered.push(id) }
+          ? {
+              enqueueUpdate: (id: string) => {
+                recovered.push(id)
+                enqueued.push([id, 'reclock'])
+              },
+              enqueueRecoveredUpdate: (id: string) => {
+                recovered.push(id)
+                enqueued.push([id, 'replay'])
+              }
+            }
           : undefined
     } as unknown as Parameters<typeof recoverDirtyItems>[1]
+    // This vault first opened under the stamping build at this time.
+    const upgradedAt = (iso: string): void => {
+      db.insert(syncState)
+        .values({ key: 'journalClockEra', value: iso, updatedAt: new Date() })
+        .run()
+    }
 
     const insertJournal = (values: Record<string, unknown>): void => {
       db.insert(noteMetadata)
@@ -719,6 +737,85 @@ describe('dirty-recovery', () => {
 
     beforeEach(() => {
       recovered.length = 0
+      enqueued.length = 0
+    })
+
+    // Which enqueue ran is the decision: a re-clock is a new write, a replay
+    // keeps the clock the server may already hold (VERIFY-5691R4).
+    it('re-clocks only a stamped journal edited in this build era, and replays the rest', () => {
+      upgradedAt('2026-01-01T12:00:00.000Z')
+      // edited after its stamp, in the era: an outside edit this build saw
+      insertJournal({
+        id: 'journal-edited',
+        clock: { 'device-A': 1 },
+        syncedAt: '2026-01-01T13:00:00.000Z',
+        modifiedAt: '2026-01-01T14:00:00.000Z'
+      })
+      // pulled, then edited and acked by an older build that never stamped acks
+      insertJournal({
+        id: 'journal-shipped',
+        clock: { 'device-A': 1, 'device-B': 1 },
+        syncedAt: '2026-01-01T09:00:00.000Z',
+        modifiedAt: '2026-01-01T10:00:00.000Z'
+      })
+      // minted and acked by an older build: no stamp
+      insertJournal({
+        id: 'journal-unstamped',
+        clock: { 'device-A': 1 },
+        modifiedAt: '2026-01-01T14:00:00.000Z'
+      })
+
+      recoverDirtyItems(db, journalAdapters)
+
+      expect(new Map(enqueued)).toEqual(
+        new Map([
+          ['journal-edited', 'reclock'],
+          ['journal-shipped', 'replay'],
+          ['journal-unstamped', 'replay']
+        ])
+      )
+    })
+
+    it('dates the era at the first sweep when the vault open did not, and keeps it', () => {
+      insertJournal({
+        id: 'journal-shipped',
+        clock: { 'device-A': 1 },
+        syncedAt: '2026-01-01T09:00:00.000Z',
+        modifiedAt: '2026-01-01T10:00:00.000Z'
+      })
+
+      recoverDirtyItems(db, journalAdapters)
+      const era = db.select().from(syncState).where(eq(syncState.key, 'journalClockEra')).get()
+      recoverDirtyItems(db, journalAdapters)
+
+      expect(enqueued).toEqual([
+        ['journal-shipped', 'replay'],
+        ['journal-shipped', 'replay']
+      ])
+      expect(
+        db.select().from(syncState).where(eq(syncState.key, 'journalClockEra')).get()?.value
+      ).toBe(era?.value)
+    })
+
+    // Sign-out wipes the session's sync_state; a re-dated era would read an
+    // edit made before the sign-out as an older build's and replay it, which
+    // the server refuses and the ack stamps clean (VERIFY-5691R5).
+    it('keeps the era through a sign-out, so an edit from before it is re-clocked', () => {
+      upgradedAt('2026-01-01T12:00:00.000Z')
+      insertJournal({
+        id: 'journal-edited',
+        clock: { 'device-A': 1 },
+        syncedAt: '2026-01-01T13:00:00.000Z',
+        modifiedAt: '2026-01-01T14:00:00.000Z'
+      })
+
+      db.delete(syncState).where(sessionState()).run()
+      recoverDirtyItems(db, journalAdapters)
+
+      expect(enqueued).toEqual([['journal-edited', 'reclock']])
+      expect(
+        db.select().from(syncState).where(eq(syncState.key, 'journalClockEra')).get()?.value
+      ).toBe('2026-01-01T12:00:00.000Z')
     })
 
     it('recovers a synced journal whose local change never reached the server', () => {

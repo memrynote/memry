@@ -7,12 +7,13 @@ import { openRelatedVaultItem } from '@/lib/open-related-vault-item'
 import { openLinkedEvent } from '@/pages/project/open-linked-item'
 import { notesService } from '@/services/notes-service'
 import { tasksService } from '@/services/tasks-service'
-import { extractErrorMessage } from '@/lib/ipc-error'
+import { extractErrorMessage, unwrapIpcResult } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
 import type { ProjectLinkedEvent } from '@memry/rpc/tasks'
 import type { ProjectHubData, ProjectTabKey } from '@/pages/project/use-project-hub'
 import type { HubHandlers } from '@/pages/project/tabs/hub-handlers'
 import { toast } from 'sonner'
+import { getI18n } from 'react-i18next'
 import { useT } from '@memry/i18n/renderer'
 
 const log = createLogger('ProjectWidget')
@@ -72,10 +73,18 @@ export function useProjectWidgetHandlers({
 
   const handleNoteIconChange = useCallback(
     (noteId: string, icon: string | null) => {
+      const failed = getI18n().getFixedT(null, 'notes')('phaseI.toasts.failedToUpdateIcon')
       void notesService
         .update({ id: noteId, emoji: icon })
-        .then(() => hub.refresh())
-        .catch((error: unknown) => log.error('Failed to set note icon', extractErrorMessage(error)))
+        .then((result) => {
+          unwrapIpcResult(result, failed)
+          hub.refresh()
+        })
+        .catch((error: unknown) => {
+          const message = extractErrorMessage(error, failed)
+          log.error('Failed to set note icon', message)
+          toast.error(message)
+        })
     },
     [hub]
   )

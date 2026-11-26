@@ -16,8 +16,9 @@ import path from 'path'
 import fs from 'fs/promises'
 import { generateContentHash, parseNote } from './frontmatter'
 import { writingFrontmatterOf } from '@memry/shared/writing-tools/markdown'
-import { syncNoteToCache, syncFileToCache } from './note-sync'
-import { planCaseTwinMove, prepareCaseTwinLeave, sharesCaseTwinFile } from './case-twin-file'
+import { persistNoteToCache, syncNoteToCache, syncFileToCache } from './note-sync'
+import { planCaseTwinMove, prepareCaseTwinLeave } from './case-twin-file'
+import { sharesCaseTwinFile } from './case-twin-shared-file'
 import {
   ensureDirectory,
   sanitizeFilename,
@@ -78,24 +79,28 @@ async function leaveCaseTwinFile(
   const vaultPath = getVaultRoot()
   await prepareCaseTwinLeave(vaultPath, existing.path, existing.id, true)
   const cached = getNoteCacheById(getIndexDatabase(), existing.id)
-  const moved = planCaseTwinMove(vaultPath, existing.path, existing.id, newRelativePath)()
-  syncNoteToCache(
-    getIndexDatabase(),
-    {
-      id: existing.id,
-      path: newRelativePath,
-      fileContent: moved.content,
-      contentHash: generateContentHash(moved.content),
-      frontmatter: moved.frontmatter,
-      parsedContent: moved.markdown,
-      title,
-      createdAt: cached?.createdAt ?? existing.created.toISOString(),
-      modifiedAt: now,
-      localOnly: cached?.localOnly ?? false,
-      emoji: cached?.emoji ?? null
-    },
-    { isNew: false }
-  )
+  const move = planCaseTwinMove(vaultPath, existing.path, existing.id, newRelativePath)
+  let publish: (() => void) | undefined
+  move((moved) => {
+    publish = persistNoteToCache(
+      {
+        id: existing.id,
+        path: newRelativePath,
+        fileContent: moved.content,
+        contentHash: generateContentHash(moved.content),
+        frontmatter: moved.frontmatter,
+        parsedContent: moved.markdown,
+        title,
+        createdAt: cached?.createdAt ?? existing.created.toISOString(),
+        modifiedAt: now,
+        localOnly: cached?.localOnly ?? false,
+        emoji: cached?.emoji ?? null
+      },
+      { isNew: false }
+    ).publish
+  })
+  // After the step's transaction commits: the index never takes a row move it rolled back.
+  publish?.()
 }
 
 export async function renameNote(id: string, newTitle: string): Promise<Note> {

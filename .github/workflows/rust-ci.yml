@@ -35,6 +35,7 @@ on:
       - 'scripts/check-test-timing*.mjs'
       - 'scripts/fetch-pdfium.mjs'
       - 'scripts/fetch-tesseract-sources.mjs'
+      - 'scripts/check-uniffi-not-gated.mjs'
       - '.github/workflows/rust-ci.yml'
       - '.github/actions/apt-install/**'
       - '.github/actions/ci-tier/**'
@@ -160,7 +161,7 @@ jobs:
         uses: ./.github/actions/paths-changed
         with:
           token: ${{ github.token }}
-          include: '^(crates/|apps/desktop-tauri/(src-tauri|scripts)/|tests/sync-harness/scripts/serve\.ts$|tests/sync-harness/src/|apps/sync-server/|pnpm-lock\.yaml$|packages/swift/|packages/contracts/test-vectors/|packages/article-extract/|scripts/check-line-ceilings\.mjs$|scripts/check-test-timing(\.test)?\.mjs$|scripts/fetch-pdfium\.mjs$|scripts/fetch-tesseract-sources\.mjs$|\.github/workflows/rust-ci\.yml$|\.github/actions/(apt-install|ci-tier|free-disk|libsodium-dist|ort-static|paths-changed|setup-pnpm|tesseract-sources)/)'
+          include: '^(crates/|apps/desktop-tauri/(src-tauri|scripts)/|tests/sync-harness/scripts/serve\.ts$|tests/sync-harness/src/|apps/sync-server/|pnpm-lock\.yaml$|packages/swift/|packages/contracts/test-vectors/|packages/article-extract/|scripts/check-line-ceilings\.mjs$|scripts/check-test-timing(\.test)?\.mjs$|scripts/check-uniffi-not-gated\.mjs$|scripts/fetch-pdfium\.mjs$|scripts/fetch-tesseract-sources\.mjs$|\.github/workflows/rust-ci\.yml$|\.github/actions/(apt-install|ci-tier|free-disk|libsodium-dist|ort-static|paths-changed|setup-pnpm|tesseract-sources)/)'
 
   lint-and-test:
     name: Rust ${{ matrix.part }}${{ matrix.partition && format(' {0}', matrix.partition) || '' }} (${{ matrix.os }})
@@ -924,6 +925,12 @@ jobs:
         run: |
           cargo tree -p memry-tauri -e normal,build,features --target all > "$RUNNER_TEMP/features.txt"
           if grep -E '(tauri|tauri-runtime-wry|wry) feature "devtools"' "$RUNNER_TEMP/features.txt"; then exit 1; fi
+
+      # swift-bindings-fresh builds without `semantic` and the app links a build with it.
+      - name: No UniFFI export behind the semantic feature
+        if: matrix.part != 'tests' && matrix.part != 'models' && runner.os == 'Linux'
+        working-directory: .
+        run: node scripts/check-uniffi-not-gated.mjs
 
   # memry-ml-worker on Linux arm64, a release target (#4775): the cmake build of Tesseract and
   # Leptonica, the ORT static archive of that triple, pdfium, OCR, the linked libraries and the real

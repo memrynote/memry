@@ -45,6 +45,12 @@
     }
   },
   "page": {
+    "noteFiles": {
+      "downloading": "Downloading this note's files…",
+      "failed": "Couldn't download this note's files: {error}",
+      "failedFallback": "the download failed",
+      "retry": "Try again"
+    },
     "empty": {
       "title": "No note selected",
       "body": "Select a note from the sidebar to view it"

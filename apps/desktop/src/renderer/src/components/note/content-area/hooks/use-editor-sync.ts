@@ -444,6 +444,8 @@ interface EditorSyncResult {
    * otherwise to `onMarkdownChange`; resolves once it has been handed over.
    */
   flushPendingMarkdown: (deliver?: (markdown: string) => void) => Promise<void>
+  /** The editor's body as markdown now, without saving it. */
+  readMarkdown: () => Promise<string>
   isContentReadyRef: React.RefObject<boolean>
   prevInlineTagsRef: React.RefObject<string[]>
   lastNormalizedTagsRef: React.RefObject<string>
@@ -776,9 +778,22 @@ export function useEditorSync({
     []
   )
 
+  const readMarkdown = useCallback(
+    () =>
+      serializeMarkdownPreservingSource(
+        editor,
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
+        editor.document as Block[],
+        markdownSourceRef.current,
+        notePath
+      ),
+    [editor, notePath]
+  )
+
   return {
     handleChange,
     flushPendingMarkdown,
+    readMarkdown,
     isContentReadyRef,
     prevInlineTagsRef,
     lastNormalizedTagsRef

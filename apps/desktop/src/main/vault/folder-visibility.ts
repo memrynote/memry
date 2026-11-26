@@ -6,7 +6,7 @@
 
 import type { VaultConfig } from '@memry/contracts/vault-api'
 import { CANVAS_DIR } from '../canvas/scene-file'
-import { ATTACHMENTS_DIR } from './attachments'
+import { ATTACHMENTS_DIR } from '@memry/shared/attachment-store'
 
 /**
  * A predicate over vault-relative folder paths for `getFolders`.

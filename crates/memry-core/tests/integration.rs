@@ -90,6 +90,8 @@ mod auth_session;
 mod auth_sign_out_marker;
 #[path = "auth_web_callback.rs"]
 mod auth_web_callback;
+#[path = "binary_note_files.rs"]
+mod binary_note_files;
 #[path = "block_edit_vectors.rs"]
 mod block_edit_vectors;
 #[path = "block_refs.rs"]
@@ -112,6 +114,8 @@ mod body_edit_restore;
 mod body_edit_split;
 #[path = "body_tags_reindex.rs"]
 mod body_tags_reindex;
+#[path = "body_write_handles.rs"]
+mod body_write_handles;
 #[path = "calendar_cursor_device_local.rs"]
 mod calendar_cursor_device_local;
 #[path = "calendar_external_relation.rs"]
@@ -351,10 +355,22 @@ mod inbox_vectors;
 mod journal_body;
 #[path = "journal_day_merge.rs"]
 mod journal_day_merge;
+#[path = "journal_day_merge_devices.rs"]
+mod journal_day_merge_devices;
+#[path = "journal_day_note_reads.rs"]
+mod journal_day_note_reads;
+#[path = "journal_day_pictures_devices.rs"]
+mod journal_day_pictures_devices;
+#[path = "journal_embedded_attachments.rs"]
+mod journal_embedded_attachments;
+#[path = "journal_field_merge.rs"]
+mod journal_field_merge;
 #[path = "journal_ghost_refs.rs"]
 mod journal_ghost_refs;
 #[path = "journal_links.rs"]
 mod journal_links;
+#[path = "journal_merge_vectors.rs"]
+mod journal_merge_vectors;
 #[path = "journal_metadata.rs"]
 mod journal_metadata;
 #[path = "journal_reads.rs"]
@@ -435,6 +451,8 @@ mod mention_mask_untrusted;
 mod note_aliases;
 #[path = "note_blocks_vectors.rs"]
 mod note_blocks_vectors;
+#[path = "note_embedded_attachments.rs"]
+mod note_embedded_attachments;
 #[path = "note_header_status.rs"]
 mod note_header_status;
 #[path = "note_link_display.rs"]

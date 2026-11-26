@@ -2220,6 +2220,23 @@ describe('notes operations', () => {
 
         expect(fs.existsSync(folderPath)).toBe(false)
       })
+
+      // Windows reads a peer's `Work.` as `Work`, so the delete is refused, with
+      // copy the user can act on rather than an untranslated sentence.
+      it('refuses on Windows a folder whose name ends in a dot or space, and deletes nothing', async () => {
+        const platform = process.platform
+        Object.defineProperty(process, 'platform', { value: 'win32' })
+        const folderPath = path.join(tempVault.path, 'Work.')
+        fs.mkdirSync(folderPath)
+        try {
+          await expect(notes.deleteFolder('Work.')).rejects.toThrow(
+            'errors:folder.deleteWindowsName'
+          )
+          expect(fs.existsSync(folderPath)).toBe(true)
+        } finally {
+          Object.defineProperty(process, 'platform', { value: platform })
+        }
+      })
     })
   })
 
@@ -2284,6 +2301,31 @@ describe('notes operations', () => {
 
       const markdown = await notes.createNote({ title: 'Markdown File', content: 'C.' })
       await expect(notes.getFileById(markdown.id)).resolves.toBeNull()
+    })
+
+    it('keeps a synced file whose bytes have not downloaded yet (#5616)', async () => {
+      const { getNoteMetadataById, upsertNoteMetadata } = await import('@memry/storage-data')
+      const row = {
+        id: 'synced-pdf',
+        path: 'notes/report.pdf',
+        title: 'report',
+        fileType: 'pdf' as const,
+        mimeType: 'application/pdf',
+        fileSize: 10,
+        createdAt: '2026-01-15T12:00:00.000Z',
+        modifiedAt: '2026-01-15T12:00:00.000Z'
+      }
+      // As a pull leaves it: the attachment id on the canonical row only.
+      upsertNoteMetadata(dataDb.db, { ...row, attachmentId: 'att-report' })
+      const { insertNoteCache } = await import('@main/database/queries/notes')
+      insertNoteCache(testDb.db, row)
+
+      await expect(notes.getFileById('synced-pdf')).resolves.toMatchObject({
+        id: 'synced-pdf',
+        path: 'notes/report.pdf',
+        fileType: 'pdf'
+      })
+      expect(getNoteMetadataById(dataDb.db, 'synced-pdf')?.attachmentId).toBe('att-report')
     })
 
     it('returns the filed voice transcript with audio file metadata', async () => {

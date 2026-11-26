@@ -70,7 +70,8 @@ const getProviderDocMock = vi.fn()
 const getCrdtProviderMock = vi.fn(() => ({
   initPersistence: initPersistenceMock,
   getOpenNoteIds: getOpenNoteIdsMock,
-  getDoc: getProviderDocMock
+  getDoc: getProviderDocMock,
+  beginClose: vi.fn()
 }))
 const stopSyncRuntimeMock = vi.fn(async () => undefined)
 const flushPendingWritebacksMock = vi.fn(async () => undefined)
@@ -2282,7 +2283,10 @@ describe('main index phase2 exports', () => {
 
     expect(updater.performQuitAndInstall).toHaveBeenCalled()
     // Update path skips the unbounded final network push.
-    expect(stopSyncRuntimeMock).toHaveBeenCalledWith({ skipFinalSync: true })
+    expect(stopSyncRuntimeMock).toHaveBeenCalledWith({
+      skipFinalSync: true,
+      downloadSettleTimeoutMs: expect.any(Function)
+    })
     expect(app.quit).not.toHaveBeenCalled()
     expect(app.exit).not.toHaveBeenCalled()
   })
@@ -2420,7 +2424,10 @@ describe('main index phase2 exports', () => {
     // #then the vault was already closed and the activity log flushed
     expect(closeVaultMock).toHaveBeenCalled()
     expect(flushActivityLogMock).toHaveBeenCalled()
-    expect(stopSyncRuntimeMock).toHaveBeenCalledWith({ finalSyncTimeoutMs: expect.any(Number) })
+    expect(stopSyncRuntimeMock).toHaveBeenCalledWith({
+      finalSyncTimeoutMs: expect.any(Number),
+      downloadSettleTimeoutMs: expect.any(Function)
+    })
 
     // #when the telemetry cap passes
     await vi.advanceTimersByTimeAsync(SHUTDOWN_TELEMETRY_FLUSH_MS)

@@ -4,7 +4,8 @@ import * as sqliteVec from 'sqlite-vec'
 
 const mocks = vi.hoisted(() => ({
   raw: null as unknown,
-  generateEmbedding: vi.fn()
+  generateEmbedding: vi.fn(),
+  generateQueryEmbedding: vi.fn()
 }))
 
 vi.mock('../../database', () => ({
@@ -21,6 +22,7 @@ vi.mock('../../lib/logger', () => ({
 vi.mock('../../lib/window-broadcast', () => ({ broadcastToAllWindows: vi.fn() }))
 vi.mock('../../lib/embeddings', () => ({
   generateEmbedding: mocks.generateEmbedding,
+  generateQueryEmbedding: mocks.generateQueryEmbedding,
   initEmbeddingModel: vi.fn(async () => true),
   isModelLoaded: () => true
 }))
@@ -61,10 +63,11 @@ describe('embedding chunks (real sqlite-vec)', () => {
     sqliteVec.load(db)
     ensureVecNotesTable(db)
     db.exec(
-      'CREATE TABLE note_embedding_state (note_id TEXT PRIMARY KEY, input_version INTEGER NOT NULL, chunk_count INTEGER NOT NULL DEFAULT 0)'
+      'CREATE TABLE note_embedding_state (note_id TEXT PRIMARY KEY, input_version INTEGER NOT NULL, chunk_count INTEGER NOT NULL DEFAULT 0, input_hash TEXT)'
     )
     mocks.raw = db
     mocks.generateEmbedding.mockImplementation(async (text: string) => embedText(text))
+    mocks.generateQueryEmbedding.mockImplementation(async (text: string) => embedText(text))
   })
 
   afterEach(() => db.close())
