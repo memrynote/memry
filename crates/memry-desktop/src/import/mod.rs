@@ -14,6 +14,7 @@ pub mod assets;
 pub mod bear;
 pub mod context;
 pub mod csv;
+pub mod csv_lex;
 pub mod google_keep;
 pub mod markdown;
 pub mod messages;
@@ -25,6 +26,7 @@ pub mod roam;
 pub mod runner;
 pub mod sink;
 pub mod source_paths;
+pub mod todoist;
 pub mod zip;
 
 use std::fs::{File, OpenOptions};
@@ -42,7 +44,7 @@ pub use messages::{ImportMessage, ImportText};
 pub use registry::Registry;
 pub use sink::{
     BookmarkMetadata, ImportSink, ImportedBookmark, ImportedJournalEntry, ImportedNote,
-    ImportedTask, JournalEntry, SinkError,
+    ImportedProjectTask, ImportedTask, JournalEntry, SinkError,
 };
 
 /// The largest source file an importer reads into memory. Electron read any size; a larger file
@@ -53,6 +55,11 @@ pub const MAX_SOURCE_BYTES: u64 = 100 * 1024 * 1024;
 /// note at 20,000 characters (at most about 80 KB of JSON), so this holds over 6,500 notes of
 /// maximal length and far more of the usual few KB; Electron held any amount.
 pub const MAX_NOTE_JSON_BYTES: u64 = 512 * 1024 * 1024;
+
+/// The memory one run's plans may take, summed over every picked file, for an importer that
+/// plans every file before its first write (Raindrop, Todoist). It holds about 300,000 items of a
+/// typical size; Electron had no bound.
+pub const MAX_PLANNED_BYTES: usize = 512 * 1024 * 1024;
 
 /// `ImportInput`: the picked paths and the importer's own options.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]

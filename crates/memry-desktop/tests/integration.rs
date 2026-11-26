@@ -229,6 +229,8 @@ mod importer_noteplan;
 mod importer_raindrop;
 #[path = "importer_roam.rs"]
 mod importer_roam;
+#[path = "importer_todoist.rs"]
+mod importer_todoist;
 #[path = "importer_untrusted.rs"]
 mod importer_untrusted;
 #[path = "importer_vectors.rs"]
