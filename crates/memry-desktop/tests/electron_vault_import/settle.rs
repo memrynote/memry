@@ -224,7 +224,9 @@ fn a_failed_write_back_reaches_the_file_and_keeps_its_push() {
     s.electron_unchanged();
 }
 
-/// The file owes its body to the document: it is never written over.
+/// The file owes its body to the document: it is never written over. The open's take of the
+/// owed file (`vault/consumer/tier/owed.rs`) puts the file into the body and keeps the body it
+/// replaces as a version, once.
 #[test]
 fn a_file_that_owes_its_body_is_never_written_over() {
     let mut s = import_and_open(&Fixture {
@@ -232,7 +234,8 @@ fn a_file_that_owes_its_body_is_never_written_over() {
         ..AHEAD
     });
     assert_eq!(s.quiet_file(), "A\n");
-    assert_eq!(s.e.versions(NOTE), Vec::<String>::new());
+    s.until_body("A");
+    assert_eq!(s.e.versions(NOTE), vec!["B\n".to_string()]);
     s.electron_unchanged();
 }
 
