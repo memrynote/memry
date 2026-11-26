@@ -122,10 +122,8 @@ final class NoteReadViewModel {
     @ObservationIgnored private var openAwaitsRefresh = false
 
     init(
-        route: NoteRoute,
-        reader: any NotesReading,
-        filler: (any VaultFilling)? = nil,
-        reachability: (any Reachability)? = nil,
+        route: NoteRoute, reader: any NotesReading,
+        filler: (any VaultFilling)? = nil, reachability: (any Reachability)? = nil,
         attachmentURL: @escaping @Sendable (String) -> URL = AttachmentPaths.url(for:)
     ) {
         self.route = route
@@ -168,7 +166,8 @@ final class NoteReadViewModel {
             return
         }
         hasLoaded = false
-        await load()
+        // The body waits for its walk (#5247); a page on screen stays, or a new note's title loses its caret (#4893).
+        if case .ready = phase { blocksWalked = false; await load(quietly: true) } else { await load() }
     }
 
     /// Pulls this note's body, then re-reads the note in place. Answers

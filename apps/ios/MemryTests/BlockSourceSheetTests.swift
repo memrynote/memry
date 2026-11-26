@@ -148,68 +148,70 @@ private func withRenderer(_ body: (BlockWebRenderer) async throws -> Void) async
     try await body(BlockWebRenderer { window })
 }
 
-/// The bundled page loads in the web view and KaTeX answers through it: a
-/// picture for a formula, KaTeX's own message for a broken one.
-@MainActor
-struct BlockWebRendererTests {
-    private func request(_ source: String) -> BlockWebRenderer.Request {
-        BlockWebRenderer.Request(source: source, ink: "rgb(55, 53, 47)", size: 17)
-    }
+extension KeyWindowSuites {
+    /// The bundled page loads in the web view and KaTeX answers through it: a
+    /// picture for a formula, KaTeX's own message for a broken one.
+    @MainActor
+    struct BlockWebRendererTests {
+        private func request(_ source: String) -> BlockWebRenderer.Request {
+            BlockWebRenderer.Request(source: source, ink: "rgb(55, 53, 47)", size: 17)
+        }
 
-    @Test func aFormulaBecomesAPictureAndBrokenLatexItsMessage() async throws {
-        try await withRenderer { renderer in
-            async let fraction = renderer.render(request("\\frac{a}{b}"))
-            async let broken = renderer.render(request("\\frac{a"))
-            guard case let .image(image) = await fraction else {
-                Issue.record("expected a picture, got \(await fraction)")
+        @Test func aFormulaBecomesAPictureAndBrokenLatexItsMessage() async throws {
+            try await withRenderer { renderer in
+                async let fraction = renderer.render(request("\\frac{a}{b}"))
+                async let broken = renderer.render(request("\\frac{a"))
+                guard case let .image(image) = await fraction else {
+                    Issue.record("expected a picture, got \(await fraction)")
+                    return
+                }
+                #expect(image.size.width > 10, "a fraction has width")
+                #expect(image.size.height > image.size.width / 2, "and is about as tall as it is wide")
+                #expect(inkedPixels(image) > 50, "the glyphs are painted, not a transparent box")
+                guard case let .invalid(message) = await broken else {
+                    Issue.record("expected KaTeX's message, got \(await broken)")
+                    return
+                }
+                #expect(message.hasPrefix("KaTeX parse error"))
+                #expect(renderer.cached(request("\\frac{a}{b}")) == .image(image))
+            }
+        }
+
+        /// The app's renderer is built on whichever window is key, and that window
+        /// can go away while a picture is drawn. A web view taken out of its window
+        /// is suspended, so the picture, and every one queued behind it, never came.
+        /// The first window holds its page's load, so it always goes away mid-load.
+        @Test func theWindowGoingAwayMidPictureDoesNotHoldTheNextOne() async throws {
+            let scene = try #require(UIApplication.shared.connectedScenes.first as? UIWindowScene)
+            let load = HeldLoad()
+            let first = LoadHoldingWindow(windowScene: scene, load: load)
+            first.rootViewController = UIViewController()
+            first.isHidden = false
+            let next = UIWindow(windowScene: scene)
+            next.rootViewController = UIViewController()
+            next.isHidden = false
+            defer { next.isHidden = true }
+            let renderer = BlockWebRenderer { first.isHidden ? next : first }
+            let firstPicture = FirstPicture()
+            Task { firstPicture.output = await renderer.render(request("x^2")) }
+            // The web view is in the first window, its page asked for and held.
+            try await wait(30) { load.isHeld }
+            // The window goes away. Hiding alone keeps it and its views alive,
+            // so its views are taken out as its teardown would.
+            first.isHidden = true
+            first.subviews.forEach { $0.removeFromSuperview() }
+
+            // Bounds only the failure: with the fix the picture ends as the web
+            // view leaves, and the held load is let go so a failure unwinds.
+            try await wait(30) { firstPicture.output != nil }
+            load.release()
+            try #require(firstPicture.output != nil, "the first picture ended when its window went away")
+            guard case let .image(image) = await renderer.render(request("y^2")) else {
+                Issue.record("expected a picture once the renderer moved to the next window")
                 return
             }
-            #expect(image.size.width > 10, "a fraction has width")
-            #expect(image.size.height > image.size.width / 2, "and is about as tall as it is wide")
-            #expect(inkedPixels(image) > 50, "the glyphs are painted, not a transparent box")
-            guard case let .invalid(message) = await broken else {
-                Issue.record("expected KaTeX's message, got \(await broken)")
-                return
-            }
-            #expect(message.hasPrefix("KaTeX parse error"))
-            #expect(renderer.cached(request("\\frac{a}{b}")) == .image(image))
+            #expect(inkedPixels(image) > 20, "the glyphs are painted")
         }
-    }
-
-    /// The app's renderer is built on whichever window is key, and that window
-    /// can go away while a picture is drawn. A web view taken out of its window
-    /// is suspended, so the picture, and every one queued behind it, never came.
-    /// The first window holds its page's load, so it always goes away mid-load.
-    @Test func theWindowGoingAwayMidPictureDoesNotHoldTheNextOne() async throws {
-        let scene = try #require(UIApplication.shared.connectedScenes.first as? UIWindowScene)
-        let load = HeldLoad()
-        let first = LoadHoldingWindow(windowScene: scene, load: load)
-        first.rootViewController = UIViewController()
-        first.isHidden = false
-        let next = UIWindow(windowScene: scene)
-        next.rootViewController = UIViewController()
-        next.isHidden = false
-        defer { next.isHidden = true }
-        let renderer = BlockWebRenderer { first.isHidden ? next : first }
-        let firstPicture = FirstPicture()
-        Task { firstPicture.output = await renderer.render(request("x^2")) }
-        // The web view is in the first window, its page asked for and held.
-        try await wait(30) { load.isHeld }
-        // The window goes away. Hiding alone keeps it and its views alive,
-        // so its views are taken out as its teardown would.
-        first.isHidden = true
-        first.subviews.forEach { $0.removeFromSuperview() }
-
-        // Bounds only the failure: with the fix the picture ends as the web
-        // view leaves, and the held load is let go so a failure unwinds.
-        try await wait(30) { firstPicture.output != nil }
-        load.release()
-        try #require(firstPicture.output != nil, "the first picture ended when its window went away")
-        guard case let .image(image) = await renderer.render(request("y^2")) else {
-            Issue.record("expected a picture once the renderer moved to the next window")
-            return
-        }
-        #expect(inkedPixels(image) > 20, "the glyphs are painted")
     }
 }
 
@@ -291,37 +293,39 @@ struct BlockRenderCacheKeyTests {
     }
 }
 
-/// Mermaid answers through the same page: a picture for a flowchart, its
-/// message for broken source.
-@MainActor
-struct BlockWebRendererDiagramTests {
-    @Test func aFlowchartBecomesAPictureAndBrokenMermaidItsMessage() async throws {
-        try await withRenderer { renderer in
-            async let flow = renderer.render(.diagram("graph TD; A-->B", dark: false))
-            async let broken = renderer.render(.diagram("graph TD; A-->", dark: false))
-            guard case let .image(image) = await flow else {
-                Issue.record("expected a picture, got \(await flow)")
-                return
-            }
-            #expect(image.size.height > 40, "two stacked nodes")
-            #expect(inkedPixels(image) > 200, "the nodes are painted")
-            guard case .invalid = await broken else {
-                Issue.record("expected mermaid's message, got \(await broken)")
-                return
+extension KeyWindowSuites {
+    /// Mermaid answers through the same page: a picture for a flowchart, its
+    /// message for broken source.
+    @MainActor
+    struct BlockWebRendererDiagramTests {
+        @Test func aFlowchartBecomesAPictureAndBrokenMermaidItsMessage() async throws {
+            try await withRenderer { renderer in
+                async let flow = renderer.render(.diagram("graph TD; A-->B", dark: false))
+                async let broken = renderer.render(.diagram("graph TD; A-->", dark: false))
+                guard case let .image(image) = await flow else {
+                    Issue.record("expected a picture, got \(await flow)")
+                    return
+                }
+                #expect(image.size.height > 40, "two stacked nodes")
+                #expect(inkedPixels(image) > 200, "the nodes are painted")
+                guard case .invalid = await broken else {
+                    Issue.record("expected mermaid's message, got \(await broken)")
+                    return
+                }
             }
         }
-    }
 
-    @Test func aSixtyNodeGraphIsPaintedTopToBottom() async throws {
-        try await withRenderer { renderer in
-            let edges = (0..<59).map { "N\($0)-->N\($0 + 1)" }.joined(separator: "; ")
-            let output = await renderer.render(.diagram("graph TD; " + edges, dark: false))
-            guard case let .image(image) = output else {
-                Issue.record("expected a picture, got \(output)")
-                return
+        @Test func aSixtyNodeGraphIsPaintedTopToBottom() async throws {
+            try await withRenderer { renderer in
+                let edges = (0..<59).map { "N\($0)-->N\($0 + 1)" }.joined(separator: "; ")
+                let output = await renderer.render(.diagram("graph TD; " + edges, dark: false))
+                guard case let .image(image) = output else {
+                    Issue.record("expected a picture, got \(output)")
+                    return
+                }
+                #expect(image.size.height > image.size.width, "a top-down chain is tall")
+                #expect(inkedPixels(image) > 2000, "its nodes are painted, not a blank box")
             }
-            #expect(image.size.height > image.size.width, "a top-down chain is tall")
-            #expect(inkedPixels(image) > 2000, "its nodes are painted, not a blank box")
         }
     }
 }

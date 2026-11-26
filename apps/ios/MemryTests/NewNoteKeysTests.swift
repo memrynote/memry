@@ -629,34 +629,29 @@ extension KeyWindowSuites {
             return (detail?.summary.title, blocks.map { $0.inline.map(\.text).joined() })
         }
 
-        /// Runs `scenario` on a new scene window until no other suite made its
-        /// window key meanwhile, and returns what it saw. Suites run in parallel
-        /// in this process, and a window made key elsewhere takes the caret: such
-        /// a run proves nothing either way (as in `NoteTitleBurstTests`).
+        /// Runs `scenario` on a new scene window and returns what it saw.
         /// `scenario` gets the window and whether to type `s` the moment the new
         /// title begins editing, ahead of the page's focus change.
-        private func uninterrupted<T>(
+        private func onSceneWindow<T>(
             typingAtOnce atOnce: Bool, _ scenario: @MainActor (UIWindow, @MainActor () -> Bool) async throws -> T
         ) async throws -> T {
-            try await Resigned.uninterrupted { watch in
-                let window = try sceneWindow()
-                watch(window)
-                var typedAtOnce = false
-                let began = NotificationCenter.default.addObserver(
-                    forName: UITextView.textDidBeginEditingNotification, object: nil, queue: nil
-                ) { note in
-                    let view = note.object as? UITextView
-                    MainActor.assumeIsolated {
-                        guard atOnce, !typedAtOnce, let view, view.window === window, !(view is BlockTextView),
-                              window.rootViewController is UIHostingController<NoteReadView>
-                        else { return }
-                        typedAtOnce = true
-                        view.insertText("s")
-                    }
+            let window = try sceneWindow()
+            defer { window.isHidden = true }
+            var typedAtOnce = false
+            let began = NotificationCenter.default.addObserver(
+                forName: UITextView.textDidBeginEditingNotification, object: nil, queue: nil
+            ) { note in
+                let view = note.object as? UITextView
+                MainActor.assumeIsolated {
+                    guard atOnce, !typedAtOnce, let view, view.window === window, !(view is BlockTextView),
+                          window.rootViewController is UIHostingController<NoteReadView>
+                    else { return }
+                    typedAtOnce = true
+                    view.insertText("s")
                 }
-                defer { NotificationCenter.default.removeObserver(began) }
-                return try await scenario(window) { typedAtOnce }
             }
+            defer { NotificationCenter.default.removeObserver(began) }
+            return try await scenario(window) { typedAtOnce }
         }
 
         /// The reviewer's case: `milk` held, then `s` typed in the title, the
@@ -664,7 +659,7 @@ extension KeyWindowSuites {
         /// title editor starts its edit from the held keys either way.
         @Test(.timeLimit(.minutes(3)), arguments: [true, false])
         func keysHeldThenTypedInTheTitleKeepTheirOrder(atOnce: Bool) async throws {
-            let seen = try await uninterrupted(typingAtOnce: atOnce) { window, typedAtOnce in
+            let seen = try await onSceneWindow(typingAtOnce: atOnce) { window, typedAtOnce in
                 let page = try await newNote(typing: "milk", in: window)
                 await until { title(in: window)?.isFirstResponder == true }
                 let field = try #require(title(in: window))
@@ -693,7 +688,7 @@ extension KeyWindowSuites {
         @Test(.timeLimit(.minutes(3)), arguments: [true, false])
         func aReturnInTheHeldKeysEndsTheTitleAndTheRestGoesToTheBody(atOnce: Bool) async throws {
             let body = atOnce ? "buys" : "buy"
-            let seen = try await uninterrupted(typingAtOnce: atOnce) { window, typedAtOnce in
+            let seen = try await onSceneWindow(typingAtOnce: atOnce) { window, typedAtOnce in
                 let page = try await newNote(typing: "milk\nbuy", in: window)
                 await until { views(BlockTextView.self, in: window).first?.text == body }
                 let block = views(BlockTextView.self, in: window).first
@@ -722,7 +717,7 @@ extension KeyWindowSuites {
         /// and its Escape, when a new note's title appears under it.
         @Test(.timeLimit(.minutes(3)))
         func aTitleUnderThePaletteLeavesItTheCaret() async throws {
-            let seen = try await uninterrupted(typingAtOnce: false) { window, _ in
+            let seen = try await onSceneWindow(typingAtOnce: false) { window, _ in
                 let root = UIViewController()
                 window.rootViewController = root
                 window.makeKeyAndVisible()
