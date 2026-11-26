@@ -14,15 +14,15 @@
 //! 2. each note and journal day carrying the tag (`Search::tag_rename_holders`: its record, its
 //!    body's `#tags`, its file's header as the index read it; not one whose file is excluded,
 //!    which keeps the old name as Electron's index does not hold it), in its own write turn, through
-//!    [`AppEdit`] with [`Precondition::Held`]: its file's frontmatter `tags:` (a note's only: a
-//!    day's are the author's bytes and never written, decision on #3530) and its body's `#tags`
-//!    when the new name can be one; then, once the file holds them, its record's `tags` and
+//!    [`AppEdit`] with [`Precondition::Held`]: its file's frontmatter `tags:` (a day's too: its
+//!    header follows its record, #5509, #5588) and its body's `#tags` when the new name can be
+//!    one; then, once the file holds them, its record's `tags` and
 //!    `pinnedTags` (`TagHub::rename_in`, one outbox row, the holder struck off in the same
 //!    transaction). Before its file is written the plan records the file's hashes before and
 //!    after, and the record's lists (`TagHub::rename_start`): a rename stopped between the file
 //!    and the record finds the after text on resume and renames the record alone: what the
-//!    rename made of the lists it had, with what an edit read meanwhile changed (a note's
-//!    renamed header carried into it, a tag a day's header added). Text that is neither changed
+//!    rename made of the lists it had, with what an edit read meanwhile changed (a renamed
+//!    header carried into it). Text that is neither changed
 //!    since, by an edit outside: whether the file took the rename cannot be told, so it is not
 //!    written again, its record is treated so, and it is answered in `failed_note_ids`. Each note's turn reads its
 //!    holder and its begun edit afresh, so it acts on what the plan holds then.
@@ -44,8 +44,7 @@
 //! the second spelling is what the core's projection cannot hold beside the first (#3847).
 //!
 //! Divergences from Electron, stated: a renamed pin reads as pinned when this device applied the
-//! rename (the projection stamps a newly pinned spelling), where Electron kept the pin's time;
-//! a day's frontmatter `tags:` keep the old name.
+//! rename (the projection stamps a newly pinned spelling), where Electron kept the pin's time.
 
 use std::cell::Cell;
 #[cfg(feature = "test-hooks")]
@@ -358,7 +357,7 @@ impl NotesService {
                             what: "a test failed this edit".to_owned(),
                         }));
                     }
-                    let Some((next, tags)) = next_text(text, holder.day, from, to)? else {
+                    let Some((next, tags)) = next_text(text, from, to)? else {
                         return Ok(None);
                     };
                     hub.rename_start(id, &before, &content_hash(&next))?;
@@ -534,16 +533,14 @@ pub(crate) fn walked(facts: &mut Receiver<Applied>, cancel: &dyn Fn() -> bool) -
     }
 }
 
-/// The file's next text and its body's `#tags`, `None` when it does not carry the tag: a note's
-/// header tags and the body's `#tags` renamed, every other key keeping its lines. A day's header
-/// is left.
+/// The file's next text and its body's `#tags`, `None` when it does not carry the tag: its
+/// header tags and the body's `#tags` renamed, every other key keeping its lines.
 fn next_text(
     text: &str,
-    day: bool,
     from: &str,
     to: &str,
 ) -> Result<Option<(String, Vec<String>)>, NotesError> {
-    let header = |before: &[String]| (!day).then(|| renamed_list(before, from, to));
+    let header = |before: &[String]| Some(renamed_list(before, from, to));
     let edited = tags_edited(text, header, |content| rewrite_markdown(content, from, to))?;
     Ok(edited.map(|(text, body)| (text, extract_markdown(&body))))
 }

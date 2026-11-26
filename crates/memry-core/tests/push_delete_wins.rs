@@ -92,6 +92,7 @@ fn push(db: &Db, transport: Arc<dyn Transport>, sealer: Arc<Operations>) -> Push
         db.clone(),
         Declaration::subscribed(),
         sealer,
+        "device-a",
     )
 }
 

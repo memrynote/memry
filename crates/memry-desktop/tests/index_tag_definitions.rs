@@ -10,6 +10,7 @@
 //! | a later pass defines only the tags of the files it read     | `ensureTagDefinitions` per file      |
 //! | an open defines the tags an older build indexed without one | existing vaults catch up on open     |
 //! | an open's sweep that failed is run by the next pass         | the sweep stays owed until it ran    |
+//! | a tag written while a first sync held the pass is defined   | a held pass owes the sweep (#5409)   |
 //!
 //! A definition is minted on this device only, unclocked; `tag_definitions_sync` covers the
 //! sync pass that seeds it.
@@ -29,7 +30,7 @@ use index_support::until;
 use memry_core::domain::tag_admin::definitions;
 use memry_core::seams::secure_store::SecureStore;
 use memry_desktop::notes::identity::NotesIdentity;
-use memry_desktop::notes::index::{IndexReport, NoteIndex};
+use memry_desktop::notes::index::{IDLE_DELAY, IndexReport, NoteIndex};
 use serde_json::Value;
 use vault_env::{Env, env, indexed};
 
@@ -269,4 +270,20 @@ fn an_opens_sweep_that_failed_is_run_by_the_next_pass() {
     until("later defined", || color(&e, "later").is_some());
     assert_eq!(colors(&e).len(), 7, "{:?}", colors(&e));
     assert_eq!(color(&e, "walk").as_deref(), Some("indigo"));
+}
+
+/// A pass a first sync held mints nothing, as its search reindex is deferred, and the reindex
+/// that runs once the first sync ended reads no file: the held pass owes the sweep, so a tag
+/// written meanwhile is defined then (#5409).
+#[test]
+fn a_tag_written_while_a_first_sync_held_the_pass_is_defined_once_it_ended() {
+    let (e, _) = opened(&[("seed.md", "---\ntags: [seed]\n---\nBody.\n")]);
+    until("seed defined", || color(&e, "seed").is_some());
+    let hold = e.session.current().unwrap().first_sync.hold();
+    e.write("late.md", "Late #idea\n");
+    std::thread::sleep(IDLE_DELAY * 4);
+    until("late.md measured", || index_support::all_indexed(&e));
+    assert_eq!(color(&e, "idea"), None, "held by the first sync");
+    drop(hold);
+    until("idea defined", || color(&e, "idea").is_some());
 }

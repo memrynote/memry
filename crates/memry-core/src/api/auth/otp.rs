@@ -194,6 +194,7 @@ impl AuthSession {
             self.sign_out_marker.store_kept();
         }
         *pending = PendingSignIn::default();
+        self.manifest_not_found.clear();
         *state = next.clone();
         cleared?;
         Ok(next)

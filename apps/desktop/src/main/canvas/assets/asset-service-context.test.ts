@@ -14,7 +14,6 @@ const {
   getValidAccessToken,
   getSyncEngine,
   resolveSyncServerUrl,
-  markWritebackIgnored,
   trackMainEvent,
   dereferenceChunks,
   getCanvasFilePath,
@@ -29,7 +28,6 @@ const {
   getValidAccessToken: vi.fn(),
   getSyncEngine: vi.fn(),
   resolveSyncServerUrl: vi.fn(),
-  markWritebackIgnored: vi.fn(),
   trackMainEvent: vi.fn(),
   dereferenceChunks: vi.fn(),
   getCanvasFilePath: vi.fn(),
@@ -45,12 +43,6 @@ vi.mock('../../ipc/sync-attachment-handlers', () => ({ getCanvasAssetIO }))
 vi.mock('../../sync/token-manager', () => ({ getValidAccessToken }))
 vi.mock('../../sync/runtime-state', () => ({ getSyncEngine }))
 vi.mock('@memry/sync-client/sync-server-url', () => ({ resolveSyncServerUrl }))
-vi.mock('../../sync/crdt-network-update', async () => await import('../../sync/crdt-writeback'))
-vi.mock('../../sync/crdt-writeback-port', async () => {
-  const writeback = await import('../../sync/crdt-writeback')
-  return { crdtWriteback: () => writeback }
-})
-vi.mock('../../sync/crdt-writeback', () => ({ markWritebackIgnored }))
 vi.mock('../../telemetry/track', () => ({ trackMainEvent }))
 vi.mock('./attachment-dereference', () => ({ dereferenceChunks }))
 vi.mock('../store', () => ({ getCanvasFilePath, readCanvasScene }))
@@ -64,6 +56,7 @@ import {
   canUploadCanvasAssets,
   releaseUnshownCanvasHolds
 } from './asset-service-context'
+import { recordAppWrite } from '../../vault/app-writes'
 
 describe('buildAssetServiceContext', () => {
   const fakeDb = { marker: 'db' }
@@ -97,7 +90,7 @@ describe('buildAssetServiceContext', () => {
     expect(ctx?.db).toBe(fakeDb)
     expect(ctx?.vaultId).toBe('vault-uuid-1')
     expect(ctx?.vaultPath).toBe('/vault/path')
-    expect(ctx?.markWritebackIgnored).toBe(markWritebackIgnored)
+    expect(ctx?.recordAppWrite).toBe(recordAppWrite)
     expect(ctx?.trackEvent).toBe(trackMainEvent)
   })
 

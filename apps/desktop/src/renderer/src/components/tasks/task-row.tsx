@@ -9,6 +9,8 @@ import { TaskRelationChip } from '@/features/tag-fields/tasks/TaskRelationChip'
 import { SelectionCheckbox } from '@/components/tasks/bulk-actions'
 import { RepeatIndicator } from '@/components/tasks/repeat-indicator'
 import { TaskPathTitle, useTaskPath } from '@/components/tasks/date-view-context'
+import { TaskTitleText } from '@/components/tasks/task-title-text'
+import { replaceWikiLinks } from '@memry/shared/wiki-target'
 import { TaskRowReminder, TaskRowStartDate } from '@/components/tasks/task-row-schedule'
 import type { Task } from '@/data/task-model'
 import type { Project, Status } from '@/data/tasks-data'
@@ -123,6 +125,8 @@ export const TaskRow = ({
   const formattedDate = formatDueDate(task.dueDate, task.dueTime)
   const isOverdue = formattedDate?.status === 'overdue' && !isCompleted
   const { color: statusColor } = resolveStatus(task, project.statuses)
+  // Screen readers read the title as shown: `[[Note|alias]]` as `alias`.
+  const titleLabel = replaceWikiLinks(task.title)
 
   const handleRowClick = (e: React.MouseEvent): void => {
     if (e.shiftKey && isSelectionMode && onShiftSelect) {
@@ -179,7 +183,7 @@ export const TaskRow = ({
         isSelected && !isCheckedForSelection && 'bg-primary/10 ring-1 ring-inset ring-primary/30',
         className
       )}
-      aria-label={`Task: ${task.title}${isCompleted ? ', completed' : ''}`}
+      aria-label={`Task: ${titleLabel}${isCompleted ? ', completed' : ''}`}
       aria-busy={!interactive || undefined}
     >
       {isSelectionMode && showSelection && (
@@ -189,7 +193,7 @@ export const TaskRow = ({
             checked={isCheckedForSelection}
             onChange={() => onToggleSelect?.(task.id)}
             onClick={(e: React.MouseEvent) => e.stopPropagation()}
-            aria-label={`Select ${task.title}`}
+            aria-label={`Select ${titleLabel}`}
           />
         </div>
       )}
@@ -223,7 +227,7 @@ export const TaskRow = ({
                 : 'text-foreground/90'
             )}
           >
-            {task.title}
+            <TaskTitleText title={task.title} />
           </span>
         </TaskPathTitle>
       )}

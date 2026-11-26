@@ -16,8 +16,9 @@ use rusqlite::{Connection, params};
 
 use crate::api::errors::StorageError;
 use crate::domain::embedding_input::{
-    EMBEDDING_INPUT_VERSION, EmbeddingTask, build_embedding_input,
+    EmbeddingTask, UNCAPPED_EMBEDDING_INPUT_VERSION, build_embedding_input,
 };
+use crate::storage::nested_tx;
 use crate::storage::vec::{VecTable, nearest, to_blob};
 
 /// `AUDIO_EMBEDDING_INPUT_VERSION`: bump when how a recording is windowed or encoded changes.
@@ -62,7 +63,7 @@ impl VoiceSource {
     /// `inputVersion`: the text input's version for a transcript, the audio one for audio.
     pub fn input_version(self) -> u32 {
         match self {
-            Self::Transcript => EMBEDDING_INPUT_VERSION,
+            Self::Transcript => UNCAPPED_EMBEDDING_INPUT_VERSION,
             Self::Audio => AUDIO_EMBEDDING_INPUT_VERSION,
         }
     }
@@ -214,7 +215,7 @@ fn delete_in(index: &Connection, item_id: &str) -> Result<(), StorageError> {
 
 /// `deleteVoiceVectors`: the memo's windows and its state row, in one transaction.
 pub fn delete(index: &Connection, item_id: &str) -> Result<(), StorageError> {
-    let transaction = index.unchecked_transaction().map_err(failed)?;
+    let transaction = nested_tx::begin(index).map_err(failed)?;
     delete_in(&transaction, item_id)?;
     transaction.commit().map_err(failed)
 }
@@ -227,7 +228,7 @@ pub fn replace(
     source: VoiceSource,
     vectors: &[Vec<f32>],
 ) -> Result<(), StorageError> {
-    let transaction = index.unchecked_transaction().map_err(failed)?;
+    let transaction = nested_tx::begin(index).map_err(failed)?;
     delete_in(&transaction, item_id)?;
     for (n, vector) in vectors.iter().enumerate() {
         transaction
@@ -254,7 +255,7 @@ pub fn replace(
 
 /// The voice projector's `rebuild`: every voice vector and state row, in one transaction.
 pub fn clear(index: &Connection) -> Result<(), StorageError> {
-    let transaction = index.unchecked_transaction().map_err(failed)?;
+    let transaction = nested_tx::begin(index).map_err(failed)?;
     transaction
         .execute_batch("DELETE FROM vec_voice; DELETE FROM voice_embedding_state;")
         .map_err(failed)?;

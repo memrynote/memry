@@ -1,0 +1,11 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "bundle": {
+    "active": true,
+    "externalBin": ["binaries/memry-ml-worker"],
+    "resources": {
+      "binaries/pdfium/": "pdfium/",
+      "resources/tessdata/eng.traineddata.gz": "tessdata/eng.traineddata.gz"
+    }
+  }
+}

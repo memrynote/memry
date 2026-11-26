@@ -81,6 +81,7 @@ enum JournalCopy {
     static let findInPage = "Find in page"
     static let export = "Export…"
     static let journalSettings = "Journal Settings"
+    static let fullWidth = "Full width"
 
     // MARK: Month and Year (journal.json `empty.*`, `count.*`)
 
@@ -176,11 +177,4 @@ enum JournalCopy {
     static let settingsFooterGroup = "Footer"
     static let settingsShowStatsFooter = "Show Stats Footer"
     static let settingsShowStatsFooterDescription = "Word count, reading time, timestamps"
-
-    // MARK: Limits
-
-    /// D5, gate G0: why the tag and property rows cannot be edited here yet.
-    static let metadataReadOnly =
-        "Tags and properties on a journal day are read-only on \(ThisDevice.noun) for now. "
-        + "Edit them in Memry on another device."
 }

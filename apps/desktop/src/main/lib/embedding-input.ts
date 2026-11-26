@@ -24,6 +24,17 @@ export const MAX_EMBEDDING_INPUT_LENGTH = 4000
  */
 export const MAX_EMBEDDING_CHUNKS = 16
 
+/**
+ * Max tokens of one model input, BOS and EOS included. A window's units do not
+ * bound its tokens: a 4000-unit window is ~900 tokens of English or German,
+ * ~1200 of Turkish, ~1900 of Japanese, ~4000 of hex, ~8000 of CJK Extension B,
+ * and attention memory grows with the square of the count (peak RSS, q4, one
+ * thread: 1024 tokens 0.88 GB, 1536 1.17 GB, 2048 1.42 GB, 4096 2.45 GB, 8002
+ * 7.14 GB). 1536 leaves every 4000-unit window of the Latin, Cyrillic, Arabic
+ * and Thai locales whole and cuts denser text to ~1.2 GB.
+ */
+export const MAX_EMBEDDING_INPUT_TOKENS = 1536
+
 /** Characters of note text a reader hands to {@link buildEmbeddingChunks}; the rest is never used. */
 export const MAX_EMBEDDABLE_CONTENT_LENGTH = MAX_EMBEDDING_INPUT_LENGTH * MAX_EMBEDDING_CHUNKS
 
@@ -124,6 +135,15 @@ function findChunkCut(text: string, budget: number): number {
   return budget
 }
 
+/**
+ * Cap a tokenized model input at {@link MAX_EMBEDDING_INPUT_TOKENS}: the first
+ * tokens, then the input's last one, so the model still sees its closing EOS.
+ */
+export function capEmbeddingTokens(ids: readonly number[]): number[] {
+  if (ids.length <= MAX_EMBEDDING_INPUT_TOKENS) return [...ids]
+  return [...ids.slice(0, MAX_EMBEDDING_INPUT_TOKENS - 1), ids[ids.length - 1]]
+}
+
 /** Build the text fed to the model for a typed search query. */
 export function buildQueryEmbeddingInput(query: string): string {
   const text = query.trim()
@@ -133,15 +153,17 @@ export function buildQueryEmbeddingInput(query: string): string {
 
 /**
  * Bump when the text {@link buildEmbeddingInput} or {@link buildEmbeddingChunks}
- * produce changes, or a vector is added, so stored vectors are rebuilt.
+ * produce changes, or the tokens {@link capEmbeddingTokens} keep, or a vector is
+ * added, so stored vectors are rebuilt.
  * v1 = content only (legacy); v2 = title + content; v3 = EmbeddingGemma 2 with
  * the `sentence similarity` task prefix (a different model, so every stored
  * vector is stale); v4 = the document prefix above; v5 = notes past one window
  * also get a vector per later window (`vec_note_chunks`); v6 = every note also gets
- * a `similarity` vector (`vec_note_similar`) for note-to-note features. Stale
+ * a `similarity` vector (`vec_note_similar`) for note-to-note features; v7 = every
+ * input is capped at {@link MAX_EMBEDDING_INPUT_TOKENS}. Stale
  * vectors keep serving search until the background re-embed (note_embedding_state) replaces them.
  */
-export const EMBEDDING_INPUT_VERSION = 6
+export const EMBEDDING_INPUT_VERSION = 7
 
 /**
  * Bump when the bytes fed to the vision encoder or its settings change (for

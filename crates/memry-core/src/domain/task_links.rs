@@ -2,7 +2,7 @@
 //! desktop's `getTasksLinkedToNote`, `queries/tasks.ts:711`).
 //!
 //! A task names the notes it references in `linkedNoteIds` and the canvases in
-//! `linkedCanvasIds`; `task_links` (data migration 0037) holds one row per
+//! `linkedCanvasIds`; `task_links` (data migration 0038) holds one row per
 //! pair, kept current by triggers on `tasks`, so a lookup seeks by target
 //! instead of parsing every task. The note a task was written in
 //! (`sourceNoteId`) is not a link, as desktop's `task_notes` holds only

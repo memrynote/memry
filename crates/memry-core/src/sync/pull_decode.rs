@@ -1,5 +1,9 @@
 //! Per-item validation of one pulled envelope (chapter 05 §5.12, §5.14),
 //! split out of [`super::pull`] to keep it under the line ceiling.
+//!
+//! Opening a record is an Ed25519 verify, two AEAD decrypts and an inflate. A
+//! page's worth runs on the blocking pool (`PullLoop::start_items`), never on
+//! the async runtime's worker threads (#5231).
 
 use serde_json::Value as Json;
 

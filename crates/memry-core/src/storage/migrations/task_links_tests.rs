@@ -1,4 +1,4 @@
-//! Data migration 0037, `task_links`: the backfill, the triggers that keep it
+//! Data migration 0038, `task_links`: the backfill, the triggers that keep it
 //! current for any writer of `tasks` (a build older than the migration
 //! included), and the index a lookup seeks.
 
@@ -52,7 +52,7 @@ fn write_task(conn: &rusqlite::Connection, id: &str, note_ids: &str, payload: &s
 #[test]
 fn the_migration_backfills_every_live_tasks_links_and_skips_what_will_not_read() {
     let db = Db::open_in_memory().expect("open");
-    db.call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..33]))
+    db.call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..34]))
         .expect("a database as the last build left it");
     db.call_blocking(|conn| {
         write_task(

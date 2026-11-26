@@ -19,6 +19,7 @@ use serde_json::json;
 use super::{Bookmark, ITEM_TYPE, failed, get, live_ids, sync_id};
 use crate::api::errors::StorageError;
 use crate::domain::notes::{insert_local, iso, next_clock, object, require_payload};
+use crate::storage::nested_tx;
 use crate::storage::repositories::schema::Object;
 use crate::storage::repositories::{Change, sync_items};
 use crate::sync::outbox;
@@ -75,7 +76,7 @@ pub fn toggle_rows(
     now_ms: i64,
 ) -> Result<Toggled, StorageError> {
     require_item(item_type, item_id)?;
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let live = live_ids(&tx, item_type, item_id)?;
     let toggled = if live.is_empty() {
         Toggled::Created(create_queued(&tx, item_type, item_id, device_id, now_ms)?)
@@ -100,7 +101,7 @@ pub fn create(
     now_ms: i64,
 ) -> Result<Created, StorageError> {
     require_item(item_type, item_id)?;
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     if !live_ids(&tx, item_type, item_id)?.is_empty() {
         return Ok(Created::AlreadyBookmarked);
     }
@@ -121,7 +122,7 @@ pub fn bulk_create(
     for (item_type, item_id) in items {
         require_item(item_type, item_id)?;
     }
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let mut created = Vec::new();
     for (item_type, item_id) in items {
         if live_ids(&tx, item_type, item_id)?.is_empty() {
@@ -140,7 +141,7 @@ pub fn delete(
     device_id: &str,
     now_ms: i64,
 ) -> Result<Option<Bookmark>, StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let deleted = delete_queued(&tx, id, device_id, now_ms)?;
     tx.commit().map_err(failed)?;
     Ok(deleted)
@@ -154,7 +155,7 @@ pub fn bulk_delete(
     device_id: &str,
     now_ms: i64,
 ) -> Result<Vec<Bookmark>, StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let mut deleted = Vec::new();
     for id in ids {
         deleted.extend(delete_queued(&tx, id, device_id, now_ms)?);
@@ -173,7 +174,7 @@ pub fn reorder(
     device_id: &str,
     now_ms: i64,
 ) -> Result<(), StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     for (index, id) in ids.iter().enumerate() {
         if get(&tx, id)?.is_none() {
             continue;

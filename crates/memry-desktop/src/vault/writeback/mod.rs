@@ -54,6 +54,12 @@
 //!   not before the cooldown of its last pass ends: [`COOLDOWN_FACTOR`] times what that pass
 //!   took, at most [`MAX_COOLDOWN`]. One pass runs at a time; a schedule while the note's pass
 //!   runs gives it one more pass after it, once that pass's cooldown ended.
+//! - **A note kept for its unpulled body runs again once the bodies settle.** A pass that kept
+//!   the file because the note's server body was not pulled (`Keep::BodyNotPulled`) puts the
+//!   note aside; when the sync's body step settled its debts, every note put aside whose body
+//!   is no longer owed is scheduled again ([`WriteBack::schedule_body_waits`], from `sync::disk`), and so is one
+//!   whose pass kept it for its body while that settle ran. The pass's own rules still decide:
+//!   a file changed outside the app or a file at the note's name is kept.
 //! - **Nothing scheduled waits out a quit or a close.** [`WriteBack::flush`] makes every
 //!   scheduled pass due now and waits for them and the one running. The `flush-writebacks`
 //!   shutdown step calls it on every way the app quits (the app menu, Cmd-Q, the Dock, a
@@ -116,22 +122,31 @@
 //!   deletes the file for good and reports success, as desktop's unlink always did (measured
 //!   on Windows 11 with `trash` 5.2.9: the file was neither in the Recycle Bin nor on the share).
 //! - **A failed write is told, once per run of failures.** The first failed pass of a note
-//!   sends [`WriteBackFailed`]; the next pass that does not fail ends the run. A failed pass is
-//!   not retried on its own: the note's next schedule is its retry, and its body stays in the
-//!   document until then.
+//!   sends [`WriteBackFailed`]; the next pass that does not fail ends the run. A failed write
+//!   runs again on its own [`RETRY_AFTER`] later, the delay doubling with each failure in a row,
+//!   until a pass does not fail or the delay would reach [`MAX_RETRY_AFTER`]: then the retries
+//!   end, with one log line, and the note waits for its next schedule or the next open's
+//!   reconcile. A flush or a stop does not wait for a retry, and a close leaves it to the next
+//!   open's reconcile. A pass that cannot finish ([`Outcome::Broken`]: a body that does not
+//!   read, a file that does not serialize, a panic) is not retried, nor is a file whose
+//!   frontmatter does not parse: it waits for the user's fix. The body stays in the document
+//!   all along.
 //!
 //! A journal day's file is written as a note's is, by the same rules (Step 13m): its row says
 //! the document holds it once the consumer fed it. A body write sets the day's `date` in its
-//! frontmatter, in place, and never writes the day's tags (`journal`).
+//! frontmatter, in place, and never writes the day's tags (`journal`). A live day owns its
+//! file: a pass moves a day's file that is off its date's path there (`day_place`, #5786).
 //!
 //! A note or day no row names (a record pulled from another device) gets its first file from
 //! its pass, once its body is here, under a free name and never over a file (`unfiled`). A row
 //! that names a missing file gets none: the removal is the user's.
 
+mod day_place;
 #[cfg(feature = "e2e")]
 mod debug;
 mod deleted;
 pub(crate) mod journal;
+mod owed;
 mod pass;
 mod place;
 mod reconcile;
@@ -146,4 +161,7 @@ pub use deleted::Leftover;
 pub(crate) use pass::output_over;
 pub use pass::{Keep, Outcome, Pass};
 pub(crate) use reconcile::reconcile;
-pub use schedule::{COOLDOWN_FACTOR, DEBOUNCE, Failure, MAX_COOLDOWN, WriteBack, WriteBackFailed};
+pub use schedule::{
+    COOLDOWN_FACTOR, DEBOUNCE, Failure, MAX_COOLDOWN, MAX_RETRY_AFTER, RETRY_AFTER, WriteBack,
+    WriteBackFailed,
+};

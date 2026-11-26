@@ -213,11 +213,10 @@ describe('CRDT sweep: the persisted snapshot watermark', () => {
   it('carries the watermark across a relaunch: the first sweep of the next session issues zero snapshot GETs', async () => {
     twoSettledNotes()
 
-    // Session 1 — cold. No watermarks anywhere, so no probe is even sent and
-    // both baselines are downloaded.
+    // Session 1 — cold. No watermarks anywhere, so both baselines are
+    // downloaded.
     await newSession().pullCrdtForNotes(['note-1', 'note-2'])
     expect(snapshotGets).toEqual(['note-1', 'note-2'])
-    expect(probeRequests()).toHaveLength(0)
 
     resetTraffic()
 
@@ -267,7 +266,6 @@ describe('CRDT sweep: the persisted snapshot watermark', () => {
     await coordinator.pullCrdtForNotes(['note-1', 'note-2'])
 
     expect(snapshotGets).toEqual(['note-1', 'note-2'])
-    expect(probeRequests()).toHaveLength(0)
     // And nothing from the old store leaked into the new one's records.
     expect(store.watermarks.get('note-1')).toEqual({
       appliedSequence: 90,
@@ -288,7 +286,6 @@ describe('CRDT sweep: the persisted snapshot watermark', () => {
     await newSession().pullCrdtForNotes(['note-1', 'note-2'])
 
     expect(snapshotGets).toEqual(['note-1', 'note-2'])
-    expect(probeRequests()).toHaveLength(0)
   })
 
   // Mutation 2. Defaulting a missing record to sequence 0 has to redden this.
@@ -300,9 +297,8 @@ describe('CRDT sweep: the persisted snapshot watermark', () => {
 
     await newSession().pullCrdtForNotes(['note-1', 'note-2'])
 
+    // Unknown is unknown, never "sequence 0, therefore skip".
     expect(snapshotGets).toEqual(['note-1', 'note-2'])
-    // Not even a probe: unknown is unknown, never "sequence 0, therefore skip".
-    expect(probeRequests()).toHaveLength(0)
   })
 
   it('FM5: never persists a watermark for a snapshot blob that never arrived', async () => {
@@ -340,7 +336,6 @@ describe('CRDT sweep: the persisted snapshot watermark', () => {
     // Still cold, every session, forever. That is the correct price for a device
     // with no store.
     expect(snapshotGets).toEqual(['note-1', 'note-2'])
-    expect(probeRequests()).toHaveLength(0)
   })
 
   it('carries a watermark the single-note path moved, without ever consulting one (FM4)', async () => {

@@ -22,6 +22,7 @@ use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
 
 use crate::api::errors::{ApiError, AuthError, SecureStoreError};
+use crate::api::sync::NotFoundMemory;
 use crate::protocol::auth::{
     AuthRoutes, DeviceFormFactor, DevicePlatform, DeviceRegisterRequest, RenewSetupTokenRequest,
     TokenClaims, TokenManager, random_nonce, sign_device_challenge,
@@ -143,6 +144,8 @@ pub struct AuthSession {
     /// refresh token a refused keychain delete left behind never restores the session the user
     /// ended ([`Self::restore`]).
     sign_out_marker: SignOutMarker,
+    /// The manifests a note open was answered 404 for (#5247).
+    pub(crate) manifest_not_found: NotFoundMemory,
 }
 
 impl AuthSession {
@@ -347,6 +350,7 @@ impl AuthSession {
             state: Mutex::new(AuthState::SignedOut),
             pending: Mutex::new(PendingSignIn::default()),
             sign_out_marker: SignOutMarker::new(sign_out_marker),
+            manifest_not_found: NotFoundMemory::default(),
         })
     }
 

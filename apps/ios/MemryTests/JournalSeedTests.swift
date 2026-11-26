@@ -45,6 +45,9 @@ final class ScriptedSeedJournal: JournalProtocol, @unchecked Sendable {
         try base.renameProperty(date: date, from: from, to: to)
     }
     func resolveWikiTarget(target: String) throws -> WikiTargetMatch? { try base.resolveWikiTarget(target: target) }
+    func sameDayEntries(date: String, today: String) throws -> [JournalMonthDayRecord] {
+        try base.sameDayEntries(date: date, today: today)
+    }
     func setDefaultTemplate(templateId: String?) throws -> JournalSettingsRecord {
         try base.setDefaultTemplate(templateId: templateId)
     }

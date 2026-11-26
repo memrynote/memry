@@ -81,12 +81,12 @@ pub enum ImportError {
     /// written.
     #[error("sync_state has an unmapped key {0}")]
     UnmappedSyncStateKey(String),
-    /// The source's last drizzle migration is not the frozen one the table map describes.
-    #[error("{db} is at migration {found:?}, this build reads {expected}")]
+    /// The source's last drizzle migration is none of the frozen ones the table map describes.
+    #[error("{db} is at migration {found:?}, this build reads {expected:?}")]
     SourceSchema {
         db: &'static str,
         found: Option<i64>,
-        expected: i64,
+        expected: &'static [i64],
     },
     /// The source holds rows whose importer this build does not have yet. Nothing was written.
     #[error("the import of {0} is not built yet")]

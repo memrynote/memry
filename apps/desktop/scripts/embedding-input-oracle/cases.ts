@@ -1,5 +1,5 @@
 /**
- * The 61 inputs of `embedding-input.json`: notes (title and body), typed
+ * The 61 inputs of `embedding-input-electron.json`: notes (title and body), typed
  * queries and interleaved page text. Built from fixed sentence pools, so the
  * file is the same on every machine. The long inputs sit on the window
  * boundaries of `embedding-input.ts`: the 4000-unit window, the chunk budget

@@ -48,17 +48,37 @@ interface PasteContext {
   }) => boolean | undefined
 }
 
+/**
+ * Text copied on Windows, and from some web copy buttons, ends its lines with
+ * `\r\n`. BlockNote's markdown parser splits on `\n` only, so every line keeps
+ * a trailing `\r` and lists, numbered lists, and code fences stop matching:
+ * the note shows `- item` and ```` ``` ```` as literal text. The clipboard of a
+ * paste event is read-only, so its text reads are rewritten for the life of
+ * this one event.
+ */
+function readTextWithUnixLineEndings(clipboard: DataTransfer): void {
+  const getData = clipboard.getData.bind(clipboard)
+  clipboard.getData = (format: string) => {
+    const data = getData(format)
+    return format === 'text/plain' || format === 'text/markdown'
+      ? data.replace(/\r\n?/g, '\n')
+      : data
+  }
+}
+
 export function handleEditorPaste({
   editor,
   event,
   defaultPasteHandler
 }: PasteContext): boolean | undefined {
+  const clipboard = event?.clipboardData
+  if (clipboard) readTextWithUnixLineEndings(clipboard)
+
   // A clipboard holding nothing but a URL becomes an inline link, wherever the
   // cursor is. The default handler would read it as markdown and replace the
   // block, dropping a list item's bullet or number. See `paste-url-link.ts`.
   // A clipboard carrying files is an attachment paste even when its text
   // flavour happens to read as a URL — leave those to the default handler.
-  const clipboard = event?.clipboardData
   const url = clipboard?.files?.length ? null : readBareUrl(clipboard?.getData('text/plain'))
   if (url && insertUrlAsLink(editor, url)) {
     event.preventDefault()

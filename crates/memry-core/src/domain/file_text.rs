@@ -19,6 +19,7 @@ use rusqlite::{Connection, OptionalExtension as _, Row, params};
 use crate::api::errors::StorageError;
 use crate::domain::journal_rules::is_js_whitespace;
 use crate::domain::notes::failed;
+use crate::storage::nested_tx;
 use crate::storage::repositories::instants::to_iso8601;
 
 /// The `source` of a filed PDF's or image's own text.
@@ -234,7 +235,7 @@ pub fn reset_file(
     now_ms: i64,
 ) -> Result<(), StorageError> {
     let now = iso(now_ms)?;
-    let tx = conn.transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     tx.execute(
         "DELETE FROM extracted_text WHERE note_id = ?1 AND source = ?2",
         params![of.note_id, of.source],
@@ -262,7 +263,7 @@ pub fn retry(
     now_ms: i64,
 ) -> Result<(), StorageError> {
     let now = iso(now_ms)?;
-    let tx = conn.transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     tx.execute(
         "DELETE FROM extracted_text WHERE note_id = ?1 AND source = ?2 AND method = 'unreadable'",
         params![of.note_id, of.source],
@@ -292,7 +293,7 @@ pub fn requeue(conn: &Connection, of: &TextSource, now_ms: i64) -> Result<(), St
 
 /// Forget a file that is gone: its job and its text (`deleteTextSource`).
 pub fn delete_source(conn: &mut Connection, of: &TextSource) -> Result<(), StorageError> {
-    let tx = conn.transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     for table in ["extracted_text", "file_text_jobs"] {
         tx.execute(
             &format!("DELETE FROM {table} WHERE note_id = ?1 AND source = ?2"),
@@ -321,7 +322,7 @@ pub fn delete_notes(conn: &mut Connection, note_ids: &[String]) -> Result<(), St
     let ids = serde_json::to_string(note_ids).map_err(|err| StorageError::Failed {
         what: err.to_string(),
     })?;
-    let tx = conn.transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     for table in ["extracted_text", "file_text_jobs"] {
         tx.execute(
             &format!("DELETE FROM {table} WHERE note_id IN (SELECT value FROM json_each(?1))"),

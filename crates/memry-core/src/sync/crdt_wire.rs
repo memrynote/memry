@@ -147,6 +147,24 @@ mod tests {
     }
 
     #[test]
+    fn a_wrongly_typed_signer_keeps_its_entry_so_the_document_stops_rather_than_skips() {
+        // #5303 review low: a `signerDeviceId` that is not a string reads as
+        // absent, so the entry cannot be opened and §7.9 stops the document
+        // there. Dropping the entry instead would let the cursor step over the
+        // update, because the update loop has no continuity check: a loss.
+        let page = read_update_page(
+            &json!({ "updates": [
+                {"sequenceNum": 4, "data": "YWJj", "signerDeviceId": 42},
+                {"sequenceNum": 5, "data": "YWJj", "signerDeviceId": "dev-1"}
+            ]}),
+            "abc123def456",
+        );
+        assert_eq!(page.updates.len(), 2);
+        assert_eq!(page.updates[0].sequence_num, 4);
+        assert_eq!(page.updates[0].signer_device_id, None);
+    }
+
+    #[test]
     fn an_undecodable_payload_survives_the_read_so_it_can_stop_the_document() {
         // Only an entry with no sequence number at all is dropped: there is
         // nothing a client could do with it. An entry whose `data` will not

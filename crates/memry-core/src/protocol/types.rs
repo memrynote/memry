@@ -256,7 +256,7 @@ impl Declaration {
 
     /// The header without [`PURGED_TOMBSTONES_SYNC_TYPE`], for a read that
     /// cannot tell a marker's id in `deleted` from a signed tombstone's: the
-    /// first sync's refs pass, which applies every `deleted` id untyped.
+    /// first sync's refs pass, which fetches every `deleted` id (§5.12.1).
     pub fn header_value_without_purged_tombstones(&self) -> String {
         self.types.join(",")
     }

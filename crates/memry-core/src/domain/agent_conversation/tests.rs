@@ -45,7 +45,7 @@ pub(super) fn pull(
     key: &AtRestKey,
     items: Vec<Pending>,
 ) -> Result<ApplyTotals, StorageError> {
-    apply_page(conn, items, vec![], NOW + 10, Some(DEVICE), key)
+    apply_page(conn, items, NOW + 10, Some(DEVICE), key)
 }
 
 /// The projection's title column and whether the record is sealed-pending.
@@ -475,4 +475,59 @@ pub(super) fn storage(error: AgentError) -> StorageError {
     StorageError::Failed {
         what: error.to_string(),
     }
+}
+
+/// #5505: a vault that downloaded the account vault binds the server id over its own local id.
+/// A conversation made here states the server id, and the list keeps one pulled under the
+/// server id, one made before the bind, and one pulled under another id: the bound vault's feed
+/// holds only its own records, whatever id their writer stated before its bind (#5812).
+#[test]
+fn a_bound_vault_states_the_server_id_and_lists_every_conversation() {
+    let (db, _dir) = open("agent-conversation-server-vault");
+    db.call_blocking(|conn| {
+        let key = key();
+        let before = create(conn, &key, &NEW, Queue::Outbox, DEVICE, NOW).map_err(storage)?;
+        crate::sync::server_vault::bind(conn, "server-vault")?;
+        let after = create(conn, &key, &NEW, Queue::Outbox, DEVICE, NOW + 1).map_err(storage)?;
+        assert_eq!(after.vault_id, "server-vault");
+        assert_eq!(
+            payload(conn, ITEM_TYPE, &after.id)["vaultId"],
+            json!("server-vault")
+        );
+        let clock = json!({ "peer": 1 });
+        pull(
+            conn,
+            &key,
+            vec![
+                peer(
+                    "pulled",
+                    json!({ "vaultId": "server-vault" }),
+                    clock.clone(),
+                    json!({}),
+                ),
+                peer(
+                    "elsewhere",
+                    json!({ "vaultId": "other-vault" }),
+                    clock,
+                    json!({}),
+                ),
+            ],
+        )?;
+        let mut ids: Vec<String> = list(conn, &key, "vault-1")
+            .map_err(storage)?
+            .into_iter()
+            .map(|conversation| conversation.id)
+            .collect();
+        ids.sort();
+        let mut expected = vec![
+            before.id,
+            after.id,
+            "pulled".to_owned(),
+            "elsewhere".to_owned(),
+        ];
+        expected.sort();
+        assert_eq!(ids, expected);
+        Ok(())
+    })
+    .expect("bound vault");
 }

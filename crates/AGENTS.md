@@ -64,7 +64,7 @@ The same binary runs the embedding model (Step 23, #3540): `embed.rs` holds `mem
 
 ### Embedding input
 
-`memry-core/src/domain/embedding_input.rs` (Step 23, #3540) ports Electron's `apps/desktop/src/main/lib/embedding-input.ts` and is tested against `packages/contracts/test-vectors/embedding-input.json`, which `apps/desktop/scripts/embedding-input-oracle/` generates by running that module in Node. Regenerate with `pnpm --filter @memry/desktop vectors:embedding-input`; `vectors:embedding-input:check` runs in CI. Lengths are UTF-16 code units, and a cut that splits a surrogate pair is U+FFFD on both sides.
+`memry-core/src/domain/embedding_input.rs` (Step 23, #3540) ports Electron's `apps/desktop/src/main/lib/embedding-input.ts` and is tested against `packages/contracts/test-vectors/embedding-input-electron.json`, which `apps/desktop/scripts/embedding-input-oracle/` generates by running that module in Node. Regenerate with `pnpm --filter @memry/desktop vectors:embedding-input`; `vectors:embedding-input:check` runs in CI. Lengths are UTF-16 code units, and a cut that splits a surrogate pair is U+FFFD on both sides.
 
 ### HTML block text
 

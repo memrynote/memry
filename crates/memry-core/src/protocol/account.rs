@@ -49,7 +49,7 @@ const DEVICES_PATH: &str = "/auth/devices";
 
 /// How the text of an unresolvable signer ends, and so how the
 /// `sync_items.corrupt_reason` of its record ends
-/// ([`crate::storage::repositories::sync_items::unknown_signer_ids`] reads it
+/// ([`crate::storage::repositories::sync_items::unknown_signer_rows`] reads it
 /// back). Persisted: rows written by older builds end with these exact words.
 pub const UNKNOWN_SIGNER: &str = " is not in the directory from GET /auth/devices";
 
@@ -400,6 +400,10 @@ impl RecordCipher for AccountCipher {
                 ),
             })?;
         envelope::decrypt(envelope, &self.vault_key, signer)
+    }
+
+    fn signing_key(&self, device_id: &str) -> Option<Vec<u8>> {
+        self.directory.signing_key(device_id).map(<[u8]>::to_vec)
     }
 }
 

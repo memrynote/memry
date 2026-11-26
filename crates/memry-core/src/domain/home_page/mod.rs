@@ -21,6 +21,7 @@ use crate::api::errors::StorageError;
 use crate::domain::desktop_records::{self, live};
 use crate::domain::notes::{failed, insert_local, iso, next_clock, object};
 use crate::domain::saved_filters::mint_id;
+use crate::storage::nested_tx;
 use crate::storage::repositories::Change;
 use crate::storage::repositories::projectors::home_pages::is_readable_cover;
 use crate::storage::repositories::schema::Object;
@@ -176,7 +177,7 @@ pub fn reorder(
     device_id: &str,
     now_ms: i64,
 ) -> Result<Vec<String>, StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let mut moved = Vec::new();
     for (index, id) in ids.iter().enumerate() {
         let position = u32::try_from(index).map_err(|_| StorageError::Invalid {

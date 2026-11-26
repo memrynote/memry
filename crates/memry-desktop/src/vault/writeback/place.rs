@@ -5,12 +5,14 @@
 //! rewrites its frontmatter.
 //!
 //! In the pass, under the rows' lane, after its row, hash and file checks (a missing file is
-//! kept missing, an outside edit not fed yet is kept, and the mark stays for the next pass):
+//! kept missing, an outside edit not fed yet is kept, and the mark stays for the next pass; a
+//! pass that keeps the file later, for a body not pulled yet or a file changed under the write,
+//! gives the mark back, #5509):
 //! - **Place** ([`Pass::place`]). The record's folder as the disk spells it, under the name its
 //!   title makes ([`name_for`]) when the pull changed the title ([`Mark::title_before`]), else
 //!   under the file's name byte for byte (Electron's `titleChanged`, `note-handler.ts:349`), numbered
 //!   `<name> 1.md` on when another note or file holds it ([`free_target`]). A journal day is
-//!   never placed: [`NoteFiles::placed`] reads notes only. A target that would make the note a
+//!   never placed: its path is its date's. A target that would make the note a
 //!   journal day's file, a locked note, and a locked folder keep the file where it is. The move is
 //!   the app's own ([`NoteFileMove`]): recorded in the core, both names told to the own-write
 //!   record, the file moved without replacing anything (never a moment without it), then
@@ -18,15 +20,20 @@
 //!   the pulled place, so nothing is pushed), the file moved back when that fails, and a crash
 //!   in between finished by the next open. [`Applied::Renamed`] follows: `Renamed` for a new
 //!   name, `Moved` for a new folder alone. A move that fails keeps the file where it is: the
-//!   pass still writes the frontmatter and the body there, and the mark waits for the next pass,
-//!   [`PLACE_TRIES`] passes at most ([`Pulled::retry`]; Electron logs and goes on, L438-442).
+//!   pass still writes the frontmatter and the body there, and the move is tried again on the
+//!   next pass, [`PLACE_TRIES`] passes at most ([`Mark::move_failed`]; Electron logs and goes on,
+//!   L438-442). A mark whose moves are given up still waits for a pass that writes its
+//!   frontmatter.
 //! - **Frontmatter** ([`patch`], inside `file_for`). `tags` when the set differs
 //!   (case-insensitive), `aliases` when they differ, and each property value the record holds
 //!   that the file does not. A file key goes only when the record lacks it and the property
 //!   read takes it ([`text_values`]): a key the read does not take, a reserved key, `writing`
-//!   and the cover keys stay as the file holds them.
-//!
-//! [`NoteFiles::placed`]: memry_core::api::note_files::NoteFiles::placed
+//!   and the cover keys stay as the file holds them. A journal day's file takes the same, as
+//!   Electron's pull writes a day's record into its file (`journal-handler.ts` `applyUpsert`,
+//!   `buildJournalEntryWrite`; #5509 reverses #3530's "tags are never written"), with its own
+//!   keys (`date`, `id`, `created`, `modified`, `emoji`) left to the file, and its `aliases`
+//!   only when the record holds a list: a stored `[]` removes the file's, no list leaves them
+//!   (Electron `remoteAliases`: an array, `[]` included, is the list; absent keeps).
 
 use std::collections::{HashMap, HashSet};
 use std::fmt::Display;
@@ -35,10 +42,14 @@ use std::sync::{Mutex, MutexGuard, PoisonError};
 use memry_core::domain::note_files::Unfiled;
 use memry_core::domain::note_stats::header_tags;
 use memry_core::domain::notes::app_move::AppMoved;
+use memry_core::domain::notes::names::normalize_aliases;
+use memry_core::domain::properties::RESERVED_DAY_KEYS;
 use memry_core::markdown::frontmatter::{YamlMap, YamlValue, json_to_yaml, parse_markdown_note};
 
 use super::Pass;
 use crate::locks::Locks;
+use crate::notes::aliases::with_aliases;
+use crate::notes::error::NotesError;
 use crate::notes::frontmatter::{aliases, is_reserved_key};
 use crate::notes::moves::{free_target, name_for, plain_folder};
 use crate::notes::properties::{definition_types, text_values};
@@ -67,6 +78,35 @@ pub(super) struct Mark {
     failed: u32,
 }
 
+impl Mark {
+    /// Whether a pass still tries the move.
+    pub(super) fn moves(&self) -> bool {
+        self.failed < PLACE_TRIES
+    }
+
+    /// A move that failed: the next pass tries it again, until [`PLACE_TRIES`] passes failed;
+    /// then the file stays where it is until the next pull of the note. The mark itself still
+    /// waits for a pass that writes the pulled frontmatter.
+    pub(super) fn move_failed(&mut self, note_id: &str, why: &str) {
+        self.failed += 1;
+        if self.moves() {
+            tracing::warn!(
+                scope = SCOPE,
+                note_id,
+                tries = self.failed,
+                "a pulled place waits for the next pass; the file stays where it is: {why}"
+            );
+        } else {
+            tracing::error!(
+                scope = SCOPE,
+                note_id,
+                tries = self.failed,
+                "a pulled place is given up; the file stays where it is: {why}"
+            );
+        }
+    }
+}
+
 impl Pulled {
     /// A later pull keeps the first one's title: the file still carries that one.
     pub(super) fn mark(&self, note_id: &str, title_before: Option<&str>) {
@@ -85,28 +125,6 @@ impl Pulled {
         self.map().insert(note_id.to_owned(), mark);
     }
 
-    /// A move that failed: the next pass tries it again, until [`PLACE_TRIES`] passes failed;
-    /// then the file stays where it is until the next pull of the note.
-    pub(super) fn retry(&self, note_id: &str, mut mark: Mark, why: &str) {
-        mark.failed += 1;
-        if mark.failed >= PLACE_TRIES {
-            tracing::error!(
-                scope = SCOPE,
-                note_id,
-                tries = mark.failed,
-                "a pulled place is given up; the file stays where it is: {why}"
-            );
-            return;
-        }
-        tracing::warn!(
-            scope = SCOPE,
-            note_id,
-            tries = mark.failed,
-            "a pulled place waits for the next pass; the file stays where it is: {why}"
-        );
-        self.put_back(note_id, mark);
-    }
-
     fn map(&self) -> MutexGuard<'_, HashMap<String, Mark>> {
         self.0.lock().unwrap_or_else(PoisonError::into_inner)
     }
@@ -117,6 +135,23 @@ impl Pulled {
 pub(crate) struct Patch<'a> {
     pub(super) record: &'a Unfiled,
     pub(super) types: HashMap<String, String>,
+}
+
+/// The file `output` with its `aliases` key set to the record's list, as the in-app alias edit
+/// writes it ([`with_aliases`]): every other key, comment and the body as `output` has them. A
+/// record with no list, or a frontmatter that is not a map, leaves `output` as it is. The
+/// pass gives it a file that owes its record's aliases
+/// ([`memry_core::domain::owed_file_aliases`]).
+pub(super) fn owed_aliases(output: String, record: &Unfiled) -> Result<String, String> {
+    let Some(held) = &record.aliases else {
+        return Ok(output);
+    };
+    let name = record.date.as_deref().unwrap_or(&record.title);
+    match with_aliases(&output, name, |_| normalize_aliases(name, held)) {
+        Ok((_, Some(written))) => Ok(written),
+        Ok((_, None)) | Err(NotesError::FrontmatterNotAMap) => Ok(output),
+        Err(error) => Err(format!("the aliases could not be written: {error}")),
+    }
 }
 
 /// The header tags of the file `text`, case folded; `None` when its frontmatter does not read.
@@ -274,22 +309,32 @@ pub(super) fn patch(
         set_list(map, "tags", &record.tags);
         changed = true;
     }
-    if aliases(map) != record.aliases {
-        set_list(map, "aliases", &record.aliases);
+    // A day with no stored list leaves the file's; `[]` is a list and clears them.
+    let wanted = match (&record.date, &record.aliases) {
+        (_, None) => None,
+        (Some(date), Some(held)) => Some(normalize_aliases(date, held))
+            .filter(|held| normalize_aliases(date, &aliases(map)) != *held),
+        (None, Some(held)) => Some(held.clone()).filter(|held| aliases(map) != *held),
+    };
+    if let Some(wanted) = wanted {
+        set_list(map, "aliases", &wanted);
         changed = true;
     }
     let Some(held) = text_values(raw, types) else {
         return changed;
     };
+    let reserved = |name: &str, value: &serde_json::Value| {
+        is_reserved_key(name, value) || (record.date.is_some() && RESERVED_DAY_KEYS.contains(&name))
+    };
     for (name, value) in &record.properties {
-        if !is_reserved_key(name, value) && held.get(name) != Some(value) {
+        if !reserved(name, value) && held.get(name) != Some(value) {
             map.insert(name.clone(), json_to_yaml(value));
             changed = true;
         }
     }
-    for name in held
-        .keys()
-        .filter(|name| !record.properties.contains_key(*name))
+    for (name, _) in held
+        .iter()
+        .filter(|(name, value)| !record.properties.contains_key(*name) && !reserved(name, value))
     {
         map.remove(name);
         if let Some(YamlValue::Map(nested)) = map.get("properties") {

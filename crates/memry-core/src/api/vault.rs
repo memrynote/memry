@@ -35,7 +35,7 @@
 //! cross: the cost of this shape is that `Vault` then holds it and `Notes` asks
 //! `Vault` to seal, rather than each object carrying its own copy.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use zeroize::Zeroizing;
@@ -49,8 +49,9 @@ use crate::api::inbox::Inbox;
 use crate::api::journal::Journal;
 use crate::api::notes::Notes;
 use crate::api::notes_write::NotesWriter;
-use crate::api::search::Search;
+use crate::api::search::{Search, SharedPass};
 use crate::api::search_recents::SearchRecents;
+use crate::api::semantic::SemanticSearch;
 use crate::api::sync::VaultSync;
 use crate::api::task_store::TaskStore;
 use crate::api::tasks::Tasks;
@@ -71,6 +72,7 @@ use crate::storage::{Db, OpenOptions, open_data, open_data_with};
 pub struct Vault {
     id: String,
     db: Db,
+    reindexing: SharedPass,
     /// Kept because `index.db` lives beside `data.db` and is opened later, on
     /// demand: the index is a cache of the vault (data-model §A.5) and a
     /// vault that is never searched must not pay for it at open.
@@ -106,6 +108,7 @@ impl Vault {
         Ok(Self {
             id,
             db,
+            reindexing: Arc::default(),
             directory,
             #[cfg(feature = "markdown")]
             editor: std::sync::OnceLock::new(),
@@ -124,7 +127,10 @@ impl Vault {
     /// [`Vault::search`] that also says why `index.db` was rebuilt (`None` when the file
     /// was reused or migrated in place). Not on the FFI surface.
     pub fn search_reporting(&self) -> Result<(Arc<Search>, Option<String>), StorageError> {
-        let (search, reason) = Search::over_reporting(self.db.clone(), &self.directory)?;
+        // Desktop has no on-device semantic search (the `semantic` feature is iOS-only).
+        let pass = Arc::clone(&self.reindexing);
+        let (search, reason) =
+            Search::over_reporting(self.db.clone(), pass, &self.directory, None)?;
         Ok((Arc::new(search), reason))
     }
 
@@ -421,6 +427,10 @@ impl Vault {
     ) -> Result<crate::domain::custom_icons::CustomIcons, StorageError> {
         self.db.read_blocking(crate::domain::custom_icons::list)
     }
+
+    pub(crate) fn directory(&self) -> &Path {
+        Path::new(&self.directory)
+    }
 }
 
 #[uniffi::export]
@@ -445,6 +455,7 @@ impl Vault {
         Ok(Self {
             id: vault_id,
             db,
+            reindexing: Arc::default(),
             directory,
             #[cfg(feature = "markdown")]
             editor: std::sync::OnceLock::new(),
@@ -567,9 +578,18 @@ impl Vault {
     /// **Opens `index.db`, which [`Vault::open`] does not**, and rebuilds it
     /// when the file cannot be trusted — so this one is not free, and a vault
     /// that is never searched never opens it. Hold the handle rather than
-    /// rebuilding it per keystroke.
-    pub fn search(&self) -> Result<Arc<Search>, StorageError> {
-        Ok(Arc::new(Search::over(self.db.clone(), &self.directory)?))
+    /// rebuilding it per keystroke. `semantic` fuses on-device semantic hits
+    /// into the results while it is on; `None` searches FTS alone.
+    pub fn search(
+        &self,
+        semantic: Option<Arc<SemanticSearch>>,
+    ) -> Result<Arc<Search>, StorageError> {
+        Ok(Arc::new(Search::over(
+            self.db.clone(),
+            Arc::clone(&self.reindexing),
+            &self.directory,
+            semantic,
+        )?))
     }
 
     /// The search sheet's recently opened results, device-local (#4322),

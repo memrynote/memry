@@ -11,9 +11,9 @@ import SwiftUI
 @Observable
 final class UnlinkedMentionsViewModel {
     enum Phase: Equatable {
-        /// Not opened. The scan reads every candidate body, so nothing runs
-        /// until the section is opened, as on desktop.
-        case collapsed
+        /// Read on appear, unlike desktop's open-to-scan, so a note with no
+        /// mentions draws nothing rather than an empty header. The scan reads
+        /// the local index only.
         case loading
         case ready([UnlinkedMention])
         case failed(UserFacingError)
@@ -30,7 +30,9 @@ final class UnlinkedMentionsViewModel {
     private let reader: any NotesReading
     private let editor: (any BlockEditing)?
 
-    private(set) var phase: Phase = .collapsed
+    private(set) var phase: Phase = .loading
+    /// The mentions are listed, not just counted.
+    private(set) var isExpanded = false
     private(set) var pending: Key?
     /// The last Link tap found its mention gone (edited elsewhere since the
     /// list was read). Not a failure: the list is re-read and shows the truth.
@@ -45,31 +47,24 @@ final class UnlinkedMentionsViewModel {
         self.editor = editor
     }
 
-    var isAvailable: Bool { search != nil }
-    var isOpen: Bool { phase != .collapsed }
     var canLink: Bool { editor != nil }
 
-    func toggle() async {
-        if isOpen {
-            phase = .collapsed
-            mentionChanged = false
-            failure = nil
-        } else {
-            phase = .loading
-            await refresh()
-        }
+    func toggle() {
+        isExpanded.toggle()
+        mentionChanged = false
+        failure = nil
     }
 
-    /// Re-reads an open list, after the vault's index owner finished a
-    /// reindex (`VaultSearchIndex`).
+    /// Reads the mentions, on appear and after the vault's index owner
+    /// finished a reindex (`VaultSearchIndex`). Keeps the rows on screen
+    /// meanwhile.
     func refresh() async {
-        guard let search, isOpen else { return }
+        guard let search else { return }
         do {
-            let rows = try await search.unlinkedMentions(targetId: noteId)
-            if isOpen { phase = .ready(rows) }
+            phase = .ready(try await search.unlinkedMentions(targetId: noteId))
         } catch {
             Log.storage.error("the unlinked mentions could not be read")
-            if isOpen { phase = .failed(ErrorMapping.userFacing(error)) }
+            phase = .failed(ErrorMapping.userFacing(error))
         }
     }
 
@@ -134,62 +129,55 @@ struct UnlinkedMentionsSection: View {
     @Environment(\.vaultSearchIndex) private var searchIndex
 
     var body: some View {
-        if model.isAvailable {
-            VStack(alignment: .leading, spacing: Tokens.Space.small) {
-                header
-                if model.isOpen { content }
+        VStack(alignment: .leading, spacing: Tokens.Space.small) {
+            switch model.phase {
+            case .loading:
+                EmptyView()
+            case let .ready(rows) where rows.isEmpty:
+                // No mentions, no section: an empty header is noise.
+                EmptyView()
+            case let .ready(rows):
+                header(count: rows.count)
+                if model.isExpanded { list(rows) }
+            case let .failed(error):
+                ErrorNotice(error: error, code: nil)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .onChange(of: searchIndex?.completed) { Task { await model.refresh() } }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .task(id: searchIndex?.completed) { await model.refresh() }
     }
 
-    private var header: some View {
-        Button { Task { await model.toggle() } } label: {
+    private func header(count: Int) -> some View {
+        let title = count == 1 ? "1 unlinked mention" : "\(count) unlinked mentions"
+        return Button(action: model.toggle) {
             HStack(spacing: Tokens.Space.small) {
-                Image(systemName: "chevron.right")
-                    .rotationEffect(.degrees(model.isOpen ? 90 : 0))
-                    .accessibilityHidden(true)
                 Text(title)
-                Spacer()
+                    .foregroundStyle(Tokens.Text.secondary.color)
+                Spacer(minLength: 0)
+                Text(model.isExpanded ? "Hide" : "Review")
+                    .foregroundStyle(Tokens.Text.tint.color)
             }
-            .font(Tokens.Typography.heading.font)
-            .foregroundStyle(Tokens.Text.primary.color)
+            .font(Tokens.Typography.caption.font)
             .frame(minHeight: Tokens.Size.minimumHitArea)
             .contentShape(.rect)
         }
+        .buttonStyle(.plain)
         .accessibilityLabel(title)
-        .accessibilityValue(model.isOpen ? "Expanded" : "Collapsed")
+        .accessibilityValue(model.isExpanded ? "Expanded" : "Collapsed")
         .accessibilityIdentifier("note.unlinkedMentions")
     }
 
-    private var title: String {
-        if case let .ready(rows) = model.phase {
-            return rows.isEmpty ? "No unlinked mentions" : "Unlinked mentions (\(rows.count))"
-        }
-        return "Unlinked mentions"
-    }
-
     @ViewBuilder
-    private var content: some View {
-        switch model.phase {
-        case .collapsed:
-            EmptyView()
-        case .loading:
-            ProgressView()
-        case let .ready(rows):
-            ForEach(rows, id: \.sourceId) { source in
-                sourceRows(source)
-            }
-            if model.mentionChanged {
-                Text("That mention changed. The list is up to date now.")
-                    .font(Tokens.Typography.caption.font)
-                    .foregroundStyle(Tokens.Text.secondary.color)
-            }
-            if let failure = model.failure { ErrorNotice(error: failure, code: nil) }
-        case let .failed(error):
-            ErrorNotice(error: error, code: nil)
+    private func list(_ rows: [UnlinkedMention]) -> some View {
+        ForEach(rows, id: \.sourceId) { source in
+            sourceRows(source)
         }
+        if model.mentionChanged {
+            Text("That mention changed. The list is up to date now.")
+                .font(Tokens.Typography.caption.font)
+                .foregroundStyle(Tokens.Text.secondary.color)
+        }
+        if let failure = model.failure { ErrorNotice(error: failure, code: nil) }
     }
 
     private func sourceRows(_ source: UnlinkedMention) -> some View {
