@@ -286,7 +286,8 @@ extension EditorSession {
         pendingFocus = target
     }
 
-    /// A slash row chosen: `/query` goes, then the row acts.
+    /// A slash row chosen: `/query` goes, then the row acts. A row that turns
+    /// the line takes the spaces before the `/` with it, as desktop does.
     func chooseSlash(_ row: BlockCatalog.Row) {
         guard let field, let trigger, case .slash = trigger else { return }
         if case let .date(remind) = row.action {
@@ -295,12 +296,21 @@ extension EditorSession {
             return
         }
         let textView = field.textView
-        textView.textStorage.replaceCharacters(in: trigger.range, with: "")
-        textView.selectedRange = NSRange(location: trigger.range.location, length: 0)
+        let turnsLine = row.convertsInPlace && BlockActionTarget.textKinds.contains(field.block.kind)
+        var cut = trigger.range
+        if turnsLine {
+            let text = textView.textStorage.string as NSString
+            while cut.location > 0, let unit = Unicode.Scalar(text.character(at: cut.location - 1)),
+                  CharacterSet.whitespaces.contains(unit) {
+                cut = NSRange(location: cut.location - 1, length: cut.length + 1)
+            }
+        }
+        textView.textStorage.replaceCharacters(in: cut, with: "")
+        textView.selectedRange = NSRange(location: cut.location, length: 0)
         field.dirty = true
         textView.invalidateIntrinsicContentSize()
         selectionChanged(in: field)
-        run(row, in: field, turnsLine: row.convertsInPlace && BlockActionTarget.textKinds.contains(field.block.kind))
+        run(row, in: field, turnsLine: turnsLine)
     }
 
     /// A `+` grid row chosen: the grid closes, then the row acts at the caret

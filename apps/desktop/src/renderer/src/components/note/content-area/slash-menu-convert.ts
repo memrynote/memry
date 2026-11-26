@@ -16,6 +16,9 @@
  * @module note/content-area/slash-menu-convert
  */
 
+import { closeHistory } from '@tiptap/pm/history'
+import type { EditorState, Transaction } from '@tiptap/pm/state'
+import { yUndoPluginKey } from 'y-prosemirror'
 import { TURN_INTO_TARGETS } from './turn-into-targets'
 
 type BlockSpec = { type: string; props?: Record<string, unknown> }
@@ -45,13 +48,17 @@ const TURN_INTO_TYPES: ReadonlySet<string> = new Set(TURN_INTO_TARGETS.map((targ
 type ConvertEditor = {
   getTextCursorPosition(): { block: { id: string; type: string; content?: unknown } }
   updateBlock(block: string, update: Partial<BlockSpec>): unknown
+  transact<T>(callback: (tr: Transaction) => T): T
+  readonly prosemirrorState: EditorState
 }
 
 type Row = { id: string; onItemClick: () => void }
 
 /**
  * `rows` with each converting row's click changed to turn the caret's block
- * into the row's type, keeping its text and children. A row that is not in
+ * into the row's type, keeping its text and children but not the spaces that
+ * separated the text from the `/`. Undo takes back the turn alone, so the line
+ * comes back as it was before the `/`, as on iOS. A row that is not in
  * the converting list, a caret in a block Turn into does not offer, or an
  * empty line (which BlockNote's own click already converts) runs the row's
  * own click.
@@ -66,6 +73,17 @@ export function convertCurrentBlockOnPick<T extends Row>(editor: ConvertEditor, 
         const current = editor.getTextCursorPosition().block
         const empty = Array.isArray(current.content) && current.content.length === 0
         if (empty || !TURN_INTO_TYPES.has(current.type)) return row.onItemClick()
+        // The menu has removed `/query`, so the caret sits where `/` was.
+        editor.transact((tr) => {
+          const { $from } = tr.selection
+          const before = $from.parent.textBetween(0, $from.parentOffset, undefined, '\ufffc')
+          const gap = /[^\S\n]+$/.exec(before)?.[0].length ?? 0
+          if (gap > 0) tr.delete($from.pos - gap, $from.pos)
+        })
+        // Ends the undo step that holds the typing, `/query` and the gap, in
+        // whichever history the editor has: BlockNote's own, or a note's Y.Doc.
+        editor.transact((tr) => closeHistory(tr))
+        yUndoPluginKey.getState(editor.prosemirrorState)?.undoManager.stopCapturing()
         editor.updateBlock(current.id, spec)
       }
     }
