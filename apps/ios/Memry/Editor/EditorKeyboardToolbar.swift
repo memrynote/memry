@@ -10,24 +10,31 @@
 import SwiftUI
 import VisionKit
 
-/// The toolbar's items, in the order the main row draws them.
+/// The toolbar's items. `pinned` stay in view at the row's leading edge;
+/// `scrolling(for:)` is the rest, in the order the scrolling row draws them.
 enum EditorToolbarItem: String, CaseIterable, Identifiable {
     case insert, format, mention, tag, attach, turnInto, undo, redo
     case indent, outdent, moveDown, moveUp, more
 
     var id: String { rawValue }
 
-    /// Indent, outdent and the moves: what a list item is edited with most.
-    static let blockMoves: [EditorToolbarItem] = [.indent, .outdent, .moveDown, .moveUp]
+    /// Indent and outdent never scroll away: at the end of a long row, users
+    /// did not find them. They are always drawn and are disabled where the
+    /// block cannot nest (`BlockSiblings`), as the block menu's entries are.
+    static let pinned: [EditorToolbarItem] = [.indent, .outdent]
 
-    /// List-like blocks, whose row leads with `blockMoves`.
+    /// The moves a list item is edited with most.
+    static let listMoves: [EditorToolbarItem] = [.moveDown, .moveUp]
+
+    /// List-like blocks, whose scrolling row leads with `listMoves`.
     static let listKinds: Set<String> = ["bulletListItem", "numberedListItem", "checkListItem", "toggleListItem"]
 
-    /// Every item once. In a list item the block moves come first, before
-    /// `+`; everything else keeps its relative order.
-    static func order(for kind: String?) -> [EditorToolbarItem] {
-        guard let kind, listKinds.contains(kind) else { return allCases }
-        return blockMoves + allCases.filter { !blockMoves.contains($0) }
+    /// Every item that is not pinned, once. In a list item the moves come
+    /// first, before `+`; everything else keeps its relative order.
+    static func scrolling(for kind: String?) -> [EditorToolbarItem] {
+        let rest = allCases.filter { !pinned.contains($0) }
+        guard let kind, listKinds.contains(kind) else { return rest }
+        return listMoves + rest.filter { !listMoves.contains($0) }
     }
 }
 
@@ -115,27 +122,35 @@ struct EditorKeyboardToolbar: View {
     }
 }
 
-/// One horizontally scrolling row of every item, in
-/// `EditorToolbarItem.order(for:)`. Scrolls back to its leading edge when the
-/// order changes, so a list item's moves are in view at once.
+/// Indent and outdent pinned at the leading edge, a hairline, then a
+/// horizontally scrolling row of every other item, in
+/// `EditorToolbarItem.scrolling(for:)`.
+/// The scrolling row returns to its leading edge when the order changes, so a
+/// list item's moves are in view at once.
 private struct EditorMainRow: View {
     let session: EditorSession
 
     var body: some View {
         let items = session.toolbarItems
-        ScrollViewReader { proxy in
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 0) {
-                    ForEach(items) { item in
-                        itemView(item).id(item)
+        HStack(spacing: 0) {
+            ForEach(EditorToolbarItem.pinned) { itemView($0) }
+            // Where the row starts scrolling, so the row's items do not seem
+            // to slide under the pinned two.
+            Divider().frame(height: Tokens.Size.minimumHitArea / 2)
+            ScrollViewReader { proxy in
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 0) {
+                        ForEach(items) { item in
+                            itemView(item).id(item)
+                        }
                     }
                 }
-                .padding(.horizontal, Tokens.Space.tight)
-            }
-            .onChange(of: items) { _, next in
-                if let first = next.first { proxy.scrollTo(first, anchor: .leading) }
+                .onChange(of: items) { _, next in
+                    if let first = next.first { proxy.scrollTo(first, anchor: .leading) }
+                }
             }
         }
+        .padding(.horizontal, Tokens.Space.tight)
     }
 
     @ViewBuilder private func itemView(_ item: EditorToolbarItem) -> some View {

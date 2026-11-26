@@ -67,8 +67,20 @@ struct BlockSiblingsTests {
         // p holds x and y; z is p's sibling. y has no next sibling, x no
         // previous one: moving would leave the parent.
         let blocks = [block("p"), block("x", depth: 1), block("y", depth: 1), block("z")]
-        #expect(BlockSiblings.of(1, in: blocks) == BlockSiblings(previous: nil, next: "y"))
-        #expect(BlockSiblings.of(2, in: blocks) == BlockSiblings(previous: "x", next: nil))
+        #expect(BlockSiblings.of(1, in: blocks) == BlockSiblings(previous: nil, next: "y", canOutdent: true))
+        #expect(BlockSiblings.of(2, in: blocks) == BlockSiblings(previous: "x", next: nil, canOutdent: true))
+    }
+
+    @Test func indent_needs_a_previous_sibling_and_outdent_a_parent() {
+        let blocks = [block("a"), block("a1", depth: 1), block("a2", depth: 1), block("b")]
+        let first = BlockSiblings.of(0, in: blocks)
+        #expect(!first.canIndent && !first.canOutdent)
+        let firstChild = BlockSiblings.of(1, in: blocks)
+        #expect(!firstChild.canIndent && firstChild.canOutdent)
+        let secondChild = BlockSiblings.of(2, in: blocks)
+        #expect(secondChild.canIndent && secondChild.canOutdent)
+        let last = BlockSiblings.of(3, in: blocks)
+        #expect(last.canIndent && !last.canOutdent)
     }
 
     @Test func an_index_out_of_range_has_no_siblings() {
@@ -168,6 +180,63 @@ struct BlockActionRunnerTests {
         #expect(editor.all == [.moveBlock(blockId: "b", afterBlockId: "c")])
         #expect(session.pendingFocus == "b")
         #expect(session.history.undoName == "Move down")
+    }
+
+    @Test func indent_from_the_menu_nests_a_block_the_caret_is_not_in() async {
+        let target = BlockActionTarget(block: block("b"), siblings: BlockSiblings(previous: "a", next: nil))
+        let (editor, session) = await run(target) { $0.nest(true) }
+        #expect(editor.all == [.indent(blockId: "b")])
+        #expect(session.history.undoName == "Indent")
+        #expect(session.history.popUndo()?.backward == .outdent(blockId: "b"))
+    }
+
+    @Test func outdent_from_the_menu_lifts_a_nested_block() async {
+        let target = BlockActionTarget(
+            block: block("b", depth: 1), siblings: BlockSiblings(previous: nil, next: nil, canOutdent: true)
+        )
+        let (editor, session) = await run(target) { $0.nest(false) }
+        #expect(editor.all == [.outdent(blockId: "b")])
+        #expect(session.history.undoName == "Outdent")
+    }
+
+    @Test func the_menu_writes_nothing_where_the_toolbar_would_be_disabled() async {
+        // A first, top-level block: nothing to nest under, nothing to leave.
+        // The move after them is queued behind anything they wrote.
+        let target = BlockActionTarget(block: block("b"), siblings: BlockSiblings(previous: nil, next: "c"))
+        let editor = RecordingBlockEditor()
+        let model = NoteEditorViewModel(noteId: "note-1", editor: editor)
+        let session = model.session
+        session.model = model
+        let move = BlockEdit.moveBlock(blockId: "b", afterBlockId: "c")
+        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+            session.reload = { if editor.all.last == move { done.resume() } }
+            let runner = BlockActionRunner(session: session, target: target)
+            runner.nest(true)
+            runner.nest(false)
+            runner.moveDown()
+        }
+        #expect(editor.all == [move])
+        #expect(session.history.popUndo()?.name == "Move down")
+        #expect(session.history.undoName == nil)
+    }
+
+    @Test func indenting_the_focused_block_keeps_the_caret_in_it() async throws {
+        let editor = RecordingBlockEditor()
+        let model = NoteEditorViewModel(noteId: "note-1", editor: editor)
+        let session = model.session
+        session.model = model
+        let blocks = [block("a"), block("b")]
+        session.blocks = { blocks }
+        let style = BlockText.Style(font: .systemFont(ofSize: 17), ink: .label, titleExists: nil)
+        let field = BlockField(block: blocks[1], session: session, style: style, alignment: .natural)
+        session.focusChanged(to: field)
+        let runner = try #require(session.focusedRunner)
+        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+            session.reload = { done.resume() }
+            runner.nest(true)
+        }
+        #expect(editor.all == [.indent(blockId: "b")])
+        #expect(session.pendingFocus == "b")
     }
 
     @Test func moving_a_block_without_the_caret_moves_no_caret() async {

@@ -879,20 +879,8 @@ final class EditorSession {
         return BlockSiblings.of(index, in: blocks)
     }
 
-    /// The core nests any block under its previous sibling, and refuses the
-    /// first block of its parent (`indent` in `structure.rs`).
-    var canIndent: Bool { focusedSiblings.previous != nil }
-    /// The core lifts any nested block, and refuses a top-level one and a
-    /// column's own block (`outdent` in `structure.rs`), as desktop's
-    /// `liftItem` does nothing there.
-    var canOutdent: Bool {
-        let blocks = blocks()
-        guard let focusedBlockId, let index = blocks.firstIndex(where: { $0.id == focusedBlockId }),
-              blocks[index].depth > 0
-        else { return false }
-        guard let parent = NoteColumns.parentIndex(of: index, in: blocks) else { return true }
-        return blocks[parent].kind != "column"
-    }
+    var canIndent: Bool { focusedSiblings.canIndent }
+    var canOutdent: Bool { focusedSiblings.canOutdent }
 
     /// The block menu's actions for the focused block.
     var focusedRunner: BlockActionRunner? {
@@ -900,8 +888,8 @@ final class EditorSession {
         return BlockActionRunner(session: self, target: BlockActionTarget(block: block, siblings: focusedSiblings))
     }
 
-    /// The toolbar's items for the focused block.
-    var toolbarItems: [EditorToolbarItem] { EditorToolbarItem.order(for: focusedKind) }
+    /// The toolbar's scrolling items for the focused block.
+    var toolbarItems: [EditorToolbarItem] { EditorToolbarItem.scrolling(for: focusedKind) }
 
     func showFormatting(_ on: Bool) {
         formatting = on
@@ -1109,10 +1097,9 @@ final class EditorSession {
     /// it out a level; the core refuses an indent with nothing to nest under.
     func nest(_ indent: Bool) {
         withFocused { [weak self] model, blockId in
-            let forward: BlockEdit = indent ? .indent(blockId: blockId) : .outdent(blockId: blockId)
-            let backward: BlockEdit = indent ? .outdent(blockId: blockId) : .indent(blockId: blockId)
-            await model.apply(forward)
-            self?.history.record(EditorUndoStep(name: indent ? "Indent" : "Outdent", backward: backward, forward: forward))
+            let step = EditorUndoStep.nest(blockId: blockId, indent: indent)
+            await model.apply(step.forward)
+            self?.history.record(step)
             self?.pendingFocus = blockId
         }
     }

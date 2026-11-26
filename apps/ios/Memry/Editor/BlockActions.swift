@@ -1,7 +1,7 @@
 //
 //  BlockActions.swift
 //  Desktop's block side menu, as a native context menu: turn into, text and
-//  background colour, move up, move down, duplicate, delete.
+//  background colour, indent, outdent, move up, move down, duplicate, delete.
 //
 //  **Where the long press lands.** An editable block is a text view, and a
 //  long press inside it belongs to text selection. So the menu hangs off a
@@ -23,9 +23,19 @@ import UIKit
 ///
 /// Siblings only: a block at the top or bottom of its parent stays inside it
 /// rather than being lifted out, so a list item never silently leaves its list.
+///
+/// It also answers Indent and Outdent, which move the block relative to those
+/// same neighbours: the toolbar, the block menu and the hardware keys share
+/// one rule.
 struct BlockSiblings: Equatable {
     var previous: String?
     var next: String?
+    /// Whether the block is nested in something it may leave.
+    var canOutdent = false
+
+    /// The core nests any block under its previous sibling, and refuses the
+    /// first block of its parent (`indent` in `structure.rs`).
+    var canIndent: Bool { previous != nil }
 
     /// Over the flat list the core returns, where nesting is `depth`: the
     /// nearest block at the same depth, stopping at a shallower one (the
@@ -40,9 +50,15 @@ struct BlockSiblings: Equatable {
             }
             return nil
         }
+        // The core lifts any nested block, and refuses a top-level one and a
+        // column's own block (`outdent` in `structure.rs`), as desktop's
+        // `liftItem` does nothing there.
+        let canOutdent = depth > 0
+            && (NoteColumns.parentIndex(of: index, in: blocks).map { blocks[$0].kind != "column" } ?? true)
         return BlockSiblings(
             previous: sibling(blocks[..<index].reversed()),
-            next: sibling(blocks[(index + 1)...])
+            next: sibling(blocks[(index + 1)...]),
+            canOutdent: canOutdent
         )
     }
 }
@@ -66,6 +82,14 @@ extension EditorUndoStep {
             backward: .moveBlock(blockId: next, afterBlockId: blockId),
             forward: .moveBlock(blockId: blockId, afterBlockId: next)
         )
+    }
+
+    /// Indent nests the block under its previous sibling, outdent lifts it out
+    /// of its parent; each is the other's undo.
+    static func nest(blockId: String, indent: Bool) -> EditorUndoStep {
+        let forward: BlockEdit = indent ? .indent(blockId: blockId) : .outdent(blockId: blockId)
+        let backward: BlockEdit = indent ? .outdent(blockId: blockId) : .indent(blockId: blockId)
+        return EditorUndoStep(name: indent ? "Indent" : "Outdent", backward: backward, forward: forward)
     }
 
     /// The core copies the block with its children, props and marks; undo
@@ -193,6 +217,15 @@ struct BlockActionRunner {
         apply(step, refocus: isFocused)
     }
 
+    /// Indent or outdent, when the block can: a long press on a block the
+    /// caret is not in must not write what the toolbar would have greyed out.
+    func nest(_ indent: Bool) {
+        guard let blockId = target.blockId,
+              indent ? target.siblings.canIndent : target.siblings.canOutdent else { return }
+        if isFocused { return session.nest(indent) }
+        apply(.nest(blockId: blockId, indent: indent))
+    }
+
     func duplicate() {
         guard let blockId = target.blockId else { return }
         let step = EditorUndoStep.duplicate(blockId: blockId, newBlockId: UUID().uuidString.lowercased())
@@ -255,6 +288,20 @@ struct BlockActionMenuItems: View {
         if target.canColour {
             BlockColourMenu(runner: runner, title: "Text colour", prop: "textColor", symbol: "character")
             BlockColourMenu(runner: runner, title: "Background colour", prop: "backgroundColor", symbol: "paintbrush")
+        }
+        Section {
+            Button {
+                runner.nest(true)
+            } label: {
+                Label("Indent", systemImage: "increase.indent")
+            }
+            .disabled(!target.siblings.canIndent)
+            Button {
+                runner.nest(false)
+            } label: {
+                Label("Outdent", systemImage: "decrease.indent")
+            }
+            .disabled(!target.siblings.canOutdent)
         }
         Section {
             Button {
@@ -324,6 +371,8 @@ private struct BlockActionAccessibility: ViewModifier {
 
     func body(content: Content) -> some View {
         content
+            .accessibilityAction(named: "Indent") { runner.nest(true) }
+            .accessibilityAction(named: "Outdent") { runner.nest(false) }
             .accessibilityAction(named: "Move up") { runner.moveUp() }
             .accessibilityAction(named: "Move down") { runner.moveDown() }
             .accessibilityAction(named: "Duplicate") { runner.duplicate() }
@@ -400,7 +449,7 @@ private struct BlockActionHandle<Preview: View>: View {
             }
             .accessibilityElement()
             .accessibilityLabel("Block actions")
-            .accessibilityHint("Touch and hold for turn into, colours, move, duplicate and delete.")
+            .accessibilityHint("Touch and hold for turn into, colours, indent, move, duplicate and delete.")
             .modifier(BlockActionAccessibility(runner: runner))
     }
 }
