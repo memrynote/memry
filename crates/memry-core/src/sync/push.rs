@@ -410,6 +410,8 @@ impl PushCoordinator {
                 for (ids, reason, at) in &deferred {
                     outbox::defer(&tx, ids, reason, Some(*at))?;
                 }
+                // #5849: a local delete is stamped inside the hold that writes it.
+                let now = now_ms();
                 for (item_type, item_id) in &deleted_there {
                     take_the_delete(&tx, item_type, item_id, now)?;
                 }

@@ -14,6 +14,7 @@
 //! | a by-id pull (the shared apply)                | `notes.synced_at`           |
 //! | a body pull's server update                    | `yjs_updates.created_at`    |
 //! | a body pull's baseline                         | `yjs_snapshots.compacted_at`|
+//! | a pushed snapshot absorbing a server update    | `yjs_snapshots.compacted_at`|
 
 use crate::support::{ScratchDb, scratch_data_db};
 use crate::{http_fakes, stamp_gate};
@@ -23,6 +24,11 @@ use std::sync::Arc;
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use http_fakes::{FakeTransport, probe_refused, response};
+use memry_core::api::errors::StorageError;
+use memry_core::crdt::DocumentRegistry;
+use memry_core::crdt::epoch;
+use memry_core::crdt::registry::UpdateSink;
+use memry_core::crdt::snapshots::{SnapshotGate, SnapshotOutcome, SnapshotPusher, SnapshotSealer};
 use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope};
 use memry_core::protocol::http::{ClientIdentity, HttpClient};
 use memry_core::protocol::types::Declaration;
@@ -255,5 +261,96 @@ async fn a_baseline_that_waited_through_a_reindex_is_indexed_next_pass() {
     assert!(
         search.finds(WORD, NOTE),
         "the next reindex skipped the note's baseline"
+    );
+}
+
+/// A snapshot pusher whose sealer hands the state back as it is.
+fn snapshot_pusher(db: &Db, transport: Arc<dyn Transport>) -> SnapshotPusher {
+    SnapshotPusher::new(
+        http(transport),
+        db.clone(),
+        Arc::new(PlainSealer),
+        Declaration::subscribed(),
+    )
+}
+
+struct PlainSealer;
+
+impl SnapshotSealer for PlainSealer {
+    fn seal_snapshot(&self, _doc_id: &str, state: &[u8]) -> Result<Vec<u8>, EnvelopeError> {
+        Ok(state.to_vec())
+    }
+}
+
+/// A snapshot push absorbs (prunes) a server update that landed after the last
+/// reindex and was never indexed. The snapshot it stores is the only row left
+/// that holds the update's text, so its stamp must be at or after that
+/// update's: a stamp taken before the round (the driver's, #5849 review) is
+/// below the reindex watermark, and the next pass would skip the body.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_pushed_snapshot_that_absorbs_an_unindexed_update_is_indexed_next_pass() {
+    let (db, search) = indexed_note("snapshot");
+    let round_began = stamp_gate::wall_ms();
+    while stamp_gate::wall_ms() <= round_began {
+        std::thread::yield_now();
+    }
+    db.call_blocking(|conn| land_note(conn, RIVAL_NOTE, "Rival", stamp_gate::wall_ms()))
+        .expect("land the rival");
+    search.reindex();
+    assert!(search.watermark() > round_began);
+
+    let pulled = body_pull(
+        &db,
+        FakeTransport::new(vec![
+            probe_refused(),
+            response(200, &json!({"snapshot": null}).to_string()),
+            response(
+                200,
+                &json!({"updates": [{"sequenceNum": 1, "signerDeviceId": "device-b",
+                                     "data": body_update()}],
+                        "hasMore": false})
+                .to_string(),
+            ),
+        ]),
+    )
+    .pull_document(NOTE)
+    .await
+    .expect("the body pull");
+    assert_eq!(pulled.updates, 1);
+
+    let sink: UpdateSink = Arc::new(|_, _| {});
+    let registry = DocumentRegistry::new("device-a", sink);
+    let document = registry.get_or_open(NOTE).expect("open");
+    let update = BASE64.decode(body_update()).expect("base64");
+    document.apply_durable_update(&update).expect("apply");
+    let opened_at = db
+        .call_blocking(|conn| {
+            epoch::capture(conn, NOTE).map_err(|error| StorageError::Failed {
+                what: error.to_string(),
+            })
+        })
+        .expect("the epoch");
+    let outcome = snapshot_pusher(
+        &db,
+        FakeTransport::new(vec![response(
+            200,
+            &json!({"sequenceNum": 1, "revision": "rev-pushed"}).to_string(),
+        )]),
+    )
+    .push(&document, opened_at, SnapshotGate::clean())
+    .await
+    .expect("the push");
+    assert_eq!(
+        outcome,
+        SnapshotOutcome::Pushed {
+            sequence_num: 1,
+            pruned: 1
+        }
+    );
+
+    search.reindex();
+    assert!(
+        search.finds(WORD, NOTE),
+        "the next reindex skipped the body the snapshot absorbed"
     );
 }

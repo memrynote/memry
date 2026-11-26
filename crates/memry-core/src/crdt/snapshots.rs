@@ -35,7 +35,6 @@ use std::sync::atomic::AtomicBool;
 
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64;
-use rusqlite::{Connection, params};
 use serde_json::{Value as Json, json};
 use yrs::updates::decoder::Decode as _;
 use yrs::{ReadTxn as _, Transact as _, Update};
@@ -49,13 +48,13 @@ use crate::protocol::http::{
 };
 use crate::protocol::types::Declaration;
 use crate::storage::Db;
-use crate::storage::nested_tx;
 use crate::sync::{body_debt, note_body_feed};
 
-use super::epoch::{self, Epoch, HeldBody};
+use super::epoch::{self, Epoch};
 use super::errors::CrdtError;
 use super::registry::{Document, OFFSET_KIND};
 use super::update_log::{self, Namespace};
+use store::{PushedSnapshot, store_pushed_snapshot};
 
 pub use super::snapshot_cadence::{SNAPSHOT_MAX_WAIT_MS, SNAPSHOT_QUIET_MS, snapshot_is_due};
 
@@ -288,20 +287,18 @@ impl SnapshotPusher {
         document: &Document,
         opened_at: Epoch,
         gate: SnapshotGate,
-        now_ms: i64,
     ) -> Result<SnapshotOutcome, SnapshotError> {
         let prepared = match self.prepare(document, opened_at, gate).await? {
             Ok(prepared) => prepared,
             Err(refusal) => return Ok(SnapshotOutcome::Refused(refusal)),
         };
-        self.push_prepared(prepared, now_ms).await
+        self.push_prepared(prepared).await
     }
 
     /// The single-note request for a document [`Self::prepare`] passed.
     pub(super) async fn push_prepared(
         &self,
         prepared: Prepared,
-        now_ms: i64,
     ) -> Result<SnapshotOutcome, SnapshotError> {
         let request = self
             .request("POST", "/sync/crdt/snapshot")
@@ -323,7 +320,7 @@ impl SnapshotPusher {
             }
             Err(error) => return Err(error.into()),
         };
-        self.settle(prepared, &body, now_ms).await
+        self.settle(prepared, &body).await
     }
 
     /// Every check of §7.13.2, then the encode and the seal. `Err(refusal)`
@@ -425,7 +422,6 @@ impl SnapshotPusher {
         &self,
         prepared: Prepared,
         body: &Json,
-        now_ms: i64,
     ) -> Result<SnapshotOutcome, SnapshotError> {
         // §7.4: the server assigns the sequence number and a client never
         // proposes one. §7.6: on a document that already had a snapshot this
@@ -451,7 +447,7 @@ impl SnapshotPusher {
                     answered,
                     revision: revision.as_deref(),
                 };
-                store_pushed_snapshot(conn, &doc_id, pushed, now_ms)
+                store_pushed_snapshot(conn, &doc_id, pushed)
             })
             .await?;
         // #5356: purged during the request, by a delete or a revive. The state
@@ -529,54 +525,6 @@ pub fn stable_watermark(existing: Option<i64>, answered: Option<i64>) -> i64 {
     }
 }
 
-/// Stores the pushed snapshot and prunes the local rows it absorbed.
-///
-/// One transaction. A kill between the two would otherwise leave a pruned log
-/// with no snapshot, which is the one shape that loses body state.
-///
-/// Returns the watermark written and how many rows were pruned, or `None`,
-/// storing nothing and owing a pull, when the body moved off `epoch`.
-/// What the push response answered for the bytes it stored.
-struct PushedSnapshot<'a> {
-    epoch: Epoch,
-    state: &'a [u8],
-    answered: Option<i64>,
-    revision: Option<&'a str>,
-}
-
-fn store_pushed_snapshot(
-    conn: &Connection,
-    doc_id: &str,
-    pushed: PushedSnapshot<'_>,
-    now_ms: i64,
-) -> Result<Option<(i64, usize)>, StorageError> {
-    let txn = nested_tx::begin(conn).map_err(failed)?;
-    let Some(body) = HeldBody::check(&txn, doc_id, pushed.epoch).map_err(crdt_to_storage)? else {
-        body_debt::owe(&txn, doc_id)?;
-        txn.commit().map_err(failed)?;
-        return Ok(None);
-    };
-
-    let existing = update_log::snapshot(&txn, Namespace::Server, doc_id)
-        .map_err(crdt_to_storage)?
-        .map(|row| row.last_seq);
-    let watermark = stable_watermark(existing, pushed.answered);
-
-    // §7.13.4: the revision the server answered, never an invented token.
-    body.put_server_snapshot(pushed.state, watermark, pushed.revision, now_ms)
-        .map_err(crdt_to_storage)?;
-
-    let pruned = txn
-        .execute(
-            "DELETE FROM yjs_updates WHERE doc_id = ?1 AND seq <= ?2",
-            params![Namespace::Server.row_id(doc_id), watermark],
-        )
-        .map_err(failed)?;
-
-    txn.commit().map_err(failed)?;
-    Ok(Some((watermark, pruned)))
-}
-
 fn crdt_to_storage(error: CrdtError) -> StorageError {
     StorageError::Failed {
         what: error.to_string(),
@@ -589,5 +537,6 @@ fn failed(error: rusqlite::Error) -> StorageError {
     }
 }
 
+mod store;
 #[cfg(test)]
 mod tests;

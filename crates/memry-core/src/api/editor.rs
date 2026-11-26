@@ -300,7 +300,6 @@ impl Editor {
         update: &[u8],
         holder: &str,
     ) -> Result<Option<Applied>, EditorError> {
-        let now = now_ms();
         let mut repaired = None;
         let mut caught = Vec::new();
         let applied = {
@@ -311,6 +310,8 @@ impl Editor {
                 });
             }
             let applied = self.on_writer(|conn| {
+                // #5849: stamped inside the hold that writes the update row.
+                let now = now_ms();
                 let owner = body_owner(conn, note_id)?.ok_or_else(|| not_found(note_id))?;
                 if let Some(why) = read_only(conn, note_id, &self.excluded)? {
                     let note_id = note_id.to_owned();
