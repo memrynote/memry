@@ -254,13 +254,10 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "manifest_watermark",
         sql: include_str!("migrations/data/0040_manifest_watermark.sql"),
     },
-    // 35-38 belong to open PRs (#4879, #4891, #5069, #5090). 39 must not land
-    // before 35-38: the runner applies only `version > user_version`, so a
-    // data.db at 39 would never run them.
     Migration {
-        version: 39,
+        version: 41,
         name: "note_snapshot_outside_writes",
-        sql: include_str!("migrations/data/0039_note_snapshot_outside_writes.sql"),
+        sql: include_str!("migrations/data/0041_note_snapshot_outside_writes.sql"),
     },
 ];
 
