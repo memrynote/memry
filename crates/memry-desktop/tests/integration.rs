@@ -221,6 +221,8 @@ mod importer_bear;
 mod importer_google_keep;
 #[path = "importer_noteplan.rs"]
 mod importer_noteplan;
+#[path = "importer_raindrop.rs"]
+mod importer_raindrop;
 #[path = "importer_roam.rs"]
 mod importer_roam;
 #[path = "importer_untrusted.rs"]
