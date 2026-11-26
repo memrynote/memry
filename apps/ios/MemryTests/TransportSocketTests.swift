@@ -318,9 +318,12 @@ struct TransportSocketTests {
 
         subject.phaseChanged(to: .foreground)
         // Nothing new may appear: no second open here, no second connection at
-        // the server. A reopen would show up as either. `phaseChanged` returns
-        // after any reopen it starts, so a probe opened after it reaches the
-        // server behind that reopen: once the probe is in, a reopen is too.
+        // the server. A reopen would show up as either. `phaseChanged` starts
+        // any reopen before it returns, so the probe opened after it usually
+        // reaches the server behind that reopen. Nothing orders two
+        // connections at the server, so this is best effort, as the fixed
+        // sleep it replaced was: a reopen that lands after the probe goes
+        // unseen here.
         let probe = RecordingListener()
         let probeHandle = try subject.openSocket(request: socketRequest(server), listener: probe)
         #expect(await probe.history(after: 1) == [.open])
