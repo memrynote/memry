@@ -264,8 +264,12 @@ struct VaultSearchTests {
 
         let follower = Task { await model.followIndex() }
         defer { follower.cancel() }
-        // A reindex the query has not seen re-runs it once. It finishes after the
-        // follower's first look, so a re-run for the old reindex comes first.
+        // Let the follower take its first look, at the reindex the query saw,
+        // before the next one lands: a re-run for that old reindex would come
+        // now, so the query count stays exact.
+        for _ in 0..<50 { await Task.yield() }
+        #expect(search.queries.withLock { $0.count } == 1, "the follower re-ran a query that saw the reindex")
+        // A reindex the query has not seen re-runs it once.
         index.schedule()
         await index.settle()
         await search.changes.until { search.queries.withLock { $0.count } >= 2 }

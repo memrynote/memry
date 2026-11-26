@@ -612,17 +612,11 @@ struct NoteTitleBurstTests {
         note: (() async throws -> Fixture)? = nil,
         _ scenario: (Fixture, UIWindow, UITextView) async throws -> T
     ) async throws -> T {
-        var attempt = 0
-        while true {
-            attempt += 1
+        try await Resigned.uninterrupted { watch in
             let f = if let note { try await note() } else { try await newNote() }
             let (window, field) = try await open(f)
-            let resigned = Resigned(window)
-            let seen = try await scenario(f, window, field)
-            resigned.stop()
-            window.isHidden = true
-            if !resigned.happened || attempt == 10 { return seen }
-            try await Task.sleep(for: .milliseconds(200 * attempt))
+            watch(window)
+            return try await scenario(f, window, field)
         }
     }
 

@@ -750,7 +750,9 @@ struct ReloadGenerationTests {
         let scene = try #require(UIApplication.shared.connectedScenes.first as? UIWindowScene)
         let window = UIWindow(windowScene: scene)
         window.frame = CGRect(x: 0, y: 0, width: 400, height: 800)
-        window.rootViewController = UIHostingController(rootView: NoteReadView(model: model, editor: f.editor))
+        window.rootViewController = UIHostingController(rootView: NoteReadView(
+            model: model, editor: f.editor, notifications: NotificationCenter()
+        ))
         window.makeKeyAndVisible()
         defer { window.isHidden = true }
         func row() -> BlockTextView? {
