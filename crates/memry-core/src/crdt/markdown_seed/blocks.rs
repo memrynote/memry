@@ -203,11 +203,15 @@ fn convert_block(kind: &TokenKind, breaks: &[String]) -> Result<SeedBlock, Unsup
             SeedBlock::new(SeedKind::Paragraph, inline_content(content, breaks)?)
         }
         TokenKind::Code { language, code } => {
+            // A token in a fence the mask did not see as one (a fence another
+            // fence's opener closed) gets its spelling back: the bytes of a
+            // code block are literal (`repairRuns`, `unmaskRun`).
+            let code = restore_hard_break_spelling(code, breaks);
             let content = if code.is_empty() {
                 Vec::new()
             } else {
                 vec![SeedInline::Text {
-                    text: code.clone(),
+                    text: code,
                     marks: SeedMarks::default(),
                 }]
             };

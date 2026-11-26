@@ -10,12 +10,13 @@
 //!    (`nodeToBlock.ts`): marks from the tags (a code mark excludes every
 //!    other mark), a hard break appended to the run before it as `\n`;
 //! 4. desktop's repair (`@memry/editor-schema/parse-markdown`): the break
-//!    artifact after a newline, the first run's leading blank, the hard-break
-//!    tokens — on plain text runs only, never inside a link.
+//!    artifact after a newline, the leading blank of a run that opens a
+//!    line, the hard-break tokens, in link text too.
 
 use crate::domain::journal_rules::js_trim;
 
-use super::links::{closing, destination_and_title, link};
+use super::closers::Closers;
+use super::links::{destination_and_title, link};
 use super::media::{self, Media};
 use super::runs;
 use super::{SeedInline, Unsupported};
@@ -111,6 +112,7 @@ const ESCAPABLE: &str = "\\`*_{}[]()#+-.!~|>";
 /// `parseInline`.
 fn parse_inline(text: &[char]) -> Result<Vec<Html>, Unsupported> {
     let mut nodes = Vec::new();
+    let mut closers = Closers::new(text);
     let mut i = 0;
     while i < text.len() {
         if text[i] == '\n' && i >= 2 && text[i - 1] == ' ' && text[i - 2] == ' ' {
@@ -124,7 +126,7 @@ fn parse_inline(text: &[char]) -> Result<Vec<Html>, Unsupported> {
             continue;
         }
         if SPECIAL.contains(&text[i])
-            && let Some(end) = inline_token(text, i, &mut nodes)?
+            && let Some(end) = inline_token(&mut closers, i, &mut nodes)?
         {
             i = end;
             continue;
@@ -142,10 +144,11 @@ fn parse_inline(text: &[char]) -> Result<Vec<Html>, Unsupported> {
 /// The tokenizers of `parseInline`, in priority order. Pushes what matched
 /// and returns where it ends.
 fn inline_token(
-    text: &[char],
+    closers: &mut Closers,
     i: usize,
     nodes: &mut Vec<Html>,
 ) -> Result<Option<usize>, Unsupported> {
+    let text = closers.text();
     let at = |offset: usize| text.get(i + offset).copied();
 
     if text[i] == '\\' && i + 1 < text.len() {
@@ -168,13 +171,13 @@ fn inline_token(
     }
     if text[i] == '!'
         && at(1) == Some('[')
-        && let Some((found, end)) = image(text, i)?
+        && let Some((found, end)) = image(closers, i)?
     {
         nodes.push(Html::Media(found));
         return Ok(Some(end));
     }
     if text[i] == '['
-        && let Some((href, inner, end)) = link(text, i)
+        && let Some((href, inner, end)) = link(closers, i)
     {
         let children = parse_inline(inner)?;
         if contains_link(&children) {
@@ -185,13 +188,13 @@ fn inline_token(
     }
     if text[i] == '~'
         && at(1) == Some('~')
-        && let Some(end) = delimited(text, i, 2, Tag::Del, nodes)?
+        && let Some(end) = delimited(closers, i, 2, Tag::Del, nodes)?
     {
         return Ok(Some(end));
     }
     let run3 = |c: char| at(0) == Some(c) && at(1) == Some(c) && at(2) == Some(c);
     if (run3('*') || (run3('_') && !intraword(text, i, 3)))
-        && let Some(end) = delimited_with(text, i, 3, nodes, |children| {
+        && let Some(end) = delimited_with(closers, i, 3, nodes, |children| {
             Html::Wrap(Tag::Strong, vec![Html::Wrap(Tag::Em, children)])
         })?
     {
@@ -199,12 +202,12 @@ fn inline_token(
     }
     let run2 = |c: char| at(0) == Some(c) && at(1) == Some(c);
     if (run2('*') || (run2('_') && !intraword(text, i, 2)))
-        && let Some(end) = delimited(text, i, 2, Tag::Strong, nodes)?
+        && let Some(end) = delimited(closers, i, 2, Tag::Strong, nodes)?
     {
         return Ok(Some(end));
     }
     if (text[i] == '*' || (text[i] == '_' && !intraword(text, i, 1)))
-        && let Some(end) = delimited(text, i, 1, Tag::Em, nodes)?
+        && let Some(end) = delimited(closers, i, 1, Tag::Em, nodes)?
     {
         return Ok(Some(end));
     }
@@ -222,14 +225,15 @@ fn inline_token(
 }
 
 /// `parseImage`: `![alt](url "title")`, the alt as written.
-fn image(text: &[char], start: usize) -> Result<Option<(Media, usize)>, Unsupported> {
-    let Some(alt_end) = closing(text, start + 1, '[', ']') else {
+fn image(closers: &mut Closers, start: usize) -> Result<Option<(Media, usize)>, Unsupported> {
+    let text = closers.text();
+    let Some(alt_end) = closers.closing(start + 1, '[', ']') else {
         return Ok(None);
     };
     if text.get(alt_end + 1) != Some(&'(') {
         return Ok(None);
     }
-    let Some(paren_end) = closing(text, alt_end + 1, '(', ')') else {
+    let Some(paren_end) = closers.closing(alt_end + 1, '(', ')') else {
         return Ok(None);
     };
     let (url, title) = destination_and_title(&text[alt_end + 2..paren_end]);
@@ -284,52 +288,36 @@ fn inline_code(text: &[char], start: usize) -> Option<(String, usize)> {
 }
 
 fn delimited(
-    text: &[char],
+    closers: &mut Closers,
     start: usize,
     len: usize,
     tag: Tag,
     nodes: &mut Vec<Html>,
 ) -> Result<Option<usize>, Unsupported> {
-    delimited_with(text, start, len, nodes, |children| {
+    delimited_with(closers, start, len, nodes, |children| {
         Html::Wrap(tag, children)
     })
 }
 
 /// `parseDelimited`.
 fn delimited_with(
-    text: &[char],
+    closers: &mut Closers,
     start: usize,
     len: usize,
     nodes: &mut Vec<Html>,
     wrap: impl FnOnce(Vec<Html>) -> Html,
 ) -> Result<Option<usize>, Unsupported> {
-    let delimiter = &text[start..start + len];
+    let text = closers.text();
     let after_open = start + len;
     if after_open >= text.len() || matches!(text[after_open], ' ' | '\t') {
         return Ok(None);
     }
-    let mut j = after_open;
-    while j < text.len() {
-        if text[j] == '\\' && j + 1 < text.len() {
-            j += 2;
-            continue;
-        }
-        if text.get(j..j + len) == Some(delimiter) {
-            let before = text[j - 1];
-            let single_in_run = len == 1
-                && ((before == delimiter[0] && !(j >= 2 && text[j - 2] == '\\'))
-                    || text.get(j + len) == Some(&delimiter[0]));
-            if matches!(before, ' ' | '\t') || single_in_run || j == after_open {
-                j += 1;
-                continue;
-            }
-            let children = parse_inline(&text[after_open..j])?;
-            nodes.push(wrap(children));
-            return Ok(Some(j + len));
-        }
-        j += 1;
-    }
-    Ok(None)
+    let Some(close) = closers.delimiter(start, len) else {
+        return Ok(None);
+    };
+    let children = parse_inline(&text[after_open..close])?;
+    nodes.push(wrap(children));
+    Ok(Some(close + len))
 }
 
 #[cfg(test)]

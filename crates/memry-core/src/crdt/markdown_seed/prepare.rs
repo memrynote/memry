@@ -31,16 +31,28 @@ pub(super) fn document_fallback(markdown: &str) -> Option<&'static str> {
     {
         return Some("CriticMarkup");
     }
-    // Column regions (`blocks/columns.ts`): Obsidian's multi-column markers
-    // and Pandoc's `:::` fences.
-    let lower = markdown.to_ascii_lowercase();
-    if lower.contains("multi-column") || markdown.split('\n').any(|line| line.starts_with(":::")) {
+    if markdown.split('\n').any(opens_column_region) {
         return Some("columns");
     }
     if markdown.split('\n').any(is_link_reference_definition) {
         return Some("link reference definition");
     }
     None
+}
+
+/// A superset of the lines `readColumnRegion` (`blocks/columns.ts`) opens a
+/// region on, matched on the raw line as it is: `MCM_START_REGEX`, and a
+/// Pandoc `:::` fence whose descriptor names a columns class.
+fn opens_column_region(line: &str) -> bool {
+    let lower = line.to_ascii_lowercase();
+    if let Some(rest) = lower
+        .strip_prefix("---")
+        .or_else(|| lower.strip_prefix("==="))
+    {
+        let rest = rest.trim_start_matches(crate::domain::journal_rules::is_js_whitespace);
+        return rest.starts_with("start-multi-column") || rest.starts_with("multi-column-start");
+    }
+    lower.starts_with(":::") && lower.contains("column")
 }
 
 /// A superset of `DEFINITION_LINE` (`shared/link-references.ts`): up to three

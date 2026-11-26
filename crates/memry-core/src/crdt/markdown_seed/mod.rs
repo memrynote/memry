@@ -40,11 +40,17 @@
 //! text, one paragraph per non-blank line, and is reported in
 //! [`SeedPlan::fallbacks`]. A construct that changes how desktop reads the
 //! whole text (CriticMarkup, a link reference definition, column regions, a
-//! coloured toggle) sends every line there. No text is dropped; the document
-//! then differs from desktop's in those blocks only.
+//! coloured toggle) sends every line there. A fallback drops no text; the
+//! document then differs from desktop's in those blocks only.
+//!
+//! **A table drops what desktop's drops.** Each body row is cut to its header
+//! row's cell count, and a `|` inside a code span splits the cell like any
+//! other pipe, so cells past that count are lost ([`table`]'s `table_block`).
+//! Desktop builds the same table from the same row.
 
 mod blocks;
 mod claims;
+mod closers;
 mod inline;
 mod lift;
 mod links;

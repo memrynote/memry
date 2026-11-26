@@ -263,37 +263,82 @@ fn to_runs(nodes: Vec<PmNode>) -> Vec<Run> {
     runs
 }
 
-/// Stage 4: `repairRuns` for prose.
-fn repair(runs: &mut [Run], breaks: &[String]) {
-    for (index, run) in runs.iter_mut().enumerate() {
-        let Run::Text(text, _) = run else {
-            continue;
-        };
-        let mut stripped = String::with_capacity(text.len());
-        let mut chars = text.chars().peekable();
-        while let Some(c) = chars.next() {
-            stripped.push(c);
-            if c == '\n'
-                && chars
-                    .peek()
-                    .is_some_and(|next| *next != '\n' && is_js_whitespace(*next))
-            {
-                chars.next();
-            }
+impl Run {
+    /// `endsLine`: the run, or a link's last text, ends in a soft break.
+    fn ends_line(&self) -> bool {
+        match self {
+            Run::Text(text, _) => text.ends_with('\n'),
+            Run::Link(_, content) => content.last().is_some_and(|(text, _)| text.ends_with('\n')),
+            Run::Node(_) => false,
         }
-        if index == 0
-            && let Some(first) = stripped.chars().next()
-            && first != '\n'
-            && is_js_whitespace(first)
-        {
-            stripped.remove(0);
-        }
-        *text = if breaks.is_empty() {
-            stripped
-        } else {
-            unmask_hard_breaks(&stripped)
-        };
     }
+}
+
+/// Stage 4: `repairRuns` for prose. A text run opens a line when it is the
+/// block's first, or when the run before it ends in a soft break and it is
+/// not a code span; a run the strip empties is removed.
+fn repair(runs: &mut Vec<Run>, breaks: &[String]) {
+    let mut first = true;
+    let mut previous_ends_line = false;
+    runs.retain_mut(|run| {
+        let keep = match run {
+            Run::Text(text, marks) => {
+                let opens_line = first || (!marks.code && previous_ends_line);
+                !repair_text(text, opens_line, breaks)
+            }
+            Run::Link(_, content) => {
+                repair_link_text(content, breaks);
+                true
+            }
+            Run::Node(_) => true,
+        };
+        first = false;
+        previous_ends_line = run.ends_line();
+        keep
+    });
+}
+
+/// `repairRuns` over a link's text, which never opens its block's first
+/// line: a leading space there is the author's (BBF-103, BBF-104).
+fn repair_link_text(content: &mut Vec<(String, SeedMarks)>, breaks: &[String]) {
+    let mut previous_ends_line = false;
+    content.retain_mut(|(text, marks)| {
+        let emptied = repair_text(text, !marks.code && previous_ends_line, breaks);
+        previous_ends_line = text.ends_with('\n');
+        !emptied
+    });
+}
+
+/// `BREAK_ARTIFACT` and, on a run that opens a line,
+/// `LEADING_BREAK_ARTIFACT` stripped, then the hard-break tokens unmasked.
+/// Returns whether the strip emptied the run.
+fn repair_text(text: &mut String, opens_line: bool, breaks: &[String]) -> bool {
+    let mut stripped = String::with_capacity(text.len());
+    let mut chars = text.chars().peekable();
+    while let Some(c) = chars.next() {
+        stripped.push(c);
+        if c == '\n'
+            && chars
+                .peek()
+                .is_some_and(|next| *next != '\n' && is_js_whitespace(*next))
+        {
+            chars.next();
+        }
+    }
+    if opens_line
+        && let Some(first) = stripped.chars().next()
+        && first != '\n'
+        && is_js_whitespace(first)
+    {
+        stripped.remove(0);
+    }
+    let emptied = stripped.is_empty() && !text.is_empty();
+    *text = if breaks.is_empty() {
+        stripped
+    } else {
+        unmask_hard_breaks(&stripped)
+    };
+    emptied
 }
 
 /// `inlineContentToNodes`: text split on `\n` into hard breaks, empty pieces

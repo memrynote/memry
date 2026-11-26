@@ -1,38 +1,20 @@
 //! Links: BlockNote's `parseLink` and `parseDestinationAndTitle`, and the
 //! `isAllowedUri` check its link mark applies when parsing HTML.
 
+use super::closers::Closers;
 use super::inline::collect;
 
-/// `findClosingBracket` / `findClosingParen`.
-pub(super) fn closing(text: &[char], open_at: usize, open: char, close: char) -> Option<usize> {
-    let mut depth = 0i32;
-    let mut i = open_at;
-    while i < text.len() {
-        if text[i] == '\\' && i + 1 < text.len() {
-            i += 2;
-            continue;
-        }
-        if text[i] == open {
-            depth += 1;
-        }
-        if text[i] == close {
-            depth -= 1;
-            if depth == 0 {
-                return Some(i);
-            }
-        }
-        i += 1;
-    }
-    None
-}
-
 /// `parseLink`: the destination, the link text and where the link ends.
-pub(super) fn link(text: &[char], start: usize) -> Option<(String, &[char], usize)> {
-    let text_end = closing(text, start, '[', ']')?;
+pub(super) fn link<'t>(
+    closers: &mut Closers<'t>,
+    start: usize,
+) -> Option<(String, &'t [char], usize)> {
+    let text = closers.text();
+    let text_end = closers.closing(start, '[', ']')?;
     if text.get(text_end + 1) != Some(&'(') {
         return None;
     }
-    let paren_end = closing(text, text_end + 1, '(', ')')?;
+    let paren_end = closers.closing(text_end + 1, '(', ')')?;
     let raw = &text[text_end + 2..paren_end];
     let href = kept_whole(raw).unwrap_or_else(|| destination(raw));
     Some((href, &text[start + 1..text_end], paren_end + 1))
