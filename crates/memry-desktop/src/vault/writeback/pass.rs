@@ -1,7 +1,8 @@
 //! One write-back pass for one note; the rules are the module invariants.
 
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use memry_core::api::vault::Vault;
 use memry_core::domain::app_settings::AppSettings;
@@ -107,6 +108,9 @@ pub struct Pass {
     pub(super) store: Arc<dyn SecureStore>,
     /// The notes a pull changed whose pass has not taken the change yet (`place`).
     pub(super) pulled: Pulled,
+    /// The days whose file a pass left off its date's path this session, logged once
+    /// (`day_place`).
+    pub(super) refused_days: Mutex<HashSet<String>>,
 }
 
 impl Pass {
@@ -131,6 +135,7 @@ impl Pass {
             own_files,
             store,
             pulled: Pulled::default(),
+            refused_days: Mutex::default(),
         }
     }
 
@@ -317,6 +322,8 @@ impl Pass {
             }
         };
         self.echo.will_write(&path, &hash);
+        // Until the pass ends: the row names the old bytes until it is stamped below.
+        let _writing = self.own_files.writing(note_id, &hash);
         // A locked note's document takes only another device's edits (the core refuses local
         // ones), so its write-back goes through the lock, and its text becomes the baseline.
         let written = Locks::new(&self.root, &self.vault).write_through(&path, &output, || {

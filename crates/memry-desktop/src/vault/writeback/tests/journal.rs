@@ -253,7 +253,7 @@ fn a_block_the_date_cannot_be_set_in_is_kept_and_logged() {
     assert!(!log.contains(rel), "a path reached the log: {log}");
 }
 
-struct Capture(Arc<Mutex<Vec<u8>>>);
+pub(super) struct Capture(pub(super) Arc<Mutex<Vec<u8>>>);
 
 impl std::io::Write for Capture {
     fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {

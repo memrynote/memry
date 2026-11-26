@@ -77,9 +77,11 @@ struct CoreVaultSearch: VaultSearching {
         await search.semanticModelLoaded()
     }
 
+    /// One queue call per batch, so the queue's other calls (screen reads,
+    /// search, sync state) run between the batches of a long rebuild (#5842).
     func reindex() async throws {
         let search = search
-        _ = try await executor.run { try search.reindex() }
+        while try await executor.run({ try search.reindexStep() }) == nil {}
     }
 
     func backlinks(noteId: String, order: BacklinkOrder) async throws -> [Backlink] {

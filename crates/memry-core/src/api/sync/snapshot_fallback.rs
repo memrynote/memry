@@ -137,15 +137,7 @@ impl SnapshotFallback for PassSnapshots {
             },
             None => None,
         };
-        let pushed = self
-            .pusher
-            .push(
-                &document,
-                opened_at,
-                gate,
-                crate::api::tasks_write::now_ms(),
-            )
-            .await;
+        let pushed = self.pusher.push(&document, opened_at, gate).await;
         if let (Some(admission), Err(SnapshotError::Api { source })) = (&self.admission, &pushed) {
             admission.note(source);
         }

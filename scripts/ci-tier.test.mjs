@@ -178,13 +178,16 @@ function tier({
   assert.equal(result.status, 0, result.stderr)
   // stdout is $GITHUB_OUTPUT: anything but `key=value` lines fails the step.
   for (const line of result.stdout.trim().split('\n')) assert.match(line, /^[a-z0-9_]+=[a-z]+$/)
-  return Object.fromEntries(
+  const out = Object.fromEntries(
     result.stdout
       .trim()
       .split('\n')
       .map((line) => line.split('='))
       .map(([key, value]) => [key, value === 'true' ? true : value === 'false' ? false : value])
   )
+  // Not a tier output: rust-legs.jq reads the event from the workflow (`--arg event`).
+  Object.defineProperty(out, 'event', { value: event })
+  return out
 }
 
 // The OS legs a fast-tier PR adds, beyond Linux.
@@ -719,6 +722,9 @@ function rustLegEntries(out, warm = false) {
       '--arg',
       'mac',
       out.rust_macos,
+      '--arg',
+      'event',
+      out.event,
       ...(warm ? ['--arg', 'warm', 'true'] : []),
       '-f',
       join(tierDir, 'rust-legs.jq')
@@ -774,10 +780,23 @@ function tauriBuilds(out, queue = false) {
   )
 }
 
-const linuxRust = ['ubuntu-22.04 checks', 'ubuntu-22.04 tests 1/2', 'ubuntu-22.04 tests 2/2']
-const windowsRust = ['windows-2022 checks', 'windows-2022 tests 1/2', 'windows-2022 tests 2/2']
+const linuxRust = [
+  'ubuntu-22.04 lint',
+  'ubuntu-22.04 seams',
+  'ubuntu-22.04 tests 1/2',
+  'ubuntu-22.04 tests 2/2'
+]
+const windowsRust = [
+  'windows-2022 lint',
+  'windows-2022 seams',
+  'windows-2022 tests 1/2',
+  'windows-2022 tests 2/2'
+]
+// Off the PR and merge-queue path: the post-merge schedule, pushes and dispatch.
+const perfRust = ['ubuntu-22.04 perf']
 const armRust = [
-  'windows-11-arm checks',
+  'windows-11-arm lint',
+  'windows-11-arm seams',
   'windows-11-arm tests 1/2',
   'windows-11-arm tests 2/2',
   'windows-11-arm models'
@@ -791,18 +810,14 @@ describe('ci matrices', () => {
   it('runs the model steps in one job per OS on the full tier, in their own job on windows-11-arm', () => {
     const out = tier({ event: 'push', ref: 'refs/heads/main', base: '', listed: false, files: [] })
     assert.deepEqual(modelLegs(out), [
-      'ubuntu-22.04 checks',
+      'ubuntu-22.04 seams',
       'macos-15 all',
       'macos-15-intel all',
-      'windows-2022 checks',
+      'windows-2022 seams',
       'windows-11-arm models'
     ])
     const queue = tier({ event: 'merge_group', base: '', files: [shell] })
-    assert.deepEqual(modelLegs(queue), [
-      'ubuntu-22.04 checks',
-      'windows-2022 checks',
-      'windows-11-arm models'
-    ])
+    assert.deepEqual(modelLegs(queue), ['ubuntu-22.04 seams', 'windows-2022 seams'])
   })
 
   it('runs no model steps on the fast tier', () => {
@@ -817,7 +832,12 @@ describe('ci matrices', () => {
 
   it('adds the Windows and Apple Silicon checks and debug builds for an OS cfg', () => {
     const out = pr('+#[cfg(windows)]')
-    assert.deepEqual(rustLegs(out), [...linuxRust, 'windows-2022 checks', 'macos-15 checks'])
+    assert.deepEqual(rustLegs(out), [
+      ...linuxRust,
+      'windows-2022 lint',
+      'windows-2022 seams',
+      'macos-15 checks'
+    ])
     assert.deepEqual(tauriBuilds(out), ['macos-arm64 debug', 'windows-x64 debug', ...linuxTauri])
   })
 
@@ -848,18 +868,37 @@ describe('ci matrices', () => {
   ]
 
   it('builds everything but Intel for a full-ci PR and a push to feat/tauri-v2', () => {
-    for (const out of [
-      tier({ labels: 'full-ci', files: [shell], patches: {} }),
-      tier({ event: 'push', ref: 'refs/heads/feat/tauri-v2', base: '', files: [shell] })
-    ]) {
-      assert.deepEqual(rustLegs(out), [...linuxRust, 'macos-15 all', ...windowsRust, ...armRust])
+    const fullCi = tier({ labels: 'full-ci', files: [shell], patches: {} })
+    const push = tier({ event: 'push', ref: 'refs/heads/feat/tauri-v2', base: '', files: [shell] })
+    // Only the merge queue drops windows-11-arm and the perf budgets; `full-ci` asks for every leg.
+    for (const out of [fullCi, push]) {
+      assert.deepEqual(rustLegs(out), [
+        ...linuxRust,
+        'macos-15 all',
+        ...windowsRust,
+        ...armRust,
+        ...perfRust
+      ])
       assert.deepEqual(tauriBuilds(out), fullTauri)
     }
   })
 
-  it('builds no Mac and no windows-arm64 e2e in the merge queue', () => {
+  // No schedule covers main, so a PR into main (the final feat/tauri-v2 one included) runs them.
+  it('runs the windows-11-arm Rust legs and the perf budgets on a PR into main', () => {
+    const out = tier({ base: 'main', files: [shell], patches: {} })
+    assert.deepEqual(rustLegs(out), [
+      ...linuxRust,
+      'macos-15 all',
+      'macos-15-intel all',
+      ...windowsRust,
+      ...armRust,
+      ...perfRust
+    ])
+  })
+
+  it('builds no Mac, no windows-11-arm Rust leg and no windows-arm64 e2e in the merge queue', () => {
     const out = tier({ event: 'merge_group', base: '', files: [shell] })
-    assert.deepEqual(rustLegs(out), [...linuxRust, ...windowsRust, ...armRust])
+    assert.deepEqual(rustLegs(out), [...linuxRust, ...windowsRust])
     assert.deepEqual(tauriBuilds(out, true), [
       'windows-x64 debug',
       'windows-x64 e2e 1',
@@ -878,7 +917,8 @@ describe('ci matrices', () => {
       'macos-15 all',
       'macos-15-intel all',
       ...windowsRust,
-      ...armRust
+      ...armRust,
+      ...perfRust
     ])
     assert.deepEqual(tauriBuilds(out), [
       ...fullTauri.slice(0, 2),
@@ -1058,8 +1098,8 @@ describe('ci tier after a merge into feat/tauri-v2', () => {
     assert.equal(out.swift, true)
     assert.equal(out.intel, false)
     assert.equal(out.rust_linux_arm64, false)
-    assert.deepEqual(rustLegs(out), ['macos-15 all'])
-    assert.deepEqual(modelLegs(out), ['macos-15 all'])
+    assert.deepEqual(rustLegs(out), ['macos-15 all', ...armRust, ...perfRust])
+    assert.deepEqual(modelLegs(out), ['macos-15 all', 'windows-11-arm models'])
     assert.deepEqual(tauriBuilds(out), [
       'macos-arm64 debug',
       'macos-arm64 e2e',
@@ -1359,7 +1399,7 @@ describe('ci concurrency of the feat/tauri-v2 push runs', () => {
   })
 })
 
-// The daily cache-warm run of rust-ci.yml adds the `checks` leg of each OS the merge queue runs, with the
+// The daily cache-warm run of rust-ci.yml adds the `seams` leg of each OS the merge queue runs, with the
 // steps the queue gives it: the entry it saves is the one the queue's checks legs restore, and a leg
 // with fewer steps would save an entry that lacks what the queue builds (an exact hit saves nothing).
 describe('ci tier cache-warm legs', () => {
@@ -1373,23 +1413,28 @@ describe('ci tier cache-warm legs', () => {
       scheduleTested
     })
   const queue = tier({ event: 'merge_group', base: '', files: ['crates/memry-core/src/lib.rs'] })
-  const warmed = ['ubuntu-22.04 checks', 'windows-2022 checks', 'windows-11-arm checks']
+  const warmed = ['ubuntu-22.04 seams', 'windows-2022 seams']
 
   it('runs the warm legs on a scheduled SHA that already passed, and beside the macOS leg otherwise', () => {
     const covered = scheduled(true)
     assert.equal(covered.post_merge, 'covered')
     assert.deepEqual(rustLegs(covered, true), warmed)
-    assert.deepEqual(rustLegs(scheduled(false), true), ['macos-15 all', ...warmed])
+    assert.deepEqual(rustLegs(scheduled(false), true), [
+      'macos-15 all',
+      ...armRust,
+      ...perfRust,
+      ...warmed
+    ])
   })
 
   it('gives each warm leg exactly the queue leg it warms', () => {
-    const queueChecks = rustLegEntries(queue).filter((leg) => leg.part === 'checks')
+    const queueChecks = rustLegEntries(queue).filter((leg) => leg.part === 'seams')
     assert.deepEqual(rustLegEntries(scheduled(true), true), queueChecks)
   })
 
   it('adds nothing to a run that is not the warm run', () => {
     assert.deepEqual(rustLegs(scheduled(true)), [])
-    assert.deepEqual(rustLegs(scheduled(false)), ['macos-15 all'])
+    assert.deepEqual(rustLegs(scheduled(false)), ['macos-15 all', ...armRust, ...perfRust])
   })
 
   it('names a cron that rust-ci.yml schedules', () => {
