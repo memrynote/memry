@@ -42,14 +42,41 @@ async function makeWorld() {
   return { world, vaultPath, note }
 }
 
-/** Every entry under `world` except the vault's databases, which any command opens. */
+/**
+ * Every entry under `world` except the vault's databases, which any command opens. Links are
+ * listed but never followed: `readdir({ recursive: true })` stats each entry, so it walked
+ * `vault/zz -> ..` until the kernel's link limit and sometimes failed with ELOOP.
+ */
 async function snapshot(world: string): Promise<string[]> {
-  const entries = await fs.readdir(world, { recursive: true })
-  return entries
+  const entries: string[] = []
+  const walk = async (dir: string) => {
+    for (const name of await fs.readdir(path.join(world, dir))) {
+      const entry = path.posix.join(dir, name)
+      entries.push(entry)
+      const stats = await fs.lstat(path.join(world, entry))
+      if (stats.isDirectory() && entry !== 'vault/.memry') await walk(entry)
+    }
+  }
+  await walk('')
+  return entries.toSorted()
+}
+
+test('snapshot lists a link without following it', { skip: skipLinks }, async () => {
+  const { world, vaultPath } = await makeWorld()
+  const entries = await snapshot(world)
+  assert.ok(entries.includes('vault/zz') && entries.includes('vault/out'), entries.join('\n'))
+  assert.deepEqual(
+    entries.filter((entry) => entry.startsWith('vault/zz/') || entry.startsWith('vault/out/')),
+    []
+  )
+
+  await fs.unlink(path.join(vaultPath, 'zz'))
+  await fs.unlink(path.join(vaultPath, 'out'))
+  const recursive = (await fs.readdir(world, { recursive: true }))
     .map((entry) => entry.replaceAll('\\', '/'))
     .filter((entry) => !entry.startsWith('vault/.memry/'))
-    .toSorted()
-}
+  assert.deepEqual(await snapshot(world), recursive.toSorted())
+})
 
 type World = Awaited<ReturnType<typeof makeWorld>>
 
