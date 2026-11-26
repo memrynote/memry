@@ -110,3 +110,18 @@ describe('turbo env', () => {
     assert.ok(turbo.tasks.typecheck.passThroughEnv?.includes('CARGO_*'))
   })
 })
+
+describe('IPC bindings check', () => {
+  // Desktop Tauri CI has no separate "IPC bindings are current" step: the Typecheck step runs
+  // ipc:check through pretypecheck, or replays a cached run that passed it on the same inputs.
+  it('runs ipc:check in every typecheck the root runs', () => {
+    const tauriPackage = JSON.parse(
+      readFileSync(new URL('../apps/desktop-tauri/package.json', import.meta.url), 'utf8')
+    )
+    assert.equal(tauriPackage.scripts.pretypecheck, 'pnpm ipc:check')
+    assert.match(desktopPackage.scripts.pretypecheck, /&& pnpm ipc:check$/)
+    for (const pkg of ['@memry/desktop', '@memry/desktop-tauri']) {
+      assert.ok(rootPackage.scripts.typecheck.includes(`--filter=${pkg} `))
+    }
+  })
+})

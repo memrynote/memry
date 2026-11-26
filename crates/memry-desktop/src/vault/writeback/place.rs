@@ -76,9 +76,6 @@ pub(super) struct Mark {
     pub(super) title_before: Option<String>,
     /// The passes whose move failed.
     failed: u32,
-    /// The record was strictly newer than its file when the file was first named: the pass
-    /// writes the file's `aliases` key alone and never moves it ([`owed_aliases`]).
-    pub(super) aliases_only: bool,
 }
 
 impl Mark {
@@ -111,30 +108,11 @@ impl Mark {
 }
 
 impl Pulled {
-    /// A later pull keeps the first one's title: the file still carries that one. A pull
-    /// replaces an aliases-only mark: its frontmatter patch writes the aliases too.
+    /// A later pull keeps the first one's title: the file still carries that one.
     pub(super) fn mark(&self, note_id: &str, title_before: Option<&str>) {
-        let pulled = Mark {
+        self.map().entry(note_id.to_owned()).or_insert(Mark {
             title_before: title_before.map(str::to_owned),
             failed: 0,
-            aliases_only: false,
-        };
-        let mut map = self.map();
-        match map.get(note_id) {
-            Some(mark) if !mark.aliases_only => {}
-            _ => {
-                map.insert(note_id.to_owned(), pulled);
-            }
-        }
-    }
-
-    /// A mark that writes the file's `aliases` key alone and never moves the file
-    /// (`Pass::mark_record_newer`). A pull's mark, already there, stays.
-    pub(super) fn mark_in_place(&self, note_id: &str) {
-        self.map().entry(note_id.to_owned()).or_insert(Mark {
-            title_before: None,
-            failed: PLACE_TRIES,
-            aliases_only: true,
         });
     }
 
@@ -142,17 +120,9 @@ impl Pulled {
         self.map().remove(note_id)
     }
 
-    /// Gives `mark` back to the next pass: this one stopped before it took the change. A pull's
-    /// mark made meanwhile stays over an aliases-only one, as in [`Pulled::mark`]: its patch
-    /// writes the aliases too, and dropping it would lose the pulled frontmatter (#5316).
+    /// Gives `mark` back to the next pass: this one stopped before it took the change.
     pub(super) fn put_back(&self, note_id: &str, mark: Mark) {
-        let mut map = self.map();
-        match map.get(note_id) {
-            Some(held) if !held.aliases_only && mark.aliases_only => {}
-            _ => {
-                map.insert(note_id.to_owned(), mark);
-            }
-        }
+        self.map().insert(note_id.to_owned(), mark);
     }
 
     fn map(&self) -> MutexGuard<'_, HashMap<String, Mark>> {
@@ -169,7 +139,9 @@ pub(crate) struct Patch<'a> {
 
 /// The file `output` with its `aliases` key set to the record's list, as the in-app alias edit
 /// writes it ([`with_aliases`]): every other key, comment and the body as `output` has them. A
-/// record with no list, or a frontmatter that is not a map, leaves `output` as it is.
+/// record with no list, or a frontmatter that is not a map, leaves `output` as it is. The
+/// pass gives it a file that owes its record's aliases
+/// ([`memry_core::domain::owed_file_aliases`]).
 pub(super) fn owed_aliases(output: String, record: &Unfiled) -> Result<String, String> {
     let Some(held) = &record.aliases else {
         return Ok(output);

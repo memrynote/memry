@@ -146,13 +146,6 @@ impl Pass {
         self.pulled.mark(note_id, title_before);
     }
 
-    /// The note's record was strictly newer than its file when the file was first named
-    /// (`Adoption::ExistingNewer`): its next pass writes the file's `aliases` key alone
-    /// (`place::owed_aliases`) and never moves the file.
-    pub fn mark_record_newer(&self, note_id: &str) {
-        self.pulled.mark_in_place(note_id);
-    }
-
     /// Writes the note's body to its file, or says why the file was kept.
     pub fn run(&self, note_id: &str) -> Outcome {
         self.run_checked(note_id, &mut || {})
@@ -192,6 +185,13 @@ impl Pass {
             self.pulled.take(note_id);
             return Outcome::Kept(Keep::NotMarkdown);
         }
+        // A large file owing its record's aliases gets its `aliases` key alone (`owed`).
+        if row.content_hash.is_none()
+            && let Some(outcome) =
+                self.owed_large(&mut lane, note_id, &row, (read_at, read_mark), between)
+        {
+            return outcome;
+        }
         let Some(row_hash) = row.content_hash.clone() else {
             return Outcome::Kept(Keep::NotRead);
         };
@@ -224,8 +224,21 @@ impl Pass {
         // gives it back only for a failed move to be tried again.
         let mut waiting = pulled.as_ref().map(|(mark, _)| mark.clone());
         let mut move_again = false;
+        // A file owing its record's aliases (`owed`) gets them from a pull's patch, or alone.
+        let owed = match pulled {
+            Some(_) => None,
+            None => match self.owed_record(note_id) {
+                Ok(owed) => owed,
+                Err(why) => return Outcome::Failed(why),
+            },
+        };
+        let pays =
+            owed.is_some() || (pulled.as_ref()).is_some_and(|(_, record)| record.aliases.is_some());
         let wait = |waiting: Option<Mark>, move_again: bool, outcome: Outcome| {
             let wrote = matches!(outcome, Outcome::Wrote { .. } | Outcome::Unchanged);
+            if wrote && pays {
+                self.paid(note_id);
+            }
             // A deleted note's mark goes: one that comes back is pulled again.
             let gone = outcome == Outcome::Kept(Keep::NoNote);
             if let Some(mark) = waiting.filter(|_| !gone && (!wrote || move_again)) {
@@ -257,15 +270,14 @@ impl Pass {
                 }
             }
         }
-        let aliases_only = waiting.as_ref().is_some_and(|mark| mark.aliases_only);
         let pulled = pulled.as_ref().map(|(_, record)| record);
-        let patch = pulled.filter(|_| !aliases_only).map(|record| Patch {
+        let patch = pulled.map(|record| Patch {
             record,
             types: self.property_types(),
         });
         let made = (&*self.vault, self.settings.as_ref(), self.root.as_path());
         let output = match output_over(made, note_id, &path, &file, patch.as_ref()) {
-            Ok(output) => match pulled.filter(|_| aliases_only) {
+            Ok(output) => match &owed {
                 Some(record) => owed_aliases(output, record),
                 None => Ok(output),
             },

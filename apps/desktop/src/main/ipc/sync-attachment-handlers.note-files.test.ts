@@ -608,7 +608,9 @@ describe('sync:download-note-files with auto-download on', () => {
     h.download.mockClear()
     serveFiles()
     await redriveAttachmentDownloads()
-    await settle()
+    // A binary note's landing stats its file on disk, so one tick is not
+    // enough: wait until all four tell the windows they landed (#5854).
+    await vi.waitFor(() => expect(materialized()).toHaveLength(4))
 
     expect(fs.readFileSync(imagePath())).toEqual(PNG)
     expect(fs.readFileSync(pdfPath())).toEqual(PDF)

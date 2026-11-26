@@ -11,11 +11,13 @@ import Testing
 private final class RecordingRedrives: VaultFilling, @unchecked Sendable {
     private let calls = Mutex<[Reachable]>([])
     private let inboxCalls = Mutex(0)
+    let changes = Changes()
     var reachables: [Reachable] { calls.withLock { $0 } }
     var inboxPasses: Int { inboxCalls.withLock { $0 } }
 
     func syncInboxAttachments(reachable: Reachable) async throws -> InboxAttachmentSyncSummary {
         inboxCalls.withLock { $0 += 1 }
+        changes.changed()
         return InboxAttachmentSyncSummary(uploaded: 0, downloaded: 0, deferred: 0, failed: 0, released: 0)
     }
 
@@ -38,15 +40,18 @@ private final class RecordingRedrives: VaultFilling, @unchecked Sendable {
 @MainActor
 @Suite("Attachment redrive wiring")
 struct AttachmentRedriveWiringTests {
-    @Test func a_sync_pass_redrives_attachments() async throws {
+    /// The redrive is a task the pass starts and does not await, and a full
+    /// parallel Unit run can keep the main actor from it for seconds, so it is
+    /// awaited rather than given a deadline. The bound is the time limit.
+    @Test(.timeLimit(.minutes(1)))
+    func a_sync_pass_redrives_attachments() async throws {
         let filler = RecordingRedrives()
         let vault = try TasksTestVault(filler: filler)
         await vault.store.sync()
         // The redrive runs after the pass, outside it (#4155). Counted by its
         // Inbox pass, which runs whatever this device's Download attachments
         // setting (#5644); the setting's note redrive is pinned below.
-        let deadline = Date().addingTimeInterval(3)
-        while filler.inboxPasses == 0, Date() < deadline { try await Task.sleep(for: .milliseconds(20)) }
+        await filler.changes.until { filler.inboxPasses > 0 }
         #expect(filler.inboxPasses == 1)
     }
 

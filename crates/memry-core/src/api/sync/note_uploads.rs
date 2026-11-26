@@ -361,10 +361,11 @@ impl VaultSync {
             )
             .await?;
 
-        let now = now_ms();
         let referenced = self
             .db
             .call(move |conn| {
+                // #5849: stamped inside the hold that writes the note.
+                let now = now_ms();
                 let tx = crate::storage::nested_tx::begin(conn).map_err(notes::failed)?;
                 // Invariant: the upload names the note that owns its queue row
                 // when it lands, read here in the transaction that references
