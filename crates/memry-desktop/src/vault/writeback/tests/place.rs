@@ -402,3 +402,88 @@ fn a_row_not_read_yet_keeps_the_mark() {
     assert_eq!(f.run(&id), Outcome::Unchanged);
     assert_eq!(f.read("Renamed.md"), "first words\n");
 }
+
+/// A pass kept for a server body not pulled yet keeps the mark (#5509): the pass after the body
+/// arrives gives the file the pulled frontmatter, as Electron's `applyUpsert` writes it.
+#[test]
+fn a_pass_kept_for_its_unpulled_body_keeps_the_mark() {
+    let mut f = fixture();
+    let id = note(&mut f, "first words\n");
+    pulled(&f, &id, |w| {
+        w.set_property(id.clone(), "status".into(), "\"done\"".into())
+            .unwrap();
+    });
+    f.owe_server_body(&id);
+    assert_eq!(f.run(&id), Outcome::Kept(Keep::BodyNotPulled));
+    assert_eq!(
+        f.read("n.md"),
+        "first words\n",
+        "the file waits for the body"
+    );
+
+    f.sql("DELETE FROM meta WHERE key = 'sync.body_owed:' || ?1", &id);
+    let outcome = f.run(&id);
+    assert!(matches!(outcome, Outcome::Wrote { .. }), "{outcome:?}");
+    assert_eq!(f.read("n.md"), "---\nstatus: done\n---\nfirst words\n");
+}
+
+/// A note deleted under its pass (after the move, before the body read) drops its mark
+/// (`Keep::NoNote`, REVIEW-5517 finding 4): a note that comes back is pulled again, never
+/// patched by a mark with a stale `title_before`.
+#[test]
+fn a_note_deleted_under_its_pass_drops_the_mark() {
+    let mut f = fixture();
+    let id = note(&mut f, "first words\n");
+    pulled(&f, &id, |w| {
+        w.rename(id.clone(), "Renamed".into()).unwrap();
+        w.set_tags(id.clone(), vec!["pulled".into()]).unwrap();
+    });
+    // The move updates the row; the trigger deletes the note before the pass reads its body.
+    f.exec(
+        "CREATE TRIGGER gone_under_pass AFTER UPDATE OF path ON note_files
+         BEGIN UPDATE notes SET deleted_at = 1 WHERE id = NEW.note_id; END",
+    );
+    assert_eq!(f.run(&id), Outcome::Kept(Keep::NoNote));
+    f.exec("DROP TRIGGER gone_under_pass");
+    f.sql("UPDATE notes SET deleted_at = NULL WHERE id = ?1", &id);
+    assert_eq!(f.run(&id), Outcome::Unchanged);
+    assert_eq!(
+        f.read("Renamed.md"),
+        "first words\n",
+        "no mark wrote the tags"
+    );
+}
+
+/// A pulled place whose moves are given up still gives the file the pulled frontmatter once the
+/// body is here: the mark waits through every pass kept for the body (REVIEW-5517 finding 3).
+#[cfg(unix)]
+#[test]
+fn a_mark_whose_moves_failed_still_waits_for_the_body() {
+    use std::os::unix::fs::PermissionsExt;
+
+    use crate::vault::writeback::place::PLACE_TRIES;
+
+    let mut f = fixture();
+    let id = note(&mut f, "first words\n");
+    let work = f.root.join("Work");
+    std::fs::create_dir(&work).unwrap();
+    std::fs::set_permissions(&work, std::fs::Permissions::from_mode(0o555)).unwrap();
+    pulled(&f, &id, |w| {
+        w.move_to_folder(id.clone(), Some("Work".into())).unwrap();
+        w.set_property(id.clone(), "status".into(), "\"done\"".into())
+            .unwrap();
+    });
+    f.owe_server_body(&id);
+    for _ in 0..=PLACE_TRIES {
+        assert_eq!(f.run(&id), Outcome::Kept(Keep::BodyNotPulled));
+    }
+    std::fs::set_permissions(&work, std::fs::Permissions::from_mode(0o755)).unwrap();
+    f.sql("DELETE FROM meta WHERE key = 'sync.body_owed:' || ?1", &id);
+    let outcome = f.run(&id);
+    assert!(matches!(outcome, Outcome::Wrote { .. }), "{outcome:?}");
+    assert_eq!(f.read("n.md"), "---\nstatus: done\n---\nfirst words\n");
+    assert!(
+        !work.join("n.md").exists(),
+        "the given-up move stays given up"
+    );
+}

@@ -20,7 +20,12 @@ vi.mock('../projections', () => ({
   publishProjectionEvent: vi.fn()
 }))
 
-import { extractNoteMetadata, syncNoteToCache, type NoteSyncInput } from './note-sync'
+import {
+  extractNoteMetadata,
+  isRemoteApplySpelling,
+  syncNoteToCache,
+  type NoteSyncInput
+} from './note-sync'
 import { publishProjectionEvent } from '../projections'
 import { saveCanonicalNote } from '@memry/domain-notes'
 import type { NoteFrontmatter } from './frontmatter'
@@ -225,5 +230,41 @@ describe('syncNoteToCache', () => {
         })
       })
     )
+  })
+})
+
+describe('isRemoteApplySpelling', () => {
+  const claimed = {
+    sharesFile: false,
+    id: 'n1',
+    path: 'SuperNotes/Ärzte.md'.normalize('NFC'),
+    title: 'Ärzte',
+    createdAt: FIXED_ISO,
+    modifiedAt: FIXED_ISO,
+    fileSize: 1,
+    emoji: null,
+    localOnly: false
+  }
+
+  it('reads a file name the disk keeps decomposed as the row name', () => {
+    expect(isRemoteApplySpelling(claimed, 'Supernotes/Ärzte.md'.normalize('NFD'))).toBe(true)
+  })
+
+  it('reads a file name that changed case as a rename', () => {
+    expect(isRemoteApplySpelling(claimed, 'Supernotes/ärzte.md')).toBe(false)
+  })
+})
+
+describe('syncNoteToCache with a kept baseline', () => {
+  it('publishes the baseline it is given instead of the hash of the bytes', () => {
+    vi.mocked(publishProjectionEvent).mockClear()
+    syncNoteToCache(
+      createMockDb(),
+      { ...buildInput({ fileContent: 'edited' }), contentHash: 'baseline-hash' },
+      { isNew: false }
+    )
+    expect(vi.mocked(publishProjectionEvent).mock.calls[0]?.[0]).toMatchObject({
+      note: { contentHash: 'baseline-hash' }
+    })
   })
 })

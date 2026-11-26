@@ -35,7 +35,7 @@ fn pull(
     key: &AtRestKey,
     items: Vec<Pending>,
 ) -> Result<ApplyTotals, StorageError> {
-    apply_page(conn, items, vec![], NOW + 10, Some(DEVICE), key)
+    apply_page(conn, items, NOW + 10, Some(DEVICE), key)
 }
 
 fn text(content: &str) -> Value {

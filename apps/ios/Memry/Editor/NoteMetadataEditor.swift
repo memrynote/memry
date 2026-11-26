@@ -38,8 +38,8 @@ protocol NoteMetadataWriting: Sendable {
     func ensurePropertyDefinition(name: String, typeName: String) async throws
 }
 
-/// A write this surface cannot make, such as renaming a journal day's property
-/// before its writer supports it.
+/// A write this surface cannot make, such as reordering a journal day's
+/// properties, which the core's journal API has no operation for.
 struct NoteMetadataWriteUnsupported: Error {}
 
 extension NoteMetadataWriting {
@@ -586,6 +586,16 @@ final class NoteMetadataViewModel {
     /// `nil` because its writer is `JournalStore`, which asks for itself.
     @ObservationIgnored var requestSync: (@MainActor () -> Void)?
 
+    /// The title field's edit in progress, `nil` when there is none. The
+    /// page menu's Rename opens on it rather than on the stored title, which
+    /// the edit has not reached yet (#4691). Not observed: only a menu tap
+    /// reads it, and each keystroke would redraw the page.
+    @ObservationIgnored var titleDraft: String?
+    /// Keeps the app running until the call it returns: a background task.
+    @ObservationIgnored var hold: () -> () -> Void = { ExchangeHold.application(named: "note-title").begin() }
+    /// The rename written last, which the next one waits for.
+    @ObservationIgnored private var lastRename: Task<Void, Error>?
+
     init(noteId: String, writer: (any NoteMetadataWriting)?) {
         self.noteId = noteId
         self.writer = writer
@@ -595,14 +605,53 @@ final class NoteMetadataViewModel {
     /// through, and a field that cannot save is worse than no field.
     var canEdit: Bool { writer != nil }
 
+    /// Renames the note under a background task begun now, in the caller's
+    /// turn: a title saved as the app leaves lands before iOS suspends the
+    /// app (#4787).
+    func save(title: String, current: String) {
+        guard let landing = startRename(to: title, current: current) else { return }
+        let end = hold()
+        Task {
+            await landing.value
+            end()
+        }
+    }
+
     /// Renames the note (N702).
     ///
     /// An unchanged title writes nothing: every write is a payload merge and
     /// an outbox row, and tapping into the title and back out must not enqueue
     /// a push.
+    ///
+    /// A title that landed is announced with `titleSaved`, so every page on
+    /// this note re-reads, not only the one that wrote: a size-class change
+    /// commits the title as it draws the note again as a new page (#4532).
     func rename(to title: String, current: String) async {
-        guard let writer, title != current else { return }
-        await run { try await writer.rename(id: noteId, title: title) }
+        await startRename(to: title, current: current)?.value
+    }
+
+    /// The write starts off the main actor, at once: as the app leaves, UIKit
+    /// draws its snapshot on the main thread, and a write queued there had
+    /// not started when the app was killed 2 s after Home (iPad HID, #4787).
+    /// Each write waits for the one before, so titles land in typed order.
+    private func startRename(to title: String, current: String) -> Task<Void, Never>? {
+        guard let writer, title != current else { return nil }
+        let noteId = noteId
+        let previous = lastRename
+        // The keys typed after ⌘N stored as the title when the note was made.
+        let seeded = NewNoteSeeds.shared.landing(noteId)
+        let write = Task.detached {
+            await seeded?.value
+            _ = await previous?.result
+            try await writer.rename(id: noteId, title: title)
+        }
+        lastRename = write
+        return Task {
+            await run { try await write.value }
+            if status == .idle {
+                NotificationCenter.default.post(name: NoteReadViewModel.titleSaved, object: noteId)
+            }
+        }
     }
 
     /// Sets or clears the icon (N702). `nil` clears.

@@ -14,6 +14,7 @@ use base64::engine::general_purpose::STANDARD as BASE64;
 use memry_core::api::editor::{EditorError, Notice, Origin};
 use memry_core::api::errors::StorageError;
 use memry_core::crdt::body_edit::BlockEdit;
+use memry_core::crdt::epoch::HeldBody;
 use memry_core::crdt::update_log;
 use memry_core::domain::external_feed::{AppRead, FeedInput, FeedOutcome};
 use memry_core::markdown::convert::api::Converter;
@@ -335,11 +336,11 @@ async fn a_day_whose_log_did_not_replay_opens_once_a_delete_purged_it_and_it_was
     f.vault
         .db_handle()
         .call_blocking(|conn| {
-            update_log::append_server_update(conn, &day, 1, &[0xff; 4], 1).map_err(|error| {
-                StorageError::Failed {
+            HeldBody::never_purged(conn, &day)
+                .and_then(|held| held.append_server_update(1, &[0xff; 4], 1))
+                .map_err(|error| StorageError::Failed {
                     what: error.to_string(),
-                }
-            })
+                })
         })
         .expect("bytes no build decodes");
     assert!(matches!(
@@ -376,6 +377,7 @@ async fn a_pulled_baseline_snapshot_reaches_the_open_document_as_remote() {
         "signerDeviceId": "device-b", "revision": "r1",
     });
     let transport = FakeTransport::new(vec![
+        crate::http_fakes::probe_refused(),
         response(200, &snapshot.to_string()),
         response(200, &json!({ "updates": [], "hasMore": false }).to_string()),
     ]);
@@ -406,11 +408,11 @@ fn a_committed_row_the_open_document_cannot_take_unloads_it() {
     f.vault
         .db_handle()
         .call_blocking(|conn| {
-            update_log::append_server_update(conn, &note, 1, &[0xff; 4], 1).map_err(|error| {
-                StorageError::Failed {
+            HeldBody::never_purged(conn, &note)
+                .and_then(|held| held.append_server_update(1, &[0xff; 4], 1))
+                .map_err(|error| StorageError::Failed {
                     what: error.to_string(),
-                }
-            })
+                })
         })
         .expect("bytes no build decodes");
 

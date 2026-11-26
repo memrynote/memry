@@ -26,6 +26,7 @@ use rusqlite::{Connection, params};
 use serde_json::{Value, json};
 
 use crate::api::errors::StorageError;
+use crate::storage::nested_tx;
 use crate::storage::repositories::schema::Object;
 use crate::storage::repositories::{Change, sync_items};
 use crate::sync::outbox;
@@ -167,7 +168,7 @@ pub fn rename(
     let name = clean_name(name)?;
     // The liveness check and the edit are one transaction: a peer's delete
     // applied between them must not be edited back to life.
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     require_live(&tx, id)?;
     edit_in(
         &tx,
@@ -193,7 +194,7 @@ pub fn delete(
     device_id: &str,
     now_ms: i64,
 ) -> Result<usize, StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     require_live(&tx, id)?;
 
     let mut statement = tx
@@ -243,7 +244,7 @@ pub fn arrange(
     device_id: &str,
     now_ms: i64,
 ) -> Result<(), StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     for assignment in assignments {
         let tag = assignment.tag.trim();
         if tag.is_empty() {

@@ -4,11 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { describe, it } from 'node:test'
 
 // connect-src must list every external host the browser talks to.
-const REQUIRED_CONNECT_SRC = [
-  'https://sync.memrynote.com',
-  'https://e.memrynote.com',
-  'https://datafa.st'
-]
+const REQUIRED_CONNECT_SRC = ['https://sync.memrynote.com', 'https://e.memrynote.com']
 
 function getDirective(name: string): string {
   const vercelPath = fileURLToPath(new URL('../../vercel.json', import.meta.url))

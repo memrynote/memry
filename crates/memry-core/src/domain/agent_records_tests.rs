@@ -54,14 +54,7 @@ fn sealing_hands_back_a_fast_secure_delete_as_it_found_it() {
             "clock": {"peer": 1}, "createdAt": NOW, "updatedAt": NOW,
         });
         let pulled = remote("agent_message", "m1", &message);
-        apply_page(
-            conn,
-            vec![pulled],
-            vec![],
-            NOW,
-            Some(DEVICE),
-            &AtRestKey::default(),
-        )?;
+        apply_page(conn, vec![pulled], NOW, Some(DEVICE), &AtRestKey::default())?;
         conn.execute_batch("PRAGMA secure_delete = FAST")
             .map_err(failed)?;
         assert_eq!(seal_pending(conn, &key(), NOW).map_err(storage)?.records, 1);
@@ -90,14 +83,7 @@ fn a_title_written_over_a_pending_record_is_sealed_once() {
             "deletedAt": null,
         });
         let pulled = remote("agent_conversation", "c1", &conversation);
-        apply_page(
-            conn,
-            vec![pulled],
-            vec![],
-            NOW,
-            Some(DEVICE),
-            &AtRestKey::default(),
-        )?;
+        apply_page(conn, vec![pulled], NOW, Some(DEVICE), &AtRestKey::default())?;
         let key = key();
         let patch = ConversationPatch {
             title: Some("Renamed"),
@@ -145,7 +131,7 @@ fn a_local_title_under_another_key_makes_the_merge_corrupt() {
                 "deletedAt": null,
             });
             let pulled = remote("agent_conversation", &id, &body);
-            let totals = apply_page(conn, vec![pulled], vec![], NOW, Some(DEVICE), &key())?;
+            let totals = apply_page(conn, vec![pulled], NOW, Some(DEVICE), &key())?;
             assert_eq!(totals.corrupt, 1, "{clock}");
             assert_eq!(stored()?, before, "{clock}");
         }
@@ -171,7 +157,7 @@ fn a_merge_that_keeps_a_pending_title_stays_pending() {
             "deletedAt": null,
         });
         let pulled = remote("agent_conversation", "c1", &conversation);
-        apply_page(conn, vec![pulled], vec![], NOW, Some(DEVICE), &none)?;
+        apply_page(conn, vec![pulled], NOW, Some(DEVICE), &none)?;
         let body = json!({
             "vaultId": "vault-1", "backend": "local", "backendModel": null,
             "trustList": [], "pinned": true, "clock": {"other": 1},
@@ -179,7 +165,7 @@ fn a_merge_that_keeps_a_pending_title_stays_pending() {
             "createdAt": NOW, "updatedAt": NOW + 1, "deletedAt": null,
         });
         let concurrent = remote("agent_conversation", "c1", &body);
-        let totals = apply_page(conn, vec![concurrent], vec![], NOW, Some(DEVICE), &none)?;
+        let totals = apply_page(conn, vec![concurrent], NOW, Some(DEVICE), &none)?;
         assert_eq!(totals.corrupt, 0);
         assert!(is_sealed_pending(conn, "agent_conversation", "c1")?);
 
@@ -209,9 +195,9 @@ fn a_pending_record_flagged_corrupt_is_sealed() {
         });
         let none = AtRestKey::default();
         let pulled = remote("agent_conversation", "c1", &conversation);
-        apply_page(conn, vec![pulled], vec![], NOW, Some(DEVICE), &none)?;
+        apply_page(conn, vec![pulled], NOW, Some(DEVICE), &none)?;
         let broken = remote("agent_conversation", "c1", &json!([1]));
-        let totals = apply_page(conn, vec![broken], vec![], NOW, Some(DEVICE), &none)?;
+        let totals = apply_page(conn, vec![broken], NOW, Some(DEVICE), &none)?;
         assert_eq!(totals.corrupt, 1);
 
         assert_eq!(

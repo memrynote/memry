@@ -116,7 +116,7 @@ impl Device {
         let definitions = Arc::new(PropertyDefinitions::new(
             vault,
             records,
-            Some(core.search().unwrap()),
+            Some(core.search(None).unwrap()),
         ));
 
         let transport = wrap(app_transport(&["127.0.0.1".to_owned()], Arc::new(NoPins)));

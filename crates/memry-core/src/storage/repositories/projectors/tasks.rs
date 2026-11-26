@@ -140,7 +140,7 @@ pub fn project_task(
     view: &Object,
 ) -> Result<(), StorageError> {
     // Cached: preparing an insert into `tasks` also compiles the `task_links`
-    // triggers (migration 0037), which costs more than the write itself.
+    // triggers (migration 0038), which costs more than the write itself.
     let mut statement = conn
         .prepare_cached(
             "INSERT INTO tasks (

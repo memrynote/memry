@@ -82,6 +82,45 @@ final class NoteFiller: VaultFilling, @unchecked Sendable {
     }
 }
 
+/// Refuses a read in a cancelled task, as `CoreExecutor.run` does.
+private struct RefusingCancelledReads: NotesReading {
+    let note: ScriptedNote
+
+    func folders() async throws -> [FolderSummary] { [] }
+    func list() async throws -> [NoteSummary] { [] }
+
+    func read(id: String) async throws -> NoteDetail? {
+        try Task.checkCancellation()
+        return try await note.read(id: id)
+    }
+}
+
+/// A pull that takes long enough for the screen's task to be cancelled
+/// under it. The core's pull runs on regardless (spec-defect 108).
+private final class SlowFiller: VaultFilling, @unchecked Sendable {
+    private let store: NoteStore
+
+    init(store: NoteStore) { self.store = store }
+
+    func isFirstSyncComplete() async throws -> Bool { true }
+
+    func firstSync(
+        progress: @escaping @MainActor @Sendable (SyncProgress) -> Void
+    ) async throws -> FirstSyncSummary {
+        .none
+    }
+
+    func pullNoteBody(noteId: String) async throws -> BodyFetchSummary {
+        // Not `Task.sleep`: that would end early on the cancel, which the
+        // core's pull does not.
+        await withCheckedContinuation { continuation in
+            DispatchQueue.global().asyncAfter(deadline: .now() + 0.1) { continuation.resume() }
+        }
+        store.pull()
+        return BodyFetchSummary(updates: 1, baselines: 0, stopped: false)
+    }
+}
+
 @MainActor
 @Suite("T237 the on-demand body", .serialized)
 struct NoteBodyFetchTests {
@@ -133,6 +172,28 @@ struct NoteBodyFetchTests {
         await model.loadIfNeeded()
         await model.refreshFromRemote()
         #expect(filler.fetches == 1)
+        #expect(model.preview == .text("the body arrived"))
+        #expect(model.fetch == .idle)
+    }
+
+    /// The page's task can be cancelled while the pull runs. The pull lands
+    /// anyway, so the page reads it rather than staying on its button.
+    @Test("a pull whose page task is cancelled is still read")
+    func aCancelledPageStillReadsThePull() async throws {
+        let store = NoteStore()
+        let model = NoteReadViewModel(
+            route: Self.route,
+            reader: RefusingCancelledReads(note: ScriptedNote(store: store)),
+            filler: SlowFiller(store: store)
+        )
+        await model.loadIfNeeded()
+        #expect(model.preview == .notPulled)
+
+        let page = Task { await model.refreshFromRemote() }
+        try await Task.sleep(for: .milliseconds(20))
+        page.cancel()
+        await page.value
+
         #expect(model.preview == .text("the body arrived"))
         #expect(model.fetch == .idle)
     }
@@ -222,5 +283,48 @@ struct NoteBodyFetchTests {
 
         await model.fetchBody()
         #expect(model.blocksRead)
+    }
+
+    /// A new note's body is not pulled yet, so its page fetches the body while
+    /// the title holds the caret. The re-read after the fetch kept the page on
+    /// screen: a `.loading` swap drew the spinner in the title's place, and the
+    /// title's focus state let go of the caret it still drew, so the keys
+    /// typed next went to no edit (#4893).
+    @Test("the read after a fetch keeps the page on screen")
+    func theReadAfterAFetchKeepsThePage() async throws {
+        let store = NoteStore()
+        let phases = PhaseLog()
+        let model = NoteReadViewModel(
+            route: Self.route, reader: PhaseWatchingReads(note: ScriptedNote(store: store), log: phases),
+            filler: NoteFiller(store: store)
+        )
+        await model.loadIfNeeded()
+        phases.model = model
+        #expect(!model.blocksRead)
+
+        await model.fetchBody()
+        #expect(phases.seen.allSatisfy { if case .ready = $0 { true } else { false } }, "\(phases.seen)")
+        #expect(model.preview == .text("the body arrived"))
+        #expect(model.blocksRead)
+    }
+}
+
+/// The page's phase each time the note is read.
+@MainActor
+private final class PhaseLog {
+    weak var model: NoteReadViewModel?
+    var seen: [NoteReadViewModel.Phase] = []
+}
+
+private struct PhaseWatchingReads: NotesReading {
+    let note: ScriptedNote
+    let log: PhaseLog
+
+    func folders() async throws -> [FolderSummary] { [] }
+    func list() async throws -> [NoteSummary] { [] }
+
+    func read(id: String) async throws -> NoteDetail? {
+        await MainActor.run { if let phase = log.model?.phase { log.seen.append(phase) } }
+        return try await note.read(id: id)
     }
 }

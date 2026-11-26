@@ -220,6 +220,7 @@ function getItemTags(db: ReturnType<typeof getDatabase>, itemId: string): string
  * carry, or an index write that failed.
  */
 async function indexFiledBinary(
+  vaultPath: string,
   relativePath: string,
   absolutePath: string,
   tags: string[]
@@ -233,7 +234,7 @@ async function indexFiledBinary(
   // Log and continue. See #800.
   try {
     const indexDb = getIndexDatabase()
-    const noteId = await indexBinaryFile(indexDb, relativePath, absolutePath, fileType)
+    const noteId = await indexBinaryFile(indexDb, vaultPath, relativePath, absolutePath, fileType)
     if (tags.length > 0) setNoteTags(indexDb, noteId, { header: tags, inline: [] })
 
     const stats = await stat(absolutePath)
@@ -714,7 +715,7 @@ async function fileBinaryToFolder(
 
     // Index the filed file, announce it so the tree picks it up live, and push
     // it — the watcher that would normally do the pushing never sees this file.
-    const filedBinary = await indexFiledBinary(relativePath, finalPath, mergedTags)
+    const filedBinary = await indexFiledBinary(vaultPath, relativePath, finalPath, mergedTags)
     announceFiledBinary(filedBinary)
     syncFiledBinary(filedBinary, finalPath, item.attachmentId)
 
@@ -1416,7 +1417,7 @@ async function linkBinaryToNotes(
 
     // Index the filed file, announce it so the tree picks it up live, and push
     // it — the watcher that would normally do the pushing never sees this file.
-    const filedBinary = await indexFiledBinary(relativePath, finalPath, mergedTags)
+    const filedBinary = await indexFiledBinary(vaultPath, relativePath, finalPath, mergedTags)
     announceFiledBinary(filedBinary)
     syncFiledBinary(filedBinary, finalPath, item.attachmentId)
 

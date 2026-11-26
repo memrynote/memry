@@ -18,7 +18,7 @@ use crate::storage::repositories::sync_items::{self, ApplyOutcome, InboundRecord
 use crate::sync::field_merge::FieldConflict;
 use crate::sync::hardening::requeue;
 use crate::sync::versioned_apply::{TAG_SCHEMA, VersionedKey};
-use crate::sync::{journal_day_merge, settings_merge};
+use crate::sync::{day_picture_refs, journal_day_merge, journal_merge, settings_merge};
 
 /// [`apply_inbound_on`] with no device clock id.
 pub fn apply_inbound(
@@ -91,12 +91,15 @@ pub(super) fn apply_record(
     {
         return Ok((ApplyOutcome::Skipped, None));
     }
+    let in_transaction = !conn.is_autocommit();
     let merged = match record.item_type.as_str() {
         tasks::ITEM_TYPE => tasks::apply_remote(conn, record, now_ms, clock_device),
         projects::ITEM_TYPE => projects::apply_remote(conn, record, now_ms),
         // §6.3.1, then §6.8.1's union of `attachmentReferences` (note-handler.ts).
-        notes::ITEM_TYPE => notes::merge::apply_remote(conn, record, now_ms),
+        notes::ITEM_TYPE => apply_note(conn, record, now_ms, clock_device),
         settings::SETTINGS_ITEM_TYPE => settings_merge::apply_remote_merged(conn, record, now_ms),
+        // `tags` and `properties` per unit, the rest by §6.3.1 (§6.12, #5508).
+        journal::ITEM_TYPE => journal_merge::apply_remote(conn, record, now_ms, clock_device),
         // "absent key keeps, explicit null clears" (desktop's inbox handler).
         inbox::ITEM_TYPE => inbox::merge::apply_remote(conn, record, now_ms),
         // Desktop's four calendar handlers (spec 007 CL010/CL011).
@@ -130,8 +133,30 @@ pub(super) fn apply_record(
     match merged {
         Ok(Inbound::Merged { conflicts, .. }) => Ok((ApplyOutcome::Applied, Some(conflicts))),
         Ok(inbound) => Ok((outcome(inbound), None)),
+        // SQLite rolled back the caller's whole transaction (a full disk, an
+        // interrupt): the page's earlier records are gone, so the failure is
+        // the page's, not this record's.
+        Err(error) if in_transaction && conn.is_autocommit() => Err(error),
         Err(error) => Ok((refuse(conn, record, &error.to_string(), now_ms)?, None)),
     }
+}
+
+/// A remote `note`: this device's own file kept over a record that names none,
+/// then a day's pictures merged id by id (#5800), any other note by
+/// [`notes::merge`].
+fn apply_note(
+    conn: &Connection,
+    record: &InboundRecord,
+    now_ms: i64,
+    clock_device: Option<&str>,
+) -> Result<Inbound, StorageError> {
+    let kept = crate::domain::note_file::keep_own_file(conn, record)?;
+    let record = kept.as_ref().unwrap_or(record);
+    // A day's pictures merge id by id, and the merge may owe a push (#5800).
+    if day_picture_refs::is_day_note(&record.item_id) {
+        return day_picture_refs::apply_remote(conn, record, now_ms, clock_device);
+    }
+    notes::merge::apply_remote(conn, record, now_ms)
 }
 
 /// §6.8's fourth row: §6.3.1's document-level resolver, with no per-field step

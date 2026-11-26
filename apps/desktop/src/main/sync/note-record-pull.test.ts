@@ -22,8 +22,6 @@ vi.mock('../vault/status', async (importOriginal) => {
   return { ...actual, getStatus: () => ({ ...actual.getStatus(), path: vaultRoot }) }
 })
 
-vi.mock('./crdt-writeback', () => ({ markWritebackIgnored: vi.fn() }))
-
 import fs from 'fs'
 import os from 'os'
 import path from 'path'

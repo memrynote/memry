@@ -2,7 +2,7 @@ import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { decodeJwt } from 'jose'
 
 import { KEYCHAIN_ENTRIES } from '@memry/contracts/crypto'
-import type { SessionExpiredReason } from '@memry/contracts/ipc-events'
+import { isSessionEndedReason, type SessionExpiredReason } from '@memry/contracts/ipc-events'
 import { SYNC_EVENTS } from '@memry/contracts/ipc-sync'
 import { RefreshTokenResponseSchema } from '@memry/contracts/auth-api'
 import { storeKey, retrieveKey } from '../crypto'
@@ -39,12 +39,18 @@ let activeRefreshPromise: Promise<boolean> | null = null
 let fallbackRetryScheduled = false
 let tokenIssuedAt = 0
 let onTokenRefreshedCallback: (() => void) | null = null
+let onSessionEndedCallback: (() => void) | null = null
 let refreshRejections = 0
 let refreshBlockedUntil = 0
 let credentialsMissing = false
 
 export function setOnTokenRefreshed(cb: (() => void) | null): void {
   onTokenRefreshedCallback = cb
+}
+
+/** Called once `hasSessionEnded()` turns true; one slot, like `setOnTokenRefreshed`. */
+export function setOnSessionEnded(cb: (() => void) | null): void {
+  onSessionEndedCallback = cb
 }
 
 export const storeToken = async (
@@ -106,6 +112,7 @@ export const cancelTokenRefresh = (): void => {
 export const emitSessionExpired = (reason: SessionExpiredReason): void => {
   cancelTokenRefresh()
   broadcastToAllWindows(SYNC_EVENTS.SESSION_EXPIRED, { reason })
+  if (isSessionEndedReason(reason)) onSessionEndedCallback?.()
 }
 
 const clearRefreshRejections = (): void => {
@@ -261,5 +268,6 @@ export function resetTokenManagerState(): void {
   fallbackRetryScheduled = false
   tokenIssuedAt = 0
   onTokenRefreshedCallback = null
+  onSessionEndedCallback = null
   clearRefreshRejections()
 }

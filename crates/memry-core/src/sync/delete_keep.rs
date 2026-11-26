@@ -21,12 +21,20 @@
 //! 4. the tombstone carries the deleter's body state vector and this device's
 //!    body log holds an item it does not cover (#3037).
 //!
+//! A note or journal day whose vault file holds bytes the document never took
+//! (an outside edit the vault has not read yet) keeps that file's text
+//! whatever the four rules say (#5758, #5796). Bytes this device wrote itself
+//! ([`OwnWrites`]) are taken, and a file is hashed in a stream, up to
+//! [`MAX_NOTE_BYTES`], before its body is read.
+//!
 //! The core never writes markdown, so the copy holds [`extract_text`]'s plain
 //! text: words, headings and list markers, without inline formatting. A body
 //! log with a blob that does not replay is read from the note's vault file,
 //! as Electron reads every body, and else from the blobs that replay (#5343).
 
-use std::path::Path;
+use std::fs::File;
+use std::io::Read as _;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use base64::Engine as _;
@@ -40,10 +48,11 @@ use crate::crdt::CrdtError;
 use crate::crdt::registry::{Document, DocumentRegistry, UpdateSink};
 use crate::crdt::text_extract::extract_text;
 use crate::crdt::update_log::{self, LOCAL_NAMESPACE_PREFIX};
+use crate::domain::content_hash::hash_reader;
 use crate::domain::inbox::write::{NewCapture, capture_in};
 use crate::domain::journal;
 use crate::domain::journal_rules::canonical_journal_id;
-use crate::domain::note_files;
+use crate::domain::note_files::{self, MAX_NOTE_BYTES};
 use crate::storage::repositories::sync_items;
 
 use super::clock::{ClockOrder, VectorClock, compare};
@@ -52,6 +61,22 @@ use super::clock::{ClockOrder, VectorClock, compare};
 pub const DELETE_KEEP_SKEW_MS: i64 = 60_000;
 
 const READER_DEVICE_ID: &str = "memry-core-delete-keep";
+
+/// The bytes this device wrote to a note's or journal day's file itself, which the document
+/// holds though the row's `content_hash` may not name them yet: the write-back writes the file
+/// first and stamps the row after (desktop's `OwnFiles`).
+pub trait OwnWrites: Send + Sync + std::fmt::Debug {
+    /// Whether `file_hash` is the content hash of bytes this device wrote last for `item_id`.
+    fn wrote(&self, item_id: &str, file_hash: &str) -> bool;
+}
+
+/// The vault folder whose files hold the notes' bodies (desktop), and the writes of its own
+/// that a delete reads as taken. `None` in a shell with no vault files (iOS).
+#[derive(Debug, Clone)]
+pub struct VaultFiles {
+    pub root: PathBuf,
+    pub own_writes: Option<Arc<dyn OwnWrites>>,
+}
 
 /// The facts [`keeps_unseen_text`] decides on.
 #[derive(Debug, Clone, Default)]
@@ -137,7 +162,7 @@ pub(crate) fn keep(
     tombstone: Option<&VectorClock>,
     deleter_body_state_vector: Option<&str>,
     clock_device: Option<&str>,
-    vault_root: Option<&Path>,
+    vault: Option<&VaultFiles>,
     now_ms: i64,
 ) -> Result<(), StorageError> {
     let Some(title) = copy_title(tx, item_type, item_id)? else {
@@ -189,13 +214,22 @@ pub(crate) fn keep(
         Ok(state_vector) => facts.local_body_state_vector = Some(BASE64.encode(state_vector)),
         Err(error) => eprintln!("memry-core: no state vector for the body of {item_id}: {error}"),
     }
-    if !keeps_unseen_text(&facts) {
+    // Invariant: a file this device has not ingested is never deleted unseen. A note's or
+    // journal day's file edited outside the app that the document has not taken yet (a
+    // closed-app edit the open walk has not reached, one still in the watcher's debounce) holds
+    // text no clock or body log here knows of: it is unseen whatever the clocks say, and the
+    // copy keeps the file's text (#5758, #5796, desktop's #5757).
+    let unseen_file = untaken_file_body(tx, vault, item_id)?;
+    let forced = unseen_file.is_some();
+    if !forced && !keeps_unseen_text(&facts) {
         return Ok(());
     }
-    let file = if skipped > 0 {
-        vault_file_body(tx, vault_root, item_id)?
-    } else {
-        None
+    let file = match unseen_file {
+        Some(text) => Some(text),
+        None if skipped > 0 => {
+            vault_file_body(tx, vault.map(|vault| vault.root.as_path()), item_id)?
+        }
+        None => None,
     };
     let text = match file {
         Some(text) => text,
@@ -208,7 +242,7 @@ pub(crate) fn keep(
         },
     };
     facts.body_blank = text.trim().is_empty();
-    if !keeps_unseen_text(&facts) {
+    if facts.body_blank || (!forced && !keeps_unseen_text(&facts)) {
         return Ok(());
     }
     let device = clock_device.ok_or_else(|| StorageError::Failed {
@@ -282,12 +316,102 @@ fn vault_file_body(
         );
         return Ok(None);
     };
-    match std::fs::read_to_string(root.join(&row.path)) {
+    let read = read_capped(&root.join(&row.path)).and_then(|bytes| {
+        String::from_utf8(bytes)
+            .map_err(|error| std::io::Error::new(std::io::ErrorKind::InvalidData, error))
+    });
+    match read {
         Ok(raw) => Ok(Some(file_body(&raw))),
         Err(error) => {
             eprintln!(
                 "memry-core: the vault file of {item_id} cannot be read, its delete keeps \
                  the text that replays: {error}"
+            );
+            Ok(None)
+        }
+    }
+}
+
+/// The whole file, refused past [`MAX_NOTE_BYTES`] without reading it (a large-file note's
+/// delete leaves its file on disk, which the write-back reads the same way).
+fn read_capped(path: &Path) -> std::io::Result<Vec<u8>> {
+    let file = File::open(path)?;
+    refuse_large(&file)?;
+    let mut bytes = Vec::new();
+    file.take(MAX_NOTE_BYTES + 1).read_to_end(&mut bytes)?;
+    if bytes.len() as u64 > MAX_NOTE_BYTES {
+        return Err(too_large());
+    }
+    Ok(bytes)
+}
+
+fn refuse_large(file: &File) -> std::io::Result<()> {
+    match file.metadata()?.len() > MAX_NOTE_BYTES {
+        true => Err(too_large()),
+        false => Ok(()),
+    }
+}
+
+fn too_large() -> std::io::Error {
+    std::io::Error::new(
+        std::io::ErrorKind::FileTooLarge,
+        format!("the file is larger than {MAX_NOTE_BYTES} bytes"),
+    )
+}
+
+/// The body of `item_id`'s vault file when its bytes are neither the ones the document took
+/// (the row's `content_hash`) nor ones this device wrote itself ([`OwnWrites`]); `None` when
+/// they are, when the row names no text the document took, or when there is no file to read.
+/// The file is hashed in a stream first, and its body read only when the hash differs.
+fn untaken_file_body(
+    tx: &Connection,
+    vault: Option<&VaultFiles>,
+    item_id: &str,
+) -> Result<Option<String>, StorageError> {
+    let Some(vault) = vault else {
+        return Ok(None);
+    };
+    let Some(row) = note_files::by_id(tx, item_id)? else {
+        return Ok(None);
+    };
+    // On purpose: a row with no `content_hash` names no text the document took (a file not
+    // read yet), so its file counts as taken and no copy is made. The write-back's sweep of
+    // deleted notes keeps such a file on disk (`Leftover::Kept`), so its text is not lost.
+    let Some(taken) = row.content_hash else {
+        return Ok(None);
+    };
+    let path = vault.root.join(&row.path);
+    let hashed = File::open(&path).and_then(|file| {
+        refuse_large(&file)?;
+        hash_reader(file.take(MAX_NOTE_BYTES + 1))
+    });
+    let hash = match hashed {
+        Ok((_, read)) if read > MAX_NOTE_BYTES => Err(too_large()),
+        other => other.map(|(hash, _)| hash),
+    };
+    let hash = match hash {
+        Ok(hash) => hash,
+        // Moved or removed while the app was closed: nothing at the row's path to keep.
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => {
+            eprintln!(
+                "memry-core: the vault file of {item_id} cannot be read before its delete: {error}"
+            );
+            return Ok(None);
+        }
+    };
+    let own = vault
+        .own_writes
+        .as_ref()
+        .is_some_and(|own| own.wrote(item_id, &hash));
+    if hash == taken || own {
+        return Ok(None);
+    }
+    match read_capped(&path) {
+        Ok(bytes) => Ok(Some(file_body(&String::from_utf8_lossy(&bytes)))),
+        Err(error) => {
+            eprintln!(
+                "memry-core: the vault file of {item_id} cannot be read before its delete: {error}"
             );
             Ok(None)
         }

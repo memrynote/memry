@@ -2,8 +2,7 @@ import MemryCore
 import SwiftUI
 
 // The Notes root: the vault's folder tree, its notes, Bookmarks and Tags.
-// The phone stack's first screen, and the split view's list column for the
-// vault root, where Bookmarks and Tags live in the sidebar instead.
+// The first screen of the phone stack and of the split view's list column.
 
 /// The sort control. Lifted out of `NotesListView.body` on purpose — see the
 /// toolbar comment there.
@@ -88,10 +87,8 @@ private struct VaultOutlineList: View {
     /// Folded from its title, like Bookmarks and Tags. Only foldable when
     /// those exist: alone, the tree has no title to tap.
     @AppStorage("notes.section.collections.collapsed") private var collectionsCollapsed = false
-    /// Inside the split view, Bookmarks and Tags are the sidebar's.
-    @Environment(NotesSplitRouter.self) private var split: NotesSplitRouter?
 
-    private var hasShortcuts: Bool { split == nil && (!model.bookmarks.isEmpty || !model.tags.isEmpty) }
+    private var hasShortcuts: Bool { !model.bookmarks.isEmpty || !model.tags.isEmpty }
 
     var body: some View {
         NotesList {
@@ -120,10 +117,8 @@ private struct VaultOutlineList: View {
                     Text("These notes are in folders this vault has no folder record for.")
                 }
             }
-            if split == nil {
-                BookmarksSection(bookmarks: model.bookmarks)
-                TagsSection(tags: model.tags, openTag: openTag)
-            }
+            BookmarksSection(bookmarks: model.bookmarks)
+            TagsSection(tags: model.tags, openTag: openTag)
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)

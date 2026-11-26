@@ -5,6 +5,8 @@
  * @module vault/note-sync
  */
 
+import { posix } from 'path'
+import type { NoteEventSource } from '@memry/contracts/notes-api'
 import type { NoteFrontmatter } from './frontmatter'
 import {
   extractAliases,
@@ -21,6 +23,9 @@ import { extractInlineTagsFromMarkdown } from '@memry/shared/inline-tags'
 import { COVER_FRONTMATTER_KEY, isCoverValue } from '@memry/shared/cover-image'
 import { extractDateFromPath, getNoteCacheByPath } from '@main/database/queries/notes'
 import { getDatabase, type IndexDb } from '../database'
+import { diskCaseOf, volumeIgnoresCase } from './disk-case'
+import { getPendingDelete } from './rename-tracker'
+import { createLogger } from '../lib/logger'
 import type { FileType } from '@memry/shared/file-types'
 import {
   isPersistableDefinitionType,
@@ -33,13 +38,18 @@ import {
   saveCanonicalPropertyDefinition
 } from '@memry/domain-notes'
 import {
+  getNoteMetadataById,
   getNoteMetadataByPath,
+  listNoteMetadataByFoldedPath,
   getPropertyDefinition as getCanonicalPropertyDefinition,
   updateNoteMetadata,
   type NoteMetadataDb
 } from '@memry/storage-data'
-import { publishProjectionEvent } from '../projections'
+import { flushProjectionEvents, publishProjectionEvent } from '../projections'
+import { DEFAULT_PROJECTION_QUEUE_LIMIT } from '../projections/bus'
 import type { FileNoteProjection, MarkdownNoteProjection } from '../projections/types'
+import { forgetSyncedBinaryHash } from '../sync/binary-synced-hash'
+import { clearCaseTwinForeignBytes } from './case-twin-bytes'
 
 function getCanonicalDb() {
   try {
@@ -97,26 +107,163 @@ export function learnCanonicalPropertyType(
   return type
 }
 
+export interface CanonicalNoteRef {
+  id: string
+  /** The row's spelling, which differs from the file's only in case. */
+  path: string
+  title: string
+  createdAt: string
+  modifiedAt: string
+  fileSize: number | null
+  /**
+   * Other rows fold to this file's path (#5263), the row at its exact path
+   * included: their bytes may be the ones on disk, so the file's size and
+   * body say nothing about this row (#5297).
+   */
+  sharesFile: boolean
+  emoji: string | null
+  localOnly: boolean
+}
+
 /**
- * The identity the vault already holds for `path`, if it holds one.
+ * The rows that name the file at `relativePath` (the disk's spelling) on a
+ * disk that ignores case; empty on one that does not.
+ */
+function listRowsOnFile(
+  dataDb: NonNullable<ReturnType<typeof getCanonicalDb>>,
+  vaultPath: string,
+  relativePath: string
+) {
+  // The exact row too: a re-keyed twin sits at the disk spelling (#5297).
+  const candidates = volumeIgnoresCase(vaultPath)
+    ? listNoteMetadataByFoldedPath(dataDb, relativePath)
+    : []
+  // The fold finds candidates; the disk proves which of them name this file. On
+  // APFS `ılık.md` and `Ilık.md` fold to one key but are two files.
+  return candidates.filter((candidate) => diskCaseOf(vaultPath, candidate.path) === relativePath)
+}
+
+/**
+ * The ids of the case twins sharing the file at `relativePath` (the disk's
+ * spelling) other than `noteId`. Empty when the file is not shared.
+ */
+export function listCaseTwinIds(vaultPath: string, relativePath: string, noteId: string): string[] {
+  const dataDb = getCanonicalDb()
+  if (!dataDb) return []
+  const rows = listRowsOnFile(dataDb, vaultPath, relativePath)
+  return rows.length > 1 ? rows.map((row) => row.id).filter((id) => id !== noteId) : []
+}
+
+/**
+ * The paths of the case twins sharing the file at `relativePath`, in any
+ * spelling, or none when the file is not shared. The disk is read only when
+ * another row folds to the path, so a file with no twin costs a watcher event
+ * no I/O (#5624).
+ */
+export function listCaseTwinPaths(vaultPath: string, relativePath: string): string[] {
+  const dataDb = getCanonicalDb()
+  if (!dataDb || !volumeIgnoresCase(vaultPath)) return []
+  if (listNoteMetadataByFoldedPath(dataDb, relativePath).length < 2) return []
+  // Callers name the file by the row's spelling; the rows are matched to
+  // the disk's. A file that is not there holds no body to take.
+  const onDisk = diskCaseOf(vaultPath, relativePath)
+  const rows = onDisk === null ? [] : listRowsOnFile(dataDb, vaultPath, onDisk)
+  return rows.length > 1 ? rows.map((row) => row.path) : []
+}
+
+/**
+ * The identity the vault already holds for the file at `relativePath`, given
+ * in the disk's spelling, if it holds one.
  *
  * `note_metadata.path` is unique, so a second row for the same path is not a
  * duplicate to be resolved later — it is an INSERT that throws. An ingest that
  * finds a path already claimed has to adopt that row's id rather than mint a
  * fresh one: the id is what the note's CRDT doc, sync item and open tabs are
  * keyed by, so renumbering it orphans all three.
+ *
+ * On a case-insensitive disk the row can spell the path in another case: sync
+ * applies a note at `SuperNotes/a.md`, and the file lands in the `Supernotes/`
+ * folder the disk already has. Each such file was listed again under a fresh
+ * id and pushed as a create (#5261).
  */
-export function findCanonicalNoteByPath(path: string): { id: string; createdAt: string } | null {
+export function findCanonicalNoteForFile(
+  vaultPath: string,
+  relativePath: string
+): CanonicalNoteRef | null {
   const dataDb = getCanonicalDb()
   if (!dataDb) return null
-  const existing = getNoteMetadataByPath(dataDb, path)
-  return existing ? { id: existing.id, createdAt: existing.createdAt } : null
+  const exact = getNoteMetadataByPath(dataDb, relativePath)
+  const onThisFile = listRowsOnFile(dataDb, vaultPath, relativePath)
+  const row = exact ?? onThisFile[0]
+  return row
+    ? {
+        sharesFile: onThisFile.length > 1,
+        id: row.id,
+        path: row.path,
+        title: row.title,
+        createdAt: row.createdAt,
+        modifiedAt: row.modifiedAt,
+        fileSize: row.fileSize,
+        emoji: row.emoji,
+        localOnly: row.localOnly
+      }
+    : null
 }
 
+/**
+ * Whether a file whose row spells its path in another case is the remote-apply
+ * shape (#5261): only the folder segments differ, and no unlink of the row's
+ * path is pending. Sync wrote the row's spelling into a folder the disk spells
+ * otherwise, and nothing was renamed. A file name that changed case is the
+ * user's rename, which syncs. File names compare in NFC: APFS keeps the form a
+ * name was written in, so the disk can hold the row's name decomposed.
+ */
+export function isRemoteApplySpelling(claimed: CanonicalNoteRef, relativePath: string): boolean {
+  return (
+    posix.basename(claimed.path).normalize('NFC') ===
+      posix.basename(relativePath).normalize('NFC') && getPendingDelete(claimed.id) === undefined
+  )
+}
+
+const log = createLogger('NoteSync')
+
+/**
+ * Whether the file at `relativePath` is shared by case twins: distinct rows
+ * whose paths fold to it on a case-insensitive disk (#5263). The file holds
+ * one twin's body, so its bytes never enter note `noteId`'s doc. Taking them
+ * pushed one note's body into the other on every device (#5297). Every
+ * reader that feeds a note's file into its doc asks this first, and leaves
+ * the file to the twin repair.
+ */
+export function refusesCaseTwinFile(
+  vaultPath: string,
+  relativePath: string,
+  noteId: string
+): boolean {
+  if (listCaseTwinPaths(vaultPath, relativePath).length === 0) return false
+  log.warn('A file shared with a case twin stays out of the doc', { noteId, path: relativePath })
+  return true
+}
+
+/** The path the canonical row gives note `id`, or null when it has no row. */
+export function findCanonicalNotePath(id: string): string | null {
+  const dataDb = getCanonicalDb()
+  if (!dataDb) return null
+  return getNoteMetadataById(dataDb, id)?.path ?? null
+}
+
+/**
+ * Drops note `noteId`'s row and the `sync_state` marks kept for its binary
+ * file. Every caller drops the row once its file is gone or another row's,
+ * and the pull re-creates no id this device deleted while its tombstone is
+ * pending, so a re-created id starts with no mark.
+ */
 function removeCanonicalMetadata(noteId: string): void {
   const dataDb = getCanonicalDb()
   if (!dataDb) return
   deleteCanonicalNote(dataDb, noteId)
+  forgetSyncedBinaryHash(dataDb, noteId)
+  clearCaseTwinForeignBytes(dataDb, noteId)
 }
 
 /**
@@ -129,6 +276,11 @@ export interface NoteSyncInput {
   path: string
   /** Full file content including frontmatter */
   fileContent: string
+  /**
+   * The write-back's baseline to record instead of the hash of `fileContent`,
+   * for a reader that does not feed the doc (sync/writeback-baseline.ts).
+   */
+  contentHash?: string
   /** Raw user frontmatter keys (used for tags/aliases/properties extraction) */
   frontmatter: NoteFrontmatter
   /** Markdown body content (without frontmatter) */
@@ -185,6 +337,8 @@ export type NoteSyncResult = NoteMetadata
 export interface NoteSyncOptions {
   /** Whether this is a new note (insert) or existing (update). */
   isNew: boolean
+  /** What caused the write, for the notes its link changes touch. Default `'internal'`. */
+  source?: NoteEventSource
 }
 
 // ============================================================================
@@ -210,7 +364,7 @@ export function extractNoteMetadata(input: NoteSyncInput): NoteMetadata {
   const wordCount = calculateWordCount(parsedContent)
   const characterCount = parsedContent.length
   const snippet = createSnippet(parsedContent)
-  const contentHash = generateContentHash(fileContent)
+  const contentHash = input.contentHash ?? generateContentHash(fileContent)
   const date = extractDateFromPath(path)
   const emoji = input.emoji ?? null
   const rawCover = frontmatter[COVER_FRONTMATTER_KEY]
@@ -243,8 +397,22 @@ export function extractNoteMetadata(input: NoteSyncInput): NoteMetadata {
 export function syncNoteToCache(
   _db: IndexDb,
   input: NoteSyncInput,
-  _options: NoteSyncOptions
+  options: NoteSyncOptions
 ): NoteSyncResult {
+  const { metadata, publish } = persistNoteToCache(input, options)
+  publish()
+  return metadata
+}
+
+/**
+ * `syncNoteToCache` for a write inside a data-DB transaction: run `publish`
+ * once the transaction commits, so the index never takes a row the data DB
+ * rolled back.
+ */
+export function persistNoteToCache(
+  input: NoteSyncInput,
+  options: NoteSyncOptions
+): { metadata: NoteSyncResult; publish: () => void } {
   const { id, path, parsedContent, title, createdAt, modifiedAt, localOnly } = input
   const metadata = extractNoteMetadata(input)
   const {
@@ -301,12 +469,13 @@ export function syncNoteToCache(
     wikiLinks
   }
 
-  publishProjectionEvent({
-    type: 'note.upserted',
-    note
-  })
-
-  return metadata
+  const publish = (): void =>
+    publishProjectionEvent({
+      type: 'note.upserted',
+      note,
+      source: options.source
+    })
+  return { metadata, publish }
 }
 
 /**
@@ -345,6 +514,13 @@ export function syncNoteStatToCache(
   input: NoteStatSyncInput,
   options: NoteStatSyncOptions
 ): void {
+  publishProjectionEvent({ type: 'note.upserted', note: persistNoteStat(input, options) })
+}
+
+function persistNoteStat(
+  input: NoteStatSyncInput,
+  options: NoteStatSyncOptions
+): MarkdownNoteProjection {
   const { id, path, title, createdAt, modifiedAt, fileSize } = input
   const localOnly = input.localOnly ?? false
   const emoji = input.emoji ?? null
@@ -368,7 +544,7 @@ export function syncNoteStatToCache(
     }
   }
 
-  const note: MarkdownNoteProjection = {
+  return {
     kind: 'markdown',
     noteId: id,
     path,
@@ -391,8 +567,40 @@ export function syncNoteStatToCache(
     aliases: null,
     wikiLinks: []
   }
+}
 
-  publishProjectionEvent({ type: 'note.upserted', note })
+/** A note row that a folder rename or move carries to a new path. */
+export type NoteMove =
+  | { kind: 'markdown'; input: NoteStatSyncInput }
+  | { kind: 'file'; input: FileSyncInput }
+
+/**
+ * Projection lanes drop their oldest events past DEFAULT_PROJECTION_QUEUE_LIMIT,
+ * and the note-cache lane has no repair for a dropped move.
+ */
+const MOVE_PROJECTION_BATCH = DEFAULT_PROJECTION_QUEUE_LIMIT / 4
+
+/**
+ * Carry many notes to new paths, as a folder rename does.
+ *
+ * Every canonical row moves first, in one synchronous pass, so a watcher event
+ * handled while the index catches up already finds each note at its new path.
+ * The index follows in batches the projection lanes can hold. Publishing one
+ * event per note at once overflowed them on a folder of a few thousand notes,
+ * and every dropped event left a note in the sidebar under the old folder.
+ */
+export async function moveNotesInCache(db: IndexDb, moves: NoteMove[]): Promise<void> {
+  const notes = moves.map((move) =>
+    move.kind === 'markdown'
+      ? persistNoteStat(move.input, { isNew: false })
+      : persistFile(db, move.input).note
+  )
+  for (let start = 0; start < notes.length; start += MOVE_PROJECTION_BATCH) {
+    for (const note of notes.slice(start, start + MOVE_PROJECTION_BATCH)) {
+      publishProjectionEvent({ type: 'note.upserted', note })
+    }
+    await flushProjectionEvents()
+  }
 }
 
 /**
@@ -520,7 +728,49 @@ export interface FileSyncResult {
  * @param input - File sync input
  * @returns Sync result
  */
+/**
+ * Move a file's row to `input.path` and keep every other canonical column
+ * (emoji, local-only, sync bookkeeping), as `syncNoteStatToCache` with
+ * `isNew: false` does for markdown. `syncFileToCache` writes the whole row.
+ */
+export function moveFileInCache(_db: IndexDb, input: FileSyncInput): void {
+  const dataDb = getCanonicalDb()
+  if (dataDb) {
+    updateNoteMetadata(dataDb, input.id, {
+      path: input.path,
+      title: input.title,
+      fileType: input.fileType,
+      mimeType: input.mimeType,
+      fileSize: input.fileSize,
+      modifiedAt: input.modifiedAt.toISOString()
+    })
+  }
+  publishProjectionEvent({
+    type: 'note.upserted',
+    note: {
+      kind: 'file',
+      noteId: input.id,
+      path: input.path,
+      title: input.title,
+      fileType: input.fileType,
+      mimeType: input.mimeType,
+      fileSize: input.fileSize,
+      createdAt: input.createdAt.toISOString(),
+      modifiedAt: input.modifiedAt.toISOString()
+    }
+  })
+}
+
 export function syncFileToCache(db: IndexDb, input: FileSyncInput): FileSyncResult {
+  const { result, note } = persistFile(db, input)
+  publishProjectionEvent({ type: 'note.upserted', note })
+  return result
+}
+
+function persistFile(
+  db: IndexDb,
+  input: FileSyncInput
+): { result: FileSyncResult; note: FileNoteProjection } {
   const { id, path, title, fileType, mimeType, fileSize, createdAt, modifiedAt } = input
 
   syncCanonicalMetadata({
@@ -550,17 +800,5 @@ export function syncFileToCache(db: IndexDb, input: FileSyncInput): FileSyncResu
     modifiedAt: modifiedAt.toISOString()
   }
 
-  publishProjectionEvent({
-    type: 'note.upserted',
-    note
-  })
-
-  return {
-    id: noteId,
-    path,
-    title,
-    fileType,
-    mimeType,
-    fileSize
-  }
+  return { result: { id: noteId, path, title, fileType, mimeType, fileSize }, note }
 }

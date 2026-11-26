@@ -59,6 +59,8 @@ vi.mock('../../vault/index', () => ({
 }))
 
 vi.mock('../../vault/note-sync', () => ({
+  // No case twin shares a file here (#5561).
+  findCanonicalNoteForFile: () => null,
   syncNoteToCache: vi.fn(),
   syncFileToCache: vi.fn(),
   deleteNoteFromCache: vi.fn()
@@ -73,7 +75,7 @@ vi.mock('../crdt-writeback-port', async () => {
   const writeback = await import('../crdt-writeback')
   return { crdtWriteback: () => writeback }
 })
-vi.mock('../crdt-writeback', () => ({ markWritebackIgnored: vi.fn() }))
+vi.mock('../crdt-writeback', () => ({}))
 
 vi.mock('@memry/domain-notes', () => ({ saveCanonicalPropertyDefinition: vi.fn() }))
 

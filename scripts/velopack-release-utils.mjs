@@ -339,9 +339,12 @@ export function selectPreviousFullNupkgAsset(assetNames) {
   return null
 }
 
+// Prereleases such as `ort-pod-*` hold CI build inputs, not app releases, and carry no nupkg.
 export function selectPreviousPublishedRelease(releases, { excludeTag } = {}) {
   const published = releases
-    .filter((release) => !release.isDraft && release.tagName !== excludeTag)
+    .filter(
+      (release) => !release.isDraft && !release.isPrerelease && release.tagName !== excludeTag
+    )
     .toSorted((left, right) => createdAtTime(right) - createdAtTime(left))
 
   return published[0]?.tagName ?? null

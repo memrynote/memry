@@ -414,6 +414,7 @@ impl Relay {
             device.db(),
             Declaration::desktop(),
             sealed.clone(),
+            device.id,
         )
         .with_at_rest_key(device.vault.at_rest_key())
         .drain_wave()

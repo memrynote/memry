@@ -20,9 +20,11 @@ use crate::api::errors::StorageError;
 use crate::domain::desktop_records::{live, tombstone};
 use crate::domain::notes::{failed, insert_local, next_clock, object};
 use crate::domain::saved_filters::mint_id;
+use crate::storage::nested_tx;
 use crate::storage::repositories::schema::Object;
 use crate::storage::repositories::{Change, StoredPayload, sync_items};
 use crate::sync::outbox;
+use crate::sync::server_vault::RecordVault;
 
 use super::folder_paths::normalize_folder;
 use super::{CANVAS_SCENE_SYNC_CAP_BYTES, Canvas, ITEM_TYPE, NewCanvas, canonical_scene};
@@ -119,24 +121,31 @@ pub fn get(conn: &Connection, canvas_id: &str) -> Result<Option<Canvas>, Storage
     Ok(Some(canvas))
 }
 
-/// Every live canvas of the vault, most recently changed first, without
-/// scenes (`listCanvases`). A payload that named no vault lists in every one.
+/// Every live canvas of the vault whose local id is `vault_id`, most recently
+/// changed first, without scenes (`listCanvases`): every one once the vault is
+/// bound ([`RecordVault::lists_every_record`]), else those stating its local id.
+/// A payload that named no vault lists in every one.
 pub fn list(conn: &Connection, vault_id: &str) -> Result<Vec<Canvas>, StorageError> {
+    let vault = RecordVault::read(conn, vault_id)?;
     let mut statement = conn
         .prepare_cached(&format!(
             "SELECT {COLUMNS} FROM canvases c
-             WHERE c.vault_id IN (?1, '') AND c.deleted_at IS NULL
+             WHERE (?3 OR c.vault_id IN (?1, ?2, '')) AND c.deleted_at IS NULL
              ORDER BY c.updated_at DESC, c.id"
         ))
         .map_err(failed)?;
     statement
-        .query_map([vault_id], read_row)
+        .query_map(
+            params![vault.stamp(), vault.local(), vault.lists_every_record()],
+            read_row,
+        )
         .map_err(failed)?
         .collect::<Result<_, _>>()
         .map_err(failed)
 }
 
-/// Creates a canvas, queued for push unless its scene is over the cap.
+/// Creates a canvas, queued for push unless its scene is over the cap. It
+/// states the [`RecordVault`] stamp of the vault whose local id is `vault_id`.
 pub fn create(
     conn: &Connection,
     canvas: &NewCanvas<'_>,
@@ -152,9 +161,10 @@ pub fn create(
     let id = chosen_id(canvas.id)?;
     let folder = normalize_folder(canvas.folder)?;
     let scene = canonical_scene(canvas.scene.unwrap_or(""))?;
+    let vault = RecordVault::read(conn, vault_id)?;
     let payload = object(json!({
         "id": id,
-        "vaultId": vault_id,
+        "vaultId": vault.stamp(),
         "title": canvas.title,
         "scene": scene,
         "folder": folder,
@@ -163,7 +173,7 @@ pub fn create(
         "clock": next_clock(&Object::new(), device_id)?,
         "deletedAt": null,
     }));
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     insert_local(&tx, ITEM_TYPE, &id, payload, now_ms)?;
     commit(tx, &id, &scene, now_ms)
 }
@@ -178,7 +188,7 @@ pub fn update(
 ) -> Result<Updated, StorageError> {
     let folder = edit.folder.map(normalize_folder).transpose()?;
     let scene = edit.scene.map(canonical_scene).transpose()?;
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let stored = live(&tx, ITEM_TYPE, canvas_id, "canvas")?;
     if let Some(expected) = edit.expected_updated_at {
         let updated_at: Option<i64> = tx
@@ -232,7 +242,7 @@ pub fn delete(
     if get(conn, canvas_id)?.is_none() {
         return Ok(false);
     }
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     tombstone_in(&tx, canvas_id, device_id, now_ms)?;
     tx.commit().map_err(failed)?;
     Ok(true)
@@ -258,9 +268,10 @@ pub fn duplicate(
         return Ok(None);
     };
     let scene = scene.unwrap_or(source.scene);
+    let vault = RecordVault::read(conn, vault_id)?;
     let payload = object(json!({
         "id": id,
-        "vaultId": vault_id,
+        "vaultId": vault.stamp(),
         "title": copy.title,
         "scene": scene,
         "folder": source.folder,
@@ -269,7 +280,7 @@ pub fn duplicate(
         "clock": next_clock(&Object::new(), device_id)?,
         "deletedAt": null,
     }));
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     insert_local(&tx, ITEM_TYPE, &id, payload, now_ms)?;
     tx.execute(
         "INSERT OR IGNORE INTO canvas_assets (
@@ -343,19 +354,24 @@ pub(crate) fn tombstone_in(
     Ok(())
 }
 
-/// The id and folder of every live canvas of the vault, read without scenes.
+/// The id and folder of every live canvas of the vault, read without scenes:
+/// the canvases [`list`] lists.
 pub(crate) fn placements(
     conn: &Connection,
     vault_id: &str,
 ) -> Result<Vec<(String, Option<String>)>, StorageError> {
+    let vault = RecordVault::read(conn, vault_id)?;
     let mut statement = conn
         .prepare_cached(
             "SELECT id, folder FROM canvases
-             WHERE vault_id IN (?1, '') AND deleted_at IS NULL ORDER BY id",
+             WHERE (?3 OR vault_id IN (?1, ?2, '')) AND deleted_at IS NULL ORDER BY id",
         )
         .map_err(failed)?;
     statement
-        .query_map([vault_id], |row| Ok((row.get(0)?, row.get(1)?)))
+        .query_map(
+            params![vault.stamp(), vault.local(), vault.lists_every_record()],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
         .map_err(failed)?
         .collect::<Result<_, _>>()
         .map_err(failed)
@@ -363,7 +379,7 @@ pub(crate) fn placements(
 
 /// Queues the canvas when `scene` fits the cap, commits, and reads it back.
 fn commit(
-    tx: rusqlite::Transaction<'_>,
+    tx: nested_tx::NestedTx<'_>,
     canvas_id: &str,
     scene: &str,
     now_ms: i64,

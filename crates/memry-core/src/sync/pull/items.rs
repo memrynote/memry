@@ -6,9 +6,9 @@ use std::sync::Arc;
 
 use serde_json::Value as Json;
 
-use crate::sync::crypto_batch::off_runtime;
-
 use super::{PullError, PullLoop, PullReport, now_ms};
+use crate::api::errors::StorageError;
+use crate::protocol::account::UNKNOWN_SIGNER;
 use crate::storage::repositories::sync_items;
 use crate::sync::apply::{self, Pending};
 use crate::sync::changes_page::ChangesPage;
@@ -17,43 +17,82 @@ use crate::sync::hardening::purged;
 use crate::sync::hardening::quarantine;
 use crate::sync::note_body_feed::{self, FeedClient, FetchedBodies};
 use crate::sync::pull_decode::{self, Undecodable, server_cursor};
+use crate::sync::unknown_signer;
+
+/// One pulled item beside its decode: pending, or why it is one corrupt item.
+pub(super) type Decoded = (Json, Result<Pending, Undecodable>);
+
+/// A chunk of pulled items decoding on the blocking pool, started by
+/// [`PullLoop::start_items`].
+pub(super) struct Decoding(tokio::task::JoinHandle<Vec<Decoded>>);
+
+impl Decoding {
+    async fn finish(self) -> Result<Vec<Decoded>, PullError> {
+        let decoded = self.0.await.map_err(|error| StorageError::Failed {
+            what: format!("decoding a pulled page failed: {error}"),
+        })?;
+        Ok(decoded)
+    }
+}
 
 impl PullLoop {
-    /// Decodes pulled items per item (§5.14): each one is pending or one
-    /// recorded corrupt item. A hardened pull first skips, undecoded, every
-    /// item permanently quarantined ([`quarantine::blocked`]), as Electron's
-    /// pull does (`pull-coordinator.ts:806`).
-    pub(super) async fn take_items(
+    /// Starts decoding pulled items on the blocking pool and answers at once,
+    /// so the caller's next chunk request overlaps this chunk's crypto
+    /// (#5231). A hardened pull first skips, undecoded, every item
+    /// permanently quarantined ([`quarantine::blocked`]), as Electron's pull
+    /// does (`pull-coordinator.ts:806`).
+    pub(super) async fn start_items(
         &self,
         items: Vec<Json>,
         report: &mut PullReport,
-        pending: &mut Vec<Pending>,
-    ) -> Result<(), PullError> {
-        let items = if self.hardened {
-            let blocked = self
-                .db
-                .call(|conn| quarantine::blocked(conn, now_ms()))
-                .await?;
-            let (skipped, kept): (Vec<Json>, Vec<Json>) = items
-                .into_iter()
-                .partition(|item| blocked.contains(&(field(item, "type"), field(item, "id"))));
-            report.skipped += skipped.len();
-            kept
-        } else {
-            items
-        };
-        let mut marked = Vec::new();
-        for (item, decoded) in self.decode_batch(items).await? {
-            match decoded {
-                Ok(decoded) => pending.push(decoded),
-                Err(corrupt) => {
-                    report.corrupt += 1;
-                    marked.extend(self.record_corrupt(&item, &corrupt).await?);
+    ) -> Result<Decoding, PullError> {
+        let items = self.skip_quarantined(items, report).await?;
+        Ok(self.spawn_decode(items))
+    }
+
+    /// Takes started chunks in arrival order, per item (§5.14): answers the
+    /// pending items and records each corrupt one.
+    pub(super) async fn take_decoded(
+        &self,
+        chunks: Vec<Decoding>,
+        report: &mut PullReport,
+    ) -> Result<Vec<Pending>, PullError> {
+        let mut pending = Vec::new();
+        for chunk in chunks {
+            let mut marked = Vec::new();
+            for (item, decoded) in chunk.finish().await? {
+                match decoded {
+                    Ok(decoded) => pending.push(decoded),
+                    Err(corrupt) => {
+                        report.corrupt += 1;
+                        marked.extend(self.record_corrupt(&item, &corrupt).await?);
+                    }
                 }
             }
+            self.warn(marked).await;
         }
-        self.warn(marked).await;
-        Ok(())
+        Ok(pending)
+    }
+
+    /// In a hardened pull, drops every item permanently quarantined
+    /// ([`quarantine::blocked`]) undecoded and counts it skipped.
+    pub(super) async fn skip_quarantined(
+        &self,
+        items: Vec<Json>,
+        report: &mut PullReport,
+    ) -> Result<Vec<Json>, PullError> {
+        if !self.hardened {
+            return Ok(items);
+        }
+        let blocked = self
+            .db
+            .call(|conn| quarantine::blocked(conn, now_ms()))
+            .await?;
+        let (skipped, kept): (Vec<Json>, Vec<Json>) = items
+            .into_iter()
+            .partition(|item| blocked.contains(&(field(item, "type"), field(item, "id"))));
+        report.skipped += skipped.len();
+        Ok(kept)
     }
 
     /// Pushes the purged tombstones that apply onto `pending`
@@ -82,7 +121,9 @@ impl PullLoop {
             from_zero || blocked.contains(&(marker.item_type.clone(), marker.item_id.clone()))
         };
         let keys = self.signer_keys.as_deref();
-        pending.extend(purged::applicable(entries, skip, keys, &self.http, &self.db).await?);
+        pending.extend(
+            purged::applicable(entries, skip, self.vault_id(), keys, &self.http, &self.db).await?,
+        );
         Ok(named)
     }
 
@@ -97,13 +138,14 @@ impl PullLoop {
     /// Opens and decodes `items`, in order, on `spawn_blocking`: a page's
     /// envelope opens and signature checks are CPU work that must not hold a
     /// runtime worker (#3534).
-    pub(super) async fn decode_batch(
-        &self,
-        items: Vec<Json>,
-    ) -> Result<Vec<(Json, Result<Pending, Undecodable>)>, PullError> {
+    pub(super) async fn decode_batch(&self, items: Vec<Json>) -> Result<Vec<Decoded>, PullError> {
+        self.spawn_decode(items).finish().await
+    }
+
+    fn spawn_decode(&self, items: Vec<Json>) -> Decoding {
         let declaration = self.declaration.clone();
         let cipher = Arc::clone(&self.cipher);
-        let decoded = off_runtime("decoding a pulled page", move || {
+        Decoding(tokio::task::spawn_blocking(move || {
             items
                 .into_iter()
                 .map(|item| {
@@ -111,9 +153,7 @@ impl PullLoop {
                     (item, decoded)
                 })
                 .collect()
-        })
-        .await?;
-        Ok(decoded)
+        }))
     }
 
     /// The `items` array of a `POST /sync/pull` body, taken out of it; `None`
@@ -207,6 +247,9 @@ impl PullLoop {
             .call(move |conn| {
                 sync_items::upsert_metadata_only(conn, &item_type, &item_id, now, cursor)?;
                 sync_items::mark_corrupt(conn, &item_type, &item_id, &reason, now)?;
+                if reason.ends_with(UNKNOWN_SIGNER) {
+                    unknown_signer::refused(conn, &item_type, &item_id)?;
+                }
                 quarantined
                     .map(|signer| {
                         quarantine::record_failure(

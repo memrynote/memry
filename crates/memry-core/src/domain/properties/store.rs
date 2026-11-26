@@ -6,6 +6,7 @@ use serde_json::{Map, Value};
 
 use crate::api::errors::StorageError;
 use crate::domain::projects;
+use crate::storage::nested_tx;
 use crate::storage::repositories::instants;
 use crate::storage::repositories::schema::Object;
 use crate::storage::repositories::{Change, StoredPayload, sync_items};
@@ -60,7 +61,7 @@ pub(super) fn write(
         publish(conn)?;
         return Ok(values);
     }
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     publish(&tx)?;
     tx.commit().map_err(failed)?;
     Ok(values)

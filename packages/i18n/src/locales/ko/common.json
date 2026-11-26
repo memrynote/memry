@@ -1,4 +1,7 @@
 {
+  "wikiLink": {
+    "openFailed": "이 링크를 열지 못했습니다"
+  },
   "portalBlock": {
     "copyFailed": "포털을 복사하지 못했습니다",
     "hiddenCount": "{count}개 숨김",
