@@ -110,6 +110,7 @@ pub(super) fn guard_column_layout(txn: &TransactionMut, edit: &BlockEdit) -> Res
         | BlockEdit::RemoveMark { block_id, .. }
         | BlockEdit::Duplicate { block_id, .. }
         | BlockEdit::SplitBlock { block_id, .. }
+        | BlockEdit::PasteMarkdown { block_id, .. }
         | BlockEdit::Indent { block_id }
         | BlockEdit::Outdent { block_id } => Some(block_id),
         BlockEdit::SetCellText { table_id, .. }

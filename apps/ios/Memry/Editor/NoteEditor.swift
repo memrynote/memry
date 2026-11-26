@@ -171,6 +171,41 @@ final class NoteEditorViewModel {
         ))
     }
 
+    /// Plain text pasted at `caret` in `blockId`, which the core reads as
+    /// markdown (`BlockEdit.pasteMarkdown`): its `count` blocks go in at the
+    /// caret, the text after it moves below them, and an empty block is
+    /// replaced. `typed` and `caret` are as `split` takes them.
+    ///
+    /// - Returns: the last pasted block's id, and the step that undoes the
+    ///   paste (`blockId` put back whole, then the blocks it wrote deleted),
+    ///   `nil` when the surface reads no snapshot; `nil` when it did not land.
+    func paste(
+        _ markdown: String, into blockId: String, typed: String, at caret: Int, count: Int
+    ) async -> (lastId: String, step: EditorUndoStep?)? {
+        let ids = (0 ..< count).map { _ in UUID().uuidString.lowercased() }
+        let tailId = UUID().uuidString.lowercased()
+        guard let lastId = ids.last else { return nil }
+        let before = await snapshot(blockId)
+        let located = await run(in: blockId) { runs in
+            let live = runs.map(BlockText.shown) ?? typed
+            guard let at = BlockText.follow(caret, length: 0, from: typed, to: live) else { return nil }
+            let characters = (live as NSString).substring(to: min(at, (live as NSString).length)).unicodeScalars.count
+            let inside = characters > 0 && characters < live.unicodeScalars.count
+            return .pasteMarkdown(
+                blockId: blockId, at: UInt32(characters), markdown: markdown, newBlockIds: inside ? ids + [tailId] : ids
+            )
+        }
+        guard case let .landed(forward)? = located, case let .pasteMarkdown(_, _, _, written) = forward else { return nil }
+        drafts[blockId] = nil
+        let step = before.map {
+            EditorUndoStep(
+                name: "Paste", backward: .restoreBlock(snapshot: $0), forward: forward,
+                backwardAfter: written.map { .delete(blockId: $0) }
+            )
+        }
+        return (lastId, step)
+    }
+
     /// Merges a block into the one above it, which is Backspace at offset 0:
     /// its content, marks and inline nodes kept, joins the end of
     /// `previousId`'s in one write (`BlockEdit.mergeBlocks`), so no failure

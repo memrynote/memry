@@ -13,7 +13,7 @@
 //!   may be pushed at all, and the local prune that follows one.
 //!
 //! **The core never serialises markdown, and parses it only in
-//! [`markdown_seed`]**, for the two writes of chapter 12 §12.1.0. Desktop owns
+//! [`markdown_seed`]**, for the writes of chapter 12 §12.1.0. Desktop owns
 //! every other conversion. The one document-to-text operation this tier owns
 //! is [`text_extract::extract_text`], a plain-text walk of the `prosemirror`
 //! fragment that keeps heading and list markers and claims no markdown

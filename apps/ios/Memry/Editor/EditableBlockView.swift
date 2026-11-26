@@ -162,6 +162,9 @@ final class BlockTextView: UITextView {
     var editorKeyPressed: ((EditorKeyCommand) -> Void)?
     /// A hardware key went down, with the text it types.
     var keyWentDown: ((String) -> Void)?
+    /// Offered the pasteboard's text on a paste: `true` when it took it
+    /// (`EditorSession.pasteMarkdown`), else the text view pastes it.
+    var pastesText: ((String) -> Bool)?
 
     init() {
         let storage = NSTextStorage()
@@ -182,6 +185,12 @@ final class BlockTextView: UITextView {
               let backspaceAtStart
         else { return super.deleteBackward() }
         backspaceAtStart()
+    }
+
+    override func paste(_ sender: Any?) {
+        let pasteboard = UIPasteboard.general
+        if !pasteboard.hasImages, let text = pasteboard.string, pastesText?(text) == true { return }
+        super.paste(sender)
     }
 
     override func didMoveToWindow() {
@@ -361,6 +370,10 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
         textView.keyWentDown = { [weak self] characters in
             guard let self else { return }
             self.session?.keyWentDown(characters, in: self)
+        }
+        textView.pastesText = { [weak self] text in
+            guard let self else { return false }
+            return self.session?.pasteMarkdown(text, in: self) ?? false
         }
         let undo = textView.editorUndo
         undo.typing = { [weak textView] in textView?.typingUndo }
@@ -853,7 +866,7 @@ extension EditorSession {
         startReturnBurst(in: field, makes: pressed.nested ? nil : pressed.next ?? kind, cut: cut)
     }
 
-    private func hasNestedBlocks(_ blockId: String) -> Bool {
+    func hasNestedBlocks(_ blockId: String) -> Bool {
         let blocks = blocks()
         guard let index = blocks.firstIndex(where: { $0.id == blockId }), index + 1 < blocks.count else { return false }
         return blocks[index + 1].depth > blocks[index].depth

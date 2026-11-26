@@ -7,7 +7,7 @@ This directory owns the Rust workspace. `memry-core` is the shared core under th
 - Everything that is not UI lives once, in `memry-core`: sync, crypto, CRDT through yrs, SQLite storage, auth, and domain rules. When a shell needs a decision the core does not expose, the core gains an API and the shell gains no logic.
 - `memry-core/src/api/` is the UniFFI API the shells call. `memry-core/src/seams/` defines the traits each shell implements for platform capabilities, such as transport, secure store, reachability, notifications, background work, and code capture. A new seam needs a written reason.
 - The core implements `docs/protocol/`, and `packages/contracts` is the schema source of truth. A Rust type that drifts from a contract is a bug in the Rust.
-- The core never serialises a note body to markdown. It parses markdown only in `memry-core/src/crdt/markdown_seed/`, for the two writes in section 12.1.0 of `docs/protocol/12-note-body-format.md`, and carries markdown verbatim everywhere else. Desktop owns the conversion.
+- The core never serialises a note body to markdown. It parses markdown only in `memry-core/src/crdt/markdown_seed/`, for the writes in section 12.1.0 of `docs/protocol/12-note-body-format.md`, and carries markdown verbatim everywhere else. Desktop owns the conversion.
 - Desktop stays TypeScript, so the protocol has two implementations. They agree through conformance vectors, never by reading each other's code.
 
 ## Conformance
