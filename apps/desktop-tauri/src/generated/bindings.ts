@@ -1063,6 +1063,20 @@ export const commands = {
 	tasksUnarchive: (id: string) => __TAURI_INVOKE<TaskAck>("tasks_unarchive", { id }),
 	tasksUncomplete: (id: string) => __TAURI_INVOKE<TaskMutation>("tasks_uncomplete", { id }),
 	tasksUpdate: (input: TaskUpdateInput) => __TAURI_INVOKE<TaskMutation>("tasks_update", { input }),
+	tasksProjectArchive: (id: string) => __TAURI_INVOKE<ProjectMutation>("tasks_project_archive", { id }),
+	tasksProjectCreate: (input: ProjectCreateInput) => __TAURI_INVOKE<ProjectMutation>("tasks_project_create", { input }),
+	tasksProjectDelete: (id: string) => __TAURI_INVOKE<ProjectMutation>("tasks_project_delete", { id }),
+	tasksProjectGet: (id: string) => __TAURI_INVOKE<ProjectWithStatusesView | null>("tasks_project_get", { id }),
+	tasksProjectLinkItem: (input: ProjectLinkItemInput) => __TAURI_INVOKE<ProjectMutation>("tasks_project_link_item", { input }),
+	tasksProjectList: () => __TAURI_INVOKE<ProjectListView>("tasks_project_list"),
+	tasksProjectListContents: (id: string) => __TAURI_INVOKE<ProjectContentsView>("tasks_project_list_contents", { id }),
+	tasksProjectListForItem: (input: ProjectListForItemInput) => __TAURI_INVOKE<ProjectRefView[]>("tasks_project_list_for_item", { input }),
+	tasksProjectListLinks: (id: string) => __TAURI_INVOKE<ProjectLinkView[]>("tasks_project_list_links", { id }),
+	tasksProjectReorder: (input: ProjectReorderInput) => __TAURI_INVOKE<ProjectMutation>("tasks_project_reorder", { input }),
+	tasksProjectSetHomeNote: (input: ProjectSetHomeNoteInput) => __TAURI_INVOKE<ProjectMutation>("tasks_project_set_home_note", { input }),
+	tasksProjectSetLinkPinned: (input: ProjectSetLinkPinnedInput) => __TAURI_INVOKE<ProjectMutation>("tasks_project_set_link_pinned", { input }),
+	tasksProjectUnlinkItem: (input: ProjectLinkItemInput) => __TAURI_INVOKE<ProjectMutation>("tasks_project_unlink_item", { input }),
+	tasksProjectUpdate: (input: ProjectUpdateInput) => __TAURI_INVOKE<ProjectMutation>("tasks_project_update", { input }),
 };
 
 /** Events */
@@ -1112,6 +1126,9 @@ export const events = {
 	noteUpdatedEvent: makeEvent<NoteUpdatedEvent, NoteUpdatedEvent>("note-updated-event"),
 	ocrLanguagesChangedEvent: makeEvent<OcrLanguagesChangedEvent, OcrLanguagesChangedEvent>("ocr-languages-changed-event"),
 	portalsUsageChangedEvent: makeEvent<PortalsUsageChangedEvent, PortalsUsageChangedEvent>("portals-usage-changed-event"),
+	projectCreatedEvent: makeEvent<ProjectCreatedEvent, ProjectCreatedEvent>("project-created-event"),
+	projectDeletedEvent: makeEvent<ProjectDeletedEvent, ProjectDeletedEvent>("project-deleted-event"),
+	projectUpdatedEvent: makeEvent<ProjectUpdatedEvent, ProjectUpdatedEvent>("project-updated-event"),
 	propertyDefinitionChangedEvent: makeEvent<PropertyDefinitionChangedEvent, PropertyDefinitionChangedEvent>("property-definition-changed-event"),
 	settingsChangedEvent: makeEvent<SettingsChangedEvent, SettingsChangedEvent>("settings-changed-event"),
 	settingsOpenSectionEvent: makeEvent<SettingsOpenSectionEvent, SettingsOpenSectionEvent>("settings-open-section-event"),
@@ -3640,6 +3657,189 @@ export type PreviewTagView = {
 	name: string,
 	color: string,
 };
+
+/**  `ProjectContents['counts']`. */
+export type ProjectContentCounts = {
+	notes: number,
+	files: number,
+	events: number,
+};
+
+/**  `ProjectContents`. */
+export type ProjectContentsView = {
+	notes: ProjectLinkedNoteView[],
+	files: ProjectLinkedFileView[],
+	events: ProjectLinkedEventView[],
+	counts: ProjectContentCounts,
+};
+
+/**  `ProjectCreateSchema`. Nullish fields are `None` for both absent and `null`. */
+export type ProjectCreateInput = {
+	name: string,
+	description?: string | null,
+	color?: string | null,
+	icon?: string | null,
+	statuses?: ProjectStatusInput[] | null,
+};
+
+/**  A project was made (`tasks:project-created`). */
+export type ProjectCreatedEvent = {
+	id: string,
+};
+
+/**  A project was deleted with its tasks (`tasks:project-deleted`). */
+export type ProjectDeletedEvent = {
+	id: string,
+};
+
+/**  `ProjectLinkItemSchema`; `itemType` is `note`, `calendar_event` or `file`. */
+export type ProjectLinkItemInput = {
+	projectId: string,
+	itemType: string,
+	itemId: string,
+};
+
+/**  `ProjectLink`. `createdAt` is empty for an entry that carries none. */
+export type ProjectLinkView = {
+	id: string,
+	projectId: string,
+	itemType: string,
+	itemId: string,
+	position: number,
+	createdAt: string,
+};
+
+/**  `ProjectLinkedEvent`. */
+export type ProjectLinkedEventView = {
+	id: string,
+	title: string,
+	startAt: string,
+	endAt: string | null,
+	isAllDay: boolean,
+};
+
+/**  `ProjectLinkedFile`. */
+export type ProjectLinkedFileView = {
+	id: string,
+	title: string,
+	fileType: string,
+	mimeType: string | null,
+	fileSize: number | null,
+	modifiedAt: string,
+};
+
+/**  `ProjectLinkedNote`. */
+export type ProjectLinkedNoteView = {
+	id: string,
+	title: string,
+	emoji: string | null,
+	modifiedAt: string,
+	pinned: boolean,
+};
+
+/**  `ProjectListForItemSchema`. */
+export type ProjectListForItemInput = {
+	itemType: string,
+	itemId: string,
+};
+
+/**  `tasks:project-list`'s `{ projects }`. */
+export type ProjectListView = {
+	projects: ProjectWithStatsView[],
+};
+
+/**  The `withDb` envelope of a project write: `{ success, project?, error? }`. */
+export type ProjectMutation = {
+	success: boolean,
+	project?: ProjectWithStatusesView | null,
+	error?: string | null,
+};
+
+/**  `ProjectRef`. */
+export type ProjectRefView = {
+	id: string,
+	name: string,
+	color: string,
+	icon: string | null,
+};
+
+/**  `ProjectReorderSchema`. */
+export type ProjectReorderInput = {
+	projectIds: string[],
+	positions: number[],
+};
+
+/**  `ProjectSetHomeNoteSchema`; `null` clears the home note. */
+export type ProjectSetHomeNoteInput = {
+	projectId: string,
+	noteId: string | null,
+};
+
+/**  `ProjectSetLinkPinnedSchema`. */
+export type ProjectSetLinkPinnedInput = {
+	projectId: string,
+	itemId: string,
+	pinned: boolean,
+};
+
+/**  `StatusInputSchema` (create) and `StatusUpsertSchema` (update, with `id`). */
+export type ProjectStatusInput = {
+	id?: string | null,
+	name: string,
+	/**  `#6b7280` when absent. */
+	color?: string | null,
+	/**  `todo`, `in_progress` or `done`. */
+	type: string,
+	order: number,
+};
+
+/**
+ *  `ProjectUpdateSchema`. On `description` and `icon` an absent key keeps the value and `null`
+ *  clears it.
+ */
+export type ProjectUpdateInput = {
+	id: string,
+	name?: string | null,
+	description?: string | null,
+	color?: string | null,
+	icon?: string | null,
+	statuses?: ProjectStatusInput[] | null,
+};
+
+/**
+ *  A project's metadata, statuses, links, home note, archive or position changed
+ *  (`tasks:project-updated`).
+ */
+export type ProjectUpdatedEvent = {
+	id: string,
+};
+
+/**  `Project`. A stamp the row does not carry is empty. */
+export type ProjectView = {
+	id: string,
+	name: string,
+	description: string | null,
+	color: string,
+	icon: string | null,
+	position: number,
+	isInbox: boolean,
+	createdAt: string,
+	modifiedAt: string,
+	archivedAt: string | null,
+	homeNoteId: string | null,
+};
+
+/**  `ProjectWithStats`. */
+export type ProjectWithStatsView = {
+	taskCount: number,
+	completedCount: number,
+	overdueCount: number,
+} & ProjectView;
+
+/**  `ProjectWithStatuses`. */
+export type ProjectWithStatusesView = {
+	statuses: StatusView[],
+} & ProjectView;
 
 /**
  *  A property definition was created for a tag field (`properties:definition-changed`). The
