@@ -47,8 +47,15 @@ struct TimelineSettings: Codable, Equatable, Sendable {
 }
 
 struct CalendarViewState: Codable, Equatable, Sendable {
+    /// The view last picked on this device, `nil` until one is. Written
+    /// under the `view` key older builds read, and left out while `nil`,
+    /// which those builds read as Day.
+    private var pickedView: CalendarViewMode?
     /// Day is the phone's default (artboard 01); desktop's global default is Month.
-    var view: CalendarViewMode = .day
+    var view: CalendarViewMode {
+        get { pickedView ?? .day }
+        set { pickedView = newValue }
+    }
     var anchorDate: String?
     var showMemryItems = true
     var showImportedCalendars = true
@@ -65,9 +72,21 @@ struct CalendarViewState: Codable, Equatable, Sendable {
 
     init() {}
 
+    /// The first open at regular width shows Week (`DESIGN.md` › Tablet);
+    /// a view picked before stays.
+    mutating func openFirst(at width: LayoutWidth) {
+        if pickedView == nil, width == .regular { pickedView = .week }
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case pickedView = "view"
+        case anchorDate, showMemryItems, showImportedCalendars, importedSourceIds, visualTypes, timeline
+        case calendarProperties, connectPromptDismissed
+    }
+
     init(from decoder: any Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
-        view = (try? values.decodeIfPresent(CalendarViewMode.self, forKey: .view)) ?? .day
+        pickedView = try? values.decodeIfPresent(CalendarViewMode.self, forKey: .pickedView)
         anchorDate = try? values.decodeIfPresent(String.self, forKey: .anchorDate)
         showMemryItems = (try? values.decodeIfPresent(Bool.self, forKey: .showMemryItems)) ?? true
         showImportedCalendars = (try? values.decodeIfPresent(Bool.self, forKey: .showImportedCalendars)) ?? true

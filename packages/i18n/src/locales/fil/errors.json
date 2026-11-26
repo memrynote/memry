@@ -44,6 +44,9 @@
     "moveFailed": "Hindi mailipat ang tala",
     "applyTemplateFailed": "Hindi magamit ang template",
     "appendBlocksFailed": "Hindi mailipat ang block sa talang iyon",
+    "appendIntoCaseTwin": "Kahati ng talang iyon ang file nito sa isang tala na ang pangalan ay naiiba lamang sa malaki at maliit na titik. Palitan ang pangalan ng isa sa mga ito, pagkatapos ay ilipat muli ang block.",
+    "appendIntoBinary": "Sa isang tala lamang maaaring ilipat ang block, hindi sa isang larawan, PDF, audio o video file.",
+    "caseTwinMoveRefused": "Kahati ng talang ito ang file nito sa isang tala na ang pangalan ay naiiba lamang sa malaki at maliit na titik, kaya hindi ito mailipat sa ganitong paraan. Palitan ang pangalan o ilipat ang kabilang tala, o burahin ang kopyang hindi mo kailangan.",
     "exportPdfFailed": "Hindi ma-export ang PDF",
     "exportHtmlFailed": "Hindi ma-export ang HTML",
     "restoreVersionFailed": "Hindi maibalik ang bersyon",
@@ -75,10 +78,15 @@
     "uploadFailed": "Nabigo ang pag-upload ng attachment",
     "uploadProgressFailed": "Hindi makuha ang progreso ng pag-upload",
     "downloadFailed": "Nabigo ang pag-download ng attachment",
+    "downloadGone": "Wala na sa sync server ang file na ito. Kung nasa ibang device pa ito, idagdag itong muli mula sa device na iyon.",
+    "downloadMissing": "Wala pa sa sync server ang file na ito. Buksan ito ulit bukas para tingnan.",
+    "downloadNeedsSync": "Hindi tumatakbo ang sync, kaya hindi ma-download ang file na ito. Kusa itong mada-download kapag tumatakbo na ang sync.",
     "downloadProgressFailed": "Hindi makuha ang progreso ng pag-download",
     "exceedsMaxSize": "Masyadong malaki ang file: lumalampas ang {size} sa limitasyong {limit}",
     "exceedsPlanLimit": "Mas malaki ang file kaysa sa pinapayagan ng iyong plano: lumalampas ang {size} sa {limit}",
-    "emptyFile": "Hindi mai-upload ang walang lamang file"
+    "emptyFile": "Hindi mai-upload ang walang lamang file",
+    "emptyNotAttached": "Walang laman ang file na ito, kaya hindi ito na-attach. Kung nag-paste ka ng larawan, kopyahin itong muli at i-paste.",
+    "textInMediaFile": "Teksto ang laman ng file na ito sa halip na ang media na sinasabi ng pangalan nito"
   },
   "crdt": {
     "persistenceDegradedTitle": "Hindi itinatabi sa device na ito ang kasaysayan ng pag-edit",
@@ -233,10 +241,13 @@
   "folder": {
     "createFailed": "Hindi makagawa ng folder",
     "renameFailed": "Hindi mapalitan ang pangalan ng folder",
+    "renameCaseTwins": "May mga tala sa folder na ito na kahati ng file ang isang tala na ang pangalan ng folder ay naiiba lamang sa malaki at maliit na titik. Palitan muna ang pangalan o ilipat ang mga talang iyon, pagkatapos ay palitan ang pangalan ng folder.",
     "deleteFailed": "Hindi matanggal ang folder",
     "keptNotPulled": "May tala sa folder na ito na ang file ay binura sa labas ng memrynote, at hindi pa naisi-sync sa device na ito ang teksto nito, kaya hindi ito mailipat sa basurahan. Walang binura. Hintaying ma-sync ito, o burahin muna nang hiwalay ang talang iyon.",
     "keptUnwritable": "May tala sa folder na ito na ang file ay binura sa labas ng memrynote, at hindi ma-save sa isang file ang teksto nito para sa basurahan. Walang binura. Burahin muna nang hiwalay ang talang iyon.",
     "trashUnavailable": "Hindi mailipat sa basurahan ang folder na ito. Hindi binura ang anumang nasa loob pa nito.",
+    "deleteCaseTwins": "Iisang folder sa disk ang folder na ito at ang folder na may parehong pangalan pero iba ang pagkakasulat, gaya ng ibang malaki at maliit na titik, kaya kapag binura ito, mabubura rin ang mga tala sa dalawa. Burahin na lang isa-isa ang mga talang hindi mo kailangan.",
+    "deleteWindowsName": "Nagtatapos sa tuldok o espasyo ang pangalan ng folder na ito, na hindi pinapansin ng Windows, kaya kapag binura ito, puwedeng mabura rin ang ibang folder. Burahin na lang isa-isa ang mga tala sa loob nito.",
     "setConfigFailed": "Hindi maitakda ang config ng folder"
   },
   "folderView": {

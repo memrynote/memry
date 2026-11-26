@@ -36,7 +36,7 @@ use super::claim::{Keychain, TOKEN, vault_files};
 use super::*;
 
 /// The sync server's one `settings` row and its version: the last push stands.
-type Cloud = Arc<Mutex<Option<(u64, String)>>>;
+pub(super) type Cloud = Arc<Mutex<Option<(u64, String)>>>;
 
 /// A step of a sync pass. `Wrap` is the rest of the pass after the push (other item types,
 /// the cursor), so the pass ends some time after its push lands.
@@ -49,7 +49,7 @@ enum PassStep {
 }
 
 /// One device's memry sync.
-struct FakeSync {
+pub(super) struct FakeSync {
     db: Db,
     cloud: Cloud,
     env: Mutex<PullEnv>,
@@ -195,35 +195,10 @@ fn device_with(
     indexing: Box<dyn Fn() -> bool + Send + Sync>,
 ) -> Device {
     let v = vault(&[], books);
-    let keychain = Arc::new(Keychain::default());
+    let keychain = keychain_with_token(&v);
     let secrets: Arc<dyn GenericSecrets> = keychain.clone();
     let token = ReadwiseToken::new(secrets, &v.e.vault, None).unwrap();
-    let account = memry_desktop::readwise::token::token_account(&v.e.vault, None).unwrap();
-    keychain
-        .set_secret(
-            memry_desktop::readwise::token::TOKEN_SERVICE,
-            &account,
-            b"token",
-        )
-        .unwrap();
-    let sync = Arc::new(FakeSync {
-        db: v.library.open.vault.db_handle(),
-        cloud: Arc::clone(cloud),
-        env: Mutex::new(PullEnv {
-            decided: true,
-            eligible: true,
-            pulled: true,
-            device_id: Some(id.to_owned()),
-        }),
-        pulled_version: AtomicU64::new(0),
-        pulls: AtomicU64::new(0),
-        pass: Mutex::default(),
-        requested: AtomicBool::new(false),
-        after_push: Mutex::default(),
-        offline: AtomicBool::new(false),
-        indexing,
-        name,
-    });
+    let sync = fake_sync(&v, id, name, cloud, indexing);
     let settings = settings(&v);
     let gate = PullGate::new(v.library.store(), settings, token, sync.clone())
         .with_poll(Duration::from_millis(1));
@@ -242,7 +217,49 @@ fn device_with(
     }
 }
 
-fn settings(v: &Vault) -> Arc<Settings> {
+/// A keychain holding the vault's Readwise token.
+pub(super) fn keychain_with_token(v: &Vault) -> Arc<Keychain> {
+    let keychain = Arc::new(Keychain::default());
+    let account = memry_desktop::readwise::token::token_account(&v.e.vault, None).unwrap();
+    keychain
+        .set_secret(
+            memry_desktop::readwise::token::TOKEN_SERVICE,
+            &account,
+            TOKEN.as_bytes(),
+        )
+        .unwrap();
+    keychain
+}
+
+/// Sync on, registered as `id`, pulled once, over `cloud`'s one settings row.
+pub(super) fn fake_sync(
+    v: &Vault,
+    id: &str,
+    name: &'static str,
+    cloud: &Cloud,
+    indexing: Box<dyn Fn() -> bool + Send + Sync>,
+) -> Arc<FakeSync> {
+    Arc::new(FakeSync {
+        db: v.library.open.vault.db_handle(),
+        cloud: Arc::clone(cloud),
+        env: Mutex::new(PullEnv {
+            decided: true,
+            eligible: true,
+            pulled: true,
+            device_id: Some(id.to_owned()),
+        }),
+        pulled_version: AtomicU64::new(0),
+        pulls: AtomicU64::new(0),
+        pass: Mutex::default(),
+        requested: AtomicBool::new(false),
+        after_push: Mutex::default(),
+        offline: AtomicBool::new(false),
+        indexing,
+        name,
+    })
+}
+
+pub(super) fn settings(v: &Vault) -> Arc<Settings> {
     v.library.open.vault.settings(v.store.clone()).unwrap()
 }
 
@@ -299,7 +316,7 @@ impl RunObserver for AfterFirstBook {
     }
 }
 
-fn two_books() -> Vec<Value> {
+pub(super) fn two_books() -> Vec<Value> {
     vec![
         book(
             1,

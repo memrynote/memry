@@ -55,6 +55,7 @@ use crate::error::{CoreError, FailureKind};
 use crate::registry::create::create_vault_folder;
 use crate::registry::vault_icon::{self, IconError};
 use crate::registry::{GetVaultsResponse, RegistryError, SandboxInfo, StoredVault, VaultRegistry};
+use crate::sync::first_sync_running::FirstSyncRunning;
 
 /// The Electron projection drain default, per hook.
 pub const HOOK_DEADLINE: Duration = Duration::from_secs(5);
@@ -154,6 +155,9 @@ pub struct OpenVault {
     pub name: String,
     pub vault: Arc<Vault>,
     pub search: Arc<Search>,
+    /// Whether this vault's first sync runs: sync holds it, the note index defers its search
+    /// reindex while it does (#5409).
+    pub first_sync: FirstSyncRunning,
 }
 
 /// What [`Session::open_startup`] did. `Failed` carries the error so the shell can offer

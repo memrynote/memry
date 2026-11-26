@@ -14,7 +14,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use memry_core::api::editor::Editor;
 use memry_core::crdt::BODY_FRAGMENT;
 use memry_core::crdt::body_edit::BlockEdit;
-use memry_core::crdt::resident::EDITOR_LIFECYCLE;
+use memry_core::crdt::editor_resident::EDITOR_LIFECYCLE;
 use memry_core::domain::write_back::BodyRead;
 use memry_core::markdown::convert::NoEmbeds;
 use memry_core::markdown::convert::api::Converter;

@@ -26,7 +26,8 @@
 //! ([`crate::crdt::body_writes`]).
 
 use std::path::Path;
-use std::sync::{Arc, Mutex, MutexGuard, OnceLock, Weak};
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex, MutexGuard, OnceLock, PoisonError, Weak};
 
 use rusqlite::Connection;
 
@@ -35,6 +36,8 @@ use crate::crdt::body_writes::{self, BodyObserver};
 use crate::storage::pool::ReaderPool;
 use crate::storage::pragmas;
 pub use crate::storage::pragmas::{BUSY_TIMEOUT_MS, Profile};
+
+const STATEMENT_CACHE_CAPACITY: usize = 64;
 
 /// A single SQLite database the core owns.
 ///
@@ -48,8 +51,25 @@ pub struct Db {
     /// read-only connection cannot, so the writer has to be the last one out or
     /// `data.db-wal` outlives the handle holding every recent write.
     readers: Option<Arc<ReaderPool>>,
-    writer: Arc<Mutex<Connection>>,
+    writer: Arc<Shared>,
+    /// Calls blocked on `writer` right now ([`Db::writers_waiting`]).
+    waiting: Arc<AtomicUsize>,
     observer: Arc<OnceLock<Weak<dyn BodyObserver>>>,
+}
+
+/// The writer connection.
+struct Shared {
+    conn: Mutex<Connection>,
+}
+
+/// The last user of the connection is gone, so the database is closing, as a
+/// vault close or a sign-out closes it: the note bodies kept decoded for it go
+/// with it, before the connection itself closes.
+impl Drop for Shared {
+    fn drop(&mut self) {
+        let conn = self.conn.get_mut().unwrap_or_else(PoisonError::into_inner);
+        crate::crdt::resident::release_connection(conn);
+    }
 }
 
 impl Db {
@@ -69,11 +89,23 @@ impl Db {
             what: format!("could not open {}: {err}", path.display()),
         })?;
         pragmas::configure_writer(&conn, profile)?;
+        // The record apply reuses its hot statements through `prepare_cached`
+        // (#5231); rusqlite's default of 16 would evict them between items.
+        conn.set_prepared_statement_cache_capacity(STATEMENT_CACHE_CAPACITY);
         // The writer has created the file and persisted WAL by now.
         let readers = ReaderPool::open(path, profile)?;
+        let writer = Arc::new(Shared {
+            conn: Mutex::new(conn),
+        });
+        {
+            // Registered at its final address, inside the `Arc`.
+            let conn = writer.conn.lock().unwrap_or_else(PoisonError::into_inner);
+            crate::crdt::resident::open_connection(&conn);
+        }
         Ok(Self {
-            writer: Arc::new(Mutex::new(conn)),
+            writer,
             readers: Some(Arc::new(readers)),
+            waiting: Arc::default(),
             observer: Arc::default(),
         })
     }
@@ -88,9 +120,13 @@ impl Db {
             what: format!("could not open an in-memory database: {err}"),
         })?;
         pragmas::configure_writer(&conn, Profile::Data)?;
+        conn.set_prepared_statement_cache_capacity(STATEMENT_CACHE_CAPACITY);
         Ok(Self {
-            writer: Arc::new(Mutex::new(conn)),
+            writer: Arc::new(Shared {
+                conn: Mutex::new(conn),
+            }),
             readers: None,
+            waiting: Arc::default(),
             observer: Arc::default(),
         })
     }
@@ -119,7 +155,7 @@ impl Db {
     {
         let observer = self.observer.get().and_then(Weak::upgrade);
         let (result, writes) = body_writes::recording(observer.is_some(), || {
-            let mut guard = lock(&self.writer)?;
+            let mut guard = self.lock_writer()?;
             let result = f(&mut guard);
             if let Some(observer) = &observer {
                 let noted = body_writes::recorded();
@@ -142,7 +178,34 @@ impl Db {
     where
         F: FnOnce(&mut Connection) -> Result<T, StorageError>,
     {
-        body_writes::recording(false, || f(&mut *lock(&self.writer)?)).0
+        body_writes::recording(false, || f(&mut *self.lock_writer()?)).0
+    }
+
+    /// How many writes are blocked on the writer now. A long job that writes in batches waits
+    /// for this to reach zero between two of them, so a write that queued behind one batch
+    /// runs before the next: the mutex alone hands the lock back to the thread that let it go.
+    pub fn writers_waiting(&self) -> usize {
+        self.waiting.load(Ordering::SeqCst)
+    }
+
+    /// The writer, held until the guard drops, for a caller that must let go of another
+    /// database's writer while it still holds this one: the search reindex commits `index.db`
+    /// after it lets go of `data.db` (#5468). It tells no body observer, so a database that has
+    /// one is refused.
+    pub(crate) fn hold_writer(&self) -> Result<MutexGuard<'_, Connection>, StorageError> {
+        if self.observer.get().is_some() {
+            return Err(StorageError::Failed {
+                what: "a database with a body observer cannot hand out its writer".to_owned(),
+            });
+        }
+        self.lock_writer()
+    }
+
+    fn lock_writer(&self) -> Result<MutexGuard<'_, Connection>, StorageError> {
+        self.waiting.fetch_add(1, Ordering::SeqCst);
+        let guard = lock(&self.writer);
+        self.waiting.fetch_sub(1, Ordering::SeqCst);
+        guard
     }
 
     /// Registers the one observer of this database's body writes, for every
@@ -211,10 +274,23 @@ fn set_query_only(conn: &Connection, on: bool) -> Result<(), StorageError> {
         })
 }
 
-fn lock(conn: &Arc<Mutex<Connection>>) -> Result<MutexGuard<'_, Connection>, StorageError> {
-    conn.lock().map_err(|_| StorageError::Failed {
+/// Every transaction borrows the guard of the call that opened it, so a call
+/// that finds one open finds a dead one: its drop could not roll it back. A
+/// `begin` inside it would open a savepoint whose RELEASE commits nothing, so
+/// it is rolled back first, and the call fails when that fails too.
+fn lock(shared: &Shared) -> Result<MutexGuard<'_, Connection>, StorageError> {
+    let guard = shared.conn.lock().map_err(|_| StorageError::Failed {
         what: "the database mutex was poisoned by a panic in an earlier statement".to_owned(),
-    })
+    })?;
+    if !guard.is_autocommit() {
+        eprintln!("memry-core: rolling back a transaction an earlier call left open");
+        guard
+            .execute_batch("ROLLBACK")
+            .map_err(|err| StorageError::Failed {
+                what: format!("could not roll back a transaction left open: {err}"),
+            })?;
+    }
+    Ok(guard)
 }
 
 #[cfg(test)]

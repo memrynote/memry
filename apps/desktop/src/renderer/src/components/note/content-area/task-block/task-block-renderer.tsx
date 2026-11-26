@@ -5,6 +5,7 @@ import { useTaskBlockData } from './use-task-block-data'
 import { useTaskPrefetch } from './task-prefetch-context'
 import { serviceTaskToDisplayTask } from './task-block-utils'
 import { hasPendingQuickAddSyntax, parseQuickAddEdit } from './quick-add-edit'
+import { useTitleNotePicker } from './title-note-picker'
 import { TaskBlockProperties, missingTaskProperties } from './properties/task-block-properties'
 import { AddPropertyMenu } from './properties/add-property-menu'
 import { QuickAddPreview } from './properties/quick-add-preview'
@@ -26,6 +27,8 @@ import { canvasTabData } from '@/lib/sidebar-tab-data'
 import type { Task as DisplayTask } from '@/data/task-model'
 import { defaultStatuses, type Project, type Status } from '@/data/tasks-data'
 import { TaskRow } from '@/components/tasks/task-row'
+import { TaskTitleText } from '@/components/tasks/task-title-text'
+import { replaceWikiLinks } from '@memry/shared/wiki-target'
 import type { RelatedRef } from '@/components/tasks/use-related-item-info'
 import { useT } from '@memry/i18n/renderer'
 
@@ -777,22 +780,39 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
     [task, focusRowSoon]
   )
 
+  const notePicker = useTitleNotePicker(editTitle, titleInputRef, handleTitleChange)
+
   const titleInput = useCallback(
     () => (
-      <input
-        ref={titleInputRef}
-        type="text"
-        dir="auto"
-        value={editTitle}
-        onChange={(e) => handleTitleChange(e.target.value)}
-        onBlur={handleTitleBlur}
-        onKeyDown={handleTitleKeyDown}
-        className="grow shrink min-w-24 bg-transparent text-[13px] font-medium outline-none text-foreground/90 placeholder:text-muted-foreground"
-        placeholder={tPhaseF('phaseF.componentsNoteContentAreaTaskBlockTaskBlockRenderer.taskName')}
-        aria-label={tPhaseF('phaseF.componentsNoteContentAreaTaskBlockTaskBlockRenderer.taskName')}
-      />
+      <span className="relative flex grow shrink min-w-24">
+        <input
+          ref={titleInputRef}
+          type="text"
+          {...notePicker.inputProps}
+          dir="auto"
+          value={editTitle}
+          onChange={(e) => {
+            handleTitleChange(e.target.value)
+            notePicker.trackCaret(e.currentTarget)
+          }}
+          onClick={(e) => notePicker.trackCaret(e.currentTarget)}
+          onKeyUp={(e) => notePicker.trackCaret(e.currentTarget)}
+          onBlur={handleTitleBlur}
+          onKeyDown={(e) => {
+            if (!notePicker.handleKeyDown(e)) handleTitleKeyDown(e)
+          }}
+          className="grow shrink min-w-0 bg-transparent text-[13px] font-medium outline-none text-foreground/90 placeholder:text-muted-foreground"
+          placeholder={tPhaseF(
+            'phaseF.componentsNoteContentAreaTaskBlockTaskBlockRenderer.taskName'
+          )}
+          aria-label={tPhaseF(
+            'phaseF.componentsNoteContentAreaTaskBlockTaskBlockRenderer.taskName'
+          )}
+        />
+        {notePicker.picker}
+      </span>
     ),
-    [editTitle, handleTitleBlur, handleTitleKeyDown, tPhaseF, handleTitleChange]
+    [editTitle, handleTitleBlur, handleTitleKeyDown, tPhaseF, handleTitleChange, notePicker]
   )
 
   const clickableTitle = useCallback(() => {
@@ -829,7 +849,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
               : 'text-foreground/90'
         )}
       >
-        {isEmpty ? 'Task name…' : resolvedTitle}
+        {isEmpty ? 'Task name…' : <TaskTitleText title={resolvedTitle} />}
       </button>
     )
   }, [displayTask?.title, title, isCompleted])
@@ -954,7 +974,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
         tabIndex={-1}
         // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role is intentional here and the native tag would change default styling or behavior
         role="group"
-        aria-label={rowTask.title}
+        aria-label={replaceWikiLinks(rowTask.title)}
         aria-keyshortcuts="S P Shift+P D Shift+D R H L E Shift+L"
         onKeyDown={handleRowKeyDown}
         onClick={handleRowClick}

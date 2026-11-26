@@ -1,4 +1,7 @@
 {
+  "wikiLink": {
+    "openFailed": "Could not open this link"
+  },
   "portalBlock": {
     "copyFailed": "Could not copy the portal",
     "hiddenCount": "{count} hidden",

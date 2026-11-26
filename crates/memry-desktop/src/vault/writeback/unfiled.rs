@@ -29,6 +29,7 @@ use super::{Keep, Outcome, Pass};
 use crate::journal::write::{day_file, day_frontmatter};
 use crate::journal::{day_path_in, is_reserved_day_key};
 use crate::notes::create::{free_path, remove_row};
+use crate::notes::error::NotesError;
 use crate::notes::frontmatter::{is_reserved_key, new_file_frontmatter};
 use crate::vault::config::read_vault_config_strict;
 use crate::vault::consumer::rows::{Lane, RowStat};
@@ -136,7 +137,7 @@ impl Pass {
                     return Err(Outcome::Kept(Keep::DayWaits));
                 };
                 let rel = day_path_in(&config, date)
-                    .map_err(|error| Outcome::Failed(format!("the day's path: {error}")))?;
+                    .map_err(|error| Outcome::Broken(format!("the day's path: {error}")))?;
                 let taken =
                     lane.check_free(&rel).is_err() || root.join(&rel).symlink_metadata().is_ok();
                 if taken {
@@ -147,7 +148,10 @@ impl Pass {
                     !is_reserved_day_key(name) && !is_reserved_key(name, value)
                 });
                 let mut frontmatter = day_frontmatter(date, &unfiled.tags, &properties);
-                with_aliases(&mut frontmatter, &unfiled.aliases);
+                with_aliases(
+                    &mut frontmatter,
+                    unfiled.aliases.as_deref().unwrap_or_default(),
+                );
                 (rel, day_file(&frontmatter, ""))
             }
             None => {
@@ -155,10 +159,19 @@ impl Pass {
                     .folder_path
                     .as_deref()
                     .filter(|folder| !folder.is_empty());
-                let rel = free_path(lane, root, root, &unfiled.title, folder)
-                    .map_err(|error| Outcome::Failed(format!("no path for the note: {error}")))?;
+                // A read error may pass (a folder's permissions, a busy disk): tried again.
+                let rel = free_path(lane, root, root, &unfiled.title, folder).map_err(|error| {
+                    let reason = format!("no path for the note: {error}");
+                    match error {
+                        NotesError::Io(_) => Outcome::Failed(reason),
+                        _ => Outcome::Broken(reason),
+                    }
+                })?;
                 let mut frontmatter = new_file_frontmatter(&unfiled.tags, &unfiled.properties);
-                with_aliases(&mut frontmatter, &unfiled.aliases);
+                with_aliases(
+                    &mut frontmatter,
+                    unfiled.aliases.as_deref().unwrap_or_default(),
+                );
                 // A `cover` property that is no cover is the user's; a remote cover never
                 // replaces it (`applyNoteCoverToFrontmatter`).
                 let cover = unfiled.cover.as_ref().map(cover_frontmatter);
@@ -171,7 +184,7 @@ impl Pass {
             }
         };
         let written =
-            written.map_err(|error| Outcome::Failed(format!("the frontmatter: {error}")))?;
+            written.map_err(|error| Outcome::Broken(format!("the frontmatter: {error}")))?;
         Ok((rel, written))
     }
 }

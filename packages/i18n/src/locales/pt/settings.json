@@ -1232,6 +1232,10 @@
     "loadingAria": "Carregando dispositivos",
     "none": "Nenhum dispositivo vinculado ainda",
     "linkNew": "Vincular novo dispositivo",
+    "linkNeedsPlan": {
+      "title": "Vincular exige um plano de sincronização",
+      "description": "Um dispositivo vinculado só vê suas notas quando a sincronização está ativada. Sem um plano, entre nele com sua frase de recuperação e ele manterá seu próprio cofre."
+    },
     "thisDevice": "Este dispositivo",
     "lastSeen": "Visto pela última vez há {time}",
     "linked": "Vinculado há {time}",

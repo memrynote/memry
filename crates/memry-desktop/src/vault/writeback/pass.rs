@@ -1,7 +1,8 @@
 //! One write-back pass for one note; the rules are the module invariants.
 
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use memry_core::api::vault::Vault;
 use memry_core::domain::app_settings::AppSettings;
@@ -16,7 +17,7 @@ use memry_core::markdown::shared::writing_tools::{WritingFrontmatter, merge_writ
 use memry_core::seams::secure_store::SecureStore;
 
 use super::journal::{Dated, dated_block, set_date};
-use super::place::{Found, Patch, Pulled, header_tags_of, patch};
+use super::place::{Found, Mark, Patch, Pulled, header_tags_of, owed_aliases, patch};
 use crate::attachments;
 use crate::locks::Locks;
 use crate::vault::app_edit::OwnFiles;
@@ -52,6 +53,10 @@ pub enum Outcome {
     /// The pass could not finish (a read or a write failed); the file is as it was, unless
     /// the reason says the row was not recorded after the write.
     Failed(String),
+    /// The pass cannot finish, and runs of it fail the same way until the note, its file or the
+    /// app changes: a body that does not read, a file that does not serialize, no path for a first
+    /// file, a pass that panicked. Told as a failed write, and not retried on its own.
+    Broken(String),
     /// The file's frontmatter does not parse: its block is bytes the document does not hold,
     /// so the file is never written over, and no later pass writes it until the file is fixed
     /// (#3750). The user is told, as for a failure.
@@ -103,6 +108,9 @@ pub struct Pass {
     pub(super) store: Arc<dyn SecureStore>,
     /// The notes a pull changed whose pass has not taken the change yet (`place`).
     pub(super) pulled: Pulled,
+    /// The days whose file a pass left off its date's path this session, logged once
+    /// (`day_place`).
+    pub(super) refused_days: Mutex<HashSet<String>>,
 }
 
 impl Pass {
@@ -127,6 +135,7 @@ impl Pass {
             own_files,
             store,
             pulled: Pulled::default(),
+            refused_days: Mutex::default(),
         }
     }
 
@@ -176,7 +185,14 @@ impl Pass {
             self.pulled.take(note_id);
             return Outcome::Kept(Keep::NotMarkdown);
         }
-        let Some(row_hash) = row.content_hash else {
+        // A large file owing its record's aliases gets its `aliases` key alone (`owed`).
+        if row.content_hash.is_none()
+            && let Some(outcome) =
+                self.owed_large(&mut lane, note_id, &row, (read_at, read_mark), between)
+        {
+            return outcome;
+        }
+        let Some(row_hash) = row.content_hash.clone() else {
             return Outcome::Kept(Keep::NotRead);
         };
         let file = match read_note(&self.root, &row.path) {
@@ -190,6 +206,8 @@ impl Pass {
         if file.hash != row_hash {
             return Outcome::Kept(Keep::FileChanged);
         }
+        // A live day's file stands at its date's path (`day_place`, #5786).
+        let day_place = self.place_day(&mut lane, &row);
         // A pulled change: taken here, and given back to the next pass when this one stops.
         let pulled = match self.pulled.take(note_id) {
             None => None,
@@ -201,9 +219,41 @@ impl Pass {
                 }
             },
         };
-        let mut path = row.path.clone();
-        let mut moved = false;
-        if let Some((mark, record)) = &pulled {
+        // The mark a pass that keeps the file gives back, so the pass after the wait (a body
+        // not pulled yet, #5509) still gives the file the pulled change; a pass that wrote it
+        // gives it back only for a failed move to be tried again.
+        let mut waiting = pulled.as_ref().map(|(mark, _)| mark.clone());
+        let mut move_again = false;
+        // A file owing its record's aliases (`owed`) gets them from a pull's patch, or alone.
+        let owed = match pulled {
+            Some(_) => None,
+            None => match self.owed_record(note_id) {
+                Ok(owed) => owed,
+                Err(why) => return Outcome::Failed(why),
+            },
+        };
+        let pays =
+            owed.is_some() || (pulled.as_ref()).is_some_and(|(_, record)| record.aliases.is_some());
+        let wait = |waiting: Option<Mark>, move_again: bool, outcome: Outcome| {
+            let wrote = matches!(outcome, Outcome::Wrote { .. } | Outcome::Unchanged);
+            if wrote && pays {
+                self.paid(note_id);
+            }
+            // A deleted note's mark goes: one that comes back is pulled again.
+            let gone = outcome == Outcome::Kept(Keep::NoNote);
+            if let Some(mark) = waiting.filter(|_| !gone && (!wrote || move_again)) {
+                self.pulled.put_back(note_id, mark);
+            }
+            outcome
+        };
+        let mut moved = day_place.is_some();
+        let mut path = day_place.unwrap_or_else(|| row.path.clone());
+        // A day's path is its date's (`day_place`): a pulled record never places it.
+        let places = pulled
+            .as_ref()
+            .zip(waiting.as_mut())
+            .filter(|((mark, record), _)| record.date.is_none() && mark.moves());
+        if let Some(((mark, record), waiting)) = places {
             let found = Found {
                 path: &row.path,
                 file_hash: row.file_hash.as_deref(),
@@ -214,7 +264,10 @@ impl Pass {
                 Ok(None) => {}
                 // The file and its row stay where they were, and the body is written there: a
                 // move that cannot happen never holds the file back from the note's edits.
-                Err(why) => self.pulled.retry(note_id, mark.clone(), &why),
+                Err(why) => {
+                    waiting.move_failed(note_id, &why);
+                    move_again = waiting.moves();
+                }
             }
         }
         let pulled = pulled.as_ref().map(|(_, record)| record);
@@ -224,8 +277,15 @@ impl Pass {
         });
         let made = (&*self.vault, self.settings.as_ref(), self.root.as_path());
         let output = match output_over(made, note_id, &path, &file, patch.as_ref()) {
+            Ok(output) => match &owed {
+                Some(record) => owed_aliases(output, record),
+                None => Ok(output),
+            },
+            Err(outcome) => return wait(waiting, move_again, outcome),
+        };
+        let output = match output {
             Ok(output) => output,
-            Err(outcome) => return outcome,
+            Err(why) => return wait(waiting, move_again, Outcome::Failed(why)),
         };
         let patched = pulled.is_some()
             && split_frontmatter_block(&file.raw).block != split_frontmatter_block(&output).block;
@@ -259,19 +319,23 @@ impl Pass {
                     source,
                 });
             }
-            return Outcome::Unchanged;
+            return wait(waiting, move_again, Outcome::Unchanged);
         }
         let hash = content_hash(&output);
         let kept = self.keep_replaced(note_id, &file.raw, &file.hash, &output, patched);
         let (version_kept, replaced_outside) = match kept {
             Ok(kept) => kept,
             Err(error) => {
-                return Outcome::Failed(format!(
-                    "no version of the replaced file was kept: {error}"
-                ));
+                return wait(
+                    waiting,
+                    move_again,
+                    Outcome::Failed(format!("no version of the replaced file was kept: {error}")),
+                );
             }
         };
         self.echo.will_write(&path, &hash);
+        // Until the pass ends: the row names the old bytes until it is stamped below.
+        let _writing = self.own_files.writing(note_id, &hash);
         // A locked note's document takes only another device's edits (the core refuses local
         // ones), so its write-back goes through the lock, and its text becomes the baseline.
         let written = Locks::new(&self.root, &self.vault).write_through(&path, &output, || {
@@ -287,8 +351,16 @@ impl Pass {
                 replaced.keep_late_writes(&self.vault, &self.rows, note_id, told);
             }
             Ok(_) => {}
-            Err(NoteFileError::ChangedUnderWrite) => return Outcome::Kept(Keep::FileChanged),
-            Err(error) => return Outcome::Failed(format!("the file was not written: {error}")),
+            Err(NoteFileError::ChangedUnderWrite) => {
+                return wait(waiting, move_again, Outcome::Kept(Keep::FileChanged));
+            }
+            Err(error) => {
+                return wait(
+                    waiting,
+                    move_again,
+                    Outcome::Failed(format!("the file was not written: {error}")),
+                );
+            }
         }
         // An attachment rename the body carries moves the file on this device too (#1714).
         attachments::reconcile_renames(&self.root, &self.vault, note_id, &file.raw, &output);
@@ -307,7 +379,11 @@ impl Pass {
             // The file holds the document's body and the row the old hash, so the next pass
             // reads it as an outside edit and keeps it. The feed (12e-3b) reads it back
             // `Unchanged` and records the hash; until then the file only waits.
-            return Outcome::Failed(format!("the file was written, its row was not: {error}"));
+            return wait(
+                waiting,
+                move_again,
+                Outcome::Failed(format!("the file was written, its row was not: {error}")),
+            );
         }
         if let Some(record) = pulled.filter(|_| patched) {
             self.wrote_pulled(note_id, record);
@@ -331,11 +407,15 @@ impl Pass {
                 path,
             });
         }
-        Outcome::Wrote {
-            hash,
-            version_kept,
-            replaced_outside,
-        }
+        wait(
+            waiting,
+            move_again,
+            Outcome::Wrote {
+                hash,
+                version_kept,
+                replaced_outside,
+            },
+        )
     }
 
     /// Keeps the file a write replaces when the write changes bytes the document does not hold
@@ -419,7 +499,7 @@ pub(crate) fn output_over(
         Ok(BodyRead::NotRepresentable(what)) => {
             return Err(Outcome::Kept(Keep::NotRepresentable(what)));
         }
-        Ok(BodyRead::Failed(reason)) => return Err(Outcome::Failed(reason.to_owned())),
+        Ok(BodyRead::Failed(reason)) => return Err(Outcome::Broken(reason.to_owned())),
         Err(error) => {
             return Err(Outcome::Failed(format!(
                 "the body could not be read: {error}"
@@ -442,7 +522,7 @@ pub(crate) fn output_over(
         (note_id, file_date.as_deref()),
         pulled,
     )
-    .map_err(Outcome::Failed)
+    .map_err(Outcome::Broken)
 }
 
 /// The file the body makes of `parsed`: its frontmatter block kept byte for byte unless the

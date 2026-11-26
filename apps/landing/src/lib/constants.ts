@@ -115,7 +115,8 @@ export const FOOTER_LINKS = {
     { label: 'Pricing', href: '/pricing' },
     { label: 'FAQ', href: '/faq' },
     { label: 'Changelog', href: '/changelog' },
-    { label: 'Security', href: '/security' }
+    { label: 'Security', href: '/security' },
+    { label: 'Encrypted notes', href: '/encrypted-notes-app' }
   ],
   // Footer shows only marquee competitors; the long tail lives on the /compare hub.
   compare: [
@@ -247,7 +248,7 @@ export const FAQ_ITEMS = [
   {
     question: 'Which platforms are supported?',
     answer:
-      'macOS, Windows, and Linux today. Mobile apps for iPhone, iPad, and Android are planned and targeting late 2026. A command-line tool ships with the desktop app, and a web clipper is available for Chrome and Firefox.'
+      'macOS, Windows, and Linux. An iPhone app is in beta on TestFlight (join at memrynote.com/ios-beta), and there is no Android app yet. A command-line tool ships with the desktop app, and a web clipper is available for Chrome and Firefox.'
   },
   {
     question: 'What file format does memrynote use?',
@@ -257,7 +258,7 @@ export const FAQ_ITEMS = [
   {
     question: 'Can I import from other apps?',
     answer:
-      'Yes. memrynote imports Markdown folders (including Obsidian vaults), Notion, Evernote, Apple Notes, Apple Journal, Bear, Roam Research, Google Keep, NotePlan, Todoist, TickTick, Raindrop, and CSV.'
+      'Yes. memrynote imports Markdown folders (including Obsidian vaults), Notion, Evernote, OneNote, Apple Notes (on macOS), Apple Journal, Bear, Roam Research, Google Keep, NotePlan, Readwise, Todoist, TickTick, Raindrop, HTML files, and CSV.'
   },
   {
     question: 'Is memrynote open source?',
@@ -268,54 +269,6 @@ export const FAQ_ITEMS = [
 
 export const HOME_FAQ_COUNT = 6
 export const HOME_FAQ_ITEMS = FAQ_ITEMS.slice(0, HOME_FAQ_COUNT)
-
-export const ROADMAP_DATA = {
-  releaseDate: 'Available now',
-  earlyAccess: 'The desktop app is available now',
-  phases: [
-    {
-      status: 'done' as const,
-      title: 'Available now',
-      caption: 'The local-first desktop workspace is already usable across the core flows.',
-      items: [
-        'Local vault with Markdown notes, backlinks, and global search',
-        'Inbox capture for text, URLs, images, and voice',
-        'Tasks, projects, subtasks, recurring rules, and multiple views',
-        'Daily journal, calendar week view, and reminders',
-        'End-to-end encrypted sync for notes and journals',
-        'Web clipper for Chrome, Firefox, and Edge',
-        'Importers for Obsidian, Notion, Roam, Bear, Evernote, and more',
-        'Agent Chat, voice memos with transcription, and Memrynote CLI'
-      ]
-    },
-    {
-      status: 'in-progress' as const,
-      title: 'Building now',
-      caption: 'The next work is focused on wider clipping and agent reliability.',
-      items: [
-        'Safari web clipper support',
-        'Browser store listing: Edge Add-ons',
-        'Optional AI Agent polish: provider settings, streaming, approvals'
-      ]
-    },
-    {
-      status: 'planned' as const,
-      title: 'Planned next',
-      caption: 'Direction, not a release promise. These unlock more ways to use your vault.',
-      items: [
-        'Mobile apps for iPhone, iPad, and Android (targeting late 2026)',
-        'iPad handwriting and PDF annotation',
-        'Offline mobile vault with conflict-safe sync',
-        'Mobile share sheet, widgets, and quick capture',
-        'Locked spaces for sensitive notes',
-        'Public and shared vaults',
-        'Plugin API for custom tools and views',
-        'Templates marketplace',
-        'Self-hosted encrypted sync server'
-      ]
-    }
-  ]
-} as const
 
 export const USE_CASES = [
   {
@@ -817,7 +770,7 @@ export const PRICING_FAQ_ITEMS = [
   {
     question: 'You store my data, but you cannot read it. What does that actually mean?',
     answer:
-      'Every byte is encrypted on your device with XChaCha20-Poly1305 before it leaves. The keys live in your password manager and never touch our servers. We hold ciphertext, count bytes for billing, and that is the limit of what we see.'
+      'Your notes, tasks, journal entries, and attachments are encrypted on your device with XChaCha20-Poly1305 before upload. The keys come from a recovery phrase only you hold, and we never receive it. We store the ciphertext and count bytes for billing. We can see routing metadata: item IDs, sizes, change times, and your tag names and folder paths, because sync uses them as item IDs.'
   },
   {
     question: 'How does the refund policy work?',

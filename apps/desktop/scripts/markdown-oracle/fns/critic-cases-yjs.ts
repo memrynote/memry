@@ -87,9 +87,22 @@ const CASES: Record<string, [unknown[], CriticMarkupMark[][]]> = {
     [[{ ...c1, body: 'valid' }]]
   ],
   'duplicate-ids-in-marks': [[], [[c1, { ...c1, body: 'second' }]]],
-  'invalid-elements-deleted': [
+  'invalid-elements-kept': [
     [null, 'x', 3, [c1], { ...c1, end: -1 }, { ...c2, kind: 'note' }, c3],
     [[c3]]
+  ],
+  'newer-kind-kept-on-edit': [
+    [{ ...c1, future }, { ...c2, kind: 'highlight', future }, c3],
+    [
+      [
+        { ...c1, body: 'edited' },
+        { ...c3, body: 'edited' }
+      ]
+    ]
+  ],
+  'newer-kind-kept-on-insert-and-delete': [
+    [c1, { ...c2, id: 'n1', kind: 'highlight' }, c3],
+    [[c2, c3]]
   ],
   'invalid-mark-not-written': [[], [[{ ...c1, start: 4, end: 2 }, c2]]],
   'two-writers-same-mark': [[c1], [[{ ...c1, body: 'from a' }], [{ ...c1, body: 'from b' }]]],

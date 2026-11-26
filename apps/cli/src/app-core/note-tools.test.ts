@@ -258,7 +258,7 @@ test('read-lines and grep stream a large file by 0-based line', async () => {
     await assert.rejects(app.noteTools.grep('big.log', 'a\nb'), /span lines/)
     await assert.rejects(
       app.noteTools.readLines('../outside.txt', 0, 5),
-      /inside the vault|not found/i
+      /^Error: Refusing to read lines: "\.\.\/outside\.txt" is the vault itself or outside it\.$/
     )
     await assert.rejects(app.noteTools.readLines('missing.md', 0, 5), /Note not found/)
   })

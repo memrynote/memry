@@ -138,7 +138,7 @@ impl Device {
         let definitions = Arc::new(PropertyDefinitions::new(
             vault.clone(),
             records,
-            Some(core.search().unwrap()),
+            Some(core.search(None).unwrap()),
         ));
 
         let transport = app_transport(&["127.0.0.1".to_owned()], Arc::new(NoPins));
@@ -176,6 +176,7 @@ impl Device {
             db.clone(),
             Declaration::subscribed(),
             sealer,
+            &clock_id,
         );
         let engine = SyncEngine::new(Arc::new(pull), http, Arc::new(Online))
             .with_push(Arc::new(Wave { push, db }))

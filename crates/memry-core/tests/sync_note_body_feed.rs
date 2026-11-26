@@ -16,6 +16,7 @@ use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use http_fakes::{FakeTransport, response};
 use memry_core::api::errors::StorageError;
+use memry_core::crdt::epoch::HeldBody;
 use memry_core::crdt::update_log::{self, Namespace};
 use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope, SyncOperation};
 use memry_core::protocol::http::{ClientIdentity, HttpClient};
@@ -487,11 +488,11 @@ async fn a_snapshot_ref_is_fetched_unless_its_revision_is_held() {
     hold(&db, NOTE_B, "0");
     let held = an_update("held");
     db.call_blocking(move |conn| {
-        update_log::put_server_snapshot(conn, NOTE_A, &held, 3, Some("rev-held"), 1).map_err(
-            |error| StorageError::Failed {
+        HeldBody::never_purged(conn, NOTE_A)
+            .and_then(|body| body.put_server_snapshot(&held, 3, Some("rev-held"), 1))
+            .map_err(|error| StorageError::Failed {
                 what: error.to_string(),
-            },
-        )
+            })
     })
     .expect("a held snapshot");
     let fresh = an_update("fresh");

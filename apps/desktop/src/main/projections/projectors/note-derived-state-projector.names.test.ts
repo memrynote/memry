@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { NotesChannels } from '@memry/contracts/ipc-channels'
 import { createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { getOutgoingLinks } from '@main/database/queries/notes'
+import type { NoteEventSource } from '@memry/contracts/notes-api'
 import type { MarkdownNoteProjection } from '../types'
 
 const getIndexDatabase = vi.hoisted(() => vi.fn())
@@ -29,7 +30,12 @@ describe('note names drive wiki-link resolution', () => {
   async function upsert(
     noteId: string,
     title: string,
-    options: { aliases?: string[] | null; links?: string[]; path?: string } = {}
+    options: {
+      aliases?: string[] | null
+      links?: string[]
+      path?: string
+      source?: NoteEventSource
+    } = {}
   ): Promise<void> {
     const note: MarkdownNoteProjection = {
       kind: 'markdown',
@@ -53,7 +59,7 @@ describe('note names drive wiki-link resolution', () => {
       aliases: options.aliases === undefined ? [] : options.aliases,
       wikiLinks: options.links ?? []
     }
-    await projector.project({ type: 'note.upserted', note })
+    await projector.project({ type: 'note.upserted', note, source: options.source })
   }
 
   function targetOf(sourceId: string, title: string): string | null | undefined {
@@ -134,5 +140,28 @@ describe('note names drive wiki-link resolution', () => {
     expect(
       ['new/idea', '/New/Idea.md', 'Other/Idea'].map((title) => targetOf('n-src', title))
     ).toEqual([null, null, 'n-idea'])
+  })
+
+  it('announces the notes a link change touched with the cause of the upsert', async () => {
+    await upsert('n-src', 'Source', { links: ['Plan'] })
+    vi.clearAllMocks()
+
+    await upsert('n-plan', 'Plan', { source: 'sync' })
+    expect(targetOf('n-src', 'Plan')).toBe('n-plan')
+    const updated = broadcastToAllWindows.mock.calls.filter(
+      ([channel]) => channel === NotesChannels.events.UPDATED
+    )
+    expect(updated.map(([, event]) => event)).toEqual([
+      { id: 'n-src', changes: {}, source: 'sync' },
+      { id: 'n-plan', changes: {}, source: 'sync' }
+    ])
+
+    vi.clearAllMocks()
+    await upsert('n-plan', 'Renamed')
+    expect(broadcastToAllWindows).toHaveBeenCalledWith(NotesChannels.events.UPDATED, {
+      id: 'n-src',
+      changes: {},
+      source: 'internal'
+    })
   })
 })

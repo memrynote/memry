@@ -1232,6 +1232,10 @@
     "loadingAria": "Apparaten laden",
     "none": "Nog geen apparaten gekoppeld",
     "linkNew": "Nieuw apparaat koppelen",
+    "linkNeedsPlan": {
+      "title": "Koppelen vereist een synchronisatieabonnement",
+      "description": "Een gekoppeld apparaat ziet je notities alleen als synchronisatie aan staat. Zonder abonnement log je daar in met je herstelzin en houdt het apparaat zijn eigen kluis."
+    },
     "thisDevice": "Dit apparaat",
     "lastSeen": "Laatst gezien {time} geleden",
     "linked": "{time} geleden gekoppeld",

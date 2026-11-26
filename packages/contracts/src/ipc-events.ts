@@ -182,6 +182,11 @@ export interface AttachmentUploadFailedEvent {
    * sends this event without it, and the renderer must still handle that.
    */
   errorCategory?: SyncErrorCategory
+  /**
+   * A localized sentence saying why the file will never upload, shown under the
+   * generic message. Optional: only a refused file sets it.
+   */
+  reason?: string
 }
 
 export interface DeviceRevokedEvent {

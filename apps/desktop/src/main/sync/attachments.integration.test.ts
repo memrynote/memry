@@ -13,6 +13,7 @@
  * `net` import is never dereferenced.
  */
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest'
+import { existsSync } from 'node:fs'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { randomUUID, randomBytes } from 'node:crypto'
 import path from 'node:path'
@@ -45,6 +46,8 @@ import { recordDeletedItemAssets, releaseExpiredDeletedAssets } from './deleted-
 import { recordAttachmentFile } from './attachment-files'
 import { listPendingUploads } from './attachment-outbox'
 import { noteRevived, settleRevivedNotes } from './note-attachment-revival'
+import { DownloadQueue } from './download-queue'
+import { sha256OfFile } from '../vault/file-sha256'
 
 const MIB = 1024 * 1024
 // nonce(24) + Poly1305 tag(16) — mirrors the server's CHUNK_CRYPTO_OVERHEAD.
@@ -513,6 +516,27 @@ describe('an upload whose bytes the note already has on the server', () => {
   }, 120_000)
 })
 
+// #5608: a peer's replace of a binary note with no synced hash compares its file
+// with the manifest checksum of the attachment the note named.
+describe('the checksum of an uploaded attachment', () => {
+  it('reads the sha256 the file hashes to from its manifest, and fails for an id the server lacks', async () => {
+    const user = await seedUser({
+      plan: 'believer',
+      status: 'active',
+      maxFileSize: 200 * MIB,
+      storageLimit: 50 * 1024 * MIB
+    })
+    const svc = new AttachmentSyncService(createDeps(user))
+    const src = await writeTempFile('p.png', randomBytes(64 * 1024))
+    const { attachmentId } = await svc.uploadAttachment('note-1', src)
+
+    const pace = vi.fn(async () => {})
+    expect(await svc.checksumOf(attachmentId, { pace })).toBe(await sha256OfFile(src))
+    await expect(svc.checksumOf(randomUUID(), { pace })).rejects.toMatchObject({ statusCode: 404 })
+    expect(pace).toHaveBeenCalledTimes(2)
+  }, 120_000)
+})
+
 // #3015: a deleted note's attachment is freed on the real server 30 days after
 // the delete: its chunks drop to zero references, the quota gets their bytes
 // back, and a replayed release frees nothing twice.
@@ -574,8 +598,7 @@ describe('deleted note attachment release against the real sync-server', () => {
             getSyncServerUrl: () => baseUrl,
             getVaultId: () => 'default',
             fetchFn: (input, init) => fetch(input, init)
-          }),
-        markWritebackIgnored: () => {}
+          })
       })
 
     now += 29 * 24 * 60 * 60 * 1000
@@ -706,5 +729,127 @@ describe('revived note attachments against the real sync-server', () => {
       }
     })
     expect(requests).toBe(0)
+  }, 120_000)
+})
+
+describe('a fresh device downloading many attachments through the download queue (#5329)', () => {
+  const FILES = 5
+
+  async function uploadFiles(deps: AttachmentSyncDeps): Promise<Map<string, Buffer>> {
+    const uploader = new AttachmentSyncService(deps)
+    const originals = new Map<string, Buffer>()
+    for (let i = 0; i < FILES; i++) {
+      const bytes = randomBytes(4 * 1024)
+      const { attachmentId } = await uploader.uploadAttachment(
+        'note-1',
+        await writeTempFile(`f${i}.bin`, bytes)
+      )
+      originals.set(attachmentId, bytes)
+    }
+    return originals
+  }
+
+  /** Every download eagerly through the queue, as the pull fan-out does; returns requests by endpoint. */
+  async function downloadAll(
+    deps: AttachmentSyncDeps,
+    originals: Map<string, Buffer>,
+    answer?: (url: string) => Response | null
+  ): Promise<Record<string, number>> {
+    const counts: Record<string, number> = {}
+    const svc = new AttachmentSyncService({
+      ...deps,
+      fetchFn: async (input, init) => {
+        const url =
+          typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+        const route = new URL(url).pathname
+          .replace(
+            /^\/sync\/attachments\/(?!manifests\/)[^/]+\/manifest$/,
+            '/sync/attachments/:id/manifest'
+          )
+          .replace(/\/chunks\/.+$/, '/chunks/:hash')
+        const endpoint = `${init?.method ?? 'GET'} ${route}`
+        counts[endpoint] = (counts[endpoint] ?? 0) + 1
+        return answer?.(url) ?? fetch(input, init)
+      }
+    })
+    const queue = new DownloadQueue(svc.downloadAttachment.bind(svc))
+    await Promise.all(
+      [...originals].map(async ([attachmentId, bytes]) => {
+        const targetPath = path.join(tmpDir, `out-${attachmentId}.bin`)
+        await queue.enqueue({ ownerId: 'note-1', attachmentId, targetPath, source: 'eager' })
+        const { readFile } = await import('node:fs/promises')
+        expect(Buffer.compare(await readFile(targetPath), bytes)).toBe(0)
+      })
+    )
+    queue.dispose()
+    return counts
+  }
+
+  // A binary note's file that landed unannounced read as an outside edit: the
+  // note's clock ticked and its bytes went back up to the server (#5255).
+  it('announces each file right before it lands at its path', async () => {
+    const user = await seedUser({
+      plan: 'believer',
+      status: 'active',
+      maxFileSize: 200 * MIB,
+      storageLimit: 50 * 1024 * MIB
+    })
+    const deps = createDeps(user)
+    const originals = await uploadFiles(deps)
+    const landed = new Map<string, boolean>()
+
+    await downloadAll(
+      {
+        ...deps,
+        beforeFileLands: (filePath) => {
+          landed.set(filePath, existsSync(filePath))
+          return filePath
+        }
+      },
+      originals
+    )
+
+    expect(landed).toEqual(
+      new Map([...originals.keys()].map((id) => [path.join(tmpDir, `out-${id}.bin`), false]))
+    )
+  }, 120_000)
+
+  it('fetches every manifest in one batch call instead of one GET each', async () => {
+    const user = await seedUser({
+      plan: 'believer',
+      status: 'active',
+      maxFileSize: 200 * MIB,
+      storageLimit: 50 * 1024 * MIB
+    })
+    const deps = createDeps(user)
+    const originals = await uploadFiles(deps)
+
+    const counts = await downloadAll(deps, originals)
+
+    expect(counts['GET /sync/attachments/:id/manifest'] ?? 0).toBe(0)
+    expect(counts['POST /sync/attachments/manifests/batch']).toBe(1)
+    // This deployment has no presign secrets: the first 501 stops every later call.
+    expect(counts['POST /sync/attachments/presign-batch']).toBe(1)
+    expect(counts['GET /sync/attachments/chunks/:hash']).toBe(FILES)
+  }, 120_000)
+
+  it('falls back to one manifest GET each on a server without the batch route', async () => {
+    const user = await seedUser({
+      plan: 'believer',
+      status: 'active',
+      maxFileSize: 200 * MIB,
+      storageLimit: 50 * 1024 * MIB
+    })
+    const deps = createDeps(user)
+    const originals = await uploadFiles(deps)
+
+    const counts = await downloadAll(deps, originals, (url) =>
+      url.endsWith('/sync/attachments/manifests/batch')
+        ? new Response('Not Found', { status: 404 })
+        : null
+    )
+
+    expect(counts['POST /sync/attachments/manifests/batch']).toBe(1)
+    expect(counts['GET /sync/attachments/:id/manifest']).toBe(FILES)
   }, 120_000)
 })

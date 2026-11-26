@@ -28,7 +28,7 @@
 //! `wiki_name_keys` holds every key each live note and day claims, computed here
 //! because SQLite's `lower()` folds ASCII only. Triggers on `notes`,
 //! `journal_entries` and `journal_aliases` list a changed id in
-//! `wiki_names_owed` (data migration 0024), so a row written by any writer, an
+//! `wiki_names_owed` (data migration 0025), so a row written by any writer, an
 //! older build's included, is read whole until [`settle_name_keys`] stores its
 //! keys again. A lookup is answered from every row claiming one of its keys plus
 //! every owed row, and the tie-break needs only the rows claiming a key, so the
@@ -41,6 +41,7 @@ use rusqlite::Connection;
 use crate::api::errors::StorageError;
 use crate::domain::notes::names::{js_trim, name_key, parse_stored};
 use crate::domain::tags::fold;
+use crate::storage::nested_tx;
 
 /// A target's note half, and its heading half when it carries a `#`.
 ///
@@ -144,7 +145,7 @@ impl WikiNames {
         let keys = to_json(&keys)?;
         // Both reads in one snapshot, so a rename committed between them is not half seen.
         let snapshot = if conn.is_autocommit() {
-            Some(conn.unchecked_transaction().map_err(failed)?)
+            Some(nested_tx::begin(conn).map_err(failed)?)
         } else {
             None
         };
@@ -297,7 +298,7 @@ impl WikiNames {
 /// `wiki_name_keys` stores these, so a change to what a key is ([`name_key`], [`fold`], the
 /// NFC step, a new map) leaves stored keys stale: it ships with a data migration that marks
 /// every row owed (`INSERT INTO wiki_names_owed (id) SELECT id FROM notes UNION SELECT id
-/// FROM journal_entries`), as 0024 does.
+/// FROM journal_entries`), as 0025 does.
 struct Claims {
     /// `by_path`: a markdown note's folded `folder/Title.md`.
     path: Option<String>,
@@ -399,7 +400,7 @@ fn target_keys(target: &str) -> Vec<String> {
 /// Stores the keys of every id `wiki_names_owed` lists and clears the list: an id no longer
 /// live keeps no key. On `data.db`'s writer, in one transaction. The number of ids settled.
 pub fn settle_name_keys(conn: &Connection) -> Result<usize, StorageError> {
-    let transaction = conn.unchecked_transaction().map_err(failed)?;
+    let transaction = nested_tx::begin(conn).map_err(failed)?;
     let ids = {
         let mut statement = transaction
             .prepare("SELECT DISTINCT id FROM wiki_names_owed")
@@ -451,7 +452,8 @@ fn rows(conn: &Connection, ids: Option<&str>) -> Result<Vec<Row>, StorageError> 
     let mut notes = conn
         .prepare(&format!(
             "SELECT id, title, folder_path, file_type, aliases FROM notes \
-             WHERE deleted_at IS NULL{only}"
+             WHERE deleted_at IS NULL AND {}{only}",
+            crate::domain::journal::not_a_journal_day("id")
         ))
         .map_err(failed)?;
     let found = notes

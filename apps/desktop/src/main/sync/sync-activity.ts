@@ -10,7 +10,10 @@
  */
 
 import type { SyncStatusChangedEvent } from '@memry/contracts/ipc-events'
+import { SYNC_EVENTS } from '@memry/contracts/ipc-sync'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { recordActivity, toActivityPath } from '../vault/activity-log'
+import { TextInMediaFileError } from './attachment-errors'
 
 const SYNC_ACTIVITY_DEDUPE_MS = 6 * 60 * 60 * 1000
 
@@ -42,6 +45,22 @@ export function recordAttachmentUploadFailure(
     message,
     dedupeKey: `sync-upload:${diskPath}:${category}`,
     dedupeWindowMs: SYNC_ACTIVITY_DEDUPE_MS
+  })
+}
+
+/**
+ * An upload refused for good (`UnsendableAttachmentError`). A media file that
+ * holds text (#5415) is told to the user with its reason; an empty file
+ * (#3414) stays silent.
+ */
+export function reportRefusedUpload(noteId: string, diskPath: string, error: Error): void {
+  if (!(error instanceof TextInMediaFileError)) return
+  recordAttachmentUploadFailure(diskPath, 'text_in_media_file', error.message)
+  broadcastToAllWindows(SYNC_EVENTS.ATTACHMENT_UPLOAD_FAILED, {
+    noteId,
+    diskPath,
+    error: error.message,
+    reason: error.message
   })
 }
 
