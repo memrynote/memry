@@ -205,8 +205,10 @@ fn convert_block(kind: &TokenKind, breaks: &[String]) -> Result<SeedBlock, Unsup
         TokenKind::Code { language, code } => {
             // A token in a fence the mask did not see as one (a fence another
             // fence's opener closed) gets its spelling back: the bytes of a
-            // code block are literal (`repairRuns`, `unmaskRun`).
+            // code block are literal (`repairRuns`, `unmaskRun`), and so do
+            // its string props, the language among them (`repairBlocks`).
             let code = restore_hard_break_spelling(code, breaks);
+            let language = restore_hard_break_spelling(language, breaks);
             let content = if code.is_empty() {
                 Vec::new()
             } else {
@@ -220,9 +222,7 @@ fn convert_block(kind: &TokenKind, breaks: &[String]) -> Result<SeedBlock, Unsup
             let kind = if language == "mermaid" {
                 SeedKind::Diagram
             } else {
-                SeedKind::CodeBlock {
-                    language: language.clone(),
-                }
+                SeedKind::CodeBlock { language }
             };
             SeedBlock::new(kind, content)
         }
