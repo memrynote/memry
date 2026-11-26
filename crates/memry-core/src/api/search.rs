@@ -27,7 +27,6 @@ use rusqlite::OptionalExtension as _;
 
 use crate::api::errors::StorageError;
 use crate::api::semantic::SemanticSearch;
-use crate::domain::calendar_items::linked_notes::{self, LinkedNote};
 use crate::domain::journal_ops::links::{self, BacklinkRow, OutgoingLink};
 #[cfg(feature = "markdown")]
 use crate::domain::note_properties::{self, NoteWithProperty, PropertyUse, StoredProperty};
@@ -163,24 +162,6 @@ impl Search {
     #[doc(hidden)]
     pub fn index_handle(&self) -> Db {
         self.index.clone()
-    }
-}
-
-/// The event card's linked notes ([`linked_notes`]). Not on the FFI surface.
-impl Search {
-    /// The notes and days whose relations name a calendar item, by title.
-    pub fn calendar_linked_notes(
-        &self,
-        source_type: &str,
-        source_id: &str,
-    ) -> Result<Vec<LinkedNote>, StorageError> {
-        let (source_type, source_id) = (source_type.to_owned(), source_id.to_owned());
-        let index = self.index.clone();
-        self.data.read_blocking(move |data| {
-            index.read_blocking(|index| {
-                linked_notes::linked_notes(data, index, &source_type, &source_id)
-            })
-        })
     }
 }
 
