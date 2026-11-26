@@ -91,14 +91,17 @@ test("the packages match rust-ci.yml's merge-queue Test step, which applies the 
     new URL('../.github/workflows/rust-ci.yml', import.meta.url),
     'utf8'
   )
-  const step = workflow.match(/^ {10}cargo nextest run --profile "\$PROFILE" (.*)$/m)?.[1]
-  assert.ok(step, 'the Test step runs cargo nextest run --profile "$PROFILE"')
+  const step = workflow.match(/^ {10}cargo nextest run (.*\$\{FILTER:\+-E "\$FILTER"\}.*)$/m)?.[1]
+  assert.ok(step, 'the Test step runs cargo nextest run with the quarantine filter')
   assert.deepEqual(
     [...step.matchAll(/-p (\S+)/g)].map(([, p]) => p),
     PACKAGES
   )
   assert.match(step, /\$\{FILTER:\+-E "\$FILTER"\}/)
-  assert.match(workflow, /FILTER=\$\(node \.\.\/scripts\/check-quarantine\.mjs --filter\)/)
+  assert.match(
+    workflow,
+    /if \[ "\$NEXTEST_PROFILE" = merge-queue \]; then FILTER=\$\(node \.\.\/scripts\/check-quarantine\.mjs --filter\); fi/
+  )
 })
 
 test('the committed list parses', () => {

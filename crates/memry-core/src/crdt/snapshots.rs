@@ -538,5 +538,6 @@ fn failed(error: rusqlite::Error) -> StorageError {
 }
 
 mod store;
+
 #[cfg(test)]
 mod tests;

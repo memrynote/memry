@@ -135,86 +135,88 @@ private struct DayHost: View {
     }
 }
 
-@MainActor
-@Suite("Journal day attachments", .serialized)
-struct JournalDayAttachmentTests {
-    private struct Fixture {
-        let vault: JournalTestVault
-        let page: JournalDayPageModel
-        let reader: DayReader
-        let filler: DayFiller
-        let shown: Shown
-        let window: UIWindow
-    }
-
-    /// Today, with an entry whose body `reader` scripts, on a page in a scene
-    /// window.
-    private func open(_ reader: DayReader, shown: Bool) async throws -> Fixture {
-        let vault = try JournalTestVault()
-        try vault.write("entry", on: JournalTestVault.today)
-        let filler = DayFiller(reader: reader)
-        let context = JournalVaultContext(
-            reader: reader, filler: filler, writer: nil, editor: nil, metadataWriter: nil, search: nil, noteTasks: nil
-        )
-        vault.store.context = context
-        await vault.store.loadDay(JournalTestVault.today)
-        let page = JournalDayPageModel(store: vault.store, date: JournalTestVault.today, context: context)
-        let shown = Shown(shown)
-        let scene = try #require(UIApplication.shared.connectedScenes.first as? UIWindowScene)
-        let window = UIWindow(windowScene: scene)
-        window.rootViewController = UIHostingController(rootView: DayHost(store: vault.store, page: page, shown: shown))
-        window.makeKeyAndVisible()
-        return Fixture(vault: vault, page: page, reader: reader, filler: filler, shown: shown, window: window)
-    }
-
-    private func until(_ condition: () -> Bool) async {
-        for _ in 0..<300 where !condition() {
-            try? await Task.sleep(for: .milliseconds(20))
+extension KeyWindowSuites {
+    @MainActor
+    @Suite("Journal day attachments", .serialized)
+    struct JournalDayAttachmentTests {
+        private struct Fixture {
+            let vault: JournalTestVault
+            let page: JournalDayPageModel
+            let reader: DayReader
+            let filler: DayFiller
+            let shown: Shown
+            let window: UIWindow
         }
-    }
 
-    /// Opening today builds yesterday and tomorrow too. Building a neighbour
-    /// is a prefetch: under Never or On Wi-Fi it must not download over
-    /// cellular. It asks once the user pages to it.
-    @Test(.timeLimit(.minutes(1))) func a_neighbour_asks_for_nothing_until_it_is_shown() async throws {
-        let reader = DayReader(blocks: [picture("shot.png")], bindings: ["shot.png": binding("att-1")])
-        defer { reader.removeLandedBytes() }
-        let day = try await open(reader, shown: false)
-        defer { day.window.isHidden = true }
-
-        await until { day.page.read.attachments["shot.png"] != nil }
-        // The read is done; give a fetch following it time to start.
-        for _ in 0..<25 where day.filler.fetched.isEmpty {
-            try await Task.sleep(for: .milliseconds(20))
+        /// Today, with an entry whose body `reader` scripts, on a page in a scene
+        /// window.
+        private func open(_ reader: DayReader, shown: Bool) async throws -> Fixture {
+            let vault = try JournalTestVault()
+            try vault.write("entry", on: JournalTestVault.today)
+            let filler = DayFiller(reader: reader)
+            let context = JournalVaultContext(
+                reader: reader, filler: filler, writer: nil, editor: nil, metadataWriter: nil, search: nil, noteTasks: nil
+            )
+            vault.store.context = context
+            await vault.store.loadDay(JournalTestVault.today)
+            let page = JournalDayPageModel(store: vault.store, date: JournalTestVault.today, context: context)
+            let shown = Shown(shown)
+            let scene = try #require(UIApplication.shared.connectedScenes.first as? UIWindowScene)
+            let window = UIWindow(windowScene: scene)
+            window.rootViewController = UIHostingController(rootView: DayHost(store: vault.store, page: page, shown: shown))
+            window.makeKeyAndVisible()
+            return Fixture(vault: vault, page: page, reader: reader, filler: filler, shown: shown, window: window)
         }
-        #expect(day.filler.fetched.isEmpty, "a neighbour built as a prefetch downloaded its attachments")
 
-        day.shown.value = true
-        await until { !day.filler.fetched.isEmpty }
-        #expect(day.filler.fetched == ["att-1"], "the day the user paged to did not download its picture")
-    }
-
-    /// A desktop edit adds a picture while the day is open. Under Never the
-    /// redriver downloads nothing, so the page is the only thing that asks:
-    /// the pass pulls the body, the re-read binds the picture, and the page
-    /// downloads it without being reopened.
-    @Test(.timeLimit(.minutes(1))) func the_shown_day_downloads_a_picture_a_pulled_body_brings() async throws {
-        let reader = DayReader(blocks: [paragraph], bindings: [:])
-        defer { reader.removeLandedBytes() }
-        let day = try await open(reader, shown: true)
-        defer { day.window.isHidden = true }
-
-        // The open read and pulled the body, which brought nothing. Its work
-        // ends before the pass, so nothing from the open sees the picture.
-        await until { day.filler.pulled >= 1 && day.page.read.blocksRead }
-        for _ in 0..<20 { try await Task.sleep(for: .milliseconds(20)) }
-        #expect(day.filler.fetched.isEmpty)
-        day.filler.landOnNextPull {
-            reader.land([paragraph, picture("shot.png")], bindings: ["shot.png": binding("att-1")])
+        private func until(_ condition: () -> Bool) async {
+            for _ in 0..<300 where !condition() {
+                try? await Task.sleep(for: .milliseconds(20))
+            }
         }
-        await day.vault.store.syncFinished()
 
-        await until { !day.filler.fetched.isEmpty }
-        #expect(day.filler.fetched == ["att-1"], "the picture the pulled body brought was never downloaded")
+        /// Opening today builds yesterday and tomorrow too. Building a neighbour
+        /// is a prefetch: under Never or On Wi-Fi it must not download over
+        /// cellular. It asks once the user pages to it.
+        @Test(.timeLimit(.minutes(1))) func a_neighbour_asks_for_nothing_until_it_is_shown() async throws {
+            let reader = DayReader(blocks: [picture("shot.png")], bindings: ["shot.png": binding("att-1")])
+            defer { reader.removeLandedBytes() }
+            let day = try await open(reader, shown: false)
+            defer { day.window.isHidden = true }
+
+            await until { day.page.read.attachments["shot.png"] != nil }
+            // The read is done; give a fetch following it time to start.
+            for _ in 0..<25 where day.filler.fetched.isEmpty {
+                try await Task.sleep(for: .milliseconds(20))
+            }
+            #expect(day.filler.fetched.isEmpty, "a neighbour built as a prefetch downloaded its attachments")
+
+            day.shown.value = true
+            await until { !day.filler.fetched.isEmpty }
+            #expect(day.filler.fetched == ["att-1"], "the day the user paged to did not download its picture")
+        }
+
+        /// A desktop edit adds a picture while the day is open. Under Never the
+        /// redriver downloads nothing, so the page is the only thing that asks:
+        /// the pass pulls the body, the re-read binds the picture, and the page
+        /// downloads it without being reopened.
+        @Test(.timeLimit(.minutes(1))) func the_shown_day_downloads_a_picture_a_pulled_body_brings() async throws {
+            let reader = DayReader(blocks: [paragraph], bindings: [:])
+            defer { reader.removeLandedBytes() }
+            let day = try await open(reader, shown: true)
+            defer { day.window.isHidden = true }
+
+            // The open read and pulled the body, which brought nothing. Its work
+            // ends before the pass, so nothing from the open sees the picture.
+            await until { day.filler.pulled >= 1 && day.page.read.blocksRead }
+            for _ in 0..<20 { try await Task.sleep(for: .milliseconds(20)) }
+            #expect(day.filler.fetched.isEmpty)
+            day.filler.landOnNextPull {
+                reader.land([paragraph, picture("shot.png")], bindings: ["shot.png": binding("att-1")])
+            }
+            await day.vault.store.syncFinished()
+
+            await until { !day.filler.fetched.isEmpty }
+            #expect(day.filler.fetched == ["att-1"], "the picture the pulled body brought was never downloaded")
+        }
     }
 }
