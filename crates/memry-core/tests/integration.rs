@@ -332,6 +332,9 @@ mod editor_locked_refuses;
 mod editor_open_apply;
 #[path = "editor_origin_fanout.rs"]
 mod editor_origin_fanout;
+#[cfg(feature = "markdown")]
+#[path = "editor_search_stamp.rs"]
+mod editor_search_stamp;
 #[path = "embedding_input_vectors.rs"]
 mod embedding_input_vectors;
 #[path = "embedding_parity.rs"]
@@ -520,6 +523,8 @@ mod search_body_cache;
 mod session_refresh_errors;
 #[path = "snapshot_embeds.rs"]
 mod snapshot_embeds;
+#[path = "stamp_inside_hold.rs"]
+mod stamp_inside_hold;
 #[path = "sync_applied_records.rs"]
 mod sync_applied_records;
 #[path = "sync_body_heal.rs"]
