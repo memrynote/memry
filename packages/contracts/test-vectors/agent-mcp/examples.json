@@ -2,7 +2,7 @@
   "meta": {
     "generator": "apps/desktop/scripts/generate-agent-mcp-vectors.ts",
     "oracle": "apps/desktop/scripts/agent-api-examples.json run through the SDK server above (tools) and assertDesktopApiArgs (operations)",
-    "note": "A tool case is `valid` when Electron ran its handler; otherwise `issues` are zod’s and `errorText` is the reply text the SDK sends. An operation case carries the VALIDATION error Electron returns, or none.",
+    "note": "A tool case is `valid` when Electron ran its handler; otherwise `issues` are zod’s and `errorText` is the reply text the SDK sends. A tool case with `platform` holds only there (`linux` is every platform but Windows); the others hold everywhere. An operation case carries the VALIDATION error Electron returns, or none.",
     "regenerate": "pnpm --filter @memry/desktop vectors:agent-mcp"
   },
   "tools": [
@@ -2512,6 +2512,186 @@
         }
       ],
       "errorText": "MCP error -32602: Input validation error: Invalid arguments for tool vault_delete_folder: Invalid input: expected string, received number at path"
+    },
+    {
+      "tool": "vault_delete_folder",
+      "variant": "path the vault itself",
+      "arguments": {
+        "path": "."
+      },
+      "valid": false,
+      "issues": [
+        {
+          "code": "custom",
+          "path": [
+            "path"
+          ],
+          "message": "Name a folder inside the vault, not the vault itself or a path outside it"
+        }
+      ],
+      "errorText": "MCP error -32602: Input validation error: Invalid arguments for tool vault_delete_folder: Name a folder inside the vault, not the vault itself or a path outside it at path"
+    },
+    {
+      "tool": "vault_delete_folder",
+      "variant": "path a backslash",
+      "arguments": {
+        "path": "\\"
+      },
+      "valid": false,
+      "issues": [
+        {
+          "code": "custom",
+          "path": [
+            "path"
+          ],
+          "message": "Name a folder inside the vault, not the vault itself or a path outside it"
+        }
+      ],
+      "errorText": "MCP error -32602: Input validation error: Invalid arguments for tool vault_delete_folder: Name a folder inside the vault, not the vault itself or a path outside it at path"
+    },
+    {
+      "tool": "vault_delete_folder",
+      "variant": "path back to the vault",
+      "arguments": {
+        "path": "Work/.."
+      },
+      "valid": false,
+      "issues": [
+        {
+          "code": "custom",
+          "path": [
+            "path"
+          ],
+          "message": "Name a folder inside the vault, not the vault itself or a path outside it"
+        }
+      ],
+      "errorText": "MCP error -32602: Input validation error: Invalid arguments for tool vault_delete_folder: Name a folder inside the vault, not the vault itself or a path outside it at path"
+    },
+    {
+      "tool": "vault_delete_folder",
+      "variant": "path the parent",
+      "arguments": {
+        "path": ".."
+      },
+      "valid": false,
+      "issues": [
+        {
+          "code": "custom",
+          "path": [
+            "path"
+          ],
+          "message": "Name a folder inside the vault, not the vault itself or a path outside it"
+        }
+      ],
+      "errorText": "MCP error -32602: Input validation error: Invalid arguments for tool vault_delete_folder: Name a folder inside the vault, not the vault itself or a path outside it at path"
+    },
+    {
+      "tool": "vault_delete_folder",
+      "variant": "path outside the vault",
+      "arguments": {
+        "path": "Work/../../Outside"
+      },
+      "valid": false,
+      "issues": [
+        {
+          "code": "custom",
+          "path": [
+            "path"
+          ],
+          "message": "Name a folder inside the vault, not the vault itself or a path outside it"
+        }
+      ],
+      "errorText": "MCP error -32602: Input validation error: Invalid arguments for tool vault_delete_folder: Name a folder inside the vault, not the vault itself or a path outside it at path"
+    },
+    {
+      "tool": "vault_delete_folder",
+      "variant": "path a drive",
+      "arguments": {
+        "path": "C:\\Users"
+      },
+      "valid": false,
+      "issues": [
+        {
+          "code": "custom",
+          "path": [
+            "path"
+          ],
+          "message": "Name a folder inside the vault, not the vault itself or a path outside it"
+        }
+      ],
+      "errorText": "MCP error -32602: Input validation error: Invalid arguments for tool vault_delete_folder: Name a folder inside the vault, not the vault itself or a path outside it at path"
+    },
+    {
+      "tool": "vault_delete_folder",
+      "variant": "path ./Work/",
+      "arguments": {
+        "path": "./Work/"
+      },
+      "valid": true
+    },
+    {
+      "tool": "vault_delete_folder",
+      "variant": "path Work\\Sub",
+      "arguments": {
+        "path": "Work\\Sub"
+      },
+      "valid": true
+    },
+    {
+      "tool": "vault_delete_folder",
+      "variant": "path Work. off Windows",
+      "platform": "linux",
+      "arguments": {
+        "path": "Work."
+      },
+      "valid": true
+    },
+    {
+      "tool": "vault_delete_folder",
+      "variant": "path Work. on Windows",
+      "platform": "win32",
+      "arguments": {
+        "path": "Work."
+      },
+      "valid": false,
+      "issues": [
+        {
+          "code": "custom",
+          "path": [
+            "path"
+          ],
+          "message": "The folder name ends in a dot or a space, which Windows ignores, so deleting it could delete another folder. Delete the notes in it one by one instead."
+        }
+      ],
+      "errorText": "MCP error -32602: Input validation error: Invalid arguments for tool vault_delete_folder: The folder name ends in a dot or a space, which Windows ignores, so deleting it could delete another folder. Delete the notes in it one by one instead. at path"
+    },
+    {
+      "tool": "vault_delete_folder",
+      "variant": "path Work /Sub on Windows",
+      "platform": "win32",
+      "arguments": {
+        "path": "Work /Sub"
+      },
+      "valid": false,
+      "issues": [
+        {
+          "code": "custom",
+          "path": [
+            "path"
+          ],
+          "message": "The folder name ends in a dot or a space, which Windows ignores, so deleting it could delete another folder. Delete the notes in it one by one instead."
+        }
+      ],
+      "errorText": "MCP error -32602: Input validation error: Invalid arguments for tool vault_delete_folder: The folder name ends in a dot or a space, which Windows ignores, so deleting it could delete another folder. Delete the notes in it one by one instead. at path"
+    },
+    {
+      "tool": "vault_delete_folder",
+      "variant": "path Work/.Sub on Windows",
+      "platform": "win32",
+      "arguments": {
+        "path": "Work/.Sub"
+      },
+      "valid": true
     },
     {
       "tool": "vault_create_task",

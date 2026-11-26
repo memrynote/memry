@@ -452,7 +452,8 @@ fn rows(conn: &Connection, ids: Option<&str>) -> Result<Vec<Row>, StorageError> 
     let mut notes = conn
         .prepare(&format!(
             "SELECT id, title, folder_path, file_type, aliases FROM notes \
-             WHERE deleted_at IS NULL{only}"
+             WHERE deleted_at IS NULL AND {}{only}",
+            crate::domain::journal::not_a_journal_day("id")
         ))
         .map_err(failed)?;
     let found = notes

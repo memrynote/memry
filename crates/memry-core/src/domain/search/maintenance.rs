@@ -57,8 +57,9 @@ pub const TASKS_WATERMARK_KEY: &str = "watermark.fts_tasks";
 pub const STAMPS_KEY: &str = "stamps.version";
 /// The current [`STAMPS_KEY`]. `1`: body updates stamped at apply time. `2`
 /// (#4315): the body cache keyed by a version a snapshot moves, so the bodies
-/// cached empty under `1` are read again.
-pub(super) const STAMPS_VERSION: i64 = 2;
+/// cached empty under `1` are read again. `3` (#5716): body `#tags` read in
+/// every script, so `note_body_tags` gains the ones `2` read as prose.
+pub(super) const STAMPS_VERSION: i64 = 3;
 
 /// What one [`super::reindex`] pass did.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]

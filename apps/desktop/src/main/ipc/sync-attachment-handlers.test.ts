@@ -24,7 +24,8 @@ const attachmentMocks = vi.hoisted(() => ({
     downloadAttachment: vi.fn(),
     getUploadProgress: vi.fn(),
     getDownloadProgress: vi.fn(),
-    setProgressCallback: vi.fn()
+    setProgressCallback: vi.fn(),
+    checksumOf: vi.fn()
   },
   queue: {
     enqueue: vi.fn(),
@@ -100,6 +101,9 @@ vi.mock('../sync/upload-queue', () => ({
 // wiring can be driven directly.
 type OutboxUploader = Parameters<typeof AttachmentOutboxregisterOutboxUploader>[0]
 const outboxUploaders = vi.hoisted(() => [] as OutboxUploader[])
+const outboxRecorders = vi.hoisted(
+  () => [] as Parameters<typeof AttachmentOutboxregisterOutboxUploader>[2][]
+)
 vi.mock('../sync/attachment-outbox', async (importOriginal) => {
   const actual = await importOriginal<typeof AttachmentOutboxModule>()
   return {
@@ -110,6 +114,7 @@ vi.mock('../sync/attachment-outbox', async (importOriginal) => {
     refuseUpload: vi.fn(actual.refuseUpload),
     registerOutboxUploader: (...args: Parameters<typeof actual.registerOutboxUploader>): void => {
       outboxUploaders.push(args[0])
+      outboxRecorders.push(args[2])
       actual.registerOutboxUploader(...args)
     }
   }
@@ -146,13 +151,18 @@ vi.mock('../sync/crdt-writeback', () => ({}))
 // tests that exercise the on-demand-only mode.
 const autoDownloadSettings = vi.hoisted(() => ({ enabled: true }))
 vi.mock('../sync/attachment-download-settings', () => ({
+  downloadsInBackground: vi.fn(() => autoDownloadSettings.enabled),
   isAttachmentAutoDownloadEnabled: vi.fn(() => autoDownloadSettings.enabled)
 }))
 
-const mockApplyDownloadedAttachmentName = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
+const mockApplyDownloadedAttachmentName = vi.hoisted(() =>
+  vi.fn(async (_noteId: string, placed: string) => placed)
+)
 vi.mock('../vault/case-twin-file', () => ({
-  landCaseTwinDownload: vi.fn((filePath: string) => filePath),
   releaseAbandonedCaseTwinBytes: vi.fn()
+}))
+vi.mock('../vault/case-twin-landing', () => ({
+  landCaseTwinDownload: vi.fn((filePath: string) => filePath)
 }))
 vi.mock('../vault/attachment-rename', () => ({
   applyDownloadedAttachmentName: (...args: unknown[]) => mockApplyDownloadedAttachmentName(...args)
@@ -195,7 +205,12 @@ vi.mock('../lib/logger', () => ({
 
 vi.mock('../sync/note-attachment-metadata', () => ({
   recordDownloadedFileSize: vi.fn(),
-  recordUploadedAttachment: vi.fn()
+  recordUploadedFile: vi.fn(async () => true)
+}))
+
+vi.mock('../sync/binary-hash-check', () => ({
+  registerManifestChecksumReader: vi.fn(),
+  settleBinaryHashCheck: vi.fn(async () => {})
 }))
 
 const mockRecordAttachmentFile = vi.hoisted(() => vi.fn())
@@ -247,16 +262,18 @@ import { UploadQueue } from '../sync/upload-queue'
 import type { NetworkMonitor } from '../sync/network'
 import { getValidAccessToken } from '../sync/token-manager'
 import { isDatabaseInitialized } from '../database/client'
-import {
-  recordDownloadedFileSize,
-  recordUploadedAttachment
-} from '../sync/note-attachment-metadata'
+import { recordDownloadedFileSize, recordUploadedFile } from '../sync/note-attachment-metadata'
+import { registerManifestChecksumReader, settleBinaryHashCheck } from '../sync/binary-hash-check'
 import { appWriteCheck, resetAppWrites } from '../vault/app-writes'
-import { landCaseTwinDownload, releaseAbandonedCaseTwinBytes } from '../vault/case-twin-file'
+import { releaseAbandonedCaseTwinBytes } from '../vault/case-twin-file'
+import { landCaseTwinDownload } from '../vault/case-twin-landing'
 import {
   clearAttachmentDownloadFailure,
-  markDownloadSucceeded
+  markDownloadRequested,
+  markDownloadSucceeded,
+  resetAttachmentDownloadSession
 } from '@memry/sync-client/attachment-download-state'
+import type { AttachmentDownloadNeededEvent } from '@memry/sync-client/attachment-events'
 import {
   AttachmentSyncService,
   AttachmentTooLargeError,
@@ -265,6 +282,14 @@ import {
 import { SyncServerError } from '../sync/http-client'
 import { setCachedEntitlementFromStatus, getCachedMaxFileSize } from '../billing/entitlement-cache'
 import type { BillingStatus } from '../billing/paddle-billing'
+
+/** What a pull hands the listener: the request, and the claim it took for it. */
+const pullRequest = (
+  event: Omit<AttachmentDownloadNeededEvent, 'claim'>
+): AttachmentDownloadNeededEvent => ({
+  ...event,
+  claim: markDownloadRequested(event.noteId, event.attachmentId)!
+})
 
 describe('sync-attachment-handlers', () => {
   beforeEach(() => {
@@ -298,13 +323,15 @@ describe('sync-attachment-handlers', () => {
       removeListener: vi.fn()
     } as unknown as NetworkMonitor)
     outboxUploaders.length = 0
+    outboxRecorders.length = 0
     mockOnSaved.mockClear()
     mockOnDownloadNeeded.mockClear()
     mockRemoveAll.mockClear()
     vi.mocked(getValidAccessToken).mockResolvedValue(null)
     vi.mocked(getVaultStatus).mockReturnValue({ path: null } as any)
     vi.mocked(isDatabaseInitialized).mockReturnValue(false)
-    clearAttachmentState()
+    void clearAttachmentState()
+    resetAttachmentDownloadSession()
   })
 
   afterEach(() => {
@@ -313,7 +340,7 @@ describe('sync-attachment-handlers', () => {
   })
 
   // #given handlers are registered
-  it('registers all 4 attachment IPC channels on registerAttachmentHandlers', () => {
+  it('registers all 5 attachment IPC channels on registerAttachmentHandlers', () => {
     // #when
     registerAttachmentHandlers()
 
@@ -322,6 +349,7 @@ describe('sync-attachment-handlers', () => {
     expect(mockIpcMain._getHandler(SYNC_CHANNELS.GET_UPLOAD_PROGRESS)).toBeDefined()
     expect(mockIpcMain._getHandler(SYNC_CHANNELS.DOWNLOAD_ATTACHMENT)).toBeDefined()
     expect(mockIpcMain._getHandler(SYNC_CHANNELS.GET_DOWNLOAD_PROGRESS)).toBeDefined()
+    expect(mockIpcMain._getHandler(SYNC_CHANNELS.DOWNLOAD_NOTE_FILES)).toBeDefined()
   })
 
   it('subscribes to attachmentEvents on register', () => {
@@ -354,7 +382,7 @@ describe('sync-attachment-handlers', () => {
     registerAttachmentHandlers()
 
     // #when
-    clearAttachmentState()
+    void clearAttachmentState()
 
     // #then — safe to call multiple times without throwing
     expect(() => clearAttachmentState()).not.toThrow()
@@ -379,13 +407,13 @@ describe('sync-attachment-handlers', () => {
     getCanvasAssetIO()
 
     // #when the sync runtime tears down
-    resetAttachmentQueue()
+    void resetAttachmentQueue()
 
     // #then the IPC layer's queue went with it
     expect(dispose).toHaveBeenCalledTimes(1)
 
     unregisterAttachmentHandlers()
-    resetAttachmentQueue()
+    void resetAttachmentQueue()
 
     // #then a deregistered handler set is not reachable from the runtime
     expect(dispose).toHaveBeenCalledTimes(1)
@@ -403,7 +431,7 @@ describe('sync-attachment-handlers', () => {
     expect(vi.mocked(UploadQueue).mock.calls[0][1]).toBe(monitorA)
 
     // #when that runtime stops and a second one starts with a fresh monitor
-    resetAttachmentQueue()
+    void resetAttachmentQueue()
     expect(attachmentMocks.queue.dispose).toHaveBeenCalledTimes(1)
     vi.mocked(getNetworkMonitor).mockReturnValue(monitorB)
     expect(getCanvasAssetIO()).not.toBeNull()
@@ -486,7 +514,8 @@ describe('sync-attachment-handlers', () => {
       {
         onProgress: expect.any(Function),
         pace: expect.any(Function),
-        upcoming: expect.any(Function)
+        upcoming: expect.any(Function),
+        signal: expect.any(AbortSignal)
       }
     )
     // The shared slot is never touched, so nothing can clear a concurrent
@@ -645,7 +674,11 @@ describe('sync-attachment-handlers', () => {
     expect(attachmentMocks.service.downloadAttachment).toHaveBeenCalledWith(
       'attachment-1',
       '/vault/attachments/canvas-1.png',
-      { pace: expect.any(Function), upcoming: expect.any(Function) }
+      {
+        pace: expect.any(Function),
+        upcoming: expect.any(Function),
+        signal: expect.any(AbortSignal)
+      }
     )
   })
 
@@ -1041,7 +1074,7 @@ describe('sync-attachment-handlers', () => {
     }) => void
     onSaved({ noteId: 'note-1', diskPath: '/vault/attachments/saved.pdf' })
     await vi.waitFor(() =>
-      expect(recordUploadedAttachment).toHaveBeenCalledWith('note-1', 'attachment-1', 'sha-up')
+      expect(recordUploadedFile).toHaveBeenCalledWith('note-1', 'attachment-1', 'sha-up')
     )
 
     const onDownloadNeeded = mockOnDownloadNeeded.mock.calls[0][0] as (event: {
@@ -1049,11 +1082,13 @@ describe('sync-attachment-handlers', () => {
       attachmentId: string
       diskPath: string
     }) => void
-    onDownloadNeeded({
-      noteId: 'note-1',
-      attachmentId: 'attachment-1',
-      diskPath: '/vault/attachments/file.pdf'
-    })
+    onDownloadNeeded(
+      pullRequest({
+        noteId: 'note-1',
+        attachmentId: 'attachment-1',
+        diskPath: '/vault/attachments/file.pdf'
+      })
+    )
     await vi.waitFor(() =>
       expect(attachmentMocks.service.downloadAttachment).toHaveBeenCalledWith(
         'attachment-1',
@@ -1066,9 +1101,9 @@ describe('sync-attachment-handlers', () => {
     // A case twin's download lands where its note's file is now (#5560).
     const { beforeFileLands } = vi.mocked(AttachmentSyncService).mock.calls[0][0]
     vi.mocked(landCaseTwinDownload).mockReturnValueOnce('/vault/Other/file.pdf')
-    expect(beforeFileLands?.('/vault/attachments/file.pdf', 'attachment-1', 'sha', 'note-1')).toBe(
-      '/vault/Other/file.pdf'
-    )
+    await expect(
+      beforeFileLands?.('/vault/attachments/file.pdf', 'attachment-1', 'sha', 'note-1')
+    ).resolves.toBe('/vault/Other/file.pdf')
     expect(landCaseTwinDownload).toHaveBeenCalledWith(
       '/vault/attachments/file.pdf',
       'attachment-1',
@@ -1085,6 +1120,69 @@ describe('sync-attachment-handlers', () => {
         1234,
         'sha-down'
       )
+    )
+  })
+
+  // A late upload kept off its note: its file holds other bytes now (#5608).
+  it('records no file for an upload kept off its note', async () => {
+    vi.mocked(getValidAccessToken).mockResolvedValue('token-1')
+    vi.mocked(isDatabaseInitialized).mockReturnValue(true)
+    vi.mocked(getVaultStatus).mockReturnValue({ path: '/vault' } as any)
+    vi.mocked(recordUploadedFile).mockClear().mockResolvedValue(false)
+    mockRecordAttachmentFile.mockClear()
+    registerAttachmentHandlers()
+
+    try {
+      const onSaved = mockOnSaved.mock.calls[0][0] as (event: {
+        noteId: string
+        diskPath: string
+      }) => void
+      onSaved({ noteId: 'note-1', diskPath: '/vault/Pictures/saved.png' })
+      await vi.waitFor(() => expect(clearUpload).toHaveBeenCalled())
+      const drained = '/vault/Pictures/drained.png'
+      const uploaded = (await outboxUploaders.findLast(Boolean)!('note-1', drained))!
+      await outboxRecorders.findLast(Boolean)!('note-1', uploaded, drained)
+
+      expect(recordUploadedFile).toHaveBeenCalledTimes(2)
+      expect(mockRecordAttachmentFile).not.toHaveBeenCalled()
+    } finally {
+      vi.mocked(recordUploadedFile).mockResolvedValue(true)
+    }
+  })
+
+  it("lands a note's download once its file's check against its attachment answered", async () => {
+    vi.mocked(isDatabaseInitialized).mockReturnValue(true)
+    registerAttachmentHandlers()
+    // The check reads a manifest through the shared attachment service.
+    attachmentMocks.service.checksumOf.mockResolvedValueOnce('sha-old')
+    const reader = vi.mocked(registerManifestChecksumReader).mock.calls.at(-1)?.[0]
+    const net = { signal: new AbortController().signal, pace: vi.fn(async () => {}) }
+    await expect(reader?.checksumOf('att-old', net)).resolves.toBe('sha-old')
+    expect(attachmentMocks.service.checksumOf).toHaveBeenCalledWith('att-old', net)
+    // It spends the downloads' pacing budget (#5617).
+    await expect(reader?.pace()).resolves.toBeUndefined()
+
+    let answer = (): void => {}
+    vi.mocked(settleBinaryHashCheck).mockReturnValueOnce(
+      new Promise<void>((resolve) => {
+        answer = resolve
+      })
+    )
+    vi.mocked(landCaseTwinDownload).mockClear().mockReturnValueOnce('/vault/Pictures/p.png')
+    const { beforeFileLands } = vi.mocked(AttachmentSyncService).mock.calls.at(-1)![0]
+
+    const landing = beforeFileLands?.('/vault/Pictures/p.png', 'att-new', 'sha', 'img')
+    await Promise.resolve()
+    expect(settleBinaryHashCheck).toHaveBeenCalledWith('img')
+    expect(landCaseTwinDownload).not.toHaveBeenCalled()
+    answer()
+
+    await expect(landing).resolves.toBe('/vault/Pictures/p.png')
+    expect(landCaseTwinDownload).toHaveBeenCalledWith(
+      '/vault/Pictures/p.png',
+      'att-new',
+      'sha',
+      'img'
     )
   })
 
@@ -1105,7 +1203,8 @@ describe('sync-attachment-handlers', () => {
     await vi.waitFor(() => expect(mockRecordAttachmentFile).toHaveBeenCalledTimes(1))
 
     const uploader = outboxUploaders.findLast(Boolean)!
-    await uploader('note-1', '/vault/attachments/note-1/bbbbbb-drained.png')
+    const drained = '/vault/attachments/note-1/bbbbbb-drained.png'
+    await outboxRecorders.findLast(Boolean)!('note-1', await uploader('note-1', drained), drained)
     mockPlaceDownloadedFile.mockResolvedValueOnce('/vault/sources/file.pdf')
     mockApplyDownloadedAttachmentName.mockClear()
     const onDownloadNeeded = mockOnDownloadNeeded.mock.calls[0][0] as (event: {
@@ -1114,12 +1213,14 @@ describe('sync-attachment-handlers', () => {
       diskPath: string
       intoDir?: boolean
     }) => void
-    onDownloadNeeded({
-      noteId: 'note-1',
-      attachmentId: 'attachment-9',
-      diskPath: '/vault/attachments/note-1',
-      intoDir: true
-    })
+    onDownloadNeeded(
+      pullRequest({
+        noteId: 'note-1',
+        attachmentId: 'attachment-9',
+        diskPath: '/vault/attachments/note-1',
+        intoDir: true
+      })
+    )
     await vi.waitFor(() => expect(mockRecordAttachmentFile).toHaveBeenCalledTimes(3))
 
     expect(mockRecordAttachmentFile.mock.calls.map((call) => call.slice(1))).toEqual([
@@ -1180,12 +1281,14 @@ describe('sync-attachment-handlers', () => {
         intoDir?: boolean
       }) => void
 
-      onDownloadNeeded({
-        noteId: 'note-1',
-        attachmentId: 'attachment-src',
-        diskPath: '/vault/attachments/note-1',
-        intoDir: true
-      })
+      onDownloadNeeded(
+        pullRequest({
+          noteId: 'note-1',
+          attachmentId: 'attachment-src',
+          diskPath: '/vault/attachments/note-1',
+          intoDir: true
+        })
+      )
       await vi.waitFor(() =>
         expect(vi.mocked(markDownloadSucceeded).mock.calls.map((call) => call.slice(1))).toEqual([
           ['note-1', 'attachment-src']
@@ -1212,12 +1315,14 @@ describe('sync-attachment-handlers', () => {
       diskPath: string
       intoDir?: boolean
     }) => void
-    onDownloadNeeded({
-      noteId: 'note-1',
-      attachmentId: 'attachment-1',
-      diskPath: '/vault/attachments/note-1',
-      intoDir: true
-    })
+    onDownloadNeeded(
+      pullRequest({
+        noteId: 'note-1',
+        attachmentId: 'attachment-1',
+        diskPath: '/vault/attachments/note-1',
+        intoDir: true
+      })
+    )
 
     // #then the file on THIS device ends up under the body's current name
     await vi.waitFor(() =>
@@ -1238,12 +1343,14 @@ describe('sync-attachment-handlers', () => {
       diskPath: string
       intoDir?: boolean
     }) => void
-    onDownloadNeeded({
-      noteId: 'note-1',
-      attachmentId: 'attachment-1',
-      diskPath: '/vault/attachments/note-1',
-      intoDir: true
-    })
+    onDownloadNeeded(
+      pullRequest({
+        noteId: 'note-1',
+        attachmentId: 'attachment-1',
+        diskPath: '/vault/attachments/note-1',
+        intoDir: true
+      })
+    )
 
     await vi.waitFor(() => expect(mockFileTextNoteChanged).toHaveBeenCalledWith('note-1'))
     expect(mockApplyDownloadedAttachmentName.mock.invocationCallOrder[0]).toBeLessThan(
@@ -1262,11 +1369,13 @@ describe('sync-attachment-handlers', () => {
       attachmentId: string
       diskPath: string
     }) => void
-    onDownloadNeeded({
-      noteId: 'note-1',
-      attachmentId: 'attachment-1',
-      diskPath: '/vault/attachments/file.pdf'
-    })
+    onDownloadNeeded(
+      pullRequest({
+        noteId: 'note-1',
+        attachmentId: 'attachment-1',
+        diskPath: '/vault/attachments/file.pdf'
+      })
+    )
 
     // A binary note IS the file — its name comes from the note, not from a
     // block ref, so the attachments-folder reconcile has no business here.
@@ -1286,12 +1395,14 @@ describe('sync-attachment-handlers', () => {
       diskPath: string
       landed: () => void
     }) => void
-    onDownloadNeeded({
-      noteId: 'note-1',
-      attachmentId: 'attachment-1',
-      diskPath: '/vault/Sunset.png',
-      landed
-    })
+    onDownloadNeeded(
+      pullRequest({
+        noteId: 'note-1',
+        attachmentId: 'attachment-1',
+        diskPath: '/vault/Sunset.png',
+        landed
+      })
+    )
 
     await vi.waitFor(() => expect(landed).toHaveBeenCalledTimes(1))
   })
@@ -1308,7 +1419,9 @@ describe('sync-attachment-handlers', () => {
       attachmentId: string
       diskPath: string
     }) => void
-    onDownloadNeeded({ noteId: 'note-1', attachmentId: 'attachment-1', diskPath: '/vault/p.png' })
+    onDownloadNeeded(
+      pullRequest({ noteId: 'note-1', attachmentId: 'attachment-1', diskPath: '/vault/p.png' })
+    )
 
     await vi.waitFor(() =>
       expect(releaseAbandonedCaseTwinBytes).toHaveBeenCalledWith(
@@ -1347,11 +1460,13 @@ describe('sync-attachment-handlers', () => {
       attachmentId: string
       diskPath: string
     }) => void
-    onDownloadNeeded({
-      noteId: 'note-1',
-      attachmentId: 'attachment-1',
-      diskPath: '/vault/attachments/file.pdf'
-    })
+    onDownloadNeeded(
+      pullRequest({
+        noteId: 'note-1',
+        attachmentId: 'attachment-1',
+        diskPath: '/vault/attachments/file.pdf'
+      })
+    )
     await vi.waitFor(() =>
       expect(attachmentMocks.sent).toContainEqual({
         channel: SYNC_EVENTS.ATTACHMENT_UPLOAD_FAILED,
@@ -1372,15 +1487,14 @@ describe('sync-attachment-handlers', () => {
     )
     registerAttachmentHandlers()
 
-    const onDownloadNeeded = mockOnDownloadNeeded.mock.calls[0][0] as (event: {
-      noteId: string
-      attachmentId: string
-      diskPath: string
-    }) => void
+    const onDownloadNeeded = mockOnDownloadNeeded.mock.calls[0][0] as (
+      event: AttachmentDownloadNeededEvent
+    ) => void
     onDownloadNeeded({
       noteId: 'note-1',
       attachmentId: 'attachment-1',
-      diskPath: '/vault/Pictures/p.png'
+      diskPath: '/vault/Pictures/p.png',
+      claim: markDownloadRequested('note-1', 'attachment-1')!
     })
     await vi.waitFor(() => expect(attachmentMocks.service.downloadAttachment).toHaveBeenCalled())
     await new Promise((resolve) => setTimeout(resolve, 20))

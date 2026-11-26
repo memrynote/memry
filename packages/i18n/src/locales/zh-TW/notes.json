@@ -45,6 +45,12 @@
     }
   },
   "page": {
+    "noteFiles": {
+      "downloading": "正在下載此筆記的檔案…",
+      "failed": "無法下載此筆記的檔案：{error}",
+      "failedFallback": "下載失敗",
+      "retry": "重試"
+    },
     "empty": {
       "title": "未選擇筆記",
       "body": "從側邊欄選擇一則筆記以查看"

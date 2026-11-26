@@ -225,6 +225,9 @@ final class NewNoteKeys {
         if seeds.inBackground() { seeds.flush() }
     }
 
+    /// The scene of the window the keys are held in.
+    fileprivate var scene: UIScene? { holder?.window?.windowScene }
+
     private func finish() {
         holder?.hold = nil
         holder?.removeFromSuperview()
@@ -278,17 +281,27 @@ final class NewNoteSeeds {
         settle: @escaping () async -> Void = { try? await Task.sleep(for: .seconds(2)) },
         inBackground: @escaping () -> Bool = { UIApplication.shared.applicationState == .background },
         log: Log = .interface,
-        journal: NewNoteJournal? = nil
+        journal: NewNoteJournal? = nil,
+        notifications: NotificationCenter = .default
     ) {
         self.hold = hold
         self.settle = settle
         self.inBackground = inBackground
         self.log = log
         self.journal = journal
-        NotificationCenter.default.addObserver(
+        notifications.addObserver(
             forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: nil
         ) { [weak self] _ in
             MainActor.assumeIsolated { self?.flush() }
+        }
+        // An iPad window can go to the background while others stay, which
+        // posts only its scene's notification (#5820). A post that names no
+        // scene ends no hold: only the app leaving ends every one.
+        notifications.addObserver(
+            forName: UIScene.didEnterBackgroundNotification, object: nil, queue: nil
+        ) { [weak self] note in
+            guard let scene = note.object as? UIScene else { return }
+            MainActor.assumeIsolated { self?.flush(leaving: scene) }
         }
     }
 
@@ -341,11 +354,17 @@ final class NewNoteSeeds {
 
     /// Ends every hold and writes each seed: into its title editor when one
     /// is on screen, as the stored title otherwise.
-    func flush() {
-        log.debug("new note seeds flushed, holds", .count(holds.allObjects.count))
-        holds.allObjects.forEach { $0.end() }
-        let pending = seeds
-        seeds = [:]
+    /// `scene`: the window that went to the background, whose holds end and
+    /// whose notes' seeds are written; `nil` when the app did, which ends
+    /// every hold and writes every seed. A second flush for the same leave
+    /// writes nothing: ended holds and taken seeds are gone.
+    func flush(leaving scene: UIScene? = nil) {
+        let ending = holds.allObjects.filter { scene == nil || $0.scene === scene }
+        log.debug("new note seeds flushed, holds", .count(ending.count))
+        ending.forEach { $0.end() }
+        let notes = Set(ending.compactMap(\.noteId))
+        let pending = seeds.filter { scene == nil || notes.contains($0.key) }
+        pending.keys.forEach { seeds.removeValue(forKey: $0) }
         for (noteId, seed) in pending {
             if let absorb = titles[noteId]?.absorb {
                 log.debug("new note seed absorbed by its title", .count(seed.keys.count))

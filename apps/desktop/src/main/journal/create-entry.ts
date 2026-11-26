@@ -15,13 +15,21 @@ import { JournalChannels } from '@memry/contracts/ipc-channels'
 import { generateJournalId, type JournalEntry } from '@memry/contracts/journal-api'
 import { getCanonicalJournalByDate } from '@memry/domain-notes'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
+import { createLogger } from '../lib/logger'
 import { getDatabase, getIndexDatabase } from '../database'
-import { writeJournalEntryWithContent, getJournalRelativePath } from '../vault/journal'
+import {
+  writeJournalEntryWithContent,
+  getJournalRelativePath,
+  readJournalEntry
+} from '../vault/journal'
 import { syncJournalCache } from '../vault/journal-cache-sync'
 import { baselineAfterWrite } from '../sync/writeback-baseline'
+import { holdFlushUntil } from '../sync/crdt-writeback'
 import { flushProjectionEvents } from '../projections'
 import { enqueueJournalCreate, initializeJournalCrdt } from './runtime-effects'
 import { getJournalEntryByDate, getNoteCacheByPath } from './store'
+
+const logger = createLogger('Journal:Create')
 
 export interface CreateJournalEntryInput {
   /** ISO `YYYY-MM-DD`. */
@@ -57,6 +65,33 @@ export function findStoredJournalEntry(
 }
 
 export async function createJournalEntry(input: CreateJournalEntryInput): Promise<JournalEntry> {
+  return finishJournalEntryCreate(await writeJournalEntryCreate(input))
+}
+
+/** A written create and its sync enqueue, which `finishJournalEntryCreate` awaits. */
+export interface WrittenJournalCreate {
+  entry: JournalEntry
+  queued: Promise<void>
+}
+
+/**
+ * The create's file write and index cache row: file I/O and index writes
+ * only, so a caller can run it in the entry's write-back turn. It holds the
+ * write-back flush from before the write until the create is on the sync
+ * queue, so a quit that starts during the write, in a turn or not, queues the
+ * create while the sync runtime still runs. The caller then runs
+ * `finishJournalEntryCreate` after the turn.
+ */
+export function writeJournalEntryCreate(
+  input: CreateJournalEntryInput
+): Promise<WrittenJournalCreate> {
+  const written = writeJournalEntryFile(input)
+  const queued = written.then(queueJournalCreate)
+  holdFlushUntil(queued, `journal create ${input.date}`)
+  return written.then((entry) => ({ entry, queued }))
+}
+
+async function writeJournalEntryFile(input: CreateJournalEntryInput): Promise<JournalEntry> {
   const db = getIndexDatabase()
   const journalPath = getJournalRelativePath(input.date)
   // Read the cache row before the write, so `isNew` reflects whether the entry
@@ -90,16 +125,43 @@ export async function createJournalEntry(input: CreateJournalEntryInput): Promis
     },
     { isNew: !cached }
   )
+  return cacheId === entry.id ? entry : { ...entry, id: cacheId }
+}
+
+/** Waits on the projection lane, never on the CRDT store. */
+async function queueJournalCreate(entry: JournalEntry): Promise<void> {
   await flushProjectionEvents()
+  enqueueJournalCreate(entry.id, entry.date)
+}
 
-  const syncedEntry = cacheId === entry.id ? entry : { ...entry, id: cacheId }
-  enqueueJournalCreate(cacheId, syncedEntry.date)
-  await initializeJournalCrdt(cacheId, syncedEntry.date, syncedEntry.tags)
-
-  broadcastToAllWindows(JournalChannels.events.ENTRY_CREATED, {
-    date: syncedEntry.date,
-    entry: syncedEntry
-  })
-
-  return syncedEntry
+/**
+ * Waits for the sync enqueue, seeds the doc and tells the windows. The seed
+ * waits on the CRDT store, so this never runs in a write-back turn: the quit
+ * flush awaits every turn (#5475). It returns the entry as its file holds it
+ * now, and the windows get the same: a tags save or a day merge that landed
+ * since the create already wrote its tags, and neither the created event nor
+ * the reply the creating window caches may put the older tags back. A re-read
+ * that fails costs the event, not the create, which is written and queued:
+ * the caller gets the entry it wrote.
+ */
+export async function finishJournalEntryCreate({
+  entry,
+  queued
+}: WrittenJournalCreate): Promise<JournalEntry> {
+  await queued
+  await initializeJournalCrdt(entry.id, entry.date, entry.tags)
+  let current: JournalEntry | null
+  try {
+    current = await readJournalEntry(entry.date)
+  } catch (error) {
+    logger.warn('Created journal entry could not be re-read; windows not told', {
+      date: entry.date,
+      error
+    })
+    return entry
+  }
+  if (!current) return entry
+  const settled = { ...current, id: entry.id, createdAt: entry.createdAt }
+  broadcastToAllWindows(JournalChannels.events.ENTRY_CREATED, { date: entry.date, entry: settled })
+  return settled
 }

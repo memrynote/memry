@@ -79,6 +79,7 @@ use crate::sync::first_sync::{
     META_FIRST_SYNC_COMPLETED, ProgressSink,
 };
 use crate::sync::first_sync_store::read_meta;
+use crate::sync::note_refs_heal;
 use crate::sync::pack_bootstrap::PackBootstrap;
 use crate::sync::pull::PullLoop;
 use crate::sync::socket_run::TerminalLatch;
@@ -94,6 +95,7 @@ mod realtime;
 pub(crate) mod snapshot_fallback;
 
 pub use attachment_fetch::AttachmentRedriveSummary;
+pub(crate) use attachment_fetch::NotFoundMemory;
 pub use drain::BodyDrainSummary;
 pub use inbox_attachments::{InboxAttachmentSyncSummary, InboxFileAttachment};
 pub use note_uploads::{AttachmentRefusal, QueuedAttachmentNews, QueuedUploadSummary};
@@ -440,6 +442,11 @@ impl VaultSync {
         let gate = pass::pass_gate(&self.vault_id);
         let _held = gate.lock().await;
         self.seed_vault_locks().await?;
+        // Before the first apply: a fresh device has no notes to heal, and the
+        // notes this run applies get their attachment rows on apply (#5675).
+        self.db
+            .call(|conn| note_refs_heal::merge_applied_notes(conn))
+            .await?;
         let cipher = self.cipher().await?;
         let http = self.session.http();
         // #5215: the run's own requests are counted, not the session's.
