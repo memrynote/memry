@@ -2,6 +2,8 @@
 //!
 //! Split from `sync.rs` along the seam the `impl` blocks already drew.
 
+use std::io::Write as _;
+
 #[allow(unused_imports)]
 use super::*;
 
@@ -396,7 +398,9 @@ impl VaultSync {
     /// Writes the bytes under `images/` and returns the path the row records.
     ///
     /// Relative, because the sandbox container moves between launches on iOS
-    /// and an absolute path stored today is a dangling path tomorrow.
+    /// and an absolute path stored today is a dangling path tomorrow. Written
+    /// via a sibling temp file, flushed to disk before the rename, so neither
+    /// a reader nor a crash leaves half a file under the attachment's name.
     pub(super) fn write_bytes(
         &self,
         attachment_id: &str,
@@ -404,7 +408,17 @@ impl VaultSync {
     ) -> Result<String, SyncError> {
         let images = PathBuf::from(&self.directory).join("images");
         std::fs::create_dir_all(&images).map_err(storage_error)?;
-        std::fs::write(images.join(attachment_id), bytes).map_err(storage_error)?;
+        let partial = images.join(format!(".{attachment_id}.part"));
+        let written = std::fs::File::create(&partial)
+            .and_then(|mut file| {
+                file.write_all(bytes)?;
+                file.sync_all()
+            })
+            .and_then(|()| std::fs::rename(&partial, images.join(attachment_id)));
+        if written.is_err() {
+            let _ = std::fs::remove_file(&partial);
+        }
+        written.map_err(storage_error)?;
         Ok(attachment_id.to_owned())
     }
 }

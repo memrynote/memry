@@ -141,8 +141,9 @@ in `pack_index.documents` (migration 0024), and the purge reads that column, so 
 note's older revisions in any pack built before its last snapshot write and leaves every other
 pack alone. A body kind that still lists a pack built before migration 0024, whose `documents` is
 NULL, is dropped whole and its watermark reset instead, as every purge did before; the rebuild
-records `documents`, so the next purge is scoped. A rewrite that cannot read its pack or loses its
-commit twice resets the kind the same way. Until a rewrite commits, a fresh device fetches the
+records `documents`, so the next purge is scoped. A rewrite that loses its commit twice resets the
+kind the same way. So does one that cannot read its pack, unless another pass has already finished
+that rewrite, which leaves nothing to redo. Until a rewrite commits, a fresh device fetches the
 other bodies of that pack item by item. A compaction run that selected the old snapshot before the
 purge cannot publish it: it inserts the `pack_index` row and advances the watermark in one batch,
 guarded on every packed snapshot row still existing with the packed blob and its note not dead.
@@ -196,9 +197,9 @@ At-least-once queue delivery means every step has to tolerate re-running:
    deletion pass deletes it later, only while no row lists its key (`listingBatch` in
    `services/pack-replaced-objects.ts`). The pass reads `pack_index` again right before the R2
    delete, so a late commit that lands after its first read keeps its object. A commit that lands
-   between that second read and the delete still loses it: the row stays listed with no object, a
-   reader meets a 404 and takes that range from the item routes as a gap, and a rollup cannot read
-   the pack, so it skips it and leaves it listed (protocol 08 §8.12, §8.14).
+   after that second read, before or after the delete, still loses it: the row stays listed with
+   no object, a reader meets a 404 and takes that range from the item routes as a gap, and a rollup
+   cannot read the pack, so it skips it and leaves it listed (protocol 08 §8.12, §8.14).
 
 A build that crashed in the PUT-to-row window leaves an object no row points at, and the retry
 writes a new key, so that object is never listed. The 6-hourly cleanup cron deletes it
@@ -347,7 +348,11 @@ out of the listing and rewrites it the same way. The rewrite keeps only the entr
 so the tombstone stays and the older versions of the record go. A pack that keeps an entry is listed again
 under its old range and coverage (migration 0027 keeps the coverage on the `pack_replaced_objects` row). A
 pack that keeps nothing is not listed again: its coverage moves to the neighbouring listed record pack in the
-same batch, or the record kind is reset when there is none, so the coverage chain never keeps a hole. Every replaced record object of the
+same batch, so the coverage chain never keeps a hole. Its neighbour may itself wait for a rewrite, as when
+the first two packs of the chain both held only the deleted note. The pass then runs the first pack's rewrite
+again after the others: the second has by then handed its coverage to the third, which takes the first's too.
+When no rewrite of the pass can give it a neighbour, the record kind is reset, unless the pass settled a rewrite
+and left more for the next pass, which may list that neighbour. Every replaced record object of the
 vault is made due at once, so the same 900-second deadline holds. The tombstone shed
 (`cleanupExpiredTombstones`) does the same before it turns a tombstone into a marker. It takes the record
 packs holding the item out of the listing and enqueues a compaction message to rewrite them, and that
@@ -504,7 +509,7 @@ touch.
    `expiresAt`, and whose expiry is more than `PRESIGN_EXPIRY_SAFETY_SECONDS` = 30 seconds away.
    Snapshot packs at or below a previous run's `PACKS_APPLIED_THROUGH_CURSOR` are dropped before
    anything transfers. Record packs are kept only while `LAST_CURSOR` is absent
-   (`packs/pack-bootstrap.ts:334`): a device with a cursor already holds every record below it.
+   (`packs/pack-bootstrap.ts:340`): a device with a cursor already holds every record below it.
    The first page's `record` coverage statement is kept for the record plan.
 2. **Transfer.** Up to `MAX_PARALLEL_PACK_DOWNLOADS` = 3 packs concurrently, newest cursor range
    first, paced through the same `DownloadPacer` the attachment queue uses at
@@ -518,17 +523,23 @@ touch.
    The pacer governs the pack transfers themselves, which are presigned GETs straight to R2 and
    therefore hit no Worker bucket at all. The `GET /sync/packs` listing that precedes them is not
    paced and spends the ordinary `sync_packs` bucket, which a bootstrap session does not elevate.
-   Each pack streams to a temp file under `userData/sync-packs`; a partial file is resumed with
-   `Range: bytes=<have>-` rather than restarted, and a server that ignores the Range and answers
-   200 restarts cleanly. Body chunks go straight to the file handle — a pack is never materialised
-   as one buffer.
+   Each pack streams to a temp file in the run's own directory, `userData/sync-packs/run-<uuid>`,
+   so a second run on the same vault never writes or deletes the first run's file. A partial file
+   is resumed with `Range: bytes=<have>-` rather than restarted, and a server that ignores the
+   Range and answers 200 restarts cleanly. Body chunks go straight to the file handle — a pack is
+   never materialised as one buffer.
 3. **Read.** `openPackFile` opens the temp file and hands it to `openPack`, which reads the footer
    tail, then the header, bounds-checks `indexOffset` and `entryCount`, caps and decodes the index
    block, bounds-checks every entry against the payload region, and finally verifies the
    whole-payload sha256 by streaming the region in `PACK_READ_CHUNK_BYTES` = 256 KB chunks. A
    structurally bad pack is therefore rejected after it has been read, not before it is opened —
    what the streaming reader guarantees is that nothing proportional to the file is ever held in
-   memory, not that a bad file is diagnosed without touching it.
+   memory, not that a bad file is diagnosed without touching it. The file stays open for the entry
+   reads that follow. At most `MAX_OPEN_PACK_FILES` = 16 pack files are open at once across every
+   opened pack, and past that the least recently read idle one closes and opens again on its next
+   read. A fresh device holds every pack until the body manifest is read, and one fd per pack ran
+   past macOS's 256-fd soft limit. Opening the file again for every entry cost an open, stat and
+   close per document.
 4. **Apply.** For each `crdt_snapshot` entry with a well-formed `{sequenceNum, revision}` meta: ask
    the local snapshot watermark whether these bytes are still worth applying, read that entry's
    slice, verify it against the index's per-entry digest, decrypt, verify the Ed25519 signature,
@@ -541,7 +552,11 @@ touch.
    previous signer to try, the snapshot is opened first in a batch of its own, so a snapshot that
    verifies under no key costs no update reads or decrypts. Each entry is read into a buffer of its
    own size: a post to the worker clones a view's whole buffer, and a small read from Node's shared
-   Buffer pool would send the 8 KiB pool with every update.
+   Buffer pool would send the 8 KiB pool with every update. Each refused entry gets a debug line
+   with its note id, and at the end of the run each pack with refused entries gets one info line,
+   `Packed bodies refused`, with the pack id and the count per reason: `unregistered_signer`,
+   `bad_signature`, `decrypt_failed`, `no_result`, `unreadable` (the per-entry digest or the read
+   failed) or `no_key_verified` (a snapshot no registered key verifies).
 5. **Commit.** Every `PACK_APPLY_PAGE_ENTRIES` = 100 applied entries, and at the end of each pack,
    the page transaction commits with the pack watermark written **inside** it.
 6. **Settle after a delivered pull.** A packed body lands before any record does, and packs are
@@ -551,7 +566,10 @@ touch.
    note's file (`CrdtProvider.materialize`), and each one whose id has no row is purged, watermark
    included. Without the first half a live note would keep the body its record carried, because
    the record's CRDT walk finds the watermark current and merges nothing. Without the second, a
-   deleted note's doc would outlive it.
+   deleted note's doc would outlive it. A binary note has no body (#5607, see
+   [CRDT](/architecture/crdt)): the apply opens no doc for a note this device holds as binary,
+   and the settle purges the doc of a note whose record made it binary, as it purges one with no
+   row.
 
    The settle is durable. Before an apply records its watermark, it writes a
    `packSeeded:<noteId>` row to `sync_state` (and `packSeedSettlePending` once per run), and the
@@ -584,7 +602,7 @@ Every packed snapshot was signed by some other device, so the applier refreshes 
 cache lazily — once per bootstrap, and only once an entry is actually up for apply, so a vault with
 no usable packs pays nothing.
 
-The key that verified the previous snapshot is tried first (`packs/pack-body-applier.ts:230-231`).
+The key that verified the previous snapshot is tried first (`packs/pack-body-applier.ts:244-245`).
 An account keeps a key for every device it ever linked, and most snapshots come from the few
 devices that compacted last. Trying every key per snapshot cost 126 s of a 270 s pack phase on
 17k notes. The order does not change which key verifies. On the worker and on the main thread
@@ -690,7 +708,7 @@ here makes it this device's own write, which must not be lost. A key leaves the 
 server lists the row again or this device no longer holds it (`manifest-check.ts:289-293`).
 
 **Bodies.** A note whose packed body already reached the body manifest's head (last sequence and
-snapshot revision) is marked settled (`isSettled`, `packs/pack-bootstrap.ts:708`), and the pull
+snapshot revision) is marked settled (`isSettled`, `packs/pack-bootstrap.ts:730`), and the pull
 skips its body pull while it applies the record packs.
 
 ### Local apply cost
@@ -735,7 +753,13 @@ user, and falls back to the item-granular bootstrap. A bad pack is never fatal.
 | Per-entry checksum mismatch                                              | That entry | Counted as failed → item GET                                       |
 | Decrypt failure, or no registered key verifies                           | That entry | Counted as failed → item GET                                       |
 
-Temp files never survive: success, failure and abort all discard them.
+Temp files never survive a run that ends: success, failure and abort all remove the run's
+directory. A crash leaves it behind. Once the next pack phase has created its own directory, it
+moves the dead directory's file for each pack it downloads into it. The download resumes that file
+with a Range (a finished file gets a 416 and no bytes), and the payload digest checks it again.
+The phase then removes the dead directories and the flat `<packId>.pack` files that builds before
+run directories wrote. A phase with no pack to download removes them all. A run still going in the
+same process keeps its directory.
 
 A network drop pauses the whole pack phase (`pack-downloads.ts`, protocol 08 §8.12): no new pack GET
 starts, the running ones finish, and after the pause every lost or unstarted pack downloads again,

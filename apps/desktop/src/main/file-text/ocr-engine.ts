@@ -1,6 +1,6 @@
 /**
- * The OCR utility process (ocr-worker.ts): one Tesseract worker at low OS
- * priority, started on the first request and stopped after a minute of quiet.
+ * The OCR utility process (ocr-worker.ts): one Tesseract worker in the
+ * background (`moveToBackground`), started on the first request and stopped after a minute of quiet.
  * It reads with the languages ocr-languages.ts has data for, and a new worker
  * starts when they change.
  */
@@ -9,7 +9,7 @@ import { existsSync } from 'fs'
 import path from 'path'
 import { createLogger } from '../lib/logger'
 import { getLogShip } from '../telemetry/log-ship'
-import { lowerProcessPriority } from '../lib/low-priority'
+import { backgroundDeadline, moveToBackground } from '../lib/low-priority'
 import { ocrLanguageSet } from './ocr-languages'
 import type {
   OcrImageSource,
@@ -30,7 +30,7 @@ const CRASH_COOLDOWN_MS = 10 * 60_000
 interface Pending {
   resolve: (text: string) => void
   reject: (error: Error) => void
-  timer: ReturnType<typeof setTimeout>
+  cancelTimeout: () => void
 }
 
 let worker: Promise<UtilityProcess> | null = null
@@ -69,7 +69,7 @@ export function stopOcr(reason = 'OCR stopped'): void {
   child = null
   worker = null
   for (const request of pending.values()) {
-    clearTimeout(request.timer)
+    request.cancelTimeout()
     request.reject(new Error(reason))
   }
   pending.clear()
@@ -80,7 +80,7 @@ function settle(requestId: number, outcome: (request: Pending) => void): void {
   const request = pending.get(requestId)
   if (!request) return
   pending.delete(requestId)
-  clearTimeout(request.timer)
+  request.cancelTimeout()
   outcome(request)
   if (pending.size === 0) {
     clearIdleTimer()
@@ -99,16 +99,20 @@ function startWorker(languages: OcrLanguageSet): Promise<UtilityProcess> {
       env: { ...process.env, MEMRY_OCR_LANGUAGES: JSON.stringify(languages) }
     })
     child = spawned
-    const startTimer = setTimeout(() => {
-      reject(new Error('OCR worker did not start in time'))
-      if (child === spawned) stopOcr('OCR worker did not start in time')
-    }, START_TIMEOUT_MS)
+    const cancelStartTimeout = backgroundDeadline(
+      () => spawned.pid,
+      START_TIMEOUT_MS,
+      () => {
+        reject(new Error('OCR worker did not start in time'))
+        if (child === spawned) stopOcr('OCR worker did not start in time')
+      }
+    )
 
-    spawned.once('spawn', () => lowerProcessPriority(spawned.pid))
+    spawned.once('spawn', () => void moveToBackground(spawned.pid))
     spawned.on('message', (message: OcrWorkerToMainMessage) => {
       switch (message.type) {
         case 'ready':
-          clearTimeout(startTimer)
+          cancelStartTimeout()
           resolve(spawned)
           return
         case 'log':
@@ -124,7 +128,7 @@ function startWorker(languages: OcrLanguageSet): Promise<UtilityProcess> {
       }
     })
     spawned.once('exit', (code) => {
-      clearTimeout(startTimer)
+      cancelStartTimeout()
       reject(new Error(`OCR worker exited before it was ready (code ${code})`))
       if (child === spawned) {
         logger.warn('OCR worker exited', { code })
@@ -157,11 +161,15 @@ export async function recognizeText(source: OcrImageSource): Promise<string> {
   const ready = await worker
   const requestId = nextRequestId++
   return new Promise<string>((resolve, reject) => {
-    const timer = setTimeout(() => {
-      settle(requestId, (request) => request.reject(new Error('OCR did not finish in time')))
-      if (child === ready) stopOcr('OCR did not finish in time')
-    }, RECOGNIZE_TIMEOUT_MS)
-    pending.set(requestId, { resolve, reject, timer })
+    const cancelTimeout = backgroundDeadline(
+      () => ready.pid,
+      RECOGNIZE_TIMEOUT_MS,
+      () => {
+        settle(requestId, (request) => request.reject(new Error('OCR did not finish in time')))
+        if (child === ready) stopOcr('OCR did not finish in time')
+      }
+    )
+    pending.set(requestId, { resolve, reject, cancelTimeout })
     ready.postMessage({ type: 'recognize', requestId, source } satisfies OcrMainToWorkerMessage)
   })
 }

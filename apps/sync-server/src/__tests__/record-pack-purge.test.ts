@@ -5,6 +5,7 @@ import { createMemoryR2, createSqliteD1, type SqliteD1 } from './d1-sqlite'
 import { encodeSignaturePayload } from '../lib/cbor'
 import { errorHandler } from '../lib/errors'
 import { cleanupExpiredTombstones } from '../services/cleanup'
+import { storeSnapshot } from '../services/crdt-snapshot-write'
 import { compactOneRange, compactVault } from '../services/pack-compaction'
 import { parsePack } from '../services/pack-format'
 import { deleteReplacedPackObjects } from '../services/pack-replaced-objects'
@@ -15,6 +16,9 @@ import type { AppContext, Bindings } from '../types'
 import {
   PACK_PURGE_DEADLINE_SECONDS,
   PACK_REPLACED_GRACE_SECONDS,
+  RECORD_SYNC_ITEM_TYPES,
+  type PackListResponse,
+  type RecordChangesResponse,
   type RecordSyncItemType
 } from '@memry/contracts/sync-api'
 
@@ -91,6 +95,11 @@ const seed = async (): Promise<void> => {
     .run(DEVICE_ID, USER_ID, publicKey, now(), now())
 }
 
+const executionCtx = {
+  waitUntil: () => undefined,
+  passThroughOnException: () => undefined
+} as unknown as ExecutionContext
+
 const buildApp = () => {
   const app = new Hono<AppContext>()
   app.onError(errorHandler)
@@ -140,14 +149,53 @@ const push = async (app: App, ...specs: PushSpec[]): Promise<void> => {
       body: JSON.stringify({ items: await Promise.all(specs.map(signed)) })
     },
     env,
-    {
-      waitUntil: () => undefined,
-      passThroughOnException: () => undefined
-    } as unknown as ExecutionContext
+    executionCtx
   )
   expect(res.status).toBe(200)
   const { accepted } = (await res.json()) as { accepted: string[] }
   expect(accepted).toEqual(specs.map((spec) => spec.id))
+}
+
+const getRoute = async <T>(app: App, path: string): Promise<T> => {
+  const headers = { 'X-Memry-Sync-Types': RECORD_SYNC_ITEM_TYPES.join(',') }
+  const res = await app.request(path, { headers }, env, executionCtx)
+  expect(res.status).toBe(200)
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- test reader of a route whose shape the assertions check
+  return (await res.json()) as T
+}
+
+/**
+ * A fresh device's record bootstrap through the routes: the listed record
+ * packs chained from cursor 0, then the changes feed past the chain. Each item
+ * it ends with as `type:id@blob_key`, beside every row the server holds.
+ */
+const freshDeviceRecords = async (app: App) => {
+  const { packs } = await getRoute<PackListResponse>(app, '/sync/packs?limit=50')
+  const chain = packs
+    .filter((pack) => pack.itemKind === 'record')
+    .toSorted((a, b) => (a.coverFrom ?? 0) - (b.coverFrom ?? 0))
+  const held = new Map<string, string>()
+  let through = 0
+  for (const pack of chain) {
+    const object = await storage.get(pack.packKey)
+    if (pack.coverFrom !== through || pack.coverThrough === undefined || !object) break
+    const { entries } = await parsePack(new Uint8Array(await object.arrayBuffer()))
+    for (const entry of entries) held.set(entry.id, entry.sourceKey)
+    through = pack.coverThrough
+  }
+  const tail = await getRoute<RecordChangesResponse>(app, `/sync/changes?cursor=${through}`)
+  expect(tail.hasMore).toBe(false)
+  const rows = harness.raw
+    .prepare('SELECT item_type, item_id, blob_key FROM sync_items')
+    .all() as Array<{ item_type: string; item_id: string; blob_key: string }>
+  for (const id of [...tail.items.map((item) => item.id), ...tail.deleted]) {
+    const row = rows.find((candidate) => candidate.item_id === id)
+    if (row) held.set(`${row.item_type}:${id}`, row.blob_key)
+  }
+  return {
+    device: [...held].map(([id, key]) => `${id}@${key}`).toSorted(),
+    server: rows.map((row) => `${row.item_type}:${row.item_id}@${row.blob_key}`).toSorted()
+  }
 }
 
 /** Builds the record kind until nothing is left above its watermark. */
@@ -195,6 +243,11 @@ const listedRecordPacks = () =>
 const coverage = () =>
   listedRecordPacks().map(({ cover_from: from, cover_through: through }) => [from, through])
 
+const coverOf = (pack: { cover_from: number | null; cover_through: number | null }) => ({
+  cover_from: pack.cover_from,
+  cover_through: pack.cover_through
+})
+
 /** Runs the passes a compaction message runs first (pack-message-passes.ts). */
 const messagePasses = async (): Promise<void> => {
   await rewritePurgedPacks(harness.db, storage, SCOPE)
@@ -202,6 +255,12 @@ const messagePasses = async (): Promise<void> => {
 }
 
 const pastRetention = () => vi.setSystemTime(Date.now() + (RETENTION_DAYS + 1) * 86_400 * 1000)
+
+const pendingRewrites = () =>
+  harness.raw
+    .prepare(`SELECT pack_key FROM pack_replaced_objects WHERE replaced_by = 'rewrite'`)
+    .pluck()
+    .all()
 
 const shedRow = (id: string) =>
   harness.raw.prepare('SELECT blob_key FROM sync_items WHERE item_id = ?').get(id) as {
@@ -367,6 +426,209 @@ describe('record packs and the purge promise (#5247, protocol 08 §8.13)', () =>
         .prepare(`SELECT COUNT(*) AS n FROM pack_replaced_objects WHERE replaced_by = 'rewrite'`)
         .get()
     ).toEqual({ n: 0 })
+  })
+
+  // VERIFY-5452 #3: the first emptied pack found no listed neighbour, because
+  // the second still waited for its rewrite, so the pass reset the record kind.
+  // REVIEW-5636 #2, #7: three packs take three rounds, and each retry read and
+  // parsed the pack object again.
+  it('emptied record packs at the start of the chain hand their coverage to the pack after them, reading each object once', async () => {
+    const app = buildApp()
+    const versions: string[] = []
+    for (const tick of [1, 2, 3]) {
+      const operation = tick === 1 ? 'create' : 'update'
+      await push(app, { id: 'note-a', type: 'note', tick, operation })
+      await compactAll()
+      versions.push(blobKey('note-a'))
+    }
+    await push(app, { id: 'task-keep', type: 'task', tick: 1, operation: 'create' })
+    await compactAll()
+    const before = listedRecordPacks()
+    expect(before).toHaveLength(4)
+    const get = vi.spyOn(storage, 'get')
+
+    await push(app, { id: 'note-a', type: 'note', tick: 4, operation: 'delete' })
+
+    for (const { pack_key: key } of before.slice(0, 3)) {
+      expect(get.mock.calls.filter(([read]) => read === key)).toHaveLength(1)
+    }
+    for (const version of versions) expect(await heldBy(version)).toEqual([])
+    expect(listedRecordPacks()).toEqual([
+      { pack_key: before[3].pack_key, cover_from: 0, cover_through: before[3].cover_through }
+    ])
+  })
+
+  // REVIEW-5636 #3: the other queue's pass handed the first pack's coverage on
+  // and deleted its object between two rounds; the retry read the object, found
+  // it missing and reset the kind that pass had just settled.
+  it('a retry whose rewrite a concurrent pass settled leaves the record packs listed', async () => {
+    const app = buildApp()
+    await push(app, { id: 'note-a', type: 'note', tick: 1, operation: 'create' })
+    await compactAll()
+    await push(app, { id: 'note-a', type: 'note', tick: 2, operation: 'update' })
+    await compactAll()
+    await push(app, { id: 'task-keep', type: 'task', tick: 1, operation: 'create' })
+    await compactAll()
+    const [, second, kept] = listedRecordPacks()
+    const settled = harness.raw.prepare(
+      `SELECT 1 FROM pack_replaced_objects WHERE pack_key = ? AND replaced_by = 'purge'`
+    )
+    const batch = harness.db.batch.bind(harness.db)
+    let raced = false
+    vi.spyOn(harness.db, 'batch').mockImplementation(async (statements) => {
+      const results = await batch(statements)
+      if (!raced && settled.get(second.pack_key)) {
+        raced = true
+        await messagePasses()
+      }
+      return results
+    })
+
+    await push(app, { id: 'note-a', type: 'note', tick: 3, operation: 'delete' })
+
+    expect(raced).toBe(true)
+    expect(listedRecordPacks()).toEqual([{ ...kept, cover_from: 0 }])
+  })
+
+  // VERIFY-5636 #9 (#5247): a compaction message settled both rewrites and its
+  // deletion pass removed the old objects between the purge pass's SELECT and
+  // its read; the read found the object missing and reset the record kind.
+  it('a rewrite whose pack a concurrent pass settled and deleted before its read leaves the record packs listed', async () => {
+    const app = buildApp()
+    await push(
+      app,
+      { id: 'note-x', type: 'note', tick: 1, operation: 'create' },
+      { id: 'task-keep', type: 'task', tick: 1, operation: 'create' }
+    )
+    await compactAll()
+    await push(app, { id: 'note-x', type: 'note', tick: 2, operation: 'update' })
+    await compactAll()
+    const before = listedRecordPacks()
+    expect(before).toHaveLength(2)
+    const read = storage.get.bind(storage)
+    let raced = false
+    vi.spyOn(storage, 'get').mockImplementation(async (key, options) => {
+      if (!raced && pendingRewrites().includes(key)) {
+        raced = true
+        await messagePasses()
+      }
+      return read(key, options)
+    })
+
+    await push(app, { id: 'note-x', type: 'note', tick: 3, operation: 'delete' })
+
+    expect(raced).toBe(true)
+    expect(pendingRewrites()).toEqual([])
+    expect(listedRecordPacks()).toEqual([
+      expect.objectContaining({ cover_from: 0, cover_through: before[1].cover_through })
+    ])
+    expect(await heldBy('note:note-x@')).toEqual([])
+    const { device, server } = await freshDeviceRecords(app)
+    expect(device).toEqual(server)
+  })
+
+  // REVIEW-5665 #8 (#5247): the inverse of VERIFY-5636 #9. The object is gone
+  // and no pass settled its rewrite, so the read failure resets the kind.
+  it('a rewrite whose pack object is lost while the rewrite is pending resets the record kind, and a fresh device still gets every row', async () => {
+    const app = buildApp()
+    await push(
+      app,
+      { id: 'note-x', type: 'note', tick: 1, operation: 'create' },
+      { id: 'task-keep', type: 'task', tick: 1, operation: 'create' }
+    )
+    const firstVersion = blobKey('note-x')
+    await compactAll()
+    await push(
+      app,
+      { id: 'note-x', type: 'note', tick: 2, operation: 'update' },
+      { id: 'task-other', type: 'task', tick: 1, operation: 'create' }
+    )
+    const secondVersion = blobKey('note-x')
+    await compactAll()
+    const [lost] = listedRecordPacks()
+    await storage.delete(lost.pack_key)
+
+    await push(app, { id: 'note-x', type: 'note', tick: 3, operation: 'delete' })
+
+    expect(listedRecordPacks()).toEqual([])
+    expect(pendingRewrites()).toEqual([])
+    const reset = await freshDeviceRecords(app)
+    expect(reset.device).toEqual(reset.server)
+
+    // The first run re-anchors the reset chain, the second builds.
+    await compactAll()
+    await compactAll()
+    const chain = coverage()
+    expect(chain[0][0]).toBe(0)
+    for (let i = 1; i < chain.length; i++) expect(chain[i][0]).toBe(chain[i - 1][1])
+    expect(await heldBy(firstVersion)).toEqual([])
+    expect(await heldBy(secondVersion)).toEqual([])
+    const rebuilt = await freshDeviceRecords(app)
+    expect(rebuilt.device).toEqual(rebuilt.server)
+  })
+
+  // REVIEW-5636 #4: the pass settled one rewrite and left two for the next
+  // pass, one of them the neighbour an emptied pack waited for, and reset the
+  // record kind anyway.
+  it('an emptied pack whose neighbour waits for the next pass hands its coverage on there instead of resetting the kind', async () => {
+    const app = buildApp()
+    await push(app, { id: 'task-gone', type: 'task', tick: 1, operation: 'create' })
+    await compactAll()
+    for (const tick of [1, 2, 3]) {
+      const operation = tick === 1 ? 'create' : 'update'
+      await push(app, { id: 'note-a', type: 'note', tick, operation })
+      await compactAll()
+    }
+    await push(app, { id: 'task-next', type: 'task', tick: 1, operation: 'create' })
+    await compactAll()
+    await push(
+      app,
+      { id: 'task-gone', type: 'task', tick: 2, operation: 'delete' },
+      { id: 'task-keep', type: 'task', tick: 1, operation: 'create' }
+    )
+    await compactAll()
+    const before = listedRecordPacks()
+    expect(before).toHaveLength(6)
+    pastRetention()
+    // The shed takes the task's two packs out first; the note's purge then adds
+    // its three, so the pass runs four of the five rewrites.
+    expect(await cleanupExpiredTombstones(harness.db, storage, env)).toBe(0)
+    vi.setSystemTime(Date.now() + 1000)
+
+    await push(app, { id: 'note-a', type: 'note', tick: 4, operation: 'delete' })
+
+    expect(listedRecordPacks()).toEqual([before[4], expect.objectContaining(coverOf(before[5]))])
+    expect(pendingRewrites()).toHaveLength(4)
+
+    await messagePasses()
+
+    expect(pendingRewrites()).toEqual([])
+    expect(coverage()).toEqual([
+      [0, before[4].cover_through],
+      [before[5].cover_from, before[5].cover_through]
+    ])
+    expect(await heldBy('note:note-a@')).toEqual([])
+  })
+
+  // REVIEW-5636 #7: no later pass runs the rewrite, so the reset still settles it.
+  it('a pass that settled a rewrite and leaves none for later resets the kind for an emptied pack with no neighbour', async () => {
+    const app = buildApp()
+    await push(app, { id: 'note-a', type: 'note', tick: 1, operation: 'create' })
+    const version = blobKey('note-a')
+    const snapshot = new Uint8Array([0xe1, 0xe2, 0xe3]).buffer
+    await storeSnapshot(harness.db, storage, USER_ID, VAULT_ID, 'note-a', DEVICE_ID, snapshot)
+    await compactAll()
+    expect(listedRecordPacks()).toHaveLength(1)
+    expect(
+      harness.raw
+        .prepare(`SELECT COUNT(*) AS n FROM pack_index WHERE item_kind = 'crdt_snapshot'`)
+        .get()
+    ).toEqual({ n: 1 })
+
+    await push(app, { id: 'note-a', type: 'note', tick: 2, operation: 'delete' })
+
+    expect(pendingRewrites()).toEqual([])
+    expect(await heldBy(version)).toEqual([])
   })
 
   it('a rollup whose input coverage changed after its plan does not swap', async () => {

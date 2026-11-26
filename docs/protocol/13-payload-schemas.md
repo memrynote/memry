@@ -79,11 +79,11 @@ The platform-free engine establishes rules 1 and 2: it decrypts to
 copy for `fileType` (`:307-308`), with the contract stated at
 `packages/sync-client/src/pull/store.ts:5-9`, `:17`. The Rust core obeys it:
 the received string goes into `sync_items.payload` unchanged
-(`crates/memry-core/src/storage/repositories/sync_items.rs:489`, `:503`),
-projections come from a parsed copy (`:151-152`), a local edit merges the
+(`crates/memry-core/src/storage/repositories/sync_items.rs:488`, `:505`),
+projections come from a parsed copy (`:158`), a local edit merges the
 changed keys into that copy and stores the result
 (`crates/memry-core/src/storage/repositories/payload.rs:64-72`), and a push
-sends the stored string (`crates/memry-core/src/storage/repositories/sync_items.rs:289-291`).
+sends the stored string (`crates/memry-core/src/storage/repositories/sync_items.rs:368-370`).
 
 The Rust core meets rule 5 with a refused-items ledger (#4453), the equal of
 desktop's below. A record its type's schema refuses is not applied, its local
@@ -122,7 +122,7 @@ a bad signature or when the corrupt ledger also asked for the pair
 (`apply_step.rs:187-192`, `crates/memry-core/src/sync/pull/items.rs:235-249`).
 One that decodes but
 applies as corrupt keeps its entry the same way, and that apply does flag the
-row corrupt, as on any pull (`crates/memry-core/src/sync/apply/record.rs:228`).
+row corrupt, as on any pull (`crates/memry-core/src/sync/apply/record.rs:248`).
 
 ### 13.2.1 Desktop meets the obligation by a different mechanism (#2183)
 
@@ -356,19 +356,20 @@ optional on every type; `fieldClocks` appears only where §13.9 says so.
 
 ### 13.7.1 `note` — `packages/contracts/src/sync-payloads.ts:344-367`
 
-| Field                                                            | Type                                          | Rule                                                                                                                                   |
-| ---------------------------------------------------------------- | --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `title`                                                          | string?                                       |                                                                                                                                        |
-| `content`                                                        | string, nullable?                             | **a CRDT update push carries `content: null`** (chapter 07); non-null only on `create` and `duplicate` (chapter 12 §12.2, carve-out A) |
-| `tags`                                                           | string[]?                                     | see chapter 12 §12.5.2 for the unresolved two-writer case                                                                              |
-| `pinnedTags`                                                     | string[]?                                     |                                                                                                                                        |
-| `emoji`                                                          | string, nullable?                             |                                                                                                                                        |
-| `properties`                                                     | record, nullable?                             | **free-form: values only, never definitions** (`property_definition` carries those)                                                    |
-| `aliases`                                                        | string[], nullable?                           | see §13.7.1.2; **absent or `null` keeps the receiver's list, `[]` clears it**                                                          |
-| `fileType`                                                       | `markdown \| pdf \| image \| audio \| video`? | **binary types have no CRDT body**                                                                                                     |
-| `mimeType`, `attachmentId`, `attachmentReferences`, `folderPath` | nullable?                                     |                                                                                                                                        |
-| `cover`                                                          | object, nullable?                             | see §13.7.1.1; **absent keeps the receiver's cover, `null` removes it**                                                                |
-| `createdAt`, `modifiedAt`                                        | `SyncTimestampSchema`?                        | §13.5                                                                                                                                  |
+| Field                                                            | Type                                          | Rule                                                                                                                                                |
+| ---------------------------------------------------------------- | --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `title`                                                          | string?                                       |                                                                                                                                                     |
+| `content`                                                        | string, nullable?                             | **a CRDT update push carries `content: null`** (chapter 07); non-null only on `create` and `duplicate` (chapter 12 §12.2, carve-out A)              |
+| `tags`                                                           | string[]?                                     | see chapter 12 §12.5.2 for the unresolved two-writer case                                                                                           |
+| `pinnedTags`                                                     | string[]?                                     |                                                                                                                                                     |
+| `emoji`                                                          | string, nullable?                             |                                                                                                                                                     |
+| `properties`                                                     | record, nullable?                             | **free-form: values only, never definitions** (`property_definition` carries those)                                                                 |
+| `aliases`                                                        | string[], nullable?                           | see §13.7.1.2; **absent or `null` keeps the receiver's list, `[]` clears it**                                                                       |
+| `fileType`                                                       | `markdown \| pdf \| image \| audio \| video`? | **binary types have no CRDT body**                                                                                                                  |
+| `mimeType`, `attachmentId`, `attachmentReferences`, `folderPath` | nullable?                                     |                                                                                                                                                     |
+| `cover`                                                          | object, nullable?                             | see §13.7.1.1; **absent keeps the receiver's cover, `null` removes it**                                                                             |
+| `removedAttachmentReferences`                                    | string[]?                                     | **`note j<YYYY-MM-DD>` only, sent by the Rust core**: the ids a core device removed from a journal day; desktop never sends it (chapter 14 §14.7.4) |
+| `createdAt`, `modifiedAt`                                        | `SyncTimestampSchema`?                        | §13.5                                                                                                                                               |
 
 #### 13.7.1.1 `cover`
 
@@ -453,6 +454,17 @@ short-circuits `operation === 'delete'` and reads only the optional
 `bodyStateVector` out of a `note` or `journal` tombstone (chapter 05 §5.8,
 #3037). Both schemas list `bodyStateVector` as an optional string; it appears
 only on a delete.
+
+A `journal` also carries `fieldClocks`, `fieldClocksAt`, `fieldClocksFloor` and
+`fieldFloors` (`packages/contracts/src/sync-payloads.ts:387-398`, #5508, #5572):
+one clock per `tags.<tagKey>` and `properties.<key>` unit, stamped at the
+payload's `clock`; one floor clock for every unit `fieldClocks` does not name;
+and, keyed as `fieldClocks` is, a unit's own floor where it differs from
+`fieldClocksFloor`, omitted when empty. All four are optional, and a payload
+without a matching stamp is read whole at its clock (chapter 06 §6.12.1).
+`fieldClocksFloor` and `fieldFloors` are additive keys: an older desktop keeps
+them in its §13.2.1 remainder and an older core verbatim, and both push them
+back under a ticked `clock`, where they are not trusted.
 
 **An inbound `journal` record whose id is not `j<date>` is never projected** (§1.9.1). Its
 body is merged into the day's `j<date>` item and its id is tombstoned.
@@ -685,7 +697,7 @@ neither list is a wire constraint on the other.
   others on vault open, after copying into the survivor any icon, category,
   views or authored colour it lacks, and pushes the deletes
   (`apps/desktop/src/main/tags/converge-identity.ts:53-64`,
-  `apps/desktop/src/main/vault/index.ts:571`). Every device picks the same
+  `apps/desktop/src/main/vault/index.ts:606`). Every device picks the same
   survivor from the same rows, so devices converge on one id. An older build
   that still compares ASCII-only can mint a plain definition under its own
   spelling again; the next open merges it back, and since the survivor keeps
@@ -1640,20 +1652,21 @@ its local clock is strictly after the tombstone's (`:187-210`).
 
 **Normative** (the enumeration is chapter 06 §6.8):
 
-| Type                        | Algorithm                                                | Carries `fieldClocks`                              |
-| --------------------------- | -------------------------------------------------------- | -------------------------------------------------- |
-| `task`                      | field-level                                              | yes (`packages/contracts/src/sync-payloads.ts:61`) |
-| `project`                   | field-level                                              | yes (`:247`)                                       |
-| `calendar_event`            | field-level                                              | yes (`:405`)                                       |
-| `settings`                  | dotted-path field clocks                                 | yes, its own key space                             |
-| `canvas`                    | document-level resolver, plus a conflict copy (§13.7.21) | no                                                 |
-| `vault_lock`                | document-level resolver, keeping local keys (§13.7.22)   | no                                                 |
-| `canvas_folder`             | document-level resolver, keeping local keys (§13.7.23)   | no                                                 |
-| `home_page`                 | document-level resolver, keeping local keys (§13.7.24)   | no                                                 |
-| `sticky_draft`              | document-level resolver, keeping local keys (§13.7.25)   | no                                                 |
-| `agent_conversation`        | field-level (§13.7.26)                                   | yes (`:707`)                                       |
-| `agent_message`             | immutable: written once (§13.7.27)                       | no                                                 |
-| every other subscribed type | document-level resolver                                  | no                                                 |
+| Type                        | Algorithm                                                            | Carries `fieldClocks`                              |
+| --------------------------- | -------------------------------------------------------------------- | -------------------------------------------------- |
+| `task`                      | field-level                                                          | yes (`packages/contracts/src/sync-payloads.ts:61`) |
+| `project`                   | field-level                                                          | yes (`:247`)                                       |
+| `calendar_event`            | field-level                                                          | yes (`:405`)                                       |
+| `settings`                  | dotted-path field clocks                                             | yes, its own key space                             |
+| `journal`                   | document-level resolver, `tags` and `properties` per unit (06 §6.12) | yes, for those two keys (`:390`)                   |
+| `canvas`                    | document-level resolver, plus a conflict copy (§13.7.21)             | no                                                 |
+| `vault_lock`                | document-level resolver, keeping local keys (§13.7.22)               | no                                                 |
+| `canvas_folder`             | document-level resolver, keeping local keys (§13.7.23)               | no                                                 |
+| `home_page`                 | document-level resolver, keeping local keys (§13.7.24)               | no                                                 |
+| `sticky_draft`              | document-level resolver, keeping local keys (§13.7.25)               | no                                                 |
+| `agent_conversation`        | field-level (§13.7.26)                                               | yes (`:707`)                                       |
+| `agent_message`             | immutable: written once (§13.7.27)                                   | no                                                 |
+| every other subscribed type | document-level resolver                                              | no                                                 |
 
 **`task.fields` and `tag_definition.schema` are versioned values** joined by
 chapter 06 §6.11 on every apply path, in addition to the type's algorithm in the

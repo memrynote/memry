@@ -37,6 +37,7 @@ import {
   readCriticMarkupMarksFromYDoc,
   readWritingAlternativesFromYDoc,
   readWritingGhostsFromYDoc,
+  stripWritingSentinels,
   withoutWritingSentinels,
   writeCriticMarkupMarksToYDoc,
   type CriticMarkupMark,
@@ -309,16 +310,18 @@ async function restoreFileSpelling(
 
 /**
  * The file body of a doc that holds alternatives or ghosts: house style with
- * the writing tools markers in place and `criticMarks` applied around them.
- * House style, as with CriticMarkup: the markers are placed by the
- * serializer, and restoring the author's spelling around them is not
- * something the merge can prove. Resolves undefined when no range resolves
- * any more (the caller serializes as usual), null when conversion failed.
+ * the writing tools markers in place and the CriticMarkup marks applied around
+ * them. `placeCriticMarks` gets the body's text without the markers and
+ * returns the marks placed in it. House style, as with CriticMarkup: the
+ * markers are placed by the serializer, and restoring the author's spelling
+ * around them is not something the merge can prove. Resolves undefined when no
+ * range resolves any more (the caller serializes as usual), null when
+ * conversion failed.
  */
 export async function yDocToMarkdownWithWritingRanges(
   doc: Y.Doc,
   fragmentName: string,
-  criticMarks: CriticMarkupMark[],
+  placeCriticMarks: (plain: string) => CriticMarkupMark[],
   options: YDocToMarkdownOptions = {}
 ): Promise<
   { markdown: string; alternatives: EncodedWritingRanges['alternatives'] } | null | undefined
@@ -335,7 +338,11 @@ export async function yDocToMarkdownWithWritingRanges(
   if (!ranges || ranges.sentinels.size === 0) return undefined
   options.onSourceRestore?.('writing-marks')
   return {
-    markdown: encodeWritingBody(text, ranges.sentinels, criticMarks),
+    markdown: encodeWritingBody(
+      text,
+      ranges.sentinels,
+      placeCriticMarks(stripWritingSentinels(text, ranges.sentinels))
+    ),
     alternatives: ranges.alternatives
   }
 }

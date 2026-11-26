@@ -45,6 +45,12 @@
     }
   },
   "page": {
+    "noteFiles": {
+      "downloading": "Bestanden van deze notitie downloaden…",
+      "failed": "Kan de bestanden van deze notitie niet downloaden: {error}",
+      "failedFallback": "het downloaden is mislukt",
+      "retry": "Opnieuw proberen"
+    },
     "empty": {
       "title": "Geen notitie geselecteerd",
       "body": "Selecteer een notitie in de zijbalk om deze te bekijken"
