@@ -6,7 +6,7 @@ import { ContentArea } from '@/components/note'
 import { EditorErrorBoundary } from '@/components/note/editor-error-boundary'
 import { tasksService } from '@/services/tasks-service'
 import { notesService, type Note } from '@/services/notes-service'
-import { extractErrorMessage } from '@/lib/ipc-error'
+import { extractErrorMessage, unwrapIpcResult } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
@@ -52,6 +52,9 @@ export const ProjectOverviewNote = ({
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   // The home note whose save lifecycle is running, cleared once its flush ran.
   const liveNoteIdRef = useRef<string | null>(null)
+  // Set by a failed save and cleared by the next one that lands, so a refused
+  // note shows one toast per run of refusals instead of one per keystroke.
+  const saveFailureShownRef = useRef(false)
   const isLocked = useIsNoteLocked(homeNoteId, note?.path ?? null)
 
   useEffect(() => {
@@ -90,6 +93,18 @@ export const ProjectOverviewNote = ({
   // overview note is created — the editor remounts via key={homeNoteId}).
   // Mirrors note.tsx's registerPendingSave/unregisterPendingSave pattern so
   // app-quit (useFlushOnQuit) and tab-close don't silently drop an edit.
+  const reportSaveFailure = useCallback(
+    (error: unknown): void => {
+      const message = extractErrorMessage(error, t('projectHome.overview.saveError'))
+      log.error('Failed to save overview note', message)
+      trackRendererError('project_overview_note_save', error)
+      if (saveFailureShownRef.current) return
+      saveFailureShownRef.current = true
+      toast.error(message)
+    },
+    [t]
+  )
+
   useEffect(() => {
     if (!homeNoteId) return undefined
 
@@ -97,9 +112,20 @@ export const ProjectOverviewNote = ({
     liveNoteIdRef.current = homeNoteId
     const flush = async (): Promise<void> => {
       const pending = pendingMarkdownRef.current
-      if (pending !== null) {
-        pendingMarkdownRef.current = null
-        await notesService.update({ id: homeNoteId, content: pending })
+      if (pending === null) return
+      pendingMarkdownRef.current = null
+      try {
+        unwrapIpcResult(
+          await notesService.update({ id: homeNoteId, content: pending }),
+          t('projectHome.overview.saveError')
+        )
+        lastSavedContentRef.current = pending
+        saveFailureShownRef.current = false
+      } catch (error) {
+        reportSaveFailure(error)
+        // Put the unsaved text back so the next flush retries instead of
+        // dropping it, unless a newer edit already replaced it mid-await.
+        if (pendingMarkdownRef.current === null) pendingMarkdownRef.current = pending
       }
     }
 
@@ -114,7 +140,7 @@ export const ProjectOverviewNote = ({
       unregisterPendingSave(registryKey)
       liveNoteIdRef.current = null
     }
-  }, [homeNoteId])
+  }, [homeNoteId, reportSaveFailure, t])
 
   const handleMarkdownChange = useCallback(
     (markdown: string) => {
@@ -123,13 +149,13 @@ export const ProjectOverviewNote = ({
       // already ran (#1900). Queued in the refs it would ride along with the
       // next home note's save, so it is saved now, to the note it was typed in.
       if (liveNoteIdRef.current !== homeNoteId) {
-        notesService.update({ id: homeNoteId, content: markdown }).catch((error: unknown) => {
-          log.error(
-            'Failed to save overview note',
-            extractErrorMessage(error, t('projectHome.overview.saveError'))
-          )
-          trackRendererError('project_overview_note_save', error)
-        })
+        notesService
+          .update({ id: homeNoteId, content: markdown })
+          .then((result) => unwrapIpcResult(result, t('projectHome.overview.saveError')))
+          .catch((error: unknown) => {
+            saveFailureShownRef.current = false
+            reportSaveFailure(error)
+          })
         return
       }
       if (markdown === lastSavedContentRef.current) return
@@ -140,20 +166,20 @@ export const ProjectOverviewNote = ({
       saveTimeoutRef.current = setTimeout(() => {
         void (async () => {
           try {
-            await notesService.update({ id: homeNoteId, content: markdown })
-            lastSavedContentRef.current = markdown
-            pendingMarkdownRef.current = null
-          } catch (error) {
-            log.error(
-              'Failed to save overview note',
-              extractErrorMessage(error, t('projectHome.overview.saveError'))
+            unwrapIpcResult(
+              await notesService.update({ id: homeNoteId, content: markdown }),
+              t('projectHome.overview.saveError')
             )
-            trackRendererError('project_overview_note_save', error)
+            lastSavedContentRef.current = markdown
+            saveFailureShownRef.current = false
+            if (pendingMarkdownRef.current === markdown) pendingMarkdownRef.current = null
+          } catch (error) {
+            reportSaveFailure(error)
           }
         })()
       }, 1000)
     },
-    [homeNoteId, t]
+    [homeNoteId, reportSaveFailure, t]
   )
 
   const handleCreate = useCallback(async (): Promise<void> => {

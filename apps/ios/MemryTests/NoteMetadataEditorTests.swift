@@ -202,6 +202,30 @@ struct NoteMetadataViewModelTests {
         #expect(model.status == .idle)
     }
 
+    /// #4787: a title saved as the app leaves. iOS may suspend the app once
+    /// no background task is held, so the write lands before the last ends.
+    @Test func a_saved_title_lands_before_the_app_may_be_suspended() async throws {
+        let writer = ScriptedMetadataWriter()
+        let model = NoteMetadataViewModel(noteId: "note-1", writer: writer)
+        var held = 0
+        var landedAtRelease: [[ScriptedMetadataWriter.Call]] = []
+        model.hold = {
+            held += 1
+            return {
+                held -= 1
+                landedAtRelease.append(writer.all)
+            }
+        }
+
+        model.save(title: "New", current: "Old")
+        #expect(held == 1, "nothing keeps the app running while the title is written")
+        for _ in 0..<300 where held > 0 {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+
+        #expect(landedAtRelease == [[.rename("New")]])
+    }
+
     /// A metadata write sits in the outbox until a pass pushes it. A title
     /// edit that asked for none waited for the next foreground (#2910).
     @Test func every_landed_write_asks_for_a_sync_pass() async {
@@ -239,6 +263,27 @@ struct NoteMetadataViewModelTests {
         await model.rename(to: "Same", current: "Same")
 
         #expect(writer.all.isEmpty)
+    }
+
+    /// #4680: every page on the note re-reads after a title lands, and only
+    /// then: an unchanged title or a failed write announces nothing.
+    @Test func only_a_landed_rename_announces_the_saved_title() async {
+        let id = "note-\(UUID().uuidString)"
+        var announced = 0
+        let observer = NotificationCenter.default.addObserver(
+            forName: NoteReadViewModel.titleSaved, object: id, queue: nil
+        ) { _ in announced += 1 }
+        defer { NotificationCenter.default.removeObserver(observer) }
+        let model = NoteMetadataViewModel(noteId: id, writer: ScriptedMetadataWriter())
+        let failing = NoteMetadataViewModel(
+            noteId: id, writer: ScriptedMetadataWriter(failure: StorageError.Failed(what: "x"))
+        )
+
+        await model.rename(to: "Same", current: "Same")
+        await failing.rename(to: "New", current: "Old")
+        #expect(announced == 0)
+        await model.rename(to: "New", current: "Old")
+        #expect(announced == 1)
     }
 
     /// Clearing an icon is `nil`, which the core writes as an explicit null
@@ -592,5 +637,94 @@ struct NoteTagSuggestionsTests {
         #expect(NoteNames.replacing(nil, with: "  ", in: ["ML"]) == ["ML"])
         #expect(NoteNames.replacing("ML", with: "Learning", in: ["ML", "AI"]) == ["Learning", "AI"])
         #expect(NoteNames.replacing("ML", with: "", in: ["ML", "AI"]) == ["AI"])
+    }
+}
+
+/// The property row drives these as it does: focus in begins, Return or
+/// leaving the field takes, and Clear empties the draft and rebases.
+@Suite("Typed property values reach the payload once, never over a Clear (#4616)")
+@MainActor
+struct NotePropertyDraftCommitsTests {
+    private func row() -> (NoteMetadataViewModel, ScriptedMetadataWriter, DraftCommits) {
+        let writer = ScriptedMetadataWriter()
+        return (NoteMetadataViewModel(noteId: "note-1", writer: writer), writer, DraftCommits())
+    }
+
+    /// What the row does when an edit ends: Return is `explicit`, a blur or
+    /// the row going is not.
+    private func end(
+        _ commits: inout DraftCommits, _ draft: String, _ model: NoteMetadataViewModel,
+        explicit: Bool = false
+    ) async {
+        if let value = commits.take(draft, explicit: explicit) {
+            await model.setProperty("Status", input: value, kind: .text)
+        }
+    }
+
+    @Test func a_clear_then_leaving_the_field_leaves_it_null() async {
+        var (model, writer, commits) = row()
+        commits.begin("old")
+        await model.clearProperty("Status")
+        commits.rebase("")
+        await end(&commits, "", model)
+        #expect(writer.all == [.clear("Status")])
+    }
+
+    @Test func a_clear_then_return_without_typing_leaves_it_null() async {
+        var (model, writer, commits) = row()
+        await model.clearProperty("Status")
+        commits.rebase("")
+        commits.begin("")
+        await end(&commits, "", model, explicit: true)
+        #expect(writer.all == [.clear("Status")])
+    }
+
+    @Test func a_clear_then_typing_and_return_writes_the_new_value() async {
+        var (model, writer, commits) = row()
+        commits.begin("old")
+        await model.clearProperty("Status")
+        commits.rebase("")
+        await end(&commits, "new", model, explicit: true)
+        #expect(writer.all == [.clear("Status"), .property("Status", "\"new\"")])
+    }
+
+    @Test func return_then_leaving_the_field_writes_once() async {
+        var (model, writer, commits) = row()
+        commits.begin("")
+        await end(&commits, "typed", model, explicit: true)
+        await end(&commits, "typed", model)
+        #expect(writer.all == [.property("Status", "\"typed\"")])
+    }
+
+    @Test func an_untouched_field_or_an_emptied_one_left_writes_nothing() async {
+        var (model, writer, commits) = row()
+        commits.begin("old")
+        await end(&commits, "old", model, explicit: true)
+        commits.begin("old")
+        await end(&commits, "", model)
+        await end(&commits, "late", model)
+        #expect(writer.all.isEmpty)
+    }
+
+    @Test func return_on_an_emptied_field_writes_the_empty_value_once() async {
+        var (model, writer, commits) = row()
+        commits.begin("old")
+        await end(&commits, "", model, explicit: true)
+        await end(&commits, "", model)
+        #expect(writer.all == [.property("Status", "\"\"")])
+    }
+
+    @Test func return_on_an_emptied_number_refuses_and_writes_nothing() async {
+        var (model, writer, commits) = row()
+        commits.begin("3")
+        if let value = commits.take("", explicit: true) {
+            await model.setProperty("Count", input: value, kind: .number)
+        }
+        #expect(writer.all.isEmpty)
+        guard case let .failed(error) = model.status else {
+            Issue.record("expected a failure, got \(model.status)")
+            return
+        }
+        #expect(error.code == "property.unrepresentable")
     }
 }

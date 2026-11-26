@@ -100,8 +100,8 @@ const TAGS_COLUMN: &str = "(SELECT json_group_array(tag) FROM (\
      AND h.deleted_at IS NULL AND tag_fold(h.tag) = tag_fold(b.tag)) \
      ORDER BY half, rank))";
 
-/// The two statements a list runs, the match count and the page, and their shared arguments.
-fn statements(query: &NoteListQuery) -> (String, String, Vec<SqlValue>) {
+/// The `FROM ... WHERE` of the notes `query` matches, and its arguments.
+fn matching(query: &NoteListQuery) -> (String, Vec<SqlValue>) {
     let mut filters = vec!["n.deleted_at IS NULL".to_owned()];
     let mut args: Vec<SqlValue> = Vec::new();
     if let Some(folder) = query.folder.as_deref().filter(|f| !f.is_empty()) {
@@ -122,15 +122,26 @@ fn statements(query: &NoteListQuery) -> (String, String, Vec<SqlValue>) {
             args.len()
         ));
     }
-    let (items, date) = if query.include_journals {
-        (WITH_DAYS, "n.date")
+    let items = if query.include_journals {
+        WITH_DAYS
     } else {
-        ("notes", "NULL")
+        "notes"
     };
     let from = format!(
         "FROM {items} n JOIN note_files f ON f.note_id = n.id WHERE {}",
         filters.join(" AND ")
     );
+    (from, args)
+}
+
+/// The two statements a list runs, the match count and the page, and their shared arguments.
+fn statements(query: &NoteListQuery) -> (String, String, Vec<SqlValue>) {
+    let (from, args) = matching(query);
+    let date = if query.include_journals {
+        "n.date"
+    } else {
+        "NULL"
+    };
     let order = match query.sort {
         NoteSort::Modified => "n.modified_at",
         NoteSort::Created => "n.created_at",
@@ -166,6 +177,24 @@ pub fn list(conn: &Connection, query: &NoteListQuery) -> Result<NoteListPage, St
         total: u32::try_from(total).unwrap_or(u32::MAX),
         has_more,
     })
+}
+
+/// The ids of every note with a file under `folder` (every note without one), unordered.
+pub fn ids(conn: &Connection, folder: Option<&str>) -> Result<Vec<String>, StorageError> {
+    let query = NoteListQuery {
+        folder: folder.map(str::to_owned),
+        ..NoteListQuery::default()
+    };
+    let (from, args) = matching(&query);
+    let mut statement = conn
+        .prepare(&format!("SELECT n.id {from}"))
+        .map_err(failed)?;
+    let ids = statement
+        .query_map(params_from_iter(args.iter()), |row| row.get(0))
+        .map_err(failed)?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(failed)?;
+    Ok(ids)
 }
 
 /// The live note `id`, when it has a file.

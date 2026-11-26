@@ -12,6 +12,10 @@ import {
   transitionToCompleted
 } from '../services/linking'
 import { waitUntilCaptured } from '../services/analytics'
+import {
+  assertPaidSyncAccess,
+  ensureLocalAdminPaidSyncAccessForUser
+} from '../services/entitlements'
 import type { AppContext } from '../types'
 
 // Key linking buckets by the request's sessionId so concurrent devices and
@@ -92,6 +96,16 @@ linking.post('/initiate', authMiddleware, linkingRateLimit, async (c) => {
 
   const userId = c.get('userId')!
   const deviceId = c.get('deviceId')!
+
+  // A linked device only sees the account's vaults through sync, so linking
+  // needs the plan sync needs. Without one the new device opens an empty vault.
+  await ensureLocalAdminPaidSyncAccessForUser(
+    c.env.DB,
+    c.env.ENVIRONMENT,
+    userId,
+    c.env.LOCAL_ADMIN_SYNC_EMAILS
+  )
+  await assertPaidSyncAccess(c.env.DB, userId)
 
   const { sessionId, expiresAt, linkingSecret } = await createLinkingSession(
     c.env.DB,

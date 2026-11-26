@@ -62,4 +62,9 @@ pub struct PullReport {
     /// Documents whose update log gained a body from the feed on this pass
     /// (chapter 07 §7.17), so a **resident** document is behind its log.
     pub advanced_documents: Vec<String>,
+    /// Ids a pull by id asked for in an envelope answer that no decoded item
+    /// covers (§5.12.1): not served, or served and refused. A marker does not
+    /// cover an id here, and ids of a non-envelope answer count in
+    /// `dropped_pages` instead. The feed pull never sets it.
+    pub uncovered: usize,
 }

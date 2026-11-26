@@ -1,0 +1,41 @@
+{
+  "name": "vault-status",
+  "registry": {
+    "vaults": [
+      {
+        "path": "{vault}",
+        "name": "Vault",
+        "noteCount": 0,
+        "taskCount": 0,
+        "lastOpened": "2026-01-02T03:04:05.678Z",
+        "isDefault": true
+      }
+    ]
+  },
+  "steps": [
+    {
+      "argv": ["vault", "init"]
+    },
+    {
+      "argv": ["vault", "status"]
+    },
+    {
+      "argv": ["--json", "vault", "open"]
+    },
+    {
+      "argv": ["--vault", "{tmp}/fresh/nested", "vault", "status"]
+    },
+    {
+      "argv": ["--vault", "fresh/../vault", "--json", "vault", "status"]
+    },
+    {
+      "argv": ["vault"]
+    },
+    {
+      "argv": ["vault", "bogus"]
+    },
+    {
+      "argv": ["bogus"]
+    }
+  ]
+}

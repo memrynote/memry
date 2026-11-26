@@ -21,6 +21,7 @@ use crate::api::errors::StorageError;
 use crate::domain::notes::{
     failed, insert_local, iso, next_clock, require_payload, tombstone_local,
 };
+use crate::storage::nested_tx;
 use crate::storage::repositories::{Change, sync_items};
 use crate::sync::clock::{self, VectorClock};
 use crate::sync::outbox;
@@ -57,6 +58,10 @@ pub struct EventPatch {
     pub is_all_day: Option<bool>,
     pub target_calendar_id: Option<Option<String>>,
     pub color: Option<Option<String>>,
+    /// Attendee and reminder JSON as the event stores it (`Value::Null` clears).
+    pub attendees: Option<Value>,
+    pub reminders: Option<Value>,
+    pub visibility: Option<Option<String>>,
 }
 
 /// `nanoid()` (desktop's `generateId`).
@@ -213,6 +218,19 @@ pub fn update_event(
                 changes.push(("isAllDay", Change::Set(json!(all_day))));
                 changed.push("isAllDay");
             }
+            for (field, value) in [
+                ("attendees", patch.attendees.clone()),
+                ("reminders", patch.reminders.clone()),
+                (
+                    "visibility",
+                    patch.visibility.clone().map(|v| set(v.as_deref())),
+                ),
+            ] {
+                if let Some(value) = value {
+                    changes.push((field, Change::Set(value)));
+                    changed.push(field);
+                }
+            }
             if let Some(target) = &patch.target_calendar_id {
                 changes.push(("targetCalendarId", Change::Set(set(target.as_deref()))));
             }
@@ -300,7 +318,7 @@ pub fn promote(
     device_id: &str,
     now_ms: i64,
 ) -> Result<Result<String, PromoteRefusal>, StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let Some(mirror) = live_payload(&tx, EXTERNAL_TYPE, external_id)? else {
         return Ok(Err(PromoteRefusal::NotFound));
     };

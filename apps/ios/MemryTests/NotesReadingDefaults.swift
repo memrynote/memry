@@ -52,6 +52,10 @@ extension NotesReading {
         .unknown
     }
 
+    /// Every note has a body, which is what a reader holding no binary note
+    /// answers.
+    func file(id: String) async throws -> NoteFile? { nil }
+
     /// Unread rather than empty, for the same reason the production screen
     /// keeps the two apart: a fake answering "this note has no tags" would let
     /// a test pass over a tag row that was never asked for.

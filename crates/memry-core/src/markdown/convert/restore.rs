@@ -95,7 +95,7 @@ fn done(markdown: String, outcome: SourceRestoreOutcome) -> Option<SerializedBod
 }
 
 /// `withLfLineEndings`.
-fn with_lf_line_endings(markdown: &str) -> String {
+pub(super) fn with_lf_line_endings(markdown: &str) -> String {
     markdown.replace("\r\n", "\n").replace('\r', "\n")
 }
 

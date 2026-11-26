@@ -1,4 +1,7 @@
 {
+  "wikiLink": {
+    "openFailed": "Nem sikerült megnyitni ezt a hivatkozást"
+  },
   "portalBlock": {
     "copyFailed": "Nem sikerült átmásolni a portált",
     "hiddenCount": "{count} rejtett",
@@ -956,6 +959,8 @@
     "componentsVaultSwitcher": {
       "noVaultsYet": "Még nincsenek széfek",
       "openVault": "Széf megnyitása",
+      "createVault": "Széf létrehozása",
+      "openFolderAsVault": "Mappa megnyitása széfként",
       "settings": "Beállítások",
       "remove": "Eltávolítás: „",
       "removeVaultTitle": "Eltávolítja a(z) „{name}” széfet a listáról?",

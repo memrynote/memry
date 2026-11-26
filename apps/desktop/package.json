@@ -71,6 +71,12 @@
     "vectors:embedding-input:check": "tsx scripts/embedding-input-oracle/generate.ts --check",
     "vectors:html-text": "tsx scripts/html-text-oracle/generate.ts",
     "vectors:html-text:check": "tsx scripts/html-text-oracle/generate.ts --check",
+    "vectors:agent-mcp": "tsx scripts/generate-agent-mcp-vectors.ts",
+    "vectors:agent-mcp:check": "tsx scripts/generate-agent-mcp-vectors.ts --check",
+    "vectors:export": "tsx scripts/export-oracle/generate.ts",
+    "vectors:export:check": "tsx scripts/export-oracle/generate.ts --check",
+    "vectors:task-superseded": "tsx scripts/task-superseded-oracle/generate.ts",
+    "vectors:task-superseded:check": "tsx scripts/task-superseded-oracle/generate.ts --check",
     "smoke:local-provider": "node --import tsx scripts/smoke-local-provider.ts",
     "db:generate": "drizzle-kit generate --config config/drizzle-data.config.ts && drizzle-kit generate --config config/drizzle-index.config.ts",
     "db:generate:data": "drizzle-kit generate --config config/drizzle-data.config.ts",
@@ -111,7 +117,8 @@
     "seed:vault": "bash scripts/ensure-native.sh electron && ELECTRON_RUN_AS_NODE=1 electron --import tsx scripts/seed-vault.ts",
     "seed:rich": "bash scripts/ensure-native.sh electron && ELECTRON_RUN_AS_NODE=1 electron --import tsx scripts/seed-rich-vault.ts",
     "seed:bench": "bash scripts/ensure-native.sh electron && ELECTRON_RUN_AS_NODE=1 electron --import tsx scripts/seed-bench-vault.ts",
-    "seed:small": "bash scripts/ensure-native.sh electron && ELECTRON_RUN_AS_NODE=1 electron --import tsx scripts/seed-small-vault.ts"
+    "seed:small": "bash scripts/ensure-native.sh electron && ELECTRON_RUN_AS_NODE=1 electron --import tsx scripts/seed-small-vault.ts",
+    "seed:export-templates": "bash scripts/ensure-native.sh electron && TZ=UTC ELECTRON_RUN_AS_NODE=1 electron --import tsx scripts/export-seed-templates.ts"
   },
   "dependencies": {
     "@huggingface/transformers": "^4.3.1",

@@ -1,6 +1,7 @@
 //! Tests of [`super`]: the two-namespace log against a real `data.db`.
 
 use super::*;
+use crate::storage::nested_tx;
 use crate::storage::{Db, open_data, test_support::temp_dir};
 
 fn db(label: &str) -> (crate::storage::test_support::TempDir, Db) {
@@ -10,7 +11,7 @@ fn db(label: &str) -> (crate::storage::test_support::TempDir, Db) {
 }
 
 fn fold(conn: &mut Connection, doc_id: &str, snapshot: &[u8], at: i64) -> Result<i64, CrdtError> {
-    let tx = conn.transaction().unwrap();
+    let tx = nested_tx::begin(conn).unwrap();
     let fold_at = fold_local_in(&tx, doc_id, snapshot, at)?;
     tx.commit().unwrap();
     Ok(fold_at)

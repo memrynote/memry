@@ -19,8 +19,12 @@ N = json.load(open(os.path.join(HERE, 'narration.json')))
 TL = json.load(open(os.path.join(take, 'timeline.json')))
 EV = json.load(open(os.path.join(take, 'events.json')))
 
-SW, SH, DPR = 3200, 1800, 2
-# The 3200x1800 capture has the pixels for 1440p, and channels upload 1440p to get YouTube's sharper
+# The take's size: the film is 1440x810 CSS px at 2x (2880x1620), a window that fits a 14 inch
+# MacBook's screen. take.json names it; a take recorded before it existed is the old 1600x900.
+TAKE = json.load(open(os.path.join(take, 'take.json'))) if os.path.exists(os.path.join(take, 'take.json')) else {'width': 1600, 'height': 900, 'scale': 2}
+DPR = TAKE['scale']
+SW, SH = TAKE['width'] * DPR, TAKE['height'] * DPR
+# The 2880x1620 capture has the pixels for 1440p, and channels upload 1440p to get YouTube's sharper
 # encodes (common practice, not a documented rule). The landing demo stays 1080p. Sizes below are
 # designed at 1080p and scaled by S; card.mjs renders the cards at the same size.
 OW, OH = (2560, 1440) if 'youtube' in N else (1920, 1080)

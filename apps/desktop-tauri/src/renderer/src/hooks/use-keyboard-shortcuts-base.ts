@@ -48,6 +48,8 @@ export interface KeyboardShortcut {
  */
 export const isMac = typeof navigator !== 'undefined' && /Mac/.test(navigator.platform)
 
+export const isLinux = typeof navigator !== 'undefined' && /Linux/.test(navigator.platform)
+
 /**
  * Get platform-specific modifier key label
  */

@@ -110,6 +110,11 @@ pub async fn run(
         // A handshake with an expired token is a 401 that looks like any
         // other failure, so refresh first rather than burn an attempt on it.
         refresh_if_expired(tokens).await;
+        // A stop that came during the refresh opens nothing.
+        if stop.is_stopped() {
+            client.disconnect();
+            return RunEnd::Stopped;
+        }
         if client.connect().await.is_ok() && hold(client, stop, on_connected).await {
             client.disconnect();
             return RunEnd::Stopped;

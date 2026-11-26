@@ -285,6 +285,9 @@ final class CalendarStore {
             let pass = try await filler.syncNow()
             Log.sync.info("calendar sync pass pulled", .count(Int(pass.pulled)))
             Log.sync.info("calendar sync pass pushed", .count(Int(pass.pushed)))
+            // #5373: a pass that reached the server answers the last refusal.
+            // Before the providers, so their own failures still show.
+            failure = nil
             // Google and CalDAV (CL070-CL075): this device's pushes and the
             // pulls, then one more pass for the bindings and mirror rows they
             // wrote.

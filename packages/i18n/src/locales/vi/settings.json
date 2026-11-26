@@ -1232,6 +1232,10 @@
     "loadingAria": "Đang tải thiết bị",
     "none": "Chưa có thiết bị nào được liên kết",
     "linkNew": "Liên kết thiết bị mới",
+    "linkNeedsPlan": {
+      "title": "Liên kết cần gói đồng bộ",
+      "description": "Thiết bị đã liên kết chỉ thấy ghi chú của bạn khi bật đồng bộ. Nếu không có gói, hãy đăng nhập trên thiết bị đó bằng cụm từ khôi phục và thiết bị sẽ giữ kho riêng."
+    },
     "thisDevice": "Thiết bị này",
     "lastSeen": "Hoạt động lần cuối {time} trước",
     "linked": "Đã liên kết {time} trước",
@@ -1398,6 +1402,7 @@
       "selectModel": "Chọn một mô hình",
       "apiKey": "Khóa API",
       "apiKeyDescription": "Lưu cục bộ, chỉ gửi đến nhà cung cấp",
+      "apiKeyKeychainDescription": "Lưu trong chuỗi khóa của hệ điều hành, chỉ gửi đến nhà cung cấp",
       "apiKeyPlaceholder": "Nhập khóa API {provider}",
       "ollamaUrl": "URL Ollama",
       "ollamaUrlDescription": "Địa chỉ máy chủ cục bộ",
@@ -2238,6 +2243,10 @@
         "prevVault": {
           "label": "Kho trước",
           "description": "Chuyển sang kho trước trong thanh bên"
+        },
+        "todayJournal": {
+          "label": "Nhật ký hôm nay",
+          "description": "Mở nhật ký ở mục hôm nay"
         }
       },
       "tabs": {
@@ -2431,7 +2440,8 @@
         "vault-binding": "Khóa của thiết bị này đã được khôi phục, nhưng kho này chưa được đặt để đồng bộ với tài khoản của bạn. Hãy chọn cách đồng bộ từ menu đồng bộ.",
         "vault-foreign": "Khóa của thiết bị này đã được khôi phục, nhưng kho này thuộc về tài khoản khác. Kho vẫn chỉ nằm trên thiết bị này.",
         "entitlement": "Khóa của thiết bị này đã được khôi phục, nhưng đồng bộ cần một gói Sync đang hoạt động.",
-        "unavailable": "Khóa của thiết bị này đã được khôi phục, nhưng đồng bộ không thể bắt đầu. Nó sẽ thử lại; hãy khởi động lại Memry nếu không được."
+        "unavailable": "Khóa của thiết bị này đã được khôi phục, nhưng đồng bộ không thể bắt đầu. Nó sẽ thử lại; hãy khởi động lại Memry nếu không được.",
+        "unavailable-restart": "Khóa của thiết bị này đã được khôi phục, nhưng đồng bộ không thể bắt đầu. Hãy khởi động lại Memry; nếu đồng bộ vẫn không bắt đầu, hãy đăng xuất rồi đăng nhập lại."
       }
     },
     "pagesSettingsAiInlineSection": {

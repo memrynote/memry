@@ -1,0 +1,677 @@
+{
+  "hash": [
+    {
+      "input": "",
+      "hash": "811c9dc5"
+    },
+    {
+      "input": "a",
+      "hash": "e40c292c"
+    },
+    {
+      "input": "Hello, world",
+      "hash": "94d8f9bd"
+    },
+    {
+      "input": "line one\r\nline two\rline three\n",
+      "hash": "58711fe5"
+    },
+    {
+      "input": "trailing spaces   \ntrailing tab\t\t\nnbsp \n",
+      "hash": "ff5a5482"
+    },
+    {
+      "input": "\n\n\nleading and trailing newlines\n\n\n",
+      "hash": "5b0bb405"
+    },
+    {
+      "input": "\r\n\r\nCRLF edges\r\n\r\n",
+      "hash": "c3e2eb88"
+    },
+    {
+      "input": " \n leading space line",
+      "hash": "779a7575"
+    },
+    {
+      "input": "😀📚􏿿",
+      "hash": "c2042dcd"
+    },
+    {
+      "input": "퟿￿",
+      "hash": "36b4516f"
+    }
+  ],
+  "bigHash": {
+    "unit": "ab😀 \r\n- [x] item\t\n",
+    "times": 8000,
+    "hash": "b71dc8cd"
+  },
+  "seal": [
+    {
+      "body": "",
+      "last": "2026-10-22T18:05:00.001Z",
+      "out": "<!-- readwise:start -->\n\n\n\n<!-- readwise:end v1 last=2026-10-22T18:05:00.001Z hash=811c9dc5 -->"
+    },
+    {
+      "body": "Just a note.",
+      "last": "1970-01-01T00:00:00.000Z",
+      "out": "<!-- readwise:start -->\n\nJust a note.\n\n<!-- readwise:end v1 last=1970-01-01T00:00:00.000Z hash=bab19022 -->"
+    },
+    {
+      "body": "## Highlights\n\n- 😀 smile",
+      "last": "2026-10-22T18:05:00.001Z",
+      "out": "<!-- readwise:start -->\n\n## Highlights\n\n- 😀 smile\n\n<!-- readwise:end v1 last=2026-10-22T18:05:00.001Z hash=42254200 -->"
+    },
+    {
+      "body": "## Highlights\r\n\r\n- a  \r\n- b",
+      "last": "1970-01-01T00:00:00.000Z",
+      "out": "<!-- readwise:start -->\n\n## Highlights\r\n\r\n- a  \r\n- b\n\n<!-- readwise:end v1 last=1970-01-01T00:00:00.000Z hash=63f52353 -->"
+    },
+    {
+      "body": "\n\n## Highlights\n\n- a\n\n",
+      "last": "2026-10-22T18:05:00.001Z",
+      "out": "<!-- readwise:start -->\n\n\n\n## Highlights\n\n- a\n\n\n\n<!-- readwise:end v1 last=2026-10-22T18:05:00.001Z hash=93a075c8 -->"
+    },
+    {
+      "body": "## Highlights   \n\n- a\t",
+      "last": "1970-01-01T00:00:00.000Z",
+      "out": "<!-- readwise:start -->\n\n## Highlights   \n\n- a\t\n\n<!-- readwise:end v1 last=1970-01-01T00:00:00.000Z hash=93a075c8 -->"
+    }
+  ],
+  "endMarker": [
+    {
+      "last": "2026-10-22T18:05:00.001Z",
+      "hash": "0badf00d",
+      "out": "<!-- readwise:end v1 last=2026-10-22T18:05:00.001Z hash=0badf00d -->"
+    },
+    {
+      "last": "x",
+      "hash": "00000000",
+      "out": "<!-- readwise:end v1 last=x hash=00000000 -->"
+    }
+  ],
+  "read": [
+    {
+      "name": "empty",
+      "body": "",
+      "out": {
+        "found": false,
+        "untouched": false,
+        "problem": "no-start"
+      }
+    },
+    {
+      "name": "plain text",
+      "body": "Just a note.",
+      "out": {
+        "found": false,
+        "untouched": false,
+        "problem": "no-start"
+      }
+    },
+    {
+      "name": "sealed with emoji",
+      "body": "## Highlights\n\n- 😀 smile",
+      "out": {
+        "found": false,
+        "untouched": false,
+        "problem": "no-start"
+      }
+    },
+    {
+      "name": "sealed with CRLF",
+      "body": "## Highlights\r\n\r\n- a  \r\n- b",
+      "out": {
+        "found": false,
+        "untouched": false,
+        "problem": "no-start"
+      }
+    },
+    {
+      "name": "sealed with outer newlines",
+      "body": "\n\n## Highlights\n\n- a\n\n",
+      "out": {
+        "found": false,
+        "untouched": false,
+        "problem": "no-start"
+      }
+    },
+    {
+      "name": "sealed with trailing spaces",
+      "body": "## Highlights   \n\n- a\t",
+      "out": {
+        "found": false,
+        "untouched": false,
+        "problem": "no-start"
+      }
+    },
+    {
+      "name": "unsealed hash mismatch",
+      "body": "Intro\n\n<!-- readwise:start -->\n\n## Highlights\n\n- a\n\n<!-- readwise:end v1 last=2026-10-22T18:05:00.001Z hash=00000000 -->\n\nOutro",
+      "out": {
+        "found": true,
+        "range": {
+          "start": 7,
+          "end": 120
+        },
+        "text": "\n## Highlights\n\n- a\n",
+        "marker": {
+          "last": "2026-10-22T18:05:00.001Z",
+          "hash": "00000000"
+        },
+        "untouched": false
+      }
+    },
+    {
+      "name": "no start",
+      "body": "Intro\n<!-- readwise:end v1 last=2026-10-22T18:05:00.001Z hash=00000000 -->",
+      "out": {
+        "found": false,
+        "untouched": false,
+        "problem": "no-start",
+        "end": {
+          "range": {
+            "start": 6,
+            "end": 74
+          },
+          "marker": {
+            "last": "2026-10-22T18:05:00.001Z",
+            "hash": "00000000"
+          }
+        }
+      }
+    },
+    {
+      "name": "no end",
+      "body": "<!-- readwise:start -->\n\ntext",
+      "out": {
+        "found": false,
+        "untouched": false,
+        "problem": "no-end"
+      }
+    },
+    {
+      "name": "out of order",
+      "body": "<!-- readwise:end v1 last=x hash=0 -->\ntext\n<!-- readwise:start -->",
+      "out": {
+        "found": false,
+        "untouched": false,
+        "problem": "out-of-order",
+        "end": {
+          "range": {
+            "start": 0,
+            "end": 38
+          },
+          "marker": {
+            "last": "x",
+            "hash": "0"
+          }
+        }
+      }
+    },
+    {
+      "name": "inline marker",
+      "body": "see <!-- readwise:start --> inline\n<!-- readwise:start -->\n<!-- readwise:end v1 last=x hash=0 -->",
+      "out": {
+        "found": false,
+        "untouched": false,
+        "problem": "inline-marker"
+      }
+    },
+    {
+      "name": "inline end prefix",
+      "body": "<!-- readwise:start -->\nx <!-- readwise:end\n<!-- readwise:end v1 last=x hash=0 -->",
+      "out": {
+        "found": false,
+        "untouched": false,
+        "problem": "inline-marker"
+      }
+    },
+    {
+      "name": "duplicate starts",
+      "body": "<!-- readwise:start -->\n<!-- readwise:start -->\n<!-- readwise:end v1 last=x hash=0 -->",
+      "out": {
+        "found": false,
+        "untouched": false,
+        "problem": "duplicate-markers"
+      }
+    },
+    {
+      "name": "duplicate ends",
+      "body": "<!-- readwise:start -->\n<!-- readwise:end v1 last=x hash=0 -->\n<!-- readwise:end v1 last=y hash=1 -->",
+      "out": {
+        "found": false,
+        "untouched": false,
+        "problem": "duplicate-markers"
+      }
+    },
+    {
+      "name": "unknown version",
+      "body": "<!-- readwise:start -->\n\n- a\n\n<!-- readwise:end v2 last=x hash=6f2bc5ea -->",
+      "out": {
+        "found": true,
+        "range": {
+          "start": 0,
+          "end": 75
+        },
+        "text": "\n- a\n",
+        "marker": null,
+        "untouched": false
+      }
+    },
+    {
+      "name": "version 01",
+      "body": "<!-- readwise:start -->\n\n- a\n\n<!-- readwise:end v01 last=x hash=6f2bc5ea -->",
+      "out": {
+        "found": true,
+        "range": {
+          "start": 0,
+          "end": 76
+        },
+        "text": "\n- a\n",
+        "marker": {
+          "last": "x",
+          "hash": "6f2bc5ea"
+        },
+        "untouched": false
+      }
+    },
+    {
+      "name": "bad fields",
+      "body": "<!-- readwise:start -->\n\n- a\n\n<!-- readwise:end v1  last=x hash=6f2bc5ea -->",
+      "out": {
+        "found": true,
+        "range": {
+          "start": 0,
+          "end": 76
+        },
+        "text": "\n- a\n",
+        "marker": null,
+        "untouched": false
+      }
+    },
+    {
+      "name": "uppercase hash",
+      "body": "<!-- readwise:start -->\n\n- a\n\n<!-- readwise:end v1 last=x hash=ABC -->",
+      "out": {
+        "found": true,
+        "range": {
+          "start": 0,
+          "end": 70
+        },
+        "text": "\n- a\n",
+        "marker": null,
+        "untouched": false
+      }
+    },
+    {
+      "name": "indented and CRLF markers",
+      "body": "  <!-- readwise:start -->  \r\n\r\n- a\r\n\r\n\t<!-- readwise:end v1 last=x hash=00000000 -->\r\nafter",
+      "out": {
+        "found": true,
+        "range": {
+          "start": 0,
+          "end": 85
+        },
+        "text": "\r\n- a\r\n\r",
+        "marker": {
+          "last": "x",
+          "hash": "00000000"
+        },
+        "untouched": false
+      }
+    },
+    {
+      "name": "adjacent markers",
+      "body": "<!-- readwise:start -->\n<!-- readwise:end v1 last=x hash=811c9dc5 -->",
+      "out": {
+        "found": true,
+        "range": {
+          "start": 0,
+          "end": 69
+        },
+        "text": "",
+        "marker": {
+          "last": "x",
+          "hash": "811c9dc5"
+        },
+        "untouched": true
+      }
+    },
+    {
+      "name": "markers with astral text before",
+      "body": "😀😀\n<!-- readwise:start -->\n📚\n<!-- readwise:end v1 last=x hash=0 -->\n😀",
+      "out": {
+        "found": true,
+        "range": {
+          "start": 5,
+          "end": 70
+        },
+        "text": "📚",
+        "marker": {
+          "last": "x",
+          "hash": "0"
+        },
+        "untouched": false
+      }
+    },
+    {
+      "name": "nbsp-indented marker",
+      "body": " <!-- readwise:start -->\n\n<!-- readwise:end v1 last=x hash=811c9dc5 -->",
+      "out": {
+        "found": true,
+        "range": {
+          "start": 0,
+          "end": 71
+        },
+        "text": "",
+        "marker": {
+          "last": "x",
+          "hash": "811c9dc5"
+        },
+        "untouched": true
+      }
+    },
+    {
+      "name": "nel-indented marker",
+      "body": "<!-- readwise:start -->\n\n<!-- readwise:end v1 last=x hash=811c9dc5 -->",
+      "out": {
+        "found": false,
+        "untouched": false,
+        "problem": "inline-marker"
+      }
+    },
+    {
+      "name": "day markers are not book markers",
+      "body": "<!-- readwise-day:start -->\n<!-- readwise-day:end v1 hash=0 -->",
+      "out": {
+        "found": false,
+        "untouched": false,
+        "problem": "no-start"
+      }
+    },
+    {
+      "name": "editor round trip of a TypeScript-written note",
+      "body": "Intro.\n\n<!-- readwise:start -->\n\n![](attachments/rw-1a2b3c.jpg)\n\n## Document note\n\nMy thoughts on the whole book.\n\nSecond paragraph.\n\n## Summary\n\nA case for focus.\n\n## Highlights\n\n#### Chapter One\n\n- Page based ([Page 12](https://readwise.io/open/4), 2026-10-22)\n- Clarity about what matters provides clarity about what does not. ([Location 120](https://readwise.io/open/1), 2026-10-22) #focus #Big-Idea\n  - Quote this in the talk\n- Second highlight ([Location 340](https://readwise.io/open/2), 2026-10-22)\n\n<!-- readwise:end v1 last=2026-10-22T18:05:00.001Z hash=82df21cb -->\n\nOutro.",
+      "out": {
+        "found": true,
+        "range": {
+          "start": 8,
+          "end": 576
+        },
+        "text": "\n![](attachments/rw-1a2b3c.jpg)\n\n## Document note\n\nMy thoughts on the whole book.\n\nSecond paragraph.\n\n## Summary\n\nA case for focus.\n\n## Highlights\n\n#### Chapter One\n\n- Page based ([Page 12](https://readwise.io/open/4), 2026-10-22)\n- Clarity about what matters provides clarity about what does not. ([Location 120](https://readwise.io/open/1), 2026-10-22) #focus #Big-Idea\n  - Quote this in the talk\n- Second highlight ([Location 340](https://readwise.io/open/2), 2026-10-22)\n",
+        "marker": {
+          "last": "2026-10-22T18:05:00.001Z",
+          "hash": "82df21cb"
+        },
+        "untouched": true
+      }
+    },
+    {
+      "name": "editor round trip, then an edit outside the section",
+      "body": "Intro, edited.\n\n<!-- readwise:start -->\n\n![](attachments/rw-1a2b3c.jpg)\n\n## Document note\n\nMy thoughts on the whole book.\n\nSecond paragraph.\n\n## Summary\n\nA case for focus.\n\n## Highlights\n\n#### Chapter One\n\n- Page based ([Page 12](https://readwise.io/open/4), 2026-10-22)\n- Clarity about what matters provides clarity about what does not. ([Location 120](https://readwise.io/open/1), 2026-10-22) #focus #Big-Idea\n  - Quote this in the talk\n- Second highlight ([Location 340](https://readwise.io/open/2), 2026-10-22)\n\n<!-- readwise:end v1 last=2026-10-22T18:05:00.001Z hash=82df21cb -->\n\nOutro.",
+      "out": {
+        "found": true,
+        "range": {
+          "start": 16,
+          "end": 584
+        },
+        "text": "\n![](attachments/rw-1a2b3c.jpg)\n\n## Document note\n\nMy thoughts on the whole book.\n\nSecond paragraph.\n\n## Summary\n\nA case for focus.\n\n## Highlights\n\n#### Chapter One\n\n- Page based ([Page 12](https://readwise.io/open/4), 2026-10-22)\n- Clarity about what matters provides clarity about what does not. ([Location 120](https://readwise.io/open/1), 2026-10-22) #focus #Big-Idea\n  - Quote this in the talk\n- Second highlight ([Location 340](https://readwise.io/open/2), 2026-10-22)\n",
+        "marker": {
+          "last": "2026-10-22T18:05:00.001Z",
+          "hash": "82df21cb"
+        },
+        "untouched": true
+      }
+    }
+  ],
+  "readDay": [
+    {
+      "name": "empty",
+      "body": "",
+      "out": {
+        "found": false,
+        "untouched": false,
+        "problem": "no-start"
+      }
+    },
+    {
+      "name": "text only",
+      "body": "Morning pages.\n",
+      "out": {
+        "found": false,
+        "untouched": false,
+        "problem": "no-start"
+      }
+    },
+    {
+      "name": "text ending in a list",
+      "body": "Todo:\n- one\n- two\n\n",
+      "out": {
+        "found": false,
+        "untouched": false,
+        "problem": "no-start"
+      }
+    },
+    {
+      "name": "untouched",
+      "body": "Morning.\n\n<!-- readwise-day:start -->\n\n### Readwise\n\n- [[Deep Work]]: 2 highlights\n\n<!-- readwise-day:end v1 hash=6a32c061 -->\n\nEvening.",
+      "out": {
+        "found": true,
+        "range": {
+          "start": 10,
+          "end": 126
+        },
+        "text": "\n### Readwise\n\n- [[Deep Work]]: 2 highlights\n",
+        "marker": {
+          "hash": "6a32c061"
+        },
+        "untouched": true
+      }
+    },
+    {
+      "name": "untouched, older books",
+      "body": "<!-- readwise-day:start -->\n\n### Readwise\n\n- [[Old]]: 1 highlight\n\n<!-- readwise-day:end v1 hash=c8e8f86b -->",
+      "out": {
+        "found": true,
+        "range": {
+          "start": 0,
+          "end": 109
+        },
+        "text": "\n### Readwise\n\n- [[Old]]: 1 highlight\n",
+        "marker": {
+          "hash": "c8e8f86b"
+        },
+        "untouched": true
+      }
+    },
+    {
+      "name": "touched",
+      "body": "Morning.\n\n<!-- readwise-day:start -->\n\n### Readwise\n\n- [[Deep Work]]: 2 highlights, edited\n\n<!-- readwise-day:end v1 hash=6a32c061 -->\n\nEvening.",
+      "out": {
+        "found": true,
+        "range": {
+          "start": 10,
+          "end": 134
+        },
+        "text": "\n### Readwise\n\n- [[Deep Work]]: 2 highlights, edited\n",
+        "marker": {
+          "hash": "6a32c061"
+        },
+        "untouched": false
+      }
+    },
+    {
+      "name": "touched ending in text",
+      "body": "<!-- readwise-day:start -->\n\n### Readwise\n\nmy words\n<!-- readwise-day:end v1 hash=00000000 -->",
+      "out": {
+        "found": true,
+        "range": {
+          "start": 0,
+          "end": 94
+        },
+        "text": "\n### Readwise\n\nmy words",
+        "marker": {
+          "hash": "00000000"
+        },
+        "untouched": false
+      }
+    },
+    {
+      "name": "unknown version",
+      "body": "<!-- readwise-day:start -->\n\nx\n\n<!-- readwise-day:end v2 hash=0 -->",
+      "out": {
+        "found": true,
+        "range": {
+          "start": 0,
+          "end": 67
+        },
+        "text": "\nx\n",
+        "marker": null,
+        "untouched": false
+      }
+    },
+    {
+      "name": "end only",
+      "body": "text\n\n- item\n<!-- readwise-day:end v1 hash=0 -->\n",
+      "out": {
+        "found": false,
+        "untouched": false,
+        "problem": "no-start",
+        "end": {
+          "range": {
+            "start": 13,
+            "end": 48
+          },
+          "marker": {
+            "hash": "0"
+          }
+        }
+      }
+    },
+    {
+      "name": "end only, unknown version",
+      "body": "text\n<!-- readwise-day:end v9 hash=0 -->",
+      "out": {
+        "found": false,
+        "untouched": false,
+        "problem": "no-start",
+        "end": {
+          "range": {
+            "start": 5,
+            "end": 40
+          },
+          "marker": null
+        }
+      }
+    },
+    {
+      "name": "start only",
+      "body": "<!-- readwise-day:start -->\n\n- x  \n\n",
+      "out": {
+        "found": false,
+        "untouched": false,
+        "problem": "no-end"
+      }
+    },
+    {
+      "name": "out of order",
+      "body": "<!-- readwise-day:end v1 hash=0 -->\n<!-- readwise-day:start -->",
+      "out": {
+        "found": false,
+        "untouched": false,
+        "problem": "out-of-order",
+        "end": {
+          "range": {
+            "start": 0,
+            "end": 35
+          },
+          "marker": {
+            "hash": "0"
+          }
+        }
+      }
+    },
+    {
+      "name": "inline",
+      "body": "a <!-- readwise-day:start --> b",
+      "out": {
+        "found": false,
+        "untouched": false,
+        "problem": "inline-marker"
+      }
+    },
+    {
+      "name": "duplicate",
+      "body": "<!-- readwise-day:start -->\n<!-- readwise-day:start -->\n<!-- readwise-day:end v1 hash=0 -->",
+      "out": {
+        "found": false,
+        "untouched": false,
+        "problem": "duplicate-markers"
+      }
+    },
+    {
+      "name": "book markers only",
+      "body": "<!-- readwise:start -->\n<!-- readwise:end v1 last=x hash=0 -->",
+      "out": {
+        "found": false,
+        "untouched": false,
+        "problem": "no-start"
+      }
+    },
+    {
+      "name": "numbered list before end",
+      "body": "x\n  12) item\n<!-- readwise-day:end v1 hash=0 -->",
+      "out": {
+        "found": false,
+        "untouched": false,
+        "problem": "no-start",
+        "end": {
+          "range": {
+            "start": 13,
+            "end": 48
+          },
+          "marker": {
+            "hash": "0"
+          }
+        }
+      }
+    },
+    {
+      "name": "ten-digit list before end",
+      "body": "x\n1234567890. item\n<!-- readwise-day:end v1 hash=0 -->",
+      "out": {
+        "found": false,
+        "untouched": false,
+        "problem": "no-start",
+        "end": {
+          "range": {
+            "start": 19,
+            "end": 54
+          },
+          "marker": {
+            "hash": "0"
+          }
+        }
+      }
+    },
+    {
+      "name": "astral before end",
+      "body": "😀\n<!-- readwise-day:end v1 hash=0 -->\n😀",
+      "out": {
+        "found": false,
+        "untouched": false,
+        "problem": "no-start",
+        "end": {
+          "range": {
+            "start": 3,
+            "end": 38
+          },
+          "marker": {
+            "hash": "0"
+          }
+        }
+      }
+    }
+  ]
+}

@@ -16,6 +16,7 @@ export {
   getAllCrdtNoteIds,
   getAllSyncableNoteMetadataIds,
   getNotesModifiedAfter,
+  UNSTORED_FILE,
   type ListNotesOptions,
   type NoteCacheRefRow,
   type NoteTreeCacheRow
@@ -26,6 +27,7 @@ export {
   listNotesWithUnresolvedHeaderTags,
   resolveHeaderTagFlags,
   getNoteTags,
+  getNoteHeaderTags,
   getTagsForNotes,
   getAllTags,
   findNotesByTag,
@@ -103,6 +105,7 @@ export {
 export {
   setNoteProperties,
   getNoteProperties,
+  getNoteFileProperties,
   getNotePropertiesAsRecord,
   getPropertiesForNotes,
   deleteNoteProperties,

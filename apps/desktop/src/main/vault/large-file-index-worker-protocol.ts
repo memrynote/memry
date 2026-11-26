@@ -32,7 +32,13 @@ export interface SearchWorkerInput {
   maxHits: number
 }
 
-export type LargeFileWorkerInput = IndexWorkerInput | SearchWorkerInput
+/** The file's sha256, for a binary note's sync (`file-hash-bridge.ts`). */
+export interface HashWorkerInput {
+  kind: 'hash'
+  absolutePath: string
+}
+
+export type LargeFileWorkerInput = IndexWorkerInput | SearchWorkerInput | HashWorkerInput
 
 export type LargeFileWorkerMessage =
   | { type: 'progress'; bytesScanned: number }
@@ -52,4 +58,6 @@ export type LargeFileWorkerMessage =
       limited: boolean
       bytesSearched: number
     }
+  /** `sha256` is null when nothing is at the path. */
+  | { type: 'hash-done'; sha256: string | null }
   | { type: 'error'; message: string }

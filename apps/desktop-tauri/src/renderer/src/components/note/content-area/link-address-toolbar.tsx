@@ -102,7 +102,7 @@ function EditLinkAddressForm(props: LinkToolbarProps): React.JSX.Element {
     props.setToolbarPositionFrozen?.(false)
   }
   const onKeyDown = (event: KeyboardEvent): void => {
-    if (event.key !== 'Enter' || event.nativeEvent.isComposing) return
+    if (event.key !== 'Enter') return
     event.preventDefault()
     submit()
   }

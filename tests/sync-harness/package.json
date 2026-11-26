@@ -4,10 +4,12 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./simulated-server": "./src/simulated-server.ts"
+    "./simulated-server": "./src/simulated-server.ts",
+    "./zero-loss-oracle": "./src/zero-loss-oracle/index.ts"
   },
   "scripts": {
     "build:worker": "tsx scripts/build-worker.ts",
+    "build:core": "tsx scripts/build-core.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -17,7 +19,8 @@
     "jose": "^6.1.3",
     "libsodium-wrappers-sumo": "^0.8.2",
     "miniflare": "^4.20260730.0",
-    "pako": "^2.1.0"
+    "pako": "^2.1.0",
+    "yjs": "^13.6.29"
   },
   "devDependencies": {
     "@memry/typescript-config": "workspace:*",

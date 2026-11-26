@@ -111,9 +111,17 @@ extension CalendarStore {
         message: String?,
         _ work: @escaping @Sendable (any TasksProtocol, String) throws -> TaskChange
     ) async {
+        await tasksWrite(message: message) { core in try work(core, id) }
+    }
+
+    /// A write over any number of tasks, refreshed once, with one Undo.
+    func tasksWrite(
+        message: String?,
+        _ work: @escaping @Sendable (any TasksProtocol) throws -> TaskChange
+    ) async {
         guard let tasks else { return }
         let core = tasks.core
-        guard let change = await read({ try work(core, id) }) else { return }
+        guard let change = await read({ try work(core) }) else { return }
         TasksTelemetry.track(change)
         await tasks.refresh()
         await refreshAllWindows()
