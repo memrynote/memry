@@ -1090,8 +1090,9 @@ jobs:
           overwrite: true
           retention-days: 1
 
-  # The nextest suite of the Linux and Windows legs in four count partitions, each run from its OS's
-  # archive, with no compile. The checkout is the workspace the tests read their fixtures from, and the archive unpacks
+  # The nextest suite of the Linux and Windows legs in four slices (nextest deals the tests of every
+  # binary round-robin; `count:` dealt per binary and put each one-test binary in partition 1), each
+  # run from its OS's archive, with no compile. The checkout is the workspace the tests read their fixtures from, and the archive unpacks
   # into crates/target, the path the build compiled into CARGO_BIN_EXE_*.
   test-partitions:
     name: Rust tests ${{ matrix.partition }} (${{ matrix.os }})
@@ -1162,7 +1163,7 @@ jobs:
         run: |
           FILTER=
           if [ "$NEXTEST_PROFILE" = merge-queue ]; then FILTER=$(node ../scripts/check-quarantine.mjs --filter); fi
-          cargo nextest run --archive-file "$RUNNER_TEMP/nextest-archive/nextest-archive.tar.zst" --workspace-remap . --extract-to . --extract-overwrite --no-fail-fast --partition "count:$PARTITION" ${FILTER:+-E "$FILTER"}
+          cargo nextest run --archive-file "$RUNNER_TEMP/nextest-archive/nextest-archive.tar.zst" --workspace-remap . --extract-to . --extract-overwrite --no-fail-fast --partition "slice:$PARTITION" ${FILTER:+-E "$FILTER"}
 
       - name: Upload the JUnit report (merge queue)
         if: ${{ !cancelled() && github.event_name == 'merge_group' }}

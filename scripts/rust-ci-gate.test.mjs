@@ -224,7 +224,7 @@ describe('Rust CI gate', () => {
       )
       const runs = [...partitions.matchAll(/^ {10}(cargo nextest .*)$/gm)].map((m) => m[1])
       assert.deepEqual(runs, [
-        'cargo nextest run --archive-file "$RUNNER_TEMP/nextest-archive/nextest-archive.tar.zst" --workspace-remap . --extract-to . --extract-overwrite --no-fail-fast --partition "count:$PARTITION" ${FILTER:+-E "$FILTER"}'
+        'cargo nextest run --archive-file "$RUNNER_TEMP/nextest-archive/nextest-archive.tar.zst" --workspace-remap . --extract-to . --extract-overwrite --no-fail-fast --partition "slice:$PARTITION" ${FILTER:+-E "$FILTER"}'
       ])
       assert.match(
         partitions,
