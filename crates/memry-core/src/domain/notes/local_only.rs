@@ -42,6 +42,7 @@ use crate::crdt::errors::CrdtError;
 use crate::domain::{note_files, reads};
 use crate::protocol::account::MAX_UPDATE_BYTES;
 use crate::protocol::crdt_envelope::packed_len;
+use crate::storage::nested_tx;
 use crate::storage::repositories::sync_items;
 use crate::sync::outbox;
 
@@ -80,7 +81,7 @@ pub fn set(
     local_only: bool,
     now_ms: i64,
 ) -> Result<LocalOnlyChange, StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let Some(file) = note_files::by_id(&tx, note_id)? else {
         return Err(StorageError::NotFound {
             what: note_id.to_owned(),

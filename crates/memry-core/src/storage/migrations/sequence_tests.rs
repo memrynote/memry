@@ -1,7 +1,7 @@
 //! Each list is the sequence its directory spells: versions 1, 2, 3 and on with no gap or
 //! repeat, and the file named `NNNN_<name>.sql` is version NNNN, named `<name>`, with that
-//! file's text. A shift of feat/tauri-v2's own migrations above main's (#4438) that misses a
-//! file name, a registry entry or a version fails here.
+//! file's text. A shift of feat/tauri-v2's own migrations above main's (#4438, #5221) that
+//! misses a file name, a registry entry or a version fails here.
 
 use std::path::Path;
 
@@ -9,7 +9,7 @@ use super::*;
 
 #[test]
 fn versions_are_strictly_ascending_from_one() {
-    for migrations in [DATA_MIGRATIONS, INDEX_MIGRATIONS] {
+    for migrations in [DATA_MIGRATIONS, INDEX_MIGRATIONS, VECTOR_MIGRATIONS] {
         for (index, migration) in migrations.iter().enumerate() {
             let expected = u32::try_from(index + 1).expect("migration count fits u32");
             assert_eq!(migration.version, expected, "{}", migration.name);
@@ -20,7 +20,11 @@ fn versions_are_strictly_ascending_from_one() {
 #[test]
 fn every_migration_file_is_its_numbered_entry() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("src/storage/migrations");
-    for (dir, migrations) in [("data", DATA_MIGRATIONS), ("index", INDEX_MIGRATIONS)] {
+    for (dir, migrations) in [
+        ("data", DATA_MIGRATIONS),
+        ("index", INDEX_MIGRATIONS),
+        ("vectors", VECTOR_MIGRATIONS),
+    ] {
         let mut files: Vec<_> = std::fs::read_dir(root.join(dir))
             .expect("list the migrations")
             .map(|entry| {

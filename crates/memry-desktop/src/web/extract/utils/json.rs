@@ -438,7 +438,7 @@ fn array_index(key: &str) -> Option<u32> {
 }
 
 /// `OrdinaryOwnPropertyKeys`: integer keys ascending, then string keys in insertion order.
-fn order_keys(entries: Vec<(String, JsValue)>) -> Vec<(String, JsValue)> {
+pub(crate) fn order_keys(entries: Vec<(String, JsValue)>) -> Vec<(String, JsValue)> {
     if !entries.iter().any(|(k, _)| array_index(k).is_some()) {
         return entries;
     }

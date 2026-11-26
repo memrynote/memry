@@ -329,11 +329,14 @@ pub fn stats(vault: &OpenVault) -> SearchStats {
         .unwrap_or_default()
 }
 
+/// How many search reasons a vault keeps (`search-handlers.ts:242`). iOS keeps 10 in the same table.
+const REASONS_CAP: u32 = 20;
+
 /// `search:get-reasons`: the recently opened results whose items still exist, newest first.
 pub fn reasons(vault: &OpenVault) -> Result<Vec<SearchReason>, StorageError> {
     Ok(vault
         .vault
-        .search_recents()
+        .search_recents(REASONS_CAP)
         .list()?
         .into_iter()
         .filter_map(view::reason)
@@ -351,7 +354,7 @@ pub fn add_reason(vault: &OpenVault, input: AddReasonInput) -> Result<SearchReas
             return Err(AddError::Invalid(Invalid(field)));
         }
     }
-    let recents = vault.vault.search_recents();
+    let recents = vault.vault.search_recents(REASONS_CAP);
     recents.record(view::recorded(&input), input.search_query.clone())?;
     let stored = recents
         .list()?
@@ -363,7 +366,7 @@ pub fn add_reason(vault: &OpenVault, input: AddReasonInput) -> Result<SearchReas
 
 /// `search:clear-reasons`.
 pub fn clear_reasons(vault: &OpenVault) -> Result<(), StorageError> {
-    vault.vault.search_recents().clear()
+    vault.vault.search_recents(REASONS_CAP).clear()
 }
 
 #[derive(Debug, thiserror::Error)]

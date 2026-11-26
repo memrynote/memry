@@ -54,7 +54,7 @@ The reason is on record: **a parser bug must never be able to lock a paying user
 out of their own vault** (`apps/sync-server/src/lib/client-identity.ts:31-35`).
 The no-header branch must also stay free of database work, because it is the
 branch every currently-shipped build takes
-(`apps/sync-server/src/middleware/client-gate.ts:36-38`).
+(`apps/sync-server/src/middleware/client-gate.ts:44-46`).
 
 **A client SHOULD verify its own header against the server's grammar before
 sending**, because a malformed value silently opts it out of the write gate
@@ -63,17 +63,52 @@ rather than failing loudly
 
 ## 11.4 Reads are never gated
 
-**Normative.** `GET`, `HEAD` and `OPTIONS` bypass **both** the version floor and
-the kill switch (`apps/sync-server/src/middleware/client-gate.ts:13`, `:34`), so
-a device dropped to read-only can still open every note it owns.
+**Normative.** Reads bypass **both** the version floor and the kill switch
+(`apps/sync-server/src/middleware/client-gate.ts:42`), so a device dropped to
+read-only can still open every note it owns, including notes a peer changed
+after the floor went up.
+
+The gate classifies a request as a read by method **and** route, not by method
+alone:
+
+- every `GET`, `HEAD` and `OPTIONS` request
+  (`apps/sync-server/src/middleware/client-gate.ts:14`);
+- these four `POST` routes, which carry an id list in the body and change no
+  client-authored state (`apps/sync-server/src/middleware/client-gate.ts:15-20`).
+  `POST /sync/pull` and `POST /sync/records/pull` MAY stamp
+  `sync_items.blob_missing_at` on a live row whose blob is lost; the server sets
+  it, and a repeat pull keeps the first stamp
+  (`apps/sync-server/src/services/sync.ts:1596`, called at `:1679`; #2302):
+
+| Route                                  | Registered at                                                                             |
+| -------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `POST /sync/pull`                      | `apps/sync-server/src/routes/sync.ts:734`                                                 |
+| `POST /sync/records/pull`              | `apps/sync-server/src/routes/sync.ts:724`, mounted at `:718`                              |
+| `POST /sync/crdt/updates/batch`        | `apps/sync-server/src/routes/sync.ts:1394`, mounted at `:1389`                            |
+| `POST /sync/attachments/presign-batch` | `apps/sync-server/src/routes/blob.ts:767`, mounted at `apps/sync-server/src/index.ts:238` |
+
+Every other `POST`, and every `PUT`, `PATCH` and `DELETE`, is a write
+(`apps/sync-server/src/middleware/client-gate.ts:48-73`). `POST` routes that
+create or change server state stay gated even when they sit on the pull path:
+the bootstrap session open, renew and close
+(`apps/sync-server/src/routes/bootstrap.ts:86`, `:160`, `:179`; chapter 10) and
+the attachment chunk holds (`apps/sync-server/src/routes/blob.ts:717`, `:731`;
+chapter 14 §14.8.1). A server change that adds a read-only `POST` route MUST
+add it to the list above in the same change; until it does, a read-only device
+gets `403` or `426` on that route.
+
+Before #4716 the gate classified by method alone, so a read-only device that
+sent the client header failed on `POST /sync/pull` and
+`POST /sync/crdt/updates/batch` and could not fetch a peer's change. The fix is
+server-only: every shipped client sends the same requests and now gets `200`.
 
 Parsing, by contrast, is **unconditional** and runs on reads too, because
 downstream handlers read the identity for write attribution and for the policy
-echo on status (`apps/sync-server/src/middleware/client-gate.ts:28-32`).
+echo on status (`apps/sync-server/src/middleware/client-gate.ts:35-39`).
 
 Parsing and gating live in **one** middleware deliberately: splitting them meant
 a router could be mounted with the gate but without the parser, which fails open
-silently (`apps/sync-server/src/middleware/client-gate.ts:17-21`).
+silently (`apps/sync-server/src/middleware/client-gate.ts:25-28`).
 
 ## 11.5 The kill switch is evaluated before the version floor
 
@@ -84,7 +119,7 @@ them (`specs/001-mobile-app/contracts/sync-protocol-additions.md:46-48`).
 
 ## 11.6 Responses
 
-**Normative** (`apps/sync-server/src/middleware/client-gate.ts:44-65`):
+**Normative** (`apps/sync-server/src/middleware/client-gate.ts:52-73`):
 
 | Condition                        | Status  | Body                                                                      |
 | -------------------------------- | ------- | ------------------------------------------------------------------------- |
@@ -92,8 +127,8 @@ them (`specs/001-mobile-app/contracts/sync-protocol-additions.md:46-48`).
 | client version below the floor   | **426** | `{"error":{"code":"CLIENT_UPGRADE_REQUIRED","message":…,"minVersion":…}}` |
 
 **`minVersion` rides _inside_ the `error` object, not at the top level**
-(`apps/sync-server/src/middleware/client-gate.ts:56-63`, and the contract
-sketch's correction at `:23-25`).
+(`apps/sync-server/src/middleware/client-gate.ts:64-71`, and the contract
+sketch's correction at `:30-32`).
 
 ## 11.7 An unreadable policy degrades to allow
 
@@ -176,7 +211,7 @@ A pull-only client learns about a flipped switch this way
 300 s is chosen to match `CLOCK_SKEW_THRESHOLD_SECONDS` (chapter 05 §5.16), so a
 client that already polls status for skew gets policy for free, and it sits far
 inside the `sync_status` budget of 60 requests per 60 s
-(`apps/sync-server/src/routes/sync.ts:246-247`).
+(`apps/sync-server/src/routes/sync.ts:247-248`).
 
 **There is no push channel for a flipped switch.** The WebSocket's `error` frame
 carries only `WS_RATE_LIMITED` and `WS_TOKEN_EXPIRED` (chapter 09 §9.5), and no
@@ -243,9 +278,9 @@ different floors and different mechanisms:
 | ------ | --------------------------------------------------------------------- | ---------------------------------------------------------------- |
 | Header | `x-memry-client`, `<platform>/<semver>`                               | `X-App-Version`, a bare semver                                   |
 | Floor  | `client_policies.min_write_version`, **per platform**, a database row | `MIN_APP_VERSION`, a **deployment-wide** environment value       |
-| Scope  | write methods only (§11.4)                                            | the whole socket                                                 |
+| Scope  | writes only (§11.4)                                                   | the whole socket                                                 |
 | Answer | 403 or 426 (§11.6)                                                    | 426 `SYNC_VERSION_INCOMPATIBLE` at handshake (chapter 09 §9.2)   |
-| Where  | `apps/sync-server/src/middleware/client-gate.ts:27-66`                | `apps/sync-server/src/durable-objects/user-sync-state.ts:99-122` |
+| Where  | `apps/sync-server/src/middleware/client-gate.ts:34-74`                | `apps/sync-server/src/durable-objects/user-sync-state.ts:99-122` |
 
 **A client MUST satisfy both, and MUST send both headers.** The two version
 strings may be the same application version; they are carried in different

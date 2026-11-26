@@ -1912,12 +1912,7 @@ describe('auth routes', () => {
 
       expect(res.status).toBe(200)
       expect(await res.json()).toEqual({ success: true })
-      expect(deleteUserData).toHaveBeenCalledWith(
-        envWithStorage.DB,
-        envWithStorage.STORAGE,
-        'user-1',
-        'test@example.com'
-      )
+      expect(deleteUserData).toHaveBeenCalledWith(envWithStorage, 'user-1', 'test@example.com')
     })
 
     it('returns 400 when code is missing or invalid format', async () => {

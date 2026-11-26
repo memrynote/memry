@@ -28,6 +28,10 @@ const mocks = vi.hoisted(() => ({
   openIncidentReport: vi.fn()
 }))
 
+vi.mock('@/services/sync-service', () => ({
+  syncService: { getLargeNotes: vi.fn().mockResolvedValue({ maxBytes: 3_826_189, notes: [] }) }
+}))
+
 // The activity log has its own tests and needs a query client this suite does not build.
 vi.mock('@/components/settings/vault-activity', () => ({
   VaultActivitySettings: () => null
@@ -171,10 +175,7 @@ describe('zero-covered leaf surfaces', () => {
       onVaultIndexProgress: vi.fn(() => () => {}),
       onVaultError: vi.fn(() => () => {}),
       onVaultIndexRecovered: vi.fn(() => () => {}),
-      onVaultConfigChanged: vi.fn(() => () => {}),
-      syncOps: {
-        getLargeNotes: vi.fn().mockResolvedValue({ maxBytes: 3_826_189, notes: [] })
-      }
+      onVaultConfigChanged: vi.fn(() => () => {})
     }
   })
 

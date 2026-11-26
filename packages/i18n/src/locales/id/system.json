@@ -17,6 +17,7 @@
       "filterAll": "Semua file"
     },
     "exportCancelled": "Ekspor dibatalkan",
+    "exportVaultChanged": "Brankas lain dibuka saat Anda memilih tempat menyimpan. Ekspor catatan lagi.",
     "dataDbRecovery": {
       "title": "Perbaiki database vault",
       "message": "Database Memry untuk vault ini rusak.",

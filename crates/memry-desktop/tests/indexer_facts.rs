@@ -5,7 +5,8 @@
 //! is measured once it reads, and its backoff does not hold back an edit; a day file moved to
 //! another day's path while the app was closed loses its stored day, though no fact said so;
 //! and the search index (links) is brought up to date at every open, not only after a pass that
-//! wrote rows.
+//! wrote rows. The open's build ends as walked only with a pass after the walk's `Indexed`, and
+//! after the reindex that took it.
 
 #[allow(unused_imports)]
 use crate::device_key;
@@ -15,14 +16,15 @@ use crate::index_support;
 use crate::vault_env;
 
 use std::sync::{Arc, Mutex};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use index_support::{
-    all_indexed, note_text, path_of, seeded, until, with_reporting_task, with_task,
+    all_indexed, note_text, path_of, seeded, until, with_reporting_task, with_task, with_task_under,
 };
 use memry_core::domain::note_stats::{MeasuredFile, measure};
 use memry_desktop::notes::identity::NotesIdentity;
-use memry_desktop::notes::index::{IDLE_DELAY, IndexProgress, NoteIndex};
+use memry_desktop::notes::index::{IDLE_DELAY, IndexProgress, NoteIndex, OpenBuild, TaskHandle};
+use memry_desktop::session::OpenVault;
 use memry_desktop::vault::consumer::rows::RowStat;
 use memry_desktop::vault::consumer::{Applied, ChangeSource};
 use memry_desktop::vault::file_types::FileType;
@@ -487,5 +489,428 @@ fn the_walks_end_reports_though_a_failed_watchers_pass_reported_first() {
         // Nothing left to measure: `0` of `0`, which still refreshes the list.
         assert_eq!(*reported.lock().unwrap(), [step(0, 0)]);
     });
+    e.close();
+}
+
+/// What the task told: the open's build, and a reindex's steps.
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum Told {
+    Build(OpenBuild),
+    Reindexed,
+}
+
+type Log = Arc<Mutex<Vec<Told>>>;
+
+/// Runs a task whose facts start with `early`, sent before it reads any, into a channel of
+/// `capacity`; the open's build goes to the log, its steps left out.
+fn with_build_log(
+    open: &OpenVault,
+    capacity: usize,
+    early: &[Applied],
+    test: impl FnOnce(&TaskHandle, &broadcast::Sender<Applied>, &Log),
+) {
+    let (sender, receiver) = broadcast::channel(capacity);
+    for fact in early {
+        sender.send(fact.clone()).unwrap();
+    }
+    let log = Log::default();
+    let told = log.clone();
+    let report = move |build| {
+        if !matches!(build, OpenBuild::Step(_)) {
+            told.lock().unwrap().push(Told::Build(build));
+        }
+    };
+    with_task_under(
+        open,
+        receiver,
+        device_key::with_device_key(),
+        &report,
+        |handle| test(handle, &sender, &log),
+    );
+}
+
+fn told(log: &Log) -> Vec<Told> {
+    log.lock().unwrap().clone()
+}
+
+/// A pass before the walk's `Indexed` (lost facts, or a watcher that failed before its first
+/// pass) ends the open's build, but not as walked: the rows may miss notes the walk has not
+/// offered, so a job waiting on them (`NoteIndex::wait_built`) waits for the walk's pass. A lag
+/// that lost `Indexed` leaves it waiting for the next open.
+#[test]
+fn a_pass_before_the_walks_indexed_ends_the_build_unwalked() {
+    let (mut e, _store, _) = seeded(2);
+    e.open();
+    let open = e.session.current().unwrap();
+    let failed = Applied::Vault(VaultEvent::WatchFailed {
+        message: "no watcher".into(),
+        limit: false,
+    });
+    // A channel of one, sent three facts before the task reads: its first read is `Lagged`.
+    let lost = (1, vec![rescanned(); 3]);
+    for (capacity, early) in [lost, (16, vec![failed])] {
+        with_build_log(&open, capacity, &early, |_, sender, log| {
+            until("the early pass ended the build", || !told(log).is_empty());
+            assert_eq!(told(log), [Told::Build(OpenBuild::Ended { walked: false })]);
+            sender.send(rescanned()).unwrap();
+            sender.send(Applied::Indexed { complete: true }).unwrap();
+            until("the walk's pass ended the build", || told(log).len() == 3);
+            assert_eq!(
+                told(log)[1..],
+                [
+                    Told::Build(OpenBuild::Owed),
+                    Told::Build(OpenBuild::Ended { walked: true }),
+                ]
+            );
+        });
+    }
+    e.close();
+}
+
+/// A reindex asked during the walk takes the open's build: the build ends once the reindex
+/// answered, so a job waiting on the rows (`NoteIndex::wait_built`) does not start beside it.
+#[test]
+fn the_open_build_ends_after_the_reindex_that_took_it() {
+    let (mut e, _store, _) = seeded(2);
+    e.open();
+    let open = e.session.current().unwrap();
+    with_build_log(&open, 16, &[rescanned()], |handle, sender, log| {
+        let reindexed = log.clone();
+        let answer = handle
+            .reindex(Box::new(move |_| {
+                reindexed.lock().unwrap().push(Told::Reindexed);
+            }))
+            .unwrap();
+        sender.send(Applied::Indexed { complete: true }).unwrap();
+        answer.recv().unwrap().unwrap();
+        until("the build ended", || {
+            told(log).contains(&Told::Build(OpenBuild::Ended { walked: true }))
+        });
+        let told = told(log);
+        assert_eq!(
+            told.last(),
+            Some(&Told::Build(OpenBuild::Ended { walked: true })),
+            "{told:?}"
+        );
+        assert!(
+            told[..told.len() - 1].iter().all(|t| *t == Told::Reindexed),
+            "{told:?}"
+        );
+        assert!(told.len() > 1, "the reindex stepped: {told:?}");
+    });
+    e.close();
+}
+
+/// Whether the search index holds `from`'s link to `to`.
+fn links_to(open: &OpenVault, from: &str, to: &str) -> bool {
+    (open.search.links_from(from.to_owned()).unwrap().iter())
+        .any(|link| link.target_id.as_deref() == Some(to))
+}
+
+/// A first sync holds the search reindex (#5409): the reindex holds the `data.db` writer for its
+/// whole pass, which the first sync's bodies pass waits on. The rows are measured meanwhile, and
+/// the reindex runs once the first sync ends.
+#[test]
+fn a_first_sync_holds_the_search_reindex_until_it_ends() {
+    let (mut e, _store, notes) = seeded(2);
+    e.open();
+    let open = e.session.current().unwrap();
+    let (first, second) = (&notes[0].0, &notes[1].0);
+    assert!(!links_to(&open, first, second), "no reindex ran yet");
+    let hold = open.first_sync.hold();
+    let (sender, receiver) = broadcast::channel(16);
+    with_task(&open, receiver, |_| {
+        sender.send(Applied::Indexed { complete: true }).unwrap();
+        until("every note measured", || all_indexed(&e));
+        std::thread::sleep(IDLE_DELAY * 2);
+        assert!(!links_to(&open, first, second), "held by the first sync");
+        drop(hold);
+        until("the reindex ran", || links_to(&open, first, second));
+    });
+    drop(open);
+    e.close();
+}
+
+/// A vault closed (a quit, a crash) while a first sync held its reindex owes it at the next
+/// open, and the search ends up complete (#5409).
+#[test]
+fn a_reindex_a_first_sync_held_runs_at_the_next_open() {
+    let (mut e, _store, notes) = seeded(2);
+    let (first, second) = (&notes[0].0, &notes[1].0);
+    e.open();
+    let open = e.session.current().unwrap();
+    let hold = open.first_sync.hold();
+    let (sender, receiver) = broadcast::channel(16);
+    with_task(&open, receiver, |_| {
+        sender.send(Applied::Indexed { complete: true }).unwrap();
+        until("every note measured", || all_indexed(&e));
+        std::thread::sleep(IDLE_DELAY * 2);
+        assert!(!links_to(&open, first, second), "held by the first sync");
+    });
+    drop((hold, open));
+    e.close();
+
+    e.open();
+    let open = e.session.current().unwrap();
+    let (sender, receiver) = broadcast::channel(16);
+    with_task(&open, receiver, |_| {
+        sender.send(Applied::Indexed { complete: true }).unwrap();
+        until("the reindex ran", || links_to(&open, first, second));
+    });
+    drop(open);
+    e.close();
+}
+
+/// A reindex asked while a first sync runs stays pending, not answered as done with its search
+/// deferred, and is answered once the first sync ended (#5409).
+#[test]
+fn a_reindex_asked_during_a_first_sync_is_answered_once_it_ended() {
+    let (mut e, _store, notes) = seeded(2);
+    e.open();
+    let open = e.session.current().unwrap();
+    let (first, second) = (&notes[0].0, &notes[1].0);
+    let hold = open.first_sync.hold();
+    let (sender, receiver) = broadcast::channel(16);
+    with_task(&open, receiver, |task| {
+        sender.send(Applied::Indexed { complete: true }).unwrap();
+        let answer = task.reindex(Box::new(|_| {})).unwrap();
+        std::thread::sleep(IDLE_DELAY * 2);
+        assert!(
+            answer.try_recv().is_err(),
+            "pending while the first sync runs"
+        );
+        drop(hold);
+        answer
+            .recv_timeout(Duration::from_secs(30))
+            .unwrap()
+            .unwrap();
+        assert!(
+            links_to(&open, first, second),
+            "the answer follows the reindex"
+        );
+    });
+    drop(open);
+    e.close();
+}
+
+/// A first sync that starts while an asked reindex runs holds its search reindex: the answer
+/// waits for the first sync to end and the reindex to run after it, so it never says the search
+/// is current while it was deferred (#5423 C88.1).
+#[test]
+fn a_reindex_a_first_sync_held_midway_is_answered_once_it_ended() {
+    let (mut e, _store, notes) = seeded(2);
+    e.open();
+    let open = e.session.current().unwrap();
+    let (first, second) = (&notes[0].0, &notes[1].0);
+    let (sender, receiver) = broadcast::channel(16);
+    with_task(&open, receiver, |task| {
+        // Asked before the walk ends, the reindex is the first pass: no search reindex ran yet.
+        // The first sync starts once the reindex is under way, before its search reindex.
+        let hold = Arc::new(Mutex::new(None));
+        let (running, taken) = (open.first_sync.clone(), hold.clone());
+        let mut started = false;
+        let answer = task
+            .reindex(Box::new(move |_| {
+                if !std::mem::replace(&mut started, true) {
+                    *taken.lock().unwrap() = Some(running.hold());
+                }
+            }))
+            .unwrap();
+        sender.send(Applied::Indexed { complete: true }).unwrap();
+        until("the first sync started", || hold.lock().unwrap().is_some());
+        std::thread::sleep(IDLE_DELAY * 2);
+        assert!(
+            answer.try_recv().is_err(),
+            "pending while the first sync holds its search reindex"
+        );
+        assert!(!links_to(&open, first, second), "held by the first sync");
+        drop(hold.lock().unwrap().take());
+        answer
+            .recv_timeout(Duration::from_secs(30))
+            .unwrap()
+            .unwrap();
+        assert!(
+            links_to(&open, first, second),
+            "the answer follows the reindex"
+        );
+    });
+    drop(open);
+    e.close();
+}
+
+/// Two reindexes asked at once while their shared pass meets a first sync: neither runs a pass
+/// while the first sync holds, and both are answered by the rerun once it ended (#5423 C8). The
+/// second asker shares the first's pass (REVIEW-5806 finding 2): before the release it was told
+/// exactly the first asker's steps, of that one pass.
+#[test]
+fn a_held_reindex_holds_the_reindexes_asked_after_it() {
+    let (mut e, _store, notes) = seeded(2);
+    e.open();
+    let open = e.session.current().unwrap();
+    let (first, second) = (&notes[0].0, &notes[1].0);
+    let (sender, receiver) = broadcast::channel(16);
+    with_task(&open, receiver, |task| {
+        // What each asker was told, and the release, in the order they happened.
+        let order: Arc<Mutex<Vec<(&str, IndexProgress)>>> = Arc::default();
+        let hold = Arc::new(Mutex::new(None));
+        let (running, taken, told) = (open.first_sync.clone(), hold.clone(), order.clone());
+        let held = task
+            .reindex(Box::new(move |step| {
+                let mut told = told.lock().unwrap();
+                if told.is_empty() {
+                    *taken.lock().unwrap() = Some(running.hold());
+                }
+                told.push(("first", step));
+            }))
+            .unwrap();
+        let told = order.clone();
+        let after = task
+            .reindex(Box::new(move |step| {
+                told.lock().unwrap().push(("second", step));
+            }))
+            .unwrap();
+        sender.send(Applied::Indexed { complete: true }).unwrap();
+        until("the first sync started", || hold.lock().unwrap().is_some());
+        // A measure is answered only once the task is done with the askers it took at once:
+        // any pass it ran for the second asker has reported by then.
+        task.measure(first.clone())
+            .unwrap()
+            .recv_timeout(Duration::from_secs(30))
+            .unwrap()
+            .unwrap();
+        assert!(held.try_recv().is_err() && after.try_recv().is_err());
+        order
+            .lock()
+            .unwrap()
+            .push(("released", IndexProgress::default()));
+        drop(hold.lock().unwrap().take());
+        for answer in [held, after] {
+            answer
+                .recv_timeout(Duration::from_secs(30))
+                .unwrap()
+                .unwrap();
+        }
+        let order = order.lock().unwrap().clone();
+        let released = order
+            .iter()
+            .position(|(who, _)| *who == "released")
+            .unwrap();
+        let steps = |asker| -> Vec<IndexProgress> {
+            (order[..released].iter())
+                .filter(|(who, _)| *who == asker)
+                .map(|(_, step)| *step)
+                .collect()
+        };
+        let (shared, theirs) = (steps("first"), steps("second"));
+        assert!(!shared.is_empty(), "the held pass stepped: {order:?}");
+        assert_eq!(
+            theirs, shared,
+            "the second asker shared the pass: {order:?}"
+        );
+        assert!(
+            shared.windows(2).all(|pair| pair[0].built <= pair[1].built)
+                && shared
+                    .iter()
+                    .filter(|step| step.built == step.total)
+                    .count()
+                    == 1,
+            "one pass, no more: {order:?}"
+        );
+        assert!(links_to(&open, first, second));
+    });
+    drop(open);
+    e.close();
+}
+
+/// A reindex a first sync held and ran again after it reports one progress that never goes
+/// back: the rerun does not restart its steps from 0 (#5423 C9b).
+#[test]
+fn a_held_reindex_reports_progress_that_never_goes_back() {
+    let (mut e, _store, _notes) = seeded(2);
+    e.open();
+    let open = e.session.current().unwrap();
+    let (sender, receiver) = broadcast::channel(16);
+    with_task(&open, receiver, |task| {
+        let hold = Arc::new(Mutex::new(None));
+        let reported = Reported::default();
+        let (running, taken, seen) = (open.first_sync.clone(), hold.clone(), reported.clone());
+        let answer = task
+            .reindex(Box::new(move |step| {
+                let mut seen = seen.lock().unwrap();
+                if seen.is_empty() {
+                    *taken.lock().unwrap() = Some(running.hold());
+                }
+                seen.push(step);
+            }))
+            .unwrap();
+        sender.send(Applied::Indexed { complete: true }).unwrap();
+        until("the first sync started", || hold.lock().unwrap().is_some());
+        std::thread::sleep(IDLE_DELAY * 2);
+        assert!(answer.try_recv().is_err(), "held");
+        drop(hold.lock().unwrap().take());
+        answer
+            .recv_timeout(Duration::from_secs(30))
+            .unwrap()
+            .unwrap();
+        let steps = reported.lock().unwrap().clone();
+        assert!(
+            steps.windows(2).all(|pair| pair[0].built <= pair[1].built),
+            "progress went back: {steps:?}"
+        );
+        assert_eq!(steps.last().map(|step| step.built), Some(2));
+    });
+    drop(open);
+    e.close();
+}
+
+/// A reindex a first sync held, rerun after notes were deleted meanwhile, ends its asker's
+/// progress at the rerun's total: the rerun's last step is never dropped as below the held
+/// pass's, so the bar does not stay on the held pass's step (REVIEW-5805 finding 1).
+#[test]
+fn a_held_reindex_rerun_over_fewer_notes_reports_its_last_step() {
+    let (mut e, _store, notes) = seeded(10);
+    e.open();
+    let open = e.session.current().unwrap();
+    let (sender, receiver) = broadcast::channel(16);
+    with_task(&open, receiver, |task| {
+        let hold = Arc::new(Mutex::new(None));
+        let reported = Reported::default();
+        let (running, taken, seen) = (open.first_sync.clone(), hold.clone(), reported.clone());
+        let answer = task
+            .reindex(Box::new(move |step| {
+                let mut seen = seen.lock().unwrap();
+                if seen.is_empty() {
+                    *taken.lock().unwrap() = Some(running.hold());
+                }
+                seen.push(step);
+            }))
+            .unwrap();
+        sender.send(Applied::Indexed { complete: true }).unwrap();
+        let full = IndexProgress {
+            built: 10,
+            total: 10,
+        };
+        until("the held pass read every note", || {
+            reported.lock().unwrap().contains(&full)
+        });
+        let rows = e.tier.rows();
+        let session = rows.session_for(&open.vault).unwrap();
+        for (id, _) in &notes[..4] {
+            assert!(rows.remove(session, id).unwrap());
+        }
+        assert!(answer.try_recv().is_err(), "held");
+        drop(hold.lock().unwrap().take());
+        answer
+            .recv_timeout(Duration::from_secs(30))
+            .unwrap()
+            .unwrap();
+        let steps = reported.lock().unwrap().clone();
+        assert_eq!(
+            steps.last(),
+            Some(&IndexProgress { built: 6, total: 6 }),
+            "the rerun's last step: {steps:?}"
+        );
+    });
+    drop(open);
     e.close();
 }

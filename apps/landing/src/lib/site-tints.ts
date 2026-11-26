@@ -66,6 +66,7 @@ export const SITE_TINTS = {
   // Trust — carries the homepage PrivacyShowcase link visually
   privacy: 'mint',
   security: 'mint',
+  encryptedNotesApp: 'mint',
 
   // Comparison
   compare: COMPARISON_TINT

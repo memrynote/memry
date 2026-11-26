@@ -14,6 +14,16 @@ inputs produce the **same winner and the same conflict set**, with no appeal to
 
 - A vector clock is a map from device id to a non-negative integer. **A missing
   key reads as 0** (`:11`, `:17`, `:29-30`).
+- A tick is at most `2^53 - 1`: `VectorClockSchema` is
+  `z.number().int().nonnegative()` (`packages/contracts/src/sync-api.ts:386`),
+  and zod 4's `int()` accepts safe integers only. The server is untrusted, so a
+  client MUST refuse a clock read off the wire with a larger tick. The Rust core
+  reads every envelope and purged-tombstone clock through `read_tick`
+  (`crates/memry-core/src/sync/clock.rs:43`;
+  `crates/memry-core/src/protocol/envelope.rs:532`;
+  `crates/memry-core/src/sync/hardening/purged.rs:238`). A pulled record or
+  tombstone carrying one is one corrupt item, and a marker carrying one is
+  refused. Its `increment` saturates rather than wraps (`clock.rs:58`).
 - `increment(clock, deviceId)` adds exactly 1 and is non-mutating (`:9-12`).
 - `merge(a, b)` is the **pointwise maximum** and is commutative (`:14-20`).
 - `compare(a, b)` returns `equal | before | after | concurrent`, computed over
@@ -228,9 +238,9 @@ and a client that breaks any of them reintroduces divergence.**
 
 - **P1 — one row per item; any push with one component ahead is accepted.**
   `ON CONFLICT … DO UPDATE SET … clock = excluded.clock`
-  (`apps/sync-server/src/services/sync.ts:668-686`), `version = existing.version
+  (`apps/sync-server/src/services/sync.ts:678-696`), `version = existing.version
   - 1` (`:575`), and `detectReplay`
-    (`apps/sync-server/src/services/sync.ts:179-190`), which rejects only when **no**
+    (`apps/sync-server/src/services/sync.ts:189-200`), which rejects only when **no**
     incoming component exceeds the stored one. A concurrent push overwrites the
     row, so the earlier concurrent payload stops existing.
 - **P2 — a queued push is rebuilt from the live row at dequeue.**
@@ -264,7 +274,7 @@ and a client that breaks any of them reintroduces divergence.**
   `packages/sync-client/src/item-handlers/types.ts` (`resolveClockConflict`).
   This is what settles the two devices whose P3 re-pushes collide: the first is
   accepted, the second is refused as a replay
-  (`apps/sync-server/src/services/sync.ts:179-190`) and marked done anyway
+  (`apps/sync-server/src/services/sync.ts:189-200`) and marked done anyway
   (`apps/desktop/src/main/sync/engine/push-coordinator.ts:299-305`), and the
   refused device then pulls the accepted row under the same clock and takes it.
   **The one exception is an identical payload** (#2294): an equal clock MAY be
@@ -496,8 +506,7 @@ Pinned by `apps/desktop/src/main/sync/engine/conflict-report.test.ts` and
 `packages/sync-client/src/item-handlers/types.test.ts`.
 
 **Residual, cosmetic.** Both devices also write a `superseded` activity row with
-the **same id**, minted from `mergedClock`
-(`apps/desktop/src/main/tasks/activity-log.ts:385`), carrying opposite
+the **same id**, minted from `mergedClock` (§6.6.3), carrying opposite
 `winningValue`s. One overwrites the other on the server (P1), so an activity
 entry can name as "winning" the value that the convergence step then discarded.
 The task itself is not affected.
@@ -505,6 +514,30 @@ The task itself is not affected.
 **Core obligation.** Implement P3 and P4. A core that merges without re-queueing,
 or that treats an equal clock with a different payload as a no-op, turns this race back into the
 permanent divergence this section once described.
+
+### 6.6.3 The `superseded` activity id
+
+A task field this device lost in a merge (`mergedValue` differs from
+`localValue`, `apps/desktop/src/main/sync/item-handlers/task-handler.ts:250-258`)
+is written as one `task_activity` row with `action: 'superseded'`
+(`apps/desktop/src/main/tasks/activity-log.ts:409-448`). Its id is
+
+```
+"tac_" + hex(sha256(taskId + "\0" + field + "\0" + canonicalJson(mergedClock)))[0..20]
+```
+
+(`apps/desktop/src/main/tasks/activity-log.ts:391-400`). The separators are
+U+0000 bytes, not spaces. `canonicalJson` writes object keys sorted by UTF-16
+code unit, with no whitespace (`apps/desktop/src/main/tasks/activity-log.ts:372-380`).
+`mergedClock` is the field's merged clock, which both devices of one conflict
+compute alike, so both mint the same id. Inbound, a `task_activity` id that is
+already present is skipped, never merged
+(`packages/sync-client/src/item-handlers/task-activity-handler.ts:55-56`), which
+keeps one row per conflict.
+
+**Core obligation.** Mint the id byte for byte as above; vectors:
+`packages/contracts/test-vectors/task-superseded-id.json`. An id that differs
+writes a second row for the same conflict on every device.
 
 ## 6.7 Field lists
 
@@ -538,12 +571,154 @@ homeNoteId
 ```
 
 **A field absent from the list is not merged at all** and does not appear in
-`merged` (`packages/sync-client/src/field-merge.ts:118`).
+`merged` (`packages/sync-client/src/field-merge.ts:118`). Two exceptions ride
+beside the field merge: a task's three list fields, unioned by §6.7.1, and a
+project's two nested arrays, replaced by the remote's by §6.7.2.
 
 `initAllFieldClocks(docClock, fields)` seeds **every listed field** with a copy of
 the document clock (`packages/sync-client/src/field-merge.ts:42-46`). It is what
 a client uses when a row has a document clock but no field clocks yet
 (`packages/sync-client/src/offline-clock.ts:76`, `:92`).
+
+### 6.7.1 A task's list fields are unioned on a concurrent merge
+
+**Normative.** `tags`, `linkedNoteIds` and `linkedCanvasIds` are outside
+`TASK_SYNCABLE_FIELDS` and carry no field clock. On §6.3.1's concurrent branch
+of a `task` apply, a client MUST replace each of the three lists that the remote
+payload carries with the union of the local list and the remote list
+(`apps/desktop/src/main/sync/item-handlers/task-handler.ts:221-242`):
+
+1. **Presence.** The union runs only for a list the remote carries
+   (`if (data.tags)`, `:228`, `:233`, `:238`). A remote that omits the key or
+   carries `null` leaves the local list unchanged. A remote empty array is
+   present, so the result is the local list. A remote list of any other shape
+   is refused: `TaskSyncPayloadSchema` accepts only an array of strings
+   (`packages/contracts/src/sync-payloads.ts:56-58`), and the core flags the
+   record corrupt with the item id and list name
+   (`crates/memry-core/src/domain/task_merge/carried.rs:200-232`).
+2. **Order.** Order is not part of the rule, and a reader MUST NOT depend on
+   it. Electron builds the union as the local entries, then the remote's new
+   ones (`[...new Set([...local, ...remote])]`, `:230`, `:235`, `:240`), but
+   stores it in junction tables and reads it back in index order: `task_tags`
+   has the primary key `(task_id, tag)` on a `NOCASE` column
+   (`packages/db-schema/src/schema/task-relations.ts:35-44`), and `queryTags`
+   has no `ORDER BY` (`task-handler.ts:69-76`). Electron stores
+   `["Alpha", "beta", "gamma", "zeta"]` where the core stores
+   `["zeta", "Alpha", "beta", "gamma"]`. Both hold the same set.
+3. **Tags.** `writeTags` stores the result (`:100-115`). It trims each tag with
+   JavaScript `trim`, drops an empty tag, and dedupes by `foldTag`
+   (`packages/shared/src/tag-fold.ts:25`; vector class `tag-fold`), keeping the
+   first spelling. A local `urgent` and a remote `Urgent` give `urgent`.
+4. **Links.** Note and canvas ids dedupe by exact string equality, so `n1` and
+   `N1` are two links (`:117-133`).
+5. **No removal set.** The union cannot express a removal. When one device
+   removes an entry and the other device makes any concurrent edit to the task
+   while it still holds the entry, the merge brings the entry back on every
+   device. Electron accepts this trade (`:222-227`): a stray link is visible and
+   removable, and a silently dropped link is not.
+6. **Wholesale branch.** On §6.3.1's apply branch (the remote dominates, or
+   there is nothing to compare), a client MUST keep each of the three lists
+   that the remote omits or carries as `null` at its local value. Electron
+   writes a junction list only when the remote carries it
+   (`task-handler.ts:312-321`). Electron builds from before #1879
+   (2026-08-28) push no `linkedCanvasIds`, builds from before 2026-03-19 push
+   no `tags` or `linkedNoteIds` either, and the write floor (chapter 11
+   §11.11) lets them push. A client that stored such a row verbatim would drop
+   the local list and push the shorter list with its next edit. The core copies
+   the local value into the remote payload before it stores the row
+   (`crates/memry-core/src/domain/task_merge/carried.rs:244-296`, called at
+   `crates/memry-core/src/domain/task_merge.rs:180`).
+   A tombstone, a remote that will not parse, and a deleted or corrupt local
+   row keep nothing.
+
+The merged row is re-queued at the union clock by §6.5.2 P3, so the union
+reaches the server and the peer. A client that kept only the local lists would
+re-push them under a clock that dominates the peer's row, and an entry the peer
+added would be lost on every device. Desktop's Rust core does the union in
+`crates/memry-core/src/domain/task_merge/carried.rs` (`union_list`), on the one apply
+path that pull, first sync and relay share (`crates/memry-core/src/sync/apply/record.rs:85`).
+
+The `field-merge` vector class does not cover this rule: the union is inline in
+the task handler and not in `mergeTaskFields`. The two-device tests in
+`crates/memry-core/tests/sync_list_fields_union.rs` pin it.
+
+### 6.7.2 A project's nested arrays take the remote's on both branches
+
+**Normative.** `statuses` and `links` are outside `PROJECT_SYNCABLE_FIELDS` and
+carry no field clock (Kaan, 18 Nov: match Electron). On every `project` apply
+that §6.3.1 does not skip, a client MUST replace each of the two arrays that the
+remote payload carries with the remote's array, and MUST keep each array that
+the remote omits at its local value. Electron runs `if (data.statuses)` and
+`if (data.links)` after the field merge of the concurrent branch (`:204-238`)
+and after the apply branch (`:239-257`) alike
+(`apps/desktop/src/main/sync/item-handlers/project-handler.ts:259-265`):
+
+1. **Concurrent branch.** The remote's array wins whole. The arrays are not
+   unioned and not merged entry by entry: `reconcileStatuses` deletes every
+   local status the remote does not list and writes the remote's
+   (`:39-78`), and `reconcileLinks` does the same for the links
+   (`:116-168`). When one device renames a status and the other device
+   concurrently retitles the project, the device that merges takes the other
+   device's statuses, and §6.5.2 P3's re-push carries that result to every
+   device. The rename survives only when the renaming device pushes first.
+   A status that one device adds, with tasks moved onto it, is dropped the
+   same way, and those tasks keep a `statusId` no status has: Electron clears
+   it to `null` on receipt (`resolveStatusId`,
+   `apps/desktop/src/main/sync/item-handlers/task-handler.ts:45-65`), the core
+   reads it as a to-do status
+   (`crates/memry-core/src/domain/tasks/structure.rs:164`), and no task data
+   is lost.
+2. **Wholesale branch.** A remote that omits an array keeps the local array.
+   Electron builds that predate the project hub push no `links`, and the write
+   floor (chapter 11 §11.11) lets them push. A client that stored such a row
+   verbatim would drop the local array and push the shorter row with its next
+   edit.
+3. **`null`.** `ProjectSyncPayloadSchema` declares both arrays optional and not
+   nullable (`packages/contracts/src/sync-payloads.ts:261`, `:263`), so
+   Electron refuses a record that carries `null`. The core applies it as
+   chapter 13 §13.4's clear on both branches, because its projector already
+   reads an explicit `null` array as empty
+   (`crates/memry-core/src/storage/repositories/projectors/projects.rs:113`).
+4. **Shape.** A remote array of any other shape is refused, and so is an
+   array with an entry that `StatusSyncSchema` or `ProjectLinkSyncSchema`
+   refuses (`packages/contracts/src/sync-payloads.ts:227-247`: a required key
+   missing, or a key of the wrong type, `null` included). On the concurrent
+   branch the core flags the record corrupt with the item id, the array name
+   and the entry's index
+   (`crates/memry-core/src/domain/task_merge/carried.rs:116-186`); stored, a
+   bad entry would be re-pushed at the union clock and every Electron peer
+   would refuse the row. On the wholesale branch the projector flags a
+   non-array (`Kind::Array`, `projectors/projects.rs:41-42`) and skips an
+   entry without an `id`; the core does not re-push that row.
+5. **A markdown note's link.** A markdown note's membership is its own
+   `project` property, a list of project names, and Electron derives the
+   note's link row from it. `reconcileLinks` deletes only table-owned rows
+   (`:116-137`, `listTableOwnedProjectLinks`), so no inbound project removes a
+   markdown note from a project. The core mirrors that link into the `links`
+   array (`crates/memry-core/src/domain/projects/links.rs:1-19`), so on both
+   branches it keeps each local `links` entry whose item is a markdown note
+   that the remote array does not list (matched by `itemId`) and whose
+   `project` property still names the project, under its local name or the
+   remote's. The kept entries follow the remote's entries
+   (`crates/memry-core/src/domain/projects/links.rs:212-243`).
+
+**Known divergence, inside an entry.** The core stores the remote array as the
+payload. Electron reconciles rows: a remote link without `pinned` keeps the
+local row's pin (`:150`), a remote status keeps the local row's `createdAt`
+(`:53-61`), and a markdown note's link applies only `pinned` and `position` to
+the row this device derived from the note's `project` property, never
+membership (`:94-114`, `:119-131`). The core has no per-device derived link
+row. A markdown note's remote entry, `pinned` and `position` included, replaces
+the local one, and a remote that lists a markdown note this device's property
+does not name still adds it to the hub. Item 5 keeps the membership the remote
+omits; it does not remove membership the remote adds.
+
+The core runs the rule in
+`crates/memry-core/src/domain/task_merge/carried.rs` (`Carry::Remote`), passed
+by `crates/memry-core/src/domain/projects/mod.rs:323-340`. The `field-merge`
+vector class does not cover it: the rule is inline in the project handler and
+not in `mergeProjectFields`. The two-device tests in
+`crates/memry-core/tests/sync_project_nested_arrays.rs` pin it.
 
 ## 6.8 Which types merge which way — Q06.5
 
@@ -551,15 +726,17 @@ a client uses when a row has a document clock but no field clocks yet
 
 | Type                            | Algorithm                                                                                  |
 | ------------------------------- | ------------------------------------------------------------------------------------------ |
-| `task`                          | field-level merge over `TASK_SYNCABLE_FIELDS`                                              |
-| `project`                       | field-level merge over `PROJECT_SYNCABLE_FIELDS`                                           |
+| `task`                          | field-level merge over `TASK_SYNCABLE_FIELDS`, plus the list union of §6.7.1               |
+| `project`                       | field-level merge over `PROJECT_SYNCABLE_FIELDS`, plus the nested arrays of §6.7.2         |
 | `calendar_event`                | field-level merge over the fourteen `CALENDAR_EVENT_SYNCABLE_FIELDS` (chapter 13 §13.7.17) |
 | `settings`                      | dotted-path field clocks, §6.9                                                             |
+| `journal`                       | the document-level resolver of §6.3.1, with `tags` and `properties` merged per unit, §6.12 |
 | `canvas`                        | the document-level resolver of §6.3.1, plus a conflict copy (chapter 13 §13.7.21)          |
+| `note`                          | the document-level resolver of §6.3.1, plus the reference union of §6.8.1                  |
 | **every other subscribed type** | the document-level resolver of §6.3.1                                                      |
 
 The field-level path exists only where a payload carries `fieldClocks`
-(chapter 13 §13.5); the task and project lists live in
+(chapter 13 §13.5), and `journal` carries them for two keys only (§6.12); the task and project lists live in
 `packages/sync-client/src/field-merge.ts:11-40`, the calendar event list in
 `apps/desktop/src/main/calendar/field-merge-calendar.ts:4`. Every other type carries only
 `clock` and takes the `resolveClockConflict` path
@@ -574,6 +751,66 @@ whatever the row's algorithm decided.
 
 **Disposition of Q06.5: answered** (this section).
 
+### 6.8.1 A note's attachment references are unioned on apply
+
+**Normative.** `attachmentReferences` (chapter 14 §14.7) carries no field
+clock. When a client applies a remote `note` over a live local note, on
+§6.3.1's concurrent branch and on its apply branch alike, it MUST store the
+union of the local list and the remote list in place of the remote list
+(`apps/desktop/src/main/sync/item-handlers/note-handler.ts:135-145`, `:537-553`):
+
+1. **Presence.** A remote list that is absent, `null` or `[]` leaves the local
+   list unchanged (`if (!remote?.length) return undefined`, `:139`). Desktop
+   pushes the key only when the list is non-empty
+   (`apps/desktop/src/main/sync/item-handlers/note-handler-sync-helpers.ts:79-81`),
+   so a peer that removed its last reference sends no key.
+2. **Order.** The result starts with the local entries in their order, local
+   duplicates kept, then adds each remote id the result does not hold yet, in
+   the remote's order (`:140-144`). Ids compare by exact string equality.
+3. **Prune.** The client then drops each id it has itself proved gone, and
+   only when all three of these hold
+   (`pruneUnresolvableReferences`,
+   `packages/sync-client/src/attachment-download-state.ts:324-366`; `:541-543`;
+   `crates/memry-core/src/sync/attachments/store/download_failures.rs:213-246`):
+   - this device recorded `MISSING_PROBE_LIMIT` (3) failures of reason
+     `missing` for the id under this note, each probe at least 24 h after the
+     one before (`attachment-download-state.ts:26-34`, `:205-210`;
+     `download_failures.rs:24-27`, `:133-135`). A 404 or 410 counts as
+     missing, and so does a manifest signature that does not verify
+     (`attachment-download-state.ts:108-118`; `download_failures.rs:9-11`);
+   - the failure has no retry left: `next_attempt_at IS NULL`, which the
+     third missing record sets (`attachment-download-state.ts:346`;
+     `download_failures.rs:229-230`);
+   - no `attachment_upload_queue` row is queued for the note
+     (`attachment-download-state.ts:331-337`; `download_failures.rs:222`).
+
+   One 404, a transient failure, or an id never probed drops nothing, so a
+   slow upload is never pruned. A prune that fails keeps every id, and the
+   note still applies (`attachment-download-state.ts:362-364`).
+
+4. **No removal set.** The union cannot express a removal. An id one device
+   removes stays on every device that still holds it, whichever clock wins, and
+   that device's next push of the note brings it back everywhere. Only the
+   prune of rule 3 drops an id for good.
+5. **Scope.** A new note, a tombstone and a skip store the remote's value
+   unchanged (`:702-704`). Desktop leaves the list of a local binary note
+   untouched (`:255-342`); desktop pushes no list for one (`:40-52`), so a
+   remote binary note carries none and rule 1 gives the same result.
+
+On the concurrent branch the union is part of the merged row that §6.5.2 P3
+re-queues at the union clock, so it reaches the server and the peer. A client
+that stored the remote list there would re-push it under a clock that
+dominates the local row, and the id only this device held would be lost on
+every device. The two devices of a concurrent upload can hold the same ids in
+different orders: the merging device keeps its own first, and the other device
+unions the merged row over its own list on the apply branch.
+
+The Rust core runs the union in `crates/memry-core/src/domain/notes/merge.rs`,
+on the one apply path that pull, first sync and relay share
+(`crates/memry-core/src/sync/apply/record.rs:89`). No vector class covers this
+rule. The two-device tests in
+`crates/memry-core/tests/sync_note_attachment_union.rs` pin it.
+
 ## 6.9 Settings use a third shape
 
 **Normative.** Field clocks for `settings` are keyed by **dotted path at
@@ -581,8 +818,58 @@ arbitrary depth** — `general.theme`, `journal.weekdayTemplates.3`,
 `sidebar.sortModes.collections`
 (`packages/contracts/src/settings-sync.ts:78-93`, `:111-116`). The whole settings
 blob is **one sync item** with `itemId = 'synced_settings'`
-(`packages/sync-client/src/settings-sync.ts:171`,
+(`packages/sync-client/src/settings-sync.ts:185`,
 `packages/sync-client/src/settings-sync-keys.ts:12`).
+
+**The settings item is never deleted.** A receiver MUST skip a pulled
+`settings` tombstone: the item stays live, its queued edit stays queued, and
+later edits keep syncing (`apps/desktop/src/main/sync/item-handlers/settings-handler.ts:80-82`,
+`crates/memry-core/src/sync/apply.rs:267-275`, #5433). A core that marked it
+deleted on an earlier build clears that delete on the item's next merged write
+(`crates/memry-core/src/domain/settings.rs:233-241`). When that earlier build
+left the row with no payload, a local edit seeds an empty payload, and its push
+waits until a by-id re-pull merges the server's copy, so the edit cannot
+replace the account's settings with one key
+(`crates/memry-core/src/domain/settings.rs:148-156`,
+`crates/memry-core/src/sync/unknown_signer.rs:89-95`, `:113-119`).
+
+**Every unknown-signer hold follows one rule, settings or not.** A pulled
+record refused only because its signer is missing from the pass's device
+directory records a hold on its `(type, id)`, and a queued edit of that row
+stays out of the push while the hold waits
+(`crates/memry-core/src/sync/unknown_signer.rs:89-95`, `:113-119`). Each pass
+re-pulls every waiting hold by id over that pass's fresh directory: each
+settings hold on its own, so another record's answer never counts toward it,
+and every other hold in one batch (`:125-143`). A verified record for the id
+ends the hold (`:99-108`). Otherwise the hold gives up after 5 attempts or 50
+failures, whichever comes first, and the queued edit then pushes
+(`:62`, `:67`, `:234-236`). One re-pull counts as follows
+(`:161-177`, `:183-231`):
+
+- **Attempt**: only a well-formed page that leaves the id out, with no dropped
+  page and no record still unverifiable.
+- **Failure**: the server's own answer about the request: a record still
+  unverifiable, or a 4xx other than 429 that carries the server's error code
+  and that the client keeps as a plain status
+  (`crates/memry-core/src/protocol/http.rs:491-495`).
+- **Never counts**: a transport failure, a 5xx, a 429, a 200 that is no pull
+  envelope (a dropped page or a malformed body), or a 4xx with no error code.
+  A captive portal or proxy answers in these shapes (a sign-in page, `{}`, a
+  403, a 407). Counted, they would release the hold, and a held settings edit
+  would push over the account's settings on the next good network
+  (VERIFY-5447 r4 #8). Nor does a 4xx the client turns into its own error,
+  because it is about the session, device or plan, not the record: any 401, a
+  revoked device, a 402 vault limit, a 403 with writes disabled, a 409 device
+  limit, or a 426 upgrade-required
+  (`crates/memry-core/src/protocol/http.rs:427-461`).
+
+**Desktop divergence.** Desktop has no hold and no re-pull. It skips a pulled
+record whose signer has no public key as a decrypt failure that is not a crypto
+error, and applies the rest of the page
+(`apps/desktop/src/main/sync/sync-crypto-batch.ts:174-184`, `:240-250`;
+`apps/desktop/src/main/sync/engine-pull.test.ts:306`). The page's corrupt
+re-fetch takes only crypto and parse failures, so it never retries that record
+(`apps/desktop/src/main/sync/engine/pull-coordinator.ts:1041`).
 
 Some sub-objects are deliberately single-clocked as a unit, and the reasons are
 in the schema comments:
@@ -664,15 +951,22 @@ nothing.** §6.9 already requires a key outside the modelled set to ride along
 rather than fail the payload; an unaddressable key is that rule's limiting case,
 and refusing the payload over one would stall every other synced setting.
 
-**A merge in which any path compared `concurrent` MUST re-queue the merged
-settings** (`packages/sync-client/src/settings-sync.ts:112`; the Rust core
-enqueues in the merge's own transaction,
-`crates/memry-core/src/sync/settings_merge.rs`, #2399). This is §6.5.2 P3
-for settings, which reach it without the pull coordinator's conflict re-queue:
-the handler reports `applied`, and settings have no `buildPushPayload`, so the
-queued payload is what gets pushed. Without it, a device that kept its own value
-on a concurrent pair is the only one holding it; the server keeps the peer's row
-and the two devices stay on different values (#2287).
+**A merge in which any path's local clock compared `concurrent` with or
+`after` the remote's MUST re-queue the merged settings**
+(`packages/sync-client/src/settings-merge.ts:62-65`,
+`packages/sync-client/src/settings-sync.ts:124`; the Rust core enqueues in the
+merge's own transaction, `crates/memry-core/src/sync/settings_merge.rs`, #2399,
+#5506). This is §6.5.2 P3 for settings, which reach it without the pull
+coordinator's conflict re-queue: the handler reports `applied`, and settings
+have no `buildPushPayload`, so the queued payload is what gets pushed. Without
+it, a device that kept a value the server lacks is the only one holding it, and
+the devices stay on different values. Two shapes reach that state: a concurrent
+pair, where the server keeps the peer's row (#2287); and a local clock that
+dominates, because a peer pushed a payload it built before pulling this
+device's tick on another path. Settings carry no record clock, so the server
+takes that stale payload whole (#5506). A merge where every local clock is
+`equal` or `before` re-queues nothing, so a device that pulls its own push back
+does not push again.
 
 **A mixed pair converges through that re-queue, not through the rule.** A #2287
 build (tick max, local keeps a tie) and a #2383 build can pick different winners
@@ -752,7 +1046,7 @@ pruning rule.** There is no pruning in
 `packages/sync-client/src/vector-clock.ts`, none in
 `packages/sync-client/src/field-merge.ts`, and none on the server: the push path
 stores `clock = excluded.clock` verbatim
-(`apps/sync-server/src/services/sync.ts:668-686`).
+(`apps/sync-server/src/services/sync.ts:678-696`).
 
 The growth is bounded by the device cap, not by time: at most 50 active devices
 per account (chapter 02 §2.3.3), so at most 50 keys per document clock and 50 per
@@ -850,7 +1144,7 @@ Desktop enqueues a local update after the apply's transaction
 `apps/desktop/src/main/sync/item-handlers/tag-definition-handler.ts:152`). The
 enqueue ticks this device into the document clock, which is what lets the
 re-push pass the server's replay check
-(`apps/sync-server/src/services/sync.ts:229-240`): the apply stored the remote's
+(`apps/sync-server/src/services/sync.ts:239-250`): the apply stored the remote's
 clock, and a push at that clock is refused. A task's heal names no changed
 field, so it ticks no field clock (`packages/sync-client/src/task-sync.ts:87-88`).
 
@@ -899,3 +1193,208 @@ implementation in its tests and asserted against the production functions.
 `packages/shared/src/versioned.ts` and asserted by
 `packages/contracts/src/__tests__/versioned-values.test.ts` and
 `crates/memry-core/tests/versioned_values_vectors.rs`.
+
+## 6.12 Journal tags and properties merge per unit (#5508)
+
+**Normative, amended 2026-11-25 (#5508, #5572).** Before this section a `journal`
+took §6.3.1 alone: on `concurrent` the remote payload applied whole, and P2
+rebuilt the outbox row from that live row. Four devices that each added a tag,
+removed one, or set a property kept only the last pusher's edit, and a removed
+tag came back. Every other journal key still takes §6.3.1; the body is the
+CRDT's (chapter 07).
+
+### 6.12.1 Units, floors, and when a side's unit clocks are trusted
+
+A unit is `tags.<tagKey>`, the trimmed, folded tag of §1.9.1 step 6, or
+`properties.<key>`, the raw key after the prefix, never split on `.`
+(`packages/sync-client/src/journal-merge.ts:52-62`, `crates/memry-core/src/sync/journal_merge.rs:68-84`). `fieldClocks` maps a unit to the
+**document clock at which a device last wrote it**, so a unit clock never
+exceeds the `clock` of the payload carrying it. A unit clocked but absent from
+the value is a removal; its clock is what stops a stale copy re-adding it.
+
+**`fieldClocksFloor` covers every unit `fieldClocks` does not name** (#5572):
+the payload supersedes every write to such a unit at or before the floor, so a
+unit under the floor and absent from the value is a removal there.
+**`fieldFloors` overrides that floor for the units it names**: it maps a unit
+to its own floor, keyed as `fieldClocks` is, and never names a unit
+`fieldClocks` names. A side's floor for a unit is its `fieldFloors` entry, else
+its `fieldClocksFloor` (`packages/sync-client/src/journal-merge.ts:90-93`, `crates/memry-core/src/sync/journal_merge.rs:116-149`).
+
+A floor is a dominance claim, not a unit clock. Against the other side's claim
+on a unit, its stamped unit clock or else its floor, a floor reads at its clock
+only when it **strictly dominates** that claim (§6.3.1 `before`), or when the
+other side has no claim (`packages/sync-client/src/journal-merge.ts:150-156`, `crates/memry-core/src/sync/journal_merge.rs:245-251`). A write
+concurrent with the floor is one its writer never saw, so the floor does not
+decide it. Read under §6.3's tick sum instead, a floor would beat such a write
+on a tie (`q` in `issue-5572-relay`).
+
+`fieldClocksAt` is the `clock` the writer stamped the units at
+(`packages/contracts/src/sync-payloads.ts:387-398`). **A side's
+`fieldClocks`, `fieldClocksFloor` and `fieldFloors` are trusted only when
+`fieldClocks` is present and `fieldClocksAt` equals its `clock`** under §6.4.2
+(`packages/sync-client/src/journal-merge.ts:69-75`, `crates/memry-core/src/sync/journal_merge.rs:116-149`). **An untrusted side, local or
+remote, clocks no unit, and its `clock` is its floor on every unit**: it was
+written whole at that clock, which is the rule its writer ran. Each unit in the
+union of both sides (§6.12.3) therefore reads that clock as a floor, so an
+older build's removal of a unit it saw is a removal at its clock
+(`old-build-removes-tag-and-property`), and a write concurrent with it is not
+overruled (`old-build-remote-is-whole-record`). An untrusted local side is read
+the same way, so a device that pushed with no base and then merged keeps its
+own adds and removals; its body-only ticks are a floor, not a write, so they do
+not outrank an older build's concurrent removal
+(`no-base-2-saves-old-build-removes`). Desktop reads a day with no synced base
+this way (§6.12.2), and the core reads a stored payload that is not trusted
+this way, such as one an older core build edited.
+
+**A record's clock never becomes a unit clock.** A document clock is not a
+write clock. Only a trusted side's stamped unit clocks are writes, and
+everything an untrusted record proves goes into the floor:
+
+- **Applied whole** (§6.3.1 `before` or `equal`, or a first sighting), an
+  untrusted remote is kept as `fieldClocks: {}`, `fieldClocksAt: C` and
+  `fieldClocksFloor: C`, where C is its `clock`. A trusted remote is kept as
+  received, `fieldFloors` included (`packages/sync-client/src/journal-merge.ts:139-142`, `crates/memry-core/src/sync/journal_merge.rs:226-240`;
+  `wholesales`). Every unit the device held and the record lacks reads at C
+  through the floor, so a concurrent merge keeps the record's removals, and so
+  does the next edit, which carries the floor (§6.12.2). The floor also covers
+  units the device never held but the record's writer saw removed
+  (`issue-5572-relay`, `issue-5572-relay-pulls-stale-copy`). The core stores
+  the stamped payload (`crates/memry-core/src/sync/journal_merge.rs:519-544`), and desktop keeps it as the synced
+  base (`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:134`). An equal-clock re-pull of the same record
+  compares against the stamped payload, so it is still §6.5.2 P4's skip.
+
+That is the version gate. No version byte covers a JSON record payload
+(chapter 00 §0.2), and moving `CRYPTO_VERSION` would make an older build refuse
+the record. An older build keeps the stamp keys but ticks `clock` past the
+stamp, so its edit is read whole at its clock: a mixed-version pair merges by
+today's rule and never below it, and needs no client version floor. For
+`fieldClocksFloor` and `fieldFloors`, each added after `fieldClocks` with no
+released build between them:
+
+- An older desktop parses with a plain `z.object`, which strips an unknown key
+  into the `sync_unknown_fields` remainder (§13.2.1,
+  `apps/desktop/src/main/sync/apply-item.ts:209`), and pushes it back under its
+  own payload with its own ticked `clock`. The stamp no longer matches, so a
+  newer build ignores the stale floors with the stale `fieldClocks` and reads
+  the push whole at its clock (`older-build-echo-of-field-floors-is-whole`). A
+  build that drops `fieldFloors` and ticks `clock` reads the same way
+  (`older-build-dropped-field-floors-is-whole`).
+- An older core stores the payload verbatim (§13.2). Its edits tick `clock` the
+  same way.
+- A trusted record from a build that knows `fieldClocksFloor` but not
+  `fieldFloors` carries none, so every unclocked unit reads its
+  `fieldClocksFloor`, the rule that build ran (`pre-field-floors-peer-record`).
+
+No migration is needed: desktop keeps the floors in the `sync_state` base it
+already writes, and the core keeps them in the stored payload. A payload with
+no `fieldClocks` is read the same way. Every unit clock is at most the document
+clock that saw it, so a side read at its clock dominates every unit it saw.
+
+### 6.12.2 A local edit clocks the units it changed
+
+A writer diffs the fields it pushes against the last synced ones: each unit
+whose value differs (§6.4.2; a new spelling of the same tag key differs) takes
+the new `clock`, the rest keep theirs, and `fieldClocksAt` is set to `clock`
+(`packages/sync-client/src/journal-merge.ts:104-116`, `crates/memry-core/src/sync/journal_merge.rs:196-219`). **A trusted base keeps its
+`fieldClocksFloor` and the `fieldFloors` entry of every unit the edit did not
+clock**; a unit the edit clocks drops its unit floor, because its write clock
+now decides it (`edit-keeps-unit-floors-it-did-not-clock`,
+`edit-drops-the-unit-floor-it-clocks`). **An untrusted base clocks no unit, and
+its `clock` becomes the floor**, because it was written whole at that clock
+(`trusted-base-carries-its-floor`, `untrusted-base-edit-then-concurrent-removal`).
+**With no synced base an edit carries no unit clocks**, because the writer
+cannot tell which units it wrote since it last synced (`journal-merge.json`,
+`no-base`). The core restamps on every journal write, in the one function every
+local edit goes through
+(`crates/memry-core/src/storage/repositories/sync_items.rs:285`,
+`crates/memry-core/src/sync/journal_merge.rs:452-457`). Desktop reads tags and properties from the day file, so it
+diffs against a base kept in `sync_state` under `journal.fields:<id>`, written
+on every apply and on every push build that has a base
+(`apps/desktop/src/main/sync/journal-fields.ts:19`, `apps/desktop/src/main/sync/item-handlers/journal-handler.ts:232`,
+`:419`). A day last synced by an older build has no base. Desktop
+pushes it without the stamp keys, so peers read it whole at its clock as they
+read an older build's push, and writes no base (`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:419`). A
+concurrent pull reads its local side untrusted (§6.12.1), and the next pull
+that applies writes the base. The §6.5.2 P4 identity check builds the same
+payload without unit clocks and compares it to the remote with the stamp keys
+removed, so an identical legacy row still skips and the check writes no base
+(`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:360`).
+
+### 6.12.3 The merge
+
+`before` and `equal` apply wholesale and `after` skips, as §6.3.1 has it. On
+`concurrent` the units are the union of both sides' `fieldClocks` keys, trusted
+or not, and value units (`packages/sync-client/src/journal-merge.ts:204-307`, `crates/memry-core/src/sync/journal_merge.rs:300-447`). Each unit
+is decided by its claims (§6.12.1):
+
+1. A side's claim is its stamped unit clock, else its unit floor where that
+   floor strictly dominates the other side's stamped unit clock or unit floor.
+2. A claim that dominates the other wins. Two concurrent claims tie-break:
+   more ticks win; on equal ticks a value beats an absence, then the greater
+   §6.4.2 canonical value wins, compared as UTF-16 code units
+   (`packages/sync-client/src/journal-merge.ts:178-188`, `crates/memry-core/src/sync/journal_merge.rs:260-276`). Both sides compute the same
+   winner. With no claim on either side the remote's value stands, as the
+   document rule has it.
+3. **A winner with no value removes the unit**; §6.9.0's keep-on-absent does
+   not apply, because `tags` is an array and `properties` an open record,
+   which no build strips.
+
+Local survivors keep local order and local spelling, then remote-only
+survivors follow in remote order. A result that holds the remote's fields, as
+a set for tags and by §6.4.2 for properties, takes the remote's `tags` and
+`properties` verbatim.
+
+**The merged stamp.** A unit a stamped write won keeps that write clock, or the
+join of both write clocks when the sides hold the same value. Every other unit
+keeps **the floor its value supersedes**: the join of both sides' unit floors
+when they hold the same value, otherwise the winner's unit floor alone
+(`packages/sync-client/src/journal-merge.ts:265`, `crates/memry-core/src/sync/journal_merge.rs:379`). The merged `fieldClocksFloor` is the
+**record floor**, the join of each side's `fieldClocksFloor`, or `clock` for an
+untrusted side (`packages/sync-client/src/journal-merge.ts:225`, `crates/memry-core/src/sync/journal_merge.rs:326`). A unit floor that
+differs from the record floor goes into `fieldFloors`
+(`field-floors-concurrent-floors`). Without it the record floor would claim the
+loser's copy too: in that case, D's base held `d` at `{X:1,D:1}` and E's
+older build removed it at `{X:1,E:1}`. Neither floor claims `d`, so E's
+removal stands, but a record floor of `{X:1,D:1,E:1}` would then claim it
+supersedes D's copy, and a later removal of `d` that saw only D's copy would
+read as concurrent with it and lose (seed newUntrusted 15890).
+
+**The clock and the re-queue.** `requeue` is true when the merged `tags` or
+`properties` differ from the remote's (`packages/sync-client/src/journal-merge.ts:293`, `crates/memry-core/src/sync/journal_merge.rs:431`).
+A merge with `requeue` is stored at the union of both clocks ticked once for
+the merging device (§6.1), with `fieldClocksAt` equal to it, and **MUST be
+re-queued** (§6.5.2 P3), so its push dominates both inputs and an older core
+applies it whole. A merge without it holds the remote's record: it is stored at
+the union clock and not pushed, because a push would only clobber an older
+device's unpushed edit (`packages/sync-client/src/journal-merge.ts:298`). The core ticks under the pull's
+clock device id and enqueues in the apply's transaction, as settings do; a pull
+with no clock device id stores nothing and records the item corrupt, as a
+diverged canvas does
+(`crates/memry-core/src/sync/journal_merge.rs:482`, `:505`). Desktop ticks under its sync device id
+and returns `'conflict'`, which re-queues the day, only on `requeue`
+(`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:154`, `:173`). Every key other than `tags`,
+`properties`, `clock` and the stamp keys is the remote's.
+
+**Tombstones are never collected.** A removed unit keeps its clock in
+`fieldClocks` for the life of the day, or stays under a floor, because
+dropping it would let a stale copy re-add the value. The cost is bounded: a day
+carries at most one unit per distinct tag key and property key ever written to
+it, and each unit clock or unit floor has at most one entry per device that
+wrote the day, the same bound as the document `clock`. No pruning rule exists,
+so a peer MUST NOT drop a clocked unit absent from the value.
+
+**Known residue.** A unit named only in `fieldFloors`, absent from both values
+and clocked by neither side, is not in the union, so its unit floor folds back
+into the record floor (`floored-record-pulls-new-edit`). The fleet simulator
+(`packages/sync-client/src/journal-sim`) still finds about 5 losses per 120 000
+runs when neither side claims a unit and both floors come from desks that
+pushed with no base (class (d), #5508); its ship bar is open.
+
+Pinned by the `journal-merge` vector class:
+`packages/contracts/test-vectors/journal-merge.json`, generated from
+`packages/contracts/scripts/vectors/journal-merge.ts`, and
+`packages/contracts/test-vectors/journal-merge-sim.json`, every merge (and every
+edit from a base with `fieldFloors`) a new build made in the simulator's five
+floor over-claim seeds and seeds 1..20 of each fleet configuration. Both run in
+`packages/contracts/src/__tests__/journal-merge.test.ts` and
+`crates/memry-core/tests/journal_merge_vectors.rs`.

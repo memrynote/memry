@@ -3,6 +3,7 @@ import { Hono } from 'hono'
 import { z } from 'zod'
 
 import {
+  CRDT_MANIFEST_PAGE_LIMIT,
   CrdtSnapshotBaseRevisionSchema,
   CrdtSnapshotCoversThroughSchema,
   PullRequestSchema,
@@ -20,7 +21,7 @@ import {
   snapshotClaimsEnabled,
   toPolicySnapshot
 } from '../services/client-policies'
-import { paidSyncMiddleware } from '../middleware/paid-sync'
+import { paidSyncMiddleware, paidSyncReadMiddleware } from '../middleware/paid-sync'
 import { createRateLimiter, deviceIdentifier } from '../middleware/rate-limit'
 import { bootstrapRateLimitElevation } from '../services/bootstrap-session'
 import { syncTypesMiddleware } from '../middleware/sync-types'
@@ -68,7 +69,9 @@ import {
   type SnapshotBatchOutcome,
   type SnapshotClaim
 } from '../services/crdt'
-import { enqueuePackCompaction } from '../services/pack-compaction'
+import { getCrdtManifestPage } from '../services/crdt-manifest'
+import { enqueuePackCompaction } from '../services/pack-queue'
+import { PACK_PURGE_RETRY_DELAY_SECONDS } from '../services/pack-replaced-objects'
 import { listPacks } from '../services/pack-list'
 import { resolveR2PresignConfig } from '../services/r2-presign'
 import type { AppContext } from '../types'
@@ -221,6 +224,39 @@ sync.get('/storage', storageRateLimit, async (c) => {
   return c.json(breakdown)
 })
 
+const statusRateLimit = createRateLimiter({
+  keyPrefix: 'sync_status',
+  maxRequests: 60,
+  windowSeconds: 60
+})
+
+const handleRecordStatus = async (c: Context<AppContext>): Promise<Response> => {
+  const userId = c.get('userId')!
+  const deviceId = c.get('deviceId')!
+  const vaultId = c.get('vaultId')!
+  const status = await getSyncStatus(c.env.DB, userId, deviceId, vaultId)
+
+  // Status is what a client polls on startup and on foreground, so it is where
+  // a flipped kill switch reaches a device WITHOUT the device first attempting
+  // a write and eating a 403 (contract §2, last bullet). Only clients that
+  // identified themselves get the field: a header-less desktop build receives
+  // byte-for-byte the response it received before this shipped, and pays no
+  // extra query for it.
+  const client = c.get('client')
+  if (!client) return c.json(status)
+
+  const policy = await getClientPolicy(c.env.DB, client.platform)
+  return c.json({ ...status, clientPolicy: toPolicySnapshot(client.platform, policy) })
+}
+
+// Above paidSyncMiddleware, which UPSERTS the request's vault: memry-core polls
+// status with no X-Memry-Vault-Id at the start of a pass, racing vault
+// registration, and on an account with no vaults that poll minted a phantom
+// `default` (#3967). paidSyncReadMiddleware resolves the vault and returns the
+// same 400/402s, but never inserts.
+sync.get('/status', paidSyncReadMiddleware, statusRateLimit, handleRecordStatus)
+sync.get('/records/status', paidSyncReadMiddleware, statusRateLimit, handleRecordStatus)
+
 sync.use('*', paidSyncMiddleware)
 sync.use('*', syncTypesMiddleware)
 
@@ -318,12 +354,6 @@ const manifestRateLimit = createRateLimiter({
   getElevatedLimits: bootstrapRateLimitElevation
 })
 
-const statusRateLimit = createRateLimiter({
-  keyPrefix: 'sync_status',
-  maxRequests: 60,
-  windowSeconds: 60
-})
-
 const wsRateLimit = createRateLimiter({
   keyPrefix: 'sync_ws',
   maxRequests: 15,
@@ -346,25 +376,6 @@ sync.get('/ws', wsRateLimit, async (c) => {
     })
   )
 })
-
-const handleRecordStatus = async (c: Context<AppContext>): Promise<Response> => {
-  const userId = c.get('userId')!
-  const deviceId = c.get('deviceId')!
-  const vaultId = c.get('vaultId')!
-  const status = await getSyncStatus(c.env.DB, userId, deviceId, vaultId)
-
-  // Status is what a client polls on startup and on foreground, so it is where
-  // a flipped kill switch reaches a device WITHOUT the device first attempting
-  // a write and eating a 403 (contract §2, last bullet). Only clients that
-  // identified themselves get the field: a header-less desktop build receives
-  // byte-for-byte the response it received before this shipped, and pays no
-  // extra query for it.
-  const client = c.get('client')
-  if (!client) return c.json(status)
-
-  const policy = await getClientPolicy(c.env.DB, client.platform)
-  return c.json({ ...status, clientPolicy: toPolicySnapshot(client.platform, policy) })
-}
 
 const handleRecordManifest = async (c: Context<AppContext>): Promise<Response> => {
   const userId = c.get('userId')!
@@ -570,6 +581,15 @@ const handleRecordPush = async (c: Context<AppContext>): Promise<Response> => {
       source: 'PackQueue',
       action: 'pack_enqueue_failed'
     })
+    // The body purge left pack objects due (protocol 08 §8.13): this delayed
+    // message retries their deletion.
+    if (result.purgeRetry) {
+      waitUntilCaptured(
+        c,
+        enqueuePackCompaction(c.env, { userId, vaultId }, PACK_PURGE_RETRY_DELAY_SECONDS),
+        { source: 'PackQueue', action: 'pack_enqueue_failed' }
+      )
+    }
     const doId = c.env.USER_SYNC_STATE.idFromName(userId)
     const stub = c.env.USER_SYNC_STATE.get(doId)
     // Only sockets that opted in ever see these (protocol 09 §9.13, #2300).
@@ -699,7 +719,7 @@ const handleListPacks = async (c: Context<AppContext>): Promise<Response> => {
     c.env.DB,
     userId,
     vaultId,
-    { cursor: cursorParam ?? null, limit },
+    { cursor: cursorParam ?? null, limit, coverageDisabled: c.env.PACK_COVERAGE_DISABLED },
     resolveR2PresignConfig(c.env)
   )
   return c.json(result)
@@ -707,7 +727,6 @@ const handleListPacks = async (c: Context<AppContext>): Promise<Response> => {
 
 const recordSync = new Hono<AppContext>()
 
-recordSync.get('/status', statusRateLimit, handleRecordStatus)
 recordSync.get('/manifest', manifestRateLimit, handleRecordManifest)
 recordSync.get('/changes', changesRateLimit, handleRecordChanges)
 recordSync.post('/push', pushRateLimit, handleRecordPush)
@@ -717,7 +736,6 @@ recordSync.get('/packs', packsRateLimit, handleListPacks)
 
 sync.route('/records', recordSync)
 
-sync.get('/status', statusRateLimit, handleRecordStatus)
 sync.get('/manifest', manifestRateLimit, handleRecordManifest)
 sync.get('/changes', changesRateLimit, handleRecordChanges)
 sync.post('/push', pushRateLimit, handleRecordPush)
@@ -775,6 +793,17 @@ const crdtPullRateLimit = createRateLimiter({
 
 const crdtBatchPullRateLimit = createRateLimiter({
   keyPrefix: 'crdt_batch_pull',
+  maxRequests: 30,
+  windowSeconds: 60,
+  identifier: deviceIdentifier,
+  getElevatedLimits: bootstrapRateLimitElevation
+})
+
+// One page answers up to 1,000 documents, so a 13,527-document vault reads in
+// 14 pages; 30/min runs them back to back with room for a retry, and a
+// bootstrap session triples it (BOOTSTRAP_ELEVATION_MULTIPLIERS).
+const crdtManifestRateLimit = createRateLimiter({
+  keyPrefix: 'crdt_manifest',
   maxRequests: 30,
   windowSeconds: 60,
   identifier: deviceIdentifier,
@@ -980,7 +1009,8 @@ const handleCrdtUpdatePull = async (c: Context<AppContext>): Promise<Response> =
     latencyMs: Date.now() - startedAt
   })
 
-  return c.json({ updates: encoded, hasMore: result.hasMore, snapshotMeta })
+  // `floor` (#5228): additive, read with the updates; protocol 08 §8.4.3.
+  return c.json({ updates: encoded, hasMore: result.hasMore, floor: result.floor, snapshotMeta })
 }
 
 const handleCrdtBatchPull = async (c: Context<AppContext>): Promise<Response> => {
@@ -997,7 +1027,7 @@ const handleCrdtBatchPull = async (c: Context<AppContext>): Promise<Response> =>
 
   const batchResult = await getBatchUpdates(c.env.DB, userId, vaultId, parsed.notes, parsed.limit)
 
-  const response: Record<string, { updates: unknown[]; hasMore: boolean }> = {}
+  const response: Record<string, { updates: unknown[]; hasMore: boolean; floor: number }> = {}
   for (const [noteId, result] of Object.entries(batchResult.notes)) {
     response[noteId] = {
       updates: result.updates.map((update) => ({
@@ -1006,7 +1036,8 @@ const handleCrdtBatchPull = async (c: Context<AppContext>): Promise<Response> =>
         signerDeviceId: update.signer_device_id,
         createdAt: update.created_at
       })),
-      hasMore: result.hasMore
+      hasMore: result.hasMore,
+      floor: result.floor
     }
   }
 
@@ -1033,6 +1064,34 @@ const handleCrdtBatchPull = async (c: Context<AppContext>): Promise<Response> =>
   // clients read this response through an unvalidated TypeScript cast, so the
   // extra key is ignored.
   return c.json({ notes: response, snapshotMeta: batchResult.snapshotMeta })
+}
+
+/**
+ * GET /sync/crdt/manifest (#5232, protocol 07 §7.4.1): per document its floor,
+ * snapshot revision and highest stored update, metadata only, so a pack reader
+ * answers the chapter 08 §8.4.3 and §8.10 checks in ceil(n / 1000) requests.
+ */
+const handleCrdtManifest = async (c: Context<AppContext>): Promise<Response> => {
+  const endpoint = getRequestPath(c)
+  const cursor = c.req.query('cursor')
+  const limitParam = c.req.query('limit')
+
+  if (cursor !== undefined && !NoteIdSchema.safeParse(cursor).success) {
+    logQueryValidationFailure('crdt', endpoint, 'Invalid cursor value', 'SYNC_INVALID_CURSOR')
+  }
+  const limit = limitParam === undefined ? CRDT_MANIFEST_PAGE_LIMIT : Number(limitParam)
+  if (!Number.isInteger(limit) || limit < 1) {
+    logQueryValidationFailure('crdt', endpoint, 'Invalid limit value')
+  }
+
+  const page = await getCrdtManifestPage(
+    c.env.DB,
+    c.get('userId')!,
+    c.get('vaultId')!,
+    cursor ?? '',
+    Math.min(limit, CRDT_MANIFEST_PAGE_LIMIT)
+  )
+  return c.json(page)
 }
 
 const handleCrdtSnapshotPush = async (c: Context<AppContext>): Promise<Response> => {
@@ -1382,6 +1441,7 @@ const crdtSync = new Hono<AppContext>()
 crdtSync.post('/updates', crdtPushRateLimit, handleCrdtUpdatePush)
 crdtSync.get('/updates', crdtPullRateLimit, handleCrdtUpdatePull)
 crdtSync.post('/updates/batch', crdtBatchPullRateLimit, handleCrdtBatchPull)
+crdtSync.get('/manifest', crdtManifestRateLimit, handleCrdtManifest)
 crdtSync.post('/snapshot', crdtPushRateLimit, handleCrdtSnapshotPush)
 crdtSync.post('/snapshot/batch', crdtPushRateLimit, handleCrdtSnapshotBatchPush)
 crdtSync.get('/snapshot/:noteId', crdtPullRateLimit, handleCrdtSnapshotPull)

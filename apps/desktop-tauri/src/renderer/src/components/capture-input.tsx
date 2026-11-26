@@ -166,9 +166,9 @@ export function CaptureInput({
   }, [handleSubmit])
 
   const handleRecordingComplete = useCallback(
-    async (audioBlob: Blob, duration: number): Promise<void> => {
+    async (audio: AudioBuffer, duration: number): Promise<void> => {
       try {
-        const preparedAudio = await prepareVoiceMemoAudio(audioBlob)
+        const preparedAudio = await prepareVoiceMemoAudio(audio)
 
         const result = await captureVoice.mutateAsync({
           data: preparedAudio.data,

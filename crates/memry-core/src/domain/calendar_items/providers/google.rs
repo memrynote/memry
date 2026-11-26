@@ -18,6 +18,7 @@ use crate::domain::calendar_items::zone::LocalZone;
 use crate::domain::calendar_items::{EXTERNAL_TYPE, SOURCE_TYPE};
 use crate::domain::notes::{failed, insert_local, iso, next_clock};
 use crate::domain::recreate::write_over_tombstone;
+use crate::storage::nested_tx;
 use crate::storage::repositories::{Change, sync_items};
 use crate::sync::outbox;
 
@@ -341,7 +342,7 @@ pub fn apply_pull(
             changed += 1;
             continue;
         }
-        let tx = conn.unchecked_transaction().map_err(failed)?;
+        let tx = nested_tx::begin(conn).map_err(failed)?;
         upsert_mirror(&tx, source_id, &event, device_id, now_ms)?;
         tx.commit().map_err(failed)?;
         changed += 1;
@@ -359,7 +360,7 @@ pub fn set_source_cursor(
     device_id: &str,
     now_ms: i64,
 ) -> Result<(), StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let Some(stored) = live_payload(&tx, SOURCE_TYPE, source_id)? else {
         return Ok(());
     };
@@ -401,7 +402,7 @@ pub fn connect(
     device_id: &str,
     now_ms: i64,
 ) -> Result<(), StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     upsert(
         &tx,
         &format!("google-account:{email}"),
@@ -510,7 +511,7 @@ pub fn disconnect(
     device_id: &str,
     now_ms: i64,
 ) -> Result<(), StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let rows: Vec<(String, String)> = {
         let mut stmt = tx
             .prepare("SELECT id, remote_id FROM calendar_sources WHERE provider = 'google' AND account_id = ?1 AND archived_at IS NULL AND deleted_at IS NULL")

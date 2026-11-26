@@ -573,6 +573,9 @@ press <kbd>Esc</kbd> when you are done; the block shows the typeset formula the 
 you close the box. LaTeX that does not parse shows the error instead of a formula, with
 your source still in the box.
 
+The formula is centered in the writing column. One wider than the column scrolls sideways
+inside the block.
+
 The file keeps the source, not the rendering:
 
 ```md

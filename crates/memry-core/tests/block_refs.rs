@@ -14,10 +14,11 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 
+use memry_core::crdt::DocumentRegistry;
 use memry_core::crdt::blocks::{Block, BlockProp, InlineRun};
+use memry_core::crdt::epoch::HeldBody;
 use memry_core::crdt::markdown_seed::seed_document;
 use memry_core::crdt::registry::{Document, UpdateSink};
-use memry_core::crdt::{DocumentRegistry, update_log};
 use memry_core::domain::notes::{self, NewNote};
 use memry_core::domain::search::block_refs::{
     self, BlockLink, BlockRefEdge, BlockRefKind, PortalRef,
@@ -266,7 +267,8 @@ impl Vault {
         fill(&document);
         for update in captured.lock().unwrap().drain(..) {
             self.seq += 1;
-            update_log::append_server_update(&self.data, id, self.seq, &update, NOW + self.seq)
+            HeldBody::never_purged(&self.data, id)
+                .and_then(|held| held.append_server_update(self.seq, &update, NOW + self.seq))
                 .expect("store the update");
         }
     }

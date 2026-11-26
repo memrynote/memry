@@ -15,6 +15,7 @@
 use std::sync::{Arc, Mutex};
 
 use memry_core::api::errors::StorageError;
+use memry_core::crdt::epoch::HeldBody;
 use memry_core::crdt::errors::CrdtError;
 use memry_core::crdt::registry::UpdateSink;
 use memry_core::crdt::{DocumentRegistry, update_log};
@@ -92,7 +93,9 @@ fn paragraph_update(device: &str, doc_id: &str, text: &str) -> Vec<u8> {
 /// A body update pulled from the server.
 fn pulled_body(conn: &Connection, doc_id: &str, seq: i64, text: &str) {
     let update = paragraph_update("device-b", doc_id, text);
-    update_log::append_server_update(conn, doc_id, seq, &update, NOW).expect("append");
+    HeldBody::never_purged(conn, doc_id)
+        .and_then(|held| held.append_server_update(seq, &update, NOW))
+        .expect("append");
 }
 
 /// A body update written on this device.
@@ -155,7 +158,7 @@ fn a_day_with_no_entry_or_a_tombstone_reads_none() {
 #[test]
 fn a_body_not_pulled_is_not_an_empty_day() {
     let mut conn = data();
-    // Created here with no edit: the log holds nothing yet.
+    // Created here with no edit: its body is here, and empty.
     journal::open_day(&conn, "2099-06-10", DEVICE, NOW).expect("open");
     // Created elsewhere, body still on the server.
     remote_day(&conn, "j2099-06-11", json!({"date": "2099-06-11"}));
@@ -163,15 +166,15 @@ fn a_body_not_pulled_is_not_an_empty_day() {
     remote_day(&conn, "j2099-06-12", json!({"date": "2099-06-12"}));
     local_body(&mut conn, "j2099-06-12", DEVICE, "");
 
-    for date in ["2099-06-10", "2099-06-11"] {
-        let day = reads::day(&conn, date).expect("read").expect("live");
-        assert_eq!(day.body_state, JournalBodyState::NotPulled, "{date}");
-        assert_eq!((day.character_count, day.word_count), (0, 0));
-    }
-    let empty = reads::day(&conn, "2099-06-12")
+    let day = reads::day(&conn, "2099-06-11")
         .expect("read")
         .expect("live");
-    assert_eq!(empty.body_state, JournalBodyState::Empty);
+    assert_eq!(day.body_state, JournalBodyState::NotPulled);
+    assert_eq!((day.character_count, day.word_count), (0, 0));
+    for date in ["2099-06-10", "2099-06-12"] {
+        let empty = reads::day(&conn, date).expect("read").expect("live");
+        assert_eq!(empty.body_state, JournalBodyState::Empty, "{date}");
+    }
 
     let june = reads::month(&conn, 2099, 6, "2099-06-20").expect("month");
     let unpulled = june

@@ -7,6 +7,8 @@ interface WindowState {
 
 export interface ConsumeRequest {
   windowSeconds: number
+  /** Tokens this request spends; absent or invalid means 1. */
+  cost?: number
 }
 
 export interface ConsumeResponse {
@@ -38,18 +40,19 @@ export class RateLimiter extends DurableObject {
 
     const body: ConsumeRequest = await request.json()
     const windowSeconds = body.windowSeconds
+    const cost = Number.isInteger(body.cost) && (body.cost ?? 0) >= 1 ? (body.cost ?? 1) : 1
     const now = Math.floor(Date.now() / 1000)
 
     const existing = (await this.ctx.storage.get<WindowState>('window')) ?? null
     let state: WindowState
     if (!existing || existing.windowStart < now - windowSeconds) {
-      state = { count: 1, windowStart: now }
+      state = { count: cost, windowStart: now }
       // Hygiene: clear storage once the window has fully lapsed so an idle key
       // costs nothing. The +1s slack means the alarm only ever deletes a
       // window that the reset condition above would discard anyway.
       await this.ctx.storage.setAlarm((now + windowSeconds + 1) * 1000)
     } else {
-      state = { count: existing.count + 1, windowStart: existing.windowStart }
+      state = { count: existing.count + cost, windowStart: existing.windowStart }
     }
     await this.ctx.storage.put('window', state)
 

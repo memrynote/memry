@@ -24,6 +24,7 @@ use super::records::{DefinitionRecord, write_record};
 use super::{DEFINITION_TYPES, ITEM_TYPE};
 use crate::api::errors::StorageError;
 use crate::domain::notes::failed;
+use crate::storage::nested_tx;
 use crate::sync::outbox;
 
 /// The `meta` key of the learned types.
@@ -43,7 +44,7 @@ pub fn learned(conn: &Connection) -> Result<BTreeMap<String, String>, StorageErr
 /// in one write. `true` when it learned one. Fails, writing nothing, over a stored value this
 /// build cannot read, which a write would replace.
 pub fn learn(conn: &Connection, wanted: &BTreeMap<String, String>) -> Result<bool, StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let mut types = stored(&tx)?.ok_or_else(|| StorageError::Failed {
         what: format!("the learned property types ({LEARNED}) do not read; kept as they are"),
     })?;
@@ -77,7 +78,7 @@ pub fn promote(
     device_id: &str,
     now_ms: i64,
 ) -> Result<Vec<String>, StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let Some(mut types) = stored(&tx)? else {
         return Ok(Vec::new());
     };
@@ -116,7 +117,7 @@ pub fn promote(
 /// Drops `names` from the learned types: the shell's definitions file holds them now, and its
 /// definition types them. A stored value this build cannot read stays as it is.
 pub fn forget(conn: &Connection, names: &[String]) -> Result<(), StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let Some(mut types) = stored(&tx)? else {
         return Ok(());
     };

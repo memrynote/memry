@@ -35,7 +35,7 @@ const tombstone = (
   type: PurgedTombstone['type'],
   id: string,
   clock: Record<string, number> = { 'device-a': 2 }
-): PurgedTombstone => ({ id, type, deletedAt: DELETED_AT, clock })
+): PurgedTombstone => ({ id, type, deletedAt: DELETED_AT, clock, serverCursor: 5 })
 
 // #2302 review: the local reasons a purged tombstone is never applied.
 describe('localTombstoneRefusal (#2302)', () => {
