@@ -124,7 +124,7 @@ export interface CaptureBarProps {
   }
   /** Renders the mic and the inline recorder. */
   voice?: {
-    onComplete: (audio: Blob, seconds: number) => void | Promise<void>
+    onComplete: (audio: AudioBuffer, seconds: number) => void | Promise<void>
     /** Gate the recorder (permissions, model download). Return false to abort. */
     onBeforeStart?: () => boolean | Promise<boolean>
     label: string
@@ -589,7 +589,7 @@ export const CaptureBar = ({
   }, [voice, showRecorder])
 
   const handleRecordingComplete = useCallback(
-    async (audio: Blob, seconds: number): Promise<void> => {
+    async (audio: AudioBuffer, seconds: number): Promise<void> => {
       hideRecorder()
       await voice?.onComplete(audio, seconds)
     },

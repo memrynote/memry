@@ -10,8 +10,8 @@ use base64::Engine;
 use memry_core::markdown::frontmatter::{YamlMap, YamlValue};
 use memry_desktop::attachments::{self, SavedAttachment};
 use memry_desktop::import::{
-    ImportProgress, ImportSink, ImportedJournalEntry, ImportedNote, ImportedTask, JournalEntry,
-    SinkError,
+    ImportProgress, ImportSink, ImportedBookmark, ImportedJournalEntry, ImportedNote, ImportedTask,
+    JournalEntry, SinkError,
 };
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
@@ -30,6 +30,8 @@ pub struct RecordingSink {
     pub journals: HashMap<String, JournalEntry>,
     /// `resolveJournalEntryId` throws.
     pub fail_journal_id: bool,
+    /// `saveBookmark` throws for this URL.
+    pub fail_bookmark_url: Option<String>,
 }
 
 impl RecordingSink {
@@ -42,6 +44,7 @@ impl RecordingSink {
             nested_subtasks: true,
             journals: HashMap::new(),
             fail_journal_id: false,
+            fail_bookmark_url: None,
         }
     }
 
@@ -170,6 +173,32 @@ impl ImportSink for RecordingSink {
 
     fn finish(&self) {
         self.push(json!({ "op": "finish" }));
+    }
+
+    /// The generator's `saveBookmark`, with the run's `now` given as `<now>`.
+    fn save_bookmark(&self, bookmark: ImportedBookmark) -> Result<(), SinkError> {
+        if self.fail_bookmark_url.as_deref() == Some(bookmark.source_url.as_str()) {
+            return Err(SinkError("db boom".to_owned()));
+        }
+        let meta = bookmark.metadata;
+        self.push(json!({
+            "op": "saveBookmark",
+            "title": bookmark.title,
+            "content": bookmark.content,
+            "sourceUrl": bookmark.source_url,
+            "createdAt": bookmark.created_at.as_deref().unwrap_or("<now>"),
+            "tags": bookmark.tags,
+            "metadata": {
+                "url": meta.url,
+                "excerpt": meta.excerpt,
+                "note": meta.note,
+                "folder": meta.folder,
+                "favorite": meta.favorite,
+                "heroImage": meta.hero_image,
+                "highlights": meta.highlights,
+            },
+        }));
+        Ok(())
     }
 }
 
