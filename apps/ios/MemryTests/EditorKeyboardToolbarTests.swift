@@ -264,29 +264,37 @@ private func focused(_ target: Block, in blocks: [Block], session: EditorSession
 }
 
 struct EditorToolbarOrderTests {
-    @Test func aParagraphKeepsTheSpecOrder() {
-        #expect(EditorToolbarItem.order(for: "paragraph") == [
-            .insert, .format, .mention, .tag, .attach, .turnInto, .undo, .redo,
-            .indent, .outdent, .moveDown, .moveUp, .more,
-        ])
-        #expect(EditorToolbarItem.order(for: nil) == EditorToolbarItem.allCases)
-        #expect(EditorToolbarItem.order(for: "heading") == EditorToolbarItem.allCases)
+    @Test func indentAndOutdentArePinnedWhateverTheBlock() {
+        #expect(EditorToolbarItem.pinned == [.indent, .outdent])
+        for kind in [nil, "paragraph", "heading", "bulletListItem", "codeBlock"] {
+            let scrolling = EditorToolbarItem.scrolling(for: kind)
+            #expect(!scrolling.contains(.indent) && !scrolling.contains(.outdent), "kind \(kind ?? "none")")
+        }
     }
 
-    @Test func aListItemLeadsWithItsMovesAndKeepsTheRestInOrder() {
+    @Test func aParagraphKeepsTheSpecOrderForTheScrollingRow() {
+        #expect(EditorToolbarItem.scrolling(for: "paragraph") == [
+            .insert, .format, .mention, .tag, .attach, .turnInto, .undo, .redo,
+            .moveDown, .moveUp, .more,
+        ])
+        #expect(EditorToolbarItem.scrolling(for: nil) == EditorToolbarItem.scrolling(for: "paragraph"))
+        #expect(EditorToolbarItem.scrolling(for: "heading") == EditorToolbarItem.scrolling(for: "paragraph"))
+    }
+
+    @Test func aListItemLeadsItsScrollingRowWithTheMoves() {
         for kind in ["bulletListItem", "numberedListItem", "checkListItem", "toggleListItem"] {
-            #expect(EditorToolbarItem.order(for: kind) == [
-                .indent, .outdent, .moveDown, .moveUp,
+            #expect(EditorToolbarItem.scrolling(for: kind) == [
+                .moveDown, .moveUp,
                 .insert, .format, .mention, .tag, .attach, .turnInto, .undo, .redo, .more,
             ])
         }
     }
 
-    @Test func everyItemAppearsOnce() {
+    @Test func everyItemAppearsOnceAcrossThePinnedAndScrollingRows() {
         for kind in ["paragraph", "bulletListItem"] {
-            let order = EditorToolbarItem.order(for: kind)
-            #expect(Set(order).count == EditorToolbarItem.allCases.count)
-            #expect(order.count == EditorToolbarItem.allCases.count)
+            let all = EditorToolbarItem.pinned + EditorToolbarItem.scrolling(for: kind)
+            #expect(Set(all).count == EditorToolbarItem.allCases.count)
+            #expect(all.count == EditorToolbarItem.allCases.count)
         }
     }
 }
