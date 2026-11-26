@@ -17,9 +17,11 @@
 #
 # Linux and Windows legs split in four jobs that run in parallel: `lint` (fmt, clippy, doctests, the
 # iOS feature check, line ceilings), `seams` (the live OS seams, the read pool release test, the sync
-# harness, the agent MCP client, memry-ml, the worker and memry-cli) and the nextest suite in two hash
+# harness, the agent MCP client, memry-ml, the worker and memry-cli) and the nextest suite in four
 # partitions. `checks` was lint and seams in one job, 59 to 62 minutes cold. A whole macOS leg stays
-# one `all` job: that pool is the scarcest, and four jobs would hold four of its runners.
+# one `all` job: that pool is the scarcest, and more jobs would hold more of its runners.
+# rust-ci.yml's plan job moves the partitions (the legs with a `partition`) to the test-partitions
+# job, which runs them from the nextest archive that test-archive builds once per OS.
 #
 # Each leg carries the step groups it runs, which rust-ci.yml's steps test (`matrix.lint`, `matrix.seams`,
 # `matrix.tests`, `matrix.perf`, `matrix.models`): a macOS `all` leg runs lint, seams and tests, a macOS
@@ -31,7 +33,7 @@
 def lint($os): {os: $os, part: "lint", lint: true};
 def seams($os): {os: $os, part: "seams", seams: true};
 def leg($os): if ($os | startswith("macos")) then {os: $os, part: "all", lint: true, seams: true, tests: true}
-  else (lint($os), seams($os), {os: $os, part: "tests", partition: "1/2", tests: true}, {os: $os, part: "tests", partition: "2/2", tests: true}) end;
+  else (lint($os), seams($os), (range(1; 5) | {os: $os, part: "tests", partition: "\(.)/4", tests: true})) end;
 def full_leg($os): if $os == "windows-11-arm" then (leg($os), {os: $os, part: "models", models: true})
   else leg($os) | if .part == "seams" or .part == "all" then . + {models: true} else . end end;
 def perf_leg: {os: "ubuntu-22.04", part: "perf", perf: true};

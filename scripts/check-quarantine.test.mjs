@@ -86,22 +86,36 @@ test('a malformed test, issue, owner, unknown key, duplicate or stray line is re
   assert.match(errorsFor(`${entry(complete)}\nexpires = 2026-12-01`).join(), /expected/)
 })
 
-test("the packages match rust-ci.yml's merge-queue Test step, which applies the filter", () => {
+test("the packages match rust-ci.yml's suite, and every merge-queue run of it applies the filter", () => {
   const workflow = readFileSync(
     new URL('../.github/workflows/rust-ci.yml', import.meta.url),
     'utf8'
   )
-  const step = workflow.match(/^ {10}cargo nextest run (.*\$\{FILTER:\+-E "\$FILTER"\}.*)$/m)?.[1]
-  assert.ok(step, 'the Test step runs cargo nextest run with the quarantine filter')
-  assert.deepEqual(
-    [...step.matchAll(/-p (\S+)/g)].map(([, p]) => p),
-    PACKAGES
-  )
-  assert.match(step, /\$\{FILTER:\+-E "\$FILTER"\}/)
-  assert.match(
-    workflow,
-    /if \[ "\$NEXTEST_PROFILE" = merge-queue \]; then FILTER=\$\(node \.\.\/scripts\/check-quarantine\.mjs --filter\); fi/
-  )
+  // The suite is built by test-archive (`cargo nextest archive`) and, on macOS, by lint-and-test's
+  // Test step; test-partitions runs the archive.
+  const builds = [
+    ...workflow.matchAll(
+      /^ {10}cargo nextest (?:run|archive) (-p .*--features memry-core\/markdown.*)$/gm
+    )
+  ].map(([, args]) => args)
+  assert.equal(builds.length, 2, 'test-archive and the macOS Test step build the suite')
+  for (const args of builds)
+    assert.deepEqual(
+      [...args.matchAll(/-p (\S+)/g)].map(([, p]) => p),
+      PACKAGES
+    )
+  const runs = [
+    ...workflow.matchAll(
+      /^ {10}(cargo(?:-nextest)? nextest run .*\$\{FILTER:\+-E "\$FILTER"\}.*)$/gm
+    )
+  ]
+  assert.equal(runs.length, 2, 'test-partitions and the macOS Test step apply the filter')
+  const sets = [
+    ...workflow.matchAll(
+      /if \[ "\$NEXTEST_PROFILE" = merge-queue \]; then FILTER=\$\(node \.\.\/scripts\/check-quarantine\.mjs --filter\); fi/g
+    )
+  ]
+  assert.equal(sets.length, 2)
 })
 
 test('the committed list parses', () => {

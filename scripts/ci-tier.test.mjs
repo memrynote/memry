@@ -783,22 +783,28 @@ function tauriBuilds(out, queue = false) {
 const linuxRust = [
   'ubuntu-22.04 lint',
   'ubuntu-22.04 seams',
-  'ubuntu-22.04 tests 1/2',
-  'ubuntu-22.04 tests 2/2'
+  'ubuntu-22.04 tests 1/4',
+  'ubuntu-22.04 tests 2/4',
+  'ubuntu-22.04 tests 3/4',
+  'ubuntu-22.04 tests 4/4'
 ]
 const windowsRust = [
   'windows-2022 lint',
   'windows-2022 seams',
-  'windows-2022 tests 1/2',
-  'windows-2022 tests 2/2'
+  'windows-2022 tests 1/4',
+  'windows-2022 tests 2/4',
+  'windows-2022 tests 3/4',
+  'windows-2022 tests 4/4'
 ]
 // Off the PR and merge-queue path: the post-merge schedule, pushes and dispatch.
 const perfRust = ['ubuntu-22.04 perf']
 const armRust = [
   'windows-11-arm lint',
   'windows-11-arm seams',
-  'windows-11-arm tests 1/2',
-  'windows-11-arm tests 2/2',
+  'windows-11-arm tests 1/4',
+  'windows-11-arm tests 2/4',
+  'windows-11-arm tests 3/4',
+  'windows-11-arm tests 4/4',
   'windows-11-arm models'
 ]
 const linuxTauri = ['linux-x64 debug', 'linux-x64 e2e 1', 'linux-x64 e2e 2']
