@@ -431,7 +431,7 @@ final class EditorSession {
             focusedKind = field.block.kind
             focusedLevel = field.value("level").flatMap(Int.init)
             focusedProps = Dictionary(field.block.props.map { ($0.name, $0.value) }) { $1 }
-            selectionChanged(in: field)
+            selectionChanged(in: field, placed: true)
         } else {
             if panel != .none { panel = .none }
             formatting = false
@@ -445,7 +445,10 @@ final class EditorSession {
         }
     }
 
-    func selectionChanged(in field: BlockField) {
+    /// `placed`: the caret moved or the row was redrawn, and no text was typed.
+    /// Only typing opens a menu, so a placed caret keeps the menu it is
+    /// already in, and a leftover `/`, `@`, `[[` or `#` beside it stays closed.
+    func selectionChanged(in field: BlockField, placed: Bool = false) {
         guard field === self.field else { return }
         refreshTypingState()
         let textView = field.textView
@@ -466,9 +469,13 @@ final class EditorSession {
         // A code block keeps `[[`, `@`, `/` and `#` as literal text, as
         // desktop's does: no menu opens there.
         let inCode = field.block.kind == "codeBlock"
-        let typed = range.length == 0 && !inCode ? InlineTrigger.active(in: textView.text, caret: range.location) : nil
-        let typedTag = range.length == 0 && !inCode
+        var typed = range.length == 0 && !inCode ? InlineTrigger.active(in: textView.text, caret: range.location) : nil
+        var typedTag = range.length == 0 && !inCode
             ? HashTagTrigger.active(in: textView.text, caret: range.location) : nil
+        if placed {
+            if typed.map(Self.dismissable) != trigger.map(Self.dismissable) { typed = nil }
+            if typedTag?.range.location != tagTrigger?.range.location { typedTag = nil }
+        }
         let typedMenu = typed.map(Self.dismissable)
         let typedTagMenu = typedTag.map { DismissedMenu(trigger: "#", location: $0.range.location) }
         if let dismissed = dismissedMenu, typedMenu != dismissed, typedTagMenu != dismissed {
