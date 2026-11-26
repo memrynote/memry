@@ -1089,7 +1089,7 @@ jobs:
           if-no-files-found: error
           compression-level: 0
           overwrite: true
-          retention-days: 1
+          retention-days: 3
 
   # The nextest suite of the Linux and Windows legs in six slices (nextest deals the tests of every
   # binary round-robin; `count:` dealt per binary and put each one-test binary in partition 1), each
@@ -1120,6 +1120,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with: *lean-checkout
+
+      # The extracted archive and the target dir fill the runner's disk.
+      - name: Free disk space
+        uses: ./.github/actions/free-disk
 
       # memry-tauri's test binaries load the webview libraries.
       - name: Install Linux system libraries
@@ -1596,8 +1600,9 @@ jobs:
           case "$CHANGED" in true | false) ;; *) echo "::error::the plan job reported no paths decision"; exit 1 ;; esac
           case " $RESULTS " in *" failure "*|*" cancelled "*) exit 1 ;; esac
           # Tiers skip legs on purpose, and a push the merge queue passed skips the Rust legs. A pull
-          # request that changes a Rust CI path always runs them, so there a skip is no pass (#5613).
-          if [ "$EVENT" = pull_request ] && [ "$CHANGED" = true ] && [ "$RUST_RESULTS" != 'success success success' ]; then
+          # request or merge group that changes a Rust CI path always runs them, so there a skip is no
+          # pass (#5613).
+          if { [ "$EVENT" = pull_request ] || [ "$EVENT" = merge_group ]; } && [ "$CHANGED" = true ] && [ "$RUST_RESULTS" != 'success success success' ]; then
             echo "::error::A Rust CI path changed but the Rust legs did not pass ($RUST_RESULTS)."
             exit 1
           fi

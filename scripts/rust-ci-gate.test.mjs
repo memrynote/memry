@@ -144,6 +144,14 @@ describe('Rust CI gate', () => {
     const covered = { ...pr, EVENT: 'push', RUST_RESULTS: rustSkipped, RESULTS: skipped }
     assert.equal(runGate(covered), 0)
     assert.equal(runGate({ ...pr, RUST_RESULTS: rustSkipped, RESULTS: skipped }), 1)
+    // A merge group that changes a Rust CI path runs every Rust leg, so a skip is no pass.
+    const queued = { ...pr, EVENT: 'merge_group' }
+    assert.equal(runGate({ ...queued, RUST_RESULTS: rustSkipped, RESULTS: skipped }), 1)
+    assert.equal(
+      runGate({ ...queued, RUST_RESULTS: 'success success skipped', RESULTS: skipped }),
+      1
+    )
+    assert.equal(runGate({ ...queued, RUST_RESULTS: rustPassed, RESULTS: passed }), 0)
     for (const [rust, results] of [
       ['failure success success', 'success failure success success success success success'],
       ['cancelled success success', 'success cancelled success success success success success'],
