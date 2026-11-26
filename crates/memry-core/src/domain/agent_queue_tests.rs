@@ -391,3 +391,25 @@ fn acknowledge_push(conn: &Connection) -> Result<(), StorageError> {
         .map(drop)
         .map_err(crate::domain::notes::failed)
 }
+
+/// #5505: the backfill of a bound vault queues conversations stated under the server id and
+/// those made before the bind under the local id.
+#[test]
+fn backfill_of_a_bound_vault_queues_records_of_either_id() {
+    let (db, _dir) = open("agent-queue-backfill-server-vault");
+    db.call_blocking(|conn| {
+        conversation(conn, "v1", Queue::LocalOnly)?;
+        conversation(conn, "v2", Queue::LocalOnly)?;
+        crate::sync::server_vault::bind(conn, "server-vault")?;
+        // As a pull projects one another device made under the server id.
+        let pulled = conversation(conn, "v1", Queue::LocalOnly)?;
+        conn.execute(
+            "UPDATE agent_conversations SET vault_id = 'server-vault' WHERE id = ?1",
+            params![pulled],
+        )
+        .map_err(crate::domain::notes::failed)?;
+        assert_eq!(backfill(conn, "v1", NOW + 2)?, 2);
+        Ok(())
+    })
+    .expect("backfill");
+}

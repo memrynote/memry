@@ -75,6 +75,10 @@ fn declaration() -> Declaration {
         .expect("recognised")
 }
 
+pub(crate) fn declaration_header() -> String {
+    declaration().header_value()
+}
+
 pub(crate) fn pull_loop(db: &Db, transport: Arc<FakeTransport>) -> PullLoop {
     let http = HttpClient::new(
         transport,

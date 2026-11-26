@@ -17,7 +17,7 @@ use crate::storage::Db;
 use crate::sync::engine::PassSeed;
 use crate::sync::first_sync::{FirstSyncPhase, FirstSyncProgress, ProgressSink};
 use crate::sync::outbox;
-use crate::sync::pack_bootstrap::PackBootstrapReport;
+use crate::sync::pack_bootstrap::BodyPackReport;
 
 /// `InitialSyncPhase`, minus `manifest` and `attachments`, which other owners
 /// report.
@@ -79,22 +79,26 @@ impl Phases {
 impl ProgressSink for Phases {
     fn progress(&self, progress: FirstSyncProgress) {
         match progress.phase {
-            // Each pass has its own denominator, so only one feeds the bar.
-            FirstSyncPhase::Refs => self.emit(InitialSyncPhase::Notes, 0, 0),
-            FirstSyncPhase::Metadata => {
-                self.emit(InitialSyncPhase::Notes, progress.completed, progress.total);
-            }
+            // Records have no total until the feed is read to its end, so the
+            // bar stays indeterminate (0 of 0) until then.
+            FirstSyncPhase::Records => match progress.total {
+                Some(total) => self.emit(InitialSyncPhase::Notes, progress.completed, total),
+                None => self.emit(InitialSyncPhase::Notes, 0, 0),
+            },
             // Bodies: Electron's body pulls report nothing. Done: the catch-up
             // passes still run, and the driver reports `complete`.
             FirstSyncPhase::Bodies | FirstSyncPhase::Done => {}
         }
     }
 
-    fn packs(&self, report: Option<&PackBootstrapReport>) {
+    fn packs(&self, report: Option<&BodyPackReport>) {
         // Core counts pack entries only when the run ends, so the start is
         // indeterminate (0 of 0) and the end is whole.
         let done = report.map_or(0, |report| {
-            (report.entries_applied + report.entries_skipped + report.entries_failed) as u64
+            (report.snapshots_applied
+                + report.updates_applied
+                + report.entries_unusable
+                + report.entries_unconfirmed) as u64
         });
         self.emit(InitialSyncPhase::Packs, done, done);
     }

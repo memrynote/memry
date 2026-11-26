@@ -365,10 +365,19 @@ function toolCases(args: JsonObject, inputSchema: Json): Array<[string, JsonObje
 }
 
 /**
+ * The `process.platform` a case runs on, for a refinement that reads it. A case without one runs as
+ * `linux` and holds on every platform.
+ */
+type CasePlatform = 'linux' | 'win32'
+
+/**
  * Calls that break a zod refinement of the tool, and edge cases of it that pass, each named. The
  * JSON Schema has no refinements, so these hold the Rust checks to zod.
  */
-function refineCases(name: ToolName, args: JsonObject): Array<[string, JsonObject]> {
+function refineCases(
+  name: ToolName,
+  args: JsonObject
+): Array<[string, JsonObject] | [string, JsonObject, CasePlatform]> {
   const elements = Array.isArray(args.elements) ? args.elements : []
   const element = (fields: JsonObject): JsonObject => ({
     ...args,
@@ -414,6 +423,21 @@ function refineCases(name: ToolName, args: JsonObject): Array<[string, JsonObjec
         ['edit link https', edit({ link: 'https://example.com' })],
         ['edit link null', edit({ link: null })]
       ]
+    case 'vault_delete_folder':
+      return [
+        ['path the vault itself', { path: '.' }],
+        ['path a backslash', { path: '\\' }],
+        ['path back to the vault', { path: 'Work/..' }],
+        ['path the parent', { path: '..' }],
+        ['path outside the vault', { path: 'Work/../../Outside' }],
+        ['path a drive', { path: 'C:\\Users' }],
+        ['path ./Work/', { path: './Work/' }],
+        ['path Work\\Sub', { path: 'Work\\Sub' }],
+        ['path Work. off Windows', { path: 'Work.' }, 'linux'],
+        ['path Work. on Windows', { path: 'Work.' }, 'win32'],
+        ['path Work /Sub on Windows', { path: 'Work /Sub' }, 'win32'],
+        ['path Work/.Sub on Windows', { path: 'Work/.Sub' }, 'win32']
+      ]
     case 'vault_bulk_tag_notes': {
       const { add: _add, remove: _remove, ...ids } = args
       return [
@@ -434,6 +458,21 @@ function replyText(result: unknown): string {
     .join('')
 }
 
+/**
+ * Runs `run` with `process.platform` set to `platform`, so the vectors do not depend on the host:
+ * `windowsTrimsFolderName` reads it at call time.
+ */
+async function onPlatform<T>(platform: CasePlatform, run: () => Promise<T>): Promise<T> {
+  const real = Object.getOwnPropertyDescriptor(process, 'platform')
+  if (!real) throw new Error('process.platform has no property descriptor')
+  Object.defineProperty(process, 'platform', { ...real, value: platform })
+  try {
+    return await run()
+  } finally {
+    Object.defineProperty(process, 'platform', real)
+  }
+}
+
 async function toolExamples(
   oracle: Oracle,
   examples: AgentApiExamples,
@@ -445,17 +484,20 @@ async function toolExamples(
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the examples file holds JSON arguments
     const base = (example ? toJson(example.arguments) : {}) as JsonObject
     const cases = [...toolCases(base, listed.get(name) ?? null), ...refineCases(name, base)]
-    for (const [variant, args] of cases) {
+    for (const [variant, args, platform] of cases) {
       oracle.ran.clear()
-      const result = await oracle.client.callTool({ name, arguments: args })
+      const { result, parsed } = await onPlatform(platform ?? 'linux', async () => ({
+        result: await oracle.client.callTool({ name, arguments: args }),
+        parsed: TOOL_SCHEMAS[name].input.safeParse(args)
+      }))
       const valid = oracle.ran.has(name)
-      const parsed = TOOL_SCHEMAS[name].input.safeParse(args)
       if (parsed.success !== valid) {
         throw new Error(`${name} (${variant}): zod and the SDK disagree`)
       }
       out.push({
         tool: name,
         variant,
+        ...(platform ? { platform } : {}),
         arguments: args,
         valid,
         ...(parsed.success
@@ -638,7 +680,7 @@ async function build(): Promise<Map<string, string>> {
     const examplesFile = {
       meta: meta(
         'apps/desktop/scripts/agent-api-examples.json run through the SDK server above (tools) and assertDesktopApiArgs (operations)',
-        'A tool case is `valid` when Electron ran its handler; otherwise `issues` are zod’s and `errorText` is the reply text the SDK sends. An operation case carries the VALIDATION error Electron returns, or none.'
+        'A tool case is `valid` when Electron ran its handler; otherwise `issues` are zod’s and `errorText` is the reply text the SDK sends. A tool case with `platform` holds only there (`linux` is every platform but Windows); the others hold everywhere. An operation case carries the VALIDATION error Electron returns, or none.'
       ),
       tools: await toolExamples(oracle, examples, listed),
       operations: operationExamples(examples)

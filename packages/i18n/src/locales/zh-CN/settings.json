@@ -1232,6 +1232,10 @@
     "loadingAria": "正在加载设备",
     "none": "尚未关联设备",
     "linkNew": "关联新设备",
+    "linkNeedsPlan": {
+      "title": "关联设备需要同步套餐",
+      "description": "已关联的设备只有在开启同步后才能看到你的笔记。没有套餐时，请在该设备上用恢复短语登录，它会保留自己的仓库。"
+    },
     "thisDevice": "此设备",
     "lastSeen": "{time}前在线",
     "linked": "{time}前关联",

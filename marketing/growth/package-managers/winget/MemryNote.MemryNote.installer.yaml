@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.10.0.schema.json
+
+PackageIdentifier: MemryNote.MemryNote
+PackageVersion: 2026.1111.1
+InstallerType: exe
+Scope: user
+InstallModes:
+  - interactive
+  - silent
+  - silentWithProgress
+InstallerSwitches:
+  Silent: --silent
+  SilentWithProgress: --silent
+UpgradeBehavior: install
+Protocols:
+  - memry
+ReleaseDate: 2026-11-11
+AppsAndFeaturesEntries:
+  - DisplayName: MemryNote
+    Publisher: memrynote
+    ProductCode: MemryNote
+InstallationMetadata:
+  DefaultInstallLocation: '%LocalAppData%\MemryNote'
+Installers:
+  - Architecture: x64
+    InstallerUrl: https://github.com/memrynote/memry/releases/download/v2026-11-11/MemryNote-Setup-win-x64.exe
+    InstallerSha256: BEFCDACE4A74233DFAFB578DB330B8E05DA2C09E09CF20EA90B69E1D7FC43149
+ManifestType: installer
+ManifestVersion: 1.10.0

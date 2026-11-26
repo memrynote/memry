@@ -1,4 +1,4 @@
-//! `canvas_files` (data migration `0036`): where this device keeps each canvas's `.excalidraw`
+//! `canvas_files` (data migration `0037`): where this device keeps each canvas's `.excalidraw`
 //! document and the sha256 of the bytes the app last wrote or read there. Device-local, never
 //! synced; the services here are its only writer. A save expects the document to still hold
 //! those bytes, so an edit made on disk since is never overwritten.

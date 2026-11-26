@@ -68,9 +68,11 @@ fn a_state_row_matches_its_source_at_the_current_version() {
         input_version,
         chunks: 1,
     };
-    assert!(row("transcript", EMBEDDING_INPUT_VERSION).matches(VoiceSource::Transcript));
-    assert!(!row("transcript", EMBEDDING_INPUT_VERSION - 1).matches(VoiceSource::Transcript));
-    assert!(!row("transcript", EMBEDDING_INPUT_VERSION).matches(VoiceSource::Audio));
+    assert!(row("transcript", UNCAPPED_EMBEDDING_INPUT_VERSION).matches(VoiceSource::Transcript));
+    assert!(
+        !row("transcript", UNCAPPED_EMBEDDING_INPUT_VERSION - 1).matches(VoiceSource::Transcript)
+    );
+    assert!(!row("transcript", UNCAPPED_EMBEDDING_INPUT_VERSION).matches(VoiceSource::Audio));
     assert!(row("audio", AUDIO_EMBEDDING_INPUT_VERSION).matches(VoiceSource::Audio));
     assert!(!row("video", AUDIO_EMBEDDING_INPUT_VERSION).matches(VoiceSource::Audio));
 }
@@ -189,7 +191,7 @@ fn windows_are_replaced_deleted_and_found_per_memo() {
                     VoiceEmbeddingState {
                         item_id: "b".into(),
                         source: "transcript".into(),
-                        input_version: EMBEDDING_INPUT_VERSION,
+                        input_version: UNCAPPED_EMBEDDING_INPUT_VERSION,
                         chunks: 1,
                     },
                 ]

@@ -47,6 +47,7 @@ function makePullItem(
   encryptOverrides: Record<string, unknown> = {}
 ): PullItemForDecrypt {
   const { pushItem } = encryptItemForPush({
+    vaultId: null,
     id: 'item-1',
     type: 'note',
     operation: 'update',

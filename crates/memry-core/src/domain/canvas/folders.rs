@@ -15,6 +15,7 @@ use crate::api::errors::StorageError;
 use crate::domain::canvas_folder::{self, CanvasFolder};
 use crate::domain::desktop_records::{self, live};
 use crate::domain::notes::failed;
+use crate::storage::nested_tx;
 use crate::storage::repositories::Change;
 use crate::sync::outbox;
 
@@ -69,7 +70,7 @@ pub fn create(
 ) -> Result<CanvasFolder, StorageError> {
     let existing = canvas_folder::get(conn, canonical)?;
     let stored = existing.as_ref().map_or(canonical, |folder| &folder.path);
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     mint_ancestors(&tx, vault_id, stored, device_id, now_ms)?;
     let folder = match existing.clone() {
         Some(folder) => folder,
@@ -123,7 +124,7 @@ pub fn relocate(
         }
     }
 
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     for (id, folder) in &canvases {
         set_folder_in(&tx, id, folder.as_deref(), device_id, now_ms)?;
     }
@@ -192,7 +193,7 @@ pub fn delete(
         .chain(folders.iter().map(|folder| folder.path.as_str()));
     let implied = implied_paths(canonical, stored);
 
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     for (id, _) in &inside {
         tombstone_in(&tx, id, device_id, now_ms)?;
     }

@@ -151,6 +151,52 @@ describe('settings field clocks — device id keying (#2287)', () => {
     expect(payload.fieldClocks['general.theme']).toEqual({ 'dev-a': 1, 'dev-b': 1 })
   })
 
+  it('#given a peer pushes a payload missing our tick on another path #then the merge re-queues and every device converges', () => {
+    // #5506: A and B both start from weekStartDay {dev-a: 1}. Offline, A sets
+    // the theme and B sets weekStartDay. B pushes, then A pushes a payload
+    // built before it pulled B, so the server holds weekStartDay {dev-a: 1}.
+    // B's clock {dev-a: 1, dev-b: 1} dominates it on that path; B keeps its
+    // value and must push again, or it holds `monday` alone forever.
+    const server: Server = { row: null, cursor: 0 }
+    const a = createDevice('dev-a')
+    const b = createDevice('dev-b')
+    a.manager.updateField('calendar.weekStartDay', 'sunday')
+    push(a, server)
+    pull(a, server)
+    pull(b, server)
+
+    a.manager.updateField('general.theme', 'light')
+    b.manager.updateField('calendar.weekStartDay', 'monday')
+    push(b, server)
+    push(a, server)
+    pull(b, server)
+    pull(a, server)
+    settle([a, b], server)
+
+    for (const device of [a, b]) {
+      expect(device.manager.getPayload()).toEqual(server.row?.payload)
+      expect(device.queue.getSize()).toBe(0)
+    }
+    expect(server.row?.payload.settings.calendar?.weekStartDay).toBe('monday')
+    expect(server.row?.payload.fieldClocks['calendar.weekStartDay']).toEqual({
+      'dev-a': 1,
+      'dev-b': 1
+    })
+    expect(server.row?.payload.settings.general?.theme).toBe('light')
+  })
+
+  it('#given a remote equal to the local payload #then nothing is queued', () => {
+    // #5506: the re-queue rule must not turn an echo into a push loop.
+    const a = createDevice('dev-a')
+    a.manager.updateField('general.theme', 'dark')
+    const [queued] = a.queue.dequeue(1)
+    a.queue.markSuccess(queued.id, queued.payload)
+
+    a.manager.mergeRemote(a.manager.getPayload())
+
+    expect(a.queue.getSize()).toBe(0)
+  })
+
   it('#given a remote that dominates #then nothing is queued', () => {
     // #2287
     const a = createDevice('dev-a')

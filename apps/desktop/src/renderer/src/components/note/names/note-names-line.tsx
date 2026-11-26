@@ -62,7 +62,7 @@ export function NoteNamesLine({ noteId, title, aliases, disabled }: NoteNamesLin
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLInputElement>): void {
-    if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
+    if (event.key === 'Enter') {
       event.preventDefault()
       commit()
     } else if (event.key === 'Escape') {

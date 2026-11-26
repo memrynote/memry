@@ -130,6 +130,8 @@ impl Transport for Server {
                         .to_string(),
                 )
             }
+            // The batch probe refused: each document takes its own routes (§7.8).
+            "/sync/crdt/updates/batch" => response(503, "{}"),
             "/sync/crdt/updates" if request.method == "GET" => {
                 response(200, &json!({"updates": [], "hasMore": false}).to_string())
             }

@@ -47,8 +47,29 @@ describe('extractInlineTagsFromMarkdown', () => {
     expect(extractInlineTagsFromMarkdown('line one\n#tag')).toEqual(['tag'])
   })
 
-  it('rejects tags starting with a digit', () => {
-    expect(extractInlineTagsFromMarkdown('#123 #456abc')).toEqual([])
+  it('reads a tag that starts with a digit only when it holds a letter', () => {
+    expect(extractInlineTagsFromMarkdown('#123 #456abc #2024년')).toEqual(['456abc', '2024년'])
+  })
+
+  it('reads tags in every script', () => {
+    expect(
+      extractInlineTagsFromMarkdown(
+        '#퓨리 #fuy #привет #日本語 #タグ #हिन्दी #ภาษาไทย #عربي #İş #café'
+      )
+    ).toEqual(['퓨리', 'fuy', 'привет', '日本語', 'タグ', 'हिन्दी', 'ภาษาไทย', 'عربي', 'İş', 'café'])
+  })
+
+  it('ends a tag at punctuation in any script', () => {
+    expect(extractInlineTagsFromMarkdown('#タグ。 #퓨리, #привет! #中文，')).toEqual([
+      'タグ',
+      '퓨리',
+      'привет',
+      '中文'
+    ])
+  })
+
+  it('needs whitespace before the # in a script without spaces', () => {
+    expect(extractInlineTagsFromMarkdown('日本語#タグ')).toEqual([])
   })
 
   it('allows hyphens and underscores', () => {
@@ -133,13 +154,16 @@ describe('isInlineTagName', () => {
     expect(isInlineTagName('people/VIP')).toBe(true)
     expect(isInlineTagName('my project')).toBe(false)
     expect(isInlineTagName('2024')).toBe(false)
-    expect(isInlineTagName('iş')).toBe(false)
+    expect(isInlineTagName('2024/12')).toBe(false)
+    expect(isInlineTagName('2024/qı')).toBe(true)
+    expect(isInlineTagName('iş')).toBe(true)
+    expect(isInlineTagName('퓨리/하위')).toBe(true)
     expect(isInlineTagName('a/')).toBe(false)
   })
 })
 
 describe('findInlineTags', () => {
-  it('reads a tag only when a letter follows the #', () => {
+  it('reads a tag only when it starts with a letter or digit and holds a letter', () => {
     expect(findInlineTags('#2024 #a2024 #_x #-x #a/2024')).toEqual([
       { index: 6, tag: 'a2024' },
       { index: 21, tag: 'a/2024' }
@@ -159,7 +183,7 @@ describe('isInlineTagPrefix', () => {
     expect(isInlineTagPrefix('a/2')).toBe(true)
   })
 
-  it('rejects what can never become a tag by appending', () => {
+  it('rejects what no chip can hold', () => {
     expect(isInlineTagPrefix('')).toBe(false)
     expect(isInlineTagPrefix('2')).toBe(false)
     expect(isInlineTagPrefix('a//')).toBe(false)

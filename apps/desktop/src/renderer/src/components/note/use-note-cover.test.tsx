@@ -199,6 +199,36 @@ describe('useNoteCover', () => {
     expect(onSaved).not.toHaveBeenCalled()
   })
 
+  // VERIFY-5753R4 (1): main refuses a cover edit of an off-file case twin by
+  // resolving a failure envelope, not by rejecting. Each writer shows it.
+  const REFUSAL = 'Rename one of them, then edit the cover again; nothing was changed'
+  it.each([
+    [
+      'set',
+      (cover: ReturnType<typeof renderUseNoteCover>['result']['current']) =>
+        cover.setCover(IMAGE_COVER)
+    ],
+    [
+      'reframe',
+      (cover: ReturnType<typeof renderUseNoteCover>['result']['current']) =>
+        cover.setCoverFraming({ zoom: 2 })
+    ],
+    [
+      'remove',
+      (cover: ReturnType<typeof renderUseNoteCover>['result']['current']) => cover.removeCover()
+    ]
+  ])('shows a refused %s in a toast and keeps the note as it was', async (_what, edit) => {
+    mocks.update.mockResolvedValue({ success: false, note: null, error: REFUSAL })
+    const { result, onSaved } = renderUseNoteCover()
+
+    await act(() => edit(result.current))
+
+    expect({ toasts: mocks.toastError.mock.calls, saved: onSaved.mock.calls.length }).toEqual({
+      toasts: [[REFUSAL]],
+      saved: 0
+    })
+  })
+
   it('does nothing at all without a note id', async () => {
     const { result, onSaved } = renderUseNoteCover(null)
 

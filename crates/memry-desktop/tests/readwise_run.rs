@@ -27,7 +27,7 @@ use std::time::{Duration, Instant};
 
 use chrono::DateTime;
 use memry_core::api::errors::StorageError;
-use memry_core::crdt::update_log;
+use memry_core::crdt::epoch::HeldBody;
 use memry_core::domain::readwise::LinkState;
 use memry_core::seams::secure_store::SecureStore;
 use memry_desktop::attachments::RemoteImages;
@@ -58,6 +58,10 @@ mod after;
 mod claim;
 #[path = "readwise_run/gate.rs"]
 mod gate;
+#[path = "readwise_run/schedule.rs"]
+mod schedule;
+#[path = "readwise_run/sync_view.rs"]
+mod sync_view;
 
 use editor_window::Window;
 use readwise_server::{Reply, Seen, Server};
@@ -523,11 +527,11 @@ fn a_server_update_defers_a_user_started_write_for_two_seconds() {
     let id = note.id.clone();
     let db = v.library.open.vault.db_handle();
     db.call_blocking(move |conn| {
-        update_log::append_server_update(conn, &id, 1, &update, 1).map_err(|error| {
-            StorageError::Failed {
+        HeldBody::never_purged(conn, &id)
+            .and_then(|held| held.append_server_update(1, &update, 1))
+            .map_err(|error| StorageError::Failed {
                 what: error.to_string(),
-            }
-        })
+            })
     })
     .unwrap();
     v.host.close(&note.id, "main");

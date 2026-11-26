@@ -12,7 +12,7 @@ use std::time::{Duration, Instant};
 use memry_core::api::errors::StorageError;
 use memry_core::api::vault::Vault;
 use memry_core::crdt::body_edit::BlockEdit;
-use memry_core::crdt::update_log;
+use memry_core::crdt::epoch::HeldBody;
 use memry_core::sync::driver::{DriverConfig, SyncDriver};
 use memry_core::sync::state::PassTrigger;
 use memry_desktop::notes::identity::NotesIdentity;
@@ -162,11 +162,11 @@ async fn a_pulled_delete_over_a_bad_blob_keeps_the_text_of_the_vault_file() {
     open.vault
         .db_handle()
         .call_blocking(move |conn| {
-            update_log::append_server_update(conn, &doc, 1_000_000, &[0xff; 4], 1).map_err(
-                |error| StorageError::Failed {
+            HeldBody::never_purged(conn, &doc)
+                .and_then(|held| held.append_server_update(1_000_000, &[0xff; 4], 1))
+                .map_err(|error| StorageError::Failed {
                     what: error.to_string(),
-                },
-            )
+                })
         })
         .expect("bytes no build decodes");
 

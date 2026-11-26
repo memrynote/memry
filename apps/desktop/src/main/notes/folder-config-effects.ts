@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { folderConfigs } from '@memry/db-schema/schema/folder-configs'
 import { utcNow } from '@memry/shared/utc'
+import { hasPulledRecordsSinceStart } from '@memry/sync-client/sync-eligibility'
 import { getDatabase } from '../database'
 import { getFolders } from '../vault/notes'
 import { getCurrentVaultPath } from '../store'
@@ -38,7 +39,25 @@ export function syncFolderConfigDiscovered(folderPath: string): void {
   const db = getDatabase()
   if (!db || !folderPath) return
   if (db.select().from(folderConfigs).where(eq(folderConfigs.path, folderPath)).get()) return
-  syncFolderConfigSet(folderPath, null)
+  recordFoundFolder(db, folderPath)
+}
+
+/**
+ * A folder found on disk rather than made in the app. Before this runtime's
+ * first pull it is mostly one the pull itself is writing, whose row the server
+ * already holds. That row stays clock-less here, so the remote row applies over
+ * it instead of merging and being pushed back, and the seed after the pull
+ * pushes only the rows the server lacks (#5255).
+ */
+function recordFoundFolder(
+  db: NonNullable<ReturnType<typeof getDatabase>>,
+  folderPath: string
+): void {
+  if (hasPulledRecordsSinceStart()) return syncFolderConfigSet(folderPath, null)
+  const now = utcNow()
+  db.insert(folderConfigs)
+    .values({ path: folderPath, icon: null, createdAt: now, modifiedAt: now })
+    .run()
 }
 
 export function syncFolderConfigSet(folderPath: string, icon: string | null | undefined): void {
@@ -59,38 +78,6 @@ export function syncFolderConfigSet(folderPath: string, icon: string | null | un
       .values({ path: folderPath, icon: icon ?? null, createdAt: now, modifiedAt: now })
       .run()
     enqueueLocalSyncCreate('folder_config', folderPath)
-  }
-}
-
-/**
- * Folders the app itself is renaming or deleting. The watcher's unlinkDir for
- * such a folder arrives while the app is still moving notes, before it re-keys
- * or deletes the rows, so the watcher must leave these paths to the app
- * instead of tombstoning their rows as an outside delete (#2850).
- */
-const appFolderChanges = new Map<string, number>()
-
-export function isAppFolderChange(folderPath: string): boolean {
-  for (const owned of appFolderChanges.keys()) {
-    if (folderPath === owned || folderPath.startsWith(`${owned}/`)) return true
-  }
-  return false
-}
-
-/** Marks `folderPaths` as app-owned until `change` settles. */
-export async function withAppFolderChange<T>(
-  folderPaths: string[],
-  change: () => Promise<T>
-): Promise<T> {
-  for (const p of folderPaths) appFolderChanges.set(p, (appFolderChanges.get(p) ?? 0) + 1)
-  try {
-    return await change()
-  } finally {
-    for (const p of folderPaths) {
-      const count = (appFolderChanges.get(p) ?? 1) - 1
-      if (count > 0) appFolderChanges.set(p, count)
-      else appFolderChanges.delete(p)
-    }
   }
 }
 
@@ -174,7 +161,7 @@ export async function backfillFolderConfigs(): Promise<number> {
   let queued = 0
   for (const folder of await getFolders()) {
     if (known.has(folder.path)) continue
-    syncFolderConfigCreate(folder.path)
+    recordFoundFolder(db, folder.path)
     queued += 1
   }
 

@@ -39,12 +39,14 @@
 //! (chapter 13 §13.2). **This file must not learn an item type's name**: the
 //! one dispatch lives there, so that a route added later cannot forget it.
 
-use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 
 use serde_json::{Value as Json, json};
 
+use rusqlite::Connection;
+
+use crate::api::errors::StorageError;
 use crate::crypto::agent_envelope::AtRestKey;
 use crate::protocol::envelope::{EnvelopeError, RecordEnvelope};
 use crate::protocol::http::{ApiRequest, Auth, HttpClient, SYNC_TYPES_HEADER, VAULT_ID_HEADER};
@@ -60,7 +62,7 @@ use super::feed_restart;
 use super::hardening::orphans::OrphanRepair;
 use super::hardening::purged::{self, SignerKeys};
 use super::hardening::stale_cursor::{self, StaleCursor};
-use super::note_body_feed::{self, NOTE_BODY_SYNC_TYPE};
+use super::note_body_feed::NOTE_BODY_SYNC_TYPE;
 
 use super::store::{self, RECORD_CURSOR_SCOPE};
 
@@ -83,6 +85,14 @@ pub const MAX_PULL_IDS: usize = 100;
 /// item, never a dropped page.
 pub trait RecordCipher: Send + Sync {
     fn open(&self, envelope: &RecordEnvelope) -> Result<Vec<u8>, EnvelopeError>;
+
+    /// The Ed25519 public key of `device_id`, which a purged tombstone's
+    /// delete attestation verifies under (chapter 04 §4.8.4, chapter 05
+    /// §5.12.3). `None` when the signer is unknown, so the marker deletes
+    /// nothing.
+    fn signing_key(&self, _device_id: &str) -> Option<Vec<u8>> {
+        None
+    }
 }
 
 pub use super::pull_report::{PullError, PullReport};
@@ -91,6 +101,10 @@ mod apply_step;
 mod items;
 
 pub use super::feed_restart::{META_CURSOR_SKIP_REPAIR, META_RECORD_DECLARATION};
+
+mod shared_apply;
+
+use shared_apply::IdItems;
 
 /// The pull loop. One per vault; cheap to clone through the `Arc`s it holds.
 pub struct PullLoop {
@@ -119,8 +133,8 @@ pub struct PullLoop {
     orphans: Arc<OrphanRepair>,
     /// The keys purged tombstones verify under ([`PullLoop::with_signer_keys`]).
     signer_keys: Option<Arc<dyn SignerKeys>>,
-    /// The vault a delete reads a note's file in ([`PullLoop::with_vault_root`]).
-    vault_root: Option<PathBuf>,
+    /// The vault a delete reads a note's file in ([`PullLoop::with_vault_files`]).
+    vault_files: Option<super::delete_keep::VaultFiles>,
 }
 
 impl PullLoop {
@@ -145,7 +159,7 @@ impl PullLoop {
             stale_cursor: None,
             orphans: Arc::default(),
             signer_keys: None,
-            vault_root: None,
+            vault_files: None,
         }
     }
 
@@ -233,21 +247,14 @@ impl PullLoop {
         self
     }
 
-    /// The vault folder whose files hold the notes' bodies (desktop). A delete
-    /// over a body log that does not replay keeps the note's file text
-    /// instead ([`super::delete_keep`], #5343).
-    pub fn with_vault_root(mut self, root: PathBuf) -> Self {
-        self.vault_root = Some(root);
-        self
-    }
-
     /// The `X-Memry-Vault-Id` header's value, when a vault is selected (§5.2).
     pub fn with_vault(mut self, vault_id: &str) -> Self {
         self.vault_id = Some(vault_id.to_owned());
         self
     }
 
-    /// The vault [`PullLoop::with_vault`] selected.
+    /// The vault [`PullLoop::with_vault`] selected, which a purged marker's
+    /// attestation must name (chapter 04 §4.8.4, #5247).
     pub fn vault_id(&self) -> Option<&str> {
         self.vault_id.as_deref()
     }
@@ -397,8 +404,9 @@ impl PullLoop {
 
         let fetch = uncovered_ids(&page, &ids);
 
-        self.take_items(std::mem::take(&mut page.inline), &mut report, &mut pending)
-            .await?;
+        // Each chunk decodes while the next one's request is out (#5231).
+        let inline = std::mem::take(&mut page.inline);
+        let mut decoding = vec![self.start_items(inline, &mut report).await?];
         let mut markers = purged::Entries::default();
         for chunk in fetch.chunks(MAX_PULL_IDS) {
             let mut body = self.fetch_bodies(chunk).await?;
@@ -408,13 +416,15 @@ impl PullLoop {
                 // contract regression. Nothing from the page is applied and the
                 // cursor holds, so the page is still there to re-pull once the
                 // server is fixed; the run is refused so no success is written.
+                self.take_decoded(decoding, &mut report).await?;
                 report.dropped_pages += 1;
                 report.refused = true;
                 report.cursor = cursor;
                 return Ok(report);
             };
-            self.take_items(items, &mut report, &mut pending).await?;
+            decoding.push(self.start_items(items, &mut report).await?);
         }
+        pending.extend(self.take_decoded(decoding, &mut report).await?);
         let named = self.take_markers(markers, from_zero, &mut pending).await?;
 
         // §5.13: rank, then a **stable** sort, so two items of the same rank
@@ -441,53 +451,37 @@ impl PullLoop {
         // settles the debts (#2297 review A-7).
         let owe_bodies = self.bodies.is_some();
         let mut feed = AppliedFeed::default();
-        let landed = async {
-            let outcomes = self
-                .apply_all(pending, Vec::new(), owe_bodies, &mut feed)
-                .await?;
-            report.applied += outcomes.applied;
-            report.deleted += outcomes.deleted;
-            report.skipped += outcomes.skipped;
-            report.corrupt += outcomes.corrupt;
-            report.expired += outcomes.expired;
-            report.purged_documents.extend(outcomes.purged_documents);
-            // §5.14's breaker, all three conditions or none.
-            let yielded = report.applied + report.deleted + report.skipped + report.expired;
-            report.refused = yielded == 0 && report.corrupt > 0 && !ids.is_empty();
-            // A refused page at the head is still the head: the cursor moves past it, so a
-            // run from cursor 0 ends there and the next run's markers apply (§5.12.3).
-            let at_head = !report.has_more;
-
-            // §5.11: only now, and in the transaction that lands the bodies.
-            let advanced = page.next_cursor.clone().or(cursor);
-            let stored = advanced.clone();
-            report.advanced_documents = self
-                .db
-                .call(move |conn| {
-                    // Stamped under the writer, as `body_pull::store_update` says why.
-                    note_body_feed::land_and_advance(
-                        conn,
-                        bodies,
-                        stored.as_deref(),
-                        at_head,
-                        now_ms(),
-                    )
-                })
-                .await?;
-            report.cursor = advanced;
-            if let Some(observers) = &self.observers {
-                observers
-                    .bodies_applied(report.advanced_documents.clone())
-                    .await;
-            }
-            Ok::<(), PullError>(())
-        }
-        .await;
-        // Each record committed on its own, so a failure after some of them
-        // still tells those: a re-pull reports them `Skipped`, and an observer
-        // that missed them now would never write their files (#3534).
+        let requested = !ids.is_empty();
+        let advanced = page.next_cursor.clone().or(cursor);
+        let advance = apply_step::Advance {
+            bodies,
+            cursor: advanced.clone(),
+            at_head: !report.has_more,
+        };
+        let (outcomes, advanced_documents) = self
+            .apply_all(pending, owe_bodies, Some(advance), &mut feed)
+            .await?;
+        report.applied += outcomes.applied;
+        report.deleted += outcomes.deleted;
+        report.skipped += outcomes.skipped;
+        report.corrupt += outcomes.corrupt;
+        report.expired += outcomes.expired;
+        report.purged_documents.extend(outcomes.purged_documents);
+        // §5.14's breaker, all three conditions or none.
+        report.refused = breaker(
+            report.applied + report.deleted + report.skipped + report.expired,
+            report.corrupt,
+            requested,
+        );
+        report.advanced_documents = advanced_documents;
+        report.cursor = advanced;
+        // Told after the page committed, never inside it: an observer reads the row.
         self.tell(feed).await;
-        landed?;
+        if let Some(observers) = &self.observers {
+            observers
+                .bodies_applied(report.advanced_documents.clone())
+                .await;
+        }
 
         Ok(report)
     }
@@ -502,33 +496,22 @@ impl PullLoop {
     /// other rule does: per-item validation, the §5.13 apply order, and one
     /// corrupt item never poisoning its chunk mates.
     pub async fn fetch_ids(&self, ids: &[String]) -> Result<PullReport, PullError> {
-        let mut report = PullReport::default();
-        let mut pending: Vec<Pending> = Vec::with_capacity(ids.len());
-
-        let mut markers = purged::Entries::default();
-        for chunk in ids.chunks(MAX_PULL_IDS) {
-            let mut body = self.fetch_bodies(chunk).await?;
-            markers.read(&body, chunk);
-            let Some(items) = Self::pulled_items(&mut body) else {
-                report.dropped_pages += 1;
-                continue;
-            };
-            self.take_items(items, &mut report, &mut pending).await?;
-        }
-        self.take_markers(markers, false, &mut pending).await?;
-
-        pending.sort_by_key(|item| apply::apply_rank(item.item_type()));
-        let mut feed = AppliedFeed::default();
-        let applied = self.apply_all(pending, Vec::new(), true, &mut feed).await;
-        self.tell(feed).await;
-        let outcomes = applied?;
-        report.applied += outcomes.applied;
-        report.deleted += outcomes.deleted;
-        report.skipped += outcomes.skipped;
-        report.corrupt += outcomes.corrupt;
-        report.expired += outcomes.expired;
-        report.purged_documents.extend(outcomes.purged_documents);
-        Ok(report)
+        let IdItems {
+            mut report,
+            mut pending,
+            markers,
+            answered,
+            ..
+        } = self.fetch_id_items(ids, false).await?;
+        let named = self.take_markers(markers, false, &mut pending).await?;
+        // A chunk with no envelope is a server fault counted in
+        // `dropped_pages`, so only the answered chunks' ids can be uncovered
+        // (#5492).
+        report.uncovered = answered
+            .iter()
+            .filter(|id| !typed_covers(&pending, id) && !named.contains(*id))
+            .count();
+        self.apply_fetched(report, pending).await
     }
 
     async fn fetch_changes(
@@ -576,6 +559,23 @@ impl PullLoop {
         }
         request
     }
+}
+
+/// Fails the page when SQLite rolled its transaction back on its own: writing
+/// on would autocommit the cursor without the records it names.
+pub(crate) fn still_open(conn: &Connection) -> Result<(), StorageError> {
+    if conn.is_autocommit() {
+        return Err(StorageError::Failed {
+            what: "the page's transaction was rolled back".to_owned(),
+        });
+    }
+    Ok(())
+}
+
+/// §5.14's breaker: a page that requested items, yielded none and met
+/// corruption is refused.
+fn breaker(yielded: usize, corrupt: usize, requested: bool) -> bool {
+    yielded == 0 && corrupt > 0 && requested
 }
 
 fn typed_covers(pending: &[Pending], id: &str) -> bool {

@@ -1,9 +1,14 @@
 //! What the open vault's sync tells the rest of the app: the account signals the account service
-//! turns into the session-expired, revoked and linking events (Step 19), and the pull counter
-//! tests and e2e commands wait on.
+//! turns into the session-expired, revoked and linking events (Step 19), the pull counter
+//! tests and e2e commands wait on, and the verdict and catch-up facts the Readwise pull gate
+//! reads (`sync-eligibility.ts`, `engine.ts` `isCaughtUpWithServer`).
+
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use serde::Serialize;
 use tokio::sync::{broadcast, watch};
+
+use super::gate::{GateInputs, VaultBinding};
 
 /// `SessionExpiredReason` in `ipc-events.ts`, the ones sync produces.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, specta::Type)]
@@ -76,6 +81,8 @@ impl AuthSignals {
 pub(super) struct Signals {
     auth: AuthSignals,
     pulls: watch::Sender<u64>,
+    decided: AtomicBool,
+    caught_up: AtomicBool,
 }
 
 impl Signals {
@@ -83,6 +90,8 @@ impl Signals {
         Self {
             auth,
             pulls: watch::Sender::new(0),
+            decided: AtomicBool::new(false),
+            caught_up: AtomicBool::new(false),
         }
     }
 
@@ -108,5 +117,30 @@ impl Signals {
         // The sender lives as long as `self`, so the wait cannot fail.
         let seen = pulls.wait_for(|n| *n > after).await.map(|n| *n);
         seen.unwrap_or(after)
+    }
+
+    /// The gate answered for the open vault (`markSyncEligible` / `markSyncIneligible`). A
+    /// keychain that did not answer, a vault list not fetched yet and a binding the user has
+    /// not chosen are no answer: sync may still start, so a Readwise run waits.
+    pub(super) fn decide(&self, inputs: &GateInputs, keychain_unavailable: bool) {
+        let pending = matches!(
+            inputs.binding,
+            VaultBinding::Unknown | VaultBinding::NeedsDecision
+        );
+        let open = keychain_unavailable || (inputs.auth.signed_in && pending);
+        self.decided.store(!open, Ordering::SeqCst);
+    }
+
+    pub(super) fn decided(&self) -> bool {
+        self.decided.load(Ordering::SeqCst)
+    }
+
+    /// The last pass ended without an error and online (`lastRunCaughtUp`).
+    pub(super) fn set_caught_up(&self, caught_up: bool) {
+        self.caught_up.store(caught_up, Ordering::SeqCst);
+    }
+
+    pub(super) fn caught_up(&self) -> bool {
+        self.caught_up.load(Ordering::SeqCst)
     }
 }

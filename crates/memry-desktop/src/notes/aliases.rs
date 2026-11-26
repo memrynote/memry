@@ -80,41 +80,18 @@ impl NotesService {
                 Precondition::Held,
                 ChangeSource::AppEdit,
                 |text| {
-                    let parsed = parse_markdown_note(text)?;
-                    let read = match &parsed.frontmatter {
-                        YamlValue::Map(map) => (**map).clone(),
-                        _ if parsed.raw_frontmatter_block.is_none() => YamlMap::new(),
-                        // A top level that is a list or a scalar is the author's; no key goes in.
-                        _ => return Err(NotesError::FrontmatterNotAMap),
-                    };
-                    let before = normalize_aliases(&title, &aliases(&read));
-                    let after = apply_alias_delta(&title, &before, &input.add, &input.remove);
-                    if after == before {
-                        *names.borrow_mut() = Some((before, false));
-                        return Ok(None);
-                    }
-                    let mut next = read.clone();
-                    match after.is_empty() {
-                        true => {
-                            next.remove("aliases");
-                        }
-                        false => {
-                            let items = after.iter().cloned().map(YamlValue::String).collect();
-                            next.insert("aliases".to_owned(), YamlValue::seq(items));
-                        }
-                    }
-                    *names.borrow_mut() = Some((after, true));
-                    let body = parsed.content.clone();
-                    Ok(Some(serialize_updated_note(
-                        parsed, &read, next, &body, true,
-                    )?))
+                    let (after, written) = with_aliases(text, &title, |before| {
+                        apply_alias_delta(&title, before, &input.add, &input.remove)
+                    })?;
+                    *names.borrow_mut() = Some((after, written.is_some()));
+                    Ok(written)
                 },
                 // Under the lane once the file holds the edit, before the note event.
                 || {
                     if let Some((after, true)) = names.borrow().as_ref() {
                         mirror(&writer, id, after)?;
                     }
-                    Ok(false)
+                    Ok::<_, NotesError>(false)
                 },
                 &mut || {},
             )?;
@@ -135,6 +112,44 @@ impl NotesService {
             }
         })
     }
+}
+
+/// The file `text` with its `aliases` key set to `edit` of the list it holds, normalized
+/// against `title` (a note's title, a day's date): the list after the edit, and the new text,
+/// `None` when the list did not change. Only that key changes: the whole list, or no key once it
+/// is empty; every other key keeps its lines and comments, and the body is not touched
+/// (`serialize_updated_note`). The in-app edit writes with it, and so does a record strictly
+/// newer than its file when the file was first named (`vault::writeback::place`).
+pub(crate) fn with_aliases(
+    text: &str,
+    title: &str,
+    edit: impl FnOnce(&[String]) -> Vec<String>,
+) -> Result<(Vec<String>, Option<String>), NotesError> {
+    let parsed = parse_markdown_note(text)?;
+    let read = match &parsed.frontmatter {
+        YamlValue::Map(map) => (**map).clone(),
+        _ if parsed.raw_frontmatter_block.is_none() => YamlMap::new(),
+        // A top level that is a list or a scalar is the author's; no key goes in.
+        _ => return Err(NotesError::FrontmatterNotAMap),
+    };
+    let before = normalize_aliases(title, &aliases(&read));
+    let after = edit(&before);
+    if after == before {
+        return Ok((before, None));
+    }
+    let mut next = read.clone();
+    match after.is_empty() {
+        true => {
+            next.remove("aliases");
+        }
+        false => {
+            let items = after.iter().cloned().map(YamlValue::String).collect();
+            next.insert("aliases".to_owned(), YamlValue::seq(items));
+        }
+    }
+    let body = parsed.content.clone();
+    let written = serialize_updated_note(parsed, &read, next, &body, true)?;
+    Ok((after, Some(written)))
 }
 
 /// What the names are normalized against: a note's title, a journal day's date; `None` for no

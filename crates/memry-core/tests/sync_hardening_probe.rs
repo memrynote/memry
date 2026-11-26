@@ -84,7 +84,7 @@ fn marker(clock: Json, signer: Option<(&str, u8)>) -> Json {
         )
         .expect("an attestable delete");
         entry["signerDeviceId"] = json!(device);
-        entry["deleteAttestation"] = json!(sign(&claim, &keypair(seed).1).expect("signed"));
+        entry["deleteAttestation"] = json!(sign(&claim, None, &keypair(seed).1).expect("signed"));
     }
     json!({ "items": [], "purgedTombstones": [entry] })
 }

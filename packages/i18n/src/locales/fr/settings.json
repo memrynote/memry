@@ -1232,6 +1232,10 @@
     "loadingAria": "Chargement des appareils",
     "none": "Aucun appareil associé pour le moment",
     "linkNew": "Associer un nouvel appareil",
+    "linkNeedsPlan": {
+      "title": "L'association nécessite un forfait de synchronisation",
+      "description": "Un appareil associé ne voit vos notes que lorsque la synchronisation est activée. Sans forfait, connectez-vous sur cet appareil avec votre phrase de récupération, et il conservera son propre coffre."
+    },
     "thisDevice": "Cet appareil",
     "lastSeen": "Vu pour la dernière fois il y a {time}",
     "linked": "Associé il y a {time}",

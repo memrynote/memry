@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import {
   createHashTagInlinePlugin,
-  matchHashTagImmediate,
+  matchHashTagBeforeCursor,
   matchTrailingTagChars,
   isTagChar,
   extendTagName,
@@ -9,46 +9,62 @@ import {
 } from './hash-tag-inline-plugin'
 
 describe('hash-tag-inline-plugin', () => {
-  describe('matchHashTagImmediate', () => {
+  describe('matchHashTagBeforeCursor', () => {
     it('matches # followed by a single letter at end of text', () => {
-      expect(matchHashTagImmediate('#a')).toBe('a')
-    })
-
-    it('matches at start of text', () => {
-      expect(matchHashTagImmediate('#z')).toBe('z')
+      expect(matchHashTagBeforeCursor('#a')).toBe('a')
     })
 
     it('matches after whitespace', () => {
-      expect(matchHashTagImmediate('hello #b')).toBe('b')
+      expect(matchHashTagBeforeCursor('hello #b')).toBe('b')
     })
 
     it('matches after object replacement char (inline node before #)', () => {
-      expect(matchHashTagImmediate('\ufffc #c')).toBe('c')
+      expect(matchHashTagBeforeCursor('\ufffc #c')).toBe('c')
     })
 
     it('returns null when no hash', () => {
-      expect(matchHashTagImmediate('abc')).toBeNull()
+      expect(matchHashTagBeforeCursor('abc')).toBeNull()
     })
 
     it('returns null for hash only (no letter)', () => {
-      expect(matchHashTagImmediate('#')).toBeNull()
+      expect(matchHashTagBeforeCursor('#')).toBeNull()
     })
 
-    it('never starts a tag with a digit', () => {
-      expect(matchHashTagImmediate('#1')).toBeNull()
-      expect(matchHashTagImmediate('hello #5')).toBeNull()
+    it('waits for a letter in a tag that starts with a digit', () => {
+      expect(matchHashTagBeforeCursor('#1')).toBeNull()
+      expect(matchHashTagBeforeCursor('hello #2024')).toBeNull()
+      expect(matchHashTagBeforeCursor('#2024년')).toBe('2024년')
     })
 
     it('returns null when hash not preceded by whitespace or start', () => {
-      expect(matchHashTagImmediate('word#a')).toBeNull()
+      expect(matchHashTagBeforeCursor('word#a')).toBeNull()
+      expect(matchHashTagBeforeCursor('日本語#タグ')).toBeNull()
     })
 
-    it('returns null for multi-char tag (already a word)', () => {
-      expect(matchHashTagImmediate('#abc')).toBeNull()
+    it('reads a whole committed or pasted tag', () => {
+      expect(matchHashTagBeforeCursor('#abc')).toBe('abc')
+      expect(matchHashTagBeforeCursor('x #a/b')).toBe('a/b')
+      expect(matchHashTagBeforeCursor('#a/')).toBeNull()
+    })
+
+    it('reads tags in every script', () => {
+      for (const tag of [
+        '퓨리',
+        'привет',
+        'タグ',
+        '中文',
+        'हिन्दी',
+        'ภาษาไทย',
+        'عربي',
+        'İş',
+        'café'
+      ]) {
+        expect(matchHashTagBeforeCursor(`note #${tag}`)).toBe(tag)
+      }
     })
 
     it('preserves case', () => {
-      expect(matchHashTagImmediate('#A')).toBe('A')
+      expect(matchHashTagBeforeCursor('#A')).toBe('A')
     })
   })
 
@@ -71,6 +87,18 @@ describe('hash-tag-inline-plugin', () => {
     it('accepts hyphen and underscore', () => {
       expect(isTagChar('-')).toBe(true)
       expect(isTagChar('_')).toBe(true)
+    })
+
+    it('accepts letters and combining marks in every script', () => {
+      for (const char of ['퓨', 'п', 'タ', '中', 'ह', 'ि', '्', '่', 'ع', 'ş', 'é']) {
+        expect(isTagChar(char)).toBe(true)
+      }
+    })
+
+    it('rejects punctuation in every script', () => {
+      for (const char of ['。', '，', '、', '¿', '،']) {
+        expect(isTagChar(char)).toBe(false)
+      }
     })
 
     it('rejects space', () => {
@@ -165,6 +193,11 @@ describe('hash-tag-inline-plugin', () => {
 
     it('matches hyphens and underscores', () => {
       expect(matchTrailingTagChars('\ufffcmy-tag_v2')).toEqual({ chars: 'my-tag_v2', offset: 0 })
+    })
+
+    it('matches letters in every script', () => {
+      expect(matchTrailingTagChars('a \ufffc리')).toEqual({ chars: '리', offset: 2 })
+      expect(matchTrailingTagChars('\ufffcवी')).toEqual({ chars: 'वी', offset: 0 })
     })
 
     it('only matches the last object replacement char', () => {
@@ -282,7 +315,7 @@ describe('hash-tag-inline-plugin', () => {
       }
 
       const result = plugin.spec.appendTransaction?.(
-        [{ docChanged: true, getMeta: () => false }] as never,
+        [{ docChanged: true, getMeta: () => undefined }] as never,
         {} as never,
         newState as never
       )
@@ -320,7 +353,7 @@ describe('hash-tag-inline-plugin', () => {
       }
 
       const result = plugin.spec.appendTransaction?.(
-        [{ docChanged: true, getMeta: () => false }] as never,
+        [{ docChanged: true, getMeta: () => undefined }] as never,
         {} as never,
         newState as never
       )
@@ -349,7 +382,7 @@ describe('hash-tag-inline-plugin', () => {
 
       expect(
         plugin.spec.appendTransaction?.(
-          [{ docChanged: false, getMeta: () => false }] as never,
+          [{ docChanged: false, getMeta: () => undefined }] as never,
           {} as never,
           baseState as never
         )
@@ -357,7 +390,7 @@ describe('hash-tag-inline-plugin', () => {
 
       expect(
         plugin.spec.appendTransaction?.(
-          [{ docChanged: true, getMeta: () => false }] as never,
+          [{ docChanged: true, getMeta: () => undefined }] as never,
           {} as never,
           {
             ...baseState,
@@ -374,7 +407,7 @@ describe('hash-tag-inline-plugin', () => {
 
       expect(
         plugin.spec.appendTransaction?.(
-          [{ docChanged: true, getMeta: () => false }] as never,
+          [{ docChanged: true, getMeta: () => undefined }] as never,
           {} as never,
           baseState as never
         )
@@ -382,7 +415,7 @@ describe('hash-tag-inline-plugin', () => {
 
       expect(
         plugin.spec.appendTransaction?.(
-          [{ docChanged: true, getMeta: () => false }] as never,
+          [{ docChanged: true, getMeta: () => undefined }] as never,
           {} as never,
           {
             ...baseState,

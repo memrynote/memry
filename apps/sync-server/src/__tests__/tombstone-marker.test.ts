@@ -421,6 +421,33 @@ describe('cleanupExpiredTombstones sheds the payload and keeps the row (#2302)',
     })
     expect(storageUsed()).toBe(usedBefore)
   })
+
+  // #5247: compaction reads the shed's expiry to decide whether a lost record
+  // blob is a hole it may pass. A retention that grows between the shed's
+  // select and its mark must keep the row, or the shed empties a row that
+  // compaction already passed as unexpired.
+  it('skips a row whose retention grew between its select and its mark: no marker, no refund', async () => {
+    const app = buildApp()
+    const before = await expiredTombstone(app)
+    const originalDelete = storage.delete.bind(storage)
+    vi.spyOn(storage, 'delete').mockImplementation(async (key) => {
+      harness.raw
+        .prepare('UPDATE sync_entitlements SET version_history_days = 3650 WHERE user_id = ?')
+        .run(USER_ID)
+      return originalDelete(key)
+    })
+    const usedBefore = storageUsed()
+
+    expect(await cleanupExpiredTombstones(harness.db, storage)).toBe(0)
+
+    expect(row('task-t')).toMatchObject({
+      payload_purged_at: null,
+      signature: before.signature,
+      size_bytes: before.size_bytes
+    })
+    expect(row('task-t').blob_key).not.toBe('')
+    expect(storageUsed()).toBe(usedBefore)
+  })
 })
 
 describe('a marker keeps refusing resurrection (#2302)', () => {

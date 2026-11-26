@@ -13,8 +13,10 @@ struct CalendarSmallSheetFrame<Actions: View>: View {
     let kind: String
     var detail: String?
     var footnote: String?
+    let detents: Set<PresentationDetent>
     @ViewBuilder let actions: () -> Actions
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.calendarSheetLayout) private var layout
 
     var body: some View {
         VStack(alignment: .leading, spacing: Tokens.Space.medium) {
@@ -59,11 +61,20 @@ struct CalendarSmallSheetFrame<Actions: View>: View {
         }
         .padding(.horizontal, Tokens.Space.inset + Tokens.Space.tight)
         .padding(.top, Tokens.Space.inset)
-        // Regular width ignores the fractional detents: a form sheet as
-        // tall as its content instead of a mostly empty one (#4341).
         .padding(.bottom, Tokens.Space.inset)
+        // Regular width: a form sheet as tall as its content instead of a
+        // mostly empty one (#4341). It scales a fractional detent by that
+        // fitted height, so only `.large` shows the whole content there.
+        // Inside the sheet the size classes read compact on iPad too, so
+        // the presenter's layout decides.
         .presentationSizing(.form.fitted(horizontal: false, vertical: true))
+        .presentationDetents(layout == .regular ? [.large] : detents)
     }
+}
+
+extension EnvironmentValues {
+    /// The layout of the screen presenting the sheet.
+    @Entry var calendarSheetLayout = LayoutWidth.compact
 }
 
 /// Artboard 20.
@@ -79,7 +90,8 @@ struct CalendarNoteSheet: View {
             item: item,
             kind: isDateReminder ? CalendarCopy.dateReminderKind : CalendarCopy.noteKind,
             detail: [item.descriptionPreview, CalendarSheetText.when(item)].compactMap { $0 }.joined(separator: " · "),
-            footnote: CalendarCopy.noteFootnote
+            footnote: CalendarCopy.noteFootnote,
+            detents: [.fraction(0.4), .medium]
         ) {
             Button {
                 // The note, opened on the More stack (Notes has no anchor
@@ -96,7 +108,6 @@ struct CalendarNoteSheet: View {
             .tint(Tokens.Tint.base.color)
             .accessibilityIdentifier("calendar.note.open")
         }
-        .presentationDetents([.fraction(0.4), .medium])
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("calendar.sheet.note")
     }
@@ -117,7 +128,8 @@ struct CalendarSnoozeSheet: View {
             item: item,
             kind: "\(CalendarCopy.snoozeKind) · \(CalendarCopy.backAt(CalendarItemStyle.time(item.startDate)))",
             detail: item.descriptionPreview,
-            footnote: CalendarCopy.snoozeFootnote
+            footnote: CalendarCopy.snoozeFootnote,
+            detents: [.fraction(0.5), .medium]
         ) {
             VStack(spacing: 0) {
                 row(CalendarCopy.openInInbox, systemImage: "tray") {
@@ -149,7 +161,6 @@ struct CalendarSnoozeSheet: View {
                 Task { await inbox?.snooze([item.sourceId], until: date); await store.refreshAllWindows(); dismiss() }
             }
         }
-        .presentationDetents([.fraction(0.5), .medium])
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("calendar.sheet.snooze")
     }
@@ -183,9 +194,9 @@ struct CalendarReminderSheet: View {
         CalendarSmallSheetFrame(
             item: item,
             kind: [CalendarCopy.reminderKind, item.source.title].filter { !$0.isEmpty }.joined(separator: " · "),
-            detail: [CalendarSheetText.when(item), item.descriptionPreview].compactMap { $0 }.joined(separator: " · ")
+            detail: [CalendarSheetText.when(item), item.descriptionPreview].compactMap { $0 }.joined(separator: " · "),
+            detents: [.fraction(0.3)]
         ) { EmptyView() }
-            .presentationDetents([.fraction(0.3)])
     }
 }
 

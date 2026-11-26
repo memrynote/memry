@@ -24,6 +24,7 @@ use rusqlite::{Connection, params};
 
 use crate::api::errors::StorageError;
 use crate::domain::tasks::Inbound;
+use crate::storage::nested_tx;
 use crate::storage::repositories::sync_items::{self, ApplyOutcome, InboundRecord};
 use crate::sync::outbox;
 
@@ -96,7 +97,7 @@ pub(crate) fn store_merged(
     record: &InboundRecord,
     now_ms: i64,
 ) -> Result<Inbound, StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let record = &InboundRecord {
         deleted_at: queued_tombstone(&tx, record)?,
         ..record.clone()

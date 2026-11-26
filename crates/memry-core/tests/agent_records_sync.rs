@@ -250,6 +250,7 @@ async fn agent_pending_record_pushes_plain_with_no_key() {
         db.clone(),
         declaration(),
         recording.clone(),
+        "device-a",
     )
     .with_at_rest_key(fixture.vault.at_rest_key())
     .drain_wave()
@@ -326,6 +327,7 @@ async fn agent_text_never_reaches_the_database_file_and_pushes_plain() {
         db.clone(),
         declaration(),
         recording.clone(),
+        "device-a",
     )
     .with_at_rest_key(key.clone())
     .drain_wave()
@@ -364,6 +366,7 @@ async fn agent_text_never_reaches_the_database_file_and_pushes_plain() {
         db.clone(),
         declaration(),
         recording.clone(),
+        "device-a",
     )
     .with_at_rest_key(key)
     .drain_wave()
@@ -462,6 +465,7 @@ async fn agent_record_under_another_key_errors_holds_and_is_never_sealed_again()
         db.clone(),
         declaration(),
         recording.clone(),
+        "device-a",
     )
     .with_at_rest_key(key)
     .drain_wave()

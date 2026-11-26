@@ -139,9 +139,9 @@ Two SQLite databases via better-sqlite3 + Drizzle:
 
 ## Cryptography
 
-XChaCha20-Poly1305 + Ed25519 + Argon2id, all via libsodium. Per-device sealing of the vault key. Constant-time comparisons.
+XChaCha20-Poly1305 + Ed25519 + Argon2id, all via libsodium. The encryption keys derive from a 24-word recovery phrase. Constant-time comparisons.
 
-→ [Cryptography](/architecture/cryptography)
+→ [Cryptography](/architecture/cryptography) · [Security White Paper](/architecture/security-white-paper)
 
 ## IPC Boundary
 

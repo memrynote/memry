@@ -2,7 +2,7 @@
 //! (`apps/desktop/src/main/ipc/recents-handlers.ts`,
 //! `main/database/queries/recently-opened.ts`).
 //!
-//! Device-local UI state in `data.db` (migration 0035): never synced, gone
+//! Device-local UI state in `data.db` (migration 0036): never synced, gone
 //! with the vault on sign-out. A row names an item and stores no title, so
 //! [`list`] resolves each item when it reads and skips one that is gone.
 
@@ -12,6 +12,7 @@ use serde_json::Value;
 use crate::api::errors::StorageError;
 use crate::domain::canvas;
 use crate::domain::inbox::filing::note_path;
+use crate::storage::nested_tx;
 use crate::storage::repositories::{StoredPayload, sync_items};
 
 /// Rows kept per device (`RECENTLY_OPENED_LIMIT`, `recents-api.ts:50`).
@@ -57,7 +58,7 @@ pub fn record(
             what: format!("not a recently opened item: {item_type}"),
         });
     }
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     tx.execute(
         "INSERT INTO recently_opened (item_type, item_id, opened_at)
          VALUES (?1, ?2, max(?3, COALESCE((SELECT max(opened_at) + 1 FROM recently_opened), ?3)))
@@ -318,7 +319,7 @@ mod tests {
         });
     }
 
-    /// 0035 adds the trail to a `data.db` an older build wrote, and it works
+    /// 0036 adds the trail to a `data.db` an older build wrote, and it works
     /// on it straight away.
     #[test]
     fn an_older_data_database_gains_an_empty_trail() {

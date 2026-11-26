@@ -166,6 +166,7 @@ async fn a_pulled_snapshot_still_reaches_a_locked_open_note_as_remote() {
         "signerDeviceId": "device-b", "revision": "r1",
     });
     let transport = FakeTransport::new(vec![
+        crate::http_fakes::probe_refused(),
         response(200, &snapshot.to_string()),
         response(200, &json!({ "updates": [], "hasMore": false }).to_string()),
     ]);

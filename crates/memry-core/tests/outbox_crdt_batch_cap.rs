@@ -171,6 +171,7 @@ async fn many_large_pending_updates_drain_under_the_body_ceiling() {
         db.clone(),
         Declaration::subscribed(),
         PackSealer::new(),
+        "device-a",
     );
 
     let report = push.drain_wave().await.expect("the wave drains");

@@ -21,6 +21,7 @@ use crate::api::errors::StorageError;
 use crate::domain::notes::{
     failed, insert_local, iso, next_clock, require_payload, tombstone_local,
 };
+use crate::storage::nested_tx;
 use crate::storage::repositories::{Change, sync_items};
 use crate::sync::clock::{self, VectorClock};
 use crate::sync::outbox;
@@ -317,7 +318,7 @@ pub fn promote(
     device_id: &str,
     now_ms: i64,
 ) -> Result<Result<String, PromoteRefusal>, StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let Some(mirror) = live_payload(&tx, EXTERNAL_TYPE, external_id)? else {
         return Ok(Err(PromoteRefusal::NotFound));
     };

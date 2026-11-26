@@ -140,6 +140,8 @@ mod canvas_files;
 mod canvas_folders;
 #[path = "canvas_service.rs"]
 mod canvas_service;
+#[path = "canvas_vault_id.rs"]
+mod canvas_vault_id;
 #[path = "capture_pairing.rs"]
 mod capture_pairing;
 #[path = "capture_requests.rs"]
@@ -233,6 +235,8 @@ mod index_tag_definitions;
 mod indexer_facts;
 #[path = "indexer_open_status.rs"]
 mod indexer_open_status;
+#[path = "indexer_reindex_coalesce.rs"]
+mod indexer_reindex_coalesce;
 #[path = "indexer_scan.rs"]
 mod indexer_scan;
 #[path = "ios_beta_join.rs"]
@@ -317,6 +321,8 @@ mod note_properties_outside;
 mod note_versions;
 #[path = "notes_aliases.rs"]
 mod notes_aliases;
+#[path = "notes_aliases_owed.rs"]
+mod notes_aliases_owed;
 #[path = "notes_append_blocks.rs"]
 mod notes_append_blocks;
 #[path = "notes_apply_template.rs"]
@@ -351,6 +357,8 @@ mod notes_moves;
 mod notes_moves_edges;
 #[path = "notes_outside_after_reopen.rs"]
 mod notes_outside_after_reopen;
+#[path = "notes_outside_aliases.rs"]
+mod notes_outside_aliases;
 #[path = "notes_outside_tags.rs"]
 mod notes_outside_tags;
 #[path = "notes_plain_checklists.rs"]
@@ -419,6 +427,8 @@ mod sticky_drafts;
 mod sync_backend;
 #[path = "sync_host_clients.rs"]
 mod sync_host_clients;
+#[path = "sync_pack_files.rs"]
+mod sync_pack_files;
 #[path = "tag_definitions_sync.rs"]
 mod tag_definitions_sync;
 #[path = "tag_field_rename.rs"]

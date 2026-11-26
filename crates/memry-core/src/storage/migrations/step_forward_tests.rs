@@ -1,4 +1,4 @@
-//! Each feat/tauri-v2 data migration from 18 to 23 applied to a `data.db` the build before it
+//! Each feat/tauri-v2 data migration from 19 to 24 applied to a `data.db` the build before it
 //! left: the rows it held survive, and the migration is a no-op the second time.
 
 use super::tests::table_names;
@@ -6,9 +6,9 @@ use super::*;
 use crate::storage::Db;
 
 #[test]
-fn note_snapshots_applies_to_a_version_17_database_and_keeps_its_rows() {
+fn note_snapshots_applies_to_a_version_18_database_and_keeps_its_rows() {
     let db = Db::open_in_memory().expect("open");
-    db.call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..17]))
+    db.call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..18]))
         .expect("a database as the last shipped build left it");
     db.call_blocking(|conn| {
         conn.execute(
@@ -66,9 +66,9 @@ fn note_snapshots_applies_to_a_version_17_database_and_keeps_its_rows() {
 }
 
 #[test]
-fn local_settings_applies_to_a_version_18_database_and_keeps_its_rows() {
+fn local_settings_applies_to_a_version_19_database_and_keeps_its_rows() {
     let db = Db::open_in_memory().expect("open");
-    db.call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..18]))
+    db.call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..19]))
         .expect("a database as the last shipped build left it");
     db.call_blocking(|conn| {
         conn.execute(
@@ -111,9 +111,9 @@ fn local_settings_applies_to_a_version_18_database_and_keeps_its_rows() {
 }
 
 #[test]
-fn note_files_applies_to_a_version_19_database_and_keeps_its_rows() {
+fn note_files_applies_to_a_version_20_database_and_keeps_its_rows() {
     let db = Db::open_in_memory().expect("open");
-    db.call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..19]))
+    db.call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..20]))
         .expect("a database as the last shipped build left it");
     db.call_blocking(|conn| {
         conn.execute(
@@ -150,9 +150,9 @@ fn note_files_applies_to_a_version_19_database_and_keeps_its_rows() {
 }
 
 #[test]
-fn note_positions_applies_to_a_version_20_database_and_keeps_its_rows() {
+fn note_positions_applies_to_a_version_21_database_and_keeps_its_rows() {
     let db = Db::open_in_memory().expect("open");
-    db.call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..20]))
+    db.call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..21]))
         .expect("a database as the last shipped build left it");
     db.call_blocking(|conn| {
         conn.execute(
@@ -172,7 +172,7 @@ fn note_positions_applies_to_a_version_20_database_and_keeps_its_rows() {
     assert_eq!(version, latest_version(DATA_MIGRATIONS));
     // The crash window of §A.0: the migration is a no-op the second time.
     db.call_blocking(|conn| {
-        conn.execute_batch(DATA_MIGRATIONS[20].sql)
+        conn.execute_batch(DATA_MIGRATIONS[21].sql)
             .map_err(|err| StorageError::Failed {
                 what: err.to_string(),
             })
@@ -197,9 +197,9 @@ fn note_positions_applies_to_a_version_20_database_and_keeps_its_rows() {
 }
 
 #[test]
-fn note_file_hashes_applies_to_a_version_21_database_and_names_the_hashes_rows_had() {
+fn note_file_hashes_applies_to_a_version_22_database_and_names_the_hashes_rows_had() {
     let db = Db::open_in_memory().expect("open");
-    db.call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..21]))
+    db.call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..22]))
         .expect("a database as the last shipped build left it");
     db.call_blocking(|conn| {
         conn.execute_batch(
@@ -218,7 +218,7 @@ fn note_file_hashes_applies_to_a_version_21_database_and_names_the_hashes_rows_h
     assert_eq!(version, latest_version(DATA_MIGRATIONS));
     // The crash window of §A.0: the migration is a no-op the second time.
     db.call_blocking(|conn| {
-        conn.execute_batch(DATA_MIGRATIONS[21].sql)
+        conn.execute_batch(DATA_MIGRATIONS[22].sql)
             .map_err(|err| StorageError::Failed {
                 what: err.to_string(),
             })
@@ -244,9 +244,9 @@ fn note_file_hashes_applies_to_a_version_21_database_and_names_the_hashes_rows_h
 /// feature its module is built with.
 #[cfg(feature = "markdown")]
 #[test]
-fn the_note_identity_migration_applies_to_a_version_22_database_and_answers_the_identity() {
+fn the_note_identity_migration_applies_to_a_version_23_database_and_answers_the_identity() {
     let db = Db::open_in_memory().expect("open");
-    db.call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..22]))
+    db.call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..23]))
         .expect("a database as the last build left it");
     db.call_blocking(|conn| {
         conn.execute(
@@ -264,7 +264,7 @@ fn the_note_identity_migration_applies_to_a_version_22_database_and_answers_the_
         .expect("step forward");
     assert_eq!(version, latest_version(DATA_MIGRATIONS));
     db.call_blocking(|conn| {
-        conn.execute_batch(DATA_MIGRATIONS[22].sql)
+        conn.execute_batch(DATA_MIGRATIONS[23].sql)
             .map_err(|err| StorageError::Failed {
                 what: err.to_string(),
             })

@@ -117,6 +117,21 @@ describe('createRateLimiter', () => {
     expect(c._headers['X-RateLimit-Remaining']).toBe('2')
   })
 
+  it('spends the cost of a request that does the work of several', async () => {
+    // #given a route charging 3 tokens per request against a ceiling of 5
+    const { namespace } = createNamespace()
+    const middleware = createRateLimiter({ ...options, cost: () => 3 })
+
+    // #when
+    const first = await run(middleware, namespace, { userId: 'user-1' })
+
+    // #then the first fits, the second goes over the ceiling
+    expect(first.c._headers['X-RateLimit-Remaining']).toBe('2')
+    await expect(run(middleware, namespace, { userId: 'user-1' })).rejects.toMatchObject({
+      statusCode: 429
+    })
+  })
+
   it('should allow requests exactly at the limit', async () => {
     // #given
     const { namespace } = createNamespace()

@@ -1232,6 +1232,10 @@
     "loadingAria": "Indlæser enheder",
     "none": "Ingen tilknyttede enheder endnu",
     "linkNew": "Tilknyt ny enhed",
+    "linkNeedsPlan": {
+      "title": "Tilknytning kræver et synkroniseringsabonnement",
+      "description": "En tilknyttet enhed ser kun dine noter, når synkronisering er slået til. Uden et abonnement logger du ind der med din gendannelsessætning, og enheden beholder sin egen boks."
+    },
     "thisDevice": "Denne enhed",
     "lastSeen": "Sidst set for {time} siden",
     "linked": "Tilknyttet for {time} siden",

@@ -1,10 +1,12 @@
 // Stages the Windows pack dir for `vpk [win] pack`: the Tauri binary as Memrynote.exe plus every
-// file `tauri.conf.json` lists under bundle.resources or bundle.externalBin that the build placed
-// beside the executable (the Tauri resource directory on Windows is the executable directory).
-import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, statSync } from 'node:fs'
+// file the release config (`tauri-config.mjs`) lists under bundle.resources or bundle.externalBin
+// that the build placed beside the executable (the Tauri resource directory on Windows is the
+// executable directory).
+import { cpSync, existsSync, mkdirSync, rmSync, statSync } from 'node:fs'
 import path from 'node:path'
 
 import { isMain } from './is-main.mjs'
+import { readReleaseConfig } from './tauri-config.mjs'
 
 export const WINDOWS_MAIN_EXE = 'Memrynote.exe'
 
@@ -43,7 +45,7 @@ export function stageWindowsPayload({ exeDir, exeName = WINDOWS_MAIN_EXE, config
   const missing = listCompanionPaths(config).filter((rel) => !existsSync(path.join(exeDir, rel)))
   if (missing.length > 0) {
     throw new Error(
-      `tauri.conf.json lists files the build did not place beside the exe: ${missing.join(', ')}`
+      `the release config lists files the build did not place beside the exe: ${missing.join(', ')}`
     )
   }
 
@@ -66,8 +68,7 @@ function main(argv) {
     console.error('usage: stage-payload.mjs win <target-triple> <out-dir>')
     process.exit(2)
   }
-  const tauriDir = path.resolve('apps/desktop-tauri/src-tauri')
-  const config = JSON.parse(readFileSync(path.join(tauriDir, 'tauri.conf.json'), 'utf8'))
+  const config = readReleaseConfig('windows')
   const exeDir = path.resolve('crates/target', triple, 'release')
   const staged = stageWindowsPayload({ exeDir, config, outDir: path.resolve(outDir) })
   console.log(`Staged ${staged.length} entries into ${outDir}: ${staged.join(', ')}`)

@@ -1232,6 +1232,10 @@
     "loadingAria": "Se încarcă dispozitivele",
     "none": "Încă nu există dispozitive asociate",
     "linkNew": "Asociază un dispozitiv nou",
+    "linkNeedsPlan": {
+      "title": "Asocierea necesită un plan de sincronizare",
+      "description": "Un dispozitiv asociat vede notițele tale doar când sincronizarea este activată. Fără un plan, conectează-te pe el cu fraza de recuperare și își va păstra propriul seif."
+    },
     "thisDevice": "Acest dispozitiv",
     "lastSeen": "Văzut ultima dată acum {time}",
     "linked": "Asociat acum {time}",

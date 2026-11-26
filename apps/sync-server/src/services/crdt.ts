@@ -302,6 +302,45 @@ const readPlannedUpdates = (
     )
     .bind(userId, vaultId, range.noteId, range.since, upTo)
 
+/**
+ * A document's `floor`: its highest purged sequence number, 0 when it was
+ * never purged (protocol 07 §7.4, §7.15). A reader applies a packed update
+ * only above it (protocol 08 §8.4.3), so it is read in the same batch as the
+ * updates it answers with: a purge committing between two reads cannot pair a
+ * stale floor with the re-created document's updates.
+ */
+const readFloors = (
+  db: D1Database,
+  userId: string,
+  vaultId: string,
+  noteIds: string[]
+): D1PreparedStatement[] => {
+  const perStatement = D1_MAX_BIND_PARAMS - 2
+  const statements: D1PreparedStatement[] = []
+  for (let i = 0; i < noteIds.length; i += perStatement) {
+    const chunk = noteIds.slice(i, i + perStatement)
+    statements.push(
+      db
+        .prepare(
+          `SELECT note_id, floor FROM crdt_sequence_floors
+           WHERE user_id = ? AND vault_id = ? AND note_id IN (${chunk.map(() => '?').join(', ')})`
+        )
+        .bind(userId, vaultId, ...chunk)
+    )
+  }
+  return statements
+}
+
+const floorsOf = (results: D1Result[]): Map<string, number> =>
+  new Map(
+    results.flatMap((result) =>
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- D1 rows are untyped; the shape is fixed by the SELECT in readFloors
+      ((result as D1Result<{ note_id: string; floor: number }>).results ?? []).map(
+        (row): [string, number] => [row.note_id, row.floor]
+      )
+    )
+  )
+
 export const getUpdates = async (
   db: D1Database,
   userId: string,
@@ -309,13 +348,18 @@ export const getUpdates = async (
   noteId: string,
   sinceSequence: number,
   limit = 100
-): Promise<{ updates: CrdtUpdate[]; hasMore: boolean }> => {
+): Promise<{ updates: CrdtUpdate[]; hasMore: boolean; floor: number }> => {
   const range = { noteId, since: sinceSequence }
   const [plan] = await planUpdatePage(db, userId, vaultId, [range], limit)
-  if (plan.upTo === null) return { updates: [], hasMore: plan.hasMore }
-
-  const rows = await readPlannedUpdates(db, userId, vaultId, range, plan.upTo).all<CrdtUpdate>()
-  return { updates: rows.results ?? [], hasMore: plan.hasMore }
+  const reads =
+    plan.upTo === null ? [] : [readPlannedUpdates(db, userId, vaultId, range, plan.upTo)]
+  const results = await db.batch([...reads, ...readFloors(db, userId, vaultId, [noteId])])
+  return {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- D1 rows are untyped; the shape is fixed by readPlannedUpdates
+    updates: reads.length > 0 ? ((results[0] as D1Result<CrdtUpdate>).results ?? []) : [],
+    hasMore: plan.hasMore,
+    floor: floorsOf(results.slice(reads.length)).get(noteId) ?? 0
+  }
 }
 
 /**
@@ -388,7 +432,7 @@ export const getBatchUpdates = async (
   notes: Array<{ noteId: string; since: number }>,
   limitPerNote: number
 ): Promise<{
-  notes: Record<string, { updates: CrdtUpdate[]; hasMore: boolean }>
+  notes: Record<string, { updates: CrdtUpdate[]; hasMore: boolean; floor: number }>
   snapshotMeta: Record<string, CrdtSnapshotMeta>
 }> => {
   if (notes.length === 0) return { notes: {}, snapshotMeta: {} }
@@ -400,21 +444,22 @@ export const getBatchUpdates = async (
       ? []
       : [{ noteId: note.noteId, statement: readPlannedUpdates(db, userId, vaultId, note, upTo) }]
   })
-  const statements = reads.map((read) => read.statement)
-  statements.push(
-    ...getBatchSnapshotMeta(
-      db,
-      userId,
-      vaultId,
-      notes.map((n) => n.noteId)
-    )
-  )
+  const noteIds = notes.map((n) => n.noteId)
+  const metaStatements = getBatchSnapshotMeta(db, userId, vaultId, noteIds)
+  const batchResults = await db.batch([
+    ...reads.map((read) => read.statement),
+    ...metaStatements,
+    ...readFloors(db, userId, vaultId, noteIds)
+  ])
+  const floors = floorsOf(batchResults.slice(reads.length + metaStatements.length))
 
-  const batchResults = await db.batch(statements)
-
-  const noteResults: Record<string, { updates: CrdtUpdate[]; hasMore: boolean }> = {}
+  const noteResults: Record<string, { updates: CrdtUpdate[]; hasMore: boolean; floor: number }> = {}
   notes.forEach((note, i) => {
-    noteResults[note.noteId] = { updates: [], hasMore: plans[i].hasMore }
+    noteResults[note.noteId] = {
+      updates: [],
+      hasMore: plans[i].hasMore,
+      floor: floors.get(note.noteId) ?? 0
+    }
   })
   reads.forEach((read, i) => {
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- D1 rows are untyped; the shape is fixed by the SELECT in this function
@@ -423,10 +468,10 @@ export const getBatchUpdates = async (
 
   // A note absent from this map has no server snapshot at all.
   const snapshotMeta: Record<string, CrdtSnapshotMeta> = {}
-  // Everything past the per-note statements is metadata, however many statements
-  // the bind-parameter split turned it into.
+  // Between the per-note statements and the floors is metadata, however many
+  // statements the bind-parameter split turned it into.
   const metaRows = batchResults
-    .slice(reads.length)
+    .slice(reads.length, reads.length + metaStatements.length)
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- D1 rows are untyped; the shape is fixed by the SELECT in this function
     .flatMap((result) => (result as D1Result<CrdtSnapshot>).results ?? [])
   for (const row of metaRows) {

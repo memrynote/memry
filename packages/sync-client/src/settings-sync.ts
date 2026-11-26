@@ -116,10 +116,11 @@ export class SettingsSyncManager {
     this.saveSettings(merged.settings)
     this.saveClocks(merged.fieldClocks)
 
-    // §6.5.2 P3 (#2287): the union clock must reach the server. Settings have
-    // no buildPushPayload, so a queued row is pushed as frozen; without this a
-    // device that kept its own value on a concurrent tie holds it alone while
-    // the server keeps the peer's, and the two never converge.
+    // §6.5.2 P3 (#2287, #5506): the union clock must reach the server. Settings
+    // have no buildPushPayload, so a queued row is pushed as frozen; without
+    // this a device that kept a value the server lacks (a concurrent tie, or a
+    // tick a peer's stale push dropped) holds it alone, and the two never
+    // converge.
     if (merged.requeue) this.enqueueCurrentState()
   }
 

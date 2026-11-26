@@ -118,7 +118,7 @@ impl Local {
         let definitions = Arc::new(PropertyDefinitions::new(
             vault,
             records,
-            Some(core.search().unwrap()),
+            Some(core.search(None).unwrap()),
         ));
 
         let session = Arc::new(
@@ -1295,11 +1295,13 @@ async fn a_body_owed_a_per_note_pull_arrives_in_the_drivers_pass() {
 }
 
 /// The app transport, answering every `/sync/changes` with a 500 while `fail` is set and
-/// counting every body GET (`/sync/crdt/...`).
+/// counting every body read: a `GET /sync/crdt/...` and the batch probe
+/// (`POST /sync/crdt/updates/batch`), which alone answers a body the server
+/// reports current (it sends `floor`, #5228).
 struct FailPulls {
     inner: Arc<dyn Transport>,
     fail: AtomicBool,
-    body_gets: AtomicUsize,
+    body_reads: AtomicUsize,
 }
 
 #[async_trait::async_trait]
@@ -1312,8 +1314,10 @@ impl Transport for FailPulls {
                 body: br#"{"error":{"code":"INTERNAL_ERROR","message":"harness"}}"#.to_vec(),
             });
         }
-        if request.method == "GET" && request.url.contains("/sync/crdt/") {
-            self.body_gets.fetch_add(1, Ordering::SeqCst);
+        let body_read = (request.method == "GET" && request.url.contains("/sync/crdt/"))
+            || request.url.contains("/sync/crdt/updates/batch");
+        if body_read {
+            self.body_reads.fetch_add(1, Ordering::SeqCst);
         }
         self.inner.send(request).await
     }
@@ -1327,7 +1331,7 @@ impl Transport for FailPulls {
     }
 }
 
-/// A pass whose pull failed runs no body step (`driver/bodies.rs`): no body GET and the debt
+/// A pass whose pull failed runs no body step (`driver/bodies.rs`): no body read and the debt
 /// stays owed. The next pass that reaches the server settles it.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_pass_whose_pull_failed_leaves_every_body_debt_owed() {
@@ -1336,7 +1340,7 @@ async fn a_pass_whose_pull_failed_leaves_every_body_debt_owed() {
     let pulls = Arc::new(FailPulls {
         inner: app_transport(&["127.0.0.1".to_owned()], Arc::new(NoPins)),
         fail: AtomicBool::new(false),
-        body_gets: AtomicUsize::new(0),
+        body_reads: AtomicUsize::new(0),
     });
     let b = Device::over(&server, 1, pulls.clone()).await;
     let note = write_bodies(&a, 0..1).remove(0);
@@ -1352,20 +1356,20 @@ async fn a_pass_whose_pull_failed_leaves_every_body_debt_owed() {
         .unwrap();
 
     pulls.fail.store(true, Ordering::SeqCst);
-    let before = pulls.body_gets.load(Ordering::SeqCst);
+    let before = pulls.body_reads.load(Ordering::SeqCst);
     let pass = b.sync().await;
     assert!(pass.pull_error.is_some(), "the pull failed: {pass:?}");
     assert_eq!(
-        pulls.body_gets.load(Ordering::SeqCst),
+        pulls.body_reads.load(Ordering::SeqCst),
         before,
-        "no body GET"
+        "no body read"
     );
     assert!(owed().contains(&note), "the debt stays owed");
 
     pulls.fail.store(false, Ordering::SeqCst);
     b.sync().await;
     assert!(
-        pulls.body_gets.load(Ordering::SeqCst) > before,
+        pulls.body_reads.load(Ordering::SeqCst) > before,
         "the next pass pulls the body"
     );
     assert!(!owed().contains(&note), "the debt settled");

@@ -191,6 +191,8 @@ import-crash-points = []
 
 [dev-dependencies]
 memry-desktop = { path = ".", features = ["test-hooks", "import-crash-points"] }
+# `HeldBody::never_purged`: the tests seed another device's body updates without a fetch (#5356).
+memry-core = { path = "../memry-core", default-features = false, features = ["test-support"] }
 proptest = "1"
 memry-test-kit = { path = "../memry-test-kit" }
 tokio = { workspace = true, features = ["net", "io-util", "time", "macros", "rt-multi-thread", "test-util"] }
