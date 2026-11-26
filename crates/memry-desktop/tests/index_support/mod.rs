@@ -211,6 +211,26 @@ pub fn with_task_under(
     report: &(dyn Fn(OpenBuild) + Sync),
     test: impl FnOnce(&TaskHandle),
 ) {
+    run_task(open, facts, store, report, |handle, _| test(handle));
+}
+
+/// [`with_task`] whose test may cancel the task, as a closing session does.
+pub fn with_cancellable_task(
+    open: &OpenVault,
+    facts: Receiver<Applied>,
+    test: impl FnOnce(&TaskHandle, &CancelToken),
+) {
+    let store = crate::device_key::with_device_key();
+    run_task(open, facts, store, &|_| {}, test);
+}
+
+fn run_task(
+    open: &OpenVault,
+    facts: Receiver<Applied>,
+    store: Arc<dyn SecureStore>,
+    report: &(dyn Fn(OpenBuild) + Sync),
+    test: impl FnOnce(&TaskHandle, &CancelToken),
+) {
     let indexer = Indexer::new(open, store);
     let cancel = CancelToken::default();
     let (handle, inbox) = task_channel();
@@ -232,7 +252,7 @@ pub fn with_task_under(
         });
         // Stopped on the way out, a failed wait included, so the scope can join the task.
         let _stop = StopOnDrop(&handle, &cancel);
-        test(&handle);
+        test(&handle, &cancel);
     });
 }
 

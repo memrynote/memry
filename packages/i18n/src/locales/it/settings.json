@@ -1232,6 +1232,10 @@
     "loadingAria": "Caricamento dispositivi",
     "none": "Nessun dispositivo ancora collegato",
     "linkNew": "Collega un nuovo dispositivo",
+    "linkNeedsPlan": {
+      "title": "Il collegamento richiede un piano di sincronizzazione",
+      "description": "Un dispositivo collegato vede le tue note solo quando la sincronizzazione è attiva. Senza un piano, accedi da lì con la tua frase di recupero e il dispositivo manterrà un proprio vault."
+    },
     "thisDevice": "Questo dispositivo",
     "lastSeen": "Visto l'ultima volta {time} fa",
     "linked": "Collegato {time} fa",

@@ -164,7 +164,7 @@ fn read<R: Runtime>(app: &AppHandle<R>, open: &OpenVault, date: &str) -> Option<
     let service = app.try_state::<Arc<NotesService>>()?;
     let read = service
         .journal(open)
-        .and_then(|day| journal::entry(open, &day, date));
+        .and_then(|day| service.day_entry(open, &day, date));
     match read {
         Ok(entry) => entry,
         Err(error) => {

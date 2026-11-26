@@ -23,6 +23,7 @@ use crate::protocol::types::Declaration;
 use crate::seams::transport::{
     HttpRequest, HttpResponse, SocketHandle, SocketListener, SocketRequest, Transport,
 };
+use crate::storage::nested_tx;
 use crate::storage::{Db, open_data};
 use crate::sync::outbox::{self, Change};
 use crate::sync::push::{PendingRecord, PushCoordinator, PushSealer};
@@ -180,6 +181,7 @@ fn coordinator(db: &Db, server: &Arc<Server>) -> PushCoordinator {
         db.clone(),
         Declaration::subscribed(),
         Arc::new(Plain),
+        "device-a",
     )
 }
 
@@ -299,7 +301,7 @@ impl PrePushHook for EditingHook {
         let change = Change::upsert(item_type, item_id);
         self.db
             .call(move |c| {
-                let tx = c.unchecked_transaction().unwrap();
+                let tx = nested_tx::begin(c).unwrap();
                 outbox::enqueue(&tx, &change, 2)?;
                 tx.commit().unwrap();
                 Ok(())

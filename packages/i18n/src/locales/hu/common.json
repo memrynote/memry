@@ -1,4 +1,7 @@
 {
+  "wikiLink": {
+    "openFailed": "Nem sikerült megnyitni ezt a hivatkozást"
+  },
   "portalBlock": {
     "copyFailed": "Nem sikerült átmásolni a portált",
     "hiddenCount": "{count} rejtett",

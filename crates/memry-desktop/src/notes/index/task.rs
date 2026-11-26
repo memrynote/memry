@@ -73,6 +73,7 @@ impl TaskHandle {
     }
 
     /// Asks for a reindex, run once the open walk ended; `None` when the task already ended.
+    /// Its progress is the shared pass's, throttled by the task.
     pub fn reindex(&self, progress: Progress) -> Option<Answer> {
         let (answer, receiver) = reply::channel();
         self.0
@@ -172,9 +173,11 @@ impl Owed {
         matches!(self.walk, Walk::Failed | Walk::Ended)
     }
 
-    /// When the owed work is due; `None` while nothing is owed or the walk has not ended.
-    fn next(&self) -> Option<Instant> {
-        let owed = self.scan || self.links.is_some() || self.retype || !self.queue.is_empty();
+    /// When the owed work is due; `None` while nothing is owed or the walk has not ended. A
+    /// search reindex alone is not due while a first sync holds it (`first_sync`, #5409).
+    fn next(&self, first_sync: bool) -> Option<Instant> {
+        let links = self.links.is_some() && !first_sync;
+        let owed = self.scan || links || self.retype || !self.queue.is_empty();
         (self.walked() && owed).then(|| self.due.unwrap_or_else(Instant::now))
     }
 
@@ -190,7 +193,9 @@ impl Owed {
                 self.queue.extend(ids);
                 self.scan |= scan;
             }
-            Ok(pass) if pass.unread.is_empty() && self.links.is_none() => self.failures = 0,
+            Ok(pass) if pass.unread.is_empty() && (self.links.is_none() || pass.held) => {
+                self.failures = 0;
+            }
             Ok(pass) => {
                 tracing::warn!(
                     scope = "note_index",
@@ -282,15 +287,43 @@ impl Indexer {
             ..Owed::default()
         };
         let mut waiting: Vec<(Progress, Reply)> = Vec::new();
+        // One throttle for the askers' shared pass, until it answers them: a pass a first sync
+        // held and its rerun never report backwards, but for the rerun's last step, which ends
+        // the askers' progress. An asker that joins during the hold is told no step before the
+        // held pass's, so the shared `NoteIndex::indexing` never goes back.
+        let mut shared = ProgressThrottle::new(PROGRESS_INTERVAL);
+        // The indexer holds its sender, so `changed` never ends while this runs.
+        let mut first_sync = self.first_sync.subscribe();
         while !cancel.is_cancelled() {
-            if owed.walked() && !waiting.is_empty() {
-                // A reindex reports through its own callback, which refreshes the list. The
+            // An asked reindex stays pending while a first sync runs, which holds its search
+            // reindex (#5409): its answer says the search is current. The inbox is read first,
+            // so one pass answers every asker already waiting when it starts; one asked during
+            // it waits in the inbox for a pass of its own.
+            if owed.walked()
+                && !waiting.is_empty()
+                && !self.first_sync.is_running()
+                && commands.is_empty()
+            {
+                // A reindex reports through its askers' callbacks, which refresh the list. The
                 // open's build ends after it, once the rows hold every note.
                 let carried = std::mem::take(&mut owed.report);
-                for (progress, answer) in waiting.drain(..) {
-                    // The asker may have gone; the work is done either way.
-                    let _ = answer
-                        .send(self.reindex(&mut owed, progress, cancel, announce, landed, defined));
+                let mut progress = |step| {
+                    if shared.offer(step, Instant::now()) {
+                        for (asker, _) in &mut waiting {
+                            asker(step);
+                        }
+                    }
+                };
+                let outcome =
+                    self.reindex(&mut owed, &mut progress, cancel, announce, landed, defined);
+                // `None`: a first sync that started meanwhile held its search reindex, and every
+                // asker waits for it to end, as one asked during it does.
+                if let Some(done) = outcome {
+                    shared = ProgressThrottle::new(PROGRESS_INTERVAL);
+                    for (_, answer) in waiting.drain(..) {
+                        // The asker may have gone; the work is done either way.
+                        let _ = answer.send(done.clone());
+                    }
                 }
                 if carried {
                     report(OpenBuild::Ended {
@@ -298,7 +331,7 @@ impl Indexer {
                     });
                 }
             }
-            let next = owed.next();
+            let next = owed.next(self.first_sync.is_running());
             let wake = tokio::time::Instant::from_std(next.unwrap_or_else(Instant::now));
             tokio::select! {
                 biased;
@@ -328,6 +361,8 @@ impl Indexer {
                     }
                     Err(RecvError::Closed) => return,
                 },
+                // A first sync that ended makes a held reindex due.
+                _ = first_sync.changed() => {}
                 () = tokio::time::sleep_until(wake), if next.is_some() => {
                     let carried = std::mem::take(&mut owed.report);
                     let step = |step| report(OpenBuild::Step(step));
@@ -426,7 +461,14 @@ impl Indexer {
                 announce,
             )
         });
-        // The sweep mints for every note, a later pass for the files it read.
+        // The sweep mints for every note, a later pass for the files it read. A pass a first
+        // sync held mints nothing, and the reindex run once it ended reads no file: it owes the
+        // sweep (#5409).
+        if let Ok(pass) = &outcome
+            && pass.held
+        {
+            owed.sweep = true;
+        }
         if let Ok(pass) = &outcome
             && pass.reindexed
         {
@@ -455,36 +497,24 @@ impl Indexer {
         measured
     }
 
-    /// Every note measured again, the queue and an owed scan with it.
+    /// Every note measured again, the queue and an owed scan with it; `None` when a first sync
+    /// held its search reindex, which is still owed.
     fn reindex(
         &self,
         owed: &mut Owed,
-        mut progress: Progress,
+        progress: &mut dyn FnMut(IndexProgress),
         cancel: &CancelToken,
         announce: &dyn Fn(LinkChanges),
         landed: &dyn Fn(&str),
         defined: &dyn Fn(),
-    ) -> Result<Backfilled, IndexError> {
+    ) -> Option<Result<Backfilled, IndexError>> {
         let ids = std::mem::take(&mut owed.queue);
         let scan = std::mem::take(&mut owed.scan);
         owed.retype = false;
         let stop = || cancel.is_cancelled();
-        let mut throttle = ProgressThrottle::new(PROGRESS_INTERVAL);
         let outcome = self.scan(true).map_err(IndexError::from).and_then(|notes| {
-            let mut progress = |step| {
-                if throttle.offer(step, Instant::now()) {
-                    progress(step);
-                }
-            };
             let typing = self.typing_all()?;
-            self.pass(
-                notes,
-                typing,
-                &mut owed.links,
-                &stop,
-                &mut progress,
-                announce,
-            )
+            self.pass(notes, typing, &mut owed.links, &stop, progress, announce)
         });
         if let Ok(pass) = &outcome
             && pass.reindexed
@@ -495,9 +525,10 @@ impl Indexer {
         owed.settle(ids, scan, &outcome);
         owed.land(&outcome, landed);
         match outcome {
-            Ok(pass) if pass.stopped => Err(IndexError::NotOpen),
-            Ok(pass) => Ok(pass.done),
-            Err(error) => Err(error),
+            Ok(pass) if pass.stopped => Some(Err(IndexError::NotOpen)),
+            Ok(pass) if pass.held => None,
+            Ok(pass) => Some(Ok(pass.done)),
+            Err(error) => Some(Err(error)),
         }
     }
 }
@@ -514,7 +545,28 @@ mod tests {
             written: Vec::new(),
             learned: false,
             reindexed: false,
+            held: false,
         })
+    }
+
+    /// A search reindex a first sync held stays owed with no backoff, and is due once the first
+    /// sync ended (#5409).
+    #[test]
+    fn a_held_reindex_stays_owed_and_is_due_once_the_first_sync_ended() {
+        let mut owed = Owed {
+            links: Some(LinkChanges::default()),
+            walk: Walk::Ended,
+            ..Owed::default()
+        };
+        let mut held = finished(&[]);
+        if let Ok(pass) = &mut held {
+            pass.held = true;
+        }
+        owed.settle(BTreeSet::new(), false, &held);
+        assert_eq!(owed.failures, 0);
+        assert!(owed.links.is_some() && !owed.scan && owed.queue.is_empty());
+        assert_eq!(owed.next(true), None, "not due while the first sync runs");
+        assert!(owed.next(false).is_some(), "due once it ended");
     }
 
     /// A pass that finished, a reindex's included, starts the next backoff from the first step.

@@ -1,5 +1,5 @@
 //! The device-local index of Readwise highlight dates behind the journal day sections
-//! (`highlights-index.ts`, #3476 D17), over `readwise_highlights` (data migration 0038). A run
+//! (`highlights-index.ts`, #3476 D17), over `readwise_highlights` (data migration 0039). A run
 //! keeps it current; a full export replaces it, so a device that takes over renders the bytes
 //! the old one wrote. It never syncs: a full export refills it.
 
@@ -9,6 +9,7 @@ use rusqlite::{Connection, params, params_from_iter};
 
 use crate::api::errors::StorageError;
 use crate::domain::readwise::set_run_state;
+use crate::storage::nested_tx;
 
 fn failed(error: rusqlite::Error) -> StorageError {
     StorageError::Failed {
@@ -79,7 +80,7 @@ pub fn record(
     now_ms: i64,
     pending: impl FnOnce(&HashSet<i64>, Option<String>) -> Option<String>,
 ) -> Result<(), StorageError> {
-    let tx = conn.transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let ids: Vec<i64> = record.rows.iter().map(|row| row.highlight_id).collect();
     let known = known_ids(&tx, &ids)?;
     let stored = super::readwise::run_state(&tx, record.pending_key)?;

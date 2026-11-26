@@ -1,9 +1,12 @@
 {
+  "wikiLink": {
+    "openFailed": "Không thể mở liên kết này"
+  },
   "portalBlock": {
     "copyFailed": "Không thể sao chép portal",
     "hiddenCount": "{count} đã ẩn",
     "windowFailed": "Không thể mở portal này. Hãy mở ghi chú nguồn thay thế.",
-    "unreadable": "Không thể đọc cổng này. Hãy xóa khối và thêm một cổng mới.",
+    "unreadable": "Không thể đọc portal này. Hãy xóa khối và thêm một portal mới.",
     "search": {
       "editQuery": "Sửa truy vấn",
       "count": "{count, plural, other {# khối}}",

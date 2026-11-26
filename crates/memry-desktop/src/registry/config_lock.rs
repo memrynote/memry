@@ -117,7 +117,7 @@ mod tests {
 
     /// Set in the child processes of the test below: `<config path>|<key prefix>`.
     const WORKER: &str = "MEMRY_CONFIG_LOCK_WORKER";
-    const UPDATES: usize = 200;
+    const UPDATES: usize = 50;
 
     fn wait_for(path: &Path) {
         for _ in 0..6000 {
@@ -130,7 +130,9 @@ mod tests {
     }
 
     /// Two processes each write their own keys into one file, starting together; every key
-    /// survives.
+    /// survives. Each worker pauses longer than the lock's poll between its updates, so the two
+    /// interleave: back to back, one worker re-took the lock before the other's next poll and
+    /// starved it past `WAIT` on a slow runner (windows-11-arm).
     #[test]
     fn updates_from_two_processes_do_not_lose_each_other() {
         let dir = tempfile::tempdir().expect("tempdir");
@@ -144,9 +146,11 @@ mod tests {
                         "--exact",
                         "registry::config_lock::tests::worker",
                         "--test-threads=1",
+                        "--nocapture",
                     ])
                     .env(WORKER, format!("{}|{tag}", path.display()))
-                    .stdout(std::process::Stdio::null())
+                    .stdout(std::process::Stdio::piped())
+                    .stderr(std::process::Stdio::piped())
                     .spawn()
                     .expect("spawn worker")
             })
@@ -155,8 +159,15 @@ mod tests {
             wait_for(&dir.path().join(format!("ready-{tag}")));
         }
         std::fs::write(dir.path().join("go"), b"").expect("go");
-        for mut child in children {
-            assert!(child.wait().expect("wait").success(), "worker failed");
+        for child in children {
+            let out = child.wait_with_output().expect("wait");
+            assert!(
+                out.status.success(),
+                "worker failed: {}\nstdout:\n{}\nstderr:\n{}",
+                out.status,
+                String::from_utf8_lossy(&out.stdout),
+                String::from_utf8_lossy(&out.stderr)
+            );
         }
         let written = AppConfig::load_strict(path).expect("load");
         assert_eq!(written.read(Map::len), 2 * UPDATES);
@@ -181,6 +192,7 @@ mod tests {
                     Ok::<_, ConfigError>(())
                 })
                 .expect("update");
+            std::thread::sleep(2 * super::POLL);
         }
     }
 

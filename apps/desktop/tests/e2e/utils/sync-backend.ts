@@ -12,8 +12,8 @@ interface TestSyncServer {
   stop(): Promise<void>
   getD1(): Promise<D1Database>
   getDirectUrl(): Promise<URL>
-  /** Runs the Worker's scheduled handler (pack backfill lives there). */
-  triggerScheduled(cron?: string): Promise<void>
+  /** Runs the scheduled handler until its pack backfill has nothing left to pack. */
+  settlePackBackfill(): Promise<void>
   getKeys(): { privateKey: CryptoKey; privateKeyPem: string }
 }
 

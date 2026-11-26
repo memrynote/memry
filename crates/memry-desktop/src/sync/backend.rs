@@ -10,6 +10,7 @@ use memry_core::api::errors::SyncError;
 use memry_core::api::vault::Vault;
 use memry_core::seams::reachability::Reachability;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
+use memry_core::sync::delete_keep::OwnWrites;
 use memry_core::sync::driver::progress::InitialSyncSink;
 use memry_core::sync::driver::{ApplyObserver, DriverConfig, SyncDriver};
 use memry_core::sync::engine::{PassReport, PassSeed};
@@ -21,6 +22,7 @@ use zeroize::Zeroizing;
 
 use crate::session::at_rest_key::{AtRestKeyGuard, AtRestKeys};
 
+use super::first_sync_running::FirstSyncRunning;
 use super::gate::AuthFacts;
 use super::realtime::{CoreSocket, PinWatch, RealtimeSocket};
 
@@ -152,6 +154,10 @@ pub trait SyncBackend: Send + Sync {
     fn refresh_refused(&self) -> bool;
     /// The driver was dropped, or never kept: release sync's hold on the at-rest key.
     fn close(&self);
+    /// What a first sync holds while it runs, which the note index reads (#5409).
+    fn first_sync_running(&self) -> Option<FirstSyncRunning> {
+        None
+    }
 }
 
 /// The open vault's backend over the app's session and keychain.
@@ -166,6 +172,9 @@ pub struct VaultSyncBackend {
     observers: Vec<Arc<dyn ApplyObserver>>,
     /// The open vault's folder, where a pulled delete reads a note's file (#5343).
     vault_root: Option<PathBuf>,
+    /// The bytes the app writes to that folder's files, which a pulled delete reads as taken.
+    own_writes: Option<Arc<dyn OwnWrites>>,
+    first_sync: Option<FirstSyncRunning>,
     keys: Arc<AtRestKeys>,
     /// Sync's hold on the at-rest key while a driver is open.
     guard: Arc<Mutex<Option<AtRestKeyGuard>>>,
@@ -195,6 +204,8 @@ impl VaultSyncBackend {
             account,
             observers: Vec::new(),
             vault_root: None,
+            own_writes: None,
+            first_sync: None,
             keys,
             guard: Arc::default(),
             closes: Arc::default(),
@@ -205,6 +216,19 @@ impl VaultSyncBackend {
     /// log that does not replay keeps the note's file text, as Electron does (#5343).
     pub fn with_vault_root(mut self, root: PathBuf) -> Self {
         self.vault_root = Some(root);
+        self
+    }
+
+    /// The bytes the app writes to the open vault's files itself: a pulled delete keeps no copy
+    /// of a file that holds them before its row names them (#5809 review, low 2).
+    pub fn with_own_writes(mut self, own: Arc<dyn OwnWrites>) -> Self {
+        self.own_writes = Some(own);
+        self
+    }
+
+    /// The open vault's first-sync flag, held while a first sync runs (#5409).
+    pub fn with_first_sync(mut self, running: FirstSyncRunning) -> Self {
+        self.first_sync = Some(running);
         self
     }
 
@@ -286,6 +310,7 @@ impl SyncBackend for VaultSyncBackend {
                 Arc::clone(&self.reachability),
                 DriverConfig {
                     vault_root: self.vault_root.clone(),
+                    own_writes: self.own_writes.clone(),
                     ..DriverConfig::desktop()
                 },
                 self.seeds.clone(),
@@ -301,6 +326,10 @@ impl SyncBackend for VaultSyncBackend {
 
     fn refresh_refused(&self) -> bool {
         self.session.refresh_refused()
+    }
+
+    fn first_sync_running(&self) -> Option<FirstSyncRunning> {
+        self.first_sync.clone()
     }
 
     fn close(&self) {

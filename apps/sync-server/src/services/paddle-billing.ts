@@ -418,6 +418,52 @@ export async function applyPlanChange(
 }
 
 /**
+ * Cancels the user's Paddle subscription right away, before account deletion erases the grant
+ * that records it. Paddle keeps billing a subscription nobody cancels, so a deleted account would
+ * be charged every period with no account to grant. Throws when Paddle refuses, so the account is
+ * not deleted while its subscription still bills.
+ */
+export async function cancelPaddleSubscriptionForDeletion(
+  env: Bindings,
+  userId: string
+): Promise<void> {
+  // paddle_grants is Paddle's own grant. A Worker from before migration 0019 wrote the
+  // subscription to sync_entitlements only.
+  const row = await env.DB.prepare(
+    `SELECT COALESCE(g.paddle_subscription_id, e.paddle_subscription_id) AS subscription_id
+     FROM users u
+     LEFT JOIN paddle_grants g ON g.user_id = u.id
+     LEFT JOIN sync_entitlements e ON e.user_id = u.id
+     WHERE u.id = ?`
+  )
+    .bind(userId)
+    .first<{ subscription_id: string | null }>()
+  const subscriptionId = row?.subscription_id
+  if (!subscriptionId) return
+
+  let subscription: PaddleSubscription
+  try {
+    subscription = await fetchPaddleSubscription(env, subscriptionId)
+  } catch (error) {
+    if (error instanceof AppError && error.code === ErrorCodes.NOT_FOUND) return
+    throw error
+  }
+  if (subscription.status === 'canceled') return
+  // One Paddle customer can buy for several accounts, and a stale id must not cancel another
+  // account's subscription.
+  const ownerId = asString(subscription.custom_data?.userId ?? subscription.custom_data?.user_id)
+  if (ownerId && ownerId !== userId) return
+
+  await paddleFetch<PaddleSubscription>(
+    env,
+    `/subscriptions/${encodeURIComponent(subscriptionId)}/cancel`,
+    { method: 'POST', body: { effective_from: 'immediately' } },
+    'Could not cancel your subscription, so the account was not deleted. Try again.'
+  )
+  logger.info('Canceled Paddle subscription for account deletion', { subscriptionId })
+}
+
+/**
  * Paddle cannot change or show a subscription Apple bills, so the Paddle management routes refuse
  * with a code the client can turn into "manage it in the App Store".
  */

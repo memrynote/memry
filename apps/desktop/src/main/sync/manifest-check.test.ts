@@ -22,6 +22,8 @@ import { canvasFolderSyncId } from '@memry/contracts/canvas-folder-types'
 import { reminders } from '@memry/db-schema/schema/reminders'
 import { noteMetadata } from '@memry/db-schema/data-schema'
 import { syncPendingDeletes } from '@memry/db-schema/schema/sync-pending-deletes'
+import { syncState } from '@memry/db-schema/schema/sync-state'
+import { syncDevices } from '@memry/db-schema/schema/sync-devices'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { SyncQueueManager } from '@memry/sync-client/queue'
 import { calendarSources } from '@memry/db-schema/schema/calendar-sources'
@@ -675,6 +677,81 @@ describe('checkManifestIntegrity', () => {
 
       // #then
       expect(result.serverOnly).toEqual([])
+    })
+  })
+
+  // #5390, protocol 08 §8.10 rule 2: a pack-phase row the manifest dropped and
+  // the by-id pull did not resolve. The server accepts a create over a marker
+  // for a recreatable type, so re-uploading it would reverse a delete.
+  describe('#given a tag the record-pack rerun kept unresolved #when check runs', () => {
+    const unresolvedSet = () =>
+      testDb.db
+        .select({ value: syncState.value })
+        .from(syncState)
+        .where(eq(syncState.key, 'recordPacksUnresolved'))
+        .get()?.value
+
+    const check = async (items: Array<ReturnType<typeof serverRef>>) => {
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({ items })
+      const { checkManifestIntegrity } = await import('./manifest-check')
+      return checkManifestIntegrity({
+        db: asSyncDb(testDb.db),
+        queue,
+        getAccessToken: async () => 'test-token',
+        isOnline: () => true
+      })
+    }
+
+    beforeEach(() => {
+      const clock: VectorClock = { 'device-B': 1 }
+      testDb.db.insert(tagDefinitions).values({ name: 'reading', color: 'blue', clock }).run()
+      testDb.db.insert(tagDefinitions).values({ name: 'mine', color: 'blue', clock }).run()
+      testDb.db
+        .insert(syncState)
+        .values({
+          key: 'recordPacksUnresolved',
+          value: JSON.stringify(['tag_definition:reading']),
+          updatedAt: new Date()
+        })
+        .run()
+    })
+
+    it('#then never re-enqueues it as a create, and keeps it unresolved', async () => {
+      await check([])
+
+      expect(queue.dequeue(10).map((item) => item.itemId)).toEqual(['mine'])
+      expect(unresolvedSet()).toBe(JSON.stringify(['tag_definition:reading']))
+    })
+
+    it('#then re-enqueues it once this device edited it, since its own write is what went missing', async () => {
+      testDb.db
+        .insert(syncDevices)
+        .values({
+          id: 'device-A',
+          name: 'This device',
+          platform: 'darwin',
+          appVersion: '1.0.0',
+          linkedAt: new Date(),
+          isCurrentDevice: true,
+          signingPublicKey: 'pk'
+        } as never)
+        .run()
+      testDb.db
+        .update(tagDefinitions)
+        .set({ clock: { 'device-B': 1, 'device-A': 1 } })
+        .where(eq(tagDefinitions.name, 'reading'))
+        .run()
+
+      await check([])
+
+      expect(queue.dequeue(10).map((item) => item.itemId)).toEqual(['reading', 'mine'])
+    })
+
+    it('#then retires it once the server lists it again', async () => {
+      await check([serverRef('tag_definition', 'reading'), serverRef('tag_definition', 'mine')])
+
+      expect(queue.dequeue(10)).toEqual([])
+      expect(unresolvedSet()).toBeUndefined()
     })
   })
 

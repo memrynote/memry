@@ -78,6 +78,24 @@ lto = true
 codegen-units = 1
 strip = "debuginfo"
 
+# libsodium compiles from C source with the package's opt-level (`cc` reads
+# `OPT_LEVEL`), so the dev profile built it at -O0. A first sync verifies an
+# Ed25519 signature per record and per CRDT entry, and at -O0 that verify was
+# most of the iOS Debug app's bootstrap: 23 s / 104 s against 8 s / 28 s with
+# the release core on the same 18k-record vault (#5391). The bytes it produces
+# do not depend on the optimisation level.
+[profile.dev.package.libsodium-sys-stable]
+opt-level = 3
+
+# The next hottest dependencies in a Debug core bootstrap of the same vault
+# (Time Profiler, #5247): SQLite's C code and SHA-256, about 2.5% and 1% of
+# CPU at -O0. Neither changes output bytes. yrs showed 0.2% and stays unoptimised.
+[profile.dev.package.libsqlite3-sys]
+opt-level = 3
+
+[profile.dev.package.sha2]
+opt-level = 3
+
 # The image decoders and memry-ml's preprocessing work per pixel: unoptimised, the pixel-tensors
 # vectors take minutes in the dev profile tests use. Integer and IEEE float results do not depend
 # on the optimisation level.

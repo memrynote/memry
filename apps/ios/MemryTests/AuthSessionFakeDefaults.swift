@@ -23,6 +23,7 @@ extension AuthSessionProtocol {
     func billingPortalUrl() async throws -> String { throw UnscriptedSettingsCall() }
     func refreshBilling() async throws -> BillingStatus { throw UnscriptedSettingsCall() }
     func sendTelemetry(batchJson _: Data) async -> TelemetryDelivery { .accepted }
+    func sendFeedback(payloadJson _: Data) async throws { throw UnscriptedSettingsCall() }
     func deviceApprover() -> DeviceApprover {
         fatalError("deviceApprover is not scripted in this fake")
     }

@@ -1,5 +1,5 @@
 import type { SyncSubscription } from './lib/sync-types'
-import type { PackCompactionMessageBody } from './services/pack-compaction'
+import type { PackCompactionMessageBody } from './services/pack-queue'
 import type { SyncEntitlement } from './services/entitlements'
 import type { ClientIdentity } from './lib/client-identity'
 
@@ -74,9 +74,17 @@ export type Bindings = {
   // exactly as before. Never commit real values.
   BOOTSTRAP_SESSION_HMAC_KEY?: string
   // Pack compaction queue (#1839). Optional so local dev without Queues keeps
-  // working: an absent binding makes enqueuePackCompaction a no-op and the
-  // cron backfill still drains packs over time.
+  // working: an absent binding makes enqueuePackCompaction a no-op, and the
+  // cron backfill, which only enqueues, packs nothing.
   PACK_QUEUE?: Queue<PackCompactionMessageBody>
+  // Pack backfill queue (#5278): the cron's per-vault backfill messages and
+  // their chains, apart from PACK_QUEUE so nudges never wait behind them.
+  // Absent: the cron enqueues nothing and packs nothing.
+  PACK_BACKFILL_QUEUE?: Queue<PackCompactionMessageBody>
+  // Step 14 rollback switch (#5392): `*` or comma-separated vault ids that get
+  // no packs, no coverage and no bootstrap backfill (pack-list.ts,
+  // packCoverageDisabled). Unset in wrangler.toml for every environment.
+  PACK_COVERAGE_DISABLED?: string
   // Socket items budget in bytes (#2300). Unset = 64 KiB; "0" turns every
   // changes_available frame back to hint-only. It can lower the cap, never raise it.
   SYNC_SOCKET_ITEMS_MAX_BYTES?: string

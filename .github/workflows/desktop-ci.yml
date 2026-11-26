@@ -9,9 +9,21 @@ on:
     branches:
       - main
       - feat/tauri-v2
+    # A push to main runs the full Electron matrix, e2e included. Skip it when
+    # every changed file sits in a tree the Electron app neither bundles nor tests:
+    # the iOS app, the Rust core and its generated Swift bindings. Anything else,
+    # including a path nobody listed here, still runs everything. The crates are
+    # listed by name, not as crates/**: Desktop CI checks the goldens of
+    # crates/memrynote-cli against the TypeScript CLI, so a change there still runs it.
     paths-ignore:
       - 'apps/docs/**'
       - 'apps/landing/**'
+      - 'apps/ios/**'
+      - 'crates/*'
+      - 'crates/memry-*/**'
+      - 'crates/uniffi-bindgen-swift/**'
+      - 'crates/xtask/**'
+      - 'packages/swift/**'
   # The merge queue (feat/tauri-v2) runs the full matrix on the merge-group commit; `paths` do not apply.
   merge_group:
   workflow_dispatch:
@@ -129,41 +141,36 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
 
-      - name: Typecheck workspace packages
-        run: |
-          for package in \
-            @memry/app-core \
-            @memry/cli \
-            @memry/contracts \
-            @memry/db-schema \
-            @memry/domain-inbox \
-            @memry/domain-notes \
-            @memry/domain-tasks \
-            @memry/editor-schema \
-            @memry/i18n \
-            @memry/rpc \
-            @memry/shared \
-            @memry/storage-data \
-            @memry/storage-vault \
-            @memry/sync-core
-          do
-            pnpm --filter "$package" run typecheck
-          done
-
-      - name: Typecheck desktop main process
-        run: pnpm --filter @memry/desktop exec node ../../scripts/typecheck.mjs tsconfig.node.json
-
-      - name: Typecheck desktop renderer
-        run: pnpm --filter @memry/desktop exec node ../../scripts/typecheck.mjs tsconfig.web.json
-
-      - name: Typecheck desktop main-process tests
-        run: pnpm --filter @memry/desktop exec node ../../scripts/typecheck.mjs tsconfig.test.node.json
-
-      - name: Typecheck desktop renderer tests
-        run: pnpm --filter @memry/desktop exec node ../../scripts/typecheck.mjs tsconfig.test.web.json
-
-      - name: Typecheck desktop e2e specs
-        run: pnpm --filter @memry/desktop exec node ../../scripts/typecheck.mjs tsconfig.test.e2e.json
+      # One turbo run: the 14 workspace packages and @memry/desktop, whose typecheck covers the main
+      # process, renderer, and test and e2e tsconfigs, and whose pretypecheck adds the contract and
+      # architecture boundary checks.
+      - name: Typecheck workspace packages and desktop
+        # Turbo remote cache (tools/turbo-cache), read-only: a hit replays a typecheck the push-to-feat
+        # writer ran on the same inputs. No remote cache when TURBO_API or the signature key is unset,
+        # and none for a fork's pull request.
+        env:
+          TURBO_API: ${{ vars.TURBO_API }}
+          TURBO_TEAM: ${{ vars.TURBO_TEAM }}
+          TURBO_TOKEN: ${{ vars.TURBO_API != '' && secrets.TURBO_REMOTE_CACHE_SIGNATURE_KEY != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && secrets.TURBO_READ_TOKEN || '' }}
+          TURBO_REMOTE_CACHE_SIGNATURE_KEY: ${{ secrets.TURBO_REMOTE_CACHE_SIGNATURE_KEY }}
+          TURBO_CACHE: local:rw,remote:r
+        run: >-
+          node scripts/run-turbo.js run typecheck
+          --filter=@memry/app-core
+          --filter=@memry/cli
+          --filter=@memry/contracts
+          --filter=@memry/db-schema
+          --filter=@memry/domain-inbox
+          --filter=@memry/domain-notes
+          --filter=@memry/domain-tasks
+          --filter=@memry/editor-schema
+          --filter=@memry/i18n
+          --filter=@memry/rpc
+          --filter=@memry/shared
+          --filter=@memry/storage-data
+          --filter=@memry/storage-vault
+          --filter=@memry/sync-core
+          --filter=@memry/desktop
 
       - name: Check IPC generated files
         run: pnpm --filter @memry/desktop run ipc:check

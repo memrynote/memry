@@ -52,6 +52,18 @@ describe('sortNotes', () => {
     ])
   })
 
+  it('sorts a formula column by its evaluated value', () => {
+    const notes = [
+      note({ id: 'a', properties: { price: 3, qty: 1 } }),
+      note({ id: 'b', properties: { price: 2, qty: 5 } }),
+      note({ id: 'c', properties: { price: 4, qty: 2 } })
+    ]
+    const sorted = sortNotes(notes, [{ property: 'formula.total', direction: 'desc' }], {
+      total: 'price * qty'
+    })
+    expect(sorted.map((n) => n.id)).toEqual(['b', 'c', 'a'])
+  })
+
   it('falls through to secondary sort key on ties', () => {
     const notes = [
       note({ id: 'a', folder: 'f', title: 'z' }),

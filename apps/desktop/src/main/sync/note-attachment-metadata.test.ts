@@ -308,7 +308,7 @@ describe('recordDownloadedFileSize', () => {
     seedDataRow('note-1', { fileType: 'pdf', fileSize: 0 })
     seedIndexRow('note-1')
 
-    recordDownloadedFileSize('note-1', 20_481)
+    recordDownloadedFileSize('note-1', 'att-1', 20_481, 'sha-1')
 
     expect(getNoteMetadataById(dataDb, 'note-1')?.fileSize).toBe(20_481)
     expect(getNoteCacheById(indexDb, 'note-1')?.fileSize).toBe(20_481)
@@ -318,7 +318,7 @@ describe('recordDownloadedFileSize', () => {
     seedDataRow('note-1', { fileType: 'pdf', fileSize: 99 })
     seedIndexRow('note-1')
 
-    recordDownloadedFileSize('note-1', 0)
+    recordDownloadedFileSize('note-1', 'att-1', 0, 'sha-1')
 
     expect(getNoteMetadataById(dataDb, 'note-1')?.fileSize).toBe(0)
     expect(getNoteCacheById(indexDb, 'note-1')?.fileSize).toBe(0)
@@ -328,7 +328,7 @@ describe('recordDownloadedFileSize', () => {
     seedDataRow('note-1', { attachmentReferences: ['att-1'], attachmentId: 'att-1' })
     seedIndexRow('note-1')
 
-    recordDownloadedFileSize('note-1', 512)
+    recordDownloadedFileSize('note-1', 'att-1', 512, 'sha-1')
 
     const meta = getNoteMetadataById(dataDb, 'note-1')
     expect(meta?.attachmentReferences).toEqual(['att-1'])
@@ -337,7 +337,7 @@ describe('recordDownloadedFileSize', () => {
   })
 
   it('is a silent no-op for an unknown note', () => {
-    expect(() => recordDownloadedFileSize('ghost', 512)).not.toThrow()
+    expect(() => recordDownloadedFileSize('ghost', 'att-1', 512, 'sha-1')).not.toThrow()
     expect(getNoteMetadataById(dataDb, 'ghost')).toBeUndefined()
   })
 })

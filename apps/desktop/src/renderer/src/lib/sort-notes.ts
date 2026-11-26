@@ -7,6 +7,7 @@
  */
 
 import type { NoteWithProperties } from '@/hooks/use-folder-view'
+import { evaluateFormula } from '@/lib/expression-evaluator'
 
 interface OrderEntry {
   property: string
@@ -14,7 +15,11 @@ interface OrderEntry {
 }
 
 /** Extract the sortable value for a property — matches grouped-table accessors. */
-function getSortValue(note: NoteWithProperties, property: string): unknown {
+function getSortValue(
+  note: NoteWithProperties,
+  property: string,
+  formulas: Record<string, string>
+): unknown {
   switch (property) {
     case 'title':
       return note.title
@@ -28,10 +33,13 @@ function getSortValue(note: NoteWithProperties, property: string): unknown {
       return note.modified
     case 'wordCount':
       return note.wordCount
-    default:
-      // ponytail: formula columns aren't evaluated here (rare in list/gallery);
-      // swap to evaluateFormula if formula sort is ever needed outside the table.
+    default: {
+      if (property.startsWith('formula.')) {
+        const expression = formulas[property.slice('formula.'.length)]
+        return expression ? evaluateFormula(expression, note) : null
+      }
       return note.properties[property] ?? ''
+    }
   }
 }
 
@@ -44,13 +52,17 @@ function compareNonEmpty(a: unknown, b: unknown): number {
  * Return a sorted copy of notes. Empty/missing values always sort last,
  * regardless of direction. No order → returns the input unchanged.
  */
-export function sortNotes(notes: NoteWithProperties[], order?: OrderEntry[]): NoteWithProperties[] {
+export function sortNotes(
+  notes: NoteWithProperties[],
+  order?: OrderEntry[],
+  formulas: Record<string, string> = {}
+): NoteWithProperties[] {
   if (!order || order.length === 0) return notes
 
   return [...notes].toSorted((na, nb) => {
     for (const { property, direction } of order) {
-      const av = getSortValue(na, property)
-      const bv = getSortValue(nb, property)
+      const av = getSortValue(na, property, formulas)
+      const bv = getSortValue(nb, property, formulas)
       const aEmpty = av == null || av === ''
       const bEmpty = bv == null || bv === ''
       if (aEmpty && bEmpty) continue

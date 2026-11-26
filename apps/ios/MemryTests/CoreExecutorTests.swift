@@ -16,7 +16,7 @@ import Testing
 // SE-0461 is what removes that accident, and the executor's guarantee was never
 // "some other thread" anyway: it is "this serial queue". So the assertion names
 // the queue, and the main-thread check is kept only as the weaker companion.
-@Suite("CoreExecutor")
+@Suite("CoreExecutor", .timeLimit(.minutes(1)))
 struct CoreExecutorTests {
     @MainActor
     @Test("work runs off the main thread and the result returns to the caller's actor")
@@ -61,16 +61,18 @@ struct CoreExecutorTests {
         let executor = CoreExecutor(label: "test.core-executor.queued")
         let gate = DispatchSemaphore(value: 0)
         let blockerStarted = OSAllocatedUnfairLock(initialState: false)
+        let changes = Changes()
         let victimRan = OSAllocatedUnfairLock(initialState: false)
 
         // Occupy the single queue, so the next submission has to wait its turn.
         let blocker = Task {
             try await executor.run {
                 blockerStarted.withLock { $0 = true }
+                changes.changed()
                 gate.wait()
             }
         }
-        await waitUntil { blockerStarted.withLock { $0 } }
+        await changes.until { blockerStarted.withLock { $0 } }
 
         let victim = Task {
             try await executor.run { victimRan.withLock { $0 = true } }
@@ -119,17 +121,19 @@ struct CoreExecutorTests {
     func cancellationAfterStartStillDelivers() async throws {
         let executor = CoreExecutor(label: "test.core-executor.inflight")
         let started = OSAllocatedUnfairLock(initialState: false)
+        let changes = Changes()
 
         let task = Task {
             try await executor.run { () -> Int in
                 started.withLock { $0 = true }
+                changes.changed()
                 // Stands in for a blocking core call that cannot be
                 // interrupted once libsodium or SQLite has it.
                 Thread.sleep(forTimeInterval: 0.15)
                 return 42
             }
         }
-        await waitUntil { started.withLock { $0 } }
+        await changes.until { started.withLock { $0 } }
         task.cancel()
 
         let value = try await task.value
@@ -155,21 +159,6 @@ struct CoreExecutorTests {
         let version = try await executor.run { coreVersion() }
 
         #expect(version.isEmpty == false)
-    }
-
-    /// Polls a flag the queue thread sets. A fixed sleep here would be either
-    /// flaky or slow, and both of those read as the executor's fault later.
-    private func waitUntil(
-        _ condition: @Sendable () -> Bool,
-        timeout: Duration = .seconds(5),
-        sourceLocation: SourceLocation = #_sourceLocation
-    ) async {
-        let deadline = ContinuousClock.now.advanced(by: timeout)
-        while ContinuousClock.now < deadline {
-            if condition() { return }
-            try? await Task.sleep(for: .milliseconds(1))
-        }
-        Issue.record("condition never became true within \(timeout)", sourceLocation: sourceLocation)
     }
 }
 

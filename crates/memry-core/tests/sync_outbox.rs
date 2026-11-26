@@ -169,7 +169,13 @@ fn coordinator(
         "https://sync.example",
         ClientIdentity::new("ios", "1.2.3").expect("a valid identity"),
     );
-    PushCoordinator::new(Arc::new(http), db, Declaration::subscribed(), sealer)
+    PushCoordinator::new(
+        Arc::new(http),
+        db,
+        Declaration::subscribed(),
+        sealer,
+        "device-a",
+    )
 }
 
 fn push_ok(accepted: &[&str]) -> String {
@@ -466,6 +472,40 @@ async fn a_rejected_item_stays_queued_and_a_replay_is_acked() {
         })
         .expect("attempt count");
     assert_eq!(attempts, 1, "a per-item rejection accrues one attempt");
+}
+
+/// #5247 B17b: a refused delete attestation is an ordinary per-item refusal.
+/// The row stays queued with the reason recorded; nothing else happens.
+#[tokio::test]
+async fn a_refused_delete_attestation_stays_queued_with_its_reason() {
+    let db = scratch_db("attestation");
+    seed_item(&db, "note", "d", r#"{"title":"x"}"#);
+    db.call_blocking(|conn| outbox::commit(conn, &Change::upsert("note", "d"), 1, |_| Ok(())))
+        .expect("enqueue");
+
+    let transport = FakeTransport::new(vec![response(
+        200,
+        &json!({
+            "accepted": [],
+            "rejected": [{"id": "d", "reason": "SYNC_INVALID_DELETE_ATTESTATION"}],
+            "serverTime": 1,
+            "maxCursor": 1,
+        })
+        .to_string(),
+    )]);
+    let push = coordinator(db.clone(), transport, RecordingSealer::new());
+    let report = push.drain_wave().await.expect("the wave");
+
+    assert_eq!(report.rejected, 1);
+    let reason: Option<String> = db
+        .call_blocking(|conn| {
+            conn.query_row("SELECT last_error FROM outbox", [], |row| row.get(0))
+                .map_err(|e| StorageError::Failed {
+                    what: e.to_string(),
+                })
+        })
+        .expect("last error");
+    assert_eq!(reason.as_deref(), Some("SYNC_INVALID_DELETE_ATTESTATION"));
 }
 
 #[tokio::test]

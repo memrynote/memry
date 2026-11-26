@@ -200,6 +200,10 @@ fn a_generated_vault_is_measured_once_per_note_and_its_passes_report_to_the_tota
     });
     assert!(reported.lock().unwrap().is_empty());
 
+    // The edit's pass may still be in its search reindex, which commits in batches and rests
+    // between them (#5417): a reindex queued behind it ends after it, so the count below
+    // takes in only its own statements.
+    index.reindex(recorder(&Steps::default())).unwrap();
     let steps = Steps::default();
     count_index_statements(&e, true);
     assert_eq!(index.indexing(), None);

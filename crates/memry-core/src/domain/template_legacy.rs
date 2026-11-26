@@ -21,6 +21,7 @@ use serde_json::{Map, Number, Value, json};
 use crate::api::errors::StorageError;
 use crate::markdown::frontmatter::js::{js_trim, number_to_string};
 use crate::markdown::frontmatter::{YamlValue, gray_matter_data, gray_matter_parts};
+use crate::storage::nested_tx;
 use crate::storage::repositories::sync_items;
 use crate::sync::outbox;
 
@@ -178,7 +179,7 @@ pub fn import(
     let failed = |e: rusqlite::Error| StorageError::Failed {
         what: e.to_string(),
     };
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     if sync_items::load(&tx, ITEM_TYPE, &template.id)?.is_some() {
         return Ok(false);
     }

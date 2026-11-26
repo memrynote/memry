@@ -114,8 +114,17 @@ private struct NoteRowMenu: View {
     let pickIcon: () -> Void
     let share: () -> Void
     let delete: () -> Void
+    @Environment(NotesSplitRouter.self) private var split: NotesSplitRouter?
 
     var body: some View {
+        // #4377: desktop's tree menu opens a note beside the open one.
+        if let split, split.splitFits {
+            Section {
+                Button(NotesPaneCopy.openToTheSide, systemImage: "rectangle.split.2x1") {
+                    split.openToTheSide(NoteRoute(id: note.id))
+                }
+            }
+        }
         Section {
             Button("Rename", systemImage: "pencil") { rename() }
             if let outline = model.outline {

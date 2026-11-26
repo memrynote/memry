@@ -29,25 +29,37 @@ final class JournalDayPageModel {
     var lastDetail: NoteDetail?
     /// Find in page (J09) is open over this page.
     var finding = false
-    /// The user tapped a disabled ghost row: say why it is disabled.
-    var explainsReadOnlyMetadata = false
+    /// The first line's Return made a block that has yet to take the caret:
+    /// the field stays, hidden and holding the caret, until it does.
+    private(set) var handingOff = false
     private var seedChecked = false
+    /// The page's first read, which the neighbour prefetch and the shown
+    /// day's refresh share. Not either caller's task, so the shown day asks
+    /// for its attachments only after the read has bound them.
+    @ObservationIgnored private var firstRead: Task<Void, Never>?
 
-    init(store: JournalStore, date: String, context: JournalVaultContext) {
+    init(
+        store: JournalStore, date: String, context: JournalVaultContext,
+        notifications: NotificationCenter = .default,
+        attachmentURL: @escaping @Sendable (String) -> URL = AttachmentPaths.url(for:)
+    ) {
         self.date = date
         let id = store.cachedDay(date)?.id ?? JournalNoteBridge.newDayId(date)
-        let bridge = JournalNoteBridge(store: store, date: date, exposesMetadata: JournalWriteGate.metadataWrites)
+        let bridge = JournalNoteBridge(store: store, date: date)
         self.bridge = bridge
         read = NoteReadViewModel(
             route: NoteRoute(id: id),
             reader: bridge,
             filler: context.filler,
-            reachability: PathReachability.forAttachments
+            reachability: PathReachability.forAttachments,
+            attachmentURL: attachmentURL
         )
-        editor = NoteEditorViewModel(noteId: id, editor: bridge, notes: context.writer)
+        editor = NoteEditorViewModel(
+            noteId: id, editor: bridge, notes: context.writer, notifications: notifications
+        )
         metadata = NoteMetadataViewModel(
             noteId: id,
-            writer: JournalWriteGate.metadataWrites ? JournalMetadataWriter(bridge: bridge) : nil
+            writer: JournalMetadataWriter(bridge: bridge, definitions: context.metadataWriter)
         )
         composer = NoteAttachmentComposer(noteId: id, filler: context.filler)
         backlinks = BacklinksViewModel(noteId: id, search: context.search)
@@ -61,6 +73,26 @@ final class JournalDayPageModel {
         guard let context = store.context else { return nil }
         if !store.hasRead(date) { await store.loadDay(date) }
         return JournalDayPageModel(store: store, date: date, context: context)
+    }
+
+    /// Reads the page once. Every caller waits for the same read.
+    func load() async {
+        let read = read
+        let pending = firstRead ?? Task { await read.loadIfNeeded() }
+        firstRead = pending
+        await pending.value
+    }
+
+    /// The shown day, when it appears and after each sync pass: its body from
+    /// the server, then the attachments it waits on (#5644). Only the shown
+    /// page asks: building a neighbour is a prefetch, and an attachment
+    /// downloads whatever the Download attachments setting only once the
+    /// user opens it. The page re-reads a pulled body on `store.generation`
+    /// and asks again for what that read binds.
+    func refreshShown(store: JournalStore) async {
+        await load()
+        await pullRemoteBody(store: store)
+        await read.fetchWaitingAttachments()
     }
 
     /// What the page draws: the current read, or the last one while a
@@ -105,19 +137,31 @@ final class JournalDayPageModel {
 
     /// The first line typed into an empty day: one paragraph through
     /// `editDay`, which creates the day (D2). The block editor takes over
-    /// once the re-read draws the new block.
+    /// once the re-read draws the new block. A line written after it goes
+    /// at the end. `carrying` hands the new block the keys typed after the
+    /// line's Return, as it takes the caret (#4705).
     @discardableResult
-    func writeFirstLine(_ text: String) async -> Bool {
-        let edit = BlockEdit.insertParagraph(
-            afterBlockId: nil,
-            text: text,
-            newBlockId: UUID().uuidString.lowercased()
-        )
+    func writeFirstLine(_ text: String, carrying draft: JournalFirstLineDraft? = nil) async -> Bool {
+        let id = UUID().uuidString.lowercased()
+        let edit = BlockEdit.insertParagraph(afterBlockId: nil, text: text, newBlockId: id)
         do {
             _ = try await bridge.edit(noteId: read.route.id, edit)
         } catch {
             Log.storage.error("the first line of a journal day did not land")
             return false
+        }
+        // The user moved the caret elsewhere during the write: it stays
+        // there, and the field lands its keys as lines of their own. Set
+        // before the re-read, so the block takes the caret as it is drawn,
+        // from the field, which stays until then (`handingOff`): a key typed
+        // while neither holds the caret is lost.
+        if let draft, draft.focused {
+            handingOff = true
+            editor.session.titleBurst = TitleBurst(target: id) { [weak self] moved in
+                self?.handingOff = false
+                return draft.takeHeld(moved)
+            }
+            editor.session.focus(id)
         }
         await read.reload()
         return true

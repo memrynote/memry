@@ -583,7 +583,6 @@ fn a_remote_apply_and_a_remote_tombstone_update_the_projection() {
         let page = apply_page(
             conn,
             vec![tombstone],
-            vec![],
             NOW + 6,
             Some(DEVICE),
             &crate::crypto::agent_envelope::AtRestKey::default(),

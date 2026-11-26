@@ -62,7 +62,7 @@ pub(crate) fn record_tags(e: &Env, item_type: &'static str, id: &str) -> Vec<Str
 }
 
 /// The record pushes queued for `id`, after the last [`clear_outbox`].
-fn upserts(e: &Env, id: &str) -> i64 {
+pub(crate) fn upserts(e: &Env, id: &str) -> i64 {
     let id = id.to_owned();
     e.core()
         .db_handle()
@@ -78,7 +78,7 @@ fn upserts(e: &Env, id: &str) -> i64 {
         .unwrap()
 }
 
-fn clear_outbox(e: &Env) {
+pub(crate) fn clear_outbox(e: &Env) {
     e.core()
         .db_handle()
         .call_blocking(|conn| {
@@ -89,7 +89,7 @@ fn clear_outbox(e: &Env) {
 }
 
 /// Writes `text` at `rel` outside the app and waits until the consumer applied it.
-fn edited_outside(e: &mut Env, id: &str, rel: &str, text: &str) {
+pub(crate) fn edited_outside(e: &mut Env, id: &str, rel: &str, text: &str) {
     e.write(rel, text);
     e.facts_until(|f| {
         matches!(f, Applied::Changed { note_id, source: ChangeSource::Watcher, .. } if note_id == id)

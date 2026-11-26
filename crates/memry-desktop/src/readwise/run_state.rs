@@ -1,5 +1,5 @@
 //! The device-local run state of `sync-state.ts`, over `readwise_run_state` (data migration
-//! 0038). Keys and value text are desktop's (`readwise.<key>` there), so Step 36 copies the
+//! 0039). Keys and value text are desktop's (`readwise.<key>` there), so Step 36 copies the
 //! rows unchanged. A value that does not parse costs a retry or a display, never a note: it is
 //! logged and read as absent, as desktop does.
 
