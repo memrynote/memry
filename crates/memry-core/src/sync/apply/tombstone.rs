@@ -1,8 +1,6 @@
 //! The delete half of [`super::apply_page_into`]: a typed tombstone and the
 //! clock weighing #2409 adds to it.
 
-use std::path::Path;
-
 use rusqlite::Connection;
 
 use crate::api::errors::StorageError;
@@ -12,6 +10,7 @@ use crate::domain::{attachment_uploads, journal, notes, settings};
 use crate::storage::nested_tx;
 use crate::storage::repositories::{projectors, sync_items};
 use crate::sync::clock::{ClockOrder, VectorClock, compare};
+use crate::sync::delete_keep::VaultFiles;
 use crate::sync::{body_debt, delete_keep, journal_day_merge, outbox, store};
 
 use super::{ApplyTotals, DOCUMENT_TYPES, feed, sqlite_failed};
@@ -58,7 +57,7 @@ pub(super) fn apply_tombstone(
     body_state_vector: Option<&str>,
     now_ms: i64,
     clock_device: Option<&str>,
-    vault_root: Option<&Path>,
+    vault: Option<&VaultFiles>,
     totals: &mut ApplyTotals,
 ) -> Result<(), StorageError> {
     // Settings are never deleted (#5433), as desktop's settings handler skips
@@ -90,7 +89,7 @@ pub(super) fn apply_tombstone(
         clock,
         body_state_vector,
         clock_device,
-        vault_root,
+        vault,
         now_ms,
     )?;
     store::mark_deleted(&txn, item_type, item_id, deleted_at, server_cursor, now_ms)?;

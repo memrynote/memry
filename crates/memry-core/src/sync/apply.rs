@@ -43,7 +43,6 @@
 //! saw ([`super::delete_keep`]). The one ticked re-push is §6.11.4's heal of a
 //! versioned key the remote is behind on ([`super::versioned_apply`]), which
 //! §6.11.4 bounds so two clients never ping-pong.
-use std::path::Path;
 
 use rusqlite::Connection;
 
@@ -53,6 +52,7 @@ use crate::domain::{attachment_refs, notes, settings};
 use crate::storage::repositories::sync_items::{ApplyOutcome, InboundRecord};
 
 use super::clock::VectorClock;
+use super::delete_keep::VaultFiles;
 use super::driver::observer::AppliedFeed;
 use super::{refused_items, store};
 
@@ -180,7 +180,7 @@ pub fn apply_pulled_delete(
     clock: &VectorClock,
     now_ms: i64,
     clock_device: &str,
-    vault_root: &Path,
+    vault: VaultFiles,
 ) -> Result<(), StorageError> {
     apply_tombstone(
         conn,
@@ -192,7 +192,7 @@ pub fn apply_pulled_delete(
         None,
         now_ms,
         Some(clock_device),
-        Some(vault_root),
+        Some(&vault),
         &mut ApplyTotals::default(),
     )
 }
@@ -201,9 +201,9 @@ pub fn apply_pulled_delete(
 ///
 /// `clock_device` is this device's clock id (chapter 01 §1.5), which a canvas
 /// conflict copy and a re-queued journal merge are clocked under. `at_rest` seals the agent records
-/// ([`crate::crypto::agent_payload`]). `vault_root` is where a deleted
-/// note's vault file is read when its body log does not replay
-/// ([`super::delete_keep`]); `None` in a shell with no vault files.
+/// ([`crate::crypto::agent_payload`]). `vault` is where a deleted note's
+/// vault file is read ([`super::delete_keep`]); `None` in a shell with no
+/// vault files.
 ///
 /// The outcomes go into the caller's `totals`. Each record commits on its own,
 /// so on an error `totals` (its `feed` above all) still holds every record
@@ -218,7 +218,7 @@ pub(crate) fn apply_page_into(
     pending: Vec<Pending>,
     now_ms: i64,
     clock_device: Option<&str>,
-    vault_root: Option<&Path>,
+    vault: Option<&VaultFiles>,
     at_rest: &AtRestKey,
     totals: &mut ApplyTotals,
 ) -> Result<(), StorageError> {
@@ -251,7 +251,7 @@ pub(crate) fn apply_page_into(
                     body_state_vector.as_deref(),
                     now_ms,
                     clock_device,
-                    vault_root,
+                    vault,
                     totals,
                 )?;
                 refused_items::resolve(conn, &item_type, &item_id)?;
@@ -273,7 +273,7 @@ pub(crate) fn apply_page_into(
                         None,
                         now_ms,
                         clock_device,
-                        vault_root,
+                        vault,
                         totals,
                     )?;
                     refused_items::resolve(conn, &record.item_type, &record.item_id)?;

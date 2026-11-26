@@ -15,6 +15,7 @@ mod editor_support;
 mod http_fakes;
 #[cfg(feature = "markdown")]
 mod note_identity_support;
+mod stamp_gate;
 mod support;
 
 #[path = "account_setup.rs"]
@@ -44,6 +45,8 @@ mod api_search_cjk;
 #[cfg(feature = "markdown")]
 #[path = "api_search_file_text.rs"]
 mod api_search_file_text;
+#[path = "api_search_reindex_batches.rs"]
+mod api_search_reindex_batches;
 #[path = "api_sticky_store.rs"]
 mod api_sticky_store;
 #[path = "api_sync_declaration.rs"]
@@ -580,6 +583,8 @@ mod sync_outbox;
 #[cfg(feature = "markdown")]
 #[path = "sync_project_nested_arrays.rs"]
 mod sync_project_nested_arrays;
+#[path = "sync_pull_search_stamp.rs"]
+mod sync_pull_search_stamp;
 #[path = "sync_realtime.rs"]
 mod sync_realtime;
 #[path = "sync_realtime_run.rs"]

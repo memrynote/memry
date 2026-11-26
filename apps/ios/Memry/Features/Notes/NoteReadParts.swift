@@ -59,6 +59,10 @@ enum NoteBodyPreview: Equatable, Sendable {
 }
 
 extension NoteReadViewModel {
+    /// Whether this screen can offer to fetch a body at all. An affordance
+    /// that leads nowhere is worse than its absence.
+    var canFetchBody: Bool { filler != nil }
+
     /// Whether the page draws `preview` in place of blocks yet.
     ///
     /// A text preview waits for the walk: drawn first, a large note's whole
@@ -271,7 +275,7 @@ extension NoteReadViewModel {
 
         var waiting: [String] = []
         for case let .bound(attachment) in attachments.values
-            where attachment.intactPath == nil && !waiting.contains(attachment.attachmentId) {
+            where attachment.intactPath(under: attachmentURL) == nil && !waiting.contains(attachment.attachmentId) {
             waiting.append(attachment.attachmentId)
         }
         var landed: [String] = []
@@ -312,7 +316,7 @@ extension NoteReadViewModel {
         }
         return !attachments.values.contains { binding in
             guard case let .bound(attachment) = binding else { return false }
-            return attachment.attachmentId == id && attachment.intactPath != nil
+            return attachment.attachmentId == id && attachment.intactPath(under: attachmentURL) != nil
         }
     }
 

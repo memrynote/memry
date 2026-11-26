@@ -39,49 +39,9 @@ impl Search {
         links: &mut LinkChanges,
     ) -> Result<Option<search::Reindexed>, StorageError> {
         loop {
-            let mut pass = self.data.read_blocking(|data| {
-                self.index
-                    .read_blocking(|index| search::ReindexPass::plan(data, index))
-            })?;
+            let mut pass = self.plan_reindex()?;
             loop {
-                // Settling the changed names is a short take; reading every name is not, so
-                // it runs on a reader.
-                let index_writer = OnceCell::new();
-                let batch = self
-                    .data
-                    .call_blocking(|data| pass.settle_names(data))
-                    .and_then(|()| self.data.read_blocking(|data| pass.load_names(data)))
-                    .and_then(|()| {
-                        let (step, index_tx, rest) = self.data.call_blocking(|data| {
-                            let held = std::time::Instant::now();
-                            let _ = index_writer.set(self.index.hold_writer()?);
-                            let index = index_writer.get().expect("set above");
-                            let index_tx = nested_tx::begin(index).map_err(search::failed)?;
-                            let step = pass.batch(data, &index_tx, super::now_ms(), stop)?;
-                            // Counted under the writer: once it is let go, a waiter takes it.
-                            let rest = (self.data.writers_waiting() > 0).then(|| held.elapsed());
-                            Ok((step, index_tx, rest))
-                        })?;
-                        match index_tx.commit().map_err(search::failed) {
-                            Ok(()) => Ok((step, rest)),
-                            Err(error) => {
-                                if let search::ReindexStep::Done(done) = step {
-                                    links.extend(done.links);
-                                }
-                                Err(error)
-                            }
-                        }
-                    });
-                // Let go of index.db before the rest: a save takes data.db then index.db, and
-                // would wait on this writer while holding data.db (REVIEW-5503).
-                drop(index_writer);
-                let (step, rest) = match batch {
-                    Ok(batch) => batch,
-                    Err(error) => {
-                        links.extend(pass.take_links());
-                        return Err(error);
-                    }
-                };
+                let (step, rest) = self.reindex_batch(&mut pass, stop, links)?;
                 match step {
                     search::ReindexStep::More => {}
                     search::ReindexStep::Done(mut done) => {
@@ -102,6 +62,57 @@ impl Search {
                 }
             }
         }
+    }
+
+    /// Plans a pass on readers ([`search::ReindexPass::plan`]).
+    pub(super) fn plan_reindex(&self) -> Result<search::ReindexPass, StorageError> {
+        self.data.read_blocking(|data| {
+            self.index
+                .read_blocking(|index| search::ReindexPass::plan(data, index))
+        })
+    }
+
+    /// One batch of `pass` under both writers, as [`Search::reindex_in_batches`] describes,
+    /// and how long the batch should rest when writers queued behind it. A failed batch hands
+    /// the links it owes to `links` and ends the pass.
+    pub(super) fn reindex_batch(
+        &self,
+        pass: &mut search::ReindexPass,
+        stop: &dyn Fn() -> bool,
+        links: &mut LinkChanges,
+    ) -> Result<(search::ReindexStep, Option<std::time::Duration>), StorageError> {
+        // Settling the changed names is a short take; reading every name is not, so
+        // it runs on a reader.
+        let index_writer = OnceCell::new();
+        let batch = self
+            .data
+            .call_blocking(|data| pass.settle_names(data))
+            .and_then(|()| self.data.read_blocking(|data| pass.load_names(data)))
+            .and_then(|()| {
+                let (step, index_tx, rest) = self.data.call_blocking(|data| {
+                    let held = std::time::Instant::now();
+                    let _ = index_writer.set(self.index.hold_writer()?);
+                    let index = index_writer.get().expect("set above");
+                    let index_tx = nested_tx::begin(index).map_err(search::failed)?;
+                    let step = pass.batch(data, &index_tx, super::now_ms(), stop)?;
+                    // Counted under the writer: once it is let go, a waiter takes it.
+                    let rest = (self.data.writers_waiting() > 0).then(|| held.elapsed());
+                    Ok((step, index_tx, rest))
+                })?;
+                match index_tx.commit().map_err(search::failed) {
+                    Ok(()) => Ok((step, rest)),
+                    Err(error) => {
+                        if let search::ReindexStep::Done(done) = step {
+                            links.extend(done.links);
+                        }
+                        Err(error)
+                    }
+                }
+            });
+        // Let go of index.db before the rest: a save takes data.db then index.db, and
+        // would wait on this writer while holding data.db (REVIEW-5503).
+        drop(index_writer);
+        batch.inspect_err(|_| links.extend(pass.take_links()))
     }
 }
 

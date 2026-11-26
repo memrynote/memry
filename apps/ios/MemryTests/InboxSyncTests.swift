@@ -133,7 +133,11 @@ struct InboxSyncTests {
 @MainActor
 @Suite("Tasks store attachment redrive", .serialized, .timeLimit(.minutes(1)))
 struct TasksRedriveOutsidePassTests {
-    @Test func a_slow_redrive_does_not_hold_the_next_pass() async throws {
+    /// #5852: the pass's re-read runs on the shared core executor, which a
+    /// full parallel Unit run keeps busy for seconds, so the redrive is awaited
+    /// rather than given a deadline. The bound is the time limit.
+    @Test(.timeLimit(.minutes(1)))
+    func a_slow_redrive_does_not_hold_the_next_pass() async throws {
         let filler = GatedFiller(holdRedrive: true)
         let tasks = try TasksTestVault(filler: filler)
 

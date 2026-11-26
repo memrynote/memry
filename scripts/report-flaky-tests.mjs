@@ -1,6 +1,7 @@
 // Posts the tests that passed only on retry in a merge-queue run of rust-ci.yml to the flaky-test
 // issue (#3967). Input: a directory of downloaded `nextest-junit-<os>-<n>` artifacts, each holding
-// the junit.xml of nextest's `merge-queue` profile (crates/.config/nextest.toml). Logging is best
+// JUnit reports of nextest's `merge-queue` profile (crates/.config/nextest.toml): a tests leg's
+// junit.xml, or a seams leg's one report per nextest step (`<step>.xml`). Logging is best
 // effort: every error ends in a warning and exit 0, so the merge queue never fails on it.
 //
 // `--alarm` (flake-alarm.yml) looks at the failed merge-queue runs of the last 24 hours instead. A
@@ -52,16 +53,23 @@ export function exhaustedTests(xml) {
   return failed
 }
 
-// [leg, junit.xml text] for every `nextest-junit-<leg>-<n>` artifact directory under root.
+// [leg, JUnit report text] for each report of every `nextest-junit-<leg>-<n>` directory under root.
 function* junitFiles(root) {
   for (const dir of readdirSync(root).toSorted()) {
     const leg = dir.match(/^nextest-junit-(.+)-\d+$/)?.[1]
     if (!leg) continue
+    let reports
     try {
-      yield [leg, readFileSync(join(root, dir, 'junit.xml'), 'utf8')]
-    } catch {
-      console.log(`::warning::${dir} has no junit.xml`)
+      reports = readdirSync(join(root, dir))
+        .filter((file) => file.endsWith('.xml'))
+        .toSorted()
+        .map((file) => readFileSync(join(root, dir, file), 'utf8'))
+    } catch (error) {
+      console.log(`::warning::${dir} could not be read: ${error.message}`)
+      continue
     }
+    if (reports.length === 0) console.log(`::warning::${dir} has no JUnit report`)
+    for (const xml of reports) yield [leg, xml]
   }
 }
 
