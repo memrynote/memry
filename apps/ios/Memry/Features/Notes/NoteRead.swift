@@ -167,8 +167,8 @@ final class NoteReadViewModel {
             fetch = .failed(mapped)
             return
         }
-        hasLoaded = false
-        await load()
+        // The body waits for its walk (#5247); a page on screen stays, or a new note's title loses its caret (#4893).
+        if case .ready = phase { blocksWalked = false; await load(quietly: true) } else { await load() }
     }
 
     /// Pulls this note's body, then re-reads the note in place. Answers
