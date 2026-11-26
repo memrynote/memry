@@ -35,6 +35,7 @@ mod columns;
 mod inline;
 mod locate;
 mod merge;
+mod paste;
 mod snapshot;
 mod structure;
 mod tables;
@@ -45,6 +46,7 @@ use columns::*;
 use inline::*;
 use locate::*;
 use merge::*;
+use paste::*;
 use snapshot::*;
 use structure::*;
 use tables::*;
@@ -330,6 +332,21 @@ pub enum BlockEdit {
         kind: Option<String>,
         new_block_id: String,
     },
+    /// Plain text pasted at `at` in `block_id` (counted as `SplitBlock`'s
+    /// `at`), read as markdown as desktop's paste reads `text/plain`
+    /// (chapter 12 §12.1.0). Its blocks go below the text before the caret,
+    /// and the text after it moves to a block of `block_id`'s type below
+    /// them; at the start of the block they go above it, and an empty block
+    /// is replaced. `new_block_ids` holds one id per block the paste writes
+    /// ([`crate::crdt::markdown_seed::paste_plan`]), then the moved text's
+    /// when there is any. A code block, and a block with nested blocks split
+    /// mid-text, are refused. Last, to keep earlier FFI indices.
+    PasteMarkdown {
+        block_id: String,
+        at: u32,
+        markdown: String,
+        new_block_ids: Vec<String>,
+    },
 }
 
 /// Applies one edit to `document`.
@@ -446,6 +463,12 @@ fn apply_in(txn: &mut TransactionMut, edit: &BlockEdit) -> Result<(), CrdtError>
             kind,
             new_block_id,
         } => split_block(txn, block_id, *at, kind.as_deref(), new_block_id),
+        BlockEdit::PasteMarkdown {
+            block_id,
+            at,
+            markdown,
+            new_block_ids,
+        } => paste_markdown(txn, block_id, *at, markdown, new_block_ids),
     }
 }
 

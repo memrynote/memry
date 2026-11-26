@@ -29809,6 +29809,19 @@ public enum BlockEdit: Equatable, Hashable {
      */
     case splitBlock(blockId: String, at: UInt32, kind: String? = nil, newBlockId: String
     )
+    /**
+     * Plain text pasted at `at` in `block_id` (counted as `SplitBlock`'s
+     * `at`), read as markdown as desktop's paste reads `text/plain`
+     * (chapter 12 §12.1.0). Its blocks go below the text before the caret,
+     * and the text after it moves to a block of `block_id`'s type below
+     * them; at the start of the block they go above it, and an empty block
+     * is replaced. `new_block_ids` holds one id per block the paste writes
+     * ([`crate::crdt::markdown_seed::paste_plan`]), then the moved text's
+     * when there is any. A code block, and a block with nested blocks split
+     * mid-text, are refused. Last, to keep earlier FFI indices.
+     */
+    case pasteMarkdown(blockId: String, at: UInt32, markdown: String, newBlockIds: [String]
+    )
 
 
 
@@ -29903,6 +29916,9 @@ public struct FfiConverterTypeBlockEdit: FfiConverterRustBuffer {
         )
         
         case 25: return .splitBlock(blockId: try FfiConverterString.read(from: &buf), at: try FfiConverterUInt32.read(from: &buf), kind: try FfiConverterOptionString.read(from: &buf), newBlockId: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 26: return .pasteMarkdown(blockId: try FfiConverterString.read(from: &buf), at: try FfiConverterUInt32.read(from: &buf), markdown: try FfiConverterString.read(from: &buf), newBlockIds: try FfiConverterSequenceString.read(from: &buf)
         )
         
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -30082,6 +30098,14 @@ public struct FfiConverterTypeBlockEdit: FfiConverterRustBuffer {
             FfiConverterUInt32.write(at, into: &buf)
             FfiConverterOptionString.write(kind, into: &buf)
             FfiConverterString.write(newBlockId, into: &buf)
+            
+        
+        case let .pasteMarkdown(blockId,at,markdown,newBlockIds):
+            writeInt(&buf, Int32(26))
+            FfiConverterString.write(blockId, into: &buf)
+            FfiConverterUInt32.write(at, into: &buf)
+            FfiConverterString.write(markdown, into: &buf)
+            FfiConverterSequenceString.write(newBlockIds, into: &buf)
             
         }
     }
@@ -38294,6 +38318,19 @@ public func journalConformance(fileJson: String) -> String  {
 })
 }
 /**
+ * How many blocks `markdown` pasted into a block writes: the ids
+ * [`crate::crdt::body_edit::BlockEdit::PasteMarkdown`] takes, before the
+ * moved text's ([`crate::crdt::markdown_seed::paste_plan`]).
+ */
+public func markdownPasteBlockCount(markdown: String) -> UInt32  {
+    return try!  FfiConverterUInt32.lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_func_markdown_paste_block_count(
+        FfiConverterString.lower(markdown),uniffiCallStatus
+    )
+})
+}
+/**
  * The `[[` menu's note rows for `query` over `notes` (from [`Notes::list`]),
  * at most `limit` (see [`wiki_suggest::rank`]).
  */
@@ -38523,6 +38560,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_func_journal_conformance() != 2227) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_func_markdown_paste_block_count() != 62645) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_func_wiki_link_candidates() != 17581) {

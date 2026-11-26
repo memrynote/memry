@@ -79,8 +79,8 @@ pub enum SeedKind {
         language: String,
     },
     Divider,
-    /// Only [`append_markdown_in`] builds one, from a line that is just an
-    /// image; [`plan`] keeps such a line as literal text.
+    /// Only [`append_markdown_in`] and [`paste_plan`] build one, from a line
+    /// that is just an image; [`plan`] keeps such a line as literal text.
     Image {
         url: String,
     },
@@ -212,15 +212,42 @@ pub(crate) fn append_markdown_in(
     txn: &mut yrs::TransactionMut,
     markdown: &str,
 ) -> Result<SeedPlan, CrdtError> {
+    let plan = editor_plan(markdown);
+    let group = crate::crdt::body_edit::top_block_group(txn)?;
+    write::write_group(txn, &group, &plan.blocks, &mut random_block_id);
+    Ok(plan)
+}
+
+/// The blocks plain text pasted into a block makes (chapter 12 §12.1.0):
+/// desktop's paste reads `text/plain` as markdown in its editor, with each
+/// `\r\n` and `\r` read as `\n` first (`table-cell-paste.ts`).
+pub fn paste_plan(markdown: &str) -> SeedPlan {
+    editor_plan(&markdown.replace("\r\n", "\n").replace('\r', "\n"))
+}
+
+/// Writes `blocks` into `group` from `index` on, each top-level block under
+/// its id in `ids`, inside the caller's transaction: a paste
+/// ([`crate::crdt::body_edit::BlockEdit::PasteMarkdown`]).
+pub(crate) fn insert_blocks(
+    txn: &mut yrs::TransactionMut,
+    group: &yrs::XmlElementRef,
+    index: u32,
+    blocks: &[SeedBlock],
+    ids: &[String],
+) {
+    write::insert_group(txn, group, index, blocks, ids, &mut random_block_id);
+}
+
+/// [`plan`] as desktop's editor reads markdown: a line that is only an image
+/// is an image block rather than literal text.
+fn editor_plan(markdown: &str) -> SeedPlan {
     let mut plan = plan(markdown);
     for block in &mut plan.blocks {
         if let Some(url) = image_line(block) {
             *block = SeedBlock::new(SeedKind::Image { url }, Vec::new());
         }
     }
-    let group = crate::crdt::body_edit::top_block_group(txn)?;
-    write::write_group(txn, &group, &plan.blocks, &mut random_block_id);
-    Ok(plan)
+    plan
 }
 
 /// The image address of a literal paragraph that is only `![alt](url)` or

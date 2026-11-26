@@ -36,12 +36,43 @@ pub(super) fn write_group(
 ) {
     for block in blocks {
         let container = group.push_back(txn, XmlElementPrelim::empty("blockContainer"));
-        container.insert_attribute(txn, "id", mint());
-        write_block(txn, &container, block);
-        if !block.children.is_empty() {
-            let children = container.push_back(txn, XmlElementPrelim::empty("blockGroup"));
-            write_group(txn, &children, &block.children, mint);
-        }
+        let id = mint();
+        write_container(txn, &container, id, block, mint);
+    }
+}
+
+/// Writes `blocks` into `group` from `index` on, each top-level container
+/// under its id in `ids`; nested blocks take ids from `mint`.
+pub(super) fn insert_group(
+    txn: &mut TransactionMut,
+    group: &XmlElementRef,
+    index: u32,
+    blocks: &[SeedBlock],
+    ids: &[String],
+    mint: &mut dyn FnMut() -> String,
+) {
+    for (offset, (block, id)) in (0u32..).zip(blocks.iter().zip(ids)) {
+        let container = group.insert(
+            txn,
+            index + offset,
+            XmlElementPrelim::empty("blockContainer"),
+        );
+        write_container(txn, &container, id.clone(), block, mint);
+    }
+}
+
+fn write_container(
+    txn: &mut TransactionMut,
+    container: &XmlElementRef,
+    id: String,
+    block: &SeedBlock,
+    mint: &mut dyn FnMut() -> String,
+) {
+    container.insert_attribute(txn, "id", id);
+    write_block(txn, container, block);
+    if !block.children.is_empty() {
+        let children = container.push_back(txn, XmlElementPrelim::empty("blockGroup"));
+        write_group(txn, &children, &block.children, mint);
     }
 }
 
