@@ -6,7 +6,9 @@ use tauri_specta::{Builder, ErrorHandlingMode, collect_commands, collect_events}
 
 use crate::startup::StartupState;
 
-// The task domain's commands and events (`registry/tasks.rs`).
+// The task domain's commands and events (`registry/tasks.rs`, `registry/projects.rs`).
+#[macro_use]
+mod projects;
 #[macro_use]
 mod tasks;
 

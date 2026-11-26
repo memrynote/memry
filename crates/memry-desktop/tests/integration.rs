@@ -221,6 +221,8 @@ mod importer_bear;
 mod importer_google_keep;
 #[path = "importer_noteplan.rs"]
 mod importer_noteplan;
+#[path = "importer_raindrop.rs"]
+mod importer_raindrop;
 #[path = "importer_roam.rs"]
 mod importer_roam;
 #[path = "importer_untrusted.rs"]
@@ -395,6 +397,10 @@ mod path_collision;
 mod paths;
 #[path = "portals.rs"]
 mod portals;
+#[path = "project_note_files.rs"]
+mod project_note_files;
+#[path = "project_writes.rs"]
+mod project_writes;
 #[path = "properties_file.rs"]
 mod properties_file;
 #[path = "property_definitions.rs"]
