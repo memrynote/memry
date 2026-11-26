@@ -174,7 +174,7 @@ fn records_carry_the_payload_electron_pushes_with_its_kept_keys() {
     drop(conn);
 
     let report = import(&vault);
-    assert_eq!(report.checks_passed, vec![1, 2, 5, 6]);
+    assert_eq!(report.checks_passed, vec![1, 2, 4, 5, 6]);
     for (table, written, dropped) in [
         ("data.db/tag_categories", 2, 0),
         ("data.db/tag_definitions", 4, 0),

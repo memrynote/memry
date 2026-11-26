@@ -216,6 +216,17 @@ impl RunState {
         }
     }
 
+    /// `claimErrorToast`: true for the first ask of a parked episode, false after it and while
+    /// not parked.
+    pub fn claim_error_toast(&self) -> Result<bool, StorageError> {
+        let parked = self.last_run()?.is_some_and(|run| run.needs_attention);
+        if !parked || self.get(ERROR_TOAST)?.is_some() {
+            return Ok(false);
+        }
+        self.set(ERROR_TOAST, Some("true"))?;
+        Ok(true)
+    }
+
     pub(crate) fn store(&self) -> &ReadwiseStore {
         &self.store
     }
