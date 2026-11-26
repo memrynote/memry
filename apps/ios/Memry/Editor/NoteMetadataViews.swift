@@ -366,7 +366,10 @@ struct NoteTitleEditor: View {
                     // keys UIKit has and the binding has not seen yet.
                     text: Binding(
                         get: { commits.editing || returned != nil ? draft : title },
-                        set: typed
+                        // A closure, not `set: typed`: Swift 6.3.3 (Xcode 26.6)
+                        // crashes in IRGen on a method passed as Binding's
+                        // `@isolated(any)` setter in a Release build.
+                        set: { typed($0) }
                     ),
                     // Wraps rather than truncating a long title.
                     axis: .vertical
