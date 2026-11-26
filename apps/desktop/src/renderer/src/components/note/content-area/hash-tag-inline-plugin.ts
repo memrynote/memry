@@ -1,13 +1,25 @@
-import { Plugin, PluginKey } from '@tiptap/pm/state'
+import { Plugin, PluginKey, Selection } from '@tiptap/pm/state'
 import { Fragment } from '@tiptap/pm/model'
-import type { EditorState } from '@tiptap/pm/state'
+import type { EditorState, Transaction } from '@tiptap/pm/state'
 import type { EditorView } from '@tiptap/pm/view'
-import type { Node as ProseMirrorNode } from '@tiptap/pm/model'
+import type { Node as ProseMirrorNode, ResolvedPos } from '@tiptap/pm/model'
 import { isInlineTagName, isInlineTagPrefix, TAG_CHAR } from '@memry/shared/inline-tags'
 
 const PLUGIN_KEY = new PluginKey('hashTagInline')
 /** Meta on the transaction that reads the text an input method just committed. */
 const RECHECK = 'recheck'
+/**
+ * How long a commit waits for the next composition. Korean commits a syllable
+ * and starts the next one on the same key, a few milliseconds apart in WebKit.
+ */
+const SETTLE_MS = 50
+/**
+ * Hangul right before the cursor. The macOS Korean input method can write
+ * without composing: it types a jamo as plain text and rewrites the text before
+ * the cursor with each key (`ㅍ`, `퓨`, `퓰`, `퓨리`), which it cannot do once that
+ * text is inside a chip. A Hangul tag becomes a chip when its word ends.
+ */
+const TRAILING_HANGUL = /[\u1100-\u11FF\u3130-\u318F\uA960-\uA97F\uAC00-\uD7A3\uD7B0-\uD7FF]$/u
 const TAG_RUN = String.raw`(?:${TAG_CHAR}|\/)+`
 const HASH_TAG_BEFORE_CURSOR = new RegExp(String.raw`(^|[\s\ufffc])#(${TAG_RUN})$`, 'u')
 const TAG_CHAR_PATTERN = new RegExp(String.raw`^(?:${TAG_CHAR}|\/)$`, 'u')
@@ -55,24 +67,96 @@ type GetTagColor = (tag: string) => string
 export function createHashTagInlinePlugin(getTagColor: GetTagColor): Plugin {
   // An input method (Korean, Japanese, Chinese, accents) edits the doc while it
   // composes, and replacing that text with a chip would tear the composition:
-  // `#ㅍ` is half of `#퓨`. Composing transactions are left alone, and once the
-  // input method commits, the text before the cursor is read whole. The commit
-  // may arrive together with the space or punctuation that ended it.
-  let composedSinceRead = false
+  // `#ㅍ` is half of `#퓨`. Nothing is read between compositionstart and
+  // compositionend. ProseMirror's `composition` meta is not enough: WebKit
+  // inserts each committed syllable as a plain input before compositionend, and
+  // starts the next syllable right after. Once a commit settles with no new
+  // composition, the text before the cursor is read whole. The commit may
+  // arrive together with the space that ended it, or with Enter, which leaves
+  // the tag at the end of the line above.
+  let composing = false
+  let committed = false
+  let settle: ReturnType<typeof setTimeout> | undefined
+
+  /** The transaction that chips the tag ending at `$pos`, or null. */
+  function chipBefore(state: EditorState, $pos: ResolvedPos, ended: boolean): Transaction | null {
+    const parent = $pos.parent
+    if (parent.type.spec.code) return null
+
+    let textUpToCursor = parent.textBetween(0, $pos.parentOffset, undefined, '\ufffc')
+    if (!ended && TRAILING_HANGUL.test(textUpToCursor)) return null
+    // The space that ended a commit or a Hangul word.
+    if (
+      /\s$/u.test(textUpToCursor) &&
+      (ended || TRAILING_HANGUL.test(textUpToCursor.slice(0, -1)))
+    ) {
+      textUpToCursor = textUpToCursor.slice(0, -1)
+    }
+    const endPos = $pos.start() + textUpToCursor.length
+
+    const hashTagNodeType = state.schema.nodes.hashTag
+    if (!hashTagNodeType) return null
+
+    // Creation: a `#` that starts a word, then a whole tag. Typing makes the
+    // chip at its first letter; a commit, a paste, a Hangul word or a
+    // digit-first tag (`#2024년`) makes it from the whole run.
+    const createTag = matchHashTagBeforeCursor(textUpToCursor)
+    if (createTag) {
+      const hashTagNode = hashTagNodeType.create({
+        tag: createTag,
+        color: getTagColor(createTag)
+      })
+      const tr = state.tr.replaceWith(
+        endPos - createTag.length - 1,
+        endPos,
+        Fragment.from([hashTagNode])
+      )
+      tr.setMeta(PLUGIN_KEY, true)
+      return tr
+    }
+
+    // Extension: a chip followed by tag characters absorbs them.
+    const trailing = matchTrailingTagChars(textUpToCursor)
+    if (trailing) {
+      const absPos = $pos.start() + trailing.offset
+      const nodeAtPos = state.doc.nodeAt(absPos)
+
+      if (nodeAtPos?.type.name !== 'hashTag') return null
+
+      const currentTag: string = nodeAtPos.attrs.tag
+      const newTag = extendTagName(currentTag, trailing.chars)
+      if (newTag === null) return null
+      const color = getTagColor(newTag)
+      const newNode = hashTagNodeType.create({ tag: newTag, color })
+
+      const tr = state.tr.replaceWith(absPos, endPos, Fragment.from([newNode]))
+      tr.setMeta(PLUGIN_KEY, true)
+      return tr
+    }
+
+    return null
+  }
 
   return new Plugin({
     key: PLUGIN_KEY,
 
+    view: () => ({ destroy: () => clearTimeout(settle) }),
+
     props: {
       handleDOMEvents: {
+        compositionstart(): boolean {
+          composing = true
+          clearTimeout(settle)
+          return false
+        },
         compositionend(view: EditorView): boolean {
-          // After ProseMirror's own handler, which flushes the committed text
-          // in a microtask. A new composition (the next Korean syllable) waits
-          // for its own end.
-          setTimeout(() => {
+          composing = false
+          committed = true
+          clearTimeout(settle)
+          settle = setTimeout(() => {
             if (view.isDestroyed || view.composing) return
             view.dispatch(view.state.tr.setMeta(PLUGIN_KEY, RECHECK))
-          })
+          }, SETTLE_MS)
           return false
         }
       },
@@ -110,69 +194,23 @@ export function createHashTagInlinePlugin(getTagColor: GetTagColor): Plugin {
     },
 
     appendTransaction(transactions, _oldState, newState) {
-      if (transactions.some((tr) => tr.getMeta('composition') !== undefined)) {
-        composedSinceRead = true
+      if (composing || transactions.some((tr) => tr.getMeta('composition') !== undefined)) {
+        committed = true
         return null
       }
       const hasDocChange = transactions.some((tr) => tr.docChanged && !tr.getMeta(PLUGIN_KEY))
       const recheck = transactions.some((tr) => tr.getMeta(PLUGIN_KEY) === RECHECK)
       if (!hasDocChange && !recheck) return null
-      const afterCommit = composedSinceRead
-      composedSinceRead = false
+      const ended = committed || recheck
+      committed = false
 
-      const { selection } = newState
-      const $from = selection.$from
-      const parent = $from.parent
-
-      if (parent.type.spec.code) return null
-
-      let textUpToCursor = parent.textBetween(0, $from.parentOffset, undefined, '\ufffc')
-      if (afterCommit && /\s$/u.test(textUpToCursor)) {
-        textUpToCursor = textUpToCursor.slice(0, -1)
+      const { $from } = newState.selection
+      // Enter ended the word: it is at the end of the line above.
+      if ($from.parentOffset === 0 && $from.depth > 0) {
+        const above = Selection.findFrom(newState.doc.resolve($from.before()), -1, true)
+        return above ? chipBefore(newState, above.$from, true) : null
       }
-      const endPos = $from.start() + textUpToCursor.length
-
-      const hashTagNodeType = newState.schema.nodes.hashTag
-      if (!hashTagNodeType) return null
-
-      // Creation: a `#` that starts a word, then a whole tag. Typing makes the
-      // chip at its first letter; a commit, a paste or a digit-first tag
-      // (`#2024년`) makes it from the whole run.
-      const createTag = matchHashTagBeforeCursor(textUpToCursor)
-      if (createTag) {
-        const hashTagNode = hashTagNodeType.create({
-          tag: createTag,
-          color: getTagColor(createTag)
-        })
-        const tr = newState.tr.replaceWith(
-          endPos - createTag.length - 1,
-          endPos,
-          Fragment.from([hashTagNode])
-        )
-        tr.setMeta(PLUGIN_KEY, true)
-        return tr
-      }
-
-      // Extension: a chip followed by tag characters absorbs them.
-      const trailing = matchTrailingTagChars(textUpToCursor)
-      if (trailing) {
-        const absPos = $from.start() + trailing.offset
-        const nodeAtPos = newState.doc.nodeAt(absPos)
-
-        if (nodeAtPos?.type.name !== 'hashTag') return null
-
-        const currentTag: string = nodeAtPos.attrs.tag
-        const newTag = extendTagName(currentTag, trailing.chars)
-        if (newTag === null) return null
-        const color = getTagColor(newTag)
-        const newNode = hashTagNodeType.create({ tag: newTag, color })
-
-        const tr = newState.tr.replaceWith(absPos, endPos, Fragment.from([newNode]))
-        tr.setMeta(PLUGIN_KEY, true)
-        return tr
-      }
-
-      return null
+      return chipBefore(newState, $from, ended)
     }
   })
 }
