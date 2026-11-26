@@ -40,6 +40,7 @@ fn search_over(notes: usize) -> Search {
     Search {
         data,
         index,
+        pass: Default::default(),
         directory: PathBuf::new(),
         semantic: None,
     }
