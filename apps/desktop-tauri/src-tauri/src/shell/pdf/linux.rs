@@ -12,10 +12,12 @@ use webkit2gtk::{PrintOperation, PrintOperationExt, SettingsExt, WebViewExt};
 
 use super::{Done, MARGIN_INCHES, Paper};
 
+/// The answer channel and the operation it waits on, taken once by whichever answers first.
+type Pending = Rc<RefCell<Option<(Done, Option<PrintOperation>)>>>;
+
 pub fn start(webview: &PlatformWebview, paper: Paper, target: &Path, done: Done) {
     // The operation is held here until it answers, so it outlives this call.
-    let pending: Rc<RefCell<Option<(Done, Option<PrintOperation>)>>> =
-        Rc::new(RefCell::new(Some((done, None))));
+    let pending: Pending = Rc::new(RefCell::new(Some((done, None))));
     let answer = {
         let pending = Rc::clone(&pending);
         move |outcome: Result<(), String>| {
