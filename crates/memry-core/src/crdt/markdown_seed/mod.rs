@@ -6,7 +6,8 @@
 //! (§5 fact c): the day would read "not on this phone", and the first
 //! keystroke would write blocks into an empty document that desktop's next
 //! write-back puts over the template text. So the core seeds the document
-//! itself, for the block types templates use, and nothing more.
+//! itself. Text pasted into a block on iOS, a filed inbox article and a note
+//! created from a template go through the same [`plan`].
 //!
 //! **The document must be the one desktop would build** from the same bytes
 //! (`apps/desktop/src/main/sync/blocknote-converter.ts` `markdownToYFragment`,
@@ -15,29 +16,48 @@
 //! on the last line is the paragraph `1.` because the text is `trim()`med
 //! first; a soft break is one `hardBreak` and a hard break two; a code span
 //! drops every other mark. `packages/contracts/test-vectors/markdown-seed.json`
-//! pins the result, generated through the production parse path.
+//! pins the result, generated through the production parse path. A paste
+//! follows the converter too, not BlockNote's own paste of `text/plain`: the
+//! converter is the desktop reading that builds Memry's blocks (callouts,
+//! math, toggles, embeds), and the one every vault file goes through.
 //!
-//! **Supported**: paragraphs, headings 1–6 (ATX and setext), bullet, numbered
-//! and check lists nested by indentation, quotes of one paragraph, fenced and
-//! indented code blocks with their language, dividers, and inline bold,
-//! italic, strike, code and links. Wiki links, tags and `{{…}}` tokens stay
-//! plain text, which is what desktop's converter does with them too.
+//! **Built**: paragraphs, headings 1–6 (ATX and setext), bullet, numbered
+//! and check lists nested by indentation, quotes, fenced and indented code
+//! blocks with their language, mermaid diagrams, dividers, pipe tables,
+//! images and videos (a line of its own, or lifted out of a paragraph or
+//! heading, or inline in a table cell), YouTube, bookmark, whiteboard and file
+//! marker lines, callouts, `$$` math blocks, quotes with a blank `>` line
+//! between paragraphs, Memry's `<details data-memry-toggle>` toggles, and
+//! inline bold, italic, strike, code and links. Wiki links, tags and `{{…}}`
+//! tokens stay plain text, which is what desktop's converter does with them
+//! too, and so does a `<details>` block another app wrote.
 //!
-//! **Fallback**: a construct outside that set (a table, HTML, an image or
-//! embed, a callout, math, a structured quote, a task block, an inline
-//! mention) keeps its block's source lines as literal text, one paragraph per
-//! non-blank line, and is reported in [`SeedPlan::fallbacks`]. A construct
-//! that changes how desktop reads the whole text (a toggle, CriticMarkup, a
-//! link reference definition, a carriage return) sends every line there. No
-//! text is dropped; the document then differs from desktop's in those blocks
-//! only.
+//! **Fallback**: a construct outside that set (raw HTML and HTML comments, an
+//! image in a list or a quote, a video beside text, an inline mention or date
+//! token, a task block or plain-checkbox marker, a quote or callout holding a
+//! list or a nested quote, a callout of a user-defined type or with a body
+//! this port cannot serialize back) keeps its block's source lines as literal
+//! text, one paragraph per non-blank line, and is reported in
+//! [`SeedPlan::fallbacks`]. A construct that changes how desktop reads the
+//! whole text (CriticMarkup, a link reference definition, column regions, a
+//! coloured toggle) sends every line there. No text is dropped; the document
+//! then differs from desktop's in those blocks only.
 
 mod blocks;
+mod claims;
 mod inline;
+mod lift;
 mod links;
+mod markers;
+mod media;
 mod prepare;
+mod roundtrip;
+mod runs;
 mod shapes;
+mod table;
+mod toggles;
 mod tokens;
+mod web_url;
 mod write;
 
 use yrs::{ReadTxn as _, XmlFragment as _};
@@ -78,19 +98,98 @@ pub enum SeedKind {
     CodeBlock {
         language: String,
     },
+    /// A ```` ```mermaid ```` fence: its source as plain content.
+    Diagram,
+    /// `<details data-memry-toggle>`: the summary is its content, the body
+    /// its children.
+    Toggle {
+        open: bool,
+    },
     Divider,
-    /// Only [`append_markdown_in`] and [`paste_plan`] build one, from a line
-    /// that is just an image; [`plan`] keeps such a line as literal text.
+    /// `kind` is the callout type (`note`, `tip`, …), `fold` `none`,
+    /// `closed` or `open`. The first paragraph is its content, the blocks
+    /// after it its children.
+    Callout {
+        kind: String,
+        fold: String,
+    },
+    Math {
+        latex: String,
+    },
+    /// `name` is the markdown's alt text, without the `|300` width suffix
+    /// that becomes `preview_width`.
     Image {
         url: String,
+        name: String,
+        preview_width: Option<u32>,
     },
+    Video {
+        url: String,
+        name: String,
+    },
+    YoutubeEmbed {
+        video_id: String,
+        video_url: String,
+        alt: String,
+    },
+    Bookmark {
+        url: String,
+        domain: String,
+    },
+    Whiteboard {
+        canvas_id: String,
+    },
+    /// A `<!-- file:{…} -->` marker line's props.
+    File(FileProps),
+    /// A pipe table: its rows, the first one of `tableHeader` cells when the
+    /// markdown's header row is not blank.
+    Table {
+        rows: Vec<SeedRow>,
+    },
+}
+
+/// The props of a `file` block, as its marker line's JSON gives them.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FileProps {
+    pub url: String,
+    pub name: String,
+    pub size: serde_json::Number,
+    pub mime_type: String,
+    pub width: serde_json::Number,
+    pub height: serde_json::Number,
+    pub align: String,
+    /// `display: "link"`; any other display is the default viewer.
+    pub link: bool,
+}
+
+/// One table row.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SeedRow {
+    pub cells: Vec<SeedCell>,
+}
+
+/// One table cell: a `tableHeader` or a `tableCell`, holding one
+/// `tableParagraph` of inline content.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SeedCell {
+    pub header: bool,
+    pub content: Vec<SeedInline>,
 }
 
 /// One piece of inline content.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SeedInline {
-    Text { text: String, marks: SeedMarks },
+    Text {
+        text: String,
+        marks: SeedMarks,
+    },
     HardBreak,
+    /// An image inside a table cell (`inlineImage`); `width` 0 is unset.
+    InlineImage {
+        src: String,
+        alt: String,
+        width: u32,
+    },
 }
 
 /// The marks on one text run.
@@ -145,9 +244,22 @@ impl SeedBlock {
     }
 }
 
-/// The blocks `markdown` seeds, without touching a document.
+/// The blocks `markdown` seeds, without touching a document. Plain text
+/// pasted into a block makes the same blocks (chapter 12 §12.1.0).
 pub fn plan(markdown: &str) -> SeedPlan {
-    if let Some(reason) = prepare::document_fallback(markdown) {
+    // `withLfLineEndings`: the parse would read a `\r` as a space.
+    let markdown = &markdown.replace("\r\n", "\n").replace('\r', "\n");
+    let mut out = Vec::new();
+    let mut fallbacks = Vec::new();
+    let parsed = match prepare::document_fallback(markdown) {
+        Some(reason) => Err(Unsupported(reason)),
+        None => parse_masked(
+            &media::separate_block_images(markdown),
+            &mut out,
+            &mut fallbacks,
+        ),
+    };
+    if let Err(Unsupported(reason)) = parsed {
         let lines: Vec<String> = markdown
             .split('\n')
             .map(|line| crate::domain::journal_rules::js_trim(line).to_owned())
@@ -158,25 +270,96 @@ pub fn plan(markdown: &str) -> SeedPlan {
             fallbacks: vec![SeedFallback { reason, lines }],
         };
     }
-
-    let mut out = Vec::new();
-    let mut fallbacks = Vec::new();
-    if let Some((text, trailing_gap)) = prepare::toggle_segment(markdown) {
-        for piece in prepare::split_preserving_blanks(&text) {
-            match piece {
-                prepare::Piece::Content(chunk) => {
-                    blocks::parse_chunk(&chunk, &mut out, &mut fallbacks);
-                }
-                prepare::Piece::Gap(count) => {
-                    out.extend((0..count).map(|_| SeedBlock::empty_paragraph()));
-                }
-            }
+    restore_details_markup(&mut out);
+    for fallback in &mut fallbacks {
+        for line in &mut fallback.lines {
+            *line = line.replace(toggles::DETAILS_LT_TOKEN, "<");
         }
-        out.extend((0..trailing_gap).map(|_| SeedBlock::empty_paragraph()));
     }
     SeedPlan {
         blocks: out,
         fallbacks,
+    }
+}
+
+/// `parseMaskedMarkdown` and `parseMarkdownWithToggles`: toggles first, each
+/// body read the same way, then each markdown segment split at its blank
+/// lines and read line by line.
+fn parse_masked(
+    markdown: &str,
+    out: &mut Vec<SeedBlock>,
+    fallbacks: &mut Vec<SeedFallback>,
+) -> Result<(), Unsupported> {
+    for segment in toggles::split_by_toggles(markdown)? {
+        match segment {
+            toggles::Segment::Toggle {
+                summary,
+                body,
+                open,
+            } => {
+                // `parseToggleSegment`: the summary's first block's content.
+                let mut parsed = Vec::new();
+                let mut summary_fallbacks = Vec::new();
+                blocks::parse_chunk(&summary, &mut parsed, &mut summary_fallbacks);
+                if let Some(fallback) = summary_fallbacks.first() {
+                    return Err(Unsupported(fallback.reason));
+                }
+                let first = parsed.into_iter().next();
+                if first
+                    .as_ref()
+                    .is_some_and(|block| matches!(block.kind, SeedKind::Table { .. }))
+                {
+                    return Err(Unsupported("table in a toggle summary"));
+                }
+                let mut children = Vec::new();
+                parse_masked(&body, &mut children, fallbacks)?;
+                out.push(SeedBlock {
+                    kind: SeedKind::Toggle { open },
+                    content: first.map(|block| block.content).unwrap_or_default(),
+                    children,
+                });
+            }
+            toggles::Segment::Gap(count) => {
+                out.extend((0..count).map(|_| SeedBlock::empty_paragraph()));
+            }
+            toggles::Segment::Markdown(text) => {
+                for piece in prepare::split_preserving_blanks(&text) {
+                    match piece {
+                        prepare::Piece::Content(chunk) => {
+                            markers::parse_content(&chunk, out, fallbacks);
+                        }
+                        prepare::Piece::Gap(count) => {
+                            out.extend((0..count).map(|_| SeedBlock::empty_paragraph()));
+                        }
+                    }
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+/// `restoreDetailsMarkup`, over every text run.
+fn restore_details_markup(blocks: &mut [SeedBlock]) {
+    for block in blocks {
+        let cells = match &mut block.kind {
+            SeedKind::Table { rows } => rows
+                .iter_mut()
+                .flat_map(|row| row.cells.iter_mut())
+                .map(|cell| &mut cell.content)
+                .collect(),
+            _ => Vec::new(),
+        };
+        for content in cells.into_iter().chain([&mut block.content]) {
+            for piece in content {
+                if let SeedInline::Text { text, .. } = piece
+                    && text.contains(toggles::DETAILS_LT_TOKEN)
+                {
+                    *text = text.replace(toggles::DETAILS_LT_TOKEN, "<");
+                }
+            }
+        }
+        restore_details_markup(&mut block.children);
     }
 }
 
@@ -205,24 +388,15 @@ pub fn seed_document(document: &Document, markdown: &str) -> Result<SeedPlan, Cr
 /// inside the caller's transaction: a filed inbox article under its link
 /// mention (desktop's `generateNoteContent`, read by its editor).
 ///
-/// Unlike [`seed_document`] the body need not be empty, and a line that is
-/// only an image (`![alt](https://…)`, or one wrapped in a link) becomes an
-/// image block, as desktop's editor reads it, rather than literal text.
+/// Unlike [`seed_document`] the body need not be empty.
 pub(crate) fn append_markdown_in(
     txn: &mut yrs::TransactionMut,
     markdown: &str,
 ) -> Result<SeedPlan, CrdtError> {
-    let plan = editor_plan(markdown);
+    let plan = plan(markdown);
     let group = crate::crdt::body_edit::top_block_group(txn)?;
     write::write_group(txn, &group, &plan.blocks, &mut random_block_id);
     Ok(plan)
-}
-
-/// The blocks plain text pasted into a block makes (chapter 12 §12.1.0):
-/// desktop's paste reads `text/plain` as markdown in its editor, with each
-/// `\r\n` and `\r` read as `\n` first (`table-cell-paste.ts`).
-pub fn paste_plan(markdown: &str) -> SeedPlan {
-    editor_plan(&markdown.replace("\r\n", "\n").replace('\r', "\n"))
 }
 
 /// Writes `blocks` into `group` from `index` on, each top-level block under
@@ -236,42 +410,6 @@ pub(crate) fn insert_blocks(
     ids: &[String],
 ) {
     write::insert_group(txn, group, index, blocks, ids, &mut random_block_id);
-}
-
-/// [`plan`] as desktop's editor reads markdown: a line that is only an image
-/// is an image block rather than literal text.
-fn editor_plan(markdown: &str) -> SeedPlan {
-    let mut plan = plan(markdown);
-    for block in &mut plan.blocks {
-        if let Some(url) = image_line(block) {
-            *block = SeedBlock::new(SeedKind::Image { url }, Vec::new());
-        }
-    }
-    plan
-}
-
-/// The image address of a literal paragraph that is only `![alt](url)` or
-/// `[![alt](url)](href)`, with an http(s) address.
-fn image_line(block: &SeedBlock) -> Option<String> {
-    if block.kind != SeedKind::Paragraph || !block.children.is_empty() {
-        return None;
-    }
-    let [SeedInline::Text { text, marks }] = block.content.as_slice() else {
-        return None;
-    };
-    if *marks != SeedMarks::default() {
-        return None;
-    }
-    let line = text.trim();
-    let image = match line.strip_prefix('[') {
-        Some(rest) if rest.starts_with("![") => rest.get(..rest.rfind("](")?)?,
-        _ => line,
-    };
-    let rest = image.strip_prefix("![")?;
-    let (alt, target) = rest.split_once("](")?;
-    let url = target.strip_suffix(')')?.split_whitespace().next()?;
-    let web = url.starts_with("https://") || url.starts_with("http://");
-    (web && !alt.contains(']') && !url.contains(')')).then(|| url.to_owned())
 }
 
 /// Whether a document's body fragment holds nothing at all: the condition
@@ -327,54 +465,48 @@ mod tests {
     }
 
     #[test]
-    fn a_table_keeps_its_lines_as_literal_paragraphs() {
-        let plan = plan("## Log\n\n| a | b |\n|---|---|\n| 1 | 2 |\n\nafter");
-        assert_eq!(plan.fallbacks.len(), 1);
-        assert_eq!(plan.fallbacks[0].reason, "table");
-        assert_eq!(plan.blocks[1], SeedBlock::literal("| a | b |"));
-        assert_eq!(plan.blocks[3], SeedBlock::literal("| 1 | 2 |"));
+    fn pasted_ai_markdown_becomes_memry_blocks() {
+        let plan = plan(
+            "| a |\n|---|\n| 1 |\n\n> [!note]\n> body\n\n$$\nx^2\n$$\n\n![c](https://e.com/c.png)\n\n```mermaid\nA-->B\n```",
+        );
+        assert!(plan.fallbacks.is_empty(), "{:?}", plan.fallbacks);
+        let kinds: Vec<&SeedKind> = plan.blocks.iter().map(|block| &block.kind).collect();
+        assert!(matches!(kinds[0], SeedKind::Table { .. }));
         assert_eq!(
-            plan.blocks[4],
+            kinds[1],
+            &SeedKind::Callout {
+                kind: "note".to_owned(),
+                fold: "none".to_owned()
+            }
+        );
+        assert_eq!(plan.blocks[1].content, vec![text("body")]);
+        assert_eq!(
+            kinds[2],
+            &SeedKind::Math {
+                latex: "x^2".to_owned()
+            }
+        );
+        assert!(matches!(kinds[3], SeedKind::Image { url, .. } if url == "https://e.com/c.png"));
+        assert_eq!(kinds[4], &SeedKind::Diagram);
+    }
+
+    #[test]
+    fn a_foreign_details_block_stays_its_text() {
+        let plan = plan("<details>\n<summary>More</summary>\nbody\n</details>");
+        assert!(plan.fallbacks.is_empty(), "{:?}", plan.fallbacks);
+        let shown: Vec<&SeedInline> = plan.blocks[0].content.iter().collect();
+        assert_eq!(shown[0], &text("<details>"));
+        assert_eq!(shown[2], &text("<summary>More</summary>"));
+    }
+
+    #[test]
+    fn raw_html_keeps_its_lines_as_literal_paragraphs() {
+        let plan = plan("<kbd>Ctrl</kbd> raw\n\nafter");
+        assert_eq!(plan.fallbacks[0].reason, "HTML");
+        assert_eq!(plan.blocks[0], SeedBlock::literal("<kbd>Ctrl</kbd> raw"));
+        assert_eq!(
+            plan.blocks[1],
             SeedBlock::new(SeedKind::Paragraph, vec![text("after")])
-        );
-    }
-
-    #[test]
-    fn a_toggle_sends_the_whole_document_to_the_fallback() {
-        let plan = plan("# Title\n<details><summary>More</summary>\nbody\n</details>");
-        assert_eq!(plan.fallbacks[0].reason, "toggle");
-        assert_eq!(plan.blocks.len(), 4);
-        assert_eq!(plan.blocks[0], SeedBlock::literal("# Title"));
-    }
-
-    #[test]
-    fn an_image_line_is_an_image_only_when_appended() {
-        let literal = |line: &str| image_line(&SeedBlock::literal(line));
-        assert_eq!(
-            literal("![A chart](https://example.com/a.png)").as_deref(),
-            Some("https://example.com/a.png")
-        );
-        assert_eq!(
-            literal("[![](https://example.com/a.png)](https://example.com/post)").as_deref(),
-            Some("https://example.com/a.png")
-        );
-        assert_eq!(literal("![x](y.png)"), None);
-        assert_eq!(literal("see ![x](https://example.com/a.png)"), None);
-        assert_eq!(
-            plan("![x](https://example.com/a.png)").blocks[0].kind,
-            SeedKind::Paragraph
-        );
-    }
-
-    #[test]
-    fn an_image_in_a_list_sends_the_whole_list_item_to_the_fallback() {
-        let plan = plan("- a\n  ![x](y.png)\n- b");
-        assert_eq!(plan.fallbacks[0].reason, "image or embed");
-        assert_eq!(plan.blocks[0], SeedBlock::literal("- a"));
-        assert_eq!(plan.blocks[1], SeedBlock::literal("![x](y.png)"));
-        assert_eq!(
-            plan.blocks[2],
-            SeedBlock::new(SeedKind::BulletListItem, vec![text("b")])
         );
     }
 }

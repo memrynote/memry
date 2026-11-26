@@ -2,13 +2,14 @@
 //! `tokenize`), line for line.
 //!
 //! Every regex there is ported by hand; `\s` is JavaScript's whitespace set
-//! and `trim()` is JavaScript's. Tables and raw HTML blocks are recognised so
-//! they can be routed to the fallback, and never built.
+//! and `trim()` is JavaScript's. Raw HTML blocks are recognised so they can be
+//! routed to the fallback, and never built.
 
 use crate::domain::journal_rules::{is_js_whitespace, js_trim};
 
 use super::prepare::fence_line;
 use super::shapes::*;
+use super::table::{PipeRow, try_parse_table};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum ListType {
@@ -43,7 +44,10 @@ pub(super) enum TokenKind {
         checked: bool,
         child: Option<String>,
     },
-    Table,
+    Table {
+        header: PipeRow,
+        rows: Vec<PipeRow>,
+    },
     RawHtml,
 }
 
@@ -148,8 +152,8 @@ pub(super) fn tokenize(markdown: &str) -> Vec<Token> {
             continue;
         }
 
-        if let Some(end) = table_end(&lines, i) {
-            push(&mut tokens, TokenKind::Table, start, end);
+        if let Some((header, rows, end)) = try_parse_table(&lines, i) {
+            push(&mut tokens, TokenKind::Table { header, rows }, start, end);
             i = end;
             prev_blank = false;
             continue;
