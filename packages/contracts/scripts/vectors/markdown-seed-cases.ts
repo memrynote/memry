@@ -3,7 +3,7 @@
  * template markdown a journal day is seeded from, and the edge cases of the
  * path desktop turns it into a document with.
  *
- * Every case stays inside the constructs the core's seed supports
+ * Every case stays inside the constructs the core's seed builds
  * (`crates/memry-core/src/crdt/markdown_seed/mod.rs`); the generator refuses
  * one that reaches a desktop layer it does not reproduce.
  */
@@ -156,5 +156,87 @@ export const MARKDOWN_SEED_CASES: ReadonlyArray<{ name: string; markdown: string
       name: 'edge: unicode and whitespace',
       markdown: 'ünïcode 😀  two  spaces\tand tab',
       pins: 'text without a newline keeps its whitespace'
+    },
+    {
+      name: 'table: header, marks and alignment row',
+      markdown:
+        '| Name | Value |\n|:---|---:|\n| **alpha** | `1` |\n| [beta](https://e.com/b) | ~~2~~ |',
+      pins: 'a pipe table: tableHeader cells first, marked runs in tableParagraphs'
+    },
+    {
+      name: 'table: ragged rows and escaped pipes',
+      markdown: '| a | b |\n|---|---|\n| one |\n| x \\| y | z | extra |',
+      pins: 'short rows padded and long rows cut to the header width; an escaped pipe stays in its cell'
+    },
+    {
+      name: 'table: blank header and cell image',
+      markdown: '|  |  |\n|---|---|\n| x ![i](https://e.com/i.png) y | `a  b` |',
+      pins: 'a blank header row is dropped; an image in a cell is an inlineImage; code keeps its spaces'
+    },
+    {
+      name: 'table: wiki link alias and text around',
+      markdown: 'Before\n\n| [[Roadmap|the plan]] | b |\n|---|---|\n| 1 | 2 |\n\nAfter',
+      pins: "a wiki link's alias pipe stays in its cell"
+    },
+    {
+      name: 'image: standalone lines, width and video',
+      markdown:
+        'Intro\n![chart|300](https://e.com/c.png)\n![](https://e.com/clip.mp4 "Clip")\n![photo](assets/p.png)',
+      pins: 'an image line is its own block; `|300` is previewWidth; a video address is a video block named by its title'
+    },
+    {
+      name: 'image: lifted out of text and headings',
+      markdown:
+        'see ![x](https://e.com/a.png) now\n\n# Title ![y](https://e.com/b.png)\n\nlink [![z](https://e.com/c.png)](https://e.com/p) here',
+      pins: 'an image in a paragraph or heading moves after it; a linked image leaves its alt as the link text'
+    },
+    {
+      name: 'embed: youtube, bookmark, whiteboard and file',
+      markdown:
+        '![My video](https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=10)\n![bookmark](https://www.example.com/post)\n![whiteboard](memry://canvas/abc_1-2)\n<!-- file:{"url":"memry-file://x.pdf","name":"x.pdf","size":3,"mimeType":"application/pdf"} -->\n![bookmark](assets/photo.png)',
+      pins: 'one-line embed markers become their blocks; a bookmark that is no web address stays an image'
+    },
+    {
+      name: 'callout: types, fold and children',
+      markdown:
+        '> [!note]\n> Callout **body**\n\n> [!tip]-\n> Folded\n\n> [!warning]\n> own line\n>\n> child paragraph\n\n> [!info]',
+      pins: 'a lowercase built-in marker claims its body; `-` folds it closed; a blank `>` line starts its children'
+    },
+    {
+      name: 'callout: shapes desktop leaves as quotes',
+      markdown:
+        '> [!NOTE]\n> GitHub alert\n\n> [!info] Title\n> body\n\n> [!tip]\n> an _italic_ word',
+      pins: 'an uppercase or titled marker, or a body that does not serialize back byte for byte, stays a quote'
+    },
+    {
+      name: 'callout: bare marker heals',
+      markdown: '[!info]\nbody text',
+      pins: 'a marker that lost its `> ` heals into a callout over the paragraph below'
+    },
+    {
+      name: 'math: block and inline dollars',
+      markdown: '$$\n\\int_0^1 x\\,dx\n$$\n\nInline $x$ stays text\n\n$$ one line $$',
+      pins: 'a `$$` fence in its written form is a mathBlock; inline and one-line dollars stay text'
+    },
+    {
+      name: 'quote: separated paragraphs',
+      markdown: '> **lead**\n>\n> second *para*',
+      pins: 'a blank `>` line makes a quote whose later paragraphs are its children'
+    },
+    {
+      name: 'toggle: memry toggles and foreign details',
+      markdown:
+        '<details data-memry-toggle open>\n<summary>Toggle **title**</summary>\n\nHidden body\n\n<details data-memry-toggle>\n<summary>Inner</summary>\n\n- a\n\n</details>\n\n</details>\n\n\n<details>\n<summary>Click</summary>\nForeign\n</details>',
+      pins: "Memry's toggle nests; a gap at its edge is kept; a foreign `<details>` stays text"
+    },
+    {
+      name: 'mermaid: diagram fence',
+      markdown: '```mermaid\ngraph TD\n  A-->B\n```\n\n```js\nx\n```',
+      pins: 'a mermaid fence is a diagram block with its source as plain content'
+    },
+    {
+      name: 'line endings: CRLF and CR',
+      markdown: '# Title\r\n\r\n| a |\r\n|---|\r\n| 1 |\r\nlast\rline',
+      pins: 'CRLF and a lone CR read as LF'
     }
   ]

@@ -115,14 +115,20 @@ fn a_body_with_content_is_never_seeded_again() {
 /// lines stay as literal paragraphs, and the plan says which and why.
 #[test]
 fn unsupported_constructs_keep_their_text_as_literal_paragraphs() {
-    let seeded =
-        plan("## Log\n| a | b |\n|---|---|\n| 1 | 2 |\n\n![photo](a.png)\n\n> [!info] note");
-    let reasons: Vec<&str> = seeded.fallbacks.iter().map(|f| f.reason).collect();
-    assert_eq!(reasons, ["table", "image or embed", "callout"]);
-    assert_eq!(
-        seeded.fallbacks[0].lines,
-        ["| a | b |", "|---|---|", "| 1 | 2 |"]
+    let seeded = plan(
+        "## Log\n<kbd>Ctrl</kbd> raw\n\n- [ ] Call {task:abc}\n\n- item ![photo](a.png)\n\nsee ((mention:n1|Note))",
     );
+    let reasons: Vec<&str> = seeded.fallbacks.iter().map(|f| f.reason).collect();
+    assert_eq!(
+        reasons,
+        [
+            "HTML",
+            "task block",
+            "image in a list or quote",
+            "inline token"
+        ]
+    );
+    assert_eq!(seeded.fallbacks[0].lines, ["<kbd>Ctrl</kbd> raw"]);
 
     let document = fresh("fallback");
     seed_document(&document, "<div>html</div>\n\nafter").expect("seed");
