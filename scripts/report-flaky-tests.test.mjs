@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { cpSync, mkdirSync, mkdtempSync, readFileSync } from 'node:fs'
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
@@ -25,6 +25,27 @@ test('a test that passed on retry is flaky; a pass and a failure on every attemp
   assert.deepEqual(flakyTests(readFileSync(fixture, 'utf8')), [
     { name: 'memry-tauri::ml_embedding_lane a_vault_close_stops_the_model', failedAttempts: 1 }
   ])
+})
+
+// A seams leg keeps one report per nextest step (rust-ci.yml): a flake in any of them is reported.
+test('a seams artifact with one report per nextest step reports the flaky test of each', () => {
+  const root = mkdtempSync(join(tmpdir(), 'flaky-'))
+  const dir = join(root, 'nextest-junit-ubuntu-22.04-1')
+  mkdirSync(dir)
+  writeFileSync(
+    join(dir, 'memry-ml.xml'),
+    '<testsuite><testcase name="a" classname="memry-ml"/></testsuite>'
+  )
+  cpSync(fixture, join(dir, 'sync-harness.xml'))
+  assert.deepEqual(
+    [...collectFlaky(root)],
+    [
+      [
+        'memry-tauri::ml_embedding_lane a_vault_close_stops_the_model',
+        [{ leg: 'ubuntu-22.04', failedAttempts: 1 }]
+      ]
+    ]
+  )
 })
 
 test('a run with no retries has no flaky tests', () => {
