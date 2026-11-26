@@ -15,7 +15,7 @@
 //!   by the TypeScript importers with the same seams mocked.
 //!
 //! The trait grows with the importers that need more writes (NotePlan added tasks and journal
-//! entries; projects and inbox links follow): each later stage adds the method it uses, with a
+//! entries, Raindrop inbox links, Todoist projects): each later stage adds the method it uses, with a
 //! default only when a no-op is a correct answer.
 
 use memry_core::markdown::frontmatter::YamlMap;
@@ -57,6 +57,28 @@ pub struct ImportedTask {
     pub parent_id: Option<String>,
     /// The note or journal entry the task line lives in.
     pub source_note_id: String,
+}
+
+/// `ImportTasksDomain.createTask` input (`apps/desktop/src/main/import/todoist/todoist-importer.ts`):
+/// a task of a project the importer created, with Todoist's fields mapped.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ImportedProjectTask {
+    /// An id [`ImportSink::create_project`] returned earlier in this run.
+    pub project_id: String,
+    /// A task id [`ImportSink::create_project_task`] returned earlier in this run.
+    pub parent_id: Option<String>,
+    pub title: String,
+    pub description: Option<String>,
+    /// Memry's priority, 0 (none) to 4 (urgent): Todoist's 4, 3 and 2 keep their number, and
+    /// anything else is 0.
+    pub priority: u8,
+    /// `YYYY-MM-DD`, or the year Todoist's text named (`0-06-20` for year 0000), as Electron
+    /// stored it.
+    pub due_date: Option<String>,
+    /// `HH:mm`.
+    pub due_time: Option<String>,
+    /// The task's place among the project's tasks, from 0.
+    pub position: usize,
 }
 
 /// The parts of a stored journal entry an importer merges into (`readJournalEntry`).
@@ -161,6 +183,15 @@ pub trait ImportSink: Send + Sync {
     /// skips the event or the sync write, or tests the URL any other way, departs from
     /// Electron. `Err` fails that bookmark; the import goes on.
     fn save_bookmark(&self, bookmark: ImportedBookmark) -> Result<(), SinkError>;
+
+    /// `ImportTasksDomain.createProject` (`createDesktopTasksDomain`): creates a project named
+    /// `name` and returns its id. `Err` fails the file whose tasks it would hold; the import goes
+    /// on with the next file.
+    fn create_project(&self, name: &str) -> Result<String, SinkError>;
+
+    /// `ImportTasksDomain.createTask`: creates an open task in a project of this run and
+    /// returns its id. `Err` fails the rest of the task's file; the tasks created before it stay.
+    fn create_project_task(&self, task: ImportedProjectTask) -> Result<String, SinkError>;
 
     /// Runs once after the importer returned, before the runner reports `done`: the production
     /// sink waits for the index to hold every note it wrote (`flushProjectionEvents`), so a
