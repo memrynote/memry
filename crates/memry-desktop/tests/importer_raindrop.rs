@@ -4,8 +4,11 @@
 
 use std::path::{Path, PathBuf};
 
-use memry_desktop::import::raindrop::{MAX_PLANNED_BYTES, RaindropImporter, steps};
-use memry_desktop::import::{FailedItem, ImportContext, ImportInput, ImportSummary, Importer};
+use memry_desktop::import::csv_lex::steps;
+use memry_desktop::import::raindrop::RaindropImporter;
+use memry_desktop::import::{
+    FailedItem, ImportContext, ImportInput, ImportSummary, Importer, MAX_PLANNED_BYTES,
+};
 use memry_desktop::web::extract::utils::date::parse_date;
 use memry_test_kit::{assert_steps_at_most, proptest_config};
 use proptest::prelude::*;
