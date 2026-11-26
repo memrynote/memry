@@ -45,6 +45,12 @@
     }
   },
   "page": {
+    "noteFiles": {
+      "downloading": "Laster ned filene til dette notatet…",
+      "failed": "Kunne ikke laste ned filene til dette notatet: {error}",
+      "failedFallback": "nedlastingen mislyktes",
+      "retry": "Prøv på nytt"
+    },
     "empty": {
       "title": "Ingen notat er valgt",
       "body": "Velg et notat fra sidefeltet for å vise det"

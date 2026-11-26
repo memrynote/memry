@@ -16,6 +16,7 @@ export {
   getAllCrdtNoteIds,
   getAllSyncableNoteMetadataIds,
   getNotesModifiedAfter,
+  UNSTORED_FILE,
   type ListNotesOptions,
   type NoteCacheRefRow,
   type NoteTreeCacheRow

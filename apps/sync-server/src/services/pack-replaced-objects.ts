@@ -23,6 +23,21 @@ export const REWRITE_PENDING = 'rewrite'
 const kindPath = (kind: PackKindName): string => `/packs/${kind}/`
 
 /**
+ * The keys of the `[user_id, vault_id, pack_key]` triples bound as a JSON
+ * array that a `pack_index` row lists. Each triple is one probe of the vault's
+ * index; `pack_key` alone has no index (VERIFY-5449).
+ */
+const LISTED_KEYS = `SELECT j.value->>'$[2]' AS pack_key FROM json_each(?) j
+  WHERE EXISTS (SELECT 1 FROM pack_index p WHERE p.user_id = j.value->>'$[0]'
+    AND p.vault_id = j.value->>'$[1]' AND p.pack_key = j.value->>'$[2]')`
+
+const triple = (row: { user_id: string; vault_id: string; pack_key: string }) => [
+  row.user_id,
+  row.vault_id,
+  row.pack_key
+]
+
+/**
  * Statements that drop every listed `kind` pack of the vault while `when`
  * holds, reset the kind's watermark so compaction rebuilds it from source
  * rows, and make every recorded object of the kind due at once, a pending
@@ -164,14 +179,8 @@ export const deleteReplacedPackObjects = async (
       : new Set(
           (
             await db
-              .prepare(
-                `SELECT j.value->>'$[2]' AS pack_key FROM json_each(?) j
-                 WHERE EXISTS (SELECT 1 FROM pack_index p WHERE p.user_id = j.value->>'$[0]'
-                   AND p.vault_id = j.value->>'$[1]' AND p.pack_key = j.value->>'$[2]')`
-              )
-              .bind(
-                JSON.stringify(unlisted.map((row) => [row.user_id, row.vault_id, row.pack_key]))
-              )
+              .prepare(LISTED_KEYS)
+              .bind(JSON.stringify(unlisted.map(triple)))
               .all<{ pack_key: string }>()
           ).results?.map((row) => row.pack_key)
         )
@@ -187,14 +196,11 @@ export const deleteReplacedPackObjects = async (
   }
   // A record found listed is dropped only while its pack is still listed: a
   // reset or purge since the select made it the record of a due object.
-  const stale = found
-    .filter((row) => row.listed || relisted.has(row.pack_key))
-    .map((row) => row.pack_key)
+  const stale = found.filter((row) => row.listed || relisted.has(row.pack_key)).map(triple)
   await db
     .prepare(
       `DELETE FROM pack_replaced_objects WHERE pack_key IN (SELECT value FROM json_each(?))
-         OR (pack_key IN (SELECT value FROM json_each(?))
-           AND EXISTS (SELECT 1 FROM pack_index p WHERE p.pack_key = pack_replaced_objects.pack_key))`
+         OR pack_key IN (${LISTED_KEYS})`
     )
     .bind(JSON.stringify(doomed), JSON.stringify(stale))
     .run()

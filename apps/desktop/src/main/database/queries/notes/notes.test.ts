@@ -434,7 +434,8 @@ describe('notes cache queries', () => {
       db,
       'note-20',
       { priority: 5, archived: false, date: '2026-01-10' },
-      inferType
+      inferType,
+      'file'
     )
 
     const properties = getNoteProperties(db, 'note-20')
@@ -471,7 +472,8 @@ describe('notes cache queries', () => {
       db,
       'note-21',
       { status: 'open', score: 3, due: '2026-01-20', kind: 'alpha' },
-      (_name, value) => (typeof value === 'number' ? 'number' : 'text')
+      (_name, value) => (typeof value === 'number' ? 'number' : 'text'),
+      'file'
     )
 
     expect(filterNotesByProperty(db, 'status', 'open').map((n) => n.id)).toEqual(['note-21'])

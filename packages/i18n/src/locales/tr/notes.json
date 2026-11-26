@@ -45,6 +45,12 @@
     }
   },
   "page": {
+    "noteFiles": {
+      "downloading": "Bu notun dosyaları indiriliyor…",
+      "failed": "Bu notun dosyaları indirilemedi: {error}",
+      "failedFallback": "indirme başarısız oldu",
+      "retry": "Tekrar dene"
+    },
     "empty": {
       "title": "Seçili not yok",
       "body": "Görüntülemek için kenar çubuğundan bir not seçin"

@@ -60,7 +60,8 @@ export const syncAttachments = {
   download: (input: { attachmentId: string; targetPath: string }) =>
     invoke(SYNC_CHANNELS.DOWNLOAD_ATTACHMENT, input),
   getDownloadProgress: (input: { attachmentId: string }) =>
-    invoke(SYNC_CHANNELS.GET_DOWNLOAD_PROGRESS, input)
+    invoke(SYNC_CHANNELS.GET_DOWNLOAD_PROGRESS, input),
+  downloadNoteFiles: (input: { noteId: string }) => invoke(SYNC_CHANNELS.DOWNLOAD_NOTE_FILES, input)
 }
 
 // CRDT channels are merged into SYNC_CHANNELS (single flat namespace for the preload bridge)

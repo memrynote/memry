@@ -14,9 +14,7 @@ use memry_core::domain::app_settings::AppSettings;
 
 use super::activity::report_unread;
 use super::body::{Body, Emptied, Write};
-use super::identity::{
-    Adoption, Candidate, IdentityCtx, IdentityError, NoteIdentity, Removal, Rename,
-};
+use super::identity::{Adoption, Candidate, IdentityCtx, NoteIdentity, Removal, Rename};
 use super::rows::{Lane, RowOwner, RowSession, RowStat};
 use super::{Applied, ChangeSource, MAX_RETRIES, MoveKind};
 use crate::editor::EditorHost;
@@ -26,10 +24,11 @@ use crate::vault::file_types::{FileType, extension, file_type_of_extension};
 use crate::vault::note_file::{NoteFile, large_by_size, large_file_class, record_large_file};
 use crate::vault::watch::filter::WatchFilter;
 use crate::vault::watch::{VaultEvent, WatchHandle};
-use crate::vault::writeback::WriteBack;
+use crate::vault::writeback::{Pass, WriteBack};
 
 mod crossing;
 mod locked;
+mod owed_record;
 mod read;
 mod watched;
 
@@ -79,6 +78,9 @@ pub(super) struct Applier {
     /// The open's write-back, which writes a body that won over an outside edit; `None` in a
     /// test that runs none.
     pub(super) writeback: Option<Arc<WriteBack>>,
+    /// The open write-back's pass, which a record newer than its file marks
+    /// ([`Applier::owe_record`]); `None` in a test that runs none.
+    pub(super) pass: Option<Arc<Pass>>,
 }
 
 impl Applier {
@@ -167,19 +169,6 @@ impl Applier {
         true
     }
 
-    /// The identity's [`NoteIdentity::left_large_class`], when the note's file was large.
-    fn left_large(
-        &self,
-        lane: &Lane<'_>,
-        note_id: &str,
-        file: &NoteFile,
-    ) -> Result<(), IdentityError> {
-        if !lane.files().is_large_file(note_id)? {
-            return Ok(());
-        }
-        self.identity.left_large_class(&self.ctx(), note_id, file)
-    }
-
     /// A file at `path`. A row there makes it a change of that row's note; otherwise the
     /// identity names its note. `scan` is the open walk's, `None` for a watcher's fact.
     pub(super) fn found(
@@ -232,6 +221,10 @@ impl Applier {
         let (note_id, created) = match self.identity.adopt_or_create(&self.ctx(), &candidate) {
             Ok(Adoption::Defer) => return Step::Done,
             Ok(Adoption::Existing(id)) => (id, false),
+            Ok(Adoption::ExistingNewer(id)) => {
+                self.owe_record(&id);
+                (id, false)
+            }
             Ok(Adoption::Created(id)) => (id, true),
             Err(error) => {
                 tracing::error!(scope = SCOPE, "a new file got no note: {error}");
@@ -241,7 +234,7 @@ impl Applier {
         if let Some(file) = &file {
             // A large file's note claimed after its file shrank queues its record (#4326).
             let large = large_file_class(&file.raw).is_some();
-            if !large && let Err(error) = self.left_large(lane, &note_id, file) {
+            if !large && let Err(error) = self.left_large(lane, &note_id, file, modified_ms) {
                 tracing::error!(scope = SCOPE, note_id, "a shrunk large file waits: {error}");
                 return Step::Retry(path.to_owned());
             }
@@ -338,7 +331,7 @@ impl Applier {
             let large = large_file_class(&file.raw).is_some();
             if row.content_hash.is_none()
                 && !large
-                && let Err(error) = self.left_large(lane, note_id, &file)
+                && let Err(error) = self.left_large(lane, note_id, &file, modified_ms)
             {
                 tracing::error!(scope = SCOPE, note_id, "a shrunk large file waits: {error}");
                 return Step::Retry(path.to_owned());

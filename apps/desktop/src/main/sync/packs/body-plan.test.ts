@@ -23,12 +23,14 @@ const entry = (kind: PackIndexEntry['kind'], digest = 0): PackIndexEntry => ({
 
 const snapshot = (sequenceNum: number, revision: string): PackedSnapshot => ({
   entry: entry('crdt_snapshot'),
+  packId: 'p1',
   meta: { sequenceNum, revision },
   read: async () => new Uint8Array()
 })
 
 const update = (sequenceNum: number, digest = sequenceNum): PackedUpdate => ({
   entry: entry('crdt_update', digest),
+  packId: 'p1',
   sequenceNum,
   signerDeviceId: 'a',
   createdAt: 0,

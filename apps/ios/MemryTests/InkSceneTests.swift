@@ -292,6 +292,28 @@ struct InkBoardSaveTests {
         #expect(InkScene.strokes(in: fake.scene ?? "")?.map(\.ink) == [pen])
     }
 
+    /// #5820: an iPad window resigning while others stay active posts only
+    /// its scene's notification, which saves the canvas's drawing.
+    @Test(.timeLimit(.minutes(1))) func its_window_resigning_saves_under_a_background_task() async throws {
+        let fake = FakeInkBoards(scene: scene([]))
+        let board = await open(fake)
+        let window = UIWindow(windowScene: try #require(UIApplication.shared.connectedScenes.first as? UIWindowScene))
+        let canvas = UIView()
+        window.addSubview(canvas)
+        board.canvas = canvas
+        defer { window.isHidden = true; canvas.removeFromSuperview() }
+        var ended: [UIBackgroundTaskIdentifier] = []
+        board.beginBackgroundTask = { _ in UIBackgroundTaskIdentifier(rawValue: 7) }
+        board.endBackgroundTask = { ended.append($0) }
+        board.changed(drawing(board, [(1, pen)]))
+
+        notifications.post(name: UIScene.willDeactivateNotification, object: window.windowScene)
+        while ended.isEmpty { try? await Task.sleep(for: .milliseconds(10)) }
+
+        #expect(fake.saves == 1)
+        #expect(InkScene.strokes(in: fake.scene ?? "")?.map(\.ink) == [pen])
+    }
+
     @Test func desktopEraseSurvivesIPadSave() async throws {
         let fake = FakeInkBoards(scene: scene([]))
         let board = await open(fake)
