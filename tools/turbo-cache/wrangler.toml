@@ -2,6 +2,7 @@
 # binding, secret or route with it. Deploy and secrets: see README.md.
 name = "memry-turbo-cache"
 main = "src/index.ts"
+account_id = "47b83566bd8a59e0ff5ddb585f63de83"
 compatibility_date = "2025-01-01"
 workers_dev = true
 
