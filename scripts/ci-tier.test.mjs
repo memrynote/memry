@@ -801,7 +801,9 @@ const armRust = [
   'windows-11-arm tests 2/2',
   'windows-11-arm models'
 ]
-const linuxTauri = ['linux-x64 debug', 'linux-x64 e2e 1', 'linux-x64 e2e 2']
+// linux-x64 and windows-x64 run their e2e specs in four shards of one build (tauri-builds.jq).
+const e2eShards = (platform) => [1, 2, 3, 4].map((shard) => `${platform} e2e ${shard}`)
+const linuxTauri = ['linux-x64 debug', ...e2eShards('linux-x64')]
 
 describe('ci matrices', () => {
   const shell = 'crates/memry-desktop/src/shell/paths.rs'
@@ -848,8 +850,7 @@ describe('ci matrices', () => {
       'macos-arm64 debug',
       'macos-arm64 e2e',
       'windows-x64 debug',
-      'windows-x64 e2e 1',
-      'windows-x64 e2e 2',
+      ...e2eShards('windows-x64'),
       ...linuxTauri
     ])
   })
@@ -858,8 +859,7 @@ describe('ci matrices', () => {
     'macos-arm64 debug',
     'macos-arm64 e2e',
     'windows-x64 debug',
-    'windows-x64 e2e 1',
-    'windows-x64 e2e 2',
+    ...e2eShards('windows-x64'),
     'windows-arm64 debug',
     'windows-arm64 e2e',
     ...linuxTauri,
@@ -901,8 +901,7 @@ describe('ci matrices', () => {
     assert.deepEqual(rustLegs(out), [...linuxRust, ...windowsRust])
     assert.deepEqual(tauriBuilds(out, true), [
       'windows-x64 debug',
-      'windows-x64 e2e 1',
-      'windows-x64 e2e 2',
+      ...e2eShards('windows-x64'),
       'windows-arm64 debug',
       ...linuxTauri,
       'linux-arm64 debug',
