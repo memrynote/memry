@@ -16,9 +16,8 @@ use std::time::Duration;
 
 use body_pack_server::{
     BodyPack, MANIFEST_RETRY_AFTER_S, Manifest, NOW_MS, Routes, Server, ServerDoc, bootstrap,
-    bootstrap_observed, cursor_of, first_sync, first_sync_observed, has_snapshot, holds_exactly,
-    is_owed, seed_records, snapshot_item_as, snapshot_items, update_item, update_items,
-    update_seqs,
+    bootstrap_observed, cursor_of, first_sync, has_snapshot, holds_exactly, is_owed, seed_records,
+    snapshot_item_as, snapshot_items, update_item, update_items, update_seqs,
 };
 use memry_core::storage::Db;
 use memry_core::sync::body_pull::MANIFEST_READ_DEADLINE;
@@ -877,7 +876,7 @@ async fn a_forged_snapshot_or_update_in_a_body_pack_is_not_seeded_told_or_settle
     });
     observers.register(watcher.clone());
 
-    let report = first_sync_observed(&db, &routes, &dir, observers)
+    let report = body_pack_server::first_sync_observed(&db, &routes, &dir, observers)
         .run(NOW_MS)
         .await
         .expect("the first sync");

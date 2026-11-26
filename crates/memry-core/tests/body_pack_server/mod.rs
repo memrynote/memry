@@ -63,27 +63,32 @@ fn keypair() -> &'static (Vec<u8>, Vec<u8>) {
 }
 
 fn seal(doc_id: &str, update: &[u8]) -> Vec<u8> {
-    seal_with(doc_id, update, &keypair().1)
+    pack(
+        &CrdtRequest {
+            note_id: doc_id,
+            update,
+            vault_key: &VAULT_KEY,
+            signing_secret_key: &keypair().1,
+        },
+        &CrdtMaterial::random(),
+    )
+    .expect("seal")
 }
 
 /// Sealed under a signing key that is not `SIGNER`'s: the vault key is right,
 /// the signature is not the account's.
 fn forge(doc_id: &str, update: &[u8]) -> Vec<u8> {
     let (_, secret) = memry_core::crypto::sodium::sign_seed_keypair(&[9u8; 32]).expect("keypair");
-    seal_with(doc_id, update, &secret)
-}
-
-fn seal_with(doc_id: &str, update: &[u8], signing_secret_key: &[u8]) -> Vec<u8> {
     pack(
         &CrdtRequest {
             note_id: doc_id,
             update,
             vault_key: &VAULT_KEY,
-            signing_secret_key,
+            signing_secret_key: &secret,
         },
         &CrdtMaterial::random(),
     )
-    .expect("seal")
+    .expect("forge")
 }
 
 /// `n` edits of one paragraph of a body the desktop write-back serializes
