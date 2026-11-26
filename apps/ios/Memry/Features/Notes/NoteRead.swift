@@ -56,6 +56,9 @@ final class NoteReadViewModel {
     /// core's (`may_download`). Optional so a test can leave it out.
     let reachability: (any Reachability)?
 
+    /// Resolves an attachment's relative `localPath`; any vault open moves the default's directory (#5847).
+    let attachmentURL: @Sendable (String) -> URL
+
     private(set) var phase: Phase = .loading
     private(set) var fetch: Fetch = .idle
     /// A binary note's own file (#5668), or `nil` for a note with a body.
@@ -122,17 +125,15 @@ final class NoteReadViewModel {
         route: NoteRoute,
         reader: any NotesReading,
         filler: (any VaultFilling)? = nil,
-        reachability: (any Reachability)? = nil
+        reachability: (any Reachability)? = nil,
+        attachmentURL: @escaping @Sendable (String) -> URL = AttachmentPaths.url(for:)
     ) {
         self.route = route
         self.reader = reader
         self.filler = filler
         self.reachability = reachability
+        self.attachmentURL = attachmentURL
     }
-
-    /// Whether this screen can offer to fetch a body at all. An affordance
-    /// that leads nowhere is worse than its absence.
-    var canFetchBody: Bool { filler != nil }
 
     /// Fetches this note's body, then re-reads it.
     ///
