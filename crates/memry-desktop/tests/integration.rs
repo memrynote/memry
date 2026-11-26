@@ -395,6 +395,10 @@ mod path_collision;
 mod paths;
 #[path = "portals.rs"]
 mod portals;
+#[path = "project_note_files.rs"]
+mod project_note_files;
+#[path = "project_writes.rs"]
+mod project_writes;
 #[path = "properties_file.rs"]
 mod properties_file;
 #[path = "property_definitions.rs"]

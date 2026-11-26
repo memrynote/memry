@@ -361,7 +361,7 @@ fn bulk_ok(count: usize) -> BulkMutation {
 /// `taskDeleted` for each tombstoned task, and for each `asked` id the write did not find, as
 /// Electron announces every id it was asked to delete; each followed by tags-changed when the
 /// deleted task carried tags.
-fn deleted(write: &TaskWrite, asked: &[String]) -> Vec<TaskEvent> {
+pub(super) fn deleted(write: &TaskWrite, asked: &[String]) -> Vec<TaskEvent> {
     let tagged = |id: &str| {
         write.removed.iter().any(|removed| {
             removed.task_id == id
