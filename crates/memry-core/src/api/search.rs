@@ -543,7 +543,8 @@ impl Search {
             Some(pass) => pass,
             None => self.plan_reindex()?,
         };
-        let (step, _rest) = self.reindex_batch(&mut pass, &|| false, &mut LinkChanges::default())?;
+        let (step, _rest) =
+            self.reindex_batch(&mut pass, &|| false, &mut LinkChanges::default())?;
         Ok(match step {
             search::ReindexStep::Done(done) => Some(summary(done)),
             search::ReindexStep::More => {
@@ -564,7 +565,8 @@ fn summary(done: search::Reindexed) -> ReindexSummary {
     }
 }
 
-/// A vault's reindex pass in progress, shared by its `Search`es.
+/// A vault's reindex pass in progress, shared by its `Search`es so two passes never
+/// interleave their batches (#5842).
 pub(crate) type SharedPass = Arc<Mutex<Option<search::ReindexPass>>>;
 
 /// Wall clock, in epoch milliseconds (data-model §A.6).

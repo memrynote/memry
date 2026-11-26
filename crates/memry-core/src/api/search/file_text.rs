@@ -149,7 +149,8 @@ mod tests {
             source: file_text::OWN_FILE.into(),
         };
         {
-            let search = Search::over(data.clone(), Default::default(), &directory, None).expect("search");
+            let search =
+                Search::over(data.clone(), Default::default(), &directory, None).expect("search");
             search
                 .reset_file_text(pdf.clone(), "1:1".into(), "1.0.0".into())
                 .expect("reset");

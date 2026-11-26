@@ -175,7 +175,7 @@ fn a_database_call_during_a_reindex_runs_before_the_reindex_ends() {
 }
 
 #[test]
-fn a_note_edited_during_a_reindex_is_indexed_with_its_new_text() {
+fn a_note_edited_during_a_reindex_is_indexed_by_the_next_pass() {
     let (dir, vault) = vault("edit");
     seed(&vault);
     // The first note is in the first batch, so the reindex has already
@@ -196,7 +196,12 @@ fn a_note_edited_during_a_reindex_is_indexed_with_its_new_text() {
         .expect("the edit");
     }
 
+    // On feat/tauri-v2 a pass indexes to the watermarks it planned (#5417): an
+    // edit stamped after the plan is owed to the next pass, which the app runs
+    // after the sync that landed it.
     let search = vault.search(None).expect("the index");
+    let next = search.reindex().expect("the next pass");
+    assert!(!next.full, "the next pass is incremental");
     let hits = search
         .search("saffron".to_string(), None, 10)
         .expect("search");
@@ -237,5 +242,30 @@ fn two_searches_of_one_vault_never_run_two_passes_at_once() {
         1,
         "one rebuild, stepped by both"
     );
+    assert_eq!(committed_rows(&dir, None), NOTES, "every note once");
+}
+
+#[test]
+fn a_reindex_stepped_one_batch_per_call_indexes_every_note_once() {
+    let (dir, vault) = vault("steps");
+    seed(&vault);
+    let search = vault.search(None).expect("the index");
+
+    // The iOS shell's path: one serial-queue call per batch (#5842).
+    let mut steps = 1;
+    let summary = loop {
+        if let Some(summary) = search.reindex_step().expect("a step") {
+            break summary;
+        }
+        assert!(
+            committed_rows(&dir, None) < NOTES,
+            "a step committed the whole pass early"
+        );
+        steps += 1;
+    };
+
+    assert!(steps > 1, "the pass ran in one call");
+    assert!(summary.full);
+    assert_eq!(summary.notes_indexed as usize, NOTES);
     assert_eq!(committed_rows(&dir, None), NOTES, "every note once");
 }

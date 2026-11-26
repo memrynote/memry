@@ -72,8 +72,6 @@ use crate::storage::{Db, OpenOptions, open_data, open_data_with};
 pub struct Vault {
     id: String,
     db: Db,
-    /// The search reindex pass in progress, shared by every `Search` of this
-    /// vault: the batches of two passes must not interleave (#5842).
     reindexing: SharedPass,
     /// Kept because `index.db` lives beside `data.db` and is opened later, on
     /// demand: the index is a cache of the vault (data-model §A.5) and a
@@ -130,12 +128,9 @@ impl Vault {
     /// was reused or migrated in place). Not on the FFI surface.
     pub fn search_reporting(&self) -> Result<(Arc<Search>, Option<String>), StorageError> {
         // Desktop has no on-device semantic search (the `semantic` feature is iOS-only).
-        let (search, reason) = Search::over_reporting(
-            self.db.clone(),
-            Arc::clone(&self.reindexing),
-            &self.directory,
-            None,
-        )?;
+        let pass = Arc::clone(&self.reindexing);
+        let (search, reason) =
+            Search::over_reporting(self.db.clone(), pass, &self.directory, None)?;
         Ok((Arc::new(search), reason))
     }
 
