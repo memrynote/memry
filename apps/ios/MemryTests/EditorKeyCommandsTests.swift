@@ -127,9 +127,11 @@ private final class Page {
         field.textView.keyCommands?.contains { $0.input == input && $0.modifierFlags == modifiers } ?? false
     }
 
+    /// Typing, in UIKit's order: the selection callback, then the change one.
     func type(_ text: String) {
         field.textView.text = text
         field.textView.selectedRange = NSRange(location: (text as NSString).length, length: 0)
+        field.textViewDidChangeSelection(field.textView)
         field.textViewDidChange(field.textView)
     }
 
@@ -665,6 +667,24 @@ extension KeyWindowSuites {
             #expect(page.session.menuOpen, "a new trigger opens again")
             await page.press(".", .command, writes: false)
             #expect(!page.session.menuOpen)
+        }
+
+        /// Real keystrokes after Esc: UIKit moves the caret before it reports
+        /// the text change, and the menu stays closed through both.
+        @Test func escapeKeepsTheMenuClosedWhileTheUserTypesOn() async throws {
+            let page = Page(text: "")
+            let window = try page.showInWindow()
+            defer { window.isHidden = true }
+            page.field.textView.insertText("/")
+            #expect(page.session.menuOpen)
+            await page.press(UIKeyCommand.inputEscape, writes: false)
+            #expect(!page.session.menuOpen)
+            page.field.textView.insertText("h")
+            #expect(!page.session.menuOpen, "typing on in the closed trigger keeps it closed")
+            page.field.textView.insertText("e")
+            #expect(!page.session.menuOpen)
+            page.field.textView.insertText(" /")
+            #expect(page.session.menuOpen, "a new trigger opens again")
         }
 
         /// Esc closes one kind of menu: another trigger typed at the same place
