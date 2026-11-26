@@ -396,7 +396,7 @@ table.
 
 Type `/` anywhere in the editor to insert a block. Filter by typing — `/h2` jumps straight to Heading 2. Press <kbd>Enter</kbd> or <kbd>Tab</kbd> to confirm the highlighted command.
 
-On a line that already has text, a command for a text block turns that line into it and keeps the text: `Groceries /h2` makes **Groceries** a Heading 2. That covers paragraph, the headings, the lists, check list, toggle list, quote, callout, code block and task, the same types the block menu's **Turn into** offers. Every other command, such as divider, table, equation, diagram, columns, image or file, adds its block after the line. The iOS app works the same way.
+On a line that already has text, a command for a text block turns that line into it and keeps the text: `Groceries /h2` makes **Groceries** a Heading 2. That covers paragraph, the headings, the lists, check list, toggle list, quote, callout, code block and task, the same types the block menu's **Turn into** offers. Every other command, such as divider, table, equation, diagram, columns, image or file, adds its block after the line. Undo once and the line goes back to what it was before you typed `/`, without the command. The iOS app works the same way.
 
 - **Recent** — the last three commands you used sit at the top of the menu, above every other command. They are remembered on this device only.
 - **Groups** — the rest of the menu is always the same order: **Blocks**, **More headings** (Heading 4–6), **Insert**, **Media** and **AI**. Every command is listed; none of them is hidden behind search.
