@@ -129,11 +129,11 @@ fn vault_files(root: &Path) -> BTreeMap<String, String> {
     out
 }
 
-fn installed(vault: &Vault) -> Connection {
+pub(super) fn installed(vault: &Vault) -> Connection {
     Connection::open(vault.core().join(DATA_FILE)).unwrap()
 }
 
-fn payload(core: &Connection, item_type: &str, id: &str) -> String {
+pub(super) fn payload(core: &Connection, item_type: &str, id: &str) -> String {
     core.query_row(
         "SELECT payload FROM sync_items WHERE item_type = ?1 AND item_id = ?2",
         [item_type, id],

@@ -26,6 +26,8 @@ mod electron_db;
 mod ledger_ends;
 #[path = "electron_vault_import/notes.rs"]
 mod notes;
+#[path = "electron_vault_import/property_strings.rs"]
+mod property_strings;
 #[path = "electron_vault_import/records.rs"]
 mod records;
 #[path = "electron_vault_import/tag_template_records.rs"]

@@ -42,6 +42,7 @@ struct NoteRow {
 
 pub fn note_metadata(ctx: &mut TableCtx<'_>) -> Result<TableStats, ImportError> {
     let (data, index, vault) = (ctx.source, ctx.index, ctx.vault_dir);
+    let yaml_string = has_yaml_string(index)?;
     let mut files = Vec::new();
     let mut pins = Vec::new();
     let mut unread = 0u64;
@@ -95,7 +96,13 @@ pub fn note_metadata(ctx: &mut TableCtx<'_>) -> Result<TableStats, ImportError> 
                     pins.extend(pinned_at(index, &note.id)?);
                     (
                         "note",
-                        note_payload(row, (data, index, vault), &note, rowid, &mut unread)?,
+                        note_payload(
+                            row,
+                            (data, index, vault),
+                            &note,
+                            (rowid, yaml_string),
+                            &mut unread,
+                        )?,
                     )
                 }
             };
@@ -171,12 +178,13 @@ fn binary_payload(
 }
 
 /// The payload of a markdown note (`note-handler-sync-helpers.ts:54-90`), without its clock
-/// and instants. A file that could not be read adds one to `unread`.
+/// and instants. A file that could not be read adds one to `unread`. `yaml_string`: whether
+/// `note_properties` has the column (index 0038).
 fn note_payload(
     row: &Row<'_>,
     (data, index, vault): (&Connection, &Connection, &Path),
     note: &NoteRow,
-    rowid: i64,
+    (rowid, yaml_string): (i64, bool),
     unread: &mut u64,
 ) -> Result<Map<String, Value>, ImportError> {
     let fields = note_fields(vault, &note.id, &note.path, &note.title, note.create);
@@ -196,7 +204,7 @@ fn note_payload(
     }
     payload.insert(
         "properties".into(),
-        Value::Object(properties(index, &note.id)?),
+        Value::Object(properties(index, &note.id, yaml_string)?),
     );
     payload.insert(
         "pinnedTags".into(),
@@ -269,26 +277,49 @@ fn index_error(error: rusqlite::Error) -> ImportError {
     source_error(SourceDb::Index, error)
 }
 
-/// `propsToRecord(getNoteProperties(indexDb, id))` (`property-queries.ts:83-98`).
-fn properties(index: &Connection, note_id: &str) -> Result<Map<String, Value>, ImportError> {
-    let mut stmt = index
-        .prepare_cached(
-            "SELECT name, value, type FROM note_properties WHERE note_id = ?1 ORDER BY rowid",
-        )
-        .map_err(index_error)?;
+/// Whether `note_properties` has `yaml_string` (index 0038). Shipped Electron releases end at
+/// 0037 and lack it; newer main builds write it.
+fn has_yaml_string(index: &Connection) -> Result<bool, ImportError> {
+    index
+        .prepare("SELECT 1 FROM pragma_table_info('note_properties') WHERE name = 'yaml_string'")
+        .and_then(|mut stmt| stmt.exists([]))
+        .map_err(index_error)
+}
+
+/// `propsToRecord(getNoteProperties(indexDb, id))` (`property-queries.ts:83-98`), except that a
+/// row marked `yaml_string` keeps its text as the string the file held, as Electron's
+/// `getNoteFileProperties` reads it (#5738): a quoted `'[1,2]'` under a list type would read
+/// as the list, and the record would write that list into the file.
+fn properties(
+    index: &Connection,
+    note_id: &str,
+    yaml_string: bool,
+) -> Result<Map<String, Value>, ImportError> {
+    let sql = if yaml_string {
+        "SELECT name, value, type, yaml_string FROM note_properties WHERE note_id = ?1 \
+         ORDER BY rowid"
+    } else {
+        "SELECT name, value, type, NULL FROM note_properties WHERE note_id = ?1 ORDER BY rowid"
+    };
+    let mut stmt = index.prepare_cached(sql).map_err(index_error)?;
     let rows = stmt
         .query_map([note_id], |row| {
             Ok((
                 row.get::<_, String>(0)?,
                 row.get::<_, Option<String>>(1)?,
                 row.get::<_, String>(2)?,
+                row.get::<_, Option<i64>>(3)?.is_some_and(|mark| mark != 0),
             ))
         })
         .map_err(index_error)?;
     let mut out = Map::new();
     for row in rows {
-        let (name, value, type_name) = row.map_err(index_error)?;
-        let value = value.map_or(Value::Null, |text| indexed_value(text, &type_name));
+        let (name, value, type_name, string) = row.map_err(index_error)?;
+        let value = match value {
+            None => Value::Null,
+            Some(text) if string => Value::String(text),
+            Some(text) => indexed_value(text, &type_name),
+        };
         out.insert(name, value);
     }
     Ok(out)

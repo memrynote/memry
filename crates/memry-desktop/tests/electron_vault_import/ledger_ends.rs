@@ -6,7 +6,7 @@ use rusqlite::Connection;
 use super::{Vault, electron_db, import};
 
 /// Rebuilds the vault's index.db with the frozen index journal applied up to and including `tag`.
-fn index_at(vault: &Vault, tag: &str) {
+pub(super) fn index_at(vault: &Vault, tag: &str) {
     let journal = electron_db::journal(electron_db::INDEX_DIR);
     let upto = journal.iter().position(|(t, _)| t == tag).unwrap() + 1;
     std::fs::remove_file(&vault.pair.index).unwrap();
