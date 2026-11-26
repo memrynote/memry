@@ -380,6 +380,11 @@ pub struct VaultLocksExternalEditRestoredEvent {
     pub title: String,
 }
 
+/// The Readwise run started, moved on, ended or failed (`import:readwise:status-changed`): the
+/// page reads the status again.
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+pub struct ImportReadwiseStatusChangedEvent;
+
 /// The registry list or a vault's icon changed (`vault:list-changed`).
 #[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
 pub struct VaultListChangedEvent;
