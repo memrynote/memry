@@ -1,6 +1,7 @@
 import { EventEmitter } from 'events'
 import * as fs from 'fs'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import type { ProcessSample } from '../lib/process-sample'
 import type { OcrMainToWorkerMessage, OcrWorkerToMainMessage } from './ocr-protocol'
 
 /**
@@ -33,6 +34,11 @@ class FakeWorker extends EventEmitter {
 const crashOnSpawn = vi.hoisted(() => ({ value: false }))
 const workers = vi.hoisted(() => [] as FakeWorker[])
 const forkOptions = vi.hoisted(() => [] as Array<{ env?: Record<string, string> }>)
+
+const sampleProcess = vi.hoisted(() =>
+  vi.fn<() => Promise<ProcessSample | undefined>>(async () => undefined)
+)
+vi.mock('../lib/process-sample', () => ({ sampleProcess }))
 
 vi.mock('electron', () => ({
   utilityProcess: {
@@ -72,6 +78,7 @@ describe('OCR engine', () => {
     stopOcr()
     workers.length = 0
     forkOptions.length = 0
+    sampleProcess.mockReset().mockResolvedValue(undefined)
     vi.useRealTimers()
   })
 
@@ -161,6 +168,27 @@ describe('OCR engine', () => {
 
     await outcome
     expect(workers[0].killed).toBe(true)
+  })
+
+  it('waits past three minutes for a worker that keeps using CPU', async () => {
+    vi.useFakeTimers()
+    await recognizeText(source)
+    const worker = workers[0]
+    let pending: Extract<OcrMainToWorkerMessage, { type: 'recognize' }> | undefined
+    worker.answer = (message) => {
+      pending = message
+    }
+    let cpuSeconds = 1
+    sampleProcess.mockImplementation(async () => ({ cpuSeconds, runnable: true }))
+
+    const slow = recognizeText(source)
+    await vi.advanceTimersByTimeAsync(0)
+    cpuSeconds += 0.5
+    await vi.advanceTimersByTimeAsync(180_000)
+    worker.reply({ type: 'recognized', requestId: pending?.requestId ?? -1, text: 'Late heron' })
+
+    await expect(slow).resolves.toBe('Late heron')
+    expect(worker.killed).toBe(false)
   })
 
   it('shuts the worker down after a minute without work', async () => {

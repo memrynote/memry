@@ -29,6 +29,8 @@ use super::{ITEM_TYPE, failed};
 use crate::api::errors::StorageError;
 use crate::crdt::errors::CrdtError;
 use crate::crdt::update_log;
+use crate::domain::note_files;
+use crate::storage::nested_tx;
 use crate::sync::{body_debt, outbox};
 
 /// The note of the large-file class `file` no row names: a new record with `new_id` and no
@@ -40,7 +42,7 @@ pub fn adopt_large(
     device_id: &str,
     now_ms: i64,
 ) -> Result<Adopted, CrdtError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let candidates = unfiled_notes(&tx, file.title, file.folder_path)?;
     if !candidates.is_empty() {
         let mut bare = None;
@@ -56,24 +58,28 @@ pub fn adopt_large(
         return Ok(Adopted::Deferred(Deferral::ElectronNotImported));
     }
     create_unqueued(&tx, file, new_id, device_id, now_ms)?;
+    // With the note, so a crash cannot leave it unqueued and of no class: a file that then
+    // shrinks would be claimed as a note's that never left the class ([`left_class`]), and its
+    // record would never be queued (#4326).
+    note_files::set_large_file(&tx, new_id, true)?;
     tx.commit().map_err(failed)?;
     Ok(Adopted::Created(new_id.to_owned()))
 }
 
 /// Whether the note has no text anywhere: no document, an empty `content` and no body owed a
 /// pull. A large file's note is one until its file shrinks; a removal or a claim of it loses
-/// nothing.
+/// nothing. A payload that cannot be read is not known to be empty, so its note is not bare.
 pub(super) fn is_bare(conn: &Connection, note_id: &str) -> Result<bool, CrdtError> {
     Ok(!body_debt::is_owed(conn, note_id)?
         && update_log::load_plan(conn, note_id)?.is_empty()
-        && created_content(conn, ITEM_TYPE, note_id)?.is_empty())
+        && created_content(conn, ITEM_TYPE, note_id)?.is_some_and(|content| content.is_empty()))
 }
 
 /// The note's file left the large-file class: its record is queued, ahead of the body the feed
 /// gives it next, as a new note's is ([`super::new_files`]). A large file's note never queued
 /// it; one that did queues the same record again. Nothing for a note that is not live.
 pub fn left_class(conn: &Connection, note_id: &str, now_ms: i64) -> Result<(), StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     if live_place(&tx, note_id)?.is_none() {
         return Ok(());
     }

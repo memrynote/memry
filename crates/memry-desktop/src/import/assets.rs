@@ -9,6 +9,7 @@
 use std::cell::Cell;
 use std::collections::{HashMap, HashSet};
 use std::fs;
+use std::io::Read;
 use std::path::{Component, Path, PathBuf};
 use std::sync::LazyLock;
 
@@ -16,7 +17,7 @@ use memry_core::markdown::frontmatter::js_trim;
 use regex::{Captures, Regex};
 
 use super::messages::ImportText;
-use super::{ImportContext, ImportSink};
+use super::{ImportContext, ImportSink, open_regular};
 use crate::attachments::{self, AttachmentKind, MAX_FILE_SIZE, SavedAttachment};
 
 /// `MD_LINK_RE`: `![alt](ref)` or `[text](ref)`. Neither class takes `[`, so a run cannot
@@ -129,8 +130,12 @@ fn decode_uri(text: &str, reserved: &[u8]) -> Option<String> {
         if bytes.get(at) != Some(&b'%') {
             return None;
         }
-        let hex = std::str::from_utf8(bytes.get(at + 1..at + 3)?).ok()?;
-        u8::from_str_radix(hex, 16).ok()
+        let hex = bytes.get(at + 1..at + 3)?;
+        // `from_str_radix` alone also takes a sign: `%+1` would decode where JavaScript throws.
+        if !hex.iter().all(u8::is_ascii_hexdigit) {
+            return None;
+        }
+        u8::from_str_radix(std::str::from_utf8(hex).ok()?, 16).ok()
     };
     while i < bytes.len() {
         if bytes[i] != b'%' {
@@ -218,8 +223,13 @@ impl RealRoots {
 }
 
 /// `resolveCoLocatedAssets`: saves every asset `note.body` references and returns the body with
-/// those references rewritten to the saved files. A missing file, one outside the root or one
-/// the sink refuses is reported skipped and its reference stays.
+/// those references rewritten to the saved files. A missing file, one outside the root, one
+/// that is not a regular file or one the sink refuses is reported skipped and its reference
+/// stays.
+///
+/// A cancel is not checked here: the importer checks it between notes, so a note is either
+/// written with every asset it references or not at all. Electron stopped mid-note and wrote
+/// the note with its remaining references pointing at the export.
 pub fn resolve_co_located_assets(
     note: &AssetNote<'_>,
     ctx: &mut ImportContext,
@@ -231,9 +241,6 @@ pub fn resolve_co_located_assets(
     let mut saved: HashMap<String, (usize, String)> = HashMap::new();
 
     for (order, reference) in extract_asset_refs(note.body).into_iter().enumerate() {
-        if ctx.is_cancelled() {
-            break;
-        }
         let decoded = percent_decode_ref(&reference);
         // Resolved against the note's folder, then for real: a link inside the selection can
         // point anywhere, and macOS reports `/private/var` for a `/var` path.
@@ -246,10 +253,13 @@ pub fn resolve_co_located_assets(
             continue;
         }
         let name = file_name(&decoded);
-        let size = fs::metadata(&real).map(|meta| meta.len());
-        if let Ok(size) = size
-            && size > MAX_FILE_SIZE as u64
-        {
+        // Electron's `readFile` of a folder failed as not found; a FIFO or device is refused
+        // the same way instead of blocking the run.
+        let Ok((file, size)) = open_regular(&real) else {
+            ctx.report_skipped(&reference, Some(ImportText::from(NOT_FOUND)));
+            continue;
+        };
+        if size > MAX_FILE_SIZE as u64 {
             let error = attachments::AttachmentError::TooLarge {
                 size: usize::try_from(size).unwrap_or(usize::MAX),
                 limit: MAX_FILE_SIZE,
@@ -257,10 +267,15 @@ pub fn resolve_co_located_assets(
             ctx.report_skipped(&name, Some(ImportText::Text(error.to_string())));
             continue;
         }
-        let Ok(bytes) = fs::read(&real) else {
+        let mut bytes = Vec::new();
+        if file
+            .take(MAX_FILE_SIZE as u64 + 1)
+            .read_to_end(&mut bytes)
+            .is_err()
+        {
             ctx.report_skipped(&reference, Some(ImportText::from(NOT_FOUND)));
             continue;
-        };
+        }
         match sink.save_attachment(note.note_id, &name, &bytes) {
             Ok(result) => {
                 saved.insert(reference, (order, attachment_markdown(&result)));

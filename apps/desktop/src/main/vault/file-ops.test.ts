@@ -955,4 +955,16 @@ describe('generateUniquePathSync', () => {
     // #then
     expect(result).toBe(path.join(tempDir.path, 'note 3.md'))
   })
+
+  it('appends " 1" when basePath is a dangling symlink', () => {
+    // #given
+    const filePath = path.join(tempDir.path, 'note.md')
+    fs.symlinkSync(path.join(tempDir.path, 'gone.md'), filePath)
+
+    // #when
+    const result = generateUniquePathSync(filePath)
+
+    // #then
+    expect(result).toBe(path.join(tempDir.path, 'note 1.md'))
+  })
 })

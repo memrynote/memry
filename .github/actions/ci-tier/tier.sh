@@ -44,12 +44,12 @@ fi
 macos=true
 if [ "$EVENT" = "merge_group" ]; then macos=false; fi
 
-# Electron desktop: the app, what it bundles or typechecks, root configs and locks, and this
-# workflow's own definitions.
+# Electron desktop: the app, what it bundles or typechecks, the memrynote goldens it generates,
+# root configs and locks, and this workflow's own definitions.
 electron=true
 if [ "$LISTED" = true ]; then
   electron=false
-  if printf '%s\n' "$files" | grep -E '^(apps/(desktop|extension|cli)/|packages/|scripts/|package\.json$|pnpm-lock\.yaml$|pnpm-workspace\.yaml$|tsconfig[^/]*\.json$|oxlint\.config\.mts$|\.oxfmtrc\.jsonc$|turbo\.json$|\.nvmrc$|\.husky/|\.github/(workflows/desktop-ci\.yml|actions/))' >/dev/null; then
+  if printf '%s\n' "$files" | grep -E '^(apps/(desktop|extension|cli)/|crates/memrynote-cli/tests/golden/|packages/|scripts/|package\.json$|pnpm-lock\.yaml$|pnpm-workspace\.yaml$|tsconfig[^/]*\.json$|oxlint\.config\.mts$|\.oxfmtrc\.jsonc$|turbo\.json$|\.nvmrc$|\.husky/|\.github/(workflows/desktop-ci\.yml|actions/))' >/dev/null; then
     electron=true
   fi
 fi

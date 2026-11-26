@@ -57,13 +57,15 @@ struct NoteImageView: View {
 
     @ViewBuilder
     private var picture: some View {
-        switch NoteAttachmentBinding.of(url, resolve) {
+        let binding = NoteAttachmentBinding.of(url, resolve)
+        switch binding {
         case let .file(path, label, _):
             LocalImage(path: path, label: label, maxWidth: previewWidth)
         case let .remote(address):
             RemoteImage(address: address, label: label)
         case .waiting, .waitingFor:
-            AttachmentPlaceholder(
+            WaitingAttachment(
+                id: binding.attachmentId,
                 symbol: "photo",
                 label: label,
                 detail: "Not downloaded yet"
@@ -99,6 +101,7 @@ struct NoteAttachmentView: View {
     var remove: ((String) async -> Void)?
 
     @State private var previewing: URL?
+    @State private var previewWidth: CGFloat = 0
 
     var body: some View {
         VStack(alignment: .leading, spacing: Tokens.Space.small) {
@@ -114,7 +117,8 @@ struct NoteAttachmentView: View {
 
     @ViewBuilder
     private var content: some View {
-        switch NoteAttachmentBinding.of(url, resolve) {
+        let binding = NoteAttachmentBinding.of(url, resolve)
+        switch binding {
         case let .file(path, filename, _):
             if let media {
                 let type = mimeType ?? UTType(filenameExtension: (filename as NSString).pathExtension)?.preferredMIMEType
@@ -130,13 +134,15 @@ struct NoteAttachmentView: View {
                 // one thing the reader came for. Full screen stays a tap away.
                 VStack(alignment: .leading, spacing: Tokens.Space.small) {
                     PDFPreview(url: path)
-                        .frame(height: 420)
+                        .frame(height: PreviewMeasure.height(forWidth: previewWidth))
                         .clipShape(.rect(cornerRadius: Tokens.Radius.card))
                         .overlay(
                             RoundedRectangle(cornerRadius: Tokens.Radius.card)
                                 .stroke(Tokens.Line.border.color, lineWidth: Tokens.Size.hairline)
                         )
                         .accessibilityLabel(spoken("PDF"))
+                        .frame(maxWidth: Tokens.Size.reading)
+                        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { previewWidth = $0 }
                     Button { previewing = path } label: {
                         Label("Open \(label)", systemImage: "arrow.up.left.and.arrow.down.right")
                             .font(Tokens.Typography.caption.font)
@@ -154,7 +160,8 @@ struct NoteAttachmentView: View {
         case let .remote(address):
             LinkCardRowPublic(url: address, title: label, subtitle: measured, symbol: symbol)
         case .waiting, .waitingFor:
-            AttachmentPlaceholder(
+            WaitingAttachment(
+                id: binding.attachmentId,
                 symbol: symbol,
                 label: label,
                 detail: measured.map { "\($0) · not downloaded yet" } ?? "Not downloaded yet"
@@ -257,7 +264,7 @@ enum NoteAttachmentBinding: Equatable {
         case let .bound(attachment):
             // A bound attachment whose bytes are not on disk is still waiting,
             // but it knows which attachment it is waiting for.
-            guard let path = attachment.localPath, !path.isEmpty else {
+            guard let path = attachment.intactPath else {
                 return .waitingFor(attachment.attachmentId)
             }
             return .file(
@@ -309,6 +316,29 @@ enum AttachmentPaths {
     static func url(for relativePath: String) -> URL {
         let base = imagesDirectory ?? URL.temporaryDirectory
         return base.appending(path: relativePath)
+    }
+}
+
+extension CachedAttachment {
+    /// `localPath` when all of the file is there: on disk at the manifest's
+    /// plaintext `size`. A missing or torn file reads as not downloaded, so
+    /// the page asks again and the core downloads it over (#5247).
+    var intactPath: String? { intactPath(under: AttachmentPaths.url(for:)) }
+
+    func intactPath(under url: (String) -> URL) -> String? {
+        guard let localPath, !localPath.isEmpty,
+              let attributes = try? FileManager.default.attributesOfItem(
+                  atPath: url(localPath).path(percentEncoded: false)
+              ),
+              attributes[.type] as? FileAttributeType == .typeRegular,
+              let length = (attributes[.size] as? NSNumber)?.uint64Value
+        else { return nil }
+        // A row without a manifest has no size to hold the file to.
+        guard let data = manifest?.data(using: .utf8),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let size = (object["size"] as? NSNumber)?.uint64Value
+        else { return localPath }
+        return length == size ? localPath : nil
     }
 }
 

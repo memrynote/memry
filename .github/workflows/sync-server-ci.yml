@@ -15,6 +15,11 @@ on:
       - 'packages/shared/**'
       - 'packages/sync-core/**'
       - 'tests/sync-harness/**'
+      # The harness runs the core device (`memry`) against the Worker (#5232).
+      - 'crates/memry-core/**'
+      - 'crates/memry-cli/**'
+      - 'crates/Cargo.*'
+      - 'crates/rust-toolchain.toml'
       # The attachment client is exercised against the real Worker by the
       # integration spec below, so a client-side change must re-run this job.
       # http-client.ts owns binaryFetch and AttachmentTooLargeError, which the
@@ -53,7 +58,8 @@ jobs:
   gate:
     name: Sync Server CI gate
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    # 40: the job builds the core device (memry-cli) for the harness.
+    timeout-minutes: 40
     permissions:
       contents: read
       pull-requests: read
@@ -72,7 +78,7 @@ jobs:
         uses: ./.github/actions/paths-changed
         with:
           token: ${{ github.token }}
-          include: '^(apps/sync-server/|packages/(contracts|rpc|shared|sync-core)/|tests/sync-harness/|apps/desktop/src/main/sync/(attachments\.ts|attachments\.integration\.test\.ts|http-client\.ts)$|package\.json$|pnpm-lock\.yaml$|pnpm-workspace\.yaml$|turbo\.json$|\.github/workflows/sync-server-ci\.yml$)'
+          include: '^(apps/sync-server/|packages/(contracts|rpc|shared|sync-core)/|tests/sync-harness/|crates/(memry-core|memry-cli)/|crates/Cargo\.[^/]+$|crates/rust-toolchain\.toml$|apps/desktop/src/main/sync/(attachments\.ts|attachments\.integration\.test\.ts|http-client\.ts)$|package\.json$|pnpm-lock\.yaml$|pnpm-workspace\.yaml$|turbo\.json$|\.github/workflows/sync-server-ci\.yml$)'
 
       - name: Checkout
         if: steps.paths.outputs.changed == 'true'
@@ -118,7 +124,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
 
       - name: Install dependencies
         if: steps.paths.outputs.changed == 'true'
@@ -126,6 +131,15 @@ jobs:
 
       - name: Typecheck shared packages
         if: steps.paths.outputs.changed == 'true'
+        # Turbo remote cache (tools/turbo-cache), read-only: a hit replays a typecheck the push-to-feat
+        # writer ran on the same inputs. No remote cache when TURBO_API or the signature key is unset,
+        # and none for a fork's pull request.
+        env:
+          TURBO_API: ${{ vars.TURBO_API }}
+          TURBO_TEAM: ${{ vars.TURBO_TEAM }}
+          TURBO_TOKEN: ${{ vars.TURBO_API != '' && secrets.TURBO_REMOTE_CACHE_SIGNATURE_KEY != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && secrets.TURBO_READ_TOKEN || '' }}
+          TURBO_REMOTE_CACHE_SIGNATURE_KEY: ${{ secrets.TURBO_REMOTE_CACHE_SIGNATURE_KEY }}
+          TURBO_CACHE: local:rw,remote:r
         run: pnpm typecheck:packages
 
       - name: Typecheck sync-server
@@ -139,6 +153,33 @@ jobs:
       - name: Build sync-harness worker
         if: steps.paths.outputs.changed == 'true'
         run: pnpm --filter @memry/sync-harness build:worker
+
+      # The core device the harness drives (`crates/memry-cli`, #5232). Same
+      # toolchain pin as rust-ci.yml; the cache key names the runner image (#3846).
+      - name: Setup Rust
+        if: steps.paths.outputs.changed == 'true'
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: '1.98.1'
+
+      - name: Runner image
+        if: steps.paths.outputs.changed == 'true'
+        id: image
+        run: echo "os=${ImageOS:?ImageOS is unset, so the cargo cache key cannot name the image}" >> "$GITHUB_OUTPUT"
+
+      # Saves only on refs/heads/feat/tauri-v2, like rust-ci.yml: every other ref restores what it saved
+      # and writes nothing (per-ref saves filled the repo's 10 GB cache cap).
+      - name: Cache cargo
+        if: steps.paths.outputs.changed == 'true'
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: crates
+          key: harness-${{ steps.image.outputs.os }}
+          save-if: ${{ github.ref == 'refs/heads/feat/tauri-v2' }}
+
+      - name: Build the core device
+        if: steps.paths.outputs.changed == 'true'
+        run: pnpm --filter @memry/sync-harness build:core
 
       - name: Run sync protocol harness
         if: steps.paths.outputs.changed == 'true'

@@ -8,8 +8,9 @@ import SwiftUI
 extension EnvironmentValues {
     /// The surface runs the full pane instead of the reading measure.
     ///
-    /// Nothing sets it yet. #4376 sets it from desktop's per-device editor
-    /// width, a note's `fullWidth` frontmatter, and the journal override.
+    /// The note page sets it from a note's `fullWidth` frontmatter, then this
+    /// device's editor width; the journal day from this device's journal
+    /// override, then the same editor width.
     @Entry var fullWidthReading = false
 
     /// A wide block breaks out of the reading measure to the full pane.
@@ -17,6 +18,18 @@ extension EnvironmentValues {
     /// Off inside a block's own box, such as a column or an embedded note,
     /// where the pane is not the block's to take.
     @Entry var paneBreakout = true
+}
+
+/// A picture of a page in a note, such as a PDF or a whiteboard: as tall as
+/// the width it gets, up to the reading measure, and never below the 420pt a
+/// phone has always shown, so a 13" iPad shows a page instead of a strip and
+/// a phone lays out as before.
+enum PreviewMeasure {
+    static let minimumHeight: CGFloat = 420
+
+    static func height(forWidth width: CGFloat) -> CGFloat {
+        max(minimumHeight, min(width, Tokens.Size.reading))
+    }
 }
 
 /// The reading measure, lifted when the surface is full width.

@@ -1,6 +1,6 @@
 //! Path identity and file state of every vault file (desktop Step 12).
 //!
-//! The `note_files` table (migration 20) holds one row per note id: the
+//! The `note_files` table (migration 21) holds one row per note id: the
 //! vault-relative path, the kind of file, its size and the content hash of the
 //! bytes the index last read. It is device-local and never synced.
 //!
@@ -24,7 +24,7 @@
 //! replaces it with the value the caller read (`None` clears it), so a row never
 //! pairs a new stat with the hash of older bytes.
 //!
-//! `file_hash` (table `note_file_hashes`, migration 22) is the same kind of
+//! `file_hash` (table `note_file_hashes`, migration 23) is the same kind of
 //! string for the bytes on disk now, whether or not the note's document took
 //! them, or `None` when the tier does not know them: it is never the hash of
 //! bytes that went or were replaced. Rename pairing reads it, and a removal of
@@ -37,17 +37,27 @@ use std::collections::{BTreeMap, BTreeSet};
 use rusqlite::{Connection, OptionalExtension, Row, params};
 
 use crate::api::errors::StorageError;
+use crate::storage::nested_tx;
 
 mod behind;
 mod large;
 mod marks;
 mod text_files;
+mod unfiled;
 
 use behind::body_moved_after_stamp;
+
 pub use behind::{behind_bodies, behind_body};
 pub use large::{is_large_file, set_large_file};
 pub use marks::{LogMark, StampMark, mark_unmarked, stamped_mark};
 pub use text_files::{FiledTextFile, filed_text_files, gone_notes, markdown_notes};
+#[cfg(feature = "markdown")]
+pub use unfiled::days_wait;
+pub use unfiled::{Unfiled, placed, unfiled, unfiled_bodies};
+
+/// Largest note file read into memory. Bigger files are handled by the large-file class and
+/// stream; a read that has to hold one as a string refuses instead of exhausting memory.
+pub const MAX_NOTE_BYTES: u64 = 256 * 1024 * 1024;
 
 const COLUMNS: &str = "f.note_id, f.path, f.file_type, f.mime_type, f.file_size, f.content_hash,
      f.local_only, f.indexed_at, h.file_hash";
@@ -178,7 +188,7 @@ pub fn upsert_stats_as(
     stats: &[NoteFileStat],
     mark: StampMark,
 ) -> Result<(), StorageError> {
-    let tx = conn.transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     for stat in stats {
         check_path(&stat.path)?;
         tx.execute(
@@ -242,7 +252,7 @@ pub fn set_file_hash(
     note_id: &str,
     file_hash: Option<&str>,
 ) -> Result<(), StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let exists = tx
         .query_row(
             "SELECT 1 FROM note_files WHERE note_id = ?1",
@@ -269,7 +279,7 @@ pub fn set_file_hash(
 /// write-back may write the document again.
 pub fn refresh_stat(conn: &Connection, stat: &NoteFileStat) -> Result<(), StorageError> {
     check_path(&stat.path)?;
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let changed = tx
         .execute(
             &format!(
@@ -316,7 +326,7 @@ pub fn set_hash(
     note_id: &str,
     content_hash: Option<&str>,
 ) -> Result<(), StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let changed = tx
         .execute(
             "UPDATE note_files SET content_hash = ?2 WHERE note_id = ?1",
@@ -369,7 +379,7 @@ pub fn rename_prefix(
         return Err(invalid(format!("{new_dir:?} is inside {old_dir:?}")));
     }
 
-    let tx = conn.transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     // `'/' + 1 == '0'`: the paths under `old_dir/` are exactly this range, with
     // no LIKE escaping. It holds under the column's default BINARY collation.
     let (low, high) = (format!("{old_dir}/"), format!("{old_dir}0"));
@@ -410,7 +420,7 @@ pub fn rename_prefix(
 
 /// Removes the row of a note. `false` when there was none.
 pub fn remove(conn: &Connection, note_id: &str) -> Result<bool, StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let removed = remove_in(&tx, note_id)?;
     tx.commit().map_err(failed).map(|()| removed)
 }
@@ -424,10 +434,11 @@ pub(crate) fn remove_in(tx: &Connection, note_id: &str) -> Result<bool, StorageE
         )
         .map(|n| n > 0)
         .map_err(failed)?;
-    // The marker, the file hash, the size class, an owed move with its hold and the file's
+    // The markers, the file hash, the size class, an owed move with its hold and the file's
     // property baseline are file state of the note: they go with the row. A debt left would be
     // the next row's of the id (a day's repeats), hiding its date.
     crate::domain::owed_file_body::clear(tx, note_id)?;
+    crate::domain::owed_file_aliases::clear(tx, note_id)?;
     crate::domain::properties::forget_file_baseline(tx, note_id)?;
     write_file_hash(tx, note_id, None)?;
     set_large_file(tx, note_id, false)?;
@@ -465,7 +476,8 @@ pub fn list_missing_candidates(conn: &Connection) -> Result<Vec<NoteFile>, Stora
 /// this vault has no record of is not among them: its record may not have arrived yet, and
 /// a file is not given up on an absence. An owed one is the caller's to decide: a crossing a
 /// crash cut short leaves its record deleted and owed, and its file is the item the next
-/// crossing makes, not a deleted one's (#4258).
+/// crossing makes, not a deleted one's (#4258). A tombstoned `notes` row whose id a live journal
+/// day holds is not among them: the id reads as the day (the invariant on `unfiled`'s query, #5786).
 pub fn rows_of_deleted_notes(conn: &Connection) -> Result<Vec<(NoteFile, bool)>, StorageError> {
     let mut statement = conn
         .prepare(&format!(
@@ -474,7 +486,9 @@ pub fn rows_of_deleted_notes(conn: &Connection) -> Result<Vec<(NoteFile, bool)>,
                FROM {ROWS}
               WHERE f.file_type = 'markdown'
                 AND (EXISTS (SELECT 1 FROM notes n
-                              WHERE n.id = f.note_id AND n.deleted_at IS NOT NULL)
+                              WHERE n.id = f.note_id AND n.deleted_at IS NOT NULL
+                                AND NOT EXISTS (SELECT 1 FROM journal_entries d
+                                                 WHERE d.id = n.id AND d.deleted_at IS NULL))
                   OR EXISTS (SELECT 1 FROM journal_entries j
                               WHERE j.id = f.note_id AND j.deleted_at IS NOT NULL))
               ORDER BY f.path"

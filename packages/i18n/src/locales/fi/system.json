@@ -17,6 +17,7 @@
       "filterAll": "Kaikki tiedostot"
     },
     "exportCancelled": "Vienti peruttu",
+    "exportVaultChanged": "Toinen holvi avattiin, kun valitsit tallennuspaikkaa. Vie muistiinpano uudelleen.",
     "dataDbRecovery": {
       "title": "Korjaa holvin tietokanta",
       "message": "Memryn tämän holvin tietokanta on vioittunut.",

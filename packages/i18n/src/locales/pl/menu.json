@@ -102,7 +102,6 @@
   "commands": {
     "goHome": "Przejdź do ekranu głównego",
     "goInbox": "Przejdź do skrzynki odbiorczej",
-    "goJournal": "Przejdź do dziennika",
     "goCalendar": "Przejdź do kalendarza",
     "goTasks": "Przejdź do zadań",
     "goGraph": "Przejdź do grafu",

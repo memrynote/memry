@@ -42,7 +42,11 @@ impl SyncDriver {
     }
 
     /// Pushes the snapshots due at `now_ms`. Run after a pass, under its gate.
+    /// None while paused.
     pub async fn push_due_snapshots(&self, now_ms: i64) -> SnapshotRound {
+        if self.is_paused() {
+            return SnapshotRound::default();
+        }
         let due = self.snapshot_requests.take_due(now_ms);
         self.push_snapshots(due, None).await
     }
@@ -63,14 +67,15 @@ impl SyncDriver {
         let now = crate::sync::pull::now_ms();
         let mut chunks = docs.chunks(MAX_SNAPSHOT_BATCH_ENTRIES);
         while let Some(chunk) = chunks.next() {
-            let cut = deadline.is_some_and(|at| Instant::now() >= at);
+            let cut = self.is_paused() || deadline.is_some_and(|at| Instant::now() >= at);
             let admitted = if cut {
                 None
             } else {
                 self.admission.admit().await.ok()
             };
             let Some(_permit) = admitted else {
-                // A deadline or a `429` cooldown: every document left waits.
+                // A pause, a deadline or a `429` cooldown: every document left
+                // waits.
                 for doc_id in chunk.iter().chain(chunks.flatten()) {
                     self.snapshot_requests.request(doc_id, now);
                     round.requeued += 1;
@@ -93,10 +98,12 @@ impl SyncDriver {
         }
         let pairs: Vec<_> = documents
             .iter()
-            .map(|document| (&**document, self.snapshots.gate(document.id())))
+            .map(|(document, opened_at)| {
+                (&**document, *opened_at, self.snapshots.gate(document.id()))
+            })
             .collect();
         let mut stored = Vec::new();
-        for (doc_id, outcome) in self.snapshots.pusher.push_batch(&pairs, now).await {
+        for (doc_id, outcome) in self.snapshots.pusher.push_batch(&pairs).await {
             if let Err(crate::crdt::snapshots::SnapshotError::Api { source }) = &outcome {
                 self.admission.note(source);
             }

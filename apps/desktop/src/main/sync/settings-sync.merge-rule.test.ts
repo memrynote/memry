@@ -170,8 +170,10 @@ describe('settings mergeRemote — §6.3.2 rows on a settings path (#2383)', () 
       const payload = device.manager.getPayload()
       expect(accent(payload.settings)).toBe(winner)
       expect(payload.fieldClocks[PATH]).toEqual(merge(local, remote))
-      // §6.9.0: a concurrent path re-queues the merged settings (#2287).
-      expect(device.queue.getSize()).toBe(compare(local, remote) === 'concurrent' ? 1 : 0)
+      // §6.9.0: a local clock concurrent with or ahead of the remote's
+      // re-queues the merged settings (#2287, #5506).
+      const order = compare(local, remote)
+      expect(device.queue.getSize()).toBe(order === 'concurrent' || order === 'after' ? 1 : 0)
     }
   )
 

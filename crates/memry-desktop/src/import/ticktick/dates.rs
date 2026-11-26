@@ -10,7 +10,7 @@
 use std::sync::LazyLock;
 
 use jiff::Timestamp;
-use jiff::tz::{AmbiguousOffset, Offset, TimeZone};
+use jiff::tz::{AmbiguousOffset, Offset, TimeZone, TimeZoneDatabase};
 use memry_core::markdown::frontmatter::js_trim;
 use regex::Regex;
 
@@ -18,6 +18,8 @@ use super::legacy_zones::legacy_offset;
 use crate::web::extract::utils::date::{civil_from_days, parse_date_in};
 
 const DAY_MS: i64 = 86_400_000;
+/// The bundled tzdb on every platform; jiff's global `db()` reads the system zoneinfo on Unix.
+pub(super) static TZDB: LazyLock<TimeZoneDatabase> = LazyLock::new(TimeZoneDatabase::bundled);
 /// 400 Gregorian years.
 const CYCLE_MS: i64 = 146_097 * DAY_MS;
 /// About 7,900 years either side of 1970: inside jiff's -9999 to 9999 years once a whole cycle
@@ -94,7 +96,7 @@ fn intl_offset(name: &str, at: Timestamp) -> Offset {
         name => name,
     };
     offset_zone(name)
-        .or_else(|| jiff::tz::db().get(name).ok())
+        .or_else(|| TZDB.get(name).ok())
         .map(|zone| zone.to_offset(at))
         .or_else(|| legacy_offset(name, at))
         .unwrap_or(Offset::UTC)

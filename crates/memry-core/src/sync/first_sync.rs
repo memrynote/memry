@@ -4,6 +4,14 @@
 //! > window, with determinate progress. App open is never blocked on any of
 //! > it.
 //!
+//! **Whole vault, not a window (#5233).** With packs, the body pack phase
+//! settles or owes every live document, so a vault the packs fully cover
+//! takes every body from packs and owes nothing. The recent window below is
+//! the path for partial coverage only: the first sync pulls the owed documents
+//! inside it, and the shell then drains the rest in the foreground
+//! ([`crate::sync::body_drain`]) until none is owed. FR-028's "older content
+//! on demand" still holds for a note opened before the drain reaches it.
+//!
 //! **It is a sub-sequence, not a state.** Nothing here appears in §C.3's
 //! diagram; the engine's states are unchanged and a first sync is three
 //! ordered passes over the ordinary routes.
@@ -22,6 +30,7 @@
 //! | Pass     | Calls                              | Unelevated ceiling | Time   |
 //! | -------- | ---------------------------------- | ------------------ | ------ |
 //! | refs     | 20 at `limit=500`                  | 60/min             | ~20 s  |
+//! | deleted  | `ceil(d / 100)` for `d` deleted ids | 120/min            | d/200 s |
 //! | metadata | 100 at 100 ids each                | 120/min            | ~50 s  |
 //! | bodies   | [`RECENT_BODY_LIMIT`] documents    | 600/min            | ~50 s  |
 //!
@@ -31,7 +40,8 @@
 //! separate checkpoint to fall out of step with:
 //!
 //! - the refs pass advances the one record cursor **after** the page's ref
-//!   rows are recorded, in the same transaction (chapter 05 §5.11);
+//!   rows are recorded and its `deleted` ids queued, in the same
+//!   transaction (chapter 05 §5.11); a pulled id leaves the queue;
 //! - the metadata pass's work list is literally
 //!   `payload_state = 'metadata-only'` — the partial index data-model §A.2
 //!   calls "the query the windowed first sync drives" — so an applied row
@@ -52,33 +62,47 @@ use serde_json::Value as Json;
 
 use crate::api::errors::StorageError;
 use crate::protocol::http::SYNC_TYPES_HEADER;
-use crate::storage::Db;
-use crate::storage::repositories::sync_items;
+use crate::seams::diagnostics::DiagnosticPhase;
+use crate::storage::{Db, nested_tx};
 
 use super::body_pull::{BodyPull, BodyPullError, BodyPullReport};
 use super::bootstrap::BootstrapClient;
+use super::diagnostics::RunDiagnostics;
 use super::feed_restart;
 use super::first_sync_store::{
-    metadata_left_behind, owe_live_documents, pending_metadata_ids, read_meta, recent_document_ids,
-    write_meta,
+    metadata_left_behind, pending_metadata_ids, read_meta, record_ref, write_meta,
 };
 use super::note_body_feed;
-use super::pack_bootstrap::{PackBootstrap, PackBootstrapReport};
+use super::pack_bootstrap::{BodyPackReport, PackBootstrap, RecordPackReport};
 
 mod body_pass;
-mod refs_page;
-use refs_page::{read_refs_page, reference_now};
+mod deleted_ids;
+mod open_session;
+mod progress;
+mod reconcile;
+mod record_packs;
+mod refs;
+mod window;
+
+pub(crate) use progress::read_body_counts;
+
+use open_session::OpenSession;
+use refs::read_refs_page;
 
 use super::pull::{PULL_PAGE_LIMIT, PullError, PullLoop};
 use super::store::{self, RECORD_CURSOR_SCOPE};
-pub use body_pass::{
-    BODY_CONCURRENCY_ELEVATED, BODY_CONCURRENCY_STEADY, MAX_RATE_LIMIT_PAUSE_S,
-    MAX_RATE_LIMIT_PAUSES,
-};
+pub use body_pass::{BODY_CONCURRENCY_ELEVATED, BODY_CONCURRENCY_STEADY};
 
 /// `meta` keys, data-model §A.2's reserved list.
 pub const META_FIRST_SYNC_COMPLETED: &str = "first_sync.completed";
 pub const META_FIRST_SYNC_WINDOW_START: &str = "first_sync.window_start";
+/// Set once the record pack phase ended: `1` when record packs were applied,
+/// so the manifest reconcile is due, `0` when none were.
+pub const META_FIRST_SYNC_RECORD_PACKS: &str = "first_sync.record_packs";
+/// Set once the body pack phase ended: `1` when it settled or owed every
+/// live document, `0` when the bodies were left to the item-granular pass.
+pub const META_FIRST_SYNC_BODY_PACKS: &str = "first_sync.body_packs";
+pub use reconcile::META_FIRST_SYNC_RECONCILED;
 
 /// How far back "recent" reaches, in milliseconds. Thirty days.
 ///
@@ -90,13 +114,14 @@ pub const META_FIRST_SYNC_WINDOW_START: &str = "first_sync.window_start";
 /// a different one.
 pub const RECENT_WINDOW_MS: i64 = 30 * 24 * 60 * 60 * 1_000;
 
-/// The ceiling on bodies the first sync pulls before declaring itself done.
+/// The ceiling on bodies the first sync pulls item by item before declaring
+/// itself done, when packs did not cover the vault.
 ///
 /// The window alone is not a bound: a vault whose whole history landed last
 /// week has every document inside thirty days, and pulling ten thousand
 /// bodies is seventeen minutes unelevated (§10.6.1) against SC-007's two.
-/// Everything past this loads on demand, which is exactly what FR-028 asks
-/// for ("older content on demand"), and owed a pull each pass sweeps (#3253).
+/// Everything past this stays owed, and the shell's foreground drain pulls it
+/// next (#5233); a note opened first loads on demand (FR-028).
 pub const RECENT_BODY_LIMIT: usize = 500;
 
 /// How much of the vault the bodies pass pulls.
@@ -128,31 +153,30 @@ impl FirstSyncLimits {
 /// /sync/pull` takes at most 100.
 pub const METADATA_CHUNK: usize = 100;
 
-/// Which pass the run is in.
+/// Which part of the vault is arriving.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FirstSyncPhase {
-    /// `GET /sync/changes` to the end of the feed.
-    Refs,
-    /// `POST /sync/pull`, newest first.
-    Metadata,
-    /// `GET /sync/crdt/updates` for the recent window.
+    /// Note records: record packs, the feed, the reconcile, the metadata pass.
+    Records,
+    /// Note bodies: body packs, then the owed documents.
     Bodies,
     Done,
 }
 
-/// FR-028's determinate progress.
+/// FR-028's determinate progress, in live notes and journals (#5233).
 ///
 /// `total` is never below `completed`, so a shell can render a fraction
-/// without guarding against one above 1. §10.11: progress is measured against
-/// the tail cursor and the client's own cursor, neither of which a bootstrap
-/// session affects — so the numbers survive Q10.2's mid-run fallback
-/// unchanged, and the only observable difference is that the run takes
-/// longer.
+/// without guarding against one above 1. It is `None` while the vault's total
+/// is not yet known (records before the feed's end). §10.11: every count is
+/// read from this device's tables, never a server cursor (a per-user sequence
+/// over every vault and edit, `apps/sync-server/migrations/0001_baseline.sql:189-192`).
+/// A bootstrap session does not affect them, so the numbers survive Q10.2's
+/// mid-run fallback unchanged.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FirstSyncProgress {
     pub phase: FirstSyncPhase,
     pub completed: u64,
-    pub total: u64,
+    pub total: Option<u64>,
 }
 
 /// Where progress goes. Synchronous, because a shell's progress bar is not
@@ -163,7 +187,7 @@ pub trait ProgressSink: Send + Sync {
     /// The pack bootstrap starts (`None`) and ends (`Some(report)`). A no-op
     /// by default: [`FirstSyncPhase`] and the FFI's `SyncPhase` have no packs
     /// pass, and only the desktop driver reports one (Electron's `packs`).
-    fn packs(&self, _report: Option<&PackBootstrapReport>) {}
+    fn packs(&self, _report: Option<&BodyPackReport>) {}
 }
 
 /// A sink that drops everything, for a caller that does not want progress.
@@ -181,8 +205,22 @@ pub struct FirstSyncReport {
     pub tombstones: usize,
     pub metadata_applied: usize,
     pub metadata_corrupt: usize,
-    pub packs: PackBootstrapReport,
+    /// Records taken from `record` packs (chapter 08 §8.4.2).
+    pub record_packs: RecordPackReport,
+    /// Items the manifest reconcile pulled by id (§8.10).
+    pub reconcile_pulled: usize,
+    /// Pack-held rows the reconcile found deleted on the server and removed.
+    pub reconcile_removed: usize,
+    /// Stale rows the reconcile kept live: no verified delete or attested
+    /// marker (§5.12.1, #5406).
+    pub reconcile_kept: usize,
+    /// Requests the reconcile sent: the manifest plus its pulls.
+    pub reconcile_requests: usize,
+    /// Bodies from `crdt_snapshot` and `crdt_update` packs (§8.4.3, §8.10).
+    pub body_packs: BodyPackReport,
     pub bodies: BodyPullReport,
+    /// Live documents still owed a body when the run ended.
+    pub bodies_owed: usize,
     /// The window boundary this run used, epoch milliseconds.
     pub window_start: i64,
     /// Whether the session was elevated (§10.7). Informational: the run is
@@ -225,6 +263,7 @@ pub struct FirstSync {
     packs: Option<Arc<PackBootstrap>>,
     progress: Arc<dyn ProgressSink>,
     limits: FirstSyncLimits,
+    diagnostics: Arc<RunDiagnostics>,
 }
 
 impl FirstSync {
@@ -237,6 +276,7 @@ impl FirstSync {
             packs: None,
             progress: Arc::new(SilentProgress),
             limits: FirstSyncLimits::RECENT,
+            diagnostics: RunDiagnostics::silent(),
         }
     }
 
@@ -252,8 +292,8 @@ impl FirstSync {
         self
     }
 
-    /// Seeds body baselines from `crdt_snapshot` packs before the bodies
-    /// pass, so it skips their snapshot GETs. Every pack failure falls back.
+    /// Takes records and bodies from packs (chapter 08). Every pack failure
+    /// falls back to the item-granular passes.
     pub fn with_packs(mut self, packs: Arc<PackBootstrap>) -> Self {
         self.packs = Some(packs);
         self
@@ -261,6 +301,14 @@ impl FirstSync {
 
     pub fn with_progress(mut self, progress: Arc<dyn ProgressSink>) -> Self {
         self.progress = progress;
+        self
+    }
+
+    /// Reports each phase's request statistics (#5215). The recorder must be
+    /// the one the run's HTTP clients were derived with, or no request is
+    /// counted.
+    pub fn with_diagnostics(mut self, diagnostics: Arc<RunDiagnostics>) -> Self {
+        self.diagnostics = diagnostics;
         self
     }
 
@@ -282,15 +330,35 @@ impl FirstSync {
         let mut report = FirstSyncReport::default();
 
         // §10.5: this cannot fail in any way a caller must handle.
-        let tail_cursor = match &self.bootstrap {
-            Some(bootstrap) => {
-                let opened = bootstrap.open(now_ms / 1_000).await;
-                report.elevated = opened.elevated();
-                opened.tail_cursor
+        if let Some(bootstrap) = &self.bootstrap {
+            let opened = bootstrap.open(now_ms / 1_000).await;
+            report.elevated = opened.elevated();
+            // §10.5: the reason is a log line, never shown and never retried.
+            if let Some(reason) = opened.fallback_reason {
+                eprintln!("memry-core: first sync runs unelevated: {reason}");
             }
-            None => 0,
-        };
+        }
 
+        // Close on every exit after the open, so a failed or cancelled run
+        // frees its slot (#5281). A close failure is logged by the client and
+        // never fails the run.
+        let session = OpenSession(self.bootstrap.clone());
+        let passes = self.passes(now_ms, &mut report).await;
+        session.close().await;
+        passes?;
+        self.progress.progress(FirstSyncProgress {
+            phase: FirstSyncPhase::Done,
+            completed: 1,
+            total: Some(1),
+        });
+        Ok(report)
+    }
+
+    async fn passes(
+        &self,
+        now_ms: i64,
+        report: &mut FirstSyncReport,
+    ) -> Result<(), FirstSyncError> {
         report.window_start = self.window_start(now_ms).await?;
 
         // The refs pass reads the feed from the start under this declaration,
@@ -305,8 +373,28 @@ impl FirstSync {
             })
             .await?;
 
-        self.refs_pass(tail_cursor, &mut report).await?;
-        self.metadata_pass(&mut report).await?;
+        // Records first (#5232): packs, then the feed from where they end,
+        // then the manifest decides, so the note list fills before any body.
+        let record_packs_used = self
+            .diagnostics
+            .phase(DiagnosticPhase::RecordPacks, self.record_packs_pass(report))
+            .await?;
+        // A reconcile still to run pulls every held row the manifest disagrees
+        // with, so the refs pass leaves `deleted` to it (#5405).
+        let reconciled = self.db.call(|c| read_meta(c, META_FIRST_SYNC_RECONCILED));
+        let defer = record_packs_used && reconciled.await?.is_none();
+        let refs = self.refs_pass(defer, report);
+        self.diagnostics.phase(DiagnosticPhase::Refs, refs).await?;
+        // The feed has been read to its end: the vault's total is known.
+        self.records_progress(true).await?;
+        if record_packs_used {
+            self.diagnostics
+                .phase(DiagnosticPhase::Reconcile, self.reconcile(report))
+                .await?;
+        }
+        self.diagnostics
+            .phase(DiagnosticPhase::Metadata, self.metadata_pass(report))
+            .await?;
         // A chunk that was not a pull envelope, or an id the server did not serve,
         // leaves its rows `metadata-only`. A row held corrupt or refused does too,
         // and a re-read does not fix it.
@@ -318,26 +406,30 @@ impl FirstSync {
                 feed_restart::reopen_cursor_skip_repair(conn)
             })
             .await?;
-        // After refs, so a tombstoned document is known and never seeded.
-        if let Some(packs) = &self.packs {
-            self.progress.packs(None);
-            report.packs = packs.run(now_ms / 1_000).await?;
-            self.progress.packs(Some(&report.packs));
-        }
-        self.bodies_pass(report.window_start, &mut report).await?;
+        // After the reconcile, so a document whose record is a tombstone or
+        // absent takes no packed body (§8.10).
+        let body_packs_used = self
+            .diagnostics
+            .phase(DiagnosticPhase::BodyPacks, self.body_packs_pass(report))
+            .await?;
+        let window_start = report.window_start;
+        self.diagnostics
+            .phase(
+                DiagnosticPhase::Bodies,
+                self.bodies_pass(window_start, body_packs_used, report),
+            )
+            .await?;
+        report.bodies_owed = read_body_counts(&self.db).await?.1 as usize;
 
         self.db
-            .call(move |conn| write_meta(conn, META_FIRST_SYNC_COMPLETED, &now_ms.to_string()))
+            .call(move |conn| {
+                let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
+                note_body_feed::finish_legacy_pull(&txn)?;
+                write_meta(&txn, META_FIRST_SYNC_COMPLETED, &now_ms.to_string())?;
+                txn.commit().map_err(sqlite_failed)
+            })
             .await?;
-        if let Some(bootstrap) = &self.bootstrap {
-            bootstrap.close().await;
-        }
-        self.progress.progress(FirstSyncProgress {
-            phase: FirstSyncPhase::Done,
-            completed: 1,
-            total: 1,
-        });
-        Ok(report)
+        Ok(())
     }
 
     /// Pass one: `GET /sync/changes` to the end.
@@ -348,7 +440,7 @@ impl FirstSync {
     /// the client the complete inventory it needs to order everything else.
     async fn refs_pass(
         &self,
-        tail_cursor: i64,
+        defer_deletes: bool,
         report: &mut FirstSyncReport,
     ) -> Result<(), FirstSyncError> {
         loop {
@@ -361,9 +453,9 @@ impl FirstSync {
                 path.push_str("&cursor=");
                 path.push_str(cursor);
             }
-            // Without `purged_tombstones`: this pass applies every `deleted` id
-            // untyped and cannot tell a marker's id from a signed tombstone's
-            // (chapter 05 §5.12.3). Electron's run from cursor 0 skips markers too.
+            // Without `purged_tombstones`, as Electron's run from cursor 0: the
+            // page lists no marker. A marker's id can still reach the pull of
+            // `deleted` ids below, which applies an attested one (§5.12.3).
             let declared = self
                 .pull
                 .declaration()
@@ -379,39 +471,57 @@ impl FirstSync {
                 .map_err(|source| FirstSyncError::Pull { source })?;
 
             let page = read_refs_page(&body);
-            let next = page.next_cursor.clone().or(cursor);
+            let next = page.next_cursor.clone().or_else(|| cursor.clone());
             let recorded = page.refs.len();
             let tombstones = page.deleted.len();
 
             // Durable **before** the cursor advances, in one transaction, so
             // a kill here resumes at this page rather than past it.
+            // §5.12.1 (#5340): an id in `deleted` is not a delete. It only
+            // names an id to pull, and only the verified typed delete or
+            // attested marker the pull returns deletes, before the cursor
+            // moves past it. Full chunks are pulled first, and the rest is
+            // queued with the cursor move (`deleted_ids`). Before a pending
+            // reconcile no pull is needed: it pulls a pack-held row the
+            // manifest does not list, pass two a metadata-only row.
+            let deleted = if defer_deletes {
+                Vec::new()
+            } else {
+                page.deleted
+            };
+            let (deleted, missed) = self
+                .pull_deleted(deleted, !page.has_more, cursor.as_deref())
+                .await?;
             let stored = next.clone();
             let refs = page.refs;
-            let deleted = page.deleted;
             self.db
                 .call(move |conn| {
-                    let txn = conn.unchecked_transaction().map_err(sqlite_failed)?;
+                    let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
                     for reference in &refs {
-                        sync_items::upsert_metadata_only(
+                        record_ref(
                             &txn,
                             &reference.item_type,
                             &reference.item_id,
                             reference.modified_at,
-                            None,
                         )?;
+                        // A body this device seeded with no clock and no pull
+                        // ever signed (the Inbox, `projects::ensure_inbox`; a
+                        // tag mint, `tag_mint::define_used`) is not the
+                        // server's: pass two fetches the server's over it (a
+                        // local record with no clock takes the remote
+                        // wholesale, §6.3.1) rather than the seed being clocked
+                        // and pushed over the user's own (#3538).
+                        txn.execute(
+                            "UPDATE sync_items SET payload_state = 'metadata-only'
+                              WHERE item_type = ?1 AND item_id = ?2 AND clock IS NULL
+                                AND signer_device_id IS NULL AND payload IS NOT NULL",
+                            rusqlite::params![reference.item_type, reference.item_id],
+                        )
+                        .map_err(sqlite_failed)?;
                     }
-                    // §5.12.1: an id in `deleted` may have no type on the
-                    // wire, and the refs-only pass has no envelope to read one
-                    // from. Marking every row for that id, and filing a bare
-                    // tombstone when there is none, is idempotent and is what
-                    // stops pass two resurrecting it.
-                    for item_id in &deleted {
-                        store::apply_untyped_tombstone(
-                            &txn,
-                            item_id,
-                            reference_now(&refs, item_id),
-                            reference_now(&refs, item_id),
-                        )?;
+                    deleted_ids::keep(&txn, &deleted)?;
+                    if missed {
+                        feed_restart::reopen_cursor_skip_repair(&txn)?;
                     }
                     // The refs pass serves no bodies (#2299).
                     note_body_feed::rearm_legacy_pull(&txn)?;
@@ -425,22 +535,10 @@ impl FirstSync {
             report.refs_recorded += recorded;
             report.tombstones += tombstones;
 
-            let seen = next.as_deref().and_then(|c| c.parse::<u64>().ok());
-            self.progress.progress(FirstSyncProgress {
-                phase: FirstSyncPhase::Refs,
-                completed: seen.unwrap_or(report.refs_recorded as u64),
-                // §10.4's `tailCursor` when a session supplied one; otherwise
-                // the tail is not knowable until the feed says `hasMore:
-                // false`, and reporting the cursor against itself is the
-                // honest answer rather than an invented denominator.
-                total: seen
-                    .unwrap_or(report.refs_recorded as u64)
-                    .max(tail_cursor.max(0) as u64),
-            });
-
             if !page.has_more {
                 return Ok(());
             }
+            self.records_progress(false).await?;
         }
     }
 
@@ -452,82 +550,13 @@ impl FirstSync {
     /// dated before the rest of the vault is touched.
     async fn metadata_pass(&self, report: &mut FirstSyncReport) -> Result<(), FirstSyncError> {
         let outstanding = self.db.call(|conn| pending_metadata_ids(conn)).await?;
-        let total = outstanding.len() as u64;
-        let mut done = 0u64;
-
         for chunk in outstanding.chunks(METADATA_CHUNK) {
             let page = self.pull.fetch_ids(chunk).await?;
             report.metadata_applied += page.applied;
             report.metadata_corrupt += page.corrupt;
-            done += chunk.len() as u64;
-            self.progress.progress(FirstSyncProgress {
-                phase: FirstSyncPhase::Metadata,
-                completed: done,
-                total,
-            });
+            self.records_progress(true).await?;
         }
         Ok(())
-    }
-
-    /// Pass three: bodies for the recent window.
-    ///
-    /// This is the pass that makes a note show its text. Everything above
-    /// carries note *metadata*; a body edit's record push carries
-    /// `content: null` (chapter 07's opening), so `yjs_updates` fills here or
-    /// it never fills at all.
-    async fn bodies_pass(
-        &self,
-        window_start: i64,
-        report: &mut FirstSyncReport,
-    ) -> Result<(), FirstSyncError> {
-        let limit = self.limits.recent_body_limit;
-        let window = self
-            .db
-            .call(move |conn| recent_document_ids(conn, window_start, limit))
-            .await?;
-        // §7.15: a tombstoned document is excluded by the query above. The
-        // server still answers with the surviving log, and applying it would
-        // resurrect a body the record feed says is deleted.
-
-        // Every live document is owed before any pull, the window included
-        // (a merged pull settles it), and so is a record an older build's
-        // interrupted run applied without a debt.
-        self.db.call(|conn| owe_live_documents(conn)).await?;
-
-        // Renewed once here rather than per request: the document pulls run
-        // concurrently and must not race each other into two renewals. The
-        // pass is minutes long against a sixty-minute token, so one check is
-        // enough; a lapsed token only drops the header (§10.11 rule 2).
-        let elevated = match &self.bootstrap {
-            Some(bootstrap) => bootstrap.renew_if_due(now_ms() / 1_000).await,
-            None => false,
-        };
-        report.bodies.absorb(
-            body_pass::pull_parallel(&self.bodies, &self.db, window, elevated, &self.progress)
-                .await?,
-        );
-        Ok(())
-    }
-
-    /// The window boundary, chosen once and remembered.
-    async fn window_start(&self, now_ms: i64) -> Result<i64, FirstSyncError> {
-        // No window has no boundary to slide, so there is nothing to remember.
-        let Some(window_ms) = self.limits.recent_window_ms else {
-            return Ok(i64::MIN);
-        };
-        if let Some(stored) = self
-            .db
-            .call(|conn| read_meta(conn, META_FIRST_SYNC_WINDOW_START))
-            .await?
-            .and_then(|text| text.parse::<i64>().ok())
-        {
-            return Ok(stored);
-        }
-        let chosen = now_ms - window_ms;
-        self.db
-            .call(move |conn| write_meta(conn, META_FIRST_SYNC_WINDOW_START, &chosen.to_string()))
-            .await?;
-        Ok(chosen)
     }
 
     /// §10.11 rule 1 and 2, applied at the one place a request is built: renew
@@ -566,15 +595,4 @@ fn now_ms() -> i64 {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn the_window_is_thirty_days_and_the_body_cap_fits_sc_007() {
-        assert_eq!(RECENT_WINDOW_MS, 2_592_000_000);
-        // §10.6.1: 600 `crdt_pull` per minute unelevated, so the cap has to
-        // stay under a minute of body pulling on its own or SC-007's two
-        // minutes are gone before the refs and metadata passes are counted.
-        assert_eq!(RECENT_BODY_LIMIT.min(600), RECENT_BODY_LIMIT);
-    }
-}
+mod tests;

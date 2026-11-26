@@ -67,12 +67,16 @@ final class JournalUITests: XCTestCase {
         XCTAssertTrue(field.exists, "no empty day within ten days")
         let line = "[agent] SHIP-4152 a"
         field.tap()
-        // Return makes the line the day's first block.
+        // Return makes the line the day's first block and starts the next
+        // one, which takes the caret (#4705).
         field.typeText(line + "\n")
         let block = app.textViews.matching(NSPredicate(format: "value == %@", line)).firstMatch
         XCTAssertTrue(block.waitForExistence(timeout: 10), "the typed line did not become a block")
-        // The caret at the end of the line.
-        block.coordinate(withNormalizedOffset: CGVector(dx: 0.99, dy: 0.5)).tap()
+        let blocks = app.textViews.matching(NSPredicate(format: "identifier BEGINSWITH 'note.block.'"))
+        XCTAssertTrue(waitUntil { blocks.count == 2 }, "Return started no block after the line")
+        // Backspace in the empty block puts the caret at the end of the line.
+        app.typeText(XCUIKeyboardKey.delete.rawValue)
+        XCTAssertTrue(waitUntil { blocks.count == 1 }, "Backspace left the empty block")
         assertBackspaceJoinsBlocks(in: app, line: line)
 
         // On a day other than today the bar's Today button pushes the More
@@ -87,10 +91,46 @@ final class JournalUITests: XCTestCase {
         XCTAssertTrue(field.waitForExistence(timeout: 10), "the day was not deleted")
     }
 
+    /// #4376: the day menu's Full width lifts or restores the reading
+    /// measure for every day on this device, and toggling again undoes it.
+    func testFullWidthTogglesTheReadingMeasure() throws {
+        try openJournal(today: Self.randomDay())
+        XCUIDevice.shared.orientation = .landscapeLeft
+        defer { XCUIDevice.shared.orientation = .portrait }
+        // Beside the page sidebar and the rail the pane is about the measure,
+        // so the sidebar goes to give the day room to widen into.
+        let sidebar = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'sidebar'"))
+            .allElementsBoundByIndex.filter(\.isHittable).min { $0.frame.minX < $1.frame.minX }
+        sidebar?.tap()
+        defer { sidebar?.tap() }
+        Thread.sleep(forTimeInterval: 1)
+        // The header's frame spans the pane at any width; the empty day's
+        // first line is as wide as the column.
+        let line = app.descendants(matching: .any)["journal.day.firstLine"].firstMatch
+        for _ in 0 ..< 10 where !line.waitForExistence(timeout: 3) {
+            app.buttons["journal.day.next"].firstMatch.tap()
+        }
+        XCTAssertTrue(line.exists, "no empty day within ten days")
+        // The override is this device's and outlives a run, so the test
+        // starts from whichever width the day has and flips it twice.
+        let before = line.frame.width
+        attach(before > 900 ? "journal-width-full" : "journal-width-normal")
+
+        toggleFullWidth()
+        XCTAssertTrue(waitUntil { abs(line.frame.width - before) > 40 },
+                      "Full width did not change the day: \(before) → \(line.frame.width)")
+        attach(line.frame.width > before ? "journal-width-full" : "journal-width-normal")
+
+        toggleFullWidth()
+        XCTAssertTrue(waitUntil { abs(line.frame.width - before) < 1 },
+                      "toggling again did not bring the width back: \(line.frame.width)")
+    }
+
     /// #4351: with a hardware keyboard, ← in the editor moves the caret and
     /// leaves the day alone; ⌥⌘← / ⌥⌘→ change the day from inside it.
     func testArrowKeysInTheEditorMoveTheCaretNotTheDay() throws {
         try openJournal(today: Self.randomDay())
+        app.primeCommandKeys()
         let field = app.descendants(matching: .any)["journal.day.firstLine"].firstMatch
         for _ in 0 ..< 10 where !field.waitForExistence(timeout: 3) {
             app.buttons["journal.day.next"].firstMatch.tap()
@@ -122,6 +162,79 @@ final class JournalUITests: XCTestCase {
         }
         // On iPad the first tap after the keys can land while the page
         // settles; open the menu until it shows.
+        let delete = app.buttons["journal.more.delete"].firstMatch
+        for _ in 0 ..< 3 where !delete.exists {
+            more.tap()
+            _ = delete.waitForExistence(timeout: 3)
+        }
+        delete.tap()
+        app.buttons["Delete entry"].firstMatch.tap()
+        XCTAssertTrue(field.waitForExistence(timeout: 10), "the day was not deleted")
+    }
+
+    /// #4705: a line, its Return and the next words typed in one burst land
+    /// whole and in order, and stay so after a relaunch.
+    func testABurstWithReturnLandsTheWholeFirstLine() throws {
+        try returnInTheFirstLine { field, line in field.typeText(line + "\nmore words") }
+    }
+
+    /// #4705: Return typed at a normal speed starts a new block too, which
+    /// takes the caret and the next words.
+    func testReturnAtNormalSpeedStartsANewBlock() throws {
+        try returnInTheFirstLine { field, line in
+            field.typeText(line + "\n")
+            let landed = app.textViews.matching(NSPredicate(format: "value == %@", line)).firstMatch
+            XCTAssertTrue(landed.waitForExistence(timeout: 10), "the line did not land")
+            // A pause between Return and the next words, as a typist makes.
+            Thread.sleep(forTimeInterval: 1.5)
+            app.typeText("more words")
+        }
+    }
+
+    /// #4705: a hardware Return key arrives as a submit, not as a newline.
+    /// It starts a block too, and the words typed right after it land there.
+    func testTheReturnKeyStartsANewBlock() throws {
+        try returnInTheFirstLine { field, line in
+            field.typeText(line)
+            app.pressReturnKey()
+            app.typeText("more words")
+        }
+    }
+
+    /// Types `line`, a Return and "more words" into an empty day's first
+    /// line with `typing`, then checks they land in order, also after a
+    /// relaunch, and deletes the day.
+    private func returnInTheFirstLine(typing: (XCUIElement, String) -> Void) throws {
+        try openJournal(today: Self.randomDay())
+        app.primeCommandKeys()
+        let field = app.descendants(matching: .any)["journal.day.firstLine"].firstMatch
+        for _ in 0 ..< 10 where !field.waitForExistence(timeout: 3) {
+            app.buttons["journal.day.next"].firstMatch.tap()
+        }
+        XCTAssertTrue(field.exists, "no empty day within ten days")
+        let day = try XCTUnwrap(shownDate())
+        let line = "[agent] SHIP-4705 journal linkword"
+        field.tap()
+        typing(field, line)
+        let first = app.textViews.matching(NSPredicate(format: "value == %@", line)).firstMatch
+        let next = app.textViews.matching(NSPredicate(format: "value == 'more words'")).firstMatch
+        XCTAssertTrue(first.waitForExistence(timeout: 10), "the line did not land whole")
+        XCTAssertTrue(next.waitForExistence(timeout: 10), "the words after Return did not land")
+        XCTAssertLessThan(first.frame.minY, next.frame.minY, "the words after Return landed above the line")
+
+        // Going to the background saves the block being typed in.
+        XCUIDevice.shared.press(.home)
+        Thread.sleep(forTimeInterval: 2)
+        app.terminate()
+        try openJournal(today: day)
+        XCTAssertTrue(first.waitForExistence(timeout: 10), "the stored line is not the typed one")
+        XCTAssertTrue(next.waitForExistence(timeout: 10), "the stored words after Return are not the typed ones")
+        XCTAssertLessThan(first.frame.minY, next.frame.minY, "the stored words after Return are above the line")
+
+        let more = app.buttons["journal.more"].firstMatch
+        if !more.waitForExistence(timeout: 5) {
+            app.navigationBars.buttons.element(boundBy: app.navigationBars.buttons.count - 1).tap()
+        }
         let delete = app.buttons["journal.more.delete"].firstMatch
         for _ in 0 ..< 3 where !delete.exists {
             more.tap()
@@ -201,7 +314,11 @@ final class JournalUITests: XCTestCase {
         // `TEST_RUNNER_MEMRY_UI_VAULT` picks the one this run uses.
         let name = ProcessInfo.processInfo.environment["MEMRY_UI_VAULT"] ?? "MemryNote"
         let vault = app.staticTexts[name].firstMatch
-        let journalTab = app.buttons["Journal"].firstMatch
+        // A tab on the phone, a page sidebar row on a full-screen iPad.
+        let journalTab = app.descendants(matching: .any).matching(NSPredicate(
+            format: "label == 'Journal' AND (elementType == %d OR elementType == %d)",
+            XCUIElement.ElementType.button.rawValue, XCUIElement.ElementType.cell.rawValue
+        )).firstMatch
         // Signed out lands on the welcome screen first, or on sign-in once
         // past it.
         let signIn = app.descendants(matching: .any).matching(NSPredicate(
@@ -238,6 +355,25 @@ final class JournalUITests: XCTestCase {
         XCTAssertTrue(header.waitForExistence(timeout: 20), "the Journal tab did not show a day")
     }
 
+    private func toggleFullWidth() {
+        let more = app.buttons["journal.more"].firstMatch
+        if !more.waitForExistence(timeout: 5) {
+            app.navigationBars.buttons.element(boundBy: app.navigationBars.buttons.count - 1).tap()
+        }
+        more.tap()
+        let toggle = app.descendants(matching: .any).matching(identifier: "journal.more.fullWidth").firstMatch
+        XCTAssertTrue(toggle.waitForExistence(timeout: 5), "the day menu has no Full width")
+        toggle.tap()
+    }
+
+    private func attach(_ name: String) {
+        Thread.sleep(forTimeInterval: 2)
+        let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        shot.name = name
+        shot.lifetime = .keepAlways
+        add(shot)
+    }
+
     /// Picks an item from the date title's menu.
     private func titleMenu(_ identifier: String) {
         app.buttons["journal.day.titleMenu"].firstMatch.tap()
@@ -246,8 +382,9 @@ final class JournalUITests: XCTestCase {
         item.tap()
     }
 
+    /// The month's Back. In landscape the page sidebar's bar comes first.
     private func back() {
-        app.navigationBars.buttons.element(boundBy: 0).tap()
+        app.navigationBars.buttons["BackButton"].firstMatch.tap()
     }
 
     /// The shown day: the header's spoken date matched against the days

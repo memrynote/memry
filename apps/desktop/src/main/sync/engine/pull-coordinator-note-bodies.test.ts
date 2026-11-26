@@ -926,6 +926,57 @@ describe('PullCoordinator note bodies from the change feed (#2297)', () => {
     ).toEqual([])
   })
 
+  // #5607: the server holds CRDT bodies for binary notes an older Windows build
+  // made of pasted attachments. A binary note's file is its blob, so its body
+  // opens no doc and arms no write-back here.
+  describe('a binary note', () => {
+    const insertBinaryRow = (id: string): void => {
+      getDb()
+        .db.insert(noteMetadata)
+        .values({
+          id,
+          path: `attachments/host/${id}.png`,
+          title: id,
+          fileType: 'image',
+          createdAt: 'x',
+          modifiedAt: 'x'
+        })
+        .run()
+    }
+
+    it('takes no change-feed body and owes none', async () => {
+      const provider = fakeProvider()
+      const engine = engineWith(getDb, provider)
+      insertBinaryRow('photo')
+      await mockServer([
+        { noteBodies: [update('photo', 3, A), update('note-1', 4, C)], nextCursor: 4 }
+      ])
+
+      await expect(engine.pull()).resolves.toEqual({ status: 'delivered' })
+
+      expect(provider.stored).toEqual([['note-1', C]])
+      expect(provider.open.mock.calls.map(([noteId]) => noteId)).toEqual(['note-1'])
+      expect(owedPulls(engine)).toEqual([])
+      expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('4')
+    })
+
+    it('drops a queued pull, settling its debt without opening a doc', async () => {
+      const provider = fakeProvider()
+      const engine = engineWith(getDb, provider)
+      insertBinaryRow('photo')
+      const crdtSync = crdtSyncOf(engine)
+      crdtSync.addPendingPull('photo', 'feed_owed')
+      const batch = vi.spyOn(crdtSync, 'applyCrdtBatch')
+
+      await crdtSync.pullCrdtForNotes(crdtSync.drainPendingPulls())
+
+      expect(batch).not.toHaveBeenCalled()
+      expect(provider.open).not.toHaveBeenCalled()
+      expect(crdtSync.hasUnmergedRemoteState('photo')).toBe(false)
+      expect(getDb().sqlite.prepare('SELECT note_id FROM crdt_body_debts').all()).toEqual([])
+    })
+  })
+
   // #2297 round 2 (A-M2, B-M1, B-L3): nothing is fetched for an id with no row,
   // nor for a note whose record is on the page: that page pulls the whole body.
   it('fetches no body for a rowless id or for a note whose record is on the page', async () => {

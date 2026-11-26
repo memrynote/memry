@@ -91,3 +91,17 @@ export function typeActions(text: string): KeyAction[] {
     ]
   })
 }
+
+/** The mouse event flags of the modifier keys a click holds (`in-page.mjs` `hold`). */
+export function heldFlags(
+  modifiers: string[],
+  platform: string = process.platform
+): { metaKey: boolean; ctrlKey: boolean; shiftKey: boolean; altKey: boolean } {
+  const codes = new Set(modifiers.map((key) => keyToCodepoint(key, platform)))
+  return {
+    metaKey: codes.has(keyToCodepoint('Meta')),
+    ctrlKey: codes.has(keyToCodepoint('Control')),
+    shiftKey: codes.has(keyToCodepoint('Shift')),
+    altKey: codes.has(keyToCodepoint('Alt'))
+  }
+}

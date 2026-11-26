@@ -17,6 +17,8 @@ use jiff::Timestamp;
 use jiff::civil::{Weekday, date};
 use jiff::tz::{Offset, TimeZone};
 
+use super::dates::TZDB;
+
 /// The first year of the `SystemV` rule in ICU.
 const SYSTEM_V_FIRST_YEAR: i16 = 1902;
 
@@ -75,8 +77,7 @@ pub(super) fn legacy_offset(name: &str, at: Timestamp) -> Option<Offset> {
         .find(|(alias, _)| alias.eq_ignore_ascii_case(name))
     {
         return Some(
-            jiff::tz::db()
-                .get(target)
+            TZDB.get(target)
                 .expect("an alias names a tzdb zone")
                 .to_offset(at),
         );

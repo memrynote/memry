@@ -6,6 +6,7 @@
  * conformance vectors pin them that way, so a port indexes the same units.
  * `now` is the caller's clock; nothing here reads one.
  */
+import { findInlineTags, isInlineTagName } from '@memry/shared/inline-tags'
 import { parseNaturalDate } from './natural-date.ts'
 import { findRepeatPhrase, firstOccurrenceFor } from './repeat-phrase.ts'
 import type { Priority, QuickAddProject, RepeatConfig } from './types.ts'
@@ -31,6 +32,14 @@ export interface ParsedQuickAdd {
   noteTitles: string[]
 }
 
+export interface QuickAddOptions {
+  /**
+   * Leave `[[…]]` runs in the title. A task typed in a note keeps its links as
+   * text, since the note line is what renders and indexes them (#5294).
+   */
+  keepNoteLinks?: boolean
+}
+
 /** A stretch of the input that carries syntax rather than title text. */
 export type QuickAddSpanKind = 'priority' | 'project' | 'tag' | 'noteLink' | 'datePhrase' | 'repeat'
 
@@ -53,13 +62,6 @@ const PRIORITY_PATTERN = /(?:^|\s)(![a-zA-Z]+)/g
 
 /** `+` starts a word, so "1+2" and "C++" never read as a project. */
 const PROJECT_PATTERN = /(?:^|\s)(\+[\w-]+)/g
-
-/**
- * The note editor's tag grammar verbatim, nesting included — see
- * `HASH_TAG_PATTERN` in `components/note/content-area/hash-tag.tsx`, which also
- * requires the `#` to start a word. `C#` and `issue#12` are therefore prose.
- */
-const TAG_PATTERN = /(?:^|\s)(#[a-zA-Z0-9][a-zA-Z0-9_-]*(?:\/[a-zA-Z0-9][a-zA-Z0-9_-]*)*)/g
 
 /** `[[Note title]]` — note titles are arbitrary, so anything but the brackets. */
 const NOTE_LINK_PATTERN = /\[\[([^[\]\n]+)\]\]/g
@@ -108,6 +110,18 @@ export const findNoteLinks = (input: string): NoteLinkMatch[] => {
   }
   return links
 }
+
+/**
+ * The `#tag` runs, read with the note body's tag grammar (`@memry/shared/inline-tags`),
+ * which requires the `#` to start a word. `C#`, `issue#12` and `#12` are prose.
+ */
+const findTagRuns = (input: string): MarkerRun[] =>
+  findInlineTags(input).map(({ index, tag }) => ({
+    start: index,
+    end: index + 1 + tag.length,
+    text: `#${tag}`,
+    value: tag
+  }))
 
 /**
  * A note title is user text and may well contain a sigil — `[[Q3 #launch]]`
@@ -253,8 +267,7 @@ export const projectMarker = (
 
 /** The `#` marker for `tag`, or null when the tag grammar cannot read it whole. */
 export const tagMarker = (tag: string): string | null => {
-  const marker = `#${tag}`
-  return isWholeMarker(marker, TAG_PATTERN) ? marker : null
+  return isInlineTagName(tag) ? `#${tag}` : null
 }
 
 // ============================================================================
@@ -302,7 +315,8 @@ const stripSpans = (input: string, spans: QuickAddSpan[]): string => {
 export const parseQuickAdd = (
   input: string,
   projects: readonly QuickAddProject[],
-  now: Date
+  now: Date,
+  options: QuickAddOptions = {}
 ): ParsedQuickAdd => {
   const spans: QuickAddSpan[] = []
   let dueDate: Date | null = null
@@ -312,8 +326,10 @@ export const parseQuickAdd = (
 
   // Note links first: they own their whole run, sigils inside included.
   const noteLinks = findNoteLinks(input)
-  for (const link of noteLinks) {
-    spans.push({ start: link.start, end: link.end, kind: 'noteLink' })
+  if (!options.keepNoteLinks) {
+    for (const link of noteLinks) {
+      spans.push({ start: link.start, end: link.end, kind: 'noteLink' })
+    }
   }
 
   // Natural-language due date: @tomorrow, @next wednesday
@@ -357,7 +373,7 @@ export const parseQuickAdd = (
 
   // Tags: unlike the other markers, every one counts — a task takes several.
   const tags: string[] = []
-  for (const run of findMarkerRuns(input, TAG_PATTERN)) {
+  for (const run of findTagRuns(input)) {
     if (isInsideLink(noteLinks, run.start)) continue
     tags.push(run.value)
     spans.push({ start: run.start, end: run.end, kind: 'tag' })
@@ -406,13 +422,13 @@ export const findQuickAddSpans = (input: string, now: Date): QuickAddSpan[] => {
 
   // The sigil forms are painted as soon as they are typed, parseable or not —
   // an unfinished "!hi" or an unknown "+foo" still reads as syntax.
-  const sigilKinds: [RegExp, QuickAddSpanKind][] = [
-    [PRIORITY_PATTERN, 'priority'],
-    [PROJECT_PATTERN, 'project'],
-    [TAG_PATTERN, 'tag']
+  const sigilKinds: [MarkerRun[], QuickAddSpanKind][] = [
+    [findMarkerRuns(input, PRIORITY_PATTERN), 'priority'],
+    [findMarkerRuns(input, PROJECT_PATTERN), 'project'],
+    [findTagRuns(input), 'tag']
   ]
-  for (const [pattern, kind] of sigilKinds) {
-    for (const run of findMarkerRuns(input, pattern)) {
+  for (const [runs, kind] of sigilKinds) {
+    for (const run of runs) {
       if (isInsideLink(noteLinks, run.start)) continue
       spans.push({ start: run.start, end: run.end, kind })
     }
@@ -434,7 +450,7 @@ export const hasSpecialSyntax = (input: string, now: Date): boolean => {
   return (
     findMarkerRuns(input, PRIORITY_PATTERN).length > 0 ||
     findMarkerRuns(input, PROJECT_PATTERN).length > 0 ||
-    findMarkerRuns(input, TAG_PATTERN).length > 0 ||
+    findTagRuns(input).length > 0 ||
     findNoteLinks(input).length > 0 ||
     findDatePhrase(input, now) !== null || // @tomorrow
     findRepeatPhrase(input, now, now) !== null // every monday

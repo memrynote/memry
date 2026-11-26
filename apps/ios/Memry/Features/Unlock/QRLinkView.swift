@@ -72,10 +72,18 @@ struct QRLinkView: View {
                 .font(Tokens.Typography.screenTitle.font)
                 .foregroundStyle(Tokens.Text.primary.color)
             Text(
-                "On a device where Memry is already unlocked, open Settings and choose "
-                    + "Link a device. Scan the code it shows, or paste it below."
+                "On a device where Memry is already unlocked, open Settings \u{2192} Account \u{2192} Devices "
+                    + "and choose Link new device. Scan the code it shows, or paste it below."
             )
             .font(Tokens.Typography.body.font)
+            .foregroundStyle(Tokens.Text.secondary.color)
+            // Desktop shows no code to an account without a plan, and nothing
+            // syncs without one, so the free path is the recovery phrase.
+            Text(
+                "Linking and sync need a plan. Without one, use your recovery phrase "
+                    + "and this \(ThisDevice.noun) keeps its own vault."
+            )
+            .font(Tokens.Typography.supporting.font)
             .foregroundStyle(Tokens.Text.secondary.color)
         }
         .multilineTextAlignment(.leading)

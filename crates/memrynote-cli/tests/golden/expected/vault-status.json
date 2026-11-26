@@ -1,0 +1,81 @@
+{
+  "name": "vault-status",
+  "steps": [
+    {
+      "argv": [
+        "vault",
+        "init"
+      ],
+      "exit": 0,
+      "stdout": "{\n  \"isOpen\": true,\n  \"path\": \"<vault>\"\n}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "vault",
+        "status"
+      ],
+      "exit": 0,
+      "stdout": "{\n  \"isOpen\": true,\n  \"path\": \"<vault>\"\n}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "--json",
+        "vault",
+        "open"
+      ],
+      "exit": 0,
+      "stdout": "{\"isOpen\":true,\"path\":\"<vault>\"}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "--vault",
+        "{tmp}/fresh/nested",
+        "vault",
+        "status"
+      ],
+      "exit": 0,
+      "stdout": "{\n  \"isOpen\": true,\n  \"path\": \"<tmp>/fresh/nested\"\n}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "--vault",
+        "fresh/../vault",
+        "--json",
+        "vault",
+        "status"
+      ],
+      "exit": 0,
+      "stdout": "{\"isOpen\":true,\"path\":\"fresh/../vault\"}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "vault"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "Usage: memrynote vault list|current|use|remove OR memrynote [--vault <path>] vault init|status|config|update-config|reindex|set-icon|activity|locks\n"
+    },
+    {
+      "argv": [
+        "vault",
+        "bogus"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "Usage: memrynote vault list|current|use|remove OR memrynote [--vault <path>] vault init|status|config|update-config|reindex|set-icon|activity|locks\n"
+    },
+    {
+      "argv": [
+        "bogus"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "Usage: memrynote [--vault <path>] <vault|notes|folders|properties|folder-view|tasks|projects|inbox|journal|tags|settings|locale|reminders|templates|bookmarks|saved-filters|calendar|sync|agent|graph|search|canvas|home-pages|icons|import|readwise>\n"
+    }
+  ]
+}

@@ -1,4 +1,7 @@
 {
+  "wikiLink": {
+    "openFailed": "Не удалось открыть эту ссылку"
+  },
   "portalBlock": {
     "copyFailed": "Не удалось скопировать портал",
     "hiddenCount": "Скрыто: {count}",
@@ -956,6 +959,8 @@
     "componentsVaultSwitcher": {
       "noVaultsYet": "Хранилищ пока нет",
       "openVault": "Открыть хранилище",
+      "createVault": "Создать хранилище",
+      "openFolderAsVault": "Открыть папку как хранилище",
       "settings": "Настройки",
       "remove": "Убрать «",
       "removeVaultTitle": "Убрать «{name}» из списка?",

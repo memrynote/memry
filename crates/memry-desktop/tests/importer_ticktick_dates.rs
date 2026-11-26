@@ -2,7 +2,7 @@
 //! `Intl.DateTimeFormat` takes, years as `en-CA` writes them, zone-less times in the machine's
 //! zone, and reminders past the Date range, which fail their file as Electron's `RangeError` did.
 
-use jiff::tz::TimeZone;
+use jiff::tz::TimeZoneDatabase;
 use serde_json::{Value, json};
 use tokio_util::sync::CancellationToken;
 
@@ -28,7 +28,7 @@ fn dues(cells: &[(&str, &str, &str)], local: Option<&str>) -> Vec<(Value, Value)
             let dir = tempfile::tempdir().unwrap();
             let path = write(dir.path(), "t.csv", &backup(&rows));
             let importer = TickTickImporter {
-                local: Some(TimeZone::get(zone).unwrap()),
+                local: Some(TimeZoneDatabase::bundled().get(zone).unwrap()),
                 ..importer()
             };
             run_with(&importer, &[path], |_| {}, CancellationToken::new())

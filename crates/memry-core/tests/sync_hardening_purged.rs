@@ -102,7 +102,7 @@ fn marker(
         .expect("an attestable delete");
         let (_, secret) = sodium::sign_seed_keypair(&[seed; 32]).expect("a keypair");
         entry["signerDeviceId"] = json!(device);
-        entry["deleteAttestation"] = json!(sign(&claim, &secret).expect("signed"));
+        entry["deleteAttestation"] = json!(sign(&claim, None, &secret).expect("signed"));
     }
     entry
 }
@@ -551,4 +551,42 @@ async fn the_first_sync_refs_pass_reads_the_feed_without_purged_tombstones() {
             .iter()
             .all(|header| header.contains("purged_tombstones"))
     );
+}
+
+/// A device reset to cursor 0 holding a note a peer deleted. Its run from cursor 0 skips the
+/// note's marker (§5.12.3) and keeps no trace of it, so the note stays live here while the
+/// server's manifest lacks it. The manifest check queues nothing: the server re-creates a note
+/// over its marker, so a `create` would bring the deleted note back on every device
+/// (REVIEW-5066, #4785).
+#[tokio::test]
+async fn a_note_whose_marker_a_run_from_zero_skipped_is_not_reuploaded() {
+    let desktop = Desktop::open_with(Declaration::desktop(), |conn| {
+        hold(conn, "note", "n1", Some(json!({ PEER: 1 })), 1_000)
+    })
+    .await;
+    desktop.server.purge(peer_marker("note", "n1"));
+    desktop.server.deleted_page(&["n1"], "1", false);
+    desktop.pass().await;
+    assert_eq!(
+        deleted_at(&desktop, "note", "n1"),
+        None,
+        "the marker was skipped"
+    );
+
+    desktop.server.deleted_page(&[], "2", false);
+    desktop.pass().await;
+
+    assert!(
+        desktop.server.pushed().is_empty(),
+        "{:?}",
+        desktop.server.pushed()
+    );
+    let queued: i64 = desktop
+        .db
+        .call_blocking(|conn| {
+            conn.query_row("SELECT count(*) FROM outbox", [], |row| row.get(0))
+                .map_err(failed)
+        })
+        .expect("the outbox");
+    assert_eq!(queued, 0);
 }

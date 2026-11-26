@@ -4,15 +4,14 @@ import { renderWithProviders } from '@tests/utils/render'
 import type { LargeNotesResult } from '@memry/contracts/ipc-sync-ops'
 import { LargeNotesWarning } from './large-notes-warning'
 
-const getLargeNotes = vi.fn<() => Promise<LargeNotesResult>>()
+const { getLargeNotes } = vi.hoisted(() => ({
+  getLargeNotes: vi.fn<() => Promise<LargeNotesResult>>()
+}))
+
+vi.mock('@/services/sync-service', () => ({ syncService: { getLargeNotes } }))
 
 beforeEach(() => {
   vi.clearAllMocks()
-  const api = window.api as typeof window.api & {
-    syncOps?: { getLargeNotes?: typeof getLargeNotes }
-  }
-  api.syncOps = api.syncOps ?? {}
-  api.syncOps.getLargeNotes = getLargeNotes
 })
 
 describe('LargeNotesWarning', () => {

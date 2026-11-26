@@ -17,7 +17,7 @@ import {
   type CoverValue
 } from '@memry/shared/cover-image'
 import { notesService } from '@/services/notes-service'
-import { extractErrorMessage } from '@/lib/ipc-error'
+import { extractErrorMessage, unwrapIpcResult } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
 
 const logger = createLogger('NoteCover')
@@ -93,15 +93,18 @@ export function useNoteCover(
         // A new cover invalidates the old photo's framing, and carries either its
         // own attribution or none. Both land in the one write that sets the cover,
         // so the note is never briefly credited to the wrong photographer.
-        await notesService.update({
-          id: noteId,
-          frontmatter: {
-            cover: ref,
-            ...clearedFraming(frontmatter ?? {}),
-            coverCredit: credit?.name ?? null,
-            coverCreditUrl: credit?.url ?? null
-          }
-        })
+        unwrapIpcResult(
+          await notesService.update({
+            id: noteId,
+            frontmatter: {
+              cover: ref,
+              ...clearedFraming(frontmatter ?? {}),
+              coverCredit: credit?.name ?? null,
+              coverCreditUrl: credit?.url ?? null
+            }
+          }),
+          t('cover.setFailed')
+        )
         onSaved()
       } catch (err) {
         logger.error('Failed to set note cover', err)
@@ -117,7 +120,10 @@ export function useNoteCover(
       const patch = framingFrontmatter(changes)
       if (Object.keys(patch).length === 0) return
       try {
-        await notesService.update({ id: noteId, frontmatter: patch })
+        unwrapIpcResult(
+          await notesService.update({ id: noteId, frontmatter: patch }),
+          t('cover.focusFailed')
+        )
         onSaved()
       } catch (err) {
         logger.error('Failed to save the cover position', err)
@@ -130,15 +136,18 @@ export function useNoteCover(
   const removeCover = useCallback(async () => {
     if (!noteId) return
     try {
-      await notesService.update({
-        id: noteId,
-        frontmatter: {
-          cover: null,
-          ...clearedFraming(frontmatter ?? {}),
-          coverCredit: null,
-          coverCreditUrl: null
-        }
-      })
+      unwrapIpcResult(
+        await notesService.update({
+          id: noteId,
+          frontmatter: {
+            cover: null,
+            ...clearedFraming(frontmatter ?? {}),
+            coverCredit: null,
+            coverCreditUrl: null
+          }
+        }),
+        t('cover.removeFailed')
+      )
       onSaved()
     } catch (err) {
       logger.error('Failed to remove note cover', err)

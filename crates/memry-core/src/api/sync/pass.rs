@@ -27,8 +27,8 @@ use std::sync::{Arc, LazyLock, Mutex, RwLock};
 
 use zeroize::Zeroizing;
 
-use super::VaultSync;
 use super::snapshot_fallback::{LastPull, PassSnapshots};
+use super::{QueuedAttachmentNews, VaultSync};
 use crate::api::errors::{StorageError, SyncError};
 use crate::api::projects::ProjectSeed;
 use crate::crdt::SnapshotPusher;
@@ -38,8 +38,11 @@ use crate::sync::body_pull::BodyPull;
 use crate::sync::body_step;
 use crate::sync::engine::seed_at_head;
 use crate::sync::journal_day_merge;
+use crate::sync::note_refs_heal;
 use crate::sync::pull::{PullError, PullLoop};
 use crate::sync::push::{PushCoordinator, PushError};
+use crate::sync::revive_heal;
+use crate::sync::unknown_signer;
 
 /// Pages one pass may pull before it stops and lets the next pass continue.
 const MAX_PULL_PAGES: u32 = 200;
@@ -59,6 +62,10 @@ pub struct SyncPassSummary {
     pub rejected: u32,
     /// Rows still queued after the pass.
     pub pending: u32,
+    /// Attachment refusals the user was not told of yet, and landed uploads
+    /// they were (#5532).
+    #[uniffi(default = [])]
+    pub attachments: Vec<QueuedAttachmentNews>,
 }
 
 fn count(value: usize) -> u32 {
@@ -133,26 +140,35 @@ impl VaultSync {
     /// queued. Safe to call repeatedly. Passes over one vault run one at a
     /// time: two overlapping passes would push the same outbox rows twice and
     /// report the second copy as rejected, so a second call waits for the
-    /// first and then runs its own pass.
+    /// first and then runs its own pass. It waits for a running
+    /// [`VaultSync::first_sync`] the same way.
     pub async fn sync_now(&self) -> Result<SyncPassSummary, SyncError> {
         let gate = pass_gate(&self.vault_id);
         let _held = gate.lock().await;
         self.seed_vault_locks().await?;
+        // Notes applied before #5675 get their attachment rows, once.
+        self.db
+            .call(|conn| note_refs_heal::merge_applied_notes(conn))
+            .await?;
         let cipher = self.cipher().await?;
         let http = self.session.http();
 
-        let pulled = PullLoop::new(
-            Arc::clone(&http),
-            self.db.clone(),
-            self.declaration.clone(),
-            cipher.clone(),
-        )
-        .with_vault(&self.vault_id)
-        .with_clock_device(&self.session.device_id()?)
-        .with_at_rest_key(self.at_rest.clone())
-        .with_note_bodies(cipher.clone())
-        .run(MAX_PULL_PAGES)
-        .await?;
+        let pull = Arc::new(
+            PullLoop::new(
+                Arc::clone(&http),
+                self.db.clone(),
+                self.declaration.clone(),
+                cipher.clone(),
+            )
+            .with_vault(&self.vault_id)
+            .with_clock_device(&self.session.device_id()?)
+            .with_at_rest_key(self.at_rest.clone())
+            .with_note_bodies(cipher.clone()),
+        );
+        // Records an earlier pass refused for a signer its directory lacked,
+        // re-pulled over this pass's directory before the feed (#5413).
+        unknown_signer::retry(&self.db, &pull).await?;
+        let pulled = pull.run(MAX_PULL_PAGES).await?;
         // The unclocked Inbox becomes this device's record only once the feed is read to its
         // head, so an Inbox another device pushed first has replaced it (#3538).
         let device_id = self.session.device_id()?;
@@ -171,10 +187,16 @@ impl VaultSync {
             cipher,
         )
         .with_vault(&self.vault_id);
-        let bodies = body_step::run(&self.db, &body_pull).await?;
+        let bodies = body_step::run(&self.db, &body_pull).await?.pulled;
         // Foreign journal ids owed to their canonical day (#2939). Queues
         // the merged body and the tombstones for the push below.
         journal_day_merge::drain(&self.db, &body_pull, &self.session.device_id()?).await?;
+        // A document re-created on a build before #5351 re-pushes its full
+        // state once when the server holds its body pending (#5354).
+        revive_heal::run(&self.db, &body_pull).await?;
+        // Attachments kept while offline go up before the push, so the note's
+        // new reference leaves with it (#5510).
+        let attachments = self.upload_queued_attachments().await?;
 
         let master_key = Zeroizing::new(self.session.master_key()?.ok_or(SyncError::Locked)?);
         let vault_key = Zeroizing::new(keys::derive_vault_key(&master_key)?.to_vec());
@@ -187,6 +209,9 @@ impl VaultSync {
         .map_err(|e| StorageError::Failed {
             what: e.to_string(),
         })?;
+        // Delete attestations stay v1 until production servers verify v2
+        // (#5247, chapter 04 §4.8.4): an older server rejects a v2 delete.
+        // The flip adds `.with_vault(&self.vault_id)`.
         let sealer = Arc::new(AccountSealer::new(vault_key.to_vec(), signer));
         // An update too large for the incremental route goes as a snapshot of
         // its document (chapter 07 §7.4.2). The gate is clean only when the
@@ -207,10 +232,17 @@ impl VaultSync {
         };
         // Built per pass, so it takes no pre-push hook: its deferral counts would restart every
         // pass and never reach the limit. Hooks go on the driver's coordinator (`driver/mod.rs`).
-        let push = PushCoordinator::new(http, self.db.clone(), self.declaration.clone(), sealer)
-            .with_vault(&self.vault_id)
-            .with_at_rest_key(self.at_rest.clone())
-            .with_snapshot_fallback(Arc::new(snapshots));
+        let push = PushCoordinator::new(
+            http,
+            self.db.clone(),
+            self.declaration.clone(),
+            sealer,
+            &self.session.device_id()?,
+        )
+        .with_vault(&self.vault_id)
+        .with_at_rest_key(self.at_rest.clone())
+        .with_snapshot_fallback(Arc::new(snapshots))
+        .with_pull(pull);
         let report = push.drain_wave().await?;
         let pending = self
             .db
@@ -224,13 +256,18 @@ impl VaultSync {
             })
             .await?;
 
+        // Last, so a pass that failed above tells its refusals next time.
+        self.remember_told(&attachments.news).await?;
         Ok(SyncPassSummary {
             pulled: count(pulled.applied),
             deleted: count(pulled.deleted),
             bodies: count(bodies.documents),
             pushed: count(report.accepted),
-            rejected: count(report.rejected),
+            // A refused attachment upload counts too: it is the only failure
+            // of this pass the shell would otherwise never see (#5510).
+            rejected: count(report.rejected).saturating_add(attachments.refused),
             pending: u32::try_from(pending).unwrap_or(u32::MAX),
+            attachments: attachments.news,
         })
     }
 }
