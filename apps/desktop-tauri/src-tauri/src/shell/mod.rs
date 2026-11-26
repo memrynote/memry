@@ -4,6 +4,7 @@
 pub mod account_sync;
 pub mod agent;
 pub mod billing;
+pub mod capture;
 pub mod clipboard;
 pub mod dialogs;
 pub mod drop_stage;

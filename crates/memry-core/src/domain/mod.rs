@@ -15,6 +15,8 @@ pub mod agent_message;
 pub mod agent_queue;
 pub mod agent_records;
 pub mod app_settings;
+pub mod attachment_refs;
+pub mod attachment_uploads;
 pub mod attachments;
 pub mod body_tags;
 pub mod body_write;
@@ -25,7 +27,7 @@ pub mod canvas;
 pub mod canvas_folder;
 pub mod content_hash;
 pub mod custom_icons;
-mod desktop_records;
+pub(crate) mod desktop_records;
 pub mod embedding_input;
 #[cfg(feature = "markdown")]
 pub mod external_feed;
@@ -35,6 +37,9 @@ pub mod file_text;
 // The desktop note fold cache; iOS folds no note.
 #[cfg(feature = "markdown")]
 pub mod fold_chunks;
+// Desktop's folder views and tag tables: they read the note index of files.
+#[cfg(feature = "markdown")]
+pub mod folder_view;
 pub mod folders;
 // Desktop's note edit only: iOS writes no note file, so it links none of it.
 #[cfg(feature = "markdown")]
@@ -49,6 +54,7 @@ pub mod journal_rules;
 pub mod link_reads;
 #[cfg(feature = "vec")]
 pub mod note_embeddings;
+pub mod note_file;
 pub mod note_files;
 pub mod note_list;
 pub mod note_meta;
@@ -61,6 +67,7 @@ pub mod note_stats;
 pub mod note_status;
 pub mod note_tasks;
 pub mod notes;
+pub mod owed_file_aliases;
 pub mod owed_file_body;
 pub mod projects;
 pub mod properties;
@@ -68,7 +75,10 @@ pub mod property_admin;
 #[cfg(feature = "markdown")]
 pub mod property_values;
 pub mod reads;
-mod recreate;
+pub mod readwise;
+pub mod readwise_highlights;
+pub mod recently_opened;
+pub(crate) mod recreate;
 pub mod recurrence;
 pub mod related_items;
 pub mod reminders;
@@ -92,9 +102,11 @@ pub mod tag_rename;
 pub mod tag_retag;
 pub mod tag_schema;
 pub mod tag_schema_refs;
+pub mod tag_views;
 pub mod tags;
 pub mod task_activity;
 pub mod task_filter;
+pub mod task_links;
 pub mod task_merge;
 pub mod task_parse;
 pub mod task_records;
@@ -111,6 +123,8 @@ pub mod unlinked_mentions;
 // Desktop's read-only locks: iOS keeps no vault files to lock.
 #[cfg(feature = "markdown")]
 pub mod vault_locks;
+#[cfg(feature = "vec")]
+pub mod voice_embeddings;
 pub mod wiki_suggest;
 pub mod wiki_target;
 #[cfg(feature = "markdown")]

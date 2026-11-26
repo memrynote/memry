@@ -18,6 +18,7 @@
 //! `spawn_blocking`.
 
 pub mod at_rest_key;
+mod headless;
 mod hooks;
 mod open;
 pub mod projection;
@@ -40,8 +41,10 @@ use memry_core::api::errors::StorageError;
 use memry_core::api::search::Search;
 use memry_core::api::vault::Vault;
 
+pub use headless::{HeadlessOpen, open_headless};
 pub use hooks::{BackgroundHook, CloseHook, OpenHook, OpenStage};
 use hooks::{Hooks, run_with_deadline};
+pub(crate) use open::prepare_core_dir;
 use projection::{ProjectionRuntime, Projector};
 pub use repair::{CreateOrOpenError, RepairOutcome};
 use response::MovesRecovered;
@@ -52,6 +55,7 @@ use crate::error::{CoreError, FailureKind};
 use crate::registry::create::create_vault_folder;
 use crate::registry::vault_icon::{self, IconError};
 use crate::registry::{GetVaultsResponse, RegistryError, SandboxInfo, StoredVault, VaultRegistry};
+use crate::sync::first_sync_running::FirstSyncRunning;
 
 /// The Electron projection drain default, per hook.
 pub const HOOK_DEADLINE: Duration = Duration::from_secs(5);
@@ -77,6 +81,10 @@ pub enum SessionError {
     /// may still hold this vault's databases. Reopening or repairing it now would race it.
     #[error("the vault at {0} is still held by a thread that did not stop; restart the app")]
     Held(String),
+    /// The folder a new vault was to be made in exists already: it appeared after the caller
+    /// picked the name, so it is someone else's and stays untouched.
+    #[error("A folder already exists at {0}")]
+    FolderExists(String),
 }
 
 impl CoreError for SessionError {
@@ -89,6 +97,7 @@ impl CoreError for SessionError {
             Self::SwitchInProgress => (FailureKind::Invalid, "switch_in_progress"),
             Self::AlreadyOpen => (FailureKind::Invalid, "vault_already_open"),
             Self::Held(_) => (FailureKind::Locked, "vault_held"),
+            Self::FolderExists(_) => (FailureKind::Invalid, "vault_folder_exists"),
         }
     }
 }
@@ -146,6 +155,9 @@ pub struct OpenVault {
     pub name: String,
     pub vault: Arc<Vault>,
     pub search: Arc<Search>,
+    /// Whether this vault's first sync runs: sync holds it, the note index defers its search
+    /// reindex while it does (#5409).
+    pub first_sync: FirstSyncRunning,
 }
 
 /// What [`Session::open_startup`] did. `Failed` carries the error so the shell can offer
@@ -543,6 +555,8 @@ pub(crate) fn canonical(path: &Path) -> PathBuf {
 
 #[cfg(test)]
 mod fixture;
+#[cfg(test)]
+mod headless_tests;
 #[cfg(test)]
 mod identity;
 #[cfg(test)]

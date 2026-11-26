@@ -34,6 +34,12 @@ describe('environment scripts', () => {
   })
 })
 
+describe('bench scripts', () => {
+  it('runs the launch bench against the Tauri app', () => {
+    assert.equal(rootPackage.scripts['bench:launch'], 'node scripts/launch-bench.mjs')
+  })
+})
+
 describe('sandbox vault script', () => {
   it('runs the CLI generator under Electron so the shared better-sqlite3 build stays put', () => {
     const cliPackage = JSON.parse(
@@ -76,5 +82,46 @@ describe('native warm-up scripts', () => {
 
   it('keeps predev on the stamp-aware guard', () => {
     assert.match(desktopPackage.scripts.predev, /ensure-native\.sh electron/)
+  })
+})
+
+describe('seed scripts', () => {
+  it('seeds the bench vault through cargo xtask, from crates/ where the alias lives', () => {
+    assert.equal(rootPackage.scripts.seed1k, 'cd crates && cargo xtask seed bench')
+    assert.match(
+      readFileSync(new URL('../crates/.cargo/config.toml', import.meta.url), 'utf8'),
+      /^xtask = "run -p xtask --"$/m
+    )
+  })
+  it('seeds the demo, rich and small vaults through cargo xtask', () => {
+    assert.equal(rootPackage.scripts.seed, 'cd crates && cargo xtask seed demo')
+    assert.equal(rootPackage.scripts['seed:rich'], 'cd crates && cargo xtask seed rich')
+    assert.equal(rootPackage.scripts['seed:1'], 'cd crates && cargo xtask seed small --variant 1')
+    assert.equal(rootPackage.scripts['seed:2'], 'cd crates && cargo xtask seed small --variant 2')
+  })
+})
+
+describe('turbo env', () => {
+  // desktop-tauri's pretypecheck builds export-bindings under turbo. Strict env mode dropped the
+  // CI cargo profile (CARGO_PROFILE_DEV_DEBUG), so "IPC bindings are current" rebuilt all 633
+  // crates under the other profile: 7.5 minutes per Static checks run.
+  it('passes the cargo env through to typecheck', () => {
+    const turbo = JSON.parse(readFileSync(new URL('../turbo.json', import.meta.url), 'utf8'))
+    assert.ok(turbo.tasks.typecheck.passThroughEnv?.includes('CARGO_*'))
+  })
+})
+
+describe('IPC bindings check', () => {
+  // Desktop Tauri CI has no separate "IPC bindings are current" step: the Typecheck step runs
+  // ipc:check through pretypecheck, or replays a cached run that passed it on the same inputs.
+  it('runs ipc:check in every typecheck the root runs', () => {
+    const tauriPackage = JSON.parse(
+      readFileSync(new URL('../apps/desktop-tauri/package.json', import.meta.url), 'utf8')
+    )
+    assert.equal(tauriPackage.scripts.pretypecheck, 'pnpm ipc:check')
+    assert.match(desktopPackage.scripts.pretypecheck, /&& pnpm ipc:check$/)
+    for (const pkg of ['@memry/desktop', '@memry/desktop-tauri']) {
+      assert.ok(rootPackage.scripts.typecheck.includes(`--filter=${pkg} `))
+    }
   })
 })

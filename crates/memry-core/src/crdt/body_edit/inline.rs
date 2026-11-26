@@ -35,10 +35,16 @@ pub(super) fn insert_inline(
     }
     let (_, block) = locate(txn, block_id).ok_or_else(|| missing(block_id))?;
 
-    // The run the range falls in, and where it sits inside that run.
+    // The run the range falls in, and where it sits inside that run. A node
+    // with no text has no width here, so an empty range at its offset fits
+    // the run before it and the run after it: the run holding the character
+    // at `start` wins, which puts the node after the textless one when text
+    // follows (#4765), and the run ending at `start` is kept for when none
+    // does.
     let children: Vec<XmlOut> = block.children(txn).collect();
     let mut base = 0u32;
     let mut found: Option<(u32, XmlTextRef, u32)> = None;
+    let mut ending: Option<(u32, XmlTextRef, u32)> = None;
     for (index, child) in children.iter().enumerate() {
         let length = match child {
             XmlOut::Text(run) => run.len(txn),
@@ -49,13 +55,16 @@ pub(super) fn insert_inline(
             && start >= base
             && end <= base + length
         {
-            found = Some((index as u32, run.clone(), base));
-            break;
+            if start < base + length {
+                found = Some((index as u32, run.clone(), base));
+                break;
+            }
+            ending.get_or_insert_with(|| (index as u32, run.clone(), base));
         }
         base += length;
     }
 
-    let (index, run, base) = found.ok_or_else(|| CrdtError::Undecodable {
+    let (index, run, base) = found.or(ending).ok_or_else(|| CrdtError::Undecodable {
         doc_id: block_id.to_owned(),
         what: "that range does not fall inside one run of this block's text".to_owned(),
     })?;
@@ -148,6 +157,30 @@ pub(super) fn formatted_text(txn: &TransactionMut, run: &XmlTextRef) -> Result<R
             Out::Any(embed) => Ok((Chunk::Embed(embed), chunk.attributes)),
             _ => Err(CrdtError::Undecodable {
                 doc_id: "block snapshot".to_owned(),
+                what: "a text run embeds a shared type, which a copy cannot carry".to_owned(),
+            }),
+        })
+        .collect()
+}
+
+/// One run's content from `from` onward, as formatted chunks, for a Return
+/// that moves the text after the caret into a new block (#5122). `from` is in
+/// the document's offset unit (#4808). An offset inside a character, and an
+/// embed holding a shared type, are refused as [`formatted_text`] refuses
+/// them, so no caller drops part of the run.
+pub(super) fn formatted_tail(
+    txn: &TransactionMut,
+    run: &XmlTextRef,
+    from: u32,
+) -> Result<Run, CrdtError> {
+    run_tail(txn, run, from)
+        .ok_or_else(|| inside_a_character("block split"))?
+        .into_iter()
+        .map(|(content, attrs)| match content {
+            Out::Any(Any::String(text)) => Ok((Chunk::Text(text.to_string()), attrs)),
+            Out::Any(embed) => Ok((Chunk::Embed(embed), attrs)),
+            _ => Err(CrdtError::Undecodable {
+                doc_id: "block split".to_owned(),
                 what: "a text run embeds a shared type, which a copy cannot carry".to_owned(),
             }),
         })

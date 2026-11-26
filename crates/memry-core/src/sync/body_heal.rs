@@ -15,6 +15,7 @@
 use rusqlite::Connection;
 
 use crate::api::errors::StorageError;
+use crate::storage::nested_tx;
 
 use super::body_debt;
 use super::first_sync_store::{read_meta, write_meta};
@@ -32,7 +33,7 @@ pub fn owe_unread_documents(conn: &Connection) -> Result<usize, StorageError> {
     if read_meta(conn, META_BODY_HEAL)?.is_some() {
         return Ok(0);
     }
-    let txn = conn.unchecked_transaction().map_err(failed)?;
+    let txn = nested_tx::begin(conn).map_err(failed)?;
     let ids = {
         let mut statement = txn
             .prepare(

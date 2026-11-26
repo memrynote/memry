@@ -88,6 +88,7 @@ fn kind(kind: MatchKind) -> &'static str {
         MatchKind::Body => "exact",
         MatchKind::Fuzzy => "fuzzy",
         MatchKind::Alias => "alias",
+        MatchKind::Semantic => "semantic",
     }
 }
 
@@ -97,7 +98,7 @@ fn each_cjk_query_finds_what_desktop_finds() {
     for (id, title, body) in NOTES {
         write_note(&db, id, title, body);
     }
-    let search = vault.search().expect("the index");
+    let search = vault.search(None).expect("the index");
     search.reindex().expect("the reindex");
 
     for (query, expected) in CASES {

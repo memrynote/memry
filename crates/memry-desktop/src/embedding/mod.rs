@@ -1,13 +1,14 @@
 //! Local embeddings: the model's owner ([`service`]), its load backoff ([`breaker`]) and
 //! the pinned model download ([`download`]), the model in the `memry-ml-worker` sidecar
-//! ([`worker`]), and the note and image lanes ([`projector`], [`image_projector`]). Step 23
-//! (#3540), Step 25 (#3542).
+//! ([`worker`]), and the note, image and voice memo lanes ([`projector`], [`image_projector`],
+//! [`voice_projector`]). Step 23 (#3540), Step 25 (#3542), Step 24 (#3541).
 
 mod breaker;
 pub mod download;
 pub mod image_projector;
 pub mod projector;
 pub mod service;
+pub mod voice_projector;
 pub mod worker;
 
 pub use breaker::{MAX_CONSECUTIVE_FAILURES, RETRY_BASE};

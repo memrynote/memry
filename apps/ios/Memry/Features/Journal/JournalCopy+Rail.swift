@@ -1,12 +1,15 @@
 import Foundation
 
-// #4351. The Journal rail's words: the mini calendar, the day's agenda
-// (desktop `journal.json` `dayTimeline.*`, `section.tasks`) and On this day
-// (`pastYears.*`).
+// #4351, #4380. The Day Panel's words, also the Journal rail's: the mini
+// calendar, the day's agenda (desktop `journal.json` `dayTimeline.*`,
+// `section.tasks`) and On this day (`pastYears.*`).
 
 extension JournalCopy {
     enum Rail {
-        static let label = "Day details"
+        /// Desktop `common.json` `dayPanel`.
+        static let label = "Day Panel"
+        static let show = "Show Day Panel"
+        static let hide = "Hide Day Panel"
 
         // MARK: Mini calendar
 

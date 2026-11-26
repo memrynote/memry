@@ -13,6 +13,7 @@ Default shortcuts. Navigation, tab, split-view (except the <kbd>⌘</kbd>+<kbd>K
 | Action                   | Shortcut                                              |
 | ------------------------ | ----------------------------------------------------- |
 | New note                 | <kbd>⌘</kbd>+<kbd>N</kbd>                             |
+| Today's journal          | <kbd>⌘</kbd>+<kbd>⌥</kbd>+<kbd>T</kbd>                |
 | Go to sidebar section    | <kbd>⌘</kbd>+<kbd>1</kbd> … <kbd>⌘</kbd>+<kbd>6</kbd> |
 | Open search              | <kbd>⌘</kbd>+<kbd>K</kbd>                             |
 | Open the command palette | <kbd>⌘</kbd>+<kbd>P</kbd>                             |
@@ -21,6 +22,8 @@ Default shortcuts. Navigation, tab, split-view (except the <kbd>⌘</kbd>+<kbd>K
 | Next / previous vault    | <kbd>⌘</kbd>+<kbd>⌃</kbd>+<kbd>→</kbd> / <kbd>←</kbd> |
 
 > **Switch vault** opens the vault switcher at the top of the sidebar panel from anywhere — if the sidebar is hidden it slides open for the duration, and <kbd>Esc</kbd> closes the switcher and puts the sidebar back without changing vaults. It opens on the vault you are in: <kbd>↓</kbd> and <kbd>↑</kbd> move through the list (wrapping at either end) and <kbd>Enter</kbd> switches to the highlighted vault, so a switch never needs the mouse. It works from anywhere, including while you are typing in a field or in the note editor.
+
+> **Today's journal** opens the Journal on today's entry, from anywhere in the app (<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>T</kbd> on Windows, <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>J</kbd> on Linux, where Ubuntu and other GNOME desktops open a terminal on <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>T</kbd>). <kbd>⌘</kbd>+<kbd>T</kbd> stays **New tab**.
 
 > **Next / previous vault** moves the sidebar to the neighbouring vault with the same slide as a trackpad swipe (<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+arrow on Windows and Linux). The arrows follow the page layout, so in right-to-left languages the next vault is to the left. See [Switching vaults](/guide/tour#switching-vaults).
 
@@ -220,6 +223,21 @@ opens the task's detail drawer beside the note. See
 ## Global Undo (Tasks)
 
 <kbd>⌘</kbd>+<kbd>Z</kbd> undoes recent task changes within a 10-second window. Coverage includes status, priority, due date, deletion, and bulk actions.
+
+## Input Methods
+
+Korean, Japanese, Chinese, Vietnamese and some Hindi keyboards build each character in
+steps: an input method (IME) shows the character underlined until you confirm it.
+While a character is underlined, <kbd>Enter</kbd> and <kbd>Esc</kbd> go to the input
+method. <kbd>Enter</kbd> confirms the character and <kbd>Esc</kbd> cancels it. Neither
+saves a title, submits a field or closes a dialog.
+
+For example, typing `이것은 제목입니다` as a note title and pressing <kbd>Enter</kbd>
+while `다` is still underlined keeps the whole title. With a Korean keyboard that one
+<kbd>Enter</kbd> also saves the title. With a Japanese keyboard it confirms the text,
+and a second <kbd>Enter</kbd> saves it.
+
+The note editor handles input methods the same way.
 
 ## Customizing
 

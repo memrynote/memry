@@ -211,6 +211,11 @@ struct AttachingVaultRegistry: VaultRegistry {
         }
         return rows
     }
+
+    func named(_ row: VaultSummary) -> VaultSummary {
+        if let local = attach.store.summary, local.id == row.id { return local }
+        return inner.named(row)
+    }
 }
 
 /// The sync mint for an account, which hands the attached local vault's
@@ -225,13 +230,13 @@ struct LocalSeedingMint: VaultFillerMinting {
     let executor: CoreExecutor
     static let seededKey = "localVault.seeded"
 
-    func filler(for vault: Vault) async throws -> any VaultFilling {
+    func filler(for vault: Vault, named name: String) async throws -> any VaultFilling {
         if vault.id() == store.id, store.isAttached, !UserDefaults.standard.bool(forKey: Self.seededKey) {
             let seeded = try await executor.run { try vault.seedUnsynced() }
             UserDefaults.standard.set(true, forKey: Self.seededKey)
             Log.sync.info("queued the local vault for its first push", .count(Int(seeded)))
         }
-        return try await inner.filler(for: vault)
+        return try await inner.filler(for: vault, named: name)
     }
 }
 

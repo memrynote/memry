@@ -74,6 +74,7 @@ struct CalendarTimelineBar: View {
         }
         .overlay(alignment: .leading) { if isSelected { handle(.resizeStart) } }
         .overlay(alignment: .trailing) { if isSelected { handle(.resizeEnd) } }
+        .pointerHover(.glyph)
         .offset(x: x + 1)
         .onTapGesture(perform: select)
         .highPriorityGesture(isSelected ? moveGesture(.move) : nil)

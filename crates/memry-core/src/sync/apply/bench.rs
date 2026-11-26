@@ -95,7 +95,7 @@ fn median(page: fn() -> Vec<Pending>) -> Duration {
             let key = key.clone();
             db.call_blocking(move |conn| {
                 let started = Instant::now();
-                let totals = apply_page(conn, pending, Vec::new(), NOW, Some("device-a"), &key)?;
+                let totals = apply_page(conn, pending, NOW, Some("device-a"), &key)?;
                 let elapsed = started.elapsed();
                 assert_eq!(
                     (totals.applied, totals.corrupt),

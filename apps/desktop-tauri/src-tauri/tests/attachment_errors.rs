@@ -9,6 +9,7 @@ use std::sync::{Arc, Mutex};
 use memry_desktop::attachments::AttachmentError;
 use memry_desktop::locale::LocaleService;
 use memry_tauri::commands::attachments::{attachment_error, delete_error, read_error};
+use memry_tauri::commands::error::ErrorKind;
 use tauri::Manager;
 use tauri::test::mock_app;
 use tracing_subscriber::fmt::MakeWriter;
@@ -106,4 +107,20 @@ fn a_failed_read_says_the_load_failed() {
         &AttachmentError::InvalidNote,
     );
     assert_eq!(answer.code, "attachment_invalid_note");
+}
+
+/// An exact name that is not a plain one (`save_exact`) is refused as an invalid path, as its
+/// sibling name errors are. Electron's `saveAttachment` `exactFilename` check
+/// (`vault/attachments.ts`) has no error key of its own, and only its main-process callers see it.
+#[test]
+fn a_name_that_is_not_plain_is_an_invalid_path() {
+    let app = mock_app();
+    app.manage(Arc::new(LocaleService::new("en")));
+    let answer = attachment_error(
+        app.handle(),
+        "notes_upload_attachment",
+        &AttachmentError::NotPlainName,
+    );
+    assert_eq!(answer.kind, ErrorKind::Invalid);
+    assert_eq!(answer.code, "attachment_invalid_path");
 }

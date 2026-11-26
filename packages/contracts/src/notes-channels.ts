@@ -47,6 +47,8 @@ export const NotesChannels = {
     CREATE_FOLDER: 'notes:create-folder',
     /** Rename a folder */
     RENAME_FOLDER: 'notes:rename-folder',
+    /** The refusal a folder delete would meet, with nothing deleted */
+    CHECK_FOLDER_DELETE: 'notes:check-folder-delete',
     /** Delete a folder (recursive) */
     DELETE_FOLDER: 'notes:delete-folder',
     /** Check if note exists */

@@ -11,6 +11,7 @@ use std::thread;
 use memry_core::api::editor::{COMPACTION_GROWTH_BYTES, Notice, Origin};
 use memry_core::crdt::BODY_FRAGMENT;
 use memry_core::crdt::body_writes::{BodyObserver as _, BodyWrite, LogRow};
+use memry_core::crdt::epoch::HeldBody;
 use memry_core::crdt::update_log::{self, Namespace};
 use memry_core::domain::note_files;
 use rusqlite::{Connection, params};
@@ -282,8 +283,12 @@ fn a_server_row_pruned_before_its_writer_was_heard_reaches_the_open_document_fro
     let update = peer.type_text("merged from the server");
     {
         let conn = raw(&f);
-        update_log::append_server_update(&conn, &note, 7, &update, 5).unwrap();
-        update_log::put_server_snapshot(&conn, &note, &peer.full_state(), 7, None, 6).unwrap();
+        HeldBody::never_purged(&conn, &note)
+            .and_then(|held| held.append_server_update(7, &update, 5))
+            .unwrap();
+        HeldBody::never_purged(&conn, &note)
+            .and_then(|held| held.put_server_snapshot(&peer.full_state(), 7, None, 6))
+            .unwrap();
         conn.execute(
             "DELETE FROM yjs_updates WHERE doc_id = ?1 AND seq <= 7",
             params![note],
@@ -370,7 +375,9 @@ fn bytes_merged_from_the_server_do_not_make_a_document_due() {
     for n in 0..600 {
         let update = peer.rewrite(&kib(n));
         let seq = i64::try_from(n).unwrap() + 1;
-        update_log::append_server_update(&conn, &note, seq, &update, 5).unwrap();
+        HeldBody::never_purged(&conn, &note)
+            .and_then(|held| held.append_server_update(seq, &update, 5))
+            .unwrap();
         f.editor.bodies_written(&[BodyWrite {
             doc_id: note.clone(),
             origin: Origin::Remote,

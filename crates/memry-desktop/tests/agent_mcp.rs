@@ -153,6 +153,14 @@ async fn every_example_call_gets_electrons_verdict() {
     let cases = file["tools"].as_array().unwrap();
     assert!(cases.len() > 300);
     for case in cases {
+        // A case that holds on one platform only (`refine.rs` tests its check on both).
+        let here = if cfg!(windows) { "win32" } else { "linux" };
+        if case["platform"]
+            .as_str()
+            .is_some_and(|platform| platform != here)
+        {
+            continue;
+        }
         let tool = case["tool"].as_str().unwrap();
         host.calls.lock().unwrap().clear();
         let result = registry

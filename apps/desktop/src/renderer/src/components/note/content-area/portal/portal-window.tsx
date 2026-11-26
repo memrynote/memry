@@ -22,7 +22,7 @@ import { PortalAncestryContext } from './portal-context'
 import type { PortalPlan } from './portal-plans'
 import { descendPortalAncestry, type PortalAncestry, type PortalWindowTarget } from './portal-state'
 import { attachPortalWindowDragOut, type PortalDropOutside } from './portal-window-drag-out'
-import { usePortalLinkOpen } from './use-portal-link-open'
+import { useOpenWikiTarget } from '@/hooks/use-open-wiki-target'
 import { usePortalWindowPlugin, type PortalWindowResolution } from './use-portal-window-plugin'
 import './portal-window.css'
 
@@ -100,7 +100,7 @@ export function PortalWindow({
   const { t } = useT('common')
   const frameRef = useRef<HTMLDivElement>(null)
   const near = useMountedNearViewport(frameRef)
-  const openLink = usePortalLinkOpen()
+  const openLink = useOpenWikiTarget()
   const [attached, setAttached] = useState(false)
   const [failed, setFailed] = useState(false)
   const childAncestry = useMemo(() => descendPortalAncestry(ancestry, target), [ancestry, target])

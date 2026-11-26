@@ -92,7 +92,7 @@ async fn a_failed_open_leaves_no_at_rest_key() {
     let (vault, backend) = unbound(dir.path(), store);
 
     assert!(
-        backend.open().await.is_err(),
+        backend.open(Vec::new()).await.is_err(),
         "an unbound vault does not sync"
     );
     assert!(
@@ -123,7 +123,7 @@ async fn sync_letting_go_keeps_the_key_another_holder_needs() {
     let agent = keys.acquire(&vault).expect("the agent's hold");
 
     assert!(
-        backend.open().await.is_err(),
+        backend.open(Vec::new()).await.is_err(),
         "an unbound vault does not sync"
     );
     backend.close();
@@ -270,7 +270,7 @@ async fn a_locked_keychain_is_only_read_again_never_written() {
         "{facts:?}"
     );
     assert!(matches!(
-        backend.open().await,
+        backend.open(Vec::new()).await,
         Err(SyncError::SecureStore { .. })
     ));
 
@@ -290,6 +290,7 @@ async fn a_locked_keychain_is_only_read_again_never_written() {
             telemetry: None,
             signals: memry_desktop::sync::signals::AuthSignals::new(),
             on_status: Arc::new(|_| {}),
+            on_event: Arc::new(|_| {}),
         },
     );
     let before = store.reads.load(Ordering::SeqCst);

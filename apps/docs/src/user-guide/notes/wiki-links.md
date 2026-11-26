@@ -542,7 +542,7 @@ A canvas entry says **Connected on** and the canvas name, and has no text snippe
 Each entry shows:
 
 - The source note's title
-- A snippet of the surrounding text from the note's body, never its frontmatter (for a relation, the property name and value instead)
+- A snippet of the surrounding text from the note's body, never its frontmatter (for a relation, the property name and value instead). The snippet is plain text, like a note preview: colours, underline, bold and other formatting marks are left out, other links show their names, and only the link to this note keeps its `[[...]]` form so you can spot it
 - A timestamp
 - A click target to open the source note
 

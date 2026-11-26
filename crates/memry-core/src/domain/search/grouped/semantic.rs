@@ -10,8 +10,12 @@
 //!
 //! The image leg (`semantic.ts:85-99`) reads `vec_images` when image embeddings are on:
 //! an image answers for the note that owns it, at its own floor of 0.68, shifted down by
-//! the 0.03 gap to the text floor. The voice leg (`semantic.ts:106-122`) joins here when
-//! its vector store lands (Step 24).
+//! the 0.03 gap to the text floor. The voice leg (`semantic.ts:106-122`) reads `vec_voice`:
+//! a memo answers for itself, at the text floor when embedded from its transcript and at the
+//! audio floor of 0.68 (shifted down the same way) when embedded from its audio.
+
+#[cfg(feature = "vec")]
+use crate::domain::voice_embeddings::VoiceSource;
 
 /// A note, journal day or voice memo whose vector is near the query
 /// (`search-semantic-merge.ts:17-21`).
@@ -26,6 +30,8 @@ pub struct SemanticHit {
 pub const QUERY_SIMILARITY_FLOOR: f64 = 0.65;
 /// `EMBEDDING_IMAGE_QUERY_SIMILARITY_FLOOR` (`lib/embeddings-constants.ts:57`).
 pub const IMAGE_QUERY_SIMILARITY_FLOOR: f64 = 0.68;
+/// `EMBEDDING_AUDIO_QUERY_SIMILARITY_FLOOR` (`lib/embeddings-constants.ts:73`).
+pub const AUDIO_QUERY_SIMILARITY_FLOOR: f64 = 0.68;
 /// `MIN_QUERY_LENGTH` (`semantic.ts:26`), in UTF-16 units as JavaScript counts.
 const MIN_QUERY_LENGTH: usize = 3;
 /// `NEIGHBOURS` (`semantic.ts:28`): read before the floor applies.
@@ -97,15 +103,38 @@ pub fn best_windows(
     hits
 }
 
+/// `notes` (from [`best_windows`]) with the voice memos near the query (`semantic.ts:106-123`):
+/// each memo `(id, cosine, source)` at or above its source's floor, an audio-embedded one
+/// shifted down to the text floor's scale. Best first; ties keep notes first.
+#[cfg(feature = "vec")]
+pub fn with_voice(
+    mut notes: Vec<SemanticHit>,
+    voice: impl IntoIterator<Item = (String, f64, VoiceSource)>,
+) -> Vec<SemanticHit> {
+    let audio_shift = AUDIO_QUERY_SIMILARITY_FLOOR - QUERY_SIMILARITY_FLOOR;
+    for (id, cosine, source) in voice {
+        let cosine = match source {
+            VoiceSource::Transcript if cosine >= QUERY_SIMILARITY_FLOOR => cosine,
+            VoiceSource::Audio if cosine >= AUDIO_QUERY_SIMILARITY_FLOOR => cosine - audio_shift,
+            _ => continue,
+        };
+        notes.push(SemanticHit { id, cosine });
+    }
+    notes.sort_by(|a, b| b.cosine.total_cmp(&a.cosine));
+    notes
+}
+
 /// The notes and journal days nearest `query` (an embedded search query), best
 /// first: the [`NEIGHBOURS`] nearest of `vec_notes` and of `vec_note_chunks`, and of
 /// `vec_images` when `images` is on (`isImageEmbeddingEnabled`), merged by
-/// [`best_windows`]. A note vector store that fails is logged and answers no hits,
-/// so the search falls back to the index (`semantic.ts:126-129`); a failing image
-/// leg leaves the note hits (`semantic.ts:100-103`).
+/// [`best_windows`], then the voice memos nearest it ([`with_voice`]). A note vector
+/// store that fails is logged and answers no hits, so the search falls back to the
+/// index (`semantic.ts:126-129`); a failing image or voice leg leaves the note hits
+/// (`semantic.ts:100-103`, 119-122).
 #[cfg(feature = "vec")]
 pub fn note_hits(index: &rusqlite::Connection, query: &[f32], images: bool) -> Vec<SemanticHit> {
     use crate::domain::image_embeddings::nearest_notes;
+    use crate::domain::voice_embeddings::nearest_items;
     use crate::storage::vec::{VecTable, nearest};
     let windows = nearest(index, VecTable::Notes, query, NEIGHBOURS).and_then(|notes| {
         nearest(index, VecTable::NoteChunks, query, NEIGHBOURS).map(|chunks| (notes, chunks))
@@ -125,7 +154,11 @@ pub fn note_hits(index: &rusqlite::Connection, query: &[f32], images: bool) -> V
     } else {
         Vec::new()
     };
-    best_windows(notes, chunks, image_hits)
+    let voice = nearest_items(index, query, NEIGHBOURS).unwrap_or_else(|error| {
+        eprintln!("memry search: voice memo search failed, answering from note vectors: {error}");
+        Vec::new()
+    });
+    with_voice(best_windows(notes, chunks, image_hits), voice)
 }
 
 #[cfg(test)]
@@ -204,6 +237,30 @@ mod tests {
         assert_eq!(hits.len(), 30);
         assert_eq!(hits[0], hit("n0", 0.9));
         assert_eq!(hits[29].id, "n29");
+    }
+
+    /// `search-semantic.test.ts` voice memos: a transcript hit at the text floor, an audio
+    /// hit at the audio floor shifted down by the gap, both merged with the notes by cosine.
+    #[cfg(feature = "vec")]
+    #[test]
+    fn voice_memos_answer_at_their_source_floor() {
+        let notes = vec![hit("note", 0.8)];
+        let hits = with_voice(
+            notes,
+            [
+                ("spoken".to_owned(), 0.9, VoiceSource::Transcript),
+                ("quiet".to_owned(), 0.64, VoiceSource::Transcript),
+                ("music".to_owned(), 0.78, VoiceSource::Audio),
+                ("noise".to_owned(), 0.67, VoiceSource::Audio),
+                ("edge".to_owned(), 0.65, VoiceSource::Transcript),
+            ],
+        );
+        let ids: Vec<&str> = hits.iter().map(|h| h.id.as_str()).collect();
+        assert_eq!(ids, ["spoken", "note", "music", "edge"]);
+        assert!(
+            (hits[2].cosine - 0.75).abs() < 1e-12,
+            "0.78 less the 0.03 gap"
+        );
     }
 
     /// Real vec0 tables: the stored vectors answer by cosine.
@@ -349,5 +406,51 @@ mod tests {
             ["text"],
             "the image leg failing keeps the note hits"
         );
+    }
+
+    /// Real vec0 tables: a memo's best window answers for it through `note_hits`, and a broken
+    /// voice table leaves the note hits (`semantic.ts:119-122`).
+    #[cfg(feature = "vec")]
+    #[test]
+    fn note_hits_reads_voice_memo_windows() {
+        use crate::domain::voice_embeddings::replace;
+        use crate::storage::index_db::open_or_rebuild;
+        use crate::storage::test_support::temp_dir;
+        use crate::storage::vec::{EMBEDDING_DIMENSION, to_blob};
+
+        let axis = |at: usize, weight: f32| {
+            let mut vector = vec![0.0_f32; EMBEDDING_DIMENSION];
+            vector[0] = weight;
+            vector[at] = (1.0 - weight * weight).sqrt();
+            vector
+        };
+        let dir = temp_dir("semantic-voice-hits");
+        let opened = open_or_rebuild(&dir.path().join("index.db")).expect("open");
+        let (found, broken) = opened
+            .db
+            .call_blocking(move |conn| {
+                conn.execute(
+                    "INSERT INTO vec_notes (note_id, embedding) VALUES ('n', ?1)",
+                    [to_blob(&axis(1, 0.7))],
+                )
+                .map_err(super::super::super::failed)?;
+                replace(
+                    conn,
+                    "memo",
+                    VoiceSource::Audio,
+                    &[axis(2, 0.1), axis(3, 0.9)],
+                )?;
+                let query = axis(4, 1.0);
+                let found = note_hits(conn, &query, false);
+                conn.execute_batch("DROP TABLE vec_voice;")
+                    .map_err(super::super::super::failed)?;
+                Ok((found, note_hits(conn, &query, false)))
+            })
+            .expect("note hits");
+        let got: Vec<&str> = found.iter().map(|hit| hit.id.as_str()).collect();
+        assert_eq!(got, ["memo", "n"]);
+        assert!((found[0].cosine - 0.87).abs() < 1e-6, "0.9 less the gap");
+        let got: Vec<&str> = broken.iter().map(|hit| hit.id.as_str()).collect();
+        assert_eq!(got, ["n"]);
     }
 }

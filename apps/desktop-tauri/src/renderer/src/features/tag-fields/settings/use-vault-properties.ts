@@ -1,3 +1,4 @@
+import { folderViewService } from '@/services/folder-view-service'
 import { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import type { SelectOption } from '@memry/contracts/property-types'
@@ -22,7 +23,7 @@ export function useVaultProperties(enabled: boolean): VaultProperty[] {
     queryFn: async (): Promise<VaultProperty[]> => {
       const [definitions, available] = await Promise.all([
         notesService.getPropertyDefinitions(),
-        window.api.folderView.getAvailableProperties({ kind: 'folder', path: '' })
+        folderViewService.getAvailableProperties({ kind: 'folder', path: '' })
       ])
       const usage = new Map(available.properties.map((p) => [p.name, p]))
       const byName = new Map<string, VaultProperty>()

@@ -41,7 +41,7 @@ struct CalendarEmptyTime: View {
             .contentShape(.rect)
             // A pan that starts here still scrolls and pages; once the hold
             // lands the grid stops (`dragState`).
-            .gesture(selectGesture)
+            .calendarHoldDrag(selectGesture)
             .overlay(alignment: .topLeading) {
                 if let range {
                     CalendarSelectionBlock(
@@ -85,7 +85,7 @@ struct CalendarEmptyTime: View {
                 current = anchor
             case let .changed(_, location):
                 current = minutes(location.y)
-            case let .ended(_, _, completed):
+            case let .ended(_, _, completed, _):
                 defer { anchor = nil; current = nil; dragState = nil }
                 guard completed, let range else { return }
                 // A plain long press (no drag) selects an hour, as desktop's
@@ -147,6 +147,7 @@ struct CalendarGridChip: View {
             item: item, layout: layout, now: now, isSelected: dragging,
             onComplete: item.visualType == "task" ? { actions.complete(item) } : nil
         )
+        .pointerHover(.card(radius: Tokens.Calendar.chipRadius))
         .offset(y: dragging && dragState?.edge == .move ? CGFloat(liveDelta) / 60 * hourHeight : 0)
         .overlay { if dragging, dragState?.edge != .move { resizeOutline } }
         // Paper 16: handles on the top and bottom edges resize.
@@ -169,7 +170,12 @@ struct CalendarGridChip: View {
             }
         }
         .onTapGesture { actions.open(item) }
-        .gesture(moveGesture)
+        .calendarHoldDrag(moveGesture)
+        // A movable chip has no `.contextMenu` (its hold drags), so a pointer
+        // reaches the held chip's menu with a secondary click.
+        .gesture(CalendarSecondaryClick(isEnabled: item.canDrag && actions.move != nil && actions.contextMenu != nil) {
+            showsMenu = true
+        })
         .sensoryFeedback(.selection, trigger: liveDelta)
         .calendarItemMenu(item.canDrag && actions.move != nil ? nil : actions.contextMenu, item: item)
         // On the chip, so the popover points at it on iPad.
@@ -238,7 +244,7 @@ struct CalendarGridChip: View {
             .frame(maxWidth: .infinity, minHeight: 14)
             .contentShape(.rect)
             .offset(y: edge == .top ? -5 : 5)
-            .gesture(resizeGesture(edge))
+            .calendarHoldDrag(resizeGesture(edge))
             .accessibilityHidden(true)
     }
 
@@ -250,7 +256,7 @@ struct CalendarGridChip: View {
             case let .changed(start, location):
                 let raw = Int((location.y - start.y) / hourHeight * 60)
                 liveDelta = Int((Double(raw) / 15).rounded()) * 15
-            case let .ended(_, _, completed):
+            case let .ended(_, _, completed, _):
                 let delta = liveDelta
                 liveDelta = 0
                 dragState = nil
@@ -276,14 +282,15 @@ struct CalendarGridChip: View {
             case let .changed(start, location):
                 let raw = Int((location.y - start.y) / hourHeight * 60)
                 liveDelta = Int((Double(raw) / 15).rounded()) * 15
-            case let .ended(_, _, completed):
+            case let .ended(_, _, completed, held):
                 let delta = liveDelta
                 liveDelta = 0
                 dragState = nil
                 guard completed else { return }
                 guard delta != 0 else {
-                    // Held, not moved: the item's menu.
-                    showsMenu = true
+                    // Held, not moved: the item's menu. A pointer drag that
+                    // comes back to its start never held, so it does nothing.
+                    if held { showsMenu = true }
                     return
                 }
                 let day = CalendarDates.key(item.startDate)

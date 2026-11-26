@@ -35,6 +35,14 @@ let syncDecided = false
  */
 let pullCompleted = false
 
+/**
+ * A full sync's pull delivered every record since the runtime started, even if
+ * the run then failed. Folder discovery reads it: a folder found after this has
+ * no remote row left to arrive (#5255). Earlier than `pullCompleted`, which
+ * waits for the manifest check, so it must not gate Readwise.
+ */
+let recordsPulled = false
+
 /** Past every policy gate: the runtime is expected to be running. */
 export function markSyncEligible(): void {
   syncEligible = true
@@ -64,6 +72,7 @@ export function isSyncDecided(): boolean {
 export function resetSyncDecision(): void {
   syncDecided = false
   pullCompleted = false
+  recordsPulled = false
 }
 
 /** A full sync's pull delivered. */
@@ -73,4 +82,12 @@ export function markPullCompleted(): void {
 
 export function hasCompletedPullSinceStart(): boolean {
   return pullCompleted
+}
+
+export function markRecordsPulled(): void {
+  recordsPulled = true
+}
+
+export function hasPulledRecordsSinceStart(): boolean {
+  return recordsPulled
 }

@@ -1,4 +1,5 @@
 import Foundation
+import MemryCore
 import SwiftUI
 
 // Where the user was, so the next launch continues there: the vault, the tab,
@@ -7,8 +8,10 @@ import SwiftUI
 // `UserDefaults` rather than `@SceneStorage`: iOS drops scene storage when the
 // user swipes the app away, which is the relaunch this exists for.
 //
-// Only ids and offsets are stored, never titles or text, because
-// `UserDefaults` sits outside the vault's encryption. Sign-out clears it.
+// Only ids, offsets and the last vault's sealed name are stored, never titles
+// or text, because `UserDefaults` sits outside the vault's encryption. The
+// sealed name is the registry's ciphertext, kept so an offline launch can name
+// the vault it reopens (#5524). Sign-out clears it.
 //
 // Stack changes are written through on each change. Scroll offsets change on
 // every frame, so they are held in memory and written when the app leaves the
@@ -23,8 +26,16 @@ final class LaunchSnapshot: @unchecked Sendable {
         var scroll: [String: Double] = [:]
     }
 
+    /// The registry's ciphertext of a vault name, never the name itself.
+    struct SealedName: Codable, Equatable {
+        var encryptedName: String
+        var nameNonce: String
+    }
+
     private struct Stored: Codable {
         var lastVault: String?
+        /// Added for #5524; absent in snapshots older builds wrote.
+        var lastVaultName: SealedName?
         var vaults: [String: VaultState] = [:]
     }
 
@@ -48,12 +59,32 @@ final class LaunchSnapshot: @unchecked Sendable {
     /// The vault open when the app was last used.
     var lastVault: String? { lock.withLock { stored.lastVault } }
 
-    /// A vault was opened: it becomes the one to reopen, and the scope for
-    /// everything below.
-    func vaultOpened(_ id: String) {
+    /// The vault open when the app was last used, as the registry row it was
+    /// opened from with only its sealed name: what an offline launch reopens.
+    var lastVaultSummary: VaultSummary? {
         lock.withLock {
-            current = id
-            stored.lastVault = id
+            stored.lastVault.map {
+                VaultSummary(
+                    id: $0,
+                    name: nil,
+                    encryptedName: stored.lastVaultName?.encryptedName,
+                    nameNonce: stored.lastVaultName?.nameNonce
+                )
+            }
+        }
+    }
+
+    /// A vault was opened: it becomes the one to reopen, and the scope for
+    /// everything below. Records the row's sealed name too, never its opened
+    /// `name`.
+    func vaultOpened(_ summary: VaultSummary) {
+        lock.withLock {
+            current = summary.id
+            if stored.lastVault != summary.id { stored.lastVaultName = nil }
+            stored.lastVault = summary.id
+            if let sealed = summary.encryptedName, let nonce = summary.nameNonce {
+                stored.lastVaultName = SealedName(encryptedName: sealed, nameNonce: nonce)
+            }
         }
         write()
     }
@@ -63,6 +94,7 @@ final class LaunchSnapshot: @unchecked Sendable {
         lock.withLock {
             current = nil
             stored.lastVault = nil
+            stored.lastVaultName = nil
         }
         write()
     }
@@ -71,7 +103,10 @@ final class LaunchSnapshot: @unchecked Sendable {
     func prune(keeping ids: Set<String>) {
         lock.withLock {
             stored.vaults = stored.vaults.filter { ids.contains($0.key) }
-            if let last = stored.lastVault, !ids.contains(last) { stored.lastVault = nil }
+            if let last = stored.lastVault, !ids.contains(last) {
+                stored.lastVault = nil
+                stored.lastVaultName = nil
+            }
         }
         write()
     }

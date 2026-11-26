@@ -867,6 +867,29 @@ describe('JournalPage', () => {
     await waitFor(() => expect(mocks.forceReload).toHaveBeenCalled())
   })
 
+  // With auto-download off, opening the day is what fetches a peer's pictures.
+  it("asks main for the day's files on open and offers Try again on a failure (#5735)", async () => {
+    const downloadNoteFiles = vi.mocked(window.api.syncAttachments.downloadNoteFiles)
+    downloadNoteFiles.mockResolvedValueOnce({ success: false, error: 'R2 unavailable' })
+    render(<JournalPage />)
+
+    expect(await screen.findByTestId('note-files-download-failed')).toBeInTheDocument()
+    expect(downloadNoteFiles).toHaveBeenCalledWith({ noteId: 'j2026-01-15' })
+
+    fireEvent.click(screen.getByRole('button', { name: 'page.noteFiles.retry' }))
+    await waitFor(() => expect(downloadNoteFiles).toHaveBeenCalledTimes(2))
+    await waitFor(() =>
+      expect(screen.queryByTestId('note-files-download-failed')).not.toBeInTheDocument()
+    )
+  })
+
+  it('asks for no files on a day that has no entry yet', () => {
+    mocks.entry = null
+    render(<JournalPage />)
+
+    expect(window.api.syncAttachments.downloadNoteFiles).not.toHaveBeenCalled()
+  })
+
   it('shows incoming references on a journal day that has no entry yet', () => {
     mocks.entry = null
     render(<JournalPage />)

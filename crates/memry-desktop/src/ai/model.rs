@@ -7,7 +7,7 @@ use std::sync::Arc;
 use serde::Serialize;
 
 use crate::embedding::projector;
-use crate::embedding::service::{EMBEDDING_DIMENSION, EmbeddingService, MODEL_NAME};
+use crate::embedding::service::{EMBEDDING_DIMENSION, EmbeddingService, MODEL_NAME, ModelStatus};
 use crate::i18n::{self, Args};
 use crate::session::Session;
 
@@ -73,19 +73,22 @@ pub fn status(session: &Session, model: Option<&Arc<EmbeddingService>>) -> AiMod
             |count| u32::try_from(count).unwrap_or(u32::MAX),
         )
     });
-    let (loaded, loading, error) = match model {
-        Some(model) => {
-            let status = model.status();
-            (status.loaded, status.loading, status.error)
-        }
-        None => (false, false, Some(NO_MODEL.to_owned())),
-    };
+    let status = model.map_or_else(
+        || ModelStatus {
+            name: MODEL_NAME,
+            dimension: EMBEDDING_DIMENSION,
+            loaded: false,
+            loading: false,
+            error: Some(NO_MODEL.to_owned()),
+        },
+        |model| model.status(),
+    );
     AiModelStatus {
-        name: MODEL_NAME.to_owned(),
-        dimension: u32::try_from(EMBEDDING_DIMENSION).unwrap_or(u32::MAX),
-        loaded,
-        loading,
-        error,
+        name: status.name.to_owned(),
+        dimension: u32::try_from(status.dimension).unwrap_or(u32::MAX),
+        loaded: status.loaded,
+        loading: status.loading,
+        error: status.error,
         embedding_count,
     }
 }

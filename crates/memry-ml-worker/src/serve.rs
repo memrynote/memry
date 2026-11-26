@@ -1,7 +1,8 @@
 //! The worker's side of the frames: announce readiness, then answer each request in order until
 //! `Shutdown` or the end of stdin. A request that does not decode is answered with `Failed` under
 //! its id, since its frame was whole; a frame that does not parse ends the worker, because the
-//! stream cannot be resynchronised.
+//! stream cannot be resynchronised. The worker exits when the app does
+//! ([`crate::lifetime::exit_with_parent`]).
 
 use std::io::{Read, Write};
 use std::panic::{AssertUnwindSafe, catch_unwind};
@@ -17,6 +18,7 @@ pub fn serve(
     mut output: impl Write,
     mut handle: impl FnMut(Request) -> Response,
 ) -> Result<(), FrameError> {
+    crate::lifetime::exit_with_parent();
     write_frame(&mut output, &Response::Ready.to_frame(READY_ID))?;
     while let Some(frame) = read_frame(&mut input)? {
         let response = match Request::from_frame(&frame) {

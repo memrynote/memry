@@ -18,6 +18,7 @@ use std::time::{Duration, Instant};
 
 use memry_core::domain::vault_locks::TargetKind;
 use memry_desktop::locks::{Locks, RestoreError};
+use memry_desktop::vault::consumer::Applied;
 use memry_desktop::vault::hash::content_hash;
 use memry_desktop::vault::note_file::{NoteFile, NoteFileError};
 
@@ -245,7 +246,7 @@ fn a_locked_notes_write_back_lands_and_stays() {
 /// file gets the locked text back, not the body written over it.
 #[test]
 fn a_locked_note_with_its_body_ahead_reverts_an_outside_edit() {
-    let (e, store) = guarded(&[("Plan.md", NOTE)]);
+    let (mut e, store) = guarded(&[("Plan.md", NOTE)]);
     let id = id_at(&e, "Plan.md");
     e.edit_in_app(&store, &id, "From another device");
     lock(&e, TargetKind::Note, &id);
@@ -256,9 +257,9 @@ fn a_locked_note_with_its_body_ahead_reverts_an_outside_edit() {
 
     edit_outside(&e, "Plan.md", OUTSIDE);
 
-    until("the outside text is kept", || {
-        kept_outside_text(&e, &id) > 0
-    });
+    // The version is kept before the locked text is written, and that write can need the
+    // consumer's retries; the fact follows the write.
+    e.facts_until(|f| matches!(f, Applied::LockRestored { note_id, .. } if *note_id == id));
     std::thread::sleep(QUIET);
     assert_eq!(e.read("Plan.md"), NOTE);
     assert!(read_only(&e, "Plan.md"), "Plan.md is read-only again");
@@ -469,8 +470,6 @@ fn a_tool_rewriting_a_locked_note_pushes_out_none_of_the_users_versions() {
 #[test]
 fn a_stalled_writers_late_text_in_a_reverted_locked_file_is_kept() {
     use std::io::Write;
-
-    use memry_desktop::vault::consumer::Applied;
 
     let (mut e, id) = locked(&[("Plan.md", NOTE)], "Plan.md", TargetKind::Note);
     let (first, rest) = OUTSIDE.split_at(8);

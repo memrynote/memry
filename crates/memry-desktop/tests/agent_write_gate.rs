@@ -569,5 +569,5 @@ mod capability {
     }
 }
 
-#[path = "agent_write_gate_approvals.rs"]
+#[path = "agent_write_gate/approvals.rs"]
 mod approvals;

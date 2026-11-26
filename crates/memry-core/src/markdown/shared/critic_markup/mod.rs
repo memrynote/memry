@@ -19,6 +19,7 @@ pub use format::{
     normalize_critic_markup_comment_format_ranges, normalize_critic_markup_comment_mentions,
     parse_critic_markup_comment_format,
 };
+pub(crate) use parse::resolve_mark_range;
 pub use parse::{parse_critic_markup, serialize_critic_markup, serialize_critic_markup_units};
 pub use transforms::{
     TransformResult, accept_critic_mark, delete_critic_mark, reject_critic_mark,

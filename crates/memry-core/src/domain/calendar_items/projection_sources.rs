@@ -8,6 +8,7 @@ use rusqlite::{Connection, params_from_iter};
 use serde_json::Value;
 
 use crate::api::errors::StorageError;
+use crate::domain::journal;
 use crate::domain::notes::failed;
 use crate::storage::repositories::instants;
 
@@ -399,7 +400,11 @@ type SnoozeRow = (String, String, Option<String>, i64, Option<String>);
 
 fn note_rows(conn: &Connection) -> Result<Vec<NoteRow>, StorageError> {
     let mut stmt = conn
-        .prepare("SELECT id, title, properties, created_at, file_type FROM notes WHERE deleted_at IS NULL")
+        .prepare(&format!(
+            "SELECT id, title, properties, created_at, file_type FROM notes \
+             WHERE deleted_at IS NULL AND {}",
+            journal::not_a_journal_day("id")
+        ))
         .map_err(failed)?;
     let rows = stmt
         .query_map([], |row| {
