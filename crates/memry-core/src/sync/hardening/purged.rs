@@ -18,9 +18,9 @@
 //! and only then applies as the signed tombstone with the same clock
 //! ([`Pending::Tombstone`]), under §5.8's clock rule. Every id an entry names
 //! is reported in [`Entries::named`] whatever happens to it, so the pull never
-//! applies it as an untyped §5.12.1 delete.
+//! fetches it as a bare §5.12.1 id.
 
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet, hash_map::Entry};
 
 use rusqlite::{Connection, OptionalExtension, params};
 use serde_json::Value as Json;
@@ -32,7 +32,7 @@ use crate::protocol::types::is_record_item_type;
 use crate::storage::Db;
 use crate::storage::repositories::{instants, sync_items};
 use crate::sync::apply::Pending;
-use crate::sync::clock::{OFFLINE_CLOCK_DEVICE_ID, VectorClock};
+use crate::sync::clock::{OFFLINE_CLOCK_DEVICE_ID, VectorClock, read_tick};
 use crate::sync::first_sync_store::{read_meta, write_meta};
 use crate::sync::pull::PullError;
 use crate::sync::store::{self, RECORD_CURSOR_SCOPE};
@@ -76,7 +76,7 @@ pub(crate) fn cursor_and_from_zero(
 }
 
 /// Ends a run from cursor 0: called in the transaction that lands a page at
-/// the head that was not refused.
+/// the head, a refused one included, since the cursor moves past it.
 pub(crate) fn end_from_zero(conn: &Connection) -> Result<(), StorageError> {
     conn.execute("DELETE FROM meta WHERE key = ?1", params![META_FROM_ZERO])
         .map_err(|error| StorageError::Failed {
@@ -102,9 +102,9 @@ pub trait SignerKeys: Send + Sync {
     /// (Electron's `readKnownDeviceIds`).
     fn known_devices(&self) -> Option<HashSet<String>>;
 
-    /// A pull run starts: forget the signers the last run did not find, as
-    /// Electron clears `deviceKeyCache` (`pull-coordinator.ts:153`).
-    fn begin_run(&self) {}
+    /// A pull run starts or ends: forget the signers it did not find, as
+    /// Electron clears `deviceKeyCache` (`pull-coordinator.ts:153`, `:587`).
+    fn forget_absent(&self) {}
 }
 
 /// Why a marker applies nothing, logged by reason (Electron's
@@ -230,36 +230,54 @@ fn admit(entry: &Json, requested: &HashSet<&str>) -> Result<Marker, Refusal> {
     })
 }
 
-/// `VectorClockSchema`: device ids to non-negative integers.
+/// `VectorClockSchema`: device ids to non-negative safe integers.
 fn read_clock(value: &Json) -> Option<VectorClock> {
     value
         .as_object()?
         .iter()
-        .map(|(device, tick)| Some((device.clone(), tick.as_u64()?)))
+        .map(|(device, tick)| Some((device.clone(), read_tick(tick)?)))
         .collect()
+}
+
+/// The signing key of each of `signers`, one lookup per signer; `None` for
+/// one no completed lookup names. A lookup that cannot complete fails the call.
+pub(crate) async fn resolve_signers(
+    signers: Vec<String>,
+    keys: Option<&dyn SignerKeys>,
+    http: &HttpClient,
+) -> Result<HashMap<String, Option<Vec<u8>>>, ApiError> {
+    let mut resolved: HashMap<String, Option<Vec<u8>>> = HashMap::new();
+    for signer in signers {
+        if let Entry::Vacant(slot) = resolved.entry(signer) {
+            let key = match keys {
+                Some(keys) => keys.signing_key(http, slot.key()).await?,
+                None => None,
+            };
+            slot.insert(key);
+        }
+    }
+    Ok(resolved)
 }
 
 /// The attested markers, in order (`applicablePurgedTombstones`' first half).
 /// One key lookup per signer; a lookup that cannot complete fails the call.
 pub(crate) async fn attest(
     markers: Vec<Marker>,
+    vault_id: Option<&str>,
     keys: Option<&dyn SignerKeys>,
     http: &HttpClient,
     refused: &mut Vec<Refusal>,
 ) -> Result<Vec<Marker>, ApiError> {
-    let mut resolved: HashMap<String, Option<Vec<u8>>> = HashMap::new();
-    for (signer, _) in markers
+    let signers = markers
         .iter()
-        .filter_map(|marker| marker.attestation.as_ref())
-    {
-        if !resolved.contains_key(signer) {
-            let key = match keys {
-                Some(keys) => keys.signing_key(http, signer).await?,
-                None => None,
-            };
-            resolved.insert(signer.clone(), key);
-        }
-    }
+        .filter_map(|marker| {
+            marker
+                .attestation
+                .as_ref()
+                .map(|(signer, _)| signer.clone())
+        })
+        .collect();
+    let resolved = resolve_signers(signers, keys, http).await?;
     let mut attested = Vec::with_capacity(markers.len());
     for marker in markers {
         let Some((signer, signature)) = &marker.attestation else {
@@ -270,7 +288,7 @@ pub(crate) async fn attest(
             refused.push(Refusal::SignerUnknown);
             continue;
         };
-        if delete_attestation::verify(&marker.claim(), signature, key).is_err() {
+        if delete_attestation::verify(&marker.claim(), vault_id, signature, key).is_err() {
             refused.push(Refusal::AttestationInvalid);
             continue;
         }
@@ -384,6 +402,7 @@ fn to_ms(at: i64) -> i64 {
 pub(crate) async fn applicable(
     entries: Entries,
     skip: impl Fn(&Marker) -> bool,
+    vault_id: Option<&str>,
     keys: Option<&dyn SignerKeys>,
     http: &HttpClient,
     db: &Db,
@@ -394,7 +413,7 @@ pub(crate) async fn applicable(
         ..
     } = entries;
     let candidates: Vec<Marker> = markers.into_iter().filter(|marker| !skip(marker)).collect();
-    let attested = attest(candidates, keys, http, &mut refused).await?;
+    let attested = attest(candidates, vault_id, keys, http, &mut refused).await?;
     let known = if attested.is_empty() {
         None
     } else {

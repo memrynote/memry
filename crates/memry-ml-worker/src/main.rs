@@ -3,13 +3,17 @@
 //! on the first PDF, and the embedding model loads from its directory under the cache on the first
 //! embedding op, so a worker without either still starts and fails those ops with the reason. OCR
 //! runs on the Tesseract linked into this binary; a build without the `ocr` feature (a dev machine
-//! without cmake) fails every OCR op with the reason.
+//! without cmake) fails every OCR op with the reason. Transcription runs on the whisper.cpp linked
+//! into this binary, the model loaded from the path each op names; a build without the
+//! `transcribe` feature fails every transcription op with the reason.
 
 #[cfg(feature = "embed")]
 mod embed;
 #[cfg(feature = "ocr")]
 mod ocr;
 mod pdf;
+#[cfg(feature = "transcribe")]
+mod transcribe;
 
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -53,6 +57,8 @@ fn main() -> ExitCode {
     let mut embedder = embed::Embedder::new(model_cache);
     #[cfg(not(feature = "embed"))]
     let _ = model_cache;
+    #[cfg(feature = "transcribe")]
+    let mut transcriber = transcribe::Transcriber::default();
     match serve(
         std::io::stdin().lock(),
         std::io::stdout().lock(),
@@ -82,6 +88,19 @@ fn main() -> ExitCode {
                 {
                     memry_ml_worker::Response::Failed(
                         "this worker was built without the embedding model (cargo feature `embed`)"
+                            .into(),
+                    )
+                }
+            }
+            Request::TranscribeLoad { .. } | Request::Transcribe { .. } => {
+                #[cfg(feature = "transcribe")]
+                {
+                    transcriber.handle(request)
+                }
+                #[cfg(not(feature = "transcribe"))]
+                {
+                    memry_ml_worker::Response::Failed(
+                        "this worker was built without transcription (cargo feature `transcribe`)"
                             .into(),
                     )
                 }

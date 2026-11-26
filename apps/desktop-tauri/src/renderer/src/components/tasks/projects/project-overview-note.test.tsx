@@ -18,7 +18,11 @@ const mocks = vi.hoisted(() => ({
   onMarkdownChange: null as ((markdown: string) => void) | null,
   updatedHandlers: new Set<(event: { id: string; changes: { content?: string } }) => void>(),
   isNoteLocked: false,
-  noUnsubscribe: (): (() => void) => () => {}
+  /** A subscription that is live at once, as `subscribeToEvent` reports it. */
+  noUnsubscribe: (_handler: unknown, live?: () => void): (() => void) => {
+    live?.()
+    return () => {}
+  }
 }))
 
 vi.mock('@/lib/vault-locks-store', async (importOriginal) => ({
@@ -41,14 +45,17 @@ vi.mock('@/services/notes-service', async (importOriginal) => ({
     create: mocks.notesCreate,
     update: mocks.notesUpdate
   },
-  onNoteUpdated: (handler: (event: { id: string; changes: { content?: string } }) => void) => {
+  onNoteUpdated: (
+    handler: (event: { id: string; changes: { content?: string } }) => void,
+    live?: () => void
+  ) => {
     mocks.updatedHandlers.add(handler)
+    live?.()
     return () => mocks.updatedHandlers.delete(handler)
   },
   onNoteRenamed: mocks.noUnsubscribe,
   onNoteMoved: mocks.noUnsubscribe,
   onNoteDeleted: mocks.noUnsubscribe,
-  onNoteExternalChange: mocks.noUnsubscribe,
   onNoteEventsDropped: mocks.noUnsubscribe,
   onNoteOutsideEditKept: mocks.noUnsubscribe
 }))

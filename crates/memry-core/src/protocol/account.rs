@@ -49,7 +49,7 @@ const DEVICES_PATH: &str = "/auth/devices";
 
 /// How the text of an unresolvable signer ends, and so how the
 /// `sync_items.corrupt_reason` of its record ends
-/// ([`crate::storage::repositories::sync_items::unknown_signer_ids`] reads it
+/// ([`crate::storage::repositories::sync_items::unknown_signer_rows`] reads it
 /// back). Persisted: rows written by older builds end with these exact words.
 pub const UNKNOWN_SIGNER: &str = " is not in the directory from GET /auth/devices";
 
@@ -251,6 +251,38 @@ pub async fn device_directory(http: &HttpClient) -> Result<DeviceDirectory, ApiE
     })
 }
 
+/// The id of the device the server lists, not revoked, under `public_key`; `None` when no live
+/// device holds that key (`DeviceKeySchema`, `revokedAt` null, `sync/device-registration.ts:419-428`).
+pub async fn active_device_with_key(
+    http: &HttpClient,
+    public_key: &[u8],
+) -> Result<Option<String>, ApiError> {
+    let body: Json = http
+        .send_json(ApiRequest::get(DEVICES_PATH).auth(Auth::Session))
+        .await?;
+    let rows = rows(&body, "devices").ok_or_else(|| ApiError::MalformedResponse {
+        path: DEVICES_PATH.to_string(),
+        what: "expected an array of devices, or an object carrying one".to_string(),
+    })?;
+    let Some(row) = rows
+        .iter()
+        .filter(|row| row.get("revokedAt").is_none_or(Json::is_null))
+        .find(|row| {
+            text(row, &["signingPublicKey"])
+                .and_then(|encoded| keys::base64_decode(&encoded).ok())
+                .is_some_and(|key| key == public_key)
+        })
+    else {
+        return Ok(None);
+    };
+    text(row, &["id", "deviceId"])
+        .map(Some)
+        .ok_or_else(|| ApiError::MalformedResponse {
+            path: DEVICES_PATH.to_string(),
+            what: "the device holding this key has no id".to_string(),
+        })
+}
+
 fn read_key_material(body: &Json) -> Option<KeyMaterial> {
     Some(KeyMaterial {
         kdf_salt: body.get("kdfSalt")?.as_str()?.to_string(),
@@ -368,6 +400,10 @@ impl RecordCipher for AccountCipher {
                 ),
             })?;
         envelope::decrypt(envelope, &self.vault_key, signer)
+    }
+
+    fn signing_key(&self, device_id: &str) -> Option<Vec<u8>> {
+        self.directory.signing_key(device_id).map(<[u8]>::to_vec)
     }
 }
 

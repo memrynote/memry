@@ -7,9 +7,11 @@
  */
 
 import { foldTag } from '@memry/shared/tag-fold'
+import { getNoteMetadataById } from '@memry/storage-data'
 import path from 'path'
 import fs from 'fs/promises'
 import type { Stats } from 'fs'
+import type { NoteCache } from '@memry/db-schema/schema/notes-cache'
 import { shell } from 'electron'
 import { and, desc, eq } from 'drizzle-orm'
 import {
@@ -22,7 +24,20 @@ import {
   type NoteFrontmatter
 } from './frontmatter'
 import { syncNoteToCache, deleteNoteFromCache } from './note-sync'
-import { moveIndexedNotesWithFolder, type FolderMovedNote } from './folder-move-index'
+import {
+  assertFolderDeleteKeepsCaseTwins,
+  assertFolderRenameKeepsCaseTwins,
+  deleteCaseTwin
+} from './case-twin-file'
+import { caseTwinOwnFile } from './case-twin-off-file'
+import { assertOwnHeaderCoverUnchanged } from './case-twin-own-file'
+import { isCaseTwinOffFile, sharesCaseTwinFile } from './case-twin-shared-file'
+import {
+  announceFolderMove,
+  moveFolderHoldingWritebacks,
+  moveIndexedNotesWithFolder,
+  type FolderMovedNote
+} from './folder-move-index'
 import {
   compareHeaderTags,
   nextHeaderTags,
@@ -31,7 +46,9 @@ import {
   type HeaderTagChange
 } from './note-write'
 import { classifyMarkdownStat, classifyMarkdownContent } from '@memry/shared/markdown-class'
-import { hasPendingWriteback } from '../sync/crdt-writeback'
+import { hasPendingWriteback, takeWritebackTurn } from '../sync/crdt-writeback'
+import { baselineAfterWrite, feedBodyEdit, writeFedBodyEdit } from '../sync/writeback-baseline'
+import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
 import {
   atomicWrite,
   deleteFile,
@@ -66,6 +83,7 @@ import {
 import { getDatabase, getIndexDatabase } from '../database'
 import { NoteError, NoteErrorCode } from '../lib/errors'
 import { openVaultFile, readVaultFile } from '../lib/paths'
+import { vaultFolderPath, windowsTrimsFolderName } from '@memry/storage-vault'
 import { generateNoteId } from '../lib/id'
 import {
   NotesChannels,
@@ -80,10 +98,11 @@ import { readFolderConfig } from './folders'
 import { createLogger } from '../lib/logger'
 import { trackMainLog } from '../telemetry/diagnostics'
 import { markExpectedWarning } from '../telemetry/expected-conditions'
-import { getFileType, getExtension, isBinaryFileType } from '@memry/shared/file-types'
+import { getFileType, getExtension, isBinaryNoteRow } from '@memry/shared/file-types'
 import { getStatus, getConfig } from './status'
 import { followJournalFolderMove } from './journal-folder-follow'
 import { createTreeFolderFilter } from './folder-visibility'
+import { isAttachmentStoreRow, isInAttachmentStore } from '@memry/shared/attachment-store'
 import {
   assertFolderTreeWritable,
   assertFolderWritable,
@@ -578,8 +597,13 @@ export async function getFileById(id: string): Promise<FileMetadata | null> {
   try {
     await fs.access(absolutePath)
   } catch {
-    deleteNoteFromCache(db, id)
-    return null
+    // A synced file whose bytes have not downloaded yet (auto-download off,
+    // #5616) is not stale: the file page fetches it. Its attachment id lives
+    // on the canonical row; the index row never carries one.
+    if (!getNoteMetadataById(getDatabase(), id)?.attachmentId) {
+      deleteNoteFromCache(db, id)
+      return null
+    }
   }
 
   const filedVoice =
@@ -618,6 +642,14 @@ export async function getNoteByPath(notePath: string): Promise<Note | null> {
   const cached = getNoteCacheByPath(db, notePath)
   if (cached) {
     return getNoteById(cached.id)
+  }
+
+  // Below, a path with no row is read and indexed as markdown, so only a file
+  // the indexer would index as markdown gets there. The attachment store holds
+  // no note, and the watcher gives a binary file its binary row and its sync;
+  // read here, a pasted image became a markdown note (#5607).
+  if (getFileType(getExtension(notePath)) !== 'markdown' || isInAttachmentStore(notePath)) {
+    return null
   }
 
   const file = await openVaultFile(getVaultRoot(), notePath)
@@ -669,14 +701,56 @@ export async function getNoteByPath(notePath: string): Promise<Note | null> {
 // Update
 // ============================================================================
 
+/**
+ * The file is written in the note's write-back turn, so a pass never writes
+ * back the frontmatter it read before it (#5472, #5479), and a folder rename
+ * that holds the turn moves the file before the write reads its path (#5690).
+ * A body update feeds the doc first (`feedBodyEdit`) outside the turn, since
+ * the feed can wait on the store (#5475). The re-arm after a pass restores
+ * the body but not the frontmatter written beside it, and a remote patch can
+ * land between the turns, so the frontmatter edit is written again in a later
+ * turn (#5479). A rewrite with identical bytes writes nothing.
+ */
 export function updateNote(input: NoteUpdateInput): Promise<NoteUpdateOutcome> {
-  return writeNoteInOrder(input.id, () => writeNote(input))
+  return writeNoteInOrder(input.id, async () => {
+    const content = input.content
+    if (content === undefined) return takeWritebackTurn(input.id, () => writeNote(input))
+    const { path: notePath } = editableNoteRow(input.id)
+    if (isCaseTwinOffFile(getVaultRoot(), notePath, input.id)) throw offFileBodyEdit(input.id)
+    const fed = await feedBodyEdit(input.id, notePath, () =>
+      feedExternalEditToCrdt(input.id, content)
+    )
+    const outcome = await takeWritebackTurn(input.id, () => writeNote(input, fed))
+    const { frontmatter, properties, propertyPatch, aliases } = input
+    const tagChange = outcome.headerTagChange
+    if (!tagChange && !frontmatter && !properties && !propertyPatch && !aliases) return outcome
+    await takeWritebackTurn(input.id, () =>
+      writeNote({
+        id: input.id,
+        headerTags: tagChange ? { add: tagChange.added, remove: tagChange.removed } : undefined,
+        frontmatter,
+        properties,
+        propertyPatch,
+        aliases
+      })
+    )
+    return outcome
+  })
 }
 
-async function writeNote(input: NoteUpdateInput): Promise<NoteUpdateOutcome> {
-  const db = getIndexDatabase()
-  const dataDb = getDatabase()
+/**
+ * A body edit of a case twin whose shared file holds the other twin's bytes
+ * (#5742) has no file to land on: it is refused before the doc takes it.
+ */
+function offFileBodyEdit(id: string): NoteError {
+  return new NoteError(
+    'This note shares its file with a note whose name differs only in case. Rename one of them, then edit the body again; nothing was changed',
+    NoteErrorCode.WRITE_FAILED,
+    id
+  )
+}
 
+function editableNoteRow(id: string): NoteCache {
   // #2073: a PDF/image/audio/video row is binary content. Everything below
   // reads the file as UTF-8, parses it as markdown and writes a serialized
   // string back — on a PDF that replaces every non-ASCII byte with U+FFFD and
@@ -684,20 +758,42 @@ async function writeNote(input: NoteUpdateInput): Promise<NoteUpdateOutcome> {
   // binary file's tags (`note_tags` is a rebuildable cache that `rebuildIndex`
   // drops, and only markdown can restore itself from frontmatter), so the
   // honest answer is to refuse rather than to accept and lose the bytes.
-  const cachedRow = getNoteCacheById(db, input.id)
-  if (cachedRow?.fileType && isBinaryFileType(cachedRow.fileType)) {
+  const row = getNoteCacheById(getIndexDatabase(), id)
+  if (!row) throw new NoteError(`Note not found: ${id}`, NoteErrorCode.NOT_FOUND, id)
+  if (isBinaryNoteRow(row)) {
     throw new NoteError(
-      `Cannot edit note metadata on a ${cachedRow.fileType} file: ${cachedRow.path}`,
+      `Cannot edit note metadata on a binary file: ${row.path}`,
       NoteErrorCode.NOT_MARKDOWN,
-      input.id
+      id
     )
   }
+  return row
+}
 
-  const existing = await getNoteById(input.id)
-  if (!existing) {
+/** `fed`: what `feedBodyEdit` resolved for `input.content`. */
+async function writeNote(input: NoteUpdateInput, fed?: boolean): Promise<NoteUpdateOutcome> {
+  const db = getIndexDatabase()
+  const dataDb = getDatabase()
+  editableNoteRow(input.id)
+
+  const read = await getNoteById(input.id)
+  if (!read) {
     throw new NoteError(`Note not found: ${input.id}`, NoteErrorCode.NOT_FOUND, input.id)
   }
-  assertNoteWritable(input.id, existing.path)
+  assertNoteWritable(input.id, read.path)
+  // A case twin whose shared file holds the other twin's bytes is edited on
+  // its own header and body, and the shared file stays as it is (#5742).
+  const own = await caseTwinOwnFile(getVaultRoot(), read.path, input.id)
+  if (own && input.content !== undefined) throw offFileBodyEdit(input.id)
+  const existing: Note = own
+    ? {
+        ...read,
+        content: own.markdown,
+        frontmatter: own.frontmatter,
+        headerTags: extractTags(own.frontmatter),
+        aliases: own.frontmatter.aliases ?? []
+      }
+    : read
 
   const newTitle = input.title ?? existing.title
   const newContent = input.content ?? existing.content
@@ -723,9 +819,14 @@ async function writeNote(input: NoteUpdateInput): Promise<NoteUpdateOutcome> {
     properties: newProperties,
     edited: frontmatterEdited
   } = nextNoteFrontmatter(existing, input, headerTags, headerTagChange)
+  if (own) assertOwnHeaderCoverUnchanged(input.id, own.frontmatter, newFrontmatter)
 
   let fileContent: string
-  if (currentRaw === null) {
+  if (own) {
+    fileContent = serializeUpdatedNote(parseNote(own.content), newFrontmatter, own.markdown, {
+      frontmatterEdited
+    })
+  } else if (currentRaw === null) {
     fileContent = serializeNote(newFrontmatter, newContent)
   } else {
     const parsedCurrent = parseNote(currentRaw, existing.path)
@@ -735,17 +836,26 @@ async function writeNote(input: NoteUpdateInput): Promise<NoteUpdateOutcome> {
     })
   }
 
-  const wrote = currentRaw === null || fileContent !== currentRaw
-  if (wrote) {
-    await atomicWrite(absolutePath, fileContent)
+  const wrote = !own && (currentRaw === null || fileContent !== currentRaw)
+  const write = async (): Promise<void> => {
+    if (wrote) await atomicWrite(absolutePath, fileContent)
   }
+  const cached = getNoteCacheById(db, input.id)
+  // A new body went to the doc before the file (`feedBodyEdit`): the watcher
+  // ignores Memry's own write, so the next write-back would otherwise put the
+  // doc's older body back over it (#2646). No `writing`: the doc keeps its own
+  // alternatives. A metadata edit keeps the body the doc holds.
+  // An own file that is not on disk keeps the baseline of the note's own bytes.
+  const contentHash = own
+    ? (cached?.contentHash ?? undefined)
+    : fed !== undefined
+      ? await writeFedBodyEdit(db, input.id, fileContent, fed, { write })
+      : (await write(), baselineAfterWrite(db, input.id, currentRaw, fileContent))
 
   // Identical bytes = no watcher echo, no sync item, no mtime bump. Sidecar
   // state (title/emoji) still updates the DBs without touching the file.
   const sidecarChanged = newTitle !== existing.title || newEmoji !== existing.emoji
-  const changed = wrote || sidecarChanged
-
-  const cached = getNoteCacheById(db, input.id)
+  const changed = (own ? frontmatterEdited : wrote) || sidecarChanged
   const newModified = changed
     ? new Date().toISOString()
     : (cached?.modifiedAt ?? existing.modified.toISOString())
@@ -761,6 +871,7 @@ async function writeNote(input: NoteUpdateInput): Promise<NoteUpdateOutcome> {
           id: input.id,
           path: existing.path,
           fileContent,
+          contentHash,
           frontmatter: writtenFrontmatter,
           parsedContent: newContent,
           title: newTitle,
@@ -836,7 +947,14 @@ async function writeNote(input: NoteUpdateInput): Promise<NoteUpdateOutcome> {
 // Delete
 // ============================================================================
 
-export async function deleteNote(id: string): Promise<void> {
+/**
+ * Queues the note's sync delete (`syncNoteDelete`). `inStep` is the delete's
+ * own step: it queues the tombstone with `enqueueTombstone`, and a throw there
+ * queues none.
+ */
+export type SyncNoteDelete = (inStep?: (enqueueTombstone: () => void) => void) => Promise<void>
+
+export async function deleteNote(id: string, syncDelete: SyncNoteDelete): Promise<void> {
   const db = getIndexDatabase()
 
   const cached = getNoteCacheById(db, id)
@@ -845,11 +963,38 @@ export async function deleteNote(id: string): Promise<void> {
   }
   assertNoteWritable(id, cached.path)
 
-  const absolutePath = toAbsolutePath(cached.path)
-  await deleteFile(absolutePath)
-
-  deleteNoteFromCache(db, id)
-  deleteNotePosition(getDatabase(), cached.path)
+  const vaultPath = getVaultRoot()
+  const dropRows = (): void => {
+    deleteNoteFromCache(db, id)
+    deleteNotePosition(getDatabase(), cached.path)
+  }
+  if (sharesCaseTwinFile(vaultPath, cached.path)) {
+    // A case twin's file is the other twin's too (#5495): only this row goes,
+    // and the file becomes the survivor's own in the step that drops it and
+    // queues the tombstone. Nothing before the step changes anything.
+    await deleteCaseTwin(vaultPath, cached.path, id, syncDelete, dropRows)
+  } else {
+    // A twin that arrived while the delete awaited has its body in this file.
+    await syncDelete((enqueueTombstone) => {
+      if (sharesCaseTwinFile(vaultPath, cached.path)) {
+        throw new NoteError(
+          'Another note now shares this file; try the delete again',
+          NoteErrorCode.DELETE_FAILED,
+          id
+        )
+      }
+      enqueueTombstone()
+    })
+    const twinArrived = (): boolean => sharesCaseTwinFile(vaultPath, cached.path)
+    // A stray row's file is the attachment store's, not this row's (#5607).
+    if (!isAttachmentStoreRow(cached)) {
+      await deleteFile(toAbsolutePath(cached.path), () => !twinArrived())
+    }
+    if (twinArrived()) {
+      logger.warn('A case twin arrived on a deleted note’s file; the file stays the twin’s', { id })
+    }
+    dropRows()
+  }
 
   emitNoteEvent(NotesChannels.events.DELETED, {
     id,
@@ -903,15 +1048,22 @@ export async function createFolder(folderPath: string): Promise<void> {
   placeNewItemAtTop(getDatabase(), folderPath, path.posix.dirname(folderPath).replace(/^\.$/, ''))
 }
 
+/** No write-back of a note under the folder runs beside the move (#5643, #5671). */
 export async function renameFolder(oldPath: string, newPath: string): Promise<FolderMovedNote[]> {
+  const moved = await moveFolderHoldingWritebacks(oldPath, () => moveFolder(oldPath, newPath))
+  await announceFolderMove(moved)
+  return moved
+}
+
+async function moveFolder(oldPath: string, newPath: string): Promise<FolderMovedNote[]> {
   assertFolderTreeWritable(oldPath)
   assertParentFolderWritable(newPath)
+  assertFolderRenameKeepsCaseTwins(oldPath)
   const notesDir = getVaultRoot()
   const oldAbsPath = path.join(notesDir, oldPath)
-  const newAbsPath = path.join(notesDir, newPath)
 
   try {
-    await moveDirectory(oldAbsPath, newAbsPath)
+    await moveDirectory(notesDir, oldPath, newPath)
   } catch (error) {
     // The folder was already moved or deleted on disk (another window, sync, a
     // file manager) before the sidebar caught up. The rename still fails for the
@@ -935,13 +1087,29 @@ export async function renameFolder(oldPath: string, newPath: string): Promise<Fo
   return moveIndexedNotesWithFolder(oldPath, newPath)
 }
 
-export async function deleteFolder(folderPath: string): Promise<void> {
+/**
+ * The folder a delete of `requestedPath` removes, as rows name it. Throws the
+ * refusal the delete would meet, with nothing changed: the guards and the
+ * delete must see one path, or `./Supernotes` passes the case-twin guard and
+ * the delete removes `SuperNotes` (#5642).
+ */
+export function checkFolderDelete(requestedPath: string): string {
+  const folderPath = vaultFolderPath(requestedPath)
+  if (folderPath === null) {
+    throw new NoteError('Not a vault folder that can be deleted', NoteErrorCode.INVALID_PATH)
+  }
+  // Windows reads `Work.` as `Work`, so the rm would remove that folder.
+  if (windowsTrimsFolderName(folderPath)) throw new Error('errors:folder.deleteWindowsName')
   assertFolderTreeWritable(folderPath)
-  const notesDir = getVaultRoot()
-  const absPath = path.join(notesDir, folderPath)
+  assertFolderDeleteKeepsCaseTwins(folderPath)
+  return folderPath
+}
 
+export async function deleteFolder(requestedPath: string): Promise<void> {
   const { rm } = await import('fs/promises')
-  await rm(absPath, { recursive: true, force: true })
+  // Right before the delete, so a row filed in another spelling meanwhile is seen.
+  const folderPath = checkFolderDelete(requestedPath)
+  await rm(path.join(getVaultRoot(), folderPath), { recursive: true, force: true })
 
   dropFolderPositions(getDatabase(), folderPath)
 }
@@ -1065,8 +1233,8 @@ export async function importFiles(input: ImportFilesInput): Promise<ImportFilesR
  * The indexed id of a file `importFiles` just copied, or null until the watcher
  * has indexed it. `importedFiles[].destPath` is absolute while the index keys
  * vault-relative paths, so the path must be relativized before the lookup.
- * Cache-only on purpose: `getNoteByPath`'s read-and-parse fallback would index
- * a PDF or image as a markdown note.
+ * Cache-only on purpose: the copied file's row is the watcher's to make, and
+ * `getNoteByPath` would index a copied markdown file itself.
  */
 export function getIndexedIdByImportedPath(destPath: string): string | null {
   return getNoteCacheByPath(getIndexDatabase(), toRelativePath(destPath))?.id ?? null

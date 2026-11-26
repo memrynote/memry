@@ -164,3 +164,42 @@ export function isSupportedPath(filePath: string): boolean {
 export function isBinaryFileType(fileType: string): boolean {
   return fileType !== 'markdown'
 }
+
+/**
+ * Is this note row a binary note (image, PDF, audio, video)? Its file is the
+ * downloaded blob, so nothing reads it as markdown or writes markdown over it.
+ * A shipped build saved some binary rows as markdown (#5412); a markdown
+ * note's file is always `.md`, so a binary extension on the path decides too
+ * (`foo.png` is binary, `foo.png.md` is not).
+ */
+export function isBinaryNoteRow(row: { fileType?: string | null; path: string }): boolean {
+  if (row.fileType && isBinaryFileType(row.fileType)) return true
+  const pathType = getFileType(getExtension(row.path))
+  return pathType !== null && isBinaryFileType(pathType)
+}
+
+type BinaryFileType = Exclude<FileType, 'markdown'>
+
+function binaryType(type: FileType | null | undefined): BinaryFileType | null {
+  return type && type !== 'markdown' ? type : null
+}
+
+/**
+ * The file type and MIME type of a binary note (`isBinaryNoteRow`), or `null`
+ * for a markdown note. A row a shipped write-back retyped to markdown (#5412)
+ * still sits at its `.png`/`.pdf`/... path, so its type and MIME type come
+ * from the path. Pushing such a row as markdown drops the attachment link for
+ * every device that has not seen the note yet (#5419).
+ */
+export function binaryRecordFields(row: {
+  path: string
+  fileType?: FileType | null
+  mimeType: string | null
+}): { fileType: BinaryFileType; mimeType: string | null } | null {
+  if (!isBinaryNoteRow(row)) return null
+  const rowType = binaryType(row.fileType)
+  if (rowType) return { fileType: rowType, mimeType: row.mimeType }
+  const ext = getExtension(row.path)
+  const pathType = binaryType(getFileType(ext))
+  return pathType && { fileType: pathType, mimeType: getMimeType(ext) ?? row.mimeType }
+}

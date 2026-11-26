@@ -1,9 +1,16 @@
 import type { ShortcutBinding } from '../settings-schemas'
 
-/** `ShortcutBinding` that differs by platform. `meta` already means Ctrl off macOS. */
+/**
+ * `ShortcutBinding` that differs by platform. `meta` already means Ctrl off macOS.
+ * `linux` replaces `other` on Linux, for a chord the desktop takes first there.
+ */
 export type PlatformBinding =
   | ShortcutBinding
-  | { readonly mac: ShortcutBinding; readonly other: ShortcutBinding }
+  | {
+      readonly mac: ShortcutBinding
+      readonly other: ShortcutBinding
+      readonly linux?: ShortcutBinding
+    }
 
 /** Where a command acts: the whole app, or the entity shown in the active tab. */
 export type CommandContext =
@@ -136,7 +143,12 @@ export interface CommandMeta {
   readonly palette?: false
 }
 
-export function resolvePlatformBinding(binding: PlatformBinding, isMac: boolean): ShortcutBinding {
-  if ('mac' in binding) return isMac ? binding.mac : binding.other
-  return binding
+export function resolvePlatformBinding(
+  binding: PlatformBinding,
+  isMac: boolean,
+  isLinux = false
+): ShortcutBinding {
+  if (!('mac' in binding)) return binding
+  if (isMac) return binding.mac
+  return (isLinux ? binding.linux : undefined) ?? binding.other
 }

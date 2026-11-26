@@ -18,22 +18,19 @@ import MemryCore
 // and asks for a sync. The date is fixed per bridge: a page's pending edit
 // lands on the day it was typed on, never the one shown after a swipe.
 //
-// **Metadata writes** exist only behind `JournalWriteGate.metadataWrites`
-// (D5, gate G0); the page passes no writer while the gate is off.
+// **Metadata writes** (tags, properties, other names) go by date through
+// `JournalMetadataWriter`. Desktops from v2026-09-28 (JP029a) keep the
+// day's file body when such a record-only change arrives.
 
 struct JournalNoteBridge: NotesReading, BlockEditing {
     let store: JournalStore
     let date: String
-    /// `false` hides the tags and properties from the note page, for a page
-    /// that draws its own read-only rows (the gate is off).
-    let exposesMetadata: Bool
     private let reader: (any NotesReading)?
 
     @MainActor
-    init(store: JournalStore, date: String, exposesMetadata: Bool = true) {
+    init(store: JournalStore, date: String) {
         self.store = store
         self.date = date
-        self.exposesMetadata = exposesMetadata
         reader = store.context?.reader
     }
 
@@ -96,7 +93,6 @@ struct JournalNoteBridge: NotesReading, BlockEditing {
     }
 
     func metadata(id: String) async throws -> NoteMetadata? {
-        guard exposesMetadata else { return Self.metadata(nil) }
         let date = date
         let outcome = await store.read { core in Result { try core.day(date: date) } }
         guard let outcome else { return nil }
@@ -126,6 +122,9 @@ struct JournalNoteBridge: NotesReading, BlockEditing {
     func attachments(id: String) async throws -> [CachedAttachment] {
         try await reader?.attachments(id: await dayId(id)) ?? []
     }
+
+    /// A day carries no file fields (§13.7.2), so it always has a body.
+    func file(id: String) async throws -> NoteFile? { nil }
 
     func linkedTasks(noteId: String) async throws -> [LinkedTask] {
         try await reader?.linkedTasks(noteId: await dayId(noteId)) ?? []
@@ -186,11 +185,13 @@ struct JournalNoteBridge: NotesReading, BlockEditing {
     }
 }
 
-/// Tags, properties and other names written by date (JP045), used only while
-/// `JournalWriteGate.metadataWrites` is on. A day has no title, icon or
-/// cover, so those writes do nothing.
+/// Tags, properties and other names written by date (JP045). A day has no
+/// title, icon or cover, so those writes do nothing.
 struct JournalMetadataWriter: NoteMetadataWriting {
     let bridge: JournalNoteBridge
+    /// The note writer, for the vault-wide property definitions a day shares
+    /// with notes.
+    let definitions: (any NoteMetadataWriting)?
 
     func rename(id: String, title: String) async throws {}
     func setIcon(id: String, icon: String?) async throws {}
@@ -214,5 +215,14 @@ struct JournalMetadataWriter: NoteMetadataWriting {
     func clearProperty(id: String, name: String) async throws {
         let date = bridge.date
         try await bridge.write { core in try core.clearProperty(date: date, name: name) }
+    }
+
+    func renameProperty(id: String, from: String, to: String) async throws {
+        let date = bridge.date
+        try await bridge.write { core in try core.renameProperty(date: date, from: from, to: to) }
+    }
+
+    func ensurePropertyDefinition(name: String, typeName: String) async throws {
+        try await definitions?.ensurePropertyDefinition(name: name, typeName: typeName)
     }
 }

@@ -1,4 +1,7 @@
 {
+  "wikiLink": {
+    "openFailed": "Tento odkaz sa nepodarilo otvoriť"
+  },
   "portalBlock": {
     "copyFailed": "Portál sa nepodarilo skopírovať",
     "hiddenCount": "Skryté: {count}",
@@ -956,6 +959,8 @@
     "componentsVaultSwitcher": {
       "noVaultsYet": "Zatiaľ žiadne trezory",
       "openVault": "Otvoriť trezor",
+      "createVault": "Vytvoriť trezor",
+      "openFolderAsVault": "Otvoriť priečinok ako trezor",
       "settings": "Nastavenia",
       "remove": "Odstrániť",
       "removeVaultTitle": "Odstrániť „{name}“ zo zoznamu?",

@@ -1,4 +1,5 @@
 import type { FileType } from '@memry/shared/file-types'
+import type { NoteEventSource } from '@memry/contracts/notes-api'
 
 export interface MarkdownNoteProjection {
   kind: 'markdown'
@@ -62,6 +63,8 @@ export type ProjectionEvent =
   | {
       type: 'note.upserted'
       note: NoteProjectionRecord
+      /** What caused the upsert; the notes its link changes touch are announced with it. Default `'internal'`. */
+      source?: NoteEventSource
     }
   | {
       type: 'note.deleted'

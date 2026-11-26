@@ -50,7 +50,7 @@ For machines that struggle with local Whisper or when you want maximum accuracy:
 
 1. Settings → AI → Voice Transcription → Provider: **OpenAI**
 2. Paste your **API key**
-3. The key is stored locally in the vault, encrypted at rest
+3. The key is stored on this device, encrypted with the operating system's secure storage, not in the vault
 
 Each transcription call counts against your OpenAI quota.
 

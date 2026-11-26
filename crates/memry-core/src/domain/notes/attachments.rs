@@ -3,6 +3,9 @@
 #[allow(unused_imports)]
 use super::*;
 
+use crate::domain::attachment_refs;
+use crate::sync::day_picture_refs;
+
 /// Adds an attachment id to a note's `attachmentReferences` (§14.7).
 ///
 /// **A union, never a replace.** A note can embed several attachments and each
@@ -21,25 +24,35 @@ pub fn add_attachment_reference(
     device_id: &str,
     now_ms: i64,
 ) -> Result<Option<Durable<String>>, StorageError> {
-    let existing: Vec<String> = read_attachment_references(conn, note_id)?;
-    if existing.iter().any(|id| id == attachment_id) {
-        return Ok(None);
-    }
-    let mut merged = existing;
-    merged.push(attachment_id.to_owned());
-    Ok(Some(edit(
+    add_attachment_references(
         conn,
-        ITEM_TYPE,
         note_id,
-        vec![(
-            "attachmentReferences",
-            Change::Set(Value::Array(
-                merged.into_iter().map(Value::String).collect(),
-            )),
-        )],
+        &[attachment_id.to_owned()],
         device_id,
         now_ms,
-    )?))
+    )
+}
+
+/// [`add_attachment_reference`] for several ids in one edit: one clock tick
+/// and one queued push, or none when the list holds every id already.
+pub(crate) fn add_attachment_references(
+    conn: &Connection,
+    note_id: &str,
+    attachment_ids: &[String],
+    device_id: &str,
+    now_ms: i64,
+) -> Result<Option<Durable<String>>, StorageError> {
+    let mut merged: Vec<String> = read_attachment_references(conn, note_id)?;
+    let held = merged.len();
+    for id in attachment_ids {
+        if !merged.contains(id) {
+            merged.push(id.clone());
+        }
+    }
+    if merged.len() == held {
+        return Ok(None);
+    }
+    edit_references(conn, note_id, merged, device_id, now_ms).map(Some)
 }
 
 /// Removes an attachment id from a note's `attachmentReferences`.
@@ -58,19 +71,57 @@ pub fn remove_attachment_reference(
     if !existing.iter().any(|id| id == attachment_id) {
         return Ok(None);
     }
-    let remaining: Vec<Value> = existing
+    let remaining = existing
         .into_iter()
         .filter(|id| id != attachment_id)
-        .map(Value::String)
         .collect();
-    Ok(Some(edit(
+    edit_references(conn, note_id, remaining, device_id, now_ms).map(Some)
+}
+
+/// [`edit`] of `attachmentReferences`, with the attachment rows following the
+/// list in the same transaction (#5675). The merge runs before the list is
+/// stored, because the stored list bounds the rows to drop the note from.
+fn edit_references(
+    conn: &Connection,
+    note_id: &str,
+    references: Vec<String>,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<Durable<String>, StorageError> {
+    outbox::commit(
         conn,
-        ITEM_TYPE,
-        note_id,
-        vec![("attachmentReferences", Change::Set(Value::Array(remaining)))],
-        device_id,
+        &outbox::Change::upsert(ITEM_TYPE, note_id),
         now_ms,
-    )?))
+        |tx| {
+            // A day with no `note` record, or a deleted one: its owner creates
+            // it (#5800).
+            if day_picture_refs::creates_day_note(tx, note_id)? {
+                return day_picture_refs::create_day_note(
+                    tx,
+                    note_id,
+                    &references,
+                    device_id,
+                    now_ms,
+                );
+            }
+            let before = read_attachment_references(tx, note_id)?;
+            attachment_refs::merge_note_references(tx, note_id, Some(&references))?;
+            let mut changes = stamp(tx, ITEM_TYPE, note_id, device_id, now_ms)?;
+            changes.extend(day_picture_refs::removals_after_edit(
+                tx,
+                note_id,
+                &before,
+                &references,
+            )?);
+            changes.push((
+                "attachmentReferences",
+                Change::Set(Value::Array(
+                    references.into_iter().map(Value::String).collect(),
+                )),
+            ));
+            sync_items::apply_local_edit_in(tx, ITEM_TYPE, note_id, &changes, now_ms)
+        },
+    )
 }
 
 /// The note's current reference list, or empty when the column is null.
