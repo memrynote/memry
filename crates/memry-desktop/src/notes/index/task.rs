@@ -73,15 +73,8 @@ impl TaskHandle {
     }
 
     /// Asks for a reindex, run once the open walk ended; `None` when the task already ended.
-    /// One throttle for the asker: a pass a first sync held and its rerun never report backwards,
-    /// but for the rerun's last step, which ends the asker's progress.
-    pub fn reindex(&self, mut progress: Progress) -> Option<Answer> {
-        let mut throttle = ProgressThrottle::new(PROGRESS_INTERVAL);
-        let progress: Progress = Box::new(move |step| {
-            if throttle.offer(step, Instant::now()) {
-                progress(step);
-            }
-        });
+    /// Its progress is the shared pass's, throttled by the task.
+    pub fn reindex(&self, progress: Progress) -> Option<Answer> {
         let (answer, receiver) = reply::channel();
         self.0
             .send(Command::Reindex { progress, answer })
@@ -294,31 +287,42 @@ impl Indexer {
             ..Owed::default()
         };
         let mut waiting: Vec<(Progress, Reply)> = Vec::new();
+        // One throttle for the askers' shared pass, until it answers them: a pass a first sync
+        // held and its rerun never report backwards, but for the rerun's last step, which ends
+        // the askers' progress. An asker that joins during the hold is told no step before the
+        // held pass's, so the shared `NoteIndex::indexing` never goes back.
+        let mut shared = ProgressThrottle::new(PROGRESS_INTERVAL);
         // The indexer holds its sender, so `changed` never ends while this runs.
         let mut first_sync = self.first_sync.subscribe();
         while !cancel.is_cancelled() {
             // An asked reindex stays pending while a first sync runs, which holds its search
-            // reindex (#5409): its answer says the search is current.
-            if owed.walked() && !waiting.is_empty() && !self.first_sync.is_running() {
-                // A reindex reports through its own callback, which refreshes the list. The
+            // reindex (#5409): its answer says the search is current. The inbox is read first,
+            // so one pass answers every asker already waiting when it starts; one asked during
+            // it waits in the inbox for a pass of its own.
+            if owed.walked()
+                && !waiting.is_empty()
+                && !self.first_sync.is_running()
+                && commands.is_empty()
+            {
+                // A reindex reports through its askers' callbacks, which refresh the list. The
                 // open's build ends after it, once the rows hold every note.
                 let carried = std::mem::take(&mut owed.report);
-                let mut asked = std::mem::take(&mut waiting).into_iter();
-                while let Some((mut progress, answer)) = asked.next() {
-                    match self.reindex(&mut owed, &mut progress, cancel, announce, landed, defined)
-                    {
-                        // A first sync that started meanwhile held its search reindex: the
-                        // asker, and every one after it, waits for it to end, as one asked
-                        // during it does.
-                        None => {
-                            waiting.push((progress, answer));
-                            waiting.extend(asked);
-                            break;
+                let mut progress = |step| {
+                    if shared.offer(step, Instant::now()) {
+                        for (asker, _) in &mut waiting {
+                            asker(step);
                         }
+                    }
+                };
+                let outcome =
+                    self.reindex(&mut owed, &mut progress, cancel, announce, landed, defined);
+                // `None`: a first sync that started meanwhile held its search reindex, and every
+                // asker waits for it to end, as one asked during it does.
+                if let Some(done) = outcome {
+                    shared = ProgressThrottle::new(PROGRESS_INTERVAL);
+                    for (_, answer) in waiting.drain(..) {
                         // The asker may have gone; the work is done either way.
-                        Some(done) => {
-                            let _ = answer.send(done);
-                        }
+                        let _ = answer.send(done.clone());
                     }
                 }
                 if carried {
@@ -498,7 +502,7 @@ impl Indexer {
     fn reindex(
         &self,
         owed: &mut Owed,
-        progress: &mut Progress,
+        progress: &mut dyn FnMut(IndexProgress),
         cancel: &CancelToken,
         announce: &dyn Fn(LinkChanges),
         landed: &dyn Fn(&str),
