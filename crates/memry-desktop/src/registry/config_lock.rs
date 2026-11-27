@@ -4,10 +4,11 @@
 //! re-read the file before each write, but between that read and the rename another process
 //! could write a key that this rename then drops (#4278).
 
-use std::fs::{File, OpenOptions, TryLockError};
+use std::fs::{File, OpenOptions};
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
-use std::time::{Duration, Instant};
+use std::sync::mpsc::{RecvTimeoutError, sync_channel};
+use std::time::Duration;
 
 /// Why the lock was not taken: the lock file, the reason and its kind (`PermissionDenied` when
 /// the folder refuses the lock file, so a caller can report it as the write's own permission
@@ -27,13 +28,17 @@ pub(crate) fn lock_path(config: &Path) -> PathBuf {
 /// How long a write waits for another process's write. A write holds the lock for one read,
 /// write and rename, well under a second.
 const WAIT: Duration = Duration::from_secs(5);
-const POLL: Duration = Duration::from_millis(10);
 
 /// Holds the lock on `<config>.lock` until the returned file is dropped. The file is never
 /// removed: a process that removes it could leave two holders of two different files.
 ///
 /// `Ok(None)` where the file system has no locks ([`unsupported`]: an NFS or SMB home): the write goes ahead unlocked, as before, with a warning, because refusing
 /// would stop every config write of the app there. A lock still held after [`WAIT`] is an error.
+///
+/// The wait is the OS's blocking lock (`flock`, `LockFileEx`), not a `try_lock` poll: a process
+/// writing back to back re-took a polled lock between two polls of the other and starved it past
+/// [`WAIT`] (#3967). The blocking call runs on a helper thread so the deadline still holds; one
+/// that outlives it lets go of the lock as soon as it gets it.
 ///
 /// A lock file this user may not write (another user's, left by `sudo memrynote`) is locked
 /// through a read-only handle: `flock` and `LockFileEx` both lock one. One this user cannot open
@@ -67,30 +72,36 @@ pub(crate) fn hold(config: &Path) -> Result<Option<File>, LockError> {
         },
         Err(error) => return Err(fail(error)),
     };
-    let deadline = Instant::now() + WAIT;
-    loop {
-        match file.try_lock() {
-            Ok(()) => return Ok(Some(file)),
-            Err(TryLockError::Error(error)) if unsupported(&error) => {
-                tracing::warn!(
-                    path = %path.display(),
-                    %error,
-                    "no file locks here; the config is written without the lock"
-                );
-                return Ok(None);
-            }
-            Err(TryLockError::Error(error)) => return Err(fail(error)),
-            Err(TryLockError::WouldBlock) if Instant::now() >= deadline => {
-                return Err(fail(std::io::Error::new(
-                    ErrorKind::WouldBlock,
-                    format!(
-                        "another process held the lock for more than {} s",
-                        WAIT.as_secs()
-                    ),
-                )));
-            }
-            Err(TryLockError::WouldBlock) => std::thread::sleep(POLL),
+    let (sender, receiver) = sync_channel(1);
+    std::thread::Builder::new()
+        .name("config-lock-wait".into())
+        .spawn(move || {
+            // Past the deadline the receiver is gone: the send fails or its message is
+            // discarded, and either drops the file, which lets go of the lock.
+            let _ = sender.send(file.lock().map(|()| file));
+        })
+        .map_err(fail)?;
+    match receiver.recv_timeout(WAIT) {
+        Ok(Ok(file)) => Ok(Some(file)),
+        Ok(Err(error)) if unsupported(&error) => {
+            tracing::warn!(
+                path = %path.display(),
+                %error,
+                "no file locks here; the config is written without the lock"
+            );
+            Ok(None)
         }
+        Ok(Err(error)) => Err(fail(error)),
+        Err(RecvTimeoutError::Timeout) => Err(fail(std::io::Error::new(
+            ErrorKind::WouldBlock,
+            format!(
+                "another process held the lock for more than {} s",
+                WAIT.as_secs()
+            ),
+        ))),
+        Err(RecvTimeoutError::Disconnected) => Err(fail(std::io::Error::other(
+            "the lock wait stopped without a result",
+        ))),
     }
 }
 
@@ -129,10 +140,8 @@ mod tests {
         panic!("{} never appeared", path.display());
     }
 
-    /// Two processes each write their own keys into one file, starting together; every key
-    /// survives. Each worker pauses longer than the lock's poll between its updates, so the two
-    /// interleave: back to back, one worker re-took the lock before the other's next poll and
-    /// starved it past `WAIT` on a slow runner (windows-11-arm).
+    /// Two processes each write their own keys into one file, back to back and starting
+    /// together; every key survives, and neither starves the other past `WAIT`.
     #[test]
     fn updates_from_two_processes_do_not_lose_each_other() {
         let dir = tempfile::tempdir().expect("tempdir");
@@ -192,7 +201,6 @@ mod tests {
                     Ok::<_, ConfigError>(())
                 })
                 .expect("update");
-            std::thread::sleep(2 * super::POLL);
         }
     }
 
@@ -233,5 +241,13 @@ mod tests {
             .expect_err("held");
         assert!(error.to_string().contains("held the lock"), "{error}");
         assert!(!path.exists(), "nothing written");
+        // The wait that gave up does not keep the lock once the holder lets go.
+        drop(held);
+        config
+            .update(|map| {
+                map.insert("b".into(), Value::Null);
+                Ok::<_, ConfigError>(())
+            })
+            .expect("written after the holder let go");
     }
 }
