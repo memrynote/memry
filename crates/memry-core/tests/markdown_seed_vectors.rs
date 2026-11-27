@@ -43,6 +43,19 @@ fn without_block_ids(canonical: &str) -> String {
         .join("\n")
 }
 
+/// Cases desktop builds and the core keeps as literal text, because claiming
+/// them needs desktop's serialization of a block the core does not write: a
+/// table or a code block under a quote, a comment node, a quoted list. A
+/// fallback is lossless (every line stays text), so each must fall back, and
+/// the run it keeps literal is checked below.
+const KEPT_LITERAL: [&str; 5] = [
+    "comment: %% in a callout body and a quote",
+    "callout: a body holding a table",
+    "quote: a run opening on a table",
+    "quote: a line, a blank and a table",
+    "quote: a quoted fence then a lazy line",
+];
+
 #[test]
 fn every_case_seeds_the_document_desktop_builds() {
     let file = vector_file("markdown-seed");
@@ -54,6 +67,22 @@ fn every_case_seeds_the_document_desktop_builds() {
         let document = fresh(name);
         let seeded = seed_document(&document, markdown)
             .unwrap_or_else(|error| panic!("{name}: seed: {error}"));
+        if KEPT_LITERAL.contains(&name) {
+            assert!(
+                !seeded.fallbacks.is_empty(),
+                "{name}: the core now builds it, so it is not kept literal"
+            );
+            let kept: Vec<&str> = seeded
+                .fallbacks
+                .iter()
+                .flat_map(|fallback| fallback.lines.iter().map(String::as_str))
+                .collect();
+            assert!(
+                kept.iter().all(|line| markdown.contains(line)),
+                "{name}: a fallback holds a line the source does not: {kept:?}"
+            );
+            continue;
+        }
         assert!(
             seeded.fallbacks.is_empty(),
             "{name}: a vector case fell back: {:?}",

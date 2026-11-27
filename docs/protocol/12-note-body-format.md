@@ -48,7 +48,7 @@ production parse path (`crates/memry-core/src/crdt/markdown_seed/mod.rs:12-22`).
 is paragraphs, headings, bullet, numbered and check lists, quotes, code blocks, mermaid diagrams,
 dividers, pipe tables, images and videos (a line of their own, lifted out of a paragraph or a
 heading, or inline in a table cell), the YouTube, bookmark, whiteboard and file marker lines,
-callouts, `$$` math blocks, quotes with a blank `>` line between paragraphs, Memry's
+callouts, `$$` math blocks, quotes of more than one paragraph or heading, Memry's
 `<details data-memry-toggle>` toggles, and inline bold, italic, strike, code and links
 (`:24-33`). A construct outside it keeps its source lines as literal text, one paragraph per
 non-blank line. A construct that changes how desktop reads the whole text, such as CriticMarkup,
@@ -59,10 +59,14 @@ shorter rows padded with empty cells. A header row spelled like a delimiter row 
 like any other (`:46-51`, `crates/memry-core/src/crdt/markdown_seed/table.rs:21-37`;
 `packages/editor-schema/src/inline/cell-code-spans.ts:95-111`,
 `packages/editor-schema/src/table-width.ts:81-90`, `:118-141`). A callout or a structured quote is
-claimed only when serializing its parsed body gives back its bytes, as desktop claims it
-(`packages/editor-schema/src/blocks/markdown.ts:220-238`,
-`packages/editor-schema/src/blocks/quote.ts:150-167`); the core serializes the bodies it can
-reproduce exactly and keeps any other body literal
+claimed as desktop claims it: when serializing its parsed body gives back its bytes, or when
+the canonical form it would write instead settles, and a quote that parses to one paragraph
+stays a flat quote
+(`packages/editor-schema/src/blocks/markdown.ts:232-252`, `:276-287`,
+`packages/editor-schema/src/blocks/quote.ts:167-188`, `:246-280`;
+`crates/memry-core/src/crdt/markdown_seed/claims.rs:158-185`, `:257-270`, `:311-370`). The core
+serializes a body of paragraphs and headings exactly and keeps a run holding any other block (a
+table, a code block, an image), a list, a nested quote or a comment as literal text
 (`crates/memry-core/src/crdt/markdown_seed/roundtrip.rs:1-7`). The serializer writes text as
 desktop's writer does, which escapes with a backslash each character that would read back as
 markup, judged on the block as spelled: a `*` or `_` that pairs, a backtick that is not alone, a
@@ -97,9 +101,10 @@ fence's info string, `""` for an untagged fence or an indented run, never BlockN
   (`crates/memry-core/src/crdt/markdown_seed/comments.rs:71`, `:304`;
   `crates/memry-core/src/crdt/markdown_seed/comment_nodes.rs:84`;
   `packages/editor-schema/src/parse-markdown.ts:205`, `:274`, `:284`). A `%%` that never closes,
-  or sits in code, is text. A callout or a quote whose body holds a comment is not claimed,
-  because desktop serializes the comment back as its source and the proof fails
-  (`crates/memry-core/src/crdt/markdown_seed/claims.rs:325`).
+  or sits in code, is text. Desktop serializes a comment back as its source, so it decides
+  a callout or a quote whose body holds one by a proof the core does not run: a body of
+  one paragraph stays a flat quote, any other keeps its lines as literal text
+  (`crates/memry-core/src/crdt/markdown_seed/claims.rs:218-224`).
 - **A `<!--` comment is not built.** It keeps the block-level fallback above, and a `<!--`
   comment that spans lines sends every line to it, because desktop reads the lines around it
   as one word (`crates/memry-core/src/crdt/markdown_seed/comments.rs:218`).
@@ -743,13 +748,19 @@ are not plain CommonMark:
 - the bare damaged marker (`[!info]` without its `> `) is healed only for the
   original four types (`:40-47`);
 - a run abutting more quote lines is refused whole (`:125`);
-- **a run is claimed only by proof**: the body must re-serialise byte for byte
-  (`:195`), except a body with a list or a `> >` level, which is claimed when
-  its canonical form settles (`:196-199`); a body with a checkbox is never
-  claimed (`:211`). A leading paragraph is the callout's own line and every
-  later block its child;
-- structured quotes refuse a `>text` line and claim only a run that is separated
-  or nested (`:201-207`);
+- **a run is claimed only by proof**: the body must re-serialise byte for byte,
+  or its canonical form must settle (read back as the same whole run and
+  serialise to itself again). Every non-bare callout body settles this way, and
+  every quote run that parses to more than one paragraph or to a block other
+  than a paragraph (`packages/editor-schema/src/blocks/markdown.ts:134-152`,
+  `:232-252`, `:276-287`; `packages/editor-schema/src/blocks/quote.ts:77-135`,
+  `:167-188`, `:267-280`). A bare damaged marker settles nothing. A leading
+  paragraph is the callout's own line and every later block its child; a quote
+  whose first block is not a paragraph has no own line and every block a child
+  (`quote.ts:246-259`);
+- structured quotes refuse a `>text` line and need no blank `>` line, `> >` level
+  or list to be read: a run of one paragraph is the only one that stays a flat
+  quote (`quote.ts:77-135`, `:246-259`);
 - a math run is claimed only when it OWNS its paragraph at both ends and
   `serializeMathBlock` reproduces it byte for byte
   (`packages/editor-schema/src/blocks/markdown.ts:518-536`), so a one-line
@@ -797,7 +808,7 @@ settings payload.
   `info` and writes the marker back unchanged.
 - **The Rust core needs no definitions.** Its seed claims a callout of a
   built-in type only; a marker naming any other lowercase type keeps its run
-  as literal text (`crates/memry-core/src/crdt/markdown_seed/claims.rs:66-72`).
+  as literal text (`crates/memry-core/src/crdt/markdown_seed/claims.rs:92-98`).
 
 ### 12.6.1 The view block is a code fence
 
