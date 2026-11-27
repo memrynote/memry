@@ -16,6 +16,13 @@ const TABLE_ROW = /^\s*\|(?:.+\|)+\s*$/
 const TABLE_DELIMITER = /^\s*\|?\s*:?-+:?\s*(?:\|\s*:?-+:?\s*)*\|?\s*$/
 
 /**
+ * The three whole-line shapes `<details>` markup takes on disk. A lossless read
+ * keeps such a line that no toggle claimed as text (`escapePrefixedDetailsMarkup`),
+ * so it continues a paragraph like any other text.
+ */
+export const DETAILS_MARKUP = String.raw`<details(?:\s[^>]*)?>|<summary>.*<\/summary>|<\/details>`
+
+/**
  * True when `lines[i]` opens a block, `first` being the first line the same
  * parse reads (the lines above it belong to blocks already claimed).
  *

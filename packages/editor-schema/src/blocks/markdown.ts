@@ -19,7 +19,7 @@
 import { BLOCK_COLORS_LINE_REGEX } from '@memry/shared/block-colors'
 import { createFenceTracker } from '@memry/shared/markdown-fences'
 import { extractYouTubeVideoId } from '@memry/shared/youtube'
-import { endsParagraphBefore } from './block-starts.ts'
+import { DETAILS_MARKUP, endsParagraphBefore } from './block-starts.ts'
 import { isCalloutTypeName } from './callout-types.ts'
 import {
   itemHoldsNonList,
@@ -691,18 +691,20 @@ export function serializeToggleBlock(
 }
 
 /**
- * The three whole-line shapes `<details>` markup takes on disk. Matched against
- * the raw line, never a trimmed one: an indented `<details>` is inside a code
- * block or a list item, and those bytes are not this function's to touch.
+ * A details markup line, matched against the raw line, never a trimmed one: an
+ * indented `<details>` is inside a code block or a list item, and those bytes
+ * are not this function's to touch.
  */
-const DETAILS_MARKUP = String.raw`<details(?:\s[^>]*)?>|<summary>.*<\/summary>|<\/details>`
 const DETAILS_MARKUP_LINE_REGEX = new RegExp(`^(?:${DETAILS_MARKUP})$`)
 /**
  * The same line behind quote markers or a heading's `#`s, which the parser
  * drops as raw HTML too: a quote's own markup, the body of a quote or callout
- * run, and `## </details>`, a closing tag read over a setext underline.
+ * run, and `## </details>`, a closing tag read over a setext underline. The
+ * writer spells a break after it as two trailing spaces.
  */
-const PREFIXED_DETAILS_LINE_REGEX = new RegExp(`^((?:>[ \t]?)*|#{1,6}[ \t]+)(${DETAILS_MARKUP})$`)
+const PREFIXED_DETAILS_LINE_REGEX = new RegExp(
+  `^((?:>[ \t]?)*|#{1,6}[ \t]+)(${DETAILS_MARKUP})([ \t]*)$`
+)
 
 /**
  * The `<` of a declined `<details>` line, while it crosses the parser.
@@ -753,7 +755,7 @@ export function escapePrefixedDetailsMarkup(markdown: string): string {
     .split('\n')
     .map((line) => {
       const match = fence.consume(line) ? null : PREFIXED_DETAILS_LINE_REGEX.exec(line)
-      return match ? match[1] + match[2].split('<').join(DETAILS_LT_TOKEN) : line
+      return match ? match[1] + match[2].split('<').join(DETAILS_LT_TOKEN) + match[3] : line
     })
     .join('\n')
 }

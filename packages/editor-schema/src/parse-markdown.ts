@@ -360,7 +360,10 @@ export async function parseMarkdownToBlocksRepaired<T>(
   const commentsMasked = htmlComments
     ? maskHtmlComments(markdown, { losslessTables: losslessBlocks })
     : markdown
-  const source = fenceIndentedCodeBlocks(escapeWikiLinkPipesInTableRows(commentsMasked))
+  const fenced = fenceIndentedCodeBlocks(escapeWikiLinkPipesInTableRows(commentsMasked))
+  // `<details>` markup in a quote stays text, before a break masks the two
+  // spaces the writer ends its line with.
+  const source = losslessBlocks ? escapePrefixedDetailsMarkup(fenced) : fenced
   // A hard break and a soft break now parse to the same single newline, so the
   // hard one is marked to keep them apart.
   const { markdown: breaksMasked, breaks } = maskHardBreaks(source)
@@ -374,10 +377,10 @@ export async function parseMarkdownToBlocksRepaired<T>(
   const { markdown: codeMasked, chars: codeChars } = maskCellCodeSpans(tokensMasked, {
     pipes: losslessBlocks
   })
-  // A row wider than its table's header keeps its extra cells, an empty list
-  // item or heading stays one, and so does `<details>` markup in a quote.
+  // A row wider than its table's header keeps its extra cells, and an empty
+  // list item or heading stays one.
   const withTokensMasked = losslessBlocks
-    ? maskEmptyBlockLines(widenTables(escapePrefixedDetailsMarkup(codeMasked)))
+    ? maskEmptyBlockLines(widenTables(codeMasked))
     : codeMasked
 
   // BlockNote parses markdown by way of this same HTML, so the detour changes

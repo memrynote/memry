@@ -1,4 +1,5 @@
 import { createFenceTracker } from '@memry/shared/markdown-fences'
+import { DETAILS_MARKUP } from './block-starts.ts'
 import type { ParsedBlockShape } from './markdown'
 
 // ---------------------------------------------------------------------------
@@ -55,6 +56,7 @@ const LIST_ITEM = /^ {0,3}([-*+]|\d{1,9}[.)])([ \t]|$)/
 const BLOCK_START =
   /^ {0,3}(>|#{1,6}([ \t]|$)|```|~~~|<|\||[-*_=]+[ \t]*$|[-*_]([ \t]*[-*_]){2,}[ \t]*$)/
 const FENCE = /^ {0,3}(```|~~~)/
+const DETAILS_MARKUP_LINE = new RegExp(`^(?:${DETAILS_MARKUP})[ \t]*$`)
 
 /**
  * Read a blockquote run at `lines[start]` whose inner structure BlockNote
@@ -120,14 +122,17 @@ export function readStructuredQuoteRun(
   // ending the run before `b](u)` tore its link in two (BBF-110). A quote's
   // last paragraph continues the same way: the flat quote BlockNote read from
   // `> q\nsee ![x](u)` dropped the image.
+  // A lossless read keeps a details markup line as text: `> <details>\nsee ![x](u)`.
+  const startsBlock = (line: string): boolean =>
+    BLOCK_START.test(line) && !(lossless && DETAILS_MARKUP_LINE.test(line))
   const last = inner[inner.length - 1]
-  const continues = listed || (lossless && lazyParagraph && !BLOCK_START.test(last))
+  const continues = listed || (lossless && lazyParagraph && !startsBlock(last))
   if (continues && last !== '' && !inner.some((line) => FENCE.test(line))) {
     while (
       end < lines.length &&
       lines[end].trim() !== '' &&
       !LIST_ITEM.test(lines[end]) &&
-      !BLOCK_START.test(lines[end])
+      !startsBlock(lines[end])
     ) {
       inner.push(lines[end])
       end++
