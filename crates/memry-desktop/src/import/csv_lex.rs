@@ -1,5 +1,5 @@
-//! The CSV tokenizer Raindrop's and Todoist's exports share: `tokenizeCsv`
-//! (`packages/importers/src/raindrop/parse-csv.ts`) and `parseCsv`
+//! The CSV tokenizer Raindrop's, Todoist's and TickTick's exports share: `tokenizeCsv`
+//! (`packages/importers/src/{raindrop,ticktick}/parse-csv.ts`) and `parseCsv`
 //! (`packages/importers/src/todoist/parse-csv.ts`) read a file the same way. A quote anywhere
 //! outside quotes opens a quoted run, `""` inside one is a quote, a CR outside quotes is
 //! dropped, and an LF ends a row. The CSV importer's dialect differs (`csv.rs`).
@@ -12,7 +12,7 @@ thread_local! {
 
 /// Steps of this thread's export readers: one per character [`lex`] reads, plus the steps each
 /// importer counts for its own work per cell or row (Raindrop's tag pieces; Todoist's date
-/// tokens and indent-stack probes).
+/// tokens and indent-stack probes; TickTick's list rows and order comparisons).
 #[doc(hidden)]
 pub fn steps() -> usize {
     STEPS.with(Cell::get)
