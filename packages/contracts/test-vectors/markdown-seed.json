@@ -9,7 +9,7 @@
     "authoredBy": "desktop's markdownToYFragment path: LF line endings, maskHtmlComments, parseNoteMarkdown (editor-schema note-markdown) with parseMarkdownToBlocksRepaired on desktop's server schema, blocksToYXmlFragment",
     "provenAgainst": "apps/desktop/src/main/sync/markdown-seed-vectors.test.ts",
     "blockIds": "removed from every blockContainer line: BlockNote mints them at random",
-    "caseCount": 82
+    "caseCount": 83
   },
   "cases": [
     {
@@ -503,6 +503,12 @@
       "pins": "a heading or item line with no text is an empty block, an item only after a blank line or another item (after paragraph text `-` stays text), never inside a fence, and `#######` is text",
       "markdown": "#\n\n## \n\n-\n- \n*\n\n1.\n2. x\n3)\n\n- [x]\n\ntext\n-\n\n```\n-\n#\n```\n\n####### ",
       "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=1 textAlignment=\"left\" textColor=\"default\"\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=2 textAlignment=\"left\" textColor=\"default\"\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n1 element blockContainer\n2 element numberedListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n1 element blockContainer\n2 element numberedListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"x\"\n1 element blockContainer\n2 element numberedListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n1 element blockContainer\n2 element checkListItem backgroundColor=\"default\" checked=true plain=false textAlignment=\"left\" textColor=\"default\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"text\"\n3 element hardBreak\n3 text \"-\"\n1 element blockContainer\n2 element codeBlock language=\"\"\n3 text \"-\\n#\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"#######\""
+    },
+    {
+      "name": "empty blocks: a box after a number",
+      "pins": "a box after a number is the item's text, not a to-do; after a bullet it is an empty to-do",
+      "markdown": "1. [ ]\n\n- [ ]\n\n1. [ ] x",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element numberedListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"[ ]\"\n1 element blockContainer\n2 element checkListItem backgroundColor=\"default\" checked=false plain=false textAlignment=\"left\" textColor=\"default\"\n1 element blockContainer\n2 element checkListItem backgroundColor=\"default\" checked=false plain=false textAlignment=\"left\" textColor=\"default\"\n3 text \"x\""
     }
   ]
 }

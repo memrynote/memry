@@ -437,5 +437,10 @@ export const MARKDOWN_SEED_CASES: ReadonlyArray<{ name: string; markdown: string
       markdown:
         '#\n\n## \n\n-\n- \n*\n\n1.\n2. x\n3)\n\n- [x]\n\ntext\n-\n\n```\n-\n#\n```\n\n####### ',
       pins: 'a heading or item line with no text is an empty block, an item only after a blank line or another item (after paragraph text `-` stays text), never inside a fence, and `#######` is text'
+    },
+    {
+      name: 'empty blocks: a box after a number',
+      markdown: '1. [ ]\n\n- [ ]\n\n1. [ ] x',
+      pins: "a box after a number is the item's text, not a to-do; after a bullet it is an empty to-do"
     }
   ]
