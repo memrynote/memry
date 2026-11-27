@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { endsParagraphBefore, opensBlock } from './blocks/block-starts'
 import { escapePrefixedDetailsMarkup } from './blocks/markdown'
 import { spellsRunsWithUnderscores, trimEmphasisEdges } from './inline/emphasis-runs'
+import { maskCellCodeSpans } from './inline/cell-code-spans'
+import { maskEmptyLinks } from './inline/empty-links'
 import { escapeMarkdownText } from './inline/markdown-escapes'
 import { widenTables } from './table-width'
 
@@ -45,6 +47,22 @@ const cases: Array<[string, () => unknown]> = [
   [
     'a summary line of many closing tags and breaks',
     () => escapePrefixedDetailsMarkup(`<summary>${'</summary><br>'.repeat(10_000)}\u2028`)
+  ],
+  // Runs of backticks of every length, none closing another: a scan to the end per opener.
+  [
+    'a line of code spans no run closes',
+    () =>
+      maskCellCodeSpans(Array.from({ length: 1500 }, (_, i) => `${'`'.repeat(i + 1)} `).join(''), {
+        pipes: false
+      })
+  ],
+  [
+    'a line of empty-label link openers no paren closes',
+    () => maskEmptyLinks('[](a '.repeat(50_000))
+  ],
+  [
+    'a line of empty-label links in nested parens',
+    () => maskEmptyLinks(`${'[](('.repeat(25_000)}${'))'.repeat(25_000)}`)
   ]
 ]
 

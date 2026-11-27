@@ -27,6 +27,11 @@ import { MASK_WORD } from '@memry/shared/mask-word'
  * and the restore reaches link addresses and props as well as text, so a
  * placeholder never reaches the vault.
  *
+ * A code span of nothing but spaces and tabs is masked on any line, since a
+ * block that held only such spans read back empty and was dropped: `` ` ` ``
+ * came back as no paragraph, and `- ` `` as a bare `-`. Only that span's
+ * whitespace is hidden, on a line with no pipe.
+ *
  * `pipes: false` masks whitespace only, as builds before lossless tables did,
  * for reading a source the way an older build read it.
  */
@@ -45,9 +50,12 @@ export interface MaskedCellCodeSpans {
 interface MaskedChars {
   spaces: boolean
   pipes: boolean
+  /** Only a code span of spaces and tabs alone is touched. */
+  blankOnly?: boolean
 }
 
 function maskCodeContent(content: string, chars: string[], masked: MaskedChars): string {
+  if (masked.blankOnly && !/^[ \t]+$/.test(content)) return content
   const stripped = masked.spaces && /^ [\s\S]* $/.test(content) && content.trim() !== ''
   const inner = stripped ? content.slice(1, -1) : content
   const hide = (ch: string): string => {
@@ -64,9 +72,52 @@ function maskCodeContent(content: string, chars: string[], masked: MaskedChars):
   return stripped ? ` ${out} ` : out
 }
 
+/** The maximal runs of backticks in `line`, as `[start, length]`, in order. */
+function backtickRuns(line: string): Array<[number, number]> {
+  const runs: Array<[number, number]> = []
+  for (let i = 0; i < line.length;) {
+    if (line[i] !== '`') {
+      i++
+      continue
+    }
+    let end = i + 1
+    while (line[end] === '`') end++
+    runs.push([i, end - i])
+    i = end
+  }
+  return runs
+}
+
+/** The first of the ascending `indexes` past `after`. */
+function firstAfter(indexes: number[] | undefined, after: number): number | undefined {
+  if (!indexes) return undefined
+  let low = 0
+  let high = indexes.length
+  while (low < high) {
+    const mid = (low + high) >> 1
+    if (indexes[mid] > after) high = mid
+    else low = mid + 1
+  }
+  return indexes[low]
+}
+
+/**
+ * A backslash skips the character after it. A span opens at a run of
+ * backticks and closes on the first later run of exactly its length, which a
+ * lookup by length finds in log time, so a line of runs no run closes costs
+ * no scan per opener.
+ */
 function maskLine(line: string, chars: string[], masked: MaskedChars): string {
+  const runs = backtickRuns(line)
+  const byLength = new Map<number, number[]>()
+  for (const [index, [, length]] of runs.entries()) {
+    const same = byLength.get(length)
+    if (same) same.push(index)
+    else byLength.set(length, [index])
+  }
   let out = ''
   let i = 0
+  let at = 0
   while (i < line.length) {
     if (line[i] === '\\' && i + 1 < line.length) {
       out += line.slice(i, i + 2)
@@ -78,17 +129,20 @@ function maskLine(line: string, chars: string[], masked: MaskedChars): string {
       i++
       continue
     }
-    const run = /^`+/.exec(line.slice(i))![0]
-    const closer = new RegExp(`(?<!\`)${run}(?!\`)`, 'g')
-    closer.lastIndex = i + run.length
-    const close = closer.exec(line)
-    if (!close) {
-      out += run
-      i += run.length
+    while (runs[at][0] + runs[at][1] <= i) at++
+    const run = runs[at][0] + runs[at][1] - i
+    const closer = firstAfter(byLength.get(run), at)
+    if (closer === undefined) {
+      out += line.slice(i, i + run)
+      i += run
       continue
     }
-    out += run + maskCodeContent(line.slice(i + run.length, close.index), chars, masked) + run
-    i = close.index + run.length
+    const close = runs[closer][0]
+    out +=
+      line.slice(i, i + run) +
+      maskCodeContent(line.slice(i + run, close), chars, masked) +
+      line.slice(close, close + run)
+    i = close + run
   }
   return out
 }
@@ -97,13 +151,16 @@ export function maskCellCodeSpans(
   markdown: string,
   { pipes }: { pipes: boolean }
 ): MaskedCellCodeSpans {
-  if (!markdown.includes('`') || !markdown.includes('|')) return { markdown, chars: [] }
+  if (!markdown.includes('`')) return { markdown, chars: [] }
   const chars: string[] = []
   const fence = createFenceTracker()
   const masked = markdown
     .split('\n')
     .map((line) => {
-      if (fence.consume(line) || !line.includes('|')) return line
+      if (fence.consume(line)) return line
+      if (!line.includes('|')) {
+        return maskLine(line, chars, { spaces: true, pipes: false, blankOnly: true })
+      }
       const spaces = !UNSAFE_LINE.test(line)
       return spaces || pipes ? maskLine(line, chars, { spaces, pipes }) : line
     })

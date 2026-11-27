@@ -14,6 +14,7 @@ import {
 import { escapePrefixedDetailsMarkup, restoreDetailsMarkup } from './blocks/markdown'
 import { dropEmptyBlockPlaceholders, maskEmptyBlockLines } from './empty-blocks'
 import { maskCellCodeSpans, restoreCellCodeSpans } from './inline/cell-code-spans'
+import { maskEmptyLinks } from './inline/empty-links'
 import { type InlineItem, trimEmphasisEdges } from './inline/emphasis-runs'
 import { linkCodeAsText } from './inline/link-code-spans'
 import { maskLinkDestinations, restoreLinkDestinations } from './inline/link-destinations'
@@ -360,7 +361,10 @@ export async function parseMarkdownToBlocksRepaired<T>(
   const commentsMasked = htmlComments
     ? maskHtmlComments(markdown, { losslessTables: losslessBlocks })
     : markdown
-  const fenced = fenceIndentedCodeBlocks(escapeWikiLinkPipesInTableRows(commentsMasked))
+  // A link with no label has no text to hold its address, so it travels as
+  // a comment's token too.
+  const linksMasked = losslessBlocks ? maskEmptyLinks(commentsMasked) : commentsMasked
+  const fenced = fenceIndentedCodeBlocks(escapeWikiLinkPipesInTableRows(linksMasked))
   // `<details>` markup in a quote stays text, before a break masks the two
   // spaces the writer ends its line with.
   const source = losslessBlocks ? escapePrefixedDetailsMarkup(fenced) : fenced
