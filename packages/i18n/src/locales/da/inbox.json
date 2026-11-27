@@ -579,7 +579,10 @@
       "journalOff": "Dagbogen er slået fra i Indstillinger.",
       "sendFailed": "Kunne ikke sende stickyen.",
       "undoExpired": "Det er for sent at fortryde.",
-      "undoFailed": "Kunne ikke fortryde afsendelsen."
+      "undoFailed": "Kunne ikke fortryde afsendelsen.",
+      "journalBusy": "Dagens dagbogsindlæg gemmes stadig. Prøv igen om lidt.",
+      "folderExcluded": "Mappen Sticky er udelukket. Fjern den fra de udelukkede mapper i Indstillinger for at sende noter.",
+      "projectMissing": "Opgavens projekt findes ikke. Vælg et standardprojekt i Indstillinger, eller send den som en note."
     },
     "inputLabel": "Sticky-tekst",
     "dismissError": "Luk"

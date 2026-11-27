@@ -4,6 +4,7 @@ import { useTabs } from '@/contexts/tabs'
 import { buildReminderTargetTab } from '@/lib/open-reminder-target'
 import { getVaultSwitchState } from '@/lib/vault-switch-state'
 import { createLogger } from '@/lib/logger'
+import { stickyService } from '@/services/sticky-service'
 
 const log = createLogger('StickyOpenTarget')
 
@@ -16,7 +17,7 @@ export function useStickyOpenTarget(): void {
   const { t } = useT('inbox')
 
   useEffect(() => {
-    return window.api.sticky.onOpenTargetRequested(({ kind, targetId }) => {
+    return stickyService.onOpenTargetRequested(({ kind, targetId }) => {
       // The leaving vault is still on screen during a switch; its tab would be wrong.
       if (getVaultSwitchState().pending !== null) return
       const tab = buildReminderTargetTab({

@@ -1176,6 +1176,12 @@ export const commands = {
 	stickyTuck: () => __TAURI_INVOKE<void>("sticky_tuck"),
 	/**  The edge tab unfolds the sticky on a draft, or blank for none (`sticky:unfold`). */
 	stickyUnfold: (draftId: string | null) => __TAURI_INVOKE<null>("sticky_unfold", { draftId }),
+	/**  Shows the main window, asks it to open what a send made, and tucks the sticky away. */
+	stickyOpenTarget: (kind: string, targetId: string) => __TAURI_INVOKE<null>("sticky_open_target", { kind, targetId }),
+	/**  Sends the text to a note, a task or today's journal entry, and deletes its draft. */
+	stickySend: (input: StickySendInput) => __TAURI_INVOKE<StickySent>("sticky_send", { input }),
+	/**  Takes a note or task send back within its minute and answers the draft it restores. */
+	stickyUndoSend: (undoToken: string) => __TAURI_INVOKE<StickyDraftView>("sticky_undo_send", { undoToken }),
 	/**  `graph:clear-layout`: forgets the view's layout. */
 	graphClearLayout: (viewKey: string) => __TAURI_INVOKE<null>("graph_clear_layout", { viewKey }),
 	/**  `graph:get-layout`: the layout saved for the view, `null` when none reads. */
@@ -1252,6 +1258,7 @@ export const events = {
 	settingsChangedEvent: makeEvent<SettingsChangedEvent, SettingsChangedEvent>("settings-changed-event"),
 	settingsOpenSectionEvent: makeEvent<SettingsOpenSectionEvent, SettingsOpenSectionEvent>("settings-open-section-event"),
 	stickyDraftsChangedEvent: makeEvent<StickyDraftsChangedEvent, StickyDraftsChangedEvent>("sticky-drafts-changed-event"),
+	stickyOpenTargetRequestedEvent: makeEvent<StickyOpenTargetRequestedEvent, StickyOpenTargetRequestedEvent>("sticky-open-target-requested-event"),
 	syncCertificatePinFailedEvent: makeEvent<SyncCertificatePinFailedEvent, SyncCertificatePinFailedEvent>("sync-certificate-pin-failed-event"),
 	syncClockSkewWarningEvent: makeEvent<SyncClockSkewWarningEvent, SyncClockSkewWarningEvent>("sync-clock-skew-warning-event"),
 	syncDeviceRemovedEvent: makeEvent<SyncDeviceRemovedEvent, SyncDeviceRemovedEvent>("sync-device-removed-event"),
@@ -5321,12 +5328,40 @@ export type StickyDraftView = {
  */
 export type StickyDraftsChangedEvent = null;
 
+/**  The sticky asks the main window to open what a send made (`sticky:open-target-requested`). */
+export type StickyOpenTargetRequestedEvent = {
+	/**  `note`, `task` or `journal`. */
+	kind: string,
+	/**  A note id, a task id, or the journal day (`YYYY-MM-DD`). */
+	targetId: string,
+};
+
 /**  `StickySaveDraftInput`: no id creates a draft. */
 export type StickySaveDraftInput = {
 	id: string | null,
 	/**  At most 100000 characters. */
 	content: string,
 	kind: string,
+};
+
+/**  `StickySendSchema`. */
+export type StickySendInput = {
+	/**  The draft the text came from; deleted once the send lands. */
+	draftId: string | null,
+	/**  1 to 100000 characters. */
+	content: string,
+	/**  `note`, `task` or `journal`. */
+	kind: string,
+};
+
+/**  The success arm of `StickySendResult`. */
+export type StickySent = {
+	kind: string,
+	/**  A note id, a task id, or the journal day (`YYYY-MM-DD`). */
+	targetId: string,
+	title: string,
+	/**  None for a journal send, which has no undo. */
+	undoToken: string | null,
 };
 
 /**  `StickyShortcutResult` of `@memry/contracts/settings-schemas`. */
