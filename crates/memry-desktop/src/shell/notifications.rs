@@ -59,6 +59,19 @@ impl LiveNotifications {
         (id, replaced)
     }
 
+    /// Forgets the notifications shown under `key` and returns their ids, which the caller
+    /// withdraws where the platform can (a reminder dismissed, snoozed or deleted in the app).
+    pub fn forget(&mut self, key: &str) -> Vec<i32> {
+        let ids = self
+            .live
+            .iter()
+            .filter(|(_, existing, _)| existing == key)
+            .map(|(id, _, _)| *id)
+            .collect();
+        self.live.retain(|(_, existing, _)| existing != key);
+        ids
+    }
+
     /// The route of a clicked notification, `None` when it is no longer remembered.
     pub fn route_of(&self, id: i32) -> Option<Route> {
         self.live
