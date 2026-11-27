@@ -28,6 +28,7 @@ use crate::sync::outbox::{self, Durable};
 
 use super::notes::{insert_local, iso, next_clock, object, stamp, tombstone_local};
 
+pub mod fire;
 pub mod journal;
 mod queries;
 
