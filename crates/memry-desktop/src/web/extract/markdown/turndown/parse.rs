@@ -369,6 +369,16 @@ pub fn parse(html: &str) -> Dom {
 /// with scripting on, as parse5 under cheerio parses, so `noscript` holds raw text, and within
 /// `caps`. Returns the tree and the steps the sink took.
 pub fn parse_page(html: &str, caps: Caps) -> Result<(Dom, usize), CapHit> {
+    parse_guarded(html, caps, true)
+}
+
+/// An imported HTML file as jsdom parses it for `html-to-markdown.ts`: scripting off, as
+/// [`parse`], within `caps`. Returns the tree and the steps the sink took.
+pub fn parse_import(html: &str, caps: Caps) -> Result<(Dom, usize), CapHit> {
+    parse_guarded(html, caps, false)
+}
+
+fn parse_guarded(html: &str, caps: Caps, scripting: bool) -> Result<(Dom, usize), CapHit> {
     let started = Instant::now();
     let mut doc = Document::new();
     let spent = doc.create_document_fragment();
@@ -386,7 +396,7 @@ pub fn parse_page(html: &str, caps: Caps) -> Result<(Dom, usize), CapHit> {
         }),
     };
     let mut opts = ParseOpts::default();
-    opts.tree_builder.scripting_enabled = true;
+    opts.tree_builder.scripting_enabled = scripting;
     let mut parser = parse_document(sink, opts);
     let guard = |parser: &html5ever::Parser<Sink>| -> Result<(), CapHit> {
         let guard = parser.tokenizer.sink.sink.guard.as_ref();
