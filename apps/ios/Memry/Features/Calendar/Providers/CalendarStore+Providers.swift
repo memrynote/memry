@@ -182,7 +182,7 @@ extension CalendarStore {
                     let written = try await upsert(plan)
                     try await CoreExecutor.shared.run {
                         try core.pushDone(
-                            sourceType: item.sourceType, sourceId: item.sourceId, provider: plan.provider,
+                            sourceType: item.sourceType, sourceId: item.sourceId, queuedAt: item.queuedAt, provider: plan.provider,
                             calendarId: plan.calendarId, remoteEventId: written.id, etag: written.etag, body: plan.body, zones: zones
                         )
                     }

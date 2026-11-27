@@ -19,6 +19,7 @@ interface YArrayLike {
 
 interface YDocLike {
   getArray(name: string): YArrayLike
+  transact?: (fn: () => void) => void
 }
 
 const VALID_KINDS: ReadonlySet<unknown> = new Set<CriticMarkupKind>([
@@ -65,8 +66,9 @@ export function readCriticMarkupMarksFromYDoc(doc: YDocLike): CriticMarkupMark[]
 
 /**
  * Makes the root hold `marks`, touching only the elements that change
- * (protocol 12.5.1): it deletes invalid elements, later copies of an id and
- * ids `marks` drops, and inserts a new id after the furthest existing mark
+ * (protocol 12.5.1): it deletes later copies of an id and ids `marks` drops,
+ * keeps every element this build cannot read (a newer build's, #5574), and
+ * inserts a new id after the furthest existing mark
  * before it in `marks`. It replaces an element only when the stored mark, read
  * as this build reads it, differs from the new one in more than its offsets:
  * the window moves offsets with its typing and never writes them alone
@@ -86,18 +88,18 @@ export function writeCriticMarkupMarksToYDoc(doc: YDocLike, marks: CriticMarkupM
   }
 
   const values = readArray(array)
-  const keptIds = new Set<string>()
+  const stored: unknown[] = []
+  const indexOf = new Map<string, number>()
   const keep = values.map((value) => {
     const id = normalizeCriticMarkupMark(value)?.id
-    if (id === undefined || !next.has(id) || keptIds.has(id)) return false
-    keptIds.add(id)
+    if (id !== undefined && (!next.has(id) || indexOf.has(id))) return false
+    if (id !== undefined) indexOf.set(id, stored.length)
+    stored.push(value)
     return true
   })
 
-  const stored = values.filter((_, index) => keep[index])
   const result = [...stored]
   const replaced = stored.map(() => false)
-  const indexOf = new Map([...keptIds].map((id, index) => [id, index]))
   // New marks keyed by the kept element they follow (-1: the start).
   const inserts = new Map<number, Record<string, unknown>[]>()
   let anchor = -1
@@ -126,6 +128,68 @@ export function writeCriticMarkupMarksToYDoc(doc: YDocLike, marks: CriticMarkupM
   for (const [after, group] of [...inserts].toSorted(([a], [b]) => b - a)) {
     array.insert(after + 1, group)
   }
+}
+
+/**
+ * Adds or replaces the `upsert` marks and removes the `remove` ids; leaves
+ * every other mark. Unlike `writeCriticMarkupMarksToYDoc` it writes a mark
+ * whose offsets alone changed (the main-process write-back re-anchors marks,
+ * #5574) and keeps elements this build cannot read.
+ */
+export function updateCriticMarkupMarksInYDoc(
+  doc: YDocLike,
+  { upsert = [], remove = [] }: { upsert?: CriticMarkupMark[]; remove?: string[] }
+): void {
+  const removed = new Set(remove)
+  updateMarks(doc, upsert, (id) => removed.has(id))
+}
+
+/**
+ * One transaction of element edits, never a rewrite of the array: an element
+ * whose mark does not change is not touched, so a concurrent edit to another
+ * mark merges instead of being replaced by this writer's copy of it. A changed
+ * mark is replaced where it stands, keeping fields this build does not know.
+ * Elements the reader drops are left alone, so a newer build's marks survive.
+ */
+function updateMarks(
+  doc: YDocLike,
+  upsert: CriticMarkupMark[],
+  isRemoved: (id: string) => boolean
+): void {
+  const array = doc.getArray(CRITIC_MARKUP_MARKS_ARRAY)
+  const pending = new Map<string, Record<string, unknown>>()
+  for (const mark of upsert) {
+    const normalized = normalizeCriticMarkupMark(mark)
+    if (normalized && !pending.has(normalized.id)) {
+      pending.set(normalized.id, toSerializableMark(normalized))
+    }
+  }
+  const values = readArray(array)
+  const marks = values.map((value) => normalizeCriticMarkupMark(value))
+  const firstIndex = new Map<string, number>()
+  marks.forEach((mark, index) => {
+    if (mark && !firstIndex.has(mark.id)) firstIndex.set(mark.id, index)
+  })
+
+  const apply = (): void => {
+    for (let index = values.length - 1; index >= 0; index--) {
+      const mark = marks[index]
+      if (!mark) continue
+      if (firstIndex.get(mark.id) !== index || isRemoved(mark.id)) {
+        array.delete(index, 1)
+        continue
+      }
+      const next = pending.get(mark.id)
+      if (!next) continue
+      pending.delete(mark.id)
+      if (JSON.stringify(toSerializableMark(mark)) === JSON.stringify(next)) continue
+      array.delete(index, 1)
+      array.insert(index, [{ ...unknownKeys(values[index]), ...next }])
+    }
+    if (pending.size > 0) array.insert(array.length, [...pending.values()])
+  }
+  if (doc.transact) doc.transact(apply)
+  else apply()
 }
 
 /** The `[start, end)` runs of `true`, in order. */

@@ -18,6 +18,7 @@ pub mod markdown;
 pub mod portal;
 pub mod protocol;
 pub mod seams;
+pub mod semantic;
 pub mod storage;
 pub mod sync;
 

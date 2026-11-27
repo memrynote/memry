@@ -89,6 +89,17 @@ impl ProjectStatuses {
         self.first_of(StatusKind::Done)
     }
 
+    /// The open status a reopened task and a repeating task's next occurrence
+    /// land in: the open status flagged default, else the first open one
+    /// (`openStatusIdOnReopen`, `completion.ts:39-49`; `defaultOpenStatusId`,
+    /// `repeat-completion.ts:47-53`).
+    pub(super) fn default_open(&self) -> Option<&Status> {
+        let mut open = self.0.iter().filter(|status| !status.is_done);
+        open.clone()
+            .find(|status| status.is_default)
+            .or_else(|| open.next())
+    }
+
     /// The status a new task starts in: the default todo status, else the
     /// first column (`getDefaultTodoStatus(project)?.id || statuses[0]?.id`).
     pub(super) fn initial(&self) -> Option<&Status> {

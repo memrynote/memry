@@ -8,8 +8,15 @@ import {
 import { crdtOwedFileBodies } from '@memry/db-schema/schema/crdt-owed-file-bodies'
 import { noteBodySync } from '@memry/db-schema/schema/note-body-sync'
 import { noteCache } from '@memry/db-schema/schema/notes-cache'
+import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
+import { notesCreatedHere } from '@memry/db-schema/schema/notes-created-here'
 import { syncQueue } from '@memry/db-schema/schema/sync-queue'
-import { getNoteSyncState, listUnsentNotes, type NoteSyncStateDbs } from './note-sync-state'
+import {
+  getNoteSyncState,
+  isNeverSyncedLocalNote,
+  listUnsentNotes,
+  type NoteSyncStateDbs
+} from './note-sync-state'
 import * as Y from 'yjs'
 import { recordNoteBodyPush } from './note-body-push-record'
 
@@ -267,5 +274,78 @@ describe('note sync state (#2647)', () => {
     const [row] = data.db.select().from(noteBodySync).all()
     const vector = Y.decodeStateVector(Buffer.from(row.pushedStateVector!, 'base64'))
     expect(Object.fromEntries(vector)).toEqual({ 1: 3, 2: 2 })
+  })
+
+  describe('a note the server provably never saw (#5371)', () => {
+    const indexedFromFile = (id: string, syncedAt: string | null = null) => {
+      data.db
+        .insert(noteMetadata)
+        .values({
+          id,
+          path: `notes/${id}.md`,
+          title: `Title ${id}`,
+          syncedAt,
+          createdAt: '2026-10-01T00:00:00.000Z',
+          modifiedAt: '2026-10-01T00:00:00.000Z'
+        })
+        .run()
+      data.db
+        .insert(syncQueue)
+        .values({
+          id: `${id}-create`,
+          type: 'note',
+          itemId: id,
+          operation: 'create',
+          payload: '{}',
+          createdAt: new Date(T0)
+        })
+        .run()
+    }
+    const createdHere = (id: string, syncedAt: string | null = null) => {
+      indexedFromFile(id, syncedAt)
+      data.db.insert(notesCreatedHere).values({ noteId: id, createdAt: T0 }).run()
+    }
+    const neverSynced = (id: string) => isNeverSyncedLocalNote(dbs.data, id)
+
+    it('fails for a note the ingest or the watcher indexed from a file', () => {
+      indexedFromFile('n1')
+
+      expect(neverSynced('n1')).toBe(false)
+    })
+
+    it('holds for a note created here whose create and body never left', () => {
+      createdHere('n1')
+      queueRow('n1', 'note_body', T0)
+
+      expect(neverSynced('n1')).toBe(true)
+    })
+
+    it('fails once a pull or a confirmed record push stamped the row', () => {
+      createdHere('n1', '2026-10-02T00:00:00.000Z')
+
+      expect(neverSynced('n1')).toBe(false)
+    })
+
+    it('fails once the server acknowledged the create', () => {
+      createdHere('n1')
+      data.db.delete(syncQueue).run()
+      queueRow('n1', 'note', T0)
+
+      expect(neverSynced('n1')).toBe(false)
+    })
+
+    it.each(['sent', 'confirmed', 'snapshot', 'failed', 'rejected'] as const)(
+      'fails once a body push was %s',
+      (event) => {
+        createdHere('n1')
+        record('n1', event, T0)
+
+        expect(neverSynced('n1')).toBe(false)
+      }
+    )
+
+    it('fails for a note with no canonical row', () => {
+      expect(neverSynced('missing')).toBe(false)
+    })
   })
 })

@@ -38,9 +38,12 @@ import type {
   InboxUpdatedEvent,
   LinkPreviewData,
   ListArchivedInput,
-  SnoozeInput
+  SnoozeInput,
+  TranscribeAudioInput,
+  TranscribeAudioResponse
 } from '@memry/rpc/inbox'
-import { events, type InboxSnoozeDueEvent } from '../../../generated/bindings'
+import { commands, events, type InboxSnoozeDueEvent } from '../../../generated/bindings'
+import { invokeBinary } from '../lib/ipc-binary'
 import { subscribeToEvent } from './tauri-event'
 import { createWindowApiForwarder } from './window-api-forwarder'
 
@@ -88,7 +91,27 @@ export type {
   SuggestionsResponse
 }
 
-export const inboxService: InboxClientAPI = createWindowApiForwarder(() => window.api.inbox)
+/**
+ * Transcription runs over Rust commands (Step 24, #3541): dictation sends the recording as a
+ * raw body, a retry resolves once the memo is transcribed again. Every other name still reaches
+ * `window.api.inbox`.
+ */
+const transcription = {
+  transcribeAudio: (input: TranscribeAudioInput): Promise<TranscribeAudioResponse> =>
+    invokeBinary<TranscribeAudioResponse>('inbox_transcribe_audio', new Uint8Array(input.data), {
+      format: input.format,
+      duration: input.duration
+    }),
+  retryTranscription: async (itemId: string): Promise<{ success: boolean; error?: string }> => {
+    const { success, error } = await commands.inboxRetryTranscription(itemId)
+    return error ? { success, error } : { success }
+  }
+}
+
+export const inboxService: InboxClientAPI = createWindowApiForwarder<
+  InboxClientAPI,
+  keyof typeof transcription
+>(() => window.api.inbox, transcription)
 
 export function onInboxCaptured(callback: (event: InboxCapturedEvent) => void): () => void {
   return window.api.onInboxCaptured(callback)

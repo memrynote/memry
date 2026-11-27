@@ -48,6 +48,15 @@ Commands:
                                          dev only: replace a journal day's tags
   journal property <date> <name> <json> [--vault <id>]
                                          dev only: set one property on a journal day
+  journal delete <date> [--vault <id>]   dev only: delete a journal day's entry
+  bench bootstrap --vault <id> [--pass-interval <s>] [--resume]
+                                         dev only: wipe this profile's copy of the vault (kept with
+                                         --resume), run the first sync and body passes, print
+                                         timing marks
+  bench oracle-state --vault <id>        dev only: print the local records and bodies as JSON,
+                                         for the zero-loss oracle
+  bench body-coverage --vault <id>       dev only: print the local body coverage and the bodies
+                                         the server holds that this device does not, as JSON
 
 Options:
   --server <name|url>          staging (the default), prod, local, or a base URL
@@ -128,6 +137,25 @@ pub enum Command {
         value_json: String,
         vault: Option<String>,
     },
+    JournalDelete {
+        date: String,
+        vault: Option<String>,
+    },
+    /// Dev only (#5223): a timed fresh-device bootstrap for the benchmark.
+    /// `resume` keeps the local copy, to finish a killed bootstrap (#5232).
+    BenchBootstrap {
+        vault: String,
+        pass_interval_secs: u64,
+        resume: bool,
+    },
+    /// Dev only (#5232): the local state the zero-loss oracle reads.
+    BenchOracleState {
+        vault: String,
+    },
+    /// Dev only (#5232): the bodies the server holds that this device does not.
+    BenchBodyCoverage {
+        vault: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -156,7 +184,7 @@ impl fmt::Display for UsageError {
 
 impl std::error::Error for UsageError {}
 
-fn usage<T>(message: impl Into<String>) -> Result<T, UsageError> {
+pub(crate) fn usage<T>(message: impl Into<String>) -> Result<T, UsageError> {
     Err(UsageError {
         message: message.into(),
     })
@@ -235,7 +263,7 @@ pub fn parse(args: Vec<String>) -> Result<Parsed, UsageError> {
     })))
 }
 
-type Args = std::iter::Peekable<std::vec::IntoIter<String>>;
+pub(crate) type Args = std::iter::Peekable<std::vec::IntoIter<String>>;
 
 fn parse_command(name: &str, args: &mut Args) -> Result<Command, UsageError> {
     match name {
@@ -257,7 +285,8 @@ fn parse_command(name: &str, args: &mut Args) -> Result<Command, UsageError> {
             vault: optional(args, "--vault")?,
         }),
         "notes" => parse_notes(args),
-        "journal" => parse_journal(args),
+        "journal" => crate::journal::parse(args),
+        "bench" => crate::bench::parse(args),
         other => usage(format!("unknown command `{other}`")),
     }
 }
@@ -320,45 +349,14 @@ fn parse_notes(args: &mut Args) -> Result<Command, UsageError> {
     }
 }
 
-fn parse_journal(args: &mut Args) -> Result<Command, UsageError> {
-    let Some(subcommand) = args.next() else {
-        return usage("journal needs a subcommand: append, tags, or property");
-    };
-    let date = positional(args, "journal", "a YYYY-MM-DD date")?;
-    match subcommand.as_str() {
-        "append" => Ok(Command::JournalAppend {
-            date,
-            text: positional(args, "journal append", "the text")?,
-            vault: optional(args, "--vault")?,
-        }),
-        "tags" => Ok(Command::JournalTags {
-            date,
-            tags: positional(args, "journal tags", "a comma-separated tag list")?
-                .split(',')
-                .map(str::trim)
-                .filter(|tag| !tag.is_empty())
-                .map(str::to_owned)
-                .collect(),
-            vault: optional(args, "--vault")?,
-        }),
-        "property" => Ok(Command::JournalProperty {
-            date,
-            name: positional(args, "journal property", "a property name")?,
-            value_json: positional(args, "journal property", "a JSON value")?,
-            vault: optional(args, "--vault")?,
-        }),
-        other => usage(format!("unknown journal subcommand `{other}`")),
-    }
-}
-
-fn value(args: &mut Args, flag: &str) -> Result<String, UsageError> {
+pub(crate) fn value(args: &mut Args, flag: &str) -> Result<String, UsageError> {
     match args.next() {
         Some(value) if !value.starts_with('-') => Ok(value),
         _ => usage(format!("{flag} needs a value")),
     }
 }
 
-fn required(args: &mut Args, flag: &str, command: &str) -> Result<String, UsageError> {
+pub(crate) fn required(args: &mut Args, flag: &str, command: &str) -> Result<String, UsageError> {
     match args.next() {
         Some(found) if found == flag => value(args, flag),
         Some(found) => usage(format!("{command} takes {flag}, not `{found}`")),
@@ -366,7 +364,7 @@ fn required(args: &mut Args, flag: &str, command: &str) -> Result<String, UsageE
     }
 }
 
-fn optional(args: &mut Args, flag: &str) -> Result<Option<String>, UsageError> {
+pub(crate) fn optional(args: &mut Args, flag: &str) -> Result<Option<String>, UsageError> {
     match args.peek() {
         Some(found) if found == flag => {
             args.next();
@@ -377,7 +375,7 @@ fn optional(args: &mut Args, flag: &str) -> Result<Option<String>, UsageError> {
     }
 }
 
-fn positional(args: &mut Args, command: &str, what: &str) -> Result<String, UsageError> {
+pub(crate) fn positional(args: &mut Args, command: &str, what: &str) -> Result<String, UsageError> {
     match args.next() {
         Some(value) if !value.starts_with('-') => Ok(value),
         _ => usage(format!("{command} needs {what}")),
@@ -541,6 +539,9 @@ mod tests {
             "--server",
             "sync --once",
             "vaults --loud",
+            "bench",
+            "bench bootstrap",
+            "bench bootstrap v-1",
         ] {
             assert!(run(line).is_err(), "`{line}` should not parse");
         }
@@ -564,6 +565,10 @@ mod tests {
             "journal append",
             "journal tags",
             "journal property",
+            "journal delete",
+            "bench bootstrap --vault",
+            "bench oracle-state --vault",
+            "bench body-coverage --vault",
         ] {
             assert!(HELP.contains(command), "help omits `{command}`");
         }

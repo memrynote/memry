@@ -15,18 +15,21 @@ import Foundation
 /// back into a chip when it opens the note. Desktop writes that chip; this
 /// client does not write on read, so it only draws and opens it.
 enum HashTagText {
-    // A `#` at the start or after whitespace, then desktop's tag characters.
+    // A `#` at the start or after whitespace, then desktop's tag grammar
+    // (`@memry/shared/inline-tags`): `/`-separated segments of a letter or digit
+    // followed by letters, marks, digits, `_` or `-`, in any script.
     private static let pattern = try? NSRegularExpression(
-        pattern: #"(?<!\S)#([a-zA-Z0-9][a-zA-Z0-9_-]*(?:/[a-zA-Z0-9][a-zA-Z0-9_-]*)*)"#
+        pattern: #"(?<!\S)#([\p{Alphabetic}\p{N}][\p{Alphabetic}\p{M}\p{N}_-]*(?:/[\p{Alphabetic}\p{N}][\p{Alphabetic}\p{M}\p{N}_-]*)*)"#
     )
 
     /// Each `#tag` in `text`: the range it covers, `#` included, and the
-    /// tag's name.
+    /// tag's name. A tag holds a letter, so `#2024` is prose.
     static func matches(in text: String) -> [(range: NSRange, tag: String)] {
         guard let pattern, text.contains("#") else { return [] }
         let string = text as NSString
-        return pattern.matches(in: text, range: NSRange(location: 0, length: string.length)).map {
-            ($0.range, string.substring(with: $0.range(at: 1)))
+        return pattern.matches(in: text, range: NSRange(location: 0, length: string.length)).compactMap {
+            let tag = string.substring(with: $0.range(at: 1))
+            return tag.unicodeScalars.contains(where: \.properties.isAlphabetic) ? ($0.range, tag) : nil
         }
     }
 }
@@ -36,11 +39,13 @@ struct HashTagTrigger: Equatable {
     let range: NSRange
     let query: String
 
-    /// Desktop's `TAG_CHAR_PATTERN`: `[a-zA-Z0-9_\-/]`.
-    static func isTagCharacter(_ unit: unichar) -> Bool {
-        switch unit {
-        case 48...57, 65...90, 97...122, 95, 45, 47: true
-        default: false
+    /// Desktop's `TAG_CHAR_PATTERN`: `[\p{Alphabetic}\p{M}\p{N}_\-/]`.
+    static func isTagCharacter(_ scalar: Unicode.Scalar) -> Bool {
+        switch scalar.properties.generalCategory {
+        case .nonspacingMark, .spacingMark, .enclosingMark, .decimalNumber, .letterNumber, .otherNumber:
+            return true
+        default:
+            return scalar.properties.isAlphabetic || "_-/".unicodeScalars.contains(scalar)
         }
     }
 
@@ -61,7 +66,15 @@ struct HashTagTrigger: Equatable {
                 let query = string.substring(with: NSRange(location: index + 1, length: caret - index - 1))
                 return HashTagTrigger(range: NSRange(location: index, length: caret - index), query: query)
             }
-            guard isTagCharacter(character) else { return nil }
+            // A letter outside the BMP is two UTF-16 units: read it whole.
+            if UTF16.isTrailSurrogate(character), index > 0,
+               UTF16.isLeadSurrogate(string.character(at: index - 1)) {
+                let pair = string.substring(with: NSRange(location: index - 1, length: 2))
+                guard let scalar = pair.unicodeScalars.first, isTagCharacter(scalar) else { return nil }
+                index -= 2
+                continue
+            }
+            guard let scalar = Unicode.Scalar(character), isTagCharacter(scalar) else { return nil }
             index -= 1
         }
         return nil

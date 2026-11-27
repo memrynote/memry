@@ -13,6 +13,8 @@ vi.mock('../../lib/logger', () => ({
   createLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() })
 }))
 vi.mock('../http-client', () => ({ postToServer: vi.fn() }))
+// The open vault's id; without one an attested marker holds the page (#5247).
+vi.mock('../sync-vault-id', () => ({ getSyncVaultId: async () => 'vault-a' }))
 vi.mock('@memry/sync-client/retry', () => ({
   withRetry: vi.fn(async (fn: () => Promise<unknown>) => ({ value: await fn() }))
 }))

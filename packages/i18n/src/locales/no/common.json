@@ -1,4 +1,7 @@
 {
+  "wikiLink": {
+    "openFailed": "Kunne ikke åpne denne lenken"
+  },
   "portalBlock": {
     "copyFailed": "Kunne ikke kopiere portalen",
     "hiddenCount": "{count} skjult",
@@ -956,6 +959,8 @@
     "componentsVaultSwitcher": {
       "noVaultsYet": "Ingen hvelv ennå",
       "openVault": "Åpne hvelv",
+      "createVault": "Opprett hvelv",
+      "openFolderAsVault": "Åpne mappe som hvelv",
       "settings": "Innstillinger",
       "remove": "Fjern \"",
       "removeVaultTitle": "Vil du fjerne «{name}» fra listen?",

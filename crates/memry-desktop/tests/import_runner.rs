@@ -2,7 +2,7 @@
 //! time, the final `done` snapshot and the activity log line a run leaves in the vault.
 
 use std::path::Path;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, mpsc};
 use std::time::Duration;
 
@@ -179,6 +179,123 @@ async fn cancel_stops_the_run_and_logs_it_canceled() {
     assert_eq!(entries.len(), 1, "{entries:?}");
     assert_eq!(entries[0].kind, ActivityKind::Import);
     assert_eq!(entries[0].reason.as_deref(), Some("import-canceled"));
+}
+
+/// Sets its flag when dropped, an assert's unwind included: a script spinning on the flag ends,
+/// so a red test fails instead of hanging.
+struct Release(Arc<AtomicBool>);
+
+impl Drop for Release {
+    fn drop(&mut self) {
+        self.0.store(true, Ordering::SeqCst);
+    }
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn an_import_id_in_flight_is_refused_and_stays_cancellable_after_its_caller_leaves() {
+    let (started_tx, started_rx) = mpsc::channel();
+    let started_tx = Mutex::new(started_tx);
+    let released = Arc::new(AtomicBool::new(false));
+    let script_released = Arc::clone(&released);
+    let runner = runner(
+        move |input, ctx| {
+            if input.source_paths[0] == "quick" {
+                return Ok(());
+            }
+            started_tx.lock().unwrap().send(()).unwrap();
+            while !ctx.is_cancelled() && !script_released.load(Ordering::SeqCst) {
+                std::thread::yield_now();
+            }
+            Ok(())
+        },
+        fixed_clock(),
+    );
+    let _release = Release(released);
+    let (vault, other) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+    let (done_tx, done_rx) = mpsc::channel();
+    let done_tx = Mutex::new(done_tx);
+
+    let first = tokio::spawn({
+        let runner = Arc::clone(&runner);
+        let target = target(vault.path(), None);
+        async move {
+            runner
+                .run(request("same"), target, move |snapshot| {
+                    if snapshot.done {
+                        done_tx.lock().unwrap().send(()).unwrap();
+                    }
+                })
+                .await
+        }
+    });
+    tokio::task::spawn_blocking(move || started_rx.recv().unwrap())
+        .await
+        .unwrap();
+    // The caller stops waiting; the importer runs on.
+    first.abort();
+    assert!(first.await.unwrap_err().is_cancelled());
+
+    let quick = RunRequest {
+        import_id: "same".to_owned(),
+        importer_id: "script".to_owned(),
+        input: ImportInput {
+            source_paths: vec!["quick".to_owned()],
+            options: None,
+        },
+    };
+    let refused = runner.run(quick, target(other.path(), None), |_| {}).await;
+    assert!(
+        matches!(&refused, Err(ImportError::DuplicateImport(id)) if id == "same"),
+        "{refused:?}"
+    );
+
+    runner.cancel("same");
+    tokio::task::spawn_blocking(move || done_rx.recv().unwrap())
+        .await
+        .unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_panicking_importer_still_logs_flushes_and_sends_done() {
+    let runner = runner(
+        |_, ctx| -> Result<(), ImportError> {
+            ctx.report_imported();
+            panic!("importer bug");
+        },
+        fixed_clock(),
+    );
+    let dir = tempfile::tempdir().unwrap();
+    let log = ActivityLog::new();
+    log.open(dir.path());
+    let timeline = Timeline::default();
+    let target = RunTarget {
+        vault_root: dir.path().to_path_buf(),
+        sink: Arc::new(RecordingSink::new(Arc::clone(&timeline))),
+        activity: Some(Arc::clone(&log)),
+    };
+    let (received, on_progress) = recorder();
+
+    let result = runner.run(request("panic"), target, on_progress).await;
+
+    assert!(matches!(result, Err(ImportError::Crashed)), "{result:?}");
+    let last = received.lock().unwrap().last().cloned().unwrap();
+    assert!(last.done, "{last:?}");
+    assert_eq!(last.imported, 1);
+    assert_eq!(
+        *timeline.lock().unwrap(),
+        [serde_json::json!({ "op": "finish" })],
+        "the sink is flushed"
+    );
+    log.flush().unwrap();
+    let entries = logged(dir.path());
+    assert_eq!(entries.len(), 1, "{entries:?}");
+    assert_eq!(entries[0].kind, ActivityKind::Failed);
+    assert_eq!(entries[0].reason.as_deref(), Some("import-failed"));
+    assert_eq!(entries[0].importer.as_deref(), Some("script"));
+    assert_eq!(
+        entries[0].message.as_deref(),
+        Some("the import stopped unexpectedly")
+    );
 }
 
 #[tokio::test(flavor = "multi_thread")]

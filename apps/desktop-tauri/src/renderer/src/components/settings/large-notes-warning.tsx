@@ -5,6 +5,7 @@ import { formatBytes } from '@/lib/format'
 import { ChevronDown } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { createLogger } from '@/lib/logger'
+import { syncService } from '@/services/sync-service'
 
 const log = createLogger('LargeNotesWarning')
 
@@ -20,7 +21,7 @@ export function LargeNotesWarning(): React.JSX.Element | null {
 
   useEffect(() => {
     let cancelled = false
-    window.api.syncOps
+    syncService
       .getLargeNotes()
       .then((result) => {
         if (!cancelled) setData(result)

@@ -102,7 +102,6 @@
   "commands": {
     "goHome": "Idi na Početnu",
     "goInbox": "Idi na Ulazni pretinac",
-    "goJournal": "Idi na Dnevnik",
     "goCalendar": "Idi na Kalendar",
     "goTasks": "Idi na Zadatke",
     "goGraph": "Idi na Graf",

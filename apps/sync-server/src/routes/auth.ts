@@ -1065,6 +1065,6 @@ auth.delete('/account', authMiddleware, async (c) => {
     throw new AppError(ErrorCodes.NOT_FOUND, 'User not found', 404)
   }
   await verifyOtp(c.env.DB, user.email, parsed.data.code, c.env.OTP_HMAC_KEY)
-  await deleteUserData(c.env.DB, c.env.STORAGE, userId, user.email)
+  await deleteUserData(c.env, userId, user.email)
   return c.json({ success: true })
 })

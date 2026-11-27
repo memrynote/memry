@@ -157,6 +157,12 @@ final class RevocationWatch: AuthSessionProtocol, @unchecked Sendable {
         await session.sendTelemetry(batchJson: batchJson)
     }
 
+    /// Not watched, for the same reason: `POST /feedback` reads a bearer only
+    /// to name the account, and a token it cannot verify is sent anonymously.
+    func sendFeedback(payloadJson: Data) async throws {
+        try await session.sendFeedback(payloadJson: payloadJson)
+    }
+
     func deleteVault(vaultId: String) async throws {
         try await watching { try await session.deleteVault(vaultId: vaultId) }
     }

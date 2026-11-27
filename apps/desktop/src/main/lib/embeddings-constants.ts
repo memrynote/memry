@@ -32,14 +32,20 @@ export const EMBEDDING_MODEL_DTYPE = 'q4'
 export const EMBEDDING_SIMILARITY_FLOOR = 0.6
 
 /**
- * Lowest query-to-document cosine a semantic search hit may have. Measured on
- * Turkish and English notes (q4, 256d, `task: search result` query against
- * `title: | text:` documents): a query and a note it is about land at 0.66-0.79
- * (median 0.75), while a query and an unrelated note reach 0.68 at most (median
- * 0.57). Note-to-note cosines are higher across the board, so
- * {@link EMBEDDING_SIMILARITY_FLOOR} would let nearly every note through.
+ * Lowest query-to-document cosine a semantic search hit may have. The Rust
+ * core's `QUERY_FLOOR` holds the same value. Measured in #4625 on the shipped
+ * pipeline (q4, 256d, best window per note) over Belebele, a synthetic Turkish,
+ * English and mixed vault, and the staging SandboxMobile vault; all three put
+ * the floor at 0.725-0.75. On both vaults a query and a note it is about land
+ * at median 0.73 (10th percentile 0.67-0.68), a query and an unrelated note at
+ * median 0.65 (99th percentile 0.73-0.76). At 0.65 half of the SandboxMobile
+ * queries with no relevant note got semantic-only hits; at 0.725 none did. The
+ * cost is cross-language recall: Turkish queries for English notes find 0.33
+ * of what keywords missed, against 0.87 at 0.65. Note-to-note cosines are
+ * higher across the board, so {@link EMBEDDING_SIMILARITY_FLOOR} would let
+ * nearly every note through.
  */
-export const EMBEDDING_QUERY_SIMILARITY_FLOOR = 0.65
+export const EMBEDDING_QUERY_SIMILARITY_FLOOR = 0.725
 
 /**
  * Lowest text-query-to-image cosine a semantic search hit may have. Text-to-image
@@ -61,9 +67,8 @@ export const EMBEDDING_IMAGE_QUERY_SIMILARITY_FLOOR = 0.68
  * queries against audio vectors (q4, 256d, 20 recordings and sounds, 67
  * candidates): a query and the recording it describes land at 0.70-0.77 (median
  * 0.73), an unrelated recording at 0.57 (median) to 0.74 (max), 95th percentile
- * 0.67. Audio sits above the text floor's 0.65 because the 0.65 to
- * 0.68 band is mostly unrelated clips; memos embedded from a transcript use
- * {@link EMBEDDING_QUERY_SIMILARITY_FLOOR}.
+ * 0.67, so 0.68 keeps the recordings and drops the unrelated clips. Memos
+ * embedded from a transcript use {@link EMBEDDING_QUERY_SIMILARITY_FLOOR}.
  */
 export const EMBEDDING_AUDIO_QUERY_SIMILARITY_FLOOR = 0.68
 

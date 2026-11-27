@@ -6,6 +6,8 @@
 //! keeps a new file from being left out of both: with `autotests = false` it would never compile.
 
 mod ai_fake;
+mod caldav_server;
+mod capture_support;
 mod device_key;
 mod electron_profile;
 mod embedding_lane;
@@ -22,6 +24,8 @@ mod vault_env;
 mod account_oauth;
 #[path = "account_service.rs"]
 mod account_service;
+#[path = "account_sign_out_cancel.rs"]
+mod account_sign_out_cancel;
 #[path = "account_teardown.rs"]
 mod account_teardown;
 #[path = "account_vault_directory.rs"]
@@ -32,6 +36,18 @@ mod account_vault_download;
 mod activity_log;
 #[path = "activity_scan.rs"]
 mod activity_scan;
+#[path = "agent_gate_wiring.rs"]
+mod agent_gate_wiring;
+#[path = "agent_mcp.rs"]
+mod agent_mcp;
+#[path = "agent_mcp_http.rs"]
+mod agent_mcp_http;
+#[path = "agent_mcp_parts.rs"]
+mod agent_mcp_parts;
+#[path = "agent_store.rs"]
+mod agent_store;
+#[path = "agent_write_gate.rs"]
+mod agent_write_gate;
 #[path = "ai_catalog.rs"]
 mod ai_catalog;
 #[path = "ai_features.rs"]
@@ -106,6 +122,34 @@ mod billing_service;
 mod block_refs;
 #[path = "byte_preservation.rs"]
 mod byte_preservation;
+#[path = "calendar_caldav.rs"]
+mod calendar_caldav;
+#[path = "calendar_caldav_connect.rs"]
+mod calendar_caldav_connect;
+#[path = "calendar_caldav_sync.rs"]
+mod calendar_caldav_sync;
+#[path = "calendar_eventkit.rs"]
+mod calendar_eventkit;
+#[path = "calendar_feeds.rs"]
+mod calendar_feeds;
+#[path = "calendar_ics_fetch.rs"]
+mod calendar_ics_fetch;
+#[path = "calendar_settings.rs"]
+mod calendar_settings;
+#[path = "canvas_files.rs"]
+mod canvas_files;
+#[path = "canvas_folders.rs"]
+mod canvas_folders;
+#[path = "canvas_service.rs"]
+mod canvas_service;
+#[path = "canvas_vault_id.rs"]
+mod canvas_vault_id;
+#[path = "capture_pairing.rs"]
+mod capture_pairing;
+#[path = "capture_requests.rs"]
+mod capture_requests;
+#[path = "capture_server.rs"]
+mod capture_server;
 #[path = "command_failure.rs"]
 mod command_failure;
 #[path = "config_compat.rs"]
@@ -127,6 +171,10 @@ mod editor_host;
 mod editor_readonly;
 #[path = "electron_profile_fixture.rs"]
 mod electron_profile_fixture;
+#[path = "electron_vault_prep.rs"]
+mod electron_vault_prep;
+#[path = "electron_yjs_journal.rs"]
+mod electron_yjs_journal;
 #[path = "embedding_file_text.rs"]
 mod embedding_file_text;
 #[path = "embedding_owed.rs"]
@@ -153,8 +201,12 @@ mod fold_untrusted;
 mod folder_file;
 #[path = "folder_prune.rs"]
 mod folder_prune;
+#[path = "folder_view.rs"]
+mod folder_view;
 #[path = "fs_atomic.rs"]
 mod fs_atomic;
+#[path = "home_boards.rs"]
+mod home_boards;
 #[path = "home_covers.rs"]
 mod home_covers;
 #[path = "http.rs"]
@@ -171,8 +223,28 @@ mod image_processing;
 mod import_copy;
 #[path = "import_runner.rs"]
 mod import_runner;
+#[path = "importer_bear.rs"]
+mod importer_bear;
+#[path = "importer_google_keep.rs"]
+mod importer_google_keep;
+#[path = "importer_html_fetch.rs"]
+mod importer_html_fetch;
+#[path = "importer_noteplan.rs"]
+mod importer_noteplan;
+#[path = "importer_raindrop.rs"]
+mod importer_raindrop;
+#[path = "importer_roam.rs"]
+mod importer_roam;
+#[path = "importer_ticktick.rs"]
+mod importer_ticktick;
+#[path = "importer_ticktick_dates.rs"]
+mod importer_ticktick_dates;
+#[path = "importer_todoist.rs"]
+mod importer_todoist;
 #[path = "importer_untrusted.rs"]
 mod importer_untrusted;
+#[path = "importer_untrusted_html.rs"]
+mod importer_untrusted_html;
 #[path = "importer_vectors.rs"]
 mod importer_vectors;
 #[path = "inbox_review.rs"]
@@ -183,6 +255,8 @@ mod index_tag_definitions;
 mod indexer_facts;
 #[path = "indexer_open_status.rs"]
 mod indexer_open_status;
+#[path = "indexer_reindex_coalesce.rs"]
+mod indexer_reindex_coalesce;
 #[path = "indexer_scan.rs"]
 mod indexer_scan;
 #[path = "ios_beta_join.rs"]
@@ -235,6 +309,10 @@ mod lock_service;
 mod lock_set;
 #[path = "logship.rs"]
 mod logship;
+#[path = "metadata_guards.rs"]
+mod metadata_guards;
+#[path = "metadata_vectors.rs"]
+mod metadata_vectors;
 #[path = "move_dir.rs"]
 mod move_dir;
 #[path = "move_journal.rs"]
@@ -267,6 +345,8 @@ mod note_properties_outside;
 mod note_versions;
 #[path = "notes_aliases.rs"]
 mod notes_aliases;
+#[path = "notes_aliases_owed.rs"]
+mod notes_aliases_owed;
 #[path = "notes_append_blocks.rs"]
 mod notes_append_blocks;
 #[path = "notes_apply_template.rs"]
@@ -285,6 +365,8 @@ mod notes_folders;
 mod notes_frontmatter;
 #[path = "notes_identity.rs"]
 mod notes_identity;
+#[path = "notes_import_files.rs"]
+mod notes_import_files;
 #[path = "notes_kept.rs"]
 mod notes_kept;
 #[path = "notes_link_rewrite.rs"]
@@ -299,8 +381,12 @@ mod notes_moves;
 mod notes_moves_edges;
 #[path = "notes_outside_after_reopen.rs"]
 mod notes_outside_after_reopen;
+#[path = "notes_outside_aliases.rs"]
+mod notes_outside_aliases;
 #[path = "notes_outside_tags.rs"]
 mod notes_outside_tags;
+#[path = "notes_plain_checklists.rs"]
+mod notes_plain_checklists;
 #[path = "notes_properties.rs"]
 mod notes_properties;
 #[path = "notes_resolve_refs.rs"]
@@ -323,14 +409,22 @@ mod notes_update_critic_marks;
 mod notes_writes;
 #[path = "oauth_loopback.rs"]
 mod oauth_loopback;
+#[path = "obsidian_task_import.rs"]
+mod obsidian_task_import;
 #[path = "ocr_languages.rs"]
 mod ocr_languages;
+#[path = "owed_take.rs"]
+mod owed_take;
 #[path = "path_collision.rs"]
 mod path_collision;
 #[path = "paths.rs"]
 mod paths;
 #[path = "portals.rs"]
 mod portals;
+#[path = "project_note_files.rs"]
+mod project_note_files;
+#[path = "project_writes.rs"]
+mod project_writes;
 #[path = "properties_file.rs"]
 mod properties_file;
 #[path = "property_definitions.rs"]
@@ -341,6 +435,10 @@ mod property_definitions_seed;
 mod property_definitions_sync;
 #[path = "property_usage.rs"]
 mod property_usage;
+#[path = "reminder_commands.rs"]
+mod reminder_commands;
+#[path = "reminder_scheduler.rs"]
+mod reminder_scheduler;
 #[path = "sanitize_svg_inert.rs"]
 mod sanitize_svg_inert;
 #[path = "sanitize_svg_untrusted.rs"]
@@ -351,6 +449,8 @@ mod sanitize_svg_vectors;
 mod seams_tls;
 #[path = "seams_transport.rs"]
 mod seams_transport;
+#[path = "search_reasons.rs"]
+mod search_reasons;
 #[path = "settings_service.rs"]
 mod settings_service;
 #[path = "sticky_drafts.rs"]
@@ -359,6 +459,8 @@ mod sticky_drafts;
 mod sync_backend;
 #[path = "sync_host_clients.rs"]
 mod sync_host_clients;
+#[path = "sync_pack_files.rs"]
+mod sync_pack_files;
 #[path = "tag_definitions_sync.rs"]
 mod tag_definitions_sync;
 #[path = "tag_field_rename.rs"]
@@ -373,6 +475,12 @@ mod tag_schema;
 mod tags;
 #[path = "task_defaults.rs"]
 mod task_defaults;
+#[path = "task_reopen.rs"]
+mod task_reopen;
+#[path = "task_writes.rs"]
+mod task_writes;
+#[path = "tasks_service.rs"]
+mod tasks_service;
 #[path = "telemetry_flush.rs"]
 mod telemetry_flush;
 #[path = "telemetry_report_posts.rs"]
@@ -428,6 +536,14 @@ mod vault_watch_session;
 mod vault_writeback;
 #[path = "vault_writes.rs"]
 mod vault_writes;
+#[path = "voice_embedding_lane.rs"]
+mod voice_embedding_lane;
+#[path = "voice_engine.rs"]
+mod voice_engine;
+#[path = "voice_service.rs"]
+mod voice_service;
+#[path = "web_fetch.rs"]
+mod web_fetch;
 
 #[test]
 fn every_test_file_is_built() {

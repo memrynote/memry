@@ -1,7 +1,7 @@
 //! Feedback on filing suggestions (parity row inv04#30): Electron's
 //! `trackSuggestionFeedback` and `getSuggestionStats`
 //! (`apps/desktop/src/main/inbox/suggestions.ts:840-919`), over the local
-//! `inbox_suggestion_feedback` table (data migration 0041).
+//! `inbox_suggestion_feedback` table (data migration 0043).
 
 use rusqlite::{Connection, params};
 

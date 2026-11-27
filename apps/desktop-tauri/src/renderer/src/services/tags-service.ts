@@ -32,6 +32,7 @@ import type { GetLinkedHereResponse, SearchObjectsResponse } from '@memry/contra
 import { commands, events } from '../../../generated/bindings'
 import type { KeptNoteView, UnfinishedRenameView } from '../../../generated/bindings'
 import { commandErrorCode, extractErrorMessage } from '../lib/ipc-error'
+import { withSyncedRecords } from './sync-service'
 import { subscribeToEvent } from './tauri-event'
 
 /**
@@ -289,14 +290,24 @@ export function onTagColorUpdated(callback: (event: TagColorUpdatedEvent) => voi
 }
 
 /**
- * Subscribe to tag deleted events: a tag deleted or merged into another.
+ * Subscribe to tag deleted events: a tag deleted or merged into another, or a tag definition
+ * sync pulled the delete of (its id is the tag; the count of notes is not known).
  * @returns Unsubscribe function
  */
 export function onTagDeleted(
   callback: (event: TagDeletedEvent) => void,
   onListening?: () => void
 ): () => void {
-  return subscribeToEvent(events.tagDeletedEvent, callback, onListening)
+  return withSyncedRecords(
+    (live) => subscribeToEvent(events.tagDeletedEvent, callback, live),
+    ['tag_definition'],
+    (items) => {
+      for (const item of items) {
+        if (item.itemOperation === 'delete') callback({ tag: item.itemId, affectedNotes: 0 })
+      }
+    },
+    onListening
+  )
 }
 
 /**
@@ -311,23 +322,37 @@ export function onTagNotesChanged(
 }
 
 /**
- * Subscribe to the property definitions a tag field or a ready-made tag created.
+ * Subscribe to the property definitions a tag field or a ready-made tag created, or sync pulled
+ * (a definition's id is its name).
  * @returns Unsubscribe function
  */
 export function onPropertyDefinitionChanged(
   callback: (event: { name: string }) => void,
   onListening?: () => void
 ): () => void {
-  return subscribeToEvent(events.propertyDefinitionChangedEvent, callback, onListening)
+  return withSyncedRecords(
+    (live) => subscribeToEvent(events.propertyDefinitionChangedEvent, callback, live),
+    ['property_definition'],
+    (items) => {
+      for (const item of items) callback({ name: item.itemId })
+    },
+    onListening
+  )
 }
 
 /**
- * Subscribe to tag category changed events (create/rename/delete/reorder). `onListening` runs
- * once they reach this page; a change before then sends its event to nobody.
+ * Subscribe to tag category changed events (create/rename/delete/reorder), here or pulled by
+ * sync. `onListening` runs once they reach this page; a change before then sends its event to
+ * nobody.
  * @returns Unsubscribe function
  */
 export function onTagCategoriesChanged(callback: () => void, onListening?: () => void): () => void {
-  return subscribeToEvent(events.tagCategoriesChangedEvent, () => callback(), onListening)
+  return withSyncedRecords(
+    (live) => subscribeToEvent(events.tagCategoriesChangedEvent, () => callback(), live),
+    ['tag_category'],
+    () => callback(),
+    onListening
+  )
 }
 
 /** The subscriptions above that Rust events serve; `window.api` is typed without them. */

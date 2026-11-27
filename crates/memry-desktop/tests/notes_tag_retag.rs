@@ -48,8 +48,8 @@ fn vault(notes: &NotesService, e: &mut Env, store: &Arc<dyn SecureStore>) -> [St
     [plan, both, day, found]
 }
 
-/// A merge renames the tag itself in each note's header and record once, a pin with it, a day
-/// in its record alone; children and body `#tags` stay, the definition moves, and a second run
+/// A merge renames the tag itself in each note's and day's header and record once, a pin with
+/// it; children and body `#tags` stay, the definition moves, and a second run
 /// writes nothing.
 #[test]
 fn a_merge_writes_each_header_and_record_once_and_leaves_children_and_bodies() {
@@ -79,9 +79,13 @@ fn a_merge_writes_each_header_and_record_once_and_leaves_children_and_bodies() {
     assert_eq!(record(&e, &both, "tags"), ["Work"]);
     assert_eq!(record(&e, &both, "pinnedTags"), ["Work"]);
     assert!(!e.read("Both.md").contains("job"), "{}", e.read("Both.md"));
-    // A day's file is its author's: its record alone.
+    // A day's header follows its record, as Electron writes it (#5509, #5588).
     assert_eq!(record(&e, &day, "tags"), ["work"]);
-    assert_eq!(e.read(&path_of(&e, &day)), day_text);
+    assert!(day_text.contains("  - job\n"), "{day_text}");
+    assert_eq!(
+        e.read(&path_of(&e, &day)),
+        day_text.replace("  - job\n", "  - work\n")
+    );
     assert_eq!(e.read("Found.md"), "---\ntags:\n  - work\n---\nfound\n");
     for id in [&plan, &both, &day] {
         assert_eq!(upserts(&e, id), 1, "{id}");
@@ -115,8 +119,8 @@ fn a_merge_writes_each_header_and_record_once_and_leaves_children_and_bodies() {
     );
 }
 
-/// A delete takes the tag itself, with its pin, off each note's header and record and a day's
-/// record; children and body `#tags` stay, and the definition goes.
+/// A delete takes the tag itself, with its pin, off each note's and day's header and record;
+/// children and body `#tags` stay, and the definition goes.
 #[test]
 fn a_delete_takes_the_tag_itself_off_headers_and_records() {
     let (mut e, notes, store) = opened();
@@ -132,6 +136,7 @@ fn a_delete_takes_the_tag_itself_off_headers_and_records() {
     assert_eq!(record(&e, &both, "tags"), ["Work"]);
     assert!(record(&e, &both, "pinnedTags").is_empty());
     assert!(record(&e, &day, "tags").is_empty());
+    assert!(!e.read(&path_of(&e, &day)).contains("job"));
     assert!(!e.read(&path_of(&e, &found)).contains("job"));
 }
 
@@ -289,6 +294,7 @@ fn removing_a_tag_from_a_note_edits_that_note_alone() {
 
     assert!(notes.remove_tag_from_note(&open, &day, "job").unwrap());
     assert!(record(&e, &day, "tags").is_empty());
+    assert!(!e.read(&path_of(&e, &day)).contains("job"));
     assert!(!notes.remove_tag_from_note(&open, &plan, "job").unwrap());
     let blank = notes.remove_tag_from_note(&open, " ", "job");
     assert!(

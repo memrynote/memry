@@ -1,7 +1,16 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import type * as Bindings from '../../../generated/bindings'
 import { installNotPortedShim } from './not-ported'
 import { installPortedApi, type PortedApiHost } from './ported-api'
+import { readwiseService } from '../services/readwise-service'
 import { settingsService } from '../services/settings-service'
+
+const syncGetStatus = vi.hoisted(() => vi.fn())
+
+vi.mock('../../../generated/bindings', async (importOriginal) => {
+  const real = await importOriginal<typeof Bindings>()
+  return { ...real, commands: { ...real.commands, syncGetStatus } }
+})
 
 describe('installPortedApi', () => {
   it('serves the ported domains and falls through to the layer below for the rest', () => {
@@ -39,5 +48,38 @@ describe('installPortedApi', () => {
     const host: PortedApiHost = {}
     installPortedApi(host)
     expect(typeof (host.api as Record<string, unknown>).locale).toBe('object')
+  })
+
+  it('serves the Readwise page from Rust and leaves its unported names to the shim', async () => {
+    const host: PortedApiHost = {}
+    installNotPortedShim(host)
+    installPortedApi(host)
+    const api = host.api as {
+      import: { readwise: Record<string, () => Promise<unknown>> } & Record<string, unknown>
+      onReadwiseStatusChanged: unknown
+    }
+
+    expect(typeof api.onReadwiseStatusChanged).toBe('function')
+    expect(api.import.readwise.status).toBe(readwiseService.status)
+    let pending: Promise<unknown> | undefined
+    expect(() => {
+      pending = api.import.readwise.takeOver()
+    }).not.toThrow()
+    await expect(pending).rejects.toMatchObject({ name: 'NotPortedError' })
+    expect(typeof api.import.preview).toBe('function')
+  })
+
+  it('sends ported sync names to the Rust commands and rejects the unported ones', async () => {
+    syncGetStatus.mockResolvedValue({ status: 'idle', pendingCount: 0 })
+    const host: PortedApiHost = {}
+    installNotPortedShim(host)
+    installPortedApi(host)
+    const syncOps = (host.api as { syncOps: Record<string, () => Promise<unknown>> }).syncOps
+
+    await expect(syncOps.getStatus()).resolves.toMatchObject({ status: 'idle', pendingCount: 0 })
+    expect(syncGetStatus).toHaveBeenCalledOnce()
+    for (const name of ['getStorageBreakdown', 'repairDeviceKeys', 'getQuarantinedItems']) {
+      await expect(syncOps[name]()).rejects.toMatchObject({ name: 'NotPortedError' })
+    }
   })
 })

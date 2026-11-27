@@ -2,6 +2,10 @@
 
 Add a second device that decrypts and syncs the same vault.
 
+Linking needs a [sync plan](/user-guide/sync/how-sync-works). Without one, **Link new device**
+explains the plan instead of showing a code, because a linked device would open an empty vault
+of its own. On a free account, sign in on the new device with your recovery phrase instead.
+
 <!-- screenshot: device linking screen with QR code and short code -->
 
 ## How Linking Works
@@ -18,11 +22,11 @@ The new device never sees your passphrase. The existing device never exposes the
 ## On the Existing Device
 
 1. Open [Settings → Account](/user-guide/settings#account) → **Devices**
-2. Choose **Link a device**
+2. Choose **Link new device**
 3. memrynote shows a **QR code** and a **linking code** — a long text string carrying the pairing data, meant to be copied, not typed by hand
 4. Keep this screen open
 
-Only the newest code is live. Choosing **Link a device** again cancels any code you generated
+Only the newest code is live. Choosing **Link new device** again cancels any code you generated
 before it, so a device still holding an older QR code or linking string is told the session was
 cancelled and has to scan the new one.
 

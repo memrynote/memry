@@ -18,8 +18,9 @@ use std::sync::Arc;
 
 use memry_core::api::search::BacklinkOrder;
 use memry_core::api::vault::Vault;
+use memry_core::crdt::DocumentRegistry;
+use memry_core::crdt::epoch::HeldBody;
 use memry_core::crdt::registry::UpdateSink;
-use memry_core::crdt::{DocumentRegistry, update_log};
 use memry_core::domain::journal_ops::links;
 use memry_core::domain::link_reads::{self, LinkTarget};
 use memry_core::domain::notes::link_rewrite::LinkNames;
@@ -403,7 +404,8 @@ fn write_note(db: &Db, id: &str, title: &str, body: &str, target: Option<&str>) 
             emoji: None,
         };
         notes::create(conn, &note, "device-a", NOW)?;
-        update_log::append_server_update(conn, id, 1, &body_update(id, body, target), NOW)
+        HeldBody::never_purged(conn, id)
+            .and_then(|held| held.append_server_update(1, &body_update(id, body, target), NOW))
             .expect("the body update");
         Ok(())
     })
@@ -416,7 +418,7 @@ fn the_search_surface_reads_links_and_names() {
     write_note(&db, "target", "Cardamom", "the spice itself", None);
     write_note(&db, "linker", "Groceries", "buy ", Some("Cardamom"));
     write_note(&db, "mentioner", "Recipes", "add cardamom last", None);
-    let search = vault.search().expect("search");
+    let search = vault.search(None).expect("search");
     search.reindex().expect("the reindex");
     // The reindex stored every name's lookup keys.
     let owed: i64 = db

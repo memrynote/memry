@@ -415,24 +415,23 @@ export function scanTextForSecrets(filePath, text) {
 }
 
 function getStagedFiles() {
-  return execFileSync('git', ['diff', '--cached', '--name-only', '--diff-filter=ACMR'], {
+  // `-z`: paths come raw, never quoted, so a non-ASCII file name reads back through `git show`.
+  return execFileSync('git', ['diff', '--cached', '--name-only', '-z', '--diff-filter=ACMR'], {
     encoding: 'utf8'
   })
-    .split('\n')
-    .map((file) => file.trim())
+    .split('\0')
     .filter(Boolean)
 }
 
 function getChangedFiles(baseRef) {
   return execFileSync(
     'git',
-    ['diff', '--no-renames', '--name-only', '--diff-filter=ACMR', baseRef],
+    ['diff', '--no-renames', '--name-only', '-z', '--diff-filter=ACMR', baseRef],
     {
       encoding: 'utf8'
     }
   )
-    .split('\n')
-    .map((file) => file.trim())
+    .split('\0')
     .filter(Boolean)
 }
 

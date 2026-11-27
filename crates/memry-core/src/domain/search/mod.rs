@@ -83,7 +83,10 @@ mod names;
 pub mod portal_reads;
 mod query;
 pub mod recents;
+mod reindex_pass;
+pub mod semantic;
 mod snippet;
+pub(crate) mod source;
 
 pub use links::LinkChanges;
 #[doc(hidden)]
@@ -95,8 +98,10 @@ pub use inbox::{INBOX_RANK, INBOX_WATERMARK_KEY};
 #[cfg(feature = "markdown")]
 pub use maintenance::refresh_note_text;
 pub use maintenance::{
-    DATA_VERSION_KEY, NOTES_WATERMARK_KEY, Reindexed, STAMPS_KEY, TASKS_WATERMARK_KEY, reindex,
-    reindex_until,
+    DATA_VERSION_KEY, NOTES_WATERMARK_KEY, Reindexed, STAMPS_KEY, TASKS_WATERMARK_KEY,
+};
+pub use reindex_pass::{
+    BATCH_NOTES, BATCH_TIME, RESUME_KEY, ReindexPass, Step as ReindexStep, reindex, reindex_until,
 };
 pub use snippet::SnippetSegment;
 
@@ -119,6 +124,9 @@ pub enum MatchKind {
     Fuzzy,
     /// One of the note's or journal day's aliases is or starts with the query.
     Alias,
+    /// Only the on-device embedding found it: the note means what the query
+    /// means without holding its words ([`semantic`]).
+    Semantic,
 }
 
 /// What a hit is.
@@ -148,12 +156,13 @@ pub struct SearchHit {
     pub id: String,
     pub title: String,
     pub kind: HitKind,
-    /// The bm25 score. Negative; more negative is a better match. Zero for a
-    /// fuzzy or alias hit, which bm25 did not rank.
+    /// A per-kind diagnostic value; the order is the ranking. The bm25 score
+    /// for a body hit, negative and more negative for a better match. Zero
+    /// for a fuzzy or alias hit, and the cosine for a semantic hit.
     pub score: f64,
     /// The body window around the match (`content` for notes, journals and
-    /// inbox captures, `description` for tasks), empty when that column is, and for a fuzzy
-    /// or alias hit.
+    /// inbox captures, `description` for tasks), empty when that column is, and for a fuzzy,
+    /// alias or semantic hit.
     pub snippet: Vec<SnippetSegment>,
     pub match_kind: MatchKind,
     /// The alias the query matched, when the hit's title does not hold it.
@@ -499,7 +508,7 @@ fn scored(
 }
 
 /// The one `rusqlite::Error` conversion both halves of this module use.
-pub(super) fn failed(error: rusqlite::Error) -> StorageError {
+pub(crate) fn failed(error: rusqlite::Error) -> StorageError {
     StorageError::Failed {
         what: error.to_string(),
     }

@@ -467,6 +467,10 @@ vi.mock('@/components/shared', () => ({
   )
 }))
 
+vi.mock('@/services/bookmarks-service', () => ({
+  bookmarksService: { toggle: mocks.bookmarksToggle }
+}))
+
 vi.mock('@/services/journal-service', () => ({
   journalService: { updateEntry: mocks.updateEntry }
 }))
@@ -897,7 +901,6 @@ describe('JournalPage', () => {
   it('creates the entry before bookmarking an empty day', async () => {
     mocks.entry = null
     mocks.updateEntry.mockResolvedValue({ id: 'j2026-01-15', date: '2026-01-15' })
-    vi.mocked(window.api.bookmarks.toggle).mockImplementation(mocks.bookmarksToggle)
     render(<JournalPage />)
 
     fireEvent.click(screen.getByText('bookmark'))

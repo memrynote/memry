@@ -32,6 +32,7 @@ function encryptTestItem(
   overrides: Record<string, unknown> = {}
 ): EncryptItemResult {
   return encryptItemForPush({
+    vaultId: null,
     id: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
     type: 'note',
     operation: 'update',

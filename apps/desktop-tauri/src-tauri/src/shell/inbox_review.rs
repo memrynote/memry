@@ -94,7 +94,7 @@ fn start(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     app.manage(review.clone());
     app.state::<NotificationService>().on_click(
         OPEN_HANDLER,
-        Arc::new(|app| broadcast(app, InboxReviewOpenEvent {})),
+        Arc::new(|app, _key| broadcast(app, InboxReviewOpenEvent {})),
     );
     let power = app.state::<PowerMonitor>().subscribe();
     tauri::async_runtime::spawn(inbox_review::run(power, opens, move || {

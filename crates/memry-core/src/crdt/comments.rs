@@ -69,7 +69,12 @@ pub struct ReviewComment {
     pub created_at: Option<i64>,
 }
 
-/// Every review mark on this note, in document order.
+/// Every review mark on this note, in document order, one per id.
+///
+/// Two devices that change the same mark at once each replace its element,
+/// and the array keeps both. The reference reader takes the first well-formed
+/// one in array order (`packages/shared/src/critic-markup/yjs.ts`), which is
+/// the same element on every device, and so does this one.
 ///
 /// **An empty list means "this note has none", which is different from the
 /// root being absent** — but both arrive here as an empty list, because a

@@ -2,8 +2,9 @@
 //! worker (pdfium and Tesseract, one `WorkerHandle`, read by the file text runner of the open vault, which stops
 //! it on every vault close, #3542 lane G) and the embedding model (`WorkerModel` under the app's
 //! `EmbeddingService`, Step 23). Each child starts on its first call and stops on every vault close
-//! and in the `stop-utility-processes` shutdown step. The note embedding lane runs on every open
-//! vault, and the image embedding lane too when the PDF worker exists (it renders PDF pages).
+//! and in the `stop-utility-processes` shutdown step. The note and voice memo embedding lanes run
+//! on every open vault, and the image embedding lane too when the PDF worker exists (it renders
+//! PDF pages).
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -13,6 +14,7 @@ use memry_desktop::ai::features;
 use memry_desktop::embedding::image_projector::ImageEmbeddingProjector;
 use memry_desktop::embedding::projector::{self, NoteEmbeddingProjector};
 use memry_desktop::embedding::service::{self, EmbeddingService, Timing};
+use memry_desktop::embedding::voice_projector::VoiceEmbeddingProjector;
 use memry_desktop::embedding::worker::{WorkerModel, exit_telemetry};
 use memry_desktop::notes::index::NoteIndex;
 use memry_desktop::paths::AppPaths;
@@ -21,6 +23,7 @@ use memry_desktop::services::file_text::runner::Recognize;
 use memry_desktop::services::file_text::service::{FileText, FileTextConfig};
 use memry_desktop::services::file_text::{WorkerHandle, WorkerPaths};
 use memry_desktop::services::ocr_languages::OcrLanguages;
+use memry_desktop::services::voice::VoiceSettings;
 use memry_desktop::session::Session;
 use memry_desktop::session::projection::feed;
 use memry_desktop::settings::SettingsService;
@@ -114,7 +117,7 @@ pub fn pass_progress<R: Runtime>(app: &AppHandle<R>) -> projector::ProgressSink 
     Arc::new(move |progress| broadcast(&app, AiEmbeddingProgressEvent::from(progress)))
 }
 
-fn worker_paths(app: &AppHandle<Wry>) -> Result<WorkerPaths, String> {
+pub(crate) fn worker_paths(app: &AppHandle<Wry>) -> Result<WorkerPaths, String> {
     let exe = std::env::current_exe().map_err(|error| error.to_string())?;
     let exe_dir = exe.parent().ok_or("the executable has no directory")?;
     Ok(WorkerPaths::new(exe_dir, &resource_dir(app)?))
@@ -160,12 +163,14 @@ pub fn register_on_close<R: Runtime>(app: &AppHandle<R>, session: &Session) {
     }
 }
 
-/// The note and image embedding lanes on every open of `session`, fed by `tier`'s facts and
-/// deferred while `index` builds. Registered before the first open. Without the managed service
-/// (see `manage`) there is no lane and no feed: the feed's events would reach no projector, and
-/// the notes stay owed. The note lane checks the vault's `ai.enabled` before every inference, the
-/// image lane `ai.enabled` and `ai.imageEmbeddings` before every image, and neither embeds once
-/// the vault closes (REVIEW-4548). Without the PDF worker there is no image lane this run: its
+/// The note, image and voice memo embedding lanes on every open of `session`, fed by `tier`'s
+/// facts (the voice lane by `notify_voice`) and, for notes and images, deferred while `index`
+/// builds. Registered before the first open. Without the managed service (see `manage`) there is
+/// no lane and no feed: the feed's events would reach no projector, and the notes stay owed. The
+/// note lane checks the vault's `ai.enabled` before every inference, the image lane `ai.enabled`
+/// and `ai.imageEmbeddings` before every image, the voice lane `ai.enabled` before every memo
+/// and `voiceTranscription.audioSearch` before every recording, and none embeds once the vault
+/// closes (REVIEW-4548). Without the PDF worker there is no image lane this run: its
 /// images stay owed for a run that has one.
 pub fn register_embedding_lane<R: Runtime>(
     app: &AppHandle<R>,
@@ -191,14 +196,28 @@ pub fn register_embedding_lane<R: Runtime>(
             .is_some_and(|index| index.indexing().is_some())
     });
     let note_settings = settings.clone();
+    let ai_enabled: projector::AiEnabled =
+        Arc::new(move |open| features::read(&note_settings, Some(open)).is_ok_and(|ai| ai.enabled));
     let projector = NoteEmbeddingProjector::new(
         session,
         service.inner().clone(),
-        Arc::new(move |open| features::read(&note_settings, Some(open)).is_ok_and(|ai| ai.enabled)),
+        ai_enabled.clone(),
         indexing.clone(),
         pass_progress(app),
     );
     session.register_projector(projector);
+    let voice_settings = settings.clone();
+    session.register_projector(VoiceEmbeddingProjector::new(
+        session,
+        service.inner().clone(),
+        ai_enabled,
+        Arc::new(move |open| {
+            features::read(&voice_settings, Some(open)).is_ok_and(|ai| ai.enabled)
+                && voice_settings
+                    .read_group(Some(open), "voiceTranscription")
+                    .is_ok_and(|group| VoiceSettings::of_group(&group.value).audio_search)
+        }),
+    ));
     match app.try_state::<Arc<WorkerHandle>>() {
         Some(worker) => session.register_projector(ImageEmbeddingProjector::new(
             session,
