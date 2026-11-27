@@ -16,6 +16,8 @@
 use crate::domain::journal_rules::js_trim;
 
 use super::closers::Closers;
+use super::code_spans::keep_code_whitespace;
+use super::comment_nodes::has_token;
 use super::hard_breaks::JOIN;
 use super::links::{destination_and_title, link};
 use super::media::{self, Media};
@@ -49,13 +51,14 @@ pub(super) enum Html {
 pub(super) fn inline_content(
     text: &str,
     breaks: &[String],
+    paragraph: bool,
 ) -> Result<Vec<SeedInline>, Unsupported> {
-    let html = parse(text)?;
+    let html = parse(&keep_code_whitespace(text))?;
     if holds_media(&html) {
         // Desktop's parse drops it, or makes it a child block of a list item.
         return Err(Unsupported("image in a list or quote"));
     }
-    Ok(runs::block_content(html, breaks))
+    Ok(runs::block_content(html, breaks, paragraph))
 }
 
 /// `parseInline` on one block's text.
@@ -180,6 +183,9 @@ fn inline_token(
     if text[i] == '['
         && let Some((href, inner, end)) = link(closers, i)
     {
+        if has_token(&href) {
+            return Err(Unsupported("comment in a link address"));
+        }
         let children = parse_inline(inner)?;
         if contains_link(&children) {
             return Err(Unsupported("nested link"));
@@ -245,6 +251,10 @@ fn image(closers: &mut Closers, start: usize) -> Result<Option<(Media, usize)>, 
     };
     let (url, title) = destination_and_title(&text[alt_end + 2..paren_end]);
     let alt = collect(&text[start + 2..alt_end]);
+    if has_token(&alt) || has_token(&url) {
+        // Desktop leaves its masked word in an image's props.
+        return Err(Unsupported("comment in an image"));
+    }
     Ok(Some((media::media(url, alt, title)?, paren_end + 1)))
 }
 
@@ -342,7 +352,7 @@ mod tests {
 
     #[test]
     fn a_soft_break_is_one_hard_break_and_loses_the_next_lines_indent() {
-        let content = inline_content("a\n b  c", &[]).expect("supported");
+        let content = inline_content("a\n b  c", &[], false).expect("supported");
         assert_eq!(
             content,
             vec![plain("a"), SeedInline::HardBreak, plain("b c")]
@@ -351,7 +361,7 @@ mod tests {
 
     #[test]
     fn a_code_span_drops_every_other_mark() {
-        let content = inline_content("**`x`**", &[]).expect("supported");
+        let content = inline_content("**`x`**", &[], false).expect("supported");
         let code = SeedMarks {
             code: true,
             ..SeedMarks::default()
@@ -372,7 +382,7 @@ mod tests {
         assert!(allowed_href("u"));
         assert!(allowed_href("#frag"));
         assert!(allowed_href("mailto:a@b.c"));
-        let content = inline_content("[a](javascript:x)", &[]).expect("supported");
+        let content = inline_content("[a](javascript:x)", &[], false).expect("supported");
         assert_eq!(content, vec![plain("a")]);
     }
 

@@ -7,9 +7,10 @@ use crate::domain::journal_rules::js_trim;
 
 use super::blocks::parse_chunk;
 use super::claims::{Claim, callout_at, math_at, quote_at};
+use super::comment_nodes::{has_token, source_lines};
 use super::media::marker_line;
 use super::prepare::fence_line;
-use super::{SeedBlock, SeedFallback, Unsupported};
+use super::{SeedBlock, SeedFallback, SeedKind, Unsupported};
 
 pub(super) fn parse_content(
     text: &str,
@@ -49,8 +50,7 @@ pub(super) fn parse_content(
                 Err((Unsupported(reason), end)) => {
                     let kept: Vec<String> = lines[index..end]
                         .iter()
-                        .map(|line| js_trim(line).to_owned())
-                        .filter(|line| !line.is_empty())
+                        .flat_map(|line| source_lines(line))
                         .collect();
                     out.extend(kept.iter().map(|line| SeedBlock::literal(line)));
                     fallbacks.push(SeedFallback {
@@ -90,12 +90,20 @@ fn claim_at(
         return Ok(Some(claim));
     }
     if let Some(claim) = math_at(lines, index, at_paragraph_start) {
+        // Desktop keeps the masked word in the formula, a random one.
+        if matches!(&claim.0.kind, SeedKind::Math { latex } if has_token(latex)) {
+            return Err((Unsupported("comment in a math block"), claim.1));
+        }
         return Ok(Some(claim));
     }
     if at_paragraph_start && let Some(claim) = quote_at(lines, index).map_err(|e| (e, run_end()))? {
         return Ok(Some(claim));
     }
     match marker_line(lines[index]) {
+        // The marker's props would hold desktop's masked word.
+        Ok(Some(_)) if has_token(lines[index]) => {
+            Err((Unsupported("comment in a marker line"), index + 1))
+        }
         Ok(found) => Ok(found.map(|block| (block, index + 1))),
         Err(unsupported) => Err((unsupported, index + 1)),
     }

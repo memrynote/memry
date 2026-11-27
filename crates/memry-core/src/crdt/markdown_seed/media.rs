@@ -249,13 +249,16 @@ pub(super) fn media(url: String, alt: String, title: Option<String>) -> Result<M
 /// The block an `<img>` or `<video>` parses to. An image's alt may carry its
 /// width as `name|300` (`withImageWidthInAlt`, `parseInlineImageAlt`).
 /// Every string prop gets its hard-break spelling back (`repairBlocks`).
-pub(super) fn media_block(media: &Media, breaks: &[String]) -> SeedBlock {
+pub(super) fn media_block(media: &Media, breaks: &[String]) -> Result<SeedBlock, Unsupported> {
     let restore = |text: &str| restore_hard_break_spelling(text, breaks);
-    match media {
+    Ok(match media {
         Media::Image { url, alt } => {
             let (name, width) = alt_width(alt);
+            // `img.src` is the DOM's serialization of the address; a
+            // `<video src>` and an `inlineImage` read the attribute as written.
+            let src = web_url::img_src(url).ok_or(Unsupported("image address"))?;
             block(SeedKind::Image {
-                url: restore(url),
+                url: restore(&src),
                 name: restore(name),
                 preview_width: width,
             })
@@ -264,7 +267,7 @@ pub(super) fn media_block(media: &Media, breaks: &[String]) -> SeedBlock {
             url: restore(url),
             name: restore(name),
         }),
-    }
+    })
 }
 
 /// `parseInlineImageAlt`: `ALT_WIDTH_SUFFIX`, `/^(.*)\|(\d+)$/`, with a

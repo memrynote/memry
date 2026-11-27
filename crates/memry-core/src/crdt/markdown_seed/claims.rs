@@ -11,6 +11,7 @@
 use crate::domain::journal_rules::{is_js_whitespace, js_trim};
 
 use super::blocks::parse_chunk;
+use super::comment_nodes::has_token;
 use super::roundtrip::serialize;
 use super::{SeedBlock, SeedKind, Unsupported};
 
@@ -322,6 +323,12 @@ fn item_holds_non_list(block: &SeedBlock) -> bool {
 /// A body as `parseMarkdownToBlocks` reads it. A body holding a construct the
 /// seed keeps literal cannot be judged.
 fn parse_body(markdown: &str) -> Result<Vec<SeedBlock>, Unsupported> {
+    // Desktop serializes a comment back as its source, which is not the
+    // masked run it is proving against, so a body holding one is never
+    // claimed: no blocks, no claim.
+    if has_token(markdown) {
+        return Ok(Vec::new());
+    }
     let mut blocks = Vec::new();
     let mut fallbacks = Vec::new();
     parse_chunk(markdown, &mut blocks, &mut fallbacks);

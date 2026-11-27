@@ -69,6 +69,51 @@ fence's info string, `""` for an untagged fence or an indented run, never BlockN
 `javascript` default (`packages/editor-schema/src/schema.ts:80-89`,
 `crates/memry-core/src/crdt/markdown_seed/blocks.rs:205-228`).
 
+**Comments, and what the core follows from the parse rather than from the markdown.**
+
+- **`%% … %%` comments are `htmlComment` nodes (§12.7).** Desktop masks every comment outside
+  code before any line is split (`apps/desktop/src/main/sync/blocknote-converter.ts:468-469`,
+  `packages/shared/src/html-comments.ts:126`, boundaries from `walkMarkdown`,
+  `packages/shared/src/markdown-code.ts:144`, including a comment that crosses a table cell end
+  as text and a code span's pipe as part of the cell, `:304`), and again on each chunk it parses.
+  The core walks the text the same way and masks each `%%` comment to one word, then turns the
+  word into a node once the blocks exist, in the block's marks, and back into its bytes inside a
+  code span, a link label and a code block
+  (`crates/memry-core/src/crdt/markdown_seed/comments.rs:71`, `:304`;
+  `crates/memry-core/src/crdt/markdown_seed/comment_nodes.rs:84`;
+  `packages/editor-schema/src/parse-markdown.ts:205`, `:274`, `:284`). A `%%` that never closes,
+  or sits in code, is text. A callout or a quote whose body holds a comment is not claimed,
+  because desktop serializes the comment back as its source and the proof fails
+  (`crates/memry-core/src/crdt/markdown_seed/claims.rs:325`).
+- **A `<!--` comment is not built.** It keeps the block-level fallback above, and a `<!--`
+  comment that spans lines sends every line to it, because desktop reads the lines around it
+  as one word (`crates/memry-core/src/crdt/markdown_seed/comments.rs:218`).
+- **Desktop leaves its masked word in a few props, so those fall back.** A comment inside a
+  `$$` math block, an image's alt or address, a link's address or a marker line reaches the
+  document as a word drawn once per process (`MEMRYCMT…X`, §12.7), which no seed can
+  reproduce; the core keeps those lines as literal text
+  (`crates/memry-core/src/crdt/markdown_seed/markers.rs:95`, `:105`;
+  `crates/memry-core/src/crdt/markdown_seed/inline.rs:187`, `:256`).
+- **An image's `url` is the DOM's `img.src`.** An absolute address is written in the WHATWG
+  serialization (`http://e.com` is `http://e.com/`, the scheme and host lowercased, a default
+  port dropped, dot segments resolved, `é` and `{` as `%XX`); a relative one stays as written;
+  a `<video>` and an `inlineImage` keep the attribute as written. An address the core does not
+  serialize (an IPv4 or punycode host, `file:`, a backslash, a special scheme without `//`) keeps
+  its line as literal text
+  (`crates/memry-core/src/crdt/markdown_seed/web_url.rs:125`,
+  `crates/memry-core/src/crdt/markdown_seed/media.rs:252`).
+- **A code span keeps its blanks on any line with a pipe.** `maskCellCodeSpans` hides each space
+  and tab of a code span on every line that holds a `|` and no `[`, `]` or tag, not only a table
+  row, so `` ` |`é `` keeps its leading space and `` ` a`b `` does not
+  (`packages/editor-schema/src/inline/cell-code-spans.ts:95-111`,
+  `crates/memry-core/src/crdt/markdown_seed/code_spans.rs:22`).
+- **A paragraph with no visible text collapses its whitespace.** BlockNote's paragraph rule
+  declines a `<p>` whose `textContent.trim()` is empty (`@blocknote/core`
+  `src/blocks/Paragraph/block.ts:33-36`), so ProseMirror's default parse drops a leading,
+  repeated or trailing blank and a blank right after a break: `` `\n`\n`\n` `` is a paragraph
+  of one break, while the same breaks around an `x` keep every blank
+  (`crates/memry-core/src/crdt/markdown_seed/collapse.rs:31`).
+
 **Why the core parses here at all.** A day seeded from a template on the phone would otherwise
 hold only `seed_markdown` until desktop built its document, and the first keystroke on the phone
 would write blocks into an empty body that desktop's next write-back puts over the template text
@@ -940,6 +985,9 @@ break's `\n` is not one), never `code` (BBF-52,
 code spans stay code, and Memry's own marker comments (§12.8, file markers,
 nesting markers, writing tools markers) keep their own readers. A client built
 before the type finds it unrepresentable and keeps the file (§12.1).
+
+The core's markdown seed builds the `%%` form as a node, and keeps a `<!--` comment as literal text
+(§12.1.0).
 
 A `<!--` that opens an HTML block and never closes would hide the rest of the
 note, so it is a node whose `source` is `<!--` alone, and the text after it

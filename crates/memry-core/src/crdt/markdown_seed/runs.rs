@@ -3,6 +3,8 @@
 
 use crate::domain::journal_rules::{is_js_whitespace, js_trim};
 
+use super::code_spans::{SPACE_TOKEN, TAB_TOKEN, restore_code_whitespace};
+use super::collapse::collapse_blank_paragraph;
 use super::hard_breaks::unmask_hard_breaks;
 use super::inline::{Html, Tag};
 use super::links::allowed_href;
@@ -19,9 +21,17 @@ enum Run {
 }
 
 /// A paragraph-like block's runs: stage 2, then ProseMirror's parse with its
-/// whitespace preserved.
-pub(super) fn block_content(mut html: Vec<Html>, breaks: &[String]) -> Vec<SeedInline> {
+/// whitespace preserved, unless the paragraph shows no text
+/// ([`collapse_blank_paragraph`]).
+pub(super) fn block_content(
+    mut html: Vec<Html>,
+    breaks: &[String],
+    paragraph: bool,
+) -> Vec<SeedInline> {
     normalize_whitespace(&mut html);
+    if paragraph {
+        collapse_blank_paragraph(&mut html);
+    }
     let mut nodes = Vec::new();
     flatten(&html, &SeedMarks::default(), false, &mut nodes);
     finish(nodes, breaks)
@@ -79,26 +89,23 @@ pub(super) fn cell_content(html: Vec<Html>, breaks: &[String], code_kept: bool) 
             nodes.pop();
         }
     }
-    let mut content = finish(nodes, breaks);
+    finish(nodes, breaks)
+}
+
+/// Stage 4 and the end of `maskCellCodeSpans`: the placeholders come back
+/// after the repair, which never sees the whitespace they hide.
+fn finish(nodes: Vec<PmNode>, breaks: &[String]) -> Vec<SeedInline> {
+    let mut runs = to_runs(nodes);
+    repair(&mut runs, breaks);
+    let mut content = expand(runs);
     for piece in &mut content {
         if let SeedInline::Text { text, .. } = piece
             && text.contains("MEMRYCSP")
         {
-            *text = text.replace(SPACE_TOKEN, " ").replace(TAB_TOKEN, "\t");
+            *text = restore_code_whitespace(text);
         }
     }
     content
-}
-
-/// `maskCellCodeSpans`' placeholders. Source text holding `MEMRY` never gets
-/// here (`prepare::document_fallback`), so a token is always ours.
-const SPACE_TOKEN: &str = "MEMRYCSPSX";
-const TAB_TOKEN: &str = "MEMRYCSPTX";
-
-fn finish(nodes: Vec<PmNode>, breaks: &[String]) -> Vec<SeedInline> {
-    let mut runs = to_runs(nodes);
-    repair(&mut runs, breaks);
-    expand(runs)
 }
 
 /// Stage 2: a text node holding a newline has each whitespace run collapsed.

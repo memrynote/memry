@@ -28,11 +28,13 @@
 //! heading, or inline in a table cell), YouTube, bookmark, whiteboard and file
 //! marker lines, callouts, `$$` math blocks, quotes with a blank `>` line
 //! between paragraphs, Memry's `<details data-memry-toggle>` toggles, and
-//! inline bold, italic, strike, code and links. Wiki links, tags and `{{…}}`
+//! inline bold, italic, strike, code and links, and Obsidian `%% … %%`
+//! comments as `htmlComment` nodes ([`comments`], [`comment_nodes`]). Wiki
+//! links, tags and `{{…}}`
 //! tokens stay plain text, which is what desktop's converter does with them
 //! too, and so does a `<details>` block another app wrote.
 //!
-//! **Fallback**: a construct outside that set (raw HTML and HTML comments, an
+//! **Fallback**: a construct outside that set (raw HTML and `<!--` comments, an
 //! image in a list or a quote, a video beside text, an inline mention or date
 //! token, a task block or plain-checkbox marker, a quote or callout holding a
 //! list or a nested quote, a callout of a user-defined type or with a body
@@ -53,6 +55,10 @@
 mod blocks;
 mod claims;
 mod closers;
+mod code_spans;
+mod collapse;
+mod comment_nodes;
+mod comments;
 mod hard_breaks;
 mod inline;
 mod lift;
@@ -193,6 +199,11 @@ pub enum SeedInline {
         marks: SeedMarks,
     },
     HardBreak,
+    /// An `htmlComment` node: a `%% … %%` comment as written, delimiters
+    /// included (chapter 12 §12.7).
+    HtmlComment {
+        source: String,
+    },
     /// An image inside a table cell (`inlineImage`); `width` 0 is unset.
     InlineImage {
         src: String,
@@ -262,11 +273,20 @@ pub fn plan(markdown: &str) -> SeedPlan {
     let mut fallbacks = Vec::new();
     let parsed = match prepare::document_fallback(markdown) {
         Some(reason) => Err(Unsupported(reason)),
-        None => parse_masked(
-            &media::separate_block_images(markdown),
-            &mut out,
-            &mut fallbacks,
-        ),
+        None => {
+            // `markdownToBlocks`: every comment is masked before any line is
+            // split.
+            let masked = comments::mask(markdown);
+            if masked.multiline_html {
+                Err(Unsupported("HTML"))
+            } else {
+                parse_masked(
+                    &media::separate_block_images(&masked.text),
+                    &mut out,
+                    &mut fallbacks,
+                )
+            }
+        }
     };
     if let Err(Unsupported(reason)) = parsed {
         let lines: Vec<String> = markdown
@@ -517,5 +537,42 @@ mod tests {
             plan.blocks[1],
             SeedBlock::new(SeedKind::Paragraph, vec![text("after")])
         );
+    }
+
+    #[test]
+    fn a_comment_desktop_would_leave_its_word_in_stays_literal_and_whole() {
+        for (markdown, lines) in [
+            ("$$\nx %% y %% z\n$$", vec!["$$", "x %% y %% z", "$$"]),
+            (
+                "![a %% b %% c](https://e.com/i.png)",
+                vec!["![a %% b %% c](https://e.com/i.png)"],
+            ),
+            (
+                "[a](https://e.com/%% b %%)",
+                vec!["[a](https://e.com/%% b %%)"],
+            ),
+        ] {
+            let plan = plan(markdown);
+            assert_eq!(plan.fallbacks.len(), 1, "{markdown}");
+            assert_eq!(plan.fallbacks[0].lines, lines, "{markdown}");
+            assert!(
+                !plan.blocks.iter().any(|block| {
+                    block
+                        .content
+                        .iter()
+                        .any(|piece| matches!(piece, SeedInline::HtmlComment { .. }))
+                }),
+                "{markdown}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_html_comment_across_lines_sends_the_whole_text_to_the_fallback() {
+        let plan = plan("# a\n\n<!--\n# b\n-->\n\nc");
+        assert_eq!(plan.fallbacks[0].reason, "HTML");
+        assert_eq!(plan.blocks.len(), 5);
+        let single = super::plan("# a\n\n<!-- b -->\n\nc");
+        assert_eq!(single.blocks[0].kind, SeedKind::Heading { level: 1 });
     }
 }

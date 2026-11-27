@@ -96,7 +96,7 @@ fn code_span_pipes(line: &[char]) -> Vec<bool> {
 
 /// The regex ``(?<!`)RUN(?!`)`` from `from`: the first run of exactly `run`
 /// backticks.
-fn closing_run(line: &[char], from: usize, run: usize) -> Option<usize> {
+pub(super) fn closing_run(line: &[char], from: usize, run: usize) -> Option<usize> {
     (from..=line.len().saturating_sub(run)).find(|&at| {
         line[at..at + run].iter().all(|ch| *ch == '`')
             && line[at - 1] != '`'
@@ -106,7 +106,7 @@ fn closing_run(line: &[char], from: usize, run: usize) -> Option<usize> {
 
 /// `maskCellCodeSpans`' `UNSAFE_LINE`, `/[[\]]|<(?!br\s*\/?>)/i`: a row whose
 /// code spans keep their whitespace unmasked.
-fn unsafe_for_code_mask(line: &str) -> bool {
+pub(super) fn unsafe_for_code_mask(line: &str) -> bool {
     if line.contains(['[', ']']) {
         return true;
     }

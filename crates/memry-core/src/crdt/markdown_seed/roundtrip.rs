@@ -75,7 +75,9 @@ fn inline(content: &[SeedInline]) -> Result<String, Unsupported> {
     for piece in content {
         match piece {
             SeedInline::HardBreak => out.push_str("\\\n"),
-            SeedInline::InlineImage { .. } => return Err(UNSERIALIZED),
+            SeedInline::InlineImage { .. } | SeedInline::HtmlComment { .. } => {
+                return Err(UNSERIALIZED);
+            }
             SeedInline::Text { text, marks } => {
                 // A backslash would make `normalizeSerializedMarkdown`'s
                 // break rewrite ambiguous.

@@ -5,6 +5,9 @@ use crate::domain::journal_rules::js_trim;
 
 use crate::domain::journal_rules::is_js_whitespace;
 
+use super::code_spans::keep_code_whitespace;
+use super::comment_nodes::{into_nodes, source_lines};
+use super::comments;
 use super::hard_breaks::{JOIN, mask_hard_breaks, restore_hard_break_spelling};
 use super::inline::{Html, holds_media, inline_content};
 use super::lift::lift_images;
@@ -26,7 +29,11 @@ pub(super) fn parse_chunk(
     if js_trim(chunk).is_empty() {
         return;
     }
-    let fenced = fence_indented_code(&escape_wiki_link_pipes_in_table_rows(chunk));
+    // `parseMarkdownToBlocksRepaired` masks its own text again: a chunk is
+    // trimmed and cut from the lines around it, so what it holds can differ.
+    let chunk = comments::mask(chunk).text;
+    let first_block = out.len();
+    let fenced = fence_indented_code(&escape_wiki_link_pipes_in_table_rows(&chunk));
     let (masked, breaks) = mask_hard_breaks(&fenced);
     let lines: Vec<&str> = masked.split('\n').collect();
     let mut list = ListState::default();
@@ -53,10 +60,9 @@ pub(super) fn parse_chunk(
                     .flat_map(|line| {
                         restore_hard_break_spelling(line, &breaks)
                             .split(JOIN)
-                            .map(|part| js_trim(part).to_owned())
+                            .flat_map(source_lines)
                             .collect::<Vec<_>>()
                     })
-                    .filter(|line| !line.is_empty())
                     .collect();
                 out.extend(kept.iter().map(|line| SeedBlock::literal(line)));
                 fallbacks.push(SeedFallback {
@@ -66,6 +72,7 @@ pub(super) fn parse_chunk(
             }
         }
     }
+    into_nodes(&mut out[first_block..]);
 }
 
 /// A top-level paragraph or heading, and the media blocks its images become:
@@ -76,9 +83,13 @@ fn text_block(
     content: &str,
     breaks: &[String],
 ) -> Result<Vec<SeedBlock>, Unsupported> {
-    let html = super::inline::parse(content)?;
+    let html = super::inline::parse(&keep_code_whitespace(content))?;
+    let paragraph = kind == SeedKind::Paragraph;
     if !holds_media(&html) {
-        return Ok(vec![SeedBlock::new(kind, block_content(html, breaks))]);
+        return Ok(vec![SeedBlock::new(
+            kind,
+            block_content(html, breaks, paragraph),
+        )]);
     }
     let lift_when_alone = kind != SeedKind::Paragraph;
     if let Some((text, media)) = lift_images(&html, lift_when_alone) {
@@ -86,18 +97,20 @@ fn text_block(
             // A video beside text, which desktop's parse drops.
             return Err(Unsupported("video beside text"));
         }
-        let mut blocks = vec![SeedBlock::new(kind, block_content(text, breaks))];
-        blocks.extend(media.iter().map(|found| media_block(found, breaks)));
+        let mut blocks = vec![SeedBlock::new(kind, block_content(text, breaks, paragraph))];
+        for found in &media {
+            blocks.push(media_block(found, breaks)?);
+        }
         return Ok(blocks);
     }
     let mut media = Vec::new();
     if lift_when_alone || !media_only(&html, &mut media) {
         return Err(Unsupported("media beside text"));
     }
-    Ok(media
+    media
         .into_iter()
         .map(|found| media_block(found, breaks))
-        .collect())
+        .collect()
 }
 
 /// Whether `nodes` hold only images, videos and whitespace, collecting the
@@ -189,7 +202,7 @@ fn convert(
             }
         }
     };
-    let content = inline_content(content, breaks)?;
+    let content = inline_content(content, breaks, false)?;
     // An empty `<p>` lets ProseMirror's fitting pull the first child up into
     // the item, or push it out beside it, depending on the item type.
     if content.is_empty() && nested_lists == 0 && !child_tokens.is_empty() {
@@ -206,10 +219,10 @@ fn convert_block(kind: &TokenKind, breaks: &[String]) -> Result<SeedBlock, Unsup
     let block = match kind {
         TokenKind::Heading { level, content } => SeedBlock::new(
             SeedKind::Heading { level: *level },
-            inline_content(content, breaks)?,
+            inline_content(content, breaks, false)?,
         ),
         TokenKind::Paragraph { content } => {
-            SeedBlock::new(SeedKind::Paragraph, inline_content(content, breaks)?)
+            SeedBlock::new(SeedKind::Paragraph, inline_content(content, breaks, true)?)
         }
         TokenKind::Code { language, code } => {
             // A token in a fence the mask did not see as one (a fence another
@@ -248,7 +261,7 @@ fn convert_block(kind: &TokenKind, breaks: &[String]) -> Result<SeedBlock, Unsup
                     kind: TokenKind::Paragraph { content },
                     ..
                 },
-            ] => SeedBlock::new(SeedKind::Quote, inline_content(content, breaks)?),
+            ] => SeedBlock::new(SeedKind::Quote, inline_content(content, breaks, false)?),
             _ => return Err(Unsupported("structured quote")),
         },
         TokenKind::Rule => SeedBlock::new(SeedKind::Divider, Vec::new()),
