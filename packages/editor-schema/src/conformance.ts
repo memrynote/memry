@@ -1385,6 +1385,10 @@ const htmlCommentCases: RoundtripCase[] = [
   { name: 'numbered item holding a box', markdown: '1. [ ]' },
   { name: 'empty to-do between two items', markdown: '- [ ]\n- [x]\n- b' },
   { name: 'empty heading', markdown: '#\n\nb' },
+  // The parser opens a heading only flush left, so an indented `#` is text,
+  // and the placeholder an empty heading line holds came out in it.
+  { name: 'indented hash alone', markdown: 'a\n\n #', canonical: 'a\n\n\\#' },
+  { name: 'indented hash after a hard break', markdown: 'a  \n #', canonical: 'a  \n\\#' },
   // The writer wrote a link whose text is its address as the bare address,
   // which reads back as text.
   { name: 'link whose text is its address', markdown: 'see [https://e.com](https://e.com)' },

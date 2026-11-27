@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 349,
+    "exportedCaseCount": 351,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 359,
+    "caseCount": 361,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -2322,6 +2322,20 @@
       "canonical": null,
       "pending": null,
       "sha256": "480d589c06d04fef4825adbdb49acb2fd54460f40b006d0a9812c71e9d958eb3"
+    },
+    {
+      "name": "indented hash alone",
+      "markdown": "a\n\n #",
+      "canonical": "a\n\n\\#",
+      "pending": null,
+      "sha256": "7cdef67ea55d68f28054629474827888181d5368cac456209364ed5588ac2005"
+    },
+    {
+      "name": "indented hash after a hard break",
+      "markdown": "a  \n #",
+      "canonical": "a  \n\\#",
+      "pending": null,
+      "sha256": "e5b52d60ecdbd96cd1b43fa3e1957e68404b586b0f094188162e0147885f662c"
     },
     {
       "name": "link whose text is its address",
