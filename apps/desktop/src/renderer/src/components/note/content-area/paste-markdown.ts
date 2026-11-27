@@ -2,7 +2,20 @@
 
 import { blockToNode, type Block, type BlockNoteEditor } from '@blocknote/core'
 import { Fragment, Slice, type Node as ProseMirrorNode, type ResolvedPos } from '@tiptap/pm/model'
-import { NodeSelection, Selection, type Transaction } from '@tiptap/pm/state'
+import {
+  AllSelection,
+  NodeSelection,
+  Selection,
+  TextSelection,
+  type EditorState,
+  type Transaction
+} from '@tiptap/pm/state'
+import {
+  getRelativeSelection,
+  relativePositionToAbsolutePosition,
+  ySyncPluginKey,
+  type ProsemirrorBinding
+} from 'y-prosemirror'
 import { createLogger } from '@/lib/logger'
 import { parseMarkdownPreservingBlanks } from './markdown-utils'
 import { normalizeNoteBlocks } from './normalize-note-blocks'
@@ -12,12 +25,33 @@ const log = createLogger('PasteMarkdown')
 type Editor = BlockNoteEditor<any, any, any>
 
 /**
+ * Past this, a paste stops waiting for the note parser and lands through
+ * BlockNote's. The note parser asks main for the note's path and for any
+ * pasted `![[image]]`, and a request main never answers would otherwise hold
+ * every later paste in the editor behind it.
+ */
+const NOTE_PARSE_TIMEOUT_MS = 5000
+
+/**
+ * The selection a paste was made in. A ProseMirror selection is mapped through
+ * every change to the document. A collaborative editor's is kept as Yjs
+ * relative positions instead, because y-prosemirror applies a synced edit by
+ * replacing the whole document, which maps any position inside it to the end.
+ */
+type PasteTarget =
+  | { kind: 'mapped'; selection: Selection }
+  | {
+      kind: 'synced'
+      binding: ProsemirrorBinding
+      selection: ReturnType<typeof getRelativeSelection>
+    }
+
+/**
  * A paste whose markdown is still being parsed, aimed at the selection it was
- * made in. The target is mapped through every change to the document, so the
- * paste lands where it was made, wherever the caret is by the time it lands.
+ * made in, so it lands there wherever the caret is by the time it lands.
  */
 interface PendingPaste {
-  target: Selection
+  target: PasteTarget
 }
 
 /**
@@ -77,7 +111,7 @@ function queuePaste(
   resolveNotePath?: () => Promise<string | undefined>
 ): void {
   const queue = queueFor(editor)
-  const paste: PendingPaste = { target: editor.prosemirrorState.selection }
+  const paste: PendingPaste = { target: captureTarget(editor.prosemirrorState) }
   queue.pending.push(paste)
   queue.last = queue.last.then(() => landPaste(editor, queue, paste, markdown, resolveNotePath))
 }
@@ -99,13 +133,15 @@ async function landPaste(
       return
     }
     if (blocks.length === 0) return
+    const state = editor.prosemirrorState
+    const target = resolveTarget(state, paste.target)
     // A paste made before this one landed, at the same caret, follows it
     // there, as it would have if this one had landed at once.
     const followers = queue.pending.filter(
-      (other) => other !== paste && other.target.eq(paste.target)
+      (other) => other !== paste && resolveTarget(state, other.target).eq(target)
     )
-    pasteBlocks(editor, blocks, paste.target)
-    for (const follower of followers) follower.target = editor.prosemirrorState.selection
+    pasteBlocks(editor, blocks, target)
+    for (const follower of followers) follower.target = captureTarget(editor.prosemirrorState)
   } catch (error) {
     log.error('Pasting markdown failed', { length: markdown.length, error })
   } finally {
@@ -120,7 +156,12 @@ function queueFor(editor: Editor): PasteQueue {
   editor._tiptapEditor.on('transaction', ({ transaction, appendedTransactions }) => {
     for (const tr of [transaction, ...appendedTransactions]) {
       if (!tr.docChanged) continue
-      for (const paste of queue.pending) paste.target = paste.target.map(tr.doc, tr.mapping)
+      for (const paste of queue.pending) {
+        const { target } = paste
+        if (target.kind === 'mapped') {
+          paste.target = { kind: 'mapped', selection: target.selection.map(tr.doc, tr.mapping) }
+        }
+      }
     }
   })
   queues.set(editor, queue)
@@ -132,16 +173,64 @@ async function parseNoteMarkdown(
   markdown: string,
   resolveNotePath?: () => Promise<string | undefined>
 ): Promise<Block<any, any, any>[]> {
-  try {
+  const parse = async (): Promise<Block<any, any, any>[]> => {
     const notePath = await resolveNotePath?.()
     return normalizeNoteBlocks(
       await parseMarkdownPreservingBlanks(editor, markdown, notePath),
       markdown
     )
-  } catch (error) {
-    log.error('Parsing pasted markdown as note blocks failed, using BlockNote parser', error)
-    return editor.tryParseMarkdownToBlocks(markdown)
   }
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(
+      () => reject(new Error(`no result after ${NOTE_PARSE_TIMEOUT_MS} ms`)),
+      NOTE_PARSE_TIMEOUT_MS
+    )
+  })
+  try {
+    return await Promise.race([parse(), timeout])
+  } catch (error) {
+    log.error('Parsing pasted markdown as note blocks failed, using BlockNote parser', {
+      length: markdown.length,
+      error
+    })
+    return editor.tryParseMarkdownToBlocks(markdown)
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+function captureTarget(state: EditorState): PasteTarget {
+  // y-prosemirror's plugin state is untyped; `binding` is the field it documents.
+  const binding: ProsemirrorBinding | undefined = ySyncPluginKey.getState(state)?.binding
+  return binding
+    ? { kind: 'synced', binding, selection: getRelativeSelection(binding, state) }
+    : { kind: 'mapped', selection: state.selection }
+}
+
+/** The target's selection in `state`, rebuilt as y-prosemirror rebuilds the caret after a synced edit. */
+function resolveTarget(state: EditorState, target: PasteTarget): Selection {
+  if (target.kind === 'mapped') return target.selection
+  const { binding, selection } = target
+  const { doc } = state
+  if (selection.type === 'all') return new AllSelection(doc)
+  const [anchor, head] = [selection.anchor, selection.head].map((position) => {
+    const pos = relativePositionToAbsolutePosition(
+      binding.doc,
+      binding.type,
+      position,
+      binding.mapping
+    )
+    return pos === null ? null : Math.min(pos, doc.content.size)
+  })
+  if (anchor == null || head == null) {
+    log.warn('The place a markdown paste was made is gone from the note; pasting at the caret')
+    return state.selection
+  }
+  if (selection.type === 'node' && doc.resolve(anchor).nodeAfter) {
+    return NodeSelection.create(doc, anchor)
+  }
+  return TextSelection.between(doc.resolve(anchor), doc.resolve(head))
 }
 
 /**
