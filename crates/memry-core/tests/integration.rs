@@ -30,6 +30,8 @@ mod api_attachment_fetch;
 mod api_inbox;
 #[path = "api_inbox_attachments.rs"]
 mod api_inbox_attachments;
+#[path = "api_inbox_suggest.rs"]
+mod api_inbox_suggest;
 #[path = "api_journal.rs"]
 mod api_journal;
 #[path = "api_note_attachment_queue.rs"]
@@ -359,6 +361,8 @@ mod header_tags_untrusted;
 mod http_client;
 #[path = "inbox_seed_sync.rs"]
 mod inbox_seed_sync;
+#[path = "inbox_suggest_vectors.rs"]
+mod inbox_suggest_vectors;
 #[path = "inbox_vectors.rs"]
 mod inbox_vectors;
 #[path = "journal_body.rs"]

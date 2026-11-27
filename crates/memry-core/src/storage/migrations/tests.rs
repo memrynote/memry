@@ -42,7 +42,7 @@ fn a_fresh_data_database_reaches_the_latest_version() {
     let version = db
         .call_blocking(|conn| user_version(conn))
         .expect("user_version");
-    assert_eq!(version, 42);
+    assert_eq!(version, 43);
 
     let names = table_names(&db);
     // Source of record, §A.2.
@@ -214,11 +214,36 @@ fn a_database_at_0041_gains_reminder_fires_at_0042() {
     assert!(!table_names(&db).iter().any(|n| n == "reminder_fires"));
 
     let version = db
-        .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
+        .call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..42]))
         .expect("step forward");
 
     assert_eq!(version, 42);
     assert!(table_names(&db).iter().any(|n| n == "reminder_fires"));
+}
+
+#[test]
+fn a_database_at_0042_gains_inbox_suggestion_feedback_at_0043() {
+    let db = Db::open_in_memory().expect("open");
+    let at_42 = db
+        .call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..42]))
+        .expect("migrate to 42");
+    assert_eq!(at_42, 42);
+    assert!(
+        !table_names(&db)
+            .iter()
+            .any(|n| n == "inbox_suggestion_feedback")
+    );
+
+    let version = db
+        .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
+        .expect("step forward");
+
+    assert_eq!(version, 43);
+    assert!(
+        table_names(&db)
+            .iter()
+            .any(|n| n == "inbox_suggestion_feedback")
+    );
 }
 
 #[test]

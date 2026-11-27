@@ -1,53 +1,21 @@
-import { X64_SETUP_NAME } from './release/vpk-args.mjs'
+import { TARGETS } from './release/vpk-args.mjs'
 
 export const releaseStepOrder = [
   'dispatch',
   'build',
   'download',
-  'sign-nsis',
-  'pack',
+  'pack-windows',
+  'bridge',
   'verify',
   'upload',
   'publish'
 ]
 
-// vpk's own default --exclude drops .pdb files; any value we pass replaces that default, so the
-// first alternative re-adds it. The second drops non-win32 prebuilds, which are ELF/Mach-O
-// binaries that Authenticode cannot sign.
-const vpkExcludePattern = '(\\.pdb$)|(prebuilds[\\\\/](?!win32-x64[\\\\/]))'
-
-const requiredCiAssets = [
-  { description: 'macOS arm64 DMG', matches: (name) => name.endsWith('-arm64.dmg') },
-  {
-    description: 'macOS x64 DMG',
-    matches: (name) => name.endsWith('.dmg') && !name.includes('arm64')
-  },
-  {
-    description: 'macOS ZIP',
-    matches: (name) => name.endsWith('.zip') && !name.endsWith('-win.zip')
-  },
-  { description: 'latest-mac.yml', matches: (name) => name === 'latest-mac.yml' },
-  {
-    description: 'Windows NSIS setup.exe',
-    matches: (name) => name.toLowerCase().endsWith('-setup.exe')
-  },
-  { description: 'Windows ZIP', matches: (name) => name.endsWith('-win.zip') },
-  { description: 'latest.yml', matches: (name) => name === 'latest.yml' },
-  { description: 'Linux AppImage', matches: (name) => name.endsWith('.AppImage') },
-  { description: 'Linux deb', matches: (name) => name.endsWith('.deb') }
-]
-
-const velopackAssetRoles = [
-  { key: 'setup', required: true },
-  { key: 'full', required: true },
-  { key: 'delta', required: false },
-  { key: 'releasesJson', required: true },
-  { key: 'releases', required: true }
-]
+// Marks a state file written by the Tauri pipeline. A state without it was written by the Electron
+// `pnpm release` (steps `sign-nsis` and `pack`, Electron artifacts), which this one cannot resume.
+const releasePipeline = 'tauri'
 
 const releaseMetadataStringFields = ['appVersion', 'tag', 'releaseName', 'draftTag', 'commitSha']
-
-const fullNupkgPattern = /^MemryNote-([^/]+)-full\.nupkg$/
 
 const inactiveTokenPattern =
   /CKR_USER_NOT_LOGGED_IN|CKR_TOKEN_NOT_PRESENT|no token present|CKR_DEVICE_ERROR/i
@@ -60,6 +28,7 @@ export function createReleaseState({ draftCreatedAt = null, draftTag }) {
     completed: [],
     draftCreatedAt,
     draftTag,
+    pipeline: releasePipeline,
     runId: null,
     tag: null
   }
@@ -84,8 +53,15 @@ export function parseReleaseState(raw, { draftCreatedAt = null, draftTag }) {
     return fresh
   }
 
-  if (!raw.completed.every((step) => releaseStepOrder.includes(step))) {
-    return fresh
+  if (
+    raw.pipeline !== releasePipeline ||
+    !raw.completed.every((step) => releaseStepOrder.includes(step))
+  ) {
+    const dir = `.release-state/${draftTag.replaceAll('/', '-')}`
+    throw new Error(
+      `${dir}/state.json was written by an older pnpm release (steps: ${raw.completed.join(', ') || 'none'}). ` +
+        `Remove ${dir} and rerun pnpm release.`
+    )
   }
 
   return {
@@ -93,6 +69,7 @@ export function parseReleaseState(raw, { draftCreatedAt = null, draftTag }) {
     completed: releaseStepOrder.filter((step) => raw.completed.includes(step)),
     draftCreatedAt: draftCreatedAt ?? toStringOrNull(raw.draftCreatedAt),
     draftTag,
+    pipeline: releasePipeline,
     runId: toStringOrNull(raw.runId),
     tag: toStringOrNull(raw.tag)
   }
@@ -122,6 +99,25 @@ export function clearStepsFrom(state, step) {
   return {
     ...state,
     completed: state.completed.filter((candidate) => releaseStepOrder.indexOf(candidate) < cutoff)
+  }
+}
+
+// The steps after `download`. A finished pack or bridge is kept on resume; verify, upload and
+// publish always run, since they check the staged bytes and the remote draft as they are now.
+const finishSteps = ['pack-windows', 'bridge', 'verify', 'upload', 'publish']
+const alwaysRun = new Set(['verify', 'upload', 'publish'])
+
+/**
+ * What `pnpm release` does after the download step, in order, and the state to continue from. A
+ * fresh download replaced the assets, so the packs and the feeds staged into them are redone. A
+ * release already published (a run that stopped after the publish call) is only marked done.
+ */
+export function planFinishSteps(state, { downloaded, published }) {
+  const next = markStepDone(downloaded ? clearStepsFrom(state, 'download') : state, 'download')
+  if (published) return { state: markStepDone(next, 'publish'), steps: [] }
+  return {
+    state: next,
+    steps: finishSteps.filter((step) => alwaysRun.has(step) || !isStepDone(next, step))
   }
 }
 
@@ -171,6 +167,8 @@ export function parseReleaseMetadata(raw) {
     problems.push('invalid releaseId')
   }
 
+  const windowsPayloads = parseWindowsPayloads(raw, problems)
+
   if (problems.length > 0) {
     throw new Error(`release-metadata.json is invalid: ${problems.join(', ')}`)
   }
@@ -181,93 +179,54 @@ export function parseReleaseMetadata(raw) {
     draftTag: raw.draftTag,
     releaseId: String(raw.releaseId).trim(),
     releaseName: raw.releaseName,
-    tag: raw.tag
+    tag: raw.tag,
+    windowsPayloads
   }
 }
 
-export function resolveUnpackedDir(archivePaths, { mainExe = 'Memrynote.exe' } = {}) {
-  const target = mainExe.toLowerCase()
-  const matches = archivePaths.filter((entry) => basename(entry).toLowerCase() === target)
-
-  if (matches.length === 0) {
-    throw new Error(`Archive contains no ${mainExe}`)
+/**
+ * The sha256 `build-windows` recorded for each payload zip it uploaded, by pack target, from
+ * `windowsPayloads: [{ name, sha256 }]`. The Mac packs only those bytes.
+ */
+function parseWindowsPayloads(raw, problems) {
+  if (!Array.isArray(raw.windowsPayloads)) {
+    problems.push(`${raw.windowsPayloads === undefined ? 'missing' : 'invalid'} windowsPayloads`)
+    return {}
   }
 
-  const shallowest = Math.min(...matches.map(entryDepth))
-  const dirs = matches.filter((entry) => entryDepth(entry) === shallowest).map(dirname)
+  const digests = {}
 
-  if (dirs.length > 1) {
-    const listed = [...dirs].toSorted((a, b) => (a < b ? -1 : a > b ? 1 : 0)).join(', ')
-    throw new Error(
-      `Archive contains ${dirs.length} ${mainExe} entries at the same depth: ${listed}`
-    )
+  // The zip names need the version; a bad appVersion is already reported.
+  if (isAbsent(raw.appVersion) || typeof raw.appVersion !== 'string') {
+    return digests
   }
 
-  return dirs[0]
+  for (const target of windowsTargets()) {
+    const name = payloadZipName(target, raw.appVersion)
+    const sha256 = raw.windowsPayloads.find((entry) => entry?.name === name)?.sha256
+
+    if (typeof sha256 === 'string' && /^[0-9a-f]{64}$/.test(sha256)) {
+      digests[target] = sha256
+    } else {
+      problems.push(`no sha256 for ${name} in windowsPayloads`)
+    }
+  }
+
+  return digests
 }
 
-export function buildVpkPackArgs({
-  packVersion,
-  packDir,
-  outputDir,
-  iconPath,
-  mainExe = 'Memrynote.exe',
-  packId = 'MemryNote',
-  packTitle = 'MemryNote',
-  packAuthors = 'memrynote',
-  runtime = 'win-x64',
-  signTemplate,
-  releaseNotesPath,
-  skipVeloAppCheck = false
-}) {
-  requireField(packVersion, 'packVersion')
-  requireField(packDir, 'packDir')
-  requireField(outputDir, 'outputDir')
-  requireField(iconPath, 'iconPath')
-
-  const args = [
-    '[win]',
-    'pack',
-    '--runtime',
-    runtime,
-    '--packId',
-    packId,
-    '--packVersion',
-    packVersion,
-    '--packDir',
-    packDir,
-    '--mainExe',
-    mainExe,
-    '--packTitle',
-    packTitle,
-    '--packAuthors',
-    packAuthors,
-    '--icon',
-    iconPath,
-    '--outputDir',
-    outputDir,
-    '--noPortable',
-    '--exclude',
-    vpkExcludePattern
-  ]
-
-  if (signTemplate) {
-    args.push('--signTemplate', signTemplate)
-  }
-
-  if (releaseNotesPath) {
-    args.push('--releaseNotes', releaseNotesPath)
-  }
-
-  if (skipVeloAppCheck) {
-    args.push('--skipVeloAppCheck')
-  }
-
-  return args
+/** The name `build-windows` in publish-release.yml zips the unsigned pack dir of `target` under. */
+export function payloadZipName(target, version) {
+  return `MemryNote-${version}-${target}-payload.zip`
 }
 
 const metadataArtifactPrefix = 'release-metadata-'
 
+/**
+ * The artifacts of a `publish-release.yml` run that `pnpm release` downloads: the staged macOS and
+ * Linux assets, the metadata, the release inputs (`release-notes.md`, `delta.json`) and the
+ * unsigned Windows payload zip of each Windows pack target.
+ */
 export function selectRunArtifacts(names) {
   const metadataArtifact = names.find((name) => name.startsWith(metadataArtifactPrefix))
 
@@ -277,59 +236,42 @@ export function selectRunArtifacts(names) {
 
   const appVersion = metadataArtifact.slice(metadataArtifactPrefix.length)
   const assetsArtifact = `memry-release-${appVersion}`
+  const inputsArtifact = `release-inputs-${appVersion}`
+  const payloadArtifacts = Object.fromEntries(
+    windowsTargets().map((target) => [target, `memry-windows-payload-${target}-${appVersion}`])
+  )
 
-  if (!names.includes(assetsArtifact)) {
-    throw new Error(`The workflow run uploaded no ${assetsArtifact} artifact`)
-  }
-
-  return { appVersion, assetsArtifact, metadataArtifact }
-}
-
-export function buildVelopackAssetNames(appVersion) {
-  requireField(appVersion, 'appVersion')
-
-  return {
-    delta: `MemryNote-${appVersion}-delta.nupkg`,
-    full: `MemryNote-${appVersion}-full.nupkg`,
-    releases: 'RELEASES',
-    releasesJson: 'releases.win.json',
-    // vpk-args.mjs owns the Setup name rule: vpk's own name is never published.
-    setup: X64_SETUP_NAME
-  }
-}
-
-export function collectUploadAssets({ appVersion, ciAssetNames, velopackAssetNames }) {
-  const names = buildVelopackAssetNames(appVersion)
-  // The Windows ZIP is only the payload vpk unpacks; it ships unsigned because the
-  // Certum key is not reachable from the CI runner, so uploading it hands users a
-  // SmartScreen-blocked portable build next to the signed installers. It stays a
-  // required staged artifact, it just never becomes a release asset.
-  const assets = ciAssetNames
-    .filter((name) => !name.endsWith('-win.zip'))
-    .map((name) => ({ name, source: 'ci' }))
-  const missing = requiredCiAssets
-    .filter((required) => !ciAssetNames.some((name) => required.matches(name)))
-    .map((required) => required.description)
-
-  for (const role of velopackAssetRoles) {
-    const name = names[role.key]
-
-    if (velopackAssetNames.includes(name)) {
-      assets.push({ name, source: 'velopack' })
-      continue
-    }
-
-    if (role.required) {
-      missing.push(name)
+  for (const name of [assetsArtifact, inputsArtifact, ...Object.values(payloadArtifacts)]) {
+    if (!names.includes(name)) {
+      throw new Error(`The workflow run uploaded no ${name} artifact`)
     }
   }
 
-  return { assets, missing }
+  return { appVersion, assetsArtifact, inputsArtifact, metadataArtifact, payloadArtifacts }
 }
 
-export function selectPreviousFullNupkgAsset(assetNames) {
+/** The Windows pack targets, which the Mac packs and signs. */
+export function windowsTargets() {
+  return Object.keys(TARGETS).filter((target) => TARGETS[target].os === 'win')
+}
+
+/**
+ * The full nupkg of `target`'s channel among a release's assets, and its version. Each channel
+ * has its own: `MemryNote-<V>-full.nupkg` for `win` (x64), `MemryNote-<V>-<channel>-full.nupkg`
+ * for the others. Versions (`YYYY.MDD.n`) hold no dash.
+ */
+export function selectPreviousFullNupkgAsset(assetNames, target) {
+  const { channel } = TARGETS[target] ?? {}
+
+  if (!channel) {
+    throw new Error(`Unknown pack target "${target}"`)
+  }
+
+  const suffix = channel === 'win' ? '' : `-${channel}`
+  const pattern = new RegExp(`^MemryNote-([^-/]+)${suffix}-full\\.nupkg$`)
+
   for (const name of assetNames) {
-    const match = fullNupkgPattern.exec(name)
+    const match = pattern.exec(name)
 
     if (match) {
       return { name, version: match[1] }
@@ -458,20 +400,6 @@ function isNumeric(value) {
   }
 
   return typeof value === 'string' && Number.isFinite(Number(value.trim()))
-}
-
-function basename(entry) {
-  return entry.slice(entry.lastIndexOf('/') + 1)
-}
-
-function dirname(entry) {
-  const index = entry.lastIndexOf('/')
-
-  return index === -1 ? '' : entry.slice(0, index)
-}
-
-function entryDepth(entry) {
-  return entry.split('/').length - 1
 }
 
 function createdAtTime(release) {
