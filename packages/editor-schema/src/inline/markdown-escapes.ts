@@ -213,9 +213,10 @@ function unclosedWikiOpeners(spelling: string): Set<number> {
 /**
  * Whether the newline at `at` sits where the writer has no spelling for it: at
  * the block's start or end, or in a run of three or more. A lone one opening a
- * paragraph is left to the writer, which drops it: a `<br>` opening a
- * paragraph line reads back as a hard break (`maskHardBreaks`). A mark's
- * delimiters do not count, since the writer moves them past the break.
+ * paragraph with more after it is left to the writer, which drops it: a `<br>`
+ * opening a paragraph line reads back as a hard break (`maskHardBreaks`). A
+ * paragraph of one break is `<br>` alone. A mark's delimiters do not count,
+ * since the writer moves them past the break.
  */
 function unwritableBreak(block: Spelling, at: number, paragraph: boolean): boolean {
   const { spelling, delimiters } = block
@@ -225,7 +226,7 @@ function unwritableBreak(block: Spelling, at: number, paragraph: boolean): boole
   let end = at + 1
   while (end < spelling.length && passes(end)) end++
   const run = spelling.slice(start, end).split('\n').length - 1
-  if (start === 0) return !paragraph || run > 1
+  if (start === 0) return !paragraph || run > 1 || end === spelling.length
   return end === spelling.length || run >= 3
 }
 
