@@ -54,13 +54,18 @@ The script runs these steps in order:
 
 1. Checks the signing session.
 2. Humanizes the draft release notes.
-3. Dispatches `publish-release.yml` and watches the run.
-4. Downloads the workflow artifacts.
-5. Packs and signs the Velopack package.
-6. Verifies both signatures with `osslsigncode`.
-7. Uploads every asset to the draft release.
-8. Publishes the draft release.
-9. Dispatches the Homebrew cask bump.
+3. Dispatches `publish-release.yml` and watches the run (`dispatch`, `build`).
+4. Downloads the staged assets, the release metadata, the release inputs and both Windows payload zips (`download`).
+5. Packs and signs the Windows x64 and arm64 Velopack packages (`pack-windows`). Each payload zip must match the sha256 that `release-metadata.json` records for it. It must not name a path outside its pack dir, and it must not unpack a symbolic link. The packs use the notes and the `--delta` from `release-inputs-<version>`, the same ones macOS and Linux used. A delta pack downloads the previous release's full package of its own channel. If `delta.json` asks for a delta and that package is missing from the previous release, the step stops before it signs anything. To recover, upload the missing `-full.nupkg` to the previous release (`gh release upload <previous tag> <file>`), then rerun `pnpm release`. If you still have that release's `.release-state/<draft>/assets`, the file is there. `--restart` does not help, because CI picks the delta from the previous release's `releases.<channel>.json`, not from its full package.
+6. Copies the signed `MemryNote-Setup-win-x64.exe` to `MemryNote-<version>-setup.exe` and writes the three bridge feeds from the staged bytes (`bridge`).
+7. Verifies the release before anything is uploaded (`verify`):
+   - The staged files are exactly the release asset set (`required-assets.mjs --set release`).
+   - Every file each feed lists matches its `sha512` and `size`. `latest.yml` lists only `MemryNote-<version>-setup.exe`, and that file is byte for byte the x64 Setup.
+   - Both Setups, the `-setup.exe` copy and every PE file in both full packages pass `osslsigncode` against the Certum chain. The exception is `third-party-signed.json`: the WebView2 bootstrapper must keep its pinned bytes and Microsoft's signature. Every file that starts with `MZ` must be a PE file. An archive under `lib/app` fails the step unless `finish-release.mjs` allow-lists it (`archivesWithoutCode`), because no check reads the PE files inside it.
+8. Deletes each draft asset that is not in the verified set, then uploads every verified asset (`upload`).
+9. Publishes the draft release (`publish`). Before it does, the draft's asset names, sizes and GitHub sha256 digests must equal the verified files. The rename from the draft tag to the release tag happens in the same call that publishes. If the release is already published, because a run stopped right after publishing, a rerun only marks it done.
+
+If publish refuses, the draft keeps its tag and stays a draft. Rerun `pnpm release`. It verifies again, deletes the stray assets, uploads the verified set to the same release (by id) and repeats the check. If the refusal says `the draft lists no sha256 digest`, GitHub omitted `digest` for that asset, and every rerun refuses the same way. In that case, compare each draft asset with `.release-state/<draft>/assets` by hand (`gh release download <draft tag> --dir <dir>` and `shasum -a 256`). Then publish with the values from `.release-state/<draft>/metadata/release-metadata.json`: `gh api --method PATCH repos/memrynote/memry/releases/<releaseId> -f tag_name=<tag> -f target_commitish=<commitSha> -f name=<releaseName> -F draft=false -f make_latest=true`. Rerun `pnpm release` after that: it sees the published release, marks it done and dispatches the Homebrew cask bump. 10. Dispatches the Homebrew cask bump.
 
 After the release is published, run `pnpm release:reddit -- --tag <tag>`. It prints a copy/paste-ready Reddit title and body.
 
@@ -70,36 +75,29 @@ Log in to SimplySign Desktop with the OTP from the phone app. The script opens S
 
 ## Resuming a failed release
 
-The script keeps its state under `.release-state/<draft-tag>/`, which is gitignored. Run the same command again to pick up where the script stopped. It does not re-dispatch a workflow run that already succeeded. To throw the state away and start over, pass `--restart`.
+The script keeps its state under `.release-state/<draft-tag>/`, which is gitignored. Run the same command again to pick up where the script stopped. It does not re-dispatch a workflow run that already succeeded. A fresh download of the artifacts redoes the Windows packs and the feeds. To throw the state away and start over, pass `--restart`. The script refuses a state written by the Electron `pnpm release` and names the directory to remove.
 
 ## What ships on Windows
 
-Both Windows installer families ship during the transition.
-
-The NSIS set keeps existing installs updating through electron-updater:
-
-- `MemryNote-<version>-setup.exe`
-- `latest.yml`
-- the blockmaps
-- `MemryNote-<version>-win.zip`
-
-The Velopack set is what new installs and the Velopack updater use:
+Each Windows target ships one Velopack set. The x64 target uses channel `win`, so Electron's Velopack installs find it:
 
 - `MemryNote-Setup-win-x64.exe`
 - `MemryNote-<version>-full.nupkg`
-- a `-delta.nupkg`, written only when the previous release's full package was available. The previous release is the newest published release that is not a prerelease, so build-input prereleases such as `ort-pod-*` are skipped
+- a `-delta.nupkg`, only when the previous release holds a Tauri package of the channel. The previous release is the newest published release that is not a prerelease, so build-input prereleases such as `ort-pod-*` are skipped
 - `releases.win.json`
 - `RELEASES`
 
-The NSIS assets stop shipping once telemetry shows that no NSIS installs remain.
+The arm64 target uses channel `win-arm64` and ships `MemryNote-win-arm64-Setup.exe`, `MemryNote-<version>-win-arm64-{full,delta}.nupkg`, `releases.win-arm64.json` and `RELEASES-win-arm64`.
+
+While `BRIDGES_WIN_LINUX` is on, Electron's NSIS installs update through `latest.yml`. It names `MemryNote-<version>-setup.exe`, a byte copy of the signed x64 Setup. The release has no NSIS installer, no `-win.zip` and no blockmaps.
 
 vpk names the Setup `MemryNote-win-Setup.exe`, and `pnpm release` renames it to
 `MemryNote-Setup-win-x64.exe` before signing is verified and anything is uploaded. Never upload a
 `MemryNote-win-Setup.exe`, not even by hand: NSIS builds v2026-09-12 to v2026-10-25 send a `HEAD`
 for that name on every update check, and on a `200` they download it and arm a hand-off whose
 script hangs, so they never update and download it again the next session. On a `404` they
-install the `latest.yml` NSIS installer, which carries the fixed hand-off. Releases up to
-v2026-10-25 keep the old name; the landing download and the smoke test accept both.
+install the `latest.yml` installer instead. Releases up to v2026-10-25 keep the old name; the
+landing download and the smoke test accept both.
 
 ## Downloads and the Homebrew cask
 
@@ -138,24 +136,9 @@ removes the vault. The generator's self-check runs in `pnpm test:release`
 
 ## Windows signing
 
-Both Windows installer families are Authenticode-signed with the Certum key, which
-lives in a hardware-backed cloud keystore your Mac reaches through SimplySign. CI
-cannot reach it, so CI never signs.
+Every Windows file of ours is Authenticode-signed with the Certum key, which lives in a hardware-backed cloud keystore your Mac reaches through SimplySign. CI cannot reach it, so CI never signs. `vpk --signTemplate` runs `scripts/sign-windows-binary.sh` on every file it packs. The script signs each PE file, skips other files, and skips the names in `scripts/release/third-party-signed.json`. The only listed file is Microsoft's WebView2 bootstrapper, which keeps Microsoft's signature.
 
-- the Velopack set is signed while it is packed, through `vpk --signTemplate`
-- the NSIS `MemryNote-<version>-setup.exe` is built unsigned on the CI Windows
-  runner and signed afterwards on your Mac, before anything is uploaded
-
-Signing rewrites the installer, so `pnpm release` also regenerates its `.blockmap`
-and rewrites the `sha512` and `size` in `latest.yml`. This is not optional:
-electron-updater refuses any download whose bytes do not match that digest, so a
-signed installer paired with the CI manifest would stop every remaining NSIS
-install from updating. All three move together in one step.
-
-Every signed artifact is then verified with `osslsigncode` against the Certum
-chain before upload — the Velopack `Setup.exe`, the packaged `Memrynote.exe`, and
-the NSIS installer. A verification failure aborts the release with nothing
-uploaded.
+`latest.yml` is written after signing, from the signed bytes, so electron-updater's `sha512` check matches the file it downloads. The `verify` step checks every signature and every feed digest again before upload. Any failure aborts the release with nothing uploaded.
 
 ## Diagnosing a failed NSIS to Velopack migration
 
