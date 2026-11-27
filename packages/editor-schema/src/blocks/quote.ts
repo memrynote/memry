@@ -169,6 +169,7 @@ export async function resolveQuoteRun(
   parseMarkdown: (markdown: string) => Promise<ParsedBlockShape[]>,
   serializeBlocks: (blocks: ParsedBlockShape[]) => Promise<string>
 ): Promise<{ content: unknown; children: ParsedBlockShape[] } | null> {
+  if (run.lossless) parseMarkdown = withItemBlocksAfterItems(parseMarkdown)
   const parsed = await parseMarkdown(run.innerMarkdown)
   const claimed = splitQuoteBlocks(parsed, run.lossless)
   if (!claimed) return null
@@ -188,13 +189,42 @@ const LIST_BLOCKS = new Set<unknown>(['bulletListItem', 'numberedListItem', 'che
 /**
  * A list item that owns a block other than a list item. The writer spells that
  * child with nesting markers, which no parse reads back inside a quote, so
- * `> - x\n>   y` would grow on every save.
+ * `> - x\n>   y` would grow on every save. A lossless read moves those blocks
+ * out instead (`withItemBlocksAfterItems`); a legacy read declines the run.
  */
 export function itemHoldsNonList(block: ParsedBlockShape): boolean {
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- ParsedBlockShape.children is unknown[] (shared with the parse path); a block's children are blocks
   const children = (block.children ?? []) as ParsedBlockShape[]
   if (!LIST_BLOCKS.has(block.type)) return false
   return children.some((child) => !LIST_BLOCKS.has(child.type) || itemHoldsNonList(child))
+}
+
+/**
+ * `parseMarkdown` with every block a list item owns that is not a list item
+ * moved out to follow the item's top-level list item, in order. Declining the
+ * run instead flattens the whole list, and with it the image a list item's
+ * text held: `> - a ![i](u) b` keeps its list and settles as
+ * `> - a b\n>\n> ![i](u)`.
+ */
+export function withItemBlocksAfterItems(
+  parseMarkdown: (markdown: string) => Promise<ParsedBlockShape[]>
+): (markdown: string) => Promise<ParsedBlockShape[]> {
+  const itemsOnly = (item: ParsedBlockShape, after: ParsedBlockShape[]): ParsedBlockShape => {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- ParsedBlockShape.children is unknown[] (shared with the parse path); a block's children are blocks
+    const children = (item.children ?? []) as ParsedBlockShape[]
+    const items: ParsedBlockShape[] = []
+    for (const child of children) {
+      if (LIST_BLOCKS.has(child.type)) items.push(itemsOnly(child, after))
+      else after.push(child)
+    }
+    return { ...item, children: items }
+  }
+  return async (markdown) =>
+    (await parseMarkdown(markdown)).flatMap((block) => {
+      if (!LIST_BLOCKS.has(block.type)) return [block]
+      const after: ParsedBlockShape[] = []
+      return [itemsOnly(block, after), ...after]
+    })
 }
 
 /**

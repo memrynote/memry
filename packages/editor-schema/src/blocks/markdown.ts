@@ -20,7 +20,12 @@ import { BLOCK_COLORS_LINE_REGEX } from '@memry/shared/block-colors'
 import { createFenceTracker } from '@memry/shared/markdown-fences'
 import { extractYouTubeVideoId } from '@memry/shared/youtube'
 import { isCalloutTypeName } from './callout-types.ts'
-import { itemHoldsNonList, readStructuredQuoteRun, serializeQuoteBlock } from './quote.ts'
+import {
+  itemHoldsNonList,
+  readStructuredQuoteRun,
+  serializeQuoteBlock,
+  withItemBlocksAfterItems
+} from './quote.ts'
 
 // ---------------------------------------------------------------------------
 // callout — `> [!type]` followed by the content, one `> ` per line
@@ -108,6 +113,8 @@ export interface CalloutRun {
    * or a `> >` level.
    */
   reshapes: boolean
+  /** Read as this build reads callouts, see `QuoteRun.lossless`. */
+  lossless: boolean
 }
 
 /**
@@ -146,7 +153,8 @@ export function readCalloutRun(
         raw: lines.slice(start, structured.end).join('\n'),
         end: structured.end,
         bare: false,
-        reshapes: lossless || structured.listed || structured.nested
+        reshapes: lossless || structured.listed || structured.nested,
+        lossless
       }
     }
     const contentLines: string[] = []
@@ -165,7 +173,8 @@ export function readCalloutRun(
       raw: lines.slice(start, end).join('\n'),
       end,
       bare: false,
-      reshapes: false
+      reshapes: false,
+      lossless
     }
   }
 
@@ -185,7 +194,8 @@ export function readCalloutRun(
       raw: lines.slice(start, end).join('\n'),
       end,
       bare: true,
-      reshapes: false
+      reshapes: false,
+      lossless
     }
   }
 
@@ -226,6 +236,7 @@ export async function resolveCalloutRun(
 ): Promise<ResolvedCallout | null> {
   const content = run.contentLines.join('\n')
   if (content === '') return { type: run.type, fold: run.fold, content: [], children: [] }
+  if (run.lossless) parseMarkdown = withItemBlocksAfterItems(parseMarkdown)
 
   const body = await parseCalloutBody(content, parseMarkdown, serializeBlocks)
   if (!body) return null

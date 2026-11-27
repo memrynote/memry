@@ -306,17 +306,18 @@ function restoreStringProps(node: BlockLike, restore: (value: string) => string)
  * treatment.
  *
  * `htmlComments: false` parses as builds before #2741 did, dropping every
- * comment, and `losslessTables: false` as builds before lossless tables did,
- * splitting a row on a code span's pipe and cutting it to its header's width,
- * for reading a source the way an older build read it.
+ * comment, and `losslessBlocks: false` as builds before lossless blocks did,
+ * splitting a table row on a code span's pipe, cutting it to its header's
+ * width and dropping a list item's images, for reading a source the way an
+ * older build read it.
  */
 export async function parseMarkdownToBlocksRepaired<T>(
   editor: MarkdownParsingEditor,
   markdown: string,
   {
     htmlComments = true,
-    losslessTables = true
-  }: { htmlComments?: boolean; losslessTables?: boolean } = {}
+    losslessBlocks = true
+  }: { htmlComments?: boolean; losslessBlocks?: boolean } = {}
 ): Promise<T[]> {
   // A `[[target|alias]]` already in a vault table has to be escaped before the
   // parse or 0.51's table parser splits the row on it and drops the alias.
@@ -324,7 +325,9 @@ export async function parseMarkdownToBlocksRepaired<T>(
   // HTML comments come off first, as one token each (AF-015). The callers that
   // split a note into blocks before this mask them already; a caller that
   // hands in raw markdown (paste, a template) gets the same treatment here.
-  const commentsMasked = htmlComments ? maskHtmlComments(markdown, { losslessTables }) : markdown
+  const commentsMasked = htmlComments
+    ? maskHtmlComments(markdown, { losslessTables: losslessBlocks })
+    : markdown
   const source = fenceIndentedCodeBlocks(escapeWikiLinkPipesInTableRows(commentsMasked))
   // A hard break and a soft break now parse to the same single newline, so the
   // hard one is marked to keep them apart.
@@ -337,10 +340,10 @@ export async function parseMarkdownToBlocksRepaired<T>(
   // A table cell collapses the whitespace in its code spans, and a row splits
   // on the pipes in them.
   const { markdown: codeMasked, chars: codeChars } = maskCellCodeSpans(tokensMasked, {
-    pipes: losslessTables
+    pipes: losslessBlocks
   })
   // A row wider than its table's header keeps its extra cells.
-  const withTokensMasked = losslessTables ? widenTables(codeMasked) : codeMasked
+  const withTokensMasked = losslessBlocks ? widenTables(codeMasked) : codeMasked
 
   // BlockNote parses markdown by way of this same HTML, so the detour changes
   // nothing but the lifted images and the code in link text, and a note with
@@ -350,7 +353,7 @@ export async function parseMarkdownToBlocksRepaired<T>(
     linkCode || /!\[|<img\b/i.test(withTokensMasked) ? markdownToHTML(withTokensMasked) : null
   const lifted =
     html !== null && /!\[|<img\b/i.test(withTokensMasked)
-      ? (liftImagesOutOfTextBlocks(html) ?? html)
+      ? (liftImagesOutOfTextBlocks(html, losslessBlocks) ?? html)
       : html
   const repaired = lifted === null ? null : linkCodeAsText(lifted)
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the parsing editor returns unknown[]; BlockNote's blocks are what BlockLike describes, and repairBlocks only reads the fields it declares
