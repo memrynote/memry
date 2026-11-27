@@ -401,6 +401,7 @@ fn open_last_vault(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     register_uploads(app, &session);
     register_task_defaults(app, &session);
     crate::ml_worker::register(app, &session);
+    crate::reminders::register(app, &session);
     crate::commands::calendar_ics::register(app, &session);
     // Subscribed before the first open, so the launch's own events reach the renderer's
     // listeners; the renderer reads `status()` once after it subscribes.

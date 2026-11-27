@@ -29,42 +29,12 @@ import type {
   BookmarkListResponse,
   BookmarkToggleResponse
 } from '@memry/contracts/bookmarks-api'
-
-// ============================================================================
-// Bookmarks Service
-// ============================================================================
-
-const bookmarksService = {
-  list: async (options?: {
-    itemType?: string
-    sortBy?: 'position' | 'createdAt'
-    sortOrder?: 'asc' | 'desc'
-    limit?: number
-    offset?: number
-  }): Promise<BookmarkListResponse> => {
-    return window.api.bookmarks.list(options)
-  },
-
-  listByType: async (itemType: string): Promise<BookmarkListResponse> => {
-    return window.api.bookmarks.listByType(itemType)
-  },
-
-  toggle: async (input: { itemType: string; itemId: string }): Promise<BookmarkToggleResponse> => {
-    return window.api.bookmarks.toggle(input)
-  },
-
-  isBookmarked: async (input: { itemType: string; itemId: string }): Promise<boolean> => {
-    return window.api.bookmarks.isBookmarked(input)
-  },
-
-  delete: async (id: string): Promise<{ success: boolean; error?: string }> => {
-    return window.api.bookmarks.delete(id)
-  },
-
-  reorder: async (bookmarkIds: string[]): Promise<{ success: boolean; error?: string }> => {
-    return window.api.bookmarks.reorder(bookmarkIds)
-  }
-}
+import {
+  bookmarksService,
+  onBookmarkCreated,
+  onBookmarkDeleted,
+  onBookmarksReordered
+} from '@/services/bookmarks-service'
 
 // ============================================================================
 // Hook
@@ -376,32 +346,33 @@ export function useBookmarks(options: UseBookmarksOptions = {}): UseBookmarksRet
 
   // Subscribe to bookmark events
   useEffect(() => {
-    const unsubCreated = window.api.onBookmarkCreated?.(() => {
+    const unsubCreated = onBookmarkCreated(() => {
       // Refresh to get the full bookmark with resolved item
       void refresh()
     })
 
     // Only sync emits UPDATED: an inbound merge changed an existing row's
     // position (a reorder done on another device). Refresh to pick up the order.
+    // Inbound sync events are not ported yet, so this stays on the shim.
     const unsubUpdated = window.api.onBookmarkUpdated?.(() => {
       void refresh()
     })
 
-    const unsubDeleted = window.api.onBookmarkDeleted?.((event) => {
+    const unsubDeleted = onBookmarkDeleted((event) => {
       setBookmarks((prev) => prev.filter((b) => b.id !== event.id))
       setTotal((prev) => Math.max(0, prev - 1))
     })
 
-    const unsubReordered = window.api.onBookmarksReordered?.(() => {
+    const unsubReordered = onBookmarksReordered(() => {
       // Refresh to get new order
       void refresh()
     })
 
     return () => {
-      unsubCreated?.()
+      unsubCreated()
       unsubUpdated?.()
-      unsubDeleted?.()
-      unsubReordered?.()
+      unsubDeleted()
+      unsubReordered()
     }
   }, [refresh])
 
@@ -442,7 +413,7 @@ export function useIsBookmarked(itemType: string, itemId: string) {
 
     setIsLoading(true)
     try {
-      const result = await window.api.bookmarks.isBookmarked({ itemType, itemId })
+      const result = await bookmarksService.isBookmarked({ itemType, itemId })
       setIsBookmarked(result)
     } catch {
       setIsBookmarked(false)
@@ -453,7 +424,7 @@ export function useIsBookmarked(itemType: string, itemId: string) {
 
   const toggle = useCallback(async (): Promise<boolean> => {
     try {
-      const result = await window.api.bookmarks.toggle({ itemType, itemId })
+      const result = await bookmarksService.toggle({ itemType, itemId })
       setIsBookmarked(result.isBookmarked)
       return result.isBookmarked
     } catch {
@@ -471,7 +442,7 @@ export function useIsBookmarked(itemType: string, itemId: string) {
     // says whether it concerns this item. Sync sends only `{ id }` for inbound
     // changes — nothing to compare against — so fall back to asking the main
     // process, otherwise the star icon silently keeps the pre-sync state.
-    const unsubCreated = window.api.onBookmarkCreated?.((event) => {
+    const unsubCreated = onBookmarkCreated((event) => {
       if (!event?.bookmark) {
         void checkBookmark()
         return
@@ -481,7 +452,7 @@ export function useIsBookmarked(itemType: string, itemId: string) {
       }
     })
 
-    const unsubDeleted = window.api.onBookmarkDeleted?.((event) => {
+    const unsubDeleted = onBookmarkDeleted((event) => {
       if (!event?.itemType && !event?.itemId) {
         void checkBookmark()
         return
@@ -492,8 +463,8 @@ export function useIsBookmarked(itemType: string, itemId: string) {
     })
 
     return () => {
-      unsubCreated?.()
-      unsubDeleted?.()
+      unsubCreated()
+      unsubDeleted()
     }
   }, [checkBookmark, itemType, itemId])
 

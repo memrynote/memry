@@ -10,9 +10,11 @@ vi.mock('@/contexts/tabs', () => ({
   useActiveTab: () => activeTab.current
 }))
 
-import { useRecordRecentlyOpened } from './use-recently-opened'
+const record = vi.hoisted(() => vi.fn())
 
-const record = vi.fn().mockResolvedValue({ recorded: true })
+vi.mock('@/services/recents-service', () => ({ recentsService: { record } }))
+
+import { useRecordRecentlyOpened } from './use-recently-opened'
 
 function wrapper({ children }: { children: React.ReactNode }): React.JSX.Element {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -22,10 +24,9 @@ function wrapper({ children }: { children: React.ReactNode }): React.JSX.Element
 describe('useRecordRecentlyOpened', () => {
   beforeEach(() => {
     vi.useFakeTimers()
-    record.mockClear()
+    record.mockReset()
+    record.mockResolvedValue({ recorded: true })
     activeTab.current = null
-    // @ts-expect-error partial window.api for this hook only
-    window.api = { recents: { record } }
   })
 
   afterEach(() => {
