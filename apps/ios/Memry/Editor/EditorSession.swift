@@ -490,9 +490,7 @@ final class EditorSession {
         if let field {
             focusMemory.forget()
             self.field = field
-            focusedKind = field.block.kind
-            focusedLevel = field.value("level").flatMap(Int.init)
-            focusedProps = Dictionary(field.block.props.map { ($0.name, $0.value) }) { $1 }
+            readFocusedBlock(of: field)
             selectionChanged(in: field)
         } else {
             if panel != .none {
@@ -510,6 +508,18 @@ final class EditorSession {
             tagTrigger = nil
             tagSuggestions = []
         }
+    }
+
+    /// The type, level and props the toolbar shows, from the block the
+    /// focused row holds: as it takes the caret, and as it takes a new read
+    /// of its block. An undo, a redo or another pane's edit can change the
+    /// type under a row that keeps its text view (a bullet to a numbered
+    /// item, one heading level to another).
+    func readFocusedBlock(of field: BlockField) {
+        guard field === self.field else { return }
+        focusedKind = field.block.kind
+        focusedLevel = field.value("level").flatMap(Int.init)
+        focusedProps = Dictionary(field.block.props.map { ($0.name, $0.value) }) { $1 }
     }
 
     /// A key about to replace `range` with `text`: one that types a trigger
