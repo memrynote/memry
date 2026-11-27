@@ -1,4 +1,5 @@
-//! Reminder events of the scheduler (Step 21f, #3538). They carry ids and small hints only: the
+//! Reminder events of the scheduler (Step 21f) and the reminder commands (Step 21f2, #3538).
+//! They carry ids and small hints only: the
 //! renderer's consumers read `targetType` and `targetId` (`use-triggered-date-pills.ts`,
 //! `use-reminders.ts` `eventMatchesTarget`) and fetch the reminder by id when they need it.
 
@@ -27,6 +28,36 @@ impl ReminderHint {
 #[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
 pub struct ReminderDueEvent {
     pub reminders: Vec<ReminderHint>,
+}
+
+/// A reminder command created this reminder.
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+pub struct ReminderCreatedEvent {
+    pub reminder: ReminderHint,
+}
+
+/// A reminder command changed this reminder's time, title or note.
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+pub struct ReminderUpdatedEvent {
+    pub reminder: ReminderHint,
+}
+
+/// A reminder command deleted this reminder.
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+pub struct ReminderDeletedEvent {
+    pub reminder: ReminderHint,
+}
+
+/// A reminder command dismissed this reminder.
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+pub struct ReminderDismissedEvent {
+    pub reminder: ReminderHint,
+}
+
+/// A reminder command snoozed this reminder.
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+pub struct ReminderSnoozedEvent {
+    pub reminder: ReminderHint,
 }
 
 /// The user clicked a reminder notification.

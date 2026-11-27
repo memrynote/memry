@@ -1,0 +1,350 @@
+{
+  "source": "apple-journal",
+  "cases": [
+    {
+      "name": "sample",
+      "sources": [
+        "entry-1.html",
+        "index.html",
+        "entry-2.html",
+        "no-date.html"
+      ],
+      "exactCreated": true,
+      "timeline": [
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": "",
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing entry-1.html",
+            "params": {
+              "title": "entry-1.html"
+            }
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": null,
+          "title": "2024-11-03",
+          "folder": "Apple Journal",
+          "tags": [],
+          "properties": [
+            [
+              "date",
+              "2024-11-03"
+            ],
+            [
+              "Location",
+              true
+            ],
+            [
+              "location",
+              true
+            ],
+            [
+              "Hyde Park, London",
+              true
+            ]
+          ],
+          "created": "2024-11-03",
+          "modified": null,
+          "content": "A beautiful autumn day. Went for a long walk in the park.\n\nNoticed the leaves turning gold and red. Perfect weather.\n\n> What are you grateful for today?"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing entry-1.html",
+            "params": {
+              "title": "entry-1.html"
+            }
+          },
+          "imported": 1,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing entry-1.html",
+            "params": {
+              "title": "entry-1.html"
+            }
+          },
+          "imported": 1,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 1,
+          "total": 4,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing entry-1.html",
+            "params": {
+              "title": "entry-1.html"
+            }
+          },
+          "imported": 1,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 1,
+          "total": 4,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing entry-1.html",
+            "params": {
+              "title": "entry-1.html"
+            }
+          },
+          "imported": 1,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 2,
+          "total": 4,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing entry-2.html",
+            "params": {
+              "title": "entry-2.html"
+            }
+          },
+          "imported": 1,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 2,
+          "total": 4,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": null,
+          "title": "2024-11-04",
+          "folder": "Apple Journal",
+          "tags": [],
+          "properties": [
+            [
+              "date",
+              "2024-11-04"
+            ]
+          ],
+          "created": "2024-11-04",
+          "modified": null,
+          "content": "Short entry today. Busy with work."
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing entry-2.html",
+            "params": {
+              "title": "entry-2.html"
+            }
+          },
+          "imported": 2,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 2,
+          "total": 4,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing entry-2.html",
+            "params": {
+              "title": "entry-2.html"
+            }
+          },
+          "imported": 2,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 3,
+          "total": 4,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing no-date.html",
+            "params": {
+              "title": "no-date.html"
+            }
+          },
+          "imported": 2,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 3,
+          "total": 4,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": null,
+          "title": "no-date",
+          "folder": "Apple Journal",
+          "tags": [],
+          "properties": [
+            [
+              "12",
+              true
+            ],
+            [
+              "workout",
+              true
+            ],
+            [
+              "location",
+              true
+            ]
+          ],
+          "created": null,
+          "modified": null,
+          "content": "First spansecond span\n\nnested\n\nnested"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing no-date.html",
+            "params": {
+              "title": "no-date.html"
+            }
+          },
+          "imported": 3,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 3,
+          "total": 4,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing no-date.html",
+            "params": {
+              "title": "no-date.html"
+            }
+          },
+          "imported": 3,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 4,
+          "total": 4,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "done",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing no-date.html",
+            "params": {
+              "title": "no-date.html"
+            }
+          },
+          "imported": 3,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 4,
+          "total": 4,
+          "done": true,
+          "summary": {
+            "imported": 3,
+            "attachments": 0,
+            "skipped": 1,
+            "failed": [],
+            "skippedReasons": [
+              {
+                "reason": "index file",
+                "count": 1
+              }
+            ]
+          }
+        }
+      ],
+      "summary": {
+        "imported": 3,
+        "attachments": 0,
+        "skipped": 1,
+        "failed": [],
+        "skippedReasons": [
+          {
+            "reason": "index file",
+            "count": 1
+          }
+        ]
+      }
+    }
+  ]
+}

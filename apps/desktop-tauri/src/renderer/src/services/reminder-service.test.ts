@@ -1,128 +1,180 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { createMockApi } from '@tests/setup-dom'
 import {
   reminderService,
-  createNoteReminder,
   createJournalReminder,
-  onReminderCreated,
-  onReminderUpdated,
+  onReminderClicked,
   onReminderDeleted,
-  onReminderDue,
-  onReminderDismissed,
-  onReminderSnoozed
+  onReminderDue
 } from './reminder-service'
 
+const commands = vi.hoisted(() => ({
+  reminderCreate: vi.fn(),
+  reminderUpdate: vi.fn(),
+  reminderDelete: vi.fn(),
+  reminderGet: vi.fn(),
+  reminderList: vi.fn(),
+  reminderGetUpcoming: vi.fn(),
+  reminderGetDue: vi.fn(),
+  reminderGetForTarget: vi.fn(),
+  reminderCountPending: vi.fn(),
+  reminderDismiss: vi.fn(),
+  reminderSnooze: vi.fn(),
+  reminderBulkDismiss: vi.fn()
+}))
+type Handler = (event: { payload: unknown }) => void
+const handlers = vi.hoisted(() => new Map<string, Handler>())
+const events = vi.hoisted(() => {
+  const event = (name: string) => ({
+    listen: vi.fn((handler: Handler) => {
+      handlers.set(name, handler)
+      return Promise.resolve(() => handlers.delete(name))
+    })
+  })
+  return {
+    reminderCreatedEvent: event('created'),
+    reminderUpdatedEvent: event('updated'),
+    reminderDeletedEvent: event('deleted'),
+    reminderDismissedEvent: event('dismissed'),
+    reminderSnoozedEvent: event('snoozed'),
+    reminderDueEvent: event('due'),
+    reminderClickedEvent: event('clicked')
+  }
+})
+
+vi.mock('../../../generated/bindings', () => ({ commands, events }))
+
+const view = {
+  id: 'rem_1',
+  targetType: 'journal',
+  targetId: '2026-03-20',
+  remindAt: '2026-03-20T09:00:00.000Z',
+  anchorId: null,
+  highlightText: null,
+  highlightStart: null,
+  highlightEnd: null,
+  title: null,
+  note: null,
+  status: 'triggered',
+  triggeredAt: '2026-03-20T09:00:01.000Z',
+  dismissedAt: null,
+  snoozedUntil: null,
+  createdAt: '2026-03-20T08:00:00.000Z',
+  modifiedAt: '2026-03-20T08:00:00.000Z'
+}
+const withTarget = { ...view, targetTitle: '2026-03-20', targetExists: true, highlightExists: null }
+const hint = { id: 'rem_1', targetType: 'journal', targetId: '2026-03-20' }
+
+/** Lets the event's read-back settle. */
+const settle = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0))
+
+beforeEach(() => {
+  for (const command of Object.values(commands)) command.mockReset()
+  handlers.clear()
+})
+
 describe('reminder-service', () => {
-  let api: any
+  it('answers a write with the reminder, as Electron does', async () => {
+    commands.reminderCreate.mockResolvedValue(view)
 
-  beforeEach(() => {
-    api = createMockApi()
-    api.reminders.get = vi.fn().mockResolvedValue(null)
-    api.reminders.getUpcoming = vi
-      .fn()
-      .mockResolvedValue({ reminders: [], total: 0, hasMore: false })
-    api.reminders.getDue = vi.fn().mockResolvedValue([])
-    api.reminders.getForTarget = vi.fn().mockResolvedValue([])
-    api.reminders.countPending = vi.fn().mockResolvedValue(0)
-    api.reminders.bulkDismiss = vi.fn().mockResolvedValue({ success: true, dismissedCount: 0 })
+    const created = await createJournalReminder('2026-03-20', '2026-03-20T09:00:00.000Z')
 
-    api.onReminderCreated = vi.fn().mockReturnValue(() => {})
-    api.onReminderUpdated = vi.fn().mockReturnValue(() => {})
-    api.onReminderDeleted = vi.fn().mockReturnValue(() => {})
-    api.onReminderDue = vi.fn().mockReturnValue(() => {})
-    api.onReminderDismissed = vi.fn().mockReturnValue(() => {})
-    api.onReminderSnoozed = vi.fn().mockReturnValue(() => {})
-    ;(window as Window & { api: unknown }).api = api
-  })
-
-  it('forwards reminder CRUD and query operations', async () => {
-    api.reminders.create = vi.fn().mockResolvedValue({ success: true })
-    api.reminders.update = vi.fn().mockResolvedValue({ success: true })
-    api.reminders.delete = vi.fn().mockResolvedValue({ success: true })
-    api.reminders.list = vi.fn().mockResolvedValue({ reminders: [], total: 0, hasMore: false })
-    api.reminders.dismiss = vi.fn().mockResolvedValue({ success: true })
-    api.reminders.snooze = vi.fn().mockResolvedValue({ success: true })
-
-    await reminderService.create({ targetType: 'note', targetId: 'note-1', remindAt: '2025-01-01' })
-    expect(api.reminders.create).toHaveBeenCalledWith({
-      targetType: 'note',
-      targetId: 'note-1',
-      remindAt: '2025-01-01'
-    })
-
-    await reminderService.update({ id: 'rem-1', title: 'Update' })
-    expect(api.reminders.update).toHaveBeenCalledWith({ id: 'rem-1', title: 'Update' })
-
-    await reminderService.delete('rem-1')
-    expect(api.reminders.delete).toHaveBeenCalledWith('rem-1')
-
-    await reminderService.list({ status: 'pending' })
-    expect(api.reminders.list).toHaveBeenCalledWith({ status: 'pending' })
-
-    await reminderService.get('rem-2')
-    expect(api.reminders.get).toHaveBeenCalledWith('rem-2')
-
-    await reminderService.getUpcoming(3)
-    expect(api.reminders.getUpcoming).toHaveBeenCalledWith(3)
-
-    await reminderService.getDue()
-    expect(api.reminders.getDue).toHaveBeenCalled()
-
-    await reminderService.getForTarget('note', 'note-1')
-    expect(api.reminders.getForTarget).toHaveBeenCalledWith({
-      targetType: 'note',
-      targetId: 'note-1'
-    })
-
-    await reminderService.countPending()
-    expect(api.reminders.countPending).toHaveBeenCalled()
-
-    await reminderService.dismiss('rem-3')
-    expect(api.reminders.dismiss).toHaveBeenCalledWith('rem-3')
-
-    await reminderService.snooze({ id: 'rem-4', snoozeUntil: '2025-01-02' })
-    expect(api.reminders.snooze).toHaveBeenCalledWith({ id: 'rem-4', snoozeUntil: '2025-01-02' })
-
-    await reminderService.bulkDismiss(['rem-5', 'rem-6'])
-    expect(api.reminders.bulkDismiss).toHaveBeenCalledWith({ reminderIds: ['rem-5', 'rem-6'] })
-  })
-
-  it('builds convenience reminder payloads', async () => {
-    api.reminders.create = vi.fn().mockResolvedValue({ success: true })
-
-    await createNoteReminder('note-1', '2025-01-01', { title: 'Check', note: 'Note' })
-    expect(api.reminders.create).toHaveBeenCalledWith({
-      targetType: 'note',
-      targetId: 'note-1',
-      remindAt: '2025-01-01',
-      title: 'Check',
-      note: 'Note'
-    })
-
-    await createJournalReminder('2025-01-02', '2025-01-03')
-    expect(api.reminders.create).toHaveBeenCalledWith({
+    expect(commands.reminderCreate).toHaveBeenCalledWith({
       targetType: 'journal',
-      targetId: '2025-01-02',
-      remindAt: '2025-01-03',
+      targetId: '2026-03-20',
+      remindAt: '2026-03-20T09:00:00.000Z',
       title: undefined,
       note: undefined
     })
+    expect(created).toEqual({ success: true, reminder: view })
   })
 
-  it('registers reminder event subscriptions', () => {
-    const unsubscribe = vi.fn()
-    api.onReminderCreated = vi.fn(() => unsubscribe)
-    api.onReminderUpdated = vi.fn(() => unsubscribe)
-    api.onReminderDeleted = vi.fn(() => unsubscribe)
-    api.onReminderDue = vi.fn(() => unsubscribe)
-    api.onReminderDismissed = vi.fn(() => unsubscribe)
-    api.onReminderSnoozed = vi.fn(() => unsubscribe)
+  it('answers a refused write with its message, as Electron withErrorHandler does', async () => {
+    const notFound = { kind: 'notFound', code: 'reminder_not_found', message: 'Reminder not found' }
+    commands.reminderDismiss.mockRejectedValue(notFound)
+    commands.reminderDelete.mockRejectedValue(notFound)
+    commands.reminderBulkDismiss.mockRejectedValue(notFound)
 
-    expect(onReminderCreated(vi.fn())).toBe(unsubscribe)
-    expect(onReminderUpdated(vi.fn())).toBe(unsubscribe)
-    expect(onReminderDeleted(vi.fn())).toBe(unsubscribe)
-    expect(onReminderDue(vi.fn())).toBe(unsubscribe)
-    expect(onReminderDismissed(vi.fn())).toBe(unsubscribe)
-    expect(onReminderSnoozed(vi.fn())).toBe(unsubscribe)
+    expect(await reminderService.dismiss('rem_x')).toEqual({
+      success: false,
+      reminder: null,
+      error: 'Reminder not found'
+    })
+    expect(await reminderService.delete('rem_x')).toEqual({
+      success: false,
+      error: 'Reminder not found'
+    })
+    expect(await reminderService.bulkDismiss(['rem_x'])).toEqual({
+      success: false,
+      dismissedCount: 0,
+      error: 'Reminder not found'
+    })
+  })
+
+  it('maps delete, bulk dismiss and the reads to Electron shapes', async () => {
+    commands.reminderDelete.mockResolvedValue(null)
+    commands.reminderBulkDismiss.mockResolvedValue(2)
+    commands.reminderGet.mockResolvedValue(withTarget)
+    commands.reminderList.mockResolvedValue({ reminders: [withTarget], total: 1, hasMore: false })
+    commands.reminderGetForTarget.mockResolvedValue([view])
+
+    expect(await reminderService.delete('rem_1')).toEqual({ success: true })
+    expect(await reminderService.bulkDismiss(['rem_1', 'rem_2'])).toEqual({
+      success: true,
+      dismissedCount: 2
+    })
+    expect(commands.reminderBulkDismiss).toHaveBeenCalledWith(['rem_1', 'rem_2'])
+    expect(await reminderService.get('rem_1')).toEqual({
+      ...withTarget,
+      highlightExists: undefined
+    })
+
+    const listed = await reminderService.list({ status: 'triggered' })
+    expect(commands.reminderList).toHaveBeenCalledWith({ status: 'triggered' })
+    expect(listed.reminders[0]?.status).toBe('triggered')
+    await reminderService.list()
+    expect(commands.reminderList).toHaveBeenLastCalledWith(null)
+
+    expect(await reminderService.getForTarget('journal', '2026-03-20')).toEqual([view])
+    expect(commands.reminderGetForTarget).toHaveBeenCalledWith({
+      targetType: 'journal',
+      targetId: '2026-03-20'
+    })
+  })
+
+  it('answers a due event with the fired reminders read back, and their count', async () => {
+    commands.reminderGet.mockImplementation((id: string) =>
+      Promise.resolve(id === 'rem_1' ? withTarget : null)
+    )
+    const callback = vi.fn()
+    onReminderDue(callback)
+
+    handlers.get('due')?.({ payload: { reminders: [hint, { ...hint, id: 'rem_gone' }] } })
+    await settle()
+
+    expect(callback).toHaveBeenCalledWith({
+      reminders: [{ ...withTarget, highlightExists: undefined }],
+      count: 1
+    })
+  })
+
+  it('answers a notification click with the reminder, and nothing once unsubscribed', async () => {
+    commands.reminderGet.mockResolvedValue(withTarget)
+    const callback = vi.fn()
+    const unsubscribe = onReminderClicked(callback)
+
+    handlers.get('clicked')?.({ payload: { reminder: hint } })
+    unsubscribe()
+    await settle()
+
+    expect(callback).not.toHaveBeenCalled()
+  })
+
+  it('passes a command event to its subscriber with the reminder target', () => {
+    const callback = vi.fn()
+    onReminderDeleted(callback)
+
+    handlers.get('deleted')?.({ payload: { reminder: hint } })
+
+    expect(callback).toHaveBeenCalledWith({ reminder: hint })
   })
 })

@@ -1,5 +1,5 @@
 //! The sticky note and edge tab commands and events, appended to the task domain's lists by
-//! `registry/bookmarks.rs`: `with_sticky_commands!(collect_commands![...])` hands
+//! `registry/reminders.rs`: `with_sticky_commands!(collect_commands![...])` hands
 //! `collect_commands!` the list with these appended, and `with_sticky_events!` does the same
 //! for `collect_events!`.
 

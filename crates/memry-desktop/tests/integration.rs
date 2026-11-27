@@ -227,6 +227,8 @@ mod import_runner;
 mod importer_bear;
 #[path = "importer_google_keep.rs"]
 mod importer_google_keep;
+#[path = "importer_html_fetch.rs"]
+mod importer_html_fetch;
 #[path = "importer_noteplan.rs"]
 mod importer_noteplan;
 #[path = "importer_raindrop.rs"]
@@ -241,6 +243,8 @@ mod importer_ticktick_dates;
 mod importer_todoist;
 #[path = "importer_untrusted.rs"]
 mod importer_untrusted;
+#[path = "importer_untrusted_html.rs"]
+mod importer_untrusted_html;
 #[path = "importer_vectors.rs"]
 mod importer_vectors;
 #[path = "index_tag_definitions.rs"]
@@ -429,6 +433,8 @@ mod property_definitions_seed;
 mod property_definitions_sync;
 #[path = "property_usage.rs"]
 mod property_usage;
+#[path = "reminder_commands.rs"]
+mod reminder_commands;
 #[path = "reminder_scheduler.rs"]
 mod reminder_scheduler;
 #[path = "sanitize_svg_inert.rs"]
