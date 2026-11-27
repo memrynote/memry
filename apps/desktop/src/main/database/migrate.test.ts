@@ -1360,6 +1360,64 @@ describe('0065_crdt_owed_file_bodies migration', () => {
   })
 })
 
+// #5371: notes the app's create command made on this device.
+describe('0084_notes_created_here migration', () => {
+  let tempDir: string
+  const migrationsDir = path.join(__dirname, 'drizzle-data')
+
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-notes-created-here-'))
+  })
+
+  afterEach(() => {
+    fs.rmSync(tempDir, { recursive: true, force: true })
+  })
+
+  function makePre0084Folder(): string {
+    const copy = path.join(tempDir, 'drizzle-data-pre-0084')
+    fs.cpSync(migrationsDir, copy, { recursive: true })
+    const journalPath = path.join(copy, 'meta', '_journal.json')
+    const journal = JSON.parse(fs.readFileSync(journalPath, 'utf8')) as {
+      entries: { tag: string }[]
+    }
+    const cutoff = journal.entries.findIndex((e) => e.tag === '0084_notes_created_here')
+    expect(cutoff).toBeGreaterThanOrEqual(0)
+    for (const entry of journal.entries.splice(cutoff)) {
+      fs.rmSync(path.join(copy, `${entry.tag}.sql`))
+    }
+    fs.writeFileSync(journalPath, JSON.stringify(journal, null, 2))
+    return copy
+  }
+
+  it('adds an empty table on a populated database and changes no row', () => {
+    const sqlite = new Database(path.join(tempDir, 'data.db'))
+    const db = drizzle(sqlite)
+    migrate(db, { migrationsFolder: makePre0084Folder() })
+    sqlite.prepare("INSERT INTO crdt_owed_file_bodies (note_id, created_at) VALUES ('n1', 1)").run()
+
+    migrate(db, { migrationsFolder: migrationsDir })
+    migrate(db, { migrationsFolder: migrationsDir })
+
+    expect(sqlite.prepare('SELECT note_id, created_at FROM crdt_owed_file_bodies').all()).toEqual([
+      { note_id: 'n1', created_at: 1 }
+    ])
+    expect(sqlite.prepare('SELECT count(*) AS n FROM notes_created_here').get()).toEqual({ n: 0 })
+    sqlite.close()
+  })
+
+  it('is inert for an older build that opens the upgraded database', () => {
+    const dbPath = path.join(tempDir, 'data.db')
+    runMigrations(dbPath)
+    const sqlite = new Database(dbPath)
+    sqlite.prepare("INSERT INTO notes_created_here (note_id, created_at) VALUES ('n1', 1)").run()
+
+    expect(() => migrate(drizzle(sqlite), { migrationsFolder: makePre0084Folder() })).not.toThrow()
+
+    expect(sqlite.prepare('SELECT count(*) AS n FROM notes_created_here').get()).toEqual({ n: 1 })
+    sqlite.close()
+  })
+})
+
 // #2301 review B-6/A-8: drizzle applies a migration only when its `when` is
 // greater than the newest one already applied. Two stacked migrations that
 // share a `when` (or go backwards) make every install that has the first skip

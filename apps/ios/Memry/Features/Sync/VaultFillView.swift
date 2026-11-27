@@ -1,24 +1,22 @@
 import MemryCore
 import SwiftUI
 
-// T237's screen. The minute or so between opening a vault and being able to
-// read it (FR-028).
+// T237's screen. The vault's contents while its first sync runs (FR-028).
 //
-// **This screen is new ground and `DESIGN.md` does not name it.** There is no
-// progress surface anywhere in that document: "loading" appears only in the
-// component-state list and the review checklist, and nothing says what a
-// long-running determinate operation looks like. Reported as a gap. What is
-// chosen here is the smallest thing consistent with what `DESIGN.md` *does*
-// say — words rather than a bare spinner, no duration the user cannot use, no
-// promise of a mechanism this build does not have, and the platform's own
-// `ProgressView` rather than a hand-built bar, so Dynamic Type, RTL mirroring
-// and the VoiceOver value come from the system.
+// **The contents are rendered in every phase.** This used to swap the whole
+// vault for a "Setting up this vault" screen until the run ended, so a run
+// that took a day, or was killed by every screen lock and restarted on every
+// launch, left the user staring at a bar over notes that were already on the
+// phone. The core's own promise is that app open is never blocked on a first
+// sync (`first_sync.rs`), and this screen now keeps it: the run is silent and
+// in the background, and a note whose body has not arrived yet fetches it
+// when opened (`NoteReadViewModel.refreshFromRemote`). A thin strip above the
+// contents says how far it is (#5233), in the vault's own counts, and goes
+// when the run and the drain after it end.
 //
 // **There is no Cancel, and that is not an omission** (spec-defect 108).
 // `rust_future_cancel` appears zero times in the bindings, so an in-flight core
-// call cannot be stopped. A button offering to stop it would be a lie. The
-// copy says the true thing instead: what has arrived is kept, so an
-// interruption is resumed rather than restarted.
+// call cannot be stopped. A button offering to stop it would be a lie.
 //
 // **A failure is rendered above the contents, never instead of them.** That is
 // the whole of requirement five: `SyncError.Api` can arrive after some notes
@@ -30,6 +28,9 @@ import SwiftUI
 
 struct VaultFillView<Content: View>: View {
     @State private var model: VaultFillViewModel
+    /// Observed here, at the vault scope (`apps/ios/AGENTS.md`): the drain
+    /// asks for rounds only in the foreground.
+    @Environment(\.scenePhase) private var scenePhase
     @ViewBuilder private let content: () -> Content
 
     /// The production entry point. `VaultListView` calls exactly this with the
@@ -48,158 +49,116 @@ struct VaultFillView<Content: View>: View {
     }
 
     var body: some View {
-        Group {
-            switch model.phase {
-            case .checking:
-                FirstSyncScreen(progress: nil, checking: true)
-            case let .filling(progress):
-                FirstSyncScreen(progress: progress, checking: false)
-            case .filled:
-                filled
-            case let .failed(error):
-                // The contents are underneath, and they are the point. A pull
-                // that stopped after forty notes leaves forty real notes.
-                VStack(spacing: Tokens.Space.medium) {
-                    SyncFailureNotice(error: error) { Task { await model.retry() } }
-                        .padding(.horizontal, Tokens.Space.screenInline)
-                        .padding(.top, Tokens.Space.inset)
-                    content()
-                }
-                .background(Tokens.Canvas.background.color)
+        // The contents keep one place in this stack whatever the banner is,
+        // so the run ending neither rebuilds the tabs nor drops a pushed note.
+        VStack(spacing: 0) {
+            if let progress = model.strip {
+                FirstSyncStrip(progress: progress, quiet: model.isQuiet)
+                    .transition(.opacity)
             }
+            banner
+            content()
+                .environment(\.firstSyncLanded, model.landed)
+                .environment(\.firstSyncPending, model.isPending)
         }
+        .calmAnimation(.normal, value: model.strip == nil)
+        .background(Tokens.Canvas.background.color)
         // Structured, and therefore not leakable: SwiftUI cancels this when
         // the view goes away. Cancelling it abandons the **UI** only — the
         // core call it started runs to completion, which is what spec-defect
         // 108 leaves the shell with and why no button here claims otherwise.
         .task { await model.begin() }
+        // The drain is the model's own task, which a scene change only starts
+        // or joins, so the screen going away is what ends it.
+        .onDisappear { model.leave() }
+        .onChange(of: scenePhase) { _, phase in
+            guard phase != .inactive else { return }
+            Task { await model.sceneChanged(active: phase == .active) }
+        }
     }
 
     @ViewBuilder
-    private var filled: some View {
-        if let incomplete = model.incomplete {
-            VStack(spacing: Tokens.Space.medium) {
-                Text(incomplete)
-                    .font(Tokens.Typography.supporting.font)
-                    .foregroundStyle(Tokens.Text.secondary.color)
-                    .multilineTextAlignment(.leading)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, Tokens.Space.screenInline)
-                    .padding(.top, Tokens.Space.inset)
-                content()
-            }
-            .background(Tokens.Canvas.background.color)
-        } else {
-            content()
+    private var banner: some View {
+        switch model.banner {
+        case .none:
+            EmptyView()
+        case let .failure(error):
+            // The contents are underneath, and they are the point. A pull
+            // that stopped after forty notes leaves forty real notes.
+            SyncFailureNotice(error: error) { Task { await model.retry() } }
+                .padding(.horizontal, Tokens.Space.screenInline)
+                .padding(.vertical, Tokens.Space.inset)
+        case let .incomplete(sentence):
+            Text(sentence)
+                .font(Tokens.Typography.supporting.font)
+                .foregroundStyle(Tokens.Text.secondary.color)
+                .multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, Tokens.Space.screenInline)
+                .padding(.vertical, Tokens.Space.inset)
         }
     }
 }
 
-/// The waiting screen itself.
-private struct FirstSyncScreen: View {
-    let progress: SyncProgress?
-    /// The gate, which makes no request. A separate flag rather than a fourth
-    /// `SyncPhase`, because it is not one: nothing is being pulled yet.
-    let checking: Bool
+extension EnvironmentValues {
+    /// ``VaultFillViewModel/landed``: changes each time a running first sync
+    /// has landed rows a list shows, so the list re-reads mid-run.
+    @Entry var firstSyncLanded: Int = 0
+    /// ``VaultFillViewModel/isPending``: the vault's sync passes wait for it.
+    @Entry var firstSyncPending: Bool = false
+}
+
+/// How far the first sync and the drain are, in live notes and journals of
+/// the vault: `Downloading notes · 3,200 of 9,677`, then `Downloading note
+/// content · 5,100 of 9,677`. The bar appears once the total is known.
+/// `quiet` swaps the phase words for `Still working` when no tick has come for
+/// a while. Both labels are laid out and the hidden one keeps its space, so
+/// the strip, and the list under it, never changes height on the swap.
+struct FirstSyncStrip: View {
+    let progress: SyncProgress
+    let quiet: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Tokens.Space.section) {
-            VStack(alignment: .leading, spacing: Tokens.Space.small) {
-                Text("Setting up this vault")
-                    .font(Tokens.Typography.screenTitle.font)
-                    .foregroundStyle(Tokens.Text.primary.color)
-                    .accessibilityAddTraits(.isHeader)
-                Text(Self.explanation)
-                    .font(Tokens.Typography.body.font)
-                    .foregroundStyle(Tokens.Text.secondary.color)
+        VStack(alignment: .leading, spacing: Tokens.Space.tight) {
+            ZStack(alignment: .topLeading) {
+                count
+                    .opacity(quiet ? 0 : 1)
+                    .accessibilityHidden(quiet)
+                stillWorking
+                    .opacity(quiet ? 1 : 0)
+                    .accessibilityHidden(!quiet)
             }
-            .multilineTextAlignment(.leading)
+            .font(Tokens.Typography.supporting.font)
+            .foregroundStyle(Tokens.Text.secondary.color)
+            .monospacedDigit()
             .frame(maxWidth: .infinity, alignment: .leading)
-            .accessibilityElement(children: .combine)
-
-            bar
+            if let total = progress.total, total > 0 {
+                ProgressView(value: Double(min(progress.completed, total)), total: Double(total))
+                    .progressViewStyle(.linear)
+                    .accessibilityHidden(true)
+            }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(.horizontal, Tokens.Space.screenInline)
-        .padding(.vertical, Tokens.Space.screenBlock)
-        .background(Tokens.Canvas.background.color)
+        .padding(.vertical, Tokens.Space.small)
+        .accessibilityElement(children: .combine)
     }
 
-    /// Words in every case, and a determinate bar only where there is a real
-    /// denominator. `SyncProgress.completed` is never above `total`, so the
-    /// fraction needs no guard against one above 1.
-    ///
-    /// **What VoiceOver says, and how often.** The bar is one accessibility
-    /// element: the label is the pass, the value is a whole percentage.
-    /// Nothing here posts an announcement — a run over ninety-four notes ticks
-    /// dozens of times, and a screen that interrupted the user on each one
-    /// would be unusable. A focused `ProgressView` is read when the user asks,
-    /// which is the platform behaviour and the right one for a minute-long
-    /// wait.
-    @ViewBuilder
-    private var bar: some View {
-        if let progress, progress.total > 0 {
-            let fraction = Double(progress.completed) / Double(progress.total)
-            VStack(alignment: .leading, spacing: Tokens.Space.small) {
-                ProgressView(value: Double(progress.completed), total: Double(progress.total)) {
-                    Text(Self.sentence(for: progress.phase))
-                        .font(Tokens.Typography.supporting.font)
-                        .foregroundStyle(Tokens.Text.secondary.color)
-                }
-                // A tint fill, which is what `DESIGN.md` reserves the accent
-                // for. Nothing here rests on the colour: the count under it
-                // says the same thing in words.
-                .tint(Tokens.Tint.base.color)
-                // A count the user can act on — unlike a duration, which this
-                // screen still refuses to invent.
-                Text("\(progress.completed) of \(progress.total) notes")
-                    .font(Tokens.Typography.technicalCaption.font.monospacedDigit())
-                    .foregroundStyle(Tokens.Text.secondary.color)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel(Self.sentence(for: progress.phase))
-            .accessibilityValue("\(Int(fraction * 100)) per cent")
-            // Reduce-motion branched at the modifier level: under the
-            // preference this resolves to no animation at all, so the bar
-            // keeps the final state and loses the movement.
-            .calmAnimation(.normal, .moving, value: progress.completed)
-        } else {
-            ProgressView {
-                Text(checking ? "Checking what this \(ThisDevice.noun) already has" : "Starting")
-                    .font(Tokens.Typography.supporting.font)
-                    .foregroundStyle(Tokens.Text.secondary.color)
-            }
-            .progressViewStyle(.circular)
-            .tint(Tokens.Text.secondary.color)
-            .frame(maxWidth: .infinity, alignment: .leading)
+    private var stillWorking: Text {
+        let done = progress.completed.formatted()
+        guard let total = progress.total?.formatted() else { return Text("Still working · \(done)") }
+        return Text("Still working · \(done) of \(total)")
+    }
+
+    private var count: Text {
+        let done = progress.completed.formatted()
+        let total = progress.total?.formatted()
+        switch (progress.phase, total) {
+        case let (.bodies, total?): return Text("Downloading note content · \(done) of \(total)")
+        case (.bodies, nil): return Text("Downloading note content · \(done)")
+        case let (_, total?): return Text("Downloading notes · \(done) of \(total)")
+        case (_, nil): return Text("Downloading notes · \(done)")
         }
     }
-
-    /// One sentence per pass. `DESIGN.md` names no vocabulary for these, so
-    /// they say what the pass does in the user's terms rather than the
-    /// protocol's — "refs", "metadata" and "CRDT updates" are chapter 05 and
-    /// chapter 07 words and mean nothing on a phone.
-    static func sentence(for phase: SyncPhase) -> String {
-        switch phase {
-        case .refs: "Checking what this vault holds"
-        case .metadata: "Bringing in your notes"
-        case .bodies: "Downloading recent notes"
-        case .done: "Finishing"
-        }
-    }
-
-    /// True on this screen and on no other, which is why it lives here.
-    ///
-    /// It promises no mechanism this build does not have: there is no Cancel,
-    /// so it does not offer one, and it names no duration, because the only
-    /// honest one would be a figure the user cannot use (`DESIGN.md`
-    /// §"Error copy, in detail", spec-defect 111).
-    static let explanation = """
-        Memry is bringing this vault onto your \(ThisDevice.noun) for the first time. \
-        Everything it has already brought in is kept, so if this is \
-        interrupted it carries on from there.
-        """
 }
 
 /// A first sync that stopped, rendered above whatever did arrive.
@@ -224,6 +183,7 @@ struct SyncFailureNotice: View {
                 Button("Continue setting up", action: retry)
                     .memrySecondaryAction()
             }
+            FeedbackSheetButton()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

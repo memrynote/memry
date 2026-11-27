@@ -245,17 +245,43 @@ export function parseCriticMarkup(markdown: string): ParsedCriticMarkup {
   return { plainText, marks }
 }
 
-export function serializeCriticMarkup(plainText: string, marks: CriticMarkupMark[]): string {
-  const ranges = marks
-    .map((mark) => resolveMarkRange(plainText, mark))
-    .filter((range): range is CriticMarkupMark => range !== null)
-    .toSorted((a, b) => a.start - b.start)
+export interface CriticMarkupPlacement {
+  /** Marks the text holds, moved to where it holds them, in text order. */
+  placed: CriticMarkupMark[]
+  /** Marks whose text is gone, or that overlap a mark placed before them. */
+  unplaced: CriticMarkupMark[]
+}
 
+/** Where `serializeCriticMarkup` puts each mark in `plainText`, and which it leaves out. */
+export function placeCriticMarkupMarks(
+  plainText: string,
+  marks: CriticMarkupMark[]
+): CriticMarkupPlacement {
+  const placed: CriticMarkupMark[] = []
+  const unplaced: CriticMarkupMark[] = []
+  const ranges: CriticMarkupMark[] = []
+  for (const mark of marks) {
+    const range = resolveMarkRange(plainText, mark)
+    if (range) ranges.push(range)
+    else unplaced.push(mark)
+  }
+  let cursor = 0
+  for (const mark of ranges.toSorted((a, b) => a.start - b.start)) {
+    if (mark.start < cursor) {
+      unplaced.push(mark)
+      continue
+    }
+    placed.push(mark)
+    cursor = mark.end
+  }
+  return { placed, unplaced }
+}
+
+export function serializeCriticMarkup(plainText: string, marks: CriticMarkupMark[]): string {
   let result = ''
   let cursor = 0
 
-  for (const mark of ranges) {
-    if (mark.start < cursor) continue
+  for (const mark of placeCriticMarkupMarks(plainText, marks).placed) {
     result += plainText.slice(cursor, mark.start)
     const visibleText = plainText.slice(mark.start, mark.end)
     result += serializeMark(mark, visibleText)
@@ -431,7 +457,18 @@ function resolveMarkRange(plainText: string, mark: CriticMarkupMark): CriticMark
   if (mark.visibleText.length === 0) return mark
   if (mark.kind !== 'comment') return null
 
-  const nextStart = plainText.indexOf(mark.visibleText)
+  // The occurrence nearest where the mark was, so a comment on a word the note
+  // repeats stays on its own copy of it.
+  let nextStart = -1
+  for (
+    let index = plainText.indexOf(mark.visibleText);
+    index !== -1;
+    index = plainText.indexOf(mark.visibleText, index + 1)
+  ) {
+    if (nextStart === -1 || Math.abs(index - mark.start) < Math.abs(nextStart - mark.start)) {
+      nextStart = index
+    }
+  }
   if (nextStart === -1) return null
   return {
     ...mark,

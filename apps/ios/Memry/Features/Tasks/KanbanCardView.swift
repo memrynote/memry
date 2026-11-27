@@ -22,8 +22,8 @@ struct KanbanCardView: View {
     }
 
     var body: some View {
-        NavigationLink(value: TasksRoute.task(task.id)) {
-            content
+        TaskOpenLink(id: task.id) {
+            content.pointerHover(.card(radius: Tokens.Radius.card))
         }
         .buttonStyle(.plain)
         .draggable(task.id) {

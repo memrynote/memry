@@ -1,29 +1,17 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
+import { buildHumanizedReleaseMarker } from './release-notes-utils.mjs'
 import {
+  assertDraftReadyForDispatch,
   buildDateReleaseVersion,
   buildHumanizeReleaseArgs,
   extractWorkflowRunId,
   getReleaseListFields,
   parseReleaseArgs,
-  rewriteWindowsUpdateManifest,
   selectDispatchedWorkflowRun,
   selectDraftRelease
 } from './release-utils.mjs'
-
-// Shape of a real Windows latest.yml, taken from the v2026-09-14 release.
-const WINDOWS_MANIFEST = [
-  'version: 2026.914.1',
-  'files:',
-  '  - url: MemryNote-2026.914.1-setup.exe',
-  '    sha512: biC2Ypa+4Vk1MbAQKrCSgS0COwGf9NCY8cFAngl7T4ZP9R6BQtaHQTc3Nxr3lMrOJdzlgjsoGZURVh45ax2guQ==',
-  '    size: 335425051',
-  'path: MemryNote-2026.914.1-setup.exe',
-  'sha512: biC2Ypa+4Vk1MbAQKrCSgS0COwGf9NCY8cFAngl7T4ZP9R6BQtaHQTc3Nxr3lMrOJdzlgjsoGZURVh45ax2guQ==',
-  "releaseDate: '2026-09-14T17:16:07.931Z'",
-  ''
-].join('\n')
 
 describe('release helpers', () => {
   it('builds publish-day date tags and semver-safe app versions', () => {
@@ -109,9 +97,9 @@ describe('release helpers', () => {
 
   it('parses release launcher flags', () => {
     assert.deepEqual(
-      parseReleaseArgs(['--', '--tag', 'vnext', '--dry-run', '--humanize', '--no-watch', '--yes']),
+      parseReleaseArgs(['--', '--tag', 'vnext', '--humanize', '--no-watch', '--yes']),
       {
-        dryRun: true,
+        dryRun: false,
         help: false,
         humanize: true,
         restart: false,
@@ -121,6 +109,54 @@ describe('release helpers', () => {
         yes: true
       }
     )
+  })
+
+  it('rejects --dry-run with --humanize, which can never pass the draft check', () => {
+    for (const argv of [
+      ['--dry-run', '--humanize'],
+      ['--humanize', '--tag', 'vnext', '--dry-run']
+    ]) {
+      assert.throws(
+        () => parseReleaseArgs(argv),
+        /--dry-run cannot be combined with --humanize.*pnpm release:humanize/
+      )
+    }
+    assert.equal(parseReleaseArgs(['--dry-run']).dryRun, true)
+  })
+
+  it('requires humanized notes for the resolved tag before dispatch, dry runs included', () => {
+    for (const dryRun of [true, false]) {
+      assert.throws(
+        () =>
+          assertDraftReadyForDispatch({
+            body: '## Changelog\n- a change',
+            draftTag: 'vnext',
+            dryRun,
+            expectedTag: 'v2026-11-18'
+          }),
+        /not been humanized for v2026-11-18[\s\S]*--tag vnext/,
+        `dryRun ${dryRun}`
+      )
+      assert.throws(
+        () =>
+          assertDraftReadyForDispatch({
+            body: `${buildHumanizedReleaseMarker('v2026-11-17')}\n## Fixes`,
+            draftTag: 'vnext',
+            dryRun,
+            expectedTag: 'v2026-11-18'
+          }),
+        /humanized for v2026-11-17/,
+        `dryRun ${dryRun}`
+      )
+      assert.doesNotThrow(() =>
+        assertDraftReadyForDispatch({
+          body: `${buildHumanizedReleaseMarker('v2026-11-18')}\n## Fixes`,
+          draftTag: 'vnext',
+          dryRun,
+          expectedTag: 'v2026-11-18'
+        })
+      )
+    }
   })
 
   it('parses the local pipeline flags', () => {
@@ -153,7 +189,13 @@ describe('release helpers', () => {
   })
 
   it('uses only gh release list fields supported by GitHub CLI', () => {
-    assert.deepEqual(getReleaseListFields(), ['tagName', 'name', 'isDraft', 'createdAt'])
+    assert.deepEqual(getReleaseListFields(), [
+      'tagName',
+      'name',
+      'isDraft',
+      'isPrerelease',
+      'createdAt'
+    ])
   })
 
   it('extracts the created workflow run id from gh workflow run output', () => {
@@ -187,55 +229,5 @@ describe('release helpers', () => {
     )
 
     assert.equal(run.databaseId, 25571212462)
-  })
-})
-
-describe('rewriteWindowsUpdateManifest', () => {
-  it('repoints both digests and the size at the signed installer', () => {
-    const result = rewriteWindowsUpdateManifest(WINDOWS_MANIFEST, {
-      sha512: 'NEWDIGEST==',
-      size: 335430000
-    })
-
-    assert.equal(result.match(/sha512: NEWDIGEST==/g)?.length, 2)
-    assert.match(result, /^ {4}size: 335430000$/m)
-    assert.doesNotMatch(result, /biC2Ypa/)
-  })
-
-  it('leaves every other line alone', () => {
-    const result = rewriteWindowsUpdateManifest(WINDOWS_MANIFEST, {
-      sha512: 'NEWDIGEST==',
-      size: 1
-    })
-
-    assert.match(result, /^version: 2026\.914\.1$/m)
-    assert.match(result, /^ {2}- url: MemryNote-2026\.914\.1-setup\.exe$/m)
-    assert.match(result, /^path: MemryNote-2026\.914\.1-setup\.exe$/m)
-    assert.match(result, /^releaseDate: '2026-09-14T17:16:07\.931Z'$/m)
-  })
-
-  // A second file entry would mean the digest below it is no longer the installer's,
-  // and a blind rewrite would point every install at the wrong bytes.
-  it('refuses a manifest describing more than one file', () => {
-    const twoFiles = WINDOWS_MANIFEST.replace(
-      '  - url: MemryNote-2026.914.1-setup.exe',
-      ['  - url: MemryNote-2026.914.1-setup.exe', '  - url: MemryNote-2026.914.1-win.zip'].join(
-        '\n'
-      )
-    )
-
-    assert.throws(
-      () => rewriteWindowsUpdateManifest(twoFiles, { sha512: 'x', size: 1 }),
-      /exactly one Windows file, found 2/
-    )
-  })
-
-  it('refuses a manifest whose digest count changed', () => {
-    const extraDigest = `${WINDOWS_MANIFEST}sha512: another==\n`
-
-    assert.throws(
-      () => rewriteWindowsUpdateManifest(extraDigest, { sha512: 'x', size: 1 }),
-      /two sha512 lines and one size line, found 3 and 1/
-    )
   })
 })

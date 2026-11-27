@@ -10,6 +10,7 @@ use std::fs;
 use std::io::ErrorKind;
 use std::path::Path;
 
+use rusqlite::types::ValueRef;
 use rusqlite::{Connection, OpenFlags, OptionalExtension, params};
 use serde_json::Value;
 
@@ -95,7 +96,7 @@ fn read(db: &Connection) -> Result<VaultEvidence, ImportError> {
         text("SELECT value FROM settings WHERE key = ?1", Some(key))
     };
     let vault_id = if has_column(db, "vault_metadata", "vault_uuid")? {
-        text("SELECT vault_uuid FROM vault_metadata LIMIT 1", None)?
+        singleton_vault_uuid(db)?
     } else {
         None
     };
@@ -129,6 +130,50 @@ fn read(db: &Connection) -> Result<VaultEvidence, ImportError> {
         device_public_key,
         inline_ai_reenter,
     })
+}
+
+/// The uuid Electron names a vault by, for its core id and its CRDT store alike: the
+/// `vault_metadata` singleton's (`resolveVaultCrdtStore` -> `getOrCreateVaultUuid`,
+/// `crdt-store-path.ts:51-57`), else the config entry's `vaultUuid`, a best-effort copy that an
+/// adoption whose device registration failed leaves stale (`vault-adoption.ts:35-60`). A blank
+/// value names nothing; any other is kept as written. Every reader of a vault's uuid in the
+/// import resolves it here, so no two of them can name one vault differently.
+pub fn electron_vault_uuid(singleton: Option<&str>, config: Option<&str>) -> Option<String> {
+    [singleton, config]
+        .into_iter()
+        .flatten()
+        .find(|uuid| !uuid.trim().is_empty())
+        .map(str::to_owned)
+}
+
+/// The uuid of the `vault_metadata` row Electron reads, `id = 'singleton'`
+/// (`agent/storage/vault-id.ts:7`, `sync/vault-adoption.ts:24-28`); other rows are never read.
+/// A value that is not UTF-8 text fails with the row named: it is the vault's identity, so no
+/// guess stands in for it.
+fn singleton_vault_uuid(db: &Connection) -> Result<Option<String>, ImportError> {
+    let value = db
+        .query_row(
+            "SELECT vault_uuid FROM vault_metadata WHERE id = 'singleton'",
+            [],
+            |r| {
+                Ok(match r.get_ref(0)? {
+                    ValueRef::Null => None,
+                    ValueRef::Text(bytes) => Some(String::from_utf8(bytes.to_vec()).ok()),
+                    _ => Some(None),
+                })
+            },
+        )
+        .optional()
+        .map_err(sqlite)?
+        .flatten();
+    match value {
+        None => Ok(None),
+        Some(Some(uuid)) => Ok(Some(uuid)),
+        Some(None) => Err(ImportError::Sqlite(
+            "vault data.db: vault_metadata row 'singleton' has a vault_uuid that is not UTF-8 text"
+                .to_owned(),
+        )),
+    }
 }
 
 #[cfg(test)]

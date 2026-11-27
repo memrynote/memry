@@ -127,6 +127,16 @@ pub fn due_window(
     conn: &Connection,
     until_ms: Option<i64>,
 ) -> Result<Vec<DueReminder>, StorageError> {
+    due_unless(conn, until_ms, |_, _| false)
+}
+
+/// [`due_window`] without the reminders `skip` names by id and fire instant,
+/// dropped before their target is looked up.
+pub(super) fn due_unless(
+    conn: &Connection,
+    until_ms: Option<i64>,
+    skip: impl Fn(&str, i64) -> bool,
+) -> Result<Vec<DueReminder>, StorageError> {
     let mut statement = conn
         .prepare(&format!(
             "SELECT {COLUMNS} FROM reminders \
@@ -145,7 +155,7 @@ pub fn due_window(
         let Some(fire_at_ms) = fire_at_ms(&reminder) else {
             continue;
         };
-        if until_ms.is_some_and(|until| fire_at_ms > until) {
+        if until_ms.is_some_and(|until| fire_at_ms > until) || skip(&reminder.id, fire_at_ms) {
             continue;
         }
         let Some(fire_at) = instants::to_iso8601(fire_at_ms) else {
@@ -168,11 +178,23 @@ pub fn due_window(
 /// A snoozed reminder fires at `snoozedUntil` (desktop's due query); one
 /// without a usable `snoozedUntil` falls back to `remindAt`.
 fn fire_at_ms(reminder: &Reminder) -> Option<i64> {
-    let snoozed = (reminder.status == STATUS_SNOOZED)
-        .then_some(reminder.snoozed_until.as_deref())
+    fire_instant(
+        &reminder.status,
+        &reminder.remind_at,
+        reminder.snoozed_until.as_deref(),
+    )
+}
+
+pub(super) fn fire_instant(
+    status: &str,
+    remind_at: &str,
+    snoozed_until: Option<&str>,
+) -> Option<i64> {
+    let snoozed = (status == STATUS_SNOOZED)
+        .then_some(snoozed_until)
         .flatten()
         .and_then(instants::to_epoch_ms);
-    snoozed.or_else(|| instants::to_epoch_ms(&reminder.remind_at))
+    snoozed.or_else(|| instants::to_epoch_ms(remind_at))
 }
 
 struct Target {
@@ -250,7 +272,7 @@ fn reminder_row(row: &Row<'_>) -> rusqlite::Result<Reminder> {
     })
 }
 
-fn failed(error: rusqlite::Error) -> StorageError {
+pub(super) fn failed(error: rusqlite::Error) -> StorageError {
     StorageError::Failed {
         what: error.to_string(),
     }

@@ -30,6 +30,8 @@ export interface EncryptItemInput {
   clock?: VectorClock
   stateVector?: string
   deletedAt?: number
+  /** The vault the push is routed to; a delete attestation binds it (#5247). */
+  vaultId: string | null
 }
 
 export interface EncryptItemResult {
@@ -92,7 +94,7 @@ export function encryptItemForPush(input: EncryptItemInput): EncryptItemResult {
     const deleteAttestation = claim
       ? toB64(
           signPayload(
-            deleteAttestationPayload(claim),
+            deleteAttestationPayload(claim, input.vaultId),
             CBOR_FIELD_ORDER.DELETE_ATTESTATION,
             input.signingSecretKey
           )

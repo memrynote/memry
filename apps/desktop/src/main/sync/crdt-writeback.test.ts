@@ -3,7 +3,7 @@ import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { JournalChannels, NotesChannels } from '@memry/contracts/ipc-channels'
+import { NotesChannels } from '@memry/contracts/ipc-channels'
 import type * as PathsModule from '../lib/paths'
 
 const mocks = vi.hoisted(() => ({
@@ -16,7 +16,6 @@ const mocks = vi.hoisted(() => ({
   atomicWrite: vi.fn(),
   safeRead: vi.fn(),
   ensureDirectory: vi.fn(),
-  deleteFile: vi.fn(),
   parseNote: vi.fn(),
   generateContentHash: vi.fn(),
   serializeNote: vi.fn(),
@@ -26,15 +25,12 @@ const mocks = vi.hoisted(() => ({
   createSnapshot: vi.fn(),
   getJournalPath: vi.fn(),
   syncNoteToCache: vi.fn(),
-  deleteNoteFromCache: vi.fn(),
   flushProjectionEvents: vi.fn(),
   closeDoc: vi.fn(),
-  purgeDoc: vi.fn(),
   getDoc: vi.fn(),
   syncNoteDateReminders: vi.fn(),
   getVaultRoot: vi.fn(),
   reconcileRenamedAttachments: vi.fn(),
-  clearNoteDateReminders: vi.fn(),
   createRemindersService: vi.fn(),
   sent: [] as Array<{ channel: string; payload: unknown }>,
   logger: {
@@ -64,8 +60,8 @@ vi.mock('../lib/logger', () => ({
 
 vi.mock('./crdt-provider', () => ({
   getCrdtProvider: () => ({
+    holdsDoc: () => true,
     close: mocks.closeDoc,
-    purge: mocks.purgeDoc,
     getDoc: mocks.getDoc
   })
 }))
@@ -94,8 +90,7 @@ vi.mock('../lib/paths', async (importOriginal) => ({
 vi.mock('../vault/file-ops', () => ({
   atomicWrite: (...args: unknown[]) => mocks.atomicWrite(...args),
   safeRead: (...args: unknown[]) => mocks.safeRead(...args),
-  ensureDirectory: (...args: unknown[]) => mocks.ensureDirectory(...args),
-  deleteFile: (...args: unknown[]) => mocks.deleteFile(...args)
+  ensureDirectory: (...args: unknown[]) => mocks.ensureDirectory(...args)
 }))
 
 vi.mock('../vault/frontmatter', () => ({
@@ -126,8 +121,7 @@ vi.mock('../vault/journal', () => ({
 }))
 
 vi.mock('../vault/note-sync', () => ({
-  syncNoteToCache: (...args: unknown[]) => mocks.syncNoteToCache(...args),
-  deleteNoteFromCache: (...args: unknown[]) => mocks.deleteNoteFromCache(...args)
+  syncNoteToCache: (...args: unknown[]) => mocks.syncNoteToCache(...args)
 }))
 
 vi.mock('../projections', () => ({
@@ -140,7 +134,8 @@ vi.mock('../database/client', () => ({
 }))
 
 vi.mock('@main/database/queries/notes', () => ({
-  getNoteCacheById: (...args: unknown[]) => mocks.getNoteCacheById(...args)
+  getNoteCacheById: (...args: unknown[]) => mocks.getNoteCacheById(...args),
+  updateNoteCache: vi.fn()
 }))
 
 vi.mock('@memry/storage-data', () => ({
@@ -152,8 +147,7 @@ vi.mock('@memry/app-core/reminders', () => ({
 }))
 
 vi.mock('../notes/note-date-reminders', () => ({
-  syncNoteDateReminders: (...args: unknown[]) => mocks.syncNoteDateReminders(...args),
-  clearNoteDateReminders: (...args: unknown[]) => mocks.clearNoteDateReminders(...args)
+  syncNoteDateReminders: (...args: unknown[]) => mocks.syncNoteDateReminders(...args)
 }))
 
 import {
@@ -161,17 +155,16 @@ import {
   cancelWriteback,
   flushPendingWritebacks,
   hasPendingWriteback,
+  holdFlushUntil,
   getWritebackDebugState,
   getWritebackStateSizes,
-  handleSyncDeletion,
-  isWritebackIgnored,
-  markWritebackIgnored,
   resetWritebackState,
   scheduleWriteback,
   settleWriteback,
   writebackNow
 } from './crdt-writeback'
 import { recordNetworkUpdate, wasRecentNetworkUpdate } from './crdt-network-update'
+import { recordAppWrite } from '../vault/app-writes'
 import { resetTelemetryThrottle } from '../telemetry/throttle'
 
 // A real, empty folder: the outside-vault check resolves every read against it.
@@ -229,10 +222,8 @@ describe('crdt writeback', () => {
     mocks.toAbsolutePath.mockImplementation((relative: string) => `/vault/${relative}`)
     mocks.getJournalPath.mockImplementation((date: string) => `/vault/journal/${date}.md`)
     mocks.atomicWrite.mockResolvedValue(undefined)
-    mocks.deleteFile.mockResolvedValue(undefined)
     mocks.ensureDirectory.mockResolvedValue(undefined)
     mocks.closeDoc.mockResolvedValue(undefined)
-    mocks.purgeDoc.mockResolvedValue(undefined)
     // Default: the note is not in the provider's map (closed, or never opened
     // through the provider), so a pending write-back falls back to the doc it
     // captured — the behaviour every case below except the reopen ones wants.
@@ -247,13 +238,7 @@ describe('crdt writeback', () => {
     vi.useRealTimers()
   })
 
-  it('tracks ignored write and recent network update TTL windows', () => {
-    markWritebackIgnored('/vault/notes/A.md')
-    expect(isWritebackIgnored('/vault/notes/A.md')).toBe(true)
-
-    vi.advanceTimersByTime(5000)
-    expect(isWritebackIgnored('/vault/notes/A.md')).toBe(false)
-
+  it('tracks the recent network update window', () => {
     recordNetworkUpdate('note-1')
     expect(wasRecentNetworkUpdate('note-1')).toBe(true)
 
@@ -280,7 +265,7 @@ describe('crdt writeback', () => {
     expect(mocks.syncNoteToCache).toHaveBeenCalledWith(
       { kind: 'index-db' },
       expect.objectContaining({ id: 'note-1', path: 'notes/Existing.md' }),
-      { isNew: false }
+      { isNew: false, source: 'sync' }
     )
     // The body changed here, so `content` rides along — that is what lets an
     // open editor pick up a remote edit instead of showing stale text.
@@ -607,7 +592,7 @@ describe('crdt writeback', () => {
     expect(mocks.syncNoteToCache).toHaveBeenCalledWith(
       { kind: 'index-db' },
       expect.objectContaining({ parsedContent: 'updated markdown {++added++} {--deleted--}' }),
-      { isNew: false }
+      { isNew: false, source: 'sync' }
     )
   })
 
@@ -643,7 +628,7 @@ describe('crdt writeback', () => {
         path: 'notes/Real Title.md',
         title: 'Real Title'
       }),
-      { isNew: false }
+      { isNew: false, source: 'sync' }
     )
   })
 
@@ -725,63 +710,6 @@ describe('crdt writeback', () => {
     )
   })
 
-  it('deletes synced note files, purges CRDT docs, and emits note or journal deletion events', async () => {
-    await handleSyncDeletion('note-1')
-
-    expect(mocks.deleteNoteFromCache).toHaveBeenCalledWith({ kind: 'index-db' }, 'note-1')
-    expect(mocks.deleteFile).toHaveBeenCalledWith('/vault/notes/Existing.md')
-    expect(mocks.purgeDoc).toHaveBeenCalledWith('note-1')
-    expect(mocks.sent).toContainEqual({
-      channel: NotesChannels.events.DELETED,
-      payload: {
-        id: 'note-1',
-        path: 'notes/Existing.md',
-        date: undefined,
-        source: 'sync'
-      }
-    })
-
-    mocks.sent = []
-    mocks.getNoteCacheById.mockReturnValue({
-      id: 'j2026-01-04',
-      path: 'journal/2026-01-04.md',
-      title: 'Journal'
-    })
-
-    await handleSyncDeletion('j2026-01-04')
-
-    expect(mocks.sent).toContainEqual({
-      channel: JournalChannels.events.ENTRY_DELETED,
-      payload: {
-        id: 'j2026-01-04',
-        path: 'journal/2026-01-04.md',
-        date: '2026-01-04',
-        source: 'sync'
-      }
-    })
-  })
-
-  it('purges a note deleted on a peer even when this device kept no row for it', async () => {
-    // #given the local delete already ran here and took the index row with it.
-    // The doc is the part no row is left to point at, so the arriving delete is
-    // the last chance to be rid of it.
-    mocks.getNoteCacheById.mockReturnValue(undefined)
-
-    await handleSyncDeletion('note-1')
-
-    expect(mocks.purgeDoc).toHaveBeenCalledWith('note-1')
-    expect(mocks.deleteFile).not.toHaveBeenCalled()
-  })
-
-  it('applies the same remote delete twice to the same end state', async () => {
-    await handleSyncDeletion('note-1')
-    mocks.getNoteCacheById.mockReturnValue(undefined)
-    await handleSyncDeletion('note-1')
-
-    expect(mocks.purgeDoc).toHaveBeenCalledTimes(2)
-    expect(mocks.deleteFile).toHaveBeenCalledTimes(1)
-  })
-
   it('flushPendingWritebacks runs a scheduled write-back without advancing the debounce timer', async () => {
     scheduleWriteback('note-1', makeDoc('Pending title', ['flush-tag']), 'remote')
     expect(mocks.atomicWrite).not.toHaveBeenCalled()
@@ -818,6 +746,27 @@ describe('crdt writeback', () => {
       'Write-back failed during shutdown flush',
       expect.objectContaining({ noteId: 'note-1' })
     )
+  })
+
+  // A held journal create waits on the projection lane, which a stuck
+  // projection can hold for good: the quit, a vault close and a journal format
+  // change flush through here, and none of them may hang on it.
+  it('flushPendingWritebacks stops waiting for stuck held work and names it in the log', async () => {
+    let settle!: () => void
+    holdFlushUntil(new Promise<void>((resolve) => (settle = resolve)), 'journal create 2026-05-11')
+
+    let flushed = false
+    const flush = flushPendingWritebacks().then(() => (flushed = true))
+    await vi.advanceTimersByTimeAsync(0)
+    expect(flushed).toBe(false)
+    await vi.advanceTimersByTimeAsync(10_000)
+    await flush
+
+    expect(mocks.logger.warn).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ held: ['journal create 2026-05-11'] })
+    )
+    settle()
   })
 
   it('settleWriteback runs an armed pass at once and leaves an unarmed note alone', async () => {
@@ -1367,26 +1316,25 @@ describe('crdt-writeback per-vault state reset', () => {
     vi.useRealTimers()
   })
 
-  it('drops ignored writes, network-update marks and debug state on vault teardown', () => {
+  it('drops app writes, network-update marks, debug state and armed passes on vault teardown', () => {
     // #given — a vault session that populated every module-level per-note map
-    markWritebackIgnored('/vault-a/notes/One.md')
+    recordAppWrite('/vault-a/notes/One.md', 'one')()
     recordNetworkUpdate('note-1')
     scheduleWriteback('note-1', makeDoc('One'), 'remote')
 
-    expect(isWritebackIgnored('/vault-a/notes/One.md')).toBe(true)
+    expect(getWritebackStateSizes().appWrites).toBe(1)
     expect(wasRecentNetworkUpdate('note-1')).toBe(true)
     expect(getWritebackDebugState('note-1')).not.toBeNull()
 
     // #when — the vault is closed (CrdtProvider.destroy)
-    cancelPendingWritebacks()
     resetWritebackState()
 
     // #then — nothing from the old vault survives into the next one
-    expect(isWritebackIgnored('/vault-a/notes/One.md')).toBe(false)
+    expect(hasPendingWriteback('note-1')).toBe(false)
     expect(wasRecentNetworkUpdate('note-1')).toBe(false)
     expect(getWritebackDebugState('note-1')).toBeNull()
     expect(getWritebackStateSizes()).toEqual({
-      ignoredWrites: 0,
+      appWrites: 0,
       networkUpdates: 0,
       lastWrittenHashes: 0,
       debugState: 0
@@ -1410,20 +1358,5 @@ describe('crdt-writeback per-vault state reset', () => {
     expect(getWritebackStateSizes().networkUpdates).toBe(1)
     expect(wasRecentNetworkUpdate('note-old')).toBe(false)
     expect(wasRecentNetworkUpdate('note-new')).toBe(true)
-  })
-
-  it('evicts expired ignored writes from the write path, not only from watcher reads', () => {
-    // #given — a write-back marked a file as self-written
-    markWritebackIgnored('/vault-a/notes/Old.md')
-
-    // #when — the TTL passes and another write-back lands, with no watcher event
-    // in between (a stopped watcher never calls `isWritebackIgnored`)
-    vi.advanceTimersByTime(6000)
-    markWritebackIgnored('/vault-a/notes/New.md')
-
-    // #then — the expired entry did not survive the session
-    expect(getWritebackStateSizes().ignoredWrites).toBe(1)
-    expect(isWritebackIgnored('/vault-a/notes/Old.md')).toBe(false)
-    expect(isWritebackIgnored('/vault-a/notes/New.md')).toBe(true)
   })
 })

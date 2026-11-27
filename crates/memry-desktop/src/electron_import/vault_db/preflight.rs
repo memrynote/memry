@@ -9,13 +9,13 @@ use std::collections::BTreeMap;
 
 use rusqlite::{Connection, OptionalExtension};
 
+use super::ImportError;
 use super::source::{Sources, source_error};
 use super::sync_state::{self, KeyRule};
 use super::tables::{
-    ELECTRON_DATA_LAST_MIGRATION, ELECTRON_INDEX_LAST_MIGRATION, Importer, LEDGER_TABLE, SourceDb,
+    ELECTRON_DATA_LEDGER_ENDS, ELECTRON_INDEX_LEDGER_ENDS, Importer, LEDGER_TABLE, SourceDb,
     TableMapping, mapping, pending_area,
 };
-use super::{ImportError, VaultImportInput};
 
 /// Shadow tables per module, as Electron's DDL creates them: fts5 always makes these five, and
 /// vec0 these four for a table with a TEXT primary key and no auxiliary or metadata columns. A
@@ -30,15 +30,12 @@ pub(super) struct Preflight {
     pub dropped_keys: BTreeMap<String, u64>,
 }
 
-pub(super) fn run(
-    sources: &Sources,
-    _input: &VaultImportInput<'_>,
-) -> Result<Preflight, ImportError> {
-    for (db, last) in [
-        (SourceDb::Data, ELECTRON_DATA_LAST_MIGRATION),
-        (SourceDb::Index, ELECTRON_INDEX_LAST_MIGRATION),
+pub(super) fn run(sources: &Sources) -> Result<Preflight, ImportError> {
+    for (db, ends) in [
+        (SourceDb::Data, ELECTRON_DATA_LEDGER_ENDS),
+        (SourceDb::Index, ELECTRON_INDEX_LEDGER_ENDS),
     ] {
-        ledger_matches(sources.conn(db), db, last)?;
+        ledger_matches(sources.conn(db), db, ends)?;
     }
 
     let mut tables = Vec::new();
@@ -82,9 +79,14 @@ fn not_ready(stage: &str, detail: String) -> ImportError {
     }
 }
 
-/// The newest `__drizzle_migrations.created_at` must be the frozen journal's last `when`. An
-/// older source lacks columns the map reads; a newer one may hold columns it would drop.
-fn ledger_matches(conn: &Connection, db: SourceDb, expected: i64) -> Result<(), ImportError> {
+/// The newest `__drizzle_migrations.created_at` must be one of `expected`, the frozen journal
+/// entries `TABLE_MAP` reads alike. An older source lacks columns the map reads; a newer one may
+/// hold columns it would drop.
+fn ledger_matches(
+    conn: &Connection,
+    db: SourceDb,
+    expected: &'static [i64],
+) -> Result<(), ImportError> {
     let has_ledger: bool = conn
         .query_row(
             "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?1)",
@@ -102,7 +104,7 @@ fn ledger_matches(conn: &Connection, db: SourceDb, expected: i64) -> Result<(), 
     } else {
         None
     };
-    if found != Some(expected) {
+    if !found.is_some_and(|end| expected.contains(&end)) {
         return Err(ImportError::SourceSchema {
             db: db.name(),
             found,

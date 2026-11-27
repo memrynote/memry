@@ -30,71 +30,21 @@ import {
   STDERR_TAIL_LIMIT,
   type ModelCacheState
 } from './embeddings-worker-stderr'
+import type {
+  EmbeddingWorkerCrashContext,
+  EncoderState,
+  WorkerExitPhase,
+  WorkerRelease
+} from './embedding-crash-context'
 import { MAX_EMBEDDING_INPUT_LENGTH } from './embedding-input'
 import { createLogger } from './logger'
-import { lowerProcessPriority } from './low-priority'
+import { backgroundDeadline, moveToBackground, setBackgroundQos } from './low-priority'
 import { broadcastToAllWindows } from './window-broadcast'
 import { isChildProcessFault, trackMainLog } from '../telemetry/diagnostics'
 import { getLogShip } from '../telemetry/log-ship'
 import { shouldEmitThrottled } from '../telemetry/throttle'
 
 const logger = createLogger('Embeddings')
-
-/**
- * Where the worker was in its lifecycle when it died. This is the discriminator
- * production is missing: an `idle_shutdown` death costs the user nothing (the
- * embedding was already delivered), while `in_flight` means they silently lost
- * semantic-search indexing for that note.
- */
-export type WorkerExitPhase = 'starting' | 'in_flight' | 'idle_shutdown' | 'idle'
-
-/**
- * How the bridge stopped tracking a worker. `live` means it still owns it;
- * everything else is a worker it has already let go of, which is the state
- * every production crash report has arrived in.
- */
-export type WorkerRelease =
-  | 'live'
-  | 'teardown'
-  | 'start_timeout'
-  | 'request_timeout'
-  | 'fatal_error'
-  | 'exit'
-  | 'graceful_stop'
-
-/** Where an on-demand encoder stands in a worker: never asked for, loading, or live. */
-export type EncoderState = 'off' | 'loading' | 'ready'
-
-/**
- * Everything the main process knows about the worker a `child-process-gone`
- * report belongs to. Every field is a number, a bounded enum, or output the
- * caller redacts — no user content.
- */
-export interface EmbeddingWorkerCrashContext {
-  phase: WorkerExitPhase
-  /** OS pid, so two reports can be tied to one fork (or told apart). */
-  pid?: number
-  /** ms between the fork and this report. Separates "died loading" from "died after running fine". */
-  uptimeMs: number
-  release: WorkerRelease
-  modelCache: ModelCacheState
-  /** Size of the cached weights file, when there is one. */
-  modelCacheBytes?: number
-  /** Image encoder state in this worker. Text-only users stay `off` with `absent` weights. */
-  vision: EncoderState
-  /** Whether the image encoder weights were on disk when this worker was forked. */
-  visionCache: ModelCacheState
-  /** Audio encoder state in this worker. Users with no voice memo to embed stay `off`. */
-  audio: EncoderState
-  /** Whether the audio encoder weights were on disk when this worker was forked. */
-  audioCache: ModelCacheState
-  /** `reload` when a model load had already failed this session before this fork. */
-  load: 'first' | 'reload'
-  /** Embedding-worker crash reports seen this session, including this one. */
-  crashCount: number
-  /** Redacted tail of the worker's own stderr — the abort message, if it wrote one. */
-  stderrTail?: string
-}
 
 export interface ModelInfo {
   name: string
@@ -128,7 +78,8 @@ const WORKER_SERVICE_NAME = 'Embeddings'
 
 /**
  * Covers the first-run download inside `load-model`: ~210MB at 2.5 Mbps is
- * ~11 minutes. Five minutes was sized for the 23MB MiniLM.
+ * ~11 minutes. Five minutes was sized for the 23MB MiniLM. Both timeouts move
+ * out while the worker keeps using CPU (`backgroundDeadline`).
  */
 const REQUEST_TIMEOUT_MS = 15 * 60_000
 const START_TIMEOUT_MS = 10_000
@@ -167,7 +118,7 @@ const LAST_WORKER_TTL_MS = 60_000
 type PendingRequest = {
   resolve: (value: EmbeddingWorkerToMainMessage) => void
   reject: (error: Error) => void
-  timer: ReturnType<typeof setTimeout>
+  cancelTimeout: () => void
 }
 
 type WorkerRequest = Extract<EmbeddingMainToWorkerMessage, { requestId: string }>
@@ -176,7 +127,7 @@ type WorkerRequest = Extract<EmbeddingMainToWorkerMessage, { requestId: string }
 type WorkerGeneration = {
   process: ReturnType<typeof utilityProcess.fork>
   readiness: PromiseWithResolvers<void>
-  startTimer: ReturnType<typeof setTimeout> | null
+  cancelStartTimeout: (() => void) | null
   idleTimer: ReturnType<typeof setTimeout> | null
   pendingRequests: Map<string, PendingRequest>
   activeRequests: Map<string, WorkerRequest['type']>
@@ -198,6 +149,10 @@ type WorkerGeneration = {
   stderrTail: string
   /** Phase at the moment the bridge released it; null while it is still live. */
   releasePhase: WorkerExitPhase | null
+  /** Search queries waiting on this worker; while any does, it runs out of background QoS. */
+  queriesWaiting: number
+  /** Serializes this worker's QoS changes, so a lift never lands after the drop that follows it. */
+  qos: Promise<void>
 }
 
 /**
@@ -338,7 +293,12 @@ class EmbeddingModelBridge {
     }
   }
 
-  async embed(text: string): Promise<Float32Array | null> {
+  /**
+   * `query` is a search waiting on the vector: the worker leaves background QoS
+   * until it is answered, or a busy Mac would hold the search back with the
+   * backfill.
+   */
+  async embed(text: string, query = false): Promise<Float32Array | null> {
     // Belt-and-suspenders for the same loop: callers reach embeddings through
     // isModelLoaded() -> initEmbeddingModel(), but nothing forces them to, and the
     // worker re-drives the download inside handleEmbed. Without this an embed()
@@ -357,11 +317,12 @@ class EmbeddingModelBridge {
       generation = this.start()
       if (!this.isActive(generation)) return null
       this.loading = !this.loaded
-      const response = await this.sendRequest(generation, {
+      const request = this.sendRequest(generation, {
         type: 'embed',
         requestId: this.nextRequestId(),
         text: text.substring(0, MAX_EMBEDDING_INPUT_LENGTH)
       })
+      const response = query ? await this.whileQueryWaits(generation, request) : await request
       if (!this.isActive(generation)) return null
 
       if (response.type === 'error') {
@@ -400,6 +361,20 @@ class EmbeddingModelBridge {
       this.recordFailure()
       this.reportEmbeddingFailure(error)
       return null
+    }
+  }
+
+  private async whileQueryWaits<T>(generation: WorkerGeneration, request: Promise<T>): Promise<T> {
+    const setQos = (background: boolean): void => {
+      generation.qos = generation.qos.then(() =>
+        setBackgroundQos(generation.process.pid, background)
+      )
+    }
+    if (generation.queriesWaiting++ === 0) setQos(false)
+    try {
+      return await request
+    } finally {
+      if (--generation.queriesWaiting === 0 && !generation.stopping) setQos(true)
     }
   }
 
@@ -506,7 +481,7 @@ class EmbeddingModelBridge {
 
     generation.stopping = true
     this.clearIdleShutdown(generation)
-    clearTimeout(generation.startTimer ?? undefined)
+    generation.cancelStartTimeout?.()
     const error = new Error('Embedding utility stopping')
     generation.readiness.reject(error)
     this.rejectAll(generation, error)
@@ -622,11 +597,11 @@ class EmbeddingModelBridge {
       env: { ...process.env, MEMRY_USER_DATA_PATH: userDataPath },
       allowLoadingUnsignedLibraries: process.platform === 'darwin'
     })
-    child.once('spawn', () => lowerProcessPriority(child.pid))
+    child.once('spawn', () => void moveToBackground(child.pid))
     const generation: WorkerGeneration = {
       process: child,
       readiness: Promise.withResolvers<void>(),
-      startTimer: null,
+      cancelStartTimeout: null,
       idleTimer: null,
       pendingRequests: new Map(),
       activeRequests: new Map(),
@@ -645,7 +620,9 @@ class EmbeddingModelBridge {
       audioCache: probeEncoderCache(userDataPath, 'audio'),
       load: this.consecutiveFailures > 0 ? 'reload' : 'first',
       stderrTail: '',
-      releasePhase: null
+      releasePhase: null,
+      queriesWaiting: 0,
+      qos: Promise.resolve()
     }
     this.worker = generation
     child.stdout?.on('data', (chunk: Buffer | string) => {
@@ -662,12 +639,16 @@ class EmbeddingModelBridge {
         logger.error(`Embedding utility stderr: ${output}`)
       }
     })
-    generation.startTimer = setTimeout(() => {
-      if (!this.isActive(generation)) return
-      const error = new Error('Embedding utility failed to start within timeout')
-      logger.error('Embedding utility start timeout', { workerPath, pid: child.pid })
-      this.failProcess(generation, error, 'start_timeout')
-    }, START_TIMEOUT_MS)
+    generation.cancelStartTimeout = backgroundDeadline(
+      () => child.pid,
+      START_TIMEOUT_MS,
+      () => {
+        if (!this.isActive(generation)) return
+        const error = new Error('Embedding utility failed to start within timeout')
+        logger.error('Embedding utility start timeout', { workerPath, pid: child.pid })
+        this.failProcess(generation, error, 'start_timeout')
+      }
+    )
     this.setupProcessHandlers(generation)
     return generation
   }
@@ -681,8 +662,8 @@ class EmbeddingModelBridge {
       }
       if (!this.isActive(generation)) return
       if (message.type === 'ready') {
-        clearTimeout(generation.startTimer ?? undefined)
-        generation.startTimer = null
+        generation.cancelStartTimeout?.()
+        generation.cancelStartTimeout = null
         generation.ready = true
         generation.readiness.resolve()
         logger.info('Embedding utility ready')
@@ -696,7 +677,7 @@ class EmbeddingModelBridge {
       if ('requestId' in message) {
         const pending = generation.pendingRequests.get(message.requestId)
         if (!pending) return
-        clearTimeout(pending.timer)
+        pending.cancelTimeout()
         generation.pendingRequests.delete(message.requestId)
         if (message.type === 'error') {
           this.error = message.error
@@ -789,14 +770,17 @@ class EmbeddingModelBridge {
       if (!this.isActive(generation)) throw new Error('Embedding utility generation retired')
       this.clearIdleShutdown(generation)
       return await new Promise<EmbeddingWorkerToMainMessage>((resolve, reject) => {
-        const timer = setTimeout(() => {
-          this.failProcess(
-            generation,
-            new Error(`Embedding request timed out: ${message.type}`),
-            'request_timeout'
-          )
-        }, REQUEST_TIMEOUT_MS)
-        generation.pendingRequests.set(message.requestId, { resolve, reject, timer })
+        const cancelTimeout = backgroundDeadline(
+          () => generation.process.pid,
+          REQUEST_TIMEOUT_MS,
+          () =>
+            this.failProcess(
+              generation,
+              new Error(`Embedding request timed out: ${message.type}`),
+              'request_timeout'
+            )
+        )
+        generation.pendingRequests.set(message.requestId, { resolve, reject, cancelTimeout })
         try {
           generation.process.postMessage(message)
         } catch (error) {
@@ -853,8 +837,8 @@ class EmbeddingModelBridge {
     generation.stopping = true
     generation.loadPromise = null
     generation.releasePhase ??= phase
-    clearTimeout(generation.startTimer ?? undefined)
-    generation.startTimer = null
+    generation.cancelStartTimeout?.()
+    generation.cancelStartTimeout = null
     this.clearIdleShutdown(generation)
     const error = new Error('Embedding utility generation retired')
     generation.readiness.reject(error)
@@ -922,7 +906,7 @@ class EmbeddingModelBridge {
 
   private rejectAll(generation: WorkerGeneration, error: Error): void {
     for (const pending of generation.pendingRequests.values()) {
-      clearTimeout(pending.timer)
+      pending.cancelTimeout()
       pending.reject(error)
     }
     generation.pendingRequests.clear()
@@ -975,6 +959,15 @@ export async function generateEmbedding(text: string): Promise<Float32Array | nu
   }
 
   return bridge.embed(text)
+}
+
+/**
+ * {@link generateEmbedding} for a search query someone is waiting on: the
+ * worker leaves background QoS until it answers.
+ */
+export async function generateQueryEmbedding(text: string): Promise<Float32Array | null> {
+  if (!text || text.trim().length < MIN_CONTENT_LENGTH) return null
+  return bridge.embed(text, true)
 }
 
 /**

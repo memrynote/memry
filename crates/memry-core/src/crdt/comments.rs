@@ -69,7 +69,12 @@ pub struct ReviewComment {
     pub created_at: Option<i64>,
 }
 
-/// Every review mark on this note, in document order.
+/// Every review mark on this note, in document order, one per id.
+///
+/// Two devices that change the same mark at once each replace its element,
+/// and the array keeps both. The reference reader takes the first well-formed
+/// one in array order (`packages/shared/src/critic-markup/yjs.ts`), which is
+/// the same element on every device, and so does this one.
 ///
 /// **An empty list means "this note has none", which is different from the
 /// root being absent** — but both arrive here as an empty list, because a
@@ -85,7 +90,11 @@ pub fn extract_comments(document: &Document) -> Result<Vec<ReviewComment>, CrdtE
     })
 }
 
+/// One mark per id, the first valid copy winning (§12.5.1): two devices that
+/// edit one mark offline leave two copies, which Yjs orders the same on every
+/// replica.
 fn read_marks<T: ReadTxn>(array: &ArrayRef, txn: &T) -> Vec<ReviewComment> {
+    let mut seen = std::collections::HashSet::new();
     array
         .iter(txn)
         .filter_map(|value| {
@@ -107,6 +116,7 @@ fn read_marks<T: ReadTxn>(array: &ArrayRef, txn: &T) -> Vec<ReviewComment> {
                 _ => None,
             }
         })
+        .filter(|mark| seen.insert(mark.id.clone()))
         .collect()
 }
 

@@ -386,6 +386,45 @@ fn an_edit_resending_an_unchanged_field_leaves_its_clock_alone() {
 }
 
 #[test]
+fn a_no_op_edit_or_a_re_archive_stamps_and_queues_nothing() {
+    // An editor save that changes nothing must not move the document clock:
+    // a concurrent clock makes the merge keep this device's unmerged arrays
+    // (RCA-STATUSNOOP).
+    let db = open("projects-edit-noop");
+    db.call_blocking(|conn| {
+        seed(
+            conn,
+            "project",
+            "proj-z",
+            json!({
+                "name": "Agent Test Same", "description": "Same", "color": "#0ea5e9",
+                "icon": "📦", "position": 1, "archivedAt": "2025-01-01T00:00:00.000Z",
+                "clock": {"device-b": 3}, "fieldClocks": {"name": {"device-b": 3}},
+                "modifiedAt": "2025-01-01T00:00:00.000Z"
+            }),
+        );
+        let before = payload_of(conn, "project", "proj-z");
+        let edit = ProjectEdit {
+            name: Some("Agent Test Same"),
+            description: Some(Some("Same")),
+            color: Some("#0ea5e9"),
+            icon: Some(Some("📦")),
+            statuses: None,
+        };
+        let _ = projects::update(conn, "proj-z", &edit, DEVICE, NOW)?;
+        let _ = projects::set_archived(conn, "proj-z", true, DEVICE, NOW)?;
+
+        let after = payload_of(conn, "project", "proj-z");
+        for key in ["clock", "fieldClocks", "modifiedAt"] {
+            assert_eq!(after[key], before[key], "{key}");
+        }
+        assert_eq!(outbox_total(conn), 0);
+        Ok(())
+    })
+    .expect("the no-op");
+}
+
+#[test]
 fn a_status_reconcile_keeps_drops_adds_and_retypes_and_leaves_tasks_alone() {
     let db = open("projects-reconcile");
     db.call_blocking(|conn| {

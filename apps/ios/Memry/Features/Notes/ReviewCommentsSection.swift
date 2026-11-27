@@ -11,6 +11,8 @@ import SwiftUI
 ///
 /// Absent when the note has none, like the other sections under the body.
 struct ReviewCommentsSection: View {
+    /// Each `visibleText` and `originalText` as the note shows it
+    /// (`NoteReadViewModel.shownComments`).
     let comments: [ReviewComment]
 
     var body: some View {

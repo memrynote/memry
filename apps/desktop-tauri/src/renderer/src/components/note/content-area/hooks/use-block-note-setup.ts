@@ -55,7 +55,7 @@ export function useBlockNoteSetup({
     }, 0)
 
     const handleKeyDown = (e: KeyboardEvent): void => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'j') {
+      if ((e.metaKey || e.ctrlKey) && !e.altKey && e.key === 'j') {
         e.preventDefault()
         const ai = editor.getExtension('ai')
         if (!ai?.openAIMenuAtBlock) return

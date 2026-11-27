@@ -6,6 +6,7 @@ use rusqlite::params;
 
 use super::{ImportWriter, failed};
 use crate::api::errors::StorageError;
+use crate::storage::nested_tx;
 
 /// One `inbox_item_tags` row; `created_at` in epoch ms.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -66,7 +67,7 @@ impl ImportWriter {
     /// Writes `tags` in order and returns how many were stored: a tag already on the item (the
     /// core key ignores case, as Electron's `NOCASE` column compares) keeps the first one.
     pub fn put_inbox_tags(&mut self, tags: &[ImportInboxTag]) -> Result<u64, StorageError> {
-        let tx = self.data.transaction().map_err(failed)?;
+        let tx = nested_tx::begin(&self.data).map_err(failed)?;
         let mut stored = 0;
         for tag in tags {
             stored += tx
@@ -82,7 +83,7 @@ impl ImportWriter {
     }
 
     pub fn put_inbox_uploads(&mut self, uploads: &[ImportInboxUpload]) -> Result<(), StorageError> {
-        let tx = self.data.transaction().map_err(failed)?;
+        let tx = nested_tx::begin(&self.data).map_err(failed)?;
         for upload in uploads {
             tx.execute(
                 "INSERT INTO inbox_attachment_uploads (item_id, created_at) VALUES (?1, ?2)",
@@ -96,7 +97,7 @@ impl ImportWriter {
     /// Writes `jobs` with no current run (`run_id` NULL). A second job for one (capture, type)
     /// fails the call: the caller keeps one per pair, as `jobs::enqueue` does.
     pub fn put_inbox_jobs(&mut self, jobs: &[ImportInboxJob]) -> Result<(), StorageError> {
-        let tx = self.data.transaction().map_err(failed)?;
+        let tx = nested_tx::begin(&self.data).map_err(failed)?;
         for job in jobs {
             tx.execute(
                 "INSERT INTO inbox_jobs (id, item_id, type, status, run_id, attempts,
@@ -124,7 +125,7 @@ impl ImportWriter {
     }
 
     pub fn put_local_events(&mut self, events: &[ImportLocalEvent]) -> Result<(), StorageError> {
-        let tx = self.data.transaction().map_err(failed)?;
+        let tx = nested_tx::begin(&self.data).map_err(failed)?;
         for e in events {
             tx.execute(
                 "INSERT INTO calendar_local_events (id, source_id, remote_event_id, title,

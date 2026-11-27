@@ -172,6 +172,7 @@ fn a_value_removed_outside_stays_removed_through_a_full_apply() {
         note_id: f.id.clone(),
         template_id: template,
         mode: TemplateMode::Full,
+        plain_checklists: false,
     };
     f.notes.apply_template(&open, input).unwrap();
     let text = f.e.read("Plan.md");

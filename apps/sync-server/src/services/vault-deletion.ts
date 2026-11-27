@@ -141,6 +141,7 @@ export async function deleteVaultData(
     // adjustment accompanies this.
     scoped('DELETE FROM pack_index WHERE user_id = ? AND vault_id = ?'),
     scoped('DELETE FROM pack_watermarks WHERE user_id = ? AND vault_id = ?'),
+    scoped('DELETE FROM pack_bootstrap_enqueues WHERE user_id = ? AND vault_id = ?'),
     scoped('UPDATE devices SET vault_id = NULL WHERE user_id = ? AND vault_id = ?'),
     scoped('DELETE FROM sync_vaults WHERE user_id = ? AND vault_id = ?'),
     // Inlined rather than calling adjustStorageUsed(): that helper runs its own

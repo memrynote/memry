@@ -23,7 +23,8 @@
  * served through self-heal.
  */
 
-import { renameSync, existsSync } from 'fs'
+import { existsSync, readdirSync, renameSync, statSync } from 'fs'
+import { open, stat, unlink } from 'fs/promises'
 import path from 'path'
 import { createLogger } from '../lib/logger'
 import { getNoteAttachmentsDir } from './attachments'
@@ -133,6 +134,73 @@ export function reconcileRenamedAttachments(
   return applied
 }
 
+type Identity = 'same' | 'different' | 'unknown'
+
+const foldName = (name: string): string => name.normalize('NFC').toLowerCase()
+
+/**
+ * Whether two paths name one file: a case or normalization variant on a
+ * folding FS. A file is removed or replaced only when identity is proven, so
+ * callers act on `same` and `different` and leave everything alone on
+ * `unknown`. Some mounts (SMB/WebDAV redirectors, virtual cloud drives, FUSE)
+ * report ino 0 for every file, which proves neither. The folder listing then
+ * settles `same` only when both names fold to one spelling and exactly one
+ * entry carries it.
+ */
+function sameFile(a: string, b: string): Identity {
+  if (path.dirname(a) !== path.dirname(b)) return 'unknown'
+  const sa = statSync(a, { bigint: true })
+  const sb = statSync(b, { bigint: true })
+  if (sa.dev === undefined || sb.dev === undefined || !sa.ino || !sb.ino) {
+    const folded = foldName(path.basename(a))
+    if (folded !== foldName(path.basename(b))) return 'unknown'
+    const entries = readdirSync(path.dirname(a)).filter((name) => foldName(name) === folded)
+    return entries.length === 1 ? 'same' : 'unknown'
+  }
+  return sa.dev === sb.dev && sa.ino === sb.ino ? 'same' : 'different'
+}
+
+/** Reads both files off the main thread's event loop, chunk by chunk. */
+async function sameBytes(a: string, b: string): Promise<boolean> {
+  const [sa, sb] = await Promise.all([stat(a), stat(b)])
+  if (sa.size !== sb.size) return false
+  const fa = await open(a, 'r')
+  try {
+    const fb = await open(b, 'r')
+    try {
+      const ba = Buffer.alloc(64 * 1024)
+      const bb = Buffer.alloc(ba.length)
+      for (let at = 0; at < sa.size;) {
+        const { bytesRead: n } = await fa.read(ba, 0, ba.length, at)
+        if (n === 0 || (await fb.read(bb, 0, n, at)).bytesRead !== n) return false
+        if (!ba.subarray(0, n).equals(bb.subarray(0, n))) return false
+        at += n
+      }
+      return true
+    } finally {
+      await fb.close()
+    }
+  } finally {
+    await fa.close()
+  }
+}
+
+/**
+ * Give one file the body's spelling of its own name. Two steps through a
+ * temporary name, because a folding FS may treat a direct case-only rename as
+ * a rename onto itself and keep the old spelling.
+ */
+function renameCaseOnly(from: string, to: string): void {
+  const temporary = `${from}.${process.pid}.case`
+  renameSync(from, temporary)
+  try {
+    renameSync(temporary, to)
+  } catch (error) {
+    renameSync(temporary, from)
+    throw error
+  }
+}
+
 /**
  * Rename a just-downloaded attachment to the name the note body asks for.
  *
@@ -141,15 +209,23 @@ export function reconcileRenamedAttachments(
  * authority here — and the file was created by sync a moment ago, so there is
  * no user-chosen name to overwrite.
  *
+ * A file already under the body's name with the same bytes is this download
+ * landed and renamed before, its record cut short (OL-M48): the download is a
+ * second copy, so it is removed and that file reused. Other bytes there are
+ * kept beside it. On a case-insensitive FS a ref that differs only by case
+ * names the download itself (REVIEW-5749): that one file takes the body's
+ * spelling and nothing is removed. When the FS cannot prove whether the two
+ * names are one file (ino 0), the download keeps its name and nothing moves.
+ *
  * Returns the file's final path (renamed or not), or null when the input is not
  * a file in this note's attachments folder.
  */
-export function reconcileDownloadedAttachmentName(
+export async function reconcileDownloadedAttachmentName(
   noteId: string,
   downloadedPath: string,
   noteMarkdown: string | null,
   vaultPath: string
-): string | null {
+): Promise<string | null> {
   if (!noteMarkdown || !vaultPath) return null
 
   const dir = getNoteAttachmentsDir(vaultPath, noteId)
@@ -162,13 +238,39 @@ export function reconcileDownloadedAttachmentName(
   if (refs.has(downloaded)) return downloadedPath
 
   const prefix = downloaded.slice(0, 7)
-  const candidates = [...refs].filter((name) => name.startsWith(prefix))
+  // A reconcile acts only inside this note's own attachments folder. A ref
+  // is decoded and may carry `/`, `\` or `..` (hand-edited or crafted body);
+  // such a name would aim the rename at a subfolder or another note's folder,
+  // so only a plain file name can be a target.
+  const candidates = [...refs].filter(
+    (name) =>
+      name.startsWith(prefix) &&
+      path.basename(name) === name &&
+      !/[/\\]/.test(name) &&
+      !name.includes('..')
+  )
   if (candidates.length !== 1) return downloadedPath
 
   const target = path.join(dir, candidates[0])
-  if (existsSync(target)) return downloadedPath
-
   try {
+    if (existsSync(target)) {
+      const identity = sameFile(downloadedPath, target)
+      if (identity === 'unknown') return downloadedPath
+      if (identity === 'same') {
+        // Both spellings listed are two links to one file: nothing to rename.
+        if (readdirSync(dir).includes(candidates[0])) return downloadedPath
+        renameCaseOnly(downloadedPath, target)
+        logger.info('Gave a downloaded attachment its synced spelling', { noteId })
+        return target
+      }
+      // Invariant (REVIEW-5749): never delete a path unless it is a different
+      // file whose bytes are identical. The same file under two spellings would
+      // lose its only copy, with any local edits the server lacks.
+      if (!(await sameBytes(downloadedPath, target))) return downloadedPath
+      await unlink(downloadedPath)
+      logger.info('Reused the attachment already under its synced name', { noteId })
+      return target
+    }
     renameSync(downloadedPath, target)
     logger.info('Renamed a downloaded attachment to its synced name', { noteId })
     return target

@@ -46,6 +46,7 @@ use rusqlite::{Connection, OpenFlags, params};
 
 use crate::api::errors::StorageError;
 use crate::storage::guard::is_damage;
+use crate::storage::nested_tx;
 use crate::storage::quarantine::{free_name, move_to, now_ms};
 pub use crate::storage::salvage::TableSalvage;
 use crate::storage::salvage::{copy_table, is_transient, plain_tables, transient};
@@ -106,8 +107,10 @@ fn describe(tables: &[TableSalvage], salvage_error: Option<&str>, vault_id_lost:
     parts.join("; ")
 }
 
-/// The marker beside `path` (`data.db.recovering`). A file there means a recovery may be under
-/// way, so a caller that replaces `path` must leave it alone.
+/// The marker beside `path` (`data.db.recovering`): written before a recovery starts, removed
+/// after it settled. A file there means a recovery may be under way, so a caller that replaces
+/// `path` must leave it alone, and a process that must not run the recovery (the desktop command
+/// line) refuses while it is there.
 pub fn marker_path(path: &Path) -> PathBuf {
     PathBuf::from(format!("{}.recovering", path.display()))
 }
@@ -314,9 +317,7 @@ fn salvage(backup: &Path, fresh: &mut Connection) -> Result<Salvaged, StorageErr
 }
 
 fn salvage_in_transaction(backup: &Path, fresh: &mut Connection) -> Result<Salvaged, StorageError> {
-    let tx = fresh
-        .transaction()
-        .map_err(|err| transient("begin the salvage", &err))?;
+    let tx = nested_tx::begin(fresh).map_err(|err| transient("begin the salvage", &err))?;
     let (tables, salvage_error) = copy_all(backup, &tx)?;
     let copied: u64 = tables.iter().map(|t| t.copied).sum();
     let rejected: u64 = tables.iter().map(|t| t.rejected).sum();
