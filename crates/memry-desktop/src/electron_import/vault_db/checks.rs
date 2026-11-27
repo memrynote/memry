@@ -31,6 +31,22 @@ pub const RECORD_TABLES: &[(&str, &str, &str, &str)] = &[
     ("custom_icons", "id", "custom_icon", "1"),
     ("note_metadata", "id", "note", "journal_date IS NULL"),
     ("note_metadata", "id", "journal", "journal_date IS NOT NULL"),
+    ("inbox_items", "id", "inbox", "1"),
+    ("bookmarks", "id", "bookmark", "1"),
+    (
+        "calendar_sources",
+        "id",
+        "calendar_source",
+        "provider IS NOT 'apple-eventkit'",
+    ),
+    ("calendar_events", "id", "calendar_event", "1"),
+    ("calendar_bindings", "id", "calendar_binding", "1"),
+    (
+        "calendar_external_events",
+        "id",
+        "calendar_external_event",
+        "source_id NOT IN (SELECT id FROM calendar_sources WHERE provider IN ('ics', 'apple-eventkit'))",
+    ),
 ];
 
 pub(super) fn run(
@@ -105,6 +121,7 @@ pub(super) fn run(
     if source_vault_id(source)? != writer.vault_id()? {
         clock_mismatches.push("vault_metadata: the core vault id is not the source uuid".into());
     }
+    clock_mismatches.extend(super::sync_state::mismatches(source, writer)?);
     if !clock_mismatches.is_empty() {
         return Err(ImportError::CheckFailed {
             check: 5,

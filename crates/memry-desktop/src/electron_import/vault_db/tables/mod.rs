@@ -8,6 +8,8 @@
 use super::ImportError;
 use super::TableCtx;
 
+mod calendar;
+mod inbox;
 pub mod js_json;
 pub(super) mod note_file;
 mod notes;
@@ -15,6 +17,7 @@ pub mod queue;
 pub mod records;
 pub mod replay;
 mod row_dumps;
+pub mod sync_history;
 mod tags;
 pub mod unknown_fields;
 
@@ -153,11 +156,11 @@ pub const TABLE_MAP: &[TableMapping] = &[
     map!(Data Migration "attachment_download_failures" [18, Reseed]: "retry state; rows are dropped and the Step 18 redrive recomputes failures from the manifest"),
     map!(Data Migration "attachment_files" [18, Convert, "36f"]: "Step 18 attachment table (note id, path, attachment id, recorded at)"),
     map!(Data Migration "attachment_upload_queue" [18, Convert, "36f"]: "Step 18 upload queue; pending uploads must survive"),
-    map!(Data Migration "bookmarks" [29, Convert, "36d1"]: "core bookmarks table (data 0009) with the Electron clock columns"),
-    map!(Data Migration "calendar_bindings" [28, Convert, "36d1"]: "core calendar_bindings; created_at kept verbatim in created_at_raw and parsed to ms"),
-    map!(Data Migration "calendar_events" [28, Convert, "36d1"]: "core calendar_events; ISO instants to ms, JSON columns unchanged"),
-    map!(Data Migration "calendar_external_events" [28, Convert, "36d1"]: "split by source provider: google and caldav into calendar_external_events, ics and apple-eventkit into calendar_local_events"),
-    map!(Data Migration "calendar_sources" [28, Convert, "36d1"]: "core calendar_sources; ISO instants to ms, last_synced_at stays ISO text"),
+    map!(Data Migration "bookmarks" [29, Convert => calendar::bookmarks]: "bookmark sync_items records, the drizzle row Electron pushes; projected into core bookmarks (data 0009)"),
+    map!(Data Migration "calendar_bindings" [28, Convert => calendar::calendar_bindings]: "calendar_binding records as Electron pushes them; the projection keeps created_at verbatim in created_at_raw"),
+    map!(Data Migration "calendar_events" [28, Convert => calendar::calendar_events]: "calendar_event records as Electron pushes them, field clocks kept"),
+    map!(Data Migration "calendar_external_events" [28, Convert => calendar::calendar_external_events]: "by source provider: google and caldav as calendar_external_event records, ics and unknown providers into calendar_local_events, apple-eventkit dropped with its source"),
+    map!(Data Migration "calendar_sources" [28, Convert => calendar::calendar_sources]: "calendar_source records as Electron pushes them; apple-eventkit sources never leave the Mac and the core has no EventKit provider, so they are dropped and counted"),
     map!(Data Migration "canvas_assets" [29, Convert, "36f"]: "Step 30 canvas asset rows with chunk hashes"),
     map!(Data Migration "canvas_entity_edges" [29, Rebuild]: "derived from the canvas scene by the Step 30 projector"),
     map!(Data Migration "canvas_entity_refs" [29, Rebuild]: "derived from the canvas scene by the Step 30 projector"),
@@ -172,10 +175,10 @@ pub const TABLE_MAP: &[TableMapping] = &[
     map!(Data Migration "filing_history" [26, Skip]: "derived: core derives filing history from filed inbox_items (Inbox::filing_history)"),
     map!(Data Migration "folder_configs" [13, Convert => records::folder_configs]: "core folders table (data 0002, item id is the folder path)"),
     map!(Data Migration "home_pages" [16, Convert, "36b"]: "core home_page record table of Step 16"),
-    map!(Data Migration "inbox_attachment_uploads" [27, Convert, "36d1"]: "core inbox_attachment_uploads (data 0016)"),
-    map!(Data Migration "inbox_item_tags" [26, Convert, "36d1"]: "core inbox_item_tags table (data 0004)"),
-    map!(Data Migration "inbox_items" [26, Convert, "36d1"]: "core inbox table (data 0004) with clocks and attachment_id; dirty rows re-enqueued"),
-    map!(Data Migration "inbox_jobs" [26, Reseed]: "transient enrichment jobs; Step 27 re-queues jobs for items without a result"),
+    map!(Data Migration "inbox_attachment_uploads" [27, Copy => inbox::inbox_attachment_uploads]: "core inbox_attachment_uploads (data 0016)"),
+    map!(Data Migration "inbox_item_tags" [26, Convert => inbox::inbox_item_tags]: "core inbox_item_tags (data 0004), keyed by (item, tag); Electron's row id dropped"),
+    map!(Data Migration "inbox_items" [26, Convert => inbox::inbox_items]: "inbox sync_items records, the drizzle row Electron pushes (attachment_id included); a local-only row is refused"),
+    map!(Data Migration "inbox_jobs" [27, Convert => inbox::inbox_jobs]: "core inbox_jobs (data 0034) as Electron resumes them: running becomes pending; types the core has no processor for dropped"),
     map!(Data Migration "inbox_stats" [26, Rebuild]: "derived counters rebuilt by the Step 27 stats projector"),
     map!(Data Migration "note_metadata" [13, Convert => notes::note_metadata]: "note and journal records built as Electron pushes them (file and index copy) plus the Step 12 note_files row; ids and clocks bit exact"),
     map!(Data Migration "note_positions" [13, Convert => notes::note_positions]: "Step 13 manual order rows (data 0022)"),
@@ -194,9 +197,9 @@ pub const TABLE_MAP: &[TableMapping] = &[
     map!(Data Migration "sticky_drafts" [16, Convert, "36b"]: "core sticky_draft record table of Step 16"),
     map!(Data Migration "suggestion_feedback" [26, Convert, "36d1"]: "Step 27 inbox_suggestion_feedback (device-local)"),
     map!(Data Migration "sync_devices" [19, Skip]: "device list comes from the server, device id from memry-config.json; the key check is Step 37"),
-    map!(Data Migration "sync_history" [17, Convert, "36c3"]: "Step 17 sync_history: type becomes kind, epoch seconds to ms, newest 500 rows"),
+    map!(Data Migration "sync_history" [17, Convert => sync_history::import]: "Step 17 sync_history: type becomes kind, epoch seconds to ms, newest 500 rows"),
     map!(Data Migration "sync_intents" [17, Convert, "36d2"]: "only task and project writes record intents (their field clocks come from changedFields); a delete intent repeats its sync_pending_deletes row"),
-    map!(Data Migration "sync_state" [17, Convert, "36c3"]: "per-key rules in sync_state.rs (SYNC_STATE_KEYS)"),
+    map!(Data Migration "sync_state" [17, Convert => super::sync_state::import]: "per-key rules in sync_state.rs (SYNC_STATE_KEYS)"),
     map!(Data Migration "tag_categories" [13, Convert => tags::tag_categories]: "core tag_categories table"),
     map!(Data Migration "tag_definitions" [13, Convert => tags::tag_definitions]: "core tag_definitions table"),
     map!(Data Migration "task_activity" [21, Convert, "36d2"]: "core task_activity table"),

@@ -1,11 +1,37 @@
+import { createElement, type ReactNode } from 'react'
 import { describe, it, expect, vi } from 'vitest'
-import { renderHook } from '@testing-library/react'
+import { renderHook, waitFor } from '@testing-library/react'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { createTestQueryClient } from '@tests/utils/hook-test-wrapper'
 import {
   computeFiredAnchorIds,
   applyFiredState,
   watchFiredPills,
-  useTriggeredDatePills
+  useTriggeredDatePills,
+  useFiredDatePillAnchors
 } from './use-triggered-date-pills'
+
+const commands = vi.hoisted(() => ({ reminderGet: vi.fn(), reminderGetForTarget: vi.fn() }))
+type Handler = (event: { payload: unknown }) => void
+const handlers = vi.hoisted(() => new Map<string, Handler>())
+const events = vi.hoisted(() => {
+  const event = (name: string) => ({
+    listen: vi.fn((handler: Handler) => {
+      handlers.set(name, handler)
+      return Promise.resolve(() => undefined)
+    })
+  })
+  return {
+    reminderCreatedEvent: event('created'),
+    reminderUpdatedEvent: event('updated'),
+    reminderDeletedEvent: event('deleted'),
+    reminderDismissedEvent: event('dismissed'),
+    reminderSnoozedEvent: event('snoozed'),
+    reminderDueEvent: event('due'),
+    syncItemSyncedEvent: event('synced')
+  }
+})
+vi.mock('../../../../../generated/bindings', () => ({ commands, events }))
 
 function makePill(anchorId: string): HTMLElement {
   const el = document.createElement('span')
@@ -205,5 +231,27 @@ describe('useTriggeredDatePills', () => {
 
     unmount()
     container.remove()
+  })
+})
+
+describe('useFiredDatePillAnchors', () => {
+  it("refetches the note's reminders when one of its pills fires, without reading the reminder back", async () => {
+    commands.reminderGetForTarget.mockResolvedValue([])
+    const client = createTestQueryClient()
+    const wrapper = ({ children }: { children: ReactNode }) =>
+      createElement(QueryClientProvider, { client }, children)
+    renderHook(() => useFiredDatePillAnchors('note-1'), { wrapper })
+    await waitFor(() => expect(commands.reminderGetForTarget).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(handlers.has('due')).toBe(true))
+
+    handlers.get('due')?.({
+      payload: {
+        reminders: [{ id: 'rem_1', targetType: 'note_date', targetId: 'note-1' }],
+        count: 1
+      }
+    })
+
+    await waitFor(() => expect(commands.reminderGetForTarget).toHaveBeenCalledTimes(2))
+    expect(commands.reminderGet).not.toHaveBeenCalled()
   })
 })
