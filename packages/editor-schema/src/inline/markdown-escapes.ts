@@ -170,8 +170,9 @@ interface Place {
   paragraph: boolean
 }
 
-/** Whether the character at `at` of `spelling` would be read as markup. */
-function isMarkup(spelling: string, at: number, segment: Segment, place: Place): boolean {
+/** Whether the character at `at` of the block's spelling would be read as markup. */
+function isMarkup(block: Spelling, at: number, segment: Segment, place: Place): boolean {
+  const { spelling, delimiters } = block
   const next = spelling[at + 1]
   switch (spelling[at]) {
     case '\\':
@@ -189,8 +190,12 @@ function isMarkup(spelling: string, at: number, segment: Segment, place: Place):
       return segment.inLink
     case ']':
       return segment.inLink || (next === '(' && spelling.lastIndexOf('[', at) >= 0)
-    case '!':
-      return next === '['
+    case '!': {
+      // A run that continues into a link is written around it (`**c ![x](y)**`).
+      let after = at + 1
+      while (delimiters.has(after)) after++
+      return spelling[after] === '['
+    }
     default:
       return false
   }
@@ -254,7 +259,6 @@ function escapeSegment(
   place: Place,
   forced: Set<number>
 ): string {
-  const { spelling } = block
   const keep = new Set<number>()
   if (segment.inLink) {
     for (const [at, length] of codeSpanRanges(segment.text)) {
@@ -269,7 +273,7 @@ function escapeSegment(
       char === '\n' &&
       (place.oneLine || (place.lineBlock && unwritableBreak(block, at, place.paragraph)))
     if (tag) out += '<br>'
-    else if (!keep.has(at) && (forced.has(at) || isMarkup(spelling, at, segment, place))) {
+    else if (!keep.has(at) && (forced.has(at) || isMarkup(block, at, segment, place))) {
       out += `\\${char}`
     } else out += char
   }
