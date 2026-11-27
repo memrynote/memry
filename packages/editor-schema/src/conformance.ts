@@ -551,6 +551,17 @@ const toggleCases: RoundtripCase[] = [
     markdown: '> <details>\n<br>b',
     canonical: '> <details>  \n> b'
   },
+  // Three breaks or more are written `<br>`, on the markup's own line.
+  {
+    name: 'details markup line before three breaks',
+    markdown: '<details>\n<br>b',
+    canonical: '<details><br><br><br>b'
+  },
+  {
+    name: 'details closing tag before three breaks',
+    markdown: '<details>\n<summary>S</summary>\n\nb\n\n</details>\n<br>b',
+    canonical: '<details>\n<summary>S</summary>\n\nb\n\n</details><br><br><br>b'
+  },
   { name: 'details closing tag as a heading', markdown: '## </details>' },
   {
     name: 'details closing tag over a setext underline',

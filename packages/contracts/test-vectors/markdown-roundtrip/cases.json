@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 433,
+    "exportedCaseCount": 435,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 443,
+    "caseCount": 445,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -908,6 +908,20 @@
       "canonical": "> <details>  \n> b",
       "pending": null,
       "sha256": "403cf1f25f88830549ff58d4cf52e34feeb9ef059d89eb825a41e873f9565737"
+    },
+    {
+      "name": "details markup line before three breaks",
+      "markdown": "<details>\n<br>b",
+      "canonical": "<details><br><br><br>b",
+      "pending": null,
+      "sha256": "031dc2869a3ef5956d1b5537dae03808f8ac4b3e5ec454de0c2d4d5937cb7d1e"
+    },
+    {
+      "name": "details closing tag before three breaks",
+      "markdown": "<details>\n<summary>S</summary>\n\nb\n\n</details>\n<br>b",
+      "canonical": "<details>\n<summary>S</summary>\n\nb\n\n</details><br><br><br>b",
+      "pending": null,
+      "sha256": "10829758c1a61cd3d5df39a160b662f063b8a33d8bc52008116bf47634291c38"
     },
     {
       "name": "details closing tag as a heading",
