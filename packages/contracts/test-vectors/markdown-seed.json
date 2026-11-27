@@ -9,7 +9,7 @@
     "authoredBy": "desktop's markdownToYFragment path: LF line endings, maskHtmlComments, parseNoteMarkdown (editor-schema note-markdown) with parseMarkdownToBlocksRepaired on desktop's server schema, blocksToYXmlFragment",
     "provenAgainst": "apps/desktop/src/main/sync/markdown-seed-vectors.test.ts",
     "blockIds": "removed from every blockContainer line: BlockNote mints them at random",
-    "caseCount": 106
+    "caseCount": 110
   },
   "cases": [
     {
@@ -647,6 +647,30 @@
       "pins": "the two spaces of a hard break and the break leave the italic",
       "markdown": "*a  \n*b",
       "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a\" italic={}\n3 element hardBreak\n3 element hardBreak\n3 text \"b\""
+    },
+    {
+      "name": "list item child: a callout",
+      "pins": "a list item a holding a callout child: a run indented under an item after a blank line is that block",
+      "markdown": "- a\n\n  > [!info]\n  > c",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a\"\n2 element blockGroup\n3 element blockContainer\n4 element callout fold=\"none\" textAlignment=\"left\" textColor=\"default\" type=\"info\"\n5 text \"c\""
+    },
+    {
+      "name": "list item child: a math block",
+      "pins": "a list item a holding a mathBlock child",
+      "markdown": "- a\n\n  $$\n  x\n  $$",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a\"\n2 element blockGroup\n3 element blockContainer\n4 element mathBlock latex=\"x\""
+    },
+    {
+      "name": "list item child: a structured quote",
+      "pins": "a list item a holding a structured quote child",
+      "markdown": "- a\n\n  > x\n  >\n  > y",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a\"\n2 element blockGroup\n3 element blockContainer\n4 element quote backgroundColor=\"default\" textColor=\"default\"\n5 text \"x\"\n4 element blockGroup\n5 element blockContainer\n6 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n7 text \"y\""
+    },
+    {
+      "name": "list item child: a numbered item's callout",
+      "pins": "an item holding a callout, then a top-level paragraph: the run ends at the first line at the left edge",
+      "markdown": "1. a\n\n   > [!tip]\n   > d\n\nafter",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element numberedListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a\"\n2 element blockGroup\n3 element blockContainer\n4 element callout fold=\"none\" textAlignment=\"left\" textColor=\"default\" type=\"tip\"\n5 text \"d\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"after\""
     }
   ]
 }

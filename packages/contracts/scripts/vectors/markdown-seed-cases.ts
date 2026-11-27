@@ -557,5 +557,25 @@ export const MARKDOWN_SEED_CASES: ReadonlyArray<{ name: string; markdown: string
       name: 'emphasis: a marked run ending in a hard break',
       markdown: '*a  \n*b',
       pins: 'the two spaces of a hard break and the break leave the italic'
+    },
+    {
+      name: 'list item child: a callout',
+      markdown: '- a\n\n  > [!info]\n  > c',
+      pins: 'a list item a holding a callout child: a run indented under an item after a blank line is that block'
+    },
+    {
+      name: 'list item child: a math block',
+      markdown: '- a\n\n  $$\n  x\n  $$',
+      pins: 'a list item a holding a mathBlock child'
+    },
+    {
+      name: 'list item child: a structured quote',
+      markdown: '- a\n\n  > x\n  >\n  > y',
+      pins: 'a list item a holding a structured quote child'
+    },
+    {
+      name: "list item child: a numbered item's callout",
+      markdown: '1. a\n\n   > [!tip]\n   > d\n\nafter',
+      pins: 'an item holding a callout, then a top-level paragraph: the run ends at the first line at the left edge'
     }
   ]

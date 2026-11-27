@@ -46,10 +46,11 @@ fn without_block_ids(canonical: &str) -> String {
 /// Cases desktop builds and the core keeps as literal text, because claiming
 /// them needs desktop's serialization of a block the core does not write: a
 /// table or a code block under a quote, a comment node, a quoted list, the
-/// `<details>` markup a quote, a callout or a heading now keeps as text. A
+/// `<details>` markup a quote, a callout or a heading now keeps as text, a
+/// callout, quote or math block indented under a list item. A
 /// fallback is lossless (every line stays text), so each must fall back, and
 /// the run it keeps literal is checked below.
-const KEPT_LITERAL: [&str; 9] = [
+const KEPT_LITERAL: [&str; 13] = [
     "comment: %% in a callout body and a quote",
     "callout: a body holding a table",
     "quote: a run opening on a table",
@@ -59,6 +60,10 @@ const KEPT_LITERAL: [&str; 9] = [
     "details markup: a one-paragraph quote",
     "details markup: a callout body",
     "details markup: a closing tag in a heading",
+    "list item child: a callout",
+    "list item child: a math block",
+    "list item child: a structured quote",
+    "list item child: a numbered item's callout",
 ];
 
 #[test]
@@ -123,6 +128,55 @@ fn details_markup_behind_quote_markers_or_hashes_stays_literal() {
                 .iter()
                 .all(|block| block.kind == memry_core::crdt::markdown_seed::SeedKind::Paragraph),
             "{markdown}"
+        );
+    }
+}
+
+/// A block nesting marker changes the level of the text after it
+/// (`parseMarkdownWithNestingMarkers`), and desktop lifts a callout, quote or
+/// math run indented under a top-level item into the marker form
+/// (`liftItemChildRuns`). The core builds neither, so a source holding one
+/// keeps every line as literal text.
+#[test]
+fn nesting_markers_and_lifted_item_runs_keep_the_whole_source_literal() {
+    use memry_core::crdt::markdown_seed::SeedKind;
+    for markdown in [
+        "- a\n\n<!-- memry:block-nesting-level=1 -->\n\n$$\nx\n$$\n\npara\n\n<!-- memry:block-nesting-level=0 -->",
+        "# t\n\n<!--  memry:block-nesting-level=2  -->\n\ntext",
+        "- a\n\n  > [!info]\n  > c",
+        "- a\n\n  $$\n  x\n  $$",
+        "1. a\n\n   > x\n   >\n   > y\n\nafter",
+        "-\n\n  > q",
+    ] {
+        let planned = plan(markdown);
+        assert_eq!(planned.fallbacks.len(), 1, "{markdown}");
+        assert!(
+            planned
+                .blocks
+                .iter()
+                .all(|block| block.kind == SeedKind::Paragraph),
+            "{markdown}"
+        );
+    }
+    // Not a lift: no blank line above, an item nested deeper, a fence, a quote
+    // at the left edge, indented less than the item's text.
+    for markdown in [
+        "- a\n  > x",
+        "- a\n  - b\n\n    > x",
+        "```\n- a\n\n  > x\n```",
+        "1. a\n\n> q",
+        "- a\n\n > q",
+        "text\n\n  > q",
+        "* a\n\n    more\n\n   > q",
+    ] {
+        let planned = plan(markdown);
+        assert!(
+            !planned
+                .fallbacks
+                .iter()
+                .any(|f| f.reason == "list item holding a callout, quote or math block"),
+            "{markdown}: {:?}",
+            planned.fallbacks
         );
     }
 }
