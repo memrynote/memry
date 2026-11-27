@@ -231,6 +231,10 @@ mod importer_noteplan;
 mod importer_raindrop;
 #[path = "importer_roam.rs"]
 mod importer_roam;
+#[path = "importer_ticktick.rs"]
+mod importer_ticktick;
+#[path = "importer_ticktick_dates.rs"]
+mod importer_ticktick_dates;
 #[path = "importer_todoist.rs"]
 mod importer_todoist;
 #[path = "importer_untrusted.rs"]
