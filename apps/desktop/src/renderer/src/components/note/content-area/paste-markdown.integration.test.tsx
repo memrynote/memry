@@ -2,7 +2,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 import { BlockNoteEditor, type PartialBlock } from '@blocknote/core'
 import { BlockNoteView } from '@blocknote/shadcn'
 import { cleanup, render } from '@testing-library/react'
-import { TextSelection } from '@tiptap/pm/state'
+import { NodeSelection, TextSelection } from '@tiptap/pm/state'
 
 // Markdown pasted as plain text (an answer copied from Claude, a README) has to
 // land as the blocks the vault converter builds from the same bytes: callouts,
@@ -73,11 +73,13 @@ afterEach(() => {
 })
 
 function mountEditor(
-  initialContent: PartialBlock<any, any, any>[]
+  initialContent: PartialBlock<any, any, any>[],
+  resolveNotePath?: () => Promise<string | undefined>
 ): BlockNoteEditor<any, any, any> {
   const editor = BlockNoteEditor.create({
     schema: editorSchema,
-    pasteHandler: handleEditorPaste,
+    pasteHandler: (context: Parameters<typeof handleEditorPaste>[0]) =>
+      handleEditorPaste({ ...context, resolveNotePath }),
     initialContent
   } as never) as BlockNoteEditor<any, any, any>
   render(<BlockNoteView editor={editor} />)
@@ -123,6 +125,27 @@ function outline(blocks: any[]): Array<[string, string]> {
       return [block.type, `${text(block)} > ${block.children.map(text).join(' | ')}`]
     }
     return [block.type, text(block)]
+  })
+}
+
+/** Selects the block of `type`, as clicking an image does. */
+function selectBlockContent(editor: BlockNoteEditor<any, any, any>, type: string): void {
+  const v = view(editor)
+  let at: number | null = null
+  v.state.doc.descendants((node: any, pos: number) => {
+    if (at === null && node.type.name === type) at = pos
+    return at === null
+  })
+  if (at === null) throw new Error(`no ${type} block`)
+  v.dispatch(v.state.tr.setSelection(NodeSelection.create(v.state.doc, at)))
+}
+
+/** Every block with its children, nested as the editor nests them. */
+function tree(blocks: any[]): unknown[] {
+  return outline(blocks).map(([type, label], index) => {
+    const children = blocks[index].children ?? []
+    const node = `${type}: ${label}`
+    return children.length > 0 && type !== 'toggleListItem' ? [node, tree(children)] : node
   })
 }
 
@@ -308,5 +331,175 @@ describe('pasting markdown as plain text', () => {
       ['heading', 'Release notes'],
       ['paragraph', 'Shipped today']
     ])
+  })
+})
+
+describe('pasting markdown around existing blocks', () => {
+  it('keeps the children of the block holding the caret when a callout ends the paste', async () => {
+    const editor = mountEditor([
+      {
+        type: 'bulletListItem',
+        content: 'parent',
+        children: [{ type: 'bulletListItem', content: 'child' }]
+      },
+      { type: 'paragraph', content: 'after' }
+    ])
+    placeCaretIn(editor, 'parent', 'parent'.length)
+    const before = JSON.stringify(editor.document)
+
+    paste(editor, { 'text/plain': 'x\n\n> [!tip]\n> B' })
+    await settled(editor, before)
+
+    // BlockNote's own paste does the same with a quote: the children follow
+    // the end of their block into the last pasted block, and no empty block
+    // is left to hold them.
+    expect(tree(editor.document)).toEqual([
+      'bulletListItem: parentx',
+      ['callout: tip: B', ['bulletListItem: child']],
+      'paragraph: after'
+    ])
+  })
+
+  it('keeps a toggle body when a callout ends the paste', async () => {
+    const editor = mountEditor([
+      { type: 'toggleListItem', content: 'tog', children: [{ type: 'paragraph', content: 'body' }] }
+    ] as any)
+    placeCaretIn(editor, 'tog', 'tog'.length)
+    const before = JSON.stringify(editor.document)
+
+    paste(editor, { 'text/plain': 'x\n\n> [!tip]\n> B' })
+    await settled(editor, before)
+
+    expect(tree(editor.document)).toEqual([
+      'toggleListItem: togx > ',
+      ['callout: tip: B', ['paragraph: body']]
+    ])
+  })
+
+  it('replaces a selected image with the pasted blocks', async () => {
+    const editor = mountEditor([
+      { type: 'paragraph', content: 'one' },
+      { type: 'image', props: { url: 'https://example.com/a.png' } },
+      { type: 'paragraph', content: 'two' }
+    ])
+    selectBlockContent(editor, 'image')
+    const before = JSON.stringify(editor.document)
+
+    paste(editor, { 'text/plain': 'hello\n\nworld' })
+    await settled(editor, before)
+
+    expect(outline(editor.document)).toEqual([
+      ['paragraph', 'one'],
+      ['paragraph', 'hello'],
+      ['paragraph', 'world'],
+      ['paragraph', 'two']
+    ])
+  })
+
+  it('keeps a column list whole when column markdown is pasted into a column', async () => {
+    const editor = mountEditor([
+      {
+        type: 'columnList',
+        children: [
+          { type: 'column', children: [{ type: 'paragraph', content: 'left' }] },
+          { type: 'column', children: [{ type: 'paragraph', content: 'right' }] }
+        ]
+      }
+    ] as any)
+    placeCaretIn(editor, 'left', 'left'.length)
+    const before = JSON.stringify(editor.document)
+
+    paste(editor, {
+      'text/plain':
+        '--- start-multi-column: r1\nA\n\n--- end-column ---\n\nB\n\n--- end-multi-column'
+    })
+    await settled(editor, before)
+
+    // A column cannot hold a column list, so the pasted columns' blocks land
+    // in the column holding the caret, in reading order.
+    const [columns] = editor.document as any[]
+    expect(editor.document).toHaveLength(1)
+    expect(columns.children.map((column: any) => outline(column.children))).toEqual([
+      [
+        ['paragraph', 'left'],
+        ['paragraph', 'A'],
+        ['paragraph', 'B']
+      ],
+      [['paragraph', 'right']]
+    ])
+  })
+})
+
+describe('pasting markdown while the editor changes', () => {
+  const PASTES = ['> [!tip]\n> one', 'two', '$$\nx^2\n$$\n\nthree']
+
+  async function pasteEachAfterTheLast(editor: BlockNoteEditor<any, any, any>): Promise<void> {
+    for (const markdown of PASTES) {
+      const before = JSON.stringify(editor.document)
+      paste(editor, { 'text/plain': markdown })
+      await settled(editor, before)
+    }
+  }
+
+  it('lands pastes made in quick succession as if each waited for the last', async () => {
+    const slow = mountEditor([{ type: 'paragraph' }])
+    await pasteEachAfterTheLast(slow)
+    const fast = mountEditor([{ type: 'paragraph' }])
+
+    for (const markdown of PASTES) paste(fast, { 'text/plain': markdown })
+
+    await vi.waitFor(() => expect(tree(fast.document)).toEqual(tree(slow.document)), {
+      timeout: 5000
+    })
+  })
+
+  it('pastes where the caret was when the paste was made', async () => {
+    const editor = mountEditor([
+      { type: 'paragraph', content: 'aaa' },
+      { type: 'paragraph', content: 'bbb' }
+    ])
+    placeCaretIn(editor, 'aaa', 'aaa'.length)
+    const before = JSON.stringify(editor.document)
+
+    paste(editor, { 'text/plain': 'PASTED' })
+    placeCaretIn(editor, 'bbb', 0)
+    await settled(editor, before)
+
+    expect(outline(editor.document)).toEqual([
+      ['paragraph', 'aaaPASTED'],
+      ['paragraph', 'bbb']
+    ])
+  })
+
+  it('drops a paste whose editor closed before it was parsed', async () => {
+    const editor = mountEditor([{ type: 'paragraph', content: 'kept' }])
+    const before = JSON.stringify(editor.document)
+
+    paste(editor, { 'text/plain': '> [!tip]\n> late' })
+    cleanup()
+    await new Promise((resolve) => setTimeout(resolve, 500))
+
+    expect(JSON.stringify(editor.document)).toBe(before)
+  })
+
+  it('settles a failed paste without an unhandled rejection', async () => {
+    const rejections: unknown[] = []
+    const onRejection = (reason: unknown): void => {
+      rejections.push(reason)
+    }
+    process.on('unhandledRejection', onRejection)
+    try {
+      const editor = mountEditor([{ type: 'paragraph' }], () =>
+        Promise.reject(new Error('note lookup failed'))
+      )
+
+      paste(editor, { 'text/plain': '> [!tip]\n> body' })
+      cleanup()
+      await new Promise((resolve) => setTimeout(resolve, 500))
+
+      expect(rejections).toEqual([])
+    } finally {
+      process.off('unhandledRejection', onRejection)
+    }
   })
 })
