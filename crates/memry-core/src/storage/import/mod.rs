@@ -25,17 +25,23 @@ mod locks;
 mod notes;
 mod outbox;
 mod records;
+mod sync_state;
 
 pub use crdt::{
     DocumentState, ImportBodyPush, ImportBodySync, ImportBodyVersion, ImportDocument,
     ImportFileHash, document_state,
 };
-pub use local::ImportLocalSetting;
+pub use local::{
+    ImportInboxJob, ImportInboxTag, ImportInboxUpload, ImportLocalEvent, ImportLocalSetting,
+};
 #[cfg(feature = "markdown")]
 pub use locks::{ImportFileMode, ImportLockBaseline};
 pub use notes::{ImportNoteFile, ImportNoteSnapshot};
 pub use outbox::{ImportDeleted, ImportQueued, ImportTombstoneClock};
 pub use records::ImportRecord;
+pub use sync_state::{
+    ImportHistory, ImportQuarantined, ImportRecordCursor, ImportRefused, ImportSyncState,
+};
 
 /// `meta` key a finished import writes into the staged `data.db`, last. Its
 /// presence in `<vault>/.memry/core/data.db` means the vault was imported.

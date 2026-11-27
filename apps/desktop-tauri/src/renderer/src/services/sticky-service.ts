@@ -13,7 +13,7 @@ function toDraft(view: StickyDraftView): StickyDraft {
 }
 
 /**
- * The sticky window's drafts and window calls over their Rust commands. Send, undo and
+ * The sticky and edge tab windows' drafts and window calls over their Rust commands. Send, undo and
  * open-target still go through `window.api.sticky` until they are ported (#3548 stage 31c).
  */
 export const stickyService = {
@@ -24,6 +24,10 @@ export const stickyService = {
   deleteDraft: (id: string): Promise<boolean> => commands.stickyDeleteDraft(id),
   tuck: (): Promise<void> => commands.stickyTuck(),
   resize: (height: number): Promise<null> => commands.stickyResize(height),
+  /** The edge tab: open the sticky on a draft, or blank for `null`. */
+  unfold: (draftId: string | null): Promise<null> => commands.stickyUnfold(draftId),
+  /** The edge tab: fan the draft list out, or fold it back. */
+  peek: (open: boolean): Promise<null> => commands.stickyPeek(open),
   onDraftsChanged: (callback: () => void): (() => void) =>
     subscribeToEvent(events.stickyDraftsChangedEvent, callback),
   /**

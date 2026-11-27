@@ -31,6 +31,22 @@ pub const RECORD_TABLES: &[(&str, &str, &str, &str)] = &[
     ("canvas_folders", "id", "canvas_folder", "1"),
     ("home_pages", "id", "home_page", "1"),
     ("sticky_drafts", "id", "sticky_draft", "1"),
+    ("inbox_items", "id", "inbox", "1"),
+    ("bookmarks", "id", "bookmark", "1"),
+    (
+        "calendar_sources",
+        "id",
+        "calendar_source",
+        "provider IS NOT 'apple-eventkit'",
+    ),
+    ("calendar_events", "id", "calendar_event", "1"),
+    ("calendar_bindings", "id", "calendar_binding", "1"),
+    (
+        "calendar_external_events",
+        "id",
+        "calendar_external_event",
+        "source_id NOT IN (SELECT id FROM calendar_sources WHERE provider IN ('ics', 'apple-eventkit'))",
+    ),
 ];
 
 /// The record tables whose clock column is `vector_clock`, in the shape of [`RECORD_TABLES`].
@@ -106,6 +122,7 @@ pub(super) fn run(
     if source_vault_id(source)? != writer.vault_id()? {
         clock_mismatches.push("vault_metadata: the core vault id is not the source uuid".into());
     }
+    clock_mismatches.extend(super::sync_state::mismatches(source, writer)?);
     if !clock_mismatches.is_empty() {
         return Err(ImportError::CheckFailed {
             check: 5,

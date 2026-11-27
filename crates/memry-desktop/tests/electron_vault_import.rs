@@ -20,6 +20,8 @@ use rusqlite::Connection;
 use rusqlite::types::Value;
 use sha2::{Digest, Sha256};
 
+#[path = "electron_vault_import/calendar_push.rs"]
+mod calendar_push;
 #[path = "electron_vault_import/desktop_records.rs"]
 mod desktop_records;
 #[path = "device_key/mod.rs"]
@@ -30,6 +32,8 @@ mod docs;
 mod electron_db;
 #[path = "electron_vault_import/first_open.rs"]
 mod first_open;
+#[path = "electron_vault_import/inbox_calendar.rs"]
+mod inbox_calendar;
 #[path = "electron_vault_import/ledger_ends.rs"]
 mod ledger_ends;
 #[path = "electron_vault_import/notes.rs"]
@@ -44,6 +48,8 @@ mod records;
 mod settings;
 #[path = "electron_vault_import/settle.rs"]
 mod settle;
+#[path = "electron_vault_import/sync_state.rs"]
+mod sync_state;
 #[path = "electron_vault_import/tag_template_records.rs"]
 mod tag_template_records;
 #[path = "vault_env/mod.rs"]
@@ -287,20 +293,6 @@ fn an_unmapped_table_aborts_before_any_write() {
 }
 
 #[test]
-fn an_unmapped_sync_state_key_aborts_before_any_write() {
-    let vault = Vault::new();
-    electron_db::seed(
-        &vault.data_conn(),
-        "sync_state",
-        &[("key", Value::Text("fromANewerElectron".into()))],
-    );
-    assert_refused(
-        &vault,
-        |e| matches!(e, ImportError::UnmappedSyncStateKey(key) if key == "fromANewerElectron"),
-    );
-}
-
-#[test]
 fn rows_whose_importer_is_pending_abort_before_any_write() {
     let vault = Vault::new();
     electron_db::seed(
@@ -320,11 +312,11 @@ fn rows_whose_importer_is_pending_abort_before_any_write() {
     electron_db::seed(
         &vault.data_conn(),
         "sync_state",
-        &[("key", Value::Text("lastCursor".into()))],
+        &[("key", Value::Text("crdtUnmergedDebt".into()))],
     );
     assert_refused(
         &vault,
-        |e| matches!(e, ImportError::NotReady { detail, .. } if detail.contains("lastCursor")),
+        |e| matches!(e, ImportError::NotReady { detail, .. } if detail.contains("crdtUnmergedDebt")),
     );
 }
 
