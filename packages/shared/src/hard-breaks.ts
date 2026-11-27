@@ -124,6 +124,17 @@ function maskProseHardBreaks(text: string, breaks: string[]): string {
   let inListItem = false
   for (let index = 0; index < lines.length; index++) {
     const line = lines[index]
+    // BlockNote ends a list item at a lazy line and opens a paragraph on it,
+    // so a `<br>` opening that line is one opening a paragraph: a hard break.
+    // Read as the soft break it parsed to, it had no spelling and was dropped
+    // on the next write (`- [a\n<br>b](u)`). Link syntax later in the line
+    // cannot hold the token, which sits before the tag at the line's start.
+    if (hasBr && inListItem && !NOT_PARAGRAPH_LINE.test(line) && !BLOCK_START.test(line)) {
+      lines[index] = line.replace(/^<br\s*\/?>(?![^\S\n]*<br\b)(?=[^\S\n]*\S)/i, (tag) => {
+        breaks.push('')
+        return `${HARD_BREAK_TOKEN_PREFIX}${breaks.length - 1};${tag}`
+      })
+    }
     if (line.trim() === '') inOtherBlock = false
     else if (NOT_PARAGRAPH_LINE.test(line)) inOtherBlock = true
     if (line.trim() === '') inListItem = false
