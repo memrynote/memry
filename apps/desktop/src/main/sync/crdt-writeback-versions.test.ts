@@ -22,8 +22,8 @@ vi.mock('@memry/shared/html-comments', async (importOriginal) => {
   const actual = await importOriginal<typeof HtmlCommentsModule>()
   return {
     ...actual,
-    maskHtmlComments: (markdown: string) =>
-      parseBefore2741.on ? markdown : actual.maskHtmlComments(markdown)
+    maskHtmlComments: (...args: Parameters<typeof actual.maskHtmlComments>) =>
+      parseBefore2741.on ? args[0] : actual.maskHtmlComments(...args)
   }
 })
 vi.mock('@memry/shared/markdown-source', async (importOriginal) => {
@@ -783,5 +783,16 @@ describe('tables in a doc a build before lossless tables seeded', () => {
     await pass(NOTE, doc, 'local')
 
     expect(h.files.get(NOTE_FILE)).toBe(to === undefined ? raw : raw.replace('Line to edit.', to))
+  })
+
+  it('reads a comment holding a piped code span in a cell as that build did', async () => {
+    // Its row split on the span's pipe, so the comment was two cells of text.
+    const doc = await parseWithLegacyTables(() =>
+      docWith('| a | b |\n|---|---|\n| <!-- `x|y` --> | 2 |\n')
+    )
+    const cells = doc.getXmlFragment(CRDT_FRAGMENT_NAME).toString()
+    expect(cells).toContain('<tableparagraph><!-- `x</tableparagraph>')
+    expect(cells).toContain('<tableparagraph>y` --></tableparagraph>')
+    expect(cells).not.toContain('<htmlcomment')
   })
 })

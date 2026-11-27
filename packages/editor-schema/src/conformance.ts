@@ -1063,11 +1063,12 @@ const htmlCommentCases: RoundtripCase[] = [
   },
   // A fence in a quote stays a fence: `- ` inside it is code, not a list, and
   // an untagged fence stays untagged (BBF-113). A fence-only quote keeps main's
-  // flat bytes, the same in both pipelines.
+  // flat bytes, the same in both pipelines, its `-` escaped so the quote's text
+  // does not come back as a list inside it.
   {
     name: 'quoted fence, lazy line (BBF-113)',
     markdown: '> ```\n> - x\n> ```\nz',
-    canonical: '> - xz'
+    canonical: '> \\- xz'
   },
   {
     name: 'quoted item, bare fence (BBF-113)',
@@ -1149,7 +1150,7 @@ const htmlCommentCases: RoundtripCase[] = [
   {
     name: 'html break in a table row with no leading pipe (BBF-85)',
     markdown: 'a | b\n--|--\nc<br>d | e',
-    canonical: '| a   | b |\n| --- | - |\n| c d | e |'
+    canonical: '| a      | b |\n| ------ | - |\n| c<br>d | e |'
   },
   {
     // CommonMark keeps a code span's one-sided space, so the line-start strip skips code.
@@ -1157,10 +1158,10 @@ const htmlCommentCases: RoundtripCase[] = [
     markdown: 'a  \n` x` y'
   },
   {
-    // The cell break collapses to a space; the code span keeps its own leading space.
+    // The cell break stays a break; the code span keeps its own leading space.
     name: 'code span with a leading space after a cell break (BBF-90)',
     markdown: '| h |\n| - |\n| a<br>` x` |',
-    canonical: '| h      |\n| ------ |\n| a ` x` |'
+    canonical: '| h         |\n| --------- |\n| a<br>` x` |'
   },
   {
     name: 'code span with two inner spaces in a cell (BBF-90)',
@@ -1182,6 +1183,48 @@ const htmlCommentCases: RoundtripCase[] = [
     markdown: '| a | b |\n| - | - |\n| 1 | 2 | 3 | extra |',
     canonical: '| a | b |   |       |\n| - | - | - | ----- |\n| 1 | 2 | 3 | extra |'
   },
+  {
+    name: 'table row wider than a header spelled like a delimiter row',
+    markdown: '| --- |\n|---|\n| 1 | 2 |',
+    canonical: '| --- |   |\n| --- | - |\n| 1   | 2 |'
+  },
+  {
+    // The pipe in the comment's code span ends no cell, so the comment stays one node.
+    name: 'comment holding a piped code span in a cell',
+    markdown: '| a              | b |\n| -------------- | - |\n| <!-- `x|y` --> | 2 |'
+  },
+  { name: 'line break in a table cell', markdown: '| h      |\n| ------ |\n| x<br>y |' },
+  { name: 'line break in a heading', markdown: '## a<br>b' },
+  {
+    // An escaped backtick pairs with nothing, in its own cell or the next one.
+    name: 'escaped backticks in two cells',
+    markdown: '| a   |     |\n| --- | --- |\n| \\`n | m\\` |'
+  },
+  {
+    name: 'escaped backticks around a cell pipe',
+    markdown: '| a |\n|---|\n| \\`n|m\\` |',
+    canonical: '| a   |     |\n| --- | --- |\n| \\`n | m\\` |'
+  },
+  { name: 'escaped markup in a paragraph', markdown: 'a \\`n\\` b \\*x\\* \\_y\\_ \\~\\~z\\~\\~' },
+  { name: 'escaped markup in a table cell', markdown: '| h       |\n| ------- |\n| \\*x\\* y |' },
+  {
+    name: 'escaped link syntax',
+    markdown: 'a \\[x\\](y) and \\![i\\](y)',
+    canonical: 'a [x\\](y) and \\![i\\](y)'
+  },
+  {
+    name: 'escaped block openers at line starts',
+    markdown: '\\# h\n\n\\- l\n\n1\\. n\n\n\\> q\n\n\\*\\*\\*\n\n\\[x]: https://e.com'
+  },
+  { name: 'escaped block opener after a hard break', markdown: 'a  \n\\# b' },
+  { name: 'escaped list marker in a quote', markdown: '> \\- x' },
+  // Text that pairs with nothing keeps its bytes: intraword underscores, a lone
+  // `*` or `_`, a wiki link's target.
+  {
+    name: 'unpaired markup characters stay as written',
+    markdown: 'a_b_c and 5 * 3 and [[_draft]]'
+  },
+  { name: 'table pipe line after a hard break in a paragraph', markdown: '| a  \nb' },
   {
     name: 'comment after a link inside bold (BBF-62)',
     markdown: '**[l](https://example.com) <!-- b --> c**'

@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 282,
+    "exportedCaseCount": 296,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 292,
+    "caseCount": 306,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -1696,7 +1696,7 @@
     {
       "name": "quoted fence, lazy line (BBF-113)",
       "markdown": "> ```\n> - x\n> ```\nz",
-      "canonical": "> - xz",
+      "canonical": "> \\- xz",
       "pending": null,
       "sha256": "0e7e0968dd25467e2bd31238367c7c330b81d6c7805174e29b6ce8a32b0d9611"
     },
@@ -1906,7 +1906,7 @@
     {
       "name": "html break in a table row with no leading pipe (BBF-85)",
       "markdown": "a | b\n--|--\nc<br>d | e",
-      "canonical": "| a   | b |\n| --- | - |\n| c d | e |",
+      "canonical": "| a      | b |\n| ------ | - |\n| c<br>d | e |",
       "pending": null,
       "sha256": "e585300e05890a5d402055e02a6bf396022a28a1907196a317856d329d469671"
     },
@@ -1920,7 +1920,7 @@
     {
       "name": "code span with a leading space after a cell break (BBF-90)",
       "markdown": "| h |\n| - |\n| a<br>` x` |",
-      "canonical": "| h      |\n| ------ |\n| a ` x` |",
+      "canonical": "| h         |\n| --------- |\n| a<br>` x` |",
       "pending": null,
       "sha256": "ec640c131a85ba0922d3b317bc879f03f6546fe7d9b0e23544f5ede41c982c8f"
     },
@@ -1951,6 +1951,104 @@
       "canonical": "| a | b |   |       |\n| - | - | - | ----- |\n| 1 | 2 | 3 | extra |",
       "pending": null,
       "sha256": "f6f613c19b1cc9eba3b286e275fc8a06670fafa4189be99d309cc26e608dca2f"
+    },
+    {
+      "name": "table row wider than a header spelled like a delimiter row",
+      "markdown": "| --- |\n|---|\n| 1 | 2 |",
+      "canonical": "| --- |   |\n| --- | - |\n| 1   | 2 |",
+      "pending": null,
+      "sha256": "d028fa0fd9bfecd020c260859d57504d2d975ad6f9f0e1283a9e69fa3dea87c4"
+    },
+    {
+      "name": "comment holding a piped code span in a cell",
+      "markdown": "| a              | b |\n| -------------- | - |\n| <!-- `x|y` --> | 2 |",
+      "canonical": null,
+      "pending": null,
+      "sha256": "37e6efc297c310ed56952e8d3ea63c7e9d706fa356d276616f4dafb72697adca"
+    },
+    {
+      "name": "line break in a table cell",
+      "markdown": "| h      |\n| ------ |\n| x<br>y |",
+      "canonical": null,
+      "pending": null,
+      "sha256": "7118305f85e6dada5547f40888b71fbceabe67ee18718752af19e45a0b6ffd38"
+    },
+    {
+      "name": "line break in a heading",
+      "markdown": "## a<br>b",
+      "canonical": null,
+      "pending": null,
+      "sha256": "1132c1cd71420e6c0d00e8835d481e9b8590cfaa0424abe85db37e804dcd7639"
+    },
+    {
+      "name": "escaped backticks in two cells",
+      "markdown": "| a   |     |\n| --- | --- |\n| \\`n | m\\` |",
+      "canonical": null,
+      "pending": null,
+      "sha256": "580fb48ea33b8449504fed5bbf9e1d6b664be1612fc2e3a7174d46b8736f6ee4"
+    },
+    {
+      "name": "escaped backticks around a cell pipe",
+      "markdown": "| a |\n|---|\n| \\`n|m\\` |",
+      "canonical": "| a   |     |\n| --- | --- |\n| \\`n | m\\` |",
+      "pending": null,
+      "sha256": "0fcf9852937cf8668a3d39b539ff9f11d6ca3862aa853c2a4cc08a750d6e864e"
+    },
+    {
+      "name": "escaped markup in a paragraph",
+      "markdown": "a \\`n\\` b \\*x\\* \\_y\\_ \\~\\~z\\~\\~",
+      "canonical": null,
+      "pending": null,
+      "sha256": "430032172a59b2b35de9172958ad2ea5979cacd62dad3c4c2333a274c8ed6259"
+    },
+    {
+      "name": "escaped markup in a table cell",
+      "markdown": "| h       |\n| ------- |\n| \\*x\\* y |",
+      "canonical": null,
+      "pending": null,
+      "sha256": "3670e3691b340ea26c3457c810ea2c30be6750acbd5c2e7607a52e4baa1e81ea"
+    },
+    {
+      "name": "escaped link syntax",
+      "markdown": "a \\[x\\](y) and \\![i\\](y)",
+      "canonical": "a [x\\](y) and \\![i\\](y)",
+      "pending": null,
+      "sha256": "11df466be7d732a6f26c8eb291986c5b9f91ed00d15f6f9337efb7fba82789ca"
+    },
+    {
+      "name": "escaped block openers at line starts",
+      "markdown": "\\# h\n\n\\- l\n\n1\\. n\n\n\\> q\n\n\\*\\*\\*\n\n\\[x]: https://e.com",
+      "canonical": null,
+      "pending": null,
+      "sha256": "c77c0bf93de19b73bd6d98fcd547ac82b4884659fa960a7a1304ecab01979dca"
+    },
+    {
+      "name": "escaped block opener after a hard break",
+      "markdown": "a  \n\\# b",
+      "canonical": null,
+      "pending": null,
+      "sha256": "3f9865ea60e2b9ebf9e61a5892494c2653f694261798cff642f38cb076a9295c"
+    },
+    {
+      "name": "escaped list marker in a quote",
+      "markdown": "> \\- x",
+      "canonical": null,
+      "pending": null,
+      "sha256": "f00dffe2bab3226497191728481d5eac5dd548dba7510b7c4962771ab896a8c5"
+    },
+    {
+      "name": "unpaired markup characters stay as written",
+      "markdown": "a_b_c and 5 * 3 and [[_draft]]",
+      "canonical": null,
+      "pending": null,
+      "sha256": "4ab124a35f3c95bc2248a7f2c0423b3763522bc1e862949c90b0b54378b6c0fb"
+    },
+    {
+      "name": "table pipe line after a hard break in a paragraph",
+      "markdown": "| a  \nb",
+      "canonical": null,
+      "pending": null,
+      "sha256": "3f0b327fe1b6977d423473f8159fe5bd414cd765d2eb18d18631b5f148781f64"
     },
     {
       "name": "comment after a link inside bold (BBF-62)",

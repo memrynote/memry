@@ -109,6 +109,23 @@ describe('maskHtmlComments (AF-015)', () => {
   })
 })
 
+describe('maskHtmlComments in a table row', () => {
+  const row = '| a | b |\n| --- | --- |\n| <!-- `x|y` --> | 2 |'
+  const cell = (markdown: string) => splitHtmlCommentTokens(markdown.split('\n')[2])
+
+  it('keeps a comment whose code span holds a pipe in its cell', () => {
+    expect(cell(maskHtmlComments(row))).toEqual([
+      { kind: 'text', text: '| ' },
+      { kind: 'comment', source: '<!-- `x|y` -->' },
+      { kind: 'text', text: ' | 2 |' }
+    ])
+  })
+
+  it('leaves it as text crossing that pipe for a source an older build recorded', () => {
+    expect(maskHtmlComments(row, { losslessTables: false })).toBe(row)
+  })
+})
+
 describe('maskHtmlComments with %% comments (BBF-26)', () => {
   const note =
     'Tail text %% [[Topic]] secret %% end of line.\n\n%%\nblock [[Other]] secret\n%%\n\nAfter'
