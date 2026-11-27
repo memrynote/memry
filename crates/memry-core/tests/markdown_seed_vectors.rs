@@ -53,7 +53,7 @@ fn without_block_ids(canonical: &str) -> String {
 /// which ProseMirror keeps or drops by its neighbours. A
 /// fallback is lossless (every line stays text), so each must fall back, and
 /// the run it keeps literal is checked below.
-const KEPT_LITERAL: [&str; 18] = [
+const KEPT_LITERAL: [&str; 16] = [
     "comment: %% in a callout body and a quote",
     "callout: a body holding a table",
     "quote: a run opening on a table",
@@ -67,9 +67,7 @@ const KEPT_LITERAL: [&str; 18] = [
     "list item child: a math block",
     "list item child: a structured quote",
     "list item child: a numbered item's callout",
-    "writer: an italic run ending in a star beside an underscore",
-    "writer: a bold run ending in a star then an underscore run",
-    "writer: a code span between an underscore and an italic star",
+    "writer: a code span with an underscore before touching runs",
     "blank paragraph: a whitespace-only code span between paragraphs",
     "blank paragraph: a whitespace-only code span after a paragraph",
 ];

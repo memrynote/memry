@@ -12,6 +12,7 @@
 use super::Unsupported;
 use super::items::Item;
 use super::roundtrip::UNSERIALIZED;
+use super::run_writer::{delimiter, spells_runs_with_underscores};
 use super::shapes::is_table_separator;
 use crate::domain::journal_rules::is_js_whitespace;
 
@@ -53,30 +54,55 @@ pub(super) fn escape_items(items: Vec<Item>, heading: bool) -> Result<Vec<Item>,
     {
         return Err(UNSERIALIZED);
     }
-    let (spelling, delimiters, segments) = spell(&items);
-    if segments
+    let block = spell(&items);
+    if block
+        .segments
         .iter()
         .any(|segment| segment.in_link && items[segment.item].text.contains('`'))
     {
         return Err(UNSERIALIZED);
     }
-    let forced = if place.line_block {
-        line_openers(&spelling)
+    let mut forced = if place.line_block {
+        line_openers(&block)
     } else {
-        vec![false; spelling.len()]
+        vec![false; block.spelling.len()]
     };
-    let pairing = Pairing::new(&spelling);
-    let mut items = items;
-    for segment in &segments {
+    let pairing = Pairing::new(&block.spelling);
+    let escaped = escape_pass(&items, &block, &pairing, &forced, place)?;
+    // An underscore delimiter pairs with any bare `_` in its block.
+    if !spells_runs_with_underscores(&escaped) {
+        return Ok(escaped);
+    }
+    for segment in &block.segments {
+        for (offset, ch) in items[segment.item].text.chars().enumerate() {
+            if ch == '_' {
+                forced[segment.at + offset] = true;
+            }
+        }
+    }
+    escape_pass(&items, &block, &pairing, &forced, place)
+}
+
+/// `escapeItems`: each text run's text escaped, `forced` marking the
+/// characters to escape whatever they are.
+fn escape_pass(
+    items: &[Item],
+    block: &Spelling,
+    pairing: &Pairing,
+    forced: &[bool],
+    place: Place,
+) -> Result<Vec<Item>, Unsupported> {
+    let mut items = items.to_vec();
+    for segment in &block.segments {
         let text = items[segment.item].text.clone();
         let mut out = String::with_capacity(text.len());
         for (offset, ch) in text.chars().enumerate() {
             let at = segment.at + offset;
-            if ch == '\n' && place.line_block && unwritable_break(&spelling, &delimiters, at) {
+            if ch == '\n' && place.line_block && unwritable_break(block, at) {
                 return Err(UNSERIALIZED);
             } else if ch == '\n' && place.one_line {
                 out.push_str("<br>");
-            } else if forced[at] || is_markup(&spelling, &pairing, at, segment.in_link) {
+            } else if forced[at] || is_markup(block, pairing, at, segment.in_link) {
                 out.push('\\');
                 out.push(ch);
             } else {
@@ -96,58 +122,64 @@ pub(super) fn escape_items(items: Vec<Item>, heading: bool) -> Result<Vec<Item>,
     Ok(items)
 }
 
-/// `spell`: the block as the writer spells it, near enough to tell markup,
-/// which of its characters are a mark's delimiters, and where each escapable
-/// text run starts.
-fn spell(items: &[Item]) -> (Vec<char>, Vec<bool>, Vec<Segment>) {
-    let mut spelling = Vec::new();
-    let mut delimiters = Vec::new();
-    let mut segments = Vec::new();
-    // `delimiters` flags, per character of `spelling`, a mark's `**`, `*` or `~~`.
-    let flag = |spelling: &[char], delimiters: &mut Vec<bool>, on: bool| {
-        delimiters.resize(spelling.len(), on);
-    };
-    for (index, item) in items.iter().enumerate() {
-        let marks = &item.marks;
-        if item.is_code() {
-            spelling.extend(['`', NODE, '`']);
-            flag(&spelling, &mut delimiters, false);
-        } else if let Some(href) = &marks.link {
-            spelling.push('[');
-            segments.push(Segment {
-                item: index,
-                at: spelling.len(),
-                in_link: true,
-            });
-            spelling.extend(item.text.chars());
-            spelling.extend([']', '(']);
-            spelling.extend(href.chars());
-            spelling.push(')');
-            flag(&spelling, &mut delimiters, false);
-        } else {
-            let delimiter = if marks.bold {
-                "**"
-            } else if marks.italic {
-                "*"
-            } else if marks.strike {
-                "~~"
-            } else {
-                ""
-            };
-            spelling.extend(delimiter.chars());
-            flag(&spelling, &mut delimiters, true);
-            segments.push(Segment {
-                item: index,
-                at: spelling.len(),
-                in_link: false,
-            });
-            spelling.extend(item.text.chars());
-            flag(&spelling, &mut delimiters, false);
-            spelling.extend(delimiter.chars());
-            flag(&spelling, &mut delimiters, true);
+/// The block as the writer spells it, near enough to tell markup.
+struct Spelling {
+    spelling: Vec<char>,
+    /// Per character: a mark's `**`, `*` or `~~`, which the writer moves past
+    /// an edge break.
+    delimiters: Vec<bool>,
+    /// Per character: a mark's closing delimiter, or a link's `](href)`,
+    /// which the writer moves before a break that ends their run.
+    closers: Vec<bool>,
+    /// Where each escapable text run starts.
+    segments: Vec<Segment>,
+}
+
+impl Spelling {
+    fn push(&mut self, text: impl IntoIterator<Item = char>, delimiter: bool, closer: bool) {
+        for c in text {
+            self.spelling.push(c);
+            self.delimiters.push(delimiter);
+            self.closers.push(closer);
         }
     }
-    (spelling, delimiters, segments)
+}
+
+/// `spell`: the block as the writer spells it.
+fn spell(items: &[Item]) -> Spelling {
+    let mut block = Spelling {
+        spelling: Vec::new(),
+        delimiters: Vec::new(),
+        closers: Vec::new(),
+        segments: Vec::new(),
+    };
+    for (index, item) in items.iter().enumerate() {
+        if item.is_code() {
+            block.push(['`', NODE, '`'], false, false);
+        } else if let Some(href) = &item.marks.link {
+            block.push(['['], false, false);
+            block.segments.push(Segment {
+                item: index,
+                at: block.spelling.len(),
+                in_link: true,
+            });
+            block.push(item.text.chars(), false, false);
+            block.push([']', '('], false, true);
+            block.push(href.chars(), false, true);
+            block.push([')'], false, true);
+        } else {
+            let delimiter = delimiter(item).unwrap_or("");
+            block.push(delimiter.chars(), true, false);
+            block.segments.push(Segment {
+                item: index,
+                at: block.spelling.len(),
+                in_link: false,
+            });
+            block.push(item.text.chars(), false, false);
+            block.push(delimiter.chars(), true, true);
+        }
+    }
+    block
 }
 
 fn is_space(c: Option<char>) -> bool {
@@ -198,7 +230,8 @@ impl Pairing {
 }
 
 /// `isMarkup`: whether the character at `at` would be read as markup.
-fn is_markup(spelling: &[char], pairing: &Pairing, at: usize, in_link: bool) -> bool {
+fn is_markup(block: &Spelling, pairing: &Pairing, at: usize, in_link: bool) -> bool {
+    let spelling = &block.spelling;
     let next = spelling.get(at + 1).copied();
     match spelling[at] {
         '\\' => next.is_none_or(|c| c == '\n' || ESCAPABLE.contains(c)),
@@ -207,14 +240,22 @@ fn is_markup(spelling: &[char], pairing: &Pairing, at: usize, in_link: bool) -> 
         '~' => (at > 0 && spelling[at - 1] == '~') || next == Some('~'),
         '[' => in_link,
         ']' => in_link || (next == Some('(') && spelling[..at].contains(&'[')),
-        '!' => next == Some('['),
+        // A run that continues into a link is written around it (`**c ![x](y)**`).
+        '!' => {
+            let after = (at + 1..)
+                .find(|i| !block.delimiters.get(*i).copied().unwrap_or(false))
+                .and_then(|i| spelling.get(i));
+            after == Some(&'[')
+        }
         _ => false,
     }
 }
 
-/// `lineOpeners`: the offsets in `spelling` of the characters that open a
-/// block at a line start.
-fn line_openers(spelling: &[char]) -> Vec<bool> {
+/// `lineOpeners`: the offsets in the spelling of the characters that open a
+/// block at a line start, past the closers of a run that ended in the break
+/// before it.
+fn line_openers(block: &Spelling) -> Vec<bool> {
+    let spelling = &block.spelling;
     let mut out = vec![false; spelling.len()];
     let mut start = 0;
     loop {
@@ -222,8 +263,12 @@ fn line_openers(spelling: &[char]) -> Vec<bool> {
             .iter()
             .position(|c| *c == '\n')
             .map_or(spelling.len(), |n| start + n);
-        if let Some(offset) = block_opener(&spelling[start..end], start > 0) {
-            out[start + offset] = true;
+        let mut from = start;
+        while from < end && block.closers[from] {
+            from += 1;
+        }
+        if let Some(offset) = block_opener(&spelling[from..end], start > 0) {
+            out[from + offset] = true;
         }
         if end == spelling.len() {
             return out;
@@ -297,7 +342,12 @@ fn is_table_row(line: &[char]) -> bool {
 /// break. Desktop writes those as `<br>` or leaves them to the writer's trim,
 /// and has changed which more than once, so a paragraph holding one is not
 /// decided.
-fn unwritable_break(spelling: &[char], delimiters: &[bool], at: usize) -> bool {
+fn unwritable_break(block: &Spelling, at: usize) -> bool {
+    let Spelling {
+        spelling,
+        delimiters,
+        ..
+    } = block;
     let passes = |i: usize| spelling[i] == '\n' || delimiters[i];
     let mut start = at;
     while start > 0 && passes(start - 1) {
@@ -385,5 +435,57 @@ mod tests {
         assert_eq!(escaped("a\n\nb"), "a\n\nb");
         let heading = escape_items(vec![plain("a\nb")], true).expect("escaped");
         assert_eq!(heading[0].text, "a<br>b");
+    }
+
+    fn marked(text: &str, marks: SeedMarks) -> Item {
+        Item {
+            text: text.to_owned(),
+            marks,
+        }
+    }
+
+    fn escaped_items(items: Vec<Item>) -> Vec<String> {
+        let items = escape_items(items, false).expect("escaped");
+        items.into_iter().map(|item| item.text).collect()
+    }
+
+    #[test]
+    fn a_line_start_past_a_runs_closers_is_a_line_opener() {
+        let bold = SeedMarks {
+            bold: true,
+            ..SeedMarks::default()
+        };
+        let link = SeedMarks {
+            link: Some("u".to_owned()),
+            ..SeedMarks::default()
+        };
+        assert_eq!(
+            escaped_items(vec![marked("b\n", bold), plain("# x")]),
+            ["b\n", "\\# x"]
+        );
+        assert_eq!(
+            escaped_items(vec![marked("l\n", link), plain("- z")]),
+            ["l\n", "\\- z"]
+        );
+    }
+
+    #[test]
+    fn an_image_mark_before_a_link_is_escaped_past_a_runs_delimiters() {
+        let bold = SeedMarks {
+            bold: true,
+            ..SeedMarks::default()
+        };
+        let link = SeedMarks {
+            link: Some("y".to_owned()),
+            ..SeedMarks::default()
+        };
+        assert_eq!(
+            escaped_items(vec![marked("c !", bold), marked("x", link.clone())]),
+            ["c \\!", "x"]
+        );
+        assert_eq!(
+            escaped_items(vec![plain("!"), marked("x", link)]),
+            ["\\!", "x"]
+        );
     }
 }

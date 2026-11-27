@@ -16,7 +16,8 @@ const PLACEHOLDER: &str = "MEMRYEMBCORE";
 
 /// `markdown` with the placeholder on each empty item or heading line. An item
 /// line counts only where a list item can start without ending a paragraph:
-/// after a blank line or another item. Lines in a fence are left alone.
+/// after a blank line or another item. A to-do's box is none, so an empty
+/// to-do counts after any line. Lines in a fence are left alone.
 pub(super) fn mask_empty_block_lines(markdown: &str) -> String {
     let mut fence = FenceTracker::default();
     let lines: Vec<&str> = markdown.split('\n').collect();
@@ -29,7 +30,7 @@ pub(super) fn mask_empty_block_lines(markdown: &str) -> String {
         let opens = index
             .checked_sub(1)
             .is_none_or(|before| js_trim(lines[before]).is_empty() || is_item_line(lines[before]));
-        if is_empty_heading(line) || (opens && is_empty_item(line)) {
+        if is_empty_heading(line) || is_empty_todo(line) || (opens && is_empty_item(line)) {
             out.push(format!(
                 "{} {PLACEHOLDER}",
                 line.trim_end_matches(is_js_whitespace)
@@ -108,18 +109,28 @@ fn is_item_line(line: &str) -> bool {
     after_marker(line).is_some_and(|(after, _)| after.is_empty() || after.starts_with(blank))
 }
 
-/// `/^[ \t]*(?:[-*+](?: \[[ xX]\])?|\d{1,9}[.)])[ \t]*$/`: a to-do box
-/// only after a bullet.
-fn is_empty_item(line: &str) -> bool {
-    let Some((after, bullet)) = after_marker(line) else {
-        return false;
-    };
-    let boxed = bullet
+/// The text after a bullet's `[ ]`, `[x]` or `[X]` box, when the line has one.
+fn after_box(line: &str) -> Option<&str> {
+    let (after, bullet) = after_marker(line)?;
+    bullet
         .then(|| after.strip_prefix(" ["))
         .flatten()
         .and_then(|rest| rest.strip_prefix([' ', 'x', 'X']))
-        .and_then(|rest| rest.strip_prefix(']'));
-    boxed.unwrap_or(after).chars().all(blank)
+        .and_then(|rest| rest.strip_prefix(']'))
+}
+
+/// `/^[ \t]*(?:[-*+](?: \[[ xX]\])?|\d{1,9}[.)])[ \t]*$/`: a to-do box
+/// only after a bullet.
+fn is_empty_item(line: &str) -> bool {
+    let Some((after, _)) = after_marker(line) else {
+        return false;
+    };
+    after_box(line).unwrap_or(after).chars().all(blank)
+}
+
+/// `EMPTY_TODO`, `/^[ \t]*[-*+] \[[ xX]\][ \t]*$/`.
+fn is_empty_todo(line: &str) -> bool {
+    after_box(line).is_some_and(|after| after.chars().all(blank))
 }
 
 #[cfg(test)]
@@ -145,6 +156,26 @@ mod tests {
         assert_eq!(mask_empty_block_lines("####### "), "####### ");
         assert_eq!(mask_empty_block_lines("- a b"), "- a b");
         assert_eq!(mask_empty_block_lines("1. [ ]"), "1. [ ]");
+    }
+
+    #[test]
+    fn an_empty_todo_counts_after_any_line() {
+        let word = |line: &str| format!("{line} {PLACEHOLDER}");
+        assert_eq!(
+            mask_empty_block_lines("# H\n- [ ]"),
+            format!("# H\n{}", word("- [ ]"))
+        );
+        assert_eq!(
+            mask_empty_block_lines("one\n* [X]  "),
+            format!("one\n{}", word("* [X]"))
+        );
+        assert_eq!(
+            mask_empty_block_lines("> q\n  + [x]"),
+            format!("> q\n{}", word("  + [x]"))
+        );
+        assert_eq!(mask_empty_block_lines("one\n- [ ] b"), "one\n- [ ] b");
+        assert_eq!(mask_empty_block_lines("one\n1. [ ]"), "one\n1. [ ]");
+        assert_eq!(mask_empty_block_lines("```\n- [ ]\n```"), "```\n- [ ]\n```");
     }
 
     #[test]

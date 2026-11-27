@@ -72,6 +72,7 @@ mod markers;
 mod media;
 mod prepare;
 mod roundtrip;
+mod run_writer;
 mod runs;
 mod shapes;
 mod table;

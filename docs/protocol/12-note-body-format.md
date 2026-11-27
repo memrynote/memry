@@ -70,24 +70,39 @@ table, a code block, an image), a list, a nested quote or a comment as literal t
 (`crates/memry-core/src/crdt/markdown_seed/roundtrip.rs:1-7`). The serializer writes text as
 desktop's writer does, which escapes with a backslash each character that would read back as
 markup, judged on the block as spelled: a `*` or `_` that pairs, a backtick that is not alone, a
-`~` beside a `~`, a `]` before `(` or inside link text, a `!` before `[`, a `\` before an escapable
-character, a newline or the block's end, and the first character of a line that opens a block
-(`#`, `>`, `-`, `+`, `*`, `1.`, a thematic break, a table delimiter row, and a table row after the
-first line). Text that holds none keeps its bytes, a break in a heading is `<br>`, a link whose
+`~` beside a `~`, a `]` before `(` or inside link text, a `!` before `[` (past the delimiters of
+a run that goes on into the link), a `\` before an escapable character, a newline or the block's
+end, and the first character of a line that opens a block (`#`, `>`, `-`, `+`, `*`, `1.`, a
+thematic break, a table delimiter row, and a table row after the first line), which a run's
+closing delimiters and a link's `](address)` before the break do not hide. Text that holds none
+keeps its bytes, a break in a heading is `<br>`, a link whose
 text is its address keeps its brackets (`[a](a)`), a code span with a space at both ends gains
 one at each end, and an empty heading is written `#`
 (`packages/editor-schema/src/inline/markdown-escapes.ts:36`, `:112-125`, `:127-145`, `:147-171`,
 `:205-212`, `:242-266`, called from `packages/editor-schema/src/inline/html-comment.ts:194`;
-`crates/memry-core/src/crdt/markdown_seed/escapes.rs:43`, `:190`, `:226`). A mark's delimiters
+`packages/editor-schema/src/inline/markdown-escapes.ts:174`, `:208`, `:284`;
+`crates/memry-core/src/crdt/markdown_seed/escapes.rs:44`, `:233`, `:257`). A mark's delimiters
 stay outside its run's edge whitespace and breaks, a break belongs to the run it was split from,
-and a block holding a mark beside another, link text with a backtick, a link address with a
+and a run the parser would misread with stars is spelled with underscores: an italic run whose
+content starts with a star or ends in a bare one, a bold run whose content ends in a bare one (a
+star the escaper escaped, as in `*a\**`, meets no delimiter), and a run with no leading edge
+whose stars would touch the stars of the run closed right before it (`*a*__b__`, `**a**_b_`).
+The underscores stay only where the parser reads them: not between two word characters, not
+beside another underscore, and not after a bare `_` earlier in the paragraph that could open a
+run, and a block whose escaped runs are spelled with underscores escapes every `_` in its text
+(`packages/editor-schema/src/inline/emphasis-runs.ts:273`, `:298`, `:318`, `:350`, `:366`;
+`crates/memry-core/src/crdt/markdown_seed/run_writer.rs:37`, `:88`, `:109`, `:163`, `:237`,
+`crates/memry-core/src/crdt/markdown_seed/escapes.rs:71-83`). A code span is fenced with the
+fewest backticks no backtick run inside it has, with a space each side when it starts or ends in
+a backtick (`c``c` stays `` `c``c` ``)
+(`packages/editor-schema/src/inline/emphasis-runs.ts:207`,
+`crates/memry-core/src/crdt/markdown_seed/roundtrip.rs:155`). A block holding a mark beside another, link text with a backtick, a link address with a
 backslash, angle bracket, whitespace or unbalanced parenthesis, a break in a code run, or a break
 at a paragraph's start or end or in a run of three or more, is not decided and stays literal
 (`packages/editor-schema/src/inline/emphasis-runs.ts:38`, `:95`, `:177`;
 `crates/memry-core/src/crdt/markdown_seed/items.rs:31`,
-`crates/memry-core/src/crdt/markdown_seed/roundtrip.rs:113`, `:135`, `:163`, `:189`). A code block's `language` is its
-fence's info string, `""` for an untagged fence or an indented run, never BlockNote's
-`javascript` default (`packages/editor-schema/src/schema.ts:80-89`,
+`crates/memry-core/src/crdt/markdown_seed/roundtrip.rs:113`, `:135`, `:163`, `:189`). A code block's `language`is its
+fence's info string,`""`for an untagged fence or an indented run, never BlockNote's`javascript` default (`packages/editor-schema/src/schema.ts:80-89`,
 `crates/memry-core/src/crdt/markdown_seed/blocks.rs:205-228`).
 
 **Comments, and what the core follows from the parse rather than from the markdown.**
@@ -138,12 +153,13 @@ fence's info string, `""` for an untagged fence or an indented run, never BlockN
   a to-do (`- [ ]`, a box only after a bullet) with nothing after it is an empty item, where
   BlockNote's parser reads each as a paragraph of the marker. An item line counts only at the
   top of the text, after a blank line or after another item line, so `-` under paragraph text
-  stays text, and never inside a fence. Desktop gives each such line a placeholder word for the
+  stays text, and never inside a fence; an empty to-do has no box to be a setext underline, so it
+  counts after any line (`# H\n- [ ]`, `one\n- [x]`). Desktop gives each such line a placeholder word for the
   parser and takes it back out (`packages/editor-schema/src/empty-blocks.ts:24-33`, `:35-50`,
-  `:56-71`, called from `packages/editor-schema/src/parse-markdown.ts:379`, `:399`), and strips
+  `:56-71`, `:29`, `:37`, called from `packages/editor-schema/src/parse-markdown.ts:379`, `:399`), and strips
   any it left inside text, so the last
   line of `1. \n2. ` is an empty numbered item, not a paragraph; the core does the same
-  (`crates/memry-core/src/crdt/markdown_seed/empty_blocks.rs:20`, `:46`,
+  (`crates/memry-core/src/crdt/markdown_seed/empty_blocks.rs:21`, `:132`, `:46`,
   `crates/memry-core/src/crdt/markdown_seed/blocks.rs:46`, `:73`). A placeholder the parser
   does leave in text keeps its chunk literal (`empty_blocks.rs:61`).
 - **Whitespace at a mark's edge is outside the mark.** After a block is parsed, each maximal

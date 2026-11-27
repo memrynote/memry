@@ -10,6 +10,7 @@ use crate::domain::journal_rules::{is_js_whitespace, js_trim};
 
 use super::escapes::escape_items;
 use super::items::{Item, items};
+use super::run_writer::{RunWriter, delimiter};
 use super::{SeedBlock, SeedInline, SeedKind, Unsupported};
 
 pub(super) const UNSERIALIZED: Unsupported = Unsupported("callout or quote body");
@@ -67,172 +68,38 @@ fn rewritten_line(line: &str) -> bool {
 /// `escapeMarkdownText`, then `tokenizeEmphasisRuns` and BlockNote's export,
 /// with `restoreEmphasisRuns` putting each mark's delimiters back.
 fn inline(content: &[SeedInline], heading: bool) -> Result<String, Unsupported> {
-    let mut out = String::new();
-    let mut underscored = Vec::new();
+    let mut writer = RunWriter::default();
     for item in escape_items(items(content)?, heading)? {
-        write_item(&item, &mut out, &mut underscored)?;
+        write_item(&item, &mut writer)?;
     }
-    resolve_underscores(&mut out, &underscored);
-    Ok(out)
+    Ok(writer.finish())
 }
 
 /// A break is `\` and a newline.
-const BREAK: &str = "\\\n";
+pub(super) const BREAK: &str = "\\\n";
 
-fn write_item(
-    item: &Item,
-    out: &mut String,
-    underscored: &mut Vec<Delimiters>,
-) -> Result<(), Unsupported> {
+fn write_item(item: &Item, writer: &mut RunWriter) -> Result<(), Unsupported> {
     let marks = &item.marks;
     if let Some(href) = &marks.link {
-        return write_link(&item.text, href, out);
+        return write_link(&item.text, href, &mut writer.out);
     }
     if marks.code {
         for (index, part) in item.text.split('\n').enumerate() {
             if index > 0 {
-                out.push_str(BREAK);
+                writer.out.push_str(BREAK);
             }
             if !part.is_empty() {
-                out.push_str(&code_span(part));
+                writer.out.push_str(&code_span(part));
             }
         }
         return Ok(());
     }
     let text = item.text.replace('\n', BREAK);
-    let delimiter = if marks.bold {
-        "**"
-    } else if marks.italic {
-        "*"
-    } else if marks.strike {
-        "~~"
-    } else {
-        out.push_str(&text);
-        return Ok(());
-    };
-    emphasis(&text, delimiter, out, underscored);
+    match delimiter(item) {
+        Some(delimiter) => writer.emphasis(&text, delimiter),
+        None => writer.out.push_str(&text),
+    }
     Ok(())
-}
-
-/// Where an underscore pair may stand for one run's stars: the byte offsets
-/// of its opening and closing delimiter, which are as long as each other.
-struct Delimiters {
-    open: usize,
-    close: usize,
-    len: usize,
-}
-
-/// `restoreEmphasisRuns`: a run's leading and trailing whitespace and breaks
-/// stay outside its delimiters (`EDGES`), and a run of nothing else has none.
-/// A run the parser would misread with stars is an underscore candidate.
-fn emphasis(run: &str, delimiter: &str, out: &mut String, underscored: &mut Vec<Delimiters>) {
-    let lead = edge_prefix(run, false);
-    let trail = run[lead..]
-        .char_indices()
-        .map(|(at, _)| lead + at)
-        .chain([run.len()])
-        .find(|&at| edge_prefix(&run[at..], true) == run.len() - at)
-        .unwrap_or(run.len());
-    if lead >= trail {
-        out.push_str(run);
-        return;
-    }
-    let content = &run[lead..trail];
-    out.push_str(&run[..lead]);
-    let open = out.len();
-    out.push_str(delimiter);
-    out.push_str(content);
-    let close = out.len();
-    out.push_str(delimiter);
-    out.push_str(&run[trail..]);
-    if meets_inner_stars(delimiter, content) && !has_bare_underscore(content) {
-        underscored.push(Delimiters {
-            open,
-            close,
-            len: delimiter.len(),
-        });
-    }
-}
-
-/// `meetsInnerStars`, for a run with no run inside it: three stars in a row
-/// open bold italic, so an italic run whose content starts or ends with `*`
-/// and a bold run whose content ends with one came back as text.
-fn meets_inner_stars(delimiter: &str, content: &str) -> bool {
-    match delimiter {
-        "*" => content.starts_with('*') || content.ends_with('*'),
-        "**" => content.ends_with('*'),
-        _ => false,
-    }
-}
-
-/// `hasBareUnderscore`: `parseDelimited` skips an escaped character, so only a
-/// bare `_` could close an underscore run early.
-fn has_bare_underscore(content: &str) -> bool {
-    let mut chars = content.chars();
-    while let Some(c) = chars.next() {
-        if c == '\\' {
-            chars.next();
-        } else if c == '_' {
-            return true;
-        }
-    }
-    false
-}
-
-/// `resolveUnderscores`: each candidate pair spelled `_` or `__` where the
-/// parser reads them (`tryItalic` and `tryBold` refuse an opener between two
-/// word characters, and no run closes on an underscore next to another), and
-/// with its stars where it would not. Each is judged on the text before any
-/// pair changes.
-fn resolve_underscores(out: &mut String, pairs: &[Delimiters]) {
-    let word = |c: Option<char>| c.is_some_and(|c| c.is_ascii_alphanumeric() || c == '_');
-    let readable: Vec<&Delimiters> = pairs
-        .iter()
-        .filter(|pair| {
-            let before = out[..pair.open].chars().next_back();
-            let first = out[pair.open + pair.len..].chars().next();
-            let after = out[pair.close + pair.len..].chars().next();
-            let opens = !(word(before) && word(first)) && before != Some('_');
-            opens && after != Some('_')
-        })
-        .collect();
-    for pair in readable {
-        let swap = "_".repeat(pair.len);
-        out.replace_range(pair.open..pair.open + pair.len, &swap);
-        out.replace_range(pair.close..pair.close + pair.len, &swap);
-    }
-}
-
-/// The length of the longest prefix of `text` matching
-/// `/(?:\\\n(?:[^\S\n]*>)*|\s)*/`: a break (with the `>` prefixes a quote
-/// carries onto the next line) or whitespace. At a run's end (`trailing`) a
-/// `<br>` is one too: the break the escaper spelled for a heading's line.
-fn edge_prefix(text: &str, trailing: bool) -> usize {
-    let mut at = 0;
-    loop {
-        let rest = &text[at..];
-        if rest.starts_with(BREAK) {
-            at += BREAK.len();
-            // `(?:[^\S\n]*>)*`
-            loop {
-                let tail = &text[at..];
-                let blanks = tail
-                    .find(|c: char| c == '\n' || !is_js_whitespace(c))
-                    .unwrap_or(tail.len());
-                if tail[blanks..].starts_with('>') {
-                    at += blanks + 1;
-                } else {
-                    break;
-                }
-            }
-        } else if trailing && rest.starts_with("<br>") {
-            at += "<br>".len();
-        } else if let Some(c) = rest.chars().next().filter(|c| is_js_whitespace(*c)) {
-            at += c.len_utf8();
-        } else {
-            return at;
-        }
-    }
 }
 
 /// A link's text, one link per line (`splitLinksAtBreaks`), its breaks
@@ -281,11 +148,13 @@ fn address(href: &str) -> Result<&str, Unsupported> {
     }
 }
 
-/// BlockNote's code span: a fence longer than any backtick run in it, padded
-/// when it starts or ends with a backtick.
+/// A code span, fenced with the fewest backticks no backtick run inside it
+/// has (`shortFencedCode`, which keeps BlockNote's longest run plus one only
+/// where that is the smallest), padded when it starts or ends with a
+/// backtick.
 fn code_span(text: &str) -> String {
-    let longest = text.split(|c| c != '`').map(str::len).max().unwrap_or(0);
-    let fence = "`".repeat(longest + 1);
+    let runs: Vec<usize> = text.split(|c| c != '`').map(str::len).collect();
+    let fence = "`".repeat((1..).find(|n| !runs.contains(n)).unwrap_or(1));
     if text.starts_with('`') || text.ends_with('`') {
         format!("{fence} {text} {fence}")
     } else {
@@ -466,7 +335,7 @@ mod tests {
     }
 
     #[test]
-    fn a_run_whose_stars_the_parser_would_misread_is_spelled_with_underscores() {
+    fn a_run_against_another_runs_stars_is_spelled_with_underscores() {
         let italic = SeedMarks {
             italic: true,
             ..SeedMarks::default()
@@ -477,18 +346,79 @@ mod tests {
         };
         let plain = SeedMarks::default();
         let written = |content: Vec<SeedInline>| serialize(&[paragraph(content)]).expect("written");
-        assert_eq!(written(vec![text("a*", italic.clone())]), "_a\\*_\n");
-        // An escaped star opens the content with a backslash, not a star.
+        // An escaped star meets no delimiter, and the stars of the run before
+        // open bold italic with a run's own.
+        assert_eq!(written(vec![text("a*", italic.clone())]), "*a\\**\n");
+        assert_eq!(written(vec![text("a*", bold.clone())]), "**a\\***\n");
         assert_eq!(written(vec![text("*a", italic.clone())]), "*\\*a*\n");
-        assert_eq!(written(vec![text("a*", bold.clone())]), "__a\\*__\n");
-        assert_eq!(written(vec![text("*a", bold)]), "**\\*a**\n");
-        // A bare underscore would close the run early, and an opener between
-        // two word characters is no opener.
-        assert_eq!(written(vec![text("a_b*", italic.clone())]), "*a_b\\**\n");
         assert_eq!(
-            written(vec![text("x", plain.clone()), text("a*", italic)]),
-            "x*a\\**\n"
+            written(vec![text("a", italic.clone()), text("b", bold.clone())]),
+            "*a*__b__\n"
         );
+        assert_eq!(
+            written(vec![text("a", bold.clone()), text("b", italic.clone())]),
+            "**a**_b_\n"
+        );
+        // A run after text, or after a run spelled with underscores, meets no stars.
+        assert_eq!(
+            written(vec![
+                text("a", italic.clone()),
+                text(" ", plain.clone()),
+                text("b", bold.clone())
+            ]),
+            "*a* **b**\n"
+        );
+        // A bare underscore before the run could open one that the
+        // underscore delimiters would close.
+        let code = SeedMarks {
+            code: true,
+            ..SeedMarks::default()
+        };
+        assert_eq!(
+            written(vec![
+                text("a_", code),
+                text("b", italic.clone()),
+                text("c", bold)
+            ]),
+            "`a_`*b***c**\n"
+        );
+    }
+
+    #[test]
+    fn a_block_whose_runs_use_underscores_escapes_every_underscore_in_its_text() {
+        let italic = SeedMarks {
+            italic: true,
+            ..SeedMarks::default()
+        };
+        let bold = SeedMarks {
+            bold: true,
+            ..SeedMarks::default()
+        };
+        let body = paragraph(vec![
+            text("snake_case ", SeedMarks::default()),
+            text("a", italic),
+            text("b", bold),
+        ]);
+        assert_eq!(
+            serialize(&[body]).expect("written"),
+            "snake\\_case *a*__b__\n"
+        );
+    }
+
+    #[test]
+    fn a_code_span_gets_the_fewest_backticks_its_runs_allow() {
+        let code = SeedMarks {
+            code: true,
+            ..SeedMarks::default()
+        };
+        let written = |value: &str| {
+            serialize(&[paragraph(vec![text(value, code.clone())])]).expect("written")
+        };
+        assert_eq!(written("c``c"), "`c``c`\n");
+        assert_eq!(written("a`b```c"), "``a`b```c``\n");
+        assert_eq!(written("`a```b"), "`` `a```b ``\n");
+        assert_eq!(written("a`b"), "``a`b``\n");
+        assert_eq!(written("a"), "`a`\n");
     }
 
     #[test]
