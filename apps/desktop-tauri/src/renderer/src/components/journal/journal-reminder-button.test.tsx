@@ -1,7 +1,7 @@
 /**
  * Covers the journal toolbar's reminder path end to end: the note typed into
  * the real `ReminderPicker` has to survive every hop down to the
- * `reminders.create` IPC payload. Nothing between the textarea and `window.api`
+ * `reminderCreate` IPC payload. Nothing between the textarea and the command
  * is stubbed, so a consumer that reads the wrong callback argument fails here
  * instead of silently dropping what the user wrote.
  */
@@ -9,7 +9,8 @@
 import React from 'react'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { renderWithProviders, getMockApi, userEvent } from '@tests/utils/render'
+import { renderWithProviders, userEvent } from '@tests/utils/render'
+import type * as Bindings from '../../../../generated/bindings'
 import { JournalReminderButton } from './journal-reminder-button'
 
 vi.mock('@/lib/telemetry', () => ({ trackTelemetry: vi.fn() }))
@@ -39,9 +40,28 @@ vi.mock('@/components/ui/picker', async () => {
   return createPickerStub()
 })
 
+const reminderCommands = vi.hoisted(() => ({
+  getForTarget: vi.fn(),
+  create: vi.fn(),
+  update: vi.fn(),
+  delete: vi.fn()
+}))
+vi.mock('../../../../generated/bindings', async (importOriginal) => {
+  const actual = await importOriginal<typeof Bindings>()
+  return {
+    ...actual,
+    commands: {
+      ...actual.commands,
+      reminderGetForTarget: reminderCommands.getForTarget,
+      reminderCreate: reminderCommands.create,
+      reminderUpdate: reminderCommands.update,
+      reminderDelete: reminderCommands.delete
+    }
+  }
+})
+
 function reminderApi(): Record<string, ReturnType<typeof vi.fn>> {
-  return (getMockApi() as unknown as { reminders: Record<string, ReturnType<typeof vi.fn>> })
-    .reminders
+  return reminderCommands
 }
 
 /**
@@ -72,7 +92,8 @@ function seedActiveReminder(targetType: 'journal' | 'note', targetId: string): v
 describe('JournalReminderButton', () => {
   beforeEach(() => {
     const api = reminderApi()
-    api.getForTarget = vi.fn().mockResolvedValue([])
+    api.getForTarget.mockReset()
+    api.getForTarget.mockResolvedValue([])
     api.create.mockClear()
     api.create.mockResolvedValue({ success: true })
     api.update.mockClear()
@@ -81,7 +102,7 @@ describe('JournalReminderButton', () => {
     api.delete.mockResolvedValue({ success: true })
   })
 
-  it('sends the note typed in the picker to reminders.create', async () => {
+  it('sends the note typed in the picker to reminderCreate', async () => {
     const user = userEvent.setup()
     renderWithProviders(<JournalReminderButton journalDate="2026-05-10" />)
 
@@ -92,10 +113,7 @@ describe('JournalReminderButton', () => {
     await user.click(screen.getByTestId('preset-in-one-week'))
 
     await waitFor(() => {
-      const api = getMockApi() as unknown as {
-        reminders: { create: ReturnType<typeof vi.fn> }
-      }
-      expect(api.reminders.create).toHaveBeenCalledWith(
+      expect(reminderApi().create).toHaveBeenCalledWith(
         expect.objectContaining({
           targetType: 'journal',
           targetId: '2026-05-10',
