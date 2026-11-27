@@ -3,6 +3,8 @@ import { BlockNoteEditor, type PartialBlock } from '@blocknote/core'
 import { BlockNoteView } from '@blocknote/shadcn'
 import { cleanup, render } from '@testing-library/react'
 import { NodeSelection, TextSelection } from '@tiptap/pm/state'
+import * as Y from 'yjs'
+import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 
 // Markdown pasted as plain text (an answer copied from Claude, a README) has to
 // land as the blocks the vault converter builds from the same bytes: callouts,
@@ -36,6 +38,7 @@ beforeAll(() => {
   ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = false
 })
 
+import { withCollaborationIfLive } from './collaboration-options'
 import { editorSchema } from './editor-schema'
 import { parseMarkdownPreservingBlanks } from './markdown-utils'
 import { handleEditorPaste } from './table-cell-paste'
@@ -84,6 +87,41 @@ function mountEditor(
   } as never) as BlockNoteEditor<any, any, any>
   render(<BlockNoteView editor={editor} />)
   return editor
+}
+
+/** An editor bound to `doc`, as the app mounts a note with a live Y.Doc. */
+function mountCollaborativeEditor(
+  doc: Y.Doc,
+  initialContent: PartialBlock<any, any, any>[],
+  resolveNotePath: () => Promise<string | undefined>
+): BlockNoteEditor<any, any, any> {
+  const editor = BlockNoteEditor.create(
+    withCollaborationIfLive(doc.getXmlFragment(CRDT_FRAGMENT_NAME), {
+      schema: editorSchema,
+      pasteHandler: (context: Parameters<typeof handleEditorPaste>[0]) =>
+        handleEditorPaste({ ...context, resolveNotePath })
+    } as never)
+  ) as BlockNoteEditor<any, any, any>
+  render(<BlockNoteView editor={editor} />)
+  editor.replaceBlocks(editor.document, initialContent)
+  return editor
+}
+
+/** Appends `suffix` to the text reading `needle` in a peer's copy of `doc`, and syncs it back. */
+function peerAppends(doc: Y.Doc, needle: string, suffix: string): void {
+  const peer = new Y.Doc()
+  Y.applyUpdate(peer, Y.encodeStateAsUpdate(doc))
+  const visit = (node: Y.XmlFragment | Y.XmlElement | Y.XmlText): boolean => {
+    if (node instanceof Y.XmlText) {
+      if (node.toString() !== needle) return false
+      node.insert(needle.length, suffix)
+      return true
+    }
+    return node.toArray().some((child) => visit(child as Y.XmlElement | Y.XmlText))
+  }
+  if (!visit(peer.getXmlFragment(CRDT_FRAGMENT_NAME))) throw new Error(`no text reads "${needle}"`)
+  Y.applyUpdate(doc, Y.encodeStateAsUpdate(peer, Y.encodeStateVector(doc)))
+  peer.destroy()
 }
 
 function view(editor: BlockNoteEditor<any, any, any>): any {
@@ -480,6 +518,65 @@ describe('pasting markdown while the editor changes', () => {
     await new Promise((resolve) => setTimeout(resolve, 500))
 
     expect(JSON.stringify(editor.document)).toBe(before)
+  })
+
+  it('pastes where the caret was when a synced edit arrives before the paste is parsed', async () => {
+    const doc = new Y.Doc()
+    let finishParse: ((notePath: string | undefined) => void) | undefined
+    const editor = mountCollaborativeEditor(
+      doc,
+      [
+        { type: 'paragraph', content: 'aaa' },
+        { type: 'paragraph', content: 'bbb' },
+        { type: 'paragraph', content: 'ccc' }
+      ],
+      () => new Promise((resolve) => (finishParse = resolve))
+    )
+    placeCaretIn(editor, 'aaa', 'aaa'.length)
+
+    paste(editor, { 'text/plain': '> [!tip]\n> PASTED' })
+    await vi.waitFor(() => expect(finishParse).toBeDefined())
+    peerAppends(doc, 'ccc', '-remote')
+    expect(outline(editor.document).at(-1)).toEqual(['paragraph', 'ccc-remote'])
+    finishParse?.(undefined)
+
+    await vi.waitFor(
+      () =>
+        expect(outline(editor.document)).toEqual([
+          ['paragraph', 'aaa'],
+          ['callout', 'tip: PASTED'],
+          ['paragraph', 'bbb'],
+          ['paragraph', 'ccc-remote']
+        ]),
+      { timeout: 5000 }
+    )
+    doc.destroy()
+  })
+
+  it('lands later pastes when parsing an earlier one never finishes', async () => {
+    let lookups = 0
+    const editor = mountEditor([{ type: 'paragraph' }], () =>
+      lookups++ === 0 ? new Promise(() => undefined) : Promise.resolve(undefined)
+    )
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    try {
+      paste(editor, { 'text/plain': 'first' })
+      paste(editor, { 'text/plain': '> [!tip]\n> second' })
+      await vi.advanceTimersByTimeAsync(60_000)
+    } finally {
+      vi.useRealTimers()
+    }
+
+    // The stuck paste falls back to BlockNote's parser where it was made, and
+    // the one after it still goes through the note parser.
+    await vi.waitFor(
+      () =>
+        expect(outline(editor.document)).toEqual([
+          ['paragraph', 'first'],
+          ['callout', 'tip: second']
+        ]),
+      { timeout: 5000 }
+    )
   })
 
   it('settles a failed paste without an unhandled rejection', async () => {
