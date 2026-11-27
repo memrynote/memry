@@ -17,6 +17,7 @@
 //! | an empty file is not offered again until it has bytes        | `queueUploadIfAbsent` (#5606)        |
 //! | a file over the limit is refused once until it changes       | `refuseUpload` (#5606)               |
 //! | a revived note queues only its file that was not refused     | `reuploadFreedAttachments` (#5606)   |
+//! | a sign-out keeps refusals, so the file is not offered again  | `device-local-state.ts:63` (#5756)   |
 
 #[allow(unused_imports)]
 use crate::http_fakes;
@@ -640,6 +641,7 @@ async fn a_deleted_note_is_freed_on_day_30_and_never_a_live_reference() {
 mod backfill {
     use super::*;
     use memry_core::storage::open_data;
+    use memry_core::sync::account_binding;
     use memry_core::sync::attachments::backfill::{backfill, embedded_files};
     use proptest::prelude::*;
 
@@ -772,6 +774,27 @@ mod backfill {
             "a changed file is offered again"
         );
         assert!(server.paths().is_empty(), "{:?}", server.paths());
+    }
+
+    #[tokio::test]
+    async fn a_sign_out_keeps_refusals_so_the_file_is_not_offered_again() {
+        let db = scratch_data_db("backfill-refusal-sign-out");
+        let vault = Arc::new(TempVault::new());
+        note(&db, "n1", "n1.md", &[]);
+        vault.write("n1.md", b"text");
+        vault.write_oversized("attachments/n1/big.mov", 1);
+        let server = Server::new();
+        assert_eq!(backfill(&db, vault.clone()).await.unwrap().queued, 1);
+        assert_eq!(drain_once(&db, &server, &vault).await.dropped.len(), 1);
+        assert_eq!(backfill(&db, vault.clone()).await.unwrap().queued, 0);
+
+        with(&db, account_binding::clear_session_state);
+
+        assert_eq!(
+            backfill(&db, vault.clone()).await.unwrap().queued,
+            0,
+            "the refusal describes this device's file and outlives the session"
+        );
     }
 
     fn row_path(conn: &Connection) -> String {
