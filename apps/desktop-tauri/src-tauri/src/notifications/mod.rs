@@ -164,6 +164,29 @@ impl NotificationService {
         }
     }
 
+    /// Withdraws the notifications shown under `key`, delivered or still to come: a reminder
+    /// dismissed, snoozed or deleted in the app (Electron's `removeDeliveredNotification`). On
+    /// macOS it waits for a show in progress, so a banner posted under `key` just before is
+    /// withdrawn too. Windows cannot withdraw a delivered toast (`plugin::withdraw`).
+    pub async fn withdraw(&self, app: &AppHandle<Wry>, key: &str) {
+        #[cfg(target_os = "macos")]
+        {
+            let _ = app;
+            let _turn = self.posting.lock().await;
+            let ids = self.live().forget(key);
+            if !ids.is_empty() {
+                mac::withdraw(&ids);
+            }
+        }
+        #[cfg(not(target_os = "macos"))]
+        {
+            let ids = self.live().forget(key);
+            if !ids.is_empty() {
+                plugin::withdraw(app, ids);
+            }
+        }
+    }
+
     /// Shows the notification. Fails when the platform refuses it, for example when the user
     /// turned notifications off. On macOS, while the user was never asked, the first call shows
     /// the permission prompt and resolves only once the user answers, which has no time limit,

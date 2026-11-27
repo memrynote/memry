@@ -159,7 +159,7 @@ pub async fn post(
 }
 
 /// Takes notifications out of Notification Center, also those macOS has not shown yet.
-fn withdraw(ids: &[i32]) {
+pub(super) fn withdraw(ids: &[i32]) {
     let identifiers: Vec<Retained<NSString>> = ids
         .iter()
         .map(|id| NSString::from_str(&platform_identifier(launch(), *id)))
