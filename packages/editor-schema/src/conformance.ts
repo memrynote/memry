@@ -1630,6 +1630,25 @@ const htmlCommentCases: RoundtripCase[] = [
     name: 'link whose text is its address in a callout',
     markdown: '> [!tip]\n> see [https://e.com](https://e.com)'
   },
+  // A link with no text has nothing to hold its address in a document, and the
+  // parser dropped the whole link.
+  { name: 'empty-label link in a line', markdown: 'x [](u) y' },
+  { name: 'empty-label link alone', markdown: '[](u)' },
+  { name: 'empty-label link after a paragraph', markdown: 'kq0xkq1x\n\n[](u)' },
+  { name: 'blank-label link alone, with a title', markdown: '[ ](u "t")' },
+  { name: 'empty-label link in a list item', markdown: '- [](u)' },
+  { name: 'empty-label link in bold', markdown: 'a **b [](u) c** d' },
+  {
+    name: 'empty-label link in a table cell',
+    markdown: '| a     |\n| ----- |\n| [](u) |'
+  },
+  // A block holding only a code span of spaces lost the span, and with it the block.
+  { name: 'code span of one space alone', markdown: '` `' },
+  { name: 'code span of spaces alone before a paragraph', markdown: '`  `\n\nb' },
+  { name: 'list item holding a code span of spaces', markdown: '- `  `' },
+  { name: 'numbered item holding a code span of a space', markdown: '1. ` `' },
+  // A code span drops the bold around it.
+  { name: 'code span of a space in bold', markdown: '**` `**', canonical: '` `' },
   // The parser strips one space off each end of a code span with one at both.
   { name: 'code span with a space at both ends', markdown: 'a `  b  ` c' },
   // The writer fenced a code span with one backtick more than its longest run,

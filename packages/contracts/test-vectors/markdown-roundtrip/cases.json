@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 435,
+    "exportedCaseCount": 447,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 445,
+    "caseCount": 457,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -2847,6 +2847,90 @@
       "canonical": null,
       "pending": null,
       "sha256": "c0bf64932aea880eae9e7a6e8c1ecce7ce3695c8057aa00a8c9920c0a85c0b1e"
+    },
+    {
+      "name": "empty-label link in a line",
+      "markdown": "x [](u) y",
+      "canonical": null,
+      "pending": null,
+      "sha256": "99d2996bbc6e1ee93479ab77fa755eeb208f2dd6d5d1c2ab42720f28d0f2fc3f"
+    },
+    {
+      "name": "empty-label link alone",
+      "markdown": "[](u)",
+      "canonical": null,
+      "pending": null,
+      "sha256": "b2e265ef2e0d0da34e8f7b4ad51a2f48f8725c75491538dc44424b3b990cda96"
+    },
+    {
+      "name": "empty-label link after a paragraph",
+      "markdown": "kq0xkq1x\n\n[](u)",
+      "canonical": null,
+      "pending": null,
+      "sha256": "3ec6b7b81f178944499f95958b02ae4c2458eb69afdc2334bcf9f54c4242ee7c"
+    },
+    {
+      "name": "blank-label link alone, with a title",
+      "markdown": "[ ](u \"t\")",
+      "canonical": null,
+      "pending": null,
+      "sha256": "5c484e9b7d09371c16f61430e0cc754051c3a8b77593e60389172e8d397c48b1"
+    },
+    {
+      "name": "empty-label link in a list item",
+      "markdown": "- [](u)",
+      "canonical": null,
+      "pending": null,
+      "sha256": "7fe700d70c59594fe47f60e3012ecc8b5c3040ff2d34cf20ec152c94d298175e"
+    },
+    {
+      "name": "empty-label link in bold",
+      "markdown": "a **b [](u) c** d",
+      "canonical": null,
+      "pending": null,
+      "sha256": "956f9fcfafd15f8c3307d514b76dbf67c26ddd3e67c6687f403ab87b89df841d"
+    },
+    {
+      "name": "empty-label link in a table cell",
+      "markdown": "| a     |\n| ----- |\n| [](u) |",
+      "canonical": null,
+      "pending": null,
+      "sha256": "613dfbd57708aaf4cfa9218b6e46e88b8ea8e0a961c9721b5bfd50cf581b23ba"
+    },
+    {
+      "name": "code span of one space alone",
+      "markdown": "` `",
+      "canonical": null,
+      "pending": null,
+      "sha256": "301d6e188c2e66adef392f657d08754b3c6c21457f87e48055f91c78e3c5c05a"
+    },
+    {
+      "name": "code span of spaces alone before a paragraph",
+      "markdown": "`  `\n\nb",
+      "canonical": null,
+      "pending": null,
+      "sha256": "c89d014c82349743742e80b250a7ca19ba7342b6817e59f71ec6b29f8aed40c4"
+    },
+    {
+      "name": "list item holding a code span of spaces",
+      "markdown": "- `  `",
+      "canonical": null,
+      "pending": null,
+      "sha256": "05d9d01f26fe48fd72a2ea8ff652cf2739168bb7042299475009a18402c83c79"
+    },
+    {
+      "name": "numbered item holding a code span of a space",
+      "markdown": "1. ` `",
+      "canonical": null,
+      "pending": null,
+      "sha256": "1719bf52a56e15a993ba6537ddafe927e135fb57308f2113181765c1bda68dc0"
+    },
+    {
+      "name": "code span of a space in bold",
+      "markdown": "**` `**",
+      "canonical": "` `",
+      "pending": null,
+      "sha256": "2704c03fad03de2b98501d8c2877c92a701146acb12abc290f87657c089a6d2d"
     },
     {
       "name": "code span with a space at both ends",
