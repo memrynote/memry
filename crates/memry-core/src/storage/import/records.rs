@@ -13,6 +13,7 @@ use crate::storage::repositories::projectors::{self, ItemContext};
 use crate::storage::repositories::schema::Object;
 use crate::storage::repositories::sync_items::PAYLOAD_STATE_FULL;
 use crate::storage::vault_identity;
+use crate::sync::clock::VectorClock;
 
 /// One Electron record as Electron would push it.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -24,6 +25,14 @@ pub struct ImportRecord {
     /// Electron's `synced_at` in epoch ms; `None` for a row never synced or a table without
     /// the column, which projects with the import time as a local create does.
     pub synced_at: Option<i64>,
+}
+
+/// A record [`ImportWriter::put_held_records`] stores unprojected, with the row clock it keeps
+/// when its payload carries none.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ImportHeldRecord {
+    pub record: ImportRecord,
+    pub clock: VectorClock,
 }
 
 impl ImportWriter {
@@ -44,15 +53,27 @@ impl ImportWriter {
     /// Stores each record's `sync_items` row without a projection: a journal day a foreign
     /// holder gave up to `j<D>` on Electron, kept as the core keeps a displaced holder
     /// (`journal_day_merge::plan_inbound` removes only the projection), so a later tombstone
-    /// holds its body for the owed merge.
+    /// holds its body for the owed merge. A payload without a clock gets the row clock
+    /// [`ImportHeldRecord::clock`]: the core's own displaced holder always keeps the clock its
+    /// record was stored under, and an unclocked live row is one the unclocked seed would clock
+    /// and push as a new record (`domain::unclocked_seed`, `clock IS NULL`).
     pub fn put_held_records(
         &mut self,
-        records: &[ImportRecord],
+        held: &[ImportHeldRecord],
         now_ms: i64,
     ) -> Result<(), StorageError> {
         let tx = nested_tx::begin(&self.data).map_err(failed)?;
-        for record in records {
-            store(&tx, record, now_ms)?;
+        for held in held {
+            store(&tx, &held.record, now_ms)?;
+            let clock = serde_json::to_string(&held.clock).map_err(|e| StorageError::Failed {
+                what: format!("held record clock: {e}"),
+            })?;
+            tx.execute(
+                "UPDATE sync_items SET clock = ?3
+                  WHERE item_type = ?1 AND item_id = ?2 AND clock IS NULL",
+                params![held.record.item_type, held.record.item_id, clock],
+            )
+            .map_err(failed)?;
         }
         tx.commit().map_err(failed)
     }

@@ -6,6 +6,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 
 use memry_core::api::errors::TransportError;
+use memry_core::domain::unclocked_seed;
 use memry_core::domain::write_back::{BodyRead, body_for_file};
 use memry_core::markdown::convert::NoEmbeds;
 use memry_core::markdown::convert::api::Converter;
@@ -378,6 +379,54 @@ fn a_covering_tombstone_does_not_resurrect_holder_tags() {
         .unwrap();
     assert_eq!(tags, 0, "resurrected a tag removed elsewhere");
     assert_eq!(live_days(&vault, "2026-02-01"), 0);
+}
+
+/// VERIFY-5166C 1: a holder Electron recorded no clock for (edited since its sync) keeps no
+/// payload clock, yet its row is clocked: the unclocked seed must not push it as a live day.
+/// The drain still folds its text once, and the forget takes its row.
+#[test]
+fn an_unclocked_holder_is_not_seeded_and_still_folds_once() {
+    let vault = Vault::new();
+    let (key, value) = owed_day(
+        "f-edited",
+        json!({"foreignId": "f-edited", "date": "2026-02-01", "clock": {"dev-A": 2},
+               "fallbackMarkdown": "My unpushed day", "tags": ["t"]}),
+    );
+    seed_key(&vault, &key, &value, DEBT_AT_S);
+    import(&vault);
+    let path = vault.core().join(DATA_FILE);
+    let db = memry_core::storage::open_data(&path).unwrap();
+    let seeded = db
+        .call_blocking(|conn| unclocked_seed::seed(conn, "device-core", NOW_MS))
+        .unwrap();
+    assert!(seeded.is_empty(), "seeded {seeded:?}");
+    let queued: i64 = core_conn(&vault)
+        .query_row("SELECT count(*) FROM outbox", [], |row| row.get(0))
+        .unwrap();
+    assert_eq!(queued, 0);
+    drop(db);
+
+    let clock = BTreeMap::from([("dev-A".to_owned(), 2), ("dev-B".to_owned(), 1)]);
+    let report = tombstone_then_drain(&vault, "f-edited", clock);
+    assert_eq!(report.settled, ["f-edited"]);
+    let day = document_state(&path, "j2026-02-01")
+        .unwrap()
+        .expect("the day");
+    assert_eq!(
+        day.text.matches("My unpushed day").count(),
+        1,
+        "{}",
+        day.text
+    );
+    assert_eq!(live_days(&vault, "2026-02-01"), 1);
+    let live: i64 = core_conn(&vault)
+        .query_row(
+            "SELECT count(*) FROM sync_items WHERE item_id = 'f-edited' AND deleted_at IS NULL",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(live, 0);
 }
 
 /// `noteCoverForPush`: a note whose cover this device held and whose file has none pushes

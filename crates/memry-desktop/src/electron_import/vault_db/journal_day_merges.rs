@@ -17,7 +17,7 @@ use memry_core::api::errors::StorageError;
 use memry_core::crdt::errors::CrdtError;
 use memry_core::crdt::registry::UpdateSink;
 use memry_core::crdt::{DocumentRegistry, markdown_seed};
-use memry_core::storage::import::{ImportDocument, ImportRecord, ImportWriter};
+use memry_core::storage::import::{ImportDocument, ImportHeldRecord, ImportRecord, ImportWriter};
 use memry_core::sync::clock::VectorClock;
 use memry_core::sync::journal_day_merge::OwedMerge;
 use rusqlite::Connection;
@@ -40,6 +40,8 @@ pub struct DisplacedHolder {
     pub tags: Option<Vec<String>>,
     /// The row's clock (`holderClock`); `None` when it was edited since its sync.
     pub clock: Option<VectorClock>,
+    /// The owed merge's clock, the row's when it has no `holderClock`.
+    pub owed_clock: VectorClock,
 }
 
 #[derive(Deserialize)]
@@ -98,6 +100,7 @@ pub(super) fn journal_day_merge(plan: &mut SyncStatePlan, value: &str) -> Carrie
         clock: serde_json::from_value(owed.holder_clock)
             .ok()
             .filter(|clock: &VectorClock| !clock.is_empty()),
+        owed_clock: merge.clock.clone(),
     };
     // The core keys a merge by its foreign id, so a second row of the same id replaces it.
     plan.holders
@@ -153,7 +156,8 @@ pub fn fallback_documents(
 /// Stages each displaced holder's `sync_items` row, unprojected and with no outbox row:
 /// payload `{date, content, tags, clock}` from its owed row. `clock` is `holderClock`, absent
 /// when Electron recorded none (the row was edited since its sync): Electron then counts every
-/// holder tag unpushed (`unpushedHolderTags`), and so does the core with no row clock. A foreign
+/// holder tag unpushed (`unpushedHolderTags`), and so does the core with no payload clock. The
+/// row's clock column then holds the owed merge's clock, so the row is never unclocked. A foreign
 /// id the import already staged as a live record keeps that one. Runs after every table.
 pub fn put_holders(
     source: &Connection,
@@ -178,11 +182,14 @@ pub fn put_holders(
         if let Some(clock) = holder.clock {
             payload["clock"] = json!(clock);
         }
-        records.push(ImportRecord {
-            item_type: JOURNAL,
-            item_id: holder.foreign_id,
-            payload: payload.to_string(),
-            synced_at: None,
+        records.push(ImportHeldRecord {
+            record: ImportRecord {
+                item_type: JOURNAL,
+                item_id: holder.foreign_id,
+                payload: payload.to_string(),
+                synced_at: None,
+            },
+            clock: holder.owed_clock,
         });
     }
     writer.put_held_records(&records, now_ms)?;
