@@ -371,6 +371,29 @@ describe('an outside edit followed by a rename inside the change debounce', () =
     80_000
   )
 
+  it.runIf(process.platform === 'darwin')(
+    'a rename whose new name the folder reports after the app took it reads no body',
+    async () => {
+      seed('n1', 'Docs/apple.md', '# apple\n\nbody\n')
+      index.db.update(noteCache).set({ contentHash: null }).where(eq(noteCache.id, 'n1')).run()
+      lostChanges.add(path.join(vault.path, 'Docs/apple.md'))
+      await watch()
+      const renamed = path.join(vault.path, 'Docs/pear.md')
+      lostAdds.add(renamed)
+      // Right after the app took the rename, before the backfill read the body.
+      registerRenameSyncCallback((id: string) => {
+        renameSynced(id)
+        changeHeard.watcher?.emit('add', renamed)
+      })
+      fs.renameSync(path.join(vault.path, 'Docs/apple.md'), renamed)
+      await settleOn(() => expect(renameSynced).toHaveBeenCalledWith('n1'))
+
+      expect(metadataRows()).toEqual([{ id: 'n1', path: 'Docs/pear.md' }])
+      expect(feedExternalEditToCrdt).not.toHaveBeenCalled()
+    },
+    80_000
+  )
+
   it.runIf(fileSystemIgnoresCase())(
     'a case-only rename inside the write-finish wait after an outside edit keeps the note id',
     async () => {
