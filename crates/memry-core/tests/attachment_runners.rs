@@ -14,6 +14,7 @@
 //! | a vault that is away keeps every queued upload               | `uploadFileState`                    |
 //! | a revival reupload waits for its vault                       | `uploadFileState`                    |
 //! | a revoked device stops the drain, no attempt counted         | `drainOutboxWith` (#3414)            |
+//! | an upload clears its queue row in either path form           | `onSaved` `clearUploadQueue`         |
 
 #[allow(unused_imports)]
 use crate::http_fakes;
@@ -44,6 +45,7 @@ use memry_core::sync::attachments::plan::RELEASE_GRACE_MS;
 use memry_core::sync::attachments::queue::{
     DownloadFn, DownloadQueue, DownloadRequest, DownloadSource, QueueCleared, VaultFiles,
 };
+use memry_core::sync::attachments::records::record_uploaded;
 use memry_core::sync::attachments::release::{CanvasAsset, CanvasAssets, CanvasKept, release_due};
 use memry_core::sync::attachments::revival::{mark_revived, revived, settle_revived};
 use memry_core::sync::attachments::server::AttachmentServer;
@@ -409,7 +411,7 @@ async fn a_revived_note_is_probed_before_its_file_is_queued() {
     assert_eq!((report.queued, report.freed), (1, 1));
     assert_eq!(
         queued(&db),
-        vec![("n1".to_owned(), vault.abs("attachments/n1/abc123-pic.png"))]
+        vec![("n1".to_owned(), "attachments/n1/abc123-pic.png".to_owned())]
     );
     assert!(references(&db, "n1").is_empty(), "the freed id is dropped");
     assert!(with(&db, revived).is_empty(), "the check settled");
@@ -488,7 +490,7 @@ async fn record_moves_survive_a_crash_before_the_reupload() {
     assert_eq!((report.queued, report.freed), (1, 1));
     assert_eq!(
         queued(&db),
-        vec![("n1".to_owned(), vault.abs("attachments/n1/abc123-new.png"))]
+        vec![("n1".to_owned(), "attachments/n1/abc123-new.png".to_owned())]
     );
     assert!(references(&db, "n1").is_empty());
     assert!(with(&db, revived).is_empty());
@@ -674,9 +676,9 @@ mod backfill {
         assert_eq!(
             all,
             vec![
-                ("n1".to_owned(), vault.abs("attachments/n1/a.png")),
-                ("n2".to_owned(), vault.abs("attachments/n2/b.png")),
-                ("n2".to_owned(), vault.abs("images/c d.png")),
+                ("n1".to_owned(), "attachments/n1/a.png".to_owned()),
+                ("n2".to_owned(), "attachments/n2/b.png".to_owned()),
+                ("n2".to_owned(), "images/c d.png".to_owned()),
             ]
         );
         assert_eq!(backfill(&db, vault.clone()).await.unwrap().queued, 0);
@@ -759,14 +761,14 @@ async fn a_vault_that_is_away_keeps_every_queued_upload() {
     vault.write("notes/n1.md", b"");
     for rel in ["attachments/n1/a.png", "attachments/n1/b.png"] {
         vault.write(rel, b"picture");
-        let path = vault.abs(rel);
+        let path = rel.to_owned();
         with(&db, move |conn| {
             upload_queue::enqueue(conn, "n1", &path, NOW)
         });
     }
     let both = vec![
-        (vault.abs("attachments/n1/a.png"), 0),
-        (vault.abs("attachments/n1/b.png"), 0),
+        ("attachments/n1/a.png".to_owned(), 0),
+        ("attachments/n1/b.png".to_owned(), 0),
     ];
     let server = Server::new();
     let drain = || {
@@ -821,7 +823,7 @@ async fn a_revival_reupload_waits_for_its_vault() {
         references(&db, "n1").is_empty(),
         "the gone id is already dropped"
     );
-    let row = vec![(vault.abs("attachments/n1/abc123-pic.png"), 0)];
+    let row = vec![("attachments/n1/abc123-pic.png".to_owned(), 0)];
     let drain = || {
         drain_uploads(
             (*db).clone(),
@@ -862,7 +864,7 @@ async fn a_revoked_device_stops_the_drain_and_counts_no_attempt() {
     for index in 0..5 {
         let rel = format!("attachments/n1/{index}.png");
         vault.write(&rel, b"picture");
-        let path = vault.abs(&rel);
+        let path = rel.clone();
         rows.push((path.clone(), 0));
         with(&db, move |conn| {
             upload_queue::enqueue(conn, "n1", &path, NOW)
@@ -889,4 +891,27 @@ async fn a_revoked_device_stops_the_drain_and_counts_no_attempt() {
     assert_eq!(report.failed, 0, "{report:?}");
     assert_eq!(attempts(&db), rows, "every row as it was");
     assert_eq!(server.paths().len(), 3, "no row starts after the refusal");
+}
+
+/// Rows queued under the vault-relative path and under the absolute one (an
+/// earlier build's) both clear with the upload's record.
+#[tokio::test]
+async fn an_upload_clears_its_queue_row_in_either_path_form() {
+    let db = scratch_data_db("record-uploaded-key");
+    let vault = TempVault::new();
+    note(&db, "n1", "notes/n1.md", &[]);
+    let absolute = vault.abs("attachments/n1/a.png");
+    for (queued, rel, id) in [
+        (absolute.as_str(), "attachments/n1/a.png", "id-a"),
+        ("attachments/n1/b.png", "attachments/n1/b.png", "id-b"),
+    ] {
+        let queued = queued.to_owned();
+        let pending = with(&db, move |conn| {
+            upload_queue::enqueue(conn, "n1", &queued, NOW)?;
+            record_uploaded(conn, "n1", rel, &queued, id, DEVICE, NOW)?;
+            upload_queue::has_pending(conn, "n1", &queued)
+        });
+        assert!(!pending, "the {rel} row is cleared");
+    }
+    assert!(attempts(&db).is_empty());
 }
