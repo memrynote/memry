@@ -362,6 +362,77 @@ fn only_http_heroes_are_downloaded() {
     assert_eq!(w.server.hits("/hero.png"), 0);
 }
 
+/// A capture id from a peer is not checked when it syncs in. One that is not a plain name gets
+/// no hero, so nothing is written outside `attachments/inbox/<id>/`.
+#[test]
+fn a_capture_whose_id_is_not_plain_gets_no_hero() {
+    let w = world();
+    let open = w.open();
+    let captured = w.capture(&open, "/post");
+    let id = "../escape";
+    open.vault
+        .db_handle()
+        .call_blocking(move |conn| {
+            conn.execute_batch(&format!(
+                "UPDATE inbox_items SET id = '{id}' WHERE id = '{captured}';
+                 UPDATE sync_items SET item_id = '{id}' WHERE item_id = '{captured}';"
+            ))
+            .expect("rename");
+            Ok(())
+        })
+        .expect("rename");
+    w.jobs
+        .enqueue(&open, id, InboxJobType::MetadataScrape)
+        .expect("enqueue");
+    let inbox = w.inbox(&open);
+    until("both jobs complete", || {
+        statuses(&inbox, id)
+            == vec![
+                (InboxJobType::MetadataScrape, InboxJobStatus::Complete),
+                (InboxJobType::ArticleExtract, InboxJobStatus::Complete),
+            ]
+    });
+    assert_eq!(w.item(&open, id).thumbnail_path, None);
+    assert_eq!(w.server.hits("/hero.png"), 0);
+    assert!(!w.vault_dir.join("attachments/escape").exists());
+}
+
+/// Transcription is `VoiceService`'s, so a memo Electron queued waits for it: the runner neither
+/// claims nor fails its job. The link queued after it proves the runner went past it.
+#[test]
+fn the_runner_leaves_transcription_jobs_pending() {
+    let w = world();
+    let open = w.open();
+    let memo = w
+        .inbox(&open)
+        .capture_text("a memo".into(), None, None, false)
+        .expect("capture")
+        .item
+        .id;
+    w.inbox(&open)
+        .enqueue_job(memo.clone(), InboxJobType::Transcription)
+        .expect("enqueue");
+    w.session.close();
+    drop(open);
+    let open = w.open();
+    let link = w.capture(&open, "/post");
+    w.jobs
+        .enqueue(&open, &link, InboxJobType::MetadataScrape)
+        .expect("enqueue");
+    let inbox = w.inbox(&open);
+    until("the link's jobs complete", || {
+        statuses(&inbox, &link)
+            == vec![
+                (InboxJobType::MetadataScrape, InboxJobStatus::Complete),
+                (InboxJobType::ArticleExtract, InboxJobStatus::Complete),
+            ]
+    });
+    assert_eq!(
+        statuses(&inbox, &memo),
+        vec![(InboxJobType::Transcription, InboxJobStatus::Pending)]
+    );
+}
+
 #[test]
 fn links_left_unfetched_are_fetched_when_the_vault_opens() {
     let w = world();

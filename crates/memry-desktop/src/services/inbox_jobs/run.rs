@@ -193,9 +193,9 @@ pub(super) fn run(
         cancel,
     };
     while !ctx.stopping() {
-        match inbox.claim_next_job() {
+        match inbox.claim_next_job(RUNS.to_vec()) {
             Ok(Some(job)) => process(&ctx, &job),
-            Ok(None) => match inbox.next_job_due() {
+            Ok(None) => match inbox.next_job_due(RUNS.to_vec()) {
                 Ok(due) => wait(&ctx, due),
                 Err(error) => {
                     tracing::warn!(scope = "Inbox:Jobs", %error, "the next job time was not read");
@@ -211,12 +211,16 @@ pub(super) fn run(
     Ok(())
 }
 
+/// The job types this runner claims. Transcription runs through `VoiceService` until its job
+/// processor is ported (Step 27 stage 7).
+const RUNS: [InboxJobType; 2] = [InboxJobType::MetadataScrape, InboxJobType::ArticleExtract];
+
 fn process(ctx: &Ctx<'_>, job: &InboxJob) {
     match job.job_type {
         InboxJobType::MetadataScrape => metadata::run(ctx, job),
         InboxJobType::ArticleExtract => article::run(ctx, job),
-        // Voice transcription runs through `VoiceService` until its job processor is ported
-        // (Step 27 stage 7); nothing in this build queues one. `processInboxJob`'s default.
+        // Not in `RUNS`, so never claimed: a transcription job Electron queued waits for
+        // `VoiceService`. `processInboxJob`'s default.
         InboxJobType::Transcription => ctx.fail(
             job,
             "No processor registered for job type \"transcription\".",

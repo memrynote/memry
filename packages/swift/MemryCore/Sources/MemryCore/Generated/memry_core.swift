@@ -3848,10 +3848,10 @@ public protocol InboxProtocol: AnyObject, Sendable {
     func enrichArticle(itemId: String, article: InboxArticle, heroPath: String?) throws  -> InboxItemRecord
     
     /**
-     * The earliest due job, now `running` under a new `run_id`; `nil` when
-     * none is due.
+     * The earliest due job of `job_types`, now `running` under a new
+     * `run_id`; `nil` when none is due. Jobs of other types stay pending.
      */
-    func claimNextJob() throws  -> InboxJob?
+    func claimNextJob(jobTypes: [InboxJobType]) throws  -> InboxJob?
     
     /**
      * Queues the capture's job of `job_type`, due now, attempts reset;
@@ -3879,9 +3879,10 @@ public protocol InboxProtocol: AnyObject, Sendable {
     func jobs(itemIds: [String], statuses: [InboxJobStatus]) throws  -> [InboxJob]
     
     /**
-     * When the next pending job is due (epoch ms); `nil` when none is.
+     * When the next pending job of `job_types` is due (epoch ms); `nil` when
+     * none is.
      */
-    func nextJobDue() throws  -> Int64?
+    func nextJobDue(jobTypes: [InboxJobType]) throws  -> Int64?
     
     /**
      * At vault open, before the runner starts: interrupted jobs pending
@@ -4333,14 +4334,15 @@ open func enrichArticle(itemId: String, article: InboxArticle, heroPath: String?
 }
     
     /**
-     * The earliest due job, now `running` under a new `run_id`; `nil` when
-     * none is due.
+     * The earliest due job of `job_types`, now `running` under a new
+     * `run_id`; `nil` when none is due. Jobs of other types stay pending.
      */
-open func claimNextJob()throws  -> InboxJob?  {
+open func claimNextJob(jobTypes: [InboxJobType])throws  -> InboxJob?  {
     return try  FfiConverterOptionTypeInboxJob.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
         uniffiCallStatus in
     uniffi_memry_core_fn_method_inbox_claim_next_job(
-            self.uniffiCloneHandle(),uniffiCallStatus
+            self.uniffiCloneHandle(),
+        FfiConverterSequenceTypeInboxJobType.lower(jobTypes),uniffiCallStatus
     )
 })
 }
@@ -4409,13 +4411,15 @@ open func jobs(itemIds: [String], statuses: [InboxJobStatus])throws  -> [InboxJo
 }
     
     /**
-     * When the next pending job is due (epoch ms); `nil` when none is.
+     * When the next pending job of `job_types` is due (epoch ms); `nil` when
+     * none is.
      */
-open func nextJobDue()throws  -> Int64?  {
+open func nextJobDue(jobTypes: [InboxJobType])throws  -> Int64?  {
     return try  FfiConverterOptionInt64.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
         uniffiCallStatus in
     uniffi_memry_core_fn_method_inbox_next_job_due(
-            self.uniffiCloneHandle(),uniffiCallStatus
+            self.uniffiCloneHandle(),
+        FfiConverterSequenceTypeInboxJobType.lower(jobTypes),uniffiCallStatus
     )
 })
 }
@@ -39479,6 +39483,31 @@ fileprivate struct FfiConverterSequenceTypeInboxJobStatus: FfiConverterRustBuffe
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeInboxJobType: FfiConverterRustBuffer {
+    typealias SwiftType = [InboxJobType]
+
+    public static func write(_ value: [InboxJobType], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeInboxJobType.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [InboxJobType] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [InboxJobType]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeInboxJobType.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeQueuedAttachmentNews: FfiConverterRustBuffer {
     typealias SwiftType = [QueuedAttachmentNews]
 
@@ -40699,7 +40728,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_inbox_enrich_article() != 16052) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_inbox_claim_next_job() != 22128) {
+    if (uniffi_memry_core_checksum_method_inbox_claim_next_job() != 36322) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_inbox_enqueue_job() != 36935) {
@@ -40714,7 +40743,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_inbox_jobs() != 37516) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_inbox_next_job_due() != 15759) {
+    if (uniffi_memry_core_checksum_method_inbox_next_job_due() != 23268) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_inbox_resume_pending_jobs() != 7670) {

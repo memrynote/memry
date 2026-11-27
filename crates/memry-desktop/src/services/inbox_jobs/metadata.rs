@@ -1,6 +1,7 @@
 //! `processMetadataJob` (`jobs.ts`): a link's preview (title, description, hero image and the
 //! rest of `UrlMetadata`) fetched, scraped and written back, then its article queued.
 
+use memry_core::domain::inbox::ingest::is_plain_name;
 use memry_core::domain::inbox::jobs::{InboxJob, InboxJobType};
 use serde_json::{Map, Value, json};
 
@@ -39,15 +40,29 @@ fn fetch(ctx: &Ctx<'_>, url: &str) -> Result<UrlMetadata, Halt> {
         .map_err(|error| Halt::Failed(error.to_string()))
 }
 
+/// Downloads `image` into `attachments/inbox/<item_id>/`, the vault-relative path back. A
+/// capture id from a peer is not checked when it syncs in, so one that is not a plain name gets
+/// no hero rather than a write outside that folder (Electron downloads it regardless).
+pub(super) fn download_hero(
+    ctx: &Ctx<'_>,
+    item_id: &str,
+    image: &str,
+) -> Result<Option<String>, Halt> {
+    if !is_plain_name(item_id) {
+        tracing::warn!(scope = "Inbox:Jobs", "hero_skipped_capture_id_not_plain");
+        return Ok(None);
+    }
+    let dir = ctx.open.path.join("attachments/inbox").join(item_id);
+    Ok(ctx
+        .block(ctx.jobs.web.download_image(image, &dir))?
+        .map(|name| format!("attachments/inbox/{item_id}/{name}")))
+}
+
 /// The success half of `processMetadataJob`: hero downloaded, preview written, article queued.
 fn store(ctx: &Ctx<'_>, job: &InboxJob, url: &str, metadata: UrlMetadata) -> Result<(), Halt> {
     let item_id = job.item_id.as_str();
     let thumbnail_path = match metadata.image.as_deref() {
-        Some(image) => {
-            let dir = ctx.open.path.join("attachments/inbox").join(item_id);
-            ctx.block(ctx.jobs.web.download_image(image, &dir))?
-                .map(|name| format!("attachments/inbox/{item_id}/{name}"))
-        }
+        Some(image) => download_hero(ctx, item_id, image)?,
         None => None,
     };
     let title = metadata

@@ -18,10 +18,13 @@ impl Inbox {
         self.write(move |conn, _, now| jobs::enqueue(conn, &item_id, job_type, now))
     }
 
-    /// The earliest due job, now `running` under a new `run_id`; `nil` when
-    /// none is due.
-    pub fn claim_next_job(&self) -> Result<Option<InboxJob>, StorageError> {
-        self.write(|conn, _, now| jobs::claim_next(conn, now))
+    /// The earliest due job of `job_types`, now `running` under a new
+    /// `run_id`; `nil` when none is due. Jobs of other types stay pending.
+    pub fn claim_next_job(
+        &self,
+        job_types: Vec<InboxJobType>,
+    ) -> Result<Option<InboxJob>, StorageError> {
+        self.write(move |conn, _, now| jobs::claim_next(conn, now, &job_types))
     }
 
     /// Marks run `run_id` of a job complete; `nil` when the job was queued
@@ -66,8 +69,10 @@ impl Inbox {
         self.write(|conn, _, now| jobs::resume(conn, now))
     }
 
-    /// When the next pending job is due (epoch ms); `nil` when none is.
-    pub fn next_job_due(&self) -> Result<Option<i64>, StorageError> {
-        self.db.read_blocking(jobs::next_due)
+    /// When the next pending job of `job_types` is due (epoch ms); `nil` when
+    /// none is.
+    pub fn next_job_due(&self, job_types: Vec<InboxJobType>) -> Result<Option<i64>, StorageError> {
+        self.db
+            .read_blocking(move |conn| jobs::next_due(conn, &job_types))
     }
 }

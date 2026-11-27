@@ -100,19 +100,24 @@ fn properties(article: &InboxArticle) -> Value {
     Value::Object(map)
 }
 
+/// A segment [`own_path`] accepts: `[A-Za-z0-9._-]`, not empty, `.` or `..`.
+/// The runner checks a capture's id with it before it downloads into
+/// `attachments/inbox/<item_id>/`.
+pub fn is_plain_name(segment: &str) -> bool {
+    !matches!(segment, "" | "." | "..")
+        && segment
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b"._-".contains(&b))
+}
+
 /// `path` when it is `attachments/inbox/<item_id>/<file>` with both segments
 /// in `[A-Za-z0-9._-]`, the shape desktop's `sanitizeFilename` stores. The
 /// screenshot path goes unescaped into the markdown body, so a `(`, `]`,
 /// space or control character would break it. Sync's `capture_file_name`
 /// stays looser: captures already shipped may carry other names.
 pub(super) fn own_path(item_id: &str, path: &str) -> Result<String, StorageError> {
-    let plain = |segment: &str| {
-        segment
-            .bytes()
-            .all(|b| b.is_ascii_alphanumeric() || b"._-".contains(&b))
-    };
     match capture_file_name(item_id, path) {
-        Some(file) if plain(item_id) && plain(file) => Ok(path.to_owned()),
+        Some(file) if is_plain_name(item_id) && is_plain_name(file) => Ok(path.to_owned()),
         _ => Err(StorageError::Invalid {
             what: format!(
                 "a capture's file must be a plain [A-Za-z0-9._-] name in attachments/inbox/{item_id}/"
