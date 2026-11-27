@@ -20,6 +20,8 @@ use rusqlite::Connection;
 use rusqlite::types::Value;
 use sha2::{Digest, Sha256};
 
+#[path = "electron_vault_import/calendar_push.rs"]
+mod calendar_push;
 #[path = "electron_vault_import/derived.rs"]
 mod derived;
 #[path = "device_key/mod.rs"]
@@ -28,6 +30,8 @@ mod device_key;
 mod docs;
 #[path = "support/electron_db.rs"]
 mod electron_db;
+#[path = "electron_vault_import/inbox_calendar.rs"]
+mod inbox_calendar;
 #[path = "electron_vault_import/ledger_ends.rs"]
 mod ledger_ends;
 #[path = "electron_vault_import/notes.rs"]
