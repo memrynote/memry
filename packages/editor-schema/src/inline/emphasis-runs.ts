@@ -36,8 +36,9 @@ const codeToken = (index: number): string => `MEMRYEMK${PROCESS_WORD}${index};`
 const TOKEN = new RegExp(`MEMRYEM([OCK])${PROCESS_WORD}(\\d+);`, 'g')
 const underscoreToken = (index: number): string => `MEMRYEMU${PROCESS_WORD}${index};`
 const UNDERSCORE_TOKEN = new RegExp(`MEMRYEMU${PROCESS_WORD}(\\d+);`, 'g')
-// A break inside a quote carries the quote's `>` prefix onto the next line.
-const EDGES = /^((?:\\\n(?:[^\S\n]*>)*|\s)*)([\s\S]*?)((?:\\\n(?:[^\S\n]*>)*|\s)*)$/
+// A break inside a quote carries the quote's `>` prefix onto the next line. A
+// `<br>` ending a run is a break the escaper spelled for a paragraph's end.
+const EDGES = /^((?:\\\n(?:[^\S\n]*>)*|\s)*)([\s\S]*?)((?:\\\n(?:[^\S\n]*>)*|<br>|\s)*)$/
 
 function holds(item: InlineItem, mark: EmphasisMark): boolean {
   if (Array.isArray(item.content)) {

@@ -65,10 +65,22 @@ interface Segment {
 const isLink = (item: Item): item is Item & { content: Item[] } =>
   item.type === 'link' && Array.isArray(item.content)
 
+interface Spelling {
+  spelling: string
+  segments: Segment[]
+  /** The offsets of the marks' delimiters, which the writer moves past an edge break. */
+  delimiters: Set<number>
+}
+
 /** The block as the writer spells it, near enough to tell markup, and its text runs. */
-function spell(items: Item[]): { spelling: string; segments: Segment[] } {
+function spell(items: Item[]): Spelling {
   let spelling = ''
   const segments: Segment[] = []
+  const delimiters = new Set<number>()
+  const delimit = (delimiter: string): void => {
+    for (let i = 0; i < delimiter.length; i++) delimiters.add(spelling.length + i)
+    spelling += delimiter
+  }
   const walk = (list: Item[], inLink: boolean): void => {
     for (const item of list) {
       if (item.type === 'text' && typeof item.text === 'string') {
@@ -82,9 +94,10 @@ function spell(items: Item[]): { spelling: string; segments: Segment[] } {
         const bold = styles.bold === true ? '**' : ''
         const italic = styles.italic === true ? '*' : ''
         const strike = styles.strike === true ? '~~' : ''
-        spelling += bold + italic + strike
+        delimit(bold + italic + strike)
         segments.push({ at: spelling.length, text: item.text, inLink })
-        spelling += item.text + strike + italic + bold
+        spelling += item.text
+        delimit(strike + italic + bold)
       } else if (isLink(item)) {
         spelling += '['
         walk(item.content, true)
@@ -95,7 +108,7 @@ function spell(items: Item[]): { spelling: string; segments: Segment[] } {
     }
   }
   walk(items, false)
-  return { spelling, segments }
+  return { spelling, segments, delimiters }
 }
 
 const isSpace = (c: string | undefined): boolean => c === undefined || c === ' ' || c === '\t'
@@ -201,23 +214,28 @@ function unclosedWikiOpeners(spelling: string): Set<number> {
  * Whether the newline at `at` sits where the writer has no spelling for it: at
  * the block's start or end, or in a run of three or more. A lone one opening a
  * paragraph is left to the writer, which drops it: a `<br>` opening a
- * paragraph line reads back as a hard break (`maskHardBreaks`).
+ * paragraph line reads back as a hard break (`maskHardBreaks`). A mark's
+ * delimiters do not count, since the writer moves them past the break.
  */
-function unwritableBreak(spelling: string, at: number, paragraph: boolean): boolean {
+function unwritableBreak(block: Spelling, at: number, paragraph: boolean): boolean {
+  const { spelling, delimiters } = block
+  const passes = (i: number): boolean => spelling[i] === '\n' || delimiters.has(i)
   let start = at
-  while (spelling[start - 1] === '\n') start--
+  while (start > 0 && passes(start - 1)) start--
   let end = at + 1
-  while (spelling[end] === '\n') end++
-  if (start === 0) return !paragraph || end - start > 1
-  return end === spelling.length || end - start >= 3
+  while (end < spelling.length && passes(end)) end++
+  const run = spelling.slice(start, end).split('\n').length - 1
+  if (start === 0) return !paragraph || run > 1
+  return end === spelling.length || run >= 3
 }
 
 function escapeSegment(
-  spelling: string,
+  block: Spelling,
   segment: Segment,
   place: Place,
   forced: Set<number>
 ): string {
+  const { spelling } = block
   const keep = new Set<number>()
   if (segment.inLink) {
     for (const [at, length] of codeSpanRanges(segment.text)) {
@@ -230,7 +248,7 @@ function escapeSegment(
     const char = segment.text[i]
     const tag =
       char === '\n' &&
-      (place.oneLine || (place.lineBlock && unwritableBreak(spelling, at, place.paragraph)))
+      (place.oneLine || (place.lineBlock && unwritableBreak(block, at, place.paragraph)))
     if (tag) out += '<br>'
     else if (!keep.has(at) && (forced.has(at) || isMarkup(spelling, at, segment, place))) {
       out += `\\${char}`
@@ -249,12 +267,13 @@ export function escapeMarkdownText<T extends Item>(items: T[], blockType?: strin
     cell,
     paragraph: blockType === 'paragraph'
   }
-  const { spelling, segments } = spell(items)
+  const block = spell(items)
+  const { spelling, segments } = block
   const forced = lineOpeners(spelling, place)
   const firstLine = spelling.split('\n', 1)[0]
   if (spellsCalloutMarker(blockType ?? '', firstLine, firstLine === spelling)) forced.add(0)
   if (cell) for (const at of unclosedWikiOpeners(spelling)) forced.add(at)
-  const escaped = segments.map((segment) => escapeSegment(spelling, segment, place, forced))
+  const escaped = segments.map((segment) => escapeSegment(block, segment, place, forced))
   let next = 0
   const rewrite = (list: Item[]): Item[] =>
     list.map((item) => {
