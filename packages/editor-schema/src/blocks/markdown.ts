@@ -19,7 +19,7 @@
 import { BLOCK_COLORS_LINE_REGEX } from '@memry/shared/block-colors'
 import { createFenceTracker } from '@memry/shared/markdown-fences'
 import { extractYouTubeVideoId } from '@memry/shared/youtube'
-import { DETAILS_MARKUP, endsParagraphBefore } from './block-starts.ts'
+import { DETAILS_LINE_TAIL, DETAILS_MARKUP, endsParagraphBefore } from './block-starts.ts'
 import { isCalloutTypeName } from './callout-types.ts'
 import {
   itemHoldsNonList,
@@ -700,10 +700,10 @@ const DETAILS_MARKUP_LINE_REGEX = new RegExp(`^(?:${DETAILS_MARKUP})$`)
  * The same line behind quote markers or a heading's `#`s, which the parser
  * drops as raw HTML too: a quote's own markup, the body of a quote or callout
  * run, and `## </details>`, a closing tag read over a setext underline. The
- * writer spells a break after it as two trailing spaces.
+ * breaks after it stay on its line.
  */
 const PREFIXED_DETAILS_LINE_REGEX = new RegExp(
-  `^((?:>[ \t]?)*|#{1,6}[ \t]+)(${DETAILS_MARKUP})([ \t]*)$`
+  `^((?:>[ \t]?)*|#{1,6}[ \t]+)(${DETAILS_MARKUP})(${DETAILS_LINE_TAIL})$`
 )
 
 /**

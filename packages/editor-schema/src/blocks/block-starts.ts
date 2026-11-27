@@ -21,6 +21,8 @@ const TABLE_DELIMITER = /^\s*\|?\s*:?-+:?\s*(?:\|\s*:?-+:?\s*)*\|?\s*$/
  * so it continues a paragraph like any other text.
  */
 export const DETAILS_MARKUP = String.raw`<details(?:\s[^>]*)?>|<summary>.*<\/summary>|<\/details>`
+/** What the writer puts after the markup on its line: two spaces for a break, `<br>` for three. */
+export const DETAILS_LINE_TAIL = String.raw`(?:[ \t]*|<br>.*)`
 
 /**
  * True when `lines[i]` opens a block, `first` being the first line the same

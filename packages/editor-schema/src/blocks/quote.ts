@@ -1,5 +1,5 @@
 import { createFenceTracker } from '@memry/shared/markdown-fences'
-import { DETAILS_MARKUP } from './block-starts.ts'
+import { DETAILS_LINE_TAIL, DETAILS_MARKUP } from './block-starts.ts'
 import type { ParsedBlockShape } from './markdown'
 
 // ---------------------------------------------------------------------------
@@ -56,7 +56,7 @@ const LIST_ITEM = /^ {0,3}([-*+]|\d{1,9}[.)])([ \t]|$)/
 const BLOCK_START =
   /^ {0,3}(>|#{1,6}([ \t]|$)|```|~~~|<|\||[-*_=]+[ \t]*$|[-*_]([ \t]*[-*_]){2,}[ \t]*$)/
 const FENCE = /^ {0,3}(```|~~~)/
-const DETAILS_MARKUP_LINE = new RegExp(`^(?:${DETAILS_MARKUP})[ \t]*$`)
+const DETAILS_MARKUP_LINE = new RegExp(`^(?:${DETAILS_MARKUP})${DETAILS_LINE_TAIL}$`)
 
 /**
  * Read a blockquote run at `lines[start]` whose inner structure BlockNote
