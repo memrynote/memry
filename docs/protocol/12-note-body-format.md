@@ -226,8 +226,11 @@ fence's info string, `""` for an untagged fence or an indented run, never BlockN
   declines a `<p>` whose `textContent.trim()` is empty (`@blocknote/core`
   `src/blocks/Paragraph/block.ts:33-36`), so ProseMirror's default parse drops a leading,
   repeated or trailing blank and a blank right after a break: `` `\n`\n`\n` `` is a paragraph
-  of one break, while the same breaks around an `x` keep every blank
-  (`crates/memry-core/src/crdt/markdown_seed/collapse.rs:31`).
+  of one break, while the same breaks around an `x` keep every blank. A paragraph of nothing
+  but blanks (a code span of spaces) and no break leaves an empty paragraph or none by the
+  blocks beside it, which the core does not decide: it keeps the line as literal text
+  (`crates/memry-core/src/crdt/markdown_seed/collapse.rs:31`, `:47`,
+  `crates/memry-core/src/crdt/markdown_seed/blocks.rs:114`).
 
 **Why the core parses here at all.** A day seeded from a template on the phone would otherwise
 hold only `seed_markdown` until desktop built its document, and the first keystroke on the phone

@@ -6,6 +6,7 @@ use crate::domain::journal_rules::js_trim;
 use crate::domain::journal_rules::is_js_whitespace;
 
 use super::code_spans::keep_code_whitespace;
+use super::collapse::is_blank_paragraph;
 use super::comment_nodes::{into_nodes, source_lines};
 use super::comments;
 use super::emphasis_edges::trim_blocks;
@@ -110,6 +111,9 @@ fn text_block(
 ) -> Result<Vec<SeedBlock>, Unsupported> {
     let html = super::inline::parse(&keep_code_whitespace(content))?;
     let paragraph = kind == SeedKind::Paragraph;
+    if paragraph && is_blank_paragraph(&html) {
+        return Err(Unsupported("paragraph of only whitespace"));
+    }
     if !holds_media(&html) {
         return Ok(vec![SeedBlock::new(
             kind,

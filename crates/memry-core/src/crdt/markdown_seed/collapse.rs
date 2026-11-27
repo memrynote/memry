@@ -38,6 +38,25 @@ pub(super) fn collapse_blank_paragraph(nodes: &mut [Html]) {
     trim_last(nodes);
 }
 
+/// Whether a paragraph's nodes are whitespace and nothing else, no break and
+/// no media: its `<p>` is declined and the whitespace goes into the block
+/// group, where ProseMirror keeps an empty paragraph or none by what is beside
+/// it (a paragraph above or below drops it, a math block keeps it). Not built.
+/// A paragraph of a break alone keeps the break, and one of nothing never
+/// reaches here.
+pub(super) fn is_blank_paragraph(nodes: &[Html]) -> bool {
+    fn holds_node(nodes: &[Html]) -> bool {
+        nodes.iter().any(|node| match node {
+            Html::Br | Html::Media(_) => true,
+            Html::Wrap(_, children) | Html::Link { children, .. } => holds_node(children),
+            Html::Text(_) | Html::Code(_) => false,
+        })
+    }
+    let mut text = String::new();
+    text_content(nodes, &mut text);
+    !text.is_empty() && js_trim(&text).is_empty() && !holds_node(nodes)
+}
+
 fn text_content(nodes: &[Html], out: &mut String) {
     for node in nodes {
         match node {
@@ -138,5 +157,18 @@ mod tests {
     fn a_paragraph_with_a_visible_character_is_left_alone() {
         let before = super::super::inline::parse("`\n`\nx\n`\n`").expect("parsed");
         assert_eq!(collapsed("`\n`\nx\n`\n`").expect("parsed"), before);
+    }
+
+    #[test]
+    fn a_paragraph_of_only_whitespace_is_told_from_one_that_holds_a_break() {
+        let blank = |markdown: &str| {
+            is_blank_paragraph(&super::super::inline::parse(markdown).expect("parsed"))
+        };
+        assert!(blank("`  `"));
+        assert!(blank("` ` `  `"));
+        assert!(blank("`\n`"));
+        assert!(!blank("`\n`\n`\n`"));
+        assert!(!blank("` x`"));
+        assert!(!blank("![](u)"));
     }
 }
