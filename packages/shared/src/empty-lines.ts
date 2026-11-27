@@ -642,5 +642,9 @@ export function splitByCodeFences(markdown: string): TextRegion[] {
 }
 
 function trimEdgeNewlines(text: string): string {
-  return text.replace(/^\n+/, '').replace(/\n+$/, '')
+  let start = 0
+  let end = text.length
+  while (start < end && text[start] === '\n') start++
+  while (end > start && text[end - 1] === '\n') end--
+  return text.slice(start, end)
 }

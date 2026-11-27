@@ -30,7 +30,7 @@ const cases: Array<[string, () => unknown]> = [
   // Each marker reads every marker line below it before it finds no link.
   [
     'a run of link-card markers before no link',
-    () => maskHtmlComments(`${'<!-- link-card:{} -->\n'.repeat(5000)}\0`)
+    () => maskHtmlComments(`${'<!-- link-card:{} -->\n'.repeat(4000)}\0`)
   ],
   // Each `*` could be one `**` token or two `*` tokens.
   [

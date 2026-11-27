@@ -40,18 +40,25 @@ const HARD_BREAK_TOKEN_PREFIX = `MEMRYHBK${MASK_WORD}`
 const HARD_BREAK_TOKEN = new RegExp(`${HARD_BREAK_TOKEN_PREFIX}(\\d+);`, 'g')
 
 /**
- * The same token, with the spaces before it and the newline it marks when it
- * still has one. Spaces before a break are part of its spelling, never text.
+ * The same token, then the newline it marks when it still has one. The spaces
+ * before it are not part of the pattern: `unmaskHardBreaks` looks back for them,
+ * because a pattern opening with a run of blanks reads the run again from every
+ * start in it.
  */
-const HARD_BREAK_TOKEN_WITH_NEWLINE = new RegExp(
-  `([^\\S\\n]*)${HARD_BREAK_TOKEN_PREFIX}\\d+;(\\n?)`,
-  'g'
-)
+const HARD_BREAK_TOKEN_THEN_NEWLINE = new RegExp(`${HARD_BREAK_TOKEN_PREFIX}\\d+;(\\n?)`, 'g')
 
-// A hard break is a line ending in two or more spaces, or in a single
-// backslash. Both only count when a non-blank line follows: otherwise the line
-// ends the paragraph and the parser produces no break at all.
-const HARD_BREAK_LINE = /(?:[ \t]{2,}|\\)$/
+/**
+ * What makes `line` a hard break: its two or more trailing spaces or tabs, or
+ * its single trailing backslash. Empty when it is not one. Both only count when
+ * a non-blank line follows: otherwise the line ends the paragraph and the
+ * parser produces no break at all.
+ */
+function hardBreakSpelling(line: string): string {
+  if (line.endsWith('\\')) return '\\'
+  let start = line.length
+  while (start > 0 && (line[start - 1] === ' ' || line[start - 1] === '\t')) start--
+  return line.length - start >= 2 ? line.slice(start) : ''
+}
 
 // An author's `<br>` with more text after it on the same line (BBF-85). The
 // parser turns the tag into the same newline a soft break gives, so the token
@@ -114,9 +121,9 @@ export function maskHardBreaks(markdown: string): MaskedHardBreaks {
 }
 
 function maskProseHardBreaks(text: string, breaks: string[]): string {
-  // Cheap reject on the characters a hard break or a link is spelled with. `$` in
-  // `HARD_BREAK_LINE` anchors to the end of the whole string, so it is only
-  // meaningful once the text is split into lines.
+  // Cheap reject on the characters a hard break or a link is spelled with. A hard
+  // break is a line's own ending, so it is only meaningful once the text is split
+  // into lines.
   const hasBr = /<br/i.test(text)
   if (
     !hasBr &&
@@ -172,7 +179,7 @@ function maskProseHardBreaks(text: string, breaks: string[]): string {
     // with a `<br>`, the item keeps one link with a soft break in it.
     if (
       inListItem &&
-      !HARD_BREAK_LINE.test(line) &&
+      !hardBreakSpelling(line) &&
       !BLOCK_START.test(lines[index + 1]) &&
       endsInsideLinkText(line, lines.slice(index + 1))
     ) {
@@ -181,15 +188,15 @@ function maskProseHardBreaks(text: string, breaks: string[]): string {
       index--
       continue
     }
-    if (inTable || line.trim() === '' || !HARD_BREAK_LINE.test(line)) continue
+    if (inTable || line.trim() === '' || !hardBreakSpelling(line)) continue
     // The marker replaces the spelling rather than joining it: leaving the two
     // trailing spaces in place would hand the parser a break it already knows
     // how to drop, and leaving the backslash would escape the token's first
     // character.
-    lines[index] = lines[index].replace(HARD_BREAK_LINE, (spelling) => {
-      breaks.push(spelling)
-      return `${HARD_BREAK_TOKEN_PREFIX}${breaks.length - 1};`
-    })
+    const spelling = hardBreakSpelling(lines[index])
+    breaks.push(spelling)
+    lines[index] =
+      `${lines[index].slice(0, -spelling.length)}${HARD_BREAK_TOKEN_PREFIX}${breaks.length - 1};`
     // BlockNote's parser turns a list item's continuation line into a child
     // paragraph, or ends the list on a lazy one, so the break is lost (BBF-99).
     // Joined with the `<br>` the item parses to instead, the token lands
@@ -222,7 +229,7 @@ function endsInsideLinkText(line: string, after: string[]): boolean {
     /`|<(?!br>)|!\[|\\[[\]]|<br>[^\S\n]*\n|\n[^\S\n]*<br>/i.test(paragraph) ||
     addressKeepsSplit(paragraph) ||
     /<br/i.test(rest.join('\n')) ||
-    rest.slice(0, -1).some((next) => HARD_BREAK_LINE.test(next))
+    rest.slice(0, -1).some((next) => hardBreakSpelling(next))
   ) {
     return false
   }
@@ -269,9 +276,15 @@ function addressKeepsSplit(paragraph: string): boolean {
  */
 export function unmaskHardBreaks(text: string): string {
   if (!text.includes(HARD_BREAK_TOKEN_PREFIX)) return text
-  return text.replace(HARD_BREAK_TOKEN_WITH_NEWLINE, (_whole, spaces: string, newline: string) =>
-    newline ? '\n\n' : spaces
-  )
+  let out = ''
+  let copied = 0
+  for (const { index, 0: token, 1: newline } of text.matchAll(HARD_BREAK_TOKEN_THEN_NEWLINE)) {
+    let end = index
+    if (newline) while (end > copied && /[^\S\n]/.test(text[end - 1])) end--
+    out += text.slice(copied, end) + (newline ? '\n\n' : '')
+    copied = index + token.length
+  }
+  return out + text.slice(copied)
 }
 
 /**
