@@ -7,7 +7,7 @@ use std::borrow::Cow;
 
 use crate::domain::journal_rules::js_trim;
 
-use super::block_starts::opens_block;
+use super::block_starts::{Above, opens_block};
 use super::blocks::parse_chunk;
 use super::claims::{Claim, callout_at, math_at, quote_at};
 use super::comment_nodes::{has_token, source_lines};
@@ -23,6 +23,7 @@ pub(super) fn parse_content(
 ) {
     let mut buffer: Vec<Cow<str>> = Vec::new();
     let mut fence = FenceTracker::default();
+    let mut above = Above::default();
     let flush = |buffer: &mut Vec<Cow<str>>,
                  out: &mut Vec<SeedBlock>,
                  fallbacks: &mut Vec<SeedFallback>| {
@@ -39,6 +40,7 @@ pub(super) fn parse_content(
         // A file marker whose JSON does not read keeps its bytes as a comment,
         // which is no claim and no marker.
         if !inside_fence && let Some(trimmed) = unreadable_file_marker(line) {
+            above.take(&lines, index, buffer.is_empty());
             buffer.push(Cow::Owned(line.replacen(trimmed, &encode(trimmed), 1)));
             index += 1;
             continue;
@@ -50,7 +52,7 @@ pub(super) fn parse_content(
             // paragraph start of it on the next seed. A bare `[!info]` still
             // wants one: under text it is that text.
             let at_block_start =
-                at_paragraph_start || opens_block(&lines, index, index - buffer.len());
+                at_paragraph_start || opens_block(&lines, index, index - buffer.len(), &above);
             let claimed = claim_at(&lines, index, at_paragraph_start, at_block_start);
             if !matches!(claimed, Ok(None)) {
                 flush(&mut buffer, out, fallbacks);
@@ -83,6 +85,7 @@ pub(super) fn parse_content(
                 }
             }
         }
+        above.take(&lines, index, buffer.is_empty());
         buffer.push(Cow::Borrowed(line));
         index += 1;
     }

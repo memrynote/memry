@@ -25,43 +25,58 @@ fn indented_text(line: &str) -> bool {
     rest.len() < line.len() && !rest.is_empty()
 }
 
+/// What [`opens_block`] reads of the run's lines above the line it asks about,
+/// kept as each line joins the run. Reading it back through the run for every
+/// line costs a pass per line, quadratic in a long table or indented item.
+#[derive(Default)]
+pub(super) struct Above {
+    /// The last line not indented past a marker starts a list item.
+    item: bool,
+    /// The last line is in a table: a run of pipe lines back to a delimiter
+    /// row under a pipe line.
+    table: bool,
+}
+
+impl Above {
+    /// Takes `lines[i]` into the run. `first` is whether it is the run's
+    /// first line.
+    pub(super) fn take(&mut self, lines: &[&str], i: usize, first: bool) {
+        let line = lines[i];
+        // An item's own lines are indented past its marker; a line flush left
+        // ends it.
+        if first || !indented_text(line) {
+            self.item = starts_list_item(line);
+        }
+        // A table runs on while each line holds a pipe.
+        self.table = !first
+            && line.contains('|')
+            && ((is_table_separator(line) && lines[i - 1].contains('|')) || self.table);
+    }
+}
+
 /// `opensBlock`: whether `lines[i]` opens a block, `first` being the first line
-/// the same parse reads (the lines above it belong to blocks already claimed).
+/// the same parse reads (the lines above it belong to blocks already claimed)
+/// and `above` the lines from there to `lines[i - 1]`.
 ///
 /// A quote ends any paragraph, list item, heading or table above it, so `>`
 /// opens a block unless the line above is its own quote's. Any other line opens
 /// one where the block above takes no more lines: a heading, a thematic break,
 /// a fence, a list item or a table. A paragraph and a quote's lazy lines take
 /// it in.
-pub(super) fn opens_block(lines: &[&str], i: usize, first: usize) -> bool {
+pub(super) fn opens_block(lines: &[&str], i: usize, first: usize, above: &Above) -> bool {
     if i <= first {
         return true;
     }
-    let above = lines[i - 1];
+    let previous = lines[i - 1];
     if starts_quote(lines[i]) {
-        return !starts_quote(above);
+        return !starts_quote(previous);
     }
-    if js_trim(above).is_empty() || heading(above) || fence_line(above).is_some() || is_rule(above)
-    {
-        return true;
-    }
-    // An item's own lines are indented past its marker; a line flush left ends it.
-    let mut item = i - 1;
-    while item > first && indented_text(lines[item]) {
-        item -= 1;
-    }
-    if starts_list_item(lines[item]) {
-        return true;
-    }
-    // A table runs on while each line holds a pipe.
-    let mut row = i - 1;
-    while row > first && lines[row].contains('|') {
-        if is_table_separator(lines[row]) && lines[row - 1].contains('|') {
-            return true;
-        }
-        row -= 1;
-    }
-    false
+    js_trim(previous).is_empty()
+        || heading(previous)
+        || fence_line(previous).is_some()
+        || is_rule(previous)
+        || above.item
+        || above.table
 }
 
 /// `endsParagraphBefore`: BlockNote ends a paragraph before `line`, or before
@@ -96,7 +111,11 @@ mod tests {
 
     fn opens(source: &str, at: usize) -> bool {
         let lines: Vec<&str> = source.split('\n').collect();
-        opens_block(&lines, at, 0)
+        let mut above = Above::default();
+        for i in 0..at {
+            above.take(&lines, i, i == 0);
+        }
+        opens_block(&lines, at, 0, &above)
     }
 
     #[test]
