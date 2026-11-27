@@ -58,7 +58,7 @@ final class KeyboardCommandsUITests: XCTestCase {
         app.typeKey(".", modifierFlags: .command)
         XCTAssertTrue(search.waitForNonExistence(timeout: 5))
 
-        deleteNote(name)
+        try deleteNote(name)
     }
 
     func testCommandPaletteRunsNewNote() throws {
@@ -88,7 +88,7 @@ final class KeyboardCommandsUITests: XCTestCase {
         app.typeKey(".", modifierFlags: .command)
         XCTAssertTrue(field.waitForNonExistence(timeout: 5))
 
-        deleteNote(name)
+        try deleteNote(name)
     }
 
     /// REVIEW-4666 M1: a command that presents runs once the palette has gone,
@@ -114,7 +114,7 @@ final class KeyboardCommandsUITests: XCTestCase {
         palette.typeText("quick capture\n")
         let capture = app.descendants(matching: .any)["capture.field"].firstMatch
         XCTAssertTrue(capture.waitForExistence(timeout: 5), "Quick Capture from the palette did not open its sheet")
-        app.coordinate(withNormalizedOffset: CGVector(dx: 0.03, dy: 0.5)).tap()
+        tapBesideTheSheet()
         XCTAssertTrue(capture.waitForNonExistence(timeout: 5), "the capture sheet did not close")
         app.typeKey("k", modifierFlags: .command)
         XCTAssertTrue(search.waitForExistence(timeout: 5), "⌘K did not open search after Quick Capture")
@@ -137,7 +137,7 @@ final class KeyboardCommandsUITests: XCTestCase {
             "⌘P opened the command palette under the capture sheet"
         )
 
-        app.coordinate(withNormalizedOffset: CGVector(dx: 0.03, dy: 0.5)).tap()
+        tapBesideTheSheet()
         XCTAssertTrue(capture.waitForNonExistence(timeout: 5), "the capture sheet did not close")
         app.typeKey("k", modifierFlags: .command)
         XCTAssertTrue(search.waitForExistence(timeout: 5), "search did not open once the sheet closed")
@@ -209,7 +209,7 @@ final class KeyboardCommandsUITests: XCTestCase {
         app.buttons["dayPanel.hide"].firstMatch.tap()
         XCTAssertTrue(panel.waitForNonExistence(timeout: 5), "the panel's hide button did not close it")
         XCTAssertTrue(toggle.waitForExistence(timeout: 5), "the closed panel's toolbar button did not come back")
-        deleteNote(name)
+        try deleteNote(name)
     }
 
     /// #4380 (REVIEW-4681 M2): beside the open panel the Journal day keeps
@@ -273,13 +273,32 @@ final class KeyboardCommandsUITests: XCTestCase {
         return XCTWaiter.wait(for: [expectation], timeout: 10) == .completed
     }
 
-    private func deleteNote(_ title: String) {
+    /// Deletes by the row's swipe, from a fresh launch. The row's context
+    /// menu cost two of XCTest's 60 s idle waits per note, and at times took
+    /// no tap on Delete note: on the iPadOS 26 simulator an open context menu
+    /// never reports its animations done, Photos' own included. Relaunched,
+    /// no block holds the caret, so the swipe's touch brings no on-screen
+    /// keyboard up over the question.
+    private func deleteNote(_ title: String) throws {
+        app.terminate()
+        try openVault()
+        sidebarRow("Notes").tap()
         let row = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", title)).firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 10), "no row for \(title)")
-        row.press(forDuration: 1)
-        app.buttons["Delete note"].tap()
-        app.buttons["Delete"].firstMatch.tap()
+        row.swipeLeft()
+        let question = app.sheets["Delete this note?"]
+        // A swipe across a narrow list runs its Delete action itself.
+        if !question.waitForExistence(timeout: 2) { app.buttons["trash"].firstMatch.tap() }
+        XCTAssertTrue(question.waitForExistence(timeout: 5), "Delete asked nothing")
+        question.buttons["Delete"].tap()
         XCTAssertTrue(row.waitForNonExistence(timeout: 10))
+    }
+
+    /// A tap on the dimmed page beside the sheet, above the keyboard: on an
+    /// iPad mini in landscape the on-screen keyboard reaches up past the
+    /// window's middle, and a tap there types a key instead.
+    private func tapBesideTheSheet() {
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.03, dy: 0.1)).tap()
     }
 
     private func attach(_ name: String) {
