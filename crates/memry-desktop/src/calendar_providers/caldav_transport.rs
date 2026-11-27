@@ -16,7 +16,7 @@ use std::time::Duration;
 
 use base64::Engine;
 use reqwest::header::{
-    AUTHORIZATION, CONTENT_TYPE, HeaderValue, LOCATION, RETRY_AFTER, WWW_AUTHENTICATE,
+    AUTHORIZATION, CONTENT_TYPE, ETAG, HeaderValue, LOCATION, RETRY_AFTER, WWW_AUTHENTICATE,
 };
 use reqwest::{Method, StatusCode};
 use url::{Host, Url};
@@ -131,6 +131,8 @@ pub struct DavRequest {
     pub body: Option<String>,
     /// `false` hands a 3xx back to the caller (`redirect: 'manual'`).
     pub follow: bool,
+    /// Extra headers (`If-Match`, `If-None-Match`); a `Content-Type` here replaces the XML one.
+    pub headers: Vec<(&'static str, String)>,
 }
 
 /// A final answer, its body read.
@@ -141,10 +143,13 @@ pub struct Reply {
     pub url: Url,
     pub location: Option<String>,
     pub content_type: Option<String>,
+    pub etag: Option<String>,
+    pub retry_after: Option<String>,
     pub body: Vec<u8>,
 }
 
 /// The client every CalDAV account shares: the app's TLS stack with redirects off.
+#[derive(Clone)]
 pub struct CaldavHttp {
     client: reqwest::Client,
     timeout: Duration,
@@ -254,9 +259,17 @@ impl Transport {
     ) -> Result<reqwest::Response, TransportError> {
         let mut builder = self.client.request(method.clone(), url.clone());
         if let Some(body) = body {
-            builder = builder
-                .header(CONTENT_TYPE, "text/xml;charset=UTF-8")
-                .body(body.to_owned());
+            if !request
+                .headers
+                .iter()
+                .any(|(name, _)| name.eq_ignore_ascii_case("content-type"))
+            {
+                builder = builder.header(CONTENT_TYPE, "text/xml;charset=UTF-8");
+            }
+            builder = builder.body(body.to_owned());
+        }
+        for (name, value) in &request.headers {
+            builder = builder.header(*name, value);
         }
         if let Some(depth) = request.depth {
             builder = builder.header("Depth", depth);
@@ -348,6 +361,8 @@ impl Transport {
             return Ok(Hop::Redirect(next, status));
         }
         let content_type = header(&response, CONTENT_TYPE);
+        let etag = header(&response, ETAG);
+        let retry_after = header(&response, RETRY_AFTER);
         let body = read_capped(response, MAX_BODY)
             .await
             .map_err(|error| match error {
@@ -359,6 +374,8 @@ impl Transport {
             url: url.clone(),
             location,
             content_type,
+            etag,
+            retry_after,
             body,
         }))
     }

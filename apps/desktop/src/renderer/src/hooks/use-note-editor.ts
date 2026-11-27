@@ -14,7 +14,7 @@ import { getI18n } from 'react-i18next'
 import { useState, useCallback, useRef, useEffect } from 'react'
 import type { Note } from '@memry/rpc/notes'
 import type { HeaderTagEdit } from '@memry/contracts/notes-api'
-import { extractErrorMessage } from '@/lib/ipc-error'
+import { extractErrorMessage, unwrapIpcResult } from '@/lib/ipc-error'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { notesService, onNoteDeleted, onNoteExternalChange } from '@/services/notes-service'
 import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
@@ -237,7 +237,10 @@ export function useNoteEditor(
       setSaveStatus('saving')
 
       try {
-        const result = await notesService.update({ id: noteId, content })
+        const result = unwrapIpcResult(
+          await notesService.update({ id: noteId, content }),
+          getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToSave')
+        )
         if (result) {
           // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- notesService.update/create results are IPC payloads typed as a union; the Note shape is what the hook stores
           setNote(result as unknown as Note)
@@ -278,7 +281,10 @@ export function useNoteEditor(
       if (!noteId || !note || title === note.title || isDeleted) return
 
       try {
-        const result = await notesService.rename(noteId, title)
+        const result = unwrapIpcResult(
+          await notesService.rename(noteId, title),
+          getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToRename')
+        )
         if (result) {
           // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- notesService.update/create results are IPC payloads typed as a union; the Note shape is what the hook stores
           setNote(result as unknown as Note)
@@ -334,7 +340,10 @@ export function useNoteEditor(
       if (!noteId || !note || isDeleted) return
 
       try {
-        const result = await notesService.update({ id: noteId, emoji })
+        const result = unwrapIpcResult(
+          await notesService.update({ id: noteId, emoji }),
+          getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToUpdateEmoji')
+        )
         if (result) {
           // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- notesService.update/create results are IPC payloads typed as a union; the Note shape is what the hook stores
           setNote(result as unknown as Note)
@@ -359,7 +368,10 @@ export function useNoteEditor(
       if (!noteId || !note || isDeleted) return
 
       try {
-        const result = await notesService.update({ id: noteId, headerTags })
+        const result = unwrapIpcResult(
+          await notesService.update({ id: noteId, headerTags }),
+          getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToUpdateTags')
+        )
         if (result) {
           // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- notesService.update/create results are IPC payloads typed as a union; the Note shape is what the hook stores
           setNote(result as unknown as Note)

@@ -20,14 +20,45 @@ use rusqlite::Connection;
 use rusqlite::types::Value;
 use sha2::{Digest, Sha256};
 
+#[path = "electron_vault_import/attachments.rs"]
+mod attachments;
+#[path = "electron_vault_import/calendar_push.rs"]
+mod calendar_push;
+#[path = "electron_vault_import/derived.rs"]
+mod derived;
+#[path = "device_key/mod.rs"]
+mod device_key;
+#[path = "electron_vault_import/docs.rs"]
+mod docs;
 #[path = "support/electron_db.rs"]
 mod electron_db;
+#[path = "electron_vault_import/inbox_calendar.rs"]
+mod inbox_calendar;
+#[path = "electron_vault_import/ledger_ends.rs"]
+mod ledger_ends;
+#[path = "electron_vault_import/notes.rs"]
+mod notes;
+#[path = "electron_vault_import/queue.rs"]
+mod queue;
+#[path = "electron_vault_import/queue_deletes.rs"]
+mod queue_deletes;
 #[path = "electron_vault_import/records.rs"]
 mod records;
+#[path = "electron_vault_import/replay.rs"]
+mod replay;
+#[path = "electron_vault_import/seed_after_pull.rs"]
+mod seed_after_pull;
+#[path = "electron_vault_import/settle.rs"]
+mod settle;
+#[path = "electron_vault_import/sync_state.rs"]
+mod sync_state;
 #[path = "electron_vault_import/tag_template_records.rs"]
 mod tag_template_records;
+#[path = "vault_env/mod.rs"]
+mod vault_env;
 
 const NOW_MS: i64 = 1_800_000_000_000;
+const ELECTRON_DEVICE: &str = "device-electron";
 
 struct Vault {
     _dir: tempfile::TempDir,
@@ -35,6 +66,8 @@ struct Vault {
     pair: electron_db::ElectronPair,
     profile: ElectronProfile,
     lock: ProfileLock,
+    /// `memry-config.json` `sync.deviceId`.
+    device_id: Option<&'static str>,
 }
 
 /// An Electron profile whose localStorage store has a free LOCK file.
@@ -71,6 +104,7 @@ impl Vault {
             pair,
             profile,
             lock,
+            device_id: Some(ELECTRON_DEVICE),
         }
     }
 
@@ -84,6 +118,7 @@ impl Vault {
             docs: Vec::new(),
             extra_owed_docs: Vec::new(),
             vault_key: None,
+            electron_device_id: self.device_id.map(str::to_owned),
             now_ms: NOW_MS,
             progress: None,
         }
@@ -104,7 +139,7 @@ impl Vault {
 
 fn staged(outcome: StageOutcome) -> memry_desktop::electron_import::vault_db::StagedVault {
     match outcome {
-        StageOutcome::Staged(staged) => staged,
+        StageOutcome::Staged(staged) => *staged,
         StageOutcome::AlreadyImported => panic!("AlreadyImported"),
         StageOutcome::NativeFirst => panic!("NativeFirst"),
     }
@@ -152,7 +187,7 @@ fn installed_marker(vault: &Vault) -> Option<String> {
 fn an_empty_electron_pair_installs_a_core_pair_that_opens() {
     let vault = Vault::new();
     let report = import(&vault);
-    assert_eq!(report.checks_passed, vec![1, 2, 5, 6]);
+    assert_eq!(report.checks_passed, vec![1, 2, 4, 5, 6]);
     assert!(report.tables.values().all(|t| t.source_count == 0));
     assert!(!vault.staging().exists(), "staging removed after install");
 
@@ -260,20 +295,6 @@ fn an_unmapped_table_aborts_before_any_write() {
 }
 
 #[test]
-fn an_unmapped_sync_state_key_aborts_before_any_write() {
-    let vault = Vault::new();
-    electron_db::seed(
-        &vault.data_conn(),
-        "sync_state",
-        &[("key", Value::Text("fromANewerElectron".into()))],
-    );
-    assert_refused(
-        &vault,
-        |e| matches!(e, ImportError::UnmappedSyncStateKey(key) if key == "fromANewerElectron"),
-    );
-}
-
-#[test]
 fn rows_whose_importer_is_pending_abort_before_any_write() {
     let vault = Vault::new();
     electron_db::seed(
@@ -283,18 +304,18 @@ fn rows_whose_importer_is_pending_abort_before_any_write() {
     );
     assert_refused(
         &vault,
-        |e| matches!(e, ImportError::NotReady(what) if what.contains("data.db/settings")),
+        |e| matches!(e, ImportError::NotReady { detail, .. } if detail.contains("data.db/settings")),
     );
 
     let vault = Vault::new();
     electron_db::seed(
         &vault.data_conn(),
         "sync_state",
-        &[("key", Value::Text("lastCursor".into()))],
+        &[("key", Value::Text("crdtUnmergedDebt".into()))],
     );
     assert_refused(
         &vault,
-        |e| matches!(e, ImportError::NotReady(what) if what.contains("lastCursor")),
+        |e| matches!(e, ImportError::NotReady { detail, .. } if detail.contains("crdtUnmergedDebt")),
     );
 }
 

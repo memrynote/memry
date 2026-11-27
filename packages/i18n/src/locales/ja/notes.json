@@ -45,6 +45,12 @@
     }
   },
   "page": {
+    "noteFiles": {
+      "downloading": "このノートのファイルをダウンロードしています…",
+      "failed": "このノートのファイルをダウンロードできませんでした: {error}",
+      "failedFallback": "ダウンロードに失敗しました",
+      "retry": "もう一度試す"
+    },
     "empty": {
       "title": "ノートが選択されていません",
       "body": "表示するノートをサイドバーから選択してください"
@@ -196,6 +202,10 @@
   "editor": {
     "bodySyncPending": "同期中です。このノートの内容はまだ届いていない可能性があります",
     "databaseReadOnly": "読み取り専用です。このデバイスでは変更を保存できません。",
+    "remoteBodyStuck": "同期を待っています — 同期済みの内容が届くまで読み取り専用です",
+    "remoteBodyOffline": "オフライン — このノートが同期されるまで読み取り専用です",
+    "remoteBodySignedOut": "サインアウト中 — サインインしてこのノートが同期されるまで読み取り専用です",
+    "remoteBodyVaultLocked": "この保管庫の暗号化キーを読み取れません — このノートが同期されるまで読み取り専用です",
     "taskRemoval": {
       "title": "{count, plural, other {このノートからタスク # 件を削除しました}}",
       "description": "{count, plural, other {タスクに残しますか？それともすべての場所から削除しますか？}}",

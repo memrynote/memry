@@ -102,10 +102,10 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "journal_aliases",
         sql: include_str!("migrations/data/0012_journal_aliases.sql"),
     },
-    // main's 13..17, shipped in v2026-11-05.2 and later. feat/tauri-v2 builds
-    // had used 13..22, then 15..24, then 17..28, for the entries from 18 on;
-    // `legacy_numbering` moves a file of any of them onto this numbering
-    // (#4052, #4438).
+    // main's 13..18, shipped in v2026-11-05.2 and later (18 in v2026-11-23).
+    // feat/tauri-v2 builds had used 13..22, then 15..24, then 17..28, then
+    // 18..38, for the entries from 19 on; `legacy_numbering` moves a file of
+    // any of them onto this numbering (#4052, #4438, #5221).
     Migration {
         version: 13,
         name: "calendar_cursor_reset",
@@ -133,119 +133,156 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
     },
     Migration {
         version: 18,
-        name: "note_snapshots",
-        sql: include_str!("migrations/data/0018_note_snapshots.sql"),
+        name: "note_attachment_uploads",
+        sql: include_str!("migrations/data/0018_note_attachment_uploads.sql"),
     },
+    // feat/tauri-v2's own, shifted one up in the main -> feat/tauri-v2 merge of #5221 so
+    // main's shipped 18 keeps its number; `legacy_numbering` moves a file a build before that
+    // merge left (own migrations from 18) onto this numbering.
     Migration {
         version: 19,
-        name: "local_settings",
-        sql: include_str!("migrations/data/0019_local_settings.sql"),
+        name: "note_snapshots",
+        sql: include_str!("migrations/data/0019_note_snapshots.sql"),
     },
     Migration {
         version: 20,
-        name: "note_files",
-        sql: include_str!("migrations/data/0020_note_files.sql"),
+        name: "local_settings",
+        sql: include_str!("migrations/data/0020_local_settings.sql"),
     },
     Migration {
         version: 21,
-        name: "notes_device_tables",
-        sql: include_str!("migrations/data/0021_notes_device_tables.sql"),
+        name: "note_files",
+        sql: include_str!("migrations/data/0021_note_files.sql"),
     },
     Migration {
         version: 22,
-        name: "note_file_hashes",
-        sql: include_str!("migrations/data/0022_note_file_hashes.sql"),
+        name: "notes_device_tables",
+        sql: include_str!("migrations/data/0022_notes_device_tables.sql"),
     },
     Migration {
         version: 23,
-        name: "note_identity",
-        sql: include_str!("migrations/data/0023_note_identity.sql"),
+        name: "note_file_hashes",
+        sql: include_str!("migrations/data/0023_note_file_hashes.sql"),
     },
     Migration {
         version: 24,
-        name: "wiki_name_keys",
-        sql: include_str!("migrations/data/0024_wiki_name_keys.sql"),
+        name: "note_identity",
+        sql: include_str!("migrations/data/0024_note_identity.sql"),
     },
     Migration {
         version: 25,
-        name: "vault_locks",
-        sql: include_str!("migrations/data/0025_vault_locks.sql"),
+        name: "wiki_name_keys",
+        sql: include_str!("migrations/data/0025_wiki_name_keys.sql"),
     },
     Migration {
         version: 26,
-        name: "note_large_files",
-        sql: include_str!("migrations/data/0026_note_large_files.sql"),
+        name: "vault_locks",
+        sql: include_str!("migrations/data/0026_vault_locks.sql"),
     },
     Migration {
         version: 27,
-        name: "note_file_marks",
-        sql: include_str!("migrations/data/0027_note_file_marks.sql"),
+        name: "note_large_files",
+        sql: include_str!("migrations/data/0027_note_large_files.sql"),
     },
     Migration {
         version: 28,
-        name: "desktop_record_types",
-        sql: include_str!("migrations/data/0028_desktop_record_types.sql"),
+        name: "note_file_marks",
+        sql: include_str!("migrations/data/0028_note_file_marks.sql"),
     },
     Migration {
         version: 29,
-        name: "agent_records",
-        sql: include_str!("migrations/data/0029_agent_records.sql"),
+        name: "desktop_record_types",
+        sql: include_str!("migrations/data/0029_desktop_record_types.sql"),
     },
-    // 30 follows the main -> feat/tauri-v2 shift (#4438): main's #4419 keeps
-    // data 0017, and feat's own 0017-0028 (28 is #4456's agent records) move
-    // to 0018-0029 in that merge commit. 30 must not land before 28 and 29:
-    // the runner applies only `version > user_version`.
     Migration {
         version: 30,
-        name: "sync_refused_items",
-        sql: include_str!("migrations/data/0030_sync_refused_items.sql"),
+        name: "agent_records",
+        sql: include_str!("migrations/data/0030_agent_records.sql"),
     },
+    // 31 follows the main -> feat/tauri-v2 shifts: main's #4419 keeps data
+    // 0017, and feat's own 0017-0028 (28 is #4456's agent records) moved to
+    // 0018-0029 (#4438); main's #5526 keeps 0018, and they moved on to
+    // 0019-0030 (#5221). 31 must not land before 29 and 30: the runner
+    // applies only `version > user_version`.
     Migration {
         version: 31,
-        name: "sync_hardening",
-        sql: include_str!("migrations/data/0031_sync_hardening.sql"),
+        name: "sync_refused_items",
+        sql: include_str!("migrations/data/0031_sync_refused_items.sql"),
     },
     Migration {
         version: 32,
-        name: "note_body_sync",
-        sql: include_str!("migrations/data/0032_note_body_sync.sql"),
+        name: "sync_hardening",
+        sql: include_str!("migrations/data/0032_sync_hardening.sql"),
     },
     Migration {
         version: 33,
-        name: "inbox_jobs",
-        sql: include_str!("migrations/data/0033_inbox_jobs.sql"),
+        name: "note_body_sync",
+        sql: include_str!("migrations/data/0033_note_body_sync.sql"),
     },
     Migration {
         version: 34,
-        name: "attachment_sync",
-        sql: include_str!("migrations/data/0034_attachment_sync.sql"),
+        name: "inbox_jobs",
+        sql: include_str!("migrations/data/0034_inbox_jobs.sql"),
     },
     Migration {
         version: 35,
-        name: "recents",
-        sql: include_str!("migrations/data/0035_recents.sql"),
+        name: "attachment_sync",
+        sql: include_str!("migrations/data/0035_attachment_sync.sql"),
     },
     Migration {
         version: 36,
-        name: "canvases",
-        sql: include_str!("migrations/data/0036_canvases.sql"),
+        name: "recents",
+        sql: include_str!("migrations/data/0036_recents.sql"),
     },
     Migration {
         version: 37,
-        name: "task_links",
-        sql: include_str!("migrations/data/0037_task_links.sql"),
+        name: "canvases",
+        sql: include_str!("migrations/data/0037_canvases.sql"),
     },
     Migration {
         version: 38,
-        name: "readwise",
-        sql: include_str!("migrations/data/0038_readwise.sql"),
+        name: "task_links",
+        sql: include_str!("migrations/data/0038_task_links.sql"),
     },
-    // 39-44 are held by open PRs (#5135, #5144, #5162, #5250 and others) and land before this
-    // one: the runner applies only `version > user_version`.
+    Migration {
+        version: 39,
+        name: "readwise",
+        sql: include_str!("migrations/data/0039_readwise.sql"),
+    },
+    Migration {
+        version: 40,
+        name: "manifest_watermark",
+        sql: include_str!("migrations/data/0040_manifest_watermark.sql"),
+    },
+    Migration {
+        version: 41,
+        name: "note_snapshot_outside_writes",
+        sql: include_str!("migrations/data/0041_note_snapshot_outside_writes.sql"),
+    },
+    Migration {
+        version: 42,
+        name: "reminder_fires",
+        sql: include_str!("migrations/data/0042_reminder_fires.sql"),
+    },
+    Migration {
+        version: 43,
+        name: "inbox_suggestion_feedback",
+        sql: include_str!("migrations/data/0043_inbox_suggestion_feedback.sql"),
+    },
+    Migration {
+        version: 44,
+        name: "graph_layouts",
+        sql: include_str!("migrations/data/0044_graph_layouts.sql"),
+    },
     Migration {
         version: 45,
+        name: "attachment_revivals",
+        sql: include_str!("migrations/data/0045_attachment_revivals.sql"),
+    },
+    Migration {
+        version: 46,
         name: "note_pulled_marks",
-        sql: include_str!("migrations/data/0045_note_pulled_marks.sql"),
+        sql: include_str!("migrations/data/0046_note_pulled_marks.sql"),
     },
 ];
 
@@ -315,6 +352,22 @@ pub const INDEX_MIGRATIONS: &[Migration] = &[
         version: 12,
         name: "canvas_refs",
         sql: include_str!("migrations/index/0012_canvas_refs.sql"),
+    },
+];
+
+/// `vectors.db`: the semantic-search cache. Unlike `index.db` it migrates
+/// forward like `data.db`, so a schema bump never throws away hours of
+/// embedding; every entry is additive so an older build still reads the file.
+pub const VECTOR_MIGRATIONS: &[Migration] = &[
+    Migration {
+        version: 1,
+        name: "note_vectors",
+        sql: include_str!("migrations/vectors/0001_note_vectors.sql"),
+    },
+    Migration {
+        version: 2,
+        name: "note_embed_attempts",
+        sql: include_str!("migrations/vectors/0002_note_embed_attempts.sql"),
     },
 ];
 

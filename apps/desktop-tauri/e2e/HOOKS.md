@@ -22,7 +22,7 @@ Electron suite.
 | `bootstrapSyncDevice`                       | `e2e_bootstrap_sync_device`               | Step 17 (#3534) |
 | `setNetworkOnlineForTests`                  | `e2e_set_network_online`                  | Step 17 (#3534) |
 | `resetVaultDirectoryThrottle`               | `e2e_reset_vault_directory_throttle`      | Step 17 (#3534) |
-| `getCrdtPendingCount`                       | `e2e_crdt_pending_count`                  | Step 14 (#3531) |
+| `getCrdtPendingCount`                       | `e2e_crdt_pending_count`                  | Step 17 (#3534) |
 | `seedCalendarProjection`                    | `e2e_seed_calendar_projection`            | Step 29 (#3546) |
 | `getCrdtDocMarkdown`                        | `e2e_get_crdt_doc_body`                   | Step 17 (#3534) |
 | `hasNoteOnDevice`                           | `e2e_has_note_on_device`                  | Step 14 (#3531) |
@@ -91,6 +91,8 @@ tab. `harness/note-sync-helpers.ts` wraps them (`getCrdtDocBodyById`, `getCrdtMa
 | `MEMRY_FORCE_VAULT_PICKER`                                                 | `1` starts on the picker whatever `currentVault` says; `test.use({ extraEnv: { MEMRY_FORCE_VAULT_PICKER: '1' } })`.                                                                                                                                                                                                                                                                              |
 | `MEMRY_TEST_UPDATER`                                                       | `scripted` replaces the update backend with the scripted one (`memry_desktop::updater::scripted`), read through `LaunchEnv` while `E2eGate` is open. `e2e_updater_script` queues what the next checks find, and `e2e_updater_hook_calls` lists every install hand-off, which also lands in `<appDataDir>/e2e-updater-applies.jsonl`. Replaces the Electron specs' `updater:state-changed` sends. |
 | `MEMRY_TEST_UPDATER_VERSION`                                               | With `MEMRY_TEST_UPDATER=scripted`, the raw version (`YYYY.MDD.N`) the updater reports instead of the bundle's `0.0.0`, so a spec can relaunch as the build an install put in place.                                                                                                                                                                                                             |
+| `MEMRY_TEST_OS_APP_DATA_DIR`                                               | Under an open `E2eGate`, the folder `onboarding_detect_sources` reads Obsidian's `obsidian/obsidian.json` from instead of the OS app data folder (Electron's `app.getPath('appData')`), so a run never lists the host's vaults. `agent-app.mjs start` points it at an empty folder of its profile.                                                                                               |
+| `MEMRY_TEST_OS_APPS_DIR`                                                   | Under an open `E2eGate`, the one folder `onboarding_detect_sources` looks for installed app bundles in, instead of `/Applications` and `~/Applications`, so a run never lists the host's apps. `agent-app.mjs start` points it at an empty folder of its profile.                                                                                                                                |
 
 ## Dialogs
 

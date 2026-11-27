@@ -1,8 +1,9 @@
-//! Data migration 0045, `note_pulled_marks`, and the marks over it (`note_files::pulled`), on a
-//! real SQLite database.
+//! Data migration 0046, `note_pulled_marks`, and the marks over it (`domain::note_pulled_marks`),
+//! on a real SQLite database.
 
 use super::*;
-use crate::domain::note_files::{self, PulledMark};
+use crate::domain::note_files;
+use crate::domain::note_pulled_marks::{self as pulled, PulledMark};
 use crate::storage::Db;
 
 fn failed(err: rusqlite::Error) -> StorageError {
@@ -17,7 +18,7 @@ fn exec(db: &Db, sql: &'static str) {
 }
 
 fn mark(db: &Db) -> Option<PulledMark> {
-    db.read_blocking(|conn| note_files::pulled_mark(conn, "n1"))
+    db.read_blocking(|conn| pulled::pulled_mark(conn, "n1"))
         .unwrap()
 }
 
@@ -41,7 +42,7 @@ fn the_pulled_marks_migration_keeps_rows_reruns_and_leaves_the_file_readable() {
         db.call_blocking(|conn| run(conn, DATA_MIGRATIONS)).unwrap(),
         latest_version(DATA_MIGRATIONS)
     );
-    db.call_blocking(|conn| note_files::mark_pulled(conn, "n1", Some("n")))
+    db.call_blocking(|conn| pulled::mark_pulled(conn, "n1", Some("n")))
         .unwrap();
     // A crash between the commit and the `user_version` write runs the SQL again.
     exec(&db, DATA_MIGRATIONS[at].sql);
@@ -78,34 +79,34 @@ fn a_mark_keeps_the_first_title_and_settles_only_what_its_pass_read() {
          INSERT INTO note_files (note_id, path, indexed_at) VALUES ('n1', 'n.md', 1);",
     );
     let listed = |db: &Db| {
-        db.read_blocking(|conn| note_files::pulled_notes(conn, 2))
+        db.read_blocking(|conn| pulled::pulled_notes(conn, 2))
             .unwrap()
     };
     db.call_blocking(|conn| {
-        note_files::mark_pulled(conn, "n1", Some("n"))?;
-        assert_eq!(note_files::fail_pulled(conn, "n1", 1)?, Some(1));
-        assert_eq!(note_files::fail_pulled(conn, "n1", 7)?, None);
-        note_files::mark_pulled(conn, "n1", Some("Plan"))
+        pulled::mark_pulled(conn, "n1", Some("n"))?;
+        assert_eq!(pulled::fail_pulled(conn, "n1", 1)?, Some(1));
+        assert_eq!(pulled::fail_pulled(conn, "n1", 7)?, None);
+        pulled::mark_pulled(conn, "n1", Some("Plan"))
     })
     .unwrap();
     let read = mark(&db).expect("a mark");
     assert_eq!(read.title_before.as_deref(), Some("n"));
     assert_eq!((read.failed, read.pulls), (0, 2));
 
-    db.call_blocking(|conn| note_files::settle_pulled(conn, "n1", 1))
+    db.call_blocking(|conn| pulled::settle_pulled(conn, "n1", 1))
         .unwrap();
     assert!(mark(&db).is_some(), "a pull came in after the read");
     db.call_blocking(|conn| {
-        note_files::fail_pulled(conn, "n1", 2)?;
-        note_files::fail_pulled(conn, "n1", 2)
+        pulled::fail_pulled(conn, "n1", 2)?;
+        pulled::fail_pulled(conn, "n1", 2)
     })
     .unwrap();
     assert!(listed(&db).is_empty(), "the tries are spent");
-    db.call_blocking(|conn| note_files::settle_pulled(conn, "n1", 2))
+    db.call_blocking(|conn| pulled::settle_pulled(conn, "n1", 2))
         .unwrap();
     assert_eq!(mark(&db), None);
 
-    db.call_blocking(|conn| note_files::mark_pulled(conn, "n1", None))
+    db.call_blocking(|conn| pulled::mark_pulled(conn, "n1", None))
         .unwrap();
     assert_eq!(listed(&db), ["n1"]);
     db.call_blocking(|conn| note_files::remove(conn, "n1"))

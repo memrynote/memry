@@ -6,8 +6,8 @@ use rusqlite::{Connection, params};
 use serde_json::{Value, json};
 
 use super::super::{
-    CANVAS_SCENE_SYNC_CAP_BYTES, CanvasEdit, EMPTY_SCENE, ITEM_TYPE, NewCanvas, SyncHold, Updated,
-    canonical_scene, create, delete, duplicate, get, list, update,
+    CANVAS_SCENE_SYNC_CAP_BYTES, CanvasCopy, CanvasEdit, EMPTY_SCENE, ITEM_TYPE, NewCanvas,
+    SyncHold, Updated, canonical_scene, create, delete, duplicate, get, list, update,
 };
 use crate::api::errors::StorageError;
 use crate::protocol::envelope::{NOTE_SYNC_MAX_BYTES, check_size};
@@ -501,7 +501,10 @@ fn a_duplicate_copies_the_scene_and_the_asset_rows() {
         let copy = duplicate(
             conn,
             &source.id,
-            Some("Original copy"),
+            &CanvasCopy {
+                title: Some("Original copy"),
+                ..CanvasCopy::default()
+            },
             VAULT_ID,
             DEVICE,
             NOW + 1,
@@ -526,10 +529,6 @@ fn a_duplicate_copies_the_scene_and_the_asset_rows() {
             .map_err(crate::domain::notes::failed)?;
         assert_eq!(hashes, ["h1", "h2"]);
         assert_eq!(outbox(conn), [(copy.id, "upsert".to_owned())]);
-        assert_eq!(
-            duplicate(conn, "never-was", None, VAULT_ID, DEVICE, NOW)?,
-            None
-        );
         Ok(())
     })
     .expect("duplicate");
@@ -584,7 +583,6 @@ fn a_remote_apply_and_a_remote_tombstone_update_the_projection() {
         let page = apply_page(
             conn,
             vec![tombstone],
-            vec![],
             NOW + 6,
             Some(DEVICE),
             &crate::crypto::agent_envelope::AtRestKey::default(),

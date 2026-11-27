@@ -39,9 +39,10 @@ import { createLogger } from '../lib/logger'
 import { normalizeRelativePath } from '../lib/paths'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { recordAttachmentFile } from '../sync/attachment-files'
-import { EmptyAttachmentError } from '../sync/attachment-errors'
+import { UnsendableAttachmentError } from '../sync/attachment-errors'
 import { recordUploadedAttachment } from '../sync/note-attachment-metadata'
 import { getSyncEngine } from '../sync/runtime-state'
+import { reportRefusedUpload } from '../sync/sync-activity'
 import { classifyError } from '../sync/sync-errors'
 import { fileExists } from '../vault/file-ops'
 import { getStatus as getVaultStatus } from '../vault/status'
@@ -153,9 +154,10 @@ async function uploadOne(deps: InboxAttachmentDeps, io: InboxAttachmentIO, itemI
     broadcastToAllWindows(InboxChannels.events.UPDATED, { id: itemId })
   } catch (error) {
     const { category } = classifyError(error)
-    if (REFUSED_CATEGORIES.has(category) || error instanceof EmptyAttachmentError) {
+    if (REFUSED_CATEGORIES.has(category) || error instanceof UnsendableAttachmentError) {
       log.info('Inbox attachment will not sync; it stays on this device', { itemId, category })
       clearPending(db, itemId)
+      if (error instanceof UnsendableAttachmentError) reportRefusedUpload(itemId, filePath, error)
     } else if (isMissingFile(error)) {
       clearPending(db, itemId)
     } else {

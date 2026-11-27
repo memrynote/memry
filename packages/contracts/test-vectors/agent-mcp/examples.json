@@ -2,7 +2,7 @@
   "meta": {
     "generator": "apps/desktop/scripts/generate-agent-mcp-vectors.ts",
     "oracle": "apps/desktop/scripts/agent-api-examples.json run through the SDK server above (tools) and assertDesktopApiArgs (operations)",
-    "note": "A tool case is `valid` when Electron ran its handler; otherwise `issues` are zod’s and `errorText` is the reply text the SDK sends. An operation case carries the VALIDATION error Electron returns, or none.",
+    "note": "A tool case is `valid` when Electron ran its handler; otherwise `issues` are zod’s and `errorText` is the reply text the SDK sends. A tool case with `platform` holds only there (`linux` is every platform but Windows); the others hold everywhere. An operation case carries the VALIDATION error Electron returns, or none.",
     "regenerate": "pnpm --filter @memry/desktop vectors:agent-mcp"
   },
   "tools": [
@@ -2512,6 +2512,186 @@
         }
       ],
       "errorText": "MCP error -32602: Input validation error: Invalid arguments for tool vault_delete_folder: Invalid input: expected string, received number at path"
+    },
+    {
+      "tool": "vault_delete_folder",
+      "variant": "path the vault itself",
+      "arguments": {
+        "path": "."
+      },
+      "valid": false,
+      "issues": [
+        {
+          "code": "custom",
+          "path": [
+            "path"
+          ],
+          "message": "Name a folder inside the vault, not the vault itself or a path outside it"
+        }
+      ],
+      "errorText": "MCP error -32602: Input validation error: Invalid arguments for tool vault_delete_folder: Name a folder inside the vault, not the vault itself or a path outside it at path"
+    },
+    {
+      "tool": "vault_delete_folder",
+      "variant": "path a backslash",
+      "arguments": {
+        "path": "\\"
+      },
+      "valid": false,
+      "issues": [
+        {
+          "code": "custom",
+          "path": [
+            "path"
+          ],
+          "message": "Name a folder inside the vault, not the vault itself or a path outside it"
+        }
+      ],
+      "errorText": "MCP error -32602: Input validation error: Invalid arguments for tool vault_delete_folder: Name a folder inside the vault, not the vault itself or a path outside it at path"
+    },
+    {
+      "tool": "vault_delete_folder",
+      "variant": "path back to the vault",
+      "arguments": {
+        "path": "Work/.."
+      },
+      "valid": false,
+      "issues": [
+        {
+          "code": "custom",
+          "path": [
+            "path"
+          ],
+          "message": "Name a folder inside the vault, not the vault itself or a path outside it"
+        }
+      ],
+      "errorText": "MCP error -32602: Input validation error: Invalid arguments for tool vault_delete_folder: Name a folder inside the vault, not the vault itself or a path outside it at path"
+    },
+    {
+      "tool": "vault_delete_folder",
+      "variant": "path the parent",
+      "arguments": {
+        "path": ".."
+      },
+      "valid": false,
+      "issues": [
+        {
+          "code": "custom",
+          "path": [
+            "path"
+          ],
+          "message": "Name a folder inside the vault, not the vault itself or a path outside it"
+        }
+      ],
+      "errorText": "MCP error -32602: Input validation error: Invalid arguments for tool vault_delete_folder: Name a folder inside the vault, not the vault itself or a path outside it at path"
+    },
+    {
+      "tool": "vault_delete_folder",
+      "variant": "path outside the vault",
+      "arguments": {
+        "path": "Work/../../Outside"
+      },
+      "valid": false,
+      "issues": [
+        {
+          "code": "custom",
+          "path": [
+            "path"
+          ],
+          "message": "Name a folder inside the vault, not the vault itself or a path outside it"
+        }
+      ],
+      "errorText": "MCP error -32602: Input validation error: Invalid arguments for tool vault_delete_folder: Name a folder inside the vault, not the vault itself or a path outside it at path"
+    },
+    {
+      "tool": "vault_delete_folder",
+      "variant": "path a drive",
+      "arguments": {
+        "path": "C:\\Users"
+      },
+      "valid": false,
+      "issues": [
+        {
+          "code": "custom",
+          "path": [
+            "path"
+          ],
+          "message": "Name a folder inside the vault, not the vault itself or a path outside it"
+        }
+      ],
+      "errorText": "MCP error -32602: Input validation error: Invalid arguments for tool vault_delete_folder: Name a folder inside the vault, not the vault itself or a path outside it at path"
+    },
+    {
+      "tool": "vault_delete_folder",
+      "variant": "path ./Work/",
+      "arguments": {
+        "path": "./Work/"
+      },
+      "valid": true
+    },
+    {
+      "tool": "vault_delete_folder",
+      "variant": "path Work\\Sub",
+      "arguments": {
+        "path": "Work\\Sub"
+      },
+      "valid": true
+    },
+    {
+      "tool": "vault_delete_folder",
+      "variant": "path Work. off Windows",
+      "platform": "linux",
+      "arguments": {
+        "path": "Work."
+      },
+      "valid": true
+    },
+    {
+      "tool": "vault_delete_folder",
+      "variant": "path Work. on Windows",
+      "platform": "win32",
+      "arguments": {
+        "path": "Work."
+      },
+      "valid": false,
+      "issues": [
+        {
+          "code": "custom",
+          "path": [
+            "path"
+          ],
+          "message": "The folder name ends in a dot or a space, which Windows ignores, so deleting it could delete another folder. Delete the notes in it one by one instead."
+        }
+      ],
+      "errorText": "MCP error -32602: Input validation error: Invalid arguments for tool vault_delete_folder: The folder name ends in a dot or a space, which Windows ignores, so deleting it could delete another folder. Delete the notes in it one by one instead. at path"
+    },
+    {
+      "tool": "vault_delete_folder",
+      "variant": "path Work /Sub on Windows",
+      "platform": "win32",
+      "arguments": {
+        "path": "Work /Sub"
+      },
+      "valid": false,
+      "issues": [
+        {
+          "code": "custom",
+          "path": [
+            "path"
+          ],
+          "message": "The folder name ends in a dot or a space, which Windows ignores, so deleting it could delete another folder. Delete the notes in it one by one instead."
+        }
+      ],
+      "errorText": "MCP error -32602: Input validation error: Invalid arguments for tool vault_delete_folder: The folder name ends in a dot or a space, which Windows ignores, so deleting it could delete another folder. Delete the notes in it one by one instead. at path"
+    },
+    {
+      "tool": "vault_delete_folder",
+      "variant": "path Work/.Sub on Windows",
+      "platform": "win32",
+      "arguments": {
+        "path": "Work/.Sub"
+      },
+      "valid": true
     },
     {
       "tool": "vault_create_task",
@@ -11287,6 +11467,31 @@
       }
     },
     {
+      "operation": "journal.getEntry",
+      "variant": "date not YYYY-MM-DD",
+      "args": [
+        "2026-1-5"
+      ],
+      "valid": false,
+      "error": {
+        "code": "VALIDATION",
+        "message": "journal.getEntry arguments do not match its schema: date: Date must be YYYY-MM-DD, got \"2026-1-5\". Nothing was run. vault_desktop_describe with operation \"journal.getEntry\" returns the full argument schema.",
+        "details": {
+          "operation": "journal.getEntry",
+          "params": [
+            "date"
+          ],
+          "issues": [
+            {
+              "field": "date",
+              "problem": "Date must be YYYY-MM-DD",
+              "received": "\"2026-1-5\""
+            }
+          ]
+        }
+      }
+    },
+    {
       "operation": "journal.getHeatmap",
       "variant": "example",
       "args": [
@@ -11504,6 +11709,31 @@
       }
     },
     {
+      "operation": "journal.getDayContext",
+      "variant": "date not YYYY-MM-DD",
+      "args": [
+        "2026-1-5"
+      ],
+      "valid": false,
+      "error": {
+        "code": "VALIDATION",
+        "message": "journal.getDayContext arguments do not match its schema: date: Date must be YYYY-MM-DD, got \"2026-1-5\". Nothing was run. vault_desktop_describe with operation \"journal.getDayContext\" returns the full argument schema.",
+        "details": {
+          "operation": "journal.getDayContext",
+          "params": [
+            "date"
+          ],
+          "issues": [
+            {
+              "field": "date",
+              "problem": "Date must be YYYY-MM-DD",
+              "received": "\"2026-1-5\""
+            }
+          ]
+        }
+      }
+    },
+    {
       "operation": "journal.getAllTags",
       "variant": "example",
       "args": [],
@@ -11597,6 +11827,31 @@
               "field": "entityId",
               "expected": "string",
               "received": "42"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "properties.get",
+      "variant": "empty entity id",
+      "args": [
+        ""
+      ],
+      "valid": false,
+      "error": {
+        "code": "VALIDATION",
+        "message": "properties.get arguments do not match its schema: entityId: Entity ID is required, got \"\". Nothing was run. vault_desktop_describe with operation \"properties.get\" returns the full argument schema.",
+        "details": {
+          "operation": "properties.get",
+          "params": [
+            "entityId"
+          ],
+          "issues": [
+            {
+              "field": "entityId",
+              "problem": "Entity ID is required",
+              "received": "\"\""
             }
           ]
         }
@@ -15577,6 +15832,17 @@
       }
     },
     {
+      "operation": "notes.uploadAttachment",
+      "variant": "file without arrayBuffer",
+      "args": [
+        "<noteId>",
+        {
+          "name": "photo.png"
+        }
+      ],
+      "valid": true
+    },
+    {
       "operation": "notes.deleteAttachment",
       "variant": "example",
       "args": [
@@ -16413,6 +16679,569 @@
       }
     },
     {
+      "operation": "tasks.create",
+      "variant": "dueDate 2026-02-30",
+      "args": [
+        {
+          "projectId": "<projectId>",
+          "title": "Order the launch cake",
+          "priority": 1,
+          "dueDate": "2026-02-30"
+        }
+      ],
+      "valid": false,
+      "error": {
+        "code": "VALIDATION",
+        "message": "tasks.create arguments do not match its schema: input.dueDate: Date must be a real calendar date in YYYY-MM-DD form, got \"2026-02-30\". Nothing was run. vault_desktop_describe with operation \"tasks.create\" returns the full argument schema.",
+        "details": {
+          "operation": "tasks.create",
+          "params": [
+            "input"
+          ],
+          "issues": [
+            {
+              "field": "input.dueDate",
+              "problem": "Date must be a real calendar date in YYYY-MM-DD form",
+              "received": "\"2026-02-30\""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "tasks.create",
+      "variant": "startDate 2026-13-01",
+      "args": [
+        {
+          "projectId": "<projectId>",
+          "title": "Order the launch cake",
+          "priority": 1,
+          "dueDate": "2026-10-21",
+          "startDate": "2026-13-01"
+        }
+      ],
+      "valid": false,
+      "error": {
+        "code": "VALIDATION",
+        "message": "tasks.create arguments do not match its schema: input.startDate: Date must be a real calendar date in YYYY-MM-DD form, got \"2026-13-01\". Nothing was run. vault_desktop_describe with operation \"tasks.create\" returns the full argument schema.",
+        "details": {
+          "operation": "tasks.create",
+          "params": [
+            "input"
+          ],
+          "issues": [
+            {
+              "field": "input.startDate",
+              "problem": "Date must be a real calendar date in YYYY-MM-DD form",
+              "received": "\"2026-13-01\""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "tasks.create",
+      "variant": "dueDate null",
+      "args": [
+        {
+          "projectId": "<projectId>",
+          "title": "Order the launch cake",
+          "priority": 1,
+          "dueDate": null
+        }
+      ],
+      "valid": true
+    },
+    {
+      "operation": "tasks.create",
+      "variant": "101 fields",
+      "args": [
+        {
+          "projectId": "<projectId>",
+          "title": "Order the launch cake",
+          "priority": 1,
+          "dueDate": "2026-10-21",
+          "fields": {
+            "k0": 0,
+            "k1": 1,
+            "k2": 2,
+            "k3": 3,
+            "k4": 4,
+            "k5": 5,
+            "k6": 6,
+            "k7": 7,
+            "k8": 8,
+            "k9": 9,
+            "k10": 10,
+            "k11": 11,
+            "k12": 12,
+            "k13": 13,
+            "k14": 14,
+            "k15": 15,
+            "k16": 16,
+            "k17": 17,
+            "k18": 18,
+            "k19": 19,
+            "k20": 20,
+            "k21": 21,
+            "k22": 22,
+            "k23": 23,
+            "k24": 24,
+            "k25": 25,
+            "k26": 26,
+            "k27": 27,
+            "k28": 28,
+            "k29": 29,
+            "k30": 30,
+            "k31": 31,
+            "k32": 32,
+            "k33": 33,
+            "k34": 34,
+            "k35": 35,
+            "k36": 36,
+            "k37": 37,
+            "k38": 38,
+            "k39": 39,
+            "k40": 40,
+            "k41": 41,
+            "k42": 42,
+            "k43": 43,
+            "k44": 44,
+            "k45": 45,
+            "k46": 46,
+            "k47": 47,
+            "k48": 48,
+            "k49": 49,
+            "k50": 50,
+            "k51": 51,
+            "k52": 52,
+            "k53": 53,
+            "k54": 54,
+            "k55": 55,
+            "k56": 56,
+            "k57": 57,
+            "k58": 58,
+            "k59": 59,
+            "k60": 60,
+            "k61": 61,
+            "k62": 62,
+            "k63": 63,
+            "k64": 64,
+            "k65": 65,
+            "k66": 66,
+            "k67": 67,
+            "k68": 68,
+            "k69": 69,
+            "k70": 70,
+            "k71": 71,
+            "k72": 72,
+            "k73": 73,
+            "k74": 74,
+            "k75": 75,
+            "k76": 76,
+            "k77": 77,
+            "k78": 78,
+            "k79": 79,
+            "k80": 80,
+            "k81": 81,
+            "k82": 82,
+            "k83": 83,
+            "k84": 84,
+            "k85": 85,
+            "k86": 86,
+            "k87": 87,
+            "k88": 88,
+            "k89": 89,
+            "k90": 90,
+            "k91": 91,
+            "k92": 92,
+            "k93": 93,
+            "k94": 94,
+            "k95": 95,
+            "k96": 96,
+            "k97": 97,
+            "k98": 98,
+            "k99": 99,
+            "k100": 100
+          }
+        }
+      ],
+      "valid": false,
+      "error": {
+        "code": "VALIDATION",
+        "message": "tasks.create arguments do not match its schema: input.fields: At most 100 fields, got an object. Nothing was run. vault_desktop_describe with operation \"tasks.create\" returns the full argument schema.",
+        "details": {
+          "operation": "tasks.create",
+          "params": [
+            "input"
+          ],
+          "issues": [
+            {
+              "field": "input.fields",
+              "problem": "At most 100 fields",
+              "received": "an object"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "tasks.create",
+      "variant": "100 fields",
+      "args": [
+        {
+          "projectId": "<projectId>",
+          "title": "Order the launch cake",
+          "priority": 1,
+          "dueDate": "2026-10-21",
+          "fields": {
+            "k0": 0,
+            "k1": 1,
+            "k2": 2,
+            "k3": 3,
+            "k4": 4,
+            "k5": 5,
+            "k6": 6,
+            "k7": 7,
+            "k8": 8,
+            "k9": 9,
+            "k10": 10,
+            "k11": 11,
+            "k12": 12,
+            "k13": 13,
+            "k14": 14,
+            "k15": 15,
+            "k16": 16,
+            "k17": 17,
+            "k18": 18,
+            "k19": 19,
+            "k20": 20,
+            "k21": 21,
+            "k22": 22,
+            "k23": 23,
+            "k24": 24,
+            "k25": 25,
+            "k26": 26,
+            "k27": 27,
+            "k28": 28,
+            "k29": 29,
+            "k30": 30,
+            "k31": 31,
+            "k32": 32,
+            "k33": 33,
+            "k34": 34,
+            "k35": 35,
+            "k36": 36,
+            "k37": 37,
+            "k38": 38,
+            "k39": 39,
+            "k40": 40,
+            "k41": 41,
+            "k42": 42,
+            "k43": 43,
+            "k44": 44,
+            "k45": 45,
+            "k46": 46,
+            "k47": 47,
+            "k48": 48,
+            "k49": 49,
+            "k50": 50,
+            "k51": 51,
+            "k52": 52,
+            "k53": 53,
+            "k54": 54,
+            "k55": 55,
+            "k56": 56,
+            "k57": 57,
+            "k58": 58,
+            "k59": 59,
+            "k60": 60,
+            "k61": 61,
+            "k62": 62,
+            "k63": 63,
+            "k64": 64,
+            "k65": 65,
+            "k66": 66,
+            "k67": 67,
+            "k68": 68,
+            "k69": 69,
+            "k70": 70,
+            "k71": 71,
+            "k72": 72,
+            "k73": 73,
+            "k74": 74,
+            "k75": 75,
+            "k76": 76,
+            "k77": 77,
+            "k78": 78,
+            "k79": 79,
+            "k80": 80,
+            "k81": 81,
+            "k82": 82,
+            "k83": 83,
+            "k84": 84,
+            "k85": 85,
+            "k86": 86,
+            "k87": 87,
+            "k88": 88,
+            "k89": 89,
+            "k90": 90,
+            "k91": 91,
+            "k92": 92,
+            "k93": 93,
+            "k94": 94,
+            "k95": 95,
+            "k96": 96,
+            "k97": 97,
+            "k98": 98,
+            "k99": 99
+          }
+        }
+      ],
+      "valid": true
+    },
+    {
+      "operation": "tasks.create",
+      "variant": "a field of 51 keys",
+      "args": [
+        {
+          "projectId": "<projectId>",
+          "title": "Order the launch cake",
+          "priority": 1,
+          "dueDate": "2026-10-21",
+          "fields": {
+            "size": {
+              "k0": 0,
+              "k1": 1,
+              "k2": 2,
+              "k3": 3,
+              "k4": 4,
+              "k5": 5,
+              "k6": 6,
+              "k7": 7,
+              "k8": 8,
+              "k9": 9,
+              "k10": 10,
+              "k11": 11,
+              "k12": 12,
+              "k13": 13,
+              "k14": 14,
+              "k15": 15,
+              "k16": 16,
+              "k17": 17,
+              "k18": 18,
+              "k19": 19,
+              "k20": 20,
+              "k21": 21,
+              "k22": 22,
+              "k23": 23,
+              "k24": 24,
+              "k25": 25,
+              "k26": 26,
+              "k27": 27,
+              "k28": 28,
+              "k29": 29,
+              "k30": 30,
+              "k31": 31,
+              "k32": 32,
+              "k33": 33,
+              "k34": 34,
+              "k35": 35,
+              "k36": 36,
+              "k37": 37,
+              "k38": 38,
+              "k39": 39,
+              "k40": 40,
+              "k41": 41,
+              "k42": 42,
+              "k43": 43,
+              "k44": 44,
+              "k45": 45,
+              "k46": 46,
+              "k47": 47,
+              "k48": 48,
+              "k49": 49,
+              "k50": 50
+            }
+          }
+        }
+      ],
+      "valid": false,
+      "error": {
+        "code": "VALIDATION",
+        "message": "tasks.create arguments do not match its schema: input.fields.size: At most 50 keys, got an object. Nothing was run. vault_desktop_describe with operation \"tasks.create\" returns the full argument schema.",
+        "details": {
+          "operation": "tasks.create",
+          "params": [
+            "input"
+          ],
+          "issues": [
+            {
+              "field": "input.fields.size",
+              "problem": "At most 50 keys",
+              "received": "an object"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "tasks.create",
+      "variant": "a nested field of 51 keys",
+      "args": [
+        {
+          "projectId": "<projectId>",
+          "title": "Order the launch cake",
+          "priority": 1,
+          "dueDate": "2026-10-21",
+          "fields": {
+            "size": [
+              {
+                "inner": {
+                  "k0": 0,
+                  "k1": 1,
+                  "k2": 2,
+                  "k3": 3,
+                  "k4": 4,
+                  "k5": 5,
+                  "k6": 6,
+                  "k7": 7,
+                  "k8": 8,
+                  "k9": 9,
+                  "k10": 10,
+                  "k11": 11,
+                  "k12": 12,
+                  "k13": 13,
+                  "k14": 14,
+                  "k15": 15,
+                  "k16": 16,
+                  "k17": 17,
+                  "k18": 18,
+                  "k19": 19,
+                  "k20": 20,
+                  "k21": 21,
+                  "k22": 22,
+                  "k23": 23,
+                  "k24": 24,
+                  "k25": 25,
+                  "k26": 26,
+                  "k27": 27,
+                  "k28": 28,
+                  "k29": 29,
+                  "k30": 30,
+                  "k31": 31,
+                  "k32": 32,
+                  "k33": 33,
+                  "k34": 34,
+                  "k35": 35,
+                  "k36": 36,
+                  "k37": 37,
+                  "k38": 38,
+                  "k39": 39,
+                  "k40": 40,
+                  "k41": 41,
+                  "k42": 42,
+                  "k43": 43,
+                  "k44": 44,
+                  "k45": 45,
+                  "k46": 46,
+                  "k47": 47,
+                  "k48": 48,
+                  "k49": 49,
+                  "k50": 50
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "valid": false,
+      "error": {
+        "code": "VALIDATION",
+        "message": "tasks.create arguments do not match its schema: input.fields.size.0.inner: At most 50 keys, got an object. Nothing was run. vault_desktop_describe with operation \"tasks.create\" returns the full argument schema.",
+        "details": {
+          "operation": "tasks.create",
+          "params": [
+            "input"
+          ],
+          "issues": [
+            {
+              "field": "input.fields.size.0.inner",
+              "problem": "At most 50 keys",
+              "received": "an object"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "tasks.create",
+      "variant": "a field of 50 keys",
+      "args": [
+        {
+          "projectId": "<projectId>",
+          "title": "Order the launch cake",
+          "priority": 1,
+          "dueDate": "2026-10-21",
+          "fields": {
+            "size": {
+              "k0": 0,
+              "k1": 1,
+              "k2": 2,
+              "k3": 3,
+              "k4": 4,
+              "k5": 5,
+              "k6": 6,
+              "k7": 7,
+              "k8": 8,
+              "k9": 9,
+              "k10": 10,
+              "k11": 11,
+              "k12": 12,
+              "k13": 13,
+              "k14": 14,
+              "k15": 15,
+              "k16": 16,
+              "k17": 17,
+              "k18": 18,
+              "k19": 19,
+              "k20": 20,
+              "k21": 21,
+              "k22": 22,
+              "k23": 23,
+              "k24": 24,
+              "k25": 25,
+              "k26": 26,
+              "k27": 27,
+              "k28": 28,
+              "k29": 29,
+              "k30": 30,
+              "k31": 31,
+              "k32": 32,
+              "k33": 33,
+              "k34": 34,
+              "k35": 35,
+              "k36": 36,
+              "k37": 37,
+              "k38": 38,
+              "k39": 39,
+              "k40": 40,
+              "k41": 41,
+              "k42": 42,
+              "k43": 43,
+              "k44": 44,
+              "k45": 45,
+              "k46": 46,
+              "k47": 47,
+              "k48": 48,
+              "k49": 49
+            }
+          }
+        }
+      ],
+      "valid": true
+    },
+    {
       "operation": "tasks.update",
       "variant": "example",
       "args": [
@@ -16501,6 +17330,563 @@
           ]
         }
       }
+    },
+    {
+      "operation": "tasks.update",
+      "variant": "dueDate 2026-02-30",
+      "args": [
+        {
+          "id": "<taskId>",
+          "title": "Write homepage copy",
+          "description": "Hero, features, pricing.",
+          "dueDate": "2026-02-30"
+        }
+      ],
+      "valid": false,
+      "error": {
+        "code": "VALIDATION",
+        "message": "tasks.update arguments do not match its schema: input.dueDate: Date must be a real calendar date in YYYY-MM-DD form, got \"2026-02-30\". Nothing was run. vault_desktop_describe with operation \"tasks.update\" returns the full argument schema.",
+        "details": {
+          "operation": "tasks.update",
+          "params": [
+            "input"
+          ],
+          "issues": [
+            {
+              "field": "input.dueDate",
+              "problem": "Date must be a real calendar date in YYYY-MM-DD form",
+              "received": "\"2026-02-30\""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "tasks.update",
+      "variant": "startDate 2026-13-01",
+      "args": [
+        {
+          "id": "<taskId>",
+          "title": "Write homepage copy",
+          "description": "Hero, features, pricing.",
+          "startDate": "2026-13-01"
+        }
+      ],
+      "valid": false,
+      "error": {
+        "code": "VALIDATION",
+        "message": "tasks.update arguments do not match its schema: input.startDate: Date must be a real calendar date in YYYY-MM-DD form, got \"2026-13-01\". Nothing was run. vault_desktop_describe with operation \"tasks.update\" returns the full argument schema.",
+        "details": {
+          "operation": "tasks.update",
+          "params": [
+            "input"
+          ],
+          "issues": [
+            {
+              "field": "input.startDate",
+              "problem": "Date must be a real calendar date in YYYY-MM-DD form",
+              "received": "\"2026-13-01\""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "tasks.update",
+      "variant": "dueDate null",
+      "args": [
+        {
+          "id": "<taskId>",
+          "title": "Write homepage copy",
+          "description": "Hero, features, pricing.",
+          "dueDate": null
+        }
+      ],
+      "valid": true
+    },
+    {
+      "operation": "tasks.update",
+      "variant": "101 fields",
+      "args": [
+        {
+          "id": "<taskId>",
+          "title": "Write homepage copy",
+          "description": "Hero, features, pricing.",
+          "fields": {
+            "k0": 0,
+            "k1": 1,
+            "k2": 2,
+            "k3": 3,
+            "k4": 4,
+            "k5": 5,
+            "k6": 6,
+            "k7": 7,
+            "k8": 8,
+            "k9": 9,
+            "k10": 10,
+            "k11": 11,
+            "k12": 12,
+            "k13": 13,
+            "k14": 14,
+            "k15": 15,
+            "k16": 16,
+            "k17": 17,
+            "k18": 18,
+            "k19": 19,
+            "k20": 20,
+            "k21": 21,
+            "k22": 22,
+            "k23": 23,
+            "k24": 24,
+            "k25": 25,
+            "k26": 26,
+            "k27": 27,
+            "k28": 28,
+            "k29": 29,
+            "k30": 30,
+            "k31": 31,
+            "k32": 32,
+            "k33": 33,
+            "k34": 34,
+            "k35": 35,
+            "k36": 36,
+            "k37": 37,
+            "k38": 38,
+            "k39": 39,
+            "k40": 40,
+            "k41": 41,
+            "k42": 42,
+            "k43": 43,
+            "k44": 44,
+            "k45": 45,
+            "k46": 46,
+            "k47": 47,
+            "k48": 48,
+            "k49": 49,
+            "k50": 50,
+            "k51": 51,
+            "k52": 52,
+            "k53": 53,
+            "k54": 54,
+            "k55": 55,
+            "k56": 56,
+            "k57": 57,
+            "k58": 58,
+            "k59": 59,
+            "k60": 60,
+            "k61": 61,
+            "k62": 62,
+            "k63": 63,
+            "k64": 64,
+            "k65": 65,
+            "k66": 66,
+            "k67": 67,
+            "k68": 68,
+            "k69": 69,
+            "k70": 70,
+            "k71": 71,
+            "k72": 72,
+            "k73": 73,
+            "k74": 74,
+            "k75": 75,
+            "k76": 76,
+            "k77": 77,
+            "k78": 78,
+            "k79": 79,
+            "k80": 80,
+            "k81": 81,
+            "k82": 82,
+            "k83": 83,
+            "k84": 84,
+            "k85": 85,
+            "k86": 86,
+            "k87": 87,
+            "k88": 88,
+            "k89": 89,
+            "k90": 90,
+            "k91": 91,
+            "k92": 92,
+            "k93": 93,
+            "k94": 94,
+            "k95": 95,
+            "k96": 96,
+            "k97": 97,
+            "k98": 98,
+            "k99": 99,
+            "k100": 100
+          }
+        }
+      ],
+      "valid": false,
+      "error": {
+        "code": "VALIDATION",
+        "message": "tasks.update arguments do not match its schema: input.fields: At most 100 fields, got an object. Nothing was run. vault_desktop_describe with operation \"tasks.update\" returns the full argument schema.",
+        "details": {
+          "operation": "tasks.update",
+          "params": [
+            "input"
+          ],
+          "issues": [
+            {
+              "field": "input.fields",
+              "problem": "At most 100 fields",
+              "received": "an object"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "tasks.update",
+      "variant": "100 fields",
+      "args": [
+        {
+          "id": "<taskId>",
+          "title": "Write homepage copy",
+          "description": "Hero, features, pricing.",
+          "fields": {
+            "k0": 0,
+            "k1": 1,
+            "k2": 2,
+            "k3": 3,
+            "k4": 4,
+            "k5": 5,
+            "k6": 6,
+            "k7": 7,
+            "k8": 8,
+            "k9": 9,
+            "k10": 10,
+            "k11": 11,
+            "k12": 12,
+            "k13": 13,
+            "k14": 14,
+            "k15": 15,
+            "k16": 16,
+            "k17": 17,
+            "k18": 18,
+            "k19": 19,
+            "k20": 20,
+            "k21": 21,
+            "k22": 22,
+            "k23": 23,
+            "k24": 24,
+            "k25": 25,
+            "k26": 26,
+            "k27": 27,
+            "k28": 28,
+            "k29": 29,
+            "k30": 30,
+            "k31": 31,
+            "k32": 32,
+            "k33": 33,
+            "k34": 34,
+            "k35": 35,
+            "k36": 36,
+            "k37": 37,
+            "k38": 38,
+            "k39": 39,
+            "k40": 40,
+            "k41": 41,
+            "k42": 42,
+            "k43": 43,
+            "k44": 44,
+            "k45": 45,
+            "k46": 46,
+            "k47": 47,
+            "k48": 48,
+            "k49": 49,
+            "k50": 50,
+            "k51": 51,
+            "k52": 52,
+            "k53": 53,
+            "k54": 54,
+            "k55": 55,
+            "k56": 56,
+            "k57": 57,
+            "k58": 58,
+            "k59": 59,
+            "k60": 60,
+            "k61": 61,
+            "k62": 62,
+            "k63": 63,
+            "k64": 64,
+            "k65": 65,
+            "k66": 66,
+            "k67": 67,
+            "k68": 68,
+            "k69": 69,
+            "k70": 70,
+            "k71": 71,
+            "k72": 72,
+            "k73": 73,
+            "k74": 74,
+            "k75": 75,
+            "k76": 76,
+            "k77": 77,
+            "k78": 78,
+            "k79": 79,
+            "k80": 80,
+            "k81": 81,
+            "k82": 82,
+            "k83": 83,
+            "k84": 84,
+            "k85": 85,
+            "k86": 86,
+            "k87": 87,
+            "k88": 88,
+            "k89": 89,
+            "k90": 90,
+            "k91": 91,
+            "k92": 92,
+            "k93": 93,
+            "k94": 94,
+            "k95": 95,
+            "k96": 96,
+            "k97": 97,
+            "k98": 98,
+            "k99": 99
+          }
+        }
+      ],
+      "valid": true
+    },
+    {
+      "operation": "tasks.update",
+      "variant": "a field of 51 keys",
+      "args": [
+        {
+          "id": "<taskId>",
+          "title": "Write homepage copy",
+          "description": "Hero, features, pricing.",
+          "fields": {
+            "size": {
+              "k0": 0,
+              "k1": 1,
+              "k2": 2,
+              "k3": 3,
+              "k4": 4,
+              "k5": 5,
+              "k6": 6,
+              "k7": 7,
+              "k8": 8,
+              "k9": 9,
+              "k10": 10,
+              "k11": 11,
+              "k12": 12,
+              "k13": 13,
+              "k14": 14,
+              "k15": 15,
+              "k16": 16,
+              "k17": 17,
+              "k18": 18,
+              "k19": 19,
+              "k20": 20,
+              "k21": 21,
+              "k22": 22,
+              "k23": 23,
+              "k24": 24,
+              "k25": 25,
+              "k26": 26,
+              "k27": 27,
+              "k28": 28,
+              "k29": 29,
+              "k30": 30,
+              "k31": 31,
+              "k32": 32,
+              "k33": 33,
+              "k34": 34,
+              "k35": 35,
+              "k36": 36,
+              "k37": 37,
+              "k38": 38,
+              "k39": 39,
+              "k40": 40,
+              "k41": 41,
+              "k42": 42,
+              "k43": 43,
+              "k44": 44,
+              "k45": 45,
+              "k46": 46,
+              "k47": 47,
+              "k48": 48,
+              "k49": 49,
+              "k50": 50
+            }
+          }
+        }
+      ],
+      "valid": false,
+      "error": {
+        "code": "VALIDATION",
+        "message": "tasks.update arguments do not match its schema: input.fields.size: At most 50 keys, got an object. Nothing was run. vault_desktop_describe with operation \"tasks.update\" returns the full argument schema.",
+        "details": {
+          "operation": "tasks.update",
+          "params": [
+            "input"
+          ],
+          "issues": [
+            {
+              "field": "input.fields.size",
+              "problem": "At most 50 keys",
+              "received": "an object"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "tasks.update",
+      "variant": "a nested field of 51 keys",
+      "args": [
+        {
+          "id": "<taskId>",
+          "title": "Write homepage copy",
+          "description": "Hero, features, pricing.",
+          "fields": {
+            "size": [
+              {
+                "inner": {
+                  "k0": 0,
+                  "k1": 1,
+                  "k2": 2,
+                  "k3": 3,
+                  "k4": 4,
+                  "k5": 5,
+                  "k6": 6,
+                  "k7": 7,
+                  "k8": 8,
+                  "k9": 9,
+                  "k10": 10,
+                  "k11": 11,
+                  "k12": 12,
+                  "k13": 13,
+                  "k14": 14,
+                  "k15": 15,
+                  "k16": 16,
+                  "k17": 17,
+                  "k18": 18,
+                  "k19": 19,
+                  "k20": 20,
+                  "k21": 21,
+                  "k22": 22,
+                  "k23": 23,
+                  "k24": 24,
+                  "k25": 25,
+                  "k26": 26,
+                  "k27": 27,
+                  "k28": 28,
+                  "k29": 29,
+                  "k30": 30,
+                  "k31": 31,
+                  "k32": 32,
+                  "k33": 33,
+                  "k34": 34,
+                  "k35": 35,
+                  "k36": 36,
+                  "k37": 37,
+                  "k38": 38,
+                  "k39": 39,
+                  "k40": 40,
+                  "k41": 41,
+                  "k42": 42,
+                  "k43": 43,
+                  "k44": 44,
+                  "k45": 45,
+                  "k46": 46,
+                  "k47": 47,
+                  "k48": 48,
+                  "k49": 49,
+                  "k50": 50
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "valid": false,
+      "error": {
+        "code": "VALIDATION",
+        "message": "tasks.update arguments do not match its schema: input.fields.size.0.inner: At most 50 keys, got an object. Nothing was run. vault_desktop_describe with operation \"tasks.update\" returns the full argument schema.",
+        "details": {
+          "operation": "tasks.update",
+          "params": [
+            "input"
+          ],
+          "issues": [
+            {
+              "field": "input.fields.size.0.inner",
+              "problem": "At most 50 keys",
+              "received": "an object"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "tasks.update",
+      "variant": "a field of 50 keys",
+      "args": [
+        {
+          "id": "<taskId>",
+          "title": "Write homepage copy",
+          "description": "Hero, features, pricing.",
+          "fields": {
+            "size": {
+              "k0": 0,
+              "k1": 1,
+              "k2": 2,
+              "k3": 3,
+              "k4": 4,
+              "k5": 5,
+              "k6": 6,
+              "k7": 7,
+              "k8": 8,
+              "k9": 9,
+              "k10": 10,
+              "k11": 11,
+              "k12": 12,
+              "k13": 13,
+              "k14": 14,
+              "k15": 15,
+              "k16": 16,
+              "k17": 17,
+              "k18": 18,
+              "k19": 19,
+              "k20": 20,
+              "k21": 21,
+              "k22": 22,
+              "k23": 23,
+              "k24": 24,
+              "k25": 25,
+              "k26": 26,
+              "k27": 27,
+              "k28": 28,
+              "k29": 29,
+              "k30": 30,
+              "k31": 31,
+              "k32": 32,
+              "k33": 33,
+              "k34": 34,
+              "k35": 35,
+              "k36": 36,
+              "k37": 37,
+              "k38": 38,
+              "k39": 39,
+              "k40": 40,
+              "k41": 41,
+              "k42": 42,
+              "k43": 43,
+              "k44": 44,
+              "k45": 45,
+              "k46": 46,
+              "k47": 47,
+              "k48": 48,
+              "k49": 49
+            }
+          }
+        }
+      ],
+      "valid": true
     },
     {
       "operation": "tasks.delete",
@@ -19022,6 +20408,108 @@
       }
     },
     {
+      "operation": "inbox.captureImage",
+      "variant": "data a string",
+      "args": [
+        {
+          "data": "not bytes",
+          "filename": "whiteboard.png",
+          "mimeType": "image/png"
+        }
+      ],
+      "valid": false,
+      "error": {
+        "code": "VALIDATION",
+        "message": "inbox.captureImage arguments do not match its schema: input.data: Must be binary data (Buffer, Uint8Array, ArrayBuffer, or serialized buffer), got \"not bytes\". Nothing was run. vault_desktop_describe with operation \"inbox.captureImage\" returns the full argument schema.",
+        "details": {
+          "operation": "inbox.captureImage",
+          "params": [
+            "input"
+          ],
+          "issues": [
+            {
+              "field": "input.data",
+              "problem": "Must be binary data (Buffer, Uint8Array, ArrayBuffer, or serialized buffer)",
+              "received": "\"not bytes\""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "inbox.captureImage",
+      "variant": "data empty",
+      "args": [
+        {
+          "data": {},
+          "filename": "whiteboard.png",
+          "mimeType": "image/png"
+        }
+      ],
+      "valid": false,
+      "error": {
+        "code": "VALIDATION",
+        "message": "inbox.captureImage arguments do not match its schema: input.data: Must be binary data (Buffer, Uint8Array, ArrayBuffer, or serialized buffer), got an object. Nothing was run. vault_desktop_describe with operation \"inbox.captureImage\" returns the full argument schema.",
+        "details": {
+          "operation": "inbox.captureImage",
+          "params": [
+            "input"
+          ],
+          "issues": [
+            {
+              "field": "input.data",
+              "problem": "Must be binary data (Buffer, Uint8Array, ArrayBuffer, or serialized buffer)",
+              "received": "an object"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "inbox.captureImage",
+      "variant": "data an array of bytes",
+      "args": [
+        {
+          "data": [
+            1,
+            2,
+            3
+          ],
+          "filename": "whiteboard.png",
+          "mimeType": "image/png"
+        }
+      ],
+      "valid": true
+    },
+    {
+      "operation": "inbox.captureImage",
+      "variant": "data missing",
+      "args": [
+        {
+          "filename": "whiteboard.png",
+          "mimeType": "image/png"
+        }
+      ],
+      "valid": false,
+      "error": {
+        "code": "VALIDATION",
+        "message": "inbox.captureImage arguments do not match its schema: input.data: Must be binary data (Buffer, Uint8Array, ArrayBuffer, or serialized buffer), got nothing. Nothing was run. vault_desktop_describe with operation \"inbox.captureImage\" returns the full argument schema.",
+        "details": {
+          "operation": "inbox.captureImage",
+          "params": [
+            "input"
+          ],
+          "issues": [
+            {
+              "field": "input.data",
+              "problem": "Must be binary data (Buffer, Uint8Array, ArrayBuffer, or serialized buffer)",
+              "received": "nothing"
+            }
+          ]
+        }
+      }
+    },
+    {
       "operation": "inbox.captureVoice",
       "variant": "example",
       "args": [
@@ -19220,6 +20708,112 @@
             {
               "field": "input.memry_unknown_key",
               "unknown": true
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "inbox.captureVoice",
+      "variant": "data a string",
+      "args": [
+        {
+          "data": "not bytes",
+          "duration": 1,
+          "format": "webm",
+          "transcribe": false
+        }
+      ],
+      "valid": false,
+      "error": {
+        "code": "VALIDATION",
+        "message": "inbox.captureVoice arguments do not match its schema: input.data: Must be binary data (Buffer, Uint8Array, ArrayBuffer, or serialized buffer), got \"not bytes\". Nothing was run. vault_desktop_describe with operation \"inbox.captureVoice\" returns the full argument schema.",
+        "details": {
+          "operation": "inbox.captureVoice",
+          "params": [
+            "input"
+          ],
+          "issues": [
+            {
+              "field": "input.data",
+              "problem": "Must be binary data (Buffer, Uint8Array, ArrayBuffer, or serialized buffer)",
+              "received": "\"not bytes\""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "inbox.captureVoice",
+      "variant": "data empty",
+      "args": [
+        {
+          "data": {},
+          "duration": 1,
+          "format": "webm",
+          "transcribe": false
+        }
+      ],
+      "valid": false,
+      "error": {
+        "code": "VALIDATION",
+        "message": "inbox.captureVoice arguments do not match its schema: input.data: Must be binary data (Buffer, Uint8Array, ArrayBuffer, or serialized buffer), got an object. Nothing was run. vault_desktop_describe with operation \"inbox.captureVoice\" returns the full argument schema.",
+        "details": {
+          "operation": "inbox.captureVoice",
+          "params": [
+            "input"
+          ],
+          "issues": [
+            {
+              "field": "input.data",
+              "problem": "Must be binary data (Buffer, Uint8Array, ArrayBuffer, or serialized buffer)",
+              "received": "an object"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "inbox.captureVoice",
+      "variant": "data an array of bytes",
+      "args": [
+        {
+          "data": [
+            1,
+            2,
+            3
+          ],
+          "duration": 1,
+          "format": "webm",
+          "transcribe": false
+        }
+      ],
+      "valid": true
+    },
+    {
+      "operation": "inbox.captureVoice",
+      "variant": "data missing",
+      "args": [
+        {
+          "duration": 1,
+          "format": "webm",
+          "transcribe": false
+        }
+      ],
+      "valid": false,
+      "error": {
+        "code": "VALIDATION",
+        "message": "inbox.captureVoice arguments do not match its schema: input.data: Must be binary data (Buffer, Uint8Array, ArrayBuffer, or serialized buffer), got nothing. Nothing was run. vault_desktop_describe with operation \"inbox.captureVoice\" returns the full argument schema.",
+        "details": {
+          "operation": "inbox.captureVoice",
+          "params": [
+            "input"
+          ],
+          "issues": [
+            {
+              "field": "input.data",
+              "problem": "Must be binary data (Buffer, Uint8Array, ArrayBuffer, or serialized buffer)",
+              "received": "nothing"
             }
           ]
         }
@@ -19425,6 +21019,40 @@
             {
               "field": "input.memry_unknown_key",
               "unknown": true
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "inbox.capturePdf",
+      "variant": "data an array of bytes",
+      "args": [
+        {
+          "data": [
+            37,
+            80,
+            68,
+            70
+          ],
+          "filename": "report.pdf",
+          "extractText": false
+        }
+      ],
+      "valid": false,
+      "error": {
+        "code": "VALIDATION",
+        "message": "inbox.capturePdf arguments do not match its schema: input.data: expected any, got an array. Nothing was run. vault_desktop_describe with operation \"inbox.capturePdf\" returns the full argument schema.",
+        "details": {
+          "operation": "inbox.capturePdf",
+          "params": [
+            "input"
+          ],
+          "issues": [
+            {
+              "field": "input.data",
+              "expected": "any",
+              "received": "an array"
             }
           ]
         }
@@ -21281,6 +22909,37 @@
       }
     },
     {
+      "operation": "journal.createEntry",
+      "variant": "date not YYYY-MM-DD",
+      "args": [
+        {
+          "date": "5 Oct 2026",
+          "content": "Launch day prep.\n",
+          "tags": [
+            "launch"
+          ]
+        }
+      ],
+      "valid": false,
+      "error": {
+        "code": "VALIDATION",
+        "message": "journal.createEntry arguments do not match its schema: input.date: Date must be YYYY-MM-DD, got \"5 Oct 2026\". Nothing was run. vault_desktop_describe with operation \"journal.createEntry\" returns the full argument schema.",
+        "details": {
+          "operation": "journal.createEntry",
+          "params": [
+            "input"
+          ],
+          "issues": [
+            {
+              "field": "input.date",
+              "problem": "Date must be YYYY-MM-DD",
+              "received": "\"5 Oct 2026\""
+            }
+          ]
+        }
+      }
+    },
+    {
       "operation": "journal.updateEntry",
       "variant": "example",
       "args": [
@@ -21368,6 +23027,34 @@
       }
     },
     {
+      "operation": "journal.updateEntry",
+      "variant": "date not YYYY-MM-DD",
+      "args": [
+        {
+          "date": "5 Oct 2026",
+          "content": "Launch day prep went well.\n"
+        }
+      ],
+      "valid": false,
+      "error": {
+        "code": "VALIDATION",
+        "message": "journal.updateEntry arguments do not match its schema: input.date: Date must be YYYY-MM-DD, got \"5 Oct 2026\". Nothing was run. vault_desktop_describe with operation \"journal.updateEntry\" returns the full argument schema.",
+        "details": {
+          "operation": "journal.updateEntry",
+          "params": [
+            "input"
+          ],
+          "issues": [
+            {
+              "field": "input.date",
+              "problem": "Date must be YYYY-MM-DD",
+              "received": "\"5 Oct 2026\""
+            }
+          ]
+        }
+      }
+    },
+    {
       "operation": "journal.deleteEntry",
       "variant": "example",
       "args": [
@@ -21415,6 +23102,31 @@
               "field": "date",
               "expected": "string",
               "received": "42"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "journal.deleteEntry",
+      "variant": "date not YYYY-MM-DD",
+      "args": [
+        "2026-1-5"
+      ],
+      "valid": false,
+      "error": {
+        "code": "VALIDATION",
+        "message": "journal.deleteEntry arguments do not match its schema: date: Date must be YYYY-MM-DD, got \"2026-1-5\". Nothing was run. vault_desktop_describe with operation \"journal.deleteEntry\" returns the full argument schema.",
+        "details": {
+          "operation": "journal.deleteEntry",
+          "params": [
+            "date"
+          ],
+          "issues": [
+            {
+              "field": "date",
+              "problem": "Date must be YYYY-MM-DD",
+              "received": "\"2026-1-5\""
             }
           ]
         }
@@ -21488,6 +23200,36 @@
       }
     },
     {
+      "operation": "properties.set",
+      "variant": "empty entity id",
+      "args": [
+        "",
+        {
+          "stage": "draft",
+          "owner": "Sam"
+        }
+      ],
+      "valid": false,
+      "error": {
+        "code": "VALIDATION",
+        "message": "properties.set arguments do not match its schema: entityId: Entity ID is required, got \"\". Nothing was run. vault_desktop_describe with operation \"properties.set\" returns the full argument schema.",
+        "details": {
+          "operation": "properties.set",
+          "params": [
+            "entityId",
+            "properties"
+          ],
+          "issues": [
+            {
+              "field": "entityId",
+              "problem": "Entity ID is required",
+              "received": "\"\""
+            }
+          ]
+        }
+      }
+    },
+    {
       "operation": "properties.rename",
       "variant": "example",
       "args": [
@@ -21545,6 +23287,93 @@
               "field": "entityId",
               "expected": "string",
               "received": "42"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "properties.rename",
+      "variant": "empty entity id",
+      "args": [
+        "",
+        "owner",
+        "lead"
+      ],
+      "valid": false,
+      "error": {
+        "code": "VALIDATION",
+        "message": "properties.rename arguments do not match its schema: entityId: Entity ID is required, got \"\". Nothing was run. vault_desktop_describe with operation \"properties.rename\" returns the full argument schema.",
+        "details": {
+          "operation": "properties.rename",
+          "params": [
+            "entityId",
+            "oldName",
+            "newName"
+          ],
+          "issues": [
+            {
+              "field": "entityId",
+              "problem": "Entity ID is required",
+              "received": "\"\""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "properties.rename",
+      "variant": "empty old name",
+      "args": [
+        "<noteId>",
+        "",
+        "lead"
+      ],
+      "valid": false,
+      "error": {
+        "code": "VALIDATION",
+        "message": "properties.rename arguments do not match its schema: oldName: Old property name is required, got \"\". Nothing was run. vault_desktop_describe with operation \"properties.rename\" returns the full argument schema.",
+        "details": {
+          "operation": "properties.rename",
+          "params": [
+            "entityId",
+            "oldName",
+            "newName"
+          ],
+          "issues": [
+            {
+              "field": "oldName",
+              "problem": "Old property name is required",
+              "received": "\"\""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "properties.rename",
+      "variant": "empty new name",
+      "args": [
+        "<noteId>",
+        "owner",
+        ""
+      ],
+      "valid": false,
+      "error": {
+        "code": "VALIDATION",
+        "message": "properties.rename arguments do not match its schema: newName: New property name is required, got \"\". Nothing was run. vault_desktop_describe with operation \"properties.rename\" returns the full argument schema.",
+        "details": {
+          "operation": "properties.rename",
+          "params": [
+            "entityId",
+            "oldName",
+            "newName"
+          ],
+          "issues": [
+            {
+              "field": "newName",
+              "problem": "New property name is required",
+              "received": "\"\""
             }
           ]
         }

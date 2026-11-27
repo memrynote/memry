@@ -47,6 +47,10 @@ impl Scratch {
         Ok(scratch)
     }
 
+    pub fn root(&self) -> &Path {
+        &self.root
+    }
+
     pub fn with_max_bytes(mut self, max_bytes: u64) -> Self {
         self.max_bytes = max_bytes;
         self

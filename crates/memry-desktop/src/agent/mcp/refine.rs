@@ -1,19 +1,30 @@
 //! The zod refinements (`.refine`) of the tool inputs, which Electron's JSON Schemas cannot carry:
 //! real calendar dates on tasks, http(s)-only canvas links (Electron's guard against `file:` and
-//! `javascript:` links in agent-drawn canvases), one endpoint form per arrow end, and a bulk tag
-//! call that adds or removes something. `tools.json` lists them under `refinements`; the test
-//! below holds this table to that list.
+//! `javascript:` links in agent-drawn canvases), one endpoint form per arrow end, a bulk tag
+//! call that adds or removes something, and a folder delete that names a folder inside the vault
+//! (never the vault itself or outside it) whose name Windows reads as written. `tools.json` lists them under `refinements`; the test
+//! below holds this table to that list. The zod walk ([`super::zod`]) runs them as zod runs a
+//! `.refine`: after the checks of the value at their path, unless one of those stopped the parse.
 
 use serde_json::Value;
+
+use super::zod::Seg;
 
 const CALENDAR_DATE: &str = "Date must be a real calendar date in YYYY-MM-DD form";
 const HTTP_LINK: &str = "link must be an http(s) URL";
 const ONE_ENDPOINT: &str = "exactly one of ref or elementId is required";
 const SOME_TAG: &str = "Give at least one tag in add or remove.";
+const BINARY_DATA: &str =
+    "Must be binary data (Buffer, Uint8Array, ArrayBuffer, or serialized buffer)";
+const TASK_FIELDS: &str = "At most 100 fields";
+const TASK_FIELD_KEYS: &str = "At most 50 keys";
+const FOLDER_IN_VAULT: &str =
+    "Name a folder inside the vault, not the vault itself or a path outside it";
+const FOLDER_WINDOWS_TRIMS: &str = "The folder name ends in a dot or a space, which Windows ignores, so deleting it could delete another folder. Delete the notes in it one by one instead.";
 
 /// The value at `path` (`[]` is every item of an array) satisfies `holds`, or the call is refused
-/// with `message`. An absent or null value is not checked, as zod's `.nullish()` wraps the check.
-struct Refinement {
+/// with `message`.
+pub(super) struct Refinement {
     tool: &'static str,
     path: &'static [&'static str],
     message: &'static str,
@@ -62,6 +73,17 @@ const REFINEMENTS: &[Refinement] = &[
         calendar_date,
     ),
     refinement("vault_bulk_tag_notes", &[], SOME_TAG, some_tag),
+    refinement("vault_delete_folder", &["path"], FOLDER_IN_VAULT, |value| {
+        folder_in_vault(value).is_some()
+    }),
+    refinement(
+        "vault_delete_folder",
+        &["path"],
+        FOLDER_WINDOWS_TRIMS,
+        |value| {
+            !windows_trims_folder_name(cfg!(windows), &folder_in_vault(value).unwrap_or_default())
+        },
+    ),
     refinement(
         "vault_draw_on_canvas",
         &["elements", "[]", "link"],
@@ -94,46 +116,42 @@ const REFINEMENTS: &[Refinement] = &[
     ),
 ];
 
-/// The refinements `args` (valid against the tool's JSON Schema) breaks, in the SDK's issue text:
-/// the message, then ` at ` and the path (`elements[3].link`) unless it is the root.
-pub(super) fn issues(tool: &str, args: &Value) -> Vec<String> {
-    let mut issues = Vec::new();
-    for refinement in REFINEMENTS
+/// The refinements of the desktop API arguments, by message: `desktop-ops.json` `checks` names
+/// the schema node each applies to, and the test below holds this table to that list.
+type Holds = fn(&Value) -> bool;
+
+const DESKTOP_REFINEMENTS: &[(&str, Holds)] = &[
+    (CALENDAR_DATE, calendar_date),
+    (BINARY_DATA, binary_data),
+    (TASK_FIELDS, |value| own_keys(value) <= 100),
+    (TASK_FIELD_KEYS, |value| own_keys(value) <= 50),
+];
+
+/// The desktop API refinement whose message is `message`.
+pub(super) fn desktop_refinement(message: &str) -> Option<Holds> {
+    DESKTOP_REFINEMENTS
         .iter()
-        .filter(|refinement| refinement.tool == tool)
-    {
-        visit(args, refinement.path, String::new(), &mut |value, at| {
-            if value.is_null() || (refinement.holds)(value) {
-                return;
-            }
-            issues.push(if at.is_empty() {
-                refinement.message.to_owned()
-            } else {
-                format!("{} at {at}", refinement.message)
-            });
-        });
-    }
-    issues
+        .find(|(known, _)| *known == message)
+        .map(|(_, holds)| *holds)
 }
 
-fn visit(value: &Value, path: &[&str], at: String, found: &mut impl FnMut(&Value, &str)) {
-    match path.split_first() {
-        None => found(value, &at),
-        Some((&"[]", rest)) => {
-            for (index, item) in value.as_array().into_iter().flatten().enumerate() {
-                visit(item, rest, format!("{at}[{index}]"), found);
-            }
-        }
-        Some((key, rest)) => {
-            if let Some(child) = value.get(key) {
-                let at = if at.is_empty() {
-                    (*key).to_owned()
-                } else {
-                    format!("{at}.{key}")
-                };
-                visit(child, rest, at, found);
-            }
-        }
+/// The refinements of `tool`.
+pub(super) fn for_tool(tool: &str) -> Vec<&'static Refinement> {
+    REFINEMENTS
+        .iter()
+        .filter(|refinement| refinement.tool == tool)
+        .collect()
+}
+
+impl Refinement {
+    /// The message, when `value` sits at this refinement's path and breaks it.
+    pub(super) fn broken_by(&self, path: &[Seg], value: &Value) -> Option<&'static str> {
+        let here = self.path.len() == path.len()
+            && self.path.iter().zip(path).all(|(want, seg)| match seg {
+                Seg::Index(_) => *want == "[]",
+                Seg::Key(key) => want == key,
+            });
+        (here && !(self.holds)(value)).then_some(self.message)
     }
 }
 
@@ -192,18 +210,109 @@ fn one_endpoint(value: &Value) -> bool {
     truthy("ref") != truthy("elementId")
 }
 
+/// `binaryDataSchema` of `inbox-api.ts` over JSON: a non-empty object or array whose values are
+/// all numbers (the IPC form of a buffer).
+fn binary_data(value: &Value) -> bool {
+    match value {
+        Value::Array(items) => !items.is_empty() && items.iter().all(Value::is_number),
+        Value::Object(object) => !object.is_empty() && object.values().all(Value::is_number),
+        _ => false,
+    }
+}
+
+/// `Object.keys(value).length` of `tasks-api.ts`'s field refinements, run on zod's record output,
+/// which leaves out `__proto__`.
+fn own_keys(value: &Value) -> usize {
+    value.as_object().map_or(0, |object| {
+        object.keys().filter(|key| *key != "__proto__").count()
+    })
+}
+
 /// `(add?.length ?? 0) + (remove?.length ?? 0) > 0` of `note-action-schemas.ts`.
 fn some_tag(value: &Value) -> bool {
     let count = |key: &str| value.get(key).and_then(Value::as_array).map_or(0, Vec::len);
     count("add") + count("remove") > 0
 }
 
+/// `vaultFolderPath(normalizeFolderPath(path))` of `schemas.ts`: the folder `path` names as note
+/// rows name it, or `None` for the vault itself (`''`, `.`, `/`) or a path that leaves it (`..`, an
+/// absolute or drive path), which a recursive delete must never reach.
+fn folder_in_vault(value: &Value) -> Option<String> {
+    let path = value.as_str().unwrap_or_default();
+    let slashed = path.trim_matches('/').replace('\\', "/");
+    let normalized = posix_normalize(&slashed);
+    let folder = normalized.trim_end_matches('/');
+    if folder.is_empty() || folder == "." {
+        return None;
+    }
+    let bytes = folder.as_bytes();
+    let drive =
+        bytes.len() > 2 && bytes[0].is_ascii_alphabetic() && bytes[1] == b':' && bytes[2] == b'/';
+    let outside = folder == ".." || folder.starts_with("../") || folder.starts_with('/') || drive;
+    (!outside).then(|| folder.to_owned())
+}
+
+/// Node's `path.posix.normalize` on a path with `/` separators: `.` and empty segments go, a `..`
+/// takes the segment before it (or stays at the front of a relative path).
+fn posix_normalize(path: &str) -> String {
+    let absolute = path.starts_with('/');
+    let mut segments: Vec<&str> = Vec::new();
+    for segment in path.split('/') {
+        match segment {
+            "" | "." => {}
+            ".." if segments.last().is_some_and(|last| *last != "..") => {
+                segments.pop();
+            }
+            ".." if absolute => {}
+            _ => segments.push(segment),
+        }
+    }
+    let joined = segments.join("/");
+    match (absolute, joined.is_empty()) {
+        (true, _) => format!("/{joined}"),
+        (false, true) => ".".to_owned(),
+        (false, false) => joined,
+    }
+}
+
+/// `windowsTrimsFolderName` of `@memry/storage-vault`: on Windows a segment ending in a dot or a
+/// space names another folder, since Windows drops them.
+fn windows_trims_folder_name(windows: bool, folder: &str) -> bool {
+    windows
+        && folder
+            .split('/')
+            .any(|segment| segment.ends_with('.') || segment.ends_with(' '))
+}
+
 #[cfg(test)]
 mod tests {
     use serde_json::Value;
 
-    use super::REFINEMENTS;
+    use std::collections::BTreeSet;
+
+    use super::{DESKTOP_REFINEMENTS, REFINEMENTS, folder_in_vault, windows_trims_folder_name};
+    use crate::agent::mcp::desktop_args::DESKTOP_OPS_JSON;
     use crate::agent::mcp::schemas::TOOLS_JSON;
+
+    /// A desktop refinement Electron adds or drops changes `desktop-ops.json`, and the table must
+    /// follow: a listed one without a Rust check fails the catalogue load, an unlisted one here.
+    #[test]
+    fn the_desktop_table_is_electrons_list_of_refinements() {
+        let file: Value = serde_json::from_str(DESKTOP_OPS_JSON).unwrap();
+        let listed: BTreeSet<&str> = file["operations"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .flat_map(|operation| operation["checks"].as_array().unwrap())
+            .filter(|check| check["check"] == "custom")
+            .map(|check| check["message"].as_str().unwrap())
+            .collect();
+        let table: BTreeSet<&str> = DESKTOP_REFINEMENTS
+            .iter()
+            .map(|(message, _)| *message)
+            .collect();
+        assert_eq!(table, listed);
+    }
 
     /// A refinement Electron adds or drops changes `tools.json`, and this table must follow.
     #[test]
@@ -240,5 +349,38 @@ mod tests {
         listed.sort();
         table.sort();
         assert_eq!(table, listed);
+    }
+
+    /// `examples.json` runs the Windows cases only on Windows; this holds both branches anywhere.
+    #[test]
+    fn a_trailing_dot_or_space_is_refused_only_on_windows() {
+        for folder in ["Work.", "Work /Sub", "Work/Sub."] {
+            assert!(windows_trims_folder_name(true, folder), "{folder}");
+            assert!(!windows_trims_folder_name(false, folder), "{folder}");
+        }
+        assert!(!windows_trims_folder_name(true, "Work/.Sub"));
+    }
+
+    /// The vault itself and a path out of it never name a folder to delete.
+    #[test]
+    fn a_folder_delete_names_a_folder_inside_the_vault() {
+        let folder = |path: &str| folder_in_vault(&Value::from(path));
+        for path in [
+            "",
+            ".",
+            "/",
+            "\\",
+            "Work/..",
+            "..",
+            "Work/../../Out",
+            "C:\\Users",
+            "//",
+        ] {
+            assert_eq!(folder(path), None, "{path}");
+        }
+        assert_eq!(folder("./Work/").as_deref(), Some("Work"));
+        assert_eq!(folder("Work\\Sub").as_deref(), Some("Work/Sub"));
+        assert_eq!(folder("/Work//Sub/").as_deref(), Some("Work/Sub"));
+        assert_eq!(folder("C:Work").as_deref(), Some("C:Work"));
     }
 }

@@ -107,6 +107,14 @@ pub trait ApplyObserver: Send + Sync {
     /// Every record of one committed page, in apply order. One call per page.
     fn records_applied(&self, _batch: &[AppliedRecord]) {}
 
+    /// These tasks' activity logs grew in one committed page, by a pulled
+    /// `task_activity` row or a `superseded` row this device wrote, each task
+    /// once. Told by [`SupersededObserver`] after its own write committed, so
+    /// a read at this call sees every row.
+    ///
+    /// [`SupersededObserver`]: crate::domain::task_activity::superseded::SupersededObserver
+    fn task_activity_created(&self, _task_ids: &[String]) {}
+
     /// A pulled tombstone of `note_id` was skipped because the local edit is
     /// newer, so the note lives on (Electron's `note-handler.ts:740`).
     fn note_revived(&self, _note_id: &str) {}

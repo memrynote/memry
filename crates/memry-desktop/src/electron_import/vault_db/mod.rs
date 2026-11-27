@@ -15,6 +15,7 @@
 
 pub mod checks;
 pub mod crash;
+mod docs;
 mod install;
 mod preflight;
 mod source;
@@ -25,7 +26,7 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use memry_core::storage::import::{DATA_FILE, ImportWriter};
+use memry_core::storage::import::{DATA_FILE, DocumentState, ImportWriter};
 use rusqlite::Connection;
 use serde::Serialize;
 use zeroize::Zeroizing;
@@ -57,6 +58,11 @@ pub struct VaultImportInput<'a> {
     pub docs: Vec<FoldedDoc>,
     pub extra_owed_docs: Vec<String>,
     pub vault_key: Option<VaultKey>,
+    /// `memry-config.json` `sync.deviceId` ([`crate::electron_import::ElectronConfig::device_id`]).
+    /// A queued delete without a clock is stamped with it, as Electron's push does
+    /// (`ensureRequiredClock`); without it such a delete fails
+    /// [`ImportError::DeleteWithoutDevice`].
+    pub electron_device_id: Option<String>,
     pub now_ms: i64,
     pub progress: Option<Box<dyn Fn(ImportProgress) + Send>>,
 }
@@ -76,7 +82,7 @@ pub struct ImportProgress {
 }
 
 pub enum StageOutcome {
-    Staged(StagedVault),
+    Staged(Box<StagedVault>),
     /// `core/data.db` carries the import marker: an earlier run installed this vault.
     AlreadyImported,
     /// `core/data.db` exists without the marker: the vault was first opened natively. It is
@@ -94,6 +100,15 @@ impl StagedVault {
     pub fn report(&self) -> &VaultStageReport {
         &self.report
     }
+
+    /// The staged document `doc_id` (state vector and canonical body text), for Step 37's check
+    /// 3 against the folded Electron state; `None` when the import wrote no log for it.
+    pub fn document_state(&self, doc_id: &str) -> Result<Option<DocumentState>, ImportError> {
+        Ok(memry_core::storage::import::document_state(
+            &self.paths.staging.join(DATA_FILE),
+            doc_id,
+        )?)
+    }
 }
 
 /// What a run read and wrote. No secrets and no note text: counts and table names only.
@@ -104,6 +119,11 @@ pub struct VaultStageReport {
     pub tables: BTreeMap<String, TableReport>,
     /// Source rows or keys not carried over, by named reason.
     pub dropped: BTreeMap<String, u64>,
+    /// Source rows carried over with less than the source held, by named reason.
+    pub notices: BTreeMap<String, u64>,
+    /// Pushes queued by Electron's runtime-start replays ([`tables::replay::runtime_start`]),
+    /// by rule: `dirtyRecordsQueued`, `deletedNotesRecreated`.
+    pub queued: BTreeMap<String, u64>,
     pub merged_tables: Vec<String>,
     pub checks_passed: Vec<u8>,
 }
@@ -120,10 +140,18 @@ pub struct TableReport {
 /// What an importer of [`tables::TABLE_MAP`] reads from and writes to.
 pub struct TableCtx<'a> {
     pub source: &'a Connection,
+    /// The Electron `index.db` copy, which the note payload reads as Electron's push does.
+    pub index: &'a Connection,
+    /// The vault, whose note files the note payload reads as Electron's push does.
+    pub vault_dir: &'a Path,
     /// [`VaultImportInput::vault_id`].
     pub vault_id: &'a str,
     pub writer: &'a mut ImportWriter,
     pub now_ms: i64,
+    /// [`VaultImportInput::electron_device_id`].
+    pub electron_device_id: Option<&'a str>,
+    /// [`VaultImportInput::docs`].
+    pub docs: &'a [FoldedDoc],
 }
 
 #[derive(Debug, Clone)]
@@ -159,7 +187,10 @@ pub fn stage_vault_import(input: VaultImportInput<'_>) -> Result<StageOutcome, I
     // A failure discards the staging directory here, explicitly and not on drop, so a crash
     // point (a panic) leaves it behind the way a real crash would.
     match stage(&input, &paths) {
-        Ok(report) => Ok(StageOutcome::Staged(StagedVault { paths, report })),
+        Ok(report) => Ok(StageOutcome::Staged(Box::new(StagedVault {
+            paths,
+            report,
+        }))),
         Err(error) => {
             if let Err(cleanup) = remove_staging(&paths) {
                 tracing::warn!(%cleanup, "could not remove the import staging directory");
@@ -210,12 +241,11 @@ fn stage(input: &VaultImportInput<'_>, paths: &Paths) -> Result<VaultStageReport
         &input.electron_index_db,
         &paths.staging,
     )?;
-    let preflight = preflight::run(&sources, input)?;
+    let preflight = preflight::run(&sources)?;
     let mut writer = ImportWriter::create(&paths.staging)?;
     crash::point("stage:writer-created");
 
     let mut report = VaultStageReport {
-        dropped: preflight.dropped_keys,
         ..VaultStageReport::default()
     };
     let total = preflight.tables.len();
@@ -237,15 +267,22 @@ fn stage(input: &VaultImportInput<'_>, paths: &Paths) -> Result<VaultStageReport
                 }
                 let mut ctx = TableCtx {
                     source: sources.conn(mapping.db),
+                    index: sources.conn(tables::SourceDb::Index),
+                    vault_dir: &input.vault_dir,
                     vault_id: &input.vault_id,
                     writer: &mut writer,
                     now_ms: input.now_ms,
+                    electron_device_id: input.electron_device_id.as_deref(),
+                    docs: &input.docs,
                 };
                 let stats = import(&mut ctx)?;
                 table.target_count = stats.written;
                 for (reason, count) in stats.dropped {
                     table.dropped += count;
                     *report.dropped.entry(reason.to_owned()).or_default() += count;
+                }
+                for (reason, count) in stats.notices {
+                    *report.notices.entry(reason.to_owned()).or_default() += count;
                 }
             }
             // The preflight refused a pending table with rows, so this one is empty.
@@ -257,7 +294,38 @@ fn stage(input: &VaultImportInput<'_>, paths: &Paths) -> Result<VaultStageReport
             .insert(format!("{}/{}", mapping.db.name(), mapping.table), table);
     }
 
-    checks::run(&mut report, &sources, &writer)?;
+    let replayed = tables::replay::runtime_start(&mut TableCtx {
+        source: sources.conn(tables::SourceDb::Data),
+        index: sources.conn(tables::SourceDb::Index),
+        vault_dir: &input.vault_dir,
+        vault_id: &input.vault_id,
+        writer: &mut writer,
+        now_ms: input.now_ms,
+        electron_device_id: input.electron_device_id.as_deref(),
+        docs: &input.docs,
+    })?;
+    for (rule, count) in [
+        ("dirtyRecordsQueued", replayed.dirty),
+        ("deletedNotesRecreated", replayed.recreated),
+    ] {
+        if count > 0 {
+            report.queued.insert(rule.to_owned(), count);
+        }
+    }
+    docs::import_documents(
+        input,
+        sources.conn(tables::SourceDb::Data),
+        sources.conn(tables::SourceDb::Index),
+        &mut writer,
+    )?;
+    checks::run(
+        &mut report,
+        &sources,
+        &writer,
+        input.electron_device_id.as_deref(),
+        &input.docs,
+        input.now_ms,
+    )?;
     drop(sources);
     source::remove(&paths.staging)?;
     writer.finish(&marker(&report, input.now_ms))?;

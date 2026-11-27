@@ -13,11 +13,23 @@ use crate::api::errors::{AuthError, StorageError};
 use crate::api::tasks::Tasks;
 use crate::api::tasks_write::{after, now_ms, source_notes};
 use crate::domain::calendar::LocalDateTime;
+use crate::domain::projects::{
+    self, NewStatus, Status, StatusPatch, create_status, delete_status, reorder_statuses,
+    update_status,
+};
+use crate::domain::task_records::TaskRecord;
 use crate::domain::tasks::list::{self, ListQuery, TagCount, TaskListItem, TaskPage};
 use crate::domain::tasks::stats::{self, TaskStats};
 use crate::domain::tasks::{self, TaskPatch, TaskUpdate, UpdateRefusal};
+use crate::domain::{task_links, task_settings};
 use crate::seams::secure_store::SecureStore;
 use crate::storage::Db;
+
+mod project_writes;
+mod writes;
+
+pub use project_writes::{NoteNames, ProjectRefusal, StoredProject};
+pub use writes::NewDesktopTask;
 
 /// Built by [`crate::api::vault::Vault::task_store`].
 pub struct TaskStore {
@@ -102,5 +114,69 @@ impl TaskStore {
     pub fn overdue(&self, local_now: LocalDateTime) -> Result<Vec<TaskListItem>, StorageError> {
         self.db
             .read_blocking(|conn| stats::overdue(conn, local_now.date()))
+    }
+
+    /// `tasks:get-linked-tasks` ([`task_links::linked_tasks`]).
+    pub fn linked_tasks(&self, note_id: &str) -> Result<Vec<TaskRecord>, StorageError> {
+        self.db
+            .read_blocking(|conn| task_links::linked_tasks(conn, note_id))
+    }
+
+    /// `tasks:status-list` ([`projects::statuses`]).
+    pub fn statuses(&self, project_id: &str) -> Result<Vec<Status>, StorageError> {
+        self.db
+            .read_blocking(|conn| projects::statuses(conn, project_id))
+    }
+
+    /// `tasks:status-create` ([`projects::create_status`]).
+    pub fn create_status(&self, status: NewStatus<'_>) -> Result<Status, StorageError> {
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            create_status(conn, &status, &device_id, now_ms()).map(|d| d.acknowledge())
+        })
+    }
+
+    /// `tasks:status-update` ([`projects::update_status`]): the status after
+    /// the edit. An edit that changes nothing writes nothing and reads it back.
+    pub fn update_status(&self, id: &str, patch: StatusPatch<'_>) -> Result<Status, StorageError> {
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            if let Some(written) = update_status(conn, id, &patch, &device_id, now_ms())? {
+                return Ok(written.acknowledge());
+            }
+            projects::status_by_id(conn, id)?.ok_or_else(|| StorageError::NotFound {
+                what: format!("no status {id}"),
+            })
+        })
+    }
+
+    /// The `tasks.nestedSubtasks` setting [`TaskStore::update`] takes.
+    pub fn nested_subtasks(&self) -> Result<bool, StorageError> {
+        self.db
+            .read_blocking(|conn| task_settings::read(conn).map(|s| s.nested_subtasks))
+    }
+
+    /// `tasks:status-delete` ([`projects::delete_status`]): the project the
+    /// status left, `None` when no live project held it.
+    pub fn delete_status(&self, id: &str) -> Result<Option<String>, StorageError> {
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            delete_status(conn, id, &device_id, now_ms())
+                .map(|written| written.map(|d| d.acknowledge()))
+        })
+    }
+
+    /// `tasks:status-reorder` ([`projects::reorder_statuses`]): the moved
+    /// statuses, one commit per project.
+    pub fn reorder_statuses(
+        &self,
+        ids: &[&str],
+        positions: &[i64],
+    ) -> Result<Vec<Status>, StorageError> {
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            let written = reorder_statuses(conn, ids, positions, &device_id, now_ms())?;
+            Ok(written.into_iter().flat_map(|d| d.acknowledge()).collect())
+        })
     }
 }

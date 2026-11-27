@@ -29,18 +29,49 @@ import {
   onenoteDownloadingAttachmentStatus
 } from '@memry/importers/messages'
 import type { NoteCreateInput } from '../../vault/notes-crud'
+import type { AttachmentResult } from '../../vault/attachments'
 import type * as IdModule from '../../lib/id'
 import type * as AttachmentsModule from '../../vault/attachments'
 import type * as FsPromises from 'fs/promises'
-import type { Importer, ImportInput, ImportSummary } from '../types'
+import type * as NotesCrudModule from '../../vault/notes-crud'
+import type * as JournalModule from '../../vault/journal'
+import type { Importer, ImportContext, ImportInput, ImportSummary } from '../types'
 import { createImportContext } from '../import-context'
+import { attachmentMarkdown } from '../_shared/attachment-markdown'
 import { bearImporter } from '../bear/bear-importer'
 import { markdownImporter } from '../markdown/markdown-importer'
 import { csvImporter } from '../csv/csv-importer'
 import { googleKeepImporter } from '../google-keep/google-keep-importer'
 import { roamImporter } from '../roam/roam-importer'
+import { notePlanImporter, runNotePlanImport } from '../noteplan/noteplan-importer'
+import type { NotePlanTaskDeps } from '../noteplan/noteplan-importer'
+import { raindropImporter, runRaindropImport } from '../raindrop/raindrop-importer'
+import type { ApplyDeps as RaindropDeps } from '../raindrop/raindrop-importer'
+import {
+  applyTodoistImport,
+  buildTodoistPreview,
+  todoistImporter
+} from '../todoist/todoist-importer'
+import type { ImportTasksDomain } from '../todoist/todoist-importer'
+import { htmlImporter } from '../html/html-importer'
+import { evernoteImporter } from '../evernote/evernote-importer'
+import { appleJournalImporter } from '../apple-journal/apple-journal-importer'
 
-const rec = vi.hoisted(() => ({ timeline: [] as unknown[], noteCounter: 0 }))
+interface StoredJournal {
+  content: string
+  tags: string[]
+  properties: Record<string, unknown>
+}
+
+const rec = vi.hoisted(() => ({
+  timeline: [] as unknown[],
+  noteCounter: 0,
+  taskCounter: 0,
+  projectCounter: 0,
+  journals: {} as Record<string, StoredJournal>,
+  /** Each saved file's result by the MD5 of its bytes, which is an Evernote resource's hash. */
+  savedByMd5: new Map<string, AttachmentResult>()
+}))
 
 vi.mock('../../lib/window-broadcast', () => ({
   broadcastToAllWindows: (_channel: string, payload: unknown) => {
@@ -60,6 +91,41 @@ vi.mock('../_shared/imported-note', () => ({
   }
 }))
 
+// NotePlan creates its notes without `createImportedNote`'s checklist step.
+vi.mock('../../vault/notes-crud', async (importOriginal) => ({
+  ...(await importOriginal<typeof NotesCrudModule>()),
+  createNote: async (input: NoteCreateInput) => {
+    rec.timeline.push({ op: 'createNoteAsWritten', input })
+    return {}
+  }
+}))
+
+vi.mock('../../journal/create-entry', () => ({
+  resolveJournalEntryId: (date: string) => `j${date}`,
+  createJournalEntry: async (input: {
+    date: string
+    content: string
+    tags?: string[]
+    properties?: Record<string, unknown>
+  }) => {
+    rec.timeline.push({
+      op: 'createJournalEntry',
+      date: input.date,
+      tags: input.tags ?? [],
+      properties: input.properties
+        ? Object.entries(input.properties).map(([key, value]) => [key, tagValue(value)])
+        : null,
+      content: input.content
+    })
+    return {}
+  }
+}))
+
+vi.mock('../../vault/journal', async (importOriginal) => ({
+  ...(await importOriginal<typeof JournalModule>()),
+  readJournalEntry: async (date: string) => rec.journals[date] ?? null
+}))
+
 vi.mock('../../vault/attachments', async (importOriginal) => {
   const actual = await importOriginal<typeof AttachmentsModule>()
   return {
@@ -74,7 +140,7 @@ vi.mock('../../vault/attachments', async (importOriginal) => {
       }
       const sha256 = createHash('sha256').update(data).digest('hex')
       rec.timeline.push({ op: 'saveAttachment', noteId, name, size: data.length, sha256 })
-      return {
+      const result = {
         success: true,
         path: `attachments/${noteId}/${name}`,
         name,
@@ -82,6 +148,8 @@ vi.mock('../../vault/attachments', async (importOriginal) => {
         mimeType: actual.getMimeType(name),
         type: actual.getFileType(name)
       }
+      rec.savedByMd5.set(createHash('md5').update(data).digest('hex'), result)
+      return result
     }
   }
 })
@@ -103,15 +171,99 @@ const VECTORS = path.resolve(
 )
 /** Every input file's modification time, so `modified` is the same on every machine. */
 const FIXED_TIME = new Date('2026-01-14T12:00:00.000Z')
+/** Todoist's clock for relative dates: noon of 2026-01-14 in the machine's own time zone. */
+const TODOIST_NOW = new Date(2026, 0, 14, 12)
 
 interface VectorCase {
   name: string
   /** Picked paths, relative to the source's `input/` folder. */
   sources: string[]
   preview?: boolean
+  /** NotePlan: the Inbox project's id, `null` for none. Default `inbox`. */
+  inboxProjectId?: string | null
+  /** NotePlan: the `tasks.nestedSubtasks` setting. Default true. */
+  nestedSubtasks?: boolean
+  /** NotePlan: the journal entries `readJournalEntry` finds, by date. */
+  journals?: Record<string, StoredJournal>
+  /** Record `created` as written: it comes from the source, not from the file's birth time. */
+  exactCreated?: boolean
 }
 
-const SOURCES: { source: string; importer: Importer; cases: VectorCase[] }[] = [
+/** NotePlan's task side, recorded: ids come from a counter. */
+const recordingTaskDeps = (c: VectorCase): NotePlanTaskDeps => ({
+  async createTask(a) {
+    rec.timeline.push({ op: 'createTask', ...a })
+    return { success: true, task: { id: `task-${++rec.taskCounter}` } }
+  },
+  async completeTask(a) {
+    rec.timeline.push({
+      op: 'completeTask',
+      id: a.id,
+      completedAt: a.completedAt ?? null,
+      recordOnly: a.recordOnly ?? false
+    })
+    return {}
+  },
+  async archiveTask(id) {
+    rec.timeline.push({ op: 'archiveTask', id })
+    return {}
+  },
+  getInboxProjectId: () =>
+    c.inboxProjectId === undefined ? 'inbox' : (c.inboxProjectId ?? undefined),
+  nestedSubtasks: () => c.nestedSubtasks ?? true
+})
+
+/** Raindrop's `saveBookmark`, recorded. */
+const recordingBookmarks: RaindropDeps = {
+  saveBookmark(item) {
+    rec.timeline.push({ op: 'saveBookmark', ...item })
+  }
+}
+
+/** Todoist's tasks domain, recorded: ids come from counters. */
+const recordingProjects: ImportTasksDomain = {
+  async createProject(input) {
+    rec.timeline.push({ op: 'createProject', ...input })
+    return { project: { id: `project-${++rec.projectCounter}` } }
+  },
+  async createTask(input) {
+    rec.timeline.push({ op: 'createTask', ...input })
+    return { task: { id: `task-${++rec.taskCounter}` } }
+  }
+}
+
+type Preview = NonNullable<Importer['preview']>
+
+/**
+ * An Electron bug the Rust importer fixes, listed in #3549's Departures: it rewrites the body
+ * the TypeScript importer wrote, so the vector holds the fixed output.
+ */
+type Departure = (content: string) => string
+
+/** Note bodies each departure changed, so a fix that stops matching fails the test. */
+const departureHits = new Map<Departure, number>()
+
+/**
+ * Evernote: a non-image attachment's placeholder `[[attachment]](memry-enex:H)` has brackets in
+ * its label, so neither the rewrite nor the strip regex matched it and the note kept the internal
+ * link. Fixed, it becomes the saved file's block, or nothing.
+ */
+const enexAttachmentLink: Departure = (content) =>
+  content.replace(/\[\[attachment\]\]\(memry-enex:([^)]*)\)/g, (_match, hash: string) => {
+    const saved = rec.savedByMd5.get(hash)
+    return (saved && attachmentMarkdown(saved)) ?? ''
+  })
+
+const SOURCES: {
+  source: string
+  importer: Importer
+  /** Runs one case; the importer's own `run` when absent. */
+  run?: (input: ImportInput, ctx: ImportContext, c: VectorCase) => Promise<unknown>
+  /** Previews one case; the importer's own `preview` when absent. */
+  preview?: Preview
+  cases: VectorCase[]
+  departures?: Departure[]
+}[] = [
   {
     source: 'bear',
     importer: bearImporter,
@@ -157,11 +309,98 @@ const SOURCES: { source: string; importer: Importer; cases: VectorCase[] }[] = [
     ]
   },
   {
+    source: 'noteplan',
+    importer: notePlanImporter,
+    run: (input, ctx, c) => runNotePlanImport(input, ctx, recordingTaskDeps(c)),
+    cases: [
+      { name: 'sample', sources: ['sample'] },
+      {
+        name: 'edge',
+        sources: ['edge'],
+        journals: {
+          '2026-01-01': {
+            content: '  My own words\n',
+            tags: ['mine', 'daily'],
+            properties: { weather: 'sun', mood: 'calm' }
+          }
+        }
+      },
+      { name: 'flat-subtasks', sources: ['bare'], nestedSubtasks: false },
+      { name: 'no-inbox', sources: ['bare', 'sample/Notes'], inboxProjectId: null }
+    ]
+  },
+  {
+    source: 'raindrop',
+    importer: raindropImporter,
+    // `raindropImporter.run` with the recording deps, and `<now>` as the run's clock: the Rust
+    // sink fills in the import time where the plan falls back to it.
+    run: async (input, ctx) => {
+      ctx.setPhase('importing')
+      ctx.status(IMPORT_STATUS.raindropImporting)
+      await runRaindropImport(input.sourcePaths, recordingBookmarks, ctx, '<now>')
+    },
+    cases: [
+      { name: 'export', sources: ['export.csv'] },
+      { name: 'many', sources: ['edge.csv', 'bad-header.csv', 'empty.csv', 'clean.csv'] },
+      { name: 'preview', sources: ['clean.csv', 'bad-header.csv', 'empty.csv'], preview: true }
+    ]
+  },
+  {
+    source: 'todoist',
+    importer: todoistImporter,
+    // `todoistImporter.run` and its preview with the recording domain and a fixed clock.
+    run: async (input, ctx) => {
+      ctx.setPhase('importing')
+      ctx.status(IMPORT_STATUS.todoistImporting)
+      await applyTodoistImport(input.sourcePaths, recordingProjects, ctx, TODOIST_NOW)
+    },
+    preview: (input, signal) => buildTodoistPreview(input.sourcePaths, TODOIST_NOW, signal),
+    cases: [
+      { name: 'export', sources: ['Personal.csv'], preview: true },
+      {
+        name: 'many',
+        sources: ['edge.csv', 'not-todoist.csv', 'empty.csv', 'Shout.CSV'],
+        preview: true
+      }
+    ]
+  },
+  {
     source: 'roam',
     importer: roamImporter,
     cases: [
       { name: 'graph', sources: ['graph.json'] },
       { name: 'two-files', sources: ['not-pages.json', 'graph.json', 'edge.json'] }
+    ]
+  },
+  {
+    source: 'html',
+    importer: htmlImporter,
+    cases: [
+      { name: 'sample', sources: ['site/page-one.html', 'site/page-two.htm', 'site/notes.txt'] },
+      { name: 'empty-body', sources: ['site/empty.html'] }
+    ]
+  },
+  {
+    source: 'evernote',
+    importer: evernoteImporter,
+    departures: [enexAttachmentLink],
+    cases: [
+      {
+        name: 'sample',
+        sources: ['My   Notebook .enex', '.enex', 'empty.enex', 'bad-date.enex'],
+        exactCreated: true
+      }
+    ]
+  },
+  {
+    source: 'apple-journal',
+    importer: appleJournalImporter,
+    cases: [
+      {
+        name: 'sample',
+        sources: ['entry-1.html', 'index.html', 'entry-2.html', 'no-date.html'],
+        exactCreated: true
+      }
     ]
   }
 ]
@@ -178,7 +417,11 @@ function tagValue(value: unknown): unknown {
   return value
 }
 
-function noteRecord(input: NoteCreateInput): unknown {
+function noteRecord(
+  input: NoteCreateInput,
+  exactCreated: boolean,
+  departures: Departure[]
+): unknown {
   return {
     op: 'createNote',
     id: input.id ?? null,
@@ -190,9 +433,13 @@ function noteRecord(input: NoteCreateInput): unknown {
       tagValue(value)
     ]),
     // The birth time cannot be set on a copied file; only its presence is compared.
-    created: input.created ? '<birthtime>' : null,
+    created: input.created ? (exactCreated ? input.created : '<birthtime>') : null,
     modified: input.modified ?? null,
-    content: input.content ?? ''
+    content: departures.reduce((content, fix) => {
+      const fixed = fix(content)
+      if (fixed !== content) departureHits.set(fix, (departureHits.get(fix) ?? 0) + 1)
+      return fixed
+    }, input.content ?? '')
   }
 }
 
@@ -204,7 +451,14 @@ function setTimes(dir: string): void {
   }
 }
 
-async function runCase(source: string, importer: Importer, c: VectorCase): Promise<unknown> {
+async function runCase(
+  source: string,
+  importer: Importer,
+  c: VectorCase,
+  departures: Departure[],
+  run?: (input: ImportInput, ctx: ImportContext, c: VectorCase) => Promise<unknown>,
+  previewCase: Preview | undefined = importer.preview
+): Promise<unknown> {
   const work = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-import-vectors-'))
   try {
     fs.cpSync(path.join(VECTORS, source, 'input'), work, { recursive: true })
@@ -219,11 +473,15 @@ async function runCase(source: string, importer: Importer, c: VectorCase): Promi
 
     rec.timeline = []
     rec.noteCounter = 0
+    rec.savedByMd5.clear()
+    rec.taskCounter = 0
+    rec.projectCounter = 0
+    rec.journals = c.journals ?? {}
     const controller = new AbortController()
     const input: ImportInput = { sourcePaths: c.sources.map((s) => path.join(work, s)) }
-    const preview = c.preview ? await importer.preview?.(input, controller.signal) : undefined
+    const preview = c.preview ? await previewCase?.(input, controller.signal) : undefined
     const ctx = createImportContext('vector', controller.signal)
-    await importer.run(input, ctx)
+    await (run ? run(input, ctx, c) : importer.run(input, ctx))
     // A failed item names the picked file; a `done` snapshot an importer emits carries it too.
     const unrootSummary = (summary: ImportSummary): ImportSummary => ({
       ...summary,
@@ -234,7 +492,14 @@ async function runCase(source: string, importer: Importer, c: VectorCase): Promi
       ...(preview ? { preview } : {}),
       timeline: rec.timeline.map((entry) => {
         const e = entry as { op: string; input?: NoteCreateInput; summary?: ImportSummary }
-        if (e.op === 'createNote' && e.input) return noteRecord(e.input)
+        const exactCreated = c.exactCreated ?? false
+        if (e.op === 'createNote' && e.input) return noteRecord(e.input, exactCreated, departures)
+        if (e.op === 'createNoteAsWritten' && e.input) {
+          return {
+            ...(noteRecord(e.input, exactCreated, departures) as object),
+            op: 'createNoteAsWritten'
+          }
+        }
         return e.summary ? { ...e, summary: unrootSummary(e.summary) } : entry
       }),
       summary: unrootSummary(ctx.toSummary())
@@ -267,13 +532,19 @@ describe('importer vectors', () => {
     expect(fs.readFileSync(file, 'utf8'), STALE).toBe(text)
   })
 
-  for (const { source, importer, cases } of SOURCES) {
+  for (const { source, importer, run, preview, cases, departures = [] } of SOURCES) {
     it(`${source}/expected.json matches the TypeScript importer`, async () => {
       const recorded: unknown[] = []
-      for (const c of cases) recorded.push(await runCase(source, importer, c))
+      for (const c of cases)
+        recorded.push(
+          await runCase(source, importer, c, departures, run, preview ?? importer.preview)
+        )
       const file = path.join(VECTORS, source, 'expected.json')
       const text = vectorText(file, { source, cases: recorded })
       expect(fs.readFileSync(file, 'utf8'), STALE).toBe(text)
+      for (const fix of departures) {
+        expect(departureHits.get(fix) ?? 0, `${fix.name} changed no note`).toBeGreaterThan(0)
+      }
     })
   }
 })

@@ -1232,6 +1232,10 @@
     "loadingAria": "Läser in enheter",
     "none": "Inga enheter kopplade än",
     "linkNew": "Koppla ny enhet",
+    "linkNeedsPlan": {
+      "title": "Koppling kräver en synkroniseringsplan",
+      "description": "En kopplad enhet ser bara dina anteckningar när synkronisering är på. Utan en plan loggar du in där med din återställningsfras, och enheten behåller sitt eget valv."
+    },
     "thisDevice": "Den här enheten",
     "lastSeen": "Senast sedd för {time} sedan",
     "linked": "Kopplad för {time} sedan",
@@ -1398,6 +1402,7 @@
       "selectModel": "Välj en modell",
       "apiKey": "API-nyckel",
       "apiKeyDescription": "Lagras lokalt, skickas bara till leverantören",
+      "apiKeyKeychainDescription": "Sparas i operativsystemets nyckelring, skickas bara till leverantören",
       "apiKeyPlaceholder": "Ange API-nyckel för {provider}",
       "ollamaUrl": "Ollama-URL",
       "ollamaUrlDescription": "Lokal serveradress",

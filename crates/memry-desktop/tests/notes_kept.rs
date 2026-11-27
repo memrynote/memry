@@ -130,7 +130,7 @@ fn kept_removing(
     // The reconcile after the walk re-stamps a row's hash: `ahead` comes after it.
     e.after_reconcile();
     let id = row_id(&e, rel);
-    let search = e.core().search().unwrap();
+    let search = e.core().search(None).unwrap();
     until("the file's header is measured", || {
         search
             .note_stats(&id)
@@ -789,10 +789,21 @@ fn a_kept_note_put_back_from_the_trash_with_its_folder_gets_its_row_back() {
     )
     .unwrap();
     e.write("f/b.md", "Control\n");
-    e.facts_until(|f| matches!(f, Applied::Added { path, .. } if path == "f/b.md"));
-    until("the kept note's file has a row again", || {
-        e.rows().iter().any(|(_, path)| path == "f/g/a.md")
+    // Both files are fed, in either order: the kept note's file, the folder's own report, is
+    // one even when the watcher saw the folder only once it was back (#5565).
+    let fed = std::cell::RefCell::new(Vec::new());
+    e.facts_until(|f| {
+        if let Applied::Added { path, .. } = f {
+            fed.borrow_mut().push(path.clone());
+        }
+        ["f/g/a.md", "f/b.md"]
+            .iter()
+            .all(|path| fed.borrow().iter().any(|fed| fed == path))
     });
+    assert!(
+        e.rows().iter().any(|(_, path)| path == "f/g/a.md"),
+        "the kept note's file has no row again"
+    );
 }
 
 #[test]
@@ -805,7 +816,7 @@ fn a_refused_folder_delete_takes_back_two_kept_copies_and_the_folders_they_made(
         id,
     } = kept_removing("f/g/a.md", "f/g", FILE, no_trash, |e, store, id| {
         e.write("f/g/b.md", FILE);
-        let search = e.core().search().unwrap();
+        let search = e.core().search(None).unwrap();
         until("the second file is measured", || {
             e.rows().iter().any(|(_, path)| path == "f/g/b.md")
                 && search
@@ -1221,4 +1232,78 @@ fn a_kept_notes_delete_whose_trash_took_its_folder_brings_back_no_folder() {
     );
     assert!(!e.vault.join("f").exists(), "the deleted folder is back");
     assert!(record(&e, &id).0);
+}
+
+/// A file dropped into the open vault gets its note from the watcher's report. Its folder,
+/// deleted in the app with the note's row and put back from the trash before the watcher looked,
+/// is new again: the report named no note, and the bytes it holds are the ones reported (#5579).
+#[test]
+fn a_dropped_in_note_put_back_from_the_trash_with_its_folder_gets_its_row_back() {
+    let notices = VaultNotices::new();
+    let board = notices.clone();
+    let mut kept = None;
+    let mut e = env(|store| {
+        kept = Some(store.clone());
+        Some(NotesIdentity::noticing(store, board))
+    });
+    e.write("b.md", "Control\n");
+    e.open();
+    e.facts_until(indexed);
+    e.after_reconcile();
+    e.write("f/a.md", "Dropped in\n");
+    e.facts_until(|f| {
+        matches!(f, Applied::Added { path, source: ChangeSource::Watcher, .. } if path == "f/a.md")
+    });
+    let notes = NotesService::with_trash(e.tier.clone(), kept.expect("the store"), bin_beside);
+    let open = e.session.current().unwrap();
+    notes.delete_folder(&open, "f").unwrap();
+    assert!(!e.rows().iter().any(|(_, path)| path == "f/a.md"));
+
+    fs::rename(
+        e.vault.with_extension("trashed").join("f"),
+        e.vault.join("f"),
+    )
+    .unwrap();
+    until("the dropped-in file has a row again", || {
+        e.rows().iter().any(|(_, path)| path == "f/a.md")
+    });
+}
+
+/// A file put back where its kept note's row still is gets that row's note from the watcher's
+/// report of it, so the folder deleted in the app with the row and put back from the trash
+/// before the watcher looked is new again (#5579).
+#[test]
+fn a_kept_notes_file_put_back_then_trashed_with_its_folder_and_put_back_gets_its_row_back() {
+    let notices = VaultNotices::new();
+    let board = notices.clone();
+    let mut kept = None;
+    let mut e = env(|store| {
+        kept = Some(store.clone());
+        Some(NotesIdentity::noticing(store, board))
+    });
+    notices.register(&e.session);
+    e.write("f/a.md", "Kept\n");
+    e.open();
+    e.facts_until(indexed);
+    e.after_reconcile();
+    let id = row_id(&e, "f/a.md");
+    unread(&e, &id);
+    fs::remove_file(e.vault.join("f/a.md")).unwrap();
+    until("the kept removal is listed", || is_listed(&notices, &id));
+    // Put back: the row is there, so the watcher's report of the file is a change of its note.
+    e.write("f/a.md", "Kept\n");
+    e.facts_until(|f| matches!(f, Applied::Changed { path, .. } if path == "f/a.md"));
+    let notes = NotesService::with_trash(e.tier.clone(), kept.expect("the store"), bin_beside);
+    let open = e.session.current().unwrap();
+    notes.delete_folder(&open, "f").unwrap();
+    assert!(!e.rows().iter().any(|(_, path)| path == "f/a.md"));
+
+    fs::rename(
+        e.vault.with_extension("trashed").join("f"),
+        e.vault.join("f"),
+    )
+    .unwrap();
+    until("the put-back file has a row again", || {
+        e.rows().iter().any(|(_, path)| path == "f/a.md")
+    });
 }

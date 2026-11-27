@@ -6,9 +6,12 @@
     "class": "delete-attestation",
     "chapter": "docs/protocol/04-record-envelope.md §4.8.4, docs/protocol/05-record-sync.md §5.12.3",
     "writer": "packages/sync-client/src/push/record-encrypt.ts",
-    "purpose": "memry-delete-attestation-v1",
+    "purpose": "memry-delete-attestation-v2",
+    "purposeV1": "memry-delete-attestation-v1",
+    "vaultId": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
     "fieldOrder": [
       "purpose",
+      "vaultId",
       "id",
       "type",
       "deletedAt",
@@ -19,7 +22,7 @@
     "signerDeviceId": "164d71d9ac7df04847bcd966ea29f814",
     "otherSeedHex": "5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c",
     "otherPublicKeyB64": "7WpHo52oabVEYVXkCy2T8ePwFnviZzK656PvnY46P9M=",
-    "notBound": "vaultId and signerDeviceId are not signed: the verifier picks the key by signerDeviceId, so a swapped id fails",
+    "notBound": "signerDeviceId is not signed: the verifier picks the key by signerDeviceId, so a swapped id fails",
     "caseCount": 4
   },
   "cases": [
@@ -35,8 +38,8 @@
           "dev-a": 7
         }
       },
-      "messageHex": "a5626964667461736b2d316474797065647461736b65636c6f636ba2656465762d6107656465762d620367707572706f7365781b6d656d72792d64656c6574652d6174746573746174696f6e2d76316964656c6574656441741a6553f100",
-      "signatureB64": "DYjJjmldDDORyYLY2wrT19w1I76WEgFOZ/HIgTwEFnsmHXf5fWVB0MDeJ8JVTAIZ9O7dha2egnnXjq0JYJ30DA=="
+      "messageHex": "a6626964667461736b2d316474797065647461736b65636c6f636ba2656465762d6107656465762d620367707572706f7365781b6d656d72792d64656c6574652d6174746573746174696f6e2d7632677661756c744964782461316232633364342d653566362d346137622d386339642d3065316632613362346335646964656c6574656441741a6553f100",
+      "signatureB64": "XSJbi+bmtS7dA6flSISFIsz1lNFsBUIfZTCUxiPI9rKEnt3i/XzYGTUsPCcEvE65ecDwWADQaKH9w3f1S4pQCA=="
     },
     {
       "name": "task delete, deletedAt in seconds, clock keys inserted a then b",
@@ -50,8 +53,8 @@
           "dev-b": 3
         }
       },
-      "messageHex": "a5626964667461736b2d316474797065647461736b65636c6f636ba2656465762d6107656465762d620367707572706f7365781b6d656d72792d64656c6574652d6174746573746174696f6e2d76316964656c6574656441741a6553f100",
-      "signatureB64": "DYjJjmldDDORyYLY2wrT19w1I76WEgFOZ/HIgTwEFnsmHXf5fWVB0MDeJ8JVTAIZ9O7dha2egnnXjq0JYJ30DA=="
+      "messageHex": "a6626964667461736b2d316474797065647461736b65636c6f636ba2656465762d6107656465762d620367707572706f7365781b6d656d72792d64656c6574652d6174746573746174696f6e2d7632677661756c744964782461316232633364342d653566362d346137622d386339642d3065316632613362346335646964656c6574656441741a6553f100",
+      "signatureB64": "XSJbi+bmtS7dA6flSISFIsz1lNFsBUIfZTCUxiPI9rKEnt3i/XzYGTUsPCcEvE65ecDwWADQaKH9w3f1S4pQCA=="
     },
     {
       "name": "note delete, deletedAt in milliseconds",
@@ -64,8 +67,8 @@
           "device-a": 3
         }
       },
-      "messageHex": "a5626964666e6f74652d316474797065646e6f746565636c6f636ba1686465766963652d610367707572706f7365781b6d656d72792d64656c6574652d6174746573746174696f6e2d76316964656c6574656441741b00000199c82cc000",
-      "signatureB64": "Cnlme6sCeshmks9a3BqVCYUT4wbBEiz8yi1P4p9sljEYgTlMaJc1DoX2o5sGiRUD9/VLL2ysEPMdOybWGDpjDA=="
+      "messageHex": "a6626964666e6f74652d316474797065646e6f746565636c6f636ba1686465766963652d610367707572706f7365781b6d656d72792d64656c6574652d6174746573746174696f6e2d7632677661756c744964782461316232633364342d653566362d346137622d386339642d3065316632613362346335646964656c6574656441741b00000199c82cc000",
+      "signatureB64": "t+HuUvdky5oKUlbmnLEvfKZFiS0PJt/I5vRR/HSDuQlgaJRcf+u1ojTmSvW2PxmToDVTRsQy+0BkmF2H69QOCw=="
     },
     {
       "name": "tag delete with a non-ASCII id and a clock over 2^32",
@@ -80,11 +83,62 @@
           "device-c": 23
         }
       },
-      "messageHex": "a5626964734772c3bcc39f6520e4b896e7958c20f09f8fb764747970656e7461675f646566696e6974696f6e65636c6f636ba3686465766963652d611b0000000100000000686465766963652d6201686465766963652d631767707572706f7365781b6d656d72792d64656c6574652d6174746573746174696f6e2d76316964656c6574656441741a6553f101",
-      "signatureB64": "uKhOx3OmmkIquNVtKzrQTH9HANY94jQuYSDeGcrZEaxHXmjk79uzD4tzkSbbYkAq2viaVpxh9BWJqyrVU+5gCA=="
+      "messageHex": "a6626964734772c3bcc39f6520e4b896e7958c20f09f8fb764747970656e7461675f646566696e6974696f6e65636c6f636ba3686465766963652d611b0000000100000000686465766963652d6201686465766963652d631767707572706f7365781b6d656d72792d64656c6574652d6174746573746174696f6e2d7632677661756c744964782461316232633364342d653566362d346137622d386339642d3065316632613362346335646964656c6574656441741a6553f101",
+      "signatureB64": "BToFQ392TuS7AYc1AqVskz2AfyiBrSgew+rCPrw8QcZNlRdix63lSs6yom3l+T7Zc2XQMvfSQ4SydXxhlZV5DQ=="
+    }
+  ],
+  "v1Cases": [
+    {
+      "name": "v1 task delete from a build before #5247",
+      "pins": "purpose memry-delete-attestation-v1 and no vaultId: verifiers in any vault accept it",
+      "claim": {
+        "id": "task-1",
+        "type": "task",
+        "deletedAt": 1700000000,
+        "clock": {
+          "dev-b": 3,
+          "dev-a": 7
+        }
+      },
+      "messageHex": "a5626964667461736b2d316474797065647461736b65636c6f636ba2656465762d6107656465762d620367707572706f7365781b6d656d72792d64656c6574652d6174746573746174696f6e2d76316964656c6574656441741a6553f100",
+      "signatureB64": "DYjJjmldDDORyYLY2wrT19w1I76WEgFOZ/HIgTwEFnsmHXf5fWVB0MDeJ8JVTAIZ9O7dha2egnnXjq0JYJ30DA=="
     }
   ],
   "mutations": [
+    {
+      "name": "the delete replayed into another vault (#5247)",
+      "claim": {
+        "id": "task-1",
+        "type": "task",
+        "deletedAt": 1700000000,
+        "clock": {
+          "dev-b": 3,
+          "dev-a": 7
+        }
+      },
+      "vaultId": "default",
+      "signerPublicKeyB64": "tTPYrZ/Pvd4LSBwbM03cPFNBL9YUVk5+Wv0CA2jTgsM=",
+      "of": "task delete, deletedAt in seconds, clock keys inserted b then a",
+      "signatureB64": "XSJbi+bmtS7dA6flSISFIsz1lNFsBUIfZTCUxiPI9rKEnt3i/XzYGTUsPCcEvE65ecDwWADQaKH9w3f1S4pQCA==",
+      "verifies": false
+    },
+    {
+      "name": "the v2 signature read as v1 (#5247)",
+      "claim": {
+        "id": "task-1",
+        "type": "task",
+        "deletedAt": 1700000000,
+        "clock": {
+          "dev-b": 3,
+          "dev-a": 7
+        }
+      },
+      "vaultId": null,
+      "signerPublicKeyB64": "tTPYrZ/Pvd4LSBwbM03cPFNBL9YUVk5+Wv0CA2jTgsM=",
+      "of": "task delete, deletedAt in seconds, clock keys inserted b then a",
+      "signatureB64": "XSJbi+bmtS7dA6flSISFIsz1lNFsBUIfZTCUxiPI9rKEnt3i/XzYGTUsPCcEvE65ecDwWADQaKH9w3f1S4pQCA==",
+      "verifies": false
+    },
     {
       "name": "the id is swapped",
       "claim": {
@@ -96,9 +150,10 @@
           "dev-a": 7
         }
       },
+      "vaultId": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
       "signerPublicKeyB64": "tTPYrZ/Pvd4LSBwbM03cPFNBL9YUVk5+Wv0CA2jTgsM=",
       "of": "task delete, deletedAt in seconds, clock keys inserted b then a",
-      "signatureB64": "DYjJjmldDDORyYLY2wrT19w1I76WEgFOZ/HIgTwEFnsmHXf5fWVB0MDeJ8JVTAIZ9O7dha2egnnXjq0JYJ30DA==",
+      "signatureB64": "XSJbi+bmtS7dA6flSISFIsz1lNFsBUIfZTCUxiPI9rKEnt3i/XzYGTUsPCcEvE65ecDwWADQaKH9w3f1S4pQCA==",
       "verifies": false
     },
     {
@@ -112,9 +167,10 @@
           "dev-a": 7
         }
       },
+      "vaultId": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
       "signerPublicKeyB64": "tTPYrZ/Pvd4LSBwbM03cPFNBL9YUVk5+Wv0CA2jTgsM=",
       "of": "task delete, deletedAt in seconds, clock keys inserted b then a",
-      "signatureB64": "DYjJjmldDDORyYLY2wrT19w1I76WEgFOZ/HIgTwEFnsmHXf5fWVB0MDeJ8JVTAIZ9O7dha2egnnXjq0JYJ30DA==",
+      "signatureB64": "XSJbi+bmtS7dA6flSISFIsz1lNFsBUIfZTCUxiPI9rKEnt3i/XzYGTUsPCcEvE65ecDwWADQaKH9w3f1S4pQCA==",
       "verifies": false
     },
     {
@@ -128,9 +184,10 @@
           "dev-a": 7
         }
       },
+      "vaultId": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
       "signerPublicKeyB64": "tTPYrZ/Pvd4LSBwbM03cPFNBL9YUVk5+Wv0CA2jTgsM=",
       "of": "task delete, deletedAt in seconds, clock keys inserted b then a",
-      "signatureB64": "DYjJjmldDDORyYLY2wrT19w1I76WEgFOZ/HIgTwEFnsmHXf5fWVB0MDeJ8JVTAIZ9O7dha2egnnXjq0JYJ30DA==",
+      "signatureB64": "XSJbi+bmtS7dA6flSISFIsz1lNFsBUIfZTCUxiPI9rKEnt3i/XzYGTUsPCcEvE65ecDwWADQaKH9w3f1S4pQCA==",
       "verifies": false
     },
     {
@@ -144,9 +201,10 @@
           "dev-a": 7
         }
       },
+      "vaultId": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
       "signerPublicKeyB64": "tTPYrZ/Pvd4LSBwbM03cPFNBL9YUVk5+Wv0CA2jTgsM=",
       "of": "task delete, deletedAt in seconds, clock keys inserted b then a",
-      "signatureB64": "DYjJjmldDDORyYLY2wrT19w1I76WEgFOZ/HIgTwEFnsmHXf5fWVB0MDeJ8JVTAIZ9O7dha2egnnXjq0JYJ30DA==",
+      "signatureB64": "XSJbi+bmtS7dA6flSISFIsz1lNFsBUIfZTCUxiPI9rKEnt3i/XzYGTUsPCcEvE65ecDwWADQaKH9w3f1S4pQCA==",
       "verifies": false
     },
     {
@@ -160,9 +218,10 @@
           "dev-a": 2147483648
         }
       },
+      "vaultId": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
       "signerPublicKeyB64": "tTPYrZ/Pvd4LSBwbM03cPFNBL9YUVk5+Wv0CA2jTgsM=",
       "of": "task delete, deletedAt in seconds, clock keys inserted b then a",
-      "signatureB64": "DYjJjmldDDORyYLY2wrT19w1I76WEgFOZ/HIgTwEFnsmHXf5fWVB0MDeJ8JVTAIZ9O7dha2egnnXjq0JYJ30DA==",
+      "signatureB64": "XSJbi+bmtS7dA6flSISFIsz1lNFsBUIfZTCUxiPI9rKEnt3i/XzYGTUsPCcEvE65ecDwWADQaKH9w3f1S4pQCA==",
       "verifies": false
     },
     {
@@ -177,9 +236,10 @@
           "x": 1
         }
       },
+      "vaultId": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
       "signerPublicKeyB64": "tTPYrZ/Pvd4LSBwbM03cPFNBL9YUVk5+Wv0CA2jTgsM=",
       "of": "task delete, deletedAt in seconds, clock keys inserted b then a",
-      "signatureB64": "DYjJjmldDDORyYLY2wrT19w1I76WEgFOZ/HIgTwEFnsmHXf5fWVB0MDeJ8JVTAIZ9O7dha2egnnXjq0JYJ30DA==",
+      "signatureB64": "XSJbi+bmtS7dA6flSISFIsz1lNFsBUIfZTCUxiPI9rKEnt3i/XzYGTUsPCcEvE65ecDwWADQaKH9w3f1S4pQCA==",
       "verifies": false
     },
     {
@@ -192,9 +252,10 @@
           "dev-a": 7
         }
       },
+      "vaultId": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
       "signerPublicKeyB64": "tTPYrZ/Pvd4LSBwbM03cPFNBL9YUVk5+Wv0CA2jTgsM=",
       "of": "task delete, deletedAt in seconds, clock keys inserted b then a",
-      "signatureB64": "DYjJjmldDDORyYLY2wrT19w1I76WEgFOZ/HIgTwEFnsmHXf5fWVB0MDeJ8JVTAIZ9O7dha2egnnXjq0JYJ30DA==",
+      "signatureB64": "XSJbi+bmtS7dA6flSISFIsz1lNFsBUIfZTCUxiPI9rKEnt3i/XzYGTUsPCcEvE65ecDwWADQaKH9w3f1S4pQCA==",
       "verifies": false
     },
     {
@@ -208,9 +269,10 @@
           "dev-a": 7
         }
       },
+      "vaultId": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
       "signerPublicKeyB64": "7WpHo52oabVEYVXkCy2T8ePwFnviZzK656PvnY46P9M=",
       "of": "task delete, deletedAt in seconds, clock keys inserted b then a",
-      "signatureB64": "DYjJjmldDDORyYLY2wrT19w1I76WEgFOZ/HIgTwEFnsmHXf5fWVB0MDeJ8JVTAIZ9O7dha2egnnXjq0JYJ30DA==",
+      "signatureB64": "XSJbi+bmtS7dA6flSISFIsz1lNFsBUIfZTCUxiPI9rKEnt3i/XzYGTUsPCcEvE65ecDwWADQaKH9w3f1S4pQCA==",
       "verifies": false
     }
   ],

@@ -19,7 +19,7 @@ const HUB_BLURBS: Record<AlternativeConfig['pageKey'], string> = {
   obsidianAlternative:
     'memrynote keeps the local Markdown vault, wiki-links, and backlinks Obsidian users already know, but ships tasks, a calendar, a daily journal, and an inbox as native features instead of community plugins. End-to-end encrypted sync is part of the product, not a separate paid add-on.',
   notionAlternative:
-    'Notion stores your pages on its servers, where staff can technically read them. memrynote keeps every note as a plain Markdown file on your device and encrypts sync with XChaCha20-Poly1305, so the server only ever holds ciphertext.',
+    'Notion stores your pages on its servers, where staff can technically read them. memrynote keeps every note as a plain Markdown file on your device and encrypts sync with XChaCha20-Poly1305, so the server only ever holds your notes as ciphertext.',
   noteplanAlternative:
     "NotePlan's daily-notes and task-backlink workflow is built around Apple platforms and leans on iCloud for sync. memrynote brings the same daily-notes flow to Windows and Linux too, with zero-knowledge encrypted sync that isn't tied to iCloud.",
   capacitiesAlternative:
@@ -47,7 +47,7 @@ const HUB_BLURBS: Record<AlternativeConfig['pageKey'], string> = {
   tanaAlternative:
     "Tana structures your workspace with supertags in a proprietary cloud graph that isn't end-to-end encrypted. memrynote stores each note as a portable Markdown file, encrypts sync so the server never reads your content, and ships tasks, a calendar, and a journal with no schema to design first.",
   heptabaseAlternative:
-    "Heptabase's infinite whiteboard is built for spatial thinking, but your cards live in a proprietary cloud format. memrynote trades the canvas for a complete daily workspace — Markdown notes, tasks, a calendar, and a journal — stored as files you own and synced with end-to-end encryption.",
+    "Heptabase's infinite whiteboard is built for spatial thinking, but your cards live in a proprietary cloud format. memrynote adds a canvas of live cards to a complete daily workspace — Markdown notes, tasks, a calendar, and a journal — stored as files you own and synced with end-to-end encryption.",
   standardNotesAlternative:
     'Standard Notes and memrynote both encrypt everything before it syncs and publish their source. memrynote keeps the working copy of each note as a plain Markdown file in your own folder, and adds task projects, a calendar, and a daily journal to the same encrypted vault.',
   notesnookAlternative:

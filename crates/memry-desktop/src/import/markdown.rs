@@ -60,7 +60,7 @@ pub fn parse_frontmatter(source: &str) -> Result<ParsedMarkdown, YamlError> {
 
 /// `Object.entries(data)` for whatever the frontmatter loaded as: a mapping's entries, an
 /// array's or a string's elements under their indexes, nothing for any other scalar.
-fn object_entries(data: &YamlValue) -> Vec<(String, YamlValue)> {
+pub(crate) fn object_entries(data: &YamlValue) -> Vec<(String, YamlValue)> {
     match data {
         YamlValue::Map(map) => map
             .iter()

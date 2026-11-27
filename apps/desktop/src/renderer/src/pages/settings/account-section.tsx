@@ -11,7 +11,7 @@ import {
   AlertDialogTitle
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { Switch } from '@/components/ui/switch'
 import { Check, ExternalLink, Lock, RefreshCw, Sparkles } from '@/lib/icons'
 import { cn } from '@/lib/utils'
@@ -813,7 +813,26 @@ export function AccountSettings() {
 
       <Dialog open={showLinkingQr} onOpenChange={setShowLinkingQr}>
         <DialogContent className="sm:max-w-[400px] rounded-xl">
-          <QrLinking onCancel={() => setShowLinkingQr(false)} />
+          {/* Without a plan nothing syncs, so a linked device would open an empty vault. */}
+          {isSyncLocked ? (
+            <div className="flex flex-col gap-1.5">
+              <DialogTitle className="font-heading text-xl font-semibold tracking-tight text-foreground">
+                {t('devices.linkNeedsPlan.title')}
+              </DialogTitle>
+              <DialogDescription className="text-sm text-muted-foreground">
+                {t('devices.linkNeedsPlan.description')}
+              </DialogDescription>
+              <SyncUpgradeCard
+                billingStatus={billing?.status}
+                isCheckoutStarting={isCheckoutStarting}
+                isBillingRefreshing={isBillingRefreshing}
+                onStartCheckout={() => void handleStartCheckout()}
+                onRefreshBilling={() => void handleRefreshBilling()}
+              />
+            </div>
+          ) : (
+            <QrLinking onCancel={() => setShowLinkingQr(false)} />
+          )}
         </DialogContent>
       </Dialog>
 

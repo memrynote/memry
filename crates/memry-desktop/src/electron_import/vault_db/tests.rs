@@ -5,45 +5,6 @@ use super::source::copy_sources;
 use super::tables::SourceDb;
 use super::*;
 
-/// The probe over a profile directory with no LevelDB store in it.
-fn no_electron(dir: &Path) -> ProfileLock {
-    use crate::electron_import::{AppNameCandidates, ElectronProfile, HostOs};
-    ProfileLock::probe(&ElectronProfile {
-        dir: dir.join("electron-profile"),
-        host: HostOs::current(),
-        pin: None,
-        app_names: AppNameCandidates(Vec::new()),
-        has_config: false,
-        has_secure_store: false,
-        has_local_state: false,
-        has_local_storage: false,
-        has_legacy_crdt_store: false,
-        has_custom_dictionary: false,
-        crdt_store_dirs: Vec::new(),
-        other_candidates: Vec::new(),
-    })
-    .unwrap()
-}
-
-fn input<'a>(
-    vault: &Path,
-    pair: &electron_db::ElectronPair,
-    lock: &'a ProfileLock,
-) -> VaultImportInput<'a> {
-    VaultImportInput {
-        electron_closed: lock,
-        vault_dir: vault.to_owned(),
-        vault_id: "vault-1".into(),
-        electron_data_db: pair.data.clone(),
-        electron_index_db: pair.index.clone(),
-        docs: Vec::new(),
-        extra_owed_docs: Vec::new(),
-        vault_key: None,
-        now_ms: 1_800_000_000_000,
-        progress: None,
-    }
-}
-
 /// Copies the pair the way a run does and reads `note_metadata.id` back from the copy.
 fn ids_through_the_copy(pair: &electron_db::ElectronPair, staging: &Path) -> Vec<String> {
     let sources = copy_sources(&pair.data, &pair.index, staging).unwrap();
@@ -65,11 +26,9 @@ fn a_fresh_electron_pair_passes_the_preflight() {
     let pair = electron_db::create_pair(&dir.path().join(".memry"));
     let staging = dir.path().join("staging");
     let sources = copy_sources(&pair.data, &pair.index, &staging).unwrap();
-    let lock = no_electron(dir.path());
-    let preflight = preflight::run(&sources, &input(dir.path(), &pair, &lock)).unwrap();
+    let preflight = preflight::run(&sources).unwrap();
     // Every mapped table and nothing else: the fts5 and vec0 shadow tables are recognised.
     assert_eq!(preflight.tables.len(), tables::TABLE_MAP.len());
-    assert!(preflight.dropped_keys.is_empty());
 }
 
 /// Ids are read as the exact bytes Electron stored, uppercase, `_`, `-`, NUL and combining
@@ -170,6 +129,173 @@ fn check_1_fails_when_a_table_wrote_fewer_rows_than_it_read() {
     ));
     report.tables.get_mut("data.db/tasks").unwrap().dropped = 1;
     checks::row_counts(&report).unwrap();
+}
+
+/// A record importer that skipped `merge_into` leaves a stored payload the merge still changes,
+/// and `sync_unknown_fields` fails check 1 instead of counting the row as merged.
+#[test]
+fn a_record_written_without_its_unknown_fields_merge_fails_check_1() {
+    let dir = tempfile::tempdir().unwrap();
+    let pair = electron_db::create_pair(&dir.path().join(".memry"));
+    electron_db::seed(
+        &rusqlite::Connection::open(&pair.data).unwrap(),
+        "sync_unknown_fields",
+        &[
+            ("type", Value::Text("folder_config".into())),
+            ("item_id", Value::Text("f".into())),
+            ("fields", Value::Text(r#"{"x":1}"#.into())),
+            ("nested_fields", Value::Null),
+        ],
+    );
+    let sources = copy_sources(&pair.data, &pair.index, &dir.path().join("staging")).unwrap();
+    let staged = dir.path().join("staged");
+    std::fs::create_dir_all(&staged).unwrap();
+    let mut writer = memry_core::storage::import::ImportWriter::create(&staged).unwrap();
+    writer
+        .put_records(
+            &[memry_core::storage::import::ImportRecord {
+                item_type: "folder_config",
+                item_id: "f".into(),
+                payload: r#"{"icon":null}"#.into(),
+                synced_at: None,
+            }],
+            7,
+        )
+        .unwrap();
+    let mut ctx = TableCtx {
+        source: sources.conn(SourceDb::Data),
+        index: sources.conn(SourceDb::Index),
+        vault_dir: dir.path(),
+        vault_id: "vault-1",
+        writer: &mut writer,
+        now_ms: 7,
+        electron_device_id: None,
+        docs: &[],
+    };
+    assert!(matches!(
+        tables::unknown_fields::import(&mut ctx),
+        Err(ImportError::CheckFailed { check: 1, .. })
+    ));
+}
+
+/// Electron's push sends the body only for a queued `create` (`readNoteFileFields`,
+/// `journal-handler.ts:276`). A clocked row Electron never marked synced (a day pushed from this
+/// device, an offline edit) is pushed as an update with `content: null`, unless `sync_queue`
+/// still holds its `create`. The importer runs directly, so the rule is seen on its own.
+#[test]
+fn only_a_queued_create_carries_the_body() {
+    // Electron f5fd229's journal `buildPushPayload` with operation `create` over this day file.
+    const DAY_CREATE: &str = "{\"date\":\"2026-01-05\",\"content\":\"Today.\",\"tags\":[\"daily\"],\"properties\":{\"mood\":\"good\",\"aliases\":\"x\"},\"aliases\":[],\"clock\":{\"dev-A\":5},\"createdAt\":\"2026-01-05T08:00:00.000Z\",\"modifiedAt\":\"2026-01-05T09:00:00.000Z\"}";
+    let dir = tempfile::tempdir().unwrap();
+    let vault = dir.path().join("vault");
+    let pair = electron_db::create_pair(&vault.join(".memry"));
+    let data = rusqlite::Connection::open(&pair.data).unwrap();
+    for (id, path, journal_date, queued) in [
+        (
+            "j2026-01-05",
+            "journal/2026-01-05.md",
+            Some("2026-01-05"),
+            true,
+        ),
+        (
+            "j2026-01-06",
+            "journal/2026-01-06.md",
+            Some("2026-01-06"),
+            false,
+        ),
+        ("Queued-note1", "Queued.md", None, true),
+        ("Edited-note1", "Edited.md", None, false),
+    ] {
+        let (created, modified) = match journal_date {
+            Some(_) => ("2026-01-05T08:00:00.000Z", "2026-01-05T09:00:00.000Z"),
+            None => ("2026-01-02T03:04:05.000Z", "2026-01-03T03:04:05.000Z"),
+        };
+        electron_db::seed(
+            &data,
+            "note_metadata",
+            &[
+                ("id", Value::Text(id.into())),
+                ("path", Value::Text(path.into())),
+                ("title", Value::Text(id.into())),
+                (
+                    "journal_date",
+                    journal_date.map_or(Value::Null, |d| Value::Text(d.into())),
+                ),
+                ("clock", Value::Text(r#"{"dev-A":5}"#.into())),
+                ("synced_at", Value::Null),
+                ("created_at", Value::Text(created.into())),
+                ("modified_at", Value::Text(modified.into())),
+            ],
+        );
+        let item_type = if journal_date.is_some() {
+            "journal"
+        } else {
+            "note"
+        };
+        // An `update` row queued for every item; only a `create` sends the body.
+        for operation in ["update", "create"].iter().take(1 + usize::from(queued)) {
+            electron_db::seed(
+                &data,
+                "sync_queue",
+                &[
+                    ("type", Value::Text(item_type.into())),
+                    ("item_id", Value::Text(id.into())),
+                    ("operation", Value::Text((*operation).into())),
+                    ("payload", Value::Text("{}".into())),
+                ],
+            );
+        }
+        let file = vault.join(path);
+        std::fs::create_dir_all(file.parent().unwrap()).unwrap();
+        let text = match journal_date {
+            Some(_) => "---\ntags: daily\nmood: good\naliases: x\n---\n\nToday.\n\n",
+            None => "Body\n",
+        };
+        std::fs::write(file, text).unwrap();
+    }
+    drop(data);
+    let sources = copy_sources(&pair.data, &pair.index, &dir.path().join("staging")).unwrap();
+    let staged = dir.path().join("staged");
+    std::fs::create_dir_all(&staged).unwrap();
+    let mut writer = memry_core::storage::import::ImportWriter::create(&staged).unwrap();
+    let Some(tables::Importer::Ready(import)) = tables::TABLE_MAP
+        .iter()
+        .find(|m| m.table == "note_metadata")
+        .and_then(|m| m.class.importer())
+    else {
+        panic!("note_metadata has no importer");
+    };
+    let mut ctx = TableCtx {
+        source: sources.conn(SourceDb::Data),
+        index: sources.conn(SourceDb::Index),
+        vault_dir: &vault,
+        vault_id: "vault-1",
+        writer: &mut writer,
+        now_ms: 7,
+        electron_device_id: None,
+        docs: &[],
+    };
+    import(&mut ctx).unwrap();
+    let payload = |item_type: &str, id: &str| -> serde_json::Value {
+        let text = writer.record_payload(item_type, id).unwrap().unwrap();
+        serde_json::from_str(&text).unwrap()
+    };
+    assert_eq!(
+        writer
+            .record_payload("journal", "j2026-01-05")
+            .unwrap()
+            .as_deref(),
+        Some(DAY_CREATE)
+    );
+    assert_eq!(
+        payload("journal", "j2026-01-06")["content"],
+        serde_json::Value::Null
+    );
+    assert_eq!(payload("note", "Queued-note1")["content"], "Body\n");
+    assert_eq!(
+        payload("note", "Edited-note1")["content"],
+        serde_json::Value::Null
+    );
 }
 
 /// The clock cap is the size guard: a well-formed clock over it is refused, one under it reads.

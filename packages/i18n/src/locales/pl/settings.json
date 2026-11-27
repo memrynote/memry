@@ -1232,6 +1232,10 @@
     "loadingAria": "Ładowanie urządzeń",
     "none": "Żadne urządzenia nie są jeszcze połączone",
     "linkNew": "Połącz nowe urządzenie",
+    "linkNeedsPlan": {
+      "title": "Połączenie wymaga planu synchronizacji",
+      "description": "Połączone urządzenie widzi Twoje notatki tylko wtedy, gdy synchronizacja jest włączona. Bez planu zaloguj się na nim frazą odzyskiwania, a zachowa ono własny sejf."
+    },
     "thisDevice": "To urządzenie",
     "lastSeen": "Ostatnia aktywność {time} temu",
     "linked": "Połączono {time} temu",
@@ -1398,6 +1402,7 @@
       "selectModel": "Wybierz model",
       "apiKey": "Klucz API",
       "apiKeyDescription": "Przechowywany lokalnie, wysyłany tylko do dostawcy",
+      "apiKeyKeychainDescription": "Przechowywany w pęku kluczy systemu, wysyłany tylko do dostawcy",
       "apiKeyPlaceholder": "Wprowadź klucz API {provider}",
       "ollamaUrl": "Adres URL Ollama",
       "ollamaUrlDescription": "Adres lokalnego serwera",

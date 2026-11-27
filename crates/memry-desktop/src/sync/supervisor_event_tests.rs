@@ -87,6 +87,26 @@ async fn the_drivers_feed_tells_synced_corrupt_recovered_and_quarantined_records
     );
 }
 
+/// The core's task-activity announcement, told after its rows committed, reaches the shell.
+#[tokio::test(start_paused = true)]
+async fn the_drivers_task_activity_announcement_reaches_the_shell() {
+    let rig = Rig::new();
+    let supervisor = rig.start().await;
+    let (result, ()) = tokio::join!(supervisor.sync_now(), settle());
+    assert!(result.success, "{result:?}");
+    let observers = lock(&rig.backend.driver.observers).clone();
+
+    observers[0].task_activity_created(&["t1".to_owned(), "t2".to_owned()]);
+
+    assert_eq!(
+        *lock(&rig.sync_events),
+        [SyncEvent::TaskActivityCreated(vec![
+            "t1".into(),
+            "t2".into()
+        ])]
+    );
+}
+
 /// One page is one event, whatever its size: K records reach the renderer as one broadcast.
 /// A record applied twice in one page is told once, with its last operation. Notes and
 /// journals are the vault tier's to tell (`shell/note_events.rs`, `journal_events.rs`).
@@ -303,6 +323,61 @@ async fn a_fresh_vault_runs_the_first_sync_with_its_progress_then_passes() {
     );
 }
 
+/// The first sync holds the vault's first-sync flag while it runs, and lets go when it ends,
+/// a failed one too: the note index defers its search reindex only meanwhile (#5409).
+#[tokio::test(start_paused = true)]
+async fn a_first_sync_holds_the_first_sync_flag_only_while_it_runs() {
+    let rig = Rig::new();
+    let driver = &rig.backend.driver;
+    driver.fresh.store(true, Ordering::SeqCst);
+    *lock(&driver.first_sync_error) = Some(SyncError::Api {
+        source: ApiError::Status {
+            status: 503,
+            code: None,
+            message: "unavailable".into(),
+        },
+    });
+    let supervisor = rig.start().await;
+    assert_eq!(*lock(&driver.held_in_first_sync), [true]);
+    assert!(
+        !driver.first_sync_running.is_running(),
+        "a failed first sync lets go"
+    );
+
+    let (_, ()) = tokio::join!(supervisor.sync_now(), settle());
+    assert_eq!(*lock(&driver.held_in_first_sync), [true, true]);
+    assert!(
+        !driver.fresh.load(Ordering::SeqCst),
+        "the second first sync finished"
+    );
+    assert!(
+        !driver.first_sync_running.is_running(),
+        "a finished first sync lets go"
+    );
+}
+
+/// A pass whose body step stopped at its request budget is followed by the next pass at once,
+/// not at the 60 s tick, until a pass leaves no body due (#5235).
+#[tokio::test(start_paused = true)]
+async fn passes_keep_coming_while_the_body_budget_leaves_bodies_due() {
+    let rig = Rig::new();
+    rig.backend.driver.bodies_left.store(2, Ordering::SeqCst);
+    let _supervisor = rig.start().await;
+    settle().await;
+    settle().await;
+    assert_eq!(
+        rig.passes(),
+        3,
+        "the start's pass, then one per budget it spent"
+    );
+    settle().await;
+    assert_eq!(
+        rig.passes(),
+        3,
+        "a pass that left nothing due waits for its timer"
+    );
+}
+
 /// A first sync that fails is shown and backed off like a failed pass; the next pass runs the
 /// first sync again, which resumes from what it wrote.
 #[tokio::test(start_paused = true)]
@@ -425,6 +500,7 @@ fn a_first_sync_answers_its_last_pass_with_every_push() {
         push_ms,
         pull_error: None,
         push_error: None,
+        bodies_left: false,
     };
     let folded = super::super::backend::last_with_every_push(vec![
         pass(3, 20, SyncState::Applying),

@@ -9,7 +9,7 @@
 import { getDatabase, getRawIndexDatabase } from '../database'
 import { nearestVoiceItems } from '../database/voice-vectors'
 import { getSetting } from '@main/database/queries/settings'
-import { generateEmbedding, initEmbeddingModel, isModelLoaded } from '../lib/embeddings'
+import { generateQueryEmbedding, initEmbeddingModel, isModelLoaded } from '../lib/embeddings'
 import { buildQueryEmbeddingInput } from '../lib/embedding-input'
 import {
   EMBEDDING_AUDIO_QUERY_SIMILARITY_FLOOR,
@@ -27,6 +27,27 @@ const AI_SETTINGS_KEY = 'ai.enabled'
 const MIN_QUERY_LENGTH = 3
 /** Neighbours read before the floor is applied. */
 const NEIGHBOURS = 30
+/**
+ * Longest a search waits for its query vector before it answers from FTS
+ * alone. The query waits behind the note the background pass is embedding, and
+ * a busy machine can hold that pass back for as long as it stays busy.
+ */
+const QUERY_EMBEDDING_BUDGET_MS = 2_000
+
+async function queryVectorWithinBudget(query: string): Promise<Float32Array | null> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const late = new Promise<null>((resolve) => {
+    timer = setTimeout(() => {
+      logger.info('Search answered without meaning: the query vector was late')
+      resolve(null)
+    }, QUERY_EMBEDDING_BUDGET_MS)
+  })
+  try {
+    return await Promise.race([generateQueryEmbedding(buildQueryEmbeddingInput(query)), late])
+  } finally {
+    clearTimeout(timer)
+  }
+}
 
 function isAIEnabled(): boolean {
   try {
@@ -45,7 +66,8 @@ function hasOperators(text: string): boolean {
  * Notes, voice memos, and notes whose images' content is near `text`, best first. Empty when AI is off, the
  * query is too short or uses operators, or the model is not loaded yet: a
  * search never waits seconds on a model load, so the first one after launch
- * starts the load and answers from FTS alone.
+ * starts the load and answers from FTS alone. The same holds for a query
+ * vector that is late (QUERY_EMBEDDING_BUDGET_MS).
  */
 export async function semanticNoteHits(text: string): Promise<SemanticHit[]> {
   const query = text.trim()
@@ -59,7 +81,7 @@ export async function semanticNoteHits(text: string): Promise<SemanticHit[]> {
   }
 
   try {
-    const vector = await generateEmbedding(buildQueryEmbeddingInput(query))
+    const vector = await queryVectorWithinBudget(query)
     if (!vector) return []
     const rawDb = getRawIndexDatabase()
     const nearest = (table: 'vec_notes' | 'vec_note_chunks', idColumn: string) =>
@@ -87,9 +109,10 @@ export async function semanticNoteHits(text: string): Promise<SemanticHit[]> {
     }
     if (isImageEmbeddingEnabled()) {
       // An image answers for the note that owns it: the image itself when filed,
-      // else the note that embeds it. Its floor is higher (text-to-image cosines
-      // run lower and overlap more), and the hit is shifted down by the gap so
-      // the merge scores both kinds of hit by the same distance above their floor.
+      // else the note that embeds it. It has its own floor (text-to-image cosines
+      // run lower and overlap more), and the hit is shifted by the gap between
+      // the floors so the merge scores both kinds of hit by their distance above
+      // their own floor.
       const shift = EMBEDDING_IMAGE_QUERY_SIMILARITY_FLOOR - EMBEDDING_QUERY_SIMILARITY_FLOOR
       try {
         for (const hit of nearestImageVectors(rawDb, vector, NEIGHBOURS)) {
@@ -106,9 +129,9 @@ export async function semanticNoteHits(text: string): Promise<SemanticHit[]> {
       .map(([id, cosine]) => ({ id, cosine }))
       .toSorted((a, b) => b.cosine - a.cosine)
       .slice(0, NEIGHBOURS)
-    // Memos answer for themselves. An audio-embedded memo has the stricter audio
-    // floor, shifted down by the gap like images so the merge scores every kind
-    // of hit by its distance above its own floor.
+    // Memos answer for themselves. An audio-embedded memo has the audio floor,
+    // shifted by the gap like images so the merge scores every kind of hit by
+    // its distance above its own floor.
     const audioShift = EMBEDDING_AUDIO_QUERY_SIMILARITY_FLOOR - EMBEDDING_QUERY_SIMILARITY_FLOOR
     const voice: SemanticHit[] = []
     try {

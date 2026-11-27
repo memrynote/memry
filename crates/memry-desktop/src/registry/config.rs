@@ -6,8 +6,9 @@
 //! an unknown key, or an unknown field inside a known entry, round-trips untouched.
 //!
 //! Every write is whole-file and atomic (temp file in the same directory, fsync, rename,
-//! fsync of the directory) and goes through [`AppConfig::update`] under one mutex, so writers
-//! never interleave. The in-memory copy changes only after the rename succeeded: a failed
+//! fsync of the directory) and goes through [`AppConfig::update`] under one mutex and an
+//! advisory file lock ([`super::config_lock`]), so writers of this and other processes never
+//! interleave. The in-memory copy changes only after the rename succeeded: a failed
 //! write is an error the caller sees, never a cache that disagrees with the disk.
 
 use std::path::{Path, PathBuf};
@@ -125,6 +126,11 @@ impl AppConfig {
         if let Some(message) = &state.unreadable {
             return Err(refuse(message.clone()).into());
         }
+        // Across processes too: the command line writes this file beside the app.
+        let _held = super::config_lock::hold(&self.path).map_err(|error| ConfigError::Write {
+            path: error.path.display().to_string(),
+            message: error.message,
+        })?;
         let current = match read_file(&self.path) {
             Ok(map) => map,
             Err(Unusable::NotAnObject) => {

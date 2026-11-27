@@ -59,6 +59,7 @@ fn request(method: Method, url: &str) -> DavRequest {
         depth: None,
         body: Some("<x/>".to_owned()),
         follow: true,
+        headers: Vec::new(),
     }
 }
 

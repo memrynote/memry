@@ -1,4 +1,7 @@
 {
+  "wikiLink": {
+    "openFailed": "Nije moguće otvoriti ovu poveznicu"
+  },
   "portalBlock": {
     "copyFailed": "Nije moguće kopirati portal",
     "hiddenCount": "Skriveno: {count}",

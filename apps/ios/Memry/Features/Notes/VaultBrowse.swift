@@ -108,6 +108,8 @@ protocol NotesReading: Sendable {
     /// filename. Four answers, because a remote image is ordinary content and
     /// an ambiguous name is refused rather than guessed.
     func attachmentForBlock(id: String, url: String) async throws -> BlockAttachment
+    /// A binary note's own file (#5668), or `nil` for a note with a body.
+    func file(id: String) async throws -> NoteFile?
     /// Desktop's sidebar bookmarks that resolve to something this vault
     /// holds, in the user's order. Read only: the phone does not write them.
     func bookmarks() async throws -> [BookmarkEntry]
@@ -185,6 +187,11 @@ struct CoreNotesReader: NotesReading {
     func attachments(id: String) async throws -> [CachedAttachment] {
         let vault = vault
         return try await executor.run { try vault.notes().attachments(id: id) }
+    }
+
+    func file(id: String) async throws -> NoteFile? {
+        let vault = vault
+        return try await executor.run { try vault.notes().file(id: id) }
     }
 
     func comments(id: String) async throws -> [ReviewComment] {

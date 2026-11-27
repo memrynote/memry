@@ -1,4 +1,4 @@
-//! Readwise's device-local state in `data.db` (migration 0038): the link from a Readwise book
+//! Readwise's device-local state in `data.db` (migration 0039): the link from a Readwise book
 //! or Reader document to its note (`links-repository.ts`), and the run state desktop kept as
 //! `readwise.<name>` settings (`sync-state.ts`). Neither syncs: a note's `readwise_url` is the
 //! identity that travels, and the links are rebuilt from it.
@@ -6,6 +6,7 @@
 use rusqlite::{Connection, OptionalExtension, Row, params};
 
 use crate::api::errors::StorageError;
+use crate::storage::nested_tx;
 
 fn failed(error: rusqlite::Error) -> StorageError {
     StorageError::Failed {
@@ -188,7 +189,7 @@ pub fn upsert_link(
     input: &UpsertLink<'_>,
     now_ms: i64,
 ) -> Result<Link, StorageError> {
-    let tx = conn.transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let link = upsert_in(&tx, input, now_ms)?;
     tx.commit().map_err(failed)?;
     Ok(link)
@@ -314,6 +315,18 @@ pub fn set_run_state(
     Ok(())
 }
 
+/// `clearRunState`: every run-state key and the highlight index, in one transaction. The
+/// table holds only the keys desktop clears (`sync-state.ts`), so the whole table goes; the
+/// links stay (D9).
+pub fn clear_run_state(conn: &mut Connection) -> Result<(), StorageError> {
+    let tx = nested_tx::begin(conn).map_err(failed)?;
+    tx.execute("DELETE FROM readwise_run_state", [])
+        .map_err(failed)?;
+    tx.execute("DELETE FROM readwise_highlights", [])
+        .map_err(failed)?;
+    tx.commit().map_err(failed)
+}
+
 /// The Readwise item a `readwise_url` names (D4).
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ReadwiseItem {
@@ -360,7 +373,7 @@ pub fn rebuild_links(
     now_ms: i64,
 ) -> Result<usize, StorageError> {
     urls.sort_by(|a, b| a.0.cmp(&b.0));
-    let tx = conn.transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let mut seen = std::collections::HashSet::new();
     let mut linked = 0;
     for (note_id, url) in &urls {

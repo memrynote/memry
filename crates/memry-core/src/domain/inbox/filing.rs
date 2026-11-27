@@ -383,10 +383,9 @@ pub fn ensure_folder(
 }
 
 /// Item tags + `inbox`, deduplicated by tag identity (`mergedTags`).
-pub fn merged_tags(item: &InboxItem, extra: &[String]) -> Vec<String> {
+pub fn merged_tags(item_tags: &[String], extra: &[String]) -> Vec<String> {
     let mut tags: Vec<String> = Vec::new();
-    for tag in item
-        .tags
+    for tag in item_tags
         .iter()
         .chain(extra)
         .map(|t| t.trim().to_owned())
@@ -422,7 +421,7 @@ pub fn create_filed_note(
         .and_then(|m| m.get("properties"))
         .and_then(Value::as_object)
         .cloned();
-    let merged = merged_tags(item, tags);
+    let merged = merged_tags(&item.tags, tags);
     notes::create(
         conn,
         &NewNote {

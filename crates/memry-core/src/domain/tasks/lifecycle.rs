@@ -1,10 +1,11 @@
-//! Complete and uncomplete, as desktop's `completeTaskWithUndo` and
-//! `uncompleteTaskWithUndo` (`use-undoable-task-actions.ts`) write them.
+//! Complete and uncomplete, as desktop's `completeTaskWithUndo`
+//! (`use-undoable-task-actions.ts`) and `uncompleteTask` (`commands.ts`)
+//! write them.
 //!
 //! Completion is two fields, never one: `statusId` moves to the project's
-//! done status and `completedAt` is stamped, and uncompleting moves back to
-//! the default todo status with an explicit `null` (§13.4). Completing a
-//! parent completes the open tasks of its whole branch with it.
+//! done status and `completedAt` is stamped, and uncompleting moves a task in
+//! a done status to the default open status with an explicit `null` (§13.4).
+//! Completing a parent completes the open tasks of its whole branch with it.
 //!
 //! Completing a **repeating** task (spec 004 D3) closes this occurrence —
 //! `repeatConfig` becomes `null` (desktop also clears the local-only
@@ -26,7 +27,7 @@ use super::batch::{Batch, TaskWrite};
 use super::create::{copied, seeded};
 use super::model::{
     ProjectStatuses, StatusKind, StoredTask, descendant_ids, load_live, new_task_id, next_position,
-    status_kind,
+    status_by_id, status_kind,
 };
 
 /// The fields the next occurrence copies from the one completed. Desktop
@@ -89,6 +90,48 @@ pub fn complete(
     device_id: &str,
     now_ms: i64,
 ) -> Result<Completion, StorageError> {
+    complete_with(
+        conn,
+        task_id,
+        local_now,
+        &Completing::default(),
+        device_id,
+        now_ms,
+    )
+}
+
+/// How [`complete_with`] completes. The default is [`complete`]'s: open subtasks close with
+/// the task, a repeating task rolls, and `completedAt` is `now_ms`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Completing {
+    /// Close the task's open subtasks too. Desktop's `tasks:complete` does not.
+    pub subtasks: bool,
+    /// Roll a repeating task to its next occurrence. Off is desktop's `recordOnly`: a
+    /// completion recorded from elsewhere closes the task and leaves its series alone.
+    pub roll: bool,
+    /// The `completedAt` to stamp, an ISO instant; `None` is `now_ms`.
+    pub completed_at: Option<String>,
+}
+
+impl Default for Completing {
+    fn default() -> Self {
+        Self {
+            subtasks: true,
+            roll: true,
+            completed_at: None,
+        }
+    }
+}
+
+/// [`complete`] as `how` says.
+pub fn complete_with(
+    conn: &Connection,
+    task_id: &str,
+    local_now: LocalDateTime,
+    how: &Completing,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<Completion, StorageError> {
     let mut batch = Batch::open(conn, device_id, now_ms)?;
     let task = load_live(batch.conn(), task_id)?;
     let statuses = ProjectStatuses::load(batch.conn(), task.project_id())?;
@@ -99,9 +142,12 @@ pub fn complete(
         });
     }
 
-    let series = series_of(&task);
+    let series = if how.roll { series_of(&task) } else { None };
 
-    let at = json!(iso(now_ms)?);
+    let at = match &how.completed_at {
+        Some(at) => json!(at),
+        None => json!(iso(now_ms)?),
+    };
     let done = done_status(&task, &statuses);
     let mut changes = vec![("statusId", done), ("completedAt", at.clone())];
     if series.is_some() {
@@ -109,7 +155,12 @@ pub fn complete(
     }
     batch.edit(task_id, changes)?;
 
-    for subtask_id in descendant_ids(batch.conn(), task_id)? {
+    let subtasks = if how.subtasks {
+        descendant_ids(batch.conn(), task_id)?
+    } else {
+        Vec::new()
+    };
+    for subtask_id in subtasks {
         let subtask = load_live(batch.conn(), &subtask_id)?;
         if subtask.is_completed() {
             continue;
@@ -163,7 +214,7 @@ pub(super) fn spawn_next(
     let due_date = next_due.key();
     let mut fields = copied(task, &OCCURRENCE_FIELDS);
     let status = statuses
-        .default_todo()
+        .default_open()
         .map(|status| json!(status.id))
         .unwrap_or_else(|| task.value("statusId"));
     if !status.is_null() {
@@ -190,9 +241,9 @@ pub(super) fn spawn_next(
     Ok(Some(NextOccurrence { id, due_date }))
 }
 
-/// Reopens a task (`uncompleteTaskWithUndo`): the project's default todo
-/// status (the current one when the project has none) and an explicit `null`
-/// `completedAt`. Subtasks are not touched, as on desktop.
+/// Reopens a task (`uncompleteTask`, `commands.ts:501-529`): an explicit
+/// `null` `completedAt` and, when the task sits in a done status, its
+/// project's default open status. Subtasks are not touched, as on desktop.
 pub fn uncomplete(
     conn: &Connection,
     task_id: &str,
@@ -201,7 +252,17 @@ pub fn uncomplete(
 ) -> Result<TaskWrite, StorageError> {
     let mut batch = Batch::open(conn, device_id, now_ms)?;
     let task = load_live(batch.conn(), task_id)?;
-    reopen_in(&mut batch, &task)?;
+    let mut changes = vec![("completedAt", Value::Null)];
+    let in_done = match task.status_id() {
+        Some(id) => status_by_id(batch.conn(), id)?.is_some_and(|status| status.is_done),
+        None => false,
+    };
+    if in_done
+        && let Some(open) = ProjectStatuses::load(batch.conn(), task.project_id())?.default_open()
+    {
+        changes.insert(0, ("statusId", json!(open.id)));
+    }
+    batch.edit(task_id, changes)?;
     batch.commit()
 }
 
@@ -233,7 +294,8 @@ pub(super) fn close_in(batch: &mut Batch<'_>, task: &StoredTask) -> Result<bool,
     batch.edit(&task.id, vec![("statusId", done), ("completedAt", at)])
 }
 
-/// Reopens `task` into its project's default todo status.
+/// Reopens `task` into its project's default todo status, as the renderer's
+/// bulk bar and subtask menu do (`getDefaultTodoStatus`).
 pub(super) fn reopen_in(batch: &mut Batch<'_>, task: &StoredTask) -> Result<bool, StorageError> {
     let statuses = ProjectStatuses::load(batch.conn(), task.project_id())?;
     let todo = statuses

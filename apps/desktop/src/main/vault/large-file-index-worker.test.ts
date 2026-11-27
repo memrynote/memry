@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { createHash } from 'crypto'
 import { mkdtemp, rm, writeFile } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
@@ -79,6 +80,27 @@ describe('large-file index worker', () => {
         total: 2,
         limited: false
       })
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+
+  it("posts a hash job's sha256 back to the bridge, and null for a missing file", async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'memry-large-file-worker-'))
+    const path = join(dir, 'p.png')
+    await writeFile(path, 'image bytes')
+
+    try {
+      await runWorker({ kind: 'hash', absolutePath: path })
+      await vi.waitFor(() => expect(mocks.posted.at(-1)?.type).toBe('hash-done'))
+      expect(mocks.posted.at(-1)).toEqual({
+        type: 'hash-done',
+        sha256: createHash('sha256').update('image bytes').digest('hex')
+      })
+
+      await runWorker({ kind: 'hash', absolutePath: join(dir, 'gone.png') })
+      await vi.waitFor(() => expect(mocks.posted.at(-1)?.type).toBe('hash-done'))
+      expect(mocks.posted.at(-1)).toEqual({ type: 'hash-done', sha256: null })
     } finally {
       await rm(dir, { recursive: true, force: true })
     }

@@ -7,7 +7,7 @@
 
 use std::collections::BTreeSet;
 
-use super::place::PLACE_TRIES;
+use super::place::PARKED;
 use super::{Pass, WriteBack};
 use crate::vault::trash::move_to_trash;
 
@@ -15,7 +15,8 @@ const SCOPE: &str = "vault_writeback";
 
 /// Moves the files of deleted notes to the trash, those owed a move only when the open's
 /// crossings left the file theirs (`theirs`), marks the rows an older build stamped whose body
-/// is not ahead of them, then schedules a pass for every note behind its body. The consumer
+/// is not ahead of them, then schedules a pass for every note behind its body or whose file
+/// owes its record's aliases. The consumer
 /// calls it once the open walk ended; a stop of the consumer ends the trashing between files
 /// (`stopped`).
 pub(crate) fn reconcile(
@@ -53,6 +54,20 @@ pub(crate) fn reconcile(
              open: {error}"
         ),
     }
+    // A file that owes its record's aliases: a quit before its pass, or a pass that kept the
+    // file (`owed`, #5828).
+    match pass.vault.note_files().owed_file_aliases() {
+        Ok(notes) => {
+            for note_id in &notes {
+                writeback.schedule(note_id);
+            }
+        }
+        Err(error) => tracing::error!(
+            scope = SCOPE,
+            "the files owing their records' aliases could not be listed, so they wait for the \
+             next open: {error}"
+        ),
+    }
     // A record pulled with no file written for it: a crash between the pull's commit and its
     // pass, or a vault synced by a build that wrote none (#3534 L5b).
     match pass.vault.note_files().unfiled_bodies() {
@@ -74,7 +89,7 @@ pub(crate) fn reconcile(
         ),
     }
     // A pulled place or frontmatter a quit left before its pass (`place`, #5309).
-    match pass.vault.note_files().pulled_notes(PLACE_TRIES) {
+    match pass.vault.note_files().pulled_notes(PARKED) {
         Ok(notes) => {
             if !notes.is_empty() {
                 tracing::info!(

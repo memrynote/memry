@@ -15,8 +15,6 @@
  * moving the portal rebuilds the window, handle included, and a removed handle
  * never delivers the `dragend` BlockNote clears its drag state on.
  *
- * Option-drops pass through: `use-portal-block-drop` claims those.
- *
  * @module note/content-area/portal/portal-window-drag-out
  */
 
@@ -53,7 +51,7 @@ export function attachPortalWindowDragOut(
   }
 
   const onDrop = (event: DragEvent): void => {
-    if (!dragging || event.altKey) return
+    if (!dragging) return
     const closest = closestEditorAt(frame.ownerDocument, event)
     if (!closest || closest.distance > EDITOR_DROP_REACH) return
     if (closest.element.closest('.portal-window') === frame) return

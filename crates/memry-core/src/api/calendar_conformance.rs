@@ -212,6 +212,7 @@ fn input(query: &Value, timezone: &str) -> RangeInput {
         start_at: query["startAt"].as_str().unwrap_or_default().to_owned(),
         end_at: query["endAt"].as_str().unwrap_or_default().to_owned(),
         include_unselected_sources: query["includeUnselectedSources"].as_bool().unwrap_or(false),
+        include_completed_tasks: query["includeCompletedTasks"].as_bool().unwrap_or(false),
         include_external: true,
         external_providers: None,
         enabled_property_names: query["enabledPropertyNames"]
@@ -399,6 +400,7 @@ fn writes_section(section: &Value) -> Result<Value, StorageError> {
                 is_all_day: input.get("isAllDay").and_then(Value::as_bool),
                 target_calendar_id: text_patch(input, "targetCalendarId"),
                 color: text_patch(input, "color"),
+                ..EventPatch::default()
             };
             write::update_event(conn, &scratch_id, &patch, &device, now)?;
             updates.push(normalise(

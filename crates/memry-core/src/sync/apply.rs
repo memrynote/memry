@@ -43,13 +43,16 @@
 //! saw ([`super::delete_keep`]). The one ticked re-push is §6.11.4's heal of a
 //! versioned key the remote is behind on ([`super::versioned_apply`]), which
 //! §6.11.4 bounds so two clients never ping-pong.
+
 use rusqlite::Connection;
 
 use crate::api::errors::StorageError;
 use crate::crypto::agent_envelope::AtRestKey;
+use crate::domain::{attachment_refs, notes, settings};
 use crate::storage::repositories::sync_items::{ApplyOutcome, InboundRecord};
 
 use super::clock::VectorClock;
+use super::delete_keep::VaultFiles;
 use super::driver::observer::AppliedFeed;
 use super::{refused_items, store};
 
@@ -59,7 +62,7 @@ mod tombstone;
 
 use record::apply_record;
 pub use record::{apply_inbound, apply_inbound_on};
-use tombstone::{apply_tombstone, apply_untyped_tombstone};
+use tombstone::apply_tombstone;
 
 /// One decoded item, waiting for its turn in the apply order (§5.13).
 pub(crate) enum Pending {
@@ -148,7 +151,6 @@ pub(crate) const DOCUMENT_TYPES: [&str; 2] = ["note", "journal"];
 pub(crate) fn apply_page(
     conn: &Connection,
     pending: Vec<Pending>,
-    untyped: Vec<String>,
     now_ms: i64,
     clock_device: Option<&str>,
     at_rest: &AtRestKey,
@@ -157,35 +159,78 @@ pub(crate) fn apply_page(
     apply_page_into(
         conn,
         pending,
-        untyped,
         now_ms,
         clock_device,
+        None,
         at_rest,
         &mut totals,
     )?;
     Ok(totals)
 }
 
-/// Applies one page's decoded items, in the order they were handed over, plus
-/// the ids §5.12.1 leaves with no type on the wire.
+/// One pulled delete, applied as a page applies it, for the desktop tests that race a peer's
+/// delete against the vault's own facts. Off in every shipped build.
+#[cfg(any(test, feature = "test-support"))]
+#[allow(clippy::too_many_arguments)]
+pub fn apply_pulled_delete(
+    conn: &Connection,
+    item_type: &str,
+    item_id: &str,
+    deleted_at: i64,
+    clock: &VectorClock,
+    now_ms: i64,
+    clock_device: &str,
+    vault: VaultFiles,
+) -> Result<(), StorageError> {
+    apply_tombstone(
+        conn,
+        item_type,
+        item_id,
+        deleted_at,
+        None,
+        Some(clock),
+        None,
+        now_ms,
+        Some(clock_device),
+        Some(&vault),
+        &mut ApplyTotals::default(),
+    )
+}
+
+/// Applies one page's decoded items, in the order they were handed over.
 ///
 /// `clock_device` is this device's clock id (chapter 01 §1.5), which a canvas
-/// conflict copy is clocked under. `at_rest` seals the agent records
-/// ([`crate::crypto::agent_payload`]).
+/// conflict copy and a re-queued journal merge are clocked under. `at_rest` seals the agent records
+/// ([`crate::crypto::agent_payload`]). `vault` is where a deleted note's
+/// vault file is read ([`super::delete_keep`]); `None` in a shell with no
+/// vault files.
 ///
 /// The outcomes go into the caller's `totals`. Each record commits on its own,
 /// so on an error `totals` (its `feed` above all) still holds every record
 /// that committed before it: the pull tells the observers that part, because
 /// a re-pull reports those rows `Skipped` and a write-back would never run.
+///
+/// The attachment rows of the notes it applied are written once, after the
+/// last record and outside each record's savepoint (#5675).
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn apply_page_into(
     conn: &Connection,
     pending: Vec<Pending>,
-    untyped: Vec<String>,
     now_ms: i64,
     clock_device: Option<&str>,
+    vault: Option<&VaultFiles>,
     at_rest: &AtRestKey,
     totals: &mut ApplyTotals,
 ) -> Result<(), StorageError> {
+    let note_ids: Vec<&str> = pending
+        .iter()
+        .filter(
+            |item| matches!(item, Pending::Record(record) if record.item_type == notes::ITEM_TYPE),
+        )
+        .map(Pending::item_id)
+        .collect();
+    let stored_lists = attachment_refs::stored_lists(conn, &note_ids)?;
+    let mut applied_notes = Vec::new();
     for item in pending {
         match item {
             Pending::Tombstone {
@@ -206,6 +251,7 @@ pub(crate) fn apply_page_into(
                     body_state_vector.as_deref(),
                     now_ms,
                     clock_device,
+                    vault,
                     totals,
                 )?;
                 refused_items::resolve(conn, &item_type, &item_id)?;
@@ -214,7 +260,9 @@ pub(crate) fn apply_page_into(
                 // §5.12.1: a bare tombstone outranks the item that arrives
                 // after it, or the "does not resurrect it locally" guarantee
                 // holds only until the next page.
-                if store::has_bare_tombstone(conn, &record.item_id)? {
+                if record.item_type != settings::SETTINGS_ITEM_TYPE
+                    && store::has_bare_tombstone(conn, &record.item_id)?
+                {
                     apply_tombstone(
                         conn,
                         &record.item_type,
@@ -225,6 +273,7 @@ pub(crate) fn apply_page_into(
                         None,
                         now_ms,
                         clock_device,
+                        vault,
                         totals,
                     )?;
                     refused_items::resolve(conn, &record.item_type, &record.item_id)?;
@@ -242,6 +291,9 @@ pub(crate) fn apply_page_into(
                         if DOCUMENT_TYPES.contains(&record.item_type.as_str()) {
                             totals.applied_documents.push(record.item_id.clone());
                         }
+                        if record.item_type == notes::ITEM_TYPE {
+                            applied_notes.push(record.item_id.clone());
+                        }
                     }
                     ApplyOutcome::Skipped | ApplyOutcome::Refused => totals.skipped += 1,
                     ApplyOutcome::Corrupt { .. } => totals.corrupt += 1,
@@ -250,10 +302,7 @@ pub(crate) fn apply_page_into(
             }
         }
     }
-    for item_id in untyped {
-        apply_untyped_tombstone(conn, &item_id, now_ms, totals)?;
-        refused_items::resolve_id(conn, &item_id)?;
-    }
+    attachment_refs::merge_page(conn, &stored_lists, &applied_notes)?;
     Ok(())
 }
 

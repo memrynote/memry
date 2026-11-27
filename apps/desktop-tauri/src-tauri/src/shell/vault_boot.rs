@@ -401,6 +401,7 @@ fn open_last_vault(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     register_uploads(app, &session);
     register_task_defaults(app, &session);
     crate::ml_worker::register(app, &session);
+    crate::reminders::register(app, &session);
     crate::commands::calendar_ics::register(app, &session);
     // Subscribed before the first open, so the launch's own events reach the renderer's
     // listeners; the renderer reads `status()` once after it subscribes.
@@ -496,6 +497,8 @@ fn forward_events(app: AppHandle<Wry>, events: Receiver<SessionEvent>) {
                     // After the tray: registering a shortcut and the login item are slower, and
                     // the tray must follow the vault as soon as the status changes.
                     crate::shortcuts::apply_from_settings(&app);
+                    // The drafts and the tab's edge live in the vault.
+                    crate::windows::edge_tab::refresh(&app);
                     if is_open {
                         crate::autostart::on_vault_opened(&app);
                     }

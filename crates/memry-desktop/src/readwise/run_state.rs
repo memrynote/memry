@@ -1,5 +1,5 @@
 //! The device-local run state of `sync-state.ts`, over `readwise_run_state` (data migration
-//! 0038). Keys and value text are desktop's (`readwise.<key>` there), so Step 36 copies the
+//! 0039). Keys and value text are desktop's (`readwise.<key>` there), so Step 36 copies the
 //! rows unchanged. A value that does not parse costs a retry or a display, never a note: it is
 //! logged and read as absent, as desktop does.
 
@@ -214,6 +214,17 @@ impl RunState {
             true => Ok(()),
             false => self.set(ERROR_TOAST, None),
         }
+    }
+
+    /// `claimErrorToast`: true for the first ask of a parked episode, false after it and while
+    /// not parked.
+    pub fn claim_error_toast(&self) -> Result<bool, StorageError> {
+        let parked = self.last_run()?.is_some_and(|run| run.needs_attention);
+        if !parked || self.get(ERROR_TOAST)?.is_some() {
+            return Ok(false);
+        }
+        self.set(ERROR_TOAST, Some("true"))?;
+        Ok(true)
     }
 
     pub(crate) fn store(&self) -> &ReadwiseStore {

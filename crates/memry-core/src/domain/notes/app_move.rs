@@ -48,6 +48,7 @@ use super::failed;
 use super::identity::{folder_of, follow, owe_in, settle_place};
 use crate::api::errors::StorageError;
 use crate::domain::{folders, note_files, note_positions};
+use crate::storage::nested_tx;
 
 /// Where the app moved a note's file.
 #[derive(Debug, Clone, Copy)]
@@ -246,7 +247,7 @@ fn json(record: &impl Serialize) -> Result<String, StorageError> {
 }
 
 fn insert_records(conn: &Connection, records: &[(String, String)]) -> Result<(), StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     for (key, value) in records {
         tx.execute(
             "INSERT INTO meta (key, value) VALUES (?1, ?2)",
@@ -418,7 +419,7 @@ pub fn moved_by_app(
         moved.keeps_kind || moved.title.is_none(),
         "a move that changes what the file is keeps the record's title"
     );
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     follow_file(&tx, note_id, moved, device_id, now_ms, |tx| {
         let (old_folder, new_folder) = (folder_of(moved.old_path), folder_of(moved.new_path));
         if old_folder == new_folder {
@@ -443,7 +444,7 @@ pub fn folder_moved_by_app(
     device_id: &str,
     now_ms: i64,
 ) -> Result<(), StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     for (note_id, moved) in moves {
         follow_file(&tx, note_id, moved, device_id, now_ms, |_| Ok(()))?;
     }

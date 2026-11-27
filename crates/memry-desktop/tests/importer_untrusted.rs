@@ -18,8 +18,9 @@ use memry_desktop::import::assets::{
 use memry_desktop::import::csv::{CsvImporter, map_rows, parse_csv, steps};
 use memry_desktop::import::markdown::{MarkdownImporter, parse_frontmatter};
 use memry_desktop::import::{
-    ImportContext, ImportInput, ImportSink, ImportSummary, ImportedNote, Importer,
-    MAX_SOURCE_BYTES, SinkError,
+    ImportContext, ImportInput, ImportSink, ImportSummary, ImportedBookmark, ImportedJournalEntry,
+    ImportedNote, ImportedProjectTask, ImportedStatus, ImportedTask, ImportedTickTickTask,
+    Importer, JournalEntry, MAX_SOURCE_BYTES, ProjectStatus, SinkError,
 };
 use memry_test_kit::{assert_steps_at_most, on_small_stack, output_bound, proptest_config};
 use proptest::prelude::*;
@@ -29,7 +30,7 @@ use tokio_util::sync::CancellationToken;
 use crate::import_support::{RecordingSink, Timeline};
 
 /// Runs `importer` over `sources` into a recording sink: the summary and every sink call.
-fn run(importer: &dyn Importer, sources: &[&Path]) -> (ImportSummary, Vec<Value>) {
+pub fn run(importer: &dyn Importer, sources: &[&Path]) -> (ImportSummary, Vec<Value>) {
     let input = ImportInput {
         source_paths: sources
             .iter()
@@ -45,12 +46,12 @@ fn run(importer: &dyn Importer, sources: &[&Path]) -> (ImportSummary, Vec<Value>
     (ctx.summary(), calls)
 }
 
-fn ops(calls: &[Value], op: &str) -> usize {
+pub fn ops(calls: &[Value], op: &str) -> usize {
     calls.iter().filter(|call| call["op"] == op).count()
 }
 
 /// A file of `len` bytes that takes no disk space where the file system supports holes.
-fn sparse(path: &Path, len: u64) {
+pub fn sparse(path: &Path, len: u64) {
     fs::File::create(path).unwrap().set_len(len).unwrap();
 }
 
@@ -270,9 +271,9 @@ fn a_fifo_source_or_asset_is_refused_without_blocking_the_run() {
 }
 
 /// Cancels the run as it saves its first attachment.
-struct CancelOnSave {
-    inner: RecordingSink,
-    cancel: CancellationToken,
+pub struct CancelOnSave {
+    pub inner: RecordingSink,
+    pub cancel: CancellationToken,
 }
 
 impl ImportSink for CancelOnSave {
@@ -292,6 +293,74 @@ impl ImportSink for CancelOnSave {
 
     fn create_note(&self, note: ImportedNote) -> Result<(), SinkError> {
         self.inner.create_note(note)
+    }
+
+    fn create_note_as_written(&self, note: ImportedNote) -> Result<(), SinkError> {
+        self.inner.create_note_as_written(note)
+    }
+
+    fn inbox_project_id(&self) -> Option<String> {
+        self.inner.inbox_project_id()
+    }
+
+    fn nested_subtasks(&self) -> bool {
+        self.inner.nested_subtasks()
+    }
+
+    fn create_task(&self, task: ImportedTask) -> Result<String, SinkError> {
+        self.inner.create_task(task)
+    }
+
+    fn complete_task(&self, id: &str, completed_at: Option<&str>) -> Result<(), SinkError> {
+        self.inner.complete_task(id, completed_at)
+    }
+
+    fn archive_task(&self, id: &str) -> Result<(), SinkError> {
+        self.inner.archive_task(id)
+    }
+
+    fn create_project(&self, name: &str) -> Result<String, SinkError> {
+        self.inner.create_project(name)
+    }
+
+    fn create_project_task(&self, task: ImportedProjectTask) -> Result<String, SinkError> {
+        self.inner.create_project_task(task)
+    }
+
+    fn create_status_project(
+        &self,
+        name: &str,
+        statuses: &[ImportedStatus],
+    ) -> Result<String, SinkError> {
+        self.inner.create_status_project(name, statuses)
+    }
+
+    fn project_statuses(&self, project_id: &str) -> Vec<ProjectStatus> {
+        self.inner.project_statuses(project_id)
+    }
+
+    fn create_ticktick_task(&self, task: ImportedTickTickTask) -> Result<String, SinkError> {
+        self.inner.create_ticktick_task(task)
+    }
+
+    fn create_reminder(&self, task_id: &str, remind_at: &str) -> Result<(), SinkError> {
+        self.inner.create_reminder(task_id, remind_at)
+    }
+
+    fn journal_entry_id(&self, date: &str) -> Result<String, SinkError> {
+        self.inner.journal_entry_id(date)
+    }
+
+    fn read_journal_entry(&self, date: &str) -> Result<Option<JournalEntry>, SinkError> {
+        self.inner.read_journal_entry(date)
+    }
+
+    fn create_journal_entry(&self, entry: ImportedJournalEntry) -> Result<(), SinkError> {
+        self.inner.create_journal_entry(entry)
+    }
+
+    fn save_bookmark(&self, bookmark: ImportedBookmark) -> Result<(), SinkError> {
+        self.inner.save_bookmark(bookmark)
     }
 }
 
@@ -381,4 +450,38 @@ proptest! {
         prop_assert!(bytes_scanned() - before <= 2 * body.len());
         prop_assert!(refs.iter().map(String::len).sum::<usize>() <= body.len());
     }
+}
+
+/// #4278: `a.png`, `./a.png`, `././a.png`... name one file. It is read and saved once per note,
+/// so a crafted note cannot write a 1 MiB file a thousand times, even after a cancel.
+#[test]
+fn refs_to_one_file_save_it_once_per_note() {
+    let dir = tempfile::tempdir().unwrap();
+    fs::write(dir.path().join("a.png"), vec![7u8; 1024 * 1024]).unwrap();
+    let body: String = (0..1000)
+        .map(|n| format!("![]({}a.png)\n", "./".repeat(n)))
+        .collect();
+    fs::write(dir.path().join("n.md"), &body).unwrap();
+    let input = ImportInput {
+        source_paths: vec![dir.path().join("n.md").to_string_lossy().into_owned()],
+        options: None,
+    };
+    let (timeline, cancel) = (Timeline::default(), CancellationToken::new());
+    let sink = CancelOnSave {
+        inner: RecordingSink::new(Arc::clone(&timeline)),
+        cancel: cancel.clone(),
+    };
+    let mut ctx = ImportContext::new("dedupe", cancel, Box::new(|_| {}));
+
+    MarkdownImporter.run(&input, &mut ctx, &sink).unwrap();
+
+    let calls = timeline.lock().unwrap().clone();
+    assert_eq!(ops(&calls, "saveAttachment"), 1, "one saved copy");
+    let created = calls.iter().find(|c| c["op"] == "createNote").unwrap();
+    assert_eq!(
+        created["content"],
+        "![a.png](attachments/note-1/a.png)\n".repeat(1000),
+        "every spelling points at the one copy"
+    );
+    assert_eq!(ctx.summary().attachments, 1);
 }

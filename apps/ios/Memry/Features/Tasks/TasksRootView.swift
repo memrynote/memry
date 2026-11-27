@@ -4,127 +4,37 @@ import Observation
 import SwiftUI
 
 // TP031. The Tasks tab: one navigation stack over the task list, with routes
-// to a task, a project hub, the projects list and the task settings.
-//
-// **Opening a task by id** (search results, a task block in a note, a reminder
-// notification) goes through ``TasksRouter``: it selects the Tasks tab and
-// replaces the stack with that task's detail. A task that no longer exists
-// opens a sensible "not in this vault" state inside the detail rather than
-// crashing or showing a ghost (FR-061).
-
-/// A place inside the Tasks tab.
-enum TasksRoute: Hashable, Codable, Sendable {
-    case task(String)
-    /// A task's subtasks as their own screen (#2868).
-    case branch(String)
-    case project(String)
-    case projects
-    case settings
-
-    /// Screens with a floating "+" show the toast beside it themselves.
-    var placesOwnToast: Bool {
-        if case .project = self { return true }
-        return false
-    }
-}
-
-/// The vault shell's pages, so a route can switch to one. Raw values match
-/// desktop's rail ids (`sidebar.railOrder`) and the saved launch tab.
-enum VaultTab: String, Hashable, Sendable {
-    case home, notes, inbox, tasks, journal, calendar
-    /// Menu: Settings, and the pages that did not fit the bar
-    /// (`VaultTabLayout`). The raw value predates the menu and stays, so a
-    /// saved launch tab still reads.
-    case more
-
-    @MainActor var isShown: Bool {
-        switch self {
-        case .home, .notes, .more: true
-        case .inbox: LocalSettings.shared.isOn(.inbox)
-        case .tasks: LocalSettings.shared.isOn(.tasks)
-        case .journal: LocalSettings.shared.isOn(.journal)
-        case .calendar: LocalSettings.shared.isOn(.calendar)
-        }
-    }
-}
-
-/// Cross-tab navigation into the Tasks tab.
-@MainActor
-@Observable
-final class TasksRouter {
-    var selectedTab: VaultTab = .notes
-    var path: [TasksRoute] = []
-    /// Settings' stack (spec 006 ST20): Settings routes, and the notes a
-    /// Settings page opens.
-    var settingsPath = NavigationPath()
-    /// The Calendar page's stack, wherever the page sits.
-    var calendarPath = NavigationPath()
-
-    /// The router for the vault ``LaunchSnapshot`` has open: the tab and the
-    /// Tasks stack the user left.
-    static func restored(from snapshot: LaunchSnapshot = .shared) -> TasksRouter {
-        let router = TasksRouter()
-        // A tab whose module was turned off since is not shown; stay on Notes.
-        if let tab = snapshot.tab.flatMap(VaultTab.init(rawValue:)), tab.isShown { router.selectedTab = tab }
-        router.path = snapshot.stack("tasks", as: [TasksRoute].self) ?? []
-        return router
-    }
-
-    /// Every "… › settings" entry point: Menu › Settings, that section, and
-    /// Back returns to the Settings root (flow lane 01).
-    func openSettings(_ route: SettingsRoute) {
-        selectedTab = .more
-        var path = NavigationPath()
-        if route != .root { path.append(route) }
-        settingsPath = path
-    }
-
-    /// Selects the Tasks tab and shows this task.
-    func openTask(_ id: String) {
-        selectedTab = .tasks
-        path = [.task(id)]
-    }
-
-    func open(_ route: TasksRoute) {
-        selectedTab = .tasks
-        path.append(route)
-    }
-}
+// to a task, a project hub, the projects list and the task settings. At
+// regular width it is a split view instead (`TasksSplitView`, #4350). Both
+// read the one path on ``TasksRouter``.
 
 /// The Tasks tab's content for one opened vault.
 struct TasksRootView: View {
     let store: TasksStore
     @Environment(TasksRouter.self) private var router
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
+
+    private var width: LayoutWidth {
+        LayoutWidth(horizontal: horizontalSizeClass, vertical: verticalSizeClass)
+    }
 
     var body: some View {
         @Bindable var router = router
-        NavigationStack(path: $router.path) {
-            TaskListScreen(store: store)
-                .navigationDestination(for: TasksRoute.self) { route in
-                    switch route {
-                    case let .task(id):
-                        TaskDetailView(taskId: id, store: store)
-                    case let .branch(id):
-                        TaskBranchView(parentId: id, store: store)
-                    case let .project(id):
-                        ProjectHubView(projectId: id, store: store)
-                    case .projects:
-                        ProjectsListView(store: store)
-                    case .settings:
-                        TaskSettingsView(store: store)
-                    }
+        Group {
+            if width == .regular {
+                TasksSplitView(store: store)
+            } else {
+                NavigationStack(path: $router.path) {
+                    TaskListScreen(store: store)
+                        .tasksDestinations(store: store)
                 }
-        }
-        // The list places its own toast beside the "+" (RD15); every pushed
-        // screen shows it here, over the tab bar.
-        .overlay(alignment: .bottom) {
-            // The hub places its own beside its "+" (RD18).
-            if let top = router.path.last, !top.placesOwnToast {
-                TasksToast(store: store)
-                    .padding(.horizontal, Tokens.Space.inset)
-                    .padding(.bottom, Tokens.Space.medium)
+                // The list places its own toast beside the "+" (RD15); every
+                // pushed screen shows it here, over the tab bar.
+                .tasksToast(store: store, over: router.path)
             }
         }
+        .onChange(of: width, initial: true) { _, width in router.setTasksSplit(width == .regular) }
         .subtaskPrompts(store: store)
         .repeatPrompts(store: store)
         .task {
@@ -139,6 +49,38 @@ struct TasksRootView: View {
     }
 }
 
+extension View {
+    /// Every page the Tasks tab pushes.
+    func tasksDestinations(store: TasksStore) -> some View {
+        navigationDestination(for: TasksRoute.self) { route in
+            switch route {
+            case let .task(id):
+                TaskDetailView(taskId: id, store: store)
+            case let .branch(id):
+                TaskBranchView(parentId: id, store: store)
+            case let .project(id):
+                ProjectHubView(projectId: id, store: store)
+            case .projects:
+                ProjectsListView(store: store)
+            case .settings:
+                TaskSettingsView(store: store)
+            }
+        }
+    }
+
+    /// The Undo toast over a pushed page. The list and the hub place their
+    /// own beside their "+" (RD15, RD18).
+    func tasksToast(store: TasksStore, over path: [TasksRoute]) -> some View {
+        overlay(alignment: .bottom) {
+            if let top = path.last, !top.placesOwnToast {
+                TasksToast(store: store)
+                    .padding(.horizontal, Tokens.Space.inset)
+                    .padding(.bottom, Tokens.Space.medium)
+            }
+        }
+    }
+}
+
 /// Builds the vault's tasks store as soon as the vault opens, not when the
 /// Tasks tab is first shown (`TabView` builds tabs lazily): reminder
 /// notifications (TP053, FR-062) refill from this store at launch and on every
@@ -149,6 +91,10 @@ struct VaultTasksScope<Content: View>: View {
     let filler: (any VaultFilling)?
     @ViewBuilder let content: (TasksStore?, UserFacingError?) -> Content
     @Environment(\.scenePhase) private var scenePhase
+    /// No pass while the vault's first sync is pending (`VaultFillView`): a
+    /// pass started first would hold the core's pass gate for a whole
+    /// unwindowed pull. One pass runs when it ends, for what was written.
+    @Environment(\.firstSyncPending) private var firstSyncPending
     @State private var store: TasksStore?
     @State private var failure: UserFacingError?
     @State private var searchIndex: VaultSearchIndex?
@@ -165,9 +111,13 @@ struct VaultTasksScope<Content: View>: View {
             // Pull and push on every return to the foreground, whichever tab
             // shows: a tab's own views miss scene changes while hidden. The
             // pass for the vault opening runs from `make()`, because the
-            // scene can already be active before the store exists.
+            // scene can already be active before the store exists, or when
+            // the first sync ends.
             .onChange(of: scenePhase) { _, phase in
-                if phase == .active, let store { Task { await store.sync() } }
+                if phase == .active, !firstSyncPending, let store { Task { await store.sync() } }
+            }
+            .onChange(of: firstSyncPending) { _, pending in
+                if !pending, let store { Task { await store.sync() } }
             }
             // Reconnect: retry attachments a dead path left missing (#3261).
             .onReceive(NotificationCenter.default.publisher(for: PathReachability.attachmentPathChanged).receive(on: DispatchQueue.main)) { _ in
@@ -188,7 +138,12 @@ struct VaultTasksScope<Content: View>: View {
             // Keyed on `.background`, not `.active`: Control Center or a
             // notification banner makes the scene `.inactive` for a moment,
             // and reconnecting after each is a handshake for nothing.
-            .task(id: RealtimeKey(vault: vault.id(), foreground: scenePhase != .background, store: store?.vaultId)) {
+            .task(id: RealtimeKey(
+                vault: vault.id(),
+                foreground: scenePhase != .background,
+                firstSyncPending: firstSyncPending,
+                store: store?.vaultId
+            )) {
                 await holdRealtime()
             }
     }
@@ -196,13 +151,15 @@ struct VaultTasksScope<Content: View>: View {
     private struct RealtimeKey: Equatable {
         let vault: String
         let foreground: Bool
+        let firstSyncPending: Bool
         let store: String?
     }
 
-    /// Runs until the scene goes to the background or the store changes;
+    /// Runs until the scene goes to the background, the store changes or a
+    /// first sync starts;
     /// SwiftUI cancels the task, and the cancel stops the socket.
     private func holdRealtime() async {
-        guard scenePhase != .background, let store,
+        guard scenePhase != .background, !firstSyncPending, let store,
               let realtime = filler?.realtime(onChanges: { store.scheduleSync() })
         else { return }
         let terminal = await withTaskCancellationHandler {
@@ -221,8 +178,9 @@ struct VaultTasksScope<Content: View>: View {
 
     private var syncRequest: (@MainActor () -> Void)? {
         guard let store else { return nil }
+        let pending = firstSyncPending
         return { [searchIndex] in
-            store.scheduleSync()
+            if !pending { store.scheduleSync() }
             searchIndex?.schedule()
         }
     }
@@ -245,7 +203,7 @@ struct VaultTasksScope<Content: View>: View {
             let tasks = try vault.tasks(store: secureStore)
             let made = TasksStore(core: tasks, filler: filler, vaultId: vault.id())
             store = made
-            Task { await made.sync() }
+            if !firstSyncPending { Task { await made.sync() } }
         } catch {
             failure = ErrorMapping.userFacing(error)
         }

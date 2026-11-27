@@ -26,7 +26,8 @@ pub const RETRY_MAX_MS: i64 = 6 * 60 * 60 * 1000;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PendingUpload {
     pub owner_id: String,
-    /// The absolute path of the file, as the enqueuer gave it.
+    /// The vault-relative, `/`-separated path of the file (`attachments/<note>/<file>`), the path
+    /// [`files`](super::files) records it under once the server has it.
     pub disk_path: String,
     /// Failed tries so far.
     pub attempts: u32,

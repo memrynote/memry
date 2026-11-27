@@ -63,7 +63,18 @@ final class NoteAttachmentComposer {
     ///   without the note being recreated.
     @discardableResult
     func upload(filename: String, mimeType: String, bytes: Data) async -> String? {
-        guard let filler else { return nil }
+        switch await send(filename: filename, mimeType: mimeType, bytes: bytes) {
+        case let .success(id): return id
+        case let .failure(refusal):
+            state = .failed(refusal)
+            return nil
+        }
+    }
+
+    /// The upload, answering a refusal instead of showing it: a batch shows
+    /// one alert for all of its refusals.
+    func send(filename: String, mimeType: String, bytes: Data) async -> Result<String, UserFacingError> {
+        guard let filler else { return .failure(ErrorMapping.unrecognised) }
         state = .uploading(filename)
         do {
             let id = try await filler.uploadAttachment(
@@ -73,12 +84,12 @@ final class NoteAttachmentComposer {
                 bytes: bytes
             )
             state = .idle
-            return id
+            return .success(id)
         } catch {
             let mapped = ErrorMapping.userFacing(error)
             Log.sync.error("an attachment could not be uploaded", .code(mapped.code))
-            state = .failed(mapped)
-            return nil
+            state = .idle
+            return .failure(mapped)
         }
     }
 
@@ -97,6 +108,9 @@ final class NoteAttachmentComposer {
     }
 
     func dismissFailure() { state = .idle }
+
+    /// Shows `refusal` in the pickers' alert.
+    func fail(_ refusal: UserFacingError) { state = .failed(refusal) }
 
     /// Bytes still coming off a picker, which for a long video takes a while
     /// before the upload itself starts.

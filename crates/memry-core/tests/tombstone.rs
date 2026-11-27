@@ -16,7 +16,7 @@
 //! §7.15's first two consequences are `sync::apply`'s as of this change, and
 //! the tripwire that used to pin their absence is gone with them. The rest of
 //! §7.15 — the ids whose resident `Y.Doc` a caller must still release — is in
-//! `tests/tombstone_purge.rs` along with the untyped delete and the rollback.
+//! `tests/tombstone_purge.rs` along with the bare deleted id and the rollback.
 //!
 //! ## The two tiers, and why the answer is deterministic at all
 //!
@@ -43,11 +43,12 @@ use std::sync::Arc;
 
 use http_fakes::{FakeTransport, response};
 use memry_core::api::errors::StorageError;
+use memry_core::crdt::epoch::HeldBody;
 use memry_core::crdt::registry::UpdateSink;
 use memry_core::crdt::update_log::{self, Namespace};
 use memry_core::crdt::{Document, DocumentRegistry, extract_text};
 use memry_core::domain::notes::{self, NewNote};
-use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope};
+use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope, SyncOperation};
 use memry_core::protocol::http::{ClientIdentity, HttpClient};
 use memry_core::protocol::types::Declaration;
 use memry_core::storage::repositories::sync_items;
@@ -82,16 +83,21 @@ fn storage_failure(error: impl std::fmt::Display) -> StorageError {
     }
 }
 
-/// A cipher that refuses everything.
+/// A cipher that opens only a delete, to an empty payload.
 ///
-/// §5.12 and §13.7.2: a tombstone's body is **never decoded**, so a cipher
-/// that cannot open anything is enough to drive the whole delete path. If the
-/// delete ever reaches a parser this test stops compiling its way around the
-/// problem and fails outright.
-struct NeverOpens;
+/// §5.12 and §13.7.2: a tombstone's body is **never applied**, so a delete
+/// that opens to nothing is enough to drive the whole delete path (§5.14
+/// verifies it first). If the delete ever reaches a parser this test fails
+/// outright.
+struct OpensDeletes;
 
-impl RecordCipher for NeverOpens {
-    fn open(&self, _envelope: &RecordEnvelope) -> Result<Vec<u8>, EnvelopeError> {
+impl RecordCipher for OpensDeletes {
+    fn open(&self, envelope: &RecordEnvelope) -> Result<Vec<u8>, EnvelopeError> {
+        // §5.14: a delete opens before it applies; this one opens to the
+        // empty payload a signed delete seals.
+        if envelope.deleted_at.is_some() || envelope.operation == SyncOperation::Delete {
+            return Ok(Vec::new());
+        }
         Err(EnvelopeError::SignatureInvalid)
     }
 }
@@ -141,7 +147,7 @@ async fn deliver_the_delete(db: &Db, live: bool) -> PullReport {
         Arc::new(http),
         db.clone(),
         Declaration::subscribed(),
-        Arc::new(NeverOpens),
+        Arc::new(OpensDeletes),
     )
     // A delete over unsent text keeps it as an inbox capture (#3029), which
     // is clocked under this device.
@@ -241,7 +247,7 @@ fn edit_the_body(db: &Db, document: &Document, text: &str) -> Vec<u8> {
 struct Resolution {
     /// The record tier's verdict.
     record_deleted_at: Option<i64>,
-    /// Whether the delete left the stored payload alone (§5.12: never decoded).
+    /// Whether the delete left the stored payload alone (§5.12: never applied).
     record_has_payload: bool,
     /// The projection the body-pull window is chosen from.
     projected_deleted_at: Option<i64>,
@@ -341,24 +347,28 @@ async fn a_delete_and_a_concurrent_body_edit_resolve_identically_in_either_order
         "delete-versus-edit has one answer: the arrival order of the record \
          feed and the body feed must not change whether the note exists"
     );
-    let note_rows = |state: &Resolution| -> Vec<(String, String)> {
+    let note_rows = |state: &Resolution, crdt: bool| -> Vec<(String, String)> {
         state
             .outbox
             .iter()
-            .filter(|(_, id)| id == NOTE)
+            .filter(|(op, id)| id == NOTE && (op == outbox::OP_CRDT_UPDATE) == crdt)
             .cloned()
             .collect()
     };
     assert_eq!(
-        note_rows(&a_state),
-        note_rows(&b_state),
-        "and neither order throws the edit away: both still owe the server \
-         the same push"
+        note_rows(&a_state, false),
+        note_rows(&b_state, false),
+        "the record tier owes the server the same push in either order"
     );
-    // #3029: A held text the delete never saw, so A also queued that text as
-    // an inbox capture. B applied the delete before it typed.
-    assert_eq!(a_state.outbox.len(), note_rows(&a_state).len() + 1);
-    assert_eq!(b_state.outbox.len(), note_rows(&b_state).len());
+    // #5379: A's edit was queued on the body the delete purged, so its push
+    // goes with that body; pushed, it would land on the server's dead
+    // document. The text is not lost: A held text the delete never saw, so
+    // #3029 queued it as an inbox capture. B typed after the delete, on a new
+    // body, and that push stays queued.
+    assert!(note_rows(&a_state, true).is_empty(), "{:?}", a_state.outbox);
+    assert_eq!(note_rows(&b_state, true).len(), 1);
+    assert_eq!(a_state.outbox.len(), note_rows(&a_state, false).len() + 1);
+    assert_eq!(b_state.outbox.len(), note_rows(&b_state, false).len() + 1);
 
     // The body tier is where the orders legitimately differ, and §7.15 is why.
     // The purge is what a client does **on applying** a tombstone, so A's edit
@@ -380,15 +390,17 @@ async fn a_delete_and_a_concurrent_body_edit_resolve_identically_in_either_order
     );
     assert!(
         a_state.record_has_payload,
-        "§5.12: the delete never decoded the body, so the stored payload is \
+        "§5.12: the delete never applied a body, so the stored payload is \
          exactly the bytes that were already there"
     );
 }
 
 /// The body edit is **orphaned**, not a resurrection.
 ///
-/// The edit is real, durable, and still queued to push — §7.15 does not throw
-/// it away, and the server will keep it forever. What it must not do is put
+/// The edit was real, and its text survives as the #3029 inbox capture. Its
+/// queued push goes with the purged body (#5379): the server purges the
+/// deleted body too (§7.15), and a push that lands after that purge is what a
+/// later revive of the id would pull back. What the bytes must not do is put
 /// the note back: existence is a record-tier fact, and nothing on the CRDT
 /// tier writes a record row.
 #[tokio::test]
@@ -404,16 +416,13 @@ async fn the_concurrent_body_edit_is_orphaned_and_never_resurrects_the_note() {
     let after = observe(&db);
     assert_eq!(after.record_deleted_at, Some(DELETED_AT));
 
-    // The orphan: a queued push under a document id no live record names. The
-    // **outbox** row is what survives §7.15 — the purge takes the local log,
-    // not the pending push, because the edit really happened and the server
-    // will keep it forever.
+    // #5379: no push stays queued under a document id no live record names.
     assert!(
-        after
+        !after
             .outbox
             .iter()
             .any(|(op, id)| op == outbox::OP_CRDT_UPDATE && id == NOTE),
-        "the body edit is still queued: {:?}",
+        "the body edit's push went with the purged body: {:?}",
         after.outbox
     );
 
@@ -455,7 +464,9 @@ async fn the_tombstone_purge_empties_both_namespaces_and_the_document() {
     let update = edit_the_body(&db, &document, "still typing");
     // A server update too, so the purge has something in each namespace.
     db.call_blocking(|conn| {
-        update_log::append_server_update(conn, NOTE, 1, &update, NOW).map_err(storage_failure)?;
+        HeldBody::never_purged(conn, NOTE)
+            .and_then(|held| held.append_server_update(1, &update, NOW))
+            .map_err(storage_failure)?;
         memry_core::sync::store::write_cursor(
             conn,
             &memry_core::sync::body_pull::crdt_cursor_scope(NOTE),
