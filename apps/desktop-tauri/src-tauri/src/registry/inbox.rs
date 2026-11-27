@@ -1,4 +1,4 @@
-//! The Inbox events, appended to the reminder events by `registry/reminders.rs`:
+//! The Inbox events, appended to the sticky events by `registry/stickies.rs`:
 //! `with_inbox_events!(collect_events![...])` hands `collect_events!` the list with these
 //! appended.
 

@@ -96,7 +96,7 @@ impl ReminderSink for Shell {
             });
         }
         if !report.fired.is_empty() {
-            let reminders = report
+            let reminders: Vec<ReminderHint> = report
                 .fired
                 .iter()
                 .map(|due| {
@@ -104,7 +104,8 @@ impl ReminderSink for Shell {
                     ReminderHint::new(&r.id, &r.target_type, &r.target_id)
                 })
                 .collect();
-            broadcast(&self.app, ReminderDueEvent { reminders });
+            let count = u32::try_from(reminders.len()).unwrap_or(u32::MAX);
+            broadcast(&self.app, ReminderDueEvent { reminders, count });
         }
         self.app
             .state::<BadgeService>()
