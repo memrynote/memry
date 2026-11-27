@@ -45,15 +45,20 @@ fn without_block_ids(canonical: &str) -> String {
 
 /// Cases desktop builds and the core keeps as literal text, because claiming
 /// them needs desktop's serialization of a block the core does not write: a
-/// table or a code block under a quote, a comment node, a quoted list. A
+/// table or a code block under a quote, a comment node, a quoted list, the
+/// `<details>` markup a quote, a callout or a heading now keeps as text. A
 /// fallback is lossless (every line stays text), so each must fall back, and
 /// the run it keeps literal is checked below.
-const KEPT_LITERAL: [&str; 5] = [
+const KEPT_LITERAL: [&str; 9] = [
     "comment: %% in a callout body and a quote",
     "callout: a body holding a table",
     "quote: a run opening on a table",
     "quote: a line, a blank and a table",
     "quote: a quoted fence then a lazy line",
+    "details markup: a quote holding a toggle's lines",
+    "details markup: a one-paragraph quote",
+    "details markup: a callout body",
+    "details markup: a closing tag in a heading",
 ];
 
 #[test]
@@ -93,6 +98,31 @@ fn every_case_seeds_the_document_desktop_builds() {
             without_block_ids(&canonical),
             str_field(case, "expectedCanonical"),
             "{name}"
+        );
+    }
+}
+
+/// Desktop keeps `<details>` markup behind quote markers or a heading's `#`s
+/// as text (`escapePrefixedDetailsMarkup`). The core builds no HTML text, so
+/// each such line keeps its source as literal text.
+#[test]
+fn details_markup_behind_quote_markers_or_hashes_stays_literal() {
+    for markdown in [
+        "> <details>",
+        ">> <details open>",
+        ">\t<summary>O</summary>",
+        "# <summary>O</summary>",
+        "### </details>",
+        "> [!tip]\n> <details>",
+    ] {
+        let planned = plan(markdown);
+        assert!(!planned.fallbacks.is_empty(), "{markdown}");
+        assert!(
+            planned
+                .blocks
+                .iter()
+                .all(|block| block.kind == memry_core::crdt::markdown_seed::SeedKind::Paragraph),
+            "{markdown}"
         );
     }
 }

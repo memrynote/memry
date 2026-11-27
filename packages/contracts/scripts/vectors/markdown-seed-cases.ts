@@ -512,5 +512,40 @@ export const MARKDOWN_SEED_CASES: ReadonlyArray<{ name: string; markdown: string
       name: 'marker image: a file marker whose JSON does not read',
       markdown: '<!-- file:{bad} -->',
       pins: 'a paragraph holding the comment, which keeps its bytes'
+    },
+    {
+      name: "details markup: a quote holding a toggle's lines",
+      markdown: '> <details>\n> <summary>O</summary>\n>\n> ob\n>\n> </details>',
+      pins: 'a quote whose text keeps the details markup lines: the parser no longer drops them as raw HTML'
+    },
+    {
+      name: 'details markup: a one-paragraph quote',
+      markdown: '> <details>\n> <summary>O</summary>',
+      pins: 'a flat quote of the text <details> and <summary>O</summary>, which was O'
+    },
+    {
+      name: 'details markup: a callout body',
+      markdown: '> [!info]\n> <details>\n>\n> b',
+      pins: 'a callout whose first line keeps the <details> text'
+    },
+    {
+      name: 'details markup: a closing tag in a heading',
+      markdown: '## </details>',
+      pins: 'a heading holding </details>, which was an empty heading'
+    },
+    {
+      name: 'callout marker: a quote whose text spells one',
+      markdown: '> \\[!info]\n> c',
+      pins: 'a quote of the text [!info] and c: an escaped bracket is no marker'
+    },
+    {
+      name: 'callout marker: a folded one escaped',
+      markdown: '> \\[!tip]-',
+      pins: 'a quote of the text [!tip]-'
+    },
+    {
+      name: 'callout marker: a torn one in a paragraph',
+      markdown: '\\[!info]\nc',
+      pins: 'a paragraph of the text [!info] and c'
     }
   ]

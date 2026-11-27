@@ -9,7 +9,7 @@
     "authoredBy": "desktop's markdownToYFragment path: LF line endings, maskHtmlComments, parseNoteMarkdown (editor-schema note-markdown) with parseMarkdownToBlocksRepaired on desktop's server schema, blocksToYXmlFragment",
     "provenAgainst": "apps/desktop/src/main/sync/markdown-seed-vectors.test.ts",
     "blockIds": "removed from every blockContainer line: BlockNote mints them at random",
-    "caseCount": 97
+    "caseCount": 104
   },
   "cases": [
     {
@@ -593,6 +593,48 @@
       "pins": "a paragraph holding the comment, which keeps its bytes",
       "markdown": "<!-- file:{bad} -->",
       "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 element htmlComment source=\"<!-- file:{bad} -->\""
+    },
+    {
+      "name": "details markup: a quote holding a toggle's lines",
+      "pins": "a quote whose text keeps the details markup lines: the parser no longer drops them as raw HTML",
+      "markdown": "> <details>\n> <summary>O</summary>\n>\n> ob\n>\n> </details>",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"<details>\"\n3 element hardBreak\n3 text \"<summary>O</summary>\"\n2 element blockGroup\n3 element blockContainer\n4 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n5 text \"ob\"\n3 element blockContainer\n4 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n5 text \"</details>\""
+    },
+    {
+      "name": "details markup: a one-paragraph quote",
+      "pins": "a flat quote of the text <details> and <summary>O</summary>, which was O",
+      "markdown": "> <details>\n> <summary>O</summary>",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"<details>\"\n3 element hardBreak\n3 text \"<summary>O</summary>\""
+    },
+    {
+      "name": "details markup: a callout body",
+      "pins": "a callout whose first line keeps the <details> text",
+      "markdown": "> [!info]\n> <details>\n>\n> b",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element callout fold=\"none\" textAlignment=\"left\" textColor=\"default\" type=\"info\"\n3 text \"<details>\"\n2 element blockGroup\n3 element blockContainer\n4 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n5 text \"b\""
+    },
+    {
+      "name": "details markup: a closing tag in a heading",
+      "pins": "a heading holding </details>, which was an empty heading",
+      "markdown": "## </details>",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=2 textAlignment=\"left\" textColor=\"default\"\n3 text \"</details>\""
+    },
+    {
+      "name": "callout marker: a quote whose text spells one",
+      "pins": "a quote of the text [!info] and c: an escaped bracket is no marker",
+      "markdown": "> \\[!info]\n> c",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"[!info]\"\n3 element hardBreak\n3 text \"c\""
+    },
+    {
+      "name": "callout marker: a folded one escaped",
+      "pins": "a quote of the text [!tip]-",
+      "markdown": "> \\[!tip]-",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"[!tip]-\""
+    },
+    {
+      "name": "callout marker: a torn one in a paragraph",
+      "pins": "a paragraph of the text [!info] and c",
+      "markdown": "\\[!info]\nc",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"[!info]\"\n3 element hardBreak\n3 text \"c\""
     }
   ]
 }

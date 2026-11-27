@@ -180,6 +180,16 @@ fence's info string, `""` for an untagged fence or an indented run, never BlockN
   (`packages/editor-schema/src/note-markdown.ts:264`, `:378`, `:483`;
   `crates/memry-core/src/crdt/markdown_seed/media.rs:145`, `:157`,
   `crates/memry-core/src/crdt/markdown_seed/markers.rs:41`, `:95`).
+- **`<details>` markup behind quote markers or a heading's `#`s is text.** A lossless parse hides
+  the `<` of a `<details>`, `<summary>…</summary>` or `</details>` line that follows any
+  `>` markers or `#` to `######` and a space (fenced lines excepted), so `> <details>` seeds a
+  quote whose text is `<details>` and `## </details>` a heading `</details>`, where the parser
+  used to drop the tag as HTML. The core builds no HTML as text, so each such line, and a quote
+  or callout run holding one, stays literal (the existing "HTML" fallback). A callout marker
+  with an escaped bracket (`> \[!info]`) is a quote of that text, which the core builds
+  (`packages/editor-schema/src/blocks/markdown.ts:691`, `:735`,
+  `packages/editor-schema/src/parse-markdown.ts:379`;
+  `crates/memry-core/tests/markdown_seed_vectors.rs:52-62`).
 - **A table row is never read as a hard break.** A line holding a `|` with a delimiter row
   below it opens a table, which runs until a line without a pipe, and a `\` ending
   one of its rows is the last cell's text, never a break token: `| a \` seeds the header cell `a \`
