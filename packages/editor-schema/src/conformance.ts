@@ -1513,6 +1513,10 @@ const htmlCommentCases: RoundtripCase[] = [
   },
   // The parser strips one space off each end of a code span with one at both.
   { name: 'code span with a space at both ends', markdown: 'a `  b  ` c' },
+  // A code span opening a paragraph lost the leading space CommonMark keeps.
+  { name: 'code span with a leading space opening a paragraph', markdown: '` *a` b' },
+  { name: 'code span of one space opening a paragraph', markdown: '` ` b' },
+  { name: 'code span with a leading space opening a list item', markdown: '- ` a` b' },
   // A bold run ending at a break closed on the quote's next line.
   { name: 'bold line then a plain line in a callout', markdown: '> [!note]\n> **b**\n> plain' },
   { name: 'italic line then a plain line in a quote', markdown: '> *c*\n> d' },

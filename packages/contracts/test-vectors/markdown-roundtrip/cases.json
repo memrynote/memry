@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 384,
+    "exportedCaseCount": 387,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 394,
+    "caseCount": 397,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -2588,6 +2588,27 @@
       "canonical": null,
       "pending": null,
       "sha256": "dbf53e1b5b4c0a891f52944a9cb5eaceab2c1bc10066596196519b57a301237e"
+    },
+    {
+      "name": "code span with a leading space opening a paragraph",
+      "markdown": "` *a` b",
+      "canonical": null,
+      "pending": null,
+      "sha256": "2324ca71b2c23a35654698a41de70d3533b3bb6ed6376518b6438acc17cdae8d"
+    },
+    {
+      "name": "code span of one space opening a paragraph",
+      "markdown": "` ` b",
+      "canonical": null,
+      "pending": null,
+      "sha256": "601d23c42bebdd5f45186d640ce4f0fce6ae64b48f683434cda003b26f621169"
+    },
+    {
+      "name": "code span with a leading space opening a list item",
+      "markdown": "- ` a` b",
+      "canonical": null,
+      "pending": null,
+      "sha256": "b0316fd6919cb3fa4b42b2e3655c4f834f62dd29a24ab3633101a1c5464c5f47"
     },
     {
       "name": "bold line then a plain line in a callout",
