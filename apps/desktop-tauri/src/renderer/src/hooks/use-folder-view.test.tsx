@@ -442,6 +442,44 @@ describe('useFolderView', () => {
     expect((window.api.folderView.setView as any).mock.calls.length).toBe(calls)
   })
 
+  // folder-view.e2e.ts T129 (#3967): "New view" was clicked while the rename of the previous
+  // "New view" was still debounced, so the disk held the old name and the add replaced it.
+  it('keeps a view added while a rename is still debounced', async () => {
+    // The disk as `folder_view_set_view` keeps it: replace the view named `previousName` (else
+    // its own name), otherwise append.
+    let disk: Array<{ name: string; type: string }> = [
+      { name: 'Main', type: 'table' },
+      { name: 'Second', type: 'table' }
+    ]
+    const api = window.api.folderView as ReturnType<typeof folderApi>
+    api.getViews.mockImplementation(() => Promise.resolve({ defaultIndex: 0, views: disk }))
+    api.setView.mockImplementation(
+      (_scope: ViewScope, view: { name: string; type: string }, previousName?: string) => {
+        const at = disk.findIndex((v) => v.name === (previousName ?? view.name))
+        disk = at >= 0 ? disk.map((v, i) => (i === at ? view : v)) : [...disk, view]
+        return Promise.resolve({ success: true })
+      }
+    )
+    const { result } = renderHook(() => useFolderView({ scope: workScope }), {
+      wrapper: makeWrapper()
+    })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    await act(async () => {
+      await result.current.renameView(1, 'Renamed')
+    })
+    // The switcher names a new view after the names in the cache, where 'Second' is free again.
+    await act(async () => {
+      await result.current.addView({ name: 'Second', type: 'table' })
+    })
+    await act(async () => {
+      vi.advanceTimersByTime(300)
+      await Promise.resolve()
+    })
+
+    expect(disk.map((v) => v.name)).toEqual(['Main', 'Renamed', 'Second'])
+  })
+
   it('covers summary delete, note-property deletion, missing cache, and formula failures', async () => {
     const { result } = renderHook(() => useFolderView({ scope: workScope }), {
       wrapper: makeWrapper()

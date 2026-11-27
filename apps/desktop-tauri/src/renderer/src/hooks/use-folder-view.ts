@@ -306,6 +306,26 @@ export function useFolderView({
   const renameTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   /** Name on disk for the view being renamed while its write is debounced. */
   const renameOriginRef = useRef<{ index: number; name: string } | null>(null)
+  /** The debounced rename's disk write, until its timer fires or another view write runs it. */
+  const pendingRenameRef = useRef<(() => Promise<void>) | null>(null)
+  const renameWriteRef = useRef<Promise<void>>(Promise.resolve())
+
+  /**
+   * Runs the debounced rename write now and waits for it. Every other view write calls this
+   * first: those writes address views by the name in the cache, and until the rename lands the
+   * disk still holds the old one. A view added meanwhile under that old name ("New view") would
+   * replace it, and the rename would then turn it into the renamed view, losing the new one.
+   */
+  const flushRename = useCallback((): Promise<void> => {
+    const write = pendingRenameRef.current
+    if (write) {
+      pendingRenameRef.current = null
+      if (renameTimeoutRef.current) clearTimeout(renameTimeoutRef.current)
+      renameTimeoutRef.current = null
+      renameWriteRef.current = write()
+    }
+    return renameWriteRef.current
+  }, [])
 
   // ============================================================================
   // Queries
@@ -511,6 +531,7 @@ export function useFolderView({
       updateTimeoutRef.current = setTimeout(() => {
         void (async () => {
           try {
+            await flushRename()
             const result = await folderViewService.setView(
               scope,
               // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- local ViewConfig mirrors the preload type with unknown filters/groupBy; the IPC contract type is narrower
@@ -528,7 +549,7 @@ export function useFolderView({
         })()
       }, 300)
     },
-    [activeView, activeViewIndex, scope, queryClient]
+    [activeView, activeViewIndex, scope, queryClient, flushRename]
   )
 
   /**
@@ -537,6 +558,7 @@ export function useFolderView({
   const addView = useCallback(
     async (view: ViewConfig) => {
       try {
+        await flushRename()
         const result = await folderViewService.setView(
           scope,
           // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- local ViewConfig mirrors the preload type with unknown filters/groupBy; the IPC contract type is narrower
@@ -563,7 +585,7 @@ export function useFolderView({
         throw err
       }
     },
-    [scope, queryClient]
+    [scope, queryClient, flushRename]
   )
 
   /**
@@ -572,6 +594,7 @@ export function useFolderView({
   const deleteView = useCallback(
     async (viewName: string) => {
       try {
+        await flushRename()
         const result = await folderViewService.deleteView(scope, viewName)
 
         if (!result.success) {
@@ -591,7 +614,7 @@ export function useFolderView({
         throw err
       }
     },
-    [scope, queryClient, activeViewIndex]
+    [scope, queryClient, activeViewIndex, flushRename]
   )
 
   /**
@@ -631,30 +654,29 @@ export function useFolderView({
       if (renameTimeoutRef.current) {
         clearTimeout(renameTimeoutRef.current)
       }
-      renameTimeoutRef.current = setTimeout(() => {
-        void (async () => {
-          try {
-            renameOriginRef.current = null
-            if (persistedName === name) return
-            const result = await folderViewService.setView(
-              scope,
-              // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- local ViewConfig mirrors the preload type with unknown filters/groupBy; the IPC contract type is narrower
-              renamed as unknown as ContractViewConfig,
-              persistedName
-            )
+      pendingRenameRef.current = async () => {
+        try {
+          renameOriginRef.current = null
+          if (persistedName === name) return
+          const result = await folderViewService.setView(
+            scope,
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- local ViewConfig mirrors the preload type with unknown filters/groupBy; the IPC contract type is narrower
+            renamed as unknown as ContractViewConfig,
+            persistedName
+          )
 
-            if (!result.success) {
-              throw new Error(result.error || 'Failed to rename view')
-            }
-          } catch (err) {
-            log.error('renameView failed:', err)
-            // Revert on error
-            void queryClient.invalidateQueries({ queryKey: folderViewKeys.views(scope) })
+          if (!result.success) {
+            throw new Error(result.error || 'Failed to rename view')
           }
-        })()
-      }, 300)
+        } catch (err) {
+          log.error('renameView failed:', err)
+          // Revert on error
+          void queryClient.invalidateQueries({ queryKey: folderViewKeys.views(scope) })
+        }
+      }
+      renameTimeoutRef.current = setTimeout(() => void flushRename(), 300)
     },
-    [views, scope, queryClient]
+    [views, scope, queryClient, flushRename]
   )
 
   /**
@@ -679,6 +701,7 @@ export function useFolderView({
       })
 
       try {
+        await flushRename()
         // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- local ViewConfig mirrors the preload type with unknown filters/groupBy; the IPC contract type is narrower
         const result = await folderViewService.setView(scope, {
           ...targetView,
@@ -697,7 +720,7 @@ export function useFolderView({
         throw err
       }
     },
-    [views, scope, queryClient]
+    [views, scope, queryClient, flushRename]
   )
 
   /**
@@ -816,6 +839,7 @@ export function useFolderView({
       updateTimeoutRef.current = setTimeout(() => {
         void (async () => {
           try {
+            await flushRename()
             // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- local ViewConfig mirrors the preload type with unknown filters/groupBy; the IPC contract type is narrower
             await folderViewService.setView(scope, updatedView as unknown as ContractViewConfig)
 
@@ -846,7 +870,7 @@ export function useFolderView({
         })()
       }, 300)
     },
-    [activeView, activeViewIndex, scope, queryClient]
+    [activeView, activeViewIndex, scope, queryClient, flushRename]
   )
 
   /**
