@@ -73,11 +73,16 @@ const FENCE = /^ {0,3}(```|~~~)/
  * Strict on the prefix: only `>` alone and `> …` are read. A `>text` line —
  * valid CommonMark, never bytes Memry writes — refuses the whole run rather
  * than ending it early, which would tear one blockquote into two.
+ *
+ * `lazyParagraph`: a lossless quote's last paragraph takes the lines after it
+ * that open no block, as BlockNote's flat quote does. A callout's body ends at
+ * its last `>` line.
  */
 export function readStructuredQuoteRun(
   lines: readonly string[],
   start: number,
-  lossless = true
+  lossless = true,
+  lazyParagraph = false
 ): QuoteRun | null {
   if (!lines[start]?.startsWith('>')) return null
 
@@ -112,8 +117,12 @@ export function readStructuredQuoteRun(
 
   // A line after a listed run that neither opens a block nor follows a gap
   // continues the item's paragraph lazily: `> - [a\nb](u)` is one item, and
-  // ending the run before `b](u)` tore its link in two (BBF-110).
-  if (listed && inner[inner.length - 1] !== '' && !inner.some((line) => FENCE.test(line))) {
+  // ending the run before `b](u)` tore its link in two (BBF-110). A quote's
+  // last paragraph continues the same way: the flat quote BlockNote read from
+  // `> q\nsee ![x](u)` dropped the image.
+  const last = inner[inner.length - 1]
+  const continues = listed || (lossless && lazyParagraph && !BLOCK_START.test(last))
+  if (continues && last !== '' && !inner.some((line) => FENCE.test(line))) {
     while (
       end < lines.length &&
       lines[end].trim() !== '' &&

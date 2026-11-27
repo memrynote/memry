@@ -455,7 +455,7 @@ async function parseQuoteRunAt<B extends NoteBlock<B>>(
   lines: readonly string[],
   i: number
 ): Promise<{ content: unknown; children: B[]; end: number } | null> {
-  const run = readStructuredQuoteRun(lines, i, !host.legacyBlocks)
+  const run = readStructuredQuoteRun(lines, i, !host.legacyBlocks, true)
   if (!run) return null
 
   const claimed = await resolveQuoteRun(
