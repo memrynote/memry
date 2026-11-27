@@ -246,6 +246,17 @@ describe('SetupWizard', () => {
     await waitFor(() => expect(auth.initOAuth).toHaveBeenCalledWith())
   })
 
+  it('links the plans page with the setup wizard UTM tags', () => {
+    mockAuth()
+
+    render(<SetupWizard />)
+
+    expect(screen.getByRole('link', { name: 'setup.signIn.seePlans' })).toHaveAttribute(
+      'href',
+      'https://memrynote.com/pricing?utm_source=app&utm_medium=desktop&utm_campaign=setup_wizard'
+    )
+  })
+
   it('handles OTP verify, resend, and back paths', async () => {
     const user = userEvent.setup()
     const auth = mockAuth(

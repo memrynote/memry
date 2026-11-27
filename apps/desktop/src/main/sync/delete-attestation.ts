@@ -1,6 +1,9 @@
 import sodium from 'libsodium-wrappers-sumo'
 import { CBOR_FIELD_ORDER } from '@memry/contracts/cbor-ordering'
-import { deleteAttestationPayload, type DeleteClaim } from '@memry/contracts/delete-attestation'
+import {
+  acceptedDeleteAttestationPayloads,
+  type DeleteClaim
+} from '@memry/contracts/delete-attestation'
 import { verifySignature } from '../crypto/signatures'
 
 /** The attestation fields of a purged tombstone entry, present only together (#2408). */
@@ -27,14 +30,19 @@ export interface VerifiedAttestation {
  *   attestations existed, and every old client's delete);
  * - `signer_unknown`: no key for the named device, locally or on the server;
  * - `attestation_invalid`: the signature does not verify over this entry's
- *   own (type, id, clock, deletedAt), or is not a signature at all.
+ *   own (type, id, clock, deletedAt) in this vault, or is not a signature at
+ *   all. A v2 attestation signed in another vault is one (#5247).
  */
 export type AttestationRefusal = 'unattested' | 'signer_unknown' | 'attestation_invalid'
 
-/** Verifies a purged tombstone's attestation under its signer's resolved key. */
+/**
+ * Verifies a purged tombstone's attestation under its signer's resolved key:
+ * v2 bound to `vaultId`, the vault this device syncs, or v1 (#5247).
+ */
 export function verifyTombstoneAttestation(
   tombstone: DeleteClaim & { attestation?: TombstoneAttestation },
-  signerKey: Uint8Array | null
+  signerKey: Uint8Array | null,
+  vaultId: string | null
 ): VerifiedAttestation | AttestationRefusal {
   const { attestation } = tombstone
   if (!attestation) return 'unattested'
@@ -42,11 +50,8 @@ export function verifyTombstoneAttestation(
   try {
     // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
     const signature = sodium.from_base64(attestation.signature, sodium.base64_variants.ORIGINAL)
-    const valid = verifySignature(
-      deleteAttestationPayload(tombstone),
-      CBOR_FIELD_ORDER.DELETE_ATTESTATION,
-      signature,
-      signerKey
+    const valid = acceptedDeleteAttestationPayloads(tombstone, vaultId).some((payload) =>
+      verifySignature(payload, CBOR_FIELD_ORDER.DELETE_ATTESTATION, signature, signerKey)
     )
     if (!valid) return 'attestation_invalid'
   } catch {

@@ -1,7 +1,6 @@
 import { useEffect, useReducer, useState } from 'react'
 import { useT } from '@memry/i18n/renderer'
 import { useAuth } from '@/contexts/auth-context'
-import { trackTelemetry } from '@/lib/telemetry'
 import { StagePreview, type StageFocus } from './stage-preview'
 import { AccountStep } from './steps/account-step'
 import { AgentStep, startSmartConnectionsDownload } from './steps/agent-step'
@@ -118,10 +117,6 @@ export function OnboardingWizard(): React.JSX.Element {
     draft: initialDraft(true)
   }))
   const [focusedModule, setFocusedModule] = useState<ModuleKey>('journal')
-
-  useEffect(() => {
-    void trackTelemetry('onboarding_started', { surface: 'onboarding', action: 'wizard' })
-  }, [])
 
   const back = (): void => dispatch({ type: 'back' })
   useWizardKeys(state, back)

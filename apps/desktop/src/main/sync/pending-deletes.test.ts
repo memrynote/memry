@@ -30,7 +30,10 @@ import { SyncQueueManager } from '@memry/sync-client/queue'
 import { initTaskSyncService, resetTaskSyncService } from '@memry/sync-client/task-sync'
 import { initNoteSyncService, resetNoteSyncService } from './note-sync'
 import { enqueueLocalSyncDelete, flushPendingLocalDeletes } from './local-mutations'
+import { buildContentDeletePayload } from './pending-deletes'
 import { markSyncEligible, markSyncIneligible } from '@memry/sync-client/sync-eligibility'
+import { readTombstoneClock } from '@memry/sync-client/tombstone-clocks'
+import { deleteNoteRowQueuingSyncDelete } from '../../../../cli/src/app-core/note-sync-delete'
 
 const DEVICE_ID = 'device-A'
 
@@ -272,5 +275,38 @@ describe('local delete tombstones', () => {
     expect(flushed).toBe(0)
     expect(queue.getPendingCount()).toBe(0)
     expect(db.select().from(syncPendingDeletes).all()).toHaveLength(1)
+  })
+
+  it('replays a note delete the CLI queued as it replays its own (#5661)', () => {
+    // #given — `memrynote notes delete` of a note the server knows, desktop closed
+    seedNote('note-cli', { [DEVICE_ID]: 3, peer: 7 })
+    const ownTombstone = buildContentDeletePayload(db, 'note-cli')
+    deleteNoteRowQueuingSyncDelete(db, 'note-cli')
+
+    // #then — the CLI left the pending delete and tombstone clock desktop's delete records
+    expect(db.select().from(noteMetadata).all()).toEqual([])
+    expect(
+      db
+        .select({
+          type: syncPendingDeletes.type,
+          itemId: syncPendingDeletes.itemId,
+          payload: syncPendingDeletes.payload
+        })
+        .from(syncPendingDeletes)
+        .all()
+    ).toEqual([{ type: 'note', itemId: 'note-cli', payload: ownTombstone }])
+    expect(readTombstoneClock(db, 'note', 'note-cli')).toEqual({ [DEVICE_ID]: 4, peer: 7 })
+
+    // #when — the runtime starts
+    initNoteSyncService({ queue, getDeviceId: () => DEVICE_ID })
+    const flushed = flushPendingLocalDeletes(db)
+
+    // #then — the delete reaches the queue with that tombstone
+    expect(flushed).toBe(1)
+    expect(
+      queue
+        .peek(10)
+        .map(({ type, itemId, operation, payload }) => ({ type, itemId, operation, payload }))
+    ).toEqual([{ type: 'note', itemId: 'note-cli', operation: 'delete', payload: ownTombstone }])
   })
 })

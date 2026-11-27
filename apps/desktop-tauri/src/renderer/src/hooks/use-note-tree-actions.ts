@@ -35,6 +35,7 @@ import { journalService } from '@/services/journal-service'
 import { useVaultConfig } from '@/hooks/use-vault-config'
 import { containsJournalFolder, journalDateForPath } from '@/lib/journal-path'
 import { BookmarkItemTypes } from '@memry/contracts/bookmark-types'
+import { bookmarksService } from '@/services/bookmarks-service'
 
 const log = createLogger('Hook:NoteTreeActions')
 
@@ -880,11 +881,12 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
       if (folderToConfigureTemplate && templateId) {
         try {
           const existing = (await notesService.getFolderConfig(folderToConfigureTemplate)) ?? {}
-          await notesService.setFolderConfig(folderToConfigureTemplate, {
+          const saved = await notesService.setFolderConfig(folderToConfigureTemplate, {
             ...existing,
             template: templateId,
             inherit: true
           })
+          if (!saved.success) throw new Error(saved.error)
           const templatesResponse = await templatesService.list()
           const template = templatesResponse.templates.find((t) => t.id === templateId)
           if (template) {
@@ -898,7 +900,10 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
         } catch (err) {
           log.error('Failed to set folder template', err)
           toast.error(
-            getI18n().getFixedT(null, 'notes')('phaseI.toasts.failedToSetDefaultTemplate')
+            extractErrorMessage(
+              err,
+              getI18n().getFixedT(null, 'notes')('phaseI.toasts.failedToSetDefaultTemplate')
+            )
           )
         }
       }
@@ -913,7 +918,8 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
         const existing = (await notesService.getFolderConfig(folderPath)) ?? {}
         const next = { ...existing, inherit: true }
         delete next.template
-        await notesService.setFolderConfig(folderPath, next)
+        const saved = await notesService.setFolderConfig(folderPath, next)
+        if (!saved.success) throw new Error(saved.error)
         deps.setFolderTemplateNames((prev) => {
           const nextNames = new Map(prev)
           nextNames.delete(folderPath)
@@ -923,7 +929,10 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
       } catch (err) {
         log.error('Failed to clear folder template', err)
         toast.error(
-          getI18n().getFixedT(null, 'notes')('phaseI.toasts.failedToClearDefaultTemplate')
+          extractErrorMessage(
+            err,
+            getI18n().getFixedT(null, 'notes')('phaseI.toasts.failedToClearDefaultTemplate')
+          )
         )
       }
     },
@@ -1209,7 +1218,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
     if (items.length === 0) return
     const t = getI18n().getFixedT(null, 'notes')
     try {
-      await window.api.bookmarks.bulkCreate(items)
+      await bookmarksService.bulkCreate(items)
       toast.success(t('tree.toast.selectionBookmarked', { count: items.length }))
     } catch (err) {
       log.error('Failed to bookmark selection', err)

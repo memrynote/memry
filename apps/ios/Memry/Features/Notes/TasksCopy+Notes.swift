@@ -38,14 +38,8 @@ extension TasksCopy {
     // MARK: Linked tasks (`linkedTasks.*`)
 
     static let linkedTasksTitle = "Linked Tasks"
-    static let linkedTasksExpanded = "Expanded"
-    static let linkedTasksCollapsed = "Collapsed"
     static let writtenInThisNote = "Written in this note"
     static let mentionsThisNote = "Mentions this note"
-
-    static func linkedTasksHeader(_ count: Int) -> String {
-        "\(linkedTasksTitle), \(count)"
-    }
 
     static func linkedTaskSubtitle(fromThisNote: Bool, due: String?) -> String {
         let origin = fromThisNote ? writtenInThisNote : mentionsThisNote

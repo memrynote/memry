@@ -5,12 +5,16 @@ use std::collections::BTreeSet;
 use serde_json::Value as Json;
 
 use super::items::field;
-use super::{MAX_PULL_IDS, PullError, PullLoop, now_ms};
+use super::{MAX_PULL_IDS, PullError, PullLoop, now_ms, still_open};
+use crate::api::errors::StorageError;
+use crate::storage::nested_tx;
 use crate::sync::apply::{self, ApplyTotals, Pending};
 use crate::sync::body_debt;
-use crate::sync::driver::observer::AppliedFeed;
+use crate::sync::driver::observer::{AppliedFeed, AppliedOutcome, AppliedRecord};
 use crate::sync::hardening::{corrupt, quarantine};
+use crate::sync::note_body_feed::{self, FetchedBodies};
 use crate::sync::refused_items::{self, CORE_BUILD};
+use crate::sync::unknown_signer;
 
 impl PullLoop {
     /// Hands the page to [`apply`], which owns every decision about what an
@@ -18,6 +22,11 @@ impl PullLoop {
     /// applied at, on a feed page the body debt of its documents, and the
     /// ledger entry of each record the type's schema refused, under this core
     /// build ([`CORE_BUILD`]), in the same writer call as the apply.
+    ///
+    /// Invariant (§5.11, #5231): the page's applied records and, on a feed
+    /// page, its bodies and cursor (`advance`) commit in one transaction or
+    /// not at all. `feed` learns the records only once that transaction
+    /// committed: a failure leaves nothing for an observer to read.
     ///
     /// The debt is written **before** the apply (#2294): a page re-pulled
     /// after a crash skips its identical records (chapter 06 §6.5.2 P4), so a
@@ -27,55 +36,74 @@ impl PullLoop {
     pub(super) async fn apply_all(
         &self,
         pending: Vec<Pending>,
-        untyped: Vec<String>,
         owe_bodies: bool,
+        advance: Option<Advance>,
         feed: &mut AppliedFeed,
-    ) -> Result<ApplyTotals, PullError> {
-        let now = now_ms();
+    ) -> Result<(ApplyTotals, Vec<String>), PullError> {
         let clock_device = self.clock_device.clone();
+        let vault_files = self.vault_files();
         let at_rest = self.at_rest.clone();
-        let (mut totals, applied) = self
+        let (mut totals, advanced) = self
             .db
             .call(move |conn| {
+                // #5849: stamped inside the hold that writes the rows, so no
+                // search watermark written while this page waited for the
+                // lock can pass them.
+                let now = now_ms();
+                let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
                 let mut totals = ApplyTotals::default();
-                let applied = (|| {
-                    let owed_here = if owe_bodies {
-                        body_debt::owe_page(conn, &pending)?
-                    } else {
-                        Vec::new()
-                    };
-                    apply::apply_page_into(
-                        conn,
-                        pending,
-                        untyped,
-                        now,
-                        clock_device.as_deref(),
-                        &at_rest,
-                        &mut totals,
-                    )?;
-                    for doc_id in &owed_here {
-                        if !totals.applied_documents.contains(doc_id) {
-                            body_debt::settle(conn, doc_id)?;
-                        }
+                unknown_signer::resolve_verified(&txn, &pending)?;
+                let owed_here = if owe_bodies {
+                    body_debt::owe_page(&txn, &pending)?
+                } else {
+                    Vec::new()
+                };
+                apply::apply_page_into(
+                    &txn,
+                    pending,
+                    now,
+                    clock_device.as_deref(),
+                    vault_files.as_ref(),
+                    &at_rest,
+                    &mut totals,
+                )?;
+                for doc_id in &owed_here {
+                    if !totals.applied_documents.contains(doc_id) {
+                        body_debt::settle(&txn, doc_id)?;
                     }
-                    refused_items::record(conn, &totals.refused, CORE_BUILD, now)
-                })();
-                Ok((totals, applied))
+                }
+                refused_items::record(&txn, &totals.refused, CORE_BUILD, now)?;
+                still_open(&txn)?;
+                let advanced = match advance {
+                    Some(advance) => {
+                        // Stamped under the writer, as `body_pull::store_update` says why.
+                        let advanced = note_body_feed::land_and_advance(
+                            &txn,
+                            advance.bodies,
+                            advance.cursor.as_deref(),
+                            advance.at_head,
+                            now_ms(),
+                        )?;
+                        still_open(&txn)?;
+                        advanced
+                    }
+                    None => Vec::new(),
+                };
+                txn.commit().map_err(sqlite_failed)?;
+                Ok((totals, advanced))
             })
             .await?;
-        // What committed before a failure is the caller's to tell (#3534).
         let committed = std::mem::take(&mut totals.feed);
         feed.records.extend(committed.records);
         feed.revived_notes.extend(committed.revived_notes);
         feed.downloads.extend(committed.downloads);
-        applied?;
-        Ok(totals)
+        Ok((totals, advanced))
     }
 
     /// Tells the observers what an apply committed
     /// ([`crate::sync::driver::observer::Observers::applied`]).
     /// Called after the commit, never inside it: an observer reads the row.
-    pub(super) async fn tell(&self, feed: AppliedFeed) {
+    pub(crate) async fn tell(&self, feed: AppliedFeed) {
         if let Some(observers) = &self.observers {
             observers.applied(feed).await;
         }
@@ -141,7 +169,7 @@ impl PullLoop {
             .collect();
         let mut answered = BTreeSet::new();
         let mut pending = Vec::new();
-        let mut warnings = Vec::new();
+        let mut marked = Vec::new();
         let fetched: Result<bool, PullError> = async {
             for chunk in ids.chunks(MAX_PULL_IDS) {
                 let mut body = self.fetch_bodies(chunk).await?;
@@ -163,7 +191,7 @@ impl PullLoop {
                             if corrupt.contains(&key)
                                 || (self.hardened && failure.signature_invalid) =>
                         {
-                            warnings.extend(self.record_corrupt(&item, &failure).await?);
+                            marked.extend(self.record_corrupt(&item, &failure).await?);
                         }
                         Err(failure) => eprintln!(
                             "memry-core: refused {} {} still does not decode: {}",
@@ -176,18 +204,32 @@ impl PullLoop {
             Ok(true)
         }
         .await;
-        // The warnings already counted reach the observers on every exit.
+        // The marks already written reach the observers on every exit.
         if !matches!(fetched, Ok(true)) {
-            self.warn(warnings).await;
+            self.warn(marked).await;
             return fetched.map(drop);
         }
         pending.sort_by_key(|item| apply::apply_rank(item.item_type()));
         let mut feed = AppliedFeed::default();
         let applied = self
-            .apply_all(pending, Vec::new(), self.bodies.is_some(), &mut feed)
+            .apply_all(pending, self.bodies.is_some(), None, &mut feed)
             .await;
+        // A corrupt row that applied is recovered (`item-recovery.ts:78`); a
+        // skip changed nothing.
+        let recovered: Vec<AppliedRecord> = feed
+            .records
+            .iter()
+            .filter(|record| {
+                record.outcome != AppliedOutcome::Skipped
+                    && corrupt.contains(&(record.item_type.clone(), record.item_id.clone()))
+            })
+            .cloned()
+            .collect();
         self.tell(feed).await;
-        self.warn(warnings).await;
+        self.warn(marked).await;
+        if let Some(observers) = &self.observers {
+            observers.recovered(recovered).await;
+        }
         applied?;
         let gone: Vec<(String, String)> = refused.difference(&answered).cloned().collect();
         self.db
@@ -198,5 +240,21 @@ impl PullLoop {
             })
             .await?;
         Ok(())
+    }
+}
+
+/// What a feed page commits with its records: its bodies and cursor.
+pub(super) struct Advance {
+    pub bodies: FetchedBodies,
+    pub cursor: Option<String>,
+    /// Whether the page reached the head of the feed. A refused page at the head is still
+    /// the head: the cursor moves past it, so a run from cursor 0 ends there and the next
+    /// run's markers apply (§5.12.3).
+    pub at_head: bool,
+}
+
+fn sqlite_failed(error: rusqlite::Error) -> StorageError {
+    StorageError::Failed {
+        what: error.to_string(),
     }
 }

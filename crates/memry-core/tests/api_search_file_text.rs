@@ -68,7 +68,7 @@ fn force_full_rebuild(search: &Search) {
 fn a_markdown_note_is_found_by_its_attachments_text() {
     let (db, vault) = vault("attachment-text");
     write_note(&db, "n1", "Trip", "flights and hotels");
-    let search = vault.search().expect("the index");
+    let search = vault.search(None).expect("the index");
     save(&search, source("n1", "receipt.pdf"), "Quittung Kardamom");
 
     assert!(search.reindex().expect("the reindex").full);
@@ -85,7 +85,7 @@ fn a_bodyless_note_is_found_by_its_own_file_text_and_without_text_by_its_title()
     let (db, vault) = vault("file-note-text");
     write_note(&db, "scan", "Invoice March", "");
     write_note(&db, "clip", "Holiday Video", "");
-    let search = vault.search().expect("the index");
+    let search = vault.search(None).expect("the index");
     save(&search, source("scan", OWN_FILE), "Rechnung Kardamom");
 
     search.reindex().expect("the reindex");
@@ -107,7 +107,7 @@ fn a_bodyless_note_is_found_by_its_own_file_text_and_without_text_by_its_title()
 fn refreshing_one_note_picks_up_text_saved_after_its_reindex() {
     let (db, vault) = vault("refresh-note-text");
     write_note(&db, "n1", "Trip", "flights and hotels");
-    let search = vault.search().expect("the index");
+    let search = vault.search(None).expect("the index");
     search.reindex().expect("the reindex");
     assert!(found(&search, "kardamom").is_empty());
 
@@ -132,7 +132,7 @@ fn refreshing_one_note_picks_up_text_saved_after_its_reindex() {
 fn refreshing_a_note_the_index_has_not_reached_writes_no_row() {
     let (db, vault) = vault("refresh-unindexed");
     write_note(&db, "n1", "Trip", "");
-    let search = vault.search().expect("the index");
+    let search = vault.search(None).expect("the index");
     save(&search, source("n1", "receipt.pdf"), "Quittung Kardamom");
 
     search.refresh_note_text("n1").expect("the refresh");
@@ -172,7 +172,7 @@ fn refresh_then_reindex_leaves_what_a_full_rebuild_writes() {
     write_note(&db, "n1", "Trip", "flights and hotels");
     write_note(&db, "scan", "Invoice March", "");
     write_note(&db, "plain", "Plain", "no files");
-    let search = vault.search().expect("the index");
+    let search = vault.search(None).expect("the index");
     search.reindex().expect("the reindex");
 
     save(&search, source("n1", "receipt.pdf"), "Quittung Kardamom");
@@ -191,7 +191,7 @@ fn refresh_then_reindex_leaves_what_a_full_rebuild_writes() {
 fn refreshing_a_corrupt_note_is_an_error() {
     let (db, vault) = vault("refresh-corrupt");
     write_note(&db, "n1", "Trip", "flights");
-    let search = vault.search().expect("the index");
+    let search = vault.search(None).expect("the index");
     search.reindex().expect("the reindex");
     set_sync_item(&db, "n1", "corrupt_reason = 'unreadable'");
 
@@ -206,7 +206,7 @@ fn refreshing_a_corrupt_note_is_an_error() {
 fn refreshing_a_deleted_note_is_an_error() {
     let (db, vault) = vault("refresh-deleted");
     write_note(&db, "n1", "Trip", "flights");
-    let search = vault.search().expect("the index");
+    let search = vault.search(None).expect("the index");
     search.reindex().expect("the reindex");
     set_sync_item(&db, "n1", "deleted_at = 1");
     search.reindex().expect("the reindex drops the row");
@@ -273,13 +273,14 @@ fn traced(search: &Search, f: impl FnOnce()) -> Vec<String> {
 }
 
 /// `fts_notes.id` is UNINDEXED, so `WHERE id = ?` scans the whole table: a rebuild that
-/// ran one per note would be quadratic in the vault.
+/// ran one per note would be quadratic in the vault. Since #5417 an incremental pass also
+/// replaces each row by its rowid, read once per pass.
 #[test]
 fn a_full_rebuild_runs_no_per_note_delete() {
     let (db, vault) = vault("rebuild-no-delete");
     write_note(&db, "n1", "Trip", "flights");
     write_note(&db, "n2", "Home", "garden");
-    let search = vault.search().expect("the index");
+    let search = vault.search(None).expect("the index");
 
     let per_note = |statements: &[String]| {
         statements
@@ -299,9 +300,25 @@ fn a_full_rebuild_runs_no_per_note_delete() {
     });
     let done = done.expect("the pass");
     assert!(!done.full);
+    assert!(done.notes_indexed > 0);
+    assert_eq!(per_note(&incremental), 0, "{incremental:#?}");
+    let (rows, ids): (i64, i64) = search
+        .index_handle()
+        .read_blocking(|index| {
+            index
+                .query_row(
+                    "SELECT count(*), count(DISTINCT id) FROM fts_notes",
+                    [],
+                    |row| Ok((row.get(0)?, row.get(1)?)),
+                )
+                .map_err(|error| memry_core::api::errors::StorageError::Failed {
+                    what: error.to_string(),
+                })
+        })
+        .expect("count");
     assert_eq!(
-        per_note(&incremental),
-        done.notes_indexed as usize,
+        (rows, ids),
+        (3, 3),
         "an incremental pass still replaces each row"
     );
 }
@@ -310,7 +327,7 @@ fn a_full_rebuild_runs_no_per_note_delete() {
 fn a_refresh_looks_the_row_up_once_and_updates_it_by_rowid() {
     let (db, vault) = vault("refresh-rowid");
     write_note(&db, "n1", "Trip", "flights");
-    let search = vault.search().expect("the index");
+    let search = vault.search(None).expect("the index");
     search.reindex().expect("the reindex");
     save(&search, source("n1", "receipt.pdf"), "Quittung Kardamom");
 

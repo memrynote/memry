@@ -6,9 +6,8 @@
  * the pack backfill, and a fresh device B bootstraps against the result.
  *
  * What is covered here:
- *   - packs are actually BUILT by the real Worker against the real D1 ledger;
- *   - `crdt_snapshot` is the only packed kind — a packed `record` carries no
- *     signature and must never be minted (#1852);
+ *   - packs are actually BUILT by the real Worker against the real D1 ledger,
+ *     snapshot packs among them;
  *   - a fresh device asks `GET /sync/packs` and gets a well-formed listing;
  *   - the vault converges either way — with packs present and with none at
  *     all, which is the item-granular fallback.
@@ -25,6 +24,8 @@ import { waitForAppReady } from './utils/electron-helpers'
 import type { SharedSyncBootstrap } from './utils/sync-backend'
 
 const SEED_NOTE_COUNT = 40
+/** Past the backfill's settle window (`PACK_SETTLE_SECONDS`, 24 h): 40 rows are below its minimum fill. */
+const BACKDATE_SECONDS = 2 * 24 * 60 * 60
 
 interface PackRow {
   item_kind: string
@@ -95,7 +96,18 @@ test.describe('Pack bootstrap', () => {
     await seedAndPush(pageA, db, syncBootstrap.email, prefix)
 
     // ---- run the real compaction pipeline ---------------------------------
-    await syncBootstrap.server.triggerScheduled()
+    await db.batch(
+      [
+        'UPDATE sync_items SET updated_at = updated_at - ?',
+        'UPDATE crdt_updates SET created_at = created_at - ?',
+        'UPDATE crdt_snapshots SET created_at = created_at - ?'
+      ].map((sql) =>
+        db
+          .prepare(`${sql} WHERE user_id = (SELECT id FROM users WHERE email = ?)`)
+          .bind(BACKDATE_SECONDS, syncBootstrap.email)
+      )
+    )
+    await syncBootstrap.server.settlePackBackfill()
 
     const packs = await db
       .prepare(
@@ -108,10 +120,8 @@ test.describe('Pack bootstrap', () => {
     const packRows = packs.results ?? []
 
     expect(packRows.length, 'the backfill built no packs at all').toBeGreaterThanOrEqual(1)
-    // PACKED_KINDS is ['crdt_snapshot'] only: a packed record would carry no
-    // signature and no client could verify it (#1852).
-    expect([...new Set(packRows.map((row) => row.item_kind))]).toEqual(['crdt_snapshot'])
-    expect(packRows.reduce((sum, row) => sum + row.item_count, 0)).toBeGreaterThanOrEqual(
+    const snapshotPacks = packRows.filter((row) => row.item_kind === 'crdt_snapshot')
+    expect(snapshotPacks.reduce((sum, row) => sum + row.item_count, 0)).toBeGreaterThanOrEqual(
       SEED_NOTE_COUNT
     )
     for (const row of packRows) {

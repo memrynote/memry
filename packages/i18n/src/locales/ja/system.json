@@ -17,6 +17,7 @@
       "filterAll": "すべてのファイル"
     },
     "exportCancelled": "エクスポートをキャンセルしました",
+    "exportVaultChanged": "保存先を選んでいる間に別の保管庫が開かれました。ノートをもう一度エクスポートしてください。",
     "dataDbRecovery": {
       "title": "Vault データベースを修復",
       "message": "この Vault の Memry データベースが破損しています。",

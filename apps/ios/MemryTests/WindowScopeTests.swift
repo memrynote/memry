@@ -33,54 +33,56 @@ private func focusedField(in window: UIWindow) -> (EditorSession, BlockField) {
     return (session, field)
 }
 
-@MainActor
-@Suite("window scope", .serialized)
-struct WindowScopeTests {
-    private func window() throws -> UIWindow {
-        let scene = try #require(UIApplication.shared.connectedScenes.first as? UIWindowScene)
-        let window = UIWindow(windowScene: scene)
-        window.isHidden = false
-        return window
-    }
+extension KeyWindowSuites {
+    @MainActor
+    @Suite("window scope", .serialized)
+    struct WindowScopeTests {
+        private func window() throws -> UIWindow {
+            let scene = try #require(UIApplication.shared.connectedScenes.first as? UIWindowScene)
+            let window = UIWindow(windowScene: scene)
+            window.isHidden = false
+            return window
+        }
 
-    private func keyboardWillShow(height: CGFloat, on screen: UIScreen?, isLocal: Bool) {
-        NotificationCenter.default.post(
-            name: UIResponder.keyboardWillShowNotification,
-            object: screen,
-            userInfo: [
-                UIResponder.keyboardFrameEndUserInfoKey: CGRect(x: 0, y: 400, width: 800, height: height),
-                UIResponder.keyboardIsLocalUserInfoKey: isLocal,
-            ]
-        )
-    }
+        private func keyboardWillShow(height: CGFloat, on screen: UIScreen?, isLocal: Bool) {
+            NotificationCenter.default.post(
+                name: UIResponder.keyboardWillShowNotification,
+                object: screen,
+                userInfo: [
+                    UIResponder.keyboardFrameEndUserInfoKey: CGRect(x: 0, y: 400, width: 800, height: height),
+                    UIResponder.keyboardIsLocalUserInfoKey: isLocal,
+                ]
+            )
+        }
 
-    @Test func the_editor_sizes_its_panel_only_from_its_own_apps_keyboard() throws {
-        let window = try window()
-        defer { window.isHidden = true }
-        let (session, field) = focusedField(in: window)
-        defer { withExtendedLifetime(field) {} }
-        let before = session.keyboardHeight
+        @Test func the_editor_sizes_its_panel_only_from_its_own_apps_keyboard() throws {
+            let window = try window()
+            defer { window.isHidden = true }
+            let (session, field) = focusedField(in: window)
+            defer { withExtendedLifetime(field) {} }
+            let before = session.keyboardHeight
 
-        keyboardWillShow(height: 520, on: window.windowScene?.screen, isLocal: false)
-        #expect(session.keyboardHeight == before, "another app's keyboard on this screen is not this window's")
+            keyboardWillShow(height: 520, on: window.windowScene?.screen, isLocal: false)
+            #expect(session.keyboardHeight == before, "another app's keyboard on this screen is not this window's")
 
-        keyboardWillShow(height: 520, on: window.windowScene?.screen, isLocal: true)
-        #expect(session.keyboardHeight == 520 - session.accessory.frame.height)
-    }
+            keyboardWillShow(height: 520, on: window.windowScene?.screen, isLocal: true)
+            #expect(session.keyboardHeight == 520 - session.accessory.frame.height)
+        }
 
-    @Test func a_reduce_motion_panel_swap_leaves_the_app_animating() throws {
-        let window = try window()
-        defer { window.isHidden = true }
-        let (session, field) = focusedField(in: window)
-        defer { withExtendedLifetime(field) {} }
-        session.reduceMotion = { true }
+        @Test func a_reduce_motion_panel_swap_leaves_the_app_animating() throws {
+            let window = try window()
+            defer { window.isHidden = true }
+            let (session, field) = focusedField(in: window)
+            defer { withExtendedLifetime(field) {} }
+            session.reduceMotion = { true }
 
-        session.show(.insert)
+            session.show(.insert)
 
-        #expect(session.panel == .insert)
-        #expect(UIView.areAnimationsEnabled, "animations elsewhere in the app keep running")
-        session.show(.insert)
-        #expect(UIView.areAnimationsEnabled)
+            #expect(session.panel == .insert)
+            #expect(UIView.areAnimationsEnabled, "animations elsewhere in the app keep running")
+            session.show(.insert)
+            #expect(UIView.areAnimationsEnabled)
+        }
     }
 }
 

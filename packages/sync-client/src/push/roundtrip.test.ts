@@ -81,6 +81,7 @@ describe('encryptRecordForPush', () => {
   it('round-trips through the pull decryptor', async () => {
     const content = new TextEncoder().encode(JSON.stringify({ title: 'Note', content: 'hello' }))
     const { pushItem } = await encryptRecordForPush(crypto, {
+      vaultId: null,
       id: 'note-1',
       type: 'note',
       operation: 'create',
@@ -101,6 +102,7 @@ describe('encryptRecordForPush', () => {
 
   it('carries clock and stateVector into the signed payload', async () => {
     const { pushItem } = await encryptRecordForPush(crypto, {
+      vaultId: null,
       id: 'task-1',
       type: 'task',
       operation: 'update',
@@ -120,6 +122,7 @@ describe('encryptRecordForPush', () => {
 
   it('rejects verification when the clock is stripped after signing', async () => {
     const { pushItem } = await encryptRecordForPush(crypto, {
+      vaultId: null,
       id: 'task-2',
       type: 'task',
       operation: 'update',
@@ -139,6 +142,7 @@ describe('encryptRecordForPush', () => {
   it('signs a delete with its deletedAt', async () => {
     const deletedAt = 1_700_000_000_000
     const { pushItem } = await encryptRecordForPush(crypto, {
+      vaultId: null,
       id: 'note-2',
       type: 'note',
       operation: 'delete',
@@ -167,6 +171,7 @@ describe('encryptRecordForPush', () => {
     const { pushItem } = await encryptRecordForPush(crypto, {
       ...base,
       ...claim,
+      vaultId: 'vault-a',
       operation: 'delete'
     })
     const verifies = (message: Uint8Array) =>
@@ -176,10 +181,20 @@ describe('encryptRecordForPush', () => {
         signing.publicKey
       )
 
-    expect(verifies(deleteAttestationMessage(claim))).toBe(true)
-    expect(verifies(deleteAttestationMessage({ ...claim, clock: { 'device-a': 3 } }))).toBe(false)
+    expect(verifies(deleteAttestationMessage(claim, 'vault-a'))).toBe(true)
+    expect(
+      verifies(deleteAttestationMessage({ ...claim, clock: { 'device-a': 3 } }, 'vault-a'))
+    ).toBe(false)
+    // #5247: bound to its vault, and never readable as v1.
+    expect(verifies(deleteAttestationMessage(claim, 'vault-b'))).toBe(false)
+    expect(verifies(deleteAttestationMessage(claim, null))).toBe(false)
 
-    const update = await encryptRecordForPush(crypto, { ...base, ...claim, operation: 'update' })
+    const update = await encryptRecordForPush(crypto, {
+      ...base,
+      ...claim,
+      vaultId: 'vault-a',
+      operation: 'update'
+    })
     expect(update.pushItem).not.toHaveProperty('deleteAttestation')
   })
 })

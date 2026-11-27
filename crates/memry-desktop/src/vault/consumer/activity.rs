@@ -3,7 +3,8 @@
 //! vault does not open, and one it could not read. What the open walk found goes into its
 //! [`ScanActivity`], which the walk records as `recordScanActivity` does once it ended.
 
-use super::apply::Applier;
+use super::apply::{Applier, Step};
+use super::rows::Lane;
 use crate::vault::activity::{
     ActivityInput, ActivityKind, ActivitySource, ScanActivity, UNREADABLE_REPORT_MS, failure_key,
 };
@@ -40,20 +41,50 @@ impl Applier {
     }
 
     /// A file that got its note. Only a new one is `added`, as Electron records an add no note
-    /// claimed: a watched file's at once, a walked file's in the walk's `scan`.
-    pub(super) fn report_found(&self, path: &str, created: bool, scan: Option<&mut ScanActivity>) {
-        if !created {
-            return;
-        }
+    /// claimed: a watched file's at once, a walked file's in the walk's `scan`. The watcher is
+    /// told a watched file's note, since its report of the file named none (#5579).
+    pub(super) fn report_found(
+        &self,
+        path: &str,
+        note_id: &str,
+        created: bool,
+        scan: Option<&mut ScanActivity>,
+    ) {
         match scan {
-            Some(scan) => scan.add(path),
+            Some(scan) if created => scan.add(path),
+            Some(_) => {}
             None => {
-                self.activity.record(
-                    &self.root,
-                    ActivityInput::new(ActivityKind::Added, ActivitySource::Watcher).path(path),
-                );
+                if let Some(watch) = &self.watch {
+                    watch.named(path.to_owned(), note_id.to_owned());
+                }
+                if created {
+                    self.activity.record(
+                        &self.root,
+                        ActivityInput::new(ActivityKind::Added, ActivitySource::Watcher).path(path),
+                    );
+                }
             }
         }
+    }
+
+    /// A watched file at its row's path: the watcher's report of it names the row's note from
+    /// now on. A file put back where a kept note's row stayed was reported new, naming no note,
+    /// so the row going with the file's folder left it reported, never new again (#5579).
+    pub(super) fn found_at_row(
+        &self,
+        lane: &mut Lane<'_>,
+        note_id: &str,
+        path: &str,
+        size: u64,
+        modified_ms: i64,
+        scan: Option<&mut ScanActivity>,
+    ) -> Step {
+        if scan.is_none()
+            && let Some(watch) = &self.watch
+        {
+            watch.named(path.to_owned(), note_id.to_owned());
+        }
+        self.changed(lane, note_id, path, size, modified_ms, scan)
     }
 
     /// What the open walk found (`recordScanActivity`), but in a vault the identity leaves as

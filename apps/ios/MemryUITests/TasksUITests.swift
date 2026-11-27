@@ -25,6 +25,10 @@ final class TasksUITests: XCTestCase {
         run = "ui-\(UUID().uuidString.prefix(6).lowercased())"
     }
 
+    override func tearDown() async throws {
+        XCUIDevice.shared.orientation = .portrait
+    }
+
     // MARK: Flows
 
     func testQuickAddReadsDateTimePriorityAndTag() throws {
@@ -186,12 +190,18 @@ final class TasksUITests: XCTestCase {
     /// Launches onto the Tasks tab with no filter, the All tab and list mode,
     /// scoped to every project.
     private func openTasks() throws {
+        // iPad portrait opens the page sidebar over the list when the
+        // keyboard comes up (#4507); landscape docks it, and Tasks is its row.
+        let isPad = UIDevice.current.userInterfaceIdiom == .pad
+        if isPad { XCUIDevice.shared.orientation = .landscapeLeft }
         app.launch()
         // The staging vault's name is whatever a desktop peer last set it to;
         // `TEST_RUNNER_MEMRY_UI_VAULT` overrides the usual one.
         let name = ProcessInfo.processInfo.environment["MEMRY_UI_VAULT"] ?? "MemryNote"
         let vault = app.staticTexts[name]
-        let tasksTab = app.buttons["Tasks"].firstMatch
+        let tasksTab = isPad
+            ? app.collectionViews.cells.matching(NSPredicate(format: "label BEGINSWITH 'Tasks'")).firstMatch
+            : app.buttons["Tasks"].firstMatch
         // Signed out lands on the welcome screen first, or on sign-in once
         // past it.
         let signIn = app.descendants(matching: .any).matching(NSPredicate(
@@ -247,7 +257,8 @@ final class TasksUITests: XCTestCase {
             }
             XCTAssertTrue(found, "the test project was not created")
         }
-        app.navigationBars.buttons.element(boundBy: 0).tap()
+        // By id: on iPad the first bar button is the sidebar toggle.
+        app.navigationBars.buttons["BackButton"].firstMatch.tap()
         XCTAssertTrue(app.buttons["tasks.filterButton"].firstMatch.waitForExistence(timeout: 10))
     }
 
@@ -282,8 +293,9 @@ final class TasksUITests: XCTestCase {
         XCTAssertTrue(field.waitForExistence(timeout: 10))
         field.typeText(text + "\n")
         XCTAssertTrue(waitUntil { (field.value as? String ?? "").isEmpty }, "the composer did not submit")
-        // A tap outside the composer closes it.
-        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.2)).tap()
+        // A tap outside the composer, on the list's title, closes it. On
+        // iPad the list is one column, so a point on the screen may miss it.
+        title.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
         XCTAssertTrue(waitUntil { !field.exists }, "the composer did not close")
     }
 

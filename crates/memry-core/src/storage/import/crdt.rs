@@ -14,6 +14,7 @@ use crate::crdt::{DocumentRegistry, canonical_fragment, update_log};
 use crate::domain::note_files::{self, NoteFileStat, StampMark};
 use crate::domain::note_snapshots::{self, Reason, Version};
 use crate::domain::owed_file_body;
+use crate::storage::nested_tx;
 use crate::sync::{body_debt, outbox, store};
 
 /// One Yjs document folded to a single state, with the server sequence it had applied.
@@ -88,7 +89,7 @@ impl ImportWriter {
         docs: &[ImportDocument],
         now_ms: i64,
     ) -> Result<(), StorageError> {
-        let tx = self.data.transaction().map_err(failed)?;
+        let tx = nested_tx::begin(&self.data).map_err(failed)?;
         for doc in docs {
             update_log::append_local_update_in(&tx, &doc.doc_id, &doc.state, doc.created_at)
                 .map_err(crdt_failed)?;
@@ -106,7 +107,7 @@ impl ImportWriter {
         &mut self,
         pushes: &[ImportBodyPush],
     ) -> Result<Vec<bool>, StorageError> {
-        let tx = self.data.transaction().map_err(failed)?;
+        let tx = nested_tx::begin(&self.data).map_err(failed)?;
         let mut queued = Vec::with_capacity(pushes.len());
         for push in pushes {
             let item_type = body_item_type(&tx, &push.doc_id)?;
@@ -173,7 +174,7 @@ impl ImportWriter {
     }
 
     pub fn put_note_body_sync(&mut self, rows: &[ImportBodySync]) -> Result<(), StorageError> {
-        let tx = self.data.transaction().map_err(failed)?;
+        let tx = nested_tx::begin(&self.data).map_err(failed)?;
         for row in rows {
             tx.execute(
                 "INSERT INTO note_body_sync (note_id, last_sent_at, last_confirmed_at,
@@ -201,7 +202,7 @@ impl ImportWriter {
         versions: &[ImportBodyVersion],
         now_ms: i64,
     ) -> Result<(), StorageError> {
-        let tx = self.data.transaction().map_err(failed)?;
+        let tx = nested_tx::begin(&self.data).map_err(failed)?;
         for version in versions {
             let version = Version {
                 note_id: &version.note_id,
@@ -223,7 +224,7 @@ impl ImportWriter {
 
     /// Marks each document owed a body pull ([`body_debt::owe`]).
     pub fn put_body_debts(&mut self, doc_ids: &[String]) -> Result<(), StorageError> {
-        let tx = self.data.transaction().map_err(failed)?;
+        let tx = nested_tx::begin(&self.data).map_err(failed)?;
         for doc_id in doc_ids {
             body_debt::owe(&tx, doc_id)?;
         }
@@ -233,7 +234,7 @@ impl ImportWriter {
     /// `(note_id, recorded_at_ms)`: each note's file is ahead of its document
     /// ([`owed_file_body::record`]), at the time Electron recorded it.
     pub fn put_owed_file_bodies(&mut self, rows: &[(String, i64)]) -> Result<(), StorageError> {
-        let tx = self.data.transaction().map_err(failed)?;
+        let tx = nested_tx::begin(&self.data).map_err(failed)?;
         for (note_id, recorded_at) in rows {
             owed_file_body::record(&tx, note_id, *recorded_at)?;
         }

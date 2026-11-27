@@ -290,7 +290,8 @@ pub async fn account_get_info(app: AppHandle<Wry>) -> Result<AccountInfoView, Co
 pub async fn auth_init_oauth(app: AppHandle<Wry>) -> Result<AuthOAuthStarted, CommandError> {
     let probe = app.state::<NoRedirectTransport>().inner().clone();
     let emitter = app.clone();
-    let started = account(&app)
+    let account = account(&app);
+    let started = account
         .init_oauth(probe.as_ref(), move |event| match event {
             OAuthEvent::Callback { code, state } => {
                 broadcast(&emitter, AuthOauthCallbackEvent { code, state });
@@ -310,7 +311,9 @@ pub async fn auth_init_oauth(app: AppHandle<Wry>) -> Result<AuthOAuthStarted, Co
         })
         .await
         .map_err(|e| map_error(&app, "auth_init_oauth", &e))?;
-    let browser_opened = open_browser(&app, &started.authorization_url);
+    // A Cancel during the start ended this attempt, or will once the start lets it run.
+    let browser_opened =
+        account.oauth_attempt_live(&started) && open_browser(&app, &started.authorization_url);
     Ok(AuthOAuthStarted {
         state: started.state,
         authorization_url: started.authorization_url,

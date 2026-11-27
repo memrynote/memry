@@ -31,6 +31,9 @@ extension VaultFilling {
         )
     }
 
+    /// Named none: a fake has no manifests to read.
+    func fetchNoteManifests(noteId: String) async throws -> UInt32 { 0 }
+
     /// Refuses, rather than returning a plausible id. A fake that reported a
     /// successful upload would let a test pass over bytes nothing ever put.
     func uploadAttachment(

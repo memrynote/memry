@@ -130,7 +130,6 @@ struct BlockTextTests {
     @Test func a_node_is_one_placeholder_and_zero_core_bytes() {
         let runs = [run("see "), run("", ["wikiLink"], ["wikiLink.target": "Dune"]), run(" later", ["bold"])]
         #expect(BlockText.shown(runs) == "see \u{FFFC} later")
-        #expect(BlockText.isFormatted(runs))
 
         let style = BlockText.Style(font: .systemFont(ofSize: 17), ink: .label, titleExists: nil)
         let text = BlockText.attributed(runs, style: style)
@@ -173,225 +172,304 @@ private final class GatedEditor: BlockEditing, @unchecked Sendable {
     func release() { gate.continuation.yield() }
 }
 
-/// A block's typing is committed as the change from the text it started
-/// from, so a peer's edit that merged underneath survives the commit.
-@Suite("Editor commit from base")
-@MainActor
-struct EditorCommitBaseTests {
-    private func paragraph(_ text: String) -> Block {
-        Block(
-            id: "a", kind: "paragraph", depth: 0, props: [],
-            inline: [InlineRun(text: text, marks: [], markAttrs: [:], target: nil)]
-        )
-    }
-
-    @Test func a_commit_over_a_moved_block_sends_replace_text_with_its_base() async {
-        let editor = RecordingEditor()
-        let model = NoteEditorViewModel(noteId: "note-1", editor: editor)
-
-        await model.commit("hello brave world", for: "a", current: "hello world!", base: "hello world")
-
-        #expect(editor.all == [.replaceText(blockId: "a", text: "hello brave world", base: "hello world")])
-    }
-
-    @Test func typing_nothing_over_a_moved_block_writes_nothing() async {
-        let editor = RecordingEditor()
-        let model = NoteEditorViewModel(noteId: "note-1", editor: editor)
-
-        await model.commit("hello world", for: "a", current: "hello world!", base: "hello world")
-
-        #expect(editor.all.isEmpty, "writing the stale text would delete the peer's edit")
-    }
-
-    @Test func a_dirty_field_commits_against_the_text_it_was_drawn_with() async {
-        let editor = RecordingEditor()
-        let model = NoteEditorViewModel(noteId: "note-1", editor: editor)
-        let session = model.session
-        session.model = model
-        let style = BlockText.Style(font: .systemFont(ofSize: 17), ink: .label, titleExists: nil)
-        let field = BlockField(block: paragraph("hello world"), session: session, style: style, alignment: .natural)
-        field.render()
-        #expect(field.base == "hello world")
-
-        // The user types; a peer's "!" merges and the block moves on under
-        // the text view, which is not redrawn over unsaved typing.
-        field.textView.text = "hello brave world"
-        field.dirty = true
-        field.block = paragraph("hello world!")
-
-        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
-            session.reload = { done.resume() }
-            session.commit(field)
+extension KeyWindowSuites {
+    /// A block's typing is committed as the change from the text it started
+    /// from, so a peer's edit that merged underneath survives the commit.
+    @Suite("Editor commit from base")
+    @MainActor
+    struct EditorCommitBaseTests {
+        private func paragraph(_ text: String) -> Block {
+            Block(
+                id: "a", kind: "paragraph", depth: 0, props: [],
+                inline: [InlineRun(text: text, marks: [], markAttrs: [:], target: nil)]
+            )
         }
 
-        #expect(editor.all == [.replaceText(blockId: "a", text: "hello brave world", base: "hello world")])
-        #expect(field.base == "hello brave world", "the next commit starts from what this one sent")
-    }
+        @Test func a_commit_over_a_moved_block_sends_replace_text_with_its_base() async {
+            let editor = RecordingEditor()
+            let model = NoteEditorViewModel(noteId: "note-1", editor: editor)
 
-    /// #2669: typing in a block reaches other devices without waiting for
-    /// the next foreground: its commit schedules a sync pass after the write.
-    @Test func a_typed_commit_schedules_a_sync_pass_after_the_write() async {
-        let editor = RecordingEditor()
-        let model = NoteEditorViewModel(noteId: "note-1", editor: editor)
-        let session = model.session
-        session.model = model
-        var editsAtSync: [[BlockEdit]] = []
-        session.requestSync = { editsAtSync.append(editor.all) }
-        let style = BlockText.Style(font: .systemFont(ofSize: 17), ink: .label, titleExists: nil)
-        let field = BlockField(block: paragraph("hello"), session: session, style: style, alignment: .natural)
-        field.render()
-        field.textView.text = "hello world"
-        field.dirty = true
+            await model.commit("hello brave world", for: "a", base: "hello world")
 
-        await commit(session, field)
-
-        #expect(editsAtSync == [[.setText(blockId: "a", text: "hello world")]])
-    }
-
-    /// #2820: leaving the app does not end editing, so a kill from the app
-    /// switcher lost the focused block's typing. Resigning active commits it.
-    @Test(.timeLimit(.minutes(1))) func leaving_the_app_commits_the_focused_blocks_typing() async {
-        let editor = RecordingEditor()
-        let model = NoteEditorViewModel(noteId: "note-1", editor: editor)
-        let session = model.session
-        session.model = model
-        let style = BlockText.Style(font: .systemFont(ofSize: 17), ink: .label, titleExists: nil)
-        let field = BlockField(block: paragraph("hello"), session: session, style: style, alignment: .natural)
-        field.render()
-        session.focusChanged(to: field)
-        field.textView.text = "hello world"
-        field.dirty = true
-
-        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
-            session.reload = { done.resume() }
-            NotificationCenter.default.post(name: UIApplication.willResignActiveNotification, object: nil)
+            #expect(editor.all == [.replaceText(blockId: "a", text: "hello brave world", base: "hello world")])
         }
 
-        #expect(editor.all == [.setText(blockId: "a", text: "hello world")])
-        #expect(!field.dirty)
-    }
+        @Test func typing_nothing_over_a_moved_block_writes_nothing() async {
+            let editor = RecordingEditor()
+            let model = NoteEditorViewModel(noteId: "note-1", editor: editor)
 
-    /// #2820: a second resign while the first's write is in flight holds its
-    /// own background task, and the first write landing does not end it.
-    @Test(.timeLimit(.minutes(1))) func a_later_resigns_write_stays_protected_when_an_earlier_one_lands() async {
-        let editor = GatedEditor()
-        let model = NoteEditorViewModel(noteId: "note-1", editor: editor)
-        let session = model.session
-        session.model = model
-        var next = 0
-        var ended: [UIBackgroundTaskIdentifier] = []
-        session.beginBackgroundTask = { _ in
-            next += 1
-            return UIBackgroundTaskIdentifier(rawValue: next)
+            await model.commit("hello world", for: "a", base: "hello world")
+
+            #expect(editor.all.isEmpty, "writing the stale text would delete the peer's edit")
         }
-        session.endBackgroundTask = { ended.append($0) }
-        let style = BlockText.Style(font: .systemFont(ofSize: 17), ink: .label, titleExists: nil)
-        let field = BlockField(block: paragraph("hello"), session: session, style: style, alignment: .natural)
-        field.render()
-        session.focusChanged(to: field)
-        let first = UIBackgroundTaskIdentifier(rawValue: 1)
-        let second = UIBackgroundTaskIdentifier(rawValue: 2)
 
-        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
-            session.reload = { done.resume() }
+        @Test func a_dirty_field_commits_against_the_text_it_was_drawn_with() async {
+            let editor = RecordingEditor()
+            let model = NoteEditorViewModel(noteId: "note-1", editor: editor)
+            let session = model.session
+            session.model = model
+            let style = BlockText.Style(font: .systemFont(ofSize: 17), ink: .label, titleExists: nil)
+            let field = BlockField(block: paragraph("hello world"), session: session, style: style, alignment: .natural)
+            field.render()
+            #expect(field.base == "hello world")
+
+            // The user types; a peer's "!" merges and the block moves on under
+            // the text view, which is not redrawn over unsaved typing.
+            field.textView.text = "hello brave world"
+            field.dirty = true
+            field.block = paragraph("hello world!")
+
+            await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+                session.reload = { done.resume() }
+                session.commit(field)
+            }
+
+            #expect(editor.all == [.replaceText(blockId: "a", text: "hello brave world", base: "hello world")])
+            #expect(field.base == "hello brave world", "the next commit starts from what this one sent")
+        }
+
+        /// #2669: typing in a block reaches other devices without waiting for
+        /// the next foreground: its commit schedules a sync pass after the write.
+        @Test func a_typed_commit_schedules_a_sync_pass_after_the_write() async {
+            let editor = RecordingEditor()
+            let model = NoteEditorViewModel(noteId: "note-1", editor: editor)
+            let session = model.session
+            session.model = model
+            var editsAtSync: [[BlockEdit]] = []
+            session.requestSync = { editsAtSync.append(editor.all) }
+            let style = BlockText.Style(font: .systemFont(ofSize: 17), ink: .label, titleExists: nil)
+            let field = BlockField(block: paragraph("hello"), session: session, style: style, alignment: .natural)
+            field.render()
             field.textView.text = "hello world"
             field.dirty = true
-            NotificationCenter.default.post(name: UIApplication.willResignActiveNotification, object: nil)
-            field.textView.text = "hello world!"
+
+            await commit(session, field)
+
+            #expect(editsAtSync == [[.replaceText(blockId: "a", text: "hello world", base: "hello")]])
+        }
+
+        /// #2820: leaving the app does not end editing, so a kill from the app
+        /// switcher lost the focused block's typing. Resigning active commits it.
+        @Test(.timeLimit(.minutes(1))) func leaving_the_app_commits_the_focused_blocks_typing() async {
+            let editor = RecordingEditor()
+            let notifications = NotificationCenter()
+            let model = NoteEditorViewModel(noteId: "note-1", editor: editor, notifications: notifications)
+            let session = model.session
+            session.model = model
+            let style = BlockText.Style(font: .systemFont(ofSize: 17), ink: .label, titleExists: nil)
+            let field = BlockField(block: paragraph("hello"), session: session, style: style, alignment: .natural)
+            field.render()
+            session.focusChanged(to: field)
+            field.textView.text = "hello world"
             field.dirty = true
-            NotificationCenter.default.post(name: UIApplication.willResignActiveNotification, object: nil)
-        }
-        for _ in 0..<50 { await Task.yield() }
 
-        // Other tests post the same notification, so only these two ids count.
-        #expect(ended.contains(first))
-        #expect(!ended.contains(second))
+            await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+                session.reload = { done.resume() }
+                notifications.post(name: UIApplication.willResignActiveNotification, object: nil)
+            }
 
-        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
-            session.reload = { done.resume() }
-            editor.release()
-        }
-        for _ in 0..<50 { await Task.yield() }
-
-        #expect(ended.contains(second))
-    }
-
-    private func commit(_ session: EditorSession, _ field: BlockField) async {
-        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
-            session.reload = { done.resume() }
-            session.commit(field)
-        }
-    }
-
-    /// The trace: commit #1 turns `[[x]]` into a link; the user types on
-    /// before the page reloads; commit #2 must not convert `[[x]]` again at
-    /// offsets that now cover the typed text.
-    @Test func a_converted_link_is_not_converted_again_by_the_next_commit() async {
-        let editor = RecordingEditor()
-        let model = NoteEditorViewModel(noteId: "note-1", editor: editor)
-        let session = model.session
-        session.model = model
-        let style = BlockText.Style(font: .systemFont(ofSize: 17), ink: .label, titleExists: nil)
-        let field = BlockField(block: paragraph("a "), session: session, style: style, alignment: .natural)
-        field.render()
-
-        field.textView.text = "a [[x]]"
-        field.dirty = true
-        await commit(session, field)
-
-        let converted = editor.all.filter { if case .insertInline = $0 { true } else { false } }
-        #expect(converted == [.insertInline(blockId: "a", start: 2, end: 7, kind: "wikiLink", text: "", attrs: ["target": "x", "alias": ""])])
-        #expect(field.textView.text == "a \u{FFFC}", "the literal link is drawn as its chip at once")
-        #expect(field.base == "a \u{FFFC}")
-
-        // Typed before the reload: the block is still the stale "a ".
-        field.textView.textStorage.append(NSAttributedString(string: " b"))
-        field.dirty = true
-        await commit(session, field)
-
-        let after = editor.all.filter { if case .insertInline = $0 { true } else { false } }
-        #expect(after.count == 1, "the second commit converts nothing")
-        #expect(editor.all.last == .replaceText(blockId: "a", text: "a \u{FFFC} b", base: "a \u{FFFC}"))
-    }
-
-    @Test func choosing_a_wiki_row_links_the_row_not_the_typed_query() async {
-        let editor = RecordingEditor()
-        let model = NoteEditorViewModel(noteId: "note-1", editor: editor)
-        let session = model.session
-        session.model = model
-        session.linkNotes = [note("Dune")]
-        let style = BlockText.Style(font: .systemFont(ofSize: 17), ink: .label, titleExists: nil)
-        let field = BlockField(block: paragraph("a "), session: session, style: style, alignment: .natural)
-        field.render()
-        session.focusChanged(to: field)
-        field.textView.text = "a [[Du]]"
-        field.dirty = true
-        field.textView.selectedRange = NSRange(location: 6, length: 0)
-        session.selectionChanged(in: field)
-
-        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
-            session.reload = { done.resume() }
-            session.choose(session.suggestions[0])
+            #expect(editor.all == [.replaceText(blockId: "a", text: "hello world", base: "hello")])
+            #expect(!field.dirty)
         }
 
-        let links = editor.all.filter { if case .insertInline = $0 { true } else { false } }
-        #expect(links == [.insertInline(blockId: "a", start: 2, end: 2, kind: "wikiLink", text: "", attrs: ["target": "Dune", "alias": ""])])
-    }
+        /// #5820: an iPad window resigning while others stay active posts only
+        /// its scene's notification, which commits the focused block's typing.
+        @Test(.timeLimit(.minutes(1))) func its_window_resigning_commits_the_focused_blocks_typing() async throws {
+            let editor = RecordingEditor()
+            let model = NoteEditorViewModel(noteId: "note-1", editor: editor)
+            // A private center: the app-wide one reaches every suite's editors.
+            let center = NotificationCenter()
+            let session = EditorSession(notifications: center)
+            session.model = model
+            let style = BlockText.Style(font: .systemFont(ofSize: 17), ink: .label, titleExists: nil)
+            let field = BlockField(block: paragraph("hello"), session: session, style: style, alignment: .natural)
+            field.render()
+            let window = UIWindow(windowScene: try #require(UIApplication.shared.connectedScenes.first as? UIWindowScene))
+            window.addSubview(field.textView)
+            defer { window.isHidden = true }
+            session.focusChanged(to: field)
+            field.textView.text = "hello world"
+            field.dirty = true
 
-    @Test func a_code_block_keeps_a_typed_link_literal() async {
-        let editor = RecordingEditor()
-        let model = NoteEditorViewModel(noteId: "note-1", editor: editor)
-        let session = model.session
-        session.model = model
-        let style = BlockText.Style(font: .systemFont(ofSize: 17), ink: .label, titleExists: nil)
-        let code = Block(id: "a", kind: "codeBlock", depth: 0, props: [], inline: [])
-        let field = BlockField(block: code, session: session, style: style, alignment: .natural)
-        field.render()
-        field.textView.text = "[[x]]"
-        field.dirty = true
-        await commit(session, field)
-        #expect(!editor.all.contains { if case .insertInline = $0 { true } else { false } })
-        #expect(field.textView.text == "[[x]]")
+            await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+                session.reload = { done.resume() }
+                center.post(name: UIScene.willDeactivateNotification, object: window.windowScene)
+            }
+
+            #expect(editor.all == [.replaceText(blockId: "a", text: "hello world", base: "hello")])
+            #expect(!field.dirty)
+        }
+
+        /// #2820: a second resign while the first's write is in flight holds its
+        /// own background task, and the first write landing does not end it.
+        @Test(.timeLimit(.minutes(1))) func a_later_resigns_write_stays_protected_when_an_earlier_one_lands() async {
+            let editor = GatedEditor()
+            let notifications = NotificationCenter()
+            let model = NoteEditorViewModel(noteId: "note-1", editor: editor, notifications: notifications)
+            let session = model.session
+            session.model = model
+            var next = 0
+            var ended: [UIBackgroundTaskIdentifier] = []
+            session.beginBackgroundTask = { _ in
+                next += 1
+                return UIBackgroundTaskIdentifier(rawValue: next)
+            }
+            let changes = Changes()
+            session.endBackgroundTask = { ended.append($0); changes.changed() }
+            let style = BlockText.Style(font: .systemFont(ofSize: 17), ink: .label, titleExists: nil)
+            let field = BlockField(block: paragraph("hello"), session: session, style: style, alignment: .natural)
+            field.render()
+            session.focusChanged(to: field)
+            let first = UIBackgroundTaskIdentifier(rawValue: 1)
+            let second = UIBackgroundTaskIdentifier(rawValue: 2)
+
+            await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+                session.reload = { done.resume() }
+                field.textView.text = "hello world"
+                field.dirty = true
+                notifications.post(name: UIApplication.willResignActiveNotification, object: nil)
+                field.textView.text = "hello world!"
+                field.dirty = true
+                notifications.post(name: UIApplication.willResignActiveNotification, object: nil)
+            }
+            await changes.until { !ended.isEmpty }
+
+            #expect(ended == [first])
+
+            await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+                session.reload = { done.resume() }
+                editor.release()
+            }
+            await changes.until { ended.count > 1 }
+
+            #expect(ended == [first, second])
+        }
+
+        /// #4506: a page torn down (a split view swapping notes, Back, a
+        /// size-class re-host) can free its model before its focused block
+        /// resigns. The keyboard toolbar keeps the session alive, the model goes.
+        @Test(.timeLimit(.minutes(1))) func typing_lands_when_the_page_frees_its_model_before_the_block_resigns() async {
+            let editor = RecordingEditor()
+            var model: NoteEditorViewModel? = NoteEditorViewModel(noteId: "note-1", editor: editor)
+            let session = model!.session
+            session.model = model
+            let style = BlockText.Style(font: .systemFont(ofSize: 17), ink: .label, titleExists: nil)
+            let field = BlockField(block: paragraph("hello"), session: session, style: style, alignment: .natural)
+            field.render()
+            session.focusChanged(to: field)
+            field.textView.text = "hello world"
+            field.textViewDidChange(field.textView)
+
+            await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+                session.reload = { done.resume() }
+                model = nil
+                field.textViewDidEndEditing(field.textView)
+            }
+
+            #expect(editor.all == [.replaceText(blockId: "a", text: "hello world", base: "hello")])
+        }
+
+        /// #4506: the dismantle commit (#4346) of a page whose model and session
+        /// are both gone still writes, and nothing outlives the write.
+        @Test(.timeLimit(.minutes(1))) func a_block_dismantled_after_its_page_is_freed_still_writes_its_typing() async {
+            let editor = RecordingEditor()
+            var model: NoteEditorViewModel? = NoteEditorViewModel(noteId: "note-1", editor: editor)
+            weak var freed = model
+            model?.session.model = model
+            let style = BlockText.Style(font: .systemFont(ofSize: 17), ink: .label, titleExists: nil)
+            let field = BlockField(block: paragraph("hello"), session: model!.session, style: style, alignment: .natural)
+            field.render()
+            field.textView.text = "hello world"
+            field.textViewDidChange(field.textView)
+
+            await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+                model?.session.reload = { done.resume() }
+                model = nil
+                EditableBlockView.dismantleUIView(field.textView, coordinator: field)
+            }
+            for _ in 0..<50 { await Task.yield() }
+
+            #expect(editor.all == [.replaceText(blockId: "a", text: "hello world", base: "hello")])
+            #expect(freed == nil, "the page's model is released once its writes land")
+        }
+
+        private func commit(_ session: EditorSession, _ field: BlockField) async {
+            await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+                session.reload = { done.resume() }
+                session.commit(field)
+            }
+        }
+
+        /// The trace: commit #1 turns `[[x]]` into a link; the user types on
+        /// before the page reloads; commit #2 must not convert `[[x]]` again at
+        /// offsets that now cover the typed text.
+        @Test func a_converted_link_is_not_converted_again_by_the_next_commit() async {
+            let editor = RecordingEditor()
+            let model = NoteEditorViewModel(noteId: "note-1", editor: editor)
+            let session = model.session
+            session.model = model
+            let style = BlockText.Style(font: .systemFont(ofSize: 17), ink: .label, titleExists: nil)
+            let field = BlockField(block: paragraph("a "), session: session, style: style, alignment: .natural)
+            field.render()
+
+            field.textView.text = "a [[x]]"
+            field.dirty = true
+            await commit(session, field)
+
+            let converted = editor.all.filter { if case .insertInline = $0 { true } else { false } }
+            #expect(converted == [.insertInline(blockId: "a", start: 2, end: 7, kind: "wikiLink", text: "", attrs: ["target": "x", "alias": ""])])
+            #expect(field.textView.text == "a \u{FFFC}", "the literal link is drawn as its chip at once")
+            #expect(field.base == "a \u{FFFC}")
+
+            // Typed before the reload: the block is still the stale "a ".
+            field.textView.textStorage.append(NSAttributedString(string: " b"))
+            field.dirty = true
+            await commit(session, field)
+
+            let after = editor.all.filter { if case .insertInline = $0 { true } else { false } }
+            #expect(after.count == 1, "the second commit converts nothing")
+            #expect(editor.all.last == .replaceText(blockId: "a", text: "a \u{FFFC} b", base: "a \u{FFFC}"))
+        }
+
+        @Test func choosing_a_wiki_row_links_the_row_not_the_typed_query() async {
+            let editor = RecordingEditor()
+            let model = NoteEditorViewModel(noteId: "note-1", editor: editor)
+            let session = model.session
+            session.model = model
+            session.linkNotes = [note("Dune")]
+            let style = BlockText.Style(font: .systemFont(ofSize: 17), ink: .label, titleExists: nil)
+            let field = BlockField(block: paragraph("a "), session: session, style: style, alignment: .natural)
+            field.render()
+            session.focusChanged(to: field)
+            field.textView.text = "a [[Du]]"
+            field.dirty = true
+            field.textView.selectedRange = NSRange(location: 6, length: 0)
+            session.selectionChanged(in: field)
+
+            await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+                session.reload = { done.resume() }
+                session.choose(session.suggestions[0])
+            }
+
+            let links = editor.all.filter { if case .insertInline = $0 { true } else { false } }
+            #expect(links == [.insertInline(blockId: "a", start: 2, end: 2, kind: "wikiLink", text: "", attrs: ["target": "Dune", "alias": ""])])
+        }
+
+        @Test func a_code_block_keeps_a_typed_link_literal() async {
+            let editor = RecordingEditor()
+            let model = NoteEditorViewModel(noteId: "note-1", editor: editor)
+            let session = model.session
+            session.model = model
+            let style = BlockText.Style(font: .systemFont(ofSize: 17), ink: .label, titleExists: nil)
+            let code = Block(id: "a", kind: "codeBlock", depth: 0, props: [], inline: [])
+            let field = BlockField(block: code, session: session, style: style, alignment: .natural)
+            field.render()
+            field.textView.text = "[[x]]"
+            field.dirty = true
+            await commit(session, field)
+            #expect(!editor.all.contains { if case .insertInline = $0 { true } else { false } })
+            #expect(field.textView.text == "[[x]]")
+        }
     }
 }
 

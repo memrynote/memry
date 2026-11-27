@@ -35,6 +35,7 @@ use crate::crdt::errors::CrdtError;
 use crate::crdt::update_log;
 use crate::domain::notes::failed;
 use crate::domain::{body_tags, body_write, journal, notes, reads, tags};
+use crate::storage::nested_tx;
 
 pub(crate) fn renamed_tag(tag: &str, from: &str, to: &str) -> Option<String> {
     let from = tags::tag_key(from);
@@ -50,15 +51,8 @@ pub(crate) fn renamed_tag(tag: &str, from: &str, to: &str) -> Option<String> {
 
 /// Whether `name` can be written as an inline `#tag` (desktop `isInlineTagName`).
 pub fn is_inline_tag_name(name: &str) -> bool {
-    let word = |segment: &str, first_alpha: bool| {
-        let mut chars = segment.chars();
-        chars
-            .next()
-            .is_some_and(|c| c.is_ascii_alphabetic() || (!first_alpha && c.is_ascii_digit()))
-            && chars.all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
-    };
-    let mut segments = name.split('/');
-    segments.next().is_some_and(|head| word(head, true)) && segments.all(|s| word(s, false))
+    let chars: Vec<char> = name.chars().collect();
+    body_tags::tag_len(&chars) == Some(chars.len())
 }
 
 thread_local! {
@@ -173,11 +167,13 @@ pub(crate) fn rewrite_bodies(
 
 fn sources(conn: &Connection) -> Result<Vec<(String, &'static str)>, StorageError> {
     let mut statement = conn
-        .prepare(
+        .prepare(&format!(
             "SELECT id, 0 FROM notes WHERE deleted_at IS NULL AND file_type = 'markdown' \
-             UNION ALL SELECT id, 1 FROM journal_entries WHERE deleted_at IS NULL \
-             ORDER BY 1",
-        )
+                 AND {} \
+                 UNION ALL SELECT id, 1 FROM journal_entries WHERE deleted_at IS NULL \
+                 ORDER BY 1",
+            journal::not_a_journal_day("id")
+        ))
         .map_err(failed)?;
     let rows = statement
         .query_map([], |row| {
@@ -215,13 +211,13 @@ fn rewrite_source(
     if !may_hold {
         return Ok(());
     }
-    let Some(update) = body_write::author_with(conn, id, device_id, |document| {
+    let tx = nested_tx::begin(conn).map_err(failed)?;
+    let Some(update) = body_write::author_with(&tx, id, device_id, |document| {
         document.write(|txn| rewrite_document(txn, from, to))
     })?
     else {
         return Ok(());
     };
-    let tx = conn.unchecked_transaction().map_err(failed)?;
     body_write::append_in(&tx, item_type, id, &update, now_ms)?;
     // `note_body_tags` caches the body's parse; refresh it with the body so
     // tag counts follow the rename before the next search reindex.
@@ -316,10 +312,29 @@ mod tests {
 
     #[test]
     fn inline_tag_names_match_desktop() {
-        for name in ["work", "a/b2", "x_y-z", "Area/2024"] {
+        for name in [
+            "work",
+            "a/b2",
+            "x_y-z",
+            "Area/2024",
+            "ünï",
+            "퓨리/하위",
+            "2024년",
+            "हिन्दी",
+        ] {
             assert!(is_inline_tag_name(name), "{name}");
         }
-        for name in ["my project", "2024", "a/", "/a", "a//b", "-a", "ünï", ""] {
+        for name in [
+            "my project",
+            "2024",
+            "2024/12",
+            "a/",
+            "/a",
+            "a//b",
+            "-a",
+            "タグ。",
+            "",
+        ] {
             assert!(!is_inline_tag_name(name), "{name}");
         }
     }

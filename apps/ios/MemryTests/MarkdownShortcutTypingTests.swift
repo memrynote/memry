@@ -44,6 +44,8 @@ private final class BodyEditor: BlockEditing, @unchecked Sendable {
 @Observable
 private final class Page {
     var blocks: [Block]
+    /// The writes `blocks` includes (`NoteReadViewModel.blocksGeneration`).
+    var generation = 0
     init(_ blocks: [Block]) { self.blocks = blocks }
 }
 
@@ -55,7 +57,10 @@ private struct Body: View {
     let editor: BodyEditor
 
     var body: some View {
-        let bridge = NoteEditingBridge(model: model) { page.blocks = editor.all }
+        let bridge = NoteEditingBridge(model: model, drawnGeneration: { page.generation }) {
+            page.generation = model.session.landedWrites
+            page.blocks = editor.all
+        }
         VStack {
             ForEach(page.blocks, id: \.id) { block in
                 NoteBlockView(block: block, editing: bridge)
@@ -64,65 +69,67 @@ private struct Body: View {
     }
 }
 
-@MainActor
-@Suite("Markdown shortcut typing")
-struct MarkdownShortcutTypingTests {
-    private static func textViews(in view: UIView) -> [BlockTextView] {
-        (view as? BlockTextView).map { [$0] } ?? view.subviews.flatMap(textViews)
-    }
-
-    /// The Meeting Notes template seeds a `-` paragraph. Typing " persisted"
-    /// after it makes a bullet holding "persisted", as desktop's input rule
-    /// does. Before the fix the caret never reached the redrawn bullet row,
-    /// and the letters typed into the paragraph row it replaced were lost.
-    @Test(.timeLimit(.minutes(1))) func typing_after_a_dash_keeps_the_text_in_the_new_bullet() async throws {
-        let dash = Block(
-            id: "a", kind: "paragraph", depth: 0, props: [],
-            inline: [InlineRun(text: "-", marks: [], markAttrs: [:], target: nil)]
-        )
-        let editor = BodyEditor([dash])
-        let model = NoteEditorViewModel(noteId: "note-1", editor: editor)
-        let page = Page([dash])
-        let scene = try #require(UIApplication.shared.connectedScenes.first as? UIWindowScene)
-        let window = UIWindow(windowScene: scene)
-        window.frame = CGRect(x: 0, y: 0, width: 400, height: 800)
-        window.rootViewController = UIHostingController(rootView: Body(page: page, model: model, editor: editor))
-        window.makeKeyAndVisible()
-        defer { window.isHidden = true }
-        try await Task.sleep(for: .milliseconds(300))
-
-        let first = try #require(Self.textViews(in: window).first)
-        first.becomeFirstResponder()
-        first.selectedRange = NSRange(location: 1, length: 0)
-        // Every text view the page has drawn, so a keystroke reaches the one
-        // holding the caret even after its row left the window.
-        var drawn = [first]
-        // Keystrokes as the keyboard sends them: to the first responder,
-        // through the delegate, the page redrawing between.
-        for character in " persisted" {
-            var target: BlockTextView?
-            for _ in 0 ..< 40 {
-                drawn += Self.textViews(in: window).filter { view in !drawn.contains { $0 === view } }
-                target = drawn.first { $0.isFirstResponder }
-                if target != nil { break }
-                try await Task.sleep(for: .milliseconds(25))
-            }
-            let field = try #require(target, "no text view holds the caret")
-            let key = String(character)
-            if field.delegate?.textView?(field, shouldChangeTextIn: field.selectedRange, replacementText: key) != false {
-                field.insertText(key)
-            }
-            try await Task.sleep(for: .milliseconds(20))
-        }
-        try await Task.sleep(for: .milliseconds(300))
-        // Typing ends; whatever text view holds the caret commits.
-        drawn.first { $0.isFirstResponder }?.resignFirstResponder()
-        for _ in 0 ..< 40 where editor.all.first.map({ BlockText.shown($0.inline) }) != "persisted" {
-            try await Task.sleep(for: .milliseconds(50))
+extension KeyWindowSuites {
+    @MainActor
+    @Suite("Markdown shortcut typing")
+    struct MarkdownShortcutTypingTests {
+        private static func textViews(in view: UIView) -> [BlockTextView] {
+            (view as? BlockTextView).map { [$0] } ?? view.subviews.flatMap(textViews)
         }
 
-        let block = try #require(editor.all.first)
-        #expect(block.kind == "bulletListItem")
-        #expect(BlockText.shown(block.inline) == "persisted")
+        /// The Meeting Notes template seeds a `-` paragraph. Typing " persisted"
+        /// after it makes a bullet holding "persisted", as desktop's input rule
+        /// does. Before the fix the caret never reached the redrawn bullet row,
+        /// and the letters typed into the paragraph row it replaced were lost.
+        @Test(.timeLimit(.minutes(1))) func typing_after_a_dash_keeps_the_text_in_the_new_bullet() async throws {
+            let dash = Block(
+                id: "a", kind: "paragraph", depth: 0, props: [],
+                inline: [InlineRun(text: "-", marks: [], markAttrs: [:], target: nil)]
+            )
+            let editor = BodyEditor([dash])
+            let model = NoteEditorViewModel(noteId: "note-1", editor: editor)
+            let page = Page([dash])
+            let scene = try #require(UIApplication.shared.connectedScenes.first as? UIWindowScene)
+            let window = UIWindow(windowScene: scene)
+            window.frame = CGRect(x: 0, y: 0, width: 400, height: 800)
+            window.rootViewController = UIHostingController(rootView: Body(page: page, model: model, editor: editor))
+            window.makeKeyAndVisible()
+            defer { window.isHidden = true }
+
+            // Generous deadlines throughout: SwiftUI draws and redraws the rows on
+            // the main actor, which a full parallel Unit run keeps busy (#5484).
+            var drawnFirst: BlockTextView?
+            try await wait(30) { drawnFirst = Self.textViews(in: window).first; return drawnFirst != nil }
+            let first = try #require(drawnFirst)
+            first.becomeFirstResponder()
+            first.selectedRange = NSRange(location: 1, length: 0)
+            // Every text view the page has drawn, so a keystroke reaches the one
+            // holding the caret even after its row left the window.
+            var drawn = [first]
+            // Keystrokes as the keyboard sends them: to the first responder,
+            // through the delegate, the page redrawing between.
+            for character in " persisted" {
+                var target: BlockTextView?
+                try await wait(30) {
+                    drawn += Self.textViews(in: window).filter { view in !drawn.contains { $0 === view } }
+                    target = drawn.first { $0.isFirstResponder }
+                    return target != nil
+                }
+                let field = try #require(target, "no text view holds the caret")
+                let key = String(character)
+                if field.delegate?.textView?(field, shouldChangeTextIn: field.selectedRange, replacementText: key) != false {
+                    field.insertText(key)
+                }
+                try await Task.sleep(for: .milliseconds(20))
+            }
+            try await Task.sleep(for: .milliseconds(300))
+            // Typing ends; whatever text view holds the caret commits.
+            drawn.first { $0.isFirstResponder }?.resignFirstResponder()
+            try await wait(30) { editor.all.first.map { BlockText.shown($0.inline) } == "persisted" }
+
+            let block = try #require(editor.all.first)
+            #expect(block.kind == "bulletListItem")
+            #expect(BlockText.shown(block.inline) == "persisted")
+        }
     }
 }

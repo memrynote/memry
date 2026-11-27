@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-import { ErrorCodes, errorHandler } from '../lib/errors'
+import { AppError, ErrorCodes, errorHandler } from '../lib/errors'
 import type { AppContext } from '../types'
 
 vi.mock('../services/linking', () => ({
@@ -20,6 +20,11 @@ vi.mock('../middleware/auth', () => ({
   })
 }))
 
+vi.mock('../services/entitlements', () => ({
+  assertPaidSyncAccess: vi.fn(),
+  ensureLocalAdminPaidSyncAccessForUser: vi.fn()
+}))
+
 vi.mock('../middleware/rate-limit', () => ({
   createRateLimiter: vi.fn().mockReturnValue(
     vi.fn().mockImplementation(async (_c: any, next: any) => {
@@ -29,6 +34,7 @@ vi.mock('../middleware/rate-limit', () => ({
 }))
 
 import { linking } from './linking'
+import { assertPaidSyncAccess } from '../services/entitlements'
 import {
   createLinkingSession,
   getSession,
@@ -155,6 +161,27 @@ describe('linking routes', () => {
     })
     expect(createLinkingSession).toHaveBeenCalledWith(env.DB, 'user-1', 'device-1', 'eph-pk')
     expect(linkingStub.fetch).toHaveBeenCalledWith(expect.objectContaining({ method: 'POST' }))
+  })
+
+  it('refuses to initiate linking for an account without a paid sync plan', async () => {
+    // A free account's linked device saw only an empty vault of its own (TestFlight feedback, 2026-11-13).
+    vi.mocked(assertPaidSyncAccess).mockRejectedValueOnce(
+      new AppError(ErrorCodes.SYNC_PAYMENT_REQUIRED, 'An active paid sync plan is required', 402)
+    )
+
+    const res = await app.request(
+      'http://localhost/linking/initiate',
+      jsonPost({ ephemeralPublicKey: 'eph-pk' }),
+      env,
+      executionCtx
+    )
+
+    expect(res.status).toBe(402)
+    // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- rule false positive: the awaited value is unknown, removing the cast fails typecheck
+    expect(((await res.json()) as { error: { code: string } }).error.code).toBe(
+      ErrorCodes.SYNC_PAYMENT_REQUIRED
+    )
+    expect(createLinkingSession).not.toHaveBeenCalled()
   })
 
   it('validates scan payloads', async () => {

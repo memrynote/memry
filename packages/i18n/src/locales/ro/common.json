@@ -1,4 +1,7 @@
 {
+  "wikiLink": {
+    "openFailed": "Nu s-a putut deschide acest link"
+  },
   "portalBlock": {
     "copyFailed": "Nu s-a putut copia portalul",
     "hiddenCount": "{count} ascunse",
@@ -956,6 +959,8 @@
     "componentsVaultSwitcher": {
       "noVaultsYet": "Nu există încă seifuri",
       "openVault": "Deschide seiful",
+      "createVault": "Creează seiful",
+      "openFolderAsVault": "Deschide un dosar ca seif",
       "settings": "Setări",
       "remove": "Elimină „",
       "removeVaultTitle": "Eliminați „{name}” din listă?",

@@ -87,7 +87,8 @@ describe('canvas asset service', () => {
   let uploadAttachment: ReturnType<typeof vi.fn>
   let downloadAttachment: ReturnType<typeof vi.fn>
   let dereference: ReturnType<typeof vi.fn>
-  let markWritebackIgnored: ReturnType<typeof vi.fn>
+  let recordAppWrite: ReturnType<typeof vi.fn>
+  let landed: ReturnType<typeof vi.fn>
   let trackEvent: ReturnType<typeof vi.fn>
   let ctx: AssetServiceContext
 
@@ -109,7 +110,8 @@ describe('canvas asset service', () => {
       fs.writeFileSync(targetPath, Buffer.from('downloaded'))
     })
     dereference = vi.fn(async () => ({ ok: true }))
-    markWritebackIgnored = vi.fn()
+    landed = vi.fn()
+    recordAppWrite = vi.fn(() => landed)
     trackEvent = vi.fn()
 
     ctx = {
@@ -121,7 +123,7 @@ describe('canvas asset service', () => {
       dereference,
       holdChunks: vi.fn(async () => ({ status: 'ok' as const, missing: new Set<string>() })),
       releaseHolds: vi.fn(async () => ({ ok: true })),
-      markWritebackIgnored,
+      recordAppWrite,
       trackEvent
     }
   })
@@ -151,7 +153,8 @@ describe('canvas asset service', () => {
         assetFilename(hashAssetContent(bytes), 'image/png')
       )
       expect(fs.existsSync(diskPath)).toBe(true)
-      expect(markWritebackIgnored).toHaveBeenCalledWith(diskPath)
+      expect(recordAppWrite).toHaveBeenCalledWith(diskPath, bytes)
+      expect(landed).toHaveBeenCalledTimes(1)
 
       expect(trackEvent).toHaveBeenCalledWith(
         'canvas_asset_uploaded',
@@ -278,7 +281,8 @@ describe('canvas asset service', () => {
 
       expect(res.deduped).toBe(true)
       expect(uploadAttachment).not.toHaveBeenCalled()
-      expect(markWritebackIgnored).toHaveBeenCalledWith(diskPath)
+      expect(recordAppWrite).toHaveBeenCalledWith(diskPath, bytes)
+      expect(landed).toHaveBeenCalledTimes(1)
       expect(fs.existsSync(diskPath)).toBe(true)
       expect(fs.readFileSync(diskPath)).toEqual(bytes)
     })
@@ -295,17 +299,17 @@ describe('canvas asset service', () => {
         uploadCanvasAsset(ctx, 'canvas-a', 'file-1', 'image/png', bytes)
       ).rejects.toThrow('Not authenticated')
       expect(fs.existsSync(diskPath)).toBe(true)
-      expect(markWritebackIgnored).toHaveBeenCalledTimes(1)
+      expect(recordAppWrite).toHaveBeenCalledTimes(1)
 
       const writtenAt = fs.statSync(diskPath).mtimeMs
-      markWritebackIgnored.mockClear()
+      recordAppWrite.mockClear()
 
       await expect(
         uploadCanvasAsset(ctx, 'canvas-a', 'file-1', 'image/png', bytes)
       ).rejects.toThrow('Not authenticated')
 
       // Same content-addressed path, same bytes: the retry must not churn the disk.
-      expect(markWritebackIgnored).not.toHaveBeenCalled()
+      expect(recordAppWrite).not.toHaveBeenCalled()
       expect(fs.statSync(diskPath).mtimeMs).toBe(writtenAt)
       expect(fs.readFileSync(diskPath)).toEqual(bytes)
     })
@@ -364,6 +368,8 @@ describe('canvas asset service', () => {
       expect(fs.existsSync(path.join(dir, 'hashB.png'))).toBe(false)
       expect(fs.existsSync(path.join(dir, 'hashA.png'))).toBe(true)
       expect(fs.existsSync(path.join(dir, 'hashC.png'))).toBe(true)
+      // A delete raises unlink, which the watcher never mistakes for an echo.
+      expect(recordAppWrite).not.toHaveBeenCalled()
 
       // Only hashB is actually reaped on the server (hashC's local row is pruned but its
       // server chunk stays — canvas-b still references it), so the metric counts 1.
@@ -486,7 +492,7 @@ describe('canvas asset service', () => {
       }
     }
 
-    it('downloads only missing files, marks writeback ignored first, and survives a failed download', async () => {
+    it('downloads only missing files, records their hash first, and survives a failed download', async () => {
       const present = descriptor({
         contentHash: 'present',
         filename: 'present.png',
@@ -528,10 +534,18 @@ describe('canvas asset service', () => {
         canvasAssetDiskPath(vaultPath, 'failing.png')
       )
 
-      // markWritebackIgnored precedes each download.
-      const firstMark = markWritebackIgnored.mock.invocationCallOrder[0]
+      // The descriptor's hash is recorded before each download, and the landing
+      // is reported only for the download that landed.
+      expect(recordAppWrite).toHaveBeenCalledWith(canvasAssetDiskPath(vaultPath, 'missing.png'), {
+        sha256: 'missing'
+      })
+      expect(recordAppWrite).toHaveBeenCalledWith(canvasAssetDiskPath(vaultPath, 'failing.png'), {
+        sha256: 'failing'
+      })
+      const firstRecord = recordAppWrite.mock.invocationCallOrder[0]
       const firstDownload = downloadAttachment.mock.invocationCallOrder[0]
-      expect(firstMark).toBeLessThan(firstDownload)
+      expect(firstRecord).toBeLessThan(firstDownload)
+      expect(landed).toHaveBeenCalledTimes(1)
 
       // The successful download recorded a local row; the failure did not abort it.
       const rows = listAssetsByCanvas(db, 'canvas-a').map((r) => r.contentHash)

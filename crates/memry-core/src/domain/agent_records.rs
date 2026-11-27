@@ -19,6 +19,7 @@ use crate::crypto::agent_payload::{HELD_REASON, open_object, seal_object};
 use crate::domain::notes::failed;
 use crate::domain::task_merge;
 use crate::domain::tasks::Inbound;
+use crate::storage::nested_tx;
 use crate::storage::repositories::StoredPayload;
 use crate::storage::repositories::projectors::agent::{is_sealed_pending, set_sealed_pending};
 use crate::storage::repositories::projectors::{self, ItemContext};
@@ -104,7 +105,7 @@ pub(crate) fn store_inbound(
             });
         }
     };
-    let transaction = conn.unchecked_transaction().map_err(failed)?;
+    let transaction = nested_tx::begin(conn).map_err(failed)?;
     set_sealed_pending(&transaction, &record.item_type, &record.item_id, pending)?;
     let outcome = sync_items::apply_remote_in(&transaction, &stored, now_ms)?;
     transaction.commit().map_err(failed)?;
@@ -256,7 +257,7 @@ fn seal_rows(
     key: &AtRestKey,
     now_ms: i64,
 ) -> Result<usize, AgentError> {
-    let transaction = conn.unchecked_transaction().map_err(failed)?;
+    let transaction = nested_tx::begin(conn).map_err(failed)?;
     let mut sealed = 0;
     for (item_type, item_id, raw, deleted_at) in rows {
         let (object, view) = match seal_row(&item_type, &raw, key) {

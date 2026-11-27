@@ -21,8 +21,15 @@ async function createPair() {
   const deviceB = new SimulatedDevice(identityB, fetchFn)
   deviceA.registerPeerDevice(identityB.deviceId, identityB.signingPublicKey)
   deviceB.registerPeerDevice(identityA.deviceId, identityA.signingPublicKey)
-  return { deviceA, deviceB }
+  return { deviceA, deviceB, tokenA: identityA.accessToken }
 }
+
+const postBody = (token: string, path: string, body: unknown) =>
+  server.fetch(`http://localhost${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify(body)
+  })
 
 describe('Sync Harness — re-create after delete (#2409)', () => {
   beforeAll(async () => {
@@ -62,6 +69,34 @@ describe('Sync Harness — re-create after delete (#2409)', () => {
     expect(deviceB.getItem('j2026-04-16')?.content).toEqual({ date: '2026-04-16', mood: 'calm' })
     expect(deviceB.getItem('work')?.content).toEqual({ name: 'work', color: 'blue' })
     expect(deviceB.getItem('work')?.clock).toEqual(recreated[1].clock)
+  })
+
+  // #5367: a snapshot encoded from the deleted body, held in flight across the
+  // delete and its purge, must not become the re-created day's baseline.
+  it('a snapshot of the deleted body that lands after the purge is refused', async () => {
+    const { deviceA, deviceB, tokenA } = await createPair()
+    const id = 'j2026-04-17'
+    await deviceA.push([await deviceA.createItem('journal', id, { date: '2026-04-17' })])
+    const oldUpdate = Buffer.from('old body').toString('base64')
+    expect(
+      (await postBody(tokenA, '/sync/crdt/updates', { noteId: id, updates: [oldUpdate] })).status
+    ).toBe(200)
+
+    expect((await deviceA.push([await deviceA.deleteItem(id)])).accepted).toEqual([id])
+    const late = await postBody(tokenA, '/sync/crdt/snapshot', {
+      noteId: id,
+      snapshot: Buffer.from('old snapshot').toString('base64')
+    })
+    expect(late.status).toBe(409)
+    expect(await late.text()).toContain('CRDT_SNAPSHOT_NOT_COVERED')
+
+    const revived = await deviceA.createItem('journal', id, { date: '2026-04-17', mood: 'new' })
+    expect((await deviceA.push([revived])).accepted).toEqual([id])
+    const newUpdate = Buffer.from('new body').toString('base64')
+    await postBody(tokenA, '/sync/crdt/updates', { noteId: id, updates: [newUpdate] })
+
+    await deviceB.pullBodies([id])
+    expect(deviceB.getBodyParts(id)).toEqual([newUpdate])
   })
 
   it('an unseeded re-create of the same id is refused per item inside retention', async () => {

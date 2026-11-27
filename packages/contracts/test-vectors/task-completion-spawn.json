@@ -1,0 +1,1578 @@
+{
+  "meta": {
+    "spec": "004-ios-tasks-parity",
+    "issue": "#3538",
+    "source": "packages/domain-tasks/src/repeat-completion.ts rollRepeatingSeries",
+    "timeZone": "UTC",
+    "dates": "YYYY-MM-DD local calendar keys; completedAt is local YYYY-MM-DDTHH:MM:SS",
+    "nextId": "random on both sides (chapter 13 §13.7.3); not recorded",
+    "fields": "plain values (desktop Task.fields); the wire carries them versioned (§13.7.3.1)",
+    "caseCount": 19
+  },
+  "statuses": [
+    {
+      "id": "p1-todo",
+      "name": "To Do",
+      "position": 0,
+      "isDefault": true,
+      "isDone": false,
+      "projectId": "p1",
+      "color": "#6b7280",
+      "createdAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "p1-doing",
+      "name": "In Progress",
+      "position": 1,
+      "isDefault": false,
+      "isDone": false,
+      "projectId": "p1",
+      "color": "#6b7280",
+      "createdAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "p1-done",
+      "name": "Done",
+      "position": 2,
+      "isDefault": false,
+      "isDone": true,
+      "projectId": "p1",
+      "color": "#6b7280",
+      "createdAt": "2026-01-01T00:00:00.000Z"
+    }
+  ],
+  "copiedFields": [
+    "title",
+    "description",
+    "projectId",
+    "parentId",
+    "priority",
+    "dueTime",
+    "durationMinutes",
+    "startDate",
+    "repeatFrom",
+    "tags",
+    "linkedNoteIds",
+    "linkedCanvasIds",
+    "fields"
+  ],
+  "cases": [
+    {
+      "name": "daily-due-anchor",
+      "tzSensitive": false,
+      "task": {
+        "id": "spawn-daily-due-anchor",
+        "projectId": "p1",
+        "statusId": "p1-doing",
+        "parentId": null,
+        "title": "Water the plants",
+        "description": "Front porch",
+        "priority": 2,
+        "position": 0,
+        "dueDate": "2026-03-10",
+        "dueTime": "08:00",
+        "durationMinutes": 30,
+        "startDate": "2026-03-08",
+        "repeatConfig": {
+          "endType": "never",
+          "completedCount": 0,
+          "createdAt": "2026-01-01T00:00:00.000Z",
+          "frequency": "daily",
+          "interval": 1
+        },
+        "repeatFrom": "due",
+        "sourceNoteId": "note-src",
+        "completedAt": null,
+        "archivedAt": null,
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "modifiedAt": "2026-01-01T00:00:00.000Z",
+        "tags": [
+          "home"
+        ],
+        "linkedNoteIds": [
+          "note-1"
+        ],
+        "linkedCanvasIds": [
+          "canvas-1"
+        ],
+        "fields": {
+          "Follow up": "2026-05-14"
+        }
+      },
+      "completedAt": "2026-03-12T09:30:00",
+      "expected": {
+        "closedRepeatConfig": null,
+        "next": {
+          "dueDate": "2026-03-11",
+          "statusId": "p1-todo",
+          "completedCount": 1,
+          "repeatConfig": {
+            "endType": "never",
+            "completedCount": 1,
+            "createdAt": "2026-01-01T00:00:00.000Z",
+            "frequency": "daily",
+            "interval": 1
+          },
+          "sourceNoteId": null,
+          "copied": {
+            "title": "Water the plants",
+            "description": "Front porch",
+            "projectId": "p1",
+            "parentId": null,
+            "priority": 2,
+            "dueTime": "08:00",
+            "durationMinutes": 30,
+            "startDate": "2026-03-09",
+            "repeatFrom": "due",
+            "tags": [
+              "home"
+            ],
+            "linkedNoteIds": [
+              "note-1"
+            ],
+            "linkedCanvasIds": [
+              "canvas-1"
+            ],
+            "fields": {
+              "Follow up": "2026-05-14"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "daily-completion-anchor",
+      "tzSensitive": false,
+      "task": {
+        "id": "spawn-daily-completion-anchor",
+        "projectId": "p1",
+        "statusId": "p1-doing",
+        "parentId": "parent-1",
+        "title": "Water the plants",
+        "description": "Front porch",
+        "priority": 2,
+        "position": 0,
+        "dueDate": "2026-03-10",
+        "dueTime": "08:00",
+        "durationMinutes": 30,
+        "startDate": null,
+        "repeatConfig": {
+          "endType": "never",
+          "completedCount": 0,
+          "createdAt": "2026-01-01T00:00:00.000Z",
+          "frequency": "daily",
+          "interval": 1
+        },
+        "repeatFrom": "completion",
+        "sourceNoteId": "note-src",
+        "completedAt": null,
+        "archivedAt": null,
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "modifiedAt": "2026-01-01T00:00:00.000Z",
+        "tags": [
+          "home"
+        ],
+        "linkedNoteIds": [
+          "note-1"
+        ],
+        "linkedCanvasIds": [
+          "canvas-1"
+        ],
+        "fields": {
+          "Follow up": "2026-05-14"
+        }
+      },
+      "completedAt": "2026-03-12T09:30:00",
+      "expected": {
+        "closedRepeatConfig": null,
+        "next": {
+          "dueDate": "2026-03-13",
+          "statusId": "p1-todo",
+          "completedCount": 1,
+          "repeatConfig": {
+            "endType": "never",
+            "completedCount": 1,
+            "createdAt": "2026-01-01T00:00:00.000Z",
+            "frequency": "daily",
+            "interval": 1
+          },
+          "sourceNoteId": null,
+          "copied": {
+            "title": "Water the plants",
+            "description": "Front porch",
+            "projectId": "p1",
+            "parentId": "parent-1",
+            "priority": 2,
+            "dueTime": "08:00",
+            "durationMinutes": 30,
+            "startDate": null,
+            "repeatFrom": "completion",
+            "tags": [
+              "home"
+            ],
+            "linkedNoteIds": [
+              "note-1"
+            ],
+            "linkedCanvasIds": [
+              "canvas-1"
+            ],
+            "fields": {
+              "Follow up": "2026-05-14"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "daily-null-anchor-interval-2",
+      "tzSensitive": false,
+      "task": {
+        "id": "spawn-daily-null-anchor-interval-2",
+        "projectId": "p1",
+        "statusId": "p1-doing",
+        "parentId": null,
+        "title": "Water the plants",
+        "description": "Front porch",
+        "priority": 2,
+        "position": 0,
+        "dueDate": "2026-03-10",
+        "dueTime": "08:00",
+        "durationMinutes": 30,
+        "startDate": null,
+        "repeatConfig": {
+          "endType": "never",
+          "completedCount": 0,
+          "createdAt": "2026-01-01T00:00:00.000Z",
+          "frequency": "daily",
+          "interval": 2
+        },
+        "repeatFrom": null,
+        "sourceNoteId": "note-src",
+        "completedAt": null,
+        "archivedAt": null,
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "modifiedAt": "2026-01-01T00:00:00.000Z",
+        "tags": [
+          "home"
+        ],
+        "linkedNoteIds": [
+          "note-1"
+        ],
+        "linkedCanvasIds": [
+          "canvas-1"
+        ],
+        "fields": {
+          "Follow up": "2026-05-14"
+        }
+      },
+      "completedAt": "2026-03-12T09:30:00",
+      "expected": {
+        "closedRepeatConfig": null,
+        "next": {
+          "dueDate": "2026-03-12",
+          "statusId": "p1-todo",
+          "completedCount": 1,
+          "repeatConfig": {
+            "endType": "never",
+            "completedCount": 1,
+            "createdAt": "2026-01-01T00:00:00.000Z",
+            "frequency": "daily",
+            "interval": 2
+          },
+          "sourceNoteId": null,
+          "copied": {
+            "title": "Water the plants",
+            "description": "Front porch",
+            "projectId": "p1",
+            "parentId": null,
+            "priority": 2,
+            "dueTime": "08:00",
+            "durationMinutes": 30,
+            "startDate": null,
+            "repeatFrom": null,
+            "tags": [
+              "home"
+            ],
+            "linkedNoteIds": [
+              "note-1"
+            ],
+            "linkedCanvasIds": [
+              "canvas-1"
+            ],
+            "fields": {
+              "Follow up": "2026-05-14"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "weekly-days-5-1-3",
+      "tzSensitive": false,
+      "task": {
+        "id": "spawn-weekly-days-5-1-3",
+        "projectId": "p1",
+        "statusId": "p1-doing",
+        "parentId": null,
+        "title": "Water the plants",
+        "description": "Front porch",
+        "priority": 2,
+        "position": 0,
+        "dueDate": "2026-03-10",
+        "dueTime": "08:00",
+        "durationMinutes": 30,
+        "startDate": null,
+        "repeatConfig": {
+          "endType": "never",
+          "completedCount": 0,
+          "createdAt": "2026-01-01T00:00:00.000Z",
+          "frequency": "weekly",
+          "interval": 1,
+          "daysOfWeek": [
+            5,
+            1,
+            3
+          ]
+        },
+        "repeatFrom": null,
+        "sourceNoteId": "note-src",
+        "completedAt": null,
+        "archivedAt": null,
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "modifiedAt": "2026-01-01T00:00:00.000Z",
+        "tags": [
+          "home"
+        ],
+        "linkedNoteIds": [
+          "note-1"
+        ],
+        "linkedCanvasIds": [
+          "canvas-1"
+        ],
+        "fields": {
+          "Follow up": "2026-05-14"
+        }
+      },
+      "completedAt": "2026-03-10T09:30:00",
+      "expected": {
+        "closedRepeatConfig": null,
+        "next": {
+          "dueDate": "2026-03-11",
+          "statusId": "p1-todo",
+          "completedCount": 1,
+          "repeatConfig": {
+            "endType": "never",
+            "completedCount": 1,
+            "createdAt": "2026-01-01T00:00:00.000Z",
+            "frequency": "weekly",
+            "interval": 1,
+            "daysOfWeek": [
+              5,
+              1,
+              3
+            ]
+          },
+          "sourceNoteId": null,
+          "copied": {
+            "title": "Water the plants",
+            "description": "Front porch",
+            "projectId": "p1",
+            "parentId": null,
+            "priority": 2,
+            "dueTime": "08:00",
+            "durationMinutes": 30,
+            "startDate": null,
+            "repeatFrom": null,
+            "tags": [
+              "home"
+            ],
+            "linkedNoteIds": [
+              "note-1"
+            ],
+            "linkedCanvasIds": [
+              "canvas-1"
+            ],
+            "fields": {
+              "Follow up": "2026-05-14"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "weekly-interval-2-day-2",
+      "tzSensitive": false,
+      "task": {
+        "id": "spawn-weekly-interval-2-day-2",
+        "projectId": "p1",
+        "statusId": "p1-doing",
+        "parentId": null,
+        "title": "Water the plants",
+        "description": "Front porch",
+        "priority": 2,
+        "position": 0,
+        "dueDate": "2026-03-10",
+        "dueTime": "08:00",
+        "durationMinutes": 30,
+        "startDate": null,
+        "repeatConfig": {
+          "endType": "never",
+          "completedCount": 0,
+          "createdAt": "2026-01-01T00:00:00.000Z",
+          "frequency": "weekly",
+          "interval": 2,
+          "daysOfWeek": [
+            2
+          ]
+        },
+        "repeatFrom": null,
+        "sourceNoteId": "note-src",
+        "completedAt": null,
+        "archivedAt": null,
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "modifiedAt": "2026-01-01T00:00:00.000Z",
+        "tags": [
+          "home"
+        ],
+        "linkedNoteIds": [
+          "note-1"
+        ],
+        "linkedCanvasIds": [
+          "canvas-1"
+        ],
+        "fields": {
+          "Follow up": "2026-05-14"
+        }
+      },
+      "completedAt": "2026-03-10T09:30:00",
+      "expected": {
+        "closedRepeatConfig": null,
+        "next": {
+          "dueDate": "2026-03-24",
+          "statusId": "p1-todo",
+          "completedCount": 1,
+          "repeatConfig": {
+            "endType": "never",
+            "completedCount": 1,
+            "createdAt": "2026-01-01T00:00:00.000Z",
+            "frequency": "weekly",
+            "interval": 2,
+            "daysOfWeek": [
+              2
+            ]
+          },
+          "sourceNoteId": null,
+          "copied": {
+            "title": "Water the plants",
+            "description": "Front porch",
+            "projectId": "p1",
+            "parentId": null,
+            "priority": 2,
+            "dueTime": "08:00",
+            "durationMinutes": 30,
+            "startDate": null,
+            "repeatFrom": null,
+            "tags": [
+              "home"
+            ],
+            "linkedNoteIds": [
+              "note-1"
+            ],
+            "linkedCanvasIds": [
+              "canvas-1"
+            ],
+            "fields": {
+              "Follow up": "2026-05-14"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "weekly-no-days-completion-anchor",
+      "tzSensitive": false,
+      "task": {
+        "id": "spawn-weekly-no-days-completion-anchor",
+        "projectId": "p1",
+        "statusId": "p1-doing",
+        "parentId": null,
+        "title": "Water the plants",
+        "description": "Front porch",
+        "priority": 2,
+        "position": 0,
+        "dueDate": "2026-03-10",
+        "dueTime": "08:00",
+        "durationMinutes": 30,
+        "startDate": null,
+        "repeatConfig": {
+          "endType": "never",
+          "completedCount": 0,
+          "createdAt": "2026-01-01T00:00:00.000Z",
+          "frequency": "weekly",
+          "interval": 2
+        },
+        "repeatFrom": "completion",
+        "sourceNoteId": "note-src",
+        "completedAt": null,
+        "archivedAt": null,
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "modifiedAt": "2026-01-01T00:00:00.000Z",
+        "tags": [
+          "home"
+        ],
+        "linkedNoteIds": [
+          "note-1"
+        ],
+        "linkedCanvasIds": [
+          "canvas-1"
+        ],
+        "fields": {
+          "Follow up": "2026-05-14"
+        }
+      },
+      "completedAt": "2026-03-14T09:30:00",
+      "expected": {
+        "closedRepeatConfig": null,
+        "next": {
+          "dueDate": "2026-03-28",
+          "statusId": "p1-todo",
+          "completedCount": 1,
+          "repeatConfig": {
+            "endType": "never",
+            "completedCount": 1,
+            "createdAt": "2026-01-01T00:00:00.000Z",
+            "frequency": "weekly",
+            "interval": 2
+          },
+          "sourceNoteId": null,
+          "copied": {
+            "title": "Water the plants",
+            "description": "Front porch",
+            "projectId": "p1",
+            "parentId": null,
+            "priority": 2,
+            "dueTime": "08:00",
+            "durationMinutes": 30,
+            "startDate": null,
+            "repeatFrom": "completion",
+            "tags": [
+              "home"
+            ],
+            "linkedNoteIds": [
+              "note-1"
+            ],
+            "linkedCanvasIds": [
+              "canvas-1"
+            ],
+            "fields": {
+              "Follow up": "2026-05-14"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "monthly-day-31",
+      "tzSensitive": false,
+      "task": {
+        "id": "spawn-monthly-day-31",
+        "projectId": "p1",
+        "statusId": "p1-doing",
+        "parentId": null,
+        "title": "Water the plants",
+        "description": "Front porch",
+        "priority": 2,
+        "position": 0,
+        "dueDate": "2026-01-31",
+        "dueTime": "08:00",
+        "durationMinutes": 30,
+        "startDate": null,
+        "repeatConfig": {
+          "endType": "never",
+          "completedCount": 0,
+          "createdAt": "2026-01-01T00:00:00.000Z",
+          "frequency": "monthly",
+          "interval": 1,
+          "monthlyType": "dayOfMonth",
+          "dayOfMonth": 31
+        },
+        "repeatFrom": null,
+        "sourceNoteId": "note-src",
+        "completedAt": null,
+        "archivedAt": null,
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "modifiedAt": "2026-01-01T00:00:00.000Z",
+        "tags": [
+          "home"
+        ],
+        "linkedNoteIds": [
+          "note-1"
+        ],
+        "linkedCanvasIds": [
+          "canvas-1"
+        ],
+        "fields": {
+          "Follow up": "2026-05-14"
+        }
+      },
+      "completedAt": "2026-01-31T09:30:00",
+      "expected": {
+        "closedRepeatConfig": null,
+        "next": {
+          "dueDate": "2026-03-31",
+          "statusId": "p1-todo",
+          "completedCount": 1,
+          "repeatConfig": {
+            "endType": "never",
+            "completedCount": 1,
+            "createdAt": "2026-01-01T00:00:00.000Z",
+            "frequency": "monthly",
+            "interval": 1,
+            "monthlyType": "dayOfMonth",
+            "dayOfMonth": 31
+          },
+          "sourceNoteId": null,
+          "copied": {
+            "title": "Water the plants",
+            "description": "Front porch",
+            "projectId": "p1",
+            "parentId": null,
+            "priority": 2,
+            "dueTime": "08:00",
+            "durationMinutes": 30,
+            "startDate": null,
+            "repeatFrom": null,
+            "tags": [
+              "home"
+            ],
+            "linkedNoteIds": [
+              "note-1"
+            ],
+            "linkedCanvasIds": [
+              "canvas-1"
+            ],
+            "fields": {
+              "Follow up": "2026-05-14"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "monthly-without-type",
+      "tzSensitive": false,
+      "task": {
+        "id": "spawn-monthly-without-type",
+        "projectId": "p1",
+        "statusId": "p1-doing",
+        "parentId": null,
+        "title": "Water the plants",
+        "description": "Front porch",
+        "priority": 2,
+        "position": 0,
+        "dueDate": "2026-01-31",
+        "dueTime": "08:00",
+        "durationMinutes": 30,
+        "startDate": null,
+        "repeatConfig": {
+          "endType": "never",
+          "completedCount": 0,
+          "createdAt": "2026-01-01T00:00:00.000Z",
+          "frequency": "monthly",
+          "interval": 1
+        },
+        "repeatFrom": null,
+        "sourceNoteId": "note-src",
+        "completedAt": null,
+        "archivedAt": null,
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "modifiedAt": "2026-01-01T00:00:00.000Z",
+        "tags": [
+          "home"
+        ],
+        "linkedNoteIds": [
+          "note-1"
+        ],
+        "linkedCanvasIds": [
+          "canvas-1"
+        ],
+        "fields": {
+          "Follow up": "2026-05-14"
+        }
+      },
+      "completedAt": "2026-01-31T09:30:00",
+      "expected": {
+        "closedRepeatConfig": null,
+        "next": {
+          "dueDate": "2026-03-03",
+          "statusId": "p1-todo",
+          "completedCount": 1,
+          "repeatConfig": {
+            "endType": "never",
+            "completedCount": 1,
+            "createdAt": "2026-01-01T00:00:00.000Z",
+            "frequency": "monthly",
+            "interval": 1
+          },
+          "sourceNoteId": null,
+          "copied": {
+            "title": "Water the plants",
+            "description": "Front porch",
+            "projectId": "p1",
+            "parentId": null,
+            "priority": 2,
+            "dueTime": "08:00",
+            "durationMinutes": 30,
+            "startDate": null,
+            "repeatFrom": null,
+            "tags": [
+              "home"
+            ],
+            "linkedNoteIds": [
+              "note-1"
+            ],
+            "linkedCanvasIds": [
+              "canvas-1"
+            ],
+            "fields": {
+              "Follow up": "2026-05-14"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "monthly-second-tuesday",
+      "tzSensitive": false,
+      "task": {
+        "id": "spawn-monthly-second-tuesday",
+        "projectId": "p1",
+        "statusId": "p1-doing",
+        "parentId": null,
+        "title": "Water the plants",
+        "description": "Front porch",
+        "priority": 2,
+        "position": 0,
+        "dueDate": "2026-03-10",
+        "dueTime": "08:00",
+        "durationMinutes": 30,
+        "startDate": null,
+        "repeatConfig": {
+          "endType": "never",
+          "completedCount": 0,
+          "createdAt": "2026-01-01T00:00:00.000Z",
+          "frequency": "monthly",
+          "interval": 1,
+          "monthlyType": "weekPattern",
+          "weekOfMonth": 2,
+          "dayOfWeekForMonth": 2
+        },
+        "repeatFrom": null,
+        "sourceNoteId": "note-src",
+        "completedAt": null,
+        "archivedAt": null,
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "modifiedAt": "2026-01-01T00:00:00.000Z",
+        "tags": [
+          "home"
+        ],
+        "linkedNoteIds": [
+          "note-1"
+        ],
+        "linkedCanvasIds": [
+          "canvas-1"
+        ],
+        "fields": {
+          "Follow up": "2026-05-14"
+        }
+      },
+      "completedAt": "2026-03-10T09:30:00",
+      "expected": {
+        "closedRepeatConfig": null,
+        "next": {
+          "dueDate": "2026-04-14",
+          "statusId": "p1-todo",
+          "completedCount": 1,
+          "repeatConfig": {
+            "endType": "never",
+            "completedCount": 1,
+            "createdAt": "2026-01-01T00:00:00.000Z",
+            "frequency": "monthly",
+            "interval": 1,
+            "monthlyType": "weekPattern",
+            "weekOfMonth": 2,
+            "dayOfWeekForMonth": 2
+          },
+          "sourceNoteId": null,
+          "copied": {
+            "title": "Water the plants",
+            "description": "Front porch",
+            "projectId": "p1",
+            "parentId": null,
+            "priority": 2,
+            "dueTime": "08:00",
+            "durationMinutes": 30,
+            "startDate": null,
+            "repeatFrom": null,
+            "tags": [
+              "home"
+            ],
+            "linkedNoteIds": [
+              "note-1"
+            ],
+            "linkedCanvasIds": [
+              "canvas-1"
+            ],
+            "fields": {
+              "Follow up": "2026-05-14"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "monthly-last-friday",
+      "tzSensitive": false,
+      "task": {
+        "id": "spawn-monthly-last-friday",
+        "projectId": "p1",
+        "statusId": "p1-doing",
+        "parentId": null,
+        "title": "Water the plants",
+        "description": "Front porch",
+        "priority": 2,
+        "position": 0,
+        "dueDate": "2026-03-27",
+        "dueTime": "08:00",
+        "durationMinutes": 30,
+        "startDate": "2026-03-25",
+        "repeatConfig": {
+          "endType": "never",
+          "completedCount": 0,
+          "createdAt": "2026-01-01T00:00:00.000Z",
+          "frequency": "monthly",
+          "interval": 1,
+          "monthlyType": "weekPattern",
+          "weekOfMonth": 5,
+          "dayOfWeekForMonth": 5
+        },
+        "repeatFrom": null,
+        "sourceNoteId": "note-src",
+        "completedAt": null,
+        "archivedAt": null,
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "modifiedAt": "2026-01-01T00:00:00.000Z",
+        "tags": [
+          "home"
+        ],
+        "linkedNoteIds": [
+          "note-1"
+        ],
+        "linkedCanvasIds": [
+          "canvas-1"
+        ],
+        "fields": {
+          "Follow up": "2026-05-14"
+        }
+      },
+      "completedAt": "2026-03-27T09:30:00",
+      "expected": {
+        "closedRepeatConfig": null,
+        "next": {
+          "dueDate": "2026-04-24",
+          "statusId": "p1-todo",
+          "completedCount": 1,
+          "repeatConfig": {
+            "endType": "never",
+            "completedCount": 1,
+            "createdAt": "2026-01-01T00:00:00.000Z",
+            "frequency": "monthly",
+            "interval": 1,
+            "monthlyType": "weekPattern",
+            "weekOfMonth": 5,
+            "dayOfWeekForMonth": 5
+          },
+          "sourceNoteId": null,
+          "copied": {
+            "title": "Water the plants",
+            "description": "Front porch",
+            "projectId": "p1",
+            "parentId": null,
+            "priority": 2,
+            "dueTime": "08:00",
+            "durationMinutes": 30,
+            "startDate": "2026-04-22",
+            "repeatFrom": null,
+            "tags": [
+              "home"
+            ],
+            "linkedNoteIds": [
+              "note-1"
+            ],
+            "linkedCanvasIds": [
+              "canvas-1"
+            ],
+            "fields": {
+              "Follow up": "2026-05-14"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "yearly-leap-day",
+      "tzSensitive": false,
+      "task": {
+        "id": "spawn-yearly-leap-day",
+        "projectId": "p1",
+        "statusId": "p1-doing",
+        "parentId": null,
+        "title": "Water the plants",
+        "description": "Front porch",
+        "priority": 2,
+        "position": 0,
+        "dueDate": "2028-02-29",
+        "dueTime": "08:00",
+        "durationMinutes": 30,
+        "startDate": null,
+        "repeatConfig": {
+          "endType": "never",
+          "completedCount": 0,
+          "createdAt": "2026-01-01T00:00:00.000Z",
+          "frequency": "yearly",
+          "interval": 1
+        },
+        "repeatFrom": null,
+        "sourceNoteId": "note-src",
+        "completedAt": null,
+        "archivedAt": null,
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "modifiedAt": "2026-01-01T00:00:00.000Z",
+        "tags": [
+          "home"
+        ],
+        "linkedNoteIds": [
+          "note-1"
+        ],
+        "linkedCanvasIds": [
+          "canvas-1"
+        ],
+        "fields": {
+          "Follow up": "2026-05-14"
+        }
+      },
+      "completedAt": "2028-02-29T09:30:00",
+      "expected": {
+        "closedRepeatConfig": null,
+        "next": {
+          "dueDate": "2029-03-01",
+          "statusId": "p1-todo",
+          "completedCount": 1,
+          "repeatConfig": {
+            "endType": "never",
+            "completedCount": 1,
+            "createdAt": "2026-01-01T00:00:00.000Z",
+            "frequency": "yearly",
+            "interval": 1
+          },
+          "sourceNoteId": null,
+          "copied": {
+            "title": "Water the plants",
+            "description": "Front porch",
+            "projectId": "p1",
+            "parentId": null,
+            "priority": 2,
+            "dueTime": "08:00",
+            "durationMinutes": 30,
+            "startDate": null,
+            "repeatFrom": null,
+            "tags": [
+              "home"
+            ],
+            "linkedNoteIds": [
+              "note-1"
+            ],
+            "linkedCanvasIds": [
+              "canvas-1"
+            ],
+            "fields": {
+              "Follow up": "2026-05-14"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "count-3-done-2",
+      "tzSensitive": false,
+      "task": {
+        "id": "spawn-count-3-done-2",
+        "projectId": "p1",
+        "statusId": "p1-doing",
+        "parentId": null,
+        "title": "Water the plants",
+        "description": "Front porch",
+        "priority": 2,
+        "position": 0,
+        "dueDate": "2026-03-10",
+        "dueTime": "08:00",
+        "durationMinutes": 30,
+        "startDate": null,
+        "repeatConfig": {
+          "endType": "count",
+          "completedCount": 2,
+          "createdAt": "2026-01-01T00:00:00.000Z",
+          "frequency": "daily",
+          "interval": 1,
+          "endCount": 3
+        },
+        "repeatFrom": null,
+        "sourceNoteId": "note-src",
+        "completedAt": null,
+        "archivedAt": null,
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "modifiedAt": "2026-01-01T00:00:00.000Z",
+        "tags": [
+          "home"
+        ],
+        "linkedNoteIds": [
+          "note-1"
+        ],
+        "linkedCanvasIds": [
+          "canvas-1"
+        ],
+        "fields": {
+          "Follow up": "2026-05-14"
+        }
+      },
+      "completedAt": "2026-03-10T09:30:00",
+      "expected": {
+        "closedRepeatConfig": null,
+        "next": null
+      }
+    },
+    {
+      "name": "count-3-done-1",
+      "tzSensitive": false,
+      "task": {
+        "id": "spawn-count-3-done-1",
+        "projectId": "p1",
+        "statusId": "p1-doing",
+        "parentId": null,
+        "title": "Water the plants",
+        "description": "Front porch",
+        "priority": 2,
+        "position": 0,
+        "dueDate": "2026-03-10",
+        "dueTime": "08:00",
+        "durationMinutes": 30,
+        "startDate": null,
+        "repeatConfig": {
+          "endType": "count",
+          "completedCount": 1,
+          "createdAt": "2026-01-01T00:00:00.000Z",
+          "frequency": "daily",
+          "interval": 1,
+          "endCount": 3
+        },
+        "repeatFrom": null,
+        "sourceNoteId": "note-src",
+        "completedAt": null,
+        "archivedAt": null,
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "modifiedAt": "2026-01-01T00:00:00.000Z",
+        "tags": [
+          "home"
+        ],
+        "linkedNoteIds": [
+          "note-1"
+        ],
+        "linkedCanvasIds": [
+          "canvas-1"
+        ],
+        "fields": {
+          "Follow up": "2026-05-14"
+        }
+      },
+      "completedAt": "2026-03-10T09:30:00",
+      "expected": {
+        "closedRepeatConfig": null,
+        "next": {
+          "dueDate": "2026-03-11",
+          "statusId": "p1-todo",
+          "completedCount": 2,
+          "repeatConfig": {
+            "endType": "count",
+            "completedCount": 2,
+            "createdAt": "2026-01-01T00:00:00.000Z",
+            "frequency": "daily",
+            "interval": 1,
+            "endCount": 3
+          },
+          "sourceNoteId": null,
+          "copied": {
+            "title": "Water the plants",
+            "description": "Front porch",
+            "projectId": "p1",
+            "parentId": null,
+            "priority": 2,
+            "dueTime": "08:00",
+            "durationMinutes": 30,
+            "startDate": null,
+            "repeatFrom": null,
+            "tags": [
+              "home"
+            ],
+            "linkedNoteIds": [
+              "note-1"
+            ],
+            "linkedCanvasIds": [
+              "canvas-1"
+            ],
+            "fields": {
+              "Follow up": "2026-05-14"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "count-0-done-5",
+      "tzSensitive": false,
+      "task": {
+        "id": "spawn-count-0-done-5",
+        "projectId": "p1",
+        "statusId": "p1-doing",
+        "parentId": null,
+        "title": "Water the plants",
+        "description": "Front porch",
+        "priority": 2,
+        "position": 0,
+        "dueDate": "2026-03-10",
+        "dueTime": "08:00",
+        "durationMinutes": 30,
+        "startDate": null,
+        "repeatConfig": {
+          "endType": "count",
+          "completedCount": 5,
+          "createdAt": "2026-01-01T00:00:00.000Z",
+          "frequency": "daily",
+          "interval": 1,
+          "endCount": 0
+        },
+        "repeatFrom": null,
+        "sourceNoteId": "note-src",
+        "completedAt": null,
+        "archivedAt": null,
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "modifiedAt": "2026-01-01T00:00:00.000Z",
+        "tags": [
+          "home"
+        ],
+        "linkedNoteIds": [
+          "note-1"
+        ],
+        "linkedCanvasIds": [
+          "canvas-1"
+        ],
+        "fields": {
+          "Follow up": "2026-05-14"
+        }
+      },
+      "completedAt": "2026-03-10T09:30:00",
+      "expected": {
+        "closedRepeatConfig": null,
+        "next": {
+          "dueDate": "2026-03-11",
+          "statusId": "p1-todo",
+          "completedCount": 6,
+          "repeatConfig": {
+            "endType": "count",
+            "completedCount": 6,
+            "createdAt": "2026-01-01T00:00:00.000Z",
+            "frequency": "daily",
+            "interval": 1,
+            "endCount": 0
+          },
+          "sourceNoteId": null,
+          "copied": {
+            "title": "Water the plants",
+            "description": "Front porch",
+            "projectId": "p1",
+            "parentId": null,
+            "priority": 2,
+            "dueTime": "08:00",
+            "durationMinutes": 30,
+            "startDate": null,
+            "repeatFrom": null,
+            "tags": [
+              "home"
+            ],
+            "linkedNoteIds": [
+              "note-1"
+            ],
+            "linkedCanvasIds": [
+              "canvas-1"
+            ],
+            "fields": {
+              "Follow up": "2026-05-14"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "end-date-equals-next-day",
+      "tzSensitive": true,
+      "task": {
+        "id": "spawn-end-date-equals-next-day",
+        "projectId": "p1",
+        "statusId": "p1-doing",
+        "parentId": null,
+        "title": "Water the plants",
+        "description": "Front porch",
+        "priority": 2,
+        "position": 0,
+        "dueDate": "2026-03-10",
+        "dueTime": "08:00",
+        "durationMinutes": 30,
+        "startDate": null,
+        "repeatConfig": {
+          "endType": "date",
+          "completedCount": 0,
+          "createdAt": "2026-01-01T00:00:00.000Z",
+          "frequency": "daily",
+          "interval": 1,
+          "endDate": "2026-03-11"
+        },
+        "repeatFrom": null,
+        "sourceNoteId": "note-src",
+        "completedAt": null,
+        "archivedAt": null,
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "modifiedAt": "2026-01-01T00:00:00.000Z",
+        "tags": [
+          "home"
+        ],
+        "linkedNoteIds": [
+          "note-1"
+        ],
+        "linkedCanvasIds": [
+          "canvas-1"
+        ],
+        "fields": {
+          "Follow up": "2026-05-14"
+        }
+      },
+      "completedAt": "2026-03-10T09:30:00",
+      "expected": {
+        "closedRepeatConfig": null,
+        "next": {
+          "dueDate": "2026-03-11",
+          "statusId": "p1-todo",
+          "completedCount": 1,
+          "repeatConfig": {
+            "endType": "date",
+            "completedCount": 1,
+            "createdAt": "2026-01-01T00:00:00.000Z",
+            "frequency": "daily",
+            "interval": 1,
+            "endDate": "2026-03-11"
+          },
+          "sourceNoteId": null,
+          "copied": {
+            "title": "Water the plants",
+            "description": "Front porch",
+            "projectId": "p1",
+            "parentId": null,
+            "priority": 2,
+            "dueTime": "08:00",
+            "durationMinutes": 30,
+            "startDate": null,
+            "repeatFrom": null,
+            "tags": [
+              "home"
+            ],
+            "linkedNoteIds": [
+              "note-1"
+            ],
+            "linkedCanvasIds": [
+              "canvas-1"
+            ],
+            "fields": {
+              "Follow up": "2026-05-14"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "end-date-before-next-day",
+      "tzSensitive": true,
+      "task": {
+        "id": "spawn-end-date-before-next-day",
+        "projectId": "p1",
+        "statusId": "p1-doing",
+        "parentId": null,
+        "title": "Water the plants",
+        "description": "Front porch",
+        "priority": 2,
+        "position": 0,
+        "dueDate": "2026-03-10",
+        "dueTime": "08:00",
+        "durationMinutes": 30,
+        "startDate": null,
+        "repeatConfig": {
+          "endType": "date",
+          "completedCount": 0,
+          "createdAt": "2026-01-01T00:00:00.000Z",
+          "frequency": "daily",
+          "interval": 1,
+          "endDate": "2026-03-10"
+        },
+        "repeatFrom": null,
+        "sourceNoteId": "note-src",
+        "completedAt": null,
+        "archivedAt": null,
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "modifiedAt": "2026-01-01T00:00:00.000Z",
+        "tags": [
+          "home"
+        ],
+        "linkedNoteIds": [
+          "note-1"
+        ],
+        "linkedCanvasIds": [
+          "canvas-1"
+        ],
+        "fields": {
+          "Follow up": "2026-05-14"
+        }
+      },
+      "completedAt": "2026-03-10T09:30:00",
+      "expected": {
+        "closedRepeatConfig": null,
+        "next": null
+      }
+    },
+    {
+      "name": "end-date-complete-on-end-day",
+      "tzSensitive": true,
+      "task": {
+        "id": "spawn-end-date-complete-on-end-day",
+        "projectId": "p1",
+        "statusId": "p1-doing",
+        "parentId": null,
+        "title": "Water the plants",
+        "description": "Front porch",
+        "priority": 2,
+        "position": 0,
+        "dueDate": "2026-03-10",
+        "dueTime": "08:00",
+        "durationMinutes": 30,
+        "startDate": null,
+        "repeatConfig": {
+          "endType": "date",
+          "completedCount": 0,
+          "createdAt": "2026-01-01T00:00:00.000Z",
+          "frequency": "daily",
+          "interval": 1,
+          "endDate": "2026-03-11"
+        },
+        "repeatFrom": null,
+        "sourceNoteId": "note-src",
+        "completedAt": null,
+        "archivedAt": null,
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "modifiedAt": "2026-01-01T00:00:00.000Z",
+        "tags": [
+          "home"
+        ],
+        "linkedNoteIds": [
+          "note-1"
+        ],
+        "linkedCanvasIds": [
+          "canvas-1"
+        ],
+        "fields": {
+          "Follow up": "2026-05-14"
+        }
+      },
+      "completedAt": "2026-03-11T09:30:00",
+      "expected": {
+        "closedRepeatConfig": null,
+        "next": null
+      }
+    },
+    {
+      "name": "monthly-completion-anchor",
+      "tzSensitive": false,
+      "task": {
+        "id": "spawn-monthly-completion-anchor",
+        "projectId": "p1",
+        "statusId": "p1-doing",
+        "parentId": null,
+        "title": "Water the plants",
+        "description": "Front porch",
+        "priority": 2,
+        "position": 0,
+        "dueDate": "2026-02-15",
+        "dueTime": "08:00",
+        "durationMinutes": 30,
+        "startDate": null,
+        "repeatConfig": {
+          "endType": "never",
+          "completedCount": 0,
+          "createdAt": "2026-01-01T00:00:00.000Z",
+          "frequency": "monthly",
+          "interval": 1,
+          "monthlyType": "dayOfMonth",
+          "dayOfMonth": 15
+        },
+        "repeatFrom": "completion",
+        "sourceNoteId": "note-src",
+        "completedAt": null,
+        "archivedAt": null,
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "modifiedAt": "2026-01-01T00:00:00.000Z",
+        "tags": [
+          "home"
+        ],
+        "linkedNoteIds": [
+          "note-1"
+        ],
+        "linkedCanvasIds": [
+          "canvas-1"
+        ],
+        "fields": {
+          "Follow up": "2026-05-14"
+        }
+      },
+      "completedAt": "2026-03-02T09:30:00",
+      "expected": {
+        "closedRepeatConfig": null,
+        "next": {
+          "dueDate": "2026-04-15",
+          "statusId": "p1-todo",
+          "completedCount": 1,
+          "repeatConfig": {
+            "endType": "never",
+            "completedCount": 1,
+            "createdAt": "2026-01-01T00:00:00.000Z",
+            "frequency": "monthly",
+            "interval": 1,
+            "monthlyType": "dayOfMonth",
+            "dayOfMonth": 15
+          },
+          "sourceNoteId": null,
+          "copied": {
+            "title": "Water the plants",
+            "description": "Front porch",
+            "projectId": "p1",
+            "parentId": null,
+            "priority": 2,
+            "dueTime": "08:00",
+            "durationMinutes": 30,
+            "startDate": null,
+            "repeatFrom": "completion",
+            "tags": [
+              "home"
+            ],
+            "linkedNoteIds": [
+              "note-1"
+            ],
+            "linkedCanvasIds": [
+              "canvas-1"
+            ],
+            "fields": {
+              "Follow up": "2026-05-14"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "daily-across-2026-03-08",
+      "tzSensitive": false,
+      "task": {
+        "id": "spawn-daily-across-2026-03-08",
+        "projectId": "p1",
+        "statusId": "p1-doing",
+        "parentId": null,
+        "title": "Water the plants",
+        "description": "Front porch",
+        "priority": 2,
+        "position": 0,
+        "dueDate": "2026-03-07",
+        "dueTime": "08:00",
+        "durationMinutes": 30,
+        "startDate": null,
+        "repeatConfig": {
+          "endType": "never",
+          "completedCount": 0,
+          "createdAt": "2026-01-01T00:00:00.000Z",
+          "frequency": "daily",
+          "interval": 1
+        },
+        "repeatFrom": null,
+        "sourceNoteId": "note-src",
+        "completedAt": null,
+        "archivedAt": null,
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "modifiedAt": "2026-01-01T00:00:00.000Z",
+        "tags": [
+          "home"
+        ],
+        "linkedNoteIds": [
+          "note-1"
+        ],
+        "linkedCanvasIds": [
+          "canvas-1"
+        ],
+        "fields": {
+          "Follow up": "2026-05-14"
+        }
+      },
+      "completedAt": "2026-03-07T09:30:00",
+      "expected": {
+        "closedRepeatConfig": null,
+        "next": {
+          "dueDate": "2026-03-08",
+          "statusId": "p1-todo",
+          "completedCount": 1,
+          "repeatConfig": {
+            "endType": "never",
+            "completedCount": 1,
+            "createdAt": "2026-01-01T00:00:00.000Z",
+            "frequency": "daily",
+            "interval": 1
+          },
+          "sourceNoteId": null,
+          "copied": {
+            "title": "Water the plants",
+            "description": "Front porch",
+            "projectId": "p1",
+            "parentId": null,
+            "priority": 2,
+            "dueTime": "08:00",
+            "durationMinutes": 30,
+            "startDate": null,
+            "repeatFrom": null,
+            "tags": [
+              "home"
+            ],
+            "linkedNoteIds": [
+              "note-1"
+            ],
+            "linkedCanvasIds": [
+              "canvas-1"
+            ],
+            "fields": {
+              "Follow up": "2026-05-14"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

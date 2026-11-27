@@ -21,6 +21,8 @@ import { AddSubtaskButton } from '@/components/tasks/subtask-tree/add-subtask-bu
 import { TaskRowMenu } from '@/components/tasks/subtask-tree/task-row-menu'
 import { useSubtaskTree } from '@/components/tasks/subtask-tree/subtask-tree-context'
 import { TaskPathTitle, useTaskPath } from '@/components/tasks/date-view-context'
+import { TaskTitleText } from '@/components/tasks/task-title-text'
+import { replaceWikiLinks } from '@memry/shared/wiki-target'
 
 interface TaskRowProps {
   task: Task
@@ -173,6 +175,8 @@ const TaskRowComponent = ({
   const formattedDate = formatDueDate(task.dueDate, task.dueTime)
   const isOverdue = formattedDate?.status === 'overdue' && !isCompleted
   const { type: statusType, color: statusColor } = resolveStatus(task, project.statuses)
+  // Screen readers read the title as shown: `[[Note|alias]]` as `alias`.
+  const titleLabel = replaceWikiLinks(task.title)
 
   const handleRowClick = (e: React.MouseEvent): void => {
     if (e.shiftKey && onShiftSelect) {
@@ -265,7 +269,7 @@ const TaskRowComponent = ({
         data-testid={dataTestId}
         aria-hidden={isOverlay ? true : undefined}
         aria-label={
-          isOverlay ? undefined : `Task: ${task.title}${isCompleted ? ', completed' : ''}`
+          isOverlay ? undefined : `Task: ${titleLabel}${isCompleted ? ', completed' : ''}`
         }
       >
         {!isOverlay && insertionIndicatorPosition && (
@@ -282,7 +286,7 @@ const TaskRowComponent = ({
               state={isCheckedForSelection ? 'checked' : 'unchecked'}
               onToggle={() => onToggleSelect?.(task.id)}
               alwaysVisible={isSelectionMode}
-              label={`Select ${task.title}`}
+              label={`Select ${titleLabel}`}
             />
           </div>
         )}
@@ -326,7 +330,7 @@ const TaskRowComponent = ({
                   : 'text-foreground/90'
             )}
           >
-            {task.title}
+            <TaskTitleText title={task.title} />
           </span>
         </TaskPathTitle>
 

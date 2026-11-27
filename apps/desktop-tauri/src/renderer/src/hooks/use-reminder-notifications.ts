@@ -17,7 +17,11 @@ import { useTabs } from '@/contexts/tabs'
 import { useT } from '@memry/i18n/renderer'
 import { useDismissReminder } from '@/hooks/use-reminders'
 import { buildReminderTargetTab } from '@/lib/open-reminder-target'
-import type { ReminderWithTarget } from '@/services/reminder-service'
+import {
+  onReminderClicked,
+  onReminderDue,
+  type ReminderWithTarget
+} from '@/services/reminder-service'
 
 const log = createLogger('Hook:ReminderNotifications')
 
@@ -130,7 +134,7 @@ export function useReminderNotifications(): void {
 
   // Handle reminder due events
   useEffect(() => {
-    const unsubscribeDue = window.api.onReminderDue((event: ReminderDueEvent) => {
+    const unsubscribeDue = onReminderDue((event: ReminderDueEvent) => {
       log.info(`${event.count} reminder(s) due`)
 
       // Show toast for each due reminder (limit to avoid toast spam)
@@ -154,7 +158,7 @@ export function useReminderNotifications(): void {
 
   // Handle desktop notification click events (navigate to target)
   useEffect(() => {
-    const unsubscribeClicked = window.api.onReminderClicked((event: ReminderClickedEvent) => {
+    const unsubscribeClicked = onReminderClicked((event: ReminderClickedEvent) => {
       log.info(`Desktop notification clicked for reminder ${event.reminder.id}`)
       navigateToTarget(event.reminder)
     })

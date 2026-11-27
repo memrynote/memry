@@ -1,5 +1,6 @@
-//! Data migration numbering (#4052, #4438): main shipped 13..17, while feat/tauri-v2 builds had
-//! used 13..22, then 15..24, then 17..28, for their own. Files written under any numbering open through
+//! Data migration numbering (#4052, #4438, #5221): main shipped 13..18, while feat/tauri-v2 builds
+//! had used 13..22, then 15..24, then 17..28, then 18..38, for their own. Files written under any
+//! numbering open through
 //! [`open_data`], the real entry point, and end with the schema of a fresh database, every row
 //! and the calendar cursors reset.
 
@@ -54,9 +55,9 @@ fn earlier_feat_list(first: u32) -> Vec<Migration> {
     shared(first as usize - 1).chain(own).collect()
 }
 
-/// The list main shipped: 1..17.
+/// The list main shipped: 1..18.
 fn main_list() -> Vec<Migration> {
-    shared(17).collect()
+    shared(18).collect()
 }
 
 fn has_table(conn: &Connection, name: &str) -> bool {
@@ -91,10 +92,15 @@ fn fresh_schema() -> Vec<(String, String, Option<String>)> {
 }
 
 /// The rows a user's file holds; a row goes only into a table the file has.
-const ROWS: [(&str, &str); 6] = [
+const ROWS: [(&str, &str); 7] = [
     (
         "meta",
         "INSERT INTO meta (key, value) VALUES ('device.id', 'dev-1')",
+    ),
+    (
+        "note_attachment_uploads",
+        "INSERT INTO note_attachment_uploads (attachment_id, note_id, created_at)
+         VALUES ('a1', 'n1', 1)",
     ),
     (
         "note_snapshots",
@@ -244,16 +250,47 @@ fn a_file_numbered_by_an_earlier_feat_build_is_renumbered_once_and_gets_mains_mi
 }
 
 /// Before main's 17 `search_recents` was merged (#4438), feat/tauri-v2 numbered all its own
-/// migrations from 17: `note_snapshots` at 17 on to `agent_records` at 28. Such a file is one
-/// step behind this numbering and never ran `search_recents`; it gains it and lands at 29.
+/// migrations from 17: `note_snapshots` at 17 on to `agent_records` at 28. Such a file is two
+/// steps behind this numbering and never ran `search_recents` or `note_attachment_uploads`; it
+/// gains both and lands at 30.
 #[test]
 fn a_file_numbered_from_17_gains_search_recents_and_lands_on_this_numbering() {
     let list: Vec<Migration> = shared(16)
-        .chain(DATA_MIGRATIONS[17..].iter().map(|m| copy(m, m.version - 1)))
+        .chain(DATA_MIGRATIONS[18..].iter().map(|m| copy(m, m.version - 2)))
         .collect();
     for version in 17..=28 {
         for crashed in [false, true] {
             earlier_feat_file_opens(&list, 17, version, crashed);
+        }
+    }
+}
+
+/// Before main's 18 `note_attachment_uploads` was merged (#5221), feat/tauri-v2 numbered its own
+/// migrations from 18: `note_snapshots` at 18 on to `readwise` at 38. Such a file is one step
+/// behind this numbering and never ran `note_attachment_uploads`; it gains it and lands at 39.
+#[test]
+fn a_file_numbered_from_18_gains_note_attachment_uploads_and_lands_on_this_numbering() {
+    let list: Vec<Migration> = shared(17)
+        .chain(DATA_MIGRATIONS[18..].iter().map(|m| copy(m, m.version - 1)))
+        .collect();
+    for version in 18..=38 {
+        for crashed in [false, true] {
+            earlier_feat_file_opens(&list, 18, version, crashed);
+        }
+    }
+}
+
+/// A file main took to 18 that a pre-sync feat/tauri-v2 build (own migrations from 18) then
+/// opened: that build saw 18 as its own `note_snapshots`, skipped it, and ran `local_settings`
+/// at 19 on to `readwise` at 38. It gains `note_snapshots` and lands at 39 with every row.
+#[test]
+fn a_file_main_took_to_18_then_a_build_numbered_from_18_opened_gains_note_snapshots() {
+    let list: Vec<Migration> = shared(18)
+        .chain(DATA_MIGRATIONS[19..].iter().map(|m| copy(m, m.version - 1)))
+        .collect();
+    for version in 19..=38 {
+        for crashed in [false, true] {
+            earlier_feat_file_opens(&list, 18, version, crashed);
         }
     }
 }
@@ -329,17 +366,22 @@ fn refused_untouched(path: &Path, version: u32) {
     assert!(!has_table(&conn, "local_settings"), "no migration ran");
 }
 
-/// iOS and the CLI on main leave `data.db` at 13..17; a desktop build opening it adds the
-/// tables main does not have. A file at 13 still owes 14's reset; a later file owes none, so
-/// the cursor its device pulled since stays.
+/// iOS and the CLI on main leave `data.db` at 13..18; a desktop build opening it adds the
+/// tables main does not have and keeps main's attachments waiting to upload. A file at 13 still
+/// owes 14's reset; a later file owes none, so the cursor its device pulled since stays.
 #[test]
-fn a_file_main_left_at_13_to_17_gains_the_desktop_tables() {
+fn a_file_main_left_at_13_to_18_gains_the_desktop_tables() {
     let list = main_list();
-    for version in 13..=17 {
+    for version in 13..=18 {
         let cursor = (version > 13).then(|| "tok-1".to_owned());
         let what = format!("main at {version}");
         let (_dir, path, seeded) = file_at(&list, version);
-        assert_eq!(seeded, ["meta"], "main has none of the desktop tables");
+        let mains: &[&str] = if version >= 18 {
+            &["meta", "note_attachment_uploads"]
+        } else {
+            &["meta"]
+        };
+        assert_eq!(seeded, mains, "main has none of the desktop tables");
 
         let conn = open_and_check(&path, &seeded, &what);
         assert_eq!(cursors(&conn), (cursor.clone(), cursor), "{what}");

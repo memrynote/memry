@@ -66,7 +66,12 @@ const BlogPages = {
     () => import('@/pages/BlogPost'),
     'PrivateNotionAlternativesPostPage'
   ),
-  privateJournalingApps: lazyPage(() => import('@/pages/BlogPost'), 'PrivateJournalingAppsPostPage')
+  privateJournalingApps: lazyPage(
+    () => import('@/pages/BlogPost'),
+    'PrivateJournalingAppsPostPage'
+  ),
+  bestJournalingApps: lazyPage(() => import('@/pages/BlogPost'), 'BestJournalingAppsPostPage'),
+  openSourceNoteApps: lazyPage(() => import('@/pages/BlogPost'), 'OpenSourceNoteAppsPostPage')
 }
 
 /** Routes whose element is just a page component, in the order App renders them. */
@@ -106,6 +111,10 @@ export const PAGE_ROUTES: readonly { path: string; Component: PageComponent }[] 
   { path: '/use-cases', Component: lazyPage(() => import('@/pages/UseCases'), 'UseCasesPage') },
   { path: '/about', Component: lazyPage(() => import('@/pages/About'), 'AboutPage') },
   { path: '/security', Component: lazyPage(() => import('@/pages/Security'), 'SecurityPage') },
+  {
+    path: '/encrypted-notes-app',
+    Component: lazyPage(() => import('@/pages/EncryptedNotesApp'), 'EncryptedNotesAppPage')
+  },
   { path: '/compare', Component: lazyPage(() => import('@/pages/ComparePage'), 'ComparePage') },
   { path: '/obsidian-alternative', Component: AlternativePages.obsidian },
   { path: '/notion-alternative', Component: AlternativePages.notion },
@@ -167,6 +176,14 @@ export const PAGE_ROUTES: readonly { path: string; Component: PageComponent }[] 
   {
     path: '/blog/most-private-journaling-apps',
     Component: BlogPages.privateJournalingApps
+  },
+  {
+    path: '/blog/best-journaling-apps',
+    Component: BlogPages.bestJournalingApps
+  },
+  {
+    path: '/blog/open-source-note-taking-apps',
+    Component: BlogPages.openSourceNoteApps
   },
   { path: '/login', Component: lazyPage(() => import('@/pages/Login'), 'LoginPage') },
   {

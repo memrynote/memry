@@ -17,6 +17,7 @@
       "filterAll": "Alle filer"
     },
     "exportCancelled": "Eksporten blev annulleret",
+    "exportVaultChanged": "En anden boks blev åbnet, mens du valgte, hvor der skulle gemmes. Eksportér noten igen.",
     "dataDbRecovery": {
       "title": "Reparér boksens database",
       "message": "Memrys database for denne boks er beskadiget.",

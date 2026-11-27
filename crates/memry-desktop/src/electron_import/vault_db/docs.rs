@@ -13,14 +13,15 @@
 //! with the body kept as a version first. The Electron files and the vault files are never
 //! written here.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::io::Read;
+use std::ops::Range;
 use std::path::Path;
 use std::sync::Arc;
 
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD;
-use memry_core::crdt::{BODY_FRAGMENT, DocumentRegistry};
+use memry_core::crdt::{BODY_FRAGMENT, Document, DocumentRegistry};
 use memry_core::domain::external_feed::same_text;
 use memry_core::markdown::convert::api::Converter;
 use memry_core::markdown::convert::restore::SerializeOptions;
@@ -30,6 +31,8 @@ use memry_core::storage::import::{
     ImportBodyPush, ImportBodySync, ImportBodyVersion, ImportDocument, ImportFileHash, ImportWriter,
 };
 use rusqlite::{Connection, OptionalExtension};
+use yrs::updates::decoder::Decode as _;
+use yrs::{ClientID, ReadTxn as _, Snapshot};
 
 use super::source::source_error;
 use super::tables::note_file::MAX_FILE_BYTES;
@@ -48,6 +51,10 @@ const FULL_STATE_PAYLOAD: &str = "";
 /// (`keep-unseen-text.ts:65`, `note-sync-state.ts:207`), and a stamp before every delete does
 /// the same in the core's (`sync/delete_keep.rs`).
 const NO_OWN_BODY_AT: i64 = 0;
+
+/// The prefix of Electron's unstored mark in `note_cache.pending_write_hash` (`UNSTORED_FILE`,
+/// `note-crud.ts:26`): a write-back wrote the file from a doc its store may not hold (#5698).
+const UNSTORED_FILE: &str = "unstored-file";
 
 /// The longest `note_body` payload read, in base64 characters. A body update past it is far
 /// beyond what the server takes in one push, so the row is refused rather than decoded.
@@ -360,12 +367,16 @@ fn confirmed_at(source: &Connection) -> Result<HashMap<String, i64>, ImportError
 /// file it never read is never written over, `crdt-writeback.ts:827-832`), and the body kept as
 /// a version when an outside edit replaces it.
 ///
+/// The baseline is the cached hash, or the file when `pending_write_hash` names it: a plain
+/// pending hash is Electron's own write (`isOutsideEdit`, `writeback-baseline.ts`), and an
+/// unstored mark whose write the store covers is the doc's own (`takesUnstoredFile`).
+///
 /// - The body serializes to the file's text (`same_text`): the row holds the file.
-/// - The file is the one Electron read, or is missing, or the body cannot be serialized: the
-///   body is `ahead`, and the first write-back writes it, keeping the file as a version.
-/// - The file changed since Electron read it: an outside edit made while Electron was closed.
-///   The row names the file Electron read and holds the body, so the consumer feeds the edit
-///   into the body as Electron's write-back guard would; the body is kept as a version first.
+/// - The file is the baseline, or is missing, or the body cannot be serialized: the body is
+///   `ahead`, and the first write-back writes it, keeping the file as a version.
+/// - The file changed since Electron read it, or an unstored mark's file may hold text the
+///   store lacks: the row names a file the body does not hold, so the consumer feeds the file
+///   into the body as Electron's open would; the body is kept as a version first.
 fn file_hash(
     vault: &Path,
     source: &Connection,
@@ -379,16 +390,15 @@ fn file_hash(
     if row.file_type != "markdown" {
         return Ok(None);
     }
-    let cached: Option<String> = index
+    let cache: Option<(Option<String>, Option<String>)> = index
         .query_row(
-            "SELECT content_hash FROM note_cache WHERE id = ?1",
+            "SELECT content_hash, pending_write_hash FROM note_cache WHERE id = ?1",
             [&doc.doc_id],
-            |row| row.get(0),
+            |row| Ok((row.get(0)?, row.get(1)?)),
         )
         .optional()
-        .map_err(|e| source_error(SourceDb::Index, e))?
-        .flatten();
-    let Some(cached) = cached else {
+        .map_err(|e| source_error(SourceDb::Index, e))?;
+    let Some((Some(cached), pending)) = cache else {
         return Ok(None);
     };
     let row_of = |content_hash: String, file_hash: Option<String>, ahead: bool| ImportFileHash {
@@ -402,15 +412,29 @@ fn file_hash(
     };
     let on_disk = content_hash(&text);
     let split = split_frontmatter_block(text.strip_prefix('\u{feff}').unwrap_or(&text));
-    let body = serialized_body(doc, &row.path);
+    let document = open_document(doc);
+    let body = document
+        .as_deref()
+        .and_then(|document| serialized_body(document, &row.path));
     if body
         .as_deref()
         .is_some_and(|body| same_text(body, split.body))
     {
         return Ok(Some((row_of(on_disk.clone(), Some(on_disk), false), None)));
     }
-    let Some(body) = body.filter(|_| on_disk != cached) else {
-        return Ok(Some((row_of(cached, Some(on_disk), true), None)));
+    let takes_file = match pending.as_deref() {
+        Some(mark) if mark.starts_with(UNSTORED_FILE) => document
+            .and_then(|document| document.read(|txn| txn.snapshot()).ok())
+            .is_none_or(|held| takes_unstored_file(mark, &cached, &on_disk, &held)),
+        _ => false,
+    };
+    let own_write = match pending.as_deref() {
+        Some(mark) if mark.starts_with(UNSTORED_FILE) => !takes_file,
+        pending => pending == Some(on_disk.as_str()),
+    };
+    let baseline = if own_write { on_disk.clone() } else { cached };
+    let Some(body) = body.filter(|_| on_disk != baseline || takes_file) else {
+        return Ok(Some((row_of(baseline, Some(on_disk), true), None)));
     };
     let title: Option<String> = source
         .query_row(
@@ -426,7 +450,90 @@ fn file_hash(
         body,
         title: title.unwrap_or_default(),
     };
-    Ok(Some((row_of(cached, Some(on_disk), false), Some(version))))
+    // A taken file that is the cached one gets the hash of the body's own file, which the file
+    // on disk is not, so the consumer feeds it in.
+    let named = match on_disk == baseline {
+        true => content_hash(&version.content),
+        false => baseline,
+    };
+    Ok(Some((row_of(named, Some(on_disk), false), Some(version))))
+}
+
+/// Electron's `takesUnstoredFile` (`writeback-baseline.ts`): whether the file on disk, under the
+/// row's unstored `mark`, may hold text the store lacks. The mark records the snapshot of the
+/// doc state serialized into the marked write (`unstored-file:<hash>:<snapshot>:<snapshot of the
+/// bytes under content_hash>`). The file is the doc's own only when its hash has a recorded
+/// snapshot that `held`, the stored doc, covers; a mark this build cannot read (the bare mark
+/// of an earlier build of #5698) takes the file in.
+fn takes_unstored_file(mark: &str, cached: &str, on_disk: &str, held: &Snapshot) -> bool {
+    let Some((hash, snapshot, baseline)) = parse_unstored_mark(mark) else {
+        return true;
+    };
+    let written = match on_disk {
+        _ if on_disk == hash => Some(snapshot),
+        _ if on_disk == cached => baseline,
+        _ => None,
+    };
+    written.is_none_or(|written| !covers(held, &written))
+}
+
+/// Electron's `parseUnstoredMark`: the marked write's hash, its snapshot and the snapshot of the
+/// bytes under `content_hash` (none when the mark's last part is empty).
+fn parse_unstored_mark(mark: &str) -> Option<(&str, Snapshot, Option<Snapshot>)> {
+    let mut parts = mark.split(':');
+    let (Some(UNSTORED_FILE), Some(hash), Some(snapshot), Some(baseline), None) = (
+        parts.next(),
+        parts.next(),
+        parts.next(),
+        parts.next(),
+        parts.next(),
+    ) else {
+        return None;
+    };
+    if hash.is_empty() {
+        return None;
+    }
+    let baseline = match baseline {
+        "" => None,
+        part => Some(decode_snapshot(part)?),
+    };
+    Some((hash, decode_snapshot(snapshot)?, baseline))
+}
+
+/// A base64 Yjs snapshot (`Y.encodeSnapshot`: delete set, then state vector, v1).
+fn decode_snapshot(part: &str) -> Option<Snapshot> {
+    let base64 = |b: u8| b.is_ascii_alphanumeric() || matches!(b, b'+' | b'/' | b'=');
+    if part.len() < 4 || !part.bytes().all(base64) {
+        return None;
+    }
+    Snapshot::decode_v1(&STANDARD.decode(part).ok()?).ok()
+}
+
+/// Electron's `docCovers`: whether `held` holds every insert and delete of `marked`.
+fn covers(held: &Snapshot, marked: &Snapshot) -> bool {
+    let mut deleted: BTreeMap<ClientID, Vec<Range<u32>>> = BTreeMap::new();
+    for (client, ranges) in held.delete_set.iter() {
+        let mut sorted: Vec<Range<u32>> = ranges.iter().cloned().collect();
+        sorted.sort_by_key(|range| range.start);
+        let merged = deleted.entry(*client).or_default();
+        for range in sorted {
+            match merged.last_mut() {
+                Some(last) if range.start <= last.end => last.end = last.end.max(range.end),
+                _ => merged.push(range),
+            }
+        }
+    }
+    marked
+        .state_map
+        .iter()
+        .all(|(client, clock)| held.state_map.get(client) >= *clock)
+        && marked.delete_set.iter().all(|(client, ranges)| {
+            let held = deleted.get(client).map(Vec::as_slice).unwrap_or_default();
+            ranges.iter().all(|range| {
+                held.iter()
+                    .any(|d| d.start <= range.start && range.end <= d.end)
+            })
+        })
 }
 
 /// The file's text, read as Node reads it (UTF-8 with replacement); `None` for a file that is
@@ -441,20 +548,24 @@ fn read_file(vault: &Path, rel: &str) -> Option<String> {
     Some(String::from_utf8_lossy(&bytes).into_owned())
 }
 
+/// The folded document; `None` for a state that does not apply.
+fn open_document(doc: &FoldedDoc) -> Option<Arc<Document>> {
+    DocumentRegistry::new("import", Arc::new(|_: &str, _: &[u8]| {}))
+        .get_or_open(&doc.doc_id)
+        .and_then(|document| document.apply_durable_update(&doc.state).map(|()| document))
+        .ok()
+}
+
 /// The folded body as markdown, by the default converter; `None` for a body it cannot
 /// serialize. A custom callout the settings would name may serialize differently here: such a
 /// body counts as not the file's, and the write-back compares again with the vault's converter.
-fn serialized_body(doc: &FoldedDoc, path: &str) -> Option<String> {
-    let document = DocumentRegistry::new("import", Arc::new(|_: &str, _: &[u8]| {}))
-        .get_or_open(&doc.doc_id)
-        .and_then(|document| document.apply_durable_update(&doc.state).map(|()| document))
-        .ok()?;
+fn serialized_body(document: &Document, path: &str) -> Option<String> {
     let options = SerializeOptions {
         note_path: Some(path),
         ..SerializeOptions::default()
     };
     Converter::new(CalloutTypes::new(Vec::new()))
-        .serialize_note_body(&document, BODY_FRAGMENT, &options)
+        .serialize_note_body(document, BODY_FRAGMENT, &options)
         .map(|body| body.markdown)
 }
 
