@@ -1,0 +1,17 @@
+{
+  "permission": [
+    {
+      "identifier": "sticky-tab",
+      "description": "The commands the sticky's edge tab renderer calls besides `boot`: its drafts read and window calls (components/sticky/sticky-edge-tab.tsx through services/sticky-service.ts), and the settings reads `onSettingsChanged` makes for every change event it receives (services/settings-service.ts, subscribed through use-general-settings.ts).",
+      "commands": {
+        "allow": [
+          "settings_get_ai",
+          "settings_get_path",
+          "sticky_list_drafts",
+          "sticky_peek",
+          "sticky_unfold"
+        ]
+      }
+    }
+  ]
+}

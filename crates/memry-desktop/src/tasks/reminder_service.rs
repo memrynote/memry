@@ -53,6 +53,9 @@ pub enum ReminderError {
     Invalid(String),
     #[error(transparent)]
     Storage(StorageError),
+    /// A write could not read this device's identity (a locked keychain); reads never need it.
+    #[error(transparent)]
+    Identity(AuthError),
 }
 
 impl From<StorageError> for ReminderError {
@@ -82,19 +85,33 @@ pub struct BulkDismissed {
 
 pub struct ReminderService {
     db: Db,
-    device_id: String,
+    device_id: Box<dyn Fn() -> Result<String, AuthError> + Send + Sync>,
 }
 
 impl ReminderService {
-    pub fn new(db: Db, device_id: String) -> Self {
-        Self { db, device_id }
+    /// `device_id` is asked for on each write only, so the read commands work while the
+    /// device identity cannot be read.
+    pub fn new(
+        db: Db,
+        device_id: impl Fn() -> Result<String, AuthError> + Send + Sync + 'static,
+    ) -> Self {
+        Self {
+            db,
+            device_id: Box::new(device_id),
+        }
     }
 
     /// The reminders of `open`, written under the device identity in `store`.
-    pub fn open(open: &OpenVault, store: Arc<dyn SecureStore>) -> Result<Self, AuthError> {
-        ensure_device_identity(store.clone())?;
-        let device_id = open.vault.notes_writer(store)?.device_id();
-        Ok(Self::new(open.vault.db_handle(), device_id))
+    pub fn open(open: &OpenVault, store: Arc<dyn SecureStore>) -> Self {
+        let vault = open.vault.clone();
+        Self::new(open.vault.db_handle(), move || {
+            ensure_device_identity(store.clone())?;
+            Ok(vault.notes_writer(store.clone())?.device_id())
+        })
+    }
+
+    fn device(&self) -> Result<String, ReminderError> {
+        (self.device_id)().map_err(ReminderError::Identity)
     }
 
     /// `createReminder`.
@@ -140,12 +157,13 @@ impl ReminderService {
 
     /// `deleteReminder`. Returns the reminder as it was, for the event and the banner.
     pub fn delete(&self, id: &str, now_ms: i64) -> Result<Written<ReminderView>, ReminderError> {
+        let device = self.device()?;
         self.db
             .call_blocking(|conn| {
                 let Some(before) = reminders::get(conn, id)? else {
                     return Ok(Err(ReminderError::NotFound));
                 };
-                if let Err(error) = reminders::delete(conn, id, &self.device_id, now_ms) {
+                if let Err(error) = reminders::delete(conn, id, &device, now_ms) {
                     return Ok(Err(error.into()));
                 }
                 Ok(Ok(Written {
@@ -339,9 +357,10 @@ impl ReminderService {
     where
         F: FnOnce(&Connection, &str) -> Result<String, StorageError>,
     {
+        let device = self.device()?;
         self.db
             .call_blocking(|conn| {
-                let id = match write(conn, &self.device_id) {
+                let id = match write(conn, &device) {
                     Ok(id) => id,
                     Err(error) => return Ok(Err(ReminderError::from(error))),
                 };

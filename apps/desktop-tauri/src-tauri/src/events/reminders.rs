@@ -24,10 +24,12 @@ impl ReminderHint {
     }
 }
 
-/// One scheduler tick fired these reminders.
+/// One scheduler tick fired these reminders; `count` is how many (Electron `ReminderDueEvent`),
+/// also when some are gone by the time the renderer reads them back.
 #[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
 pub struct ReminderDueEvent {
     pub reminders: Vec<ReminderHint>,
+    pub count: u32,
 }
 
 /// A reminder command created this reminder.
