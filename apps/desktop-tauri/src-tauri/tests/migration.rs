@@ -11,11 +11,10 @@ use std::time::{Duration, Instant};
 use memry_desktop::electron_import::progress::ProgressSink;
 use memry_desktop::paths::AppPaths;
 use memry_desktop::telemetry::events::TelemetryEvent;
-use memry_tauri::binary;
 use memry_tauri::instance::window_to_raise;
 use memry_tauri::migration::status::{MigrationState, MigrationStatus};
 use memry_tauri::migration::{Backend, Migration, MigrationFailure, TelemetrySink};
-use memry_tauri::registry::{PREBOOT_COMMANDS, window_allows, window_gate};
+use memry_tauri::registry::{PREBOOT_COMMANDS, app_all_permission, window_allows, window_gate};
 use serde_json::Value;
 use tauri::ipc::{CallbackFn, InvokeBody, InvokeResponseBody};
 use tauri::test::{
@@ -204,21 +203,18 @@ fn the_startup_error_window_reaches_no_command() {
 /// its view.
 #[test]
 fn the_preboot_window_reaches_no_sign_in_token_or_vault_command() {
-    let registry = include_str!("../src/registry.rs");
-    let mut commands: Vec<&str> = registry
-        .lines()
-        .filter_map(|line| line.trim().strip_prefix("crate::commands::"))
-        .filter_map(|path| {
-            path.split("::<")
-                .next()?
-                .trim_end_matches(',')
-                .rsplit("::")
-                .next()
-        })
-        .chain(binary::COMMANDS.iter().copied())
+    // Every registered command: the generated `app-all` list (the bindings and the binary
+    // commands), since the registrations live in `registry.rs` and the modules it chains.
+    let app_all: Value = serde_json::from_str(
+        &app_all_permission(include_str!("../../src/generated/bindings.ts")).unwrap(),
+    )
+    .unwrap();
+    let commands: Vec<&str> = app_all["permission"][0]["commands"]["allow"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|command| command.as_str().unwrap())
         .collect();
-    commands.sort_unstable();
-    commands.dedup();
     for command in [
         "auth_refresh_token",
         "auth_request_otp",
