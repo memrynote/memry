@@ -9,7 +9,7 @@ use super::ImportError;
 use super::TableCtx;
 
 pub mod js_json;
-mod note_file;
+pub(super) mod note_file;
 mod notes;
 pub mod queue;
 pub mod records;
@@ -163,9 +163,9 @@ pub const TABLE_MAP: &[TableMapping] = &[
     map!(Data Migration "canvas_folders" [16, Convert, "36b"]: "core canvas_folder record table of Step 16"),
     map!(Data Migration "canvas_library_items" [29, Convert, "36f"]: "decrypted with the vault key into canvases/library.excalidrawlib when that file is absent"),
     map!(Data Migration "canvases" [29, Convert, "36f"]: "Step 30 canvas rows; canvases/*.excalidraw files stay canonical"),
-    map!(Data Migration "crdt_body_debts" [17, Convert, "36c4"]: "core body debt meta rows sync.body_owed:<docId> through Step 17"),
-    map!(Data Migration "crdt_body_withheld" [17, Convert, "36c4"]: "each row becomes a core body debt sync.body_owed:<docId>"),
-    map!(Data Migration "crdt_owed_file_bodies" [12, Convert, "36c4"]: "Step 12 owed file body markers through owed_file_body::record, at the original record time"),
+    map!(Data Migration "crdt_body_debts" [17, Convert => super::docs::crdt_body_debts]: "core body debt meta rows sync.body_owed:<docId> through Step 17"),
+    map!(Data Migration "crdt_body_withheld" [17, Convert => super::docs::crdt_body_withheld]: "each row becomes a core body debt sync.body_owed:<docId>"),
+    map!(Data Migration "crdt_owed_file_bodies" [12, Convert => super::docs::crdt_owed_file_bodies]: "Step 12 owed file body markers through owed_file_body::record, at the original record time"),
     map!(Data Migration "custom_icons" [13, Convert => row_dumps::custom_icons]: "custom_icon sync_items records with the base64 payload; .memry/icons/ files untouched"),
     map!(Data Migration "deleted_asset_releases" [18, Convert, "36f"]: "Step 18 release queue; deleted_at keeps the 30 day grace"),
     map!(Data Migration "filing_history" [26, Skip]: "derived: core derives filing history from filed inbox_items (Inbox::filing_history)"),
@@ -176,7 +176,6 @@ pub const TABLE_MAP: &[TableMapping] = &[
     map!(Data Migration "inbox_items" [26, Convert, "36d1"]: "core inbox table (data 0004) with clocks and attachment_id; dirty rows re-enqueued"),
     map!(Data Migration "inbox_jobs" [26, Reseed]: "transient enrichment jobs; Step 27 re-queues jobs for items without a result"),
     map!(Data Migration "inbox_stats" [26, Rebuild]: "derived counters rebuilt by the Step 27 stats projector"),
-    map!(Data Migration "note_body_sync" [17, Convert, "36c4"]: "Step 17 note_body_sync; pushed_state_vector dropped and counted (not in core)"),
     map!(Data Migration "note_metadata" [13, Convert => notes::note_metadata]: "note and journal records built as Electron pushes them (file and index copy) plus the Step 12 note_files row; ids and clocks bit exact"),
     map!(Data Migration "note_positions" [13, Convert => notes::note_positions]: "Step 13 manual order rows (data 0022)"),
     map!(Data Migration "notes_created_here" [13, Skip]: "device-local marker of Electron's create command (data 0084, #5371) for its offline editor rule; core keeps no such marker and imports no note content from it"),
@@ -239,7 +238,8 @@ pub const TABLE_MAP: &[TableMapping] = &[
     map!(Index Code "voice_embedding_state" [23, Copy, "36e"]: "copied with vec_voice (same width and input_version rule), else dropped with it"),
     // After every record table: queued pushes are planned against the staged records.
     map!(Data Migration "sync_tombstone_clocks" [17, Copy => queue::sync_tombstone_clocks]: "core sync_tombstone_clocks (data 0005); the note family row under note and journal"),
-    map!(Data Migration "sync_queue" [17, Convert => queue::sync_queue]: "folded per item into core outbox rows through outbox::enqueue; deletes write their tombstone; note_body rows are 36c4's"),
+    map!(Data Migration "sync_queue" [17, Convert => queue::sync_queue]: "folded per item into core outbox rows through outbox::enqueue; deletes write their tombstone; note_body rows become CRDT outbox rows (docs.rs)"),
+    map!(Data Migration "note_body_sync" [17, Convert => super::docs::note_body_sync]: "Step 17 note_body_sync; pushed_state_vector dropped and counted (not in core); after note_metadata and sync_queue, its in-flight full states name a staged note"),
     // Last: it counts the merge into the records every table above wrote.
     map!(Data Migration "sync_unknown_fields" [16, Convert => unknown_fields::import]: "merged into the verbatim sync_items.payload of the same (type, item_id)"),
 ];

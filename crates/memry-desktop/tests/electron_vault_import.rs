@@ -20,6 +20,10 @@ use rusqlite::Connection;
 use rusqlite::types::Value;
 use sha2::{Digest, Sha256};
 
+#[path = "device_key/mod.rs"]
+mod device_key;
+#[path = "electron_vault_import/docs.rs"]
+mod docs;
 #[path = "support/electron_db.rs"]
 mod electron_db;
 #[path = "electron_vault_import/ledger_ends.rs"]
@@ -32,8 +36,12 @@ mod queue;
 mod queue_deletes;
 #[path = "electron_vault_import/records.rs"]
 mod records;
+#[path = "electron_vault_import/settle.rs"]
+mod settle;
 #[path = "electron_vault_import/tag_template_records.rs"]
 mod tag_template_records;
+#[path = "vault_env/mod.rs"]
+mod vault_env;
 
 const NOW_MS: i64 = 1_800_000_000_000;
 const ELECTRON_DEVICE: &str = "device-electron";

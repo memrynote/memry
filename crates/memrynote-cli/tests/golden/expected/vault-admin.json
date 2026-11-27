@@ -1,0 +1,274 @@
+{
+  "name": "vault-admin",
+  "steps": [
+    {
+      "argv": [
+        "vault",
+        "reindex"
+      ],
+      "exit": 0,
+      "stdout": "{\n  \"notes\": 0,\n  \"tasks\": 0,\n  \"inbox\": 0,\n  \"skipped\": 0,\n  \"durationMs\": <duration>\n}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "--json",
+        "vault",
+        "reindex"
+      ],
+      "exit": 0,
+      "stdout": "{\"notes\":0,\"tasks\":0,\"inbox\":0,\"skipped\":0,\"durationMs\":<duration>}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "vault",
+        "set-icon"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "Missing icon (icon:<Name>, an emoji, or null)\n"
+    },
+    {
+      "argv": [
+        "vault",
+        "set-icon",
+        "icon:Bad-Name"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "Invalid vault icon: icon:Bad-Name (use icon:<Name> or a single emoji)\n"
+    },
+    {
+      "argv": [
+        "vault",
+        "set-icon",
+        "custom:x"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "Invalid vault icon: custom:x (use icon:<Name> or a single emoji)\n"
+    },
+    {
+      "argv": [
+        "vault",
+        "set-icon",
+        "icon:Star"
+      ],
+      "exit": 0,
+      "stdout": "{\n  \"icon\": \"icon:Star\"\n}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "--json",
+        "vault",
+        "set-icon",
+        "null"
+      ],
+      "exit": 0,
+      "stdout": "{\"icon\":null}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "vault",
+        "activity"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "Usage: memrynote [--vault <path>] vault activity list [--problems] [--limit <n>] | clear --yes\n"
+    },
+    {
+      "argv": [
+        "vault",
+        "activity",
+        "bogus"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "Usage: memrynote [--vault <path>] vault activity list [--problems] [--limit <n>] | clear --yes\n"
+    },
+    {
+      "argv": [
+        "--json",
+        "vault",
+        "activity",
+        "list"
+      ],
+      "exit": 0,
+      "stdout": "[{\"v\":1,\"id\":\"e4\",\"at\":\"<iso>\",\"kind\":\"added\",\"source\":\"sync\",\"path\":\"c.md\"},{\"v\":1,\"id\":\"e3\",\"at\":\"<iso>\",\"kind\":\"scan\",\"source\":\"scan\",\"counts\":{\"added\":2,\"skipped\":1}},{\"v\":1,\"id\":\"e2\",\"at\":\"<iso>\",\"kind\":\"failed\",\"source\":\"import\",\"path\":\"b.pdf\",\"message\":\"x\"},{\"v\":1,\"id\":\"e1\",\"at\":\"<iso>\",\"kind\":\"added\",\"source\":\"watcher\",\"path\":\"a.md\"}]\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "--json",
+        "vault",
+        "activity",
+        "list",
+        "--problems"
+      ],
+      "exit": 0,
+      "stdout": "[{\"v\":1,\"id\":\"e3\",\"at\":\"<iso>\",\"kind\":\"scan\",\"source\":\"scan\",\"counts\":{\"added\":2,\"skipped\":1}},{\"v\":1,\"id\":\"e2\",\"at\":\"<iso>\",\"kind\":\"failed\",\"source\":\"import\",\"path\":\"b.pdf\",\"message\":\"x\"}]\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "--json",
+        "vault",
+        "activity",
+        "list",
+        "--limit",
+        "1"
+      ],
+      "exit": 0,
+      "stdout": "[{\"v\":1,\"id\":\"e4\",\"at\":\"<iso>\",\"kind\":\"added\",\"source\":\"sync\",\"path\":\"c.md\"}]\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "vault",
+        "activity",
+        "list",
+        "--limit",
+        "2"
+      ],
+      "exit": 0,
+      "stdout": "[\n  {\n    \"v\": 1,\n    \"id\": \"e4\",\n    \"at\": \"<iso>\",\n    \"kind\": \"added\",\n    \"source\": \"sync\",\n    \"path\": \"c.md\"\n  },\n  {\n    \"v\": 1,\n    \"id\": \"e3\",\n    \"at\": \"<iso>\",\n    \"kind\": \"scan\",\n    \"source\": \"scan\",\n    \"counts\": {\n      \"added\": 2,\n      \"skipped\": 1\n    }\n  }\n]\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "vault",
+        "activity",
+        "list",
+        "--limit",
+        "0"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "--limit must be an integer from 1 to 1000\n"
+    },
+    {
+      "argv": [
+        "vault",
+        "activity",
+        "list",
+        "--limit",
+        "1.5"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "--limit must be an integer from 1 to 1000\n"
+    },
+    {
+      "argv": [
+        "vault",
+        "activity",
+        "list",
+        "--limit",
+        "abc"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "Invalid number: abc\n"
+    },
+    {
+      "argv": [
+        "vault",
+        "activity",
+        "list",
+        "--limit",
+        "1001"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "--limit must be an integer from 1 to 1000\n"
+    },
+    {
+      "argv": [
+        "vault",
+        "activity",
+        "clear"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "Pass --yes to clear the vault activity log\n"
+    },
+    {
+      "argv": [
+        "vault",
+        "activity",
+        "clear",
+        "--yes"
+      ],
+      "exit": 0,
+      "stdout": "{\n  \"cleared\": true\n}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "--json",
+        "vault",
+        "activity",
+        "list"
+      ],
+      "exit": 0,
+      "stdout": "[]\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "--json",
+        "vault",
+        "activity",
+        "clear",
+        "--yes"
+      ],
+      "exit": 0,
+      "stdout": "{\"cleared\":true}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "vault",
+        "locks"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "Usage: memrynote [--vault <path>] vault locks list\n"
+    },
+    {
+      "argv": [
+        "vault",
+        "locks",
+        "list"
+      ],
+      "exit": 0,
+      "stdout": "{\n  \"notes\": [],\n  \"folders\": []\n}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "--json",
+        "vault",
+        "locks",
+        "list"
+      ],
+      "exit": 0,
+      "stdout": "{\"notes\":[],\"folders\":[]}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "vault",
+        "locks",
+        "set",
+        "x"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "Setting a lock needs the desktop app: it protects the files on disk and syncs the lock. Lock it from the note or folder menu in Memry.\n"
+    }
+  ]
+}
