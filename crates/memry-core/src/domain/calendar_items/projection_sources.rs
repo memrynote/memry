@@ -10,6 +10,7 @@ use serde_json::Value;
 use crate::api::errors::StorageError;
 use crate::domain::journal;
 use crate::domain::notes::failed;
+use crate::domain::reminders::{self, Reminder};
 use crate::storage::repositories::instants;
 
 use super::colors::display_hex;
@@ -19,70 +20,50 @@ use super::projection::{
 };
 use super::zone::{LocalZone, local_date};
 
-struct ReminderRow {
-    id: String,
-    target_id: String,
-    remind_at: String,
-    anchor_id: Option<String>,
-    highlight_text: Option<String>,
-    title: Option<String>,
-    note: Option<String>,
-    status: String,
-    snoozed_until: Option<String>,
-}
-
+/// The live reminders a range shows. Regular ones: `pending` by `remindAt` or
+/// `snoozed` by `snoozedUntil`, and not fired, as desktop's `triggered` status
+/// is neither. `note_date` ones persist after firing: snoozed by
+/// `snoozedUntil`, every other shown status (fired included) by `remindAt`.
+/// Bounds compare as text, as desktop's do.
 fn reminder_rows(
     conn: &Connection,
     note_date: bool,
     input: &RangeInput,
-) -> Result<Vec<ReminderRow>, StorageError> {
-    // Regular reminders: pending by remindAt or snoozed by snoozedUntil.
-    // `note_date` ones: every non-snoozed status by remindAt, snoozed by
-    // snoozedUntil (they persist after firing).
-    let sql = if note_date {
-        "SELECT id, target_id, remind_at, anchor_id, highlight_text, title, note, status, snoozed_until
-           FROM reminders
-          WHERE deleted_at IS NULL AND target_type = 'note_date'
-            AND ((status != 'snoozed' AND remind_at >= ?1 AND remind_at < ?2)
-              OR (status = 'snoozed' AND snoozed_until IS NOT NULL
-                  AND snoozed_until >= ?1 AND snoozed_until < ?2))
-          ORDER BY remind_at"
+) -> Result<Vec<Reminder>, StorageError> {
+    let condition = if note_date {
+        "r.target_type = 'note_date'
+            AND ((r.remind_at >= ?1 AND r.remind_at < ?2)
+              OR (r.snoozed_until IS NOT NULL AND r.snoozed_until >= ?1 AND r.snoozed_until < ?2))"
     } else {
-        "SELECT id, target_id, remind_at, anchor_id, highlight_text, title, note, status, snoozed_until
-           FROM reminders
-          WHERE deleted_at IS NULL AND target_type != 'note_date'
-            AND ((status = 'pending' AND remind_at >= ?1 AND remind_at < ?2)
-              OR (status = 'snoozed' AND snoozed_until IS NOT NULL
-                  AND snoozed_until >= ?1 AND snoozed_until < ?2))
-          ORDER BY remind_at"
+        "r.target_type != 'note_date'
+            AND ((r.status = 'pending' AND r.remind_at >= ?1 AND r.remind_at < ?2)
+              OR (r.status = 'snoozed' AND r.snoozed_until IS NOT NULL
+                  AND r.snoozed_until >= ?1 AND r.snoozed_until < ?2))"
     };
-    let mut stmt = conn.prepare(sql).map_err(failed)?;
-    let rows = stmt
-        .query_map([&input.start_at, &input.end_at], |row| {
-            Ok(ReminderRow {
-                id: row.get(0)?,
-                target_id: row.get(1)?,
-                remind_at: row.get(2)?,
-                anchor_id: row.get(3)?,
-                highlight_text: row.get(4)?,
-                title: row.get(5)?,
-                note: row.get(6)?,
-                status: row.get(7)?,
-                snoozed_until: row.get(8)?,
-            })
+    let (start, end) = (input.start_at.as_str(), input.end_at.as_str());
+    let rows = reminders::select_where(conn, condition, [start, end])?;
+    Ok(rows
+        .into_iter()
+        .filter(|row| {
+            if !note_date {
+                return !row.is_fired();
+            }
+            let at = if row.shown_status() == "snoozed" {
+                row.snoozed_until.as_deref()
+            } else {
+                Some(row.remind_at.as_str())
+            };
+            at.is_some_and(|at| at >= start && at < end)
         })
-        .map_err(failed)?
-        .collect::<Result<_, _>>()
-        .map_err(failed)?;
-    Ok(rows)
+        .collect())
 }
 
 /// `(effectiveStartAt, snoozeOffsetMinutes)`.
-fn snooze_position(row: &ReminderRow) -> (String, Option<i64>) {
+fn snooze_position(row: &Reminder) -> (String, Option<i64>) {
     match row
         .snoozed_until
         .as_deref()
-        .filter(|_| row.status == "snoozed")
+        .filter(|_| row.shown_status() == "snoozed")
     {
         Some(until) if !until.is_empty() => {
             let offset = match (
@@ -139,6 +120,7 @@ pub(crate) fn reminders(
                 note_id: None,
                 anchor_id: None,
                 is_triggered: None,
+                task: None,
             }
         })
         .collect())
@@ -190,7 +172,8 @@ pub(crate) fn note_date_reminders(
                 projection_id: format!("note_date:{}", row.id),
                 source_type: "note_date".to_owned(),
                 description_preview: description_preview(row.note.as_deref()),
-                is_triggered: Some(row.status == "triggered" || row.status == "dismissed"),
+                is_triggered: Some(row.is_fired() || row.status == "dismissed"),
+                task: None,
                 source_id: row.id,
                 title,
                 start_at: start,
@@ -275,6 +258,7 @@ pub(crate) fn inbox_snoozes(
             note_id: None,
             anchor_id: None,
             is_triggered: None,
+            task: None,
         })
         .collect())
 }
@@ -387,6 +371,7 @@ pub(crate) fn external_events(
                 note_id: None,
                 anchor_id: None,
                 is_triggered: None,
+                task: None,
             });
         }
     }
@@ -472,6 +457,7 @@ pub(crate) fn note_items(
                 note_id: None,
                 anchor_id: None,
                 is_triggered: None,
+                task: None,
             });
         }
     }
@@ -513,6 +499,7 @@ pub(crate) fn note_items(
                 note_id: None,
                 anchor_id: None,
                 is_triggered: None,
+                task: None,
             });
         }
     }

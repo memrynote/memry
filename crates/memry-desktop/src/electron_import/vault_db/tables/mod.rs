@@ -8,12 +8,21 @@
 use super::ImportError;
 use super::TableCtx;
 
+mod agent;
+mod attachments;
+mod calendar;
+mod derived;
+mod inbox;
 pub mod js_json;
+mod locks;
 pub(super) mod note_file;
 mod notes;
 pub mod queue;
 pub mod records;
+pub mod replay;
 mod row_dumps;
+pub mod settings;
+pub mod sync_history;
 mod tags;
 pub mod unknown_fields;
 
@@ -147,34 +156,34 @@ pub const LEDGER_TABLE: &str = "__drizzle_migrations";
 #[rustfmt::skip]
 pub const TABLE_MAP: &[TableMapping] = &[
     // data.db, 65 tables (and sync_unknown_fields, last).
-    map!(Data Migration "agent_conversations" [16, Convert, "36b"]: "core agent_conversation record table of Step 16; clocks and version 1 ciphertext envelope copied byte for byte"),
-    map!(Data Migration "agent_messages" [16, Convert, "36b"]: "core agent_message record table of Step 16; sealed content ciphertext kept byte for byte"),
-    map!(Data Migration "attachment_download_failures" [18, Reseed]: "retry state; rows are dropped and the Step 18 redrive recomputes failures from the manifest"),
-    map!(Data Migration "attachment_files" [18, Convert, "36f"]: "Step 18 attachment table (note id, path, attachment id, recorded at)"),
-    map!(Data Migration "attachment_upload_queue" [18, Convert, "36f"]: "Step 18 upload queue; pending uploads must survive"),
-    map!(Data Migration "bookmarks" [29, Convert, "36d1"]: "core bookmarks table (data 0009) with the Electron clock columns"),
-    map!(Data Migration "calendar_bindings" [28, Convert, "36d1"]: "core calendar_bindings; created_at kept verbatim in created_at_raw and parsed to ms"),
-    map!(Data Migration "calendar_events" [28, Convert, "36d1"]: "core calendar_events; ISO instants to ms, JSON columns unchanged"),
-    map!(Data Migration "calendar_external_events" [28, Convert, "36d1"]: "split by source provider: google and caldav into calendar_external_events, ics and apple-eventkit into calendar_local_events"),
-    map!(Data Migration "calendar_sources" [28, Convert, "36d1"]: "core calendar_sources; ISO instants to ms, last_synced_at stays ISO text"),
+    map!(Data Migration "agent_conversations" [16, Convert => agent::agent_conversations]: "agent_conversation records; clock, field clocks and the version 1 title envelope copied byte for byte, never opened"),
+    map!(Data Migration "agent_messages" [16, Convert => agent::agent_messages]: "agent_message records; content and attachments envelopes copied byte for byte, never opened"),
+    map!(Data Migration "attachment_download_failures" [18, Copy => attachments::attachment_download_failures]: "Step 18 download failures (data 0034), every column unchanged: probe counts and next attempts drive the reference prune"),
+    map!(Data Migration "attachment_files" [18, Convert => attachments::attachment_files]: "Step 18 attachment_files (data 0034), every column unchanged"),
+    map!(Data Migration "attachment_upload_queue" [18, Convert => attachments::attachment_upload_queue]: "Step 18 upload queue (data 0034), every column unchanged; pending uploads survive"),
+    map!(Data Migration "bookmarks" [29, Convert => calendar::bookmarks]: "bookmark sync_items records, the drizzle row Electron pushes; projected into core bookmarks (data 0009)"),
+    map!(Data Migration "calendar_bindings" [28, Convert => calendar::calendar_bindings]: "calendar_binding records as Electron pushes them; the projection keeps created_at verbatim in created_at_raw"),
+    map!(Data Migration "calendar_events" [28, Convert => calendar::calendar_events]: "calendar_event records as Electron pushes them, field clocks kept"),
+    map!(Data Migration "calendar_external_events" [28, Convert => calendar::calendar_external_events]: "by source provider: google and caldav as calendar_external_event records, ics and unknown providers into calendar_local_events, apple-eventkit dropped with its source"),
+    map!(Data Migration "calendar_sources" [28, Convert => calendar::calendar_sources]: "calendar_source records as Electron pushes them; apple-eventkit sources never leave the Mac and the core has no EventKit provider, so they are dropped and counted"),
     map!(Data Migration "canvas_assets" [29, Convert, "36f"]: "Step 30 canvas asset rows with chunk hashes"),
     map!(Data Migration "canvas_entity_edges" [29, Rebuild]: "derived from the canvas scene by the Step 30 projector"),
     map!(Data Migration "canvas_entity_refs" [29, Rebuild]: "derived from the canvas scene by the Step 30 projector"),
-    map!(Data Migration "canvas_folders" [16, Convert, "36b"]: "core canvas_folder record table of Step 16"),
+    map!(Data Migration "canvas_folders" [16, Convert => records::canvas_folders]: "canvas_folder records as Electron pushes them; created_at and updated_at are not in the payload and are dropped"),
     map!(Data Migration "canvas_library_items" [29, Convert, "36f"]: "decrypted with the vault key into canvases/library.excalidrawlib when that file is absent"),
     map!(Data Migration "canvases" [29, Convert, "36f"]: "Step 30 canvas rows; canvases/*.excalidraw files stay canonical"),
     map!(Data Migration "crdt_body_debts" [17, Convert => super::docs::crdt_body_debts]: "core body debt meta rows sync.body_owed:<docId> through Step 17"),
     map!(Data Migration "crdt_body_withheld" [17, Convert => super::docs::crdt_body_withheld]: "each row becomes a core body debt sync.body_owed:<docId>"),
     map!(Data Migration "crdt_owed_file_bodies" [12, Convert => super::docs::crdt_owed_file_bodies]: "Step 12 owed file body markers through owed_file_body::record, at the original record time"),
     map!(Data Migration "custom_icons" [13, Convert => row_dumps::custom_icons]: "custom_icon sync_items records with the base64 payload; .memry/icons/ files untouched"),
-    map!(Data Migration "deleted_asset_releases" [18, Convert, "36f"]: "Step 18 release queue; deleted_at keeps the 30 day grace"),
+    map!(Data Migration "deleted_asset_releases" [18, Convert => attachments::deleted_asset_releases]: "Step 18 release queue (data 0034), every column unchanged; deleted_at keeps the 30 day grace"),
     map!(Data Migration "filing_history" [26, Skip]: "derived: core derives filing history from filed inbox_items (Inbox::filing_history)"),
     map!(Data Migration "folder_configs" [13, Convert => records::folder_configs]: "core folders table (data 0002, item id is the folder path)"),
-    map!(Data Migration "home_pages" [16, Convert, "36b"]: "core home_page record table of Step 16"),
-    map!(Data Migration "inbox_attachment_uploads" [27, Convert, "36d1"]: "core inbox_attachment_uploads (data 0016)"),
-    map!(Data Migration "inbox_item_tags" [26, Convert, "36d1"]: "core inbox_item_tags table (data 0004)"),
-    map!(Data Migration "inbox_items" [26, Convert, "36d1"]: "core inbox table (data 0004) with clocks and attachment_id; dirty rows re-enqueued"),
-    map!(Data Migration "inbox_jobs" [26, Reseed]: "transient enrichment jobs; Step 27 re-queues jobs for items without a result"),
+    map!(Data Migration "home_pages" [16, Convert => row_dumps::home_pages]: "home_page records, the drizzle row Electron pushes"),
+    map!(Data Migration "inbox_attachment_uploads" [27, Copy => inbox::inbox_attachment_uploads]: "core inbox_attachment_uploads (data 0016)"),
+    map!(Data Migration "inbox_item_tags" [26, Convert => inbox::inbox_item_tags]: "core inbox_item_tags (data 0004), keyed by (item, tag); Electron's row id dropped"),
+    map!(Data Migration "inbox_items" [26, Convert => inbox::inbox_items]: "inbox sync_items records, the drizzle row Electron pushes (attachment_id included); a local-only row is refused"),
+    map!(Data Migration "inbox_jobs" [27, Convert => inbox::inbox_jobs]: "core inbox_jobs (data 0034) as Electron resumes them: running becomes pending; types the core has no processor for dropped"),
     map!(Data Migration "inbox_stats" [26, Rebuild]: "derived counters rebuilt by the Step 27 stats projector"),
     map!(Data Migration "note_metadata" [13, Convert => notes::note_metadata]: "note and journal records built as Electron pushes them (file and index copy) plus the Step 12 note_files row; ids and clocks bit exact"),
     map!(Data Migration "note_positions" [13, Convert => notes::note_positions]: "Step 13 manual order rows (data 0022)"),
@@ -188,15 +197,14 @@ pub const TABLE_MAP: &[TableMapping] = &[
     map!(Data Migration "reminders" [21, Convert, "36d2"]: "core reminders; triggered becomes pending plus a reminder_fires row"),
     map!(Data Migration "saved_filters" [21, Convert, "36d2"]: "core saved_filters (data 0003) and saved_filter_expressions (data 0015)"),
     map!(Data Migration "search_reasons" [29, Convert, "36f"]: "Step 30 search_reasons (device-local, cap 20 kept)"),
-    map!(Data Migration "settings" [9, Convert, "36b"]: "core settings with the per-key rules of the settings section"),
+    map!(Data Migration "settings" [9, Convert => settings::settings]: "per-key rules in tables/settings.rs: synced record, meta, local_settings, skipped config caches"),
     map!(Data Migration "statuses" [21, Convert, "36d2"]: "core project_statuses table"),
-    map!(Data Migration "sticky_drafts" [16, Convert, "36b"]: "core sticky_draft record table of Step 16"),
+    map!(Data Migration "sticky_drafts" [16, Convert => row_dumps::sticky_drafts]: "sticky_draft records, the drizzle row Electron pushes"),
     map!(Data Migration "suggestion_feedback" [26, Convert, "36d1"]: "Step 27 inbox_suggestion_feedback (device-local)"),
     map!(Data Migration "sync_devices" [19, Skip]: "device list comes from the server, device id from memry-config.json; the key check is Step 37"),
-    map!(Data Migration "sync_history" [17, Convert, "36c3"]: "Step 17 sync_history: type becomes kind, epoch seconds to ms, newest 500 rows"),
-    map!(Data Migration "sync_intents" [17, Convert, "36c2"]: "each row becomes one core outbox record row for its type and item id"),
-    map!(Data Migration "sync_pending_deletes" [17, Convert, "36c2"]: "core outbox delete rows plus tombstone sync items"),
-    map!(Data Migration "sync_state" [17, Convert, "36c3"]: "per-key rules in sync_state.rs (SYNC_STATE_KEYS)"),
+    map!(Data Migration "sync_history" [17, Convert => sync_history::import]: "Step 17 sync_history: type becomes kind, epoch seconds to ms, newest 500 rows"),
+    map!(Data Migration "sync_intents" [17, Convert, "36d2"]: "only task and project writes record intents (their field clocks come from changedFields); a delete intent repeats its sync_pending_deletes row"),
+    map!(Data Migration "sync_state" [17, Convert => super::sync_state::import]: "per-key rules in sync_state.rs (SYNC_STATE_KEYS)"),
     map!(Data Migration "tag_categories" [13, Convert => tags::tag_categories]: "core tag_categories table"),
     map!(Data Migration "tag_definitions" [13, Convert => tags::tag_definitions]: "core tag_definitions table"),
     map!(Data Migration "task_activity" [21, Convert, "36d2"]: "core task_activity table"),
@@ -205,18 +213,18 @@ pub const TABLE_MAP: &[TableMapping] = &[
     map!(Data Migration "task_tags" [21, Convert, "36d2"]: "core tasks.tags JSON column and tags of the payload"),
     map!(Data Migration "tasks" [21, Convert, "36d2"]: "core tasks table; 16 field clocks kept"),
     map!(Data Migration "templates" [13, Convert => row_dumps::templates]: "core templates table"),
-    map!(Data Migration "vault_lock_baselines" [14, Convert, "36b"]: "Step 14 vault_lock_baselines (data 0026)"),
-    map!(Data Migration "vault_lock_file_modes" [14, Convert, "36b"]: "Step 14 vault_lock_file_modes (data 0026)"),
-    map!(Data Migration "vault_locks" [14, Convert, "36b"]: "core vault_lock record type; table vault_locks (data 0026)"),
+    map!(Data Migration "vault_lock_baselines" [14, Convert => locks::vault_lock_baselines]: "Step 14 vault_lock_baselines (data 0026) through vault_locks::write_baseline, updated_at to ms"),
+    map!(Data Migration "vault_lock_file_modes" [14, Convert => locks::vault_lock_file_modes]: "Step 14 vault_lock_file_modes (data 0026) through vault_locks::record_file_mode"),
+    map!(Data Migration "vault_locks" [14, Convert => locks::vault_locks]: "vault_lock records as Electron pushes them; unclocked rows staged unclocked"),
     map!(Data Migration "vault_metadata" [8, Copy => records::vault_metadata]: "singleton vault uuid into core meta vault.id, bit exact; Step 37 opens the vault under it"),
     // index.db, 16 tables.
     map!(Index Migration "block_link_refs" [13, Rebuild]: "derived link table; rebuilt from vault files"),
-    map!(Index Migration "extracted_text" [25, Copy, "36e"]: "Step 25 extracted_text; kept when the file signature and OCR language set match"),
-    map!(Index Migration "file_text_jobs" [25, Copy, "36e"]: "Step 25 file_text_jobs; done rows keep their signature, others reset to pending"),
+    map!(Index Migration "extracted_text" [25, Copy => derived::extracted_text]: "Step 25 extracted_text, rows unchanged; the file text runner reads a file again when its signature or OCR languages moved"),
+    map!(Index Migration "file_text_jobs" [25, Copy => derived::file_text_jobs]: "Step 25 file_text_jobs, rows unchanged; the runner resets a moved signature and retries failed jobs, as Electron's does"),
     map!(Index Migration "graph_layouts" [29, Copy, "36f"]: "Step 30 graph_layouts in data.db, time to ms, so pinned nodes survive"),
-    map!(Index Migration "image_embedding_state" [23, Copy, "36e"]: "copied with its vec rows (width 256, same input_version), else dropped with them"),
+    map!(Index Migration "image_embedding_state" [23, Copy => derived::image_embedding_state]: "copied with vec_images; dropped with it when vec_images has another width; the image lane re-embeds another signature or input_version"),
     map!(Index Migration "note_cache" [13, Rebuild]: "derived note cache rebuilt from vault files and core notes"),
-    map!(Index Migration "note_embedding_state" [23, Copy, "36e"]: "copied with its vec rows (width 256, same input_version), else dropped with them"),
+    map!(Index Migration "note_embedding_state" [23, Copy => derived::note_embedding_state]: "copied; current rows also record what their vectors were built from (note_embedding_hashes) so unchanged notes are not embedded again"),
     map!(Index Migration "note_fold_chunks" [14, Rebuild]: "90 day cache"),
     map!(Index Migration "note_links" [13, Rebuild]: "derived links"),
     map!(Index Migration "note_names" [13, Rebuild]: "derived names"),
@@ -230,15 +238,16 @@ pub const TABLE_MAP: &[TableMapping] = &[
     map!(Data Code "fts_tasks" [21, Rebuild]: "created by the owner step code at open, filled by its projector"),
     map!(Data Code "fts_inbox" [26, Rebuild]: "created by the owner step code at open, filled by its projector"),
     map!(Index Code "fts_notes" [23, Rebuild]: "created by the owner step code at open, filled by its projector"),
-    map!(Index Code "vec_notes" [23, Copy, "36e"]: "vec0 rows copied when width is 256 and input_version matches Step 23"),
-    map!(Index Code "vec_note_chunks" [23, Copy, "36e"]: "same rule as vec_notes"),
-    map!(Index Code "vec_note_similar" [23, Copy, "36e"]: "same rule as vec_notes"),
-    map!(Index Code "vec_images" [23, Copy, "36e"]: "same rule as vec_notes, with image_embedding_state"),
-    map!(Index Code "vec_voice" [23, Copy, "36e"]: "same rule as vec_notes, with voice_embedding_state"),
-    map!(Index Code "voice_embedding_state" [23, Copy, "36e"]: "copied with vec_voice (same width and input_version rule), else dropped with it"),
+    map!(Index Code "vec_notes" [23, Copy => derived::vec_notes]: "vec0 rows byte for byte (same model, width 256, input text); the note family is dropped when one of its tables has another width"),
+    map!(Index Code "vec_note_chunks" [23, Copy => derived::vec_note_chunks]: "same rule as vec_notes"),
+    map!(Index Code "vec_note_similar" [23, Copy => derived::vec_note_similar]: "same rule as vec_notes"),
+    map!(Index Code "vec_images" [23, Copy => derived::vec_images]: "same rule as vec_notes, with image_embedding_state"),
+    map!(Index Code "vec_voice" [23, Copy => derived::vec_voice]: "same rule as vec_notes, with voice_embedding_state"),
+    map!(Index Code "voice_embedding_state" [23, Copy => derived::voice_embedding_state]: "copied with vec_voice; dropped with it when vec_voice has another width"),
     // After every record table: queued pushes are planned against the staged records.
     map!(Data Migration "sync_tombstone_clocks" [17, Copy => queue::sync_tombstone_clocks]: "core sync_tombstone_clocks (data 0005); the note family row under note and journal"),
     map!(Data Migration "sync_queue" [17, Convert => queue::sync_queue]: "folded per item into core outbox rows through outbox::enqueue; deletes write their tombstone; note_body rows become CRDT outbox rows (docs.rs)"),
+    map!(Data Migration "sync_pending_deletes" [17, Convert => replay::sync_pending_deletes]: "replayed as flushPendingLocalDeletes does: core outbox delete rows plus tombstone sync items; a delete of a re-created id is dropped"),
     map!(Data Migration "note_body_sync" [17, Convert => super::docs::note_body_sync]: "Step 17 note_body_sync; pushed_state_vector dropped and counted (not in core); after note_metadata and sync_queue, its in-flight full states name a staged note"),
     // Last: it counts the merge into the records every table above wrote.
     map!(Data Migration "sync_unknown_fields" [16, Convert => unknown_fields::import]: "merged into the verbatim sync_items.payload of the same (type, item_id)"),
@@ -249,16 +258,13 @@ pub const TABLE_MAP: &[TableMapping] = &[
 pub fn pending_area(stage: &str) -> Option<&'static str> {
     Some(match stage {
         "36b" => "settings, vault locks, AI chats or canvas folders",
-        // `sync_pending_deletes` holds every local delete until the manifest check sees the
-        // server no longer lists it, so a synced vault nearly always has rows; `sync_intents`
-        // holds local changes still owed to the server.
-        "36c2" => "deletes the sync server has not confirmed yet, or changes waiting to sync",
         "36c3" => "sync progress",
         "36c4" => "note edit history",
         "36d1" => "inbox items, calendars or bookmarks",
         "36d2" => "tasks or projects",
-        "36e" => "search and similar-note data",
-        "36f" => "attachments, whiteboards or Readwise highlights",
+        "36f" => "whiteboards, recent items or Readwise highlights",
+        // `settings.rs` `TAG_RENAME_JOB`: the previous app finishes it at its next start.
+        "tagRename" => "tag rename that has not finished",
         _ => return None,
     })
 }

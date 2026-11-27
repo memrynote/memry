@@ -123,30 +123,13 @@ pub fn register() -> Result<(), StorageError> {
 pub fn ensure_vec_tables(conn: &mut Connection) -> Result<Vec<&'static str>, rusqlite::Error> {
     let tx = nested_tx::begin(conn)?;
     let mut dropped = Vec::new();
-    for (tables, state) in FAMILIES {
-        let mut stale = false;
-        let mut present = Vec::new();
+    for (tables, state, present) in stale_families(&tx)? {
         for table in tables {
-            let sql: Option<Option<String>> = tx
-                .query_row(
-                    "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?1",
-                    [table.name()],
-                    |row| row.get(0),
-                )
-                .optional()?;
-            if let Some(sql) = sql {
-                present.push(table.name());
-                stale |= declared_width(sql.as_deref().unwrap_or("")) != Some(EMBEDDING_DIMENSION);
-            }
+            tx.execute_batch(&format!("DROP TABLE IF EXISTS {}", table.name()))?;
         }
-        if stale {
-            for table in tables {
-                tx.execute_batch(&format!("DROP TABLE IF EXISTS {}", table.name()))?;
-            }
-            dropped.extend(present);
-            if let Some(state) = state {
-                tx.execute_batch(&format!("DELETE FROM {state}"))?;
-            }
+        dropped.extend(present);
+        if let Some(state) = state {
+            tx.execute_batch(&format!("DELETE FROM {state}"))?;
         }
     }
     for table in VecTable::ALL {
@@ -161,6 +144,45 @@ pub fn ensure_vec_tables(conn: &mut Connection) -> Result<Vec<&'static str>, rus
     }
     tx.commit()?;
     Ok(dropped)
+}
+
+/// The tables whose rows [`ensure_vec_tables`] would drop from `conn`: every vec0 table of a
+/// family holding a table of another width, and that family's state table. The Electron import
+/// reads an Electron index with it, whose families and widths are the same
+/// (`client.ts` `ensureVecNotesTable`, `ensureVecImagesTable`).
+pub fn stale_tables(conn: &Connection) -> Result<Vec<&'static str>, rusqlite::Error> {
+    Ok(stale_families(conn)?
+        .into_iter()
+        .flat_map(|(tables, state, _)| tables.iter().map(|t| t.name()).chain(state))
+        .collect())
+}
+
+type StaleFamily = (&'static [VecTable], Option<&'static str>, Vec<&'static str>);
+
+/// Each family with a table of another width, with the names of its tables that exist.
+fn stale_families(conn: &Connection) -> Result<Vec<StaleFamily>, rusqlite::Error> {
+    let mut stale_families = Vec::new();
+    for (tables, state) in FAMILIES {
+        let mut stale = false;
+        let mut present = Vec::new();
+        for table in tables {
+            let sql: Option<Option<String>> = conn
+                .query_row(
+                    "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?1",
+                    [table.name()],
+                    |row| row.get(0),
+                )
+                .optional()?;
+            if let Some(sql) = sql {
+                present.push(table.name());
+                stale |= declared_width(sql.as_deref().unwrap_or("")) != Some(EMBEDDING_DIMENSION);
+            }
+        }
+        if stale {
+            stale_families.push((tables, state, present));
+        }
+    }
+    Ok(stale_families)
 }
 
 /// The `n` of the first `float[n]` in a table's `CREATE` statement.

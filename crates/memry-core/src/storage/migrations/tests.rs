@@ -42,7 +42,7 @@ fn a_fresh_data_database_reaches_the_latest_version() {
     let version = db
         .call_blocking(|conn| user_version(conn))
         .expect("user_version");
-    assert_eq!(version, 43);
+    assert_eq!(version, 45);
 
     let names = table_names(&db);
     // Source of record, §A.2.
@@ -235,7 +235,7 @@ fn a_database_at_0042_gains_inbox_suggestion_feedback_at_0043() {
     );
 
     let version = db
-        .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
+        .call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..43]))
         .expect("step forward");
 
     assert_eq!(version, 43);
@@ -243,6 +243,48 @@ fn a_database_at_0042_gains_inbox_suggestion_feedback_at_0043() {
         table_names(&db)
             .iter()
             .any(|n| n == "inbox_suggestion_feedback")
+    );
+}
+
+#[test]
+fn a_database_at_0043_gains_graph_layouts_at_0044() {
+    let db = Db::open_in_memory().expect("open");
+    let at_43 = db
+        .call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..43]))
+        .expect("migrate to 43");
+    assert_eq!(at_43, 43);
+    assert!(!table_names(&db).iter().any(|n| n == "graph_layouts"));
+
+    let version = db
+        .call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..44]))
+        .expect("step forward");
+
+    assert_eq!(version, 44);
+    assert!(table_names(&db).iter().any(|n| n == "graph_layouts"));
+}
+
+#[test]
+fn a_database_at_0044_gains_attachment_revivals_at_0045() {
+    let db = Db::open_in_memory().expect("open");
+    let at_44 = db
+        .call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..44]))
+        .expect("migrate to 44");
+    assert_eq!(at_44, 44);
+    assert!(
+        !table_names(&db)
+            .iter()
+            .any(|n| n == "attachment_revived_notes")
+    );
+
+    let version = db
+        .call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..45]))
+        .expect("step forward");
+
+    assert_eq!(version, 45);
+    assert!(
+        table_names(&db)
+            .iter()
+            .any(|n| n == "attachment_revived_notes")
     );
 }
 

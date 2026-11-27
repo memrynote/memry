@@ -212,6 +212,7 @@ fn input(query: &Value, timezone: &str) -> RangeInput {
         start_at: query["startAt"].as_str().unwrap_or_default().to_owned(),
         end_at: query["endAt"].as_str().unwrap_or_default().to_owned(),
         include_unselected_sources: query["includeUnselectedSources"].as_bool().unwrap_or(false),
+        include_completed_tasks: query["includeCompletedTasks"].as_bool().unwrap_or(false),
         include_external: true,
         external_providers: None,
         enabled_property_names: query["enabledPropertyNames"]

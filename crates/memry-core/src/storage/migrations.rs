@@ -269,6 +269,16 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "inbox_suggestion_feedback",
         sql: include_str!("migrations/data/0043_inbox_suggestion_feedback.sql"),
     },
+    Migration {
+        version: 44,
+        name: "graph_layouts",
+        sql: include_str!("migrations/data/0044_graph_layouts.sql"),
+    },
+    Migration {
+        version: 45,
+        name: "attachment_revivals",
+        sql: include_str!("migrations/data/0045_attachment_revivals.sql"),
+    },
 ];
 
 /// `index.db`: the rebuildable search and link index.

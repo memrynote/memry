@@ -15,6 +15,7 @@ use memry_desktop::ai::local_agent::LocalAgent;
 use memry_desktop::ai::local_provider::LocalProviderStore;
 use memry_desktop::ai::proxy::AiProxy;
 use memry_desktop::ai::settings::InlineAiStore;
+use memry_desktop::calendar::service::CalendarService;
 use memry_desktop::config::{Compiled, MemryEnv, RuntimeConfig};
 use memry_desktop::e2e::E2eGate;
 use memry_desktop::fold::agent::FoldAgents;
@@ -343,6 +344,10 @@ fn manage_settings(app: &AppHandle<Wry>) -> Result<(), CommandError> {
         device,
     )));
     app.manage(AiProxy::new(memry_desktop::http::builder()));
+    app.manage(Arc::new(CalendarService::new(
+        identity.clone(),
+        settings.clone(),
+    )));
     app.manage(keychain);
     app.manage(identity);
     app.manage(settings);

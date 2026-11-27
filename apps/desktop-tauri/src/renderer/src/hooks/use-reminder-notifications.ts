@@ -10,7 +10,7 @@
  * @module hooks/use-reminder-notifications
  */
 
-import { useEffect, useCallback } from 'react'
+import { useEffect, useCallback, useRef } from 'react'
 import { createLogger } from '@/lib/logger'
 import { toast } from 'sonner'
 import { useTabs } from '@/contexts/tabs'
@@ -132,21 +132,30 @@ export function useReminderNotifications(): void {
     [navigateToTarget, dismissMutation]
   )
 
+  // The subscriptions read the latest callbacks through a ref, so a re-render (a new
+  // `dismissMutation` every time) never resubscribes and drops a due event whose
+  // read-back is still in flight.
+  const latest = useRef({ showReminderToast, navigateToTarget, t })
+  useEffect(() => {
+    latest.current = { showReminderToast, navigateToTarget, t }
+  })
+
   // Handle reminder due events
   useEffect(() => {
     const unsubscribeDue = onReminderDue((event: ReminderDueEvent) => {
+      const { showReminderToast: show, t: translate } = latest.current
       log.info(`${event.count} reminder(s) due`)
 
       // Show toast for each due reminder (limit to avoid toast spam)
       const remindersToShow = event.reminders.slice(0, 5)
       for (const reminder of remindersToShow) {
-        showReminderToast(reminder)
+        show(reminder)
       }
 
       // If there are more than 5, show a summary
       if (event.count > 5) {
-        toast.info(t('toast.moreRemindersDue', { count: event.count - 5 }), {
-          description: t('toast.moreRemindersDueHint')
+        toast.info(translate('toast.moreRemindersDue', { count: event.count - 5 }), {
+          description: translate('toast.moreRemindersDueHint')
         })
       }
     })
@@ -154,19 +163,19 @@ export function useReminderNotifications(): void {
     return () => {
       unsubscribeDue()
     }
-  }, [showReminderToast, t])
+  }, [])
 
   // Handle desktop notification click events (navigate to target)
   useEffect(() => {
     const unsubscribeClicked = onReminderClicked((event: ReminderClickedEvent) => {
       log.info(`Desktop notification clicked for reminder ${event.reminder.id}`)
-      navigateToTarget(event.reminder)
+      latest.current.navigateToTarget(event.reminder)
     })
 
     return () => {
       unsubscribeClicked()
     }
-  }, [navigateToTarget])
+  }, [])
 }
 
 export default useReminderNotifications

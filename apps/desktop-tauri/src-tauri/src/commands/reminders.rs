@@ -43,7 +43,7 @@ fn service(app: &AppHandle<Wry>) -> Result<ReminderService, CommandError> {
         )
     })?;
     let store = app.state::<Arc<DeviceIdentityStore>>().inner().clone();
-    ReminderService::open(&open, store).map_err(|error| CommandError::from_core(&error))
+    Ok(ReminderService::open(&open, store))
 }
 
 /// Electron's messages: `errors:reminder.notFound`, `system:error.reminderTimeMustBeFuture`.
@@ -64,6 +64,7 @@ fn failed(app: &AppHandle<Wry>, error: ReminderError) -> CommandError {
         }
         ReminderError::Invalid(what) => CommandError::new(ErrorKind::Invalid, "invalid", what),
         ReminderError::Storage(error) => CommandError::from_core(&error),
+        ReminderError::Identity(error) => CommandError::from_core(&error),
     }
 }
 

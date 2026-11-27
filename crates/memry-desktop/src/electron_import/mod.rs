@@ -81,10 +81,6 @@ pub enum ImportError {
     /// A vault database table `vault_db::tables::TABLE_MAP` does not list. Nothing was written.
     #[error("{db} has an unmapped table {table}")]
     UnmappedTable { db: &'static str, table: String },
-    /// A `sync_state` key `vault_db::sync_state::SYNC_STATE_KEYS` does not list. Nothing was
-    /// written.
-    #[error("sync_state has an unmapped key {0}")]
-    UnmappedSyncStateKey(String),
     /// The source's last drizzle migration is none of the frozen ones the table map describes.
     #[error("{db} is at migration {found:?}, this build reads {expected:?}")]
     SourceSchema {
@@ -104,10 +100,34 @@ pub enum ImportError {
     /// as Electron's push does. Staging it would let the core push retire it unsent.
     #[error(
         "A delete in this vault has not synced yet, and MemryNote cannot send it without the \
-         previous app's sync device. Nothing was changed. Open the previous MemryNote app, let \
-         it finish syncing, then quit it and try again."
+         previous app's sync device. Nothing was changed. Open the previous MemryNote app, sign \
+         in and let it finish syncing, then quit it and try again."
     )]
     DeleteWithoutDevice,
+    /// A note re-created after this device deleted it needs its first clock minted as Electron's
+    /// next runtime start would (`pushClocklessContentRecreate`), and `memry-config.json` names
+    /// no device to mint it under. A pending delete is only ever recorded under a device.
+    #[error(
+        "Changes in this vault have not synced yet, and MemryNote cannot send them without the \
+         previous app's sync device. Nothing was changed. Open the previous MemryNote app, sign \
+         in and let it finish syncing, then quit it and try again."
+    )]
+    ClockWithoutDevice,
+    /// Rows Electron pushes at its next signed-in start (its dirty sweeps and `seedUnclocked`),
+    /// which this build cannot replay yet. Nothing was written. `table` is for logs.
+    #[error(
+        "Some changes in this vault have not synced yet. Nothing was changed. Open the previous \
+         MemryNote app, let it finish syncing, then quit it and try again."
+    )]
+    UnsyncedChanges { table: &'static str },
+    /// The same rows when `memry-config.json` names no sync device: the previous app was never
+    /// signed in, so it sends nothing until it is. Nothing was written. `table` is for logs.
+    #[error(
+        "Some changes in this vault have never synced, because the previous MemryNote app was \
+         never signed in to sync. Nothing was changed. Sign in to sync in the previous \
+         MemryNote app, let it finish syncing, then quit it and try again."
+    )]
+    NeverSynced { table: &'static str },
     /// Queued note body pushes whose Yjs document the store copy does not hold. Staged
     /// without one, the push of an empty payload would have no state to send.
     #[error(

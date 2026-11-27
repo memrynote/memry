@@ -85,6 +85,8 @@ mod attachment_holds;
 mod attachment_manifest_vectors;
 #[path = "attachment_plan.rs"]
 mod attachment_plan;
+#[path = "attachment_runners.rs"]
+mod attachment_runners;
 #[path = "attachment_stream.rs"]
 mod attachment_stream;
 #[path = "attachment_upload_wire.rs"]
@@ -123,6 +125,8 @@ mod body_tags_reindex;
 mod body_write_handles;
 #[path = "calendar_cursor_device_local.rs"]
 mod calendar_cursor_device_local;
+#[path = "calendar_desktop_reads.rs"]
+mod calendar_desktop_reads;
 #[path = "calendar_external_relation.rs"]
 mod calendar_external_relation;
 #[path = "calendar_feed_untrusted.rs"]
@@ -257,6 +261,8 @@ mod domain_reminders_fire;
 mod domain_reminders_fire_sync;
 #[path = "domain_reminders_list.rs"]
 mod domain_reminders_list;
+#[path = "domain_reminders_readers.rs"]
+mod domain_reminders_readers;
 #[path = "domain_reminders_task.rs"]
 mod domain_reminders_task;
 #[path = "domain_saved_filters.rs"]
@@ -309,6 +315,8 @@ mod domain_template_legacy;
 mod domain_template_store;
 #[path = "domain_templates.rs"]
 mod domain_templates;
+#[path = "driver_imported_vault.rs"]
+mod driver_imported_vault;
 #[cfg(feature = "markdown")]
 #[path = "driver_observers.rs"]
 mod driver_observers;

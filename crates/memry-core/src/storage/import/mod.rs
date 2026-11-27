@@ -17,18 +17,39 @@ use crate::api::errors::StorageError;
 use crate::storage::migrations::{self, INDEX_MIGRATIONS};
 use crate::storage::pragmas::{self, Profile};
 
+mod attachments;
 mod crdt;
+#[cfg(feature = "vec")]
+mod embeddings;
+mod local;
+// Desktop's read-only locks (`domain::vault_locks`) build with `markdown` only.
+#[cfg(feature = "markdown")]
+mod locks;
 mod notes;
 mod outbox;
 mod records;
+mod sync_state;
 
+pub use attachments::{
+    ImportAssetRelease, ImportAttachmentFile, ImportAttachmentUpload, ImportDownloadFailure,
+};
 pub use crdt::{
     DocumentState, ImportBodyPush, ImportBodySync, ImportBodyVersion, ImportDocument,
     ImportFileHash, document_state,
 };
+#[cfg(feature = "vec")]
+pub use embeddings::{DerivedTable, ImportEmbeddedNote};
+pub use local::{
+    ImportInboxJob, ImportInboxTag, ImportInboxUpload, ImportLocalEvent, ImportLocalSetting,
+};
+#[cfg(feature = "markdown")]
+pub use locks::{ImportFileMode, ImportLockBaseline};
 pub use notes::{ImportNoteFile, ImportNoteSnapshot};
 pub use outbox::{ImportDeleted, ImportQueued, ImportTombstoneClock};
 pub use records::ImportRecord;
+pub use sync_state::{
+    ImportHistory, ImportQuarantined, ImportRecordCursor, ImportRefused, ImportSyncState,
+};
 
 /// `meta` key a finished import writes into the staged `data.db`, last. Its
 /// presence in `<vault>/.memry/core/data.db` means the vault was imported.

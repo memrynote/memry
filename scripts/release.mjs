@@ -592,9 +592,7 @@ function dispatchSmokeTest({ metadata, releases }) {
       updateTag: metadata.tag
     })
   )
-  console.log(
-    `Dispatched the Velopack Windows smoke test: ${previous.version} to ${metadata.appVersion}`
-  )
+  console.log(`Dispatched the Velopack smoke test: ${previous.version} to ${metadata.appVersion}`)
 }
 
 function assertSigningPrerequisites() {
@@ -967,7 +965,7 @@ Options:
   --humanize     Humanize draft release notes before dispatching publish. Not with --dry-run.
   --no-watch     Dispatch the workflow and stop. Re-run to finish the release.
   --restart      Discard saved progress for this draft and start over.
-  --smoke        Dispatch the Velopack Windows smoke test after publishing.
+  --smoke        Dispatch the Velopack smoke test after publishing.
   --yes, -y      Skip the interactive confirmation prompt.
   --help, -h     Show this help.
 

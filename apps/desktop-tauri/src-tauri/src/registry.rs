@@ -4,11 +4,16 @@
 use tauri::Wry;
 use tauri_specta::{Builder, ErrorHandlingMode, collect_commands, collect_events};
 
-use crate::startup::StartupState;
+use crate::{commands::calendar, startup::StartupState};
 
 // The bookmark and recents commands and events (`registry/bookmarks.rs`).
 #[macro_use]
 mod bookmarks;
+#[macro_use]
+mod inbox;
+// The sticky note and edge tab commands and events (`registry/stickies.rs`).
+#[macro_use]
+mod stickies;
 // The task domain's commands and events (`registry/tasks.rs`, `registry/projects.rs`).
 #[macro_use]
 mod projects;
@@ -17,8 +22,8 @@ mod projects;
 mod reminders;
 #[macro_use]
 mod tasks;
-
 mod dispatch;
+mod graph;
 mod permission;
 
 pub use dispatch::{dispatcher, invoke_handler};
@@ -35,7 +40,7 @@ pub fn builder() -> Builder<Wry> {
         .dangerously_cast_bigints_to_number()
         // One type per struct: the renderer reads `StartupState` and never writes it.
         .disable_serde_phases()
-        .commands(with_task_commands!(collect_commands![
+        .commands(calendar::collect_commands_with_calendar!([
             // account
             crate::commands::account::account_get_info,
             crate::commands::account::auth_cancel_oauth,
@@ -313,13 +318,6 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::spell::spell_check_word,
             crate::commands::spell::spell_add_word,
             crate::commands::spell::spell_add_words,
-            // stickies
-            crate::commands::stickies::sticky_delete_draft,
-            crate::commands::stickies::sticky_get_session,
-            crate::commands::stickies::sticky_list_drafts,
-            crate::commands::stickies::sticky_resize,
-            crate::commands::stickies::sticky_save_draft,
-            crate::commands::stickies::sticky_tuck,
             // fonts
             crate::fonts::system_fonts_list,
             // log
@@ -474,7 +472,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::shell::window_set_caption_rects,
             crate::commands::shell::window_toggle_maximize,
         ]))
-        .events(with_task_events!(collect_events![
+        .events(calendar::collect_events_with_calendar!([
             // account
             crate::events::AuthOauthCallbackEvent,
             crate::events::AuthOauthErrorEvent,
@@ -510,8 +508,6 @@ pub fn builder() -> Builder<Wry> {
             crate::events::HomePageUpdatedEvent,
             // import (Readwise)
             crate::events::ImportReadwiseStatusChangedEvent,
-            // inbox
-            crate::events::InboxOpenItemEvent,
             // journal
             crate::events::JournalEntryCreatedEvent,
             crate::events::JournalEntryDeletedEvent,
@@ -531,8 +527,6 @@ pub fn builder() -> Builder<Wry> {
             crate::events::SettingsOpenSectionEvent,
             // menu
             crate::events::MenuCommandInvokedEvent,
-            // stickies
-            crate::events::StickyDraftsChangedEvent,
             // sync
             crate::events::SyncCertificatePinFailedEvent,
             crate::events::SyncClockSkewWarningEvent,

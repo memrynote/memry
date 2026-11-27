@@ -100,6 +100,9 @@ vi.mock('../src/generated/bindings', () => {
   // `window.api.journal` is typed without the ported journal methods; component tests still set them.
   const journal = () =>
     window.api.journal as unknown as Record<string, (...args: unknown[]) => Promise<unknown>>
+  // `window.api.calendar` is typed without the ported calendar methods; component tests still set them.
+  const calendar = () =>
+    window.api.calendar as unknown as Record<string, (...args: unknown[]) => Promise<unknown>>
   // The locks are off `window.api`'s type; component tests still set `window.api.vaultLocks`.
   const vaultLocks = () =>
     (window.api as unknown as { vaultLocks: Record<string, (...args: unknown[]) => unknown> })
@@ -196,6 +199,19 @@ vi.mock('../src/generated/bindings', () => {
         vault().updateConfig(config),
       // Component tests answer in Electron's envelope; a command answers with the note, or
       // rejects.
+      // The native calendar commands (services/calendar-service.ts); component tests answer in
+      // the contract's shapes, which the commands send as they are.
+      calendarGetRange: (input: unknown) => calendar().getRange(input),
+      calendarSearchEvents: (input: unknown) => calendar().searchEvents(input),
+      calendarCreateEvent: (input: unknown) => calendar().createEvent(input),
+      calendarGetEvent: (id: string) => calendar().getEvent(id),
+      calendarUpdateEvent: (input: unknown) => calendar().updateEvent(input),
+      calendarDeleteEvent: (id: string) => calendar().deleteEvent(id),
+      calendarListLinkedNotes: (input: unknown) => calendar().listLinkedNotes(input),
+      calendarGetExternalEvent: (input: unknown) => calendar().getExternalEvent(input),
+      calendarPromoteExternalEvent: (input: unknown) => calendar().promoteExternalEvent(input),
+      calendarListSources: (input: unknown) => calendar().listSources(input),
+      calendarUpdateSourceSelection: (input: unknown) => calendar().updateSourceSelection(input),
       journalGetEntry: (date: string) => journal().getEntry(date),
       journalCreateEntry: (input: unknown) => journal().createEntry(input),
       journalUpdateEntry: (input: unknown) => journal().updateEntry(input),
@@ -518,6 +534,9 @@ vi.mock('../src/generated/bindings', () => {
       vaultNoticesChangedEvent: { listen: async () => () => undefined },
       ocrLanguagesChangedEvent: { listen: async () => () => undefined },
       aiEmbeddingProgressEvent: { listen: async () => () => undefined },
+      calendarChangedEvent: event(() => api().onCalendarChanged),
+      // Rust announces field names only (services/settings-service.ts); its tests mock the bindings.
+      settingsChangedEvent: { listen: async () => () => undefined },
       homePageCreatedEvent: { listen: async () => () => undefined },
       homePageUpdatedEvent: { listen: async () => () => undefined },
       homePageDeletedEvent: { listen: async () => () => undefined },
@@ -529,6 +548,7 @@ vi.mock('../src/generated/bindings', () => {
       reminderSnoozedEvent: { listen: async () => () => undefined },
       reminderDueEvent: { listen: async () => () => undefined },
       reminderClickedEvent: { listen: async () => () => undefined },
+      inboxSnoozeDueEvent: event(() => api().onInboxSnoozeDue),
       journalEntryCreatedEvent: event(() => api().onJournalEntryCreated),
       journalEntryUpdatedEvent: event(() => api().onJournalEntryUpdated),
       journalEntryDeletedEvent: event(() => api().onJournalEntryDeleted),

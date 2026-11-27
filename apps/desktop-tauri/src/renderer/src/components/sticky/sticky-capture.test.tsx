@@ -20,8 +20,7 @@ vi.mock('@/lib/logger', () => ({
   createLogger: () => ({ error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() })
 }))
 
-// The ported calls go through the sticky service; send, undo and open-target still go through
-// `window.api.sticky` (#3548 stage 31c). Both reach the one mock object below.
+// Every sticky call goes through the sticky service, which the mock object below stands in for.
 vi.mock('@/services/sticky-service', () => ({
   get stickyService() {
     return sticky
@@ -74,7 +73,6 @@ let flushRequest: ((requestId: string) => void) | undefined
 function setup(session: { draftId: string | null }, drafts: StickyDraft[] = []): void {
   sticky = stickyApi(session, drafts)
   const api = (window as any).api
-  api.sticky = sticky
   api.settings = {
     ...api.settings,
     getStickySettings: vi.fn().mockResolvedValue({ ...STICKY_SETTINGS_DEFAULTS, lastKind: 'task' })

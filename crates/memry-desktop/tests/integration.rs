@@ -247,6 +247,8 @@ mod importer_untrusted;
 mod importer_untrusted_html;
 #[path = "importer_vectors.rs"]
 mod importer_vectors;
+#[path = "inbox_review.rs"]
+mod inbox_review;
 #[path = "index_tag_definitions.rs"]
 mod index_tag_definitions;
 #[path = "indexer_facts.rs"]
@@ -453,6 +455,8 @@ mod search_reasons;
 mod settings_service;
 #[path = "sticky_drafts.rs"]
 mod sticky_drafts;
+#[path = "sticky_send.rs"]
+mod sticky_send;
 #[path = "sync_backend.rs"]
 mod sync_backend;
 #[path = "sync_host_clients.rs"]
