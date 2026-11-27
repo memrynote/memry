@@ -547,5 +547,15 @@ export const MARKDOWN_SEED_CASES: ReadonlyArray<{ name: string; markdown: string
       name: 'callout marker: a torn one in a paragraph',
       markdown: '\\[!info]\nc',
       pins: 'a paragraph of the text [!info] and c'
+    },
+    {
+      name: 'emphasis: a marked run ending in a space and a break',
+      markdown: '*a \n*b',
+      pins: 'the space and the break after it leave the italic: italic a, a space, a break, b'
+    },
+    {
+      name: 'emphasis: a marked run ending in a hard break',
+      markdown: '*a  \n*b',
+      pins: 'the two spaces of a hard break and the break leave the italic'
     }
   ]

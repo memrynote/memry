@@ -9,7 +9,7 @@
     "authoredBy": "desktop's markdownToYFragment path: LF line endings, maskHtmlComments, parseNoteMarkdown (editor-schema note-markdown) with parseMarkdownToBlocksRepaired on desktop's server schema, blocksToYXmlFragment",
     "provenAgainst": "apps/desktop/src/main/sync/markdown-seed-vectors.test.ts",
     "blockIds": "removed from every blockContainer line: BlockNote mints them at random",
-    "caseCount": 104
+    "caseCount": 106
   },
   "cases": [
     {
@@ -635,6 +635,18 @@
       "pins": "a paragraph of the text [!info] and c",
       "markdown": "\\[!info]\nc",
       "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"[!info]\"\n3 element hardBreak\n3 text \"c\""
+    },
+    {
+      "name": "emphasis: a marked run ending in a space and a break",
+      "pins": "the space and the break after it leave the italic: italic a, a space, a break, b",
+      "markdown": "*a \n*b",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a\" italic={}\n3 text \" \"\n3 element hardBreak\n3 text \"b\""
+    },
+    {
+      "name": "emphasis: a marked run ending in a hard break",
+      "pins": "the two spaces of a hard break and the break leave the italic",
+      "markdown": "*a  \n*b",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a\" italic={}\n3 element hardBreak\n3 element hardBreak\n3 text \"b\""
     }
   ]
 }
