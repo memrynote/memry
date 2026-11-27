@@ -63,6 +63,12 @@ mod pass;
 mod progress;
 mod task;
 
+#[cfg(feature = "test-hooks")]
+use std::collections::BTreeSet;
+#[cfg(feature = "test-hooks")]
+use std::path::{Path, PathBuf};
+#[cfg(feature = "test-hooks")]
+use std::sync::Condvar;
 use std::sync::mpsc::RecvTimeoutError;
 use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
@@ -457,6 +463,45 @@ impl NoteIndex {
             _ => IndexError::NotRunning,
         }
     }
+}
+
+/// The vault roots whose index task waits after answering a reindex's askers.
+#[cfg(feature = "test-hooks")]
+static ANSWER_HELD: (Mutex<BTreeSet<PathBuf>>, Condvar) =
+    (Mutex::new(BTreeSet::new()), Condvar::new());
+
+/// Test hook: the index task of the vault at `root` waits after it answered a reindex's askers,
+/// until the guard drops, so an asker reads [`NoteIndex::indexing`] before the task goes on.
+#[cfg(feature = "test-hooks")]
+#[doc(hidden)]
+#[must_use]
+pub fn hold_after_reindex_answer(root: &Path) -> HeldAfterAnswer {
+    lock(&ANSWER_HELD.0).insert(root.to_path_buf());
+    HeldAfterAnswer(root.to_path_buf())
+}
+
+/// [`hold_after_reindex_answer`]'s guard.
+#[cfg(feature = "test-hooks")]
+#[doc(hidden)]
+pub struct HeldAfterAnswer(PathBuf);
+
+#[cfg(feature = "test-hooks")]
+impl Drop for HeldAfterAnswer {
+    fn drop(&mut self) {
+        lock(&ANSWER_HELD.0).remove(&self.0);
+        ANSWER_HELD.1.notify_all();
+    }
+}
+
+/// The task's side of [`hold_after_reindex_answer`].
+#[cfg(feature = "test-hooks")]
+fn after_reindex_answer(root: &Path) {
+    let (held, released) = &ANSWER_HELD;
+    drop(
+        released
+            .wait_while(lock(held), |held| held.contains(root))
+            .unwrap_or_else(PoisonError::into_inner),
+    );
 }
 
 fn lock<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
