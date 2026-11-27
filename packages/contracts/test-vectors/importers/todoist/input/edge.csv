@@ -1,0 +1,14 @@
+Exported from Todoist
+
+ type , content,INDENT,priority,date,Content,description
+TASK,Root,1,4,2026-01-20T09:05,second content,  desc  
+task,Child,2,"3",,,
+task,Grandchild,3,-2,,,
+task,Orphan deep,5,4abc,,,
+task,Back to top,0,+3,,,
+task,Huge priority,1,99999999999999999999999,,,
+section,,,,,,
+task,After empty section,2,1,,,
+bogus,ignored row,1,1,,,
+task,"Quoted ""title""",1,1,,,
+task,Unclosed,1,1,,,"open

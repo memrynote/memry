@@ -15,6 +15,7 @@ use tauri::{AppHandle, Emitter, EventTarget, Runtime};
 use crate::commands::vault_locks::VaultLockStateView;
 
 mod account;
+mod agent;
 mod ai;
 mod canvas;
 mod home_pages;
@@ -24,6 +25,7 @@ mod tasks;
 mod voice;
 
 pub use account::*;
+pub use agent::*;
 pub use ai::*;
 pub use canvas::*;
 pub use home_pages::*;
@@ -379,6 +381,11 @@ pub struct VaultLocksExternalEditRestoredEvent {
     pub path: String,
     pub title: String,
 }
+
+/// The Readwise run started, moved on, ended or failed (`import:readwise:status-changed`): the
+/// page reads the status again.
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+pub struct ImportReadwiseStatusChangedEvent;
 
 /// The registry list or a vault's icon changed (`vault:list-changed`).
 #[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]

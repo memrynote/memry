@@ -11,9 +11,10 @@ use rusqlite::{Connection, OptionalExtension};
 
 use super::source::{Sources, source_error};
 use super::sync_state::{self, KeyRule};
+use super::tables::queue::NOTE_BODY_TYPE;
 use super::tables::{
     ELECTRON_DATA_LEDGER_ENDS, ELECTRON_INDEX_LEDGER_ENDS, Importer, LEDGER_TABLE, SourceDb,
-    TableMapping, mapping,
+    TableMapping, mapping, pending_area,
 };
 use super::{ImportError, VaultImportInput};
 
@@ -61,23 +62,49 @@ pub(super) fn run(
         if let Some(Importer::Pending(stage)) = table.class.importer()
             && *count > 0
         {
-            return Err(ImportError::NotReady(format!(
-                "{}/{} ({stage})",
-                table.db.name(),
-                table.table,
-            )));
+            return Err(not_ready(
+                stage,
+                format!("{}/{} ({stage})", table.db.name(), table.table),
+            ));
         }
     }
+    if let Some((_, rows)) = tables.iter().find(|(m, _)| m.table == "sync_queue")
+        && *rows > 0
+        && note_body_rows(sources.conn(SourceDb::Data))? > 0
+    {
+        return Err(not_ready(
+            "36c4",
+            format!("data.db/sync_queue {NOTE_BODY_TYPE} rows (36c4)"),
+        ));
+    }
     if !input.docs.is_empty() {
-        return Err(ImportError::NotReady("documents (36c)".into()));
+        return Err(not_ready("36c4", "documents (36c4)".into()));
     }
     if !input.extra_owed_docs.is_empty() {
-        return Err(ImportError::NotReady("owed documents (36c)".into()));
+        return Err(not_ready("36c4", "owed documents (36c4)".into()));
     }
     Ok(Preflight {
         tables,
         dropped_keys,
     })
+}
+
+/// [`ImportError::NotReady`] for a pending stage, in the user's words.
+fn not_ready(stage: &str, detail: String) -> ImportError {
+    tracing::warn!(%detail, "the vault import is not built for this data yet");
+    ImportError::NotReady {
+        area: pending_area(stage).unwrap_or("data"),
+        detail,
+    }
+}
+
+fn note_body_rows(conn: &Connection) -> Result<i64, ImportError> {
+    conn.query_row(
+        "SELECT count(*) FROM sync_queue WHERE type = ?1",
+        [NOTE_BODY_TYPE],
+        |row| row.get(0),
+    )
+    .map_err(|e| source_error(SourceDb::Data, e))
 }
 
 /// The newest `__drizzle_migrations.created_at` must be one of `expected`, the frozen journal
@@ -221,7 +248,7 @@ fn sync_state_keys(conn: &Connection) -> Result<BTreeMap<String, u64>, ImportErr
         .map_err(|e| source_error(db, e))?
         .collect::<Result<Vec<_>, _>>()
         .map_err(|e| source_error(db, e))?;
-    let mut pending = None;
+    let mut pending: Option<(&str, String)> = None;
     for key in keys {
         let Some(rule) = sync_state::classify(&key) else {
             return Err(ImportError::UnmappedSyncStateKey(key));
@@ -229,14 +256,14 @@ fn sync_state_keys(conn: &Connection) -> Result<BTreeMap<String, u64>, ImportErr
         match rule.rule {
             KeyRule::Skip { .. } => *dropped.entry(rule.report_name()).or_default() += 1,
             KeyRule::Pending { stage, .. } => {
-                pending = pending.or(Some(format!("sync_state key {key} ({stage})")));
+                pending = pending.or(Some((stage, format!("sync_state key {key} ({stage})"))));
             }
             // The `sync_state` table's importer runs the handler.
             KeyRule::Convert { .. } => {}
         }
     }
     match pending {
-        Some(what) => Err(ImportError::NotReady(what)),
+        Some((stage, detail)) => Err(not_ready(stage, detail)),
         None => Ok(dropped),
     }
 }

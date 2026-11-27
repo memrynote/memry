@@ -27,6 +27,8 @@ impl Registry {
             Arc::new(super::noteplan::NotePlanImporter),
             Arc::new(super::raindrop::RaindropImporter::default()),
             Arc::new(super::roam::RoamImporter),
+            Arc::new(super::ticktick::TickTickImporter::default()),
+            Arc::new(super::todoist::TodoistImporter::default()),
         ] {
             registry
                 .register(importer)

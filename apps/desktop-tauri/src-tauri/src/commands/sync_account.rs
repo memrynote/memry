@@ -66,6 +66,7 @@ async fn sign_out<R: Runtime>(
         log_failure(command, &mapped);
         mapped
     })?;
+    crate::shell::readwise::cancel_run(app);
     report_binding(app);
     Ok(SignOutResult {
         success: true,

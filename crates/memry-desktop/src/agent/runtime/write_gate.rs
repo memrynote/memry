@@ -24,6 +24,48 @@ pub const UNKNOWN_CONVERSATION: &str = "Unknown conversation";
 pub const DENIED: &str = "User denied request.";
 pub const CANCELLED: &str = "Turn cancelled before approval.";
 
+/// The `decision` of `tool_approval_decided` (`runtime.ts:106-114, 159, 207-210`). `Expired` and
+/// `Abandoned` are not the user's: an approval nobody answered, and one denied by shutdown or
+/// whose request went away.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ApprovalLabel {
+    Auto,
+    Allow,
+    AllowAlways,
+    EditAllow,
+    Deny,
+    Expired,
+    Abandoned,
+}
+
+impl ApprovalLabel {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Auto => "auto",
+            Self::Allow => "allow",
+            Self::AllowAlways => "allow_always",
+            Self::EditAllow => "edit_allow",
+            Self::Deny => "deny",
+            Self::Expired => "expired",
+            Self::Abandoned => "abandoned",
+        }
+    }
+
+    /// The event's `result`: nothing was written.
+    pub fn failed(self) -> bool {
+        matches!(self, Self::Deny | Self::Expired | Self::Abandoned)
+    }
+
+    fn of(decision: &ApproveToolDecision) -> Self {
+        match decision {
+            ApproveToolDecision::Allow => Self::Allow,
+            ApproveToolDecision::AllowAlways { .. } => Self::AllowAlways,
+            ApproveToolDecision::EditAllow { .. } => Self::EditAllow,
+            ApproveToolDecision::Deny => Self::Deny,
+        }
+    }
+}
+
 /// What the gate reads and writes outside itself: the conversation store, the app config's
 /// standing approvals and preferences, and the agent event stream. The runtime implements it.
 pub trait GateHost: Send + Sync {
@@ -38,6 +80,8 @@ pub trait GateHost: Send + Sync {
     fn approval_requested(&self, approval: &PendingApproval);
     /// Clears a card nobody decided (`tool_call_failed` with `{code, message}`).
     fn approval_failed(&self, approval: &PendingApproval, code: &str, message: &str);
+    /// How a write call got through the gate or not, once per call that reached the gate order.
+    fn approval_decided(&self, label: ApprovalLabel);
 }
 
 pub struct AgentWriteGate {
@@ -64,12 +108,13 @@ impl AgentWriteGate {
 
     /// The turn lock was released: its capability ends and its open approvals are denied.
     pub fn end_turn(&self, conversation_id: &str) {
-        self.grants.revoke_for(conversation_id);
         self.cancel_turn(conversation_id);
     }
 
-    /// Stop was pressed: every approval the turn left on screen settles as a denial.
+    /// Stop was pressed: the turn's capability ends, so a backend that outlives its kill raises
+    /// no new card, and every approval the turn left on screen settles as a denial.
     pub fn cancel_turn(&self, conversation_id: &str) {
+        self.grants.revoke_for(conversation_id);
         let denied = Outcome::Decided(ApproveToolDecision::Deny);
         for approval in self.approvals.settle_where(
             |approval| approval.conversation_id == conversation_id,
@@ -164,7 +209,10 @@ impl WriteGate for AgentWriteGate {
             mode: self.host.approval_mode(),
         });
         let (requires_diff, preview_kind) = match gate {
-            Gate::AutoApprove => return GateDecision::Approved { args: None },
+            Gate::AutoApprove => {
+                self.host.approval_decided(ApprovalLabel::Auto);
+                return GateDecision::Approved { args: None };
+            }
             Gate::AwaitUser {
                 requires_diff,
                 preview_kind,
@@ -180,10 +228,21 @@ impl WriteGate for AgentWriteGate {
             review_target: review_target_for_tool(request.tool, request.args),
         };
         let decision = match self.approvals.wait(approval, &*self.host).await {
-            Outcome::Expired => return denied(super::approvals::APPROVAL_EXPIRED_MESSAGE),
-            Outcome::Decided(ApproveToolDecision::Deny) => return denied(DENIED),
+            Outcome::Expired => {
+                self.host.approval_decided(ApprovalLabel::Expired);
+                return denied(super::approvals::APPROVAL_EXPIRED_MESSAGE);
+            }
             Outcome::Decided(decision) => decision,
         };
+        // Shutdown denies every card; that is no answer of the user's (`runtime.ts:203-210`).
+        let label = match ApprovalLabel::of(&decision) {
+            ApprovalLabel::Deny if self.closed.load(Ordering::SeqCst) => ApprovalLabel::Abandoned,
+            label => label,
+        };
+        self.host.approval_decided(label);
+        if decision == ApproveToolDecision::Deny {
+            return denied(DENIED);
+        }
         // An approval outlives nothing: a turn that ended while the card was open writes nothing.
         if self.turn_of(request.write_grant).as_deref() != Some(conversation_id.as_str()) {
             return denied(NO_TURN);
