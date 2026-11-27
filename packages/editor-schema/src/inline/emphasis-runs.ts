@@ -198,6 +198,25 @@ function hrefParenTokens(item: InlineItem, marks: Span[]): InlineItem {
   return { ...item, href: href.replace(/[\\()<>\s]/g, token) }
 }
 
+/**
+ * A code run spelled with the shortest fence its backtick runs allow, as a
+ * token. The writer fences with one backtick more than the longest run, and
+ * three at a line start open a code block: `c``c` came back as one. A run
+ * that holds a break is left to the writer, which splits it at the break.
+ */
+function shortFencedCode(item: InlineItem, marks: Span[]): InlineItem {
+  const text = item.text ?? ''
+  if (item.type !== 'text' || item.styles?.code !== true || text.includes('\n')) return item
+  const runs = new Set((text.match(/`+/g) ?? []).map((run) => run.length))
+  let fence = 1
+  while (runs.has(fence)) fence++
+  if (fence > Math.max(0, ...runs)) return item
+  const ticks = '`'.repeat(fence)
+  const padded = text.startsWith('`') || text.endsWith('`') ? ` ${text} ` : text
+  const { code: _code, ...styles } = item.styles
+  return { ...item, text: codeToken(marks.push({ code: `${ticks}${padded}${ticks}` }) - 1), styles }
+}
+
 /** `items` with every run of a mark between tokens; `marks` maps each token to its span. */
 export function tokenizeEmphasisRuns(items: InlineItem[], marks: Span[]): InlineItem[] {
   items = splitLinksAtBreaks(items)
@@ -219,7 +238,7 @@ export function tokenizeEmphasisRuns(items: InlineItem[], marks: Span[]): Inline
               ...hrefParenTokens(item, marks),
               content: joinTexts(tokenizeEmphasisRuns(codeTokens(children, marks), marks))
             }
-          : item
+          : shortFencedCode(item, marks)
       )
       continue
     }
