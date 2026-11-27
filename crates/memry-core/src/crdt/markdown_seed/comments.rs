@@ -16,6 +16,7 @@
 use crate::domain::journal_rules::js_trim;
 
 use super::backtick_runs::BacktickRuns;
+use super::comment_closes::{Later, LaterCloses};
 use super::markers::FenceTracker;
 
 /// The word a masked comment becomes: `MEMRYCMT`, the comment's bytes in hex,
@@ -35,10 +36,10 @@ pub(super) struct Masked {
 }
 
 #[derive(Clone, Copy)]
-struct Form {
-    open: &'static str,
-    close: &'static str,
-    prose_only: bool,
+pub(super) struct Form {
+    pub open: &'static str,
+    pub close: &'static str,
+    pub prose_only: bool,
 }
 
 const FORMS: [Form; 2] = [
@@ -55,9 +56,32 @@ const FORMS: [Form; 2] = [
 ];
 
 #[derive(Clone, Copy)]
-struct Close {
-    line: usize,
-    end: usize,
+pub(super) struct Close {
+    pub line: usize,
+    pub end: usize,
+}
+
+/// The next place a pattern occurs, from a position that only moves forward:
+/// the last hit stands until the position passes it, and a miss stands for
+/// good. It saves a scan to the end of the line for each comment on it.
+#[derive(Default)]
+pub(super) struct Next(Option<Option<usize>>);
+
+impl Next {
+    pub(super) fn at(
+        &mut self,
+        from: usize,
+        find: impl FnOnce() -> Option<usize>,
+    ) -> Option<usize> {
+        match self.0 {
+            Some(None) => return None,
+            Some(Some(at)) if at >= from => return Some(at),
+            _ => {}
+        }
+        let found = find();
+        self.0 = Some(found);
+        found
+    }
 }
 
 struct Pending {
@@ -81,6 +105,7 @@ pub(super) fn mask(markdown: &str) -> Masked {
     let mut out: Vec<String> = Vec::with_capacity(lines.len());
     let mut multiline_html = false;
     let mut pending: Option<Pending> = None;
+    let mut later_closes = LaterCloses::new(&lines);
     let (mut block_start, mut indented_code, mut container) = (true, false, false);
     for (index, full) in lines.iter().enumerate() {
         let mut line: &str = full;
@@ -132,10 +157,12 @@ pub(super) fn mask(markdown: &str) -> Masked {
 
         let table_row = table_row_line(line);
         let ticks = BacktickRuns::of_bytes(line);
+        let mut next_tick = Next::default();
+        let mut next_open = [Next::default(), Next::default()];
         let mut i = 0;
         while i < line.len() {
-            let tick = line[i..].find('`').map(|at| at + i);
-            let opened = next_comment_open(line, i);
+            let tick = next_tick.at(i, || line[i..].find('`').map(|at| at + i));
+            let opened = next_comment_open(line, i, &mut next_open);
             if tick.is_none() && opened.is_none() {
                 break;
             }
@@ -147,7 +174,7 @@ pub(super) fn mask(markdown: &str) -> Masked {
                     .map(|found| found + at + form.open.len());
                 // GFM splits a row into cells before it reads inline syntax,
                 // so a comment in a cell ends in that cell or is text.
-                if table_row && close.is_none_or(|close| close > cell_pipe(line, &ticks, at)) {
+                if table_row && close.is_none_or(|close| ends_cell(line, &ticks, at, close)) {
                     result.push_str(&line[i..at + form.open.len()]);
                     i = at + form.open.len();
                     continue;
@@ -166,7 +193,7 @@ pub(super) fn mask(markdown: &str) -> Masked {
                 let later = if reopened {
                     Later::Text
                 } else {
-                    find_later_close(&lines, index, form, inline)
+                    later_closes.find(index, form, inline)
                 };
                 if matches!(later, Later::Text) || (form.prose_only && matches!(later, Later::None))
                 {
@@ -226,76 +253,25 @@ fn comment(source: &str, multiline: &mut bool) -> String {
     }
 }
 
-enum Later {
-    At(Close),
-    Text,
-    None,
-}
-
-/// The close of a comment left open at the end of line `index`. A `%%`
-/// comment skips fenced blocks and code spans; an inline `<!--` is text when
-/// a fence opens before its close.
-fn find_later_close(lines: &[&str], index: usize, form: Form, inline: bool) -> Later {
-    let mut fence = FenceTracker::default();
-    for (next, line) in lines.iter().enumerate().skip(index + 1) {
-        if fence.consume(without_cr(line)) {
-            if form.prose_only {
-                continue;
-            }
-            if inline {
-                return Later::Text;
-            }
-        }
-        let at = if form.prose_only {
-            index_outside_code_spans(line, form.close)
-        } else {
-            line.find(form.close)
-        };
-        if let Some(at) = at {
-            return Later::At(Close {
-                line: next,
-                end: at + form.close.len(),
-            });
-        }
-    }
-    Later::None
-}
-
-fn index_outside_code_spans(line: &str, marker: &str) -> Option<usize> {
-    let mut ticks: Option<BacktickRuns> = None;
-    let mut i = 0;
-    loop {
-        let at = line[i..].find(marker).map(|found| found + i);
-        let tick = line[i..].find('`').map(|found| found + i);
-        let (Some(found), Some(tick)) = (at, tick) else {
-            return at;
-        };
-        if found < tick {
-            return at;
-        }
-        let run_end = tick + line[tick..].bytes().take_while(|b| *b == b'`').count();
-        let ticks = ticks.get_or_insert_with(|| BacktickRuns::of_bytes(line));
-        i = match ticks.closing(run_end, run_end - tick) {
-            Some(close) => close + (run_end - tick),
-            None => run_end,
-        };
-    }
-}
-
-fn next_comment_open(line: &str, from: usize) -> Option<(Form, usize)> {
+fn next_comment_open(line: &str, from: usize, next: &mut [Next; 2]) -> Option<(Form, usize)> {
     FORMS
         .iter()
-        .filter_map(|form| line[from..].find(form.open).map(|at| (*form, at + from)))
+        .zip(next)
+        .filter_map(|(form, next)| {
+            let at = next.at(from, || line[from..].find(form.open).map(|at| at + from))?;
+            Some((*form, at))
+        })
         .min_by_key(|(_, at)| *at)
 }
 
-/// The next unescaped `|` after `from` that ends a cell, or the line's
-/// length. A pipe in `[[target|alias]]` or in a code span is part of it.
-fn cell_pipe(line: &str, ticks: &BacktickRuns, from: usize) -> usize {
+/// Whether a cell ends between `from` and `limit`: an unescaped `|` there
+/// that is not inside `[[target|alias]]` or a code span. The pipe that ends
+/// the cell may be far past the comment, so the scan stops at its close.
+fn ends_cell(line: &str, ticks: &BacktickRuns, from: usize, limit: usize) -> bool {
     let bytes = line.as_bytes();
     let mut depth = 0;
     let mut i = from;
-    while i < bytes.len() {
+    while i < bytes.len().min(limit) {
         if bytes[i] == b'\\' {
             i += 1;
         } else if bytes[i] == b'`' {
@@ -311,15 +287,15 @@ fn cell_pipe(line: &str, ticks: &BacktickRuns, from: usize) -> usize {
             depth -= 1;
             i += 1;
         } else if bytes[i] == b'|' && depth == 0 {
-            return i;
+            return true;
         }
         i += 1;
     }
-    line.len()
+    false
 }
 
 /// The fence pattern cannot match past a CRLF note's trailing `\r`.
-fn without_cr(line: &str) -> &str {
+pub(super) fn without_cr(line: &str) -> &str {
     line.strip_suffix('\r').unwrap_or(line)
 }
 
