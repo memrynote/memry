@@ -93,6 +93,8 @@ fn register_stages() {
     shell::vault_boot::register_stages();
     shell::account_sync::register_stages();
     shell::readwise::register_stages();
+    // After account sync: the agent's close hook must run before the at-rest key's.
+    shell::agent::register_stages();
     shutdown::register_stages();
     ml_worker::register_stages();
     commands::voice::register_stages();

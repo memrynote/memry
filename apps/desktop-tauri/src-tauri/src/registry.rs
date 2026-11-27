@@ -45,7 +45,10 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::account::sync_setup_first_device,
             crate::commands::account::sync_setup_new_account,
             // agent
+            crate::commands::agent::agent_edit_vault_trust_list::<Wry>,
             crate::commands::agent::agent_get_local_provider_settings::<Wry>,
+            crate::commands::agent::agent_get_tool_call::<Wry>,
+            crate::commands::agent::agent_get_tool_grants::<Wry>,
             crate::commands::agent::agent_list_local_models::<Wry>,
             crate::commands::agent::agent_probe_local_provider::<Wry>,
             crate::commands::agent::agent_set_local_provider_settings::<Wry>,
@@ -468,6 +471,8 @@ pub fn builder() -> Builder<Wry> {
             crate::events::AuthOtpDetectedEvent,
             crate::events::AuthSessionExpiredEvent,
             crate::events::AuthSessionRefreshedEvent,
+            // agent
+            crate::events::AgentEventEmittedEvent,
             // ai
             crate::events::AiEmbeddingProgressEvent,
             crate::events::AiInlineSettingsChangedEvent,

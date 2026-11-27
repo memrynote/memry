@@ -2,6 +2,7 @@
 //! boot and recovery glue of the vault session.
 
 pub mod account_sync;
+pub mod agent;
 pub mod billing;
 pub mod capture;
 pub mod clipboard;
