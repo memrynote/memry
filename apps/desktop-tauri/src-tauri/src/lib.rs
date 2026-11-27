@@ -72,8 +72,9 @@ pub fn set_app_user_model_id() {
 }
 
 /// Registers the boot work of the shell: paths, logging, events, the vault session and the
-/// window.
-fn register_stages() {
+/// window. Public for the boot-order test in `tests/startup.rs`: it links every stage, so it
+/// cannot run as a lib unit test on Windows (`build.rs`, Common Controls v6).
+pub fn register_stages() {
     startup::register(Stage::Paths, "resolve app paths", resolve_paths);
     startup::register(Stage::Logging, "init logging", init_logging);
     guards::register_stages();

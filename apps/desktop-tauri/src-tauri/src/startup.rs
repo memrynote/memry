@@ -187,6 +187,17 @@ pub fn register(stage: Stage, name: &'static str, f: StageFn<Wry>) {
         .register(stage, name, f);
 }
 
+/// The registered stages and names of the app, in the order the boot runs them.
+pub fn registered() -> Vec<(Stage, &'static str)> {
+    stages()
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .ordered()
+        .into_iter()
+        .map(|(stage, name, _)| (*stage, *name))
+        .collect()
+}
+
 /// Runs every registered stage of the app.
 pub fn run_registered(app: &AppHandle<Wry>) -> Result<(), StageFailure> {
     run_registered_from(app, 0)
@@ -256,49 +267,7 @@ mod tests {
     use std::sync::atomic::AtomicBool;
     use std::sync::{Arc, Barrier};
 
-    use super::{PoisonError, Stage, mark_started, stages};
-
-    /// #3554: no sign-in, token refresh, vault open, sync or telemetry runs before the first-launch
-    /// migration has carried the Electron install over (and its telemetry opt-out with it).
-    #[test]
-    fn the_first_launch_migration_runs_before_telemetry_account_vault_and_sync() {
-        crate::register_stages();
-        let names: Vec<_> = stages()
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .ordered()
-            .into_iter()
-            .map(|(_, name, _)| *name)
-            .collect();
-        let at = |name: &str| {
-            names
-                .iter()
-                .position(|registered| *registered == name)
-                .unwrap_or_else(|| panic!("{name} is not registered: {names:?}"))
-        };
-        let migration = at("first-launch migration");
-        for later in [
-            "start telemetry",
-            "manage account",
-            "open the last vault",
-            "start account sync",
-        ] {
-            assert!(migration < at(later), "{later} runs before the migration");
-        }
-        for later in [
-            Stage::Menu,
-            Stage::Telemetry,
-            Stage::Handlers,
-            Stage::VaultOpen,
-            Stage::Window,
-            Stage::Schedulers,
-        ] {
-            assert!(
-                Stage::Migration < later,
-                "{later:?} runs before the migration"
-            );
-        }
-    }
+    use super::mark_started;
 
     #[test]
     fn of_two_threads_starting_the_shutdown_at_once_exactly_one_starts_it() {

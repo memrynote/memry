@@ -293,3 +293,43 @@ fn main_installs_webview2_before_it_builds_the_tauri_runtime() {
     let before_check = main[..position(check)].trim_end();
     assert!(before_check.ends_with("#[cfg(windows)]"), "{before_check}");
 }
+
+/// #3554: no sign-in, token refresh, vault open, sync or telemetry runs before the first-launch
+/// migration has carried the Electron install over (and its telemetry opt-out with it). Here,
+/// not in a lib unit test: registering every stage links the whole runtime (`build.rs`).
+#[test]
+fn the_first_launch_migration_runs_before_telemetry_account_vault_and_sync() {
+    memry_tauri::register_stages();
+    let names: Vec<_> = memry_tauri::startup::registered()
+        .into_iter()
+        .map(|(_, name)| name)
+        .collect();
+    let at = |name: &str| {
+        names
+            .iter()
+            .position(|registered| *registered == name)
+            .unwrap_or_else(|| panic!("{name} is not registered: {names:?}"))
+    };
+    let migration = at("first-launch migration");
+    for later in [
+        "start telemetry",
+        "manage account",
+        "open the last vault",
+        "start account sync",
+    ] {
+        assert!(migration < at(later), "{later} runs before the migration");
+    }
+    for later in [
+        Stage::Menu,
+        Stage::Telemetry,
+        Stage::Handlers,
+        Stage::VaultOpen,
+        Stage::Window,
+        Stage::Schedulers,
+    ] {
+        assert!(
+            Stage::Migration < later,
+            "{later:?} runs before the migration"
+        );
+    }
+}
