@@ -236,7 +236,7 @@ const BOOT: [&str; 7] = [
 ];
 
 /// The `sticky` permission: what the sticky renderer calls besides `boot`.
-const STICKY: [&str; 10] = [
+const STICKY: [&str; 13] = [
     "flush_done",
     "flush_ready",
     "settings_get_ai",
@@ -244,9 +244,12 @@ const STICKY: [&str; 10] = [
     "sticky_delete_draft",
     "sticky_get_session",
     "sticky_list_drafts",
+    "sticky_open_target",
     "sticky_resize",
     "sticky_save_draft",
+    "sticky_send",
     "sticky_tuck",
+    "sticky_undo_send",
 ];
 
 /// The `sticky-tab` permission: what the edge tab renderer calls besides `boot`.

@@ -1,17 +1,23 @@
-//! The daily inbox review nudge (`inbox/review-scheduler.ts`, `inbox/review-notification.ts`).
-//! A tick at launch, every minute, at every vault open and at every wake asks the core whether
-//! the nudge is due at the local wall clock. `Inbox::review_due` owns the decision and the
+//! The inbox's minute tick (`lib/minute-tick.ts`): the snooze pass (`inbox/snooze.ts`) and the
+//! daily review nudge (`inbox/review-scheduler.ts`, `inbox/review-notification.ts`). A tick at
+//! launch, every minute, at every vault open and at every wake first brings back the captures
+//! whose snooze has come (`Inbox::resurface_due`, one transaction), then asks the core whether the
+//! nudge is due at the local wall clock. `Inbox::review_due` owns the decision and the
 //! once-per-local-day guard, so ticks that land in the same minute cannot both fire. This module
 //! never depends on `tauri`: the shell's [`ReviewOutlet`] shows the notification and tells the
 //! renderer.
 
 use std::future::Future;
+use std::path::{Component, Path};
 use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
 
-use chrono::{Datelike, Local, NaiveDateTime, Timelike};
+use chrono::{DateTime, Datelike, Local, NaiveDateTime, SecondsFormat, Timelike};
 use memry_core::api::inbox::Inbox;
+use memry_core::api::inbox_records::InboxItemRecord;
 use memry_core::seams::secure_store::SecureStore;
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use tokio::sync::broadcast::{self, error::RecvError};
 use tokio::sync::mpsc;
 use tokio::time::MissedTickBehavior;
@@ -19,6 +25,7 @@ use tokio::time::MissedTickBehavior;
 use crate::i18n::{self, Args};
 use crate::session::{Session, SessionEvent, lock};
 use crate::shell::power::PowerEvent;
+use crate::vault::embeds::memry_file_url;
 
 /// The notification's key: a new nudge replaces one still on screen.
 pub const NOTIFICATION_KEY: &str = "inbox-review";
@@ -87,6 +94,79 @@ pub fn test_notice(locale: &str) -> ReviewNotice {
     }
 }
 
+/// A capture the snooze pass brought back, as the inbox list shows it (`toListItem` in
+/// `inbox/snooze.ts`). Dates are ISO 8601 in UTC.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct SnoozeDueItem {
+    pub id: String,
+    #[serde(rename = "type")]
+    pub item_type: String,
+    pub title: String,
+    pub content: Option<String>,
+    pub created_at: String,
+    pub thumbnail_url: Option<String>,
+    pub source_url: Option<String>,
+    pub tags: Vec<String>,
+    pub is_stale: bool,
+    pub processing_status: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub duration: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub excerpt: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub page_count: Option<f64>,
+    pub transcription: Option<String>,
+    pub transcription_status: Option<String>,
+}
+
+impl SnoozeDueItem {
+    /// `record` as the list shows it; its thumbnail resolves under `vault`.
+    pub fn of(record: InboxItemRecord, vault: &Path) -> Self {
+        let metadata: Option<Value> = record
+            .metadata_json
+            .as_deref()
+            .and_then(|raw| serde_json::from_str(raw).ok());
+        let meta = |key: &str| metadata.as_ref().and_then(|value| value.get(key));
+        Self {
+            thumbnail_url: record
+                .thumbnail_path
+                .as_deref()
+                .and_then(|path| file_url(vault, path)),
+            created_at: DateTime::from_timestamp_millis(record.created_at_ms)
+                .map(|at| at.to_rfc3339_opts(SecondsFormat::Millis, true))
+                .unwrap_or_default(),
+            processing_status: record
+                .processing_status
+                .filter(|status| !status.is_empty())
+                .unwrap_or_else(|| "complete".to_owned()),
+            duration: meta("duration").and_then(Value::as_f64),
+            excerpt: meta("excerpt").and_then(Value::as_str).map(str::to_owned),
+            page_count: meta("pageCount").and_then(Value::as_f64),
+            id: record.id,
+            item_type: record.item_type,
+            title: record.title,
+            content: record.content,
+            source_url: record.source_url,
+            tags: record.tags,
+            is_stale: false,
+            transcription: record.transcription,
+            transcription_status: record.transcription_status,
+        }
+    }
+}
+
+/// `resolveAttachmentUrl`: the URL of a vault-relative file that exists. The path is synced
+/// from peers, so one that leaves the vault (`..`, absolute) has no URL.
+fn file_url(vault: &Path, relative: &str) -> Option<String> {
+    let relative = Path::new(relative);
+    let inside = relative
+        .components()
+        .all(|part| matches!(part, Component::Normal(_) | Component::CurDir));
+    let path = vault.join(relative);
+    (inside && path.exists()).then(|| memry_file_url(&path, cfg!(windows)))
+}
+
 /// Where a nudge goes. The shell shows the OS notification and tells the renderer.
 pub trait ReviewOutlet: Send + Sync {
     /// The app's live locale.
@@ -97,6 +177,9 @@ pub trait ReviewOutlet: Send + Sync {
     fn show(&self, notice: ReviewNotice);
     /// The nudge fired (`inbox:review-due`): the renderer shows its toast.
     fn due(&self, count: i64);
+    /// A snooze pass brought `items` back (`inbox:snooze-due`): the renderer refreshes the list
+    /// and shows its banner and toast. Never called with none.
+    fn snooze_due(&self, items: Vec<SnoozeDueItem>);
 }
 
 pub struct InboxReview {
@@ -106,8 +189,10 @@ pub struct InboxReview {
     /// The open vault's inbox, built at its first tick and dropped by the close hook before the
     /// vault closes, so a tick does not read the device key every minute.
     inbox: Arc<Mutex<Option<Arc<Inbox>>>>,
-    /// The last tick failure logged, so a lasting one is logged once and not every minute.
-    last_failure: Mutex<Option<String>>,
+    /// The last failure of each pass logged, so a lasting one is logged once and not every
+    /// minute.
+    review_failure: Mutex<Option<String>>,
+    snooze_failure: Mutex<Option<String>>,
 }
 
 impl InboxReview {
@@ -124,8 +209,41 @@ impl InboxReview {
             store,
             outlet,
             inbox,
-            last_failure: Mutex::new(None),
+            review_failure: Mutex::new(None),
+            snooze_failure: Mutex::new(None),
         }
+    }
+
+    /// One snooze pass (`processDueItems`): nothing without an open vault, else the core clears
+    /// every due snooze in one transaction and the renderer hears of all of them at once. The
+    /// cleared snoozes are queued, so the pass asks for a push. Returns how many came back.
+    /// Blocking.
+    pub fn resurface(&self) -> usize {
+        let Some(vault) = self.session.current().map(|open| open.path.clone()) else {
+            return 0;
+        };
+        let Some(back) = self.inbox().map(|inbox| {
+            inbox.and_then(|inbox| inbox.resurface_due().map_err(|error| error.to_string()))
+        }) else {
+            return 0;
+        };
+        let Some(back) = settle(&self.snooze_failure, "snooze tick", back) else {
+            return 0;
+        };
+        if back.is_empty() {
+            return 0;
+        }
+        if let Some(supervisor) = self.session.sync_supervisor() {
+            supervisor.request_push();
+        }
+        let count = back.len();
+        let items = back
+            .into_iter()
+            .map(|record| SnoozeDueItem::of(record, &vault))
+            .collect();
+        self.outlet.snooze_due(items);
+        tracing::info!(scope = "InboxReview", "Surfaced {count} snoozed item(s)");
+        count
     }
 
     /// One tick (`runReviewTick`) at `at`: nothing without an open vault, else the core decides
@@ -137,20 +255,7 @@ impl InboxReview {
                 .review_due(at.date.clone(), at.minutes)
                 .map_err(|error| error.to_string())
         });
-        let count = match due {
-            Ok(count) => {
-                *self.failure() = None;
-                count?
-            }
-            Err(error) => {
-                let mut last = self.failure();
-                if last.as_deref() != Some(error.as_str()) {
-                    tracing::warn!(scope = "InboxReview", "review tick failed: {error}");
-                    *last = Some(error);
-                }
-                return None;
-            }
-        };
+        let count = settle(&self.review_failure, "review tick", due).flatten()?;
         self.notify(due_notice(&self.outlet.locale(), count));
         self.outlet.due(count);
         tracing::info!(
@@ -189,11 +294,23 @@ impl InboxReview {
                 .map_err(|error| error.to_string()),
         )
     }
+}
 
-    fn failure(&self) -> std::sync::MutexGuard<'_, Option<String>> {
-        self.last_failure
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
+/// A pass's result, its failure logged once until it changes or the pass succeeds.
+fn settle<T>(last: &Mutex<Option<String>>, pass: &str, result: Result<T, String>) -> Option<T> {
+    let mut last = last.lock().unwrap_or_else(PoisonError::into_inner);
+    match result {
+        Ok(value) => {
+            *last = None;
+            Some(value)
+        }
+        Err(error) => {
+            if last.as_deref() != Some(error.as_str()) {
+                tracing::warn!(scope = "InboxReview", "{pass} failed: {error}");
+                *last = Some(error);
+            }
+            None
+        }
     }
 }
 

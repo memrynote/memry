@@ -1176,6 +1176,12 @@ export const commands = {
 	stickyTuck: () => __TAURI_INVOKE<void>("sticky_tuck"),
 	/**  The edge tab unfolds the sticky on a draft, or blank for none (`sticky:unfold`). */
 	stickyUnfold: (draftId: string | null) => __TAURI_INVOKE<null>("sticky_unfold", { draftId }),
+	/**  Shows the main window, asks it to open what a send made, and tucks the sticky away. */
+	stickyOpenTarget: (kind: string, targetId: string) => __TAURI_INVOKE<null>("sticky_open_target", { kind, targetId }),
+	/**  Sends the text to a note, a task or today's journal entry, and deletes its draft. */
+	stickySend: (input: StickySendInput) => __TAURI_INVOKE<StickySent>("sticky_send", { input }),
+	/**  Takes a note or task send back within its minute and answers the draft it restores. */
+	stickyUndoSend: (undoToken: string) => __TAURI_INVOKE<StickyDraftView>("sticky_undo_send", { undoToken }),
 	/**  `graph:clear-layout`: forgets the view's layout. */
 	graphClearLayout: (viewKey: string) => __TAURI_INVOKE<null>("graph_clear_layout", { viewKey }),
 	/**  `graph:get-layout`: the layout saved for the view, `null` when none reads. */
@@ -1219,6 +1225,7 @@ export const events = {
 	inboxOpenItemEvent: makeEvent<InboxOpenItemEvent, InboxOpenItemEvent>("inbox-open-item-event"),
 	inboxReviewDueEvent: makeEvent<InboxReviewDueEvent, InboxReviewDueEvent>("inbox-review-due-event"),
 	inboxReviewOpenEvent: makeEvent<InboxReviewOpenEvent, InboxReviewOpenEvent>("inbox-review-open-event"),
+	inboxSnoozeDueEvent: makeEvent<InboxSnoozeDueEvent, InboxSnoozeDueEvent>("inbox-snooze-due-event"),
 	journalEntryCreatedEvent: makeEvent<JournalEntryCreatedEvent, JournalEntryCreatedEvent>("journal-entry-created-event"),
 	journalEntryDeletedEvent: makeEvent<JournalEntryDeletedEvent, JournalEntryDeletedEvent>("journal-entry-deleted-event"),
 	journalEntryUpdatedEvent: makeEvent<JournalEntryUpdatedEvent, JournalEntryUpdatedEvent>("journal-entry-updated-event"),
@@ -1252,6 +1259,7 @@ export const events = {
 	settingsChangedEvent: makeEvent<SettingsChangedEvent, SettingsChangedEvent>("settings-changed-event"),
 	settingsOpenSectionEvent: makeEvent<SettingsOpenSectionEvent, SettingsOpenSectionEvent>("settings-open-section-event"),
 	stickyDraftsChangedEvent: makeEvent<StickyDraftsChangedEvent, StickyDraftsChangedEvent>("sticky-drafts-changed-event"),
+	stickyOpenTargetRequestedEvent: makeEvent<StickyOpenTargetRequestedEvent, StickyOpenTargetRequestedEvent>("sticky-open-target-requested-event"),
 	syncCertificatePinFailedEvent: makeEvent<SyncCertificatePinFailedEvent, SyncCertificatePinFailedEvent>("sync-certificate-pin-failed-event"),
 	syncClockSkewWarningEvent: makeEvent<SyncClockSkewWarningEvent, SyncClockSkewWarningEvent>("sync-clock-skew-warning-event"),
 	syncDeviceRemovedEvent: makeEvent<SyncDeviceRemovedEvent, SyncDeviceRemovedEvent>("sync-device-removed-event"),
@@ -3199,6 +3207,15 @@ export type InboxReviewOpenEvent = Record<string, never>;
  */
 export type InboxReviewTestResult = {
 	supported: boolean,
+};
+
+/**
+ *  Snoozed captures came back (`inbox:snooze-due`): the renderer refreshes the inbox list and
+ *  shows its banner and toast. `count` is the number of `items`, as Electron sends it.
+ */
+export type InboxSnoozeDueEvent = {
+	count: number,
+	items: SnoozeDueItem[],
 };
 
 export type InheritedFieldsView = {
@@ -5202,6 +5219,28 @@ export type SizeClass = "note" | "large-file";
 
 export type SkippedKind = "code" | "table" | "image" | "callout" | "embed" | "other";
 
+/**
+ *  A capture the snooze pass brought back, as the inbox list shows it (`toListItem` in
+ *  `inbox/snooze.ts`). Dates are ISO 8601 in UTC.
+ */
+export type SnoozeDueItem = {
+	id: string,
+	type: string,
+	title: string,
+	content: string | null,
+	createdAt: string,
+	thumbnailUrl: string | null,
+	sourceUrl: string | null,
+	tags: string[],
+	isStale: boolean,
+	processingStatus: string,
+	duration?: number | null,
+	excerpt?: string | null,
+	pageCount?: number | null,
+	transcription: string | null,
+	transcriptionStatus: string | null,
+};
+
 export type SortOrder = "asc" | "desc";
 
 /**  What the page needs to build its menu. */
@@ -5321,12 +5360,40 @@ export type StickyDraftView = {
  */
 export type StickyDraftsChangedEvent = null;
 
+/**  The sticky asks the main window to open what a send made (`sticky:open-target-requested`). */
+export type StickyOpenTargetRequestedEvent = {
+	/**  `note`, `task` or `journal`. */
+	kind: string,
+	/**  A note id, a task id, or the journal day (`YYYY-MM-DD`). */
+	targetId: string,
+};
+
 /**  `StickySaveDraftInput`: no id creates a draft. */
 export type StickySaveDraftInput = {
 	id: string | null,
 	/**  At most 100000 characters. */
 	content: string,
 	kind: string,
+};
+
+/**  `StickySendSchema`. */
+export type StickySendInput = {
+	/**  The draft the text came from; deleted once the send lands. */
+	draftId: string | null,
+	/**  1 to 100000 characters. */
+	content: string,
+	/**  `note`, `task` or `journal`. */
+	kind: string,
+};
+
+/**  The success arm of `StickySendResult`. */
+export type StickySent = {
+	kind: string,
+	/**  A note id, a task id, or the journal day (`YYYY-MM-DD`). */
+	targetId: string,
+	title: string,
+	/**  None for a journal send, which has no undo. */
+	undoToken: string | null,
 };
 
 /**  `StickyShortcutResult` of `@memry/contracts/settings-schemas`. */

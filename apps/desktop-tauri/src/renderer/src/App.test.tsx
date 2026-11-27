@@ -168,6 +168,10 @@ vi.mock('@/services/notes-service', () => ({
   }
 }))
 
+vi.mock('@/services/sticky-service', () => ({
+  stickyService: { onOpenTargetRequested: () => () => {} }
+}))
+
 vi.mock('@/hooks', () => ({
   useMouseNavButtons: vi.fn(),
   useChordShortcuts: () => true,

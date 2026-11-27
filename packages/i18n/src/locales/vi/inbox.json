@@ -579,7 +579,10 @@
       "journalOff": "Nhật ký đã bị tắt trong Cài đặt.",
       "sendFailed": "Không thể gửi sticky.",
       "undoExpired": "Đã quá muộn để hoàn tác.",
-      "undoFailed": "Không thể hoàn tác việc gửi."
+      "undoFailed": "Không thể hoàn tác việc gửi.",
+      "journalBusy": "Mục nhật ký hôm nay vẫn đang được lưu. Hãy thử lại sau giây lát.",
+      "folderExcluded": "Thư mục Sticky đang bị loại trừ. Hãy bỏ thư mục này khỏi danh sách thư mục bị loại trừ trong Cài đặt để gửi ghi chú.",
+      "projectMissing": "Dự án của công việc này không tồn tại. Hãy chọn dự án mặc định trong Cài đặt, hoặc gửi dưới dạng ghi chú."
     },
     "inputLabel": "Nội dung sticky",
     "dismissError": "Bỏ qua"

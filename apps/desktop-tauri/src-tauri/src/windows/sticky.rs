@@ -42,6 +42,9 @@ pub fn register_stages() {
 
 fn manage(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     app.manage(StickyWindow::default());
+    app.manage(std::sync::Arc::new(
+        memry_desktop::sticky::send::UndoLedger::default(),
+    ));
     app.manage(edge_tab::EdgeTab::default());
     Ok(())
 }

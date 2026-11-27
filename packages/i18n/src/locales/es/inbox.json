@@ -579,7 +579,10 @@
       "journalOff": "El diario está desactivado en Ajustes.",
       "sendFailed": "No se pudo enviar el sticky.",
       "undoExpired": "Es demasiado tarde para deshacerlo.",
-      "undoFailed": "No se pudo deshacer el envío."
+      "undoFailed": "No se pudo deshacer el envío.",
+      "journalBusy": "La entrada de hoy del diario aún se está guardando. Inténtalo de nuevo en un momento.",
+      "folderExcluded": "La carpeta Sticky está excluida. Quítala de las carpetas excluidas en Ajustes para enviar notas.",
+      "projectMissing": "El proyecto de esta tarea no existe. Elige un proyecto predeterminado en Ajustes o envíala como nota."
     },
     "inputLabel": "Texto del sticky",
     "dismissError": "Descartar"
