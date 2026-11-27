@@ -14,6 +14,7 @@ import {
 import { restoreDetailsMarkup } from './blocks/markdown'
 import { dropEmptyBlockPlaceholders, maskEmptyBlockLines } from './empty-blocks'
 import { maskCellCodeSpans, restoreCellCodeSpans } from './inline/cell-code-spans'
+import { type InlineItem, trimEmphasisEdges } from './inline/emphasis-runs'
 import { linkCodeAsText } from './inline/link-code-spans'
 import { maskLinkDestinations, restoreLinkDestinations } from './inline/link-destinations'
 import { maskInlineTokens, restoreInlineTokens } from './inline/token-masking'
@@ -293,6 +294,35 @@ function repairBlocks(blocks: BlockLike[], masks: Masks): void {
   }
 }
 
+/**
+ * Each block's runs, table cells included, with the whitespace at a bold,
+ * italic or strike run's edge outside it, as the writer spells it.
+ */
+function trimBlockEmphasisEdges(blocks: BlockLike[]): void {
+  for (const block of blocks) {
+    if (LITERAL_TEXT_BLOCK_TYPES.has(block.type ?? '')) continue
+    if (Array.isArray(block.content)) {
+      const runs: InlineItem[] = block.content
+      block.content = trimEmphasisEdges(runs)
+    } else if (block.content && typeof block.content === 'object') {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- as in repairBlocks: a table's content is the TableContent shape
+      for (const row of (block.content as TableContent).rows ?? []) {
+        const cells = row?.cells ?? []
+        for (const [index, cell] of cells.entries()) {
+          const runs = cellRuns(cell)
+          if (!runs) continue
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- a parsed run always carries its type
+          const trimmed = trimEmphasisEdges(runs as InlineItem[])
+          if (Array.isArray(cell)) cells[index] = trimmed
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- as in repairBlocks: a non-array cell holds its runs in `content`
+          else (cell as { content: unknown }).content = trimmed
+        }
+      }
+    }
+    if (Array.isArray(block.children)) trimBlockEmphasisEdges(block.children)
+  }
+}
+
 function restoreStringProps(node: BlockLike, restore: (value: string) => string): void {
   for (const [key, value] of Object.entries(node.props ?? {})) {
     if (typeof value === 'string' && node.props) node.props[key] = restore(value)
@@ -365,7 +395,10 @@ export async function parseMarkdownToBlocksRepaired<T>(
     ? editor.tryParseMarkdownToBlocks(withTokensMasked)
     : editor.tryParseHTMLToBlocks(repaired))) as BlockLike[]
   repairBlocks(parsed, { breaks, tokens, codeChars, destinations })
-  if (losslessBlocks) dropEmptyBlockPlaceholders(parsed)
+  if (losslessBlocks) {
+    dropEmptyBlockPlaceholders(parsed)
+    trimBlockEmphasisEdges(parsed)
+  }
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- T is the caller's block type, which this package cannot name without its schema
   return parsed as T[]
 }

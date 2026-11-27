@@ -256,3 +256,46 @@ export function restoreEmphasisRuns(markdown: string, marks: Span[]): string {
   // A pair the serializer cut short keeps its text, without delimiters.
   return open.join('') + markdown.slice(last)
 }
+
+/**
+ * `items` with the whitespace at each edge of a mark's run taken out of that
+ * mark, as `restoreEmphasisRuns` writes it: markdown has no spelling for
+ * `** x **`, so a bold run ending in a space came back with the space outside
+ * the bold on the next seed (`**see ![x](u)** now` lifts the image and leaves
+ * bold `see `). A space against a comment stays: it is how the writer
+ * tells a comment inside the run from one beside it (`html-comment.ts`).
+ */
+export function trimEmphasisEdges(items: InlineItem[]): InlineItem[] {
+  // A code span is written in backticks, so its spaces are never at the run's edge.
+  const plainText = (item: InlineItem, beside: InlineItem | undefined): boolean =>
+    item.type === 'text' && item.styles?.code !== true && beside?.type !== 'htmlComment'
+  let out = items
+  for (const mark of MARKS) {
+    const trimmed: InlineItem[] = []
+    let at = 0
+    while (at < out.length) {
+      const length = runLength(out, at, mark)
+      if (length === 0) {
+        trimmed.push(out[at++])
+        continue
+      }
+      const run = out.slice(at, at + length)
+      const first = run[0]
+      const lead = plainText(first, out[at - 1])
+        ? (/^[^\S\n]+/.exec(first.text ?? '')?.[0] ?? '')
+        : ''
+      if (lead) run[0] = { ...first, text: first.text?.slice(lead.length) }
+      const last = run[run.length - 1]
+      const tail = plainText(last, out[at + length])
+        ? (/[^\S\n]+$/.exec(last.text ?? '')?.[0] ?? '')
+        : ''
+      if (tail) run[run.length - 1] = { ...last, text: last.text?.slice(0, -tail.length) }
+      if (lead) trimmed.push({ ...without(first, mark), text: lead })
+      trimmed.push(...run.filter((item) => item.type !== 'text' || item.text !== ''))
+      if (tail) trimmed.push({ ...without(last, mark), text: tail })
+      at += length
+    }
+    out = joinTexts(trimmed)
+  }
+  return out
+}
