@@ -1058,6 +1058,18 @@ const htmlCommentCases: RoundtripCase[] = [
   { name: 'obsidian comment inside italic (BBF-52)', markdown: '*a %% b %% c*' },
   { name: 'italic nested in bold (BBF-62)', markdown: '**alpha *x y* omega**' },
   { name: 'bold nested in italic (BBF-62)', markdown: '*alpha **x** omega*' },
+  // Three stars in a row read as bold italic, so a run whose edge meets an
+  // inner run's stars came back as text with stray stars.
+  { name: 'italic sentence opening with bold', markdown: '_**Note:** this matters_' },
+  { name: 'italic ending in bold', markdown: 'x _this **matters**_ y' },
+  { name: 'italic with bold at both ends', markdown: '_**a** b **c**_' },
+  {
+    name: 'bold ending in italic',
+    markdown: '**this _matters_**',
+    canonical: '__this *matters*__'
+  },
+  { name: 'italic ending in bold before a word', markdown: 'a _b **c**_d' },
+  { name: 'bold opening with italic', markdown: '**_x_ y**', canonical: '***x* y**' },
   {
     name: 'bold stops at a code span (BBF-62)',
     markdown: '**`a` x `c`**',

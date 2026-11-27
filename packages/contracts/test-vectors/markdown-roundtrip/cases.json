@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 353,
+    "exportedCaseCount": 359,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 363,
+    "caseCount": 369,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -1580,6 +1580,48 @@
       "canonical": null,
       "pending": null,
       "sha256": "982c1ffb7ad859a49b41693d9a8e7fdceb0e895a47d67ee5934d00083da7a42e"
+    },
+    {
+      "name": "italic sentence opening with bold",
+      "markdown": "_**Note:** this matters_",
+      "canonical": null,
+      "pending": null,
+      "sha256": "2f36ee792174c492b5c89d02ffedeb0dbb2f85f6f1e6df3459b71a93d90f7ad3"
+    },
+    {
+      "name": "italic ending in bold",
+      "markdown": "x _this **matters**_ y",
+      "canonical": null,
+      "pending": null,
+      "sha256": "d228c85f3acb8149a9069b95f707a6a85d12ef16b151151c959216f45d7d3ab1"
+    },
+    {
+      "name": "italic with bold at both ends",
+      "markdown": "_**a** b **c**_",
+      "canonical": null,
+      "pending": null,
+      "sha256": "7f6dcace9142c1165a692ec02bca8f04de2eb60792ddefce78ec940708014db3"
+    },
+    {
+      "name": "bold ending in italic",
+      "markdown": "**this _matters_**",
+      "canonical": "__this *matters*__",
+      "pending": null,
+      "sha256": "a627c666cf9ab4b270749f0867f1acbecdbd19f4e6c4fbe52cb21b06b6868170"
+    },
+    {
+      "name": "italic ending in bold before a word",
+      "markdown": "a _b **c**_d",
+      "canonical": null,
+      "pending": null,
+      "sha256": "5812227c7a73e66f5211c5e4a8fdb42c70cf14e7f411f558396609f68aec124b"
+    },
+    {
+      "name": "bold opening with italic",
+      "markdown": "**_x_ y**",
+      "canonical": "***x* y**",
+      "pending": null,
+      "sha256": "6d50138f39f9f2f303397477c28145071a38ead4a2a2ad817fd59da74142c140"
     },
     {
       "name": "bold stops at a code span (BBF-62)",
