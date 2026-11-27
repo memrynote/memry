@@ -8,6 +8,7 @@ use rusqlite::{Connection, OptionalExtension};
 
 use crate::api::errors::StorageError;
 use crate::crdt::body_edit::BlockEdit;
+use crate::domain::calendar_items::write::{self as calendar_write, NewEvent};
 use crate::domain::notes::{self, NewNote, failed};
 use crate::domain::tasks::{self, NewTask, TaskDetails};
 use crate::domain::{body_write, reads, reminders, task_activity};
@@ -52,7 +53,7 @@ pub fn convert_to_task(
         None => inbox_project(conn)?,
     };
     let title = note_title(&item, now);
-    let tags = merged_tags(&item, &[]);
+    let tags = merged_tags(&item.tags, &[]);
     let task_id = tasks::new_task_id();
     let description = if item.item_type == "voice" {
         item.transcription.clone().or_else(|| item.content.clone())
@@ -139,6 +140,58 @@ pub fn convert_to_reminder(
     )?;
     mark_filed(conn, item_id, &path, "reminder", device_id, now_ms)?.acknowledge();
     Ok(note_id)
+}
+
+/// What an event converted from a capture carries (`convertToEvent`'s input).
+#[derive(Debug, Clone, Default)]
+pub struct EventInput {
+    pub start_at: String,
+    pub end_at: Option<String>,
+    pub is_all_day: bool,
+    pub location: Option<String>,
+}
+
+/// `convertToEvent` (`filing.ts:999-1067`): a memrynote event titled from the
+/// capture, its text (a voice memo's transcription) as the description, in
+/// `UTC`, filed as `event` with `filedTo = eventId`. Returns the event id.
+pub fn convert_to_event(
+    conn: &Connection,
+    item_id: &str,
+    input: &EventInput,
+    now: &LocalStamp,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<String, StorageError> {
+    let item = require_live(conn, item_id)?;
+    refuse_filed(&item)?;
+    if NOTE_ONLY_TYPES.contains(&item.item_type.as_str()) {
+        return Err(StorageError::Invalid {
+            what: "Only text and voice items can become an event".to_owned(),
+        });
+    }
+    let description = if item.item_type == "voice" {
+        item.transcription.clone()
+    } else {
+        item.content.clone()
+    };
+    let event_id = calendar_write::create_event(
+        conn,
+        &NewEvent {
+            title: note_title(&item, now),
+            description,
+            location: input.location.clone(),
+            start_at: input.start_at.clone(),
+            end_at: input.end_at.clone(),
+            timezone: "UTC".to_owned(),
+            is_all_day: input.is_all_day,
+            target_calendar_id: None,
+            color: None,
+        },
+        device_id,
+        now_ms,
+    )?;
+    mark_filed(conn, item_id, &event_id, "event", device_id, now_ms)?.acknowledge();
+    Ok(event_id)
 }
 
 /// A note to link to: one that exists, or one staged by title.
