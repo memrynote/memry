@@ -22,6 +22,7 @@
  * written as it is.
  */
 
+import { spellsCalloutMarker } from '../blocks/markdown'
 import { codeSpanRanges } from './link-code-spans'
 
 type Item = {
@@ -250,6 +251,8 @@ export function escapeMarkdownText<T extends Item>(items: T[], blockType?: strin
   }
   const { spelling, segments } = spell(items)
   const forced = lineOpeners(spelling, place)
+  const firstLine = spelling.split('\n', 1)[0]
+  if (spellsCalloutMarker(blockType ?? '', firstLine, firstLine === spelling)) forced.add(0)
   if (cell) for (const at of unclosedWikiOpeners(spelling)) forced.add(at)
   const escaped = segments.map((segment) => escapeSegment(spelling, segment, place, forced))
   let next = 0

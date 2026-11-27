@@ -95,6 +95,15 @@ export function serializeCalloutBlock(
   return `${marker}\n${serializeQuoteBlock(body)}`
 }
 
+/**
+ * Whether a `blockType` block whose first line reads `line` would be read
+ * back as a callout: a quote by its marker, a paragraph by the torn form.
+ */
+export function spellsCalloutMarker(blockType: string, line: string, onlyLine: boolean): boolean {
+  if (blockType === 'quote') return matchCalloutMarker(`> ${line}`) !== null
+  return blockType === 'paragraph' && !onlyLine && BARE_CALLOUT_MARKER_REGEX.test(line)
+}
+
 export interface CalloutRun {
   type: string
   fold: CalloutFold
