@@ -30,7 +30,7 @@ use tokio_util::sync::CancellationToken;
 use crate::import_support::{RecordingSink, Timeline};
 
 /// Runs `importer` over `sources` into a recording sink: the summary and every sink call.
-fn run(importer: &dyn Importer, sources: &[&Path]) -> (ImportSummary, Vec<Value>) {
+pub fn run(importer: &dyn Importer, sources: &[&Path]) -> (ImportSummary, Vec<Value>) {
     let input = ImportInput {
         source_paths: sources
             .iter()
@@ -46,12 +46,12 @@ fn run(importer: &dyn Importer, sources: &[&Path]) -> (ImportSummary, Vec<Value>
     (ctx.summary(), calls)
 }
 
-fn ops(calls: &[Value], op: &str) -> usize {
+pub fn ops(calls: &[Value], op: &str) -> usize {
     calls.iter().filter(|call| call["op"] == op).count()
 }
 
 /// A file of `len` bytes that takes no disk space where the file system supports holes.
-fn sparse(path: &Path, len: u64) {
+pub fn sparse(path: &Path, len: u64) {
     fs::File::create(path).unwrap().set_len(len).unwrap();
 }
 
@@ -271,9 +271,9 @@ fn a_fifo_source_or_asset_is_refused_without_blocking_the_run() {
 }
 
 /// Cancels the run as it saves its first attachment.
-struct CancelOnSave {
-    inner: RecordingSink,
-    cancel: CancellationToken,
+pub struct CancelOnSave {
+    pub inner: RecordingSink,
+    pub cancel: CancellationToken,
 }
 
 impl ImportSink for CancelOnSave {
@@ -450,4 +450,38 @@ proptest! {
         prop_assert!(bytes_scanned() - before <= 2 * body.len());
         prop_assert!(refs.iter().map(String::len).sum::<usize>() <= body.len());
     }
+}
+
+/// #4278: `a.png`, `./a.png`, `././a.png`... name one file. It is read and saved once per note,
+/// so a crafted note cannot write a 1 MiB file a thousand times, even after a cancel.
+#[test]
+fn refs_to_one_file_save_it_once_per_note() {
+    let dir = tempfile::tempdir().unwrap();
+    fs::write(dir.path().join("a.png"), vec![7u8; 1024 * 1024]).unwrap();
+    let body: String = (0..1000)
+        .map(|n| format!("![]({}a.png)\n", "./".repeat(n)))
+        .collect();
+    fs::write(dir.path().join("n.md"), &body).unwrap();
+    let input = ImportInput {
+        source_paths: vec![dir.path().join("n.md").to_string_lossy().into_owned()],
+        options: None,
+    };
+    let (timeline, cancel) = (Timeline::default(), CancellationToken::new());
+    let sink = CancelOnSave {
+        inner: RecordingSink::new(Arc::clone(&timeline)),
+        cancel: cancel.clone(),
+    };
+    let mut ctx = ImportContext::new("dedupe", cancel, Box::new(|_| {}));
+
+    MarkdownImporter.run(&input, &mut ctx, &sink).unwrap();
+
+    let calls = timeline.lock().unwrap().clone();
+    assert_eq!(ops(&calls, "saveAttachment"), 1, "one saved copy");
+    let created = calls.iter().find(|c| c["op"] == "createNote").unwrap();
+    assert_eq!(
+        created["content"],
+        "![a.png](attachments/note-1/a.png)\n".repeat(1000),
+        "every spelling points at the one copy"
+    );
+    assert_eq!(ctx.summary().attachments, 1);
 }
