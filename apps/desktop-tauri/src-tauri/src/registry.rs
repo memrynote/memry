@@ -6,6 +6,9 @@ use tauri_specta::{Builder, ErrorHandlingMode, collect_commands, collect_events}
 
 use crate::startup::StartupState;
 
+// The bookmark and recents commands and events (`registry/bookmarks.rs`).
+#[macro_use]
+mod bookmarks;
 // The task domain's commands and events (`registry/tasks.rs`, `registry/projects.rs`).
 #[macro_use]
 mod projects;
@@ -286,6 +289,9 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::ocr_languages::ocr_languages_get_state,
             crate::commands::ocr_languages::ocr_languages_retry,
             crate::commands::ocr_languages::ocr_languages_set,
+            // onboarding
+            crate::commands::onboarding::onboarding_detect_sources,
+            crate::commands::onboarding::onboarding_is_memry_vault,
             // portals
             crate::commands::portals::portals_get_usage::<Wry>,
             crate::commands::portals::portals_search::<Wry>,

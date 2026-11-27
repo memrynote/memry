@@ -56,7 +56,9 @@ chrono-tz = "0.10.4"
 iana-time-zone = "0.1.65"
 # Subscribed calendars resolve the IANA zones a feed names, as Electron's `Intl` did: the system
 # zoneinfo on Unix, the bundled tzdb on Windows. Already in the lockfile through `serde_with`.
-jiff = "0.2.38"
+# TickTick's `Intl.DateTimeFormat` time zones read the bundled tzdb on every platform
+# (`TimeZoneDatabase::bundled`, `tzdb-bundle-always`): its rules past 2037, as ICU applies them.
+jiff = { version = "0.2.38", features = ["tzdb-bundle-always"] }
 # `String.prototype.normalize("NFKC")` of the MathJax glyph text in `elements/math`.
 unicode-normalization = "0.1.25"
 # Spec-conformant HTML parsing where Electron uses one: Turndown's domino and the HTML block text

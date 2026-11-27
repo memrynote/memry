@@ -36,7 +36,10 @@ export function FolderField({
     <div className="flex flex-col gap-1.5">
       <span className="text-xs leading-4 font-medium text-text-secondary">{label}</span>
       <div className="flex items-center h-9 gap-2 rounded-md border border-input ps-3 pe-1">
-        <span className="grow shrink basis-0 min-w-0 truncate font-mono text-xs text-foreground">
+        <span
+          dir="ltr"
+          className="grow shrink basis-0 min-w-0 truncate font-mono text-xs text-foreground"
+        >
           {path ?? ''}
         </span>
         <Button
