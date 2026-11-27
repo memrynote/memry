@@ -14,6 +14,7 @@ use std::path::Path;
 
 use tauri::webview::PlatformWebview;
 use tokio::sync::oneshot;
+use url::Url;
 
 /// Each margin, as Electron's `margins: { top: 0.5, ... }` (inches).
 pub const MARGIN_INCHES: f64 = 0.5;
@@ -55,14 +56,33 @@ impl Paper {
 /// Answered once, when the engine has written the file or failed (the engine's error text).
 pub type Done = oneshot::Sender<Result<(), String>>;
 
-/// Readies the hidden print window before its page loads: on macOS it is ordered in far off
+pub fn is_page(url: &Url, page: &Url) -> bool {
+    url.scheme() == page.scheme() && url.host_str() == page.host_str() && url.path() == page.path()
+}
+
+/// Whether the print window may load `to`: its staged `page`, or the blank page it opens on.
+/// A `<meta http-equiv="refresh">`, a link, a form or a frame in a note's raw HTML goes nowhere.
+/// Every engine's navigation handler and WebView2's request and frame guards ask this.
+pub fn may_load(to: &Url, page: &Url) -> bool {
+    to.as_str() == "about:blank" || is_page(to, page)
+}
+
+/// Readies the hidden print window before its page loads. On macOS it is ordered in far off
 /// screen, ignoring the mouse and never focused, because WKWebView lays out and prints nothing in
-/// a window that is not on screen. Runs on the main thread (`with_webview`).
-pub fn prepare(webview: &PlatformWebview) {
+/// a window that is not on screen. On Windows every request and frame navigation [`may_load`]
+/// refuses is stopped, since WebView2's top-level navigation handler alone let a meta refresh
+/// reach the network. An error leaves the window unguarded, so the export fails. Runs on the main
+/// thread (`with_webview`).
+pub fn prepare(webview: &PlatformWebview, page: &Url) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     macos::prepare(webview);
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(windows)]
+    windows::guard(webview, page)?;
+    #[cfg(not(any(target_os = "macos", windows)))]
     let _ = webview;
+    #[cfg(not(windows))]
+    let _ = page;
+    Ok(())
 }
 
 /// Starts printing `webview` to `target` and answers `done` when the engine is finished. Runs on
@@ -79,6 +99,35 @@ pub fn start(webview: &PlatformWebview, paper: Paper, target: &Path, done: Done)
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_print_window_goes_only_to_its_page_or_blank() {
+        let page = Url::parse("memry-export://localhost/7f1c.html").expect("url");
+        let allowed = [
+            page.as_str(),
+            "about:blank",
+            "memry-export://localhost/7f1c.html?x",
+        ];
+        for to in allowed {
+            assert!(may_load(&Url::parse(to).expect("url"), &page), "{to}");
+        }
+        let denied = [
+            "memry-export://localhost/8a2d.html",
+            "https://memry-export.localhost/7f1c.html",
+            "https://example.invalid/",
+            "http://10.1.0.5:8080/refresh",
+            "http://localhost/",
+            "file:///etc/passwd",
+            "data:text/html,<p>x</p>",
+            "about:srcdoc",
+            "about:blank#x",
+            "memry-file://localhost/note.md",
+            "memry-html://localhost/page.html",
+        ];
+        for to in denied {
+            assert!(!may_load(&Url::parse(to).expect("url"), &page), "{to}");
+        }
+    }
 
     #[test]
     fn page_sizes_are_electrons_in_points_and_inches() {

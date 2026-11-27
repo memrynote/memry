@@ -148,10 +148,18 @@ pub async fn print_to_pdf(
     // The page loads once the window is exempt from the app's main-frame guard, which would
     // refuse it on macOS.
     navigation_guard::exempt(&window.0);
+    let (ready, on_ready) = oneshot::channel();
+    let staged = page.url();
     window
         .0
-        .with_webview(|webview| pdf::prepare(&webview))
+        .with_webview(move |webview| {
+            let _ = ready.send(pdf::prepare(&webview, &staged));
+        })
         .map_err(|error| PdfError(format!("the print window is gone: {error}")))?;
+    on_ready
+        .await
+        .map_err(|_| PdfError("the print window closed before it was guarded".into()))?
+        .map_err(|error| PdfError(format!("the print window was not guarded: {error}")))?;
     window
         .0
         .navigate(page.url())
@@ -193,16 +201,6 @@ fn read_pdf(path: &Path) -> Result<Vec<u8>, PdfError> {
     Ok(bytes)
 }
 
-fn is_page(url: &Url, page: &Url) -> bool {
-    url.scheme() == page.scheme() && url.host_str() == page.host_str() && url.path() == page.path()
-}
-
-/// Whether the print window may go to `to`: its staged `page`, or the blank page it opens on.
-/// A `<meta http-equiv="refresh">`, a link or a form in a note's raw HTML goes nowhere.
-fn may_navigate(to: &Url, page: &Url) -> bool {
-    to.as_str() == "about:blank" || is_page(to, page)
-}
-
 /// The print window `label` over `page`, and the signal that its page finished loading.
 fn open(
     app: &AppHandle<Wry>,
@@ -224,11 +222,11 @@ fn open(
         .skip_taskbar(true)
         .use_https_scheme(true)
         .disable_javascript()
-        .on_navigation(move |to| may_navigate(to, &allowed))
+        .on_navigation(move |to| pdf::may_load(to, &allowed))
         .on_new_window(|_, _| NewWindowResponse::Deny)
         .on_page_load(move |_, payload| {
             if payload.event() == PageLoadEvent::Finished
-                && is_page(payload.url(), &url)
+                && pdf::is_page(payload.url(), &url)
                 && let Some(loaded) = loaded.lock().unwrap_or_else(PoisonError::into_inner).take()
             {
                 let _ = loaded.send(());
@@ -245,28 +243,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn the_print_window_goes_only_to_its_page_or_blank() {
+    fn the_staged_page_is_the_only_one_the_print_window_loads() {
         let staged = Staged::new(String::new(), "pdf-print-1".to_owned());
-        let page = staged.url();
-        let other = Staged::new(String::new(), "pdf-print-1".to_owned()).url();
-        let allowed = [page.as_str(), "about:blank"];
-        for to in allowed {
-            assert!(may_navigate(&Url::parse(to).expect("url"), &page), "{to}");
-        }
-        let denied = [
-            other.as_str(),
-            "https://example.invalid/",
-            "http://localhost/",
-            "file:///etc/passwd",
-            "data:text/html,<p>x</p>",
-            "about:srcdoc",
-            "about:blank#x",
-            "memry-file://localhost/note.md",
-            "memry-html://localhost/page.html",
-        ];
-        for to in denied {
-            assert!(!may_navigate(&Url::parse(to).expect("url"), &page), "{to}");
-        }
+        let other = Staged::new(String::new(), "pdf-print-1".to_owned());
+        assert!(pdf::may_load(&staged.url(), &staged.url()));
+        assert!(!pdf::may_load(&other.url(), &staged.url()));
     }
 
     #[test]
