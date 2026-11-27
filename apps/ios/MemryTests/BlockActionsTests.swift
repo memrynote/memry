@@ -147,6 +147,13 @@ struct BlockActionStepTests {
         #expect(target.isCurrent(h2))
         #expect(!target.isCurrent(h1))
     }
+
+    /// #5901: the menu's `ForEach` keys rows by `id`, and the three heading
+    /// levels sharing one drew "Heading 1" three times.
+    @Test func every_turn_into_choice_has_its_own_id() {
+        let ids = InsertableBlock.all.map(\.id)
+        #expect(Set(ids).count == ids.count, "\(ids)")
+    }
 }
 
 @Suite("Block action runner")
