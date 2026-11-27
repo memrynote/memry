@@ -1,3 +1,5 @@
+import { assertHumanizedReleaseNotesForPublish } from './release-notes-utils.mjs'
+
 const defaultReleaseTimeZone = 'Europe/Istanbul'
 const releaseListFields = ['tagName', 'name', 'isDraft', 'isPrerelease', 'createdAt']
 
@@ -116,7 +118,30 @@ export function parseReleaseArgs(argv) {
     throw new Error(`Unknown argument: ${arg}`)
   }
 
+  // A dry run of the humanizer leaves the draft untouched, so the humanized-notes check that
+  // follows could never pass.
+  if (options.dryRun && options.humanize) {
+    throw new Error(
+      '--dry-run cannot be combined with --humanize: a dry run does not edit the draft. Run `pnpm release:humanize -- --tag <draft>` first, then `pnpm release --dry-run`.'
+    )
+  }
+
   return options
+}
+
+/**
+ * The draft check before `release.mjs` dispatches the workflow. Dry runs included: the workflow's
+ * `setup-release` packs the draft's humanized notes and fails without them.
+ */
+export function assertDraftReadyForDispatch({ body = '', draftTag, dryRun, expectedTag }) {
+  try {
+    assertHumanizedReleaseNotesForPublish({ body, draftTag, expectedTag })
+  } catch (error) {
+    if (!dryRun) throw error
+    throw new Error(`${error.message}\nA dry run needs them too: the workflow packs these notes.`, {
+      cause: error
+    })
+  }
 }
 
 export function buildHumanizeReleaseArgs({ dryRun, tag, yes }) {
