@@ -378,5 +378,28 @@ export const MARKDOWN_SEED_CASES: ReadonlyArray<{ name: string; markdown: string
       name: 'parity: paragraph of whitespace-only code spans and breaks',
       markdown: '`\n`\n`\n`\n\n`\n`\n`\n`\n`\n`\n\n`\n`\nx\n`\n`\n\n` `\\\n` `',
       pins: 'a paragraph with no visible text is parsed with collapsed whitespace: leading, repeated and trailing blanks go, a blank right after a break goes, a blank between breaks stays'
+    },
+    {
+      name: 'callout: escaped markup in the body',
+      markdown:
+        '> [!note]\n> a \\*b\\* c \\`d\\` e \\_f\\_ g\n\n> [!tip]\n> first\n> \\# x\n> 1\\. y\n\n> [!info]\n> a \\~\\~z\\~\\~ and [w\\](v)',
+      pins: 'a body whose escapes the writer puts back (paired `*`, backticks and `_`, a `#` or `1.` opening a line, `~~`, a `]` before `(`) serializes to its bytes, so each is a callout'
+    },
+    {
+      name: 'callout: unpaired markup stays unescaped',
+      markdown:
+        '> [!note]\n> 5 * 3 and a_b_c and [[_draft]] and 2 * 4\n\n> [!tip]\n> a ! b ~ c ] d',
+      pins: 'text that pairs nothing keeps its bytes: a spaced `*`, an intraword `_`, a `_` in a wiki link, a lone `!`, `~` or `]` are written as they are, so each is a callout'
+    },
+    {
+      name: 'quote: blank separator and escaped markup',
+      markdown: '> lead \\*x\\* and \\`y\\`\n>\n> second \\_z\\_ and 5 * 3',
+      pins: 'a quote whose paragraphs hold escaped markup and a spaced `*` is claimed with its later paragraph as a child'
+    },
+    {
+      name: 'callout: hard break and escaped markup in the body',
+      markdown:
+        '> [!tip]\n> line one  \n> line \\*two\\*\n> \\- three\n\n> [!note]\n> soft\n> \\> four',
+      pins: 'a hard break keeps its spelling in the proof, and the line after it opens with an escaped `*`, `-` or `>`'
     }
   ]

@@ -9,7 +9,7 @@
     "authoredBy": "desktop's markdownToYFragment path: LF line endings, maskHtmlComments, parseNoteMarkdown (editor-schema note-markdown) with parseMarkdownToBlocksRepaired on desktop's server schema, blocksToYXmlFragment",
     "provenAgainst": "apps/desktop/src/main/sync/markdown-seed-vectors.test.ts",
     "blockIds": "removed from every blockContainer line: BlockNote mints them at random",
-    "caseCount": 71
+    "caseCount": 75
   },
   "cases": [
     {
@@ -437,6 +437,30 @@
       "pins": "a paragraph with no visible text is parsed with collapsed whitespace: leading, repeated and trailing blanks go, a blank right after a break goes, a blank between breaks stays",
       "markdown": "`\n`\n`\n`\n\n`\n`\n`\n`\n`\n`\n\n`\n`\nx\n`\n`\n\n` `\\\n` `",
       "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 element hardBreak\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 element hardBreak\n3 text \" \" code={}\n3 element hardBreak\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 element hardBreak\n3 text \"x\"\n3 element hardBreak\n3 text \" \" code={}\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 element hardBreak\n3 element hardBreak\n3 text \" \" code={}"
+    },
+    {
+      "name": "callout: escaped markup in the body",
+      "pins": "a body whose escapes the writer puts back (paired `*`, backticks and `_`, a `#` or `1.` opening a line, `~~`, a `]` before `(`) serializes to its bytes, so each is a callout",
+      "markdown": "> [!note]\n> a \\*b\\* c \\`d\\` e \\_f\\_ g\n\n> [!tip]\n> first\n> \\# x\n> 1\\. y\n\n> [!info]\n> a \\~\\~z\\~\\~ and [w\\](v)",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element callout fold=\"none\" textAlignment=\"left\" textColor=\"default\" type=\"note\"\n3 text \"a *b* c `d` e _f_ g\"\n1 element blockContainer\n2 element callout fold=\"none\" textAlignment=\"left\" textColor=\"default\" type=\"tip\"\n3 text \"first\"\n3 element hardBreak\n3 text \"# x\"\n3 element hardBreak\n3 text \"1. y\"\n1 element blockContainer\n2 element callout fold=\"none\" textAlignment=\"left\" textColor=\"default\" type=\"info\"\n3 text \"a ~~z~~ and [w](v)\""
+    },
+    {
+      "name": "callout: unpaired markup stays unescaped",
+      "pins": "text that pairs nothing keeps its bytes: a spaced `*`, an intraword `_`, a `_` in a wiki link, a lone `!`, `~` or `]` are written as they are, so each is a callout",
+      "markdown": "> [!note]\n> 5 * 3 and a_b_c and [[_draft]] and 2 * 4\n\n> [!tip]\n> a ! b ~ c ] d",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element callout fold=\"none\" textAlignment=\"left\" textColor=\"default\" type=\"note\"\n3 text \"5 * 3 and a_b_c and [[_draft]] and 2 * 4\"\n1 element blockContainer\n2 element callout fold=\"none\" textAlignment=\"left\" textColor=\"default\" type=\"tip\"\n3 text \"a ! b ~ c ] d\""
+    },
+    {
+      "name": "quote: blank separator and escaped markup",
+      "pins": "a quote whose paragraphs hold escaped markup and a spaced `*` is claimed with its later paragraph as a child",
+      "markdown": "> lead \\*x\\* and \\`y\\`\n>\n> second \\_z\\_ and 5 * 3",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"lead *x* and `y`\"\n2 element blockGroup\n3 element blockContainer\n4 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n5 text \"second _z_ and 5 * 3\""
+    },
+    {
+      "name": "callout: hard break and escaped markup in the body",
+      "pins": "a hard break keeps its spelling in the proof, and the line after it opens with an escaped `*`, `-` or `>`",
+      "markdown": "> [!tip]\n> line one  \n> line \\*two\\*\n> \\- three\n\n> [!note]\n> soft\n> \\> four",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element callout fold=\"none\" textAlignment=\"left\" textColor=\"default\" type=\"tip\"\n3 text \"line one\"\n3 element hardBreak\n3 element hardBreak\n3 text \"line *two*\"\n3 element hardBreak\n3 text \"- three\"\n1 element blockContainer\n2 element callout fold=\"none\" textAlignment=\"left\" textColor=\"default\" type=\"note\"\n3 text \"soft\"\n3 element hardBreak\n3 text \"> four\""
     }
   ]
 }
