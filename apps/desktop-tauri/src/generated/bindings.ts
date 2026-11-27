@@ -1225,6 +1225,7 @@ export const events = {
 	inboxOpenItemEvent: makeEvent<InboxOpenItemEvent, InboxOpenItemEvent>("inbox-open-item-event"),
 	inboxReviewDueEvent: makeEvent<InboxReviewDueEvent, InboxReviewDueEvent>("inbox-review-due-event"),
 	inboxReviewOpenEvent: makeEvent<InboxReviewOpenEvent, InboxReviewOpenEvent>("inbox-review-open-event"),
+	inboxSnoozeDueEvent: makeEvent<InboxSnoozeDueEvent, InboxSnoozeDueEvent>("inbox-snooze-due-event"),
 	journalEntryCreatedEvent: makeEvent<JournalEntryCreatedEvent, JournalEntryCreatedEvent>("journal-entry-created-event"),
 	journalEntryDeletedEvent: makeEvent<JournalEntryDeletedEvent, JournalEntryDeletedEvent>("journal-entry-deleted-event"),
 	journalEntryUpdatedEvent: makeEvent<JournalEntryUpdatedEvent, JournalEntryUpdatedEvent>("journal-entry-updated-event"),
@@ -3206,6 +3207,15 @@ export type InboxReviewOpenEvent = Record<string, never>;
  */
 export type InboxReviewTestResult = {
 	supported: boolean,
+};
+
+/**
+ *  Snoozed captures came back (`inbox:snooze-due`): the renderer refreshes the inbox list and
+ *  shows its banner and toast. `count` is the number of `items`, as Electron sends it.
+ */
+export type InboxSnoozeDueEvent = {
+	count: number,
+	items: SnoozeDueItem[],
 };
 
 export type InheritedFieldsView = {
@@ -5208,6 +5218,28 @@ export type SimilarNotesResponse = {
 export type SizeClass = "note" | "large-file";
 
 export type SkippedKind = "code" | "table" | "image" | "callout" | "embed" | "other";
+
+/**
+ *  A capture the snooze pass brought back, as the inbox list shows it (`toListItem` in
+ *  `inbox/snooze.ts`). Dates are ISO 8601 in UTC.
+ */
+export type SnoozeDueItem = {
+	id: string,
+	type: string,
+	title: string,
+	content: string | null,
+	createdAt: string,
+	thumbnailUrl: string | null,
+	sourceUrl: string | null,
+	tags: string[],
+	isStale: boolean,
+	processingStatus: string,
+	duration?: number | null,
+	excerpt?: string | null,
+	pageCount?: number | null,
+	transcription: string | null,
+	transcriptionStatus: string | null,
+};
 
 export type SortOrder = "asc" | "desc";
 

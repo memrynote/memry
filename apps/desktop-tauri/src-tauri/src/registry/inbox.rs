@@ -18,6 +18,7 @@ macro_rules! with_inbox_events {
             crate::events::InboxOpenItemEvent,
             crate::events::InboxReviewDueEvent,
             crate::events::InboxReviewOpenEvent,
+            crate::events::InboxSnoozeDueEvent,
         ])
     };
 }
