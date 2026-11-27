@@ -1561,6 +1561,10 @@ const htmlCommentCases: RoundtripCase[] = [
   // A box after a number is the item's text: only a bullet opens a to-do.
   { name: 'numbered item holding a box', markdown: '1. [ ]' },
   { name: 'empty to-do between two items', markdown: '- [ ]\n- [x]\n- b' },
+  // A box is no setext underline, so a to-do opens under any line.
+  { name: 'empty to-do under a heading', markdown: '# H\n- [ ]', canonical: '# H\n\n- [ ]' },
+  { name: 'empty to-do under a line of text', markdown: 'one\n- [x]', canonical: 'one\n\n- [x]' },
+  { name: 'empty to-do under a quote', markdown: '> q\n- [ ]', canonical: '> q\n\n- [ ]' },
   { name: 'empty heading', markdown: '#\n\nb' },
   // The parser opens a heading only flush left, so an indented `#` is text,
   // and the placeholder an empty heading line holds came out in it.

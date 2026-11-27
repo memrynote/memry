@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 413,
+    "exportedCaseCount": 416,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 423,
+    "caseCount": 426,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -2728,6 +2728,27 @@
       "canonical": null,
       "pending": null,
       "sha256": "0906ab7a439b501bfc94d093fe7c8a912d1288e1bd9725f4ac439a85faea7b51"
+    },
+    {
+      "name": "empty to-do under a heading",
+      "markdown": "# H\n- [ ]",
+      "canonical": "# H\n\n- [ ]",
+      "pending": null,
+      "sha256": "793d88d28afcf1c7505ba90b33102536f534012304aef2a11effc9ba9c23341d"
+    },
+    {
+      "name": "empty to-do under a line of text",
+      "markdown": "one\n- [x]",
+      "canonical": "one\n\n- [x]",
+      "pending": null,
+      "sha256": "7e62ff562bd4945eee6b5421e2f0d35aaee6eb53466149546ec054249ebd8c89"
+    },
+    {
+      "name": "empty to-do under a quote",
+      "markdown": "> q\n- [ ]",
+      "canonical": "> q\n\n- [ ]",
+      "pending": null,
+      "sha256": "18bfdbb46f3eda9cc0b8f46cccce7f21c0d1058b43f94ad6ffb5cb9a326dbcc8"
     },
     {
       "name": "empty heading",
