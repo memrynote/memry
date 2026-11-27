@@ -238,7 +238,7 @@ fn stage(input: &VaultImportInput<'_>, paths: &Paths) -> Result<VaultStageReport
         &input.electron_index_db,
         &paths.staging,
     )?;
-    let preflight = preflight::run(&sources, input)?;
+    let preflight = preflight::run(&sources)?;
     let mut writer = ImportWriter::create(&paths.staging)?;
     crash::point("stage:writer-created");
 

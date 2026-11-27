@@ -9,13 +9,13 @@ use std::collections::BTreeMap;
 
 use rusqlite::{Connection, OptionalExtension};
 
+use super::ImportError;
 use super::source::{Sources, source_error};
 use super::sync_state::{self, KeyRule};
 use super::tables::{
     ELECTRON_DATA_LEDGER_ENDS, ELECTRON_INDEX_LEDGER_ENDS, Importer, LEDGER_TABLE, SourceDb,
     TableMapping, mapping, pending_area,
 };
-use super::{ImportError, VaultImportInput};
 
 /// Shadow tables per module, as Electron's DDL creates them: fts5 always makes these five, and
 /// vec0 these four for a table with a TEXT primary key and no auxiliary or metadata columns. A
@@ -30,10 +30,7 @@ pub(super) struct Preflight {
     pub dropped_keys: BTreeMap<String, u64>,
 }
 
-pub(super) fn run(
-    sources: &Sources,
-    _input: &VaultImportInput<'_>,
-) -> Result<Preflight, ImportError> {
+pub(super) fn run(sources: &Sources) -> Result<Preflight, ImportError> {
     for (db, ends) in [
         (SourceDb::Data, ELECTRON_DATA_LEDGER_ENDS),
         (SourceDb::Index, ELECTRON_INDEX_LEDGER_ENDS),

@@ -5,46 +5,6 @@ use super::source::copy_sources;
 use super::tables::SourceDb;
 use super::*;
 
-/// The probe over a profile directory with no LevelDB store in it.
-fn no_electron(dir: &Path) -> ProfileLock {
-    use crate::electron_import::{AppNameCandidates, ElectronProfile, HostOs};
-    ProfileLock::probe(&ElectronProfile {
-        dir: dir.join("electron-profile"),
-        host: HostOs::current(),
-        pin: None,
-        app_names: AppNameCandidates(Vec::new()),
-        has_config: false,
-        has_secure_store: false,
-        has_local_state: false,
-        has_local_storage: false,
-        has_legacy_crdt_store: false,
-        has_custom_dictionary: false,
-        crdt_store_dirs: Vec::new(),
-        other_candidates: Vec::new(),
-    })
-    .unwrap()
-}
-
-fn input<'a>(
-    vault: &Path,
-    pair: &electron_db::ElectronPair,
-    lock: &'a ProfileLock,
-) -> VaultImportInput<'a> {
-    VaultImportInput {
-        electron_closed: lock,
-        vault_dir: vault.to_owned(),
-        vault_id: "vault-1".into(),
-        electron_data_db: pair.data.clone(),
-        electron_index_db: pair.index.clone(),
-        docs: Vec::new(),
-        extra_owed_docs: Vec::new(),
-        vault_key: None,
-        electron_device_id: Some("device-electron".into()),
-        now_ms: 1_800_000_000_000,
-        progress: None,
-    }
-}
-
 /// Copies the pair the way a run does and reads `note_metadata.id` back from the copy.
 fn ids_through_the_copy(pair: &electron_db::ElectronPair, staging: &Path) -> Vec<String> {
     let sources = copy_sources(&pair.data, &pair.index, staging).unwrap();
@@ -66,8 +26,7 @@ fn a_fresh_electron_pair_passes_the_preflight() {
     let pair = electron_db::create_pair(&dir.path().join(".memry"));
     let staging = dir.path().join("staging");
     let sources = copy_sources(&pair.data, &pair.index, &staging).unwrap();
-    let lock = no_electron(dir.path());
-    let preflight = preflight::run(&sources, &input(dir.path(), &pair, &lock)).unwrap();
+    let preflight = preflight::run(&sources).unwrap();
     // Every mapped table and nothing else: the fts5 and vec0 shadow tables are recognised.
     assert_eq!(preflight.tables.len(), tables::TABLE_MAP.len());
     assert!(preflight.dropped_keys.is_empty());

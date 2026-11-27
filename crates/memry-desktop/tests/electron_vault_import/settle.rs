@@ -33,6 +33,18 @@ struct Fixture {
     body: &'static str,
     owed_file_body: bool,
     queued_push: bool,
+    /// `note_cache.pending_write_hash` (Electron index 0037, #5698).
+    pending: Pending,
+}
+
+#[derive(Clone, Copy)]
+enum Pending {
+    None,
+    /// A bare `unstored-file` mark, as a crash before the store held a write-back leaves it in
+    /// an earlier build of #5698: the file may hold typing the store lacks.
+    UnstoredMark,
+    /// The hash of the file on disk: Electron's own write-back, not recorded before it quit.
+    File,
 }
 
 const AHEAD: Fixture = Fixture {
@@ -41,6 +53,7 @@ const AHEAD: Fixture = Fixture {
     body: "B\n",
     owed_file_body: false,
     queued_push: false,
+    pending: Pending::None,
 };
 
 struct Settled {
@@ -141,6 +154,20 @@ fn import_and_open(fixture: &Fixture) -> Settled {
             ("content_hash", text(&content_hash(fixture.read))),
         ],
     );
+    let pending = match fixture.pending {
+        Pending::None => None,
+        Pending::UnstoredMark => Some("unstored-file".to_string()),
+        Pending::File => Some(content_hash(fixture.file)),
+    };
+    if let Some(pending) = pending {
+        Connection::open(&pair.index)
+            .unwrap()
+            .execute(
+                "UPDATE note_cache SET pending_write_hash = ?1 WHERE id = ?2",
+                [pending.as_str(), NOTE],
+            )
+            .unwrap();
+    }
     e.write(PATH, fixture.file);
 
     let profile = electron_profile(e._dir.path());
@@ -347,5 +374,39 @@ fn a_file_with_frontmatter_whose_body_is_the_documents_is_not_rewritten() {
     });
     assert_eq!(s.quiet_file(), FILE);
     assert_eq!(s.e.versions(NOTE), Vec::<String>::new());
+    s.electron_unchanged();
+}
+
+/// Electron's write-back marked the file unstored and the app quit before the store held the
+/// doc it wrote: the file may hold typing the store lacks. Electron's open takes the file into
+/// the doc (`takesUnstoredFile`, `writeback-baseline.ts`), so the import never writes the stored
+/// body over it; the body it replaces is kept as a version.
+#[test]
+fn a_file_with_an_unstored_mark_is_taken_in_not_written_over() {
+    let mut s = import_and_open(&Fixture {
+        pending: Pending::UnstoredMark,
+        ..AHEAD
+    });
+    assert_eq!(s.quiet_file(), "A\n");
+    s.until_body("A");
+    s.has_version('B');
+    s.electron_unchanged();
+}
+
+/// Electron wrote "B" and quit before recording it, so only the pending hash names the file;
+/// the store then took "C". The file is Electron's own write, not an outside edit: the body
+/// reaches the file and the file is kept as a version, as Electron's `isOutsideEdit` reads it.
+#[test]
+fn a_file_under_a_plain_pending_hash_is_the_baseline() {
+    let s = import_and_open(&Fixture {
+        read: "A\n",
+        file: "B\n",
+        body: "C\n",
+        pending: Pending::File,
+        ..AHEAD
+    });
+    s.until_file("C\n");
+    assert_eq!(s.e.body(NOTE), "C");
+    s.has_version('B');
     s.electron_unchanged();
 }
