@@ -71,18 +71,26 @@ const nestingMarkerLevels = new WeakMap<object, number>()
 
 /**
  * `markdown` parsed chunk by chunk, with a level marker block before each
- * chunk. Pass the result through `foldBlockNestingMarkers` before use.
+ * chunk a marker opens. Pass the result through `foldBlockNestingMarkers`
+ * before use.
+ *
+ * Text before the first marker stays at the level the run is at: after a
+ * block claimed under `=1`, the item's next blocks went to the top level, so
+ * `- a` holding `$$…$$` and then `para` lost `para` to the note (#2365).
  */
 export async function parseMarkdownWithNestingMarkers<T extends object>(
   markdown: string,
   parse: (markdown: string) => Promise<T[]>
 ): Promise<T[]> {
   const blocks: T[] = []
-  for (const chunk of splitMarkdownByBlockNestingMarkers(markdown)) {
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the marker is an empty placeholder block; T is unconstrained beyond `object`, so no real T can be built here
-    const marker = {} as T
-    nestingMarkerLevels.set(marker, chunk.level)
-    blocks.push(marker)
+  const leadsWithMarker = BLOCK_NESTING_MARKER_REGEX.test(markdown.trimStart().split('\n', 1)[0])
+  for (const [index, chunk] of splitMarkdownByBlockNestingMarkers(markdown).entries()) {
+    if (index > 0 || leadsWithMarker) {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the marker is an empty placeholder block; T is unconstrained beyond `object`, so no real T can be built here
+      const marker = {} as T
+      nestingMarkerLevels.set(marker, chunk.level)
+      blocks.push(marker)
+    }
     if (chunk.text) blocks.push(...(await parse(chunk.text)))
   }
   return blocks
