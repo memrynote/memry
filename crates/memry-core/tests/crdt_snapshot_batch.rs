@@ -11,6 +11,8 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use http_fakes::{FakeTransport, error_response, response};
+use memry_core::api::errors::StorageError;
+use memry_core::crdt::epoch::{self, Epoch};
 use memry_core::crdt::registry::UpdateSink;
 use memry_core::crdt::snapshots::{
     Refusal, SnapshotError, SnapshotGate, SnapshotOutcome, SnapshotPusher, SnapshotSealer,
@@ -81,9 +83,20 @@ fn registry() -> DocumentRegistry {
     DocumentRegistry::new("device-a", sink)
 }
 
-fn clean(docs: &[Arc<Document>]) -> Vec<(&Document, SnapshotGate)> {
+/// Each document with its epoch, captured as a caller does before loading it.
+fn clean<'d>(db: &Db, docs: &'d [Arc<Document>]) -> Vec<(&'d Document, Epoch, SnapshotGate)> {
     docs.iter()
-        .map(|d| (d.as_ref(), SnapshotGate::clean()))
+        .map(|d| {
+            let id = d.id().to_owned();
+            let opened = db
+                .call_blocking(move |conn| {
+                    epoch::capture(conn, &id).map_err(|error| StorageError::Failed {
+                        what: error.to_string(),
+                    })
+                })
+                .expect("capture the epoch");
+            (d.as_ref(), opened, SnapshotGate::clean())
+        })
         .collect()
 }
 
@@ -111,7 +124,7 @@ async fn many_documents_ride_one_request_and_each_stores_its_own_watermark() {
     )]);
 
     let outcomes = pusher(&db, transport.clone())
-        .push_batch(&clean(&docs), 1)
+        .push_batch(&clean(&db, &docs))
         .await;
 
     assert_eq!(transport.call_count(), 1);
@@ -148,8 +161,8 @@ async fn a_server_without_the_route_latches_the_single_note_route_for_the_sessio
     ]);
     let pusher = pusher(&db, transport.clone());
 
-    let first = pusher.push_batch(&clean(&docs), 1).await;
-    let second = pusher.push_batch(&clean(&docs), 2).await;
+    let first = pusher.push_batch(&clean(&db, &docs)).await;
+    let second = pusher.push_batch(&clean(&db, &docs)).await;
 
     for (_, outcome) in first.iter().chain(&second) {
         assert!(
@@ -175,7 +188,7 @@ async fn a_document_with_unmerged_remote_state_never_rides_the_batch() {
     )]);
 
     let outcomes = pusher(&db, transport.clone())
-        .push_batch(&clean(&docs), 1)
+        .push_batch(&clean(&db, &docs))
         .await;
 
     assert_eq!(outcomes[0].0, A);
@@ -202,7 +215,7 @@ async fn per_note_rejections_stay_per_note() {
         .to_string(),
     )]);
 
-    let outcomes = pusher(&db, transport).push_batch(&clean(&docs), 1).await;
+    let outcomes = pusher(&db, transport).push_batch(&clean(&db, &docs)).await;
 
     // Not covered: the document is owed a pull, so the next push refuses locally.
     assert!(matches!(

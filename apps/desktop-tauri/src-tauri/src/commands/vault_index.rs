@@ -1,42 +1,71 @@
 //! `vault:reindex`: measures every note of the open vault again
-//! (`memry_desktop::notes::index`), with its progress as [`VaultIndexProgressEvent`]. The vault
+//! (`memry_desktop::notes::index`), with its progress as [`VaultIndexProgressEvent`]. The
+//! command answers once the index took the request. The vault
 //! status says indexing while it runs, as during an open's build, through [`current_status`],
-//! [`send_status`] and the index's report ([`send_indexing_status`]).
+//! [`send_status`] and the index's report ([`send_indexing_status`]). A reindex that fails after
+//! the answer sends the status with its error ([`send_failed_status`]).
 
 use std::sync::{Arc, Mutex, PoisonError};
 
 use memry_desktop::notes::index::{IndexError, IndexProgress, NoteIndex};
 use memry_desktop::session::response::VaultStatus;
 use memry_desktop::session::{Session, SessionStatus};
-use tauri::{AppHandle, Manager, Wry};
+use tauri::{AppHandle, Manager, Runtime, Wry};
 
 use super::blocking;
-use super::error::{CommandError, ErrorKind};
+use super::error::{CommandError, ErrorKind, log_failure};
 use crate::events::{VaultIndexProgressEvent, VaultStatusChangedEvent, broadcast};
 
-/// Measures every note of the open vault again; resolves once the last progress went out.
-/// The index sends the vault status, indexing, from the request to the answer.
+/// Measures every note of the open vault again; resolves once the index took the request, not
+/// when the reindex ends: a first sync holds a reindex until it ends (#5409), and a renderer
+/// awaiting the answer would hang that long (#5423 C9). The progress goes out as
+/// [`VaultIndexProgressEvent`], and the vault status says indexing from the request to the
+/// reindex's end. A reindex that fails after the request is logged, and the vault status carries
+/// its message as the error, as Electron's `reindex` sets it (`main/vault/index.ts`).
 #[tauri::command]
 #[specta::specta]
-pub async fn vault_reindex(app: AppHandle<Wry>) -> Result<(), CommandError> {
+pub async fn vault_reindex<R: Runtime>(app: AppHandle<R>) -> Result<(), CommandError> {
     let index = app
         .try_state::<Arc<NoteIndex>>()
         .map(|state| state.inner().clone());
     blocking("vault_reindex", move || {
         let index = index.ok_or_else(not_open)?;
-        let reindexed =
-            index.reindex(move |step| broadcast(&app, VaultIndexProgressEvent::from(step)));
-        reindexed.map(drop).map_err(|error| match error {
-            IndexError::NotOpen => not_open(),
-            IndexError::NotRunning => CommandError::new(
-                ErrorKind::Internal,
-                "note_index_not_running",
-                "The note index is not running for this vault. Reopen the vault to start it",
-            ),
-            IndexError::Storage(error) => CommandError::from_core(&error),
-        })
+        let asker = app.clone();
+        let reindexing = index
+            .ask_reindex(move |step| broadcast(&app, VaultIndexProgressEvent::from(step)))
+            .map_err(command_error)?;
+        std::thread::Builder::new()
+            .name("vault-reindex".into())
+            .spawn(move || match reindexing.wait() {
+                Some(Ok(_)) => {}
+                Some(Err(error)) => {
+                    let error = command_error(error);
+                    log_failure("vault_reindex", &error);
+                    send_failed_status(&asker, error.message);
+                }
+                None => tracing::info!(
+                    scope = "vault_reindex",
+                    "the vault closed or its index stopped before the reindex ended"
+                ),
+            })
+            .map(drop)
+            .map_err(|error| {
+                CommandError::new(ErrorKind::Internal, "task_failed", error.to_string())
+            })
     })
     .await
+}
+
+fn command_error(error: IndexError) -> CommandError {
+    match error {
+        IndexError::NotOpen => not_open(),
+        IndexError::NotRunning => CommandError::new(
+            ErrorKind::Internal,
+            "note_index_not_running",
+            "The note index is not running for this vault. Reopen the vault to start it",
+        ),
+        IndexError::Storage(error) => CommandError::from_core(&error),
+    }
 }
 
 /// Every status the window receives, sent or answered, reads the index and takes the next
@@ -87,7 +116,24 @@ pub fn send_indexing_status(app: &AppHandle<Wry>) {
     }
 }
 
-fn indexing(app: &AppHandle<Wry>) -> Option<IndexProgress> {
+/// The vault status with `error`, once a reindex failed after `vault_reindex` answered: the
+/// window learns it from the status, as from Electron's `updateStatus({ isIndexing: false,
+/// error })`. Nothing while no vault is open or once the app quits ([`VaultStatus::resend`]).
+fn send_failed_status<R: Runtime>(app: &AppHandle<R>, error: String) {
+    let Some(session) = app.try_state::<Session>() else {
+        return;
+    };
+    let mut revision = SENDING.lock().unwrap_or_else(PoisonError::into_inner);
+    if let Some(status) = VaultStatus::resend(&session, indexing(app)) {
+        let status = VaultStatus {
+            error: Some(error),
+            ..status
+        };
+        broadcast(app, VaultStatusChangedEvent(revised(&mut revision, status)));
+    }
+}
+
+fn indexing<R: Runtime>(app: &AppHandle<R>) -> Option<IndexProgress> {
     app.try_state::<Arc<NoteIndex>>()
         .and_then(|index| index.indexing())
 }

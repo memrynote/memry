@@ -36,11 +36,13 @@ tauri-build = { version = "2.7", features = [] }
 
 [dependencies]
 memry-desktop = { path = "../../../crates/memry-desktop" }
+# `--cli` runs the command line in this binary (legacy shims) before any Tauri type exists.
+memrynote-cli = { path = "../../../crates/memrynote-cli" }
 # No `devtools`: a release build compiles no web inspector (wry and Tauri enable it in debug builds
 # only). With the feature on, a release build would inject Tauri's inspector hotkey, let page
 # script open it, and make the macOS webview inspectable from Safari. Rust CI fails when any crate
 # turns the feature on.
-tauri = { version = "2.12", features = ["specta", "tray-icon", "image-png"] }
+tauri = { version = "2.12", features = ["specta", "tray-icon", "image-png", "macos-private-api"] }
 # tauri-specta rc.26 requires exactly these versions.
 tauri-specta = { version = "=2.0.0-rc.26", features = ["derive", "typescript"] }
 specta = { version = "=2.0.0-rc.26", features = ["derive", "serde_json"] }
@@ -146,11 +148,12 @@ tauri-plugin-notification = "2.7.0"
 # `shutdown/mac_quit.rs` answers `applicationShouldTerminate:`, which tao does not implement.
 # `windows/nav_input.rs` reads the trackpad swipe events. `windows/chrome.rs` reads the default
 # title bar and button sizes, and the e2e build the traffic lights' frames (`e2e/window.rs`).
+# `shell/pdf/macos.rs` prints the PDF export (`NSPrintInfo`, `NSPrintOperation`, `NSDictionary`).
 block2 = "0.6"
 objc2 = "0.6.5"
-objc2-app-kit = { version = "0.3.2", default-features = false, features = ["std", "NSApplication", "NSResponder", "NSEvent", "NSWorkspace", "NSSpellChecker", "NSWindow", "NSView", "NSButton", "NSControl", "block2", "objc2-core-foundation"] }
+objc2-app-kit = { version = "0.3.2", default-features = false, features = ["std", "NSApplication", "NSResponder", "NSEvent", "NSRunningApplication", "NSTrackingArea", "NSWorkspace", "NSSpellChecker", "NSWindow", "NSView", "NSButton", "NSControl", "NSPrintInfo", "NSPrintOperation", "block2", "objc2-core-foundation"] }
 objc2-service-management = { version = "0.3.2", default-features = false, features = ["std", "SMAppService", "objc2", "objc2-foundation"] }
-objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSNotification", "NSString", "NSRange", "NSArray", "NSURL", "NSURLRequest", "NSBundle", "NSError", "NSOperation", "block2", "NSAppleEventManager", "NSAppleEventDescriptor"] }
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSNotification", "NSString", "NSRange", "NSArray", "NSURL", "NSURLRequest", "NSBundle", "NSError", "NSOperation", "NSDictionary", "NSGeometry", "block2", "NSAppleEventManager", "NSAppleEventDescriptor"] }
 # `shutdown/mac_quit.rs` answers a pending terminate on the main run loop.
 objc2-core-foundation = { version = "0.3.2", default-features = false, features = ["std", "CFRunLoop", "block2"] }
 # `notifications/mac.rs`: the modern notification center, as the Electron app used it.
@@ -164,6 +167,8 @@ objc2-web-kit = { version = "0.3.2", default-features = false, features = ["std"
 async-trait = { workspace = true }
 keyring-core = "1.0.1"
 memry-core = { path = "../../../crates/memry-core" }
+# `tests/vault_reindex.rs` breaks the index database under a held reindex.
+rusqlite = { workspace = true }
 tauri = { version = "2.12", features = ["specta", "test"] }
 tempfile = "3"
 # A test reads what a command logged.

@@ -1,53 +1,55 @@
 //! When passes run (the "When" invariants). A [`Fake`] runner times them and says what each
 //! came to; the real pass on the write-back thread closes the file.
 
-use std::collections::VecDeque;
+use std::collections::{HashSet, VecDeque};
 use std::sync::{Condvar, Mutex};
 use std::time::{Duration, Instant};
 
+#[cfg(unix)]
+use super::super::Failure;
 use super::super::schedule::{Cost, Runner, due_at};
-use super::super::{COOLDOWN_FACTOR, DEBOUNCE, Failure, MAX_COOLDOWN, WriteBack, WriteBackFailed};
+use super::super::{COOLDOWN_FACTOR, DEBOUNCE, MAX_COOLDOWN, WriteBack, WriteBackFailed};
 use super::*;
 
 /// Well under the debounce: no pass may start within it.
-const SOON: Duration = Duration::from_millis(300);
-const WAIT: Duration = Duration::from_secs(10);
+pub(super) const SOON: Duration = Duration::from_millis(300);
+pub(super) const WAIT: Duration = Duration::from_secs(10);
 /// Well short of [`MAX_COOLDOWN`]: after [`cool`], a pass that waited for its note's cooldown
 /// is not seen within this, however slow the machine. Bounds tied to the debounce flaked on a
 /// loaded runner.
 const SHORT_OF_COOLDOWN: Duration = Duration::from_secs(3);
 
 #[derive(Default)]
-struct Script {
+pub(super) struct Script {
     /// Each pass's note, start and end.
     runs: Vec<(String, Instant, Option<Instant>)>,
     /// What the next passes come to; `Unchanged` when none is left.
-    outcomes: VecDeque<Outcome>,
+    pub(super) outcomes: VecDeque<Outcome>,
     /// Passes wait while it is shut, `WAIT` at most.
     shut: bool,
     took: Duration,
 }
 
 #[derive(Clone, Default)]
-struct Fake(Arc<(Mutex<Script>, Condvar)>);
+pub(super) struct Fake(Arc<(Mutex<Script>, Condvar)>);
 
-const PANIC: &str = "panic";
+pub(super) const PANIC: &str = "panic";
 
 impl Fake {
-    fn with(&self, f: impl FnOnce(&mut Script)) {
+    pub(super) fn with(&self, f: impl FnOnce(&mut Script)) {
         f(&mut self.0.0.lock().unwrap());
         self.0.1.notify_all();
     }
 
-    fn runs(&self) -> Vec<(String, Instant, Option<Instant>)> {
+    pub(super) fn runs(&self) -> Vec<(String, Instant, Option<Instant>)> {
         self.0.0.lock().unwrap().runs.clone()
     }
 
-    fn count(&self) -> usize {
+    pub(super) fn count(&self) -> usize {
         self.runs().len()
     }
 
-    fn finished(&self) -> usize {
+    pub(super) fn finished(&self) -> usize {
         self.runs().iter().filter(|run| run.2.is_some()).count()
     }
 }
@@ -81,7 +83,7 @@ impl Runner for Fake {
     }
 }
 
-fn start(fake: &Fake) -> (WriteBack, broadcast::Receiver<WriteBackFailed>) {
+pub(super) fn start(fake: &Fake) -> (WriteBack, broadcast::Receiver<WriteBackFailed>) {
     let (tx, rx) = broadcast::channel(16);
     (WriteBack::start(fake.clone(), tx).unwrap(), rx)
 }
@@ -95,8 +97,20 @@ fn cool(fake: &Fake, writeback: &WriteBack, id: &str) {
     fake.with(|s| s.took = Duration::ZERO);
 }
 
-fn eventually(what: &str, done: impl Fn() -> bool) {
+/// Well past `RETRY_AFTER`: a guard that ends a test whose retry never comes.
+const RETRY_WAIT: Duration = Duration::from_secs(60);
+
+pub(super) fn eventually(what: &str, done: impl Fn() -> bool) {
     let deadline = Instant::now() + WAIT;
+    while !done() {
+        assert!(Instant::now() < deadline, "never: {what}");
+        std::thread::sleep(Duration::from_millis(5));
+    }
+}
+
+/// [`eventually`] for a retry, which comes `RETRY_AFTER` later.
+pub(super) fn eventually_retried(what: &str, done: impl Fn() -> bool) {
+    let deadline = Instant::now() + RETRY_WAIT;
     while !done() {
         assert!(Instant::now() < deadline, "never: {what}");
         std::thread::sleep(Duration::from_millis(5));
@@ -327,32 +341,72 @@ fn a_second_stop_returns_only_once_the_thread_has_ended() {
     first.join().unwrap();
 }
 
+/// A settle re-drives only the waiting notes whose body is no longer owed; a note still owed
+/// waits for a later settle instead of a pass that would keep its file again.
 #[test]
-fn a_failed_write_is_told_once_per_run_of_failures() {
+fn a_settle_skips_a_note_still_owed_its_body() {
     let fake = Fake::default();
-    let failed = || Outcome::Failed("disk full".into());
     fake.with(|s| {
         s.outcomes = [
-            failed(),
-            failed(),
-            Outcome::Kept(Keep::FileChanged),
-            failed(),
+            Outcome::Kept(Keep::BodyNotPulled),
+            Outcome::Kept(Keep::BodyNotPulled),
         ]
         .into()
     });
-    let (writeback, mut told) = start(&fake);
-    let mut events = Vec::new();
-    for _ in 0..4 {
-        writeback.schedule("n1");
+    let (writeback, _told) = start(&fake);
+    for id in ["n1", "n2"] {
+        writeback.schedule(id);
         assert!(writeback.flush(WAIT));
-        events.extend(std::iter::from_fn(|| told.try_recv().ok()));
     }
-    let event = WriteBackFailed {
-        note_id: "n1".into(),
-        title: Some("title of n1".into()),
-        reason: Failure::Write,
-    };
-    assert_eq!(events, vec![event.clone(), event]);
+    writeback.schedule_body_waits(|waits| {
+        assert_eq!(waits.len(), 2, "{waits:?}");
+        HashSet::from(["n2".to_owned()])
+    });
+    assert!(writeback.flush(WAIT));
+    writeback.schedule_body_waits(|_| HashSet::new());
+    assert!(writeback.flush(WAIT));
+    let ran: Vec<String> = fake.runs().into_iter().map(|run| run.0).collect();
+    assert_eq!(ran, ["n1", "n2", "n1", "n2"]);
+}
+
+/// A note whose pass kept its file for an unpulled body runs again once the bodies settle, and
+/// no other note does. Red while nothing scheduled it after its one pass (#5410).
+#[test]
+fn a_note_kept_for_its_body_runs_again_once_the_bodies_settle() {
+    let fake = Fake::default();
+    fake.with(|s| s.outcomes = [Outcome::Kept(Keep::BodyNotPulled)].into());
+    let (writeback, _told) = start(&fake);
+    for id in ["n1", "n2"] {
+        writeback.schedule(id);
+        assert!(writeback.flush(WAIT));
+    }
+    writeback.schedule_body_waits(|_| HashSet::new());
+    assert!(writeback.flush(WAIT));
+    let ran: Vec<String> = fake.runs().into_iter().map(|run| run.0).collect();
+    assert_eq!(ran, ["n1", "n2", "n1"]);
+    // n1's second pass did not keep it for its body: a later settle runs nothing.
+    writeback.schedule_body_waits(|_| HashSet::new());
+    assert!(writeback.flush(WAIT));
+    assert_eq!(fake.count(), 3);
+}
+
+/// A settle while the note's pass runs, which then keeps the file for its body, still gives it a
+/// pass: the settle's re-drive did not see the note yet.
+#[test]
+fn a_settle_during_the_pass_that_waits_for_the_body_gives_one_more_pass() {
+    let fake = Fake::default();
+    fake.with(|s| {
+        s.outcomes = [Outcome::Kept(Keep::BodyNotPulled)].into();
+        s.shut = true;
+    });
+    let (writeback, _told) = start(&fake);
+    writeback.schedule("n1");
+    eventually("the pass started", || fake.count() == 1);
+    writeback.schedule_body_waits(|_| HashSet::new());
+    fake.with(|s| s.shut = false);
+    eventually("the pass finished", || fake.finished() == 1);
+    assert!(writeback.flush(WAIT));
+    assert_eq!(fake.count(), 2);
 }
 
 #[test]
@@ -368,7 +422,7 @@ fn a_pass_that_panics_is_a_failed_one_and_the_next_still_runs() {
     assert_eq!(fake.count(), 2);
 }
 
-fn real(f: &mut Fixture) -> (WriteBack, broadcast::Receiver<WriteBackFailed>) {
+pub(super) fn real(f: &mut Fixture) -> (WriteBack, broadcast::Receiver<WriteBackFailed>) {
     let pass = std::mem::replace(
         &mut f.pass,
         Pass::new(
@@ -379,6 +433,7 @@ fn real(f: &mut Fixture) -> (WriteBack, broadcast::Receiver<WriteBackFailed>) {
             f.echo.clone(),
             None,
             f.own_files.clone(),
+            f.store.clone(),
         ),
     );
     let (tx, rx) = broadcast::channel(16);
@@ -431,4 +486,35 @@ fn a_note_whose_file_cannot_be_read_is_told_with_its_title() {
             reason: Failure::Write,
         }
     );
+}
+
+/// With the real pass: a write that failed (a file it could not read) is written on its own once
+/// the file can be read again, and a file edited outside the app meanwhile is kept, not
+/// overwritten by the retry. Red while a failed write waited for the note's next schedule.
+#[cfg(unix)]
+#[test]
+fn a_failed_write_is_retried_and_the_retry_keeps_an_outside_edit() {
+    use std::os::unix::fs::PermissionsExt;
+    let mut f = fixture();
+    let fixed = f.adopt("fixed.md", "first words\n");
+    let edited = f.adopt("edited.md", "first words\n");
+    let (writeback, mut told) = real(&mut f);
+    let mode = |rel: &str, mode| {
+        let path = f.root.join(rel);
+        std::fs::set_permissions(path, std::fs::Permissions::from_mode(mode)).unwrap();
+    };
+    for (id, rel) in [(&fixed, "fixed.md"), (&edited, "edited.md")] {
+        f.edit_in_app(id, "typed in the app");
+        mode(rel, 0o000);
+        writeback.schedule(id);
+    }
+    assert!(writeback.flush(WAIT));
+    assert_eq!(told.try_recv().unwrap().reason, Failure::Write);
+    assert_eq!(told.try_recv().unwrap().reason, Failure::Write);
+    mode("fixed.md", 0o644);
+    mode("edited.md", 0o644);
+    f.write("edited.md", "typed outside the app\n");
+    eventually_retried("the retry", || f.read("fixed.md") == "typed in the app\n");
+    writeback.stop();
+    assert_eq!(f.read("edited.md"), "typed outside the app\n");
 }

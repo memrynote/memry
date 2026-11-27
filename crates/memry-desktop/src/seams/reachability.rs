@@ -174,6 +174,11 @@ pub struct DesktopReachability {
 }
 
 impl DesktopReachability {
+    /// `net.isOnline()`: any usable path.
+    pub fn is_online(&self) -> bool {
+        self.current() != Reachable::Offline
+    }
+
     /// Watches the OS network events on `runtime` until dropped.
     pub fn start(runtime: &tokio::runtime::Handle) -> Self {
         let watcher = {

@@ -220,9 +220,12 @@ export function memryPwInstall(win) {
 
   const TEXT_PSEUDO = /:(has-text|text)\(("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')\)/g
 
+  const VISIBLE_PSEUDO = /:visible$/
+
   /**
    * `querySelectorAll` plus Playwright's `:has-text("x")` (the element's text contains x,
-   * ignoring case) and `:text("x")` (the smallest element whose text contains x).
+   * ignoring case), `:text("x")` (the smallest element whose text contains x) and `:visible`
+   * at the end of a selector (the match is visible).
    */
   function queryCss(ctx, selector) {
     const found = []
@@ -235,7 +238,10 @@ export function memryPwInstall(win) {
         })
         return ''
       })
-      let hits = [...ctx.querySelectorAll(plain || '*')]
+      const visibleOnly = VISIBLE_PSEUDO.test(plain.trim())
+      const css = plain.trim().replace(VISIBLE_PSEUDO, '')
+      let hits = [...ctx.querySelectorAll(css || '*')]
+      if (visibleOnly) hits = hits.filter(isVisible)
       for (const { kind, text } of texts) {
         hits = hits.filter((el) => matches(textOf(el), text, false))
         if (kind === 'text') {
@@ -585,6 +591,46 @@ export function memryPwInstall(win) {
     return true
   }
 
+  let held = null
+  let holding = null
+  const redispatched = new WeakSet()
+
+  /**
+   * The modifiers a click holds (`{ metaKey, ctrlKey, shiftKey, altKey }`, or null once it is
+   * done). tauri-plugin-wdio-webdriver 1.5.0 gives its key events the held modifiers but builds
+   * its synthetic mouse and pointer events without them, so a Cmd or Ctrl click reads as a plain
+   * one. While a click holds modifiers, each such event the driver sends is stopped and sent again
+   * with them.
+   */
+  function hold(modifiers) {
+    held = modifiers
+    if (holding) return true
+    holding = (event) => {
+      if (!held || event.isTrusted || redispatched.has(event)) return
+      if (Object.keys(held).every((flag) => event[flag] === held[flag])) return
+      event.stopImmediatePropagation()
+      event.preventDefault()
+      const init = {
+        ...mouseInit(event.clientX, event.clientY, event.button, event.detail, event.buttons),
+        ...held
+      }
+      const copy = event.type.startsWith('pointer')
+        ? new win.PointerEvent(event.type, {
+            ...init,
+            pointerId: event.pointerId,
+            pointerType: event.pointerType,
+            isPrimary: event.isPrimary
+          })
+        : new win.MouseEvent(event.type, init)
+      redispatched.add(copy)
+      event.target.dispatchEvent(copy)
+    }
+    for (const type of ['pointerdown', 'pointerup', 'mousedown', 'mouseup', 'click']) {
+      win.addEventListener(type, holding, true)
+    }
+    return true
+  }
+
   function mouseInit(x, y, button, detail, buttons) {
     return {
       bubbles: true,
@@ -599,13 +645,18 @@ export function memryPwInstall(win) {
     }
   }
 
-  /** Focuses what a press on `el` focuses, or blurs the focus when nothing there takes it. */
+  /**
+   * Focuses what a press on `el` focuses, or blurs the focus when nothing there takes it. The
+   * driver's press is synthetic, so this native call is the only thing that moves focus, and in a
+   * window without system focus it fires no event: `moveFocus` fires them (#3967).
+   */
   function focusAt(el) {
     const focusable = el.closest(FOCUSABLE)
     if (focusable) {
-      if (doc.activeElement !== focusable) focusable.focus()
+      if (doc.activeElement !== focusable) moveFocus(focusable, () => focusable.focus(), true)
     } else if (doc.activeElement && doc.activeElement !== doc.body) {
-      doc.activeElement.blur()
+      const active = doc.activeElement
+      moveFocus(active, () => active.blur(), false)
     }
   }
 
@@ -684,6 +735,7 @@ export function memryPwInstall(win) {
     target,
     settle,
     watch,
+    hold,
     fixup,
     fixupHover,
     fill,

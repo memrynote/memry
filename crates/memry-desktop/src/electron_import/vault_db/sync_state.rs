@@ -11,10 +11,16 @@
 //! re-plans the source and compares the staged state ([`mismatches`]).
 
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
+use memry_core::api::errors::StorageError;
+use memry_core::crdt::errors::CrdtError;
+use memry_core::crdt::registry::UpdateSink;
+use memry_core::crdt::{DocumentRegistry, markdown_seed};
 use memry_core::protocol::types::Declaration;
 use memry_core::storage::import::{
-    ImportQuarantined, ImportRecordCursor, ImportRefused, ImportSyncState, ImportWriter,
+    ImportDocument, ImportQuarantined, ImportRecordCursor, ImportRefused, ImportSyncState,
+    ImportWriter,
 };
 use memry_core::sync::journal_day_merge::OwedMerge;
 use rusqlite::types::ValueRef;
@@ -25,7 +31,7 @@ use serde_json::Value;
 use super::source::source_error;
 use super::tables::records::malformed;
 use super::tables::{SourceDb, TableStats};
-use super::{ImportError, TableCtx, read_source_id};
+use super::{FoldedDoc, ImportError, TableCtx, read_source_id};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum KeyMatch {
@@ -139,10 +145,10 @@ pub const SYNC_STATE_KEYS: &[SyncStateKey] = &[
         Exact("noteBodyLegacySweep"),
         "core pulls per document and runs no legacy note body sweep",
     ),
-    convert(
+    skip(
         Exact("packsAppliedThroughCursor"),
-        packs_applied_through,
-        "Step 17 pack_bootstrap applied-through cursor",
+        "the core keeps no pack watermark since #5339: a vault holding a cursor is past its \
+         first sync and runs no pack bootstrap",
     ),
     skip(
         Exact("packSeedSettlePending"),
@@ -203,6 +209,8 @@ pub const MAX_VALUE_BYTES: usize = 8 * 1024 * 1024;
 pub struct SyncStatePlan {
     pub state: ImportSyncState,
     pub stats: TableStats,
+    /// `journalDayMerge:` text of this device by foreign id ([`fallback_documents`]).
+    pub fallbacks: Vec<(String, String)>,
 }
 
 const TABLE: &str = "sync_state";
@@ -279,10 +287,6 @@ pub fn mismatches(source: &Connection, writer: &ImportWriter) -> Result<Vec<Stri
             planned.cursor_skip_repair != staged.cursor_skip_repair,
         ),
         ("pause", planned.paused != staged.paused),
-        (
-            "pack watermark",
-            planned.packs_applied_through != staged.packs_applied_through,
-        ),
         ("quarantine", planned.quarantined != staged.quarantined),
         ("refused items", planned.refused != staged.refused),
         (
@@ -336,17 +340,6 @@ fn cursor_skip_repair(plan: &mut SyncStatePlan, value: &str) -> Carried {
     }
     plan.state.cursor_skip_repair = Some(value.to_owned());
     Carried::Written
-}
-
-/// A missing or unreadable watermark reads as 0 in both apps.
-fn packs_applied_through(plan: &mut SyncStatePlan, value: &str) -> Carried {
-    match value.parse::<i64>() {
-        Ok(watermark) => {
-            plan.state.packs_applied_through = Some(watermark);
-            Carried::Written
-        }
-        Err(_) => Carried::Dropped("unreadablePacksAppliedThroughCursor"),
-    }
 }
 
 #[derive(Deserialize)]
@@ -510,28 +503,83 @@ struct OwedJournalDayMerge {
     record_markdown: Value,
     #[serde(default)]
     fallback_markdown: Value,
+    #[serde(default)]
+    tags: Value,
+    #[serde(default)]
+    unpushed_tags: Value,
+    #[serde(default)]
+    record_tags: Value,
 }
 
 /// `listOwedJournalDayMerges`: one owed merge per row; a value that does not parse is dropped.
-/// A clock the core cannot read is no clock (`parse_owed`), so no tombstone is owed.
+/// A clock the core cannot read is no clock (`parse_owed`), so no tombstone is owed. Electron's
+/// holder `tags` are the core's holder tags; absent `unpushedTags` count every holder tag, as on
+/// Electron. This device's day text (`fallbackMarkdown`) is not part of the core's owed merge:
+/// [`fallback_documents`] makes it the foreign doc's local Yjs state.
 fn journal_day_merge(plan: &mut SyncStatePlan, value: &str) -> Carried {
     let Ok(owed) = serde_json::from_str::<OwedJournalDayMerge>(value) else {
         return Carried::Dropped("unreadableJournalDayMerges");
     };
     let text = |value: Value| value.as_str().map(str::to_owned);
+    let tags = |value: Value| serde_json::from_value::<Vec<String>>(value).ok();
+    let holder_tags = tags(owed.tags).unwrap_or_default();
     let merge = OwedMerge {
         clock: serde_json::from_value(owed.clock).unwrap_or_default(),
         deleted: owed.deleted == Value::Bool(true),
         record_markdown: text(owed.record_markdown),
-        fallback_markdown: text(owed.fallback_markdown),
+        record_tags: tags(owed.record_tags).unwrap_or_default(),
+        unpushed_holder_tags: tags(owed.unpushed_tags).unwrap_or_else(|| holder_tags.clone()),
+        holder_tags,
         foreign_id: owed.foreign_id,
         date: owed.date,
     };
     // The core keys a merge by its foreign id, so a second row of the same id replaces it.
+    plan.fallbacks.retain(|(id, _)| *id != merge.foreign_id);
+    // A blank snapshot keeps nothing (`journal-day-merge.ts`, `fallbackMarkdown?.trim()`).
+    if let Some(markdown) = text(owed.fallback_markdown).filter(|m| !m.trim().is_empty()) {
+        plan.fallbacks.push((merge.foreign_id.clone(), markdown));
+    }
     let merges = &mut plan.state.journal_merges;
     merges.retain(|held| held.foreign_id != merge.foreign_id);
     merges.push(merge);
     Carried::Written
+}
+
+/// This device's text of each foreign day an owed merge holds (`fallbackMarkdown`), as that
+/// foreign doc's local Yjs state, stored at `now_ms` as this device's newest own text. Electron's
+/// drain builds the foreign doc from it when the doc holds no state (`absorbForeignDoc`,
+/// `journal-day-merge.ts:333`), deleted id or not; the core's drain folds a foreign doc's local
+/// state into `j<D>` the same way, so the import builds it here. A foreign id whose doc the
+/// store already holds keeps that doc, as Electron does. The client id is fixed per foreign id
+/// and device, as the core's own build (`journal_day_merge::built_state`).
+pub fn fallback_documents(
+    source: &Connection,
+    folded: &[FoldedDoc],
+    device_id: Option<&str>,
+    now_ms: i64,
+) -> Result<Vec<ImportDocument>, ImportError> {
+    let device = device_id.unwrap_or("memry-electron-import");
+    let failed = |e: CrdtError| StorageError::Failed {
+        what: format!("journal day text: {e}"),
+    };
+    let mut docs = Vec::new();
+    for (foreign_id, markdown) in plan(source)?.fallbacks {
+        if folded.iter().any(|doc| doc.doc_id == foreign_id) {
+            continue;
+        }
+        let sink: UpdateSink = Arc::new(|_, _| {});
+        let document = DocumentRegistry::new(&format!("{foreign_id}\0{device}"), sink)
+            .get_or_open(&foreign_id)
+            .map_err(failed)?;
+        markdown_seed::seed_document(&document, &markdown).map_err(failed)?;
+        docs.push(ImportDocument {
+            state: document.encode_state().map_err(failed)?,
+            doc_id: foreign_id,
+            watermark: None,
+            created_at: now_ms,
+        });
+    }
+    Ok(docs)
 }
 
 #[cfg(test)]

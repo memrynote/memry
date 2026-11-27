@@ -211,94 +211,40 @@ final class LinkedTasksViewModel {
     }
 }
 
-/// The tasks linked to this note, after desktop's `note/linked-tasks`: absent
-/// when there are none, a collapsible "Linked Tasks (N)" header, and each row
-/// opening its task (TP054) in the Tasks tab.
-struct LinkedTasksSection: View {
-    let model: LinkedTasksViewModel
-    /// Opens a task by id. `nil` draws the rows without the action.
-    var open: ((String) -> Void)?
-
-    @State private var isCollapsed = false
+/// One task linked to this note, after desktop's `note/linked-tasks`: a tap
+/// opens it (TP054) in the Tasks tab.
+struct LinkedTaskRow: View {
+    let task: LinkedTask
+    /// Opens a task by id. `nil` draws the row without the action.
+    let open: ((String) -> Void)?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Tokens.Space.small) {
-            if !model.tasks.isEmpty {
-                header
-                if !isCollapsed {
-                    ForEach(model.tasks, id: \.id) { task in
-                        if let open {
-                            Button { open(task.id) } label: { row(task) }
-                                .buttonStyle(.plain)
-                                .accessibilityAddTraits(.isButton)
-                                .accessibilityHint(TasksCopy.openInTasks)
-                                .accessibilityIdentifier("tasks.noteLinked.row")
-                        } else {
-                            row(task)
-                        }
-                    }
-                }
-            }
+        if let open {
+            Button { open(task.id) } label: { row }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(.isButton)
+                .accessibilityHint(TasksCopy.openInTasks)
+                .accessibilityIdentifier("tasks.noteLinked.row")
+        } else {
+            row
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .calmAnimation(.fast, value: isCollapsed)
-        .task { await model.load() }
     }
 
-    private var header: some View {
-        Button {
-            isCollapsed.toggle()
-        } label: {
-            HStack(spacing: Tokens.Space.small) {
-                // Two symbols rather than a rotation: a rotated forward
-                // chevron points up, not down, in right-to-left layouts.
-                Image(systemName: isCollapsed ? "chevron.forward" : "chevron.down")
-                    .foregroundStyle(Tokens.Text.tertiary.color)
-                Text(TasksCopy.linkedTasksTitle)
-                    .font(Tokens.Typography.heading.font)
-                    .foregroundStyle(Tokens.Text.primary.color)
-                Text("(\(model.tasks.count))")
-                    .font(Tokens.Typography.caption.font)
-                    .foregroundStyle(Tokens.Text.secondary.color)
-                Spacer(minLength: 0)
-            }
-            .frame(minHeight: Tokens.Size.minimumHitArea)
-            .contentShape(.rect)
-        }
-        .buttonStyle(.plain)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(TasksCopy.linkedTasksHeader(model.tasks.count))
-        .accessibilityValue(isCollapsed ? TasksCopy.linkedTasksCollapsed : TasksCopy.linkedTasksExpanded)
-        .accessibilityAddTraits([.isHeader, .isButton])
-        .accessibilityIdentifier("tasks.noteLinked.header")
-    }
-
-    private func row(_ task: LinkedTask) -> some View {
-        HStack(spacing: Tokens.Space.small) {
-            Image(systemName: task.isDone ? "checkmark.circle.fill" : "circle")
-                .foregroundStyle(task.isDone ? Tokens.Task.complete.color : Tokens.Text.tertiary.color)
-            VStack(alignment: .leading, spacing: Tokens.Space.tight) {
-                Text(task.title)
-                    .font(Tokens.Typography.body.font)
-                    .foregroundStyle(task.isDone ? Tokens.Text.secondary.color : Tokens.Text.primary.color)
-                    .strikethrough(task.isDone)
-                // Which relationship this is, because "written here" and
-                // "mentions this note" are different facts about one list.
-                Text(subtitle(for: task))
-                    .font(Tokens.Typography.caption.font)
-                    .foregroundStyle(Tokens.Text.secondary.color)
-            }
-            Spacer(minLength: 0)
-        }
-        .frame(minHeight: Tokens.Size.minimumHitArea)
-        .contentShape(.rect)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(
-            TasksCopy.linkedTaskLabel(title: task.title, isDone: task.isDone, subtitle: subtitle(for: task))
+    private var row: some View {
+        ConnectionRow(
+            symbol: task.isDone ? "checkmark.circle.fill" : "circle",
+            tint: task.isDone ? Tokens.Task.complete.color : Tokens.Text.tertiary.color,
+            title: task.title,
+            // Which relationship this is, because "written here" and
+            // "mentions this note" are different facts about one list.
+            detail: subtitle,
+            isDone: task.isDone
         )
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(TasksCopy.linkedTaskLabel(title: task.title, isDone: task.isDone, subtitle: subtitle))
     }
 
-    private func subtitle(for task: LinkedTask) -> String {
+    private var subtitle: String {
         TasksCopy.linkedTaskSubtitle(
             fromThisNote: task.fromThisNote,
             due: task.dueDate.map { TaskBlockRow.dueLabel($0) ?? $0 }

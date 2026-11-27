@@ -52,6 +52,7 @@ struct JournalYearScreen: View {
                 Button(JournalCopy.nextYear, systemImage: "chevron.forward") { router.rootYear = year + 1 }
                     .accessibilityIdentifier("journal.year.next")
             }
+            DayPanelToolbarItem()
             GlobalSearchToolbarItem()
         }
         .accessibilityIdentifier("journal.year")

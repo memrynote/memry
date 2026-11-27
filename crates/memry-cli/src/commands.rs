@@ -9,8 +9,8 @@ use std::io::Write as _;
 use std::sync::Arc;
 
 use memry_core::api::crypto::{
-    account_key_verifier, account_key_verifier_matches, derive_master_key, derive_vault_key,
-    validate_recovery_phrase,
+    account_key_verifier, account_key_verifier_matches, decrypt_vault_name, derive_master_key,
+    derive_vault_key, validate_recovery_phrase,
 };
 use memry_core::api::errors::StorageError;
 use memry_core::crdt::registry::{DocumentRegistry, UpdateSink};
@@ -18,11 +18,12 @@ use memry_core::crdt::text_extract::{cross_shell_digest, extract_text};
 use memry_core::crdt::update_log;
 use memry_core::crypto::keys::base64_decode;
 use memry_core::protocol::account::{self, AccountCipher, VaultSummary};
+use memry_core::protocol::http::HttpClient;
 use memry_core::protocol::types::Declaration;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_core::storage::Db;
 use memry_core::sync::body_pull::BodyPull;
-use memry_core::sync::pull::{PullLoop, PullReport};
+use memry_core::sync::pull::{PullLoop, PullReport, RecordCipher};
 
 use rusqlite::OptionalExtension as _;
 
@@ -88,13 +89,44 @@ pub async fn unlock(cli: &Cli, path: &std::path::Path) -> Result<(), CliError> {
 /// `vaults`: the registry, which is also how a vault id for `pull` is found.
 pub async fn vaults(cli: &Cli) -> Result<(), CliError> {
     let http = cli.http()?;
-    let vaults = account::vaults(&http).await?;
+    let mut vaults = account::vaults(&http).await?;
+    // A sealed name opens once the profile is unlocked, so a vault can be
+    // named rather than looked up by id.
+    if let Ok(master_key) = cli.master_key() {
+        for vault in &mut vaults {
+            if let (None, Some(sealed), Some(nonce)) =
+                (&vault.name, &vault.encrypted_name, &vault.name_nonce)
+            {
+                vault.name = decrypt_vault_name(
+                    master_key.clone(),
+                    vault.id.clone(),
+                    sealed.clone(),
+                    nonce.clone(),
+                );
+            }
+        }
+    }
     if vaults.is_empty() {
         eprintln!("this account has no vaults");
         return Ok(());
     }
     print!("{}", format_vaults(&vaults));
     Ok(())
+}
+
+/// The record pull of `pull`. It carries this device's clock id, so a
+/// concurrent journal merge that re-queues is ticked for this device and
+/// stored rather than recorded corrupt (chapter 06 §6.12.3).
+fn record_pull(
+    http: Arc<HttpClient>,
+    db: Db,
+    cipher: Arc<dyn RecordCipher>,
+    vault: &str,
+    device_id: &str,
+) -> PullLoop {
+    PullLoop::new(http, db, Declaration::subscribed(), cipher)
+        .with_vault(vault)
+        .with_clock_device(device_id)
 }
 
 /// `pull --vault <id>`: one run of the core's pull loop into this vault's
@@ -107,9 +139,10 @@ pub async fn pull(cli: &Cli, vault: &str) -> Result<(), CliError> {
     let directory = account::device_directory(&http).await?;
     let cipher = Arc::new(AccountCipher::new(vault_key, directory));
 
+    let device_id = cli.device_id()?;
+
     let db = cli.open_vault(vault)?;
-    let report = PullLoop::new(http, db.clone(), Declaration::subscribed(), cipher.clone())
-        .with_vault(vault)
+    let report = record_pull(http, db.clone(), cipher.clone(), vault, &device_id)
         .run(MAX_PULL_PAGES)
         .await?;
 
@@ -308,7 +341,10 @@ pub struct NoteRow {
 /// The document id of a note body is the note record's id (chapter 07 §7.1),
 /// and the body is whatever the update log already holds: this command reads,
 /// and never fetches.
-fn open_body(db: &Db, note: &str) -> Result<Arc<memry_core::crdt::registry::Document>, CliError> {
+pub(crate) fn open_body(
+    db: &Db,
+    note: &str,
+) -> Result<Arc<memry_core::crdt::registry::Document>, CliError> {
     let doc_id = note.to_string();
     let plan = db.call_blocking(move |conn| {
         update_log::load_plan(conn, &doc_id).map_err(|error| StorageError::Failed {
@@ -404,6 +440,10 @@ pub fn format_hex(bytes: &[u8]) -> String {
 }
 
 #[cfg(test)]
+#[path = "pull_tests.rs"]
+mod pull_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use memry_core::storage::open_data;
@@ -453,6 +493,9 @@ mod tests {
             corrupt: 3,
             expired: 0,
             dropped_pages: 0,
+            // Set only by a pull by id (`fetch_ids`), which this command
+            // never runs.
+            uncovered: 0,
             cursor: Some("42".to_string()),
             has_more: true,
             refused: true,

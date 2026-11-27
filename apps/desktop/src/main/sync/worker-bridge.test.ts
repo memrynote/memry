@@ -210,7 +210,8 @@ describe('SyncWorkerBridge', () => {
         [],
         new Uint8Array(32),
         new Uint8Array(64),
-        'device-1'
+        'device-1',
+        null
       )
 
       // #when — terminate() lands and the abandoned thread finally reports exit
@@ -253,7 +254,8 @@ describe('SyncWorkerBridge', () => {
         ],
         new Uint8Array(32),
         new Uint8Array(64),
-        'device-1'
+        'device-1',
+        null
       )
 
       const postedMsg = mockWorkerInstance.postMessage.mock.calls.find(
@@ -307,7 +309,13 @@ describe('SyncWorkerBridge', () => {
     const inFlightEncrypt = (
       live: MockWorker
     ): { promise: Promise<unknown>; requestId: string } => {
-      const promise = bridge.encryptBatch([], new Uint8Array(32), new Uint8Array(64), 'device-1')
+      const promise = bridge.encryptBatch(
+        [],
+        new Uint8Array(32),
+        new Uint8Array(64),
+        'device-1',
+        null
+      )
       const posted = live.postMessage.mock.calls.findLast(([m]) => m.type === 'encrypt-batch')?.[0]
       // Never issued means the bridge refused the batch — the wedge this suite
       // is about. Keep going so the assertion reports the rejection, not a
@@ -429,7 +437,13 @@ describe('SyncWorkerBridge', () => {
       // continuation left the bridge with no worker at all and this batch
       // rejected with 'Worker not started' — three of which latch the bridge
       // off to main-thread crypto for the rest of the session.
-      const promise = bridge.encryptBatch([], new Uint8Array(32), new Uint8Array(64), 'device-1')
+      const promise = bridge.encryptBatch(
+        [],
+        new Uint8Array(32),
+        new Uint8Array(64),
+        'device-1',
+        null
+      )
       const posted = mockWorkerInstance.postMessage.mock.calls.findLast(
         ([m]) => m.type === 'encrypt-batch'
       )?.[0]
@@ -463,7 +477,13 @@ describe('SyncWorkerBridge', () => {
       // followed by start()
       await startReady()
       for (let i = 0; i < MAX_CONSECUTIVE_FAILURES; i++) {
-        const request = bridge.encryptBatch([], new Uint8Array(32), new Uint8Array(64), 'device-1')
+        const request = bridge.encryptBatch(
+          [],
+          new Uint8Array(32),
+          new Uint8Array(64),
+          'device-1',
+          null
+        )
         vi.advanceTimersByTime(60_001)
         await expect(request).rejects.toThrow('Worker request timed out')
       }
@@ -528,7 +548,8 @@ describe('SyncWorkerBridge', () => {
         ],
         new Uint8Array(32),
         new Uint8Array(64),
-        'device-1'
+        'device-1',
+        null
       )
 
       // #when — extract the requestId from the posted message
@@ -559,7 +580,8 @@ describe('SyncWorkerBridge', () => {
         [],
         new Uint8Array(32),
         new Uint8Array(64),
-        'device-1'
+        'device-1',
+        null
       )
 
       const postedMsg = mockWorkerInstance.postMessage.mock.calls.find(
@@ -642,7 +664,8 @@ describe('SyncWorkerBridge', () => {
         [],
         new Uint8Array(32),
         new Uint8Array(64),
-        'device-1'
+        'device-1',
+        null
       )
 
       vi.advanceTimersByTime(60_001)
@@ -663,7 +686,8 @@ describe('SyncWorkerBridge', () => {
         [],
         new Uint8Array(32),
         new Uint8Array(64),
-        'device-1'
+        'device-1',
+        null
       )
 
       // #when
@@ -680,7 +704,7 @@ describe('SyncWorkerBridge', () => {
       // #given — bridge never started
       // #when / #then
       await expect(
-        bridge.encryptBatch([], new Uint8Array(32), new Uint8Array(64), 'device-1')
+        bridge.encryptBatch([], new Uint8Array(32), new Uint8Array(64), 'device-1', null)
       ).rejects.toThrow('Worker not started')
     })
   })
@@ -751,13 +775,25 @@ describe('SyncWorkerBridge', () => {
 
     /** One batch against a worker that is alive but never answers. */
     const silentBatch = async (): Promise<void> => {
-      const request = bridge.encryptBatch([], new Uint8Array(32), new Uint8Array(64), 'device-1')
+      const request = bridge.encryptBatch(
+        [],
+        new Uint8Array(32),
+        new Uint8Array(64),
+        'device-1',
+        null
+      )
       vi.advanceTimersByTime(60_001)
       await expect(request).rejects.toThrow('Worker request timed out')
     }
 
     const answeredBatch = async (): Promise<void> => {
-      const request = bridge.encryptBatch([], new Uint8Array(32), new Uint8Array(64), 'device-1')
+      const request = bridge.encryptBatch(
+        [],
+        new Uint8Array(32),
+        new Uint8Array(64),
+        'device-1',
+        null
+      )
       const posted = encryptBatchRequests().at(-1)![0]
       mockWorkerInstance.simulateMessage({
         type: 'encrypt-batch-result',
@@ -843,7 +879,13 @@ describe('SyncWorkerBridge', () => {
     }
 
     const sendUnanswered = (): Promise<unknown> => {
-      const request = bridge.encryptBatch([], new Uint8Array(32), new Uint8Array(64), 'device-1')
+      const request = bridge.encryptBatch(
+        [],
+        new Uint8Array(32),
+        new Uint8Array(64),
+        'device-1',
+        null
+      )
       request.catch(() => {})
       return request
     }
@@ -855,7 +897,7 @@ describe('SyncWorkerBridge', () => {
 
       // #when / #then
       await expect(
-        bridge.encryptBatch([], new Uint8Array(32), new Uint8Array(64), 'device-1')
+        bridge.encryptBatch([], new Uint8Array(32), new Uint8Array(64), 'device-1', null)
       ).rejects.toThrow('Worker request queue full')
     })
 
@@ -866,7 +908,7 @@ describe('SyncWorkerBridge', () => {
 
       // #when
       await bridge
-        .encryptBatch([], new Uint8Array(32), new Uint8Array(64), 'device-1')
+        .encryptBatch([], new Uint8Array(32), new Uint8Array(64), 'device-1', null)
         .catch(() => {})
 
       // #then — capped requests cost nothing: no message, no pending entry
@@ -905,7 +947,13 @@ describe('SyncWorkerBridge', () => {
     it('#then no timer is left running once the last request settles', async () => {
       // #given
       await startReadyBridge()
-      const request = bridge.encryptBatch([], new Uint8Array(32), new Uint8Array(64), 'device-1')
+      const request = bridge.encryptBatch(
+        [],
+        new Uint8Array(32),
+        new Uint8Array(64),
+        'device-1',
+        null
+      )
       const posted = mockWorkerInstance.postMessage.mock.calls.find(
         ([m]) => m.type === 'encrypt-batch'
       )![0]
@@ -939,7 +987,8 @@ describe('SyncWorkerBridge', () => {
         [],
         new Uint8Array(32),
         new Uint8Array(64),
-        'device-1'
+        'device-1',
+        null
       )
 
       // #when
@@ -976,7 +1025,13 @@ describe('SyncWorkerBridge', () => {
 
       // #when — more consecutive protocol-error replies than the latch threshold
       for (let i = 0; i <= MAX_CONSECUTIVE_FAILURES; i++) {
-        const request = bridge.encryptBatch([], new Uint8Array(32), new Uint8Array(64), 'device-1')
+        const request = bridge.encryptBatch(
+          [],
+          new Uint8Array(32),
+          new Uint8Array(64),
+          'device-1',
+          null
+        )
         replyUnknownKindError()
         // #then — each CALL rejects so the caller falls back to main-thread crypto…
         await expect(request).rejects.toThrow('Unsupported worker message kind')
@@ -997,14 +1052,26 @@ describe('SyncWorkerBridge', () => {
     it('#then a genuine timeout still engages the latch alongside them', async () => {
       // #given — a protocol-error reply, which must not advance the failure count
       await startReady()
-      const errored = bridge.encryptBatch([], new Uint8Array(32), new Uint8Array(64), 'device-1')
+      const errored = bridge.encryptBatch(
+        [],
+        new Uint8Array(32),
+        new Uint8Array(64),
+        'device-1',
+        null
+      )
       replyUnknownKindError()
       await expect(errored).rejects.toThrow('Unsupported worker message kind')
       expect(bridge.isRunning).toBe(true)
 
       // #when — real transport failures: a live-but-silent worker timing out
       for (let i = 0; i < MAX_CONSECUTIVE_FAILURES; i++) {
-        const silent = bridge.encryptBatch([], new Uint8Array(32), new Uint8Array(64), 'device-1')
+        const silent = bridge.encryptBatch(
+          [],
+          new Uint8Array(32),
+          new Uint8Array(64),
+          'device-1',
+          null
+        )
         vi.advanceTimersByTime(60_001)
         await expect(silent).rejects.toThrow('Worker request timed out')
       }
@@ -1058,6 +1125,20 @@ describe('SyncWorkerBridge', () => {
       await expect(request).resolves.toEqual({
         results: [{ index: 0, update: new Uint8Array([1, 2, 3]) }],
         failures: [{ index: 1, noteId: 'note-2', error: 'bad signature', isSignatureError: true }]
+      })
+    })
+
+    it('#then forwards stopAtFirstOpen to the worker', async () => {
+      // #given
+      await startReady()
+
+      // #when
+      void bridge.decryptCrdtBatch([], new Uint8Array(32), {}, { stopAtFirstOpen: true })
+
+      // #then
+      expect(mockWorkerInstance.postMessage.mock.calls.at(-1)![0]).toMatchObject({
+        type: 'decrypt-crdt-batch',
+        stopAtFirstOpen: true
       })
     })
 
@@ -1150,7 +1231,7 @@ describe('SyncWorkerBridge', () => {
     }
 
     const encrypt = (): Promise<unknown> =>
-      bridge.encryptBatch([], new Uint8Array(32), new Uint8Array(64), 'device-1')
+      bridge.encryptBatch([], new Uint8Array(32), new Uint8Array(64), 'device-1', null)
 
     it('#then shuts the thread down but still reports running', async () => {
       // #given

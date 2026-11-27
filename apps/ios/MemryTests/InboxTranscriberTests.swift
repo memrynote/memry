@@ -36,11 +36,17 @@ struct InboxTranscriberTests {
         #expect(task.cancels.load(ordering: .relaxed) == 1)
     }
 
+    /// The result comes from a thread of its own after `recognize` returned
+    /// to wait. A global-queue block raced a 30 s timeout and lost on a
+    /// loaded CI runner, where the queue ran nothing for that long (#5484).
+    /// The timeout is not under test here, so it is out of reach.
     @Test("a result delivered later on another queue resumes the caller")
     func asyncResult() async {
         let task = FakeTask()
-        let text = await InboxTranscriber.recognize(timeout: .seconds(30)) { finish in
-            DispatchQueue.global().asyncAfter(deadline: .now() + 0.05) { finish("[agent] late") }
+        let text = await InboxTranscriber.recognize(timeout: .seconds(3600)) { finish in
+            let recognizer = Thread { finish("[agent] late") }
+            recognizer.qualityOfService = .userInitiated
+            recognizer.start()
             return task
         }
         #expect(text == "[agent] late")

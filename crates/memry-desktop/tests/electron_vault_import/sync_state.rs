@@ -237,20 +237,12 @@ fn a_paused_vault_stays_paused() {
 }
 
 #[test]
-fn the_pack_watermark_is_carried() {
+fn the_pack_watermark_is_dropped_with_a_report_line() {
     let vault = Vault::new();
     seed_key(&vault, "packsAppliedThroughCursor", "777");
-    import(&vault);
-    assert_eq!(
-        meta(&vault, "pack_bootstrap.applied_through_cursor").as_deref(),
-        Some("777")
-    );
-
-    let vault = Vault::new();
-    seed_key(&vault, "packsAppliedThroughCursor", "NaN");
     let report = import(&vault);
     assert_eq!(meta(&vault, "pack_bootstrap.applied_through_cursor"), None);
-    assert_eq!(report.dropped["unreadablePacksAppliedThroughCursor"], 1);
+    assert_eq!(report.dropped["packsAppliedThroughCursor"], 1);
 }
 
 #[test]

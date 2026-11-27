@@ -8,17 +8,19 @@ use serde_json::Value as Json;
 use std::sync::Arc;
 
 use super::{BodyPull, BodyPullError, BodyPullReport, PackedUpdate, RetryPolicy};
-use crate::api::errors::StorageError;
-use crate::crdt::update_log::{self, Namespace};
+use crate::crdt::epoch::Epoch;
+use crate::crdt::update_log;
 use crate::sync::crdt_wire::SnapshotMeta;
 use crate::sync::crypto_batch::off_runtime;
 
 impl BodyPull {
     /// `GET /sync/crdt/snapshot/:noteId` and the store that follows it (§7.8,
-    /// §7.11). Answers whether a baseline was actually taken.
+    /// §7.11). Answers whether a baseline was actually taken. A body that
+    /// moved off `epoch` meanwhile (#5356) stores nothing and is incomplete.
     pub(super) async fn fetch_baseline(
         &self,
         doc_id: &str,
+        epoch: Epoch,
         cursor: i64,
         report: &mut BodyPullReport,
     ) -> Result<bool, BodyPullError> {
@@ -69,8 +71,13 @@ impl BodyPull {
             .and_then(Json::as_str)
             .map(str::to_owned);
 
-        self.store_baseline(doc_id, snapshot, sequence_num, revision, cursor)
-            .await?;
+        if !self
+            .store_baseline(doc_id, epoch, snapshot, sequence_num, revision, cursor)
+            .await?
+        {
+            report.incomplete.push(doc_id.to_owned());
+            return Ok(false);
+        }
         report.baselines += 1;
         Ok(true)
     }
@@ -88,13 +95,7 @@ impl BodyPull {
         let doc = doc_id.to_owned();
         let stored = self
             .db
-            .call(move |conn| {
-                update_log::snapshot(conn, Namespace::Server, &doc)
-                    .map_err(|error| StorageError::Failed {
-                        what: error.to_string(),
-                    })
-                    .map(|row| row.and_then(|row| row.server_revision))
-            })
+            .read(move |conn| update_log::server_revision(conn, &doc))
             .await?;
         // §7.5: compared for equality and for nothing else. A local NULL —
         // which is what a snapshot this device pushed stores, §7.13.4 — never

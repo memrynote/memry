@@ -22,7 +22,7 @@ use memry_desktop::notes::service::NotesService;
 use memry_desktop::vault::consumer::{Applied, ChangeSource};
 use vault_env::{Env, QUIET, env, indexed};
 
-fn opened() -> (Env, Arc<dyn SecureStore>) {
+pub(crate) fn opened() -> (Env, Arc<dyn SecureStore>) {
     opened_with(true)
 }
 
@@ -42,7 +42,7 @@ fn opened_with(index: bool) -> (Env, Arc<dyn SecureStore>) {
 }
 
 /// The record's `tags`, as its payload holds them.
-fn record_tags(e: &Env, item_type: &'static str, id: &str) -> Vec<String> {
+pub(crate) fn record_tags(e: &Env, item_type: &'static str, id: &str) -> Vec<String> {
     let id = id.to_owned();
     let payload: String = e
         .core()
@@ -62,7 +62,7 @@ fn record_tags(e: &Env, item_type: &'static str, id: &str) -> Vec<String> {
 }
 
 /// The record pushes queued for `id`, after the last [`clear_outbox`].
-fn upserts(e: &Env, id: &str) -> i64 {
+pub(crate) fn upserts(e: &Env, id: &str) -> i64 {
     let id = id.to_owned();
     e.core()
         .db_handle()
@@ -78,7 +78,7 @@ fn upserts(e: &Env, id: &str) -> i64 {
         .unwrap()
 }
 
-fn clear_outbox(e: &Env) {
+pub(crate) fn clear_outbox(e: &Env) {
     e.core()
         .db_handle()
         .call_blocking(|conn| {
@@ -89,7 +89,7 @@ fn clear_outbox(e: &Env) {
 }
 
 /// Writes `text` at `rel` outside the app and waits until the consumer applied it.
-fn edited_outside(e: &mut Env, id: &str, rel: &str, text: &str) {
+pub(crate) fn edited_outside(e: &mut Env, id: &str, rel: &str, text: &str) {
     e.write(rel, text);
     e.facts_until(|f| {
         matches!(f, Applied::Changed { note_id, source: ChangeSource::Watcher, .. } if note_id == id)
@@ -98,7 +98,7 @@ fn edited_outside(e: &mut Env, id: &str, rel: &str, text: &str) {
 
 /// Waits until the index measured the bytes the note's row names, the base a day's edit is
 /// read against.
-fn measured(e: &Env, id: &str) {
+pub(crate) fn measured(e: &Env, id: &str) {
     let search = e.session.current().expect("open").search;
     until("the file measured", || {
         let row = e.core().note_files().by_id(id).unwrap().expect("a row");

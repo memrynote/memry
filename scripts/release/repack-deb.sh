@@ -1,5 +1,6 @@
 #!/bin/sh
-# Rewrites the control file of the Tauri deb so it replaces Electron's installed package.
+# Rewrites the control file of the Tauri deb so it replaces Electron's installed package, and drops
+# /usr/bin/export-bindings (Tauri bundles every [[bin]] of the package; that one is a dev tool).
 # Tauri names the package `memry-note` (kebab-cased productName); Electron's was `memrynote`, and
 # only the same name upgrades it in place. Depends lists the runtime libraries of the Tauri app.
 # Usage: repack-deb.sh <tauri.deb> <out.deb>
@@ -14,6 +15,7 @@ work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 dpkg-deb -R "$in" "$work/root"
 control="$work/root/DEBIAN/control"
+rm -f "$work/root/usr/bin/export-bindings"
 
 # Replace Package, Depends and Homepage with their continuation lines; add the ones Tauri left out.
 awk -v depends="$depends" -v homepage="$homepage" '

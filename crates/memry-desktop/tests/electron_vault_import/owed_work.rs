@@ -79,7 +79,7 @@ fn a_crdt_debt_of_a_vault_that_never_synced_owes_nothing() {
         &Converter::new(CalloutTypes::new(Vec::new())),
         "n-1",
         "a.md",
-        "",
+        Some(""),
         &NoEmbeds,
     )
     .unwrap();
@@ -145,7 +145,7 @@ fn owed_journal_day_merges_are_carried_with_this_devices_text() {
             "f-held",
             json!({"foreignId": "f-held", "date": "2026-02-01", "clock": {"dev-A": 2},
                    "fallbackMarkdown": "My unpushed day", "recordMarkdown": "Their copy",
-                   "deleted": true}),
+                   "deleted": true, "tags": ["mine"], "recordTags": ["theirs"]}),
         ),
         // Seen on a pull, never synced here: `clock` null, explicit nulls from the spread.
         owed_day(
@@ -169,7 +169,9 @@ fn owed_journal_day_merges_are_carried_with_this_devices_text() {
                 clock: BTreeMap::from([("dev-A".to_owned(), 2)]),
                 deleted: true,
                 record_markdown: Some("Their copy".into()),
-                fallback_markdown: Some("My unpushed day".into()),
+                record_tags: vec!["theirs".into()],
+                holder_tags: vec!["mine".into()],
+                unpushed_holder_tags: vec!["mine".into()],
             },
             OwedMerge {
                 foreign_id: "f-pulled".into(),
@@ -177,10 +179,19 @@ fn owed_journal_day_merges_are_carried_with_this_devices_text() {
                 clock: BTreeMap::new(),
                 deleted: false,
                 record_markdown: Some("Pulled text".into()),
-                fallback_markdown: None,
+                record_tags: Vec::new(),
+                holder_tags: Vec::new(),
+                unpushed_holder_tags: Vec::new(),
             },
         ]
     );
+    // This device's day text is the foreign doc's local state; a merge without one gets none.
+    let path = vault.core().join(DATA_FILE);
+    let held = document_state(&path, "f-held")
+        .unwrap()
+        .expect("f-held doc");
+    assert!(held.text.contains("My unpushed day"), "{}", held.text);
+    assert!(document_state(&path, "f-pulled").unwrap().is_none());
 }
 
 /// No request is expected: a deleted foreign id is not pulled, and the other merge waits.
@@ -210,7 +221,8 @@ impl CrdtCipher for NoBodies {
 }
 
 /// Electron folds a foreign day's own text into `j<D>` even when another device deleted the
-/// foreign id (`journal-day-merge.ts:210-220`); the core's first drain does the same.
+/// foreign id (`journal-day-merge.ts:519-536`). The import makes it the foreign doc's local Yjs
+/// state; the core's first drain folds it into the day once and leaves one day.
 #[test]
 fn the_first_drain_folds_this_devices_text_of_a_deleted_foreign_day() {
     let vault = Vault::new();
@@ -223,6 +235,10 @@ fn the_first_drain_folds_this_devices_text_of_a_deleted_foreign_day() {
     import(&vault);
 
     let path = vault.core().join(DATA_FILE);
+    let held = document_state(&path, "f-held")
+        .unwrap()
+        .expect("f-held doc");
+    assert!(held.text.contains("My unpushed day"), "{}", held.text);
     let db = memry_core::storage::open_data(&path).unwrap();
     let http = HttpClient::new(
         Arc::new(Offline) as Arc<dyn Transport>,
@@ -245,7 +261,23 @@ fn the_first_drain_folds_this_devices_text_of_a_deleted_foreign_day() {
     let day = document_state(&path, "j2026-02-01")
         .unwrap()
         .expect("the day");
-    assert!(day.text.contains("My unpushed day"), "{}", day.text);
+    assert_eq!(
+        day.text.matches("My unpushed day").count(),
+        1,
+        "{}",
+        day.text
+    );
+    assert!(document_state(&path, "f-held").unwrap().is_none());
+    let conn = core_conn(&vault);
+    assert!(journal_day_merge::owed(&conn).unwrap().is_empty());
+    let days: i64 = conn
+        .query_row(
+            "SELECT count(*) FROM journal_entries WHERE date = '2026-02-01' AND deleted_at IS NULL",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(days, 1);
 }
 
 /// `noteCoverForPush`: a note whose cover this device held and whose file has none pushes

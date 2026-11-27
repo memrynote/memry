@@ -7,6 +7,7 @@ use rusqlite::{Connection, OptionalExtension, params};
 
 use super::{ImportWriter, failed};
 use crate::api::errors::StorageError;
+use crate::storage::nested_tx;
 use crate::storage::repositories::StoredPayload;
 use crate::storage::repositories::projectors::{self, ItemContext};
 use crate::storage::repositories::sync_items::PAYLOAD_STATE_FULL;
@@ -32,7 +33,7 @@ impl ImportWriter {
         records: &[ImportRecord],
         now_ms: i64,
     ) -> Result<(), StorageError> {
-        let tx = self.data.transaction().map_err(failed)?;
+        let tx = nested_tx::begin(&self.data).map_err(failed)?;
         for record in records {
             put(&tx, record, now_ms)?;
         }

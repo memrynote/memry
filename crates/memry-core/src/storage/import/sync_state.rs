@@ -5,7 +5,7 @@
 //!   was advanced under ([`META_RECORD_DECLARATION`]) and [`META_FIRST_SYNC_COMPLETED`]: Electron
 //!   treats a device holding a cursor as past its first sync (`isFreshDevice`), so the core does.
 //! - `cursorSkipRepair`: [`META_CURSOR_SKIP_REPAIR`], whose three states are Electron's.
-//! - `syncPaused`: [`pause`]. `packsAppliedThroughCursor`: [`META_PACKS_APPLIED_THROUGH`].
+//! - `syncPaused`: [`pause`].
 //! - `quarantinedItems`: `sync_quarantine`. `schemaInvalidItems`: `sync_refused_items`.
 //! - `crdtUnmergedDebt` not yet converted (36c5): a [`body_debt`] for every live markdown note
 //!   and journal day, as Electron's engine start converts it (`convertUnmergedDebtMirror`).
@@ -13,15 +13,16 @@
 //! - `sync_history`: `sync_history`, which keeps the newest [`history::KEEP`] rows.
 
 use rusqlite::{Connection, params};
+use serde_json::json;
 
 use super::{ImportWriter, failed};
 use crate::api::errors::StorageError;
+use crate::storage::nested_tx;
 use crate::sync::body_debt;
 use crate::sync::first_sync::META_FIRST_SYNC_COMPLETED;
 use crate::sync::first_sync_store::{read_meta, write_meta};
 use crate::sync::hardening::history;
 use crate::sync::journal_day_merge::{self, OwedMerge};
-use crate::sync::pack_bootstrap::META_PACKS_APPLIED_THROUGH;
 use crate::sync::pause;
 use crate::sync::pull::{META_CURSOR_SKIP_REPAIR, META_RECORD_DECLARATION};
 use crate::sync::store::{self, RECORD_CURSOR_SCOPE};
@@ -61,7 +62,6 @@ pub struct ImportSyncState {
     pub record_cursor: Option<ImportRecordCursor>,
     pub cursor_skip_repair: Option<String>,
     pub paused: bool,
-    pub packs_applied_through: Option<i64>,
     pub quarantined: Vec<ImportQuarantined>,
     pub refused: Vec<ImportRefused>,
     /// Every live markdown note and journal day owes a body pull. Read back as "none is
@@ -90,7 +90,7 @@ impl ImportWriter {
         state: &ImportSyncState,
         now_ms: i64,
     ) -> Result<(), StorageError> {
-        let tx = self.data.transaction().map_err(failed)?;
+        let tx = nested_tx::begin(&self.data).map_err(failed)?;
         if let Some(record) = &state.record_cursor {
             store::write_cursor(&tx, RECORD_CURSOR_SCOPE, Some(&record.cursor), now_ms)?;
             write_meta(&tx, META_RECORD_DECLARATION, &record.declaration)?;
@@ -100,9 +100,6 @@ impl ImportWriter {
             write_meta(&tx, META_CURSOR_SKIP_REPAIR, repair)?;
         }
         pause::write(&tx, state.paused)?;
-        if let Some(watermark) = state.packs_applied_through {
-            write_meta(&tx, META_PACKS_APPLIED_THROUGH, &watermark.to_string())?;
-        }
         for entry in &state.quarantined {
             tx.execute(
                 "INSERT INTO sync_quarantine
@@ -139,7 +136,7 @@ impl ImportWriter {
             }
         }
         for merge in &state.journal_merges {
-            journal_day_merge::write_owed(&tx, merge)?;
+            write_owed_merge(&tx, merge)?;
         }
         tx.commit().map_err(failed)
     }
@@ -158,8 +155,6 @@ impl ImportWriter {
             record_cursor,
             cursor_skip_repair: read_meta(conn, META_CURSOR_SKIP_REPAIR)?,
             paused: pause::read(conn)?,
-            packs_applied_through: read_meta(conn, META_PACKS_APPLIED_THROUGH)?
-                .and_then(|text| text.parse().ok()),
             quarantined: quarantined(conn)?,
             refused: refused(conn)?,
             owe_every_body: {
@@ -178,7 +173,7 @@ impl ImportWriter {
                 what: format!("{} history rows, over {}", rows.len(), history::KEEP),
             });
         }
-        let tx = self.data.transaction().map_err(failed)?;
+        let tx = nested_tx::begin(&self.data).map_err(failed)?;
         for row in rows {
             tx.execute(
                 "INSERT INTO sync_history
@@ -198,6 +193,39 @@ impl ImportWriter {
         }
         tx.commit().map_err(failed)
     }
+}
+
+/// The owed merge's `meta` row, `journal.day_merge:<foreignId>`, in the format
+/// `sync::journal_day_merge` reads (`owed.rs` `parse_owed`, a shipped format, §1.9.1). Written
+/// here because the merge's writer is private to the sync mechanism; check 5 reads every row
+/// back through [`journal_day_merge::owed`] and compares it with the plan.
+fn write_owed_merge(conn: &Connection, merge: &OwedMerge) -> Result<(), StorageError> {
+    let mut value = json!({
+        "foreignId": merge.foreign_id,
+        "date": merge.date,
+        "clock": merge.clock,
+        "deleted": merge.deleted,
+    });
+    if let Some(markdown) = &merge.record_markdown {
+        value["recordMarkdown"] = json!(markdown);
+    }
+    if !merge.record_tags.is_empty() {
+        value["recordTags"] = json!(merge.record_tags);
+    }
+    if !merge.holder_tags.is_empty() {
+        value["holderTags"] = json!(merge.holder_tags);
+        value["unpushedHolderTags"] = json!(merge.unpushed_holder_tags);
+    }
+    conn.execute(
+        "INSERT INTO meta (key, value) VALUES (?1, ?2)
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        params![
+            format!("journal.day_merge:{}", merge.foreign_id),
+            value.to_string()
+        ],
+    )
+    .map_err(failed)?;
+    Ok(())
 }
 
 /// Every live markdown note and journal day: the documents Electron's conversion owes

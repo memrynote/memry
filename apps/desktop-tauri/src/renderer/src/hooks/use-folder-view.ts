@@ -1,3 +1,4 @@
+import { folderViewService } from '@/services/folder-view-service'
 import { foldTag } from '@memry/shared/tag-fold'
 import { getI18n } from 'react-i18next'
 /**
@@ -305,6 +306,45 @@ export function useFolderView({
   const renameTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   /** Name on disk for the view being renamed while its write is debounced. */
   const renameOriginRef = useRef<{ index: number; name: string } | null>(null)
+  /** The debounced rename's disk write, until its timer fires or another view write runs it. */
+  const pendingRenameRef = useRef<(() => Promise<void>) | null>(null)
+  /** The debounced view change's disk write (updateView, updateDisplayName), likewise. */
+  const pendingUpdateRef = useRef<(() => Promise<void>) | null>(null)
+  /** The debounced writes, chained in the order they were scheduled. Each catches its errors. */
+  const viewWritesRef = useRef<Promise<void>>(Promise.resolve())
+
+  /** Queues the pending rename write; the name it renames is on disk once the chain gets there. */
+  const flushRename = useCallback((): Promise<void> => {
+    const write = pendingRenameRef.current
+    if (write) {
+      pendingRenameRef.current = null
+      renameOriginRef.current = null
+      if (renameTimeoutRef.current) clearTimeout(renameTimeoutRef.current)
+      renameTimeoutRef.current = null
+      viewWritesRef.current = viewWritesRef.current.then(write)
+    }
+    return viewWritesRef.current
+  }, [])
+
+  /**
+   * Queues every pending debounced write in the order it was scheduled and waits for them. Every
+   * other view or config write calls this first: views are addressed by name, and until a rename
+   * lands the disk still holds the old one. A view added meanwhile under that old name ("New
+   * view") would replace it, and the rename would then turn it into the renamed view, losing the
+   * new one. A pending rename is always older than a pending view change, because `renameView`
+   * queues a pending change before it schedules.
+   */
+  const flushViewWrites = useCallback((): Promise<void> => {
+    void flushRename()
+    const write = pendingUpdateRef.current
+    if (write) {
+      pendingUpdateRef.current = null
+      if (updateTimeoutRef.current) clearTimeout(updateTimeoutRef.current)
+      updateTimeoutRef.current = null
+      viewWritesRef.current = viewWritesRef.current.then(write)
+    }
+    return viewWritesRef.current
+  }, [flushRename])
 
   // ============================================================================
   // Queries
@@ -320,7 +360,7 @@ export function useFolderView({
     queryKey: folderViewKeys.folderExists(scope),
     queryFn: async (): Promise<boolean> => {
       if (scope.kind !== 'folder') return true
-      return window.api.folderView.folderExists(scope.path)
+      return folderViewService.folderExists(scope.path)
     },
     enabled: scope.kind === 'folder',
     staleTime: 60_000, // 60 seconds
@@ -337,8 +377,8 @@ export function useFolderView({
     queryKey: folderViewKeys.views(scope),
     queryFn: async (): Promise<ViewsQueryData> => {
       const [viewsResult, configResult] = await Promise.all([
-        window.api.folderView.getViews(scope),
-        scope.kind === 'folder' ? window.api.folderView.getConfig(scope.path) : null
+        folderViewService.getViews(scope),
+        scope.kind === 'folder' ? folderViewService.getConfig(scope.path) : null
       ])
       return {
         views: viewsResult.views,
@@ -358,7 +398,7 @@ export function useFolderView({
   const propertiesQuery = useQuery({
     queryKey: folderViewKeys.availableProperties(scope),
     queryFn: async (): Promise<PropertiesQueryData> => {
-      const result = await window.api.folderView.getAvailableProperties(scope)
+      const result = await folderViewService.getAvailableProperties(scope)
       return {
         properties: result.properties,
         builtIn: result.builtIn,
@@ -407,7 +447,7 @@ export function useFolderView({
     queryFn: async ({ pageParam }): Promise<ListWithPropertiesResponse> => {
       // Fetch all available properties to avoid refetch when columns change
       // This is a trade-off: slightly larger payload vs better UX
-      const result = await window.api.folderView.listWithProperties({
+      const result = await folderViewService.listWithProperties({
         scope,
         // Don't filter properties - fetch all so column changes don't need refetch
         properties: undefined,
@@ -507,27 +547,26 @@ export function useFolderView({
         clearTimeout(updateTimeoutRef.current)
       }
 
-      updateTimeoutRef.current = setTimeout(() => {
-        void (async () => {
-          try {
-            const result = await window.api.folderView.setView(
-              scope,
-              // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- local ViewConfig mirrors the preload type with unknown filters/groupBy; the IPC contract type is narrower
-              updatedView as unknown as ContractViewConfig
-            )
+      pendingUpdateRef.current = async () => {
+        try {
+          const result = await folderViewService.setView(
+            scope,
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- local ViewConfig mirrors the preload type with unknown filters/groupBy; the IPC contract type is narrower
+            updatedView as unknown as ContractViewConfig
+          )
 
-            if (!result.success) {
-              throw new Error(result.error || 'Failed to save view')
-            }
-          } catch (err) {
-            log.error('updateView failed:', err)
-            // Revert on error
-            void queryClient.invalidateQueries({ queryKey: folderViewKeys.views(scope) })
+          if (!result.success) {
+            throw new Error(result.error || 'Failed to save view')
           }
-        })()
-      }, 300)
+        } catch (err) {
+          log.error('updateView failed:', err)
+          // Revert on error
+          void queryClient.invalidateQueries({ queryKey: folderViewKeys.views(scope) })
+        }
+      }
+      updateTimeoutRef.current = setTimeout(() => void flushViewWrites(), 300)
     },
-    [activeView, activeViewIndex, scope, queryClient]
+    [activeView, activeViewIndex, scope, queryClient, flushViewWrites]
   )
 
   /**
@@ -536,7 +575,8 @@ export function useFolderView({
   const addView = useCallback(
     async (view: ViewConfig) => {
       try {
-        const result = await window.api.folderView.setView(
+        await flushViewWrites()
+        const result = await folderViewService.setView(
           scope,
           // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- local ViewConfig mirrors the preload type with unknown filters/groupBy; the IPC contract type is narrower
           view as unknown as ContractViewConfig
@@ -562,7 +602,7 @@ export function useFolderView({
         throw err
       }
     },
-    [scope, queryClient]
+    [scope, queryClient, flushViewWrites]
   )
 
   /**
@@ -571,7 +611,8 @@ export function useFolderView({
   const deleteView = useCallback(
     async (viewName: string) => {
       try {
-        const result = await window.api.folderView.deleteView(scope, viewName)
+        await flushViewWrites()
+        const result = await folderViewService.deleteView(scope, viewName)
 
         if (!result.success) {
           throw new Error(result.error || 'Failed to delete view')
@@ -590,7 +631,7 @@ export function useFolderView({
         throw err
       }
     },
-    [scope, queryClient, activeViewIndex]
+    [scope, queryClient, activeViewIndex, flushViewWrites]
   )
 
   /**
@@ -614,6 +655,8 @@ export function useFolderView({
       )
       if (collides) return
 
+      // A view change scheduled before this rename writes first, under the name it had then.
+      if (pendingUpdateRef.current) void flushViewWrites()
       const newViews = views.map((v, i) => (i === index ? { ...v, name } : v))
       if (renameOriginRef.current?.index !== index) {
         renameOriginRef.current = { index, name: target.name }
@@ -630,30 +673,28 @@ export function useFolderView({
       if (renameTimeoutRef.current) {
         clearTimeout(renameTimeoutRef.current)
       }
-      renameTimeoutRef.current = setTimeout(() => {
-        void (async () => {
-          try {
-            renameOriginRef.current = null
-            if (persistedName === name) return
-            const result = await window.api.folderView.setView(
-              scope,
-              // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- local ViewConfig mirrors the preload type with unknown filters/groupBy; the IPC contract type is narrower
-              renamed as unknown as ContractViewConfig,
-              persistedName
-            )
+      pendingRenameRef.current = async () => {
+        try {
+          if (persistedName === name) return
+          const result = await folderViewService.setView(
+            scope,
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- local ViewConfig mirrors the preload type with unknown filters/groupBy; the IPC contract type is narrower
+            renamed as unknown as ContractViewConfig,
+            persistedName
+          )
 
-            if (!result.success) {
-              throw new Error(result.error || 'Failed to rename view')
-            }
-          } catch (err) {
-            log.error('renameView failed:', err)
-            // Revert on error
-            void queryClient.invalidateQueries({ queryKey: folderViewKeys.views(scope) })
+          if (!result.success) {
+            throw new Error(result.error || 'Failed to rename view')
           }
-        })()
-      }, 300)
+        } catch (err) {
+          log.error('renameView failed:', err)
+          // Revert on error
+          void queryClient.invalidateQueries({ queryKey: folderViewKeys.views(scope) })
+        }
+      }
+      renameTimeoutRef.current = setTimeout(() => void flushRename(), 300)
     },
-    [views, scope, queryClient]
+    [views, scope, queryClient, flushRename, flushViewWrites]
   )
 
   /**
@@ -678,8 +719,9 @@ export function useFolderView({
       })
 
       try {
+        await flushViewWrites()
         // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- local ViewConfig mirrors the preload type with unknown filters/groupBy; the IPC contract type is narrower
-        const result = await window.api.folderView.setView(scope, {
+        const result = await folderViewService.setView(scope, {
           ...targetView,
           default: true
         } as unknown as ContractViewConfig)
@@ -696,7 +738,7 @@ export function useFolderView({
         throw err
       }
     },
-    [views, scope, queryClient]
+    [views, scope, queryClient, flushViewWrites]
   )
 
   /**
@@ -740,7 +782,8 @@ export function useFolderView({
         return
       }
       try {
-        const configResult = await window.api.folderView.getConfig(scope.path)
+        await flushViewWrites()
+        const configResult = await folderViewService.getConfig(scope.path)
         const existingConfig = configResult.config
 
         const updatedSummaries = {
@@ -752,7 +795,7 @@ export function useFolderView({
           delete updatedSummaries[columnId]
         }
 
-        await window.api.folderView.setConfig(scope.path, {
+        await folderViewService.setConfig(scope.path, {
           ...existingConfig,
           summaries: Object.keys(updatedSummaries).length > 0 ? updatedSummaries : undefined
         })
@@ -766,7 +809,7 @@ export function useFolderView({
         log.error('updateSummaryConfig failed:', err)
       }
     },
-    [scope, queryClient]
+    [scope, queryClient, flushViewWrites]
   )
 
   /**
@@ -812,40 +855,39 @@ export function useFolderView({
         clearTimeout(updateTimeoutRef.current)
       }
 
-      updateTimeoutRef.current = setTimeout(() => {
-        void (async () => {
-          try {
-            // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- local ViewConfig mirrors the preload type with unknown filters/groupBy; the IPC contract type is narrower
-            await window.api.folderView.setView(scope, updatedView as unknown as ContractViewConfig)
+      pendingUpdateRef.current = async () => {
+        try {
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- local ViewConfig mirrors the preload type with unknown filters/groupBy; the IPC contract type is narrower
+          await folderViewService.setView(scope, updatedView as unknown as ContractViewConfig)
 
-            // The properties.{id}.displayName record lives in .folder.md,
-            // which only folders have — the per-view column override above
-            // is all a tag scope gets for now.
-            if (scope.kind === 'folder') {
-              const configResult = await window.api.folderView.getConfig(scope.path)
-              const existingConfig = configResult.config
+          // The properties.{id}.displayName record lives in .folder.md,
+          // which only folders have — the per-view column override above
+          // is all a tag scope gets for now.
+          if (scope.kind === 'folder') {
+            const configResult = await folderViewService.getConfig(scope.path)
+            const existingConfig = configResult.config
 
-              const updatedConfig = {
-                ...existingConfig,
-                properties: {
-                  ...existingConfig.properties,
-                  [columnId]: {
-                    ...existingConfig.properties?.[columnId],
-                    displayName
-                  }
+            const updatedConfig = {
+              ...existingConfig,
+              properties: {
+                ...existingConfig.properties,
+                [columnId]: {
+                  ...existingConfig.properties?.[columnId],
+                  displayName
                 }
               }
-
-              await window.api.folderView.setConfig(scope.path, updatedConfig)
             }
-          } catch (err) {
-            log.error('Failed to save display name:', err)
-            void queryClient.invalidateQueries({ queryKey: folderViewKeys.views(scope) })
+
+            await folderViewService.setConfig(scope.path, updatedConfig)
           }
-        })()
-      }, 300)
+        } catch (err) {
+          log.error('Failed to save display name:', err)
+          void queryClient.invalidateQueries({ queryKey: folderViewKeys.views(scope) })
+        }
+      }
+      updateTimeoutRef.current = setTimeout(() => void flushViewWrites(), 300)
     },
-    [activeView, activeViewIndex, scope, queryClient]
+    [activeView, activeViewIndex, scope, queryClient, flushViewWrites]
   )
 
   /**
@@ -1071,7 +1113,8 @@ export function useFolderView({
         throw new Error('Formulas are not supported for tag scope yet')
       }
       try {
-        const configResult = await window.api.folderView.getConfig(scope.path)
+        await flushViewWrites()
+        const configResult = await folderViewService.getConfig(scope.path)
         const existingConfig = configResult.config
 
         const updatedFormulas = {
@@ -1079,7 +1122,7 @@ export function useFolderView({
           [name]: expression
         }
 
-        await window.api.folderView.setConfig(scope.path, {
+        await folderViewService.setConfig(scope.path, {
           ...existingConfig,
           formulas: updatedFormulas
         })
@@ -1093,7 +1136,7 @@ export function useFolderView({
         throw err
       }
     },
-    [scope, queryClient]
+    [scope, queryClient, flushViewWrites]
   )
 
   /**
@@ -1106,7 +1149,8 @@ export function useFolderView({
         throw new Error('Formulas are not supported for tag scope yet')
       }
       try {
-        const configResult = await window.api.folderView.getConfig(scope.path)
+        await flushViewWrites()
+        const configResult = await folderViewService.getConfig(scope.path)
         const existingConfig = configResult.config
 
         const updatedFormulas = {
@@ -1114,7 +1158,7 @@ export function useFolderView({
           [name]: expression
         }
 
-        await window.api.folderView.setConfig(scope.path, {
+        await folderViewService.setConfig(scope.path, {
           ...existingConfig,
           formulas: updatedFormulas
         })
@@ -1128,7 +1172,7 @@ export function useFolderView({
         throw err
       }
     },
-    [scope, queryClient]
+    [scope, queryClient, flushViewWrites]
   )
 
   /**
@@ -1141,13 +1185,14 @@ export function useFolderView({
         throw new Error('Formulas are not supported for tag scope yet')
       }
       try {
-        const configResult = await window.api.folderView.getConfig(scope.path)
+        await flushViewWrites()
+        const configResult = await folderViewService.getConfig(scope.path)
         const existingConfig = configResult.config
 
         const updatedFormulas = { ...existingConfig.formulas }
         delete updatedFormulas[name]
 
-        await window.api.folderView.setConfig(scope.path, {
+        await folderViewService.setConfig(scope.path, {
           ...existingConfig,
           formulas: Object.keys(updatedFormulas).length > 0 ? updatedFormulas : undefined
         })
@@ -1161,7 +1206,7 @@ export function useFolderView({
         throw err
       }
     },
-    [scope, queryClient]
+    [scope, queryClient, flushViewWrites]
   )
 
   // ============================================================================

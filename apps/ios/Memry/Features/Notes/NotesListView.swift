@@ -40,7 +40,7 @@ struct NotesListView: View {
     /// second route type to the same stack. `NavigationPath` is what holds
     /// both, and it is still `Codable`-restorable, which is what research
     /// R15's rule is written for.
-    @State private var path = LaunchSnapshot.shared.path("notes")
+    @State private var path = LaunchSnapshot.shared.path(NotesSplitRouter.compactKey)
     /// Which folders are open. Held by the screen rather than by the view
     /// model: it is where the user is looking, not what the vault contains,
     /// and a reload must not close what they opened.
@@ -58,6 +58,8 @@ struct NotesListView: View {
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     private let notesLinks = NotesLinks.shared
     @Environment(\.requestVaultSync) private var requestVaultSync
+    @Environment(\.handoffVaultId) private var vaultId
+    @Environment(\.firstSyncLanded) private var firstSyncLanded
 
     /// The production entry point: an opened `Vault` and the shell's one core
     /// queue. `State(initialValue:)` so the model outlives a re-render — a
@@ -140,6 +142,10 @@ struct NotesListView: View {
                                 openTag: { path.append(TagRoute(name: $0)) },
                                 noteTasks: model.noteTasks
                             )
+                            // A note opened over an open one replaces the path at
+                            // the same depth: without its own identity the old
+                            // page stayed, showing the old note (#4787).
+                            .id(route)
                             .onAppear { router.shown(route) }
                         }
                         // N600, registered on the root for the same reason the two
@@ -170,10 +176,6 @@ struct NotesListView: View {
                         .notesCreate(model, in: nil, place: "At the top of this vault.") {
                             path.append(NoteRoute(id: $0))
                         }
-                        // A search hit or a capture's "View" opens its note here.
-                        .onChange(of: notesLinks.pending, initial: true) {
-                            if let id = notesLinks.take() { path = NavigationPath([NoteRoute(id: id)]) }
-                        }
                         .task { await model.loadIfNeeded() }
                         // Not a one-off in `.task`: Notes is the first tab, and on a
                         // cold launch the vault's sync request is still nil until the
@@ -181,9 +183,15 @@ struct NotesListView: View {
                         .onChange(of: requestVaultSync == nil, initial: true) {
                             model.requestSync = requestVaultSync
                         }
-                        .onChange(of: path) { _, path in LaunchSnapshot.shared.setPath("notes", path) }
+                        .onChange(of: path) { _, path in LaunchSnapshot.shared.setPath(NotesSplitRouter.compactKey, path) }
                         .onAppear { Task { await model.refresh() } }
                         .writeFailureAlert(model)
+                }
+                // A search hit, a capture's "View" or ⌘N opens its note here.
+                // On the stack, not its root content: a pushed note page
+                // covers the root, whose observers then never run (#4787).
+                .onChange(of: notesLinks.pending, initial: true) {
+                    if let id = notesLinks.take() { path = NavigationPath([NoteRoute(id: id)]) }
                 }
             }
         }
@@ -191,6 +199,33 @@ struct NotesListView: View {
         .onChange(of: width) { _, width in
             if width == .compact { path = router.compactPath() }
         }
+        // The vault shows while its first sync fills it (`VaultFillView`).
+        .onChange(of: firstSyncLanded) { Task { await model.refresh() } }
+        // ⌘N (#4355): the "+"'s create, opened the way a search hit opens.
+        .onChange(of: notesLinks.newNoteRequested, initial: true) {
+            // The keys typed since ⌘N wait for the new note (#4787).
+            guard let keys = notesLinks.takeNewNote() else { return }
+            Task {
+                guard let id = await model.createNote(in: nil) else { return keys.failed() }
+                keys.made(id) { [writer = model.writer, model] id, title in
+                    try await writer?.rename(id: id, title: title)
+                    await model.refresh()
+                }
+                if router.isSplit { router.created(id) }
+                notesLinks.open(id)
+            }
+        }
+        // Keys typed after ⌘N that a kill caught before their title landed
+        // (#4787, `NewNoteJournal`). ⌘N opens Notes, which the next launch
+        // restores, so this runs at launch after such a kill.
+        .task(id: vaultId) {
+            guard let vaultId, let writer = model.writer,
+                  await NewNoteSeeds.shared.recover(vault: vaultId, reader: model.reader, writer: writer)
+            else { return }
+            requestVaultSync?()
+            await model.refresh()
+        }
+        .onChange(of: width, initial: true) { _, width in router.isSplit = width == .regular }
     }
 }
 

@@ -5,46 +5,6 @@ use super::source::copy_sources;
 use super::tables::SourceDb;
 use super::*;
 
-/// The probe over a profile directory with no LevelDB store in it.
-fn no_electron(dir: &Path) -> ProfileLock {
-    use crate::electron_import::{AppNameCandidates, ElectronProfile, HostOs};
-    ProfileLock::probe(&ElectronProfile {
-        dir: dir.join("electron-profile"),
-        host: HostOs::current(),
-        pin: None,
-        app_names: AppNameCandidates(Vec::new()),
-        has_config: false,
-        has_secure_store: false,
-        has_local_state: false,
-        has_local_storage: false,
-        has_legacy_crdt_store: false,
-        has_custom_dictionary: false,
-        crdt_store_dirs: Vec::new(),
-        other_candidates: Vec::new(),
-    })
-    .unwrap()
-}
-
-fn input<'a>(
-    vault: &Path,
-    pair: &electron_db::ElectronPair,
-    lock: &'a ProfileLock,
-) -> VaultImportInput<'a> {
-    VaultImportInput {
-        electron_closed: lock,
-        vault_dir: vault.to_owned(),
-        vault_id: "vault-1".into(),
-        electron_data_db: pair.data.clone(),
-        electron_index_db: pair.index.clone(),
-        docs: Vec::new(),
-        extra_owed_docs: Vec::new(),
-        vault_key: None,
-        electron_device_id: Some("device-electron".into()),
-        now_ms: 1_800_000_000_000,
-        progress: None,
-    }
-}
-
 /// Copies the pair the way a run does and reads `note_metadata.id` back from the copy.
 fn ids_through_the_copy(pair: &electron_db::ElectronPair, staging: &Path) -> Vec<String> {
     let sources = copy_sources(&pair.data, &pair.index, staging).unwrap();
@@ -66,8 +26,7 @@ fn a_fresh_electron_pair_passes_the_preflight() {
     let pair = electron_db::create_pair(&dir.path().join(".memry"));
     let staging = dir.path().join("staging");
     let sources = copy_sources(&pair.data, &pair.index, &staging).unwrap();
-    let lock = no_electron(dir.path());
-    let preflight = preflight::run(&sources, &input(dir.path(), &pair, &lock)).unwrap();
+    let preflight = preflight::run(&sources).unwrap();
     // Every mapped table and nothing else: the fts5 and vec0 shadow tables are recognised.
     assert_eq!(preflight.tables.len(), tables::TABLE_MAP.len());
 }
@@ -405,18 +364,27 @@ proptest! {
         let _ = preflight::virtual_module(&sql);
         let _ = preflight::virtual_module(&format!("create virtual table x using {tail}{sql}"));
     }
+}
 
-    /// Any UTF-8 id comes back unchanged through copy, WAL replay and backup.
-    #[test]
-    fn any_text_id_round_trips(ids in prop::collection::btree_set("\\PC{1,24}", 1..8)) {
-        let dir = tempfile::tempdir().unwrap();
-        let pair = electron_db::create_pair(&dir.path().join(".memry"));
-        let conn = rusqlite::Connection::open(&pair.data).unwrap();
-        for id in &ids {
-            electron_db::seed(&conn, "note_metadata", &[("id", Value::Text(id.clone()))]);
+/// Any UTF-8 id comes back unchanged through copy, WAL replay and backup. The Electron pair is
+/// built once, not per case: replaying its migrations is 580 commits, one fsync each, which took
+/// 3 to 9 s per case on the Windows runners and put 32 cases at the 300 s test limit.
+#[test]
+fn any_text_id_round_trips() {
+    let dir = tempfile::tempdir().unwrap();
+    let pair = electron_db::create_pair(&dir.path().join(".memry"));
+    proptest!(
+        memry_test_kit::proptest_config(32),
+        |(ids in prop::collection::btree_set("\\PC{1,24}", 1..8))| {
+            let conn = rusqlite::Connection::open(&pair.data).unwrap();
+            conn.execute("DELETE FROM note_metadata", []).unwrap();
+            for id in &ids {
+                electron_db::seed(&conn, "note_metadata", &[("id", Value::Text(id.clone()))]);
+            }
+            drop(conn);
+            let staging = tempfile::tempdir_in(dir.path()).unwrap();
+            let read = ids_through_the_copy(&pair, staging.path());
+            prop_assert_eq!(read, ids.into_iter().collect::<Vec<_>>());
         }
-        drop(conn);
-        let read = ids_through_the_copy(&pair, &dir.path().join("staging"));
-        prop_assert_eq!(read, ids.into_iter().collect::<Vec<_>>());
-    }
+    );
 }

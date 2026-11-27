@@ -216,8 +216,8 @@ pub fn on_window_destroyed(app: &AppHandle<Wry>, label: &str) {
                 .unwrap_or_else(PoisonError::into_inner) = Some(std::time::Instant::now());
         }
     }
-    #[cfg(not(target_os = "macos"))]
-    let _ = (app, label);
+    crate::windows::sticky::on_window_destroyed(app, label);
+    crate::windows::edge_tab::on_window_destroyed(app, label);
 }
 
 /// The `run` callback of the app.

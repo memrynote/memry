@@ -22,12 +22,19 @@ import { SyncEngine } from '../engine'
 import * as bulkApply from '../bulk-apply'
 import { ItemApplier } from '../apply-item'
 import { SYNC_STATE_KEYS } from './sync-context'
+import type { PackedRecords } from '../packs/record-packs'
 import { createLogger } from '../../lib/logger'
 import { signPayload } from '../../crypto/signatures'
+import { SyncServerError } from '@memry/sync-client/http-errors'
 
 vi.mock('electron', () => ({
   app: { getVersion: () => '1.0.0', getPath: () => '/tmp/memry-purged-tombstones-test' }
 }))
+
+/** The vault this device syncs, as its sync requests name it (#5247). */
+const VAULT = 'vault-a'
+const syncVaultId = vi.hoisted(() => ({ read: async (): Promise<string | null> => 'vault-a' }))
+vi.mock('../sync-vault-id', () => ({ getSyncVaultId: () => syncVaultId.read() }))
 
 // The note handler reads its row through the app's data DB handle.
 const currentDb: { db: TestDatabaseResult | null } = { db: null }
@@ -106,15 +113,20 @@ const signerKeys = sodium.crypto_sign_seed_keypair(new Uint8Array(32).fill(7))
 const attackerKeys = sodium.crypto_sign_seed_keypair(new Uint8Array(32).fill(9))
 const toB64 = (bytes: Uint8Array): string => sodiumToBase64(bytes, sodiumBase64Variants.ORIGINAL)
 
-/** #2408: device-a's delete attestation over exactly this claim. */
+/** #2408: device-a's delete attestation over exactly this claim, signed in `vaultId`. */
 const attestationFor = (
   claim: { id: string; type: string; clock: VectorClock; deletedAt: number },
-  secretKey: Uint8Array = signerKeys.privateKey
+  secretKey: Uint8Array = signerKeys.privateKey,
+  vaultId: string | null = VAULT
 ): string => {
   const parsed = deleteClaimOf({ ...claim, operation: 'delete' })
   if (!parsed) throw new Error(`not attestable: ${claim.type}/${claim.id}`)
   return toB64(
-    signPayload(deleteAttestationPayload(parsed), CBOR_FIELD_ORDER.DELETE_ATTESTATION, secretKey)
+    signPayload(
+      deleteAttestationPayload(parsed, vaultId),
+      CBOR_FIELD_ORDER.DELETE_ATTESTATION,
+      secretKey
+    )
   )
 }
 
@@ -402,6 +414,35 @@ describe('purged tombstones and lost blobs on the desktop pull (#2302)', () => {
 
     expect(applySpy).not.toHaveBeenCalled()
     expect(localRow(db, 'task', 'task-1')).toBeDefined()
+  })
+
+  // #5390: a record-pack run cut short left rows with no cursor; their deletes
+  // may since be shed to markers, and a from-0 rerun must apply those.
+  it('applies a purged tombstone from cursor 0 to a row the record-pack phase applied', async () => {
+    const db = getDb()
+    seedRow(db, 'task', 'task-packed', { 'device-a': 1 })
+    seedRow(db, 'task', 'task-local', { 'device-a': 1 })
+    const engine = new SyncEngine(mockDeps(db))
+    engine.setStateValue(
+      SYNC_STATE_KEYS.RECORD_PACKS_APPLIED,
+      JSON.stringify({ 'task:task-packed': 3 })
+    )
+    await servePage({
+      deleted: ['task-packed', 'task-local'],
+      pull: {
+        items: [],
+        purgedTombstones: [
+          purgedTombstone('task-packed', 'task', TOMBSTONE_CLOCK),
+          purgedTombstone('task-local', 'task', TOMBSTONE_CLOCK)
+        ]
+      }
+    })
+
+    await expect(engine.pull()).resolves.toEqual({ status: 'delivered' })
+
+    expect(localRow(db, 'task', 'task-packed')).toBeUndefined()
+    expect(localRow(db, 'task', 'task-local')).toBeDefined()
+    expect(engine.getStateValue(SYNC_STATE_KEYS.RECORD_PACKS_APPLIED)).toBeUndefined()
   })
 
   // #2302 review (A-F2): an unsigned delete never takes the handler's clockless branch.
@@ -758,6 +799,17 @@ describe('#2408 attestation: a forged or missing attestation never deletes', () 
           claim(type, { clock: { 'device-a': 1 }, deletedAt: DELETED_AT - 100 })
         )
       })
+    },
+    {
+      // #5247: the server replays a real delete of the same id from another
+      // vault of the account (a journal day, a tag name).
+      name: '13 a valid attestation signed in another vault',
+      reason: 'attestation_invalid',
+      entry: (type) => ({
+        ...legacyTombstone(ID, type, TOMBSTONE_CLOCK),
+        signerDeviceId: SIGNER,
+        deleteAttestation: attestationFor(claim(type), signerKeys.privateKey, 'vault-b')
+      })
     }
   ]
 
@@ -826,6 +878,35 @@ describe('#2408 attestation: a forged or missing attestation never deletes', () 
     expect(localRow(db, 'task', 'task-1')).toBeUndefined()
   })
 
+  // #5247 compatibility: a build before #5247 signed v1, with no vault id; it still applies.
+  it('applies a v1 attestation from an old build', async () => {
+    const db = getDb()
+    seedRow(db, 'task', 'task-1', { 'device-a': 1 })
+    const engine = syncedEngine(db)
+    const entry = legacyTombstone('task-1', 'task', TOMBSTONE_CLOCK)
+    await servePage({
+      deleted: ['task-1'],
+      pull: {
+        items: [],
+        purgedTombstones: [
+          {
+            ...entry,
+            signerDeviceId: SIGNER,
+            deleteAttestation: attestationFor(
+              { id: 'task-1', type: 'task', clock: TOMBSTONE_CLOCK, deletedAt: DELETED_AT },
+              signerKeys.privateKey,
+              null
+            )
+          }
+        ]
+      }
+    })
+
+    await expect(engine.pull()).resolves.toEqual({ status: 'delivered' })
+
+    expect(localRow(db, 'task', 'task-1')).toBeUndefined()
+  })
+
   // #2429: the run applied task-1 on page 1; its purged tombstone is listed on page 2.
   it('applies a purged tombstone for an item the same run applied on an earlier page', async () => {
     const db = getDb()
@@ -880,5 +961,239 @@ describe('#2408 attestation: a forged or missing attestation never deletes', () 
     expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('3')
     expect(localRow(db, 'task', 'task-1')).toBeDefined()
     expect(warn).not.toHaveBeenCalledWith('Pull: refused purged tombstones', expect.anything())
+  })
+
+  // #5247 review: without the vault id a v2 attestation cannot be checked. A
+  // v1-only check would refuse a valid v2 marker for good once the cursor
+  // moved, so the page fails and the cursor holds instead.
+  it('holds the cursor and refuses nothing when the vault id cannot be read', async () => {
+    const db = getDb()
+    seedRow(db, 'task', 'task-1', { 'device-a': 1 })
+    const engine = syncedEngine(db)
+    await servePage({
+      deleted: ['task-1'],
+      pull: { items: [], purgedTombstones: [purgedTombstone('task-1', 'task', TOMBSTONE_CLOCK)] }
+    })
+    const warn = vi.mocked(createLogger('PullEnvelope').warn)
+    warn.mockClear()
+    const read = syncVaultId.read
+    syncVaultId.read = async () => null
+
+    try {
+      await engine.pull()
+    } finally {
+      syncVaultId.read = read
+    }
+
+    expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('3')
+    expect(localRow(db, 'task', 'task-1')).toBeDefined()
+    expect(warn).not.toHaveBeenCalledWith('Pull: refused purged tombstones', expect.anything())
+  })
+})
+
+/**
+ * #5390, protocol 08 §8.10 Closing checks rule 2: a record-pack phase cut
+ * short leaves rows with no cursor. A rerun with no pack plan pulls from
+ * cursor 0, whose first page never carries a marker, so rule 2 runs over the
+ * recorded rows first, by id, with purged tombstones declared.
+ */
+describe('rule 2 over an interrupted record-pack phase (#5390)', () => {
+  const { getDb } = setupTestDb()
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  const TAG = 'reading'
+  /** The tag's pack entry cursor: the write the row holds. */
+  const HELD = 4
+  /** As a current desktop pushes it: epoch milliseconds, mid-2025. */
+  const DELETED_AT_MS = 1_750_000_000_000
+  const MARKER_CLOCK: VectorClock = { 'device-2': 2 }
+
+  const packedTag: PackedRecords = {
+    apply: [{ item: signedItem(TAG, 'tag_definition') as never, sortKey: HELD }],
+    pullById: [{ id: 'task-elsewhere', type: 'task', serverCursor: 8 }],
+    tailStart: 10,
+    listed: new Set([`tag_definition:${TAG}`, 'task:task-elsewhere']),
+    settledBodies: new Set()
+  }
+
+  const marker = (serverCursor: number) => ({
+    id: TAG,
+    type: 'tag_definition',
+    deletedAt: DELETED_AT_MS,
+    clock: MARKER_CLOCK,
+    serverCursor,
+    signerDeviceId: SIGNER,
+    deleteAttestation: attestationFor({
+      id: TAG,
+      type: 'tag_definition',
+      clock: MARKER_CLOCK,
+      deletedAt: DELETED_AT_MS
+    })
+  })
+
+  /** The tag lands as the handler writes a pulled one: its payload's createdAt, the pull's clock. */
+  const landTags = (db: TestDatabaseResult) => {
+    const realApply = ItemApplier.prototype.apply
+    vi.spyOn(ItemApplier.prototype, 'apply').mockImplementation(function (
+      this: ItemApplier,
+      input,
+      page
+    ) {
+      if (input.operation === 'delete' || input.type !== 'tag_definition') {
+        return realApply.call(this, input, page)
+      }
+      db.db
+        .insert(tagDefinitions)
+        .values({
+          name: input.itemId,
+          color: 'blue',
+          clock: input.clock,
+          createdAt: '2025-01-01T00:00:00.000Z'
+        })
+        .onConflictDoNothing()
+        .run()
+      return 'applied'
+    })
+  }
+
+  /** Run 1: the tag lands, then the by-id pull is cancelled. No cursor is set. */
+  const interruptedPackRun = async (db: TestDatabaseResult): Promise<void> => {
+    const engine = new SyncEngine(mockDeps(db))
+    const http = await import('../http-client')
+    vi.spyOn(http, 'getFromServer').mockResolvedValue({
+      items: [],
+      deleted: [],
+      hasMore: false,
+      nextCursor: 12
+    })
+    vi.spyOn(http, 'postToServer').mockImplementation(async () => {
+      engine.requestCancel()
+      throw new DOMException('The operation was aborted.', 'AbortError')
+    })
+    await mockDecrypt()
+    landTags(db)
+
+    await expect(engine.pull([], packedTag)).resolves.toEqual({ status: 'incomplete' })
+
+    expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBeUndefined()
+    expect(localRow(db, 'tag_definition', TAG)).toBeDefined()
+    vi.restoreAllMocks()
+  }
+
+  /** Run 2: no pack plan, an honest server whose cursor-0 feed carries no marker. */
+  const rerunWithoutPacks = async (db: TestDatabaseResult, markerCursor: number) => {
+    const deps = mockDeps(db)
+    const engine = new SyncEngine(deps)
+    const http = await import('../http-client')
+    const getSpy = vi.spyOn(http, 'getFromServer').mockResolvedValue({
+      items: [],
+      deleted: [],
+      hasMore: false,
+      nextCursor: 12
+    })
+    const postSpy = vi.spyOn(http, 'postToServer').mockImplementation(async (_path, body) => ({
+      items: [],
+      purgedTombstones: (body as { itemIds: string[] }).itemIds.includes(TAG)
+        ? [marker(markerCursor)]
+        : []
+    }))
+
+    await expect(engine.pull()).resolves.toEqual({ status: 'delivered' })
+
+    return { deps, engine, getSpy, postSpy }
+  }
+
+  it('removes the row by its attested marker before the cursor-0 feed, and queues nothing', async () => {
+    const db = getDb()
+    await interruptedPackRun(db)
+
+    const { deps, engine, getSpy, postSpy } = await rerunWithoutPacks(db, 9)
+
+    expect(postSpy).toHaveBeenCalledWith('/sync/pull', { itemIds: [TAG] }, expect.any(String))
+    expect(getSpy.mock.calls.map(([p]) => p)).toEqual(['/sync/changes?limit=500&inline=1'])
+    expect(localRow(db, 'tag_definition', TAG)).toBeUndefined()
+    expect(deps.queue.getPendingCount()).toBe(0)
+    expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('12')
+    expect(engine.getStateValue(SYNC_STATE_KEYS.RECORD_PACKS_APPLIED)).toBeUndefined()
+    expect(engine.getStateValue(SYNC_STATE_KEYS.RECORD_PACKS_UNRESOLVED)).toBeUndefined()
+  })
+
+  it('keeps the record when the rule-2 pull stops short, and reads no feed page', async () => {
+    const db = getDb()
+    await interruptedPackRun(db)
+    const engine = new SyncEngine(mockDeps(db))
+    const http = await import('../http-client')
+    const getSpy = vi.spyOn(http, 'getFromServer')
+    vi.spyOn(http, 'postToServer').mockImplementation(async () => {
+      engine.requestCancel()
+      throw new DOMException('The operation was aborted.', 'AbortError')
+    })
+
+    await expect(engine.pull()).resolves.toEqual({ status: 'incomplete' })
+
+    expect(getSpy).not.toHaveBeenCalled()
+    expect(localRow(db, 'tag_definition', TAG)).toBeDefined()
+    expect(JSON.parse(engine.getStateValue(SYNC_STATE_KEYS.RECORD_PACKS_APPLIED)!)).toEqual({
+      [`tag_definition:${TAG}`]: HELD,
+      'task:task-elsewhere': 8
+    })
+  })
+
+  it('refuses on a server error in the rule-2 pull, keeps the record, and the next pull removes the row by its marker', async () => {
+    const db = getDb()
+    await interruptedPackRun(db)
+    const engine = new SyncEngine(mockDeps(db))
+    const http = await import('../http-client')
+    const getSpy = vi.spyOn(http, 'getFromServer').mockResolvedValue({
+      items: [],
+      deleted: [],
+      hasMore: false,
+      nextCursor: 12
+    })
+    const postSpy = vi
+      .spyOn(http, 'postToServer')
+      .mockRejectedValue(new SyncServerError('internal error', 500))
+    vi.useFakeTimers({ toFake: ['setTimeout'] })
+    const failing = engine.pull()
+    await vi.runAllTimersAsync()
+    vi.useRealTimers()
+
+    await expect(failing).resolves.toEqual({ status: 'incomplete' })
+    expect(getSpy).not.toHaveBeenCalled()
+    expect(localRow(db, 'tag_definition', TAG)).toBeDefined()
+    expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBeUndefined()
+    expect(engine.getStateValue(SYNC_STATE_KEYS.RECORD_PACKS_UNRESOLVED)).toBeUndefined()
+    expect(JSON.parse(engine.getStateValue(SYNC_STATE_KEYS.RECORD_PACKS_APPLIED)!)).toHaveProperty(
+      `tag_definition:${TAG}`,
+      HELD
+    )
+
+    // The same engine asks again on the next pull, inside the re-fetch cooldown.
+    postSpy.mockImplementation(async (_path, body) => ({
+      items: [],
+      purgedTombstones: (body as { itemIds: string[] }).itemIds.includes(TAG) ? [marker(9)] : []
+    }))
+    await expect(engine.pull()).resolves.toEqual({ status: 'delivered' })
+
+    expect(localRow(db, 'tag_definition', TAG)).toBeUndefined()
+    expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('12')
+    expect(engine.getStateValue(SYNC_STATE_KEYS.RECORD_PACKS_APPLIED)).toBeUndefined()
+  })
+
+  it('keeps the row on a marker not past its held cursor, and records it unresolved', async () => {
+    const db = getDb()
+    await interruptedPackRun(db)
+
+    const { deps, engine } = await rerunWithoutPacks(db, HELD)
+
+    expect(localRow(db, 'tag_definition', TAG)).toBeDefined()
+    expect(deps.queue.getPendingCount()).toBe(0)
+    expect(engine.getStateValue(SYNC_STATE_KEYS.RECORD_PACKS_APPLIED)).toBeUndefined()
+    expect(JSON.parse(engine.getStateValue(SYNC_STATE_KEYS.RECORD_PACKS_UNRESOLVED)!)).toEqual([
+      `tag_definition:${TAG}`
+    ])
   })
 })

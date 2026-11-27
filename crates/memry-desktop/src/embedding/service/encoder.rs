@@ -11,6 +11,7 @@ use super::thread::{Fault, Reply, Request};
 use super::{EmbeddingService, State, lock};
 use crate::embedding::breaker::EncoderBreaker;
 use crate::embedding::download::Abort;
+use crate::session::projection::CancelToken;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum Encoder {
@@ -80,8 +81,9 @@ impl EmbeddingService {
         encoder: Encoder,
         request: Request,
         generation: Option<u64>,
+        lane: Option<&CancelToken>,
     ) -> Option<(u64, Reply)> {
-        let (served_by, result) = self.request(request);
+        let (served_by, result) = self.request(request, lane);
         let mut state = lock(&self.state);
         if state.generation != served_by || generation.is_some_and(|g| g != served_by) {
             return None;
