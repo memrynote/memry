@@ -293,6 +293,7 @@ const createMockApi = () => ({
     getTabSettings: vi.fn().mockResolvedValue({}),
     setTabSettings: vi.fn().mockResolvedValue({ success: true }),
     getStartupThemeSync: vi.fn().mockReturnValue('system'),
+    getCalloutTypes: vi.fn().mockResolvedValue([]),
     getCalendarGoogleSettings: vi.fn().mockResolvedValue({
       defaultTargetCalendarId: null,
       onboardingCompleted: true,
