@@ -9,6 +9,10 @@ import { createFenceTracker } from '@memry/shared/markdown-fences'
  * paragraph of the marker: a list item holding only an image came back as the
  * text `*` above the image. Each such line gets a placeholder word for the
  * parser to hold, and the repair takes it back out.
+ *
+ * A to-do box counts after a bullet only. BlockNote reads `1. [ ] x` as a
+ * to-do too, but `1. [ ]` alone is a numbered item holding `[ ]`, and the
+ * writer never spells a to-do with a number.
  */
 
 // Per process, so note text does not hold the placeholder (as in `emphasis-runs.ts`).
@@ -18,8 +22,8 @@ const PROCESS_WORD = String.fromCharCode(
 const PLACEHOLDER = `MEMRYEMB${PROCESS_WORD}`
 
 const EMPTY_HEADING = /^ {0,3}#{1,6}[ \t]*$/
-const EMPTY_ITEM = /^[ \t]*(?:[-*+]|\d{1,9}[.)])(?: \[[ xX]\])?[ \t]*$/
-const ANY_EMPTY = /^(?: {0,3}#{1,6}|[ \t]*(?:[-*+]|\d{1,9}[.)])(?: \[[ xX]\])?)[ \t]*$/m
+const EMPTY_ITEM = /^[ \t]*(?:[-*+](?: \[[ xX]\])?|\d{1,9}[.)])[ \t]*$/
+const ANY_EMPTY = /^(?: {0,3}#{1,6}|[ \t]*(?:[-*+](?: \[[ xX]\])?|\d{1,9}[.)]))[ \t]*$/m
 const LIST_ITEM = /^[ \t]*(?:[-*+]|\d{1,9}[.)])(?:[ \t]|$)/
 
 /**

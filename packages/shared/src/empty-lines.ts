@@ -409,7 +409,7 @@ function normalizeProseMarkdown(text: string): string {
     out.push(
       line
         .replace(/^([ \t]*)[*+](\s|$)/, '$1-$2')
-        .replace(/^([ \t]*(?:-|\d{1,9}[.)])(?: \[[ xX]\])?| {0,3}#{1,6})[ \t]+$/, '$1')
+        .replace(/^([ \t]*(?:-(?: \[[ xX]\])?|\d{1,9}[.)])| {0,3}#{1,6})[ \t]+$/, '$1')
     )
   }
   return compactTables(out).join('\n')
