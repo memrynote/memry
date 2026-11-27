@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 328,
+    "exportedCaseCount": 330,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 338,
+    "caseCount": 340,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -2168,6 +2168,20 @@
       "canonical": null,
       "pending": null,
       "sha256": "8883dec5970d1e3ece36ba49d3a6e68514a75edc3e136e4dc1134be797f00fec"
+    },
+    {
+      "name": "numbered item holding a box",
+      "markdown": "1. [ ]",
+      "canonical": null,
+      "pending": null,
+      "sha256": "e45ea89c44841a336e27959bdd603a64d39c378ffc37bbfb1f72225323f8ccb3"
+    },
+    {
+      "name": "empty to-do between two items",
+      "markdown": "- [ ]\n- [x]\n- b",
+      "canonical": null,
+      "pending": null,
+      "sha256": "0906ab7a439b501bfc94d093fe7c8a912d1288e1bd9725f4ac439a85faea7b51"
     },
     {
       "name": "empty heading",

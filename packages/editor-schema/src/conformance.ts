@@ -1303,6 +1303,9 @@ const htmlCommentCases: RoundtripCase[] = [
   { name: 'escaped list marker in a quote', markdown: '> \\- x' },
   { name: 'empty list item between two items', markdown: '- a\n-\n- b' },
   { name: 'empty numbered items', markdown: '1.\n2.' },
+  // A box after a number is the item's text: only a bullet opens a to-do.
+  { name: 'numbered item holding a box', markdown: '1. [ ]' },
+  { name: 'empty to-do between two items', markdown: '- [ ]\n- [x]\n- b' },
   { name: 'empty heading', markdown: '#\n\nb' },
   // The writer wrote a link whose text is its address as the bare address,
   // which reads back as text.

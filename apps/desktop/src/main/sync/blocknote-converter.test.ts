@@ -1834,9 +1834,10 @@ describe('a custom spec must not claim the block its text sits in', () => {
     await markdownToYFragment('# ![p.png](p.png)', doc.getXmlFragment(CRDT_FRAGMENT_NAME))
 
     // #when / #then the heading stays, now empty, and the image follows it as
-    // a block of its own (#2537). BlockNote writes an empty heading as `# `.
+    // a block of its own (#2537). An empty heading is written `#`, which
+    // CommonMark reads back as one.
     writeMarkdownSourceToYDoc(doc, null)
-    expect(await yDocToMarkdown(doc)).toBe('# \n\n![p.png](p.png)')
+    expect(await yDocToMarkdown(doc)).toBe('#\n\n![p.png](p.png)')
   })
 
   it.each(MEMRY_INLINE_CONTENT_TYPES)('%s inside a table cell keeps the table', async (type) => {
