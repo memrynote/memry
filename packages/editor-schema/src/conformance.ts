@@ -278,6 +278,11 @@ const calloutCases: RoundtripCase[] = [
     canonical: '> x\n>\n> | a | b |\n> | - | - |\n> | c | d |'
   },
   {
+    name: 'quoted list item holding a paragraph',
+    markdown: '> - a\n>\n>   para\n> - c',
+    canonical: '> - a\n>\n> para\n>\n> - c'
+  },
+  {
     name: 'callout body in another spelling',
     markdown: '> [!tip]\n> Use __bold__',
     canonical: '> [!tip]\n> Use **bold**'
@@ -886,6 +891,29 @@ const inlineImageCases: RoundtripCase[] = [
     name: 'linked image in a heading',
     markdown: '## [![logo.png](attachments/logo.png)](https://example.com/home)',
     canonical: '## [logo.png](https://example.com/home)\n\n![logo.png](attachments/logo.png)'
+  },
+  // In a list item the image becomes the item's child block. A quote cannot
+  // hold an item's child blocks, so there it follows the item.
+  {
+    name: 'image between the words of a list item',
+    markdown: '- a ![photo.png](attachments/photo.png) b\n- c',
+    canonical:
+      '- a b\n\n<!-- memry:block-nesting-level=1 -->\n\n![photo.png](attachments/photo.png)\n\n<!-- memry:block-nesting-level=0 -->\n\n- c'
+  },
+  {
+    name: 'image in a quote line',
+    markdown: '> a ![photo.png](attachments/photo.png) b',
+    canonical: '> a b\n>\n> ![photo.png](attachments/photo.png)'
+  },
+  {
+    name: 'image in a quoted list item',
+    markdown: '> - a\n>   - b ![photo.png](attachments/photo.png)\n> - c',
+    canonical: '> - a\n>   - b\n>\n> ![photo.png](attachments/photo.png)\n>\n> - c'
+  },
+  {
+    name: 'image in a callout list item',
+    markdown: '> [!note]\n> - a ![photo.png](attachments/photo.png) b',
+    canonical: '> [!note]\n> - a b\n>\n> ![photo.png](attachments/photo.png)'
   }
 ]
 

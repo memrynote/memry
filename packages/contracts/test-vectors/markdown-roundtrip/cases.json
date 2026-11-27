@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 301,
+    "exportedCaseCount": 306,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 311,
+    "caseCount": 316,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -446,6 +446,13 @@
       "canonical": "> x\n>\n> | a | b |\n> | - | - |\n> | c | d |",
       "pending": null,
       "sha256": "1374e4808d88d30b4391b14c3a4ab83af0638624801e088d85e91850164c03be"
+    },
+    {
+      "name": "quoted list item holding a paragraph",
+      "markdown": "> - a\n>\n>   para\n> - c",
+      "canonical": "> - a\n>\n> para\n>\n> - c",
+      "pending": null,
+      "sha256": "5bc1beec4b54933bfb2dce487ec76e5e42cac0244384122502c3e1ae777cda98"
     },
     {
       "name": "callout body in another spelling",
@@ -1216,6 +1223,34 @@
       "canonical": "## [logo.png](https://example.com/home)\n\n![logo.png](attachments/logo.png)",
       "pending": null,
       "sha256": "76bda9a912c970ca372668fb84abfb3dbea969e3c198f9e829146e89f937e1db"
+    },
+    {
+      "name": "image between the words of a list item",
+      "markdown": "- a ![photo.png](attachments/photo.png) b\n- c",
+      "canonical": "- a b\n\n<!-- memry:block-nesting-level=1 -->\n\n![photo.png](attachments/photo.png)\n\n<!-- memry:block-nesting-level=0 -->\n\n- c",
+      "pending": null,
+      "sha256": "e9d4f04fec7626fe3ae56ca02a24dfda75b1de26f72a00ff7744c5334b1244f2"
+    },
+    {
+      "name": "image in a quote line",
+      "markdown": "> a ![photo.png](attachments/photo.png) b",
+      "canonical": "> a b\n>\n> ![photo.png](attachments/photo.png)",
+      "pending": null,
+      "sha256": "b9ebb8a3484b38977a739a9295558ebf3f42fdb23c4959aca62fb85dfe36dcfc"
+    },
+    {
+      "name": "image in a quoted list item",
+      "markdown": "> - a\n>   - b ![photo.png](attachments/photo.png)\n> - c",
+      "canonical": "> - a\n>   - b\n>\n> ![photo.png](attachments/photo.png)\n>\n> - c",
+      "pending": null,
+      "sha256": "24218c19dda3cc62f9882314b9b2c319e2f68eca99dae838e0729c2310fc2c8d"
+    },
+    {
+      "name": "image in a callout list item",
+      "markdown": "> [!note]\n> - a ![photo.png](attachments/photo.png) b",
+      "canonical": "> [!note]\n> - a b\n>\n> ![photo.png](attachments/photo.png)",
+      "pending": null,
+      "sha256": "25256ae30fbd0ee38bca8613753928b72018725a003cc11fc7fd08e83bc0af5a"
     },
     {
       "name": "two column region",

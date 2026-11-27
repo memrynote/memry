@@ -791,7 +791,9 @@ describe('tables, quotes and callouts in a doc a build before lossless blocks se
     ['a quote opening on a table', '> | a | b |\n> |---|---|\n> | c | d |'],
     ['a callout holding a table', '> [!note]\n> | a | b |\n> |---|---|\n> | c | d |'],
     ['a quote holding a heading', '> a\n> # h'],
-    ['a callout body in another spelling', '> [!tip]\n> Use __bold__']
+    ['a callout body in another spelling', '> [!tip]\n> Use __bold__'],
+    ['a list item holding an image', '- a ![i](attachments/i.png) b\n- c'],
+    ['a quoted list item holding an image', '> - a ![i](attachments/i.png) b']
   ])('keeps the bytes of %s', async (_shape, block) => {
     const body = `${block}\n\nLine to edit.\n`
     const raw = `---\nid: x\n---\n${body}`
