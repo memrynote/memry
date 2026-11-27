@@ -1,4 +1,4 @@
-//! The Inbox events, appended to the bookmark lists by `registry/bookmarks.rs`:
+//! The Inbox events, appended to the reminder events by `registry/reminders.rs`:
 //! `with_inbox_events!(collect_events![...])` hands `collect_events!` the list with these
 //! appended.
 

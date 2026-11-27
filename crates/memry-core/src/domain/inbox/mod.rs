@@ -28,14 +28,18 @@ use super::notes::failed;
 pub mod attachments;
 pub mod convert;
 pub mod enrich;
+pub mod feedback;
 pub mod filing;
 pub mod ingest;
 pub mod jobs;
 pub mod merge;
 pub mod panel;
 pub mod queries;
+pub mod review;
 pub mod states;
 pub mod stats;
+pub mod suggest;
+pub mod suggest_history;
 pub mod urls;
 pub mod write;
 

@@ -9,12 +9,14 @@ use crate::startup::StartupState;
 // The bookmark and recents commands and events (`registry/bookmarks.rs`).
 #[macro_use]
 mod bookmarks;
-// The Inbox events (`registry/inbox.rs`).
 #[macro_use]
 mod inbox;
 // The task domain's commands and events (`registry/tasks.rs`, `registry/projects.rs`).
 #[macro_use]
 mod projects;
+// The reminder commands and events (`registry/reminders.rs`).
+#[macro_use]
+mod reminders;
 #[macro_use]
 mod tasks;
 
@@ -214,6 +216,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::attachments::notes_upload_attachment_abort::<Wry>,
             crate::commands::attachments::notes_upload_attachment_begin::<Wry>,
             crate::commands::export::notes_export_html::<Wry>,
+            crate::commands::export::notes_export_pdf,
             crate::commands::folders::notes_create_folder::<Wry>,
             crate::commands::folders::notes_delete_folder::<Wry>,
             crate::commands::folders::notes_get_folder_config::<Wry>,
@@ -523,9 +526,6 @@ pub fn builder() -> Builder<Wry> {
             crate::events::SyncLinkingRequestedEvent,
             // ocr languages
             crate::events::OcrLanguagesChangedEvent,
-            // reminders
-            crate::events::ReminderClickedEvent,
-            crate::events::ReminderDueEvent,
             // settings
             crate::events::SettingsChangedEvent,
             crate::events::SettingsOpenSectionEvent,

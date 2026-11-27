@@ -427,6 +427,11 @@ export const commands = {
 	notesUploadAttachmentBegin: (noteId: string, fileName: string, size: number) => __TAURI_INVOKE<string>("notes_upload_attachment_begin", { noteId, fileName, size }),
 	/**  `notes:export-html`: the note as a self-contained HTML file where the save dialog says. */
 	notesExportHtml: (input: ExportNoteInput) => __TAURI_INVOKE<ExportResult>("notes_export_html", { input }),
+	/**
+	 *  `notes:export-pdf`: the note printed in a hidden window with the page size asked for, written
+	 *  where the save dialog says. Like the HTML export it takes no path from the webview.
+	 */
+	notesExportPdf: (input: ExportNoteInput) => __TAURI_INVOKE<ExportResult>("notes_export_pdf", { input }),
 	/**  `notes:create-folder`: the folder (vault-relative, `/`-separated) and the parents it needs. */
 	notesCreateFolder: (path: string) => __TAURI_INVOKE<null>("notes_create_folder", { path }),
 	/**
@@ -1120,6 +1125,22 @@ export const commands = {
 	recentsList: (limit: number | null) => __TAURI_INVOKE<RecentlyOpenedView[]>("recents_list", { limit }),
 	/**  Records that the note or canvas was opened now: whether it was written. */
 	recentsRecord: (input: RecordRecentInput) => __TAURI_INVOKE<boolean>("recents_record", { input }),
+	/**
+	 *  Dismisses each id that names a live reminder and returns how many. A failure stops the
+	 *  batch; the reminders dismissed before it keep their events and lose their banners.
+	 */
+	reminderBulkDismiss: (reminderIds: string[]) => __TAURI_INVOKE<number>("reminder_bulk_dismiss", { reminderIds }),
+	reminderCountPending: () => __TAURI_INVOKE<number>("reminder_count_pending"),
+	reminderCreate: (input: ReminderCreateInput) => __TAURI_INVOKE<ReminderView>("reminder_create", { input }),
+	reminderDelete: (id: string) => __TAURI_INVOKE<null>("reminder_delete", { id }),
+	reminderDismiss: (id: string) => __TAURI_INVOKE<ReminderView>("reminder_dismiss", { id }),
+	reminderGet: (id: string) => __TAURI_INVOKE<ReminderWithTargetView | null>("reminder_get", { id }),
+	reminderGetDue: () => __TAURI_INVOKE<ReminderWithTargetView[]>("reminder_get_due"),
+	reminderGetForTarget: (input: ReminderTargetInput) => __TAURI_INVOKE<ReminderView[]>("reminder_get_for_target", { input }),
+	reminderGetUpcoming: (days: number | null) => __TAURI_INVOKE<ReminderListView>("reminder_get_upcoming", { days }),
+	reminderList: (input: ReminderListInput | null) => __TAURI_INVOKE<ReminderListView>("reminder_list", { input }),
+	reminderSnooze: (input: ReminderSnoozeInput) => __TAURI_INVOKE<ReminderView>("reminder_snooze", { input }),
+	reminderUpdate: (input: ReminderUpdateInput) => __TAURI_INVOKE<ReminderView>("reminder_update", { input }),
 };
 
 /** Events */
@@ -1181,7 +1202,12 @@ export const events = {
 	projectUpdatedEvent: makeEvent<ProjectUpdatedEvent, ProjectUpdatedEvent>("project-updated-event"),
 	propertyDefinitionChangedEvent: makeEvent<PropertyDefinitionChangedEvent, PropertyDefinitionChangedEvent>("property-definition-changed-event"),
 	reminderClickedEvent: makeEvent<ReminderClickedEvent, ReminderClickedEvent>("reminder-clicked-event"),
+	reminderCreatedEvent: makeEvent<ReminderCreatedEvent, ReminderCreatedEvent>("reminder-created-event"),
+	reminderDeletedEvent: makeEvent<ReminderDeletedEvent, ReminderDeletedEvent>("reminder-deleted-event"),
+	reminderDismissedEvent: makeEvent<ReminderDismissedEvent, ReminderDismissedEvent>("reminder-dismissed-event"),
 	reminderDueEvent: makeEvent<ReminderDueEvent, ReminderDueEvent>("reminder-due-event"),
+	reminderSnoozedEvent: makeEvent<ReminderSnoozedEvent, ReminderSnoozedEvent>("reminder-snoozed-event"),
+	reminderUpdatedEvent: makeEvent<ReminderUpdatedEvent, ReminderUpdatedEvent>("reminder-updated-event"),
 	settingsChangedEvent: makeEvent<SettingsChangedEvent, SettingsChangedEvent>("settings-changed-event"),
 	settingsOpenSectionEvent: makeEvent<SettingsOpenSectionEvent, SettingsOpenSectionEvent>("settings-open-section-event"),
 	stickyDraftsChangedEvent: makeEvent<StickyDraftsChangedEvent, StickyDraftsChangedEvent>("sticky-drafts-changed-event"),
@@ -2276,8 +2302,8 @@ export type ExportFailure = "cancelled" | "not_found" | "failed";
  *  `ExportNoteSchema` (`packages/contracts/src/notes-api.ts`) without its `outputPath`: a
  *  webview never names the file to write, so the command always asks the user through the save
  *  dialog. `deny_unknown_fields` rejects a call that still carries one (a departure from
- *  Electron, whose handler writes to the renderer's `outputPath`). The headless export is
- *  [`export_html_to`], reachable in process only.
+ *  Electron, whose handler writes to the renderer's `outputPath`). The headless exports are
+ *  [`export_html_to`] and [`export_pdf_to`], reachable in process only.
  */
 export type ExportNoteInput = {
 	noteId: string,
@@ -4322,6 +4348,39 @@ export type ReminderClickedEvent = {
 	reminder: ReminderHint,
 };
 
+/**
+ *  `CreateReminderSchema`, flattened: the arm `targetType` names decides which of the optional
+ *  fields it needs.
+ */
+export type ReminderCreateInput = {
+	targetType: ReminderTargetType,
+	targetId: string,
+	remindAt: string,
+	title?: string | null,
+	note?: string | null,
+	/**  The `highlight` arm. */
+	highlightText?: string | null,
+	highlightStart?: number | null,
+	highlightEnd?: number | null,
+	/**  The `note_date` arm. */
+	anchorId?: string | null,
+};
+
+/**  A reminder command created this reminder. */
+export type ReminderCreatedEvent = {
+	reminder: ReminderHint,
+};
+
+/**  A reminder command deleted this reminder. */
+export type ReminderDeletedEvent = {
+	reminder: ReminderHint,
+};
+
+/**  A reminder command dismissed this reminder. */
+export type ReminderDismissedEvent = {
+	reminder: ReminderHint,
+};
+
 /**  One scheduler tick fired these reminders. */
 export type ReminderDueEvent = {
 	reminders: ReminderHint[],
@@ -4333,6 +4392,104 @@ export type ReminderHint = {
 	targetType: string,
 	targetId: string,
 };
+
+/**  `ListRemindersSchema`. */
+export type ReminderListInput = {
+	targetType?: ReminderTargetType | null,
+	targetId?: string | null,
+	status?: ReminderStatusFilter | null,
+	fromDate?: string | null,
+	toDate?: string | null,
+	/**  1 to 200, 50 when absent. */
+	limit?: number | null,
+	offset?: number | null,
+};
+
+/**  `ReminderListResponse`. */
+export type ReminderListView = {
+	reminders: ReminderWithTargetView[],
+	total: number,
+	hasMore: boolean,
+};
+
+/**  `SnoozeReminderSchema`. */
+export type ReminderSnoozeInput = {
+	id: string,
+	snoozeUntil: string,
+};
+
+/**  A reminder command snoozed this reminder. */
+export type ReminderSnoozedEvent = {
+	reminder: ReminderHint,
+};
+
+/**  `ReminderStatusSchema`. `triggered` is this device's fire, never a synced status. */
+export type ReminderStatus = "pending" | "triggered" | "dismissed" | "snoozed";
+
+/**  `ListRemindersSchema.status`: one status or several. */
+export type ReminderStatusFilter = ReminderStatus | ReminderStatus[];
+
+/**  `GetForTargetSchema`. */
+export type ReminderTargetInput = {
+	targetType: ReminderTargetType,
+	targetId: string,
+};
+
+/**  `ReminderTargetTypeSchema`. */
+export type ReminderTargetType = "note" | "journal" | "highlight" | "task" | "note_date";
+
+/**
+ *  `UpdateReminderSchema`. An absent field is left alone; `title` and `note` take `null` as a
+ *  clear.
+ */
+export type ReminderUpdateInput = {
+	id: string,
+	remindAt?: string | null,
+	title?: string | null,
+	note?: string | null,
+};
+
+/**  A reminder command changed this reminder's time, title or note. */
+export type ReminderUpdatedEvent = {
+	reminder: ReminderHint,
+};
+
+/**
+ *  `Reminder`. `status` and `targetType` are carried verbatim: a newer build may write a value
+ *  this one does not know.
+ */
+export type ReminderView = {
+	id: string,
+	targetType: string,
+	targetId: string,
+	remindAt: string,
+	anchorId: string | null,
+	highlightText: string | null,
+	highlightStart: number | null,
+	highlightEnd: number | null,
+	title: string | null,
+	note: string | null,
+	status: string,
+	/**
+	 *  When this device last fired the reminder for its `remindAt` or `snoozedUntil`: kept
+	 *  through a dismiss and a snooze, gone after a new `remindAt` (Electron's `triggeredAt`).
+	 */
+	triggeredAt: string | null,
+	dismissedAt: string | null,
+	snoozedUntil: string | null,
+	createdAt: string,
+	modifiedAt: string,
+};
+
+/**  `ReminderWithTarget`. */
+export type ReminderWithTargetView = {
+	targetTitle: string | null,
+	targetExists: boolean,
+	/**  Set for a highlight only: whether its note is still there. */
+	highlightExists?: boolean | null,
+	/**  Set for a task only: the project it belongs to. */
+	projectId?: string | null,
+} & ReminderView;
 
 /**  Why a link produced no attachment: `DownloadAttachmentFromUrlFailure`. */
 export type RemoteFailure = "not-an-image" | "too-large" | "offline" | "failed" | "write-failed";
