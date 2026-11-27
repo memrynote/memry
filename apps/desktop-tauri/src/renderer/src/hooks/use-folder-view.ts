@@ -308,24 +308,43 @@ export function useFolderView({
   const renameOriginRef = useRef<{ index: number; name: string } | null>(null)
   /** The debounced rename's disk write, until its timer fires or another view write runs it. */
   const pendingRenameRef = useRef<(() => Promise<void>) | null>(null)
-  const renameWriteRef = useRef<Promise<void>>(Promise.resolve())
+  /** The debounced view change's disk write (updateView, updateDisplayName), likewise. */
+  const pendingUpdateRef = useRef<(() => Promise<void>) | null>(null)
+  /** The debounced writes, chained in the order they were scheduled. Each catches its errors. */
+  const viewWritesRef = useRef<Promise<void>>(Promise.resolve())
 
-  /**
-   * Runs the debounced rename write now and waits for it. Every other view write calls this
-   * first: those writes address views by the name in the cache, and until the rename lands the
-   * disk still holds the old one. A view added meanwhile under that old name ("New view") would
-   * replace it, and the rename would then turn it into the renamed view, losing the new one.
-   */
+  /** Queues the pending rename write; the name it renames is on disk once the chain gets there. */
   const flushRename = useCallback((): Promise<void> => {
     const write = pendingRenameRef.current
     if (write) {
       pendingRenameRef.current = null
+      renameOriginRef.current = null
       if (renameTimeoutRef.current) clearTimeout(renameTimeoutRef.current)
       renameTimeoutRef.current = null
-      renameWriteRef.current = write()
+      viewWritesRef.current = viewWritesRef.current.then(write)
     }
-    return renameWriteRef.current
+    return viewWritesRef.current
   }, [])
+
+  /**
+   * Queues every pending debounced write in the order it was scheduled and waits for them. Every
+   * other view or config write calls this first: views are addressed by name, and until a rename
+   * lands the disk still holds the old one. A view added meanwhile under that old name ("New
+   * view") would replace it, and the rename would then turn it into the renamed view, losing the
+   * new one. A pending rename is always older than a pending view change, because `renameView`
+   * queues a pending change before it schedules.
+   */
+  const flushViewWrites = useCallback((): Promise<void> => {
+    void flushRename()
+    const write = pendingUpdateRef.current
+    if (write) {
+      pendingUpdateRef.current = null
+      if (updateTimeoutRef.current) clearTimeout(updateTimeoutRef.current)
+      updateTimeoutRef.current = null
+      viewWritesRef.current = viewWritesRef.current.then(write)
+    }
+    return viewWritesRef.current
+  }, [flushRename])
 
   // ============================================================================
   // Queries
@@ -528,28 +547,26 @@ export function useFolderView({
         clearTimeout(updateTimeoutRef.current)
       }
 
-      updateTimeoutRef.current = setTimeout(() => {
-        void (async () => {
-          try {
-            await flushRename()
-            const result = await folderViewService.setView(
-              scope,
-              // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- local ViewConfig mirrors the preload type with unknown filters/groupBy; the IPC contract type is narrower
-              updatedView as unknown as ContractViewConfig
-            )
+      pendingUpdateRef.current = async () => {
+        try {
+          const result = await folderViewService.setView(
+            scope,
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- local ViewConfig mirrors the preload type with unknown filters/groupBy; the IPC contract type is narrower
+            updatedView as unknown as ContractViewConfig
+          )
 
-            if (!result.success) {
-              throw new Error(result.error || 'Failed to save view')
-            }
-          } catch (err) {
-            log.error('updateView failed:', err)
-            // Revert on error
-            void queryClient.invalidateQueries({ queryKey: folderViewKeys.views(scope) })
+          if (!result.success) {
+            throw new Error(result.error || 'Failed to save view')
           }
-        })()
-      }, 300)
+        } catch (err) {
+          log.error('updateView failed:', err)
+          // Revert on error
+          void queryClient.invalidateQueries({ queryKey: folderViewKeys.views(scope) })
+        }
+      }
+      updateTimeoutRef.current = setTimeout(() => void flushViewWrites(), 300)
     },
-    [activeView, activeViewIndex, scope, queryClient, flushRename]
+    [activeView, activeViewIndex, scope, queryClient, flushViewWrites]
   )
 
   /**
@@ -558,7 +575,7 @@ export function useFolderView({
   const addView = useCallback(
     async (view: ViewConfig) => {
       try {
-        await flushRename()
+        await flushViewWrites()
         const result = await folderViewService.setView(
           scope,
           // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- local ViewConfig mirrors the preload type with unknown filters/groupBy; the IPC contract type is narrower
@@ -585,7 +602,7 @@ export function useFolderView({
         throw err
       }
     },
-    [scope, queryClient, flushRename]
+    [scope, queryClient, flushViewWrites]
   )
 
   /**
@@ -594,7 +611,7 @@ export function useFolderView({
   const deleteView = useCallback(
     async (viewName: string) => {
       try {
-        await flushRename()
+        await flushViewWrites()
         const result = await folderViewService.deleteView(scope, viewName)
 
         if (!result.success) {
@@ -614,7 +631,7 @@ export function useFolderView({
         throw err
       }
     },
-    [scope, queryClient, activeViewIndex, flushRename]
+    [scope, queryClient, activeViewIndex, flushViewWrites]
   )
 
   /**
@@ -638,6 +655,8 @@ export function useFolderView({
       )
       if (collides) return
 
+      // A view change scheduled before this rename writes first, under the name it had then.
+      if (pendingUpdateRef.current) void flushViewWrites()
       const newViews = views.map((v, i) => (i === index ? { ...v, name } : v))
       if (renameOriginRef.current?.index !== index) {
         renameOriginRef.current = { index, name: target.name }
@@ -656,7 +675,6 @@ export function useFolderView({
       }
       pendingRenameRef.current = async () => {
         try {
-          renameOriginRef.current = null
           if (persistedName === name) return
           const result = await folderViewService.setView(
             scope,
@@ -676,7 +694,7 @@ export function useFolderView({
       }
       renameTimeoutRef.current = setTimeout(() => void flushRename(), 300)
     },
-    [views, scope, queryClient, flushRename]
+    [views, scope, queryClient, flushRename, flushViewWrites]
   )
 
   /**
@@ -701,7 +719,7 @@ export function useFolderView({
       })
 
       try {
-        await flushRename()
+        await flushViewWrites()
         // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- local ViewConfig mirrors the preload type with unknown filters/groupBy; the IPC contract type is narrower
         const result = await folderViewService.setView(scope, {
           ...targetView,
@@ -720,7 +738,7 @@ export function useFolderView({
         throw err
       }
     },
-    [views, scope, queryClient, flushRename]
+    [views, scope, queryClient, flushViewWrites]
   )
 
   /**
@@ -764,6 +782,7 @@ export function useFolderView({
         return
       }
       try {
+        await flushViewWrites()
         const configResult = await folderViewService.getConfig(scope.path)
         const existingConfig = configResult.config
 
@@ -790,7 +809,7 @@ export function useFolderView({
         log.error('updateSummaryConfig failed:', err)
       }
     },
-    [scope, queryClient]
+    [scope, queryClient, flushViewWrites]
   )
 
   /**
@@ -836,41 +855,39 @@ export function useFolderView({
         clearTimeout(updateTimeoutRef.current)
       }
 
-      updateTimeoutRef.current = setTimeout(() => {
-        void (async () => {
-          try {
-            await flushRename()
-            // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- local ViewConfig mirrors the preload type with unknown filters/groupBy; the IPC contract type is narrower
-            await folderViewService.setView(scope, updatedView as unknown as ContractViewConfig)
+      pendingUpdateRef.current = async () => {
+        try {
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- local ViewConfig mirrors the preload type with unknown filters/groupBy; the IPC contract type is narrower
+          await folderViewService.setView(scope, updatedView as unknown as ContractViewConfig)
 
-            // The properties.{id}.displayName record lives in .folder.md,
-            // which only folders have — the per-view column override above
-            // is all a tag scope gets for now.
-            if (scope.kind === 'folder') {
-              const configResult = await folderViewService.getConfig(scope.path)
-              const existingConfig = configResult.config
+          // The properties.{id}.displayName record lives in .folder.md,
+          // which only folders have — the per-view column override above
+          // is all a tag scope gets for now.
+          if (scope.kind === 'folder') {
+            const configResult = await folderViewService.getConfig(scope.path)
+            const existingConfig = configResult.config
 
-              const updatedConfig = {
-                ...existingConfig,
-                properties: {
-                  ...existingConfig.properties,
-                  [columnId]: {
-                    ...existingConfig.properties?.[columnId],
-                    displayName
-                  }
+            const updatedConfig = {
+              ...existingConfig,
+              properties: {
+                ...existingConfig.properties,
+                [columnId]: {
+                  ...existingConfig.properties?.[columnId],
+                  displayName
                 }
               }
-
-              await folderViewService.setConfig(scope.path, updatedConfig)
             }
-          } catch (err) {
-            log.error('Failed to save display name:', err)
-            void queryClient.invalidateQueries({ queryKey: folderViewKeys.views(scope) })
+
+            await folderViewService.setConfig(scope.path, updatedConfig)
           }
-        })()
-      }, 300)
+        } catch (err) {
+          log.error('Failed to save display name:', err)
+          void queryClient.invalidateQueries({ queryKey: folderViewKeys.views(scope) })
+        }
+      }
+      updateTimeoutRef.current = setTimeout(() => void flushViewWrites(), 300)
     },
-    [activeView, activeViewIndex, scope, queryClient, flushRename]
+    [activeView, activeViewIndex, scope, queryClient, flushViewWrites]
   )
 
   /**
@@ -1096,6 +1113,7 @@ export function useFolderView({
         throw new Error('Formulas are not supported for tag scope yet')
       }
       try {
+        await flushViewWrites()
         const configResult = await folderViewService.getConfig(scope.path)
         const existingConfig = configResult.config
 
@@ -1118,7 +1136,7 @@ export function useFolderView({
         throw err
       }
     },
-    [scope, queryClient]
+    [scope, queryClient, flushViewWrites]
   )
 
   /**
@@ -1131,6 +1149,7 @@ export function useFolderView({
         throw new Error('Formulas are not supported for tag scope yet')
       }
       try {
+        await flushViewWrites()
         const configResult = await folderViewService.getConfig(scope.path)
         const existingConfig = configResult.config
 
@@ -1153,7 +1172,7 @@ export function useFolderView({
         throw err
       }
     },
-    [scope, queryClient]
+    [scope, queryClient, flushViewWrites]
   )
 
   /**
@@ -1166,6 +1185,7 @@ export function useFolderView({
         throw new Error('Formulas are not supported for tag scope yet')
       }
       try {
+        await flushViewWrites()
         const configResult = await folderViewService.getConfig(scope.path)
         const existingConfig = configResult.config
 
@@ -1186,7 +1206,7 @@ export function useFolderView({
         throw err
       }
     },
-    [scope, queryClient]
+    [scope, queryClient, flushViewWrites]
   )
 
   // ============================================================================
