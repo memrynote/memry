@@ -150,7 +150,7 @@ async fn upload_row(
             ..
         }))) => Ok(Settled::Revoked),
         Err(error @ (TransferError::EmptyFile | TransferError::TooLarge { .. })) => {
-            drop_row(db, row, error.to_string()).await
+            refuse_row(db, row, error.to_string()).await
         }
         Err(error) => {
             let text = error.to_string();
@@ -212,6 +212,20 @@ async fn drop_row(db: &Db, row: PendingUpload, reason: String) -> Result<Settled
     );
     let (owner, path) = (row.owner_id.clone(), row.disk_path.clone());
     db.call(move |conn| upload_queue::clear(conn, &owner, &path))
+        .await?;
+    Ok(Settled::Dropped(row, reason))
+}
+
+/// Drops a row the uploader refuses for good and remembers the refusal, so the
+/// next re-drive does not queue the unchanged file again (#5711,
+/// `attachment-outbox.ts:355-357`).
+async fn refuse_row(db: &Db, row: PendingUpload, reason: String) -> Result<Settled, StorageError> {
+    eprintln!(
+        "memry-core: attachment upload of {} refused: {reason}",
+        row.owner_id
+    );
+    let (owner, path) = (row.owner_id.clone(), row.disk_path.clone());
+    db.call(move |conn| upload_queue::refuse(conn, &owner, &path))
         .await?;
     Ok(Settled::Dropped(row, reason))
 }

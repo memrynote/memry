@@ -7,6 +7,17 @@
 //! that failed `n` times waits `min(1 min * 2^(n-1), 6 h)` after its last
 //! write. A row crossing [`STUCK_UPLOAD_ATTEMPTS`] is flagged once by the
 //! runner. Rows have no attempt cap: a file that exists keeps trying.
+//!
+//! Refusals (#5711, Electron #5619 `refuseUpload`, `attachment-outbox.ts:115-152`):
+//! a file the uploader refuses for good (empty, over the size limit) is dropped
+//! and its size and mtime are remembered under the `meta` key [`REFUSALS_KEY`].
+//! [`queue_if_absent`] adds no row for an empty file or for a file whose stamp
+//! still matches, so the re-drive no longer queues and drops it every pass.
+
+use std::collections::BTreeMap;
+use std::time::UNIX_EPOCH;
+
+use serde::{Deserialize, Serialize};
 
 use super::{attempts_of, backoff_ms, failed};
 use crate::api::errors::StorageError;
@@ -65,14 +76,19 @@ pub fn enqueue(
     .map_err(failed)
 }
 
-/// Queues `disk_path` unless it has a row (`queueUploadIfAbsent`): a failed row
-/// keeps its attempts and its retry window. True when a row was added.
+/// Queues `disk_path` unless it has a row (a failed row keeps its attempts
+/// and its retry window) or the uploader would refuse it as it is
+/// (`queueUploadIfAbsent`, `attachment-outbox.ts:150-151`). True when a row
+/// was added.
 pub fn queue_if_absent(
     conn: &Connection,
     owner_id: &str,
     disk_path: &str,
     now_ms: i64,
 ) -> Result<bool, StorageError> {
+    if refused_as_it_is(conn, disk_path)? {
+        return Ok(false);
+    }
     conn.execute(
         "INSERT INTO attachment_upload_queue (id, note_id, disk_path, created_at, updated_at)
          VALUES (?1, ?2, ?3, ?4, ?4)
@@ -121,6 +137,108 @@ pub fn clear(conn: &Connection, owner_id: &str, disk_path: &str) -> Result<(), S
     )
     .map(|_| ())
     .map_err(failed)
+}
+
+/// The `meta` key of the refusals: a JSON object from a file's absolute path
+/// to its [`FileStamp`] when the uploader refused it. A missing key reads as
+/// no refusals. Electron keeps the same object in `sync_state`
+/// (`attachmentUploadRefusals`); it is not imported, which costs one more
+/// offer and drop per refused file.
+pub const REFUSALS_KEY: &str = "attachment_upload.refusals";
+
+/// A file's size and mtime, as the uploader saw it when it refused the file.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+struct FileStamp {
+    size: u64,
+    #[serde(rename = "mtimeMs")]
+    mtime_ms: f64,
+}
+
+/// `None` for a file that cannot be read: a missing file is the drain's to
+/// judge, not the refusal check's.
+fn stamp_of(disk_path: &str) -> Option<FileStamp> {
+    let meta = std::fs::metadata(disk_path).ok()?;
+    let mtime_ms = match meta.modified().ok()?.duration_since(UNIX_EPOCH) {
+        Ok(after) => after.as_secs_f64() * 1000.0,
+        Err(before) => -before.duration().as_secs_f64() * 1000.0,
+    };
+    Some(FileStamp {
+        size: meta.len(),
+        mtime_ms,
+    })
+}
+
+/// The recorded refusals. A corrupt value reads as none, with a warning:
+/// forgetting them costs one more offer of each refused file.
+fn read_refusals(conn: &Connection) -> Result<BTreeMap<String, FileStamp>, StorageError> {
+    let value: Option<String> = conn
+        .query_row(
+            "SELECT value FROM meta WHERE key = ?1",
+            params![REFUSALS_KEY],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(failed)?;
+    let Some(value) = value else {
+        return Ok(BTreeMap::new());
+    };
+    match serde_json::from_str::<BTreeMap<String, serde_json::Value>>(&value) {
+        Ok(entries) => Ok(entries
+            .into_iter()
+            .filter_map(|(path, stamp)| Some((path, serde_json::from_value(stamp).ok()?)))
+            .collect()),
+        Err(error) => {
+            eprintln!(
+                "memry-core: attachment upload refusals are corrupt, starting them again: {error}"
+            );
+            Ok(BTreeMap::new())
+        }
+    }
+}
+
+fn write_refusals(
+    conn: &Connection,
+    refusals: &BTreeMap<String, FileStamp>,
+) -> Result<(), StorageError> {
+    if refusals.is_empty() {
+        conn.execute("DELETE FROM meta WHERE key = ?1", params![REFUSALS_KEY])
+            .map_err(failed)?;
+        return Ok(());
+    }
+    let value = serde_json::to_string(refusals).map_err(|error| StorageError::Failed {
+        what: error.to_string(),
+    })?;
+    conn.execute(
+        "INSERT INTO meta (key, value) VALUES (?1, ?2)
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        params![REFUSALS_KEY, value],
+    )
+    .map(drop)
+    .map_err(failed)
+}
+
+/// The uploader refused this file for good (`refuseUpload`,
+/// `attachment-outbox.ts:115-129`): drops its row and remembers the file's
+/// size and mtime, so it is not queued again until a write changes them.
+/// Refusals whose file changed or is gone hold nothing back and are let go.
+pub fn refuse(conn: &Connection, owner_id: &str, disk_path: &str) -> Result<(), StorageError> {
+    clear(conn, owner_id, disk_path)?;
+    let mut refusals = read_refusals(conn)?;
+    refusals.retain(|file, stamp| stamp_of(file) == Some(*stamp));
+    if let Some(stamp) = stamp_of(disk_path) {
+        refusals.insert(disk_path.to_owned(), stamp);
+    }
+    write_refusals(conn, &refusals)
+}
+
+/// Whether the uploader would refuse this file as it is on disk now
+/// (`refusedAsItIs`, `attachment-outbox.ts:137-141`): it is empty, or it was
+/// refused before and no write has changed it since.
+fn refused_as_it_is(conn: &Connection, disk_path: &str) -> Result<bool, StorageError> {
+    let Some(stamp) = stamp_of(disk_path) else {
+        return Ok(false);
+    };
+    Ok(stamp.size == 0 || read_refusals(conn)?.get(disk_path) == Some(&stamp))
 }
 
 /// Counts one failed try (`markUploadFailed`), adding the row if it went
