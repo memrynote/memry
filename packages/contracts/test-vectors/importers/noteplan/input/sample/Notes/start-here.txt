@@ -1,0 +1,7 @@
+---
+type: guide
+icon: hand-point-right
+bg-color: blue-50
+---
+# Start Here
+Some guidance. Tagged #guides/onboarding.

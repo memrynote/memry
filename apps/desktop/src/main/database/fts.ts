@@ -31,7 +31,16 @@ export function createFtsTable(db: IndexDb): void {
       tokenize='porter unicode61'
     )
   `)
+  // `id` is UNINDEXED, so `WHERE id = ?` on the vtab scans every row, and
+  // indexing a fresh vault note by note was quadratic: 177 s for 17k notes,
+  // 15 s with this index (#5390). fts5 keeps its `_content` shadow table
+  // (`c0` is `id`) for every writer, older builds included, so the index can
+  // never go stale. DROP TABLE fts_notes drops it with the shadow table.
+  db.run(sql`CREATE INDEX IF NOT EXISTS fts_notes_content_id ON fts_notes_content(c0)`)
 }
+
+/** The fts5 rows of one note, found through `fts_notes_content_id`. */
+const rowsOfNote = (noteId: string) => sql`SELECT id FROM fts_notes_content WHERE c0 = ${noteId}`
 
 /**
  * Removes the legacy triggers that used to keep FTS in sync with note_cache.
@@ -92,7 +101,7 @@ export function insertFtsNote(
   // One transaction so a crash between the two statements cannot leave the
   // note unsearchable.
   db.transaction((tx) => {
-    tx.run(sql`DELETE FROM fts_notes WHERE id = ${noteId}`)
+    tx.run(sql`DELETE FROM fts_notes WHERE rowid IN (${rowsOfNote(noteId)})`)
     tx.run(sql`
       INSERT INTO fts_notes (id, title, content, tags)
       VALUES (${noteId}, ${title}, ${content}, ${tagsStr})
@@ -108,9 +117,10 @@ export function insertFtsNote(
  * Anything else must use `insertFtsNote`, or the duplicate rows come back.
  *
  * This exists because `DELETE ... WHERE id = ?` is a full table scan on fts5
- * (`id` is UNINDEXED, and the vtab only optimises MATCH and rowid), which makes
+ * (`id` is UNINDEXED, and the vtab only optimises MATCH and rowid), which made
  * a bulk load quadratic. Measured on 6k notes: 92ms appending vs 1785ms
- * delete-then-insert.
+ * delete-then-insert. `fts_notes_content_id` now makes the delete a lookup,
+ * and skipping it still saves one statement per row.
  */
 export function insertFtsNoteUnchecked(
   db: IndexDb,
@@ -149,9 +159,7 @@ export function dedupeFtsNotes(db: IndexDb): void {
  * @param noteId - The note's unique ID to delete
  */
 export function deleteFtsNote(db: IndexDb, noteId: string): void {
-  db.run(sql`
-    DELETE FROM fts_notes WHERE id = ${noteId}
-  `)
+  db.run(sql`DELETE FROM fts_notes WHERE rowid IN (${rowsOfNote(noteId)})`)
 }
 
 /**
@@ -202,7 +210,7 @@ export function getFtsCount(db: IndexDb): number {
  * @returns True if the note is indexed
  */
 export function ftsNoteExists(db: IndexDb, noteId: string): boolean {
-  const result = db.get<{ id: string }>(sql`SELECT id FROM fts_notes WHERE id = ${noteId}`)
+  const result = db.get<{ id: string }>(rowsOfNote(noteId))
   return result !== undefined
 }
 

@@ -76,6 +76,14 @@ describe('AIInlineSettings', () => {
     await waitFor(() => expect((input as HTMLInputElement).value).toBe(MASKED))
   })
 
+  it('says the key lives in the OS keychain, not in local settings', async () => {
+    render(<AIInlineSettings />)
+    expect(
+      await screen.findByText('Stored in your OS keychain, sent only to the provider')
+    ).toBeTruthy()
+    expect(screen.queryByText('Stored locally, sent only to the provider')).toBeNull()
+  })
+
   it('tests the connection through Rust and names the provider, not a port', async () => {
     commands.aiInlineTestConnection.mockResolvedValue({ ok: true, detail: null })
     render(<AIInlineSettings />)

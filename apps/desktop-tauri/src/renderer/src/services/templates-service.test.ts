@@ -6,7 +6,9 @@ import {
   updateTemplate,
   deleteTemplate,
   duplicateTemplate,
-  onTemplateCreated
+  onTemplateCreated,
+  onTemplateDeleted,
+  onTemplateUpdated
 } from './templates-service'
 
 const commands = vi.hoisted(() => ({
@@ -20,8 +22,16 @@ const commands = vi.hoisted(() => ({
 const events = vi.hoisted(() => ({
   templateCreatedEvent: { listen: vi.fn() },
   templateUpdatedEvent: { listen: vi.fn() },
-  templateDeletedEvent: { listen: vi.fn() }
+  templateDeletedEvent: { listen: vi.fn() },
+  syncItemSyncedEvent: {
+    listen: vi.fn(async (handler: (event: { payload: unknown }) => void) => {
+      pulled.add(handler)
+      return () => pulled.delete(handler)
+    })
+  }
 }))
+// Every live listener of pulled pages.
+const pulled = vi.hoisted(() => new Set<(event: { payload: unknown }) => void>())
 
 vi.mock('../../../generated/bindings', () => ({ commands, events }))
 
@@ -120,5 +130,41 @@ describe('templates-service', () => {
 
     expect(callback).toHaveBeenCalledTimes(1)
     expect(callback).toHaveBeenCalledWith({ id: 'tpl-1' })
+  })
+
+  it('tells each template listener about the pulled templates of its operation', async () => {
+    for (const event of [
+      events.templateCreatedEvent,
+      events.templateUpdatedEvent,
+      events.templateDeletedEvent
+    ]) {
+      event.listen.mockResolvedValue(() => undefined)
+    }
+    vi.useFakeTimers()
+    try {
+      const created = vi.fn()
+      const updated = vi.fn()
+      const deleted = vi.fn()
+      const stops = [
+        onTemplateCreated(created),
+        onTemplateUpdated(updated),
+        onTemplateDeleted(deleted)
+      ]
+      await vi.advanceTimersByTimeAsync(0)
+      const items = [
+        { itemId: 'tpl-1', type: 'template', itemOperation: 'create' },
+        { itemId: 'tpl-2', type: 'template', itemOperation: 'update' },
+        { itemId: 'tpl-3', type: 'template', itemOperation: 'delete' }
+      ]
+      for (const handler of pulled) handler({ payload: { operation: 'pull', items } })
+      await vi.advanceTimersByTimeAsync(150)
+
+      expect(created.mock.calls).toEqual([[{ id: 'tpl-1' }]])
+      expect(updated.mock.calls).toEqual([[{ id: 'tpl-2' }]])
+      expect(deleted.mock.calls).toEqual([[{ id: 'tpl-3' }]])
+      for (const stop of stops) stop()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

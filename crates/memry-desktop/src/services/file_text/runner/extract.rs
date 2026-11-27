@@ -22,7 +22,7 @@ use crate::vault::paths::{open_vault_file, resolve_vault_file};
 
 /// How a job without OCR ends, so the app-version retry reads its OCR parts once a build has
 /// it (#3542 lane F).
-const OCR_UNAVAILABLE: &str = "OCR unavailable";
+pub(super) const OCR_UNAVAILABLE: &str = "OCR unavailable";
 
 struct PageText {
     method: ExtractedTextMethod,
@@ -357,7 +357,14 @@ impl FileTextRunner {
                         let _ = old.close();
                     }
                     *doc = Some(self.deps.pdf.open(path)?);
+                    // The stop released the worker before this open started a new one.
                     if self.stopped() {
+                        if let Some(new) = doc.take()
+                            && let Err(error) = new.close()
+                        {
+                            tracing::debug!(scope = "FileText", %error, "Closing a PDF failed");
+                        }
+                        self.deps.pdf.release();
                         return Err("stopped".into());
                     }
                 }

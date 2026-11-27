@@ -102,7 +102,6 @@
   "commands": {
     "goHome": "Zur Startseite",
     "goInbox": "Zum Eingang",
-    "goJournal": "Zum Journal",
     "goCalendar": "Zum Kalender",
     "goTasks": "Zu den Aufgaben",
     "goGraph": "Zum Graphen",

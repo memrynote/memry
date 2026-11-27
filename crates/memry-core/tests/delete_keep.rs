@@ -2,9 +2,9 @@
 //! as an inbox note first (#3029, chapter 05 §5.8 client behavior).
 //!
 //! Real `PullLoop`, `HttpClient`, SQLite, update log, outbox and `yrs`. The
-//! transport and the record cipher are fakes. A tombstone is opened only for
-//! its `bodyStateVector` (#3037); a cipher that opens nothing is a delete
-//! without one.
+//! transport and the record cipher are fakes. A tombstone opens like any
+//! record (§5.14) and is read only for its `bodyStateVector` (#3037); one that
+//! opens to an empty payload is a delete without one.
 
 #[allow(unused_imports)]
 use crate::http_fakes;
@@ -16,11 +16,12 @@ use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use http_fakes::{FakeTransport, response};
 use memry_core::crdt::body_edit::BlockEdit;
+use memry_core::crdt::epoch::HeldBody;
 use memry_core::crdt::update_log;
 use memry_core::domain::body_write;
 use memry_core::domain::journal_ops::body;
 use memry_core::domain::notes::{self, NewNote};
-use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope};
+use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope, SyncOperation};
 use memry_core::protocol::http::{ClientIdentity, HttpClient};
 use memry_core::protocol::types::Declaration;
 use memry_core::storage::repositories::sync_items;
@@ -50,10 +51,15 @@ fn scratch_db(label: &str) -> Db {
     open_data(&dir.join("data.db")).expect("open data.db")
 }
 
-struct NeverOpens;
+struct OpensDeletes;
 
-impl RecordCipher for NeverOpens {
-    fn open(&self, _envelope: &RecordEnvelope) -> Result<Vec<u8>, EnvelopeError> {
+impl RecordCipher for OpensDeletes {
+    fn open(&self, envelope: &RecordEnvelope) -> Result<Vec<u8>, EnvelopeError> {
+        // §5.14: a delete opens before it applies; this one opens to the
+        // empty payload a signed delete seals.
+        if envelope.deleted_at.is_some() || envelope.operation == SyncOperation::Delete {
+            return Ok(Vec::new());
+        }
         Err(EnvelopeError::SignatureInvalid)
     }
 }
@@ -117,7 +123,7 @@ async fn deliver_with_payload(
             Some(payload) => {
                 Arc::new(OpensTo(payload.to_string().into_bytes())) as Arc<dyn RecordCipher>
             }
-            None => Arc::new(NeverOpens),
+            None => Arc::new(OpensDeletes),
         },
     )
     .with_clock_device(DEVICE)
@@ -235,7 +241,8 @@ async fn text_the_deleting_device_already_had_is_not_kept() {
             },
             DELETED_AT - 3_600_000,
         )?;
-        update_log::append_server_update(conn, DAY, 1, &server_paragraph("Old news"), 1)
+        HeldBody::never_purged(conn, DAY)
+            .and_then(|held| held.append_server_update(1, &server_paragraph("Old news"), 1))
             .expect("server body");
         Ok(())
     })
@@ -313,6 +320,16 @@ async fn a_note_edited_offline_is_kept_under_its_title() {
                 "Edited offline".to_owned()
             )]
         );
+        // The delete wins: the note's queued record edit would go out as an
+        // update over it and undelete the note on the server (VERIFY-5426).
+        let queued: i64 = conn
+            .query_row(
+                "SELECT count(*) FROM outbox WHERE item_type = 'note' AND item_id = ?1",
+                [NOTE],
+                |row| row.get(0),
+            )
+            .expect("count");
+        assert_eq!(queued, 0, "nothing of the note is left to push");
         Ok(())
     })
     .expect("check");
@@ -372,7 +389,9 @@ async fn text_inside_the_deleters_body_vector_is_not_kept() {
             },
             DELETED_AT - 3_600_000,
         )?;
-        update_log::append_server_update(conn, DAY, 1, &body, 1).expect("server body");
+        HeldBody::never_purged(conn, DAY)
+            .and_then(|held| held.append_server_update(1, &body, 1))
+            .expect("server body");
         Ok(())
     })
     .expect("seed");

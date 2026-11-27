@@ -3,6 +3,7 @@ use std::sync::atomic::AtomicBool;
 use rusqlite::{Connection, params};
 
 use super::*;
+use crate::storage::nested_tx;
 use crate::storage::{open_data, test_support::temp_dir};
 
 const NOW: i64 = 1_760_000_000_000;
@@ -93,7 +94,7 @@ fn the_cap_evicts_the_oldest_partial_entries_and_never_a_permanent_one() {
         for at in 0..3 {
             fail(conn, "permanent", NOW + at);
         }
-        let transaction = conn.unchecked_transaction().expect("tx");
+        let transaction = nested_tx::begin(conn).expect("tx");
         for index in 1..MAX_ENTRIES {
             transaction
                 .execute(
@@ -125,7 +126,7 @@ fn the_cap_is_logged_once_per_pull_loop_flag() {
     let dir = temp_dir("quarantine-cap-log");
     let db = open_data(&dir.path().join("data.db")).expect("open");
     db.call_blocking(|conn| {
-        let transaction = conn.unchecked_transaction().expect("tx");
+        let transaction = nested_tx::begin(conn).expect("tx");
         for index in 0..=MAX_ENTRIES {
             transaction
                 .execute(

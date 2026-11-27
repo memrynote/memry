@@ -62,8 +62,14 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
     @State private var journalRouter = JournalRouter()
     /// The Inbox tab's stack (inbox spec D1).
     @State private var inboxRouter = InboxRouter()
+    /// The Day Panel and the note inspector (#4380).
+    @State private var sideRails = SideRails()
     private let inboxLinks = InboxLinks.shared
     private let calendarLinks = CalendarLinks.shared
+    private let handoffLinks = HandoffLinks.shared
+    @Environment(\.handoffVaultId) private var vaultId
+    /// A continued activity that opened nothing (#4381).
+    @State private var handoffMissing: HandoffMissing?
     @Environment(\.inboxStore) private var inboxStore
     /// Features (settings spec ST44): a module turned off loses its tab.
     /// Home, Notes and Menu are always there.
@@ -72,6 +78,12 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
     @State private var order = VaultTabOrder.shared
     @State private var showsMenu = false
     @State private var showsSearch = false
+    /// The ⌘P palette (#4379), with the commands it was opened over.
+    @State private var commandPalette: CommandPaletteRequest?
+    /// Quick capture: Home's "+" and ⇧⌘N open the same sheet from here.
+    @State private var capturing = false
+    @State private var captureReceipt: CaptureReceipt?
+    @Environment(\.quickCapture) private var capture
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Environment(\.vaultBrowse) private var browse
@@ -80,9 +92,10 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
 
     var body: some View {
         // Read here so the layout follows a module toggle and a synced order.
-        let width = LayoutWidth(horizontal: horizontalSizeClass, vertical: verticalSizeClass)
+        let width = width
         let layout = VaultTabLayout(savedOrder: order.saved, width: width) { $0.isShown }
-        GeometryReader { proxy in
+        // Two expressions: as one chain Xcode 26 cannot type-check it in time.
+        let shell = GeometryReader { proxy in
             TabView(selection: Binding(
                 get: { ShellTab.page(layout.barSelection(for: router.selectedTab)) },
                 // Neither Menu nor Search becomes the selection by a tap: each
@@ -90,7 +103,7 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
                 // Settings in the sidebar is a page like any other.
                 set: { tab in
                     switch tab {
-                    case .search: showsSearch = true
+                    case .search: openSearch()
                     case .page(.more) where width == .compact: showsMenu = true
                     case let .page(page): router.selectedTab = page
                     }
@@ -101,7 +114,7 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
                 }
                 ForEach(layout.bar, id: \.self) { page in
                     Tab(page.title, systemImage: page.symbol, value: ShellTab.page(page)) {
-                        content(page)
+                        shown(page)
                     }
                     .badge(width == .regular && page == .inbox ? inboxStore?.badgeCount ?? 0 : 0)
                 }
@@ -110,7 +123,7 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
                     systemImage: width == .regular ? "gearshape" : VaultTab.more.symbol,
                     value: ShellTab.page(.more)
                 ) {
-                    content(layout.menuContent(for: router.selectedTab))
+                    shown(layout.menuContent(for: router.selectedTab))
                 }
             }
             .tabViewStyle(.sidebarAdaptable)
@@ -121,6 +134,8 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
                 VaultSidebarHeader(name: vaultName, context: settings, switchVault: switchVault)
             }
         }
+        // The app's keyboard commands (`MemryCommands`), ⌘K among them.
+        .focusedSceneValue(\.vaultCommands, commands(pages: layout.commandPages))
         .sheet(isPresented: $showsMenu) {
             VaultMenuSheet(pages: layout.menu) { page in
                 router.selectedTab = page
@@ -129,32 +144,65 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
             .presentationDetents([.medium])
         }
         // The Menu sheet is compact-only: a window resized to regular width
-        // drops it rather than show it with the sidebar's empty menu.
-        .onChange(of: width) { showsMenu = false }
-        .sheet(isPresented: $showsSearch) {
-            GlobalSearchSheet(
-                browse: browse,
-                openNote: { openNote($0) },
-                openTask: { router.openTask($0) },
-                openInboxItem: { inboxRouter.openItem($0, in: router) },
-                openJournalDay: { journalRouter.openDay($0) }
-            )
-            .environment(router)
+        // drops it rather than show it with the sidebar's empty menu. Search
+        // closes too rather than swap its sheet for the palette mid-query.
+        .onChange(of: width) {
+            showsMenu = false
+            showsSearch = false
         }
-        .environment(\.openGlobalSearch) { showsSearch = true }
+        // Settings is a split view in the sidebar's width (#4348).
+        .onChange(of: width, initial: true) { _, width in router.setSettingsSplit(width == .regular) }
+        .sheet(isPresented: $capturing) {
+            if let capture {
+                QuickCaptureSheet(
+                    kinds: CaptureKind.allCases.filter(\.isShown),
+                    capture: capture,
+                    draft: capture.homeDraft
+                ) { captureReceipt = $0 }
+            }
+        }
+        .task(id: captureReceipt) {
+            guard captureReceipt != nil else { return }
+            try? await Task.sleep(for: .seconds(4))
+            captureReceipt = nil
+        }
+        .sheet(isPresented: searchShown(.compact)) { searchView(.sheet) }
+        // D3: a palette over the window at regular width (#4426).
+        .fullScreenCover(isPresented: searchShown(.regular)) {
+            searchView(.palette)
+                .presentationBackground(.clear)
+        }
+        .commandPalette($commandPalette, width: width)
+        .environment(\.openGlobalSearch, openSearch)
         .environment(router)
         .environment(journalRouter)
+        .environment(sideRails)
         // Where the next launch continues (`LaunchSnapshot`).
-        .onChange(of: router.selectedTab) { _, tab in LaunchSnapshot.shared.setTab(tab.rawValue) }
+        .onChange(of: router.selectedTab) { _, tab in
+            LaunchSnapshot.shared.setTab(tab.rawValue)
+            // A ⌘N the Notes page has not taken (still loading) waits for it.
+            if tab != .notes { NotesLinks.shared.parkNewNote() }
+        }
         .onChange(of: router.selectedTab, initial: true) { _, tab in tab.trackPageView() }
         .onChange(of: router.path) { _, path in LaunchSnapshot.shared.setStack("tasks", value: path) }
         .environment(\.openJournalDay, { date in journalRouter.openDay(date) })
         .environment(inboxRouter)
+        shell
         // A `memry://calendar` link opens More › Calendar; the calendar screen
         // takes the link itself and opens the day and the item (spec 007 CL022).
         .onChange(of: calendarLinks.pending, initial: true) { _, pending in
             if pending != nil { router.openCalendar() }
         }
+        // Handoff from another device; one that arrived before this shell
+        // waits in `HandoffLinks`, hence `initial: true`.
+        .onChange(of: handoffLinks.pending, initial: true) {
+            guard let vaultId, let activity = handoffLinks.take() else { return }
+            handoffMissing = activity.open(
+                openVault: vaultId, isShown: { $0.isShown }, tasks: router, journal: journalRouter, notes: .shared
+            )
+        }
+        .handoffMissingSheet($handoffMissing)
+        .attachmentRefusalAlert(openNote: openNote, openStorage: { router.openSettings(.storage) })
         // A tapped inbox notification or a Share hand-off opens the Inbox.
         .onChange(of: inboxLinks.pending, initial: true) {
             if inboxLinks.take() { inboxRouter.openInbox(in: router) }
@@ -186,14 +234,69 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
         .preference(key: SignOutHostedKey.self, value: true)
     }
 
+    private var width: LayoutWidth {
+        LayoutWidth(horizontal: horizontalSizeClass, vertical: verticalSizeClass)
+    }
+
+    /// Opens search the way this width shows it. The palette appears in
+    /// place, without the full-screen cover's slide.
+    private func openSearch() {
+        var transaction = Transaction()
+        transaction.disablesAnimations = width == .regular
+        withTransaction(transaction) { showsSearch = true }
+    }
+
+    /// Whether search is open at `shown` width.
+    private func searchShown(_ shown: LayoutWidth) -> Binding<Bool> {
+        Binding(get: { showsSearch && width == shown }, set: { showsSearch = $0 })
+    }
+
+    private func searchView(_ presentation: SearchPresentation) -> some View {
+        GlobalSearchSheet(
+            presentation: presentation,
+            browse: browse,
+            openNote: { openNote($0) },
+            openTask: { router.openTask($0) },
+            openInboxItem: { inboxRouter.openItem($0, in: router) },
+            openJournalDay: { journalRouter.openDay($0) }
+        )
+        .environment(router)
+    }
+
     /// A note on the Notes page, which takes the request itself.
     private func openNote(_ id: String) {
         router.selectedTab = .notes
         NotesLinks.shared.open(id)
     }
 
+    private func commands(pages: [VaultTab]) -> VaultCommands {
+        var newNote: (() -> Void)?
+        if browse?.writer != nil { newNote = self.newNote }
+        var quickCapture: (() -> Void)?
+        if capture != nil { quickCapture = openCapture }
+        return VaultCommands(
+            tasks: router,
+            journal: journalRouter,
+            pages: pages,
+            newNote: newNote,
+            quickCapture: quickCapture,
+            search: openSearch,
+            sideRails: sideRails,
+            commandPalette: { $commandPalette.open($0, width: width) }
+        )
+    }
+
+    private func openCapture() { capturing = true }
+
+    /// ⌘N: the Notes page makes the note, as its "+" does.
+    private func newNote() {
+        router.selectedTab = .notes
+        NotesLinks.shared.requestNewNote(window: PresentingWindow.resolve())
+    }
+
     /// A capture's "View": the item on its page.
     private func open(_ receipt: CaptureReceipt) {
+        captureReceipt = nil
         switch receipt.kind {
         case .inbox: inboxRouter.openItem(receipt.id, in: router)
         case .task: router.openTask(receipt.id)
@@ -202,11 +305,25 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
         }
     }
 
+    /// A page with ⇧⌘N's confirmation over it and the Day Panel beside it.
+    /// Home shows its own confirmation beside its "+".
+    private func shown(_ page: VaultTab) -> some View {
+        content(page).overlay(alignment: .bottom) {
+            if page != .home, let captureReceipt {
+                CaptureToast(receipt: captureReceipt) { open(captureReceipt) }
+                    .frame(maxWidth: Tokens.Size.form)
+                    .padding(.horizontal, Tokens.Space.inset)
+                    .padding(.bottom, Tokens.Space.medium)
+            }
+        }
+        .modifier(DayPanelHost(page: page, isSelected: page == router.selectedTab))
+    }
+
     /// One page's screen. A page is either in the bar or behind Menu, so each
     /// is built in one place at a time.
     @ViewBuilder private func content(_ page: VaultTab) -> some View {
         switch page {
-        case .home: HomeTab(switchVault: switchVault) { open($0) }
+        case .home: HomeTab(switchVault: switchVault, receipt: captureReceipt, capture: openCapture) { open($0) }
         case .notes: notes()
         case .inbox: InboxTab(store: inboxStore)
         case .tasks: tasks()

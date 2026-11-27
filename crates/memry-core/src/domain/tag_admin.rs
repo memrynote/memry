@@ -22,6 +22,7 @@ use crate::domain::notes::{self, edit_in, failed, iso, object, tombstone_local};
 use crate::domain::recreate::write_over_tombstone;
 use crate::domain::tag_retag::{delete_shared, merge_shared, merge_target, retagged_list};
 use crate::domain::{body_tags, tags, tasks};
+use crate::storage::nested_tx;
 use crate::storage::repositories::{Change, sync_items};
 use crate::sync::outbox;
 
@@ -142,6 +143,34 @@ pub fn definitions(conn: &Connection) -> Result<BTreeMap<String, Definition>, St
 /// The surviving live definition's id for `tag`, if any.
 pub(crate) fn definition_for(conn: &Connection, tag: &str) -> Result<Option<String>, StorageError> {
     Ok(definitions(conn)?.remove(&tags::tag_key(tag)).map(|d| d.id))
+}
+
+/// Whether `tag` was renamed away or deleted: a deleted definition answers to it and no live
+/// one does. The note index defines every tag a note uses ([`super::tag_mint`]) and keeps a
+/// definition when the tag's last note lets go of it, so a tag with no notes left still has a
+/// live one. A tag with no definition yet (not minted) is not deleted.
+pub fn definition_deleted(conn: &Connection, tag: &str) -> Result<bool, StorageError> {
+    let key = tags::tag_key(tag);
+    let mut statement = conn
+        .prepare("SELECT name, deleted_at IS NOT NULL FROM tag_definitions")
+        .map_err(failed)?;
+    let rows = statement
+        .query_map([], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, bool>(1)?))
+        })
+        .map_err(failed)?;
+    let mut deleted = false;
+    for row in rows {
+        let (name, gone) = row.map_err(failed)?;
+        if tags::tag_key(&name) != key {
+            continue;
+        }
+        if !gone {
+            return Ok(false);
+        }
+        deleted = true;
+    }
+    Ok(deleted)
 }
 
 /// Every live definition id for `tag`: all of them answer to one tag.
@@ -398,7 +427,7 @@ pub(crate) fn upsert_definition(
     device_id: &str,
     now_ms: i64,
 ) -> Result<(), StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     upsert_definition_in(&tx, name, template, changes, device_id, now_ms)?;
     tx.commit().map_err(failed)
 }
@@ -543,6 +572,19 @@ pub fn set_icon(
         device_id,
         now_ms,
     )
+}
+
+/// A tag's saved folder views (`saveTagViews`), whole: an empty list is pushed, so peers clear
+/// theirs too. Creates the tag's definition when it has none, inside the caller's transaction.
+pub fn set_views(
+    tx: &Connection,
+    tag: &str,
+    views: Vec<Value>,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<(), StorageError> {
+    let changes = vec![("views", Change::Set(Value::Array(views)))];
+    upsert_definition_in(tx, tag, None, changes, device_id, now_ms)
 }
 
 #[cfg(test)]

@@ -1,0 +1,3 @@
+id,title,note,excerpt,url,folder,tags,created,cover,highlights,favorite
+1,First,,,https://one.example,Reading,news,2025-01-02T03:04:05.000Z,,,false
+2,Second,a note,,https://two.example,Unsorted,,2025-01-03T00:00:00.000Z,,,true

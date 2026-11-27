@@ -384,7 +384,8 @@ pub struct AddReasonInput {
     pub search_query: String,
 }
 
-/// The input as the recents store records it: a hit of `item_type`, its icon as the note's.
+/// The input as the recents store records it: a hit of `item_type` whose `emoji` is the stored
+/// icon, for every kind (Electron's `itemIcon`).
 pub fn recorded(input: &AddReasonInput) -> SearchResult {
     use memry_core::domain::search::MatchKind;
     SearchResult {
@@ -392,10 +393,7 @@ pub fn recorded(input: &AddReasonInput) -> SearchResult {
         title: input.item_title.clone(),
         kind: input.item_type.as_str().to_owned(),
         journal_date: None,
-        emoji: match input.item_type {
-            ContentType::Note => input.item_icon.clone(),
-            _ => None,
-        },
+        emoji: input.item_icon.clone(),
         folder_path: None,
         score: 0.0,
         snippet: Vec::new(),

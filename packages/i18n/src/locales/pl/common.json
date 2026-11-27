@@ -1,4 +1,7 @@
 {
+  "wikiLink": {
+    "openFailed": "Nie udało się otworzyć tego linku"
+  },
   "portalBlock": {
     "copyFailed": "Nie udało się skopiować portalu",
     "hiddenCount": "Ukryte: {count}",
@@ -956,6 +959,8 @@
     "componentsVaultSwitcher": {
       "noVaultsYet": "Nie ma jeszcze sejfów",
       "openVault": "Otwórz sejf",
+      "createVault": "Utwórz sejf",
+      "openFolderAsVault": "Otwórz folder jako sejf",
       "settings": "Ustawienia",
       "remove": "Usuń „",
       "removeVaultTitle": "Usunąć „{name}” z listy?",

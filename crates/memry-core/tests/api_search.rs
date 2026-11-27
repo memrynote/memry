@@ -14,8 +14,9 @@ use std::sync::Arc;
 
 use memry_core::api::search::BacklinkOrder;
 use memry_core::api::vault::Vault;
+use memry_core::crdt::DocumentRegistry;
+use memry_core::crdt::epoch::HeldBody;
 use memry_core::crdt::registry::UpdateSink;
-use memry_core::crdt::{DocumentRegistry, update_log};
 use memry_core::domain::notes::{self, NewNote};
 use memry_core::domain::tag_admin;
 use memry_core::storage::{Db, open_data};
@@ -62,7 +63,8 @@ pub(crate) fn write_note(db: &Db, id: &str, title: &str, body: &str) {
         };
         notes::create(conn, &note, DEVICE, NOW)?;
         if !body.is_empty() {
-            update_log::append_server_update(conn, id, 1, &body_update(id, body), NOW)
+            HeldBody::never_purged(conn, id)
+                .and_then(|held| held.append_server_update(1, &body_update(id, body), NOW))
                 .expect("the body update");
         }
         Ok(())
@@ -107,7 +109,7 @@ fn a_body_word_is_found_not_only_a_title() {
     let (db, vault) = vault("body");
     write_note(&db, "n1", "Groceries", "buy cardamom and saffron");
     write_note(&db, "n2", "Cardamom", "");
-    let search = vault.search().expect("the index");
+    let search = vault.search(None).expect("the index");
     search.reindex().expect("the reindex");
 
     let hits = search
@@ -129,7 +131,7 @@ fn a_body_hashtag_reaches_the_tag_index() {
     let (db, vault) = vault("body-tags");
     write_note(&db, "n1", "Reading", "next up #Books and `#code`");
     vault
-        .search()
+        .search(None)
         .expect("the index")
         .reindex()
         .expect("the reindex");
@@ -169,7 +171,7 @@ fn an_empty_query_returns_nothing() {
     // An empty search box is not a request for the whole vault.
     let (db, vault) = vault("empty");
     write_note(&db, "n1", "Groceries", "buy cardamom");
-    let search = vault.search().expect("the index");
+    let search = vault.search(None).expect("the index");
     search.reindex().expect("the reindex");
 
     assert!(
@@ -201,7 +203,7 @@ fn a_note_deleted_after_indexing_never_surfaces() {
     // that opens nothing is worse than a shorter list.
     let (db, vault) = vault("deleted");
     write_note(&db, "n1", "Cardamom", "");
-    let search = vault.search().expect("the index");
+    let search = vault.search(None).expect("the index");
     search.reindex().expect("the reindex");
     assert_eq!(
         search
@@ -235,7 +237,7 @@ fn a_reindex_is_idempotent() {
     // appear without knowing what else already did.
     let (db, vault) = vault("idempotent");
     write_note(&db, "n1", "Cardamom", "");
-    let search = vault.search().expect("the index");
+    let search = vault.search(None).expect("the index");
 
     let first = search.reindex().expect("first");
     let second = search.reindex().expect("second");
@@ -308,7 +310,8 @@ fn write_linking_note(db: &Db, id: &str, title: &str, target: &str) {
             emoji: None,
         };
         notes::create(conn, &note, DEVICE, NOW)?;
-        update_log::append_server_update(conn, id, 1, &link_update(id, target, target), NOW)
+        HeldBody::never_purged(conn, id)
+            .and_then(|held| held.append_server_update(1, &link_update(id, target, target), NOW))
             .expect("the body update");
         Ok(())
     })
@@ -326,7 +329,7 @@ fn a_note_knows_which_notes_link_to_it() {
     write_note(&db, "target", "Cardamom", "the spice itself");
     write_linking_note(&db, "source", "Groceries", "Cardamom");
 
-    let search = vault.search().expect("search");
+    let search = vault.search(None).expect("search");
     search.reindex().expect("the reindex");
 
     let found = search
@@ -346,7 +349,7 @@ fn a_link_written_before_its_target_existed_still_counts() {
     let (db, vault) = vault("backlinks-forward");
     write_linking_note(&db, "source", "Groceries", "Cardamom");
 
-    let search = vault.search().expect("search");
+    let search = vault.search(None).expect("search");
     search.reindex().expect("the reindex");
 
     // The note the link names does not exist yet.
@@ -379,13 +382,14 @@ fn a_literal_wiki_link_in_a_synced_body_is_a_backlink() {
     );
     write_note(&db, "code", "Code", "");
     db.call_blocking(|conn: &mut Connection| {
-        update_log::append_server_update(conn, "code", 1, &code_update("code", "[[Other]]"), NOW)
+        HeldBody::never_purged(conn, "code")
+            .and_then(|held| held.append_server_update(1, &code_update("code", "[[Other]]"), NOW))
             .expect("the body update");
         Ok(())
     })
     .expect("the write");
     vault
-        .search()
+        .search(None)
         .expect("the index")
         .reindex()
         .expect("the reindex");
@@ -444,7 +448,7 @@ fn write_folder_note(db: &Db, id: &str, title: &str, folder: &str) {
 
 fn backlink_sources(vault: &Vault, id: &str) -> Vec<String> {
     vault
-        .search()
+        .search(None)
         .expect("search")
         .backlinks(id.to_string(), BacklinkOrder::Title)
         .expect("backlinks")
@@ -463,7 +467,7 @@ fn a_path_link_is_a_backlink_of_the_note_at_that_path() {
     write_folder_note(&db, "home", "Plan", "Home");
     write_linking_note(&db, "source", "Inbox", "work/PLAN.md#Goals");
     vault
-        .search()
+        .search(None)
         .expect("search")
         .reindex()
         .expect("the reindex");
@@ -479,7 +483,7 @@ fn a_path_link_written_before_its_target_existed_still_counts() {
     let (db, vault) = vault("backlinks-path-forward");
     write_linking_note(&db, "source", "Inbox", "/Work/Plan");
     vault
-        .search()
+        .search(None)
         .expect("search")
         .reindex()
         .expect("the reindex");
@@ -496,7 +500,7 @@ fn a_title_link_in_another_case_is_still_a_backlink() {
     write_note(&db, "target", "Cardamom", "the spice itself");
     write_linking_note(&db, "source", "Groceries", "cardamom#Uses");
     vault
-        .search()
+        .search(None)
         .expect("search")
         .reindex()
         .expect("the reindex");
@@ -528,12 +532,14 @@ fn removing_a_link_removes_the_backlink() {
             emoji: None,
         };
         notes::create(conn, &note, DEVICE, NOW)?;
-        update_log::append_server_update(conn, "source", 1, &link, NOW).expect("the body");
+        HeldBody::never_purged(conn, "source")
+            .and_then(|held| held.append_server_update(1, &link, NOW))
+            .expect("the body");
         Ok(())
     })
     .expect("the write");
 
-    let search = vault.search().expect("search");
+    let search = vault.search(None).expect("search");
     search.reindex().expect("the reindex");
     assert_eq!(
         search
@@ -546,7 +552,9 @@ fn removing_a_link_removes_the_backlink() {
     // The user deletes the paragraph the link was in.
     let removal = removal_update("source", &[link]);
     db.call_blocking(|conn: &mut Connection| {
-        update_log::append_server_update(conn, "source", 2, &removal, NOW).expect("the removal");
+        HeldBody::never_purged(conn, "source")
+            .and_then(|held| held.append_server_update(2, &removal, NOW))
+            .expect("the removal");
         Ok(())
     })
     .expect("the write");
@@ -584,7 +592,7 @@ fn the_three_sort_orders_each_order_differently() {
     })
     .expect("the stamps");
 
-    let search = vault.search().expect("search");
+    let search = vault.search(None).expect("search");
     search.reindex().expect("the reindex");
 
     let ids = |order| {
@@ -609,7 +617,7 @@ fn a_self_link_is_not_a_backlink_and_a_missing_note_is_empty() {
     let (db, vault) = vault("backlinks-self");
     write_linking_note(&db, "self", "Cardamom", "Cardamom");
 
-    let search = vault.search().expect("search");
+    let search = vault.search(None).expect("search");
     search.reindex().expect("the reindex");
 
     assert!(

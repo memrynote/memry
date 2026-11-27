@@ -65,7 +65,9 @@ import { resetAttachmentDownloadSession } from '@memry/sync-client/attachment-do
 import { resetAttachmentQueue } from './attachment-outbox'
 import { stopAttachmentDownloadRedriver } from './attachment-download-redriver'
 import { attachmentUploadRedriver } from './attachment-upload-redriver'
+import { restoreOverwrittenBinaryNotes } from './binary-note-restore'
 import { deletedAssetReleaseRunner } from './deleted-asset-release-runner'
+import { createServerBodyReader, reviveHealRunner } from './revive-heal'
 import { holdCanvasAssetsBeforePush } from '../canvas/assets/asset-service-context'
 import { initJournalSyncService, resetJournalSyncService } from './journal-sync'
 import {
@@ -100,6 +102,7 @@ import {
 import { getRemoteSyncAdapter } from './item-handlers'
 import type { EmitToWindows } from './item-handlers'
 import { getIndexDatabase } from '../database/client'
+import { isNeverSyncedLocalNote } from './note-sync-state'
 import { noteCache } from '@memry/db-schema/schema/notes-cache'
 import { getDeviceSigningKey } from './device-keys'
 import { getCrdtProvider, resetCrdtProvider, type SnapshotBatchPushFn } from './crdt-provider'
@@ -109,7 +112,9 @@ import { recordNoteBodyPush } from './note-body-push-record'
 import { readMergedFullState } from './full-state-read'
 import { CrdtSnapshotScheduler } from '@memry/sync-client/crdt-snapshot-scheduler'
 import { createNoteBodyPush } from './note-body-push'
+import { isBinaryNote } from './note-body-apply'
 import { recoverDirtyItems } from './dirty-recovery'
+import { coverQueuedContentDeletes } from './local-doc-delete'
 import {
   markSyncEligible,
   markSyncIneligible,
@@ -133,8 +138,10 @@ import {
 import type { AuthRetryDeps } from './auth-retry'
 import {
   getValidAccessToken,
+  hasSessionEnded,
   refreshAccessToken,
   retrieveToken,
+  setOnSessionEnded,
   setOnTokenRefreshed
 } from './token-manager'
 import { SyncWorkerBridge } from './worker-bridge'
@@ -289,7 +296,7 @@ let vaultKeyFailureLogged = false
 // prompt + sign-out) a single time, not on every failing pull cycle.
 let vaultKeyMismatchHandled = false
 
-function resetSyncServiceSingletons(): void {
+function resetSyncServiceSingletons(downloadSettleTimeoutMs?: number): Promise<void> {
   // The next start decides again and must pull again before a Readwise run
   // trusts the notes on disk (#1417).
   resetSyncDecision()
@@ -327,12 +334,16 @@ function resetSyncServiceSingletons(): void {
   // runtime's NetworkMonitor, so it has to die with the runtime: a carried-over
   // queue stays subscribed to a stopped monitor (reconnect wake-up dead, its
   // `online` flag frozen) and would upload vault A's leftovers under vault B.
-  // The DownloadQueue is disposed by the same registered reset.
-  resetAttachmentQueue()
+  // The DownloadQueue is disposed by the same registered reset, which owes its
+  // pull's requests while the vault's databases are open and resolves once its
+  // downloads recorded their outcomes, or after a bounded wait (REVIEW-5722).
+  const downloadsSettled = resetAttachmentQueue(downloadSettleTimeoutMs)
   // The re-drivers only make sense while a runtime is up to serve them.
   stopAttachmentDownloadRedriver()
   attachmentUploadRedriver.stop()
   deletedAssetReleaseRunner.stop()
+  reviveHealRunner.stop()
+  return downloadsSettled
 }
 
 async function getOptionalRuntimeVaultKey(db: DataDb, context: string): Promise<Uint8Array | null> {
@@ -583,8 +594,10 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
 
       // Batched: notes that come due together share /sync/crdt/snapshot/batch
       // requests instead of spending one push-budget slot each.
-      const snapshotScheduler = new CrdtSnapshotScheduler((noteIds) =>
-        crdtProvider.pushSnapshotsForNotes(noteIds, { skipSeed: true })
+      // A batch held offline or paused waits for the reconnect or resume below.
+      const snapshotScheduler = new CrdtSnapshotScheduler(
+        (noteIds) => crdtProvider.pushSnapshotsForNotes(noteIds, { skipSeed: true }),
+        { isHeld: () => crdtProvider.snapshotsHeld() }
       )
       // Captured by this runtime's background work, never read back from the
       // module slot that a replacement session can refill during teardown.
@@ -627,6 +640,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         recordPush: (noteId, event, pushed) =>
           recordNoteBodyPush(noteId, event, Date.now(), db, pushed),
         requestSnapshot: (noteId) => snapshotScheduler.request(noteId),
+        isBinaryNote: (noteId) => isBinaryNote(db, noteId),
         isSyncPaused
       })
 
@@ -641,6 +655,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         onNotCovered: (noteId, refusal) => engine.recordSnapshotRefusal(noteId, refusal),
         onPushed: (noteId, pushed) => getCrdtProvider().recordPushedSnapshot(noteId, pushed),
         onStored: (noteId) => recordNoteBodyPush(noteId, 'snapshot', Date.now(), db),
+        onSending: (noteId) => recordNoteBodyPush(noteId, 'sent', Date.now(), db),
         onError: (noteId, err) => {
           if (err instanceof RateLimitError) snapshotScheduler.request(noteId)
           if (err instanceof SyncServerError && err.statusCode === 401) {
@@ -679,6 +694,9 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
           return getCrdtProvider().recordPushedSnapshot(noteId, pushed)
         },
         onNotCovered: (noteId, refusal) => engine.recordSnapshotRefusal(noteId, refusal),
+        onSending: (noteIds) => {
+          for (const noteId of noteIds) recordNoteBodyPush(noteId, 'sent', Date.now(), db)
+        },
         onBatchError: (err) => {
           // Same two conditions the single push handles, and for the same
           // reasons — see the comments in snapshotPushFn. A body-limit 413
@@ -708,8 +726,12 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         return results
       }
 
+      // Built before the provider's init so every snapshot path sees it; it
+      // polls only once started, below.
+      const network = new NetworkMonitor()
       const crdtProvider = getCrdtProvider()
       crdtProvider.setSyncPaused(isSyncPaused)
+      crdtProvider.setNetworkOnline(() => network.online)
       await crdtProvider.init(noteBodyOutbox, snapshotPushFn, snapshotBatchPushFn)
       // Once, then the pre-#2298 file is gone: its notes become full-state rows.
       importLegacyPendingCrdtNotes(queue, app.getPath('userData'))
@@ -725,11 +747,11 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         log.error('Sync worker failed to start — continuing with main-thread crypto', err)
       }
 
-      const network = new NetworkMonitor()
       network.start()
       const onNetworkStatusChanged = ({ online }: { online: boolean }): void => {
         if (online) {
           noteBodyOutbox.resume()
+          snapshotScheduler.release()
           void attachmentUploadRedriver.redrive()
           // Reconnect is the moment transiently-failed attachment downloads
           // become worth retrying; the re-driver is re-entrant-safe and gated
@@ -751,6 +773,9 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         serverUrl: resolveSyncServerUrl()
       })
 
+      // An editor that opened waiting while the session still looked alive
+      // shows its file read-only with the sign-in notice (#5342).
+      setOnSessionEnded(() => crdtProvider.reportEditorWaits())
       setOnTokenRefreshed(() => {
         if (network.online) {
           noteBodyOutbox.resume()
@@ -766,7 +791,10 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         ws,
         db: runtimeSyncDb,
         getAccessToken: () => getValidAccessToken(),
+        hasSessionEnded: () => hasSessionEnded(),
         getVaultKey: () => getOptionalRuntimeVaultKey(db, 'sync engine'),
+        // A vault-locked editor goes back to its loading state once the key reads again.
+        onVaultKeyReadable: () => crdtProvider.reportEditorWaits(),
         getSigningKeys: async () => {
           const secretKey = await retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY)
           if (!secretKey) return null
@@ -824,7 +852,10 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
           })
         },
         prepareCanvasPush: (canvasId) => holdCanvasAssetsBeforePush(canvasId),
-        onSyncResumed: () => noteBodyOutbox.flushAll(),
+        onSyncResumed: () => {
+          snapshotScheduler.release()
+          noteBodyOutbox.flushAll()
+        },
         checkAccountKey: () => checkLocalKeyAgainstAccount(),
         onDeviceKeyMismatch: () => handleDeviceKeyMismatch(),
         onVaultKeyMismatch: () => {
@@ -864,6 +895,14 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       )
       crdtProvider.setOweRemoteMerge((noteId, reason) => engine.oweCrdtPull(noteId, reason))
       crdtProvider.setRemoteMerge((noteId) => engine.mergeRemoteCrdtForNote(noteId))
+      crdtProvider.setRemoteBodyQuery({
+        hasUnmerged: (noteId) => engine.hasUnmergedRemoteCrdtState(noteId),
+        isStuck: (noteId) => engine.isCrdtBodyPullStuck(noteId),
+        signedOut: () => engine.isCrdtPullSignedOut(),
+        vaultLocked: () => engine.isCrdtPullVaultKeyMissing(),
+        neverSynced: (noteId) =>
+          !engine.knowsCrdtServerBody(noteId) && isNeverSyncedLocalNote(db, noteId)
+      })
       crdtProvider.setSnapshotDeferral((noteId) => snapshotScheduler.request(noteId))
       // A full-state row queued with no runtime (a note leaving local-only) may
       // owe bodies the feed skipped: flagged, it claims nothing until its own
@@ -872,6 +911,9 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         if (!crdtProvider.isNoteLocalOnly(noteId)) engine.markCrdtRemoteStateUnmerged(noteId)
       }
 
+      // Before the first pull, so a CLI delete takes the body vector this
+      // device held (#5661); the flush in `recoverDirtyItems` sends it.
+      await coverQueuedContentDeletes(runtimeSyncDb)
       recoverDirtyItems(runtimeSyncDb, adapters)
 
       pendingRuntime = {
@@ -893,6 +935,27 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       // Each pass waits for a full sync this session, so the live-reference
       // check sees what peers did.
       deletedAssetReleaseRunner.start(() => engine.isCaughtUpWithServer())
+      // A day re-created before #5358 re-pushes its full state once when the
+      // server holds its body pending (#5354).
+      reviveHealRunner.start(
+        {
+          db: runtimeSyncDb,
+          isNoteSyncable: (noteId) => crdtProvider.isNoteSyncable(noteId),
+          hasQueuedChange: (noteId) =>
+            queue.hasPendingItem(noteId) || queue.listNoteBodyNoteIds().includes(noteId),
+          readServerBody: createServerBodyReader({
+            getAccessToken: () => getValidAccessToken(),
+            getVaultKey: () => getOptionalRuntimeVaultKey(db, 'revive heal'),
+            getDevicePublicKey: async (deviceId) => {
+              const token = await getValidAccessToken()
+              return token ? getDeviceSigningKey(runtimeSyncDb, deviceId, token) : null
+            }
+          }),
+          readLocalState: (noteId) => crdtProvider.readSyncableState(noteId),
+          enqueueFullState: (noteId) => noteBodyOutbox.enqueueFullState(noteId)
+        },
+        () => engine.isCaughtUpWithServer()
+      )
 
       void import('./vault-directory')
         .then(({ refreshVaultDirectory }) => refreshVaultDirectory({ force: true }))
@@ -922,6 +985,9 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         await redriveAttachmentDownloads()
         reconcileHomeCoversNow()
         reconcileInboxAttachmentsNow()
+        // Binary note files the pre-#5414 write-back overwrote with markdown
+        // get their blob back (#5415).
+        await restoreOverwrittenBinaryNotes()
       })().catch(() => {})
 
       // Full-state rows (signed-out edits, a note leaving local-only, the
@@ -981,7 +1047,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       resetCrdtProvider()
 
       setActiveRuntime(null)
-      resetSyncServiceSingletons()
+      await resetSyncServiceSingletons()
       if (!pauseForKeychain(error, keychainDeps)) log.error('Failed to start sync runtime', error)
       // sync_enabled only fires on success, so a fleet-wide startup regression
       // would show up as an unexplained DROP in sync_enabled — emit the
@@ -1060,8 +1126,9 @@ export async function stopSyncRuntime(options?: StopSyncRuntimeOptions): Promise
   // its `if (runtime) return` guard and install its own callback — clearing
   // after any of the awaits below would silently unhook the *live* runtime.
   setOnTokenRefreshed(null)
+  setOnSessionEnded(null)
 
-  resetSyncServiceSingletons()
+  const downloadsSettled = resetSyncServiceSingletons(options?.downloadSettleTimeoutMs?.())
 
   if (!active) {
     await getCrdtProvider()
@@ -1070,6 +1137,7 @@ export async function stopSyncRuntime(options?: StopSyncRuntimeOptions): Promise
         log.error('Failed to destroy CrdtProvider while runtime inactive', err)
       })
     resetCrdtProvider()
+    await downloadsSettled
     return
   }
 
@@ -1091,5 +1159,6 @@ export async function stopSyncRuntime(options?: StopSyncRuntimeOptions): Promise
   active.ws.disconnect()
   active.network.removeListener('status-changed', active.onNetworkStatusChanged)
   active.network.stop()
+  await downloadsSettled
   log.info('Sync runtime stopped')
 }

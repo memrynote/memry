@@ -58,6 +58,7 @@ fn timed(f: &mut Fixture, pad: Duration) -> (WriteBack, Arc<Mutex<Vec<Run>>>) {
             f.echo.clone(),
             None,
             f.own_files.clone(),
+            f.store.clone(),
         ),
     );
     let runs: Arc<Mutex<Vec<Run>>> = Arc::default();

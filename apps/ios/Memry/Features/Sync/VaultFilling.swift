@@ -41,13 +41,15 @@ protocol VaultFilling: Sendable {
     /// Whether this device has already finished a first sync for this vault.
     ///
     /// **Makes no request.** That is the whole point of asking: the entry gate
-    /// decides whether to show a setting-up screen without going near the
-    /// network, so a phone in a lift does not sit on a spinner to be told it
-    /// was already done.
+    /// decides whether to start a first sync without going near the network,
+    /// so a phone in a lift does not show a progress strip to be told it was
+    /// already done.
     func isFirstSyncComplete() async throws -> Bool
 
-    /// The first sync: refs, then metadata newest first, then bodies for the
-    /// recent window (data-model §C.3, FR-028).
+    /// The first sync: note records for the whole vault, then bodies from packs
+    /// for the whole vault (data-model §C.3, FR-028, #5233). With partial pack
+    /// coverage it pulls the owed bodies of the recent window and leaves the
+    /// rest to ``drainBodies(progress:)``.
     ///
     /// - Parameter progress: called on the main actor for every tick. **It is
     ///   never awaited from inside the core's synchronous callback** — see
@@ -63,13 +65,20 @@ protocol VaultFilling: Sendable {
         progress: @escaping @MainActor @Sendable (SyncProgress) -> Void
     ) async throws -> FirstSyncSummary
 
+    /// One foreground round of the bodies the first sync left owed (#5233):
+    /// at most 400 documents, or no request at all when none is due. The
+    /// caller asks again while the app is in the foreground, the round pulled
+    /// something and some are still owed. Awaited directly, like `firstSync`.
+    func drainBodies(
+        progress: @escaping @MainActor @Sendable (SyncProgress) -> Void
+    ) async throws -> BodyDrainSummary
+
     /// One note's body, on demand (chapter 07 §7.8 – §7.11).
     ///
-    /// **Not an extra.** `firstSync` pulls bodies only for the recent window
-    /// (chapter 10 §10.6.1), so an older note arrives with its metadata and no
-    /// body and `Notes.read` answers `NoteBody { present: false }`. Without
-    /// this call that note could never become readable, which is spec-defect
-    /// 136 one layer down, at note granularity.
+    /// **Not an extra.** With partial pack coverage a note stays owed its body
+    /// until ``drainBodies(progress:)`` reaches it (chapter 10 §10.6.1), and
+    /// `Notes.read` answers `NoteBody { present: false }` until then. This
+    /// call makes a note the user opens readable now.
     ///
     /// Throws `SyncError.UnknownNote` for a note this vault holds no **live**
     /// record of. That refusal is **permanent**; no copy may call it retryable.
@@ -80,10 +89,10 @@ protocol VaultFilling: Sendable {
 
     /// Fetches one attachment's bytes (chapter 14, FR-045).
     ///
-    /// - Parameter reachable: **the shell's observation, not its policy.**
-    ///   Only the shell can see the current path; the core decides what that
-    ///   means, so the unmetered-by-default rule and its per-item override
-    ///   live in one place rather than being re-argued here.
+    /// - Parameter reachable: the path the core's metered policy judges this
+    ///   download against: the shell's observation, as this device's Download
+    ///   attachments setting reads it (`AttachmentDownloadPath.swift`). The
+    ///   unmetered-by-default rule and its per-item override stay the core's.
     ///
     /// **A deferred fetch is not a failure.** A picture waiting for an
     /// unmetered path is FR-045 working, and the summary says so rather than
@@ -93,6 +102,11 @@ protocol VaultFilling: Sendable {
         attachmentId: String,
         reachable: Reachable
     ) async throws -> AttachmentFetchSummary
+
+    /// Reads the manifests of the attachments `noteId` names that have no
+    /// filename here yet, so their blocks bind (#5675). Answers how many it
+    /// named; no request when none is unnamed. Bytes: ``fetchAttachment(attachmentId:reachable:)``.
+    func fetchNoteManifests(noteId: String) async throws -> UInt32
 
     /// Uploads a file and attaches it to a note (chapter 14 §14.2–§14.5).
     ///
@@ -156,6 +170,13 @@ protocol VaultFilling: Sendable {
 extension VaultFilling {
     func pendingChanges() async throws -> UInt32 { 0 }
 
+    /// Nothing owed: the fakes that script only a first sync.
+    func drainBodies(
+        progress: @escaping @MainActor @Sendable (SyncProgress) -> Void
+    ) async throws -> BodyDrainSummary {
+        BodyDrainSummary(documents: 0, requests: 0, remaining: 0, elevated: false)
+    }
+
     /// One note's body, on demand (``pullNoteBody(noteId:)``). A pull that
     /// landed anything posts ``VaultSearchIndex/bodyLanded``: the body arrived
     /// outside a sync pass, so nothing else tells search, backlinks and
@@ -176,10 +197,12 @@ struct CoreVaultFiller: VaultFilling {
         do {
             let pass = try await sync.syncNow()
             SyncTelemetry.passCompleted(pass, since: start)
+            await AttachmentRefusals.shared.absorb(pass.attachments, vaultId: vaultId)
+            NotificationCenter.default.post(name: .vaultSyncPassSucceeded, object: nil)
             return pass
         } catch {
             SyncTelemetry.passFailed(error, since: start)
-            throw error
+            throw VaultPlanFull.naming(vaultName, in: error)
         }
     }
 
@@ -195,10 +218,16 @@ struct CoreVaultFiller: VaultFilling {
 
     private let sync: VaultSync
     private let executor: CoreExecutor
+    /// What the user calls this vault, so a refusal can say which one.
+    private let vaultName: String
+    /// Tags this vault's attachment refusals, so another vault never shows them.
+    private let vaultId: String
 
-    init(sync: VaultSync, executor: CoreExecutor) {
+    init(sync: VaultSync, executor: CoreExecutor, vaultId: String, vaultName: String) {
         self.sync = sync
         self.executor = executor
+        self.vaultId = vaultId
+        self.vaultName = vaultName
     }
 
     /// Blocking, so it goes on the serial core queue. One local row, no
@@ -217,6 +246,18 @@ struct CoreVaultFiller: VaultFilling {
         try await sync.firstSync(progress: SyncProgressRelay(receive: progress))
     }
 
+    /// The bodies of a round arrived outside a sync pass, so the search index
+    /// hears it here, as it does from ``fetchNoteBody(noteId:)``.
+    func drainBodies(
+        progress: @escaping @MainActor @Sendable (SyncProgress) -> Void
+    ) async throws -> BodyDrainSummary {
+        let round = try await sync.drainBodies(progress: SyncProgressRelay(receive: progress))
+        if round.documents > 0 {
+            NotificationCenter.default.post(name: VaultSearchIndex.bodyLanded, object: nil)
+        }
+        return round
+    }
+
     /// Awaited directly for the same reason, though this one is a handful of
     /// round trips rather than tens.
     func pullNoteBody(noteId: String) async throws -> BodyFetchSummary {
@@ -229,6 +270,8 @@ struct CoreVaultFiller: VaultFilling {
     ) async throws -> AttachmentFetchSummary {
         try await sync.fetchAttachment(attachmentId: attachmentId, reachable: reachable)
     }
+
+    func fetchNoteManifests(noteId: String) async throws -> UInt32 { try await sync.fetchNoteManifests(noteId: noteId) }
 
     func uploadAttachment(
         noteId: String,
@@ -320,7 +363,7 @@ final class RealtimeRelay: RealtimeListener, @unchecked Sendable {
 /// owns the one token manager, and the master key under it. Only the
 /// composition root has all three.
 protocol VaultFillerMinting: Sendable {
-    func filler(for vault: Vault) async throws -> any VaultFilling
+    func filler(for vault: Vault, named name: String) async throws -> any VaultFilling
 }
 
 /// The production mint.
@@ -349,9 +392,9 @@ struct CoreVaultFillerMint: VaultFillerMinting {
 
     /// `sync(session:)` blocks and does no I/O at all, so it goes on the core
     /// queue beside every other blocking call rather than being awaited.
-    func filler(for vault: Vault) async throws -> any VaultFilling {
+    func filler(for vault: Vault, named name: String) async throws -> any VaultFilling {
         let session = session
         let sync = try await executor.run { vault.sync(session: session) }
-        return CoreVaultFiller(sync: sync, executor: executor)
+        return CoreVaultFiller(sync: sync, executor: executor, vaultId: vault.id(), vaultName: name)
     }
 }

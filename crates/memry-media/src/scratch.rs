@@ -75,7 +75,8 @@ fn vp8_planes(width: u32, height: u32) -> u64 {
 /// A VP8L image's sub-images at their smallest block of 4 by 4 pixels, 4 bytes each: the predictor
 /// and colour transforms' (`lossless.rs:221`, `:238`), and the entropy image (`:313`) beside the
 /// 2-byte group indices made from it (`:316`). The Huffman tables are bounded by image-webp's
-/// memory limit instead (`webp`).
+/// memory limit instead (`webp`). Not counted: image-webp 0.2.4's VP8 partition table, which can
+/// allocate up to 16 MiB per partition.
 fn lossless_scratch(width: u32, height: u32) -> u64 {
     let blocks = u64::from(width.div_ceil(4)) * u64::from(height.div_ceil(4));
     blocks * (4 + 4 + 4 + 2)
@@ -92,10 +93,15 @@ fn lossless_scratch(width: u32, height: u32) -> u64 {
 /// - allocates a VP8 frame's planes from its own header (`vp8.rs:1187-1205`) before comparing it
 ///   with the canvas or the animation frame (`decoder.rs:699`, `:807`).
 ///
-/// Each refused file is one the decoder fails on or the WebP container spec forbids, so no image
-/// that decodes is lost, except one whose chunk after the image data is cut short.
+/// A simple (not VP8X) file is its first chunk: the decoder reads nothing after it, so only that
+/// chunk is checked. Each refused file is one the decoder fails on or the WebP container spec
+/// forbids, so no image that decodes is lost, except a VP8X one whose chunk after the image data
+/// is cut short.
 pub(crate) fn check_webp(bytes: &[u8]) -> Result<(), DecodeError> {
-    let chunks: Vec<_> = riff_chunks(bytes).collect();
+    let mut chunks: Vec<_> = riff_chunks(bytes).collect();
+    if chunks.first().is_some_and(|chunk| chunk.fourcc != b"VP8X") {
+        chunks.truncate(1);
+    }
     let anmf = chunks.iter().find(|chunk| chunk.fourcc == b"ANMF");
     let frame: Vec<_> = anmf
         .map(|anmf| chunks_at(bytes, anmf.start + 16).take(2).collect())

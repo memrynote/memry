@@ -41,6 +41,8 @@ import { TaskUnarchiveButton } from './task-unarchive-button'
 import { DeleteTaskDialog } from '@/components/tasks/delete-task-dialog'
 import { TaskActivitySection } from '@/components/tasks/task-activity-section'
 import { RelatedIcon } from '@/components/tasks/related-item-icon'
+import { TaskTitleText } from '@/components/tasks/task-title-text'
+import { findNoteLinks } from '@/lib/quick-add-parser'
 import { relatedItemKey, useRelatedItemInfo } from '@/components/tasks/use-related-item-info'
 
 const TASK_DETAIL_WIDTH_KEY = 'task-detail-width'
@@ -120,6 +122,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
     maxPx: TASK_DETAIL_WIDTH_MAX_PX
   })
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [isEditingTitle, setIsEditingTitle] = useState(false)
 
   const untitledCanvasLabel = tCommon('canvas.untitled')
   const {
@@ -338,20 +341,35 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
                 ancestors.length > 0 ? 'pt-1 pb-3.5' : 'py-3.5'
               )}
             >
-              <input
-                type="text"
-                value={task.title}
-                onChange={(e) => {
-                  // Every keystroke is a `tasks:update`, so select-all + delete
-                  // used to send `title: ''` at a `min(1)` contract. A task
-                  // cannot be untitled; drop the empty edit instead (#1991).
-                  if (!e.target.value.trim()) return
-                  onUpdateTask?.(task.id, { title: e.target.value })
-                }}
-                className="flex-1 min-w-0 text-[14px] font-medium text-text-primary bg-transparent outline-none truncate"
-                placeholder={t('task.namePlaceholder')}
-                aria-label={t('task.namePlaceholder')}
-              />
+              {!isEditingTitle && findNoteLinks(task.title).length > 0 ? (
+                // A title with note links reads as text with live links; a click
+                // anywhere else on it edits the raw `[[…]]` string (#5294).
+                <button
+                  type="button"
+                  onClick={() => setIsEditingTitle(true)}
+                  className="flex-1 min-w-0 cursor-text truncate text-start text-[14px] font-medium text-text-primary"
+                >
+                  <TaskTitleText title={task.title} />
+                </button>
+              ) : (
+                <input
+                  type="text"
+                  value={task.title}
+                  // oxlint-disable-next-line jsx-a11y/no-autofocus -- mounts only from a click on the title it replaces
+                  autoFocus={isEditingTitle}
+                  onBlur={() => setIsEditingTitle(false)}
+                  onChange={(e) => {
+                    // Every keystroke is a `tasks:update`, so select-all + delete
+                    // used to send `title: ''` at a `min(1)` contract. A task
+                    // cannot be untitled; drop the empty edit instead (#1991).
+                    if (!e.target.value.trim()) return
+                    onUpdateTask?.(task.id, { title: e.target.value })
+                  }}
+                  className="flex-1 min-w-0 text-[14px] font-medium text-text-primary bg-transparent outline-none truncate"
+                  placeholder={t('task.namePlaceholder')}
+                  aria-label={t('task.namePlaceholder')}
+                />
+              )}
               {onOpenInTasks && (
                 <button
                   type="button"

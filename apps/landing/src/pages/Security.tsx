@@ -1,4 +1,5 @@
 import { motion } from 'motion/react'
+import { Link } from 'react-router'
 import { PageHead } from '@/components/shared/PageHead'
 import {
   HardDrive,
@@ -14,6 +15,7 @@ import {
   QrCode
 } from 'lucide-react'
 import { Container } from '@/components/layout/Container'
+import { GITHUB_URL } from '@/lib/constants'
 import { BLUR_REVEAL_ANIMATE, BLUR_REVEAL_INITIAL, BLUR_REVEAL_TRANSITION } from '@/lib/motion'
 import type { LucideIcon } from 'lucide-react'
 
@@ -34,6 +36,7 @@ interface SecuritySection {
   title: string
   description: string
   details: string[]
+  link?: { label: string; href: string }
 }
 
 const SECURITY_SECTIONS: SecuritySection[] = [
@@ -46,44 +49,44 @@ const SECURITY_SECTIONS: SecuritySection[] = [
       'Plain .md files on your filesystem',
       'Pick any folder — iCloud, Dropbox, or fully offline',
       'SQLite for metadata, FTS5 for search',
-      'Zero cloud dependency for core functionality'
+      'Zero cloud dependency for core functionality',
+      'Not encrypted on disk by memrynote: turn on FileVault, BitLocker, or LUKS'
     ]
   },
   {
     icon: Lock,
     title: 'End-to-end encryption',
     description:
-      'When you sync, every byte is encrypted before it leaves your device. We cannot read your data. Nobody can.',
+      'When you sync, your notes are encrypted on your device before upload, so we cannot read them. Tag names and folder paths are not encrypted, because sync uses them as item IDs.',
     details: [
-      'libsodium (XChaCha20-Poly1305) for all sync traffic',
-      'At-rest encryption for local database',
-      'Keys derived on-device, never transmitted',
-      'OS keychain for credential storage'
+      'libsodium (XChaCha20-Poly1305) for every synced item',
+      'Keys derived on your device from a recovery phrase only you hold',
+      'Ed25519 signature on every synced item',
+      'OS keychain for keys and sign-in tokens'
     ]
   },
   {
     icon: EyeOff,
     title: 'Minimal telemetry',
     description:
-      'We collect anonymous usage analytics to improve the app. That is it. Your content never leaves your device.',
+      'The app sends anonymous usage metrics and crash reports so we can fix what breaks. They never include your notes.',
     details: [
-      'Anonymous feature-usage counters only',
-      'No content, filenames, or metadata collected',
-      'No third-party trackers or ad networks',
-      'Telemetry can be fully disabled in settings'
+      'Events from a fixed list, plus redacted crash reports',
+      'No note content, search queries, file paths, or emails',
+      'Processed by PostHog; no ad networks',
+      'On by default; turn off in Settings → Privacy'
     ]
   },
   {
     icon: Brain,
-    title: 'On-device AI',
+    title: 'Optional AI',
     description:
       'AI is optional and can be turned on or off. With a local model, your notes are never sent to OpenAI, Google, or anyone else.',
     details: [
       'AI can be disabled fully in settings',
-      'Local inference via on-device model',
-      'No API calls to external AI providers',
-      'Context stays in your process memory',
-      'Works fully offline'
+      'Semantic search uses an on-device embedding model',
+      'Run the assistant on a local model such as Ollama',
+      'OpenAI or Anthropic only if you connect your own account or key'
     ]
   },
   {
@@ -102,14 +105,9 @@ const SECURITY_SECTIONS: SecuritySection[] = [
     // oxlint-disable-next-line typescript/no-deprecated -- lucide removes brand icons in 1.0; this repo pins ^0.562 and swapping the glyph is a design call
     icon: Github,
     title: 'Open source',
-    description:
-      'memrynote will be fully open source. Audit the code, verify our claims, build on top of it.',
-    details: [
-      'Repository coming soon at github.com/memrynote/memry',
-      'AGPL-3.0 license',
-      'Reproducible builds planned',
-      'Security audits welcome'
-    ]
+    description: 'memrynote is open source. Audit the code, verify our claims, build on top of it.',
+    details: ['AGPL-3.0 license', 'Reproducible builds planned', 'Security audits welcome'],
+    link: { label: 'github.com/memrynote/memry', href: GITHUB_URL }
   }
 ]
 
@@ -135,6 +133,16 @@ function SecurityCard({ section }: { section: SecuritySection }) {
           </li>
         ))}
       </ul>
+      {section.link && (
+        <a
+          href={section.link.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-6 inline-block rounded-sm text-sm font-medium text-terracotta hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta/60"
+        >
+          {section.link.label}
+        </a>
+      )}
     </motion.div>
   )
 }
@@ -254,12 +262,13 @@ export function SecurityPage() {
               How the encryption actually works
             </h2>
             <p className="text-lg text-muted leading-relaxed">
-              Your vault key is the only thing that can decrypt your notes, and it never touches our
-              servers. When you set a passphrase, memrynote derives a wrapping key from it with
-              Argon2id — the same memory-hard key derivation function recommended for password
-              hashing — and uses that to unlock your vault key locally. From there, per-item data
-              keys, per-blob keys, and per-document keys are derived to encrypt your notes,
-              attachments, and edit history with XChaCha20-Poly1305 authenticated encryption.
+              Your vault key is the only thing that can decrypt your notes, and our servers never
+              see it. When you create an account, memrynote creates a 24-word recovery phrase on
+              your device and derives a master key from it with Argon2id — the same memory-hard key
+              derivation function recommended for password hashing — and your vault key from that.
+              From there, per-item data keys, per-blob keys, and per-document keys are derived to
+              encrypt your notes, attachments, and edit history with XChaCha20-Poly1305
+              authenticated encryption.
             </p>
             <p className="mt-4 text-lg text-muted leading-relaxed">
               Add a second device and memrynote never sends your vault key across the network in the
@@ -284,16 +293,30 @@ export function SecurityPage() {
             <p className="text-lg text-muted leading-relaxed">
               Zero-knowledge is a specific, checkable claim, not a marketing line. The sync server
               stores your note titles, bodies, properties, attachments, task fields, and search
-              queries only as ciphertext — it never holds the keys required to read them. Every
-              synced item also carries an Ed25519 signature over its metadata, including deletions,
-              so a compromised or hostile server cannot silently forge a delete or alter what it
-              stores without the signature failing to verify.
+              queries only as ciphertext — it never holds the keys required to read them. It does
+              see item IDs, types, sizes, and change times, and your tag names and folder paths,
+              because sync uses them as item IDs. Every synced item also carries an Ed25519
+              signature over its metadata, including deletions, so a compromised or hostile server
+              cannot silently forge a delete or alter what it stores without the signature failing
+              to verify.
             </p>
             <p className="mt-4 text-lg text-muted leading-relaxed">
               If memrynote&rsquo;s servers were subpoenaed, seized, or breached tomorrow, what an
-              attacker would get is encrypted blobs and signed metadata — not your notes. Local use
-              never touches a server at all: notes, tasks, calendar, and journal all work fully
-              offline, with sync as something you turn on, not something the app depends on.
+              attacker would get is encrypted blobs, signed metadata, and your tag names and folder
+              paths — not your notes. Local use never touches a server at all: notes, tasks,
+              calendar, and journal all work fully offline, with sync as something you turn on, not
+              something the app depends on.
+            </p>
+            <p className="mt-4 text-lg text-muted leading-relaxed">
+              For the full list of what the server can and cannot see, and what happens if you lose
+              your recovery phrase, read{' '}
+              <Link
+                to="/encrypted-notes-app"
+                className="rounded-sm font-medium text-terracotta hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta/60"
+              >
+                how memrynote encrypts your notes
+              </Link>
+              .
             </p>
           </motion.div>
         </Container>

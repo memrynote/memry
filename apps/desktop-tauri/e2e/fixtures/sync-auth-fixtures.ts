@@ -1,6 +1,5 @@
 // Binds both instances to one shared sync account: the port of
-// tests/e2e/fixtures/sync-auth-fixtures.ts. `e2e_bootstrap_sync_device` is added by Step 17
-// (#3534); no spec imports this file before that step merges.
+// tests/e2e/fixtures/sync-auth-fixtures.ts, over `e2e_bootstrap_sync_device` (HOOKS.md).
 import { waitForAppReady } from '../harness/app-helpers'
 import { invokeTest } from '../harness/invoke-test'
 import { expect } from '../harness/pw-compat/expect'
@@ -49,6 +48,11 @@ export const test = base.extend<{
   bootstrappedSyncPair: void
 }>({
   syncBootstrap: async ({}, use) => {
+    // workerd (Miniflare's runtime) ships no win32-arm64 build.
+    base.skip(
+      process.platform === 'win32' && process.arch === 'arm64',
+      'workerd has no win32-arm64 build'
+    )
     const bootstrap = await startSharedSyncBootstrap()
     try {
       await use(bootstrap)

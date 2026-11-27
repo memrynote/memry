@@ -5,6 +5,7 @@ import { useT } from '@memry/i18n/renderer'
 import { ChevronDown } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { createLogger } from '@/lib/logger'
+import { syncService } from '@/services/sync-service'
 
 const log = createLogger('UnsentNotesList')
 
@@ -21,7 +22,7 @@ export function UnsentNotesList(): React.JSX.Element | null {
 
   useEffect(() => {
     let cancelled = false
-    window.api.syncOps
+    syncService
       .getUnsentNotes()
       .then((result) => {
         if (!cancelled) setData(result)

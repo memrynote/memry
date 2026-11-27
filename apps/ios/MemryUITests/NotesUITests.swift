@@ -70,7 +70,7 @@ final class NotesUITests: XCTestCase {
         XCTAssertTrue(delete.isHittable, "Delete never scrolled into the menu")
         delete.tap()
 
-        let alert = app.alerts["Delete this note?"]
+        let alert = app.alerts["Delete \u{201c}\(title)\u{201d}?"]
         XCTAssertTrue(alert.waitForExistence(timeout: 5))
         alert.buttons["Delete"].tap()
 

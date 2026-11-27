@@ -1,0 +1,1571 @@
+{
+  "source": "todoist",
+  "cases": [
+    {
+      "name": "export",
+      "sources": [
+        "Personal.csv"
+      ],
+      "preview": {
+        "groups": [
+          {
+            "label": "Personal",
+            "counts": [
+              {
+                "labelKey": "import.stats.tasks",
+                "value": 16
+              },
+              {
+                "labelKey": "import.stats.subtasks",
+                "value": 3
+              },
+              {
+                "labelKey": "import.stats.withDueDate",
+                "value": 12
+              },
+              {
+                "labelKey": "import.stats.comments",
+                "value": 6
+              },
+              {
+                "labelKey": "import.stats.skipped",
+                "value": 1
+              }
+            ],
+            "sampleTitles": [
+              "Plan the week",
+              "Book flights",
+              "Pick seats",
+              "Pack",
+              "Water plants"
+            ],
+            "warnings": [
+              {
+                "row": 10,
+                "code": "todoist.unparsedDate",
+                "message": "Could not parse date \"every day\"",
+                "params": {
+                  "date": "every day"
+                }
+              },
+              {
+                "row": 12,
+                "code": "todoist.sectionFlattened",
+                "message": "Section \"Errands\" flattened",
+                "params": {
+                  "section": "Errands"
+                }
+              },
+              {
+                "row": 13,
+                "code": "todoist.orphanComment",
+                "message": "Comment with no preceding task skipped"
+              },
+              {
+                "row": 15,
+                "code": "todoist.subtaskNoParent",
+                "message": "Sub-task \"Milk\" has no parent at indent 2; imported top-level",
+                "params": {
+                  "title": "Milk",
+                  "indent": 2
+                }
+              },
+              {
+                "row": 16,
+                "code": "todoist.emptyTitle",
+                "message": "Task with empty content imported as (untitled)"
+              },
+              {
+                "row": 16,
+                "code": "todoist.unknownPriority",
+                "message": "Unknown priority 7 → none",
+                "params": {
+                  "priority": 7
+                }
+              },
+              {
+                "row": 17,
+                "code": "todoist.unknownPriority",
+                "message": "Unknown priority 0 → none",
+                "params": {
+                  "priority": 0
+                }
+              },
+              {
+                "row": 17,
+                "code": "todoist.unparsedDate",
+                "message": "Could not parse date \"Morgen\"",
+                "params": {
+                  "date": "Morgen"
+                }
+              },
+              {
+                "row": 23,
+                "code": "todoist.unparsedDate",
+                "message": "Could not parse date \"someday soon\"",
+                "params": {
+                  "date": "someday soon"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "timeline": [
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": "",
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 16,
+          "done": false
+        },
+        {
+          "op": "createProject",
+          "name": "Personal"
+        },
+        {
+          "op": "createTask",
+          "projectId": "project-1",
+          "parentId": null,
+          "title": "Plan the week",
+          "description": "Look at the calendar, then the inbox",
+          "priority": 4,
+          "dueDate": "2026-01-14",
+          "dueTime": null,
+          "position": 0
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 1,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 16,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 1,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 1,
+          "total": 16,
+          "done": false
+        },
+        {
+          "op": "createTask",
+          "projectId": "project-1",
+          "parentId": "task-1",
+          "title": "Book flights",
+          "description": null,
+          "priority": 3,
+          "dueDate": "2026-01-15",
+          "dueTime": null,
+          "position": 1
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 2,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 1,
+          "total": 16,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 2,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 2,
+          "total": 16,
+          "done": false
+        },
+        {
+          "op": "createTask",
+          "projectId": "project-1",
+          "parentId": "task-2",
+          "title": "Pick seats",
+          "description": "Aisle\nnot middle\n\nPrefer the morning flight\n\n[ticket.pdf](https://files.todoist.com/ticket.pdf)",
+          "priority": 2,
+          "dueDate": "2026-06-20",
+          "dueTime": null,
+          "position": 2
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 3,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 2,
+          "total": 16,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 3,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 3,
+          "total": 16,
+          "done": false
+        },
+        {
+          "op": "createTask",
+          "projectId": "project-1",
+          "parentId": "task-1",
+          "title": "Pack",
+          "description": null,
+          "priority": 0,
+          "dueDate": "2026-02-01",
+          "dueTime": "14:30",
+          "position": 3
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 4,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 3,
+          "total": 16,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 4,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 4,
+          "total": 16,
+          "done": false
+        },
+        {
+          "op": "createTask",
+          "projectId": "project-1",
+          "parentId": null,
+          "title": "Water plants",
+          "description": null,
+          "priority": 0,
+          "dueDate": null,
+          "dueTime": null,
+          "position": 4
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 5,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 4,
+          "total": 16,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 5,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 5,
+          "total": 16,
+          "done": false
+        },
+        {
+          "op": "createTask",
+          "projectId": "project-1",
+          "parentId": null,
+          "title": "Groceries",
+          "description": null,
+          "priority": 4,
+          "dueDate": "2026-01-16",
+          "dueTime": null,
+          "position": 5
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 6,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 5,
+          "total": 16,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 6,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 6,
+          "total": 16,
+          "done": false
+        },
+        {
+          "op": "createTask",
+          "projectId": "project-1",
+          "parentId": null,
+          "title": "Milk",
+          "description": null,
+          "priority": 0,
+          "dueDate": "2026-02-04",
+          "dueTime": null,
+          "position": 6
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 7,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 6,
+          "total": 16,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 7,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 7,
+          "total": 16,
+          "done": false
+        },
+        {
+          "op": "createTask",
+          "projectId": "project-1",
+          "parentId": null,
+          "title": "(untitled)",
+          "description": null,
+          "priority": 0,
+          "dueDate": null,
+          "dueTime": null,
+          "position": 7
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 8,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 7,
+          "total": 16,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 8,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 8,
+          "total": 16,
+          "done": false
+        },
+        {
+          "op": "createTask",
+          "projectId": "project-1",
+          "parentId": null,
+          "title": "Call the bank",
+          "description": null,
+          "priority": 0,
+          "dueDate": "2026-03-01",
+          "dueTime": null,
+          "position": 8
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 9,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 8,
+          "total": 16,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 9,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 9,
+          "total": 16,
+          "done": false
+        },
+        {
+          "op": "createTask",
+          "projectId": "project-1",
+          "parentId": null,
+          "title": "Renew passport",
+          "description": null,
+          "priority": 2,
+          "dueDate": "2026-03-14",
+          "dueTime": null,
+          "position": 9
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 10,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 9,
+          "total": 16,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 10,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 10,
+          "total": 16,
+          "done": false
+        },
+        {
+          "op": "createTask",
+          "projectId": "project-1",
+          "parentId": null,
+          "title": "Old thing",
+          "description": null,
+          "priority": 0,
+          "dueDate": "2027-01-05",
+          "dueTime": null,
+          "position": 10
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 11,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 10,
+          "total": 16,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 11,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 11,
+          "total": 16,
+          "done": false
+        },
+        {
+          "op": "createTask",
+          "projectId": "project-1",
+          "parentId": null,
+          "title": "Year named",
+          "description": null,
+          "priority": 0,
+          "dueDate": "2027-06-20",
+          "dueTime": null,
+          "position": 11
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 12,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 11,
+          "total": 16,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 12,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 12,
+          "total": 16,
+          "done": false
+        },
+        {
+          "op": "createTask",
+          "projectId": "project-1",
+          "parentId": null,
+          "title": "Next tuesday",
+          "description": null,
+          "priority": 0,
+          "dueDate": "2026-01-20",
+          "dueTime": null,
+          "position": 12
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 13,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 12,
+          "total": 16,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 13,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 13,
+          "total": 16,
+          "done": false
+        },
+        {
+          "op": "createTask",
+          "projectId": "project-1",
+          "parentId": null,
+          "title": "In ten days",
+          "description": null,
+          "priority": 0,
+          "dueDate": "2026-01-24",
+          "dueTime": null,
+          "position": 13
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 14,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 13,
+          "total": 16,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 14,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 14,
+          "total": 16,
+          "done": false
+        },
+        {
+          "op": "createTask",
+          "projectId": "project-1",
+          "parentId": null,
+          "title": "Not a date",
+          "description": null,
+          "priority": 0,
+          "dueDate": null,
+          "dueTime": null,
+          "position": 14
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 15,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 14,
+          "total": 16,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 15,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 15,
+          "total": 16,
+          "done": false
+        },
+        {
+          "op": "createTask",
+          "projectId": "project-1",
+          "parentId": null,
+          "title": "Picture comment",
+          "description": "[attachment](https://img.todoist.com/a.png)\n\n[attachment](42)\n\n[[file {not json}]]\n\n[[file {\"file_url\":\"\"}]]",
+          "priority": 0,
+          "dueDate": null,
+          "dueTime": null,
+          "position": 15
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 16,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 15,
+          "total": 16,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 16,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 16,
+          "total": 16,
+          "done": false
+        }
+      ],
+      "summary": {
+        "imported": 16,
+        "attachments": 0,
+        "skipped": 0,
+        "failed": []
+      }
+    },
+    {
+      "name": "many",
+      "sources": [
+        "edge.csv",
+        "not-todoist.csv",
+        "empty.csv",
+        "Shout.CSV"
+      ],
+      "preview": {
+        "groups": [
+          {
+            "label": "edge",
+            "counts": [
+              {
+                "labelKey": "import.stats.tasks",
+                "value": 9
+              },
+              {
+                "labelKey": "import.stats.subtasks",
+                "value": 2
+              },
+              {
+                "labelKey": "import.stats.withDueDate",
+                "value": 1
+              },
+              {
+                "labelKey": "import.stats.comments",
+                "value": 0
+              },
+              {
+                "labelKey": "import.stats.skipped",
+                "value": 0
+              }
+            ],
+            "sampleTitles": [
+              "Root",
+              "Child",
+              "Grandchild",
+              "Orphan deep",
+              "Back to top"
+            ],
+            "warnings": [
+              {
+                "row": 6,
+                "code": "todoist.unknownPriority",
+                "message": "Unknown priority -2 → none",
+                "params": {
+                  "priority": -2
+                }
+              },
+              {
+                "row": 7,
+                "code": "todoist.subtaskNoParent",
+                "message": "Sub-task \"Orphan deep\" has no parent at indent 4; imported top-level",
+                "params": {
+                  "title": "Orphan deep",
+                  "indent": 4
+                }
+              },
+              {
+                "row": 9,
+                "code": "todoist.unknownPriority",
+                "message": "Unknown priority 1e+23 → none",
+                "params": {
+                  "priority": 1e+23
+                }
+              },
+              {
+                "row": 10,
+                "code": "todoist.sectionFlattened",
+                "message": "Section \"\" flattened",
+                "params": {
+                  "section": ""
+                }
+              },
+              {
+                "row": 11,
+                "code": "todoist.subtaskNoParent",
+                "message": "Sub-task \"After empty section\" has no parent at indent 1; imported top-level",
+                "params": {
+                  "title": "After empty section",
+                  "indent": 1
+                }
+              }
+            ]
+          },
+          {
+            "label": "not-todoist.csv",
+            "counts": [],
+            "error": {
+              "code": "todoist.headerNotFound",
+              "message": "Not a Todoist CSV: missing TYPE header row"
+            }
+          },
+          {
+            "label": "empty.csv",
+            "counts": [],
+            "error": {
+              "code": "todoist.headerNotFound",
+              "message": "Not a Todoist CSV: missing TYPE header row"
+            }
+          },
+          {
+            "label": "Shout",
+            "counts": [
+              {
+                "labelKey": "import.stats.tasks",
+                "value": 2
+              },
+              {
+                "labelKey": "import.stats.subtasks",
+                "value": 1
+              },
+              {
+                "labelKey": "import.stats.withDueDate",
+                "value": 2
+              },
+              {
+                "labelKey": "import.stats.comments",
+                "value": 0
+              },
+              {
+                "labelKey": "import.stats.skipped",
+                "value": 0
+              }
+            ],
+            "sampleTitles": [
+              "Loud",
+              "Louder"
+            ],
+            "warnings": []
+          }
+        ]
+      },
+      "timeline": [
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": "",
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 11,
+          "done": false
+        },
+        {
+          "op": "createProject",
+          "name": "edge"
+        },
+        {
+          "op": "createTask",
+          "projectId": "project-1",
+          "parentId": null,
+          "title": "Root",
+          "description": "desc",
+          "priority": 4,
+          "dueDate": "2026-01-20",
+          "dueTime": "09:05",
+          "position": 0
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 1,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 11,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 1,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 1,
+          "total": 11,
+          "done": false
+        },
+        {
+          "op": "createTask",
+          "projectId": "project-1",
+          "parentId": "task-1",
+          "title": "Child",
+          "description": null,
+          "priority": 3,
+          "dueDate": null,
+          "dueTime": null,
+          "position": 1
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 2,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 1,
+          "total": 11,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 2,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 2,
+          "total": 11,
+          "done": false
+        },
+        {
+          "op": "createTask",
+          "projectId": "project-1",
+          "parentId": "task-2",
+          "title": "Grandchild",
+          "description": null,
+          "priority": 0,
+          "dueDate": null,
+          "dueTime": null,
+          "position": 2
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 3,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 2,
+          "total": 11,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 3,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 3,
+          "total": 11,
+          "done": false
+        },
+        {
+          "op": "createTask",
+          "projectId": "project-1",
+          "parentId": null,
+          "title": "Orphan deep",
+          "description": null,
+          "priority": 4,
+          "dueDate": null,
+          "dueTime": null,
+          "position": 3
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 4,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 3,
+          "total": 11,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 4,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 4,
+          "total": 11,
+          "done": false
+        },
+        {
+          "op": "createTask",
+          "projectId": "project-1",
+          "parentId": null,
+          "title": "Back to top",
+          "description": null,
+          "priority": 3,
+          "dueDate": null,
+          "dueTime": null,
+          "position": 4
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 5,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 4,
+          "total": 11,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 5,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 5,
+          "total": 11,
+          "done": false
+        },
+        {
+          "op": "createTask",
+          "projectId": "project-1",
+          "parentId": null,
+          "title": "Huge priority",
+          "description": null,
+          "priority": 0,
+          "dueDate": null,
+          "dueTime": null,
+          "position": 5
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 6,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 5,
+          "total": 11,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 6,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 6,
+          "total": 11,
+          "done": false
+        },
+        {
+          "op": "createTask",
+          "projectId": "project-1",
+          "parentId": null,
+          "title": "After empty section",
+          "description": null,
+          "priority": 0,
+          "dueDate": null,
+          "dueTime": null,
+          "position": 6
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 7,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 6,
+          "total": 11,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 7,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 7,
+          "total": 11,
+          "done": false
+        },
+        {
+          "op": "createTask",
+          "projectId": "project-1",
+          "parentId": null,
+          "title": "Quoted \"title\"",
+          "description": null,
+          "priority": 0,
+          "dueDate": null,
+          "dueTime": null,
+          "position": 7
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 8,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 7,
+          "total": 11,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 8,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 8,
+          "total": 11,
+          "done": false
+        },
+        {
+          "op": "createTask",
+          "projectId": "project-1",
+          "parentId": null,
+          "title": "Unclosed",
+          "description": "open",
+          "priority": 0,
+          "dueDate": null,
+          "dueTime": null,
+          "position": 8
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 9,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 8,
+          "total": 11,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 9,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 9,
+          "total": 11,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 9,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 1,
+          "completed": 9,
+          "total": 11,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 9,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 2,
+          "completed": 9,
+          "total": 11,
+          "done": false
+        },
+        {
+          "op": "createProject",
+          "name": "Shout"
+        },
+        {
+          "op": "createTask",
+          "projectId": "project-2",
+          "parentId": null,
+          "title": "Loud",
+          "description": null,
+          "priority": 4,
+          "dueDate": "2026-01-14",
+          "dueTime": null,
+          "position": 0
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 10,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 2,
+          "completed": 9,
+          "total": 11,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 10,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 2,
+          "completed": 10,
+          "total": 11,
+          "done": false
+        },
+        {
+          "op": "createTask",
+          "projectId": "project-2",
+          "parentId": "task-10",
+          "title": "Louder",
+          "description": null,
+          "priority": 4,
+          "dueDate": "2026-01-13",
+          "dueTime": null,
+          "position": 1
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 11,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 2,
+          "completed": 10,
+          "total": 11,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.todoist.importing",
+            "message": "Importing Todoist tasks…"
+          },
+          "imported": 11,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 2,
+          "completed": 11,
+          "total": 11,
+          "done": false
+        }
+      ],
+      "summary": {
+        "imported": 11,
+        "attachments": 0,
+        "skipped": 0,
+        "failed": [
+          {
+            "item": "not-todoist.csv",
+            "error": "Not a Todoist CSV: missing TYPE header row"
+          },
+          {
+            "item": "empty.csv",
+            "error": "Not a Todoist CSV: missing TYPE header row"
+          }
+        ]
+      }
+    }
+  ]
+}

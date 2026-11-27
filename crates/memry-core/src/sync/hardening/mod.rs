@@ -8,6 +8,7 @@ pub mod body_state;
 pub(crate) mod corrupt;
 pub mod history;
 pub mod manifest;
+pub mod manifest_watermark;
 pub mod orphans;
 #[cfg(test)]
 mod pending_deletes;
