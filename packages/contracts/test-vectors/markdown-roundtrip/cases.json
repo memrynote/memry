@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 412,
+    "exportedCaseCount": 413,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 422,
+    "caseCount": 423,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -1853,6 +1853,13 @@
       "canonical": null,
       "pending": null,
       "sha256": "4928d03ebb5381b6338c1c5e9b113f330842fbc91ffed2772093443efe71f46e"
+    },
+    {
+      "name": "escaped image mark before a link in a bold run",
+      "markdown": "**c \\![x](y)**",
+      "canonical": null,
+      "pending": null,
+      "sha256": "7cb524eedb08ec736dd4986d2be43ce24c1e6197714858a82042301303498f32"
     },
     {
       "name": "bold run then an italic run",

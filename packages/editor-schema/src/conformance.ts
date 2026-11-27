@@ -1188,6 +1188,9 @@ const htmlCommentCases: RoundtripCase[] = [
   { name: 'bold run ending in an escaped star', markdown: '**a\\***' },
   // Runs side by side whose stars would touch read as bold italic.
   { name: 'italic run then a bold run', markdown: '*a*__b__' },
+  // A run's delimiters are written around the link that continues it, so the
+  // `!` before them sits against the `[`.
+  { name: 'escaped image mark before a link in a bold run', markdown: '**c \\![x](y)**' },
   { name: 'bold run then an italic run', markdown: '**a**_b_' },
   { name: 'italic run then a bold run in a quote of blocks', markdown: '> *a*__b__\n>\n> z' },
   { name: 'escaped edge star beside a word underscore', markdown: '*a\\** b_c' },
