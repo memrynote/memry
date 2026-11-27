@@ -32,6 +32,7 @@ import {
   columnWidthsFromSettings,
   splitMarkdownByColumnRegions
 } from './blocks/columns'
+import { opensBlock } from './blocks/block-starts'
 import { readStructuredQuoteRun, resolveQuoteRun } from './blocks/quote'
 
 /**
@@ -279,7 +280,18 @@ async function parseContentWithMarkers<B extends NoteBlock<B>>(
     if (!insideFence) {
       const afterSidecarMarker = buffer.length === 0 && pending.length > 0
       const atParagraphStart = i === 0 || lines[i - 1].trim() === '' || afterSidecarMarker
-      const claimed = await parseCalloutRunAt(host, lines, i, atParagraphStart)
+      // A lossless read claims where BlockNote opens a block of its own, which
+      // the canonical form's blank line makes a paragraph start on the next
+      // seed. A bare `[!info]` still wants one: under text it is that text.
+      const atBlockStart =
+        atParagraphStart || (!host.legacyBlocks && opensBlock(lines, i, i - buffer.length))
+      const quoteLine = line.startsWith('>')
+      const claimed = await parseCalloutRunAt(
+        host,
+        lines,
+        i,
+        quoteLine ? atBlockStart : atParagraphStart
+      )
       if (claimed) {
         await flushBuffer()
         // `callout` as its spec declares it; `claimed.type` is one of the
@@ -303,7 +315,7 @@ async function parseContentWithMarkers<B extends NoteBlock<B>>(
       // it is read after both. `readMathRun` demands the run own its whole
       // paragraph and re-serialize byte-for-byte, which is what keeps someone
       // else's `$$` notation on the untouched path.
-      const math = readMathRun(lines, i, atParagraphStart)
+      const math = readMathRun(lines, i, atBlockStart, !host.legacyBlocks)
       if (math) {
         await flushBuffer()
         // `mathBlock` as its spec declares it - one string prop.
@@ -317,7 +329,7 @@ async function parseContentWithMarkers<B extends NoteBlock<B>>(
         continue
       }
 
-      const quoted = atParagraphStart ? await parseQuoteRunAt(host, lines, i) : null
+      const quoted = atBlockStart ? await parseQuoteRunAt(host, lines, i) : null
       if (quoted) {
         await flushBuffer()
         // `quote` as its spec declares it, with the run's parsed content and

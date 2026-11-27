@@ -95,8 +95,10 @@ export function readStructuredQuoteRun(
     if (line === '>') {
       inner.push('')
       separated = true
-    } else if (line.startsWith('> ')) {
-      const stripped = line.slice(2)
+    } else if (line.startsWith('> ') || lossless) {
+      // CommonMark's marker takes its space optionally, so `>b` is a quote
+      // line too. A legacy read declined the run on one.
+      const stripped = line.slice(line.startsWith('> ') ? 2 : 1)
       inner.push(stripped)
       if (stripped.startsWith('>')) nested = true
       const opensItem = inner.length === 1 || inner[inner.length - 2] === ''

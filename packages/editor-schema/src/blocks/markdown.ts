@@ -19,6 +19,7 @@
 import { BLOCK_COLORS_LINE_REGEX } from '@memry/shared/block-colors'
 import { createFenceTracker } from '@memry/shared/markdown-fences'
 import { extractYouTubeVideoId } from '@memry/shared/youtube'
+import { endsParagraphBefore } from './block-starts.ts'
 import { isCalloutTypeName } from './callout-types.ts'
 import {
   itemHoldsNonList,
@@ -536,12 +537,15 @@ export interface MathRun {
  * The run must also OWN its paragraph, at both ends. A fence that starts or
  * stops mid-paragraph belongs to that paragraph's bytes, and claiming it would
  * split one paragraph into two blocks — which the write-back rejoins with a
- * blank line between them, rewriting a file Memry never wrote.
+ * blank line between them, rewriting a file Memry never wrote. A lossless read
+ * takes BlockNote's paragraph ends (`endsParagraphBefore`), so `$$` against a
+ * heading below is claimed; a legacy read wants a blank line.
  */
 export function readMathRun(
   lines: readonly string[],
   start: number,
-  atParagraphStart: boolean
+  atParagraphStart: boolean,
+  lossless = true
 ): MathRun | null {
   if (!atParagraphStart) return null
   if (lines[start] !== MATH_FENCE_LINE) return null
@@ -549,7 +553,10 @@ export function readMathRun(
   let end = start + 1
   while (end < lines.length && lines[end] !== MATH_FENCE_LINE) end++
   if (end >= lines.length) return null
-  if (end + 1 < lines.length && lines[end + 1].trim() !== '') return null
+  const after = lines[end + 1]
+  if (lossless ? !endsParagraphBefore(after) : after !== undefined && after.trim() !== '') {
+    return null
+  }
 
   const raw = lines.slice(start, end + 1).join('\n')
   const latex = lines.slice(start + 1, end).join('\n')
