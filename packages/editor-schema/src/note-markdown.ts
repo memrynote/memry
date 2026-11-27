@@ -12,7 +12,11 @@ import {
 } from '@memry/shared/block-nesting'
 import { separateBlockImages, splitMarkdownPreservingBlanks } from '@memry/shared/empty-lines'
 import { applyInlineColorTokens, maskInlineColorSpans } from '@memry/shared/inline-colors'
-import { decodeHtmlCommentTokens, hasHtmlCommentToken } from '@memry/shared/html-comments'
+import {
+  decodeHtmlCommentTokens,
+  encodeHtmlCommentToken,
+  hasHtmlCommentToken
+} from '@memry/shared/html-comments'
 import { createFenceTracker } from '@memry/shared/markdown-fences'
 import {
   BOOKMARK_LINE_REGEX,
@@ -258,7 +262,8 @@ async function parseContentWithMarkers<B extends NoteBlock<B>>(
 
   const flushBuffer = async (): Promise<void> => {
     if (buffer.length === 0) return
-    const parsed = await parseMarkdownWithNestingMarkers(buffer.join('\n'), (md) => host.parse(md))
+    const read = await parseMarkdownWithNestingMarkers(buffer.join('\n'), (md) => host.parse(md))
+    const parsed = host.legacyBlocks ? read : withMarkerImages(read)
     applyPending(parsed.find((block) => !isBlockNestingMarker(block)))
     blocks.push(...parsed)
     buffer = []
@@ -368,6 +373,12 @@ async function parseContentWithMarkers<B extends NoteBlock<B>>(
       blocks.push(asBlock<B>(marker))
       continue
     }
+    // A file marker whose JSON does not read keeps its bytes as a comment, as
+    // an ignored link card does. Left to the parser, it went as raw HTML.
+    if (!insideFence && !host.legacyBlocks && FILE_BLOCK_LINE_REGEX.test(trimmed)) {
+      buffer.push(line.replace(trimmed, encodeHtmlCommentToken(trimmed)))
+      continue
+    }
 
     buffer.push(line)
   }
@@ -454,6 +465,34 @@ async function parseQuoteRunAt<B extends NoteBlock<B>>(
   if (!claimed) return null
 
   return { content: claimed.content, children: asBlocks<B>(claimed.children), end: run.end }
+}
+
+interface ImageBlockShape {
+  type?: unknown
+  props?: { url?: unknown; name?: unknown; caption?: unknown }
+  children?: unknown
+}
+
+/**
+ * Each image block whose line would be a marker, as that marker's block. The
+ * writer puts an image on a line of its own as `![name](url)`, which the next
+ * seed reads as a YouTube embed, a bookmark or a whiteboard, so an image the
+ * parser lifted out of text (`see ![](youtube-url)`) or read indented changed
+ * kind on the next open.
+ */
+function withMarkerImages<B extends NoteBlock<B>>(blocks: B[]): B[] {
+  return blocks.map((block) => {
+    // Each block is changed in place or replaced, never copied: a nesting
+    // marker is known by its identity (`isBlockNestingMarker`).
+    if (Array.isArray(block.children)) block.children = withMarkerImages(block.children)
+    const shape: ImageBlockShape = block
+    const { url, name, caption } = shape.props ?? {}
+    if (shape.type !== 'image' || typeof url !== 'string' || typeof name !== 'string' || caption) {
+      return block
+    }
+    const marker = parseCustomBlockMarkerLine(`![${name}](${url})`)
+    return marker ? asBlock<B>(marker) : block
+  })
 }
 
 /**

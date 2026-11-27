@@ -65,12 +65,16 @@ type BlockItem = {
 /**
  * An image address with a space, in angle brackets: the writer writes
  * `![a](u)` as it is, and the parser ends the address at the space, so
- * `![a](<a b.png>)` came back `a`.
+ * `![a](<a b.png>)` came back `a`. An empty address with alt text is `<>`
+ * too, since the writer drops an image without one: `![a]()` was lost. The
+ * editor's empty image block has no alt text and is still written as nothing.
  */
 function angledImageUrl(block: BlockItem): BlockItem['props'] {
   const url = block.props?.url
-  if (block.type !== 'image' || typeof url !== 'string' || !/\s/.test(url)) return block.props
-  return { ...block.props, url: `<${url}>` }
+  if (block.type !== 'image' || typeof url !== 'string') return block.props
+  if (/\s/.test(url) || (url === '' && block.props?.name))
+    return { ...block.props, url: `<${url}>` }
+  return block.props
 }
 
 function textNeighbour(items: InlineItem[], index: number, step: 1 | -1): InlineItem | undefined {
