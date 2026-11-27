@@ -1,8 +1,10 @@
 import Foundation
 import MemryCore
 import Observation
+import SwiftUI
 import Synchronization
 import Testing
+import UIKit
 
 @testable import Memry
 
@@ -13,6 +15,7 @@ import Testing
 /// Scripts the Inbox file calls and records what the shell asked for.
 private final class InboxFilesFiller: VaultFilling, @unchecked Sendable {
     private let state = Mutex(State())
+    let changes = Changes()
 
     struct State {
         var summaries: [InboxAttachmentSyncSummary] = []
@@ -24,6 +27,8 @@ private final class InboxFilesFiller: VaultFilling, @unchecked Sendable {
         var attachCalls: [String] = []
         var uploadCalls = 0
         var attached = InboxFileAttachment(attachmentId: "att-1", filename: "manifest-name.png")
+        var fetches: [Reachable] = []
+        var fetchFailure: SyncError?
     }
 
     init(summaries: [InboxAttachmentSyncSummary] = []) {
@@ -37,6 +42,17 @@ private final class InboxFilesFiller: VaultFilling, @unchecked Sendable {
     var uploadCalls: Int { state.withLock { $0.uploadCalls } }
     func failNoteRedrive() { state.withLock { $0.noteRedriveFails = true } }
     func failInboxSync() { state.withLock { $0.inboxSyncFails = true } }
+    var fetches: [Reachable] { state.withLock { $0.fetches } }
+    func failFetch(with failure: SyncError = .Locked) { state.withLock { $0.fetchFailure = failure } }
+
+    /// Lands the bytes, as the core does on a path its policy allows.
+    func fetchAttachment(attachmentId: String, reachable: Reachable) async throws -> AttachmentFetchSummary {
+        try state.withLock { state in
+            state.fetches.append(reachable)
+            if let failure = state.fetchFailure { throw failure }
+            return AttachmentFetchSummary(downloaded: true, deferred: false, bytes: 1, localPath: attachmentId)
+        }
+    }
     func attach(returning attached: InboxFileAttachment) { state.withLock { $0.attached = attached } }
 
     static func summary(uploaded: UInt32 = 0, downloaded: UInt32 = 0) -> InboxAttachmentSyncSummary {
@@ -61,6 +77,7 @@ private final class InboxFilesFiller: VaultFilling, @unchecked Sendable {
 
     func syncNow() async throws -> SyncPassSummary {
         state.withLock { $0.passes += 1 }
+        changes.changed()
         return SyncPassSummary(pulled: 0, deleted: 0, bodies: 0, pushed: 0, rejected: 0, pending: 0)
     }
 
@@ -101,15 +118,26 @@ struct InboxFileRedriveTests {
     private func redriver(
         _ filler: InboxFilesFiller,
         reachable: Reachable = .wifi,
+        setting: AttachmentDownload = .wifi,
         center: NotificationCenter = NotificationCenter()
     ) -> AttachmentRedriver {
-        AttachmentRedriver(filler: filler, reachability: { reachable }, center: center)
+        AttachmentRedriver(filler: filler, reachability: { reachable }, setting: { setting }, center: center)
     }
 
     @Test func the_redrive_syncs_inbox_files_with_the_current_path() async {
         let filler = InboxFilesFiller()
         await redriver(filler, reachable: .cellular).redrive()
         #expect(filler.inboxSyncs == [.cellular])
+    }
+
+    /// #5644: Inbox files download whatever the Download attachments
+    /// setting, as desktop's do (`attachment-sync.ts`), so the pass always
+    /// carries the observed path.
+    @Test(arguments: AttachmentDownload.allCases, [Reachable.wifi, .cellular])
+    func the_inbox_pass_ignores_the_setting(setting: AttachmentDownload, observed: Reachable) async {
+        let filler = InboxFilesFiller()
+        await redriver(filler, reachable: observed, setting: setting).redrive()
+        #expect(filler.inboxSyncs == [observed])
     }
 
     @Test func offline_syncs_no_inbox_files() async {
@@ -170,7 +198,7 @@ struct InboxFileRedriveTests {
         let filler = InboxFilesFiller(summaries: [InboxFilesFiller.summary(uploaded: 1)])
         let tasks = try TasksTestVault(filler: filler)
         await tasks.store.sync()
-        try await wait { filler.passes >= 2 }
+        await filler.changes.until { filler.passes >= 2 }
         #expect(filler.passes == 2)
         try await Task.sleep(for: .milliseconds(1200))
         #expect(filler.passes == 2, "the extra pass asked for another")
@@ -285,5 +313,180 @@ struct InboxPictureFallbackTests {
         }
         scratch.store.inboxFilesDownloaded()
         #expect(changed.withLock { $0 })
+    }
+}
+
+// #5644: on a metered path the background pass defers another device's
+// capture file (FR-045), and opening the capture downloads it.
+@MainActor
+@Suite("Inbox file on open", .serialized)
+struct InboxOpenedFileTests {
+    private static let onePixelPNG = Data(base64Encoded:
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+    ) ?? Data()
+
+    /// A capture another device uploaded: it names an upload, and its file is
+    /// not on this device.
+    private func remoteCapture(
+        _ filler: InboxFilesFiller,
+        observed: Reachable
+    ) async throws -> (InboxStore, InboxItemRecord) {
+        let scratch = try InboxTestVault()
+        let store = InboxStore(
+            core: scratch.inbox, vaultId: "vault-inbox-test", vaultDirectory: scratch.directory,
+            filler: filler, transcription: .scripted
+        )
+        store.reachability = { observed }
+        _ = await store.captureFile(data: Self.onePixelPNG, filename: "[agent] photo.png", mimeType: "image/png")
+        var item = try #require(store.items.first)
+        item.attachmentId = "att-remote"
+        item.attachmentPath = "attachments/inbox/\(item.id)/[agent]-not-here.png"
+        #expect(store.localFile(item.attachmentPath) == nil)
+        return (store, item)
+    }
+
+    @Test func opening_downloads_the_file_on_a_metered_path_and_the_rest_stay_deferred() async throws {
+        let filler = InboxFilesFiller()
+        let (store, item) = try await remoteCapture(filler, observed: .cellular)
+
+        await store.downloadFile(of: item)
+
+        #expect(filler.fetches == [.wifi], "the opened file was judged as metered")
+        #expect(filler.inboxSyncs == [.cellular], "the pass placing it downloaded other captures' files")
+        #expect(store.fileDownloads.isEmpty)
+    }
+
+    @Test func offline_asks_for_nothing() async throws {
+        let filler = InboxFilesFiller()
+        let (store, item) = try await remoteCapture(filler, observed: .offline)
+
+        await store.downloadFile(of: item)
+
+        #expect(filler.fetches.isEmpty)
+        #expect(filler.inboxSyncs.isEmpty)
+        #expect(store.fileDownloads.isEmpty)
+    }
+
+    @Test func a_failed_download_is_shown_and_places_nothing() async throws {
+        let filler = InboxFilesFiller()
+        filler.failFetch()
+        let (store, item) = try await remoteCapture(filler, observed: .wifi)
+
+        await store.downloadFile(of: item)
+
+        #expect(store.fileDownloads[item.id] == .failed(ErrorMapping.userFacing(SyncError.Locked)))
+        #expect(filler.inboxSyncs.isEmpty)
+    }
+
+    /// REVIEW-5685R2 #4, desktop `asksOnSync`: a pass asks again only after a
+    /// failure waiting can fix. A corrupt download waits for Try again, an
+    /// unverifiable one for the capture to open again.
+    @Test func a_pass_asks_again_only_after_a_failure_waiting_fixes() async throws {
+        let failures: [(SyncError, UserFacingError.Recourse, Int)] = [
+            (.AttachmentUnverified(deviceId: "device"), .blocked, 1),
+            (.AttachmentCorrupt(what: "chunk"), .retry, 1),
+            (.Api(source: .Transport(source: .Offline)), .retryLater, 2),
+        ]
+        for (failure, recourse, fetches) in failures {
+            #expect(ErrorMapping.userFacing(failure).recourse == recourse)
+            let filler = InboxFilesFiller()
+            filler.failFetch(with: failure)
+            let (store, item) = try await remoteCapture(filler, observed: .wifi)
+
+            await store.downloadFile(of: item)
+            await store.downloadFile(of: item, afterPass: true)
+
+            #expect(filler.fetches.count == fetches, "\(recourse)")
+            #expect(store.fileDownloads[item.id] == .failed(ErrorMapping.userFacing(failure)))
+        }
+    }
+
+    @Test func try_again_asks_after_a_corrupt_download() async throws {
+        let filler = InboxFilesFiller()
+        filler.failFetch(with: .AttachmentCorrupt(what: "chunk"))
+        let (store, item) = try await remoteCapture(filler, observed: .wifi)
+
+        await store.downloadFile(of: item)
+        await store.downloadFile(of: item, afterPass: true)
+        #expect(filler.fetches.count == 1)
+        await store.downloadFile(of: item)
+
+        #expect(filler.fetches.count == 2, "Try again did not ask")
+    }
+}
+
+extension KeyWindowSuites {
+    /// REVIEW-5685R2 #1: the opened capture's screen asks again when a sync pass
+    /// runs (`InboxDetailView`'s `.onChange(of: syncPasses)`).
+    @MainActor
+    @Suite("Inbox detail on a sync pass", .serialized)
+    struct InboxDetailPassTests {
+        private static let onePixelPNG = Data(base64Encoded:
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+        ) ?? Data()
+
+        @Observable final class Passes { var count = 0 }
+
+        private struct Host: View {
+            let itemId: String
+            let store: InboxStore
+            let router: InboxRouter
+            let passes: Passes
+            var body: some View {
+                NavigationStack { InboxDetailView(itemId: itemId, store: store) }
+                    .environment(router)
+                    .environment(TasksRouter())
+                    .environment(\.vaultSyncPasses, passes.count)
+            }
+        }
+
+        @Test(.timeLimit(.minutes(1)))
+        func a_capture_opened_offline_downloads_once_a_pass_runs_on_a_metered_path() async throws {
+            let scratch = try InboxTestVault()
+            let filler = InboxFilesFiller()
+            let store = InboxStore(
+                core: scratch.inbox, vaultId: "vault-inbox-test", vaultDirectory: scratch.directory,
+                filler: filler, transcription: .scripted
+            )
+            let path = Mutex(Reachable.offline)
+            let asked = Mutex(0)
+            store.reachability = {
+                asked.withLock { $0 += 1 }
+                return path.withLock { $0 }
+            }
+            _ = await store.captureFile(data: Self.onePixelPNG, filename: "[agent] photo.png", mimeType: "image/png")
+            let item = try #require(store.items.first)
+            // Another device's capture: it names an upload, and its file is not here.
+            try FileManager.default.removeItem(at: try #require(store.localFile(item.attachmentPath)))
+            let database = scratch.directory.appendingPathComponent(VaultFiles.dataDatabaseName).path
+            try execute("""
+                UPDATE sync_items SET payload = json_set(payload, '$.attachmentId', 'att-remote') WHERE item_type = 'inbox';
+                """, in: database)
+            #expect(await store.fetch(item.id)?.attachmentId == "att-remote")
+
+            let passes = Passes()
+            let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 400, height: 800))
+            window.rootViewController = UIHostingController(
+                rootView: Host(itemId: item.id, store: store, router: InboxRouter(), passes: passes)
+            )
+            window.makeKeyAndVisible()
+            defer { window.isHidden = true }
+
+            try await settle { asked.withLock { $0 } > 0 }
+            #expect(filler.fetches.isEmpty, "offline asked the server")
+
+            path.withLock { $0 = .cellular }
+            passes.count += 1
+            try await settle { !filler.inboxSyncs.isEmpty }
+
+            #expect(filler.fetches == [.wifi], "the pass did not download the opened capture's file")
+            #expect(filler.inboxSyncs == [.cellular])
+        }
+
+        private func settle(_ done: () -> Bool) async throws {
+            for _ in 0 ..< 100 where !done() {
+                try await Task.sleep(for: .milliseconds(50))
+            }
+        }
     }
 }

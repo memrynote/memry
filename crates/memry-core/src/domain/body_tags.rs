@@ -11,6 +11,7 @@
 //! rewrites a document's rows each time it indexes that document.
 
 use rusqlite::{Connection, params};
+use unicode_normalization::char::is_combining_mark;
 
 use crate::api::errors::StorageError;
 use crate::crdt::blocks::Block;
@@ -27,9 +28,9 @@ pub const ALL_NOTE_TAGS: &str = "(SELECT note_id, tag FROM note_tags WHERE delet
 
 /// The body's tags, as desktop's `extractInlineTagsFromMarkdown` reads them
 /// from the markdown it writes: a `#` at the start of a line or after
-/// whitespace, then a letter, then tag characters, with `/` nesting. Code
-/// blocks and inline code are skipped. A `hashTag` node is `#tag` on disk.
-/// Deduped case-insensitively, first spelling kept.
+/// whitespace, then a tag ([`tag_len`]). Code blocks and inline code are
+/// skipped. A `hashTag` node is `#tag` on disk. Deduped case-insensitively,
+/// first spelling kept.
 pub fn extract(blocks: &[Block]) -> Vec<String> {
     let mut found = Vec::new();
     for block in blocks.iter().filter(|block| block.kind != "codeBlock") {
@@ -103,42 +104,68 @@ fn scan(line: &str, found: &mut Vec<String>) {
     }
 }
 
+/// A character inside a tag segment, desktop's `TAG_CHAR` in
+/// `@memry/shared/inline-tags`: `[\p{Alphabetic}\p{M}\p{N}_-]`. The marks
+/// carry Hindi's virama and Thai's tone marks.
+pub(crate) fn is_tag_char(c: char) -> bool {
+    c.is_alphabetic() || is_combining_mark(c) || c.is_numeric() || c == '_' || c == '-'
+}
+
+/// Length in chars of the tag `chars` starts with, `#` excluded, or `None`:
+/// `/`-separated segments, each a letter or digit followed by tag characters,
+/// and at least one letter in the whole tag, so `2024` is prose and `2024년`
+/// and `퓨리` are tags.
+pub(crate) fn tag_len(chars: &[char]) -> Option<usize> {
+    let starts_segment = |at: usize| {
+        chars
+            .get(at)
+            .is_some_and(|c| c.is_alphabetic() || c.is_numeric())
+    };
+    if !starts_segment(0) {
+        return None;
+    }
+    let mut end = 0;
+    loop {
+        end += 1;
+        while chars.get(end).is_some_and(|&c| is_tag_char(c)) {
+            end += 1;
+        }
+        // A `/` continues the tag only when a segment follows it.
+        if chars.get(end) == Some(&'/') && starts_segment(end + 1) {
+            end += 1;
+        } else {
+            break;
+        }
+    }
+    chars[..end]
+        .iter()
+        .any(|c| c.is_alphabetic())
+        .then_some(end)
+}
+
 pub(crate) fn tag_spans(line: &str, char_before_line: Option<char>) -> Vec<(usize, usize)> {
-    let chars: Vec<(usize, char)> = line.char_indices().collect();
-    let byte = |at: usize| chars.get(at).map_or(line.len(), |(offset, _)| *offset);
-    let char_at = |at: usize| chars.get(at).map(|(_, c)| *c);
-    let word = |c: char| c.is_ascii_alphanumeric() || c == '_' || c == '-';
+    let offsets: Vec<usize> = line.char_indices().map(|(offset, _)| offset).collect();
+    let chars: Vec<char> = line.chars().collect();
+    let byte = |at: usize| offsets.get(at).copied().unwrap_or(line.len());
     let mut spans = Vec::new();
     let mut at = 0;
     while at < chars.len() {
         let preceding = if at == 0 {
             char_before_line
         } else {
-            char_at(at - 1)
+            chars.get(at - 1).copied()
         };
-        let starts = char_at(at) == Some('#')
-            // JavaScript's `\s`, which the desktop grammar tests: U+FEFF starts a tag, U+0085 does not.
-            && preceding.is_none_or(is_js_whitespace)
-            && char_at(at + 1).is_some_and(|c| c.is_ascii_alphabetic());
-        if !starts {
-            at += 1;
-            continue;
-        }
-        let mut end = at + 1;
-        while char_at(end).is_some_and(word) {
-            end += 1;
-        }
-        // A `/` continues the tag only when a segment follows it.
-        while char_at(end) == Some('/')
-            && char_at(end + 1).is_some_and(|c| c.is_ascii_alphanumeric())
-        {
-            end += 1;
-            while char_at(end).is_some_and(word) {
-                end += 1;
+        // JavaScript's `\s`, which the desktop grammar tests: U+FEFF starts a tag, U+0085 does not.
+        let len = (chars[at] == '#' && preceding.is_none_or(is_js_whitespace))
+            .then(|| tag_len(&chars[at + 1..]))
+            .flatten();
+        match len {
+            Some(len) => {
+                spans.push((byte(at + 1), byte(at + 1 + len)));
+                at += 1 + len;
             }
+            None => at += 1,
         }
-        spans.push((byte(at + 1), byte(end)));
-        at = end;
     }
     spans
 }
@@ -164,6 +191,33 @@ pub fn clear(data: &Connection, doc_id: &str) -> Result<(), StorageError> {
     )
     .map_err(failed)?;
     Ok(())
+}
+
+/// Runs `rewrite`, which replaces a document's cached body tags, as one commit. The tag readers
+/// (`used_tags`, `tag_counts`, `tags::gone`) run on their own connections and see the last
+/// commit, so a [`clear`] and a [`write`] in autocommit show a body that carries no tags between
+/// them. A savepoint, so it also nests in the caller's transaction.
+pub(crate) fn replaced_as_one<T>(
+    data: &Connection,
+    rewrite: impl FnOnce() -> Result<T, StorageError>,
+) -> Result<T, StorageError> {
+    data.execute_batch("SAVEPOINT body_tags_rewrite")
+        .map_err(failed)?;
+    match rewrite() {
+        Ok(value) => {
+            data.execute_batch("RELEASE body_tags_rewrite")
+                .map_err(failed)?;
+            Ok(value)
+        }
+        Err(error) => match data
+            .execute_batch("ROLLBACK TO body_tags_rewrite; RELEASE body_tags_rewrite")
+        {
+            Ok(()) => Err(error),
+            Err(rollback) => Err(StorageError::Failed {
+                what: format!("{error}; the body tags it wrote were not rolled back: {rollback}"),
+            }),
+        },
+    }
 }
 
 /// `(item_type, item_id, tag)` for each body tag on a live note or journal.
@@ -212,7 +266,11 @@ mod tests {
         let blocks = vec![
             block(
                 "paragraph",
-                vec![run("#Books and a#not, #9no #area/sub-1 #work", &[], None)],
+                vec![run(
+                    "#Books and a#not, #9no #2024 #area/sub-1 #work",
+                    &[],
+                    None,
+                )],
             ),
             block("paragraph", vec![run("", &["hashTag"], Some("chip"))]),
             block(
@@ -221,6 +279,29 @@ mod tests {
             ),
             block("codeBlock", vec![run("#literal", &[], None)]),
         ];
-        assert_eq!(extract(&blocks), ["Books", "area/sub-1", "work", "chip"]);
+        assert_eq!(
+            extract(&blocks),
+            ["Books", "9no", "area/sub-1", "work", "chip"]
+        );
+    }
+
+    #[test]
+    fn reads_tags_in_every_script() {
+        let text = "#퓨리 #привет, #タグ。 #हिन्दी #ภาษาไทย #عربي #İş/alt #café #2024년 日本語#タグ #\u{301}a";
+        let blocks = vec![block("paragraph", vec![run(text, &[], None)])];
+        assert_eq!(
+            extract(&blocks),
+            [
+                "퓨리",
+                "привет",
+                "タグ",
+                "हिन्दी",
+                "ภาษาไทย",
+                "عربي",
+                "İş/alt",
+                "café",
+                "2024년"
+            ]
+        );
     }
 }

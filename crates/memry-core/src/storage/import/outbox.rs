@@ -6,6 +6,7 @@ use rusqlite::{Connection, OptionalExtension, params};
 
 use super::{ImportWriter, failed};
 use crate::api::errors::StorageError;
+use crate::storage::nested_tx;
 use crate::storage::repositories::projectors;
 use crate::storage::repositories::sync_items::PAYLOAD_STATE_FULL;
 use crate::sync::clock::VectorClock;
@@ -49,7 +50,7 @@ impl ImportWriter {
         &mut self,
         rows: &[ImportTombstoneClock],
     ) -> Result<(), StorageError> {
-        let tx = self.data.transaction().map_err(failed)?;
+        let tx = nested_tx::begin(&self.data).map_err(failed)?;
         for row in rows {
             crate::sync::store::record_tombstone_clock(
                 &tx,
@@ -65,7 +66,7 @@ impl ImportWriter {
     /// Queues `items` in order, in one transaction. Returns, per item, whether a row was queued:
     /// `false` for a local-only note, which [`outbox::enqueue`] withholds.
     pub fn put_outbox(&mut self, items: &[ImportQueued]) -> Result<Vec<bool>, StorageError> {
-        let tx = self.data.transaction().map_err(failed)?;
+        let tx = nested_tx::begin(&self.data).map_err(failed)?;
         let mut queued = Vec::with_capacity(items.len());
         for item in items {
             if let Some(deleted) = &item.tombstone {

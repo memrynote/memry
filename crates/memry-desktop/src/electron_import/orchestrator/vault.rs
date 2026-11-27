@@ -195,7 +195,7 @@ pub(super) fn stage(
         progress: None,
     };
     let staged = match stage_vault_import(input).map_err(fail)? {
-        StageOutcome::Staged(staged) => staged,
+        StageOutcome::Staged(staged) => *staged,
         // `earlier_import` removed every core this import wrote: this one is not ours.
         StageOutcome::AlreadyImported => {
             return Err(fail(ImportError::CoreFileExists(

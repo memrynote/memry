@@ -6,7 +6,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 use super::RunError;
-use crate::electron_import::vault_db::tables::ELECTRON_DATA_LAST_MIGRATION;
+use crate::electron_import::vault_db::tables::ELECTRON_DATA_LEDGER_ENDS;
 use crate::electron_import::vault_prep::{Disposition, PlannedVault};
 use crate::electron_import::{ElectronConfig, ElectronProfile, YStoreReader};
 
@@ -22,12 +22,14 @@ pub(super) fn run(
 ) -> Result<(), RunError> {
     for vault in vaults {
         if matches!(vault.disposition, Disposition::Import(_))
-            && vault.source_ledger != Some(ELECTRON_DATA_LAST_MIGRATION)
+            && !vault
+                .source_ledger
+                .is_some_and(|end| ELECTRON_DATA_LEDGER_ENDS.contains(&end))
         {
             return Err(RunError::ElectronSchema {
                 vault: vault.path.clone(),
                 found: vault.source_ledger,
-                expected: ELECTRON_DATA_LAST_MIGRATION,
+                expected: ELECTRON_DATA_LEDGER_ENDS,
             });
         }
     }

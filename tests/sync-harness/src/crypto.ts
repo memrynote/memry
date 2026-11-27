@@ -68,6 +68,52 @@ export function generateVaultKey(): Uint8Array {
   return sodium.randombytes_buf(XCHACHA20_PARAMS.KEY_LENGTH)
 }
 
+/** Chapter 01 §1.7: the vault key is subkey 1 of the master key, context `memryvlt`. */
+export function deriveVaultKey(masterKey: Uint8Array): Uint8Array {
+  // oxlint-disable-next-line import/no-named-as-default-member -- libsodium populates its named exports only after `ready`; the default export is the instance the tests mock
+  return sodium.crypto_kdf_derive_from_key(32, 1, 'memryvlt', masterKey)
+}
+
+/**
+ * A CRDT update or snapshot as protocol 07 sends it, packed as
+ * `[dataNonce(24) | keyNonce(24) | wrappedKey(48) | signature(64) | ciphertext]`
+ * and signed over noteId ‖ header-without-signature ‖ ciphertext; the AEAD
+ * associated data is the noteId. The harness twin of `encryptCrdtUpdatePacked`
+ * (`packages/sync-client/src/push/crdt-encrypt.ts`), for a reader that opens
+ * bodies: the Rust core.
+ */
+export function encryptCrdtPacked(
+  update: Uint8Array,
+  vaultKey: Uint8Array,
+  noteId: string,
+  signingSecretKey: Uint8Array
+): Uint8Array {
+  const fileKey = sodium.randombytes_buf(XCHACHA20_PARAMS.KEY_LENGTH)
+  const dataNonce = sodium.randombytes_buf(XCHACHA20_PARAMS.NONCE_LENGTH)
+  const ciphertext = sodium.crypto_aead_xchacha20poly1305_ietf_encrypt(
+    compressPayload(update),
+    noteId,
+    null,
+    dataNonce,
+    fileKey
+  )
+  const keyNonce = sodium.randombytes_buf(XCHACHA20_PARAMS.NONCE_LENGTH)
+  const wrappedKey = sodium.crypto_aead_xchacha20poly1305_ietf_encrypt(
+    fileKey,
+    null,
+    null,
+    keyNonce,
+    vaultKey
+  )
+  const header = new Uint8Array([...dataNonce, ...keyNonce, ...wrappedKey])
+  const noteIdBytes = new TextEncoder().encode(noteId)
+  const signature = sodium.crypto_sign_detached(
+    new Uint8Array([...noteIdBytes, ...header, ...ciphertext]),
+    signingSecretKey
+  )
+  return new Uint8Array([...header, ...signature, ...ciphertext])
+}
+
 export interface EncryptForPushInput {
   id: string
   type: SyncItemType

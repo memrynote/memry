@@ -40,7 +40,7 @@ pub enum RunError {
     ElectronSchema {
         vault: String,
         found: Option<i64>,
-        expected: i64,
+        expected: &'static [i64],
     },
     #[error(
         "These vaults share one sync history, so MemryNote cannot move them: {}. Nothing was \

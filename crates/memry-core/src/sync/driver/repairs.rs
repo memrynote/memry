@@ -14,12 +14,21 @@ impl SyncDriver {
             return;
         }
         let _gate = self.engine.hold_gate().await;
-        let checked = self
-            .manifest
-            .run(&self.first.pull, crate::sync::pull::now_ms())
-            .await;
-        if let Err(error) = checked {
-            eprintln!("memry-core: the manifest check failed: {error}");
+        let now = crate::sync::pull::now_ms();
+        match self.manifest.run(&self.first.pull, now).await {
+            // A re-uploaded note or journal goes with its whole body: the server lost the
+            // create, so it may hold none of the document's updates (#4785).
+            Ok(Some(outcome)) => {
+                for (_, id) in outcome
+                    .reuploaded
+                    .iter()
+                    .filter(|(item_type, _)| item_type == "note" || item_type == "journal")
+                {
+                    self.snapshot_requests.request(id, now);
+                }
+            }
+            Ok(None) => {}
+            Err(error) => eprintln!("memry-core: the manifest check failed: {error}"),
         }
     }
 }

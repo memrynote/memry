@@ -137,14 +137,23 @@ fn a_watch_limit_at_the_open_shows_and_rescans() {
     e.facts_until(|fact| matches!(fact, Applied::Changed { path, .. } if path == "a.md"));
 }
 
-/// A file named like a note whose text is not the file's stays a file and is listed; once its
-/// text is the note's again, the next ask names it and the notice goes.
+/// A file named like a note whose text is not on this device yet stays a file and is listed;
+/// once the text is here and is the file's, the next ask names it and the notice goes.
+///
+/// The note's body is owed a pull while its row is lost: a note whose body is here gets its file
+/// from the open's write-back (under a free name, as a pulled note does), which ends the note
+/// being claimable by a file at its own name.
 #[test]
 fn an_undecided_file_is_listed_until_it_is_named() {
     let (mut e, notices) = noticing_env();
     e.write("x.md", "Mine\n");
     e.open();
     e.facts_until(indexed);
+    // What the first open still reports or writes ends before the row is lost: FSEvents reports
+    // what happened before the watcher was armed late, and the write-back runs a note's pass
+    // half a second after it is scheduled.
+    e.after_reconcile();
+    assert!(e.tier.flush(vault_env::WAIT), "the write-back never ended");
     let id = row_id(&e, "x.md");
     let lost = id.clone();
     e.core()
@@ -154,10 +163,16 @@ fn an_undecided_file_is_listed_until_it_is_named() {
                 .unwrap();
             conn.execute("DELETE FROM note_files WHERE note_id = ?1", [&lost])
                 .unwrap();
+            conn.execute(
+                "INSERT INTO meta (key, value) VALUES ('sync.body_owed:' || ?1, '0:0')",
+                [&lost],
+            )
+            .unwrap();
             Ok(())
         })
         .unwrap();
     e.close();
+    e.drain();
     e.write("x.md", "Another text\n");
     e.open();
     e.facts_until(indexed);
@@ -169,8 +184,26 @@ fn an_undecided_file_is_listed_until_it_is_named() {
         }]
     );
 
+    // The open's write-back has kept the note, whose body is owed, without a file; only then does
+    // the body arrive, so that the file's next ask is what names it.
+    e.after_reconcile();
+    assert!(e.tier.flush(vault_env::WAIT), "the write-back never ended");
+    let arrived = id.clone();
+    e.core()
+        .db_handle()
+        .call_blocking(move |conn| {
+            conn.execute(
+                "DELETE FROM meta WHERE key = 'sync.body_owed:' || ?1",
+                [&arrived],
+            )
+            .unwrap();
+            Ok(())
+        })
+        .unwrap();
     e.write("x.md", "Mine\n");
-    e.facts_until(|f| matches!(f, Applied::Added { note_id, .. } if *note_id == id));
+    e.facts_until(
+        |f| matches!(f, Applied::Added { note_id, path, .. } if *note_id == id && path == "x.md"),
+    );
     assert!(notices.list().is_empty(), "{:?}", notices.list());
 }
 

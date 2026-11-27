@@ -7,6 +7,7 @@ import type Logger from 'electron-log'
 import { getDatabase } from '../database/client'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
 import { nextLocalClock } from '@memry/sync-client/tombstone-clocks'
+import { isAttachmentStoreRow } from '@memry/shared/attachment-store'
 
 export interface ContentSyncDeps {
   queue: SyncQueueManager
@@ -16,12 +17,27 @@ export interface ContentSyncDeps {
 }
 
 /**
- * Single reading of the "never leaves this device" flag. Handed to the
+ * Single reading of the "never leaves this device" switch. Handed to the
  * controller as `shouldSkip`, which applies it to the snapshot path and the
- * delete path alike, so the two can never drift apart again.
+ * delete path alike, so the two can never drift apart again. A deferred delete
+ * reads it too (`buildContentDeletePayload`).
+ *
+ * A local-only note, and a binary row in the attachment store (#5607): a
+ * stray an older Windows build made of a pasted attachment. Its delete would
+ * make a peer on an older build unlink the file another note embeds.
  */
-function isLocalOnly(local: NoteMetadata | undefined): boolean {
-  return Boolean(local?.localOnly)
+export function staysOnDevice(local: NoteMetadata | undefined): boolean {
+  return Boolean(local?.localOnly) || (local !== undefined && isAttachmentStoreRow(local))
+}
+
+/**
+ * Base64 of a body doc's Yjs state vector, the `bodyStateVector` a note or
+ * journal tombstone carries (chapter 05 §5.8, #3037). Undefined when there is
+ * no doc or it holds nothing: a peer then decides as it did before #3037.
+ */
+export function encodeBodyStateVector(vector: Uint8Array | null): string | undefined {
+  if (!vector || Y.decodeStateVector(vector).size === 0) return undefined
+  return Buffer.from(vector).toString('base64')
 }
 
 export abstract class ContentSyncService<
@@ -31,7 +47,8 @@ export abstract class ContentSyncService<
   protected queue: SyncQueueManager
   protected abstract readonly log: Logger.LogFunctions
   abstract readonly itemType: Extract<SyncItemType, 'note' | 'journal'>
-  private readonly getDeviceId: () => string | null
+  /** This device's clock id (chapter 01 §1.5), `null` until sync signs in. */
+  readonly getDeviceId: () => string | null
   private readonly getStateVector: (itemId: string) => Uint8Array | null
   private controller: RecordSyncController<NoteMetadata, TArgs, TArgs> | null = null
 
@@ -54,15 +71,9 @@ export abstract class ContentSyncService<
     ...extra: TArgs
   ): TPayload | null
 
-  /**
-   * Base64 state vector of the item's open doc, for its tombstone's
-   * `bodyStateVector` (chapter 05 §5.8, #3037). Undefined when the doc is not
-   * open or holds nothing: a peer then decides as it did before #3037.
-   */
+  /** The open doc's `encodeBodyStateVector`; undefined when the doc is not open. */
   protected bodyStateVector(itemId: string | undefined): string | undefined {
-    const vector = itemId ? this.getStateVector(itemId) : null
-    if (!vector || Y.decodeStateVector(vector).size === 0) return undefined
-    return Buffer.from(vector).toString('base64')
+    return encodeBodyStateVector(itemId ? this.getStateVector(itemId) : null)
   }
 
   enqueueCreate(itemId: string, ...extra: TArgs): void {
@@ -136,7 +147,7 @@ export abstract class ContentSyncService<
       serialize: (local, operation, extra) =>
         // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- loosely typed value (unknown, column or error) named as its contract type; a runtime guard would change behavior
         this.buildSnapshotPayload(local, (local.clock as VectorClock) ?? {}, operation, ...extra),
-      shouldSkip: (local) => isLocalOnly(local),
+      shouldSkip: (local) => staysOnDevice(local),
       buildDeletePayload: ({ local, deviceId, extra }) => {
         // No `localOnly` check here on purpose: RecordSyncController.enqueueDelete
         // applies `shouldSkip` above, so a local-only row never reaches this

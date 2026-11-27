@@ -28,6 +28,8 @@ export interface E2eAppInfo {
   version: string
   buildKind: string
   webdriverPort: number
+  /** The server the app syncs with; null before the config stage ran. */
+  syncServerUrl: string | null
 }
 
 export interface AppDirs {
@@ -113,8 +115,13 @@ async function waitForApp(executor: AppBrowser): Promise<E2eAppInfo> {
 }
 
 function assertControlApplied(info: E2eAppInfo, control: ControlFile): void {
-  const mismatches = (['appDataDir', 'logDir', 'device'] as const).filter(
-    (key) => info[key] !== control[key]
+  const keys = ['appDataDir', 'logDir', 'device', 'syncServerUrl'] as const
+  // The app trims a trailing slash off the server URL (`RuntimeConfig::resolve`).
+  const mismatches = keys.filter((key) =>
+    key === 'syncServerUrl'
+      ? control.syncServerUrl !== null &&
+        info.syncServerUrl !== control.syncServerUrl.replace(/\/+$/, '')
+      : info[key] !== control[key]
   )
   if (mismatches.length > 0) {
     const detail = mismatches.map((key) => `${key}: wrote ${control[key]}, app has ${info[key]}`)

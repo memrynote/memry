@@ -223,8 +223,10 @@ export const verifyBootstrapSession = async (
  *   crdt_batch_pull  x5   30 →  150/min. One indexed query per POST; the
  *                        client spends ~3/min elevated (4s floor ÷ 5).
  *   blob_download    x5  600 → 3000/min. One indexed D1 row + one R2 class-B
- *                        read per chunk GET. The #1829 pacer rides 150/min × 5
- *                        = 750/min against it — half the ceiling.
+ *                        read per chunk GET; a manifest GET is one R2 read,
+ *                        no D1. A manifest batch spends one token per id
+ *                        (#5329), so tokens still bound R2 reads. The #1829
+ *                        pacer rides 150/min × 5 = 750/min — a quarter of it.
  *   sync_pull        x3  120 →  360/min. The expensive one: up to 100 R2
  *                        reads per POST (pullItems caps concurrency at 25),
  *                        so 6/s × bursts of 25 ≈ 150 R2 ops/s worst case —
@@ -234,6 +236,9 @@ export const verifyBootstrapSession = async (
  *                        indexed scan per page of 500.
  *   sync_manifest    x3   30 →   90/min. Paginated keyset scans since the
  *                        quick-wins pagination landed.
+ *   crdt_manifest    x3   30 →   90/min. Metadata-only keyset pages of
+ *                        1000 documents, one key read and one 3-statement
+ *                        batch each (#5232).
  *
  * Everything else (pushes, uploads, status, vaults, ws, presign issuance)
  * stays at its steady-state ceiling whether or not a valid token is present:
@@ -246,7 +251,8 @@ export const BOOTSTRAP_ELEVATION_MULTIPLIERS: Record<string, number> = {
   blob_download: 5,
   sync_pull: 3,
   sync_changes: 3,
-  sync_manifest: 3
+  sync_manifest: 3,
+  crdt_manifest: 3
 }
 
 const matchesRequestIdentity = (
@@ -294,7 +300,22 @@ export const bootstrapRateLimitElevation: GetElevatedLimits = async (c, bucket) 
 // Ledger operations (issuance cap, renewal, close, revocation)
 // ---------------------------------------------------------------------------
 
-/** Has this device never completed a pull for this vault? That is "fresh". */
+/**
+ * A device registered this recently may open a session even after its first
+ * refs page moved `last_cursor_seen` off 0, so a first sync the OS suspended
+ * or killed resumes elevated. iOS reruns the first sync on every relaunch,
+ * and a production user was refused 18 times (BOOTSTRAP_NOT_ELIGIBLE) and
+ * finished at a fifth of the speed. The bound is the device row, not the
+ * client's word: a re-registration already earns a fresh device, so this
+ * grants nothing a new sign-in would not.
+ */
+export const BOOTSTRAP_RESUME_WINDOW_SECONDS = 24 * 60 * 60
+
+/**
+ * Is this device still in its first sync of this vault? That is "fresh": it
+ * has never completed a pull, or it registered within
+ * BOOTSTRAP_RESUME_WINDOW_SECONDS and may be resuming an interrupted one.
+ */
 export const isFreshDeviceForVault = async (
   db: D1Database,
   userId: string,
@@ -310,7 +331,13 @@ export const isFreshDeviceForVault = async (
   // updateDeviceCursor only writes when a changes page actually delivered
   // items, so an absent row (or a NULL/0 cursor) is a genuine never-pulled
   // device — the same signal the client's LAST_CURSOR gate uses.
-  return !row || row.last_cursor_seen == null || row.last_cursor_seen === 0
+  if (!row || row.last_cursor_seen == null || row.last_cursor_seen === 0) return true
+  const device = await db
+    .prepare('SELECT created_at FROM devices WHERE id = ? AND user_id = ?')
+    .bind(deviceId, userId)
+    .first<{ created_at: number }>()
+  if (!device) return false
+  return Math.floor(Date.now() / 1000) - device.created_at < BOOTSTRAP_RESUME_WINDOW_SECONDS
 }
 
 export interface OpenBootstrapSessionResult {
@@ -357,27 +384,38 @@ export const openBootstrapSession = async (
   // evaluated as part of the INSERT's own execution, and D1 serializes write
   // statements, so there is no interleaving point left between "check" and
   // "take". changes === 0 means the WHERE refused us → the user is at cap.
-  const inserted = await db
-    .prepare(
-      `INSERT INTO bootstrap_sessions (jti, user_id, device_id, vault_id, expires_at, created_at)
+  //
+  // SUPERSEDE (#5328): an open replaces this device's earlier sessions for the
+  // vault, in the same batch. A killed process never closes its session, so
+  // its relaunch held a second slot for up to an hour, and two relaunches put
+  // the user at cap. One device runs one first sync of a vault at a time.
+  const [, inserted] = await db.batch([
+    db
+      .prepare(
+        'DELETE FROM bootstrap_sessions WHERE user_id = ? AND device_id = ? AND vault_id = ?'
+      )
+      .bind(identity.userId, identity.deviceId, identity.vaultId),
+    db
+      .prepare(
+        `INSERT INTO bootstrap_sessions (jti, user_id, device_id, vault_id, expires_at, created_at)
        SELECT ?, ?, ?, ?, ?, ?
        WHERE (
          SELECT COUNT(*) FROM bootstrap_sessions
          WHERE user_id = ? AND expires_at > ?
        ) < ${MAX_CONCURRENT_BOOTSTRAP_SESSIONS}`
-    )
-    .bind(
-      session.jti,
-      identity.userId,
-      identity.deviceId,
-      identity.vaultId,
-      session.expiresAt,
-      now,
-      identity.userId,
-      now
-    )
-    .run()
-  if ((inserted.meta.changes ?? 0) === 0) {
+      )
+      .bind(
+        session.jti,
+        identity.userId,
+        identity.deviceId,
+        identity.vaultId,
+        session.expiresAt,
+        now,
+        identity.userId,
+        now
+      )
+  ])
+  if ((inserted?.meta.changes ?? 0) === 0) {
     logger.warn('Bootstrap open denied — session limit', {
       userId: identity.userId,
       deviceId: identity.deviceId

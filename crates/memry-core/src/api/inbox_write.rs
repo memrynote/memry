@@ -12,7 +12,7 @@ use crate::api::errors::StorageError;
 use crate::api::inbox::Inbox;
 use crate::api::inbox_records::InboxItemRecord;
 use crate::api::tasks_write::now_ms;
-use crate::domain::inbox::convert::{self, BulkOutcome, LinkTarget, TaskInput};
+use crate::domain::inbox::convert::{self, BulkOutcome, EventInput, LinkTarget, TaskInput};
 use crate::domain::inbox::filing::{self, LocalStamp};
 use crate::domain::inbox::write::{self, Captured, NewCapture};
 
@@ -440,6 +440,32 @@ impl Inbox {
             Ok(InboxFiled {
                 target_id: Some(task.clone()),
                 filed_to: task,
+            })
+        })
+    }
+
+    /// `convertToEvent`: `start_at` and `end_at` are ISO instants.
+    pub fn convert_to_event(
+        &self,
+        id: String,
+        start_at: String,
+        end_at: Option<String>,
+        is_all_day: bool,
+        location: Option<String>,
+        local_now: String,
+    ) -> Result<InboxFiled, StorageError> {
+        let now_local = stamp(&local_now)?;
+        self.write(move |conn, device, now| {
+            let input = EventInput {
+                start_at,
+                end_at,
+                is_all_day,
+                location,
+            };
+            let event = convert::convert_to_event(conn, &id, &input, &now_local, device, now)?;
+            Ok(InboxFiled {
+                target_id: Some(event.clone()),
+                filed_to: event,
             })
         })
     }

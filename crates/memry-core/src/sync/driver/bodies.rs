@@ -12,6 +12,13 @@
 //! A pass that did not reach the server (offline, a pull that failed or was
 //! refused) runs neither: every debt stays owed for the next pass. A failure
 //! here is a local storage failure; it is logged and the pass report stands.
+//!
+//! A body step its request budget cut short answers `true`: the pass report carries it, so a
+//! shell runs the next pass at once instead of at its timer.
+//!
+//! A body step that finished tells the observers `bodies_settled`, after its
+//! settles committed: a body's own `bodies_applied` fires before its debt
+//! settles, so an owed file's take waits for this one.
 
 use crate::sync::engine::PassReport;
 use crate::sync::state::SyncState;
@@ -20,20 +27,28 @@ use crate::sync::{body_step, journal_day_merge};
 use super::SyncDriver;
 
 impl SyncDriver {
-    pub(super) async fn pull_bodies(&self, pass: &PassReport) {
+    pub(super) async fn pull_bodies(&self, pass: &PassReport) -> bool {
         if pass.pull_error.is_some()
             || matches!(pass.final_state, SyncState::Offline | SyncState::Refused)
         {
-            return;
+            return false;
         }
         let _gate = self.engine.hold_gate().await;
-        if let Err(error) = body_step::run(&self.db, &self.first.bodies).await {
-            eprintln!("memry-core: the pass's body step failed; the debts stay owed: {error}");
-        }
+        let more_due = match body_step::run(&self.db, &self.first.bodies).await {
+            Ok(step) => {
+                self.observers.bodies_settled().await;
+                step.more_due
+            }
+            Err(error) => {
+                eprintln!("memry-core: the pass's body step failed; the debts stay owed: {error}");
+                false
+            }
+        };
         let device_id = &self.snapshots.device_id;
         if let Err(error) = journal_day_merge::drain(&self.db, &self.first.bodies, device_id).await
         {
             eprintln!("memry-core: the journal day merges stay owed: {error}");
         }
+        more_due
     }
 }

@@ -17,6 +17,7 @@
       "filterAll": "Lahat ng file"
     },
     "exportCancelled": "Kinansela ang pag-export",
+    "exportVaultChanged": "May ibang vault na nabuksan habang pinipili mo kung saan ise-save. I-export muli ang note.",
     "dataDbRecovery": {
       "title": "Ayusin ang database ng vault",
       "message": "Sira ang database ng Memry para sa vault na ito.",

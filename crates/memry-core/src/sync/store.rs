@@ -91,11 +91,13 @@ pub fn mark_deleted(
          ON CONFLICT(item_type, item_id) DO UPDATE SET
              server_cursor = COALESCE(excluded.server_cursor, sync_items.server_cursor),
              updated_at = excluded.updated_at,
-             deleted_at = excluded.deleted_at",
+             deleted_at = excluded.deleted_at,
+             corrupt_reason = NULL,
+             corrupt_at = NULL",
         params![item_type, item_id, server_cursor, now_ms, deleted_at],
     )
     .map_err(failed)?;
-    Ok(())
+    super::delete_wins::forget(conn, item_type, item_id)
 }
 
 /// Remembers a delete clock for `(type, id)`, merged into what is already
@@ -159,79 +161,22 @@ pub fn tombstone_clock(
     .transpose()
 }
 
-/// Applies an id from `deleted` that arrived with **no type on the wire**
-/// (§5.12, §5.12.1).
-///
-/// Marks every existing row for that id deleted, whatever its type, and files
-/// a bare tombstone when there is none. **Never an error and never a reason to
-/// stop the page**: a delete is idempotent and a delete for an id this client
-/// has never seen is a no-op that still has to be remembered.
-///
-/// A client MUST NOT try to infer the type from the id shape (§5.12.1):
-/// `tag_definition` ids are tag names and `folder_config` ids are folder
-/// paths, so id shapes are not disjoint across types.
-pub fn apply_untyped_tombstone(
-    conn: &Connection,
-    item_id: &str,
-    deleted_at: i64,
-    now_ms: i64,
-) -> Result<(), StorageError> {
-    let touched = conn
-        .execute(
-            "UPDATE sync_items SET deleted_at = ?2, updated_at = ?3 WHERE item_id = ?1",
-            params![item_id, deleted_at, now_ms],
-        )
-        .map_err(failed)?;
-    if touched == 0 {
-        mark_deleted(
-            conn,
-            BARE_TOMBSTONE_ITEM_TYPE,
-            item_id,
-            deleted_at,
-            None,
-            now_ms,
-        )?;
-    }
-    Ok(())
-}
-
-/// Every `item_type` this device holds a row for under one id (§5.12.1).
-///
-/// What an untyped tombstone needs before it can reach the projections: the
-/// types are what say which tables have a row to mark, and the wire did not
-/// carry one.
-///
-/// This is the opposite of the inference §5.12.1 forbids. A client MUST NOT
-/// guess a type from an id's shape — `tag_definition` ids are tag names,
-/// `folder_config` ids are folder paths, so the shapes are not disjoint — and
-/// what this answers is not a guess but the set of types this device actually
-/// stored under that id. An id with no local row answers empty, which is the
-/// bare tombstone's case and is not an error.
-pub fn item_types_for(conn: &Connection, item_id: &str) -> Result<Vec<String>, StorageError> {
-    let mut statement = conn
-        .prepare("SELECT item_type FROM sync_items WHERE item_id = ?1")
-        .map_err(failed)?;
-    let types = statement
-        .query_map(params![item_id], |row| row.get::<_, String>(0))
-        .map_err(failed)?
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(failed)?;
-    Ok(types)
-}
-
-/// Whether a bare tombstone was filed for this id (§5.12.1).
+/// Whether an older build filed a bare tombstone for this id (§5.12.2).
 ///
 /// Consulted before an apply, because the tombstone that arrived without a
 /// type has to outrank the typed item that arrives after it; otherwise the
 /// "does not resurrect it locally" guarantee holds only until the next page.
+/// No current path files one (§5.12.1, #5340); the rows already on disk stay.
 pub fn has_bare_tombstone(conn: &Connection, item_id: &str) -> Result<bool, StorageError> {
-    conn.query_row(
+    conn.prepare_cached(
         "SELECT 1 FROM sync_items
          WHERE item_type = ?1 AND item_id = ?2 AND deleted_at IS NOT NULL",
-        params![BARE_TOMBSTONE_ITEM_TYPE, item_id],
-        |_| Ok(()),
     )
-    .optional()
+    .and_then(|mut statement| {
+        statement
+            .query_row(params![BARE_TOMBSTONE_ITEM_TYPE, item_id], |_| Ok(()))
+            .optional()
+    })
     .map_err(failed)
     .map(|found| found.is_some())
 }
@@ -262,49 +207,5 @@ mod tests {
             Ok(())
         })
         .expect("cursors");
-    }
-
-    #[test]
-    fn an_untyped_tombstone_marks_every_row_for_that_id() {
-        let (db, _dir) = open("sync-tombstone");
-        db.call_blocking(|conn| {
-            // §5.15's collision: a project and a tag can share the id `inbox`.
-            mark_deleted(conn, "project", "inbox", 0, None, 1)?;
-            conn.execute(
-                "UPDATE sync_items SET deleted_at = NULL WHERE item_id = 'inbox'",
-                [],
-            )
-            .map_err(failed)?;
-            mark_deleted(conn, "tag_definition", "inbox", 0, None, 1)?;
-            conn.execute(
-                "UPDATE sync_items SET deleted_at = NULL WHERE item_id = 'inbox'",
-                [],
-            )
-            .map_err(failed)?;
-
-            apply_untyped_tombstone(conn, "inbox", 99, 100)?;
-            let deleted: i64 = conn
-                .query_row(
-                    "SELECT count(*) FROM sync_items WHERE item_id = 'inbox' AND deleted_at = 99",
-                    [],
-                    |row| row.get(0),
-                )
-                .map_err(failed)?;
-            assert_eq!(deleted, 2);
-            assert!(!has_bare_tombstone(conn, "inbox")?);
-            Ok(())
-        })
-        .expect("tombstone");
-    }
-
-    #[test]
-    fn an_unknown_id_gets_a_bare_tombstone_rather_than_an_error() {
-        let (db, _dir) = open("sync-bare-tombstone");
-        db.call_blocking(|conn| {
-            apply_untyped_tombstone(conn, "never-seen", 99, 100)?;
-            assert!(has_bare_tombstone(conn, "never-seen")?);
-            Ok(())
-        })
-        .expect("bare tombstone");
     }
 }

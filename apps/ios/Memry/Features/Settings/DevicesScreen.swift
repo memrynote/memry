@@ -12,6 +12,7 @@ struct DevicesScreen: View {
     @State private var draftName = ""
     @State private var revoking: AccountDevice?
     @State private var linking = false
+    @State private var showsPlans = false
     @State private var notice: String?
     @State private var failure: UserFacingError?
 
@@ -52,7 +53,11 @@ struct DevicesScreen: View {
             }
             Section {
                 SettingsActionRow(title: SettingsCopy.linkNewDevice, symbol: "qrcode",
-                                  identifier: "settings.devices.link") { linking = true }
+                                  identifier: "settings.devices.link") {
+                    // Linking needs a plan (the server answers 402 without
+                    // one), so an unpaid account goes to the plans instead.
+                    if BillingFacts.isKnownUnpaid(context.account.billing) { showsPlans = true } else { linking = true }
+                }
             } footer: {
                 SettingsFooter(SettingsCopy.linkFooter)
             }
@@ -73,6 +78,7 @@ struct DevicesScreen: View {
         .sheet(isPresented: $linking, onDismiss: { Task { await context.account.loadDevices() } }) {
             LinkDeviceSheet(account: context.account)
         }
+        .sheet(isPresented: $showsPlans) { PlansView(session: context.account.session) }
     }
 
     private var visibleOthers: [AccountDevice] {

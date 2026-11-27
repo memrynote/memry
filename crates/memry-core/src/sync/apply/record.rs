@@ -1,4 +1,4 @@
-//! The record half of [`super::apply_page`]: chapter 06 §6.8's table, the
+//! The record half of [`super::apply_page_into`]: chapter 06 §6.8's table, the
 //! one `match` this core makes on an item's type.
 
 use rusqlite::Connection;
@@ -9,7 +9,7 @@ use crate::domain::task_merge::{self, Gate};
 use crate::domain::tasks::Inbound;
 use crate::domain::{
     agent_conversation, agent_message, calendar_items, canvas, canvas_folder, home_page, inbox,
-    journal, projects, settings, sticky_draft, tasks,
+    journal, notes, projects, settings, sticky_draft, task_activity, tasks,
 };
 // Desktop only, like the locks themselves: iOS never declares `vault_lock`.
 #[cfg(feature = "markdown")]
@@ -18,7 +18,7 @@ use crate::storage::repositories::sync_items::{self, ApplyOutcome, InboundRecord
 use crate::sync::field_merge::FieldConflict;
 use crate::sync::hardening::requeue;
 use crate::sync::versioned_apply::{TAG_SCHEMA, VersionedKey};
-use crate::sync::{journal_day_merge, settings_merge};
+use crate::sync::{day_picture_refs, journal_day_merge, journal_merge, settings_merge};
 
 /// [`apply_inbound_on`] with no device clock id.
 pub fn apply_inbound(
@@ -46,7 +46,8 @@ pub fn apply_inbound(
 ///   ([`apply_document`]). It is *not* an unconditional wholesale store: a
 ///   stale remote `note` record used to overwrite a newer local one, and a
 ///   rename made on this device vanished the moment a peer that had not seen
-///   it pushed anything. `inbox`, the calendar types, `canvas`,
+///   it pushed anything. `note` (the same gate plus §6.8.1's reference
+///   union), `inbox`, the calendar types, `canvas`,
 ///   `vault_lock`, `canvas_folder`, `home_page`, `sticky_draft` and the two
 ///   agent types are named
 ///   because each runs its desktop handler's rule instead.
@@ -81,10 +82,24 @@ pub(super) fn apply_record(
     {
         return Ok((outcome, None));
     }
+    // Activity rows are append-only: a live id is skipped, never merged
+    // (desktop's task-activity-handler.ts:55-56, chapter 06 §6.6.3), so a
+    // peer's copy of a `superseded` row this device holds is not re-queued.
+    if record.item_type == task_activity::ITEM_TYPE
+        && sync_items::load(conn, &record.item_type, &record.item_id)?
+            .is_some_and(|row| row.deleted_at.is_none() && row.payload.is_some())
+    {
+        return Ok((ApplyOutcome::Skipped, None));
+    }
+    let in_transaction = !conn.is_autocommit();
     let merged = match record.item_type.as_str() {
         tasks::ITEM_TYPE => tasks::apply_remote(conn, record, now_ms, clock_device),
         projects::ITEM_TYPE => projects::apply_remote(conn, record, now_ms),
+        // §6.3.1, then §6.8.1's union of `attachmentReferences` (note-handler.ts).
+        notes::ITEM_TYPE => apply_note(conn, record, now_ms, clock_device),
         settings::SETTINGS_ITEM_TYPE => settings_merge::apply_remote_merged(conn, record, now_ms),
+        // `tags` and `properties` per unit, the rest by §6.3.1 (§6.12, #5508).
+        journal::ITEM_TYPE => journal_merge::apply_remote(conn, record, now_ms, clock_device),
         // "absent key keeps, explicit null clears" (desktop's inbox handler).
         inbox::ITEM_TYPE => inbox::merge::apply_remote(conn, record, now_ms),
         // Desktop's four calendar handlers (spec 007 CL010/CL011).
@@ -118,8 +133,30 @@ pub(super) fn apply_record(
     match merged {
         Ok(Inbound::Merged { conflicts, .. }) => Ok((ApplyOutcome::Applied, Some(conflicts))),
         Ok(inbound) => Ok((outcome(inbound), None)),
+        // SQLite rolled back the caller's whole transaction (a full disk, an
+        // interrupt): the page's earlier records are gone, so the failure is
+        // the page's, not this record's.
+        Err(error) if in_transaction && conn.is_autocommit() => Err(error),
         Err(error) => Ok((refuse(conn, record, &error.to_string(), now_ms)?, None)),
     }
+}
+
+/// A remote `note`: this device's own file kept over a record that names none,
+/// then a day's pictures merged id by id (#5800), any other note by
+/// [`notes::merge`].
+fn apply_note(
+    conn: &Connection,
+    record: &InboundRecord,
+    now_ms: i64,
+    clock_device: Option<&str>,
+) -> Result<Inbound, StorageError> {
+    let kept = crate::domain::note_file::keep_own_file(conn, record)?;
+    let record = kept.as_ref().unwrap_or(record);
+    // A day's pictures merge id by id, and the merge may owe a push (#5800).
+    if day_picture_refs::is_day_note(&record.item_id) {
+        return day_picture_refs::apply_remote(conn, record, now_ms, clock_device);
+    }
+    notes::merge::apply_remote(conn, record, now_ms)
 }
 
 /// §6.8's fourth row: §6.3.1's document-level resolver, with no per-field step
@@ -175,10 +212,9 @@ fn apply_versioned(
 
 /// The merge's own vocabulary, in the pull's.
 ///
-/// `Merged`'s conflict set is deliberately dropped here. §6.5.3 and §6.5.4
-/// make the conflicts something a *caller* may show a user; §6.3.1's core
-/// obligation is that the core writes them nowhere, because desktop's
-/// `superseded` rows sync to every device as `task_activity`.
+/// `Merged`'s conflict set is dropped here; [`apply_record`] hands it to the
+/// applied-record feed instead, whose observers act on it after the page
+/// commits.
 pub(super) fn outcome(inbound: Inbound) -> ApplyOutcome {
     match inbound {
         Inbound::Applied | Inbound::Merged { .. } => ApplyOutcome::Applied,

@@ -5,8 +5,10 @@ use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD;
 use memry_test_kit::{assert_output_bounded, on_small_stack, output_bound, proptest_config};
 use proptest::prelude::*;
+use yrs::updates::encoder::Encode as _;
+use yrs::{ClientID, ID, IdSet, Snapshot, StateVector};
 
-use super::{MAX_BODY_PAYLOAD, decode_payload};
+use super::{MAX_BODY_PAYLOAD, decode_payload, takes_unstored_file};
 use crate::electron_import::ImportError;
 
 fn refused(result: Result<Option<Vec<u8>>, ImportError>) -> &'static str {
@@ -86,5 +88,76 @@ proptest! {
         let encoded = STANDARD.encode(&bytes);
         let expected = (!bytes.is_empty()).then(|| bytes.clone());
         prop_assert_eq!(decode_payload(&encoded, 1).unwrap(), expected);
+    }
+}
+
+/// A snapshot holding client 1 up to `clock`, with `deleted` of it deleted.
+fn snapshot(clock: u32, deleted: &[(u32, u32)]) -> Snapshot {
+    let mut ds = IdSet::new();
+    for &(start, len) in deleted {
+        ds.insert(ID::new(ClientID::new(1), start), len);
+    }
+    Snapshot::new(StateVector::from_iter([(ClientID::new(1), clock)]), ds)
+}
+
+fn mark(written: &Snapshot, baseline: Option<&Snapshot>) -> String {
+    let part = |s: &Snapshot| STANDARD.encode(s.encode_v1());
+    format!(
+        "unstored-file:h-written:{}:{}",
+        part(written),
+        baseline.map(part).unwrap_or_default()
+    )
+}
+
+/// Electron's `takesUnstoredFile`: the file is the doc's own only when the stored doc covers
+/// the snapshot recorded for the file's hash.
+#[test]
+fn an_unstored_file_is_taken_unless_the_store_covers_its_write() {
+    let held = snapshot(10, &[(2, 3)]);
+    let covered = mark(&snapshot(8, &[(3, 1)]), Some(&snapshot(4, &[])));
+    // The marked write, covered by the store: the doc's own.
+    assert!(!takes_unstored_file(
+        &covered,
+        "h-cached",
+        "h-written",
+        &held
+    ));
+    // The bytes under content_hash, covered.
+    assert!(!takes_unstored_file(
+        &covered, "h-cached", "h-cached", &held
+    ));
+    // A file with no recorded snapshot is an outside edit.
+    assert!(takes_unstored_file(&covered, "h-cached", "h-other", &held));
+    // An insert the store lacks.
+    let ahead = mark(&snapshot(11, &[]), None);
+    assert!(takes_unstored_file(&ahead, "h-cached", "h-written", &held));
+    // A delete the store lacks.
+    let deleted = mark(&snapshot(8, &[(1, 2)]), None);
+    assert!(takes_unstored_file(
+        &deleted,
+        "h-cached",
+        "h-written",
+        &held
+    ));
+    // No snapshot for the bytes under content_hash.
+    assert!(takes_unstored_file(&ahead, "h-cached", "h-cached", &held));
+}
+
+/// A mark this build cannot read takes the file in: the bare mark of an earlier build of #5698,
+/// a pre-release flag, a part that is not base64 or not a snapshot.
+#[test]
+fn an_unreadable_unstored_mark_takes_the_file_in() {
+    let held = snapshot(10, &[]);
+    for mark in [
+        "unstored-file",
+        "unstored-file:h-written:1:",
+        "unstored-file:h-written:!!!!:",
+        "unstored-file:h-written:////:",
+        "unstored-file::AAAA:",
+    ] {
+        assert!(
+            takes_unstored_file(mark, "h-cached", "h-written", &held),
+            "{mark}"
+        );
     }
 }

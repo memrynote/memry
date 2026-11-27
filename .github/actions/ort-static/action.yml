@@ -9,6 +9,10 @@ inputs:
   token:
     description: Token that can read the repository's releases.
     required: true
+  repository:
+    description: Repository whose releases hold the archives (memrynote/memry for a workflow run elsewhere).
+    required: false
+    default: ${{ github.repository }}
 runs:
   using: composite
   steps:
@@ -17,6 +21,7 @@ runs:
       env:
         GH_TOKEN: ${{ inputs.token }}
         RELEASE_TAG: ort-static-1.31.0-r2
+        ORT_REPOSITORY: ${{ inputs.repository }}
       # The sha256 of each archive as build-ort-static.yml published it (the same pins as
       # crates/.cargo/config.toml): an asset replaced under the tag fails here, before extraction.
       # Linux arm64 comes from the later release r3, which holds only that archive.
@@ -32,7 +37,7 @@ runs:
         temp="$RUNNER_TEMP"
         if [ "$RUNNER_OS" = Windows ]; then temp=$(cygpath -m "$temp"); fi
         asset="$RELEASE_TAG-$triple.tar.zst"
-        gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern "$asset" --dir "$temp"
+        gh release download "$RELEASE_TAG" --repo "$ORT_REPOSITORY" --pattern "$asset" --dir "$temp"
         actual=$(cmake -E sha256sum "$temp/$asset" | cut -d' ' -f1)
         if [ "$actual" != "$sha256" ]; then
           echo "::error::$asset has sha256 $actual, pinned $sha256"

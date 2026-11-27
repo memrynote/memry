@@ -34,6 +34,7 @@ pub mod projection_sources;
 pub mod providers;
 pub mod reads;
 pub mod selection;
+pub mod writer_compat;
 pub mod zone;
 
 use std::cmp::Ordering;

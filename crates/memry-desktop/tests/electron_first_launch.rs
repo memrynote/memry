@@ -3,6 +3,8 @@
 //! the secrets into keyring-core's in-memory mock. Its own binary: a crash point panics through
 //! `catch_unwind` and arms Step 36's process-wide install hook.
 
+#[path = "support/electron_db.rs"]
+mod electron_db;
 #[path = "electron_profile/mod.rs"]
 mod electron_profile;
 
@@ -58,6 +60,44 @@ struct Launch {
     telemetry: Telemetry,
 }
 
+/// Applies the frozen Electron migrations the captured databases predate, as the previous app's
+/// last release does at its open: the import accepts only the ledger ends `TABLE_MAP` reads.
+fn upgrade(fixture: &ElectronProfileFixture) {
+    memry_core::storage::vec::register().unwrap();
+    for (path, dir) in [
+        (fixture.data_db(), electron_db::DATA_DIR),
+        (fixture.index_db(), electron_db::INDEX_DIR),
+    ] {
+        let conn = rusqlite::Connection::open(path).unwrap();
+        let end: i64 = conn
+            .query_row(
+                "SELECT max(CAST(created_at AS INTEGER)) FROM __drizzle_migrations",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        for (tag, when) in electron_db::journal(dir)
+            .into_iter()
+            .filter(|(_, when)| *when > end)
+        {
+            let sql = fs::read_to_string(
+                electron_db::schema_root()
+                    .join(dir)
+                    .join(format!("{tag}.sql")),
+            )
+            .unwrap();
+            for statement in sql.split("--> statement-breakpoint") {
+                conn.execute_batch(statement).unwrap();
+            }
+            conn.execute(
+                "INSERT INTO __drizzle_migrations (hash, created_at) VALUES (?1, ?2)",
+                rusqlite::params![tag, when],
+            )
+            .unwrap();
+        }
+    }
+}
+
 impl Launch {
     /// The fixture as captured: its vault has a sync cursor, which Step 36 refuses until 36c3.
     fn new() -> Self {
@@ -82,6 +122,7 @@ impl Launch {
     }
 
     fn with(fixture: ElectronProfileFixture) -> Self {
+        upgrade(&fixture);
         let data_root = tempfile::tempdir().unwrap();
         let keyring = Arc::new(KeyringStore::with_factory(
             Mock(keyring_core::mock::Store::new().unwrap()),

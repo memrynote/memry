@@ -114,6 +114,11 @@ const mocks = vi.hoisted(() => ({
     | ((event: { id: string; changes: Record<string, unknown>; source?: string }) => void)
     | null,
   renamedHandler: null as ((event: { id: string; newTitle: string }) => void) | null,
+  /** The page's delete and rename listeners went live (`onListening`). */
+  deletedListening: undefined as (() => void) | undefined,
+  renamedListening: undefined as (() => void) | undefined,
+  movedListening: undefined as (() => void) | undefined,
+  getListItem: vi.fn(),
   droppedHandler: null as (() => void) | null,
   outsideKeptHandler: null as ((event: { id: string }) => void) | null,
   notesGet: vi.fn(),
@@ -276,6 +281,7 @@ vi.mock('@/services/notes-service', async (importOriginal) => {
   const actual = await importOriginal<typeof NotesServiceModule>()
   return {
     ...actual,
+    getNoteListItem: mocks.getListItem,
     notesService: {
       ...actual.notesService,
       setLocalOnly: mocks.setLocalOnly,
@@ -297,8 +303,9 @@ vi.mock('@/services/notes-service', async (importOriginal) => {
       mocks.outsideKeptHandler = handler
       return vi.fn()
     },
-    onNoteDeleted: (handler: (event: { id: string }) => void) => {
+    onNoteDeleted: (handler: (event: { id: string }) => void, listening?: () => void) => {
       mocks.deletedHandler = handler
+      mocks.deletedListening = listening
       mocks.onDeleted(handler)
       return vi.fn()
     },
@@ -309,9 +316,17 @@ vi.mock('@/services/notes-service', async (importOriginal) => {
       mocks.onUpdated(handler)
       return vi.fn()
     },
-    onNoteRenamed: (handler: (event: { id: string; newTitle: string }) => void) => {
+    onNoteRenamed: (
+      handler: (event: { id: string; newTitle: string }) => void,
+      listening?: () => void
+    ) => {
       mocks.renamedHandler = handler
+      mocks.renamedListening = listening
       mocks.onRenamed(handler)
+      return vi.fn()
+    },
+    onNoteMoved: (_handler: unknown, listening?: () => void) => {
+      mocks.movedListening = listening
       return vi.fn()
     }
   }
@@ -549,7 +564,8 @@ vi.mock('@/components/note', () => ({
     focusAtEndRef,
     review,
     onReadOnlyChange,
-    editable
+    editable,
+    noteTags
   }: {
     initialContent: string
     externalContentRevision?: number
@@ -564,10 +580,13 @@ vi.mock('@/components/note', () => ({
     review?: { onEditorReady?: (editor: unknown) => void }
     onReadOnlyChange?: (readOnly: DocReadOnly | null) => void
     editable?: boolean
+    noteTags?: string[]
   }) => {
     mocks.onMarkdownChange = onMarkdownChange
     mocks.onReadOnlyChange = onReadOnlyChange
     const [content] = useState(initialContent)
+    // The editor reads the tags it may promote once, when it binds.
+    const [noteTagsAtMount] = useState(noteTags)
     // A fresh mount mints a fresh editor, exactly as the real one does — which
     // is what makes "same instance across a round trip" a real assertion and
     // not a comment.
@@ -598,6 +617,7 @@ vi.mock('@/components/note', () => ({
         </div>
         {/* the live prop the editor re-reads when the revision moves */}
         <div data-testid="editor-live-content">{initialContent}</div>
+        <div data-testid="editor-note-tags-at-mount">{(noteTagsAtMount ?? []).join(',')}</div>
         <div data-testid="editor-external-revision">
           {String(externalContentRevision ?? 'none')}
         </div>
@@ -1363,6 +1383,30 @@ describe('NotePage', () => {
       id: 'note-1',
       headerTags: { add: [], remove: ['work', 'urgent'], source: 'inline' }
     })
+  })
+
+  it('hands the editor the inline tags of a body the index has not tagged yet', async () => {
+    // #given a note just added to the vault: its body has a tag the index has not projected
+    mocks.noteState.note = { ...note, tags: ['work'], content: 'Tagged #fresh here.' }
+
+    renderWithProviders(<NotePage noteId="note-1" />)
+
+    // #then the editor binds with it, so the first open shows the chip
+    expect(await screen.findByTestId('editor-note-tags-at-mount')).toHaveTextContent('work,fresh')
+  })
+
+  it('hands the editor one chip for a tag the header and the body both name', async () => {
+    // #given the header holds `Work` and the body spells it `#work` and `#WORK`
+    mocks.noteState.note = {
+      ...note,
+      tags: ['Work'],
+      content: 'Tagged #work and #fresh and #WORK #Fresh.'
+    }
+
+    renderWithProviders(<NotePage noteId="note-1" />)
+
+    // #then each tag is listed once, in the header's spelling first
+    expect(await screen.findByTestId('editor-note-tags-at-mount')).toHaveTextContent(/^Work,fresh$/)
   })
 
   it('does not write the note when opening it reports its inline tags', async () => {
@@ -2820,6 +2864,68 @@ describe('NotePage', () => {
     expect(screen.getByTestId('editor-content')).toHaveTextContent('Original body')
     expect(screen.getByTestId('editor-external-revision')).toHaveTextContent('0')
     expect(mocks.contentAreaMounts).toBe(1)
+  })
+
+  // S14-1: a delete or rename sent before the page's listeners went live reached nobody.
+  it('reads the note row again once its listeners are live, for a missed delete', async () => {
+    renderWithProviders(<NotePage noteId="note-1" />)
+    await screen.findByRole('button', { name: 'Test Note' })
+    mocks.getListItem.mockResolvedValueOnce(null)
+
+    act(() => {
+      mocks.deletedListening?.()
+      mocks.renamedListening?.()
+      mocks.movedListening?.()
+    })
+
+    await waitFor(() => expect(mocks.setTabDeleted).toHaveBeenCalledWith('note-1', true))
+    expect(mocks.getListItem).toHaveBeenCalledWith('note-1')
+    expect(mocks.notesGet).not.toHaveBeenCalledWith('note-1')
+  })
+
+  it('reads the note row again once its listeners are live, for a missed rename', async () => {
+    renderWithProviders(<NotePage noteId="note-1" />)
+    await screen.findByRole('button', { name: 'Test Note' })
+    mocks.getListItem.mockResolvedValueOnce({ id: 'note-1', title: 'Remote title', path: 'x.md' })
+
+    act(() => {
+      mocks.deletedListening?.()
+      mocks.renamedListening?.()
+      mocks.movedListening?.()
+    })
+
+    await waitFor(() =>
+      expect(mocks.updateTabTitleByEntityId).toHaveBeenCalledWith('note-1', 'Remote title')
+    )
+    expect(mocks.setTabDeleted).not.toHaveBeenCalled()
+  })
+
+  it('drops a re-read that a rename overtook', async () => {
+    renderWithProviders(<NotePage noteId="note-1" />)
+    await screen.findByRole('button', { name: 'Test Note' })
+    let answer = (_item: { id: string; title: string; path: string }): void => undefined
+    mocks.getListItem.mockReturnValueOnce(
+      new Promise((resolve) => {
+        answer = resolve
+      })
+    )
+    act(() => {
+      mocks.deletedListening?.()
+      mocks.renamedListening?.()
+      mocks.movedListening?.()
+    })
+    await waitFor(() => expect(mocks.getListItem).toHaveBeenCalledWith('note-1'))
+
+    act(() => {
+      mocks.renamedHandler?.({ id: 'note-1', newTitle: 'Newer title' })
+    })
+    await act(async () => {
+      answer({ id: 'note-1', title: 'Older title', path: 'x.md' })
+      await Promise.resolve()
+    })
+
+    expect(mocks.updateTabTitleByEntityId).toHaveBeenLastCalledWith('note-1', 'Newer title')
+    expect(mocks.updateTabTitleByEntityId).not.toHaveBeenCalledWith('note-1', 'Older title')
   })
 
   it('blocks mutations after the note is deleted', async () => {

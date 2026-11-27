@@ -21,6 +21,7 @@ import {
 import { useSettingsModal } from '@/contexts/settings-modal-context'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { toast } from 'sonner'
+import { commands } from '../../../generated/bindings'
 
 export function NavUser({
   user
@@ -40,7 +41,7 @@ export function NavUser({
   const handleUpgrade = async (): Promise<void> => {
     setIsStartingCheckout(true)
     try {
-      const result = await window.api.account.startCheckout()
+      const result = await commands.accountStartCheckout(null)
       if (!result.success) {
         toast.error(result.error ?? tSettings('account.billing.toasts.checkoutFailed'))
         return

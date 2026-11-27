@@ -69,6 +69,15 @@ pub enum ImportError {
     Decrypt(&'static str),
     #[error("leveldb: {0}")]
     LevelDb(String),
+    /// The Tauri `memry-config.json` refused the merge or could not be written.
+    #[error("app config: {0}")]
+    AppConfig(#[from] crate::registry::ConfigError),
+    /// A copied file's size or sha256 differs from its source; the copy was discarded.
+    #[error("the copy of {0} does not match its source")]
+    CopyMismatch(PathBuf),
+    /// A value written to the Tauri data dir did not read back as written.
+    #[error("{0} did not read back as written")]
+    ReadBack(&'static str),
     /// A vault database table `vault_db::tables::TABLE_MAP` does not list. Nothing was written.
     #[error("{db} has an unmapped table {table}")]
     UnmappedTable { db: &'static str, table: String },
@@ -76,12 +85,12 @@ pub enum ImportError {
     /// written.
     #[error("sync_state has an unmapped key {0}")]
     UnmappedSyncStateKey(String),
-    /// The source's last drizzle migration is not the frozen one the table map describes.
-    #[error("{db} is at migration {found:?}, this build reads {expected}")]
+    /// The source's last drizzle migration is none of the frozen ones the table map describes.
+    #[error("{db} is at migration {found:?}, this build reads {expected:?}")]
     SourceSchema {
         db: &'static str,
         found: Option<i64>,
-        expected: i64,
+        expected: &'static [i64],
     },
     /// The source holds rows whose importer this build does not have yet. Nothing was written.
     /// The source holds data whose importer a later build brings. The message is the user's:
@@ -134,15 +143,6 @@ pub enum ImportError {
     CoreFileExists(PathBuf),
     #[error(transparent)]
     Storage(#[from] memry_core::api::errors::StorageError),
-    /// The Tauri `memry-config.json` refused the merge or could not be written.
-    #[error("app config: {0}")]
-    AppConfig(#[from] crate::registry::ConfigError),
-    /// A copied file's size or sha256 differs from its source; the copy was discarded.
-    #[error("the copy of {0} does not match its source")]
-    CopyMismatch(PathBuf),
-    /// A value written to the Tauri data dir did not read back as written.
-    #[error("{0} did not read back as written")]
-    ReadBack(&'static str),
     #[error("sqlite: {0}")]
     Sqlite(String),
 }

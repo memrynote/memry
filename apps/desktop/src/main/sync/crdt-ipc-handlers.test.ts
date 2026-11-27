@@ -20,6 +20,11 @@ const senderWindow = vi.hoisted(() => ({
 // A real, empty folder: the outside-vault check resolves every read against it.
 const VAULT_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-vault-'))
 
+// No case twins here: the twin rule reads canonical rows these mocks do not hold.
+vi.mock('../vault/note-sync', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  refusesCaseTwinFile: () => false
+}))
 vi.mock('electron', () => ({
   app: { getPath: () => '/tmp/crdt-test-userdata' },
   BrowserWindow: {
@@ -100,6 +105,9 @@ vi.mock('./crdt-writeback-port', () => ({
     scheduleWriteback: vi.fn(),
     cancelWriteback: vi.fn(),
     flushPendingWritebacks: vi.fn(),
+    hasArmedWritebacks: () => false,
+    writeBackBeforeClose: async () => {},
+    insideWritebackTurn: () => false,
     resetWritebackState: vi.fn(),
     writebackNow: vi.fn()
   })
@@ -456,6 +464,28 @@ describe('CRDT IPC handlers — lifecycle resilience', () => {
       expect(openForEditor).toHaveBeenCalledWith('n1', 5, expect.any(Function))
       await openForEditor.mock.calls[0][2]!('n1')
       expect(mergeRemoteCrdtForNote).toHaveBeenCalledWith('n1')
+    })
+
+    it('crdt:open-doc tells the editor a doc still waits for the server body (#5290)', async () => {
+      const provider = getCrdtProvider()
+      await provider.init()
+      syncEngine.current = { mergeRemoteCrdtForNote: vi.fn(async () => true) }
+      vi.spyOn(provider, 'openForEditor').mockResolvedValue(new Y.Doc())
+      const awaiting = vi.spyOn(provider, 'remoteBodyWait').mockReturnValue('merging')
+
+      expect(await invokeHandler(CRDT_CHANNELS.OPEN_DOC, { noteId: 'n1' })).toEqual({
+        success: true,
+        awaitingRemote: 'merging'
+      })
+      awaiting.mockReturnValue('stuck')
+      expect(await invokeHandler(CRDT_CHANNELS.OPEN_DOC, { noteId: 'n1' })).toEqual({
+        success: true,
+        awaitingRemote: 'stuck'
+      })
+      awaiting.mockReturnValue(null)
+      expect(await invokeHandler(CRDT_CHANNELS.OPEN_DOC, { noteId: 'n1' })).toEqual({
+        success: true
+      })
     })
 
     it('crdt:open-doc with no sync runtime opens without a merge', async () => {

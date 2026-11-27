@@ -715,6 +715,37 @@ describe('FolderViewPage', () => {
     await waitFor(() => expect(mocks.moveNote).toHaveBeenCalledWith('note-1', 'Archive'))
   })
 
+  it.each(['grid', 'list'])('sorts the %s layout by the view order', (type) => {
+    // #given a view sorted by title, descending, over notes loaded in another order
+    mocks.folderState.activeView = {
+      id: 'default',
+      name: 'Default',
+      type,
+      columns: [{ id: 'title', displayName: 'Title', width: 150 }],
+      order: [{ property: 'title', direction: 'desc' }],
+      showSummaries: false
+    }
+    mocks.folderState.notes = ['Apple', 'Cherry', 'Banana'].map((title) => ({
+      ...note,
+      id: title,
+      title,
+      tags: [],
+      folder: 'Work',
+      created: '2026-01-01T00:00:00.000Z',
+      modified: '2026-01-01T00:00:00.000Z',
+      wordCount: 0,
+      properties: {}
+    }))
+
+    renderWithProviders(<FolderViewPage scope={{ kind: 'folder', path: 'Work' }} />)
+
+    // #then the cards follow the view order
+    const titles = screen
+      .getAllByText(/^(Apple|Cherry|Banana)$/)
+      .map((element) => element.textContent)
+    expect(titles).toEqual(['Cherry', 'Banana', 'Apple'])
+  })
+
   it('renders grouped, loading, error, and not-found states', async () => {
     mocks.folderState.activeView = {
       id: 'grouped',

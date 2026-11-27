@@ -400,7 +400,7 @@ fn a_vault_at_another_electron_schema_stops_before_any_write() {
     let conn = Connection::open(Path::new(&w.vault("Home")).join(".memry/data.db")).unwrap();
     conn.execute(
         "INSERT INTO __drizzle_migrations (hash, created_at) VALUES ('newer', ?1)",
-        [vault_db::tables::ELECTRON_DATA_LAST_MIGRATION + 1],
+        [vault_db::tables::ELECTRON_DATA_LEDGER_ENDS.last().unwrap() + 1],
     )
     .unwrap();
     drop(conn);

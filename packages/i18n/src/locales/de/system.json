@@ -17,6 +17,7 @@
       "filterAll": "Alle Dateien"
     },
     "exportCancelled": "Export abgebrochen",
+    "exportVaultChanged": "Während du den Speicherort gewählt hast, wurde ein anderer Tresor geöffnet. Exportiere die Notiz erneut.",
     "dataDbRecovery": {
       "title": "Tresor-Datenbank reparieren",
       "message": "Die Datenbank von Memry für diesen Tresor ist beschädigt.",
