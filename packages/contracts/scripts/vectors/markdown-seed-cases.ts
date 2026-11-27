@@ -472,5 +472,30 @@ export const MARKDOWN_SEED_CASES: ReadonlyArray<{ name: string; markdown: string
       name: 'emphasis: edge space beside a lifted image',
       markdown: '**see ![x](u)** now',
       pins: 'the bold ends at its last word; the space it held is plain text before the image'
+    },
+    {
+      name: 'block starts: a callout right under a heading',
+      markdown: '# H\n> [!tip]\n> d',
+      pins: 'a heading and a callout, not a quote holding the text [!tip]'
+    },
+    {
+      name: 'block starts: a callout in the middle of text',
+      markdown: 'one\n> [!tip]\n> d\ntwo',
+      pins: 'a paragraph, a callout, and a paragraph: a quote line ends the paragraph above it'
+    },
+    {
+      name: 'block starts: math right above a heading',
+      markdown: '$$\ny\n$$\n# H',
+      pins: 'a math block and a heading: the line after the closing $$ may be a heading'
+    },
+    {
+      name: 'block starts: a quote line without the space',
+      markdown: '> [!note]\n> body\n>more',
+      pins: 'a callout whose body is body and more: the space after > is optional'
+    },
+    {
+      name: 'block starts: a quote with a lazy line, then a callout',
+      markdown: '> a\nlazy\n> [!tip]\n> d',
+      pins: 'a quote a and lazy, then a callout: a quote line after lazy lines opens a new block'
     }
   ]
