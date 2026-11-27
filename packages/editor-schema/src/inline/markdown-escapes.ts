@@ -72,7 +72,10 @@ interface Spelling {
   segments: Segment[]
   /** The offsets of the marks' delimiters, which the writer moves past an edge break. */
   delimiters: Set<number>
-  /** The closing ones, which the writer moves before a break that ends their run. */
+  /**
+   * The closing ones, and each link's `](href)`, which the writer moves before
+   * a break that ends their run.
+   */
   closers: Set<number>
 }
 
@@ -109,7 +112,9 @@ function spell(items: Item[]): Spelling {
       } else if (isLink(item)) {
         spelling += '['
         walk(item.content, true)
-        spelling += `](${item.href ?? ''})`
+        const close = `](${item.href ?? ''})`
+        for (let i = 0; i < close.length; i++) closers.add(spelling.length + i)
+        spelling += close
       } else {
         spelling += NODE
       }
