@@ -313,13 +313,26 @@ final class EditorSession {
     /// A plain clear view, not a `.keyboard` `UIInputView`: on iOS 26 that
     /// style paints its own soft blur band above the accessory, which reads as
     /// a shadow over the note behind the glass toolbar.
+    ///
+    /// Hosted without a view controller. UIKit puts the accessory back in
+    /// its window on every input-view reload, and a hosting controller
+    /// appearing there with Liquid Glass in it redraws the page under the
+    /// caret. A context menu open on the page sends its rows again on that
+    /// redraw, which reloads the input views: the main thread never rested,
+    /// and the menu took no tap. Auto Layout sizes the view from its content,
+    /// which says when its height changes, as when a `[[` menu opens.
     private func floatingAccessory<Content: View>(_ content: Content) -> UIView {
-        let hosting = UIHostingController(rootView: content)
-        hosting.sizingOptions = .intrinsicContentSize
-        hosting.view.backgroundColor = .clear
-        let view = hosting.view ?? UIView()
-        view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        objc_setAssociatedObject(view, &Self.hostingKey, hosting, .OBJC_ASSOCIATION_RETAIN)
+        weak var hosted: UIView?
+        let view = UIHostingConfiguration {
+            content.onGeometryChange(for: CGFloat.self) { $0.size.height } action: { _ in
+                hosted?.invalidateIntrinsicContentSize()
+            }
+        }
+        .margins(.all, 0)
+        .makeContentView()
+        hosted = view
+        view.backgroundColor = .clear
+        view.translatesAutoresizingMaskIntoConstraints = false
         return view
     }
 
