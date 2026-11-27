@@ -753,8 +753,12 @@ function splitByEmbedMarkers(text: string): EmbedPart[] {
 
     // `readMathRun` claims only a run that owns its whole paragraph and
     // re-serializes byte-for-byte, so `$$` written by somebody else stays the
-    // markdown it is. Main's twin lives in `parseContentWithMarkers`.
-    const math = insideFence ? null : readMathRun(lines, index, buffer.length === 0)
+    // markdown it is. A paragraph starts after a blank line, which the buffer
+    // holds when a block sits above. Main's twin lives in
+    // `parseContentWithMarkers`.
+    const atParagraphStart =
+      index === 0 || lines[index - 1].trim() === '' || (buffer.length === 0 && pending.length > 0)
+    const math = insideFence ? null : readMathRun(lines, index, atParagraphStart)
     if (math) {
       flushBuffer()
       // Sidecar markers are dropped the way the file branch drops them: a math

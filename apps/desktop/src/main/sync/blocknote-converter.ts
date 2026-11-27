@@ -75,6 +75,7 @@ import {
 } from '@memry/shared/empty-lines'
 import {
   parseDroppingHtmlComments,
+  parseWithLegacyTables,
   parseMarkdownToBlocks,
   parsesHtmlComments
 } from './blocknote-parse-breaks'
@@ -227,10 +228,13 @@ export async function yDocToMarkdown(
   // A record from before #2741 sits beside a document whose parse dropped
   // every comment, so the source is read the same way, and the merge takes
   // the comments from the source like any other unchanged region (BBF-29).
-  const canonicalize = (markdown: string): Promise<string | null> =>
-    record.htmlComments
-      ? canonicalMarkdown(markdown, options.notePath)
-      : parseDroppingHtmlComments(() => canonicalMarkdown(markdown, options.notePath))
+  // A record from before lossless tables sits beside tables cut the old way:
+  // read the same way, a cut row is unchanged and keeps the file's bytes.
+  const canonicalize = (markdown: string): Promise<string | null> => {
+    const parse = (): Promise<string | null> => canonicalMarkdown(markdown, options.notePath)
+    const tables = record.losslessTables ? parse : () => parseWithLegacyTables(parse)
+    return record.htmlComments ? tables() : parseDroppingHtmlComments(tables)
+  }
   try {
     const restored = await restoreMarkdownSource(canonical, source, canonicalize)
     if (restored === source) {

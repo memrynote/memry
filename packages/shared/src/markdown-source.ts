@@ -162,12 +162,15 @@ const RECORD_KEY = 'record'
 /**
  * `htmlComments` is set when the document was read from `source` with HTML
  * comments kept as nodes (AF-015). A record without it was written by a build
- * before #2741, whose parse dropped every comment. Older builds read only
- * `source`.
+ * before #2741, whose parse dropped every comment. `losslessTables` is set when
+ * the document's tables kept a code span's pipes and the cells past their
+ * header's width; a record without it was written by a build that dropped
+ * them. Older builds read only the fields they know.
  */
 export interface MarkdownSourceRecord {
   source: string
   htmlComments: boolean
+  losslessTables: boolean
 }
 
 interface YMapLike {
@@ -189,8 +192,8 @@ export function writeMarkdownSourceToYDoc(doc: YDocLike, source: string | null):
     return
   }
   const current = readRecord(map.get(RECORD_KEY))
-  if (current?.source === source && current.htmlComments) return
-  map.set(RECORD_KEY, { source, htmlComments: true })
+  if (current?.source === source && current.htmlComments && current.losslessTables) return
+  map.set(RECORD_KEY, { source, htmlComments: true, losslessTables: true })
 }
 
 export function readMarkdownSourceFromYDoc(doc: YDocLike): string | null {
@@ -203,8 +206,10 @@ export function readMarkdownSourceRecordFromYDoc(doc: YDocLike): MarkdownSourceR
 
 function readRecord(value: unknown): MarkdownSourceRecord | null {
   if (!isObject(value)) return null
-  const { source, htmlComments } = value
-  return typeof source === 'string' ? { source, htmlComments: htmlComments === true } : null
+  const { source, htmlComments, losslessTables } = value
+  return typeof source === 'string'
+    ? { source, htmlComments: htmlComments === true, losslessTables: losslessTables === true }
+    : null
 }
 
 // ---------------------------------------------------------------------------

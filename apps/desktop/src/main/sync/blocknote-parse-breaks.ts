@@ -16,7 +16,8 @@ export async function parseMarkdownToBlocks(
   markdown: string
 ): Promise<Block[]> {
   return parseMarkdownToBlocksRepaired<Block>(editor, markdown, {
-    htmlComments: parsesHtmlComments()
+    htmlComments: parsesHtmlComments(),
+    losslessTables: legacyTables.getStore() !== true
   })
 }
 
@@ -35,4 +36,16 @@ export function parseDroppingHtmlComments<T>(parse: () => Promise<T>): Promise<T
 
 export function parsesHtmlComments(): boolean {
   return htmlCommentsDropped.getStore() !== true
+}
+
+const legacyTables = new AsyncLocalStorage<true>()
+
+/**
+ * Runs `parse` with tables read as builds before lossless tables did: a row
+ * split on a code span's pipe and cut to its header's width. A source those
+ * builds recorded is read that way, so the cells their document never got do
+ * not read as cells the user deleted.
+ */
+export function parseWithLegacyTables<T>(parse: () => Promise<T>): Promise<T> {
+  return legacyTables.run(true, parse)
 }

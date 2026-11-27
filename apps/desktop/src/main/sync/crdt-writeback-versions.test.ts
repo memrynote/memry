@@ -134,6 +134,7 @@ import { trackMainError } from '../telemetry/diagnostics'
 import { resetTelemetryThrottle } from '../telemetry/throttle'
 import type { Block } from '@blocknote/core'
 import { blocksToYFragment, markdownToYFragment, yFragmentToBlocks } from './blocknote-converter'
+import { parseWithLegacyTables } from './blocknote-parse-breaks'
 import { generateContentHash } from '../vault/frontmatter'
 
 const NOTE = 'note-1'
@@ -763,5 +764,24 @@ describe('HTML comments in a doc a build before #2741 seeded (BBF-29)', () => {
     await pass(NOTE, doc, 'local')
 
     expect(h.files.get(NOTE_FILE)).toBe('---\nid: x\n---\nTitle\n=====\n\nPara one.\n\nTail.\n')
+  })
+})
+
+describe('tables in a doc a build before lossless tables seeded', () => {
+  // A code span's pipe and a cell past the header: the older build's doc holds
+  // neither, and the file has to keep both.
+  const BODY = '| a | b |\n|---|---|\n| 1 | `p|q` | extra |\n\nLine to edit.\n'
+
+  it.each([undefined, 'Line, edited.'])('keeps the table bytes, edit: %s', async (to) => {
+    const raw = `---\nid: x\n---\n${BODY}`
+    writtenElsewhere(NOTE, raw)
+    const doc = await parseWithLegacyTables(() =>
+      to === undefined ? docWith(BODY) : retyped(BODY, 'Line to edit.', to)
+    )
+    doc.getMap(MARKDOWN_SOURCE_MAP).set('record', { source: BODY, htmlComments: true })
+
+    await pass(NOTE, doc, 'local')
+
+    expect(h.files.get(NOTE_FILE)).toBe(to === undefined ? raw : raw.replace('Line to edit.', to))
   })
 })

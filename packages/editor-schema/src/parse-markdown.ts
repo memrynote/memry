@@ -12,11 +12,12 @@ import {
   splitHtmlCommentTokens
 } from '@memry/shared/html-comments'
 import { restoreDetailsMarkup } from './blocks/markdown'
-import { maskCellCodeSpaces, restoreCellCodeSpaces } from './inline/cell-code-spaces'
+import { maskCellCodeSpans, restoreCellCodeSpans } from './inline/cell-code-spans'
 import { linkCodeAsText } from './inline/link-code-spans'
 import { maskLinkDestinations, restoreLinkDestinations } from './inline/link-destinations'
 import { maskInlineTokens, restoreInlineTokens } from './inline/token-masking'
 import { liftImagesOutOfTextBlocks } from './lift-images'
+import { widenTables } from './table-width'
 
 /**
  * Markdown to blocks, with BlockNote 0.51+'s markdown regressions repaired.
@@ -109,8 +110,8 @@ interface Masks {
   breaks: string[]
   /** The `((…))` payloads, by placeholder index. */
   tokens: string[]
-  /** The whitespace masked in table-cell code spans, by placeholder index. */
-  spaces: string[]
+  /** The whitespace and pipes masked in table-row code spans, by placeholder index. */
+  codeChars: string[]
   /** The spaced link destinations, by placeholder index. */
   destinations: string[]
 }
@@ -141,7 +142,15 @@ function repairRuns(runs: InlineRun[], code: boolean, masks: Masks, startsLine =
     // Link text is prose too, and a hard break in it carries a token (BBF-103).
     const linkContent = (run as StyledRun)?.type === 'link' ? (run as StyledRun).content : null
     const link = run as StyledRun | undefined
-    if (link?.href) link.href = restoreLinkDestinations(link.href, masks.destinations)
+    if (link?.href) {
+      link.href = restoreLinkDestinations(
+        restoreCellCodeSpans(link.href, masks.codeChars),
+        masks.destinations
+      )
+    }
+    // An inline node's props: an image in a table cell keeps its address and
+    // alt here, and a masked pipe can sit in either.
+    if (run) restoreStringProps(run, (value) => restoreCellCodeSpans(value, masks.codeChars))
     // A leading space in link text is the author's: CommonMark keeps it.
     if (Array.isArray(linkContent)) repairRuns(linkContent, code, masks, false)
     if (run?.type !== 'text' || typeof run.text !== 'string') continue
@@ -165,9 +174,9 @@ function repairRuns(runs: InlineRun[], code: boolean, masks: Masks, startsLine =
     // Every restore is unconditional: a placeholder that survives into a block
     // is written into the vault as literal text.
     run.text = restoreLinkDestinations(
-      restoreCellCodeSpaces(
+      restoreCellCodeSpans(
         restoreInlineTokens(restoreDetailsMarkup(unmasked), masks.tokens),
-        masks.spaces
+        masks.codeChars
       ),
       masks.destinations
     )
@@ -254,11 +263,12 @@ function repairBlocks(blocks: BlockLike[], masks: Masks): void {
   for (const block of blocks) {
     const code = LITERAL_TEXT_BLOCK_TYPES.has(block.type ?? '')
     // An image's alt text is a prop, not a run: it gets the author's spelling back.
-    for (const [key, value] of Object.entries(block.props ?? {})) {
-      if (typeof value === 'string' && block.props && masks.breaks.length > 0) {
-        block.props[key] = restoreHardBreakSpelling(value, masks.breaks)
-      }
-    }
+    restoreStringProps(block, (value) =>
+      restoreCellCodeSpans(
+        masks.breaks.length > 0 ? restoreHardBreakSpelling(value, masks.breaks) : value,
+        masks.codeChars
+      )
+    )
     if (Array.isArray(block.content)) {
       repairRuns(block.content, code, masks)
       block.content = withHtmlCommentNodes(block.content, code)
@@ -282,6 +292,12 @@ function repairBlocks(blocks: BlockLike[], masks: Masks): void {
   }
 }
 
+function restoreStringProps(node: BlockLike, restore: (value: string) => string): void {
+  for (const [key, value] of Object.entries(node.props ?? {})) {
+    if (typeof value === 'string' && node.props) node.props[key] = restore(value)
+  }
+}
+
 /**
  * Parse `markdown` into blocks through `editor`, repairing what 0.51+ breaks.
  *
@@ -290,12 +306,17 @@ function repairBlocks(blocks: BlockLike[], masks: Masks): void {
  * treatment.
  *
  * `htmlComments: false` parses as builds before #2741 did, dropping every
- * comment, for reading a source the way an older build read it.
+ * comment, and `losslessTables: false` as builds before lossless tables did,
+ * splitting a row on a code span's pipe and cutting it to its header's width,
+ * for reading a source the way an older build read it.
  */
 export async function parseMarkdownToBlocksRepaired<T>(
   editor: MarkdownParsingEditor,
   markdown: string,
-  { htmlComments = true }: { htmlComments?: boolean } = {}
+  {
+    htmlComments = true,
+    losslessTables = true
+  }: { htmlComments?: boolean; losslessTables?: boolean } = {}
 ): Promise<T[]> {
   // A `[[target|alias]]` already in a vault table has to be escaped before the
   // parse or 0.51's table parser splits the row on it and drops the alias.
@@ -313,8 +334,13 @@ export async function parseMarkdownToBlocksRepaired<T>(
   // `((mention:…))` and `((date:…))` are opaque payloads the parser will apply
   // intraword emphasis inside.
   const { markdown: tokensMasked, tokens } = maskInlineTokens(masked)
-  // A table cell collapses the whitespace in its code spans.
-  const { markdown: withTokensMasked, spaces } = maskCellCodeSpaces(tokensMasked)
+  // A table cell collapses the whitespace in its code spans, and a row splits
+  // on the pipes in them.
+  const { markdown: codeMasked, chars: codeChars } = maskCellCodeSpans(tokensMasked, {
+    pipes: losslessTables
+  })
+  // A row wider than its table's header keeps its extra cells.
+  const withTokensMasked = losslessTables ? widenTables(codeMasked) : codeMasked
 
   // BlockNote parses markdown by way of this same HTML, so the detour changes
   // nothing but the lifted images and the code in link text, and a note with
@@ -331,7 +357,7 @@ export async function parseMarkdownToBlocksRepaired<T>(
   const parsed = (await (repaired === null || repaired === html
     ? editor.tryParseMarkdownToBlocks(withTokensMasked)
     : editor.tryParseHTMLToBlocks(repaired))) as BlockLike[]
-  repairBlocks(parsed, { breaks, tokens, spaces, destinations })
+  repairBlocks(parsed, { breaks, tokens, codeChars, destinations })
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- T is the caller's block type, which this package cannot name without its schema
   return parsed as T[]
 }

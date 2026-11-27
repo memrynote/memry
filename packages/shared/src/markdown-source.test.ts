@@ -303,19 +303,27 @@ describe('shared-doc channel', () => {
     expect(set).not.toHaveBeenCalled()
   })
 
-  it('marks a record as read with HTML comments kept, and one an older build wrote as not (BBF-29)', () => {
-    const doc = fakeDoc()
-    doc.getMap('markdownSource').set('record', { source: '* One' })
-    expect(readMarkdownSourceRecordFromYDoc(doc)).toEqual({ source: '* One', htmlComments: false })
+  it.each([
+    ['before #2741 (BBF-29)', { source: '* One' }, { htmlComments: false, losslessTables: false }],
+    [
+      'before lossless tables',
+      { source: '* One', htmlComments: true },
+      { htmlComments: true, losslessTables: false }
+    ]
+  ])(
+    'reads a record an older build wrote %s as its parse, and rewrites it as this one',
+    (_, older, read) => {
+      const doc = fakeDoc()
+      doc.getMap('markdownSource').set('record', older)
+      expect(readMarkdownSourceRecordFromYDoc(doc)).toEqual({ source: '* One', ...read })
 
-    writeMarkdownSourceToYDoc(doc, '* One')
+      writeMarkdownSourceToYDoc(doc, '* One')
 
-    expect(doc.getMap('markdownSource').get('record')).toEqual({
-      source: '* One',
-      htmlComments: true
-    })
-    expect(readMarkdownSourceRecordFromYDoc(doc)).toEqual({ source: '* One', htmlComments: true })
-  })
+      const current = { source: '* One', htmlComments: true, losslessTables: true }
+      expect(doc.getMap('markdownSource').get('record')).toEqual(current)
+      expect(readMarkdownSourceRecordFromYDoc(doc)).toEqual(current)
+    }
+  )
 
   it('reads a malformed record as absent', () => {
     const doc = fakeDoc()

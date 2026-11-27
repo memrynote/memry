@@ -1,0 +1,141 @@
+import { markdownToHTML } from '@blocknote/core'
+
+/**
+ * A table as wide as its widest row.
+ *
+ * BlockNote sizes a table by its header row and drops every cell a body row
+ * holds past it: `| a | b |` over `| 1 | 2 | 3 | extra |` kept `1` and `2`
+ * and lost the rest from the document, and from the file on the next write of
+ * the table. The header row gets an empty cell for each column it lacks
+ * before the parse, so the extra cells become columns, and the writer spells
+ * the wider header back. A header that was all blank stays blank, so a table
+ * without a header row keeps none.
+ *
+ * Which lines BlockNote reads as a table is its tokenizer's decision, and a
+ * line that only looks like a header row (inside a list item's first line, a
+ * paragraph or a fence) must not gain pipes. So the tokenizer is asked: each
+ * header row that would widen gets a marker, BlockNote prints the text once,
+ * and only a marker printed inside a `<th>` is a table's header. The rows after
+ * it are the `<tr>`s of that table's body. The probe runs only when some
+ * table needs widening.
+ *
+ * A header row spelled like a delimiter row (`| --- |`) is never widened: a
+ * marker in it would stop it closing a table above it, so the probe could not
+ * tell. The core seed keeps the same exception (chapter 12 §12.1.0).
+ */
+
+// `tryParseTable`'s delimiter-row test (`markdownToHtml.ts`).
+const DELIMITER_ROW = /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/
+// The prefix a blockquote strips from each of its lines before its content is
+// tokenized again.
+const QUOTE_PREFIX = /^\s{0,3}>\s?/
+
+const marker = (index: number): string => `MEMRYTBL${index}X`
+
+/** `parsePipeCells`' cell count. */
+function cellCount(line: string): number {
+  const trimmed = line.trim()
+  const inner = trimmed.startsWith('|') ? trimmed.slice(1) : trimmed
+  const content = inner.endsWith('|') ? inner.slice(0, -1) : inner
+  let count = 1
+  for (let i = 0; i < content.length; i++) {
+    if (content[i] === '\\' && content[i + 1] === '|') i++
+    else if (content[i] === '|') count++
+  }
+  return count
+}
+
+function quoteDepth(line: string): number {
+  let depth = 0
+  for (
+    let rest = line, prefix = QUOTE_PREFIX.exec(rest);
+    prefix;
+    prefix = QUOTE_PREFIX.exec(rest)
+  ) {
+    rest = rest.slice(prefix[0].length)
+    depth++
+  }
+  return depth
+}
+
+/** The line as the tokenizer inside `depth` quotes reads it. */
+function unquote(line: string, depth: number): string {
+  let rest = line
+  for (let level = 0; level < depth; level++) {
+    const prefix = QUOTE_PREFIX.exec(rest)
+    if (!prefix) break
+    rest = rest.slice(prefix[0].length)
+  }
+  return rest
+}
+
+interface Candidate {
+  line: number
+  header: number
+  /** The cell count of each line that could be a body row, in order. */
+  rows: number[]
+}
+
+/** Each header row a wider row below it could widen. */
+function candidates(lines: string[]): Candidate[] {
+  const found: Candidate[] = []
+  for (let line = 0; line + 2 < lines.length; line++) {
+    const depth = quoteDepth(lines[line])
+    const header = unquote(lines[line], depth)
+    const delimiter = unquote(lines[line + 1], depth)
+    if (!header.includes('|') || DELIMITER_ROW.test(header)) continue
+    if (!delimiter.includes('|') || !DELIMITER_ROW.test(delimiter)) continue
+    const rows: number[] = []
+    for (let row = line + 2; row < lines.length; row++) {
+      const body = unquote(lines[row], depth)
+      if (!body.includes('|')) break
+      rows.push(cellCount(body))
+    }
+    const width = cellCount(header)
+    if (rows.some((cells) => cells > width)) found.push({ line, header: width, rows })
+  }
+  return found
+}
+
+/** The header row with `marker` printed in its last cell. */
+function withMarker(line: string, text: string): string {
+  const end = line.trimEnd()
+  return end.endsWith('|') ? `${end.slice(0, -1)}${text}|` : `${end}${text}`
+}
+
+/** How many body rows the table whose header printed `text` has, or null when no table did. */
+function bodyRows(html: string, text: string): number | null {
+  const at = html.indexOf(text)
+  if (at < 0) return null
+  const opened = Math.max(html.lastIndexOf('<th>', at), html.lastIndexOf('<th ', at))
+  if (opened < 0 || opened < html.lastIndexOf('</th>', at)) return null
+  const end = html.indexOf('</table>', at)
+  const body = html.indexOf('<tbody>', at)
+  if (body < 0 || body > end) return 0
+  return html.slice(body, end).split('<tr>').length - 1
+}
+
+export function widenTables(markdown: string): string {
+  if (!markdown.includes('|')) return markdown
+  const lines = markdown.split('\n')
+  const found = candidates(lines)
+  if (found.length === 0) return markdown
+
+  const probe = [...lines]
+  for (const [index, candidate] of found.entries()) {
+    probe[candidate.line] = withMarker(probe[candidate.line], marker(index))
+  }
+  const html = markdownToHTML(probe.join('\n'))
+  for (const [index, candidate] of found.entries()) {
+    const rows = bodyRows(html, marker(index))
+    if (rows === null) continue
+    const width = Math.max(candidate.header, ...candidate.rows.slice(0, rows))
+    if (width === candidate.header) continue
+    // The new cells go before the outer pipe, each opening with a space, so a
+    // `\` the header ends in never escapes a pipe it did not escape before.
+    const end = lines[candidate.line].trimEnd()
+    const open = end.endsWith('|') ? end.slice(0, -1) : end
+    lines[candidate.line] = `${open}${' |'.repeat(width - candidate.header)} |`
+  }
+  return lines.join('\n')
+}
