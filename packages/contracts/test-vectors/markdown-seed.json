@@ -9,7 +9,7 @@
     "authoredBy": "desktop's markdownToYFragment path: LF line endings, maskHtmlComments, parseNoteMarkdown (editor-schema note-markdown) with parseMarkdownToBlocksRepaired on desktop's server schema, blocksToYXmlFragment",
     "provenAgainst": "apps/desktop/src/main/sync/markdown-seed-vectors.test.ts",
     "blockIds": "removed from every blockContainer line: BlockNote mints them at random",
-    "caseCount": 83
+    "caseCount": 85
   },
   "cases": [
     {
@@ -509,6 +509,18 @@
       "pins": "a box after a number is the item's text, not a to-do; after a bullet it is an empty to-do",
       "markdown": "1. [ ]\n\n- [ ]\n\n1. [ ] x",
       "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element numberedListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"[ ]\"\n1 element blockContainer\n2 element checkListItem backgroundColor=\"default\" checked=false plain=false textAlignment=\"left\" textColor=\"default\"\n1 element blockContainer\n2 element checkListItem backgroundColor=\"default\" checked=false plain=false textAlignment=\"left\" textColor=\"default\"\n3 text \"x\""
+    },
+    {
+      "name": "table: a header row ending in a backslash",
+      "pins": "the header cell is a and a backslash: a table row is one line, so no hard break",
+      "markdown": "| a \\\n|---|\n| b |",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element table textColor=\"default\"\n3 element tableRow\n4 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"a \\\\\"\n3 element tableRow\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"b\""
+    },
+    {
+      "name": "table: a body row ending in a backslash",
+      "pins": "the second row's cell keeps its trailing backslash",
+      "markdown": "| a |\n|---|\n| b \\\n| c |",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element table textColor=\"default\"\n3 element tableRow\n4 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"a\"\n3 element tableRow\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"b \\\\\"\n3 element tableRow\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"c\""
     }
   ]
 }

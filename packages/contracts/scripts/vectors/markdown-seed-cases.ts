@@ -442,5 +442,15 @@ export const MARKDOWN_SEED_CASES: ReadonlyArray<{ name: string; markdown: string
       name: 'empty blocks: a box after a number',
       markdown: '1. [ ]\n\n- [ ]\n\n1. [ ] x',
       pins: "a box after a number is the item's text, not a to-do; after a bullet it is an empty to-do"
+    },
+    {
+      name: 'table: a header row ending in a backslash',
+      markdown: '| a \\\n|---|\n| b |',
+      pins: 'the header cell is a and a backslash: a table row is one line, so no hard break'
+    },
+    {
+      name: 'table: a body row ending in a backslash',
+      markdown: '| a |\n|---|\n| b \\\n| c |',
+      pins: "the second row's cell keeps its trailing backslash"
     }
   ]
