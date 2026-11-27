@@ -39,6 +39,8 @@
     "seed:1": "cd crates && cargo xtask seed small --variant 1",
     "seed:2": "cd crates && cargo xtask seed small --variant 2",
     "seed:rich": "cd crates && cargo xtask seed rich",
+    "bench:memory": "cd crates && cargo xtask measure-memory",
+    "bench:queries": "cd crates && cargo bench -p memry-desktop --bench vault_queries",
     "bench:launch": "node scripts/launch-bench.mjs",
     "release:humanize": "node scripts/humanize-release-notes.mjs",
     "release:reddit": "node scripts/build-reddit-release-post.mjs",
