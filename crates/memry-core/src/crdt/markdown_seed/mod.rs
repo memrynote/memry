@@ -43,14 +43,17 @@
 //! coloured toggle) sends every line there. A fallback drops no text; the
 //! document then differs from desktop's in those blocks only.
 //!
-//! **A table drops what desktop's drops.** Each body row is cut to its header
-//! row's cell count, and a `|` inside a code span splits the cell like any
-//! other pipe, so cells past that count are lost ([`table`]'s `table_block`).
-//! Desktop builds the same table from the same row.
+//! **A table keeps every cell, as desktop's does.** A `|` inside a code span
+//! splits no cell, and a body row wider than the header row widens the table,
+//! the header and the shorter rows padded with empty cells, unless the header
+//! row is spelled like a delimiter row, which cuts the rows to its width
+//! ([`table`]'s `try_parse_table`). Desktop builds the same table from the
+//! same row.
 
 mod blocks;
 mod claims;
 mod closers;
+mod hard_breaks;
 mod inline;
 mod lift;
 mod links;

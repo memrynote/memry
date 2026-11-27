@@ -5,12 +5,11 @@ use crate::domain::journal_rules::js_trim;
 
 use crate::domain::journal_rules::is_js_whitespace;
 
+use super::hard_breaks::{JOIN, mask_hard_breaks, restore_hard_break_spelling};
 use super::inline::{Html, holds_media, inline_content};
 use super::lift::lift_images;
 use super::media::media_block;
-use super::prepare::{
-    fence_indented_code, line_fallback, mask_hard_breaks, restore_hard_break_spelling,
-};
+use super::prepare::{fence_indented_code, line_fallback};
 use super::runs::block_content;
 use super::table::{escape_wiki_link_pipes_in_table_rows, table_block};
 use super::tokens::{ListType, Token, TokenKind, tokenize};
@@ -47,9 +46,16 @@ pub(super) fn parse_chunk(
             Ok(blocks) => out.extend(blocks),
             Err(Unsupported(reason)) => {
                 list = ListState::default();
+                // A list-item join is a line split again here: one literal
+                // paragraph per source line.
                 let kept: Vec<String> = lines[token.start..token.end.min(lines.len())]
                     .iter()
-                    .map(|line| js_trim(&restore_hard_break_spelling(line, &breaks)).to_owned())
+                    .flat_map(|line| {
+                        restore_hard_break_spelling(line, &breaks)
+                            .split(JOIN)
+                            .map(|part| js_trim(part).to_owned())
+                            .collect::<Vec<_>>()
+                    })
                     .filter(|line| !line.is_empty())
                     .collect();
                 out.extend(kept.iter().map(|line| SeedBlock::literal(line)));
@@ -81,14 +87,17 @@ fn text_block(
             return Err(Unsupported("video beside text"));
         }
         let mut blocks = vec![SeedBlock::new(kind, block_content(text, breaks))];
-        blocks.extend(media.iter().map(media_block));
+        blocks.extend(media.iter().map(|found| media_block(found, breaks)));
         return Ok(blocks);
     }
     let mut media = Vec::new();
     if lift_when_alone || !media_only(&html, &mut media) {
         return Err(Unsupported("media beside text"));
     }
-    Ok(media.into_iter().map(media_block).collect())
+    Ok(media
+        .into_iter()
+        .map(|found| media_block(found, breaks))
+        .collect())
 }
 
 /// Whether `nodes` hold only images, videos and whitespace, collecting the
@@ -207,7 +216,9 @@ fn convert_block(kind: &TokenKind, breaks: &[String]) -> Result<SeedBlock, Unsup
             // fence's opener closed) gets its spelling back: the bytes of a
             // code block are literal (`repairRuns`, `unmaskRun`), and so do
             // its string props, the language among them (`repairBlocks`).
-            let code = restore_hard_break_spelling(code, breaks);
+            // A join inside such a fence is the `<br>` desktop writes there
+            // (`repairRuns` restores the token only), so it is one here.
+            let code = restore_hard_break_spelling(code, breaks).replace(JOIN, "<br>");
             let language = restore_hard_break_spelling(language, breaks);
             let content = if code.is_empty() {
                 Vec::new()

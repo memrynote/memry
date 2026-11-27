@@ -16,6 +16,7 @@
 use crate::domain::journal_rules::js_trim;
 
 use super::closers::Closers;
+use super::hard_breaks::JOIN;
 use super::links::{destination_and_title, link};
 use super::media::{self, Media};
 use super::runs;
@@ -76,7 +77,7 @@ fn holds(nodes: &[Html], test: &dyn Fn(&Media) -> bool) -> bool {
 }
 
 /// The inline content of one table cell (`Table/block.ts`
-/// `parseTableContent`). `code_kept` is whether `maskCellCodeSpaces` masked
+/// `parseTableContent`). `code_kept` is whether `maskCellCodeSpans` masked
 /// the whitespace of the cell's row, which keeps its code spans' spaces.
 pub(super) fn cell_content(
     text: &str,
@@ -106,7 +107,7 @@ pub(super) fn collect(chars: &[char]) -> String {
     chars.iter().collect()
 }
 
-const SPECIAL: &[char] = &['\\', '`', '!', '[', '~', '*', '_', '\n', '<'];
+const SPECIAL: &[char] = &['\\', '`', '!', '[', '~', '*', '_', '\n', '<', JOIN];
 const ESCAPABLE: &str = "\\`*_{}[]()#+-.!~|>";
 
 /// `parseInline`.
@@ -219,6 +220,12 @@ fn inline_token(
     if text[i] == '\n' {
         nodes.push(Html::Br);
         push_text(nodes, "\n");
+        return Ok(Some(i + 1));
+    }
+    // A raw `<br>` passes through `tryInlineHtml` as it is, with no newline
+    // after it, unlike a soft break (`hard_breaks` module docs).
+    if text[i] == JOIN {
+        nodes.push(Html::Br);
         return Ok(Some(i + 1));
     }
     Ok(None)

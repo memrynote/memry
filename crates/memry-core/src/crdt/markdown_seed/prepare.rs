@@ -16,8 +16,10 @@ use crate::domain::journal_rules::js_trim;
 pub(super) fn document_fallback(markdown: &str) -> Option<&'static str> {
     // JS line terminators other than `\n`, which the desktop regexes treat as
     // line ends while `split('\n')` does not; NUL and the object replacement
-    // character, which the HTML parser and BlockNote rewrite.
-    if markdown.contains(['\0', '\u{2028}', '\u{2029}', '\u{FFFC}']) {
+    // character, which the HTML parser and BlockNote rewrite; and the
+    // character the hard-break mask joins list-item lines with
+    // ([`super::hard_breaks::JOIN`]), which no source may already hold.
+    if markdown.contains(['\0', '\u{1}', '\u{2028}', '\u{2029}', '\u{FFFC}']) {
         return Some("line terminator or control character");
     }
     // The masking tokens desktop inserts and restores (`MEMRYHBK`, `MEMRYICO`,
@@ -301,97 +303,6 @@ fn indented_run_end(lines: &[&str], start: usize) -> usize {
     last_content
 }
 
-/// `maskHardBreaks` (`shared/empty-lines.ts`): a line ending in two spaces or
-/// tabs, or in a backslash, followed by a non-blank line, has that spelling
-/// replaced by `MEMRYHBK<n>;`. Returns the text and the spellings.
-pub(super) fn mask_hard_breaks(markdown: &str) -> (String, Vec<String>) {
-    let mut breaks = Vec::new();
-    let masked: String = split_by_code_fences(markdown)
-        .into_iter()
-        .map(|(text, is_code)| {
-            if is_code || (!text.contains("  ") && !text.contains('\t') && !text.contains('\\')) {
-                return text.to_owned();
-            }
-            let mut lines: Vec<String> = text.split('\n').map(str::to_owned).collect();
-            for index in 0..lines.len().saturating_sub(1) {
-                if js_trim(&lines[index + 1]).is_empty() || js_trim(&lines[index]).is_empty() {
-                    continue;
-                }
-                let line = &lines[index];
-                let blanks = line.len() - line.trim_end_matches([' ', '\t']).len();
-                let spelling = if blanks >= 2 {
-                    blanks
-                } else if blanks == 0 && line.ends_with('\\') {
-                    1
-                } else {
-                    continue;
-                };
-                let cut = line.len() - spelling;
-                breaks.push(line[cut..].to_owned());
-                lines[index] = format!("{}MEMRYHBK{};", &line[..cut], breaks.len() - 1);
-            }
-            lines.join("\n")
-        })
-        .collect();
-    if breaks.is_empty() {
-        (markdown.to_owned(), breaks)
-    } else {
-        (masked, breaks)
-    }
-}
-
-/// `unmaskHardBreaks`: a token followed by a newline becomes two newlines, a
-/// token that lost its newline is deleted.
-pub(super) fn unmask_hard_breaks(text: &str) -> String {
-    let mut out = String::with_capacity(text.len());
-    let mut rest = text;
-    while let Some(start) = rest.find("MEMRYHBK") {
-        let after = &rest[start + "MEMRYHBK".len()..];
-        let digits = after.chars().take_while(char::is_ascii_digit).count();
-        if digits == 0 || !after[digits..].starts_with(';') {
-            out.push_str(&rest[..start + "MEMRYHBK".len()]);
-            rest = after;
-            continue;
-        }
-        out.push_str(&rest[..start]);
-        let tail = &after[digits + 1..];
-        if let Some(tail) = tail.strip_prefix('\n') {
-            out.push_str("\n\n");
-            rest = tail;
-        } else {
-            rest = tail;
-        }
-    }
-    out.push_str(rest);
-    out
-}
-
-/// `restoreHardBreakSpelling`: every token back to the spelling it replaced.
-pub(super) fn restore_hard_break_spelling(text: &str, breaks: &[String]) -> String {
-    let mut out = String::with_capacity(text.len());
-    let mut rest = text;
-    while let Some(start) = rest.find("MEMRYHBK") {
-        let after = &rest[start + "MEMRYHBK".len()..];
-        let digits = after.chars().take_while(char::is_ascii_digit).count();
-        if digits == 0 || !after[digits..].starts_with(';') {
-            out.push_str(&rest[..start + "MEMRYHBK".len()]);
-            rest = after;
-            continue;
-        }
-        out.push_str(&rest[..start]);
-        let spelling = after[..digits]
-            .parse::<usize>()
-            .ok()
-            .and_then(|index| breaks.get(index));
-        if let Some(spelling) = spelling {
-            out.push_str(spelling);
-        }
-        rest = &after[digits + 1..];
-    }
-    out.push_str(rest);
-    out
-}
-
 /// `^ {0,3}(`{3,}|~{3,})(.*)$`: the fence character, the run length and the
 /// rest of the line.
 pub(super) fn fence_line(line: &str) -> Option<(char, usize, &str)> {
@@ -422,19 +333,6 @@ mod tests {
         assert_eq!(
             split_preserving_blanks("```\na\n\n\n\nb\n```"),
             vec![Piece::Content("```\na\n\n\n\nb\n```".to_owned())]
-        );
-    }
-
-    #[test]
-    fn a_hard_break_spelling_round_trips_through_its_token() {
-        let (masked, breaks) = mask_hard_breaks("a  \nb\\\nc  \n\nd");
-        assert_eq!(masked, "aMEMRYHBK0;\nbMEMRYHBK1;\nc  \n\nd");
-        assert_eq!(breaks, vec!["  ".to_owned(), "\\".to_owned()]);
-        assert_eq!(unmask_hard_breaks("aMEMRYHBK0;\nb"), "a\n\nb");
-        assert_eq!(unmask_hard_breaks("aMEMRYHBK0;"), "a");
-        assert_eq!(
-            restore_hard_break_spelling(&masked, &breaks),
-            "a  \nb\\\nc  \n\nd"
         );
     }
 

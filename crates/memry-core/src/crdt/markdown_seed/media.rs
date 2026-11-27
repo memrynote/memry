@@ -6,6 +6,7 @@
 
 use crate::domain::journal_rules::js_trim;
 
+use super::hard_breaks::restore_hard_break_spelling;
 use super::prepare::split_by_code_fences;
 use super::web_url::{self, Url};
 use super::{FileProps, SeedBlock, SeedKind, Unsupported};
@@ -247,19 +248,21 @@ pub(super) fn media(url: String, alt: String, title: Option<String>) -> Result<M
 
 /// The block an `<img>` or `<video>` parses to. An image's alt may carry its
 /// width as `name|300` (`withImageWidthInAlt`, `parseInlineImageAlt`).
-pub(super) fn media_block(media: &Media) -> SeedBlock {
+/// Every string prop gets its hard-break spelling back (`repairBlocks`).
+pub(super) fn media_block(media: &Media, breaks: &[String]) -> SeedBlock {
+    let restore = |text: &str| restore_hard_break_spelling(text, breaks);
     match media {
         Media::Image { url, alt } => {
             let (name, width) = alt_width(alt);
             block(SeedKind::Image {
-                url: url.clone(),
-                name: name.to_owned(),
+                url: restore(url),
+                name: restore(name),
                 preview_width: width,
             })
         }
         Media::Video { url, name } => block(SeedKind::Video {
-            url: url.clone(),
-            name: name.clone(),
+            url: restore(url),
+            name: restore(name),
         }),
     }
 }

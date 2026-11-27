@@ -3,10 +3,10 @@
 
 use crate::domain::journal_rules::{is_js_whitespace, js_trim};
 
+use super::hard_breaks::unmask_hard_breaks;
 use super::inline::{Html, Tag};
 use super::links::allowed_href;
 use super::media::{Media, alt_width};
-use super::prepare::unmask_hard_breaks;
 use super::{SeedInline, SeedMarks};
 
 /// One stage-3 run: styled text, a link holding styled text, or an inline
@@ -31,7 +31,7 @@ pub(super) fn block_content(mut html: Vec<Html>, breaks: &[String]) -> Vec<SeedI
 /// `preserveWhitespace`, so ProseMirror's `addTextNode` collapses every
 /// whitespace run to one space, drops a leading space at the start, after a
 /// break or after whitespace, and `finish` drops the trailing whitespace.
-/// `code_kept`: `maskCellCodeSpaces` hid the code spans' whitespace from it
+/// `code_kept`: `maskCellCodeSpans` hid the code spans' whitespace from it
 /// and from the repair, behind tokens restored last.
 pub(super) fn cell_content(html: Vec<Html>, breaks: &[String], code_kept: bool) -> Vec<SeedInline> {
     let mut flat = Vec::new();
@@ -90,7 +90,7 @@ pub(super) fn cell_content(html: Vec<Html>, breaks: &[String], code_kept: bool) 
     content
 }
 
-/// `maskCellCodeSpaces`' placeholders. Source text holding `MEMRY` never gets
+/// `maskCellCodeSpans`' placeholders. Source text holding `MEMRY` never gets
 /// here (`prepare::document_fallback`), so a token is always ours.
 const SPACE_TOKEN: &str = "MEMRYCSPSX";
 const TAB_TOKEN: &str = "MEMRYCSPTX";
