@@ -84,11 +84,20 @@ export async function scrollTo(
   return locator.boundingBox()
 }
 
+/** Waits until `locator`'s element has the focus (WebDriver has no element handles). */
+export async function waitForFocus(locator, timeout = 20_000) {
+  const deadline = Date.now() + timeout
+  while (!(await locator.evaluate((el) => el === document.activeElement))) {
+    if (Date.now() > deadline) throw new Error(`${locator} did not take the focus in ${timeout} ms`)
+    await new Promise((done) => setTimeout(done, 50))
+  }
+}
+
 /** On camera: click a control that pops up a search field, then type into that field once it has focus. */
-export async function clickThenType({ rec, page, sleep }, target, field, text, { cps = 10 } = {}) {
+export async function clickThenType({ rec, sleep }, target, field, text, { cps = 10 } = {}) {
   await rec.click(target)
   await field.waitFor()
-  await page.waitForFunction((el) => el === document.activeElement, await field.elementHandle())
+  await waitForFocus(field)
   await sleep(250)
   await rec.type(text, { cps })
 }

@@ -30,7 +30,7 @@ describe('retypeIndexedProperties', () => {
       createdAt: '2026-10-01T00:00:00.000Z',
       modifiedAt: '2026-10-01T00:00:00.000Z'
     })
-    setNoteProperties(db, id, { due: '2026-10-01' }, () => 'date')
+    setNoteProperties(db, id, { due: '2026-10-01' }, () => 'date', 'file')
   }
   const typeOf = (id: string): string | undefined =>
     getNoteProperties(db, id).find((p) => p.name === 'due')?.type

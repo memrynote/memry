@@ -4,7 +4,7 @@ import path from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { RateLimitError, SyncServerError } from '../http-client'
+import { NetworkError, RateLimitError, SyncServerError } from '../http-client'
 import { discardPackFile, downloadPackToFile } from './pack-download'
 
 const streamOf = (chunks: Uint8Array[], failAfter?: number): ReadableStream<Uint8Array> => {
@@ -165,6 +165,32 @@ describe('downloadPackToFile', () => {
         fetchFn
       })
     ).rejects.toBeInstanceOf(SyncServerError)
+  })
+
+  it('#given a disk write error #then it surfaces as itself, not a NetworkError, with no retry', async () => {
+    const diskFull = Object.assign(new Error('ENOSPC: no space left on device'), { code: 'ENOSPC' })
+    const open = vi.spyOn(fs, 'open').mockResolvedValue({
+      write: async () => {
+        throw diskFull
+      },
+      close: async () => {}
+    } as unknown as Awaited<ReturnType<typeof fs.open>>)
+    const fetchFn = vi.fn(async () => responseOf(200, streamOf([new Uint8Array([1, 2, 3])])))
+
+    try {
+      const failure = await downloadPackToFile({
+        url: 'https://r2.example/p.pack',
+        destPath: dest,
+        fetchFn,
+        sleep: async () => {}
+      }).catch((error: unknown) => error)
+
+      expect(failure).toBe(diskFull)
+      expect(failure).not.toBeInstanceOf(NetworkError)
+      expect(fetchFn).toHaveBeenCalledTimes(1)
+    } finally {
+      open.mockRestore()
+    }
   })
 
   it('paces every request through the injected hook', async () => {

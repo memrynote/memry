@@ -5,15 +5,15 @@ import SwiftUI
 // JP033 (spec 005-journal). The parts of a note page under its title, shared
 // by the note screen and the journal day page, so the day page composes the
 // note page rather than forking it: the tags and properties rows (with the
-// ghost row), the body as editable blocks, review comments, backlinks and
-// linked tasks. What differs between the two pages is passed in: what an
-// empty body says, and what sits between the backlinks and the linked tasks
-// (a note's reminders; nothing on a day, whose reminders live on the bell).
+// ghost row), the body as editable blocks, review comments and the
+// connections card. What differs between the two pages is passed in: what an
+// empty body says, and the reminders (a note's; none on a day, whose
+// reminders live on the bell).
 //
 // Moved verbatim from `NoteReadView`; the note screen draws exactly what it
 // drew before.
 
-struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
+struct NotePageContent<EmptyBody: View>: View {
     let model: NoteReadViewModel
     let detail: NoteDetail
     let editorModel: NoteEditorViewModel
@@ -25,6 +25,8 @@ struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
     /// its own date).
     var unlinkedMentions: UnlinkedMentionsViewModel?
     let linkedTasks: LinkedTasksViewModel
+    /// `nil` on a journal day, whose reminders live on the bell.
+    var reminders: NoteRemindersViewModel?
     let taskBridge: NoteTaskBridge
     /// Pushes another note. `nil` leaves links drawn but inert.
     let open: ((NoteRoute) -> Void)?
@@ -32,21 +34,26 @@ struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
     @Binding var brokenLink: String?
     /// What the page says when it has no blocks to draw.
     @ViewBuilder let emptyBody: (NoteBodyPreview) -> EmptyBody
-    @ViewBuilder let afterBacklinks: () -> AfterBacklinks
+    /// The empty body stays, above the first blocks, until they are in the
+    /// window: a journal day's first line holds the caret until its block
+    /// takes it (#4705).
+    var keepsEmptyBody = false
     /// A tap in the space under the body puts the caret at its end. `nil`
     /// leaves no such space (a read-only page, the journal day).
     var tapBelowBody: (() -> Void)?
 
     /// The keyboard toolbar's paperclip source being shown (N214's upload path).
     @State private var attaching: EditorAttachmentSource?
-    /// The quiet row's `+ Name` asked the names line for a field.
-    @State private var addingName = false
     /// The body's tags as last seen. `nil` until the note is first drawn:
     /// opening a note seeds it and writes nothing (desktop's #1454).
     @State private var inlineTags: (noteId: String, tags: [String])?
     @Environment(\.requestVaultSync) private var requestVaultSync
     @Environment(\.whiteboards) private var whiteboards
-    @Environment(\.vaultProjects) private var vaultProjects
+    /// The note inspector shows the properties, review and backlinks, so the
+    /// page leaves them out (#4347).
+    @Environment(\.noteInspectorShown) private var inspectorShown
+    /// The split view's pane this page is in (#4377), `nil` elsewhere.
+    @Environment(\.notesPane) private var pane
 
     /// Opens a wiki link's note, for the read view and the editor alike.
     /// Resolved on the tap, then pushed onto the stack the browse list pushes
@@ -66,6 +73,21 @@ struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
         }
     }
 
+    /// Opens a wiki link's note in the pane beside this one (#4377). A
+    /// journal day still opens in the Journal.
+    private var openTargetToSide: ((String) -> Void)? {
+        guard let toSide = pane?.openToTheSide, let open else { return nil }
+        return { title in
+            Task {
+                guard let route = await model.wikiTarget(for: title) else {
+                    brokenLink = title
+                    return
+                }
+                if JournalLink.date(fromJournalId: route.id) != nil { open(route) } else { toSide(route) }
+            }
+        }
+    }
+
     /// The editing bridge, or `nil` on a read-only page.
     private var editing: NoteEditingBridge? {
         guard editorModel.canEdit else { return nil }
@@ -78,14 +100,17 @@ struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
                 model.vaultNotes.compactMap { note in ProjectIconValue.emoji(note.emoji).map { (note.title.lowercased(), $0) } },
                 uniquingKeysWith: { first, _ in first }
             ),
-            titleExists: model.titleExists
+            titleExists: model.titleExists,
+            drawnGeneration: { model.blocksGeneration }
         ) { await model.reload() }
         let session = bridge.session
+        model.landedWrites = { [weak session] in session?.landedWrites ?? 0 }
         session.tags = model.vaultTagNames
         session.tagColors = model.tagColors
         session.blocks = { model.blocks }
         session.openTag = openTag
         session.openWikiTarget = openTarget
+        session.openWikiTargetToSide = openTargetToSide
         session.requestSync = requestVaultSync
         session.whiteboards = whiteboards
         let noteTitle = detail.summary.title
@@ -100,6 +125,11 @@ struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
         if (session.attach == nil) == composer.canUpload {
             session.attach = composer.canUpload ? { attaching = $0 } : nil
         }
+        session.attachDropped = composer.canUpload
+            ? { [composer, weak session] providers, after in
+                guard let session else { return }
+                Task { await composer.attachDropped(providers, in: session, after: after) }
+            } : nil
         return bridge
     }
 
@@ -108,41 +138,19 @@ struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
         // them and where a reader looks for what a note *is* before reading
         // what it says. Absent until the read answers, and absent again when
         // there is nothing.
-        if let metadata = model.metadata {
-            NoteNamesLine(
-                names: metadata.aliases,
-                write: metadataModel.canEdit
-                    ? { names in
-                        Task {
-                            await metadataModel.setAliases(names)
-                            await model.reload()
-                        }
-                    } : nil,
-                adding: $addingName
-            )
-            if metadataModel.canEdit {
-                NoteMetadataEditors(
-                    metadata: metadata,
-                    model: metadataModel,
-                    reload: { await model.reload() },
-                    noteTitle: { id in model.vaultNotes.first { $0.id == id }?.title },
-                    noteIcon: { id in ProjectIconValue.emoji(model.vaultNotes.first { $0.id == id }?.emoji) },
-                    tagColors: model.tagColors,
-                    tagSuggestions: model.vaultTagNames,
-                    relationCandidates: model.vaultNotes,
-                    projects: vaultProjects,
-                    addName: metadata.aliases.isEmpty ? { addingName = true } : nil
-                )
-            } else {
-                NoteMetaView(metadata: metadata)
-            }
+        if let metadata = model.metadata, !inspectorShown {
+            NotePropertiesBlock(model: model, metadata: metadata, metadataModel: metadataModel)
         }
-        if model.blocks.isEmpty {
+        let preview = NoteBodyPreview.of(detail.body)
+        if let file = model.file {
+            NoteFileView(file: file, fetch: model.fileFetch) { Task { await model.fetchFile() } }
+        } else if (model.blocks.isEmpty && model.showsPreview(preview)) || keepsEmptyBody {
             // No blocks to draw. Which of the three reasons it is — never
             // pulled, genuinely empty, or a walk that failed — is the
             // caller's to say.
-            emptyBody(NoteBodyPreview.of(detail.body))
-        } else {
+            emptyBody(preview)
+        }
+        if !model.blocks.isEmpty {
             // With no stack to push onto (`open` is nil) the links are still
             // drawn and readable; they lead nowhere.
             NoteBlocksView(
@@ -159,10 +167,12 @@ struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
                 editing: editing,
                 tableEditing: editorModel.canEdit
                     ? NoteTableEditing(editor: editorModel) { await model.reload() }
-                    : nil
+                    : nil,
+                lazy: true
             )
             .environment(\.openNote, open)
             .environment(\.portalHostNote, detail.summary.id)
+            .environment(\.attachmentDownloads, model)
             .modifier(EditorAttachmentSources(source: $attaching, composer: composer, session: editorModel.session))
             .modifier(MoveBlockPresenter(session: editorModel.session, notes: model.vaultNotes, currentNoteId: detail.summary.id))
             .sheet(item: Binding(
@@ -189,14 +199,7 @@ struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
             )) { request in
                 ViewQuerySheet(request: request) { editorModel.session.saveView($0) }
             }
-            .fullScreenCover(item: Binding(
-                get: { whiteboards == nil ? nil : editorModel.session.whiteboardEdit },
-                set: { if $0 == nil { editorModel.session.finishWhiteboard() } }
-            )) { request in
-                if let whiteboards {
-                    WhiteboardEditor(request: request, boards: whiteboards)
-                }
-            }
+            .modifier(WhiteboardPresentation(session: editorModel.session, boards: whiteboards))
         }
         if let tapBelowBody {
             Color.clear
@@ -206,22 +209,21 @@ struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
                 .accessibilityHidden(true)
         }
         // Read only (N604): §12.5.1 forbids writing them.
-        ReviewCommentsSection(comments: model.comments)
+        ReviewCommentsSection(comments: inspectorShown ? [] : model.shownComments)
             // On a view that is always present, so the first block typed
             // into an empty note is seen too.
             .onChange(of: model.blocks, initial: true) { syncInlineTags() }
-        // Under the body, where desktop puts it and where a reader looks
+        // Under the body, where desktop puts them and where a reader looks
         // after finishing the note (N800).
-        if let open {
-            BacklinksSection(model: backlinks, open: open)
-            if let unlinkedMentions {
-                UnlinkedMentionsSection(
-                    model: unlinkedMentions, targetTitle: detail.summary.title, open: open
-                )
-            }
-        }
-        afterBacklinks()
-        LinkedTasksSection(model: linkedTasks, open: taskBridge.open)
+        NoteConnections(
+            backlinks: inspectorShown ? nil : backlinks,
+            linkedTasks: linkedTasks,
+            reminders: reminders,
+            unlinkedMentions: unlinkedMentions,
+            targetTitle: detail.summary.title,
+            open: open,
+            openTask: taskBridge.open
+        )
     }
 
     /// A `#tag` typed into the body becomes one of the note's tags, and one
@@ -244,6 +246,47 @@ struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
     }
 }
 
+/// A note's other names, tags and properties: under the title on the page,
+/// or in the note inspector while it is shown (#4347).
+struct NotePropertiesBlock: View {
+    let model: NoteReadViewModel
+    let metadata: NoteMetadata
+    let metadataModel: NoteMetadataViewModel
+    /// The quiet row's `+ Name` asked the names line for a field.
+    @State private var addingName = false
+    @Environment(\.vaultProjects) private var vaultProjects
+
+    var body: some View {
+        NoteNamesLine(
+            names: metadata.aliases,
+            write: metadataModel.canEdit
+                ? { names in
+                    Task {
+                        await metadataModel.setAliases(names)
+                        await model.reload()
+                    }
+                } : nil,
+            adding: $addingName
+        )
+        if metadataModel.canEdit {
+            NoteMetadataEditors(
+                metadata: metadata,
+                model: metadataModel,
+                reload: { await model.reload() },
+                noteTitle: { id in model.vaultNotes.first { $0.id == id }?.title },
+                noteIcon: { id in ProjectIconValue.emoji(model.vaultNotes.first { $0.id == id }?.emoji) },
+                tagColors: model.tagColors,
+                tagSuggestions: model.vaultTagNames,
+                relationCandidates: model.vaultNotes,
+                projects: vaultProjects,
+                addName: metadata.aliases.isEmpty ? { addingName = true } : nil
+            )
+        } else {
+            NoteMetaView(metadata: metadata)
+        }
+    }
+}
+
 /// The environment a note page's blocks read: which titles exist, the task
 /// cards, the task bridge and the review marks.
 struct NotePageEnvironment: ViewModifier {
@@ -261,7 +304,7 @@ struct NotePageEnvironment: ViewModifier {
             .environment(\.noteTasks, taskBridge)
             .environment(
                 \.reviewMarks,
-                ReviewMarkStyle.unambiguous(model.comments, in: model.exportText)
+                ReviewMarkStyle.unambiguous(model.shownComments, in: model.exportText)
             )
     }
 }

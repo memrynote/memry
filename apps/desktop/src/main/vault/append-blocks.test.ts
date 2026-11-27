@@ -6,8 +6,8 @@
  * `notes:update` and the MCP append path both write the file and skip
  * `feedExternalEditToCrdt`, which silently loses the appended text when the
  * target note is open (the next CRDT writeback overwrites it). These assert the
- * write is marked ignored BEFORE it lands and the CRDT feed runs AFTER, with
- * the post-append body.
+ * CRDT feed runs with the post-append body, and the bytes are recorded as the
+ * app's BEFORE they are written and reported landed AFTER.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
@@ -16,6 +16,7 @@ import type * as PathsModule from '../lib/paths'
 const calls: string[] = []
 const feedCalls: Array<{ noteId: string; content: string }> = []
 const written: Array<{ path: string; content: string }> = []
+const recorded: Array<{ path: string; bytes: unknown }> = []
 const emitted: Array<{ channel: string; event: any }> = []
 
 const noteRows: Record<string, any> = {}
@@ -35,10 +36,18 @@ vi.mock('../sync/crdt-writeback-port', async () => {
   const writeback = await import('../sync/crdt-writeback')
   return { crdtWriteback: () => writeback }
 })
-vi.mock('../sync/crdt-writeback', () => ({
-  markWritebackIgnored: vi.fn(() => calls.push('markWritebackIgnored'))
+vi.mock('../sync/crdt-writeback', () => ({}))
+vi.mock('./app-writes', () => ({
+  recordAppWrite: vi.fn((path: string, bytes: unknown) => {
+    calls.push('recordAppWrite')
+    recorded.push({ path, bytes })
+    return () => {
+      calls.push('landed')
+    }
+  })
 }))
 vi.mock('./note-sync', () => ({
+  refusesCaseTwinFile: () => false,
   syncNoteToCache: vi.fn(() => {
     calls.push('syncNoteToCache')
     return { wordCount: 3, characterCount: 12, tags: [] }
@@ -88,6 +97,7 @@ beforeEach(() => {
   calls.length = 0
   feedCalls.length = 0
   written.length = 0
+  recorded.length = 0
   emitted.length = 0
   for (const key of Object.keys(noteRows)) delete noteRows[key]
 })
@@ -103,19 +113,24 @@ describe('appendBlocksToNote', () => {
     expect(target.content).toContain('Existing target body\n\nMoved block')
   })
 
-  it('marks the write ignored before it lands and feeds the CRDT after', async () => {
+  // Doc first (D-DOC-FIRST): a crash before the file write leaves the doc
+  // ahead of the file, which the write-back then writes.
+  it('records the bytes before writing them and reports them landed, after feeding the doc', async () => {
     seedNote('src', 'notes/source.md', 'Source body')
     seedNote('dst', 'notes/target.md', 'Target body')
 
     await appendBlocksToNote({ sourceNoteId: 'src', targetNoteId: 'dst', markdown: 'Moved block' })
 
     expect(calls).toEqual([
-      'markWritebackIgnored',
+      'feedExternalEditToCrdt',
+      'recordAppWrite',
       'atomicWrite',
+      'landed',
       'syncNoteToCache',
-      'emitNoteEvent',
-      'feedExternalEditToCrdt'
+      'emitNoteEvent'
     ])
+    const target = written.find((w) => w.path === '/vault/notes/target.md')!
+    expect(recorded).toEqual([{ path: '/vault/notes/target.md', bytes: target.content }])
   })
 
   it('feeds the CRDT the POST-append body, not the original', async () => {

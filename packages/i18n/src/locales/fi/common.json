@@ -1,4 +1,7 @@
 {
+  "wikiLink": {
+    "openFailed": "Tämän linkin avaaminen epäonnistui"
+  },
   "portalBlock": {
     "copyFailed": "Portaalia ei voitu kopioida",
     "hiddenCount": "{count} piilotettu",
@@ -956,6 +959,8 @@
     "componentsVaultSwitcher": {
       "noVaultsYet": "Ei vielä holveja",
       "openVault": "Avaa holvi",
+      "createVault": "Luo holvi",
+      "openFolderAsVault": "Avaa kansio holvina",
       "settings": "Asetukset",
       "remove": "Poista ”",
       "removeVaultTitle": "Poistetaanko ”{name}” listalta?",

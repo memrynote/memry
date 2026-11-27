@@ -462,10 +462,9 @@ fn idle_scans(f: &Ft<WorkerHandle>) -> Vec<f64> {
     let runner = f.file_text.runner().expect("running");
     let mut times: Vec<f64> = (0..15)
         .map(|_| {
-            let before = runner.scans();
             let start = Instant::now();
-            f.file_text.rescan_all();
-            while runner.scans() == before {
+            let ticket = runner.rescan_all();
+            while runner.rescanned().ticket < ticket {
                 std::thread::sleep(Duration::from_micros(100));
             }
             start.elapsed().as_secs_f64() * 1000.0
@@ -516,13 +515,13 @@ fn measure_idle_scans(label: &str, extra: &[(String, Vec<u8>)]) {
     }
     let times = idle_scans(&f);
     eprintln!(
-        "PERF no-change scan, {label} ({notes} vault files + {} filed images): min {:.1} ms, median {:.1} ms, max {:.1} ms; compared {} files over {} scans",
+        "PERF no-change scan, {label} ({notes} vault files + {} filed images): min {:.1} ms, median {:.1} ms, max {:.1} ms; compared {} files in all, {} in the last scan",
         extra.len(),
         times[0],
         times[times.len() / 2],
         times[times.len() - 1],
         f.compared(),
-        f.file_text.runner().unwrap().scans(),
+        f.file_text.runner().unwrap().rescanned().compared,
     );
 }
 

@@ -14,8 +14,9 @@
 use std::sync::Arc;
 
 use memry_core::api::search::BacklinkOrder;
+use memry_core::crdt::DocumentRegistry;
+use memry_core::crdt::epoch::HeldBody;
 use memry_core::crdt::registry::UpdateSink;
-use memry_core::crdt::{DocumentRegistry, update_log};
 use memry_core::domain::journal;
 use memry_core::domain::journal_ops::links::{self, BacklinkRow, OutgoingLink};
 use memry_core::domain::note_meta::{self, WikiTargetMatch};
@@ -73,7 +74,8 @@ fn body_update(doc_id: &str, text: &str, targets: &[&str]) -> Vec<u8> {
 }
 
 fn write_body(data: &Connection, id: &str, text: &str, targets: &[&str]) {
-    update_log::append_server_update(data, id, 1, &body_update(id, text, targets), NOW)
+    HeldBody::never_purged(data, id)
+        .and_then(|held| held.append_server_update(1, &body_update(id, text, targets), NOW))
         .expect("the body update");
 }
 

@@ -1,6 +1,6 @@
 //! The quarantine ledger (Step 17 L3a, #3534): Electron's `QuarantineManager`
 //! (`apps/desktop/src/main/sync/engine/quarantine-manager.ts:30-140`), kept
-//! in `sync_quarantine` (migration 0031).
+//! in `sync_quarantine` (migration 0032).
 //!
 //! A pulled record whose signature does not verify is one failure of its
 //! `(type, id)`. At [`MAX_ATTEMPTS`] the entry is permanent: the pull skips the

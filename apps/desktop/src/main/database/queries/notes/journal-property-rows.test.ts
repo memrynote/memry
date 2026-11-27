@@ -22,7 +22,7 @@ describe('getJournalPropertyRows', () => {
       createdAt: '2026-09-01T00:00:00.000Z',
       modifiedAt: '2026-09-01T00:00:00.000Z'
     })
-    setNoteProperties(db, id, props, (_name, value) => inferPropertyType(value))
+    setNoteProperties(db, id, props, (_name, value) => inferPropertyType(value), 'file')
   }
 
   beforeEach(() => {

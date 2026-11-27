@@ -3,6 +3,7 @@ import { formatDistanceToNow } from 'date-fns'
 import type { NoteSyncState } from '@memry/contracts/ipc-sync-ops'
 import { useT } from '@memry/i18n/renderer'
 import { createLogger } from '@/lib/logger'
+import { syncService } from '@/services/sync-service'
 import { cn } from '@/lib/utils'
 
 const log = createLogger('NoteSyncLine')
@@ -35,7 +36,7 @@ export function NoteSyncLine({ noteId }: { noteId: string }): React.JSX.Element 
   useEffect(() => {
     let cancelled = false
     const read = (): void => {
-      window.api.syncOps
+      syncService
         .getNoteSyncState(noteId)
         .then((syncState) => {
           if (!cancelled) setState(syncState)

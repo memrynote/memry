@@ -37,9 +37,12 @@ pub(crate) fn queue_source(
     source_id: &str,
     now_ms: i64,
 ) -> Result<(), StorageError> {
+    // The stamp only grows: a push that lands drops the row only if it still has the stamp the
+    // push was planned from, so an edit in the same millisecond must move it too.
     tx.execute(
         "INSERT INTO calendar_push_queue (source_type, source_id, queued_at) VALUES (?1, ?2, ?3)
-         ON CONFLICT(source_type, source_id) DO UPDATE SET queued_at = excluded.queued_at,
+         ON CONFLICT(source_type, source_id) DO UPDATE
+           SET queued_at = MAX(excluded.queued_at, calendar_push_queue.queued_at + 1),
            attempts = 0, last_error = NULL",
         params![source_type, source_id, now_ms],
     )

@@ -7,6 +7,7 @@
 use memry_core::api::editor::EditorError;
 use memry_core::api::note_files::NoteFiles;
 use memry_core::crdt::CrdtError;
+use memry_core::crdt::epoch::HeldBody;
 use memry_core::crdt::update_log;
 use memry_core::domain::note_files::NoteFileStat;
 use memry_core::sync::body_debt;
@@ -166,11 +167,11 @@ fn a_log_that_does_not_replay_refuses_to_open_and_removes_nothing() {
     f.vault
         .db_handle()
         .call_blocking(|conn| {
-            update_log::append_server_update(conn, &note, 1, &[0xff; 4], 1).map_err(|e| {
-                memry_core::api::errors::StorageError::Failed {
+            HeldBody::never_purged(conn, &note)
+                .and_then(|held| held.append_server_update(1, &[0xff; 4], 1))
+                .map_err(|e| memry_core::api::errors::StorageError::Failed {
                     what: e.to_string(),
-                }
-            })
+                })
         })
         .expect("plant a broken row");
     let update = Replica::new(1).type_text("lost?");
@@ -458,11 +459,11 @@ fn a_block_without_an_id_is_repaired_on_open_stored_and_queued_once() {
     f.vault
         .db_handle()
         .call_blocking(|conn| {
-            update_log::append_server_update(conn, &note, 1, &old, 1).map_err(|e| {
-                memry_core::api::errors::StorageError::Failed {
+            HeldBody::never_purged(conn, &note)
+                .and_then(|held| held.append_server_update(1, &old, 1))
+                .map_err(|e| memry_core::api::errors::StorageError::Failed {
                     what: e.to_string(),
-                }
-            })
+                })
         })
         .expect("a merged server row");
 

@@ -32,9 +32,54 @@ struct EditorUndoStep: Sendable, Equatable {
     /// Replayed after `forward`: the props an inserted block carries, which
     /// `InsertBlock` alone cannot write.
     var forwardProps: [BlockEdit] = []
+    /// Replayed after `forwardOverText`, in order: the nodes a menu or a
+    /// drop put in, which `ReplaceText` cannot. Each goes where the block
+    /// holds its anchor then (`NoteEditorViewModel.place`), not at the
+    /// pane's offsets: another pane may have typed before it since (#4794).
+    var forwardNodes: [PlacedNode] = []
+    /// Replayed after `forward`, before `forwardNodes`: the nodes that
+    /// replaced text the typing wrote, a typed `[[link]]` or a `#tag`. Each
+    /// goes over its literal where the block holds it once `forward` lands
+    /// (`NoteEditorViewModel.insert(_:over:typedLength:)`), not at its
+    /// recorded offsets: another pane may have typed before it since
+    /// (#4377).
+    var forwardOverText: [TextNode] = []
+    /// `forward`'s text in core bytes, which each `TextNode.start` counts in.
+    var forwardLength = 0
+    /// Where a redo leaves the caret, in UTF-16 of the block it draws: after
+    /// the nodes it put back. The redraw's own guess lands before a node
+    /// put back beside an equal one.
+    var caret: Int?
     /// Replayed after `backward`: a step that changed two blocks, such as a
     /// merge, puts both back.
     var backwardAfter: [BlockEdit] = []
+    /// A date chip rewritten under its anchor (#4762). Undo and redo run
+    /// this instead of `backward` and `forward`, which hold the node writes
+    /// at the pane's offsets: each finds the chip where the block holds it
+    /// then (`NoteEditorViewModel.rewriteDate`).
+    var date: DateRewrite?
+
+    struct DateRewrite: Sendable, Equatable {
+        let blockId: String
+        let chip: DateChipAnchor
+        let from: DateMentionValue
+        let to: DateMentionValue
+    }
+
+    /// An inline node over text: `edit` replaced `literal`, which starts
+    /// `start` core bytes into the text the typing wrote.
+    struct TextNode: Sendable, Equatable {
+        let start: Int
+        let literal: String
+        let edit: BlockEdit
+    }
+
+    /// An inline node a pane put in at `anchor`: `edit` is its
+    /// `insertInline` at the pane's own offsets (`anchor.paneRange`).
+    struct PlacedNode: Sendable, Equatable {
+        let anchor: NodeAnchor
+        let edit: BlockEdit
+    }
 }
 
 /// This session's undo history.
@@ -85,6 +130,14 @@ final class EditorUndoStack {
         return step
     }
 
+    /// Puts a step on the redo stack without doing it: undone typing that the
+    /// next undo would otherwise strand (`EditorSession.undo`). The typing
+    /// was a new edit, so the steps redo held from before it go, as
+    /// `record` drops them.
+    func keepRedo(_ step: EditorUndoStep) {
+        redoable = [step]
+    }
+
     func popRedo() -> EditorUndoStep? {
         guard let step = redoable.popLast() else { return nil }
         undoable.append(step)
@@ -102,27 +155,62 @@ final class EditorUndoStack {
 }
 
 extension EditorUndoStep {
-    /// The step for a text change, which is the common one.
+    /// The step for a text change, which is the common one: `ReplaceText`
+    /// both ways, each carrying the text it starts from as its `base`.
     ///
-    /// Both directions are a `SetText`, which makes text undo exact rather
-    /// than approximate.
+    /// The core then applies only this step's own change to the live block,
+    /// in place, keeping marks and inline nodes. Another pane on the note
+    /// (#4377) or a peer may have typed in the block since: undo takes back
+    /// `next` to `previous` and redo puts it again, and their typing stays.
     static func text(blockId: String, from previous: String, to next: String) -> EditorUndoStep {
         EditorUndoStep(
             name: "Typing",
-            backward: .setText(blockId: blockId, text: previous),
-            forward: .setText(blockId: blockId, text: next)
+            backward: .replaceText(blockId: blockId, text: previous, base: next),
+            forward: .replaceText(blockId: blockId, text: next, base: previous)
         )
     }
 
-    /// The step for a text change in a block holding marks or inline nodes:
-    /// `ReplaceText` both ways, so undo edits in place and keeps them.
-    static func replaceText(blockId: String, from previous: String, to next: String)
-        -> EditorUndoStep
-    {
-        EditorUndoStep(
+    /// Typing whose commit then put inline nodes in: a typed `[[link]]`, a
+    /// menu's or a drop's link or date. `next` is the block as the step left
+    /// it, each node a U+FFFC, then with each node in turn back as text
+    /// (`BlockText.placingNodes`): undo walks it, so each diff takes back
+    /// exactly its node and never one beside it, and ends at `previous`.
+    /// A U+FFFC in `ReplaceText` makes no node, so redo writes the
+    /// typing, `typed` (`typedLength` core bytes), then puts `overText` back
+    /// over their literals and `nodes` at their anchors, as they went in.
+    static func text(
+        blockId: String, from previous: String, typed: String, typedLength: Int,
+        overText: [TextNode], nodes: [PlacedNode], to next: [String], caret: Int
+    ) -> EditorUndoStep {
+        let texts = next + [previous]
+        let back = zip(texts, texts.dropFirst()).map { BlockEdit.replaceText(blockId: blockId, text: $1, base: $0) }
+        return EditorUndoStep(
             name: "Typing",
-            backward: .replaceText(blockId: blockId, text: previous),
-            forward: .replaceText(blockId: blockId, text: next)
+            backward: back[0],
+            forward: .replaceText(blockId: blockId, text: typed, base: previous),
+            forwardNodes: nodes,
+            forwardOverText: overText,
+            forwardLength: typedLength,
+            caret: caret,
+            backwardAfter: Array(back.dropFirst())
+        )
+    }
+
+    /// A date chip's sheet edit: undo puts `from` back under the chip's
+    /// anchor, redo `to`.
+    static func date(
+        blockId: String, chip: DateChipAnchor, from previous: DateMentionValue, to next: DateMentionValue
+    ) -> EditorUndoStep {
+        let range = chip.place.paneRange
+        let node = { (value: DateMentionValue) in
+            BlockEdit.insertInline(
+                blockId: blockId, start: UInt32(range.lowerBound), end: UInt32(range.upperBound),
+                kind: "dateMention", text: "", attrs: value.attrs(anchorId: chip.anchorId)
+            )
+        }
+        return EditorUndoStep(
+            name: "Date", backward: node(previous), forward: node(next),
+            date: DateRewrite(blockId: blockId, chip: chip, from: previous, to: next)
         )
     }
 

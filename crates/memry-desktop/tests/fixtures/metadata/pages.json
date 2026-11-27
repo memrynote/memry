@@ -1,0 +1,297 @@
+[
+  {
+    "file": "news-opengraph.html",
+    "url": "https://www.example-news.com/world/2024/03/04/summit-ends"
+  },
+  {
+    "file": "news-jsonld-article.html",
+    "url": "https://news.example.org/tech/new-chip"
+  },
+  {
+    "file": "news-jsonld-graph.html",
+    "url": "https://www.example.co.uk/politics/budget-2024"
+  },
+  {
+    "file": "blog-wordpress.html",
+    "url": "https://blog.example.net/2022/07/hello-world/"
+  },
+  {
+    "file": "blog-medium.html",
+    "url": "https://medium.com/@kim/writing-rust-for-fun-3f2a1b"
+  },
+  {
+    "file": "youtube.html",
+    "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+  },
+  {
+    "file": "github-repo.html",
+    "url": "https://github.com/rust-lang/rust"
+  },
+  {
+    "file": "reddit-old.html",
+    "url": "https://www.reddit.com/r/rust/comments/abc123/what_are_you_working_on/"
+  },
+  {
+    "file": "reddit-new.html",
+    "url": "https://www.reddit.com/r/programming/comments/xyz789/a_story/"
+  },
+  {
+    "file": "twitter-x.html",
+    "url": "https://x.com/rustlang/status/1765000000000000000"
+  },
+  {
+    "file": "wikipedia.html",
+    "url": "https://en.wikipedia.org/wiki/Ferris_wheel"
+  },
+  {
+    "file": "forum-discourse.html",
+    "url": "https://forum.example.dev/t/how-to-borrow/1234"
+  },
+  {
+    "file": "forum-phpbb.html",
+    "url": "https://www.example-board.org/viewtopic.php?t=42"
+  },
+  {
+    "file": "jsonld-only.html",
+    "url": "https://recipes.example.com/r/lentil-soup"
+  },
+  {
+    "file": "relative-urls.html",
+    "url": "https://www.example.com/blog/posts/relative-paths.html"
+  },
+  {
+    "file": "protocol-relative.html",
+    "url": "https://shop.example.com/products/kettle"
+  },
+  {
+    "file": "jsonld-raw-newline.html",
+    "url": "https://www.example.org/news/flood"
+  },
+  {
+    "file": "jsonld-cdata.html",
+    "url": "https://www.example.org/news/cdata"
+  },
+  {
+    "file": "jsonld-trailing-comma.html",
+    "url": "https://www.example.org/news/trailing"
+  },
+  {
+    "file": "jsonld-entities.html",
+    "url": "https://www.example.org/news/entities"
+  },
+  {
+    "file": "jsonld-graph-not-array.html",
+    "url": "https://www.example.org/news/graph-object"
+  },
+  {
+    "file": "jsonld-top-level-array.html",
+    "url": "https://www.example.org/news/array"
+  },
+  {
+    "file": "bot-wall-cloudflare.html",
+    "url": "https://eksisozluk.com/entry/1"
+  },
+  {
+    "file": "bot-wall-access-denied.html",
+    "url": "https://www.example-shop.com/item/9"
+  },
+  {
+    "file": "noscript-image.html",
+    "url": "https://www.example.com/lazy"
+  },
+  {
+    "file": "template-content.html",
+    "url": "https://www.example.com/template"
+  },
+  {
+    "file": "img-alt-author.html",
+    "url": "https://www.example.com/profile"
+  },
+  {
+    "file": "microdata.html",
+    "url": "https://www.example.com/microdata"
+  },
+  {
+    "file": "meta-date-name.html",
+    "url": "https://www.example.com/meta-date"
+  },
+  {
+    "file": "byline-date-text.html",
+    "url": "https://www.example.com/byline-date"
+  },
+  {
+    "file": "class-date-little-endian.html",
+    "url": "https://www.example.com/class-date"
+  },
+  {
+    "file": "date-slash.html",
+    "url": "https://www.example.com/slash"
+  },
+  {
+    "file": "date-year-only.html",
+    "url": "https://www.example.com/year"
+  },
+  {
+    "file": "date-modified-jsonld.html",
+    "url": "https://www.example.com/modified"
+  },
+  {
+    "file": "date-time-element.html",
+    "url": "https://www.example.com/time-el"
+  },
+  {
+    "file": "date-with-zone.html",
+    "url": "https://www.example.com/zone"
+  },
+  {
+    "file": "title-post-title.html",
+    "url": "https://www.example.com/post-title"
+  },
+  {
+    "file": "title-h1-link.html",
+    "url": "https://www.example.com/h1-link"
+  },
+  {
+    "file": "title-jsonld-headline.html",
+    "url": "https://www.example.com/headline"
+  },
+  {
+    "file": "title-whitespace.html",
+    "url": "https://www.example.com/ws"
+  },
+  {
+    "file": "title-svg-only.html",
+    "url": "https://www.example.com/svg"
+  },
+  {
+    "file": "title-smartquotes.html",
+    "url": "https://www.example.com/quotes"
+  },
+  {
+    "file": "publisher-application-name.html",
+    "url": "https://app.example.io/dashboard"
+  },
+  {
+    "file": "publisher-title-separator.html",
+    "url": "https://www.example.com/sep"
+  },
+  {
+    "file": "publisher-logo-class.html",
+    "url": "https://www.example.com/logo-class"
+  },
+  {
+    "file": "publisher-logo-img-alt.html",
+    "url": "https://www.example.com/logo-img"
+  },
+  {
+    "file": "author-rel.html",
+    "url": "https://www.example.com/rel-author"
+  },
+  {
+    "file": "author-href.html",
+    "url": "https://www.example.com/href-author"
+  },
+  {
+    "file": "author-at-handle.html",
+    "url": "https://www.example.com/handle"
+  },
+  {
+    "file": "author-url-rejected.html",
+    "url": "https://www.example.com/url-author"
+  },
+  {
+    "file": "author-too-long.html",
+    "url": "https://www.example.com/long-author"
+  },
+  {
+    "file": "author-screenname.html",
+    "url": "https://www.example.com/screenname"
+  },
+  {
+    "file": "description-location.html",
+    "url": "https://www.example.com/location"
+  },
+  {
+    "file": "description-quotes.html",
+    "url": "https://www.example.com/desc-quotes"
+  },
+  {
+    "file": "description-article-body.html",
+    "url": "https://www.example.com/body"
+  },
+  {
+    "file": "url-text-fragment.html",
+    "url": "https://www.example.com/frag"
+  },
+  {
+    "file": "url-hreflang.html",
+    "url": "https://www.example.com/de/seite"
+  },
+  {
+    "file": "url-encoded-path.html",
+    "url": "https://www.example.com/enc"
+  },
+  {
+    "file": "logo-img-itemprop.html",
+    "url": "https://www.example.com/logo-img-itemprop"
+  },
+  {
+    "file": "logo-not-square.html",
+    "url": "https://www.example.com/logo-wide"
+  },
+  {
+    "file": "image-empty-data-uri.html",
+    "url": "https://www.example.com/data-uri"
+  },
+  {
+    "file": "image-video-rejected.html",
+    "url": "https://www.example.com/video"
+  },
+  {
+    "file": "image-article-img.html",
+    "url": "https://www.example.com/article-img"
+  },
+  {
+    "file": "empty-page.html",
+    "url": "https://www.example.com/empty"
+  },
+  {
+    "file": "invalid-page-url.html",
+    "url": "http://intranet/wiki/page"
+  },
+  {
+    "file": "idn-host.html",
+    "url": "https://www.bücher.de/buch/123"
+  },
+  {
+    "file": "localhost-page.html",
+    "url": "http://localhost:8080/notes/1"
+  },
+  {
+    "file": "mixed-case-attributes.html",
+    "url": "https://www.example.com/case"
+  },
+  {
+    "file": "charset-windows-1252.html",
+    "url": "https://www.example.fr/article",
+    "contentType": "text/html; charset=windows-1252"
+  },
+  {
+    "file": "charset-iso-8859-1.html",
+    "url": "https://www.example.de/seite",
+    "contentType": "text/html; charset=ISO-8859-1"
+  },
+  {
+    "file": "charset-shift-jis.html",
+    "url": "https://www.example.jp/news/1",
+    "contentType": "text/html; charset=Shift_JIS"
+  },
+  {
+    "file": "image-script-scheme.html",
+    "url": "https://www.example.com/scheme"
+  },
+  {
+    "file": "image-data-not-image.html",
+    "url": "https://www.example.com/data"
+  }
+]

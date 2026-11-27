@@ -5,7 +5,8 @@ import type * as Bindings from '../../../../generated/bindings'
 import { AgentProvidersSection } from './agent-providers-section'
 
 const localProvider = vi.hoisted(() => ({
-  agentGetLocalProviderSettings: vi.fn()
+  agentGetLocalProviderSettings: vi.fn(),
+  agentGetToolGrants: vi.fn()
 }))
 vi.mock('../../../../generated/bindings', async (importOriginal) => {
   const actual = await importOriginal<typeof Bindings>()
@@ -22,12 +23,12 @@ describe('AgentProvidersSection permissions', () => {
       allowNonLoopback: false,
       thinking: 'default'
     })
+    localProvider.agentGetToolGrants.mockResolvedValue({ tools: [] })
     window.api.agent = {
       getPreferences: vi
         .fn()
         .mockResolvedValue({ accessMode: 'vault_only', toolApprovalMode: 'always_accept' }),
-      getBackendStatuses: vi.fn().mockResolvedValue({}),
-      getToolGrants: vi.fn().mockResolvedValue({ tools: [] })
+      getBackendStatuses: vi.fn().mockResolvedValue({})
     } as unknown as typeof window.api.agent
   })
 

@@ -3,8 +3,12 @@ import { motion } from 'motion/react'
 import { Check, Minus, Plus, X } from 'lucide-react'
 import { Container } from '@/components/layout/Container'
 import { PageHead } from '@/components/shared/PageHead'
+import { RelatedLinks } from '@/components/shared/RelatedLinks'
 import { Button } from '@/components/ui/button'
+import { NewsletterSignup } from '@/components/site/NewsletterSignup'
 import { ALTERNATIVES, type AltCell, type AlternativeConfig } from '@/lib/alternatives'
+import { trackLandingEvent } from '@/lib/analytics'
+import { osLabel, platformForOS, useDetectedOS } from '@/lib/download'
 
 const REVEAL = {
   initial: { opacity: 0, y: 24 },
@@ -47,6 +51,22 @@ function MobileValue({ value }: { value: AltCell }) {
   )
 }
 
+/** Names the visitor's OS like the home hero does, and is counted per page and position:
+ *  comparison pages bring the best-converting search traffic. */
+function DownloadButton({ location }: { location: string }) {
+  const os = useDetectedOS()
+  return (
+    <Button asChild size="lg">
+      <Link
+        to="/download"
+        onClick={() => trackLandingEvent('landing_nav_click', `download:page:${location}`)}
+      >
+        {platformForOS(os) ? `Download for ${osLabel(os)}` : 'Download memrynote'}
+      </Link>
+    </Button>
+  )
+}
+
 function AlternativePage({ config }: { config: AlternativeConfig }) {
   return (
     <>
@@ -64,13 +84,15 @@ function AlternativePage({ config }: { config: AlternativeConfig }) {
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-relaxed text-muted">{config.intro}</p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Button asChild size="lg">
-                <Link to="/download">Download memrynote</Link>
-              </Button>
+              <DownloadButton location={`${config.pageKey}-hero`} />
               <Button asChild size="lg" variant="secondary">
                 <Link to="/pricing">See pricing</Link>
               </Button>
+              <Button asChild size="lg" variant="secondary">
+                <Link to="/ios-beta">Join the iPhone beta</Link>
+              </Button>
             </div>
+            <p className="mt-3 text-[13px] text-muted">Free on your device. No account needed.</p>
           </motion.div>
         </Container>
       </section>
@@ -165,6 +187,16 @@ function AlternativePage({ config }: { config: AlternativeConfig }) {
         </Container>
       </section>
 
+      {config.related && (
+        <section className="py-16">
+          <Container size="md">
+            <motion.div {...REVEAL} className="mx-auto max-w-3xl">
+              <RelatedLinks title="Keep reading" links={config.related} />
+            </motion.div>
+          </Container>
+        </section>
+      )}
+
       <section className="py-16">
         <Container size="md">
           <motion.h2 {...REVEAL} className="display-section text-ink">
@@ -240,13 +272,12 @@ function AlternativePage({ config }: { config: AlternativeConfig }) {
               at heart.
             </p>
             <div className="mt-8 flex flex-wrap justify-center gap-3">
-              <Button asChild size="lg">
-                <Link to="/download">Download memrynote</Link>
-              </Button>
+              <DownloadButton location={`${config.pageKey}-final`} />
               <Button asChild size="lg" variant="secondary">
                 <Link to={`/features`}>Explore features</Link>
               </Button>
             </div>
+            <NewsletterSignup location={`${config.pageKey}-final`} />
           </motion.div>
         </Container>
       </section>

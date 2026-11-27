@@ -208,6 +208,7 @@ describe('SettingsSyncManager', () => {
 
       // #when — encrypt
       const { pushItem } = encryptItemForPush({
+        vaultId: null,
         id: 'synced_settings',
         type: 'settings',
         operation: 'update',

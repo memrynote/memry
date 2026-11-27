@@ -40,8 +40,19 @@ runs:
     # build; the zip is additionally named per platform+arch, so a wrongly restored
     # entry would read as a miss rather than as the wrong binary. No restore-keys:
     # a near-miss prefix has nothing usable in it.
-    - name: Restore the Electron binary cache
+    # One saver per ref family: only runs on feat/tauri-v2 or main save (actions/cache, in its post
+    # step); PRs, merge groups and other refs restore their copy and write nothing, so per-ref copies
+    # of the ~125 MB zip no longer fill the repo's 10 GB cache cap. The two steps are exclusive.
+    - name: Restore and save the Electron binary cache
+      if: github.ref == 'refs/heads/feat/tauri-v2' || github.ref == 'refs/heads/main'
       uses: actions/cache@v4
+      with:
+        path: ${{ runner.temp }}/electron-binary-cache
+        key: electron-binary-${{ runner.os }}-${{ runner.arch }}-${{ steps.electron.outputs.version }}
+
+    - name: Restore the Electron binary cache
+      if: github.ref != 'refs/heads/feat/tauri-v2' && github.ref != 'refs/heads/main'
+      uses: actions/cache/restore@v4
       with:
         path: ${{ runner.temp }}/electron-binary-cache
         key: electron-binary-${{ runner.os }}-${{ runner.arch }}-${{ steps.electron.outputs.version }}

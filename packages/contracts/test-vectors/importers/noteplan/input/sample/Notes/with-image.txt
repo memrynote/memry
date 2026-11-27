@@ -1,0 +1,4 @@
+# Note With Image
+See the diagram below.
+
+![gopher](gopher.png)

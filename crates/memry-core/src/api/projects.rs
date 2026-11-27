@@ -12,6 +12,8 @@ use crate::domain::projects::{
 };
 use crate::domain::saved_filters::{self, NewSavedFilter};
 use crate::domain::task_settings;
+use crate::storage::Db;
+use crate::sync::engine::PassSeed;
 
 /// One status in a project editor.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
@@ -131,9 +133,8 @@ impl Tasks {
     /// Seeds the Inbox when the vault has none, so a new task always has a
     /// project to land in. Returns whether it wrote one.
     pub fn ensure_inbox(&self) -> Result<bool, StorageError> {
-        let device = self.device_id.clone();
         self.db
-            .call_blocking(move |conn| projects::ensure_inbox(conn, &device, now_ms()))
+            .call_blocking(move |conn| projects::ensure_inbox(conn, now_ms()))
     }
 
     /// Creates a project and returns its id.
@@ -166,7 +167,9 @@ impl Tasks {
                 icon: Some(draft.icon.as_deref()),
                 statuses: statuses.as_deref(),
             };
-            projects::update(conn, &id, &edit, &device, now_ms())?.acknowledge();
+            if let Some(written) = projects::update(conn, &id, &edit, &device, now_ms())? {
+                written.acknowledge();
+            }
             Ok(())
         })
     }
@@ -174,7 +177,9 @@ impl Tasks {
     pub fn set_project_archived(&self, id: String, archived: bool) -> Result<(), StorageError> {
         let device = self.device_id.clone();
         self.db.call_blocking(move |conn| {
-            projects::set_archived(conn, &id, archived, &device, now_ms())?.acknowledge();
+            if let Some(written) = projects::set_archived(conn, &id, archived, &device, now_ms())? {
+                written.acknowledge();
+            }
             Ok(())
         })
     }
@@ -220,8 +225,11 @@ impl Tasks {
     ) -> Result<(), StorageError> {
         let device = self.device_id.clone();
         self.db.call_blocking(move |conn| {
-            projects::set_home_note(conn, &id, note_id.as_deref(), &device, now_ms())?
-                .acknowledge();
+            if let Some(written) =
+                projects::set_home_note(conn, &id, note_id.as_deref(), &device, now_ms())?
+            {
+                written.acknowledge();
+            }
             Ok(())
         })
     }
@@ -245,15 +253,16 @@ impl Tasks {
     ) -> Result<(), StorageError> {
         let device = self.device_id.clone();
         self.db.call_blocking(move |conn| {
-            projects::link(
+            if let Some(written) = projects::link(
                 conn,
                 &id,
                 link_type(&item_type)?,
                 &item_id,
                 &device,
                 now_ms(),
-            )?
-            .acknowledge();
+            )? {
+                written.acknowledge();
+            }
             Ok(())
         })
     }
@@ -266,15 +275,16 @@ impl Tasks {
     ) -> Result<(), StorageError> {
         let device = self.device_id.clone();
         self.db.call_blocking(move |conn| {
-            projects::unlink(
+            if let Some(written) = projects::unlink(
                 conn,
                 &id,
                 link_type(&item_type)?,
                 &item_id,
                 &device,
                 now_ms(),
-            )?
-            .acknowledge();
+            )? {
+                written.acknowledge();
+            }
             Ok(())
         })
     }
@@ -287,8 +297,11 @@ impl Tasks {
     ) -> Result<(), StorageError> {
         let device = self.device_id.clone();
         self.db.call_blocking(move |conn| {
-            projects::set_link_pinned(conn, &id, &item_id, pinned, &device, now_ms())?
-                .acknowledge();
+            if let Some(written) =
+                projects::set_link_pinned(conn, &id, &item_id, pinned, &device, now_ms())?
+            {
+                written.acknowledge();
+            }
             Ok(())
         })
     }
@@ -459,5 +472,31 @@ impl Tasks {
     pub fn set_nested_subtasks(&self, on: bool) -> Result<TaskSettingsItem, StorageError> {
         self.db
             .call_blocking(move |conn| Ok(task_settings::set_nested_subtasks(conn, on)?.into()))
+    }
+}
+
+/// The unclocked Inbox seeded by a sync pass ([`projects::seed_unclocked`]), as desktop's full
+/// sync seeds its unclocked projects between its pull and its push. Desktop's sync driver
+/// registers it, and iOS's [`crate::api::sync::VaultSync::sync_now`] runs it, both through
+/// [`crate::sync::engine::seed_at_head`].
+pub(crate) struct ProjectSeed {
+    db: Db,
+    device_id: String,
+}
+
+impl ProjectSeed {
+    pub(crate) fn over(db: Db, device_id: String) -> std::sync::Arc<Self> {
+        std::sync::Arc::new(Self { db, device_id })
+    }
+}
+
+#[async_trait::async_trait]
+impl PassSeed for ProjectSeed {
+    async fn seed(&self) -> Result<(), StorageError> {
+        let device_id = self.device_id.clone();
+        self.db
+            .call(move |conn| projects::seed_unclocked(conn, &device_id, now_ms()))
+            .await?;
+        Ok(())
     }
 }

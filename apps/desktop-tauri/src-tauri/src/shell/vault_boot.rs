@@ -45,8 +45,7 @@ use crate::shell::{dialogs, services};
 use crate::shutdown::ShutdownService;
 use crate::startup::{self, Stage};
 
-/// The registry file, beside the rest of the app data (`memry-config.json` of Electron).
-pub const CONFIG_FILE: &str = "memry-config.json";
+pub use memry_desktop::registry::CONFIG_FILE;
 
 /// The vault the window is created for, read by `create_main_window`.
 #[derive(Default)]
@@ -166,7 +165,7 @@ fn register_vault_watcher(app: &AppHandle<Wry>, session: &Session) {
     );
     index.register(session);
     crate::ml_worker::register_embedding_lane(app, session, &index, &tier);
-    app.manage(index);
+    app.manage(index.clone());
     register_flushes(app, &tier, session);
     forward_writeback_failures(app.clone(), tier.subscribe_failures());
     forward_activity_changes(app.clone(), tier.activity().subscribe());
@@ -178,6 +177,7 @@ fn register_vault_watcher(app: &AppHandle<Wry>, session: &Session) {
     let schemas_changed = app.clone();
     memry_desktop::tags::schema::rename::register_resume(
         &notes,
+        &index,
         session,
         Arc::new(move || broadcast(&schemas_changed, NoteTagsChangedEvent)),
     );
@@ -278,6 +278,19 @@ fn register_large_files(app: &AppHandle<Wry>, session: &Session) {
     let files = LargeFiles::new();
     files.register(session);
     app.manage(files);
+}
+
+/// The Inbox seeded at every open, as Electron's `ensureDefaultTaskProject` (Step 21).
+fn register_task_defaults(app: &AppHandle<Wry>, session: &Session) {
+    // Managed by the `Handlers` stage, which runs before this one.
+    let Some(store) = app.try_state::<Arc<DeviceIdentityStore>>() else {
+        tracing::error!(
+            scope = "tasks",
+            "no device identity store: vaults open without an Inbox seed"
+        );
+        return;
+    };
+    memry_desktop::tasks::defaults::register(session, store.inner().clone());
 }
 
 /// The chunked attachment uploads, ended with the vault and swept at its next open (14f-2).
@@ -386,8 +399,10 @@ fn open_last_vault(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     register_editor_host(app, &session);
     register_large_files(app, &session);
     register_uploads(app, &session);
+    register_task_defaults(app, &session);
     crate::ml_worker::register(app, &session);
     crate::reminders::register(app, &session);
+    crate::commands::calendar_ics::register(app, &session);
     // Subscribed before the first open, so the launch's own events reach the renderer's
     // listeners; the renderer reads `status()` once after it subscribes.
     forward_events(app.clone(), session.subscribe());

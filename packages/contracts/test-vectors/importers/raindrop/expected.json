@@ -1,0 +1,1054 @@
+{
+  "source": "raindrop",
+  "cases": [
+    {
+      "name": "export",
+      "sources": [
+        "export.csv"
+      ],
+      "timeline": [
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": "",
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.raindrop.importing",
+            "message": "Importing Raindrop bookmarks…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.raindrop.importing",
+            "message": "Importing Raindrop bookmarks…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.raindrop.importing",
+            "message": "Importing Raindrop bookmarks…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 0,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "saveBookmark",
+          "title": "Rust Book",
+          "content": "Read chapters 1-3, then \"ownership\"\n\nThe Rust Programming Language, 2nd ed.",
+          "sourceUrl": "https://doc.rust-lang.org/book/",
+          "createdAt": "2024-05-01T10:00:00.000Z",
+          "tags": [
+            "rust",
+            "programming",
+            "Reading"
+          ],
+          "metadata": {
+            "url": "https://doc.rust-lang.org/book/",
+            "excerpt": "The Rust Programming Language, 2nd ed.",
+            "note": "Read chapters 1-3, then \"ownership\"",
+            "folder": "Reading",
+            "favorite": true,
+            "heroImage": "https://cover.example/rust.png",
+            "highlights": "Ownership is the key\r\nBorrowing follows"
+          }
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.raindrop.importing",
+            "message": "Importing Raindrop bookmarks…"
+          },
+          "imported": 1,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 0,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.raindrop.importing",
+            "message": "Importing Raindrop bookmarks…"
+          },
+          "imported": 1,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 1,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "saveBookmark",
+          "title": "https://example.com/no-title",
+          "content": null,
+          "sourceUrl": "https://example.com/no-title",
+          "createdAt": "2024-05-02T08:30:00.000Z",
+          "tags": [],
+          "metadata": {
+            "url": "https://example.com/no-title",
+            "excerpt": "",
+            "note": "",
+            "folder": "Unsorted",
+            "favorite": false,
+            "heroImage": "",
+            "highlights": ""
+          }
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.raindrop.importing",
+            "message": "Importing Raindrop bookmarks…"
+          },
+          "imported": 2,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 1,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.raindrop.importing",
+            "message": "Importing Raindrop bookmarks…"
+          },
+          "imported": 2,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 2,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "saveBookmark",
+          "title": "Duplicated tags",
+          "content": "An excerpt only",
+          "sourceUrl": "https://example.com/dupes",
+          "createdAt": "2024-05-03T00:00:00Z",
+          "tags": [
+            "reading",
+            "news"
+          ],
+          "metadata": {
+            "url": "https://example.com/dupes",
+            "excerpt": "An excerpt only",
+            "note": "",
+            "folder": "Reading",
+            "favorite": false,
+            "heroImage": "",
+            "highlights": ""
+          }
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.raindrop.importing",
+            "message": "Importing Raindrop bookmarks…"
+          },
+          "imported": 3,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 2,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.raindrop.importing",
+            "message": "Importing Raindrop bookmarks…"
+          },
+          "imported": 3,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 3,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "saveBookmark",
+          "title": "Bad date",
+          "content": null,
+          "sourceUrl": "ftp://files.example/x",
+          "createdAt": "<now>",
+          "tags": [
+            "Archive"
+          ],
+          "metadata": {
+            "url": "ftp://files.example/x",
+            "excerpt": "",
+            "note": "",
+            "folder": "Archive",
+            "favorite": false,
+            "heroImage": "",
+            "highlights": ""
+          }
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.raindrop.importing",
+            "message": "Importing Raindrop bookmarks…"
+          },
+          "imported": 4,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 3,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.raindrop.importing",
+            "message": "Importing Raindrop bookmarks…"
+          },
+          "imported": 4,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 4,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "saveBookmark",
+          "title": "Date without zone",
+          "content": "spaced note",
+          "sourceUrl": "https://example.com/spaced",
+          "createdAt": "2024-05-05T09:15",
+          "tags": [
+            "tag a",
+            "tag b",
+            "Work"
+          ],
+          "metadata": {
+            "url": "https://example.com/spaced",
+            "excerpt": "",
+            "note": "spaced note",
+            "folder": "Work",
+            "favorite": true,
+            "heroImage": "",
+            "highlights": ""
+          }
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.raindrop.importing",
+            "message": "Importing Raindrop bookmarks…"
+          },
+          "imported": 5,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 4,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.raindrop.importing",
+            "message": "Importing Raindrop bookmarks…"
+          },
+          "imported": 5,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 5,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "saveBookmark",
+          "title": "Invalid month",
+          "content": null,
+          "sourceUrl": "https://example.com/month",
+          "createdAt": "<now>",
+          "tags": [],
+          "metadata": {
+            "url": "https://example.com/month",
+            "excerpt": "",
+            "note": "",
+            "folder": "",
+            "favorite": false,
+            "heroImage": "",
+            "highlights": ""
+          }
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.raindrop.importing",
+            "message": "Importing Raindrop bookmarks…"
+          },
+          "imported": 6,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 5,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.raindrop.importing",
+            "message": "Importing Raindrop bookmarks…"
+          },
+          "imported": 6,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 6,
+          "total": 6,
+          "done": false
+        }
+      ],
+      "summary": {
+        "imported": 6,
+        "attachments": 0,
+        "skipped": 1,
+        "failed": []
+      }
+    },
+    {
+      "name": "many",
+      "sources": [
+        "edge.csv",
+        "bad-header.csv",
+        "empty.csv",
+        "clean.csv"
+      ],
+      "timeline": [
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": "",
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.raindrop.importing",
+            "message": "Importing Raindrop bookmarks…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.raindrop.importing",
+            "message": "Importing Raindrop bookmarks…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.raindrop.importing",
+            "message": "Importing Raindrop bookmarks…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 0,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "saveBookmark",
+          "title": "Lone CR",
+          "content": "kept\rinside",
+          "sourceUrl": "https://a.com",
+          "createdAt": "<now>",
+          "tags": [
+            "i̇stanbul"
+          ],
+          "metadata": {
+            "url": "https://a.com",
+            "excerpt": "",
+            "note": "kept\rinside",
+            "folder": "",
+            "favorite": false,
+            "heroImage": "",
+            "highlights": ""
+          }
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.raindrop.importing",
+            "message": "Importing Raindrop bookmarks…"
+          },
+          "imported": 1,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 0,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.raindrop.importing",
+            "message": "Importing Raindrop bookmarks…"
+          },
+          "imported": 1,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 1,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "saveBookmark",
+          "title": "midquote",
+          "content": null,
+          "sourceUrl": "https://q.example",
+          "createdAt": "<now>",
+          "tags": [],
+          "metadata": {
+            "url": "https://q.example",
+            "excerpt": "",
+            "note": "",
+            "folder": "",
+            "favorite": false,
+            "heroImage": "",
+            "highlights": ""
+          }
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.raindrop.importing",
+            "message": "Importing Raindrop bookmarks…"
+          },
+          "imported": 2,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 1,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.raindrop.importing",
+            "message": "Importing Raindrop bookmarks…"
+          },
+          "imported": 2,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 2,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "saveBookmark",
+          "title": "Escaped",
+          "content": "say \"hi\"",
+          "sourceUrl": "https://e.example",
+          "createdAt": "<now>",
+          "tags": [
+            "x"
+          ],
+          "metadata": {
+            "url": "https://e.example",
+            "excerpt": "",
+            "note": "say \"hi\"",
+            "folder": "unsorted",
+            "favorite": false,
+            "heroImage": "",
+            "highlights": ""
+          }
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.raindrop.importing",
+            "message": "Importing Raindrop bookmarks…"
+          },
+          "imported": 3,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 2,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.raindrop.importing",
+            "message": "Importing Raindrop bookmarks…"
+          },
+          "imported": 3,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 3,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "saveBookmark",
+          "title": "Last",
+          "content": null,
+          "sourceUrl": "https://last.example",
+          "createdAt": "<now>",
+          "tags": [
+            "Ünsorted"
+          ],
+          "metadata": {
+            "url": "https://last.example",
+            "excerpt": "",
+            "note": "",
+            "folder": "Ünsorted",
+            "favorite": false,
+            "heroImage": "",
+            "highlights": ""
+          }
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.raindrop.importing",
+            "message": "Importing Raindrop bookmarks…"
+          },
+          "imported": 4,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 3,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.raindrop.importing",
+            "message": "Importing Raindrop bookmarks…"
+          },
+          "imported": 4,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 4,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.raindrop.importing",
+            "message": "Importing Raindrop bookmarks…"
+          },
+          "imported": 4,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 1,
+          "completed": 4,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.raindrop.importing",
+            "message": "Importing Raindrop bookmarks…"
+          },
+          "imported": 4,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 2,
+          "completed": 4,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "saveBookmark",
+          "title": "First",
+          "content": null,
+          "sourceUrl": "https://one.example",
+          "createdAt": "2025-01-02T03:04:05.000Z",
+          "tags": [
+            "news",
+            "Reading"
+          ],
+          "metadata": {
+            "url": "https://one.example",
+            "excerpt": "",
+            "note": "",
+            "folder": "Reading",
+            "favorite": false,
+            "heroImage": "",
+            "highlights": ""
+          }
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.raindrop.importing",
+            "message": "Importing Raindrop bookmarks…"
+          },
+          "imported": 5,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 2,
+          "completed": 4,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.raindrop.importing",
+            "message": "Importing Raindrop bookmarks…"
+          },
+          "imported": 5,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 2,
+          "completed": 5,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "saveBookmark",
+          "title": "Second",
+          "content": "a note",
+          "sourceUrl": "https://two.example",
+          "createdAt": "2025-01-03T00:00:00.000Z",
+          "tags": [],
+          "metadata": {
+            "url": "https://two.example",
+            "excerpt": "",
+            "note": "a note",
+            "folder": "Unsorted",
+            "favorite": true,
+            "heroImage": "",
+            "highlights": ""
+          }
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.raindrop.importing",
+            "message": "Importing Raindrop bookmarks…"
+          },
+          "imported": 6,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 2,
+          "completed": 5,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.raindrop.importing",
+            "message": "Importing Raindrop bookmarks…"
+          },
+          "imported": 6,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 2,
+          "completed": 6,
+          "total": 6,
+          "done": false
+        }
+      ],
+      "summary": {
+        "imported": 6,
+        "attachments": 0,
+        "skipped": 1,
+        "failed": [
+          {
+            "item": "bad-header.csv",
+            "error": "Raindrop CSV header row (\"url\" column) not found"
+          },
+          {
+            "item": "empty.csv",
+            "error": "Raindrop CSV is empty"
+          }
+        ]
+      }
+    },
+    {
+      "name": "preview",
+      "sources": [
+        "clean.csv",
+        "bad-header.csv",
+        "empty.csv"
+      ],
+      "preview": {
+        "groups": [
+          {
+            "label": "clean.csv",
+            "counts": [
+              {
+                "labelKey": "import.stats.bookmarks",
+                "value": 2
+              },
+              {
+                "labelKey": "import.stats.withTags",
+                "value": 1
+              },
+              {
+                "labelKey": "import.stats.skipped",
+                "value": 0
+              }
+            ],
+            "sampleTitles": [
+              "First",
+              "Second"
+            ],
+            "warnings": []
+          },
+          {
+            "label": "bad-header.csv",
+            "counts": [],
+            "error": {
+              "code": "raindrop.headerNotFound",
+              "message": "Raindrop CSV header row (\"url\" column) not found"
+            }
+          },
+          {
+            "label": "empty.csv",
+            "counts": [],
+            "error": {
+              "code": "raindrop.csvEmpty",
+              "message": "Raindrop CSV is empty"
+            }
+          }
+        ]
+      },
+      "timeline": [
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": "",
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.raindrop.importing",
+            "message": "Importing Raindrop bookmarks…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.raindrop.importing",
+            "message": "Importing Raindrop bookmarks…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 2,
+          "done": false
+        },
+        {
+          "op": "saveBookmark",
+          "title": "First",
+          "content": null,
+          "sourceUrl": "https://one.example",
+          "createdAt": "2025-01-02T03:04:05.000Z",
+          "tags": [
+            "news",
+            "Reading"
+          ],
+          "metadata": {
+            "url": "https://one.example",
+            "excerpt": "",
+            "note": "",
+            "folder": "Reading",
+            "favorite": false,
+            "heroImage": "",
+            "highlights": ""
+          }
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.raindrop.importing",
+            "message": "Importing Raindrop bookmarks…"
+          },
+          "imported": 1,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 2,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.raindrop.importing",
+            "message": "Importing Raindrop bookmarks…"
+          },
+          "imported": 1,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 1,
+          "total": 2,
+          "done": false
+        },
+        {
+          "op": "saveBookmark",
+          "title": "Second",
+          "content": "a note",
+          "sourceUrl": "https://two.example",
+          "createdAt": "2025-01-03T00:00:00.000Z",
+          "tags": [],
+          "metadata": {
+            "url": "https://two.example",
+            "excerpt": "",
+            "note": "a note",
+            "folder": "Unsorted",
+            "favorite": true,
+            "heroImage": "",
+            "highlights": ""
+          }
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.raindrop.importing",
+            "message": "Importing Raindrop bookmarks…"
+          },
+          "imported": 2,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 1,
+          "total": 2,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.raindrop.importing",
+            "message": "Importing Raindrop bookmarks…"
+          },
+          "imported": 2,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 2,
+          "total": 2,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.raindrop.importing",
+            "message": "Importing Raindrop bookmarks…"
+          },
+          "imported": 2,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 1,
+          "completed": 2,
+          "total": 2,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.raindrop.importing",
+            "message": "Importing Raindrop bookmarks…"
+          },
+          "imported": 2,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 2,
+          "completed": 2,
+          "total": 2,
+          "done": false
+        }
+      ],
+      "summary": {
+        "imported": 2,
+        "attachments": 0,
+        "skipped": 0,
+        "failed": [
+          {
+            "item": "bad-header.csv",
+            "error": "Raindrop CSV header row (\"url\" column) not found"
+          },
+          {
+            "item": "empty.csv",
+            "error": "Raindrop CSV is empty"
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,6 +1,18 @@
+import { PACK_REPLACED_GRACE_SECONDS } from '@memry/contracts/sync-api'
+
 import { createLogger } from '../lib/logger'
 import { deleteBlobs } from './blob'
 import { purgeDeletedDocumentBodies } from './document-body-purge'
+import { enqueuePackCompaction, type PackCompactionMessageBody } from './pack-queue'
+import { EXPIRED_TOMBSTONE_SQL } from './expired-tombstone'
+import { PACK_PURGE_RETRY_DELAY_SECONDS } from './pack-replaced-objects'
+import {
+  NOT_PACKED_AT_CURSOR,
+  RECORD_OBJECTS_SETTLED,
+  packedRecordKeys,
+  recordKey,
+  unlistRecordPacks
+} from './record-pack-purge'
 import { reclaimUnusedPresignedChunks } from './presigned-chunk-reclaim'
 import { chunkHeldSql } from './chunk-holds'
 import { adjustStorageUsed } from './quota'
@@ -170,24 +182,35 @@ const ORPHAN_CHUNK_BATCH = 90
 
 // Rows shed per tick, and users whose objects are deleted per tick. Each user
 // costs one bulk R2 delete and every 50 rows one db.batch, so a tick spends at
-// most ~25 subrequests: the scheduled invocation shares its 1000-subrequest
-// ceiling with pack_backfill, which budgets 900 for itself (pack-backfill.ts).
+// most ~25 subrequests of the scheduled invocation. pack_backfill builds
+// nothing in-line, it enqueues to the pack queue (pack-backfill.ts).
 const TOMBSTONE_SHED_LIMIT = 200
 const TOMBSTONE_SHED_USERS_PER_TICK = 20
 // Rows per shed transaction: two statements each, one db.batch per chunk.
 const TOMBSTONE_SHED_CHUNK = 50
 
-// An unshed tombstone still holds its payload. `blob_key = ''` is the marker,
-// the same predicate as the partial index idx_sync_items_unshed_tombstones.
-const UNSHED_GUARD = "id = ? AND server_cursor = ? AND deleted_at IS NOT NULL AND blob_key <> ''"
-
 interface ExpiredTombstoneRow {
   id: string
   blob_key: string
   user_id: string
+  vault_id: string
+  item_type: string
+  item_id: string
   size_bytes: number
   server_cursor: number
 }
+
+// An unshed tombstone still holds its payload. `blob_key = ''` is the marker,
+// the same predicate as the partial index idx_sync_items_unshed_tombstones.
+// The row must still be past retention when the write runs: a retention that
+// grew since the select keeps the tombstone, so the shed never empties a row
+// compaction found unexpired and packed past (#5247). No listed record pack
+// may hold its entry: a build that listed one since the shed read the listing
+// keeps the row for the next tick. Binds the id, the selected server_cursor,
+// the id again and `now`.
+const UNSHED_GUARD = `id = ? AND server_cursor = ? AND blob_key <> '' AND id IN (
+  SELECT si.id FROM sync_items si LEFT JOIN sync_entitlements e ON e.user_id = si.user_id
+  WHERE si.id = ? AND ${EXPIRED_TOMBSTONE_SQL} AND ${NOT_PACKED_AT_CURSOR})`
 
 /**
  * Sheds the payload of tombstones past the user's `version_history_days` and
@@ -202,11 +225,20 @@ interface ExpiredTombstoneRow {
  * that refunds and marks each row together. Only rows whose object delete
  * succeeded are marked: a failed delete leaves them unshed for the next tick,
  * never an orphaned object behind a marker. Both statements are guarded on the
- * selected `server_cursor` and on the row still holding its payload, so a push
- * that re-created or re-deleted the item in between leaves it alone, and a
- * re-run refunds nothing twice. A crash after the R2 delete leaves a tombstone
- * without bytes; pull serves it as a purged tombstone and the next run marks
- * it. Returns the number of rows shed.
+ * selected `server_cursor`, on the row still holding its payload and on it
+ * still being past retention, so a push that re-created or re-deleted the item
+ * in between, or a retention that grew, leaves it alone, and a re-run refunds
+ * nothing twice. A crash after the R2 delete, or a retention that grew after
+ * it, leaves a tombstone without bytes; pull serves it as a purged tombstone
+ * and the run after it expires marks it. Returns the number of rows shed.
+ *
+ * Record packs first (protocol 08 §8.13, #5247): a row some listed record pack
+ * holds, an older version or the tombstone itself, is not shed this tick. Its
+ * packs leave the listing as pending rewrites, which drop its entries, and a
+ * compaction message runs them (withRecordPacksCleared). A vault with a record
+ * object that may still hold entries (RECORD_OBJECTS_SETTLED) sheds nothing,
+ * so a later tick sheds the row once no object that held it remains, and no
+ * replaced object a reader may still download inside its grace.
  *
  * Known gap: a push that read the unshed tombstone (size S) in its Stage 3 and
  * commits after this shed refunds S again through its size delta, so the
@@ -215,36 +247,48 @@ interface ExpiredTombstoneRow {
  */
 export const cleanupExpiredTombstones = async (
   db: D1Database,
-  storage: R2Bucket
+  storage: R2Bucket,
+  queue: { PACK_QUEUE?: Queue<PackCompactionMessageBody> } = {}
 ): Promise<number> => {
   const now = Math.floor(Date.now() / 1000)
 
   // deleted_at is stored as pushed: seconds from desktop, ms from the Rust
   // core (#3053, docs/protocol ch.04). Values at or above 10^11 are ms.
+  // Rows of a vault whose record objects still settle sort last and wait.
   const expired = await db
     .prepare(
-      `SELECT si.id, si.blob_key, si.user_id, si.size_bytes, si.server_cursor
+      `SELECT si.id, si.blob_key, si.user_id, si.vault_id, si.item_type, si.item_id, si.size_bytes,
+              si.server_cursor, (${RECORD_OBJECTS_SETTLED}) AS settled
        FROM sync_items si
        LEFT JOIN sync_entitlements e ON e.user_id = si.user_id
-       WHERE si.deleted_at IS NOT NULL
-         AND si.blob_key <> ''
-         AND (CASE WHEN si.deleted_at >= 100000000000 THEN si.deleted_at / 1000 ELSE si.deleted_at END)
-             < ? - (COALESCE(e.version_history_days, 0) * 86400)
-       ORDER BY si.user_id
+       WHERE si.blob_key <> ''
+         AND ${EXPIRED_TOMBSTONE_SQL}
+       ORDER BY settled DESC, si.user_id
        LIMIT ${TOMBSTONE_SHED_LIMIT}`
     )
-    .bind(now)
-    .all<ExpiredTombstoneRow>()
+    .bind(now - PACK_REPLACED_GRACE_SECONDS, now)
+    .all<ExpiredTombstoneRow & { settled: number }>()
 
+  const waiting = new Set<string>()
   const rowsByUser = new Map<string, ExpiredTombstoneRow[]>()
   for (const row of expired.results ?? []) {
+    if (!row.settled) {
+      waiting.add(row.vault_id)
+      continue
+    }
     const group = rowsByUser.get(row.user_id)
     if (group) group.push(row)
     else if (rowsByUser.size < TOMBSTONE_SHED_USERS_PER_TICK) rowsByUser.set(row.user_id, [row])
   }
 
+  for (const vaultId of waiting) {
+    logger.info('Tombstone shed: vault waits for its record pack objects to settle', { vaultId })
+  }
+
   const deleted: ExpiredTombstoneRow[] = []
-  for (const [userId, rows] of rowsByUser) {
+  for (const [userId, selected] of rowsByUser) {
+    const rows = await withRecordPacksCleared(db, queue, selected, now)
+    if (rows.length === 0) continue
     try {
       await deleteBlobs(
         storage,
@@ -268,14 +312,14 @@ export const cleanupExpiredTombstones = async (
           `UPDATE users SET storage_used = MAX(0, storage_used - ?), updated_at = ?
            WHERE id = ? AND EXISTS (SELECT 1 FROM sync_items WHERE ${UNSHED_GUARD})`
         )
-        .bind(row.size_bytes, now, row.user_id, row.id, row.server_cursor),
+        .bind(row.size_bytes, now, row.user_id, row.id, row.server_cursor, row.id, now),
       db
         .prepare(
           `UPDATE sync_items
            SET blob_key = '', content_hash = '', signature = '', size_bytes = 0, payload_purged_at = ?
            WHERE ${UNSHED_GUARD}`
         )
-        .bind(now, row.id, row.server_cursor)
+        .bind(now, row.id, row.server_cursor, row.id, now)
     ])
     const results = await db.batch(statements)
     shed += results.filter(
@@ -286,9 +330,69 @@ export const cleanupExpiredTombstones = async (
   return shed
 }
 
-// Deleted documents purged per tick. Each vault costs one or two db.batch
-// calls and one bulk R2 delete.
+/**
+ * The rows of `rows` (one user's) that no listed record pack holds. Per vault,
+ * the record packs holding the others leave the listing as pending rewrites
+ * and a compaction message runs them. A vault that lists a record pack of
+ * unknown contents resets its record kind and sheds nothing this tick.
+ */
+const withRecordPacksCleared = async (
+  db: D1Database,
+  queue: { PACK_QUEUE?: Queue<PackCompactionMessageBody> },
+  rows: ExpiredTombstoneRow[],
+  now: number
+): Promise<ExpiredTombstoneRow[]> => {
+  const byVault = new Map<string, ExpiredTombstoneRow[]>()
+  for (const row of rows) byVault.set(row.vault_id, [...(byVault.get(row.vault_id) ?? []), row])
+  const free: ExpiredTombstoneRow[] = []
+  for (const [vaultId, vaultRows] of byVault) {
+    const scope = { userId: vaultRows[0].user_id, vaultId }
+    const keyOf = (row: ExpiredTombstoneRow) => recordKey(row.item_type, row.item_id)
+    let packed: { held: Set<string>; unknown: boolean }
+    try {
+      packed = await packedRecordKeys(db, scope, vaultRows.map(keyOf))
+      if (packed.held.size > 0 || packed.unknown) {
+        await db.batch(unlistRecordPacks(db, scope, [...packed.held], now))
+      }
+    } catch (error) {
+      // The vault's rows wait for the next tick; other vaults go on.
+      logger.error('Tombstone shed: record packs not cleared, the vault waits', {
+        vaultId,
+        error: error instanceof Error ? error.message : String(error)
+      })
+      continue
+    }
+    const { held, unknown } = packed
+    if (!unknown) free.push(...vaultRows.filter((row) => !held.has(keyOf(row))))
+    if (held.size === 0 && !unknown) continue
+    logger.info('Tombstone shed: record packs holding expired tombstones left the listing', {
+      vaultId,
+      rows: held.size,
+      reset: unknown
+    })
+    try {
+      await enqueuePackCompaction(queue, scope)
+    } catch (error) {
+      // The backfill tick's message runs the same rewrite pass.
+      logger.error('Tombstone shed: record pack rewrite not enqueued', {
+        vaultId,
+        error: error instanceof Error ? error.message : String(error)
+      })
+    }
+  }
+  return free
+}
+
+// Deleted documents read per tick, and vaults purged per tick (VERIFY-5267
+// F5). A vault costs one db.batch per 20 documents, one snapshot db.batch, one
+// bulk R2 delete of snapshot objects, the replaced-object pass (a select, a
+// bulk R2 delete, a D1 delete) and one enqueue, retried twice on backpressure:
+// 8 plus its chunks. A tick spends at most 1 select + 5 x 8 + (100 / 20 + 5)
+// chunks = 51 subrequests, inside the ~105 that pack_backfill (~895 at real
+// build cost) leaves the scheduled invocation. Rows are read vault by vault,
+// so the vaults past the cap are the next tick's.
 const DELETED_BODY_LIMIT = 100
+const DELETED_BODY_VAULTS_PER_TICK = 5
 
 /**
  * Purges the server body of deleted notes and journals that still have one
@@ -297,7 +401,8 @@ const DELETED_BODY_LIMIT = 100
  */
 export const cleanupDeletedDocumentBodies = async (
   db: D1Database,
-  storage: R2Bucket
+  storage: R2Bucket,
+  queue: { PACK_QUEUE?: Queue<PackCompactionMessageBody> } = {}
 ): Promise<number> => {
   const rows = await db
     .prepare(
@@ -312,6 +417,7 @@ export const cleanupDeletedDocumentBodies = async (
                 WHERE s.user_id = si.user_id AND s.vault_id = si.vault_id AND s.note_id = si.item_id)
            OR EXISTS (SELECT 1 FROM crdt_updates u
                 WHERE u.user_id = si.user_id AND u.vault_id = si.vault_id AND u.note_id = si.item_id))
+       ORDER BY si.user_id, si.vault_id
        LIMIT ${DELETED_BODY_LIMIT}`
     )
     .all<{ user_id: string; vault_id: string; item_id: string }>()
@@ -321,17 +427,31 @@ export const cleanupDeletedDocumentBodies = async (
     const key = `${row.user_id}\u0000${row.vault_id}`
     const group = byVault.get(key)
     if (group) group.noteIds.push(row.item_id)
-    else byVault.set(key, { userId: row.user_id, vaultId: row.vault_id, noteIds: [row.item_id] })
+    else if (byVault.size < DELETED_BODY_VAULTS_PER_TICK)
+      byVault.set(key, { userId: row.user_id, vaultId: row.vault_id, noteIds: [row.item_id] })
   }
 
   let purged = 0
   for (const { userId, vaultId, noteIds } of byVault.values()) {
+    let retry: boolean
     try {
-      await purgeDeletedDocumentBodies(db, storage, userId, vaultId, noteIds)
+      retry = await purgeDeletedDocumentBodies(db, storage, userId, vaultId, noteIds)
       purged += noteIds.length
     } catch (error) {
       logger.warn('Deleted document body purge failed, retried next tick', {
         documents: noteIds.length,
+        error: error instanceof Error ? error.message : String(error)
+      })
+      // The purge may have committed its batch, and so made pack objects due or
+      // left rewrites pending, before it threw (sync.ts does the same).
+      retry = true
+    }
+    if (!retry) continue
+    try {
+      await enqueuePackCompaction(queue, { userId, vaultId }, PACK_PURGE_RETRY_DELAY_SECONDS)
+    } catch (error) {
+      logger.error('Deleted document body purge retry not enqueued', {
+        vaultId,
         error: error instanceof Error ? error.message : String(error)
       })
     }
@@ -400,4 +520,114 @@ const parseUploadedChunkHashes = (value: string): Set<string> => {
   } catch {
     return new Set()
   }
+}
+
+// Orphan pack objects (REVIEW-5260). A pack key is unique per build, so a build
+// that fails between its object PUT and its commit batch leaves an object no
+// `pack_index` row lists, and no retry overwrites it. The sweep walks the
+// `packs/` prefix of every vault that has packed, a bounded number of list
+// pages per tick, and resumes from `pack_orphan_sweep` next tick.
+//
+// Subrequests: each page costs one list, one D1 recheck and at most one batched
+// delete, so 5 pages stay well inside what the pack backfill leaves the tick.
+export const PACK_ORPHAN_PAGES_PER_TICK = 5
+const PACK_ORPHAN_PAGE_SIZE = 90
+// Older than any build's PUT-to-commit window, so an object a build is still
+// committing is never taken.
+export const PACK_ORPHAN_MIN_AGE_MS = 60 * 60 * 1000
+
+interface PackSweepPoint {
+  user_id: string
+  vault_id: string
+  list_cursor: string | null
+}
+
+const nextPackedVaults = async (
+  db: D1Database,
+  after: { user_id: string; vault_id: string },
+  limit: number
+): Promise<PackSweepPoint[]> => {
+  const rows = await db
+    .prepare(
+      `SELECT user_id, vault_id, NULL AS list_cursor FROM (
+         SELECT user_id, vault_id FROM pack_index
+         UNION SELECT user_id, vault_id FROM pack_watermarks
+       )
+       WHERE (user_id, vault_id) > (?, ?)
+       ORDER BY user_id, vault_id
+       LIMIT ?`
+    )
+    .bind(after.user_id, after.vault_id, limit)
+    .all<PackSweepPoint>()
+  return rows.results ?? []
+}
+
+export const cleanupOrphanedPackObjects = async (
+  db: D1Database,
+  storage: R2Bucket
+): Promise<number> => {
+  const saved = await db
+    .prepare('SELECT user_id, vault_id, list_cursor FROM pack_orphan_sweep WHERE id = 1')
+    .first<PackSweepPoint>()
+  const queue = saved
+    ? [saved]
+    : await nextPackedVaults(db, { user_id: '', vault_id: '' }, PACK_ORPHAN_PAGES_PER_TICK)
+  let point: PackSweepPoint | undefined = queue.shift()
+  let deleted = 0
+  for (let page = 0; point && page < PACK_ORPHAN_PAGES_PER_TICK; page++) {
+    const prefix = `${point.user_id}/vaults/${point.vault_id}/packs/`
+    const listing = await storage.list({
+      prefix,
+      limit: PACK_ORPHAN_PAGE_SIZE,
+      ...(point.list_cursor ? { cursor: point.list_cursor } : {})
+    })
+    const cutoff = Date.now() - PACK_ORPHAN_MIN_AGE_MS
+    const old = listing.objects
+      .filter((object) => object.uploaded.getTime() <= cutoff)
+      .map((object) => object.key)
+    if (old.length > 0) {
+      // Rechecked right before the delete: only a key no row lists goes. A
+      // rollup's replaced object waits out its grace period in
+      // pack_replaced_objects, whose own deletion owns it (pack-rollup.ts).
+      const listed = await db
+        .prepare(
+          `SELECT pack_key FROM pack_index WHERE user_id = ? AND vault_id = ?
+             AND pack_key IN (SELECT value FROM json_each(?))
+           UNION SELECT pack_key FROM pack_replaced_objects
+             WHERE pack_key IN (SELECT value FROM json_each(?))`
+        )
+        .bind(point.user_id, point.vault_id, JSON.stringify(old), JSON.stringify(old))
+        .all<{ pack_key: string }>()
+      const keep = new Set((listed.results ?? []).map((row) => row.pack_key))
+      const orphans = old.filter((key) => !keep.has(key))
+      if (orphans.length > 0) {
+        await storage.delete(orphans)
+        deleted += orphans.length
+      }
+    }
+    if (listing.truncated) {
+      point.list_cursor = listing.cursor
+      continue
+    }
+    if (queue.length === 0) {
+      queue.push(...(await nextPackedVaults(db, point, PACK_ORPHAN_PAGES_PER_TICK)))
+    }
+    point = queue.shift()
+  }
+
+  const now = Math.floor(Date.now() / 1000)
+  await (
+    point
+      ? db
+          .prepare(
+            `INSERT INTO pack_orphan_sweep (id, user_id, vault_id, list_cursor, updated_at)
+           VALUES (1, ?, ?, ?, ?)
+           ON CONFLICT (id) DO UPDATE SET user_id = excluded.user_id, vault_id = excluded.vault_id,
+             list_cursor = excluded.list_cursor, updated_at = excluded.updated_at`
+          )
+          .bind(point.user_id, point.vault_id, point.list_cursor, now)
+      : db.prepare('DELETE FROM pack_orphan_sweep WHERE id = 1')
+  ).run()
+  if (deleted > 0) logger.info('Orphaned pack objects deleted', { count: deleted })
+  return deleted
 }

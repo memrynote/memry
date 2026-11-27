@@ -6,11 +6,19 @@ import { ErrorCodes } from '../lib/errors'
 import { evaluateWriteAccess, getClientPolicy } from '../services/client-policies'
 import type { AppContext } from '../types'
 
-// GET/HEAD/OPTIONS are reads. Reads are NEVER gated -- neither by the version
-// floor nor by the kill switch -- so a device dropped to read-only can still
-// open every note it owns (FR-010). Anything else mutates and goes through the
-// policy check.
+// Reads are NEVER gated -- neither by the version floor nor by the kill switch
+// -- so a device dropped to read-only can still open every note it owns
+// (FR-010). GET/HEAD/OPTIONS are reads, and so are the POSTs below (#4716): they
+// change no client-authored state. A pull may stamp sync_items.blob_missing_at on
+// a lost blob (markSyncItemBlobMissing, server-set, idempotent). All else is gated.
 const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
+const READ_POST_PATHS = new Set([
+  '/sync/pull',
+  '/sync/records/pull',
+  '/sync/crdt/updates/batch',
+  '/sync/attachments/presign-batch',
+  '/sync/attachments/manifests/batch'
+])
 
 /**
  * Per-platform write gate (contracts/sync-protocol-additions.md §1-3).
@@ -31,7 +39,8 @@ export const clientGateMiddleware: MiddlewareHandler<AppContext> = async (c, nex
   const identity = parseClientIdentity(c.req.header(CLIENT_HEADER))
   if (identity) c.set('client', identity)
 
-  if (READ_METHODS.has(c.req.method)) return next()
+  const { method, path } = c.req
+  if (isReadRequest(method, path)) return next()
 
   // No header = legacy desktop = full access. This is the branch every
   // currently-shipped build takes, and it must stay free of DB work.
@@ -63,4 +72,9 @@ export const clientGateMiddleware: MiddlewareHandler<AppContext> = async (c, nex
     },
     426 as ContentfulStatusCode
   )
+}
+
+/** The read classification above, shared so paid-sync never creates a vault on a read. */
+export function isReadRequest(method: string, path: string): boolean {
+  return READ_METHODS.has(method) || (method === 'POST' && READ_POST_PATHS.has(path))
 }

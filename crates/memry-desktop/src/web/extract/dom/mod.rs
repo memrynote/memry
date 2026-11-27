@@ -11,4 +11,5 @@ pub mod serialize;
 pub mod tree;
 
 pub use node::{Attribute, NodeId, NodeKind};
+pub use parse::decode_html;
 pub use tree::Document;

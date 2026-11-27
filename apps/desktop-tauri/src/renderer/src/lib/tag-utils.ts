@@ -25,7 +25,7 @@ export function formatTagDisplay(name: string): string {
  */
 export function sanitizeTagInput(input: string): string {
   let sanitized = input.replace(/^#/, '')
-  sanitized = sanitized.replace(/[^a-zA-Z0-9_\-/]/g, '')
+  sanitized = sanitized.replace(/[^\p{Alphabetic}\p{M}\p{N}_\-/]/gu, '')
   sanitized = sanitized.replace(/\/{2,}/g, '/')
   sanitized = sanitized.replace(/^\/|\/$/g, '')
   return sanitized

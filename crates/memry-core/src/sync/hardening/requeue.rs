@@ -24,6 +24,7 @@ use rusqlite::{Connection, params};
 
 use crate::api::errors::StorageError;
 use crate::domain::tasks::Inbound;
+use crate::storage::nested_tx;
 use crate::storage::repositories::sync_items::{self, ApplyOutcome, InboundRecord};
 use crate::sync::outbox;
 
@@ -39,7 +40,11 @@ fn failed(error: rusqlite::Error) -> StorageError {
 /// A record row already queued for the key (`create`, `upsert` or `delete`)
 /// is left alone: it rebuilds from the live row at send, so it carries the
 /// merge too, and replacing it would turn a pending local `delete` into an
-/// `upsert` the server stores live, or a `create` into an update.
+/// `upsert` the server stores live, or a `create` into an update. That holds
+/// only because pull and push run one after the other in a pass, never at
+/// once: a queued row is never mid-flight here, so its next send reads the
+/// merged row. A queued row in backoff keeps its `next_attempt_at`, so the
+/// merge goes out at that row's retry time, not at once (nothing is lost).
 pub(crate) fn requeue(
     tx: &Connection,
     item_type: &str,
@@ -92,7 +97,7 @@ pub(crate) fn store_merged(
     record: &InboundRecord,
     now_ms: i64,
 ) -> Result<Inbound, StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let record = &InboundRecord {
         deleted_at: queued_tombstone(&tx, record)?,
         ..record.clone()

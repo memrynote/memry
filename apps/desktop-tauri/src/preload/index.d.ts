@@ -13,11 +13,7 @@ import type {
   PortedJournalMethod
 } from '../renderer/src/services/journal-service'
 import type * as TasksRpc from '@memry/rpc/tasks'
-import type { StartCheckoutInput } from '@memry/contracts/ipc-channels'
 import type { AgentMcpStatus } from '@memry/contracts/agent-mcp-channels'
-import type { HomePageCoverSource, HomePageSetCoverResult } from '@memry/contracts/home-page-api'
-import type { HomePageCoverSync } from '@memry/contracts/sync-payloads'
-import type { CoverFraming } from '@memry/shared/cover-image'
 import type {
   ImpactQuery,
   ImpactResult,
@@ -77,10 +73,9 @@ import type {
   ReadwiseStatusResult
 } from '@memry/contracts/import-channels'
 import type { Locale, LocaleApi } from '@memry/contracts/locale-api'
-import type { OnboardingAgentStatus, OnboardingSources } from '@memry/contracts/onboarding-api'
+import type { OnboardingAgentStatus } from '@memry/contracts/onboarding-api'
 import type {
   SyncStatusChangedEvent,
-  ItemSyncedEvent,
   LinkingRequestEvent,
   LinkingApprovedEvent,
   UploadProgressEvent,
@@ -99,18 +94,7 @@ import type {
   CertificatePinFailedEvent,
   VaultRecoveryNeededEvent
 } from '../shared/contracts/ipc-sync'
-import type {
-  RepairDeviceKeysResult,
-  ResolveVaultBindingResult,
-  SyncControlSurface,
-  SyncErrorCategory,
-  TriggerSyncResult,
-  VaultBindingChoice,
-  VaultBindingState,
-  LargeNotesResult,
-  NoteSyncState,
-  UnsentNotesResult
-} from '@memry/contracts/ipc-sync-ops'
+import type { VaultBindingState } from '@memry/contracts/ipc-sync-ops'
 import type {
   FolderViewClientAPI as ContractFolderViewClientAPI,
   ConfigUpdatedEvent as FolderViewConfigUpdatedEvent
@@ -127,7 +111,6 @@ import type {
   StickyUndoResult,
   StickyWindowSession
 } from '@memry/contracts/sticky-api'
-import type { SyncedSettings } from '../shared/contracts/settings-sync'
 import type { RecentlyOpenedItem, RecordRecentlyOpenedInput } from '@memry/contracts/recents-api'
 
 // Vault types (mirrored from contracts for preload compatibility)
@@ -593,26 +576,6 @@ export interface JournalClientAPI {
   getPropertyRows(from: string, to: string): Promise<GetPropertyRowsOutput>
 }
 
-// Home Page types
-export interface WidgetInstance {
-  id: string
-  type: string
-  x: number
-  y: number
-  w: number
-  h: number
-  config: Record<string, unknown>
-}
-
-export interface HomePage {
-  id: string
-  name: string
-  icon?: string
-  position: number
-  widgets: WidgetInstance[]
-  cover?: HomePageCoverSync
-}
-
 export interface StickyClientAPI {
   listDrafts(): Promise<StickyDraft[]>
   saveDraft(input: StickySaveDraftInput): Promise<StickyDraft>
@@ -631,32 +594,6 @@ export interface StickyClientAPI {
 
 export interface OnboardingClientAPI {
   detectAgents: () => Promise<OnboardingAgentStatus[]>
-  detectSources: () => Promise<OnboardingSources>
-  isMemryVault: (path: string) => Promise<boolean>
-}
-
-export interface HomePagesClientAPI {
-  list(): Promise<HomePage[]>
-  get(id: string): Promise<HomePage | null>
-  create(input: {
-    name: string
-    icon?: string
-    position?: number
-    widgets?: WidgetInstance[]
-  }): Promise<HomePage>
-  update(input: {
-    id: string
-    name?: string
-    icon?: string
-    position?: number
-    widgets?: WidgetInstance[]
-  }): Promise<HomePage>
-  delete(id: string): Promise<{ success: boolean }>
-  reorder(ids: string[]): Promise<{ success: boolean }>
-  setCover(id: string, source: HomePageCoverSource): Promise<HomePageSetCoverResult>
-  setCoverFraming(id: string, changes: Partial<CoverFraming>): Promise<HomePage>
-  removeCover(id: string): Promise<HomePage>
-  materializeCover(id: string): Promise<{ success: boolean }>
 }
 
 // Bookmark types
@@ -1320,85 +1257,14 @@ interface SyncSetupClientAPI {
   getRecoveryPhrase: () => Promise<string | null>
 }
 
-// Account API
-type BillingPlanId = 'plus' | 'pro' | 'believer'
-type BillingPlan = 'free' | BillingPlanId
-type BillingCadence = 'monthly' | 'annual' | 'lifetime'
-type BillingStatusValue = 'inactive' | 'active' | 'past_due' | 'paused' | 'canceled'
-
-interface BillingStatus {
-  plan: BillingPlan
-  cadence: BillingCadence | null
-  status: BillingStatusValue
-  source: string
-  email: string | null
-  limits: {
-    storageLimit: number
-    maxFileSize: number
-    maxVaults: number | null
-    versionHistoryDays: number
-  }
-  usage: {
-    storageUsed: number
-  }
-  expiresAt: number | null
-  canManageBilling: boolean
-}
-
-interface BillingActionResult {
-  success: boolean
-  error?: string
-}
-
+// Account API. The billing calls are `commands.account*` (generated bindings).
 interface AccountClientAPI {
   getInfo: () => Promise<{ email: string | null; joinedAt: number | null }>
   signOut: () => Promise<{ success: boolean; keychainWarning?: string }>
-  startCheckout: (
-    input?: StartCheckoutInput
-  ) => Promise<BillingActionResult & { checkoutUrl?: string }>
-  getBillingStatus: () => Promise<BillingStatus | (BillingActionResult & { status?: never })>
-  refreshBillingStatus: (input?: {
-    transactionId?: string
-  }) => Promise<BillingStatus | (BillingActionResult & { status?: never })>
-  openBillingPortal: () => Promise<
-    BillingActionResult & { portalUrl?: string; reason?: 'no-billing-customer' }
-  >
-  previewPlanChange: (
-    input: PlanChangeTarget
-  ) => Promise<PlanChangePreview | (BillingActionResult & { plan?: never })>
-  changePlan: (
-    input: PlanChangeTarget
-  ) => Promise<BillingStatus | (BillingActionResult & { status?: never })>
-}
-
-interface PlanChangeTarget {
-  plan: 'plus' | 'pro'
-  cadence: 'monthly' | 'annual'
-}
-
-interface PlanChangePreview {
-  plan: PlanChangeTarget['plan']
-  cadence: PlanChangeTarget['cadence']
-  isUpgrade: boolean
-  effective: 'immediate' | 'next_billing_period'
-  /** Minor units (cents), straight from Paddle. `null` when nothing is charged today. */
-  immediateChargeAmount: string | null
-  recurringAmount: string
-  currencyCode: string
-  nextBilledAt: string | null
 }
 
 // Sync Operations API
 interface SyncOpsClientAPI {
-  getStatus: () => Promise<{
-    status: string
-    lastSyncAt?: number
-    pendingCount: number
-    error?: string
-    errorCategory?: SyncErrorCategory
-    offlineSince?: number
-  }>
-  triggerSync: () => Promise<TriggerSyncResult>
   getHistory: (input: { limit?: number; offset?: number }) => Promise<{
     entries: Array<{
       id: string
@@ -1411,23 +1277,6 @@ interface SyncOpsClientAPI {
     }>
     total: number
   }>
-  getQueueSize: () => Promise<{
-    pending: number
-    failed: number
-  }>
-  pause: (surface: SyncControlSurface) => Promise<{
-    success: boolean
-    wasPaused: boolean
-  }>
-  resume: (surface: SyncControlSurface) => Promise<{
-    success: boolean
-    pendingCount: number
-  }>
-  updateSyncedSetting: (
-    fieldPath: string,
-    value: unknown
-  ) => Promise<{ success: boolean; error?: string }>
-  getSyncedSettings: () => Promise<SyncedSettings | null>
   getStorageBreakdown: () => Promise<{
     used: number
     limit: number
@@ -1438,12 +1287,6 @@ interface SyncOpsClientAPI {
       other: number
     }
   } | null>
-  getLargeNotes: () => Promise<LargeNotesResult>
-  getNoteSyncState: (noteId: string) => Promise<NoteSyncState | null>
-  getUnsentNotes: () => Promise<UnsentNotesResult>
-  getVaultBinding: () => Promise<VaultBindingState>
-  resolveVaultBinding: (choice: VaultBindingChoice) => Promise<ResolveVaultBindingResult>
-  repairDeviceKeys: () => Promise<RepairDeviceKeysResult>
 }
 
 // Crypto API
@@ -1643,7 +1486,6 @@ interface API
   syncOps: SyncOpsClientAPI
   crypto: CryptoClientAPI
   syncAttachments: SyncAttachmentsClientAPI
-  homePages: HomePagesClientAPI
   sticky: StickyClientAPI
   onboarding: OnboardingClientAPI
   agentMcp: AgentMcpClientAPI
@@ -1691,10 +1533,6 @@ interface API
   onSavedFilterUpdated: (callback: (event: SavedFilterUpdatedEvent) => void) => () => void
   onSavedFilterDeleted: (callback: (event: SavedFilterDeletedEvent) => void) => () => void
   // Templates event subscriptions
-  // Home boards event subscriptions (local writes and remote applies both emit)
-  onHomePageCreated: (callback: (event: { id: string }) => void) => () => void
-  onHomePageUpdated: (callback: (event: { id: string }) => void) => () => void
-  onHomePageDeleted: (callback: (event: { id: string }) => void) => () => void
   // Journal event subscriptions
   onJournalEntryUpdated: (callback: (event: JournalEntryUpdatedEvent) => void) => () => void
   onJournalExternalChange: (callback: (event: JournalExternalChangeEvent) => void) => () => void
@@ -1716,7 +1554,6 @@ interface API
   // Search event subscriptions
   // Sync event subscriptions
   onSyncStatusChanged: (callback: (event: SyncStatusChangedEvent) => void) => () => void
-  onItemSynced: (callback: (event: ItemSyncedEvent) => void) => () => void
   onLinkingRequest: (callback: (event: LinkingRequestEvent) => void) => () => void
   onLinkingApproved: (callback: (event: LinkingApprovedEvent) => void) => () => void
   onUploadProgress: (callback: (event: UploadProgressEvent) => void) => () => void

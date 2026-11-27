@@ -15,6 +15,7 @@
 
 pub mod bindings;
 pub mod caldav;
+pub mod caldav_bound;
 pub mod google;
 pub mod ical_write;
 
@@ -381,13 +382,16 @@ pub fn local_day(zone: &dyn LocalZone, iso_text: &str) -> Option<String> {
 pub struct Queued {
     pub target: Target,
     pub attempts: i64,
+    /// When the change was queued; a later change re-stamps the row.
+    pub queued_at: i64,
 }
 
 /// The items this device changed and still has to write out.
 pub fn queue(conn: &Connection) -> Result<Vec<Queued>, StorageError> {
     let mut stmt = conn
         .prepare(
-            "SELECT source_type, source_id, attempts FROM calendar_push_queue ORDER BY queued_at",
+            "SELECT source_type, source_id, attempts, queued_at FROM calendar_push_queue
+              ORDER BY queued_at",
         )
         .map_err(failed)?;
     stmt.query_map([], |row| {
@@ -397,6 +401,7 @@ pub fn queue(conn: &Connection) -> Result<Vec<Queued>, StorageError> {
                 source_id: row.get(1)?,
             },
             attempts: row.get(2)?,
+            queued_at: row.get(3)?,
         })
     })
     .map_err(failed)?
@@ -412,6 +417,50 @@ pub fn dequeue(conn: &Connection, target: &Target) -> Result<(), StorageError> {
     )
     .map_err(failed)?;
     Ok(())
+}
+
+/// A push landed: the binding records `written`, `body` (CalDAV) as `caldavRaw`, and the item
+/// leaves the queue. `queued_at` is the queue stamp the push was planned from: a change queued
+/// since (an edit made during the request) re-stamped the row, so the row stays and the snapshot
+/// keeps only `caldavRaw`, which makes the next plan send that change.
+#[allow(clippy::too_many_arguments)]
+pub fn push_landed(
+    conn: &Connection,
+    provider: &str,
+    target: &Target,
+    written: &bindings::Written,
+    body: Option<String>,
+    queued_at: i64,
+    zone: &dyn LocalZone,
+    zone_id: &str,
+    named: &HashMap<String, CalendarZone>,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<(), StorageError> {
+    let stamp: Option<i64> = conn
+        .query_row(
+            "SELECT queued_at FROM calendar_push_queue WHERE source_type = ?1 AND source_id = ?2",
+            params![target.source_type, target.source_id],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(failed)?;
+    let changed_since = stamp.is_some_and(|at| at != queued_at);
+    let mut snapshot = if changed_since {
+        json!({})
+    } else {
+        upsert_input(conn, target, zone, zone_id, named)?.unwrap_or_else(|| json!({}))
+    };
+    if provider == CALDAV
+        && let Some(body) = body
+    {
+        snapshot["caldavRaw"] = json!(body);
+    }
+    bindings::record_push(conn, provider, target, written, snapshot, device_id, now_ms)?;
+    if changed_since {
+        return Ok(());
+    }
+    dequeue(conn, target)
 }
 
 /// A failed attempt stays queued with its reason.

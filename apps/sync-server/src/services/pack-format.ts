@@ -21,6 +21,7 @@ import {
   type PackKindName,
   type PackedEntry
 } from '@memry/contracts/pack-format'
+import type { RecordPackEntryMeta } from '@memry/contracts/sync-api'
 
 export {
   ByteReader,
@@ -47,6 +48,9 @@ export type {
   VerifiedPack
 } from '@memry/contracts/pack-format'
 
+/** Snapshot freshness meta, or a record entry's pull-item fields (protocol 08 §8.4.2). */
+export type PackEntryPlanMeta = PackEntryMeta | RecordPackEntryMeta
+
 const HEADER_SIZE = PACK_HEADER_SIZE
 
 const sha256 = packSha256
@@ -60,8 +64,7 @@ export interface PackEntryInput {
   sourceKey: string
   /** Ordering key packed into the entry: cursor or epoch seconds. */
   sortKey: number
-  /** Freshness metadata (snapshot sequenceNum/revision); omitted for records. */
-  meta?: PackEntryMeta
+  meta?: PackEntryPlanMeta
   /** EXACT source bytes. Copied verbatim — callers must not transform them. */
   bytes: Uint8Array
 }
@@ -143,7 +146,7 @@ export interface PackEntryPlan {
   sortKey: number
   /** Declared payload size; writeEntry rejects a mismatch. */
   sizeBytes: number
-  meta?: PackEntryMeta
+  meta?: PackEntryPlanMeta
 }
 
 export interface OpenPack {
@@ -159,6 +162,22 @@ export interface OpenPack {
   /** Write index block + footer; returns the trimmed file bytes. */
   finish: () => Promise<BuiltPack>
 }
+
+/** Bytes of one entry's index record (protocol 08 §8.3), computable before any fetch. */
+export const packIndexRecordBytes = (
+  plan: Pick<PackEntryPlan, 'id' | 'sourceKey' | 'meta'>
+): number =>
+  1 /* kind */ +
+  2 +
+  encode(plan.id).byteLength +
+  2 +
+  encode(plan.sourceKey).byteLength +
+  8 /* sortKey i64 */ +
+  2 +
+  encode(plan.meta ? JSON.stringify(plan.meta) : '').byteLength +
+  8 /* offset u64 */ +
+  8 /* length u64 */ +
+  32 /* sha256 */
 
 /**
  * Open a pack for STREAMING assembly into ONE pre-allocated buffer (#1839).
@@ -194,18 +213,7 @@ export const openPack = (plans: PackEntryPlan[]): OpenPack => {
     offset: null,
     digest: null
   }))
-  const indexRecordSize = (slot: Slot): number =>
-    1 /* kind */ +
-    2 +
-    encode(slot.plan.id).byteLength +
-    2 +
-    encode(slot.plan.sourceKey).byteLength +
-    8 /* sortKey i64 */ +
-    2 +
-    encode(slot.metaJson).byteLength +
-    8 /* offset u64 */ +
-    8 /* length u64 */ +
-    32 /* sha256 */
+  const indexRecordSize = (slot: Slot): number => packIndexRecordBytes(slot.plan)
 
   const declaredPayloadBytes = slots.reduce((sum, slot) => sum + slot.plan.sizeBytes, 0)
   const indexBytes = slots.reduce((sum, slot) => sum + indexRecordSize(slot), 0)

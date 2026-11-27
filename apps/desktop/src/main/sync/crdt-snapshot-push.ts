@@ -41,6 +41,12 @@ export interface CrdtSnapshotPushDeps {
    * this device had in the doc at the encode is on the server (#2647).
    */
   onStored?: (noteId: string) => void
+  /**
+   * Before each request leaves, on either route: the server may store it even
+   * when the reply is lost, so the note may hold a server body from then on
+   * (#5371, `isNeverSyncedLocalNote`).
+   */
+  onSending?: (noteId: string) => void
   /** Every failure, before it is rethrown: the runtime pauses on 401 and surfaces 413s. */
   onError: (noteId: string, err: unknown) => void
 }
@@ -95,6 +101,7 @@ export function createCrdtSnapshotPush(deps: CrdtSnapshotPushDeps): SnapshotPush
     try {
       const encrypted = encryptCrdtUpdate(state, vaultKey, noteId, signingSecretKey)
       const viaUpdates = coverage.unmerged || deps.hasUnmergedRemoteState(noteId)
+      deps.onSending?.(noteId)
       const pushed = await withRetry(
         () =>
           withAuthRetry(

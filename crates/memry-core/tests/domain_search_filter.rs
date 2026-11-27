@@ -13,6 +13,7 @@
 //! | fuzzy and alias hits pass the filter too                  | not desktop's unfiltered fallback  |
 //! | a filtered search still fills the limit                   | the ×5 over-fetch                  |
 
+use memry_core::crdt::epoch::HeldBody;
 use memry_core::domain::search::{
     self, Groups, MatchKind, ModifiedRange, SearchFilter, SearchHit, SearchType,
 };
@@ -259,16 +260,13 @@ fn a_body_only_edit_counts_as_a_modification() {
             r#"{"date":"2026-11-01","title":"Zephyr day","modifiedAt":1793000000000}"#,
         );
         for doc in ["edited", "j-edited"] {
-            memry_core::crdt::update_log::append_server_update(
-                data,
-                doc,
-                1,
-                &yrs_empty_update(),
-                DAY_START + 22 * HOUR,
-            )
-            .map_err(|error| memry_core::api::errors::StorageError::Failed {
-                what: error.to_string(),
-            })?;
+            HeldBody::never_purged(data, doc)
+                .and_then(|held| {
+                    held.append_server_update(1, &yrs_empty_update(), DAY_START + 22 * HOUR)
+                })
+                .map_err(|error| memry_core::api::errors::StorageError::Failed {
+                    what: error.to_string(),
+                })?;
         }
         Ok(())
     })

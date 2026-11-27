@@ -11,7 +11,7 @@ use std::time::{Duration, Instant};
 
 use tokio::sync::broadcast;
 
-use super::pass::{Outcome, Pass};
+use super::pass::{Keep, Outcome, Pass};
 
 const SCOPE: &str = "vault_writeback";
 
@@ -23,6 +23,12 @@ pub const DEBOUNCE: Duration = Duration::from_millis(500);
 pub const COOLDOWN_FACTOR: u32 = 9;
 /// However big the note, its file never lags its body by more than this cooldown.
 pub const MAX_COOLDOWN: Duration = Duration::from_secs(5);
+/// How long after a failed read or write ([`Outcome::Failed`]) its note's pass runs again on its
+/// own. Each failure in a row doubles it; once it would reach [`MAX_RETRY_AFTER`] (the seventh
+/// failed pass in a row) the retries end, and the note waits for its next schedule or the next
+/// open's reconcile.
+pub const RETRY_AFTER: Duration = Duration::from_secs(5);
+pub const MAX_RETRY_AFTER: Duration = Duration::from_secs(5 * 60);
 
 /// The user is told that a note's file could not be updated from its body.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -36,7 +42,8 @@ pub struct WriteBackFailed {
 /// Why a note's file could not be updated.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Failure {
-    /// A read or a write failed; a later pass may succeed.
+    /// A read or a write failed, or the pass could not finish ([`Outcome::Broken`]); a later
+    /// pass may succeed.
     Write,
     /// The file's frontmatter does not parse: no pass writes the file until it is fixed.
     Frontmatter,
@@ -103,6 +110,17 @@ struct Queue {
     cost: HashMap<String, Cost>,
     /// Notes whose last pass failed and whose user was told.
     failing: HashSet<String>,
+    /// When each note whose last write failed is tried again, and how many failed in a row. Not
+    /// a scheduled pass: a flush or a stop neither runs nor waits for it, and a scheduled pass of
+    /// the note runs instead of it.
+    retries: HashMap<String, (Instant, u32)>,
+    /// The delay of the first retry: [`RETRY_AFTER`], shorter in the retry tests.
+    first_retry: Duration,
+    /// Notes whose last pass kept the file for a server body not pulled yet: the sync's body
+    /// step schedules them again once its debts settled ([`WriteBack::schedule_body_waits`]).
+    body_waits: HashSet<String>,
+    /// How many body steps settled: a pass kept for its body while one did is due again.
+    settles: u64,
     running: bool,
     /// Flushes waiting: every pass is due now while one is.
     flushes: usize,
@@ -146,8 +164,21 @@ impl WriteBack {
         runner: impl Runner,
         failures: broadcast::Sender<WriteBackFailed>,
     ) -> std::io::Result<Self> {
+        Self::start_retrying_after(runner, failures, RETRY_AFTER)
+    }
+
+    /// [`Self::start`] whose first retry comes `first_retry` after a failed write, the last one
+    /// scaled with it: the retry tests' clock.
+    pub(crate) fn start_retrying_after(
+        runner: impl Runner,
+        failures: broadcast::Sender<WriteBackFailed>,
+        first_retry: Duration,
+    ) -> std::io::Result<Self> {
         let shared = Arc::new(Shared {
-            queue: Mutex::default(),
+            queue: Mutex::new(Queue {
+                first_retry,
+                ..Queue::default()
+            }),
             changed: Condvar::new(),
         });
         let thread = {
@@ -186,6 +217,31 @@ impl WriteBack {
         self.shared.changed.notify_all();
     }
 
+    /// Schedules again every note whose last pass kept its file because its server body was not
+    /// pulled (`Keep::BodyNotPulled`), unless `still_owed` (one read of the body debts) names it
+    /// among those still owed: their pass would only keep the file again, so they wait for the
+    /// next settle. The sync calls it once a body step settled its debts: a body can settle with
+    /// no tell of its own, and the pass that kept the file is not run again otherwise. A pass
+    /// running meanwhile that keeps its file for the body is due again too.
+    pub fn schedule_body_waits(&self, still_owed: impl FnOnce(&[String]) -> HashSet<String>) {
+        let waits: Vec<String> = {
+            let mut queue = self.shared.lock();
+            queue.settles += 1;
+            queue.body_waits.iter().cloned().collect()
+        };
+        let owed = still_owed(&waits);
+        let settled: Vec<String> = waits.into_iter().filter(|id| !owed.contains(id)).collect();
+        {
+            let mut queue = self.shared.lock();
+            for note_id in &settled {
+                queue.body_waits.remove(note_id);
+            }
+        }
+        for note_id in settled {
+            self.schedule(&note_id);
+        }
+    }
+
     /// Runs every scheduled pass now and waits, at most `timeout`, until they and the one
     /// running have finished and their failure notices are sent. True when they did.
     pub fn flush(&self, timeout: Duration) -> bool {
@@ -198,6 +254,8 @@ impl WriteBack {
             .wait_timeout_while(queue, timeout, |queue| !queue.idle())
             .unwrap_or_else(|e| e.into_inner());
         queue.flushes -= 1;
+        // The thread left the retries aside while the flush ran: it looks at them again.
+        self.shared.changed.notify_all();
         let done = queue.idle();
         if !done {
             tracing::error!(
@@ -249,11 +307,7 @@ fn work(shared: &Shared, runner: &impl Runner, failures: &broadcast::Sender<Writ
     let mut queue = shared.lock();
     loop {
         let now = Instant::now();
-        let next = queue
-            .due
-            .iter()
-            .min_by_key(|(_, at)| **at)
-            .map(|(id, at)| (id.clone(), *at));
+        let next = next_pass(&queue);
         match next {
             None if queue.stopping => break,
             None => {
@@ -273,14 +327,16 @@ fn work(shared: &Shared, runner: &impl Runner, failures: &broadcast::Sender<Writ
                 // Taken off before the pass, so a schedule during it gives one more.
                 queue.due.remove(&note_id);
                 queue.running = true;
+                let settles = queue.settles;
+                let retrying = queue.retries.contains_key(&note_id);
                 #[cfg(feature = "e2e")]
                 queue.debug.started(&note_id);
                 drop(queue);
                 let started = Instant::now();
                 let outcome = std::panic::catch_unwind(AssertUnwindSafe(|| runner.run(&note_id)))
-                    .unwrap_or_else(|_| Outcome::Failed("the pass panicked".into()));
+                    .unwrap_or_else(|_| Outcome::Broken("the pass panicked".into()));
                 let finished = Instant::now();
-                log(&note_id, &outcome);
+                log(&note_id, &outcome, retrying);
                 let cost = Cost {
                     finished,
                     took: finished - started,
@@ -294,10 +350,43 @@ fn work(shared: &Shared, runner: &impl Runner, failures: &broadcast::Sender<Writ
                     if let Some(at) = queue.due.get_mut(&note_id) {
                         *at = (*at).max(cooled(cost));
                     }
+                    if matches!(outcome, Outcome::Kept(Keep::BodyNotPulled)) {
+                        queue.body_waits.insert(note_id.clone());
+                        // A body step settled during the pass: its re-drive missed this note.
+                        if queue.settles != settles && !queue.due.contains_key(&note_id) {
+                            let at = due_at(finished, Some(cost));
+                            queue.due.insert(note_id.clone(), at);
+                        }
+                    } else {
+                        queue.body_waits.remove(&note_id);
+                    }
                     let failure = match outcome {
-                        Outcome::Failed(_) => Some(Failure::Write),
+                        Outcome::Failed(_) | Outcome::Broken(_) => Some(Failure::Write),
                         Outcome::FrontmatterUnreadable(_) => Some(Failure::Frontmatter),
                         _ => None,
+                    };
+                    // A failed read or write may succeed later (a full disk, a file held open),
+                    // so it is retried for a while; a pass that cannot finish, or a frontmatter
+                    // that does not parse, waits for a change and the note's next schedule.
+                    let retry = match &outcome {
+                        Outcome::Failed(reason) => {
+                            let failed = queue.retries.get(&note_id).map_or(0, |retry| retry.1) + 1;
+                            let delay = retry_after(queue.first_retry, failed);
+                            if delay.is_none() {
+                                tracing::warn!(
+                                    scope = SCOPE,
+                                    note_id,
+                                    failed,
+                                    "the write-back gave up retrying the failed write: {reason}"
+                                );
+                            }
+                            delay.map(|delay| (finished + delay, failed))
+                        }
+                        _ => None,
+                    };
+                    match retry {
+                        Some(retry) => queue.retries.insert(note_id.clone(), retry),
+                        None => queue.retries.remove(&note_id),
                     };
                     match failure {
                         Some(reason) if queue.failing.insert(note_id.clone()) => Some(reason),
@@ -326,6 +415,35 @@ fn work(shared: &Shared, runner: &impl Runner, failures: &broadcast::Sender<Writ
     }
 }
 
+/// The pass to run next and when it is due: the earliest scheduled one, or the earliest retry of
+/// a note not scheduled when that is earlier. No retry while a flush or a stop runs.
+fn next_pass(queue: &Queue) -> Option<(String, Instant)> {
+    let scheduled = queue.due.iter().min_by_key(|(_, at)| **at);
+    let retry = (!queue.urgent())
+        .then(|| {
+            queue
+                .retries
+                .iter()
+                .filter(|(id, _)| !queue.due.contains_key(*id))
+                .map(|(id, (at, _))| (id, at))
+                .min_by_key(|(_, at)| **at)
+        })
+        .flatten();
+    let next = match (scheduled, retry) {
+        (Some(scheduled), Some(retry)) if retry.1 < scheduled.1 => retry,
+        (scheduled, retry) => scheduled.or(retry)?,
+    };
+    Some((next.0.clone(), *next.1))
+}
+
+/// The delay before the retry after `failed` failed writes in a row, `first` the first one's;
+/// `None` once it reaches [`MAX_RETRY_AFTER`], scaled as `first` is: the retries end.
+fn retry_after(first: Duration, failed: u32) -> Option<Duration> {
+    let delay = first.saturating_mul(1 << (failed - 1).min(16));
+    let last = first.saturating_mul((MAX_RETRY_AFTER.as_millis() / RETRY_AFTER.as_millis()) as u32);
+    (delay < last).then_some(delay)
+}
+
 /// Marks the thread ended when it returns or unwinds, so no stop waits for a thread that is gone.
 struct Closed<'a>(&'a Shared);
 
@@ -336,7 +454,8 @@ impl Drop for Closed<'_> {
     }
 }
 
-fn log(note_id: &str, outcome: &Outcome) {
+/// `retrying`: the note's last write failed too, which was logged.
+fn log(note_id: &str, outcome: &Outcome, retrying: bool) {
     match outcome {
         Outcome::Wrote { .. } | Outcome::Unchanged => {
             tracing::debug!(scope = SCOPE, note_id, outcome = ?outcome);
@@ -344,7 +463,14 @@ fn log(note_id: &str, outcome: &Outcome) {
         Outcome::Kept(keep) => {
             tracing::info!(scope = SCOPE, note_id, keep = ?keep, "the file was kept");
         }
-        Outcome::Failed(reason) => {
+        Outcome::Failed(reason) if retrying => {
+            tracing::debug!(
+                scope = SCOPE,
+                note_id,
+                "the write-back retry failed: {reason}"
+            );
+        }
+        Outcome::Failed(reason) | Outcome::Broken(reason) => {
             tracing::error!(scope = SCOPE, note_id, "the write-back failed: {reason}");
         }
         Outcome::FrontmatterUnreadable(reason) => {

@@ -14,6 +14,8 @@
 //! | case and Unicode normalization are part of the title        | exact, as Electron's titles           |
 //! | an Electron vault the core did not import mints nothing     | Electron ids come from Step 36 only   |
 //! | the vault's origin is recorded once                         | never rewritten                       |
+//! | a payload that does not parse is never a note with no text  | #4326: evidence first                 |
+//! | a large file's note is recorded large with it               | #4326: one transaction                |
 
 #![cfg(feature = "markdown")]
 
@@ -22,6 +24,7 @@ use crate::note_identity_support;
 
 use std::collections::HashMap;
 
+use memry_core::domain::note_files;
 use memry_core::domain::notes::identity::{
     self, Adopted, Deferral, ELECTRON_IMPORT_META_KEY, FileNote, Origin, VAULT_ORIGIN_META_KEY,
 };
@@ -390,6 +393,54 @@ fn a_large_file_asked_again_is_the_bare_note_it_made() {
     );
     assert_eq!(note_count(&db), 2);
     assert!(outbox(&db).is_empty());
+}
+
+/// A note whose payload cannot be read is not known to have no text (#4326): a large file
+/// does not claim it as bare, and a file with text does not take it as a note with none.
+#[test]
+fn a_note_whose_payload_does_not_parse_is_never_taken_for_one_with_no_text() {
+    let db = note_identity_support::open("corrupt-payload");
+    let adopt_large = |file, id: &str| {
+        run(&db, |conn| {
+            Ok(large_file::adopt_large(conn, &file, id, "dev", 1))
+        })
+        .expect("an answer")
+    };
+    pulled(&db, "pulled", &record("Plan", None, ""));
+    run(&db, |conn| {
+        conn.execute(
+            "UPDATE sync_items SET payload = '{\"title\": \"Pl' WHERE item_id = 'pulled'",
+            [],
+        )
+        .expect("a torn payload");
+        Ok(())
+    });
+
+    assert_eq!(adopt_large(file("Plan.md", "x"), "minted"), UNDECIDED);
+    assert_eq!(
+        adopt(&db, file("Plan.md", "Buy milk\n"), "minted"),
+        UNDECIDED
+    );
+    assert_eq!(note_count(&db), 1);
+}
+
+/// A large file's note is recorded large-file class with it, in one transaction (#4326): a
+/// crash before the vault tier records it cannot leave a note whose shrink is never seen.
+#[test]
+fn a_large_files_note_is_recorded_large_with_it() {
+    let db = note_identity_support::open("large-class");
+    let created_large = run(&db, |conn| {
+        Ok(large_file::adopt_large(
+            conn,
+            &file("Logs/dump.md", "unread"),
+            "big",
+            "dev",
+            1,
+        ))
+    })
+    .expect("an answer");
+    assert_eq!(created_large, created("big"));
+    assert!(run(&db, |conn| note_files::is_large_file(conn, "big")));
 }
 
 #[test]

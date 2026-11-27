@@ -1,7 +1,7 @@
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderWithProviders as render } from '@tests/utils/render'
 import { useSyncExternalStore } from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as Y from 'yjs'
 import { getDefaultReactSlashMenuItems } from '@blocknote/react'
 import { serializeCriticMarkup } from '@memry/shared'
@@ -306,6 +306,10 @@ vi.mock('@/contexts/sync-context', () => ({
   useSyncOptional: vi.fn(() => null)
 }))
 
+vi.mock('@/contexts/auth-context', () => ({
+  useAuthOptional: vi.fn(() => null)
+}))
+
 vi.mock('@/hooks/use-wiki-link-hover', () => ({
   useWikiLinkHover: vi.fn(() => contentAreaMocks.wikiHover)
 }))
@@ -470,6 +474,10 @@ import { ContentArea } from './ContentArea'
 import type * as ScanTaskIntents from './scan-task-intents'
 import { markTaskRemovalsHandled } from './task-removal'
 import { useYjsCollaboration } from '@/sync/use-yjs-collaboration'
+import { useSyncOptional } from '@/contexts/sync-context'
+import { useAuthOptional } from '@/contexts/auth-context'
+import type { CrdtRemoteBodyWait } from '@memry/contracts/ipc-crdt'
+import { useEditorSync } from './hooks'
 
 function createBlock(id: string, overrides: Record<string, unknown> = {}) {
   const block = {
@@ -999,7 +1007,10 @@ describe('ContentArea', () => {
     )
   })
 
-  it('persists review marks into Yjs metadata while collaboration is active', async () => {
+  // The doc owns the marks while the editor is bound to it. The review state
+  // can still hold the previous note's marks when the next note's editor binds,
+  // and copying them into the doc put one note's comments into another.
+  it("shows the doc's review marks, and only the user's own change reaches the doc", async () => {
     const doc = new Y.Doc()
     const fragment = doc.getXmlFragment('blocks')
     contentAreaMocks.useSyncState = { status: 'idle' }
@@ -1010,37 +1021,36 @@ describe('ContentArea', () => {
       isReady: true,
       isRemoteUpdateRef: { current: false }
     }
+    const onReplaceMarksFromYjs = vi.fn()
+    const onDocBindingChange = vi.fn()
+    const comment = (id: string) => ({
+      id,
+      kind: 'comment' as const,
+      visibleText: 'words',
+      start: 0,
+      end: 5
+    })
 
     render(
       <ContentArea
         noteId="note-1"
         review={{
           plainMarkdown: '',
-          marks: [
-            {
-              id: 'add-1',
-              kind: 'addition',
-              visibleText: 'added',
-              start: 5,
-              end: 10
-            }
-          ],
-          hoveredMarkId: null
+          marks: [comment('previous-note')],
+          hoveredMarkId: null,
+          onReplaceMarksFromYjs,
+          onDocBindingChange
         }}
       />
     )
 
-    await waitFor(() =>
-      expect(doc.getArray('criticMarkupMarks').toArray()).toEqual([
-        expect.objectContaining({
-          id: 'add-1',
-          kind: 'addition',
-          visibleText: 'added',
-          start: 5,
-          end: 10
-        })
-      ])
-    )
+    await waitFor(() => expect(onReplaceMarksFromYjs).toHaveBeenCalledWith([]))
+    expect(doc.getArray('criticMarkupMarks').toArray()).toEqual([])
+
+    const binding = onDocBindingChange.mock.calls.at(-1)?.[0]
+    binding.updateMarks({ upsert: [comment('added-here')], remove: [] })
+    expect(doc.getArray('criticMarkupMarks').toArray()).toEqual([comment('added-here')])
+    expect(onReplaceMarksFromYjs).toHaveBeenLastCalledWith([comment('added-here')])
   })
 
   // The note is open on two devices. The checkbox typed on one reaches the
@@ -2208,6 +2218,49 @@ describe('ContentArea', () => {
     )
   })
 
+  // A task is created from the line's text, and quick-add lifts its tokens off
+  // that text. A `[[…]]` is not one of them in a note: dropping it from the
+  // created title raced the follow-up rename and lost the link (#5294).
+  it('keeps note links in the title of a converted checkbox', async () => {
+    contentAreaMocks.blocks.get('standalone').content = [
+      { type: 'text', text: 'Check up on [[Note A]] at [[Note B]] #urgent', styles: {} }
+    ]
+    contentAreaMocks.analyzeTaskIntents.mockReturnValueOnce({
+      ...emptyIntents(new Set()),
+      standaloneCandidate: { blockId: 'standalone' }
+    })
+
+    render(<ContentArea noteId="note-1" />)
+    fireEvent.click(screen.getByText('change'))
+
+    await waitFor(() =>
+      expect(contentAreaMocks.tasksService.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Check up on [[Note A]] at [[Note B]]',
+          tags: ['urgent']
+        })
+      )
+    )
+  })
+
+  it('keeps note links in the title of a draft task', async () => {
+    contentAreaMocks.analyzeTaskIntents.mockImplementation((_blocks, dismissed: Set<string>) => ({
+      ...emptyIntents(new Set()),
+      draftTaskBlock: dismissed.has('draft')
+        ? null
+        : { blockId: 'draft', title: 'Call [[Anna]] !high' }
+    }))
+
+    render(<ContentArea noteId="note-1" />)
+    fireEvent.click(screen.getByText('change'))
+
+    await waitFor(() =>
+      expect(contentAreaMocks.tasksService.create).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Call [[Anna]]', priority: 3 })
+      )
+    )
+  })
+
   // y-prosemirror renders the Y.Doc into the view while it mounts, before
   // BlockNoteView subscribes `onChange`, so the content a note opens with never
   // produces a change. An Obsidian Tasks line in a file written outside Memry
@@ -2986,5 +3039,67 @@ describe('ContentArea', () => {
     fireEvent.keyDown(screen.getByRole('application'), { key: 'Backspace' })
 
     expect(clickSpy).toHaveBeenCalledTimes(1)
+  })
+
+  describe('waiting for its server body (#5290)', () => {
+    const yjs = (): typeof contentAreaMocks.yjsState & {
+      remoteWait?: CrdtRemoteBodyWait | null
+    } => contentAreaMocks.yjsState
+
+    afterEach(() => {
+      yjs().isReady = true
+      yjs().remoteWait = null
+      vi.mocked(useSyncOptional).mockReturnValue(null)
+      vi.mocked(useAuthOptional).mockReturnValue(null)
+    })
+
+    function waitOn(remoteWait: CrdtRemoteBodyWait, status: string): void {
+      yjs().isReady = false
+      yjs().remoteWait = remoteWait
+      vi.mocked(useSyncOptional).mockReturnValue({ state: { status } } as never)
+    }
+
+    it('shows the loading state while the merge is under way online', () => {
+      waitOn('merging', 'idle')
+
+      render(<ContentArea noteId="note-1" initialContent="# File" onMarkdownChange={vi.fn()} />)
+
+      expect(screen.queryByTestId('blocknote-view')).not.toBeInTheDocument()
+      expect(screen.queryByText('editor.remoteBodyStuck')).not.toBeInTheDocument()
+    })
+
+    it.each([
+      { remoteWait: 'stuck' as const, status: 'idle', notice: /Waiting for sync/ },
+      { remoteWait: 'merging' as const, status: 'offline', notice: /Offline/ },
+      { remoteWait: 'signed-out' as const, status: 'error', notice: /Signed out/ },
+      { remoteWait: 'vault-locked' as const, status: 'error', notice: /encryption key/ }
+    ])(
+      'shows the file read-only, unbound and unsaved, when $remoteWait and $status',
+      ({ remoteWait, status, notice }) => {
+        waitOn(remoteWait, status)
+        vi.mocked(useEditorSync).mockClear()
+
+        render(<ContentArea noteId="note-1" initialContent="# File" onMarkdownChange={vi.fn()} />)
+
+        expect(screen.getByRole('status')).toHaveTextContent(notice)
+        expect(screen.getByTestId('blocknote-view')).toBeInTheDocument()
+        expect(vi.mocked(useEditorSync).mock.lastCall?.[0]).toMatchObject({
+          initialContent: '# File',
+          yjsFragment: undefined,
+          onMarkdownChange: undefined,
+          onContentChange: undefined
+        })
+      }
+    )
+
+    it('goes back to the loading state once the window is signed in again (#5342)', () => {
+      waitOn('signed-out', 'idle')
+      vi.mocked(useAuthOptional).mockReturnValue({ state: { status: 'authenticated' } } as never)
+
+      render(<ContentArea noteId="note-1" initialContent="# File" onMarkdownChange={vi.fn()} />)
+
+      expect(screen.queryByTestId('blocknote-view')).not.toBeInTheDocument()
+      expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    })
   })
 })

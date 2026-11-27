@@ -6,7 +6,7 @@ import { getI18n } from 'react-i18next'
  * Loads file metadata via IPC and renders the file using the absolute path.
  */
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   Loader2,
@@ -29,6 +29,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 import type { FileMetadata } from '@memry/rpc/notes'
+import type { NoteFilesRetry } from '@memry/contracts/ipc-attachments'
 import { useT } from '@memry/i18n/renderer'
 import { useFileActionLabels } from '@/hooks/use-file-action-labels'
 import { ItemProjectChips } from '@/components/tasks/projects/item-project-chips'
@@ -57,6 +58,16 @@ function formatFileSize(bytes: number | null): string {
 // ============================================================================
 // Error State Component
 // ============================================================================
+
+/** The file did not download (#5616). */
+class FileDownloadError extends Error {
+  readonly retry: NoteFilesRetry
+
+  constructor(message: string | undefined, retry: NoteFilesRetry) {
+    super(message)
+    this.retry = retry
+  }
+}
 
 function FileErrorState({ error, onRetry }: { error: string; onRetry?: () => void }) {
   const { t: tPhaseF } = useT('notes')
@@ -280,10 +291,27 @@ export function FilePage({ fileId }: FilePageProps) {
     refetch
   } = useQuery({
     queryKey: ['file', fileId],
-    queryFn: () => notesService.getFile(fileId!),
+    queryFn: async () => {
+      // With attachment auto-download off, the file stays on the server until
+      // it is opened (#5616): fetch it before reading where it is.
+      const downloaded = await window.api.syncAttachments.downloadNoteFiles({ noteId: fileId! })
+      if (!downloaded.success) {
+        throw new FileDownloadError(downloaded.error, downloaded.retry ?? 'now')
+      }
+      return notesService.getFile(fileId!)
+    },
     enabled: !!fileId,
-    staleTime: 60_000 // 1 minute
+    staleTime: 60_000, // 1 minute
+    // Main paces the server's 404s for a missing file (#5616); Try again asks again.
+    retry: false
   })
+
+  // Sync starting is what brings a file that waits for it: ask again then.
+  const waitsForSync = error instanceof FileDownloadError && error.retry === 'whenSyncRuns'
+  useEffect(() => {
+    if (!waitsForSync) return undefined
+    return window.api.onSyncStatusChanged(() => void refetch({ cancelRefetch: false }))
+  }, [waitsForSync, refetch])
 
   const { runCommand } = useFileCommands({
     fileId: file?.id ?? null,
@@ -308,7 +336,11 @@ export function FilePage({ fileId }: FilePageProps) {
           error,
           getI18n().getFixedT(null, 'notes')('phaseF.pagesFile.failedToLoadFile')
         )}
-        onRetry={() => void refetch()}
+        onRetry={
+          error instanceof FileDownloadError && error.retry !== 'now'
+            ? undefined
+            : () => void refetch()
+        }
       />
     )
   }

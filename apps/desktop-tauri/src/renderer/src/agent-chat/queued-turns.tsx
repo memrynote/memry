@@ -68,11 +68,7 @@ export function QueuedTurns({
                     value={draft}
                     onChange={(event) => setDraft(turn.id, event.target.value)}
                     onKeyDown={(event) => {
-                      if (
-                        event.key === 'Enter' &&
-                        !event.shiftKey &&
-                        !event.nativeEvent.isComposing
-                      ) {
+                      if (event.key === 'Enter' && !event.shiftKey) {
                         event.preventDefault()
                         saveEdit(turn.id)
                       }

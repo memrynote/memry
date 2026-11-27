@@ -16,6 +16,7 @@ use std::sync::OnceLock;
 use rusqlite::{Connection, OptionalExtension, params};
 
 use crate::api::errors::StorageError;
+use crate::storage::nested_tx;
 
 /// Width of every vector: the first 256 of EmbeddingGemma 2's 768, renormalised.
 pub const EMBEDDING_DIMENSION: usize = 256;
@@ -120,7 +121,7 @@ pub fn register() -> Result<(), StorageError> {
 /// can tell a defect of the file (a missing shadow table) from a lock or an I/O
 /// error.
 pub fn ensure_vec_tables(conn: &mut Connection) -> Result<Vec<&'static str>, rusqlite::Error> {
-    let tx = conn.transaction()?;
+    let tx = nested_tx::begin(conn)?;
     let mut dropped = Vec::new();
     for (tables, state) in FAMILIES {
         let mut stale = false;

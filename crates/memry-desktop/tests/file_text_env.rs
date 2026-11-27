@@ -195,15 +195,19 @@ impl<P> Ft<P> {
         self.file_text.runner().expect("running").compared_files()
     }
 
+    /// A full scan that began after this call ended; the files it compared.
+    pub fn rescanned(&self) -> usize {
+        let runner = self.file_text.runner().expect("running");
+        let ticket = runner.rescan_all();
+        self.until("a rescan", |_| runner.rescanned().ticket >= ticket);
+        runner.rescanned().compared
+    }
+
     /// Every comparison and job a rescan owes has run: the next rescan's scan started after it,
     /// on the runner's one thread.
     pub fn scanned(&self) {
-        let runner = self.file_text.runner().expect("running");
-        for _ in 0..2 {
-            let before = runner.scans();
-            self.file_text.rescan_all();
-            self.until("a rescan", |_| runner.scans() > before);
-        }
+        self.rescanned();
+        self.rescanned();
     }
 
     /// The note `rel`, written now; its id once the tier applied it.

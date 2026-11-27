@@ -102,16 +102,7 @@ struct BacklinksSection: View {
     }
 
     private var orderPicker: some View {
-        Picker("Order", selection: Binding(
-            get: { model.order },
-            set: { model.order = $0 }
-        )) {
-            Text("Recent").tag(BacklinkOrder.recent)
-            Text("Title").tag(BacklinkOrder.title)
-            Text("Oldest").tag(BacklinkOrder.oldest)
-        }
-        .pickerStyle(.menu)
-        .accessibilityLabel("Order backlinks")
+        BacklinkOrderPicker(model: model)
     }
 
     /// The section shows only once there is something to say: a link, or a
@@ -161,6 +152,44 @@ struct BacklinksSection: View {
     }
 }
 
+/// How the backlinks are ordered.
+struct BacklinkOrderPicker: View {
+    let model: BacklinksViewModel
+
+    var body: some View {
+        // A menu over an inline picker rather than a menu-style picker, whose
+        // label ignores the font and draws at body size beside a caption.
+        Menu {
+            Picker("Order", selection: Binding(
+                get: { model.order },
+                set: { model.order = $0 }
+            )) {
+                ForEach(Self.orders, id: \.0) { order, name in Text(name).tag(order) }
+            }
+            .pickerStyle(.inline)
+        } label: {
+            HStack(spacing: Tokens.Space.tight) {
+                Text(name(model.order))
+                Image(systemName: "chevron.up.chevron.down")
+                    .imageScale(.small)
+            }
+            .font(Tokens.Typography.caption.font)
+            .frame(minHeight: Tokens.Size.minimumHitArea)
+            .contentShape(.rect)
+        }
+        .accessibilityLabel("Order backlinks")
+        .accessibilityValue(name(model.order))
+    }
+
+    private static let orders: [(BacklinkOrder, String)] = [
+        (.recent, "Recent"), (.title, "Title"), (.oldest, "Oldest"),
+    ]
+
+    private func name(_ order: BacklinkOrder) -> String {
+        Self.orders.first { $0.0 == order }?.1 ?? "Recent"
+    }
+}
+
 /// One backlink: a note pushes its page, a journal day opens in the Journal
 /// tab.
 struct BacklinkRowButton: View {
@@ -170,23 +199,23 @@ struct BacklinkRowButton: View {
     var leaving: (() -> Void)?
 
     @Environment(\.openJournalDay) private var openJournalDay
+    /// The split view's pane this row's page is in (#4377).
+    @Environment(\.notesPane) private var pane
+    /// `⌘` was held as the row was touched: the tap opens to the side.
+    @State private var commandHeld = false
 
     var body: some View {
         Button(action: tap) {
-            VStack(alignment: .leading, spacing: Tokens.Space.tight) {
-                Text(backlink.title)
-                    .font(Tokens.Typography.body.font)
-                    .foregroundStyle(Tokens.Text.primary.color)
-                if case .journalDay = backlink.destination {
-                    Text(JournalCopy.journalKind)
-                        .font(Tokens.Typography.caption.font)
-                        .foregroundStyle(Tokens.Text.secondary.color)
-                }
-            }
-            .frame(maxWidth: .infinity, minHeight: Tokens.Size.minimumHitArea, alignment: .leading)
-            .contentShape(.rect)
+            ConnectionRow(
+                symbol: isJournal ? "calendar" : "doc.text",
+                tint: isJournal ? Tokens.Task.tokenDate.color : Tokens.Task.tokenNote.color,
+                title: backlink.title,
+                detail: isJournal ? JournalCopy.journalKind : nil
+            )
         }
+        .buttonStyle(.plain)
         .disabled(isJournal && openJournalDay == nil)
+        .modifier(BacklinkOpenToTheSide(open: toSide, commandHeld: $commandHeld))
         .accessibilityElement(children: .combine)
         .accessibilityHint(isJournal ? JournalCopy.openInJournal : "")
         .accessibilityIdentifier("note.backlink.\(backlink.id)")
@@ -197,7 +226,18 @@ struct BacklinkRowButton: View {
         return false
     }
 
+    /// Opens the row's note in the pane beside this one; `nil` for a journal
+    /// day, and where no pane can show.
+    private var toSide: (() -> Void)? {
+        guard case let .note(route) = backlink.destination, let toSide = pane?.openToTheSide else { return nil }
+        return {
+            leaving?()
+            toSide(route)
+        }
+    }
+
     private func tap() {
+        if commandHeld, let toSide { return toSide() }
         switch backlink.destination {
         case let .note(route): open(route)
         case let .journalDay(date):
@@ -246,5 +286,23 @@ struct NoteBacklinksSheet: View {
         }
         .presentationDetents([.medium, .large])
         .task(id: searchIndex?.completed) { await model.reload() }
+    }
+}
+
+/// A backlink's "Open to the Side" (#4377): its menu, and a `⌘`-click.
+private struct BacklinkOpenToTheSide: ViewModifier {
+    let open: (() -> Void)?
+    @Binding var commandHeld: Bool
+
+    func body(content: Content) -> some View {
+        if let open {
+            content
+                .gesture(TouchDown { commandHeld = $0.contains(.command) })
+                .contextMenu {
+                    Button(NotesPaneCopy.openToTheSide, systemImage: "rectangle.split.2x1", action: open)
+                }
+        } else {
+            content
+        }
     }
 }

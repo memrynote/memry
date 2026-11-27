@@ -12,7 +12,7 @@ const nav = (page, name) =>
   page.getByRole('navigation', { name: 'Sections' }).getByRole('button', { name, exact: true })
 
 const vault = () =>
-  JSON.parse(fs.readFileSync(path.join(process.env.TMPDIR, 'memry-agent-app.json'), 'utf8'))
+  JSON.parse(fs.readFileSync(path.join(process.env.TMPDIR, 'memry-agent-app-tauri.json'), 'utf8'))
     .vaultPath
 const journalText = (d) => fs.readFileSync(path.join(vault(), 'journal', `${d}.md`), 'utf8')
 
