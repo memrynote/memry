@@ -87,6 +87,7 @@ pub fn attachment_error<R: Runtime>(
         | AttachmentError::OutsideVault
         | AttachmentError::NotOwned
         | AttachmentError::BadName
+        | AttachmentError::NotPlainName
         | AttachmentError::NoFreeName
         | AttachmentError::BadReference => CommandError::new(
             ErrorKind::Invalid,

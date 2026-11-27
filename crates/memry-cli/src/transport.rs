@@ -21,6 +21,7 @@ use std::time::Duration;
 use futures_util::{SinkExt, StreamExt};
 use memry_core::api::errors::TransportError;
 use memry_core::api::runtime;
+use memry_core::protocol::http::IDLE_TIMEOUT_MS;
 use memry_core::seams::transport::{
     HttpRequest, HttpResponse, SocketHandle, SocketListener, SocketRequest, Transport,
 };
@@ -45,8 +46,10 @@ impl NativeTransport {
         install_crypto_provider();
         // No `.timeout()` here: the ceiling is per request and the core sets it
         // (chapter 00 §0.6). A client-wide default would silently override the
-        // value the core chose for a long first-sync page.
+        // value the core chose for a long first-sync page. The idle limit is
+        // the same for every request, so it is the client's.
         let client = reqwest::Client::builder()
+            .read_timeout(Duration::from_millis(IDLE_TIMEOUT_MS))
             .build()
             .map_err(|err| TransportError::Failed {
                 what: format!("could not build the HTTP client: {err}"),
@@ -75,6 +78,7 @@ impl Transport for NativeTransport {
             }
         })?;
 
+        let started = tokio::time::Instant::now();
         let mut wire = self
             .client
             .request(method, &request.url)
@@ -89,7 +93,7 @@ impl Transport for NativeTransport {
         let response = wire
             .send()
             .await
-            .map_err(|err| classify(&err, timeout_ms))?;
+            .map_err(|err| classify(&err, timeout_ms, started))?;
         let status = response.status().as_u16();
         // Lowercase keys, as the seam's contract requires. `reqwest` already
         // lowercases them; the explicit fold is what keeps that true if it ever
@@ -108,7 +112,7 @@ impl Transport for NativeTransport {
         let body = response
             .bytes()
             .await
-            .map_err(|err| classify(&err, timeout_ms))?
+            .map_err(|err| classify(&err, timeout_ms, started))?
             .to_vec();
 
         Ok(HttpResponse {
@@ -248,11 +252,22 @@ async fn pump(
 }
 
 /// One `reqwest` failure in the seam's vocabulary.
-fn classify(error: &reqwest::Error, timeout_ms: u64) -> TransportError {
+///
+/// `reqwest` does not say which timer fired, so the elapsed time does: short
+/// of the deadline, it was the idle limit.
+fn classify(
+    error: &reqwest::Error,
+    timeout_ms: u64,
+    started: tokio::time::Instant,
+) -> TransportError {
     if error.is_timeout() {
-        return TransportError::Timeout {
-            elapsed_ms: timeout_ms,
+        let deadline = Duration::from_millis(timeout_ms);
+        let elapsed_ms = if started.elapsed() >= deadline || timeout_ms <= IDLE_TIMEOUT_MS {
+            timeout_ms
+        } else {
+            IDLE_TIMEOUT_MS
         };
+        return TransportError::Timeout { elapsed_ms };
     }
     if let Some(what) = tls_failure(error) {
         return TransportError::Tls { what };

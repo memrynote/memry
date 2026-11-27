@@ -5,19 +5,37 @@
       "binDir": "",
       "resourceDir": "",
       "executables": ["Memrynote.exe", "memry-ml-worker.exe"],
-      "resources": ["pdfium/pdfium.dll", "pdfium/LICENSE", "tessdata/eng.traineddata.gz"]
+      "resources": [
+        "pdfium/pdfium.dll",
+        "pdfium/LICENSE",
+        "tessdata/eng.traineddata.gz",
+        "sandbox/manifest.json",
+        "sandbox-assets/manifest.json"
+      ]
     },
     "macos": {
       "binDir": "Contents/MacOS",
       "resourceDir": "Contents/Resources",
-      "executables": ["MemryNote", "memry-ml-worker"],
-      "resources": ["pdfium/libpdfium.dylib", "pdfium/LICENSE", "tessdata/eng.traineddata.gz"]
+      "executables": ["MemryNote", "memry-ml-worker", "memry-eventkit"],
+      "resources": [
+        "pdfium/libpdfium.dylib",
+        "pdfium/LICENSE",
+        "tessdata/eng.traineddata.gz",
+        "sandbox/manifest.json",
+        "sandbox-assets/manifest.json"
+      ]
     },
     "linux": {
       "binDir": "usr/bin",
       "resourceDir": "usr/lib/MemryNote",
       "executables": ["memrynote", "memry-ml-worker"],
-      "resources": ["pdfium/libpdfium.so", "pdfium/LICENSE", "tessdata/eng.traineddata.gz"]
+      "resources": [
+        "pdfium/libpdfium.so",
+        "pdfium/LICENSE",
+        "tessdata/eng.traineddata.gz",
+        "sandbox/manifest.json",
+        "sandbox-assets/manifest.json"
+      ]
     }
   }
 }

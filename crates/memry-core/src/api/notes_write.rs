@@ -25,6 +25,8 @@
 
 use std::sync::Arc;
 
+mod bookmark_writes;
+
 use crate::api::errors::{AuthError, PropertyWriteError, StorageError};
 use crate::crdt::body_edit::{self, BlockEdit};
 use crate::crdt::errors::CrdtError;
@@ -416,6 +418,25 @@ impl NotesWriter {
             })
             .map_err(PropertyWriteError::from)?
             .map(|_| ())
+            .map_err(PropertyWriteError::from)
+    }
+
+    /// Sets the note's `fullWidth` override, as desktop's page-menu toggle
+    /// does: always a boolean, never cleared, so `false` pins normal width
+    /// against a global Full setting. Every other property stays as it is.
+    pub fn set_full_width(&self, id: String, full_width: bool) -> Result<(), PropertyWriteError> {
+        let device_id = self.device_id.clone();
+        self.db
+            .call_blocking(move |conn| {
+                Ok(notes::set_full_width(
+                    conn,
+                    &id,
+                    full_width,
+                    &device_id,
+                    now_ms(),
+                ))
+            })
+            .map_err(PropertyWriteError::from)?
             .map_err(PropertyWriteError::from)
     }
 

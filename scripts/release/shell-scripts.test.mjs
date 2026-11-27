@@ -190,7 +190,12 @@ describe(
   'sign-macos-bundle.sh',
   { skip: process.platform !== 'darwin' && 'needs PlistBuddy' },
   () => {
-    it('gives the app entitlements to the main binary and the bundle only', () =>
+    const eventkitEntitlements = path.resolve(
+      here,
+      '../../apps/desktop-tauri/eventkit/entitlements.plist'
+    )
+
+    it('gives the app entitlements to the main binary and the bundle only, and the EventKit helper calendars only', () =>
       inTemp((dir) => {
         const app = path.join(dir, 'MemryNote.app')
         const files = {
@@ -199,6 +204,7 @@ describe(
             '<key>CFBundleExecutable</key><string>MemryNote</string></dict></plist>',
           'Contents/MacOS/MemryNote': 'bin',
           'Contents/MacOS/memry-ml-worker': 'bin',
+          'Contents/MacOS/memry-eventkit': 'bin',
           'Contents/Resources/pdfium/libpdfium.dylib': 'lib'
         }
         for (const [rel, body] of Object.entries(files)) {
@@ -215,11 +221,54 @@ describe(
         const signing = '--force --timestamp --options runtime'
         assert.deepEqual(readFileSync(calls, 'utf8').trim().split('\n'), [
           `codesign ${signing} --keychain kc --sign Developer ID ${app}/Contents/MacOS/memry-ml-worker`,
+          `codesign ${signing} --entitlements ${eventkitEntitlements} --keychain kc --sign Developer ID ${app}/Contents/MacOS/memry-eventkit`,
           `codesign ${signing} --keychain kc --sign Developer ID ${app}/Contents/Resources/pdfium/libpdfium.dylib`,
           `codesign ${signing} --entitlements app.plist --keychain kc --sign Developer ID ${app}/Contents/MacOS/MemryNote`,
           `codesign ${signing} --entitlements app.plist --keychain kc --sign Developer ID ${app}`,
           `codesign --verify --strict --verbose=2 ${app}`
         ])
       }))
+
+    for (const missing of ['Contents/MacOS/memry-eventkit', 'Contents/MacOS/memry-ml-worker']) {
+      it(`fails before signing when the manifest's ${path.basename(missing)} is not in the bundle`, () =>
+        inTemp((dir) => {
+          const app = path.join(dir, 'MemryNote.app')
+          const files = {
+            'Contents/Info.plist':
+              '<?xml version="1.0" encoding="UTF-8"?><plist version="1.0"><dict>' +
+              '<key>CFBundleExecutable</key><string>MemryNote</string></dict></plist>',
+            'Contents/MacOS/MemryNote': 'bin',
+            'Contents/MacOS/memry-ml-worker': 'bin',
+            'Contents/MacOS/memry-eventkit': 'bin',
+            'Contents/Resources/pdfium/libpdfium.dylib': 'lib'
+          }
+          delete files[missing]
+          for (const [rel, body] of Object.entries(files)) {
+            mkdirSync(path.dirname(path.join(app, rel)), { recursive: true })
+            writeFileSync(path.join(app, rel), body)
+          }
+          const bin = path.join(dir, 'bin')
+          const calls = path.join(dir, 'calls')
+          stub(bin, 'codesign', `echo "codesign $*" >> "${calls}"`)
+          const result = run('sign-macos-bundle.sh', [app, 'Developer ID', 'app.plist', 'kc'], {
+            binDir: bin
+          })
+          assert.notEqual(result.status, 0)
+          assert.match(result.stderr, new RegExp(`missing .*${path.basename(missing)}`))
+          assert.equal(existsSync(calls), false)
+        }))
+    }
   }
 )
+
+it('the EventKit helper entitlements grant calendars and nothing else', () => {
+  const plist = readFileSync(
+    path.resolve(here, '../../apps/desktop-tauri/eventkit/entitlements.plist'),
+    'utf8'
+  )
+  assert.deepEqual(
+    [...plist.matchAll(/<key>([^<]+)<\/key>\s*<true\/>/g)].map((match) => match[1]),
+    ['com.apple.security.personal-information.calendars']
+  )
+  assert.equal([...plist.matchAll(/<key>/g)].length, 1)
+})

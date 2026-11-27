@@ -98,15 +98,19 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: '1.98.1'
           targets: ${{ matrix.triple }}
+      # BoringSSL (btls-sys, under the Inbox web fetch) assembles its x86 code with NASM; ARM64 builds it
+      # without assembly (the btls-sys patch in crates/Cargo.toml).
+      - if: runner.arch == 'X64'
+        uses: ilammy/setup-nasm@72793074d3c8cdda771dba85f6deafe00623038b # v1.5.2
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: crates
           key: ${{ matrix.os }}
+          save-if: ${{ github.ref == 'refs/heads/feat/tauri-v2' }}
       - run: pnpm install --frozen-lockfile --ignore-scripts
       # The release bundle (#3556 S1): the memry-ml-worker sidecar links ONNX Runtime and Tesseract
       # statically. The ONNX Runtime archives are releases of memrynote/memry, not of the repo the
@@ -117,7 +121,7 @@ jobs:
           repository: memrynote/memry
       - uses: ./.github/actions/tesseract-sources
         with:
-          save: 'true'
+          save: ${{ github.ref == 'refs/heads/feat/tauri-v2' }}
       - name: Build the sidecars and fetch pdfium
         run: node apps/desktop-tauri/scripts/build-sidecars.mjs --target ${{ matrix.triple }}
       - name: Build
@@ -127,7 +131,9 @@ jobs:
       - name: Stage pack dir
         run: node scripts/release/stage-payload.mjs win ${{ matrix.triple }} pack
       - name: Check the exe needs no VC++ redistributable
-        run: node scripts/release/pe-imports.mjs pack/Memrynote.exe
+        run: |
+          node scripts/release/pe-imports.mjs pack/Memrynote.exe
+          node scripts/release/pe-imports.mjs pack/memry-ml-worker.exe
       - name: Check the payload
         run: node scripts/release/assert-payload.mjs pack windows
       - name: The bundled worker opens a PDF with the bundled pdfium
@@ -162,7 +168,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: '1.98.1'
@@ -171,6 +176,7 @@ jobs:
         with:
           workspaces: crates
           key: ${{ matrix.os }}
+          save-if: ${{ github.ref == 'refs/heads/feat/tauri-v2' }}
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - uses: actions/setup-dotnet@v4
         with:
@@ -186,13 +192,13 @@ jobs:
           repository: memrynote/memry
       - uses: ./.github/actions/tesseract-sources
         with:
-          save: 'true'
+          save: ${{ github.ref == 'refs/heads/feat/tauri-v2' }}
       - name: Build the sidecars and fetch pdfium
         run: node apps/desktop-tauri/scripts/build-sidecars.mjs --target ${{ matrix.triple }}
       - name: Build bundle (unsigned)
         run: |
           node scripts/release/version-config.mjs "$VERSION" "$RUNNER_TEMP/version.conf.json"
-          pnpm --filter @memry/desktop-tauri exec tauri build --target ${{ matrix.triple }} --bundles app --config src-tauri/tauri.release.conf.json --config "$RUNNER_TEMP/version.conf.json"
+          pnpm --filter @memry/desktop-tauri exec tauri build --target ${{ matrix.triple }} --bundles app --config src-tauri/tauri.release.conf.json --config src-tauri/tauri.release.macos.conf.json --config "$RUNNER_TEMP/version.conf.json"
       - name: Import signing identity
         env:
           MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
@@ -241,6 +247,19 @@ jobs:
             entitlements="$(codesign -d --entitlements - --xml "$file")"
             if [[ "$entitlements" == *'<key>'* ]]; then echo "::error::$file has entitlements: $entitlements"; exit 1; fi
           done
+      - name: The EventKit helper is signed with the hardened runtime, the app's Team ID and the calendars entitlement only
+        run: |
+          set -euo pipefail
+          contents=pack/MemryNote.app/Contents
+          helper="$contents/MacOS/memry-eventkit"
+          team="$(codesign -dv "$contents/MacOS/MemryNote" 2>&1 | sed -n 's/^TeamIdentifier=//p')"
+          [[ "$team" =~ ^[A-Z0-9]{10}$ ]] || { echo "::error::the main binary has no Team ID"; exit 1; }
+          codesign -dv --verbose=2 "$helper" 2>&1 | tee "$RUNNER_TEMP/codesign.txt"
+          grep -qxF "TeamIdentifier=$team" "$RUNNER_TEMP/codesign.txt" || { echo "::error::$helper is not signed by the app's team"; exit 1; }
+          grep -qE '^CodeDirectory .*flags=.*runtime' "$RUNNER_TEMP/codesign.txt" || { echo "::error::$helper lacks the hardened runtime"; exit 1; }
+          keys="$(codesign -d --entitlements - --xml "$helper" | grep -o '<key>[^<]*</key>')"
+          [ "$keys" = '<key>com.apple.security.personal-information.calendars</key>' ] || { echo "::error::$helper entitlements are not exactly the calendars grant: $keys"; exit 1; }
+          echo "memry-eventkit signed with calendars only"
       - name: The bundled worker opens a PDF with the bundled pdfium
         run: node scripts/release/smoke-worker.mjs pack/MemryNote.app macos crates/memry-ml-worker/tests/fixtures/two-pages.pdf
       - name: Fetch previous full packages
@@ -300,7 +319,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: '1.98.1'
@@ -308,6 +326,7 @@ jobs:
         with:
           workspaces: crates
           key: ubuntu-22.04
+          save-if: ${{ github.ref == 'refs/heads/feat/tauri-v2' }}
       - name: Install system libraries
         run: |
           sudo apt-get update
@@ -327,7 +346,7 @@ jobs:
           repository: memrynote/memry
       - uses: ./.github/actions/tesseract-sources
         with:
-          save: 'true'
+          save: ${{ github.ref == 'refs/heads/feat/tauri-v2' }}
       - name: Build the sidecars and fetch pdfium
         run: node apps/desktop-tauri/scripts/build-sidecars.mjs --target x86_64-unknown-linux-gnu
       - name: Build AppImage

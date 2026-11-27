@@ -50,6 +50,9 @@ protocol VaultContentRemoval: Sendable {
     ///   removed twice by a retry that follows, because removal is idempotent.
     @discardableResult
     func removeAllVaultContent() throws -> Int
+
+    /// The vault id the removal keeps, if any.
+    func survivingVault() -> String?
 }
 
 /// The production remover, over the layout `VaultFiles` owns.
@@ -76,6 +79,8 @@ struct VaultContentRemover: VaultContentRemoval {
         self.filesystem = filesystem
         self.survivor = survivor
     }
+
+    func survivingVault() -> String? { survivor() }
 
     @discardableResult
     func removeAllVaultContent() throws -> Int {

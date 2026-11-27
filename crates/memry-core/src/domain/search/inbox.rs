@@ -18,6 +18,7 @@
 use rusqlite::{Connection, OptionalExtension as _, params};
 
 use crate::api::errors::StorageError;
+use crate::storage::nested_tx;
 
 use super::failed;
 use super::maintenance::{Reindexed, candidates, meta_number, meta_set};
@@ -65,7 +66,7 @@ pub(super) fn reindex(
 /// transaction. The capture shell calls it on capture, edit and transcription, so a
 /// capture is findable before the next [`super::reindex`]. Leaves the watermark alone.
 pub fn upsert(data: &Connection, index: &Connection, id: &str) -> Result<(), StorageError> {
-    let transaction = index.unchecked_transaction().map_err(failed)?;
+    let transaction = nested_tx::begin(index).map_err(failed)?;
     index_item(data, &transaction, id, true, &mut Reindexed::default())?;
     transaction.commit().map_err(failed)
 }
@@ -82,7 +83,7 @@ pub fn delete(index: &Connection, id: &str) -> Result<(), StorageError> {
 /// watermark, so the next [`super::reindex`] refills it from every capture rather
 /// than only those changed since.
 pub fn clear(index: &Connection) -> Result<(), StorageError> {
-    let transaction = index.unchecked_transaction().map_err(failed)?;
+    let transaction = nested_tx::begin(index).map_err(failed)?;
     transaction
         .execute_batch("DELETE FROM fts_inbox;")
         .map_err(failed)?;

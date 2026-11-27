@@ -393,34 +393,44 @@ impl EntityDecoder {
     }
 }
 
+/// `decodeHTML(input)` of entities 7.0.1 (legacy mode): metascraper decodes JSON-LD strings with it.
+pub fn decode_html(input: &str) -> String {
+    decode_with(input, DecodingMode::Legacy)
+}
+
+/// `decodeWithTrie`: every `&` run through the decoder.
+fn decode_with(input: &str, mode: DecodingMode) -> String {
+    let bytes = input.as_bytes();
+    let mut decoder = EntityDecoder::new();
+    let mut out = String::new();
+    let mut last = 0usize;
+    let mut offset = 0usize;
+    while let Some(rel) = bytes[offset..].iter().position(|&b| b == b'&') {
+        let amp = offset + rel;
+        out.push_str(&input[last..amp]);
+        decoder.start_entity(mode);
+        let length = decoder.write(bytes, amp + 1);
+        let incomplete = length < 0;
+        let length = if incomplete { decoder.end() } else { length };
+        for (cp, _) in decoder.take_output() {
+            out.push(char::from_u32(cp).unwrap_or('\u{fffd}'));
+        }
+        last = amp + usize::try_from(length).unwrap_or(0);
+        if incomplete {
+            break;
+        }
+        offset = if length == 0 { last + 1 } else { last };
+    }
+    out.push_str(&input[last.min(input.len())..]);
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    /// `decodeHTML` of entities 7.0.1: every `&` run through the decoder as htmlparser2 does.
     fn decode(input: &str, mode: DecodingMode) -> String {
-        let bytes = input.as_bytes();
-        let mut decoder = EntityDecoder::new();
-        let mut out = String::new();
-        let mut last = 0usize;
-        let mut offset = 0usize;
-        while let Some(rel) = bytes[offset..].iter().position(|&b| b == b'&') {
-            let amp = offset + rel;
-            out.push_str(&input[last..amp]);
-            decoder.start_entity(mode);
-            let length = decoder.write(bytes, amp + 1);
-            let length = if length < 0 { decoder.end() } else { length };
-            for (cp, _) in decoder.take_output() {
-                out.push(char::from_u32(cp).unwrap_or('\u{fffd}'));
-            }
-            last = amp + usize::try_from(length).unwrap_or(0);
-            offset = if length == 0 { last + 1 } else { last };
-            if length < 0 {
-                break;
-            }
-        }
-        out.push_str(&input[last.min(input.len())..]);
-        out
+        decode_with(input, mode)
     }
 
     // Expected values: `decodeHTML(input)` and `decodeHTMLAttribute(input)` in entities 7.0.1.

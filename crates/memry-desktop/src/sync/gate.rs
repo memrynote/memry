@@ -118,12 +118,14 @@ impl SyncStartGate {
         }
     }
 
+    /// A repeated `Entitled` signals too: billing's paid answer is the only way out of the
+    /// driver's `Unentitled` after a `402` (§11.7.1), and the gate may already say `Entitled`.
     pub fn set_entitlement(&self, entitlement: Entitlement) {
         let changed = {
             let mut facts = lock(&self.facts);
             std::mem::replace(&mut facts.1, entitlement) != entitlement
         };
-        if changed {
+        if changed || entitlement == Entitlement::Entitled {
             self.changed.send_modify(|n| *n += 1);
         }
     }

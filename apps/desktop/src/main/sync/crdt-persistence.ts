@@ -1,5 +1,5 @@
 import * as Y from 'yjs'
-import { LeveldbPersistence } from 'y-leveldb'
+import { getLevelUpdates, LeveldbPersistence } from 'y-leveldb'
 import { app } from 'electron'
 import { existsSync, readdirSync, readFileSync, rmSync } from 'fs'
 import os from 'os'
@@ -85,6 +85,37 @@ export interface CrdtPersistence {
    */
   getMeta(noteId: string, metaKey: string): Promise<unknown>
   setMeta(noteId: string, metaKey: string, value: unknown): Promise<void>
+}
+
+/** Reads of the store that never write to it. */
+export interface CrdtStoreReader {
+  docNames(): Promise<string[]>
+  updates(docName: string): Promise<Uint8Array[]>
+}
+
+/**
+ * `getYDoc` and `getStateVector` compact a long update log as they read, which
+ * is a write. These reads go through the store's own transaction queue, so they
+ * order with the provider's writes, and only list keys and values.
+ */
+export function readOnlyStore(persistence: CrdtPersistence): CrdtStoreReader | null {
+  if (!isLevelStore(persistence)) return null
+  return {
+    docNames: () => persistence.getAllDocNames(),
+    updates: (docName) => persistence._transact((db) => getLevelUpdates(db, docName))
+  }
+}
+
+/** y-leveldb 0.2.0's own reads; `_transact` is the queue every store call runs through. */
+interface LevelStoreReads {
+  getAllDocNames(): Promise<string[]>
+  _transact<T>(f: (db: unknown) => Promise<T>): Promise<T>
+}
+
+function isLevelStore(
+  persistence: CrdtPersistence
+): persistence is CrdtPersistence & LevelStoreReads {
+  return persistence instanceof LeveldbPersistence
 }
 
 /**

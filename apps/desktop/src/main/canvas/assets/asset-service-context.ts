@@ -3,8 +3,8 @@
  *
  * This is the ONE seam that reaches into the sync runtime: it reuses the
  * shared AttachmentSyncService / upload-queue singletons (via
- * `getCanvasAssetIO`), the sync token/url resolvers, the writeback-ignore
- * guard, and the server dereference client. It lives under `main/canvas/`
+ * `getCanvasAssetIO`), the sync token/url resolvers, the watcher's record of
+ * app writes, and the server dereference client. It lives under `main/canvas/`
  * (a feature module) rather than in `canvas-handlers.ts` because the IPC
  * boundary may not import `main/sync/**`; the architecture check permits a
  * feature module to depend on the sync internals it composes here.
@@ -15,7 +15,7 @@ import { getOrInitializeLocalVaultKey } from '../../crypto/vault-key-state'
 import { getDatabase, isDatabaseInitialized } from '../../database/client'
 import type { DataDb } from '../../database/types'
 import { getCanvasAssetIO } from '../../ipc/sync-attachment-handlers'
-import { markWritebackIgnored } from '../../sync/crdt-writeback'
+import { recordAppWrite } from '../../vault/app-writes'
 import { getSyncEngine } from '../../sync/runtime-state'
 import { resolveSyncServerUrl } from '@memry/sync-client/sync-server-url'
 import { getValidAccessToken } from '../../sync/token-manager'
@@ -84,7 +84,7 @@ export function buildAssetServiceContext(): AssetServiceContext | null {
     holdChunks: (canvasId, holds) => holdCanvasAssetChunks(canvasId, holds, holdDeps),
     releaseHolds: (canvasId, contentHashes) =>
       releaseCanvasAssetHolds(canvasId, contentHashes, holdDeps),
-    markWritebackIgnored,
+    recordAppWrite,
     trackEvent: trackMainEvent
   }
 }

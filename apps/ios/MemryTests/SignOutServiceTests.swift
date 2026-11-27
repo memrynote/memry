@@ -2,6 +2,7 @@ import Foundation
 import MemryCore
 import Synchronization
 import Testing
+import UIKit
 
 @testable import Memry
 
@@ -85,11 +86,15 @@ private final class OrderLog: Sendable {
 private final class ScriptedContent: VaultContentRemoval, @unchecked Sendable {
     private let log: OrderLog
     private let failure: (any Error)?
+    private let survivor: String?
 
-    init(log: OrderLog, failure: (any Error)? = nil) {
+    init(log: OrderLog, failure: (any Error)? = nil, survivor: String? = nil) {
         self.log = log
         self.failure = failure
+        self.survivor = survivor
     }
+
+    func survivingVault() -> String? { survivor }
 
     @discardableResult
     func removeAllVaultContent() throws -> Int {
@@ -101,109 +106,187 @@ private final class ScriptedContent: VaultContentRemoval, @unchecked Sendable {
 
 private func executor() -> CoreExecutor { CoreExecutor(label: "t159-service-tests") }
 
-@Suite("T159 sign-out ordering and half-completed states")
-struct SignOutServiceTests {
-    /// **The order.** The keys are what makes everything else reachable —
-    /// chapter 01 §1.7 derives every vault key from the master key and the two
-    /// tokens re-download the account — so the keychain goes first and the
-    /// files follow. Reversed, a failure between the two leaves a phone with
-    /// no notes and a working session.
-    @Test("the five keychain entries go before the files, never after")
-    func keysGoBeforeFiles() async throws {
-        let log = OrderLog()
-        let service = SignOutService(
-            session: ScriptedSession(log: log),
-            content: ScriptedContent(log: log),
-            executor: executor()
-        )
+extension KeyWindowSuites {
+    @Suite("T159 sign-out ordering and half-completed states")
+    struct SignOutServiceTests {
+        /// **The order.** The keys are what makes everything else reachable —
+        /// chapter 01 §1.7 derives every vault key from the master key and the two
+        /// tokens re-download the account — so the keychain goes first and the
+        /// files follow. Reversed, a failure between the two leaves a phone with
+        /// no notes and a working session.
+        @Test("the five keychain entries go before the files, never after")
+        func keysGoBeforeFiles() async throws {
+            let log = OrderLog()
+            let service = SignOutService(
+                session: ScriptedSession(log: log),
+                content: ScriptedContent(log: log),
+                executor: executor()
+            )
 
-        let wipe = try await service.signOut()
+            let wipe = try await service.signOut()
 
-        #expect(log.order == ["keychain", "files"])
-        #expect(wipe.reason == .signedOutByUser)
-        #expect(wipe.state == .signedOut)
-        #expect(wipe.isComplete)
-    }
+            #expect(log.order == ["keychain", "files"])
+            #expect(wipe.reason == .signedOutByUser)
+            #expect(wipe.state == .signedOut)
+            #expect(wipe.isComplete)
+        }
 
-    /// The locked-keychain case, and the reason the order is what it is: a
-    /// phone that has not been unlocked since boot reads `Locked`, not
-    /// "absent" (`Keychain`'s header, chapter 02 §2.14). Nothing may be
-    /// destroyed for a refusal that will pass.
-    @Test("a core call that refuses removes nothing at all")
-    func aRefusedCoreCallRemovesNothing() async throws {
-        let log = OrderLog()
-        let service = SignOutService(
-            session: ScriptedSession(log: log, signOut: .failure(SecureStoreError.Locked)),
-            content: ScriptedContent(log: log),
-            executor: executor()
-        )
+        @Test("a sign-out erases the keys typed after ⌘N that were not stored yet")
+        @MainActor
+        func signOutErasesTheNewNoteKeys() async throws {
+            let url = FileManager.default.temporaryDirectory.appendingPathComponent("new-note-keys-\(UUID().uuidString).json")
+            defer { try? FileManager.default.removeItem(at: url) }
+            let journal = NewNoteJournal(url: url)
+            journal.record(NewNoteJournal.Entry(hold: "h", vault: "v1", at: 0, keys: "milk"))
+            let log = OrderLog()
+            let service = SignOutService(
+                session: ScriptedSession(log: log),
+                content: ScriptedContent(log: log),
+                executor: executor(),
+                newNotes: { NotesLinks(seeds: NewNoteSeeds(journal: journal)) }
+            )
 
-        await #expect(throws: SecureStoreError.self) { try await service.signOut() }
+            _ = try await service.signOut()
 
-        // The keychain attempt happened; the filesystem never did.
-        #expect(log.order == ["keychain"])
-    }
+            #expect(!FileManager.default.fileExists(atPath: url.path))
+            #expect(NewNoteJournal(url: url).stranded(in: "v1").isEmpty)
+        }
 
-    /// The other half: the keys are gone, so the user **is** signed out, and
-    /// saying otherwise would invite them to retry something that already
-    /// happened. The residue is a notice beside a completed sign-out.
-    @Test("files that survive still leave the user signed out, with a notice")
-    func filesThatSurviveAreReportedButDoNotUndoTheSignOut() async throws {
-        let log = OrderLog()
-        let service = SignOutService(
-            session: ScriptedSession(log: log),
-            content: ScriptedContent(log: log, failure: StorageError.Failed(what: "no")),
-            executor: executor()
-        )
+        /// REVIEW-5087 #1: the parked request stayed in `NotesLinks`, and the next
+        /// account's Notes page made a note in its vault for the old account's keys.
+        @Test("a sign-out drops a parked ⌘N and its keys: the next account makes no note for them")
+        @MainActor
+        func signOutDropsAParkedNewNote() async throws {
+            let url = FileManager.default.temporaryDirectory.appendingPathComponent("new-note-keys-\(UUID().uuidString).json")
+            defer { try? FileManager.default.removeItem(at: url) }
+            let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 400, height: 400))
+            window.rootViewController = UIViewController()
+            window.isHidden = false
+            let links = NotesLinks(seeds: NewNoteSeeds(journal: NewNoteJournal(url: url)))
+            let log = OrderLog()
+            let service = SignOutService(
+                session: ScriptedSession(log: log),
+                content: ScriptedContent(log: log),
+                executor: executor(),
+                newNotes: { links }
+            )
 
-        let wipe = try await service.signOut()
+            links.requestNewNote(window: window)
+            let holder = try #require(window.subviews.first { $0.isFirstResponder } as? UIKeyInput)
+            holder.insertText("milk")
+            links.parkNewNote()
+            #expect(FileManager.default.fileExists(atPath: url.path), "parked keys are journaled")
+            _ = try await service.signOut()
 
-        #expect(wipe.state == .signedOut)
-        #expect(!wipe.isComplete)
-        #expect(wipe.residue == AccountCopy.contentSurvived)
-        // Not the mapped `StorageError` sentence: "close Memry and open it
-        // again" describes a database this app is still trying to use.
-        #expect(wipe.residue?.code != "storage.failed")
-        // And it offers the retry that genuinely exists.
-        #expect(wipe.residue?.recourse == .retry)
-    }
+            #expect(links.takeNewNote() == nil)
+            #expect(!FileManager.default.fileExists(atPath: url.path))
+        }
 
-    /// FR-026's half. `mark_revoked` is **blocking** (spec-defect 90) and its
-    /// content removal is on the other side of the value the revoked screen is
-    /// built from, which is what makes data-model §C.1's "removed **before**
-    /// this is shown" structural rather than remembered.
-    @Test("a revocation removes the same things and says why")
-    func aRevocationRemovesTheSameThings() async throws {
-        let log = OrderLog()
-        let service = SignOutService(
-            session: ScriptedSession(log: log),
-            content: ScriptedContent(log: log),
-            executor: executor()
-        )
+        /// REVIEW-5087 #2: the unattached local vault survives a sign-out, and so
+        /// do the keys journaled for it.
+        @Test("a sign-out keeps the journaled keys of the local vault that survives it")
+        @MainActor
+        func signOutKeepsTheSurvivingVaultsKeys() async throws {
+            let url = FileManager.default.temporaryDirectory.appendingPathComponent("new-note-keys-\(UUID().uuidString).json")
+            defer { try? FileManager.default.removeItem(at: url) }
+            let journal = NewNoteJournal(url: url)
+            journal.record(NewNoteJournal.Entry(hold: "a", vault: "account", at: 0, keys: "milk"))
+            journal.record(NewNoteJournal.Entry(hold: "l", vault: "local", at: 0, keys: "eggs"))
+            let log = OrderLog()
+            let service = SignOutService(
+                session: ScriptedSession(log: log),
+                content: ScriptedContent(log: log, survivor: "local"),
+                executor: executor(),
+                newNotes: { NotesLinks(seeds: NewNoteSeeds(journal: journal)) }
+            )
 
-        let wipe = try await service.markRevoked()
+            _ = try await service.signOut()
 
-        #expect(log.order == ["keychain", "files"])
-        #expect(wipe.reason == .deviceRevoked)
-        #expect(wipe.state == .revoked)
-        #expect(wipe.isComplete)
-    }
+            let relaunched = NewNoteJournal(url: url)
+            #expect(relaunched.stranded(in: "account").isEmpty)
+            #expect(relaunched.stranded(in: "local").map(\.keys) == ["eggs"])
+        }
 
-    /// A revocation that could not run its destruction must not produce the
-    /// revoked screen: that screen's copy says the vault copy has been removed,
-    /// and `DESIGN.md` requires the sentence to be true wherever it is read.
-    @Test("a revocation whose keychain half fails produces no revoked screen")
-    func aRefusedRevocationProducesNothingToRender() async throws {
-        let log = OrderLog()
-        let service = SignOutService(
-            session: ScriptedSession(log: log, revoke: .failure(SecureStoreError.Locked)),
-            content: ScriptedContent(log: log),
-            executor: executor()
-        )
+        /// The locked-keychain case, and the reason the order is what it is: a
+        /// phone that has not been unlocked since boot reads `Locked`, not
+        /// "absent" (`Keychain`'s header, chapter 02 §2.14). Nothing may be
+        /// destroyed for a refusal that will pass.
+        @Test("a core call that refuses removes nothing at all")
+        func aRefusedCoreCallRemovesNothing() async throws {
+            let log = OrderLog()
+            let service = SignOutService(
+                session: ScriptedSession(log: log, signOut: .failure(SecureStoreError.Locked)),
+                content: ScriptedContent(log: log),
+                executor: executor()
+            )
 
-        await #expect(throws: SecureStoreError.self) { try await service.markRevoked() }
+            await #expect(throws: SecureStoreError.self) { try await service.signOut() }
 
-        #expect(log.order == ["keychain"])
+            // The keychain attempt happened; the filesystem never did.
+            #expect(log.order == ["keychain"])
+        }
+
+        /// The other half: the keys are gone, so the user **is** signed out, and
+        /// saying otherwise would invite them to retry something that already
+        /// happened. The residue is a notice beside a completed sign-out.
+        @Test("files that survive still leave the user signed out, with a notice")
+        func filesThatSurviveAreReportedButDoNotUndoTheSignOut() async throws {
+            let log = OrderLog()
+            let service = SignOutService(
+                session: ScriptedSession(log: log),
+                content: ScriptedContent(log: log, failure: StorageError.Failed(what: "no")),
+                executor: executor()
+            )
+
+            let wipe = try await service.signOut()
+
+            #expect(wipe.state == .signedOut)
+            #expect(!wipe.isComplete)
+            #expect(wipe.residue == AccountCopy.contentSurvived)
+            // Not the mapped `StorageError` sentence: "close Memry and open it
+            // again" describes a database this app is still trying to use.
+            #expect(wipe.residue?.code != "storage.failed")
+            // And it offers the retry that genuinely exists.
+            #expect(wipe.residue?.recourse == .retry)
+        }
+
+        /// FR-026's half. `mark_revoked` is **blocking** (spec-defect 90) and its
+        /// content removal is on the other side of the value the revoked screen is
+        /// built from, which is what makes data-model §C.1's "removed **before**
+        /// this is shown" structural rather than remembered.
+        @Test("a revocation removes the same things and says why")
+        func aRevocationRemovesTheSameThings() async throws {
+            let log = OrderLog()
+            let service = SignOutService(
+                session: ScriptedSession(log: log),
+                content: ScriptedContent(log: log),
+                executor: executor()
+            )
+
+            let wipe = try await service.markRevoked()
+
+            #expect(log.order == ["keychain", "files"])
+            #expect(wipe.reason == .deviceRevoked)
+            #expect(wipe.state == .revoked)
+            #expect(wipe.isComplete)
+        }
+
+        /// A revocation that could not run its destruction must not produce the
+        /// revoked screen: that screen's copy says the vault copy has been removed,
+        /// and `DESIGN.md` requires the sentence to be true wherever it is read.
+        @Test("a revocation whose keychain half fails produces no revoked screen")
+        func aRefusedRevocationProducesNothingToRender() async throws {
+            let log = OrderLog()
+            let service = SignOutService(
+                session: ScriptedSession(log: log, revoke: .failure(SecureStoreError.Locked)),
+                content: ScriptedContent(log: log),
+                executor: executor()
+            )
+
+            await #expect(throws: SecureStoreError.self) { try await service.markRevoked() }
+
+            #expect(log.order == ["keychain"])
+        }
     }
 }
 

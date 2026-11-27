@@ -45,6 +45,12 @@
     }
   },
   "page": {
+    "noteFiles": {
+      "downloading": "Laddar ned filerna för den här anteckningen…",
+      "failed": "Det gick inte att ladda ned filerna för den här anteckningen: {error}",
+      "failedFallback": "nedladdningen misslyckades",
+      "retry": "Försök igen"
+    },
     "empty": {
       "title": "Ingen anteckning vald",
       "body": "Välj en anteckning från sidofältet för att visa den"
@@ -196,6 +202,10 @@
   "editor": {
     "bodySyncPending": "Synkroniserar – innehållet i anteckningen kan fortfarande vara på väg",
     "databaseReadOnly": "Skrivskyddad. Den här enheten kan inte spara ändringar.",
+    "remoteBodyStuck": "Väntar på synkronisering — skrivskyddad tills anteckningens synkroniserade innehåll kommer",
+    "remoteBodyOffline": "Offline — skrivskyddad tills anteckningen har synkroniserats",
+    "remoteBodySignedOut": "Utloggad — skrivskyddad tills du loggar in och anteckningen har synkroniserats",
+    "remoteBodyVaultLocked": "Valvets krypteringsnyckel kan inte läsas — skrivskyddad tills anteckningen har synkroniserats",
     "taskRemoval": {
       "title": "{count, plural, one {Uppgift borttagen från anteckningen} other {# uppgifter borttagna från anteckningen}}",
       "description": "{count, plural, one {Vill du behålla den i Uppgifter eller radera den överallt?} other {Vill du behålla dem i Uppgifter eller radera dem överallt?}}",

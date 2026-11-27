@@ -8,6 +8,7 @@ import { createLogger } from '../lib/logger'
 import { openVaultFileSync, resolveVaultFileSync } from '../lib/paths'
 import { OutsideVaultError } from '../lib/errors'
 import { getCurrentVaultPath } from '../store'
+import { holdsBinaryUpload } from '../vault/case-twin-hold'
 import { queueUploadIfAbsent } from './attachment-outbox'
 import {
   countNoteFiles,
@@ -43,7 +44,9 @@ export interface AttachmentBackfillDeps {
  * from before the record is counted rather than uploaded again.
  *
  * Idempotent: a queued file is recorded once it uploads, and a file that
- * already has a row keeps it untouched, retry window included.
+ * already has a row keeps it untouched, retry window included. A file the
+ * uploader would refuse as it is (empty, or refused before and not written
+ * since) is not offered at all; see `queueUploadIfAbsent` (#5606).
  */
 export function backfillUnsyncedAttachmentsWith(deps: AttachmentBackfillDeps): {
   scanned: number
@@ -134,6 +137,8 @@ function queueUnsentFileNotes(
     }
     const file = path.join(deps.vaultPath, note.path)
     if (existingFiles([file]).length === 0) continue
+    // A file a case twin shares may hold the twin's bytes (#5585).
+    if (holdsBinaryUpload(deps.db, deps.vaultPath, note.path, note.id)) continue
     try {
       if (queueUploadIfAbsent(deps.db, note.id, file)) queued++
     } catch (error) {

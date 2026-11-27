@@ -101,7 +101,7 @@ function recordSceneAssets(
  * applied scene references but this device is missing, so the scene renders.
  * Fire-and-forget — a failed/slow download must never fail (or block) the apply,
  * and a closed vault (no asset context) is a silent no-op. `ensureAssetsPresent`
- * already isolates per-asset errors and calls `markWritebackIgnored` first.
+ * already isolates per-asset errors and records each download's bytes first.
  */
 async function restoreCanvasAssets(
   canvasId: string,

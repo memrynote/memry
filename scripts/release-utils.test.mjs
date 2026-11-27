@@ -189,7 +189,13 @@ describe('release helpers', () => {
   })
 
   it('uses only gh release list fields supported by GitHub CLI', () => {
-    assert.deepEqual(getReleaseListFields(), ['tagName', 'name', 'isDraft', 'createdAt'])
+    assert.deepEqual(getReleaseListFields(), [
+      'tagName',
+      'name',
+      'isDraft',
+      'isPrerelease',
+      'createdAt'
+    ])
   })
 
   it('extracts the created workflow run id from gh workflow run output', () => {

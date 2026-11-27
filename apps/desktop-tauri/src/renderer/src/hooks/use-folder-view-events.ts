@@ -20,8 +20,7 @@ import {
   onNoteDeleted,
   onNoteCreated,
   onNoteUpdated,
-  onNoteRenamed,
-  onNoteExternalChange
+  onNoteRenamed
 } from '@/services/notes-service'
 import { subscribeToEvents } from '@/services/tauri-event'
 import { folderViewKeys } from './use-folder-view'
@@ -88,12 +87,10 @@ export function useFolderViewEvents(): void {
       ],
       invalidate
     )
-    const unsubExternal = onNoteExternalChange(invalidate)
 
     return () => {
       if (updateTimer) clearTimeout(updateTimer)
       unsubNotes()
-      unsubExternal()
     }
   }, [queryClient])
 }

@@ -13,16 +13,16 @@ describe('safeNextPath', () => {
   })
 
   it('falls back for empty or missing values', () => {
-    assert.equal(safeNextPath(null), '/account/profile')
-    assert.equal(safeNextPath(undefined), '/account/profile')
-    assert.equal(safeNextPath(''), '/account/profile')
+    assert.equal(safeNextPath(null), '/account/sync')
+    assert.equal(safeNextPath(undefined), '/account/sync')
+    assert.equal(safeNextPath(''), '/account/sync')
   })
 
   it('rejects open-redirect attempts', () => {
-    assert.equal(safeNextPath('https://evil.com'), '/account/profile')
-    assert.equal(safeNextPath('//evil.com'), '/account/profile')
-    assert.equal(safeNextPath('/\\evil.com'), '/account/profile')
-    assert.equal(safeNextPath('javascript:alert(1)'), '/account/profile')
+    assert.equal(safeNextPath('https://evil.com'), '/account/sync')
+    assert.equal(safeNextPath('//evil.com'), '/account/sync')
+    assert.equal(safeNextPath('/\\evil.com'), '/account/sync')
+    assert.equal(safeNextPath('javascript:alert(1)'), '/account/sync')
   })
 
   it('honors a custom fallback', () => {

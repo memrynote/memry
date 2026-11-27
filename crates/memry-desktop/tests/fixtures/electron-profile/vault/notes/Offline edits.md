@@ -1,0 +1,1 @@
+This paragraph was synced.

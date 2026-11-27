@@ -219,6 +219,21 @@ struct DesignTokensTests {
         }
     }
 
+    /// #4832: the selected row is a state cue too. Its `surfaceActive` fill
+    /// alone is about 1.16:1 on the canvas; its edge carries the state.
+    @Test("The selected row's edge clears 3:1 on every surface and on its fill, in both styles")
+    func selectedRowIsDistinguishable() {
+        for style in Self.styles {
+            for (surfaceName, surface) in Self.surfaces {
+                let ratio = Self.contrast(Tokens.Line.selected, on: surface, style)
+                #expect(
+                    ratio >= Self.distinguishable,
+                    "line.selected on \(surfaceName) is \(ratio):1; 1.4.11 needs 3:1."
+                )
+            }
+        }
+    }
+
     @Test("A label on a filled action is readable on its fill")
     func filledActionLabelsAreReadable() {
         for style in Self.styles {

@@ -210,7 +210,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
 
       - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
         with:
@@ -244,7 +243,7 @@ jobs:
 
       - uses: ./.github/actions/tesseract-sources
         with:
-          save: 'true'
+          save: ${{ github.ref == 'refs/heads/feat/tauri-v2' }}
 
       - uses: actions/download-artifact@v4
         with:
@@ -261,9 +260,12 @@ jobs:
           GOOGLE_CALENDAR_CLIENT_SECRET: ${{ secrets.GOOGLE_CALENDAR_CLIENT_SECRET }}
           ONENOTE_CLIENT_ID: ${{ secrets.ONENOTE_CLIENT_ID }}
           UNSPLASH_ACCESS_KEY: ${{ secrets.MEMRY_UNSPLASH_ACCESS_KEY }}
+        # tauri.release.conf.json's externalBin replaces the macOS one, so the macOS release config
+        # lists the EventKit helper again (build.rs builds it; payload-manifest.json requires it).
         run: |
           pnpm --filter @memry/desktop-tauri exec tauri build --target ${{ matrix.triple }} --bundles app \
-            --config src-tauri/tauri.release.conf.json --config "$RUNNER_TEMP/release-inputs/version.conf.json"
+            --config src-tauri/tauri.release.conf.json --config src-tauri/tauri.release.macos.conf.json \
+            --config "$RUNNER_TEMP/release-inputs/version.conf.json"
 
       - name: Import signing identity
         env:
@@ -458,7 +460,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
 
       - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
         with:
@@ -474,6 +475,11 @@ jobs:
           done
           exit 1
 
+      # btls-sys assembles BoringSSL with NASM on Windows x64 (same pin as rust-ci.yml).
+      - name: Install NASM
+        if: runner.os == 'Windows' && runner.arch == 'X64'
+        uses: ilammy/setup-nasm@72793074d3c8cdda771dba85f6deafe00623038b # v1.5.2
+
       - uses: ./.github/actions/ort-static
         with:
           token: ${{ github.token }}
@@ -481,7 +487,7 @@ jobs:
 
       - uses: ./.github/actions/tesseract-sources
         with:
-          save: 'true'
+          save: ${{ github.ref == 'refs/heads/feat/tauri-v2' }}
 
       - uses: actions/download-artifact@v4
         with:
@@ -562,7 +568,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
 
       - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
         with:
@@ -602,7 +607,7 @@ jobs:
 
       - uses: ./.github/actions/tesseract-sources
         with:
-          save: 'true'
+          save: ${{ github.ref == 'refs/heads/feat/tauri-v2' }}
 
       - uses: actions/download-artifact@v4
         with:

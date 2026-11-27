@@ -1,0 +1,601 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1766496151362,
+      "tag": "0000_thankful_luke_cage",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1766785945784,
+      "tag": "0001_married_shadow_king",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1766870407964,
+      "tag": "0002_broken_sleeper",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1766969552055,
+      "tag": "0003_shallow_gladiator",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1767049090126,
+      "tag": "0004_odd_silver_sable",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1767097184642,
+      "tag": "0005_old_mac_gargan",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1767723334849,
+      "tag": "0006_late_infant_terrible",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1768333793280,
+      "tag": "0007_safe_sunspot",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1770679343266,
+      "tag": "0008_blushing_magma",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1770757803264,
+      "tag": "0009_lumpy_gladiator",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1770987330126,
+      "tag": "0010_dizzy_natasha_romanoff",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1770988361099,
+      "tag": "0011_silent_shooting_star",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1771255377561,
+      "tag": "0012_lush_veda",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1771286986279,
+      "tag": "0013_last_guardian",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "6",
+      "when": 1771321592131,
+      "tag": "0014_dazzling_leopardon",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "6",
+      "when": 1771343866906,
+      "tag": "0015_brief_hex",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "6",
+      "when": 1771527334941,
+      "tag": "0016_lovely_mastermind",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1771795620618,
+      "tag": "0017_spotty_mongu",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "6",
+      "when": 1773015358141,
+      "tag": "0018_greedy_stepford_cuckoos",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "6",
+      "when": 1773130379373,
+      "tag": "0019_material_lethal_legion",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "6",
+      "when": 1773561600000,
+      "tag": "0020_search_reasons",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "6",
+      "when": 1773565200000,
+      "tag": "0021_inbox_jobs",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "6",
+      "when": 1775606400000,
+      "tag": "0022_notes_journal_vault",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "6",
+      "when": 1744329600000,
+      "tag": "0023_folder_configs",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "6",
+      "when": 1775952000000,
+      "tag": "0024_google_calendar_foundation",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "6",
+      "when": 1776470400000,
+      "tag": "0025_event_target_calendar",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "6",
+      "when": 1776816000000,
+      "tag": "0026_calendar_field_clocks",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "6",
+      "when": 1777248000000,
+      "tag": "0027_calendar_rich_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "6",
+      "when": 1777680000000,
+      "tag": "0028_calendar_source_last_error",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "6",
+      "when": 1778379938967,
+      "tag": "0029_agent_chat",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "6",
+      "when": 1778547600000,
+      "tag": "0030_agent_conversation_backend_model",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "6",
+      "when": 1781308800000,
+      "tag": "0031_reminders_anchor_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "6",
+      "when": 1782172800000,
+      "tag": "0032_home_pages",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "6",
+      "when": 1782518400000,
+      "tag": "0033_tag_definition_icon",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "6",
+      "when": 1783206622572,
+      "tag": "0034_tag_nocase",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "6",
+      "when": 1784289166413,
+      "tag": "0035_spatial_canvas",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "6",
+      "when": 1784565001735,
+      "tag": "0036_canvas_assets",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "6",
+      "when": 1784721218000,
+      "tag": "0037_project_links",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "6",
+      "when": 1784811299000,
+      "tag": "0038_canvas_library_items",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "6",
+      "when": 1784831400000,
+      "tag": "0039_attachment_upload_queue",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "6",
+      "when": 1784892405671,
+      "tag": "0040_tag_categories",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "6",
+      "when": 1785585337000,
+      "tag": "0041_tag_definition_views",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "6",
+      "when": 1785585338000,
+      "tag": "0042_project_link_pinned",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "6",
+      "when": 1785585339000,
+      "tag": "0043_bookmark_reminder_sync",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "6",
+      "when": 1785585340000,
+      "tag": "0044_templates",
+      "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "6",
+      "when": 1785585341000,
+      "tag": "0045_canvas_files",
+      "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "6",
+      "when": 1785585342000,
+      "tag": "0046_tag_definition_color_authored",
+      "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "6",
+      "when": 1785585343000,
+      "tag": "0047_sync_queue_revive_dead_lettered",
+      "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "6",
+      "when": 1785585344000,
+      "tag": "0048_canvas_folders",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "6",
+      "when": 1785585345000,
+      "tag": "0049_task_activity",
+      "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "6",
+      "when": 1785585346000,
+      "tag": "0050_home_page_sync",
+      "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "6",
+      "when": 1785585347000,
+      "tag": "0051_sync_pending_deletes",
+      "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "6",
+      "when": 1787168001774,
+      "tag": "0052_attachment_download_failures",
+      "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "6",
+      "when": 1787168001775,
+      "tag": "0053_custom_icons",
+      "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "6",
+      "when": 1787226759433,
+      "tag": "0054_recently_opened",
+      "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "6",
+      "when": 1787313159433,
+      "tag": "0055_task_canvases",
+      "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "6",
+      "when": 1787399559433,
+      "tag": "0056_property_definition_sync",
+      "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "6",
+      "when": 1787485959433,
+      "tag": "0057_sync_unknown_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "6",
+      "when": 1787572359433,
+      "tag": "0058_canvas_owner_note",
+      "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "6",
+      "when": 1787658759433,
+      "tag": "0059_sync_intents",
+      "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "6",
+      "when": 1787658819433,
+      "tag": "0060_crdt_body_debts",
+      "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "6",
+      "when": 1787831559433,
+      "tag": "0061_sync_tombstone_clocks",
+      "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "6",
+      "when": 1787917959433,
+      "tag": "0062_crdt_body_withheld",
+      "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "6",
+      "when": 1788004359433,
+      "tag": "0063_canvas_entity_edges",
+      "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "6",
+      "when": 1788090759433,
+      "tag": "0064_sync_unknown_nested_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "6",
+      "when": 1788177159433,
+      "tag": "0065_crdt_owed_file_bodies",
+      "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "6",
+      "when": 1788263559433,
+      "tag": "0066_attachment_files",
+      "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "6",
+      "when": 1788349959433,
+      "tag": "0067_vault_locks",
+      "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "6",
+      "when": 1788436359433,
+      "tag": "0068_note_body_sync",
+      "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "6",
+      "when": 1788522759433,
+      "tag": "0069_vault_lock_file_modes",
+      "breakpoints": true
+    },
+    {
+      "idx": 70,
+      "version": "6",
+      "when": 1788609159433,
+      "tag": "0070_vault_lock_file_identity",
+      "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "6",
+      "when": 1788695559433,
+      "tag": "0071_note_body_sync_snapshot",
+      "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "6",
+      "when": 1791581370084,
+      "tag": "0072_deleted_asset_releases",
+      "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "6",
+      "when": 1791581370085,
+      "tag": "0073_tag_schema_task_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "6",
+      "when": 1791581370086,
+      "tag": "0074_note_body_sync_pushed_state_vector",
+      "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "6",
+      "when": 1791581370087,
+      "tag": "0075_task_duration",
+      "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "6",
+      "when": 1791581371087,
+      "tag": "0076_home_page_cover",
+      "breakpoints": true
+    },
+    {
+      "idx": 77,
+      "version": "6",
+      "when": 1791581372087,
+      "tag": "0077_sticky_drafts",
+      "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "6",
+      "when": 1791581373087,
+      "tag": "0078_readwise_links",
+      "breakpoints": true
+    },
+    {
+      "idx": 79,
+      "version": "6",
+      "when": 1791581374087,
+      "tag": "0079_readwise_highlights",
+      "breakpoints": true
+    },
+    {
+      "idx": 80,
+      "version": "6",
+      "when": 1791581375087,
+      "tag": "0080_google_calendar_cursor_reset",
+      "breakpoints": true
+    },
+    {
+      "idx": 81,
+      "version": "6",
+      "when": 1793979291237,
+      "tag": "0081_calendar_foreign_cursor_reset",
+      "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "6",
+      "when": 1794065691237,
+      "tag": "0082_saved_filter_expression",
+      "breakpoints": true
+    },
+    {
+      "idx": 83,
+      "version": "6",
+      "when": 1794152091237,
+      "tag": "0083_inbox_attachment_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 84,
+      "version": "6",
+      "when": 1794238491237,
+      "tag": "0084_notes_created_here",
+      "breakpoints": true
+    }
+  ]
+}

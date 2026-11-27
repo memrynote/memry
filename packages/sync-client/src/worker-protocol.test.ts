@@ -76,7 +76,8 @@ describe('worker message contract', () => {
         items: [rawPushItem],
         vaultKey,
         signingSecretKey,
-        signerDeviceId: 'device-a'
+        signerDeviceId: 'device-a',
+        vaultId: null
       }
 
       const received = overWire(msg)
@@ -103,7 +104,8 @@ describe('worker message contract', () => {
         items: [rawPushItem, { ...rawPushItem, queueId: 'q-2', clock: undefined }],
         vaultKey: new Uint8Array(32),
         signingSecretKey: new Uint8Array(64),
-        signerDeviceId: 'device-a'
+        signerDeviceId: 'device-a',
+        vaultId: null
       }
 
       const received = overWire(msg)

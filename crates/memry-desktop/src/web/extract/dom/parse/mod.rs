@@ -7,6 +7,8 @@ mod parser;
 mod tables;
 mod tokenizer;
 
+pub use entities::decode_html;
+
 use parser::TreeHandler;
 
 use super::node::{Attribute, DoctypeData, NodeId, NodeKind};
