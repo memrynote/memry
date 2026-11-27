@@ -8,17 +8,20 @@
 use super::ImportError;
 use super::TableCtx;
 
+mod agent;
 mod attachments;
 mod calendar;
 mod derived;
 mod inbox;
 pub mod js_json;
+mod locks;
 pub(super) mod note_file;
 mod notes;
 pub mod queue;
 pub mod records;
 pub mod replay;
 mod row_dumps;
+pub mod settings;
 pub mod sync_history;
 mod tags;
 pub mod unknown_fields;
@@ -153,8 +156,8 @@ pub const LEDGER_TABLE: &str = "__drizzle_migrations";
 #[rustfmt::skip]
 pub const TABLE_MAP: &[TableMapping] = &[
     // data.db, 65 tables (and sync_unknown_fields, last).
-    map!(Data Migration "agent_conversations" [16, Convert, "36b"]: "core agent_conversation record table of Step 16; clocks and version 1 ciphertext envelope copied byte for byte"),
-    map!(Data Migration "agent_messages" [16, Convert, "36b"]: "core agent_message record table of Step 16; sealed content ciphertext kept byte for byte"),
+    map!(Data Migration "agent_conversations" [16, Convert => agent::agent_conversations]: "agent_conversation records; clock, field clocks and the version 1 title envelope copied byte for byte, never opened"),
+    map!(Data Migration "agent_messages" [16, Convert => agent::agent_messages]: "agent_message records; content and attachments envelopes copied byte for byte, never opened"),
     map!(Data Migration "attachment_download_failures" [18, Copy => attachments::attachment_download_failures]: "Step 18 download failures (data 0034), every column unchanged: probe counts and next attempts drive the reference prune"),
     map!(Data Migration "attachment_files" [18, Convert => attachments::attachment_files]: "Step 18 attachment_files (data 0034), every column unchanged"),
     map!(Data Migration "attachment_upload_queue" [18, Convert => attachments::attachment_upload_queue]: "Step 18 upload queue (data 0034), every column unchanged; pending uploads survive"),
@@ -166,7 +169,7 @@ pub const TABLE_MAP: &[TableMapping] = &[
     map!(Data Migration "canvas_assets" [29, Convert, "36f"]: "Step 30 canvas asset rows with chunk hashes"),
     map!(Data Migration "canvas_entity_edges" [29, Rebuild]: "derived from the canvas scene by the Step 30 projector"),
     map!(Data Migration "canvas_entity_refs" [29, Rebuild]: "derived from the canvas scene by the Step 30 projector"),
-    map!(Data Migration "canvas_folders" [16, Convert, "36b"]: "core canvas_folder record table of Step 16"),
+    map!(Data Migration "canvas_folders" [16, Convert => records::canvas_folders]: "canvas_folder records as Electron pushes them; created_at and updated_at are not in the payload and are dropped"),
     map!(Data Migration "canvas_library_items" [29, Convert, "36f"]: "decrypted with the vault key into canvases/library.excalidrawlib when that file is absent"),
     map!(Data Migration "canvases" [29, Convert, "36f"]: "Step 30 canvas rows; canvases/*.excalidraw files stay canonical"),
     map!(Data Migration "crdt_body_debts" [17, Convert => super::docs::crdt_body_debts]: "core body debt meta rows sync.body_owed:<docId> through Step 17"),
@@ -176,7 +179,7 @@ pub const TABLE_MAP: &[TableMapping] = &[
     map!(Data Migration "deleted_asset_releases" [18, Convert => attachments::deleted_asset_releases]: "Step 18 release queue (data 0034), every column unchanged; deleted_at keeps the 30 day grace"),
     map!(Data Migration "filing_history" [26, Skip]: "derived: core derives filing history from filed inbox_items (Inbox::filing_history)"),
     map!(Data Migration "folder_configs" [13, Convert => records::folder_configs]: "core folders table (data 0002, item id is the folder path)"),
-    map!(Data Migration "home_pages" [16, Convert, "36b"]: "core home_page record table of Step 16"),
+    map!(Data Migration "home_pages" [16, Convert => row_dumps::home_pages]: "home_page records, the drizzle row Electron pushes"),
     map!(Data Migration "inbox_attachment_uploads" [27, Copy => inbox::inbox_attachment_uploads]: "core inbox_attachment_uploads (data 0016)"),
     map!(Data Migration "inbox_item_tags" [26, Convert => inbox::inbox_item_tags]: "core inbox_item_tags (data 0004), keyed by (item, tag); Electron's row id dropped"),
     map!(Data Migration "inbox_items" [26, Convert => inbox::inbox_items]: "inbox sync_items records, the drizzle row Electron pushes (attachment_id included); a local-only row is refused"),
@@ -194,9 +197,9 @@ pub const TABLE_MAP: &[TableMapping] = &[
     map!(Data Migration "reminders" [21, Convert, "36d2"]: "core reminders; triggered becomes pending plus a reminder_fires row"),
     map!(Data Migration "saved_filters" [21, Convert, "36d2"]: "core saved_filters (data 0003) and saved_filter_expressions (data 0015)"),
     map!(Data Migration "search_reasons" [29, Convert, "36f"]: "Step 30 search_reasons (device-local, cap 20 kept)"),
-    map!(Data Migration "settings" [9, Convert, "36b"]: "core settings with the per-key rules of the settings section"),
+    map!(Data Migration "settings" [9, Convert => settings::settings]: "per-key rules in tables/settings.rs: synced record, meta, local_settings, skipped config caches"),
     map!(Data Migration "statuses" [21, Convert, "36d2"]: "core project_statuses table"),
-    map!(Data Migration "sticky_drafts" [16, Convert, "36b"]: "core sticky_draft record table of Step 16"),
+    map!(Data Migration "sticky_drafts" [16, Convert => row_dumps::sticky_drafts]: "sticky_draft records, the drizzle row Electron pushes"),
     map!(Data Migration "suggestion_feedback" [26, Convert, "36d1"]: "Step 27 inbox_suggestion_feedback (device-local)"),
     map!(Data Migration "sync_devices" [19, Skip]: "device list comes from the server, device id from memry-config.json; the key check is Step 37"),
     map!(Data Migration "sync_history" [17, Convert => sync_history::import]: "Step 17 sync_history: type becomes kind, epoch seconds to ms, newest 500 rows"),
@@ -210,9 +213,9 @@ pub const TABLE_MAP: &[TableMapping] = &[
     map!(Data Migration "task_tags" [21, Convert, "36d2"]: "core tasks.tags JSON column and tags of the payload"),
     map!(Data Migration "tasks" [21, Convert, "36d2"]: "core tasks table; 16 field clocks kept"),
     map!(Data Migration "templates" [13, Convert => row_dumps::templates]: "core templates table"),
-    map!(Data Migration "vault_lock_baselines" [14, Convert, "36b"]: "Step 14 vault_lock_baselines (data 0026)"),
-    map!(Data Migration "vault_lock_file_modes" [14, Convert, "36b"]: "Step 14 vault_lock_file_modes (data 0026)"),
-    map!(Data Migration "vault_locks" [14, Convert, "36b"]: "core vault_lock record type; table vault_locks (data 0026)"),
+    map!(Data Migration "vault_lock_baselines" [14, Convert => locks::vault_lock_baselines]: "Step 14 vault_lock_baselines (data 0026) through vault_locks::write_baseline, updated_at to ms"),
+    map!(Data Migration "vault_lock_file_modes" [14, Convert => locks::vault_lock_file_modes]: "Step 14 vault_lock_file_modes (data 0026) through vault_locks::record_file_mode"),
+    map!(Data Migration "vault_locks" [14, Convert => locks::vault_locks]: "vault_lock records as Electron pushes them; unclocked rows staged unclocked"),
     map!(Data Migration "vault_metadata" [8, Copy => records::vault_metadata]: "singleton vault uuid into core meta vault.id, bit exact; Step 37 opens the vault under it"),
     // index.db, 16 tables.
     map!(Index Migration "block_link_refs" [13, Rebuild]: "derived link table; rebuilt from vault files"),
@@ -260,6 +263,8 @@ pub fn pending_area(stage: &str) -> Option<&'static str> {
         "36d1" => "inbox items, calendars or bookmarks",
         "36d2" => "tasks or projects",
         "36f" => "whiteboards, recent items or Readwise highlights",
+        // `settings.rs` `TAG_RENAME_JOB`: the previous app finishes it at its next start.
+        "tagRename" => "tag rename that has not finished",
         _ => return None,
     })
 }
