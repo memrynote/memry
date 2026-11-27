@@ -174,6 +174,16 @@ const calloutCases: RoundtripCase[] = [
     name: 'uppercase > [!NOTE] alert passes through untouched',
     markdown: '> [!NOTE]\n> A GitHub alert'
   },
+  // A quote or a paragraph whose text spells a callout marker came back a callout.
+  { name: 'quote whose text spells a callout marker', markdown: '> \\[!info]\n> c' },
+  { name: 'quote whose text spells a folded callout marker', markdown: '> \\[!tip]-' },
+  { name: 'paragraph whose text spells a torn callout marker', markdown: '\\[!info]\nc' },
+  {
+    name: 'callout marker under a list item',
+    markdown: '- a\n\n  > [!info]\n  > c',
+    canonical:
+      '- a\n\n<!-- memry:block-nesting-level=1 -->\n\n> \\[!info]\n> c\n\n<!-- memry:block-nesting-level=0 -->'
+  },
   {
     name: 'callout with a title after the marker',
     markdown: '> [!info] Title here\n> Body'

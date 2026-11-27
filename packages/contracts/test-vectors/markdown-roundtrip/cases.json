@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 359,
+    "exportedCaseCount": 363,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 369,
+    "caseCount": 373,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -285,6 +285,34 @@
       "canonical": null,
       "pending": null,
       "sha256": "8abdcea1f1e95b24d9e00c4921a01194367e95881ad0ff02063d0be96352a080"
+    },
+    {
+      "name": "quote whose text spells a callout marker",
+      "markdown": "> \\[!info]\n> c",
+      "canonical": null,
+      "pending": null,
+      "sha256": "ed050d7acf1f1692b0e27c742ffc09212be9fa1aecc2a00d3f0feedef6fb8854"
+    },
+    {
+      "name": "quote whose text spells a folded callout marker",
+      "markdown": "> \\[!tip]-",
+      "canonical": null,
+      "pending": null,
+      "sha256": "94a57436fb0e805ad35066c8eea1dfc645232508e65c80f376410900fd2d1038"
+    },
+    {
+      "name": "paragraph whose text spells a torn callout marker",
+      "markdown": "\\[!info]\nc",
+      "canonical": null,
+      "pending": null,
+      "sha256": "eb7f6a83fdb674bb3b312b5d009b4119fc2d847ca82c8b003f11086eed751b01"
+    },
+    {
+      "name": "callout marker under a list item",
+      "markdown": "- a\n\n  > [!info]\n  > c",
+      "canonical": "- a\n\n<!-- memry:block-nesting-level=1 -->\n\n> \\[!info]\n> c\n\n<!-- memry:block-nesting-level=0 -->",
+      "pending": null,
+      "sha256": "09807061addad6a25371c88c2f656fc88d03d2aeeefac7079b4ed247d6cda74a"
     },
     {
       "name": "callout with a title after the marker",
