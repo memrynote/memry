@@ -8,6 +8,7 @@
 
 use std::sync::Arc;
 
+use memry_desktop::journal::JournalEntryView;
 use memry_desktop::journal::calendar::{
     self, HeatmapEntryView, MonthEntryView, MonthStatsView, StreakView,
 };
@@ -16,7 +17,6 @@ use memry_desktop::journal::property_rows::PropertyRowsView;
 use memry_desktop::journal::same_day::{self, SameDayEntryView};
 use memry_desktop::journal::update::{DayUpdate, DayUpdated, InlineTags};
 use memry_desktop::journal::write::NewDay;
-use memry_desktop::journal::{self, JournalEntryView};
 use memry_desktop::notes::error::NotesError;
 use memry_desktop::session::OpenVault;
 use memry_desktop::telemetry::Service;
@@ -153,10 +153,11 @@ pub async fn journal_get_entry<R: Runtime>(
 ) -> Result<Option<JournalEntryView>, CommandError> {
     blocking("journal_get_entry", move || {
         let open = notes::open_vault(&app)?;
-        let day = notes::service(&app)?
-            .journal(&open)
+        let service = notes::service(&app)?;
+        let day = service.journal(&open).map_err(|error| failed(&error))?;
+        let entry = service
+            .day_entry(&open, &day, &date)
             .map_err(|error| failed(&error))?;
-        let entry = journal::entry(&open, &day, &date).map_err(|error| failed(&error))?;
         let found = entry.is_some();
         announce(&app, Landed::Read { found });
         Ok(entry)
@@ -203,8 +204,11 @@ pub async fn journal_update_entry<R: Runtime>(
 ) -> Result<JournalEntryView, CommandError> {
     blocking("journal_update_entry", move || {
         let open = notes::open_vault(&app)?;
-        // A tags-only update writes the record alone: the file, and so its counts, stay.
-        let rewrites_file = input.content.is_some() || input.properties.is_some();
+        // Any named field rewrites the file (a tag edit writes its `tags:`, #5509).
+        let rewrites_file = input.content.is_some()
+            || input.properties.is_some()
+            || input.tags.is_some()
+            || input.inline_tags.is_some();
         let update = DayUpdate {
             date: input.date,
             content: input.content,

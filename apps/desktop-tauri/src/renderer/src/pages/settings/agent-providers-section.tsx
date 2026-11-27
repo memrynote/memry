@@ -116,14 +116,14 @@ export function AgentProvidersSection({
       .catch(() => {})
     // A standing approval the user cannot find is a standing approval they
     // cannot take back, so this list is not optional chrome.
-    void window.api.agent
-      .getToolGrants()
+    void commands
+      .agentGetToolGrants()
       .then((grants) => {
         if (!cancelled) setAlwaysAllowed(grants.tools)
       })
       .catch(() => {
-        // The agent runtime starts lazily; an empty list is the honest state
-        // until it answers, and the next visit to this page re-reads it.
+        // An empty list is the honest state until it answers, and the next
+        // visit to this page re-reads it.
       })
     return () => {
       cancelled = true
@@ -209,8 +209,7 @@ export function AgentProvidersSection({
   }, [])
 
   const revokeAlwaysAllowed = useCallback(async (toolName: string) => {
-    await window.api.agent.editTrustList({ remove: [toolName], scope: 'vault' })
-    const grants = await window.api.agent.getToolGrants()
+    const grants = await commands.agentEditVaultTrustList({ remove: [toolName] })
     setAlwaysAllowed(grants.tools)
     void trackTelemetry('setting_changed', {
       surface: 'settings',

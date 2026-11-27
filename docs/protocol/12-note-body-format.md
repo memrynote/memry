@@ -29,8 +29,8 @@ The directions:
 
 | Direction              | Mechanism                                                                                                                                                                                                                                                                            |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| markdown to document   | `Converter::seed_body` (`crates/memry-core/src/markdown/convert/api.rs:113`), the port of `markdownToYFragment` (`apps/desktop/src/main/sync/blocknote-converter.ts:548`) with the repairs of §12.1.1; in the iOS build, `markdown_seed` for the two writes of §12.1.0 and no others |
-| document to markdown   | `Converter::serialize_note_body` (`crates/memry-core/src/markdown/convert/api.rs:152`), the port of the vault write-back's `serializeNoteBody` (`apps/desktop/src/main/sync/crdt-writeback.ts:603`)                                                                                  |
+| markdown to document   | `Converter::seed_body` (`crates/memry-core/src/markdown/convert/api.rs:114`), the port of `markdownToYFragment` (`apps/desktop/src/main/sync/blocknote-converter.ts:535`) with the repairs of §12.1.1; in the iOS build, `markdown_seed` for the two writes of §12.1.0 and no others |
+| document to markdown   | `Converter::serialize_note_body` (`crates/memry-core/src/markdown/convert/api.rs:184`), the port of the vault write-back's `serializeNoteBody` (`apps/desktop/src/main/sync/crdt-writeback.ts:598`)                                                                                  |
 | document to plain text | `extract_text`, a plain-text walk of the `prosemirror` fragment that keeps headings and list markers, drops everything else, and claims no markdown fidelity (§12.1.3)                                                                                                               |
 
 ### 12.1.0 The core's markdown seed
@@ -84,19 +84,25 @@ opened from a template on the phone, and neither write closes it.
 **Normative, and a client MUST NOT assume otherwise.** Desktop does more than BlockNote's
 markdown parse and export.
 
-- **Inbound**, `markdownToYFragment` (`apps/desktop/src/main/sync/blocknote-converter.ts:548`)
-  runs `prepareFragmentSeed` (`:586`), which takes writing tools markers, CriticMarkup and link
-  reference definitions out of the text before the parse, then `applyFragmentSeed` (`:636`),
-  which writes the blocks and those side channels, then `recordMarkdownSourceInYDoc` (`:690`).
+- **Inbound**, `markdownToYFragment` (`apps/desktop/src/main/sync/blocknote-converter.ts:535`)
+  runs `prepareFragmentSeed` (`:573`), which takes writing tools markers, CriticMarkup and link
+  reference definitions out of the text before the parse, then `applyFragmentSeed` (`:631`),
+  which writes the blocks and those side channels, then `recordMarkdownSourceInYDoc` (`:692`).
   The seed promotes link mention tokens as §12.1.1.1 says. The core's `markdown_seed` keeps a
   line holding a token as literal text (§12.1.0).
 - **Outbound**, the vault write-back calls `serializeNoteBody`
-  (`apps/desktop/src/main/sync/crdt-writeback.ts:603`,
-  `apps/desktop/src/main/sync/writing-markdown.ts:430`). It runs `yDocToMarkdown`
-  (`apps/desktop/src/main/sync/blocknote-converter.ts:204`), which serialises with
-  `blocksToMarkdownPreserving` and `restoreLinkReferences` (`:387-389`) and then runs
-  `restoreMarkdownSource` (`:224`), and it applies `serializeCriticMarkup` last
-  (`apps/desktop/src/main/sync/writing-markdown.ts:455`).
+  (`apps/desktop/src/main/sync/crdt-writeback.ts:598`,
+  `apps/desktop/src/main/sync/writeback-conversion.ts:36`,
+  `apps/desktop/src/main/sync/writing-markdown.ts:433`). It runs `yDocToMarkdown`
+  (`apps/desktop/src/main/sync/blocknote-converter.ts:208`), which serialises with
+  `blocksToMarkdownPreserving` and `restoreLinkReferences` (`:397-399`) and then runs
+  `restoreMarkdownSource` (`:234`), and it applies `serializeCriticMarkup` last
+  (`apps/desktop/src/main/sync/writing-markdown.ts:474`). Before it does, it carries each
+  `criticMarkupMarks` element through the edits made since the file was written: it diffs the
+  file's text against the doc's and maps the mark's offsets through the diff
+  (`apps/desktop/src/main/sync/critic-mark-anchors.ts:58`). The device whose edit the pass
+  wrote puts the moved offsets back into the doc once the file holds them
+  (`apps/desktop/src/main/sync/crdt-writeback.ts:741`, `:774-798`).
 
 The renderer and main build their block and inline specs from one factory (§12.1), so the block
 grammar of §12.6 and §12.7 is the same in both. **The out-of-band layer of §12.8 runs only on
@@ -114,7 +120,7 @@ converter's `prepare_fragment_seed` (`crates/memry-core/src/markdown/convert/see
 - A token is a match of `MENTION_TOKEN_REGEX`
   (`packages/editor-schema/src/inline/link-mention.ts:28`) in a text run of any block except a
   `codeBlock`, table cells and nested blocks included, whose payload `parseLinkMentionToken`
-  (`:99`, ported as `crates/memry-core/src/markdown/schema/link_mention_normalize.rs:73`)
+  (`:131`, ported as `crates/memry-core/src/markdown/schema/link_mention_normalize.rs:73`)
   accepts. A payload with no whitespace and no backslash is accepted when it percent-decodes to
   a non-empty string. The legacy ones are accepted too: `_ * ! ~ '` raw, as builds before #1844
   wrote them, and a stray whitespace or remark backslash, which the parse strips. A repaired
@@ -202,10 +208,12 @@ A build before #4478 re-encodes a legacy token once, on its next write-back of a
 seeded; the URL does not change.
 
 Desktop's seed MUST promote exactly these tokens. A token a seed leaves as text is promoted by
-each device's editor on open, and two devices doing that before they sync merge two chips per
-mention (#3871, #4478). The core's `markdown_seed` keeps every token as text (§12.1.0), so a
-body it seeds reaches desktop with its tokens unpromoted and the #3871 race remains for those
-bodies.
+each device's editor on open (`apps/desktop/src/renderer/src/components/note/content-area/hooks/use-editor-sync.ts:234`),
+and two devices doing that before they sync merge two chips per mention (#3871, #4478). The
+core's `markdown_seed` keeps every token as text (§12.1.0,
+`crates/memry-core/src/crdt/markdown_seed/prepare.rs:94`), so a body it seeds reaches desktop
+with its tokens unpromoted, desktop's editor promotes them on open, and the #3871 race remains
+for those bodies.
 
 ### 12.1.2 What this means for a non-desktop client
 
@@ -214,7 +222,11 @@ every shell over it. Such a client:
 
 - MUST NOT parse or serialise BlockNote markdown, except through `markdown_seed` for the two
   writes of §12.1.0, or through the Rust converter of §12.1.4 in a build that enables the feature
-  `markdown` (`crates/memry-core/Cargo.toml:23`);
+  `markdown` (`crates/memry-core/Cargo.toml:27`), and for the display exception below;
+- MAY strip inline markdown markers from a review mark's `visibleText` and `originalText`
+  (§12.5.1) for display only: to list the words a mark covers and to find them on screen. It
+  MUST NOT use the result to place a mark (its `start` and `end`) or write it anywhere
+  (`apps/ios/Memry/Features/Notes/ReviewMarkStyle.swift:55` (`shownText`), `:33` (`resolved`));
 - carries a create's `content` and a template's body verbatim (§12.2 carve-out A);
 - duplicates a note by copying its document, never by serialising it. The core snapshots each
   top-level block into the copy and sends `content: ''`
@@ -386,7 +398,7 @@ verbatim when unedited (`packages/app-core/src/markdown.ts:65-71`), and
   push carries `content` only on `create`
   (`apps/desktop/src/main/sync/item-handlers/note-handler-sync-helpers.ts:63`). The core puts
   the caller's `content` into the create payload unchanged
-  (`crates/memry-core/src/domain/notes/mod.rs:206`), and a note made from a template carries the
+  (`crates/memry-core/src/domain/notes/mod.rs:210`), and a note made from a template carries the
   template's `content` the same way, after `{{title}}` substitution
   (`crates/memry-core/src/domain/templates.rs:138`).
   Desktop writes a new remote note's file as `serializeNote(frontmatter, data.content)`
@@ -399,7 +411,7 @@ verbatim when unedited (`packages/app-core/src/markdown.ts:65-71`), and
   (`apps/desktop/src/main/sync/item-handlers/note-handler.ts:353-371`,
   `:400-420`). See §12.4.
 - **Carve-out C — a non-empty `criticMarkupMarks` disables source restoration**
-  (`apps/desktop/src/main/sync/blocknote-converter.ts:158`), so a note carrying
+  (`apps/desktop/src/main/sync/blocknote-converter.ts:224`), so a note carrying
   suggestions is **never** byte-identical after any write-back, on any client.
 
 **Core obligation.** The `content` a client puts in a create record becomes vault bytes
@@ -683,15 +695,15 @@ on a throwaway `Y.Doc` under `PERSISTENCE_PROBE_KEY`
 (`apps/desktop/src/main/sync/crdt-persistence.ts:229-231`) and cleared
 (`:256-259`).
 
-| Root                       | Type                                    | Writer                                                                                                                                                                                                                                                                                             | Reader                                                                                                      | Consequence of dropping it                                                                                                                                        |
-| -------------------------- | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `prosemirror`              | XmlFragment                             | desktop's editors via y-prosemirror; desktop's seed (`apps/desktop/src/main/sync/crdt-provider.ts:1893-1899`) and external-edit replace (`apps/desktop/src/main/sync/crdt-feed.ts:51`); the core's block operations (`crates/memry-core/src/crdt/body_edit/mod.rs:50`) and markdown seed (§12.1.0) | everything                                                                                                  | **the body is lost**                                                                                                                                              |
-| `meta`                     | Map (`title`, `date`)                   | `apps/desktop/src/main/sync/crdt-provider.ts:1956-1958`, `:1977-1979`                                                                                                                                                                                                                              | `apps/desktop/src/main/sync/crdt-writeback.ts:684-685`, `:706`                                              | a remotely created note materialises as `Untitled` with the wrong `createdAt`                                                                                     |
-| `tags`                     | Array\<string\>                         | `apps/desktop/src/main/sync/crdt-provider.ts:1960-1964`, `apps/desktop/src/main/sync/crdt-feed.ts:127-133`                                                                                                                                                                                         | `apps/desktop/src/main/sync/crdt-writeback.ts:1059` (a note file the write-back creates)                    | a new file has no `tags:` until the record push brings them; an existing file's `tags:` is owned by the file and the note record, never by this array             |
-| `markdownSource`           | Map (`record: {source, htmlComments?}`) | `packages/shared/src/markdown-source.ts:182-191` via `apps/desktop/src/main/sync/blocknote-converter.ts:517-541`, `apps/desktop/src/main/sync/crdt-feed.ts:80`                                                                                                                                     | `apps/desktop/src/main/sync/blocknote-converter.ts:156`, `:161`                                             | foreign-vault bytes are re-spelled to house style on the next write-back: a `git diff` across the user's file, violating FR-041's "change only the edited region" |
-| `linkReferenceDefinitions` | Array                                   | `packages/shared/src/link-references.ts:178` via `apps/desktop/src/main/sync/blocknote-converter.ts:470-471`                                                                                                                                                                                       | `packages/shared/src/link-references.ts:187`, `apps/desktop/src/main/sync/blocknote-converter.ts:237-238`   | reference-link definitions are deleted and `[docs][d]` is inlined                                                                                                 |
-| `linkReferenceUsages`      | Array                                   | same (`packages/shared/src/link-references.ts:179`)                                                                                                                                                                                                                                                | same (`:191`)                                                                                               | same                                                                                                                                                              |
-| `criticMarkupMarks`        | Array                                   | `packages/shared/src/critic-markup/yjs.ts:34-45` via `apps/desktop/src/main/sync/blocknote-converter.ts:469`; renderer `apps/desktop/src/renderer/src/components/note/content-area/ContentArea.tsx:602`                                                                                            | `apps/desktop/src/main/sync/crdt-writeback.ts:466`, `apps/desktop/src/main/sync/blocknote-converter.ts:158` | **every suggestion and comment is deleted from the file on the next write-back, and source restoration flips back on, so the body is additionally re-spelled**    |
+| Root                       | Type                                    | Writer                                                                                                                                                                                                                                                                                                                       | Reader                                                                                                                             | Consequence of dropping it                                                                                                                                        |
+| -------------------------- | --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `prosemirror`              | XmlFragment                             | desktop's editors via y-prosemirror; desktop's seed (`apps/desktop/src/main/sync/crdt-provider.ts:1893-1899`) and external-edit replace (`apps/desktop/src/main/sync/crdt-feed.ts:51`); the core's block operations (`crates/memry-core/src/crdt/body_edit/mod.rs:50`) and markdown seed (§12.1.0)                           | everything                                                                                                                         | **the body is lost**                                                                                                                                              |
+| `meta`                     | Map (`title`, `date`)                   | `apps/desktop/src/main/sync/crdt-provider.ts:1956-1958`, `:1977-1979`                                                                                                                                                                                                                                                        | `apps/desktop/src/main/sync/crdt-writeback.ts:684-685`, `:706`                                                                     | a remotely created note materialises as `Untitled` with the wrong `createdAt`                                                                                     |
+| `tags`                     | Array\<string\>                         | `apps/desktop/src/main/sync/crdt-provider.ts:1960-1964`, `apps/desktop/src/main/sync/crdt-feed.ts:127-133`                                                                                                                                                                                                                   | `apps/desktop/src/main/sync/crdt-writeback.ts:1059` (a note file the write-back creates)                                           | a new file has no `tags:` until the record push brings them; an existing file's `tags:` is owned by the file and the note record, never by this array             |
+| `markdownSource`           | Map (`record: {source, htmlComments?}`) | `packages/shared/src/markdown-source.ts:182-191` via `apps/desktop/src/main/sync/blocknote-converter.ts:517-541`, `apps/desktop/src/main/sync/crdt-feed.ts:80`                                                                                                                                                               | `apps/desktop/src/main/sync/blocknote-converter.ts:156`, `:161`                                                                    | foreign-vault bytes are re-spelled to house style on the next write-back: a `git diff` across the user's file, violating FR-041's "change only the edited region" |
+| `linkReferenceDefinitions` | Array                                   | `packages/shared/src/link-references.ts:178` via `apps/desktop/src/main/sync/blocknote-converter.ts:470-471`                                                                                                                                                                                                                 | `packages/shared/src/link-references.ts:187`, `apps/desktop/src/main/sync/blocknote-converter.ts:237-238`                          | reference-link definitions are deleted and `[docs][d]` is inlined                                                                                                 |
+| `linkReferenceUsages`      | Array                                   | same (`packages/shared/src/link-references.ts:179`)                                                                                                                                                                                                                                                                          | same (`:191`)                                                                                                                      | same                                                                                                                                                              |
+| `criticMarkupMarks`        | Array                                   | `packages/shared/src/critic-markup/yjs.ts:80-131` via `apps/desktop/src/main/sync/blocknote-converter.ts:653`; renderer comment actions `apps/desktop/src/renderer/src/components/note/content-area/ContentArea.tsx:829`; write-back `apps/desktop/src/main/sync/critic-mark-anchors.ts:103` (both through `yjs.ts:139-193`) | `apps/desktop/src/main/sync/writing-markdown.ts:446`, `apps/desktop/src/main/sync/blocknote-converter.ts:224`; carve-out C (§12.2) | **every suggestion and comment is deleted from the file on the next write-back, and source restoration flips back on, so the body is additionally re-spelled**    |
 
 Root name constants:
 `CRITIC_MARKUP_MARKS_ARRAY = 'criticMarkupMarks'`
@@ -759,8 +771,105 @@ on create, whole-array replace on a tag edit
 
 The critic-markup reader **drops any element failing shape validation** — `id`,
 `kind`, `visibleText`, finite `start <= end`
-(`packages/shared/src/critic-markup/yjs.ts:55-66`) — so a client that rewrites
+(`packages/shared/src/critic-markup/yjs.ts:252-259`) — so a client that rewrites
 elements MUST keep that shape exactly.
+
+**Normative: each element of `criticMarkupMarks` is one mark, and its id names
+it.** An element is one plain object, so Yjs merges the array and never the keys
+inside an element. Two devices that change the same mark offline therefore leave
+two elements with one id, which Yjs orders the same on every replica.
+
+- **Read: one mark per id, the first valid element wins**
+  (`packages/shared/src/critic-markup/yjs.ts:57-65`,
+  `crates/memry-core/src/markdown/convert/roots.rs:177-184`,
+  `crates/memry-core/src/crdt/comments.rs:91-116`).
+- **Write: element by element** (`packages/shared/src/critic-markup/yjs.ts:80-131`,
+  `crates/memry-core/src/markdown/convert/roots.rs:217-295`). A writer deletes
+  every element after the first valid one of an id, and the ids it no longer
+  holds. It keeps, unchanged and in place, every element that fails
+  validation: a newer build may have written it, as a new `kind` or a shape
+  this build does not read. It does not move existing elements, and it inserts
+  a new id after the furthest existing valid element among the marks that
+  precede the new id in the writer's list.
+- **A writer replaces an element only for an edit.** It compares the stored
+  mark, normalized as the reader normalizes it, with the mark it writes, without
+  `start` and `end` (`packages/shared/src/critic-markup/yjs.ts:208-214`,
+  `crates/memry-core/src/markdown/convert/roots.rs:314-325`). Key order is not
+  a difference either. Offsets alone are never written: the window moves them
+  with its typing (#4425), and a copy written only to move a mark would hide
+  another device's edit of that mark under first-copy-wins. A replaced element
+  keeps every top-level key the writer does not know
+  (`packages/shared/src/critic-markup/yjs.ts:33-46`,
+  `crates/memry-core/src/markdown/convert/roots.rs:160-173`, `:328-341`).
+  Two devices that change different marks therefore merge without duplicates,
+  and a later write deletes the duplicates of an earlier concurrent edit.
+- **Desktop's update path re-places marks.** After an edit outside the app,
+  desktop's write-back moves each mark to where its text now stands and writes
+  only the marks it moved, and the renderer's comment actions write only the
+  marks they change (`apps/desktop/src/main/sync/critic-mark-anchors.ts:103`,
+  `apps/desktop/src/renderer/src/components/note/content-area/ContentArea.tsx:829`).
+  Both call `updateCriticMarkupMarksInYDoc`
+  (`packages/shared/src/critic-markup/yjs.ts:139-193`), which replaces a mark
+  whose offsets alone changed, in place and keeping the keys it does not know,
+  deletes later copies of an id, appends new ids, and leaves elements it cannot
+  read. It is the one writer that writes offsets alone, and it touches no
+  element whose mark does not change.
+- **The items of `mentions`, `attachments` and `formatRanges` take no new
+  keys.** Readers normalize them to a closed key set, and writers compare and
+  write the normalized items, so a key added inside an item is lost on the first
+  edit of its mark.
+- **A writer never deletes and re-inserts an element it does not change.** A
+  re-inserted stale copy would precede another device's concurrent copy of that
+  id, so first-copy-wins would hide that device's edit, and a re-inserted mark
+  would undo its delete. Deletes and replaces of adjacent elements are one
+  operation each, and the new ids after one element are one insert.
+- **Known performance limit.** Each Yjs and yrs array operation walks the array
+  from its start, so a write that changes `k` separate runs of an array of `n`
+  elements costs O(k·n). Only many scattered changes in one write reach this
+  worst case, and the marks come from the user's own devices. Data safety takes
+  priority over this cost.
+- **A new comment field is also written into `metadata`.** Electron builds
+  rewrite the whole array and write only the keys they know, so any other
+  top-level key is lost after they write. Every shipped build copies `metadata`
+  unchanged, and the CriticMarkup serializer keeps a `metadata` part it does not
+  know (`packages/shared/src/critic-markup/parser.ts:474-491`). A comment field
+  added after `formatRanges` MUST therefore also be written as a `key=value` part
+  of `metadata`, with parts separated by `;` and the value URI-encoded, as
+  `mentions=` and `format=` are. The key MUST NOT be one of `id`, `type`,
+  `createdAt`, `mentions`, `attachments` or `format`. The field MAY also be a
+  top-level key, and a reader that finds the top-level key missing MUST read the
+  field from `metadata`. This protects comments only: an addition, deletion or
+  substitution writes no metadata to the file
+  (`packages/shared/src/critic-markup/parser.ts:409-419`), so a new field on
+  those kinds is lost on an Electron write and on a reseed from the file.
+- **No new `kind` yet.** Every reader drops an element whose `kind` it does
+  not know. Writers that follow §12.5.1 keep that element, but shipped Electron
+  builds rewrite the whole array and delete it, so a new `kind` waits until
+  the client version floor (chapter 11) excludes those builds.
+
+The `critic.yjsWrite` cases of
+`packages/contracts/test-vectors/markdown-convert/layer-critic.json` pin this
+behavior: elements the writer cannot read, unknown keys (nested ones
+included), key order, offset-only changes,
+duplicate ids, inserts and deletes, many scattered changes, and writers that
+merge concurrently, including a large write concurrent with another device's
+edit, large write or delete. `crates/memry-core/tests/markdown_layer_critic_vectors.rs`
+reproduces them.
+
+Shipped Electron builds do not follow these write rules. It still rewrites the
+whole array, which drops the elements and top-level keys it does not know
+and duplicates
+marks that are edited concurrently. Readers that follow §12.5.1 show one copy of
+each id, and the next write by a build that follows §12.5.1 deletes the
+duplicates.
+
+**Offsets.** `start` and `end` index the body's text as `parseCriticMarkup` returns
+it (`packages/shared/src/critic-markup/parser.ts:163`), and `visibleText` is that
+text's `[start, end)`. A comment made across formatting holds its markers
+(`start **bold`) (`apps/desktop/src/renderer/src/components/note/review/use-critic-markup-review.ts:301`).
+A comment made by an older desktop build can hold the words the editor showed
+instead (`start bold`), which the file cannot place; desktop still draws it
+(`apps/desktop/src/renderer/src/components/note/content-area/critic-markup-decorations.ts:84`).
 
 ### 12.5.2 The `meta` key set
 

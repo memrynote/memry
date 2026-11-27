@@ -1,6 +1,6 @@
 use super::*;
 use crate::domain::notes::failed;
-use crate::domain::tag_admin::{current_tags, definitions};
+use crate::domain::tag_admin::{current_tags, definition_deleted, definitions};
 use crate::storage::repositories::{InboundRecord, sync_items};
 use crate::storage::{Db, open_data, test_support::temp_dir};
 
@@ -226,4 +226,27 @@ fn a_deletes_shared_part_leaves_the_notes_and_days() {
             .expect("definitions")
             .is_empty()
     );
+}
+
+/// S14-1: a tag deleted or merged away reads as deleted, in any spelling; the tag it merged
+/// into, and a tag with no definition at all, do not.
+#[test]
+fn a_tag_deleted_or_merged_away_reads_as_deleted() {
+    let (db, _d) = vault("tags-definition-deleted");
+    let deleted = |tag: &str| {
+        let tag = tag.to_owned();
+        db.call_blocking(move |c| definition_deleted(c, &tag))
+            .expect("read")
+    };
+    assert!(!deleted("JOB"));
+    assert!(!deleted("never defined"));
+
+    db.call_blocking(|c| merge_shared(c, "job", "work", "phone", NOW + 1))
+        .expect("merge");
+    assert!(deleted("Job"));
+    assert!(!deleted("work"));
+
+    db.call_blocking(|c| delete_shared(c, "work", "phone", NOW + 2))
+        .expect("delete");
+    assert!(deleted("WORK"));
 }

@@ -1,0 +1,5 @@
+# Bare Inbox
+* Parent
+	* Child
+		* Grandchild
++ checklist

@@ -43,7 +43,9 @@ impl Book {
                 note.performed_count += 1;
                 note.last_error = None;
             }
-            Outcome::Failed(reason) | Outcome::FrontmatterUnreadable(reason) => {
+            Outcome::Failed(reason)
+            | Outcome::Broken(reason)
+            | Outcome::FrontmatterUnreadable(reason) => {
                 note.last_error = Some(reason.clone());
             }
             Outcome::Kept(Keep::NotRepresentable(what)) => {

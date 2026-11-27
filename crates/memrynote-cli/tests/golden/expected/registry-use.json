@@ -1,0 +1,139 @@
+{
+  "name": "registry-use",
+  "steps": [
+    {
+      "argv": [
+        "vault",
+        "current"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "Multiple vaults found. Choose one with `memrynote vault use <vault-name-or-path>` or run with --vault <path>.\n"
+    },
+    {
+      "argv": [
+        "vault",
+        "use"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "Usage: memrynote vault use <vault-name-or-path>\n"
+    },
+    {
+      "argv": [
+        "vault",
+        "use",
+        ""
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "Usage: memrynote vault use <vault-name-or-path>\n"
+    },
+    {
+      "argv": [
+        "vault",
+        "use",
+        "nope"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "Unknown vault: nope\n"
+    },
+    {
+      "argv": [
+        "vault",
+        "use",
+        "Dup"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "Multiple vaults named Dup; use the vault path instead\n"
+    },
+    {
+      "argv": [
+        "vault",
+        "use",
+        "Beta"
+      ],
+      "exit": 0,
+      "stdout": "{\n  \"path\": \"<tmp>/b\",\n  \"name\": \"Beta\",\n  \"isDefault\": true,\n  \"lastOpened\": \"<iso>\"\n}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "--json",
+        "vault",
+        "current"
+      ],
+      "exit": 0,
+      "stdout": "{\"path\":\"<tmp>/b\",\"name\":\"Beta\",\"isDefault\":true,\"lastOpened\":\"<iso>\"}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "--json",
+        "vault",
+        "use",
+        "{tmp}/a"
+      ],
+      "exit": 0,
+      "stdout": "{\"path\":\"<tmp>/a\",\"name\":\"Alpha\",\"isDefault\":true,\"lastOpened\":\"<iso>\"}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "--json",
+        "vault",
+        "use",
+        "./d1/../d1/"
+      ],
+      "exit": 0,
+      "stdout": "{\"path\":\"<tmp>/d1\",\"name\":\"Dup\",\"isDefault\":true,\"lastOpened\":\"<iso>\"}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "--json",
+        "vault",
+        "use",
+        "d2"
+      ],
+      "exit": 0,
+      "stdout": "{\"path\":\"<tmp>/d2\",\"name\":\"Dup\",\"isDefault\":true,\"lastOpened\":\"<iso>\"}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "--json",
+        "vault",
+        "use",
+        "--vault",
+        "{tmp}/b"
+      ],
+      "exit": 0,
+      "stdout": "{\"path\":\"<tmp>/b\",\"name\":\"Beta\",\"isDefault\":true,\"lastOpened\":\"<iso>\"}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "--json",
+        "vault",
+        "use",
+        "~"
+      ],
+      "exit": 0,
+      "stdout": "{\"path\":\"<home>\",\"name\":\"Home\",\"isDefault\":true,\"lastOpened\":\"<iso>\"}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "--json",
+        "vault",
+        "list"
+      ],
+      "exit": 0,
+      "stdout": "[{\"path\":\"<tmp>/a\",\"name\":\"Alpha\",\"isDefault\":false,\"lastOpened\":\"<iso>\"},{\"path\":\"<tmp>/b\",\"name\":\"Beta\",\"isDefault\":false,\"lastOpened\":\"<iso>\"},{\"path\":\"<tmp>/d1\",\"name\":\"Dup\",\"isDefault\":false,\"lastOpened\":\"<iso>\"},{\"path\":\"<tmp>/d2\",\"name\":\"Dup\",\"isDefault\":false,\"lastOpened\":\"<iso>\"},{\"path\":\"<home>\",\"name\":\"Home\",\"isDefault\":true,\"lastOpened\":\"<iso>\"}]\n",
+      "stderr": ""
+    }
+  ]
+}

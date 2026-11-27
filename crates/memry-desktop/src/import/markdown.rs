@@ -60,7 +60,7 @@ pub fn parse_frontmatter(source: &str) -> Result<ParsedMarkdown, YamlError> {
 
 /// `Object.entries(data)` for whatever the frontmatter loaded as: a mapping's entries, an
 /// array's or a string's elements under their indexes, nothing for any other scalar.
-fn object_entries(data: &YamlValue) -> Vec<(String, YamlValue)> {
+pub(crate) fn object_entries(data: &YamlValue) -> Vec<(String, YamlValue)> {
     match data {
         YamlValue::Map(map) => map
             .iter()
@@ -318,4 +318,23 @@ fn import_note(
         modified: modified.map(iso),
     })
     .map_err(|e| e.0)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A `---json` block's numbers are JSON.parse's, to the last bit. serde_json's default
+    /// float parser lands one ULP off on this one (`5.39713700324348e-8`). This test sits in
+    /// memry-desktop because memry-core's own tests get `float_roundtrip` from its
+    /// dev-dependency and would pass without the production feature.
+    #[test]
+    fn a_json_block_keeps_json_parse_floats() {
+        let parsed =
+            parse_frontmatter("---json\n{\"a\": 5.397137003243479e-8}\n---\nbody").unwrap();
+        assert_eq!(
+            parsed.properties.get("a"),
+            Some(&YamlValue::Number(5.397137003243479e-8))
+        );
+    }
 }

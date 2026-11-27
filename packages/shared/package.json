@@ -8,6 +8,7 @@
     ".": "./src/index.ts",
     "./utc": "./src/utc.ts",
     "./file-types": "./src/file-types.ts",
+    "./attachment-store": "./src/attachment-store.ts",
     "./folder-note": "./src/folder-note.ts",
     "./empty-lines": "./src/empty-lines.ts",
     "./hard-breaks": "./src/hard-breaks.ts",
@@ -54,6 +55,7 @@
     "typecheck": "node ../../scripts/typecheck.mjs"
   },
   "devDependencies": {
-    "@memry/typescript-config": "workspace:*"
+    "@memry/typescript-config": "workspace:*",
+    "yjs": "^13.6.29"
   }
 }

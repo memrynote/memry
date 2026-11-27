@@ -45,6 +45,12 @@
     }
   },
   "page": {
+    "noteFiles": {
+      "downloading": "Baixando os arquivos desta nota…",
+      "failed": "Não foi possível baixar os arquivos desta nota: {error}",
+      "failedFallback": "o download falhou",
+      "retry": "Tentar novamente"
+    },
     "empty": {
       "title": "Nenhuma nota selecionada",
       "body": "Selecione uma nota na barra lateral para abri-la"
@@ -196,6 +202,10 @@
   "editor": {
     "bodySyncPending": "Sincronizando — o conteúdo desta nota ainda pode estar a caminho",
     "databaseReadOnly": "Somente leitura. Este dispositivo não consegue salvar alterações.",
+    "remoteBodyStuck": "Aguardando sincronização — somente leitura até o conteúdo sincronizado desta nota chegar",
+    "remoteBodyOffline": "Offline — somente leitura até esta nota sincronizar",
+    "remoteBodySignedOut": "Sessão encerrada — somente leitura até você entrar e esta nota sincronizar",
+    "remoteBodyVaultLocked": "Não é possível ler a chave de criptografia deste cofre — somente leitura até esta nota sincronizar",
     "taskRemoval": {
       "title": "{count, plural, one {Tarefa removida desta nota} other {# tarefas removidas desta nota}}",
       "description": "{count, plural, one {Mantê-la em Tarefas ou excluí-la de todos os lugares?} other {Mantê-las em Tarefas ou excluí-las de todos os lugares?}}",

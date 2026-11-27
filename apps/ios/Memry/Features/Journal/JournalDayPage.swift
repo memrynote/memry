@@ -57,6 +57,7 @@ struct JournalDayPage: View {
             .padding(.vertical, Tokens.Space.medium)
         }
         .scrollDismissesKeyboard(.interactively)
+        .environment(\.appLifecycle, model?.editor.notifications ?? .default)
         // The keyboard accessory is floating glass: paint the page colour under
         // it and drop the bottom edge blur, or the strip behind the toolbar reads
         // as a black band with a shadow over it.
@@ -79,24 +80,23 @@ struct JournalDayPage: View {
             target: .journalDay(date),
             blocks: model?.read.blocks ?? [],
             blocksRead: model?.read.blocksRead ?? false,
-            finding: Binding(get: { model?.finding ?? false }, set: { model?.finding = $0 })
+            finding: Binding(get: { model?.finding ?? false }, set: { model?.finding = $0 }),
+            answersFind: isShown
         ))
-        .task(id: model == nil) {
-            guard let model else { return }
-            await model.read.loadIfNeeded()
-            await model.read.fetchWaitingAttachments()
-        }
+        .task(id: model == nil) { await model?.load() }
         .task(id: isShown && model != nil) {
             if isShown { await model?.seedIfNeeded(store: store) }
         }
         .task(id: PullKey(shown: isShown && model != nil, pass: store.syncPasses)) {
-            if isShown { await model?.pullRemoteBody(store: store) }
+            if isShown { await model?.refreshShown(store: store) }
         }
         .onChange(of: store.generation) {
-            // A write or a sync pass changed something: re-read in place.
+            // A write, a sync pass or a pulled body changed something: re-read
+            // in place. The shown day then asks for what the read bound.
             Task {
                 await model?.read.reload()
                 await model?.backlinks.reload()
+                if isShown { await model?.read.fetchWaitingAttachments() }
             }
         }
         .onChange(of: model?.read.phase) { _, phase in
@@ -118,12 +118,6 @@ struct JournalDayPage: View {
         if let detail = model.detail {
             let taskBridge = taskBridge(model)
             VStack(alignment: .leading, spacing: Tokens.Space.section) {
-                if !JournalWriteGate.metadataWrites {
-                    JournalDayReadOnlyMetadata(
-                        metadata: JournalNoteBridge.metadata(store.cachedDay(date)),
-                        explains: Bindable(model).explainsReadOnlyMetadata
-                    )
-                }
                 NotePageContent(
                     model: model.read,
                     detail: detail,
@@ -139,7 +133,7 @@ struct JournalDayPage: View {
                     openTag: nil,
                     brokenLink: $brokenLink,
                     emptyBody: { preview in emptyBody(preview, model: model) },
-                    afterBacklinks: { EmptyView() }
+                    keepsEmptyBody: model.handingOff
                 )
             }
             .modifier(NotePageEnvironment(model: model.read, taskBridge: taskBridge))
@@ -171,12 +165,16 @@ struct JournalDayPage: View {
     /// page's own body state (not on this phone, with its fetch button).
     @ViewBuilder
     private func emptyBody(_ preview: NoteBodyPreview, model: JournalDayPageModel) -> some View {
-        if case .empty = preview {
+        if preview == .empty || model.handingOff {
             JournalDayFirstLine(
                 placeholder: JournalCopy.placeholder(date: date, today: store.clock.today)
-            ) { line in
-                await model.writeFirstLine(line)
+            ) { line, carrying in
+                await model.writeFirstLine(line, carrying: carrying)
             }
+            // Its line is drawn as a block already.
+            .frame(height: model.handingOff ? 0 : nil)
+            .opacity(model.handingOff ? 0 : 1)
+            .accessibilityHidden(model.handingOff)
         } else {
             NoteBodyView(
                 preview: preview,
@@ -195,8 +193,8 @@ struct JournalDayPage: View {
     }
 }
 
-/// When the shown day pulls its remote body: on becoming shown, and after
-/// each sync pass while shown.
+/// When the shown day pulls its remote body and asks for its attachments: on
+/// becoming shown, and after each sync pass while shown.
 private struct PullKey: Equatable {
     let shown: Bool
     let pass: Int

@@ -269,6 +269,16 @@ moment, every note looks removed to memrynote, but none of them is deleted, here
 devices. Once the folder is back, memrynote checks it again and picks up what changed while it was
 away: notes you edited elsewhere update, notes you renamed keep their history under the new name, and notes you really deleted are deleted.
 
+### Folder moves on Windows
+
+Windows will not rename a folder that holds another folder while memrynote watches it, so
+memrynote moves such a folder one file at a time. In a large folder that takes a few seconds, and
+no note is deleted meanwhile, here or on your other devices. If the move fails partway, the files
+go back to the old folder and the rename shows an error. A file that cannot go back right away
+returns the next time the vault opens. If memrynote quits or the computer turns off before the move
+finishes, the next time the vault opens the folder is back under its old name with all of its
+notes, and you can rename it again.
+
 ## See Also
 
 - [Linking Another Device](/user-guide/sync/linking-devices)

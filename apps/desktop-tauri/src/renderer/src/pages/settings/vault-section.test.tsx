@@ -31,6 +31,9 @@ vi.mock('@/hooks/use-account-vaults', () => ({
 }))
 
 // The activity log has its own tests; it needs a query client this suite does not build.
+vi.mock('@/services/sync-service', () => ({
+  syncService: { getLargeNotes: vi.fn().mockResolvedValue({ maxBytes: 3_826_189, notes: [] }) }
+}))
 vi.mock('@/components/settings/vault-activity', () => ({
   VaultActivitySettings: () => null
 }))
@@ -61,11 +64,6 @@ describe('VaultSettings account vaults', () => {
       currentVault: '/vaults/Active'
     })
     window.api.vault.switch = vi.fn().mockResolvedValue({ success: true, vault: null })
-    const api = window.api as typeof window.api & {
-      syncOps?: { getLargeNotes?: ReturnType<typeof vi.fn> }
-    }
-    api.syncOps = api.syncOps ?? {}
-    api.syncOps.getLargeNotes = vi.fn().mockResolvedValue({ maxBytes: 3_826_189, notes: [] })
   })
 
   it('lists every vault in the account', async () => {

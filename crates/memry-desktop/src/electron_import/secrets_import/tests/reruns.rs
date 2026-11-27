@@ -80,3 +80,118 @@ fn a_keychain_that_locks_mid_run_rolls_back_only_what_this_run_wrote() {
     assert_eq!(w.identity().get(DSK).unwrap(), None, "no identity adopted");
     assert!(!done_marker(&w).exists());
 }
+
+fn read_back_mismatch() -> SecretsError {
+    SecretsError::Keychain(SecureStoreError::Failed {
+        what: "the master key did not read back from the keychain".to_owned(),
+    })
+}
+
+#[test]
+fn a_master_key_that_reads_back_wrong_is_rolled_back() {
+    let w = world();
+    let before = w.electron();
+    *w.rig.fake.replace_writes.lock().unwrap() = Some(b64(&OTHER_MASTER).into_bytes());
+
+    assert_eq!(
+        w.run(&evidence(), SecretsMode::Full),
+        Err(read_back_mismatch())
+    );
+    assert!(w.items(true).is_empty(), "the sync secrets were removed");
+    assert_eq!(w.electron(), before);
+    assert!(!done_marker(&w).exists());
+}
+
+#[test]
+fn a_rollback_that_cannot_delete_reports_what_it_left() {
+    let w = world();
+    let before = w.electron();
+    *w.rig.fake.replace_writes.lock().unwrap() = Some(b64(&OTHER_MASTER).into_bytes());
+    *w.rig.fake.fail_deletes.lock().unwrap() = Some(|| Error::NoStorageAccess("locked".into()));
+
+    assert_eq!(
+        w.run(&evidence(), SecretsMode::Full),
+        Err(SecretsError::RollbackIncomplete {
+            cause: Box::new(read_back_mismatch()),
+            left: 3,
+        })
+    );
+    assert_eq!(
+        w.items(true).len(),
+        3,
+        "master key, access and refresh token"
+    );
+    assert_eq!(w.electron(), before);
+    assert!(!done_marker(&w).exists());
+}
+
+/// A write the keychain answers `Failed` may have landed anyway, so it is read back.
+#[test]
+fn a_refused_write_that_landed_is_rolled_back_with_the_rest() {
+    let w = world();
+    let before = w.electron();
+    *w.rig.fake.lost_ack_account.lock().unwrap() = Some("openai".to_owned());
+    *w.rig.fake.locked_account.lock().unwrap() = Some(w.rig.store.identity_account());
+
+    assert_eq!(
+        w.run(&evidence(), SecretsMode::Full),
+        Err(SecretsError::Keychain(SecureStoreError::Locked))
+    );
+    assert_eq!(
+        w.items(true),
+        Items::new(),
+        "the landed write was removed too"
+    );
+    assert_eq!(w.electron(), before);
+}
+
+#[test]
+fn a_refused_write_that_landed_counts_as_written() {
+    let plain = world().run(&evidence(), SecretsMode::Full).unwrap();
+    let w = world();
+    *w.rig.fake.lost_ack_account.lock().unwrap() = Some("openai".to_owned());
+
+    let outcome = w.run(&evidence(), SecretsMode::Full).unwrap();
+    assert_eq!(
+        w.own("com.memrynote.memry.voice-transcription", "openai"),
+        Some(b"sk-voice".to_vec())
+    );
+    assert_eq!(outcome, plain);
+}
+
+#[test]
+fn a_refused_write_that_holds_another_value_stops_and_is_rolled_back() {
+    let w = world();
+    let before = w.electron();
+    *w.rig.fake.replace_writes.lock().unwrap() = Some(b"garbage".to_vec());
+    *w.rig.fake.lost_ack_account.lock().unwrap() = Some("openai".to_owned());
+
+    assert_eq!(
+        w.run(&evidence(), SecretsMode::SignInAgain),
+        Err(SecretsError::Keychain(SecureStoreError::Failed {
+            what: "the refused com.memrynote.memry.voice-transcription write read back another \
+                   value"
+                .to_owned(),
+        }))
+    );
+    assert_eq!(w.items(true), Items::new(), "the other value was removed");
+    assert_eq!(w.electron(), before);
+    assert!(!done_marker(&w).exists());
+}
+
+#[test]
+fn a_refused_write_that_cannot_be_read_back_stops_and_is_rolled_back() {
+    let w = world();
+    let before = w.electron();
+    *w.rig.fake.lost_ack_account.lock().unwrap() = Some("openai".to_owned());
+    *w.rig.fake.fail_reads_after_a_write.lock().unwrap() =
+        Some(|| Error::NoStorageAccess("locked".into()));
+
+    assert_eq!(
+        w.run(&evidence(), SecretsMode::SignInAgain),
+        Err(SecretsError::Keychain(SecureStoreError::Locked))
+    );
+    assert_eq!(w.items(true), Items::new(), "the unread write was removed");
+    assert_eq!(w.electron(), before);
+    assert!(!done_marker(&w).exists());
+}

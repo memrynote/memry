@@ -31,6 +31,18 @@ describe('email service', () => {
     })
   })
 
+  it('passes attachments to Resend as base64 files', async () => {
+    const fetchMock = vi.fn(async (_url: string, _init: { body: string }) => ({ ok: true }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await sendEmail('user@example.com', 'Hello', '<p>Hi</p>', 'api-key', undefined, undefined, [
+      { filename: 'logs.txt', content: 'bG9n' }
+    ])
+
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body)
+    expect(body.attachments).toEqual([{ filename: 'logs.txt', content: 'bG9n' }])
+  })
+
   it('throws for non-OK API response', async () => {
     const fetchMock = vi.fn(async () => ({
       ok: false,

@@ -620,7 +620,7 @@ describe('Readwise Reader documents', () => {
       ]
       await sync()
       const first = await noteOf('d-rs')
-      await notes.deleteNote(first.id)
+      await notes.deleteNote(first.id, async (inStep) => inStep?.(() => {}))
       state.clearRunState(db())
       await sync()
       expect(links.getLinkByReaderDocumentId(db(), 'd-rs')?.state).toBe('note-deleted')
@@ -718,7 +718,7 @@ describe('Readwise Reader documents', () => {
     const kept = await noteOf('kept')
     const goneNote = await noteOf('gone')
     reader.documents = reader.documents.filter((d) => d.id !== 'gone')
-    await notes.deleteNote(kept.id)
+    await notes.deleteNote(kept.id, async (inStep) => inStep?.(() => {}))
     // A full list again, as after a takeover would, so both are seen.
     state.clearRunState(db())
 

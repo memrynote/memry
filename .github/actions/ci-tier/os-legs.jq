@@ -46,6 +46,6 @@ def mac: level("mac"; "(^|[/._-])(macos|mac|darwin|apple|osx)([/._-]|$)|\\.plist
 def name: ["none", "checks", "tests"][.];
 def most(f): (map(f) | max // 0) | name;
 # Each workflow's own definitions: its file and the composite actions it uses on every OS.
-(map(select(any(names[]; test("^(crates/|apps/desktop-tauri/src-tauri/|\\.github/(actions/(ci-tier|ort-static|paths-changed|setup-pnpm)/|workflows/rust-ci\\.yml$))"))))) as $rust
-| (map(select(any(names[]; test("^(apps/desktop-tauri/|crates/memry-tauri/|crates/memry-desktop/|crates/(Cargo\\.(toml|lock)|rust-toolchain\\.toml)$|crates/\\.cargo/|\\.github/(actions/(ci-tier|paths-changed|setup-pnpm)/|workflows/desktop-tauri-ci\\.yml$))") and (test($tauri_exclude) | not))))) as $tauri
+(map(select(any(names[]; test("^(crates/|apps/desktop-tauri/src-tauri/|\\.github/(actions/(ci-tier|libsodium-dist|ort-static|paths-changed|setup-pnpm)/|workflows/rust-ci\\.yml$))"))))) as $rust
+| (map(select(any(names[]; test("^(apps/desktop-tauri/|crates/memry-tauri/|crates/memry-desktop/|crates/(Cargo\\.(toml|lock)|rust-toolchain\\.toml)$|crates/\\.cargo/|\\.github/(actions/(ci-tier|libsodium-dist|paths-changed|setup-pnpm)/|workflows/desktop-tauri-ci\\.yml$))") and (test($tauri_exclude) | not))))) as $tauri
 | [($rust | most(win)), ($rust | most(mac)), ($tauri | most(win)), ($tauri | most(mac))] | join(" ")

@@ -13,6 +13,7 @@ import Testing
 private final class HeldPasses: VaultFilling, @unchecked Sendable {
     private let started = Mutex(0)
     private let gate = Mutex<CheckedContinuation<Void, Never>?>(nil)
+    let changes = Changes()
 
     var count: Int { started.withLock { $0 } }
     var held: Bool { gate.withLock { $0 != nil } }
@@ -26,9 +27,11 @@ private final class HeldPasses: VaultFilling, @unchecked Sendable {
             count += 1
             return count == 1
         }
+        changes.changed()
         if first {
             await withCheckedContinuation { continuation in
                 gate.withLock { $0 = continuation }
+                changes.changed()
             }
         }
         return SyncPassSummary(pulled: 0, deleted: 0, bodies: 0, pushed: 0, rejected: 0, pending: 0)
@@ -52,17 +55,14 @@ struct TasksSyncAgainTests {
         let filler = HeldPasses()
         let vault = try TasksTestVault(filler: filler)
         let running = Task { await vault.store.sync() }
-        while !filler.held { await Task.yield() }
+        await filler.changes.until { filler.held }
 
         // The hint arrives mid-pass. It returns at once; it must not be lost.
         await vault.store.sync()
         filler.release()
         await running.value
 
-        let deadline = Date().addingTimeInterval(3)
-        while filler.count < 2, Date() < deadline {
-            try await Task.sleep(for: .milliseconds(50))
-        }
+        await filler.changes.until { filler.count >= 2 }
         #expect(filler.count == 2)
     }
 
@@ -76,8 +76,7 @@ struct TasksSyncAgainTests {
         let relay = RealtimeRelay(receive: { store.scheduleSync() })
 
         relay.changesAvailable()
-        let deadline = Date().addingTimeInterval(3)
-        while !filler.held, Date() < deadline { try await Task.sleep(for: .milliseconds(20)) }
+        await filler.changes.until { filler.held }
         #expect(filler.held, "the first hint starts a pass")
 
         for _ in 0..<5 {
@@ -88,8 +87,7 @@ struct TasksSyncAgainTests {
         #expect(filler.count == 1)
         filler.release()
 
-        let after = Date().addingTimeInterval(3)
-        while filler.count < 2, Date() < after { try await Task.sleep(for: .milliseconds(50)) }
+        await filler.changes.until { filler.count >= 2 }
         // Long enough for a third pass to start if the loop did not stop.
         try await Task.sleep(for: .milliseconds(1_000))
         #expect(filler.count == 2)

@@ -14,6 +14,7 @@ use super::natural_date::{is_js_whitespace, js_trim, parse_natural_date};
 use super::repeat_phrase::{
     collapse_whitespace, find_repeat_phrase_range, is_ascii_word, utf16_index, word_ends,
 };
+use crate::domain::body_tags;
 use crate::domain::calendar::{CivilDate, LocalDateTime};
 use crate::domain::recurrence::first_occurrence_for;
 use crate::domain::repeat_config::RepeatConfig;
@@ -145,8 +146,8 @@ enum Marker {
     Priority,
     /// `\+[\w-]+`: "1+2" and "C++" never read as a project.
     Project,
-    /// `#[a-zA-Z0-9][a-zA-Z0-9_-]*(?:\/[a-zA-Z0-9][a-zA-Z0-9_-]*)*`, the note
-    /// editor's tag grammar: "C#" and "issue#12" are prose.
+    /// `#` and the note body's tag ([`body_tags::tag_len`]): "C#", "issue#12"
+    /// and "#12" are prose.
     Tag,
 }
 
@@ -167,20 +168,12 @@ impl Marker {
                 1 + count_from(1, |b| is_ascii_word(b) || b == b'-')
             }
             Self::Tag if bytes.first() == Some(&b'#') => {
-                let mut len = 1;
-                loop {
-                    if !bytes.get(len).is_some_and(u8::is_ascii_alphanumeric) {
-                        break;
-                    }
-                    len += 1 + count_from(len + 1, |b| is_ascii_word(b) || b == b'-');
-                    let nested = bytes.get(len) == Some(&b'/')
-                        && bytes.get(len + 1).is_some_and(u8::is_ascii_alphanumeric);
-                    if !nested {
-                        break;
-                    }
-                    len += 1;
-                }
-                len
+                let chars: Vec<char> = text[1..]
+                    .chars()
+                    .take_while(|&c| body_tags::is_tag_char(c) || c == '/')
+                    .collect();
+                let tag = body_tags::tag_len(&chars)?;
+                1 + chars[..tag].iter().map(|c| c.len_utf8()).sum::<usize>()
             }
             _ => return None,
         };

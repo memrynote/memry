@@ -40,8 +40,9 @@ use memry_core::api::vault::Vault;
 use memry_core::crdt::body_edit::BlockEdit;
 use memry_core::domain::agent_conversation::{self, NewConversation};
 use memry_core::domain::agent_message::{self, NewMessage};
+use memry_core::domain::agent_queue::Queue;
 use memry_core::domain::vault_locks::{self, TargetKind};
-use memry_core::domain::{canvas_folder, home_page, sticky_draft, tag_mint};
+use memry_core::domain::{canvas_folder, home_page, projects, sticky_draft, tag_mint};
 use memry_core::protocol::auth::DevicePlatform;
 use memry_core::seams::reachability::{Reachability, ReachabilityObserver, Reachable};
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
@@ -117,7 +118,7 @@ impl Local {
         let definitions = Arc::new(PropertyDefinitions::new(
             vault,
             records,
-            Some(core.search().unwrap()),
+            Some(core.search(None).unwrap()),
         ));
 
         let session = Arc::new(
@@ -158,6 +159,7 @@ impl Local {
                 Arc::new(Online),
                 DriverConfig::desktop(),
                 all,
+                Vec::new(),
             )
             .await
     }
@@ -225,6 +227,7 @@ impl Device {
                 reachability,
                 DriverConfig::desktop(),
                 seeds,
+                Vec::new(),
             )
             .await
             .expect("the driver");
@@ -391,7 +394,8 @@ async fn records_converge_through_the_driver() {
                 backend_model: None,
             };
             let conversation =
-                agent_conversation::create(conn, &key, &new, "a", NOW).map_err(failed)?;
+                agent_conversation::create(conn, &key, &new, Queue::Outbox, "a", NOW)
+                    .map_err(failed)?;
             let content = json!({"role": "user", "data": {"text": "what is due"}});
             let message = NewMessage {
                 id: Some("m1"),
@@ -402,7 +406,7 @@ async fn records_converge_through_the_driver() {
                 tool_call_id: None,
                 status: "completed",
             };
-            agent_message::append(conn, &key, &message, "a", NOW).map_err(failed)?;
+            agent_message::append(conn, &key, &message, Queue::Outbox, "a", NOW).map_err(failed)?;
             canvas_folder::upsert(conn, "vault-1", "Work", Some(Some("star")), "a", NOW)?;
             let board = home_page::create(
                 conn,
@@ -477,10 +481,10 @@ async fn records_converge_through_the_driver() {
 }
 
 /// What only a seed makes syncable reaches the other device through the driver's pass: a learned
-/// property type (the caller's seed), a minted tag definition and a lock written before Step 16
-/// (the driver's own).
+/// property type (the caller's seed), a minted tag definition, a lock written before Step 16 and
+/// the seeded Inbox (the driver's own).
 #[tokio::test(flavor = "multi_thread")]
-async fn the_drivers_seeds_carry_definitions_tags_and_locks() {
+async fn the_drivers_seeds_carry_definitions_tags_locks_and_the_inbox() {
     let server = Server::start();
     let a = Device::new(&server, 0).await;
     let b = Device::new(&server, 1).await;
@@ -492,6 +496,7 @@ async fn the_drivers_seeds_carry_definitions_tags_and_locks() {
     a.db()
         .call_blocking(move |conn| {
             tag_mint::define_used(conn, &["work".to_owned()], NOW)?;
+            projects::ensure_inbox(conn, NOW)?;
             conn.execute(
                 "INSERT INTO vault_locks (id, target_kind, target, locked, created_at, updated_at)
                  VALUES (?1, 'folder', 'Old', 1, ?2, ?2)",
@@ -501,17 +506,28 @@ async fn the_drivers_seeds_carry_definitions_tags_and_locks() {
             Ok(())
         })
         .unwrap();
-    for item_type in ["tag_definition", "vault_lock"] {
+    for item_type in ["tag_definition", "vault_lock", "project"] {
         assert_eq!(
             a.queued(item_type),
             0,
             "no {item_type} queued before the pass"
         );
     }
+    // B seeded its own Inbox before its first pull: the pull replaces it, nothing goes back.
+    b.db()
+        .call_blocking(|conn| projects::ensure_inbox(conn, NOW).map(drop))
+        .unwrap();
 
     let pushed = a.sync().await;
     assert!(pushed.pushed, "{pushed:?}");
     b.sync().await;
+    assert_eq!(b.ids("project"), ["inbox"]);
+    let inbox: Value = serde_json::from_str(&b.stored("project", "inbox").unwrap()).unwrap();
+    assert!(
+        inbox["clock"].is_object(),
+        "B holds the Inbox A's pass clocked and pushed: {inbox}"
+    );
+    assert_eq!(b.queued("project"), 0, "B's seed was replaced, not pushed");
     assert_eq!(b.ids("property_definition"), ["rating"]);
     assert_eq!(
         b.ids("tag_definition").len(),
@@ -696,6 +712,7 @@ async fn passes_over_one_vault_serialize() {
             Arc::new(Online),
             DriverConfig::desktop(),
             Vec::new(),
+            Vec::new(),
         )
         .await
         .map(Arc::new)
@@ -875,6 +892,20 @@ async fn a_desktop_first_sync_pulls_every_body_old_or_past_the_phone_limit() {
     let seen = progress.0.lock().unwrap().clone();
     assert!(
         seen.iter().all(|p| p.processed_items <= p.total_items),
+        "{seen:?}"
+    );
+    // One `notes` bar that only moves forward and counts items, never server cursors
+    // (Electron's `initial-sync-progress.ts`).
+    let notes_done: Vec<u64> = seen
+        .iter()
+        .filter(|p| p.phase == InitialSyncPhase::Notes)
+        .map(|p| p.processed_items)
+        .collect();
+    assert!(notes_done.is_sorted(), "{notes_done:?}");
+    assert!(
+        seen.iter()
+            .filter(|p| p.phase == InitialSyncPhase::Notes)
+            .all(|p| p.total_items <= BODIES as u64),
         "{seen:?}"
     );
     let phases: Vec<InitialSyncPhase> = seen.iter().map(|p| p.phase).collect();
@@ -1264,11 +1295,13 @@ async fn a_body_owed_a_per_note_pull_arrives_in_the_drivers_pass() {
 }
 
 /// The app transport, answering every `/sync/changes` with a 500 while `fail` is set and
-/// counting every body GET (`/sync/crdt/...`).
+/// counting every body read: a `GET /sync/crdt/...` and the batch probe
+/// (`POST /sync/crdt/updates/batch`), which alone answers a body the server
+/// reports current (it sends `floor`, #5228).
 struct FailPulls {
     inner: Arc<dyn Transport>,
     fail: AtomicBool,
-    body_gets: AtomicUsize,
+    body_reads: AtomicUsize,
 }
 
 #[async_trait::async_trait]
@@ -1281,8 +1314,10 @@ impl Transport for FailPulls {
                 body: br#"{"error":{"code":"INTERNAL_ERROR","message":"harness"}}"#.to_vec(),
             });
         }
-        if request.method == "GET" && request.url.contains("/sync/crdt/") {
-            self.body_gets.fetch_add(1, Ordering::SeqCst);
+        let body_read = (request.method == "GET" && request.url.contains("/sync/crdt/"))
+            || request.url.contains("/sync/crdt/updates/batch");
+        if body_read {
+            self.body_reads.fetch_add(1, Ordering::SeqCst);
         }
         self.inner.send(request).await
     }
@@ -1296,7 +1331,7 @@ impl Transport for FailPulls {
     }
 }
 
-/// A pass whose pull failed runs no body step (`driver/bodies.rs`): no body GET and the debt
+/// A pass whose pull failed runs no body step (`driver/bodies.rs`): no body read and the debt
 /// stays owed. The next pass that reaches the server settles it.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_pass_whose_pull_failed_leaves_every_body_debt_owed() {
@@ -1305,7 +1340,7 @@ async fn a_pass_whose_pull_failed_leaves_every_body_debt_owed() {
     let pulls = Arc::new(FailPulls {
         inner: app_transport(&["127.0.0.1".to_owned()], Arc::new(NoPins)),
         fail: AtomicBool::new(false),
-        body_gets: AtomicUsize::new(0),
+        body_reads: AtomicUsize::new(0),
     });
     let b = Device::over(&server, 1, pulls.clone()).await;
     let note = write_bodies(&a, 0..1).remove(0);
@@ -1321,20 +1356,20 @@ async fn a_pass_whose_pull_failed_leaves_every_body_debt_owed() {
         .unwrap();
 
     pulls.fail.store(true, Ordering::SeqCst);
-    let before = pulls.body_gets.load(Ordering::SeqCst);
+    let before = pulls.body_reads.load(Ordering::SeqCst);
     let pass = b.sync().await;
     assert!(pass.pull_error.is_some(), "the pull failed: {pass:?}");
     assert_eq!(
-        pulls.body_gets.load(Ordering::SeqCst),
+        pulls.body_reads.load(Ordering::SeqCst),
         before,
-        "no body GET"
+        "no body read"
     );
     assert!(owed().contains(&note), "the debt stays owed");
 
     pulls.fail.store(false, Ordering::SeqCst);
     b.sync().await;
     assert!(
-        pulls.body_gets.load(Ordering::SeqCst) > before,
+        pulls.body_reads.load(Ordering::SeqCst) > before,
         "the next pass pulls the body"
     );
     assert!(!owed().contains(&note), "the debt settled");

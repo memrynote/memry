@@ -89,10 +89,21 @@ final class TabletLayoutUITests: XCTestCase {
         snap("journal-day")
     }
 
+    /// Day, Week, Month and Year (#4352), each from the title menu. Ends on
+    /// Week, the view a regular-width window opens on first.
     func testCalendar() throws {
         try openPage("calendar")
         XCTAssertTrue(element("calendar.screen").waitForExistence(timeout: 15), "the calendar did not open")
-        snap("calendar")
+        for (view, identifier) in [("Day", "calendar.day."), ("Month", "calendar.month"), ("Year", "calendar.year"), ("Week", "calendar.week")] {
+            app.buttons["calendar.titleMenu"].firstMatch.tap()
+            let option = app.buttons[view].firstMatch
+            XCTAssertTrue(option.waitForExistence(timeout: 5), "no \(view) in the title menu")
+            option.tap()
+            let shown = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@", identifier)).firstMatch
+            XCTAssertTrue(shown.waitForExistence(timeout: 10), "\(view) did not open")
+            if view == "Day" { waitForDayPage() }
+            snap("calendar-\(view.lowercased())")
+        }
     }
 
     func testSettings() throws {
@@ -102,6 +113,24 @@ final class TabletLayoutUITests: XCTestCase {
     }
 
     // MARK: Helpers
+
+    /// Day's pager scrolls to today's page after it appears, which can take
+    /// more than a second on the first open. Waits until that page's leading
+    /// edge lines up with the calendar's.
+    private func waitForDayPage() {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd"
+        let page = element("calendar.day.\(formatter.string(from: Date()))")
+        let screen = element("calendar.screen")
+        let deadline = Date().addingTimeInterval(10)
+        while Date() < deadline {
+            if page.exists, abs(page.frame.minX - screen.frame.minX) < 1 { return }
+            Thread.sleep(forTimeInterval: 0.25)
+        }
+        let pages = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@", "calendar.day.")).allElementsBoundByIndex.map { "\($0.identifier) \($0.frame)" }
+        XCTFail("Day did not settle on today's page: screen \(screen.frame) pages \(pages)")
+    }
 
     /// Attaches the screen in portrait, then in landscape. Named
     /// `<screen>-portrait` and `<screen>-landscape`, which the script keeps.
@@ -233,12 +262,14 @@ final class TabletLayoutUITests: XCTestCase {
         }
         XCTAssertTrue(menu.isHittable, "the vault did not open")
         if page == "home" || page == "notes" {
-            app.buttons[page == "home" ? "Home" : "Notes"].firstMatch.tap()
+            app.tabBars.buttons[page == "home" ? "Home" : "Notes"].firstMatch.tap()
             return
         }
+        // The tab bar's own buttons: a restored page's title menu carries
+        // the same label ("Inbox") and would open the menu instead.
         let titles = ["inbox": "Inbox", "tasks": "Tasks", "journal": "Journal", "calendar": "Calendar"]
-        if let title = titles[page], app.buttons[title].firstMatch.isHittable {
-            app.buttons[title].firstMatch.tap()
+        if let title = titles[page], app.tabBars.buttons[title].firstMatch.isHittable {
+            app.tabBars.buttons[title].firstMatch.tap()
             return
         }
         // Not in the bar: Menu lists it, or the page is turned off.

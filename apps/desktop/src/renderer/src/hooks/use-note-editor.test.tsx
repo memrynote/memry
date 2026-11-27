@@ -178,4 +178,36 @@ describe('useNoteEditor', () => {
     })
     expect(noAutoSave.result.current.saveStatus).toBe('idle')
   })
+
+  // VERIFY-5753R4 (1): main refuses an edit by resolving a failure envelope;
+  // the hook reports it instead of storing the envelope as the note.
+  it('reports a refused emoji, tag, title or body edit', async () => {
+    const refusal = { success: false, note: null, error: 'refused' }
+    api.notes.update = vi.fn().mockResolvedValue(refusal)
+    api.notes.rename = vi.fn().mockResolvedValue(refusal)
+    const hook = renderHook(() => useNoteEditor('note-1', { showToasts: false }))
+    await waitFor(() => expect(hook.result.current.isLoading).toBe(false))
+
+    const errors: (string | null)[] = []
+    for (const edit of [
+      () => hook.result.current.updateEmoji('🔥'),
+      () => hook.result.current.updateHeaderTags({ add: ['two'] }),
+      () => hook.result.current.updateTitle('Renamed'),
+      () => {
+        hook.result.current.updateContent('Edited')
+        return hook.result.current.saveNow()
+      }
+    ]) {
+      act(() => hook.result.current.clearError())
+      await act(async () => {
+        await edit()
+      })
+      errors.push(hook.result.current.error)
+    }
+
+    expect({ errors, note: hook.result.current.note }).toEqual({
+      errors: ['refused', 'refused', 'refused', 'refused'],
+      note: expect.objectContaining({ id: 'note-1', title: 'Original', emoji: '📝' })
+    })
+  })
 })

@@ -25,6 +25,9 @@ vi.mock('../../crypto/index', () => ({ secureCleanup: vi.fn() }))
 
 vi.mock('../sync-crypto-batch', () => ({ encryptPushBatch: encryptPushBatchMock }))
 
+// A readable vault id, so the v1 writer test (#5247) proves the push leaves it out.
+vi.mock('../sync-vault-id', () => ({ getSyncVaultId: async () => 'vault-a' }))
+
 vi.mock('../item-handlers', () => ({
   getHandler: getHandlerMock,
   getRemoteSyncAdapter: getRemoteSyncAdapterMock
@@ -86,6 +89,7 @@ function fakeEncryptPushBatch(): void {
       vaultKey: Uint8Array,
       _signingKey: Uint8Array,
       deviceId: string,
+      _vaultId: string | null,
       deps: {
         resolvePushPayload: (item: QueueRow, deviceId: string, vaultKey: Uint8Array) => string
       }
@@ -225,6 +229,7 @@ describe('PushCoordinator', () => {
           vaultKey: Uint8Array,
           _signingKey: Uint8Array,
           deviceId: string,
+          _vaultId: string | null,
           deps: {
             queue: SyncQueueManager
             resolvePushPayload: (item: QueueRow, deviceId: string, vaultKey: Uint8Array) => string
@@ -1019,6 +1024,35 @@ describe('PushCoordinator', () => {
     })
   })
 
+  // #5247 B17b: a bad delete attestation refuses that delete only. The item
+  // signature verified, so this device's key is fine and must not be repaired.
+  describe('#given the server refuses a delete attestation', () => {
+    it('#then only that row is refused and no device-key mismatch is raised', async () => {
+      const { coordinator, queue, ctx } = createHarness(getDb())
+      const onDeviceKeyMismatch = vi.fn()
+      ctx.deps.onDeviceKeyMismatch = onDeviceKeyMismatch
+      postToServerMock.mockImplementation(async (_path: string, body: PushBody) => ({
+        accepted: body.items.filter((i) => i.id !== 'task-del').map((i) => i.id),
+        rejected: [{ id: 'task-del', reason: 'SYNC_INVALID_DELETE_ATTESTATION' }],
+        serverTime: Math.floor(Date.now() / 1000),
+        maxCursor: 0
+      }))
+
+      const payload = JSON.stringify({ title: 'x' })
+      queue.enqueue({ type: 'task', itemId: 'task-del', operation: 'delete', payload })
+      queue.enqueue({ type: 'note', itemId: 'note-ok', operation: 'update', payload })
+
+      await coordinator.push()
+
+      expect(onDeviceKeyMismatch).not.toHaveBeenCalled()
+      expect(ctx.lastErrorInfo?.category).not.toBe('device_key_mismatch')
+      const rows = queue.peek(2)
+      expect(rows.map((row) => row.itemId)).toEqual(['task-del'])
+      expect(rows[0].attempts).toBe(1)
+      expect(rows[0].errorMessage).toBe('SYNC_INVALID_DELETE_ATTESTATION')
+    })
+  })
+
   describe('#given a second edit lands while the first is in flight', () => {
     it('#then the newer payload survives and is the one that reaches the server', async () => {
       const { coordinator, queue } = createHarness(getDb())
@@ -1146,6 +1180,28 @@ describe('PushCoordinator', () => {
       expect(body.items[0].operation).toBe('create')
       expect(JSON.parse(body.items[0].encryptedData)).toMatchObject({ title: 'second' })
       expect(queue.getSize()).toBe(0)
+    })
+  })
+
+  // #5247: a server before v2 rejects a v2 delete attestation as a bad
+  // signature, so writers sign v1 (no vault id) until the flip.
+  describe('#given a delete in the batch', () => {
+    it('#then its attestation is signed without a vault id (v1)', async () => {
+      const { coordinator, queue } = createHarness(getDb())
+      acceptAll()
+
+      queue.enqueue({
+        type: 'task',
+        itemId: 'task-9',
+        operation: 'delete',
+        payload: JSON.stringify({ id: 'task-9', clock: { 'device-1': 2 }, deletedAt: 1 })
+      })
+
+      await coordinator.push()
+
+      expect(postToServerMock).toHaveBeenCalledTimes(1)
+      const vaultIdArg = 4
+      expect(encryptPushBatchMock.mock.calls[0][vaultIdArg]).toBeNull()
     })
   })
 

@@ -135,8 +135,9 @@ impl NoteIdentity for FilesToo {
         ctx: &IdentityCtx<'_>,
         note_id: &str,
         file: &NoteFile,
-    ) -> Result<(), IdentityError> {
-        self.notes.left_large_class(ctx, note_id, file)
+        modified_ms: i64,
+    ) -> Result<bool, IdentityError> {
+        self.notes.left_large_class(ctx, note_id, file, modified_ms)
     }
 
     fn keeps_kind(
