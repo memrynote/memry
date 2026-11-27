@@ -1,14 +1,12 @@
-//! The calendar domain's commands, kept out of `registry.rs` to stay under the line ceiling.
+//! The calendar domain's commands and event, kept out of `registry.rs` to stay under the line
+//! ceiling. `collect_commands_with_calendar!([...])` is `with_task_commands!(collect_commands![...])`
+//! with the calendar commands appended, and `collect_events_with_calendar!` does the same for
+//! `with_task_events!(collect_events![...])`; the task macros (`registry/tasks.rs`) append theirs.
 
-/// `with_task_commands!(collect_commands![...])` over `before`, the calendar commands, then
-/// `after`; the task macro (`registry/tasks.rs`) appends its commands. `Builder::commands` takes
-/// one `Commands`, so the registry cannot assemble the list from several calls; this splices the
-/// calendar paths into the middle of the single call to keep the list in domain order.
 macro_rules! collect_commands_with_calendar {
-    ([$($before:tt)*] [$($after:tt)*]) => {
+    ([$($commands:tt)*]) => {
         with_task_commands!(collect_commands![
-            $($before)*
-            // calendar
+            $($commands)*
             crate::commands::calendar::calendar_create_event::<::tauri::Wry>,
             crate::commands::calendar::calendar_delete_event::<::tauri::Wry>,
             crate::commands::calendar::calendar_get_event::<::tauri::Wry>,
@@ -20,9 +18,17 @@ macro_rules! collect_commands_with_calendar {
             crate::commands::calendar::calendar_search_events::<::tauri::Wry>,
             crate::commands::calendar::calendar_update_event::<::tauri::Wry>,
             crate::commands::calendar::calendar_update_source_selection::<::tauri::Wry>,
-            $($after)*
         ])
     };
 }
 
-pub(super) use collect_commands_with_calendar;
+macro_rules! collect_events_with_calendar {
+    ([$($events:tt)*]) => {
+        with_task_events!(collect_events![
+            $($events)*
+            crate::events::CalendarChangedEvent,
+        ])
+    };
+}
+
+pub(super) use {collect_commands_with_calendar, collect_events_with_calendar};

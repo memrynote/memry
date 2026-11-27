@@ -78,7 +78,6 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::billing::account_preview_plan_change,
             crate::commands::billing::account_refresh_billing_status,
             crate::commands::billing::account_start_checkout,
-        ] [
             // calendar macOS (EventKit)
             crate::commands::calendar_eventkit::calendar_eventkit_request_access,
             // calendar feeds
@@ -472,7 +471,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::shell::window_set_caption_rects,
             crate::commands::shell::window_toggle_maximize,
         ]))
-        .events(with_task_events!(collect_events![
+        .events(calendar::collect_events_with_calendar!([
             // account
             crate::events::AuthOauthCallbackEvent,
             crate::events::AuthOauthErrorEvent,
@@ -486,8 +485,6 @@ pub fn builder() -> Builder<Wry> {
             crate::events::AiInlineSettingsChangedEvent,
             // app
             crate::events::AppNavigationRequestedEvent,
-            // calendar
-            crate::events::CalendarChangedEvent,
             // canvas
             crate::events::CanvasCreatedEvent,
             crate::events::CanvasDeletedEvent,
@@ -526,6 +523,9 @@ pub fn builder() -> Builder<Wry> {
             crate::events::SyncLinkingRequestedEvent,
             // ocr languages
             crate::events::OcrLanguagesChangedEvent,
+            // reminders
+            crate::events::ReminderClickedEvent,
+            crate::events::ReminderDueEvent,
             // settings
             crate::events::SettingsChangedEvent,
             crate::events::SettingsOpenSectionEvent,

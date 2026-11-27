@@ -251,6 +251,10 @@ mod domain_projects_statuses;
 mod domain_projects_write;
 #[path = "domain_related_items.rs"]
 mod domain_related_items;
+#[path = "domain_reminders_fire.rs"]
+mod domain_reminders_fire;
+#[path = "domain_reminders_fire_sync.rs"]
+mod domain_reminders_fire_sync;
 #[path = "domain_reminders_task.rs"]
 mod domain_reminders_task;
 #[path = "domain_saved_filters.rs"]

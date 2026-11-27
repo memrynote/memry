@@ -131,32 +131,6 @@ export const commands = {
 	accountRefreshBillingStatus: (input: RefreshBillingInput | null) => __TAURI_INVOKE<BillingStatusResult>("account_refresh_billing_status", { input }),
 	/**  Opens the checkout page in the browser, with the plan picked during onboarding. */
 	accountStartCheckout: (input: StartCheckoutInput | null) => __TAURI_INVOKE<CheckoutResult>("account_start_checkout", { input }),
-	/**  `calendar:create-event`. */
-	calendarCreateEvent: (input: CalendarCreateEventInput) => __TAURI_INVOKE<CalendarEventMutationView>("calendar_create_event", { input }),
-	/**  `calendar:delete-event`. */
-	calendarDeleteEvent: (id: string) => __TAURI_INVOKE<CalendarDeleteView>("calendar_delete_event", { id }),
-	/**  `calendar:get-event`: `null` when there is no such event. */
-	calendarGetEvent: (id: string) => __TAURI_INVOKE<CalendarEventView | null>("calendar_get_event", { id }),
-	/**  `calendar:get-external-event`. */
-	calendarGetExternalEvent: (input: CalendarExternalEventInput) => __TAURI_INVOKE<CalendarExternalEventDetailsView>("calendar_get_external_event", { input }),
-	/**  `calendar:get-range`. */
-	calendarGetRange: (input: CalendarRangeInput) => __TAURI_INVOKE<CalendarRangeView>("calendar_get_range", { input }),
-	/**  `calendar:list-linked-notes`. */
-	calendarListLinkedNotes: (input: CalendarLinkedNotesInput) => __TAURI_INVOKE<CalendarLinkedNotesView>("calendar_list_linked_notes", { input }),
-	/**  `calendar:list-sources`. */
-	calendarListSources: (input: CalendarListSourcesInput | null) => __TAURI_INVOKE<CalendarSourceListView>("calendar_list_sources", { input }),
-	/**
-	 *  `calendar:promote-external-event`. A gone, read-only or orphaned mirror answers
-	 *  `success: false` with the reason, as the handler's three error classes did. It sends no
-	 *  calendar event, as the handler sent none.
-	 */
-	calendarPromoteExternalEvent: (input: CalendarExternalEventInput) => __TAURI_INVOKE<CalendarPromoteView>("calendar_promote_external_event", { input }),
-	/**  `calendar:search-events`. */
-	calendarSearchEvents: (input: CalendarSearchInput) => __TAURI_INVOKE<CalendarEventSearchView>("calendar_search_events", { input }),
-	/**  `calendar:update-event` (also move and resize). */
-	calendarUpdateEvent: (input: CalendarUpdateEventInput) => __TAURI_INVOKE<CalendarEventMutationView>("calendar_update_event", { input }),
-	/**  `calendar:update-source-selection`. It sends no calendar event, as the handler sent none. */
-	calendarUpdateSourceSelection: (input: CalendarSourceSelectionInput) => __TAURI_INVOKE<CalendarSourceMutationView>("calendar_update_source_selection", { input }),
 	/**
 	 *  `calendar_eventkit_request_access`: the status after the request; a failure throws its code
 	 *  (`unsupported_platform`, `unavailable`, `permission_denied`, `sync_failed`).
@@ -1075,6 +1049,32 @@ export const commands = {
 	windowSetCaptionRects: (min: CaptionRect, max: CaptionRect, close: CaptionRect) => __TAURI_INVOKE<null>("window_set_caption_rects", { min, max, close }),
 	/**  Maximizes the calling window, or restores it when it is maximized. */
 	windowToggleMaximize: () => __TAURI_INVOKE<null>("window_toggle_maximize"),
+	/**  `calendar:create-event`. */
+	calendarCreateEvent: (input: CalendarCreateEventInput) => __TAURI_INVOKE<CalendarEventMutationView>("calendar_create_event", { input }),
+	/**  `calendar:delete-event`. */
+	calendarDeleteEvent: (id: string) => __TAURI_INVOKE<CalendarDeleteView>("calendar_delete_event", { id }),
+	/**  `calendar:get-event`: `null` when there is no such event. */
+	calendarGetEvent: (id: string) => __TAURI_INVOKE<CalendarEventView | null>("calendar_get_event", { id }),
+	/**  `calendar:get-external-event`. */
+	calendarGetExternalEvent: (input: CalendarExternalEventInput) => __TAURI_INVOKE<CalendarExternalEventDetailsView>("calendar_get_external_event", { input }),
+	/**  `calendar:get-range`. */
+	calendarGetRange: (input: CalendarRangeInput) => __TAURI_INVOKE<CalendarRangeView>("calendar_get_range", { input }),
+	/**  `calendar:list-linked-notes`. */
+	calendarListLinkedNotes: (input: CalendarLinkedNotesInput) => __TAURI_INVOKE<CalendarLinkedNotesView>("calendar_list_linked_notes", { input }),
+	/**  `calendar:list-sources`. */
+	calendarListSources: (input: CalendarListSourcesInput | null) => __TAURI_INVOKE<CalendarSourceListView>("calendar_list_sources", { input }),
+	/**
+	 *  `calendar:promote-external-event`. A gone, read-only or orphaned mirror answers
+	 *  `success: false` with the reason, as the handler's three error classes did. It sends no
+	 *  calendar event, as the handler sent none.
+	 */
+	calendarPromoteExternalEvent: (input: CalendarExternalEventInput) => __TAURI_INVOKE<CalendarPromoteView>("calendar_promote_external_event", { input }),
+	/**  `calendar:search-events`. */
+	calendarSearchEvents: (input: CalendarSearchInput) => __TAURI_INVOKE<CalendarEventSearchView>("calendar_search_events", { input }),
+	/**  `calendar:update-event` (also move and resize). */
+	calendarUpdateEvent: (input: CalendarUpdateEventInput) => __TAURI_INVOKE<CalendarEventMutationView>("calendar_update_event", { input }),
+	/**  `calendar:update-source-selection`. It sends no calendar event, as the handler sent none. */
+	calendarUpdateSourceSelection: (input: CalendarSourceSelectionInput) => __TAURI_INVOKE<CalendarSourceMutationView>("calendar_update_source_selection", { input }),
 	tasksArchive: (id: string) => __TAURI_INVOKE<TaskAck>("tasks_archive", { id }),
 	tasksBulkArchive: (input: BulkIdsInput) => __TAURI_INVOKE<BulkMutation>("tasks_bulk_archive", { input }),
 	tasksBulkComplete: (input: BulkIdsInput) => __TAURI_INVOKE<BulkMutation>("tasks_bulk_complete", { input }),
@@ -1204,6 +1204,8 @@ export const events = {
 	projectDeletedEvent: makeEvent<ProjectDeletedEvent, ProjectDeletedEvent>("project-deleted-event"),
 	projectUpdatedEvent: makeEvent<ProjectUpdatedEvent, ProjectUpdatedEvent>("project-updated-event"),
 	propertyDefinitionChangedEvent: makeEvent<PropertyDefinitionChangedEvent, PropertyDefinitionChangedEvent>("property-definition-changed-event"),
+	reminderClickedEvent: makeEvent<ReminderClickedEvent, ReminderClickedEvent>("reminder-clicked-event"),
+	reminderDueEvent: makeEvent<ReminderDueEvent, ReminderDueEvent>("reminder-due-event"),
 	settingsChangedEvent: makeEvent<SettingsChangedEvent, SettingsChangedEvent>("settings-changed-event"),
 	settingsOpenSectionEvent: makeEvent<SettingsOpenSectionEvent, SettingsOpenSectionEvent>("settings-open-section-event"),
 	stickyDraftsChangedEvent: makeEvent<StickyDraftsChangedEvent, StickyDraftsChangedEvent>("sticky-drafts-changed-event"),
@@ -4608,6 +4610,23 @@ export type RelationView = {
 	target: string | null,
 	many: boolean,
 	inverse: string | null,
+};
+
+/**  The user clicked a reminder notification. */
+export type ReminderClickedEvent = {
+	reminder: ReminderHint,
+};
+
+/**  One scheduler tick fired these reminders. */
+export type ReminderDueEvent = {
+	reminders: ReminderHint[],
+};
+
+/**  The reminder an event is about. */
+export type ReminderHint = {
+	id: string,
+	targetType: string,
+	targetId: string,
 };
 
 /**  Why a link produced no attachment: `DownloadAttachmentFromUrlFailure`. */
