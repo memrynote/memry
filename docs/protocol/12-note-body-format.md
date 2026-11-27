@@ -860,11 +860,23 @@ are not plain CommonMark:
   of one paragraph is the only one that stays a flat quote. A legacy read
   (§12.10) refuses a `>text` line, and a lossless one reads it as a quote line
   (`quote.ts:77-135`, `:246-259`);
+- **a quote's last paragraph takes its lazy lines.** In a lossless read, the
+  lines after a quote's last `>` line that are not blank and open no block
+  continue its last paragraph, as CommonMark and BlockNote's flat quote read
+  them. `> q\nsee ![x](u)` is a quote holding `q\nsee` and the image, where the
+  flat quote dropped the image, and `> q\n>\n> r\nlazy` ends its second
+  paragraph with `lazy`. A line after a heading, a table or a fence in the quote
+  is no lazy line, and a callout's body ends at its last `>` line
+  (`packages/editor-schema/src/blocks/quote.ts:81`, `:124`);
 - a math run is claimed only when it OWNS its paragraph at both ends and
   `serializeMathBlock` reproduces it byte for byte
   (`packages/editor-schema/src/blocks/markdown.ts:518-536`), so a one-line
   `$$x$$`, an indented fence outside a list item, a fence with trailing spaces
-  and an unterminated one all stay the author's markdown;
+  and an unterminated one all stay the author's markdown. A lossless read ends
+  the paragraph where BlockNote's parser does, before a line with a setext
+  underline below it too, so `$$\ny\n$$\nH\n---` is a math block and the
+  heading `H` (`packages/editor-schema/src/blocks/markdown.ts:578`,
+  `packages/editor-schema/src/blocks/block-starts.ts:54`);
 - **a callout, quote or math run indented in a list item is that block under the
   item.** In a lossless read, a top-level item's run after a blank line, indented
   to the item's content column (the marker and the 1 to 4 spaces after it) and
@@ -1177,7 +1189,33 @@ are written with the bracket escaped, `\[!tip]`, so they read back as the
 quote and the paragraph. A type Memry does not have, such as `[!danger]`,
 keeps its bytes for Obsidian
 (`packages/editor-schema/src/inline/markdown-escapes.ts:275`,
-`packages/editor-schema/src/blocks/markdown.ts:102`).
+`packages/editor-schema/src/blocks/markdown.ts:102`). A quote that holds
+blocks writes its first block as a paragraph, so its first line gets the same
+escape there (`packages/editor-schema/src/blocks/markdown.ts:112`).
+
+The escapes look at the block as the writer spells it. A run's closing
+delimiters and a link's `](href)` move before the break that ends their run,
+so the line after them starts with the text: `**b**\n\# x` and `[l](u)\n\- z`
+keep their escapes. A callout's own lines are lines too, so
+`> [!note]\n> a\n> \# x` keeps its `\#`. A `!` is escaped when the next character past any
+delimiters is `[`, since a run that continues into a link is written around it:
+`**c \![x](y)**` (`packages/editor-schema/src/inline/markdown-escapes.ts:47`,
+`:193`, `:208`).
+
+An escaped star at a run's edge meets no delimiter, so `*a\**` keeps its stars.
+A run whose stars would touch the stars of the run just before it (`*a***b**`)
+is spelled with underscores too: `*a*__b__`, `**a**_b_`. In a block whose runs
+are spelled with underscores, every `_` of its text is escaped, and a bare `_`
+earlier in the paragraph, in a code span or an address, keeps the stars
+(`packages/editor-schema/src/inline/emphasis-runs.ts:264`, `:289`, `:341`,
+`:386`, `packages/editor-schema/src/inline/markdown-escapes.ts:306`).
+
+A code span is fenced with the fewest backticks that no run inside it
+matches. BlockNote's writer used one more than the longest run, and three at a
+line start open a code block: `` `c``c` `` came back as one. A break splits a
+code run into one span per line, and each line that has a space at both ends
+gets a second (`packages/editor-schema/src/inline/emphasis-runs.ts:207`,
+`packages/editor-schema/src/inline/markdown-escapes.ts:318`).
 
 `code` holds no link either, so a code span inside link text is the link's own
 text, backticks included (BBF-105). ``[`a`](u)`` parses to link text
