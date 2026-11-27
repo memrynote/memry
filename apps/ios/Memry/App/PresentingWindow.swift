@@ -25,19 +25,18 @@ enum PresentingWindow {
     /// Whether anything is presented over `window`: a sheet, the search
     /// palette, an alert or a menu, from its root controller or any child.
     static func isPresenting(over window: UIWindow) -> Bool {
-        window.rootViewController.map(presents) == true
+        window.rootViewController.map { presents($0, countingDismissals: true) } == true
     }
 
-    private static func presents(_ controller: UIViewController) -> Bool {
-        controller.presentedViewController != nil || controller.children.contains(where: presents)
+    /// As `isPresenting`, less a controller already on its way out.
+    static func keepsPresenting(over window: UIWindow) -> Bool {
+        window.rootViewController.map { presents($0, countingDismissals: false) } == true
     }
 
-    /// The keyboard's end frame in `window`'s coordinates, or `nil` when it
-    /// belongs to another screen's keyboard. A keyboard notification names
-    /// its screen as the object and gives the frame in that screen's
-    /// coordinates, which are not a resized window's.
-    static func keyboardFrame(_ frame: CGRect, on screen: UIScreen?, in window: UIWindow) -> CGRect? {
-        guard let screen, screen === window.windowScene?.screen else { return nil }
-        return window.convert(frame, from: screen.coordinateSpace)
+    private static func presents(_ controller: UIViewController, countingDismissals: Bool) -> Bool {
+        if let presented = controller.presentedViewController, countingDismissals || !presented.isBeingDismissed {
+            return true
+        }
+        return controller.children.contains { presents($0, countingDismissals: countingDismissals) }
     }
 }

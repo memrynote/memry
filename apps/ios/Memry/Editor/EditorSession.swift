@@ -205,7 +205,9 @@ final class EditorSession {
     @ObservationIgnored private var panelSwapGeneration = 0
     // `nonisolated(unsafe)`: written once in `init`, read only by `deinit`,
     // which runs after the last reference is gone.
-    @ObservationIgnored private nonisolated(unsafe) var keyboardObserver: NSObjectProtocol?
+    @ObservationIgnored private nonisolated(unsafe) var keyboardObservers: [NSObjectProtocol] = []
+    /// Looks again while anything is presented over the page (`syncToolbar`).
+    @ObservationIgnored private var coveredWatch: Timer?
     @ObservationIgnored private var leaving: AnyCancellable?
     /// Background tasks held until their resign's writes land. Each resign
     /// ends only its own, so a later resign's write stays protected.
@@ -221,21 +223,36 @@ final class EditorSession {
     /// `notifications`: the center the lifecycle notifications are posted
     /// to, a seam for tests: the app-wide one reaches every suite's editors.
     init(notifications: NotificationCenter = .default) {
-        keyboardObserver = NotificationCenter.default.addObserver(
-            forName: UIResponder.keyboardWillShowNotification, object: nil, queue: .main
-        ) { [weak self] note in
-            guard let frame = note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else { return }
-            let screen = note.object as? UIScreen
-            let isLocal = note.userInfo?[UIResponder.keyboardIsLocalUserInfoKey] as? Bool != false
-            MainActor.assumeIsolated {
-                // #4344: a keyboard on another screen, or another app's on
-                // this one (Split View, Stage Manager), says nothing about
-                // this window's.
-                guard isLocal, let self, self.panel == .none, let window = self.field?.textView.window,
-                      let frame = PresentingWindow.keyboardFrame(frame, on: screen, in: window)
-                else { return }
-                let accessory = self.accessory.frame.height
-                if frame.height - accessory > 200 { self.keyboardHeight = frame.height - accessory }
+        // The toolbar can still be out of its window as the keys are about
+        // to show; it is placed by the time they have shown.
+        let shows = [UIResponder.keyboardWillShowNotification, UIResponder.keyboardDidShowNotification]
+        keyboardObservers = shows.map {
+            NotificationCenter.default.addObserver(forName: $0, object: nil, queue: .main) { [weak self] note in
+                guard let frame = note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else { return }
+                let screen = note.object as? UIScreen
+                let isLocal = note.userInfo?[UIResponder.keyboardIsLocalUserInfoKey] as? Bool != false
+                MainActor.assumeIsolated {
+                    // #4344: a keyboard on another screen, or another app's
+                    // on this one (Split View, Stage Manager), says nothing
+                    // about this window's.
+                    guard isLocal, let self, self.panel == .none, let screen, self.accessory.window != nil,
+                          screen === self.field?.textView.window?.windowScene?.screen
+                    else { return }
+                    // The keys are what lies below the toolbar on screen. The
+                    // frame's height minus the toolbar's overstated them: iOS
+                    // 26 gives the first frame a bottom inset more than the
+                    // toolbar and keys, and a hardware keyboard's runs off the
+                    // screen.
+                    let toolbar = self.accessory.convert(self.accessory.bounds, to: screen.coordinateSpace)
+                    let keys = min(frame.maxY, screen.bounds.maxY) - toolbar.maxY
+                    if keys > 200 { self.keyboardHeight = keys }
+                }
+            }
+        }
+        let moves = [UIResponder.keyboardWillChangeFrameNotification, UIResponder.keyboardDidChangeFrameNotification]
+        keyboardObservers += moves.map {
+            NotificationCenter.default.addObserver(forName: $0, object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.syncToolbar() }
             }
         }
         // #2820: typing is committed when editing ends, and leaving the app
@@ -253,7 +270,37 @@ final class EditorSession {
     }
 
     deinit {
-        if let keyboardObserver { NotificationCenter.default.removeObserver(keyboardObserver) }
+        keyboardObservers.forEach(NotificationCenter.default.removeObserver)
+    }
+
+    /// With a hardware keyboard the toolbar floats in the keyboard's window,
+    /// above anything the page presents. UIKit hides it as a menu opens and
+    /// lays the menu out to the screen's bottom edge, then shows the toolbar
+    /// again over the menu's last rows. So it steps aside while a menu, alert
+    /// or sheet is over the page. The keys come back while a sheet is still
+    /// on its way out, so that one counts as closed, but a swipe-down can
+    /// snap the sheet back. Only the page with the caret decides; another
+    /// page's toolbar is not on screen. UIKit says nothing as a presentation
+    /// ends or snaps back, and the keys need not move then, so the toolbar
+    /// looks again every tenth of a second while anything is presented.
+    private func syncToolbar() {
+        guard focusedBlockId != nil, let window = field?.textView.window else { return stopWatchingCover() }
+        accessory.alpha = PresentingWindow.keepsPresenting(over: window) ? 0 : 1
+        guard PresentingWindow.isPresenting(over: window) else { return stopWatchingCover() }
+        guard coveredWatch == nil else { return }
+        let watch = Timer(timeInterval: 0.1, repeats: true) { [weak self] timer in
+            guard let self else { return timer.invalidate() }
+            MainActor.assumeIsolated { self.syncToolbar() }
+        }
+        watch.tolerance = 0.05
+        // Common modes, so it also looks during a sheet's swipe-down drag.
+        RunLoop.main.add(watch, forMode: .common)
+        coveredWatch = watch
+    }
+
+    private func stopWatchingCover() {
+        coveredWatch?.invalidate()
+        coveredWatch = nil
     }
 
     /// Commits the focused block's typing, and holds a background task until
@@ -313,13 +360,26 @@ final class EditorSession {
     /// A plain clear view, not a `.keyboard` `UIInputView`: on iOS 26 that
     /// style paints its own soft blur band above the accessory, which reads as
     /// a shadow over the note behind the glass toolbar.
+    ///
+    /// Hosted without a view controller. UIKit puts the accessory back in
+    /// its window on every input-view reload, and a hosting controller
+    /// appearing there with Liquid Glass in it redraws the page under the
+    /// caret. A context menu open on the page sends its rows again on that
+    /// redraw, which reloads the input views: the main thread never rested,
+    /// and the menu took no tap. Auto Layout sizes the view from its content,
+    /// which says when its height changes, as when a `[[` menu opens.
     private func floatingAccessory<Content: View>(_ content: Content) -> UIView {
-        let hosting = UIHostingController(rootView: content)
-        hosting.sizingOptions = .intrinsicContentSize
-        hosting.view.backgroundColor = .clear
-        let view = hosting.view ?? UIView()
-        view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        objc_setAssociatedObject(view, &Self.hostingKey, hosting, .OBJC_ASSOCIATION_RETAIN)
+        weak var hosted: UIView?
+        let view = UIHostingConfiguration {
+            content.onGeometryChange(for: CGFloat.self) { $0.size.height } action: { _ in
+                hosted?.invalidateIntrinsicContentSize()
+            }
+        }
+        .margins(.all, 0)
+        .makeContentView()
+        hosted = view
+        view.backgroundColor = .clear
+        view.translatesAutoresizingMaskIntoConstraints = false
         return view
     }
 
@@ -435,7 +495,12 @@ final class EditorSession {
             focusedProps = Dictionary(field.block.props.map { ($0.name, $0.value) }) { $1 }
             selectionChanged(in: field)
         } else {
-            if panel != .none { panel = .none }
+            if panel != .none {
+                panel = .none
+                // The block the panel was open in gets its keys back: the
+                // panel, closed, is blank the next time it takes the caret.
+                self.field?.textView.inputView = nil
+            }
             formatting = false
             // A caret back over a selection brings the format slide back
             // (`selectionChanged`), as after the Link prompt (#4667).
@@ -479,6 +544,7 @@ final class EditorSession {
 
     func selectionChanged(in field: BlockField) {
         guard field === self.field else { return }
+        syncToolbar()
         refreshTypingState()
         let textView = field.textView
         let range = textView.selectedRange

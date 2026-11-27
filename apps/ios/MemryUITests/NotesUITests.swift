@@ -60,7 +60,9 @@ final class NotesUITests: XCTestCase {
         // Short drags just below the menu's first rows: with the keyboard up
         // the menu is only a few rows tall, and a drag that starts outside
         // it closes it. The anchor is read once, since its row scrolls away.
-        let find = app.buttons["Find in note"].frame
+        // The menu's row, not the page's hidden ⌘F button of the same name,
+        // which XCUITest sees and VoiceOver does not.
+        let find = app.collectionViews.buttons["Find in note"].frame
         let top = app.coordinate(withNormalizedOffset: .zero)
             .withOffset(CGVector(dx: find.midX, dy: find.midY))
         for _ in 0 ..< 8 where !delete.isHittable {
@@ -268,6 +270,30 @@ final class NotesUITests: XCTestCase {
         XCTAssertEqual(field.value as? String, title)
 
         app.buttons["BackButton"].tap()
+        deleteFromList(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", title)).firstMatch)
+    }
+
+    /// The block menu, opened from the handle beside the block with the
+    /// caret, left the app spinning: each redraw of the open menu reloaded
+    /// the keyboard's views, and the keyboard toolbar coming back redrew the
+    /// page, which redrew the menu. The app never went idle, and the menu's
+    /// rows took no tap.
+    func testTheBlockMenuBesideTheCaretTakesATap() throws {
+        try openNotes()
+        let title = "[agent] \(run) block menu"
+        makeNote(title)
+        app.typeText("Two")
+        let handle = app.descendants(matching: .any)["Block actions"].firstMatch
+        XCTAssertTrue(handle.waitForExistence(timeout: 10), "the block with the caret has no menu handle")
+        handle.press(forDuration: 1.2)
+        let duplicate = app.buttons["Duplicate"]
+        XCTAssertTrue(duplicate.waitForExistence(timeout: 10), "the block menu did not open")
+        duplicate.tap()
+        let copies = app.textViews.matching(NSPredicate(
+            format: "identifier BEGINSWITH 'note.block.' AND value == 'Two'"
+        ))
+        XCTAssertTrue(copies.element(boundBy: 1).waitForExistence(timeout: 10), "Duplicate did not land")
+
         deleteFromList(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", title)).firstMatch)
     }
 

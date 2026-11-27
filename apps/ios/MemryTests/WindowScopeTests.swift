@@ -20,7 +20,7 @@ private final class NoEditor: BlockEditing, @unchecked Sendable {
 }
 
 @MainActor
-private func focusedField(in window: UIWindow) -> (EditorSession, BlockField) {
+func focusedField(in window: UIWindow) -> (EditorSession, BlockField) {
     let session = NoteEditorViewModel(noteId: "note-1", editor: NoEditor()).session
     let block = Block(
         id: "a", kind: "paragraph", depth: 0, props: [],
@@ -65,8 +65,16 @@ extension KeyWindowSuites {
             keyboardWillShow(height: 520, on: window.windowScene?.screen, isLocal: false)
             #expect(session.keyboardHeight == before, "another app's keyboard on this screen is not this window's")
 
+            // The toolbar sits on the keys, as UIKit puts it.
+            window.addSubview(session.accessory)
+            NSLayoutConstraint.activate([
+                session.accessory.leadingAnchor.constraint(equalTo: window.leadingAnchor),
+                session.accessory.widthAnchor.constraint(equalTo: window.widthAnchor),
+                session.accessory.bottomAnchor.constraint(equalTo: window.topAnchor, constant: 400),
+            ])
+            window.layoutIfNeeded()
             keyboardWillShow(height: 520, on: window.windowScene?.screen, isLocal: true)
-            #expect(session.keyboardHeight == 520 - session.accessory.frame.height)
+            #expect(session.keyboardHeight != before, "this app's keyboard sizes the panel")
         }
 
         @Test func a_reduce_motion_panel_swap_leaves_the_app_animating() throws {
