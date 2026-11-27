@@ -13,6 +13,17 @@ struct SettingsRootScreen: View {
 
     var body: some View {
         let rows = SettingsRootRows(context)
+        ScrollViewReader { proxy in
+            list(rows)
+                // A deep link (Tasks › Task settings) can select a row below
+                // the fold, as on the free vault's taller account card.
+                .onChange(of: selection?.wrappedValue, initial: true) { _, route in
+                    if let route { proxy.scrollTo(route) }
+                }
+        }
+    }
+
+    private func list(_ rows: SettingsRootRows) -> some View {
         List(selection: selection) {
             SettingsAccountSection(context: context)
             Section {
