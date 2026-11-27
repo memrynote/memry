@@ -573,7 +573,11 @@ export function readMathRun(
   while (end < lines.length && lines[end] !== MATH_FENCE_LINE) end++
   if (end >= lines.length) return null
   const after = lines[end + 1]
-  if (lossless ? !endsParagraphBefore(after) : after !== undefined && after.trim() !== '') {
+  if (
+    lossless
+      ? !endsParagraphBefore(after, lines[end + 2])
+      : after !== undefined && after.trim() !== ''
+  ) {
     return null
   }
 

@@ -46,13 +46,15 @@ export function opensBlock(lines: readonly string[], i: number, first: number): 
 
 /**
  * True when BlockNote ends a paragraph before `line`: a blank line, a heading,
- * a fence, a quote, a thematic break, a list item, a table row or an HTML
- * comment. A dashed rule is left out, since under a paragraph it is a setext
- * underline that makes the paragraph a heading.
+ * a fence, a quote, a thematic break, a list item, a table row, an HTML
+ * comment, or a line whose `next` underlines it as a setext heading. A dashed
+ * rule is left out, since under a paragraph it is a setext underline that
+ * makes the paragraph's last line a heading.
  */
-export function endsParagraphBefore(line: string | undefined): boolean {
+export function endsParagraphBefore(line: string | undefined, next?: string): boolean {
   if (line === undefined || line.trim() === '') return true
   if (/^\s{0,3}-+\s*$/.test(line)) return false
+  if (next !== undefined && /^[=-]+\s*$/.test(next)) return true
   return (
     HEADING.test(line) ||
     FENCE.test(line) ||
