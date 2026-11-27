@@ -26,12 +26,16 @@ mod attachments;
 mod calendar_push;
 #[path = "electron_vault_import/derived.rs"]
 mod derived;
+#[path = "electron_vault_import/desktop_records.rs"]
+mod desktop_records;
 #[path = "device_key/mod.rs"]
 mod device_key;
 #[path = "electron_vault_import/docs.rs"]
 mod docs;
 #[path = "support/electron_db.rs"]
 mod electron_db;
+#[path = "electron_vault_import/first_open.rs"]
+mod first_open;
 #[path = "electron_vault_import/inbox_calendar.rs"]
 mod inbox_calendar;
 #[path = "electron_vault_import/ledger_ends.rs"]
@@ -48,6 +52,8 @@ mod records;
 mod replay;
 #[path = "electron_vault_import/seed_after_pull.rs"]
 mod seed_after_pull;
+#[path = "electron_vault_import/settings.rs"]
+mod settings;
 #[path = "electron_vault_import/settle.rs"]
 mod settle;
 #[path = "electron_vault_import/sync_state.rs"]
@@ -300,11 +306,14 @@ fn rows_whose_importer_is_pending_abort_before_any_write() {
     electron_db::seed(
         &vault.data_conn(),
         "settings",
-        &[("key", Value::Text("theme".into()))],
+        &[
+            ("key", Value::Text("readwise.cursor".into())),
+            ("value", Value::Text("\"c\"".into())),
+        ],
     );
     assert_refused(
         &vault,
-        |e| matches!(e, ImportError::NotReady { detail, .. } if detail.contains("data.db/settings")),
+        |e| matches!(e, ImportError::NotReady { detail, .. } if detail.contains("readwise.cursor")),
     );
 
     let vault = Vault::new();
