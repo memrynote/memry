@@ -133,5 +133,6 @@ minimumReleaseAgeExclude:
   - oxlint-tsgolint@7.0.2005
 
 patchedDependencies:
+  '@blocknote/core@0.54.2': patches/@blocknote__core@0.54.2.patch
   gray-matter@4.0.3: patches/gray-matter@4.0.3.patch
   y-prosemirror@1.3.7: patches/y-prosemirror@1.3.7.patch
