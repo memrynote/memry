@@ -182,8 +182,13 @@ impl Launch {
     fn report(&self) -> String {
         let text = fs::read_to_string(self.data().join(REPORT_FILE)).unwrap();
         let fixture_root = self.fixture.profile.parent().unwrap().parent().unwrap();
-        text.replace(&*fixture_root.to_string_lossy(), "<fixture>")
-            .replace(&*self.data().to_string_lossy(), "<data>")
+        // A path as it reads inside a JSON string: on Windows its backslashes are doubled.
+        let json = |path: &std::path::Path| {
+            let quoted = serde_json::to_string(&*path.to_string_lossy()).unwrap();
+            quoted[1..quoted.len() - 1].to_owned()
+        };
+        text.replace(&json(fixture_root), "<fixture>")
+            .replace(&json(&self.data()), "<data>")
     }
 
     fn core_data(&self) -> PathBuf {
