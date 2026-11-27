@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 421,
+    "exportedCaseCount": 424,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 431,
+    "caseCount": 434,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -2042,6 +2042,27 @@
       "canonical": "> a\n> b\n> c",
       "pending": null,
       "sha256": "8d1db2a4d797eed81ba3d0b897bb678c33ad1e0b124fd47c6567064edb6a33fd"
+    },
+    {
+      "name": "image on a lazy quote line",
+      "markdown": "> q\nsee ![x](https://e.com/a.png)",
+      "canonical": "> q\n> see\n>\n> ![x](https://e.com/a.png)",
+      "pending": null,
+      "sha256": "ce4fa433c6efddf5876dfa64ad01408b63135228668665afec287dd0b81cb916"
+    },
+    {
+      "name": "lazy line after a quote of blocks",
+      "markdown": "> q\n>\n> r\nlazy",
+      "canonical": "> q\n>\n> r\n> lazy",
+      "pending": null,
+      "sha256": "adfbd9351a8689b4985369157adbd43593e48a6c72d2f8575b9360402b18ced0"
+    },
+    {
+      "name": "line after a quoted heading is no lazy line",
+      "markdown": "> # h\nz",
+      "canonical": "> # h\n\nz",
+      "pending": null,
+      "sha256": "2e6a1397997a165bb765b953a18b4c21a178f99abffa99a13de961f8942903a4"
     },
     {
       "name": "hard break inside a quote (BBF-99)",

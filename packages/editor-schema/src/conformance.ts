@@ -1258,6 +1258,23 @@ const htmlCommentCases: RoundtripCase[] = [
     markdown: '> a\nb<br>c',
     canonical: '> a\n> b\n> c'
   },
+  // The flat quote dropped an image on its lazy line, and a quote of blocks
+  // ended at one.
+  {
+    name: 'image on a lazy quote line',
+    markdown: '> q\nsee ![x](https://e.com/a.png)',
+    canonical: '> q\n> see\n>\n> ![x](https://e.com/a.png)'
+  },
+  {
+    name: 'lazy line after a quote of blocks',
+    markdown: '> q\n>\n> r\nlazy',
+    canonical: '> q\n>\n> r\n> lazy'
+  },
+  {
+    name: 'line after a quoted heading is no lazy line',
+    markdown: '> # h\nz',
+    canonical: '> # h\n\nz'
+  },
   { name: 'hard break inside a quote (BBF-99)', markdown: '> a  \n> b' },
   {
     name: 'backslash hard break inside a quote (BBF-99)',
