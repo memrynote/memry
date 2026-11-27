@@ -26,12 +26,13 @@ const EMPTY_HEADING = /^#{1,6}[ \t]*$/
 const EMPTY_ITEM = /^[ \t]*(?:[-*+](?: \[[ xX]\])?|\d{1,9}[.)])[ \t]*$/
 const ANY_EMPTY = /^(?:#{1,6}|[ \t]*(?:[-*+](?: \[[ xX]\])?|\d{1,9}[.)]))[ \t]*$/m
 const LIST_ITEM = /^[ \t]*(?:[-*+]|\d{1,9}[.)])(?:[ \t]|$)/
+const EMPTY_TODO = /^[ \t]*[-*+] \[[ xX]\][ \t]*$/
 
 /**
  * `markdown` with a placeholder on each empty item or heading line. An item
  * line counts only where a list item can start without ending a paragraph:
  * after a blank line or another item. After paragraph text, `-` is a setext
- * underline.
+ * underline. A to-do's box is none, so an empty to-do counts after any line.
  */
 export function maskEmptyBlockLines(markdown: string): string {
   if (!ANY_EMPTY.test(markdown)) return markdown
@@ -42,7 +43,8 @@ export function maskEmptyBlockLines(markdown: string): string {
       if (fence.consume(line)) return line
       const previous = lines[index - 1]
       const opens = previous === undefined || previous.trim() === '' || LIST_ITEM.test(previous)
-      const empty = EMPTY_HEADING.test(line) || (opens && EMPTY_ITEM.test(line))
+      const empty =
+        EMPTY_HEADING.test(line) || EMPTY_TODO.test(line) || (opens && EMPTY_ITEM.test(line))
       return empty ? `${line.trimEnd()} ${PLACEHOLDER}` : line
     })
     .join('\n')
