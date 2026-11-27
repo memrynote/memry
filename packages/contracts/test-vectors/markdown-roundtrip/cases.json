@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 376,
+    "exportedCaseCount": 384,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 386,
+    "caseCount": 394,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -306,13 +306,6 @@
       "canonical": null,
       "pending": null,
       "sha256": "eb7f6a83fdb674bb3b312b5d009b4119fc2d847ca82c8b003f11086eed751b01"
-    },
-    {
-      "name": "callout marker under a list item",
-      "markdown": "- a\n\n  > [!info]\n  > c",
-      "canonical": "- a\n\n<!-- memry:block-nesting-level=1 -->\n\n> \\[!info]\n> c\n\n<!-- memry:block-nesting-level=0 -->",
-      "pending": null,
-      "sha256": "09807061addad6a25371c88c2f656fc88d03d2aeeefac7079b4ed247d6cda74a"
     },
     {
       "name": "callout with a title after the marker",
@@ -1181,6 +1174,69 @@
       "canonical": null,
       "pending": null,
       "sha256": "57cc158d8adac3e7bb8f67fc85f2ec3d48901bb6c3fcccb3502cd974082d4300"
+    },
+    {
+      "name": "callout indented under a list item",
+      "markdown": "- a\n\n  > [!info]\n  > c",
+      "canonical": "- a\n\n<!-- memry:block-nesting-level=1 -->\n\n> [!info]\n> c\n\n<!-- memry:block-nesting-level=0 -->",
+      "pending": null,
+      "sha256": "09807061addad6a25371c88c2f656fc88d03d2aeeefac7079b4ed247d6cda74a"
+    },
+    {
+      "name": "math indented under a list item",
+      "markdown": "- a\n\n  $$\n  x\n  $$",
+      "canonical": "- a\n\n<!-- memry:block-nesting-level=1 -->\n\n$$\nx\n$$\n\n<!-- memry:block-nesting-level=0 -->",
+      "pending": null,
+      "sha256": "c08a1443bb7b5d68d318d5e3ad82bd435de6b0ca6fd9b2df1271dce151142679"
+    },
+    {
+      "name": "math indented under a numbered item",
+      "markdown": "1. a\n\n   $$\n   x\n   $$",
+      "canonical": "1. a\n\n<!-- memry:block-nesting-level=1 -->\n\n$$\nx\n$$\n\n<!-- memry:block-nesting-level=0 -->",
+      "pending": null,
+      "sha256": "dcaf4bd99c233cdbfab3c9877d2dd870e1343de8304a80a19def999008edc5cd"
+    },
+    {
+      "name": "math indented under a to-do item",
+      "markdown": "- [ ] t\n\n  $$\n  x\n  $$",
+      "canonical": "- [ ] t\n\n<!-- memry:block-nesting-level=1 -->\n\n$$\nx\n$$\n\n<!-- memry:block-nesting-level=0 -->",
+      "pending": null,
+      "sha256": "121038c0d4a9363496683f81396afaf7164c74164ee42f6d6e5cd3b3d1d0ed48"
+    },
+    {
+      "name": "quote of two paragraphs indented under a list item",
+      "markdown": "- a\n\n  > x\n  >\n  > y",
+      "canonical": "- a\n\n<!-- memry:block-nesting-level=1 -->\n\n> x\n\n<!-- memry:block-nesting-level=2 -->\n\ny\n\n<!-- memry:block-nesting-level=0 -->",
+      "pending": null,
+      "sha256": "55d4a2c05b989965470d7114984d540d8aa323366da1de8bef117862906adfb6"
+    },
+    {
+      "name": "callout indented under a list item, then the next item",
+      "markdown": "- a\n\n  > [!info]\n  > c\n- b",
+      "canonical": "- a\n\n<!-- memry:block-nesting-level=1 -->\n\n> [!info]\n> c\n\n<!-- memry:block-nesting-level=0 -->\n\n- b",
+      "pending": null,
+      "sha256": "f763dbe7990debbf6d590dc82f4491c6503986da94f922ddff9609b771efaaaf"
+    },
+    {
+      "name": "paragraph then a callout indented under a list item",
+      "markdown": "- a\n\n  para\n\n  > [!info]\n  > c",
+      "canonical": "- a\n\n<!-- memry:block-nesting-level=1 -->\n\npara\n\n> [!info]\n> c\n\n<!-- memry:block-nesting-level=0 -->",
+      "pending": null,
+      "sha256": "67bf437b5dc701e557b2d2d80d74b08a9c3b2971fc808adcf9b12280e9012d17"
+    },
+    {
+      "name": "callout then an item indented under a list item",
+      "markdown": "- a\n\n  > [!info]\n  > c\n\n  - sub\n\nafter",
+      "canonical": "- a\n\n<!-- memry:block-nesting-level=1 -->\n\n> [!info]\n> c\n\n- sub\n\n<!-- memry:block-nesting-level=0 -->\n\nafter",
+      "pending": null,
+      "sha256": "66017a04536e3e193e9e42b980c4c3614cba492baab8fe94987c36494be0f7cf"
+    },
+    {
+      "name": "quote line in a code block under a list item stays code",
+      "markdown": "- a\n\n  ```\n  > [!info]\n  ```",
+      "canonical": "- a\n\n<!-- memry:block-nesting-level=1 -->\n\n```\n> [!info]\n```\n\n<!-- memry:block-nesting-level=0 -->",
+      "pending": null,
+      "sha256": "28501f8360aebfdc0d41c86a1adff9527e5c0be5629f9a426ee6d74fcbd47cfc"
     },
     {
       "name": "math then a paragraph nested under a list item",

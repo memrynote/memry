@@ -179,12 +179,6 @@ const calloutCases: RoundtripCase[] = [
   { name: 'quote whose text spells a folded callout marker', markdown: '> \\[!tip]-' },
   { name: 'paragraph whose text spells a torn callout marker', markdown: '\\[!info]\nc' },
   {
-    name: 'callout marker under a list item',
-    markdown: '- a\n\n  > [!info]\n  > c',
-    canonical:
-      '- a\n\n<!-- memry:block-nesting-level=1 -->\n\n> \\[!info]\n> c\n\n<!-- memry:block-nesting-level=0 -->'
-  },
-  {
     name: 'callout with a title after the marker',
     markdown: '> [!info] Title here\n> Body'
   },
@@ -673,6 +667,55 @@ const nestedUnderListCases: RoundtripCase[] = [
   {
     name: 'bookmark marker nested under a list item',
     markdown: nestedUnderBullet('![bookmark](https://example.com/a)')
+  },
+  // A callout, a quote or math indented in a list item read as BlockNote reads
+  // it, a quote holding `[!info]` and a paragraph holding `$$`, and its
+  // canonical form, under nesting markers, read as the block.
+  {
+    name: 'callout indented under a list item',
+    markdown: '- a\n\n  > [!info]\n  > c',
+    canonical: nestedUnderBullet('> [!info]\n> c').replace('- parent', '- a')
+  },
+  {
+    name: 'math indented under a list item',
+    markdown: '- a\n\n  $$\n  x\n  $$',
+    canonical: nestedUnderBullet('$$\nx\n$$').replace('- parent', '- a')
+  },
+  {
+    name: 'math indented under a numbered item',
+    markdown: '1. a\n\n   $$\n   x\n   $$',
+    canonical: nestedUnderBullet('$$\nx\n$$').replace('- parent', '1. a')
+  },
+  {
+    name: 'math indented under a to-do item',
+    markdown: '- [ ] t\n\n  $$\n  x\n  $$',
+    canonical: nestedUnderBullet('$$\nx\n$$').replace('- parent', '- [ ] t')
+  },
+  {
+    name: 'quote of two paragraphs indented under a list item',
+    markdown: '- a\n\n  > x\n  >\n  > y',
+    canonical:
+      '- a\n\n<!-- memry:block-nesting-level=1 -->\n\n> x\n\n<!-- memry:block-nesting-level=2 -->\n\ny\n\n<!-- memry:block-nesting-level=0 -->'
+  },
+  {
+    name: 'callout indented under a list item, then the next item',
+    markdown: '- a\n\n  > [!info]\n  > c\n- b',
+    canonical: `${nestedUnderBullet('> [!info]\n> c').replace('- parent', '- a')}\n\n- b`
+  },
+  {
+    name: 'paragraph then a callout indented under a list item',
+    markdown: '- a\n\n  para\n\n  > [!info]\n  > c',
+    canonical: nestedUnderBullet('para\n\n> [!info]\n> c').replace('- parent', '- a')
+  },
+  {
+    name: 'callout then an item indented under a list item',
+    markdown: '- a\n\n  > [!info]\n  > c\n\n  - sub\n\nafter',
+    canonical: `${nestedUnderBullet('> [!info]\n> c\n\n- sub').replace('- parent', '- a')}\n\nafter`
+  },
+  {
+    name: 'quote line in a code block under a list item stays code',
+    markdown: '- a\n\n  ```\n  > [!info]\n  ```',
+    canonical: nestedUnderBullet('```\n> [!info]\n```').replace('- parent', '- a')
   },
   // The blocks after a claimed one went to the top level.
   {
