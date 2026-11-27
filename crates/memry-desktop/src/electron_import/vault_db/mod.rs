@@ -121,6 +121,9 @@ pub struct VaultStageReport {
     pub dropped: BTreeMap<String, u64>,
     /// Source rows carried over with less than the source held, by named reason.
     pub notices: BTreeMap<String, u64>,
+    /// Pushes queued by Electron's runtime-start replays ([`tables::replay::runtime_start`]),
+    /// by rule: `dirtyRecordsQueued`, `deletedNotesRecreated`.
+    pub queued: BTreeMap<String, u64>,
     pub merged_tables: Vec<String>,
     pub checks_passed: Vec<u8>,
 }
@@ -291,6 +294,24 @@ fn stage(input: &VaultImportInput<'_>, paths: &Paths) -> Result<VaultStageReport
             .insert(format!("{}/{}", mapping.db.name(), mapping.table), table);
     }
 
+    let replayed = tables::replay::runtime_start(&mut TableCtx {
+        source: sources.conn(tables::SourceDb::Data),
+        index: sources.conn(tables::SourceDb::Index),
+        vault_dir: &input.vault_dir,
+        vault_id: &input.vault_id,
+        writer: &mut writer,
+        now_ms: input.now_ms,
+        electron_device_id: input.electron_device_id.as_deref(),
+        docs: &input.docs,
+    })?;
+    for (rule, count) in [
+        ("dirtyRecordsQueued", replayed.dirty),
+        ("deletedNotesRecreated", replayed.recreated),
+    ] {
+        if count > 0 {
+            report.queued.insert(rule.to_owned(), count);
+        }
+    }
     docs::import_documents(
         input,
         sources.conn(tables::SourceDb::Data),
@@ -303,6 +324,7 @@ fn stage(input: &VaultImportInput<'_>, paths: &Paths) -> Result<VaultStageReport
         &writer,
         input.electron_device_id.as_deref(),
         &input.docs,
+        input.now_ms,
     )?;
     drop(sources);
     source::remove(&paths.staging)?;
