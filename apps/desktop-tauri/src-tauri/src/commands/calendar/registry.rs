@@ -1,5 +1,5 @@
-//! The calendar domain's commands and event, kept out of `registry.rs` to stay under the line
-//! ceiling. `collect_commands_with_calendar!([...])` is `with_task_commands!(collect_commands![...])`
+//! The calendar domain's commands and event for `registry.rs`, kept out of it (and its module
+//! list) to stay under the line ceiling. `collect_commands_with_calendar!([...])` is `with_task_commands!(collect_commands![...])`
 //! with the calendar commands appended, and `collect_events_with_calendar!` does the same for
 //! `with_task_events!(collect_events![...])`; the task macros (`registry/tasks.rs`) append theirs.
 
@@ -31,4 +31,4 @@ macro_rules! collect_events_with_calendar {
     };
 }
 
-pub(super) use {collect_commands_with_calendar, collect_events_with_calendar};
+pub(crate) use {collect_commands_with_calendar, collect_events_with_calendar};

@@ -1,3 +1,5 @@
+import { assertHumanizedReleaseNotesForPublish } from './release-notes-utils.mjs'
+
 const defaultReleaseTimeZone = 'Europe/Istanbul'
 const releaseListFields = ['tagName', 'name', 'isDraft', 'isPrerelease', 'createdAt']
 
@@ -116,7 +118,30 @@ export function parseReleaseArgs(argv) {
     throw new Error(`Unknown argument: ${arg}`)
   }
 
+  // A dry run of the humanizer leaves the draft untouched, so the humanized-notes check that
+  // follows could never pass.
+  if (options.dryRun && options.humanize) {
+    throw new Error(
+      '--dry-run cannot be combined with --humanize: a dry run does not edit the draft. Run `pnpm release:humanize -- --tag <draft>` first, then `pnpm release --dry-run`.'
+    )
+  }
+
   return options
+}
+
+/**
+ * The draft check before `release.mjs` dispatches the workflow. Dry runs included: the workflow's
+ * `setup-release` packs the draft's humanized notes and fails without them.
+ */
+export function assertDraftReadyForDispatch({ body = '', draftTag, dryRun, expectedTag }) {
+  try {
+    assertHumanizedReleaseNotesForPublish({ body, draftTag, expectedTag })
+  } catch (error) {
+    if (!dryRun) throw error
+    throw new Error(`${error.message}\nA dry run needs them too: the workflow packs these notes.`, {
+      cause: error
+    })
+  }
 }
 
 export function buildHumanizeReleaseArgs({ dryRun, tag, yes }) {
@@ -135,40 +160,6 @@ export function buildHumanizeReleaseArgs({ dryRun, tag, yes }) {
 
 export function getReleaseListFields() {
   return [...releaseListFields]
-}
-
-/**
- * Point `latest.yml` at the installer as it exists after Authenticode signing.
- *
- * electron-updater refuses a download whose bytes do not match the `sha512` and
- * `size` in this manifest, and signing rewrites the file, so every existing NSIS
- * install would stop updating if the manifest kept the unsigned CI values.
- *
- * The Windows manifest describes exactly one file, and its digest appears twice
- * (once under `files[0]`, once at the top level). Anything else means the shape
- * changed and the caller must look before this rewrites the wrong field.
- */
-export function rewriteWindowsUpdateManifest(yaml, { sha512, size }) {
-  const fileEntries = yaml.match(/^\s*-\s+url:/gm) ?? []
-
-  if (fileEntries.length !== 1) {
-    throw new Error(
-      `latest.yml should describe exactly one Windows file, found ${fileEntries.length}.`
-    )
-  }
-
-  const shaLines = yaml.match(/^\s*sha512: .*$/gm) ?? []
-  const sizeLines = yaml.match(/^\s*size: .*$/gm) ?? []
-
-  if (shaLines.length !== 2 || sizeLines.length !== 1) {
-    throw new Error(
-      `latest.yml should carry two sha512 lines and one size line, found ${shaLines.length} and ${sizeLines.length}.`
-    )
-  }
-
-  return yaml
-    .replace(/^(\s*sha512: ).*$/gm, `$1${sha512}`)
-    .replace(/^(\s*size: ).*$/gm, `$1${size}`)
 }
 
 export function extractWorkflowRunId(output) {

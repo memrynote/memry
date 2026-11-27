@@ -1,13 +1,28 @@
-//! The advisory lock that serialises every write of `memry-config.json` across processes: the
-//! app and the command line (`memrynote-cli`) both write it. [`super::config::AppConfig::update`]
-//! re-reads the file before each write, but between that read and the rename another process
+//! The advisory lock that serialises every write of a shared config file across processes: the
+//! app and the command line (`memrynote-cli`) both write `memry-config.json` and each vault's
+//! `.memry/config.json`. [`super::config::AppConfig::update`] and [`crate::vault::config::update`]
+//! re-read the file before each write, but between that read and the rename another process
 //! could write a key that this rename then drops (#4278).
 
 use std::fs::{File, OpenOptions, TryLockError};
+use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
-use super::config::ConfigError;
+/// Why the lock was not taken: the lock file, the reason and its kind (`PermissionDenied` when
+/// the folder refuses the lock file, so a caller can report it as the write's own permission
+/// error).
+#[derive(Debug)]
+pub(crate) struct LockError {
+    pub path: PathBuf,
+    pub message: String,
+    pub kind: ErrorKind,
+}
+
+/// The lock file beside `config`.
+pub(crate) fn lock_path(config: &Path) -> PathBuf {
+    PathBuf::from(format!("{}.lock", config.display()))
+}
 
 /// How long a write waits for another process's write. A write holds the lock for one read,
 /// write and rename, well under a second.
@@ -19,18 +34,39 @@ const POLL: Duration = Duration::from_millis(10);
 ///
 /// `Ok(None)` where the file system has no locks ([`unsupported`]: an NFS or SMB home): the write goes ahead unlocked, as before, with a warning, because refusing
 /// would stop every config write of the app there. A lock still held after [`WAIT`] is an error.
-pub(super) fn hold(config: &Path) -> Result<Option<File>, ConfigError> {
-    let path = PathBuf::from(format!("{}.lock", config.display()));
-    let fail = |message: String| ConfigError::Write {
-        path: path.display().to_string(),
-        message,
+///
+/// A lock file this user may not write (another user's, left by `sudo memrynote`) is locked
+/// through a read-only handle: `flock` and `LockFileEx` both lock one. One this user cannot open
+/// at all takes the no-locks path, so it never stops the app's config writes.
+pub(crate) fn hold(config: &Path) -> Result<Option<File>, LockError> {
+    let path = lock_path(config);
+    let fail = |error: std::io::Error| LockError {
+        path: path.clone(),
+        message: error.to_string(),
+        kind: error.kind(),
     };
-    let file = OpenOptions::new()
+    let file = match OpenOptions::new()
         .create(true)
         .truncate(false)
         .write(true)
         .open(&path)
-        .map_err(|error| fail(error.to_string()))?;
+    {
+        Ok(file) => file,
+        Err(error) if error.kind() == ErrorKind::PermissionDenied => match File::open(&path) {
+            Ok(file) => file,
+            Err(read) if read.kind() == ErrorKind::PermissionDenied => {
+                tracing::warn!(
+                    path = %path.display(),
+                    %read,
+                    "the lock file cannot be opened; the config is written without the lock"
+                );
+                return Ok(None);
+            }
+            // No lock file and a folder that refuses one: the write would be refused too.
+            Err(_) => return Err(fail(error)),
+        },
+        Err(error) => return Err(fail(error)),
+    };
     let deadline = Instant::now() + WAIT;
     loop {
         match file.try_lock() {
@@ -43,11 +79,14 @@ pub(super) fn hold(config: &Path) -> Result<Option<File>, ConfigError> {
                 );
                 return Ok(None);
             }
-            Err(TryLockError::Error(error)) => return Err(fail(error.to_string())),
+            Err(TryLockError::Error(error)) => return Err(fail(error)),
             Err(TryLockError::WouldBlock) if Instant::now() >= deadline => {
-                return Err(fail(format!(
-                    "another process held the lock for more than {} s",
-                    WAIT.as_secs()
+                return Err(fail(std::io::Error::new(
+                    ErrorKind::WouldBlock,
+                    format!(
+                        "another process held the lock for more than {} s",
+                        WAIT.as_secs()
+                    ),
                 )));
             }
             Err(TryLockError::WouldBlock) => std::thread::sleep(POLL),
