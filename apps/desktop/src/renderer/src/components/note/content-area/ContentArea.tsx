@@ -716,7 +716,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       // side by side, the way Notion does; anywhere else is BlockNote's own
       // drop cursor.
       dropCursor: multiColumnDropCursor,
-      pasteHandler: handleEditorPaste
+      pasteHandler: (context) => handleEditorPaste({ ...context, resolveNotePath: fetchNotePath })
     })
   )
 

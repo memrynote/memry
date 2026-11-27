@@ -1,6 +1,7 @@
 /* oxlint-disable typescript/no-explicit-any */
 
 import type { BlockNoteEditor } from '@blocknote/core'
+import { pasteWithNoteMarkdown } from './paste-markdown'
 import { insertUrlAsLink, readBareUrl } from './paste-url-link'
 
 /**
@@ -46,6 +47,8 @@ interface PasteContext {
     prioritizeMarkdownOverHTML?: boolean
     plainTextAsMarkdown?: boolean
   }) => boolean | undefined
+  /** The open note's vault path, so a pasted `![[image]]` resolves relative to it. */
+  resolveNotePath?: () => Promise<string | undefined>
 }
 
 /**
@@ -69,7 +72,8 @@ function readTextWithUnixLineEndings(clipboard: DataTransfer): void {
 export function handleEditorPaste({
   editor,
   event,
-  defaultPasteHandler
+  defaultPasteHandler,
+  resolveNotePath
 }: PasteContext): boolean | undefined {
   const clipboard = event?.clipboardData
   if (clipboard) readTextWithUnixLineEndings(clipboard)
@@ -85,7 +89,9 @@ export function handleEditorPaste({
     return true
   }
 
-  if (!isSelectionInTableCell(editor)) return defaultPasteHandler()
+  if (!isSelectionInTableCell(editor)) {
+    return pasteWithNoteMarkdown(editor, defaultPasteHandler, resolveNotePath)
+  }
 
   // Both flags gate a markdown reading of `text/plain`: the first sniffs the
   // text for markdown syntax, the second is the fallback when `text/plain` is
