@@ -416,13 +416,13 @@ describe('pasting markdown around existing blocks', () => {
     await settled(editor, before)
 
     // A column cannot hold a column list, so the pasted columns' blocks land
-    // in the column holding the caret, in reading order.
+    // in the column holding the caret, in reading order, the first joining
+    // the text before the caret as any pasted paragraph does.
     const [columns] = editor.document as any[]
     expect(editor.document).toHaveLength(1)
     expect(columns.children.map((column: any) => outline(column.children))).toEqual([
       [
-        ['paragraph', 'left'],
-        ['paragraph', 'A'],
+        ['paragraph', 'leftA'],
         ['paragraph', 'B']
       ],
       [['paragraph', 'right']]

@@ -840,7 +840,7 @@ Pasted Markdown is read the same way MemryNote reads a note file, so a paste giv
 - A line holding only an image becomes an image block, and a YouTube link written as an image (`![](https://www.youtube.com/watch?v=…)`) becomes a playable embed.
 - A toggle that MemryNote saved (`<details data-memry-toggle>`) becomes a [toggle](#toggle-lists) again. A plain `<details>` section from somewhere else stays as text, as it does in a file.
 
-Pasting into an empty line replaces it. Pasting in the middle of a paragraph splits it: a first line of plain text joins the text before the cursor, and a callout, equation or table starts its own block. **Undo** takes back the whole paste in one step.
+Pasting into an empty line replaces it. Pasting in the middle of a paragraph splits it: a first line of plain text joins the text before the cursor, and a callout, equation or table starts its own block. A selected block, such as an image you clicked, is replaced by the paste. When a paste replaces the end of a block that has nested blocks, the nested blocks move under the last pasted block. Columns pasted into a column add their blocks to that column. **Undo** takes back the whole paste in one step.
 
 When the clipboard also carries rich text, as it does when you copy part of a web page, the rich text is pasted unless the plain text looks like Markdown. A code block keeps everything you paste into it as plain text.
 
