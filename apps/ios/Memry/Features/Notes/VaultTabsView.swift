@@ -157,6 +157,11 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
                 VaultSidebarHeader(name: vaultName, context: settings, switchVault: switchVault)
             }
         }
+        // The window's shape picks the placement, not the keyboard's: in
+        // portrait a keyboard or an editor panel leaves less height than
+        // width, and the sidebar opened over the page. Each tab still avoids
+        // the keyboard on its own.
+        .ignoresSafeArea(.keyboard)
     }
 
     private func presentations(over tabs: some View, layout: VaultTabLayout, width: LayoutWidth) -> some View {
