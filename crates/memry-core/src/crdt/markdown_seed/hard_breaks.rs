@@ -52,6 +52,11 @@ pub(super) fn mask_hard_breaks(markdown: &str) -> (String, Vec<String>) {
 }
 
 /// `maskProseHardBreaks`, without the `<br>` marking (module docs).
+///
+/// Desktop joins into `lines[index]` and removes the line it took; here the
+/// line under construction is moved out, the lines it took are left behind
+/// `next`, and [`OpenLine`] keeps what every later decision reads of it, so a
+/// join costs the length of the line it takes and no more.
 fn mask_prose(text: &str, breaks: &mut Vec<String>) -> String {
     // The cheap reject: only these can spell a break or a link join. `<br` is
     // not among them, since only the marking it drives is not ported.
@@ -59,78 +64,138 @@ fn mask_prose(text: &str, breaks: &mut Vec<String>) -> String {
         return text.to_owned();
     }
     let mut lines: Vec<String> = text.split('\n').map(str::to_owned).collect();
+    let mut out: Vec<String> = Vec::with_capacity(lines.len());
     let mut in_list_item = false;
     let mut in_table = false;
-    let mut index = 0;
-    while index < lines.len() {
-        let line = lines[index].clone();
-        // A table row is one line, so a `\` ending it is the last cell's text.
-        // A pipe line above a delimiter row opens a table; it runs on until a
-        // line without a pipe.
-        let next = lines.get(index + 1).map_or("", String::as_str);
-        if !line.contains('|') {
-            in_table = false;
-        } else if next.contains('|') && is_table_separator(next) {
-            in_table = true;
+    let mut at = 0;
+    while at < lines.len() {
+        let mut line = std::mem::take(&mut lines[at]);
+        let mut open = OpenLine::new(&line);
+        let mut next = at + 1;
+        loop {
+            // A table row is one line, so a `\` ending it is the last cell's text.
+            // A pipe line above a delimiter row opens a table; it runs on until a
+            // line without a pipe.
+            let after = lines.get(next).map_or("", String::as_str);
+            if !open.has_pipe {
+                in_table = false;
+            } else if after.contains('|') && is_table_separator(after) {
+                in_table = true;
+            }
+            if is_blank(&line) {
+                in_list_item = false;
+            } else if list_item_start(&line) {
+                in_list_item = true;
+            } else if block_start(&line) {
+                in_list_item = false;
+            }
+            if next == lines.len() || is_blank(&lines[next]) {
+                break;
+            }
+            let spelling = hard_break_spelling(&line).map(str::len);
+            // The parser ends a list item at a soft break inside link text too,
+            // so `- [a\nb](u)` lost its link and gained a blank line (BBF-106).
+            if in_list_item && spelling.is_none() && !block_start(&lines[next]) {
+                let end = match open.link_end {
+                    Some(end) => (open.depth > 0 && next < end).then_some(end),
+                    None => ends_inside_link_text(open.depth, &line, &lines[next..])
+                        .map(|len| next + len),
+                };
+                if let Some(end) = end {
+                    open.join(&mut line, &mut lines[next]);
+                    next += 1;
+                    open.link_end = Some(end);
+                    open.unclean = true;
+                    continue;
+                }
+            }
+            let spelling = spelling.filter(|_| !in_table && !is_blank(&line));
+            let Some(spelling) = spelling else {
+                break;
+            };
+            // The token replaces the spelling: two trailing spaces left in place
+            // would hand the parser a break it already drops, and a backslash
+            // would escape the token's first character.
+            breaks.push(line[line.len() - spelling..].to_owned());
+            line.truncate(line.len() - spelling);
+            line.push_str(&format!("{TOKEN_PREFIX}{};", breaks.len() - 1));
+            // A list item's continuation line becomes a child paragraph, or a lazy
+            // one ends the list, so the break is lost (BBF-99). Joined, the token
+            // lands against the item's soft break; the joined line is read again.
+            // A span the join would carry across keeps the split.
+            if in_list_item
+                && !block_start(&lines[next])
+                && !open.unclean
+                && !lines[next].contains(JOIN_BLOCKERS)
+            {
+                open.join(&mut line, &mut lines[next]);
+                next += 1;
+                open.link_end = None;
+                continue;
+            }
+            break;
         }
-        if is_blank(&line) {
-            in_list_item = false;
-        } else if list_item_start(&line) {
-            in_list_item = true;
-        } else if block_start(&line) {
-            in_list_item = false;
-        }
-        if index + 1 == lines.len() || is_blank(&lines[index + 1]) {
-            index += 1;
-            continue;
-        }
-        // The parser ends a list item at a soft break inside link text too, so
-        // `- [a\nb](u)` lost its link and gained a blank line (BBF-106).
-        if in_list_item
-            && hard_break_spelling(&line).is_none()
-            && !block_start(&lines[index + 1])
-            && ends_inside_link_text(&line, &lines[index + 1..])
-        {
-            join_next(&mut lines, index);
-            continue;
-        }
-        let spelling = hard_break_spelling(&line).filter(|_| !in_table && !is_blank(&line));
-        let Some(spelling) = spelling else {
-            index += 1;
-            continue;
-        };
-        // The token replaces the spelling: two trailing spaces left in place
-        // would hand the parser a break it already drops, and a backslash
-        // would escape the token's first character.
-        breaks.push(spelling.to_owned());
-        lines[index].truncate(line.len() - spelling.len());
-        lines[index].push_str(&format!("{TOKEN_PREFIX}{};", breaks.len() - 1));
-        // A list item's continuation line becomes a child paragraph, or a lazy
-        // one ends the list, so the break is lost (BBF-99). Joined, the token
-        // lands against the item's soft break; the joined line is read again.
-        // A span the join would carry across keeps the split.
-        let unboxed = &lines[index][task_item_box(&lines[index]).map_or(0, |(_, end)| end)..];
-        let joined = format!(
-            "{}{}",
-            remove_joined_breaks(&seen(unboxed)),
-            seen(&lines[index + 1])
-        );
-        if in_list_item && !block_start(&lines[index + 1]) && !joined.contains(['`', '[', ']', '<'])
-        {
-            join_next(&mut lines, index);
-            continue;
-        }
-        index += 1;
+        out.push(line);
+        at = next;
     }
-    lines.join("\n")
+    out.join("\n")
 }
 
-/// `lines[index] += '<br>' + lines[index + 1].trimStart()`, then the next line
-/// removed.
-fn join_next(lines: &mut Vec<String>, index: usize) {
-    let next = lines.remove(index + 1);
-    lines[index].push(JOIN);
-    lines[index].push_str(next.trim_start_matches(is_js_whitespace));
+/// What a join keeps from a code span, a link or a tag.
+const JOIN_BLOCKERS: [char; 4] = ['`', '[', ']', '<'];
+
+/// What [`mask_prose`] reads of the line it is building, kept as the line
+/// grows.
+struct OpenLine {
+    /// The line holds a pipe.
+    has_pipe: bool,
+    /// How many `[` the line leaves open (the task box's own pair adds none).
+    depth: usize,
+    /// The line holds a character a join must not carry across, outside its
+    /// task box and the joins this port made after a token. Such a join stays
+    /// as [`JOIN`], which desktop reads as `<br>`, so it counts as a tag.
+    unclean: bool,
+    /// Set after a join over link text: where the paragraph that holds the
+    /// text ends. Each such join leaves the rest of the paragraph's lines out
+    /// of what [`ends_inside_link_text`] refuses on, and adds to the line only
+    /// what it already accepted, so the next join over the same text is
+    /// decided by `depth` and the lines left alone.
+    link_end: Option<usize>,
+}
+
+impl OpenLine {
+    fn new(line: &str) -> Self {
+        let boxed = task_item_box(line).map_or(0, |(_, end)| end);
+        let mut open = Self {
+            has_pipe: false,
+            depth: 0,
+            unclean: line[boxed..].contains(JOIN_BLOCKERS),
+            link_end: None,
+        };
+        open.take(line);
+        open
+    }
+
+    fn take(&mut self, text: &str) {
+        self.has_pipe |= text.contains('|');
+        for c in text.chars() {
+            match c {
+                '[' => self.depth += 1,
+                ']' => self.depth = self.depth.saturating_sub(1),
+                _ => {}
+            }
+        }
+    }
+
+    /// `lines[index] += '<br>' + lines[index + 1].trimStart()`: `line` takes
+    /// `next`, which is left empty.
+    fn join(&mut self, line: &mut String, next: &mut String) {
+        let next = std::mem::take(next);
+        let text = next.trim_start_matches(is_js_whitespace);
+        line.push(JOIN);
+        line.push_str(text);
+        self.take(text);
+    }
 }
 
 /// `line.trim() === ''`.
@@ -158,30 +223,6 @@ fn hard_break_spelling(line: &str) -> Option<&str> {
     } else {
         None
     }
-}
-
-/// `JOINED_BREAK` removal, `/MEMRYHBK\d+;<br>/g` replaced by nothing, on a
-/// [`seen`] line.
-fn remove_joined_breaks(line: &str) -> String {
-    let mut out = String::with_capacity(line.len());
-    let mut rest = line;
-    while let Some(start) = rest.find(TOKEN_PREFIX) {
-        let after = &rest[start + TOKEN_PREFIX.len()..];
-        let digits = after.chars().take_while(char::is_ascii_digit).count();
-        let joined = digits > 0
-            && after[digits..]
-                .strip_prefix(';')
-                .is_some_and(|tail| tail.starts_with("<br>"));
-        if joined {
-            out.push_str(&rest[..start]);
-            rest = &after[digits + 1 + "<br>".len()..];
-        } else {
-            out.push_str(&rest[..start + TOKEN_PREFIX.len()]);
-            rest = after;
-        }
-    }
-    out.push_str(rest);
-    out
 }
 
 /// `TASK_ITEM_BOX`, `/^([ \t]*(?:[-*+]|\d+[.)])[ \t]+)\[[ xX]\]/`: where the
@@ -244,39 +285,26 @@ fn block_start(line: &str) -> bool {
         && rest.chars().filter(|c| !matches!(c, ' ' | '\t')).count() >= 3
 }
 
-/// `endsInsideLinkText`: true when `line` ends inside link text that the last
-/// line of its paragraph closes. An image, a code span, an escaped bracket, a
-/// link title, an address the writer cannot spell back
-/// ([`address_keeps_split`]), a tag other than `<br>`, a `<br>` against a line
-/// end or a hard break on a later line keeps the old split.
-fn ends_inside_link_text(line: &str, after: &[String]) -> bool {
+/// `endsInsideLinkText`: when `line` ends inside link text that the last
+/// line of its paragraph closes, how many of `after`'s lines that paragraph
+/// holds. An image, a code span, an escaped bracket, a link title, an address
+/// the writer cannot spell back ([`address_keeps_split`]), a tag other than
+/// `<br>`, a `<br>` against a line end or a hard break on a later line keeps
+/// the old split. `depth` is how many `[` the line leaves open.
+fn ends_inside_link_text(depth: usize, line: &str, after: &[String]) -> Option<usize> {
     // The depth test only reads `line`, and the rest only refuses, so asking it
     // first keeps a long lazy paragraph from being scanned per line.
-    let line = seen(line);
-    let unboxed = match task_item_box(&line) {
-        Some((group_end, end)) => format!("{}{}", &line[..group_end], &line[end..]),
-        None => line.clone(),
-    };
-    let mut depth = 0usize;
-    for c in unboxed.chars() {
-        match c {
-            '[' => depth += 1,
-            ']' => depth = depth.saturating_sub(1),
-            _ => {}
-        }
-    }
     if depth == 0 {
-        return false;
+        return None;
     }
+    let line = seen(line);
     let end = after
         .iter()
         .position(|next| is_blank(next) || block_start(next));
     let rest = &after[..end.unwrap_or(after.len())];
-    let Some(last) = rest.last() else {
-        return false;
-    };
+    let last = rest.last()?;
     if !last.contains("](") {
-        return false;
+        return None;
     }
     let paragraph = std::iter::once(line.as_str())
         .chain(rest.iter().map(String::as_str))
@@ -288,12 +316,13 @@ fn ends_inside_link_text(line: &str, after: &[String]) -> bool {
         .map(|next| seen(next))
         .collect::<Vec<_>>()
         .join("\n");
-    !(blocks_link_join(&paragraph)
+    let refused = blocks_link_join(&paragraph)
         || address_keeps_split(&paragraph)
         || rest_text.to_ascii_lowercase().contains("<br")
         || rest[..rest.len() - 1]
             .iter()
-            .any(|next| hard_break_spelling(next).is_some()))
+            .any(|next| hard_break_spelling(next).is_some());
+    (!refused).then_some(rest.len())
 }
 
 /// `/<br>/i` at the start of `chars`.
