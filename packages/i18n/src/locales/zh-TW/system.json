@@ -17,6 +17,7 @@
       "filterAll": "所有檔案"
     },
     "exportCancelled": "匯出已取消",
+    "exportVaultChanged": "在你選擇儲存位置時開啟了另一個儲存庫。請重新匯出筆記。",
     "dataDbRecovery": {
       "title": "修復儲存庫資料庫",
       "message": "Memry 此儲存庫的資料庫已損壞。",

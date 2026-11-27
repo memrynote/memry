@@ -40,6 +40,7 @@ struct SettingsAccountSection: View {
                 NavigationLink(value: SettingsRoute.account) {
                     SettingsAccountCard(email: email, line: BillingCopy.needsPlanLine, dot: .offline)
                 }
+                .settingsRowSelection(.account)
                 .accessibilityIdentifier("settings.row.account")
             } footer: {
                 SettingsFooter(BillingCopy.needsPlanDetail)
@@ -50,6 +51,7 @@ struct SettingsAccountSection: View {
                 NavigationLink(value: SettingsRoute.account) {
                     SettingsAccountCard(email: email, line: BillingCopy.freeLine, dot: .offline)
                 }
+                .settingsRowSelection(.account)
                 .accessibilityIdentifier("settings.row.account")
             }
             unlockSection
@@ -62,18 +64,13 @@ struct SettingsAccountSection: View {
                         dot: SyncStatusText.dot(context)
                     )
                 }
+                .settingsRowSelection(.account)
                 .accessibilityIdentifier("settings.row.account")
             }
         }
     }
 
-    private var state: AccountCardState {
-        AccountCardState.of(
-            hasSession: context.account.hasSession,
-            billing: context.account.billing,
-            vaultIsUnattached: LocalVaultStore().isUnattached(context.vaultId)
-        )
-    }
+    private var state: AccountCardState { .of(context) }
 
     /// The one tinted row: the way to the plans sheet.
     private var unlockSection: some View {
@@ -113,5 +110,15 @@ struct SettingsAccountSection: View {
             .accessibilityIdentifier("settings.account.unlockSync")
         }
         .task { await store.loadProducts() }
+    }
+}
+
+extension AccountCardState {
+    @MainActor static func of(_ context: SettingsContext) -> AccountCardState {
+        of(
+            hasSession: context.account.hasSession,
+            billing: context.account.billing,
+            vaultIsUnattached: LocalVaultStore().isUnattached(context.vaultId)
+        )
     }
 }

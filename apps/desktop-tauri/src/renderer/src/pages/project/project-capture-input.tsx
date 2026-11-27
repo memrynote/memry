@@ -9,6 +9,7 @@ import { notesService } from '@/services/notes-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
+import { NotPortedError } from '@/lib/not-ported'
 import type { Project } from '@/data/tasks-data'
 
 const log = createLogger('ProjectHubCapture')
@@ -76,6 +77,18 @@ export const ProjectCaptureInput = ({
   )
 
   const handleAttach = useCallback(async (): Promise<void> => {
+    try {
+      // Step 32h2 ports `tasks.importFilesToProject`. Until then the attach fails before the
+      // import dialog, as before Step 32h1, so no picked file is granted and left unread.
+      if (!('importFilesToProject' in tasksService)) {
+        throw new NotPortedError('tasks.importFilesToProject')
+      }
+    } catch (error) {
+      log.error('Failed to import files', extractErrorMessage(error))
+      trackRendererError('project_import_files', error)
+      toast.error(extractErrorMessage(error, t('projectHub.capture.fileErrorGeneric')))
+      return
+    }
     const picked = await notesService.showImportDialog()
     if (picked.canceled || picked.filePaths.length === 0) return
 

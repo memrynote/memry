@@ -16,9 +16,12 @@ use std::io::{self, ErrorKind, Read};
 use sha2::{Digest, Sha256};
 use zeroize::Zeroizing;
 
-use crate::protocol::attachment_manifest::{AttachmentChunkRef, AttachmentManifest};
-use crate::protocol::attachment_upload::{FramedChunk, MAX_CHUNKS_PER_SESSION};
+use crate::protocol::attachment_manifest::{
+    AttachmentChunkRef, AttachmentManifest, EncryptedAttachmentManifest,
+};
+use crate::protocol::attachment_upload::{DirectChunk, FramedChunk, MAX_CHUNKS_PER_SESSION};
 use crate::protocol::attachments::{AttachmentError, hex_sha256};
+use crate::protocol::http::{ApiRequest, Auth, HttpClient, RetryPolicy, VAULT_ID_HEADER};
 
 /// Frames one plaintext chunk: `nonce ‖ ciphertext`, addressed by the hash of
 /// that framed ciphertext, with the plaintext hash the reader checks (§14.3).
@@ -113,8 +116,21 @@ fn again(error: &StreamError) -> StreamError {
         StreamError::Attachment(AttachmentError::ZeroChunkSize) => {
             AttachmentError::ZeroChunkSize.into()
         }
-        // `frame_one` fails only as `Undecryptable`.
-        StreamError::Attachment(_) => AttachmentError::Undecryptable.into(),
+        StreamError::Attachment(AttachmentError::Undecryptable) => {
+            AttachmentError::Undecryptable.into()
+        }
+        // Download failures: framing never produces them. Listed so a new
+        // variant has to choose its repeat here.
+        StreamError::Attachment(
+            AttachmentError::Api(_)
+            | AttachmentError::Manifest(_)
+            | AttachmentError::UnresolvableSigner { .. }
+            | AttachmentError::ChunkTooShort { .. }
+            | AttachmentError::ChunkHashMismatch { .. }
+            | AttachmentError::ChunkSizeMismatch { .. }
+            | AttachmentError::ChecksumMismatch
+            | AttachmentError::MissingChunk { .. },
+        ) => AttachmentError::Undecryptable.into(),
     }
 }
 
@@ -148,7 +164,7 @@ impl<R: Read, N: FnMut(u32) -> Vec<u8>> ChunkFramer<R, N> {
     /// A file past [`MAX_CHUNKS_PER_SESSION`] fails only once the chunk past
     /// the cap is read, and its `chunks` count is a lower bound (always cap +
     /// 1). Callers compare the file size with cap × `chunk_size` before the
-    /// first read (desktop `attachments.ts:470`).
+    /// first read (desktop `attachments.ts:434`).
     pub fn next_chunk(&mut self) -> Result<Option<FramedChunk>, StreamError> {
         match &self.state {
             State::Reading => {}
@@ -245,4 +261,40 @@ pub fn build_manifest_from(
         chunk_size: summary.chunk_size,
         created_at,
     }
+}
+
+/// Closes an upload session and stores its signed manifest in one request,
+/// Electron's `completeUploadSession` (`attachments.ts:1116-1150`): the body is
+/// the encrypted manifest's six fields, plus `directChunks` when any chunk went
+/// straight to R2 (left out otherwise, the body an older server knows). The
+/// server writes the manifest only after it has counted every chunk, so no
+/// manifest ever names a chunk that is not stored.
+pub async fn complete_with_manifest(
+    client: &HttpClient,
+    vault_id: &str,
+    session_id: &str,
+    manifest: &EncryptedAttachmentManifest,
+    direct: &[DirectChunk],
+) -> Result<(), AttachmentError> {
+    let mut body = serde_json::json!({
+        "encryptedManifest": manifest.encrypted_manifest,
+        "manifestNonce": manifest.manifest_nonce,
+        "encryptedFileKey": manifest.encrypted_file_key,
+        "keyNonce": manifest.key_nonce,
+        "manifestSignature": manifest.manifest_signature,
+        "signerDeviceId": manifest.signer_device_id,
+    });
+    if !direct.is_empty() {
+        body["directChunks"] = serde_json::json!(direct);
+    }
+    client
+        .send(
+            ApiRequest::post(&format!("/sync/attachments/upload/{session_id}/complete"))
+                .auth(Auth::Session)
+                .header(VAULT_ID_HEADER, vault_id)
+                .json(&body)
+                .retry(RetryPolicy::polled()),
+        )
+        .await?;
+    Ok(())
 }

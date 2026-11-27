@@ -4,23 +4,19 @@
  *
  * The renderer can only write a note body through a mounted editor (Yjs →
  * `crdt:apply-update` → debounced writeback). "Move to" needs to write a note
- * that is usually closed, so the write happens here, in the same order the
- * watcher lands an out-of-app edit — the order proven by
- * `rename-link-rewrite.ts` in this folder:
+ * that is usually closed, so the write happens here, in the order every
+ * Memry body writer uses (`landBodyEdit`, sync/writeback-baseline.ts):
  *
- *  1. `markWritebackIgnored` so the watcher does not re-ingest our own write,
- *  2. `atomicWrite` the file,
+ *  1. feed the note's CRDT body and wait for the store to hold it,
+ *  2. write the file through the outside-edit baseline, its bytes recorded
+ *     with `recordAppWrite`, so a crash at any point leaves the doc or the
+ *     pending hash naming the appended text,
  *  3. `syncNoteToCache` to re-project the index rows,
- *  4. `notes:updated` with `source: 'external'` for the renderer,
- *  5. `await feedExternalEditToCrdt` for the note's CRDT body.
+ *  4. `notes:updated` with `source: 'external'` for the renderer.
  *
- * Step 5 is not optional. Because `syncNoteToCache` refreshes `contentHash`
- * first, the watcher's dedupe (`vault/watcher.ts`) returns early and never
- * feeds the CRDT — so when the target note IS open, its Y.Doc keeps the
- * pre-append body and the next writeback overwrites the appended text. Awaiting
- * the feed here is what makes a move into an open note survive. `notes:update`
- * and the MCP `vault_update_note` take the same step inside
- * `updateNoteCommand`.
+ * The feed is not optional. The watcher drops this write's echo, so when the
+ * target note IS open, its Y.Doc would keep the pre-append body and the next
+ * write-back would overwrite the appended text.
  *
  * @module vault/append-blocks
  */
@@ -31,14 +27,17 @@ import { rewriteNoteRefsForMove } from '@memry/editor-schema/note-refs'
 import { getNoteCacheById } from '@main/database/queries/notes'
 import { getIndexDatabase } from '../database'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
-import { markWritebackIgnored } from '../sync/crdt-writeback'
+import { landBodyEdit } from '../sync/writeback-baseline'
+import { recordAppWrite } from './app-writes'
 import { parseNote, serializeParsedNote } from './frontmatter'
 import { writingFrontmatterOf } from '@memry/shared/writing-tools/markdown'
-import { syncNoteToCache } from './note-sync'
+import { isBinaryNoteRow } from '@memry/shared/file-types'
+import { refusesCaseTwinFile, syncNoteToCache } from './note-sync'
 import { atomicWrite } from './file-ops'
 import { emitNoteEvent, getVaultRoot, toAbsolutePath } from './notes-io'
 import { readVaultFile } from '../lib/paths'
 import { createLogger } from '../lib/logger'
+import { NoteError, NoteErrorCode } from '../lib/errors'
 
 const log = createLogger('AppendBlocks')
 
@@ -72,6 +71,17 @@ export async function appendBlocksToNote(
   const source = getNoteCacheById(db, sourceNoteId)
   if (!source) throw new Error(`Source note not found: ${sourceNoteId}`)
 
+  // An image, PDF, audio or video file is its own bytes: markdown appended to
+  // it would overwrite the file. The block stays in the source.
+  if (isBinaryNoteRow(target)) {
+    throw new NoteError('errors:note.appendIntoBinary', NoteErrorCode.NOT_MARKDOWN, targetNoteId)
+  }
+
+  // The file may hold a case twin's body (#5297); the block stays in the source.
+  if (refusesCaseTwinFile(getVaultRoot(), target.path, targetNoteId)) {
+    throw new Error('errors:note.appendIntoCaseTwin')
+  }
+
   const absolutePath = toAbsolutePath(target.path)
   const original = await readVaultFile(getVaultRoot(), target.path)
   if (original === null) throw new Error(`Target note is unreadable: ${target.path}`)
@@ -90,17 +100,32 @@ export async function appendBlocksToNote(
   // presence, and leaves the raw frontmatter block byte-identical.
   const nextFile = serializeParsedNote(parsedOriginal, nextContent, { frontmatterEdited: false })
 
-  markWritebackIgnored(absolutePath)
-  await atomicWrite(absolutePath, nextFile)
+  const parsed = parseNote(nextFile, target.path)
+  // A caller's retry would append twice: a failed file write resolves.
+  const contentHash = await landBodyEdit(db, targetNoteId, nextFile, {
+    notePath: target.path,
+    appends: true,
+    feed: () =>
+      feedExternalEditToCrdt(
+        targetNoteId,
+        parsed.content,
+        writingFrontmatterOf(parsed.frontmatter)
+      ),
+    write: async () => {
+      const landed = recordAppWrite(absolutePath, nextFile)
+      await atomicWrite(absolutePath, nextFile)
+      landed()
+    }
+  })
 
   const now = new Date().toISOString()
-  const parsed = parseNote(nextFile, target.path)
   const syncResult = syncNoteToCache(
     db,
     {
       id: targetNoteId,
       path: target.path,
       fileContent: nextFile,
+      contentHash,
       frontmatter: parsed.frontmatter,
       parsedContent: parsed.content,
       title: target.title,
@@ -122,12 +147,6 @@ export async function appendBlocksToNote(
     source: 'external'
   }
   emitNoteEvent(NotesChannels.events.UPDATED, event)
-
-  await feedExternalEditToCrdt(
-    targetNoteId,
-    parsed.content,
-    writingFrontmatterOf(parsed.frontmatter)
-  )
 
   log.info('Appended blocks to note', { targetNoteId, sourceNoteId, chars: rewritten.length })
 

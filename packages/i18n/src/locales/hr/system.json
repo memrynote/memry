@@ -17,6 +17,7 @@
       "filterAll": "Sve datoteke"
     },
     "exportCancelled": "Izvoz otkazan",
+    "exportVaultChanged": "Dok ste birali gdje spremiti, otvoren je drugi trezor. Ponovno izvezite bilješku.",
     "dataDbRecovery": {
       "title": "Popravi bazu podataka trezora",
       "message": "Memryjeva baza podataka za ovaj trezor je oštećena.",

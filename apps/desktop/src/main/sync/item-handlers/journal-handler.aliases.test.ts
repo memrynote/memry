@@ -27,7 +27,7 @@ vi.mock('../crdt-writeback-port', async () => {
   const writeback = await import('../crdt-writeback')
   return { crdtWriteback: () => writeback }
 })
-vi.mock('../crdt-writeback', () => ({ markWritebackIgnored: vi.fn() }))
+vi.mock('../crdt-writeback', () => ({}))
 vi.mock('../crdt-provider', () => ({ getCrdtProvider: () => ({ purge }) }))
 vi.mock('../../projections', () => ({
   flushProjectionEvents: vi.fn(),
@@ -42,6 +42,7 @@ vi.mock('../../database', () => ({ getDatabase: () => currentDb.value }))
 vi.mock('@main/database/queries/notes', async (importOriginal) => ({
   ...(await importOriginal<typeof NotesModule>()),
   noteCacheExists: vi.fn(() => true),
+  getNoteCacheById: vi.fn(() => undefined),
   getNoteCacheByPath: vi.fn(() => undefined),
   deleteNoteCache: vi.fn(),
   updateNoteCache: vi.fn(),

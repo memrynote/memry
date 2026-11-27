@@ -4,6 +4,7 @@
 use super::{ImportWriter, failed};
 use crate::api::errors::StorageError;
 use crate::domain::vault_locks;
+use crate::storage::nested_tx;
 
 /// One `vault_lock_baselines` row: a locked note's text as Electron last wrote or accepted it.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -35,7 +36,7 @@ impl ImportWriter {
         baselines: &[ImportLockBaseline],
         modes: &[ImportFileMode],
     ) -> Result<(), StorageError> {
-        let tx = self.data.transaction().map_err(failed)?;
+        let tx = nested_tx::begin(&self.data).map_err(failed)?;
         for row in baselines {
             vault_locks::write_baseline(
                 &tx,

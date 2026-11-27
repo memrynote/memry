@@ -210,7 +210,7 @@ fn inbox_and_canvases_see_a_capture_right_after_it() {
 fn search_sees_a_note_after_the_index_catches_up() {
     let f = fixture();
     let writer = f.vault.notes_writer(f.store.clone()).expect("writer");
-    let search = f.vault.search().expect("search");
+    let search = f.vault.search(None).expect("search");
 
     let id = writer
         .create("Zanzibar itinerary".to_owned(), None)

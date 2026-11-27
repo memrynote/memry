@@ -5,6 +5,7 @@ use rusqlite::params;
 
 use super::{ImportWriter, failed};
 use crate::api::errors::StorageError;
+use crate::storage::nested_tx;
 
 /// One Electron `settings` row that stays on the device, under its Electron key and value.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -18,7 +19,7 @@ pub struct ImportLocalSetting {
 impl ImportWriter {
     /// Writes `rows` into `local_settings` verbatim, in one transaction.
     pub fn put_local_settings(&mut self, rows: &[ImportLocalSetting]) -> Result<(), StorageError> {
-        let tx = self.data.transaction().map_err(failed)?;
+        let tx = nested_tx::begin(&self.data).map_err(failed)?;
         for row in rows {
             tx.execute(
                 "INSERT INTO local_settings (key, value, updated_at) VALUES (?1, ?2, ?3)",

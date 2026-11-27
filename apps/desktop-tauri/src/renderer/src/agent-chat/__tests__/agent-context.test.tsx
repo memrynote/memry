@@ -526,6 +526,28 @@ describe('agentReducer', () => {
         error: { code: 'INTERNAL', message: 'Connection timeout' }
       }
     })
+
+    // A request that went away before an answer was never denied by the user.
+    const abandoned = { code: 'APPROVAL_ABANDONED', message: 'Nothing was written.' }
+    const cleared = agentReducer(started, {
+      type: 'event',
+      event: {
+        kind: 'tool_call_failed',
+        conversationId: conversation.id,
+        toolCallId: 'tool-1',
+        error: abandoned
+      }
+    })
+
+    expect(cleared.messagesByConversation[conversation.id][0]?.content).toEqual({
+      role: 'tool_call',
+      data: {
+        tool: 'vault_read_note',
+        args: { id: 'note-1' },
+        status: 'output-error',
+        error: abandoned
+      }
+    })
   })
 
   it('applies a tool result only to the conversation that owns the tool call', () => {

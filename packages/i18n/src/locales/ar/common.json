@@ -1,4 +1,7 @@
 {
+  "wikiLink": {
+    "openFailed": "تعذّر فتح هذا الرابط"
+  },
   "portalBlock": {
     "copyFailed": "تعذّر نسخ البوابة",
     "hiddenCount": "{count} مخفية",
@@ -956,6 +959,8 @@
     "componentsVaultSwitcher": {
       "noVaultsYet": "لا توجد خزائن بعد",
       "openVault": "فتح خزنة",
+      "createVault": "إنشاء الخزنة",
+      "openFolderAsVault": "فتح مجلد كخزنة",
       "settings": "الإعدادات",
       "remove": "إزالة «",
       "removeVaultTitle": "هل تريد إزالة «{name}» من القائمة؟",

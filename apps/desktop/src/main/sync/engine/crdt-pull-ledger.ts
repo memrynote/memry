@@ -15,6 +15,9 @@ import type { CrdtBodyDebtReason, CrdtBodyDebtStore } from './crdt-body-debts'
  */
 export type PassFailures = Set<string>
 
+/** See `CrdtPullLedger.isBodyPullStuck`. */
+export const STUCK_BODY_PULL_FAILURES = 3
+
 /**
  * A real failed body pull, raised by the note's own request: a server answer
  * other than a rate limit or an expired session, or a payload that would not
@@ -110,6 +113,19 @@ export class CrdtPullLedger {
 
   /** The durable half of the two sets above; see `crdt-body-debts.ts`. */
   protected debts: CrdtBodyDebtStore
+
+  /**
+   * This session's failed body pulls per note, so `isBodyPullStuck` still
+   * counts when the debt store is session-only and its `failures` reads 0.
+   */
+  private sessionFailures = new Map<string, number>()
+  /**
+   * Walks in a row a newer server snapshot cut short, per note. That owe counts
+   * no failure, so a note under steady snapshot churn stays owed with no other
+   * trace (#5247). Session only; a walk that settles the note clears it, and
+   * so does dropping the note from the pull.
+   */
+  private prunedWalkOwes = new Map<string, number>()
 
   constructor(
     protected ctx: SyncContext,
@@ -275,6 +291,7 @@ export class CrdtPullLedger {
     const counted = failures !== undefined
     const failed = counted && !failures.has(noteId)
     failures?.add(noteId)
+    if (failed) this.sessionFailures.set(noteId, (this.sessionFailures.get(noteId) ?? 0) + 1)
     this.unmergedRemoteNotes.add(noteId)
     // Only a failed body pull is evidence about the note, so only it writes a
     // new row; pacing noise re-owes an existing debt and otherwise stays in
@@ -291,6 +308,14 @@ export class CrdtPullLedger {
     this.pendingPulls.delete(noteId)
     this.deferredPulls.add(noteId)
     this.onDeferred?.()
+  }
+
+  /** Owe a walk a newer server snapshot cut short; returns how many walks in a row it is. */
+  protected owePrunedWalk(noteId: string): number {
+    const inARow = (this.prunedWalkOwes.get(noteId) ?? 0) + 1
+    this.prunedWalkOwes.set(noteId, inARow)
+    this.owePendingPull(noteId)
+    return inARow
   }
 
   /**
@@ -363,6 +388,33 @@ export class CrdtPullLedger {
   }
 
   /**
+   * Any sign this device has of a server body for the note: an owed or
+   * deferred pull, an unmerged flag or withheld id, or a counted failed pull
+   * (#5371). No sign is not proof of none; callers add their own.
+   */
+  hasServerBodyEvidence(noteId: string): boolean {
+    return (
+      this.pendingPulls.has(noteId) ||
+      this.deferredPulls.has(noteId) ||
+      this.hasUnmergedRemoteState(noteId) ||
+      this.sessionFailures.has(noteId) ||
+      this.debts.failures(noteId) > 0
+    )
+  }
+
+  /**
+   * The note's pulls failed `STUCK_BODY_PULL_FAILURES` times in a row on an
+   * answer from the server (an unresolvable signer, a struct that never
+   * arrives), so merging may never finish. An editor waiting on its body then
+   * shows the vault file read-only (#5290). Offline and rate-limited passes
+   * count nothing.
+   */
+  isBodyPullStuck(noteId: string): boolean {
+    const failures = Math.max(this.debts.failures(noteId), this.sessionFailures.get(noteId) ?? 0)
+    return failures >= STUCK_BODY_PULL_FAILURES
+  }
+
+  /**
    * A pass walked these notes' whole server bodies into their docs, each
    * without an unverified or failed update. A pass is only allowed to clear the
    * flag it did not raise, so a pass that throws half-way leaves the
@@ -391,7 +443,9 @@ export class CrdtPullLedger {
     this.debts.clearWithheld(clean.filter((noteId) => !stillOwed.has(noteId)))
     for (const noteId of clean) {
       this.ctx.deps.crdtProvider?.recordWholeBodyMerged(noteId)
+      this.prunedWalkOwes.delete(noteId)
       if (stillOwed.has(noteId)) continue
+      this.sessionFailures.delete(noteId)
       this.unmergedRemoteNotes.delete(noteId)
       this.deferredPulls.delete(noteId)
       this.sessionFlagGenerations.delete(noteId)
@@ -407,6 +461,7 @@ export class CrdtPullLedger {
     if (this.pendingPulls.has(noteId)) return
     this.unmergedRemoteNotes.delete(noteId)
     this.sessionFlagGenerations.delete(noteId)
+    this.prunedWalkOwes.delete(noteId)
   }
 
   /**
@@ -419,6 +474,7 @@ export class CrdtPullLedger {
     if (dropped.length === 0) return
     const stillOwed = this.debts.settle(dropped)
     for (const noteId of dropped) {
+      this.prunedWalkOwes.delete(noteId)
       if (stillOwed.has(noteId)) continue
       this.unmergedRemoteNotes.delete(noteId)
       this.deferredPulls.delete(noteId)
@@ -432,5 +488,6 @@ export class CrdtPullLedger {
     this.deferredPulls.clear()
     this.unmergedRemoteNotes.clear()
     this.sessionFlagGenerations.clear()
+    this.prunedWalkOwes.clear()
   }
 }

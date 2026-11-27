@@ -144,6 +144,23 @@ impl Reported {
         }
     }
 
+    /// A consumer gave the file reported new at `path` a note: the entry names it from now on, so
+    /// the note's row going makes the file there new again (#5579). An entry that names a note
+    /// already, or none at all, is left as it is, and so is an entry of another spelling: on a
+    /// case-sensitive volume the folded key of `path` can belong to a different file.
+    pub fn name(&mut self, path: &str, note_id: &str) {
+        if let Some(seen) = self
+            .get(path)
+            .filter(|seen| seen.note_id.is_none() && seen.path == path)
+        {
+            let named = Seen {
+                note_id: Some(note_id.to_owned()),
+                ..seen.clone()
+            };
+            self.put(named);
+        }
+    }
+
     pub fn is_owed(&self, path: &str) -> bool {
         self.owed.contains(&folded_key(path))
     }
@@ -313,6 +330,21 @@ mod tests {
         r.put(seen("d/b.md", None));
         r.forget_unowned_tree("d");
         assert!(r.get("d/a.md").is_some() && r.get("d/b.md").is_none());
+    }
+
+    #[test]
+    fn naming_stamps_only_an_entry_that_names_no_note() {
+        let mut r = Reported::default();
+        r.put(seen("a.md", None));
+        r.put(seen("b.md", Some("n2")));
+        r.name("a.md", "n1");
+        r.name("b.md", "n9");
+        r.name("missing.md", "n3");
+        assert_eq!(r.of_note("n1").map(|s| s.path.as_str()), Some("a.md"));
+        assert_eq!(r.get("a.md").unwrap().hash.as_deref(), Some("h"));
+        assert_eq!(r.get("b.md").unwrap().note_id.as_deref(), Some("n2"));
+        assert!(r.of_note("n9").is_none() && r.get("missing.md").is_none());
+        assert_eq!(r.len(), 2);
     }
 
     #[test]

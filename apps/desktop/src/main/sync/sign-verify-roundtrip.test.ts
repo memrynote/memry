@@ -90,6 +90,7 @@ describe('sign-verify round-trip (simulated server pipeline)', () => {
       const clock = { [keys.deviceId]: 1 }
 
       const { pushItem } = encryptItemForPush({
+        vaultId: null,
         id: 'item-001',
         type: 'task',
         operation: 'create',
@@ -116,6 +117,7 @@ describe('sign-verify round-trip (simulated server pipeline)', () => {
       const clock = { [keys.deviceId]: 5, 'other-device': 2 }
 
       const { pushItem } = encryptItemForPush({
+        vaultId: null,
         id: 'item-002',
         type: 'note',
         operation: 'update',
@@ -141,6 +143,7 @@ describe('sign-verify round-trip (simulated server pipeline)', () => {
       const content = new TextEncoder().encode(JSON.stringify({ name: 'Inbox item' }))
 
       const { pushItem } = encryptItemForPush({
+        vaultId: null,
         id: 'item-003',
         type: 'inbox',
         operation: 'create',
@@ -167,6 +170,7 @@ describe('sign-verify round-trip (simulated server pipeline)', () => {
       const clock = { [keys.deviceId]: 3 }
 
       const { pushItem } = encryptItemForPush({
+        vaultId: null,
         id: 'item-004',
         type: 'task',
         operation: 'delete',
@@ -194,6 +198,7 @@ describe('sign-verify round-trip (simulated server pipeline)', () => {
       const stateVector = 'sv-abc-123'
 
       const { pushItem } = encryptItemForPush({
+        vaultId: null,
         id: 'item-005',
         type: 'project',
         operation: 'update',
@@ -221,6 +226,7 @@ describe('sign-verify round-trip (simulated server pipeline)', () => {
       const clock = { [signer.deviceId]: 1 }
 
       const { pushItem } = encryptItemForPush({
+        vaultId: null,
         id: 'item-006',
         type: 'task',
         operation: 'create',
@@ -251,6 +257,7 @@ describe('sign-verify round-trip (simulated server pipeline)', () => {
       }
 
       const { pushItem } = encryptItemForPush({
+        vaultId: null,
         id: 'item-007',
         type: 'settings',
         operation: 'update',

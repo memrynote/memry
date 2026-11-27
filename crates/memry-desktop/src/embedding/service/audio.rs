@@ -4,9 +4,8 @@
 //! (embeddings.ts:792-798), so text runs between them. A recording that crashes or hangs the
 //! worker, an audio download that fails and an audio model that does not load back off audio
 //! only; a file the worker cannot read or decode ([`super::EmbedError::Input`]) counts nowhere.
-//! It has no caller yet: Electron's only one, the voice memo projector
-//! (`projections/projectors/voice-embedding-projector.ts`), is not ported, and its port owns the
-//! gates `embedAudio` checks first (`ai.enabled`, `voiceTranscription.audioSearch`, a `.wav` name).
+//! Its caller, the voice memo projector ([`crate::embedding::voice_projector`]), owns the gates
+//! `embedAudio` checks first (`ai.enabled`, `voiceTranscription.audioSearch`, a `.wav` name).
 
 use std::path::Path;
 use std::sync::Arc;
@@ -33,7 +32,7 @@ impl EmbeddingService {
             return None;
         }
         let open = Request::OpenAudio(path.into());
-        let (generation, opened) = match self.encoder_request(Encoder::Audio, open, None)? {
+        let (generation, opened) = match self.encoder_request(Encoder::Audio, open, None, None)? {
             (generation, Reply::AudioOpened(opened)) => (generation, opened),
             _ => return None,
         };
@@ -47,7 +46,7 @@ impl EmbeddingService {
                 recording: opened.recording,
                 window,
             };
-            match self.encoder_request(Encoder::Audio, request, Some(generation))? {
+            match self.encoder_request(Encoder::Audio, request, Some(generation), None)? {
                 (_, Reply::Embedded(vector)) => vectors.push(vector),
                 _ => return None,
             }

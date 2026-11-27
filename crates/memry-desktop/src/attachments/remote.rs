@@ -15,7 +15,9 @@ use reqwest::{Client, ClientBuilder};
 use serde::Serialize;
 use url::Url;
 
-use super::{AttachmentError, SavedAttachment, save, writable_note};
+use std::path::Path;
+
+use super::{AttachmentError, Name, SavedAttachment, save, save_with, writable_note};
 use crate::http::{ReadError, read_capped};
 use crate::session::OpenVault;
 
@@ -191,6 +193,32 @@ pub fn save_fetched(
     let note_path = writable_note(open, note_id)?
         .ok_or_else(|| AttachmentError::NoteNotFound(note_id.to_owned()))?;
     save(&open.path, note_id, Some(&note_path), file_name, bytes)
+}
+
+/// `saveAttachment(..., { exactFilename: true })`: stores the file under `file_name` itself, so
+/// a caller finds it again by name (Readwise's `rw-<hash>.<ext>` images). Refuses a name that
+/// is not `[A-Za-z0-9_-][A-Za-z0-9_.-]*`, and a name already taken.
+pub fn save_exact(
+    vault: &Path,
+    note_id: &str,
+    note_path: Option<&str>,
+    file_name: &str,
+    bytes: &[u8],
+) -> Result<SavedAttachment, AttachmentError> {
+    let word = |b: u8| b.is_ascii_alphanumeric() || b == b'_' || b == b'-';
+    let plain = file_name.bytes().next().is_some_and(word)
+        && file_name.bytes().all(|b| word(b) || b == b'.');
+    if !plain {
+        return Err(AttachmentError::NotPlainName);
+    }
+    save_with(
+        vault,
+        note_id,
+        note_path,
+        Name::Exact(file_name),
+        bytes,
+        &mut |_| {},
+    )
 }
 
 #[cfg(test)]

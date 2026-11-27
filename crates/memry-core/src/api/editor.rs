@@ -77,10 +77,10 @@ use yrs::{ReadTxn as _, StateVector};
 use crate::api::errors::{AuthError, StorageError};
 use crate::api::excluded_paths::ExcludedPaths;
 use crate::api::tasks_write::now_ms;
+use crate::crdt::editor_resident::{EDITOR_LIFECYCLE, Resident};
 use crate::crdt::errors::CrdtError;
 use crate::crdt::markdown_seed::body_is_empty;
 use crate::crdt::registry::{Document, UpdateSink};
-use crate::crdt::resident::{EDITOR_LIFECYCLE, Resident};
 use crate::crdt::{BODY_FRAGMENT, epoch, update_log};
 use crate::crypto::keys;
 use crate::domain::body_write::append_in;
@@ -90,6 +90,7 @@ use crate::markdown::convert::api::Converter;
 use crate::markdown::schema::callout_types::CalloutTypes;
 use crate::seams::secure_store::{SecureStore, SecureStoreKey};
 use crate::storage::Db;
+use crate::storage::nested_tx;
 use crate::sync::{body_debt, outbox};
 
 use crate::crdt::body_writes::BodyWrite;
@@ -299,7 +300,6 @@ impl Editor {
         update: &[u8],
         holder: &str,
     ) -> Result<Option<Applied>, EditorError> {
-        let now = now_ms();
         let mut repaired = None;
         let mut caught = Vec::new();
         let applied = {
@@ -310,6 +310,8 @@ impl Editor {
                 });
             }
             let applied = self.on_writer(|conn| {
+                // #5849: stamped inside the hold that writes the update row.
+                let now = now_ms();
                 let owner = body_owner(conn, note_id)?.ok_or_else(|| not_found(note_id))?;
                 if let Some(why) = read_only(conn, note_id, &self.excluded)? {
                     let note_id = note_id.to_owned();
@@ -346,7 +348,7 @@ impl Editor {
                     return Ok(None);
                 }
                 let stored = (|| {
-                    let tx = conn.transaction().map_err(storage)?;
+                    let tx = nested_tx::begin(conn).map_err(storage)?;
                     let seq = update_log::append_local_update_in(&tx, note_id, update, now)?;
                     let change =
                         outbox::Change::crdt_update(owner.item_type, note_id, update.to_vec());
@@ -378,13 +380,17 @@ impl Editor {
 
     /// `note_id`'s body was purged (a delete applied, chapter 07 §7.15): the
     /// resident copy goes, a log that did not replay may be tried again, and
-    /// the listeners hear [`Notice::Purged`]. A day deleted and written again is
+    /// the listeners hear [`Notice::Purged`], once until a holder opens it again
+    /// ([`Resident::purge_told`]). A day deleted and written again is
     /// a new document under the old id, which the next open replays. Until a
     /// holder opens it again, [`Editor::apply_update`] refuses its edits
     /// ([`EditorError::Purged`]): they are edits of the deleted body.
     pub fn purge(&self, note_id: &str) {
-        self.resident().purge(note_id);
-        self.fan_out(note_id, Notice::Purged);
+        if self.resident().purge_told(note_id) {
+            self.fan_out(note_id, Notice::Purged);
+        } else {
+            self.count_growth(note_id, Notice::Purged);
+        }
     }
 
     /// The document's state vector, for the sync-step handshake.
@@ -477,22 +483,25 @@ impl Editor {
                 }
             })
         };
-        let document = epoch::open_for_write(conn, &self.device_id, note_id, sink)?;
-        self.count_loaded(conn, note_id)?;
+        // The replay and its repair's append in one write-locked transaction
+        // (#5734).
+        let tx = nested_tx::begin(conn).map_err(storage_crdt)?;
+        let document = epoch::open_for_write(&tx, &self.device_id, note_id, sink)?;
+        self.count_loaded(&tx, note_id)?;
         Converter::new(CalloutTypes::default()).repair_empty_block_ids(&document, BODY_FRAGMENT);
         let taken = authored
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
             .take();
         let Some(update) = taken.and_then(|mut updates| updates.pop()) else {
+            tx.commit().map_err(storage_crdt)?;
             return Ok(document);
         };
-        let owner = body_owner(conn, note_id)?.ok_or_else(|| CrdtError::Storage {
+        let owner = body_owner(&tx, note_id)?.ok_or_else(|| CrdtError::Storage {
             source: StorageError::Failed {
                 what: format!("no live note or journal day {note_id} to repair"),
             },
         })?;
-        let tx = conn.unchecked_transaction().map_err(storage_crdt)?;
         append_in(&tx, owner.item_type, note_id, &update, now_ms())?;
         tx.commit().map_err(storage_crdt)?;
         *repaired = Some(update);

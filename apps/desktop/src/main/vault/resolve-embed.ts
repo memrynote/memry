@@ -29,7 +29,7 @@ import { toMemryFileUrl } from '../lib/paths'
 // as `![alt](url)`, where a raw space or paren truncates the link.
 import { encodeAttachmentUrl } from '../import/_shared/attachment-markdown'
 import { createLogger } from '../lib/logger'
-import { ATTACHMENTS_DIR } from './attachments'
+import { ATTACHMENTS_DIR } from '@memry/shared/attachment-store'
 import { getStatus, getConfig } from './index'
 
 const logger = createLogger('ResolveEmbed')

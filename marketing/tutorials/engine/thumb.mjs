@@ -10,10 +10,11 @@
 // - text: one or two lines (\n), at most four words, with one orange mark: a single →, drawn as
 //   the orange arrow, or without one the final . ? or !
 // - shot: `at` is seconds into the scene's line (default: its last fifth); x, y, w, h are the
-//   crop's center and size in the recorder's CSS px (1600x900), the coordinates scenes.mjs uses.
+//   crop's center and size in the recorder's CSS px (1440x810), the coordinates scenes.mjs uses.
 //   The card keeps the crop's shape inside a 500x469 box at the right margin, so a crop near
 //   square (a column, a panel, a menu) gives the biggest card. Below about 15% of the frame a
 //   subject turns to texture at 168 px (Thumblore's 2026 trends guide), and the CLI warns.
+import { execFileSync } from 'node:child_process'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -22,7 +23,15 @@ import { chromium } from 'playwright'
 const ENGINE = path.dirname(fileURLToPath(import.meta.url))
 const url = (p) => pathToFileURL(p).href
 
-/** The recorded frame on screen `at` seconds into a scene's line. */
+/** The take's size in CSS px (take.json; a take older than it is 1600x900). */
+function takeSize(dir) {
+  const file = path.join(dir, 'out/take/take.json')
+  return fs.existsSync(file)
+    ? JSON.parse(fs.readFileSync(file, 'utf8'))
+    : { width: 1600, height: 900 }
+}
+
+/** The recorded frame on screen `at` seconds into a scene's line, as an image file. */
 function frameAt(dir, scene, at) {
   const take = path.join(dir, 'out/take')
   const s = JSON.parse(fs.readFileSync(path.join(take, 'timeline.json'), 'utf8')).find(
@@ -30,12 +39,28 @@ function frameAt(dir, scene, at) {
   )
   if (!s) throw new Error(`No scene "${scene}" in ${take}/timeline.json. Run the build first.`)
   const t = s.vo + (at ?? s.dur * 0.8)
-  const frames = JSON.parse(fs.readFileSync(path.join(take, 'frames.json'), 'utf8'))
-  return frames.findLast((f) => f.t <= t).f
+  const frames = path.join(take, 'frames.json')
+  if (fs.existsSync(frames))
+    return JSON.parse(fs.readFileSync(frames, 'utf8')).findLast((f) => f.t <= t).f
+  // A screen take has no frame files: cut the still from take.mp4.
+  const still = path.join(take, `still-${scene}-${t.toFixed(2)}.png`)
+  execFileSync('ffmpeg', [
+    '-y',
+    '-loglevel',
+    'error',
+    '-ss',
+    t.toFixed(3),
+    '-i',
+    path.join(take, 'take.mp4'),
+    '-frames:v',
+    '1',
+    still
+  ])
+  return still
 }
 
 /** What in variant i breaks the template, as `thumbnails[i].field: why` lines. */
-function check(v, i) {
+function check(v, i, size) {
   const at = `thumbnails[${i}]`
   const errors = []
   const text = v.text ?? ''
@@ -47,9 +72,12 @@ function check(v, i) {
   if (arrows > 1 || (!arrows && !/[.?!]$/.test(text)))
     errors.push(`${at}.text: needs one orange mark, a single → or a final . ? or !`)
   const { x, y, w, h } = v.shot ?? {}
-  const inside = x - w / 2 >= 0 && y - h / 2 >= 0 && x + w / 2 <= 1600 && y + h / 2 <= 900
+  const inside =
+    x - w / 2 >= 0 && y - h / 2 >= 0 && x + w / 2 <= size.width && y + h / 2 <= size.height
   if (![x, y, w, h].every((n) => n > 0) || !inside)
-    errors.push(`${at}.shot: x, y, w, h must give a crop inside the 1600x900 recording`)
+    errors.push(
+      `${at}.shot: x, y, w, h must give a crop inside the ${size.width}x${size.height} recording`
+    )
   return errors
 }
 
@@ -59,7 +87,8 @@ export async function renderThumbs(dir) {
   const topic = path.basename(dir)
   const N = JSON.parse(fs.readFileSync(path.join(dir, 'narration.json'), 'utf8'))
   if (!N.thumbnails?.length) throw new Error(`${dir}/narration.json has no "thumbnails"`)
-  const errors = N.thumbnails.flatMap(check)
+  const size = takeSize(dir)
+  const errors = N.thumbnails.flatMap((v, i) => check(v, i, size))
   if (errors.length)
     throw new Error(`${topic} thumbnails break the template:\n  ${errors.join('\n  ')}`)
   const out = path.join(dir, 'out')
@@ -79,7 +108,8 @@ export async function renderThumbs(dir) {
     const { overflow, cover } = await page.evaluate((P) => window.draw(P), {
       text: v.text,
       frame: url(frameAt(dir, v.shot.scene, v.shot.at)),
-      crop: v.shot
+      crop: v.shot,
+      size
     })
     if (overflow) throw new Error(`${topic} thumbnails[${i}].text "${v.text}": ${overflow}`)
     if (cover < 0.15)

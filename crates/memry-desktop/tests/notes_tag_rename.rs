@@ -1,6 +1,6 @@
 //! A tag renamed across the vault (`tags:rename`, #3530 13j-4) under the running vault tier with
 //! `NotesIdentity` and the note index: each note's file and record take the new name once (one
-//! outbox row each), a day's record and body do and its header does not, a rename the app did
+//! outbox row each), a day's file and record as a note's (#5588), a rename the app did
 //! not finish is finished by the next open, and an outside edit that lands during the rename
 //! is kept.
 
@@ -231,9 +231,15 @@ fn a_rename_writes_each_file_and_record_once_and_merges_into_a_name_in_use() {
         "{}",
         e.read("Merge.md")
     );
-    // A day's header is the author's: its record and its body take the name, its header not.
+    // A day's header follows its record, as Electron writes it (#5509, #5588).
+    assert!(before[2].contains("  - job\n"), "{}", before[2]);
     let day_text = e.read(&path_of(&e, &day));
-    assert_eq!(day_text, before[2].replace("Walked #job", "Walked #career"));
+    assert_eq!(
+        day_text,
+        before[2]
+            .replace("  - job\n", "  - career\n")
+            .replace("Walked #job", "Walked #career")
+    );
     assert_eq!(record(&e, &day, "tags"), ["career"]);
     assert_eq!(e.read("Found.md"), "---\ntags:\n  - career\n---\nfound\n");
     for id in [&plan, &merge, &day] {
@@ -498,9 +504,8 @@ fn a_file_edited_outside_after_a_crash_is_left_and_answered() {
     assert_eq!(record(&e, &id, "tags"), ["a/b"]);
 }
 
-/// A day's header keeps the old name and the rename does not move the day's baseline: a later
-/// outside edit that adds a tag to the header adds it to the record, and the old name the header
-/// still holds does not come back (#3931).
+/// A day's header takes the new name with its record (#5588): a later outside edit that adds a
+/// tag to the header adds it to the record, and the old name does not come back (#3931).
 #[test]
 fn an_outside_edit_of_a_renamed_days_header_adds_its_new_tag_alone() {
     let (mut e, notes, _) = opened();
@@ -518,9 +523,12 @@ fn an_outside_edit_of_a_renamed_days_header_adds_its_new_tag_alone() {
     assert_eq!(record(&e, &day, "tags"), ["career"]);
     let path = path_of(&e, &day);
     let text = e.read(&path);
-    assert!(text.contains("  - job\n"), "{text}");
+    assert!(
+        text.contains("  - career\n") && !text.contains("job"),
+        "{text}"
+    );
 
-    e.write(&path, &text.replace("  - job\n", "  - job\n  - x\n"));
+    e.write(&path, &text.replace("  - career\n", "  - career\n  - x\n"));
     until("the record took the added tag", || {
         record(&e, &day, "tags") == ["career", "x"]
     });
@@ -778,9 +786,9 @@ fn a_rename_left_unfinished_names_its_notes_and_can_be_stopped() {
     assert_eq!(other.unwrap().written.len(), 1);
 }
 
-/// A crash after a day's body took the rename, then an outside edit adding a tag to its header,
-/// which keeps the old name: the record took the change in the old name's terms, and the rename
-/// gives it the new name and keeps the added tag.
+/// A crash after a day's file took the rename, header and body (#5588), then an outside edit
+/// adding a tag to its header, which the record takes: as for a note, the rename leaves the day
+/// as edited and answers it.
 #[test]
 fn an_outside_header_edit_of_a_day_after_a_crash_keeps_its_tag_and_takes_the_new_name() {
     let (e, notes, _) = opened();
@@ -799,18 +807,20 @@ fn an_outside_header_edit_of_a_day_after_a_crash_keeps_its_tag_and_takes_the_new
     assert!(matches!(crashed, Err(NotesError::Closed)), "{crashed:?}");
     let text = e.read(&path);
     assert!(
-        text.contains("Walked #a/b") && text.contains("  - a\n"),
+        text.contains("Walked #a/b") && text.contains("  - a/b\n"),
         "{text}"
     );
-    e.write(&path, &text.replace("  - a\n", "  - a\n  - x\n"));
+    let edited = text.replace("  - a/b\n", "  - a/b\n  - x\n");
+    e.write(&path, &edited);
     until("the record took the outside edit", || {
-        record(&e, &day, "tags") == ["a", "x"]
+        record(&e, &day, "tags") == ["a/b", "x"]
     });
 
     let renamed = notes
         .rename_tag(&open, &job("a", "a/b"), &mut |_, _| {})
         .unwrap();
     assert_eq!(renamed.failed_note_ids, std::slice::from_ref(&day));
+    assert_eq!(e.read(&path), edited);
     assert_eq!(record(&e, &day, "tags"), ["a/b", "x"]);
     assert!(plan(&e).is_none());
 }

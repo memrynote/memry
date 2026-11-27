@@ -19,6 +19,7 @@ use super::{
     VaultOpened, lock,
 };
 use crate::registry::vaults::basename;
+use crate::sync::first_sync_running::FirstSyncRunning;
 use crate::vault::config::{applied_exclude_patterns, invalidate_vault_config_cache};
 use crate::vault::init::{CountLimits, count_markdown_files, init_vault, is_vault_initialized};
 use crate::vault::kept_copies::show_ownerless as show_kept_copies;
@@ -43,7 +44,7 @@ fn now_ms() -> i64 {
 /// `initVault` for a folder with no `.memry` yet, then `.memry/core/` (mode 0700 on Unix),
 /// which proves the folder is writable. The init comes first: afterwards `.memry` exists and
 /// the folder would read as initialised.
-pub(super) fn prepare_core_dir(path: &Path) -> Result<PathBuf, SessionError> {
+pub(crate) fn prepare_core_dir(path: &Path) -> Result<PathBuf, SessionError> {
     if !path.is_dir() {
         return Err(SessionError::Invalid(
             "Selected path is not a valid directory".into(),
@@ -82,7 +83,7 @@ pub(super) fn prepare_core_dir(path: &Path) -> Result<PathBuf, SessionError> {
 /// (or failed here) gets it at the next one; until then no id is minted beside Electron's
 /// database. A core with Electron's database beside it when this first runs counts as created
 /// over it.
-fn record_origin(path: &Path, vault: &Vault) {
+pub(super) fn record_origin(path: &Path, vault: &Vault) {
     let origin = if path.join(".memry").join("data.db").is_file() {
         Origin::OverElectron
     } else {
@@ -211,6 +212,7 @@ impl Session {
                 .map_or_else(|| basename(&path_text), |s| s.name.clone()),
             vault: Arc::new(vault),
             search,
+            first_sync: FirstSyncRunning::default(),
         };
         let projectors = lock(&self.inner.projectors).clone();
         let runtime = Arc::new(

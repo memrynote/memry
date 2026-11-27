@@ -88,6 +88,9 @@ pub const EVENT_NAMES: &[&str] = &[
     "reminder_created",
     "reminder_deleted",
     "sync_bootstrap",
+    "migration_started",
+    "migration_completed",
+    "migration_failed",
 ];
 
 pub const SURFACES: &[&str] = &[

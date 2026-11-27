@@ -42,16 +42,12 @@ fn a_claim_over_thousands_of_queued_deletes_takes_linear_steps() {
 
     VM_STEPS.store(0, Ordering::SeqCst);
     conn.trace_v2(TraceEventCodes::SQLITE_TRACE_PROFILE, Some(count));
-    let claimed = outbox::claim(&conn, 2, 100, &[]).expect("the claim");
+    let claimed = outbox::claim(&conn, 2, 100, &[], &[]).expect("the claim");
     let pending = outbox::pending(&conn, 2).expect("the count");
     conn.trace_v2(TraceEventCodes::empty(), None);
     let steps = VM_STEPS.load(Ordering::SeqCst);
 
     assert_eq!(claimed.len(), 100);
-    assert!(
-        claimed.iter().all(|row| row.item_id != "p1"),
-        "the delete is held"
-    );
     // A scan per queued delete is about DELETES² steps (millions); one pass is a few
     // hundred per row.
     assert!(

@@ -408,7 +408,8 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
         const filename = event.diskPath.split(/[\\/]/).pop() ?? event.diskPath
         toast.error(t('sync.attachmentUploadFailed', { filename }), {
           duration: 10000,
-          action: activityAction()
+          action: activityAction(),
+          ...(event.reason ? { description: event.reason } : {})
         })
       })
     )

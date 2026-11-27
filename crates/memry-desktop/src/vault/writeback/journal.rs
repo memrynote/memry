@@ -4,10 +4,12 @@
 //! writing tools data and the document's tags into the block, and stringifies the whole block
 //! again when any of them changed. Here:
 //!
-//! - **Tags are never written.** The core keeps a day's tags on its record, and the file's
-//!   `tags:` are the author's bytes (decision on #3530: journal tags are never written back to
-//!   the file).
-//! - **`date` is the one key a pass sets**, to the day's date, when it writes the file for its
+//! - **A pulled record reaches the block** (#5509, reversing #3530's "journal tags are never
+//!   written back to the file"): its tags, other names and properties, as Electron's pull
+//!   writes them (`buildJournalEntryWrite`), through the note's pulled frontmatter patch
+//!   (`place::patch`), with the date set in the block it stringifies again ([`set_date`]). A
+//!   pass that is not a pull's leaves the block as below.
+//! - **`date` is the one key a body write sets**, to the day's date, when it writes the file for its
 //!   body (a body the file already holds writes nothing, date or not), in place, and every
 //!   other byte of the block stays:
 //!   - an entry that already says the day (a YAML date of that day, or the `YYYY-MM-DD`
@@ -26,7 +28,7 @@
 //!   to it stringifies the whole block again, as for a note and as Electron does, with the date
 //!   set in it ([`set_date`]). That is the one exception to the date-only rule (Kaan, #3801
 //!   review): the bytes of the other keys may be reformatted, a version of the file is kept
-//!   before it is replaced, and no tag value ever comes from the record.
+//!   before it is replaced, and no tag value comes from the record.
 
 use memry_core::markdown::frontmatter::{
     ParsedMarkdownNote, YamlMap, YamlValue, gray_matter_data, stringify_frontmatter_block,

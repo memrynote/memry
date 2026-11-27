@@ -116,6 +116,7 @@ enum CalendarCopy {
     static func movedTo(_ time: String) -> String { "Moved to \(time)" }
     static func resizedTo(_ start: String, _ end: String) -> String { "Now \(start) – \(end)" }
     static let taskRescheduled = "Task rescheduled"
+    static func tasksRescheduled(_ count: Int) -> String { "\(count) tasks rescheduled" }
     static let moveEvent = "Move event"
     static let rescheduleTask = "Reschedule task"
 

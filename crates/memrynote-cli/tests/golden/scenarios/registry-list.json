@@ -1,0 +1,55 @@
+{
+  "name": "registry-list",
+  "registry": {
+    "locale": "tr",
+    "currentVault": "{tmp}/a",
+    "vaults": [
+      {
+        "path": "{tmp}/a",
+        "name": "Alpha",
+        "noteCount": 3,
+        "taskCount": 1,
+        "lastOpened": "2026-01-02T03:04:05.678Z",
+        "isDefault": true,
+        "vaultUuid": "0f8fad5b-d9cb-469f-a165-70867728950e",
+        "futureField": {
+          "kept": [1, 2]
+        }
+      },
+      {
+        "path": "{tmp}/b",
+        "name": "Beta",
+        "noteCount": 3,
+        "taskCount": 1,
+        "lastOpened": "2026-01-02T03:04:05.678Z",
+        "isDefault": false
+      }
+    ],
+    "sync": {
+      "deviceId": "dev-1"
+    }
+  },
+  "steps": [
+    {
+      "argv": ["vault", "list"]
+    },
+    {
+      "argv": ["--json", "vault", "list"]
+    },
+    {
+      "argv": ["vault", "current"]
+    },
+    {
+      "argv": ["vault", "current", "--json"]
+    },
+    {
+      "argv": ["--vault", "{tmp}/b", "--json", "vault", "current"]
+    },
+    {
+      "argv": ["vault", "current", "--vault", "{tmp}/elsewhere"]
+    },
+    {
+      "argv": ["--json", "vault", "list", "extra", "--flag"]
+    }
+  ]
+}

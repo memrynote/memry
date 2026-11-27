@@ -59,7 +59,7 @@ describe('CrdtSyncCoordinator', () => {
     expect(coordinator.pendingPullCount).toBe(0)
   })
 
-  it('applies single-note incrementals, skips unknown signers, and seeds empty local docs', async () => {
+  it('applies single-note incrementals, skips unknown signers, and never seeds over server updates', async () => {
     const applyRemoteUpdate = vi.fn()
     const open = vi.fn().mockResolvedValue({})
     const closeIfInactive = vi.fn().mockResolvedValue(true)
@@ -122,7 +122,8 @@ describe('CrdtSyncCoordinator', () => {
     // The update's server time (epoch seconds) rides along as the edit time the
     // write-back stamps (#2515).
     expect(applyRemoteUpdate).toHaveBeenCalledWith('note-1', new Uint8Array([7, 7, 7]), 2000)
-    expect(seedFromMarkdownPublic).toHaveBeenCalledWith('note-1')
+    // The server holds updates for this note, so an empty doc is not seeded (#5286).
+    expect(seedFromMarkdownPublic).not.toHaveBeenCalled()
   })
 
   it('does not close single-note incrementals that were already open', async () => {
@@ -792,6 +793,39 @@ describe('CrdtSyncCoordinator', () => {
     expect(seedFromMarkdownPublic).not.toHaveBeenCalledWith('note-2')
   })
 
+  it('owes and never seeds a note the server left out of its batch answer', async () => {
+    // #given the batch answer names note-1 only; note-2's doc is open and empty
+    const seedFromMarkdownPublic = vi.fn()
+    const ctx = {
+      deps: {
+        crdtProvider: {
+          isNoteLocalOnly: vi.fn(() => false),
+          inactiveDocCapacity: 32,
+          getDoc: vi.fn().mockReturnValue(undefined),
+          open: vi.fn().mockResolvedValue({}),
+          closeIfInactive: vi.fn().mockResolvedValue(true),
+          applyRemoteUpdate: vi.fn(),
+          hasPersistence: () => false,
+          getStateVector: vi.fn((noteId: string) =>
+            noteId === 'note-2' ? new Uint8Array([]) : new Uint8Array([1, 2, 3, 4])
+          ),
+          seedFromMarkdownPublic,
+          recordWholeBodyMerged: vi.fn()
+        }
+      },
+      abortController: new AbortController()
+    } as unknown as SyncContext
+    postToServerMock.mockResolvedValue({ notes: { 'note-1': { updates: [], hasMore: false } } })
+    const coordinator = new CrdtSyncCoordinator(ctx, vi.fn())
+
+    // #when
+    await coordinator.applyCrdtBatch(['note-1', 'note-2'], 'token-1', new Uint8Array([4]))
+
+    // #then the server said nothing about note-2: it is retried, not seeded
+    expect(seedFromMarkdownPublic).not.toHaveBeenCalled()
+    expect(coordinator.drainPendingPulls()).toEqual(['note-2'])
+  })
+
   it('aborts the whole pass when a snapshot baseline is aborted mid-batch', async () => {
     // #given note-1's baseline is aborted (shutdown/signal), not a transient failure
     const { ctx } = createBatchContext()
@@ -805,6 +839,47 @@ describe('CrdtSyncCoordinator', () => {
     // #then an abort must propagate, not be swallowed as a skipped note; the pass
     // stops before pulling any updates.
     expect(postToServerMock).not.toHaveBeenCalled()
+  })
+
+  describe('#given a cold chunk (no note has a watermark) (#5247 C1.1)', () => {
+    const probes = (): number =>
+      postToServerMock.mock.calls.filter(
+        ([path, body]) =>
+          path === '/sync/crdt/updates/batch' && (body as { limit: number }).limit === 1
+      ).length
+    const ids = (n: number): string[] => Array.from({ length: n }, (_, i) => `note-${i}`)
+
+    beforeEach(() => {
+      postToServerMock.mockResolvedValue({ notes: {}, snapshotMeta: {} })
+    })
+
+    it('#then a small one outside a fullSync spends no probe POST', async () => {
+      const { ctx } = createBatchContext()
+      const coordinator = new CrdtSyncCoordinator(ctx, vi.fn())
+
+      await coordinator.applyCrdtBatch(ids(19), 'token-1', new Uint8Array([4]))
+
+      expect(probes()).toBe(0)
+    })
+
+    it('#then a small one during a fullSync is still probed', async () => {
+      const { ctx } = createBatchContext()
+      ctx.fullSyncActive = true
+      const coordinator = new CrdtSyncCoordinator(ctx, vi.fn())
+
+      await coordinator.applyCrdtBatch(ids(3), 'token-1', new Uint8Array([4]))
+
+      expect(probes()).toBe(1)
+    })
+
+    it('#then one of 20 notes is probed outside a fullSync', async () => {
+      const { ctx } = createBatchContext()
+      const coordinator = new CrdtSyncCoordinator(ctx, vi.fn())
+
+      await coordinator.applyCrdtBatch(ids(20), 'token-1', new Uint8Array([4]))
+
+      expect(probes()).toBe(1)
+    })
   })
 
   it('splits a pass larger than the provider cache so its docs survive the pull', async () => {

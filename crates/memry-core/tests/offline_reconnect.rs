@@ -166,6 +166,7 @@ fn engine_for(
         db.clone(),
         Declaration::subscribed(),
         Arc::new(PassthroughSealer),
+        "device-a",
     ));
     SyncEngine::new(pull, http, reachability).with_push(push)
 }
