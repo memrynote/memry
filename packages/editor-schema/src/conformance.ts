@@ -1579,6 +1579,9 @@ const htmlCommentCases: RoundtripCase[] = [
   },
   // The parser strips one space off each end of a code span with one at both.
   { name: 'code span with a space at both ends', markdown: 'a `  b  ` c' },
+  // A break splits a code run into one span per line, each stripped on its own.
+  { name: 'code spans of a led line and of spaces across a break', markdown: 'x ` y`\n`  `' },
+  { name: 'code span with a space at both ends after a break', markdown: '`a`\n`  b  `' },
   // A code span opening a paragraph lost the leading space CommonMark keeps.
   { name: 'code span with a leading space opening a paragraph', markdown: '` *a` b' },
   { name: 'code span of one space opening a paragraph', markdown: '` ` b' },
