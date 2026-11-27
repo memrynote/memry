@@ -51,6 +51,7 @@ import {
   settleDeferredDeletes,
   discardDeferredDeletes,
   createDeferredDeletes,
+  forgetRenameTarget,
   type DeferredDeletes,
   buildStatRenameKey,
   buildAddedFileIdentityKey,
@@ -1531,6 +1532,7 @@ export class VaultWatcher {
         (cached.contentHash
           ? null
           : buildStatRenameKey(cached.fileSize ?? null, toIsoOrNull(cached.modifiedAt)))
+      const renamedFile = this.renamedFileToAdd(vaultPath, renamedTo)
 
       trackPendingDelete(
         cached.id,
@@ -1584,11 +1586,24 @@ export class VaultWatcher {
           await Promise.resolve()
         },
         statKey,
-        deferred
+        deferred,
+        renamedFile && normalizeRelativePath(path.relative(vaultPath, renamedFile))
       )
-      if (renamedTo !== null) this.addRenamedFile(vaultPath, renamedTo)
+      if (renamedFile !== null) void this.addRenamedFile(cached.id, renamedFile)
     } catch (error) {
       this.onError?.(error instanceof Error ? error : new Error(String(error)))
+    }
+  }
+
+  /** The file the unlinked file was renamed to, when the watcher would add it. */
+  private renamedFileToAdd(vaultPath: string, renamedTo: string | null): string | null {
+    if (renamedTo === null) return null
+    try {
+      const stats = lstatSync(renamedTo, { throwIfNoEntry: false })
+      return stats?.isFile() && !this.isIgnored(vaultPath, renamedTo, stats) ? renamedTo : null
+    } catch (error) {
+      logger.debug(`Not adding renamed file ${renamedTo}: ${String(error)}`)
+      return null
     }
   }
 
@@ -1596,12 +1611,16 @@ export class VaultWatcher {
    * The add of the file an unlinked file was renamed to, from the unlink and
    * not the folder's event (`RenameTargets`): on macOS that event can come
    * seconds after the rename window closed, or never. chokidar's own add of
-   * the file, if it comes, waits for this one and finds its row.
+   * the file, if it comes, waits for this one and finds its row. Only this add
+   * may take the delete. One that does not take it shows the name was not
+   * this file's, and the delete pairs with any add for the rest of its window.
    */
-  private addRenamedFile(vaultPath: string, renamedTo: string): void {
-    const stats = lstatSync(renamedTo, { throwIfNoEntry: false })
-    if (!stats?.isFile() || this.isIgnored(vaultPath, renamedTo, stats)) return
-    void this.handleFileAdd(renamedTo)
+  private async addRenamedFile(id: string, renamedFile: string): Promise<void> {
+    try {
+      await this.handleFileAdd(renamedFile)
+    } finally {
+      forgetRenameTarget(id)
+    }
   }
 
   /**

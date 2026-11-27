@@ -34,6 +34,7 @@ import {
   hasPendingDeletes,
   getPendingDeleteCount,
   createDeferredDeletes,
+  forgetRenameTarget,
   settleDeferredDeletes,
   buildAddedFileIdentityKey,
   buildFileIdentityKey,
@@ -138,6 +139,16 @@ describe('rename-tracker', () => {
     expect(checkForRename('hash-same', 'notes/copy.md')).toMatchObject({ id: 'note-older' })
     expect(checkForRename('hash-same', 'notes/copy-2.md')).toBeNull()
     expect(checkForRename('hash-same', 'notes/d.md')).toMatchObject({ id: 'note-c' })
+  })
+
+  // A move to another folder under a new name names the new name in the old
+  // folder: the add there runs and does not take the delete.
+  it('pairs a delete with any add once the add at its named path did not take it', () => {
+    trackPendingDelete('note-a', 'hash-a', 'Docs/a.md', vi.fn(), null, null, 'Docs/b.md')
+    expect(checkForRename('hash-a', 'Other/b.md')).toBeNull()
+
+    forgetRenameTarget('note-a')
+    expect(checkForRename('hash-a', 'Other/b.md')).toMatchObject({ id: 'note-a' })
   })
 
   // ==========================================================================
