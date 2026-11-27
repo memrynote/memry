@@ -156,9 +156,10 @@ function repairRuns(runs: InlineRun[], code: boolean, masks: Masks, startsLine =
     // A leading space in link text is the author's: CommonMark keeps it.
     if (Array.isArray(linkContent)) repairRuns(linkContent, code, masks, false)
     if (run?.type !== 'text' || typeof run.text !== 'string') continue
-    // CommonMark keeps a code span's one-sided leading space: it is the author's.
+    // CommonMark keeps a code span's one-sided leading space: it is the author's,
+    // at a block's start too.
     const codeSpan = (run as StyledRun).styles?.code === true
-    const opensLine = (index === 0 && startsLine) || (!codeSpan && endsLine(runs[index - 1]))
+    const opensLine = !codeSpan && ((index === 0 && startsLine) || endsLine(runs[index - 1]))
     // A newline followed by a space is the parser's artifact in prose and the
     // author's own indentation in a code block, so the strip is prose-only.
     const original = run.text
