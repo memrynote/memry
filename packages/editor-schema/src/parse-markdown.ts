@@ -324,7 +324,7 @@ export async function parseMarkdownToBlocksRepaired<T>(
   // HTML comments come off first, as one token each (AF-015). The callers that
   // split a note into blocks before this mask them already; a caller that
   // hands in raw markdown (paste, a template) gets the same treatment here.
-  const commentsMasked = htmlComments ? maskHtmlComments(markdown) : markdown
+  const commentsMasked = htmlComments ? maskHtmlComments(markdown, { losslessTables }) : markdown
   const source = fenceIndentedCodeBlocks(escapeWikiLinkPipesInTableRows(commentsMasked))
   // A hard break and a soft break now parse to the same single newline, so the
   // hard one is marked to keep them apart.

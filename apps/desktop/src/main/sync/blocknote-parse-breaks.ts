@@ -17,7 +17,7 @@ export async function parseMarkdownToBlocks(
 ): Promise<Block[]> {
   return parseMarkdownToBlocksRepaired<Block>(editor, markdown, {
     htmlComments: parsesHtmlComments(),
-    losslessTables: legacyTables.getStore() !== true
+    losslessTables: readsLosslessTables()
   })
 }
 
@@ -48,4 +48,8 @@ const legacyTables = new AsyncLocalStorage<true>()
  */
 export function parseWithLegacyTables<T>(parse: () => Promise<T>): Promise<T> {
   return legacyTables.run(true, parse)
+}
+
+export function readsLosslessTables(): boolean {
+  return legacyTables.getStore() !== true
 }

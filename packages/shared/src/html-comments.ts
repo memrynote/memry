@@ -109,7 +109,8 @@ function isMemryMarker(comment: string, wholeLine: boolean): boolean {
  * back as the code block's own text (`parseMarkdownToBlocksRepaired`).
  * A `<!--` that never closes and opens an HTML block hides the rest of the
  * note in CommonMark, so only the opener becomes a node and the text after it
- * stays visible (BBF-101).
+ * stays visible (BBF-101). `losslessTables: false` reads a table row the way
+ * builds before lossless tables did (`replaceMarkdownComments`).
  */
 /**
  * A `link-card` line is a marker only when it names a valid setting and sits
@@ -122,7 +123,10 @@ const LINK_CARD_CANDIDATE =
   /^(<!-- link-card:\{.*\} -->)(?=\n(?:<!-- [^\n]* -->\n)*(?:\*\*|~~|\*|_)*\[\[[^\]|\n]+(?:\|[^\]\n]+)?\]\](?:\*\*|~~|\*|_)*(?:\n|$))/gm
 const LINK_CARD_KEEP = 'MEMRYLINKCARD'
 
-export function maskHtmlComments(markdown: string): string {
+export function maskHtmlComments(
+  markdown: string,
+  { losslessTables = true }: { losslessTables?: boolean } = {}
+): string {
   const kept = markdown.replace(LINK_CARD_CANDIDATE, (line) =>
     parseLinkCardMarker(line) ? line.replace('<!--', LINK_CARD_KEEP) : line
   )
@@ -131,6 +135,7 @@ export function maskHtmlComments(markdown: string): string {
     (source, wholeLine) =>
       isMemryMarker(source, wholeLine) ? source : encodeHtmlCommentToken(source),
     '<!--',
-    encodeHtmlCommentToken('<!--')
+    encodeHtmlCommentToken('<!--'),
+    !losslessTables
   ).replaceAll(LINK_CARD_KEEP, '<!--')
 }

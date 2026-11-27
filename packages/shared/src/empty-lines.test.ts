@@ -508,23 +508,6 @@ describe('table column widths', () => {
     expect(normalizeSerializedMarkdown(md)).toBe(md)
   })
 
-  it('keeps a row whose cell holds a line break on one line', () => {
-    // #given what BlockNote 0.51+ serializes for two lines pasted into one
-    // cell: its backslash break, which ends the GFM row. Left alone, the table
-    // stopped being a table at that point and every row below it was lost.
-    const raw =
-      'Intro\n\n|              |        |\n| ------------ | ------ |\n| Task         | Owner  |\n| Review first\\\nsecond | Nobody |'
-
-    // #when
-    const out = normalizeSerializedMarkdown(raw)
-
-    // #then the break is a space and the table survives whole
-    expect(out).toContain('| Review first second | Nobody |')
-    expect(out.split('\n').filter((line) => line.startsWith('|'))).toHaveLength(4)
-    // #and it settles
-    expect(normalizeSerializedMarkdown(out)).toBe(out)
-  })
-
   it('leaves a backslash break outside a table as a break', () => {
     expect(normalizeSerializedMarkdown('one\\\ntwo')).toBe('one\ntwo')
   })

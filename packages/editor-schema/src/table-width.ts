@@ -13,15 +13,15 @@ import { markdownToHTML } from '@blocknote/core'
  *
  * Which lines BlockNote reads as a table is its tokenizer's decision, and a
  * line that only looks like a header row (inside a list item's first line, a
- * paragraph or a fence) must not gain pipes. So the tokenizer is asked: each
- * header row that would widen gets a marker, BlockNote prints the text once,
- * and only a marker printed inside a `<th>` is a table's header. The rows after
- * it are the `<tr>`s of that table's body. The probe runs only when some
- * table needs widening.
- *
- * A header row spelled like a delimiter row (`| --- |`) is never widened: a
- * marker in it would stop it closing a table above it, so the probe could not
- * tell. The core seed keeps the same exception (chapter 12 §12.1.0).
+ * paragraph or a fence, or a delimiter row closing a table above it) must not
+ * gain pipes. So the tokenizer is asked: the line under each delimiter row
+ * whose header would widen gets a marker in its first cell, which no table
+ * cuts, BlockNote prints the text once, and
+ * only a marker printed in the first row of a table's body sits under that
+ * table's header, since a body starts on the line after its delimiter row. The
+ * marker never goes in the header itself: one there would stop a header spelled
+ * like a delimiter row (`| --- |`) from closing a table above it. The probe
+ * runs only when some table needs widening.
  */
 
 // `tryParseTable`'s delimiter-row test (`markdownToHtml.ts`).
@@ -71,6 +71,7 @@ function unquote(line: string, depth: number): string {
 
 interface Candidate {
   line: number
+  depth: number
   header: number
   /** The cell count of each line that could be a body row, in order. */
   rows: number[]
@@ -83,7 +84,7 @@ function candidates(lines: string[]): Candidate[] {
     const depth = quoteDepth(lines[line])
     const header = unquote(lines[line], depth)
     const delimiter = unquote(lines[line + 1], depth)
-    if (!header.includes('|') || DELIMITER_ROW.test(header)) continue
+    if (!header.includes('|')) continue
     if (!delimiter.includes('|') || !DELIMITER_ROW.test(delimiter)) continue
     const rows: number[] = []
     for (let row = line + 2; row < lines.length; row++) {
@@ -92,27 +93,26 @@ function candidates(lines: string[]): Candidate[] {
       rows.push(cellCount(body))
     }
     const width = cellCount(header)
-    if (rows.some((cells) => cells > width)) found.push({ line, header: width, rows })
+    if (rows.some((cells) => cells > width)) found.push({ line, depth, header: width, rows })
   }
   return found
 }
 
-/** The header row with `marker` printed in its last cell. */
-function withMarker(line: string, text: string): string {
-  const end = line.trimEnd()
-  return end.endsWith('|') ? `${end.slice(0, -1)}${text}|` : `${end}${text}`
+/** The row inside `depth` quotes with `text` printed in its first cell, which no table cuts. */
+function withMarker(line: string, depth: number, text: string): string {
+  const body = unquote(line, depth)
+  const open = /^\s*\|?/.exec(body)?.[0] ?? ''
+  return line.slice(0, line.length - body.length) + open + text + body.slice(open.length)
 }
 
-/** How many body rows the table whose header printed `text` has, or null when no table did. */
+/** How many body rows the table whose first body row printed `text` has, or null when none did. */
 function bodyRows(html: string, text: string): number | null {
   const at = html.indexOf(text)
   if (at < 0) return null
-  const opened = Math.max(html.lastIndexOf('<th>', at), html.lastIndexOf('<th ', at))
-  if (opened < 0 || opened < html.lastIndexOf('</th>', at)) return null
-  const end = html.indexOf('</table>', at)
-  const body = html.indexOf('<tbody>', at)
-  if (body < 0 || body > end) return 0
-  return html.slice(body, end).split('<tr>').length - 1
+  const body = html.lastIndexOf('<tbody>', at)
+  if (body < 0 || html.lastIndexOf('</tbody>', at) > body) return null
+  if (html.slice(body, at).split('<tr>').length !== 2) return null
+  return html.slice(body, html.indexOf('</tbody>', at)).split('<tr>').length - 1
 }
 
 export function widenTables(markdown: string): string {
@@ -123,7 +123,8 @@ export function widenTables(markdown: string): string {
 
   const probe = [...lines]
   for (const [index, candidate] of found.entries()) {
-    probe[candidate.line] = withMarker(probe[candidate.line], marker(index))
+    const row = candidate.line + 2
+    probe[row] = withMarker(probe[row], candidate.depth, marker(index))
   }
   const html = markdownToHTML(probe.join('\n'))
   for (const [index, candidate] of found.entries()) {

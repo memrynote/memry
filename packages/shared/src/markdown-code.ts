@@ -17,7 +17,7 @@ import { createFenceTracker } from './markdown-fences.ts'
  */
 export function blankMarkdownCode(markdown: string): string {
   if (!mayHoldCode(markdown)) return markdown
-  return walkMarkdown(markdown, {
+  return walkMarkdown(markdown, false, {
     codeLine: () => '',
     textOpen: (open) => open,
     codeSpan: () => ' ',
@@ -32,7 +32,7 @@ export function blankMarkdownCode(markdown: string): string {
  */
 export function maskMarkdownCode(markdown: string): string {
   if (!mayHoldCode(markdown)) return markdown
-  return walkMarkdown(markdown, {
+  return walkMarkdown(markdown, false, {
     codeLine: (line) => ' '.repeat(line.length),
     textOpen: (open) => open,
     codeSpan: (source) => ' '.repeat(source.length),
@@ -58,16 +58,18 @@ export function stripMarkdownComments(markdown: string): string {
  * text is part of the block, not a paragraph. Code stays as written. A `<!--`
  * read as text, or one that never closes, becomes `textOpen`, except one that
  * never closes and opens an HTML block, which becomes `unclosedOpen`. The text
- * after it stays.
+ * after it stays. `legacyTables` reads a table row's cells as builds before
+ * lossless tables did, splitting them on a code span's pipe (`cellPipe`).
  */
 export function replaceMarkdownComments(
   markdown: string,
   replace: (source: string, wholeLine: boolean, blockGoesOn: boolean) => string,
   textOpen = '<!--',
-  unclosedOpen = textOpen
+  unclosedOpen = textOpen,
+  legacyTables = false
 ): string {
   if (!markdown.includes('<!--') && !markdown.includes('%%')) return markdown
-  return walkMarkdown(markdown, {
+  return walkMarkdown(markdown, legacyTables, {
     codeLine: (line) => line,
     textOpen: (open) => (open === '<!--' ? textOpen : open),
     codeSpan: (source) => source,
@@ -139,7 +141,7 @@ interface Visitor {
  * (BBF-68). It is text when it continues a paragraph, and inside a list item
  * or footnote definition, where indent marks the item's own content.
  */
-function walkMarkdown(markdown: string, visit: Visitor): string {
+function walkMarkdown(markdown: string, legacyTables: boolean, visit: Visitor): string {
   const lines = markdown.split('\n')
   const fence = createFenceTracker()
   const out: string[] = []
@@ -208,7 +210,7 @@ function walkMarkdown(markdown: string, visit: Visitor): string {
         const close = line.indexOf(form.close, at + form.open.length)
         // GFM splits a row into cells before it reads inline syntax, so a
         // comment in a cell ends in that cell or is text (BBF-51).
-        if (tableRow && (close === -1 || close > cellPipe(line, at))) {
+        if (tableRow && (close === -1 || close > cellPipe(line, at, legacyTables))) {
           result += line.slice(i, at) + visit.textOpen(form.open)
           i = at + form.open.length
           continue
@@ -292,13 +294,23 @@ const TABLE_ROW_LINE = /^\s*\|.*\|\s*$/
 
 /**
  * The next unescaped `|` after `from` that ends a cell, or the line's length.
- * A pipe inside `[[target|alias]]` is part of the link.
+ * A pipe inside `[[target|alias]]` is part of the link, and one inside a code
+ * span is part of the span, as the table reader splits the row
+ * (`maskCellCodeSpans`), a comment's text included: otherwise a comment
+ * holding `` `x|y` `` read as crossing its cell, stayed raw HTML, and the
+ * parser dropped it from the cell. Builds before lossless tables split on
+ * that pipe, so a `legacyTables` read does too.
  */
-function cellPipe(line: string, from: number): number {
+function cellPipe(line: string, from: number, legacyTables: boolean): number {
   let depth = 0
   for (let i = from; i < line.length; i++) {
     if (line[i] === '\\') {
       i++
+    } else if (line[i] === '`' && !legacyTables) {
+      let runEnd = i
+      while (line[runEnd] === '`') runEnd++
+      const closeAt = findClosingRun(line, runEnd, runEnd - i)
+      i = (closeAt === -1 ? runEnd : closeAt + (runEnd - i)) - 1
     } else if (line.startsWith('[[', i)) {
       depth++
       i++

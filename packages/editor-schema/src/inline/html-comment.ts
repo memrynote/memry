@@ -38,6 +38,7 @@ import {
   type Span,
   type InlineItem
 } from './emphasis-runs'
+import { escapeMarkdownText } from './markdown-escapes'
 
 export const htmlCommentConfig = {
   type: 'htmlComment' as const,
@@ -154,8 +155,9 @@ function mapInline(blocks: BlockItem[], inline: Inline): BlockItem[] {
 
 /**
  * Runs a blocks-to-markdown serialization of `blocks` with every comment
- * written as its token, inside the marks it sat in, and each run of emphasis
- * written as one span. The scope is synchronous: whatever
+ * written as its token, inside the marks it sat in, each run of emphasis
+ * written as one span, and text that would read back as markup escaped
+ * (`escapeMarkdownText`). The scope is synchronous: whatever
  * `serialize` exports after it returns writes nothing for the node.
  */
 export function writeHtmlCommentTokens<B>(blocks: B[], serialize: (blocks: B[]) => string): string
@@ -171,12 +173,15 @@ export function writeHtmlCommentTokens<B>(
   // SAFETY: only `content` and `children` are read and replaced, with values of
   // the same shape, so every other field of `B` passes through as it was.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- B is the caller's block type; only content and children are touched (see SAFETY above)
-  const marked = mapInline(blocks as BlockItem[], (items, blockType) =>
-    tokenizeEmphasisRuns(
-      commentsInMarks(LIST_ITEMS.has(blockType ?? '') ? listLinkBreakTokens(items, marks) : items),
+  const marked = mapInline(blocks as BlockItem[], (items, blockType) => {
+    const escaped = escapeMarkdownText(items, blockType)
+    return tokenizeEmphasisRuns(
+      commentsInMarks(
+        LIST_ITEMS.has(blockType ?? '') ? listLinkBreakTokens(escaped, marks) : escaped
+      ),
       marks
     )
-  ) as B[]
+  }) as B[]
   const restore = (markdown: string): string => restoreEmphasisRuns(markdown, marks)
   markdownWrites++
   try {

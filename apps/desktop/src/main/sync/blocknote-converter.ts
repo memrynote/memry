@@ -51,7 +51,8 @@ import {
   parseDroppingHtmlComments,
   parseWithLegacyTables,
   parseMarkdownToBlocks,
-  parsesHtmlComments
+  parsesHtmlComments,
+  readsLosslessTables
 } from './blocknote-parse-breaks'
 import { createBlockNestingMarker } from '@memry/shared/block-nesting'
 import {
@@ -464,7 +465,9 @@ export async function markdownToBlocks(
     // HTML comments come off before anything splits the note into lines, so a
     // multi-line comment holding blank lines or a fence stays one comment
     // (AF-015).
-    const masked = parsesHtmlComments() ? maskHtmlComments(markdown) : markdown
+    const masked = parsesHtmlComments()
+      ? maskHtmlComments(markdown, { losslessTables: readsLosslessTables() })
+      : markdown
     return await markdownToBlocksPreserving(editor, masked, notePath)
   } catch (err) {
     log.error('Markdown-to-blocks conversion failed', err)

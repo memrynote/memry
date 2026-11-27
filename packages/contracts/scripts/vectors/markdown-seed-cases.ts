@@ -180,9 +180,9 @@ export const MARKDOWN_SEED_CASES: ReadonlyArray<{ name: string; markdown: string
       pins: 'a blank header stays absent; a table without outer pipes widens; a table in a list item widens to its own rows only'
     },
     {
-      name: 'table: a header spelled like a delimiter row keeps its width',
+      name: 'table: a header spelled like a delimiter row widens',
       markdown: '| --- |\n|---|\n| 1 | 2 |',
-      pins: 'the one table desktop does not widen: a row past the header width is cut'
+      pins: 'a header row spelled like a delimiter row gains a column for each cell a body row has past it, as any header does'
     },
     {
       name: 'table: blank header and cell image',
