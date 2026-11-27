@@ -130,3 +130,15 @@ fn many_unclosed_html_comments_before_a_fence_plan_in_linear_time() {
     let text = format!("{}```\n", "x <!--\n".repeat(4000));
     within("unclosed comments, then a fence", text, BOUND);
 }
+
+#[test]
+fn a_list_item_of_many_hard_breaks_plans_in_linear_time() {
+    let text = format!("- a  \n{}", "b  \n".repeat(2000));
+    within("hard breaks in a list item", text, BOUND);
+}
+
+#[test]
+fn a_list_item_whose_link_text_spans_many_lines_plans_in_linear_time() {
+    let text = format!("- [a\n{}c](u)", "b\n".repeat(2000));
+    within("link text over many lines", text, BOUND);
+}
