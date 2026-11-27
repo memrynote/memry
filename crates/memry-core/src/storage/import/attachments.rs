@@ -9,6 +9,7 @@ use rusqlite::{Connection, Statement, params};
 
 use super::{ImportWriter, failed};
 use crate::api::errors::StorageError;
+use crate::storage::nested_tx;
 
 /// One `attachment_files` row.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -59,7 +60,7 @@ impl ImportWriter {
         rows: &[ImportAttachmentFile],
     ) -> Result<(), StorageError> {
         insert_all(
-            &mut self.data,
+            &self.data,
             "INSERT INTO attachment_files (note_id, path, attachment_id, recorded_at)
              VALUES (?1, ?2, ?3, ?4)",
             rows,
@@ -72,7 +73,7 @@ impl ImportWriter {
         rows: &[ImportAttachmentUpload],
     ) -> Result<(), StorageError> {
         insert_all(
-            &mut self.data,
+            &self.data,
             "INSERT INTO attachment_upload_queue
                (id, note_id, disk_path, attempts, last_error, created_at, updated_at)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
@@ -96,7 +97,7 @@ impl ImportWriter {
         rows: &[ImportDownloadFailure],
     ) -> Result<(), StorageError> {
         insert_all(
-            &mut self.data,
+            &self.data,
             "INSERT INTO attachment_download_failures
                (id, owner_id, attachment_id, reason, attempts, last_error, next_attempt_at,
                 updated_at)
@@ -119,7 +120,7 @@ impl ImportWriter {
 
     pub fn put_asset_releases(&mut self, rows: &[ImportAssetRelease]) -> Result<(), StorageError> {
         insert_all(
-            &mut self.data,
+            &self.data,
             "INSERT INTO deleted_asset_releases (item_type, item_id, deleted_at, attachment_ids)
              VALUES (?1, ?2, ?3, ?4)",
             rows,
@@ -137,12 +138,12 @@ impl ImportWriter {
 
 /// Inserts `rows` through one prepared statement in one transaction.
 fn insert_all<T>(
-    conn: &mut Connection,
+    conn: &Connection,
     sql: &str,
     rows: &[T],
     insert: impl Fn(&mut Statement<'_>, &T) -> rusqlite::Result<usize>,
 ) -> Result<(), StorageError> {
-    let tx = conn.transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     {
         let mut stmt = tx.prepare(sql).map_err(failed)?;
         for row in rows {
