@@ -654,7 +654,7 @@ on a throwaway `Y.Doc` under `PERSISTENCE_PROBE_KEY`
 | `prosemirror`              | XmlFragment                                              | desktop's editors via y-prosemirror; desktop's seed (`apps/desktop/src/main/sync/crdt-provider.ts:1893-1899`) and external-edit replace (`apps/desktop/src/main/sync/crdt-feed.ts:51`); the core's block operations (`crates/memry-core/src/crdt/body_edit/mod.rs:50`) and markdown seed (§12.1.0) | everything                                                                                                | **the body is lost**                                                                                                                                              |
 | `meta`                     | Map (`title`, `date`)                                    | `apps/desktop/src/main/sync/crdt-provider.ts:1956-1958`, `:1977-1979`                                                                                                                                                                                                                              | `apps/desktop/src/main/sync/crdt-writeback.ts:684-685`, `:706`                                            | a remotely created note materialises as `Untitled` with the wrong `createdAt`                                                                                     |
 | `tags`                     | Array\<string\>                                          | `apps/desktop/src/main/sync/crdt-provider.ts:1960-1964`, `apps/desktop/src/main/sync/crdt-feed.ts:127-133`                                                                                                                                                                                         | `apps/desktop/src/main/sync/crdt-writeback.ts:1059` (a note file the write-back creates)                  | a new file has no `tags:` until the record push brings them; an existing file's `tags:` is owned by the file and the note record, never by this array             |
-| `markdownSource`           | Map (`record: {source, htmlComments?, losslessTables?}`) | `packages/shared/src/markdown-source.ts:188-197` via `apps/desktop/src/main/sync/blocknote-converter.ts:517-541`, `apps/desktop/src/main/sync/crdt-feed.ts:80`                                                                                                                                     | `apps/desktop/src/main/sync/blocknote-converter.ts:156`, `:161`                                           | foreign-vault bytes are re-spelled to house style on the next write-back: a `git diff` across the user's file, violating FR-041's "change only the edited region" |
+| `markdownSource`           | Map (`record: {source, htmlComments?, losslessBlocks?}`) | `packages/shared/src/markdown-source.ts:188-197` via `apps/desktop/src/main/sync/blocknote-converter.ts:517-541`, `apps/desktop/src/main/sync/crdt-feed.ts:80`                                                                                                                                     | `apps/desktop/src/main/sync/blocknote-converter.ts:156`, `:161`                                           | foreign-vault bytes are re-spelled to house style on the next write-back: a `git diff` across the user's file, violating FR-041's "change only the edited region" |
 | `linkReferenceDefinitions` | Array                                                    | `packages/shared/src/link-references.ts:178` via `apps/desktop/src/main/sync/blocknote-converter.ts:470-471`                                                                                                                                                                                       | `packages/shared/src/link-references.ts:187`, `apps/desktop/src/main/sync/blocknote-converter.ts:237-238` | reference-link definitions are deleted and `[docs][d]` is inlined                                                                                                 |
 | `linkReferenceUsages`      | Array                                                    | same (`packages/shared/src/link-references.ts:179`)                                                                                                                                                                                                                                                | same (`:191`)                                                                                             | same                                                                                                                                                              |
 | `criticMarkupMarks`        | Array                                                    | `packages/shared/src/critic-markup/yjs.ts:55-67` via `apps/desktop/src/main/sync/blocknote-converter.ts:653`; renderer comment actions `apps/desktop/src/renderer/src/components/note/content-area/ContentArea.tsx:819-821`; write-back `apps/desktop/src/main/sync/critic-mark-anchors.ts:96`     | `apps/desktop/src/main/sync/writing-markdown.ts:446`; carve-out C (§12.2)                                 | **every suggestion and comment is deleted from the file on the next write-back, and source restoration flips back on, so the body is additionally re-spelled**    |
@@ -829,14 +829,31 @@ are not plain CommonMark:
   paragraph is the callout's own line and every later block its child; a quote
   whose first block is not a paragraph has no own line and every block a child
   (`quote.ts:246-259`);
-- structured quotes refuse a `>text` line and need no blank `>` line, `> >` level
-  or list to be read: a run of one paragraph is the only one that stays a flat
-  quote (`quote.ts:77-135`, `:246-259`);
+- structured quotes need no blank `>` line, `> >` level or list to be read: a run
+  of one paragraph is the only one that stays a flat quote. A legacy read
+  (§12.10) refuses a `>text` line, and a lossless one reads it as a quote line
+  (`quote.ts:77-135`, `:246-259`);
 - a math run is claimed only when it OWNS its paragraph at both ends and
   `serializeMathBlock` reproduces it byte for byte
   (`packages/editor-schema/src/blocks/markdown.ts:518-536`), so a one-line
-  `$$x$$`, an indented fence, a fence with trailing spaces and an unterminated
-  one all stay the author's markdown;
+  `$$x$$`, an indented fence outside a list item, a fence with trailing spaces
+  and an unterminated one all stay the author's markdown;
+- **a callout, quote or math run indented in a list item is that block under the
+  item.** In a lossless read, a top-level item's run after a blank line, indented
+  to the item's content column (the marker and the 1 to 4 spaces after it) and
+  opening with `>` or a `$$` line, is lifted with every later line of the item
+  into the nesting-marker form the writer gives an item's blocks (§12.8). So
+  `- a\n\n  > [!tip]\n  > b` is an item holding a callout, where BlockNote reads
+  a quote of the text `[!tip]`, and `1. a\n\n   $$\n   x\n   $$` an item
+  holding a math block. A deeper item's run, a run with no blank line above and
+  a line in a code fence stay as BlockNote reads them
+  (`packages/editor-schema/src/blocks/item-children.ts:27`,
+  `packages/editor-schema/src/note-markdown.ts:274`);
+- **a nesting marker's level holds until the next marker.** The text after a
+  block claimed under `<!-- memry:block-nesting-level=1 -->` stays at that level,
+  so an item holding a math block and then a paragraph reads back that way.
+  Builds before this read the paragraph at the top level
+  (`packages/shared/src/block-nesting.ts:81-96`);
 - **the file marker's JSON key order is fixed** as `url, name, size, mimeType`,
   then `width` and `height` only when greater than zero, `align` only when set
   and not `left`, and `display` only when it is `link`, so legacy markers stay
@@ -1104,6 +1121,36 @@ are joined, so `**[a *b*](u) c**` stays one link (BBF-71). `code` holds no
 other mark, so ``**`a` x `c`**`` reads back as bold `x` only and is written
 `` `a` **x** `c` ``
 (`packages/editor-schema/src/inline/emphasis-runs.ts:71`, `:87`, `:140`).
+
+Three stars in a row read as bold italic in BlockNote's parser, so a run
+whose edge meets an inner run's stars came back as text holding stray stars.
+House style spells such a run with underscores instead: an italic run that
+opens or closes with a bold run (`_**Note:** this matters_`), and a bold run
+that closes with an italic run (`__this *matters*__`). A run that is one inner
+run end to end stays `***x***`. A bold run that opens with an italic run stays
+`***x* y**`, which reads back as written. Stars are kept when the run holds a
+bare `_`, when the opener would sit between two word characters, or when an
+underscore stands next to it
+(`packages/editor-schema/src/inline/emphasis-runs.ts:244`, `:267`, `:290`).
+
+A break that closes a marked run at a paragraph's end is written `<br>` after
+the run's delimiters: `**a**<br>`. Inside the delimiters the writer trimmed it,
+and after them it was a blank line that split the paragraph. A paragraph of
+one break is `<br>` alone, which reads back as one break; a lone break opening a
+paragraph with more after it is still dropped, since `<br>` there reads back as
+two. A space before a break that ends a run is moved out of the run with the
+break at seed, as the writer moves it
+(`packages/editor-schema/src/inline/markdown-escapes.ts:221`,
+`packages/editor-schema/src/inline/emphasis-runs.ts:41`, `:358`).
+
+A quote whose first line spells a callout marker the reader would claim
+(`[!tip]`, `[!tip]-`), and a paragraph whose first line is the torn
+`[!info]`, `[!warning]`, `[!error]` or `[!success]` with more lines below,
+are written with the bracket escaped, `\[!tip]`, so they read back as the
+quote and the paragraph. A type Memry does not have, such as `[!danger]`,
+keeps its bytes for Obsidian
+(`packages/editor-schema/src/inline/markdown-escapes.ts:275`,
+`packages/editor-schema/src/blocks/markdown.ts:102`).
 
 `code` holds no link either, so a code span inside link text is the link's own
 text, backticks included (BBF-105). ``[`a`](u)`` parses to link text
@@ -1403,16 +1450,20 @@ only inside desktop main's `yDocToMarkdown`. The core never calls them.
   region: ours-only wins ours, theirs-only wins theirs, and **a genuine
   both-sides conflict resolves to _ours_, the house style** (`:139-143`).
 - The channel is the `markdownSource` Y.Map root, one key holding
-  `{source, htmlComments: true, losslessTables: true}`
+  `{source, htmlComments: true, losslessBlocks: true}`
   (`packages/shared/src/markdown-source.ts:188-197`).
   Builds before #2741 wrote `{source}` alone, and their parse dropped every HTML
   comment from the document, so desktop reads a record without `htmlComments`
-  with comments dropped too. Builds before lossless tables wrote no
-  `losslessTables`, and their parse split a table row on the `|` inside a code
-  span and cut each row to its header row's width, so desktop reads a record
-  without it with tables read that way, and the cut rows keep the file's bytes
-  (`apps/desktop/src/main/sync/blocknote-converter.ts:228-237`,
-  `packages/editor-schema/src/parse-markdown.ts:337-343`).
+  with comments dropped too. Builds before lossless blocks wrote no
+  `losslessBlocks`. Their parse split a table row on the `|` inside a code
+  span, cut each row to its header row's width, flattened a quote or callout
+  holding other blocks into text, dropped a list item's images, and read an
+  empty list item or heading as text. It claimed a callout, quote or math block
+  only after a blank line and never inside a list item. So desktop reads a record
+  without it the same way, and a cut row or a flat quote keeps the file's bytes
+  (`apps/desktop/src/main/sync/blocknote-converter.ts:200-206`,
+  `packages/editor-schema/src/parse-markdown.ts:340-343`, `:379`, `:399`,
+  `packages/editor-schema/src/note-markdown.ts:274`).
   The write is skipped when the value is already identical, so no spurious Y
   update (`:189`). Recording is budgeted at
   `MARKDOWN_SOURCE_SNAPSHOT_BUDGET_BYTES = floor(NOTE_SYNC_MAX_BYTES / 2)`
