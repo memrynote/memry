@@ -36,6 +36,8 @@ mod account_vault_download;
 mod activity_log;
 #[path = "activity_scan.rs"]
 mod activity_scan;
+#[path = "agent_gate_wiring.rs"]
+mod agent_gate_wiring;
 #[path = "agent_mcp.rs"]
 mod agent_mcp;
 #[path = "agent_mcp_http.rs"]
