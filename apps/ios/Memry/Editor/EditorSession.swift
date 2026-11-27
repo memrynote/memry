@@ -206,6 +206,7 @@ final class EditorSession {
     // `nonisolated(unsafe)`: written once in `init`, read only by `deinit`,
     // which runs after the last reference is gone.
     @ObservationIgnored private nonisolated(unsafe) var keyboardObserver: NSObjectProtocol?
+    @ObservationIgnored private nonisolated(unsafe) var presentationObservers: [NSObjectProtocol] = []
     @ObservationIgnored private var leaving: AnyCancellable?
     /// Background tasks held until their resign's writes land. Each resign
     /// ends only its own, so a later resign's write stays protected.
@@ -231,11 +232,32 @@ final class EditorSession {
                 // #4344: a keyboard on another screen, or another app's on
                 // this one (Split View, Stage Manager), says nothing about
                 // this window's.
-                guard isLocal, let self, self.panel == .none, let window = self.field?.textView.window,
-                      let frame = PresentingWindow.keyboardFrame(frame, on: screen, in: window)
+                guard isLocal, let self, self.panel == .none, let screen, self.accessory.window != nil,
+                      screen === self.field?.textView.window?.windowScene?.screen
                 else { return }
-                let accessory = self.accessory.frame.height
-                if frame.height - accessory > 200 { self.keyboardHeight = frame.height - accessory }
+                // The keys are what lies below the toolbar on screen. The
+                // frame's height minus the toolbar's overstated them: iOS 26
+                // gives the first frame a bottom inset more than the toolbar
+                // and keys, and a hardware keyboard's runs off the screen.
+                let toolbar = self.accessory.convert(self.accessory.bounds, to: screen.coordinateSpace)
+                let keys = min(frame.maxY, screen.bounds.maxY) - toolbar.maxY
+                if keys > 200 { self.keyboardHeight = keys }
+            }
+        }
+        // With a hardware keyboard the toolbar floats in the keyboard's
+        // window, above anything the page presents. UIKit hides it as a
+        // menu opens and lays the menu out to the screen's bottom edge, then
+        // shows the toolbar again over the menu's last rows. It steps aside
+        // while a menu or sheet is up; UIKit moves the keyboard as each one
+        // opens and closes. The keys come back while a sheet is still on its
+        // way out and do not move again, so that one counts as closed.
+        let moves = [UIResponder.keyboardWillChangeFrameNotification, UIResponder.keyboardDidChangeFrameNotification]
+        presentationObservers = moves.map {
+            NotificationCenter.default.addObserver(forName: $0, object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    guard let self, let window = self.field?.textView.window else { return }
+                    self.accessory.alpha = PresentingWindow.keepsPresenting(over: window) ? 0 : 1
+                }
             }
         }
         // #2820: typing is committed when editing ends, and leaving the app
@@ -254,6 +276,7 @@ final class EditorSession {
 
     deinit {
         if let keyboardObserver { NotificationCenter.default.removeObserver(keyboardObserver) }
+        presentationObservers.forEach(NotificationCenter.default.removeObserver)
     }
 
     /// Commits the focused block's typing, and holds a background task until
@@ -448,7 +471,12 @@ final class EditorSession {
             focusedProps = Dictionary(field.block.props.map { ($0.name, $0.value) }) { $1 }
             selectionChanged(in: field)
         } else {
-            if panel != .none { panel = .none }
+            if panel != .none {
+                panel = .none
+                // The block the panel was open in gets its keys back: the
+                // panel, closed, is blank the next time it takes the caret.
+                self.field?.textView.inputView = nil
+            }
             formatting = false
             // A caret back over a selection brings the format slide back
             // (`selectionChanged`), as after the Link prompt (#4667).
