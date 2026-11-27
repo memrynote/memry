@@ -7,6 +7,7 @@ use serde_json::Value;
 
 use crate::api::errors::StorageError;
 use crate::domain::notes::{failed, iso};
+use crate::storage::nested_tx;
 use crate::storage::repositories::Change;
 use crate::sync::outbox::{self, Durable};
 
@@ -95,7 +96,7 @@ pub fn resurface_due(
     device_id: &str,
     now_ms: i64,
 ) -> Result<Vec<InboxItem>, StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let due = queries::due_snoozed(&tx, now_ms)?;
     let mut back = Vec::with_capacity(due.len());
     for item in due {
