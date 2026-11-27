@@ -15,6 +15,9 @@
 //! Every join decision reads a line through [`seen`], where [`JOIN`] is the
 //! `<br>` desktop would see, so an author's `<br>` and a join weigh the same.
 //!
+//! A table row is never masked: its trailing `\` or spaces stay the last cell's
+//! text, as in desktop's `inTable`.
+//!
 //! Not ported: `HTML_BREAK_MID_LINE`, `inOtherBlock` and `NOT_PARAGRAPH_LINE`,
 //! desktop's marking of an author's `<br>` mid-line. A line holding HTML sends
 //! its block to the fallback, which drops the tokens again, and the marking
@@ -25,6 +28,7 @@
 use crate::domain::journal_rules::{is_js_whitespace, js_trim};
 
 use super::prepare::split_by_code_fences;
+use super::shapes::is_table_separator;
 
 /// The `<br>` of desktop's list-item join. Never in source text.
 pub(super) const JOIN: char = '\u{1}';
@@ -56,9 +60,19 @@ fn mask_prose(text: &str, breaks: &mut Vec<String>) -> String {
     }
     let mut lines: Vec<String> = text.split('\n').map(str::to_owned).collect();
     let mut in_list_item = false;
+    let mut in_table = false;
     let mut index = 0;
     while index < lines.len() {
         let line = lines[index].clone();
+        // A table row is one line, so a `\` ending it is the last cell's text.
+        // A pipe line above a delimiter row opens a table; it runs on until a
+        // line without a pipe.
+        let next = lines.get(index + 1).map_or("", String::as_str);
+        if !line.contains('|') {
+            in_table = false;
+        } else if next.contains('|') && is_table_separator(next) {
+            in_table = true;
+        }
         if is_blank(&line) {
             in_list_item = false;
         } else if list_item_start(&line) {
@@ -80,7 +94,7 @@ fn mask_prose(text: &str, breaks: &mut Vec<String>) -> String {
             join_next(&mut lines, index);
             continue;
         }
-        let spelling = hard_break_spelling(&line).filter(|_| !is_blank(&line));
+        let spelling = hard_break_spelling(&line).filter(|_| !in_table && !is_blank(&line));
         let Some(spelling) = spelling else {
             index += 1;
             continue;
@@ -467,5 +481,22 @@ mod tests {
         }
         assert!(!masked("- [a\n![i](u)](v)").contains("<br>"));
         assert!(!masked("- [a\nb](u \"t\")").contains("<br>"));
+    }
+
+    #[test]
+    fn a_table_row_ending_in_a_backslash_or_spaces_is_not_a_break() {
+        assert_eq!(masked("| a \\\n|---|\n| b |"), "| a \\\n|---|\n| b |");
+        assert_eq!(
+            masked("| a |\n|---|\n| b \\\n| c |"),
+            "| a |\n|---|\n| b \\\n| c |"
+        );
+        assert_eq!(masked("| a  \n|---|\n| b |"), "| a  \n|---|\n| b |");
+        // The table ends at a line without a pipe.
+        assert_eq!(
+            masked("| a |\n|---|\nx\\\ny"),
+            "| a |\n|---|\nxMEMRYHBK0;\ny"
+        );
+        // A pipe line with no delimiter row below it is a paragraph.
+        assert_eq!(masked("a | b\\\nc"), "a | bMEMRYHBK0;\nc");
     }
 }

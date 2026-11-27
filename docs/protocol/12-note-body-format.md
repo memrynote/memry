@@ -140,6 +140,11 @@ fence's info string, `""` for an untagged fence or an indented run, never BlockN
   line of `1. \n2. ` is an empty numbered item, not a paragraph; the core does the same
   (`crates/memry-core/src/crdt/markdown_seed/empty_blocks.rs:20`, `:46`,
   `crates/memry-core/src/crdt/markdown_seed/blocks.rs:43`, `:78`).
+- **A table row is never read as a hard break.** A line holding a `|` with a delimiter row
+  below it opens a table, which runs until a line without a pipe, and a `\` ending
+  one of its rows is the last cell's text, never a break token: `| a \` seeds the header cell `a \`
+  (`packages/shared/src/hard-breaks.ts:77`, `:134-136`, `:178`;
+  `crates/memry-core/src/crdt/markdown_seed/hard_breaks.rs:63`, `:97`).
 - **A paragraph with no visible text collapses its whitespace.** BlockNote's paragraph rule
   declines a `<p>` whose `textContent.trim()` is empty (`@blocknote/core`
   `src/blocks/Paragraph/block.ts:33-36`), so ProseMirror's default parse drops a leading,
