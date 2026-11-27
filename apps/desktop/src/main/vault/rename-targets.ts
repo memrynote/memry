@@ -7,6 +7,8 @@
  * miss the rename window, and an outside rename synced a delete plus a create.
  * The unlink takes the new path here and adds that file itself.
  *
+ * Only a watched path that is gone was renamed: a folder's watcher reports
+ * its files' changes as raw renames too, naming the file and not a new name.
  * The event names a basename only, read here in the watched file's folder. A
  * file moved to another folder under a new name has no such file there, so it
  * gets no name. When the old folder does hold a file of that name, only that
@@ -23,11 +25,15 @@ const logger = createLogger('RenameTargets')
 /** How long a rename waits for its unlink: chokidar's `atomic` holds an unlink 100 ms. */
 const RENAME_TARGET_TTL_MS = 1000
 
-function isFile(filePath: string): boolean {
+/** Whether `filePath` was renamed to `target`: it is gone, and `target` is a file. */
+function wasRenamedTo(filePath: string, target: string): boolean {
   try {
-    return lstatSync(filePath, { throwIfNoEntry: false })?.isFile() === true
+    return (
+      lstatSync(filePath, { throwIfNoEntry: false }) === undefined &&
+      lstatSync(target, { throwIfNoEntry: false })?.isFile() === true
+    )
   } catch (error) {
-    logger.debug(`No rename target at ${filePath}: ${String(error)}`)
+    logger.debug(`No rename target for ${filePath}: ${String(error)}`)
     return false
   }
 }
@@ -42,7 +48,7 @@ export class RenameTargets {
 
   record(filePath: string, target: string): void {
     this.take(filePath)
-    if (!isFile(target)) return
+    if (!wasRenamedTo(filePath, target)) return
     const expiry = setTimeout(() => this.entries.delete(filePath), RENAME_TARGET_TTL_MS)
     this.entries.set(filePath, { target, expiry })
   }
