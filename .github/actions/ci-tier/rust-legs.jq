@@ -24,10 +24,10 @@
 # to 48 minutes and set the length of every Rust CI run after #5904 (runs 46058633973, 46066546747,
 # 46070972308). The Apple Silicon leg of a PR into any base but main splits the same way, with the
 # suite in four partitions: as one `all` job it took about 100 minutes (run 45986308547: clippy 17,
-# the suite 57, the seams 20), and every round let other PRs land first. Four, because the suite runs 31 minutes on one runner, so a
-# partition runs about 8, and the macOS pool ran up to 20 jobs with no queue wait over a minute (27
-# Nov, 02:14 to 13:40 UTC). Every other macOS leg (main, pushes, the schedule, Intel) stays one
-# `all` job.
+# the suite 57, the seams 20), and every round let other PRs land first. Four, because the suite
+# runs 31 minutes on one runner, so a partition runs about 8, and the macOS pool ran up to 20 jobs
+# with no queue wait over a minute (27 Nov, 02:14 to 13:40 UTC). Every other macOS leg (main,
+# pushes, the schedule, Intel) stays one `all` job.
 # rust-ci.yml's plan job moves the partitions (the legs with a `partition`) to the test-partitions
 # job, which runs them from the nextest archive that test-archive builds once per OS.
 #
