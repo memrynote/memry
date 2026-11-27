@@ -47,6 +47,12 @@ import { notePlanImporter, runNotePlanImport } from '../noteplan/noteplan-import
 import type { NotePlanTaskDeps } from '../noteplan/noteplan-importer'
 import { raindropImporter, runRaindropImport } from '../raindrop/raindrop-importer'
 import type { ApplyDeps as RaindropDeps } from '../raindrop/raindrop-importer'
+import {
+  applyTodoistImport,
+  buildTodoistPreview,
+  todoistImporter
+} from '../todoist/todoist-importer'
+import type { ImportTasksDomain } from '../todoist/todoist-importer'
 import { htmlImporter } from '../html/html-importer'
 import { evernoteImporter } from '../evernote/evernote-importer'
 import { appleJournalImporter } from '../apple-journal/apple-journal-importer'
@@ -61,6 +67,7 @@ const rec = vi.hoisted(() => ({
   timeline: [] as unknown[],
   noteCounter: 0,
   taskCounter: 0,
+  projectCounter: 0,
   journals: {} as Record<string, StoredJournal>,
   /** Each saved file's result by the MD5 of its bytes, which is an Evernote resource's hash. */
   savedByMd5: new Map<string, AttachmentResult>()
@@ -164,6 +171,8 @@ const VECTORS = path.resolve(
 )
 /** Every input file's modification time, so `modified` is the same on every machine. */
 const FIXED_TIME = new Date('2026-01-14T12:00:00.000Z')
+/** Todoist's clock for relative dates: noon of 2026-01-14 in the machine's own time zone. */
+const TODOIST_NOW = new Date(2026, 0, 14, 12)
 
 interface VectorCase {
   name: string
@@ -211,6 +220,20 @@ const recordingBookmarks: RaindropDeps = {
   }
 }
 
+/** Todoist's tasks domain, recorded: ids come from counters. */
+const recordingProjects: ImportTasksDomain = {
+  async createProject(input) {
+    rec.timeline.push({ op: 'createProject', ...input })
+    return { project: { id: `project-${++rec.projectCounter}` } }
+  },
+  async createTask(input) {
+    rec.timeline.push({ op: 'createTask', ...input })
+    return { task: { id: `task-${++rec.taskCounter}` } }
+  }
+}
+
+type Preview = NonNullable<Importer['preview']>
+
 /**
  * An Electron bug the Rust importer fixes, listed in #3549's Departures: it rewrites the body
  * the TypeScript importer wrote, so the vector holds the fixed output.
@@ -236,6 +259,8 @@ const SOURCES: {
   importer: Importer
   /** Runs one case; the importer's own `run` when absent. */
   run?: (input: ImportInput, ctx: ImportContext, c: VectorCase) => Promise<unknown>
+  /** Previews one case; the importer's own `preview` when absent. */
+  preview?: Preview
   cases: VectorCase[]
   departures?: Departure[]
 }[] = [
@@ -318,6 +343,25 @@ const SOURCES: {
       { name: 'export', sources: ['export.csv'] },
       { name: 'many', sources: ['edge.csv', 'bad-header.csv', 'empty.csv', 'clean.csv'] },
       { name: 'preview', sources: ['clean.csv', 'bad-header.csv', 'empty.csv'], preview: true }
+    ]
+  },
+  {
+    source: 'todoist',
+    importer: todoistImporter,
+    // `todoistImporter.run` and its preview with the recording domain and a fixed clock.
+    run: async (input, ctx) => {
+      ctx.setPhase('importing')
+      ctx.status(IMPORT_STATUS.todoistImporting)
+      await applyTodoistImport(input.sourcePaths, recordingProjects, ctx, TODOIST_NOW)
+    },
+    preview: (input, signal) => buildTodoistPreview(input.sourcePaths, TODOIST_NOW, signal),
+    cases: [
+      { name: 'export', sources: ['Personal.csv'], preview: true },
+      {
+        name: 'many',
+        sources: ['edge.csv', 'not-todoist.csv', 'empty.csv', 'Shout.CSV'],
+        preview: true
+      }
     ]
   },
   {
@@ -412,7 +456,8 @@ async function runCase(
   importer: Importer,
   c: VectorCase,
   departures: Departure[],
-  run?: (input: ImportInput, ctx: ImportContext, c: VectorCase) => Promise<unknown>
+  run?: (input: ImportInput, ctx: ImportContext, c: VectorCase) => Promise<unknown>,
+  previewCase: Preview | undefined = importer.preview
 ): Promise<unknown> {
   const work = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-import-vectors-'))
   try {
@@ -430,10 +475,11 @@ async function runCase(
     rec.noteCounter = 0
     rec.savedByMd5.clear()
     rec.taskCounter = 0
+    rec.projectCounter = 0
     rec.journals = c.journals ?? {}
     const controller = new AbortController()
     const input: ImportInput = { sourcePaths: c.sources.map((s) => path.join(work, s)) }
-    const preview = c.preview ? await importer.preview?.(input, controller.signal) : undefined
+    const preview = c.preview ? await previewCase?.(input, controller.signal) : undefined
     const ctx = createImportContext('vector', controller.signal)
     await (run ? run(input, ctx, c) : importer.run(input, ctx))
     // A failed item names the picked file; a `done` snapshot an importer emits carries it too.
@@ -486,10 +532,13 @@ describe('importer vectors', () => {
     expect(fs.readFileSync(file, 'utf8'), STALE).toBe(text)
   })
 
-  for (const { source, importer, run, cases, departures = [] } of SOURCES) {
+  for (const { source, importer, run, preview, cases, departures = [] } of SOURCES) {
     it(`${source}/expected.json matches the TypeScript importer`, async () => {
       const recorded: unknown[] = []
-      for (const c of cases) recorded.push(await runCase(source, importer, c, departures, run))
+      for (const c of cases)
+        recorded.push(
+          await runCase(source, importer, c, departures, run, preview ?? importer.preview)
+        )
       const file = path.join(VECTORS, source, 'expected.json')
       const text = vectorText(file, { source, cases: recorded })
       expect(fs.readFileSync(file, 'utf8'), STALE).toBe(text)

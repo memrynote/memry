@@ -15,6 +15,7 @@ use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 
 use http_fakes::{FakeTransport, response};
+use memry_core::api::errors::StorageError;
 use memry_core::domain::sticky_draft::{self, StickyKind};
 use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope};
 use memry_core::protocol::http::{ClientIdentity, HttpClient};
@@ -170,6 +171,19 @@ fn ten_drafts(db: &Db) -> (Vec<String>, BTreeMap<String, String>, Vec<String>) {
     (ids, payloads, script)
 }
 
+/// The record cursor and one count, as a reader connection sees them.
+fn cursor_and_count(db: &Db, count_sql: &'static str) -> (Option<String>, i64) {
+    db.read_blocking(move |conn| {
+        let count = conn
+            .query_row(count_sql, [], |row| row.get(0))
+            .map_err(|error| StorageError::Failed {
+                what: error.to_string(),
+            })?;
+        Ok((store::read_cursor(conn, RECORD_CURSOR_SCOPE)?, count))
+    })
+    .expect("a reader connection")
+}
+
 fn expected(ids: &[String], cursor: Option<&str>) -> Vec<Heard> {
     ids.iter()
         .enumerate()
@@ -285,6 +299,15 @@ async fn a_record_that_fails_mid_page_stores_and_tells_no_record_of_the_page() {
     for reader in &readers {
         assert!(reader.heard.lock().unwrap().is_empty(), "{}", reader.name);
     }
+    // Nothing of the page is left behind: not the records written before
+    // `sticky-5`, not the cursor. The local draft `mine` is not a `sticky-` id.
+    assert_eq!(
+        cursor_and_count(
+            &db,
+            "SELECT COUNT(*) FROM sync_items WHERE item_id LIKE 'sticky-%'"
+        ),
+        (None, 0)
+    );
 
     db.call_blocking(|conn| {
         conn.execute_batch("DROP TRIGGER injected_record_failure")
@@ -302,6 +325,61 @@ async fn a_record_that_fails_mid_page_stores_and_tells_no_record_of_the_page() {
             "{}",
             reader.name
         );
+    }
+}
+
+/// A record whose domain write fails (a trigger on `sticky-5`'s draft row)
+/// is that record's failure, not the page's (`apply::record`): it is stored
+/// corrupt with no payload and no draft, told as skipped, and the page commits
+/// the other nine with its cursor.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_record_whose_domain_write_fails_is_told_skipped_and_the_page_commits() {
+    let db = scratch_db();
+    let (ids, payloads, script) = ten_drafts(&db);
+    db.call_blocking(|conn| {
+        conn.execute_batch(
+            "CREATE TRIGGER injected_domain_failure BEFORE INSERT ON sticky_drafts
+             WHEN NEW.id = 'sticky-5'
+             BEGIN SELECT RAISE(ABORT, 'injected domain failure'); END;",
+        )
+        .map_err(|error| StorageError::Failed {
+            what: error.to_string(),
+        })
+    })
+    .expect("the injected failure");
+    let (pull, readers) = pull_loop(&db, &[TYPE], payloads, script);
+
+    pull.pull_page().await.expect("the page commits");
+
+    let corrupt = db
+        .read_blocking(|conn| sync_items::load(conn, TYPE, "sticky-5"))
+        .expect("a reader connection")
+        .expect("sticky-5's row");
+    assert_eq!(corrupt.payload, None);
+    assert!(
+        corrupt
+            .corrupt_reason
+            .as_deref()
+            .is_some_and(|reason| reason.contains("injected domain failure")),
+        "{:?}",
+        corrupt.corrupt_reason
+    );
+    assert_eq!(
+        cursor_and_count(
+            &db,
+            "SELECT COUNT(*) FROM sticky_drafts WHERE id = 'sticky-5'"
+        ),
+        (Some("10".to_owned()), 0)
+    );
+    let mut heard = expected(&ids, Some("10"));
+    heard[5] = (
+        "sticky-5".to_owned(),
+        AppliedOutcome::Skipped,
+        false,
+        Some("10".to_owned()),
+    );
+    for reader in readers {
+        assert_eq!(*reader.heard.lock().unwrap(), heard, "{}", reader.name);
     }
 }
 
