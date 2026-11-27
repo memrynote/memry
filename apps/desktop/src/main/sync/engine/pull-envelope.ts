@@ -17,6 +17,7 @@ import {
   type VerifiedAttestation
 } from '../delete-attestation'
 import type { DrizzleDb } from '../item-handlers'
+import { getSyncVaultId } from '../sync-vault-id'
 import type { ItemRef, ResolveDeviceKey } from './corrupt-item-tracker'
 import {
   localTombstoneRefusal,
@@ -38,6 +39,8 @@ export interface PurgedTombstone {
   type: RecordClockRequiredItemType
   deletedAt: number
   clock: VectorClock
+  /** The marker row's `server_cursor`: §8.10 rule 2 needs it past the held row's (#5390). */
+  serverCursor: number
   /** #2408: present only when the entry names both a signer and a signature. */
   attestation?: TombstoneAttestation
 }
@@ -86,7 +89,8 @@ function admitTombstone(
       reason: 'shape'
     }
   }
-  const { id, type, deletedAt, clock, signerDeviceId, deleteAttestation } = parsed.data
+  const { id, type, deletedAt, clock, serverCursor, signerDeviceId, deleteAttestation } =
+    parsed.data
   if (!requested.has(id)) return { id, type, reason: 'not_requested' }
   if (!CLOCK_REQUIRED_TYPES.has(type)) return { id, type, reason: 'type_not_clocked' }
   if (!clock || Object.keys(clock).length === 0) return { id, type, reason: 'clockless' }
@@ -96,6 +100,7 @@ function admitTombstone(
     type: type as RecordClockRequiredItemType,
     deletedAt,
     clock,
+    serverCursor,
     ...(signerDeviceId && deleteAttestation
       ? { attestation: { signerDeviceId, signature: deleteAttestation } }
       : {})
@@ -200,7 +205,7 @@ export async function applicablePurgedTombstones(
   db: DrizzleDb,
   tombstones: readonly PurgedTombstone[],
   resolveKey: ResolveDeviceKey,
-  skip: (ref: ItemRef) => boolean = () => false
+  skip: (marker: PurgedTombstone) => boolean = () => false
 ): Promise<{
   apply: AttestedTombstone[]
   unverified: Array<PurgedTombstone & { reason: AttestationRefusal }>
@@ -214,13 +219,21 @@ export async function applicablePurgedTombstones(
     }
   }
 
+  // The vault this device's pulls are routed to; a v2 attestation names it (#5247).
+  const vaultId = keys.size > 0 ? await getSyncVaultId() : null
+  // A v1-only check would refuse a valid v2 marker for good once the cursor
+  // moves on; like a key that cannot be fetched, this holds the page.
+  if (keys.size > 0 && vaultId === null) {
+    throw new Error('Pull: the vault id is unreadable, so delete attestations cannot be checked')
+  }
   const unverified: Array<PurgedTombstone & { reason: AttestationRefusal }> = []
   const attested: AttestedTombstone[] = []
   for (const tombstone of candidates) {
     const signer = tombstone.attestation?.signerDeviceId
     const verified = verifyTombstoneAttestation(
       tombstone,
-      signer ? (keys.get(signer) ?? null) : null
+      signer ? (keys.get(signer) ?? null) : null,
+      vaultId
     )
     if (typeof verified === 'string') unverified.push({ ...tombstone, reason: verified })
     else attested.push({ ...tombstone, verified })
@@ -252,7 +265,7 @@ const logRefusals = (reasons: readonly string[]): void => {
  */
 export async function purgedTombstoneApplyItems(
   envelope: PullEnvelope,
-  skip: (ref: ItemRef) => boolean,
+  skip: (marker: PurgedTombstone) => boolean,
   deps: { db: DrizzleDb; resolveKey: ResolveDeviceKey }
 ): Promise<DecryptedPullItem[]> {
   if (envelope.refusedTombstones.length > 0) {

@@ -26,6 +26,7 @@ pub(super) fn note(f: &Fixture) -> (String, Pass) {
         echo,
         None,
         f.applier.own_files.clone(),
+        with_device_key(),
     );
     (only_note(f, "n.md"), pass)
 }

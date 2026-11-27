@@ -1,4 +1,4 @@
-// Screencast recorder + human-like driver for the memry renderer.
+// Recorder + human-like driver for the memry renderer, over a screen or screencast backend.
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 
@@ -50,13 +50,51 @@ export async function installCursor(page) {
   }, CURSOR_SVG)
 }
 
+/**
+ * The backend of a Playwright-launched page (terminal.html, a diagram, a web page in headless
+ * Chromium): its screencast, one JPEG per frame. The app is filmed by the screen backend
+ * (marketing/engine/screen-rec.mjs), since WebDriver has no screencast.
+ */
+export class CdpScreencast {
+  constructor(page) {
+    this.page = page
+    this.frames = []
+  }
+  async start(dir) {
+    this.cdp = await this.page.context().newCDPSession(this.page)
+    this.cdp.on('Page.screencastFrame', async ({ data, metadata, sessionId }) => {
+      const f = path.join(dir, `f${String(this.frames.length).padStart(6, '0')}.jpg`)
+      fs.writeFileSync(f, Buffer.from(data, 'base64'))
+      this.frames.push({ f, t: metadata.timestamp })
+      this.cdp.send('Page.screencastFrameAck', { sessionId }).catch(() => {})
+    })
+    await this.cdp.send('Page.startScreencast', {
+      format: 'jpeg',
+      quality: 95,
+      everyNthFrame: 1,
+      maxWidth: 3840,
+      maxHeight: 2160
+    })
+    // clip.mjs launches Chromium with --force-device-scale-factor=2.
+    return { ...this.page.viewportSize(), scale: 2 }
+  }
+  async stop() {
+    await this.cdp.send('Page.stopScreencast')
+    await this.cdp.detach()
+  }
+  async abort() {
+    if (this.cdp) await this.stop()
+  }
+}
+
 export class Recorder {
-  constructor(page, dir) {
+  /** `backend` is a CdpScreencast or a ScreenRecorder (screen-rec.mjs). */
+  constructor(page, dir, backend) {
     this.page = page
     this.dir = dir
-    this.frames = []
+    this.backend = backend
     this.events = []
-    this.mouse = { x: 700, y: 450 }
+    this.mouse = { x: 630, y: 405 }
     this.spans = []
   }
   /** Plays what is recorded from now until speedEnd() `rate` times faster in the film. */
@@ -75,22 +113,13 @@ export class Recorder {
   async start() {
     fs.rmSync(this.dir, { recursive: true, force: true })
     fs.mkdirSync(this.dir, { recursive: true })
-    this.cdp = await this.page.context().newCDPSession(this.page)
-    this.cdp.on('Page.screencastFrame', async ({ data, metadata, sessionId }) => {
-      const f = path.join(this.dir, `f${String(this.frames.length).padStart(6, '0')}.jpg`)
-      fs.writeFileSync(f, Buffer.from(data, 'base64'))
-      this.frames.push({ f, t: metadata.timestamp })
-      this.cdp.send('Page.screencastFrameAck', { sessionId }).catch(() => {})
-    })
-    await this.cdp.send('Page.startScreencast', {
-      format: 'jpeg',
-      quality: 95,
-      everyNthFrame: 1,
-      maxWidth: 3840,
-      maxHeight: 2160
-    })
+    this.size = await this.backend.start(this.dir)
     this.t0 = Date.now() / 1000
     await this.page.mouse.move(this.mouse.x, this.mouse.y)
+  }
+  /** Ends a failed take: the backend stops recording and keeps no file. */
+  abort() {
+    return this.backend.abort()
   }
   now() {
     return Date.now() / 1000 - this.t0
@@ -98,14 +127,26 @@ export class Recorder {
   mark(type, extra = {}) {
     this.events.push({ t: this.now(), type, x: this.mouse.x, y: this.mouse.y, ...extra })
   }
+  /**
+   * Writes take.json (size, backend, spans and, for the screen, `lead`: the seconds of raw.mkv
+   * before the recorder's clock started, which encode.mjs cuts), events.json and, for the
+   * screencast, frames.json. Every time is film time from the recorder's start.
+   */
   async stop() {
-    await this.cdp.send('Page.stopScreencast')
-    await this.cdp.detach()
+    const firstFrame = await this.backend.stop()
     const t0 = this.t0
-    fs.writeFileSync(
-      path.join(this.dir, 'frames.json'),
-      JSON.stringify(this.frames.map((x) => ({ ...x, t: this.remap(x.t - t0) })))
-    )
+    const take = { ...this.size, spans: this.spans }
+    if (this.backend instanceof CdpScreencast) {
+      take.backend = 'cdp'
+      fs.writeFileSync(
+        path.join(this.dir, 'frames.json'),
+        JSON.stringify(this.backend.frames.map((x) => ({ ...x, t: this.remap(x.t - t0) })))
+      )
+    } else {
+      take.backend = 'screen'
+      take.lead = t0 - firstFrame
+    }
+    fs.writeFileSync(path.join(this.dir, 'take.json'), JSON.stringify(take, null, 1))
     fs.writeFileSync(
       path.join(this.dir, 'events.json'),
       JSON.stringify(
@@ -142,9 +183,8 @@ export class Recorder {
     await this.glide(c.x + dx, c.y + dy)
     await sleep(pause)
     this.mark('click')
-    await this.page.mouse.down()
-    await sleep(70)
-    await this.page.mouse.up()
+    // One press and release: over WebDriver a down and an up sent apart make no click.
+    await this.page.mouse.click(c.x + dx, c.y + dy)
   }
   async type(text, { cps = 14 } = {}) {
     this.mark('type-start', { text })

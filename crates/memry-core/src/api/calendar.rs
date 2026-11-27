@@ -17,7 +17,8 @@ use crate::api::calendar_records::{
 };
 use crate::api::errors::{AuthError, StorageError};
 use crate::crypto::keys;
-use crate::domain::calendar_items::projection::{self, RangeInput};
+use crate::domain::calendar_items::event_search::{self, EventSearchHit};
+use crate::domain::calendar_items::projection::{self, ProjectionItem, RangeInput};
 use crate::domain::calendar_items::reads;
 use crate::domain::calendar_items::selection::{self, SelectionRefusal};
 use crate::domain::calendar_items::write::{self, EventPatch, NewEvent, PromoteRefusal};
@@ -80,6 +81,7 @@ fn range_input(request: CalendarRangeRequest, zone: &CalendarZone) -> RangeInput
         start_at: request.start_at,
         end_at: request.end_at,
         include_unselected_sources: request.include_unselected_sources,
+        include_completed_tasks: false,
         include_external: true,
         external_providers: None,
         enabled_property_names: request.enabled_property_names,
@@ -91,6 +93,60 @@ fn range_input(request: CalendarRangeRequest, zone: &CalendarZone) -> RangeInput
 fn invalid(what: &str) -> StorageError {
     StorageError::Invalid {
         what: what.to_owned(),
+    }
+}
+
+/// Desktop's calendar handlers, in the shapes they answer with. Not on the FFI surface.
+impl VaultCalendar {
+    /// `GET_RANGE` with every input desktop's handler takes (completed tasks, the external
+    /// provider filter), in the projection's own shape (`task` included).
+    pub fn project(
+        &self,
+        input: RangeInput,
+        zone: CalendarZone,
+    ) -> Result<Vec<ProjectionItem>, StorageError> {
+        self.db
+            .read_blocking(move |conn| projection::range(conn, &zone, &input))
+    }
+
+    /// `SEARCH_EVENTS`: events whose title contains `query`, nearest to `now` (an ISO
+    /// instant) first, at most `limit` ([`event_search::search`]).
+    pub fn search_titles(
+        &self,
+        query: String,
+        limit: usize,
+        now: String,
+        include_external: bool,
+    ) -> Result<Vec<EventSearchHit>, StorageError> {
+        self.db.read_blocking(move |conn| {
+            event_search::search(conn, &query, limit, &now, include_external)
+        })
+    }
+
+    /// `UPDATE_EVENT`, with the fields whose clocks ticked (desktop's `itemCount`).
+    pub fn update_event_fields(
+        &self,
+        id: String,
+        changes: CalendarEventChanges,
+    ) -> Result<(CalendarEventRecord, Vec<String>), StorageError> {
+        self.write(move |conn, device, now| {
+            let patch = EventPatch {
+                title: changes.title,
+                description: changes.description.into_patch(),
+                location: changes.location.into_patch(),
+                start_at: changes.start_at,
+                end_at: changes.end_at.into_patch(),
+                timezone: changes.timezone,
+                is_all_day: changes.is_all_day,
+                target_calendar_id: changes.target_calendar_id.into_patch(),
+                color: changes.color.into_patch(),
+                ..EventPatch::default()
+            };
+            let changed = write::update_event(conn, &id, &patch, device, now)?;
+            let record = reads::event(conn, &id)?
+                .ok_or_else(|| invalid("the event could not be read back"))?;
+            Ok((record, changed))
+        })
     }
 }
 
@@ -193,21 +249,8 @@ impl VaultCalendar {
         id: String,
         changes: CalendarEventChanges,
     ) -> Result<CalendarEventRecord, StorageError> {
-        self.write(move |conn, device, now| {
-            let patch = EventPatch {
-                title: changes.title,
-                description: changes.description.into_patch(),
-                location: changes.location.into_patch(),
-                start_at: changes.start_at,
-                end_at: changes.end_at.into_patch(),
-                timezone: changes.timezone,
-                is_all_day: changes.is_all_day,
-                target_calendar_id: changes.target_calendar_id.into_patch(),
-                color: changes.color.into_patch(),
-            };
-            write::update_event(conn, &id, &patch, device, now)?;
-            reads::event(conn, &id)?.ok_or_else(|| invalid("the event could not be read back"))
-        })
+        self.update_event_fields(id, changes)
+            .map(|(record, _)| record)
     }
 
     /// `DELETE_EVENT`.

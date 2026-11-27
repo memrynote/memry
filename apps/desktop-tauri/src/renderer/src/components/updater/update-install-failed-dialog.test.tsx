@@ -136,7 +136,9 @@ describe('UpdateInstallFailedDialog', () => {
     render(<UpdateInstallFailedDialog />)
     await userEvent.click(screen.getByRole('button', { name: /download v1\.2\.7 manually/i }))
 
-    expect(open).toHaveBeenCalledWith('https://memrynote.com/download/desktop')
+    expect(open).toHaveBeenCalledWith(
+      'https://memrynote.com/download/desktop?utm_source=app&utm_medium=desktop&utm_campaign=update_failed'
+    )
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     open.mockRestore()
   })

@@ -14,6 +14,7 @@ import type { i18n as I18nInstance } from 'i18next'
 import type { ReactElement, ReactNode } from 'react'
 import { createRendererI18n } from '@memry/i18n/renderer'
 import { ProjectCaptureInput } from './project-capture-input'
+import { tasksService } from '@/services/tasks-service'
 import type { Project } from '@/data/tasks-data'
 
 Element.prototype.scrollIntoView = vi.fn()
@@ -227,6 +228,23 @@ describe('ProjectCaptureInput — file import', () => {
     await waitFor(() =>
       expect(mocks.toastError).toHaveBeenCalledWith('Could not link /tmp/broken.pdf')
     )
+  })
+
+  // Step 32h2 ports the project import; until then a pick would grant a file nothing reads.
+  it('fails before the picker while the project import is not ported', async () => {
+    const user = userEvent.setup()
+    const port = tasksService.importFilesToProject
+    Reflect.deleteProperty(tasksService, 'importFilesToProject')
+    try {
+      setup()
+
+      await user.click(screen.getByRole('button', { name: 'Attach files' }))
+
+      await waitFor(() => expect(mocks.toastError).toHaveBeenCalledTimes(1))
+      expect(mocks.showImportDialog).not.toHaveBeenCalled()
+    } finally {
+      Object.assign(tasksService, { importFilesToProject: port })
+    }
   })
 
   it('opens the picker when importSignal changes, but not on first render', async () => {

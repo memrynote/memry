@@ -14,10 +14,13 @@ import { DeadLetterError } from '@memry/sync-client/retry'
 import { enqueueUpload } from './attachment-outbox'
 import {
   MISSING_PROBE_LIMIT,
+  claimRequestedDownload,
   clearAttachmentDownloadFailure,
+  listRedrivableDownloadFailures,
   markDownloadFailed,
   markDownloadRequested,
   markDownloadSucceeded,
+  markDroppedDownloadOwed,
   pruneUnresolvableReferences,
   releaseDownloadAttempt,
   resetAttachmentDownloadSession,
@@ -158,10 +161,56 @@ describe('attachment download state', () => {
   })
 
   it('releases an undelivered request so the next pull can ask again', () => {
-    markDownloadRequested('note-1', 'att-x')
+    const claim = markDownloadRequested('note-1', 'att-x')
     expect(shouldAttemptDownload(db, 'note-1', 'att-x')).toBe(false)
-    releaseDownloadAttempt('note-1', 'att-x')
+    releaseDownloadAttempt(claim!)
     expect(shouldAttemptDownload(db, 'note-1', 'att-x')).toBe(true)
+  })
+
+  // #5616: a pull's listener settling late must not free a download an open
+  // took in the meantime, or a second request fans out and counts its 404 twice.
+  it('lets only the holder of a claim release it', () => {
+    const pull = markDownloadRequested('note-1', 'att-x')!
+    releaseDownloadAttempt(pull)
+    const open = claimRequestedDownload(db, 'note-1', 'att-x')!
+    expect(open).not.toBeNull()
+
+    releaseDownloadAttempt(pull)
+
+    expect(shouldAttemptDownload(db, 'note-1', 'att-x')).toBe(false)
+    expect(markDownloadRequested('note-1', 'att-x')).toBeNull()
+    releaseDownloadAttempt(open)
+    expect(shouldAttemptDownload(db, 'note-1', 'att-x')).toBe(true)
+  })
+
+  // REVIEW-5722: a second restart clears the open's download without owing it,
+  // so the pull's dropped request owes it; the open landing clears the row.
+  it('owes a dropped pull request an open holds across a second restart', () => {
+    markDownloadRequested('note-1', 'att-x')
+    resetAttachmentDownloadSession()
+    const open = claimRequestedDownload(db, 'note-1', 'att-x')!
+
+    markDroppedDownloadOwed(db, 'note-1', 'att-x')
+    resetAttachmentDownloadSession()
+    releaseDownloadAttempt(open)
+
+    // The re-driver walks these rows; nothing else asks for it again.
+    expect(listRedrivableDownloadFailures(db, Date.now(), 10)).toEqual([
+      expect.objectContaining({ ownerId: 'note-1', attachmentId: 'att-x' })
+    ])
+    markDownloadRequested('note-1', 'att-x')
+    markDownloadSucceeded(db, 'note-1', 'att-x')
+    expect(sqlite.prepare('SELECT * FROM attachment_download_failures').all()).toEqual([])
+  })
+
+  it('owes nothing for a dropped pull request another pull request holds', () => {
+    markDownloadRequested('note-1', 'att-x')
+    resetAttachmentDownloadSession()
+    markDownloadRequested('note-1', 'att-x')
+
+    markDroppedDownloadOwed(db, 'note-1', 'att-x')
+
+    expect(sqlite.prepare('SELECT * FROM attachment_download_failures').all()).toEqual([])
   })
 
   it('lets a locally uploaded attachment out of a recorded verdict', () => {

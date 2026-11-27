@@ -11,18 +11,13 @@
 //! target to its date.
 
 use rusqlite::Connection;
-use serde_json::json;
 
 use crate::api::errors::StorageError;
 use crate::domain::journal::valid_date;
-use crate::sync::outbox::{self, Durable};
+use crate::sync::outbox::Durable;
 
 use super::queries::{Reminder, for_target};
-use super::{
-    ITEM_TYPE, MAX_NOTE_LEN, ReminderUpdate, STATUS_PENDING, future_instant, invalid, new_id,
-    non_empty, update,
-};
-use crate::domain::notes::{insert_local, iso, next_clock, object};
+use super::{NewReminder, NewTarget, ReminderUpdate, create_reminder, update};
 
 /// `targetType` of a reminder on a journal day.
 pub const TARGET_JOURNAL: &str = "journal";
@@ -41,53 +36,22 @@ pub struct NewJournalReminder<'a> {
     pub note: Option<&'a str>,
 }
 
-/// Creates a reminder on a journal day and returns its id.
-///
-/// The payload has the same shape as [`super::create_for_task`]'s: every
-/// nullable column present, `title` and the highlight and anchor columns
-/// explicit `null`, `remindAt` in `toISOString` form.
+/// Creates a reminder on a journal day and returns its id
+/// ([`super::create_reminder`]).
 pub fn create_for_journal(
     conn: &Connection,
     reminder: &NewJournalReminder<'_>,
     device_id: &str,
     now_ms: i64,
 ) -> Result<Durable<String>, StorageError> {
-    let date = valid_date(reminder.date)?;
-    let remind_at = future_instant(reminder.remind_at, now_ms)?;
-    let note = non_empty(reminder.note, "note", MAX_NOTE_LEN)?;
-    let id = match reminder.id {
-        Some("") => return Err(invalid("a reminder id cannot be empty".to_owned())),
-        Some(id) => id.to_owned(),
-        None => new_id(),
+    let reminder = NewReminder {
+        id: reminder.id,
+        target: NewTarget::Journal(reminder.date),
+        remind_at: reminder.remind_at,
+        title: None,
+        note: reminder.note,
     };
-
-    outbox::commit(
-        conn,
-        &outbox::Change::upsert(ITEM_TYPE, &id),
-        now_ms,
-        |tx| {
-            let at = iso(now_ms)?;
-            let payload = object(json!({
-                "targetType": TARGET_JOURNAL,
-                "targetId": date,
-                "remindAt": remind_at,
-                "anchorId": null,
-                "highlightText": null,
-                "highlightStart": null,
-                "highlightEnd": null,
-                "title": null,
-                "note": note,
-                "status": STATUS_PENDING,
-                "dismissedAt": null,
-                "snoozedUntil": null,
-                "clock": next_clock(&Default::default(), device_id)?,
-                "createdAt": at,
-                "modifiedAt": at,
-            }));
-            insert_local(tx, ITEM_TYPE, &id, payload, now_ms)?;
-            Ok(id.clone())
-        },
-    )
+    create_reminder(conn, &reminder, device_id, now_ms)
 }
 
 /// Sets the day's reminder and returns the id written, after it committed.

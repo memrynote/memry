@@ -14,6 +14,7 @@ import type * as WorkerThreads from 'worker_threads'
 import type { MessagePort } from 'worker_threads'
 import * as Y from 'yjs'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
+import { writeCriticMarkupMarksToYDoc } from '@memry/shared'
 import {
   readMarkdownSourceRecordFromYDoc,
   writeMarkdownSourceToYDoc
@@ -220,6 +221,46 @@ describe('converter worker bridge', () => {
 
     expect(await convert(doc, NOTE_PATH, async () => AUTHOR_FILE)).toEqual(expected)
     expect(spawn).not.toHaveBeenCalled()
+  })
+
+  // VERIFY-5703R6 (2): the write-back records the state it converts (`SerializedDoc`).
+  it('converts on main the state it was called with when the worker dies on the job', async () => {
+    const doc = await seededDoc()
+    const expected = await convertOnMain(doc, async () => AUTHOR_FILE)
+    const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    mocks.spawn = (thread) => {
+      thread.postMessage = (message: unknown) => {
+        if ((message as { type: string }).type !== 'job') return
+        // A keystroke lands after the job was sent, then the worker dies.
+        fragment.delete(0, fragment.length)
+        thread.emit('exit', 1)
+      }
+      queueMicrotask(() => thread.emit('message', { type: 'ready' }))
+    }
+    const { readyWritebackConverter } = await import('./converter-worker-bridge')
+    const convert = await readyWritebackConverter()
+
+    expect(await convert(doc, NOTE_PATH, async () => AUTHOR_FILE)).toEqual(expected)
+  })
+
+  it('converts on main the state it was called with when a review mark reads the file first', async () => {
+    const doc = await seededDoc()
+    const start = AUTHOR_FILE.indexOf('Stir')
+    writeCriticMarkupMarksToYDoc(doc, [
+      { id: 'm1', kind: 'comment', visibleText: 'Stir', start, end: start + 4, body: 'Why?' }
+    ])
+    const expected = await convertOnMain(doc, async () => AUTHOR_FILE)
+    mocks.spawn = vi.fn()
+    const { readyWritebackConverter } = await import('./converter-worker-bridge')
+    const convert = await readyWritebackConverter({ mainUnlessReady: true })
+
+    const conversion = await convert(doc, NOTE_PATH, async () => {
+      const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+      fragment.delete(0, fragment.length)
+      return AUTHOR_FILE
+    })
+
+    expect(conversion).toEqual(expected)
   })
 
   it('does not seed on main over a note that filled before the worker died', async () => {

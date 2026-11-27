@@ -6,7 +6,7 @@ A dated note per day. memrynote creates one on demand and remembers where you le
 
 ## Opening Today
 
-Open Journal from the sidebar, or use <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>E</kbd> if you've remapped it that way. By default memrynote opens **today's** entry.
+Open Journal from the sidebar, or press <kbd>⌘</kbd>+<kbd>⌥</kbd>+<kbd>T</kbd> (<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>T</kbd> on Windows, <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>J</kbd> on Linux). A new Journal tab opens on **today's** entry. The sidebar brings back the Journal tab on the day you left it, while the shortcut always moves it to today's entry, even from a month or year view.
 
 If today's entry doesn't exist yet, it's created on first focus, seeded by your [default journal template](/user-guide/journal/templates-settings).
 
@@ -88,6 +88,6 @@ Nothing. memrynote doesn't pad missing days with empty entries. Calendar heatmap
 
 Journal entries sync as Yjs CRDTs (same as notes). Two devices writing on the same date during a flight merge cleanly when they reconnect.
 
-A day's tags and properties changed on another device update the file on disk without touching the entry's text. To write in your journal on the phone, see [Journal on iPhone](/user-guide/journal/on-iphone).
+A day's tags and properties changed on another device update the file on disk without touching the entry's text. Edits made on several devices while offline all survive: tags merge as a set, so one device adding a tag and another removing a different one keeps both changes, and properties merge one key at a time. When two devices change the same tag or property, every device ends on the same one of the two edits, and a tag you removed is not brought back by a device that had not seen the removal. A device still on an older version sends its tags and properties as a whole, so its change can override edits it has not seen yet. To write in your journal on the phone, see [Journal on iPhone](/user-guide/journal/on-iphone).
 
 A day has one entry on every device. A day file added to the journal folder outside memrynote (another editor, Dropbox, iCloud) joins that day's entry. Older versions gave such a file a separate ID, and that copy failed to sync to other devices. When one of those copies arrives, memrynote merges its text into the day's entry, moves its task links there, and removes the copy. If two devices merge the same copy at the same moment, or a device that ran an older version still held it, its text can appear twice in the day; delete the extra paragraph. See [CRDT & Notes Sync](/architecture/crdt) for the underlying behavior.

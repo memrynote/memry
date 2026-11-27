@@ -17,6 +17,7 @@
       "filterAll": "Všechny soubory"
     },
     "exportCancelled": "Export zrušen",
+    "exportVaultChanged": "Během výběru umístění pro uložení byl otevřen jiný trezor. Exportujte poznámku znovu.",
     "dataDbRecovery": {
       "title": "Oprava databáze trezoru",
       "message": "Databáze aplikace Memry pro tento trezor je poškozená.",

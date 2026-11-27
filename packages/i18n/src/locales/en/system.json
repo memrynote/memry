@@ -17,6 +17,7 @@
       "filterAll": "All Files"
     },
     "exportCancelled": "Export cancelled",
+    "exportVaultChanged": "Another vault was opened while you chose where to save. Export the note again.",
     "dataDbRecovery": {
       "title": "Repair vault database",
       "message": "Memry's database for this vault is damaged.",

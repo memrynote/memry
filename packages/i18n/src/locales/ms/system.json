@@ -17,6 +17,7 @@
       "filterAll": "Semua fail"
     },
     "exportCancelled": "Eksport dibatalkan",
+    "exportVaultChanged": "Bilik kebal lain telah dibuka semasa anda memilih tempat untuk menyimpan. Eksport nota sekali lagi.",
     "dataDbRecovery": {
       "title": "Baiki pangkalan data peti besi",
       "message": "Pangkalan data Memry untuk peti besi ini rosak.",

@@ -17,6 +17,7 @@
       "filterAll": "Tất cả tệp"
     },
     "exportCancelled": "Đã hủy xuất",
+    "exportVaultChanged": "Một kho khác đã được mở trong lúc bạn chọn nơi lưu. Hãy xuất lại ghi chú.",
     "dataDbRecovery": {
       "title": "Sửa chữa cơ sở dữ liệu của kho",
       "message": "Cơ sở dữ liệu của Memry cho kho này đã bị hỏng.",

@@ -45,6 +45,12 @@
     }
   },
   "page": {
+    "noteFiles": {
+      "downloading": "Preuzimanje datoteka ove bilješke…",
+      "failed": "Datoteke ove bilješke nije moguće preuzeti: {error}",
+      "failedFallback": "preuzimanje nije uspjelo",
+      "retry": "Pokušaj ponovno"
+    },
     "empty": {
       "title": "Nije odabrana nijedna bilješka",
       "body": "Odaberite bilješku na bočnoj traci da biste je pogledali"
@@ -196,6 +202,10 @@
   "editor": {
     "bodySyncPending": "Sinkronizacija – sadržaj ove bilješke možda još stiže",
     "databaseReadOnly": "Samo za čitanje. Ovaj uređaj ne može spremati promjene.",
+    "remoteBodyStuck": "Čeka se sinkronizacija — samo za čitanje dok ne stigne sinkronizirani sadržaj bilješke",
+    "remoteBodyOffline": "Izvan mreže — samo za čitanje dok se bilješka ne sinkronizira",
+    "remoteBodySignedOut": "Odjavljeni ste — samo za čitanje dok se ne prijavite i bilješka se ne sinkronizira",
+    "remoteBodyVaultLocked": "Ključ šifriranja trezora ne može se pročitati — samo za čitanje dok se bilješka ne sinkronizira",
     "taskRemoval": {
       "title": "{count, plural, =1 {Zadatak uklonjen iz ove bilješke} one {# zadatak uklonjen iz ove bilješke} few {# zadatka uklonjena iz ove bilješke} other {# zadataka uklonjeno iz ove bilješke}}",
       "description": "{count, plural, =1 {Zadržati ga u Zadacima ili ga izbrisati posvuda?} one {Zadržati ih u Zadacima ili ih izbrisati posvuda?} few {Zadržati ih u Zadacima ili ih izbrisati posvuda?} other {Zadržati ih u Zadacima ili ih izbrisati posvuda?}}",

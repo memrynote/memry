@@ -15,7 +15,17 @@ import type {
   TaskSettingsDTO,
   VoiceTranscriptionSettings
 } from '../../../preload/index.d'
-import type { GlobalCaptureResult } from '@memry/contracts/settings-schemas'
+import type {
+  CalendarGoogleSettings,
+  CalendarProviderSettings,
+  GlobalCaptureResult,
+  StickyShortcutResult
+} from '@memry/contracts/settings-schemas'
+import {
+  parseGraphViewsSettings,
+  type GraphViewsSettings,
+  type GraphViewsSettingsPatch
+} from '@memry/contracts/graph-api'
 import type { CalloutTypeDefinition } from '@memry/editor-schema/callout-types'
 import {
   commands,
@@ -27,6 +37,7 @@ import {
 } from '../../../generated/bindings'
 import { sanitizeCalloutTypeDefinitions } from '@memry/editor-schema/callout-types'
 import { createLogger } from '../lib/logger'
+import { onSyncedRecords } from './sync-service'
 import { subscribeToEvent } from './tauri-event'
 
 const log = createLogger('SettingsService')
@@ -129,6 +140,7 @@ const keyboard = group<KeyboardShortcutsDTO>('keyboard')
 const sync = group<SyncSettingsDTO>('sync')
 const backup = group<BackupSettingsDTO>('backup')
 const calendar = group<Record<string, unknown>>('calendar')
+const calendarGoogle = group<CalendarGoogleSettings>('calendar.google')
 const features = group<Record<string, unknown>>('features')
 const inbox = group<Record<string, unknown>>('inbox')
 const sticky = group<Record<string, unknown>>('sticky')
@@ -140,9 +152,8 @@ const voice = group<VoiceTranscriptionSettings>('voiceTranscription')
 
 /**
  * The `window.api.settings` functions Step 09 owns: every group and flat key core stores. The
- * voice model, readiness, OpenAI key and microphone pane are Step 24's (#3541). The rest of the
- * Electron surface (calendar providers, the terminal command) belongs to the steps that port
- * those features.
+ * voice model, readiness, OpenAI key and microphone pane are Step 24's (#3541); the calendar
+ * provider groups are Step 29's (#3546). The terminal command belongs to the step that ports it.
  */
 export const settingsService = {
   getGeneralSettings: general.get,
@@ -167,6 +178,32 @@ export const settingsService = {
   setBackupSettings: backup.set,
   getCalendarSettings: calendar.get,
   setCalendarSettings: calendar.set,
+  getCalendarGoogleSettings: calendarGoogle.get,
+  setCalendarGoogleSettings: calendarGoogle.set,
+  getCalendarProviderSettings: async ({
+    provider
+  }: {
+    provider: string
+  }): Promise<CalendarProviderSettings | null> => {
+    const value = await commands.settingsGetCalendarProvider(provider)
+    return value === null ? null : asShape<CalendarProviderSettings>(value)
+  },
+  setCalendarProviderSettings: async ({
+    provider,
+    updates
+  }: {
+    provider: string
+    updates: Record<string, unknown>
+  }): Promise<Result> => {
+    try {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the updates are a JSON object built by the settings UI
+      await commands.settingsSetCalendarProvider(provider, updates as Value)
+      return { success: true }
+    } catch (error) {
+      log.warn(`write of the ${provider} calendar settings failed`, error)
+      return failure(error)
+    }
+  },
   getFeaturesSettings: features.get,
   setFeaturesSettings: features.set,
   getInboxSettings: inbox.get,
@@ -185,6 +222,11 @@ export const settingsService = {
     commands.shortcutRegisterGlobalCapture(),
   setGlobalCapture: (binding: ShortcutBindingDTO | null): Promise<GlobalCaptureResult> =>
     commands.shortcutSetGlobalCapture(binding),
+  registerStickyShortcut: (): Promise<StickyShortcutResult> => commands.shortcutRegisterSticky(),
+  setStickyShortcut: (binding: ShortcutBindingDTO | null): Promise<StickyShortcutResult> =>
+    commands.shortcutSetSticky(binding),
+  sendTestInboxReviewNotification: (): Promise<{ supported: boolean }> =>
+    commands.settingsSendTestInboxReviewNotification(),
   getAISettings: (): Promise<AISettings> => commands.settingsGetAi(),
   setAISettings: async (patch: Partial<AISettings>): Promise<Result> => {
     try {
@@ -262,15 +304,15 @@ export const settingsService = {
     await commands.settingsSetLocal('tagSearches', { searches } as Value)
     return searches
   },
-  getGraphViews: async (): Promise<unknown> =>
-    (await commands.settingsGetLocal('graphViews')) ?? {},
-  setGraphViews: async (patch: unknown): Promise<unknown> => {
-    const current = asShape<Record<string, Value>>(
-      (await commands.settingsGetLocal('graphViews')) ?? {}
-    )
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the patch is JSON built by the graph view UI
-    const next = { ...current, ...(patch as Record<string, Value>) }
-    await commands.settingsSetLocal('graphViews', next)
+  // Electron's `readGraphViews` and `SET_GRAPH_VIEWS`: a vault with no saved views reads as
+  // none, and the merged blob is parsed before it is written.
+  getGraphViews: async (): Promise<GraphViewsSettings> =>
+    parseGraphViewsSettings(await commands.settingsGetLocal('graphViews')),
+  setGraphViews: async (patch: GraphViewsSettingsPatch): Promise<GraphViewsSettings> => {
+    const current = parseGraphViewsSettings(await commands.settingsGetLocal('graphViews'))
+    const next = parseGraphViewsSettings({ ...current, ...patch })
+    // A spread, because an interface is not assignable to `Value` and an object type is.
+    await commands.settingsSetLocal('graphViews', { ...next })
     return next
   }
 }
@@ -282,45 +324,102 @@ export interface SettingsChange {
 }
 
 /**
+ * The groups announced after a pulled settings record: the ones Electron's settings handler
+ * broadcast (`propagateMergedSettings`), and `keyboard`. Electron applied no synced rebinds;
+ * core writes them here, and `use-keyboard-settings` and `shortcut-bindings` apply a peer's
+ * rebinds live from this announcement. `tasks`, `notes`, `sync` and `readwise` stay silent, as
+ * in Electron.
+ */
+const PULLED_GROUPS = ['general', 'editor', 'calendar', 'keyboard', 'inbox', 'journal', 'sidebar']
+
+/**
  * Subscribes to settings writes. Rust announces `{ key, fields }` (names only); each listener
  * gets the Electron shape back by reading the written fields, with `sidebar` fields and the
- * callout types addressed as `group.field` the way those listeners filter.
+ * callout types addressed as `group.field` the way those listeners filter. A pulled settings
+ * record names no group, so `PULLED_GROUPS` are read and announced whole, once per pulled page
+ * for all listeners together (`announcePulledGroups`).
  */
 export function onSettingsChanged(callback: (change: SettingsChange) => void): () => void {
-  return subscribeToEvent(events.settingsChangedEvent, (event) => {
-    void announce(event.key, event.fields, callback).catch((error: unknown) =>
-      log.warn(`settings change for ${event.key} could not be read`, error)
-    )
+  const tell = async (key: string, fields: string[]): Promise<void> => {
+    try {
+      for (const change of await changesFor(key, fields)) callback(change)
+    } catch (error) {
+      log.warn(`settings change for ${key} could not be read`, error)
+    }
+  }
+  const stopWrites = subscribeToEvent(events.settingsChangedEvent, ({ key, fields }) => {
+    void tell(key, fields)
   })
+  const stopPulled = joinPulledPages(callback)
+  return () => {
+    stopWrites()
+    stopPulled()
+  }
 }
 
-async function announce(
-  key: string,
-  fields: string[],
-  callback: (change: SettingsChange) => void
-): Promise<void> {
+const pulledListeners = new Set<(change: SettingsChange) => void>()
+let stopPulledPages: (() => void) | null = null
+
+/**
+ * Every `onSettingsChanged` caller shares one subscription to pulled settings pages, started by
+ * the first and stopped with the last. About 100 listeners would otherwise each read every group
+ * for each page, and Electron sent one broadcast.
+ */
+function joinPulledPages(callback: (change: SettingsChange) => void): () => void {
+  const listener = (change: SettingsChange): void => {
+    try {
+      callback(change)
+    } catch (error) {
+      log.warn('a settings listener threw', error)
+    }
+  }
+  pulledListeners.add(listener)
+  stopPulledPages ??= onSyncedRecords(['settings'], announcePulledGroups)
+  return () => {
+    pulledListeners.delete(listener)
+    if (pulledListeners.size > 0) return
+    stopPulledPages?.()
+    stopPulledPages = null
+  }
+}
+
+/** Reads each pulled group once and hands the result to every listener subscribed by then. */
+function announcePulledGroups(): void {
+  for (const name of PULLED_GROUPS) {
+    void changesFor(name, [])
+      .then((changes) => {
+        for (const listener of pulledListeners) {
+          for (const change of changes) listener(change)
+        }
+      })
+      .catch((error: unknown) => log.warn(`settings change for ${name} could not be read`, error))
+  }
+}
+
+async function changesFor(key: string, fields: string[]): Promise<SettingsChange[]> {
   // The AI switches are flat local keys, not a group (`settings_set_ai`).
   const current: Record<string, Value> =
     key === 'ai' ? await commands.settingsGetAi() : await readObject(key)
+  // No field names: the whole group changed.
+  const whole = fields.length === 0
+  const names = whole ? Object.keys(current) : fields
   if (key === 'sidebar') {
-    for (const field of fields) callback({ key: `sidebar.${field}`, value: current[field] ?? null })
-    return
+    return names.map((field) => ({ key: `sidebar.${field}`, value: current[field] ?? null }))
   }
-  const patchFields = fields.filter((field) => field in current)
-  if (fields.includes('calloutTypes')) {
-    callback({
-      key: 'editor.calloutTypes',
-      value: await readCalloutTypeList()
+  const changes: SettingsChange[] = []
+  // Core keeps `calloutTypes` out of the editor group read, so a whole editor announce reads them
+  // itself, as Electron emitted them for every pulled map (`settings-handler.ts:196-199`).
+  if (whole ? key === 'editor' : fields.includes('calloutTypes')) {
+    changes.push({ key: 'editor.calloutTypes', value: await readCalloutTypeList() })
+  }
+  const patchFields = names.filter((field) => field in current)
+  if (whole || patchFields.length > 0) {
+    changes.push({
+      key,
+      value: Object.fromEntries(patchFields.map((field) => [field, current[field]]))
     })
   }
-  if (fields.length > 0 && patchFields.length === 0) return
-  const patch = Object.fromEntries(
-    (fields.length === 0 ? Object.keys(current) : patchFields).map((field) => [
-      field,
-      current[field]
-    ])
-  )
-  callback({ key, value: patch })
+  return changes
 }
 
 /** `settings:openSection`: the menu and deep links ask for a settings section. */

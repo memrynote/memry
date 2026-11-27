@@ -18,8 +18,8 @@ import Testing
 // **No network call is made by this file, and every test asserts it.** The
 // stub `URLProtocol` records every request it is handed and the suite expects
 // zero. That is not incidental — it is the assertion for the entry gate, which
-// exists precisely so that a shell can decide whether to show a setting-up
-// screen without going near the network.
+// exists precisely so that a shell can decide whether to start a first sync
+// without going near the network.
 //
 // The two real-core failures driven here are the two that need no request at
 // all, which is what makes them hermetic:
@@ -107,7 +107,7 @@ final class VaultFillWiringTests {
 
         // The production mint, over a real `AuthSession`.
         let filler = try await CoreVaultFillerMint(session: session(), executor: executor)
-            .filler(for: vault)
+            .filler(for: vault, named: "Test vault")
         // A working fake would answer `false` too, which is exactly why the
         // type is asserted as well.
         #expect(filler is CoreVaultFiller)
@@ -132,7 +132,7 @@ final class VaultFillWiringTests {
         NoRequestURLProtocol.reset()
         let vault = try await opener.open(vaultId)
         let filler = try await CoreVaultFillerMint(session: session(), executor: executor)
-            .filler(for: vault)
+            .filler(for: vault, named: "Test vault")
 
         let fill = VaultFillViewModel(filler: filler)
         await fill.begin()
@@ -164,7 +164,7 @@ final class VaultFillWiringTests {
         NoRequestURLProtocol.reset()
         let vault = try await opener.open(vaultId)
         let filler = try await CoreVaultFillerMint(session: session(), executor: executor)
-            .filler(for: vault)
+            .filler(for: vault, named: "Test vault")
 
         await #expect(throws: SyncError.self) {
             _ = try await filler.fetchNoteBody(noteId: "no-such-note")

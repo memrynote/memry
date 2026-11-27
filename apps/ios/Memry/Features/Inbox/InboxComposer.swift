@@ -169,7 +169,7 @@ struct InboxComposer: View {
                     // The link is already in the inbox: drop the draft.
                     text = ""
                     close()
-                    router.path.append(.item(item.id))
+                    router.open(item.id)
                 }
                 .accessibilityIdentifier("inbox.composer.openDuplicate")
                 Button(InboxCopy.captureAnyway) { Task { await send(force: true) } }

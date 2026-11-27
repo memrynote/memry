@@ -1,0 +1,107 @@
+{
+  "name": "registry-remove",
+  "steps": [
+    {
+      "argv": [
+        "vault",
+        "remove"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "Usage: memrynote vault remove <vault-name-or-path> --yes\n"
+    },
+    {
+      "argv": [
+        "vault",
+        "remove",
+        "Alpha"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "Pass --yes to remove the vault from the list (its files are kept)\n"
+    },
+    {
+      "argv": [
+        "vault",
+        "remove",
+        "nope",
+        "--yes"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "Unknown vault: nope\n"
+    },
+    {
+      "argv": [
+        "--json",
+        "vault",
+        "remove",
+        "Alpha",
+        "--yes"
+      ],
+      "exit": 0,
+      "stdout": "{\"removed\":{\"path\":\"<tmp>/a\",\"name\":\"Alpha\",\"isDefault\":true,\"lastOpened\":\"<iso>\"}}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "vault",
+        "remove",
+        "{tmp}/c",
+        "--yes"
+      ],
+      "exit": 0,
+      "stdout": "{\n  \"removed\": {\n    \"path\": \"<tmp>/c\",\n    \"name\": \"Gamma\",\n    \"isDefault\": false,\n    \"lastOpened\": \"<iso>\"\n  }\n}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "--json",
+        "vault",
+        "list"
+      ],
+      "exit": 0,
+      "stdout": "[{\"path\":\"<tmp>/b\",\"name\":\"Beta\",\"isDefault\":false,\"lastOpened\":\"<iso>\"}]\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "vault",
+        "current"
+      ],
+      "exit": 0,
+      "stdout": "{\n  \"path\": \"<tmp>/b\",\n  \"name\": \"Beta\",\n  \"isDefault\": false,\n  \"lastOpened\": \"<iso>\"\n}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "vault",
+        "remove",
+        "Beta",
+        "--yes",
+        "--json"
+      ],
+      "exit": 0,
+      "stdout": "{\"removed\":{\"path\":\"<tmp>/b\",\"name\":\"Beta\",\"isDefault\":false,\"lastOpened\":\"<iso>\"}}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "vault",
+        "list"
+      ],
+      "exit": 0,
+      "stdout": "[]\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "vault",
+        "current"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "No default vault configured. Open Memry and choose Settings > Command Line > Default vault, or run with --vault <path>.\n"
+    }
+  ]
+}

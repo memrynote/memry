@@ -1,15 +1,17 @@
-//! The delete half of [`super::apply_page`]: a typed tombstone, the clock
-//! weighing #2409 adds to it, and §5.12.1's untyped delete.
+//! The delete half of [`super::apply_page_into`]: a typed tombstone and the
+//! clock weighing #2409 adds to it.
 
 use rusqlite::Connection;
 
 use crate::api::errors::StorageError;
 use crate::crdt::errors::CrdtError;
 use crate::crdt::update_log;
-use crate::domain::journal;
+use crate::domain::{attachment_uploads, journal, notes, settings};
+use crate::storage::nested_tx;
 use crate::storage::repositories::{projectors, sync_items};
 use crate::sync::clock::{ClockOrder, VectorClock, compare};
-use crate::sync::{body_debt, delete_keep, journal_day_merge, store};
+use crate::sync::delete_keep::VaultFiles;
+use crate::sync::{body_debt, delete_keep, journal_day_merge, outbox, store};
 
 use super::{ApplyTotals, DOCUMENT_TYPES, feed, sqlite_failed};
 
@@ -55,9 +57,19 @@ pub(super) fn apply_tombstone(
     body_state_vector: Option<&str>,
     now_ms: i64,
     clock_device: Option<&str>,
+    vault: Option<&VaultFiles>,
     totals: &mut ApplyTotals,
 ) -> Result<(), StorageError> {
-    let txn = conn.unchecked_transaction().map_err(sqlite_failed)?;
+    // Settings are never deleted (#5433), as desktop's settings handler skips
+    // a pulled delete: the row stays live and its queued edit stays queued.
+    if item_type == settings::SETTINGS_ITEM_TYPE {
+        eprintln!(
+            "memry-core: pull: {item_type}:{item_id} delete skipped: settings are never deleted"
+        );
+        totals.skipped += 1;
+        return Ok(());
+    }
+    let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
     if let Some(clock) = clock.filter(|clock| !clock.is_empty()) {
         store::record_tombstone_clock(&txn, item_type, item_id, clock, now_ms)?;
         if live_clock_is_after(&txn, item_type, item_id, clock)? {
@@ -73,38 +85,93 @@ pub(super) fn apply_tombstone(
         item_type,
         item_id,
         deleted_at,
+        server_cursor,
         clock,
         body_state_vector,
         clock_device,
+        vault,
         now_ms,
     )?;
     store::mark_deleted(&txn, item_type, item_id, deleted_at, server_cursor, now_ms)?;
-    if item_type == journal::ITEM_TYPE {
+    // A live foreign row keeps its row and body for the drain (#2984). Held
+    // before the queue drops: a queued edit holds tags never pushed. Defense
+    // in depth (VERIFY-5656): no test goes red with the order reversed.
+    let held = item_type == journal::ITEM_TYPE && {
         journal_day_merge::mark_deleted(&txn, item_id)?;
-        // A live foreign row keeps its row and body for the drain (#2984).
-        if journal_day_merge::hold_for_merge(&txn, item_id, clock)? {
-            txn.commit().map_err(sqlite_failed)?;
-            totals.deleted += 1;
-            feed::deleted(&mut totals.feed, item_type, item_id, was_live);
-            return Ok(());
-        }
+        journal_day_merge::hold_for_merge(&txn, item_id, clock)?
+    };
+    // Sent, the queued edit would undelete the item (VERIFY-5426). After
+    // `delete_keep::keep`, which reads the queue (rule 1). A re-create whose
+    // clock is after the delete returned above, still queued.
+    drop_queued_edits(&txn, item_type, item_id)?;
+    if held {
+        txn.commit().map_err(sqlite_failed)?;
+        count(totals, was_live);
+        feed::deleted(&mut totals.feed, item_type, item_id, was_live);
+        return Ok(());
     }
     projectors::delete(&txn, item_type, item_id, deleted_at)?;
     let purged = if DOCUMENT_TYPES.contains(&item_type) {
         // The body debt goes with the body: a pull owed before the delete
         // would bring the server's surviving log back (#2297).
         body_debt::settle(&txn, item_id)?;
-        update_log::purge_in(&txn, item_id).map_err(crdt_failed)?
+        // After `delete_keep::keep`, which reads the queue to decide what text
+        // this device never pushed (#5379).
+        outbox::drop_body_updates(&txn, item_type, item_id)?;
+        let purged = update_log::purge_in(&txn, item_id).map_err(crdt_failed)?;
+        // A same-id revive can still want the note's unsent pictures (§14.8.2).
+        if item_type == notes::ITEM_TYPE {
+            let kept = attachment_uploads::ids_for_note(&txn, item_id)?.len();
+            if kept > 0 {
+                eprintln!(
+                    "memry-core: attachment uploads: note {item_id} was deleted elsewhere; its {kept} unsent picture(s) stay here until it is revived or they are detached"
+                );
+            }
+        }
+        purged
     } else {
         0
     };
     txn.commit().map_err(sqlite_failed)?;
-    totals.deleted += 1;
+    count(totals, was_live);
     feed::deleted(&mut totals.feed, item_type, item_id, was_live);
     if purged > 0 {
         totals.purged_documents.push(item_id.to_owned());
     }
     Ok(())
+}
+
+/// Retires the queued edits of a row this verified delete removed. Sent, each
+/// is an `update` carrying `deletedAt` that the server applies as a write,
+/// bringing the item back on every device (#5413, #5427). A queued delete
+/// stays; a document's body updates go with its log (#5379).
+fn drop_queued_edits(
+    conn: &Connection,
+    item_type: &str,
+    item_id: &str,
+) -> Result<(), StorageError> {
+    let mut statement = conn
+        .prepare("SELECT id FROM outbox WHERE item_type = ?1 AND item_id = ?2 AND op IN (?3, ?4)")
+        .map_err(sqlite_failed)?;
+    let ids = statement
+        .query_map(
+            rusqlite::params![item_type, item_id, outbox::OP_UPSERT, outbox::OP_CREATE],
+            |row| row.get(0),
+        )
+        .map_err(sqlite_failed)?
+        .collect::<Result<Vec<i64>, _>>()
+        .map_err(sqlite_failed)?;
+    outbox::retire_in(conn, &ids, "superseded by a verified delete")
+}
+
+/// Counts one applied delete: deleted when it took a live row, skipped when the row was
+/// never live or already deleted, as the feed reports it ([`feed::deleted`]).
+fn count(totals: &mut ApplyTotals, was_live: bool) {
+    if was_live {
+        totals.deleted += 1;
+    } else {
+        totals.skipped += 1;
+    }
 }
 
 /// Whether the live local row's clock happens strictly after `tombstone`.
@@ -125,60 +192,6 @@ fn live_clock_is_after(
         .filter(|_| row.deleted_at.is_none())
         .and_then(|text| serde_json::from_str::<VectorClock>(&text).ok());
     Ok(local.is_some_and(|local| compare(&local, tombstone) == ClockOrder::After))
-}
-
-/// An id from `deleted` that arrived with **no type on the wire** (§5.12.1).
-///
-/// The untyped delete covers *every* row under that id, whatever its type, so
-/// the projection half reads the types this device actually stored
-/// ([`store::item_types_for`]) and marks the tables each one names. The wire
-/// carried no type and a client MUST NOT invent one from the id's shape, so
-/// the local rows are the only honest source for that list.
-///
-/// The purge runs **unconditionally** here, and that is not the id-shape
-/// inference §5.12.1 forbids. The typed arm above has to be careful because a
-/// tag named like a note id would otherwise take the note's body with it; here
-/// there is no such case to be careful about, because every row under the id —
-/// the note's included — is being deleted. Body rows under a purely local
-/// document this device never got a record for go with it, which is the same
-/// rule read from the other side (§5.12: a delete for an unseen item is still
-/// recorded).
-pub(super) fn apply_untyped_tombstone(
-    conn: &Connection,
-    item_id: &str,
-    now_ms: i64,
-    totals: &mut ApplyTotals,
-) -> Result<(), StorageError> {
-    let txn = conn.unchecked_transaction().map_err(sqlite_failed)?;
-    let item_types = store::item_types_for(&txn, item_id)?;
-    let was_live = item_types
-        .iter()
-        .map(|item_type| feed::is_live(&txn, item_type, item_id))
-        .collect::<Result<Vec<_>, _>>()?;
-    store::apply_untyped_tombstone(&txn, item_id, now_ms, now_ms)?;
-    journal_day_merge::mark_deleted(&txn, item_id)?;
-    if journal_day_merge::hold_for_merge(&txn, item_id, None)? {
-        txn.commit().map_err(sqlite_failed)?;
-        totals.deleted += 1;
-        for (item_type, live) in item_types.iter().zip(&was_live) {
-            feed::deleted(&mut totals.feed, item_type, item_id, *live);
-        }
-        return Ok(());
-    }
-    for item_type in &item_types {
-        projectors::delete(&txn, item_type, item_id, now_ms)?;
-    }
-    body_debt::settle(&txn, item_id)?;
-    let purged = update_log::purge_in(&txn, item_id).map_err(crdt_failed)?;
-    txn.commit().map_err(sqlite_failed)?;
-    totals.deleted += 1;
-    for (item_type, live) in item_types.iter().zip(&was_live) {
-        feed::deleted(&mut totals.feed, item_type, item_id, *live);
-    }
-    if purged > 0 {
-        totals.purged_documents.push(item_id.to_owned());
-    }
-    Ok(())
 }
 
 /// The CRDT tier's failure, back in the storage vocabulary this path speaks.

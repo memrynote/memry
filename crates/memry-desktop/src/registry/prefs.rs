@@ -134,12 +134,13 @@ impl AppConfig {
         })
     }
 
-    /// Replaces one vault's standing approvals and leaves every other vault's alone.
-    pub fn set_always_allowed_tools(
+    /// Edits one vault's standing approvals in one read-modify-write, so two edits never lose
+    /// each other's change, and returns the list as written. Every other vault's is left alone.
+    pub fn edit_always_allowed_tools(
         &self,
         vault_uuid: &str,
-        tools: &[String],
-    ) -> Result<(), ConfigError> {
+        edit: impl FnOnce(&mut Vec<String>),
+    ) -> Result<Vec<String>, ConfigError> {
         self.update(|map| {
             let mut all = map
                 .get("agent")
@@ -147,12 +148,21 @@ impl AppConfig {
                 .and_then(Value::as_object)
                 .cloned()
                 .unwrap_or_default();
+            let mut tools: Vec<String> = all
+                .get(vault_uuid)
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+                .filter_map(Value::as_str)
+                .map(str::to_owned)
+                .collect();
+            edit(&mut tools);
             all.insert(
                 vault_uuid.to_owned(),
                 tools.iter().cloned().map(Value::from).collect(),
             );
             set_in(map, "agent", "alwaysAllowedTools", Some(Value::Object(all)));
-            Ok(())
+            Ok(tools)
         })
     }
 
@@ -218,7 +228,7 @@ mod tests {
         let (config, _dir) =
             config(r#"{"agent":{"accessMode":"vault_only","alwaysAllowedTools":{"work":["a"]}}}"#);
         config
-            .set_always_allowed_tools("home", &["b".into(), "c".into()])
+            .edit_always_allowed_tools("home", |tools| tools.extend(["b".into(), "c".into()]))
             .expect("write");
         let agent = config.agent();
         assert_eq!(agent.always_allowed_tools["work"], ["a"]);

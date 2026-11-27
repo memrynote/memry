@@ -9,6 +9,7 @@
 pub mod app_state;
 pub mod config;
 pub mod dictionary;
+pub mod journal_replay;
 mod leveldb_log;
 mod leveldb_manifest;
 mod leveldb_table;
@@ -19,8 +20,11 @@ pub mod report;
 pub mod scratch;
 pub mod secrets;
 pub mod secrets_import;
+pub mod vault_db;
 pub mod vault_evidence;
+pub mod vault_prep;
 pub mod ystore;
+pub mod ystore_import;
 
 use std::path::PathBuf;
 
@@ -73,6 +77,91 @@ pub enum ImportError {
     /// A value written to the Tauri data dir did not read back as written.
     #[error("{0} did not read back as written")]
     ReadBack(&'static str),
+    /// A vault database table `vault_db::tables::TABLE_MAP` does not list. Nothing was written.
+    #[error("{db} has an unmapped table {table}")]
+    UnmappedTable { db: &'static str, table: String },
+    /// The source's last drizzle migration is none of the frozen ones the table map describes.
+    #[error("{db} is at migration {found:?}, this build reads {expected:?}")]
+    SourceSchema {
+        db: &'static str,
+        found: Option<i64>,
+        expected: &'static [i64],
+    },
+    /// The source holds rows whose importer this build does not have yet. Nothing was written.
+    /// The source holds data whose importer a later build brings. The message is the user's:
+    /// `area` in their words, and what to do. `detail` names the table or key, for logs.
+    #[error(
+        "This version of MemryNote cannot move this vault's {area} yet. Nothing was changed. \
+         Keep using the previous MemryNote app for this vault, and update MemryNote to try again."
+    )]
+    NotReady { area: &'static str, detail: String },
+    /// A queued delete has no clock, and `memry-config.json` names no device to stamp one with
+    /// as Electron's push does. Staging it would let the core push retire it unsent.
+    #[error(
+        "A delete in this vault has not synced yet, and MemryNote cannot send it without the \
+         previous app's sync device. Nothing was changed. Open the previous MemryNote app, sign \
+         in and let it finish syncing, then quit it and try again."
+    )]
+    DeleteWithoutDevice,
+    /// A note re-created after this device deleted it needs its first clock minted as Electron's
+    /// next runtime start would (`pushClocklessContentRecreate`), and `memry-config.json` names
+    /// no device to mint it under. A pending delete is only ever recorded under a device.
+    #[error(
+        "Changes in this vault have not synced yet, and MemryNote cannot send them without the \
+         previous app's sync device. Nothing was changed. Open the previous MemryNote app, sign \
+         in and let it finish syncing, then quit it and try again."
+    )]
+    ClockWithoutDevice,
+    /// Rows Electron pushes at its next signed-in start (its dirty sweeps and `seedUnclocked`),
+    /// which this build cannot replay yet. Nothing was written. `table` is for logs.
+    #[error(
+        "Some changes in this vault have not synced yet. Nothing was changed. Open the previous \
+         MemryNote app, let it finish syncing, then quit it and try again."
+    )]
+    UnsyncedChanges { table: &'static str },
+    /// The same rows when `memry-config.json` names no sync device: the previous app was never
+    /// signed in, so it sends nothing until it is. Nothing was written. `table` is for logs.
+    #[error(
+        "Some changes in this vault have never synced, because the previous MemryNote app was \
+         never signed in to sync. Nothing was changed. Sign in to sync in the previous \
+         MemryNote app, let it finish syncing, then quit it and try again."
+    )]
+    NeverSynced { table: &'static str },
+    /// Queued note body pushes whose Yjs document the store copy does not hold. Staged
+    /// without one, the push of an empty payload would have no state to send.
+    #[error(
+        "Changes to {} notes in this vault have not synced yet, and their edit history is \
+         missing from the previous app's data. Nothing was changed. Open the previous MemryNote \
+         app, let it finish syncing, then quit it and try again.",
+        doc_ids.len()
+    )]
+    OrphanBodyQueueRow { doc_ids: Vec<String> },
+    #[error("{path} is {bytes} bytes, over the {max} byte limit")]
+    TooLarge { path: PathBuf, bytes: u64, max: u64 },
+    /// The source changed while it was copied: Electron was writing. Retry once it has quit.
+    #[error("{0} changed while it was copied")]
+    SourceChanged(PathBuf),
+    /// Reading the copy of a source database failed. `detail` is SQLite's message, which names
+    /// tables and columns, never values.
+    #[error("{db} copy: {detail}")]
+    Source { db: &'static str, detail: String },
+    #[error("{table} row {rowid} has an id that is not UTF-8 text")]
+    NonTextId { table: String, rowid: i64 },
+    /// A source value the import cannot carry over as Electron reads it. `what` names the
+    /// column and the fault, never the value.
+    #[error("{table} row {rowid}: {what}")]
+    MalformedRow {
+        table: &'static str,
+        rowid: i64,
+        what: &'static str,
+    },
+    #[error("stage check {check} failed: {detail}")]
+    CheckFailed { check: u8, detail: String },
+    /// A file under `<vault>/.memry/core/` the import must not replace.
+    #[error("{0} exists; the import does not replace it")]
+    CoreFileExists(PathBuf),
+    #[error(transparent)]
+    Storage(#[from] memry_core::api::errors::StorageError),
     #[error("sqlite: {0}")]
     Sqlite(String),
 }

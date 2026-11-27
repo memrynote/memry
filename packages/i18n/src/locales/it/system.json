@@ -17,6 +17,7 @@
       "filterAll": "Tutti i file"
     },
     "exportCancelled": "Esportazione annullata",
+    "exportVaultChanged": "È stato aperto un altro vault mentre sceglievi dove salvare. Esporta di nuovo la nota.",
     "dataDbRecovery": {
       "title": "Ripara il database del vault",
       "message": "Il database di Memry per questo vault è danneggiato.",

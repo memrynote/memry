@@ -17,6 +17,7 @@
       "filterAll": "Minden fájl"
     },
     "exportCancelled": "Exportálás megszakítva",
+    "exportVaultChanged": "Egy másik széf nyílt meg, miközben a mentés helyét választotta. Exportálja újra a jegyzetet.",
     "dataDbRecovery": {
       "title": "Széf-adatbázis javítása",
       "message": "A Memry ehhez a széfhez tartozó adatbázisa sérült.",

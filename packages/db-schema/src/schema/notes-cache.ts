@@ -33,6 +33,10 @@ export const noteCache = sqliteTable(
     localOnly: integer('local_only', { mode: 'boolean' }).default(false),
     // Content hash for change detection (markdown only - nullable for other types)
     contentHash: text('content_hash'),
+    // Hash of the bytes a write-back is writing, set before the file write and
+    // cleared once content_hash records them, so a crash between the two does
+    // not read Memry's own bytes as an outside edit (sync/writeback-baseline.ts).
+    pendingWriteHash: text('pending_write_hash'),
     // Word count (markdown only - nullable for other types)
     wordCount: integer('word_count'),
     // Unified: characterCount for activity level calculation (markdown only)
@@ -129,7 +133,10 @@ export const noteProperties = sqliteTable(
       .references(() => noteCache.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
     value: text('value'), // JSON-encoded for arrays and complex types
-    type: text('type').notNull() // PropertyType enum
+    type: text('type').notNull(), // PropertyType enum
+    // Whether the value was a string (#5721): `value` cannot tell a quoted
+    // '2026-01-02' from a date. Null on rows older builds wrote.
+    yamlString: integer('yaml_string', { mode: 'boolean' })
   },
   (table) => [
     primaryKey({ columns: [table.noteId, table.name] }),

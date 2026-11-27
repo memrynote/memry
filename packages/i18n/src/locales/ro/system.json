@@ -17,6 +17,7 @@
       "filterAll": "Toate fișierele"
     },
     "exportCancelled": "Export anulat",
+    "exportVaultChanged": "S-a deschis alt seif în timp ce alegeai unde să salvezi. Exportă din nou notița.",
     "dataDbRecovery": {
       "title": "Repară baza de date a seifului",
       "message": "Baza de date Memry a acestui seif este deteriorată.",

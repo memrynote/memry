@@ -75,3 +75,19 @@ pub async fn migration_localstorage_applied<R: Runtime>(
     })
     .await
 }
+
+/// Appends the migration commands to the command list `registry/graph.rs` hands on, kept out of
+/// `registry.rs` for its line ceiling.
+macro_rules! with_migration_commands {
+    ($collect:ident![$($commands:tt)*]) => {
+        $collect![
+            $($commands)*
+            crate::commands::migration::migration_localstorage_applied::<Wry>,
+            crate::commands::migration::migration_open_report::<Wry>,
+            crate::commands::migration::migration_retry::<Wry>,
+            crate::commands::migration::migration_status::<Wry>,
+        ]
+    };
+}
+
+pub(crate) use with_migration_commands;

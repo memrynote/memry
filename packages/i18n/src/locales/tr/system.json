@@ -17,6 +17,7 @@
       "filterAll": "Tüm dosyalar"
     },
     "exportCancelled": "Dışa aktarma iptal edildi",
+    "exportVaultChanged": "Kaydetme yerini seçerken başka bir kasa açıldı. Notu yeniden dışa aktarın.",
     "dataDbRecovery": {
       "title": "Kasa veritabanını onar",
       "message": "Memry'nin bu kasaya ait veritabanı hasar görmüş.",
