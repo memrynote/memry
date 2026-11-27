@@ -1579,6 +1579,11 @@ const htmlCommentCases: RoundtripCase[] = [
   },
   // The parser strips one space off each end of a code span with one at both.
   { name: 'code span with a space at both ends', markdown: 'a `  b  ` c' },
+  // The writer fenced a code span with one backtick more than its longest run,
+  // and three at a line start open a code block.
+  { name: 'code span holding two backticks at a paragraph start', markdown: '`c``c` d' },
+  { name: 'code span holding a fence at a paragraph start', markdown: '` ```js `' },
+  { name: 'code span holding two backticks mid-line', markdown: 'a `c``c` d' },
   // A break splits a code run into one span per line, each stripped on its own.
   { name: 'code spans of a led line and of spaces across a break', markdown: 'x ` y`\n`  `' },
   { name: 'code span with a space at both ends after a break', markdown: '`a`\n`  b  `' },

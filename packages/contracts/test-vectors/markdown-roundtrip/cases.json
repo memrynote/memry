@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 418,
+    "exportedCaseCount": 421,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 428,
+    "caseCount": 431,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -2791,6 +2791,27 @@
       "canonical": null,
       "pending": null,
       "sha256": "dbf53e1b5b4c0a891f52944a9cb5eaceab2c1bc10066596196519b57a301237e"
+    },
+    {
+      "name": "code span holding two backticks at a paragraph start",
+      "markdown": "`c``c` d",
+      "canonical": null,
+      "pending": null,
+      "sha256": "93c84d023491089364955301bd32b7825cb49d2afdf405e7bd75be20f27b5c98"
+    },
+    {
+      "name": "code span holding a fence at a paragraph start",
+      "markdown": "` ```js `",
+      "canonical": null,
+      "pending": null,
+      "sha256": "23ab2fecda80697296fac929a3ad503b5862eb1449906e37291d783e5e4f40c0"
+    },
+    {
+      "name": "code span holding two backticks mid-line",
+      "markdown": "a `c``c` d",
+      "canonical": null,
+      "pending": null,
+      "sha256": "3b26b4f606ef2a2a4e69ed55e6d1cc08a13f7acb43b7b4f02d1f042496689da4"
     },
     {
       "name": "code spans of a led line and of spaces across a break",
