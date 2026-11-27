@@ -310,6 +310,15 @@ export function escapeMarkdownText<T extends Item>(items: T[], blockType?: strin
   return escape()
 }
 
+/**
+ * The parser strips one space off each end of a code span that has one at
+ * both, so ` b ` is written with a second. A break splits a code run into one
+ * span per line.
+ */
+function spacedCodeLine(line: string): string {
+  return /^ [\s\S]* $/.test(line) && /[^ ]/.test(line) ? ` ${line} ` : line
+}
+
 /** `items` with each text run's text replaced by the next of `escaped`. */
 function escapeItems<T extends Item>(items: T[], escaped: string[]): T[] {
   let next = 0
@@ -317,10 +326,7 @@ function escapeItems<T extends Item>(items: T[], escaped: string[]): T[] {
     list.map((item) => {
       if (item.type === 'text' && typeof item.text === 'string') {
         if (item.styles?.code !== true) return { ...item, text: escaped[next++] }
-        // The parser strips one space off each end of a code span that has
-        // one at both, so ` b ` is written with a second.
-        const spaced = /^ [\s\S]* $/.test(item.text) && /[^ ]/.test(item.text)
-        return spaced ? { ...item, text: ` ${item.text} ` } : item
+        return { ...item, text: item.text.split('\n').map(spacedCodeLine).join('\n') }
       }
       if (isLink(item)) return { ...item, content: rewrite(item.content) }
       return item
