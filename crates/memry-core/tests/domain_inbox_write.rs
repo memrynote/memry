@@ -6,6 +6,9 @@
 //! | a duplicate text or link comes back unless forced      | `findDuplicateBy*`, `force`         |
 //! | a link capture awaits enrichment; x.com is social      | `captureLink`, `storeSocialMetadata`|
 //! | snooze, unsnooze, archive, unarchive push explicit null| `snooze.ts`, `crud.ts`              |
+//! | a resurface pass that cannot clear one clears none     | `processDueItems`, one transaction  |
+//! | a resurface pass queues one push per cleared snooze    | `processDueItems`, push per item    |
+//! | a snooze is due from its instant, whatever its offset  | `getDueSnoozeItems` (`<=`)          |
 //! | a delete tombstones and queues a delete                | `handleDeletePermanent`             |
 //! | filing to a folder makes a bodied note and files it    | `fileToFolder`, `markItemAsFiled`   |
 //! | an extracted article files from its markdown            | `ingestArticleCapture`, `generateNoteContent` |
@@ -21,6 +24,7 @@ use memry_core::domain::inbox::{self};
 use memry_core::domain::{reads, reminders};
 use memry_core::storage::repositories::sync_items;
 use memry_core::storage::{Db, open_data};
+use memry_core::sync::apply::apply_inbound;
 use rusqlite::Connection;
 use serde_json::{Value, json};
 
@@ -265,6 +269,140 @@ fn snooze_unsnooze_archive_unarchive_push_explicit_nulls() {
         Ok(())
     })
     .expect("states");
+}
+
+/// The pass is one transaction: a capture it cannot clear leaves every
+/// snooze in place and queues nothing, so no capture is back without its
+/// push and the next tick retries the whole pass.
+#[test]
+fn a_resurface_pass_that_cannot_clear_one_capture_clears_none() {
+    let db = open("resurface-atomic");
+    db.call_blocking(|conn| {
+        let first = created(write::capture_text(
+            conn, "first", None, None, false, DEVICE, NOW,
+        )?);
+        let second = created(write::capture_text(
+            conn, "second", None, None, false, DEVICE, NOW,
+        )?);
+        write::snooze(conn, &first.id, NOW + 1_000, None, DEVICE, NOW)?.acknowledge();
+        write::snooze(conn, &second.id, NOW + 2_000, None, DEVICE, NOW)?.acknowledge();
+        let queued = outbox(conn).len();
+        // The second capture's record is tombstoned under a live projection, so
+        // the pass fails on it after it has cleared the first.
+        conn.execute(
+            "UPDATE sync_items SET deleted_at = ?1 WHERE item_id = ?2",
+            rusqlite::params![NOW, second.id],
+        )
+        .expect("tombstone the record");
+
+        assert!(write::resurface_due(conn, DEVICE, NOW + 3_000).is_err());
+        let first = inbox::get(conn, &first.id)?.expect("live");
+        assert_eq!(first.snoozed_until, Some(NOW + 1_000), "still snoozed");
+        assert_eq!(
+            payload(conn, &first.id)["snoozedUntil"],
+            json!("2026-09-24T12:00:01.000Z")
+        );
+        assert_eq!(outbox(conn).len(), queued, "nothing queued");
+        Ok(())
+    })
+    .expect("atomic pass");
+}
+
+/// A pass that clears N snoozes queues N pushes, one per item, and each push
+/// carries the cleared fields as explicit nulls so a peer clears too. The
+/// outbox is drained first: an enqueue supersedes the item's earlier rows, so
+/// the snooze's own row would otherwise stand in for the pass's.
+#[test]
+fn a_resurface_pass_queues_one_push_per_cleared_snooze_with_explicit_nulls() {
+    let db = open("resurface-queue");
+    db.call_blocking(|conn| {
+        let mut ids = Vec::new();
+        for (title, until, reason) in [
+            ("first", NOW + 1_000, "later"),
+            ("second", NOW + 2_000, "soon"),
+            ("not due", NOW + 10_000, "much later"),
+        ] {
+            let item = created(write::capture_text(
+                conn, title, None, None, false, DEVICE, NOW,
+            )?);
+            write::snooze(conn, &item.id, until, Some(reason), DEVICE, NOW)?.acknowledge();
+            ids.push(item.id);
+        }
+        conn.execute("DELETE FROM outbox", []).expect("drain");
+
+        let back = write::resurface_due(conn, DEVICE, NOW + 3_000)?;
+
+        let due = &ids[..2];
+        assert_eq!(
+            back.iter().map(|item| item.id.as_str()).collect::<Vec<_>>(),
+            [due[0].as_str(), due[1].as_str()]
+        );
+        assert_eq!(
+            outbox(conn),
+            due.iter()
+                .map(|id| ("inbox".to_owned(), id.clone(), "upsert".to_owned()))
+                .collect::<Vec<_>>(),
+            "one upsert per cleared snooze, none for the one still snoozed"
+        );
+        for id in due {
+            let p = payload(conn, id);
+            for key in ["snoozedUntil", "snoozeReason"] {
+                assert_eq!(p.get(key), Some(&Value::Null), "{key} is an explicit null");
+            }
+        }
+        assert_eq!(
+            payload(conn, &ids[2])["snoozedUntil"],
+            json!("2026-09-24T12:00:10.000Z")
+        );
+        Ok(())
+    })
+    .expect("queued pass");
+}
+
+/// Due at the instant itself (`lte`), and an instant a peer wrote with an
+/// offset is the same instant: the device's zone and DST never move it.
+#[test]
+fn a_snooze_is_due_from_its_instant_whatever_offset_wrote_it() {
+    let db = open("resurface-boundary");
+    db.call_blocking(|conn| {
+        let local = created(write::capture_text(
+            conn, "local", None, None, false, DEVICE, NOW,
+        )?);
+        let peer = created(write::capture_text(
+            conn, "peer", None, None, false, DEVICE, NOW,
+        )?);
+        write::snooze(conn, &local.id, NOW + 1_000, None, DEVICE, NOW)?.acknowledge();
+        // 15:01 at +03:00 is 12:01Z, NOW + 60 s.
+        let mut remote = payload(conn, &peer.id);
+        remote["snoozedUntil"] = json!("2026-09-24T15:01:00+03:00");
+        remote["clock"]["peer"] = json!(1);
+        let record = sync_items::InboundRecord {
+            item_type: "inbox".into(),
+            item_id: peer.id.clone(),
+            payload_json: remote.to_string(),
+            server_cursor: Some(1),
+            signer_device_id: Some("peer".into()),
+            updated_at: NOW,
+            deleted_at: None,
+        };
+        apply_inbound(conn, &record, NOW)?;
+
+        let ids = |items: Vec<inbox::InboxItem>| -> Vec<String> {
+            items.into_iter().map(|item| item.id).collect()
+        };
+        assert!(write::resurface_due(conn, DEVICE, NOW + 999)?.is_empty());
+        assert_eq!(
+            ids(write::resurface_due(conn, DEVICE, NOW + 1_000)?),
+            [local.id]
+        );
+        assert!(write::resurface_due(conn, DEVICE, NOW + 59_999)?.is_empty());
+        assert_eq!(
+            ids(write::resurface_due(conn, DEVICE, NOW + 60_000)?),
+            [peer.id]
+        );
+        Ok(())
+    })
+    .expect("boundary");
 }
 
 #[test]

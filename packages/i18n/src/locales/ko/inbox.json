@@ -579,7 +579,10 @@
       "journalOff": "설정에서 저널이 꺼져 있습니다.",
       "sendFailed": "스티키를 보내지 못했습니다.",
       "undoExpired": "더 이상 실행 취소할 수 없습니다.",
-      "undoFailed": "보내기를 취소하지 못했습니다."
+      "undoFailed": "보내기를 취소하지 못했습니다.",
+      "journalBusy": "오늘 저널 항목을 아직 저장하는 중입니다. 잠시 후 다시 시도하세요.",
+      "folderExcluded": "Sticky 폴더가 제외되어 있습니다. 노트를 보내려면 설정의 제외 폴더에서 이 폴더를 빼세요.",
+      "projectMissing": "이 작업의 프로젝트가 없습니다. 설정에서 기본 프로젝트를 선택하거나 노트로 보내세요."
     },
     "inputLabel": "스티키 텍스트",
     "dismissError": "닫기"

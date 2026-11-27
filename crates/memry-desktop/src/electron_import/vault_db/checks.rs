@@ -31,6 +31,10 @@ pub const RECORD_TABLES: &[(&str, &str, &str, &str)] = &[
     ("custom_icons", "id", "custom_icon", "1"),
     ("note_metadata", "id", "note", "journal_date IS NULL"),
     ("note_metadata", "id", "journal", "journal_date IS NOT NULL"),
+    ("vault_locks", "id", "vault_lock", "1"),
+    ("canvas_folders", "id", "canvas_folder", "1"),
+    ("home_pages", "id", "home_page", "1"),
+    ("sticky_drafts", "id", "sticky_draft", "1"),
     ("inbox_items", "id", "inbox", "1"),
     ("bookmarks", "id", "bookmark", "1"),
     (
@@ -47,6 +51,12 @@ pub const RECORD_TABLES: &[(&str, &str, &str, &str)] = &[
         "calendar_external_event",
         "source_id NOT IN (SELECT id FROM calendar_sources WHERE provider IN ('ics', 'apple-eventkit'))",
     ),
+];
+
+/// The record tables whose clock column is `vector_clock`, in the shape of [`RECORD_TABLES`].
+pub const VECTOR_CLOCK_TABLES: &[(&str, &str, &str, &str)] = &[
+    ("agent_conversations", "id", "agent_conversation", "1"),
+    ("agent_messages", "id", "agent_message", "1"),
 ];
 
 pub(super) fn run(
@@ -77,8 +87,13 @@ pub(super) fn run(
         .map(|item| (item.item_type.as_str(), item.item_id.as_str()))
         .collect();
     let mut clock_mismatches = Vec::new();
-    for (table, id_column, item_type, rows) in RECORD_TABLES {
-        let mut expected = source_clocks(source, table, id_column, rows)?;
+    let tables = RECORD_TABLES.iter().map(|table| (table, "clock")).chain(
+        VECTOR_CLOCK_TABLES
+            .iter()
+            .map(|table| (table, "vector_clock")),
+    );
+    for ((table, id_column, item_type, rows), clock_column) in tables {
+        let mut expected = source_clocks(source, table, id_column, clock_column, rows)?;
         expected.retain(|id, _| !tombstoned.contains(&(*item_type, id.as_str())));
         // A clock the replays minted replaces the source's (none, or a never-synced one).
         for (id, clock) in expected.iter_mut() {
@@ -254,11 +269,12 @@ fn source_clocks(
     source: &rusqlite::Connection,
     table: &'static str,
     id_column: &str,
+    clock_column: &str,
     rows: &str,
 ) -> Result<BTreeMap<String, Option<String>>, ImportError> {
     let mut stmt = source
         .prepare(&format!(
-            "SELECT rowid, {id_column}, clock FROM {table} WHERE {rows}"
+            "SELECT rowid, {id_column}, {clock_column} AS clock FROM {table} WHERE {rows}"
         ))
         .map_err(|e| source_error(SourceDb::Data, e))?;
     let mut rows = stmt
