@@ -1,4 +1,5 @@
 import { markdownToHTML } from '@blocknote/core'
+import { TABLE_DELIMITER } from './blocks/block-starts'
 
 /**
  * A table as wide as its widest row.
@@ -24,8 +25,6 @@ import { markdownToHTML } from '@blocknote/core'
  * runs only when some table needs widening.
  */
 
-// `tryParseTable`'s delimiter-row test (`markdownToHtml.ts`).
-const DELIMITER_ROW = /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/
 // The prefix a blockquote strips from each of its lines before its content is
 // tokenized again.
 const QUOTE_PREFIX = /^\s{0,3}>\s?/
@@ -85,7 +84,7 @@ function candidates(lines: string[]): Candidate[] {
     const header = unquote(lines[line], depth)
     const delimiter = unquote(lines[line + 1], depth)
     if (!header.includes('|')) continue
-    if (!delimiter.includes('|') || !DELIMITER_ROW.test(delimiter)) continue
+    if (!delimiter.includes('|') || !TABLE_DELIMITER.test(delimiter)) continue
     const rows: number[] = []
     for (let row = line + 2; row < lines.length; row++) {
       const body = unquote(lines[row], depth)

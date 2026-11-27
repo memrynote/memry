@@ -12,15 +12,23 @@ const HEADING = /^#{1,6}(?:\s|$)/
 const FENCE = /^ {0,3}(?:`{3,}|~{3,})/
 const RULE = /^\s{0,3}([-*_])\s*(?:\1\s*){2,}$/
 const LIST_ITEM = /^\s*(?:[-*+]|\d+[.)])\s+/
-const TABLE_ROW = /^\s*\|(?:.+\|)+\s*$/
-const TABLE_DELIMITER = /^\s*\|?\s*:?-+:?\s*(?:\|\s*:?-+:?\s*)*\|?\s*$/
+// The table shapes `tokenize` reads, each spelled with no two quantifiers that
+// can take the same characters: user text reaches them, and an ambiguous
+// spelling backtracked for seconds (or forever) on a long line of pipes or tabs.
+export const TABLE_ROW = /^\s*\|.+\|\s*$/
+/** `tryParseTable`'s delimiter-row test. */
+export const TABLE_DELIMITER = /^\s*(?:\|\s*)?:?-+:?\s*(?:\|\s*:?-+:?\s*)*(?:\|\s*)?$/
 
 /**
  * The three whole-line shapes `<details>` markup takes on disk. A lossless read
  * keeps such a line that no toggle claimed as text (`escapePrefixedDetailsMarkup`),
  * so it continues a paragraph like any other text.
+ *
+ * A summary ends at its last `</summary>` that `DETAILS_LINE_TAIL` or the line's
+ * end can follow. The lookaheads pick it in one pass: tried at each
+ * `</summary>`, the tail's `<br>.*` rescanned the rest of the line every time.
  */
-export const DETAILS_MARKUP = String.raw`<details(?:\s[^>]*)?>|<summary>.*<\/summary>|<\/details>`
+export const DETAILS_MARKUP = String.raw`<details(?:\s[^>]*)?>|<summary>(?=.*$).*<\/summary>(?=[ \t]*$|<br>)|<\/details>`
 /** What the writer puts after the markup on its line: two spaces for a break, `<br>` for three. */
 export const DETAILS_LINE_TAIL = String.raw`(?:[ \t]*|<br>.*)`
 

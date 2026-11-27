@@ -73,8 +73,9 @@ const TASK_ITEM_BOX = /^([ \t]*(?:[-*+]|\d+[.)])[ \t]+)\[[ xX]\]/
 
 const LIST_ITEM_START = /^[ \t]*(?:[-*+]|\d+[.)])[ \t]/
 
-// A table's delimiter row, which makes the pipe line above it a header.
-const TABLE_DELIMITER_ROW = /^\s*\|?\s*:?-+:?\s*(?:\|\s*:?-+:?\s*)*\|?\s*$/
+// A table's delimiter row, which makes the pipe line above it a header. No two
+// quantifiers take the same whitespace, so a long line of tabs cannot backtrack.
+const TABLE_DELIMITER_ROW = /^\s*(?:\|\s*)?:?-+:?\s*(?:\|\s*:?-+:?\s*)*(?:\|\s*)?$/
 
 // A line that opens a block of its own rather than continuing a paragraph.
 const BLOCK_START =

@@ -36,9 +36,53 @@ const codeToken = (index: number): string => `MEMRYEMK${PROCESS_WORD}${index};`
 const TOKEN = new RegExp(`MEMRYEM([OCK])${PROCESS_WORD}(\\d+);`, 'g')
 const underscoreToken = (index: number): string => `MEMRYEMU${PROCESS_WORD}${index};`
 const UNDERSCORE_TOKEN = new RegExp(`MEMRYEMU${PROCESS_WORD}(\\d+);`, 'g')
-// A break inside a quote carries the quote's `>` prefix onto the next line. A
-// `<br>` ending a run is a break the escaper spelled for a paragraph's end.
-const EDGES = /^((?:\\\n(?:[^\S\n]*>)*|\s)*)([\s\S]*?)((?:\\\n(?:[^\S\n]*>)*|<br>|\s)*)$/
+const SPACE = /\s/
+
+/**
+ * The offsets after each quote marker a break carries onto its next line
+ * (`(?:[^\S\n]*>)*` from `at`), `at` first.
+ */
+function quoteMarkerStops(text: string, at: number): number[] {
+  const stops = [at]
+  for (let from = at; ;) {
+    let next = from
+    while (next < text.length && text[next] !== '\n' && SPACE.test(text[next])) next++
+    if (text[next] !== '>') return stops
+    from = next + 1
+    stops.push(from)
+  }
+}
+
+/**
+ * `text` split into its leading whitespace and breaks, its content, and its
+ * trailing whitespace, breaks and `<br>`s. A break inside a quote carries the
+ * quote's `>` prefix onto the next line. A `<br>` ending a run is a break the
+ * escaper spelled for a paragraph's end.
+ *
+ * It scans instead of matching one regex: a lazy middle against a repeated
+ * trailing group retried the tail at every offset, quadratic on a long run of
+ * tabs.
+ */
+function splitEdges(text: string): [before: string, content: string, after: string] {
+  let start = 0
+  for (;;) {
+    if (text.startsWith('\\\n', start)) start = quoteMarkerStops(text, start + 2).at(-1) ?? start
+    else if (start < text.length && SPACE.test(text[start])) start++
+    else break
+  }
+  // Whether the text from each offset on is trailing edge only.
+  const edge: boolean[] = []
+  edge[text.length] = true
+  for (let at = text.length - 1; at >= start; at--) {
+    edge[at] =
+      (SPACE.test(text[at]) && edge[at + 1]) ||
+      (text.startsWith('<br>', at) && edge[at + 4]) ||
+      (text.startsWith('\\\n', at) && quoteMarkerStops(text, at + 2).some((stop) => edge[stop]))
+  }
+  let end = start
+  while (!edge[end]) end++
+  return [text.slice(0, start), text.slice(start, end), text.slice(end)]
+}
 
 function holds(item: InlineItem, mark: EmphasisMark): boolean {
   if (Array.isArray(item.content)) {
@@ -385,7 +429,7 @@ function spellRuns(markdown: string, marks: Span[]): { restored: string; undersc
     if (open.length === 1) continue
     const run = open.pop() ?? top
     const parent = open[open.length - 1]
-    const [, before, content, after] = EDGES.exec(run.text) ?? []
+    const [before, content, after] = splitEdges(run.text)
     if (!content) {
       parent.text += run.text
       continue
@@ -438,7 +482,7 @@ export function trimEmphasisEdges(items: InlineItem[]): InlineItem[] {
       const last = run[run.length - 1]
       // Breaks after the space go with it: the writer moves both past the mark.
       const tail = plainText(last, out[at + length])
-        ? (/[^\S\n]+\n*$/.exec(last.text ?? '')?.[0] ?? '')
+        ? (/(?<![^\S\n])[^\S\n]+\n*$/.exec(last.text ?? '')?.[0] ?? '')
         : ''
       if (tail) run[run.length - 1] = { ...last, text: last.text?.slice(0, -tail.length) }
       if (lead) trimmed.push({ ...without(first, mark), text: lead })

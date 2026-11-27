@@ -22,6 +22,7 @@
  * written as it is.
  */
 
+import { TABLE_DELIMITER, TABLE_ROW } from '../blocks/block-starts'
 import { spellsCalloutMarker } from '../blocks/markdown'
 import { spellsRunsWithUnderscores } from './emphasis-runs'
 import { codeSpanRanges } from './link-code-spans'
@@ -53,9 +54,6 @@ const LINE_BLOCKS = new Set([
 
 /** Stands in for a node the writer spells with none of the characters below. */
 const NODE = '\uFFFC'
-
-// `tryParseTable`'s delimiter-row test (`markdownToHtml.ts`).
-const DELIMITER_ROW = /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/
 
 interface Segment {
   /** Where the text starts in the block's spelling. */
@@ -154,8 +152,8 @@ function blockOpener(line: string, continuation: boolean): number {
   if (/^ {0,3}([-*_])([ \t]*\1){2,}[ \t]*$/.test(line)) return line.search(/\S/)
   if (/^\s{0,3}>|^\s*[-+*](\s|$)/.test(line)) return line.search(/\S/)
   if (/^\[[^\]]*\]:/.test(line)) return 0
-  if (line.includes('|') && DELIMITER_ROW.test(line)) return line.indexOf('|')
-  if (continuation && /^\s*\|(.+\|)+\s*$/.test(line)) return line.indexOf('|')
+  if (line.includes('|') && TABLE_DELIMITER.test(line)) return line.indexOf('|')
+  if (continuation && TABLE_ROW.test(line)) return line.indexOf('|')
   const ordered = /^\s*\d+[.)](\s|$)/.exec(line)
   return ordered ? ordered[0].search(/[.)]/) : -1
 }
