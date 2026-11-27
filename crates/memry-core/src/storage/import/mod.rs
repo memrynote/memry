@@ -35,7 +35,7 @@ pub use embeddings::{DerivedTable, ImportEmbeddedNote};
 pub use local::{ImportInboxJob, ImportInboxTag, ImportInboxUpload, ImportLocalEvent};
 pub use notes::{ImportNoteFile, ImportNoteSnapshot};
 pub use outbox::{ImportDeleted, ImportQueued, ImportTombstoneClock};
-pub use records::{ImportHeldRecord, ImportRecord};
+pub use records::ImportRecord;
 pub use sync_state::{
     ImportHistory, ImportQuarantined, ImportRecordCursor, ImportRefused, ImportSyncState,
 };

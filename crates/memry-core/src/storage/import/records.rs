@@ -10,10 +10,8 @@ use crate::api::errors::StorageError;
 use crate::storage::nested_tx;
 use crate::storage::repositories::StoredPayload;
 use crate::storage::repositories::projectors::{self, ItemContext};
-use crate::storage::repositories::schema::Object;
 use crate::storage::repositories::sync_items::PAYLOAD_STATE_FULL;
 use crate::storage::vault_identity;
-use crate::sync::clock::VectorClock;
 
 /// One Electron record as Electron would push it.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -27,14 +25,6 @@ pub struct ImportRecord {
     pub synced_at: Option<i64>,
 }
 
-/// A record [`ImportWriter::put_held_records`] stores unprojected, with the row clock it keeps
-/// when its payload carries none.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ImportHeldRecord {
-    pub record: ImportRecord,
-    pub clock: VectorClock,
-}
-
 impl ImportWriter {
     /// Writes `records` in one transaction. A payload the type's reader refuses fails the whole
     /// call with the type and id named: a record is never stored corrupt or dropped.
@@ -46,34 +36,6 @@ impl ImportWriter {
         let tx = nested_tx::begin(&self.data).map_err(failed)?;
         for record in records {
             put(&tx, record, now_ms)?;
-        }
-        tx.commit().map_err(failed)
-    }
-
-    /// Stores each record's `sync_items` row without a projection: a journal day a foreign
-    /// holder gave up to `j<D>` on Electron, kept as the core keeps a displaced holder
-    /// (`journal_day_merge::plan_inbound` removes only the projection), so a later tombstone
-    /// holds its body for the owed merge. A payload without a clock gets the row clock
-    /// [`ImportHeldRecord::clock`]: the core's own displaced holder always keeps the clock its
-    /// record was stored under, and an unclocked live row is one the unclocked seed would clock
-    /// and push as a new record (`domain::unclocked_seed`, `clock IS NULL`).
-    pub fn put_held_records(
-        &mut self,
-        held: &[ImportHeldRecord],
-        now_ms: i64,
-    ) -> Result<(), StorageError> {
-        let tx = nested_tx::begin(&self.data).map_err(failed)?;
-        for held in held {
-            store(&tx, &held.record, now_ms)?;
-            let clock = serde_json::to_string(&held.clock).map_err(|e| StorageError::Failed {
-                what: format!("held record clock: {e}"),
-            })?;
-            tx.execute(
-                "UPDATE sync_items SET clock = ?3
-                  WHERE item_type = ?1 AND item_id = ?2 AND clock IS NULL",
-                params![held.record.item_type, held.record.item_id, clock],
-            )
-            .map_err(failed)?;
         }
         tx.commit().map_err(failed)
     }
@@ -127,21 +89,6 @@ impl ImportWriter {
 }
 
 fn put(tx: &Connection, record: &ImportRecord, now_ms: i64) -> Result<(), StorageError> {
-    let view = store(tx, record, now_ms)?;
-    projectors::project(
-        tx,
-        record.item_type,
-        ItemContext {
-            item_id: &record.item_id,
-            synced_at: record.synced_at.unwrap_or(now_ms),
-            deleted_at: None,
-        },
-        &view,
-    )
-}
-
-/// The record's `sync_items` row, read by its type's reader; returns the view it projects.
-fn store(tx: &Connection, record: &ImportRecord, now_ms: i64) -> Result<Object, StorageError> {
     let refused = |error: crate::storage::repositories::ProjectionError| StorageError::Failed {
         what: format!(
             "import record {}/{} is unreadable: {error}",
@@ -165,5 +112,14 @@ fn store(tx: &Connection, record: &ImportRecord, now_ms: i64) -> Result<Object, 
         ],
     )
     .map_err(failed)?;
-    Ok(view)
+    projectors::project(
+        tx,
+        record.item_type,
+        ItemContext {
+            item_id: &record.item_id,
+            synced_at: record.synced_at.unwrap_or(now_ms),
+            deleted_at: None,
+        },
+        &view,
+    )
 }

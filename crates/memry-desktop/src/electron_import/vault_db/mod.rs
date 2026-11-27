@@ -243,6 +243,7 @@ fn stage(input: &VaultImportInput<'_>, paths: &Paths) -> Result<VaultStageReport
         &paths.staging,
     )?;
     let preflight = preflight::run(&sources)?;
+    journal_day_merges::refuse_local_folds(sources.conn(tables::SourceDb::Data), &input.docs)?;
     let mut writer = ImportWriter::create(&paths.staging)?;
     crash::point("stage:writer-created");
 
@@ -318,11 +319,6 @@ fn stage(input: &VaultImportInput<'_>, paths: &Paths) -> Result<VaultStageReport
         sources.conn(tables::SourceDb::Data),
         sources.conn(tables::SourceDb::Index),
         &mut writer,
-    )?;
-    journal_day_merges::put_holders(
-        sources.conn(tables::SourceDb::Data),
-        &mut writer,
-        input.now_ms,
     )?;
     checks::run(
         &mut report,

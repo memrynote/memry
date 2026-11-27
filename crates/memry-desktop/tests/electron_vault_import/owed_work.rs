@@ -3,33 +3,23 @@
 //! markers (`note-cover:`). Each imports into its core owner, which acts on it.
 
 use std::collections::{BTreeMap, HashMap};
-use std::sync::Arc;
 
-use memry_core::api::errors::TransportError;
-use memry_core::domain::unclocked_seed;
 use memry_core::domain::write_back::{BodyRead, body_for_file};
 use memry_core::markdown::convert::NoEmbeds;
 use memry_core::markdown::convert::api::Converter;
 use memry_core::markdown::schema::callout_types::CalloutTypes;
-use memry_core::protocol::envelope::EnvelopeError;
-use memry_core::protocol::http::{ClientIdentity, HttpClient};
-use memry_core::protocol::types::Declaration;
-use memry_core::seams::transport::{
-    HttpRequest, HttpResponse, SocketHandle, SocketListener, SocketRequest, Transport,
-};
 use memry_core::storage::import::{DATA_FILE, document_state};
-use memry_core::sync::apply::apply_pulled_delete;
 use memry_core::sync::body_debt;
-use memry_core::sync::body_pull::{BodyPull, CrdtCipher, PackedUpdate};
-use memry_core::sync::clock::VectorClock;
-use memry_core::sync::delete_keep::VaultFiles;
-use memry_core::sync::journal_day_merge::{self, DrainReport, OwedMerge};
+use memry_core::sync::journal_day_merge::{self, OwedMerge};
+use memry_desktop::electron_import::ImportError;
+use memry_desktop::electron_import::vault_db::{FoldedDoc, VaultImportInput, stage_vault_import};
 use rusqlite::Connection;
 use rusqlite::types::Value;
 use serde_json::json;
 
+use super::docs::folded;
 use super::queue::text;
-use super::{NOW_MS, Vault, electron_db, import};
+use super::{Vault, electron_db, import, staged, written_by_import};
 
 fn seed_key(vault: &Vault, key: &str, value: &str, updated_at_s: i64) {
     electron_db::seed(
@@ -140,16 +130,18 @@ fn owed_day(foreign: &str, value: serde_json::Value) -> (String, String) {
     (format!("journalDayMerge:{foreign}"), value.to_string())
 }
 
+/// Owed merges whose fold needs nothing of this device's: a record seen on a pull, a deleted
+/// id whose holder tags a tombstone weighed to none, and a blank holder snapshot.
 #[test]
-fn owed_journal_day_merges_are_carried_with_this_devices_text() {
+fn owed_journal_day_merges_that_need_nothing_local_are_carried() {
     let vault = Vault::new();
     for (key, value) in [
-        // A foreign holder that gave the day up: its file text only lives here.
         owed_day(
-            "f-held",
-            json!({"foreignId": "f-held", "date": "2026-02-01", "clock": {"dev-A": 2},
-                   "fallbackMarkdown": "My unpushed day", "recordMarkdown": "Their copy",
-                   "deleted": true, "tags": ["mine"], "recordTags": ["theirs"]}),
+            "f-weighed",
+            json!({"foreignId": "f-weighed", "date": "2026-02-01", "clock": {"dev-A": 2},
+                   "fallbackMarkdown": "  \n", "recordMarkdown": "Their copy",
+                   "deleted": true, "tags": ["mine"], "unpushedTags": [],
+                   "recordTags": ["theirs"], "holderClock": {"dev-A": 2}}),
         ),
         // Seen on a pull, never synced here: `clock` null, explicit nulls from the spread.
         owed_day(
@@ -162,21 +154,24 @@ fn owed_journal_day_merges_are_carried_with_this_devices_text() {
     ] {
         seed_key(&vault, &key, &value, DEBT_AT_S);
     }
-    let report = import(&vault);
+    let staged = staged(
+        stage_vault_import(VaultImportInput {
+            // An empty doc holds no state (`hasDocState`).
+            docs: vec![FoldedDoc {
+                doc_id: "f-pulled".into(),
+                state: vec![0, 0],
+                watermark: None,
+            }],
+            ..vault.input()
+        })
+        .unwrap(),
+    );
+    let report = staged.report().clone();
+    staged.install().unwrap();
     assert_eq!(report.dropped["unreadableJournalDayMerges"], 2);
     assert_eq!(
         journal_day_merge::owed(&core_conn(&vault)).unwrap(),
         vec![
-            OwedMerge {
-                foreign_id: "f-held".into(),
-                date: "2026-02-01".into(),
-                clock: BTreeMap::from([("dev-A".to_owned(), 2)]),
-                deleted: true,
-                record_markdown: Some("Their copy".into()),
-                record_tags: vec!["theirs".into()],
-                holder_tags: vec!["mine".into()],
-                unpushed_holder_tags: vec!["mine".into()],
-            },
             OwedMerge {
                 foreign_id: "f-pulled".into(),
                 date: "2026-02-02".into(),
@@ -187,246 +182,124 @@ fn owed_journal_day_merges_are_carried_with_this_devices_text() {
                 holder_tags: Vec::new(),
                 unpushed_holder_tags: Vec::new(),
             },
+            OwedMerge {
+                foreign_id: "f-weighed".into(),
+                date: "2026-02-01".into(),
+                clock: BTreeMap::from([("dev-A".to_owned(), 2)]),
+                deleted: true,
+                record_markdown: Some("Their copy".into()),
+                record_tags: vec!["theirs".into()],
+                holder_tags: vec!["mine".into()],
+                unpushed_holder_tags: Vec::new(),
+            },
         ]
     );
-    // This device's day text is the foreign doc's local state; a merge without one gets none.
-    let path = vault.core().join(DATA_FILE);
-    let held = document_state(&path, "f-held")
-        .unwrap()
-        .expect("f-held doc");
-    assert!(held.text.contains("My unpushed day"), "{}", held.text);
-    assert!(document_state(&path, "f-pulled").unwrap().is_none());
-}
-
-/// No request is expected: a deleted foreign id is not pulled, and the other merge waits.
-struct Offline;
-
-#[async_trait::async_trait]
-impl Transport for Offline {
-    async fn send(&self, _request: HttpRequest) -> Result<HttpResponse, TransportError> {
-        Err(TransportError::Offline)
-    }
-
-    fn open_socket(
-        &self,
-        _request: SocketRequest,
-        _listener: Arc<dyn SocketListener>,
-    ) -> Result<Arc<dyn SocketHandle>, TransportError> {
-        Err(TransportError::Offline)
-    }
-}
-
-struct NoBodies;
-
-impl CrdtCipher for NoBodies {
-    fn open(&self, _update: &PackedUpdate<'_>) -> Result<Vec<u8>, EnvelopeError> {
-        Err(EnvelopeError::SignatureInvalid)
-    }
-}
-
-/// Electron folds a foreign day's own text into `j<D>` even when another device deleted the
-/// foreign id (`journal-day-merge.ts:519-536`). The import makes it the foreign doc's local Yjs
-/// state; the core's first drain folds it into the day once and leaves one day.
-#[test]
-fn the_first_drain_folds_this_devices_text_of_a_deleted_foreign_day() {
-    let vault = Vault::new();
-    let (key, value) = owed_day(
-        "f-held",
-        json!({"foreignId": "f-held", "date": "2026-02-01", "clock": {"dev-A": 2},
-               "fallbackMarkdown": "My unpushed day", "deleted": true}),
-    );
-    seed_key(&vault, &key, &value, DEBT_AT_S);
-    import(&vault);
-
-    let path = vault.core().join(DATA_FILE);
-    let held = document_state(&path, "f-held")
-        .unwrap()
-        .expect("f-held doc");
-    assert!(held.text.contains("My unpushed day"), "{}", held.text);
-    let db = memry_core::storage::open_data(&path).unwrap();
-    let http = HttpClient::new(
-        Arc::new(Offline) as Arc<dyn Transport>,
-        "https://sync.example",
-        ClientIdentity::new("desktop", "1.0.0").unwrap(),
-    );
-    let bodies = BodyPull::new(
-        Arc::new(http),
-        db.clone(),
-        Declaration::desktop(),
-        Arc::new(NoBodies),
-    );
-    let report = tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .unwrap()
-        .block_on(journal_day_merge::drain(&db, &bodies, "device-tauri"))
-        .unwrap();
-    assert_eq!(report.settled, ["f-held"]);
-    let day = document_state(&path, "j2026-02-01")
-        .unwrap()
-        .expect("the day");
-    assert_eq!(
-        day.text.matches("My unpushed day").count(),
-        1,
-        "{}",
-        day.text
-    );
-    assert!(document_state(&path, "f-held").unwrap().is_none());
     let conn = core_conn(&vault);
-    assert!(journal_day_merge::owed(&conn).unwrap().is_empty());
-    let days: i64 = conn
+    let held: i64 = conn
         .query_row(
-            "SELECT count(*) FROM journal_entries WHERE date = '2026-02-01' AND deleted_at IS NULL",
+            "SELECT count(*) FROM sync_items WHERE item_id IN ('f-weighed', 'f-pulled')",
             [],
             |row| row.get(0),
         )
         .unwrap();
-    assert_eq!(days, 1);
+    assert_eq!(held, 0);
 }
 
-/// A peer's tombstone of `foreign` under `clock`, applied as a pulled page applies it, then
-/// one drain with no server reachable.
-fn tombstone_then_drain(vault: &Vault, foreign: &str, clock: VectorClock) -> DrainReport {
-    let db = memry_core::storage::open_data(&vault.core().join(DATA_FILE)).unwrap();
-    let files = VaultFiles {
-        root: vault.root.clone(),
-        own_writes: None,
-    };
-    let id = foreign.to_owned();
-    db.call_blocking(move |conn| {
-        apply_pulled_delete(conn, "journal", &id, NOW_MS, &clock, NOW_MS, "dev-B", files)
-    })
-    .unwrap();
-    let http = HttpClient::new(
-        Arc::new(Offline) as Arc<dyn Transport>,
-        "https://sync.example",
-        ClientIdentity::new("desktop", "1.0.0").unwrap(),
-    );
-    let bodies = BodyPull::new(
-        Arc::new(http),
-        db.clone(),
-        Declaration::desktop(),
-        Arc::new(NoBodies),
-    );
-    tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .unwrap()
-        .block_on(journal_day_merge::drain(&db, &bodies, "device-tauri"))
-        .unwrap()
-}
-
-fn live_days(vault: &Vault, date: &str) -> i64 {
-    core_conn(vault)
-        .query_row(
-            "SELECT count(*) FROM journal_entries WHERE date = ?1 AND deleted_at IS NULL",
-            [date],
-            |row| row.get(0),
-        )
-        .unwrap()
-}
-
-/// VERIFY-5166B 1: the displaced holder's text lives only in its local doc. A peer that merged
-/// it tombstones it before this device drains; Electron still folds its kept text into the day
-/// (`journal-day-merge.ts:170-188`), so the tombstone holds the doc for the drain.
+/// The vault the refusal asks for: Electron drained the merge, so the day holds this device's
+/// text as `j<D>` and no owed row is left. It imports.
 #[test]
-fn a_tombstone_before_the_drain_keeps_this_devices_day_text() {
+fn a_vault_whose_day_merges_are_drained_imports() {
     let vault = Vault::new();
-    let (key, value) = owed_day(
-        "f-live",
-        json!({"foreignId": "f-live", "date": "2026-02-01", "clock": {"dev-A": 2},
-               "fallbackMarkdown": "My unpushed day"}),
+    seed_markdown(
+        &vault,
+        "j2026-02-01",
+        "journal/2026-02-01.md",
+        Some("2026-02-01"),
     );
-    seed_key(&vault, &key, &value, DEBT_AT_S);
-    import(&vault);
-    let clock = BTreeMap::from([("dev-A".to_owned(), 2), ("dev-B".to_owned(), 1)]);
-    let report = tombstone_then_drain(&vault, "f-live", clock);
-    assert_eq!(report.settled, ["f-live"]);
+    let staged = staged(
+        stage_vault_import(VaultImportInput {
+            docs: vec![folded("j2026-02-01", "My unpushed day\n", None)],
+            ..vault.input()
+        })
+        .unwrap(),
+    );
+    staged.install().unwrap();
     let day = document_state(&vault.core().join(DATA_FILE), "j2026-02-01")
         .unwrap()
-        .expect("this device's day text was lost");
-    assert_eq!(
-        day.text.matches("My unpushed day").count(),
-        1,
-        "{}",
-        day.text
-    );
-    assert_eq!(live_days(&vault, "2026-02-01"), 1);
-}
-
-/// VERIFY-5166B 2: a tombstone whose clock covers the holder's (`holderClock`) saw its tags, so
-/// a tag removed elsewhere since stays removed and no day is built from tags alone (Electron
-/// `unpushedHolderTags`, `journal-day-merge.ts:213-240`).
-#[test]
-fn a_covering_tombstone_does_not_resurrect_holder_tags() {
-    let vault = Vault::new();
-    let (key, value) = owed_day(
-        "f-tagged",
-        json!({"foreignId": "f-tagged", "date": "2026-02-01", "clock": {"dev-A": 2},
-               "tags": ["removed-elsewhere"], "holderClock": {"dev-A": 2}}),
-    );
-    seed_key(&vault, &key, &value, DEBT_AT_S);
-    import(&vault);
-    let clock = BTreeMap::from([("dev-A".to_owned(), 2), ("dev-B".to_owned(), 1)]);
-    let report = tombstone_then_drain(&vault, "f-tagged", clock);
-    assert_eq!(report.settled, ["f-tagged"]);
-    let tags: i64 = core_conn(&vault)
-        .query_row(
-            "SELECT count(*) FROM note_tags WHERE tag = 'removed-elsewhere'",
-            [],
-            |row| row.get(0),
-        )
-        .unwrap();
-    assert_eq!(tags, 0, "resurrected a tag removed elsewhere");
-    assert_eq!(live_days(&vault, "2026-02-01"), 0);
-}
-
-/// VERIFY-5166C 1: a holder Electron recorded no clock for (edited since its sync) keeps no
-/// payload clock, yet its row is clocked: the unclocked seed must not push it as a live day.
-/// The drain still folds its text once, and the forget takes its row.
-#[test]
-fn an_unclocked_holder_is_not_seeded_and_still_folds_once() {
-    let vault = Vault::new();
-    let (key, value) = owed_day(
-        "f-edited",
-        json!({"foreignId": "f-edited", "date": "2026-02-01", "clock": {"dev-A": 2},
-               "fallbackMarkdown": "My unpushed day", "tags": ["t"]}),
-    );
-    seed_key(&vault, &key, &value, DEBT_AT_S);
-    import(&vault);
-    let path = vault.core().join(DATA_FILE);
-    let db = memry_core::storage::open_data(&path).unwrap();
-    let seeded = db
-        .call_blocking(|conn| unclocked_seed::seed(conn, "device-core", NOW_MS))
-        .unwrap();
-    assert!(seeded.is_empty(), "seeded {seeded:?}");
-    let queued: i64 = core_conn(&vault)
-        .query_row("SELECT count(*) FROM outbox", [], |row| row.get(0))
-        .unwrap();
-    assert_eq!(queued, 0);
-    drop(db);
-
-    let clock = BTreeMap::from([("dev-A".to_owned(), 2), ("dev-B".to_owned(), 1)]);
-    let report = tombstone_then_drain(&vault, "f-edited", clock);
-    assert_eq!(report.settled, ["f-edited"]);
-    let day = document_state(&path, "j2026-02-01")
-        .unwrap()
         .expect("the day");
-    assert_eq!(
-        day.text.matches("My unpushed day").count(),
-        1,
-        "{}",
-        day.text
+    assert!(day.text.contains("My unpushed day"), "{}", day.text);
+    assert!(
+        journal_day_merge::owed(&core_conn(&vault))
+            .unwrap()
+            .is_empty()
     );
-    assert_eq!(live_days(&vault, "2026-02-01"), 1);
-    let live: i64 = core_conn(&vault)
-        .query_row(
-            "SELECT count(*) FROM sync_items WHERE item_id = 'f-edited' AND deleted_at IS NULL",
-            [],
-            |row| row.get(0),
-        )
-        .unwrap();
-    assert_eq!(live, 0);
+}
+
+fn assert_refused_for(vault: &Vault, docs: Vec<FoldedDoc>, foreign: &str) {
+    let error = match stage_vault_import(VaultImportInput {
+        docs,
+        ..vault.input()
+    }) {
+        Err(error) => error,
+        Ok(_) => panic!("the import was not refused"),
+    };
+    assert!(
+        matches!(&error, ImportError::UndrainedJournalDay { foreign_ids } if foreign_ids == &[foreign]),
+        "{error:?}"
+    );
+    assert!(
+        error
+            .to_string()
+            .contains("Open the previous MemryNote app")
+    );
+    assert_eq!(written_by_import(vault), Vec::<String>::new());
+    assert!(!vault.staging().exists());
+}
+
+/// An owed merge whose fold needs this device's state of the foreign day is refused before any
+/// write. Each row is a reviewer's repro of a holder the core would lose or push: VERIFY-5166B 1
+/// (text, tombstone before the drain), B 2 (tags under a covering tombstone), C and D (an
+/// unclocked holder seeded, a clocked one reuploaded), a deleted id's text (#2984), unweighed
+/// tags of a deleted id, and attachment references (OL-M47).
+#[test]
+fn an_owed_merge_that_needs_this_devices_day_is_refused() {
+    for value in [
+        json!({"foreignId": "f", "date": "2026-02-01", "clock": {"dev-A": 2},
+               "fallbackMarkdown": "My unpushed day"}),
+        json!({"foreignId": "f", "date": "2026-02-01", "clock": {"dev-A": 2},
+               "tags": ["removed-elsewhere"], "holderClock": {"dev-A": 2}}),
+        json!({"foreignId": "f", "date": "2026-02-01", "clock": {"dev-A": 2},
+               "fallbackMarkdown": "My unpushed day", "tags": ["t"]}),
+        json!({"foreignId": "f", "date": "2026-02-01", "clock": {"dev-A": 2},
+               "fallbackMarkdown": "My unpushed day", "deleted": true}),
+        json!({"foreignId": "f", "date": "2026-02-01", "clock": {"dev-A": 2},
+               "deleted": true, "tags": ["t"]}),
+        json!({"foreignId": "f", "date": "2026-02-01", "clock": {"dev-A": 2},
+               "attachmentReferences": ["att-1"]}),
+    ] {
+        let vault = Vault::new();
+        let (key, value) = owed_day("f", value);
+        seed_key(&vault, &key, &value, DEBT_AT_S);
+        assert_refused_for(&vault, Vec::new(), "f");
+    }
+}
+
+/// A foreign doc with local Yjs state is folded by Electron's drain, deleted id or not
+/// (`absorbBody`); without its row a tombstone in the core would purge it first.
+#[test]
+fn an_owed_merge_whose_foreign_doc_holds_state_is_refused() {
+    let vault = Vault::new();
+    let (key, value) = owed_day(
+        "f-doc",
+        json!({"foreignId": "f-doc", "date": "2026-02-01", "clock": {"dev-A": 2},
+               "deleted": true}),
+    );
+    seed_key(&vault, &key, &value, DEBT_AT_S);
+    assert_refused_for(
+        &vault,
+        vec![folded("f-doc", "Typed offline\n", None)],
+        "f-doc",
+    );
 }
 
 /// `noteCoverForPush`: a note whose cover this device held and whose file has none pushes

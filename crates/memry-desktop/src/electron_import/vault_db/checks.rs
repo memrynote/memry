@@ -77,7 +77,6 @@ pub(super) fn run(
         .map(|item| (item.item_type.as_str(), item.item_id.as_str()))
         .collect();
     let mut clock_mismatches = Vec::new();
-    let holders = super::journal_day_merges::holder_ids(source)?;
     for (table, id_column, item_type, rows) in RECORD_TABLES {
         let mut expected = source_clocks(source, table, id_column, rows)?;
         expected.retain(|id, _| !tombstoned.contains(&(*item_type, id.as_str())));
@@ -87,12 +86,8 @@ pub(super) fn run(
                 *clock = Some(minted.clone());
             }
         }
-        let mut staged: BTreeMap<String, Option<String>> =
+        let staged: BTreeMap<String, Option<String>> =
             writer.record_clocks(item_type)?.into_iter().collect();
-        // A displaced journal holder has no source row ([`super::journal_day_merges`]).
-        staged.retain(|id, _| {
-            *item_type != "journal" || expected.contains_key(id) || !holders.contains(id)
-        });
         if !expected.keys().eq(staged.keys()) {
             let missing = expected
                 .keys()

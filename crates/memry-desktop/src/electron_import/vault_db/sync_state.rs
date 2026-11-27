@@ -21,7 +21,7 @@ use rusqlite::{Connection, OptionalExtension};
 use serde::Deserialize;
 use serde_json::Value;
 
-use super::journal_day_merges::{DisplacedHolder, journal_day_merge};
+use super::journal_day_merges::journal_day_merge;
 
 use super::source::source_error;
 use super::tables::records::malformed;
@@ -204,8 +204,9 @@ pub const MAX_VALUE_BYTES: usize = 8 * 1024 * 1024;
 pub struct SyncStatePlan {
     pub state: ImportSyncState,
     pub stats: TableStats,
-    /// The `journalDayMerge:` rows a local holder wrote when it gave its day up.
-    pub holders: Vec<DisplacedHolder>,
+    /// Foreign ids of the `journalDayMerge:` rows whose fold needs this device's holder text,
+    /// tags or attachment references: the import refuses them.
+    pub local_folds: Vec<String>,
 }
 
 const TABLE: &str = "sync_state";

@@ -338,12 +338,6 @@ pub(super) fn import_documents(
             versions.extend(version);
         }
     }
-    docs.extend(super::journal_day_merges::fallback_documents(
-        source,
-        &input.docs,
-        input.electron_device_id.as_deref(),
-        input.now_ms,
-    )?);
     writer.put_documents(&docs, input.now_ms)?;
     writer.put_body_debts(&input.extra_owed_docs)?;
     writer.put_body_versions(&versions, input.now_ms)?;
