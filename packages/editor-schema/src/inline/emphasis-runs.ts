@@ -239,12 +239,16 @@ export function tokenizeEmphasisRuns(items: InlineItem[], marks: Span[]): Inline
  * row open bold italic (`tryBoldItalic`), so an italic run whose edge meets an
  * inner bold run (`***a** b*`, `*b **c***`) and a bold run ending in an inner
  * italic (`**b *c***`) came back as text with stray stars. A run that is one
- * inner run end to end (`lastRun`) is the `***x***` the parser reads.
+ * inner run end to end (`lastRun`) is the `***x***` the parser reads, and an
+ * escaped star (`*a\**`) meets no delimiter.
  */
 function meetsInnerStars(delimiter: string, content: string, lastRun: string): boolean {
   if (content === lastRun) return false
-  if (delimiter === '*') return content.startsWith('*') || content.endsWith('*')
-  return delimiter === '**' && content.endsWith('*')
+  let slashes = 0
+  while (content[content.length - 2 - slashes] === '\\') slashes++
+  const endsInStar = content.endsWith('*') && slashes % 2 === 0
+  if (delimiter === '*') return content.startsWith('*') || endsInStar
+  return delimiter === '**' && endsInStar
 }
 
 /** `parseDelimited` skips an escaped character, so only a bare `_` could close an underscore run early. */
@@ -257,6 +261,25 @@ function hasBareUnderscore(content: string): boolean {
 }
 
 const isWord = (c: string | undefined): boolean => c !== undefined && /\w/.test(c)
+
+/**
+ * Whether a bare `_` before `at` in its paragraph could open a run, which would
+ * close on an underscore delimiter at `at`. The escaper escapes those in text
+ * (`spellsRunsWithUnderscores`), so this finds one in a code span or an address.
+ */
+function underscoreOpensBefore(markdown: string, at: number): boolean {
+  let start = 0
+  for (const blank of markdown.slice(0, at).matchAll(/\n[ \t>]*\n/g)) {
+    start = blank.index + blank[0].length
+  }
+  for (let i = start; i < at; i++) {
+    if (markdown[i] === '\\') i++
+    else if (markdown[i] === '_' && !(isWord(markdown[i - 1]) && isWord(markdown[i + 1]))) {
+      return true
+    }
+  }
+  return false
+}
 
 /**
  * Each underscore token pair spelled `_` or `__`, or with the stars it stands
@@ -278,7 +301,7 @@ function resolveUnderscores(markdown: string, delimiters: string[]): string {
     const first = markdown[at + token[0].length]
     const after = markdown[token.index + token[0].length]
     const opens = !(isWord(before) && isWord(first)) && before !== '_'
-    if (opens && after !== '_') readable.add(token[1])
+    if (opens && after !== '_' && !underscoreOpensBefore(markdown, at)) readable.add(token[1])
   }
   return markdown.replace(UNDERSCORE_TOKEN, (_token, index: string) => {
     const delimiter = delimiters[Number(index)]
@@ -288,6 +311,30 @@ function resolveUnderscores(markdown: string, delimiters: string[]): string {
 
 /** Each token pair in `markdown` turned into its delimiters. */
 export function restoreEmphasisRuns(markdown: string, marks: Span[]): string {
+  const { restored, underscored } = spellRuns(markdown, marks)
+  return resolveUnderscores(restored, underscored)
+}
+
+/**
+ * Whether house style spells a run of `items` with underscores, see
+ * `meetsInnerStars`, once the escaper has escaped every `_` in their text.
+ */
+export function spellsRunsWithUnderscores(items: InlineItem[]): boolean {
+  const spell = (list: InlineItem[]): string =>
+    list
+      .map((item) => {
+        if (Array.isArray(item.content)) return `[${spell(item.content)}](${item.href ?? ''})`
+        if (item.type !== 'text') return '\uFFFC'
+        const text = item.text ?? ''
+        return item.styles?.code === true ? `\`${text}\`` : text.replaceAll('_', '\\_')
+      })
+      .join('')
+  const marks: Span[] = []
+  return spellRuns(spell(tokenizeEmphasisRuns(items, marks)), marks).underscored.length > 0
+}
+
+/** `markdown` with each run's delimiters, an underscore token pair where `meetsInnerStars`. */
+function spellRuns(markdown: string, marks: Span[]): { restored: string; underscored: string[] } {
   // `lastRun` is the last run closed inside each open one, delimiters included.
   const open = [{ text: '', lastRun: '' }]
   const underscored: string[] = []
@@ -321,8 +368,7 @@ export function restoreEmphasisRuns(markdown: string, marks: Span[]): string {
     parent.text += `${before}${parent.lastRun}${after}`
   }
   // A pair the serializer cut short keeps its text, without delimiters.
-  const restored = open.map((run) => run.text).join('') + markdown.slice(last)
-  return resolveUnderscores(restored, underscored)
+  return { restored: open.map((run) => run.text).join('') + markdown.slice(last), underscored }
 }
 
 /**

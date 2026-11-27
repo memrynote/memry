@@ -23,6 +23,7 @@
  */
 
 import { spellsCalloutMarker } from '../blocks/markdown'
+import { spellsRunsWithUnderscores } from './emphasis-runs'
 import { codeSpanRanges } from './link-code-spans'
 
 type Item = {
@@ -273,6 +274,12 @@ export function escapeMarkdownText<T extends Item>(items: T[], blockType?: strin
   const forced = lineOpeners(spelling, place)
   const firstLine = spelling.split('\n', 1)[0]
   if (spellsCalloutMarker(blockType ?? '', firstLine, firstLine === spelling)) forced.add(0)
+  // An underscore delimiter pairs with any bare `_` in its block.
+  if (spellsRunsWithUnderscores(items)) {
+    for (const { at, text } of segments) {
+      for (let i = text.indexOf('_'); i !== -1; i = text.indexOf('_', i + 1)) forced.add(at + i)
+    }
+  }
   if (cell) for (const at of unclosedWikiOpeners(spelling)) forced.add(at)
   const escaped = segments.map((segment) => escapeSegment(block, segment, place, forced))
   let next = 0

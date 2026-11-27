@@ -676,19 +676,19 @@
       "name": "writer: an italic run ending in a star beside an underscore",
       "pins": "the writer spells the italic with underscores only where the parser reads them, so this body does not settle and stays a flat quote",
       "markdown": "> \\_\n> *a\\**\n>\n> z",
-      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"_\"\n3 element hardBreak\n3 text \"a*\" italic={}\n3 element hardBreak\n3 text \"z\""
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"_\"\n3 element hardBreak\n3 text \"a*\" italic={}\n2 element blockGroup\n3 element blockContainer\n4 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n5 text \"z\""
     },
     {
       "name": "writer: a bold run ending in a star then an underscore run",
       "pins": "a flat quote: the underscore run's opener follows a star, which the writer cannot spell back",
       "markdown": "> **a\\***_a\\*_\n>\n> z",
-      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"a*\" bold={}\n3 text \"a*\" italic={}\n3 element hardBreak\n3 text \"z\""
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"a*\" bold={}\n3 text \"a*\" italic={}\n2 element blockGroup\n3 element blockContainer\n4 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n5 text \"z\""
     },
     {
       "name": "writer: a code span between an underscore and an italic star",
       "pins": "a flat quote of the text _, code c and an italic star",
       "markdown": "> \\_*`c`\\**\n>\n> z",
-      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"_\"\n3 text \"c\" code={}\n3 text \"*\" italic={}\n3 element hardBreak\n3 text \"z\""
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"_\"\n3 text \"c\" code={}\n3 text \"*\" italic={}\n2 element blockGroup\n3 element blockContainer\n4 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n5 text \"z\""
     },
     {
       "name": "writer: an italic run ending in a star",
