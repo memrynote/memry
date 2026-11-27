@@ -191,8 +191,11 @@ fn inline_token(
         // A link with no label has no text to hold its address: it travels as
         // a comment's token, a node once the blocks exist, as desktop's
         // `maskEmptyLinks` does (`editor-schema/src/inline/empty-links.ts`).
-        // One whose address crosses a line break stays as it was.
-        if inner.iter().all(|c| matches!(c, ' ' | '\t')) && !text[i..end].contains(&'\n') {
+        if inner.iter().all(|c| matches!(c, ' ' | '\t')) {
+            if text[i..end].contains(&'\n') {
+                // Desktop reads the address as it stands on one line only.
+                return Err(Unsupported("empty-label link across lines"));
+            }
             push_text(nodes, &encode(&collect(&text[i..end])));
             return Ok(Some(end));
         }
@@ -388,6 +391,29 @@ mod tests {
         assert!(allowed_href("mailto:a@b.c"));
         let content = inline_content("[a](javascript:x)", &[], false).expect("supported");
         assert_eq!(content, vec![plain("a")]);
+    }
+
+    #[test]
+    fn an_empty_label_link_is_a_comment_node_with_its_bytes() {
+        let plan = super::super::plan("x [ ](u \"t\") y");
+        assert!(plan.fallbacks.is_empty());
+        assert_eq!(
+            plan.blocks[0].content,
+            vec![
+                plain("x "),
+                SeedInline::HtmlComment {
+                    source: "[ ](u \"t\")".to_owned()
+                },
+                plain(" y")
+            ]
+        );
+    }
+
+    #[test]
+    fn an_empty_label_link_across_lines_stays_literal_text() {
+        let plan = super::super::plan("[](u\nv)");
+        assert_eq!(plan.fallbacks.len(), 1);
+        assert_eq!(plan.blocks.len(), 2);
     }
 
     /// A paste is planned on the main thread, so a long run of openers no
