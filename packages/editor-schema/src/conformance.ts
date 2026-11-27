@@ -1158,6 +1158,7 @@ const htmlCommentCases: RoundtripCase[] = [
   // the block would pair with underscore delimiters unless it is escaped.
   { name: 'italic run ending in an escaped star', markdown: '*a\\**' },
   { name: 'bold run ending in an escaped star', markdown: '**a\\***' },
+  { name: 'escaped edge star beside a word underscore', markdown: '*a\\** b_c' },
   { name: 'underscore line above an italic run opening with bold', markdown: '\\_\n_**a** b_' },
   {
     name: 'underscore inside an italic run opening with bold',

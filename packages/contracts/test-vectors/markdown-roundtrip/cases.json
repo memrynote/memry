@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 398,
+    "exportedCaseCount": 399,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 408,
+    "caseCount": 409,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -1776,6 +1776,13 @@
       "canonical": null,
       "pending": null,
       "sha256": "30e95dd9d458ace04524233c8e6de3ecb15b432c5ea3c1c11a6221bf72728303"
+    },
+    {
+      "name": "escaped edge star beside a word underscore",
+      "markdown": "*a\\** b_c",
+      "canonical": null,
+      "pending": null,
+      "sha256": "1a589a376c6334d9bb4bfec0ff83debb42156777533e68f4341881120dc29e50"
     },
     {
       "name": "underscore line above an italic run opening with bold",
