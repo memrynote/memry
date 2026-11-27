@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 389,
+    "exportedCaseCount": 393,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 399,
+    "caseCount": 403,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -2364,6 +2364,34 @@
       "canonical": "- x\n\n<br><br>b",
       "pending": null,
       "sha256": "de08d0659b5e7db391df4ba02544ae91d3e7134fc0f6c3b5861dd91c91638638"
+    },
+    {
+      "name": "html break alone as a paragraph",
+      "markdown": "a\n\n<br>\n\nb",
+      "canonical": null,
+      "pending": null,
+      "sha256": "791e88c8efdd1aaff5367f2a008ce359e8bc9e562aaa75c52070310bd800599a"
+    },
+    {
+      "name": "html break alone ending a note",
+      "markdown": "a\n\n<br>",
+      "canonical": null,
+      "pending": null,
+      "sha256": "673eb023d3af5df6a54f3988f439c7bb74e916b00359df070ee28463caa2f01a"
+    },
+    {
+      "name": "html break alone as the note",
+      "markdown": "<br>",
+      "canonical": null,
+      "pending": null,
+      "sha256": "65aef1adba8672a5fe7932d9f9f0dc35c2435893f65112acac628d2dc17a0bcf"
+    },
+    {
+      "name": "html break alone under a list item",
+      "markdown": "- x\n<br>",
+      "canonical": "- x\n\n<br>",
+      "pending": null,
+      "sha256": "059281ea9144249dcd5d386a7fbb91bbe0f3034fa6b72ab9e94f50fe00028b35"
     },
     {
       "name": "bold before a soft break inside list-item link text (BBF-106)",

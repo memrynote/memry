@@ -1421,6 +1421,11 @@ const htmlCommentCases: RoundtripCase[] = [
     markdown: '- x\n<br>b',
     canonical: '- x\n\n<br><br>b'
   },
+  // A paragraph of one break was written as nothing, a blank line.
+  { name: 'html break alone as a paragraph', markdown: 'a\n\n<br>\n\nb' },
+  { name: 'html break alone ending a note', markdown: 'a\n\n<br>' },
+  { name: 'html break alone as the note', markdown: '<br>' },
+  { name: 'html break alone under a list item', markdown: '- x\n<br>', canonical: '- x\n\n<br>' },
   {
     name: 'bold before a soft break inside list-item link text (BBF-106)',
     markdown: '- [**a**\nb](u)'

@@ -101,7 +101,6 @@ const HTML_ONLY_BODY: Probe[] = [
   { name: '<video> embed', markdown: '<video src="a.mp4" controls></video>', pass1: '![](a.mp4)' },
   { name: 'raw <img>', markdown: '<img src="a.png" alt="A">', pass1: '![A](a.png)' },
   { name: '<hr /> self-closing', markdown: '<hr />', pass1: '***' },
-  { name: '<br> alone on a line', markdown: '<br>', pass1: '' },
   { name: '<script> block', markdown: '<script>alert(1)</script>', pass1: '\n\n', pass2: '' }
 ]
 
@@ -167,6 +166,8 @@ const SURVIVORS: Probe[] = [
     pass1: null
   },
   { name: 'raw HTML inside inline code', markdown: 'Use `<div>` here.', pass1: null },
+  // A paragraph of one break is written as the `<br>` it was read from.
+  { name: '<br> alone on a line', markdown: '<br>', pass1: null },
   // An `htmlComment` node holds it now (AF-015).
   { name: 'a plain HTML comment', markdown: '<!-- a note to self -->', pass1: null },
   {
