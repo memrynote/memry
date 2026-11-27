@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 325,
+    "exportedCaseCount": 328,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 335,
+    "caseCount": 338,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -544,6 +544,27 @@
       "canonical": null,
       "pending": null,
       "sha256": "d93da2c32e9fa407006d28d8d232f010d1b6fc5e27f0866b05aabe9d23a8cb7e"
+    },
+    {
+      "name": "blank line ending a note",
+      "markdown": "Hello\n\n",
+      "canonical": null,
+      "pending": null,
+      "sha256": "d9cd8d02c17c5dfa76991d216db8511c5b57f5c01cffa2e3378e183f4855259b"
+    },
+    {
+      "name": "two blank lines ending a note",
+      "markdown": "Hello\n\n\n",
+      "canonical": null,
+      "pending": null,
+      "sha256": "14e02244f008be46edaabe1b86733d7660c9b513c798b4e7a8e6ea1ebb9019c1"
+    },
+    {
+      "name": "blank lines after a toggle ending a note",
+      "markdown": "<details data-memry-toggle>\n<summary>Summary</summary>\n\nBody line\n\n</details>\n\n\n",
+      "canonical": null,
+      "pending": null,
+      "sha256": "d049f95979adcbeff95857c99158beea9d57871ac7ae5ff8f5d15efaa4e1a7c8"
     },
     {
       "name": "extra blank line before a colored toggle survives",

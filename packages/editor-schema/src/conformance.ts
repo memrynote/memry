@@ -341,6 +341,14 @@ const toggleCases: RoundtripCase[] = [
     name: 'two extra blank lines before a toggle survive',
     markdown: `Before\n\n\n\n${serializeToggleBlock('Summary', 'Body line')}`
   },
+  // A blank line ending a note came back one line longer on every write: the
+  // writer spelled a trailing gap like a gap between two blocks.
+  { name: 'blank line ending a note', markdown: 'Hello\n\n' },
+  { name: 'two blank lines ending a note', markdown: 'Hello\n\n\n' },
+  {
+    name: 'blank lines after a toggle ending a note',
+    markdown: `${serializeToggleBlock('Summary', 'Body line')}\n\n\n`
+  },
   {
     // The colors marker sits between the gap and the toggle, and finding it
     // must not eat the gap on the way past.
