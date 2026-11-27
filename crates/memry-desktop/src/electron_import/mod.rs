@@ -103,6 +103,21 @@ pub enum ImportError {
          it finish syncing, then quit it and try again."
     )]
     DeleteWithoutDevice,
+    /// Rows Electron pushes at its next signed-in start (its dirty sweeps and `seedUnclocked`),
+    /// which this build cannot replay yet. Nothing was written. `table` is for logs.
+    #[error(
+        "Some changes in this vault have not synced yet. Nothing was changed. Open the previous \
+         MemryNote app, let it finish syncing, then quit it and try again."
+    )]
+    UnsyncedChanges { table: &'static str },
+    /// The same rows when `memry-config.json` names no sync device: the previous app was never
+    /// signed in, so it sends nothing until it is. Nothing was written. `table` is for logs.
+    #[error(
+        "Some changes in this vault have never synced, because the previous MemryNote app was \
+         never signed in to sync. Nothing was changed. Sign in to sync in the previous \
+         MemryNote app, let it finish syncing, then quit it and try again."
+    )]
+    NeverSynced { table: &'static str },
     /// Queued note body pushes whose Yjs document the store copy does not hold. Staged
     /// without one, the push of an empty payload would have no state to send.
     #[error(
