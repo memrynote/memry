@@ -225,6 +225,8 @@
           "ocr_languages_get_state",
           "ocr_languages_retry",
           "ocr_languages_set",
+          "onboarding_detect_sources",
+          "onboarding_is_memry_vault",
           "portals_get_usage",
           "portals_search",
           "portals_stamp_anchor",

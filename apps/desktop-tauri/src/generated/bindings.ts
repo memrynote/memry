@@ -642,6 +642,10 @@ export const commands = {
 	ocrLanguagesRetry: () => __TAURI_INVOKE<OcrLanguagesState>("ocr_languages_retry"),
 	/**  Stores the chosen languages (English is always added) and starts converging on them. */
 	ocrLanguagesSet: (languages: OcrLanguage[]) => __TAURI_INVOKE<OcrLanguagesState>("ocr_languages_set", { languages }),
+	/**  `onboarding:detect-sources`: note apps installed on this computer, and Obsidian's vaults. */
+	onboardingDetectSources: () => __TAURI_INVOKE<OnboardingSources>("onboarding_detect_sources"),
+	/**  `onboarding:is-memry-vault`: whether a folder the user picked already has `.memry`. */
+	onboardingIsMemryVault: (path: string) => __TAURI_INVOKE<boolean>("onboarding_is_memry_vault", { path }),
 	/**
 	 *  `portals:get-usage`: the notes that show `note_id`, or its block `anchor`, with the notes
 	 *  that link to it.
@@ -3553,6 +3557,18 @@ export type OcrLanguagesChangedEvent = OcrLanguagesState;
 export type OcrLanguagesState = {
 	selected: OcrLanguage[],
 	statuses: Partial<{ [key in OcrLanguage]: OcrLanguageStatus }>,
+};
+
+/**  `OnboardingObsidianVault` (`packages/contracts/src/onboarding-api.ts`). */
+export type OnboardingObsidianVault = {
+	name: string,
+	path: string,
+};
+
+/**  `OnboardingSources`: Obsidian's vaults and the importer ids whose app is installed. */
+export type OnboardingSources = {
+	obsidianVaults: OnboardingObsidianVault[],
+	installedApps: string[],
 };
 
 export type OpenSettingsResult = {
