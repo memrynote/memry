@@ -199,22 +199,31 @@ function hrefParenTokens(item: InlineItem, marks: Span[]): InlineItem {
 }
 
 /**
- * A code run spelled with the shortest fence its backtick runs allow, as a
- * token. The writer fences with one backtick more than the longest run, and
- * three at a line start open a code block: `c``c` came back as one. A run
- * that holds a break is left to the writer, which splits it at the break.
+ * A code run spelled with the shortest fence its backtick runs allow, each
+ * line as a token. The writer fences with one backtick more than the longest
+ * run, and three at a line start open a code block: `c``c` came back as one.
+ * It writes a run's breaks between one span per line, as these items do.
  */
-function shortFencedCode(item: InlineItem, marks: Span[]): InlineItem {
+function shortFencedCode(item: InlineItem, marks: Span[]): InlineItem[] {
   const text = item.text ?? ''
-  if (item.type !== 'text' || item.styles?.code !== true || text.includes('\n')) return item
-  const runs = new Set((text.match(/`+/g) ?? []).map((run) => run.length))
-  let fence = 1
-  while (runs.has(fence)) fence++
-  if (fence > Math.max(0, ...runs)) return item
-  const ticks = '`'.repeat(fence)
-  const padded = text.startsWith('`') || text.endsWith('`') ? ` ${text} ` : text
+  if (item.type !== 'text' || item.styles?.code !== true) return [item]
+  const fences = text.split('\n').map((line) => {
+    const runs = new Set((line.match(/`+/g) ?? []).map((run) => run.length))
+    let fence = 1
+    while (runs.has(fence)) fence++
+    return fence > Math.max(0, ...runs) ? null : '`'.repeat(fence)
+  })
+  if (fences.every((fence) => fence === null)) return [item]
   const { code: _code, ...styles } = item.styles
-  return { ...item, text: codeToken(marks.push({ code: `${ticks}${padded}${ticks}` }) - 1), styles }
+  return text.split('\n').flatMap((line, index) => {
+    const parts: InlineItem[] = index > 0 ? [{ ...item, text: '\n', styles }] : []
+    const ticks = fences[index]
+    if (!line) return parts
+    if (ticks === null) return [...parts, { ...item, text: line }]
+    const padded = line.startsWith('`') || line.endsWith('`') ? ` ${line} ` : line
+    const token = codeToken(marks.push({ code: `${ticks}${padded}${ticks}` }) - 1)
+    return [...parts, { ...item, text: token, styles }]
+  })
 }
 
 /** `items` with every run of a mark between tokens; `marks` maps each token to its span. */
@@ -231,15 +240,15 @@ export function tokenizeEmphasisRuns(items: InlineItem[], marks: Span[]): Inline
     }
     if (!best) {
       const item = items[at++]
-      const children: InlineItem[] = Array.isArray(item.content) ? item.content : []
-      out.push(
-        Array.isArray(item.content)
-          ? {
-              ...hrefParenTokens(item, marks),
-              content: joinTexts(tokenizeEmphasisRuns(codeTokens(children, marks), marks))
-            }
-          : shortFencedCode(item, marks)
-      )
+      if (!Array.isArray(item.content)) {
+        out.push(...shortFencedCode(item, marks))
+        continue
+      }
+      const children: InlineItem[] = item.content
+      out.push({
+        ...hrefParenTokens(item, marks),
+        content: joinTexts(tokenizeEmphasisRuns(codeTokens(children, marks), marks))
+      })
       continue
     }
     const { mark, length } = best
