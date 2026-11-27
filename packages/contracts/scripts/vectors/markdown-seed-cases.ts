@@ -577,5 +577,30 @@ export const MARKDOWN_SEED_CASES: ReadonlyArray<{ name: string; markdown: string
       name: "list item child: a numbered item's callout",
       markdown: '1. a\n\n   > [!tip]\n   > d\n\nafter',
       pins: 'an item holding a callout, then a top-level paragraph: the run ends at the first line at the left edge'
+    },
+    {
+      name: 'writer: an italic run ending in a star beside an underscore',
+      markdown: '> \\_\n> *a\\**\n>\n> z',
+      pins: 'the writer spells the italic with underscores only where the parser reads them, so this body does not settle and stays a flat quote'
+    },
+    {
+      name: 'writer: a bold run ending in a star then an underscore run',
+      markdown: '> **a\\***_a\\*_\n>\n> z',
+      pins: "a flat quote: the underscore run's opener follows a star, which the writer cannot spell back"
+    },
+    {
+      name: 'writer: a code span between an underscore and an italic star',
+      markdown: '> \\_*`c`\\**\n>\n> z',
+      pins: 'a flat quote of the text _, code c and an italic star'
+    },
+    {
+      name: 'writer: an italic run ending in a star',
+      markdown: '> *a\\**\n>\n> z',
+      pins: 'a structured quote: the writer spells the run _a\\*_, which settles'
+    },
+    {
+      name: 'writer: a bold run ending in a star',
+      markdown: '> **a\\***\n>\n> z',
+      pins: 'a structured quote: the writer spells the run __a\\*__, which settles'
     }
   ]
