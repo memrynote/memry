@@ -128,6 +128,15 @@ pub enum ImportError {
          MemryNote app, let it finish syncing, then quit it and try again."
     )]
     NeverSynced { table: &'static str },
+    /// Owed journal day merges whose fold still needs this device's state of the foreign day,
+    /// which the core keeps only with a row Electron already removed. Nothing was written.
+    /// `foreign_ids` is for logs.
+    #[error(
+        "A journal day in this vault has changes that have not synced yet. Nothing was changed. \
+         Open the previous MemryNote app while online, let it finish syncing, then quit it and \
+         try again."
+    )]
+    UndrainedJournalDay { foreign_ids: Vec<String> },
     /// Queued note body pushes whose Yjs document the store copy does not hold. Staged
     /// without one, the push of an empty payload would have no state to send.
     #[error(

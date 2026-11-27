@@ -54,16 +54,12 @@ pub trait VaultFiles: Send + Sync {
     fn is_reachable(&self) -> bool;
 }
 
-/// The absolute path a queue row stores for a vault-relative file (Electron
-/// keeps absolute paths there, and the import copies rows unchanged).
-pub fn absolute(vault: &dyn VaultFiles, rel: &str) -> String {
-    vault.root().join(rel).to_string_lossy().into_owned()
-}
-
-/// The vault-relative, `/`-separated form of an absolute path, `None` outside
-/// the vault.
+/// The vault-relative, `/`-separated form of `path`, `None` outside the vault.
+/// `path` is vault-relative (how a queue row stores it) or absolute (a landed
+/// download, or a row an earlier build queued).
 pub fn relative(vault: &dyn VaultFiles, path: &str) -> Option<String> {
-    let rest = Path::new(path).strip_prefix(vault.root()).ok()?;
+    let full = vault.root().join(path);
+    let rest = full.strip_prefix(vault.root()).ok()?;
     let mut parts = Vec::new();
     for component in rest.components() {
         match component {

@@ -12,7 +12,7 @@ fn prefixes_need_an_id_and_exact_keys_match_exactly() {
     assert!(classify("LASTCURSOR").is_none());
     assert!(matches!(
         classify("note-cover:x").unwrap().rule,
-        KeyRule::Pending { .. }
+        KeyRule::Skip { .. }
     ));
 }
 
@@ -104,6 +104,13 @@ fn a_deeply_nested_ledger_is_unreadable_not_a_stack_overflow() {
                 Carried::Dropped(_)
             ));
         }
+        let merge = format!(r#"{{"foreignId":"f","date":"2026-01-05","clock":{deep}}}"#);
+        let mut plan = SyncStatePlan::default();
+        assert_eq!(
+            journal_day_merge(&mut plan, &merge),
+            Carried::Dropped("unreadableJournalDayMerges")
+        );
+        assert!(plan.state.journal_merges.is_empty());
         let entry = format!(r#"{{"k":{deep}}}"#);
         let mut plan = SyncStatePlan::default();
         assert_eq!(
