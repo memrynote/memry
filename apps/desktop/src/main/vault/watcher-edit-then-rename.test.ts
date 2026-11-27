@@ -88,12 +88,20 @@ const changeHeard = vi.hoisted(() => ({
   resolve: () => {},
   watcher: null as Chokidar.FSWatcher | null
 }))
+// A folder event macOS never delivers: chokidar's add of a path in the set
+// never reaches the app.
+const lostAdds = vi.hoisted(() => new Set<string>())
 vi.mock('chokidar', async (importOriginal) => {
   const actual = await importOriginal<typeof Chokidar>()
   return {
     ...actual,
     watch: (...args: Parameters<typeof actual.watch>) => {
-      changeHeard.watcher = actual.watch(...args).on('change', (filePath: string) => {
+      const watcher = actual.watch(...args)
+      const emitWithAll = watcher.emitWithAll.bind(watcher)
+      watcher.emitWithAll = (event, emitted) => {
+        if (event !== 'add' || !lostAdds.has(emitted[0])) emitWithAll(event, emitted)
+      }
+      changeHeard.watcher = watcher.on('change', (filePath: string) => {
         if (filePath === changeHeard.path) changeHeard.resolve()
       })
       return changeHeard.watcher
@@ -181,6 +189,7 @@ describe('an outside edit followed by a rename inside the change debounce', () =
   })
 
   afterEach(async () => {
+    lostAdds.clear()
     unregisterRenameSyncCallback()
     await stopWatcher()
     await stopProjectionRuntime({ drain: true })
@@ -313,6 +322,24 @@ describe('an outside edit followed by a rename inside the change debounce', () =
     expect(metadataRows()).toEqual([{ id: 'n1', path: 'Docs/pear.md' }])
     expect(enqueueLocalSyncDelete).not.toHaveBeenCalled()
   }, 90_000)
+
+  // macOS reports a renamed file's new name through its folder's FSEvents
+  // stream, which a loaded machine delivers seconds late or not at all. The
+  // file's own watcher reports the rename at once, and names the new file.
+  it.runIf(process.platform === 'darwin')(
+    'a rename whose new name the folder never reports keeps the note id',
+    async () => {
+      seed('n1', 'Docs/apple.md', '# apple\n\nbody\n')
+      await watch()
+      lostAdds.add(path.join(vault.path, 'Docs/pear.md'))
+      fs.renameSync(path.join(vault.path, 'Docs/apple.md'), path.join(vault.path, 'Docs/pear.md'))
+      await settleOn(() => expect(renameSynced).toHaveBeenCalledWith('n1'))
+
+      expect(metadataRows()).toEqual([{ id: 'n1', path: 'Docs/pear.md' }])
+      expect(enqueueLocalSyncDelete).not.toHaveBeenCalled()
+    },
+    90_000
+  )
 
   it.runIf(fileSystemIgnoresCase())(
     'a case-only rename inside the write-finish wait after an outside edit keeps the note id',
