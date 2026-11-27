@@ -5,6 +5,22 @@
 //! the last value, and numbers are doubles printed by `Number#toString`. `serde_json::Value`
 //! does none of that, and it rejects the lone surrogate escapes `JSON.parse` accepts.
 
+use std::cell::Cell;
+use std::collections::HashMap;
+
+thread_local! {
+    static STEPS: Cell<usize> = const { Cell::new(0) };
+}
+
+/// Object keys this thread's parses looked up so far (the complexity guard): one per key.
+pub fn steps() -> usize {
+    STEPS.with(Cell::get)
+}
+
+fn step() {
+    STEPS.with(|steps| steps.set(steps.get().saturating_add(1)));
+}
+
 /// A JSON value as JavaScript holds it.
 #[derive(Debug, Clone, PartialEq)]
 pub enum JsValue {
@@ -16,6 +32,9 @@ pub enum JsValue {
     /// Own properties in JS enumeration order.
     Object(Vec<(String, JsValue)>),
 }
+
+/// The error of a value nested past [`MAX_DEPTH`].
+pub const NESTING_TOO_DEEP: &str = "nesting too deep";
 
 /// Nesting beyond this is a parse error here. V8's limit is higher; a page that nests JSON-LD
 /// this deep is not an article, and an unbounded recursion would overflow the stack.
@@ -219,7 +238,7 @@ impl Parser {
 
     fn value(&mut self, depth: usize) -> Result<JsValue, String> {
         if depth > MAX_DEPTH {
-            return Err("nesting too deep".to_string());
+            return Err(NESTING_TOO_DEEP.to_string());
         }
         match self.peek() {
             Some('{') => self.object(depth),
@@ -363,6 +382,7 @@ impl Parser {
     fn object(&mut self, depth: usize) -> Result<JsValue, String> {
         self.pos += 1;
         let mut entries: Vec<(String, JsValue)> = Vec::new();
+        let mut slots: HashMap<String, usize> = HashMap::new();
         self.skip_whitespace();
         if self.peek() == Some('}') {
             self.pos += 1;
@@ -382,9 +402,13 @@ impl Parser {
             self.skip_whitespace();
             let value = self.value(depth + 1)?;
             // A repeated key keeps its first position and takes the last value.
-            match entries.iter_mut().find(|(k, _)| *k == key) {
-                Some(slot) => slot.1 = value,
-                None => entries.push((key, value)),
+            step();
+            match slots.get(&key) {
+                Some(&slot) => entries[slot].1 = value,
+                None => {
+                    slots.insert(key.clone(), entries.len());
+                    entries.push((key, value));
+                }
             }
             self.skip_whitespace();
             match self.peek() {
@@ -453,6 +477,17 @@ mod tests {
     fn objects_order_index_keys_first_and_keep_first_duplicate_position() {
         let value = parse(r#"{"b":1,"2":2,"a":3,"1":4,"b":5,"01":6}"#).unwrap();
         assert_eq!(value.stringify(), r#"{"1":4,"2":2,"b":5,"a":3,"01":6}"#);
+    }
+
+    /// Each key of an object is looked up once among the earlier ones, whatever their number.
+    #[test]
+    fn distinct_keys_parse_in_linear_steps() {
+        let keys = 50_000;
+        let body: Vec<String> = (0..keys).map(|i| format!("\"k{i}\":{i}")).collect();
+        let text = format!("{{{}}}", body.join(","));
+        memry_test_kit::assert_steps_at_most("50k distinct keys", steps, 2 * keys + 10, || {
+            assert!(parse(&text).is_ok());
+        });
     }
 
     #[test]

@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils'
 import { subscribeToEvent } from '@/services/tauri-event'
 import { vaultService } from '@/services/vault-service'
 import { linkingService } from '@/services/linking-service'
-import { events } from '../../../../../generated/bindings'
+import { commands, events } from '../../../../../generated/bindings'
 import { applyNewUser } from '../apply-onboarding'
 import {
   activeImports,
@@ -203,7 +203,7 @@ export function ReadyStep({ state, dispatch }: StepProps): React.JSX.Element {
         })
         return
       }
-      setExistingVault(await window.api.onboarding.isMemryVault(path))
+      setExistingVault(await commands.onboardingIsMemryVault(path))
       dispatch({ type: 'update', patch: { folder: { kind: 'existing', path } } })
     } catch (err) {
       log.warn('Picking a folder failed', err)
@@ -258,7 +258,10 @@ export function ReadyStep({ state, dispatch }: StepProps): React.JSX.Element {
             </span>
           }
         >
-          <span className={cn('truncate font-mono text-xs leading-4', MUTED)}>
+          <span
+            dir="ltr"
+            className={cn('self-start max-w-full truncate font-mono text-xs leading-4', MUTED)}
+          >
             {draft.folder ? folderPath(draft.folder) : '…'}
           </span>
           <span className="pt-[3px]">
