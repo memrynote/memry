@@ -66,3 +66,43 @@ fn a_long_run_of_indented_lines_plans_in_linear_time() {
     let breaks = format!("a{}", " \\\n".repeat(3000));
     within("trailing backslashes", breaks, BOUND);
 }
+
+/// Backtick runs of length 1, 2, 3, ...: no run has a partner of its length,
+/// so each scans to the end of the text for one.
+fn unmatched_runs(count: usize) -> String {
+    (1..=count)
+        .map(|n| format!("{} a ", "`".repeat(n)))
+        .collect()
+}
+
+#[test]
+fn unmatched_backtick_runs_in_a_paragraph_plan_in_linear_time() {
+    within("runs in a paragraph", unmatched_runs(250), BOUND);
+}
+
+#[test]
+fn unmatched_backtick_runs_on_a_pipe_line_plan_in_linear_time() {
+    within(
+        "runs on a pipe line",
+        format!("a | {}", unmatched_runs(250)),
+        BOUND,
+    );
+}
+
+#[test]
+fn unmatched_backtick_runs_in_a_table_cell_plan_in_linear_time() {
+    let table = format!("| h |\n|---|\n| {} |", unmatched_runs(250));
+    let plan = within("runs in a table cell", table, BOUND);
+    assert_eq!(plan.blocks.len(), 1);
+}
+
+#[test]
+fn unmatched_backtick_runs_beside_a_comment_plan_in_linear_time() {
+    let text = format!("%% x %% {}", unmatched_runs(250));
+    within("runs beside a comment", text, BOUND);
+}
+
+#[test]
+fn one_long_backtick_run_plans_in_linear_time() {
+    within("one run", format!("a{}", "`".repeat(8000)), BOUND);
+}
