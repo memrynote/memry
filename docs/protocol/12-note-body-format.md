@@ -128,7 +128,10 @@ fence's info string, `""` for an untagged fence or an indented run, never BlockN
   and tab of a code span on every line that holds a `|` and no `[`, `]` or tag, not only a table
   row, so `` ` |`é `` keeps its leading space and `` ` a`b `` does not
   (`packages/editor-schema/src/inline/cell-code-spans.ts:95-111`,
-  `crates/memry-core/src/crdt/markdown_seed/code_spans.rs:22`).
+  `crates/memry-core/src/crdt/markdown_seed/code_spans.rs:22`). A code span at the start of a
+  block keeps its leading space too: `` ` *a` b `` is the code ` *a`
+  (`packages/editor-schema/src/parse-markdown.ts:162`,
+  `crates/memry-core/src/crdt/markdown_seed/runs.rs:293`).
 - **A marker alone on its line is an empty block.** A flush-left heading line of `#` to
   `######` with nothing after it is an empty heading (an indented one gets no placeholder and
   is left to the parser), and a bullet (`-`, `*`, `+`), a number (`1.`, `1)`) or

@@ -290,7 +290,7 @@ fn repair(runs: &mut Vec<Run>, breaks: &[String]) {
     runs.retain_mut(|run| {
         let keep = match run {
             Run::Text(text, marks) => {
-                let opens_line = first || (!marks.code && previous_ends_line);
+                let opens_line = !marks.code && (first || previous_ends_line);
                 !repair_text(text, opens_line, breaks)
             }
             Run::Link(_, content) => {
@@ -383,4 +383,35 @@ pub(super) fn expand(runs: Vec<Run>) -> Vec<SeedInline> {
         }
     }
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_code_span_at_a_blocks_start_keeps_its_leading_space() {
+        let content = block_content(
+            vec![Html::Code(" *a".to_owned()), Html::Text(" b".to_owned())],
+            &[],
+            true,
+        );
+        let code = SeedMarks {
+            code: true,
+            ..SeedMarks::default()
+        };
+        assert_eq!(
+            content,
+            vec![
+                SeedInline::Text {
+                    text: " *a".to_owned(),
+                    marks: code
+                },
+                SeedInline::Text {
+                    text: " b".to_owned(),
+                    marks: SeedMarks::default()
+                }
+            ]
+        );
+    }
 }
