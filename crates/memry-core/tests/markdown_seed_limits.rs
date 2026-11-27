@@ -49,3 +49,20 @@ fn a_comment_marker_before_a_long_quote_chain_plans_fast() {
         BOUND,
     );
 }
+
+#[test]
+fn a_long_table_plans_in_linear_time() {
+    let rows = "| 1 | 2 |\n".repeat(3000);
+    let plan = within("table rows", format!("| a | b |\n|---|---|\n{rows}"), BOUND);
+    assert_eq!(plan.blocks.len(), 1);
+}
+
+#[test]
+fn a_long_run_of_indented_lines_plans_in_linear_time() {
+    for (label, head) in [("paragraph", "x\n"), ("list item", "- a\n")] {
+        let plan = within(label, format!("{head}{}", "  y\n".repeat(3000)), BOUND);
+        assert_eq!(plan.blocks.len(), 1, "{label}");
+    }
+    let breaks = format!("a{}", " \\\n".repeat(3000));
+    within("trailing backslashes", breaks, BOUND);
+}
