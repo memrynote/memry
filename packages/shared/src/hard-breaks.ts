@@ -73,6 +73,9 @@ const TASK_ITEM_BOX = /^([ \t]*(?:[-*+]|\d+[.)])[ \t]+)\[[ xX]\]/
 
 const LIST_ITEM_START = /^[ \t]*(?:[-*+]|\d+[.)])[ \t]/
 
+// A table's delimiter row, which makes the pipe line above it a header.
+const TABLE_DELIMITER_ROW = /^\s*\|?\s*:?-+:?\s*(?:\|\s*:?-+:?\s*)*\|?\s*$/
+
 // A line that opens a block of its own rather than continuing a paragraph.
 const BLOCK_START =
   /^[ \t]*(?:[-*+][ \t]|\d+[.)][ \t]|>|#{1,6}(?:[ \t]|$)|\||```|~~~|(?:[-*_=][ \t]*){3,}$)/
@@ -122,8 +125,14 @@ function maskProseHardBreaks(text: string, breaks: string[]): string {
   const lines = text.split('\n')
   let inOtherBlock = false
   let inListItem = false
+  let inTable = false
   for (let index = 0; index < lines.length; index++) {
     const line = lines[index]
+    // A table row is one line, so its trailing `\` is the last cell's text:
+    // masked as a break, `| a \` lost the backslash.
+    const next = lines[index + 1] ?? ''
+    if (!line.includes('|')) inTable = false
+    else if (next.includes('|') && TABLE_DELIMITER_ROW.test(next)) inTable = true
     // BlockNote ends a list item at a lazy line and opens a paragraph on it,
     // so a `<br>` opening that line is one opening a paragraph: a hard break.
     // Read as the soft break it parsed to, it had no spelling and was dropped
@@ -166,7 +175,7 @@ function maskProseHardBreaks(text: string, breaks: string[]): string {
       index--
       continue
     }
-    if (line.trim() === '' || !HARD_BREAK_LINE.test(line)) continue
+    if (inTable || line.trim() === '' || !HARD_BREAK_LINE.test(line)) continue
     // The marker replaces the spelling rather than joining it: leaving the two
     // trailing spaces in place would hand the parser a break it already knows
     // how to drop, and leaving the backslash would escape the token's first
