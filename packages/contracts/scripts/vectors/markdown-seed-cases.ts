@@ -497,5 +497,20 @@ export const MARKDOWN_SEED_CASES: ReadonlyArray<{ name: string; markdown: string
       name: 'block starts: a quote with a lazy line, then a callout',
       markdown: '> a\nlazy\n> [!tip]\n> d',
       pins: 'a quote a and lazy, then a callout: a quote line after lazy lines opens a new block'
+    },
+    {
+      name: 'marker image: a youtube address lifted from text',
+      markdown: 'see ![](https://www.youtube.com/watch?v=dQw4w9WgXcQ)',
+      pins: 'a paragraph see and a youtube embed, as the marker line would read'
+    },
+    {
+      name: 'marker image: an indented whiteboard',
+      markdown: 'a\n\n  ![whiteboard](memry://canvas/abc)',
+      pins: 'a paragraph and a whiteboard block, not an image'
+    },
+    {
+      name: 'marker image: a file marker whose JSON does not read',
+      markdown: '<!-- file:{bad} -->',
+      pins: 'a paragraph holding the comment, which keeps its bytes'
     }
   ]

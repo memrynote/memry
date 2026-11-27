@@ -9,7 +9,7 @@
     "authoredBy": "desktop's markdownToYFragment path: LF line endings, maskHtmlComments, parseNoteMarkdown (editor-schema note-markdown) with parseMarkdownToBlocksRepaired on desktop's server schema, blocksToYXmlFragment",
     "provenAgainst": "apps/desktop/src/main/sync/markdown-seed-vectors.test.ts",
     "blockIds": "removed from every blockContainer line: BlockNote mints them at random",
-    "caseCount": 94
+    "caseCount": 97
   },
   "cases": [
     {
@@ -575,6 +575,24 @@
       "pins": "a quote a and lazy, then a callout: a quote line after lazy lines opens a new block",
       "markdown": "> a\nlazy\n> [!tip]\n> d",
       "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"a\"\n3 element hardBreak\n3 text \"lazy\"\n1 element blockContainer\n2 element callout fold=\"none\" textAlignment=\"left\" textColor=\"default\" type=\"tip\"\n3 text \"d\""
+    },
+    {
+      "name": "marker image: a youtube address lifted from text",
+      "pins": "a paragraph see and a youtube embed, as the marker line would read",
+      "markdown": "see ![](https://www.youtube.com/watch?v=dQw4w9WgXcQ)",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"see\"\n1 element blockContainer\n2 element youtubeEmbed alt=\"\" title=\"\" videoId=\"dQw4w9WgXcQ\" videoUrl=\"https://www.youtube.com/watch?v=dQw4w9WgXcQ\""
+    },
+    {
+      "name": "marker image: an indented whiteboard",
+      "pins": "a paragraph and a whiteboard block, not an image",
+      "markdown": "a\n\n  ![whiteboard](memry://canvas/abc)",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a\"\n1 element blockContainer\n2 element whiteboard canvasId=\"abc\""
+    },
+    {
+      "name": "marker image: a file marker whose JSON does not read",
+      "pins": "a paragraph holding the comment, which keeps its bytes",
+      "markdown": "<!-- file:{bad} -->",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 element htmlComment source=\"<!-- file:{bad} -->\""
     }
   ]
 }
