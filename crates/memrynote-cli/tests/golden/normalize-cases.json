@@ -45,6 +45,15 @@
     "output": "undefined\n\n"
   },
   {
+    "input": "{\"durationMs\":12} {\n  \"durationMs\": 3,\n  \"notes\": 0\n}",
+    "dirs": {
+      "tmp": "/tmp/x",
+      "vault": "/tmp/x/vault",
+      "home": "/tmp/x/home"
+    },
+    "output": "{\"durationMs\":<duration>} {\n  \"durationMs\": <duration>,\n  \"notes\": 0\n}"
+  },
+  {
     "input": "mkdir '/tmp/x\\appdata\\f\\.memry' \"/tmp/x/vault\\\\a\\\\b\" \"/tmp/x/home\\\"\"",
     "dirs": {
       "tmp": "/tmp/x",
