@@ -581,27 +581,27 @@ export const MARKDOWN_SEED_CASES: ReadonlyArray<{ name: string; markdown: string
     {
       name: 'writer: an italic run ending in a star beside an underscore',
       markdown: '> \\_\n> *a\\**\n>\n> z',
-      pins: 'the writer spells the italic with underscores only where the parser reads them, so this body does not settle and stays a flat quote'
+      pins: 'a structured quote: the escaped star ends no run on a delimiter, so the writer keeps the stars, `*a\\**`, and the body settles'
     },
     {
       name: 'writer: a bold run ending in a star then an underscore run',
       markdown: '> **a\\***_a\\*_\n>\n> z',
-      pins: "a flat quote: the underscore run's opener follows a star, which the writer cannot spell back"
+      pins: 'a structured quote: the bold run keeps its stars and the italic run against them is spelled with underscores, `**a\\***_a\\*_`'
     },
     {
       name: 'writer: a code span between an underscore and an italic star',
       markdown: '> \\_*`c`\\**\n>\n> z',
-      pins: 'a flat quote of the text _, code c and an italic star'
+      pins: 'a structured quote of the text _, code c and an italic star'
     },
     {
       name: 'writer: an italic run ending in a star',
       markdown: '> *a\\**\n>\n> z',
-      pins: 'a structured quote: the writer spells the run _a\\*_, which settles'
+      pins: 'a structured quote: the escaped star ends no run on a delimiter, so the writer spells the run `*a\\**`, the source'
     },
     {
       name: 'writer: a bold run ending in a star',
       markdown: '> **a\\***\n>\n> z',
-      pins: 'a structured quote: the writer spells the run __a\\*__, which settles'
+      pins: 'a structured quote: the writer spells the run `**a\\***`, the source'
     },
     {
       name: 'blank paragraph: a whitespace-only code span between paragraphs',
@@ -612,5 +612,135 @@ export const MARKDOWN_SEED_CASES: ReadonlyArray<{ name: string; markdown: string
       name: 'blank paragraph: a whitespace-only code span after a paragraph',
       markdown: 'x\n\n` `',
       pins: 'no block follows x'
+    },
+    {
+      name: 'writer: a callout whose italic ends in an escaped star',
+      markdown: '> [!note]\n> *a\\**',
+      pins: 'a callout: the writer spells the run `*a\\**`, so the body reproduces'
+    },
+    {
+      name: 'writer: a callout whose bold ends in an escaped star',
+      markdown: '> [!note]\n> **a\\***\n> y',
+      pins: 'a callout: the writer spells the run `**a\\***`, so the body reproduces'
+    },
+    {
+      name: 'writer: an underscore escaped beside runs spelled with underscores',
+      markdown: '> snake_case *a*__b__\n>\n> z',
+      pins: 'a structured quote: a block whose runs the writer spells with underscores escapes every `_` in its text, so `snake_case` is written `snake\\_case`, and the body settles'
+    },
+    {
+      name: 'writer: an italic run touching a bold run',
+      markdown: '> *a*__b__\n>\n> z',
+      pins: 'a structured quote: stars against the stars of the run before open bold italic, so the writer spells the second run with underscores, `*a*__b__`'
+    },
+    {
+      name: 'writer: a bold run touching an italic run in a callout',
+      markdown: '> [!note]\n> **a**_b_\n> \\# x',
+      pins: 'a callout: the italic run against the bold run is spelled `_b_`, and the line after the break keeps its escaped `#`'
+    },
+    {
+      name: 'writer: an escaped star run touching a bold run',
+      markdown: '> *a\\**__a__\n>\n> z',
+      pins: "a structured quote: the second run is spelled with underscores against the first run's closing star"
+    },
+    {
+      name: 'writer: a bold run ending in an escaped star after an italic run',
+      markdown: '> _a_**a\\***\n>\n> z',
+      pins: 'a structured quote: the bold run that ends in an escaped star keeps its stars against the underscore-spelled italic before it'
+    },
+    {
+      name: 'writer: touching runs in a heading of a quote',
+      markdown: '> ## *a\\**__a__\n>\n> z',
+      pins: 'a structured quote whose first block is a heading with two runs against each other'
+    },
+    {
+      name: 'writer: a code span with an underscore before touching runs',
+      markdown: '> `a_` *b*__c__\n>\n> z',
+      pins: 'a flat quote: a bare `_` in the code span could open a run that the underscore-spelled one would close, so the writer keeps stars, which the parser misreads, and the body does not settle'
+    },
+    {
+      name: 'writer: a block start after a bold run ending in a break in a callout',
+      markdown: '> [!note]\n> **b**\n> \\# x',
+      pins: "a callout: the writer writes the break after the bold run's closing stars, so the `#` is at a line start and stays escaped"
+    },
+    {
+      name: 'writer: a rule line after an italic run ending in a break in a callout',
+      markdown: '> [!note]\n> *i*\n> \\---',
+      pins: 'a callout: the escaped rule line after the italic run keeps its backslash'
+    },
+    {
+      name: 'writer: a block start after a struck run ending in a break in a callout',
+      markdown: '> [!note]\n> ~~s~~\n> \\# x',
+      pins: "a callout: the break is written after the strike's closing delimiter, so the `#` stays escaped"
+    },
+    {
+      name: 'writer: a list marker after a bold run ending in a break in a quote',
+      markdown: '> lead\n>\n> **b**\n> \\- z',
+      pins: 'a structured quote: the `-` after the bold run and its break stays escaped'
+    },
+    {
+      name: 'writer: a block start after a link ending in a break in a callout',
+      markdown: '> [!note]\n> [l](https://e.com)\n> \\- z',
+      pins: "a callout: the break is written after the link's `](address)`, so the `-` stays escaped"
+    },
+    {
+      name: 'writer: a block start after a link with parentheses ending in a break',
+      markdown: '> [!note]\n> [l](https://e.com/a(1))\n> \\# x',
+      pins: 'a callout: a link address with balanced parentheses, then a break and an escaped `#`'
+    },
+    {
+      name: 'writer: a block start after a paragraph break',
+      markdown: '**b**\n\\# x',
+      pins: 'a paragraph of bold b, a break and the text `# x`'
+    },
+    {
+      name: 'writer: an escaped image mark before a link in a callout',
+      markdown: '> [!note]\n> \\![x](y)\n> \\# x',
+      pins: 'a callout: the text `!`, a link x, a break and the text `# x`'
+    },
+    {
+      name: 'writer: an escaped image mark before a link in a quote',
+      markdown: '> \\![x](y)\n>\n> z',
+      pins: 'a structured quote: the text `!` and a link x'
+    },
+    {
+      name: 'empty to-do: under a heading',
+      markdown: '# H\n- [ ]',
+      pins: 'an empty check item under a heading: a to-do has no text for a paragraph to hold, so it counts after any line'
+    },
+    {
+      name: 'empty to-do: under paragraph text',
+      markdown: 'one\n- [x]',
+      pins: 'a checked empty item after paragraph text, not a bullet of the text `[x]`'
+    },
+    {
+      name: 'empty to-do: under a quote line',
+      markdown: '> q\n- [ ]',
+      pins: 'a quote line, then an empty check item'
+    },
+    {
+      name: 'empty to-do: under a table row',
+      markdown: '| b |\n- [ ]',
+      pins: 'a paragraph of the row text and an empty check item after it'
+    },
+    {
+      name: 'empty to-do: other bullets and an upper-case box',
+      markdown: 'one\n* [X] \ntwo\n+ [ ]',
+      pins: '`*` with `[X]` and `+` with `[ ]`, each an empty check item after paragraph text, and trailing blanks ignored'
+    },
+    {
+      name: 'empty to-do: an empty bullet under text is still a setext underline',
+      markdown: 'one\n-',
+      pins: 'a bullet marker without a box stays text under a paragraph line: a paragraph, a break and `-`'
+    },
+    {
+      name: 'writer: three stars after an italic run',
+      markdown: '> *a***b**\n>\n> z',
+      pins: 'a structured quote: the parser reads the three stars as no italic, the text *a and a bold *b'
+    },
+    {
+      name: 'writer: three stars after a bold run',
+      markdown: '> **a***b*\n>\n> z',
+      pins: 'a structured quote of a bold a and an italic b: the writer spells the second run with underscores, which settles'
     }
   ]
