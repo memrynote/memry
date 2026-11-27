@@ -60,7 +60,9 @@ final class NotesUITests: XCTestCase {
         // Short drags just below the menu's first rows: with the keyboard up
         // the menu is only a few rows tall, and a drag that starts outside
         // it closes it. The anchor is read once, since its row scrolls away.
-        let find = app.buttons["Find in note"].frame
+        // The menu's row, not the page's hidden ⌘F button of the same name,
+        // which XCUITest sees and VoiceOver does not.
+        let find = app.collectionViews.buttons["Find in note"].frame
         let top = app.coordinate(withNormalizedOffset: .zero)
             .withOffset(CGVector(dx: find.midX, dy: find.midY))
         for _ in 0 ..< 8 where !delete.isHittable {
