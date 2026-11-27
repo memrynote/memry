@@ -12,6 +12,9 @@ mod bookmarks;
 // The task domain's commands and events (`registry/tasks.rs`, `registry/projects.rs`).
 #[macro_use]
 mod projects;
+// The reminder commands and events (`registry/reminders.rs`).
+#[macro_use]
+mod reminders;
 #[macro_use]
 mod tasks;
 
@@ -323,19 +326,6 @@ pub fn builder() -> Builder<Wry> {
             // menu
             crate::commands::shell::menu_hide_alt,
             crate::commands::shell::menu_toggle_alt,
-            // reminders
-            crate::commands::reminders::reminder_bulk_dismiss,
-            crate::commands::reminders::reminder_count_pending,
-            crate::commands::reminders::reminder_create,
-            crate::commands::reminders::reminder_delete,
-            crate::commands::reminders::reminder_dismiss,
-            crate::commands::reminders::reminder_get,
-            crate::commands::reminders::reminder_get_due,
-            crate::commands::reminders::reminder_get_for_target,
-            crate::commands::reminders::reminder_get_upcoming,
-            crate::commands::reminders::reminder_list,
-            crate::commands::reminders::reminder_snooze,
-            crate::commands::reminders::reminder_update,
             // search
             crate::commands::search::search_add_reason::<Wry>,
             crate::commands::search::search_clear_reasons::<Wry>,
@@ -535,14 +525,6 @@ pub fn builder() -> Builder<Wry> {
             crate::events::SyncLinkingRequestedEvent,
             // ocr languages
             crate::events::OcrLanguagesChangedEvent,
-            // reminders
-            crate::events::ReminderClickedEvent,
-            crate::events::ReminderCreatedEvent,
-            crate::events::ReminderDeletedEvent,
-            crate::events::ReminderDismissedEvent,
-            crate::events::ReminderDueEvent,
-            crate::events::ReminderSnoozedEvent,
-            crate::events::ReminderUpdatedEvent,
             // settings
             crate::events::SettingsChangedEvent,
             crate::events::SettingsOpenSectionEvent,

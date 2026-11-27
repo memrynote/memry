@@ -713,22 +713,6 @@ export const commands = {
 	 *  shows or hides the menu bar, Windows pops the menu up. Returns whether a menu bar shows.
 	 */
 	menuToggleAlt: () => __TAURI_INVOKE<boolean>("menu_toggle_alt"),
-	/**
-	 *  Dismisses each id that names a live reminder and returns how many. A failure stops the
-	 *  batch; the reminders dismissed before it keep their events and lose their banners.
-	 */
-	reminderBulkDismiss: (reminderIds: string[]) => __TAURI_INVOKE<number>("reminder_bulk_dismiss", { reminderIds }),
-	reminderCountPending: () => __TAURI_INVOKE<number>("reminder_count_pending"),
-	reminderCreate: (input: ReminderCreateInput) => __TAURI_INVOKE<ReminderView>("reminder_create", { input }),
-	reminderDelete: (id: string) => __TAURI_INVOKE<null>("reminder_delete", { id }),
-	reminderDismiss: (id: string) => __TAURI_INVOKE<ReminderView>("reminder_dismiss", { id }),
-	reminderGet: (id: string) => __TAURI_INVOKE<ReminderWithTargetView | null>("reminder_get", { id }),
-	reminderGetDue: () => __TAURI_INVOKE<ReminderWithTargetView[]>("reminder_get_due"),
-	reminderGetForTarget: (input: ReminderTargetInput) => __TAURI_INVOKE<ReminderView[]>("reminder_get_for_target", { input }),
-	reminderGetUpcoming: (days: number | null) => __TAURI_INVOKE<ReminderListView>("reminder_get_upcoming", { days }),
-	reminderList: (input: ReminderListInput | null) => __TAURI_INVOKE<ReminderListView>("reminder_list", { input }),
-	reminderSnooze: (input: ReminderSnoozeInput) => __TAURI_INVOKE<ReminderView>("reminder_snooze", { input }),
-	reminderUpdate: (input: ReminderUpdateInput) => __TAURI_INVOKE<ReminderView>("reminder_update", { input }),
 	/**  `search:add-reason`: records a result opened from the palette and answers its row. */
 	searchAddReason: (input: AddReasonInput) => __TAURI_INVOKE<SearchReason>("search_add_reason", { input }),
 	/**  `search:clear-reasons`. */
@@ -1136,6 +1120,22 @@ export const commands = {
 	recentsList: (limit: number | null) => __TAURI_INVOKE<RecentlyOpenedView[]>("recents_list", { limit }),
 	/**  Records that the note or canvas was opened now: whether it was written. */
 	recentsRecord: (input: RecordRecentInput) => __TAURI_INVOKE<boolean>("recents_record", { input }),
+	/**
+	 *  Dismisses each id that names a live reminder and returns how many. A failure stops the
+	 *  batch; the reminders dismissed before it keep their events and lose their banners.
+	 */
+	reminderBulkDismiss: (reminderIds: string[]) => __TAURI_INVOKE<number>("reminder_bulk_dismiss", { reminderIds }),
+	reminderCountPending: () => __TAURI_INVOKE<number>("reminder_count_pending"),
+	reminderCreate: (input: ReminderCreateInput) => __TAURI_INVOKE<ReminderView>("reminder_create", { input }),
+	reminderDelete: (id: string) => __TAURI_INVOKE<null>("reminder_delete", { id }),
+	reminderDismiss: (id: string) => __TAURI_INVOKE<ReminderView>("reminder_dismiss", { id }),
+	reminderGet: (id: string) => __TAURI_INVOKE<ReminderWithTargetView | null>("reminder_get", { id }),
+	reminderGetDue: () => __TAURI_INVOKE<ReminderWithTargetView[]>("reminder_get_due"),
+	reminderGetForTarget: (input: ReminderTargetInput) => __TAURI_INVOKE<ReminderView[]>("reminder_get_for_target", { input }),
+	reminderGetUpcoming: (days: number | null) => __TAURI_INVOKE<ReminderListView>("reminder_get_upcoming", { days }),
+	reminderList: (input: ReminderListInput | null) => __TAURI_INVOKE<ReminderListView>("reminder_list", { input }),
+	reminderSnooze: (input: ReminderSnoozeInput) => __TAURI_INVOKE<ReminderView>("reminder_snooze", { input }),
+	reminderUpdate: (input: ReminderUpdateInput) => __TAURI_INVOKE<ReminderView>("reminder_update", { input }),
 };
 
 /** Events */
