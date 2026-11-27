@@ -1,0 +1,27 @@
+{
+  "type": "excalidrawlib",
+  "version": 2,
+  "source": "memry",
+  "libraryItems": [
+    {
+      "id": "lib1",
+      "status": "published",
+      "created": 1731900000000,
+      "name": "Card ğ",
+      "elements": [
+        {
+          "1": "idx",
+          "id": "e",
+          "x": 0.5,
+          "y": 0
+        }
+      ]
+    },
+    {
+      "id": "lib2",
+      "status": "unpublished",
+      "created": 1,
+      "elements": []
+    }
+  ]
+}

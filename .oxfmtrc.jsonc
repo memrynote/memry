@@ -19,6 +19,9 @@
     // Grammar corpus notes of the markdown converter: their bytes are the test input.
     "packages/contracts/test-vectors/markdown-convert/corpus/**",
 
+    // The note export stylesheet: its bytes are Electron's getEmbeddedStyles(), compared by export_vectors.rs.
+    "crates/memry-desktop/src/export/styles.css",
+
     // Golden files for the i18n codemod tests, compared byte for byte.
     "apps/desktop/scripts/i18n/fixtures/**",
     "package-lock.json",
@@ -58,13 +61,26 @@
     "packages/contracts/test-vectors/markdown-roundtrip/*.json",
     "packages/contracts/test-vectors/markdown-convert/*.json",
     "packages/contracts/test-vectors/article-extract/",
+    "packages/contracts/test-vectors/readwise/",
+    "packages/contracts/test-vectors/agent-mcp/",
+    // Written by crates/memrynote-cli/tests/golden/generate.mjs, which `--check`s them byte for byte.
+    "crates/memrynote-cli/tests/golden/expected/",
+    "crates/memrynote-cli/tests/golden/manifest.json",
+    "crates/memrynote-cli/tests/golden/normalize-cases.json",
     // Importer vectors (Step 32): inputs byte for byte (BOM, CRLF), JSON the generator writes.
     "packages/contracts/test-vectors/importers/",
+    // Sandbox template and rebase vectors (Step 32): written by apps/cli/src/sandbox/export-template.ts, replayed byte for byte.
+    "crates/memry-desktop/resources/sandbox/",
+    "crates/memry-desktop/tests/fixtures/sandbox/",
+    // Seed templates (Step 40): written by apps/desktop/scripts/export-seed-templates.ts, replayed byte for byte.
+    "crates/xtask/seed-data/",
     "crates/memry-desktop/src/web/extract/elements/math/mathml/tables.json",
     "crates/memry-desktop/src/web/extract/elements/math/temml/tables.json",
 
     // Saved pages of the article-extraction corpus, parsed byte for byte by the Rust tests.
     "crates/memry-desktop/tests/fixtures/article-extract/",
+    // Inbox metadata corpus: the page bytes (some not UTF-8) are the test input of `metadata_vectors`.
+    "crates/memry-desktop/tests/fixtures/metadata/",
     // Byte-exact vault fixtures: copies of the Electron golden files and vectors its code produced.
     "crates/memry-desktop/tests/fixtures/golden-vault/",
     // A vault Electron wrote (scripts/electron-fixtures/capture-vault.mjs), kept as it wrote it.

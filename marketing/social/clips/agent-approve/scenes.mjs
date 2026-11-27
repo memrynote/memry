@@ -73,12 +73,12 @@ export const scenes = {
   async ask({ rec, page, zoom, sleep, at }) {
     // The composer is pinned to the bottom of the right pane, so the camera clamps to that
     // corner; the caption sits left of it.
-    zoom(1440, 800, 1.8)
+    zoom(1280, 720, 1.8)
     await sleep(450)
     await rec.click(composer(page), { dx: -60 })
     await sleep(250)
     // Off the line being typed, so the prompt reads.
-    await rec.glide(1460, 868, 450)
+    await rec.glide(1300, 778, 450)
     await sleep(200)
     await rec.type(PROMPT, { cps: 11 })
     await at(4.4)
@@ -101,7 +101,7 @@ export const scenes = {
     // bottom at 70% of the frame, clear of the step caption.
     const bar = await reviewBar(page).boundingBox()
     const z = 1.85
-    zoom(800, bar.y + bar.height - 0.7 * (900 / z) + 450 / z, z)
+    zoom(720, bar.y + bar.height - 0.7 * (810 / z) + 405 / z, z)
     await sleep(600)
     const reject = await rec.center(reviewBar(page).getByRole('button', { name: 'Reject' }))
     await rec.glide(reject.x, reject.y, 900)
@@ -127,7 +127,7 @@ export const scenes = {
 /** The note as the app saved it, in the vault copy the app runs on (agent-app's state file). */
 function savedNote() {
   const { vaultPath } = JSON.parse(
-    fs.readFileSync(path.join(os.tmpdir(), 'memry-agent-app.json'), 'utf8')
+    fs.readFileSync(path.join(os.tmpdir(), 'memry-agent-app-tauri.json'), 'utf8')
   )
   return fs.readFileSync(path.join(vaultPath, 'Meetings', `${NOTE}.md`), 'utf8')
 }

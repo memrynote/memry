@@ -6,7 +6,7 @@
     "class": "settings-merge",
     "chapter": "docs/protocol/06-vector-clocks-and-field-merge.md",
     "implementation": "packages/sync-client/src/settings-merge.ts",
-    "caseCount": 18
+    "caseCount": 19
   },
   "cases": [
     {
@@ -390,7 +390,7 @@
             "device-a": 2
           }
         },
-        "requeue": false
+        "requeue": true
       }
     },
     {
@@ -562,7 +562,7 @@
             "device-b": 1
           }
         },
-        "requeue": false
+        "requeue": true
       }
     },
     {
@@ -742,6 +742,67 @@
         },
         "fieldClocks": {},
         "requeue": false
+      }
+    },
+    {
+      "name": "local-tick-the-remote-lacks-requeues",
+      "pins": "§6.9.0, #5506: a peer push built before it pulled the local tick lacks it; local dominates, keeps its value and re-queues",
+      "local": {
+        "settings": {
+          "general": {
+            "theme": "system"
+          },
+          "calendar": {
+            "weekStartDay": "monday"
+          }
+        },
+        "fieldClocks": {
+          "general.theme": {
+            "device-a": 1
+          },
+          "calendar.weekStartDay": {
+            "device-a": 1,
+            "device-b": 1
+          }
+        }
+      },
+      "remote": {
+        "settings": {
+          "general": {
+            "theme": "light"
+          },
+          "calendar": {
+            "weekStartDay": "sunday"
+          }
+        },
+        "fieldClocks": {
+          "general.theme": {
+            "device-a": 2
+          },
+          "calendar.weekStartDay": {
+            "device-a": 1
+          }
+        }
+      },
+      "expected": {
+        "settings": {
+          "general": {
+            "theme": "light"
+          },
+          "calendar": {
+            "weekStartDay": "monday"
+          }
+        },
+        "fieldClocks": {
+          "calendar.weekStartDay": {
+            "device-a": 1,
+            "device-b": 1
+          },
+          "general.theme": {
+            "device-a": 2
+          }
+        },
+        "requeue": true
       }
     },
     {

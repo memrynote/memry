@@ -318,13 +318,37 @@ struct TransportHTTPTests {
     @Test("the ceiling is the request's own, and it beats a dribbling server")
     func perRequestCeilingBeatsADribblingServer() async throws {
         StubURLProtocol.script(.dribble(status: 200))
-        let started = ContinuousClock.now
+        let subject = transport()
 
-        let outcome = await kind { try await transport().send(request: request(timeoutMs: 400)) }
-        let elapsed = ContinuousClock.now - started
+        // The exchange's own interval, from the seam starting it to the error.
+        // Timing the whole call also counted building the session and the
+        // test's actor hops, which a loaded runner stretches (#5484).
+        var elapsedMs: UInt64?
+        do {
+            _ = try await subject.send(request: request(timeoutMs: 400))
+        } catch let TransportError.Timeout(measured) {
+            elapsedMs = measured
+        } catch {
+            Issue.record("expected Timeout, got \(error)")
+        }
 
-        #expect(outcome == .timeout)
-        #expect(elapsed < .seconds(5))
+        let elapsed = try #require(elapsedMs, "the dribbling request ended without a Timeout")
+        #expect(elapsed >= 400, "ended before its ceiling")
+        #expect(elapsed < 5_000, "ended long after its ceiling, so the ceiling did not end it")
+    }
+
+    /// #5331: a pack GET's deadline runs to minutes, and the idle timer stays
+    /// at chapter 00 §0.6's 60 s, so a stalled pack still fails a minute after
+    /// its last byte. A shorter deadline is its own idle timer too.
+    @Test("the idle timer is 60 s, or the deadline when that is shorter")
+    func idleTimerIsCappedAtSixtySeconds() async throws {
+        StubURLProtocol.script(.respond(status: 200, headers: [:], body: Data(), chunks: 1))
+        _ = try await transport().send(request: request(timeoutMs: 1_200_000))
+        #expect(StubURLProtocol.lastRequest()?.timeoutInterval == 60)
+
+        StubURLProtocol.script(.respond(status: 200, headers: [:], body: Data(), chunks: 1))
+        _ = try await transport().send(request: request(timeoutMs: 400))
+        #expect(StubURLProtocol.lastRequest()?.timeoutInterval == 0.4)
     }
 
     @Test("a dead network path is Offline, which is the variant reachability drives")

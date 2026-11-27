@@ -14,7 +14,7 @@ A row under the title shows the note's free-form labels.
 - Comma or space confirms
 - Tags are global — the same tag on two notes is the same tag
 - Tags keep the capitalization you type (`#Work` stays `#Work`), but identity is case-insensitive: `#Work` and `#work` are the same tag with one color and one combined count. This also applies to imported notes — an Obsidian vault's tag casing survives the import.
-- Typing `#tag` in the body of a note or journal entry adds the tag to the row and shows it as a colored chip in the text. A [tag with fields](/user-guide/notes/tags-with-fields#which-notes-get-the-fields) is the exception: typed in the text, it stays a label and is not added to the row. The chip is saved as plain `#tag` in the file and comes back as a chip when you reopen the note. A `#tag` starts with a letter A to Z, then letters, digits, `-` or `_`, with `/` for a child tag: `#a2024` becomes a chip, `#2024` stays text. A `#tag` inside inline code stays literal text, and one inside bold or italic text keeps its formatting and shows as text.
+- Typing `#tag` in the body of a note or journal entry adds the tag to the row and shows it as a colored chip in the text. A [tag with fields](/user-guide/notes/tags-with-fields#which-notes-get-the-fields) is the exception: typed in the text, it stays a label and is not added to the row. The chip is saved as plain `#tag` in the file and comes back as a chip when you reopen the note. A `#tag` holds letters in any language, digits, `-` or `_`, with `/` for a child tag, and needs at least one letter: `#프로젝트`, `#проект`, `#2024년` and `#a2024` become chips, `#2024` stays text. With an input method (Korean, Japanese, Chinese), the chip appears once you commit the text. A `#tag` inside inline code stays literal text, and one inside bold or italic text keeps its formatting and shows as text.
 
 Tags appear in the sidebar **Tags** section, grouped by category (see
 [Tag Categories](#tag-categories) below). Click any tag — in the sidebar, on a note, or in
@@ -56,8 +56,8 @@ notes and journal entries, including notes you have open. Only whole tags change
 `person` leaves `#personal` alone, and a `#tag` inside code stays as written. A delete changes
 the `tags:` list only, so a `#tag` in the text stays until you edit it.
 
-If the new name can't be typed as a `#tag` (it has a space, starts with a digit, or uses a
-letter outside A to Z), the rename still changes the `tags:` lists, but `#tags` in the text
+If the new name can't be typed as a `#tag` (it has a space or punctuation, or holds no letter
+at all, like `2024`), the rename still changes the `tags:` lists, but `#tags` in the text
 keep the old name, and Memry tells you so. A rename runs one note at a time, and a toast
 counts the notes as it goes; if Memry quits
 partway, it finishes the rename the next time the vault opens, and it doesn't start another

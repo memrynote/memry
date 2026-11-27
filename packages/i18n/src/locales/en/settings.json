@@ -1232,6 +1232,10 @@
     "loadingAria": "Loading devices",
     "none": "No devices linked yet",
     "linkNew": "Link new device",
+    "linkNeedsPlan": {
+      "title": "Linking needs a sync plan",
+      "description": "A linked device only sees your notes when sync is on. Without a plan, sign in there with your recovery phrase and it keeps its own vault."
+    },
     "thisDevice": "This device",
     "lastSeen": "Last seen {time} ago",
     "linked": "Linked {time} ago",
@@ -1398,6 +1402,7 @@
       "selectModel": "Select a model",
       "apiKey": "API Key",
       "apiKeyDescription": "Stored locally, sent only to the provider",
+      "apiKeyKeychainDescription": "Stored in your OS keychain, sent only to the provider",
       "apiKeyPlaceholder": "Enter {provider} API key",
       "ollamaUrl": "Ollama URL",
       "ollamaUrlDescription": "Local server address",
@@ -2238,6 +2243,10 @@
         "prevVault": {
           "label": "Previous Vault",
           "description": "Move to the previous vault in the sidebar"
+        },
+        "todayJournal": {
+          "label": "Today's Journal",
+          "description": "Open the journal on today's entry"
         }
       },
       "tabs": {
@@ -2431,7 +2440,8 @@
         "vault-binding": "This device's keys are restored, but this vault isn't set to sync with your account yet. Choose how to sync it from the sync menu.",
         "vault-foreign": "This device's keys are restored, but this vault belongs to another account. It stays local on this device.",
         "entitlement": "This device's keys are restored, but sync needs an active Sync plan.",
-        "unavailable": "This device's keys are restored, but sync couldn't start. It will retry; restart Memry if it doesn't."
+        "unavailable": "This device's keys are restored, but sync couldn't start. It will retry; restart Memry if it doesn't.",
+        "unavailable-restart": "This device's keys are restored, but sync couldn't start. Restart Memry; if sync still doesn't start, sign out and sign in again."
       }
     },
     "pagesSettingsAiInlineSection": {

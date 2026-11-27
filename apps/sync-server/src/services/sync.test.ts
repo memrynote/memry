@@ -3091,6 +3091,12 @@ describe('processRecordPushBatch committedItems', () => {
     expect(result.committedItems).toHaveLength(1)
     const pulled = await pullStoredRow(upsertStatements(batches)[0], storedBlobBody())
     expect(JSON.stringify(result.committedItems[0])).toBe(JSON.stringify(pulled))
+    // The manifest's serverCursor and version stay out of pull and socket
+    // items (recordMetaFromColumns), so a record pack entry's meta is unchanged.
+    for (const built of [result.committedItems[0], pulled]) {
+      expect(built).not.toHaveProperty('serverCursor')
+      expect(built).not.toHaveProperty('version')
+    }
     expect(result.committedAtMs).toBeGreaterThan(0)
   })
 

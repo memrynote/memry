@@ -1,15 +1,15 @@
 import SwiftUI
 import UIKit
 
-// #4351, epic #4334 keyboard decisions. The day page's hardware keys, carried
-// by hidden buttons: ⌥⌘← / ⌥⌘→ change the day anywhere, ⌘T shows today and
-// Esc drills up. Plain ← / → (desktop `pages/journal.tsx` keydown) change
-// the day only while no text view or field is being edited: they are never
-// registered then, so the caret keeps its arrow keys.
+// #4351, epic #4334 keyboard decisions. The day page's own hardware keys,
+// carried by hidden buttons: Esc drills up, and plain ← / → (desktop
+// `pages/journal.tsx` keydown) change the day only while no text view or
+// field is being edited: they are never registered then, so the caret keeps
+// its arrow keys. ⌥⌘← / ⌥⌘→ and ⌘T are app commands (`MemryCommands`),
+// which reach this page through `JournalDayCommands`.
 
 struct JournalDayShortcuts: View {
     let step: (Int) -> Void
-    let today: () -> Void
     let drillUp: () -> Void
 
     @State private var editingText = false
@@ -22,12 +22,6 @@ struct JournalDayShortcuts: View {
                 Button(JournalCopy.nextDay) { step(1) }
                     .keyboardShortcut(.rightArrow, modifiers: [])
             }
-            Button(JournalCopy.previousDay) { step(-1) }
-                .keyboardShortcut(.leftArrow, modifiers: [.option, .command])
-            Button(JournalCopy.nextDay) { step(1) }
-                .keyboardShortcut(.rightArrow, modifiers: [.option, .command])
-            Button(JournalCopy.goToToday, action: today)
-                .keyboardShortcut("t", modifiers: .command)
             Button(JournalCopy.backToMonth, action: drillUp)
                 .keyboardShortcut(.cancelAction)
         }

@@ -6,8 +6,9 @@ import Testing
 @testable import Memry
 
 // #4351: what the Journal rail and the regular-width year grid read. "On
-// this day" over a scratch vault and the real core, with desktop's same-day
-// rule (`packages/domain-notes/src/journal/same-day.ts`), leap days included.
+// this day" over a scratch vault and the real core, which owns the same-day
+// rule (`journal_rules/same_day.rs`, desktop's `same-day.ts`), leap days
+// included (#4833).
 
 @MainActor
 @Suite("Journal rail", .serialized)
@@ -60,10 +61,13 @@ struct JournalRailTests {
         #expect(onLeapDay.map(\.date) == ["2097-02-28"])
     }
 
-    @Test func a_feb_28_in_a_leap_year_matches_only_feb_28() {
-        #expect(JournalSameDay.matches("2096-02-28", "2097-02-28"))
-        #expect(!JournalSameDay.matches("2096-02-28", "2092-02-29"))
-        #expect(!JournalSameDay.matches("2097-06-15", "2097-06-15"), "the same year is not another year")
+    @Test func a_leap_year_feb_28_keeps_to_feb_28_and_years_before_1000_count() async throws {
+        let vault = try JournalTestVault(today: "2099-03-01")
+        try vault.write("Leap day entry.", on: "2092-02-29")
+        try vault.write("Same day, long ago.", on: "0999-02-28")
+
+        let entries = try #require(await vault.store.sameDayEntries("2096-02-28"))
+        #expect(entries.map(\.date) == ["0999-02-28"])
     }
 
     @Test func the_year_grid_has_four_columns_only_at_regular_width_and_height() {

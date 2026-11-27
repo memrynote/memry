@@ -8,7 +8,8 @@ use std::sync::{Arc, Mutex};
 
 use memry_core::api::editor::{EditorError, Notice, Origin};
 use memry_core::api::errors::StorageError;
-use memry_core::crdt::{CrdtError, update_log};
+use memry_core::crdt::CrdtError;
+use memry_core::crdt::epoch::HeldBody;
 
 use crate::editor_support::{Fixture, Replica, fixture, local_blobs};
 
@@ -62,11 +63,11 @@ fn run_server_row(f: &Fixture, note: &str, update: &[u8]) {
     f.vault
         .db_handle()
         .call_blocking(|conn| {
-            update_log::append_server_update(conn, note, 1, update, 1).map_err(|e| {
-                StorageError::Failed {
+            HeldBody::never_purged(conn, note)
+                .and_then(|held| held.append_server_update(1, update, 1))
+                .map_err(|e| StorageError::Failed {
                     what: e.to_string(),
-                }
-            })
+                })
         })
         .expect("a merged server row");
 }

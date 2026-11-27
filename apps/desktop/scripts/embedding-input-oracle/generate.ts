@@ -1,11 +1,12 @@
 /**
- * Generates `embedding-input.json` by running Electron's input shaping
+ * Generates `embedding-input-electron.json` by running Electron's input shaping
  * (`src/main/lib/embedding-input.ts`) in place as the oracle.
  *
  *   pnpm --filter @memry/desktop vectors:embedding-input          # write the file
  *   pnpm --filter @memry/desktop vectors:embedding-input:check    # regenerate in memory, diff, write nothing
  *
- * The file lives in `packages/contracts/test-vectors/`; this generator sits in
+ * The file lives in `packages/contracts/test-vectors/`, beside the `embedding-input`
+ * protocol class that `gen-protocol-vectors` writes; this generator sits in
  * `apps/desktop` because it imports the Electron module, and `packages/` never
  * imports an app. The Rust port (`crates/memry-core/src/domain/embedding_input.rs`)
  * reproduces every case.
@@ -36,7 +37,10 @@ import {
 import { CASES, type Case } from './cases'
 
 const appRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
-const PATH = join(resolve(appRoot, '../../packages/contracts/test-vectors'), 'embedding-input.json')
+const PATH = join(
+  resolve(appRoot, '../../packages/contracts/test-vectors'),
+  'embedding-input-electron.json'
+)
 
 let lone = false
 const wellFormed = (text: string): string => {
@@ -100,7 +104,7 @@ function main(): void {
   }
   if (committed !== fresh) {
     process.stderr.write(
-      'vectors:embedding-input:check failed: embedding-input.json is missing or regenerates differently.\n' +
+      'vectors:embedding-input:check failed: embedding-input-electron.json is missing or regenerates differently.\n' +
         'Regenerate with `pnpm --filter @memry/desktop vectors:embedding-input`.\n'
     )
     process.exit(1)

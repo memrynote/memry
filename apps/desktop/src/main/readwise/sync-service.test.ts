@@ -424,7 +424,7 @@ describe('Readwise incremental sync', () => {
   it('a note deleted in memry stays deleted, and the book is marked', async () => {
     twoBooks()
     await sync()
-    await notes.deleteNote((await noteFor(1)).id)
+    await notes.deleteNote((await noteFor(1)).id, async (inStep) => inStep?.(() => {}))
     edit(1, (b) => b.highlights.push(hl(14, 40, 5)))
     resetWrites()
 

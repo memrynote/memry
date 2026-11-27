@@ -11,9 +11,10 @@ use rusqlite::{OptionalExtension, params, params_from_iter};
 
 use super::{ImportWriter, failed};
 use crate::api::errors::StorageError;
-use crate::domain::embedding_input::EMBEDDING_INPUT_VERSION;
+use crate::domain::embedding_input::UNCAPPED_EMBEDDING_INPUT_VERSION;
 use crate::domain::file_text::extracted_text_for_note;
 use crate::domain::note_embeddings::embedded_hash;
+use crate::storage::nested_tx;
 use crate::storage::vec::VecTable;
 
 /// An Electron index table the import copies row for row.
@@ -83,7 +84,7 @@ impl ImportWriter {
     ) -> Result<(), StorageError> {
         let columns = table.columns();
         let marks = vec!["?"; columns.len()].join(", ");
-        let tx = self.index.transaction().map_err(failed)?;
+        let tx = nested_tx::begin(&self.index).map_err(failed)?;
         {
             let mut insert = tx
                 .prepare(&format!(
@@ -100,7 +101,8 @@ impl ImportWriter {
     }
 
     /// Records, for each note of `notes` with a staged file and a staged
-    /// `note_embedding_state` row at [`EMBEDDING_INPUT_VERSION`], a `note_embedding_hashes` row
+    /// `note_embedding_state` row at [`UNCAPPED_EMBEDDING_INPUT_VERSION`] (the version
+    /// [`crate::domain::note_embeddings::owed`] treats as built), a `note_embedding_hashes` row
     /// (index migration 0011): Electron's cached hash (none for a filed file) joined with the
     /// staged text read out of its files, as
     /// [`crate::domain::note_embeddings::with_file_text`] joins the hash it has now, and the
@@ -119,7 +121,7 @@ impl ImportWriter {
         &mut self,
         notes: &[ImportEmbeddedNote],
     ) -> Result<u64, StorageError> {
-        let tx = self.index.transaction().map_err(failed)?;
+        let tx = nested_tx::begin(&self.index).map_err(failed)?;
         let mut written = 0;
         for note in notes {
             let markdown: Option<bool> = self
@@ -135,7 +137,7 @@ impl ImportWriter {
                 .query_row(
                     "SELECT EXISTS(SELECT 1 FROM note_embedding_state
                        WHERE note_id = ?1 AND input_version = ?2)",
-                    params![note.note_id, EMBEDDING_INPUT_VERSION],
+                    params![note.note_id, UNCAPPED_EMBEDDING_INPUT_VERSION],
                     |row| row.get(0),
                 )
                 .map_err(failed)?;

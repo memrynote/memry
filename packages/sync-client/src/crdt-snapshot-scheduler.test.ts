@@ -149,6 +149,30 @@ describe('CrdtSnapshotScheduler', () => {
     expect(push).toHaveBeenCalledTimes(2)
   })
 
+  it('keeps a batch that came due while held and sends it on release', async () => {
+    const push = vi.fn().mockResolvedValue(true)
+    let held = true
+    const scheduler = new CrdtSnapshotScheduler(push, {
+      quietMs: 1000,
+      maxWaitMs: 120_000,
+      batchWindowMs: WINDOW_MS,
+      isHeld: () => held
+    })
+
+    scheduler.request('note-1')
+    scheduler.request('note-2')
+    await vi.advanceTimersByTimeAsync(60_000)
+    expect(push).not.toHaveBeenCalled()
+    expect(scheduler.getPendingNoteIds()).toEqual(['note-1', 'note-2'])
+
+    held = false
+    scheduler.release()
+    await vi.advanceTimersByTimeAsync(WINDOW_MS)
+    expect(push).toHaveBeenCalledTimes(1)
+    expect(push).toHaveBeenCalledWith(['note-1', 'note-2'])
+    expect(scheduler.getPendingNoteIds()).toEqual([])
+  })
+
   it('drops pending work and ignores later requests after stop', async () => {
     const push = vi.fn().mockResolvedValue(true)
     const scheduler = new CrdtSnapshotScheduler(push, {

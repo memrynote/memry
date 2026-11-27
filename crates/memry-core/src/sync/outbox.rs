@@ -29,10 +29,12 @@
 //! individually if the batch is rejected, and the server acks CRDT rows
 //! against the sequence it assigned to each specific update.
 
-use rusqlite::{Connection, Transaction, params};
+use rusqlite::{Connection, OptionalExtension as _, params};
 
 use crate::api::errors::StorageError;
+use crate::domain::settings::SETTINGS_ITEM_TYPE;
 use crate::protocol::crdt_envelope::{MAX_REQUEST_PAYLOAD_CHARS, max_payload_chars};
+use crate::storage::nested_tx;
 
 mod claim;
 mod collapse;
@@ -230,7 +232,7 @@ pub fn commit<T, F>(
 where
     F: FnOnce(&Connection) -> Result<T, StorageError>,
 {
-    let transaction = conn.unchecked_transaction().map_err(failed)?;
+    let transaction = nested_tx::begin(conn).map_err(failed)?;
     let value = source(&transaction)?;
     let outbox_id = enqueue(&transaction, change, now_ms)?;
     transaction.commit().map_err(failed)?;
@@ -312,6 +314,9 @@ fn insert(
             .map_err(failed)?;
         if created && *record_op == RecordOp::Upsert {
             op = OP_CREATE;
+        }
+        if change.op() == RecordOp::Delete.as_str() {
+            super::delete_wins::forget(tx, item_type, item_id)?;
         }
         tx.execute(
             "DELETE FROM outbox
@@ -411,15 +416,17 @@ impl Batch {
 ///
 /// One batch is either one document's CRDT updates or a run of record rows,
 /// never both: they go to different routes, and §A.2's ordering puts every
-/// CRDT row ahead of every record row within a pass. `skip_docs` is [`claim`]'s.
+/// CRDT row ahead of every record row within a pass. `skip_docs` and
+/// `skip_rows` are [`claim`]'s.
 pub fn next_batch(
     conn: &Connection,
     now_ms: i64,
     limit: usize,
     skip_docs: &[String],
+    skip_rows: &[i64],
 ) -> Result<Option<Batch>, StorageError> {
     let limit = limit.max(1);
-    let rows = claim(conn, now_ms, limit, skip_docs)?;
+    let rows = claim(conn, now_ms, limit, skip_docs, skip_rows)?;
     let Some(head) = rows.first() else {
         return Ok(None);
     };
@@ -463,11 +470,40 @@ pub fn next_batch(
 pub fn ack(conn: &Connection, ids: &[i64]) -> Result<usize, StorageError> {
     let mut removed = 0;
     for id in ids {
-        removed += conn
-            .execute("DELETE FROM outbox WHERE id = ?1", params![id])
+        let acked: Option<(String, String, String)> = conn
+            .query_row(
+                "DELETE FROM outbox WHERE id = ?1 RETURNING item_type, item_id, op",
+                params![id],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .optional()
             .map_err(failed)?;
+        if let Some((item_type, item_id, op)) = acked {
+            removed += 1;
+            super::journal_day_merge::note_acked(conn, &item_type, &item_id, &op)?;
+        }
     }
     Ok(removed)
+}
+
+/// Drops a purged document's queued body updates (chapter 07 §7.15.1, #5379).
+pub(crate) fn drop_body_updates(tx: &Connection, kind: &str, id: &str) -> Result<(), StorageError> {
+    let sql = "DELETE FROM outbox WHERE item_type = ?1 AND item_id = ?2 AND op = ?3";
+    tx.execute(sql, params![kind, id, OP_CRDT_UPDATE])
+        .map_err(failed)?;
+    Ok(())
+}
+
+/// Drops the queued record edits of a held foreign journal day that a delete
+/// or a merge forgets (#5763). Sent, the upsert would re-create the day over
+/// its tombstone.
+pub(crate) fn drop_upserts(tx: &Connection, kind: &str, id: &str) -> Result<(), StorageError> {
+    // A settings edit is never retired by a delete (#5433, `sync::apply`).
+    let sql = "DELETE FROM outbox WHERE item_type = ?1 AND item_id = ?2
+               AND op = ?3 AND item_type <> ?4";
+    tx.execute(sql, params![kind, id, OP_UPSERT, SETTINGS_ITEM_TYPE])
+        .map_err(failed)?;
+    Ok(())
 }
 
 /// Records a rejection against rows that stay queued: one attempt, the
@@ -504,7 +540,7 @@ pub fn defer(
 /// the row first so a crash inside the window leaves the reason behind rather
 /// than a silent disappearance.
 pub fn retire(conn: &Connection, ids: &[i64], reason: &str) -> Result<(), StorageError> {
-    let transaction = conn.unchecked_transaction().map_err(failed)?;
+    let transaction = nested_tx::begin(conn).map_err(failed)?;
     retire_in(&transaction, ids, reason)?;
     transaction.commit().map_err(failed)?;
     Ok(())
@@ -512,7 +548,7 @@ pub fn retire(conn: &Connection, ids: &[i64], reason: &str) -> Result<(), Storag
 
 /// [`retire`] inside the caller's open transaction, for a caller that records
 /// something else about the retired rows in the same commit.
-pub fn retire_in(tx: &Transaction, ids: &[i64], reason: &str) -> Result<(), StorageError> {
+pub fn retire_in(tx: &Connection, ids: &[i64], reason: &str) -> Result<(), StorageError> {
     let truncated = truncate(reason);
     for id in ids {
         tx.execute(

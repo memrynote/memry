@@ -21,7 +21,7 @@ import {
 } from '@/components/note/content-area/markdown-utils'
 import { normalizeNoteBlocks } from '@/components/note/content-area/normalize-note-blocks'
 import { TaskPrefetchProvider } from '@/components/note/content-area/task-block/task-prefetch-context'
-import { normalizeMarkdownHardBreaks } from '@/components/note/content-area/wiki-link-utils'
+import { normalizeLoadedMarkdown } from '@/components/note/content-area/wiki-link-utils'
 import { useEditorTeardown } from '@/hooks/use-editor-teardown'
 import { useEditorLinkClicks } from '@/components/note/content-area/editor-links'
 import { createLogger } from '@/lib/logger'
@@ -35,7 +35,7 @@ async function parseBody(
   markdown: string,
   notePath: string | undefined
 ): Promise<DiffableBlock[]> {
-  const source = normalizeMarkdownHardBreaks(markdown)
+  const source = normalizeLoadedMarkdown(markdown)
   const parsed = await parseMarkdownPreservingBlanks(editor, source, notePath)
   return sanitizeBlockIds(normalizeNoteBlocks(parsed, source))
 }

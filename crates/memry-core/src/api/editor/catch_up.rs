@@ -18,6 +18,7 @@ use crate::crdt::epoch;
 use crate::crdt::errors::CrdtError;
 use crate::crdt::registry::Document;
 use crate::crdt::update_log::{self, Namespace};
+use crate::storage::nested_tx;
 
 impl BodyObserver for Editor {
     fn bodies_committing(&self, writes: &[BodyWrite]) {
@@ -159,7 +160,7 @@ fn committed(
     doc_id: &str,
     rows: &[LogRow],
 ) -> Result<(u64, Vec<Vec<u8>>), CrdtError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let client_id = epoch::client_id(&tx, device_id, doc_id)?;
     let mut blobs = Vec::new();
     let mut folded = Vec::new();

@@ -1,4 +1,7 @@
 {
+  "wikiLink": {
+    "openFailed": "Hindi mabuksan ang link na ito"
+  },
   "portalBlock": {
     "copyFailed": "Hindi makopya ang portal",
     "hiddenCount": "{count} ang nakatago",
@@ -956,6 +959,8 @@
     "componentsVaultSwitcher": {
       "noVaultsYet": "Wala pang vault",
       "openVault": "Buksan ang vault",
+      "createVault": "Gumawa ng vault",
+      "openFolderAsVault": "Buksan ang folder bilang vault",
       "settings": "Mga setting",
       "remove": "Alisin ang “",
       "removeVaultTitle": "Alisin ang “{name}” sa listahan?",

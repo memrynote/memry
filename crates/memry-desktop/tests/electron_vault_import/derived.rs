@@ -7,6 +7,7 @@
 
 use std::path::Path;
 
+use memry_core::domain::embedding_input::UNCAPPED_EMBEDDING_INPUT_VERSION;
 use memry_core::domain::note_embeddings::{candidates, embedded_hash, owed, with_file_text};
 use memry_core::storage::import::{DATA_FILE, INDEX_FILE};
 use memry_desktop::electron_import::ProfileLock;
@@ -136,7 +137,7 @@ fn derived_rows_import_unchanged_and_only_changed_notes_owe_a_vector() {
     }
     index
         .execute_batch(&format!(
-            "INSERT INTO note_embedding_state VALUES ('{KEPT}', 6, 1), ('{EDITED}', 6, 0),
+            "INSERT INTO note_embedding_state (note_id, input_version, chunk_count) VALUES ('{KEPT}', {UNCAPPED_EMBEDDING_INPUT_VERSION}, 1), ('{EDITED}', {UNCAPPED_EMBEDDING_INPUT_VERSION}, 0),
                ('{DIRTY}', 0, 0);
              INSERT INTO extracted_text VALUES ('{KEPT}', 'a.pdf', 1, 'pdf-text', 'Attached words');
              INSERT INTO file_text_jobs VALUES ('{KEPT}', 'a.pdf', '12:34', 'done', 1, NULL,
@@ -252,7 +253,7 @@ fn notes_without_a_cached_hash_import_and_only_markdown_ones_stay_owed() {
     }
     index
         .execute_batch(&format!(
-            "INSERT INTO note_embedding_state VALUES ('{PDF}', 6, 0), ('{TIER0}', 6, 0);
+            "INSERT INTO note_embedding_state (note_id, input_version, chunk_count) VALUES ('{PDF}', {UNCAPPED_EMBEDDING_INPUT_VERSION}, 0), ('{TIER0}', {UNCAPPED_EMBEDDING_INPUT_VERSION}, 0);
              INSERT INTO extracted_text VALUES ('{PDF}', 'doc.pdf', 1, 'pdf-text', 'Scanned words');"
         ))
         .unwrap();

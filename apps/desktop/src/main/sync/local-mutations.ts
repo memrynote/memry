@@ -13,7 +13,8 @@ import {
   clearPendingDelete,
   isSupersededByLiveRow,
   listPendingDeletes,
-  recordPendingDelete
+  recordPendingDelete,
+  type PendingDelete
 } from './pending-deletes'
 import {
   incrementBookmarkClockOffline,
@@ -219,6 +220,18 @@ function pushClocklessContentRecreate(db: DrizzleDb, itemId: string): void {
 }
 
 /**
+ * Hands a pending note or journal delete to its service's queue as captured.
+ * The service cannot build it again: it reads the row, which is gone. False
+ * when the sync runtime is down.
+ */
+export function sendPendingContentDelete(item: PendingDelete): boolean {
+  const service = item.type === 'note' ? getNoteSyncService() : getJournalSyncService()
+  if (!service) return false
+  service.enqueueRecoveredDelete(item.itemId, item.payload)
+  return true
+}
+
+/**
  * Replay every delete this device still owes the server. Runs from
  * `recoverDirtyItems` at every runtime start — the same "re-push what this
  * device still owes the server" pass, for the one operation that had none.
@@ -259,9 +272,7 @@ export function flushPendingLocalDeletes(db: DrizzleDb): number {
       }
 
       if (item.type === 'note' || item.type === 'journal') {
-        const service = item.type === 'note' ? getNoteSyncService() : getJournalSyncService()
-        if (!service) continue
-        service.enqueueRecoveredDelete(item.itemId, item.payload)
+        if (!sendPendingContentDelete(item)) continue
       } else {
         // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- persisted queue/registry type is a plain string column; narrowing it needs a runtime allow-list that would change behavior
         enqueueLocalSyncDelete(item.type as LocalSyncType, item.itemId, item.payload)

@@ -8,18 +8,19 @@
  * through this module. This module is the persistence half of the Obsidian-model
  * fix: `rewrite-wiki-links.ts` decides which occurrences to rewrite; this one
  * finds the source notes through the `note_links` index and lands the rewrite
- * everywhere a note body lives, in the same order the watcher lands an
- * out-of-app edit:
+ * everywhere a note body lives, in the order every Memry body writer uses
+ * (`landBodyEdit`, sync/writeback-baseline.ts):
  *
- *  1. the vault file (`markWritebackIgnored` first, so the watcher does not
- *     re-ingest our own write),
- *  2. the index/canonical rows via `syncNoteToCache` — the re-projection is
+ *  1. the note's CRDT body via `feedExternalEditToCrdt`, which reaches an open
+ *     doc, a closed-but-persisted doc, and correctly leaves a note with no
+ *     CRDT body alone. This is also what carries the rewrite to other devices,
+ *  2. the vault file (its bytes recorded with `recordAppWrite`, so the watcher
+ *     does not re-ingest our own write), written through the outside-edit
+ *     baseline,
+ *  3. the index/canonical rows via `syncNoteToCache` — the re-projection is
  *     what refreshes `note_links.target_title`, so backlinks and the graph
  *     survive without a rebuild,
- *  3. the renderer, via the same `notes:updated` event an external edit emits,
- *  4. the note's CRDT body via `feedExternalEditToCrdt`, which reaches an open
- *     doc, a closed-but-persisted doc, and correctly leaves a note with no
- *     CRDT body alone. This is also what carries the rewrite to other devices.
+ *  4. the renderer, via the same `notes:updated` event an external edit emits.
  *
  * A source that fails is logged and skipped: the rename itself already
  * happened, and repairing nine of ten links beats unwinding a filesystem
@@ -29,7 +30,7 @@
  */
 
 import { splitWikiTarget } from '@memry/shared/wiki-target'
-import { isBinaryFileType } from '@memry/shared/file-types'
+import { isBinaryNoteRow } from '@memry/shared/file-types'
 import { NotesChannels, JournalChannels } from '@memry/contracts/ipc-channels'
 import type { NoteUpdatedEvent } from '@memry/contracts/notes-api'
 import {
@@ -42,11 +43,14 @@ import {
 import type { NoteCache } from '@memry/db-schema/schema/notes-cache'
 import { getIndexDatabase, type IndexDb } from '../database'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
-import { markWritebackIgnored } from '../sync/crdt-writeback'
+import { feedBodyEdit, writeFedBodyEdit } from '../sync/writeback-baseline'
+import { takeWritebackTurn } from '../sync/crdt-writeback'
+import { crdtWriteback } from '../sync/crdt-writeback-port'
+import { recordAppWrite } from './app-writes'
 import { rewriteWikiLinksToNote, type WikiLinkNames } from '@memry/shared/rewrite-wiki-links'
 import { parseNote } from './frontmatter'
 import { writingFrontmatterOf } from '@memry/shared/writing-tools/markdown'
-import { syncNoteToCache } from './note-sync'
+import { refusesCaseTwinFile, syncNoteToCache } from './note-sync'
 import { atomicWrite } from './file-ops'
 import { isNoteLocked } from '../vault-locks/registry'
 import { emitNoteEvent, getVaultRoot, toAbsolutePath } from './notes-io'
@@ -139,23 +143,25 @@ async function rewriteSource(
 
   const cached = getNoteCacheById(db, sourceId)
   if (!cached) return
-  if (cached.fileType && isBinaryFileType(cached.fileType)) return
+  if (isBinaryNoteRow(cached)) return
   // A locked note keeps its links as written, even to a renamed note.
   if (sourceId !== noteId && isNoteLocked(sourceId, cached.path)) return
 
   // The renamed note linking to itself: its cache row lags the rename (the
   // projector is async), so its file lives at the caller-supplied new path.
   const sourcePath = sourceId === noteId ? input.newPath : cached.path
-  const original = await readVaultFile(getVaultRoot(), sourcePath)
-  if (!original) return
-
-  const rewritten = rewriteWikiLinksToNote(original, from, to, otherNoteWithTitleExists)
-  if (rewritten === null) return
-
+  // The file may hold a case twin's body (#5297): the link stays stale.
+  if (refusesCaseTwinFile(getVaultRoot(), sourcePath, sourceId)) {
+    log.warn('Left an inbound link stale: the source shares its file with a case twin', {
+      sourceId,
+      renamedNoteId: noteId
+    })
+    return
+  }
   await landSourceRewrite(db, cached, {
     path: sourcePath,
     title: sourceId === noteId ? to.title : cached.title,
-    content: rewritten
+    rewrite: (raw) => rewriteWikiLinksToNote(raw, from, to, otherNoteWithTitleExists)
   })
 }
 
@@ -163,29 +169,103 @@ async function rewriteSource(
  * Land a rewritten source file everywhere its body lives: the file, the index,
  * the renderer and the CRDT body (steps 1-4 above). Also used by the
  * unlinked-mention "Link" action.
+ *
+ * `rewrite` maps the source's bytes to the rewritten ones, or null when there
+ * is nothing to rewrite; `false` when there was not.
+ *
+ * The doc is fed outside the source's write-back turn, since the feed can wait
+ * on the store (#5475); the file and the rows are written in the turn, at the
+ * path the source has then. A folder rename that ran during the feed moved
+ * the file and the rows, and writing the path read before it would make the
+ * old folder again and move the rows back (#5690). The turn rewrites the bytes
+ * the file holds then: a tag or property written during the feed is in them,
+ * and the bytes read before it would write over it.
+ *
+ * `samePick` says whether `rewrite` edits the same spot in the bytes read
+ * before the feed and in the bytes read in the turn. When it does not and the
+ * doc was fed, the file is left as it is: the doc holds the rewrite, and a
+ * write-back scheduled here brings the file level, so `true`. A doc that was
+ * not fed holds nothing, so the file gets the rewrite of the bytes it holds.
  */
 export async function landSourceRewrite(
   db: IndexDb,
   cached: NoteCache,
-  source: { path: string; title: string; content: string }
+  source: {
+    path: string
+    title: string
+    rewrite: (raw: string) => string | null
+    samePick?: (fedFrom: string, current: string) => boolean
+  }
+): Promise<boolean> {
+  const sourceId = cached.id
+  const original = await readVaultFile(getVaultRoot(), source.path)
+  if (!original) return false
+  const rewritten = source.rewrite(original)
+  if (rewritten === null) return false
+  const parsed = parseNote(rewritten, source.path)
+  const fed = await feedBodyEdit(sourceId, source.path, () =>
+    feedExternalEditToCrdt(sourceId, parsed.content, writingFrontmatterOf(parsed.frontmatter))
+  )
+  return takeWritebackTurn(sourceId, async () => {
+    const sourcePath = currentSourcePath(db, cached, source.path)
+    if (sourcePath === null) {
+      log.warn('Dropped a link rewrite: its source note was deleted meanwhile', { sourceId })
+      return false
+    }
+    const current = await readVaultFile(getVaultRoot(), sourcePath)
+    const content = current ? source.rewrite(current) : null
+    if (!current || content === null) {
+      log.warn('Dropped a link rewrite: its source no longer holds the link', { sourceId })
+      return false
+    }
+    if (fed && source.samePick && !source.samePick(original, current)) {
+      log.warn('Left a link to the write-back: the body changed during the feed', { sourceId })
+      crdtWriteback().retryWriteback(sourceId)
+      return true
+    }
+    await writeSourceRewrite(db, cached, { ...source, path: sourcePath, content }, fed)
+    return true
+  })
+}
+
+/**
+ * Where the source lives now: `path` (which can be ahead of a row the projector
+ * has not moved yet), unless its row moved since `cached` was read.
+ */
+function currentSourcePath(db: IndexDb, cached: NoteCache, path: string): string | null {
+  const row = getNoteCacheById(db, cached.id)
+  if (!row) return null
+  return row.path === cached.path ? path : row.path
+}
+
+async function writeSourceRewrite(
+  db: IndexDb,
+  cached: NoteCache,
+  source: { path: string; title: string; content: string },
+  fed: boolean
 ): Promise<void> {
   const sourceId = cached.id
   const { path: sourcePath, content: rewritten } = source
   const absolutePath = toAbsolutePath(sourcePath)
-
-  // Same guard the sync note handler and `moveNote` use before touching a file
-  // the watcher is also watching: this write is already being reconciled here.
-  markWritebackIgnored(absolutePath)
-  await atomicWrite(absolutePath, rewritten)
+  const parsed = parseNote(rewritten, sourcePath)
+  const contentHash = await writeFedBodyEdit(db, sourceId, rewritten, fed, {
+    // Recorded as the sync note handler and `moveNote` record theirs: the
+    // watcher drops this write's echo, which is already being reconciled here.
+    write: async () => {
+      const landed = recordAppWrite(absolutePath, rewritten)
+      await atomicWrite(absolutePath, rewritten)
+      landed()
+    }
+  })
 
   const now = new Date().toISOString()
-  const parsed = parseNote(rewritten, sourcePath)
   const syncResult = syncNoteToCache(
     db,
     {
       id: sourceId,
       path: sourcePath,
       fileContent: rewritten,
+      contentHash,
       frontmatter: parsed.frontmatter,
       parsedContent: parsed.content,
       title: source.title,
@@ -207,8 +287,6 @@ export async function landSourceRewrite(
     source: 'external'
   }
   emitNoteEvent(NotesChannels.events.UPDATED, event)
-
-  await feedExternalEditToCrdt(sourceId, parsed.content, writingFrontmatterOf(parsed.frontmatter))
 
   if (isJournalEntry(sourcePath)) {
     const journalDate = extractDateFromPath(sourcePath) ?? ''

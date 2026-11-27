@@ -302,6 +302,23 @@ describe('note and sidebar cold surfaces', () => {
     expect(rail).toHaveClass('max-[920px]:hidden')
   })
 
+  it.each([
+    ['without a rail', undefined],
+    ['with a rail', <aside key="rail">Comment rail</aside>]
+  ])('keeps only the side menu and outline gutters in full width, %s (#3512)', (_, sideRail) => {
+    const { container } = render(
+      <NoteLayout headings={[]} sideRail={sideRail} fullWidth>
+        <article>Note body</article>
+      </NoteLayout>
+    )
+
+    // The start gutter holds the block side menu (fold chevron, drag handle,
+    // plus), the end gutter the outline panel; nothing else is drawn there.
+    const canvas = container.querySelector('[data-note-layout-canvas]')
+    expect(canvas).not.toHaveClass('px-24')
+    expect(canvas).toHaveClass('ps-[72px]', 'pe-[56px]')
+  })
+
   it('renders project empty, skeleton, and sortable drop/edit states', async () => {
     const user = userEvent.setup()
     const onCreateProject = vi.fn()
