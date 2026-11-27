@@ -285,6 +285,7 @@
           "settings_install_terminal_command",
           "settings_open_os_microphone_settings",
           "settings_reset_keyboard",
+          "settings_send_test_inbox_review_notification",
           "settings_set_ai",
           "settings_set_calendar_provider",
           "settings_set_group",

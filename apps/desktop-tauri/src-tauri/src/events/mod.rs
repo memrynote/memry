@@ -505,6 +505,18 @@ pub struct InboxOpenItemEvent {
     pub item_id: String,
 }
 
+/// The daily inbox review nudge fired (`inbox:review-due`): the renderer shows its toast.
+/// `count` is the number of captures to review.
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+pub struct InboxReviewDueEvent {
+    pub count: i64,
+}
+
+/// The inbox review notification was clicked (`inbox:review-open`): the renderer opens the inbox.
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+pub struct InboxReviewOpenEvent {}
+
 /// A native menu item that the renderer runs as a command was clicked. `command` is the
 /// command id (`tabs.closeTab`).
 #[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
