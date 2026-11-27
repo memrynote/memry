@@ -9,8 +9,8 @@ use crate::domain::journal_rules::{is_js_whitespace, js_trim};
 
 use super::prepare::fence_line;
 use super::shapes::{
-    is_pipe_row, is_rule, is_table_separator, leading_ws, skip_chars, starts_list_item,
-    starts_quote,
+    is_pipe_row, is_rule, is_setext_underline, is_table_separator, leading_ws, skip_chars,
+    starts_list_item, starts_quote,
 };
 
 /// `HEADING`, `/^#{1,6}(?:\s|$)/`.
@@ -64,9 +64,10 @@ pub(super) fn opens_block(lines: &[&str], i: usize, first: usize) -> bool {
     false
 }
 
-/// `endsParagraphBefore`: BlockNote ends a paragraph before `line`. A dashed
-/// rule is left out, since under a paragraph it is a setext underline.
-pub(super) fn ends_paragraph_before(line: Option<&str>) -> bool {
+/// `endsParagraphBefore`: BlockNote ends a paragraph before `line`, or before
+/// a line that the `next` line underlines as a setext heading. A dashed rule
+/// is left out, since under a paragraph it is a setext underline.
+pub(super) fn ends_paragraph_before(line: Option<&str>, next: Option<&str>) -> bool {
     let Some(line) = line.filter(|line| !js_trim(line).is_empty()) else {
         return true;
     };
@@ -75,6 +76,9 @@ pub(super) fn ends_paragraph_before(line: Option<&str>) -> bool {
     let rest = skip_chars(line, lead).trim_end_matches(is_js_whitespace);
     if lead <= 3 && !rest.is_empty() && rest.chars().all(|c| c == '-') {
         return false;
+    }
+    if next.is_some_and(is_setext_underline) {
+        return true;
     }
     heading(line)
         || fence_line(line).is_some()
@@ -117,10 +121,15 @@ mod tests {
     #[test]
     fn a_paragraph_ends_before_a_block_but_a_dashed_rule_is_its_underline() {
         for line in ["", "# H", "```", "> q", "***", "- a", "| a |", "<!-- c -->"] {
-            assert!(ends_paragraph_before(Some(line)), "{line}");
+            assert!(ends_paragraph_before(Some(line), None), "{line}");
         }
-        assert!(ends_paragraph_before(None));
-        assert!(!ends_paragraph_before(Some("---")));
-        assert!(!ends_paragraph_before(Some("text")));
+        assert!(ends_paragraph_before(None, None));
+        assert!(!ends_paragraph_before(Some("---"), None));
+        assert!(!ends_paragraph_before(Some("text"), None));
+        assert!(!ends_paragraph_before(Some("text"), Some("text")));
+        // A line the next one underlines is a heading of its own.
+        assert!(ends_paragraph_before(Some("H"), Some("---")));
+        assert!(ends_paragraph_before(Some("H"), Some("===  ")));
+        assert!(!ends_paragraph_before(Some("---"), Some("---")));
     }
 }

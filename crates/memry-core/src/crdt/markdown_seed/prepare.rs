@@ -117,7 +117,7 @@ fn lifts_item_child_run(markdown: &str) -> bool {
         if indent == 0 {
             if let Some(found) = item_column(line) {
                 column = found;
-            } else if after_blank || ends_paragraph_before(Some(line)) {
+            } else if after_blank || ends_paragraph_before(Some(line), None) {
                 column = 0;
             }
             continue;

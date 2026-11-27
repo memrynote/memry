@@ -64,7 +64,19 @@ the canonical form it would write instead settles, and a quote that parses to on
 stays a flat quote
 (`packages/editor-schema/src/blocks/markdown.ts:232-252`, `:276-287`,
 `packages/editor-schema/src/blocks/quote.ts:167-188`, `:246-280`;
-`crates/memry-core/src/crdt/markdown_seed/claims.rs:158-185`, `:257-270`, `:311-370`). The core
+`crates/memry-core/src/crdt/markdown_seed/claims.rs:158-185`, `:257-270`, `:311-370`). A
+quote's last paragraph takes the lines after the run that open no block (not blank, a list item,
+a heading, a fence, a quote, an HTML tag, a table row, a rule or a setext underline), so `> q\nsee`
+is one quote and `> q\n>\n> r\nlazy` ends in the paragraph `r` and `lazy`; a run whose last line
+opens a block or holds a fence takes none, and a callout's body ends at its last `>` line
+(`packages/editor-schema/src/blocks/quote.ts:81-135`,
+`crates/memry-core/src/crdt/markdown_seed/claims.rs:371-407`, `:432-457`). A `$$` math run owns its
+paragraph where the parser ends one after it, which includes a line a setext underline sits under
+(`$$\ny\n$$\nH\n---` is math and a heading)
+(`packages/editor-schema/src/blocks/block-starts.ts:54-66`,
+`packages/editor-schema/src/blocks/markdown.ts:563-589`,
+`crates/memry-core/src/crdt/markdown_seed/block_starts.rs:70-91`,
+`crates/memry-core/src/crdt/markdown_seed/claims.rs:267-289`). The core
 serializes a body of paragraphs and headings exactly and keeps a run holding any other block (a
 table, a code block, an image), a list, a nested quote or a comment as literal text
 (`crates/memry-core/src/crdt/markdown_seed/roundtrip.rs:1-7`). The serializer writes text as

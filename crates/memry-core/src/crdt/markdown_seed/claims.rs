@@ -17,6 +17,7 @@ use crate::domain::journal_rules::{is_js_whitespace, js_trim};
 use super::block_starts::ends_paragraph_before;
 use super::blocks::parse_chunk;
 use super::comment_nodes::has_token;
+use super::prepare::fence_line;
 use super::roundtrip::serialize;
 use super::{SeedBlock, SeedInline, SeedKind, Unsupported};
 
@@ -100,7 +101,7 @@ fn read_callout<'a>(
                 Ok(None)
             };
         }
-        if let Some(run) = structured_quote_run(lines, start + 1) {
+        if let Some(run) = structured_quote_run(lines, start + 1, false) {
             if run.reshapes {
                 return Err(Unsupported("callout holding a list or a nested quote"));
             }
@@ -268,7 +269,7 @@ pub(super) fn math_at(lines: &[&str], start: usize, at_paragraph_start: bool) ->
         return None;
     }
     let close = start + 1 + lines[start + 1..].iter().position(|line| *line == "$$")?;
-    if !ends_paragraph_before(lines.get(close + 1).copied()) {
+    if !ends_paragraph_before(lines.get(close + 1).copied(), lines.get(close + 2).copied()) {
         return None;
     }
     let body = &lines[start + 1..close];
@@ -302,7 +303,7 @@ struct QuoteRun {
 /// level or a list is [`Unsupported`], as is one holding a block this port
 /// does not serialize.
 pub(super) fn quote_at(lines: &[&str], start: usize) -> Result<Option<Claim>, Unsupported> {
-    let Some(run) = structured_quote_run(lines, start) else {
+    let Some(run) = structured_quote_run(lines, start, true) else {
         return Ok(None);
     };
     if run.reshapes {
@@ -346,7 +347,8 @@ fn split_quote_blocks(parsed: &[SeedBlock]) -> Option<(Vec<SeedInline>, Vec<Seed
 /// blocks serialize to it again.
 fn quote_settles(canonical: &str) -> Result<bool, Unsupported> {
     let lines: Vec<&str> = canonical.split('\n').collect();
-    let Some(run) = structured_quote_run(&lines, 0).filter(|run| run.end == lines.len()) else {
+    let Some(run) = structured_quote_run(&lines, 0, false).filter(|run| run.end == lines.len())
+    else {
         return Ok(false);
     };
     if run.reshapes {
@@ -363,8 +365,10 @@ fn quote_settles(canonical: &str) -> Result<bool, Unsupported> {
 /// `readStructuredQuoteRun`: a run of `>` lines, with one level stripped. A
 /// `>text` line refuses the run. `reshapes` marks a `> >` level or a list item
 /// (which the source also tracks fences for); both are refused, so a superset
-/// is enough.
-fn structured_quote_run(lines: &[&str], start: usize) -> Option<QuoteRun> {
+/// is enough. With `lazy_paragraph`, a quote's last paragraph takes the lines
+/// after it that open no block, as BlockNote's flat quote does; a callout's
+/// body ends at its last `>` line.
+fn structured_quote_run(lines: &[&str], start: usize, lazy_paragraph: bool) -> Option<QuoteRun> {
     if !lines.get(start)?.starts_with('>') {
         return None;
     }
@@ -382,6 +386,19 @@ fn structured_quote_run(lines: &[&str], start: usize) -> Option<QuoteRun> {
         }
         end += 1;
     }
+    let last = inner.last().map_or("", String::as_str);
+    if lazy_paragraph
+        && !last.is_empty()
+        && !is_block_start(last)
+        && !inner.iter().any(|line| fence_line(line).is_some())
+    {
+        while let Some(line) = lines.get(end).filter(|line| {
+            !js_trim(line).is_empty() && !looks_like_list_item(line) && !is_block_start(line)
+        }) {
+            inner.push((*line).to_owned());
+            end += 1;
+        }
+    }
     Some(QuoteRun {
         inner,
         end,
@@ -389,7 +406,8 @@ fn structured_quote_run(lines: &[&str], start: usize) -> Option<QuoteRun> {
     })
 }
 
-/// A superset of `INTERRUPTING_ITEM` and `LIST_ITEM`.
+/// `LIST_ITEM`, `/^ {0,3}([-*+]|\d{1,9}[.)])([ \t]|$)/`, a superset of
+/// `INTERRUPTING_ITEM`.
 fn looks_like_list_item(line: &str) -> bool {
     let rest = line.trim_start_matches(' ');
     if line.len() - rest.len() > 3 {
@@ -400,12 +418,42 @@ fn looks_like_list_item(line: &str) -> bool {
         None => {
             let digits = rest.chars().take_while(char::is_ascii_digit).count();
             match rest[digits..].strip_prefix(['.', ')']) {
-                Some(after) if digits > 0 => after,
+                Some(after) if (1..=9).contains(&digits) => after,
                 _ => return false,
             }
         }
     };
     after.is_empty() || after.starts_with([' ', '\t'])
+}
+
+/// `BLOCK_START`, a line that starts a block of its own instead of continuing
+/// a paragraph:
+/// `/^ {0,3}(>|#{1,6}([ \t]|$)|```|~~~|<|\||[-*_=]+[ \t]*$|[-*_]([ \t]*[-*_]){2,}[ \t]*$)/`.
+fn is_block_start(line: &str) -> bool {
+    let rest = line.trim_start_matches(' ');
+    if line.len() - rest.len() > 3 {
+        return false;
+    }
+    let hashes = rest.chars().take_while(|c| *c == '#').count();
+    let ruled = rest.trim_end_matches([' ', '\t']);
+    let marks = ruled
+        .chars()
+        .filter(|c| matches!(c, '-' | '*' | '_'))
+        .count();
+    rest.starts_with(['>', '<', '|'])
+        || rest.starts_with("```")
+        || rest.starts_with("~~~")
+        || ((1..=6).contains(&hashes)
+            && rest[hashes..]
+                .chars()
+                .next()
+                .is_none_or(|c| matches!(c, ' ' | '\t')))
+        || (!ruled.is_empty() && ruled.chars().all(|c| matches!(c, '-' | '*' | '_' | '=')))
+        || (marks >= 3
+            && rest.starts_with(['-', '*', '_'])
+            && ruled
+                .chars()
+                .all(|c| matches!(c, '-' | '*' | '_' | ' ' | '\t')))
 }
 
 /// `itemHoldsNonList`.
@@ -456,6 +504,32 @@ mod tests {
         assert!(math_at(&["$$", "x", "$$", "after"], 0, true).is_none());
         assert!(math_at(&["$$", "x"], 0, true).is_none());
         assert!(math_at(&lines, 0, false).is_none());
+        // The parser ends a paragraph before a line a setext underline sits under.
+        assert!(math_at(&["$$", "y", "$$", "H", "---"], 0, true).is_some());
+        assert!(math_at(&["$$", "y", "$$", "H", "==="], 0, true).is_some());
+        assert!(math_at(&["$$", "y", "$$", "H", "text"], 0, true).is_none());
+    }
+
+    #[test]
+    fn a_quotes_last_paragraph_takes_the_lazy_lines_that_open_no_block() {
+        let run = |lines: &[&str], lazy| {
+            let run = structured_quote_run(lines, 0, lazy).expect("a run");
+            (run.inner, run.end)
+        };
+        let (inner, end) = run(
+            &["> q", "> ", ">", "> r", "lazy", "more", "", "after"],
+            true,
+        );
+        assert_eq!((inner.last().map(String::as_str), end), (Some("more"), 6));
+        // A callout's body ends at its last `>` line.
+        assert_eq!(run(&["> q", "lazy"], false).1, 1);
+        // A line that opens a block, or a last line that does, ends the run.
+        assert_eq!(run(&["> q", "# h"], true).1, 1);
+        assert_eq!(run(&["> q", "lazy", "- a"], true).1, 2);
+        assert_eq!(run(&["> # h", "z"], true).1, 1);
+        assert_eq!(run(&["> q", "> ```", "> x", "> ```", "z"], true).1, 4);
+        assert_eq!(run(&["> q", "z", "    code"], true).1, 3);
+        assert_eq!(run(&["> q", "a | b"], true).1, 2);
     }
 
     #[test]

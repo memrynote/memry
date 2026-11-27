@@ -45,7 +45,7 @@ fn without_block_ids(canonical: &str) -> String {
 
 /// Cases desktop builds and the core keeps as literal text, because claiming
 /// them needs desktop's serialization of a block the core does not write: a
-/// table or a code block under a quote, a comment node, a quoted list, the
+/// table, a code block or an image under a quote, a comment node, a quoted list, the
 /// `<details>` markup a quote, a callout or a heading now keeps as text, a
 /// callout, quote or math block indented under a list item, a quote body the
 /// writer's underscore spelling stops settling (desktop reads a flat quote,
@@ -53,11 +53,12 @@ fn without_block_ids(canonical: &str) -> String {
 /// which ProseMirror keeps or drops by its neighbours. A
 /// fallback is lossless (every line stays text), so each must fall back, and
 /// the run it keeps literal is checked below.
-const KEPT_LITERAL: [&str; 16] = [
+const KEPT_LITERAL: [&str; 17] = [
     "comment: %% in a callout body and a quote",
     "callout: a body holding a table",
     "quote: a run opening on a table",
     "quote: a line, a blank and a table",
+    "lazy quote line: an image on the line after a quote",
     "quote: a quoted fence then a lazy line",
     "details markup: a quote holding a toggle's lines",
     "details markup: a one-paragraph quote",
