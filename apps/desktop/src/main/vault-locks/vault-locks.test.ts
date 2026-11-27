@@ -649,7 +649,7 @@ describe('vault read-only locks (#2606)', () => {
         fs.writeFileSync(file, 'new')
         fs.chmodSync(file, 0o600)
       }
-      await protectLockedFile(seenLive)
+      protectLockedFile(seenLive)
       await checkLockedFilesAtOpen()
       expect([seenLive, seenAtOpen].map(modeOf)).toEqual([0o400, 0o400])
 
@@ -680,7 +680,7 @@ describe('vault read-only locks (#2606)', () => {
         fs.writeFileSync(file, 'new')
         fs.chmodSync(file, mode)
       }
-      await protectLockedFile(ownerOnly)
+      protectLockedFile(ownerOnly)
       await checkLockedFilesAtOpen()
       await setVaultLock({ kind: 'folder', target: 'shared', locked: false })
       await setVaultLock({ kind: 'note', target: 'note-a', locked: false })
@@ -755,7 +755,8 @@ describe('vault read-only locks (#2606)', () => {
       settleRemoteNoteFileSync('note-a', file, 'archive/a.md', 'pulled\n')
       fs.chmodSync(file, 0o664)
 
-      const protecting = protectLockedFile(file)
+      // Settled after the unlock, as an asynchronous protect would be.
+      const protecting: unknown = protectLockedFile(file)
       writeRemoteLock('folder', 'archive', false)
       settleRemoteNoteFileSync('note-a', file, 'archive/a.md', null)
       await protecting

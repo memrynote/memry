@@ -22,7 +22,7 @@ interface AttachmentWatch {
 
 let active: AttachmentWatch | null = null
 
-const protect = (filePath: string): void => void protectLockedFile(filePath)
+const protect = (filePath: string): void => protectLockedFile(filePath)
 
 /**
  * chokidar reads a folder, then watches it, and on macOS the watch starts

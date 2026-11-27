@@ -778,7 +778,7 @@ export class VaultWatcher {
       // A file moved into a locked folder, a locked note renamed or a locked
       // file recreated from outside comes in writable. The app's own write is
       // left alone: `protectLockedFile` would take it as replaced from outside.
-      if (!echo) await protectLockedFile(absolutePath)
+      if (!echo) protectLockedFile(absolutePath)
     }
   }
 
@@ -1257,7 +1257,7 @@ export class VaultWatcher {
       this.onError?.(error)
     } finally {
       // `atomic` reports a quick delete and recreate as a change.
-      if (!echo) await protectLockedFile(absolutePath)
+      if (!echo) protectLockedFile(absolutePath)
     }
   }
 
