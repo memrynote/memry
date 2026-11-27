@@ -13,7 +13,7 @@ export const MARKDOWN_SEED_CASES: ReadonlyArray<{ name: string; markdown: string
     {
       name: 'journal: morning and gratitude',
       markdown: '## Morning\n- [ ] \n\n## Gratitude\n1. \n2. \n',
-      pins: 'an empty check item and an empty numbered item; the last line is trimmed to `2.` first, so it is a paragraph'
+      pins: 'an empty check item and two empty numbered items: a marker alone on its line is an empty item, after a blank line or another item'
     },
     {
       name: 'journal: date heading after substitution',
@@ -431,5 +431,11 @@ export const MARKDOWN_SEED_CASES: ReadonlyArray<{ name: string; markdown: string
       name: 'quote: a quoted fence then a lazy line',
       markdown: '> ```\n> - x\n> ```\nz',
       pins: 'a list marker inside a quoted fence is code, so the run ends at its last `>` line and the next line is a paragraph of its own'
+    },
+    {
+      name: 'empty blocks: headings and items with nothing on the line',
+      markdown:
+        '#\n\n## \n\n-\n- \n*\n\n1.\n2. x\n3)\n\n- [x]\n\ntext\n-\n\n```\n-\n#\n```\n\n####### ',
+      pins: 'a heading or item line with no text is an empty block, an item only after a blank line or another item (after paragraph text `-` stays text), never inside a fence, and `#######` is text'
     }
   ]
