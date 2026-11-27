@@ -11,7 +11,7 @@ import {
   maskHtmlComments,
   splitHtmlCommentTokens
 } from '@memry/shared/html-comments'
-import { restoreDetailsMarkup } from './blocks/markdown'
+import { escapePrefixedDetailsMarkup, restoreDetailsMarkup } from './blocks/markdown'
 import { dropEmptyBlockPlaceholders, maskEmptyBlockLines } from './empty-blocks'
 import { maskCellCodeSpans, restoreCellCodeSpans } from './inline/cell-code-spans'
 import { type InlineItem, trimEmphasisEdges } from './inline/emphasis-runs'
@@ -373,10 +373,10 @@ export async function parseMarkdownToBlocksRepaired<T>(
   const { markdown: codeMasked, chars: codeChars } = maskCellCodeSpans(tokensMasked, {
     pipes: losslessBlocks
   })
-  // A row wider than its table's header keeps its extra cells, and an empty
-  // list item or heading stays one.
+  // A row wider than its table's header keeps its extra cells, an empty list
+  // item or heading stays one, and so does `<details>` markup in a quote.
   const withTokensMasked = losslessBlocks
-    ? maskEmptyBlockLines(widenTables(codeMasked))
+    ? maskEmptyBlockLines(widenTables(escapePrefixedDetailsMarkup(codeMasked)))
     : codeMasked
 
   // BlockNote parses markdown by way of this same HTML, so the detour changes

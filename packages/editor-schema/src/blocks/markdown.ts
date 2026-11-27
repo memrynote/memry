@@ -681,7 +681,14 @@ export function serializeToggleBlock(
  * the raw line, never a trimmed one: an indented `<details>` is inside a code
  * block or a list item, and those bytes are not this function's to touch.
  */
-const DETAILS_MARKUP_LINE_REGEX = /^(?:<details(?:\s[^>]*)?>|<summary>.*<\/summary>|<\/details>)$/
+const DETAILS_MARKUP = String.raw`<details(?:\s[^>]*)?>|<summary>.*<\/summary>|<\/details>`
+const DETAILS_MARKUP_LINE_REGEX = new RegExp(`^(?:${DETAILS_MARKUP})$`)
+/**
+ * The same line behind quote markers or a heading's `#`s, which the parser
+ * drops as raw HTML too: a quote's own markup, the body of a quote or callout
+ * run, and `## </details>`, a closing tag read over a setext underline.
+ */
+const PREFIXED_DETAILS_LINE_REGEX = new RegExp(`^((?:>[ \t]?)*|#{1,6}[ \t]+)(${DETAILS_MARKUP})$`)
 
 /**
  * The `<` of a declined `<details>` line, while it crosses the parser.
@@ -722,6 +729,19 @@ const DETAILS_LT_TOKEN = 'MEMRYDLT;'
 function escapeDetailsMarkup(line: string): string {
   if (!DETAILS_MARKUP_LINE_REGEX.test(line)) return line
   return line.split('<').join(DETAILS_LT_TOKEN)
+}
+
+/** `markdown` with every details markup line escaped, prefixed or not; fenced code keeps its bytes. */
+export function escapePrefixedDetailsMarkup(markdown: string): string {
+  if (!/<(?:details|summary>|\/details>)/.test(markdown)) return markdown
+  const fence = createFenceTracker()
+  return markdown
+    .split('\n')
+    .map((line) => {
+      const match = fence.consume(line) ? null : PREFIXED_DETAILS_LINE_REGEX.exec(line)
+      return match ? match[1] + match[2].split('<').join(DETAILS_LT_TOKEN) : line
+    })
+    .join('\n')
 }
 
 /**
