@@ -801,6 +801,7 @@ function tauriSplit(matrix) {
 const linuxRust = [
   'ubuntu-22.04 lint',
   'ubuntu-22.04 seams',
+  'ubuntu-22.04 budget',
   'ubuntu-22.04 tests 1/6',
   'ubuntu-22.04 tests 2/6',
   'ubuntu-22.04 tests 3/6',
@@ -1463,7 +1464,8 @@ describe('ci concurrency of the feat/tauri-v2 push runs', () => {
   })
 })
 
-// The daily cache-warm run of rust-ci.yml adds the `seams` leg of each OS the merge queue runs, with the
+// The daily cache-warm run of rust-ci.yml adds the `seams` leg of each OS the merge queue runs (and the
+// Linux `budget` leg, which saves its own entry), with the
 // steps the queue gives it: the entry it saves is the one the queue's checks legs restore, and a leg
 // with fewer steps would save an entry that lacks what the queue builds (an exact hit saves nothing).
 describe('ci tier cache-warm legs', () => {
@@ -1477,7 +1479,7 @@ describe('ci tier cache-warm legs', () => {
       scheduleTested
     })
   const queue = tier({ event: 'merge_group', base: '', files: ['crates/memry-core/src/lib.rs'] })
-  const warmed = ['ubuntu-22.04 seams', 'windows-2022 seams']
+  const warmed = ['ubuntu-22.04 seams', 'ubuntu-22.04 budget', 'windows-2022 seams']
 
   it('runs the warm legs on a scheduled SHA that already passed, and beside the macOS leg otherwise', () => {
     const covered = scheduled(true)
@@ -1492,7 +1494,9 @@ describe('ci tier cache-warm legs', () => {
   })
 
   it('gives each warm leg exactly the queue leg it warms', () => {
-    const queueChecks = rustLegEntries(queue).filter((leg) => leg.part === 'seams')
+    const queueChecks = rustLegEntries(queue).filter(
+      (leg) => leg.part === 'seams' || leg.part === 'budget'
+    )
     assert.deepEqual(rustLegEntries(scheduled(true), true), queueChecks)
   })
 

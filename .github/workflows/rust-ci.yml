@@ -325,6 +325,10 @@ jobs:
       # Cargo.lock). PRs, merge groups and other refs restore feat/tauri-v2's entry, the default
       # branch's, and write nothing: per-ref saves of 2.5-3.5 GB filled the cap and evicted it, and the
       # hit rate fell to 0-25% from 18 Nov.
+      # The Linux `budget` leg keeps an entry of its own, saved the same way: its release build shares
+      # nothing with the debug entry, and rust-cache never saves over an exact key hit, so the debug
+      # entry saved before the calendar budget existed held none of it and every run compiled 457
+      # release crates (17 minutes, run 46058633973). The cap is 50 GB now (cache/storage-limit).
       - name: Cache cargo
         id: cargo-cache
         uses: Swatinem/rust-cache@v2
@@ -336,9 +340,10 @@ jobs:
           workspaces: crates
           # The image in the key: rust-cache keys on job id + OS + arch only, so main's ubuntu-latest
           # (26.04) save restored here and its build scripts needed GLIBC_2.39 (#3846).
-          # No part in the key: every leg of an OS restores the entry its seams leg saved.
-          key: ${{ matrix.os }}-checks
-          save-if: ${{ matrix.part == 'seams' && matrix.os != 'windows-11-arm' && !startsWith(matrix.os, 'macos') && github.ref == 'refs/heads/feat/tauri-v2' }}
+          # No part in the key: every leg of an OS restores the entry its seams leg saved, but the
+          # Linux `budget` leg, which restores and saves its own (see above).
+          key: ${{ matrix.os }}-${{ matrix.budget && 'budget' || 'checks' }}
+          save-if: ${{ (matrix.part == 'seams' || matrix.part == 'budget') && matrix.os != 'windows-11-arm' && !startsWith(matrix.os, 'macos') && github.ref == 'refs/heads/feat/tauri-v2' }}
           # The warm run exists to save: a flaky step must not lose its entry.
           cache-on-failure: ${{ needs.plan.outputs.warm == 'true' }}
 
@@ -366,7 +371,7 @@ jobs:
       # `native` feature, so the cmake build runs once there and the worker steps below reuse it.
       # test-archive builds no worker.
       - name: Tesseract sources
-        if: matrix.lint || matrix.seams || matrix.models || matrix.perf
+        if: matrix.lint || matrix.seams || matrix.models || matrix.perf || matrix.budget
         uses: ./.github/actions/tesseract-sources
         with:
           save: ${{ github.ref == 'refs/heads/feat/tauri-v2' }}
@@ -647,8 +652,9 @@ jobs:
       # through the command, times the same factor as the budgets above.
       # The cold release build is a step of its own, outside the run step's hang limit: as one step it
       # took 12.1 and 13.6 minutes on this leg (runs 44806511703 and 44806862681) of its 15.
+      # Both steps run in the Linux `budget` leg, beside `seams` (rust-legs.jq).
       - name: Calendar range budget (memry-tauri, release), build
-        if: matrix.seams && matrix.os == 'ubuntu-22.04'
+        if: matrix.budget
         timeout-minutes: 20
         env:
           CARGO_PROFILE_RELEASE_LTO: 'false'
@@ -660,7 +666,7 @@ jobs:
         run: cargo test -p memry-tauri --release --test calendar --no-run
 
       - name: Calendar range budget (memry-tauri, release)
-        if: matrix.seams && matrix.os == 'ubuntu-22.04'
+        if: matrix.budget
         timeout-minutes: 15
         env:
           CARGO_PROFILE_RELEASE_LTO: 'false'
