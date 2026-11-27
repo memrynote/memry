@@ -97,9 +97,7 @@ function spell(items: Item[]): Spelling {
       if (item.type === 'text' && typeof item.text === 'string') {
         const styles = item.styles ?? {}
         if (styles.code === true) {
-          // A break at a code run's edge is written outside its backticks.
-          const [, before, after] = /^(\n*)[\s\S]*?(\n*)$/.exec(item.text) ?? ['', '', '']
-          spelling += `${before}\`${NODE}\`${after}`
+          spelling += `\`${NODE}\``
           continue
         }
         const bold = styles.bold === true ? '**' : ''
@@ -281,8 +279,9 @@ function escapeSegment(
 }
 
 /** `items` of a block of type `blockType` (none for a table cell), escaped for the markdown writer. */
-export function escapeMarkdownText<T extends Item>(items: T[], blockType?: string): T[] {
-  if (blockType !== undefined && LITERAL_BLOCKS.has(blockType)) return items
+export function escapeMarkdownText<T extends Item>(list: T[], blockType?: string): T[] {
+  if (blockType !== undefined && LITERAL_BLOCKS.has(blockType)) return list
+  const items = codeBreaksApart(list)
   const cell = blockType === undefined
   const place: Place = {
     lineBlock: !cell && LINE_BLOCKS.has(blockType),
@@ -317,6 +316,25 @@ export function escapeMarkdownText<T extends Item>(items: T[], blockType?: strin
  */
 function spacedCodeLine(line: string): string {
   return /^ [\s\S]* $/.test(line) && /[^ ]/.test(line) ? ` ${line} ` : line
+}
+
+/**
+ * `items` with each code run's breaks taken out into text runs of their own.
+ * The writer spells them outside the backticks, where they are breaks like any
+ * other: three after `` `a` `` were written as blank lines that split the
+ * paragraph, with no `<br>` for them.
+ */
+function codeBreaksApart<T extends Item>(items: T[]): T[] {
+  return items.flatMap((item) => {
+    if (item.type !== 'text' || item.styles?.code !== true || !item.text?.includes('\n')) {
+      return [item]
+    }
+    const { code: _code, ...styles } = item.styles
+    return item.text
+      .split(/(\n+)/)
+      .filter((part) => part !== '')
+      .map((text) => (text.startsWith('\n') ? { ...item, text, styles } : { ...item, text }))
+  })
 }
 
 /** `items` with each text run's text replaced by the next of `escaped`. */
