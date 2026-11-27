@@ -288,10 +288,14 @@ final class EditorSession {
         accessory.alpha = PresentingWindow.keepsPresenting(over: window) ? 0 : 1
         guard PresentingWindow.isPresenting(over: window) else { return stopWatchingCover() }
         guard coveredWatch == nil else { return }
-        coveredWatch = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] timer in
+        let watch = Timer(timeInterval: 0.1, repeats: true) { [weak self] timer in
             guard let self else { return timer.invalidate() }
             MainActor.assumeIsolated { self.syncToolbar() }
         }
+        watch.tolerance = 0.05
+        // Common modes, so it also looks during a sheet's swipe-down drag.
+        RunLoop.main.add(watch, forMode: .common)
+        coveredWatch = watch
     }
 
     private func stopWatchingCover() {
