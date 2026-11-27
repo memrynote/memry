@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 426,
+    "exportedCaseCount": 428,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 436,
+    "caseCount": 438,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -2847,6 +2847,20 @@
       "canonical": null,
       "pending": null,
       "sha256": "3b26b4f606ef2a2a4e69ed55e6d1cc08a13f7acb43b7b4f02d1f042496689da4"
+    },
+    {
+      "name": "code span holding two backticks before a break",
+      "markdown": "`c``c`\ny",
+      "canonical": null,
+      "pending": null,
+      "sha256": "221b9d312e689897b0333f15d792c9e1a05973c93fe7d611be861df2eccc7f2d"
+    },
+    {
+      "name": "code span holding two backticks on a quote line",
+      "markdown": "> `c``c`\n> y",
+      "canonical": null,
+      "pending": null,
+      "sha256": "5f0a34814a55c102c0f66bf6aed723d7e036ef8412b600276b7ab1e4ef5cf929"
     },
     {
       "name": "code spans of a led line and of spaces across a break",
