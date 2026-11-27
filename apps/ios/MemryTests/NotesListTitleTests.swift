@@ -26,7 +26,11 @@ extension KeyWindowSuites {
             _ = try writer.create(title: "Milk", folderPath: nil)
             let scene = try #require(UIApplication.shared.connectedScenes.first as? UIWindowScene)
             let window = UIWindow(windowScene: scene)
-            window.rootViewController = UIHostingController(rootView: NotesListView(model: model))
+            // The phone list: an iPad simulator's regular width draws the
+            // split view, which re-reads after each write (#5883).
+            window.rootViewController = UIHostingController(
+                rootView: NotesListView(model: model).environment(\.horizontalSizeClass, .compact)
+            )
             window.makeKeyAndVisible()
             defer { window.isHidden = true }
 
