@@ -43,4 +43,14 @@ describe('RenameTargets', () => {
 
     expect(targets.take(at('Docs/m.md'))).toBeNull()
   })
+
+  // A folder's watcher names the child that changed, not a new name.
+  it("keeps no name for a folder's event about one of its files", () => {
+    fs.writeFileSync(at('x.md'), '# x\n')
+    fs.writeFileSync(at('Docs/x.md'), '# x\n')
+
+    targets.record(at('Docs'), at('x.md'))
+
+    expect(targets.take(at('Docs'))).toBeNull()
+  })
 })
