@@ -104,6 +104,16 @@ export function spellsCalloutMarker(blockType: string, line: string, onlyLine: b
   return blockType === 'paragraph' && !onlyLine && BARE_CALLOUT_MARKER_REGEX.test(line)
 }
 
+/**
+ * A quote that owns blocks: `serializeQuoteBlock` over their markdown, its first
+ * line escaped where it would read back as a callout marker. That line is
+ * written as a paragraph's, which the escaper does not judge as a quote's.
+ */
+export function serializeQuoteOfBlocks(innerMarkdown: string): string {
+  const quoted = serializeQuoteBlock(innerMarkdown)
+  return matchCalloutMarker(quoted.split('\n', 1)[0]) ? `> \\${quoted.slice(2)}` : quoted
+}
+
 export interface CalloutRun {
   type: string
   fold: CalloutFold

@@ -21,7 +21,7 @@ import { parseMarkdownToBlocksRepaired } from '@memry/editor-schema/parse-markdo
 import { maskHtmlComments } from '@memry/shared/html-comments'
 import {
   serializeMathBlock,
-  serializeQuoteBlock,
+  serializeQuoteOfBlocks,
   serializeToggleBlock,
   serializeWhiteboard,
   serializeColumnListBlock
@@ -197,11 +197,11 @@ function isStructuredQuote(block: Block): boolean {
  */
 async function serializeQuote(editor: any, block: Block): Promise<string> {
   // SAFETY: the quote's own inline content as a bare paragraph, so it is
-  // serialized without the `> ` that `serializeQuoteBlock` adds.
+  // serialized without the `> ` that `serializeQuoteOfBlocks` adds.
   const own = schemaBlock({ ...block, type: 'paragraph', props: {}, children: [] })
   const children = (block.children ?? []) as Block[]
   const inner = await serializeBlocksPreservingBlanks(editor, [own, ...children])
-  return serializeQuoteBlock(inner.trim())
+  return serializeQuoteOfBlocks(inner.trim())
 }
 
 export function sanitizeBlockIds(blocks: Block[]): Block[] {

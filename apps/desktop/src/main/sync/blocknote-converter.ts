@@ -10,7 +10,7 @@ import {
   type FileBlockProps,
   serializeCalloutBlock,
   serializeMathBlock,
-  serializeQuoteBlock,
+  serializeQuoteOfBlocks,
   serializeToggleBlock,
   serializeColumnListBlock
 } from '@memry/editor-schema/blocks'
@@ -880,12 +880,12 @@ function isCalloutWithChildren(block: Block): boolean {
  */
 async function serializeQuote(editor: ServerBlockNoteEditor, block: Block): Promise<string> {
   // SAFETY: the quote's own inline content as a bare paragraph, so it is
-  // serialized without the `> ` that `serializeQuoteBlock` adds below.
+  // serialized without the `> ` that `serializeQuoteOfBlocks` adds below.
   // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- BlockNote Block generics do not model the Memry custom blocks this converter builds; the shape is fixed by packages/editor-schema; BlockNote Block/PartialBlock generics do not model the Memry custom blocks and props; the shape is fixed by packages/editor-schema
   const own = { ...block, type: 'paragraph', props: {}, children: [] } as unknown as Block
   const children = (block.children ?? []) as Block[]
   const inner = await blocksToMarkdownPreserving(editor, [own, ...children])
-  return serializeQuoteBlock(inner.trim())
+  return serializeQuoteOfBlocks(inner.trim())
 }
 
 /**

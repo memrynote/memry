@@ -336,8 +336,9 @@ export function spellsRunsWithUnderscores(items: InlineItem[]): boolean {
 
 /** `markdown` with each run's delimiters, an underscore token pair where `meetsInnerStars`. */
 function spellRuns(markdown: string, marks: Span[]): { restored: string; underscored: string[] } {
-  // `lastRun` is the last run closed inside each open one, delimiters included.
-  const open = [{ text: '', lastRun: '' }]
+  // `lastRun` is the last run closed inside each open one, delimiters included,
+  // and `runEnd` the length of `text` right after it.
+  const open = [{ text: '', lastRun: '', runEnd: -1 }]
   const underscored: string[] = []
   let last = 0
   for (const token of markdown.matchAll(TOKEN)) {
@@ -350,7 +351,7 @@ function spellRuns(markdown: string, marks: Span[]): { restored: string; undersc
       continue
     }
     if (token[1] === 'O') {
-      open.push({ text: '', lastRun: '' })
+      open.push({ text: '', lastRun: '', runEnd: -1 })
       continue
     }
     if (open.length === 1) continue
@@ -362,11 +363,17 @@ function spellRuns(markdown: string, marks: Span[]): { restored: string; undersc
       continue
     }
     let delimiter: string = typeof span === 'string' ? DELIMITERS[span] : ''
-    if (meetsInnerStars(delimiter, content, run.lastRun) && !hasBareUnderscore(content)) {
+    // Stars against the stars of the run before (`*a***b**`) open bold italic too.
+    const touches = !before && parent.text.length === parent.runEnd && parent.lastRun.endsWith('*')
+    const misread =
+      meetsInnerStars(delimiter, content, run.lastRun) || (touches && delimiter.startsWith('*'))
+    if (misread && !hasBareUnderscore(content)) {
       delimiter = underscoreToken(underscored.push(delimiter) - 1)
     }
     parent.lastRun = `${delimiter}${content}${delimiter}`
-    parent.text += `${before}${parent.lastRun}${after}`
+    parent.text += `${before}${parent.lastRun}`
+    parent.runEnd = parent.text.length
+    parent.text += after
   }
   // A pair the serializer cut short keeps its text, without delimiters.
   return { restored: open.map((run) => run.text).join('') + markdown.slice(last), underscored }
