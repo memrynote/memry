@@ -14,6 +14,7 @@ pub mod assets;
 pub mod bear;
 pub mod context;
 pub mod csv;
+pub mod csv_lex;
 pub mod google_keep;
 pub mod markdown;
 pub mod messages;
@@ -25,6 +26,8 @@ pub mod roam;
 pub mod runner;
 pub mod sink;
 pub mod source_paths;
+pub mod ticktick;
+pub mod todoist;
 pub mod zip;
 
 use std::fs::{File, OpenOptions};
@@ -42,7 +45,8 @@ pub use messages::{ImportMessage, ImportText};
 pub use registry::Registry;
 pub use sink::{
     BookmarkMetadata, ImportSink, ImportedBookmark, ImportedJournalEntry, ImportedNote,
-    ImportedTask, JournalEntry, SinkError,
+    ImportedProjectTask, ImportedRepeat, ImportedStatus, ImportedTask, ImportedTickTickTask,
+    JournalEntry, MonthlyRepeat, ProjectStatus, RepeatEnd, RepeatFrequency, SinkError, StatusKind,
 };
 
 /// The largest source file an importer reads into memory. Electron read any size; a larger file
@@ -53,6 +57,55 @@ pub const MAX_SOURCE_BYTES: u64 = 100 * 1024 * 1024;
 /// note at 20,000 characters (at most about 80 KB of JSON), so this holds over 6,500 notes of
 /// maximal length and far more of the usual few KB; Electron held any amount.
 pub const MAX_NOTE_JSON_BYTES: u64 = 512 * 1024 * 1024;
+
+/// The memory one run's plans may take, summed over every picked file, for an importer that
+/// plans every file before its first write (Raindrop, Todoist, TickTick). It holds about 300,000 items of a
+/// typical size; Electron had no bound.
+pub const MAX_PLANNED_BYTES: usize = 512 * 1024 * 1024;
+
+/// What a warning costs a plan besides its text.
+pub(crate) const WARNING_COST: usize = 256;
+
+/// The titles a preview group samples.
+pub(crate) const SAMPLE_MAX: usize = 5;
+
+/// The bytes one run's plans may still take, and the text a file fails with when its plan does not
+/// fit. Raindrop, Todoist and TickTick plan every picked file before the first write, so one
+/// budget spans the run.
+#[derive(Clone, Copy)]
+pub(crate) struct Budget {
+    left: usize,
+    too_many: &'static str,
+}
+
+impl Budget {
+    pub(crate) fn new(left: usize, too_many: &'static str) -> Self {
+        Self { left, too_many }
+    }
+
+    /// Takes `cost`; past what is left it takes nothing and returns the failure text.
+    pub(crate) fn charge(&mut self, cost: usize) -> Result<(), &'static str> {
+        self.left = self.left.checked_sub(cost).ok_or(self.too_many)?;
+        Ok(())
+    }
+}
+
+/// A message with neither a code nor params.
+pub(crate) fn message(text: String) -> ImportMessage {
+    ImportMessage {
+        code: None,
+        message: text,
+        params: None,
+    }
+}
+
+/// One count of a preview group.
+pub(crate) fn count(label_key: &str, value: usize) -> PreviewCount {
+    PreviewCount {
+        label_key: label_key.to_owned(),
+        value,
+    }
+}
 
 /// `ImportInput`: the picked paths and the importer's own options.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]

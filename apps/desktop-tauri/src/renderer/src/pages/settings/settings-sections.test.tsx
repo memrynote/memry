@@ -14,7 +14,9 @@ const localProvider = vi.hoisted(() => ({
   agentGetLocalProviderSettings: vi.fn(),
   agentSetLocalProviderSettings: vi.fn(),
   agentListLocalModels: vi.fn(),
-  agentTestLocalProvider: vi.fn()
+  agentTestLocalProvider: vi.fn(),
+  agentGetToolGrants: vi.fn(),
+  agentEditVaultTrustList: vi.fn()
 }))
 const billing = vi.hoisted(() => ({
   accountGetBillingStatus: vi.fn(),
@@ -460,6 +462,7 @@ function installLocalProviderCommands() {
     thinking: input.thinking ?? 'default'
   }))
   localProvider.agentListLocalModels.mockResolvedValue({ models: ['llama3', 'qwen2.5'] })
+  localProvider.agentGetToolGrants.mockResolvedValue({ tools: [] })
   localProvider.agentTestLocalProvider.mockResolvedValue({
     connected: true,
     modelAvailable: true,
@@ -1248,26 +1251,24 @@ describe('settings section coverage', () => {
   })
 
   it('lists and revokes always-allowed agent tools', async () => {
-    vi.mocked(window.api.agent.getToolGrants)
-      .mockResolvedValueOnce({ tools: ['create_note'] })
-      .mockResolvedValueOnce({ tools: [] })
-    window.api.agent.editTrustList = vi.fn().mockResolvedValue(null)
+    localProvider.agentGetToolGrants.mockResolvedValue({
+      tools: ['vault_create_task', 'vault_tag_note']
+    })
+    localProvider.agentEditVaultTrustList.mockResolvedValue({ tools: ['vault_tag_note'] })
     render(<AgentProvidersSection />)
 
-    expect(await screen.findByText('create_note')).toBeInTheDocument()
+    expect(await screen.findByText('vault_create_task')).toBeInTheDocument()
     fireEvent.click(
       screen.getByRole('button', {
-        name: 'agentProviders.alwaysAllowed.revokeLabel {"tool":"create_note"}'
+        name: 'agentProviders.alwaysAllowed.revokeLabel {"tool":"vault_create_task"}'
       })
     )
 
-    await waitFor(() =>
-      expect(window.api.agent.editTrustList).toHaveBeenCalledWith({
-        remove: ['create_note'],
-        scope: 'vault'
-      })
-    )
-    expect(await screen.findByText('agentProviders.alwaysAllowed.empty')).toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByText('vault_create_task')).not.toBeInTheDocument())
+    expect(localProvider.agentEditVaultTrustList).toHaveBeenCalledWith({
+      remove: ['vault_create_task']
+    })
+    expect(screen.getByText('vault_tag_note')).toBeInTheDocument()
   })
 
   it('clears agent memory and says so', async () => {

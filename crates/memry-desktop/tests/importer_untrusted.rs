@@ -19,7 +19,8 @@ use memry_desktop::import::csv::{CsvImporter, map_rows, parse_csv, steps};
 use memry_desktop::import::markdown::{MarkdownImporter, parse_frontmatter};
 use memry_desktop::import::{
     ImportContext, ImportInput, ImportSink, ImportSummary, ImportedBookmark, ImportedJournalEntry,
-    ImportedNote, ImportedTask, Importer, JournalEntry, MAX_SOURCE_BYTES, SinkError,
+    ImportedNote, ImportedProjectTask, ImportedStatus, ImportedTask, ImportedTickTickTask,
+    Importer, JournalEntry, MAX_SOURCE_BYTES, ProjectStatus, SinkError,
 };
 use memry_test_kit::{assert_steps_at_most, on_small_stack, output_bound, proptest_config};
 use proptest::prelude::*;
@@ -316,6 +317,34 @@ impl ImportSink for CancelOnSave {
 
     fn archive_task(&self, id: &str) -> Result<(), SinkError> {
         self.inner.archive_task(id)
+    }
+
+    fn create_project(&self, name: &str) -> Result<String, SinkError> {
+        self.inner.create_project(name)
+    }
+
+    fn create_project_task(&self, task: ImportedProjectTask) -> Result<String, SinkError> {
+        self.inner.create_project_task(task)
+    }
+
+    fn create_status_project(
+        &self,
+        name: &str,
+        statuses: &[ImportedStatus],
+    ) -> Result<String, SinkError> {
+        self.inner.create_status_project(name, statuses)
+    }
+
+    fn project_statuses(&self, project_id: &str) -> Vec<ProjectStatus> {
+        self.inner.project_statuses(project_id)
+    }
+
+    fn create_ticktick_task(&self, task: ImportedTickTickTask) -> Result<String, SinkError> {
+        self.inner.create_ticktick_task(task)
+    }
+
+    fn create_reminder(&self, task_id: &str, remind_at: &str) -> Result<(), SinkError> {
+        self.inner.create_reminder(task_id, remind_at)
     }
 
     fn journal_entry_id(&self, date: &str) -> Result<String, SinkError> {

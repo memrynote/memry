@@ -15,7 +15,8 @@
 //!   by the TypeScript importers with the same seams mocked.
 //!
 //! The trait grows with the importers that need more writes (NotePlan added tasks and journal
-//! entries; projects and inbox links follow): each later stage adds the method it uses, with a
+//! entries, Raindrop inbox links, Todoist projects, TickTick status projects and reminders): each
+//! later stage adds the method it uses, with a
 //! default only when a no-op is a correct answer.
 
 use memry_core::markdown::frontmatter::YamlMap;
@@ -57,6 +58,126 @@ pub struct ImportedTask {
     pub parent_id: Option<String>,
     /// The note or journal entry the task line lives in.
     pub source_note_id: String,
+}
+
+/// `ImportTasksDomain.createTask` input (`apps/desktop/src/main/import/todoist/todoist-importer.ts`):
+/// a task of a project the importer created, with Todoist's fields mapped.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ImportedProjectTask {
+    /// An id [`ImportSink::create_project`] returned earlier in this run.
+    pub project_id: String,
+    /// A task id [`ImportSink::create_project_task`] returned earlier in this run.
+    pub parent_id: Option<String>,
+    pub title: String,
+    pub description: Option<String>,
+    /// Memry's priority, 0 (none) to 4 (urgent): Todoist's 4, 3 and 2 keep their number, and
+    /// anything else is 0.
+    pub priority: u8,
+    /// `YYYY-MM-DD`, or the year Todoist's text named (`0-06-20` for year 0000), as Electron
+    /// stored it.
+    pub due_date: Option<String>,
+    /// `HH:mm`.
+    pub due_time: Option<String>,
+    /// The task's place among the project's tasks, from 0.
+    pub position: usize,
+}
+
+/// A status of a project TickTick creates (`CreateProjectArgs.statuses`,
+/// `apps/desktop/src/main/import/ticktick/apply-plan.ts`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ImportedStatus {
+    pub name: String,
+    /// `#rrggbb`.
+    pub color: String,
+    pub kind: StatusKind,
+    /// The status's place among the project's statuses, from 0.
+    pub order: usize,
+}
+
+/// `StatusType`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StatusKind {
+    Todo,
+    InProgress,
+    Done,
+}
+
+/// A stored status of a project (`getStatusesByProject`'s row).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ProjectStatus {
+    pub id: String,
+    pub is_default: bool,
+    pub is_done: bool,
+}
+
+/// `RepeatConfig` (`packages/importers/src/ticktick/types.ts`) as TickTick's RRULE gave it. The
+/// numbers are JS numbers: `parseInt` of the rule's text, so `NaN` where the text has no number
+/// and `Infinity` past f64, which `JSON.stringify` writes as `null`. `completedCount` is 0.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ImportedRepeat {
+    pub frequency: RepeatFrequency,
+    /// 1 or more.
+    pub interval: f64,
+    /// Sunday 0 to Saturday 6, for a weekly rule with `BYDAY`.
+    pub days_of_week: Option<Vec<u8>>,
+    pub monthly: Option<MonthlyRepeat>,
+    pub end: RepeatEnd,
+    /// The run's start as `toISOString` writes it.
+    pub created_at: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RepeatFrequency {
+    Daily,
+    Weekly,
+    Monthly,
+    Yearly,
+}
+
+/// `monthlyType` with its fields.
+#[derive(Debug, Clone, PartialEq)]
+pub enum MonthlyRepeat {
+    DayOfMonth(f64),
+    WeekPattern {
+        week_of_month: f64,
+        day_of_week: Option<u8>,
+    },
+}
+
+/// `endType` with its field.
+#[derive(Debug, Clone, PartialEq)]
+pub enum RepeatEnd {
+    Never,
+    /// `YYYY-MM-DD`.
+    Date(String),
+    Count(f64),
+}
+
+/// `CreateTaskArgs` of TickTick's `applyPlan`: a task of a project this run created or of the
+/// Inbox, with TickTick's fields mapped.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ImportedTickTickTask {
+    pub project_id: String,
+    pub title: String,
+    pub description: Option<String>,
+    /// Memry's 0 to 3: TickTick's 1, 3 and 5 become 1, 2 and 3.
+    pub priority: u8,
+    /// A status id [`ImportSink::project_statuses`] returned, possibly of another project when
+    /// two lists' `list column` names collide, as in Electron.
+    pub status_id: Option<String>,
+    /// A task id [`ImportSink::create_ticktick_task`] returned earlier in this run.
+    pub parent_id: Option<String>,
+    /// The task's place among its project's tasks of the same status, from 0.
+    pub position: usize,
+    /// `Y-MM-DD` in the task's time zone, the year as `Intl` writes it (no padding, and the era
+    /// year before year 1).
+    pub start_date: Option<String>,
+    pub due_date: Option<String>,
+    /// `HH:mm`.
+    pub due_time: Option<String>,
+    /// Repeats from the due date (`repeatFrom: 'due'`).
+    pub repeat: Option<ImportedRepeat>,
+    pub tags: Vec<String>,
 }
 
 /// The parts of a stored journal entry an importer merges into (`readJournalEntry`).
@@ -137,7 +258,7 @@ pub trait ImportSink: Send + Sync {
     fn create_task(&self, task: ImportedTask) -> Result<String, SinkError>;
 
     /// `completeTask({ id, completedAt, recordOnly: true })`: marks a task created in this run
-    /// done at `completed_at` (`YYYY-MM-DD`), or now.
+    /// done at `completed_at` (NotePlan's `YYYY-MM-DD`, or TickTick's text as exported), or now.
     fn complete_task(&self, id: &str, completed_at: Option<&str>) -> Result<(), SinkError>;
 
     /// `archiveTask`: Memry has no cancelled state.
@@ -161,6 +282,36 @@ pub trait ImportSink: Send + Sync {
     /// skips the event or the sync write, or tests the URL any other way, departs from
     /// Electron. `Err` fails that bookmark; the import goes on.
     fn save_bookmark(&self, bookmark: ImportedBookmark) -> Result<(), SinkError>;
+
+    /// `ImportTasksDomain.createProject` (`createDesktopTasksDomain`): creates a project named
+    /// `name` and returns its id. `Err` fails the file whose tasks it would hold; the import goes
+    /// on with the next file.
+    fn create_project(&self, name: &str) -> Result<String, SinkError>;
+
+    /// `ImportTasksDomain.createTask`: creates an open task in a project of this run and
+    /// returns its id. `Err` fails the rest of the task's file; the tasks created before it stay.
+    fn create_project_task(&self, task: ImportedProjectTask) -> Result<String, SinkError>;
+
+    /// `ImportTasksDomain.createProject` with statuses (TickTick): creates a project named
+    /// `name` with `statuses` in order and returns its id. `Err` skips the project's tasks; the
+    /// import goes on.
+    fn create_status_project(
+        &self,
+        name: &str,
+        statuses: &[ImportedStatus],
+    ) -> Result<String, SinkError>;
+
+    /// `getStatusesByProject`: a project's statuses in their order.
+    fn project_statuses(&self, project_id: &str) -> Vec<ProjectStatus>;
+
+    /// TickTick's `createTask`: creates an open task and returns its id. `Err` fails that task;
+    /// the import goes on.
+    fn create_ticktick_task(&self, task: ImportedTickTickTask) -> Result<String, SinkError>;
+
+    /// `createReminder({ targetType: 'task', targetId, remindAt })`: a reminder at `remind_at`
+    /// (`toISOString` form, later than the run's start) on a task of this run. `Err` drops that
+    /// reminder; the task stays.
+    fn create_reminder(&self, task_id: &str, remind_at: &str) -> Result<(), SinkError>;
 
     /// Runs once after the importer returned, before the runner reports `done`: the production
     /// sink waits for the index to hold every note it wrote (`flushProjectionEvents`), so a

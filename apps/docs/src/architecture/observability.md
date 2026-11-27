@@ -386,6 +386,14 @@ snapshot push so `close-vault` always keeps at least 2s of the shared budget.
 | Migration       | `migration_started`, `migration_completed`, `migration_failed` — the Tauri build's first launch over an Electron install: duration, vault and deferred counts, the failing check as `errorCode`; never a path                    |
 | Diagnostics     | `app_log_recorded`, `app_error_seen`, `app_launch_phase_completed`, `app_crashed` (see [Crash & Unclean-Shutdown Detection](#crash-unclean-shutdown-detection))                                                                  |
 
+### Onboarding on Tauri
+
+The Tauri first-run wizard sends `onboarding_started` (`action` = `wizard`) only when a new user
+finishes it with usage metrics on: once, after the metrics choice is stored and the vault opens,
+right before `onboarding_completed`. Electron sends it when the wizard mounts. The wire format is
+the same, but on Tauri the event counts new users who finished with metrics on, not wizard
+starts, and a returning user who signs in sends no `onboarding_started`.
+
 ### Sync runs
 
 `sync_run_completed` carries more than finished runs: `push_lag` and `e2e_latency` are latency

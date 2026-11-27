@@ -39,6 +39,7 @@ fn input<'a>(
         docs: Vec::new(),
         extra_owed_docs: Vec::new(),
         vault_key: None,
+        electron_device_id: Some("device-electron".into()),
         now_ms: 1_800_000_000_000,
         progress: None,
     }
@@ -210,6 +211,7 @@ fn a_record_written_without_its_unknown_fields_merge_fails_check_1() {
         vault_id: "vault-1",
         writer: &mut writer,
         now_ms: 7,
+        electron_device_id: None,
     };
     assert!(matches!(
         tables::unknown_fields::import(&mut ctx),
@@ -220,7 +222,7 @@ fn a_record_written_without_its_unknown_fields_merge_fails_check_1() {
 /// Electron's push sends the body only for a queued `create` (`readNoteFileFields`,
 /// `journal-handler.ts:276`). A clocked row Electron never marked synced (a day pushed from this
 /// device, an offline edit) is pushed as an update with `content: null`, unless `sync_queue`
-/// still holds its `create`. `sync_queue` is pending (36c), so the importer runs directly.
+/// still holds its `create`. The importer runs directly, so the rule is seen on its own.
 #[test]
 fn only_a_queued_create_carries_the_body() {
     // Electron f5fd229's journal `buildPushPayload` with operation `create` over this day file.
@@ -311,6 +313,7 @@ fn only_a_queued_create_carries_the_body() {
         vault_id: "vault-1",
         writer: &mut writer,
         now_ms: 7,
+        electron_device_id: None,
     };
     import(&mut ctx).unwrap();
     let payload = |item_type: &str, id: &str| -> serde_json::Value {

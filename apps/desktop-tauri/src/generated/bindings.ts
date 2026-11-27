@@ -40,8 +40,21 @@ export const commands = {
 	syncSetupFirstDevice: (provider: string, oauthToken: string, state: string) => __TAURI_INVOKE<AuthFirstDevice>("sync_setup_first_device", { provider, oauthToken, state }),
 	/**  `sync:setup-new-account`. The phrase waits for `sync_get_recovery_phrase`. */
 	syncSetupNewAccount: () => __TAURI_INVOKE<AccountDevice>("sync_setup_new_account"),
+	/**
+	 *  `agent:editTrustList` with `scope: 'vault'`, which Settings uses to revoke a standing
+	 *  approval. The gate reads the list at every write call, so the revoke holds from the next one.
+	 */
+	agentEditVaultTrustList: (edit: AgentVaultTrustEdit) => __TAURI_INVOKE<AgentToolGrants>("agent_edit_vault_trust_list", { edit }),
 	/**  `agent:getLocalProviderSettings`. A locked keychain still opens the screen. */
 	agentGetLocalProviderSettings: () => __TAURI_INVOKE<AgentLocalProviderSettings>("agent_get_local_provider_settings"),
+	/**
+	 *  `agent_get_tool_call`: the name and arguments of a card on screen, which the all-window
+	 *  `tool_call_pending_approval` event leaves out. A card that settled or belongs to another
+	 *  conversation is `not_found`.
+	 */
+	agentGetToolCall: (conversationId: string, toolCallId: string) => __TAURI_INVOKE<ToolCall>("agent_get_tool_call", { conversationId, toolCallId }),
+	/**  `agent:getToolGrants`. No open vault has no grants, as Electron's unavailable handler answers. */
+	agentGetToolGrants: () => __TAURI_INVOKE<AgentToolGrants>("agent_get_tool_grants"),
 	/**
 	 *  `agent:listLocalModels`. An unreachable server or a keychain that cannot answer is an empty
 	 *  list, as in Electron.
@@ -286,6 +299,20 @@ export const commands = {
 	/**  Saves how the cover sits in its band; only the fields that changed are sent. */
 	homePagesSetCoverFraming: (id: string, changes: CoverFramingInput) => __TAURI_INVOKE<HomePageView>("home_pages_set_cover_framing", { id, changes }),
 	homePagesUpdate: (input: HomePageUpdateInput) => __TAURI_INVOKE<HomePageView>("home_pages_update", { input }),
+	/**  `import:readwise:ack-error-toast`: `first` once per parked episode. */
+	importReadwiseAckErrorToast: () => __TAURI_INVOKE<boolean>("import_readwise_ack_error_toast"),
+	/**  `import:readwise:cancel`: stops the run in progress at its next book. */
+	importReadwiseCancel: () => __TAURI_INVOKE<null>("import_readwise_cancel"),
+	/**  `import:readwise:connect`: checks the pasted token with Readwise, then stores it. */
+	importReadwiseConnect: (token: string) => __TAURI_INVOKE<ReadwiseStatus>("import_readwise_connect", { token }),
+	/**  `import:readwise:disconnect`: the token and run state go, the notes stay. */
+	importReadwiseDisconnect: () => __TAURI_INVOKE<null>("import_readwise_disconnect"),
+	/**  `import:readwise:set-options`: writes the given options, answers the status. */
+	importReadwiseSetOptions: (input: ReadwiseOptionsInput) => __TAURI_INVOKE<ReadwiseStatus>("import_readwise_set_options", { input }),
+	/**  `import:readwise:status`. */
+	importReadwiseStatus: () => __TAURI_INVOKE<ReadwiseStatus>("import_readwise_status"),
+	/**  `import:readwise:sync-now`: runs now, or joins the scheduled run, and returns when it ends. */
+	importReadwiseSyncNow: () => __TAURI_INVOKE<null>("import_readwise_sync_now"),
 	/**  With the account's token when signed in. */
 	iosBetaJoin: (input: IosBetaJoinInput) => __TAURI_INVOKE<IosBetaJoinResult>("ios_beta_join", { input }),
 	/**
@@ -620,6 +647,10 @@ export const commands = {
 	ocrLanguagesRetry: () => __TAURI_INVOKE<OcrLanguagesState>("ocr_languages_retry"),
 	/**  Stores the chosen languages (English is always added) and starts converging on them. */
 	ocrLanguagesSet: (languages: OcrLanguage[]) => __TAURI_INVOKE<OcrLanguagesState>("ocr_languages_set", { languages }),
+	/**  `onboarding:detect-sources`: note apps installed on this computer, and Obsidian's vaults. */
+	onboardingDetectSources: () => __TAURI_INVOKE<OnboardingSources>("onboarding_detect_sources"),
+	/**  `onboarding:is-memry-vault`: whether a folder the user picked already has `.memry`. */
+	onboardingIsMemryVault: (path: string) => __TAURI_INVOKE<boolean>("onboarding_is_memry_vault", { path }),
 	/**
 	 *  `portals:get-usage`: the notes that show `note_id`, or its block `anchor`, with the notes
 	 *  that link to it.
@@ -1072,6 +1103,7 @@ export const commands = {
 
 /** Events */
 export const events = {
+	agentEventEmittedEvent: makeEvent<AgentEventEmittedEvent, AgentEventEmittedEvent>("agent-event-emitted-event"),
 	aiEmbeddingProgressEvent: makeEvent<AiEmbeddingProgressEvent, AiEmbeddingProgressEvent>("ai-embedding-progress-event"),
 	aiInlineSettingsChangedEvent: makeEvent<AiInlineSettingsChangedEvent, AiInlineSettingsChangedEvent>("ai-inline-settings-changed-event"),
 	appNavigationRequestedEvent: makeEvent<AppNavigationRequestedEvent, AppNavigationRequestedEvent>("app-navigation-requested-event"),
@@ -1096,6 +1128,7 @@ export const events = {
 	homePageCreatedEvent: makeEvent<HomePageCreatedEvent, HomePageCreatedEvent>("home-page-created-event"),
 	homePageDeletedEvent: makeEvent<HomePageDeletedEvent, HomePageDeletedEvent>("home-page-deleted-event"),
 	homePageUpdatedEvent: makeEvent<HomePageUpdatedEvent, HomePageUpdatedEvent>("home-page-updated-event"),
+	importReadwiseStatusChangedEvent: makeEvent<ImportReadwiseStatusChangedEvent, ImportReadwiseStatusChangedEvent>("import-readwise-status-changed-event"),
 	inboxOpenItemEvent: makeEvent<InboxOpenItemEvent, InboxOpenItemEvent>("inbox-open-item-event"),
 	journalEntryCreatedEvent: makeEvent<JournalEntryCreatedEvent, JournalEntryCreatedEvent>("journal-entry-created-event"),
 	journalEntryDeletedEvent: makeEvent<JournalEntryDeletedEvent, JournalEntryDeletedEvent>("journal-entry-deleted-event"),
@@ -1217,6 +1250,20 @@ export type AddReasonInput = {
 	searchQuery: string,
 };
 
+/**
+ *  The approval-card events, which reach every window. They carry ids and small hints only,
+ *  never the tool arguments: a card fetches those through `agent_get_tool_call`, served from
+ *  `AgentWriteGate::pending_approval`.
+ */
+export type AgentEvent = { kind: "tool_call_pending_approval"; conversationId: string; toolCallId: string; name: string; requiresDiff: boolean; previewKind: PreviewKind; reviewTarget: ReviewTarget | null } | { kind: "tool_call_failed"; conversationId: string; toolCallId: string; error: AgentEventError };
+
+export type AgentEventEmittedEvent = AgentEvent;
+
+export type AgentEventError = {
+	code: string,
+	message: string,
+};
+
 /**  `AgentLocalModelList`. */
 export type AgentLocalModelList = {
 	models: string[],
@@ -1266,6 +1313,17 @@ export type AgentLocalProviderSettingsUpdate = {
 
 /**  `AgentLocalThinking`: `off` asks a thinking model to answer without thinking. */
 export type AgentLocalThinking = "default" | "off";
+
+/**  The open vault's standing tool approvals (`AgentToolGrantsSchema`), for the Settings list. */
+export type AgentToolGrants = {
+	tools: string[],
+};
+
+/**  The vault branch of `EditTrustListRequestSchema`: grants `add`, then revokes `remove`. */
+export type AgentVaultTrustEdit = {
+	add?: string[],
+	remove?: string[],
+};
 
 /**  `EmbeddingProgressEvent.phase`: the model's download and load, then a note embedding pass. */
 export type AiEmbeddingPhase = "downloading" | "loading" | "ready" | "error" | "embedding" | "complete";
@@ -2585,6 +2643,12 @@ export type ImportFilesResult = {
 	importedFiles: ImportedFileInfo[],
 };
 
+/**
+ *  The Readwise run started, moved on, ended or failed (`import:readwise:status-changed`): the
+ *  page reads the status again.
+ */
+export type ImportReadwiseStatusChangedEvent = null;
+
 /**  `ImportedFileInfo`. */
 export type ImportedFileInfo = {
 	/**  Absolute, as Electron's `path.join(targetDir, destFilename)`. */
@@ -3496,6 +3560,18 @@ export type OcrLanguagesState = {
 	statuses: Partial<{ [key in OcrLanguage]: OcrLanguageStatus }>,
 };
 
+/**  `OnboardingObsidianVault` (`packages/contracts/src/onboarding-api.ts`). */
+export type OnboardingObsidianVault = {
+	name: string,
+	path: string,
+};
+
+/**  `OnboardingSources`: Obsidian's vaults and the importer ids whose app is installed. */
+export type OnboardingSources = {
+	obsidianVaults: OnboardingObsidianVault[],
+	installedApps: string[],
+};
+
 export type OpenSettingsResult = {
 	success: boolean,
 };
@@ -3635,6 +3711,9 @@ export type PresetOfferView = {
 
 /**  `PresetOffer.state`. */
 export type PresetState = "add" | "add-fields" | "added";
+
+/**  `ChangePreviewKindSchema` (`ipc-agent.ts:618`): the picture the approval card draws. */
+export type PreviewKind = "none" | "fields" | "body" | "loss";
 
 /**  A tag on the card, with its colour (`stone` when the tag has no definition). */
 export type PreviewTagView = {
@@ -3932,6 +4011,97 @@ export type QuickSearchResponse = {
 	queryTimeMs: number | null,
 };
 
+/**  `ReadwiseCadence`. */
+export type ReadwiseCadence = "manual" | "hourly" | "daily";
+
+/**  `Record<ReadwiseCategory, boolean>`, defaults filled in. */
+export type ReadwiseCategories = {
+	books: boolean,
+	articles: boolean,
+	tweets: boolean,
+	podcasts: boolean,
+	supplementals: boolean,
+};
+
+/**  `ReadwiseSetOptionsSchema.categories`. */
+export type ReadwiseCategoriesInput = {
+	books: boolean | null,
+	articles: boolean | null,
+	tweets: boolean | null,
+	podcasts: boolean | null,
+	supplementals: boolean | null,
+};
+
+/**  `ReadwiseFolderLayout`. */
+export type ReadwiseFolderLayout = "by-category" | "flat";
+
+/**  `ReadwiseSetOptionsInput`. */
+export type ReadwiseOptionsInput = {
+	rootFolder: string | null,
+	folderLayout: ReadwiseFolderLayout | null,
+	categories: ReadwiseCategoriesInput | null,
+	cadence: ReadwiseCadence | null,
+	readerDocuments: boolean | null,
+	readerFullText: boolean | null,
+	journalHighlights: boolean | null,
+};
+
+/**  `ReadwiseOptions` (`readReadwiseOptions`). */
+export type ReadwiseOptionsView = {
+	rootFolder: string,
+	folderLayout: ReadwiseFolderLayout,
+	categories: ReadwiseCategories,
+	cadence: ReadwiseCadence,
+	readerDocuments: boolean,
+	readerFullText: boolean,
+	journalHighlights: boolean,
+};
+
+/**  `ReadwiseRunCounts`. */
+export type ReadwiseRunCounts = {
+	books: number,
+	added: number,
+	updated: number,
+	appended: number,
+	deferred: number,
+	failed: number,
+	highlights: number,
+};
+
+/**  `ReadwiseRunError`. */
+export type ReadwiseRunError = {
+	kind: ReadwiseRunErrorKind,
+	detail: string | null,
+};
+
+/**  `ReadwiseErrorKind`. */
+export type ReadwiseRunErrorKind = "invalid-token" | "subscription-expired" | "rate-limited" | "network" | "server" | "unexpected";
+
+/**  `ReadwiseRunProgress`. */
+export type ReadwiseRunProgress = {
+	stage: ReadwiseRunStage,
+	planned: number | null,
+	done: number,
+};
+
+/**  `ReadwiseRunProgress.stage`. */
+export type ReadwiseRunStage = "waiting-for-sync" | "reading" | "writing";
+
+/**  `ReadwiseStatusResult`. */
+export type ReadwiseStatus = {
+	connected: boolean,
+	options: ReadwiseOptionsView,
+	lastSyncAt: string | null,
+	needsAttention: boolean,
+	hasImported: boolean,
+	thisDevicePulls: boolean,
+	pullingDeviceName: string | null,
+	syncing: ReadwiseRunProgress | null,
+	lastRun: ReadwiseRunCounts | null,
+	error: ReadwiseRunError | null,
+	nextRunAt: string | null,
+};
+
 /**
  *  Why a `reconnect_required` account needs attention on this device. `rejected` comes with the
  *  sync pass's auth-failure marker (29e2).
@@ -4096,6 +4266,9 @@ export type ResumeSyncResult = {
 	success: boolean,
 	pendingCount: number,
 };
+
+/**  `AgentReviewTargetSchema` (`ipc-agent.ts:694`): the page that reviews a body edit in place. */
+export type ReviewTarget = { kind: "note"; id: string } | { kind: "journal"; date: string };
 
 /**  `NoteWithProperties.kind`. */
 export type RowKindView = "note" | "task" | "inbox";
@@ -5164,6 +5337,15 @@ export type TitleMatchView = {
 	path: string,
 };
 
+/**
+ *  What `agent_get_tool_call` serves for a card on screen: the arguments the all-window event
+ *  leaves out.
+ */
+export type ToolCall = {
+	name: string,
+	args: Value,
+};
+
 /**  `TranscriptionResult`. */
 export type TranscriptionResult = {
 	success: boolean,
@@ -5577,12 +5759,14 @@ export type VersionDetailView = {
 	wordCount: number,
 	reason: string,
 	createdAt: string,
+	outsideWrite: boolean,
 	fileContent: string,
 };
 
 /**
  *  `SnapshotListItem`. `reason` is the stored column, which the renderer reads as
- *  `SnapshotReason`.
+ *  `SnapshotReason`; `outside_write` tells an outside-write version from the other
+ *  `significant` ones, which Electron never did ([`Listed::outside_write`]).
  */
 export type VersionView = {
 	id: string,
@@ -5591,6 +5775,7 @@ export type VersionView = {
 	wordCount: number,
 	reason: string,
 	createdAt: string,
+	outsideWrite: boolean,
 };
 
 /**  `ViewScope`. */

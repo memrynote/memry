@@ -7,9 +7,10 @@
 //! fragment beside the template, as in domino, so it is neither a child nor part of `textContent`.
 
 use std::borrow::Cow;
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
+use std::time::{Duration, Instant};
 
 use html5ever::tendril::{StrTendril, TendrilSink};
 use html5ever::tree_builder::{ElementFlags, NodeOrText, QuirksMode, TreeSink};
@@ -43,11 +44,85 @@ struct Sink {
     templates: RefCell<HashMap<NodeId, NodeId>>,
     /// `annotation-xml` elements whose `encoding` makes them HTML integration points.
     integration_points: RefCell<HashSet<NodeId>>,
+    /// The bounds of an untrusted page; Turndown's own input has none.
+    guard: Option<Guard>,
+}
+
+/// The bounds of an untrusted parse ([`parse_page`]). html5ever scans its stack of open elements
+/// for most tags, so 100,000 nested elements cost 10^10 scans; the spec's formatting
+/// reconstruction clones every open formatting element for each run of text; and the tokenizer
+/// compares each attribute of a tag with every earlier one. The input is fed in chunks and the
+/// parse fails at the first chunk past a cap. Once a cap is hit the sink builds nothing more.
+#[derive(Debug, Clone, Copy)]
+pub struct Caps {
+    /// The deepest a node may nest, counted from its parent links when it is attached (the
+    /// adoption agency moves whole subtrees); template content nests one level below its template.
+    pub max_depth: usize,
+    pub max_nodes: usize,
+    pub deadline: Duration,
+}
+
+/// The cap a page went past.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CapHit {
+    TooDeep,
+    TooManyNodes,
+    TooSlow,
+}
+
+/// Input fed to the tree builder at a time; the caps are checked in between.
+pub const FEED_CHUNK: usize = 256;
+
+struct Guard {
+    caps: Caps,
+    nodes: Cell<usize>,
+    /// Nodes created and parent links followed, for the complexity tests.
+    steps: Cell<usize>,
+    hit: Cell<Option<CapHit>>,
+    /// Template content fragment -> its template.
+    owners: RefCell<HashMap<NodeId, NodeId>>,
+    /// A detached node handed out for everything created past a cap.
+    spent: NodeId,
 }
 
 impl Sink {
     fn handle(&self, id: NodeId, name: QualName) -> Ref {
         Rc::new(Handle { id, name })
+    }
+
+    /// The node created past a cap, when one was hit.
+    fn spent(&self) -> Option<NodeId> {
+        self.guard
+            .as_ref()
+            .filter(|guard| guard.hit.get().is_some())
+            .map(|guard| guard.spent)
+    }
+
+    fn count_node(&self) {
+        if let Some(guard) = &self.guard {
+            guard.steps.set(guard.steps.get() + 1);
+            guard.nodes.set(guard.nodes.get() + 1);
+            if guard.nodes.get() > guard.caps.max_nodes {
+                guard.hit.set(Some(CapHit::TooManyNodes));
+            }
+        }
+    }
+
+    /// Fails the parse when a child of `parent` would nest past the depth cap.
+    fn check_depth(&self, doc: &Document, parent: NodeId) {
+        let Some(guard) = &self.guard else {
+            return;
+        };
+        let owners = guard.owners.borrow();
+        let (mut node, mut depth) = (parent, 0);
+        while depth < guard.caps.max_depth {
+            guard.steps.set(guard.steps.get() + 1);
+            match doc.parent_node(node).or_else(|| owners.get(&node).copied()) {
+                Some(up) => (node, depth) = (up, depth + 1),
+                None => return,
+            }
+        }
+        guard.hit.set(Some(CapHit::TooDeep));
     }
 
     fn append_text(&self, parent: NodeId, before: Option<NodeId>, text: &str) {
@@ -67,9 +142,14 @@ impl Sink {
             None => doc.append_child(parent, node),
         }
         .expect("a freshly created node attaches");
+        self.count_node();
+        self.check_depth(&doc, parent);
     }
 
     fn attach(&self, parent: NodeId, child: NodeOrText<Ref>, before: Option<NodeId>) {
+        if self.spent().is_some() {
+            return;
+        }
         match child {
             NodeOrText::AppendText(text) => self.append_text(parent, before, &text),
             NodeOrText::AppendNode(node) => {
@@ -80,6 +160,7 @@ impl Sink {
                     None => doc.append_child(parent, node.id),
                 }
                 .expect("the tree builder only builds acyclic trees");
+                self.check_depth(&doc, parent);
             }
         }
     }
@@ -123,6 +204,10 @@ impl TreeSink for Sink {
         attrs: Vec<HtmlAttribute>,
         flags: ElementFlags,
     ) -> Ref {
+        if let Some(spent) = self.spent() {
+            return self.handle(spent, name);
+        }
+        self.count_node();
         let mut doc = self.doc.borrow_mut();
         let id = doc.create_element_data(ElementData {
             name: name.local.to_string(),
@@ -141,13 +226,22 @@ impl TreeSink for Sink {
         if flags.template {
             let content = doc.create_document_fragment();
             self.templates.borrow_mut().insert(id, content);
+            if let Some(guard) = &self.guard {
+                guard.owners.borrow_mut().insert(content, id);
+            }
         }
         drop(doc);
         self.handle(id, name)
     }
 
     fn create_comment(&self, text: StrTendril) -> Ref {
-        let id = self.doc.borrow_mut().create_comment(&text);
+        let id = match self.spent() {
+            Some(spent) => spent,
+            None => {
+                self.count_node();
+                self.doc.borrow_mut().create_comment(&text)
+            }
+        };
         self.handle(
             id,
             QualName::new(None, html5ever::ns!(), html5ever::local_name!("")),
@@ -155,10 +249,15 @@ impl TreeSink for Sink {
     }
 
     fn create_pi(&self, target: StrTendril, data: StrTendril) -> Ref {
-        let id = self
-            .doc
-            .borrow_mut()
-            .create_comment(&format!("?{target} {data}?"));
+        let id = match self.spent() {
+            Some(spent) => spent,
+            None => {
+                self.count_node();
+                self.doc
+                    .borrow_mut()
+                    .create_comment(&format!("?{target} {data}?"))
+            }
+        };
         self.handle(
             id,
             QualName::new(None, html5ever::ns!(), html5ever::local_name!("")),
@@ -192,15 +291,16 @@ impl TreeSink for Sink {
     }
 
     fn get_template_contents(&self, target: &Ref) -> Ref {
+        let name = || QualName::new(None, html5ever::ns!(), html5ever::local_name!(""));
+        if let Some(spent) = self.spent() {
+            return self.handle(spent, name());
+        }
         let content = *self
             .templates
             .borrow()
             .get(&target.id)
             .expect("the tree builder asks only for template elements");
-        self.handle(
-            content,
-            QualName::new(None, html5ever::ns!(), html5ever::local_name!("")),
-        )
+        self.handle(content, name())
     }
 
     fn is_mathml_annotation_xml_integration_point(&self, handle: &Ref) -> bool {
@@ -214,6 +314,9 @@ impl TreeSink for Sink {
     fn set_quirks_mode(&self, _mode: QuirksMode) {}
 
     fn append_before_sibling(&self, sibling: &Ref, new_node: NodeOrText<Ref>) {
+        if self.spent().is_some() {
+            return;
+        }
         let parent = self
             .doc
             .borrow()
@@ -237,11 +340,15 @@ impl TreeSink for Sink {
     }
 
     fn reparent_children(&self, node: &Ref, new_parent: &Ref) {
+        if self.spent().is_some() {
+            return;
+        }
         let mut doc = self.doc.borrow_mut();
         while let Some(child) = doc.first_child(node.id) {
             doc.append_child(new_parent.id, child)
                 .expect("the tree builder only builds acyclic trees");
         }
+        self.check_depth(&doc, new_parent.id);
     }
 }
 
@@ -251,8 +358,62 @@ pub fn parse(html: &str) -> Dom {
         doc: RefCell::new(Document::new()),
         templates: RefCell::new(HashMap::new()),
         integration_points: RefCell::new(HashSet::new()),
+        guard: None,
     };
     let mut opts = ParseOpts::default();
     opts.tree_builder.scripting_enabled = false;
     parse_document(sink, opts).one(StrTendril::from(html))
+}
+
+/// A fetched web page as cheerio loads it (the Inbox metadata scraper): the same tree builder
+/// with scripting on, as parse5 under cheerio parses, so `noscript` holds raw text, and within
+/// `caps`. Returns the tree and the steps the sink took.
+pub fn parse_page(html: &str, caps: Caps) -> Result<(Dom, usize), CapHit> {
+    let started = Instant::now();
+    let mut doc = Document::new();
+    let spent = doc.create_document_fragment();
+    let sink = Sink {
+        doc: RefCell::new(doc),
+        templates: RefCell::new(HashMap::new()),
+        integration_points: RefCell::new(HashSet::new()),
+        guard: Some(Guard {
+            caps,
+            nodes: Cell::new(0),
+            steps: Cell::new(0),
+            hit: Cell::new(None),
+            owners: RefCell::new(HashMap::new()),
+            spent,
+        }),
+    };
+    let mut opts = ParseOpts::default();
+    opts.tree_builder.scripting_enabled = true;
+    let mut parser = parse_document(sink, opts);
+    let guard = |parser: &html5ever::Parser<Sink>| -> Result<(), CapHit> {
+        let guard = parser.tokenizer.sink.sink.guard.as_ref();
+        match guard.and_then(|guard| guard.hit.get()) {
+            Some(hit) => Err(hit),
+            None if started.elapsed() > caps.deadline => Err(CapHit::TooSlow),
+            None => Ok(()),
+        }
+    };
+    let mut rest = html;
+    while !rest.is_empty() {
+        let mut cut = rest.len().min(FEED_CHUNK);
+        while !rest.is_char_boundary(cut) {
+            cut += 1;
+        }
+        let (chunk, tail) = rest.split_at(cut);
+        parser.process(StrTendril::from_slice(chunk));
+        guard(&parser)?;
+        rest = tail;
+    }
+    let steps = parser
+        .tokenizer
+        .sink
+        .sink
+        .guard
+        .as_ref()
+        .map_or(0, |guard| guard.steps.get());
+    let dom = parser.finish();
+    Ok((dom, steps))
 }
