@@ -156,7 +156,7 @@ fn readwise_run_state_is_not_ready_before_anything_is_written() {
         matches!(
             error,
             ImportError::NotReady {
-                area: "attachments, whiteboards or Readwise highlights",
+                area: "whiteboards, recent items or Readwise highlights",
                 ..
             }
         ),
