@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 424,
+    "exportedCaseCount": 426,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 434,
+    "caseCount": 436,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -691,6 +691,20 @@
       "canonical": "$$\ny\n$$\n\n# H",
       "pending": null,
       "sha256": "b359905aa448ccd7fe4f203001e8a338ff3e509c867380f8ac022109592870e8"
+    },
+    {
+      "name": "math above a setext heading",
+      "markdown": "$$\ny\n$$\nH\n---",
+      "canonical": "$$\ny\n$$\n\n## H",
+      "pending": null,
+      "sha256": "04ec237c5a36e5a27a8d9eac170366b96ad29ae4243409086db1d01334e45d58"
+    },
+    {
+      "name": "math above a setext heading underlined with equals",
+      "markdown": "$$\ny\n$$\nH\n===",
+      "canonical": "$$\ny\n$$\n\n# H",
+      "pending": null,
+      "sha256": "c3a62b532b8c23deb88ef82aae167b88aff72725b5e11e5b5f1f7a922785de9f"
     },
     {
       "name": "math under a list item",

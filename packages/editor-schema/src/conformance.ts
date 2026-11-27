@@ -408,6 +408,17 @@ const toggleCases: RoundtripCase[] = [
   },
   { name: 'math under a heading', markdown: '# H\n$$\ny\n$$', canonical: '# H\n\n$$\ny\n$$' },
   { name: 'math above a heading', markdown: '$$\ny\n$$\n# H', canonical: '$$\ny\n$$\n\n# H' },
+  // The parser ends a paragraph before a line with a setext underline below it.
+  {
+    name: 'math above a setext heading',
+    markdown: '$$\ny\n$$\nH\n---',
+    canonical: '$$\ny\n$$\n\n## H'
+  },
+  {
+    name: 'math above a setext heading underlined with equals',
+    markdown: '$$\ny\n$$\nH\n===',
+    canonical: '$$\ny\n$$\n\n# H'
+  },
   { name: 'math under a list item', markdown: '- a\n$$\ny\n$$', canonical: '- a\n\n$$\ny\n$$' },
   {
     name: 'math under a callout',
