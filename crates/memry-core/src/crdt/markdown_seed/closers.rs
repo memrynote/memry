@@ -15,6 +15,8 @@ use super::backtick_runs::BacktickRuns;
 
 pub(super) struct Closers<'t> {
     text: &'t [char],
+    /// How many spans enclose `text`.
+    depth: usize,
     /// Whether each character is the second of a backslash pair.
     escaped: Option<Vec<bool>>,
     /// By opening character: the closer that brings each opener's depth
@@ -28,14 +30,19 @@ pub(super) struct Closers<'t> {
 }
 
 impl<'t> Closers<'t> {
-    pub(super) fn new(text: &'t [char]) -> Self {
+    pub(super) fn new(text: &'t [char], depth: usize) -> Self {
         Self {
             text,
+            depth,
             escaped: None,
             matches: HashMap::new(),
             delimiters: HashMap::new(),
             ticks: None,
         }
+    }
+
+    pub(super) fn depth(&self) -> usize {
+        self.depth
     }
 
     pub(super) fn text(&self) -> &'t [char] {

@@ -22,7 +22,7 @@ use super::hard_breaks::JOIN;
 use super::links::{destination_and_title, link};
 use super::media::{self, Media};
 use super::runs;
-use super::{SeedInline, Unsupported};
+use super::{MAX_NESTING, SeedInline, TOO_DEEP, Unsupported};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum Tag {
@@ -64,7 +64,7 @@ pub(super) fn inline_content(
 /// `parseInline` on one block's text.
 pub(super) fn parse(text: &str) -> Result<Vec<Html>, Unsupported> {
     let chars: Vec<char> = text.chars().collect();
-    parse_inline(&chars)
+    parse_inline(&chars, 0)
 }
 
 pub(super) fn holds_media(nodes: &[Html]) -> bool {
@@ -113,10 +113,13 @@ pub(super) fn collect(chars: &[char]) -> String {
 const SPECIAL: &[char] = &['\\', '`', '!', '[', '~', '*', '_', '\n', '<', JOIN];
 const ESCAPABLE: &str = "\\`*_{}[]()#+-.!~|>";
 
-/// `parseInline`.
-fn parse_inline(text: &[char]) -> Result<Vec<Html>, Unsupported> {
+/// `parseInline`. `depth` is how many links and spans enclose `text`.
+fn parse_inline(text: &[char], depth: usize) -> Result<Vec<Html>, Unsupported> {
+    if depth > MAX_NESTING {
+        return Err(TOO_DEEP);
+    }
     let mut nodes = Vec::new();
-    let mut closers = Closers::new(text);
+    let mut closers = Closers::new(text, depth);
     let mut i = 0;
     while i < text.len() {
         if text[i] == '\n' && i >= 2 && text[i - 1] == ' ' && text[i - 2] == ' ' {
@@ -186,7 +189,7 @@ fn inline_token(
         if has_token(&href) {
             return Err(Unsupported("comment in a link address"));
         }
-        let children = parse_inline(inner)?;
+        let children = parse_inline(inner, closers.depth() + 1)?;
         if contains_link(&children) {
             return Err(Unsupported("nested link"));
         }
@@ -317,7 +320,7 @@ fn delimited_with(
     let Some(close) = closers.delimiter(start, len) else {
         return Ok(None);
     };
-    let children = parse_inline(&text[after_open..close])?;
+    let children = parse_inline(&text[after_open..close], closers.depth() + 1)?;
     nodes.push(wrap(children));
     Ok(Some(close + len))
 }

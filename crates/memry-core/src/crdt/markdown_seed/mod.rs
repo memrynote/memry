@@ -249,6 +249,15 @@ pub struct SeedPlan {
     pub fallbacks: Vec<SeedFallback>,
 }
 
+/// How deep a toggle, a list item or inline markup may nest before the seed
+/// keeps its lines as written. The parse recurses once per level, and the
+/// blocks it builds are walked and dropped the same way, so a pasted text of
+/// a few thousand levels must not decide how much stack it gets.
+const MAX_NESTING: usize = 100;
+
+/// The reason a text nested past [`MAX_NESTING`] is kept as written.
+const TOO_DEEP: Unsupported = Unsupported("nesting too deep");
+
 /// A construct this seed does not build, and its name for the report.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct Unsupported(&'static str);
@@ -297,6 +306,7 @@ pub fn plan(markdown: &str) -> SeedPlan {
                     &media::separate_block_images(&masked.text),
                     &mut out,
                     &mut fallbacks,
+                    0,
                 )
             }
         }
@@ -331,6 +341,7 @@ fn parse_masked(
     markdown: &str,
     out: &mut Vec<SeedBlock>,
     fallbacks: &mut Vec<SeedFallback>,
+    depth: usize,
 ) -> Result<(), Unsupported> {
     for segment in toggles::split_by_toggles(markdown)? {
         match segment {
@@ -353,8 +364,11 @@ fn parse_masked(
                 {
                     return Err(Unsupported("table in a toggle summary"));
                 }
+                if depth >= MAX_NESTING {
+                    return Err(TOO_DEEP);
+                }
                 let mut children = Vec::new();
-                parse_masked(&body, &mut children, fallbacks)?;
+                parse_masked(&body, &mut children, fallbacks, depth + 1)?;
                 out.push(SeedBlock {
                     kind: SeedKind::Toggle { open },
                     content: first.map(|block| block.content).unwrap_or_default(),

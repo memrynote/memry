@@ -21,7 +21,9 @@ use super::prepare::{fence_indented_code, line_fallback};
 use super::runs::block_content;
 use super::table::{escape_wiki_link_pipes_in_table_rows, table_block};
 use super::tokens::{ListType, Token, TokenKind, tokenize};
-use super::{SeedBlock, SeedFallback, SeedInline, SeedKind, SeedMarks, Unsupported};
+use super::{
+    MAX_NESTING, SeedBlock, SeedFallback, SeedInline, SeedKind, SeedMarks, TOO_DEEP, Unsupported,
+};
 
 /// One content chunk: `parseContentWithMarkers` with nothing claimed, then
 /// `parseMarkdownToBlocksRepaired`. A token that holds an unsupported
@@ -55,7 +57,7 @@ pub(super) fn parse_chunk(
                 list = ListState::default();
                 text_block(SeedKind::Heading { level: *level }, content, &breaks)
             }
-            _ => convert(&token, &breaks, &mut list).map(|block| vec![block]),
+            _ => convert(&token, &breaks, &mut list, 0).map(|block| vec![block]),
         });
         match converted {
             Ok(blocks) => out.extend(blocks),
@@ -176,18 +178,24 @@ struct ListState {
     open: Option<bool>,
 }
 
-fn convert_all(tokens: &[Token], breaks: &[String]) -> Result<Vec<SeedBlock>, Unsupported> {
+fn convert_all(
+    tokens: &[Token],
+    breaks: &[String],
+    depth: usize,
+) -> Result<Vec<SeedBlock>, Unsupported> {
     let mut list = ListState::default();
     tokens
         .iter()
-        .map(|token| convert(token, breaks, &mut list))
+        .map(|token| convert(token, breaks, &mut list, depth))
         .collect()
 }
 
+/// `depth` is how many list items hold `token`.
 fn convert(
     token: &Token,
     breaks: &[String],
     list: &mut ListState,
+    depth: usize,
 ) -> Result<SeedBlock, Unsupported> {
     let TokenKind::ListItem {
         list: list_type,
@@ -201,6 +209,9 @@ fn convert(
         return convert_block(&token.kind, breaks);
     };
 
+    if depth >= MAX_NESTING {
+        return Err(TOO_DEEP);
+    }
     let ordered = *list_type == ListType::Ordered;
     let opens = list.open != Some(ordered);
     list.open = Some(ordered);
@@ -240,7 +251,7 @@ fn convert(
     Ok(SeedBlock {
         kind,
         content,
-        children: convert_all(&child_tokens, breaks)?,
+        children: convert_all(&child_tokens, breaks, depth + 1)?,
     })
 }
 
