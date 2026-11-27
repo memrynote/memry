@@ -139,6 +139,7 @@ import { useT } from '@memry/i18n/renderer'
 import { useDialogState } from '@/hooks/use-dialog-state'
 import { useJournalCommands, type JournalDialog } from './journal/use-journal-commands'
 import { openLink } from '@/lib/external-link-guard'
+import { bookmarksService } from '@/services/bookmarks-service'
 
 const log = createLogger('Page:Journal')
 
@@ -341,7 +342,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     }
     try {
       const created = await journalService.updateEntry({ date: selectedDate })
-      await window.api.bookmarks.toggle({ itemType: 'journal', itemId: created.id })
+      await bookmarksService.toggle({ itemType: 'journal', itemId: created.id })
     } catch (err) {
       log.error('Failed to bookmark journal entry:', err)
       toast.error(extractErrorMessage(err, t('toast.bookmarkFailed')))

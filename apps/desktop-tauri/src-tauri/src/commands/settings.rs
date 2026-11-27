@@ -53,6 +53,26 @@ pub(crate) fn map_error(error: SettingsError) -> CommandError {
     }
 }
 
+/// The part of [`announce`] every runtime has: one `setting_changed` per field, then
+/// `settings-changed` to every window.
+pub(crate) fn notify<R: Runtime>(app: &AppHandle<R>, key: &str, fields: Vec<String>) {
+    if let Some(service) = telemetry(app) {
+        if fields.is_empty() {
+            setting_changed(&service, key);
+        }
+        for field in &fields {
+            setting_changed(&service, &format!("{key}.{field}"));
+        }
+    }
+    broadcast(
+        app,
+        SettingsChangedEvent {
+            key: key.to_owned(),
+            fields,
+        },
+    );
+}
+
 fn patch_of(value: Value) -> Result<Map<String, Value>, CommandError> {
     match value {
         Value::Object(map) => Ok(map),
@@ -72,14 +92,6 @@ pub(crate) fn announce(
     fields: Vec<String>,
 ) -> Result<(), CommandError> {
     let mut login_item = Ok(());
-    if let Some(service) = telemetry(app) {
-        if fields.is_empty() {
-            setting_changed(&service, key);
-        }
-        for field in &fields {
-            setting_changed(&service, &format!("{key}.{field}"));
-        }
-    }
     if key == "general" {
         login_item = crate::autostart::on_general_written(app, &fields);
         // `general.minimizeToTray` lives here; apply converges and ignores an unchanged value.
@@ -87,13 +99,7 @@ pub(crate) fn announce(
             tracing::warn!(scope = "Tray", "could not apply the tray setting: {error}");
         }
     }
-    broadcast(
-        app,
-        SettingsChangedEvent {
-            key: key.to_owned(),
-            fields,
-        },
-    );
+    notify(app, key, fields);
     if key == "keyboard" {
         crate::menu::apply(app, false);
         crate::shortcuts::apply_from_settings(app);
@@ -130,6 +136,44 @@ pub async fn settings_set_group(
     let change = blocking("settings_set_group", move || {
         service
             .write_group(Some(&vault), &group, patch_of(patch)?)
+            .map_err(map_error)
+    })
+    .await?;
+    announce(&app, &change.group, change.fields)
+}
+
+/// A calendar provider's `calendar.<provider>` group with its defaults, `null` for a provider
+/// this build does not know (`settings:getCalendarProviderSettings`).
+#[tauri::command]
+#[specta::specta]
+pub async fn settings_get_calendar_provider(
+    app: AppHandle<Wry>,
+    provider: String,
+) -> Result<Option<Value>, CommandError> {
+    let (service, vault) = (service(&app), current(&app));
+    blocking("settings_get_calendar_provider", move || {
+        let read = service
+            .read_calendar_provider(vault.as_ref(), &provider)
+            .map_err(map_error)?;
+        Ok(read.map(|read| Value::Object(read.value)))
+    })
+    .await
+}
+
+/// Writes the fields a provider's group declares; the rest of `updates` is dropped. An unknown
+/// provider rejects with `Unsupported calendar provider: <id>`, a wrong type with
+/// `settings_invalid_value`, and nothing is written.
+#[tauri::command]
+#[specta::specta]
+pub async fn settings_set_calendar_provider(
+    app: AppHandle<Wry>,
+    provider: String,
+    updates: Value,
+) -> Result<(), CommandError> {
+    let (service, vault) = (service(&app), open_vault(&app)?);
+    let change = blocking("settings_set_calendar_provider", move || {
+        service
+            .write_calendar_provider(Some(&vault), &provider, patch_of(updates)?)
             .map_err(map_error)
     })
     .await?;

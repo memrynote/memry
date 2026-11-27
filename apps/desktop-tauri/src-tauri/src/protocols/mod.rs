@@ -1,11 +1,14 @@
 //! The `memry-file://` and `memry-html://` schemes. The decisions and the bytes come from
 //! `memry_desktop::shell::file_service`, the same function the loopback media route calls; this
-//! module only reads a request and writes a response.
+//! module only reads a request and writes a response. `memry-export` ([`export`]) serves the PDF
+//! export's page to its print window.
 //!
 //! A scheme response is bytes in memory (the engine takes no stream), so a range is capped at
 //! [`MAX_RANGE_BYTES`] and a whole file at [`MAX_WHOLE_FILE_BYTES`]. The PDF viewer asks for ranges
 //! and reads the rest with further requests; video and audio go through the loopback server,
 //! which streams.
+
+pub mod export;
 
 use std::borrow::Cow;
 
@@ -45,7 +48,7 @@ pub fn roots(app: &AppHandle<Wry>) -> Roots {
     }
 }
 
-/// Registers both schemes on the builder.
+/// Registers the schemes on the builder.
 pub fn register(builder: tauri::Builder<Wry>) -> tauri::Builder<Wry> {
     builder
         .register_asynchronous_uri_scheme_protocol(FILE_SCHEME, |ctx, request, responder| {
@@ -60,6 +63,15 @@ pub fn register(builder: tauri::Builder<Wry>) -> tauri::Builder<Wry> {
                 responder.respond(answer_html(&app, &request));
             });
         })
+        .register_asynchronous_uri_scheme_protocol(
+            export::EXPORT_SCHEME,
+            |ctx, request, responder| {
+                let label = ctx.webview_label().to_owned();
+                tauri::async_runtime::spawn_blocking(move || {
+                    responder.respond(export::answer(&label, &request.uri().to_string()));
+                });
+            },
+        )
 }
 
 fn answer_file(app: &AppHandle<Wry>, request: &Request<Vec<u8>>) -> Response<Cow<'static, [u8]>> {

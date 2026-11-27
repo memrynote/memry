@@ -35,7 +35,7 @@
 //! cross: the cost of this shape is that `Vault` then holds it and `Notes` asks
 //! `Vault` to seal, rather than each object carrying its own copy.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use zeroize::Zeroizing;
@@ -44,12 +44,14 @@ use crate::api::auth::AuthSession;
 use crate::api::calendar::VaultCalendar;
 use crate::api::canvas::Canvases;
 use crate::api::errors::{AuthError, StorageError};
+use crate::api::home_pages::HomePages;
 use crate::api::inbox::Inbox;
 use crate::api::journal::Journal;
 use crate::api::notes::Notes;
 use crate::api::notes_write::NotesWriter;
-use crate::api::search::Search;
+use crate::api::search::{Search, SharedPass};
 use crate::api::search_recents::SearchRecents;
+use crate::api::semantic::SemanticSearch;
 use crate::api::sync::VaultSync;
 use crate::api::task_store::TaskStore;
 use crate::api::tasks::Tasks;
@@ -70,6 +72,7 @@ use crate::storage::{Db, OpenOptions, open_data, open_data_with};
 pub struct Vault {
     id: String,
     db: Db,
+    reindexing: SharedPass,
     /// Kept because `index.db` lives beside `data.db` and is opened later, on
     /// demand: the index is a cache of the vault (data-model §A.5) and a
     /// vault that is never searched must not pay for it at open.
@@ -90,6 +93,8 @@ mod tags;
 mod sync_driver;
 // The desktop sticky drafts' accessor (Step 31).
 mod sticky;
+// The desktop's and the command line's `Search` opens, kept apart for the line ceiling.
+mod desktop_search;
 
 impl Vault {
     /// [`Vault::open`] with explicit [`OpenOptions`], for desktop. Not on the FFI surface.
@@ -105,6 +110,7 @@ impl Vault {
         Ok(Self {
             id,
             db,
+            reindexing: Arc::default(),
             directory,
             #[cfg(feature = "markdown")]
             editor: std::sync::OnceLock::new(),
@@ -118,13 +124,6 @@ impl Vault {
     /// surface; needs the keychain as [`Vault::tasks`] does.
     pub fn task_store(&self, store: &Arc<dyn SecureStore>) -> Result<TaskStore, AuthError> {
         TaskStore::over(self.db.clone(), store)
-    }
-
-    /// [`Vault::search`] that also says why `index.db` was rebuilt (`None` when the file
-    /// was reused or migrated in place). Not on the FFI surface.
-    pub fn search_reporting(&self) -> Result<(Arc<Search>, Option<String>), StorageError> {
-        let (search, reason) = Search::over_reporting(self.db.clone(), &self.directory)?;
-        Ok((Arc::new(search), reason))
     }
 
     /// [`Vault::sync`] under another declaration (chapter 13 §13.1): desktop
@@ -199,6 +198,21 @@ impl Vault {
         self.db.clone()
     }
 
+    /// Desktop's bookmark list and lookups (Step 30a). Not part of the FFI
+    /// surface: the Rust desktop shell is its only caller. The writes are on
+    /// [`Vault::notes_writer`], which carries the device identity.
+    #[doc(hidden)]
+    pub fn bookmarks(&self) -> crate::api::bookmarks::Bookmarks {
+        crate::api::bookmarks::Bookmarks::over(self.db.clone())
+    }
+
+    /// Desktop's device-local "recently opened" trail (Step 30a). Not part of
+    /// the FFI surface: the Rust desktop shell is its only caller.
+    #[doc(hidden)]
+    pub fn recently_opened(&self) -> crate::api::recently_opened::RecentlyOpened {
+        crate::api::recently_opened::RecentlyOpened::over(self.db.clone())
+    }
+
     /// Path identity and file state of this vault's files (desktop Step 12).
     /// Not part of the FFI surface: the Rust desktop shell is its only caller.
     #[doc(hidden)]
@@ -218,6 +232,13 @@ impl Vault {
     #[doc(hidden)]
     pub fn note_positions(&self) -> crate::api::note_positions::NotePositions {
         crate::api::note_positions::NotePositions::over(self.db.clone())
+    }
+
+    /// Readwise's links and run state (desktop Step 33).
+    /// Not part of the FFI surface: the Rust desktop shell is its only caller.
+    #[doc(hidden)]
+    pub fn readwise(&self) -> crate::api::readwise::ReadwiseStore {
+        crate::api::readwise::ReadwiseStore::over(self.db.clone())
     }
 
     /// Outside edits of note files, fed into note bodies (desktop Step 12e).
@@ -383,6 +404,25 @@ impl Vault {
         self.db
             .read_blocking(crate::domain::template_admin::contents)
     }
+
+    /// Every Home board read and write over this vault (Step 30c). Needs the
+    /// keychain for the same reason [`Vault::tasks`] does.
+    pub fn home_pages(&self, store: Arc<dyn SecureStore>) -> Result<HomePages, AuthError> {
+        HomePages::over(self.db.clone(), &store)
+    }
+
+    /// This vault's custom icons, read without a device identity, for desktop's note export.
+    /// Not part of the FFI surface.
+    #[doc(hidden)]
+    pub fn custom_icon_list(
+        &self,
+    ) -> Result<crate::domain::custom_icons::CustomIcons, StorageError> {
+        self.db.read_blocking(crate::domain::custom_icons::list)
+    }
+
+    pub(crate) fn directory(&self) -> &Path {
+        Path::new(&self.directory)
+    }
 }
 
 #[uniffi::export]
@@ -407,6 +447,7 @@ impl Vault {
         Ok(Self {
             id: vault_id,
             db,
+            reindexing: Arc::default(),
             directory,
             #[cfg(feature = "markdown")]
             editor: std::sync::OnceLock::new(),
@@ -529,13 +570,23 @@ impl Vault {
     /// **Opens `index.db`, which [`Vault::open`] does not**, and rebuilds it
     /// when the file cannot be trusted — so this one is not free, and a vault
     /// that is never searched never opens it. Hold the handle rather than
-    /// rebuilding it per keystroke.
-    pub fn search(&self) -> Result<Arc<Search>, StorageError> {
-        Ok(Arc::new(Search::over(self.db.clone(), &self.directory)?))
+    /// rebuilding it per keystroke. `semantic` fuses on-device semantic hits
+    /// into the results while it is on; `None` searches FTS alone.
+    pub fn search(
+        &self,
+        semantic: Option<Arc<SemanticSearch>>,
+    ) -> Result<Arc<Search>, StorageError> {
+        Ok(Arc::new(Search::over(
+            self.db.clone(),
+            Arc::clone(&self.reindexing),
+            &self.directory,
+            semantic,
+        )?))
     }
 
-    /// The search sheet's recently opened results, device-local (#4322).
-    pub fn search_recents(&self) -> Arc<SearchRecents> {
-        Arc::new(SearchRecents::over(self.db.clone()))
+    /// The search sheet's recently opened results, device-local (#4322),
+    /// keeping the newest `cap` (iOS 10, desktop 20).
+    pub fn search_recents(&self, cap: u32) -> Arc<SearchRecents> {
+        Arc::new(SearchRecents::over(self.db.clone(), cap))
     }
 }

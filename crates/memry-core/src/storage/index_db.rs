@@ -33,7 +33,9 @@
 //! two builds alternating would otherwise wipe it each time. Only the newest of
 //! each kind is kept.
 
-use std::path::Path;
+use std::ffi::OsString;
+use std::fs;
+use std::path::{Path, PathBuf};
 
 use crate::api::errors::StorageError;
 use crate::storage::connection::{Db, Profile};
@@ -76,7 +78,16 @@ struct Rebuild {
 pub fn open_or_rebuild(path: &Path) -> Result<OpenedIndex, StorageError> {
     #[cfg(feature = "vec")]
     super::vec::register()?;
-    open_tables(path)
+    open_tables(path, true)
+}
+
+/// [`open_or_rebuild`] for a process that is not the index's owner (the command line beside a
+/// running app): a file that would be set aside is an error naming why, and stays in place,
+/// so the owner's open handles never lose their file. A missing file is still created.
+pub fn open_keeping(path: &Path) -> Result<OpenedIndex, StorageError> {
+    #[cfg(feature = "vec")]
+    super::vec::register()?;
+    open_tables(path, false)
 }
 
 /// The vector tables, after the migrations. A defect of the file (a vec0 table
@@ -101,7 +112,7 @@ fn ensure_vectors(conn: &mut rusqlite::Connection) -> Result<Option<Rebuild>, St
     }
 }
 
-fn open_tables(path: &Path) -> Result<OpenedIndex, StorageError> {
+fn open_tables(path: &Path, set_aside: bool) -> Result<OpenedIndex, StorageError> {
     guard::refuse_foreign_schema(path)?;
     let rebuild_reason = if path.exists() {
         match inspect(path)? {
@@ -109,6 +120,11 @@ fn open_tables(path: &Path) -> Result<OpenedIndex, StorageError> {
                 return Ok(OpenedIndex {
                     db,
                     rebuild_reason: None,
+                });
+            }
+            Err(rebuild) if !set_aside => {
+                return Err(StorageError::Failed {
+                    what: format!("index.db needs a rebuild: {}", rebuild.reason),
                 });
             }
             Err(rebuild) => {
@@ -249,6 +265,33 @@ fn build(path: &Path) -> Result<Db, StorageError> {
         Ok(())
     })?;
     Ok(db)
+}
+
+/// Removes the database and its `-wal` and `-shm` sidecars. A path that is
+/// already absent is not an error.
+pub(super) fn delete(path: &Path) -> Result<(), StorageError> {
+    for target in [
+        path.to_path_buf(),
+        sidecar(path, "-wal"),
+        sidecar(path, "-shm"),
+    ] {
+        match fs::remove_file(&target) {
+            Ok(()) => {}
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
+            Err(err) => {
+                return Err(StorageError::Failed {
+                    what: format!("could not delete {}: {err}", target.display()),
+                });
+            }
+        }
+    }
+    Ok(())
+}
+
+fn sidecar(path: &Path, suffix: &str) -> PathBuf {
+    let mut name = OsString::from(path.as_os_str());
+    name.push(suffix);
+    PathBuf::from(name)
 }
 
 #[cfg(test)]

@@ -77,18 +77,25 @@ impl Reconciler {
     }
 
     /// The note living at `rel`: what was reported for it, else its row (exact spelling, then
-    /// the same file under another case or normalization).
+    /// the same file under another case or normalization). A report names a note only while
+    /// its row lives: one the app or a sync deleted since, its folder put back from the trash
+    /// before the watcher saw it go (#5565), leaves the report naming no note, and the file
+    /// there is new.
     pub(super) fn home_at(&mut self, rel: &str) -> Result<Option<Home>, StorageError> {
-        if let Some(seen) = self.reported.get(rel)
-            && let Some(note_id) = &seen.note_id
+        if let Some(seen) = self.reported.get(rel).cloned()
+            && let Some(note_id) = seen.note_id
         {
-            return Ok(Some(Home {
-                note_id: note_id.clone(),
-                path: seen.path.clone(),
-                hash: seen.hash.clone(),
-                size: None,
-                indexed_at: 0,
-            }));
+            if self.files.by_id(&note_id)?.is_none() {
+                self.reported.remove(rel);
+            } else {
+                return Ok(Some(Home {
+                    note_id,
+                    path: seen.path,
+                    hash: seen.hash,
+                    size: None,
+                    indexed_at: 0,
+                }));
+            }
         }
         let key = folded_key(rel);
         if let Some(row) = self.files.by_path(rel)?

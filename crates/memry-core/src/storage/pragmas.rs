@@ -16,11 +16,12 @@
 //! `wal_autocheckpoint` stays at SQLite's 1000 pages. A reader holds a snapshot
 //! only for one call, so checkpoints finish.
 
-use std::time::Duration;
+use std::thread;
+use std::time::{Duration, Instant};
 
-use rusqlite::Connection;
 use rusqlite::functions::FunctionFlags;
 use rusqlite::types::{Value, ValueRef};
+use rusqlite::{Connection, ErrorCode};
 
 use crate::api::errors::StorageError;
 
@@ -55,6 +56,8 @@ fn fail(what: &str, err: rusqlite::Error) -> StorageError {
     }
 }
 
+const STATEMENT_CACHE_CAPACITY: usize = 64;
+
 /// Pragmas and functions for the one connection that writes.
 pub fn configure_writer(conn: &Connection, profile: Profile) -> Result<(), StorageError> {
     // Asserted here rather than discovered on the first search: a core without
@@ -62,15 +65,52 @@ pub fn configure_writer(conn: &Connection, profile: Profile) -> Result<(), Stora
     assert_fts5(conn)?;
     common(conn, profile)?;
 
-    // `journal_mode` answers with the mode it settled on, so it is a query and
-    // not an update. A `:memory:` database answers `memory` and that is fine.
-    let _mode: String = conn
-        .query_row("PRAGMA journal_mode=WAL", [], |row| row.get(0))
-        .map_err(|err| fail("journal_mode", err))?;
+    set_wal(conn)?;
     conn.pragma_update(None, "synchronous", "NORMAL")
         .map_err(|err| fail("synchronous", err))?;
     conn.pragma_update(None, "journal_size_limit", 67_108_864_i64)
         .map_err(|err| fail("journal_size_limit", err))?;
+    // The record apply reuses its hot statements through `prepare_cached`
+    // (#5231); rusqlite's default of 16 would evict them between items.
+    conn.set_prepared_statement_cache_capacity(STATEMENT_CACHE_CAPACITY);
+    register_functions(conn)
+}
+
+/// `journal_mode` answers with the mode it settled on, so it is a query and not
+/// an update. A `:memory:` database answers `memory` and that is fine.
+///
+/// The pragma reads the header under a shared lock, then upgrades it to switch a
+/// new file to WAL. SQLite answers a contended upgrade with `SQLITE_BUSY` at once,
+/// without the busy handler, so a second process opening the file while the first
+/// switches it retries here for as long as the busy timeout would have waited.
+fn set_wal(conn: &Connection) -> Result<(), StorageError> {
+    let deadline = Instant::now() + Duration::from_millis(BUSY_TIMEOUT_MS);
+    loop {
+        match conn.query_row("PRAGMA journal_mode=WAL", [], |row| row.get::<_, String>(0)) {
+            Ok(_mode) => return Ok(()),
+            Err(err)
+                if err.sqlite_error_code() == Some(ErrorCode::DatabaseBusy)
+                    && Instant::now() < deadline =>
+            {
+                thread::sleep(Duration::from_millis(10));
+            }
+            Err(err) => return Err(fail("journal_mode", err)),
+        }
+    }
+}
+
+/// Pragmas and functions for a database staged by the Electron import
+/// ([`crate::storage::import`]): no journal and no syncs, because a staged file
+/// that did not finish is deleted, never repaired. The installed file is reopened
+/// through [`configure_writer`], which sets WAL again.
+pub fn configure_staging(conn: &Connection, profile: Profile) -> Result<(), StorageError> {
+    assert_fts5(conn)?;
+    common(conn, profile)?;
+    let _mode: String = conn
+        .query_row("PRAGMA journal_mode=OFF", [], |row| row.get(0))
+        .map_err(|err| fail("journal_mode", err))?;
+    conn.pragma_update(None, "synchronous", "OFF")
+        .map_err(|err| fail("synchronous", err))?;
     register_functions(conn)
 }
 

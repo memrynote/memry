@@ -32,7 +32,10 @@ enum SyncEnvironment: String, Sendable, CaseIterable {
         switch self {
         case .staging: "https://sync-staging.memrynote.com"
         case .production: "https://sync.memrynote.com"
-        case .local: "http://localhost:8787"
+        // The loopback IP, not `localhost`: the simulator inherits the Mac's
+        // HTTP proxy, and a local proxy can fail on `localhost` (spoofdpi
+        // answers 502) while it reaches the IP.
+        case .local: "http://127.0.0.1:8787"
         }
     }
 }

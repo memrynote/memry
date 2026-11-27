@@ -134,6 +134,8 @@ export function createGeneratedRpcApi({
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the IPC invoke result type is wider than the public API contract; the cast pins the contract
       "renameFolder": ((oldPath, newPath) => invoke("notes:rename-folder", { oldPath, newPath })) as GeneratedRpcApi["notes"]["renameFolder"],
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the IPC invoke result type is wider than the public API contract; the cast pins the contract
+      "checkFolderDelete": ((path) => invoke("notes:check-folder-delete", path)) as GeneratedRpcApi["notes"]["checkFolderDelete"],
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the IPC invoke result type is wider than the public API contract; the cast pins the contract
       "deleteFolder": ((path) => invoke("notes:delete-folder", path)) as GeneratedRpcApi["notes"]["deleteFolder"],
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the IPC invoke result type is wider than the public API contract; the cast pins the contract
       "exists": ((titleOrPath) => invoke("notes:exists", titleOrPath)) as GeneratedRpcApi["notes"]["exists"],

@@ -8,7 +8,7 @@
  * @module sync/crdt-network-update
  */
 
-export function sweepExpired(entries: Map<string, number>, ttlMs: number, now: number): void {
+function sweepExpired(entries: Map<string, number>, ttlMs: number, now: number): void {
   for (const [key, ts] of entries) {
     if (now - ts >= ttlMs) entries.delete(key)
   }

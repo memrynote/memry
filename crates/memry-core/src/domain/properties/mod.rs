@@ -47,6 +47,7 @@ use serde_json::{Map, Value};
 use thiserror::Error;
 
 use crate::api::errors::StorageError;
+use crate::storage::nested_tx;
 use crate::storage::repositories::sync_items;
 
 mod file;
@@ -54,7 +55,7 @@ mod store;
 
 use file::file_changes;
 pub(crate) use file::forget as forget_file_baseline;
-pub use file::{taken, taken_all};
+pub use file::{taken, taken_all, written as file_written};
 pub use store::read_values;
 use store::{failed, require, stored, write};
 
@@ -333,7 +334,7 @@ pub fn mirror_file(
     device_id: &str,
     now_ms: i64,
 ) -> Result<bool, StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let before = file::own(&tx, item_id, before.clone())?;
     let after = file::own(&tx, item_id, after)?;
     let (changed, removed) = file_changes(&before, &after);

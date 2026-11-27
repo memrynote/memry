@@ -1,0 +1,9 @@
+﻿id,title,note,excerpt,url,folder,tags,created,cover,highlights,favorite
+101,Rust Book,"Read chapters 1-3, then ""ownership""","The Rust Programming Language, 2nd ed.",https://doc.rust-lang.org/book/,Reading,"rust, Programming",2024-05-01T10:00:00.000Z,https://cover.example/rust.png,"Ownership is the key
+Borrowing follows",true
+102,,,,https://example.com/no-title,Unsorted,,2024-05-02T08:30:00.000Z,,,false
+103,Duplicated tags,,An excerpt only,https://example.com/dupes,Reading,"reading, READING, news",2024-05-03T00:00:00Z,,,FALSE
+104,No URL here,a note,,,Unsorted,,2024-05-04T00:00:00.000Z,,,false
+105,Bad date,,,ftp://files.example/x,Archive,,yesterday,,,false
+106,Date without zone,  spaced note  ,,  https://example.com/spaced  ,  Work  ,"  Tag A ,, tag b ",2024-05-05T09:15,,, true 
+107,Invalid month,,,https://example.com/month,,,2024-13-01T00:00:00Z,,,false

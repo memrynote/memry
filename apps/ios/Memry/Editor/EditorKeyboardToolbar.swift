@@ -33,21 +33,30 @@ enum EditorToolbarItem: String, CaseIterable, Identifiable {
 
 /// The accessory row, with the `[[` / `@` / `#` menu above it when one is
 /// open. `Aa`, or a non-empty selection, slides the format row in over the
-/// main row.
+/// main row. Capped at the reading measure and centred, so a wide window
+/// does not draw a window-wide band of glass (`DESIGN.md` › Tablet).
 struct EditorKeyboardToolbar: View {
     let session: EditorSession
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// The toolbar row's top on screen, once laid out.
+    @State private var rowTop: CGFloat?
 
     private var showsFormat: Bool { session.formatting && session.panel == .none }
+
+    private var menuHeight: CGFloat {
+        SuggestionMenuHeight.max(
+            rowTop: rowTop, safeTop: session.field?.textView.window?.safeAreaInsets.top ?? 0
+        )
+    }
 
     var body: some View {
         GlassEffectContainer(spacing: Tokens.Space.small) {
             VStack(spacing: Tokens.Space.small) {
                 if !session.suggestions.isEmpty {
-                    EditorSuggestionList(session: session)
+                    EditorSuggestionList(session: session, maxHeight: menuHeight)
                         .chromeGlass(in: .rect(cornerRadius: Tokens.Size.minimumHitArea / 2))
                 } else if !session.tagSuggestions.isEmpty {
-                    TagSuggestionList(session: session)
+                    TagSuggestionList(session: session, maxHeight: menuHeight)
                         .chromeGlass(in: .rect(cornerRadius: Tokens.Size.minimumHitArea / 2))
                 }
                 HStack(spacing: Tokens.Space.small) {
@@ -64,11 +73,17 @@ struct EditorKeyboardToolbar: View {
                     .padding(.vertical, Tokens.Space.tight)
                     .clipShape(.capsule)
                     .chromeGlass(in: .capsule)
-                    trailingButton
-                        .padding(Tokens.Space.tight)
-                        .chromeGlass(in: .circle)
+                    // Hiding the keyboard does nothing for a hardware one,
+                    // and drops the caret.
+                    if session.panel == .insert || !session.hardwareKeyboard.attached {
+                        trailingButton
+                            .padding(Tokens.Space.tight)
+                            .chromeGlass(in: .circle)
+                    }
                 }
+                .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).minY } action: { rowTop = $0 }
             }
+            .measuredColumn(Tokens.Size.reading)
             .padding(.horizontal, Tokens.Space.small)
             .padding(.top, Tokens.Space.small)
             .padding(.bottom, Tokens.Space.tight)
@@ -301,6 +316,7 @@ private struct ToolbarGlyph: View {
                 .contentShape(.rect)
         }
         .buttonStyle(.plain)
+        .pointerHover(.glyph)
         .accessibilityLabel(label)
         .accessibilityAddTraits(selected ? [.isSelected] : [])
     }
@@ -319,6 +335,7 @@ private struct ToolbarText: View {
                 .contentShape(.rect)
         }
         .buttonStyle(.plain)
+        .pointerHover(.glyph)
         .accessibilityLabel(label)
     }
 }
@@ -326,27 +343,10 @@ private struct ToolbarText: View {
 /// A link over the selection, asked for by address.
 private struct LinkMarkButton: View {
     let session: EditorSession
-    @State private var asking = false
-    @State private var address = ""
 
     var body: some View {
         ToolbarGlyph(symbol: "link", label: "Add a link", selected: session.selectionMarks.contains("link")) {
-            if session.selectionMarks.contains("link") {
-                session.toggleMark("link")
-            } else {
-                address = ""
-                asking = true
-            }
-        }
-        .alert("Link", isPresented: $asking) {
-            TextField("https://", text: $address)
-                .keyboardType(.URL)
-                .textInputAutocapitalization(.never)
-            Button("Cancel", role: .cancel) {}
-            Button("Add") {
-                let trimmed = address.trimmingCharacters(in: .whitespaces)
-                if !trimmed.isEmpty { session.toggleMark("link", value: trimmed) }
-            }
+            session.editLink()
         }
     }
 }
@@ -354,11 +354,11 @@ private struct LinkMarkButton: View {
 /// The `#` menu rows: vault tags, then a create row.
 private struct TagSuggestionList: View {
     let session: EditorSession
+    let maxHeight: CGFloat
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                ForEach(session.tagSuggestions) { item in
+        SuggestionScroll(session: session, maxHeight: maxHeight) {
+            ForEach(Array(session.tagSuggestions.enumerated()), id: \.element.id) { index, item in
                     Button {
                         session.chooseTag(item)
                     } label: {
@@ -378,18 +378,18 @@ private struct TagSuggestionList: View {
                         .contentShape(.rect)
                     }
                     .buttonStyle(.plain)
+                    .pointerHover(.row)
                     .accessibilityLabel(item.isNew ? "Create tag \(item.tag)" : "Tag \(item.tag)")
-                }
+                    .suggestionRow(index, session: session)
             }
         }
-        .frame(maxHeight: Tokens.Size.minimumHitArea * 4)
-        .fixedSize(horizontal: false, vertical: true)
     }
 }
 
 /// The `[[` / `@` menu rows.
 private struct EditorSuggestionList: View {
     let session: EditorSession
+    let maxHeight: CGFloat
 
     /// A note row shows the note's emoji, as the notes list does.
     private func emoji(for item: EditorSuggestion) -> String? {
@@ -399,9 +399,8 @@ private struct EditorSuggestionList: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                ForEach(session.suggestions) { item in
+        SuggestionScroll(session: session, maxHeight: maxHeight) {
+            ForEach(Array(session.suggestions.enumerated()), id: \.element.id) { index, item in
                     Button {
                         session.choose(item)
                     } label: {
@@ -431,16 +430,74 @@ private struct EditorSuggestionList: View {
                         .contentShape(.rect)
                     }
                     .buttonStyle(.plain)
-                }
+                    .suggestionRow(index, session: session)
+                    .pointerHover(.row)
             }
         }
-        .frame(maxHeight: Tokens.Size.minimumHitArea * 4)
+    }
+}
+
+/// A suggestion menu's rows, scrolled to keep the highlighted one in view.
+private struct SuggestionScroll<Rows: View>: View {
+    let session: EditorSession
+    let maxHeight: CGFloat
+    @ViewBuilder let rows: Rows
+
+    var body: some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(spacing: 0) { rows }
+            }
+            .onChange(of: session.highlighted) { _, row in proxy.scrollTo(row) }
+        }
+        .frame(maxHeight: maxHeight)
         .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+/// How tall a suggestion menu may be. The menu sits above the toolbar row in
+/// the keyboard's accessory, which grows upward from the keyboard, so four
+/// rows ran off the top of a phone in landscape and its first rows could not
+/// be reached (#4818). Four rows, or the room between the safe area's top and
+/// the row, and never less than one row.
+enum SuggestionMenuHeight {
+    static let rows: CGFloat = Tokens.Size.minimumHitArea * 4
+
+    /// `rowTop` is the toolbar row's top on screen, `nil` before layout.
+    static func max(rowTop: CGFloat?, safeTop: CGFloat) -> CGFloat {
+        guard let rowTop else { return rows }
+        // The stack's spacing under the menu and the padding above it.
+        let room = rowTop - safeTop - Tokens.Space.small * 2
+        return min(rows, Swift.max(Tokens.Size.minimumHitArea, room))
+    }
+}
+
+extension View {
+    /// A menu row at `index`: highlighted for Return with a hardware
+    /// keyboard, as desktop's menu highlights its row. The on-screen
+    /// keyboard has no arrows, so its menus draw as before.
+    fileprivate func suggestionRow(_ index: Int, session: EditorSession) -> some View {
+        let highlighted = session.menuFollowsKeys && index == session.highlighted
+        return id(index)
+            .background(highlighted ? Tokens.Canvas.surface.color : .clear, in: .rect)
+            .accessibilityAddTraits(highlighted ? .isSelected : [])
+            .accessibilityIdentifier("editor.suggestion")
     }
 }
 
 /// What replaces the keyboard: the insert grid, or turn-into and colours.
 struct EditorPanelView: View {
+    /// The share of the window's height the panel may take.
+    static let windowShare: CGFloat = 0.4
+
+    /// The keyboard's height, capped at `windowShare` of the window, so a
+    /// short Stage Manager window or a phone in landscape keeps the note in
+    /// view. With no window yet, the keyboard's height.
+    static func height(keyboard: CGFloat, window: CGFloat?) -> CGFloat {
+        guard let window, window > 0 else { return keyboard }
+        return min(keyboard, window * windowShare)
+    }
+
     let session: EditorSession
     /// Grows with Dynamic Type, so a tile's title wraps rather than truncates.
     @ScaledMetric(relativeTo: .caption) private var tileWidth: CGFloat = 96
@@ -491,6 +548,7 @@ struct EditorPanelView: View {
                 .contentShape(.capsule)
             }
             .buttonStyle(.plain)
+            .pointerHover(.glyph)
             .accessibilityLabel("Filter blocks")
             .accessibilityHint("Opens the keyboard with the slash menu")
         }
@@ -547,6 +605,7 @@ struct EditorPanelView: View {
                     .contentShape(.rect)
                 }
                 .buttonStyle(.plain)
+                .pointerHover(.card(radius: Tokens.Radius.control))
                 .accessibilityLabel(tile.title)
                 .accessibilityAddTraits(tile.title == checked ? [.isSelected] : [])
             }
@@ -579,6 +638,7 @@ struct EditorPanelView: View {
                                 }
                         }
                         .buttonStyle(.plain)
+                        .pointerHover(.card(radius: Tokens.Radius.control))
                         .accessibilityLabel("\(title): \(name == "default" ? "Default" : name.capitalized)")
                         .accessibilityAddTraits(prop != nil && current == name ? [.isSelected] : [])
                 }

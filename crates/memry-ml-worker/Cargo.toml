@@ -5,7 +5,7 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 publish = false
-description = "The out-of-process worker of MemryNote (pdfium, Tesseract, ONNX Runtime) and its supervisor. Never depends on tauri."
+description = "The out-of-process worker of MemryNote (pdfium, Tesseract, ONNX Runtime, whisper.cpp) and its supervisor. Never depends on tauri."
 autobins = false
 
 # The lib (frame codec, ops, supervisor) has no native dependency: memry-desktop links it with
@@ -23,7 +23,7 @@ memry-ml = { path = "../memry-ml", optional = true }
 libc = "0.2"
 
 [target.'cfg(windows)'.dependencies]
-windows = { version = "0.62.2", features = ["Win32_Foundation", "Win32_System_LibraryLoader", "Win32_System_Threading"] }
+windows = { version = "0.62.2", features = ["Win32_Foundation", "Win32_Security", "Win32_System_JobObjects", "Win32_System_LibraryLoader", "Win32_System_Threading"] }
 
 [features]
 default = ["native"]
@@ -33,11 +33,14 @@ default = ["native"]
 # Runtime), so building it needs `ORT_LIB_LOCATION` on every target but macOS arm64. A build
 # without `embed` answers every embedding op with a failure: the dev loop builds one when ONNX
 # Runtime is not at hand (apps/desktop-tauri/scripts/dev-worker.mjs), and one without `ocr`, which
-# fails every OCR op, when cmake is not. Releases build `native`.
-native = ["pdf", "ocr", "embed"]
+# fails every OCR op, when cmake is not. whisper.cpp (`transcribe`) lives in memry-ml, so it needs
+# ONNX Runtime and cmake both, and libclang for its bindgen; without it every transcription op
+# fails. Releases build `native`.
+native = ["pdf", "ocr", "embed", "transcribe"]
 pdf = ["dep:pdfium-render", "dep:image"]
 ocr = ["dep:image"]
 embed = ["dep:memry-ml"]
+transcribe = ["dep:memry-ml", "memry-ml/whisper"]
 
 # The sidecar the app spawns (`memry_desktop::services::file_text::WorkerHandle`).
 [[bin]]
@@ -81,6 +84,15 @@ required-features = ["native"]
 name = "embed_audio"
 path = "tests/embed_audio.rs"
 required-features = ["native"]
+
+[[test]]
+name = "transcribe"
+path = "tests/transcribe.rs"
+required-features = ["native"]
+
+[[test]]
+name = "transcribe_worker"
+path = "tests/transcribe_worker.rs"
 
 [[test]]
 name = "ocr_timeout"

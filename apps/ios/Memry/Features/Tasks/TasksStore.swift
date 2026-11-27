@@ -317,6 +317,8 @@ final class TasksStore {
             Log.sync.info("task sync pass pushed", .count(Int(pass.pushed)))
             if pass.rejected > 0 { Log.sync.error("task sync pass rejected", .count(Int(pass.rejected))) }
             if pass.pending > 0 { Log.sync.info("task sync pass left pending", .count(Int(pass.pending))) }
+            // #5373: a pass that reached the server answers the last refusal.
+            failure = nil
             syncFinished?(true)
             reached = true
         } catch {

@@ -45,6 +45,12 @@
     }
   },
   "page": {
+    "noteFiles": {
+      "downloading": "Henter denne notes filer…",
+      "failed": "Kunne ikke hente denne notes filer: {error}",
+      "failedFallback": "hentningen mislykkedes",
+      "retry": "Prøv igen"
+    },
     "empty": {
       "title": "Ingen note valgt",
       "body": "Vælg en note fra sidebjælken for at se den"
@@ -196,6 +202,10 @@
   "editor": {
     "bodySyncPending": "Synkroniserer – indholdet af denne note er muligvis stadig på vej",
     "databaseReadOnly": "Skrivebeskyttet. Denne enhed kan ikke gemme ændringer.",
+    "remoteBodyStuck": "Venter på synkronisering — skrivebeskyttet, indtil notens synkroniserede indhold ankommer",
+    "remoteBodyOffline": "Offline — skrivebeskyttet, indtil noten er synkroniseret",
+    "remoteBodySignedOut": "Logget ud — skrivebeskyttet, indtil du logger ind, og noten er synkroniseret",
+    "remoteBodyVaultLocked": "Boksens krypteringsnøgle kan ikke læses — skrivebeskyttet, indtil noten er synkroniseret",
     "taskRemoval": {
       "title": "{count, plural, one {Opgave fjernet fra denne note} other {# opgaver fjernet fra denne note}}",
       "description": "{count, plural, one {Vil du beholde den i Opgaver eller slette den overalt?} other {Vil du beholde dem i Opgaver eller slette dem overalt?}}",
