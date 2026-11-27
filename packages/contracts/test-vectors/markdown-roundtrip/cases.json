@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 313,
+    "exportedCaseCount": 325,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 323,
+    "caseCount": 335,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -1246,6 +1246,34 @@
       "sha256": "24218c19dda3cc62f9882314b9b2c319e2f68eca99dae838e0729c2310fc2c8d"
     },
     {
+      "name": "list item holding only an image",
+      "markdown": "- ![photo.png](attachments/photo.png)",
+      "canonical": "-\n\n<!-- memry:block-nesting-level=1 -->\n\n![photo.png](attachments/photo.png)\n\n<!-- memry:block-nesting-level=0 -->",
+      "pending": null,
+      "sha256": "e506b83ec6124d6e9f8f3af293632c99deb027ab8a0e2fa2d6e223b88a32d546"
+    },
+    {
+      "name": "numbered item holding only an image",
+      "markdown": "1. ![photo.png](attachments/photo.png)",
+      "canonical": "1.\n\n<!-- memry:block-nesting-level=1 -->\n\n![photo.png](attachments/photo.png)\n\n<!-- memry:block-nesting-level=0 -->",
+      "pending": null,
+      "sha256": "6d04b66990a5826fe8c1eba61fc7d9283706b9ebc1ae95a2e89ced31853e9a8d"
+    },
+    {
+      "name": "heading holding only an image",
+      "markdown": "# ![photo.png](attachments/photo.png)",
+      "canonical": "#\n\n![photo.png](attachments/photo.png)",
+      "pending": null,
+      "sha256": "5a63127bce95db2df341134d700431eb8a616b14f5fe517cc4d27edd3aa74c21"
+    },
+    {
+      "name": "image address with a space",
+      "markdown": "![photo](<attachments/a b.png>)",
+      "canonical": null,
+      "pending": null,
+      "sha256": "d200eb23156fae529105b101aff887d16fee90c94bf058b2a51fc00808829e0e"
+    },
+    {
       "name": "image in a callout list item",
       "markdown": "> [!note]\n> - a ![photo.png](attachments/photo.png) b",
       "canonical": "> [!note]\n> - a b\n>\n> ![photo.png](attachments/photo.png)",
@@ -2105,6 +2133,62 @@
       "canonical": null,
       "pending": null,
       "sha256": "f00dffe2bab3226497191728481d5eac5dd548dba7510b7c4962771ab896a8c5"
+    },
+    {
+      "name": "empty list item between two items",
+      "markdown": "- a\n-\n- b",
+      "canonical": null,
+      "pending": null,
+      "sha256": "b5dda828f305e19289a43c3f451c727bed4272d6872483041ee355369340d977"
+    },
+    {
+      "name": "empty numbered items",
+      "markdown": "1.\n2.",
+      "canonical": null,
+      "pending": null,
+      "sha256": "8883dec5970d1e3ece36ba49d3a6e68514a75edc3e136e4dc1134be797f00fec"
+    },
+    {
+      "name": "empty heading",
+      "markdown": "#\n\nb",
+      "canonical": null,
+      "pending": null,
+      "sha256": "480d589c06d04fef4825adbdb49acb2fd54460f40b006d0a9812c71e9d958eb3"
+    },
+    {
+      "name": "link whose text is its address",
+      "markdown": "see [https://e.com](https://e.com)",
+      "canonical": null,
+      "pending": null,
+      "sha256": "1bce592049cc8e44bf8df7cbe553c1cecbd35d0c16f21db373c16e6b1abfe665"
+    },
+    {
+      "name": "link whose text is its address in a callout",
+      "markdown": "> [!tip]\n> see [https://e.com](https://e.com)",
+      "canonical": null,
+      "pending": null,
+      "sha256": "c0bf64932aea880eae9e7a6e8c1ecce7ce3695c8057aa00a8c9920c0a85c0b1e"
+    },
+    {
+      "name": "code span with a space at both ends",
+      "markdown": "a `  b  ` c",
+      "canonical": null,
+      "pending": null,
+      "sha256": "dbf53e1b5b4c0a891f52944a9cb5eaceab2c1bc10066596196519b57a301237e"
+    },
+    {
+      "name": "bold line then a plain line in a callout",
+      "markdown": "> [!note]\n> **b**\n> plain",
+      "canonical": null,
+      "pending": null,
+      "sha256": "468cea31f8283c121b4e7cdfa818ce9f57bd993886732fdfb58ec212a3cad9c7"
+    },
+    {
+      "name": "italic line then a plain line in a quote",
+      "markdown": "> *c*\n> d",
+      "canonical": null,
+      "pending": null,
+      "sha256": "e2fc5913dc97fb6082286232dc4ba9f4e762c248b83f26c220cb1613f0dccbf2"
     },
     {
       "name": "backslash ending a paragraph",

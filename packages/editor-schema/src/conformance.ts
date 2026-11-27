@@ -910,6 +910,26 @@ const inlineImageCases: RoundtripCase[] = [
     markdown: '> - a\n>   - b ![photo.png](attachments/photo.png)\n> - c',
     canonical: '> - a\n>   - b\n>\n> ![photo.png](attachments/photo.png)\n>\n> - c'
   },
+  // An item or heading holding only an image keeps its empty line, which the
+  // parser read as the text `*` or `#`.
+  {
+    name: 'list item holding only an image',
+    markdown: '- ![photo.png](attachments/photo.png)',
+    canonical:
+      '-\n\n<!-- memry:block-nesting-level=1 -->\n\n![photo.png](attachments/photo.png)\n\n<!-- memry:block-nesting-level=0 -->'
+  },
+  {
+    name: 'numbered item holding only an image',
+    markdown: '1. ![photo.png](attachments/photo.png)',
+    canonical:
+      '1.\n\n<!-- memry:block-nesting-level=1 -->\n\n![photo.png](attachments/photo.png)\n\n<!-- memry:block-nesting-level=0 -->'
+  },
+  {
+    name: 'heading holding only an image',
+    markdown: '# ![photo.png](attachments/photo.png)',
+    canonical: '#\n\n![photo.png](attachments/photo.png)'
+  },
+  { name: 'image address with a space', markdown: '![photo](<attachments/a b.png>)' },
   {
     name: 'image in a callout list item',
     markdown: '> [!note]\n> - a ![photo.png](attachments/photo.png) b',
@@ -1273,6 +1293,21 @@ const htmlCommentCases: RoundtripCase[] = [
   },
   { name: 'escaped block opener after a hard break', markdown: 'a  \n\\# b' },
   { name: 'escaped list marker in a quote', markdown: '> \\- x' },
+  { name: 'empty list item between two items', markdown: '- a\n-\n- b' },
+  { name: 'empty numbered items', markdown: '1.\n2.' },
+  { name: 'empty heading', markdown: '#\n\nb' },
+  // The writer wrote a link whose text is its address as the bare address,
+  // which reads back as text.
+  { name: 'link whose text is its address', markdown: 'see [https://e.com](https://e.com)' },
+  {
+    name: 'link whose text is its address in a callout',
+    markdown: '> [!tip]\n> see [https://e.com](https://e.com)'
+  },
+  // The parser strips one space off each end of a code span with one at both.
+  { name: 'code span with a space at both ends', markdown: 'a `  b  ` c' },
+  // A bold run ending at a break closed on the quote's next line.
+  { name: 'bold line then a plain line in a callout', markdown: '> [!note]\n> **b**\n> plain' },
+  { name: 'italic line then a plain line in a quote', markdown: '> *c*\n> d' },
   // The writer read a backslash ending the block as a break and dropped it.
   { name: 'backslash ending a paragraph', markdown: 'a \\' },
   { name: 'backslash alone in a list item', markdown: '- \\' },
