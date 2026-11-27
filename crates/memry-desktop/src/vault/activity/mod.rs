@@ -46,7 +46,7 @@ use tokio::sync::broadcast;
 use disk::write_retention;
 pub use disk::{
     DEFAULT_RETENTION_DAYS, DiskError, LOG_FILE, MAX_LOG_BYTES, MAX_SETTINGS_BYTES, RETENTION_DAYS,
-    SETTINGS_FILE, log_path, settings_path,
+    SETTINGS_FILE, listed_on_disk, log_path, settings_path,
 };
 pub use entry::{
     ActivityEntry, ActivityInput, ActivityKind, ActivitySource, MAX_ITEMS, MAX_MESSAGE_UNITS,

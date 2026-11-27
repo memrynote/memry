@@ -88,7 +88,7 @@ vi.mock('../lib/logger', () => ({ createLogger: () => mocks.logger }))
 // crdt-provider itself reaches for `app.getPath` and the CRDT store; write-back
 // only ever asks it "is there a newer doc for this note?".
 vi.mock('./crdt-provider', () => ({
-  getCrdtProvider: () => ({ getDoc: () => undefined, close: vi.fn() })
+  getCrdtProvider: () => ({ holdsDoc: () => true, getDoc: () => undefined, close: vi.fn() })
 }))
 
 vi.mock('../telemetry/diagnostics', () => ({ trackMainError: vi.fn(), trackMainLog: vi.fn() }))
@@ -100,7 +100,10 @@ vi.mock('../database/client', () => ({
 
 vi.mock('@main/database/queries/notes', () => ({
   getNoteCacheById: () => mocks.noteRow,
-  getNoteCacheByPath: () => mocks.noteRow
+  getNoteCacheByPath: () => mocks.noteRow,
+  updateNoteCache: (_db: unknown, _id: string, patch: Record<string, unknown>) => {
+    if (mocks.noteRow) mocks.noteRow = { ...mocks.noteRow, ...patch }
+  }
 }))
 
 vi.mock('@memry/storage-data', () => ({ getNoteMetadataById: () => null }))
@@ -360,7 +363,7 @@ beforeEach(() => {
     createdAt: '2026-01-01T00:00:00.000Z',
     localOnly: false,
     emoji: null,
-    fileType: 'md',
+    fileType: 'markdown',
     date: null
   }
   vi.stubEnv('NODE_ENV', 'test')

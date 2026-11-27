@@ -18,6 +18,7 @@ final class SettingsContext {
     let account: AccountModel
     let vaults: VaultSelectionViewModel
     let vaultId: String
+    let vault: Vault
     let executor: CoreExecutor
 
     init(
@@ -29,6 +30,7 @@ final class SettingsContext {
         account: AccountModel,
         vaults: VaultSelectionViewModel,
         vaultId: String,
+        vault: Vault,
         executor: CoreExecutor = .shared
     ) {
         self.store = store
@@ -39,6 +41,7 @@ final class SettingsContext {
         self.account = account
         self.vaults = vaults
         self.vaultId = vaultId
+        self.vault = vault
         self.executor = executor
     }
 
@@ -114,7 +117,11 @@ final class AccountModel {
         return value > 10_000_000_000 ? value / 1000 : value
     }
 
+    /// The screen's first account call, so it starts the round: the notice
+    /// shows what this round refused, never a refusal from an earlier one
+    /// (#5373).
     func load() async {
+        failure = nil
         await refreshPending()
         guard let session else { return }
         do {
@@ -153,7 +160,7 @@ final class AccountModel {
     /// way). An unknown plan still asks.
     func loadStorage() async {
         guard let session else { return }
-        if let billing, billing.plan == "free" || billing.status != "active" { return }
+        if BillingFacts.isKnownUnpaid(billing) { return }
         do { storage = try await session.storage() } catch { record(error) }
     }
 

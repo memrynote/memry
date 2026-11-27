@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "title": "Language Study",
+  "excludePatterns": [
+    ".git",
+    "node_modules",
+    ".DS_Store"
+  ]
+}

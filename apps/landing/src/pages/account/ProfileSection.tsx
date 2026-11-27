@@ -5,6 +5,8 @@ import { Input } from '@/components/ui/input'
 import { useAuth } from '@/contexts/use-auth'
 
 const SUPPORT_EMAIL = 'support@memrynote.com'
+const APP_STORE_SUBSCRIPTIONS_URL = 'https://apps.apple.com/account/subscriptions'
+const GOOGLE_PLAY_SUBSCRIPTIONS_URL = 'https://play.google.com/store/account/subscriptions'
 
 interface BillingStatus {
   email: string | null
@@ -167,6 +169,29 @@ export function ProfileSection() {
         <h2 className="text-sm font-semibold text-red-500">Delete account</h2>
         <p className="mt-1 text-sm text-muted">
           This permanently erases your account and synced data. It cannot be undone.
+        </p>
+        {/* DELETE /auth/account cancels no store subscription, and Google Play's account
+            deletion policy requires saying so (#4607). */}
+        <p className="mt-2 text-sm text-muted">
+          If you subscribe through the App Store or Google Play, cancel the subscription in{' '}
+          <a
+            className="text-terracotta-dark underline"
+            href={APP_STORE_SUBSCRIPTIONS_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            App Store subscriptions
+          </a>{' '}
+          or{' '}
+          <a
+            className="text-terracotta-dark underline"
+            href={GOOGLE_PLAY_SUBSCRIPTIONS_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Google Play subscriptions
+          </a>{' '}
+          first. Deleting your account does not stop the store from billing you.
         </p>
         <div className="mt-4 space-y-2">
           <Button variant="outline" disabled={!email} onClick={() => void requestDeleteCode()}>

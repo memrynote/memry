@@ -1,4 +1,4 @@
-//! `journal append|tags|property`: dev-only journal writes (spec 005-journal
+//! `journal append|tags|property|delete`: dev-only journal writes (spec 005-journal
 //! JP029, gate G0).
 //!
 //! They call the same core functions the phone's `Journal` surface does
@@ -12,6 +12,7 @@ use memry_core::crdt::update_log;
 use memry_core::domain::journal;
 use memry_core::domain::journal_ops::{body, metadata};
 
+use crate::cli::{Args, Command, UsageError, optional, positional, usage};
 use crate::session::{Cli, CliError};
 
 /// `journal append <date> <text>`: one paragraph at the end of the day.
@@ -100,6 +101,54 @@ pub fn property(
         .map_err(|error| CliError::Refused(error.to_string()))?;
     println!("{date}: properties {written:?}");
     Ok(())
+}
+
+/// `journal delete <date>`: tombstones the day's entry, as the phone's
+/// `Journal::delete_day` does.
+pub fn delete(cli: &Cli, date: &str, vault: Option<&str>) -> Result<(), CliError> {
+    let vault = crate::commands::resolve_vault(cli, vault)?;
+    let db = cli.open_vault(&vault)?;
+    let device_id = cli.device_id()?;
+    let day = date.to_string();
+    let deleted =
+        db.call_blocking(move |conn| journal::delete_day(conn, &day, &device_id, now_ms()))?;
+    println!("{date}: deleted {deleted}");
+    Ok(())
+}
+
+pub(crate) fn parse(args: &mut Args) -> Result<Command, UsageError> {
+    let Some(subcommand) = args.next() else {
+        return usage("journal needs a subcommand: append, tags, property, or delete");
+    };
+    let date = positional(args, "journal", "a YYYY-MM-DD date")?;
+    match subcommand.as_str() {
+        "append" => Ok(Command::JournalAppend {
+            date,
+            text: positional(args, "journal append", "the text")?,
+            vault: optional(args, "--vault")?,
+        }),
+        "tags" => Ok(Command::JournalTags {
+            date,
+            tags: positional(args, "journal tags", "a comma-separated tag list")?
+                .split(',')
+                .map(str::trim)
+                .filter(|tag| !tag.is_empty())
+                .map(str::to_owned)
+                .collect(),
+            vault: optional(args, "--vault")?,
+        }),
+        "property" => Ok(Command::JournalProperty {
+            date,
+            name: positional(args, "journal property", "a property name")?,
+            value_json: positional(args, "journal property", "a JSON value")?,
+            vault: optional(args, "--vault")?,
+        }),
+        "delete" => Ok(Command::JournalDelete {
+            date,
+            vault: optional(args, "--vault")?,
+        }),
+        other => usage(format!("unknown journal subcommand `{other}`")),
+    }
 }
 
 fn now_ms() -> i64 {

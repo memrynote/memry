@@ -18,7 +18,10 @@ import { FONT_SIZE_PX_MAX, FONT_SIZE_PX_MIN } from '../../src/font-size'
 import { GRAPH_SETTINGS_DEFAULTS } from '../../src/graph-api'
 import {
   BACKUP_SETTINGS_DEFAULTS,
+  CALENDAR_GOOGLE_SETTINGS_DEFAULTS,
+  CALENDAR_PROVIDER_BASE_SETTINGS_DEFAULTS,
   CALENDAR_SETTINGS_DEFAULTS,
+  CALENDAR_WRITABLE_PROVIDER_SETTINGS_DEFAULTS,
   EDITOR_SETTINGS_DEFAULTS,
   EDITOR_SYNCABLE_FIELDS,
   FEATURES_SETTINGS_DEFAULTS,
@@ -32,6 +35,7 @@ import {
   TASK_SETTINGS_DEFAULTS,
   VOICE_TRANSCRIPTION_SETTINGS_DEFAULTS
 } from '../../src/settings-schemas'
+import { SettingsSyncPayloadSchema } from '../../src/settings-sync'
 import { SIDEBAR_SORT_SURFACES } from '../../src/sidebar-sort'
 import { meta } from './shared'
 
@@ -53,6 +57,11 @@ interface GroupSpec {
 
 const SETTINGS_SCHEMAS = 'packages/contracts/src/settings-schemas.ts'
 const HANDLERS = 'apps/desktop/src/main/ipc/settings-handlers.ts'
+// The calendar leaves desktop mirrors into settings sync are private to this
+// module (`CALENDAR_KEYS`, `GOOGLE_KEYS`, `PROVIDER_KEYS`, and the whole-value
+// `calendar.defaultWriteTarget`); This Mac's group (`apple-eventkit`) stays local.
+const CALENDAR_SYNC = 'apps/desktop/src/main/calendar/calendar-settings-sync.ts'
+const CALENDAR_PROVIDER_KEYS = ['agentReadEventsConsent', 'pushEventsToProvider']
 
 // Keys of `journal.weekdayTemplates`: JS `getDay()`, `isWeekdayKey` in
 // apps/desktop/src/main/settings/journal-template-keys.ts.
@@ -106,9 +115,39 @@ const GROUPS: Record<string, GroupSpec> = {
   },
   calendar: {
     defaults: { ...CALENDAR_SETTINGS_DEFAULTS },
+    syncable: ['weekStartDay', 'showNotesOnCalendar', 'defaultWriteTarget'],
+    maps: [],
+    source: CALENDAR_SYNC
+  },
+  'calendar.google': {
+    defaults: { ...CALENDAR_GOOGLE_SETTINGS_DEFAULTS },
+    syncable: [
+      'defaultTargetCalendarId',
+      'onboardingCompleted',
+      'promoteConfirmDismissed',
+      'pushEventsToGoogle',
+      'agentReadEventsConsent'
+    ],
+    maps: [],
+    source: CALENDAR_SYNC
+  },
+  'calendar.caldav': {
+    defaults: { ...CALENDAR_WRITABLE_PROVIDER_SETTINGS_DEFAULTS },
+    syncable: CALENDAR_PROVIDER_KEYS,
+    maps: [],
+    source: CALENDAR_SYNC
+  },
+  'calendar.ics': {
+    defaults: { ...CALENDAR_PROVIDER_BASE_SETTINGS_DEFAULTS },
+    syncable: CALENDAR_PROVIDER_KEYS,
+    maps: [],
+    source: CALENDAR_SYNC
+  },
+  'calendar.apple-eventkit': {
+    defaults: { ...CALENDAR_PROVIDER_BASE_SETTINGS_DEFAULTS },
     syncable: [],
     maps: [],
-    source: SETTINGS_SCHEMAS
+    source: CALENDAR_SYNC
   },
   features: {
     defaults: { ...FEATURES_SETTINGS_DEFAULTS },
@@ -206,6 +245,40 @@ const GROUPS: Record<string, GroupSpec> = {
   }
 }
 
+// Synced calendar leaves and values a write may carry. `accepted` is what desktop's
+// `SettingsSyncPayloadSchema` says of a payload holding that one leaf: the core must take a
+// value exactly when desktop does, or one bad leaf holds back every synced setting there.
+const TARGET = { provider: 'google', remoteCalendarId: 'primary' }
+const CALENDAR_LEAF_PROBES: Array<[string, unknown[]]> = [
+  ['calendar.weekStartDay', ['sunday', 'monday', 'tuesday', 'Sunday', null, 0]],
+  ['calendar.showNotesOnCalendar', [true, false, 'true', null]],
+  [
+    'calendar.defaultWriteTarget',
+    [TARGET, null, 'garbage', {}, { provider: 'google' }, { ...TARGET, provider: 1 }]
+  ],
+  ['calendar.google.defaultTargetCalendarId', ['primary', null, 5, true]],
+  ['calendar.google.onboardingCompleted', [true, null, 'yes']],
+  ['calendar.google.promoteConfirmDismissed', [false, 1]],
+  ['calendar.google.pushEventsToGoogle', [false, null, 'no']],
+  ['calendar.google.agentReadEventsConsent', [true, null, 'yes']],
+  ['calendar.caldav.agentReadEventsConsent', [false, null, 'yes']],
+  ['calendar.caldav.pushEventsToProvider', [false, null, 'no']],
+  ['calendar.ics.agentReadEventsConsent', [true, null, 1]],
+  ['calendar.ics.pushEventsToProvider', [true, null, 'no']]
+]
+
+function calendarLeaves(): Array<{ path: string; value: unknown; accepted: boolean }> {
+  return CALENDAR_LEAF_PROBES.flatMap(([path, values]) =>
+    values.map((value) => {
+      const settings = path
+        .split('.')
+        .reduceRight<unknown>((inner, key) => ({ [key]: inner }), value)
+      const accepted = SettingsSyncPayloadSchema.safeParse({ settings, fieldClocks: {} }).success
+      return { path, value, accepted }
+    })
+  )
+}
+
 export function buildSettingsGroups(): Record<string, unknown> {
   return {
     meta: meta({
@@ -217,6 +290,7 @@ export function buildSettingsGroups(): Record<string, unknown> {
       'general.fontSizePx': { min: FONT_SIZE_PX_MIN, max: FONT_SIZE_PX_MAX },
       'general.zoomFactor': { min: ZOOM_FACTOR_MIN, max: ZOOM_FACTOR_MAX }
     },
-    groups: GROUPS
+    groups: GROUPS,
+    calendarLeaves: calendarLeaves()
   }
 }

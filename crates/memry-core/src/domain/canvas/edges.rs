@@ -15,6 +15,7 @@ use rusqlite::{Connection, params};
 
 use crate::api::errors::StorageError;
 use crate::domain::notes::failed;
+use crate::storage::nested_tx;
 
 use super::scene_refs::{CanvasEntityRef, entity_edges, entity_refs};
 
@@ -29,7 +30,7 @@ pub struct CanvasEdge {
 
 /// Replaces the canvas's refs and edges with those its scene draws.
 pub fn rewrite(index: &Connection, canvas_id: &str, scene: &str) -> Result<(), StorageError> {
-    let tx = index.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(index).map_err(failed)?;
     clear_in(&tx, canvas_id)?;
     for card in entity_refs(scene) {
         tx.execute(
@@ -60,7 +61,7 @@ pub fn rewrite(index: &Connection, canvas_id: &str, scene: &str) -> Result<(), S
 
 /// Drops the canvas's refs and edges, for a deleted canvas.
 pub fn clear(index: &Connection, canvas_id: &str) -> Result<(), StorageError> {
-    let tx = index.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(index).map_err(failed)?;
     clear_in(&tx, canvas_id)?;
     tx.commit().map_err(failed)
 }
@@ -83,6 +84,25 @@ pub fn for_entity(
         index,
         "WHERE (source_type = ?1 AND source_id = ?2) OR (target_type = ?1 AND target_id = ?2)",
         params![entity_type, entity_id],
+    )
+}
+
+/// Edges on a live canvas with a note, task or project card at either end whose id is in
+/// `ids`, a JSON array (`getCanvasEdgesTouching` with the graph's card types). The type is
+/// part of the filter so both lookups use the `(type, id)` indexes.
+pub fn touching(
+    data: &Connection,
+    index: &Connection,
+    ids: &str,
+) -> Result<Vec<CanvasEdge>, StorageError> {
+    edges_where(
+        data,
+        index,
+        "WHERE (source_type IN ('note', 'task', 'project') \
+           AND source_id IN (SELECT value FROM json_each(?1))) \
+         OR (target_type IN ('note', 'task', 'project') \
+           AND target_id IN (SELECT value FROM json_each(?1)))",
+        params![ids],
     )
 }
 

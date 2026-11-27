@@ -273,7 +273,7 @@ pub(crate) fn holds_journal_days(
 
 /// The entry of a folder that a name in it is ([`sibling_named`]).
 #[derive(Debug, PartialEq, Eq)]
-pub(super) enum Sibling {
+pub(crate) enum Sibling {
     /// No entry, or no folder.
     Missing,
     /// The entry, as the folder lists it.
@@ -288,7 +288,7 @@ pub(super) enum Sibling {
 /// Unicode form, as `dir` lists it: one spelled as `segment` in any Unicode form, else the one
 /// that differs from it in case only. Every volume answers alike, so a vault copied between
 /// them keeps one spelling per folder.
-pub(super) fn sibling_named(dir: &Path, segment: &str) -> io::Result<Sibling> {
+pub(crate) fn sibling_named(dir: &Path, segment: &str) -> io::Result<Sibling> {
     let entries = match fs::read_dir(dir) {
         Ok(entries) => entries,
         Err(error) if error.kind() == ErrorKind::NotFound => return Ok(Sibling::Missing),

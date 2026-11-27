@@ -102,7 +102,7 @@ test('typing into today saves the day to its file and its document', async ({
   await expect(page.locator('.bn-editor').first()).toContainText('Today I am testing the journal.')
 })
 
-test('a #tag typed into a day joins its tags on the record, and the file keeps its own', async ({
+test('a #tag typed into a day joins its tags on the record and its file', async ({
   page,
   testVaultPath
 }) => {
@@ -125,11 +125,13 @@ test('a #tag typed into a day joins its tags on the record, and the file keeps i
   const text = await pollUntil(
     async () => {
       const read = readFileSync(file, 'utf8')
-      return read.includes('#reflection') ? read : undefined
+      return read.includes('#reflection') && /^tags:/m.test(read) ? read : undefined
     },
     { timeoutMs: 20_000 }
   )
-  expect(text).not.toMatch(/^tags:/m)
+  // #5509 reverses #3530 on Tauri: the day's file says its record's tags, as Electron's
+  // `composeJournalEntry` writes them.
+  expect(text).toMatch(/^tags:\n {2}- reflection$/m)
 })
 
 interface MonthEntry {

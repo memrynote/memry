@@ -360,4 +360,27 @@ describe('createCrdtSnapshotBatchPush', () => {
 
     expect(onPushed.mock.calls.map(([noteId]) => noteId)).toEqual(['note-a'])
   })
+
+  it('marks every batched note sent before the request leaves (#5371)', async () => {
+    // #given a batch request whose reply is lost
+    const order: string[] = []
+    pushCrdtSnapshotBatchMock.mockImplementation(async () => {
+      order.push('request')
+      throw new TypeError('fetch failed')
+    })
+    const { deps } = createDeps({ onSending: (noteIds) => order.push(`sent ${noteIds.join(',')}`) })
+
+    // #when
+    vi.useFakeTimers()
+    const done = createCrdtSnapshotBatchPush(deps)([entry('note-a'), entry('note-b')]).catch(
+      () => {}
+    )
+    await vi.runAllTimersAsync()
+    await done
+    vi.useRealTimers()
+
+    // #then both notes were recorded before the request
+    expect(order[0]).toBe('sent note-a,note-b')
+    expect(order).toContain('request')
+  })
 })

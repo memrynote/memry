@@ -24,7 +24,7 @@ fn a_file_is_taken_as_read_with_its_writing_frontmatter_and_when_that_does_not_p
             &super::super::converter_for(None),
             &id,
             "w.md",
-            "",
+            None,
             &memry_core::markdown::convert::NoEmbeds,
         )
         .unwrap();

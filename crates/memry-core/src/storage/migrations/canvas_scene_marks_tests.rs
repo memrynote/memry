@@ -1,4 +1,4 @@
-//! Data migration 0037, `canvas_scene_marks`: kept apart from `tests.rs` for its line ceiling.
+//! Data migration 0047, `canvas_scene_marks`: kept apart from `tests.rs` for its line ceiling.
 
 use super::*;
 use crate::storage::Db;

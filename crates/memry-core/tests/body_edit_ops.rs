@@ -1329,6 +1329,31 @@ fn duplicate_ids_read_as_the_first_valid_copy() {
     assert_eq!(bodies, [Some("first")]);
 }
 
+/// Two devices that move the same mark at once leave two elements with its id.
+/// The reference reads the first well-formed one; reading both would show the
+/// comment twice here and once on desktop.
+#[test]
+fn a_mark_replaced_on_two_devices_at_once_reads_once_as_the_reference_reads_it() {
+    let copy = |start: f64| {
+        mark(&[
+            ("id", Any::String("c1".into())),
+            ("kind", Any::String("comment".into())),
+            ("visibleText", Any::String("x".into())),
+            ("start", Any::Number(start)),
+            ("end", Any::Number(start + 1.0)),
+        ])
+    };
+    let malformed = mark(&[("id", Any::String("c1".into()))]);
+    let document = opened(&comments_doc(vec![malformed, copy(2.0), copy(5.0)]));
+
+    let comments = memry_core::crdt::comments::extract_comments(&document).expect("comments");
+    let read: Vec<(&str, u32)> = comments
+        .iter()
+        .map(|comment| (comment.id.as_str(), comment.start))
+        .collect();
+    assert_eq!(read, [("c1", 2)]);
+}
+
 /// All four kinds the reference accepts, and nothing invented alongside them.
 #[test]
 fn the_four_kinds_are_the_four_the_reference_accepts() {
@@ -1765,4 +1790,143 @@ fn an_in_place_set_text_edits_at_byte_offsets_around_multibyte_text() {
     .expect("edit");
     let blocks = extract_blocks(&document).expect("blocks");
     assert_eq!(text_of(&blocks[0]), "日記 🌙☀️ the end");
+}
+
+/// Each run of block `a`: a node by its kind, text as itself.
+fn spelled(document: &Document) -> Vec<String> {
+    let block = extract_blocks(document)
+        .expect("blocks")
+        .into_iter()
+        .find(|block| block.id.as_deref() == Some("a"))
+        .expect("a");
+    block
+        .inline
+        .iter()
+        .map(|run| {
+            run.marks
+                .iter()
+                .find(|mark| ["wikiLink", "dateMention"].contains(&mark.as_str()))
+                .cloned()
+                .unwrap_or_else(|| run.text.clone())
+        })
+        .collect()
+}
+
+fn atom(at: u32, kind: &str) -> BlockEdit {
+    BlockEdit::InsertInline {
+        block_id: "a".to_owned(),
+        start: at,
+        end: at,
+        kind: kind.to_owned(),
+        text: String::new(),
+        attrs: inline_attrs(&[("target", "x")]),
+    }
+}
+
+/// #4765: a node with no text has no width in the offsets, so an empty
+/// range at its offset is both before and after it. The run holding the
+/// character at that offset decides: the shell writes a node's space first
+/// and puts the node before that space, which lies after the earlier node.
+#[test]
+fn an_empty_range_at_a_textless_node_lands_after_it() {
+    for (first, second) in [("wikiLink", "dateMention"), ("dateMention", "wikiLink")] {
+        let document = opened(&body(&[("a", "paragraph", "q  z")]));
+        apply(&document, &atom(2, first)).expect("the first node");
+        assert_eq!(spelled(&document), ["q ", first, " z"]);
+
+        apply(&document, &atom(2, second)).expect("the second node");
+        assert_eq!(spelled(&document), ["q ", first, second, " z"]);
+    }
+}
+
+/// With no text after the node, the range still lands, in the run before it.
+#[test]
+fn an_empty_range_at_a_trailing_textless_node_still_lands() {
+    let document = opened(&body(&[("a", "paragraph", "q ")]));
+    apply(&document, &atom(2, "wikiLink")).expect("the link");
+    apply(&document, &atom(2, "dateMention")).expect("the date");
+    assert_eq!(spelled(&document), ["q ", "dateMention", "wikiLink"]);
+}
+
+/// #4808: offsets are UTF-8 bytes. A node after multibyte text keeps the
+/// text after it: counting the run in characters made the tail look empty.
+#[test]
+fn a_node_after_multibyte_text_keeps_the_text_after_it() {
+    let document = opened(&body(&[("a", "paragraph", "A にほn  z")]));
+    apply(&document, &atom("A にほn ".len() as u32, "dateMention")).expect("the date");
+    assert_eq!(spelled(&document), ["A にほn ", "dateMention", " z"]);
+}
+
+/// #4398: an offset inside a character is refused, and the block is left as
+/// it was. yrs underflowed on it: a panic in debug, a wrapped length in
+/// release.
+#[test]
+fn a_node_inside_a_character_is_refused() {
+    let document = opened(&body(&[("a", "paragraph", "A 語 z")]));
+    for (start, end) in [(3, 3), (2, 3), (3, 5)] {
+        let refused = apply(
+            &document,
+            &BlockEdit::InsertInline {
+                block_id: "a".to_owned(),
+                start,
+                end,
+                kind: "dateMention".to_owned(),
+                text: String::new(),
+                attrs: inline_attrs(&[("date", "2026-01-01")]),
+            },
+        );
+        assert!(
+            matches!(
+                refused,
+                Err(memry_core::crdt::CrdtError::Undecodable { .. })
+            ),
+            "{start}..{end}: {refused:?}"
+        );
+        assert_eq!(spelled(&document), ["A 語 z"]);
+    }
+}
+
+/// #4808: a multibyte tail with a mark in it comes back whole and with the
+/// mark where it was.
+#[test]
+fn a_formatted_multibyte_tail_keeps_its_text_and_marks() {
+    let document = opened(&body(&[("a", "paragraph", "q にほん語 z")]));
+    let bold = "q にほ".len() as u32;
+    apply(
+        &document,
+        &BlockEdit::SetMark {
+            block_id: "a".to_owned(),
+            start: bold,
+            end: bold + "ん語".len() as u32,
+            mark: "bold".to_owned(),
+            value: None,
+        },
+    )
+    .expect("bold");
+    apply(&document, &atom(2, "wikiLink")).expect("the link");
+    let block = extract_blocks(&document)
+        .expect("blocks")
+        .into_iter()
+        .find(|block| block.id.as_deref() == Some("a"))
+        .expect("a");
+    let runs: Vec<(String, bool)> = block
+        .inline
+        .iter()
+        .map(|run| {
+            (
+                run.text.clone(),
+                run.marks.iter().any(|mark| mark == "bold"),
+            )
+        })
+        .collect();
+    assert_eq!(
+        runs,
+        [
+            ("q ".to_owned(), false),
+            (String::new(), false),
+            ("にほ".to_owned(), false),
+            ("ん語".to_owned(), true),
+            (" z".to_owned(), false),
+        ]
+    );
 }

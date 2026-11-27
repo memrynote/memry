@@ -129,6 +129,23 @@ pub fn open(purpose: Purpose, envelope: &str, key: &[u8; 32]) -> Result<String, 
     Ok(text.strip_prefix('\u{FEFF}').unwrap_or(&text).to_owned())
 }
 
+/// Whether `envelope` is an envelope this build opens, checked without a key: the column JSON
+/// of version 1, a 24-byte nonce and a ciphertext at least as long as its tag. The Electron
+/// import (Step 36) copies sealed columns unopened and refuses one that fails this.
+pub fn well_formed(envelope: &str) -> bool {
+    let Ok(envelope) = serde_json::from_str::<Envelope>(envelope) else {
+        return false;
+    };
+    let nonce = base64_decode(&envelope.nonce);
+    let ciphertext = base64_decode(&envelope.ciphertext);
+    envelope.version == VERSION
+        && nonce.is_ok_and(|nonce| nonce.len() == NONCE_LEN)
+        && ciphertext.is_ok_and(|ciphertext| ciphertext.len() >= TAG_LEN)
+}
+
+/// The Poly1305 tag every ciphertext ends with.
+const TAG_LEN: usize = 16;
+
 /// The vault key the agent stores seal under, shared by the [`Vault`] that
 /// installs it and the writers that seal with it. Zeroed when replaced or
 /// dropped.
@@ -294,5 +311,32 @@ mod tests {
             Err(SealError::KeyUnavailable)
         ));
         assert_eq!(format!("{key:?}"), "AtRestKey(..)");
+    }
+
+    #[test]
+    fn well_formed_accepts_only_an_envelope_this_build_opens() {
+        let sealed = seal(Purpose::ConversationTitle, "t", &KEY).expect("seal");
+        assert!(well_formed(&sealed));
+        let short_nonce = format!(
+            r#"{{"version":1,"nonce":"{}","ciphertext":"{}"}}"#,
+            base64_encode(&[0; 12]),
+            base64_encode(&[0; 16])
+        );
+        let short_text = format!(
+            r#"{{"version":1,"nonce":"{}","ciphertext":"{}"}}"#,
+            base64_encode(&[0; NONCE_LEN]),
+            base64_encode(&[0; 15])
+        );
+        let v2 = sealed.replace(r#""version":1"#, r#""version":2"#);
+        for column in [
+            "t",
+            "",
+            "{}",
+            short_nonce.as_str(),
+            short_text.as_str(),
+            v2.as_str(),
+        ] {
+            assert!(!well_formed(column), "{column}");
+        }
     }
 }

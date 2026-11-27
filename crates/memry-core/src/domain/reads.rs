@@ -156,11 +156,12 @@ pub fn folders(conn: &Connection) -> Result<Vec<FolderSummary>, StorageError> {
 /// are different values rather than the same absent one.
 pub fn notes(conn: &Connection) -> Result<Vec<NoteSummary>, StorageError> {
     let mut statement = conn
-        .prepare(
+        .prepare(&format!(
             "SELECT id, title, folder_path, emoji, created_at, modified_at, aliases FROM notes \
-             WHERE deleted_at IS NULL \
+             WHERE deleted_at IS NULL AND {} \
              ORDER BY COALESCE(modified_at, created_at, 0) DESC, id",
-        )
+            crate::domain::journal::not_a_journal_day("id")
+        ))
         .map_err(failed)?;
     let rows = statement.query_map([], read_summary).map_err(failed)?;
     rows.collect::<Result<Vec<_>, _>>().map_err(failed)
@@ -195,9 +196,10 @@ pub fn tags(conn: &Connection) -> Result<Vec<TagSummary>, StorageError> {
     let mut statement = conn
         .prepare(&format!(
             "SELECT MIN(t.tag), COUNT(DISTINCT t.note_id) FROM {ALL_NOTE_TAGS} t \
-             JOIN notes n ON n.id = t.note_id AND n.deleted_at IS NULL \
+             JOIN notes n ON n.id = t.note_id AND n.deleted_at IS NULL AND {} \
              GROUP BY tag_fold(t.tag) \
-             ORDER BY COUNT(DISTINCT t.note_id) DESC, tag_fold(MIN(t.tag)), MIN(t.tag)"
+             ORDER BY COUNT(DISTINCT t.note_id) DESC, tag_fold(MIN(t.tag)), MIN(t.tag)",
+            crate::domain::journal::not_a_journal_day("n.id")
         ))
         .map_err(failed)?;
     let rows = statement
@@ -224,9 +226,10 @@ pub fn notes_tagged(conn: &Connection, tag: &str) -> Result<Vec<NoteSummary>, St
     let mut statement = conn
         .prepare(&format!(
             "SELECT n.id, n.title, n.folder_path, n.emoji, n.created_at, n.modified_at, n.aliases \
-             FROM notes n WHERE n.deleted_at IS NULL AND EXISTS (SELECT 1 FROM \
+             FROM notes n WHERE n.deleted_at IS NULL AND {} AND EXISTS (SELECT 1 FROM \
              {ALL_NOTE_TAGS} t WHERE t.note_id = n.id AND tag_fold(t.tag) = tag_fold(?1)) \
-             ORDER BY COALESCE(n.modified_at, n.created_at, 0) DESC, n.id"
+             ORDER BY COALESCE(n.modified_at, n.created_at, 0) DESC, n.id",
+            crate::domain::journal::not_a_journal_day("n.id")
         ))
         .map_err(failed)?;
     let rows = statement.query_map([tag], read_summary).map_err(failed)?;

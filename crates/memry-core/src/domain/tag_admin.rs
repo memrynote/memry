@@ -22,6 +22,7 @@ use crate::domain::notes::{self, edit_in, failed, iso, object, tombstone_local};
 use crate::domain::recreate::write_over_tombstone;
 use crate::domain::tag_retag::{delete_shared, merge_shared, merge_target, retagged_list};
 use crate::domain::{body_tags, tags, tasks};
+use crate::storage::nested_tx;
 use crate::storage::repositories::{Change, sync_items};
 use crate::sync::outbox;
 
@@ -426,7 +427,7 @@ pub(crate) fn upsert_definition(
     device_id: &str,
     now_ms: i64,
 ) -> Result<(), StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     upsert_definition_in(&tx, name, template, changes, device_id, now_ms)?;
     tx.commit().map_err(failed)
 }
@@ -571,6 +572,19 @@ pub fn set_icon(
         device_id,
         now_ms,
     )
+}
+
+/// A tag's saved folder views (`saveTagViews`), whole: an empty list is pushed, so peers clear
+/// theirs too. Creates the tag's definition when it has none, inside the caller's transaction.
+pub fn set_views(
+    tx: &Connection,
+    tag: &str,
+    views: Vec<Value>,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<(), StorageError> {
+    let changes = vec![("views", Change::Set(Value::Array(views)))];
+    upsert_definition_in(tx, tag, None, changes, device_id, now_ms)
 }
 
 #[cfg(test)]

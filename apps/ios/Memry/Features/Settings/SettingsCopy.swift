@@ -103,7 +103,7 @@ enum SettingsCopy {
     static let onThisPhone = "On this \(ThisDevice.noun)"
     static let inAccount = "In your account"
     static let openVault = "Open"
-    static let currentVault = "Open now"
+    static let currentVault = "Current"
     static let download = "Download"
     static let unnamedVault = "Unnamed vault"
     static func vaultsFooter(_ max: Int64?) -> String {
@@ -132,9 +132,13 @@ enum SettingsCopy {
     static let folders = "Folders"
     static let newNotesFooter = "This \(ThisDevice.noun). New notes from the + button land here."
     static let checkSpelling = "Check spelling"
+    static let editorWidth = "Editor width"
+    static let editorWidthNormal = "Normal"
+    static let editorWidthFull = "Full width"
     static let privacy = "Privacy"
     static let usageMetrics = "Share Anonymous Usage Metrics"
-    static let privacyFooter = "This \(ThisDevice.noun). Metrics never include note content, titles or tags."
+    static let handoff = "Handoff between devices"
+    static let privacyFooter = "This \(ThisDevice.noun). Off stops this \(ThisDevice.noun) offering the open note, day or task to your other devices; it still opens what they hand off. Handoff shares which item is open, never its text. Metrics never include note content, titles or tags."
 
     // Appearance
     static let colorMode = "Color Mode"
@@ -158,7 +162,6 @@ enum SettingsCopy {
     static func version(_ version: String, _ build: String) -> String { "Version \(version) (\(build))" }
     static let loveMemry = "Love memrynote?"
     static let starGitHub = "Star us on GitHub"
-    static let feedback = "Share feedback"
     static let privacyPolicy = "Privacy policy"
     static let terms = "Terms"
     static let licenses = "Open-source licenses"

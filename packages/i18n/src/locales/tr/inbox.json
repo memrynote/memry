@@ -579,7 +579,10 @@
       "journalOff": "Günlük Ayarlar’da kapalı.",
       "sendFailed": "Sticky gönderilemedi.",
       "undoExpired": "Bunu geri almak için çok geç.",
-      "undoFailed": "Gönderim geri alınamadı."
+      "undoFailed": "Gönderim geri alınamadı.",
+      "journalBusy": "Bugünün günlük kaydı hâlâ kaydediliyor. Birazdan tekrar dene.",
+      "folderExcluded": "Sticky klasörü hariç tutuluyor. Not göndermek için onu Ayarlar’daki hariç tutulan klasörlerden çıkar.",
+      "projectMissing": "Bu görevin projesi yok. Ayarlar’dan varsayılan bir proje seç ya da bunu not olarak gönder."
     },
     "inputLabel": "Sticky metni",
     "dismissError": "Kapat"

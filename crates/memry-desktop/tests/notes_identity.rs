@@ -735,6 +735,45 @@ fn a_large_files_note_that_shrinks_queues_its_record_before_its_body() {
     assert!(!e.core().note_files().is_large_file(&id).unwrap());
 }
 
+/// A crash after a large file's note was made and before its row was recorded, then the file
+/// shrinking while the app is closed (#4326): the next open claims the note for the file, and
+/// its record is queued as for a shrink seen live, so it reaches the server.
+#[test]
+fn a_large_files_note_claimed_after_a_crash_and_a_shrink_queues_its_record() {
+    let mut e = notes_env();
+    e.open();
+    e.facts_until(indexed);
+    e.write("logs/dump.md", &"word\n\n".repeat(NOTE_MAX_BYTES / 6 + 1));
+    e.facts_until(added("logs/dump.md"));
+    let id = row_id(&e, "logs/dump.md").expect("the file is listed");
+    assert!(!outbox(&e).iter().any(|(_, item)| *item == id), "pushed");
+    let crashed = id.clone();
+    e.core()
+        .db_handle()
+        .call_blocking(move |conn| {
+            conn.execute("DELETE FROM note_files WHERE note_id = ?1", [&crashed])
+                .unwrap();
+            Ok(())
+        })
+        .unwrap();
+
+    e.close();
+    e.drain();
+    fs::write(e.vault.join("logs/dump.md"), "Small now\n").unwrap();
+    e.open();
+    e.facts_until(indexed);
+
+    assert_eq!(row_id(&e, "logs/dump.md").as_deref(), Some(id.as_str()));
+    assert!(
+        outbox(&e)
+            .iter()
+            .any(|(op, item)| *item == id && op == "upsert"),
+        "{:?}",
+        outbox(&e)
+    );
+    assert!(!e.core().note_files().is_large_file(&id).unwrap());
+}
+
 /// The outside removal of a large file's note with no text anywhere deletes it, as Electron
 /// does (#4326): a later file at its path is a new note, never the gone note's text.
 #[test]

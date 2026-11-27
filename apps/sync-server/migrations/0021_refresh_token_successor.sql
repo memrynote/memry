@@ -1,0 +1,13 @@
+-- The token a rotation issued in place of this one (protocol 02 section 2.9).
+-- A client whose refresh response was lost (main thread stalled past its
+-- request timeout) retries with the token the server already rotated. The
+-- server re-issues for that token only while this successor is unused, so a
+-- reuse after the successor was spent still reads as theft.
+--
+-- Backward compatibility:
+--   * Nullable, no default, no backfill. A row rotated before this column
+--     existed reads NULL and gets no grace, exactly what a reuse got before.
+--     The grace window is minutes, so such rows age out of it right away.
+--   * A Worker deployed before this migration (or rolled back after it) names
+--     its UPDATE and INSERT columns and never writes this one.
+ALTER TABLE refresh_tokens ADD COLUMN replaced_by TEXT;

@@ -128,6 +128,30 @@ fn a_renamed_file_whose_attachment_is_gone_is_reuploaded() {
     );
 }
 
+/// A file renamed in the note folder keeps its live attachment while another
+/// id, named by no record, is gone: the moved record still holds the file
+/// under its new name, so it is not uploaded again.
+#[test]
+fn a_moved_file_with_a_live_id_is_not_reuploaded() {
+    let plan = ChangePlan::for_note(&NoteAttachments {
+        files: strings(&["attachments/n1/abc123-new.png", "img/z.png"]),
+        records: vec![record("attachments/n1/abc123-old.png", Some("live"), false)],
+        references: strings(&["live", "g"]),
+        gone: set(&["g"]),
+        ..note()
+    });
+    assert_eq!(plan.keep, strings(&["live"]));
+    assert_eq!(plan.drop_gone, strings(&["g"]));
+    assert_eq!(
+        plan.move_records,
+        vec![RecordMove {
+            from: "attachments/n1/abc123-old.png".to_owned(),
+            to: "attachments/n1/abc123-new.png".to_owned(),
+        }]
+    );
+    assert_eq!(plan.reupload, strings(&["img/z.png"]));
+}
+
 #[test]
 fn a_local_only_note_offers_nothing() {
     let plan = ChangePlan::for_note(&NoteAttachments {
@@ -323,6 +347,36 @@ fn renamed_gone_note() -> impl Strategy<Value = NoteAttachments> {
     })
 }
 
+/// `any_note` plus a file renamed in the note folder that keeps a live id,
+/// next to a gone id no record names: the shape where a reupload set built
+/// from the records before their moves would take the live file.
+fn moved_live_note() -> impl Strategy<Value = NoteAttachments> {
+    any_note().prop_map(|mut note| {
+        note.local_only = false;
+        note.files.push("attachments/n1/ppp888-new.png".to_owned());
+        note.records
+            .push(record("attachments/n1/ppp888-old.png", Some("live"), false));
+        note.references.push("live".to_owned());
+        note.references.push("unnamed".to_owned());
+        note.gone.insert("unnamed".to_owned());
+        note
+    })
+}
+
+/// The note's records with the plan's moves applied.
+fn records_after_moves(note: &NoteAttachments, plan: &ChangePlan) -> Vec<FileRecord> {
+    let mut records = note.records.clone();
+    for RecordMove { from, to } in &plan.move_records {
+        let row = records
+            .iter_mut()
+            .find(|r| r.path == *from)
+            .expect("moved row");
+        row.path = to.clone();
+        row.on_disk = true;
+    }
+    records
+}
+
 proptest! {
     #![proptest_config(proptest_config(512))]
 
@@ -350,12 +404,7 @@ proptest! {
         note in prop_oneof![any_note(), renamed_gone_note()],
     ) {
         let plan = ChangePlan::for_note(&note);
-        let mut records = note.records.clone();
-        for RecordMove { from, to } in &plan.move_records {
-            let row = records.iter_mut().find(|r| r.path == *from).expect("moved row");
-            row.path = to.clone();
-            row.on_disk = true;
-        }
+        let records = records_after_moves(&note, &plan);
         let named: BTreeSet<&String> = note
             .references
             .iter()
@@ -372,6 +421,44 @@ proptest! {
                     "{} holds gone {id} and is not reuploaded", record.path
                 );
             }
+        }
+    }
+
+    /// Only files that can hold a gone id go up again: a file whose record
+    /// (after the moves) names a gone id, the file note's own file, or, while
+    /// a gone id has no record, a file no live attachment holds.
+    #[test]
+    fn only_files_of_gone_or_unrecorded_attachments_are_reuploaded(
+        note in prop_oneof![any_note(), renamed_gone_note(), moved_live_note()],
+    ) {
+        let plan = ChangePlan::for_note(&note);
+        let records = records_after_moves(&note, &plan);
+        let gone: BTreeSet<&String> = note
+            .references
+            .iter()
+            .chain(&note.uploaded)
+            .chain(&note.own_attachment_id)
+            .filter(|id| note.gone.contains(*id) && !note.local_only)
+            .collect();
+        let unnamed_gone = gone.iter().any(|id| {
+            !records.iter().any(|r| r.attachment_id.as_ref() == Some(*id))
+        });
+        for path in &plan.reupload {
+            let of_gone = records.iter().any(|r| {
+                r.path == *path
+                    && r.on_disk
+                    && r.attachment_id.as_ref().is_some_and(|id| gone.contains(id))
+            });
+            let held_live = records.iter().any(|r| {
+                r.path == *path && r.attachment_id.as_ref().is_some_and(|id| !gone.contains(id))
+            });
+            let unrecorded = unnamed_gone && note.files.contains(path) && !held_live;
+            let own_file = note.file_note_path.as_ref() == Some(path)
+                && note.own_attachment_id.as_ref().is_some_and(|id| gone.contains(id));
+            prop_assert!(
+                of_gone || unrecorded || own_file,
+                "{path} is reuploaded and holds no gone attachment"
+            );
         }
     }
 

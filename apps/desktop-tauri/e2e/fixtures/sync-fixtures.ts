@@ -9,6 +9,7 @@ import { waitForAppReady } from '../harness/app-helpers'
 import { expect } from '../harness/pw-compat/expect'
 import type { Page } from '../harness/pw-compat/page'
 import { test as base } from '../harness/test'
+import { vaultStatus } from '../harness/vault-commands'
 
 function createTestVault(prefix: string): string {
   const vaultPath = mkdtempSync(join(tmpdir(), prefix))
@@ -23,7 +24,7 @@ async function waitForVaultPath(
   timeout = 15000
 ): Promise<void> {
   await expect
-    .poll(() => page.evaluate(() => window.api.vault.getStatus()), { timeout })
+    .poll(() => vaultStatus(page), { timeout })
     .toMatchObject({ isOpen: true, path: expectedVaultPath })
 }
 

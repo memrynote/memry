@@ -194,6 +194,43 @@ test.describe('Editor command flows E2E', () => {
       )
   })
 
+  // #5606: on Windows, Chromium hands a paste `image.png` with no bytes when it
+  // cannot read the clipboard image. It used to be written as an empty file
+  // and embedded as a broken image; the user is told now, and nothing lands:
+  // no file, and no image block left reading "Loading...".
+  test('refuses a pasted image with no bytes and says why', async ({ page }) => {
+    const title = uniqueLabel('Empty Paste')
+    await createNote(page, title)
+    await focusEditor(page)
+
+    await page.evaluate(() => {
+      const data = new DataTransfer()
+      data.items.add(new File([], 'image.png', { type: 'image/png' }))
+      document
+        .querySelector('[aria-label="Rich text editor"] [contenteditable="true"]')
+        ?.dispatchEvent(
+          new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true })
+        )
+    })
+
+    await expect(page.getByText('This file is empty, so it was not attached.')).toBeVisible()
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          (window as any).__memryActiveEditor.document.map((block: any) => block.type)
+        )
+      )
+      .not.toContain('image')
+    await expect(page.locator('.bn-file-loading-preview')).toHaveCount(0)
+    const attachments = await page.evaluate(async (noteTitle) => {
+      const notes = await window.api.notes.list({ limit: 100 })
+      const note = notes.notes.find((item) => item.title === noteTitle)
+      if (!note) throw new Error('note not found')
+      return window.api.notes.listAttachments(note.id)
+    }, title)
+    expect(attachments).toEqual([])
+  })
+
   test('opens AI inline commands, invokes a selection command, and cancels the menu', async ({
     page
   }) => {

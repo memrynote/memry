@@ -28,6 +28,8 @@ vi.mock('../http-client', () => ({
   postToServer: vi.fn()
 }))
 
+vi.mock('../sync-vault-id', () => ({ getSyncVaultId: async () => 'vault-a' }))
+
 vi.mock('@memry/sync-client/retry', () => ({
   withRetry: vi.fn(async (fn: () => Promise<unknown>) => ({ value: await fn() }))
 }))
@@ -62,7 +64,7 @@ const purged = (
         signerDeviceId: 'device-a',
         deleteAttestation: sodiumToBase64(
           signPayload(
-            deleteAttestationPayload({ id, type: type as 'task', deletedAt: 5, clock }),
+            deleteAttestationPayload({ id, type: type as 'task', deletedAt: 5, clock }, 'vault-a'),
             CBOR_FIELD_ORDER.DELETE_ATTESTATION,
             signer.privateKey
           ),
@@ -139,7 +141,7 @@ describe('CorruptItemTracker', () => {
 
   describe('markFailed', () => {
     describe('#given new item #when markFailed called', () => {
-      it('#then creates entry with attempts=1', () => {
+      it('#then puts the item on the cooldown', () => {
         const tracker = createTracker()
 
         tracker.markFailed({ id: 'item-1', type: 'task' })
@@ -149,7 +151,7 @@ describe('CorruptItemTracker', () => {
     })
 
     describe('#given existing failed item #when markFailed called again', () => {
-      it('#then increments attempts and item remains not retryable', () => {
+      it('#then item remains not retryable', () => {
         const tracker = createTracker()
         tracker.markFailed({ id: 'item-1', type: 'task' })
         tracker.markFailed({ id: 'item-1', type: 'task' })
@@ -267,6 +269,10 @@ describe('CorruptItemTracker', () => {
           invalid: [],
           blobMissing: [],
           skipped: [
+            { id: 'item-1', type: 'task' },
+            { id: 'item-2', type: 'task' }
+          ],
+          unanswered: [
             { id: 'item-1', type: 'task' },
             { id: 'item-2', type: 'task' }
           ]

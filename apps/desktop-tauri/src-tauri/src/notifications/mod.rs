@@ -20,8 +20,9 @@ use tauri::{AppHandle, Manager, Wry};
 use crate::commands::error::CommandError;
 use crate::startup::{self, Stage};
 
-/// Runs when a notification routed to its name is clicked.
-pub type ClickHandler = Arc<dyn Fn(&AppHandle<Wry>) + Send + Sync>;
+/// Runs when a notification routed to its name is clicked, with the key it was shown under
+/// (a reminder's id).
+pub type ClickHandler = Arc<dyn Fn(&AppHandle<Wry>, &str) + Send + Sync>;
 
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase", tag = "kind", content = "value")]
@@ -93,6 +94,9 @@ fn init(app: &AppHandle<Wry>) -> Result<(), CommandError> {
 /// A click on notification `id`, `None` when the platform could not say which one.
 fn route_click(app: &AppHandle<Wry>, id: Option<i32>) {
     let service = app.state::<NotificationService>();
+    let key = id
+        .and_then(|id| service.live().key_of(id))
+        .unwrap_or_default();
     let route = id
         .and_then(|id| service.live().route_of(id))
         // Bringing the app forward is still right for a notification it no longer remembers.
@@ -111,7 +115,7 @@ fn route_click(app: &AppHandle<Wry>, id: Option<i32>) {
                 .get(&name)
                 .cloned();
             match handler {
-                Some(handler) => handler(app),
+                Some(handler) => handler(app, &key),
                 None => tracing::info!(
                     scope = "Notifications",
                     "no click handler named {name}; the window only came forward"
@@ -157,6 +161,29 @@ impl NotificationService {
         #[cfg(not(target_os = "macos"))]
         {
             plugin::permission(app)
+        }
+    }
+
+    /// Withdraws the notifications shown under `key`, delivered or still to come: a reminder
+    /// dismissed, snoozed or deleted in the app (Electron's `removeDeliveredNotification`). On
+    /// macOS it waits for a show in progress, so a banner posted under `key` just before is
+    /// withdrawn too. Windows cannot withdraw a delivered toast (`plugin::withdraw`).
+    pub async fn withdraw(&self, app: &AppHandle<Wry>, key: &str) {
+        #[cfg(target_os = "macos")]
+        {
+            let _ = app;
+            let _turn = self.posting.lock().await;
+            let ids = self.live().forget(key);
+            if !ids.is_empty() {
+                mac::withdraw(&ids);
+            }
+        }
+        #[cfg(not(target_os = "macos"))]
+        {
+            let ids = self.live().forget(key);
+            if !ids.is_empty() {
+                plugin::withdraw(app, ids);
+            }
         }
     }
 

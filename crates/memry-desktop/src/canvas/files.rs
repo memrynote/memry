@@ -1,4 +1,4 @@
-//! `canvas_files` (data migration `0036`) and `canvas_scene_marks` (`0037`): where this device
+//! `canvas_files` (data migration `0037`) and `canvas_scene_marks` (`0047`): where this device
 //! keeps each canvas's `.excalidraw` document, and the point where the document and the record
 //! last agreed: the sha256 of the document's bytes and of the record's scene then. Device-local,
 //! never synced; the services here are their only writer, and only at an agreement.

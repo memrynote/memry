@@ -101,6 +101,15 @@ pub fn set(
     if !vault.is_dir() {
         return Err(IconError::Unreachable(path.to_owned()));
     }
+    write(vault, icon, now_ms)
+}
+
+/// [`set`] on an open vault, which needs no registry entry: the command line's
+/// `vault set-icon`. Nothing is written when the icon is invalid.
+pub fn write(vault: &Path, icon: Option<&str>, now_ms: i64) -> Result<StoredVaultIcon, IconError> {
+    if icon.is_some_and(|icon| !is_valid(icon)) {
+        return Err(IconError::Invalid);
+    }
     // The stamp is computed from the value read under the config's write lock, so two
     // changes in one millisecond stay ordered and a concurrent write cannot be overwritten.
     let mut written = None;

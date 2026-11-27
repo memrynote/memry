@@ -44,7 +44,7 @@ vi.mock('../store', () => ({
     env.stored = languages
   }
 }))
-vi.mock('./ocr-language-data', async () => {
+vi.mock('@memry/contracts/ocr-language-data', async () => {
   const { createHash } = await import('crypto')
   const pin = (text: string) => ({
     bytes: Buffer.byteLength(text),

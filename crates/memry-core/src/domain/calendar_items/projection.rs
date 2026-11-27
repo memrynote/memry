@@ -98,6 +98,16 @@ pub struct ProjectionItem {
     pub note_id: Option<String>,
     pub anchor_id: Option<String>,
     pub is_triggered: Option<bool>,
+    /// Task items only: what the calendar's status picker needs (`item.task`).
+    pub task: Option<TaskMeta>,
+}
+
+/// `CalendarProjectionItem.task`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TaskMeta {
+    pub project_id: String,
+    pub status_id: Option<String>,
+    pub is_completed: bool,
 }
 
 /// `GetCalendarRangeInput`, plus desktop's two side inputs.
@@ -106,6 +116,9 @@ pub struct RangeInput {
     pub start_at: String,
     pub end_at: String,
     pub include_unselected_sources: bool,
+    /// `includeCompletedTasks`: completed tasks stay in the range, flagged
+    /// `task.isCompleted` (the calendar page draws them faded).
+    pub include_completed_tasks: bool,
     /// `includeExternal: false` drops imported events entirely.
     pub include_external: bool,
     /// `externalProviders`: `None` = every provider.
@@ -349,14 +362,34 @@ fn memry_events(
                     note_id: None,
                     anchor_id: None,
                     is_triggered: None,
+                    task: None,
                 }
             },
         )
         .collect())
 }
 
-/// `(id, title, description, due_date, due_time)`.
-type TaskRow = (String, String, Option<String>, String, Option<String>);
+/// One dated task row (`loadTaskItems`).
+struct TaskRow {
+    id: String,
+    title: String,
+    description: Option<String>,
+    due_date: String,
+    due_time: Option<String>,
+    project_id: String,
+    status_id: Option<String>,
+    is_completed: bool,
+    /// `durationMinutes`, which has no column: read from the record's payload.
+    duration_minutes: Option<f64>,
+}
+
+/// `taskEditability(canResize)`: a task with a duration is a block that resizes.
+const fn task_editability(can_resize: bool) -> Editability {
+    Editability {
+        can_resize,
+        ..Editability::MOVE_TEXT_DELETE
+    }
+}
 
 fn tasks(
     conn: &Connection,
@@ -368,47 +401,73 @@ fn tasks(
     };
     let mut stmt = conn
         .prepare(
-            "SELECT id, title, description, due_date, due_time FROM tasks
-              WHERE deleted_at IS NULL AND due_date IS NOT NULL
-                AND due_date >= ?1 AND due_date <= ?2
-                AND completed_at IS NULL AND archived_at IS NULL
-              ORDER BY due_date, due_time, position",
+            "SELECT t.id, t.title, t.description, t.due_date, t.due_time, t.project_id,
+                    t.status_id, t.completed_at IS NOT NULL,
+                    json_extract(s.payload, '$.durationMinutes')
+               FROM tasks t
+               LEFT JOIN sync_items s ON s.item_type = 'task' AND s.item_id = t.id
+              WHERE t.deleted_at IS NULL AND t.due_date IS NOT NULL
+                AND t.due_date >= ?1 AND t.due_date <= ?2
+                AND (?3 OR t.completed_at IS NULL) AND t.archived_at IS NULL
+              ORDER BY t.due_date, t.due_time, t.position",
         )
         .map_err(failed)?;
     let rows: Vec<TaskRow> = stmt
-        .query_map([&start_date, &end_date], |row| {
-            Ok((
-                row.get(0)?,
-                row.get(1)?,
-                row.get(2)?,
-                row.get(3)?,
-                row.get(4)?,
-            ))
-        })
+        .query_map(
+            rusqlite::params![start_date, end_date, input.include_completed_tasks],
+            |row| {
+                Ok(TaskRow {
+                    id: row.get(0)?,
+                    title: row.get(1)?,
+                    description: row.get(2)?,
+                    due_date: row.get(3)?,
+                    due_time: row.get(4)?,
+                    project_id: row.get(5)?,
+                    status_id: row.get(6)?,
+                    is_completed: row.get(7)?,
+                    duration_minutes: row.get::<_, Option<f64>>(8).unwrap_or(None),
+                })
+            },
+        )
         .map_err(failed)?
         .collect::<Result<_, _>>()
         .map_err(failed)?;
-    let ids: Vec<String> = rows.iter().map(|r| r.0.clone()).collect();
+    let ids: Vec<String> = rows.iter().map(|r| r.id.clone()).collect();
     let bindings = bindings_by_source(conn, "task", &ids)?;
     Ok(rows
         .into_iter()
-        .filter_map(|(id, title, description, due_date, due_time)| {
-            let date = CivilDate::parse_key(due_date.get(..10)?)?;
-            let due_time = due_time.filter(|t| !t.is_empty());
+        .filter_map(|row| {
+            let date = CivilDate::parse_key(row.due_date.get(..10)?)?;
+            let due_time = row.due_time.filter(|t| !t.is_empty());
             let is_all_day = due_time.is_none();
+            let start_at = local_instant(zone, date, due_time.as_deref());
+            let block_minutes = row.duration_minutes.filter(|_| !is_all_day);
+            // `blockMinutes ? start + minutes : null`: zero minutes is no block.
+            let end_at = if is_all_day {
+                Some(local_all_day_end(zone, date))
+            } else {
+                block_minutes
+                    .filter(|minutes| *minutes != 0.0 && minutes.is_finite())
+                    .and_then(|minutes| {
+                        let start = instants::to_epoch_ms(&start_at)?;
+                        #[allow(clippy::cast_possible_truncation)]
+                        let span = (minutes * 60_000.0) as i64;
+                        Some(iso(start.checked_add(span)?))
+                    })
+            };
             Some(ProjectionItem {
-                projection_id: format!("task:{id}"),
+                projection_id: format!("task:{}", row.id),
                 source_type: "task".to_owned(),
-                binding: bindings.get(&id).cloned(),
-                source_id: id,
-                title,
-                description_preview: description_preview(description.as_deref()),
-                start_at: local_instant(zone, date, due_time.as_deref()),
-                end_at: is_all_day.then(|| local_all_day_end(zone, date)),
+                binding: bindings.get(&row.id).cloned(),
+                source_id: row.id,
+                title: row.title,
+                description_preview: description_preview(row.description.as_deref()),
+                start_at,
+                end_at,
                 is_all_day,
                 timezone: input.local_timezone.clone(),
                 visual_type: "task".to_owned(),
-                editability: Editability::MOVE_TEXT_DELETE,
+                editability: task_editability(block_minutes.is_some()),
                 source: native_source("memrynote Tasks"),
                 snooze_offset_minutes: None,
                 color: None,
@@ -416,6 +475,11 @@ fn tasks(
                 note_id: None,
                 anchor_id: None,
                 is_triggered: None,
+                task: Some(TaskMeta {
+                    project_id: row.project_id,
+                    status_id: row.status_id,
+                    is_completed: row.is_completed,
+                }),
             })
         })
         .collect())

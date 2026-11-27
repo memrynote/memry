@@ -11,10 +11,12 @@ import * as Y from 'yjs'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { eq } from 'drizzle-orm'
+import type { PackIndexEntry } from '@memry/contracts/pack-format'
 import { syncDevices } from '@memry/db-schema/schema/sync-devices'
 import { syncState } from '@memry/db-schema/schema/sync-state'
 import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { encryptCrdtUpdate } from '../crdt-encrypt'
+import { planDocument } from '../packs/body-plan'
 import type { PackBootstrapDeps } from '../packs/pack-bootstrap'
 import { generateUniquePathSync } from '../../vault/file-ops'
 import { generateContentHash, parseNote, serializeNote } from '../../vault/frontmatter'
@@ -96,7 +98,12 @@ vi.mock('../local-mutations', () => ({
 
 // Write-back asks the provider only for a newer doc of the same note.
 vi.mock('../crdt-provider', () => ({
-  getCrdtProvider: () => ({ getDoc: () => undefined, close: vi.fn(), purge: vi.fn() })
+  getCrdtProvider: () => ({
+    holdsDoc: () => true,
+    getDoc: () => undefined,
+    close: vi.fn(),
+    purge: vi.fn()
+  })
 }))
 
 // The body under test is plain text; the BlockNote schema is not what this
@@ -117,7 +124,11 @@ vi.mock('../../database/queries/notes', () => ({
   getAllSyncableNoteMetadataIds: () => [],
   getNoteCacheById: (_db: unknown, id: string) => mocks.rows.get(id),
   getNoteCacheByPath: (_db: unknown, rel: string) =>
-    [...mocks.rows.values()].find((row) => row.path === rel)
+    [...mocks.rows.values()].find((row) => row.path === rel),
+  updateNoteCache: (_db: unknown, id: string, patch: Record<string, unknown>) => {
+    const row = mocks.rows.get(id)
+    if (row) mocks.rows.set(id, { ...row, ...patch })
+  }
 }))
 vi.mock('@memry/storage-data', () => ({
   getNoteMetadataById: (_db: unknown, id: string) => mocks.rows.get(id)
@@ -212,6 +223,16 @@ function serverUpdate(noteId: string, body: string): Uint8Array {
   serverStates.set(noteId, update)
   return update
 }
+
+const packEntry = (noteId: string): PackIndexEntry => ({
+  kind: 'crdt_snapshot',
+  id: noteId,
+  sourceKey: '',
+  sortKey: 0,
+  offset: 0,
+  length: 0,
+  sha256: new Uint8Array(32)
+})
 
 function packedUpdate(noteId: string, body: string): Uint8Array {
   return encryptCrdtUpdate(serverUpdate(noteId, body), vaultKey, noteId, peer.privateKey)
@@ -336,6 +357,7 @@ function makeDevice(
       const doc = docs.get(noteId)
       return doc ? Y.encodeStateVector(doc) : null
     },
+    getDoc: (noteId: string) => docs.get(noteId),
     closeIfInactive: async () => true,
     getOpenNoteIds: () => [],
     purge: async (noteId: string) => {
@@ -378,9 +400,14 @@ async function runSync(
   mocks.runPackBootstrap.mockImplementation(async (deps: PackBootstrapDeps) => {
     for (const [index, { id, body }] of options.packed.entries()) {
       const meta = { sequenceNum: index + 1, revision: `r${index + 1}` }
-      if (await deps.snapshots.shouldApply(id, meta)) {
-        await deps.snapshots.apply(id, packedUpdate(id, body), meta)
+      const snapshot = {
+        entry: packEntry(id),
+        packId: 'p1',
+        meta,
+        read: async () => packedUpdate(id, body)
       }
+      const plan = planDocument(id, await deps.bodies.localWatermark(id), snapshot, [], null)
+      if (plan) await deps.bodies.applyDocument(id, plan)
     }
     return {
       usedPacks: true,
@@ -388,6 +415,7 @@ async function runSync(
       entriesApplied: options.packed.length,
       entriesSkipped: 0,
       entriesFailed: 0,
+      updatesApplied: 0,
       appliedThroughCursor: 100
     }
   })
@@ -678,6 +706,114 @@ describe('FullSyncRunner pack bootstrap and the markdown write-back', () => {
         files: { 'Plans.md': 'Record body' },
         owed: [live.id]
       })
+    })
+  })
+
+  // 17k docs settled one await at a time left the main process idle for most
+  // of a 408 s settle (#5390): each doc waits on its store, converter and file.
+  it('settles several docs at once, and a slow one holds up none of the others', async () => {
+    const notes = Array.from({ length: 12 }, (_, i) => ({
+      id: `livenote${String(i).padStart(4, '0')}`,
+      body: `Body ${i}`
+    }))
+    let inFlight = 0
+    let peak = 0
+    let releaseSlow = (): void => {}
+    // A serial settle never reaches the other docs, so the timer frees the
+    // slow doc and peak stays 1: the test fails on its assertion, not a timeout.
+    const slowGate = new Promise<void>((resolve) => {
+      releaseSlow = resolve
+      setTimeout(resolve, 1000).unref()
+    })
+    const device = makeDevice()
+    const materialize = device.provider.materialize
+    device.provider.materialize = async (noteId) => {
+      inFlight++
+      peak = Math.max(peak, inFlight)
+      try {
+        if (noteId === notes[0].id) await slowGate
+        return await materialize(noteId)
+      } finally {
+        inFlight--
+        // Every other doc settled while the first one waited.
+        if (noteId === notes[11].id) releaseSlow()
+      }
+    }
+    const pullRecords = async (): Promise<boolean> => {
+      for (const note of notes) {
+        applyRecord(
+          { op: 'upsert', type: 'note', id: note.id, title: note.id, content: '' },
+          device.docs
+        )
+      }
+      return true
+    }
+
+    await runSync(device, { fresh: true, packed: notes, pull: pullRecords })
+
+    expect(peak).toBeGreaterThan(1)
+    expect(readVault(mocks.vaultRoot)).toEqual(
+      Object.fromEntries(notes.map((note) => [`${note.id}.md`, note.body]))
+    )
+    expect(
+      device.db.db
+        .select({ key: syncState.key })
+        .from(syncState)
+        .all()
+        .filter((row) => row.key.startsWith('packSeed'))
+    ).toEqual([])
+  })
+
+  // #5607: the server holds bodies for binary notes, from older builds that
+  // made a doc for one. A binary note's file is its blob, so it keeps no doc.
+  describe('a packed body of a binary note', () => {
+    const photo = { id: 'photonote001', body: 'Title an old doc pushed' }
+    const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+    const holdBinaryRow = (): void => {
+      mocks.rows.set(photo.id, {
+        id: photo.id,
+        path: 'photo.png',
+        title: 'photo',
+        contentHash: '',
+        journalDate: null,
+        createdAt: '2026-09-26T00:00:00.000Z'
+      })
+      fs.writeFileSync(path.join(mocks.vaultRoot, 'photo.png'), PNG)
+    }
+    const kept = (device: Device) => ({
+      docs: [...device.docs.keys()],
+      watermarks: [...device.watermarks.keys()],
+      file: fs.readFileSync(path.join(mocks.vaultRoot, 'photo.png'))
+    })
+
+    it('is dropped once its record lands', async () => {
+      const device = makeDevice()
+
+      await runSync(device, {
+        fresh: true,
+        packed: [photo],
+        pull: async () => {
+          await flushPendingWritebacks()
+          holdBinaryRow()
+          return true
+        }
+      })
+
+      expect(kept(device)).toEqual({ docs: [], watermarks: [], file: PNG })
+    })
+
+    it('opens no doc for a note this device already holds as binary', async () => {
+      const device = makeDevice()
+      holdBinaryRow()
+      const open = vi.spyOn(
+        device.provider as unknown as { open: (noteId: string) => Promise<Y.Doc> },
+        'open'
+      )
+
+      await runSync(device, { fresh: true, packed: [photo], pull: async () => true })
+
+      expect(open).not.toHaveBeenCalled()
+      expect(kept(device)).toEqual({ docs: [], watermarks: [], file: PNG })
     })
   })
 

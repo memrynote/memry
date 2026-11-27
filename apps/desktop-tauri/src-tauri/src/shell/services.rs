@@ -2,6 +2,7 @@
 //! (`I18n`), telemetry with its crash marker and log shipping (`Telemetry`), and the settings and
 //! account services (`Handlers`). Each is managed state that commands read; none is rebuilt per call.
 
+use std::collections::HashSet;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, PoisonError};
@@ -14,6 +15,7 @@ use memry_desktop::ai::local_agent::LocalAgent;
 use memry_desktop::ai::local_provider::LocalProviderStore;
 use memry_desktop::ai::proxy::AiProxy;
 use memry_desktop::ai::settings::InlineAiStore;
+use memry_desktop::calendar::service::CalendarService;
 use memry_desktop::config::{Compiled, MemryEnv, RuntimeConfig};
 use memry_desktop::e2e::E2eGate;
 use memry_desktop::fold::agent::FoldAgents;
@@ -62,8 +64,8 @@ fn compiled() -> Compiled {
     }
 }
 
-/// Whether this launch reports telemetry, before the telemetry service exists: the stored
-/// choice, else the build's default.
+/// Whether this launch reports telemetry, before the telemetry service exists: off under the
+/// `MEMRY_TELEMETRY_ENABLED=false` launch switch, else the stored choice, else the build's default.
 pub fn telemetry_enabled(app: &AppHandle<Wry>) -> bool {
     let env = app.state::<LaunchEnv>();
     let stored = memry_desktop::telemetry::TelemetryConfig::new(&app.state::<AppPaths>().data_dir);
@@ -133,10 +135,24 @@ fn node_arch() -> &'static str {
 }
 
 /// Logs a pin failure; a mismatch also reaches the renderer as `sync:certificate-pin-failed`
-/// (`certificate-pins.ts`). An unverified chain is not a pin mismatch, so it is only logged.
-struct PinFailures(AppHandle<Wry>);
+/// (`error-recovery-handler.ts`), once per host and presented key for the process: every
+/// request to a mismatched host fails the same way, and the renderer needs to hear it once. An
+/// unverified chain is not a pin mismatch, so it is only logged.
+pub struct PinFailures<R: Runtime> {
+    app: AppHandle<R>,
+    told: Mutex<HashSet<(String, String)>>,
+}
 
-impl PinFailureSink for PinFailures {
+impl<R: Runtime> PinFailures<R> {
+    pub fn new(app: AppHandle<R>) -> Self {
+        Self {
+            app,
+            told: Mutex::default(),
+        }
+    }
+}
+
+impl<R: Runtime> PinFailureSink for PinFailures<R> {
     fn pin_failed(&self, failure: PinFailure) {
         match failure.reason {
             PinFailureReason::Mismatch => {
@@ -146,8 +162,16 @@ impl PinFailureSink for PinFailures {
                     actual = failure.actual_hash,
                     "the sync host presented a certificate none of its pins match"
                 );
+                let first = self
+                    .told
+                    .lock()
+                    .unwrap_or_else(PoisonError::into_inner)
+                    .insert((failure.hostname.clone(), failure.actual_hash.clone()));
+                if !first {
+                    return;
+                }
                 broadcast(
-                    &self.0,
+                    &self.app,
                     SyncCertificatePinFailedEvent {
                         hostname: failure.hostname,
                         actual_hash: failure.actual_hash,
@@ -191,7 +215,7 @@ fn start_telemetry(app: &AppHandle<Wry>) -> Result<(), CommandError> {
 
     let (transport, no_redirect): (SyncTransport, NoRedirectTransport) = app_transports(
         &runtime.loopback_hosts(),
-        Arc::new(PinFailures(app.clone())),
+        Arc::new(PinFailures::new(app.clone())),
     );
     let service = Arc::new(Service::start(
         &paths.data_dir,
@@ -320,6 +344,10 @@ fn manage_settings(app: &AppHandle<Wry>) -> Result<(), CommandError> {
         device,
     )));
     app.manage(AiProxy::new(memry_desktop::http::builder()));
+    app.manage(Arc::new(CalendarService::new(
+        identity.clone(),
+        settings.clone(),
+    )));
     app.manage(keychain);
     app.manage(identity);
     app.manage(settings);

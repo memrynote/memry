@@ -27,10 +27,14 @@
 
 use rusqlite::{Connection, OptionalExtension, params};
 use serde_json::json;
+use yrs::{Doc, ReadTxn as _, StateVector, Transact as _};
 
 use crate::api::errors::StorageError;
+use crate::crdt::errors::CrdtError;
+use crate::crdt::update_log;
+use crate::storage::nested_tx;
 use crate::storage::repositories::{Change, sync_items};
-use crate::sync::outbox;
+use crate::sync::{body_debt, journal_day_merge, outbox};
 
 use super::notes::{failed, iso, object, require_payload, seed_body, valid_document_id};
 use super::recreate::{recreate_clock, write_over_tombstone};
@@ -90,7 +94,7 @@ pub fn open_day(
     device_id: &str,
     now_ms: i64,
 ) -> Result<OpenedDay, StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let opened = open_day_in(&tx, date, device_id, now_ms)?;
     tx.commit().map_err(failed)?;
     Ok(opened)
@@ -176,6 +180,24 @@ pub fn date_of(conn: &Connection, id: &str) -> Result<Option<String>, StorageErr
     .map_err(failed)
 }
 
+/// SQL that holds when `id`, a `notes` id column, is not a journal day's.
+///
+/// Desktop names a day's pictures in a `note` record under the day's own id
+/// (`recordOnNote`), so a pulled day can hold a `notes` row (#5730). The row
+/// stays, because it carries the day's attachment references. A reader that
+/// lists or classifies notes filters with this, so the day never reads as a
+/// note. A day's id is the canonical `j<YYYY-MM-DD>` (desktop's
+/// `dateFromJournalId`) or any id a `journal_entries` row holds, live or not.
+/// The subquery drops NULL ids, since one would make `NOT IN` false for every
+/// row; it stays uncorrelated because callers pass a bare `id`, which a
+/// correlated `NOT EXISTS` would bind to the journal row itself.
+pub(crate) fn not_a_journal_day(id: &str) -> String {
+    format!(
+        "{id} NOT GLOB 'j[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]' \
+         AND {id} NOT IN (SELECT id FROM journal_entries WHERE id IS NOT NULL)"
+    )
+}
+
 /// Whether this vault holds a live journal entry with this record id.
 pub fn journal_exists(conn: &Connection, id: &str) -> bool {
     conn.query_row(
@@ -214,7 +236,26 @@ fn create_in(
     // A journal body is edited exactly as a note's is (FR-055), so it gets
     // the same materialised body row: empty text, no seed, derived from
     // the Yjs log the moment there is one.
-    seed_body(tx, id, "", now_ms)
+    seed_empty_body_in(tx, id, now_ms)
+}
+
+/// An empty body for `id`, here: the materialised row and one local log row.
+fn seed_empty_body_in(tx: &Connection, id: &str, now_ms: i64) -> Result<(), StorageError> {
+    seed_body(tx, id, "", now_ms)?;
+    // The body of a day created here is here, and empty. Without a log row a
+    // day created by a tag or property write reads `NotPulled`, and the shell
+    // offers a download of a body the server never had instead of the first
+    // line. Local only: an empty update carries nothing a peer needs.
+    let empty = Doc::new()
+        .transact()
+        .encode_state_as_update_v1(&StateVector::default());
+    update_log::append_local_update_in(tx, id, &empty, now_ms).map_err(|error| match error {
+        CrdtError::Storage { source } => source,
+        other => StorageError::Failed {
+            what: format!("seed the empty body of {id}: {other}"),
+        },
+    })?;
+    Ok(())
 }
 
 /// Clears the tombstone on an entry whose day is being opened again.
@@ -223,7 +264,22 @@ fn create_in(
 /// original id is the only way "open today" can succeed after today was
 /// deleted. The revival is a re-create, so its clock ticks past every delete
 /// clock this device knows for the id (#2409).
+///
+/// It is a new body too (#5351, chapter 07 §7.15). The server purged the
+/// deleted one, so an update authored on top of it reaches every fresh device
+/// as structs whose parents are gone, and the day reads empty there. The
+/// deleted generation's log, snapshots, cursor, owed pull and queued updates
+/// go before anything authors, and the purge moves the id to a new epoch, so
+/// the new body writes under a client id the old one never used (§7.16).
 fn revive_in(tx: &Connection, id: &str, device_id: &str, now_ms: i64) -> Result<(), StorageError> {
+    update_log::purge_in(tx, id).map_err(|error| StorageError::Failed {
+        what: format!("purge the deleted body of {id}: {error}"),
+    })?;
+    body_debt::settle(tx, id)?;
+    outbox::drop_body_updates(tx, ITEM_TYPE, id)?;
+    tx.execute("DELETE FROM note_bodies WHERE note_id = ?1", params![id])
+        .map_err(failed)?;
+    seed_empty_body_in(tx, id, now_ms)?;
     tx.execute(
         "UPDATE sync_items SET deleted_at = NULL, updated_at = ?3
          WHERE item_type = ?1 AND item_id = ?2",
@@ -245,7 +301,8 @@ fn revive_in(tx: &Connection, id: &str, device_id: &str, now_ms: i64) -> Result<
         ),
         ("modifiedAt", Change::set(iso(now_ms)?)),
     ];
-    sync_items::apply_local_edit_in(tx, ITEM_TYPE, id, &changes, now_ms)?;
+    // The one edit that shows a deleted day again.
+    sync_items::apply_local_edit_setting_deleted_in(tx, ITEM_TYPE, id, &changes, now_ms, None)?;
     Ok(())
 }
 
@@ -308,7 +365,11 @@ pub fn delete_day(
         conn,
         &outbox::Change::delete(ITEM_TYPE, &id),
         now_ms,
-        |tx| super::notes::tombstone_local(tx, ITEM_TYPE, &id, device_id, now_ms),
+        |tx| {
+            super::notes::tombstone_local(tx, ITEM_TYPE, &id, device_id, now_ms)?;
+            // A held day is deleted too, not merged into `j<date>` (§1.9.1).
+            journal_day_merge::forget_deleted_day(tx, &id, now_ms)
+        },
     )?
     .acknowledge();
     Ok(true)

@@ -87,7 +87,7 @@ pub(crate) fn world_with(trash: Trash) -> World {
     let store: Arc<dyn SecureStore> = Arc::new(MemoryStore::default());
     ensure_device_identity(store.clone()).unwrap();
     let opened = Vault::open("vault".into(), core.to_string_lossy().into_owned()).unwrap();
-    let index = opened.search().unwrap().index_handle();
+    let index = opened.search(None).unwrap().index_handle();
     let core = opened.canvases(store).unwrap();
     let canvases = CanvasService::new(vault.clone(), core.clone(), index, trash);
     World {

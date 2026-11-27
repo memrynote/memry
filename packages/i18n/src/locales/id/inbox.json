@@ -579,7 +579,10 @@
       "journalOff": "Jurnal dimatikan di Pengaturan.",
       "sendFailed": "Tidak dapat mengirim sticky.",
       "undoExpired": "Sudah terlambat untuk mengurungkan ini.",
-      "undoFailed": "Tidak dapat mengurungkan pengiriman."
+      "undoFailed": "Tidak dapat mengurungkan pengiriman.",
+      "journalBusy": "Entri jurnal hari ini masih disimpan. Coba lagi sebentar lagi.",
+      "folderExcluded": "Folder Sticky dikecualikan. Hapus dari daftar folder yang dikecualikan di Pengaturan untuk mengirim catatan.",
+      "projectMissing": "Proyek tugas ini tidak ada. Pilih proyek default di Pengaturan, atau kirim sebagai catatan."
     },
     "inputLabel": "Teks sticky",
     "dismissError": "Tutup"

@@ -7,6 +7,7 @@ use memry_desktop::notes::index::{IndexProgress, LinkChanges};
 use memry_desktop::notes::view::NoteListItemView;
 use memry_desktop::services::ocr_languages::OcrLanguagesState;
 use memry_desktop::session::response::VaultStatus;
+use memry_desktop::shell::inbox_review::SnoozeDueItem;
 use memry_desktop::updater::state::AppUpdateState;
 use memry_desktop::vault::config::VaultConfig;
 use serde::Serialize;
@@ -15,17 +16,29 @@ use tauri::{AppHandle, Emitter, EventTarget, Runtime};
 use crate::commands::vault_locks::VaultLockStateView;
 
 mod account;
+mod agent;
 mod ai;
+mod bookmarks;
+mod calendar;
 mod canvas;
+mod home_pages;
+mod reminders;
 mod sync;
 mod tags;
+mod tasks;
 mod voice;
 
 pub use account::*;
+pub use agent::*;
 pub use ai::*;
+pub use bookmarks::*;
+pub use calendar::*;
 pub use canvas::*;
+pub use home_pages::*;
+pub use reminders::*;
 pub use sync::*;
 pub use tags::*;
+pub use tasks::*;
 pub use voice::*;
 
 /// Emit `event` to every webview: the one window-wide emit (inv09#66). Each listener gets it once.
@@ -207,12 +220,14 @@ pub struct VaultActivityChangedEvent;
 #[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
 pub struct VaultNoticesChangedEvent;
 
-/// Who made a note change (`NoteEventSource`): the app, or an edit outside it.
+/// Who made a note change (`NoteEventSource`): the app, an edit outside it, or a change pulled
+/// from another device, which an open editor does not remount for (Electron `source: 'sync'`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, serde::Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub enum NoteEventSource {
     Internal,
     External,
+    Sync,
 }
 
 /// A note was made, by the app or from a file that appeared (`notes:created`).
@@ -374,6 +389,11 @@ pub struct VaultLocksExternalEditRestoredEvent {
     pub title: String,
 }
 
+/// The Readwise run started, moved on, ended or failed (`import:readwise:status-changed`): the
+/// page reads the status again.
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+pub struct ImportReadwiseStatusChangedEvent;
+
 /// The registry list or a vault's icon changed (`vault:list-changed`).
 #[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
 pub struct VaultListChangedEvent;
@@ -480,12 +500,43 @@ pub struct FlushRequestedEvent {
 #[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
 pub struct StickyDraftsChangedEvent;
 
+/// The sticky asks the main window to open what a send made (`sticky:open-target-requested`).
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+pub struct StickyOpenTargetRequestedEvent {
+    /// `note`, `task` or `journal`.
+    pub kind: String,
+    /// A note id, a task id, or the journal day (`YYYY-MM-DD`).
+    pub target_id: String,
+}
+
 /// Open an inbox item (`inbox-open-item-event`): `memry://open?item=<id>` and, with Step 27
 /// (#3544), a clicked inbox notification.
 #[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
 #[serde(rename_all = "camelCase")]
 pub struct InboxOpenItemEvent {
     pub item_id: String,
+}
+
+/// The daily inbox review nudge fired (`inbox:review-due`): the renderer shows its toast.
+/// `count` is the number of captures to review.
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+pub struct InboxReviewDueEvent {
+    pub count: i64,
+}
+
+/// The inbox review notification was clicked (`inbox:review-open`): the renderer opens the inbox.
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+pub struct InboxReviewOpenEvent {}
+
+/// Snoozed captures came back (`inbox:snooze-due`): the renderer refreshes the inbox list and
+/// shows its banner and toast. `count` is the number of `items`, as Electron sends it.
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+pub struct InboxSnoozeDueEvent {
+    pub count: i64,
+    pub items: Vec<SnoozeDueItem>,
 }
 
 /// A native menu item that the renderer runs as a command was clicked. `command` is the

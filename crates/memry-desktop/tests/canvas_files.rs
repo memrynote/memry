@@ -8,6 +8,7 @@
 //! | a write never replaces a file changed since it was read   | departure: Electron overwrites    |
 //! | listing finds documents at any depth up to the cap        | `scene-file.test.ts:180-189,380-390,468` |
 //! | a path is allocated per folder, case-insensitively        | `scene-file.test.ts:194-218,295-315,358-372` |
+//! | a name the file system folds onto a document is numbered past | `existsSync` of `allocateCanvasPath` |
 //! | titles and folders get portable names                     | `scene-file.test.ts:281,290,402-458` |
 //! | a stored path cannot leave the vault                      | `scene-file.test.ts:274`          |
 //! | a rename keeps the old path when it cannot move           | `scene-file.test.ts:226-237`      |
@@ -100,6 +101,28 @@ fn a_document_linked_outside_the_vault_is_refused() {
         read,
         Err(memry_desktop::canvas::scene_file::ReadError::Outside)
     ));
+}
+
+#[cfg(unix)]
+#[test]
+fn a_link_out_of_the_vault_to_a_folder_is_refused_not_read_as_none() {
+    let dir = vault();
+    let outside = vault();
+    fs::create_dir_all(outside.path().join("Folder")).unwrap();
+    fs::create_dir_all(dir.path().join("canvases")).unwrap();
+    std::os::unix::fs::symlink(
+        outside.path().join("Folder"),
+        dir.path().join("canvases/Link.excalidraw"),
+    )
+    .unwrap();
+    let read = read_canvas_file(dir.path(), "canvases/Link.excalidraw");
+    assert!(
+        matches!(
+            read,
+            Err(memry_desktop::canvas::scene_file::ReadError::Outside)
+        ),
+        "{read:?}"
+    );
 }
 
 #[test]
@@ -201,6 +224,32 @@ fn a_path_is_allocated_per_folder_case_insensitively() {
         allocate(v, Some("Plan"), Some("Home")),
         "canvases/Home/Plan.excalidraw"
     );
+}
+
+/// Names that a case-insensitive volume folds together but `canvas_path_key` (NFC plus
+/// `str::to_lowercase`) keeps apart: `ſ` (U+017F) folds to `s`, and a final `ς` folds to `σ`.
+const FOLDED_BY_THE_VOLUME: [(&str, &str); 2] = [("S", "\u{17f}"), ("Τέλος", "ΤΈΛΟΣ")];
+
+#[test]
+fn a_name_the_file_system_folds_onto_a_document_is_numbered_past() {
+    for (existing, title) in FOLDED_BY_THE_VOLUME {
+        let dir = vault();
+        let v = dir.path();
+        let on_disk = format!("canvases/{existing}.excalidraw");
+        put(v, &on_disk, "first ink");
+        // Only a volume that folds the two names can produce the case: APFS and NTFS do. On a
+        // case-sensitive one (Linux) the names are two files, so the test has nothing to prove
+        // and skips.
+        if fs::symlink_metadata(v.join(format!("canvases/{title}.excalidraw"))).is_err() {
+            eprintln!("skipped: this file system keeps {existing:?} and {title:?} apart");
+            continue;
+        }
+        let allocated = allocate(v, Some(title), None);
+        assert_eq!(allocated, format!("canvases/{title} 2.excalidraw"));
+        write_canvas_file(v, &allocated, "second ink", Expect::New).unwrap();
+        assert_eq!(fs::read_to_string(v.join(&on_disk)).unwrap(), "first ink");
+        assert_eq!(list_canvas_files(v).len(), 2);
+    }
 }
 
 #[test]

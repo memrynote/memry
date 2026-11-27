@@ -52,6 +52,7 @@ import {
   cancelTokenRefresh,
   refreshAccessToken,
   resetTokenManagerState,
+  setOnSessionEnded,
   setOnTokenRefreshed,
   hasSessionEnded
 } from './token-manager'
@@ -332,6 +333,25 @@ describe('token-manager', () => {
       expect(mockPostToServer).toHaveBeenCalledTimes(3)
     })
 
+    it('reports the session ended once, on the terminal rejection only (#5342)', async () => {
+      // #given
+      givenDeadRefreshToken()
+      await rejectWith401()
+      const onEnded = vi.fn()
+      setOnSessionEnded(onEnded)
+
+      // #when two advisory rejections, then the terminal one
+      await getValidAccessToken()
+      await vi.advanceTimersByTimeAsync(61_000)
+      await getValidAccessToken()
+      expect(onEnded).not.toHaveBeenCalled()
+      await vi.advanceTimersByTimeAsync(301_000)
+      await getValidAccessToken()
+
+      // #then
+      expect(onEnded).toHaveBeenCalledTimes(1)
+    })
+
     it('does not schedule a fallback retry after a rejection', async () => {
       // #given a live session whose refresh token is then rejected
       givenDeadRefreshToken()
@@ -478,6 +498,39 @@ describe('token-manager', () => {
         'auth:session-expired',
         expect.anything()
       )
+    })
+
+    // The server rotates before it answers, so a timed-out refresh may already
+    // have retired the token the keychain holds. The retry presents that same
+    // token, and the server's lost-rotation grace (protocol 02 §2.9) answers it.
+    it('retries a refresh whose answer was lost with the token it holds and stores the new pair', async () => {
+      const stored = new Map<string, string>([['refresh-token', 'held-refresh']])
+      mockRetrieveKey.mockImplementation((entry: { account: string }) => {
+        const value = stored.get(entry.account)
+        return Promise.resolve(value ? new TextEncoder().encode(value) : null)
+      })
+      mockStoreKey.mockImplementation((entry: { account: string }, value: Uint8Array) => {
+        stored.set(entry.account, new TextDecoder().decode(value))
+        return Promise.resolve()
+      })
+      mockPostToServer
+        .mockRejectedValueOnce(new Error('Sync request timed out.'))
+        .mockResolvedValueOnce({
+          accessToken: 'new-access',
+          refreshToken: 'new-refresh',
+          expiresIn: 900
+        })
+
+      const refresh = refreshAccessToken()
+      await vi.advanceTimersByTimeAsync(1_000)
+
+      await expect(refresh).resolves.toBe(true)
+      expect(mockPostToServer.mock.calls.map(([, body]) => body)).toEqual([
+        { refreshToken: 'held-refresh' },
+        { refreshToken: 'held-refresh' }
+      ])
+      expect(stored.get('refresh-token')).toBe('new-refresh')
+      expect(hasSessionEnded()).toBe(false)
     })
 
     it('reports a network failure as a live session', async () => {

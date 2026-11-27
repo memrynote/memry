@@ -22,12 +22,14 @@ pub struct CalendarZoneTransition {
 }
 
 impl LocalZone for CalendarZone {
+    /// `transitions` are in time order (every producer sorts them), so a
+    /// binary search: a feed's VTIMEZONE can define thousands, and every
+    /// instance asks several times.
     fn offset_ms(&self, utc_ms: i64) -> i64 {
-        self.transitions
-            .iter()
-            .take_while(|t| t.at_ms <= utc_ms)
-            .last()
-            .map_or(self.base_offset_ms, |t| t.offset_ms)
+        match self.transitions.partition_point(|t| t.at_ms <= utc_ms) {
+            0 => self.base_offset_ms,
+            after => self.transitions[after - 1].offset_ms,
+        }
     }
 }
 
