@@ -12,19 +12,16 @@
  * `apps/desktop/src/main/sync/blocknote-converter.ts`, which reaches
  * `electron-log`, the index database and the vault through its imports, and a
  * `packages/contracts` script must not depend on an app (the boundary
- * `record-envelope.ts` records). So this generator runs the same production
- * pieces that function runs, in its order: line endings to `\n`,
- * `separateBlockImages`, `splitMarkdownByToggles` (each toggle's summary and
- * body parsed as `parseToggleSegment` does), `splitMarkdownPreservingBlanks`,
- * `parseContentWithMarkers` (callouts, `$$` math, structured quotes and the
- * one-line file, YouTube, bookmark and whiteboard markers, claimed by the
- * editor-schema readers and resolvers), `parseMarkdownToBlocksRepaired`
- * through a `ServerBlockNoteEditor` on desktop's schema (code block options
- * included), and `blocksToYXmlFragment`, after `maskHtmlComments` has made
- * every comment one token. The layers it does not reproduce (CriticMarkup,
- * link references, wiki embeds, colour spans, column regions, `<!--` comments
- * and sidecar markers, inline tokens, task blocks, plain-checkbox markers) are
- * refused by {@link refuseUnreproduced} rather
+ * `record-envelope.ts` records). So this generator runs the production pieces
+ * that function runs, in its order: line endings to `\n`, `maskHtmlComments`,
+ * then `parseNoteMarkdown`, the note pipeline both desktop processes share,
+ * with `parseMarkdownToBlocksRepaired` through a `ServerBlockNoteEditor` on
+ * desktop's schema (code block options included) and desktop's
+ * `serializeBlocks`, and `blocksToYXmlFragment`. The layers before that
+ * pipeline it does not reproduce (CriticMarkup, link references, wiki embeds),
+ * and the layers no case here is proven against (colour spans, column regions,
+ * `<!--` comments and sidecar markers, inline tokens, task blocks,
+ * plain-checkbox markers), are refused by {@link refuseUnreproduced} rather
  * than skipped. The proof that the result is desktop's is
  * `apps/desktop/src/main/sync/markdown-seed-vectors.test.ts`, which runs the
  * real `markdownToYFragment` over every case here.
@@ -35,22 +32,9 @@
  */
 import * as Y from 'yjs'
 import { createMemrySchema } from '@memry/editor-schema'
-import {
-  BOOKMARK_LINE_REGEX,
-  FILE_BLOCK_LINE_REGEX,
-  parseFileBlockMarker,
-  parseWhiteboardLine,
-  parseYoutubeEmbedLine,
-  readCalloutRun,
-  readMathRun,
-  readStructuredQuoteRun,
-  resolveCalloutRun,
-  resolveQuoteRun,
-  splitMarkdownByToggles,
-  type ParsedBlockShape
-} from '@memry/editor-schema/blocks'
 import { memryCodeBlockOptions } from '@memry/editor-schema/code-block'
 import { writeHtmlCommentTokens } from '@memry/editor-schema/inline'
+import { parseNoteMarkdown } from '@memry/editor-schema/note-markdown'
 import { parseMarkdownToBlocksRepaired } from '@memry/editor-schema/parse-markdown'
 // `@blocknote/server-util` is a dependency of `@memry/editor-schema`, not of
 // this package; the schema package re-exports it so both share one
@@ -60,17 +44,12 @@ import {
   createServerBlockSpecs,
   createServerInlineSpecs
 } from '@memry/editor-schema/server'
-import {
-  normalizeSerializedMarkdown,
-  separateBlockImages,
-  splitMarkdownPreservingBlanks
-} from '../../../shared/src/empty-lines.ts'
+import { normalizeSerializedMarkdown } from '../../../shared/src/empty-lines.ts'
 import {
   extractInlineColorRuns,
   restoreInlineColorTokens
 } from '../../../shared/src/inline-colors.ts'
 import { maskHtmlComments } from '../../../shared/src/html-comments.ts'
-import { createFenceTracker } from '../../../shared/src/markdown-fences.ts'
 import { withPlainCheckboxMarkers } from '../../../shared/src/plain-checkbox.ts'
 
 import { canonicalFragment } from '../fragment-canonical'
@@ -132,16 +111,12 @@ function refuseUnreproduced(name: string, markdown: string): void {
   }
 }
 
-function emptyParagraph(): SeedBlock {
-  return { type: 'paragraph', props: {}, content: [], children: [] }
-}
-
 function parse(markdown: string): Promise<SeedBlock[]> {
   return parseMarkdownToBlocksRepaired<SeedBlock>(serverEditor(), markdown)
 }
 
 /** `blocknote-converter.ts` `serializeBlocks`, the callout and quote claims' proof. */
-async function serializeBlocks(blocks: ParsedBlockShape[]): Promise<string> {
+async function serializeBlocks(blocks: SeedBlock[]): Promise<string> {
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
   const marked = withPlainCheckboxMarkers(blocks as never[])
   const { blocks: wrapped, replacements } = extractInlineColorRuns(marked)
@@ -154,137 +129,17 @@ async function serializeBlocks(blocks: ParsedBlockShape[]): Promise<string> {
   return restoreInlineColorTokens(markdown, replacements)
 }
 
-/** `blocknote-converter.ts` `parseCustomBlockMarkerLine`. */
-function markerBlock(line: string): SeedBlock | null {
-  const trimmed = line.trim()
-  const file = FILE_BLOCK_LINE_REGEX.test(trimmed) ? parseFileBlockMarker(trimmed) : null
-  if (file) return { type: 'file', props: { ...file }, children: [] }
-  const embed = parseYoutubeEmbedLine(line)
-  if (embed) return { type: 'youtubeEmbed', props: { ...embed }, children: [] }
-  const bookmark = BOOKMARK_LINE_REGEX.exec(line)
-  if (bookmark) {
-    try {
-      const url = new URL(bookmark[1])
-      if (url.protocol === 'http:' || url.protocol === 'https:') {
-        const domain = url.hostname.replace(/^www\./, '')
-        return { type: 'bookmark', props: { url: bookmark[1], domain }, children: [] }
-      }
-    } catch {
-      // Not an address: the line stays an image.
-    }
-  }
-  const canvasId = parseWhiteboardLine(line)
-  return canvasId ? { type: 'whiteboard', props: { canvasId }, children: [] } : null
-}
-
-/**
- * `blocknote-converter.ts` `parseContentWithMarkers`, without the sidecar
- * markers {@link refuseUnreproduced} keeps out.
- */
-async function parseContentWithMarkers(text: string): Promise<SeedBlock[]> {
-  const blocks: SeedBlock[] = []
-  let buffer: string[] = []
-  // `parseMarkdownWithNestingMarkers` with no marker: one chunk, its edge
-  // newlines trimmed, parsed only when it holds text.
-  const flush = async (): Promise<void> => {
-    const chunk = buffer.join('\n').replace(/^\n+|\n+$/g, '')
-    if (chunk.trim()) blocks.push(...(await parse(chunk)))
-    buffer = []
-  }
-  const fence = createFenceTracker()
-  const lines = text.split('\n')
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]
-    const insideFence = fence.consume(line)
-    let claimed: { block: SeedBlock; end: number } | null = null
-    if (!insideFence) {
-      const atParagraphStart = i === 0 || lines[i - 1].trim() === ''
-      const callout = readCalloutRun(lines, i, atParagraphStart)
-      const resolved = callout ? await resolveCalloutRun(callout, parse, serializeBlocks) : null
-      const math = readMathRun(lines, i, atParagraphStart)
-      const quote = atParagraphStart ? readStructuredQuoteRun(lines, i) : null
-      const quoted = quote ? await resolveQuoteRun(quote, parse, serializeBlocks) : null
-      if (callout && resolved) {
-        const props = { type: resolved.type, fold: resolved.fold }
-        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
-        const children = resolved.children as SeedBlock[]
-        claimed = {
-          block: { type: 'callout', props, content: resolved.content, children },
-          end: callout.end
-        }
-      } else if (math) {
-        claimed = {
-          block: { type: 'mathBlock', props: { latex: math.latex }, children: [] },
-          end: math.end
-        }
-      } else if (quote && quoted) {
-        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
-        const children = quoted.children as SeedBlock[]
-        claimed = {
-          block: { type: 'quote', props: {}, content: quoted.content, children },
-          end: quote.end
-        }
-      }
-    }
-    if (claimed) {
-      await flush()
-      blocks.push(claimed.block)
-      for (let consumed = i + 1; consumed < claimed.end; consumed++) fence.consume(lines[consumed])
-      i = claimed.end - 1
-      continue
-    }
-    const marker = insideFence ? null : markerBlock(line)
-    if (marker) {
-      await flush()
-      blocks.push(marker)
-      continue
-    }
-    buffer.push(line)
-  }
-  await flush()
-  return blocks
-}
-
-/**
- * `blocknote-converter.ts` `parseMarkdownWithToggles`: toggle segments (as
- * `parseToggleSegment` builds them), their gaps, then each markdown segment's
- * blank-line gaps and content.
- */
-async function parseMasked(markdown: string): Promise<SeedBlock[]> {
-  const blocks: SeedBlock[] = []
-  for (const segment of splitMarkdownByToggles(markdown)) {
-    if (segment.kind === 'toggle') {
-      const summary = await parse(segment.summary)
-      blocks.push({
-        type: 'toggleListItem',
-        props: { open: segment.open },
-        content: summary[0]?.content ?? [],
-        children: segment.body ? await parseMasked(segment.body) : []
-      })
-    } else if (segment.kind === 'gap') {
-      for (let i = 0; i < segment.extraLines; i++) blocks.push(emptyParagraph())
-    } else {
-      for (const piece of splitMarkdownPreservingBlanks(segment.text)) {
-        if (piece.type === 'gap') {
-          for (let i = 0; i < piece.extraLines; i++) blocks.push(emptyParagraph())
-        } else {
-          blocks.push(...(await parseContentWithMarkers(piece.text)))
-        }
-      }
-    }
-  }
-  return blocks
-}
-
 /**
  * `prepareFragmentSeed` → `markdownToBlocks` → `markdownToBlocksPreserving` for
- * the reproduced layers. `markdownToBlocks` masks every comment before any line
- * is split, so a comment holding blank lines or a fence stays one token word
- * (`@memry/shared/html-comments`); `parseMarkdownToBlocksRepaired` turns each
- * token into an `htmlComment` node once the blocks exist.
+ * the reproduced layers: every comment masked before any line is split
+ * (`@memry/shared/html-comments`), then the note pipeline both desktop
+ * processes run (`@memry/editor-schema/note-markdown`).
  */
 function markdownToBlocks(markdown: string): Promise<SeedBlock[]> {
-  return parseMasked(separateBlockImages(maskHtmlComments(markdown.replace(/\r\n?/g, '\n'))))
+  return parseNoteMarkdown<SeedBlock>(
+    { parse, serialize: serializeBlocks },
+    maskHtmlComments(markdown.replace(/\r\n?/g, '\n'))
+  )
 }
 
 /** Fixed ids in place of `ensureBlockIds`' random ones; stripped below anyway. */
@@ -327,7 +182,7 @@ export async function buildMarkdownSeed(): Promise<Record<string, unknown>> {
       canonical: 'packages/contracts/scripts/fragment-canonical.ts',
       fragmentName: 'prosemirror',
       authoredBy:
-        "desktop's markdownToYFragment path: LF line endings, maskHtmlComments, separateBlockImages, splitMarkdownByToggles, splitMarkdownPreservingBlanks, parseContentWithMarkers (callouts, math, structured quotes, marker lines), parseMarkdownToBlocksRepaired on desktop's server schema, blocksToYXmlFragment",
+        "desktop's markdownToYFragment path: LF line endings, maskHtmlComments, parseNoteMarkdown (editor-schema note-markdown) with parseMarkdownToBlocksRepaired on desktop's server schema, blocksToYXmlFragment",
       provenAgainst: 'apps/desktop/src/main/sync/markdown-seed-vectors.test.ts',
       blockIds: 'removed from every blockContainer line: BlockNote mints them at random',
       caseCount: cases.length

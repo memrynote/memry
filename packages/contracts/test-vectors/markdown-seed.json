@@ -6,7 +6,7 @@
     "class": "markdown-seed",
     "canonical": "packages/contracts/scripts/fragment-canonical.ts",
     "fragmentName": "prosemirror",
-    "authoredBy": "desktop's markdownToYFragment path: LF line endings, maskHtmlComments, separateBlockImages, splitMarkdownByToggles, splitMarkdownPreservingBlanks, parseContentWithMarkers (callouts, math, structured quotes, marker lines), parseMarkdownToBlocksRepaired on desktop's server schema, blocksToYXmlFragment",
+    "authoredBy": "desktop's markdownToYFragment path: LF line endings, maskHtmlComments, parseNoteMarkdown (editor-schema note-markdown) with parseMarkdownToBlocksRepaired on desktop's server schema, blocksToYXmlFragment",
     "provenAgainst": "apps/desktop/src/main/sync/markdown-seed-vectors.test.ts",
     "blockIds": "removed from every blockContainer line: BlockNote mints them at random",
     "caseCount": 71
