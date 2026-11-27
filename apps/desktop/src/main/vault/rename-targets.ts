@@ -7,11 +7,30 @@
  * miss the rename window, and an outside rename synced a delete plus a create.
  * The unlink takes the new path here and adds that file itself.
  *
+ * The event names a basename only, read here in the watched file's folder. A
+ * file moved to another folder under a new name has no such file there, so it
+ * gets no name. When the old folder does hold a file of that name, only that
+ * file's add can show it was the renamed one (`forgetRenameTarget`).
+ *
  * @module vault/rename-targets
  */
 
+import { lstatSync } from 'fs'
+import { createLogger } from '../lib/logger'
+
+const logger = createLogger('RenameTargets')
+
 /** How long a rename waits for its unlink: chokidar's `atomic` holds an unlink 100 ms. */
 const RENAME_TARGET_TTL_MS = 1000
+
+function isFile(filePath: string): boolean {
+  try {
+    return lstatSync(filePath, { throwIfNoEntry: false })?.isFile() === true
+  } catch (error) {
+    logger.debug(`No rename target at ${filePath}: ${String(error)}`)
+    return false
+  }
+}
 
 interface Entry {
   target: string
@@ -23,6 +42,7 @@ export class RenameTargets {
 
   record(filePath: string, target: string): void {
     this.take(filePath)
+    if (!isFile(target)) return
     const expiry = setTimeout(() => this.entries.delete(filePath), RENAME_TARGET_TTL_MS)
     this.entries.set(filePath, { target, expiry })
   }
