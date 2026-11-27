@@ -9,7 +9,7 @@
     "authoredBy": "desktop's markdownToYFragment path: LF line endings, maskHtmlComments, parseNoteMarkdown (editor-schema note-markdown) with parseMarkdownToBlocksRepaired on desktop's server schema, blocksToYXmlFragment",
     "provenAgainst": "apps/desktop/src/main/sync/markdown-seed-vectors.test.ts",
     "blockIds": "removed from every blockContainer line: BlockNote mints them at random",
-    "caseCount": 143
+    "caseCount": 148
   },
   "cases": [
     {
@@ -869,6 +869,36 @@
       "pins": "a structured quote of a bold a and an italic b: the writer spells the second run with underscores, which settles",
       "markdown": "> **a***b*\n>\n> z",
       "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"a\" bold={}\n3 text \"b\" italic={}\n2 element blockGroup\n3 element blockContainer\n4 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n5 text \"z\""
+    },
+    {
+      "name": "writer: a code span holding a run of two backticks in a quote",
+      "pins": "a structured quote: the writer fences the code c``c with one backtick, the smallest count no run inside is, so the body reproduces; the longest run plus one would put three at a line start",
+      "markdown": "> `c``c`\n>\n> z",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"c``c\" code={}\n2 element blockGroup\n3 element blockContainer\n4 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n5 text \"z\""
+    },
+    {
+      "name": "writer: a code span holding a run of two backticks in a callout",
+      "pins": "a callout whose code span c``c is fenced with one backtick, as in the source",
+      "markdown": "> [!note]\n> `c``c`",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element callout fold=\"none\" textAlignment=\"left\" textColor=\"default\" type=\"note\"\n3 text \"c``c\" code={}"
+    },
+    {
+      "name": "writer: a code span holding runs of one and three backticks",
+      "pins": "a structured quote: the fence is two backticks, shorter than the four the longest run plus one would give",
+      "markdown": "> ``a`b```c``\n>\n> z",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"a`b```c\" code={}\n2 element blockGroup\n3 element blockContainer\n4 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n5 text \"z\""
+    },
+    {
+      "name": "writer: a code span starting with a backtick and holding a run of three",
+      "pins": "a structured quote: the code starts with a backtick, so the two-backtick fence is padded with a space each side",
+      "markdown": "> `` `a```b ``\n>\n> z",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"`a```b\" code={}\n2 element blockGroup\n3 element blockContainer\n4 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n5 text \"z\""
+    },
+    {
+      "name": "writer: a code span holding a run of one backtick",
+      "pins": "a callout: the fewest backticks no run holds is two, the longest run plus one, so the spacing stays BlockNote's",
+      "markdown": "> [!note]\n> `` a`b ``",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element callout fold=\"none\" textAlignment=\"left\" textColor=\"default\" type=\"note\"\n3 text \"a`b\" code={}"
     }
   ]
 }

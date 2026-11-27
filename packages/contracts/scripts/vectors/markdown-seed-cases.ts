@@ -742,5 +742,30 @@ export const MARKDOWN_SEED_CASES: ReadonlyArray<{ name: string; markdown: string
       name: 'writer: three stars after a bold run',
       markdown: '> **a***b*\n>\n> z',
       pins: 'a structured quote of a bold a and an italic b: the writer spells the second run with underscores, which settles'
+    },
+    {
+      name: 'writer: a code span holding a run of two backticks in a quote',
+      markdown: '> `c``c`\n>\n> z',
+      pins: 'a structured quote: the writer fences the code c``c with one backtick, the smallest count no run inside is, so the body reproduces; the longest run plus one would put three at a line start'
+    },
+    {
+      name: 'writer: a code span holding a run of two backticks in a callout',
+      markdown: '> [!note]\n> `c``c`',
+      pins: 'a callout whose code span c``c is fenced with one backtick, as in the source'
+    },
+    {
+      name: 'writer: a code span holding runs of one and three backticks',
+      markdown: '> ``a`b```c``\n>\n> z',
+      pins: 'a structured quote: the fence is two backticks, shorter than the four the longest run plus one would give'
+    },
+    {
+      name: 'writer: a code span starting with a backtick and holding a run of three',
+      markdown: '> `` `a```b ``\n>\n> z',
+      pins: 'a structured quote: the code starts with a backtick, so the two-backtick fence is padded with a space each side'
+    },
+    {
+      name: 'writer: a code span holding a run of one backtick',
+      markdown: '> [!note]\n> `` a`b ``',
+      pins: "a callout: the fewest backticks no run holds is two, the longest run plus one, so the spacing stays BlockNote's"
     }
   ]
