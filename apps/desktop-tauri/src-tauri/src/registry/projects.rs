@@ -1,10 +1,11 @@
 //! The project commands and events, appended to the task domain's lists by `registry/tasks.rs`:
 //! `with_project_commands!(collect_commands![...])` hands `collect_commands!` the list with
-//! these appended, and `with_project_events!` does the same for `collect_events!`.
+//! these appended, and `with_project_events!` does the same for `collect_events!`. Each hands
+//! its list on to `registry/bookmarks.rs`, which appends the bookmark and recents ones.
 
 macro_rules! with_project_commands {
     ($collect:ident![$($commands:tt)*]) => {
-        $collect![
+        with_bookmark_commands!($collect![
             $($commands)*
             crate::commands::task_projects::tasks_project_archive::<Wry>,
             crate::commands::task_projects::tasks_project_create::<Wry>,
@@ -20,17 +21,17 @@ macro_rules! with_project_commands {
             crate::commands::task_projects::tasks_project_set_link_pinned::<Wry>,
             crate::commands::task_projects::tasks_project_unlink_item::<Wry>,
             crate::commands::task_projects::tasks_project_update::<Wry>,
-        ]
+        ])
     };
 }
 
 macro_rules! with_project_events {
     ($collect:ident![$($events:tt)*]) => {
-        $collect![
+        with_bookmark_events!($collect![
             $($events)*
             crate::events::ProjectCreatedEvent,
             crate::events::ProjectDeletedEvent,
             crate::events::ProjectUpdatedEvent,
-        ]
+        ])
     };
 }

@@ -127,7 +127,10 @@ impl AppConfig {
             return Err(refuse(message.clone()).into());
         }
         // Across processes too: the command line writes this file beside the app.
-        let _held = super::config_lock::hold(&self.path)?;
+        let _held = super::config_lock::hold(&self.path).map_err(|error| ConfigError::Write {
+            path: error.path.display().to_string(),
+            message: error.message,
+        })?;
         let current = match read_file(&self.path) {
             Ok(map) => map,
             Err(Unusable::NotAnObject) => {

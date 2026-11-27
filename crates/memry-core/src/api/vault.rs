@@ -93,6 +93,8 @@ mod tags;
 mod sync_driver;
 // The desktop sticky drafts' accessor (Step 31).
 mod sticky;
+// The desktop's and the command line's `Search` opens, kept apart for the line ceiling.
+mod desktop_search;
 
 impl Vault {
     /// [`Vault::open`] with explicit [`OpenOptions`], for desktop. Not on the FFI surface.
@@ -122,16 +124,6 @@ impl Vault {
     /// surface; needs the keychain as [`Vault::tasks`] does.
     pub fn task_store(&self, store: &Arc<dyn SecureStore>) -> Result<TaskStore, AuthError> {
         TaskStore::over(self.db.clone(), store)
-    }
-
-    /// [`Vault::search`] that also says why `index.db` was rebuilt (`None` when the file
-    /// was reused or migrated in place). Not on the FFI surface.
-    pub fn search_reporting(&self) -> Result<(Arc<Search>, Option<String>), StorageError> {
-        // Desktop has no on-device semantic search (the `semantic` feature is iOS-only).
-        let pass = Arc::clone(&self.reindexing);
-        let (search, reason) =
-            Search::over_reporting(self.db.clone(), pass, &self.directory, None)?;
-        Ok((Arc::new(search), reason))
     }
 
     /// [`Vault::sync`] under another declaration (chapter 13 §13.1): desktop
