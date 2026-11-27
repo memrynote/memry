@@ -354,8 +354,9 @@ export function trimEmphasisEdges(items: InlineItem[]): InlineItem[] {
         : ''
       if (lead) run[0] = { ...first, text: first.text?.slice(lead.length) }
       const last = run[run.length - 1]
+      // Breaks after the space go with it: the writer moves both past the mark.
       const tail = plainText(last, out[at + length])
-        ? (/[^\S\n]+$/.exec(last.text ?? '')?.[0] ?? '')
+        ? (/[^\S\n]+\n*$/.exec(last.text ?? '')?.[0] ?? '')
         : ''
       if (tail) run[run.length - 1] = { ...last, text: last.text?.slice(0, -tail.length) }
       if (lead) trimmed.push({ ...without(first, mark), text: lead })
