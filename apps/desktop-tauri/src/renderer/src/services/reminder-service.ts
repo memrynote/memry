@@ -259,8 +259,9 @@ export function onRemindersFired(callback: (reminders: ReminderHint[]) => void):
  * the created, updated and deleted channels (`reminder-handler.ts`).
  */
 export function onReminderSynced(callback: (event: { id: string }) => void): () => void {
-  return subscribeToEvent(events.syncItemSyncedEvent, (event) => {
-    if (event.type === 'reminder' && event.operation === 'pull') callback({ id: event.itemId })
+  return subscribeToEvent(events.syncItemSyncedEvent, ({ operation, items }) => {
+    if (operation !== 'pull') return
+    for (const item of items) if (item.type === 'reminder') callback({ id: item.itemId })
   })
 }
 

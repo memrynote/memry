@@ -173,16 +173,16 @@ describe('reminder-service', () => {
   it('names a reminder a pull applied, and ignores pushes and other types', () => {
     const callback = vi.fn()
     onReminderSynced(callback)
-    const synced = (payload: {
-      itemId: string
-      type: string
-      operation: string
-      itemOperation?: string
-    }): void => handlers.get('synced')?.({ payload })
+    const synced = (
+      operation: string,
+      items: { itemId: string; type: string; itemOperation: string }[]
+    ): void => handlers.get('synced')?.({ payload: { operation, items } })
 
-    synced({ itemId: 'rem_1', type: 'reminder', operation: 'push' })
-    synced({ itemId: 'task_1', type: 'task', operation: 'pull' })
-    synced({ itemId: 'rem_1', type: 'reminder', operation: 'pull', itemOperation: 'update' })
+    synced('push', [{ itemId: 'rem_1', type: 'reminder', itemOperation: 'update' }])
+    synced('pull', [
+      { itemId: 'task_1', type: 'task', itemOperation: 'update' },
+      { itemId: 'rem_1', type: 'reminder', itemOperation: 'update' }
+    ])
 
     expect(callback).toHaveBeenCalledTimes(1)
     expect(callback).toHaveBeenCalledWith({ id: 'rem_1' })

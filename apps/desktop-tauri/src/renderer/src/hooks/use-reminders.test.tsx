@@ -238,7 +238,10 @@ describe('useReminders', () => {
     it('refetches on a pulled reminder change (another device dismissed it)', async () => {
       await mountForTarget()
 
-      emit('synced', { itemId: 'rem-remote', type: 'reminder', operation: 'pull' })
+      emit('synced', {
+        operation: 'pull',
+        items: [{ itemId: 'rem-remote', type: 'reminder', itemOperation: 'update' }]
+      })
 
       await waitFor(() => {
         expect(commands.reminderGetForTarget).toHaveBeenCalledTimes(2)
@@ -248,8 +251,14 @@ describe('useReminders', () => {
     it('ignores a pushed reminder and a pulled item of another type', async () => {
       await mountForTarget()
 
-      emit('synced', { itemId: 'rem-1', type: 'reminder', operation: 'push' })
-      emit('synced', { itemId: 'task-1', type: 'task', operation: 'pull' })
+      emit('synced', {
+        operation: 'push',
+        items: [{ itemId: 'rem-1', type: 'reminder', itemOperation: 'update' }]
+      })
+      emit('synced', {
+        operation: 'pull',
+        items: [{ itemId: 'task-1', type: 'task', itemOperation: 'update' }]
+      })
 
       await new Promise((resolve) => setTimeout(resolve, 50))
       expect(commands.reminderGetForTarget).toHaveBeenCalledTimes(1)
@@ -262,7 +271,10 @@ describe('useReminders', () => {
         expect(result.current.isLoading).toBe(false)
       })
 
-      emit('synced', { itemId: 'rem-remote', type: 'reminder', operation: 'pull' })
+      emit('synced', {
+        operation: 'pull',
+        items: [{ itemId: 'rem-remote', type: 'reminder', itemOperation: 'update' }]
+      })
 
       await waitFor(() => {
         expect(commands.reminderList).toHaveBeenCalledTimes(2)

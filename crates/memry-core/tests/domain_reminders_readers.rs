@@ -189,10 +189,10 @@ fn a_fired_reminder_is_not_written_to_a_provider_and_its_fire_queues_the_push() 
             .into_iter()
             .map(|q| q.target)
             .collect();
-        assert_eq!(
-            queued,
-            std::slice::from_ref(&target),
-            "the fire queues the push that takes it down"
+        // The fire's inbox item queues its own `inbox_snooze` push beside it.
+        assert!(
+            queued.contains(&target),
+            "the fire queues the push that takes it down: {queued:?}"
         );
         Ok(())
     })
