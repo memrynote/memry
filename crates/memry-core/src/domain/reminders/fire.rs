@@ -4,7 +4,7 @@
 //! Desktop marks a fired reminder `status = 'triggered'`, a status it never
 //! sends, and its reminder handler keeps a peer's `pending` copy from un-firing
 //! it (`a4e8920c55`). Here the synced row is never touched. `reminder_fires`
-//! (data migration 0040, device-local) records every fire instant each
+//! (data migration 0042, device-local) records every fire instant each
 //! reminder was shown for, and a reminder is due when its current instant
 //! (`snoozedUntil` when snoozed, else `remindAt`) is not among them. A pulled
 //! copy with an instant already shown cannot refire it, even one that turns a
@@ -33,6 +33,7 @@ use serde_json::{Map, Value, json};
 use crate::api::errors::StorageError;
 use crate::domain::inbox;
 use crate::domain::notes::{insert_local, iso, object};
+use crate::storage::nested_tx;
 use crate::storage::repositories::sync_items;
 use crate::sync::outbox;
 
@@ -84,7 +85,7 @@ pub fn fire(
     due: &DueReminder,
     now_ms: i64,
 ) -> Result<Option<Fired>, StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let recorded = tx
         .execute(
             "INSERT INTO reminder_fires (reminder_id, fired_for_ms, fired_at_ms) VALUES (?1, ?2, ?3)
