@@ -17,6 +17,7 @@ pub mod checks;
 pub mod crash;
 mod docs;
 mod install;
+mod journal_day_merges;
 mod preflight;
 mod source;
 pub mod sync_state;
@@ -242,6 +243,7 @@ fn stage(input: &VaultImportInput<'_>, paths: &Paths) -> Result<VaultStageReport
         &paths.staging,
     )?;
     let preflight = preflight::run(&sources)?;
+    journal_day_merges::refuse_local_folds(sources.conn(tables::SourceDb::Data), &input.docs)?;
     let mut writer = ImportWriter::create(&paths.staging)?;
     crash::point("stage:writer-created");
 
