@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 431,
+    "exportedCaseCount": 433,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 441,
+    "caseCount": 443,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -894,6 +894,20 @@
       "canonical": "> q\n> <details>\n> <summary>O</summary>\n\nob\n\n</details>",
       "pending": null,
       "sha256": "011b608171476e6c222e2e052af649ef5eba6a3ef41118286c7506a086c2efe9"
+    },
+    {
+      "name": "details markup quote line, then a lazy line holding an image",
+      "markdown": "> <details>\nsee ![x](u)",
+      "canonical": "> <details>\n> see\n>\n> ![x](u)",
+      "pending": null,
+      "sha256": "026d8871df6df7f0887b7fb7bd5c1a8106ca953cfca2f804a33a4ff5d2bf145a"
+    },
+    {
+      "name": "details markup quote line ending in a hard break",
+      "markdown": "> <details>\n<br>b",
+      "canonical": "> <details>  \n> b",
+      "pending": null,
+      "sha256": "403cf1f25f88830549ff58d4cf52e34feeb9ef059d89eb825a41e873f9565737"
     },
     {
       "name": "details closing tag as a heading",

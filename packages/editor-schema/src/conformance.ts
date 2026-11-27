@@ -537,6 +537,20 @@ const toggleCases: RoundtripCase[] = [
     markdown: '> q\n<details>\n<summary>O</summary>\n\nob\n\n</details>',
     canonical: '> q\n> <details>\n> <summary>O</summary>\n\nob\n\n</details>'
   },
+  // A quote's paragraph runs on past its details line, which is text, so the
+  // image on its lazy line was dropped with the flat quote.
+  {
+    name: 'details markup quote line, then a lazy line holding an image',
+    markdown: '> <details>\nsee ![x](u)',
+    canonical: '> <details>\n> see\n>\n> ![x](u)'
+  },
+  // The writer spells a break after the markup as two spaces, which hid the
+  // line from the escape, and the parser dropped it.
+  {
+    name: 'details markup quote line ending in a hard break',
+    markdown: '> <details>\n<br>b',
+    canonical: '> <details>  \n> b'
+  },
   { name: 'details closing tag as a heading', markdown: '## </details>' },
   {
     name: 'details closing tag over a setext underline',
