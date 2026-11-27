@@ -743,6 +743,26 @@ describe('vault read-only locks (#2606)', () => {
     expect(isWritable(moved)).toBe(true)
     expect(getBaseline(asClientDb(data.db), 'note-a')).toBeUndefined()
   })
+
+  // The watcher protects a locked file made writable outside the app, and a
+  // pulled unlock releases it before that protect has changed the mode.
+  it.skipIf(isWindows)(
+    'a protect in flight when the lock lifts leaves the file writable',
+    async () => {
+      const file = addNote('note-a', 'archive/a.md', 'a\n')
+      fs.chmodSync(file, 0o664)
+      writeRemoteLock('folder', 'archive', true)
+      settleRemoteNoteFileSync('note-a', file, 'archive/a.md', 'pulled\n')
+      fs.chmodSync(file, 0o664)
+
+      const protecting = protectLockedFile(file)
+      writeRemoteLock('folder', 'archive', false)
+      settleRemoteNoteFileSync('note-a', file, 'archive/a.md', null)
+      await protecting
+
+      expect(modeOf(file)).toBe(0o664)
+    }
+  )
 })
 
 /**
