@@ -22,6 +22,7 @@ use super::blocking;
 use super::error::{CommandError, ErrorKind};
 use super::notes::{failed, open_vault, service};
 use crate::shell::{dialogs, services};
+use crate::startup::{self, Stage};
 
 /// `{ canceled, filePaths }` of `notes:show-import-dialog`.
 #[derive(Debug, Serialize, specta::Type)]
@@ -29,6 +30,10 @@ use crate::shell::{dialogs, services};
 pub struct ImportDialogResult {
     pub canceled: bool,
     pub file_paths: Vec<String>,
+}
+
+pub fn register_stages() {
+    startup::register(Stage::Handlers, "import grants", init);
 }
 
 /// Manages the import dialog's answers, which `notes_import_files` may read.
