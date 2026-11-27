@@ -78,7 +78,7 @@ final class EditorKeyboardUITests: XCTestCase {
         XCTAssertTrue(matches(NSPredicate(format: "hasKeyboardFocus == true"), find), "a second ⌘F did not re-focus find")
         app.buttons["find.close"].tap()
 
-        deleteNotes([title])
+        try deleteNotes([title])
     }
 
     func testTheSlashMenuTakesArrowsReturnAndEscape() throws {
@@ -105,7 +105,7 @@ final class EditorKeyboardUITests: XCTestCase {
         app.typeText("x")
         XCTAssertFalse(rows.firstMatch.exists, "the closed menu came back while typing in its trigger")
 
-        deleteNotes([title])
+        try deleteNotes([title])
     }
 
     /// #4705: a title, its Return and the body's first words typed in one
@@ -134,7 +134,7 @@ final class EditorKeyboardUITests: XCTestCase {
         stored.tap()
         XCTAssertTrue(matches(NSPredicate(format: "value == 'body words'"), block(0)), "the stored body is not the typed one")
 
-        deleteNotes([title])
+        try deleteNotes([title])
     }
 
     /// #4705: a hardware Return key in the title arrives as a submit, not as
@@ -152,7 +152,7 @@ final class EditorKeyboardUITests: XCTestCase {
         XCTAssertTrue(matches(NSPredicate(format: "value == 'body words'"), block(0)), "the body did not get the keys after Return")
         XCTAssertTrue(matches(NSPredicate(format: "value == %@", title), field), "the title lost or gained keys")
         XCTAssertTrue(row(title).waitForExistence(timeout: 10), "the stored title is not the typed one")
-        deleteNotes([title])
+        try deleteNotes([title])
     }
 
     /// #4705: Return as the last key of a burst in the title moves the caret
@@ -177,7 +177,7 @@ final class EditorKeyboardUITests: XCTestCase {
         XCTAssertEqual((block(0).value as? String)?.lowercased(), "one")
         XCTAssertEqual((block(1).value as? String)?.lowercased(), "two")
         XCTAssertTrue(matches(NSPredicate(format: "value == %@", title), field), "the title lost or gained keys")
-        deleteNotes([title])
+        try deleteNotes([title])
     }
 
     /// #4705 smoke test: Return in the title after the app comes back moves
@@ -210,7 +210,7 @@ final class EditorKeyboardUITests: XCTestCase {
         stored.tap()
         XCTAssertTrue(matches(NSPredicate(format: "value == 'body words'"), block(0)), "the stored body is not the typed one")
 
-        deleteNotes([title])
+        try deleteNotes([title])
     }
 
     /// In portrait the keyboard, or a panel that replaces it, leaves the
@@ -235,7 +235,7 @@ final class EditorKeyboardUITests: XCTestCase {
         XCTAssertTrue(matches(NSPredicate(format: "hasKeyboardFocus == true"), block(0)), "the block lost the caret")
 
         app.buttons["Turn into"].tap()
-        deleteNotes([title])
+        try deleteNotes([title])
     }
 
     // MARK: Helpers
@@ -284,13 +284,24 @@ final class EditorKeyboardUITests: XCTestCase {
         XCTAssertTrue(row(title).waitForExistence(timeout: 10), "the new note has no row in the list")
     }
 
-    private func deleteNotes(_ titles: [String]) {
+    /// Deletes by the row's swipe, from a fresh launch. The row's context
+    /// menu cost two of XCTest's 60 s idle waits per note: on the iPadOS 26
+    /// simulator an open context menu never reports its animations done,
+    /// Photos' own included. Relaunched, no block holds the caret, so the
+    /// swipe's touch brings no on-screen keyboard up over the question.
+    private func deleteNotes(_ titles: [String]) throws {
+        app.terminate()
+        XCUIDevice.shared.orientation = .landscapeLeft
+        try openNotes()
         for title in titles {
             let row = row(title)
             XCTAssertTrue(row.waitForExistence(timeout: 10), "no row for \(title)")
-            row.press(forDuration: 1)
-            app.buttons["Delete note"].tap()
-            app.buttons["Delete"].firstMatch.tap()
+            row.swipeLeft()
+            let question = app.sheets["Delete this note?"]
+            // A swipe across a narrow list runs its Delete action itself.
+            if !question.waitForExistence(timeout: 2) { app.buttons["trash"].firstMatch.tap() }
+            XCTAssertTrue(question.waitForExistence(timeout: 5), "Delete asked nothing")
+            question.buttons["Delete"].tap()
             XCTAssertTrue(row.waitForNonExistence(timeout: 10))
         }
     }

@@ -32,7 +32,8 @@ private struct SettingsRowSelection: ViewModifier {
     @Environment(\.settingsSelection) private var selection
 
     func body(content: Content) -> some View {
-        content.selectedRowBackground(selection == route)
+        // The id lets the root list scroll its selected row into view.
+        content.selectedRowBackground(selection == route).id(route)
     }
 }
 
