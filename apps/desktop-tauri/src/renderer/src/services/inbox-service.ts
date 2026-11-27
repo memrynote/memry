@@ -43,8 +43,9 @@ import type {
   TranscribeAudioInput,
   TranscribeAudioResponse
 } from '@memry/rpc/inbox'
-import { commands } from '../../../generated/bindings'
+import { commands, events } from '../../../generated/bindings'
 import { invokeBinary } from '../lib/ipc-binary'
+import { subscribeToEvent } from './tauri-event'
 import { createWindowApiForwarder } from './window-api-forwarder'
 
 export type {
@@ -135,6 +136,16 @@ export function onInboxSnoozed(callback: (event: InboxSnoozedEvent) => void): ()
 
 export function onInboxSnoozeDue(callback: (event: InboxSnoozeDueEvent) => void): () => void {
   return window.api.onInboxSnoozeDue(callback)
+}
+
+/** The daily review nudge fired: `count` captures to review. */
+export function onInboxReviewDue(callback: (event: { count: number }) => void): () => void {
+  return subscribeToEvent(events.inboxReviewDueEvent, callback)
+}
+
+/** The review notification was clicked: open the inbox. */
+export function onInboxReviewOpen(callback: () => void): () => void {
+  return subscribeToEvent(events.inboxReviewOpenEvent, () => callback())
 }
 
 export function onInboxTranscriptionComplete(

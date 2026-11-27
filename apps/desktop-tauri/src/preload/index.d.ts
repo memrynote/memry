@@ -1546,9 +1546,6 @@ interface API
   onTagDeleted: (callback: (event: TagDeletedEvent) => void) => () => void
   onTagNotesChanged: (callback: (event: TagNotesChangedEvent) => void) => () => void
   onTagsProgress: (callback: (event: TagsProgressEvent) => void) => () => void
-  // Inbox review event subscriptions
-  onInboxReviewDue: (callback: (event: { count: number }) => void) => () => void
-  onInboxReviewOpen: (callback: () => void) => () => void
   // Folder View event subscriptions
   onFolderViewConfigUpdated: (callback: (event: FolderViewConfigUpdatedEvent) => void) => () => void
   // Search event subscriptions

@@ -18,6 +18,7 @@ pub(super) mod note_file;
 mod notes;
 pub mod queue;
 pub mod records;
+pub mod replay;
 mod row_dumps;
 pub mod settings;
 pub mod sync_history;
@@ -201,8 +202,7 @@ pub const TABLE_MAP: &[TableMapping] = &[
     map!(Data Migration "suggestion_feedback" [26, Convert, "36d1"]: "Step 27 inbox_suggestion_feedback (device-local)"),
     map!(Data Migration "sync_devices" [19, Skip]: "device list comes from the server, device id from memry-config.json; the key check is Step 37"),
     map!(Data Migration "sync_history" [17, Convert => sync_history::import]: "Step 17 sync_history: type becomes kind, epoch seconds to ms, newest 500 rows"),
-    map!(Data Migration "sync_intents" [17, Convert, "36c2"]: "each row becomes one core outbox record row for its type and item id"),
-    map!(Data Migration "sync_pending_deletes" [17, Convert, "36c2"]: "core outbox delete rows plus tombstone sync items"),
+    map!(Data Migration "sync_intents" [17, Convert, "36d2"]: "only task and project writes record intents (their field clocks come from changedFields); a delete intent repeats its sync_pending_deletes row"),
     map!(Data Migration "sync_state" [17, Convert => super::sync_state::import]: "per-key rules in sync_state.rs (SYNC_STATE_KEYS)"),
     map!(Data Migration "tag_categories" [13, Convert => tags::tag_categories]: "core tag_categories table"),
     map!(Data Migration "tag_definitions" [13, Convert => tags::tag_definitions]: "core tag_definitions table"),
@@ -246,6 +246,7 @@ pub const TABLE_MAP: &[TableMapping] = &[
     // After every record table: queued pushes are planned against the staged records.
     map!(Data Migration "sync_tombstone_clocks" [17, Copy => queue::sync_tombstone_clocks]: "core sync_tombstone_clocks (data 0005); the note family row under note and journal"),
     map!(Data Migration "sync_queue" [17, Convert => queue::sync_queue]: "folded per item into core outbox rows through outbox::enqueue; deletes write their tombstone; note_body rows become CRDT outbox rows (docs.rs)"),
+    map!(Data Migration "sync_pending_deletes" [17, Convert => replay::sync_pending_deletes]: "replayed as flushPendingLocalDeletes does: core outbox delete rows plus tombstone sync items; a delete of a re-created id is dropped"),
     map!(Data Migration "note_body_sync" [17, Convert => super::docs::note_body_sync]: "Step 17 note_body_sync; pushed_state_vector dropped and counted (not in core); after note_metadata and sync_queue, its in-flight full states name a staged note"),
     // Last: it counts the merge into the records every table above wrote.
     map!(Data Migration "sync_unknown_fields" [16, Convert => unknown_fields::import]: "merged into the verbatim sync_items.payload of the same (type, item_id)"),
@@ -256,10 +257,6 @@ pub const TABLE_MAP: &[TableMapping] = &[
 pub fn pending_area(stage: &str) -> Option<&'static str> {
     Some(match stage {
         "36b" => "settings, vault locks, AI chats or canvas folders",
-        // `sync_pending_deletes` holds every local delete until the manifest check sees the
-        // server no longer lists it, so a synced vault nearly always has rows; `sync_intents`
-        // holds local changes still owed to the server.
-        "36c2" => "deletes the sync server has not confirmed yet, or changes waiting to sync",
         "36c3" => "sync progress",
         "36c4" => "note edit history",
         "36d1" => "inbox items, calendars or bookmarks",
