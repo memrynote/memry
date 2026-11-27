@@ -26,7 +26,6 @@ use memry_core::api::errors::{StorageError, SyncError};
 use memry_core::domain::notes;
 use memry_core::seams::reachability::{Reachability, ReachabilityObserver, Reachable};
 use memry_core::seams::secure_store::SecureStoreKey;
-use memry_core::sync::attachments::queue::absolute;
 use memry_core::sync::attachments::release::record_deleted_note;
 use memry_core::sync::attachments::revival;
 use memry_core::sync::attachments::store::download_failures::{self, FailureReason};
@@ -35,6 +34,7 @@ use memry_core::sync::driver::AttachmentDownload;
 use memry_core::sync::engine::PassReport;
 use memry_core::sync::pull::PullReport;
 use memry_core::sync::state::{PassTrigger, SyncState};
+use memry_desktop::session::at_rest_key::AtRestKeys;
 use memry_desktop::sync::attachments::AttachmentSync;
 use memry_desktop::sync::attachments::vault_files::DesktopVaultFiles;
 use memry_desktop::sync::backend::{SyncBackend, VaultSyncBackend};
@@ -103,6 +103,7 @@ fn pulled() -> PassReport {
         push_ms: 0,
         pull_error: None,
         push_error: None,
+        bodies_left: false,
     }
 }
 
@@ -177,7 +178,7 @@ async fn a_queued_upload_leaves_at_start_and_a_pulled_reference_lands() {
     let plain = content(2 * MIB, 41);
     a.write(REL, &plain);
     create_note(&a, "note-1").await;
-    let queued = absolute(&DesktopVaultFiles::new(a.vault.clone()), REL);
+    let queued = REL.to_owned();
     let row = queued.clone();
     a.db.call(move |conn| upload_queue::enqueue(conn, "note-1", &row, 2))
         .await
@@ -514,7 +515,7 @@ async fn offline_upload_rounds_count_nothing_and_the_reconnect_uploads() {
     let a = Device::new(&server, 0);
     a.write(REL, &content(MIB, 61));
     create_note(&a, "note-1").await;
-    let queued = absolute(&DesktopVaultFiles::new(a.vault.clone()), REL);
+    let queued = REL.to_owned();
     let row = queued.clone();
     a.db.call(move |conn| upload_queue::enqueue(conn, "note-1", &row, 2))
         .await
@@ -581,6 +582,7 @@ async fn a_pause_through_the_driver_keeps_the_release_closed() {
         network.clone(),
         Vec::new(),
         Arc::new(|| (true, true)),
+        AtRestKeys::new(Arc::clone(&a.store)),
     )
     .with_attachments(sync.clone());
     // The driver `open` returns is the one that tells the attachment drivers of every pause.
@@ -628,7 +630,7 @@ async fn a_pause_through_the_driver_keeps_the_release_closed() {
 async fn queued_upload(device: &Device) {
     device.write(REL, &content(MIB, 61));
     create_note(device, "note-1").await;
-    let queued = absolute(&DesktopVaultFiles::new(device.vault.clone()), REL);
+    let queued = REL.to_owned();
     device
         .db
         .call(move |conn| upload_queue::enqueue(conn, "note-1", &queued, 2))

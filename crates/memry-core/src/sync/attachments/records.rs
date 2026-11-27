@@ -12,8 +12,8 @@ use crate::storage::nested_tx;
 
 /// Records an upload of the vault file `path` (vault-relative) of `owner_id`
 /// that the server now holds as `attachment_id`, and drops its queue row,
-/// keyed `queued`: the path the row was queued under, absolute or (older rows)
-/// vault-relative.
+/// keyed `queued`: the path the row was queued under, vault-relative like
+/// `path`, or absolute in a row an earlier build queued.
 ///
 /// When the owner is a live note, the id joins the note's
 /// `attachmentReferences` as a union, in one transaction with the note's

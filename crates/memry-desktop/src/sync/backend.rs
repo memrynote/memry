@@ -405,7 +405,8 @@ impl SyncPasses for Tracked {
     ) -> Result<Option<PassReport>, SyncError> {
         let pass = SyncPasses::first_sync(&self.driver, progress).await;
         // A failed first sync is a pass that did not catch up.
-        self.attachments.heard(pass.as_ref().ok().and_then(Option::as_ref));
+        self.attachments
+            .heard(pass.as_ref().ok().and_then(Option::as_ref));
         pass
     }
     fn realtime(
