@@ -93,7 +93,7 @@ fn a_failed_move_leaves_the_folder_refused_and_untouched() {
     let w = stray_world();
     let stray = PathBuf::from(w.vault("Stray"));
     let conn = Connection::open(stray.join(".memry/data.db")).unwrap();
-    electron_db::seed(&conn, "attachment_files", &[]);
+    electron_db::seed(&conn, "reminders", &[]);
     drop(conn);
     let before = tree(&stray);
 

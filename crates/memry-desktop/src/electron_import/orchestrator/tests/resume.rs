@@ -30,9 +30,9 @@ fn core_tags(w: &World, name: &str) -> i64 {
 fn block(w: &World, name: &str, blocked: bool) {
     let conn = Connection::open(electron_db(w, name)).unwrap();
     if blocked {
-        electron_db::seed(&conn, "attachment_files", &[]);
+        electron_db::seed(&conn, "reminders", &[]);
     } else {
-        conn.execute("DELETE FROM attachment_files", []).unwrap();
+        conn.execute("DELETE FROM reminders", []).unwrap();
     }
 }
 

@@ -419,7 +419,7 @@ fn a_vault_at_another_electron_schema_stops_before_any_write() {
 fn not_ready_stops_the_whole_run() {
     let w = two_vault_world();
     let conn = Connection::open(Path::new(&w.vault("Home")).join(".memry/data.db")).unwrap();
-    electron_db::seed(&conn, "attachment_files", &[]);
+    electron_db::seed(&conn, "reminders", &[]);
     drop(conn);
 
     let error = w.run().unwrap_err();
