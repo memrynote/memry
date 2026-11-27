@@ -8,7 +8,10 @@ use serde_json::Map;
 use super::*;
 use crate::notes::properties::text_values;
 use crate::vault::consumer::MoveKind;
-use crate::vault::writeback::place::{PARKED, PLACE_TRIES};
+use crate::vault::writeback::place::PARKED;
+// Only the moves that fail on a read-only folder count tries (`cfg(unix)`).
+#[cfg(unix)]
+use crate::vault::writeback::place::PLACE_TRIES;
 
 mod marks;
 
