@@ -298,7 +298,8 @@ describe('PullCoordinator cursor inside the last slice transaction (#2294)', () 
       missing: [],
       invalid: [],
       blobMissing: [],
-      skipped: []
+      skipped: [],
+      unanswered: []
     })
 
     await engine.pull()

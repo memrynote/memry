@@ -62,6 +62,38 @@ pub fn color_id_for_event_color(color: Option<&str>) -> Option<&'static str> {
         .map(|(_, id)| *id)
 }
 
+/// RFC 7986 COLOR names per Google colour id (`COLOR_NAME_BY_ID`, `ical-write.ts`).
+const ICAL_COLORS: [(&str, &str); 11] = [
+    ("11", "tomato"),
+    ("4", "lightcoral"),
+    ("6", "darkorange"),
+    ("5", "gold"),
+    ("2", "mediumseagreen"),
+    ("10", "seagreen"),
+    ("7", "deepskyblue"),
+    ("9", "royalblue"),
+    ("1", "mediumpurple"),
+    ("3", "darkviolet"),
+    ("8", "gray"),
+];
+
+/// The COLOR an event with Google colour id `id` is written with.
+pub fn ical_color_name(id: &str) -> Option<&'static str> {
+    ICAL_COLORS
+        .iter()
+        .find(|(cid, _)| *cid == id)
+        .map(|(_, name)| *name)
+}
+
+/// `COLOR_ID_BY_NAME`: a COLOR read back, in any case.
+pub fn color_id_for_ical_color(name: &str) -> Option<&'static str> {
+    let name = name.to_ascii_lowercase();
+    ICAL_COLORS
+        .iter()
+        .find(|(_, n)| *n == name)
+        .map(|(id, _)| *id)
+}
+
 /// `calendarColorHex`.
 pub fn calendar_color_hex(color: &str) -> Option<&'static str> {
     CALENDAR_COLORS

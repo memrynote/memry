@@ -169,30 +169,32 @@ pub fn read_binding(vault: &Vault) -> Result<Option<StoredBinding>, AccountError
 
 /// Writes the binding into the vault and mirrors it onto the registry entry
 /// (`writeVaultAccountBinding`), which the account vault directory reads for closed vaults.
+/// `server_vault` is the id a sync binding binds to; the registry entry takes it in the same
+/// write as the binding mirror, so no crash between two writes leaves a stale `vaultUuid`.
 pub fn write_binding(
     open: &OpenVault,
     registry: &VaultRegistry,
     binding: &StoredBinding,
+    server_vault: Option<&str>,
 ) -> Result<(), AccountError> {
     let json =
         serde_json::to_string(binding).map_err(|e| AccountError::VaultChoice(e.to_string()))?;
     open.vault.set_account_binding(&json).map_err(storage)?;
-    let path = open.path.to_string_lossy();
-    if let Some(mut stored) = registry.get(&path) {
-        stored.account_binding = Some(AccountBinding {
-            user_id: binding.user_id.clone(),
-            mode: match binding.mode {
-                BindingMode::Sync => "sync",
-                BindingMode::Local => "local",
-            }
-            .to_owned(),
-        });
-        if let Err(error) = registry.upsert(&stored) {
-            tracing::warn!(
-                scope = "Binding",
-                "the registry mirror was not written: {error}"
-            );
+    let mirror = AccountBinding {
+        user_id: binding.user_id.clone(),
+        mode: match binding.mode {
+            BindingMode::Sync => "sync",
+            BindingMode::Local => "local",
         }
+        .to_owned(),
+    };
+    if let Err(error) =
+        registry.set_account_binding(&open.path.to_string_lossy(), &mirror, server_vault)
+    {
+        tracing::warn!(
+            scope = "Binding",
+            "the registry mirror was not written: {error}"
+        );
     }
     Ok(())
 }
@@ -253,13 +255,16 @@ pub enum Applied {
 
 impl AccountService {
     /// `applyOpenVaultBinding`: decide for the open vault, bind when that is the answer. The
-    /// network is asked only for an unbound vault with content. Signed out holds as `Unknown`.
+    /// network is asked only for an unbound vault with content. Signed out holds as `Unknown`, and
+    /// so does a sign-out that overtakes the server's answer: it binds nothing.
     pub async fn apply_open_vault_binding(
         &self,
         open: &OpenVault,
         registry: &VaultRegistry,
     ) -> Result<Applied, AccountError> {
-        let Some(user_id) = self.session.account_user_id() else {
+        // Signed in, not merely holding tokens: a refused sign-out leaves them behind.
+        let (Some(epoch), Some(user_id)) = (self.signed_in_epoch(), self.session.account_user_id())
+        else {
             return Ok(Applied::Held(BindingState::Unknown));
         };
         let binding = read_binding(&open.vault)?;
@@ -291,11 +296,18 @@ impl AccountService {
         });
         match decision {
             Decision::Hold(state) => Ok(Applied::Held(state)),
-            Decision::Start { bind } => {
-                if bind {
-                    self.bind_for_sync(open, registry, &user_id, None)?;
-                }
+            Decision::Start { bind: false } => {
+                self.restamp_records(&open.vault);
                 Ok(Applied::Start)
+            }
+            Decision::Start { bind: true } => {
+                match self
+                    .epoch
+                    .write_if(epoch, || self.bind_for_sync(open, registry, &user_id, None))
+                {
+                    Some(bound) => bound.map(|()| Applied::Start),
+                    None => Ok(Applied::Held(BindingState::Unknown)),
+                }
             }
         }
     }
@@ -327,6 +339,7 @@ impl AccountService {
                         user_id,
                         mode: BindingMode::Local,
                     },
+                    None,
                 )?;
                 Ok(BindingState::LocalOnly)
             }
@@ -345,7 +358,7 @@ impl AccountService {
 
     /// `bindVaultForSync` (and `adoptVaultLocally` for a merge): the server vault id first, so a
     /// refused rebind (bound to another server vault) records no binding, then the binding.
-    fn bind_for_sync(
+    pub(super) fn bind_for_sync(
         &self,
         open: &OpenVault,
         registry: &VaultRegistry,
@@ -364,17 +377,39 @@ impl AccountService {
                 user_id: user_id.to_owned(),
                 mode: BindingMode::Sync,
             },
+            // The account vault directory registers the vault under this id (a merge changes
+            // it, `vault-binding-resolve.ts:44-47`).
+            Some(&id),
         )?;
-        // The account vault directory registers the vault under this id (a merge changes it,
-        // `vault-binding-resolve.ts:44-47`).
-        if let Err(error) = registry.stamp_vault_uuid(&open.path.to_string_lossy(), Some(&id), &id)
-        {
-            tracing::warn!(
-                scope = "Binding",
-                "the vault id was not stamped on the registry entry: {error}"
-            );
-        }
+        self.restamp_records(&open.vault);
         Ok(())
+    }
+
+    /// Before the first push of a vault bound for sync, its records that state the local id state
+    /// the server id (#5535), once. A failure leaves sync running on the stamps as they are and
+    /// the restamp owed to the next start.
+    fn restamp_records(&self, vault: &Vault) {
+        let restamped = self
+            .session
+            .local_device_id()
+            .map_err(|error| error.to_string())
+            .and_then(|device| {
+                vault
+                    .restamp_record_vaults(&device)
+                    .map_err(|error| error.to_string())
+            });
+        match restamped {
+            Ok(0) => {}
+            Ok(count) => tracing::info!(
+                scope = "Binding",
+                count,
+                "restamped records to the server vault id"
+            ),
+            Err(error) => tracing::warn!(
+                scope = "Binding",
+                "records were not restamped to the server vault id: {error}"
+            ),
+        }
     }
 
     /// Ticks from a device other than this install's own: the id its writes stamp (from the

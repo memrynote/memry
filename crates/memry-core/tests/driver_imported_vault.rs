@@ -111,7 +111,7 @@ async fn an_imported_offline_create_goes_out_under_the_signing_device() {
 
     let pushed: Vec<(Json, Json, Json)> = desktop
         .server
-        .pushed_items()
+        .pushed_records()
         .into_iter()
         .map(|item| {
             (

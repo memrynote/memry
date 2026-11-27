@@ -174,6 +174,16 @@ fn a_failed_framer_keeps_returning_its_error() {
         );
     }
 
+    let bytes = plaintext(10);
+    let mut framer = ChunkFramer::new(bytes.as_slice(), &[0; 3], 4, nonce);
+    for _ in 0..2 {
+        assert!(matches!(
+            framer.next_chunk(),
+            Err(StreamError::Attachment(AttachmentError::Undecryptable))
+        ));
+    }
+    assert!(framer.into_summary().is_none());
+
     let past_cap = plaintext(MAX_CHUNKS_PER_SESSION + 1);
     let mut framer = ChunkFramer::new(past_cap.as_slice(), &FILE_KEY, 1, nonce);
     while let Ok(Some(_)) = framer.next_chunk() {}

@@ -3,12 +3,13 @@
 //!
 //! Real `AuthSession`, `HttpClient`, sealing, signature checks, SQLite, apply
 //! and push. The server answers by route from what it holds: `/sync/pull` the
-//! sealed records asked for, `/sync/manifest` its live records, `/sync/push`
+//! sealed records asked for, `/sync/manifest` its live records above the
+//! asked cursor with the server cursor of their last write, `/sync/push`
 //! accepts everything, and `/sync/changes` serves the pages a test queued, then
 //! an empty page at the head.
 
 use std::collections::{BTreeMap, HashMap, VecDeque};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicI64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use base64::Engine as _;
@@ -26,7 +27,7 @@ use memry_core::seams::transport::{
     HttpRequest, HttpResponse, SocketHandle, SocketListener, SocketRequest, Transport,
 };
 use memry_core::storage::{Db, open_data};
-use memry_core::sync::driver::{DriverConfig, DriverParts, SyncDriver};
+use memry_core::sync::driver::{ApplyObserver, DriverConfig, DriverParts, SyncDriver};
 use memry_core::sync::engine::{MAX_PAGES_PER_PASS, PassReport};
 use memry_core::sync::first_sync::FirstSyncLimits;
 use memry_core::sync::server_vault;
@@ -45,6 +46,9 @@ const MASTER_KEY: [u8; 32] = [7u8; 32];
 /// The server: the records it holds, the feed pages queued, every request.
 pub struct FakeServer {
     records: Mutex<BTreeMap<String, (String, Json, bool)>>,
+    /// The server cursor of each record's last write; every write takes the next one.
+    cursors: Mutex<BTreeMap<String, i64>>,
+    last_cursor: AtomicI64,
     pages: Mutex<VecDeque<String>>,
     calls: Mutex<Vec<HttpRequest>>,
     peer_secret: Vec<u8>,
@@ -54,9 +58,43 @@ pub struct FakeServer {
     added_devices: Mutex<Vec<(String, u8)>>,
     /// `GET /auth/devices` answers 503 while set.
     devices_down: AtomicBool,
+    /// `GET /auth/devices` answers a body that lists no devices while set.
+    devices_garbled: AtomicBool,
+    /// Routes whose requests are recorded and never answered.
+    hung: Mutex<Vec<&'static str>>,
+    /// Path prefixes answered 429 with this `Retry-After`, in seconds.
+    rate_limited: Mutex<Vec<(&'static str, u64)>>,
 }
 
 impl FakeServer {
+    /// A server holding nothing, whose peer signs with [`PEER_SEED`].
+    pub fn new() -> Arc<Self> {
+        let (_, peer_secret) = sodium::sign_seed_keypair(&[PEER_SEED; 32]).expect("a keypair");
+        Arc::new(Self {
+            records: Mutex::default(),
+            cursors: Mutex::default(),
+            last_cursor: AtomicI64::new(0),
+            pages: Mutex::default(),
+            calls: Mutex::default(),
+            peer_secret: peer_secret.to_vec(),
+            markers: Mutex::default(),
+            added_devices: Mutex::default(),
+            devices_down: AtomicBool::new(false),
+            devices_garbled: AtomicBool::new(false),
+            hung: Mutex::default(),
+            rate_limited: Mutex::default(),
+        })
+    }
+
+    /// Answers every request whose path starts with `route` with a 429 asking
+    /// for `retry_after_s`.
+    pub fn rate_limit(&self, route: &'static str, retry_after_s: u64) {
+        self.rate_limited
+            .lock()
+            .unwrap()
+            .push((route, retry_after_s));
+    }
+
     /// Holds `payload` live as the peer's `item_type` record `id`.
     pub fn put(&self, item_type: &str, id: &str, payload: Json) {
         self.seal(item_type, id, payload, None);
@@ -65,6 +103,18 @@ impl FakeServer {
     /// Holds `id` deleted, as a peer's delete left it.
     pub fn delete(&self, item_type: &str, id: &str) {
         self.seal(item_type, id, json!({}), Some(1_760_000_000_000));
+    }
+
+    /// Holds `id` deleted by `signer`, whose key is seeded with `seed` and
+    /// which the directory lists only once [`FakeServer::add_device`] adds it.
+    #[cfg(feature = "markdown")]
+    pub fn delete_by(&self, item_type: &str, id: &str, signer: &str, seed: u8) {
+        let (_, secret) = sodium::sign_seed_keypair(&[seed; 32]).expect("a keypair");
+        let signer = Signer {
+            id: signer,
+            signing_key: &secret,
+        };
+        self.seal_by(item_type, id, json!({}), Some(1_760_000_000_000), signer);
     }
 
     /// Queues one feed page listing `ids` (with the types the server holds).
@@ -90,7 +140,6 @@ impl FakeServer {
     }
 
     /// Queues one feed page of `deleted` ids and no refs.
-    #[cfg(feature = "markdown")]
     pub fn deleted_page(&self, deleted: &[&str], next_cursor: &str, has_more: bool) {
         self.pages.lock().unwrap().push_back(
             json!({"items": [], "deleted": deleted, "hasMore": has_more,
@@ -108,10 +157,23 @@ impl FakeServer {
             .push((id.to_owned(), seed));
     }
 
+    /// Records every request to `route` from now on and never answers it.
+    #[cfg(feature = "markdown")]
+    pub fn hang(&self, route: &'static str) {
+        self.hung.lock().unwrap().push(route);
+    }
+
     /// Fails `GET /auth/devices` until called with `false`.
     #[cfg(feature = "markdown")]
     pub fn devices_down(&self, down: bool) {
         self.devices_down.store(down, Ordering::SeqCst);
+    }
+
+    /// Answers `GET /auth/devices` with a malformed body until called with
+    /// `false`: a failure that is neither transport nor retried.
+    #[cfg(feature = "markdown")]
+    pub fn devices_garbled(&self, garbled: bool) {
+        self.devices_garbled.store(garbled, Ordering::SeqCst);
     }
 
     /// The `X-Memry-Sync-Types` of every request to `route`, in order.
@@ -150,6 +212,19 @@ impl FakeServer {
             .collect()
     }
 
+    /// The route and the `X-Memry-Vault-Id` of every request, in order.
+    pub fn vault_headers(&self) -> Vec<(String, Option<String>)> {
+        self.calls
+            .lock()
+            .unwrap()
+            .iter()
+            .map(|call| {
+                let vault = call.headers.get("x-memry-vault-id").cloned();
+                (route_of(&call.url).to_owned(), vault)
+            })
+            .collect()
+    }
+
     /// The ids of each `POST /sync/pull`, in order.
     pub fn pulled_ids(&self) -> Vec<Json> {
         self.calls_to("/sync/pull")
@@ -158,8 +233,8 @@ impl FakeServer {
             .collect()
     }
 
-    /// Every pushed record as the push sent it.
-    pub fn pushed_items(&self) -> Vec<Json> {
+    /// Every pushed record, as sent.
+    pub fn pushed_records(&self) -> Vec<Json> {
         self.calls_to("/sync/push")
             .iter()
             .flat_map(|call| {
@@ -173,7 +248,7 @@ impl FakeServer {
 
     /// `(type, id, operation)` of every pushed record.
     pub fn pushed(&self) -> Vec<(String, String, String)> {
-        self.pushed_items()
+        self.pushed_records()
             .into_iter()
             .map(|item| {
                 let field = |key: &str| item[key].as_str().unwrap_or_default().to_owned();
@@ -193,6 +268,21 @@ impl FakeServer {
     }
 
     fn seal(&self, item_type: &str, id: &str, payload: Json, deleted_at: Option<i64>) {
+        let peer = Signer {
+            id: PEER,
+            signing_key: &self.peer_secret,
+        };
+        self.seal_by(item_type, id, payload, deleted_at, peer);
+    }
+
+    fn seal_by(
+        &self,
+        item_type: &str,
+        id: &str,
+        payload: Json,
+        deleted_at: Option<i64>,
+        signer: Signer<'_>,
+    ) {
         let vault_key = keys::derive_vault_key(&MASTER_KEY).expect("the vault key");
         let content = payload.to_string().into_bytes();
         let sealed = envelope::encrypt(
@@ -206,8 +296,8 @@ impl FakeServer {
                 },
                 content: &content,
                 vault_key: &vault_key,
-                signing_secret_key: &self.peer_secret,
-                signer_device_id: PEER,
+                signing_secret_key: signer.signing_key,
+                signer_device_id: signer.id,
                 clock: None,
                 state_vector: None,
                 deleted_at,
@@ -215,6 +305,8 @@ impl FakeServer {
             &RecordMaterial::random(),
         )
         .expect("sealed");
+        let cursor = self.last_cursor.fetch_add(1, Ordering::SeqCst) + 1;
+        self.cursors.lock().unwrap().insert(id.to_owned(), cursor);
         self.records.lock().unwrap().insert(
             id.to_owned(),
             (
@@ -233,6 +325,9 @@ impl FakeServer {
                 if self.devices_down.load(Ordering::SeqCst) {
                     return (503, "{}".to_owned());
                 }
+                if self.devices_garbled.load(Ordering::SeqCst) {
+                    return (200, "{}".to_owned());
+                }
                 let public = |seed: u8| {
                     let (public, _) = sodium::sign_seed_keypair(&[seed; 32]).expect("a keypair");
                     BASE64.encode(public)
@@ -247,6 +342,9 @@ impl FakeServer {
                 json!({ "devices": devices }).to_string()
             }
             "/sync/status" => "{}".to_owned(),
+            // An answer naming no document, as an older server's: each one is
+            // pulled through its own routes.
+            "/sync/crdt/updates/batch" => "{}".to_owned(),
             "/sync/changes" => self.pages.lock().unwrap().pop_front().unwrap_or_else(|| {
                 json!({"items": [], "deleted": [], "hasMore": false, "nextCursor": null})
                     .to_string()
@@ -278,10 +376,20 @@ impl FakeServer {
             }
             "/sync/manifest" => {
                 let records = self.records.lock().unwrap();
+                let cursors = self.cursors.lock().unwrap();
+                let after: i64 = request
+                    .url
+                    .split("cursor=")
+                    .nth(1)
+                    .and_then(|rest| rest.split('&').next())
+                    .and_then(|cursor| cursor.parse().ok())
+                    .unwrap_or(0);
                 let items: Vec<Json> = records
                     .iter()
-                    .filter(|(_, (_, _, deleted))| !deleted)
-                    .map(|(id, (item_type, _, _))| json!({"id": id, "type": item_type}))
+                    .filter(|(id, (_, _, deleted))| !deleted && cursors[*id] > after)
+                    .map(|(id, (item_type, _, _))| {
+                        json!({"id": id, "type": item_type, "serverCursor": cursors[id]})
+                    })
                     .collect();
                 json!({ "items": items }).to_string()
             }
@@ -322,6 +430,12 @@ impl FakeServer {
     }
 }
 
+/// The device a sealed record names, and its signing key.
+struct Signer<'a> {
+    id: &'a str,
+    signing_key: &'a [u8],
+}
+
 /// `https://host/sync/changes?limit=500` -> `/sync/changes`.
 fn route_of(url: &str) -> &str {
     let path = url.split_once("://").map_or(url, |(_, rest)| rest);
@@ -335,6 +449,30 @@ struct Routes(Arc<FakeServer>);
 impl Transport for Routes {
     async fn send(&self, request: HttpRequest) -> Result<HttpResponse, TransportError> {
         self.0.calls.lock().unwrap().push(request.clone());
+        let hung = self
+            .0
+            .hung
+            .lock()
+            .unwrap()
+            .contains(&route_of(&request.url));
+        if hung {
+            std::future::pending::<()>().await;
+        }
+        let limited = self
+            .0
+            .rate_limited
+            .lock()
+            .unwrap()
+            .iter()
+            .find(|(route, _)| route_of(&request.url).starts_with(route))
+            .map(|(_, retry_after_s)| *retry_after_s);
+        if let Some(retry_after_s) = limited {
+            return Ok(HttpResponse {
+                status: 429,
+                headers: [("retry-after".to_owned(), retry_after_s.to_string())].into(),
+                body: br#"{"error":{"code":"RATE_LIMITED","message":"slow down"}}"#.to_vec(),
+            });
+        }
         let (status, body) = self.0.answer(&request);
         Ok(HttpResponse {
             status,
@@ -376,6 +514,44 @@ impl Reachability for Network {
     }
 }
 
+/// A signed-in session of this device (`server-device-1`) over `server`, and its secure store.
+pub fn session_on(server: &Arc<FakeServer>) -> (Arc<AuthSession>, Arc<FakeSecureStore>) {
+    let (_, own_secret) = sodium::sign_seed_keypair(&[11u8; 32]).expect("a keypair");
+    let store = FakeSecureStore::new();
+    store.put_text(
+        SecureStoreKey::AccessToken,
+        &jwt(
+            json!({"sub": "user-1", "device_id": DEVICE, "type": "access",
+                        "exp": 9_999_999_999u64}),
+        ),
+    );
+    store
+        .set(SecureStoreKey::MasterKey, MASTER_KEY.to_vec())
+        .expect("the master key");
+    store
+        .set(SecureStoreKey::DeviceSigningKey, own_secret.to_vec())
+        .expect("the signing key");
+    let session = Arc::new(
+        AuthSession::new(
+            Arc::new(Routes(Arc::clone(server))),
+            store.clone(),
+            "https://sync.example.com".to_owned(),
+            "desktop".to_owned(),
+            DeviceDescriptor {
+                name: "Desk".to_owned(),
+                platform: DevicePlatform::Macos,
+                form_factor: None,
+                os_version: None,
+                app_version: "1.0.0".to_owned(),
+                vault_id: None,
+            },
+            None,
+        )
+        .expect("a session"),
+    );
+    (session, store)
+}
+
 /// One desktop vault, its driver and the server it syncs with.
 pub struct Desktop {
     pub db: Db,
@@ -398,6 +574,15 @@ impl Desktop {
         declaration: Declaration,
         seed: impl FnOnce(&Connection) -> Result<(), StorageError> + Send + 'static,
     ) -> Self {
+        Self::open_observed(declaration, seed, Vec::new()).await
+    }
+
+    /// [`Desktop::open_with`], `observers` hearing the driver from its open on.
+    pub async fn open_observed(
+        declaration: Declaration,
+        seed: impl FnOnce(&Connection) -> Result<(), StorageError> + Send + 'static,
+        observers: Vec<Arc<dyn ApplyObserver>>,
+    ) -> Self {
         let dir = tempfile::Builder::new()
             .prefix("memry-driver-")
             .tempdir()
@@ -409,65 +594,40 @@ impl Desktop {
             seed(conn)
         })
         .expect("seed");
-        Self::over(db, declaration).await
+
+        Self::drive(db, FakeServer::new(), declaration, observers).await
     }
 
     /// A driver sending `declaration` over the vault `db` holds, bound to `vault-1`.
     pub async fn over(db: Db, declaration: Declaration) -> Self {
-        let (_, peer_secret) = sodium::sign_seed_keypair(&[12u8; 32]).expect("a keypair");
-        let server = Arc::new(FakeServer {
-            records: Mutex::default(),
-            pages: Mutex::default(),
-            calls: Mutex::default(),
-            peer_secret: peer_secret.to_vec(),
-            markers: Mutex::default(),
-            added_devices: Mutex::default(),
-            devices_down: AtomicBool::new(false),
-        });
-        Self::drive(db, server, declaration).await
+        Self::drive(db, FakeServer::new(), declaration, Vec::new()).await
     }
 
     /// The app restarted: a new driver over the same `data.db` and server.
     #[cfg(feature = "markdown")]
     pub async fn reopen(self, declaration: Declaration) -> Self {
         let Self { db, server, .. } = self;
-        Self::drive(db, server, declaration).await
+        Self::drive(db, server, declaration, Vec::new()).await
     }
 
-    async fn drive(db: Db, server: Arc<FakeServer>, declaration: Declaration) -> Self {
-        let (_, own_secret) = sodium::sign_seed_keypair(&[11u8; 32]).expect("a keypair");
-        let store = FakeSecureStore::new();
-        store.put_text(
-            SecureStoreKey::AccessToken,
-            &jwt(
-                json!({"sub": "user-1", "device_id": DEVICE, "type": "access",
-                        "exp": 9_999_999_999u64}),
-            ),
-        );
-        store
-            .set(SecureStoreKey::MasterKey, MASTER_KEY.to_vec())
-            .expect("the master key");
-        store
-            .set(SecureStoreKey::DeviceSigningKey, own_secret.to_vec())
-            .expect("the signing key");
-        let session = Arc::new(
-            AuthSession::new(
-                Arc::new(Routes(Arc::clone(&server))),
-                store,
-                "https://sync.example.com".to_owned(),
-                "desktop".to_owned(),
-                DeviceDescriptor {
-                    name: "Desk".to_owned(),
-                    platform: DevicePlatform::Macos,
-                    form_factor: None,
-                    os_version: None,
-                    app_version: "1.0.0".to_owned(),
-                    vault_id: None,
-                },
-                None,
-            )
-            .expect("a session"),
-        );
+    /// The app restarted, and `observers` hear the new driver from its open on.
+    #[cfg(feature = "markdown")]
+    pub async fn reopen_observed(
+        self,
+        declaration: Declaration,
+        observers: Vec<Arc<dyn ApplyObserver>>,
+    ) -> Self {
+        let Self { db, server, .. } = self;
+        Self::drive(db, server, declaration, observers).await
+    }
+
+    async fn drive(
+        db: Db,
+        server: Arc<FakeServer>,
+        declaration: Declaration,
+        observers: Vec<Arc<dyn ApplyObserver>>,
+    ) -> Self {
+        let (session, _) = session_on(&server);
         let network = Arc::new(Network::default());
         let driver = SyncDriver::open(DriverParts {
             db: db.clone(),
@@ -478,10 +638,13 @@ impl Desktop {
                 declaration,
                 first_sync: FirstSyncLimits::ALL,
                 max_pages_per_pass: MAX_PAGES_PER_PASS,
-                pack_concurrency: 1,
+                vault_root: None,
+                own_writes: None,
             },
             seeds: Vec::new(),
             pass_gate: Arc::default(),
+            observers,
+            spill_dir: None,
         })
         .await
         .expect("the driver");

@@ -1,5 +1,21 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalDependencies": [
+    ".nvmrc",
+    "package.json",
+    "pnpm-lock.yaml",
+    "pnpm-workspace.yaml",
+    "config/oxlint-typecheck.json",
+    "packages/typescript-config/*.json",
+    "scripts/repair-package-links.js",
+    "scripts/typecheck.mjs"
+  ],
+  "futureFlags": {
+    "longerSignatureKey": true
+  },
+  "remoteCache": {
+    "signature": true
+  },
   "tasks": {
     "dev": {
       "cache": false,
@@ -13,13 +29,14 @@
     "typecheck": {
       "cache": true,
       "dependsOn": ["^typecheck"],
-      "inputs": ["**/*.ts", "**/*.tsx", "tsconfig*.json", "package.json"],
-      "outputs": ["**/*.tsbuildinfo"]
+      "inputs": ["$TURBO_DEFAULT$"],
+      "outputs": ["**/*.tsbuildinfo"],
+      "passThroughEnv": ["CARGO_*", "ANDROID_NDK_HOME"]
     },
     "test": {
       "cache": true,
       "dependsOn": ["^test"],
-      "inputs": ["**/*.ts", "**/*.tsx", "**/*.test.*", "package.json", "vitest.config.*"],
+      "inputs": ["$TURBO_DEFAULT$"],
       "outputs": []
     }
   }

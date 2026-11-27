@@ -3,6 +3,7 @@ import { deleteBlobs, generateCrdtSnapshotKey, putBlob } from './blob'
 import { reserveCursors, type CursorReservation } from './cursor'
 import { adjustStorageUsed, reserveStorage } from './quota'
 import { D1_MAX_BIND_PARAMS, refundReservation } from './crdt-shared'
+import { DEAD } from './document-body-purge'
 import type { ClientIdentity } from '../lib/client-identity'
 import { AppError, ErrorCodes } from '../lib/errors'
 import { createLogger } from '../lib/logger'
@@ -111,6 +112,29 @@ const STORED_COVERS_THROUGH_SQL = `CASE
    END`
 
 /**
+ * Whether a snapshot may be stored at all, insert and replace alike (#5367,
+ * protocol 07 §7.15). A purge deletes a dead document's body, and a snapshot
+ * encoded from that body can arrive after it. Stored, it is the baseline a
+ * fresh device takes for the re-created id. So the write is refused:
+ *
+ * - while the document is dead (a note or journal record deleted, none live);
+ * - for a claim whose cursor is below the purge's tombstone cursor: that
+ *   pusher never read the delete, whether or not the id was re-created since.
+ *   Dormant until the claim rollout: the routes drop every claim while
+ *   `snapshotClaimsEnabled` is false (protocol 07 §7.7.1), and
+ *   `CRDT_CLAIM_MIN_DESKTOP_VERSION` is unset in every environment.
+ *
+ * An unclaimed push for a live document carries nothing to judge and passes,
+ * so a client that never claims is not refused forever.
+ *
+ * Bind: user, vault, note twice (`DEAD`), then user, vault, note, and
+ * `coversThrough` (or null).
+ */
+const BODY_FENCE_SQL = `NOT (${DEAD})
+     AND NOT EXISTS (SELECT 1 FROM crdt_sequence_floors f
+       WHERE f.user_id = ? AND f.vault_id = ? AND f.note_id = ? AND f.purge_cursor > ?)`
+
+/**
  * The one snapshot upsert. A column missing from the DO UPDATE SET list
  * (`revision` above all) is not a compile error, it is a client stuck on a
  * stale body forever; `server_cursor` is in it so a replaced snapshot reaches
@@ -118,12 +142,13 @@ const STORED_COVERS_THROUGH_SQL = `CASE
  * (#2299): a concurrent push that read an older watermark must not lower it
  * under rows a claimed push pruned (07 §7.8).
  *
- * Bind the 13 row values, then `cursorBinds`, then `baseRevision` twice (the
- * stored claim, then the guard).
+ * Bind the 13 row values, then `cursorBinds`, then the `BODY_FENCE_SQL`
+ * binds, then `baseRevision` twice (the stored claim, then the guard).
  */
 const snapshotUpsertSql = (cursors: CursorReservation): string =>
   `INSERT INTO crdt_snapshots (id, user_id, vault_id, note_id, blob_key, sequence_num, size_bytes, signer_device_id, created_at, revision, client_platform, client_version, covers_through, server_cursor)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${cursors.cursorSql})
+         SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${cursors.cursorSql}
+         WHERE ${BODY_FENCE_SQL}
          ON CONFLICT (user_id, vault_id, note_id)
          DO UPDATE SET blob_key = excluded.blob_key, sequence_num = MAX(crdt_snapshots.sequence_num, excluded.sequence_num), size_bytes = excluded.size_bytes, signer_device_id = excluded.signer_device_id, created_at = excluded.created_at, revision = excluded.revision, client_platform = excluded.client_platform, client_version = excluded.client_version, covers_through = ${STORED_COVERS_THROUGH_SQL}, server_cursor = excluded.server_cursor
          WHERE ${REPLACE_ALLOWED_SQL}`
@@ -260,7 +285,20 @@ const writeSnapshots = async (
            GROUP BY note_id`
         )
         .bind(userId, vaultId, ...ids, userId, vaultId, ...ids, userId, vaultId, ...ids)
-    })
+    }),
+    // The dead documents (`DEAD`, #5367), for the early refusal below.
+    ...existingChunks.map((ids) =>
+      db
+        .prepare(
+          `SELECT DISTINCT r.item_id AS note_id FROM sync_items r
+           WHERE r.user_id = ? AND r.vault_id = ? AND r.item_type IN ('note', 'journal')
+             AND r.item_id IN (${ids.map(() => '?').join(', ')}) AND r.deleted_at IS NOT NULL
+             AND NOT EXISTS (SELECT 1 FROM sync_items l WHERE l.user_id = r.user_id
+               AND l.vault_id = r.vault_id AND l.item_type IN ('note', 'journal')
+               AND l.item_id = r.item_id AND l.deleted_at IS NULL)`
+        )
+        .bind(userId, vaultId, ...ids)
+    )
   ])
   const existingByNote = new Map<string, ExistingRow>()
   for (const result of metaResults.slice(0, existingChunks.length)) {
@@ -270,13 +308,21 @@ const writeSnapshots = async (
     }
   }
   const maxSeqByNote = new Map<string, number>()
-  for (const result of metaResults.slice(existingChunks.length)) {
+  const deadFrom = existingChunks.length + watermarkChunks.length
+  for (const result of metaResults.slice(existingChunks.length, deadFrom)) {
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- D1 rows are untyped; the shape is fixed by the SELECT in this function
     for (const row of (result as D1Result<{ note_id: string; max_seq: number | null }>).results ??
       []) {
       maxSeqByNote.set(row.note_id, row.max_seq ?? 0)
     }
   }
+  const deadNotes = new Set(
+    metaResults
+      .slice(deadFrom)
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- D1 rows are untyped; the shape is fixed by the SELECT in this function
+      .flatMap((result) => (result as D1Result<{ note_id: string }>).results ?? [])
+      .map((row) => row.note_id)
+  )
 
   // The covered watermark of every claimed write, one more round trip.
   const claimed = writes.flatMap((entry, index) =>
@@ -312,13 +358,20 @@ const writeSnapshots = async (
     })
   }
 
-  // An unclaimed push onto a claimed row is refused from the stage-1 read,
-  // before its R2 put: a pre-#2299 client retries every refusal, so each retry
-  // costs a D1 read only. The upsert's guard stays the authority.
+  // An unclaimed push onto a claimed row, and a push for a dead document
+  // (#5367), is refused from the stage-1 read, before its R2 put: a pre-#2299
+  // client retries every refusal, so each retry costs a D1 read only. The
+  // upsert's guards stay the authority.
   const planned: PlannedWrite[] = writes.flatMap((entry, index) => {
     const existing = existingByNote.get(entry.noteId)
-    if (!entry.claim && existing && existing.covers_through !== null) {
-      results[index] = { ok: false, error: new SnapshotNotCoveredError(existing.server_cursor) }
+    if (
+      deadNotes.has(entry.noteId) ||
+      (!entry.claim && existing && existing.covers_through !== null)
+    ) {
+      results[index] = {
+        ok: false,
+        error: new SnapshotNotCoveredError(existing?.server_cursor ?? null)
+      }
       return []
     }
     const revision = crypto.randomUUID()
@@ -403,6 +456,16 @@ const writeSnapshots = async (
             client?.version ?? null,
             entry.claim?.coversThrough ?? null,
             ...cursors.cursorBinds(position),
+            userId,
+            vaultId,
+            entry.noteId,
+            userId,
+            vaultId,
+            entry.noteId,
+            userId,
+            vaultId,
+            entry.noteId,
+            entry.claim?.coversThrough ?? null,
             entry.claim?.baseRevision ?? null,
             entry.claim?.baseRevision ?? null
           )

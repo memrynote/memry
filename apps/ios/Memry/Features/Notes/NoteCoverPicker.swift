@@ -124,12 +124,8 @@ struct NoteCoverPickerSheet: View {
         await upload(bytes: data, fileExtension: item.supportedContentTypes.first?.preferredFilenameExtension)
     }
 
-    /// The security-scoped dance a `fileImporter` url needs, stopped even when
-    /// the read throws.
     private func upload(file url: URL) async {
-        let scoped = url.startAccessingSecurityScopedResource()
-        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-        guard let data = try? Data(contentsOf: url) else {
+        guard let data = url.withSecurityScope({ try? Data(contentsOf: url) }) else {
             unreadable = true
             return
         }

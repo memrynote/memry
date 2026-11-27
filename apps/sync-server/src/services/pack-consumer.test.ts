@@ -52,7 +52,16 @@ describe('handlePackQueueMessage', () => {
   })
 
   it('ACKs malformed messages instead of burning retries on poison input', async () => {
-    for (const body of [null, {}, { userId: '' }, { userId: 'u' }, 42, 'nope']) {
+    for (const body of [
+      null,
+      {},
+      { userId: '' },
+      { userId: 'u' },
+      42,
+      'nope',
+      { userId: 'u', vaultId: 'v', backfill: { kind: 'note', hop: 0 } },
+      { userId: 'u', vaultId: 'v', backfill: { kind: 'record', hop: -1 } }
+    ]) {
       await expect(
         handlePackQueueMessage({ DB: harness.db, STORAGE: storage }, body)
       ).resolves.toBeUndefined()

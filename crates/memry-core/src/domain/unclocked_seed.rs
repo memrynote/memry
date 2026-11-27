@@ -17,7 +17,7 @@ use super::recreate::recreate_clock;
 use crate::api::errors::StorageError;
 use crate::api::tasks_write::now_ms;
 use crate::domain::note_files::is_local_only;
-use crate::storage::Db;
+use crate::storage::{Db, nested_tx};
 use crate::storage::repositories::{Change, StoredPayload, sync_items};
 use crate::sync::engine::PassSeed;
 use crate::sync::hardening::purged::RECREATABLE_AFTER_PURGE_ITEM_TYPES;
@@ -52,7 +52,7 @@ pub fn seed(
     device_id: &str,
     now_ms: i64,
 ) -> Result<Vec<(String, String)>, StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let mut seeded = Vec::new();
     for (item_type, item_id) in unclocked(&tx)? {
         let Some(stored) = sync_items::load(&tx, &item_type, &item_id)?

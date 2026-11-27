@@ -15,6 +15,8 @@ pub(super) enum Msg {
     Forget(String),
     /// The file at this vault-relative path is another note's now.
     Rehome(String),
+    /// The file reported new at this vault-relative path is this note's now.
+    Named(String, String),
 }
 
 /// What a rescan does with a file no row names.
@@ -65,6 +67,22 @@ impl WatchHandle {
                 "a moved file's new note was not told; resyncing"
             );
             self.resync();
+        }
+    }
+
+    /// The file the watcher reported new at `rel` got the note `note_id`: what was reported for
+    /// it names that note from now on, so the note's row going makes the file new again
+    /// ([`Reconciler::named`]). A full queue drops it, logged: the file keeps the report that
+    /// names no note, and the next open's walk gives it its row back. Dropped once the watcher
+    /// stopped.
+    ///
+    /// [`Reconciler::named`]: super::reconcile::Reconciler::named
+    pub fn named(&self, rel: String, note_id: String) {
+        if let Err(TrySendError::Full(_)) = self.tx.try_send(Msg::Named(rel, note_id)) {
+            tracing::warn!(
+                scope = "vault_watch",
+                "a new file's note was not told to the watcher; the next open looks at it again"
+            );
         }
     }
 

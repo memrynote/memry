@@ -9,6 +9,7 @@
  * - Keyboard navigation (arrows, enter, escape, number keys)
  */
 
+import { folderViewService } from '@/services/folder-view-service'
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Folder, Plus, Sparkles, Search } from '@/lib/icons'
@@ -162,7 +163,7 @@ function MoveToFolderDialogSession({
     queryKey: ['folderView', 'folder-suggestions', noteIds[0]],
     queryFn: async () => {
       if (!noteIds[0]) return { suggestions: [] }
-      return window.api.folderView.getFolderSuggestions(noteIds[0])
+      return folderViewService.getFolderSuggestions(noteIds[0])
     },
     enabled: aiEnabled && noteIds.length > 0
   })

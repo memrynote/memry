@@ -13,6 +13,7 @@ use rusqlite::{Connection, OptionalExtension as _, Row, params};
 
 use crate::api::errors::StorageError;
 use crate::domain::notes::failed;
+use crate::storage::nested_tx;
 
 use super::write::{mint_id, require_live};
 
@@ -329,7 +330,7 @@ pub struct InboxJobsResumed {
 /// transcription allows one attempt, and quitting must not cost it), but a
 /// job interrupted again after that is `failed`.
 pub fn resume(conn: &Connection, now_ms: i64) -> Result<InboxJobsResumed, StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let dropped = tx
         .execute(
             "DELETE FROM inbox_jobs WHERE NOT EXISTS (

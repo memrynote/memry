@@ -29,8 +29,7 @@ export const scenes = {
     zoom(300, 300, 1.5)
     await rec.click(tag(page, 'client'))
     await page
-      .getByText('3 items')
-      .or(page.getByText(/\d+ items/))
+      .getByText(/\d+ items/)
       .first()
       .waitFor()
     await at(4.0)

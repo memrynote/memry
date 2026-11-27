@@ -19,6 +19,7 @@ import type * as DatabaseModule from '../database'
 import type * as NotesModule from './notes'
 import type * as UnlinkedMentionsModule from './unlinked-mentions'
 import { createJournalEntry } from '../journal/create-entry'
+import { crdtWriteback } from '../sync/crdt-writeback-port'
 
 // ============================================================================
 // Type-Safe Mocks
@@ -52,7 +53,7 @@ vi.mock('../inbox/suggestions', () => ({
 // serializes the stale refs straight back over the file the move just corrected
 // — and persists them.
 const crdtMocks = vi.hoisted(() => ({
-  feedExternalEditToCrdt: vi.fn(async () => false)
+  feedExternalEditToCrdt: vi.fn(async (_noteId: string, _markdown: string) => false)
 }))
 vi.mock('../sync/crdt-external-feed', () => ({
   feedExternalEditToCrdt: crdtMocks.feedExternalEditToCrdt
@@ -165,6 +166,67 @@ describe('unlinked mentions (#3320)', () => {
         ordinal: 5
       })
     ).toBe(false)
+  })
+
+  /** Link `ordinal` while `during` changes the source's file as the feed runs; the file after it. */
+  async function linkWhileFileChanges(body: string, ordinal: number, during: string, fed = true) {
+    const target = await notes.createNote({ title: 'Alpha', content: 'Body.' })
+    const source = await notes.createNote({ title: 'Log', content: body })
+    await projections.flushProjectionEvents()
+    const before = readVaultFile(source.path)
+    const filePath = path.join(tempVault.path, source.path)
+    let docBody = ''
+    crdtMocks.feedExternalEditToCrdt.mockImplementationOnce(async (_id, content) => {
+      docBody = content.trim()
+      fs.writeFileSync(filePath, before.replace(body, during))
+      return fed
+    })
+    // Stands in for the doc's write-back: it serializes the fed body to the file.
+    vi.spyOn(crdtWriteback(), 'retryWriteback').mockImplementation((id) => {
+      if (id !== source.id) return
+      fs.writeFileSync(filePath, fs.readFileSync(filePath, 'utf-8').replace(during, docBody))
+    })
+    const linked = await mentions.linkUnlinkedMentionInSource({
+      sourceId: source.id,
+      targetId: target.id,
+      ordinal
+    })
+    return { linked, file: readVaultFile(source.path) }
+  }
+
+  // VERIFY-5719 low 2: the doc links the mention picked in the bytes read
+  // before the feed; the file must not link a different one.
+  // REVIEW-5728 low 1: the doc's write-back then brings the file level.
+  it('leaves the moved mention to the write-back, which links it in the file', async () => {
+    const { linked, file } = await linkWhileFileChanges(
+      'Alpha one.\n\nAlpha two.',
+      0,
+      'Gone one.\n\nAlpha two.'
+    )
+    expect(linked).toBe(true)
+    expect(file).toContain('[[Alpha]] one.\n\nAlpha two.')
+  })
+
+  // REVIEW-5728 low 2: with no doc holding the link, the file is its only home.
+  it('links the file when the doc was not fed, even if the body changed meanwhile', async () => {
+    const { linked, file } = await linkWhileFileChanges(
+      'Alpha one.\n\nAlpha two.',
+      0,
+      'Gone one.\n\nAlpha two.',
+      false
+    )
+    expect(linked).toBe(true)
+    expect(file).toContain('Gone one.\n\n[[Alpha]] two.')
+  })
+
+  it('links the picked mention when a body change during the feed leaves it in place', async () => {
+    const { linked, file } = await linkWhileFileChanges(
+      'Alpha one.\n\nAlpha two.',
+      0,
+      'Alpha one.\n\nAlpha two.\n\nTyped meanwhile.'
+    )
+    expect(linked).toBe(true)
+    expect(file).toContain('[[Alpha]] one.\n\nAlpha two.\n\nTyped meanwhile.')
   })
 
   it('tells the reference filters which sources are journal entries and their tags', async () => {

@@ -20,6 +20,7 @@
 //! `syncable.rs` must also ship a one-time promotion on vault open (read the blob
 //! value, `Settings::set` it only when no device has a clock for the path, then
 //! drop it from the blob), like desktop's `seedFeaturesSyncedSettings`.
+//! [`AppSettings::promote_stranded`] is that promotion for one group.
 //!
 //! ## Blob that is JSON but not an object
 //!
@@ -34,6 +35,8 @@ mod defaults;
 mod groups;
 mod syncable;
 
+#[cfg(test)]
+mod calendar_tests;
 #[cfg(test)]
 mod local_text_tests;
 #[cfg(test)]
@@ -102,6 +105,59 @@ pub fn group_names() -> Vec<&'static str> {
 /// answer while no vault is open.
 pub fn group_defaults(name: &str) -> Option<Value> {
     groups::find(name).map(|group| Value::Object(spec_defaults(group)))
+}
+
+/// A flat local key's stored text on `conn`, for a caller already inside a
+/// write (the review tick's guard).
+pub(crate) fn local_text_in(conn: &Connection, key: &str) -> Result<Option<String>, StorageError> {
+    require_local_key(key)?;
+    conn.query_row(
+        "SELECT value FROM local_settings WHERE key = ?1",
+        params![key],
+        |row| row.get(0),
+    )
+    .optional()
+    .map_err(failed)
+}
+
+/// Replaces a flat local key's stored text on `conn` (Electron's `setSetting`).
+pub(crate) fn put_local_text_in(
+    conn: &Connection,
+    key: &str,
+    text: &str,
+    now: i64,
+) -> Result<(), StorageError> {
+    require_local_key(key)?;
+    conn.execute(
+        "INSERT INTO local_settings (key, value, updated_at) VALUES (?1, ?2, ?3)
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",
+        params![key, text, now],
+    )
+    .map_err(failed)?;
+    Ok(())
+}
+
+/// Deletes a flat local key on `conn` (Electron's `deleteSetting`).
+pub(crate) fn drop_local_in(conn: &Connection, key: &str) -> Result<(), StorageError> {
+    require_local_key(key)?;
+    conn.execute("DELETE FROM local_settings WHERE key = ?1", params![key])
+        .map_err(failed)?;
+    Ok(())
+}
+
+fn require_local_key(key: &str) -> Result<(), StorageError> {
+    if local_key_ok(key) {
+        Ok(())
+    } else {
+        Err(invalid(format!("`{key}` is not a local settings key")))
+    }
+}
+
+/// Whether a group write takes `value` for `group.field`: the check of every write and of the
+/// promotion, for a shell that filters a patch before writing it.
+pub fn value_ok(group: &str, field: &str, value: &Value) -> bool {
+    groups::find(group)
+        .is_some_and(|spec| validate(group, field, value, spec_defaults(spec).get(field)).is_ok())
 }
 
 /// A flat device-local key (`tagSearches`, `graphViews`): not a group, never synced.
@@ -226,6 +282,73 @@ impl AppSettings {
         })
     }
 
+    /// Moves the synced fields a group's blob still holds into the synced item:
+    /// the one-time promotion the module docs require when a field becomes
+    /// syncable. A value is promoted only when no device has a clock or a value
+    /// for its path and it differs from the default (desktop's
+    /// `seedCalendarSyncedSettings`); every synced field then leaves the blob,
+    /// since reads never take it from there. Returns how many were promoted.
+    pub fn promote_stranded(&self, group: &str) -> Result<usize, StorageError> {
+        let spec = group_of(group)?;
+        if spec.syncable.is_empty() {
+            return Ok(0);
+        }
+        let defaults = spec_defaults(spec);
+        let device = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            let raw: Option<String> = conn
+                .query_row(
+                    "SELECT value FROM local_settings WHERE key = ?1",
+                    params![spec.name],
+                    |row| row.get(0),
+                )
+                .optional()
+                .map_err(failed)?;
+            let Some(Ok(Value::Object(mut blob))) = raw.as_deref().map(serde_json::from_str) else {
+                return Ok(0);
+            };
+            let stranded: Vec<(String, Value)> = spec
+                .syncable
+                .iter()
+                .filter_map(|field| Some(((*field).to_owned(), blob.remove(*field)?)))
+                .collect();
+            if stranded.is_empty() {
+                return Ok(0);
+            }
+            let mut promote = Vec::new();
+            for (field, value) in stranded {
+                let path = format!("{}.{field}", spec.name);
+                let untouched = settings::field_clock(conn, &path)?.is_none()
+                    && settings::read(conn, &path)?.is_none();
+                if untouched
+                    && defaults.get(&field) != Some(&value)
+                    && validate(spec.name, &field, &value, defaults.get(&field)).is_ok()
+                {
+                    promote.push((path, value));
+                }
+            }
+            let now = now_ms();
+            let rewrite = |tx: &Connection| {
+                tx.execute(
+                    "UPDATE local_settings SET value = ?1, updated_at = ?2 WHERE key = ?3",
+                    params![Value::Object(blob.clone()).to_string(), now, spec.name],
+                )
+                .map_err(failed)?;
+                Ok(())
+            };
+            if promote.is_empty() {
+                rewrite(conn)?;
+                return Ok(0);
+            }
+            let changes: Vec<(&str, Change)> = promote
+                .iter()
+                .map(|(path, value)| (path.as_str(), Change::Set(value.clone())))
+                .collect();
+            settings::apply_many(conn, &changes, &device, now, rewrite)?;
+            Ok(promote.len())
+        })
+    }
+
     /// A flat local key's value, `None` when never written. An unparseable row reads as `None`
     /// and is left on disk.
     pub fn get_local(&self, key: &str) -> Result<Option<Value>, StorageError> {
@@ -243,36 +366,15 @@ impl AppSettings {
     /// its `ai.*` keys this way: `ai.summarizeAgent` holds the bare choice (`codex_cli`), which
     /// is not JSON.
     pub fn get_local_text(&self, key: &str) -> Result<Option<String>, StorageError> {
-        if !local_key_ok(key) {
-            return Err(invalid(format!("`{key}` is not a local settings key")));
-        }
         let key = key.to_owned();
-        self.db.read_blocking(move |conn| {
-            conn.query_row(
-                "SELECT value FROM local_settings WHERE key = ?1",
-                params![key],
-                |row| row.get(0),
-            )
-            .optional()
-            .map_err(failed)
-        })
+        self.db.read_blocking(move |conn| local_text_in(conn, &key))
     }
 
     /// Replaces a flat local key's stored text (Electron's `setSetting`).
     pub fn set_local_text(&self, key: &str, text: &str) -> Result<SettingsChange, StorageError> {
-        if !local_key_ok(key) {
-            return Err(invalid(format!("`{key}` is not a local settings key")));
-        }
         let (name, text) = (key.to_owned(), text.to_owned());
-        self.db.call_blocking(move |conn| {
-            conn.execute(
-                "INSERT INTO local_settings (key, value, updated_at) VALUES (?1, ?2, ?3)
-                 ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",
-                params![name, text, now_ms()],
-            )
-            .map_err(failed)?;
-            Ok(())
-        })?;
+        self.db
+            .call_blocking(move |conn| put_local_text_in(conn, &name, &text, now_ms()))?;
         Ok(SettingsChange {
             group: key.to_owned(),
             fields: Vec::new(),
@@ -304,14 +406,22 @@ impl AppSettings {
     }
 }
 
+/// `<group>.<field>[.<entry>]`. A provider group's name holds a dot
+/// (`calendar.google`), so the two-segment group wins when it exists.
 fn split_path(path: &str) -> Result<(&str, &str, Option<&str>), StorageError> {
-    let mut parts = path.splitn(3, '.');
-    match (parts.next(), parts.next(), parts.next()) {
-        (Some(group), Some(field), entry) if !group.is_empty() && !field.is_empty() => {
-            Ok((group, field, entry.filter(|entry| !entry.is_empty())))
-        }
-        _ => Err(invalid(format!("`{path}` is not a settings path"))),
+    let refuse = || invalid(format!("`{path}` is not a settings path"));
+    let (group, rest) = match path.match_indices('.').nth(1) {
+        Some((at, _)) if groups::find(&path[..at]).is_some() => (&path[..at], &path[at + 1..]),
+        _ => path.split_once('.').ok_or_else(refuse)?,
+    };
+    let (field, entry) = match rest.split_once('.') {
+        Some((field, entry)) => (field, Some(entry)),
+        None => (rest, None),
+    };
+    if group.is_empty() || field.is_empty() {
+        return Err(refuse());
     }
+    Ok((group, field, entry.filter(|entry| !entry.is_empty())))
 }
 
 fn spec_defaults(spec: &Group) -> Map<String, Value> {
@@ -321,9 +431,9 @@ fn spec_defaults(spec: &Group) -> Map<String, Value> {
     }
 }
 
-/// Type and range checks. A `null` default means "any value": the field is
-/// nullable and its other type is not recorded. A field with no default is
-/// unknown to this build and is kept as written.
+/// Type and range checks. A field with a [`groups::shape`] must match it. Otherwise a `null`
+/// default means "any value": the field is nullable and its other type is not recorded. A
+/// field with no default is unknown to this build and is kept as written.
 fn validate(
     group: &str,
     field: &str,
@@ -331,6 +441,11 @@ fn validate(
     default: Option<&Value>,
 ) -> Result<(), StorageError> {
     let refuse = |why: &str| invalid(format!("settings `{group}.{field}`: {why}"));
+    if let Some(ok) = groups::shape(group, field)
+        && !ok(value)
+    {
+        return Err(refuse("not a value desktop's settings sync takes"));
+    }
     let Some(default) = default else {
         return Ok(());
     };
@@ -393,7 +508,8 @@ fn read_group(
     }
 
     let all = settings::all(conn)?;
-    if let Some(Value::Object(synced)) = all.get(spec.name) {
+    let at: Vec<&str> = spec.name.split('.').collect();
+    if let Some(Value::Object(synced)) = settings::value_at(&all, &at) {
         for field in spec.syncable {
             match synced.get(*field) {
                 None | Some(Value::Null) => {}

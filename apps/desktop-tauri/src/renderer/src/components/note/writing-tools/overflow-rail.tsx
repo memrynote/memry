@@ -22,7 +22,7 @@ export function OverflowRail({ session, snapshot }: OverflowRailProps) {
   const [value, setValue] = useState('')
 
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>): void => {
-    if (event.key !== 'Enter' || event.nativeEvent.isComposing) return
+    if (event.key !== 'Enter') return
     event.preventDefault()
     if (!value.trim()) return
     session.addOverflow(value)

@@ -1,3 +1,4 @@
+import type * as NotesModule from '@main/database/queries/notes'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import fs from 'fs'
 import os from 'os'
@@ -40,7 +41,17 @@ vi.mock('./crdt-writeback-port', async () => {
   const writeback = await import('./crdt-writeback')
   return { crdtWriteback: () => writeback }
 })
-vi.mock('./crdt-writeback', () => ({ markWritebackIgnored: vi.fn() }))
+vi.mock('./crdt-writeback', () => ({}))
+// The index holds each seeded file's bytes as its baseline: the delete tests
+// weigh clocks over text this device ingested. A file edited after its seed
+// holds bytes it did not (#5757, #5797).
+const { baselines } = vi.hoisted(() => ({
+  baselines: new Map<string, { contentHash: string; pendingWriteHash?: string | null }>()
+}))
+vi.mock('@main/database/queries/notes', async (importOriginal) => ({
+  ...(await importOriginal<typeof NotesModule>()),
+  getNoteCacheById: vi.fn((_db: unknown, id: string) => baselines.get(id))
+}))
 vi.mock('./crdt-provider', () => ({
   getCrdtProvider: () => ({ purge: vi.fn(() => Promise.resolve()) })
 }))
@@ -77,6 +88,7 @@ vi.mock('../vault/index', () => ({
 import { ItemApplier } from './apply-item'
 import { beginPageApply, _resetBulkApplyForTests } from './bulk-apply'
 import { recordNoteBodyPush } from './note-body-push-record'
+import { generateContentHash } from '../vault/frontmatter'
 
 const DATE = '2026-10-09'
 const DAY = `j${DATE}`
@@ -94,6 +106,7 @@ describe('a pulled delete over text this device never sent (#3029)', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    baselines.clear()
     _resetBulkApplyForTests()
     fs.rmSync(vaultPath, { recursive: true, force: true })
     fs.rmSync(path.join(userDataDir, 'sync-bulk-apply-journal.json'), { force: true })
@@ -110,6 +123,7 @@ describe('a pulled delete over text this device never sent (#3029)', () => {
 
   const seedDay = (clock: VectorClock, body: string): void => {
     fs.writeFileSync(dayFile, body)
+    baselines.set(DAY, { contentHash: generateContentHash(body) })
     testDb.db
       .insert(noteMetadata)
       .values({
@@ -126,7 +140,9 @@ describe('a pulled delete over text this device never sent (#3029)', () => {
   }
 
   const seedNote = (clock: VectorClock, body: string): void => {
-    fs.writeFileSync(noteFile, `---\ntags: [plans]\n---\n${body}`)
+    const raw = `---\ntags: [plans]\n---\n${body}`
+    fs.writeFileSync(noteFile, raw)
+    baselines.set(NOTE, { contentHash: generateContentHash(raw) })
     testDb.db
       .insert(noteMetadata)
       .values({
@@ -285,5 +301,55 @@ describe('a pulled delete over text this device never sent (#3029)', () => {
 
     expect(inbox()).toEqual([])
     expect(fs.existsSync(dayFile)).toBe(false)
+  })
+
+  // #5797: the note was synced and the deleter saw it, then the user edited
+  // its file outside the app. A pull applies the delete before the watcher
+  // reads the edit, so no clock or body push covers it.
+  const editOutside = (body: string): void =>
+    fs.writeFileSync(noteFile, `---\ntags: [plans]\n---\n${body}`)
+
+  it('keeps a note edit made outside the app that the watcher has not read yet', async () => {
+    seedNote({ a: 4 }, 'Synced an hour ago\n')
+    recordNoteBodyPush(NOTE, 'confirmed', DELETED_MS - 3_600_000, asClientDb(testDb.db))
+    editOutside('Synced an hour ago\nEdited in another editor\n')
+
+    expect(await pullDelete('note', NOTE)).toBe('applied')
+
+    expect(inbox()).toEqual([
+      {
+        id: expect.any(String),
+        title: 'Plans (kept from deleted note)',
+        content: 'Synced an hour ago\nEdited in another editor\n'
+      }
+    ])
+    expect(rowOf(NOTE)).toBeUndefined()
+    expect(fs.existsSync(noteFile)).toBe(false)
+  })
+
+  it("makes no copy of the bytes the app's own write-back is writing", async () => {
+    seedNote({ a: 4 }, 'Synced an hour ago\n')
+    recordNoteBodyPush(NOTE, 'confirmed', DELETED_MS - 3_600_000, asClientDb(testDb.db))
+    const written = '---\ntags: [plans]\n---\nWritten back from the doc\n'
+    baselines.set(NOTE, {
+      contentHash: baselines.get(NOTE)!.contentHash,
+      pendingWriteHash: generateContentHash(written)
+    })
+    fs.writeFileSync(noteFile, written)
+
+    await pullDelete('note', NOTE)
+
+    expect(inbox()).toEqual([])
+    expect(fs.existsSync(noteFile)).toBe(false)
+  })
+
+  it('keeps a note file the index never measured', async () => {
+    seedNote({ a: 4 }, 'Only listed from stat\n')
+    recordNoteBodyPush(NOTE, 'confirmed', DELETED_MS - 3_600_000, asClientDb(testDb.db))
+    baselines.delete(NOTE)
+
+    await pullDelete('note', NOTE)
+
+    expect(inbox().map((item) => item.content)).toEqual(['Only listed from stat\n'])
   })
 })

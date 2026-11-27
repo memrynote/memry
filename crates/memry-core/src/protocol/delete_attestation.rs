@@ -3,8 +3,12 @@
 //! A tombstone's record signature covers its encrypted payload, and the server
 //! sheds that payload after retention (chapter 05 §5.12.3). The attestation is
 //! a second, content-free signature by the same device key over
-//! `{purpose, id, type, deletedAt, clock}`, which the server keeps with the
-//! marker so a purged tombstone stays verifiable.
+//! `{purpose, vaultId, id, type, deletedAt, clock}`, which the server keeps
+//! with the marker so a purged tombstone stays verifiable.
+//!
+//! **v2 binds the vault** (#5247): the server cannot replay a delete signed in
+//! one vault of the account into another. v1, which builds before #5247 sign
+//! and the server still holds, names no vault; verifiers keep accepting it.
 //!
 //! **Signed exactly as pushed.** `deletedAt` is this core's milliseconds and
 //! the desktop's seconds; the server stores and serves the pushed value, so
@@ -26,8 +30,13 @@ use crate::protocol::envelope::{EnvelopeError, SyncOperation};
 use crate::protocol::types::is_record_item_type;
 use crate::sync::clock::VectorClock;
 
-/// The literal `purpose` value, versioned so a v2 cannot collide with v1.
-pub const PURPOSE: &str = "memry-delete-attestation-v1";
+/// The literal `purpose` value this core signs, versioned so v2 cannot
+/// collide with v1.
+pub const PURPOSE: &str = "memry-delete-attestation-v2";
+
+/// Compatibility contract: the purpose builds before #5247 sign, with no
+/// vault id. Verifiers accept it.
+pub const PURPOSE_V1: &str = "memry-delete-attestation-v1";
 
 /// The one record type with no required clock, chapter 00 §0.7.
 const CLOCK_EXEMPT_ITEM_TYPE: &str = "settings";
@@ -72,15 +81,23 @@ pub fn claim_of<'a>(
     })
 }
 
-/// The signed bytes: canonical CBOR under `DELETE_ATTESTATION`.
-pub fn message(claim: &DeleteClaim<'_>) -> Result<Vec<u8>, EnvelopeError> {
+/// The signed bytes: canonical CBOR under `DELETE_ATTESTATION`. v2 bound to
+/// `vault_id`, the vault the push is routed to (`X-Memry-Vault-Id`); v1 when
+/// there is none.
+pub fn message(claim: &DeleteClaim<'_>, vault_id: Option<&str>) -> Result<Vec<u8>, EnvelopeError> {
     let ticks = claim
         .clock
         .iter()
         .map(|(device, tick)| (Value::Text(device.clone()), Value::Integer((*tick).into())))
         .collect();
-    let map: cbor::CanonicalMap = vec![
-        ("purpose".to_owned(), Value::Text(PURPOSE.to_owned())),
+    let mut map: cbor::CanonicalMap = match vault_id {
+        Some(vault_id) => vec![
+            ("purpose".to_owned(), Value::Text(PURPOSE.to_owned())),
+            ("vaultId".to_owned(), Value::Text(vault_id.to_owned())),
+        ],
+        None => vec![("purpose".to_owned(), Value::Text(PURPOSE_V1.to_owned()))],
+    };
+    map.extend([
         ("id".to_owned(), Value::Text(claim.item_id.to_owned())),
         ("type".to_owned(), Value::Text(claim.item_type.to_owned())),
         (
@@ -88,22 +105,30 @@ pub fn message(claim: &DeleteClaim<'_>) -> Result<Vec<u8>, EnvelopeError> {
             Value::Integer(claim.deleted_at.into()),
         ),
         ("clock".to_owned(), Value::Map(ticks)),
-    ];
+    ]);
     Ok(cbor::encode(field_order::DELETE_ATTESTATION, &map)?)
 }
 
-/// Signs a claim with this device's Ed25519 secret key; standard base64.
-pub fn sign(claim: &DeleteClaim<'_>, signing_secret_key: &[u8]) -> Result<String, EnvelopeError> {
-    let signature = sodium::sign_detached(&message(claim)?, signing_secret_key)?;
+/// Signs a claim in `vault_id` with this device's Ed25519 secret key;
+/// standard base64.
+pub fn sign(
+    claim: &DeleteClaim<'_>,
+    vault_id: Option<&str>,
+    signing_secret_key: &[u8],
+) -> Result<String, EnvelopeError> {
+    let signature = sodium::sign_detached(&message(claim, vault_id)?, signing_secret_key)?;
     Ok(BASE64_STANDARD.encode(signature))
 }
 
-/// Verifies an attestation over exactly this claim under the signer's key.
+/// Verifies an attestation over exactly this claim under the signer's key:
+/// v2 bound to `vault_id`, the vault this device syncs, or v1.
 ///
 /// A signature that is not base64 is `Malformed`; one that does not verify,
-/// including one of the wrong length, is `SignatureInvalid`.
+/// including one of the wrong length or one signed in another vault, is
+/// `SignatureInvalid`.
 pub fn verify(
     claim: &DeleteClaim<'_>,
+    vault_id: Option<&str>,
     signature_b64: &str,
     signer_public_key: &[u8],
 ) -> Result<(), EnvelopeError> {
@@ -113,11 +138,20 @@ pub fn verify(
             .map_err(|_| EnvelopeError::Malformed {
                 what: "deleteAttestation is not base64".to_owned(),
             })?;
-    if sodium::sign_verify_detached(&signature, &message(claim)?, signer_public_key) {
-        Ok(())
+    // v2 in this vault, then v1; with no vault, v1 only.
+    let accepted = [vault_id, None];
+    let accepted = if vault_id.is_some() {
+        &accepted[..]
     } else {
-        Err(EnvelopeError::SignatureInvalid)
+        &accepted[1..]
+    };
+    for vault_id in accepted {
+        if sodium::sign_verify_detached(&signature, &message(claim, *vault_id)?, signer_public_key)
+        {
+            return Ok(());
+        }
     }
+    Err(EnvelopeError::SignatureInvalid)
 }
 
 #[cfg(test)]
@@ -158,22 +192,41 @@ mod tests {
         let (other, _) = sodium::sign_seed_keypair(&[8u8; 32]).expect("a keypair");
         let clock = clock();
         let claim = claim_of("task", "t", SyncOperation::Delete, Some(&clock), Some(5)).unwrap();
-        let signature = sign(&claim, &secret).expect("signs");
+        let signature = sign(&claim, Some("vault-a"), &secret).expect("signs");
 
-        assert!(verify(&claim, &signature, &public).is_ok());
-        assert!(verify(&claim, &signature, &other).is_err());
+        assert!(verify(&claim, Some("vault-a"), &signature, &public).is_ok());
+        assert!(verify(&claim, Some("vault-a"), &signature, &other).is_err());
         let later = DeleteClaim {
             deleted_at: 6,
             ..claim
         };
-        assert!(verify(&later, &signature, &public).is_err());
+        assert!(verify(&later, Some("vault-a"), &signature, &public).is_err());
         assert!(matches!(
-            verify(&claim, "not base64!", &public),
+            verify(&claim, Some("vault-a"), "not base64!", &public),
             Err(EnvelopeError::Malformed { .. })
         ));
         assert!(matches!(
-            verify(&claim, "AAAA", &public),
+            verify(&claim, Some("vault-a"), "AAAA", &public),
             Err(EnvelopeError::SignatureInvalid)
         ));
+    }
+
+    // #5247: a delete signed in one vault is refused in another, and v2 is
+    // never read as v1; v1 from an old build verifies in any vault.
+    #[test]
+    fn v2_binds_the_vault_and_v1_stays_accepted() {
+        let (public, secret) = sodium::sign_seed_keypair(&[9u8; 32]).expect("a keypair");
+        let clock = clock();
+        let claim = claim_of("task", "t", SyncOperation::Delete, Some(&clock), Some(5)).unwrap();
+        let v2 = sign(&claim, Some("vault-b"), &secret).expect("signs");
+        let v1 = sign(&claim, None, &secret).expect("signs");
+
+        assert!(matches!(
+            verify(&claim, Some("vault-a"), &v2, &public),
+            Err(EnvelopeError::SignatureInvalid)
+        ));
+        assert!(verify(&claim, None, &v2, &public).is_err());
+        assert!(verify(&claim, Some("vault-a"), &v1, &public).is_ok());
+        assert!(verify(&claim, None, &v1, &public).is_ok());
     }
 }

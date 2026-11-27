@@ -26,6 +26,7 @@
 
 #[cfg(test)]
 mod tests {
+    use crate::domain::agent_queue::Queue;
     use rusqlite::Connection;
     use serde_json::{Value, json};
 
@@ -249,7 +250,7 @@ mod tests {
                 inbox::states::delete_permanent(conn, id, "a", NOW + 2).map(|d| d.acknowledge())
             }
             "agent_conversation" => {
-                agent_conversation::soft_delete(conn, id, "a", NOW + 2).map(drop)
+                agent_conversation::soft_delete(conn, id, Queue::Outbox, "a", NOW + 2).map(drop)
             }
             "tag_definition" => tag_admin::delete_definitions(conn, id, "a", NOW + 2),
             "canvas_folder" => canvas_folder::delete(conn, "Work", "a", NOW + 2)
@@ -324,7 +325,6 @@ mod tests {
             let totals = apply_page(
                 conn,
                 vec![pulled(&item_type, &id, payload, clock)],
-                vec![],
                 NOW + 4,
                 Some("a"),
                 &AtRestKey::default(),

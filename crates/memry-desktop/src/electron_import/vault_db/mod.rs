@@ -82,7 +82,7 @@ pub struct ImportProgress {
 }
 
 pub enum StageOutcome {
-    Staged(StagedVault),
+    Staged(Box<StagedVault>),
     /// `core/data.db` carries the import marker: an earlier run installed this vault.
     AlreadyImported,
     /// `core/data.db` exists without the marker: the vault was first opened natively. It is
@@ -93,8 +93,7 @@ pub enum StageOutcome {
 /// A verified staged pair waiting for [`StagedVault::install`] or [`StagedVault::discard`].
 pub struct StagedVault {
     paths: Paths,
-    /// Boxed: the report is most of the struct, and `StageOutcome`'s other variants are empty.
-    report: Box<VaultStageReport>,
+    report: VaultStageReport,
 }
 
 impl StagedVault {
@@ -188,10 +187,10 @@ pub fn stage_vault_import(input: VaultImportInput<'_>) -> Result<StageOutcome, I
     // A failure discards the staging directory here, explicitly and not on drop, so a crash
     // point (a panic) leaves it behind the way a real crash would.
     match stage(&input, &paths) {
-        Ok(report) => Ok(StageOutcome::Staged(StagedVault {
+        Ok(report) => Ok(StageOutcome::Staged(Box::new(StagedVault {
             paths,
-            report: Box::new(report),
-        })),
+            report,
+        }))),
         Err(error) => {
             if let Err(cleanup) = remove_staging(&paths) {
                 tracing::warn!(%cleanup, "could not remove the import staging directory");
@@ -242,7 +241,7 @@ fn stage(input: &VaultImportInput<'_>, paths: &Paths) -> Result<VaultStageReport
         &input.electron_index_db,
         &paths.staging,
     )?;
-    let preflight = preflight::run(&sources, input)?;
+    let preflight = preflight::run(&sources)?;
     let mut writer = ImportWriter::create(&paths.staging)?;
     crash::point("stage:writer-created");
 

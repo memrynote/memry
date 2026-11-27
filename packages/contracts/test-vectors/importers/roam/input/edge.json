@@ -1,0 +1,22 @@
+[
+  {
+    "title": "Area/ Project / Leaf",
+    "create-time": 1709596800123,
+    "edit-time": 9000000000000000,
+    "children": [
+      { "uid": "edge-1", "string": "Embed {{embed: ((blk-goals))}} and {{[[embed]]: ((blk-ship))}}", "heading": 2 },
+      { "uid": "edge-2", "string": "Unknown ((missing-uid)) and empty ((edge-blank))", "children": [
+        { "uid": "edge-blank", "string": "   " },
+        { "string": "{{DONE}}done {{TODO}}todo __a__ __ ^^b^^ {{embed:raw}} {{table}}", "heading": 9 },
+        { "string": "nested ref ((edge-1))", "children": "ab" }
+      ]},
+      { "string": null, "heading": "3" },
+      7
+    ]
+  },
+  { "title": "/Lone/", "uid": "03-15-2023" },
+  { "title": "  march 5, 2023 ", "create-time": "1709596800000" },
+  { "title": "February 30th, 2024", "uid": "02-30-2024" },
+  { "title": "January 1st, 0024" },
+  { "title": "   ", "children": [] }
+]

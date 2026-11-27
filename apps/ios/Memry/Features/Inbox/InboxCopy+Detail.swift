@@ -11,6 +11,11 @@ extension InboxCopy {
     static let itemGone = "This item is no longer in the inbox"
     static let itemGoneDetail = "It may have been filed, archived or deleted on another device."
     static let restore = "Restore"
+    // The detail column beside the list (#4349).
+    static let noSelection = "No item selected"
+    static let noSelectionDetail = "Choose an item from the list."
+    static let bulkPrompt = "Choose items in the list."
+    static let bulkHint = "File, tag, snooze or archive them together."
     static let deletePermanently = "Delete permanently"
     static let deleteTitle = "Delete this item permanently?"
     static let deleteBody = "It is removed from every device. This cannot be undone."
@@ -49,6 +54,7 @@ extension InboxCopy {
     static let notYetViewed = "Not yet viewed"
     static func journalTitle(_ date: String) -> String { "Journal — \(date)" }
     static let fileNotHere = "The file is on the device that captured it."
+    static let fileDownloading = "Downloading the file…"
     static let pagesLabel = "Pages"
     static let duration = "Duration"
 }

@@ -1,5 +1,5 @@
 //! The open reconcile: a pass for every note whose file was left behind its body (the module
-//! invariants, "Every open brings the files left behind"). Electron journals a pulled page's
+//! invariants, "Every open brings the files left behind"), and for every note with no file. Electron journals a pulled page's
 //! file operations and replays them (`replayBulkApplyJournal` of desktop `bulk-apply.ts`); this
 //! derives the same notes from the body stamps instead, so it also finds an edit made in the
 //! app whose pass never ran.
@@ -13,7 +13,8 @@ const SCOPE: &str = "vault_writeback";
 
 /// Moves the files of deleted notes to the trash, those owed a move only when the open's
 /// crossings left the file theirs (`theirs`), marks the rows an older build stamped whose body
-/// is not ahead of them, then schedules a pass for every note behind its body. The consumer
+/// is not ahead of them, then schedules a pass for every note behind its body or whose file
+/// owes its record's aliases. The consumer
 /// calls it once the open walk ended; a stop of the consumer ends the trashing between files
 /// (`stopped`).
 pub(crate) fn reconcile(
@@ -49,6 +50,40 @@ pub(crate) fn reconcile(
             scope = SCOPE,
             "the files behind their bodies could not be listed, so they wait for the next \
              open: {error}"
+        ),
+    }
+    // A file that owes its record's aliases: a quit before its pass, or a pass that kept the
+    // file (`owed`, #5828).
+    match pass.vault.note_files().owed_file_aliases() {
+        Ok(notes) => {
+            for note_id in &notes {
+                writeback.schedule(note_id);
+            }
+        }
+        Err(error) => tracing::error!(
+            scope = SCOPE,
+            "the files owing their records' aliases could not be listed, so they wait for the \
+             next open: {error}"
+        ),
+    }
+    // A record pulled with no file written for it: a crash between the pull's commit and its
+    // pass, or a vault synced by a build that wrote none (#3534 L5b).
+    match pass.vault.note_files().unfiled_bodies() {
+        Ok(notes) => {
+            if !notes.is_empty() {
+                tracing::info!(
+                    scope = SCOPE,
+                    count = notes.len(),
+                    "unfiled notes get their files"
+                );
+            }
+            for note_id in &notes {
+                writeback.schedule(note_id);
+            }
+        }
+        Err(error) => tracing::error!(
+            scope = SCOPE,
+            "the unfiled notes could not be listed, so they wait for the next open: {error}"
         ),
     }
 }

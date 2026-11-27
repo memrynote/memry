@@ -231,6 +231,38 @@ describe('the renderer promotes ((mention:…)) inside a collaborative document'
     expect(mentionProps(editor)).toEqual([{ url: URL_, ...PREVIEW }])
   })
 
+  it('fills in again a mention an outside edit rebuilt bare for a URL it already filled (#4475)', async () => {
+    // #given an open note whose chip already has its preview
+    const { editor, doc, fragment } = createCollaborativeEditor()
+    seedWithPlainText(editor, `Fresh: ${serializeLinkMentionToken(URL_)} one.`)
+    openNote(editor, fragment)
+    await settlePreviews()
+    expect(mentionProps(editor)).toEqual([{ url: URL_, ...PREVIEW }])
+
+    // #when a restore on another replica rebuilds the paragraph from the
+    // token, which carries only the URL and its domain
+    const remote = createCollaborativeEditor()
+    Y.applyUpdate(remote.doc, Y.encodeStateAsUpdate(doc))
+    remote.editor.replaceBlocks(remote.editor.document, [
+      {
+        type: 'paragraph',
+        content: [
+          { type: 'text', text: 'Fresh: ', styles: {} },
+          { type: 'linkMention', props: { url: URL_, domain: 'eksisozluk.com' } },
+          { type: 'text', text: ' two.', styles: {} }
+        ]
+      } as never
+    ])
+    Y.applyUpdate(doc, Y.encodeStateAsUpdate(remote.doc))
+    await settlePreviews()
+
+    // #then the chip is rich again, into the shared doc, with no undo step
+    expect(mentionProps(editor)).toEqual([{ url: URL_, ...PREVIEW }])
+    expect(fragment.toJSON()).toContain(`title="${PREVIEW.title}"`)
+    const undoManager = yUndoPluginKey.getState(editor._tiptapEditor.state)?.undoManager
+    expect(undoManager?.undoStack).toHaveLength(0)
+  })
+
   it('writes the preview over the current content, not a copy taken before the fetch', async () => {
     // #given a preview that resolves only after the user has typed
     let resolvePreview: (value: typeof PREVIEW) => void = () => {}

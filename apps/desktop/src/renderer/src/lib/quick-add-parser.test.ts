@@ -447,6 +447,15 @@ describe('parseQuickAdd', () => {
       expect(result.noteTitles).toEqual([])
     })
 
+    it('keeps the links in the title when asked, still reading them', () => {
+      const result = parseQuickAdd('Check [[Q3 #launch]] at [[B]] #real', projects, undefined, {
+        keepNoteLinks: true
+      })
+      expect(result.title).toBe('Check [[Q3 #launch]] at [[B]]')
+      expect(result.noteTitles).toEqual(['Q3 #launch', 'B'])
+      expect(result.tags).toEqual(['real'])
+    })
+
     it('treats a marker inside a link as part of the note title', () => {
       const result = parseQuickAdd('Prep [[Q3 #launch +work]] #real', projects)
       expect(result.noteTitles).toEqual(['Q3 #launch +work'])

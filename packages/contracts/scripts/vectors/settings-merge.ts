@@ -169,6 +169,24 @@ const SPECS: SettingsMergeSpec[] = [
     remote: { settings: { notes: { spellCheck: true } }, fieldClocks: {} }
   },
   {
+    name: 'local-tick-the-remote-lacks-requeues',
+    pins: '§6.9.0, #5506: a peer push built before it pulled the local tick lacks it; local dominates, keeps its value and re-queues',
+    local: {
+      settings: { general: { theme: 'system' }, calendar: { weekStartDay: 'monday' } },
+      fieldClocks: {
+        'general.theme': { [A]: 1 },
+        'calendar.weekStartDay': { [A]: 1, [B]: 1 }
+      }
+    },
+    remote: {
+      settings: { general: { theme: 'light' }, calendar: { weekStartDay: 'sunday' } },
+      fieldClocks: {
+        'general.theme': { [A]: 2 },
+        'calendar.weekStartDay': { [A]: 1 }
+      }
+    }
+  },
+  {
     name: 'three-paths-three-branches',
     pins: 'one merge where each path takes a different branch, and one path is clocked on one side only',
     local: {

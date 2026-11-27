@@ -3,8 +3,8 @@
     "anthropic",
     "anthropic-memry",
     "anthropic-2",
+    "anthropic-3",
     "openai-codex",
-    "openai-codex-2",
-    "llamacpp"
+    "openai-codex-2"
   ]
 }

@@ -15,9 +15,11 @@ use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use http_fakes::{FakeTransport, response};
 use memry_core::api::errors::StorageError;
+use memry_core::crdt::epoch::HeldBody;
 use memry_core::crdt::update_log;
-use memry_core::domain::journal;
-use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope};
+use memry_core::domain::journal_ops::metadata;
+use memry_core::domain::{journal, tags};
+use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope, SyncOperation};
 use memry_core::protocol::http::{ClientIdentity, HttpClient};
 use memry_core::protocol::types::Declaration;
 use memry_core::storage::repositories::sync_items::{self, ApplyOutcome, InboundRecord};
@@ -51,6 +53,11 @@ struct ScriptedCipher(Mutex<Vec<(String, String)>>);
 
 impl RecordCipher for ScriptedCipher {
     fn open(&self, envelope: &RecordEnvelope) -> Result<Vec<u8>, EnvelopeError> {
+        // §5.14: a delete opens before it applies; this one opens to the
+        // empty payload a signed delete seals.
+        if envelope.deleted_at.is_some() || envelope.operation == SyncOperation::Delete {
+            return Ok(Vec::new());
+        }
         self.0
             .lock()
             .unwrap()
@@ -140,8 +147,8 @@ fn text_update(client: u64, text: &str) -> Vec<u8> {
         .encode_state_as_update_v1(&StateVector::default())
 }
 
-/// The server answers for one document with no cursor: no snapshot, then
-/// one page holding `update`.
+/// The server answers for one document with no cursor: a refused batch
+/// probe, no snapshot, then one page holding `update`.
 fn body_pull(db: &Db, update: &[u8]) -> BodyPull {
     bodies_for(db, &[Some(update)])
 }
@@ -154,6 +161,7 @@ fn bodies_for(db: &Db, logs: &[Option<&[u8]>]) -> BodyPull {
             .iter()
             .map(|update| json!({"sequenceNum": 1, "data": BASE64.encode(update), "signerDeviceId": "device-b", "createdAt": 1}))
             .collect();
+        script.push(http_fakes::probe_refused());
         script.push(response(200, &json!({"snapshot": null}).to_string()));
         script.push(response(
             200,
@@ -229,6 +237,9 @@ async fn a_foreign_journal_for_a_held_day_is_skipped_and_owed_not_corrupt() {
                 clock: clock_of([("device-b", 1)]),
                 deleted: false,
                 record_markdown: None,
+                record_tags: Vec::new(),
+                holder_tags: Vec::new(),
+                unpushed_holder_tags: Vec::new(),
             }]
         );
         Ok(())
@@ -246,7 +257,8 @@ async fn the_canonical_day_displaces_a_foreign_holder_and_owes_its_merge() {
             sync_items::apply_remote(conn, &held, 1)?,
             ApplyOutcome::Applied
         );
-        update_log::append_server_update(conn, OTHER_FOREIGN, 1, &text_update(7, "held"), 1)
+        HeldBody::never_purged(conn, OTHER_FOREIGN)
+            .and_then(|held| held.append_server_update(1, &text_update(7, "held"), 1))
             .map_err(|e| StorageError::Failed {
                 what: e.to_string(),
             })?;
@@ -281,6 +293,9 @@ async fn the_canonical_day_displaces_a_foreign_holder_and_owes_its_merge() {
                 clock: clock_of([("device-b", 2)]),
                 deleted: false,
                 record_markdown: None,
+                record_tags: Vec::new(),
+                holder_tags: Vec::new(),
+                unpushed_holder_tags: Vec::new(),
             }]
         );
         Ok(())
@@ -444,11 +459,11 @@ async fn two_devices_merging_the_same_foreign_day_converge_on_one_copy() {
     let merged = updates[0].clone();
     late.call_blocking(move |conn| {
         journal::open_day(conn, DATE, "device-d", 1)?;
-        update_log::append_server_update(conn, CANONICAL, 1, &merged, 2).map_err(|e| {
-            StorageError::Failed {
+        HeldBody::never_purged(conn, CANONICAL)
+            .and_then(|held| held.append_server_update(1, &merged, 2))
+            .map_err(|e| StorageError::Failed {
                 what: e.to_string(),
-            }
-        })?;
+            })?;
         let foreign = record(FOREIGN, &journal_payload(json!({"device-b": 1})));
         apply_inbound_on(conn, &foreign, 1, Some("device-d"))?;
         Ok(())
@@ -472,11 +487,11 @@ async fn two_devices_merging_the_same_foreign_day_converge_on_one_copy() {
     for (db, peer_update) in devices.iter().zip(updates.iter().rev()) {
         let peer_update = peer_update.clone();
         db.call_blocking(move |conn| {
-            update_log::append_server_update(conn, CANONICAL, 1, &peer_update, 2).map_err(|e| {
-                StorageError::Failed {
+            HeldBody::never_purged(conn, CANONICAL)
+                .and_then(|held| held.append_server_update(1, &peer_update, 2))
+                .map_err(|e| StorageError::Failed {
                     what: e.to_string(),
-                }
-            })?;
+                })?;
             assert_eq!(text_of(conn, CANONICAL), "once");
             Ok(())
         })
@@ -484,8 +499,15 @@ async fn two_devices_merging_the_same_foreign_day_converge_on_one_copy() {
     }
 }
 
+/// Applies typed journal tombstones with no clock through the real pull loop.
+/// `live` is how many of `ids` hold a live row here: the rest count as skipped (S17-5).
+async fn pull_tombstones(db: &Db, ids: &[&str], live: usize) {
+    pull_tombstones_at(db, ids, live, None).await;
+}
+
 /// Applies typed journal tombstones through the real pull loop.
-async fn pull_tombstones(db: &Db, ids: &[&str]) {
+/// `live` is how many of `ids` hold a live row here: the rest count as skipped (S17-5).
+async fn pull_tombstones_at(db: &Db, ids: &[&str], live: usize, clock: Option<Json>) {
     let refs: Vec<Json> = ids
         .iter()
         .map(|id| json!({"id": id, "type": "journal"}))
@@ -495,6 +517,9 @@ async fn pull_tombstones(db: &Db, ids: &[&str]) {
         .map(|id| {
             let mut item = envelope(id);
             item["deletedAt"] = json!(5);
+            if let Some(clock) = &clock {
+                item["clock"] = clock.clone();
+            }
             item
         })
         .collect();
@@ -515,7 +540,7 @@ async fn pull_tombstones(db: &Db, ids: &[&str]) {
     .pull_page()
     .await
     .expect("the page");
-    assert_eq!(report.deleted, ids.len());
+    assert_eq!((report.deleted, report.skipped), (live, ids.len() - live));
 }
 
 #[tokio::test]
@@ -531,7 +556,7 @@ async fn a_foreign_id_another_device_already_deleted_is_not_pulled_and_settles_w
         Ok(())
     })
     .unwrap();
-    pull_tombstones(&db, &[FOREIGN]).await;
+    pull_tombstones(&db, &[FOREIGN], 0).await;
 
     // The deleting device merged the server body: nothing is fetched (an
     // empty script fails any request), and nothing held here is left.
@@ -552,9 +577,9 @@ async fn a_foreign_id_another_device_already_deleted_is_not_pulled_and_settles_w
 #[tokio::test]
 async fn a_tombstone_for_a_live_foreign_row_keeps_its_unpushed_edits_for_the_merge() {
     let db = scratch_db("tombstone-first");
-    // A pre-fix row holding the day, with an edit this device never pushed.
+    // A pre-fix row holding the day, with edits this device never pushed.
     db.call_blocking(|conn| {
-        let held = record(FOREIGN, &journal_payload(json!({"device-b": 2})));
+        let held = record(FOREIGN, &tagged_payload("", &[], json!({"device-b": 2})));
         assert_eq!(
             sync_items::apply_remote(conn, &held, 1)?,
             ApplyOutcome::Applied
@@ -564,12 +589,13 @@ async fn a_tombstone_for_a_live_foreign_row_keeps_its_unpushed_edits_for_the_mer
                 what: e.to_string(),
             },
         )?;
+        metadata::set_tags(conn, DATE, &["mine".to_owned()], "device-a", 2)?;
         Ok(())
     })
     .unwrap();
 
     // Another device merged FOREIGN and deleted it before this device did.
-    pull_tombstones(&db, &[FOREIGN]).await;
+    pull_tombstones(&db, &[FOREIGN], 1).await;
     db.call_blocking(|conn| {
         assert_eq!(text_of(conn, FOREIGN), "unpushed", "not purged");
         assert_eq!(
@@ -590,6 +616,7 @@ async fn a_tombstone_for_a_live_foreign_row_keeps_its_unpushed_edits_for_the_mer
     db.call_blocking(|conn| {
         assert_eq!(day_holder(conn).as_deref(), Some(CANONICAL));
         assert_eq!(text_of(conn, CANONICAL), "unpushed");
+        assert_eq!(day_tags(conn), vec!["mine"], "a holder's tags are local");
         assert!(update_log::load_plan(conn, FOREIGN).unwrap().is_empty());
         assert!(
             outbox(conn).iter().all(|row| row.1 != "delete"),
@@ -612,7 +639,7 @@ async fn a_deleted_day_is_not_recreated_and_the_foreign_id_stays_live() {
         Ok(())
     })
     .unwrap();
-    pull_tombstones(&db, &[CANONICAL]).await;
+    pull_tombstones(&db, &[CANONICAL], 1).await;
     db.call_blocking(|conn| {
         let foreign = record(FOREIGN, &journal_payload(json!({"device-b": 1})));
         assert_eq!(
@@ -756,7 +783,7 @@ async fn a_foreign_id_deleted_elsewhere_is_not_built_from_its_text_again() {
         Ok(())
     })
     .unwrap();
-    pull_tombstones(&db, &[FOREIGN]).await;
+    pull_tombstones(&db, &[FOREIGN], 0).await;
 
     let report = journal_day_merge::drain(&db, &bodies_for(&db, &[None]), "device-a")
         .await
@@ -765,6 +792,1088 @@ async fn a_foreign_id_deleted_elsewhere_is_not_built_from_its_text_again() {
     db.call_blocking(|conn| {
         assert_eq!(day_holder(conn), None, "the deleting device built it");
         assert!(outbox(conn).is_empty());
+        Ok(())
+    })
+    .unwrap();
+}
+
+fn tagged_payload(content: &str, tags: &[&str], clock: Json) -> String {
+    json!({"date": DATE, "content": content, "tags": tags, "clock": clock}).to_string()
+}
+
+fn day_tags(conn: &Connection) -> Vec<String> {
+    tags::list(conn, "journal", CANONICAL).expect("the day's tags")
+}
+
+fn upserts_of(conn: &Connection, id: &str) -> usize {
+    outbox(conn)
+        .iter()
+        .filter(|row| row.0 == id && row.1 == "upsert")
+        .count()
+}
+
+/// The day's payload owns its tags and the fold carries only the body, so
+/// the drain adds a foreign entry's record tags to `j<D>` and pushes them
+/// (§1.9.1 step 6, #5483).
+#[tokio::test]
+async fn a_folded_foreign_entry_adds_its_tags_to_the_day_and_pushes_them() {
+    for (day, foreign, expected) in [
+        (vec![], vec!["x"], vec!["x"]),
+        (vec!["a"], vec!["x", "A"], vec!["a", "x"]),
+    ] {
+        let db = scratch_db("foreign-tags");
+        db.call_blocking(move |conn| {
+            let canonical = record(CANONICAL, &tagged_payload("", &day, json!({"device-c": 1})));
+            assert_eq!(
+                apply_inbound_on(conn, &canonical, 1, Some("device-a"))?,
+                ApplyOutcome::Applied
+            );
+            let foreign = record(
+                FOREIGN,
+                &tagged_payload("", &foreign, json!({"device-b": 1})),
+            );
+            assert_eq!(
+                apply_inbound_on(conn, &foreign, 2, Some("device-a"))?,
+                ApplyOutcome::Skipped
+            );
+            Ok(())
+        })
+        .unwrap();
+
+        let report =
+            journal_day_merge::drain(&db, &body_pull(&db, &text_update(9, "theirs")), "device-a")
+                .await
+                .unwrap();
+        assert_eq!(report.settled, vec![FOREIGN.to_owned()]);
+        db.call_blocking(move |conn| {
+            assert_eq!(day_tags(conn), expected);
+            assert_eq!(upserts_of(conn, CANONICAL), 1, "the tags are pushed");
+            assert!(journal_day_merge::owed(conn)?.is_empty());
+            Ok(())
+        })
+        .unwrap();
+    }
+}
+
+#[tokio::test]
+async fn a_tagged_day_gaining_no_new_tag_writes_nothing() {
+    let db = scratch_db("tags-held");
+    db.call_blocking(|conn| {
+        let canonical = record(
+            CANONICAL,
+            &tagged_payload("", &["a", "b"], json!({"device-c": 1})),
+        );
+        apply_inbound_on(conn, &canonical, 1, Some("device-a"))?;
+        let foreign = record(FOREIGN, &tagged_payload("", &["B"], json!({"device-b": 1})));
+        apply_inbound_on(conn, &foreign, 2, Some("device-a"))?;
+        Ok(())
+    })
+    .unwrap();
+
+    let report =
+        journal_day_merge::drain(&db, &body_pull(&db, &text_update(9, "theirs")), "device-a")
+            .await
+            .unwrap();
+    assert_eq!(report.settled, vec![FOREIGN.to_owned()]);
+    db.call_blocking(|conn| {
+        assert_eq!(day_tags(conn), vec!["a", "b"]);
+        assert_eq!(upserts_of(conn, CANONICAL), 0);
+        Ok(())
+    })
+    .unwrap();
+}
+
+/// A foreign holder's projection and `note_tags` go when `j<D>` arrives, but
+/// its stored payload tags are kept in the owed merge and reach the day.
+#[tokio::test]
+async fn a_foreign_holder_keeps_its_tags_when_the_day_record_displaces_it() {
+    let db = scratch_db("holder-tags");
+    db.call_blocking(|conn| {
+        let held = record(
+            OTHER_FOREIGN,
+            &tagged_payload("", &["mine"], json!({"device-b": 2})),
+        );
+        sync_items::apply_remote(conn, &held, 1)?;
+        HeldBody::never_purged(conn, OTHER_FOREIGN)
+            .and_then(|held| held.append_server_update(1, &text_update(7, "held"), 1))
+            .map_err(|e| StorageError::Failed {
+                what: e.to_string(),
+            })?;
+        let canonical = record(CANONICAL, &tagged_payload("", &[], json!({"device-c": 1})));
+        assert_eq!(
+            apply_inbound_on(conn, &canonical, 2, Some("device-a"))?,
+            ApplyOutcome::Applied
+        );
+        Ok(())
+    })
+    .unwrap();
+
+    let report = journal_day_merge::drain(&db, &bodies_for(&db, &[None]), "device-a")
+        .await
+        .unwrap();
+    assert_eq!(report.settled, vec![OTHER_FOREIGN.to_owned()]);
+    db.call_blocking(|conn| {
+        assert_eq!(day_tags(conn), vec!["mine"]);
+        assert_eq!(text_of(conn, CANONICAL), "held");
+        assert_eq!(upserts_of(conn, CANONICAL), 1);
+        Ok(())
+    })
+    .unwrap();
+}
+
+/// An owed merge an older build recorded has no `tags` key: it still drains
+/// and leaves the day's tags alone.
+#[tokio::test]
+async fn an_owed_merge_from_an_older_build_without_tags_still_drains() {
+    let db = scratch_db("owed-no-tags");
+    db.call_blocking(|conn| {
+        let canonical = record(CANONICAL, &tagged_payload("", &["a"], json!({"device-c": 1})));
+        apply_inbound_on(conn, &canonical, 1, Some("device-a"))?;
+        conn.execute(
+            "INSERT INTO meta (key, value) VALUES (?1, ?2)",
+            params![
+                format!("journal.day_merge:{FOREIGN}"),
+                json!({"foreignId": FOREIGN, "date": DATE, "clock": {"device-b": 1}, "deleted": false})
+                    .to_string()
+            ],
+        )
+        .map_err(failed)?;
+        Ok(())
+    })
+    .unwrap();
+
+    let report =
+        journal_day_merge::drain(&db, &body_pull(&db, &text_update(9, "theirs")), "device-a")
+            .await
+            .unwrap();
+    assert_eq!(report.settled, vec![FOREIGN.to_owned()]);
+    db.call_blocking(|conn| {
+        assert_eq!(day_tags(conn), vec!["a"]);
+        assert_eq!(text_of(conn, CANONICAL), "theirs");
+        assert!(journal_day_merge::owed(conn)?.is_empty());
+        Ok(())
+    })
+    .unwrap();
+}
+
+/// The newest record replaces the record tags kept so far: a tag removed on
+/// the device that wrote it stays removed.
+#[tokio::test]
+async fn a_later_foreign_record_replaces_the_record_tags_it_owes() {
+    let db = scratch_db("record-tags-replace");
+    db.call_blocking(|conn| {
+        let canonical = record(CANONICAL, &tagged_payload("", &[], json!({"device-c": 1})));
+        apply_inbound_on(conn, &canonical, 1, Some("device-a"))?;
+        let first = record(
+            FOREIGN,
+            &tagged_payload("", &["x", "y"], json!({"device-b": 1})),
+        );
+        apply_inbound_on(conn, &first, 2, Some("device-a"))?;
+        let second = record(FOREIGN, &tagged_payload("", &["x"], json!({"device-b": 2})));
+        apply_inbound_on(conn, &second, 3, Some("device-a"))?;
+        Ok(())
+    })
+    .unwrap();
+
+    let report =
+        journal_day_merge::drain(&db, &body_pull(&db, &text_update(9, "theirs")), "device-a")
+            .await
+            .unwrap();
+    assert_eq!(report.settled, vec![FOREIGN.to_owned()]);
+    db.call_blocking(|conn| {
+        assert_eq!(day_tags(conn), vec!["x"]);
+        Ok(())
+    })
+    .unwrap();
+}
+
+/// A deleted foreign id was merged by the device that deleted it, record
+/// tags included; adding them again would bring back a tag removed since.
+/// A holder's tags are this device's and still go in: the row has no
+/// `unpushedHolderTags`, as an older build wrote it, so all of them count as
+/// unpushed.
+#[tokio::test]
+async fn a_deleted_foreign_id_adds_its_holder_tags_but_not_its_record_tags() {
+    let db = scratch_db("deleted-record-tags");
+    db.call_blocking(|conn| {
+        let canonical = record(
+            CANONICAL,
+            &tagged_payload("", &["a"], json!({"device-c": 1})),
+        );
+        apply_inbound_on(conn, &canonical, 1, Some("device-a"))?;
+        update_log::append_local_update(conn, FOREIGN, &text_update(7, "local"), 1).map_err(
+            |e| StorageError::Failed {
+                what: e.to_string(),
+            },
+        )?;
+        let owed = json!({
+            "foreignId": FOREIGN, "date": DATE, "clock": {"device-b": 1}, "deleted": true,
+            "recordTags": ["gone"], "holderTags": ["mine"],
+        });
+        conn.execute(
+            "INSERT INTO meta (key, value) VALUES (?1, ?2)",
+            params![format!("journal.day_merge:{FOREIGN}"), owed.to_string()],
+        )
+        .map_err(failed)?;
+        Ok(())
+    })
+    .unwrap();
+
+    let report = journal_day_merge::drain(&db, &bodies_for(&db, &[]), "device-a")
+        .await
+        .unwrap();
+    assert_eq!(report.settled, vec![FOREIGN.to_owned()]);
+    db.call_blocking(|conn| {
+        assert_eq!(text_of(conn, CANONICAL), "local");
+        assert_eq!(day_tags(conn), vec!["a", "mine"]);
+        Ok(())
+    })
+    .unwrap();
+}
+
+/// Device B merged `F` into the day, deleted it, then removed `b` from the
+/// day. This device held `F` as pulled, so `b` reached the server and B added
+/// it already: the deleted merge leaves it removed (#5247 B4). A tag added
+/// here and never pushed still goes in.
+#[tokio::test]
+async fn a_deleted_merge_adds_only_the_holder_tags_this_device_never_pushed() {
+    for (offline_add, expected) in [(false, vec!["a"]), (true, vec!["a", "c"])] {
+        let db = scratch_db("holder-unpushed-tags");
+        db.call_blocking(move |conn| {
+            let held = record(
+                FOREIGN,
+                &tagged_payload("", &["a", "b"], json!({"device-b": 2})),
+            );
+            sync_items::apply_remote(conn, &held, 1)?;
+            update_log::append_local_update(conn, FOREIGN, &text_update(7, "held"), 1).map_err(
+                |e| StorageError::Failed {
+                    what: e.to_string(),
+                },
+            )?;
+            if offline_add {
+                let tags = ["a", "b", "c"].map(str::to_owned);
+                metadata::set_tags(conn, DATE, &tags, "device-a", 2)?;
+                assert_eq!(upserts_of(conn, FOREIGN), 1, "the add is unpushed");
+            }
+            Ok(())
+        })
+        .unwrap();
+
+        pull_tombstones_at(&db, &[FOREIGN], 1, Some(json!({"device-b": 3}))).await;
+        db.call_blocking(|conn| {
+            let day = record(
+                CANONICAL,
+                &tagged_payload("", &["a"], json!({"device-b": 3})),
+            );
+            assert_eq!(
+                apply_inbound_on(conn, &day, 3, Some("device-a"))?,
+                ApplyOutcome::Applied
+            );
+            Ok(())
+        })
+        .unwrap();
+
+        let report = journal_day_merge::drain(&db, &bodies_for(&db, &[]), "device-a")
+            .await
+            .unwrap();
+        assert_eq!(report.settled, vec![FOREIGN.to_owned()]);
+        db.call_blocking(move |conn| {
+            assert_eq!(text_of(conn, CANONICAL), "held");
+            assert_eq!(day_tags(conn), expected, "offline add: {offline_add}");
+            let kept: i64 = conn
+                .query_row(
+                    "SELECT count(*) FROM meta WHERE key LIKE 'journal.synced_tags:%'",
+                    [],
+                    |row| row.get(0),
+                )
+                .map_err(failed)?;
+            assert_eq!(kept, 0, "the merge forgets the tags kept for it");
+            Ok(())
+        })
+        .unwrap();
+    }
+}
+
+/// A blank `F` whose only content is a tag added offline: B's `j<D>` and then
+/// its tombstone arrive. Nothing holds `c` but this device, so the drain
+/// merges it into the day with no body to fold, rather than forgetting `F`
+/// (#5659).
+#[tokio::test]
+async fn a_deleted_blank_holder_still_brings_its_offline_tag_to_the_day() {
+    let db = scratch_db("holder-blank-tags");
+    db.call_blocking(|conn| {
+        let held = record(
+            FOREIGN,
+            &tagged_payload("", &["a", "b"], json!({"device-b": 2})),
+        );
+        sync_items::apply_remote(conn, &held, 1)?;
+        let tags = ["a", "b", "c"].map(str::to_owned);
+        metadata::set_tags(conn, DATE, &tags, "device-a", 2)?;
+        let day = record(
+            CANONICAL,
+            &tagged_payload("", &["a", "b"], json!({"device-b": 4})),
+        );
+        assert_eq!(
+            apply_inbound_on(conn, &day, 3, Some("device-a"))?,
+            ApplyOutcome::Applied
+        );
+        Ok(())
+    })
+    .unwrap();
+    pull_tombstones_at(&db, &[FOREIGN], 1, Some(json!({"device-b": 3}))).await;
+
+    let report = journal_day_merge::drain(&db, &bodies_for(&db, &[]), "device-a")
+        .await
+        .unwrap();
+
+    assert_eq!(report.settled, vec![FOREIGN.to_owned()]);
+    let tags = db.call_blocking(|conn| Ok(day_tags(conn))).unwrap();
+    assert_eq!(tags, vec!["a", "b", "c"]);
+}
+
+/// A live blank `F` whose only content is a tag added offline: `j<D>`
+/// displaces it and no tombstone comes. A tag the day lacks merges `F` with
+/// no body to fold, and `F` is tombstoned like any merged id. With every tag
+/// already in the day, `F` is forgotten and not tombstoned (#5699).
+#[tokio::test]
+async fn a_live_blank_holder_brings_its_offline_tag_to_the_day() {
+    for (tags_of_day, expected, tombstoned) in [
+        (vec!["a"], vec!["a", "c"], true),
+        (vec!["a", "C"], vec!["a", "C"], false),
+    ] {
+        let db = scratch_db("live-holder-blank-tags");
+        db.call_blocking(move |conn| {
+            let held = record(FOREIGN, &tagged_payload("", &["a"], json!({"device-b": 2})));
+            sync_items::apply_remote(conn, &held, 1)?;
+            let tags = ["a", "c"].map(str::to_owned);
+            metadata::set_tags(conn, DATE, &tags, "device-a", 2)?;
+            let day = record(
+                CANONICAL,
+                &tagged_payload("", &tags_of_day, json!({"device-c": 1})),
+            );
+            assert_eq!(
+                apply_inbound_on(conn, &day, 3, Some("device-a"))?,
+                ApplyOutcome::Applied
+            );
+            Ok(())
+        })
+        .unwrap();
+
+        let report = journal_day_merge::drain(&db, &bodies_for(&db, &[None]), "device-a")
+            .await
+            .unwrap();
+
+        assert_eq!(report.settled, vec![FOREIGN.to_owned()]);
+        db.call_blocking(move |conn| {
+            assert_eq!(day_tags(conn), expected);
+            let deletes = outbox(conn)
+                .iter()
+                .filter(|row| row.0 == FOREIGN && row.1 == "delete")
+                .count();
+            assert_eq!(deletes, usize::from(tombstoned));
+            if tombstoned {
+                assert_eq!(upserts_of(conn, FOREIGN), 0, "the tombstone replaces it");
+            }
+            assert!(journal_day_merge::owed(conn)?.is_empty());
+            Ok(())
+        })
+        .unwrap();
+    }
+}
+
+/// Desktop B merged `F`, then the user removed `b` from the day before B
+/// pushed. Desktop's queue coalesces the edit into the queued `j<D>`, ahead
+/// of `F`'s delete, so `j<D>` without `b` arrives first and displaces the
+/// holder, and every holder tag counts until a tombstone. The tombstone's
+/// weighing replaces that list: `b` stays removed and the body still folds
+/// (#5659).
+#[tokio::test]
+async fn a_tag_removed_before_the_day_arrived_ahead_of_the_tombstone_stays_removed() {
+    let db = scratch_db("holder-day-first-removed");
+    db.call_blocking(|conn| {
+        hold_foreign_tagged(conn, &["a", "b"])?;
+        let day = record(
+            CANONICAL,
+            &tagged_payload("", &["a"], json!({"device-b": 4})),
+        );
+        assert_eq!(
+            apply_inbound_on(conn, &day, 3, Some("device-a"))?,
+            ApplyOutcome::Applied
+        );
+        Ok(())
+    })
+    .unwrap();
+    pull_tombstones_at(&db, &[FOREIGN], 1, Some(json!({"device-b": 3}))).await;
+
+    let report = journal_day_merge::drain(&db, &bodies_for(&db, &[]), "device-a")
+        .await
+        .unwrap();
+
+    assert_eq!(report.settled, vec![FOREIGN.to_owned()]);
+    db.call_blocking(|conn| {
+        assert_eq!(day_tags(conn), vec!["a"]);
+        assert_eq!(text_of(conn, CANONICAL), "held");
+        Ok(())
+    })
+    .unwrap();
+}
+
+/// `F` held as pulled at `{device-b: 2}`, with a body, as a pre-fix install
+/// projected it.
+fn hold_foreign_tagged(conn: &mut Connection, held_tags: &[&str]) -> Result<(), StorageError> {
+    let held = record(
+        FOREIGN,
+        &tagged_payload("", held_tags, json!({"device-b": 2})),
+    );
+    sync_items::apply_remote(conn, &held, 1)?;
+    update_log::append_local_update(conn, FOREIGN, &text_update(7, "held"), 1).map_err(|e| {
+        StorageError::Failed {
+            what: e.to_string(),
+        }
+    })?;
+    Ok(())
+}
+
+fn upsert_ids(conn: &Connection, id: &str) -> Result<Vec<i64>, StorageError> {
+    let mut statement = conn
+        .prepare("SELECT id FROM outbox WHERE item_id = ?1 AND op = 'upsert'")
+        .map_err(failed)?;
+    statement
+        .query_map(params![id], |row| row.get(0))
+        .map_err(failed)?
+        .collect::<Result<Vec<i64>, _>>()
+        .map_err(failed)
+}
+
+/// B's tombstone for `F`, then B's `j<D>` with `day_tags`, then the drain.
+async fn delete_merge_and_drain(db: &Db, tombstone: Json, tags_of_day: &[&str]) -> Vec<String> {
+    pull_tombstones_at(db, &[FOREIGN], 1, Some(tombstone)).await;
+    let day = record(
+        CANONICAL,
+        &tagged_payload("", tags_of_day, json!({"device-b": 4})),
+    );
+    db.call_blocking(move |conn| {
+        assert_eq!(
+            apply_inbound_on(conn, &day, 3, Some("device-a"))?,
+            ApplyOutcome::Applied
+        );
+        Ok(())
+    })
+    .unwrap();
+    let report = journal_day_merge::drain(db, &bodies_for(db, &[]), "device-a")
+        .await
+        .unwrap();
+    assert_eq!(report.settled, vec![FOREIGN.to_owned()]);
+    db.call_blocking(|conn| {
+        assert_eq!(text_of(conn, CANONICAL), "held");
+        Ok(day_tags(conn))
+    })
+    .unwrap()
+}
+
+/// This device pushed `c` while B merged `F`: the server took the upsert,
+/// then B's tombstone, clocked before it, replaced it. An ack does not mean
+/// the deleting device saw the tag, so the tombstone's clock decides
+/// (REVIEW-5656): `c` goes in. A push B did see, B merged, and B's removal
+/// of `c` from the day stands.
+#[tokio::test]
+async fn a_deleted_merge_keeps_a_pushed_tag_the_deleting_device_never_saw() {
+    for (tombstone, expected) in [
+        (json!({"device-b": 3}), vec!["a", "b", "c"]),
+        (json!({"device-b": 3, "device-a": 1}), vec!["a", "b"]),
+    ] {
+        let db = scratch_db("holder-acked-tags");
+        db.call_blocking(|conn| {
+            hold_foreign_tagged(conn, &["a", "b"])?;
+            let tags = ["a", "b", "c"].map(str::to_owned);
+            metadata::set_tags(conn, DATE, &tags, "device-a", 2)?;
+            let ids = upsert_ids(conn, FOREIGN)?;
+            assert_eq!(memry_core::sync::outbox::ack(conn, &ids)?, 1);
+            Ok(())
+        })
+        .unwrap();
+
+        let label = tombstone.to_string();
+        assert_eq!(
+            delete_merge_and_drain(&db, tombstone, &["a", "b"]).await,
+            expected,
+            "tombstone {label}"
+        );
+    }
+}
+
+/// `t` is removed here and pushed, then an older build, which keeps no tags,
+/// adds it back offline. B saw the removal and merged the day without `t`,
+/// so `t` goes in. Pushed by this build, the ack drops the tags kept before
+/// the removal. Pushed by an older build, they are still kept, and B's clock,
+/// past the edit they precede, rules them out.
+#[tokio::test]
+async fn a_deleted_merge_keeps_a_tag_an_older_build_added_back_after_a_push() {
+    for this_build_pushed in [true, false] {
+        let db = scratch_db("holder-downgrade-tags");
+        db.call_blocking(move |conn| {
+            hold_foreign_tagged(conn, &["a", "t"])?;
+            metadata::set_tags(conn, DATE, &["a".to_owned()], "device-a", 2)?;
+            let ids = upsert_ids(conn, FOREIGN)?;
+            if this_build_pushed {
+                memry_core::sync::outbox::ack(conn, &ids)?;
+            } else {
+                conn.execute("DELETE FROM outbox WHERE id = ?1", params![ids[0]])
+                    .map_err(failed)?;
+            }
+            // The older build's edit: its payload and its upsert, no tags kept.
+            let clock = json!({"device-a": 2, "device-b": 2});
+            conn.execute(
+                "UPDATE sync_items SET payload = ?2, clock = ?3
+                  WHERE item_type = 'journal' AND item_id = ?1",
+                params![
+                    FOREIGN,
+                    tagged_payload("", &["a", "t"], clock.clone()),
+                    clock.to_string()
+                ],
+            )
+            .map_err(failed)?;
+            conn.execute(
+                "INSERT INTO outbox (item_type, item_id, op, enqueued_at)
+                 VALUES ('journal', ?1, 'upsert', 3)",
+                params![FOREIGN],
+            )
+            .map_err(failed)?;
+            Ok(())
+        })
+        .unwrap();
+
+        let tombstone = json!({"device-b": 3, "device-a": 1});
+        assert_eq!(
+            delete_merge_and_drain(&db, tombstone, &["a"]).await,
+            vec!["a", "t"],
+            "pushed by this build: {this_build_pushed}"
+        );
+    }
+}
+
+/// `F`'s tombstone is held, then the user edits `F`'s tags before the drain
+/// runs (#5694). The drain merges the tags `F` holds when it runs: a tag
+/// added after the tombstone goes in, an unpushed one removed since stays
+/// out. The tombstone covers `F` as pulled, so only edits made here count.
+#[tokio::test]
+async fn a_tag_edit_on_a_held_day_after_its_tombstone_is_what_the_drain_merges() {
+    for (edit, expected) in [
+        (&["a", "b", "c", "d"][..], vec!["a", "b", "c", "d"]),
+        (&["a", "b"][..], vec!["a", "b"]),
+    ] {
+        let db = scratch_db("held-tag-edit");
+        db.call_blocking(|conn| {
+            hold_foreign_tagged(conn, &["a", "b"])?;
+            let tags = ["a", "b", "c"].map(str::to_owned);
+            metadata::set_tags(conn, DATE, &tags, "device-a", 2)
+        })
+        .unwrap();
+        pull_tombstones_at(&db, &[FOREIGN], 1, Some(json!({"device-b": 3}))).await;
+        let edit: Vec<String> = edit.iter().map(|tag| tag.to_string()).collect();
+        db.call_blocking(move |conn| {
+            assert_eq!(day_holder(conn).as_deref(), Some(FOREIGN), "still held");
+            metadata::set_tags(conn, DATE, &edit, "device-a", 3)
+        })
+        .unwrap();
+
+        let report = journal_day_merge::drain(&db, &bodies_for(&db, &[]), "device-a")
+            .await
+            .unwrap();
+
+        assert_eq!(report.settled, vec![FOREIGN.to_owned()]);
+        let tags = db.call_blocking(|conn| Ok(day_tags(conn))).unwrap();
+        assert_eq!(tags, expected);
+    }
+}
+
+/// Two edits of a held `F` after its tombstone (#5763). The first used to
+/// project the tombstone's `deleted_at` onto `F`'s entry, so the second
+/// reopened the day through `revive_in`, which purged `F`'s unpushed text and
+/// queued an `F` upsert dominating the tombstone. `F` stays live until the
+/// drain folds it: `j<D>` holds the text and the tags, and no `F` upsert is
+/// left to re-create it on the server.
+#[tokio::test]
+async fn two_edits_of_a_held_day_after_its_tombstone_keep_its_unpushed_text() {
+    let db = scratch_db("held-two-edits");
+    db.call_blocking(|conn| {
+        let held = record(FOREIGN, &tagged_payload("", &[], json!({"device-b": 2})));
+        sync_items::apply_remote(conn, &held, 1)?;
+        update_log::append_local_update(conn, FOREIGN, &text_update(7, "unpushed"), 1).map_err(
+            |e| StorageError::Failed {
+                what: e.to_string(),
+            },
+        )?;
+        Ok(())
+    })
+    .unwrap();
+    pull_tombstones_at(&db, &[FOREIGN], 1, Some(json!({"device-b": 3}))).await;
+    db.call_blocking(|conn| {
+        metadata::set_tags(conn, DATE, &["x".to_owned()], "device-a", 2)?;
+        assert_eq!(day_holder(conn).as_deref(), Some(FOREIGN), "still held");
+        let tags = ["x", "y"].map(str::to_owned);
+        metadata::set_tags(conn, DATE, &tags, "device-a", 3)
+    })
+    .unwrap();
+
+    let report = journal_day_merge::drain(&db, &bodies_for(&db, &[]), "device-a")
+        .await
+        .unwrap();
+
+    assert_eq!(report.settled, vec![FOREIGN.to_owned()]);
+    db.call_blocking(|conn| {
+        assert_eq!(text_of(conn, CANONICAL), "unpushed");
+        assert_eq!(day_tags(conn), vec!["x", "y"]);
+        assert_eq!(upsert_ids(conn, FOREIGN)?, Vec::<i64>::new());
+        Ok(())
+    })
+    .unwrap();
+}
+
+/// A blank `F` the tombstone saw as it is holds nothing to merge, until the
+/// user tags it before the drain runs (#5694). The drain reads that tag and
+/// merges `F` instead of forgetting it with the tag.
+#[tokio::test]
+async fn a_tag_added_to_a_blank_held_day_after_its_tombstone_is_merged() {
+    let db = scratch_db("held-blank-tag-edit");
+    db.call_blocking(|conn| {
+        let held = record(FOREIGN, &tagged_payload("", &["a"], json!({"device-b": 2})));
+        sync_items::apply_remote(conn, &held, 1)?;
+        Ok(())
+    })
+    .unwrap();
+    pull_tombstones_at(&db, &[FOREIGN], 1, Some(json!({"device-b": 3}))).await;
+    db.call_blocking(|conn| {
+        let tags = ["a", "c"].map(str::to_owned);
+        metadata::set_tags(conn, DATE, &tags, "device-a", 3)
+    })
+    .unwrap();
+
+    let report = journal_day_merge::drain(&db, &bodies_for(&db, &[]), "device-a")
+        .await
+        .unwrap();
+
+    assert_eq!(report.settled, vec![FOREIGN.to_owned()]);
+    let tags = db.call_blocking(|conn| Ok(day_tags(conn))).unwrap();
+    assert!(tags.contains(&"c".to_owned()), "the day's tags: {tags:?}");
+}
+
+/// An unclocked tombstone weighs nothing, so every tag `F` held counts as
+/// unpushed. A tag the user removes from the held day before the drain runs
+/// stays removed (#5694).
+#[tokio::test]
+async fn a_tag_removed_from_a_held_day_after_an_unclocked_tombstone_stays_removed() {
+    let db = scratch_db("held-unclocked-removal");
+    db.call_blocking(|conn| {
+        hold_foreign_tagged(conn, &["a", "b"])?;
+        let tags = ["a", "b", "c"].map(str::to_owned);
+        metadata::set_tags(conn, DATE, &tags, "device-a", 2)
+    })
+    .unwrap();
+    pull_tombstones(&db, &[FOREIGN], 1).await;
+    db.call_blocking(|conn| {
+        let tags = ["a", "b"].map(str::to_owned);
+        metadata::set_tags(conn, DATE, &tags, "device-a", 3)
+    })
+    .unwrap();
+
+    let report = journal_day_merge::drain(&db, &bodies_for(&db, &[]), "device-a")
+        .await
+        .unwrap();
+
+    assert_eq!(report.settled, vec![FOREIGN.to_owned()]);
+    let tags = db.call_blocking(|conn| Ok(day_tags(conn))).unwrap();
+    assert_eq!(tags, vec!["a", "b"]);
+}
+
+/// A live `F` holds the day when its own record arrives from another device.
+/// The user edits `F`'s tags while the drain fetches `F`'s body: the merge
+/// adds the tags `F` holds when the day takes it over, not the ones read
+/// before the fetch (#5694). Paused time: the fetch waits until the edit is
+/// done and the test task yields.
+#[tokio::test(start_paused = true)]
+async fn a_tag_edit_while_the_drain_fetches_the_body_is_what_it_merges() {
+    let db = scratch_db("held-edit-in-fetch");
+    db.call_blocking(|conn| hold_foreign_tagged(conn, &["a", "b", "c"]))
+        .unwrap();
+    let record = tagged_payload("", &["a", "b"], json!({"device-b": 3}));
+    assert_eq!(pull_one(&db, FOREIGN, &record).await.skipped, 1);
+
+    let updates = [
+        json!({"sequenceNum": 1, "data": BASE64.encode(text_update(9, "theirs")), "signerDeviceId": "device-b", "createdAt": 1}),
+    ];
+    let transport = FakeTransport::slow(
+        vec![
+            http_fakes::probe_refused(),
+            response(200, &json!({"snapshot": null}).to_string()),
+            response(
+                200,
+                &json!({"updates": updates, "hasMore": false}).to_string(),
+            ),
+        ],
+        100,
+    );
+    let bodies = BodyPull::new(
+        http(transport.clone()),
+        db.clone(),
+        Declaration::subscribed(),
+        Arc::new(PassThrough),
+    );
+    let drain = tokio::spawn({
+        let db = db.clone();
+        async move { journal_day_merge::drain(&db, &bodies, "device-a").await }
+    });
+    while transport.call_count() == 0 {
+        tokio::task::yield_now().await;
+    }
+    db.call_blocking(|conn| {
+        assert_eq!(day_holder(conn).as_deref(), Some(FOREIGN), "still held");
+        let tags = ["a", "b", "d"].map(str::to_owned);
+        metadata::set_tags(conn, DATE, &tags, "device-a", 3)
+    })
+    .unwrap();
+
+    let report = drain.await.unwrap().unwrap();
+
+    assert_eq!(report.settled, vec![FOREIGN.to_owned()]);
+    let tags = db.call_blocking(|conn| Ok(day_tags(conn))).unwrap();
+    assert_eq!(tags, vec!["a", "b", "d"]);
+}
+
+/// A blank live `F` is forgotten when its body fetch brings nothing. The user
+/// tags it while the fetch runs: the forget reads `F` again in its own
+/// transaction and waits, so the tag is merged by the next drain instead of
+/// deleted with `F` (desktop's `holdsTextNow`).
+#[tokio::test(start_paused = true)]
+async fn a_tag_added_to_a_blank_day_while_the_drain_fetches_is_not_forgotten() {
+    let db = scratch_db("blank-edit-in-fetch");
+    db.call_blocking(|conn| {
+        let held = record(FOREIGN, &tagged_payload("", &[], json!({"device-b": 2})));
+        sync_items::apply_remote(conn, &held, 1)?;
+        Ok(())
+    })
+    .unwrap();
+    let record = tagged_payload("", &[], json!({"device-b": 3}));
+    assert_eq!(pull_one(&db, FOREIGN, &record).await.skipped, 1);
+    let empty = json!({"updates": [], "hasMore": false}).to_string();
+    let transport = FakeTransport::slow(
+        vec![
+            http_fakes::probe_refused(),
+            response(200, &json!({"snapshot": null}).to_string()),
+            response(200, &empty),
+        ],
+        100,
+    );
+    let bodies = BodyPull::new(
+        http(transport.clone()),
+        db.clone(),
+        Declaration::subscribed(),
+        Arc::new(PassThrough),
+    );
+    let drain = tokio::spawn({
+        let db = db.clone();
+        async move { journal_day_merge::drain(&db, &bodies, "device-a").await }
+    });
+    while transport.call_count() == 0 {
+        tokio::task::yield_now().await;
+    }
+    db.call_blocking(|conn| metadata::set_tags(conn, DATE, &["c".to_owned()], "device-a", 3))
+        .unwrap();
+
+    let report = drain.await.unwrap().unwrap();
+
+    assert_eq!(report.settled, Vec::<String>::new());
+    let report = journal_day_merge::drain(&db, &bodies_for(&db, &[None]), "device-a")
+        .await
+        .unwrap();
+    assert_eq!(report.settled, vec![FOREIGN.to_owned()]);
+    let tags = db.call_blocking(|conn| Ok(day_tags(conn))).unwrap();
+    assert_eq!(tags, vec!["c"]);
+}
+
+/// `F` holds the day with text it never pushed, and its tombstone arrives:
+/// the merge holds it. With `dropped`, `j<D>`'s metadata-only tombstone came
+/// first and the drain dropped the owed merge, leaving `F` live with no owed
+/// merge (§1.9.1, #2986).
+async fn hold_unpushed(db: &Db, dropped: bool) {
+    db.call_blocking(|conn| {
+        let held = record(FOREIGN, &tagged_payload("", &[], json!({"device-b": 2})));
+        sync_items::apply_remote(conn, &held, 1)?;
+        update_log::append_local_update(conn, FOREIGN, &text_update(7, "unpushed"), 1).map_err(
+            |e| StorageError::Failed {
+                what: e.to_string(),
+            },
+        )?;
+        Ok(())
+    })
+    .unwrap();
+    if dropped {
+        // No `j<D>` row here: its tombstone counts as skipped (S17-5).
+        pull_tombstones_at(db, &[CANONICAL], 0, Some(json!({"device-c": 1}))).await;
+    }
+    pull_tombstones_at(db, &[FOREIGN], 1, Some(json!({"device-b": 3}))).await;
+    if dropped {
+        let report = journal_day_merge::drain(db, &bodies_for(db, &[]), "device-a")
+            .await
+            .unwrap();
+        assert_eq!(report.settled, vec![FOREIGN.to_owned()]);
+        db.call_blocking(|conn| {
+            assert!(journal_day_merge::owed(conn)?.is_empty(), "dropped");
+            Ok(())
+        })
+        .unwrap();
+    }
+}
+
+fn property_failed(error: memry_core::domain::properties::PropertyError) -> StorageError {
+    StorageError::Failed {
+        what: error.to_string(),
+    }
+}
+
+fn paragraph(conn: &Connection, text: &str, at: i64) -> Result<(), StorageError> {
+    let edit = memry_core::crdt::body_edit::BlockEdit::InsertParagraph {
+        after_block_id: None,
+        text: text.to_owned(),
+        new_block_id: format!("b-{at}"),
+    };
+    memry_core::domain::journal_ops::body::edit_day(conn, DATE, &edit, "device-a", at)
+        .map(|_| ())
+        .map_err(|error| StorageError::Failed {
+            what: error.to_string(),
+        })
+}
+
+type LocalEdit = fn(&Connection, i64) -> Result<(), StorageError>;
+
+/// Every local edit kind of a journal day, each made twice: the first edit of
+/// a held `F` used to project its tombstone, and the second to revive it.
+const LOCAL_EDITS: [(&str, LocalEdit); 5] = [
+    ("tags", |conn, at| {
+        let tags = vec!["x".to_owned(), format!("t{at}")];
+        metadata::set_tags(conn, DATE, &tags, "device-a", at).map(|_| ())
+    }),
+    ("aliases (the day's name)", |conn, at| {
+        let aliases = vec![format!("Name {at}")];
+        metadata::set_aliases(conn, DATE, &aliases, "device-a", at).map(|_| ())
+    }),
+    ("property set", |conn, at| {
+        metadata::set_property(conn, DATE, "mood", json!(format!("m{at}")), "device-a", at)
+            .map(|_| ())
+            .map_err(property_failed)
+    }),
+    ("property rename and remove", |conn, at| {
+        metadata::set_property(conn, DATE, "p", json!(1), "device-a", at)
+            .map_err(property_failed)?;
+        metadata::rename_property(conn, DATE, "p", "q", "device-a", at)?;
+        metadata::clear_property(conn, DATE, "q", "device-a", at).map_err(property_failed)?;
+        metadata::remove_property(conn, DATE, "q", "device-a", at).map(|_| ())
+    }),
+    ("body", |conn, at| {
+        paragraph(conn, &format!("typed {at}"), at)
+    }),
+];
+
+/// No local edit changes whether a day is shown (#5763, VERIFY-5762R2 #1):
+/// a held `F` stays the day through every edit kind, its unpushed text
+/// stays, and its row keeps the tombstone, so no `F` upsert goes out over it
+/// (a queued one retires at the push, `push::settle::undeletes`). With an
+/// owed merge the drain folds the text into `j<D>` and leaves no `F` upsert.
+#[tokio::test]
+async fn no_local_edit_of_a_held_day_hides_it_or_revives_it() {
+    for dropped in [false, true] {
+        for (kind, edit) in LOCAL_EDITS {
+            let label = format!("{kind}, owed merge dropped: {dropped}");
+            let db = scratch_db("held-edit-kinds");
+            hold_unpushed(&db, dropped).await;
+            let held = label.clone();
+            db.call_blocking(move |conn| {
+                edit(conn, 2)?;
+                assert_eq!(day_holder(conn).as_deref(), Some(FOREIGN), "{held}: shown");
+                edit(conn, 3)?;
+                assert_eq!(day_holder(conn).as_deref(), Some(FOREIGN), "{held}: shown");
+                assert_eq!(text_of(conn, FOREIGN), "unpushed", "{held}: text kept");
+                let row = sync_items::load(conn, "journal", FOREIGN)?.expect("F's row");
+                assert!(row.deleted_at.is_some(), "{held}: F keeps its tombstone");
+                Ok(())
+            })
+            .unwrap();
+            if dropped {
+                continue;
+            }
+
+            let report = journal_day_merge::drain(&db, &bodies_for(&db, &[]), "device-a")
+                .await
+                .unwrap();
+
+            assert_eq!(report.settled, vec![FOREIGN.to_owned()], "{label}");
+            db.call_blocking(move |conn| {
+                assert_eq!(day_holder(conn).as_deref(), Some(CANONICAL), "{label}");
+                assert_eq!(text_of(conn, CANONICAL), "unpushed", "{label}");
+                assert_eq!(upsert_ids(conn, FOREIGN)?, Vec::<i64>::new(), "{label}");
+                Ok(())
+            })
+            .unwrap();
+        }
+    }
+}
+
+/// VERIFY-5762R2 #1's repro: the drain dropped `F`'s owed merge (its day is
+/// deleted), then two tag edits. The first used to soft-delete `F`'s entry,
+/// and the second revived it, purging "unpushed" and queuing an `F` upsert
+/// that dominated the tombstone.
+#[tokio::test]
+async fn two_tag_edits_of_a_day_held_after_a_dropped_merge_keep_its_text() {
+    let db = scratch_db("held-dropped-two-edits");
+    hold_unpushed(&db, true).await;
+    db.call_blocking(|conn| {
+        metadata::set_tags(conn, DATE, &["x".to_owned()], "device-a", 2)?;
+        let tags = ["x", "y"].map(str::to_owned);
+        metadata::set_tags(conn, DATE, &tags, "device-a", 3)?;
+
+        assert_eq!(day_holder(conn).as_deref(), Some(FOREIGN));
+        assert_eq!(text_of(conn, FOREIGN), "unpushed");
+        let row = sync_items::load(conn, "journal", FOREIGN)?.expect("F's row");
+        assert!(row.deleted_at.is_some(), "no revive over the tombstone");
+        Ok(())
+    })
+    .unwrap();
+}
+
+/// Every queued change, `(item_id, op)`.
+fn queued(conn: &Connection) -> Vec<(String, String)> {
+    outbox(conn)
+        .into_iter()
+        .map(|(id, op, _)| (id, op))
+        .collect()
+}
+
+/// What a user delete of a held day leaves (VERIFY-5762R2 #2): no day, `F`'s
+/// delete queued and nothing else, no owed merge and no body, and a drain
+/// that builds no `j<D>`, so no device gets the day back.
+fn assert_day_deleted(conn: &Connection) -> Result<(), StorageError> {
+    assert_eq!(day_holder(conn), None, "the day is gone");
+    assert_eq!(
+        queued(conn),
+        vec![(FOREIGN.to_owned(), "delete".to_owned())],
+        "only F's delete goes out"
+    );
+    assert!(journal_day_merge::owed(conn)?.is_empty(), "nothing owed");
+    assert_eq!(text_of(conn, FOREIGN), "", "F's body is purged");
+    assert!(
+        sync_items::load(conn, "journal", CANONICAL)?.is_none(),
+        "no j<D>"
+    );
+    Ok(())
+}
+
+/// A user delete of a held day deletes it (§1.9.1): the owed merge goes in
+/// the delete's transaction, so the drain never folds `F`'s text into a live
+/// `j<D>` and pushes the deleted day back. Held after `F`'s tombstone, or
+/// owed live when `F`'s own record arrived from another device.
+#[tokio::test]
+async fn a_user_delete_of_a_held_day_deletes_it_and_builds_no_day() {
+    for tombstoned in [true, false] {
+        let db = scratch_db("held-user-delete");
+        db.call_blocking(|conn| hold_foreign_tagged(conn, &["a"]))
+            .unwrap();
+        if tombstoned {
+            pull_tombstones_at(&db, &[FOREIGN], 1, Some(json!({"device-b": 3}))).await;
+        } else {
+            let record = tagged_payload("theirs", &["a"], json!({"device-b": 3}));
+            assert_eq!(pull_one(&db, FOREIGN, &record).await.skipped, 1);
+        }
+        db.call_blocking(|conn| {
+            metadata::set_tags(conn, DATE, &["a".to_owned(), "b".to_owned()], "device-a", 2)?;
+            conn.execute("DELETE FROM outbox", []).map_err(failed)?;
+            assert!(journal::delete_day(conn, DATE, "device-a", 3)?);
+            assert_day_deleted(conn)
+        })
+        .unwrap();
+
+        journal_day_merge::drain(&db, &bodies_for(&db, &[None]), "device-a")
+            .await
+            .unwrap();
+
+        db.call_blocking(|conn| assert_day_deleted(conn)).unwrap();
+    }
+}
+
+/// The user deletes two held days while the drain fetches `F`'s body: `F`'s,
+/// whose merge the drain reads again in the transaction that would open
+/// `j<D>`, and `G`'s, listed by the drain but not reached yet. Each merge is
+/// found forgotten and builds nothing. Paused time, as in
+/// `a_tag_edit_while_the_drain_fetches_the_body_is_what_it_merges`.
+#[tokio::test(start_paused = true)]
+async fn a_user_delete_during_the_body_fetch_builds_no_day() {
+    const OTHER_DATE: &str = "2026-06-10";
+    let db = scratch_db("held-delete-in-fetch");
+    db.call_blocking(|conn| {
+        hold_foreign_tagged(conn, &["a"])?;
+        let payload = json!({"date": OTHER_DATE, "content": "", "clock": {"device-b": 2}});
+        sync_items::apply_remote(conn, &record(OTHER_FOREIGN, &payload.to_string()), 1)?;
+        update_log::append_local_update(conn, OTHER_FOREIGN, &text_update(8, "g"), 1).map_err(|e| {
+            StorageError::Failed {
+                what: e.to_string(),
+            }
+        })
+    })
+    .unwrap();
+    pull_tombstones_at(&db, &[OTHER_FOREIGN], 1, Some(json!({"device-b": 3}))).await;
+    let record = tagged_payload("theirs", &["a"], json!({"device-b": 3}));
+    assert_eq!(pull_one(&db, FOREIGN, &record).await.skipped, 1);
+    let updates = [
+        json!({"sequenceNum": 1, "data": BASE64.encode(text_update(9, "theirs")), "signerDeviceId": "device-b", "createdAt": 1}),
+    ];
+    let transport = FakeTransport::slow(
+        vec![
+            http_fakes::probe_refused(),
+            response(200, &json!({"snapshot": null}).to_string()),
+            response(
+                200,
+                &json!({"updates": updates, "hasMore": false}).to_string(),
+            ),
+        ],
+        100,
+    );
+    let bodies = BodyPull::new(
+        http(transport.clone()),
+        db.clone(),
+        Declaration::subscribed(),
+        Arc::new(PassThrough),
+    );
+    let drain = tokio::spawn({
+        let db = db.clone();
+        async move { journal_day_merge::drain(&db, &bodies, "device-a").await }
+    });
+    while transport.call_count() == 0 {
+        tokio::task::yield_now().await;
+    }
+    db.call_blocking(|conn| {
+        conn.execute("DELETE FROM outbox", []).map_err(failed)?;
+        assert!(journal::delete_day(conn, DATE, "device-a", 3)?);
+        assert!(journal::delete_day(conn, OTHER_DATE, "device-a", 3)?);
+        Ok(())
+    })
+    .unwrap();
+
+    drain.await.unwrap().unwrap();
+
+    db.call_blocking(|conn| {
+        assert_eq!(day_holder(conn), None, "the day stays deleted");
+        assert_eq!(journal::live_entry(conn, OTHER_DATE)?, None, "so does G's");
+        assert!(
+            sync_items::load(conn, "journal", CANONICAL)?.is_none(),
+            "no j<D>"
+        );
+        let other_day = format!("j{OTHER_DATE}");
+        assert!(
+            sync_items::load(conn, "journal", &other_day)?.is_none(),
+            "no j<G>"
+        );
+        let deletes = [FOREIGN, OTHER_FOREIGN].map(|id| (id.to_owned(), "delete".to_owned()));
+        assert_eq!(queued(conn), deletes.to_vec());
+        assert!(journal_day_merge::owed(conn)?.is_empty());
         Ok(())
     })
     .unwrap();

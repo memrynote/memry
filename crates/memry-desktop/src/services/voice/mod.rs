@@ -1,10 +1,15 @@
 //! Voice transcription settings: the local Whisper model (`model`), the OpenAI key (`key`), and
 //! whether a voice memo can be recorded now (`readiness`), as Electron's
-//! `apps/desktop/src/main/inbox/voice-transcription-settings.ts`. The engines that transcribe
-//! arrive with the later stages of Step 24 (#3541).
+//! `apps/desktop/src/main/inbox/voice-transcription-settings.ts`, and the local engine that
+//! transcribes (`engine`, whisper.cpp in the worker). [`service::VoiceService`] picks the local
+//! or the OpenAI engine (`openai`) and writes a voice memo's transcript and name (`naming`).
 
+pub mod engine;
 pub mod key;
 pub mod model;
+pub mod naming;
+pub mod openai;
+pub mod service;
 
 #[cfg(test)]
 mod tests;
@@ -27,6 +32,45 @@ impl VoiceProvider {
         match group.get("provider").and_then(Value::as_str) {
             Some("openai") => Self::OpenAi,
             _ => Self::Local,
+        }
+    }
+}
+
+/// `VoiceTranscriptionSettings.memoNameMode`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MemoNameMode {
+    Transcript,
+    Timestamp,
+    None,
+}
+
+/// The `voiceTranscription` group as transcription reads it. As with [`VoiceProvider::of_group`],
+/// a value this build does not know reads as the default.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct VoiceSettings {
+    pub provider: VoiceProvider,
+    pub memo_name_mode: MemoNameMode,
+    /// A Whisper language code, or `None` for the engine's default (`en` locally, detection on
+    /// OpenAI).
+    pub language: Option<String>,
+    /// `audioSearch` is not `false`: a transcribed memo is embedded for audio search.
+    pub audio_search: bool,
+}
+
+impl VoiceSettings {
+    pub fn of_group(group: &Map<String, Value>) -> Self {
+        let text = |key| group.get(key).and_then(Value::as_str);
+        Self {
+            provider: VoiceProvider::of_group(group),
+            memo_name_mode: match text("memoNameMode") {
+                Some("timestamp") => MemoNameMode::Timestamp,
+                Some("none") => MemoNameMode::None,
+                _ => MemoNameMode::Transcript,
+            },
+            language: text("language")
+                .filter(|language| !language.is_empty())
+                .map(str::to_owned),
+            audio_search: group.get("audioSearch") != Some(&Value::Bool(false)),
         }
     }
 }
