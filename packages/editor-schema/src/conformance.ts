@@ -191,6 +191,14 @@ const calloutCases: RoundtripCase[] = [
   { name: 'heading spelling after a bold run ending in a break', markdown: '**b**\n\\# x' },
   { name: 'list item spelling after an italic run ending in a break', markdown: '*b*\n\\- z' },
   {
+    name: 'list item spelling after a link ending in a break',
+    markdown: '[l](https://e.com)\n\\- z'
+  },
+  {
+    name: 'callout line spelling a heading after a link',
+    markdown: '> [!note]\n> [l](https://e.com)\n> \\# x'
+  },
+  {
     name: 'quote line spelling a heading after a bold run',
     markdown: '> lead\n>\n> **b**\n> \\# x'
   },

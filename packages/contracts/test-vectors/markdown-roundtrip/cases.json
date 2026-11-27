@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 406,
+    "exportedCaseCount": 408,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 416,
+    "caseCount": 418,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -348,6 +348,20 @@
       "canonical": null,
       "pending": null,
       "sha256": "250a2e83e3a8c7b797832c76646bd0bcac89c7050284ca0b1850071d2b6b2595"
+    },
+    {
+      "name": "list item spelling after a link ending in a break",
+      "markdown": "[l](https://e.com)\n\\- z",
+      "canonical": null,
+      "pending": null,
+      "sha256": "39f82f2be03d6d0d385030f69020ca481ac03e75bf37f48ef9af27e421424670"
+    },
+    {
+      "name": "callout line spelling a heading after a link",
+      "markdown": "> [!note]\n> [l](https://e.com)\n> \\# x",
+      "canonical": null,
+      "pending": null,
+      "sha256": "d8201d13bdd075c77bc9194246dbc11e499006835558aa39e296744b105fa4f7"
     },
     {
       "name": "quote line spelling a heading after a bold run",
