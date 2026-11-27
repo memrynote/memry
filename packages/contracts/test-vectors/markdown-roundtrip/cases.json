@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 363,
+    "exportedCaseCount": 369,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 373,
+    "caseCount": 379,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -789,6 +789,48 @@
       "canonical": null,
       "pending": null,
       "sha256": "2bcc11f0dce249aeaa97314b32ff80a6b62dba3e64f4f7c9f5de347e5f4746cb"
+    },
+    {
+      "name": "details markup in a quote",
+      "markdown": "> <details>\n> <summary>O</summary>\n>\n> ob\n>\n> </details>",
+      "canonical": null,
+      "pending": null,
+      "sha256": "ad6e807b0c772181cc85514095527ea58e3792349c127146ddaaebe5852ec642"
+    },
+    {
+      "name": "details markup in a one-paragraph quote",
+      "markdown": "> <details>\n> <summary>O</summary>",
+      "canonical": null,
+      "pending": null,
+      "sha256": "520add0c89b6cf51e7ef3d5d380554e4e4038c3b5d04e7c9060b6d6758fbe9ea"
+    },
+    {
+      "name": "details markup in a callout",
+      "markdown": "> [!info]\n> <details>\n>\n> b",
+      "canonical": null,
+      "pending": null,
+      "sha256": "730554f688f42e5edb1a5832adf351ef83ec1df8ab3eb9ac4b0b5f275beb8ac3"
+    },
+    {
+      "name": "details lines under a quote line",
+      "markdown": "> q\n<details>\n<summary>O</summary>\n\nob\n\n</details>",
+      "canonical": "> q\n> <details>\n> <summary>O</summary>\n\nob\n\n</details>",
+      "pending": null,
+      "sha256": "011b608171476e6c222e2e052af649ef5eba6a3ef41118286c7506a086c2efe9"
+    },
+    {
+      "name": "details closing tag as a heading",
+      "markdown": "## </details>",
+      "canonical": null,
+      "pending": null,
+      "sha256": "d21c6d04786b37169a2d7950717bc4f13173117d0f573fd3c3fe532a191de921"
+    },
+    {
+      "name": "details closing tag over a setext underline",
+      "markdown": "<details>\n<summary>O</summary>\n\nob\n\n</details>\n---",
+      "canonical": "<details>\n<summary>O</summary>\n\nob\n\n## </details>",
+      "pending": null,
+      "sha256": "e7e1f721a5d853112ebb05f977187995940531dfcdc38933f38f38fb2a6d6d4a"
     },
     {
       "name": "math block",

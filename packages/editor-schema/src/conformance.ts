@@ -487,6 +487,28 @@ const toggleCases: RoundtripCase[] = [
     // before and after, and fails if the escaping ever over-reaches.
     name: 'declined details markup keeps a backslash away from its bracket',
     markdown: '<details>\n<summary>C:\\Users\\me</summary>\n\nBody\n\n</details>'
+  },
+  // The parser drops a `<details>` line as raw HTML, so in a quote, a callout
+  // or a heading the markup went as it did in a paragraph before #1883.
+  {
+    name: 'details markup in a quote',
+    markdown: '> <details>\n> <summary>O</summary>\n>\n> ob\n>\n> </details>'
+  },
+  {
+    name: 'details markup in a one-paragraph quote',
+    markdown: '> <details>\n> <summary>O</summary>'
+  },
+  { name: 'details markup in a callout', markdown: '> [!info]\n> <details>\n>\n> b' },
+  {
+    name: 'details lines under a quote line',
+    markdown: '> q\n<details>\n<summary>O</summary>\n\nob\n\n</details>',
+    canonical: '> q\n> <details>\n> <summary>O</summary>\n\nob\n\n</details>'
+  },
+  { name: 'details closing tag as a heading', markdown: '## </details>' },
+  {
+    name: 'details closing tag over a setext underline',
+    markdown: '<details>\n<summary>O</summary>\n\nob\n\n</details>\n---',
+    canonical: '<details>\n<summary>O</summary>\n\nob\n\n## </details>'
   }
 ]
 
