@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 408,
+    "exportedCaseCount": 412,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 418,
+    "caseCount": 422,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -299,6 +299,13 @@
       "canonical": null,
       "pending": null,
       "sha256": "94a57436fb0e805ad35066c8eea1dfc645232508e65c80f376410900fd2d1038"
+    },
+    {
+      "name": "quote of blocks whose first line spells a callout marker",
+      "markdown": "> \\[!info]\n>\n> z",
+      "canonical": null,
+      "pending": null,
+      "sha256": "f97b8912479ed4e2e341a97f70e704064dd5e5464a63d30d91d95b99f6e948b7"
     },
     {
       "name": "paragraph whose text spells a torn callout marker",
@@ -1839,6 +1846,27 @@
       "canonical": null,
       "pending": null,
       "sha256": "30e95dd9d458ace04524233c8e6de3ecb15b432c5ea3c1c11a6221bf72728303"
+    },
+    {
+      "name": "italic run then a bold run",
+      "markdown": "*a*__b__",
+      "canonical": null,
+      "pending": null,
+      "sha256": "4928d03ebb5381b6338c1c5e9b113f330842fbc91ffed2772093443efe71f46e"
+    },
+    {
+      "name": "bold run then an italic run",
+      "markdown": "**a**_b_",
+      "canonical": null,
+      "pending": null,
+      "sha256": "7e9ba39cfee07548af24c8e2638eb6fe335c69f3bc0c0c78b0c064e0007f3807"
+    },
+    {
+      "name": "italic run then a bold run in a quote of blocks",
+      "markdown": "> *a*__b__\n>\n> z",
+      "canonical": null,
+      "pending": null,
+      "sha256": "ac8ee7e3f052edbf310f88dd2df1b4f16418cfc46fea1b0f81cd6f639b1ff768"
     },
     {
       "name": "escaped edge star beside a word underscore",

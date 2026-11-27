@@ -177,6 +177,10 @@ const calloutCases: RoundtripCase[] = [
   // A quote or a paragraph whose text spells a callout marker came back a callout.
   { name: 'quote whose text spells a callout marker', markdown: '> \\[!info]\n> c' },
   { name: 'quote whose text spells a folded callout marker', markdown: '> \\[!tip]-' },
+  {
+    name: 'quote of blocks whose first line spells a callout marker',
+    markdown: '> \\[!info]\n>\n> z'
+  },
   { name: 'paragraph whose text spells a torn callout marker', markdown: '\\[!info]\nc' },
   // A callout's text line, and a line after a run that ends in a break, that
   // spells a block start came back as that block.
@@ -1182,6 +1186,10 @@ const htmlCommentCases: RoundtripCase[] = [
   // the block would pair with underscore delimiters unless it is escaped.
   { name: 'italic run ending in an escaped star', markdown: '*a\\**' },
   { name: 'bold run ending in an escaped star', markdown: '**a\\***' },
+  // Runs side by side whose stars would touch read as bold italic.
+  { name: 'italic run then a bold run', markdown: '*a*__b__' },
+  { name: 'bold run then an italic run', markdown: '**a**_b_' },
+  { name: 'italic run then a bold run in a quote of blocks', markdown: '> *a*__b__\n>\n> z' },
   { name: 'escaped edge star beside a word underscore', markdown: '*a\\** b_c' },
   { name: 'underscore line above an italic run opening with bold', markdown: '\\_\n_**a** b_' },
   {
