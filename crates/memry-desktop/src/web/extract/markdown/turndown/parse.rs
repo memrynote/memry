@@ -401,6 +401,12 @@ pub fn parse_capped(html: &str, caps: Caps) -> Result<(Dom, usize), CapHit> {
     parse_guarded(html, caps, false)
 }
 
+/// An imported HTML file as jsdom parses it for `html-to-markdown.ts`: scripting off, as
+/// [`parse`], within `caps`. Returns the tree and the steps the sink took.
+pub fn parse_import(html: &str, caps: Caps) -> Result<(Dom, usize), CapHit> {
+    parse_guarded(html, caps, false)
+}
+
 fn parse_guarded(html: &str, caps: Caps, scripting: bool) -> Result<(Dom, usize), CapHit> {
     let started = Instant::now();
     let mut doc = Document::new();
