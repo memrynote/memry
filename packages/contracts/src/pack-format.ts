@@ -32,8 +32,8 @@
  *                          for crdt kinds) — what a client matches against
  *     keyLen      uint16   source blob key length
  *     keyBytes             source R2 key (provenance + per-item fallback)
- *     sortKey     int64    server_cursor for records; created_at epoch
- *                          seconds for crdt kinds
+ *     sortKey     int64    server_cursor for records and updates;
+ *                          created_at epoch seconds for snapshots
  *     metaLen     uint16   JSON metadata length ({sequenceNum, revision}
  *                          for snapshots — the freshness token a client
  *                          compares against snapshotMeta before trusting

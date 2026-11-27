@@ -1232,6 +1232,10 @@
     "loadingAria": "Indlæser enheder",
     "none": "Ingen tilknyttede enheder endnu",
     "linkNew": "Tilknyt ny enhed",
+    "linkNeedsPlan": {
+      "title": "Tilknytning kræver et synkroniseringsabonnement",
+      "description": "En tilknyttet enhed ser kun dine noter, når synkronisering er slået til. Uden et abonnement logger du ind der med din gendannelsessætning, og enheden beholder sin egen boks."
+    },
     "thisDevice": "Denne enhed",
     "lastSeen": "Sidst set for {time} siden",
     "linked": "Tilknyttet for {time} siden",
@@ -1398,6 +1402,7 @@
       "selectModel": "Vælg en model",
       "apiKey": "API-nøgle",
       "apiKeyDescription": "Gemt lokalt, sendes kun til udbyderen",
+      "apiKeyKeychainDescription": "Gemmes i systemets nøglering, sendes kun til udbyderen",
       "apiKeyPlaceholder": "Indtast API-nøgle til {provider}",
       "ollamaUrl": "Ollama-URL",
       "ollamaUrlDescription": "Lokal serveradresse",
@@ -2435,7 +2440,8 @@
         "vault-binding": "Denne enheds nøgler er gendannet, men denne boks er endnu ikke sat til at synkronisere med din konto. Vælg, hvordan den skal synkroniseres, fra synkroniseringsmenuen.",
         "vault-foreign": "Denne enheds nøgler er gendannet, men denne boks tilhører en anden konto. Den forbliver lokal på denne enhed.",
         "entitlement": "Denne enheds nøgler er gendannet, men synkronisering kræver en aktiv Sync-plan.",
-        "unavailable": "Denne enheds nøgler er gendannet, men synkroniseringen kunne ikke starte. Den prøver igen; genstart Memry, hvis den ikke gør."
+        "unavailable": "Denne enheds nøgler er gendannet, men synkroniseringen kunne ikke starte. Den prøver igen; genstart Memry, hvis den ikke gør.",
+        "unavailable-restart": "Denne enheds nøgler er gendannet, men synkroniseringen kunne ikke starte. Genstart Memry; hvis synkroniseringen stadig ikke starter, så log ud og log ind igen."
       }
     },
     "pagesSettingsAiInlineSection": {

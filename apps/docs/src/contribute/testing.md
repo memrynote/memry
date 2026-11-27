@@ -37,6 +37,13 @@ the generated vault stays current on the day a developer runs it. The seed set s
 real personal vault: linked notes, inbox captures, calendar items, and tasks should point at each
 other instead of standing alone.
 
+The Tauri app seeds from a frozen export of these scripts. `pnpm seed`, `pnpm seed:rich`,
+`pnpm seed:1` and `pnpm seed:2` run `cargo xtask seed demo|rich|small [--variant 1|2] [--vault <dir>]`,
+which replays `crates/xtask/seed-data/<profile>/` through the sandbox replay
+(`memry_desktop::sandbox::replay`), with its dates moved to the run day. The replay writes only a
+missing or empty folder, or a vault an earlier seed wrote. After you change `seed-data/`, run
+`pnpm --filter @memry/desktop seed:export-templates` and commit `crates/xtask/seed-data/`.
+
 No literal dates. `seedJournalDate` in `scripts/seed-data/date.ts` shifts a narrative date by the
 offset between `JOURNAL_ANCHOR` and the run day, so entries and date properties dated before the
 anchor land in the past and the ones after it land in the future. It covers journal filenames, the
@@ -101,6 +108,147 @@ Content comes from a seeded PRNG (`scripts/seed-data/bulk-notes.ts`), so the sam
 or an earlier benchmark vault (`.memry/config.json` title `memrynote Benchmark Vault`); it refuses
 any other folder. It writes only vault files: the app assigns note ids when it first indexes the
 vault, and tags get default colours.
+
+### Memory and Query Benchmarks
+
+`pnpm bench:memory` (`cargo xtask measure-memory`) measures the idle memory of a Tauri build and
+its web view processes. Each run starts the app on a fresh profile in the temp folder
+(`MEMRY_APP_DATA_DIR`, `MEMRY_TEST_LOG_DIR`, and `MEMRY_DEVICE=memory-bench`, so the user's
+profile, log and keychain accounts stay untouched), waits for the `launch mark vault_open_ready`
+line in `main.log`, idles, then sums the processes the app owns: its process tree, plus on macOS
+the WebKit XPC services the system holds it responsible for. The metric is the one each OS
+charges: `ri_phys_footprint` on macOS, `PrivateUsage` on Windows, `Pss` on Linux. Each run has
+its own temp profile with telemetry off (`telemetry.json`), removed when the run ends, Ctrl-C
+included. Only a benchmark vault from `pnpm seed1k` is accepted, and Electron builds are refused.
+A run fails rather than undercount: when a process cannot be read or no web view process is
+found. On macOS 13 WKWebView has no per-instance store, so a run there shares web storage
+(localStorage) with an installed app of the same bundle id.
+
+```bash
+pnpm seed1k --vault=/tmp/bench
+pnpm bench:memory -- --app <MemryNote.app | memry-tauri | .exe> --vault /tmp/bench --runs 3 --idle 60 --out /tmp/memory.json
+```
+
+`pnpm bench:queries` (`crates/memry-desktop/benches/vault_queries.rs`) writes 15,000 notes,
+5,000 tasks and 2,000 inbox items through a session wired as the app wires it, then prints the
+p50 and p95 of the full-text search, the Tasks page's `all` view and the inbox list, over every
+timed call (criterion's warm-up included).
+
+### Bootstrap Benchmark
+
+`pnpm bench:bootstrap` times a fresh-device bootstrap of a staging vault and prints the same
+metrics for every shell. It accepts only `sync-staging.memrynote.com`, `127.0.0.1` and `localhost`
+as the server.
+
+```bash
+# Core (crates/memry-cli). Sign the bench profile in once; it lives in ~/.memry-bench.
+pnpm bench:bootstrap core --login --email <address> --phrase-file <path>
+pnpm bench:bootstrap core --vault sandboxmobile --runs 2 [--pass-interval <seconds>]
+
+# Electron: a dev build with a temp profile and an e2e-bench-* keychain device.
+pnpm bench:bootstrap electron --vault sandboxmobile
+```
+
+The shell talks to the sync server through a recording proxy on `127.0.0.1:8791`, which counts
+every request per endpoint, including the R2 pack downloads it routes through itself. The proxy
+only reads: under `/sync/` it forwards `GET`, `HEAD` and the read and session `POST`s (`/sync/pull`,
+`/sync/records/pull`, `/sync/crdt/updates/batch`, `/sync/bootstrap` with `renew` and `close`, and
+`/sync/attachments/presign-batch`). It answers every other request there with 403 itself and counts
+each refusal. Auth and device registration live outside `/sync/` and pass through. A refused write
+takes no time, so Electron's `t_bodies` leaves out the push it runs after the pull.
+
+Each run starts by measuring the line with one 25 MB GET from Cloudflare's speed test through the
+proxy. A core run then wipes the bench profile's copy of the vault and runs the shells' first sync,
+then the body passes, until no live note is owed a body. The passes run back to back by default,
+the engine's best case. iOS runs a pass on each sync trigger (foreground, screen loads, realtime
+notices), so `--pass-interval` spaces the passes to match a cadence. An Electron run starts the app
+and waits for you to sign in and download the vault from the account picker. Timing starts at that
+download. Afterwards, delete the downloaded vault folder and remove the device from another device.
+
+| Metric         | Definition                                                                                                                                                                                                                                                    |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `t_records`    | Bootstrap start until every record is applied (core: the metadata pass ends; Electron: `Pull records applied`, logged before the pull's last body batch). Electron fetches inline bodies between record pages, so those fetches count toward its `t_records`. |
+| `t_bodies`     | Bootstrap start until no live note is owed a body (core: the debt list is empty; Electron: `Bootstrap window closed`)                                                                                                                                         |
+| Requests       | Count, bytes, median latency and the most requests in flight at once, per endpoint, split between the Worker and R2                                                                                                                                           |
+| Writes refused | Write requests the proxy answered with 403                                                                                                                                                                                                                    |
+| Bytes          | Per channel: records, packs, snapshots, updates                                                                                                                                                                                                               |
+| Attachments    | Out of scope, expected 0. Attachment downloads use presigned URLs that bypass the proxy, so a report with attachment traffic has incomplete counts                                                                                                            |
+| Disruptions    | 429 answers, feed reads restarted from cursor 0, stale sync-lock releases, transport errors                                                                                                                                                                   |
+| Limiter        | When the network is idle half the run or more: client pacing or local apply (core marks its sleeps, so it tells the two apart; Electron cannot). Otherwise line speed when busy throughput reaches half the measured line, else request latency times count   |
+
+Each run writes its metrics to `.perf/bootstrap-bench/`. The proxy speaks HTTP/1.1 to the shell.
+Electron's `net.fetch` opens at most 6 sockets to one HTTP/1.1 host, so through the proxy Electron
+has at most 6 requests in flight, where staging's HTTP/2 would multiplex more. An endpoint whose
+max in flight sits at 6 was capped by the proxy, not by the app.
+
+### Bootstrap Benchmark
+
+`pnpm bench:bootstrap` times a fresh-device bootstrap of a staging vault and prints the same
+metrics for every shell. It accepts only `sync-staging.memrynote.com`, `127.0.0.1` and `localhost`
+as the server.
+
+```bash
+# Core (crates/memry-cli). Sign the bench profile in once; it lives in ~/.memry-bench.
+pnpm bench:bootstrap core --login --email <address> --phrase-file <path>
+pnpm bench:bootstrap core --vault sandboxmobile --runs 2 [--pass-interval <seconds>]
+
+# Electron: a dev build with a temp profile and an e2e-bench-* keychain device.
+pnpm bench:bootstrap electron --vault sandboxmobile
+
+# Tauri: the e2e build of a feat/tauri-v2 worktree, with a temp profile and WebDriver on 9334
+# (--cdp-port; 9333 is pnpm staging:tauri:debug's port).
+pnpm bench:bootstrap tauri --vault sandboxmobile --tauri-dir <feat/tauri-v2 worktree>
+
+# iOS: reinstalls a Debug simulator build, resets the simulator's keychain, launches it with
+# --sync-environment=local, which is http://127.0.0.1:8787, so the proxy listens there.
+pnpm bench:bootstrap ios --vault sandboxmobile --port 8787 --udid <simulator> --app <Memry.app>
+```
+
+The shell talks to the sync server through a recording proxy on `127.0.0.1:8791`, which counts
+every request per endpoint, including the R2 pack downloads it routes through itself. The proxy
+only reads: under `/sync/` it forwards `GET`, `HEAD` and the read and session `POST`s (`/sync/pull`,
+`/sync/records/pull`, `/sync/crdt/updates/batch`, `/sync/bootstrap` with `renew` and `close`, and
+`/sync/attachments/presign-batch`). It answers every other request there with 403 itself and counts
+each refusal. Auth and device registration live outside `/sync/` and pass through. A refused write
+takes no time, so Electron's `t_bodies` leaves out the push it runs after the pull.
+
+Each run starts by measuring the line with one 25 MB GET from Cloudflare's speed test through the
+proxy. A core run then wipes the bench profile's copy of the vault and runs the shells' first sync,
+then the body passes, until no live note is owed a body. The passes run back to back by default,
+the engine's best case. iOS runs a pass on each sync trigger (foreground, screen loads, realtime
+notices), so `--pass-interval` spaces the passes to match a cadence. An Electron run starts the app
+and waits for you to sign in and download the vault from the account picker. Timing starts at that
+download. Afterwards, delete the downloaded vault folder and remove the device from another device.
+Tauri and iOS runs wait the same way. The iOS run uninstalls the app and resets the simulator's
+keychain first, so give it a simulator of its own.
+
+Neither Rust-core shell logs every record applied or every body local. Their marks: start is the
+shell's own log line (Tauri `bootstrap window opened` in main.log, iOS `a first sync started` in the
+unified log). Records is iOS's `the first sync is pulling bodies`; Tauri has no such line, so its
+records mark is the proxy's feed head: the end of the last `POST /sync/pull` after the first
+`GET /sync/changes` page with `hasMore: false` (an iOS run reports the same proxy point beside its
+log mark as a check). Bodies is read from the run's vault
+`data.db`: the one vault database (it has `meta` and `yjs_snapshots`) that was not under the
+Tauri profile, `~/Documents/Memry` or the iOS app container before the run; a second new one
+stops the run. It is opened read-only once a second: the first sync completed and no `sync.body_owed:*` row
+is left. The report's `Writes refused` line also counts the whole session's refused push items by
+type and operation, so a shell that pushes after the window closed still shows.
+
+| Metric         | Definition                                                                                                                                                                                                                                                                              |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `t_records`    | Bootstrap start until every record is applied (core: the metadata pass ends; Electron: `Pull records applied`, logged before the pull's last body batch; Tauri and iOS: see above). Electron fetches inline bodies between record pages, so those fetches count toward its `t_records`. |
+| `t_bodies`     | Bootstrap start until no live note is owed a body (core: the debt list is empty; Electron: `Bootstrap window closed`; Tauri and iOS: data.db has no debt left)                                                                                                                          |
+| Requests       | Count, bytes, median latency and the most requests in flight at once, per endpoint, split between the Worker and R2                                                                                                                                                                     |
+| Writes refused | Write requests the proxy answered with 403, per endpoint                                                                                                                                                                                                                                |
+| Bytes          | Per channel: records, packs, snapshots, updates                                                                                                                                                                                                                                         |
+| Attachments    | Out of scope, expected 0. Attachment downloads use presigned URLs that bypass the proxy, so a report with attachment traffic has incomplete counts                                                                                                                                      |
+| Disruptions    | 429 answers, feed reads restarted from cursor 0, stale sync-lock releases, transport errors                                                                                                                                                                                             |
+| Limiter        | When the network is idle half the run or more: client pacing or local apply (core marks its sleeps, so it tells the two apart; Electron cannot). Otherwise line speed when busy throughput reaches half the measured line, else request latency times count                             |
+
+Each run writes its metrics to `.perf/bootstrap-bench/`. The proxy speaks HTTP/1.1 to the shell.
+Electron's `net.fetch` opens at most 6 sockets to one HTTP/1.1 host, so through the proxy Electron
+has at most 6 requests in flight, where staging's HTTP/2 would multiplex more. An endpoint whose
+max in flight sits at 6 was capped by the proxy, not by the app.
 
 ### Key Rules
 
@@ -480,6 +628,9 @@ feature-scoped and avoid catch-all test files.
   90% for statements, branches, functions, and lines.
 - **Sync harness** — `tests/sync-harness` uses the same Vitest major as the sync server so
   encrypted sync E2E helpers stay on the same runner behavior as Worker tests.
+  `pnpm test:sync-harness` also builds the Rust core device (`crates/memry-cli`), so it needs
+  the Rust toolchain pinned by `crates/rust-toolchain.toml`. Without cargo, the core zero-loss
+  scenario skips locally with a warning. In CI, a missing toolchain fails the run.
 - **PRs** — include the relevant coverage command output when raising or defending a
   threshold change.
 

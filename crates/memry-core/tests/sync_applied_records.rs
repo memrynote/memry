@@ -1,7 +1,8 @@
 //! The applied-record feed through the real pull (#3534 L2): every observer
 //! hears one record per item of a committed page, after the page committed
-//! (its cursor included); a failure after some records committed still tells
-//! those; and the first sync's id fetch, the refused-records refetch and a
+//! (its cursor included); a failure in the cursor write or in the middle of
+//! the page stores and tells no record of it; a tombstone for an item never
+//! live here counts as skipped; and the first sync's id fetch, the refused-records refetch and a
 //! losing note tombstone reach the observers too.
 //!
 //! Real `HttpClient`, SQLite and apply; the transport and the record cipher
@@ -14,6 +15,7 @@ use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 
 use http_fakes::{FakeTransport, response};
+use memry_core::api::errors::StorageError;
 use memry_core::domain::sticky_draft::{self, StickyKind};
 use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope};
 use memry_core::protocol::http::{ClientIdentity, HttpClient};
@@ -169,6 +171,19 @@ fn ten_drafts(db: &Db) -> (Vec<String>, BTreeMap<String, String>, Vec<String>) {
     (ids, payloads, script)
 }
 
+/// The record cursor and one count, as a reader connection sees them.
+fn cursor_and_count(db: &Db, count_sql: &'static str) -> (Option<String>, i64) {
+    db.read_blocking(move |conn| {
+        let count = conn
+            .query_row(count_sql, [], |row| row.get(0))
+            .map_err(|error| StorageError::Failed {
+                what: error.to_string(),
+            })?;
+        Ok((store::read_cursor(conn, RECORD_CURSOR_SCOPE)?, count))
+    })
+    .expect("a reader connection")
+}
+
 fn expected(ids: &[String], cursor: Option<&str>) -> Vec<Heard> {
     ids.iter()
         .enumerate()
@@ -205,14 +220,15 @@ async fn two_observers_hear_every_record_of_a_page_after_it_commits() {
     }
 }
 
-/// Every record commits on its own, so a failure after them (here the cursor
-/// write of `land_and_advance`) leaves them stored. The observers hear their
-/// real outcomes before the error propagates: a re-pull would report them
-/// `Skipped`, and a write-back observer would never write their files.
+/// A page's records commit with its cursor or not at all (§5.11, #5231). A
+/// failure in the cursor write (here in `land_and_advance`) stores none of
+/// them and tells the observers nothing; the re-pull then applies and tells
+/// every one.
 #[tokio::test(flavor = "multi_thread")]
-async fn a_failure_after_records_committed_still_tells_the_committed_records() {
+async fn a_failure_in_the_cursor_write_stores_and_tells_no_record_of_the_page() {
     let db = scratch_db();
     let (ids, payloads, script) = ten_drafts(&db);
+    let retry = script.clone();
     db.call_blocking(|conn| {
         conn.execute_batch(
             "CREATE TRIGGER injected_cursor_failure BEFORE INSERT ON sync_cursors
@@ -224,22 +240,167 @@ async fn a_failure_after_records_committed_still_tells_the_committed_records() {
         })
     })
     .expect("the injected failure");
-    let (pull, readers) = pull_loop(&db, &[TYPE], payloads, script);
+    let (pull, readers) = pull_loop(&db, &[TYPE], payloads.clone(), script);
 
     let error = pull.pull_page().await.expect_err("the cursor write fails");
     assert!(
         error.to_string().contains("injected cursor failure"),
         "{error}"
     );
+    for reader in &readers {
+        assert!(reader.heard.lock().unwrap().is_empty(), "{}", reader.name);
+    }
 
+    db.call_blocking(|conn| {
+        conn.execute_batch("DROP TRIGGER injected_cursor_failure")
+            .map_err(|error| memry_core::api::errors::StorageError::Failed {
+                what: error.to_string(),
+            })
+    })
+    .expect("drop the injected failure");
+    let (pull, readers) = pull_loop(&db, &[TYPE], payloads, retry);
+    pull.pull_page().await.expect("the re-pull");
     for reader in readers {
         assert_eq!(
             *reader.heard.lock().unwrap(),
-            expected(&ids, None),
+            expected(&ids, Some("10")),
             "{}",
             reader.name
         );
     }
+}
+
+/// A record whose write fails mid-page (a trigger on `sticky-5`'s insert) aborts the page,
+/// and the page's records commit with it or not at all (§5.11, #5231): the observers hear
+/// nothing, and the re-pull applies and tells every one.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_record_that_fails_mid_page_stores_and_tells_no_record_of_the_page() {
+    let db = scratch_db();
+    let (ids, payloads, script) = ten_drafts(&db);
+    let retry = script.clone();
+    db.call_blocking(|conn| {
+        conn.execute_batch(
+            "CREATE TRIGGER injected_record_failure BEFORE INSERT ON sync_items
+             WHEN NEW.item_id = 'sticky-5'
+             BEGIN SELECT RAISE(ABORT, 'injected record failure'); END;",
+        )
+        .map_err(|error| memry_core::api::errors::StorageError::Failed {
+            what: error.to_string(),
+        })
+    })
+    .expect("the injected failure");
+    let (pull, readers) = pull_loop(&db, &[TYPE], payloads.clone(), script);
+
+    let error = pull.pull_page().await.expect_err("sticky-5's write fails");
+    assert!(
+        error.to_string().contains("injected record failure"),
+        "{error}"
+    );
+    for reader in &readers {
+        assert!(reader.heard.lock().unwrap().is_empty(), "{}", reader.name);
+    }
+    // Nothing of the page is left behind: not the records written before
+    // `sticky-5`, not the cursor. The local draft `mine` is not a `sticky-` id.
+    assert_eq!(
+        cursor_and_count(
+            &db,
+            "SELECT COUNT(*) FROM sync_items WHERE item_id LIKE 'sticky-%'"
+        ),
+        (None, 0)
+    );
+
+    db.call_blocking(|conn| {
+        conn.execute_batch("DROP TRIGGER injected_record_failure")
+            .map_err(|error| memry_core::api::errors::StorageError::Failed {
+                what: error.to_string(),
+            })
+    })
+    .expect("drop the injected failure");
+    let (pull, readers) = pull_loop(&db, &[TYPE], payloads, retry);
+    pull.pull_page().await.expect("the re-pull");
+    for reader in readers {
+        assert_eq!(
+            *reader.heard.lock().unwrap(),
+            expected(&ids, Some("10")),
+            "{}",
+            reader.name
+        );
+    }
+}
+
+/// A record whose domain write fails (a trigger on `sticky-5`'s draft row)
+/// is that record's failure, not the page's (`apply::record`): it is stored
+/// corrupt with no payload and no draft, told as skipped, and the page commits
+/// the other nine with its cursor.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_record_whose_domain_write_fails_is_told_skipped_and_the_page_commits() {
+    let db = scratch_db();
+    let (ids, payloads, script) = ten_drafts(&db);
+    db.call_blocking(|conn| {
+        conn.execute_batch(
+            "CREATE TRIGGER injected_domain_failure BEFORE INSERT ON sticky_drafts
+             WHEN NEW.id = 'sticky-5'
+             BEGIN SELECT RAISE(ABORT, 'injected domain failure'); END;",
+        )
+        .map_err(|error| StorageError::Failed {
+            what: error.to_string(),
+        })
+    })
+    .expect("the injected failure");
+    let (pull, readers) = pull_loop(&db, &[TYPE], payloads, script);
+
+    pull.pull_page().await.expect("the page commits");
+
+    let corrupt = db
+        .read_blocking(|conn| sync_items::load(conn, TYPE, "sticky-5"))
+        .expect("a reader connection")
+        .expect("sticky-5's row");
+    assert_eq!(corrupt.payload, None);
+    assert!(
+        corrupt
+            .corrupt_reason
+            .as_deref()
+            .is_some_and(|reason| reason.contains("injected domain failure")),
+        "{:?}",
+        corrupt.corrupt_reason
+    );
+    assert_eq!(
+        cursor_and_count(
+            &db,
+            "SELECT COUNT(*) FROM sticky_drafts WHERE id = 'sticky-5'"
+        ),
+        (Some("10".to_owned()), 0)
+    );
+    let mut heard = expected(&ids, Some("10"));
+    heard[5] = (
+        "sticky-5".to_owned(),
+        AppliedOutcome::Skipped,
+        false,
+        Some("10".to_owned()),
+    );
+    for reader in readers {
+        assert_eq!(*reader.heard.lock().unwrap(), heard, "{}", reader.name);
+    }
+}
+
+/// A tombstone for an id this device never held live deletes nothing: the run
+/// counts it skipped, as the feed reports it. A bare id in `deleted` with no
+/// item applies nothing at all (§5.12.1, #5340), so it is not counted.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_tombstone_for_an_item_never_live_here_counts_as_skipped() {
+    let db = scratch_db();
+    let mut tombstone = envelope_of(TYPE, "ghost");
+    tombstone["deletedAt"] = json!(NOW);
+    let script = vec![
+        changes(&[(TYPE, "ghost")], &["untyped"], "10"),
+        pulled(vec![tombstone]),
+    ];
+    let payloads = BTreeMap::from([("ghost".to_owned(), sticky("ghost"))]);
+    let (pull, _readers) = pull_loop(&db, &[TYPE], payloads, script);
+
+    let report = pull.pull_page().await.expect("the page");
+
+    assert_eq!((report.deleted, report.skipped), (0, 1), "{report:?}");
 }
 
 /// The first sync's metadata pass ([`PullLoop::fetch_ids`]) tells what it

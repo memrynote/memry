@@ -17,7 +17,8 @@ import { fileURLToPath } from 'node:url'
 const SOCIAL = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const KIT = path.join(SOCIAL, 'kit')
 const MEDIA = path.join(SOCIAL, 'media')
-const DEFAULT_REPLY = 'memrynote.com: free on mac, windows and linux'
+const DEFAULT_REPLY =
+  'free on mac, windows and linux: memrynote.com/?utm_source=x&utm_medium=social&utm_campaign=social-q4'
 const MONTHS = { Oct: '10', Nov: '11', Dec: '12', Jan: '01' }
 
 const lines = fs.readFileSync(path.join(SOCIAL, '2026-q4.md'), 'utf8').split('\n')

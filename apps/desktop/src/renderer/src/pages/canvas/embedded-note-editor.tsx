@@ -13,10 +13,13 @@
  * body text) and debounce-save `onMarkdownChange` back to `notesService.update`.
  */
 import React, { useCallback, useEffect, useRef } from 'react'
+import { getI18n } from 'react-i18next'
+import { toast } from 'sonner'
 import { ContentArea } from '@/components/note/content-area'
 import { useNote } from '@/hooks/use-notes-query'
 import { notesService } from '@/services/notes-service'
 import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
+import { extractErrorMessage, unwrapIpcResult } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { useIsNoteLocked } from '@/lib/vault-locks-store'
@@ -25,6 +28,9 @@ import { LockedNoteNotice } from '@/components/note/locked-note-notice'
 const log = createLogger('EmbeddedNoteEditor')
 
 const SAVE_DEBOUNCE_MS = 1000
+
+const saveFailedMessage = (err: unknown): string =>
+  extractErrorMessage(err, getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToSave'))
 
 interface EmbeddedNoteEditorProps {
   noteId: string
@@ -39,6 +45,9 @@ export const EmbeddedNoteEditor = ({ noteId }: EmbeddedNoteEditorProps): React.J
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   // The note whose save lifecycle is running, cleared once its unmount flush ran.
   const liveNoteIdRef = useRef<string | null>(null)
+  // Set by a failed save and cleared by the next one that lands, so a refused
+  // note shows one toast per run of refusals instead of one per keystroke.
+  const saveFailureShownRef = useRef(false)
 
   useEffect(() => {
     if (note && lastSavedContentRef.current === null) {
@@ -55,11 +64,16 @@ export const EmbeddedNoteEditor = ({ noteId }: EmbeddedNoteEditorProps): React.J
     if (pending === null) return
     pendingContentRef.current = null
     try {
-      await notesService.update({ id: noteId, content: pending })
+      unwrapIpcResult(await notesService.update({ id: noteId, content: pending }), 'Save failed')
       lastSavedContentRef.current = pending
+      saveFailureShownRef.current = false
     } catch (err) {
       log.error('Failed to save note', { noteId, error: err })
       trackRendererError('canvas_card_note_save', err)
+      if (!saveFailureShownRef.current) {
+        saveFailureShownRef.current = true
+        toast.error(saveFailedMessage(err))
+      }
       // Put the unsaved text back so the next flush retries instead of
       // dropping it — unless a newer edit already replaced it mid-await.
       if (pendingContentRef.current === null) {
@@ -85,10 +99,14 @@ export const EmbeddedNoteEditor = ({ noteId }: EmbeddedNoteEditorProps): React.J
       // already ran (#1900). A timer armed now would be invisible to quit, so
       // the edit is saved straight away, to the note it was typed in.
       if (liveNoteIdRef.current !== noteId) {
-        notesService.update({ id: noteId, content: markdown }).catch((err: unknown) => {
-          log.error('Failed to save note after its editor closed', { noteId, error: err })
-          trackRendererError('canvas_card_note_save', err)
-        })
+        notesService
+          .update({ id: noteId, content: markdown })
+          .then((result) => unwrapIpcResult(result, 'Save failed'))
+          .catch((err: unknown) => {
+            log.error('Failed to save note after its editor closed', { noteId, error: err })
+            trackRendererError('canvas_card_note_save', err)
+            toast.error(saveFailedMessage(err))
+          })
         return
       }
       if (markdown === lastSavedContentRef.current) return

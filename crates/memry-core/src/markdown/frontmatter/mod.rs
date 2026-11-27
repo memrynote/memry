@@ -21,7 +21,7 @@ pub use edit::{deep_strict_equal, edit_frontmatter_block, serialize_updated_note
 pub use js::iso_string;
 /// JavaScript's `String#trim`, which a desktop input check needs to match zod's `.trim()`, and
 /// the whitespace it and `\s` take, for a desktop edit that trims one end (`/\s+$/`).
-pub use js::{is_js_whitespace, js_trim};
+pub use js::{is_js_whitespace, js_trim, number_to_string};
 pub use json::{json_to_yaml, yaml_to_json};
 pub use note::{
     Eol, ParsedMarkdownNote, gray_matter_data, gray_matter_parts, parse_markdown_note,

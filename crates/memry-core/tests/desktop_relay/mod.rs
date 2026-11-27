@@ -25,6 +25,7 @@ use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope, SyncOperatio
 use memry_core::protocol::http::{ClientIdentity, HttpClient};
 use memry_core::protocol::types::Declaration;
 use memry_core::storage::Db;
+use memry_core::sync::driver::observer::Observers;
 use memry_core::sync::pull::{PullLoop, PullReport, RecordCipher};
 use memry_core::sync::push::{PendingRecord, PushCoordinator, PushSealer};
 use serde_json::{Value as Json, json};
@@ -328,6 +329,16 @@ impl Relay {
     /// Serves `records` as one page: a page read before a push that landed
     /// since, as §6.6.2's push-build / pull-apply race delivers it.
     pub async fn pull_from(&self, device: &Device, records: Held) -> PullReport {
+        self.pull_observed(device, records, Arc::default()).await
+    }
+
+    /// [`Relay::pull_from`], told to `observers` after the page commits.
+    pub async fn pull_observed(
+        &self,
+        device: &Device,
+        records: Held,
+        observers: Arc<Observers>,
+    ) -> PullReport {
         let cursor = {
             let mut cursor = self.cursor.lock().unwrap();
             *cursor += 1;
@@ -380,6 +391,7 @@ impl Relay {
         )
         .with_clock_device(device.id)
         .with_at_rest_key(device.vault.at_rest_key())
+        .with_observers(observers)
         .pull_page()
         .await
         .expect("the page")
@@ -402,6 +414,7 @@ impl Relay {
             device.db(),
             Declaration::desktop(),
             sealed.clone(),
+            device.id,
         )
         .with_at_rest_key(device.vault.at_rest_key())
         .drain_wave()

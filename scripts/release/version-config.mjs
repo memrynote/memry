@@ -9,10 +9,11 @@ import { isMain } from './is-main.mjs'
 
 /**
  * `{ version }` for a release version. Tauri needs semver, and Windows puts each part in a 16-bit
- * field of the exe's version resource, so `YYYY.MDD.n` and `2099.101.n` pass and nothing else.
+ * field of the exe's version resource, so `YYYY.MDD.n` and `2099.101.n` pass and nothing else. A
+ * `0.x` version is the unstamped default: the sync server's desktop write floor rejects it.
  */
 export function versionConfig(version) {
-  const parts = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.exec(version ?? '')
+  const parts = /^([1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.exec(version ?? '')
   if (!parts || parts.slice(1).some((part) => Number(part) > 65535)) {
     throw new Error(`"${version}" is not a release version such as 2026.1025.1`)
   }

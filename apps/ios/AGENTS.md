@@ -27,6 +27,7 @@ xcodebuild test -project apps/ios/Memry.xcodeproj -scheme Memry -testPlan Unit \
 - Debug builds talk to staging and Release builds talk to production, set by `MEMRY_SYNC_ENVIRONMENT` in the project's build settings. A Release build on a device or simulator signs in to real accounts and reads production data, so agents build Debug.
 - `.github/workflows/ios-testflight.yml` archives, signs, and uploads a build. It runs only when someone dispatches it by hand from the Actions tab. An upload counts as a release: ask Kaan before each one.
 - Signing is Xcode automatic signing, authorised by the App Store Connect API key in the repo secrets `ASC_KEY_ID`, `ASC_ISSUER_ID`, and `ASC_KEY_P8`. Nothing in the repo holds a certificate or a profile.
+- Each run's cloud signing mints an `Apple Development: Created via API` certificate, and the run's last step (`scripts/revoke-ci-dev-certs.mjs`) revokes them. At Apple's certificate limit the Archive fails with `Choose a certificate to revoke`: run that script by hand with the key's env vars.
 - The build number is `1000 + run number`. A build uploaded by hand from Xcode needs a number below 1000.
 - A change the iOS app depends on in the sync server reaches TestFlight users only after a production sync-server deploy.
 
@@ -96,5 +97,4 @@ The app is one Universal build. iPad layouts adapt the iPhone app, not replace i
 - A sync pass pulls bodies only for the records it applied, and desktop pushes a body edit as CRDT updates with no record. A screen showing a document another device edits pulls that body itself with `VaultFilling.fetchNoteBody` when it appears and after each sync pass, as the journal day page does.
 - Search, backlinks, link targets and unlinked mentions read the search index. `VaultSearchIndex` (`\.vaultSearchIndex`) owns reindexing: it runs after each sync pass and local write, one at a time. A screen that reads the index re-reads when its `completed` changes and never reindexes itself. After content arrives outside a sync pass, such as a body pull, call its `schedule()`.
 - Address a journal day by its date, never by `j<date>`. Days written by older desktops carry other ids, and every write goes to the existing record's id.
-- Journal tag and property writes stay off (`JournalWriteGate.metadataWrites`) until the oldest desktop in use includes the JP029a handler fix (`specs/005-ios-journal-parity/tasks.md`). Earlier desktops empty the day's file on a record-only change.
 - `BlockEdit.setText` edits a single plain run in place, so a peer's concurrent typing in the same block survives. Keep plain-text edits on that path instead of replacing the whole run.

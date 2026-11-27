@@ -6,7 +6,7 @@ use std::time::Instant;
 
 use xtask::seed::{self, DEFAULT_COUNT, DEFAULT_SEED};
 
-const USAGE: &str = "usage: cargo xtask seed bench [--vault <dir>] [--count <n>] [--seed <s>]";
+const USAGE: &str = "usage: cargo xtask seed bench [--vault <dir>] [--count <n>] [--seed <s>]\n       cargo xtask measure-memory --app <path> [--vault <dir>] [--runs 3] [--idle 60] [--out <file.json>]";
 
 struct BenchArgs {
     vault: Option<PathBuf>,
@@ -84,7 +84,9 @@ fn seed_bench(args: &[String]) -> Result<(), String> {
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let result = match args.iter().map(String::as_str).collect::<Vec<_>>()[..] {
+        ["seed", "demo" | "rich" | "small", ..] => xtask::seed_template::run(&args[1..]),
         ["seed", "bench", ..] => seed_bench(&args[2..]),
+        ["measure-memory", ..] => xtask::measure_memory::run(&args[1..]),
         _ => Err(USAGE.to_owned()),
     };
     match result {

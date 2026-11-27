@@ -9,7 +9,7 @@ use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Condvar, Mutex, OnceLock, Weak};
 use std::time::{Duration, Instant};
 
-use memry_core::domain::embedding_input::EMBEDDING_INPUT_VERSION;
+use memry_core::domain::embedding_input::UNCAPPED_EMBEDDING_INPUT_VERSION;
 use memry_core::seams::secure_store::SecureStore;
 use memry_desktop::embedding::PROJECTORS;
 use memry_desktop::embedding::download::Abort;
@@ -307,7 +307,7 @@ impl Lane {
     pub fn embedded(&self, note_id: &str) {
         self.until("the note's vectors", |l| {
             l.state(note_id)
-                .is_some_and(|(version, _)| version == i64::from(EMBEDDING_INPUT_VERSION))
+                .is_some_and(|(version, _)| version == i64::from(UNCAPPED_EMBEDDING_INPUT_VERSION))
         });
     }
 
@@ -324,7 +324,9 @@ impl Lane {
         self.settled();
     }
 
-    /// Every lane event published so far, and every reconcile pass, has run.
+    /// Every event published so far to a foreground lane has run, and no reconcile pass is
+    /// running. The embedding lane is a background one, which `flush` skips: a test that needs
+    /// its work done waits on the stored vectors ([`Self::embedded`], [`Self::all_embedded`]).
     pub fn settled(&self) {
         let runtime = self.e.session.projections().expect("open");
         assert!(runtime.flush(WAIT));

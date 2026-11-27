@@ -133,6 +133,9 @@ pub struct PassReport {
     /// Why the push failed, when it did (a mid-wave refusal that parked the
     /// outbox included).
     pub push_error: Option<SyncError>,
+    /// The driver's body step stopped at its request budget with documents still due
+    /// (`body_step`): a shell runs the next pass without waiting for its timer.
+    pub bodies_left: bool,
 }
 
 impl PassReport {
@@ -504,6 +507,7 @@ impl SyncEngine {
             push_ms: done.push_ms,
             pull_error: done.pull_error,
             push_error: done.push_error,
+            bodies_left: false,
         }
     }
 }

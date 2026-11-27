@@ -3,7 +3,9 @@
 //!
 //! With `plain_checklists`, a markdown file's checkbox lines are written with the plain marker
 //! (`{check}`, [`mark_added_checklist_lines_plain`]), so the editor keeps them as checkboxes and
-//! does not turn them into tasks. A file whose bytes are not UTF-8 would not survive that
+//! does not turn them into tasks. Markdown is read from `dest_rel`, which keeps the extension
+//! of the name the user gave the file (Electron's `getExtension(sourcePath)`), not from where a
+//! link of that name leads. A file whose bytes are not UTF-8 would not survive that
 //! rewrite, so it is copied as it is, and so is a file the marking leaves unchanged.
 //!
 //! The source is outside the vault and may be anything, so it is read once, bounded:
@@ -60,8 +62,7 @@ pub fn copy_imported_file(
             }
         })
     };
-    let markdown =
-        file_type_of_extension(&extension(&source.to_string_lossy())) == Some(FileType::Markdown);
+    let markdown = file_type_of_extension(&extension(dest_rel)) == Some(FileType::Markdown);
     if !plain_checklists || !markdown {
         return place(&mut file);
     }

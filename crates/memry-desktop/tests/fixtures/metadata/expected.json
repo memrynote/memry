@@ -1,0 +1,403 @@
+{
+  "news-opengraph.html": {
+    "title": "Summit ends without a deal",
+    "description": "Leaders left the two-day summit on Monday without agreeing on a joint statement.",
+    "image": "https://cdn.example-news.com/images/summit.jpg",
+    "author": "Jane Doe",
+    "publisher": "Example News",
+    "date": "2024-03-04T10:02:11.000Z",
+    "url": "https://www.example-news.com/world/2024/03/04/summit-ends"
+  },
+  "news-jsonld-article.html": {
+    "title": "New chip doubles battery life - Tech Daily",
+    "description": "A new low-power chip promises twice the battery life.",
+    "image": "https://news.example.org/img/chip-1200.jpg",
+    "author": "Sam Lee",
+    "publisher": "Tech Daily",
+    "date": "2023-11-03T11:30:00.000Z",
+    "logo": "https://news.example.org/logo-512.png",
+    "url": "https://news.example.org/tech/new-chip"
+  },
+  "news-jsonld-graph.html": {
+    "title": "Budget 2024: what changes - Example UK",
+    "description": "Everything that changes in the spring budget.",
+    "image": "https://www.example.co.uk/wp-content/uploads/budget.jpg",
+    "author": "Priya Patel",
+    "publisher": "Example UK",
+    "date": "2024-03-06T14:00:00.000Z",
+    "url": "https://www.example.co.uk/politics/budget-2024"
+  },
+  "blog-wordpress.html": {
+    "title": "Hello world – A Small Blog",
+    "image": "https://blog.example.net/wp-content/uploads/2022/07/first.jpg",
+    "author": "Marta Ruiz",
+    "publisher": "A Small Blog",
+    "date": "2022-07-14T12:00:00.000Z",
+    "url": "https://blog.example.net/2022/07/hello-world/"
+  },
+  "blog-medium.html": {
+    "title": "Writing Rust for fun",
+    "description": "Notes from a year of side projects in Rust.",
+    "image": "https://miro.medium.com/v2/resize:fit:1200/1*abc.png",
+    "author": "Kim Ito",
+    "publisher": "Medium",
+    "date": "2021-09-30T16:01:44.123Z",
+    "url": "https://medium.com/@kim/writing-rust-for-fun-3f2a1b?source=rss"
+  },
+  "youtube.html": {
+    "title": "Never Gonna Give You Up",
+    "description": "The official video.",
+    "image": "https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg",
+    "publisher": "YouTube",
+    "date": "2009-10-25T06:57:33.000Z",
+    "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+  },
+  "github-repo.html": {
+    "title": "GitHub - rust-lang/rust: Empowering everyone to build reliable and efficient software.",
+    "description": "Empowering everyone to build reliable and efficient software. - rust-lang/rust",
+    "image": "https://opengraph.githubassets.com/abc/rust-lang/rust",
+    "publisher": "GitHub",
+    "url": "https://github.com/rust-lang/rust"
+  },
+  "reddit-old.html": {
+    "title": "r/rust - What are you working on?",
+    "description": "Weekly thread for sharing projects.",
+    "image": "https://www.redditstatic.com/icon.png",
+    "author": "ferris",
+    "publisher": "reddit",
+    "date": "2024-03-04T10:00:00.000Z",
+    "url": "https://www.reddit.com/r/rust/comments/abc123/what_are_you_working_on/"
+  },
+  "reddit-new.html": {
+    "title": "From the programming community on Reddit: A story about compilers",
+    "description": "Explore this post and more from the programming community",
+    "image": "https://share.redd.it/preview/post/xyz789",
+    "url": "https://www.reddit.com/r/programming/comments/xyz789/a_story/"
+  },
+  "twitter-x.html": {
+    "title": "Rust Language on X",
+    "description": "“Rust 1.77 is out! Read the release notes.”",
+    "image": "https://pbs.twimg.com/profile_images/rust_400x400.jpg",
+    "publisher": "X (formerly Twitter)",
+    "url": "https://x.com/rustlang/status/1765000000000000000"
+  },
+  "wikipedia.html": {
+    "title": "Ferris wheel - Wikipedia",
+    "image": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Wheel.jpg/250px-Wheel.jpg",
+    "publisher": "Wikipedia",
+    "url": "https://en.wikipedia.org/wiki/Ferris_wheel"
+  },
+  "forum-discourse.html": {
+    "title": "How to borrow twice?",
+    "image": "https://forum.example.dev/uploads/default/original/logo.png",
+    "author": "Ana Silva",
+    "publisher": "Example Forum",
+    "date": "2023-05-21T08:30:12.000Z",
+    "url": "https://forum.example.dev/t/how-to-borrow/1234"
+  },
+  "forum-phpbb.html": {
+    "title": "Example Board - View topic - Engine noise at idle",
+    "image": "https://www.example-board.org/images/smilies/icon_e_sad.gif",
+    "author": "gearhead",
+    "publisher": "Example Board",
+    "url": "https://www.example-board.org/viewtopic.php?t=42"
+  },
+  "jsonld-only.html": {
+    "title": "Lentil soup",
+    "description": "A quick weeknight soup.",
+    "author": "Leo Martin",
+    "publisher": "Example Recipes",
+    "date": "2020-01-15T00:00:00.000Z",
+    "url": "https://recipes.example.com/r/lentil-soup"
+  },
+  "relative-urls.html": {
+    "title": "Relative paths",
+    "image": "https://www.example.com/blog/images/hero.png",
+    "logo": "https://www.example.com/static/logo.svg",
+    "url": "https://www.example.com/blog/posts/relative-paths.html#comments"
+  },
+  "protocol-relative.html": {
+    "title": "Electric kettle",
+    "image": "https://cdn.example.com/products/kettle_1024x1024.jpg?v=1699999999",
+    "url": "https://shop.example.com/products/kettle"
+  },
+  "jsonld-raw-newline.html": {
+    "title": "Flood warning issued",
+    "description": "Rivers rise\nafter a week of rain.",
+    "author": "Tom Baker",
+    "date": "2023-10-10T06:00:00.000Z",
+    "url": "https://www.example.org/news/flood"
+  },
+  "jsonld-cdata.html": {
+    "title": "CDATA wrapped",
+    "author": "Rosa Diaz",
+    "publisher": "Example Org",
+    "date": "2022-02-02T02:02:02.000Z",
+    "url": "https://www.example.org/news/cdata"
+  },
+  "jsonld-trailing-comma.html": {
+    "title": "Trailing comma",
+    "image": "https://www.example.org/i/trailing.jpg",
+    "author": "Omar Haddad",
+    "url": "https://www.example.org/news/trailing"
+  },
+  "jsonld-entities.html": {
+    "title": "Fish & Chips – a history",
+    "author": "Ben & Jerry",
+    "publisher": "Example",
+    "url": "https://www.example.org/news/entities"
+  },
+  "jsonld-graph-not-array.html": {
+    "error": "graph.map is not a function"
+  },
+  "jsonld-top-level-array.html": {
+    "title": "Array of items",
+    "publisher": "Array Times",
+    "date": "2023-11-14T22:13:20.000Z",
+    "url": "https://www.example.org/news/array"
+  },
+  "bot-wall-cloudflare.html": {
+    "url": "https://eksisozluk.com/entry/1"
+  },
+  "bot-wall-access-denied.html": {
+    "url": "https://www.example-shop.com/item/9"
+  },
+  "noscript-image.html": {
+    "title": "Lazy images",
+    "image": "https://www.example.com/real.jpg",
+    "url": "https://www.example.com/lazy"
+  },
+  "template-content.html": {
+    "title": "Template",
+    "image": "https://www.example.com/in-template.jpg",
+    "author": "Hidden Author Name",
+    "url": "https://www.example.com/template"
+  },
+  "img-alt-author.html": {
+    "title": "Profile",
+    "image": "https://www.example.com/avatars/author-photo.jpg",
+    "url": "https://www.example.com/profile"
+  },
+  "microdata.html": {
+    "title": "Microdata article",
+    "description": "Described by microdata.",
+    "image": "https://www.example.com/md.jpg",
+    "author": "Mia Wong",
+    "date": "2020-01-01T04:00:00.000Z",
+    "logo": "https://www.example.com/md-logo.png",
+    "url": "https://www.example.com/microdata"
+  },
+  "meta-date-name.html": {
+    "title": "Meta date",
+    "date": "2018-05-04T00:00:00.000Z",
+    "url": "https://www.example.com/meta-date"
+  },
+  "byline-date-text.html": {
+    "title": "Byline date",
+    "date": "2024-03-05T12:00:00.000Z",
+    "url": "https://www.example.com/byline-date"
+  },
+  "class-date-little-endian.html": {
+    "title": "Class date",
+    "date": "2023-01-12T12:00:00.000Z",
+    "url": "https://www.example.com/class-date"
+  },
+  "date-slash.html": {
+    "title": "Slash date",
+    "date": "2021-07-04T09:30:00.000Z",
+    "url": "https://www.example.com/slash"
+  },
+  "date-year-only.html": {
+    "title": "Year only",
+    "date": "2019-01-01T00:00:00.000Z",
+    "url": "https://www.example.com/year"
+  },
+  "date-modified-jsonld.html": {
+    "title": "Modified",
+    "date": "2024-01-02T03:04:05.678Z",
+    "url": "https://www.example.com/modified"
+  },
+  "date-time-element.html": {
+    "title": "Time element",
+    "date": "2017-08-21T00:00:00.000Z",
+    "url": "https://www.example.com/time-el"
+  },
+  "date-with-zone.html": {
+    "title": "Zone",
+    "date": "2023-01-05T21:15:00.000Z",
+    "url": "https://www.example.com/zone"
+  },
+  "title-post-title.html": {
+    "title": "The post title",
+    "url": "https://www.example.com/post-title"
+  },
+  "title-h1-link.html": {
+    "title": "Linked heading",
+    "url": "https://www.example.com/h1-link"
+  },
+  "title-jsonld-headline.html": {
+    "title": "Only a headline",
+    "url": "https://www.example.com/headline"
+  },
+  "title-whitespace.html": {
+    "title": "Lots of space",
+    "url": "https://www.example.com/ws"
+  },
+  "title-svg-only.html": {
+    "title": "Icon title",
+    "url": "https://www.example.com/svg"
+  },
+  "title-smartquotes.html": {
+    "title": "“Don’t panic” - it’s the ’90s",
+    "publisher": "it's the '90s",
+    "url": "https://www.example.com/quotes"
+  },
+  "publisher-application-name.html": {
+    "title": "Dashboard",
+    "publisher": "Example App",
+    "url": "https://app.example.io/dashboard"
+  },
+  "publisher-title-separator.html": {
+    "title": "Some article | Section - Site Name",
+    "publisher": "Site Name",
+    "url": "https://www.example.com/sep"
+  },
+  "publisher-logo-class.html": {
+    "title": "Logo class",
+    "publisher": "Logo Text Co.",
+    "url": "https://www.example.com/logo-class"
+  },
+  "publisher-logo-img-alt.html": {
+    "title": "Logo img",
+    "image": "https://www.example.com/l.png",
+    "publisher": "Brand Name",
+    "url": "https://www.example.com/logo-img"
+  },
+  "author-rel.html": {
+    "title": "Rel author",
+    "author": "Xavier Quinn",
+    "url": "https://www.example.com/rel-author"
+  },
+  "author-href.html": {
+    "title": "Href author",
+    "author": "Yuki Tanaka",
+    "url": "https://www.example.com/href-author"
+  },
+  "author-at-handle.html": {
+    "title": "Handle",
+    "author": "devname",
+    "url": "https://www.example.com/handle"
+  },
+  "author-url-rejected.html": {
+    "title": "URL author",
+    "author": "Joe Bloggs",
+    "url": "https://www.example.com/url-author"
+  },
+  "author-too-long.html": {
+    "title": "Long author",
+    "author": "Short Name",
+    "url": "https://www.example.com/long-author"
+  },
+  "author-screenname.html": {
+    "title": "Screenname",
+    "author": "handle_one",
+    "url": "https://www.example.com/screenname"
+  },
+  "description-location.html": {
+    "title": "Location",
+    "description": "The city council voted on Tuesday to expand the cycle network…",
+    "url": "https://www.example.com/location"
+  },
+  "description-quotes.html": {
+    "title": "Desc quotes",
+    "description": "She said “yes” and it’s done.",
+    "url": "https://www.example.com/desc-quotes"
+  },
+  "description-article-body.html": {
+    "title": "Body",
+    "description": "The full body of the article.",
+    "url": "https://www.example.com/body"
+  },
+  "url-text-fragment.html": {
+    "title": "Fragment",
+    "url": "https://www.example.com/a/b/page?id=5"
+  },
+  "url-hreflang.html": {
+    "title": "Seite",
+    "url": "https://www.example.com/page"
+  },
+  "url-encoded-path.html": {
+    "title": "Encoded",
+    "url": "https://www.example.com/caf%C3%A9/men%C3%BC%20list?q=a%20b"
+  },
+  "logo-img-itemprop.html": {
+    "title": "Logo itemprop",
+    "image": "https://www.example.com/assets/logo.png",
+    "logo": "https://www.example.com/assets/logo.png",
+    "url": "https://www.example.com/logo-img-itemprop"
+  },
+  "logo-not-square.html": {
+    "title": "Wide logo",
+    "publisher": "Wide",
+    "logo": "https://www.example.com/sq.png",
+    "url": "https://www.example.com/logo-wide"
+  },
+  "image-empty-data-uri.html": {
+    "title": "Data URI",
+    "image": "data:image/gif;base64,R0lGODlhAQABAAAAACw=",
+    "url": "https://www.example.com/data-uri"
+  },
+  "image-video-rejected.html": {
+    "title": "Video image",
+    "image": "https://www.example.com/poster.webp",
+    "url": "https://www.example.com/video"
+  },
+  "image-article-img.html": {
+    "title": "Article img",
+    "image": "https://www.example.com/inside.jpg",
+    "url": "https://www.example.com/article-img"
+  },
+  "empty-page.html": {
+    "url": "https://www.example.com/empty"
+  },
+  "invalid-page-url.html": {
+    "error": "INVALID_URL, Need to provide a valid URL."
+  },
+  "idn-host.html": {
+    "title": "Ein Buch",
+    "image": "https://www.xn--bcher-kva.de/bilder/buch.jpg",
+    "url": "https://www.bücher.de/buch/123"
+  },
+  "localhost-page.html": {
+    "title": "Local note",
+    "image": "http://localhost:8080/img/a.png",
+    "url": "http://localhost:8080/notes/1"
+  },
+  "mixed-case-attributes.html": {
+    "title": "Case",
+    "author": "Upper Type",
+    "url": "https://www.example.com/case"
+  },
+  "charset-windows-1252.html": {
+    "title": "Café “crème” € 5",
+    "author": "René Dupont",
+    "url": "https://www.example.fr/article"
+  },
+  "charset-iso-8859-1.html": {
+    "title": "Grüße aus München",
+    "description": "Äpfel und Birnen",
+    "url": "https://www.example.de/seite"
+  },
+  "charset-shift-jis.html": {
+    "title": "ニュース",
+    "url": "https://www.example.jp/news/1"
+  },
+  "image-script-scheme.html": {
+    "title": "Script scheme",
+    "url": "https://www.example.com/scheme"
+  },
+  "image-data-not-image.html": {
+    "title": "Data not image",
+    "url": "https://www.example.com/data"
+  }
+}

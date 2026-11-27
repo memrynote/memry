@@ -16,6 +16,7 @@ import {
   onReminderDeleted,
   onReminderDismissed,
   onReminderSnoozed,
+  onReminderSynced,
   type CreateReminderInput,
   type UpdateReminderInput,
   type SnoozeReminderInput,
@@ -56,6 +57,7 @@ export const reminderKeys = {
  */
 function eventMatchesTarget(
   event: {
+    id?: string
     reminder?: { targetType?: string; targetId?: string } | null
     targetType?: string
     targetId?: string
@@ -108,6 +110,9 @@ export function useReminders(options?: ListRemindersInput): {
         void queryClient.invalidateQueries({ queryKey: reminderKeys.lists() })
       }),
       onReminderSnoozed(() => {
+        void queryClient.invalidateQueries({ queryKey: reminderKeys.lists() })
+      }),
+      onReminderSynced(() => {
         void queryClient.invalidateQueries({ queryKey: reminderKeys.lists() })
       })
     ]
@@ -203,12 +208,13 @@ export function useRemindersForTarget(
 
     const unsubs = [
       onReminderCreated(invalidateIfMatching),
-      // Sync applies an inbound dismiss/snooze as a plain merge and emits
-      // UPDATED, never DISMISSED. Without this the fired pill, journal badge
-      // and task chip keep showing a reminder the other device silenced.
       onReminderUpdated(invalidateIfMatching),
       onReminderDeleted(invalidateIfMatching),
-      onReminderDismissed(invalidateIfMatching)
+      onReminderDismissed(invalidateIfMatching),
+      // A pulled change (another device's dismiss, snooze or delete) names only the id.
+      // Without it the fired pill, journal badge and task chip keep showing a reminder
+      // the other device silenced.
+      onReminderSynced(invalidateIfMatching)
     ]
 
     return () => unsubs.forEach((unsub) => unsub())

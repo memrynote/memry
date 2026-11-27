@@ -31,6 +31,10 @@ For `/pdf`, a **Show as** switch at the bottom of the picker chooses **Embedded*
 
 While you drag over a note, a line marks where the file will land, and dropping inserts it exactly there. The line follows the cursor once per frame instead of on every pointer event, so dragging over a long note stays smooth.
 
+A file with no bytes is not attached. MemryNote says "This file is empty, so it was not attached" and writes nothing to the vault. On Windows this can happen when you paste an image: if the clipboard cannot be read at that moment, for example while another app still holds it, the paste arrives as an image with no bytes. Copy the image again and paste it.
+
+When a file you paste or drop can't be attached, for example because it is empty, too large or of a type MemryNote doesn't take, a notification says why and the note stays as it was. The block the file would have filled is taken out again rather than left behind as an empty image that reads "Loading...".
+
 ## File Block
 
 Each attachment renders as a block with:
@@ -302,6 +306,8 @@ If a file is over your plan's per-file limit, MemryNote tells you before it spen
 ### When an Attachment Doesn't Sync
 
 If an attachment can't be uploaded, you get a notification naming the file. The file is never lost: it stays in `<vault>/attachments/` and the note keeps working on this device. Only the synced copy is missing, so other devices won't see it until the upload succeeds.
+
+A file that can never upload is not retried: an empty file, or an image, PDF, audio or video file that holds text instead of what its name says. MemryNote remembers the file and does not try it again until it changes, so a file you fix or replace uploads on the next pass. A media file that holds text is reported once, with the reason. An empty file is skipped without a notification.
 
 When the upload fails because you're offline or the server is unreachable, MemryNote keeps retrying rather than giving up — being offline for a day is normal, and the queued upload is never discarded. Each retry waits a little longer than the last (one second, then two, four, and so on up to a minute) so a long offline stretch doesn't burn battery re-encrypting the file over and over. As soon as the network comes back, the wait is abandoned and everything queued is retried straight away.
 

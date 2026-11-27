@@ -69,10 +69,11 @@ export function trackPreparedSql(result: TestDatabaseResult): string[] {
 // ============================================================================
 
 /**
- * Create an in-memory data database (data.db equivalent).
+ * Create a data database (data.db equivalent), in memory unless a test that
+ * reopens the vault names a file.
  */
-export function createTestDataDb(): TestDatabaseResult {
-  const sqlite = new Database(':memory:')
+export function createTestDataDb(filename = ':memory:'): TestDatabaseResult {
+  const sqlite = new Database(filename)
 
   // Apply pragmas
   sqlite.pragma('journal_mode = WAL')
@@ -103,10 +104,11 @@ export function createTestDatabase(): TestDatabaseResult {
 }
 
 /**
- * Create an in-memory index database (index.db equivalent).
+ * Create an index database (index.db equivalent), in memory unless a test that
+ * reopens the vault names a file.
  */
-export function createTestIndexDb(): TestDatabaseResult {
-  const sqlite = new Database(':memory:')
+export function createTestIndexDb(filename = ':memory:'): TestDatabaseResult {
+  const sqlite = new Database(filename)
 
   // Same pragmas as initIndexDatabase. Foreign keys are on by the build default.
   sqlite.pragma('journal_mode = WAL')

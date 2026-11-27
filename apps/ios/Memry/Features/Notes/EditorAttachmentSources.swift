@@ -112,16 +112,8 @@ struct EditorAttachmentSources: ViewModifier {
         )
     }
 
-    /// Uploads under a prefixed name, as desktop saves every attachment, so a
-    /// second `photo-<second>.jpg` or `report.pdf` in the same note does not
-    /// overwrite the first.
     private func upload(_ payload: AttachmentPayload) async {
-        let filename = AttachmentFilename.unique(payload.filename)
-        guard await composer.upload(filename: filename, mimeType: payload.mimeType, bytes: payload.bytes) != nil
-        else { return }
-        session.insertAttachment(AttachmentBlock.make(
-            noteId: composer.noteId, filename: filename, mimeType: payload.mimeType, size: payload.bytes.count
-        ))
+        await composer.attach(payload, in: session, after: nil)
     }
 
     private func upload(contentsOf url: URL) async {

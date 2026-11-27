@@ -42,7 +42,7 @@ export const SubtaskDraftRow = ({
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>): void => {
     e.stopPropagation()
-    if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
+    if (e.key === 'Enter') {
       e.preventDefault()
       const trimmed = title.trim()
       if (!trimmed) {

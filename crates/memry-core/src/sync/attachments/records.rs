@@ -8,6 +8,7 @@ use rusqlite::{Connection, OptionalExtension, params};
 use super::store::{download_failures, files, upload_queue};
 use crate::api::errors::StorageError;
 use crate::domain::notes;
+use crate::storage::nested_tx;
 
 /// Records an upload of the vault file `path` (vault-relative) of `owner_id`
 /// that the server now holds as `attachment_id`, and drops its queue row,
@@ -38,7 +39,7 @@ pub fn record_uploaded(
     if referenced {
         notes::add_attachment_reference(conn, owner_id, attachment_id, device_id, now_ms)?;
     }
-    let transaction = conn.unchecked_transaction().map_err(failed)?;
+    let transaction = nested_tx::begin(conn).map_err(failed)?;
     download_failures::clear(&transaction, owner_id, attachment_id)?;
     files::record(&transaction, owner_id, path, attachment_id, now_ms)?;
     upload_queue::clear(&transaction, owner_id, queued)?;
@@ -56,7 +57,7 @@ pub fn record_downloaded(
     attachment_id: &str,
     now_ms: i64,
 ) -> Result<(), StorageError> {
-    let transaction = conn.unchecked_transaction().map_err(failed)?;
+    let transaction = nested_tx::begin(conn).map_err(failed)?;
     files::record(&transaction, owner_id, path, attachment_id, now_ms)?;
     download_failures::clear(&transaction, owner_id, attachment_id)?;
     transaction.commit().map_err(failed)

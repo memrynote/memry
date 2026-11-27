@@ -248,6 +248,41 @@ async fn a_revoked_device_stops_for_good() {
     assert_eq!(h.socket.opened(), 1);
 }
 
+/// Stops the run from inside the pre-handshake token refresh, as a sign-out or close does
+/// while the refresh is under way.
+struct StopsOnRefresh(Arc<StopSignal>);
+
+#[async_trait::async_trait]
+impl TokenProvider for StopsOnRefresh {
+    async fn access_token(&self) -> Option<String> {
+        Some("token".to_owned())
+    }
+    async fn refresh(&self, stale: &str) -> Result<String, ApiError> {
+        self.0.stop();
+        Ok(stale.to_owned())
+    }
+}
+
+#[tokio::test(start_paused = true)]
+async fn a_stop_during_the_token_refresh_opens_nothing() {
+    let socket = Arc::new(Socket::default());
+    let stop = Arc::new(StopSignal::default());
+    let tokens = StopsOnRefresh(Arc::clone(&stop));
+    let client = RealtimeClient::new(
+        Arc::clone(&socket) as Arc<dyn Transport>,
+        "https://sync.example",
+        ClientIdentity::new("ios", "1.2.3").expect("identity"),
+        Arc::new(Tokens::default()),
+        Arc::new(Passes::default()),
+    );
+    let latch = TerminalLatch::default();
+    assert_eq!(
+        run(&client, &tokens, &stop, &latch, &|| {}).await,
+        RunEnd::Stopped
+    );
+    assert_eq!(socket.opened(), 0);
+}
+
 #[tokio::test(start_paused = true)]
 async fn a_stop_before_the_run_starts_opens_nothing() {
     let socket = Arc::new(Socket::default());

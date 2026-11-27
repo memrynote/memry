@@ -6,6 +6,7 @@ use crate::api::errors::StorageError;
 use crate::api::inbox::Inbox;
 use crate::api::inbox_records::InboxItemRecord;
 use crate::api::inbox_write::metadata_object;
+use crate::domain::inbox::enrich::VoiceMemoName;
 use crate::domain::inbox::write;
 
 #[uniffi::export]
@@ -57,6 +58,43 @@ impl Inbox {
     ) -> Result<InboxItemRecord, StorageError> {
         self.item(move |conn, device, now| {
             write::set_transcription(conn, &id, transcription.as_deref(), &status, device, now)
+        })
+    }
+}
+
+/// Desktop's transcription writes (`apps/desktop/src/main/inbox/transcription.ts`), which keep
+/// the failure reason in `processingError` and name the memo as `memoNameMode` says. Not exported:
+/// iOS writes through [`Inbox::set_transcription`].
+impl Inbox {
+    /// `processing` when a run starts, `pending` when a retry resets the item.
+    pub fn start_transcription(
+        &self,
+        id: String,
+        status: String,
+    ) -> Result<InboxItemRecord, StorageError> {
+        self.item(move |conn, device, now| {
+            write::start_transcription(conn, &id, &status, device, now)
+        })
+    }
+
+    pub fn fail_transcription(
+        &self,
+        id: String,
+        error: String,
+    ) -> Result<InboxItemRecord, StorageError> {
+        self.item(move |conn, device, now| {
+            write::fail_transcription(conn, &id, &error, device, now)
+        })
+    }
+
+    pub fn complete_transcription(
+        &self,
+        id: String,
+        transcription: String,
+        name: VoiceMemoName,
+    ) -> Result<InboxItemRecord, StorageError> {
+        self.item(move |conn, device, now| {
+            write::complete_transcription(conn, &id, &transcription, &name, device, now)
         })
     }
 }

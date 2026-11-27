@@ -1,0 +1,15 @@
+-- Feed cursor of the tombstone a document body purge ran for (#5367,
+-- protocol 07 section 7.15).
+--
+-- A snapshot push encoded from the deleted body can reach the server after the
+-- purge, even after the id is re-created. A claimed push (coversThrough, 07
+-- section 7.7.1) whose cursor is below this one never read the tombstone, so
+-- its state can be the purged body's, and the server refuses it. The re-create
+-- moves the record row's own cursor, so the tombstone's cursor is kept here.
+--
+-- Backward compatibility:
+--   * Nullable column, no backfill. NULL fences nothing, which is the
+--     behaviour before this migration. Purges run before it keep NULL.
+--   * A Worker deployed before this migration (or rolled back after it) never
+--     reads or writes the column.
+ALTER TABLE crdt_sequence_floors ADD COLUMN purge_cursor INTEGER;

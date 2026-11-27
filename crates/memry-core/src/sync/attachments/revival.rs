@@ -8,7 +8,7 @@
 //! local file of each gone one, and drops the gone ids from the references.
 //!
 //! Electron keeps revived notes in memory and loses them on a restart. Here
-//! they are rows of `attachment_revived_notes` (data migration 0044), and a
+//! they are rows of `attachment_revived_notes` (data migration 0045), and a
 //! row goes only once its check settled, so a check cut off anywhere runs
 //! again. The writes follow one order, each step committed before the next:
 //! record moves, then the queue rows, then the dropped references, then the
@@ -29,7 +29,7 @@ use super::store::{files, upload_queue};
 use super::transfer::now_ms;
 use crate::api::errors::StorageError;
 use crate::domain::notes::{read_attachment_references, remove_attachment_reference};
-use crate::storage::Db;
+use crate::storage::{Db, nested_tx};
 
 /// This device's edit beat a pulled delete of `note_id` (the
 /// `ApplyObserver::note_revived` entry point). Idempotent.
@@ -180,13 +180,13 @@ fn reupload(
         ..NoteAttachments::default()
     });
     // Moves first, committed on their own: the reupload names the new paths.
-    let moves = conn.unchecked_transaction().map_err(failed)?;
+    let moves = nested_tx::begin(conn).map_err(failed)?;
     for moved in &plan.move_records {
         files::move_record(&moves, &note.id, &moved.from, &moved.to, now)?;
     }
     moves.commit().map_err(failed)?;
 
-    let queue = conn.unchecked_transaction().map_err(failed)?;
+    let queue = nested_tx::begin(conn).map_err(failed)?;
     for file in &plan.reupload {
         upload_queue::enqueue(&queue, &note.id, &absolute(vault, file), now)?;
     }

@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createSqliteD1, type SqliteD1 } from '../__tests__/d1-sqlite'
 import { listPacks } from './pack-list'
@@ -57,6 +57,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  vi.useRealTimers()
   harness.close()
 })
 
@@ -86,7 +87,10 @@ describe('listPacks', () => {
 
   it('issues one GET presigned URL per pack with minutes-scale expiry', async () => {
     seedPack({ id: 'p-1', minCursor: 1, maxCursor: 50 })
-    const before = Math.floor(Date.now() / 1000)
+    // #5247: a frozen clock one millisecond before a second boundary. The wall
+    // clock let listPacks read the next second and land at before + 301.
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(1_700_000_000_999)
     const result = await listPacks(harness.db, USER, VAULT, {}, PRESIGN_CONFIG)
 
     const pack = result.packs[0]
@@ -94,8 +98,7 @@ describe('listPacks', () => {
       `https://test-account.r2.cloudflarestorage.com/test-bucket/${USER}/vaults/${VAULT}/packs/`
     )
     expect(pack.url).toContain('X-Amz-Signature=')
-    expect(pack.expiresAt).toBeGreaterThanOrEqual(before + 295)
-    expect(pack.expiresAt).toBeLessThanOrEqual(before + 300)
+    expect(pack.expiresAt).toBe(1_700_000_000 + 300)
   })
 
   it('omits urls entirely when the deployment has no presign config', async () => {
@@ -178,5 +181,106 @@ describe('listPacks', () => {
 
     const mine = await listPacks(harness.db, USER, VAULT, {}, PRESIGN_CONFIG)
     expect(mine.packs.map((p) => p.id)).toEqual(['mine'])
+  })
+})
+
+describe('listPacks coverage (protocol 08 §8.10, #5230)', () => {
+  const setWatermark = (kind: string, coveredThrough: number | null): void => {
+    harness.raw
+      .prepare(
+        `INSERT INTO pack_watermarks (user_id, vault_id, item_kind, last_sort_value, last_sort_tiebreak, updated_at, covered_through)
+         VALUES (?, ?, ?, 0, '', 1, ?)`
+      )
+      .run(USER, VAULT, kind, coveredThrough)
+  }
+
+  it('states record coverage on the first page only, with each pack range', async () => {
+    seedPack({ id: 'a', minCursor: 1, maxCursor: 10 })
+    seedPack({ id: 'b', minCursor: 11, maxCursor: 20 })
+    harness.raw
+      .prepare(`UPDATE pack_index SET cover_from = 0, cover_through = 10 WHERE id = 'a'`)
+      .run()
+    harness.raw
+      .prepare(`UPDATE pack_index SET cover_from = 10, cover_through = 20 WHERE id = 'b'`)
+      .run()
+    setWatermark('record', 20)
+
+    const first = await listPacks(harness.db, USER, VAULT, { limit: 1 })
+    const second = await listPacks(harness.db, USER, VAULT, { cursor: first.nextCursor })
+
+    expect(first.coverage).toEqual([{ itemKind: 'record', packedThrough: 20, coveredThrough: 20 }])
+    expect(first.packs[0]).toMatchObject({ id: 'b', coverFrom: 10, coverThrough: 20 })
+    expect(second.coverage).toBeUndefined()
+    expect(second.packs[0]).toMatchObject({ id: 'a', coverFrom: 0, coverThrough: 10 })
+  })
+
+  it('states nothing for a cache-only record chain or for body kinds', async () => {
+    seedPack({ id: 'a', minCursor: 1, maxCursor: 10 })
+    setWatermark('record', null)
+    setWatermark('crdt_update', 40)
+
+    const page = await listPacks(harness.db, USER, VAULT)
+
+    expect(page.coverage).toEqual([])
+    expect('coverFrom' in page.packs[0]).toBe(false)
+  })
+})
+
+describe('PACK_COVERAGE_DISABLED (#5392, step 14 rollback)', () => {
+  const seedCovered = (vaultId: string): void => {
+    seedPack({ id: `${vaultId}-a`, minCursor: 1, maxCursor: 10, vaultId })
+    harness.raw
+      .prepare(`UPDATE pack_index SET cover_from = 0, cover_through = 10 WHERE vault_id = ?`)
+      .run(vaultId)
+    harness.raw
+      .prepare(
+        `INSERT INTO pack_watermarks (user_id, vault_id, item_kind, last_sort_value, last_sort_tiebreak, updated_at, covered_through)
+         VALUES (?, ?, 'record', 10, '', 1, 10)`
+      )
+      .run(USER, vaultId)
+  }
+  const stored = () => ({
+    packs: harness.raw.prepare('SELECT * FROM pack_index ORDER BY id').all(),
+    watermarks: harness.raw.prepare('SELECT * FROM pack_watermarks ORDER BY vault_id').all()
+  })
+
+  it('serves no packs and no coverage while set, writes nothing, and lists again once unset', async () => {
+    seedCovered(VAULT)
+    const before = stored()
+    const unset = await listPacks(harness.db, USER, VAULT, { limit: 1 })
+
+    const first = await listPacks(harness.db, USER, VAULT, { coverageDisabled: '*' })
+    const later = await listPacks(harness.db, USER, VAULT, {
+      cursor: '99:z',
+      coverageDisabled: '*'
+    })
+
+    expect(first.packs).toEqual([])
+    expect(first.coverage).toEqual([])
+    expect('nextCursor' in first).toBe(false)
+    expect(later.packs).toEqual([])
+    expect(later.coverage).toBeUndefined()
+    expect(stored()).toEqual(before)
+    const restored = await listPacks(harness.db, USER, VAULT, { limit: 1 })
+    expect({ ...restored, serverTime: 0 }).toEqual({ ...unset, serverTime: 0 })
+    expect(restored.coverage).toEqual([
+      { itemKind: 'record', packedThrough: 10, coveredThrough: 10 }
+    ])
+  })
+
+  it('a vault list switches off only the vaults it names', async () => {
+    seedCovered(VAULT)
+    seedCovered(OTHER_VAULT)
+
+    const off = await listPacks(harness.db, USER, VAULT, { coverageDisabled: ` x, ${VAULT} ` })
+    const other = await listPacks(harness.db, USER, OTHER_VAULT, {
+      coverageDisabled: ` x, ${VAULT} `
+    })
+    const empty = await listPacks(harness.db, USER, VAULT, { coverageDisabled: '' })
+
+    expect(off).toMatchObject({ packs: [], coverage: [] })
+    expect(other.packs.map((pack) => pack.id)).toEqual([`${OTHER_VAULT}-a`])
+    expect(other.coverage).toHaveLength(1)
+    expect(empty.packs).toHaveLength(1)
   })
 })

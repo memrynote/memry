@@ -34,10 +34,10 @@
 //! merged row at the union clock, untouched, so it dominates the server's row
 //! ([`crate::sync::hardening::requeue`]).
 //!
-//! It also does not write `task_activity`. Desktop mints a `superseded` row per
-//! conflict; nothing in chapter 06 makes that an obligation on this core, and
-//! those rows sync to every device, so the conflicts are **returned** to the
-//! caller and written nowhere.
+//! It also does not write `task_activity`. The conflicts are **returned** to
+//! the applied-record feed, and the desktop driver's observer writes the
+//! `superseded` rows after the page commits
+//! ([`crate::domain::task_activity::superseded`]).
 //!
 //! `_offline` never reaches a payload written here:
 //! `notes::next_clock` and `task_merge::next_field_clocks` both
@@ -78,7 +78,9 @@ pub mod bulk;
 pub mod create;
 pub mod fields;
 pub mod lifecycle;
+pub mod list;
 pub mod model;
+pub mod stats;
 pub mod structure;
 pub mod update;
 
@@ -86,12 +88,12 @@ pub use batch::{Prior, Removed, TaskWrite, undo, write_fields};
 pub use bulk::*;
 pub use create::{TaskDetails, create_detailed, duplicate};
 pub use fields::*;
-pub use lifecycle::{Completion, NextOccurrence, complete, uncomplete};
+pub use lifecycle::{Completing, Completion, NextOccurrence, complete, complete_with, uncomplete};
 pub use model::{StatusKind, TASK_ID_LEN, new_task_id, status_kind};
 pub use structure::{
     SubtaskDisposal, delete_with_subtasks, reorder, set_parent, set_project, set_status,
 };
-pub use update::{Patch, TaskPatch, TaskUpdate, UpdateRefusal};
+pub use update::{Patch, TaskPatch, TaskUpdate, UpdateRefusal, create_refusal};
 
 /// The `(type, _)` half of every key this module writes.
 pub const ITEM_TYPE: &str = "task";
@@ -145,8 +147,7 @@ pub enum Inbound {
     /// conflict (§6.5.4).
     ///
     /// `conflicts` carries those fields' values for the applied-record feed
-    /// ([`crate::sync::driver::observer`]). `task` and `project` leave it
-    /// empty until Step 21 (#3538).
+    /// ([`crate::sync::driver::observer`]).
     Merged {
         conflicted_fields: Vec<String>,
         conflicts: Vec<crate::sync::field_merge::FieldConflict>,

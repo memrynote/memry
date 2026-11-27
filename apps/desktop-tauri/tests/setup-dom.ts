@@ -81,6 +81,15 @@ vi.mock('../src/generated/bindings', () => {
       throw new Error(typeof result.error === 'string' ? result.error : '')
     return pick(result)
   }
+  // `window.api.bookmarks` and `window.api.recents` are typed as Electron's; tests set any method.
+  const bookmarks = () =>
+    window.api.bookmarks as unknown as Record<string, (...args: unknown[]) => Promise<unknown>>
+  const recents = () =>
+    (
+      window.api as unknown as {
+        recents?: Record<string, ((...args: unknown[]) => Promise<unknown>) | undefined>
+      }
+    ).recents
   // `window.api.properties` is typed without merge and rename; component tests still set them.
   const properties = () =>
     window.api.properties as unknown as Record<string, (...args: unknown[]) => Promise<unknown>>
@@ -91,6 +100,9 @@ vi.mock('../src/generated/bindings', () => {
   // `window.api.journal` is typed without the ported journal methods; component tests still set them.
   const journal = () =>
     window.api.journal as unknown as Record<string, (...args: unknown[]) => Promise<unknown>>
+  // `window.api.calendar` is typed without the ported calendar methods; component tests still set them.
+  const calendar = () =>
+    window.api.calendar as unknown as Record<string, (...args: unknown[]) => Promise<unknown>>
   // The locks are off `window.api`'s type; component tests still set `window.api.vaultLocks`.
   const vaultLocks = () =>
     (window.api as unknown as { vaultLocks: Record<string, (...args: unknown[]) => unknown> })
@@ -187,6 +199,19 @@ vi.mock('../src/generated/bindings', () => {
         vault().updateConfig(config),
       // Component tests answer in Electron's envelope; a command answers with the note, or
       // rejects.
+      // The native calendar commands (services/calendar-service.ts); component tests answer in
+      // the contract's shapes, which the commands send as they are.
+      calendarGetRange: (input: unknown) => calendar().getRange(input),
+      calendarSearchEvents: (input: unknown) => calendar().searchEvents(input),
+      calendarCreateEvent: (input: unknown) => calendar().createEvent(input),
+      calendarGetEvent: (id: string) => calendar().getEvent(id),
+      calendarUpdateEvent: (input: unknown) => calendar().updateEvent(input),
+      calendarDeleteEvent: (id: string) => calendar().deleteEvent(id),
+      calendarListLinkedNotes: (input: unknown) => calendar().listLinkedNotes(input),
+      calendarGetExternalEvent: (input: unknown) => calendar().getExternalEvent(input),
+      calendarPromoteExternalEvent: (input: unknown) => calendar().promoteExternalEvent(input),
+      calendarListSources: (input: unknown) => calendar().listSources(input),
+      calendarUpdateSourceSelection: (input: unknown) => calendar().updateSourceSelection(input),
       journalGetEntry: (date: string) => journal().getEntry(date),
       journalCreateEntry: (input: unknown) => journal().createEntry(input),
       journalUpdateEntry: (input: unknown) => journal().updateEntry(input),
@@ -440,13 +465,54 @@ vi.mock('../src/generated/bindings', () => {
         })
       ),
       aiLoadModel: vi.fn(() => Promise.resolve({ success: true })),
+      // The first-run wizard's detection; its tests set what a computer has.
+      onboardingDetectSources: vi.fn(() =>
+        Promise.resolve({ obsidianVaults: [], installedApps: [] })
+      ),
+      onboardingIsMemryVault: vi.fn(() => Promise.resolve(false)),
       aiReindexEmbeddings: vi.fn(() => Promise.resolve({ success: true, computed: 0, skipped: 0 })),
       // Settings > General reads it on mount; the row's own test mocks the bindings.
       ocrLanguagesGetState: () =>
-        Promise.resolve({ selected: ['eng'], statuses: { eng: { state: 'ready' } } })
+        Promise.resolve({ selected: ['eng'], statuses: { eng: { state: 'ready' } } }),
+      // Bookmarks and recents (Step 30a) answer from `window.api.bookmarks` and
+      // `window.api.recents`, in the command shapes.
+      bookmarksList: async (input: unknown) => {
+        const listed = (await bookmarks().list(input)) as { bookmarks?: unknown[] } | unknown[]
+        return Array.isArray(listed)
+          ? { bookmarks: listed, total: listed.length, hasMore: false }
+          : listed
+      },
+      bookmarksListByType: (itemType: string) => bookmarks().listByType(itemType),
+      bookmarksGet: (id: string) => bookmarks().get(id),
+      bookmarksGetByItem: (input: unknown) => bookmarks().getByItem(input),
+      bookmarksIsBookmarked: async (input: unknown) =>
+        (await bookmarks().isBookmarked?.(input)) ?? false,
+      bookmarksCreate: (input: unknown) => answered(bookmarks().create(input), (r) => r.bookmark),
+      bookmarksToggle: (input: unknown) =>
+        answered(bookmarks().toggle(input), (r) => ({
+          isBookmarked: r.isBookmarked ?? false,
+          bookmark: r.bookmark ?? null
+        })),
+      bookmarksDelete: (id: string) => done(bookmarks().delete(id)),
+      bookmarksReorder: (ids: string[]) => done(bookmarks().reorder(ids)),
+      bookmarksBulkCreate: (items: unknown) =>
+        answered(bookmarks().bulkCreate(items), (r) => r.createdCount ?? 0),
+      bookmarksBulkDelete: (ids: string[]) =>
+        answered(bookmarks().bulkDelete(ids), (r) => r.deletedCount ?? 0),
+      recentsList: async (limit: number | null) =>
+        (await recents()?.list?.(limit ?? undefined)) ?? [],
+      recentsRecord: async (input: unknown) =>
+        Boolean(
+          ((await recents()?.record?.(input)) as { recorded?: boolean } | undefined)?.recorded
+        ),
+      // HomeTabTitleSync is mounted app-wide; the home board tests mock the service.
+      homePagesList: () => Promise.resolve([])
     },
     events: {
       vaultStatusChangedEvent: event(() => window.api.onVaultStatusChanged, revised),
+      bookmarkCreatedEvent: event(() => api().onBookmarkCreated ?? (() => () => {})),
+      bookmarkDeletedEvent: event(() => api().onBookmarkDeleted ?? (() => () => {})),
+      bookmarksReorderedEvent: event(() => api().onBookmarksReordered ?? (() => () => {})),
       vaultListChangedEvent: event(() => window.api.onVaultListChanged),
       vaultConfigChangedEvent: event(() => window.api.onVaultConfigChanged),
       vaultErrorEvent: event(
@@ -463,15 +529,36 @@ vi.mock('../src/generated/bindings', () => {
       ),
       // The icon library (lib/custom-icons-store.ts) refetches on it; its tests mock the service.
       customIconsUpdatedEvent: { listen: async () => () => undefined },
+      // Pulled pages (services/sync-service.ts); the domain services compose it with their events.
+      syncItemSyncedEvent: { listen: async () => () => undefined },
       vaultNoticesChangedEvent: { listen: async () => () => undefined },
       ocrLanguagesChangedEvent: { listen: async () => () => undefined },
       aiEmbeddingProgressEvent: { listen: async () => () => undefined },
+      calendarChangedEvent: event(() => api().onCalendarChanged),
+      // Rust announces field names only (services/settings-service.ts); its tests mock the bindings.
+      settingsChangedEvent: { listen: async () => () => undefined },
+      homePageCreatedEvent: { listen: async () => () => undefined },
+      homePageUpdatedEvent: { listen: async () => () => undefined },
+      homePageDeletedEvent: { listen: async () => () => undefined },
+      // The reminder service (services/reminder-service.ts); its own tests mock the bindings.
+      reminderCreatedEvent: { listen: async () => () => undefined },
+      reminderUpdatedEvent: { listen: async () => () => undefined },
+      reminderDeletedEvent: { listen: async () => () => undefined },
+      reminderDismissedEvent: { listen: async () => () => undefined },
+      reminderSnoozedEvent: { listen: async () => () => undefined },
+      reminderDueEvent: { listen: async () => () => undefined },
+      reminderClickedEvent: { listen: async () => () => undefined },
       journalEntryCreatedEvent: event(() => api().onJournalEntryCreated),
       journalEntryUpdatedEvent: event(() => api().onJournalEntryUpdated),
       journalEntryDeletedEvent: event(() => api().onJournalEntryDeleted),
       journalExternalChangeEvent: event(() => api().onJournalExternalChange),
       // No Electron channel: a test reaches it through the mock api's `onJournalEventsDropped`.
       journalEventsDroppedEvent: event(() => api().onJournalEventsDropped),
+      canvasCreatedEvent: event(() => api().onCanvasCreated),
+      canvasUpdatedEvent: event(() => api().onCanvasUpdated),
+      canvasDeletedEvent: event(() => api().onCanvasDeleted),
+      // No preload channel in Electron; canvas-service.test.ts mocks its own listener.
+      canvasTooLargeEvent: { listen: async () => () => undefined },
       noteFoldUpdatedEvent: event(() => window.api.noteFold.onUpdated),
       noteCreatedEvent: event(() => api().onNoteCreated),
       noteUpdatedEvent: event(() => api().onNoteUpdated),
@@ -571,15 +658,6 @@ const createMockApi = () => ({
     deleteFromAccount: vi.fn().mockResolvedValue(undefined),
     prepareSandbox: vi.fn().mockResolvedValue({ path: '/userData/Sandbox' }),
     setIcon: vi.fn().mockResolvedValue(undefined)
-  },
-
-  // Home boards API (mounted app-wide by HomeTabTitleSync, not only by the Home page)
-  homePages: {
-    list: vi.fn().mockResolvedValue([]),
-    create: vi.fn().mockResolvedValue({ id: 'home-board', name: 'Home', position: 0, widgets: [] }),
-    update: vi.fn().mockResolvedValue({ id: 'home-board', name: 'Home', position: 0, widgets: [] }),
-    delete: vi.fn().mockResolvedValue({ success: true }),
-    reorder: vi.fn().mockResolvedValue({ success: true })
   },
 
   // Notes API
@@ -979,9 +1057,6 @@ const createMockApi = () => ({
   onNoteMoved: vi.fn().mockReturnValue(() => {}),
   onCanvasCreated: vi.fn().mockReturnValue(() => {}),
   onCanvasUpdated: vi.fn().mockReturnValue(() => {}),
-  onHomePageCreated: vi.fn().mockReturnValue(() => {}),
-  onHomePageUpdated: vi.fn().mockReturnValue(() => {}),
-  onHomePageDeleted: vi.fn().mockReturnValue(() => {}),
   onCanvasDeleted: vi.fn().mockReturnValue(() => {}),
   onTagsChanged: vi.fn().mockReturnValue(() => {}),
   onTaskCreated: vi.fn().mockReturnValue(() => {}),

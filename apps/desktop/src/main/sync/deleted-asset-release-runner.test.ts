@@ -21,8 +21,7 @@ vi.mock('../canvas/assets/asset-service-context', () => ({
     return {
       db: ctx.db,
       vaultPath: '/vault',
-      dereference: ctx.dereference,
-      markWritebackIgnored: () => {}
+      dereference: ctx.dereference
     }
   }
 }))

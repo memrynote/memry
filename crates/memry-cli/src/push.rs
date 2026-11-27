@@ -28,12 +28,15 @@ use std::fmt::Write as _;
 use std::sync::Arc;
 
 use memry_core::api::crypto::derive_vault_key;
+use memry_core::api::errors::ApiError;
 use memry_core::api::errors::StorageError;
-use memry_core::protocol::account::AccountSealer;
+use memry_core::protocol::account::{self, AccountCipher, AccountSealer, DeviceSigner};
+use memry_core::protocol::http::HttpClient;
 use memry_core::protocol::types::Declaration;
 use memry_core::storage::Db;
 use memry_core::sync::outbox;
 use memry_core::sync::policy::{self, ClientPolicy, PolicyTier};
+use memry_core::sync::pull::PullLoop;
 use memry_core::sync::push::{PushCoordinator, PushError, PushReport};
 use memry_core::sync::state::WriteGate;
 
@@ -77,15 +80,11 @@ pub async fn push(cli: &Cli, vault: Option<&str>) -> Result<(), CliError> {
         )));
     }
 
-    let coordinator = PushCoordinator::new(
-        http,
-        db.clone(),
-        Declaration::subscribed(),
-        Arc::new(AccountSealer::new(vault_key, signer)),
-    )
-    .with_vault(&vault);
-
-    let drained = coordinator.drain_wave().await;
+    let device_id = cli.device_id()?;
+    let drained = match coordinator(http, db.clone(), &vault, vault_key, signer, &device_id).await {
+        Ok(coordinator) => coordinator.drain_wave().await,
+        Err(source) => Err(PushError::Api { source }),
+    };
     let failure = match drained {
         Ok(report) => {
             outcome.report = report;
@@ -166,7 +165,7 @@ pub fn format_push(outcome: &Outcome) -> String {
     let mut out = String::new();
     let _ = write!(
         out,
-        "gate {}\nwrites-enabled {}\nmin-write-version {}\npending {}\niterations {}\naccepted {}\nrejected {}\nretired {}\ncrdt-updates {}\nbatch-ceiling {}\nhalvings {}\nqueued {}\nattempts {}\nrefused {}\n",
+        "gate {}\nwrites-enabled {}\nmin-write-version {}\npending {}\niterations {}\naccepted {}\nrejected {}\nretired {}\ncrdt-updates {}\nbatch-ceiling {}\nhalvings {}\nqueued {}\nattempts {}\nrefused {}\ndeleted-locally {}\n",
         gate_label(&outcome.gate),
         outcome.policy.writes_enabled,
         outcome.policy.min_write_version.as_deref().unwrap_or("-"),
@@ -181,8 +180,54 @@ pub fn format_push(outcome: &Outcome) -> String {
         outcome.queued,
         outcome.attempts,
         outcome.refused.as_deref().unwrap_or("-"),
+        outcome.report.deleted_locally,
     );
     out
+}
+
+/// The wave's coordinator. A `SYNC_DELETE_WINS` is checked by pulling the id,
+/// and the signer directory verifies its signed delete or attested marker
+/// (§5.8, #5406). Without the directory the coordinator gets no pull and
+/// defers what it cannot check, so a delete-wins item stays queued with its
+/// upsert and every other item pushes. A §11.9 refusal (`403`, `426`, `402`) is returned instead, so the
+/// policy learns it as from a mid-wave refusal.
+async fn coordinator(
+    http: Arc<HttpClient>,
+    db: Db,
+    vault: &str,
+    vault_key: Vec<u8>,
+    signer: DeviceSigner,
+    device_id: &str,
+) -> Result<PushCoordinator, ApiError> {
+    let directory = match account::device_directory(&http).await {
+        Ok(directory) => Some(directory),
+        Err(error) if policy::lesson(&error).is_some() => return Err(error),
+        Err(error) => {
+            eprintln!(
+                "memry-cli: push: the device directory could not be fetched ({error}); \
+                 a delete-wins answer is deferred"
+            );
+            None
+        }
+    };
+    let coordinator = PushCoordinator::new(
+        http.clone(),
+        db.clone(),
+        Declaration::subscribed(),
+        Arc::new(AccountSealer::new(vault_key.clone(), signer)),
+        device_id,
+    )
+    .with_vault(vault);
+    Ok(match directory {
+        Some(directory) => {
+            let cipher = Arc::new(AccountCipher::new(vault_key, directory));
+            let pull = PullLoop::new(http, db, Declaration::subscribed(), cipher)
+                .with_vault(vault)
+                .with_clock_device(device_id);
+            coordinator.with_pull(Arc::new(pull))
+        }
+        None => coordinator.deferring_unchecked_delete_wins(),
+    })
 }
 
 fn now_ms() -> i64 {
@@ -195,6 +240,175 @@ fn now_ms() -> i64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::VecDeque;
+    use std::sync::Mutex;
+
+    use memry_core::api::errors::TransportError;
+    use memry_core::protocol::http::ClientIdentity;
+    use memry_core::seams::transport::{
+        HttpRequest, HttpResponse, SocketHandle, SocketListener, SocketRequest, Transport,
+    };
+    use memry_core::storage::open_data;
+    use memry_core::sync::outbox::Change;
+    use serde_json::json;
+
+    /// Answers from a script, in order, and records the paths it was asked.
+    struct Scripted {
+        script: Mutex<VecDeque<(u16, String)>>,
+        paths: Mutex<Vec<String>>,
+    }
+
+    #[async_trait::async_trait]
+    impl Transport for Scripted {
+        async fn send(&self, request: HttpRequest) -> Result<HttpResponse, TransportError> {
+            self.paths.lock().unwrap().push(request.url.clone());
+            let (status, body) = self.script.lock().unwrap().pop_front().expect("scripted");
+            Ok(HttpResponse {
+                status,
+                headers: Default::default(),
+                body: body.into_bytes(),
+            })
+        }
+
+        fn open_socket(
+            &self,
+            _request: SocketRequest,
+            _listener: Arc<dyn SocketListener>,
+        ) -> Result<Arc<dyn SocketHandle>, TransportError> {
+            Err(TransportError::Failed {
+                what: "no socket".to_string(),
+            })
+        }
+    }
+
+    /// A vault with live task `t1` edited locally: one upsert queued.
+    fn edited_vault(label: &str) -> Db {
+        let dir =
+            std::env::temp_dir().join(format!("memry-cli-push-{label}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).expect("scratch dir");
+        let db = open_data(&dir.join("data.db")).expect("open data.db");
+        db.call_blocking(|conn| {
+            conn.execute(
+                "INSERT INTO sync_items (item_type, item_id, payload, payload_state, server_cursor,
+                                         clock, updated_at)
+                 VALUES ('task', 't1', '{\"title\":\"edited\"}', 'full', 5, '{\"device-b\":3}', 1)",
+                [],
+            )
+            .map_err(|e| StorageError::Failed {
+                what: e.to_string(),
+            })?;
+            outbox::commit(conn, &Change::upsert("task", "t1"), 1, |_| Ok(())).map(|_| ())
+        })
+        .expect("seed the edited row");
+        db
+    }
+
+    fn count(db: &Db, sql: &'static str) -> i64 {
+        db.call_blocking(move |conn| {
+            conn.query_row(sql, [], |row| row.get(0))
+                .map_err(|e| StorageError::Failed {
+                    what: e.to_string(),
+                })
+        })
+        .expect("count")
+    }
+
+    async fn wave_coordinator(
+        db: &Db,
+        script: Vec<(u16, String)>,
+    ) -> (Result<PushCoordinator, ApiError>, Arc<Scripted>) {
+        let transport = Arc::new(Scripted {
+            script: Mutex::new(script.into()),
+            paths: Mutex::new(Vec::new()),
+        });
+        let identity = ClientIdentity::new("ios", "1.2.3").expect("a valid identity");
+        let http = Arc::new(HttpClient::new(
+            transport.clone(),
+            "https://sync.example",
+            identity,
+        ));
+        let (_, secret) =
+            memry_core::crypto::sodium::sign_seed_keypair(&[7u8; 32]).expect("a key pair");
+        let signer = DeviceSigner::new("device-b", secret.to_vec()).expect("a signer");
+        let built = coordinator(
+            http,
+            db.clone(),
+            "vault-1",
+            vec![1u8; 32],
+            signer,
+            "device-b",
+        )
+        .await;
+        (built, transport)
+    }
+
+    /// C78.2 and REVIEW-5445 #1: a directory the server cannot serve does not
+    /// fail the push, and a delete-wins answer is deferred unchecked: the
+    /// upsert stays queued, nothing is deleted or flagged, no pull is made.
+    #[tokio::test]
+    async fn without_the_directory_a_delete_wins_item_is_deferred_and_the_wave_succeeds() {
+        let db = edited_vault("no-directory");
+        let delete_wins = json!({"accepted": [], "serverTime": 1, "maxCursor": 1,
+                                 "rejected": [{"id": "t1", "reason": "SYNC_DELETE_WINS"}]});
+        let (built, transport) = wave_coordinator(
+            &db,
+            vec![
+                (404, r#"{"error":"NOT_FOUND"}"#.to_string()),
+                (200, delete_wins.to_string()),
+            ],
+        )
+        .await;
+        let report = built
+            .expect("a coordinator")
+            .drain_wave()
+            .await
+            .expect("the wave succeeds");
+        assert_eq!(report.rejected, 1);
+        assert!(
+            !transport
+                .paths
+                .lock()
+                .unwrap()
+                .iter()
+                .any(|p| p.contains("/sync/pull")),
+            "no by-id pull without a directory"
+        );
+        assert_eq!(
+            count(
+                &db,
+                "SELECT COUNT(*) FROM outbox WHERE last_error IS NOT NULL"
+            ),
+            1,
+            "the upsert stays queued"
+        );
+        assert_eq!(
+            count(
+                &db,
+                "SELECT COUNT(*) FROM sync_items WHERE deleted_at IS NULL AND corrupt_reason IS NULL"
+            ),
+            1,
+            "the row is neither deleted nor flagged"
+        );
+    }
+
+    /// REVIEW-5445 #5: a §11.9 refusal on the directory fetch reaches the
+    /// caller, which records it on the policy and fails the push.
+    #[tokio::test]
+    async fn a_refusal_on_the_directory_fetch_is_returned() {
+        let db = edited_vault("refused");
+        let (built, _) = wave_coordinator(
+            &db,
+            vec![(
+                426,
+                r#"{"error":{"code":"CLIENT_UPGRADE_REQUIRED","message":"upgrade"}}"#.to_string(),
+            )],
+        )
+        .await;
+        let error = built.err().expect("a refusal");
+        assert!(policy::lesson(&error).is_some(), "{error}");
+        assert_eq!(count(&db, "SELECT COUNT(*) FROM outbox"), 1);
+    }
 
     fn outcome(gate: WriteGate) -> Outcome {
         Outcome {
@@ -282,6 +496,23 @@ mod tests {
         );
     }
 
+    /// #5373: the plan's vault cap is a `PaymentRequired` on every sync route,
+    /// so the transcript says the plan is full instead of a bare `402`.
+    #[test]
+    fn a_vault_limit_refusal_prints_as_needing_a_plan() {
+        let source = memry_core::api::errors::ApiError::PaymentRequired {
+            code: Some("SYNC_VAULT_LIMIT_EXCEEDED".to_string()),
+            message: "plus allows 1 synced vaults".to_string(),
+        };
+        let mut refused = outcome(WriteGate::Open);
+        refused.refused = Some(source.to_string());
+        let rendered = format_push(&refused);
+        assert!(
+            rendered.contains("refused sync needs a plan: plus allows 1 synced vaults"),
+            "{rendered}"
+        );
+    }
+
     #[test]
     fn a_drained_wave_prints_every_count_the_report_carries() {
         let mut drained = outcome(WriteGate::Open);
@@ -294,6 +525,7 @@ mod tests {
             crdt_updates: 3,
             batch_ceiling: 50,
             halvings: 1,
+            deleted_locally: 2,
         };
         drained.queued = 1;
         drained.attempts = 1;
@@ -309,6 +541,7 @@ mod tests {
             // sends fifty.
             "batch-ceiling 50",
             "halvings 1",
+            "deleted-locally 2",
         ] {
             assert!(
                 rendered.contains(expected),

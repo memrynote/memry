@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   commands: {
     syncLogout: vi.fn(),
     syncGetVaultBinding: vi.fn(),
+    syncRepairDeviceKeys: vi.fn(),
     syncResolveVaultBinding: vi.fn()
   },
   listeners: new Map<string, (event: { payload: unknown }) => void>()
@@ -52,6 +53,20 @@ describe('sync-account-service', () => {
     await expect(syncAccountService.logout()).resolves.toEqual({
       success: true,
       keychainWarning: 'Keychain locked'
+    })
+  })
+
+  it('answers a repair with the outcome of the command', async () => {
+    const notStarted = { status: 'sync-not-started', reason: 'vault-binding' }
+    mocks.commands.syncRepairDeviceKeys
+      .mockResolvedValueOnce({ status: 'repaired' })
+      .mockResolvedValueOnce(notStarted)
+      .mockResolvedValueOnce({ status: 'sign-in-required' })
+
+    await expect(syncAccountService.repairDeviceKeys()).resolves.toEqual({ status: 'repaired' })
+    await expect(syncAccountService.repairDeviceKeys()).resolves.toEqual(notStarted)
+    await expect(syncAccountService.repairDeviceKeys()).resolves.toEqual({
+      status: 'sign-in-required'
     })
   })
 

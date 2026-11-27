@@ -16,11 +16,17 @@ use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use http_fakes::{FakeSecureStore, FakeTransport, body_json, jwt, response};
 use memry_core::api::auth::{AuthSession, DeviceDescriptor};
+use memry_core::api::projects::ProjectDraft;
+use memry_core::api::tasks_write::NewTaskInput;
 use memry_core::api::vault::Vault;
+use memry_core::crdt::epoch::HeldBody;
 use memry_core::crypto::{keys, sodium};
 use memry_core::protocol::auth::DevicePlatform;
+use memry_core::protocol::delete_attestation::{self, DeleteClaim};
+use memry_core::protocol::envelope::{self, RecordMaterial, RecordRequest, SyncOperation};
 use memry_core::seams::secure_store::{SecureStore as _, SecureStoreKey};
 use memry_core::sync::body_debt;
+use memry_core::sync::clock::VectorClock;
 use serde_json::json;
 
 const BASE: &str = "https://sync.example.com";
@@ -337,15 +343,16 @@ async fn the_pass_pulls_owed_bodies_and_settles_only_the_merged_ones() {
             200,
             &json!({"items": [], "deleted": [], "hasMore": false, "nextCursor": null}).to_string(),
         ),
-        // goodnote1234: no snapshot, no updates. A clean pull.
-        response(200, &json!({"snapshot": null}).to_string()),
-        response(200, &json!({"updates": [], "hasMore": false}).to_string()),
-        // stopnote1234: an update this device cannot open, so a stop at the gap.
-        response(200, &json!({"snapshot": null}).to_string()),
+        // One batch probe, whose pages are the pulls. goodnote1234: no
+        // snapshot, no updates, a clean pull. stopnote1234: an update this
+        // device cannot open, so a stop at the gap.
         response(
             200,
-            &json!({"updates": [{"sequenceNum": 1, "data": "AAAA", "signerDeviceId": device_id}], "hasMore": false})
-                .to_string(),
+            &json!({"notes": {
+                "goodnote1234": {"updates": [], "hasMore": false, "floor": 0},
+                "stopnote1234": {"updates": [{"sequenceNum": 1, "data": "AAAA", "signerDeviceId": device_id}], "hasMore": false, "floor": 0}
+            }, "snapshotMeta": {}})
+            .to_string(),
         ),
     ]);
     let session = Arc::new(
@@ -421,6 +428,29 @@ fn vault_with_side(
         .expect("a session"),
     );
     (vault, side, session)
+}
+
+/// `id`'s note delete, sealed and signed as `server-device-1`.
+fn signed_delete(id: &str) -> serde_json::Value {
+    let vault_key = keys::derive_vault_key(&MASTER_KEY).expect("the vault key");
+    let (_public, secret) = sodium::sign_seed_keypair(&SIGNING_SEED).expect("a keypair");
+    let sealed = envelope::encrypt(
+        &RecordRequest {
+            id,
+            item_type: "note",
+            operation: SyncOperation::Delete,
+            content: b"",
+            vault_key: &vault_key[..],
+            signing_secret_key: &secret[..],
+            signer_device_id: "server-device-1",
+            clock: Some([("peer".to_owned(), 5)].into()),
+            state_vector: None,
+            deleted_at: Some(1_760_000_000_000),
+        },
+        &RecordMaterial::random(),
+    )
+    .expect("sealed");
+    envelope::to_json(&sealed.envelope)
 }
 
 fn devices()
@@ -630,13 +660,14 @@ async fn a_rate_limited_body_step_still_pushes_and_the_next_pass_resumes_from_th
 async fn a_tombstoned_owed_document_is_never_body_pulled() {
     let transport = FakeTransport::new(vec![
         devices(),
-        // X is deleted on this page, with no type on the wire (§5.12.1).
+        // X is deleted on this page: listed in `deleted`, its signed delete
+        // returned by the pull (§5.12.1, #5340).
         response(
             200,
             &json!({"items": [], "deleted": ["deadnotexxxx"], "hasMore": false, "nextCursor": 3, "noteBodies": []})
                 .to_string(),
         ),
-        response(200, &json!({"items": []}).to_string()),
+        response(200, &json!({"items": [signed_delete("deadnotexxxx")]}).to_string()),
     ]);
     let (vault, side, session) = vault_with_side("tombstoned-debt", transport.clone());
     side.call_blocking(|conn| {
@@ -648,7 +679,8 @@ async fn a_tombstoned_owed_document_is_never_body_pulled() {
             what: error.to_string(),
         })?;
         memry_core::sync::store::write_cursor(conn, "crdt:deadnotexxxx", Some("1"), 1)?;
-        memry_core::crdt::update_log::append_server_update(conn, "deadnotexxxx", 1, &[0, 0], 1)
+        HeldBody::never_purged(conn, "deadnotexxxx")
+            .and_then(|held| held.append_server_update(1, &[0, 0], 1))
             .map_err(|error| memry_core::api::errors::StorageError::Failed {
                 what: error.to_string(),
             })?;
@@ -684,6 +716,45 @@ async fn a_tombstoned_owed_document_is_never_body_pulled() {
         })
         .expect("count the rows");
     assert_eq!(rows, 0);
+}
+
+/// §5.12.1, §5.14 (#5340): a delete the pull returns for a `deleted` id opens
+/// and verifies before it deletes. One carrying a real signature over another
+/// item is one corrupt item, and the row stays live.
+#[tokio::test]
+async fn a_delete_whose_signature_covers_another_item_deletes_nothing() {
+    let mut forged = signed_delete("deadnotexxxx");
+    forged["signature"] = signed_delete("othernotexxx")["signature"].clone();
+    let transport = FakeTransport::new(vec![
+        devices(),
+        response(
+            200,
+            &json!({"items": [], "deleted": ["deadnotexxxx"], "hasMore": false, "nextCursor": 3, "noteBodies": []})
+                .to_string(),
+        ),
+        response(200, &json!({"items": [forged]}).to_string()),
+    ]);
+    let (vault, side, session) = vault_with_side("forged-delete", transport);
+    side.call_blocking(|conn| {
+        memry_core::storage::repositories::sync_items::upsert_metadata_only(
+            conn,
+            "note",
+            "deadnotexxxx",
+            1,
+            Some(1),
+        )
+    })
+    .expect("a live row");
+
+    vault.sync(session).sync_now().await.expect("the pass");
+
+    let row = side
+        .call_blocking(|conn| {
+            memry_core::storage::repositories::sync_items::load(conn, "note", "deadnotexxxx")
+        })
+        .expect("read")
+        .expect("the row");
+    assert_eq!(row.deleted_at, None, "a forged delete deletes nothing");
 }
 
 /// #2297 review A-5/B-6: a debt is settled only by a pull that reached the
@@ -795,4 +866,113 @@ async fn the_body_step_stops_at_its_request_budget() {
         budget - pulled
     );
     assert_eq!(owed(&side).len(), budget + 3 - pulled);
+}
+
+/// #5247: a server before v2 rejects a v2 delete attestation as a bad
+/// signature, so the pass signs a delete v1, with no vault id, until the
+/// writers flip (chapter 04 §4.8.4).
+#[tokio::test]
+async fn a_pushed_delete_is_attested_v1_until_the_v2_flip() {
+    let (public, secret) = sodium::sign_seed_keypair(&SIGNING_SEED).expect("a keypair");
+    let device_id = "server-device-1";
+    let store = FakeSecureStore::new();
+    store.put_text(
+        SecureStoreKey::AccessToken,
+        &jwt(json!({"sub": "user-1", "device_id": device_id, "type": "access", "exp": 9_999_999_999u64})),
+    );
+    store
+        .set(SecureStoreKey::MasterKey, MASTER_KEY.to_vec())
+        .expect("plant the master key");
+    store
+        .set(SecureStoreKey::DeviceSigningKey, secret.to_vec())
+        .expect("plant the signing key");
+
+    let vault = scratch_vault();
+    let tasks = vault.tasks(store.clone()).expect("the task surface");
+    let project_id = tasks
+        .create_project(ProjectDraft {
+            name: "Inbox".to_string(),
+            description: None,
+            color: None,
+            icon: None,
+            statuses: None,
+        })
+        .expect("create project");
+    let task_id = tasks
+        .create(NewTaskInput {
+            title: "Gone".to_string(),
+            project_id,
+            status_id: None,
+            parent_id: None,
+            priority: 0,
+            description: None,
+            due_date: None,
+            due_time: None,
+            start_date: None,
+            repeat: None,
+            repeat_from: None,
+            tags: Vec::new(),
+            linked_note_ids: Vec::new(),
+            linked_canvas_ids: Vec::new(),
+            source_note_id: None,
+            position: None,
+        })
+        .expect("create task")
+        .created
+        .remove(0);
+    tasks.delete(task_id.clone(), false).expect("delete task");
+
+    let transport = FakeTransport::new(vec![
+        response(
+            200,
+            &json!({"devices": [{"id": device_id, "signingPublicKey": BASE64.encode(&public)}]})
+                .to_string(),
+        ),
+        response(
+            200,
+            &json!({"items": [], "deleted": [], "hasMore": false, "nextCursor": null}).to_string(),
+        ),
+        response(
+            200,
+            &json!({"accepted": [], "rejected": [], "serverTime": 1, "maxCursor": 1}).to_string(),
+        ),
+        response(200, &json!({"updates": [], "hasMore": false}).to_string()),
+    ]);
+    let session = Arc::new(
+        AuthSession::new(
+            transport.clone(),
+            store,
+            BASE.to_string(),
+            "ios".to_string(),
+            DeviceDescriptor {
+                name: "Phone".to_string(),
+                platform: DevicePlatform::Ios,
+                form_factor: None,
+                os_version: None,
+                app_version: "1.0.0".to_string(),
+                vault_id: None,
+            },
+            None,
+        )
+        .expect("a session"),
+    );
+    vault.sync(session).sync_now().await.expect("the pass");
+
+    let pushed = body_json(&transport.calls_to("/sync/push")[0]);
+    let item = pushed["items"]
+        .as_array()
+        .expect("items")
+        .iter()
+        .find(|item| item["id"] == json!(task_id) && item["operation"] == json!("delete"))
+        .unwrap_or_else(|| panic!("the task delete: {pushed}"));
+    let clock: VectorClock = serde_json::from_value(item["clock"].clone()).expect("a clock");
+    let claim = DeleteClaim {
+        item_type: "task",
+        item_id: &task_id,
+        clock: &clock,
+        deleted_at: item["deletedAt"].as_i64().expect("deletedAt"),
+    };
+    let attestation = item["deleteAttestation"].as_str().expect("an attestation");
+    // With no vault the check is v1 only, which a v2 signature fails.
+    delete_attestation::verify(&claim, None, attestation, &public).expect("signed v1");
 }
