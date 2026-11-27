@@ -12,6 +12,7 @@ import {
 } from '@memry/shared/block-nesting'
 import { separateBlockImages, splitMarkdownPreservingBlanks } from '@memry/shared/empty-lines'
 import { applyInlineColorTokens, maskInlineColorSpans } from '@memry/shared/inline-colors'
+import { decodeHtmlCommentTokens, hasHtmlCommentToken } from '@memry/shared/html-comments'
 import { createFenceTracker } from '@memry/shared/markdown-fences'
 import {
   BOOKMARK_LINE_REGEX,
@@ -61,7 +62,26 @@ export async function parseNoteMarkdown<B extends NoteBlock<B>>(
   const { text, spans } = maskInlineColorSpans(separateBlockImages(markdown))
   const blocks = await parseMaskedMarkdown(host, text)
 
-  return asBlocks<B>(applyInlineColorTokens(blocks, spans))
+  const colored = applyInlineColorTokens(blocks, spans)
+  const tokened = hasHtmlCommentToken(JSON.stringify(colored) ?? '')
+  return asBlocks<B>(tokened ? withCommentBytes(colored) : colored)
+}
+
+/**
+ * `value` with every HTML comment token left in it turned back into the
+ * comment's bytes. The parse turns the tokens in text into `htmlComment`
+ * nodes, but a comment inside an image's alt or address, a link's address or
+ * a `$$` block lands in a prop. The token's word is drawn per process, so one
+ * left there reached the shared doc as text no other process can decode, and
+ * a `$$` block wrote it into the vault.
+ */
+function withCommentBytes(value: unknown): unknown {
+  if (typeof value === 'string') return decodeHtmlCommentTokens(value)
+  if (Array.isArray(value)) return value.map(withCommentBytes)
+  if (typeof value !== 'object' || value === null) return value
+  return Object.fromEntries(
+    Object.entries(value).map(([key, inner]) => [key, withCommentBytes(inner)])
+  )
 }
 
 // BlockNote's `Block` is a union keyed on the schema's block types, with
