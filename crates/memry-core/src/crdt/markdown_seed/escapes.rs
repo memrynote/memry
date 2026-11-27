@@ -85,6 +85,14 @@ pub(super) fn escape_items(items: Vec<Item>, heading: bool) -> Result<Vec<Item>,
         }
         items[segment.item].text = out;
     }
+    // The parser strips one space off each end of a code span that has one at
+    // both, so ` b ` is written with a second.
+    for item in items.iter_mut().filter(|item| item.is_code()) {
+        let spaced = item.text.len() >= 2 && item.text.starts_with(' ') && item.text.ends_with(' ');
+        if spaced && item.text.chars().any(|c| c != ' ') {
+            item.text = format!(" {} ", item.text);
+        }
+    }
     Ok(items)
 }
 
@@ -98,21 +106,16 @@ fn spell(items: &[Item]) -> (Vec<char>, Vec<Segment>) {
         if item.is_code() {
             spelling.extend(['`', NODE, '`']);
         } else if let Some(href) = &marks.link {
-            if item.is_bare_link() {
-                spelling.extend(href.chars());
-            } else {
-                spelling.push('[');
-                segments.push(Segment {
-                    item: index,
-                    at: spelling.len(),
-                    in_link: true,
-                });
-                spelling.extend(item.text.chars());
-                spelling.push(']');
-                spelling.push('(');
-                spelling.extend(href.chars());
-                spelling.push(')');
-            }
+            spelling.push('[');
+            segments.push(Segment {
+                item: index,
+                at: spelling.len(),
+                in_link: true,
+            });
+            spelling.extend(item.text.chars());
+            spelling.extend([']', '(']);
+            spelling.extend(href.chars());
+            spelling.push(')');
         } else {
             let delimiter = if marks.bold {
                 "**"

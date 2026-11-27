@@ -73,17 +73,19 @@ markup, judged on the block as spelled: a `*` or `_` that pairs, a backtick that
 `~` beside a `~`, a `]` before `(` or inside link text, a `!` before `[`, a `\` before an escapable
 character, a newline or the block's end, and the first character of a line that opens a block
 (`#`, `>`, `-`, `+`, `*`, `1.`, a thematic break, a table delimiter row, and a table row after the
-first line). Text that holds none keeps its bytes, and a break in a heading is `<br>`
-(`packages/editor-schema/src/inline/markdown-escapes.ts:36`, `:118-130`, `:133-143`, `:152-175`,
-`:233-243`, called from `packages/editor-schema/src/inline/html-comment.ts:177`;
-`crates/memry-core/src/crdt/markdown_seed/escapes.rs:43`, `:184`, `:221`). A mark's delimiters
+first line). Text that holds none keeps its bytes, a break in a heading is `<br>`, a link whose
+text is its address keeps its brackets (`[a](a)`), a code span with a space at both ends gains
+one at each end, and an empty heading is written `#`
+(`packages/editor-schema/src/inline/markdown-escapes.ts:36`, `:112-125`, `:127-145`, `:147-171`,
+`:205-212`, `:242-266`, called from `packages/editor-schema/src/inline/html-comment.ts:194`;
+`crates/memry-core/src/crdt/markdown_seed/escapes.rs:43`, `:190`, `:226`). A mark's delimiters
 stay outside its run's edge whitespace and breaks, a break belongs to the run it was split from,
 and a block holding a mark beside another, link text with a backtick, a link address with a
 backslash, angle bracket, whitespace or unbalanced parenthesis, a break in a code run, or a break
 at a paragraph's start or end or in a run of three or more, is not decided and stays literal
-(`packages/editor-schema/src/inline/emphasis-runs.ts:37`, `:94`, `:174`;
-`crates/memry-core/src/crdt/markdown_seed/items.rs:36`,
-`crates/memry-core/src/crdt/markdown_seed/roundtrip.rs:113`, `:155`, `:180`). A code block's `language` is its
+(`packages/editor-schema/src/inline/emphasis-runs.ts:38`, `:95`, `:177`;
+`crates/memry-core/src/crdt/markdown_seed/items.rs:31`,
+`crates/memry-core/src/crdt/markdown_seed/roundtrip.rs:113`, `:135`, `:163`, `:189`). A code block's `language` is its
 fence's info string, `""` for an untagged fence or an indented run, never BlockNote's
 `javascript` default (`packages/editor-schema/src/schema.ts:80-89`,
 `crates/memry-core/src/crdt/markdown_seed/blocks.rs:205-228`).
@@ -127,6 +129,17 @@ fence's info string, `""` for an untagged fence or an indented run, never BlockN
   row, so `` ` |`é `` keeps its leading space and `` ` a`b `` does not
   (`packages/editor-schema/src/inline/cell-code-spans.ts:95-111`,
   `crates/memry-core/src/crdt/markdown_seed/code_spans.rs:22`).
+- **A marker alone on its line is an empty block.** A heading line of `#` to `######` with
+  nothing after it is an empty heading, and a bullet (`-`, `*`, `+`), a number (`1.`, `1)`) or
+  a to-do (`- [ ]`, a box only after a bullet) with nothing after it is an empty item, where
+  BlockNote's parser reads each as a paragraph of the marker. An item line counts only at the
+  top of the text, after a blank line or after another item line, so `-` under paragraph text
+  stays text, and never inside a fence. Desktop gives each such line a placeholder word for the
+  parser and takes it back out (`packages/editor-schema/src/empty-blocks.ts:24-33`, `:35-50`,
+  `:56-66`, called from `packages/editor-schema/src/parse-markdown.ts:379`, `:399`), so the last
+  line of `1. \n2. ` is an empty numbered item, not a paragraph; the core does the same
+  (`crates/memry-core/src/crdt/markdown_seed/empty_blocks.rs:20`, `:46`,
+  `crates/memry-core/src/crdt/markdown_seed/blocks.rs:43`, `:78`).
 - **A paragraph with no visible text collapses its whitespace.** BlockNote's paragraph rule
   declines a `<p>` whose `textContent.trim()` is empty (`@blocknote/core`
   `src/blocks/Paragraph/block.ts:33-36`), so ProseMirror's default parse drops a leading,

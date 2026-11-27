@@ -8,6 +8,9 @@ use crate::domain::journal_rules::is_js_whitespace;
 use super::code_spans::keep_code_whitespace;
 use super::comment_nodes::{into_nodes, source_lines};
 use super::comments;
+use super::empty_blocks::{
+    drop_empty_block_placeholders, leaks_placeholder, mask_empty_block_lines,
+};
 use super::hard_breaks::{JOIN, mask_hard_breaks, restore_hard_break_spelling};
 use super::inline::{Html, holds_media, inline_content};
 use super::lift::lift_images;
@@ -33,11 +36,14 @@ pub(super) fn parse_chunk(
     // trimmed and cut from the lines around it, so what it holds can differ.
     let chunk = comments::mask(chunk).text;
     let first_block = out.len();
+    let first_fallback = fallbacks.len();
     let fenced = fence_indented_code(&escape_wiki_link_pipes_in_table_rows(&chunk));
     let (masked, breaks) = mask_hard_breaks(&fenced);
     let lines: Vec<&str> = masked.split('\n').collect();
     let mut list = ListState::default();
-    for token in tokenize(&masked) {
+    // The parser holds a placeholder on each empty item or heading line; the
+    // source lines a fallback keeps are the ones without it.
+    for token in tokenize(&mask_empty_block_lines(&masked)) {
         let converted = check_lines(&token, &lines).and_then(|()| match &token.kind {
             TokenKind::Paragraph { content } => {
                 list = ListState::default();
@@ -55,15 +61,7 @@ pub(super) fn parse_chunk(
                 list = ListState::default();
                 // A list-item join is a line split again here: one literal
                 // paragraph per source line.
-                let kept: Vec<String> = lines[token.start..token.end.min(lines.len())]
-                    .iter()
-                    .flat_map(|line| {
-                        restore_hard_break_spelling(line, &breaks)
-                            .split(JOIN)
-                            .flat_map(source_lines)
-                            .collect::<Vec<_>>()
-                    })
-                    .collect();
+                let kept = source_text(&lines[token.start..token.end.min(lines.len())], &breaks);
                 out.extend(kept.iter().map(|line| SeedBlock::literal(line)));
                 fallbacks.push(SeedFallback {
                     reason,
@@ -72,7 +70,32 @@ pub(super) fn parse_chunk(
             }
         }
     }
+    drop_empty_block_placeholders(&mut out[first_block..]);
+    if leaks_placeholder(&out[first_block..]) {
+        out.truncate(first_block);
+        fallbacks.truncate(first_fallback);
+        let kept = source_text(&lines, &breaks);
+        out.extend(kept.iter().map(|line| SeedBlock::literal(line)));
+        fallbacks.push(SeedFallback {
+            reason: "empty item or heading inside a paragraph",
+            lines: kept,
+        });
+    }
     into_nodes(&mut out[first_block..]);
+}
+
+/// The source lines of masked `lines`, hard-break spelling restored: a
+/// list-item join is a line split again, one literal paragraph per line.
+fn source_text(lines: &[&str], breaks: &[String]) -> Vec<String> {
+    lines
+        .iter()
+        .flat_map(|line| {
+            restore_hard_break_spelling(line, breaks)
+                .split(JOIN)
+                .flat_map(source_lines)
+                .collect::<Vec<_>>()
+        })
+        .collect()
 }
 
 /// A top-level paragraph or heading, and the media blocks its images become:

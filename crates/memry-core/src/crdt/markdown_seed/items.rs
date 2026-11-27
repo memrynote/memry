@@ -23,11 +23,6 @@ impl Item {
     pub(super) fn is_code(&self) -> bool {
         self.marks.code
     }
-
-    /// A link whose text is its address: written as the bare address.
-    pub(super) fn is_bare_link(&self) -> bool {
-        self.marks.link.as_deref() == Some(self.text.as_str())
-    }
 }
 
 /// `content` as BlockNote's items. Anything outside plain, bold, italic,

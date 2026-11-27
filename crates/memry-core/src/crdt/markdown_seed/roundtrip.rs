@@ -25,8 +25,12 @@ pub(super) fn serialize(blocks: &[SeedBlock]) -> Result<String, Unsupported> {
             SeedKind::Paragraph => out.push_str(&inline(&block.content, false)?),
             SeedKind::Heading { level } => {
                 out.push_str(&"#".repeat(usize::from(level)));
-                out.push(' ');
-                out.push_str(&inline(&block.content, true)?);
+                let text = inline(&block.content, true)?;
+                // An empty heading keeps no space after its `#`.
+                if !text.chars().all(is_js_whitespace) {
+                    out.push(' ');
+                    out.push_str(&text);
+                }
             }
             _ => return Err(UNSERIALIZED),
         }
@@ -56,7 +60,7 @@ fn rewritten_line(line: &str) -> bool {
     };
     super::prepare::fence_line(line).is_some()
         || js_trim(line).starts_with('|')
-        || marker.is_some_and(|after| after.starts_with(is_js_whitespace))
+        || marker.is_some_and(|after| after.is_empty() || after.starts_with(is_js_whitespace))
 }
 
 /// One paragraph's or heading's content as the writer spells it:
@@ -76,10 +80,6 @@ const BREAK: &str = "\\\n";
 fn write_item(item: &Item, out: &mut String) -> Result<(), Unsupported> {
     let marks = &item.marks;
     if let Some(href) = &marks.link {
-        if item.is_bare_link() {
-            out.push_str(href);
-            return Ok(());
-        }
         return write_link(&item.text, href, out);
     }
     if marks.code {
@@ -111,43 +111,51 @@ fn write_item(item: &Item, out: &mut String) -> Result<(), Unsupported> {
 /// `restoreEmphasisRuns`: a run's leading and trailing whitespace and breaks
 /// stay outside its delimiters (`EDGES`), and a run of nothing else has none.
 fn emphasis(run: &str, delimiter: &str) -> String {
-    let mut content = run;
-    let mut before = 0;
-    while let Some(edge) = edge_len(content, true) {
-        before += edge;
-        content = &content[edge..];
-    }
-    let mut after = 0;
-    while let Some(edge) = edge_len(content, false) {
-        after += edge;
-        content = &content[..content.len() - edge];
-    }
-    if content.is_empty() {
+    let lead = edge_prefix(run);
+    let trail = run[lead..]
+        .char_indices()
+        .map(|(at, _)| lead + at)
+        .chain([run.len()])
+        .find(|&at| edge_prefix(&run[at..]) == run.len() - at)
+        .unwrap_or(run.len());
+    if lead >= trail {
         return run.to_owned();
     }
     format!(
-        "{}{delimiter}{content}{delimiter}{}",
-        &run[..before],
-        &run[run.len() - after..]
+        "{}{delimiter}{}{delimiter}{}",
+        &run[..lead],
+        &run[lead..trail],
+        &run[trail..]
     )
 }
 
-/// The length of the `\\\n` or whitespace character at the start (or end) of `text`.
-fn edge_len(text: &str, start: bool) -> Option<usize> {
-    let token = if start {
-        text.starts_with(BREAK)
-    } else {
-        text.ends_with(BREAK)
-    };
-    if token {
-        return Some(BREAK.len());
+/// The length of the longest prefix of `text` matching
+/// `/(?:\\\n(?:[^\S\n]*>)*|\s)*/`: a break (with the `>` prefixes a quote
+/// carries onto the next line) or whitespace.
+fn edge_prefix(text: &str) -> usize {
+    let mut at = 0;
+    loop {
+        let rest = &text[at..];
+        if rest.starts_with(BREAK) {
+            at += BREAK.len();
+            // `(?:[^\S\n]*>)*`
+            loop {
+                let tail = &text[at..];
+                let blanks = tail
+                    .find(|c: char| c == '\n' || !is_js_whitespace(c))
+                    .unwrap_or(tail.len());
+                if tail[blanks..].starts_with('>') {
+                    at += blanks + 1;
+                } else {
+                    break;
+                }
+            }
+        } else if let Some(c) = rest.chars().next().filter(|c| is_js_whitespace(*c)) {
+            at += c.len_utf8();
+        } else {
+            return at;
+        }
     }
-    let edge = if start {
-        text.chars().next()
-    } else {
-        text.chars().next_back()
-    };
-    edge.filter(|c| is_js_whitespace(*c)).map(char::len_utf8)
 }
 
 /// A link's text, one link per line (`splitLinksAtBreaks`), its breaks
@@ -164,8 +172,9 @@ fn write_link(text: &str, href: &str, out: &mut String) -> Result<(), Unsupporte
                 out.push_str(BREAK);
             }
         } else if part == href {
-            // `formatLink`.
-            out.push_str(href);
+            // A link whose text is its address travels as one token, so the
+            // address is written as it is (`hrefParenTokens`).
+            out.push_str(&format!("[{part}]({href})"));
         } else {
             out.push_str(&format!("[{part}]({})", address(href)?));
         }
@@ -322,6 +331,27 @@ mod tests {
             text("b", SeedMarks::default()),
         ]);
         assert_eq!(serialize(&[after]).expect("serialized"), "**a**\nb\n");
+    }
+
+    #[test]
+    fn a_link_keeps_its_brackets_and_a_spaced_code_span_gains_a_space() {
+        let marks = SeedMarks {
+            link: Some("https://e.com/a(1".to_owned()),
+            ..SeedMarks::default()
+        };
+        let link = paragraph(vec![text("https://e.com/a(1", marks)]);
+        assert_eq!(
+            serialize(&[link]).expect("serialized"),
+            "[https://e.com/a(1](https://e.com/a(1)\n"
+        );
+        let code = SeedMarks {
+            code: true,
+            ..SeedMarks::default()
+        };
+        let spaced = paragraph(vec![text(" b ", code)]);
+        assert_eq!(serialize(&[spaced]).expect("serialized"), "`  b  `\n");
+        let empty = SeedBlock::new(SeedKind::Heading { level: 2 }, Vec::new());
+        assert_eq!(serialize(&[empty]).expect("serialized"), "##\n");
     }
 
     #[test]
