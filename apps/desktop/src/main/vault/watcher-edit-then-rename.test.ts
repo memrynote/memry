@@ -127,6 +127,7 @@ import {
 import { getStatus } from './index'
 import { enqueueLocalSyncDelete } from '../sync/local-mutations'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
+import { trackMainError } from '../telemetry/diagnostics'
 import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
 import {
   flushProjectionEvents,
@@ -337,6 +338,25 @@ describe('an outside edit followed by a rename inside the change debounce', () =
 
       expect(metadataRows()).toEqual([{ id: 'n1', path: 'Docs/pear.md' }])
       expect(enqueueLocalSyncDelete).not.toHaveBeenCalled()
+    },
+    90_000
+  )
+
+  it.runIf(process.platform === 'darwin')(
+    'a rename whose new name the folder reports during the rename lists the note once',
+    async () => {
+      seed('n1', 'Docs/apple.md', '# apple\n\nbody\n')
+      await watch()
+      const renamed = path.join(vault.path, 'Docs/pear.md')
+      lostAdds.add(renamed)
+      // Right after the app took the unlink and began the renamed file's add.
+      changeHeard.watcher?.on('unlink', () => changeHeard.watcher?.emit('add', renamed))
+      fs.renameSync(path.join(vault.path, 'Docs/apple.md'), renamed)
+      await settleOn(() => expect(renameSynced).toHaveBeenCalledWith('n1'))
+
+      expect(metadataRows()).toEqual([{ id: 'n1', path: 'Docs/pear.md' }])
+      // Both adds missed the row: the one that lost the match failed on its path.
+      expect(trackMainError).not.toHaveBeenCalled()
     },
     90_000
   )

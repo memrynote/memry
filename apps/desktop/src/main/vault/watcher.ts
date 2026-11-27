@@ -9,7 +9,7 @@
 
 import path from 'path'
 import fs from 'fs/promises'
-import { existsSync, statSync, type Stats } from 'fs'
+import { existsSync, lstatSync, statSync, type Stats } from 'fs'
 import { watch as chokidarWatch } from 'chokidar'
 import type { FSWatcher } from 'chokidar'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
@@ -249,6 +249,7 @@ export class VaultWatcher {
   private debouncedChange: ((path: string) => void) | null = null
   private recentIdentities = new RecentFileIdentities()
   private renameTargets = new RenameTargets()
+  private addsInFlight = new Map<string, Promise<void>>()
   private rawWrites = new Set<string>()
   private rawWritesFlush: NodeJS.Immediate | null = null
 
@@ -284,49 +285,11 @@ export class VaultWatcher {
       }
     }, 100)
 
-    // Capture exclude patterns for use in ignored function
-    const userExcludePatterns = this.excludePatterns
-
     // Create watcher with chokidar
     this.watcher = chokidarWatch(watchPaths, {
       persistent: true,
 
-      // Ignore hidden files, excluded patterns, unsupported file types
-      ignored: (filePath: string, stats) => {
-        const basename = path.basename(filePath)
-
-        // Always ignore hidden files and directories
-        if (basename.startsWith('.')) return true
-
-        // `filePath` has forward slashes on Windows, whatever `vaultPath` has.
-        const relativePath = normalizeRelativePath(path.relative(vaultPath, filePath))
-        if (isInAttachmentStore(relativePath)) return true
-
-        // Check user-defined exclude patterns
-        for (const pattern of userExcludePatterns) {
-          // Exact match (e.g., 'node_modules', '.git')
-          if (basename === pattern) return true
-          // Check if file is inside an excluded directory
-          if (filePath.includes(`/${pattern}/`) || filePath.includes(`\\${pattern}\\`)) return true
-        }
-
-        // For files, only watch supported file types (md, pdf, images, audio, video)
-        if (stats?.isFile()) {
-          // Canvas documents are watched only so a removal outside the app
-          // becomes a canvas delete (#2938); the note index never takes them.
-          const supported = isSupportedPath(filePath) || isCanvasFilePath(relativePath)
-          // Before `ready` this is the initial walk over files that were
-          // already there; the open-time scan reports those. After it, an
-          // unsupported file is one the user just put in the vault, and
-          // ignoring it silently is what #2359 was about.
-          if (!supported && this.isReady && this.vaultPath) {
-            recordSkippedFile(path.relative(this.vaultPath, filePath), 'watcher')
-          }
-          return !supported
-        }
-
-        return false
-      },
+      ignored: (filePath: string, stats) => this.isIgnored(vaultPath, filePath, stats),
 
       // Wait for file writes to complete (100ms stability)
       awaitWriteFinish: {
@@ -378,6 +341,43 @@ export class VaultWatcher {
         this.watcher?.once('ready', () => resolve())
       }
     })
+  }
+
+  /** Hidden files, excluded patterns, unsupported file types. */
+  private isIgnored(vaultPath: string, filePath: string, stats?: Stats): boolean {
+    const basename = path.basename(filePath)
+
+    // Always ignore hidden files and directories
+    if (basename.startsWith('.')) return true
+
+    // `filePath` has forward slashes on Windows, whatever `vaultPath` has.
+    const relativePath = normalizeRelativePath(path.relative(vaultPath, filePath))
+    if (isInAttachmentStore(relativePath)) return true
+
+    // Check user-defined exclude patterns
+    for (const pattern of this.excludePatterns) {
+      // Exact match (e.g., 'node_modules', '.git')
+      if (basename === pattern) return true
+      // Check if file is inside an excluded directory
+      if (filePath.includes(`/${pattern}/`) || filePath.includes(`\\${pattern}\\`)) return true
+    }
+
+    // For files, only watch supported file types (md, pdf, images, audio, video)
+    if (stats?.isFile()) {
+      // Canvas documents are watched only so a removal outside the app
+      // becomes a canvas delete (#2938); the note index never takes them.
+      const supported = isSupportedPath(filePath) || isCanvasFilePath(relativePath)
+      // Before `ready` this is the initial walk over files that were
+      // already there; the open-time scan reports those. After it, an
+      // unsupported file is one the user just put in the vault, and
+      // ignoring it silently is what #2359 was about.
+      if (!supported && this.isReady && this.vaultPath) {
+        recordSkippedFile(path.relative(this.vaultPath, filePath), 'watcher')
+      }
+      return !supported
+    }
+
+    return false
   }
 
   /**
@@ -678,8 +678,25 @@ export class VaultWatcher {
    * Handle new file creation.
    * Also checks if this might be a rename (matching UUID with pending delete).
    * Supports all file types: markdown, pdf, images, audio, video.
+   *
+   * A renamed file's add can come from the unlink and from chokidar at once
+   * (`addRenamedFile`). The second add of a path waits for the first, then
+   * finds the row it wrote; run together, both missed the row, and the one that
+   * lost the rename match listed the file again under a new id.
    */
-  private async handleFileAdd(eventPath: string): Promise<void> {
+  private handleFileAdd(eventPath: string): Promise<void> {
+    const prior = this.addsInFlight.get(eventPath)
+    const add = (): Promise<void> => this.addFile(eventPath)
+    const run = prior ? prior.then(add, add) : add()
+    this.addsInFlight.set(eventPath, run)
+    const settled = (): void => {
+      if (this.addsInFlight.get(eventPath) === run) this.addsInFlight.delete(eventPath)
+    }
+    void run.then(settled, settled)
+    return run
+  }
+
+  private async addFile(eventPath: string): Promise<void> {
     if (!this.vaultPath) return
     const absolutePath = this.inDiskCase(eventPath)
     let echo = false
@@ -1567,18 +1584,24 @@ export class VaultWatcher {
           await Promise.resolve()
         },
         statKey,
-        deferred,
-        // The renamed file's add can trail this unlink by seconds: the delete
-        // waits while that file is on disk and not indexed yet.
-        renamedTo === null
-          ? null
-          : () =>
-              existsSync(renamedTo) &&
-              !getNoteCacheByPath(db, normalizeRelativePath(path.relative(vaultPath, renamedTo)))
+        deferred
       )
+      if (renamedTo !== null) this.addRenamedFile(vaultPath, renamedTo)
     } catch (error) {
       this.onError?.(error instanceof Error ? error : new Error(String(error)))
     }
+  }
+
+  /**
+   * The add of the file an unlinked file was renamed to, from the unlink and
+   * not the folder's event (`RenameTargets`): on macOS that event can come
+   * seconds after the rename window closed, or never. chokidar's own add of
+   * the file, if it comes, waits for this one and finds its row.
+   */
+  private addRenamedFile(vaultPath: string, renamedTo: string): void {
+    const stats = lstatSync(renamedTo, { throwIfNoEntry: false })
+    if (!stats?.isFile() || this.isIgnored(vaultPath, renamedTo, stats)) return
+    void this.handleFileAdd(renamedTo)
   }
 
   /**

@@ -31,12 +31,6 @@ const logger = createLogger('RenameTracker')
  */
 const RENAME_WINDOW_MS = 500
 
-/**
- * How long a delete waits for the add of the file it was renamed to, while
- * that file is on disk and not indexed (`trackPendingDelete`'s `awaitsAdd`).
- */
-const RENAMED_FILE_WAIT_MS = 30_000
-
 // ============================================================================
 // Types
 // ============================================================================
@@ -62,8 +56,6 @@ interface PendingDelete {
   timeout: NodeJS.Timeout | null
   /** Callback to execute if this is a real delete (not a rename) */
   onRealDelete: () => Promise<void>
-  /** Whether the add of the file this one was renamed to is still to come. */
-  awaitsAdd: (() => boolean) | null
 }
 
 /**
@@ -171,9 +163,6 @@ function addToIndex(index: Map<string, PendingDelete[]>, key: string, entry: Pen
 function armRenameWindow(entry: PendingDelete): void {
   entry.timeout = setTimeout(() => {
     if (isAppFolderChange(entry.path)) return armRenameWindow(entry)
-    if (Date.now() - entry.timestamp < RENAMED_FILE_WAIT_MS && entry.awaitsAdd?.()) {
-      return armRenameWindow(entry)
-    }
     // No matching 'add' event arrived - this is a real delete
     logger.debug(`No rename detected for ${entry.id}, processing as delete`)
     removePending(entry)
@@ -204,9 +193,6 @@ function takeMatch(index: Map<string, PendingDelete[]>, key: string): PendingDel
  *   caller that knows every add up front (a rescan) adds them all, then
  *   settles the batch's unmatched deletes with `settleDeferredDeletes`, so a
  *   slow batch of adds cannot outlast a clock.
- * @param awaitsAdd - Whether the add of the file this one was renamed to is
- *   still to come; the window stays open while it is, up to
- *   RENAMED_FILE_WAIT_MS.
  */
 export function trackPendingDelete(
   id: string,
@@ -214,8 +200,7 @@ export function trackPendingDelete(
   relativePath: string,
   onRealDelete: () => Promise<void>,
   statKey?: string | null,
-  deferred: DeferredDeletes | null = null,
-  awaitsAdd: (() => boolean) | null = null
+  deferred: DeferredDeletes | null = null
 ): void {
   // Clear any existing pending for this id (shouldn't happen, but be safe)
   clearPendingDelete(id)
@@ -229,8 +214,7 @@ export function trackPendingDelete(
     path: relativePath,
     timestamp: Date.now(),
     timeout: null,
-    onRealDelete,
-    awaitsAdd
+    onRealDelete
   }
 
   if (!deferred) armRenameWindow(entry)

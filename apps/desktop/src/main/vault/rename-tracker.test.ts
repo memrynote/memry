@@ -125,27 +125,6 @@ describe('rename-tracker', () => {
     expect(deferred).toHaveBeenCalledTimes(1)
   })
 
-  it('holds a delete while the file it was renamed to waits for its add, up to a bound', async () => {
-    vi.useFakeTimers()
-    const renamedDelete = vi.fn().mockResolvedValue(undefined)
-    const lostDelete = vi.fn().mockResolvedValue(undefined)
-    const realDelete = vi.fn().mockResolvedValue(undefined)
-
-    trackPendingDelete('note-a', 'hash-a', 'notes/a.md', renamedDelete, null, null, () => true)
-    trackPendingDelete('note-b', 'hash-b', 'notes/b.md', lostDelete, null, null, () => true)
-    trackPendingDelete('note-c', 'hash-c', 'notes/c.md', realDelete, null, null, () => false)
-    await vi.advanceTimersByTimeAsync(5000)
-
-    expect(realDelete).toHaveBeenCalledTimes(1)
-    expect(lostDelete).not.toHaveBeenCalled()
-    // The renamed file's add arrives seconds after the unlink.
-    expect(checkForRename('hash-a', 'notes/a-renamed.md')).toMatchObject({ id: 'note-a' })
-    // An add that never comes holds the delete for 30 s at most.
-    await vi.advanceTimersByTimeAsync(25_500)
-    expect(lostDelete).toHaveBeenCalledTimes(1)
-    expect(renamedDelete).not.toHaveBeenCalled()
-  })
-
   // ==========================================================================
   // T597: checkForRename reports rename without mutating cache inline
   // ==========================================================================

@@ -2,10 +2,10 @@
  * The file each watched file was renamed to, as the file's own watcher named
  * it. On macOS libuv watches a file with kqueue, which reports a rename at once
  * and names the new file, and a folder with FSEvents, which can report seconds
- * later on a loaded machine. chokidar's unlink comes from the file's watcher
- * and the add of the renamed file from its folder's, so the add could miss the
- * rename window, and an outside rename synced a delete plus a create. The
- * unlink takes the new path here, and its pending delete waits for that add.
+ * later on a loaded machine, or never. chokidar's unlink comes from the file's
+ * watcher and the add of the renamed file from its folder's, so the add could
+ * miss the rename window, and an outside rename synced a delete plus a create.
+ * The unlink takes the new path here and adds that file itself.
  *
  * @module vault/rename-targets
  */
