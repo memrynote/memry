@@ -146,6 +146,13 @@ function fileSystemIgnoresCase(): boolean {
 
 const renameSynced = vi.fn()
 
+/**
+ * How long the app's watcher may take to hear a change. macOS reports a
+ * folder's changes through FSEvents, seconds late on a loaded machine. A test
+ * waits on `watch` and up to two `settleOn` calls, so it is given 90 s.
+ */
+const FS_EVENTS_TIMEOUT_MS = 30_000
+
 describe('an outside edit followed by a rename inside the change debounce', () => {
   let vault: ReturnType<typeof createTestVault>
   let data: TestDatabaseResult
@@ -225,7 +232,7 @@ describe('an outside edit followed by a rename inside the change debounce', () =
         await flushProjectionEvents()
         expected()
       },
-      { timeout: 10_000, interval: 100 }
+      { timeout: FS_EVENTS_TIMEOUT_MS, interval: 100 }
     )
     await drainIngestBackfill()
     await flushProjectionEvents()
@@ -305,7 +312,7 @@ describe('an outside edit followed by a rename inside the change debounce', () =
     await settleOn(() => expect(editFedTo('n1')).toBe(true))
     expect(metadataRows()).toEqual([{ id: 'n1', path: 'Docs/pear.md' }])
     expect(enqueueLocalSyncDelete).not.toHaveBeenCalled()
-  }, 20_000)
+  }, 90_000)
 
   it.runIf(fileSystemIgnoresCase())(
     'a case-only rename inside the write-finish wait after an outside edit keeps the note id',
@@ -324,7 +331,7 @@ describe('an outside edit followed by a rename inside the change debounce', () =
       expect(metadataRows()).toEqual([{ id: 'n1', path: 'Docs/Apple.md' }])
       expect(enqueueLocalSyncDelete).not.toHaveBeenCalled()
     },
-    20_000
+    90_000
   )
 
   it('raw events on one file in one event-loop turn stat it once', async () => {
@@ -353,7 +360,7 @@ describe('an outside edit followed by a rename inside the change debounce', () =
     await settleOn(() => expect(editFedTo('n1')).toBe(true))
     expect(metadataRows()).toEqual([{ id: 'n1', path: 'Docs/pear.md' }])
     expect(enqueueLocalSyncDelete).not.toHaveBeenCalled()
-  }, 20_000)
+  }, 90_000)
 
   it.runIf(fileSystemIgnoresCase())(
     'a case-only rename right after an outside edit keeps the note id',
@@ -372,7 +379,7 @@ describe('an outside edit followed by a rename inside the change debounce', () =
       expect(metadataRows()).toEqual([{ id: 'n1', path: 'Docs/Apple.md' }])
       expect(enqueueLocalSyncDelete).not.toHaveBeenCalled()
     },
-    20_000
+    90_000
   )
 
   /**
@@ -406,7 +413,7 @@ describe('an outside edit followed by a rename inside the change debounce', () =
       deleteAndWriteLookalike('Docs/apple.md', 'Docs/pear.md', '# pear!\n\nbody edited\n')
     )
     await expectDeleteAndCreate()
-  }, 20_000)
+  }, 90_000)
 
   it('a delete inside the write-finish wait after an outside edit, plus an unrelated same-size same-mtime file, stays a delete and a create', async () => {
     seed('n1', 'Docs/apple.md', '# apple\n\nbody\n')
@@ -415,7 +422,7 @@ describe('an outside edit followed by a rename inside the change debounce', () =
       deleteAndWriteLookalike('Docs/apple.md', 'Docs/pear.md', '# pear!\n\nbody edited\n')
     )
     await expectDeleteAndCreate()
-  }, 20_000)
+  }, 90_000)
 
   it('a delete long after an outside edit settled, plus an unrelated same-size same-mtime file, stays a delete and a create', async () => {
     seed('n1', 'Docs/apple.md', '# apple\n\nbody\n')
@@ -426,7 +433,7 @@ describe('an outside edit followed by a rename inside the change debounce', () =
 
     deleteAndWriteLookalike('Docs/apple.md', 'Docs/pear.md', '# pear!\n\nbody edited\n')
     await expectDeleteAndCreate()
-  }, 25_000)
+  }, 90_000)
 
   // The index has not read the body yet, so the rename matches by size + mtime;
   // there is no earlier hash for the renamed file to differ from.
@@ -447,5 +454,5 @@ describe('an outside edit followed by a rename inside the change debounce', () =
 
     expect(metadataRows()).toEqual([{ id: 'n1', path: 'Docs/pear.md' }])
     expect(feedExternalEditToCrdt).not.toHaveBeenCalled()
-  }, 20_000)
+  }, 90_000)
 })

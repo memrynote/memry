@@ -58,6 +58,7 @@ import {
   type RenameMatch
 } from './rename-tracker'
 import { RecentFileIdentities } from './recent-file-identities'
+import { RenameTargets } from './rename-targets'
 import { probeBirthtime } from './birthtime-probe'
 import {
   folderExistsExactCase,
@@ -247,6 +248,7 @@ export class VaultWatcher {
   // Debounced handlers
   private debouncedChange: ((path: string) => void) | null = null
   private recentIdentities = new RecentFileIdentities()
+  private renameTargets = new RenameTargets()
   private rawWrites = new Set<string>()
   private rawWritesFlush: NodeJS.Immediate | null = null
 
@@ -355,7 +357,7 @@ export class VaultWatcher {
         this.recentIdentities.recordChange(filePath, stats)
         this.debouncedChange?.(filePath)
       })
-      .on('raw', (_event, eventPath, details) => this.recordRawWrite(eventPath, details))
+      .on('raw', (event, eventPath, details) => this.recordRawEvent(event, eventPath, details))
       .on('unlink', (filePath) => this.handleFileDelete(filePath))
       .on('addDir', (dirPath) => this.handleDirAdd(dirPath))
       .on('unlinkDir', (dirPath) => this.handleDirUnlink(dirPath))
@@ -404,6 +406,7 @@ export class VaultWatcher {
     this.rawWritesFlush = null
     this.rawWrites.clear()
     this.recentIdentities.clear()
+    this.renameTargets.clear()
     this.isReady = false
   }
 
@@ -413,12 +416,17 @@ export class VaultWatcher {
    * rename inside that wait gets no `change`, and its unlink needs the key
    * (#5549). One write reports several raw events, so each file is stat'ed
    * once per event-loop turn, right after the turn's fs events; a rename that
-   * beats the stat keeps the hash-only match.
+   * beats the stat keeps the hash-only match. A file's own `rename` event
+   * that names another file names the file it was renamed to (`RenameTargets`).
    */
-  private recordRawWrite(eventPath: string, details: unknown): void {
+  private recordRawEvent(event: string, eventPath: string, details: unknown): void {
     if (!this.isReady || typeof details !== 'object' || details === null) return
     const watchedPath = 'watchedPath' in details ? details.watchedPath : null
     if (typeof watchedPath !== 'string') return
+    if (event === 'rename' && eventPath && path.basename(watchedPath) !== eventPath) {
+      const target = path.join(path.dirname(watchedPath), eventPath)
+      if (isSupportedPath(target)) this.renameTargets.record(watchedPath, target)
+    }
     // A file's own fs.watch names the file; a folder's names the child.
     const filePath =
       !eventPath || path.basename(watchedPath) === eventPath
@@ -1455,6 +1463,7 @@ export class VaultWatcher {
     }: { keepUnpaired?: boolean; deferred?: DeferredDeletes | null } = {}
   ): void {
     const lastChangeKey = this.recentIdentities.take(absolutePath)
+    const renamedTo = this.renameTargets.take(absolutePath)
     const vaultPath = this.vaultPath
     if (!vaultPath) return
     if (!isVaultReachable(vaultPath)) {
@@ -1558,7 +1567,14 @@ export class VaultWatcher {
           await Promise.resolve()
         },
         statKey,
-        deferred
+        deferred,
+        // The renamed file's add can trail this unlink by seconds: the delete
+        // waits while that file is on disk and not indexed yet.
+        renamedTo === null
+          ? null
+          : () =>
+              existsSync(renamedTo) &&
+              !getNoteCacheByPath(db, normalizeRelativePath(path.relative(vaultPath, renamedTo)))
       )
     } catch (error) {
       this.onError?.(error instanceof Error ? error : new Error(String(error)))

@@ -476,6 +476,13 @@ describe('vault read-only locks (#2606)', () => {
 
   const modeOf = (absolutePath: string): number => fs.statSync(absolutePath).mode & 0o777
 
+  /**
+   * How long a file added outside may stay writable before the attachment
+   * watch hears it. The watch has no deadline of its own: macOS reports a
+   * folder's changes through FSEvents, seconds late on a loaded machine.
+   */
+  const ATTACHMENT_WATCH_TIMEOUT_MS = 20_000
+
   it.skipIf(isWindows)(
     'unlocking gives every file the exact mode it had before the lock, after app writes too',
     async () => {
@@ -574,7 +581,7 @@ describe('vault read-only locks (#2606)', () => {
 
       await vi.waitFor(
         () => expect([existing, added, firstOfNote].map(modeOf)).toEqual([0o444, 0o444, 0o444]),
-        { timeout: 5000 }
+        { timeout: ATTACHMENT_WATCH_TIMEOUT_MS }
       )
       expect([unlocked, partial].map(modeOf)).toEqual([0o644, 0o644])
     }
