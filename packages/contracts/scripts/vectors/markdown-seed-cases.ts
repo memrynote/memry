@@ -166,7 +166,23 @@ export const MARKDOWN_SEED_CASES: ReadonlyArray<{ name: string; markdown: string
     {
       name: 'table: ragged rows and escaped pipes',
       markdown: '| a | b |\n|---|---|\n| one |\n| x \\| y | z | extra |',
-      pins: 'short rows padded and long rows cut to the header width; an escaped pipe stays in its cell'
+      pins: 'a row wider than the header widens the table; short rows and the header get empty cells; an escaped pipe stays in its cell'
+    },
+    {
+      name: 'table: a code span holds its pipes',
+      markdown: '| `a|b` | y |\n|---|---|\n| [l](https://e.com) | `p|q` |\n| `x\\|y` | ` | ` |',
+      pins: 'a pipe inside a code span splits no cell, in a header, beside a link, and spaced; an escaped one is the pipe'
+    },
+    {
+      name: 'table: rows wider than the header',
+      markdown:
+        '|  |  |\n|---|---|\n| 1 | 2 | 3 |\n\na | b\n---|---\n1 | 2 | 3 | 4\n\n- x\n  | h |\n  |---|\n  | 1 | 2 |\n| 3 | 4 | 5 |',
+      pins: 'a blank header stays absent; a table without outer pipes widens; a table in a list item widens to its own rows only'
+    },
+    {
+      name: 'table: a header spelled like a delimiter row keeps its width',
+      markdown: '| --- |\n|---|\n| 1 | 2 |',
+      pins: 'the one table desktop does not widen: a row past the header width is cut'
     },
     {
       name: 'table: blank header and cell image',
@@ -219,6 +235,11 @@ export const MARKDOWN_SEED_CASES: ReadonlyArray<{ name: string; markdown: string
       pins: 'a `$$` fence in its written form is a mathBlock; inline and one-line dollars stay text'
     },
     {
+      name: 'math: a fence after another block',
+      markdown: 'one\n\n$$\nx\n$$\n\n$$\ny\n$$\n\n- a\n\n$$\nz\n$$\n\ntwo\n$$\nw\n$$',
+      pins: 'a fence after a blank line is a mathBlock whatever block sits above; one that continues a paragraph stays text'
+    },
+    {
       name: 'quote: separated paragraphs',
       markdown: '> **lead**\n>\n> second *para*',
       pins: 'a blank `>` line makes a quote whose later paragraphs are its children'
@@ -254,6 +275,26 @@ export const MARKDOWN_SEED_CASES: ReadonlyArray<{ name: string; markdown: string
       name: 'callout: styled first body line',
       markdown: '> [!note]\n> **b**\n> plain\n\n> `c`\n> [!tip] x',
       pins: 'a body line after a styled run serializes back to its bytes, so the callout is claimed; a marker on a later line stays a quote'
+    },
+    {
+      name: 'hard break: spaces before a backslash break',
+      markdown: 'foo \\\nbar\n\n**b** \t\\\nc',
+      pins: "the whitespace before a hard break is part of the break's spelling, as with two trailing spaces"
+    },
+    {
+      name: 'hard break: a lazy line after a list item joins it',
+      markdown: '- a  \nb\n- [ ] c\\\nd\n\n1. e  \nf  \ng\n\n- h\ni  \nj',
+      pins: 'a hard break in a list item keeps the lazy line after it in the item (BBF-99); a soft break does not'
+    },
+    {
+      name: 'hard break: a soft break inside list-item link text',
+      markdown: '- [a\nb](https://e.com)\n- x [c\nd\ne](https://e.com) y',
+      pins: 'the item keeps one link holding the break (BBF-106)'
+    },
+    {
+      name: 'hard break: inside image alt text',
+      markdown: '![a  \nb](https://e.com/i.png)',
+      pins: "an image's name gets the break's spelling back, never the token"
     },
     {
       name: 'hard break: inside a fence another fence closed',

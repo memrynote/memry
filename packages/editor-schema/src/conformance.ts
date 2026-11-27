@@ -1171,6 +1171,18 @@ const htmlCommentCases: RoundtripCase[] = [
     markdown: '| h      |\n| ------ |\n| `x ` b |'
   },
   {
+    // A code span is one piece of text: its pipe splits no cell, and the writer escapes it.
+    name: 'pipe inside a code span in a cell',
+    markdown: '| x | y |\n| - | - |\n| a | `p|q` |',
+    canonical: '| x | y      |\n| - | ------ |\n| a | `p\\|q` |'
+  },
+  {
+    // The cells past the header become columns; the header gains empty ones.
+    name: 'table row wider than its header',
+    markdown: '| a | b |\n| - | - |\n| 1 | 2 | 3 | extra |',
+    canonical: '| a | b |   |       |\n| - | - | - | ----- |\n| 1 | 2 | 3 | extra |'
+  },
+  {
     name: 'comment after a link inside bold (BBF-62)',
     markdown: '**[l](https://example.com) <!-- b --> c**'
   },

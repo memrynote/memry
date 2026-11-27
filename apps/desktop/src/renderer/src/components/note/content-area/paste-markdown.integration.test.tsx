@@ -258,6 +258,19 @@ describe('pasting markdown as plain text', () => {
     ])
   })
 
+  it('builds an equation below a paragraph and a blank line', async () => {
+    const editor = mountEditor([{ type: 'paragraph' }])
+    const before = JSON.stringify(editor.document)
+
+    paste(editor, { 'text/plain': 'one\n\n$$\nx\n$$' })
+    await settled(editor, before)
+
+    expect(outline(editor.document)).toEqual([
+      ['paragraph', 'one'],
+      ['mathBlock', 'x']
+    ])
+  })
+
   it('reads Windows line endings the same way', async () => {
     const editor = mountEditor([{ type: 'paragraph' }])
     const before = JSON.stringify(editor.document)

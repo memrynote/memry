@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 280,
+    "exportedCaseCount": 282,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 290,
+    "caseCount": 292,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -1937,6 +1937,20 @@
       "canonical": null,
       "pending": null,
       "sha256": "33684f5b3474c71db4876658eba6f11090159af8748697eee1645d64c1e6dd5b"
+    },
+    {
+      "name": "pipe inside a code span in a cell",
+      "markdown": "| x | y |\n| - | - |\n| a | `p|q` |",
+      "canonical": "| x | y      |\n| - | ------ |\n| a | `p\\|q` |",
+      "pending": null,
+      "sha256": "2bd788024e921519f3fb4baa6b87b3141b89d254c44eebfc3ca0d411991a18fb"
+    },
+    {
+      "name": "table row wider than its header",
+      "markdown": "| a | b |\n| - | - |\n| 1 | 2 | 3 | extra |",
+      "canonical": "| a | b |   |       |\n| - | - | - | ----- |\n| 1 | 2 | 3 | extra |",
+      "pending": null,
+      "sha256": "f6f613c19b1cc9eba3b286e275fc8a06670fafa4189be99d309cc26e608dca2f"
     },
     {
       "name": "comment after a link inside bold (BBF-62)",
