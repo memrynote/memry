@@ -89,7 +89,7 @@ vi.mock('@tauri-apps/api/core', () => ({
   Channel: vi.fn()
 }))
 
-// The graph still reads through `window.api` (not ported yet).
+// The canvas list still reads through `window.api` (not ported yet).
 const windowApi = window.api as unknown as Record<string, Record<string, unknown>>
 
 const noteView = (title: string, id = 'n1') => ({
@@ -247,7 +247,9 @@ describe('a change made before an on-demand cache listens', () => {
 
   it('the graph shows a note made while it opened', async () => {
     let graph = { nodes: [], edges: [] }
-    windowApi.graph = { getData: vi.fn(async () => graph) }
+    // `graph_get_graph_data` answers raw JSON bytes (`commands/graph.rs`).
+    tauri.answers.graph_get_graph_data = () =>
+      new Uint8Array(new TextEncoder().encode(JSON.stringify(graph)))
     const { result } = renderHook(
       () => {
         useGraphReactivity()
