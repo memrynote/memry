@@ -9,12 +9,14 @@ use super::ImportError;
 use super::TableCtx;
 
 mod calendar;
+mod derived;
 mod inbox;
 pub mod js_json;
 pub(super) mod note_file;
 mod notes;
 pub mod queue;
 pub mod records;
+pub mod replay;
 mod row_dumps;
 pub mod sync_history;
 mod tags;
@@ -197,8 +199,7 @@ pub const TABLE_MAP: &[TableMapping] = &[
     map!(Data Migration "suggestion_feedback" [26, Convert, "36d1"]: "Step 27 inbox_suggestion_feedback (device-local)"),
     map!(Data Migration "sync_devices" [19, Skip]: "device list comes from the server, device id from memry-config.json; the key check is Step 37"),
     map!(Data Migration "sync_history" [17, Convert => sync_history::import]: "Step 17 sync_history: type becomes kind, epoch seconds to ms, newest 500 rows"),
-    map!(Data Migration "sync_intents" [17, Convert, "36c2"]: "each row becomes one core outbox record row for its type and item id"),
-    map!(Data Migration "sync_pending_deletes" [17, Convert, "36c2"]: "core outbox delete rows plus tombstone sync items"),
+    map!(Data Migration "sync_intents" [17, Convert, "36d2"]: "only task and project writes record intents (their field clocks come from changedFields); a delete intent repeats its sync_pending_deletes row"),
     map!(Data Migration "sync_state" [17, Convert => super::sync_state::import]: "per-key rules in sync_state.rs (SYNC_STATE_KEYS)"),
     map!(Data Migration "tag_categories" [13, Convert => tags::tag_categories]: "core tag_categories table"),
     map!(Data Migration "tag_definitions" [13, Convert => tags::tag_definitions]: "core tag_definitions table"),
@@ -214,12 +215,12 @@ pub const TABLE_MAP: &[TableMapping] = &[
     map!(Data Migration "vault_metadata" [8, Copy => records::vault_metadata]: "singleton vault uuid into core meta vault.id, bit exact; Step 37 opens the vault under it"),
     // index.db, 16 tables.
     map!(Index Migration "block_link_refs" [13, Rebuild]: "derived link table; rebuilt from vault files"),
-    map!(Index Migration "extracted_text" [25, Copy, "36e"]: "Step 25 extracted_text; kept when the file signature and OCR language set match"),
-    map!(Index Migration "file_text_jobs" [25, Copy, "36e"]: "Step 25 file_text_jobs; done rows keep their signature, others reset to pending"),
+    map!(Index Migration "extracted_text" [25, Copy => derived::extracted_text]: "Step 25 extracted_text, rows unchanged; the file text runner reads a file again when its signature or OCR languages moved"),
+    map!(Index Migration "file_text_jobs" [25, Copy => derived::file_text_jobs]: "Step 25 file_text_jobs, rows unchanged; the runner resets a moved signature and retries failed jobs, as Electron's does"),
     map!(Index Migration "graph_layouts" [29, Copy, "36f"]: "Step 30 graph_layouts in data.db, time to ms, so pinned nodes survive"),
-    map!(Index Migration "image_embedding_state" [23, Copy, "36e"]: "copied with its vec rows (width 256, same input_version), else dropped with them"),
+    map!(Index Migration "image_embedding_state" [23, Copy => derived::image_embedding_state]: "copied with vec_images; dropped with it when vec_images has another width; the image lane re-embeds another signature or input_version"),
     map!(Index Migration "note_cache" [13, Rebuild]: "derived note cache rebuilt from vault files and core notes"),
-    map!(Index Migration "note_embedding_state" [23, Copy, "36e"]: "copied with its vec rows (width 256, same input_version), else dropped with them"),
+    map!(Index Migration "note_embedding_state" [23, Copy => derived::note_embedding_state]: "copied; current rows also record what their vectors were built from (note_embedding_hashes) so unchanged notes are not embedded again"),
     map!(Index Migration "note_fold_chunks" [14, Rebuild]: "90 day cache"),
     map!(Index Migration "note_links" [13, Rebuild]: "derived links"),
     map!(Index Migration "note_names" [13, Rebuild]: "derived names"),
@@ -233,15 +234,16 @@ pub const TABLE_MAP: &[TableMapping] = &[
     map!(Data Code "fts_tasks" [21, Rebuild]: "created by the owner step code at open, filled by its projector"),
     map!(Data Code "fts_inbox" [26, Rebuild]: "created by the owner step code at open, filled by its projector"),
     map!(Index Code "fts_notes" [23, Rebuild]: "created by the owner step code at open, filled by its projector"),
-    map!(Index Code "vec_notes" [23, Copy, "36e"]: "vec0 rows copied when width is 256 and input_version matches Step 23"),
-    map!(Index Code "vec_note_chunks" [23, Copy, "36e"]: "same rule as vec_notes"),
-    map!(Index Code "vec_note_similar" [23, Copy, "36e"]: "same rule as vec_notes"),
-    map!(Index Code "vec_images" [23, Copy, "36e"]: "same rule as vec_notes, with image_embedding_state"),
-    map!(Index Code "vec_voice" [23, Copy, "36e"]: "same rule as vec_notes, with voice_embedding_state"),
-    map!(Index Code "voice_embedding_state" [23, Copy, "36e"]: "copied with vec_voice (same width and input_version rule), else dropped with it"),
+    map!(Index Code "vec_notes" [23, Copy => derived::vec_notes]: "vec0 rows byte for byte (same model, width 256, input text); the note family is dropped when one of its tables has another width"),
+    map!(Index Code "vec_note_chunks" [23, Copy => derived::vec_note_chunks]: "same rule as vec_notes"),
+    map!(Index Code "vec_note_similar" [23, Copy => derived::vec_note_similar]: "same rule as vec_notes"),
+    map!(Index Code "vec_images" [23, Copy => derived::vec_images]: "same rule as vec_notes, with image_embedding_state"),
+    map!(Index Code "vec_voice" [23, Copy => derived::vec_voice]: "same rule as vec_notes, with voice_embedding_state"),
+    map!(Index Code "voice_embedding_state" [23, Copy => derived::voice_embedding_state]: "copied with vec_voice; dropped with it when vec_voice has another width"),
     // After every record table: queued pushes are planned against the staged records.
     map!(Data Migration "sync_tombstone_clocks" [17, Copy => queue::sync_tombstone_clocks]: "core sync_tombstone_clocks (data 0005); the note family row under note and journal"),
     map!(Data Migration "sync_queue" [17, Convert => queue::sync_queue]: "folded per item into core outbox rows through outbox::enqueue; deletes write their tombstone; note_body rows become CRDT outbox rows (docs.rs)"),
+    map!(Data Migration "sync_pending_deletes" [17, Convert => replay::sync_pending_deletes]: "replayed as flushPendingLocalDeletes does: core outbox delete rows plus tombstone sync items; a delete of a re-created id is dropped"),
     map!(Data Migration "note_body_sync" [17, Convert => super::docs::note_body_sync]: "Step 17 note_body_sync; pushed_state_vector dropped and counted (not in core); after note_metadata and sync_queue, its in-flight full states name a staged note"),
     // Last: it counts the merge into the records every table above wrote.
     map!(Data Migration "sync_unknown_fields" [16, Convert => unknown_fields::import]: "merged into the verbatim sync_items.payload of the same (type, item_id)"),
@@ -252,15 +254,10 @@ pub const TABLE_MAP: &[TableMapping] = &[
 pub fn pending_area(stage: &str) -> Option<&'static str> {
     Some(match stage {
         "36b" => "settings, vault locks, AI chats or canvas folders",
-        // `sync_pending_deletes` holds every local delete until the manifest check sees the
-        // server no longer lists it, so a synced vault nearly always has rows; `sync_intents`
-        // holds local changes still owed to the server.
-        "36c2" => "deletes the sync server has not confirmed yet, or changes waiting to sync",
         "36c3" => "sync progress",
         "36c4" => "note edit history",
         "36d1" => "inbox items, calendars or bookmarks",
         "36d2" => "tasks or projects",
-        "36e" => "search and similar-note data",
         "36f" => "attachments, whiteboards or Readwise highlights",
         _ => return None,
     })

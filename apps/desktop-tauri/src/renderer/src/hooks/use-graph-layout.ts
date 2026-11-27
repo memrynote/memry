@@ -6,6 +6,7 @@ import {
   type GraphLayoutNode
 } from '@memry/contracts/graph-api'
 import { createLogger } from '@/lib/logger'
+import { graphService } from '@/services/graph-service'
 
 const log = createLogger('GraphLayout')
 
@@ -28,7 +29,7 @@ export function useGraphLayout(viewKey: string): {
     queryKey: graphLayoutKey(viewKey),
     queryFn: async () => {
       try {
-        return await window.api.graph.getLayout(viewKey)
+        return await graphService.getLayout(viewKey)
       } catch (error) {
         log.warn('Failed to load graph layout, starting fresh', error)
         return null
@@ -64,13 +65,13 @@ export function useGraphLayoutActions(viewKey: string): {
   const save = useCallback(
     (nodes: Record<string, GraphLayoutNode>) => {
       const layout: GraphLayout = { version: GRAPH_LAYOUT_VERSION, nodes }
-      void enqueueWrite(() => window.api.graph.saveLayout({ viewKey, layout }))
+      void enqueueWrite(() => graphService.saveLayout({ viewKey, layout }))
     },
     [viewKey]
   )
 
   const clear = useCallback(async () => {
-    await enqueueWrite(() => window.api.graph.clearLayout(viewKey))
+    await enqueueWrite(() => graphService.clearLayout(viewKey))
     queryClient.setQueryData(graphLayoutKey(viewKey), null)
   }, [queryClient, viewKey])
 

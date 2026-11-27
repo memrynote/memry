@@ -338,4 +338,21 @@ describe('settingsService', () => {
     mocks.commands.settingsGetLocal.mockResolvedValue(null)
     await expect(settingsService.getTagSearches()).resolves.toEqual([])
   })
+
+  it('reads graph views as Electron does: none stored, or a malformed blob, is no views', async () => {
+    for (const stored of [null, {}, { views: 'x', lastState: 3 }]) {
+      mocks.commands.settingsGetLocal.mockResolvedValue(stored)
+      await expect(settingsService.getGraphViews()).resolves.toEqual({
+        views: [],
+        lastState: null
+      })
+    }
+  })
+
+  it('merges a graph views patch into the stored views and writes the parsed result', async () => {
+    mocks.commands.settingsGetLocal.mockResolvedValue(null)
+    const next = await settingsService.setGraphViews({ lastState: null, junk: 1 })
+    expect(next).toEqual({ views: [], lastState: null })
+    expect(mocks.commands.settingsSetLocal).toHaveBeenCalledWith('graphViews', next)
+  })
 })

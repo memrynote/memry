@@ -251,6 +251,8 @@ mod importer_untrusted_html;
 mod importer_vectors;
 #[path = "inbox_jobs.rs"]
 mod inbox_jobs;
+#[path = "inbox_review.rs"]
+mod inbox_review;
 #[path = "index_tag_definitions.rs"]
 mod index_tag_definitions;
 #[path = "indexer_facts.rs"]

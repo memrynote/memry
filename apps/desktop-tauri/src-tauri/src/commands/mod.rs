@@ -26,6 +26,7 @@ pub mod export;
 pub mod fold;
 pub mod folder_view;
 pub mod folders;
+pub mod graph;
 pub mod home_pages;
 pub mod ios_beta;
 pub mod journal;

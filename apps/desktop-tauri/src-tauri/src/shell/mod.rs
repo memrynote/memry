@@ -11,6 +11,7 @@ pub mod drop_stage;
 pub mod external;
 pub mod folder_sync;
 pub mod inbox_jobs;
+pub mod inbox_review;
 pub mod journal_events;
 pub mod lock_events;
 pub mod loopback;

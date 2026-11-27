@@ -22,6 +22,8 @@ use sha2::{Digest, Sha256};
 
 #[path = "electron_vault_import/calendar_push.rs"]
 mod calendar_push;
+#[path = "electron_vault_import/derived.rs"]
+mod derived;
 #[path = "device_key/mod.rs"]
 mod device_key;
 #[path = "electron_vault_import/docs.rs"]
@@ -40,6 +42,10 @@ mod queue;
 mod queue_deletes;
 #[path = "electron_vault_import/records.rs"]
 mod records;
+#[path = "electron_vault_import/replay.rs"]
+mod replay;
+#[path = "electron_vault_import/seed_after_pull.rs"]
+mod seed_after_pull;
 #[path = "electron_vault_import/settle.rs"]
 mod settle;
 #[path = "electron_vault_import/sync_state.rs"]
