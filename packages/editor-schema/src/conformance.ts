@@ -178,6 +178,19 @@ const calloutCases: RoundtripCase[] = [
   { name: 'quote whose text spells a callout marker', markdown: '> \\[!info]\n> c' },
   { name: 'quote whose text spells a folded callout marker', markdown: '> \\[!tip]-' },
   { name: 'paragraph whose text spells a torn callout marker', markdown: '\\[!info]\nc' },
+  // A callout's text line, and a line after a run that ends in a break, that
+  // spells a block start came back as that block.
+  { name: 'callout line spelling a heading', markdown: '> [!note]\n> a\n> \\# x' },
+  { name: 'callout opening with a list item spelling', markdown: '> [!note]\n> \\- z' },
+  { name: 'callout line spelling a table row', markdown: '> [!note]\n> a\n> \\| a \\|' },
+  { name: 'callout line spelling a setext underline', markdown: '> [!note]\n> a\n> \\---' },
+  { name: 'heading spelling after a bold run ending in a break', markdown: '**b**\n\\# x' },
+  { name: 'list item spelling after an italic run ending in a break', markdown: '*b*\n\\- z' },
+  {
+    name: 'quote line spelling a heading after a bold run',
+    markdown: '> lead\n>\n> **b**\n> \\# x',
+    canonical: '> lead\n> **b**\n> \\# x'
+  },
   {
     name: 'callout with a title after the marker',
     markdown: '> [!info] Title here\n> Body'

@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 399,
+    "exportedCaseCount": 406,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 409,
+    "caseCount": 416,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -306,6 +306,55 @@
       "canonical": null,
       "pending": null,
       "sha256": "eb7f6a83fdb674bb3b312b5d009b4119fc2d847ca82c8b003f11086eed751b01"
+    },
+    {
+      "name": "callout line spelling a heading",
+      "markdown": "> [!note]\n> a\n> \\# x",
+      "canonical": null,
+      "pending": null,
+      "sha256": "4532bd77c8c9db8380bab0185b81f3672972c80aabf4dc4d5d000542bfdebfaa"
+    },
+    {
+      "name": "callout opening with a list item spelling",
+      "markdown": "> [!note]\n> \\- z",
+      "canonical": null,
+      "pending": null,
+      "sha256": "4c3f0e5d4a180f02326c058e6b2efe0045cdb2802a770dadbcef41dc730abcba"
+    },
+    {
+      "name": "callout line spelling a table row",
+      "markdown": "> [!note]\n> a\n> \\| a \\|",
+      "canonical": null,
+      "pending": null,
+      "sha256": "e5d97123302dca500aaa7545d33adb05801e333d6e78089702afd34ea9243dfc"
+    },
+    {
+      "name": "callout line spelling a setext underline",
+      "markdown": "> [!note]\n> a\n> \\---",
+      "canonical": null,
+      "pending": null,
+      "sha256": "78e6515a3b2f4e530b2898676e20e14a39fe9da8af8014a008af7545e929a7e9"
+    },
+    {
+      "name": "heading spelling after a bold run ending in a break",
+      "markdown": "**b**\n\\# x",
+      "canonical": null,
+      "pending": null,
+      "sha256": "9a5796c4329eec6c9f73e843d3f752645b805f0cead5450b91dbce9312b6ca9c"
+    },
+    {
+      "name": "list item spelling after an italic run ending in a break",
+      "markdown": "*b*\n\\- z",
+      "canonical": null,
+      "pending": null,
+      "sha256": "250a2e83e3a8c7b797832c76646bd0bcac89c7050284ca0b1850071d2b6b2595"
+    },
+    {
+      "name": "quote line spelling a heading after a bold run",
+      "markdown": "> lead\n>\n> **b**\n> \\# x",
+      "canonical": "> lead\n> **b**\n> \\# x",
+      "pending": null,
+      "sha256": "4131e4e6e2f7f044be92704508f7c231b9b627f50fd6e61f68f6f528ae54cc0b"
     },
     {
       "name": "callout with a title after the marker",
