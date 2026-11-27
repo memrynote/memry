@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 351,
+    "exportedCaseCount": 353,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 361,
+    "caseCount": 363,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -670,6 +670,20 @@
       "canonical": "**see**  now\n\n![x](attachments/x.png)",
       "pending": null,
       "sha256": "fbd03b762df009f96c62e1be96ebd5886de6967e33ea254d037cd6cae20cb3b2"
+    },
+    {
+      "name": "header row ending in a backslash",
+      "markdown": "| a \\\n|---|\n| b |",
+      "canonical": "| a \\\\ |\n| ---- |\n| b    |",
+      "pending": null,
+      "sha256": "fa7d2668df17f9a997b079363710113cbf31719416ece3fa36d56409e86b236f"
+    },
+    {
+      "name": "body row ending in a backslash",
+      "markdown": "| a |\n|---|\n| b \\\n| c |",
+      "canonical": "| a    |\n| ---- |\n| b \\\\ |\n| c    |",
+      "pending": null,
+      "sha256": "12c52efd572f3f1e22fcb890f77c3b956997275b9fc7acf00fdd6b6e5841b74c"
     },
     {
       "name": "blank line ending a note",

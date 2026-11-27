@@ -412,6 +412,18 @@ const toggleCases: RoundtripCase[] = [
     markdown: '**see ![x](attachments/x.png)** now',
     canonical: '**see**  now\n\n![x](attachments/x.png)'
   },
+  // A table row is one line, so a backslash ending it is the last cell's text,
+  // which the hard-break mask took.
+  {
+    name: 'header row ending in a backslash',
+    markdown: '| a \\\n|---|\n| b |',
+    canonical: '| a \\\\ |\n| ---- |\n| b    |'
+  },
+  {
+    name: 'body row ending in a backslash',
+    markdown: '| a |\n|---|\n| b \\\n| c |',
+    canonical: '| a    |\n| ---- |\n| b \\\\ |\n| c    |'
+  },
   // A blank line ending a note came back one line longer on every write: the
   // writer spelled a trailing gap like a gap between two blocks.
   { name: 'blank line ending a note', markdown: 'Hello\n\n' },
