@@ -55,8 +55,10 @@ export function splitMarkdownPreservingBlanks(markdown: string): MarkdownSegment
  * Content segments are joined by `\n\n` (standard paragraph break) plus
  * N extra `\n` characters for each gap between them.
  *
- * Round-trip guarantee: `assemble(split(md)) === md` for all well-formed
- * markdown where extra blank lines only appear outside code fences.
+ * A gap ending the note is one newline shorter: the seed reads each newline
+ * after the last block's own as one empty paragraph, so `Hello\n\n` is one.
+ * Spelled like a gap between blocks, a note ending in a blank line came back
+ * one line longer on every write.
  */
 export function assembleMarkdownWithBlanks(segments: MarkdownSegment[]): string {
   if (segments.length === 0) return ''
@@ -64,7 +66,7 @@ export function assembleMarkdownWithBlanks(segments: MarkdownSegment[]): string 
   let result = ''
   let prevWasContent = false
 
-  for (const seg of segments) {
+  for (const [index, seg] of segments.entries()) {
     if (seg.type === 'content') {
       if (prevWasContent) {
         result += '\n\n'
@@ -72,11 +74,8 @@ export function assembleMarkdownWithBlanks(segments: MarkdownSegment[]): string 
       result += seg.text
       prevWasContent = true
     } else {
-      if (prevWasContent) {
-        result += '\n\n' + '\n'.repeat(seg.extraLines)
-      } else {
-        result += '\n\n' + '\n'.repeat(seg.extraLines)
-      }
+      const last = index === segments.length - 1
+      result += (last ? '\n' : '\n\n') + '\n'.repeat(seg.extraLines)
       prevWasContent = false
     }
   }

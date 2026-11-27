@@ -286,8 +286,9 @@ describe('assembleMarkdownWithBlanks', () => {
     // #when
     const result = assembleMarkdownWithBlanks(segments)
 
-    // #then
-    expect(result).toBe('Hello\n\n\n\n')
+    // #then — one newline per empty paragraph after the block's own, as the
+    // seed reads them (vector 'edge: two trailing newlines')
+    expect(result).toBe('Hello\n\n\n')
   })
 
   it('returns empty string for empty segments', () => {

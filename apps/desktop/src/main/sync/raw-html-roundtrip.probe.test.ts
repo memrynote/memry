@@ -95,14 +95,14 @@ const HTML_ONLY_BODY: Probe[] = [
   {
     name: '<iframe> embed',
     markdown: '<iframe src="https://example.com"></iframe>',
-    pass1: '\n\n\n',
+    pass1: '\n\n',
     pass2: ''
   },
   { name: '<video> embed', markdown: '<video src="a.mp4" controls></video>', pass1: '![](a.mp4)' },
   { name: 'raw <img>', markdown: '<img src="a.png" alt="A">', pass1: '![A](a.png)' },
   { name: '<hr /> self-closing', markdown: '<hr />', pass1: '***' },
   { name: '<br> alone on a line', markdown: '<br>', pass1: '' },
-  { name: '<script> block', markdown: '<script>alert(1)</script>', pass1: '\n\n\n', pass2: '' }
+  { name: '<script> block', markdown: '<script>alert(1)</script>', pass1: '\n\n', pass2: '' }
 ]
 
 /** With markdown around it, the tags go and the inner text stays. */
