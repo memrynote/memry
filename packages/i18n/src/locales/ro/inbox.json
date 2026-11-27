@@ -579,7 +579,10 @@
       "journalOff": "Jurnalul este dezactivat în Setări.",
       "sendFailed": "Nu s-a putut trimite sticky-ul.",
       "undoExpired": "Este prea târziu pentru a anula.",
-      "undoFailed": "Nu s-a putut anula trimiterea."
+      "undoFailed": "Nu s-a putut anula trimiterea.",
+      "journalBusy": "Intrarea de azi din jurnal încă se salvează. Încearcă din nou peste un moment.",
+      "folderExcluded": "Folderul Sticky este exclus. Scoate-l din folderele excluse din Setări ca să poți trimite notițe.",
+      "projectMissing": "Proiectul acestei sarcini nu există. Alege un proiect implicit în Setări sau trimite-o ca notiță."
     },
     "inputLabel": "Text sticky",
     "dismissError": "Închide"

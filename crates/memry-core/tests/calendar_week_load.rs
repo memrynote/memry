@@ -54,6 +54,7 @@ fn a_week_with_200_items_reads_in_one_fast_query() {
         start_at: "2026-09-28T00:00:00.000Z".into(),
         end_at: "2026-10-05T00:00:00.000Z".into(),
         include_unselected_sources: false,
+        include_completed_tasks: false,
         include_external: true,
         external_providers: None,
         enabled_property_names: vec![],

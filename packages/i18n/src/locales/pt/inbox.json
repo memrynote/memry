@@ -579,7 +579,10 @@
       "journalOff": "O diário está desativado em Configurações.",
       "sendFailed": "Não foi possível enviar o sticky.",
       "undoExpired": "É tarde demais para desfazer.",
-      "undoFailed": "Não foi possível desfazer o envio."
+      "undoFailed": "Não foi possível desfazer o envio.",
+      "journalBusy": "A entrada de hoje do diário ainda está sendo salva. Tente novamente em um instante.",
+      "folderExcluded": "A pasta Sticky está excluída. Remova-a das pastas excluídas em Configurações para enviar notas.",
+      "projectMissing": "O projeto desta tarefa não existe. Escolha um projeto padrão em Configurações ou envie como nota."
     },
     "inputLabel": "Texto do sticky",
     "dismissError": "Dispensar"

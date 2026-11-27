@@ -171,6 +171,10 @@ vi.mock('@/services/notes-service', () => ({
   notesService: { create: (...args: unknown[]) => createNote(...args) }
 }))
 
+vi.mock('@/services/sticky-service', () => ({
+  stickyService: { onOpenTargetRequested: () => () => {} }
+}))
+
 vi.mock('@/hooks', () => ({
   useMouseNavButtons: vi.fn(),
   useChordShortcuts: () => true,

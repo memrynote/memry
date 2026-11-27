@@ -16,6 +16,9 @@ macro_rules! with_sticky_commands {
             crate::commands::stickies::sticky_save_draft,
             crate::commands::stickies::sticky_tuck,
             crate::commands::stickies::sticky_unfold,
+            crate::commands::sticky_send::sticky_open_target,
+            crate::commands::sticky_send::sticky_send,
+            crate::commands::sticky_send::sticky_undo_send,
         ])
     };
 }
@@ -25,6 +28,7 @@ macro_rules! with_sticky_events {
         $collect![
             $($events)*
             crate::events::StickyDraftsChangedEvent,
+            crate::events::StickyOpenTargetRequestedEvent,
         ]
     };
 }

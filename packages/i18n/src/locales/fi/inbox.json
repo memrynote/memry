@@ -579,7 +579,10 @@
       "journalOff": "Päiväkirja on poistettu käytöstä asetuksissa.",
       "sendFailed": "Tarraa ei voitu lähettää.",
       "undoExpired": "Kumoaminen ei ole enää mahdollista.",
-      "undoFailed": "Lähetystä ei voitu kumota."
+      "undoFailed": "Lähetystä ei voitu kumota.",
+      "journalBusy": "Tämän päivän päiväkirjamerkintää tallennetaan vielä. Yritä hetken päästä uudelleen.",
+      "folderExcluded": "Sticky-kansio on suljettu pois. Poista se asetuksissa pois suljettujen kansioiden joukosta, jotta voit lähettää muistiinpanoja.",
+      "projectMissing": "Tämän tehtävän projektia ei ole olemassa. Valitse oletusprojekti asetuksissa tai lähetä tämä muistiinpanona."
     },
     "inputLabel": "Tarran teksti",
     "dismissError": "Sulje"
