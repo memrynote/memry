@@ -20,9 +20,11 @@ use crate::api::errors::StorageError;
 use crate::domain::desktop_records::{live, tombstone};
 use crate::domain::notes::{failed, insert_local, next_clock, object};
 use crate::domain::saved_filters::mint_id;
+use crate::storage::nested_tx;
 use crate::storage::repositories::schema::Object;
 use crate::storage::repositories::{Change, StoredPayload, sync_items};
 use crate::sync::outbox;
+use crate::sync::server_vault::RecordVault;
 
 use super::folder_paths::normalize_folder;
 use super::{CANVAS_SCENE_SYNC_CAP_BYTES, Canvas, ITEM_TYPE, NewCanvas, canonical_scene};
@@ -69,6 +71,22 @@ pub struct CanvasEdit<'a> {
     pub expected_updated_at: Option<i64>,
 }
 
+/// What a copy carries besides the source's folder and icon.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct CanvasCopy<'a> {
+    pub title: Option<&'a str>,
+    /// The id to create it under; `None` mints one (see [`NewCanvas::id`]).
+    pub id: Option<&'a str>,
+    /// The scene to copy; `None` copies the source's. Desktop copies its
+    /// file's scene, which can be newer than the payload's.
+    pub scene: Option<&'a str>,
+}
+
+/// A new canvas id, the shape every canvas id has (`generateId`).
+pub fn new_id() -> String {
+    mint_id()
+}
+
 /// The outcome of [`update`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Updated {
@@ -103,24 +121,31 @@ pub fn get(conn: &Connection, canvas_id: &str) -> Result<Option<Canvas>, Storage
     Ok(Some(canvas))
 }
 
-/// Every live canvas of the vault, most recently changed first, without
-/// scenes (`listCanvases`). A payload that named no vault lists in every one.
+/// Every live canvas of the vault whose local id is `vault_id`, most recently
+/// changed first, without scenes (`listCanvases`): every one once the vault is
+/// bound ([`RecordVault::lists_every_record`]), else those stating its local id.
+/// A payload that named no vault lists in every one.
 pub fn list(conn: &Connection, vault_id: &str) -> Result<Vec<Canvas>, StorageError> {
+    let vault = RecordVault::read(conn, vault_id)?;
     let mut statement = conn
         .prepare_cached(&format!(
             "SELECT {COLUMNS} FROM canvases c
-             WHERE c.vault_id IN (?1, '') AND c.deleted_at IS NULL
+             WHERE (?3 OR c.vault_id IN (?1, ?2, '')) AND c.deleted_at IS NULL
              ORDER BY c.updated_at DESC, c.id"
         ))
         .map_err(failed)?;
     statement
-        .query_map([vault_id], read_row)
+        .query_map(
+            params![vault.stamp(), vault.local(), vault.lists_every_record()],
+            read_row,
+        )
         .map_err(failed)?
         .collect::<Result<_, _>>()
         .map_err(failed)
 }
 
-/// Creates a canvas, queued for push unless its scene is over the cap.
+/// Creates a canvas, queued for push unless its scene is over the cap. It
+/// states the [`RecordVault`] stamp of the vault whose local id is `vault_id`.
 pub fn create(
     conn: &Connection,
     canvas: &NewCanvas<'_>,
@@ -133,12 +158,13 @@ pub fn create(
             what: "a canvas owner is a note id, not an empty string".to_owned(),
         });
     }
+    let id = chosen_id(canvas.id)?;
     let folder = normalize_folder(canvas.folder)?;
     let scene = canonical_scene(canvas.scene.unwrap_or(""))?;
-    let id = mint_id();
+    let vault = RecordVault::read(conn, vault_id)?;
     let payload = object(json!({
         "id": id,
-        "vaultId": vault_id,
+        "vaultId": vault.stamp(),
         "title": canvas.title,
         "scene": scene,
         "folder": folder,
@@ -147,7 +173,7 @@ pub fn create(
         "clock": next_clock(&Object::new(), device_id)?,
         "deletedAt": null,
     }));
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     insert_local(&tx, ITEM_TYPE, &id, payload, now_ms)?;
     commit(tx, &id, &scene, now_ms)
 }
@@ -162,7 +188,7 @@ pub fn update(
 ) -> Result<Updated, StorageError> {
     let folder = edit.folder.map(normalize_folder).transpose()?;
     let scene = edit.scene.map(canonical_scene).transpose()?;
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let stored = live(&tx, ITEM_TYPE, canvas_id, "canvas")?;
     if let Some(expected) = edit.expected_updated_at {
         let updated_at: Option<i64> = tx
@@ -216,54 +242,45 @@ pub fn delete(
     if get(conn, canvas_id)?.is_none() {
         return Ok(false);
     }
-    outbox::commit(
-        conn,
-        &outbox::Change::delete(ITEM_TYPE, canvas_id),
-        now_ms,
-        |tx| {
-            let stored = live(tx, ITEM_TYPE, canvas_id, "canvas")?;
-            let changes = vec![
-                ("deletedAt", Change::set(now_ms)),
-                ("scene", Change::Remove),
-            ];
-            tombstone(
-                tx, ITEM_TYPE, canvas_id, &stored, changes, device_id, now_ms,
-            )
-        },
-    )?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
+    tombstone_in(&tx, canvas_id, device_id, now_ms)?;
+    tx.commit().map_err(failed)?;
     Ok(true)
 }
 
 /// Copies a live canvas beside the original (`duplicateCanvas`): same scene,
-/// folder and icon, never owned by a note, titled `title` (the shell names it
-/// after the file it allocates). Its `canvas_assets` rows are copied in the
+/// folder and icon, never owned by a note, titled `copy.title` (the shell
+/// names it after the file it allocates). Its `canvas_assets` rows are copied in the
 /// same transaction: asset GC frees content no other canvas references, so a
 /// copy without them would lose its images when the original next saves.
 /// `None` when the source is gone.
 pub fn duplicate(
     conn: &Connection,
     source_id: &str,
-    title: Option<&str>,
+    copy: &CanvasCopy<'_>,
     vault_id: &str,
     device_id: &str,
     now_ms: i64,
 ) -> Result<Option<Saved>, StorageError> {
+    let id = chosen_id(copy.id)?;
+    let scene = copy.scene.map(canonical_scene).transpose()?;
     let Some(source) = get(conn, source_id)? else {
         return Ok(None);
     };
-    let id = mint_id();
+    let scene = scene.unwrap_or(source.scene);
+    let vault = RecordVault::read(conn, vault_id)?;
     let payload = object(json!({
         "id": id,
-        "vaultId": vault_id,
-        "title": title,
-        "scene": source.scene,
+        "vaultId": vault.stamp(),
+        "title": copy.title,
+        "scene": scene,
         "folder": source.folder,
         "icon": source.icon,
         "ownerNoteId": null,
         "clock": next_clock(&Object::new(), device_id)?,
         "deletedAt": null,
     }));
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     insert_local(&tx, ITEM_TYPE, &id, payload, now_ms)?;
     tx.execute(
         "INSERT OR IGNORE INTO canvas_assets (
@@ -276,12 +293,93 @@ pub fn duplicate(
         params![source_id, id],
     )
     .map_err(failed)?;
-    commit(tx, &id, &source.scene, now_ms).map(Some)
+    commit(tx, &id, &scene, now_ms).map(Some)
+}
+
+/// The id the shell picked, or a new one.
+fn chosen_id(id: Option<&str>) -> Result<String, StorageError> {
+    match id {
+        Some("") => Err(StorageError::Invalid {
+            what: "a canvas id is not an empty string".to_owned(),
+        }),
+        Some(id) => Ok(id.to_owned()),
+        None => Ok(mint_id()),
+    }
+}
+
+/// Files a live canvas under `folder` (already canonical, `None` the root)
+/// inside a transaction the caller holds: ticks its clock and queues it
+/// unless its scene is over the cap. A folder move or rename does this for
+/// each canvas it carries (`relocateFolder`).
+pub(crate) fn set_folder_in(
+    tx: &Connection,
+    canvas_id: &str,
+    folder: Option<&str>,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<SyncHold, StorageError> {
+    let stored = live(tx, ITEM_TYPE, canvas_id, "canvas")?;
+    let changes = [
+        ("folder", Change::Set(json!(folder))),
+        (
+            "clock",
+            Change::Set(next_clock(stored.object(), device_id)?),
+        ),
+    ];
+    sync_items::apply_local_edit_in(tx, ITEM_TYPE, canvas_id, &changes, now_ms)?;
+    let sync = sync_hold(scene_of(stored.object()));
+    if sync == SyncHold::Queued {
+        outbox::enqueue(tx, &outbox::Change::upsert(ITEM_TYPE, canvas_id), now_ms)?;
+    }
+    Ok(sync)
+}
+
+/// [`delete`] of a canvas known to be live, inside a transaction the caller
+/// holds, with its outbox row.
+pub(crate) fn tombstone_in(
+    tx: &Connection,
+    canvas_id: &str,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<(), StorageError> {
+    let stored = live(tx, ITEM_TYPE, canvas_id, "canvas")?;
+    let changes = vec![
+        ("deletedAt", Change::set(now_ms)),
+        ("scene", Change::Remove),
+    ];
+    tombstone(
+        tx, ITEM_TYPE, canvas_id, &stored, changes, device_id, now_ms,
+    )?;
+    outbox::enqueue(tx, &outbox::Change::delete(ITEM_TYPE, canvas_id), now_ms)?;
+    Ok(())
+}
+
+/// The id and folder of every live canvas of the vault, read without scenes:
+/// the canvases [`list`] lists.
+pub(crate) fn placements(
+    conn: &Connection,
+    vault_id: &str,
+) -> Result<Vec<(String, Option<String>)>, StorageError> {
+    let vault = RecordVault::read(conn, vault_id)?;
+    let mut statement = conn
+        .prepare_cached(
+            "SELECT id, folder FROM canvases
+             WHERE (?3 OR vault_id IN (?1, ?2, '')) AND deleted_at IS NULL ORDER BY id",
+        )
+        .map_err(failed)?;
+    statement
+        .query_map(
+            params![vault.stamp(), vault.local(), vault.lists_every_record()],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .map_err(failed)?
+        .collect::<Result<_, _>>()
+        .map_err(failed)
 }
 
 /// Queues the canvas when `scene` fits the cap, commits, and reads it back.
 fn commit(
-    tx: rusqlite::Transaction<'_>,
+    tx: nested_tx::NestedTx<'_>,
     canvas_id: &str,
     scene: &str,
     now_ms: i64,
@@ -322,3 +420,6 @@ fn scene_of(payload: &Object) -> &str {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod shell_tests;

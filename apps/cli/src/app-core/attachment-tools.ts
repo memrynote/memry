@@ -16,7 +16,14 @@ import {
   type AttachmentsService
 } from './note-files.ts'
 import type { NotesService } from './notes.ts'
-import { ATTACHMENTS_DIR, normalizePath, safeFilename } from './paths.ts'
+import {
+  ATTACHMENTS_DIR,
+  isPlainSegment,
+  normalizePath,
+  safeFilename,
+  vaultFile,
+  vaultFolder
+} from './paths.ts'
 
 export interface VaultAttachmentEntry {
   ownerNoteId: string
@@ -52,16 +59,6 @@ const EXTENSION_BY_MIME: Record<string, string> = {
   'image/png': 'png',
   'image/webp': 'webp',
   'image/gif': 'gif'
-}
-
-function isPlainSegment(value: string): boolean {
-  return (
-    value.length > 0 &&
-    !value.includes('/') &&
-    !value.includes('\\') &&
-    value !== '.' &&
-    value !== '..'
-  )
 }
 
 /** The stored name minus its id prefix, which is the sanitized original name. */
@@ -151,7 +148,10 @@ export function createAttachmentToolsService({
 
       // Only files this note owns are renameable: a file under another note's
       // folder has references this note cannot rewrite.
-      const dir = path.join(vaultPath, ATTACHMENTS_DIR, note.id)
+      const dir = path.join(
+        vaultPath,
+        await vaultFolder(vaultPath, `${ATTACHMENTS_DIR}/${note.id}`, 'rename attachment')
+      )
       if (!existsSync(path.join(dir, current))) {
         throw new Error(`Attachment not found for note ${note.id}: ${current}`)
       }
@@ -243,7 +243,11 @@ export function createAttachmentToolsService({
       if (!isPlainSegment(ownerNoteId) || !isPlainSegment(filename)) {
         throw new Error('Invalid attachment reference')
       }
-      const absolutePath = path.join(vaultPath, ATTACHMENTS_DIR, ownerNoteId, filename)
+      const absolutePath = await vaultFile(
+        vaultPath,
+        `${ATTACHMENTS_DIR}/${ownerNoteId}/${filename}`,
+        'attach existing attachment'
+      )
       const stats = await fs.stat(absolutePath).catch(() => null)
       if (!stats?.isFile()) throw new Error('Attachment file not found on disk')
 

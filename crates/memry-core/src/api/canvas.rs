@@ -9,7 +9,7 @@ use std::sync::Arc;
 
 use crate::api::errors::{AuthError, StorageError};
 use crate::crypto::keys;
-use crate::domain::canvas::{self, CanvasEdit, NewCanvas, Updated};
+use crate::domain::canvas::{self, CanvasEdit, NewCanvas, SceneWrite, Updated};
 use crate::seams::secure_store::{SecureStore, SecureStoreKey};
 use crate::storage::Db;
 
@@ -45,6 +45,29 @@ impl From<canvas::Canvas> for CanvasRecord {
     }
 }
 
+/// What [`Canvases::set_scene_expecting`] did.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum CanvasSceneWrite {
+    /// The new scene is stored.
+    Written { canvas: CanvasRecord },
+    /// The stored scene changed since `expected` was read (a pull landed), so
+    /// nothing was written. Re-apply the edit to `current` and write again.
+    Stale { current: CanvasRecord },
+}
+
+impl From<SceneWrite> for CanvasSceneWrite {
+    fn from(write: SceneWrite) -> Self {
+        match write {
+            SceneWrite::Written(canvas) => Self::Written {
+                canvas: canvas.into(),
+            },
+            SceneWrite::Stale(current) => Self::Stale {
+                current: current.into(),
+            },
+        }
+    }
+}
+
 /// The canvas surface over one opened vault.
 #[derive(uniffi::Object)]
 pub struct Canvases {
@@ -76,6 +99,22 @@ impl Canvases {
             vault_id,
             device_id: keys::local_device_id_hex(public)?,
         })
+    }
+}
+
+/// Desktop's file service writes through [`crate::domain::canvas`] with these,
+/// so the `.excalidraw` file and the record change in one writer call.
+impl Canvases {
+    pub fn db(&self) -> &Db {
+        &self.db
+    }
+
+    pub fn vault_id(&self) -> &str {
+        &self.vault_id
+    }
+
+    pub fn device_id(&self) -> &str {
+        &self.device_id
     }
 }
 
@@ -123,6 +162,38 @@ impl Canvases {
                     what: format!("canvas {id} reported a conflict it was not asked to check"),
                 }),
             }
+        })
+    }
+
+    /// Replaces a canvas's scene only if the stored scene is still `expected`,
+    /// the `scene` of the record the edit was built on. Checked and written in
+    /// one transaction, so a pull between the caller's read and this write is
+    /// reported as `Stale` instead of being overwritten. Fails with `NotFound`
+    /// for a deleted canvas.
+    pub fn set_scene_expecting(
+        &self,
+        id: String,
+        scene: String,
+        expected: String,
+    ) -> Result<CanvasSceneWrite, StorageError> {
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            Ok(
+                canvas::set_scene_expecting(conn, &id, &scene, &expected, &device_id, now_ms())?
+                    .into(),
+            )
+        })
+    }
+
+    /// Every live canvas owned by the note `owner_note_id`, ordered by id: its
+    /// whiteboard and any "(conflict copy)" a pull made of it, which keeps the
+    /// owner. Empty when the note owns none.
+    pub fn list(&self, owner_note_id: String) -> Result<Vec<CanvasRecord>, StorageError> {
+        self.db.call_blocking(move |conn| {
+            Ok(canvas::list_owned_by(conn, &owner_note_id)?
+                .into_iter()
+                .map(CanvasRecord::from)
+                .collect())
         })
     }
 

@@ -223,3 +223,11 @@ enum NoteCoverUpload {
         return "\(format.string(from: date).replacingOccurrences(of: ":", with: "-"))-\(suffix)"
     }
 }
+
+extension NoteReadViewModel {
+    /// The loaded page shows a cover, which runs under the top bar.
+    var hasCover: Bool {
+        guard case .ready = phase else { return false }
+        return NoteCoverValue.of(metadata?.coverJson) != nil
+    }
+}

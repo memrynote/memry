@@ -11,7 +11,10 @@
 //!   ([`Precondition::Save`]), inside the day's own turn (its record id, the turn every other
 //!   app edit of the day takes; the date's turn is always taken first): its body when the text
 //!   changed (trimmed, as `serializeJournalEntry` writes it) with `date` set in place as the
-//!   write-back sets it, and its properties at the top level when the update names them, every
+//!   write-back sets it, its properties at the top level when the update names them, and its
+//!   `tags:` when the update names tags (given or inline) and the day's next tags differ from
+//!   them (case-insensitive), as Electron's `composeJournalEntry` writes `tags ?? existing.tags`
+//!   (#5509, reversing #3530's "journal tags are never written back to the file"), every
 //!   other key keeping its lines. A new body follows the block with one line end, as
 //!   `joinBlockAndBody` writes it; a body equal once trimmed keeps its bytes. The seam feeds
 //!   the body to the day's document, keeps a file the run did not write (an outside edit, fed
@@ -21,10 +24,10 @@
 //!   day;
 //! - the record, once the file holds the edit (the seam's `landed`, under the lane and before
 //!   the fact; a refused write leaves it, and a day deleted meanwhile stays deleted): its tags
-//!   when they changed (the file's `tags:` are the author's bytes, never written: decision on
-//!   #3530), and the property keys the file edit set or dropped (`edited_values`, as the property
-//!   panel's writer mirrors them). Every other key keeps the record's value: one a pull brought
-//!   in is not in the file yet (13k-4). A tags-only update writes the record alone.
+//!   when they changed, and the property keys the file edit set or dropped (`edited_values`, as
+//!   the property panel's writer mirrors them). Every other key keeps the record's value: one a
+//!   pull brought in is not in the file yet (13k-4). A file whose frontmatter is not a map keeps
+//!   its block; a tag edit then reaches the record alone.
 //!
 //! A day's tags are the given list, or the record's, with the `#tags` typed into or deleted
 //! from the body applied on top (`inlineTags`): a plain tag joins or leaves the list, a tag
@@ -42,6 +45,7 @@ use std::sync::PoisonError;
 
 use memry_core::domain::header_tags::{self, EditSource, Existing, HeaderTagEdit, Update};
 use memry_core::domain::journal::valid_date;
+use memry_core::domain::note_stats::header_tags as block_tags;
 use memry_core::domain::properties::RESERVED_DAY_KEYS;
 use memry_core::markdown::frontmatter::{
     Eol, ParsedMarkdownNote, YamlMap, YamlValue, json_to_yaml, parse_markdown_note,
@@ -50,7 +54,7 @@ use memry_core::markdown::frontmatter::{
 use memry_core::markdown::shared::markdown_class::MarkdownClassThresholds;
 use serde_json::{Map, Value};
 
-use super::write::{NewDay, answer, order_key};
+use super::write::{NewDay, order_key};
 use super::{JournalEntryView, SCOPE, entry, is_reserved_day_key};
 use crate::notes::error::NotesError;
 use crate::notes::frontmatter::{is_reserved_yaml, user_properties};
@@ -160,25 +164,15 @@ impl NotesService {
             }
             Ok(())
         };
-        if update.content.is_none() && update.properties.is_none() {
-            // No file edit, so no `AppEdit` to refuse a locked day: the record is the edit.
-            if open
-                .vault
-                .locks()
-                .is_note_locked(&stamp.id, stamp.path.as_deref())?
-            {
-                return Err(NotesError::EditKept(Kept::Locked));
-            }
-            if stamp
-                .path
-                .as_deref()
-                .is_some_and(|path| open.vault.excluded().covers(path))
-            {
-                return Err(NotesError::EditKept(Kept::Excluded));
-            }
-            mirror_tags()?;
-            return answer(open, journal, date);
-        }
+        // Read as the save reads the file, after the seam took an outside edit's tags in.
+        let file_tags = || -> Result<Vec<String>, NotesError> {
+            let current = journal
+                .stamp(date)?
+                .map(|stamp| stamp.tags)
+                .unwrap_or_default();
+            next_tags(open, &current, &update)
+        };
+        let names_tags = update.tags.is_some() || update.inline_tags.is_some();
         let properties = update.properties.as_ref().map(|given| {
             let given = given.iter().fold(YamlMap::new(), |mut map, (name, value)| {
                 map.insert(name.clone(), json_to_yaml(value));
@@ -190,6 +184,7 @@ impl NotesService {
             date,
             content: update.content.as_deref(),
             properties: properties.as_ref(),
+            tags: names_tags.then_some(&file_tags as &dyn Fn() -> Result<Vec<String>, NotesError>),
             mirrored: RefCell::new(None),
         };
         let writer = open.vault.notes_writer(self.store.clone())?;
@@ -230,7 +225,7 @@ impl NotesService {
                 kept => NotesError::DayTextUnwritable(kept_reason(&kept).to_owned()),
             });
         }
-        answer(open, journal, date)
+        self.answer(open, journal, date)
     }
 }
 
@@ -274,6 +269,8 @@ struct FileChange<'a> {
     content: Option<&'a str>,
     /// The given properties, and each defined property's type.
     properties: Option<&'a (YamlMap, HashMap<String, String>)>,
+    /// The day's next tags, when the update names tags.
+    tags: Option<&'a dyn Fn() -> Result<Vec<String>, NotesError>>,
     /// What the record takes once the file holds the text ([`edited_values`]), set by
     /// [`Self::text`] when it changes the properties.
     mirrored: RefCell<Option<EditedValues>>,
@@ -323,20 +320,21 @@ impl FileChange<'_> {
         Ok((output != read).then_some(output))
     }
 
-    /// The block's reading and its next keys when the update changes the file's properties:
-    /// every key that is not a property keeps its place (the legacy nested envelope goes, as
-    /// Electron flattens it), the given properties follow in their order, and `date` says the
-    /// day. Sets what the record takes: the property keys the edit set or dropped, the day's
-    /// own keys left out as a read leaves them out.
+    /// The block's reading and its next keys when the update changes the file's properties or
+    /// tags: when it names properties, every key that is not a property keeps its place (the
+    /// legacy nested envelope goes, as Electron flattens it) and the given properties follow in
+    /// their order; `tags` follow the day's next ones; `date` says the day. Sets what the record
+    /// takes: the property keys the edit set or dropped, the day's own keys left out as a read
+    /// leaves them out.
     fn next_frontmatter(
         &self,
         parsed: &ParsedMarkdownNote,
     ) -> Result<Option<(YamlMap, YamlMap)>, NotesError> {
-        let Some((given, types)) = self.properties else {
+        if self.properties.is_none() && self.tags.is_none() {
             return Ok(None);
-        };
+        }
         let YamlValue::Map(map) = &parsed.frontmatter else {
-            if given.is_empty() {
+            if self.properties.is_none_or(|(given, _)| given.is_empty()) {
                 return Ok(None);
             }
             // A top level that is a list or a scalar is the author's; no key goes into it.
@@ -345,6 +343,26 @@ impl FileChange<'_> {
             ));
         };
         let reading = (**map).clone();
+        let mut next = self.next_properties(&reading)?;
+        if let Some(tags) = self.tags {
+            let tags = tags()?;
+            if folded(&block_tags(&next)) != folded(&tags) {
+                set_tags(&mut next, &tags);
+            }
+        }
+        if next == reading {
+            return Ok(None);
+        }
+        set_date(&mut next, self.date);
+        Ok(Some((reading, next)))
+    }
+
+    /// `reading` with the given properties in place of its own, when the update names them;
+    /// sets what the record takes.
+    fn next_properties(&self, reading: &YamlMap) -> Result<YamlMap, NotesError> {
+        let Some((given, types)) = self.properties else {
+            return Ok(reading.clone());
+        };
         let mut next = YamlMap::new();
         for (name, value) in reading.iter() {
             let stays = name != "properties"
@@ -356,15 +374,29 @@ impl FileChange<'_> {
         for (name, value) in given.iter() {
             next.insert(name.to_owned(), value.clone());
         }
-        set_date(&mut next, self.date);
-        let (mut before, mut after) = edited_values(&reading, &next, types);
+        let (mut before, mut after) = edited_values(reading, &next, types);
         before.retain(|name, _| !RESERVED_DAY_KEYS.contains(&name.as_str()));
         after.retain(|name, _| !RESERVED_DAY_KEYS.contains(&name.as_str()));
         if before == after {
-            return Ok(None);
+            return Ok(reading.clone());
         }
         *self.mirrored.borrow_mut() = Some((before, after));
-        Ok(Some((reading, next)))
+        Ok(next)
+    }
+}
+
+fn folded(tags: &[String]) -> HashSet<String> {
+    tags.iter().map(|tag| tag.to_lowercase()).collect()
+}
+
+/// `tags` in the block, none when empty (`composeJournalEntry` writes `tags` only when there
+/// are some).
+fn set_tags(map: &mut YamlMap, tags: &[String]) {
+    if tags.is_empty() {
+        map.remove("tags");
+    } else {
+        let items = tags.iter().cloned().map(YamlValue::String).collect();
+        map.insert("tags".to_owned(), YamlValue::seq(items));
     }
 }
 

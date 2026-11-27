@@ -155,7 +155,6 @@ vi.mock('@/services/notes-service', () => {
     onNoteCreated: subscribe('created'),
     onNoteUpdated: subscribe('updated'),
     onNoteRenamed: subscribe('renamed'),
-    onNoteExternalChange: subscribe('external'),
     onNoteLinksChanged: subscribe('linksChanged')
   }
 })

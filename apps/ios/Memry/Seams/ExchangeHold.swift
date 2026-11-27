@@ -4,11 +4,11 @@ import UIKit
 /// Keeps the app running until an HTTP exchange it started is answered (#4156).
 ///
 /// The server rotates the refresh token on every `POST /auth/refresh` and
-/// treats a retired token presented more than ten seconds later as reuse,
+/// treats a retired token presented more than fifteen minutes later as reuse,
 /// which revokes every token the device holds (chapter 02 §2.9). When iOS
 /// suspends the app between the server committing a rotation and the response
-/// arriving, the keychain keeps the retired token and the next refresh signs
-/// the user out. A background task lets the exchange finish, and the core
+/// arriving, the keychain keeps the retired token, and a refresh after a longer
+/// suspension signs the user out. A background task lets the exchange finish, and the core
 /// store the new pair, before the app is suspended.
 struct ExchangeHold: Sendable {
     /// Begins a hold and returns the call that ends it.
@@ -20,8 +20,9 @@ struct ExchangeHold: Sendable {
     /// main actor and crosses into the core executor as a value.
     /// `beginBackgroundTask` and `endBackgroundTask` are nonisolated, so the
     /// transport calls them from whatever thread the core sends on.
+    /// `name` labels the background task, for the system's debug output.
     @MainActor
-    static func application() -> ExchangeHold {
+    static func application(named name: String = "sync-exchange") -> ExchangeHold {
         let application = UIApplication.shared
         return ExchangeHold {
             let held = OSAllocatedUnfairLock(initialState: UIBackgroundTaskIdentifier.invalid)
@@ -33,7 +34,7 @@ struct ExchangeHold: Sendable {
                 }
                 if id != .invalid { application.endBackgroundTask(id) }
             }
-            let id = application.beginBackgroundTask(withName: "sync-exchange", expirationHandler: end)
+            let id = application.beginBackgroundTask(withName: name, expirationHandler: end)
             held.withLock { $0 = id }
             return end
         }

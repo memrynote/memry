@@ -8,6 +8,7 @@
 //! | the Inbox is a project carrying a flag           | §A.4                        |
 //! | an archived project is out unless asked for      | the read surface            |
 //! | a concurrent project merges over the nine fields | chapter 06 §6.7, §6.8       |
+//! | a remote `statuses: null` clears on both branches | chapter 06 §6.7.2 item 3   |
 
 use memry_core::domain::projects;
 use memry_core::domain::tasks::Inbound;
@@ -292,4 +293,58 @@ fn an_absent_nested_array_keeps_the_projected_rows() {
         Ok(())
     })
     .expect("the absent array");
+}
+
+/// Chapter 06 §6.7.2 item 3 through `projects::apply_remote`, the path a pull
+/// takes: a remote `statuses: null` is §13.4's clear on the wholesale branch
+/// (the remote dominates) and on the concurrent one, never an absent key that
+/// keeps the local statuses.
+#[test]
+fn a_remote_null_statuses_clears_on_both_branches() {
+    for (remote_clock, branch) in [
+        (json!({"device-a": 1, "device-b": 1}), "wholesale"),
+        (json!({"device-b": 1}), "concurrent"),
+    ] {
+        let db = open("projects-null-statuses");
+        db.call_blocking(|conn| {
+            apply(
+                conn,
+                "proj-n",
+                json!({
+                    "name": "Native iOS",
+                    "statuses": [{"id": "todo", "name": "Todo", "color": "#888", "position": 0}],
+                    "clock": {"device-a": 1},
+                    "fieldClocks": {"name": {"device-a": 1}}
+                }),
+            );
+            let outcome = projects::apply_remote(
+                conn,
+                &record(
+                    "proj-n",
+                    json!({
+                        "name": "Native iOS",
+                        "statuses": Value::Null,
+                        "clock": remote_clock,
+                        "fieldClocks": {"name": {"device-a": 1}}
+                    }),
+                ),
+                NOW + 1_000,
+            )?;
+            assert_eq!(
+                matches!(outcome, Inbound::Merged { .. }),
+                branch == "concurrent",
+                "{branch}: {outcome:?}"
+            );
+            let left: i64 = conn
+                .query_row(
+                    "SELECT count(*) FROM project_statuses WHERE project_id = 'proj-n'",
+                    [],
+                    |row| row.get(0),
+                )
+                .expect("count the statuses");
+            assert_eq!(left, 0, "{branch}: an explicit null clears");
+            Ok(())
+        })
+        .expect("the null apply");
+    }
 }

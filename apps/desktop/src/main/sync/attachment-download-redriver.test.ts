@@ -17,7 +17,9 @@ const mocks = vi.hoisted(() => {
       attempts: number
     }>,
     shouldAttemptDownload: vi.fn((..._args: unknown[]) => true),
-    markDownloadRequested: vi.fn(),
+    markDownloadRequested: vi.fn((ownerId: string, attachmentId: string) => ({
+      key: `${ownerId}::${attachmentId}`
+    })),
     releaseDownloadAttempt: vi.fn(),
     clearAttachmentDownloadFailure: (_db: unknown, ownerId: string, attachmentId: string) => {
       mocks.purgedRows.push({ ownerId, attachmentId })
@@ -84,7 +86,8 @@ vi.mock('@memry/sync-client/attachment-download-state', () => ({
   listRedrivableDownloadFailures: (db: unknown, now: number, limit: number) =>
     mocks.listRedrivableDownloadFailures(db, now, limit),
   shouldAttemptDownload: (...args: unknown[]) => mocks.shouldAttemptDownload(...args),
-  markDownloadRequested: (...args: unknown[]) => mocks.markDownloadRequested(...args),
+  markDownloadRequested: (ownerId: string, attachmentId: string) =>
+    mocks.markDownloadRequested(ownerId, attachmentId),
   releaseDownloadAttempt: (...args: unknown[]) => mocks.releaseDownloadAttempt(...args),
   clearAttachmentDownloadFailure: (db: unknown, ownerId: string, attachmentId: string) =>
     mocks.clearAttachmentDownloadFailure(db, ownerId, attachmentId)
@@ -92,6 +95,11 @@ vi.mock('@memry/sync-client/attachment-download-state', () => ({
 
 vi.mock('./attachment-download-settings', () => ({
   isAttachmentAutoDownloadEnabled: () => mocks.autoDownloadEnabled
+}))
+
+const askForHeldOwnBytes = vi.hoisted(() => vi.fn((..._args: unknown[]) => 0))
+vi.mock('../vault/case-twin-file', () => ({
+  askForHeldOwnBytes: (...args: unknown[]) => askForHeldOwnBytes(...args)
 }))
 
 import {
@@ -109,7 +117,7 @@ describe('attachment download re-driver', () => {
     mocks.redrivableRows = []
     mocks.purgedRows.length = 0
     mocks.shouldAttemptDownload.mockReset().mockReturnValue(true)
-    mocks.markDownloadRequested.mockReset()
+    mocks.markDownloadRequested.mockClear()
     mocks.releaseDownloadAttempt.mockReset()
     mocks.getNoteMetadataById.mockReset()
     mocks.getNoteMetadataById.mockImplementation((_db: unknown, id: string) => ({
@@ -258,6 +266,7 @@ describe('attachment download re-driver', () => {
 
     mocks.autoDownloadEnabled = false
     expect(await redriveAttachmentDownloads()).toEqual({ requested: 0, skipped: 0 })
+    expect(askForHeldOwnBytes).toHaveBeenCalledTimes(1)
 
     mocks.autoDownloadEnabled = true
     mocks.isDatabaseInitialized.mockReturnValue(false)
@@ -271,6 +280,17 @@ describe('attachment download re-driver', () => {
     mocks.vaultPath = { path: '/vault' }
   })
 
+  it('with auto-download off, asks only for the bytes held binary note files wait for', async () => {
+    mocks.redrivableRows = [
+      { ownerId: 'note-1', attachmentId: 'att-a', reason: 'transient', attempts: 1 }
+    ]
+    mocks.autoDownloadEnabled = false
+    askForHeldOwnBytes.mockReturnValueOnce(2)
+
+    expect(await redriveAttachmentDownloads()).toEqual({ requested: 2, skipped: 0 })
+    expect(mocks.emitted).toHaveLength(0)
+  })
+
   it('releases the claim and stops when no listener is registered', async () => {
     mocks.delivered = false
     mocks.redrivableRows = [
@@ -281,7 +301,7 @@ describe('attachment download re-driver', () => {
     const summary = await redriveAttachmentDownloads()
 
     expect(summary).toEqual({ requested: 0, skipped: 0 })
-    expect(mocks.releaseDownloadAttempt).toHaveBeenCalledWith('note-1', 'att-a')
+    expect(mocks.releaseDownloadAttempt).toHaveBeenCalledWith({ key: 'note-1::att-a' })
     // The second row is deliberately not attempted — the runtime is going away.
     expect(mocks.emitted).toHaveLength(1)
   })

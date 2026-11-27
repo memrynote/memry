@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   extractHeadings,
   normalizeInlineContent,
-  normalizeMarkdownHardBreaks,
+  normalizeLoadedMarkdown,
   normalizeTableContent,
   normalizeWikiLinks,
   isDerivedAlias,
@@ -327,9 +327,9 @@ describe('wiki-link utils', () => {
   })
 
   it('normalizes markdown hard breaks outside fenced code blocks', () => {
-    expect(normalizeMarkdownHardBreaks('one\\\ntwo')).toBe('one\ntwo')
-    expect(normalizeMarkdownHardBreaks('```\\\ncode\\\n```')).toBe('```\\\ncode\\\n```')
-    expect(normalizeMarkdownHardBreaks('keep\\\\\nnext')).toBe('keep\\\\\nnext')
+    expect(normalizeLoadedMarkdown('one\\\ntwo')).toBe('one\ntwo')
+    expect(normalizeLoadedMarkdown('```\\\ncode\\\n```')).toBe('```\\\ncode\\\n```')
+    expect(normalizeLoadedMarkdown('keep\\\\\nnext')).toBe('keep\\\\\nnext')
   })
 })
 

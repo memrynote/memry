@@ -70,12 +70,12 @@ fn a_file_over_the_cap_is_refused_and_one_at_the_cap_is_read() {
     let mut at_cap = b"<p>".to_vec();
     at_cap.resize(HTML_TEXT_MAX_BYTES, b'w');
     assert_eq!(
-        read_html_text(&at_cap).map(|text| text.len()),
+        read_html_text_within(&at_cap, &|| false, NO_DEADLINE).map(|text| text.len()),
         Ok(HTML_TEXT_MAX_BYTES - 3)
     );
     at_cap.push(b'w');
     assert_eq!(
-        read_html_text(&at_cap),
+        read_html_text_within(&at_cap, &|| false, NO_DEADLINE),
         Err(HtmlTextError::TooLarge {
             size: HTML_TEXT_MAX_BYTES + 1
         })
@@ -92,7 +92,8 @@ fn nesting_reads_up_to_the_depth_cap_on_a_small_stack() {
     ] {
         let depth = MAX_DEPTH - 3;
         let html = format!("{}deep{}", open.repeat(depth), close.repeat(depth));
-        let text = on_small_stack(move || read_html_text(html.as_bytes()));
+        let text =
+            on_small_stack(move || read_html_text_within(html.as_bytes(), &|| false, NO_DEADLINE));
         assert!(text.expect("read").contains("deep"), "{open}");
     }
 }
@@ -107,7 +108,7 @@ fn deeper_nesting_stops_at_the_depth_cap_on_a_small_stack() {
         let html = format!("{}deep", open.repeat(100_000));
         let (result, steps) = on_small_stack(move || {
             let before = html_steps();
-            let result = read_html_text(html.as_bytes());
+            let result = read_html_text_within(html.as_bytes(), &|| false, NO_DEADLINE);
             (result, html_steps() - before)
         });
         assert_eq!(result, Err(HtmlTextError::TooDeep), "{open}");
@@ -130,7 +131,7 @@ fn moved_subtrees_still_stop_at_the_depth_cap_on_a_small_stack() {
     let read = (MAX_DEPTH / 9 + 1) * cycle.len() + FEED_CHUNK;
     let (result, steps) = on_small_stack(move || {
         let before = html_steps();
-        let result = read_html_text(html.as_bytes());
+        let result = read_html_text_within(html.as_bytes(), &|| false, NO_DEADLINE);
         (result, html_steps() - before)
     });
     assert_eq!(result, Err(HtmlTextError::TooDeep));
@@ -174,10 +175,14 @@ fn an_attribute_flood_stops_at_the_deadline() {
 fn a_stop_ends_the_parse_at_the_next_chunk() {
     let html = "<p>words</p>".repeat(1_000);
     let asked = Cell::new(0_usize);
-    let result = read_html_text_until(html.as_bytes(), &|| {
-        asked.set(asked.get() + 1);
-        asked.get() >= 3
-    });
+    let result = read_html_text_within(
+        html.as_bytes(),
+        &|| {
+            asked.set(asked.get() + 1);
+            asked.get() >= 3
+        },
+        NO_DEADLINE,
+    );
     assert_eq!(result, Err(HtmlTextError::Stopped));
     assert_eq!(asked.get(), 3);
 }
@@ -187,9 +192,13 @@ fn a_stop_ends_the_parse_at_the_next_chunk() {
 fn the_walk_is_linear_in_the_nodes() {
     let html = "<div><p>a <b>b</b> <code>c<br>d</code></p><pre>e</pre></div>".repeat(5_000);
     assert_steps_at_most("html walk", html_steps, 3 * node_budget(html.len()), || {
-        read_html_text(html.as_bytes()).expect("read");
+        read_html_text_within(html.as_bytes(), &|| false, NO_DEADLINE).expect("read");
     });
 }
+
+/// For tests of the node budget: the wall-clock deadline must never be the cap that trips, however
+/// loaded the host. `an_attribute_flood_stops_at_the_deadline` keeps the production guard's test.
+const NO_DEADLINE: Duration = Duration::MAX;
 
 /// Formatting reconstruction clones every open formatting element for each run of text:
 /// 500 distinct `<b>` closed by `</div>` and then 20,000 paragraphs ask for 10 million
@@ -210,7 +219,13 @@ fn formatting_reconstruction_stops_at_the_node_budget() {
         "formatting reconstruction",
         html_steps,
         node_budget(len) * (MAX_DEPTH + 3) + FEED_CHUNK * len / 16,
-        || result = Some(read_html_text(html.as_bytes())),
+        || {
+            result = Some(read_html_text_within(
+                html.as_bytes(),
+                &|| false,
+                NO_DEADLINE,
+            ))
+        },
     );
     assert_eq!(
         result,
@@ -233,7 +248,7 @@ fn the_node_budget_counts_bytes_not_decoded_text() {
     html.extend_from_slice(b"</div>");
     html.extend_from_slice("<p>x</p>".repeat(20_000).as_bytes());
     assert_eq!(
-        read_html_text(&html),
+        read_html_text_within(&html, &|| false, NO_DEADLINE),
         Err(HtmlTextError::TooManyNodes {
             limit: node_budget(html.len())
         })
@@ -269,13 +284,13 @@ proptest! {
 
     #[test]
     fn any_html_reads_within_the_output_bound(html in html_like()) {
-        let text = read_html_text(html.as_bytes()).expect("small input stays within budget");
+        let text = read_html_text_within(html.as_bytes(), &|| false, NO_DEADLINE).expect("small input stays within budget");
         prop_assert!(text.len() <= output_bound(html.len()));
     }
 
     #[test]
     fn any_bytes_read_without_panicking(bytes in prop::collection::vec(any::<u8>(), 0..512)) {
-        if let Ok(text) = read_html_text(&bytes) {
+        if let Ok(text) = read_html_text_within(&bytes, &|| false, NO_DEADLINE) {
             assert_output_bounded("html bytes", bytes.len(), text.len());
         }
     }

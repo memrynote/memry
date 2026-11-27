@@ -94,9 +94,12 @@ export const ChunkHoldReleaseResponseSchema = z.object({
 // returns them, so every shape stays wire-compatible in both directions.
 // ---------------------------------------------------------------------------
 
+/** Most chunk hashes one presign-batch call takes. */
+export const PRESIGN_BATCH_CAP = 1024
+
 /** POST /sync/attachments/presign-batch — download-side URL issuance. */
 export const PresignBatchRequestSchema = z.object({
-  chunkHashes: z.array(ChunkHashSchema).min(1).max(1024)
+  chunkHashes: z.array(ChunkHashSchema).min(1).max(PRESIGN_BATCH_CAP)
 })
 
 export const PresignBatchResponseSchema = z.object({
@@ -104,6 +107,21 @@ export const PresignBatchResponseSchema = z.object({
   urls: z.record(z.string(), z.string()),
   /** Epoch seconds after which every URL in `urls` stops working. */
   expiresAt: z.number()
+})
+
+/** Most attachment ids one `POST /sync/attachments/manifests/batch` takes. */
+export const ATTACHMENT_MANIFEST_BATCH_CAP = 100
+
+/**
+ * POST /sync/attachments/manifests/batch — the stored manifests of up to 100
+ * attachments in one call (#5329). An id is one path segment of the manifest's
+ * R2 key, so it may not contain `/`.
+ */
+export const AttachmentManifestBatchRequestSchema = z.object({
+  attachmentIds: z
+    .array(z.string().regex(/^[^/]{1,128}$/))
+    .min(1)
+    .max(ATTACHMENT_MANIFEST_BATCH_CAP)
 })
 
 /**

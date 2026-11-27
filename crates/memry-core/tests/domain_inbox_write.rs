@@ -709,7 +709,10 @@ fn filing_merges_tags_by_the_tag_fold() {
         )?);
         item.tags = vec!["İş".into(), "ΟΔΟΣ".into()];
         let extra = ["iş".to_owned(), "οδοσ".to_owned(), "INBOX".to_owned()];
-        assert_eq!(filing::merged_tags(&item, &extra), ["İş", "ΟΔΟΣ", "INBOX"]);
+        assert_eq!(
+            filing::merged_tags(&item.tags, &extra),
+            ["İş", "ΟΔΟΣ", "INBOX"]
+        );
         Ok(())
     })
     .expect("merge");

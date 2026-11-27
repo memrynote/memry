@@ -5,10 +5,7 @@ import {
   buildKeytoolListArgs,
   buildOsslsigncodeVerifyArgs,
   buildSmokeDispatchArgs,
-  buildVelopackAssetNames,
-  buildVpkPackArgs,
   clearStepsFrom,
-  collectUploadAssets,
   createReleaseState,
   decideSigningSession,
   decideWorkflowAction,
@@ -17,69 +14,16 @@ import {
   markStepDone,
   parseReleaseMetadata,
   parseReleaseState,
+  payloadZipName,
+  planFinishSteps,
   releaseStepOrder,
-  resolveUnpackedDir,
   selectRunArtifacts,
   selectPreviousFullNupkgAsset,
-  selectPreviousPublishedRelease
+  selectPreviousPublishedRelease,
+  windowsTargets
 } from './velopack-release-utils.mjs'
-import { RETIRED_SETUP_NAME } from './release/vpk-args.mjs'
+import { assetNames, RETIRED_SETUP_NAME } from './release/vpk-args.mjs'
 import { VELOPACK_SETUP_ASSET_NAME } from '../apps/desktop/src/main/installer-handoff-script.ts'
-
-const ciAssetNames = [
-  'Memry-2026.508.1-arm64.dmg',
-  'Memry-2026.508.1-arm64.dmg.blockmap',
-  'Memry-2026.508.1.dmg',
-  'Memry-2026.508.1-mac.zip',
-  'latest-mac.yml',
-  'Memry-2026.508.1-setup.exe',
-  'Memry-2026.508.1-win.zip',
-  'latest.yml',
-  'Memry-2026.508.1.AppImage',
-  'Memry-2026.508.1.deb'
-]
-
-const velopackAssetNames = [
-  'MemryNote-Setup-win-x64.exe',
-  'MemryNote-2026.508.1-full.nupkg',
-  'MemryNote-2026.508.1-delta.nupkg',
-  'releases.win.json',
-  'RELEASES',
-  'assets.win.json'
-]
-
-const packOptions = {
-  iconPath: 'build/icon.ico',
-  outputDir: 'dist/velopack',
-  packDir: 'dist/win-unpacked',
-  packVersion: '2026.508.1'
-}
-
-const baseVpkArgs = [
-  '[win]',
-  'pack',
-  '--runtime',
-  'win-x64',
-  '--packId',
-  'MemryNote',
-  '--packVersion',
-  '2026.508.1',
-  '--packDir',
-  'dist/win-unpacked',
-  '--mainExe',
-  'Memrynote.exe',
-  '--packTitle',
-  'MemryNote',
-  '--packAuthors',
-  'memrynote',
-  '--icon',
-  'build/icon.ico',
-  '--outputDir',
-  'dist/velopack',
-  '--noPortable',
-  '--exclude',
-  String.raw`(\.pdb$)|(prebuilds[\\/](?!win32-x64[\\/]))`
-]
 
 describe('release state', () => {
   it('lists the pipeline steps in execution order', () => {
@@ -87,8 +31,8 @@ describe('release state', () => {
       'dispatch',
       'build',
       'download',
-      'sign-nsis',
-      'pack',
+      'pack-windows',
+      'bridge',
       'verify',
       'upload',
       'publish'
@@ -101,6 +45,7 @@ describe('release state', () => {
       completed: [],
       draftCreatedAt: null,
       draftTag: 'vnext',
+      pipeline: 'tauri',
       runId: null,
       tag: null
     })
@@ -117,6 +62,7 @@ describe('release state', () => {
         appVersion: '2026.508.1',
         completed: ['build', 'dispatch', 'build'],
         draftTag: 'vnext',
+        pipeline: 'tauri',
         runId: 25571212462,
         tag: null
       },
@@ -128,6 +74,7 @@ describe('release state', () => {
       completed: ['dispatch', 'build'],
       draftCreatedAt: null,
       draftTag: 'vnext',
+      pipeline: 'tauri',
       runId: '25571212462',
       tag: null
     })
@@ -140,6 +87,7 @@ describe('release state', () => {
         completed: ['dispatch'],
         draftCreatedAt: '2026-09-12T10:07:38Z',
         draftTag: 'vnext',
+        pipeline: 'tauri',
         runId: '1',
         tag: null
       },
@@ -184,6 +132,7 @@ describe('release state', () => {
         completed: ['dispatch'],
         draftCreatedAt: '2026-09-11T23:13:30Z',
         draftTag: 'vnext',
+        pipeline: 'tauri',
         runId: '1',
         tag: null
       },
@@ -216,24 +165,46 @@ describe('release state', () => {
       parseReleaseState({ completed: 'dispatch', draftTag: 'vnext' }, { draftTag: 'vnext' }),
       fresh
     )
-    assert.deepEqual(
-      parseReleaseState(
-        { completed: ['dispatch', 'teleport'], draftTag: 'vnext' },
-        { draftTag: 'vnext' }
-      ),
-      fresh
-    )
     assert.deepEqual(parseReleaseState({ draftTag: 'vnext' }, { draftTag: 'vnext' }), fresh)
     assert.deepEqual(parseReleaseState(null, { draftTag: 'vnext' }), fresh)
     assert.deepEqual(parseReleaseState(['dispatch'], { draftTag: 'vnext' }), fresh)
     assert.deepEqual(parseReleaseState('vnext', { draftTag: 'vnext' }), fresh)
   })
 
+  // An Electron release left this state: its steps and artifacts (NSIS, -win.zip) do not exist in
+  // the Tauri pipeline, so resuming it would pack nothing or upload the wrong set.
+  it('rejects a state written by the Electron pnpm release, naming the directory to remove', () => {
+    const electron = {
+      appVersion: '2026.1015.1',
+      completed: ['dispatch', 'build', 'download', 'sign-nsis'],
+      draftTag: 'v/next',
+      runId: '1',
+      tag: null
+    }
+    const message =
+      /\.release-state\/v-next\/state\.json was written by an older pnpm release \(steps: dispatch, build, download, sign-nsis\)\. Remove \.release-state\/v-next and rerun pnpm release\./
+
+    assert.throws(() => parseReleaseState(electron, { draftTag: 'v/next' }), message)
+    // Steps the Tauri order also has do not make an Electron state resumable.
+    assert.throws(
+      () => parseReleaseState({ ...electron, completed: ['dispatch'] }, { draftTag: 'v/next' }),
+      /written by an older pnpm release/
+    )
+    assert.throws(
+      () =>
+        parseReleaseState(
+          { ...electron, completed: ['dispatch', 'teleport'], pipeline: 'tauri' },
+          { draftTag: 'v/next' }
+        ),
+      /written by an older pnpm release/
+    )
+  })
+
   it('reports completed steps', () => {
     const state = { ...createReleaseState({ draftTag: 'vnext' }), completed: ['dispatch'] }
 
     assert.equal(isStepDone(state, 'dispatch'), true)
-    assert.equal(isStepDone(state, 'pack'), false)
+    assert.equal(isStepDone(state, 'pack-windows'), false)
     assert.throws(() => isStepDone(state, 'teleport'), /Unknown release step: teleport/)
   })
 
@@ -246,6 +217,7 @@ describe('release state', () => {
       completed: ['dispatch', 'build'],
       draftCreatedAt: null,
       draftTag: 'vnext',
+      pipeline: 'tauri',
       runId: '25571212462',
       tag: null
     })
@@ -271,13 +243,68 @@ describe('release state', () => {
   it('clears the given step and everything downstream of it', () => {
     const state = {
       ...createReleaseState({ draftTag: 'vnext' }),
-      completed: ['dispatch', 'build', 'download', 'pack', 'upload']
+      completed: ['dispatch', 'build', 'download', 'pack-windows', 'bridge', 'upload']
     }
     const next = clearStepsFrom(state, 'download')
 
     assert.deepEqual(next.completed, ['dispatch', 'build'])
-    assert.deepEqual(state.completed, ['dispatch', 'build', 'download', 'pack', 'upload'])
+    assert.deepEqual(state.completed, [
+      'dispatch',
+      'build',
+      'download',
+      'pack-windows',
+      'bridge',
+      'upload'
+    ])
     assert.deepEqual(clearStepsFrom(state, 'dispatch').completed, [])
+  })
+})
+
+describe('finish steps', () => {
+  const stateWith = (completed) => ({ ...createReleaseState({ draftTag: 'vnext' }), completed })
+
+  it('redoes the packs and the bridge after a fresh download, then verify, upload, publish', () => {
+    const plan = planFinishSteps(
+      stateWith(['dispatch', 'build', 'download', 'pack-windows', 'bridge', 'verify']),
+      { downloaded: true, published: false }
+    )
+
+    assert.deepEqual(plan.steps, ['pack-windows', 'bridge', 'verify', 'upload', 'publish'])
+    assert.deepEqual(plan.state.completed, ['dispatch', 'build', 'download'])
+  })
+
+  it('resumes after the last finished pack step and always reruns verify, upload, publish', () => {
+    for (const [completed, steps] of [
+      [
+        ['dispatch', 'build', 'download'],
+        ['pack-windows', 'bridge', 'verify', 'upload', 'publish']
+      ],
+      [
+        ['dispatch', 'build', 'download', 'pack-windows'],
+        ['bridge', 'verify', 'upload', 'publish']
+      ],
+      [
+        ['dispatch', 'build', 'download', 'pack-windows', 'bridge', 'verify', 'upload'],
+        ['verify', 'upload', 'publish']
+      ]
+    ]) {
+      const plan = planFinishSteps(stateWith(completed), { downloaded: false, published: false })
+
+      assert.deepEqual(plan.steps, steps)
+      assert.deepEqual(plan.state.completed, completed)
+    }
+  })
+
+  // A crash after the publish call and before the state write: rerunning upload would clobber the
+  // live release and publish would turn it back into a draft.
+  it('only marks publish done when the release is already published', () => {
+    const plan = planFinishSteps(
+      stateWith(['dispatch', 'build', 'download', 'pack-windows', 'bridge', 'verify', 'upload']),
+      { downloaded: false, published: true }
+    )
+
+    assert.deepEqual(plan.steps, [])
+    assert.deepEqual(plan.state.completed, releaseStepOrder)
   })
 })
 
@@ -328,6 +355,13 @@ describe('workflow run resume', () => {
 })
 
 describe('release metadata', () => {
+  const x64Sha = 'a'.repeat(64)
+  const armSha = 'b'.repeat(64)
+  const windowsPayloads = [
+    { name: 'MemryNote-2026.508.1-win-x64-payload.zip', sha256: x64Sha },
+    { name: 'MemryNote-2026.508.1-win-arm64-payload.zip', sha256: armSha }
+  ]
+
   it('parses CI release metadata and normalizes the release id', () => {
     assert.deepEqual(
       parseReleaseMetadata({
@@ -336,7 +370,8 @@ describe('release metadata', () => {
         draftTag: 'vnext',
         releaseId: 233871199,
         releaseName: 'Memry v2026-05-08',
-        tag: 'v2026-05-08'
+        tag: 'v2026-05-08',
+        windowsPayloads
       }),
       {
         appVersion: '2026.508.1',
@@ -344,8 +379,47 @@ describe('release metadata', () => {
         draftTag: 'vnext',
         releaseId: '233871199',
         releaseName: 'Memry v2026-05-08',
-        tag: 'v2026-05-08'
+        tag: 'v2026-05-08',
+        windowsPayloads: { 'win-arm64': armSha, 'win-x64': x64Sha }
       }
+    )
+  })
+
+  it('names the payload zip build-windows uploads', () => {
+    assert.equal(
+      payloadZipName('win-arm64', '2026.508.1'),
+      'MemryNote-2026.508.1-win-arm64-payload.zip'
+    )
+  })
+
+  // The Mac packs and signs whatever zip it downloaded; without the digest the build checked it
+  // could sign bytes no CI check ever saw.
+  it('requires the sha256 of every Windows payload zip', () => {
+    const metadata = {
+      appVersion: '2026.508.1',
+      commitSha: 'abc1234',
+      draftTag: 'vnext',
+      releaseId: 1,
+      releaseName: 'Memry v2026-05-08',
+      tag: 'v2026-05-08'
+    }
+
+    assert.throws(() => parseReleaseMetadata(metadata), /invalid: missing windowsPayloads$/)
+    assert.throws(
+      () => parseReleaseMetadata({ ...metadata, windowsPayloads: {} }),
+      /invalid: invalid windowsPayloads$/
+    )
+    assert.throws(
+      () =>
+        parseReleaseMetadata({
+          ...metadata,
+          windowsPayloads: [windowsPayloads[0], { ...windowsPayloads[1], sha256: 'B'.repeat(64) }]
+        }),
+      /invalid: no sha256 for MemryNote-2026\.508\.1-win-arm64-payload\.zip in windowsPayloads$/
+    )
+    assert.throws(
+      () => parseReleaseMetadata({ ...metadata, windowsPayloads: [windowsPayloads[1]] }),
+      /invalid: no sha256 for MemryNote-2026\.508\.1-win-x64-payload\.zip in windowsPayloads$/
     )
   })
 
@@ -356,7 +430,8 @@ describe('release metadata', () => {
       draftTag: 'vnext',
       releaseId: '233871199',
       releaseName: 'Memry v2026-05-08',
-      tag: 'v2026-05-08'
+      tag: 'v2026-05-08',
+      windowsPayloads
     })
 
     assert.equal(metadata.releaseId, '233871199')
@@ -370,7 +445,8 @@ describe('release metadata', () => {
           draftTag: 'vnext',
           releaseId: 'not-a-number',
           releaseName: 'Memry v2026-05-08',
-          tag: 'v2026-05-08'
+          tag: 'v2026-05-08',
+          windowsPayloads
         }),
       (error) => {
         assert.equal(
@@ -389,7 +465,8 @@ describe('release metadata', () => {
           draftTag: 'vnext',
           releaseId: 1,
           releaseName: 'Memry v2026-05-08',
-          tag: 'v2026-05-08'
+          tag: 'v2026-05-08',
+          windowsPayloads: []
         }),
       /^Error: release-metadata\.json is invalid: missing appVersion, missing commitSha$/
     )
@@ -402,282 +479,64 @@ describe('release metadata', () => {
   })
 })
 
-describe('archive layout', () => {
-  it('returns an empty dir when the exe sits at the archive root', () => {
-    assert.equal(resolveUnpackedDir(['Memrynote.exe', 'resources/app.asar']), '')
-  })
-
-  it('returns the single nested dir that holds the exe', () => {
-    assert.equal(
-      resolveUnpackedDir([
-        'memry-win32-x64/',
-        'memry-win32-x64/Memrynote.exe',
-        'memry-win32-x64/resources/app.asar'
-      ]),
-      'memry-win32-x64'
-    )
-  })
-
-  it('prefers the shallowest exe over deeper copies', () => {
-    assert.equal(resolveUnpackedDir(['top/Memrynote.exe', 'top/deep/nested/Memrynote.exe']), 'top')
-  })
-
-  it('refuses to guess between two exes at the same depth', () => {
-    assert.throws(
-      () => resolveUnpackedDir(['beta/Memrynote.exe', 'alpha/Memrynote.exe']),
-      /Archive contains 2 Memrynote\.exe entries at the same depth: alpha, beta/
-    )
-  })
-
-  it('fails when the archive holds no exe', () => {
-    assert.throws(
-      () => resolveUnpackedDir(['resources/app.asar']),
-      /Archive contains no Memrynote\.exe/
-    )
-  })
-
-  it('matches the exe name case-insensitively and honours an override', () => {
-    assert.equal(resolveUnpackedDir(['app/memrynote.EXE']), 'app')
-    assert.equal(resolveUnpackedDir(['app/Other.exe'], { mainExe: 'Other.exe' }), 'app')
-  })
-})
-
-describe('vpk pack arguments', () => {
-  it('builds the baseline argv without optional flags', () => {
-    assert.deepEqual(buildVpkPackArgs(packOptions), baseVpkArgs)
-  })
-
-  it('appends the signing template, release notes and app check skip in order', () => {
-    assert.deepEqual(
-      buildVpkPackArgs({
-        ...packOptions,
-        releaseNotesPath: 'dist/notes.md',
-        signTemplate: 'osslsigncode sign -pkcs11module x {{file}}',
-        skipVeloAppCheck: true
-      }),
-      [
-        ...baseVpkArgs,
-        '--signTemplate',
-        'osslsigncode sign -pkcs11module x {{file}}',
-        '--releaseNotes',
-        'dist/notes.md',
-        '--skipVeloAppCheck'
-      ]
-    )
-  })
-
-  it('keeps the exclude regex byte for byte', () => {
-    const args = buildVpkPackArgs(packOptions)
-
-    assert.equal(
-      args[args.indexOf('--exclude') + 1],
-      String.raw`(\.pdb$)|(prebuilds[\\/](?!win32-x64[\\/]))`
-    )
-  })
-
-  it('honours pack identity overrides', () => {
-    const args = buildVpkPackArgs({
-      ...packOptions,
-      mainExe: 'Other.exe',
-      packAuthors: 'someone',
-      packId: 'Other',
-      packTitle: 'Other Title',
-      runtime: 'win-arm64'
-    })
-
-    assert.equal(args[args.indexOf('--runtime') + 1], 'win-arm64')
-    assert.equal(args[args.indexOf('--packId') + 1], 'Other')
-    assert.equal(args[args.indexOf('--mainExe') + 1], 'Other.exe')
-    assert.equal(args[args.indexOf('--packTitle') + 1], 'Other Title')
-    assert.equal(args[args.indexOf('--packAuthors') + 1], 'someone')
-  })
-
-  it('names the missing required field', () => {
-    assert.throws(
-      () => buildVpkPackArgs({ ...packOptions, packVersion: '' }),
-      /packVersion is required/
-    )
-    assert.throws(
-      () => buildVpkPackArgs({ ...packOptions, packDir: undefined }),
-      /packDir is required/
-    )
-    assert.throws(
-      () => buildVpkPackArgs({ ...packOptions, outputDir: '' }),
-      /outputDir is required/
-    )
-    assert.throws(
-      () => buildVpkPackArgs({ ...packOptions, iconPath: undefined }),
-      /iconPath is required/
-    )
-  })
-})
-
-describe('upload assets', () => {
-  it('names the Velopack outputs for an app version', () => {
-    assert.deepEqual(buildVelopackAssetNames('2026.508.1'), {
-      delta: 'MemryNote-2026.508.1-delta.nupkg',
-      full: 'MemryNote-2026.508.1-full.nupkg',
-      releases: 'RELEASES',
-      releasesJson: 'releases.win.json',
-      setup: 'MemryNote-Setup-win-x64.exe'
-    })
-    assert.throws(() => buildVelopackAssetNames(''), /appVersion is required/)
-  })
-
+describe('Windows Setup name', () => {
   // Shipped Electron builds up to v2026-10-25 HEAD vpk's Setup name and, on a 200, arm a hand-off
   // that hangs. The published name must differ from it and be the one the desktop app reads.
-  it("publishes the Setup under the name the app hands off to, never vpk's", () => {
-    const { setup } = buildVelopackAssetNames('2026.508.1')
+  it("publishes the x64 Setup under the name the app hands off to, never vpk's", () => {
+    const { setup } = assetNames('win-x64', '2026.508.1')
 
     assert.notEqual(setup, RETIRED_SETUP_NAME)
     assert.equal(setup, VELOPACK_SETUP_ASSET_NAME)
   })
-
-  it("never uploads a Setup left under vpk's name", () => {
-    const { assets, missing } = collectUploadAssets({
-      appVersion: '2026.508.1',
-      ciAssetNames,
-      velopackAssetNames: velopackAssetNames.map((name) =>
-        name === 'MemryNote-Setup-win-x64.exe' ? RETIRED_SETUP_NAME : name
-      )
-    })
-
-    assert.equal(
-      assets.some((asset) => asset.name === RETIRED_SETUP_NAME),
-      false
-    )
-    assert.deepEqual(missing, ['MemryNote-Setup-win-x64.exe'])
-  })
-
-  it('collects a complete set with nothing missing', () => {
-    const { assets, missing } = collectUploadAssets({
-      appVersion: '2026.508.1',
-      ciAssetNames,
-      velopackAssetNames
-    })
-
-    const uploadedCiNames = ciAssetNames.filter((name) => !name.endsWith('-win.zip'))
-
-    assert.deepEqual(missing, [])
-    assert.deepEqual(
-      assets.map((asset) => asset.name),
-      [...uploadedCiNames, ...velopackAssetNames.filter((name) => name !== 'assets.win.json')]
-    )
-    assert.deepEqual(
-      assets.slice(0, uploadedCiNames.length).map((asset) => asset.source),
-      uploadedCiNames.map(() => 'ci')
-    )
-    assert.deepEqual(
-      assets.slice(uploadedCiNames.length).map((asset) => asset.source),
-      ['velopack', 'velopack', 'velopack', 'velopack', 'velopack']
-    )
-  })
-
-  it('never uploads the unsigned Windows payload ZIP', () => {
-    const { assets, missing } = collectUploadAssets({
-      appVersion: '2026.508.1',
-      ciAssetNames,
-      velopackAssetNames
-    })
-
-    assert.deepEqual(missing, [])
-    assert.equal(
-      assets.some((asset) => asset.name.endsWith('-win.zip')),
-      false
-    )
-  })
-
-  it('never uploads the local assets.win.json manifest', () => {
-    const { assets } = collectUploadAssets({
-      appVersion: '2026.508.1',
-      ciAssetNames,
-      velopackAssetNames
-    })
-
-    assert.equal(
-      assets.some((asset) => asset.name === 'assets.win.json'),
-      false
-    )
-  })
-
-  it('describes the CI assets that never arrived', () => {
-    const { missing } = collectUploadAssets({
-      appVersion: '2026.508.1',
-      ciAssetNames: ciAssetNames.filter(
-        (name) => name !== 'Memry-2026.508.1-win.zip' && name !== 'latest-mac.yml'
-      ),
-      velopackAssetNames
-    })
-
-    assert.deepEqual(missing, ['latest-mac.yml', 'Windows ZIP'])
-  })
-
-  it('carries the delta package when it exists and never demands it', () => {
-    const withDelta = collectUploadAssets({
-      appVersion: '2026.508.1',
-      ciAssetNames,
-      velopackAssetNames
-    })
-    const withoutDelta = collectUploadAssets({
-      appVersion: '2026.508.1',
-      ciAssetNames,
-      velopackAssetNames: velopackAssetNames.filter(
-        (name) => name !== 'MemryNote-2026.508.1-delta.nupkg'
-      )
-    })
-
-    assert.equal(
-      withDelta.assets.some((asset) => asset.name === 'MemryNote-2026.508.1-delta.nupkg'),
-      true
-    )
-    assert.equal(
-      withoutDelta.assets.some((asset) => asset.name === 'MemryNote-2026.508.1-delta.nupkg'),
-      false
-    )
-    assert.deepEqual(withoutDelta.missing, [])
-  })
-
-  it('reports absent required Velopack outputs by file name', () => {
-    const { missing } = collectUploadAssets({
-      appVersion: '2026.508.1',
-      ciAssetNames,
-      velopackAssetNames: ['MemryNote-Setup-win-x64.exe', 'releases.win.json']
-    })
-
-    assert.deepEqual(missing, ['MemryNote-2026.508.1-full.nupkg', 'RELEASES'])
-  })
-
-  it('ignores unknown files sitting in the Velopack output dir', () => {
-    const { assets, missing } = collectUploadAssets({
-      appVersion: '2026.508.1',
-      ciAssetNames,
-      velopackAssetNames: [...velopackAssetNames, 'Setup.log', 'MemryNote-2026.507.1-full.nupkg']
-    })
-
-    assert.deepEqual(missing, [])
-    assert.equal(
-      assets.some((asset) => asset.name === 'Setup.log'),
-      false
-    )
-  })
 })
 
 describe('previous release lookup', () => {
-  it('finds the previous full nupkg and its version', () => {
-    assert.deepEqual(
-      selectPreviousFullNupkgAsset([
-        'RELEASES',
-        'MemryNote-2026.507.1-full.nupkg',
-        'MemryNote-2026.507.1-delta.nupkg'
-      ]),
-      { name: 'MemryNote-2026.507.1-full.nupkg', version: '2026.507.1' }
+  const tauriRelease = [
+    'RELEASES',
+    'MemryNote-2026.1120.1-win-arm64-full.nupkg',
+    'MemryNote-2026.1120.1-osx-arm64-full.nupkg',
+    'MemryNote-2026.1120.1-linux-full.nupkg',
+    'MemryNote-2026.1120.1-full.nupkg',
+    'MemryNote-2026.1120.1-delta.nupkg'
+  ]
+
+  it("finds each Windows channel's own full nupkg and its version", () => {
+    assert.deepEqual(selectPreviousFullNupkgAsset(tauriRelease, 'win-x64'), {
+      name: 'MemryNote-2026.1120.1-full.nupkg',
+      version: '2026.1120.1'
+    })
+    assert.deepEqual(selectPreviousFullNupkgAsset(tauriRelease, 'win-arm64'), {
+      name: 'MemryNote-2026.1120.1-win-arm64-full.nupkg',
+      version: '2026.1120.1'
+    })
+    assert.deepEqual(selectPreviousFullNupkgAsset(tauriRelease, 'linux-x64'), {
+      name: 'MemryNote-2026.1120.1-linux-full.nupkg',
+      version: '2026.1120.1'
+    })
+  })
+
+  // A foreign full in vpk's output dir is listed in this channel's feed.
+  it("never takes another channel's full nupkg", () => {
+    const armOnly = ['MemryNote-2026.1120.1-win-arm64-full.nupkg']
+
+    assert.equal(selectPreviousFullNupkgAsset(armOnly, 'win-x64'), null)
+    assert.equal(
+      selectPreviousFullNupkgAsset(['MemryNote-2026.1015.1-full.nupkg'], 'win-arm64'),
+      null
     )
   })
 
   it('returns null when no full nupkg is present', () => {
     assert.equal(
-      selectPreviousFullNupkgAsset(['RELEASES', 'MemryNote-2026.507.1-delta.nupkg']),
+      selectPreviousFullNupkgAsset(['RELEASES', 'MemryNote-2026.507.1-delta.nupkg'], 'win-x64'),
       null
+    )
+  })
+
+  it('rejects an unknown pack target', () => {
+    assert.throws(
+      () => selectPreviousFullNupkgAsset([], 'win-x86'),
+      /Unknown pack target "win-x86"/
     )
   })
 
@@ -694,6 +553,26 @@ describe('previous release lookup', () => {
       selectPreviousPublishedRelease(releases, { excludeTag: 'v2026-05-08' }),
       'v2026-05-07'
     )
+  })
+
+  it('skips prereleases such as the ort-pod CI build-input release', () => {
+    const releases = [
+      {
+        createdAt: '2026-11-23T13:34:03Z',
+        isDraft: false,
+        isPrerelease: false,
+        tagName: 'v2026-11-23'
+      },
+      { createdAt: '2026-11-23T15:09:40Z', isDraft: true, isPrerelease: false, tagName: 'vnext' },
+      {
+        createdAt: '2026-11-23T16:05:56Z',
+        isDraft: false,
+        isPrerelease: true,
+        tagName: 'ort-pod-1.30.0'
+      }
+    ]
+
+    assert.equal(selectPreviousPublishedRelease(releases, { excludeTag: 'vnext' }), 'v2026-11-23')
   })
 
   it('sorts releases without a creation date last', () => {
@@ -903,32 +782,47 @@ describe('smoke dispatch', () => {
 })
 
 describe('run artifacts', () => {
-  it('derives the app version and the asset artifact from the metadata artifact', () => {
-    assert.deepEqual(
-      selectRunArtifacts([
-        'memry-release-windows-2026.911.1',
-        'memry-release-2026.911.1',
-        'release-metadata-2026.911.1'
-      ]),
-      {
-        appVersion: '2026.911.1',
-        assetsArtifact: 'memry-release-2026.911.1',
-        metadataArtifact: 'release-metadata-2026.911.1'
+  const runArtifacts = [
+    'memry-release-macos-arm64-2026.1120.1',
+    'memry-release-2026.1120.1',
+    'release-metadata-2026.1120.1',
+    'release-inputs-2026.1120.1',
+    'memry-windows-payload-win-x64-2026.1120.1',
+    'memry-windows-payload-win-arm64-2026.1120.1'
+  ]
+
+  it('derives every artifact pnpm release downloads from the metadata artifact', () => {
+    assert.deepEqual(selectRunArtifacts(runArtifacts), {
+      appVersion: '2026.1120.1',
+      assetsArtifact: 'memry-release-2026.1120.1',
+      inputsArtifact: 'release-inputs-2026.1120.1',
+      metadataArtifact: 'release-metadata-2026.1120.1',
+      payloadArtifacts: {
+        'win-arm64': 'memry-windows-payload-win-arm64-2026.1120.1',
+        'win-x64': 'memry-windows-payload-win-x64-2026.1120.1'
       }
-    )
+    })
+  })
+
+  it('packs both Windows targets', () => {
+    assert.deepEqual(windowsTargets(), ['win-x64', 'win-arm64'])
   })
 
   it('rejects a run with no metadata artifact', () => {
     assert.throws(
-      () => selectRunArtifacts(['memry-release-2026.911.1']),
+      () => selectRunArtifacts(['memry-release-2026.1120.1']),
       /uploaded no release-metadata-\* artifact/
     )
   })
 
-  it('rejects a run whose staged asset artifact is missing', () => {
-    assert.throws(
-      () => selectRunArtifacts(['release-metadata-2026.911.1']),
-      /uploaded no memry-release-2026\.911\.1 artifact/
-    )
-  })
+  for (const artifact of runArtifacts.slice(1)) {
+    if (artifact.startsWith('release-metadata-')) continue
+
+    it(`rejects a run without ${artifact}`, () => {
+      assert.throws(
+        () => selectRunArtifacts(runArtifacts.filter((name) => name !== artifact)),
+        new RegExp(`uploaded no ${artifact.replaceAll('.', '\\.')} artifact`)
+      )
+    })
+  }
 })

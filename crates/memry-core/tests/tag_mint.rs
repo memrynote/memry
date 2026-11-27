@@ -6,6 +6,7 @@
 //! | the used tags read in Electron's walk order, measured only   | `findVaultFiles` order; current bytes |
 //! | each new definition takes the palette colour of the count    | `TAG_COLOR_PALETTE[count % 24]`, unclocked |
 //! | an existing definition is never changed, a deleted one stays deleted | `getOrCreateTag` reads first; a tombstone wins |
+//! | a dropped mint leaves the tag live when a live spelling survives | the seed rebuilds deleted first, live last |
 //!
 //! The seed that pushes a mint after the pull is `memry-desktop`'s `tag_definitions_sync`.
 
@@ -13,8 +14,9 @@
 
 use memry_core::api::vault::Vault;
 use memry_core::domain::tag_admin::{definitions, set_color};
-use memry_core::domain::tag_mint::define_used;
-use serde_json::Value;
+use memry_core::domain::tag_mint::{define_used, seed};
+use memry_core::storage::repositories::sync_items::{self, InboundRecord};
+use serde_json::{Value, json};
 
 use crate::tag_reads::{filed_as, measured, note, open};
 
@@ -162,4 +164,61 @@ fn an_existing_definition_is_never_changed_and_a_deleted_one_stays_deleted() {
     assert_eq!(define(&vault, &["work", "WORK"], 4), 0);
     assert!(colors(&vault).is_empty(), "the deletion stands");
     assert_eq!(queued(&vault), before, "nothing queued");
+}
+
+/// A definition another device pushed, as a pull applies it.
+fn pulled(vault: &Vault, name: &str, color: &str, deleted: bool) {
+    let record = InboundRecord {
+        item_type: "tag_definition".to_owned(),
+        item_id: name.to_owned(),
+        payload_json: json!({
+            "name": name,
+            "color": color,
+            "colorAuthored": true,
+            "createdAt": "2026-01-01T00:00:00.000Z",
+        })
+        .to_string(),
+        server_cursor: Some(1),
+        signer_device_id: Some("device-b".to_owned()),
+        updated_at: 5,
+        deleted_at: deleted.then_some(5),
+    };
+    vault
+        .db_handle()
+        .call_blocking(move |conn| sync_items::apply_remote(conn, &record, 5).map(drop))
+        .expect("apply");
+}
+
+/// The seed drops a mint whose key other records hold and makes the shared row again from
+/// them, deleted ones first and live ones last: a live spelling leaves the tag live whatever
+/// order the pull wrote them in (#4278).
+#[test]
+fn a_dropped_mint_leaves_the_tag_live_when_a_live_spelling_survives() {
+    for deleted_first in [true, false] {
+        let (_dir, vault, _search) = open();
+        assert_eq!(define(&vault, &["idea"], 1), 1);
+        if deleted_first {
+            pulled(&vault, "Idea", "rose", true);
+            pulled(&vault, "IDEA", "teal", false);
+        } else {
+            pulled(&vault, "IDEA", "teal", false);
+            pulled(&vault, "Idea", "rose", true);
+        }
+        let seeded = vault
+            .db_handle()
+            .call_blocking(|conn| seed(conn, "desk", 6))
+            .expect("seeded");
+        assert!(seeded.is_empty(), "the mint is dropped");
+        assert_eq!(
+            colors(&vault),
+            [("IDEA".to_owned(), "teal".to_owned())],
+            "deleted pulled first: {deleted_first}"
+        );
+        // The row is the live record's, so a recolour reaches it.
+        vault
+            .db_handle()
+            .call_blocking(|conn| set_color(conn, "idea", "red", "desk", 7))
+            .expect("recoloured");
+        assert_eq!(colors(&vault), [("IDEA".to_owned(), "red".to_owned())]);
+    }
 }

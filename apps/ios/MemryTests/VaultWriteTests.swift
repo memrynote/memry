@@ -180,6 +180,23 @@ struct VaultWriteTests {
         #expect(writer.calls.withLock { $0 } == [.rename("n", "New"), .move("n", "Work"), .delete("n")])
     }
 
+    @Test("the page menu's rename announces the saved title only when it lands")
+    func notePageRenameAnnouncesTheTitle() async {
+        // #4680: every page on the note re-reads the title the menu wrote.
+        let id = "n-\(UUID().uuidString)"
+        var announced = 0
+        let observer = NotificationCenter.default.addObserver(
+            forName: NoteReadViewModel.titleSaved, object: id, queue: nil
+        ) { _ in announced += 1 }
+        defer { NotificationCenter.default.removeObserver(observer) }
+
+        await NotePageActions(noteId: id, writer: ScriptedWriter(failure: StorageError.Failed(what: "x")))
+            .rename(to: "New")
+        #expect(announced == 0)
+        await NotePageActions(noteId: id, writer: ScriptedWriter()).rename(to: "New")
+        #expect(announced == 1)
+    }
+
     @Test("every note page action that lands asks for a sync pass")
     func notePageActionsAskForASync() async {
         // Rename and move asked for none and waited for the next foreground

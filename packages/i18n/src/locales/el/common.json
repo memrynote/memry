@@ -1,4 +1,7 @@
 {
+  "wikiLink": {
+    "openFailed": "Δεν ήταν δυνατό το άνοιγμα αυτού του συνδέσμου"
+  },
   "portalBlock": {
     "copyFailed": "Δεν ήταν δυνατή η αντιγραφή της πύλης",
     "hiddenCount": "{count} κρυφά",
@@ -956,6 +959,8 @@
     "componentsVaultSwitcher": {
       "noVaultsYet": "Δεν υπάρχουν ακόμη θησαυροφυλάκια",
       "openVault": "Άνοιγμα θησαυροφυλακίου",
+      "createVault": "Δημιουργία θησαυροφυλακίου",
+      "openFolderAsVault": "Άνοιγμα φακέλου ως θησαυροφυλακίου",
       "settings": "Ρυθμίσεις",
       "remove": "Αφαίρεση \"",
       "removeVaultTitle": "Αφαίρεση του «{name}» από τη λίστα;",

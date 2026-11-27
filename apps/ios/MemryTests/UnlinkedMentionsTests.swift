@@ -54,16 +54,27 @@ struct UnlinkedMentionsTests {
     @Test func the_list_names_each_mention_as_written() async throws {
         let f = try await fixture("I like agent dune. Also Agent Dune! But not Agent Dunes.")
 
-        await f.model.toggle()
+        await f.model.refresh()
 
         let list = rows(f.model)
         #expect(list.map(\.sourceId) == [f.source])
         #expect(list.first?.mentions == ["agent dune", "Agent Dune"])
     }
 
+    @Test func a_note_nobody_mentions_reads_as_empty_without_being_opened() async throws {
+        let f = try await fixture("Nothing about that book here.")
+
+        await f.model.refresh()
+
+        // The section draws nothing for an empty list, so it must be known
+        // before anyone opens it.
+        #expect(f.model.phase == .ready([]))
+        #expect(!f.model.isExpanded)
+    }
+
     @Test func link_turns_the_chosen_mention_into_a_wiki_link_with_its_text_as_alias() async throws {
         let f = try await fixture("I like agent dune. Also Agent Dune!")
-        await f.model.toggle()
+        await f.model.refresh()
         let source = try #require(rows(f.model).first)
 
         let landed = await f.model.link(source, index: 1, targetTitle: "Agent Dune")
@@ -85,7 +96,7 @@ struct UnlinkedMentionsTests {
 
     @Test func a_mention_edited_away_is_refused_not_linked_elsewhere() async throws {
         let f = try await fixture("I like agent dune.")
-        await f.model.toggle()
+        await f.model.refresh()
         let stale = try #require(rows(f.model).first)
         let blocks = try #require(try await f.reader.blocks(id: f.source))
         let writer = try f.vault.vault.notesWriter(store: TaskTestKeychain())

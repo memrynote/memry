@@ -30,3 +30,21 @@ packages/contracts/test-vectors/markdown-convert/corpus/** -text -whitespace
 crates/memry-core/src/storage/migrations/**/*.sql text eol=lf
 # PDF fixtures of the worker tests: the xref table ends each entry in a space by spec.
 crates/memry-ml-worker/tests/fixtures/*.pdf binary
+# The note export embeds its stylesheet with include_str! and compares fixtures byte for byte
+# with Electron's output; a Windows checkout must not turn either into CRLF.
+crates/memry-desktop/src/export/styles.css text eol=lf
+crates/memry-desktop/tests/fixtures/export/** -text
+# Importer vector inputs (Step 32): BOM, CRLF and malformed bytes are what the importers are tested on.
+packages/contracts/test-vectors/importers/** -text -whitespace
+
+# The sandbox template (Step 32), exported by apps/cli/src/sandbox/export-template.ts and
+# replayed byte for byte into a new vault. Re-exported, never hand-edited.
+crates/memry-desktop/resources/sandbox/** -text -whitespace linguist-generated
+crates/memry-desktop/tests/fixtures/sandbox/** -text -whitespace linguist-generated
+# Electron's canvas files as the Rust core must write them, compared byte for byte with
+# include_str!: a Windows checkout would convert them to CRLF.
+crates/memry-core/src/domain/canvas/file_format/* text eol=lf
+
+# The seed templates (Step 40), exported by apps/desktop/scripts/export-seed-templates.ts and
+# replayed byte for byte by `cargo xtask seed`. Re-exported, never hand-edited.
+crates/xtask/seed-data/** -text -whitespace linguist-generated

@@ -46,6 +46,7 @@
 use rusqlite::{Connection, OptionalExtension as _, Row, params};
 
 use crate::api::errors::StorageError;
+use crate::domain::journal;
 
 /// Desktop's `RECENT_NOTES_LIMIT`: the empty-query list length.
 pub const RECENT_LIMIT: usize = 50;
@@ -179,7 +180,10 @@ pub fn resolve(
 fn resolve_note(conn: &Connection, id: &str) -> Result<LinkState, StorageError> {
     let note = conn
         .query_row(
-            &format!("{NOTE_COLUMNS} WHERE id = ?1 AND deleted_at IS NULL"),
+            &format!(
+                "{NOTE_COLUMNS} WHERE id = ?1 AND deleted_at IS NULL AND {}",
+                journal::not_a_journal_day("id")
+            ),
             params![id],
             read_note,
         )
@@ -231,8 +235,9 @@ const NOTE_COLUMNS: &str =
 fn live_notes(conn: &Connection) -> Result<Vec<RelatedItem>, StorageError> {
     let mut statement = conn
         .prepare(&format!(
-            "{NOTE_COLUMNS} WHERE deleted_at IS NULL \
-             ORDER BY COALESCE(modified_at, created_at, 0) DESC, id"
+            "{NOTE_COLUMNS} WHERE deleted_at IS NULL AND {} \
+             ORDER BY COALESCE(modified_at, created_at, 0) DESC, id",
+            journal::not_a_journal_day("id")
         ))
         .map_err(failed)?;
     let rows = statement.query_map([], read_note).map_err(failed)?;

@@ -154,7 +154,7 @@ export const scenes = {
 }
 
 const vault = () =>
-  JSON.parse(fs.readFileSync(path.join(process.env.TMPDIR, 'memry-agent-app.json'), 'utf8'))
+  JSON.parse(fs.readFileSync(path.join(process.env.TMPDIR, 'memry-agent-app-tauri.json'), 'utf8'))
     .vaultPath
 const md5 = (f) => createHash('md5').update(fs.readFileSync(f)).digest('hex')
 const note = () => fs.readFileSync(path.join(vault(), 'Lisbon/Lisbon Ideas.md'), 'utf8')

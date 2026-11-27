@@ -132,6 +132,7 @@ vi.mock('@/services/notes-service', () => ({
     getFolderTemplate: vi.fn().mockResolvedValue(null),
     openExternal: vi.fn().mockResolvedValue({}),
     revealInFinder: vi.fn().mockResolvedValue({}),
+    checkFolderDelete: vi.fn().mockResolvedValue({ success: true }),
     deleteFolder: mocks.deleteFolder,
     renameFolder: mocks.renameFolder,
     getAllPositions: vi.fn().mockResolvedValue({ success: true, positions: {} }),

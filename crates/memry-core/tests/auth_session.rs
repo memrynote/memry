@@ -509,11 +509,16 @@ async fn abandoning_a_setup_drops_only_the_setup_token() {
     let (session, transport, store) = setup_pending(&setup_token("jti-1"), vec![]).await;
     let device_key = store.get(SecureStoreKey::DeviceSigningKey).unwrap();
     assert!(device_key.is_some());
+    store.put_text(SecureStoreKey::MasterKey, "master-key-of-this-device");
     assert_eq!(session.abandon_setup().unwrap(), AuthState::SignedOut);
     assert_eq!(store.text(SecureStoreKey::SetupToken), None);
     assert_eq!(
         store.get(SecureStoreKey::DeviceSigningKey).unwrap(),
         device_key
+    );
+    assert_eq!(
+        store.text(SecureStoreKey::MasterKey).as_deref(),
+        Some("master-key-of-this-device")
     );
 
     // From `SetupExpired` too, after a new code.

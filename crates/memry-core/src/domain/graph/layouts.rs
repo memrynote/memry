@@ -1,5 +1,5 @@
 //! Saved node positions per graph view (Electron's `database/queries/graph-layouts.ts`), in
-//! data.db `graph_layouts` (migration 0042). The stored JSON is Electron's `positions` value
+//! data.db `graph_layouts` (migration 0044). The stored JSON is Electron's `positions` value
 //! unchanged, `GraphLayoutSchema` of `packages/contracts/src/graph-api.ts`: a pinned node is
 //! held in place by the simulation, the rest only seed where the layout starts.
 

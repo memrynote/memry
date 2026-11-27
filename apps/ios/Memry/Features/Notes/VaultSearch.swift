@@ -19,7 +19,12 @@ import Observation
 // this model: SwiftUI can keep a dismissed sheet's model alive, and a model
 // that followed the index itself kept querying for a sheet nobody sees.
 //
-// **Results are the core's ranking, never re-sorted.** bm25 ordering is what
+// **Semantic hits fuse in the core.** With semantic search on, the core folds
+// notes near the query's meaning into the notes and journals groups (#4505).
+// A query typed while the model loads answers from FTS at once, then runs once
+// more if the load lands with the model loaded (#4615).
+//
+// **Results are the core's ranking, never re-sorted.** The order is what
 // the query returned; a shell that sorted by date would be answering a
 // different question than the one the user asked.
 
@@ -30,6 +35,10 @@ protocol VaultSearching: Sendable {
     /// carrying no searchable term returns **empty** — an empty box is not a
     /// request for the whole vault.
     func search(query: String, filter: SearchFilter?, limit: UInt32) async throws -> SearchGroups
+    /// Waits for the semantic model load in flight, if any, and answers
+    /// whether the model is loaded now. A result with `semanticPending` set
+    /// runs again only on `true`.
+    func semanticModelLoaded() async -> Bool
     /// Brings the index up to date. Idempotent, and safe on any schedule.
     func reindex() async throws
     /// Every note linking to this one (N800).
@@ -52,8 +61,8 @@ struct CoreVaultSearch: VaultSearching {
     ///   then has no search, which is a smaller failure than a browse screen
     ///   that will not open — hence the optional handoff in
     ///   ``VaultBrowseViewModel``.
-    init(vault: Vault, executor: CoreExecutor) throws {
-        search = try vault.search()
+    init(vault: Vault, executor: CoreExecutor, semantic: SemanticSearch? = nil) throws {
+        search = try vault.search(semantic: semantic)
         self.executor = executor
     }
 
@@ -62,9 +71,17 @@ struct CoreVaultSearch: VaultSearching {
         return try await executor.run { try search.search(query: query, filter: filter, limit: limit) }
     }
 
+    /// Off the core queue: it waits on a model load, which would hold up every
+    /// other core call behind it.
+    func semanticModelLoaded() async -> Bool {
+        await search.semanticModelLoaded()
+    }
+
+    /// One queue call per batch, so the queue's other calls (screen reads,
+    /// search, sync state) run between the batches of a long rebuild (#5842).
     func reindex() async throws {
         let search = search
-        _ = try await executor.run { try search.reindex() }
+        while try await executor.run({ try search.reindexStep() }) == nil {}
     }
 
     func backlinks(noteId: String, order: BacklinkOrder) async throws -> [Backlink] {
@@ -129,6 +146,12 @@ final class VaultSearchViewModel {
     private let index: VaultSearchIndex?
     /// The trimmed query on screen, run again after each reindex.
     private var query = ""
+    /// The last reindex the query on screen has seen. Set when the model is
+    /// made and when a query starts, not when following starts: the sheet loads
+    /// its recents first, and a reindex finishing in between must still re-run
+    /// the query (#5484), while one that finished before the query started must
+    /// not cancel it (#5423).
+    private var followed: Int
 
     init(
         search: any VaultSearching,
@@ -138,6 +161,7 @@ final class VaultSearchViewModel {
     ) {
         self.search = search
         self.index = index
+        self.followed = index?.completed ?? 0
         self.debounce = debounce
         self.source = source
     }
@@ -160,12 +184,13 @@ final class VaultSearchViewModel {
     /// the calling task is cancelled. The sheet runs it in its `.task`, so it
     /// stops when the sheet goes: SwiftUI keeps a dismissed sheet's model
     /// alive, and a model that followed the index on its own would re-run a
-    /// query nobody sees on every sync pass.
+    /// query nobody sees on every sync pass. The query in flight goes with
+    /// the sheet, so a pending re-run never lands on a dismissed one.
     func followIndex() async {
         guard let index else { return }
-        var seen = index.completed
-        for await completed in Observations({ index.completed }) where completed != seen {
-            seen = completed
+        defer { running?.cancel() }
+        for await completed in Observations({ index.completed }) where completed != followed {
+            followed = completed
             rerun()
         }
     }
@@ -185,6 +210,7 @@ final class VaultSearchViewModel {
         guard !query.isEmpty else { return }
         running?.cancel()
         phase = .searching
+        followed = index?.completed ?? followed
         running = start(query, after: .zero, source: source)
     }
 
@@ -205,11 +231,13 @@ final class VaultSearchViewModel {
             Telemetry.shared.track(.searchOpened, surface: .search, action: "opened")
         }
         phase = .searching
+        followed = index?.completed ?? followed
         running = start(trimmed, after: debounce, source: source)
     }
 
     /// One query. `source` is `nil` for a re-run after a reindex, which is not
-    /// a search the user performed.
+    /// a search the user performed. A result that missed its semantic hits
+    /// because the model was loading runs once more if the load lands loaded.
     private func start(_ trimmed: String, after debounce: Duration, source: StaticString?) -> Task<Void, Never> {
         let filter = filters.record(now: .now, calendar: .current)
         return Task { [search] in
@@ -218,13 +246,9 @@ final class VaultSearchViewModel {
                 let started = ContinuousClock.now
                 let groups = try await search.search(query: trimmed, filter: filter, limit: 50)
                 guard !Task.isCancelled else { return }
-                let hits = groups.notes + groups.journals
-                let count = hits.count + groups.tasks.count + groups.inbox.count
-                Log.storage.info("searched this vault", .count(count))
+                let count = show(groups)
                 if let source { Self.trackPerformed(source: source, count: count, since: started) }
-                taskHits = groups.tasks
-                inboxHits = groups.inbox
-                phase = .results(hits)
+                if groups.semanticPending { await rerunAfterModelLoad(trimmed, filter: filter) }
             } catch is CancellationError {
                 // A newer query owns the screen now.
             } catch {
@@ -242,6 +266,32 @@ final class VaultSearchViewModel {
                 phase = .failed(mapped)
             }
         }
+    }
+
+    /// The results already on screen stay when this fails: they answer the
+    /// query, only without its semantic hits.
+    private func rerunAfterModelLoad(_ trimmed: String, filter: SearchFilter?) async {
+        guard await search.semanticModelLoaded(), !Task.isCancelled else { return }
+        do {
+            let groups = try await search.search(query: trimmed, filter: filter, limit: 50)
+            guard !Task.isCancelled else { return }
+            show(groups)
+        } catch is CancellationError {
+            // A newer query owns the screen now.
+        } catch {
+            Log.storage.error("this vault could not be searched again", .code(ErrorMapping.userFacing(error).code))
+        }
+    }
+
+    @discardableResult
+    private func show(_ groups: SearchGroups) -> Int {
+        let hits = groups.notes + groups.journals
+        let count = hits.count + groups.tasks.count + groups.inbox.count
+        Log.storage.info("searched this vault", .count(count))
+        taskHits = groups.tasks
+        inboxHits = groups.inbox
+        phase = .results(hits)
+        return count
     }
 
     /// Desktop `search-handlers.ts`: the count, the time and a coarse bucket,

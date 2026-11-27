@@ -455,7 +455,7 @@ describe('upsertReadwiseNote', () => {
   it('does not recreate a note the user deleted', async () => {
     const source = book(1, { highlights: threeHighlights() })
     const noteId = await created(source)
-    await notes.deleteNote(noteId)
+    await notes.deleteNote(noteId, async (inStep) => inStep?.(() => {}))
 
     expect(await sync(source)).toEqual({ status: 'skipped', reason: 'note-deleted' })
     expect(links.getLinkByBookId(db(), 1)?.state).toBe('note-deleted')

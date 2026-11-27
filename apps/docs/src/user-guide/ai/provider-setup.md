@@ -47,7 +47,8 @@ Best when you want privacy, no metering, and don't mind running an extra backgro
 
 ### Notes
 
-- Keys are stored in your operating system's keychain on this device.
+- Keys are stored locally in the vault's settings database, which is not encrypted. The desktop
+  app built on Tauri keeps them in your operating system's keychain on this device instead.
 - Keys are never sent to the memrynote sync server.
 - Each AI call hits OpenAI directly from your device.
 

@@ -6,7 +6,7 @@
 //! only the first half would show a task twice. So every edit of one operation
 //! is applied to the same document, the updates it authored are merged into
 //! one v1 update (`yrs::merge_updates_v1`), and that update commits with its
-//! outbox row through [`outbox::commit`], exactly as
+//! outbox row in the transaction the document was replayed in, exactly as
 //! [`crate::domain::body_write::edit_block`] commits a single edit.
 //!
 //! **Plans read the document they write.** Each operation reads its blocks
@@ -19,12 +19,12 @@ use rusqlite::Connection;
 
 use crate::crdt::blocks::extract_blocks;
 use crate::crdt::body_edit::{self, BlockEdit};
+use crate::crdt::epoch;
 use crate::crdt::errors::CrdtError;
 use crate::crdt::registry::{Document, UpdateSink};
-use crate::crdt::{epoch, update_log};
 use crate::domain::notes::ITEM_TYPE;
-use crate::domain::reads;
-use crate::sync::outbox;
+use crate::domain::{body_write, reads};
+use crate::storage::nested_tx;
 
 use super::{
     NoteTaskLine, SUFFIX_OPEN, TASK_BLOCK, TaskLineForm, TaskParentChange, checklist_conversion,
@@ -280,6 +280,13 @@ fn direct_children(blocks: &[crate::crdt::blocks::Block], block_id: &str) -> Vec
         .collect()
 }
 
+fn failed(error: rusqlite::Error) -> CrdtError {
+    crate::api::errors::StorageError::Failed {
+        what: error.to_string(),
+    }
+    .into()
+}
+
 fn refused(block_id: &str, what: &str) -> CrdtError {
     CrdtError::Undecodable {
         doc_id: block_id.to_owned(),
@@ -316,7 +323,9 @@ where
                 .push(bytes.to_vec());
         })
     };
-    let document = epoch::open_for_write(conn, device_id, note_id, sink)?;
+    // Replay, author, and store under one write lock (#5734).
+    let tx = nested_tx::begin(conn).map_err(failed)?;
+    let document = epoch::open_for_write(&tx, device_id, note_id, sink)?;
 
     let result = plan(&document)?;
 
@@ -330,13 +339,7 @@ where
         })?,
     };
 
-    let change = outbox::Change::crdt_update(ITEM_TYPE, note_id, update.clone());
-    outbox::commit(conn, &change, now_ms, |tx| {
-        update_log::append_local_update_in(tx, note_id, &update, now_ms).map_err(|error| {
-            crate::api::errors::StorageError::Failed {
-                what: error.to_string(),
-            }
-        })
-    })?;
+    body_write::append_in(&tx, ITEM_TYPE, note_id, &update, now_ms)?;
+    tx.commit().map_err(failed)?;
     Ok(Some(result))
 }

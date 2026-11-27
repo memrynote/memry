@@ -1,0 +1,5 @@
+---
+tags: "  solo  "
+---
+# Solo
+body

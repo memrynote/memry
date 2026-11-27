@@ -30,11 +30,17 @@ use rusqlite::{Connection, OptionalExtension, params};
 use serde_json::Value;
 
 use crate::api::errors::StorageError;
-use crate::storage::migrations::{self, DATA_MIGRATIONS};
+use crate::domain::journal;
+use crate::storage::nested_tx;
+use crate::sync::journal_day_merge;
+use crate::sync::journal_merge;
 
 use super::payload::{Change, StoredPayload};
 use super::projectors::{self, ItemContext, failed};
 use super::schema::{Object, ProjectionError};
+
+mod projections;
+pub use projections::{heal_projections, rebuild_projections};
 
 /// Metadata arrived, the body has not. The windowed first sync fills these in
 /// newest first.
@@ -136,7 +142,7 @@ pub fn apply_remote(
     record: &InboundRecord,
     now_ms: i64,
 ) -> Result<ApplyOutcome, StorageError> {
-    let transaction = conn.unchecked_transaction().map_err(failed)?;
+    let transaction = nested_tx::begin(conn).map_err(failed)?;
     let outcome = apply_remote_in(&transaction, record, now_ms)?;
     transaction.commit().map_err(failed)?;
     Ok(outcome)
@@ -203,7 +209,7 @@ pub fn apply_local_edit(
     changes: &[(&str, Change)],
     now_ms: i64,
 ) -> Result<String, StorageError> {
-    let transaction = conn.unchecked_transaction().map_err(failed)?;
+    let transaction = nested_tx::begin(conn).map_err(failed)?;
     let merged = apply_local_edit_in(&transaction, item_type, item_id, changes, now_ms)?;
     transaction.commit().map_err(failed)?;
     Ok(merged)
@@ -211,6 +217,9 @@ pub fn apply_local_edit(
 
 /// [`apply_local_edit`] without the transaction, so a caller can commit the
 /// merged payload and its outbox row as one unit.
+///
+/// The edit keeps whether the item is shown. For a journal row that is its
+/// entry's current `deleted_at`, not the row's (see [`shown_deleted_at`]).
 ///
 /// Refuses autocommit for the same reason [`crate::sync::outbox::enqueue`]
 /// does: a merged payload written without the outbox row that publishes it is
@@ -223,6 +232,33 @@ pub fn apply_local_edit_in(
     item_id: &str,
     changes: &[(&str, Change)],
     now_ms: i64,
+) -> Result<String, StorageError> {
+    merge_local_edit_in(tx, item_type, item_id, changes, now_ms, None)
+}
+
+/// The local edit that decides whether the item is shown: a delete
+/// (`Some(deleted_at)`, already written to the row) or a re-create (`None`,
+/// the row's tombstone already cleared). Every other edit is
+/// [`apply_local_edit_in`].
+pub(crate) fn apply_local_edit_setting_deleted_in(
+    tx: &Connection,
+    item_type: &str,
+    item_id: &str,
+    changes: &[(&str, Change)],
+    now_ms: i64,
+    deleted_at: Option<i64>,
+) -> Result<String, StorageError> {
+    merge_local_edit_in(tx, item_type, item_id, changes, now_ms, Some(deleted_at))
+}
+
+/// `deleted_at`: `Some` for a delete or a re-create, `None` to keep it.
+fn merge_local_edit_in(
+    tx: &Connection,
+    item_type: &str,
+    item_id: &str,
+    changes: &[(&str, Change)],
+    now_ms: i64,
+    deleted_at: Option<Option<i64>>,
 ) -> Result<String, StorageError> {
     if tx.is_autocommit() {
         return Err(StorageError::Failed {
@@ -242,10 +278,20 @@ pub fn apply_local_edit_in(
             what: format!("sync item {item_type}/{item_id} has no payload to merge into"),
         });
     };
+    journal_day_merge::note_local_edit(conn, item_type, item_id, &stored)?;
+    let deleted_at = match deleted_at {
+        Some(deleted_at) => deleted_at,
+        None => shown_deleted_at(conn, item_type, item_id, row.deleted_at)?,
+    };
 
-    let merged = StoredPayload::parse(&stored)
-        .map_err(refuse(item_type, item_id))?
-        .merge(changes);
+    let stored = StoredPayload::parse(&stored).map_err(refuse(item_type, item_id))?;
+    let mut merged = stored.merge(changes);
+    if item_type == "journal" {
+        // Chapter 06 §6.12.2: every journal edit restamps its unit clocks.
+        let edited = StoredPayload::parse(&merged).map_err(refuse(item_type, item_id))?;
+        let stamp = journal_merge::local_edit_changes(stored.object(), edited.object())?;
+        merged = edited.merge(&stamp);
+    }
     let reparsed = StoredPayload::parse(&merged).map_err(refuse(item_type, item_id))?;
     let view =
         projectors::read(item_type, reparsed.object()).map_err(refuse(item_type, item_id))?;
@@ -279,12 +325,44 @@ pub fn apply_local_edit_in(
         ItemContext {
             item_id,
             synced_at: now_ms,
-            deleted_at: row.deleted_at,
+            deleted_at,
         },
         &view,
     )?;
 
     Ok(merged)
+}
+
+/// The `deleted_at` an edit that keeps whether the item is shown projects.
+///
+/// Invariant (#5763, §1.9.1): for a journal row it is the entry's current
+/// `deleted_at`, never the row's. A journal row can be tombstoned while its
+/// entry stays live: a foreign `F` whose tombstone the merge holds keeps the
+/// day, with its unpushed text, until the drain folds it, and a drop leaves
+/// it so. No edit of it may change whether its day is shown. Projected
+/// deleted, the day would vanish, and the next edit would reopen it through
+/// `journal::open_day_in`, whose revive purges the unpushed body and clears
+/// the row's tombstone so an `F` upsert goes out over it. Only a delete and a
+/// re-create set it ([`apply_local_edit_setting_deleted_in`]). A row with no
+/// entry keeps its own.
+fn shown_deleted_at(
+    conn: &Connection,
+    item_type: &str,
+    item_id: &str,
+    row_deleted_at: Option<i64>,
+) -> Result<Option<i64>, StorageError> {
+    if item_type != journal::ITEM_TYPE {
+        return Ok(row_deleted_at);
+    }
+    let entry: Option<Option<i64>> = conn
+        .query_row(
+            "SELECT deleted_at FROM journal_entries WHERE id = ?1",
+            params![item_id],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(failed)?;
+    Ok(entry.unwrap_or(row_deleted_at))
 }
 
 /// Chapter 06 §6.5.2 P2: the payload a push sends, read from the live row at
@@ -321,21 +399,40 @@ pub fn mark_corrupt(
     Ok(())
 }
 
-/// The ids of the rows held corrupt because their signer was not in the
-/// device directory (chapter 01 §1.4.0), by the reason's fixed ending
-/// ([`crate::protocol::account::UNKNOWN_SIGNER`]).
-pub fn unknown_signer_ids(conn: &Connection) -> Result<Vec<String>, StorageError> {
+/// The `(item_type, item_id)` of the rows held corrupt because their signer
+/// was not in the device directory (chapter 01 §1.4.0), by the reason's fixed
+/// ending ([`crate::protocol::account::UNKNOWN_SIGNER`]).
+pub fn unknown_signer_rows(conn: &Connection) -> Result<Vec<(String, String)>, StorageError> {
     let mut statement = conn
         .prepare(
-            "SELECT DISTINCT item_id FROM sync_items
-             WHERE substr(corrupt_reason, -length(?1)) = ?1 ORDER BY item_id",
+            "SELECT item_type, item_id FROM sync_items
+             WHERE substr(corrupt_reason, -length(?1)) = ?1 ORDER BY item_type, item_id",
         )
         .map_err(failed)?;
     statement
-        .query_map([crate::protocol::account::UNKNOWN_SIGNER], |row| row.get(0))
+        .query_map([crate::protocol::account::UNKNOWN_SIGNER], |row| {
+            Ok((row.get(0)?, row.get(1)?))
+        })
         .map_err(failed)?
-        .collect::<Result<Vec<String>, _>>()
+        .collect::<Result<Vec<_>, _>>()
         .map_err(failed)
+}
+
+/// Clears the row's unknown-signer flag once a verified record of it arrived:
+/// its signer is known now. A flag for any other reason stays.
+pub fn clear_unknown_signer(
+    conn: &Connection,
+    item_type: &str,
+    item_id: &str,
+) -> Result<(), StorageError> {
+    conn.execute(
+        "UPDATE sync_items SET corrupt_reason = NULL, corrupt_at = NULL
+         WHERE item_type = ?1 AND item_id = ?2
+           AND substr(corrupt_reason, -length(?3)) = ?3",
+        params![item_type, item_id, crate::protocol::account::UNKNOWN_SIGNER],
+    )
+    .map_err(failed)?;
+    Ok(())
 }
 
 /// Reads one row.
@@ -344,13 +441,16 @@ pub fn load(
     item_type: &str,
     item_id: &str,
 ) -> Result<Option<SyncItemRow>, StorageError> {
-    conn.query_row(
-        "SELECT item_type, item_id, payload, payload_state, clock, field_clocks,
-                server_cursor, signer_device_id, updated_at, deleted_at,
-                corrupt_reason, corrupt_at
-         FROM sync_items WHERE item_type = ?1 AND item_id = ?2",
-        params![item_type, item_id],
-        |row| {
+    let mut statement = conn
+        .prepare_cached(
+            "SELECT item_type, item_id, payload, payload_state, clock, field_clocks,
+                    server_cursor, signer_device_id, updated_at, deleted_at,
+                    corrupt_reason, corrupt_at
+             FROM sync_items WHERE item_type = ?1 AND item_id = ?2",
+        )
+        .map_err(failed)?;
+    statement
+        .query_row(params![item_type, item_id], |row| {
             Ok(SyncItemRow {
                 item_type: row.get(0)?,
                 item_id: row.get(1)?,
@@ -365,102 +465,9 @@ pub fn load(
                 corrupt_reason: row.get(10)?,
                 corrupt_at: row.get(11)?,
             })
-        },
-    )
-    .optional()
-    .map_err(failed)
-}
-
-/// Replays every stored payload through its projector (§A.1).
-///
-/// Dropping the tables of migration `0002` and calling this is a supported
-/// recovery, and it is the operation that makes "a projection column is a cache
-/// of a parse" true rather than aspirational. Returns how many rows projected.
-/// A row that fails its reader is flagged and passed over, not retried.
-pub fn rebuild_projections(conn: &Connection, now_ms: i64) -> Result<usize, StorageError> {
-    replay(
-        conn,
-        "SELECT item_type, item_id FROM sync_items WHERE payload IS NOT NULL
-         ORDER BY item_type, item_id",
-        Some(now_ms),
-    )
-}
-
-/// Projects every `canvas` payload whose `canvases` row (migration `0036`) is
-/// missing or older than the payload, on every open of `data.db`, in one
-/// transaction. Payloads reach `sync_items` without this build's projector:
-/// stored before `0036`, written by an older build that opened the migrated
-/// file (its `run` skips the versions it knows, and its canvas projector is a
-/// no-op), or salvaged by a recovery into a file migrated while empty. A row
-/// the projector wrote has `synced_at` equal to its payload's `updated_at`, so
-/// only those rows match, and a crash leaves them for the next open.
-///
-/// A replayed row takes its `sync_items.updated_at` as its apply instant, so a
-/// table listed by recency keeps the order its rows had. A row held corrupt
-/// stays out, or each open would re-read and re-flag it. A database written by
-/// a newer build is left alone: its projector may differ from this one.
-pub fn heal_projections(conn: &Connection) -> Result<usize, StorageError> {
-    let newer = migrations::user_version(conn)? > migrations::latest_version(DATA_MIGRATIONS);
-    if newer {
-        return Ok(0);
-    }
-    let tx = conn.unchecked_transaction().map_err(failed)?;
-    let healed = replay(
-        &tx,
-        "SELECT s.item_type, s.item_id FROM sync_items s
-         LEFT JOIN canvases c ON c.id = s.item_id
-         WHERE s.item_type = 'canvas' AND s.payload IS NOT NULL
-           AND s.corrupt_reason IS NULL
-           AND (c.id IS NULL OR c.synced_at IS NULL OR c.synced_at < s.updated_at)
-         ORDER BY s.item_id",
-        None,
-    )?;
-    tx.commit().map_err(failed)?;
-    Ok(healed)
-}
-
-/// Projects the payloads `keys_sql` names by `(item_type, item_id)`. `now_ms`
-/// is the apply instant, or `None` for each row's own `updated_at`. Keys are
-/// read first and payloads one at a time, so a vault of large canvas scenes is
-/// never held in memory at once.
-fn replay(conn: &Connection, keys_sql: &str, now_ms: Option<i64>) -> Result<usize, StorageError> {
-    let keys: Vec<(String, String)> = {
-        let mut statement = conn.prepare(keys_sql).map_err(failed)?;
-        let mapped = statement
-            .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))
-            .map_err(failed)?;
-        mapped.collect::<Result<_, _>>().map_err(failed)?
-    };
-
-    let mut projected = 0;
-    for (item_type, item_id) in keys {
-        let Some(row) = load(conn, &item_type, &item_id)? else {
-            continue;
-        };
-        let Some(stored) = row.payload else {
-            continue;
-        };
-        let at = now_ms.unwrap_or(row.updated_at);
-        let read = StoredPayload::parse(&stored)
-            .and_then(|payload| projectors::read(&item_type, payload.object()));
-        match read {
-            Ok(view) => {
-                projectors::project(
-                    conn,
-                    &item_type,
-                    ItemContext {
-                        item_id: &item_id,
-                        synced_at: at,
-                        deleted_at: row.deleted_at,
-                    },
-                    &view,
-                )?;
-                projected += 1;
-            }
-            Err(error) => mark_corrupt(conn, &item_type, &item_id, &error.to_string(), at)?,
-        }
-    }
-    Ok(projected)
+        })
+        .optional()
+        .map_err(failed)
 }
 
 /// Writes the payload column and the bookkeeping around it.
@@ -471,7 +478,7 @@ fn write_payload(
     corrupt_reason: Option<&str>,
     now_ms: i64,
 ) -> Result<(), StorageError> {
-    conn.execute(
+    conn.prepare_cached(
         "INSERT INTO sync_items (
              item_type, item_id, payload, payload_state, clock, field_clocks,
              server_cursor, signer_device_id, updated_at, deleted_at,
@@ -488,7 +495,9 @@ fn write_payload(
              deleted_at = excluded.deleted_at,
              corrupt_reason = excluded.corrupt_reason,
              corrupt_at = excluded.corrupt_at",
-        params![
+    )
+    .and_then(|mut statement| {
+        statement.execute(params![
             record.item_type,
             record.item_id,
             // Rule 1. The string the caller handed over, not a re-encoding of
@@ -503,8 +512,8 @@ fn write_payload(
             record.deleted_at,
             corrupt_reason,
             corrupt_reason.map(|_| now_ms),
-        ],
-    )
+        ])
+    })
     .map_err(failed)?;
     Ok(())
 }

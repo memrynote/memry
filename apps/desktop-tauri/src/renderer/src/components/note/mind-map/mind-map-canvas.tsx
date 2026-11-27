@@ -38,7 +38,7 @@ import {
 } from '@excalidraw/excalidraw'
 import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types'
 import '@excalidraw/excalidraw/index.css'
-import { useReducedMotion } from 'motion/react'
+import { useReducedMotionConfig } from 'motion/react'
 import { useTheme } from 'next-themes'
 import { ExternalLink, Link } from '@/lib/icons'
 import { copySceneAsImage, copySceneAsVector, toSkeleton } from './mind-map-export'
@@ -162,7 +162,7 @@ export function MindMapCanvas({
   onControlsChange
 }: MindMapCanvasProps): React.JSX.Element {
   const { resolvedTheme } = useTheme()
-  const prefersReducedMotion = useReducedMotion()
+  const prefersReducedMotion = useReducedMotionConfig()
   const apiRef = useRef<ExcalidrawImperativeAPI | null>(null)
   // The same instance as a piece of state, purely so an effect can subscribe to
   // it once it exists: a ref assignment does not re-run one.
@@ -382,8 +382,11 @@ export function MindMapCanvas({
   )
 
   const fit = useCallback((): void => {
-    apiRef.current?.scrollToContent(undefined, { fitToContent: true, animate: true })
-  }, [])
+    apiRef.current?.scrollToContent(undefined, {
+      fitToContent: true,
+      animate: !prefersReducedMotion
+    })
+  }, [prefersReducedMotion])
 
   /**
    * Neither `fitToContent` nor `fitToViewport` is passed, and that is the whole

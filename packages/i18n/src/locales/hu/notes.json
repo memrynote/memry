@@ -45,6 +45,12 @@
     }
   },
   "page": {
+    "noteFiles": {
+      "downloading": "A jegyzet fájljainak letöltése…",
+      "failed": "Nem sikerült letölteni a jegyzet fájljait: {error}",
+      "failedFallback": "a letöltés sikertelen",
+      "retry": "Újrapróbálkozás"
+    },
     "empty": {
       "title": "Nincs kiválasztva jegyzet",
       "body": "A megtekintéséhez válasszon egy jegyzetet az oldalsávon"
@@ -196,6 +202,10 @@
   "editor": {
     "bodySyncPending": "Szinkronizálás – előfordulhat, hogy a jegyzet tartalma még nem érkezett meg",
     "databaseReadOnly": "Írásvédett. Ez az eszköz nem tud változásokat menteni.",
+    "remoteBodyStuck": "Szinkronizálásra vár — csak olvasható, amíg a jegyzet szinkronizált tartalma meg nem érkezik",
+    "remoteBodyOffline": "Offline — csak olvasható, amíg a jegyzet nem szinkronizál",
+    "remoteBodySignedOut": "Kijelentkezve — csak olvasható, amíg be nem jelentkezel és a jegyzet nem szinkronizál",
+    "remoteBodyVaultLocked": "A széf titkosítási kulcsa nem olvasható — csak olvasható, amíg a jegyzet nem szinkronizál",
     "taskRemoval": {
       "title": "{count, plural, one {Feladat eltávolítva ebből a jegyzetből} other {# feladat eltávolítva ebből a jegyzetből}}",
       "description": "{count, plural, one {Megtartja a Feladatokban, vagy mindenhonnan törli?} other {Megtartja őket a Feladatokban, vagy mindenhonnan törli őket?}}",
