@@ -202,7 +202,9 @@ function hrefParenTokens(item: InlineItem, marks: Span[]): InlineItem {
  * A code run spelled with the shortest fence its backtick runs allow, each
  * line as a token. The writer fences with one backtick more than the longest
  * run, and three at a line start open a code block: `c``c` came back as one.
- * It writes a run's breaks between one span per line, as these items do.
+ * It writes a run's breaks between one span per line, as these items do. A
+ * table cell is no line start, and the writer escapes the pipes in its text,
+ * a token's too, so a cell's code is left to it.
  */
 function shortFencedCode(item: InlineItem, marks: Span[]): InlineItem[] {
   const text = item.text ?? ''
@@ -226,8 +228,15 @@ function shortFencedCode(item: InlineItem, marks: Span[]): InlineItem[] {
   })
 }
 
-/** `items` with every run of a mark between tokens; `marks` maps each token to its span. */
-export function tokenizeEmphasisRuns(items: InlineItem[], marks: Span[]): InlineItem[] {
+/**
+ * `items` with every run of a mark between tokens; `marks` maps each token to
+ * its span. `cell`: the items are a table cell's.
+ */
+export function tokenizeEmphasisRuns(
+  items: InlineItem[],
+  marks: Span[],
+  cell = false
+): InlineItem[] {
   items = splitLinksAtBreaks(items)
   const out: InlineItem[] = []
   let at = 0
@@ -241,13 +250,13 @@ export function tokenizeEmphasisRuns(items: InlineItem[], marks: Span[]): Inline
     if (!best) {
       const item = items[at++]
       if (!Array.isArray(item.content)) {
-        out.push(...shortFencedCode(item, marks))
+        out.push(...(cell ? [item] : shortFencedCode(item, marks)))
         continue
       }
       const children: InlineItem[] = item.content
       out.push({
         ...hrefParenTokens(item, marks),
-        content: joinTexts(tokenizeEmphasisRuns(codeTokens(children, marks), marks))
+        content: joinTexts(tokenizeEmphasisRuns(codeTokens(children, marks), marks, cell))
       })
       continue
     }
@@ -255,7 +264,7 @@ export function tokenizeEmphasisRuns(items: InlineItem[], marks: Span[]): Inline
     const index = marks.push(mark) - 1
     const run = items.slice(at, at + length).map((item) => without(item, mark))
     out.push({ type: 'text', text: openToken(index), styles: {} })
-    out.push(...tokenizeEmphasisRuns(run, marks))
+    out.push(...tokenizeEmphasisRuns(run, marks, cell))
     out.push({ type: 'text', text: closeToken(index), styles: {} })
     at += length
   }

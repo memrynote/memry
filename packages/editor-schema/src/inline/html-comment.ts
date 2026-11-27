@@ -200,7 +200,8 @@ export function writeHtmlCommentTokens<B>(
       commentsInMarks(
         LIST_ITEMS.has(blockType ?? '') ? listLinkBreakTokens(escaped, marks) : escaped
       ),
-      marks
+      marks,
+      blockType === undefined
     )
   }) as B[]
   const restore = (markdown: string): string => restoreEmphasisRuns(markdown, marks)
