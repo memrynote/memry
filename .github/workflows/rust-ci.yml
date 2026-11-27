@@ -648,7 +648,7 @@ jobs:
       # The cold release build is a step of its own, outside the run step's hang limit: as one step it
       # took 12.1 and 13.6 minutes on this leg (runs 44806511703 and 44806862681) of its 15.
       - name: Calendar range budget (memry-tauri, release), build
-        if: matrix.part != 'tests' && matrix.part != 'models' && matrix.os == 'ubuntu-22.04'
+        if: matrix.seams && matrix.os == 'ubuntu-22.04'
         timeout-minutes: 20
         env:
           CARGO_PROFILE_RELEASE_LTO: 'false'
@@ -660,7 +660,7 @@ jobs:
         run: cargo test -p memry-tauri --release --test calendar --no-run
 
       - name: Calendar range budget (memry-tauri, release)
-        if: matrix.part != 'tests' && matrix.part != 'models' && matrix.os == 'ubuntu-22.04'
+        if: matrix.seams && matrix.os == 'ubuntu-22.04'
         timeout-minutes: 15
         env:
           CARGO_PROFILE_RELEASE_LTO: 'false'
