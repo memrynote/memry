@@ -24,7 +24,6 @@ describe('useProperties', () => {
     service.get.mockResolvedValue(initialProperties)
     service.set.mockResolvedValue({ success: true })
     service.rename.mockResolvedValue({ success: true })
-    api.onItemSynced = vi.fn().mockReturnValue(() => {})
     ;(window as Window & { api: unknown }).api = api
   })
 
@@ -32,31 +31,13 @@ describe('useProperties', () => {
     vi.clearAllMocks()
   })
 
-  it('loads properties, exposes a record, and refreshes on pulled item sync events', async () => {
-    const syncCallbacks: Array<
-      (event: { operation: string; itemId: string; type: string }) => void
-    > = []
-    api.onItemSynced = vi.fn((callback) => {
-      syncCallbacks.push(callback)
-      return () => {}
-    })
-
+  it('loads properties and exposes a record', async () => {
     const { result } = renderHook(() => useProperties('note-1'))
 
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 
     expect(service.get).toHaveBeenCalledWith('note-1')
     expect(result.current.propertiesRecord).toEqual({ status: 'draft', priority: 2 })
-
-    service.get.mockResolvedValue([{ name: 'status', value: 'review', type: 'text' }])
-
-    await act(async () => {
-      syncCallbacks[0]({ operation: 'pull', itemId: 'note-1', type: 'note' })
-    })
-
-    await waitFor(() => {
-      expect(result.current.propertiesRecord).toEqual({ status: 'review' })
-    })
   })
 
   it('refetches when another surface writes properties this hook does not hold', async () => {

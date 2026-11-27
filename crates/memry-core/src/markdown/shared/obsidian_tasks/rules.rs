@@ -250,6 +250,7 @@ pub(super) fn strip_fields(input: &str, out: &mut ObsidianTaskFields) -> String 
         let mut matched = false;
         for rules in &tables {
             for rule in *rules {
+                super::step();
                 let Some((range, value)) = rule.find(&text) else {
                     continue;
                 };
@@ -258,6 +259,7 @@ pub(super) fn strip_fields(input: &str, out: &mut ObsidianTaskFields) -> String 
                 matched = true;
             }
         }
+        super::step();
         if let Some(found) = hash_tag_from_end().find(&text) {
             let name = js_trim(found.as_str()).to_owned();
             trailing_tags = if trailing_tags.is_empty() {

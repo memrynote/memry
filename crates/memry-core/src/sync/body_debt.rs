@@ -56,6 +56,7 @@
 use rusqlite::{Connection, OptionalExtension as _, params};
 
 use crate::api::errors::StorageError;
+use crate::storage::nested_tx;
 
 use super::apply::{DOCUMENT_TYPES, Pending};
 use super::body_pull::BodyPullReport;
@@ -229,7 +230,7 @@ pub(crate) fn owe_page(
     conn: &Connection,
     pending: &[Pending],
 ) -> Result<Vec<String>, StorageError> {
-    let txn = conn.unchecked_transaction().map_err(failed)?;
+    let txn = nested_tx::begin(conn).map_err(failed)?;
     let mut added = Vec::new();
     for item in pending {
         let Pending::Record(record) = item else {

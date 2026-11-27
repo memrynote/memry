@@ -32,6 +32,7 @@ use crate::domain::header_tags::{self, HeaderTagEdit};
 use crate::domain::journal;
 use crate::domain::journal_ops::metadata;
 use crate::domain::tags;
+use crate::storage::nested_tx;
 use crate::storage::repositories::sync_items;
 
 use super::{ITEM_TYPE, failed};
@@ -50,7 +51,7 @@ pub fn taken(
     now_ms: i64,
 ) -> Result<(), StorageError> {
     if let Some(date) = journal::date_of(conn, id)? {
-        let tx = conn.unchecked_transaction().map_err(failed)?;
+        let tx = nested_tx::begin(conn).map_err(failed)?;
         let before = baseline(&tx, id)?.or_else(|| indexed.map(<[String]>::to_vec));
         if let Some(change) = before.and_then(|before| header_tags::compare(&before, after)) {
             let edit = HeaderTagEdit {

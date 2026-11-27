@@ -217,7 +217,7 @@ impl NotesService {
             &converter_for(settings.as_ref()),
             note_id,
             path,
-            body,
+            Some(body),
             &embeds,
         );
         match read {

@@ -35,13 +35,6 @@ const ACTIVE_ITEMS: RoadmapItem[] = [
     title: 'Desktop moves from Electron to Tauri',
     caption:
       'Moving the desktop app to Tauri for a smaller download, lower memory use, and a faster start, on the same encrypted vault and sync.'
-  }
-]
-
-const PLANNED_ITEMS: RoadmapItem[] = [
-  {
-    title: 'Outlook and Microsoft 365 calendars',
-    caption: 'The next provider after Google, CalDAV, ICS subscriptions, and macOS Calendar.'
   },
   {
     title: 'iPad and Android apps',
@@ -51,30 +44,45 @@ const PLANNED_ITEMS: RoadmapItem[] = [
     title: 'iPad handwriting and PDF annotation',
     caption:
       'Apple Pencil writing, searchable handwritten notes, and markup for PDFs inside the vault.'
+  }
+]
+
+const PLANNED_ITEMS: RoadmapItem[] = [
+  {
+    title: 'iOS widgets',
+    caption: 'Glance at your day from the Home Screen.'
   },
   {
-    title: 'Home screen widgets and quick capture on mobile',
-    caption: 'Capture text and voice, or glance at today, without opening the full app.'
+    title: 'Raycast extension',
+    caption: 'Reach memrynote from your Mac launcher, one keystroke away.'
   },
   {
-    title: 'Locked spaces for sensitive notes',
-    caption: 'Biometric or passcode-gated areas for private notes inside an encrypted vault.'
+    title: 'WhatsApp integration',
+    caption: 'Send a message to save it as a note.'
   },
   {
-    title: 'Public and shared vaults',
-    caption: 'Publish notes to the web or collaborate on a shared workspace.'
+    title: 'Telegram integration',
+    caption: 'Capture notes straight from your Telegram chats.'
   },
   {
-    title: 'Plugin API',
-    caption: 'Extend Memrynote with your own tools, integrations, and views.'
+    title: 'Email integration',
+    caption: 'Forward emails into your vault.'
   },
   {
-    title: 'Templates marketplace',
-    caption: 'Share and discover note, task, and journal templates.'
+    title: 'Collaboration',
+    caption: 'Work on notes together with other people.'
+  },
+  {
+    title: 'Publish',
+    caption: 'Share notes on the web, on memrynote or your own custom domain.'
   },
   {
     title: 'Self-hosted sync server',
     caption: 'Run the encrypted sync layer on your own infrastructure.'
+  },
+  {
+    title: 'Outlook and Microsoft 365 calendars',
+    caption: 'The next provider after Google, CalDAV, ICS subscriptions, and macOS Calendar.'
   }
 ]
 

@@ -106,6 +106,10 @@ export async function applyNewUser(
   if (draft.aiEnabled && draft.agent) {
     persistAgentModelPreference({ provider: draft.agent, models: {} })
   }
+  // Sent only once the user has turned metrics on, never before the choice.
+  if (draft.telemetry) {
+    void trackTelemetry('onboarding_started', { surface: 'onboarding', action: 'wizard' })
+  }
   complete('new')
   return { ok: true }
 }

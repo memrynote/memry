@@ -100,6 +100,32 @@ describe('manifest pagination over real SQLite', () => {
     expect('nextCursor' in result).toBe(false)
   })
 
+  // Protocol 08 §8.10: the reader's record reconcile compares this cursor
+  // with the one it holds, because `version` is not unique per write.
+  it('carries each row server_cursor as serverCursor, paged or not', async () => {
+    // #given
+    seedEightLiveRows()
+    const cursorOf = (itemId: string): number =>
+      (
+        harness.raw
+          .prepare('SELECT server_cursor FROM sync_items WHERE user_id = ? AND item_id = ?')
+          .get(USER_ID, itemId) as { server_cursor: number }
+      ).server_cursor
+
+    // #when
+    const full = await getManifest(harness.db, USER_ID, VAULT_ID, RECORD_SYNC_ITEM_TYPES)
+    const page = await getManifest(harness.db, USER_ID, VAULT_ID, RECORD_SYNC_ITEM_TYPES, {
+      cursor: 0,
+      limit: 3
+    })
+
+    // #then
+    expect(full.items).toHaveLength(8)
+    for (const item of [...full.items, ...page.items]) {
+      expect(item.serverCursor).toBe(cursorOf(item.id))
+    }
+  })
+
   it('walks pages with no duplicate and no missing row, in stable order', async () => {
     // #given
     seedEightLiveRows()

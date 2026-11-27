@@ -65,7 +65,7 @@ broadcasts sent while it was away are gone. Desktop pulls on every socket
 ## 9.2 Handshake
 
 **Normative.** `GET /sync/ws`
-(`apps/sync-server/src/routes/sync.ts:311`). **Authentication is handshake
+(`apps/sync-server/src/routes/sync.ts:312`). **Authentication is handshake
 headers only — never a query parameter and never a subprotocol**
 (`packages/contracts/src/sync-socket.ts:12-16`).
 
@@ -127,8 +127,8 @@ and where it is produced:
 
 | Type                         | Payload                                                                                                                                          | Producer                                                                                                                                                         |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `changes_available`          | `{ cursor?, vaultId?, committedAtMs?, items? }` (`packages/contracts/src/sync-socket.ts:70-75`); the last two only on an opted-in socket (§9.13) | the default broadcast type (`apps/sync-server/src/durable-objects/user-sync-state.ts:220`), sent after a record push (`apps/sync-server/src/routes/sync.ts:526`) |
-| `crdt_updated`               | `{ vaultId?, noteId, cursor? }` (`packages/contracts/src/sync-socket.ts:86-93`)                                                                  | after a CRDT update push (`apps/sync-server/src/routes/sync.ts:849`), a snapshot push (`:1067`) and a batch (`:1243`)                                            |
+| `changes_available`          | `{ cursor?, vaultId?, committedAtMs?, items? }` (`packages/contracts/src/sync-socket.ts:70-75`); the last two only on an opted-in socket (§9.13) | the default broadcast type (`apps/sync-server/src/durable-objects/user-sync-state.ts:220`), sent after a record push (`apps/sync-server/src/routes/sync.ts:527`) |
+| `crdt_updated`               | `{ vaultId?, noteId, cursor? }` (`packages/contracts/src/sync-socket.ts:86-93`)                                                                  | after a CRDT update push (`apps/sync-server/src/routes/sync.ts:859`), a snapshot push (`:1067`) and a batch (`:1243`)                                            |
 | `calendar_changes_available` | `{ sourceId }`                                                                                                                                   | the calendar webhook route (`apps/sync-server/src/routes/webhooks.ts:183-187`)                                                                                   |
 | `auth_ok`                    | `{ exp? }` (`packages/contracts/src/sync-socket.ts:101`)                                                                                         | the in-place re-auth reply (§9.8)                                                                                                                                |
 | `error`                      | `{ code?, message? }` (`packages/contracts/src/sync-socket.ts:102`)                                                                              | `WS_RATE_LIMITED` (`apps/sync-server/src/durable-objects/user-sync-state.ts:355-360`) and `WS_TOKEN_EXPIRED` (`:464-469`)                                        |
@@ -259,8 +259,8 @@ for both — for 4004 by signing the device out, for 4009 until the application 
 updated (`apps/desktop/src/main/sync/websocket.ts:181-203`, where 4004 clears
 `shouldBeConnected` and 4009 sets `versionRejected`). The Rust core keeps the
 latch on `VaultSync`, which outlives the per-foreground socket the shell mints
-and is dropped on sign-out (`crates/memry-core/src/api/sync/mod.rs:298`,
-`crates/memry-core/src/sync/socket_run.rs:128`).
+and is dropped on sign-out (`crates/memry-core/src/api/sync/mod.rs:324-326`,
+`crates/memry-core/src/sync/socket_run.rs:133`).
 
 ## 9.10 Reconnect and backoff — Q09.4
 
@@ -278,28 +278,29 @@ adopts it:
 delay = min(BASE * 2^attempt + random()*JITTER, MAX)
 ```
 
-(`apps/desktop/src/main/sync/websocket.ts:348-352`), with `attempt` incremented
-per scheduled reconnect (`:354`) and **reset to zero on a successful open**.
+(`apps/desktop/src/main/sync/websocket.ts:349-353`), with `attempt` incremented
+per scheduled reconnect (`:355`) and **reset to zero on a successful open**.
 
 A reconnect MUST NOT be scheduled when any of these latches is set:
 the client no longer wants a connection, the handshake was rejected `401` or
 `403`, the version was rejected (a `426` handshake or a 4009 close), or
-transport pinning failed (`apps/desktop/src/main/sync/websocket.ts:344`; the handshake
-statuses set their latches at `:211-238`).
-A `403` handshake is §9.9's 4004 met before the upgrade: an unknown or revoked
-device (§9.2), which reconnecting cannot fix. A reconnect MUST only fire when
-the device believes it is online (`:358`).
+transport pinning failed (`apps/desktop/src/main/sync/websocket.ts:344-346`; the handshake
+statuses set their latches at `:212-239`).
+A `403` handshake is an unknown or revoked device (§9.2), or an edge in front
+of the server refusing the upgrade; reconnecting fixes neither, so it latches,
+but it is not §9.9's 4004 (below). A reconnect MUST only fire when the device
+believes it is online (`:359`).
 
 The Rust core learns the handshake's status from the shell as
-`TransportError::HandshakeRejected` (`crates/memry-core/src/api/errors.rs:179`).
+`TransportError::HandshakeRejected` (`crates/memry-core/src/api/errors.rs:183`).
 It latches `403` and `426` like their in-socket counterparts 4004 and 4009, and
 ends the run on `401` without latching, so the next foreground tries again
-(`crates/memry-core/src/sync/socket.rs:349`, `:366`). It reports a `403` as
+(`crates/memry-core/src/sync/socket.rs:346-351`, `:364`). It reports a `403` as
 `Terminal::HandshakeForbidden`, apart from 4004's `Terminal::DeviceRevoked`
-(`:350`): an edge in front of the server can refuse a handshake `403` too, so
+(`:347-348`): an edge in front of the server can refuse a handshake `403` too, so
 a client MUST NOT treat it as a revoked device. Desktop turns the socket off and
 leaves revocation to the HTTP path's `403 AUTH_DEVICE_REVOKED`
-(`apps/desktop/src/main/sync/websocket.ts:218-224`). A handshake with neither
+(`apps/desktop/src/main/sync/websocket.ts:219-224`). A handshake with neither
 an open nor an error after `HANDSHAKE_TIMEOUT_MS` (15 000) is dropped and
 retried along the ladder (`crates/memry-core/src/sync/socket_run.rs:39`,
 `:166`).
@@ -430,7 +431,7 @@ socket's `changes_available` payload:
   returns for that row version, byte for byte, tombstones included with
   `deletedAt`. The push builds it from the values it just committed through
   the same constructor the pull uses
-  (`apps/sync-server/src/services/sync.ts:399`, `:491`, `:564`). Only accepted rows
+  (`apps/sync-server/src/services/sync.ts:433`, `:517`, `:590`). Only accepted rows
   appear, in ascending server cursor order. `committedAtMs` is the commit time
   of the push's latest wave, for the latency trace (#2280).
 - **Only negotiated types.** A socket receives only the item types it
@@ -441,7 +442,7 @@ socket's `changes_available` payload:
   hint-only; the server never truncates the list. The server decides from the
   committed payload sizes before it builds anything, and builds the items only
   after every wave committed, so building can never reject a committed row
-  (`apps/sync-server/src/services/sync.ts:554-574`). The server variable
+  (`apps/sync-server/src/services/sync.ts:564-584`). The server variable
   `SYNC_SOCKET_ITEMS_MAX_BYTES` can lower the budget and `"0"` turns items off
   at no cost (`apps/sync-server/src/lib/socket-items.ts:18-24`); it cannot
   raise it.

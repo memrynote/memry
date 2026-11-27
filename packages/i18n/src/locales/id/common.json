@@ -1,4 +1,7 @@
 {
+  "wikiLink": {
+    "openFailed": "Tidak dapat membuka tautan ini"
+  },
   "portalBlock": {
     "copyFailed": "Tidak dapat menyalin portal",
     "hiddenCount": "{count} disembunyikan",
@@ -956,6 +959,8 @@
     "componentsVaultSwitcher": {
       "noVaultsYet": "Belum ada brankas",
       "openVault": "Buka brankas",
+      "createVault": "Buat brankas",
+      "openFolderAsVault": "Buka folder sebagai brankas",
       "settings": "Pengaturan",
       "remove": "Hapus “",
       "removeVaultTitle": "Hapus “{name}” dari daftar?",

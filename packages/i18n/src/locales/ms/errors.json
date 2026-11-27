@@ -44,6 +44,9 @@
     "moveFailed": "Gagal mengalihkan nota",
     "applyTemplateFailed": "Gagal menggunakan templat",
     "appendBlocksFailed": "Gagal mengalihkan blok ke nota itu",
+    "appendIntoCaseTwin": "Nota itu berkongsi failnya dengan nota yang namanya hanya berbeza pada huruf besar dan kecil. Namakan semula salah satu daripadanya, kemudian alihkan blok sekali lagi.",
+    "appendIntoBinary": "Blok hanya boleh dialihkan ke nota, bukan ke fail imej, PDF, audio atau video.",
+    "caseTwinMoveRefused": "Nota ini berkongsi failnya dengan nota yang namanya hanya berbeza dari segi huruf besar dan kecil, jadi nota ini tidak boleh dipindahkan dengan cara ini. Namakan semula atau pindahkan nota yang satu lagi, atau padamkan salinan yang anda tidak perlukan.",
     "exportPdfFailed": "Gagal mengeksport PDF",
     "exportHtmlFailed": "Gagal mengeksport HTML",
     "restoreVersionFailed": "Gagal memulihkan versi",
@@ -75,10 +78,15 @@
     "uploadFailed": "Muat naik lampiran gagal",
     "uploadProgressFailed": "Gagal mengambil kemajuan muat naik",
     "downloadFailed": "Muat turun lampiran gagal",
+    "downloadGone": "Fail ini tiada lagi pada pelayan penyegerakan. Jika peranti lain masih mempunyainya, tambahkannya semula dari peranti itu.",
+    "downloadMissing": "Fail ini belum ada pada pelayan penyegerakan. Buka semula esok untuk menyemak.",
+    "downloadNeedsSync": "Penyegerakan tidak berjalan, jadi fail ini tidak dapat dimuat turun. Fail ini dimuat turun dengan sendirinya sebaik sahaja penyegerakan berjalan.",
     "downloadProgressFailed": "Gagal mengambil kemajuan muat turun",
     "exceedsMaxSize": "Fail terlalu besar: {size} melebihi had {limit}",
     "exceedsPlanLimit": "Fail lebih besar daripada yang dibenarkan oleh pelan anda: {size} melebihi {limit}",
-    "emptyFile": "Tidak dapat memuat naik fail kosong"
+    "emptyFile": "Tidak dapat memuat naik fail kosong",
+    "emptyNotAttached": "Fail ini kosong, jadi ia tidak dilampirkan. Jika anda menampal imej, salin semula dan tampalkannya.",
+    "textInMediaFile": "Fail ini mengandungi teks dan bukan media yang dinyatakan oleh namanya"
   },
   "crdt": {
     "persistenceDegradedTitle": "Sejarah edit tidak disimpan pada peranti ini",
@@ -233,10 +241,13 @@
   "folder": {
     "createFailed": "Gagal membuat folder",
     "renameFailed": "Gagal menamakan semula folder",
+    "renameCaseTwins": "Folder ini mengandungi nota yang berkongsi fail dengan nota yang nama foldernya hanya berbeza dari segi huruf besar dan kecil. Namakan semula atau pindahkan nota tersebut dahulu, kemudian namakan semula folder.",
     "deleteFailed": "Gagal memadamkan folder",
     "keptNotPulled": "Folder ini mengandungi nota yang failnya dipadam di luar memrynote, dan teksnya belum disegerakkan ke peranti ini, jadi nota itu tidak boleh dialihkan ke tong sampah. Tiada apa-apa yang dipadam. Tunggu sehingga ia disegerakkan, atau padam nota itu secara berasingan terlebih dahulu.",
     "keptUnwritable": "Folder ini mengandungi nota yang failnya dipadam di luar memrynote, dan teksnya tidak dapat disimpan ke fail untuk tong sampah. Tiada apa-apa yang dipadam. Padam nota itu secara berasingan terlebih dahulu.",
     "trashUnavailable": "Folder ini tidak dapat dialihkan ke tong sampah. Apa-apa yang masih ada di dalamnya tidak dipadam.",
+    "deleteCaseTwins": "Folder ini dan folder dengan nama yang sama tetapi ditulis secara berbeza, contohnya dengan huruf besar dan kecil yang lain, ialah satu folder pada cakera, jadi memadamkannya akan memadamkan nota dalam kedua-duanya. Sebaliknya, padamkan nota yang tidak anda perlukan satu demi satu.",
+    "deleteWindowsName": "Nama folder ini berakhir dengan titik atau ruang, yang diabaikan oleh Windows, jadi memadamkannya boleh turut memadamkan folder lain. Sebaliknya, padamkan nota di dalamnya satu demi satu.",
     "setConfigFailed": "Gagal menetapkan konfigurasi folder"
   },
   "folderView": {

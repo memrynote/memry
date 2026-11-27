@@ -65,17 +65,6 @@ export function useProperties(entityId: string | null): UsePropertiesReturn {
     }
   }, [entityId])
 
-  useEffect(() => {
-    if (!entityId) return undefined
-    const unsub = window.api.onItemSynced((event) => {
-      if (event.operation !== 'pull') return
-      if (event.itemId !== entityId) return
-      if (event.type !== 'note' && event.type !== 'journal') return
-      void fetchProperties()
-    })
-    return unsub
-  }, [entityId, fetchProperties])
-
   // Every write below sends the full record with the record it was made from,
   // and only the difference is written, so a property another surface (the
   // graph, an agent) wrote since the last fetch survives. Refetch when an

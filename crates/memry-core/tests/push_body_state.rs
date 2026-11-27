@@ -113,6 +113,7 @@ fn coordinator(
         db.clone(),
         Declaration::subscribed(),
         sealer,
+        "device-a",
     )
 }
 

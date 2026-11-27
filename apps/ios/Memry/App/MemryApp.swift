@@ -1,3 +1,4 @@
+import Combine
 import SwiftUI
 import TipKit
 import UIKit
@@ -16,7 +17,10 @@ struct MemryApp: App {
                     DeepLinkTelemetry.opened(url)
                     if let link = CalendarLink(url: url) { CalendarLinks.shared.request(link) }
                 }
+                // Handoff from another device (#4381), held the same way.
+                .onContinueUserActivity(HandoffActivity.type) { HandoffLinks.shared.request($0) }
         }
+        .commands { MemryCommands() }
     }
 }
 
@@ -29,8 +33,11 @@ final class MemryAppDelegate: NSObject, UIApplicationDelegate {
     ) -> Bool {
         // Read the idiom on main before any background work can ask for it.
         _ = ThisDevice.isPad
+        DiagnosticLog.shared.markLaunch(.current())
+        CoreDiagnostics.register()
         UNUserNotificationCenter.current().delegate = ReminderNotificationDelegate.shared
         CalendarBackgroundRefresh.register()
+        SemanticBackgroundTask.register()
         TelemetryLaunch.start()
         // One-time hints (the Notes "+" hold). A failure only means no tips.
         #if DEBUG
@@ -62,6 +69,9 @@ final class MemryAppDelegate: NSObject, UIApplicationDelegate {
 struct RootView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var shell = ShellState()
+    private let pathChanged = NotificationCenter.default
+        .publisher(for: PathReachability.attachmentPathChanged)
+        .receive(on: DispatchQueue.main)
 
     var body: some View {
         // T147. The scaffold is gone, and so is the `--spike-s3` branch that
@@ -89,6 +99,8 @@ struct RootView: View {
             // so the loop cannot outlive its owner and there is nothing to
             // leak.
             .task { await shell.consume() }
+            .environment(\.semanticSearch, shell.semantic)
+            .onReceive(pathChanged) { _ in shell.resumeSemanticDownload() }
             .onChange(of: scenePhase, initial: true) { _, phase in
                 shell.scenePhaseChanged(to: phase)
                 // `.inactive` is a pulled-down Control Center as often as a

@@ -135,6 +135,19 @@ const availableProperties = [
 ]
 
 describe('ColumnSelector', () => {
+  // The trigger is an icon; without a name, assistive tech and the e2e spec cannot find it.
+  it('names its icon trigger Properties', () => {
+    render(
+      <ColumnSelector
+        columns={[{ id: 'title', width: 250 }]}
+        builtInColumns={builtInColumns}
+        availableProperties={availableProperties}
+        onColumnsChange={vi.fn()}
+      />
+    )
+    expect(screen.getByRole('button', { name: 'properties' })).toBeInTheDocument()
+  })
+
   it('filters columns, toggles visibility, and updates summaries', () => {
     const onColumnsChange = vi.fn()
     const onSearchChange = vi.fn()

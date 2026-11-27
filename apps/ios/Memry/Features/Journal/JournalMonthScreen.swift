@@ -47,6 +47,7 @@ struct JournalMonthScreen: View {
                 Button(JournalCopy.nextMonth, systemImage: "chevron.forward") { step(1) }
                     .accessibilityIdentifier("journal.month.next")
             }
+            DayPanelToolbarItem()
             GlobalSearchToolbarItem()
         }
         .accessibilityIdentifier("journal.month")

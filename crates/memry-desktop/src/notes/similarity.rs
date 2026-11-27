@@ -163,7 +163,13 @@ pub fn similar(
     };
     let limit = limit.map_or(DEFAULT_SIMILAR_LIMIT, |limit| limit as usize);
     let answer = similarity::similar_notes(&Store { vault, settings }, note_id, limit).inspect_err(
-        |error| tracing::error!(scope = "Similarity", "similar notes failed: {error}"),
+        |error| {
+            tracing::error!(
+                scope = "Similarity",
+                note_id,
+                "similar notes failed: {error}"
+            )
+        },
     );
     Ok(match answer {
         Ok(answer) => SimilarNotesResponse {
@@ -214,7 +220,11 @@ pub fn tag_suggestions(
                 .collect(),
         },
         Err(error) => {
-            tracing::error!(scope = "Similarity", "tag suggestions failed: {error}");
+            tracing::error!(
+                scope = "Similarity",
+                note_id,
+                "tag suggestions failed: {error}"
+            );
             NoteTagSuggestionsResponse {
                 status: NoteSimilarityStatus::Ready,
                 tags: Vec::new(),

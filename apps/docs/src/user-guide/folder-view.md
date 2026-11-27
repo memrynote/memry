@@ -59,6 +59,8 @@ exactly, capitals included, and only a Markdown note qualifies. A PDF named
 
 Click any header to sort. Click again to reverse direction. <kbd>⇧</kbd>+click for **secondary sort** (sort by A then B).
 
+The sort belongs to the view, so the **List** and **Gallery** layouts show notes in the same order as the table.
+
 ## Grouping
 
 Group rows by:

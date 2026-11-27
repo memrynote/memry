@@ -197,6 +197,21 @@ pub fn usage(index: &Connection) -> Result<Vec<PropertyUse>, StorageError> {
     Ok(usage.into_values().collect())
 }
 
+/// Each `(note id, value)` the index holds for `name`, a null value left out, by note id
+/// (Readwise's `rebuildLinks`, which reads `readwise_url` this way).
+pub fn values_named(index: &Connection, name: &str) -> Result<Vec<(String, String)>, StorageError> {
+    let mut statement = index
+        .prepare(
+            "SELECT note_id, value FROM note_properties \
+             WHERE name = ?1 AND value IS NOT NULL ORDER BY note_id",
+        )
+        .map_err(failed)?;
+    let rows = statement
+        .query_map(params![name], |row| Ok((row.get(0)?, row.get(1)?)))
+        .map_err(failed)?;
+    rows.collect::<Result<_, _>>().map_err(failed)
+}
+
 /// A note holding a property (`PropertyNoteUsage` of `properties-api.ts`).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NoteWithProperty {

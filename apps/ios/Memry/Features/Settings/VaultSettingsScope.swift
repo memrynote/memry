@@ -14,6 +14,7 @@ struct VaultSettingsScope<Content: View>: View {
     @State private var browse: VaultBrowseViewModel?
     @State private var capture: QuickCapture?
     @Environment(\.inboxStore) private var inboxStore
+    @Environment(\.semanticSearch) private var semanticSearch
     @State private var billingRouter = BillingRouter.shared
 
     var body: some View {
@@ -59,13 +60,17 @@ struct VaultSettingsScope<Content: View>: View {
                 notes: vault.notes(),
                 account: account,
                 vaults: model,
-                vaultId: vault.id()
+                vaultId: vault.id(),
+                vault: vault
             )
             tasks.syncFinished = { succeeded in
                 account.syncFinished(succeeded)
                 Task { await store.refreshIfChanged() }
             }
-            let madeBrowse = VaultBrowseViewModel(vault: vault, executor: .shared, filler: model.filler, store: secureStore)
+            let madeBrowse = VaultBrowseViewModel(
+                vault: vault, executor: .shared, filler: model.filler, store: secureStore,
+                semantic: semanticSearch as? SemanticSearch
+            )
             madeBrowse.requestSync = { tasks.scheduleSync() }
             browse = madeBrowse
             capture = QuickCapture(vault: vault, secureStore: secureStore, tasks: tasks, inbox: inboxStore, browse: madeBrowse)

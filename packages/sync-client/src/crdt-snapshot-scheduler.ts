@@ -37,6 +37,12 @@ export interface CrdtSnapshotSchedulerOptions {
   maxWaitMs?: number
   batchWindowMs?: number
   now?: () => number
+  /**
+   * True while the push could send nothing (sync paused, offline). A batch
+   * that comes due then waits for `release()` instead of returning false and
+   * being forgotten, since no later edit may ever request it again.
+   */
+  isHeld?: () => boolean
 }
 
 /**
@@ -55,11 +61,14 @@ export class CrdtSnapshotScheduler {
   private due = new Set<string>()
   private batchTimer: ReturnType<typeof setTimeout> | null = null
   private inFlight = new Set<string>()
+  /** Came due while held, waiting for `release()`. */
+  private held = new Set<string>()
   private stopped = false
   private readonly quietMs: number
   private readonly maxWaitMs: number
   private readonly batchWindowMs: number
   private readonly now: () => number
+  private readonly isHeld: () => boolean
 
   /** `pushFn` receives every note that came due in one batch window. */
   constructor(
@@ -70,6 +79,7 @@ export class CrdtSnapshotScheduler {
     this.maxWaitMs = options.maxWaitMs ?? SNAPSHOT_MAX_WAIT_MS
     this.batchWindowMs = options.batchWindowMs ?? SNAPSHOT_BATCH_WINDOW_MS
     this.now = options.now ?? Date.now
+    this.isHeld = options.isHeld ?? (() => false)
   }
 
   request(noteId: string): void {
@@ -93,11 +103,20 @@ export class CrdtSnapshotScheduler {
     if (this.batchTimer) clearTimeout(this.batchTimer)
     this.batchTimer = null
     this.due.clear()
+    this.held.clear()
+  }
+
+  /** Sends the notes held back while `isHeld` was true, after the batch window. */
+  release(): void {
+    if (this.stopped || this.held.size === 0) return
+    for (const noteId of this.held) this.due.add(noteId)
+    this.held.clear()
+    this.batchTimer ??= unrefTimer(setTimeout(() => this.flush(), this.batchWindowMs))
   }
 
   /** Notes whose snapshot has not been handed to `pushFn` yet. */
   getPendingNoteIds(): string[] {
-    return [...new Set([...this.pending.keys(), ...this.due])]
+    return [...new Set([...this.pending.keys(), ...this.due, ...this.held])]
   }
 
   private fire(noteId: string): void {
@@ -121,6 +140,10 @@ export class CrdtSnapshotScheduler {
 
     const noteIds = [...this.due]
     this.due.clear()
+    if (this.isHeld()) {
+      for (const noteId of noteIds) this.held.add(noteId)
+      return
+    }
     for (const noteId of noteIds) this.inFlight.add(noteId)
     void this.pushFn(noteIds)
       .catch((err: unknown) => {

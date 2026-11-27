@@ -98,6 +98,8 @@ export interface CrdtBodyDebtStore {
   list(): CrdtBodyDebt[]
   /** When each failing debt's backoff ends (epoch ms). */
   backoffUntil(): Map<string, number>
+  /** The note's consecutive failed pulls; 0 with no debt. */
+  failures(noteId: string): number
   /**
    * False when either table is unusable and its rows are tracked for this
    * session only. Probed once per handle, then latched.
@@ -123,6 +125,7 @@ export const SESSION_ONLY_CRDT_BODY_DEBTS: CrdtBodyDebtStore = {
   needsWalk: () => new Set(),
   list: () => [],
   backoffUntil: () => new Map(),
+  failures: () => 0,
   durable: () => false,
   withhold: () => {},
   isWithheld: () => false,
@@ -140,6 +143,7 @@ export function crdtBodyDebtStore(db: DrizzleDb): CrdtBodyDebtStore {
     needsWalk: (noteIds) => crdtBodyDebtsNeedingWalk(db, noteIds),
     list: () => listCrdtBodyDebts(db),
     backoffUntil: () => crdtBodyDebtBackoffUntil(db),
+    failures: (noteId) => crdtBodyDebtFailures(db, noteId),
     durable: () => {
       if (!probed.has(db)) {
         probed.add(db)
@@ -385,6 +389,19 @@ export function settleCrdtBodyDebts(
 export function listCrdtBodyDebts(db: DrizzleDb): CrdtBodyDebt[] {
   return guarded(db, [], () =>
     db.select().from(crdtBodyDebts).orderBy(crdtBodyDebts.generation).all()
+  )
+}
+
+export function crdtBodyDebtFailures(db: DrizzleDb, noteId: string): number {
+  return guarded(
+    db,
+    0,
+    () =>
+      db
+        .select({ failures: crdtBodyDebts.failures })
+        .from(crdtBodyDebts)
+        .where(eq(crdtBodyDebts.noteId, noteId))
+        .get()?.failures ?? 0
   )
 }
 

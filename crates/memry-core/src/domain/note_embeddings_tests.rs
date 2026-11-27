@@ -261,7 +261,10 @@ fn attachment_text_fills_the_room_the_body_leaves() {
 fn store_writes_head_chunks_similar_and_state_in_one_go() {
     let d = dbs();
     d.index(|conn| store(conn, "n1", None, "One", &[v(1.0), v(2.0), v(3.0)], &v(4.0)));
-    assert_eq!(d.state("n1"), Some((i64::from(EMBEDDING_INPUT_VERSION), 2)));
+    assert_eq!(
+        d.state("n1"),
+        Some((i64::from(UNCAPPED_EMBEDDING_INPUT_VERSION), 2))
+    );
     assert_eq!(d.count("SELECT count(*) FROM vec_note_chunks"), 2);
     let (head, similar, second) = d.index(|conn| {
         Ok((
@@ -276,7 +279,10 @@ fn store_writes_head_chunks_similar_and_state_in_one_go() {
 
     // A shorter note drops the chunks it no longer has.
     d.index(|conn| store(conn, "n1", None, "One", &[v(5.0)], &v(6.0)));
-    assert_eq!(d.state("n1"), Some((i64::from(EMBEDDING_INPUT_VERSION), 0)));
+    assert_eq!(
+        d.state("n1"),
+        Some((i64::from(UNCAPPED_EMBEDDING_INPUT_VERSION), 0))
+    );
     assert_eq!(d.count("SELECT count(*) FROM vec_note_chunks"), 0);
     assert_eq!(d.count("SELECT count(*) FROM vec_notes"), 1);
 }
@@ -375,7 +381,10 @@ fn vectors_from_before_the_hashes_are_owed_and_kept() {
     });
     assert_eq!(d.owed(), ["n1"]);
     assert_eq!(d.count("SELECT count(*) FROM vec_notes"), 1);
-    assert_eq!(d.state("n1"), Some((i64::from(EMBEDDING_INPUT_VERSION), 0)));
+    assert_eq!(
+        d.state("n1"),
+        Some((i64::from(UNCAPPED_EMBEDDING_INPUT_VERSION), 0))
+    );
 }
 
 #[test]

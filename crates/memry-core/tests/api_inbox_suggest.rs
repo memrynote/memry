@@ -1,5 +1,5 @@
 //! Step 27 stage 5a end to end on a real vault: filing suggestions from the
-//! filed captures, suggestion feedback (data migration 0041), the review
+//! filed captures, suggestion feedback (data migration 0043), the review
 //! tick's once-a-day guard and Convert to event.
 
 #[allow(unused_imports)]

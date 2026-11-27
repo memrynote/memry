@@ -171,6 +171,7 @@ export async function buildRecordEnvelope(): Promise<Record<string, unknown>> {
     const crypto = deterministicProvider({ dataNonceHex: spec.dataNonceHex })
     const content = utf8(spec.content)
     const { pushItem, sizeBytes } = await encryptRecordForPush(crypto, {
+      vaultId: null,
       id: spec.id,
       type: spec.type,
       operation: spec.operation,

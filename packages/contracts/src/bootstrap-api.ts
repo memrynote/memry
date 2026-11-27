@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import { PackCoverageListSchema } from './sync-api'
+
 /**
  * Bootstrap session API (#1837) — the elevated-throughput window a fresh
  * device opens while it pulls an entire vault for the first time.
@@ -34,8 +36,15 @@ export type BootstrapSession = z.infer<typeof BootstrapSessionSchema>
  * `manifest` is the FIRST page of the opt-in paginated manifest service
  * (MAX_MANIFEST_PAGE_LIMIT), never the whole vault. `tailCursor` is the
  * current MAX(server_cursor) so the client knows when its pull has caught up.
- * `packs` is RESERVED for #1839/#1840: always present, always empty until the
- * pack pipeline lands, so #1840 plugs in without a protocol change.
+ * `packs`, `packsNextCursor` and `coverage` are the first page of
+ * `GET /sync/packs` (protocol 10 §10.4, 08 §8.9), read in one D1 batch, so a
+ * client starts its pack walk without a listing request: `packs` holds
+ * `PackSummarySchema` entries, newest first, and `packsNextCursor` is the
+ * listing's `nextCursor`. A server before step 07 (#5230) sends `packs: []`
+ * and neither of the others, which means "list the packs yourself", never
+ * "the vault has no packs". `packs` stays `z.array(z.unknown())`, so a pack of
+ * a kind this build does not know cannot fail the open; a reader parses each
+ * entry with `PackSummarySchema` and skips one that fails.
  * `attachments` is likewise RESERVED-for-future: an INFORMATIONAL first keyset
  * page of the vault's ciphertext chunk hashes (absent entirely when the
  * deployment cannot presign) — no continuation endpoint ships yet, so clients
@@ -70,7 +79,9 @@ export const BootstrapOpenResponseSchema = z.object({
       nextChunkCursor: z.string().optional()
     })
     .optional(),
-  packs: z.array(z.unknown())
+  packs: z.array(z.unknown()),
+  packsNextCursor: z.string().min(1).optional(),
+  coverage: PackCoverageListSchema.optional()
 })
 
 export type BootstrapOpenResponse = z.infer<typeof BootstrapOpenResponseSchema>
