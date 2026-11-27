@@ -79,13 +79,7 @@ fn image_line(line: &str) -> Option<(&str, &str)> {
 /// embed, a bookmark or a whiteboard on the raw one. `Err` when the line is
 /// one of them in a shape this port does not decide.
 pub(super) fn marker_line(line: &str) -> Result<Option<SeedBlock>, Unsupported> {
-    let trimmed = js_trim(line);
-    if let Some(json) = trimmed
-        .strip_prefix("<!-- file:")
-        .and_then(|rest| rest.strip_suffix(" -->"))
-        .filter(|json| json.starts_with('{') && json.ends_with('}'))
-        .filter(|json| json.len() > 2 && !json[1..json.len() - 1].contains('}'))
-    {
+    if let Some(json) = file_marker_json(js_trim(line)) {
         let props = file_props(json).ok_or(Unsupported("file marker"))?;
         return Ok(Some(block(SeedKind::File(props))));
     }
@@ -132,6 +126,44 @@ pub(super) fn marker_line(line: &str) -> Result<Option<SeedBlock>, Unsupported> 
         })));
     }
     Ok(None)
+}
+
+/// `FILE_BLOCK_LINE_REGEX`, `/^<!-- file:\{[^}]+\} -->$/`, on a trimmed line:
+/// the JSON between `file:` and ` -->`.
+fn file_marker_json(trimmed: &str) -> Option<&str> {
+    trimmed
+        .strip_prefix("<!-- file:")?
+        .strip_suffix(" -->")
+        .filter(|json| json.starts_with('{') && json.ends_with('}'))
+        .filter(|json| json.len() > 2 && !json[1..json.len() - 1].contains('}'))
+}
+
+/// A file marker line whose JSON does not read, as the trimmed line.
+/// `JSON.parse` fails wherever `serde_json` does but for a lone `\u` surrogate,
+/// a number past `f64` and a nesting past its depth limit, so a text holding
+/// any of those is not judged.
+pub(super) fn unreadable_file_marker(line: &str) -> Option<&str> {
+    let trimmed = js_trim(line);
+    let json = file_marker_json(trimmed)?;
+    let judged =
+        !json.contains("\\u") && !json.contains('[') && !json.chars().any(|c| c.is_ascii_digit());
+    (judged && serde_json::from_str::<serde_json::Value>(json).is_err()).then_some(trimmed)
+}
+
+/// `withMarkerImages`: an image block whose line would be a YouTube embed, a
+/// bookmark or a whiteboard is that block. The writer puts an image on a line
+/// of its own as `![name](url)`, which the next seed reads as a marker, so an
+/// image lifted out of text or read indented changed kind on the next open.
+pub(super) fn with_marker_images(blocks: &mut [SeedBlock]) -> Result<(), Unsupported> {
+    for block in blocks {
+        if let SeedKind::Image { url, name, .. } = &block.kind
+            && let Some(marker) = marker_line(&format!("![{name}]({url})"))?
+        {
+            *block = marker;
+        }
+        with_marker_images(&mut block.children)?;
+    }
+    Ok(())
 }
 
 fn block(kind: SeedKind) -> SeedBlock {
@@ -327,5 +359,43 @@ mod tests {
         assert_eq!(alt_width("a|b|300"), ("a|b", Some(300)));
         assert_eq!(alt_width("a|0"), ("a|0", None));
         assert_eq!(alt_width("a|300x200"), ("a|300x200", None));
+    }
+
+    #[test]
+    fn only_a_file_marker_serde_and_json_parse_both_refuse_is_unreadable() {
+        assert_eq!(
+            unreadable_file_marker("  <!-- file:{bad} -->"),
+            Some("<!-- file:{bad} -->")
+        );
+        // Readable, or not a file marker line at all.
+        assert_eq!(unreadable_file_marker(r#"<!-- file:{"url":"x"} -->"#), None);
+        assert_eq!(unreadable_file_marker("<!-- file:{} -->"), None);
+        assert_eq!(unreadable_file_marker("<!-- file:{bad} --> x"), None);
+        // JSON.parse may read what serde_json refuses: not judged.
+        assert_eq!(
+            unreadable_file_marker(r#"<!-- file:{"a":"\ud800"} -->"#),
+            None
+        );
+        assert_eq!(unreadable_file_marker("<!-- file:{\"a\":1e999} -->"), None);
+    }
+
+    #[test]
+    fn an_image_block_that_is_a_marker_line_becomes_that_block() {
+        let image = |name: &str, url: &str| {
+            block(SeedKind::Image {
+                url: url.to_owned(),
+                name: name.to_owned(),
+                preview_width: None,
+            })
+        };
+        let mut blocks = vec![
+            image("", "https://www.youtube.com/watch?v=dQw4w9WgXcQ"),
+            image("whiteboard", "memry://canvas/abc"),
+            image("x", "assets/x.png"),
+        ];
+        with_marker_images(&mut blocks).expect("decided");
+        assert!(matches!(blocks[0].kind, SeedKind::YoutubeEmbed { .. }));
+        assert!(matches!(blocks[1].kind, SeedKind::Whiteboard { .. }));
+        assert!(matches!(blocks[2].kind, SeedKind::Image { .. }));
     }
 }

@@ -3,13 +3,16 @@
 //! claims outside BlockNote's parser becomes its block; the lines between go
 //! to the parser in one run ([`super::blocks::parse_chunk`]).
 
+use std::borrow::Cow;
+
 use crate::domain::journal_rules::js_trim;
 
 use super::block_starts::opens_block;
 use super::blocks::parse_chunk;
 use super::claims::{Claim, callout_at, math_at, quote_at};
 use super::comment_nodes::{has_token, source_lines};
-use super::media::marker_line;
+use super::comments::encode;
+use super::media::{marker_line, unreadable_file_marker, with_marker_images};
 use super::prepare::fence_line;
 use super::{SeedBlock, SeedFallback, SeedKind, Unsupported};
 
@@ -18,20 +21,28 @@ pub(super) fn parse_content(
     out: &mut Vec<SeedBlock>,
     fallbacks: &mut Vec<SeedFallback>,
 ) {
-    let mut buffer: Vec<&str> = Vec::new();
+    let mut buffer: Vec<Cow<str>> = Vec::new();
     let mut fence = FenceTracker::default();
-    let flush =
-        |buffer: &mut Vec<&str>, out: &mut Vec<SeedBlock>, fallbacks: &mut Vec<SeedFallback>| {
-            if !buffer.is_empty() {
-                parse_chunk(&buffer.join("\n"), out, fallbacks);
-                buffer.clear();
-            }
-        };
+    let flush = |buffer: &mut Vec<Cow<str>>,
+                 out: &mut Vec<SeedBlock>,
+                 fallbacks: &mut Vec<SeedFallback>| {
+        if !buffer.is_empty() {
+            parse_buffer(&buffer.join("\n"), out, fallbacks);
+            buffer.clear();
+        }
+    };
     let lines: Vec<&str> = text.split('\n').collect();
     let mut index = 0;
     while index < lines.len() {
         let line = lines[index];
         let inside_fence = fence.consume(line);
+        // A file marker whose JSON does not read keeps its bytes as a comment,
+        // which is no claim and no marker.
+        if !inside_fence && let Some(trimmed) = unreadable_file_marker(line) {
+            buffer.push(Cow::Owned(line.replacen(trimmed, &encode(trimmed), 1)));
+            index += 1;
+            continue;
+        }
         if !inside_fence {
             let at_paragraph_start = index == 0 || js_trim(lines[index - 1]).is_empty();
             // A claim also stands where BlockNote opens a block of its own
@@ -72,10 +83,32 @@ pub(super) fn parse_content(
                 }
             }
         }
-        buffer.push(line);
+        buffer.push(Cow::Borrowed(line));
         index += 1;
     }
     flush(&mut buffer, out, fallbacks);
+}
+
+/// One unclaimed buffer: the parser's blocks, with each image that is a marker
+/// line made that block. One whose address this port cannot decide keeps the
+/// buffer's lines as literal text.
+fn parse_buffer(chunk: &str, out: &mut Vec<SeedBlock>, fallbacks: &mut Vec<SeedFallback>) {
+    let (mut blocks, mut found) = (Vec::new(), Vec::new());
+    parse_chunk(chunk, &mut blocks, &mut found);
+    match with_marker_images(&mut blocks) {
+        Ok(()) => {
+            out.append(&mut blocks);
+            fallbacks.append(&mut found);
+        }
+        Err(Unsupported(reason)) => {
+            let kept: Vec<String> = chunk.split('\n').flat_map(source_lines).collect();
+            out.extend(kept.iter().map(|line| SeedBlock::literal(line)));
+            fallbacks.push(SeedFallback {
+                reason,
+                lines: kept,
+            });
+        }
+    }
 }
 
 /// What desktop claims at `lines[index]`, in its order: a callout, a math

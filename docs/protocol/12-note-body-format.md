@@ -169,6 +169,17 @@ fence's info string, `""` for an untagged fence or an indented run, never BlockN
   `crates/memry-core/src/crdt/markdown_seed/block_starts.rs:36`, `:69`,
   `crates/memry-core/src/crdt/markdown_seed/markers.rs:41`,
   `crates/memry-core/src/crdt/markdown_seed/claims.rs:271`, `:379`).
+- **An image that would be a marker line is that block, and an unreadable file marker is a
+  comment.** After each unclaimed run of lines is parsed, an image block whose caption is empty
+  and whose `![name](url)` reads as a YouTube embed, a bookmark or a whiteboard is that block,
+  so `see ![](youtube-url)` is a paragraph and an embed and an indented `![whiteboard](…)` is a
+  whiteboard. A line of the file-marker shape whose JSON does not parse is an `htmlComment`
+  holding the line's bytes. The core decides a JSON text only where `JSON.parse` surely fails
+  too (not with a `\u` escape, a `[` or a digit), and keeps the line literal otherwise; an
+  address it cannot judge keeps the run literal
+  (`packages/editor-schema/src/note-markdown.ts:264`, `:378`, `:483`;
+  `crates/memry-core/src/crdt/markdown_seed/media.rs:145`, `:157`,
+  `crates/memry-core/src/crdt/markdown_seed/markers.rs:41`, `:95`).
 - **A table row is never read as a hard break.** A line holding a `|` with a delimiter row
   below it opens a table, which runs until a line without a pipe, and a `\` ending
   one of its rows is the last cell's text, never a break token: `| a \` seeds the header cell `a \`
