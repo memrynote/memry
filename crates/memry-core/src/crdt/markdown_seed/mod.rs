@@ -59,8 +59,10 @@ mod code_spans;
 mod collapse;
 mod comment_nodes;
 mod comments;
+mod escapes;
 mod hard_breaks;
 mod inline;
+mod items;
 mod lift;
 mod links;
 mod markers;
@@ -198,7 +200,12 @@ pub enum SeedInline {
         text: String,
         marks: SeedMarks,
     },
-    HardBreak,
+    /// A `\n` of a run's text, split out as the document holds it. `marks`
+    /// are those of the run it came from, which the document does not keep:
+    /// the claim proofs spell the run's text with it.
+    HardBreak {
+        marks: SeedMarks,
+    },
     /// An `htmlComment` node: a `%% … %%` comment as written, delimiters
     /// included (chapter 12 §12.7).
     HtmlComment {

@@ -355,7 +355,13 @@ mod tests {
         let content = inline_content("a\n b  c", &[], false).expect("supported");
         assert_eq!(
             content,
-            vec![plain("a"), SeedInline::HardBreak, plain("b c")]
+            vec![
+                plain("a"),
+                SeedInline::HardBreak {
+                    marks: SeedMarks::default()
+                },
+                plain("b c")
+            ]
         );
     }
 

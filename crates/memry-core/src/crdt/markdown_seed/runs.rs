@@ -355,7 +355,9 @@ fn expand(runs: Vec<Run>) -> Vec<SeedInline> {
     let split = |out: &mut Vec<SeedInline>, text: &str, marks: &SeedMarks| {
         for (index, piece) in text.split('\n').enumerate() {
             if index > 0 {
-                out.push(SeedInline::HardBreak);
+                out.push(SeedInline::HardBreak {
+                    marks: marks.clone(),
+                });
             }
             if !piece.is_empty() {
                 out.push(SeedInline::Text {

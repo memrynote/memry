@@ -55,16 +55,31 @@ non-blank line. A construct that changes how desktop reads the whole text, such 
 a link reference definition or a column region, sends every line there. A fallback drops no
 text (`:35-45`). A built table keeps every cell, as desktop's converter does: a `|` inside a code
 span splits no cell, and a body row wider than the header row widens the table, the header and the
-shorter rows padded with empty cells. A header row spelled like a delimiter row (`| --- |`) is the
-one exception, and cuts each row to its width (`:46-51`,
-`crates/memry-core/src/crdt/markdown_seed/table.rs:21-50`, `:67-95`;
+shorter rows padded with empty cells. A header row spelled like a delimiter row (`| --- |`) widens
+like any other (`:46-51`, `crates/memry-core/src/crdt/markdown_seed/table.rs:21-37`;
 `packages/editor-schema/src/inline/cell-code-spans.ts:95-111`,
-`packages/editor-schema/src/table-width.ts:3-25`, `:118-141`). A callout or a structured quote is
+`packages/editor-schema/src/table-width.ts:81-90`, `:118-141`). A callout or a structured quote is
 claimed only when serializing its parsed body gives back its bytes, as desktop claims it
 (`packages/editor-schema/src/blocks/markdown.ts:220-238`,
 `packages/editor-schema/src/blocks/quote.ts:150-167`); the core serializes the bodies it can
 reproduce exactly and keeps any other body literal
-(`crates/memry-core/src/crdt/markdown_seed/roundtrip.rs:1-6`). A code block's `language` is its
+(`crates/memry-core/src/crdt/markdown_seed/roundtrip.rs:1-7`). The serializer writes text as
+desktop's writer does, which escapes with a backslash each character that would read back as
+markup, judged on the block as spelled: a `*` or `_` that pairs, a backtick that is not alone, a
+`~` beside a `~`, a `]` before `(` or inside link text, a `!` before `[`, a `\` before an escapable
+character, a newline or the block's end, and the first character of a line that opens a block
+(`#`, `>`, `-`, `+`, `*`, `1.`, a thematic break, a table delimiter row, and a table row after the
+first line). Text that holds none keeps its bytes, and a break in a heading is `<br>`
+(`packages/editor-schema/src/inline/markdown-escapes.ts:36`, `:118-130`, `:133-143`, `:152-175`,
+`:233-243`, called from `packages/editor-schema/src/inline/html-comment.ts:177`;
+`crates/memry-core/src/crdt/markdown_seed/escapes.rs:43`, `:184`, `:221`). A mark's delimiters
+stay outside its run's edge whitespace and breaks, a break belongs to the run it was split from,
+and a block holding a mark beside another, link text with a backtick, a link address with a
+backslash, angle bracket, whitespace or unbalanced parenthesis, a break in a code run, or a break
+at a paragraph's start or end or in a run of three or more, is not decided and stays literal
+(`packages/editor-schema/src/inline/emphasis-runs.ts:37`, `:94`, `:174`;
+`crates/memry-core/src/crdt/markdown_seed/items.rs:36`,
+`crates/memry-core/src/crdt/markdown_seed/roundtrip.rs:113`, `:155`, `:180`). A code block's `language` is its
 fence's info string, `""` for an untagged fence or an indented run, never BlockNote's
 `javascript` default (`packages/editor-schema/src/schema.ts:80-89`,
 `crates/memry-core/src/crdt/markdown_seed/blocks.rs:205-228`).

@@ -24,7 +24,7 @@ pub(super) struct PipeRow {
 /// neither opens a table nor continues one.
 ///
 /// `widenTables`: the header row gets an empty cell for each column the
-/// widest body row has past it, unless it is spelled like a delimiter row.
+/// widest body row has past it, one spelled like a delimiter row included.
 pub(super) fn try_parse_table(
     lines: &[&str],
     start: usize,
@@ -40,11 +40,9 @@ pub(super) fn try_parse_table(
         end += 1;
     }
     let mut header = pipe_row(lines[start]);
-    if !is_table_separator(lines[start]) {
-        let widest = rows.iter().map(|row| row.cells.len()).max().unwrap_or(0);
-        if widest > header.cells.len() {
-            header.cells.resize(widest, String::new());
-        }
+    let widest = rows.iter().map(|row| row.cells.len()).max().unwrap_or(0);
+    if widest > header.cells.len() {
+        header.cells.resize(widest, String::new());
     }
     Some((header, rows, end))
 }
@@ -158,8 +156,7 @@ fn parse_pipe_cells(line: &str) -> Vec<String> {
 
 /// `emitTable` and the parse of the HTML it prints: a header row of
 /// `tableHeader` cells unless every header cell is blank, then one row of
-/// `tableCell`s per body row, each padded to the header's width, or cut to it
-/// under a header spelled like a delimiter row.
+/// `tableCell`s per body row, each padded to the header's width.
 pub(super) fn table_block(
     header: &PipeRow,
     rows: &[PipeRow],
