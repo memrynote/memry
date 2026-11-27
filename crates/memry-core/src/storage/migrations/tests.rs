@@ -42,7 +42,7 @@ fn a_fresh_data_database_reaches_the_latest_version() {
     let version = db
         .call_blocking(|conn| user_version(conn))
         .expect("user_version");
-    assert_eq!(version, 41);
+    assert_eq!(version, 42);
 
     let names = table_names(&db);
     // Source of record, §A.2.
@@ -202,6 +202,23 @@ fn an_older_database_steps_forward_without_losing_rows() {
             .iter()
             .any(|n| n == "sync_tombstone_clocks")
     );
+}
+
+#[test]
+fn a_database_at_0041_gains_reminder_fires_at_0042() {
+    let db = Db::open_in_memory().expect("open");
+    let at_41 = db
+        .call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..41]))
+        .expect("migrate to 41");
+    assert_eq!(at_41, 41);
+    assert!(!table_names(&db).iter().any(|n| n == "reminder_fires"));
+
+    let version = db
+        .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
+        .expect("step forward");
+
+    assert_eq!(version, 42);
+    assert!(table_names(&db).iter().any(|n| n == "reminder_fires"));
 }
 
 #[test]

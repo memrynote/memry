@@ -7,6 +7,7 @@ pub mod defaults;
 pub mod project_contract;
 pub mod project_notes;
 mod projects;
+pub mod reminders;
 pub mod service;
 pub mod write_contract;
 mod writes;

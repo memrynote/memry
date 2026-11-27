@@ -20,6 +20,7 @@ pub mod post_reveal;
 pub mod power;
 pub mod protocols;
 pub mod registry;
+pub mod reminders;
 pub mod shell;
 pub mod shortcuts;
 pub mod shutdown;
