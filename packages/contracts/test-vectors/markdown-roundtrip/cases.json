@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 428,
+    "exportedCaseCount": 429,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 438,
+    "caseCount": 439,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -2854,6 +2854,13 @@
       "canonical": null,
       "pending": null,
       "sha256": "221b9d312e689897b0333f15d792c9e1a05973c93fe7d611be861df2eccc7f2d"
+    },
+    {
+      "name": "code span holding two backticks and a pipe in a cell",
+      "markdown": "| h |\n| --- |\n| `a``\\|b` |",
+      "canonical": "| h            |\n| ------------ |\n| ```a``\\|b``` |",
+      "pending": null,
+      "sha256": "9c231b6e24a3c8065ab14a4b270702f950476d435599184a7b2529ee10e46536"
     },
     {
       "name": "code span holding two backticks on a quote line",

@@ -767,5 +767,45 @@ export const MARKDOWN_SEED_CASES: ReadonlyArray<{ name: string; markdown: string
       name: 'writer: a code span holding a run of one backtick',
       markdown: '> [!note]\n> `` a`b ``',
       pins: "a callout: the fewest backticks no run holds is two, the longest run plus one, so the spacing stays BlockNote's"
+    },
+    {
+      name: 'lazy quote line: an image on the line after a quote',
+      markdown: '> q\nsee ![x](u)',
+      pins: 'a structured quote of the paragraph q, a break and see, owning the image: the lazy line joins the quote\'s last paragraph, so the image is kept as a child'
+    },
+    {
+      name: 'lazy quote line: a lazy line after a quote of blocks',
+      markdown: '> q\n>\n> r\nlazy',
+      pins: 'a structured quote whose second paragraph is r, a break and lazy: the lazy line is part of the last paragraph, not a paragraph after the quote'
+    },
+    {
+      name: 'lazy quote line: a lazy line after a one-paragraph quote',
+      markdown: '> q\nlazy\n\nafter',
+      pins: 'a flat quote of q, a break and lazy, then a paragraph after the blank line'
+    },
+    {
+      name: 'lazy quote line: a line after a quoted heading',
+      markdown: '> # h\nz',
+      pins: 'a quote owning a heading h, then a paragraph z: a run whose last line opens a block takes no lazy line'
+    },
+    {
+      name: 'lazy quote line: a line after a callout',
+      markdown: '> [!note]\n> c\nz',
+      pins: 'a callout c, then a paragraph z: a callout body ends at its last `>` line'
+    },
+    {
+      name: 'lazy quote line: a list item ends the run',
+      markdown: '> q\n>\n> r\n- a',
+      pins: 'a structured quote of q and r, then a bullet item: a list item is no lazy line'
+    },
+    {
+      name: 'math above a setext heading: dashes',
+      markdown: '$$\ny\n$$\nH\n---',
+      pins: 'a math block y and a level 2 heading H: the parser ends a paragraph before a line with a setext underline below it, so the math owns its paragraph'
+    },
+    {
+      name: 'math above a setext heading: equals signs',
+      markdown: '$$\ny\n$$\nH\n===',
+      pins: 'a math block y and a level 1 heading H'
     }
   ]

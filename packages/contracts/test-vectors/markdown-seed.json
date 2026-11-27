@@ -9,7 +9,7 @@
     "authoredBy": "desktop's markdownToYFragment path: LF line endings, maskHtmlComments, parseNoteMarkdown (editor-schema note-markdown) with parseMarkdownToBlocksRepaired on desktop's server schema, blocksToYXmlFragment",
     "provenAgainst": "apps/desktop/src/main/sync/markdown-seed-vectors.test.ts",
     "blockIds": "removed from every blockContainer line: BlockNote mints them at random",
-    "caseCount": 148
+    "caseCount": 156
   },
   "cases": [
     {
@@ -899,6 +899,54 @@
       "pins": "a callout: the fewest backticks no run holds is two, the longest run plus one, so the spacing stays BlockNote's",
       "markdown": "> [!note]\n> `` a`b ``",
       "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element callout fold=\"none\" textAlignment=\"left\" textColor=\"default\" type=\"note\"\n3 text \"a`b\" code={}"
+    },
+    {
+      "name": "lazy quote line: an image on the line after a quote",
+      "pins": "a structured quote of the paragraph q, a break and see, owning the image: the lazy line joins the quote's last paragraph, so the image is kept as a child",
+      "markdown": "> q\nsee ![x](u)",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"q\"\n3 element hardBreak\n3 text \"see\"\n2 element blockGroup\n3 element blockContainer\n4 element image backgroundColor=\"default\" caption=\"\" name=\"x\" showPreview=true textAlignment=\"left\" url=\"u\""
+    },
+    {
+      "name": "lazy quote line: a lazy line after a quote of blocks",
+      "pins": "a structured quote whose second paragraph is r, a break and lazy: the lazy line is part of the last paragraph, not a paragraph after the quote",
+      "markdown": "> q\n>\n> r\nlazy",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"q\"\n2 element blockGroup\n3 element blockContainer\n4 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n5 text \"r\"\n5 element hardBreak\n5 text \"lazy\""
+    },
+    {
+      "name": "lazy quote line: a lazy line after a one-paragraph quote",
+      "pins": "a flat quote of q, a break and lazy, then a paragraph after the blank line",
+      "markdown": "> q\nlazy\n\nafter",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"q\"\n3 element hardBreak\n3 text \"lazy\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"after\""
+    },
+    {
+      "name": "lazy quote line: a line after a quoted heading",
+      "pins": "a quote owning a heading h, then a paragraph z: a run whose last line opens a block takes no lazy line",
+      "markdown": "> # h\nz",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n2 element blockGroup\n3 element blockContainer\n4 element heading backgroundColor=\"default\" isToggleable=false level=1 textAlignment=\"left\" textColor=\"default\"\n5 text \"h\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"z\""
+    },
+    {
+      "name": "lazy quote line: a line after a callout",
+      "pins": "a callout c, then a paragraph z: a callout body ends at its last `>` line",
+      "markdown": "> [!note]\n> c\nz",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element callout fold=\"none\" textAlignment=\"left\" textColor=\"default\" type=\"note\"\n3 text \"c\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"z\""
+    },
+    {
+      "name": "lazy quote line: a list item ends the run",
+      "pins": "a structured quote of q and r, then a bullet item: a list item is no lazy line",
+      "markdown": "> q\n>\n> r\n- a",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"q\"\n2 element blockGroup\n3 element blockContainer\n4 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n5 text \"r\"\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a\""
+    },
+    {
+      "name": "math above a setext heading: dashes",
+      "pins": "a math block y and a level 2 heading H: the parser ends a paragraph before a line with a setext underline below it, so the math owns its paragraph",
+      "markdown": "$$\ny\n$$\nH\n---",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element mathBlock latex=\"y\"\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=2 textAlignment=\"left\" textColor=\"default\"\n3 text \"H\""
+    },
+    {
+      "name": "math above a setext heading: equals signs",
+      "pins": "a math block y and a level 1 heading H",
+      "markdown": "$$\ny\n$$\nH\n===",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element mathBlock latex=\"y\"\n1 element blockContainer\n2 element heading backgroundColor=\"default\" isToggleable=false level=1 textAlignment=\"left\" textColor=\"default\"\n3 text \"H\""
     }
   ]
 }

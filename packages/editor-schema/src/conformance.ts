@@ -1613,6 +1613,12 @@ const htmlCommentCases: RoundtripCase[] = [
   { name: 'code span holding a fence at a paragraph start', markdown: '` ```js `' },
   { name: 'code span holding two backticks mid-line', markdown: 'a `c``c` d' },
   { name: 'code span holding two backticks before a break', markdown: '`c``c`\ny' },
+  // A cell is no line start, and the writer escapes the pipes in its code.
+  {
+    name: 'code span holding two backticks and a pipe in a cell',
+    markdown: '| h |\n| --- |\n| `a``\\|b` |',
+    canonical: '| h            |\n| ------------ |\n| ```a``\\|b``` |'
+  },
   { name: 'code span holding two backticks on a quote line', markdown: '> `c``c`\n> y' },
   // A break splits a code run into one span per line, each stripped on its own.
   { name: 'code spans of a led line and of spaces across a break', markdown: 'x ` y`\n`  `' },
