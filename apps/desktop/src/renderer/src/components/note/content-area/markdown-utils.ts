@@ -3,65 +3,34 @@
 import { PORTAL_BLOCK_LANGUAGE } from '@memry/shared/portal-block'
 import { type Block } from '@blocknote/core'
 import {
-  splitMarkdownPreservingBlanks,
   assembleMarkdownWithBlanks,
-  separateBlockImages,
   extractWikiImageEmbedRefs,
   rewriteWikiImageEmbeds,
   normalizeSerializedMarkdown,
   type MarkdownSegment
 } from '@memry/shared/empty-lines'
-import {
-  hasNonDefaultColors,
-  parseBlockColorsMarker,
-  serializeBlockColorsMarker
-} from '@memry/shared/block-colors'
-import {
-  type SidecarPatch,
-  parseSidecarMarkerLine,
-  sidecarMarkerLines
-} from '@memry/shared/block-markers'
-import {
-  applyInlineColorTokens,
-  extractInlineColorRuns,
-  maskInlineColorSpans,
-  restoreInlineColorTokens
-} from '@memry/shared/inline-colors'
-import {
-  createBlockNestingMarker,
-  foldBlockNestingMarkers,
-  isBlockNestingMarker,
-  parseMarkdownWithNestingMarkers
-} from '@memry/shared/block-nesting'
-import { createFenceTracker } from '@memry/shared/markdown-fences'
+import { hasNonDefaultColors, serializeBlockColorsMarker } from '@memry/shared/block-colors'
+import { sidecarMarkerLines } from '@memry/shared/block-markers'
+import { extractInlineColorRuns, restoreInlineColorTokens } from '@memry/shared/inline-colors'
+import { createBlockNestingMarker } from '@memry/shared/block-nesting'
 import { withPlainCheckboxMarkers } from '@memry/shared/plain-checkbox'
-import { splitMarkdownByBlockquoteRuns, serializeCalloutBlock } from './callout-block'
+import { serializeCalloutBlock } from './callout-block'
 import { writeHtmlCommentTokens } from '@memry/editor-schema/inline'
+import { parseNoteMarkdown } from '@memry/editor-schema/note-markdown'
 import { parseMarkdownToBlocksRepaired } from '@memry/editor-schema/parse-markdown'
 import { maskHtmlComments } from '@memry/shared/html-comments'
 import {
-  parseWhiteboardLine,
-  parseYoutubeEmbedLine,
-  readMathRun,
-  resolveCalloutRun,
-  resolveQuoteRun,
   serializeMathBlock,
   serializeQuoteBlock,
   serializeToggleBlock,
   serializeWhiteboard,
-  restoreDetailsMarkup,
-  splitMarkdownByToggles,
-  splitMarkdownByColumnRegions,
-  buildColumnListBlock,
-  serializeColumnListBlock,
-  type ToggleBlockSegment
+  serializeColumnListBlock
 } from '@memry/editor-schema/blocks'
 import { markedBlock, propsFor, schemaBlock, schemaBlocks } from './block-casts'
 import { serializeYoutubeEmbed } from './youtube-embed-block'
 import { serializeBookmark } from './bookmark-block'
-import { extractDomain } from '@/lib/url-metadata'
 import { serializeTaskBlockTree } from './task-block/task-block-utils'
-import { parseFileBlockMarker, serializeFileBlock, type FileBlockProps } from './file-block-markers'
+import { serializeFileBlock } from './file-block-markers'
 import { createLogger } from '@/lib/logger'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
 
@@ -122,16 +91,6 @@ function hasMarkerSerializedChildren(block: Block): boolean {
   return children.some(
     (child) => !canSerializeChildNatively(block, child) || hasMarkerSerializedChildren(child)
   )
-}
-
-/**
- * Every markdown\u2192blocks call on this surface, through the repairs BlockNote
- * 0.51+ needs. Shared with the main process rather than reimplemented: the
- * same bytes have to parse to the same document in both, or a note reads
- * differently depending on which process opened it.
- */
-function parseMarkdown(editor: any, markdown: string): Promise<Block[]> {
-  return parseMarkdownToBlocksRepaired<Block>(editor, markdown)
 }
 
 // Funnel every BlockNote serialization through the shared normalizer so the
@@ -308,258 +267,18 @@ export async function parseMarkdownPreservingBlanks(
   notePath?: string
 ): Promise<Block[]> {
   // HTML comments come off first, as one token each, so no line splitter below
-  // reads the inside of a multi-line comment. Twin of main's `markdownToBlocks`
-  // (AF-015).
+  // reads the inside of a multi-line comment (AF-015).
   const withEmbeds = await resolveWikiImageEmbeds(maskHtmlComments(markdown), notePath)
-  // Inline color spans are masked into markdown-inert tokens before parsing
-  // (BlockNote strips raw spans), then re-applied as styles on the parsed runs.
-  const { text: maskedMarkdown, spans } = maskInlineColorSpans(withEmbeds)
-  const blocks = await parseMaskedMarkdown(editor, maskedMarkdown)
-  // Declined `<details>` lines cross the parser with their `<` hidden behind a
-  // token, because BlockNote drops a raw HTML block outright. Restoring it is
-  // not optional: a token left in a block is written into the vault as text.
-  restoreDetailsMarkupInBlocks(blocks)
-
-  return schemaBlocks(applyInlineColorTokens(blocks, spans))
-}
-
-function restoreDetailsMarkupInBlocks(blocks: Block[]): void {
-  for (const block of blocks) {
-    if (block.type !== 'codeBlock' && Array.isArray(block.content)) {
-      for (const inline of block.content as { type?: string; text?: string }[]) {
-        if (inline?.type === 'text' && typeof inline.text === 'string') {
-          inline.text = restoreDetailsMarkup(inline.text)
-        }
-      }
-    }
-    if (Array.isArray(block.children)) restoreDetailsMarkupInBlocks(block.children)
-  }
-}
-
-/**
- * Toggle regions come off FIRST, before the callout / blank-line / marker
- * scanners: those read one line at a time and would shred a toggle body apart
- * at its own paragraph gaps. Each body re-enters this function, so a toggle
- * nested inside a toggle works at any depth, images and all.
- *
- * A toggle nested under a LIST item is out of scope here — it reaches markdown
- * through the block-nesting markers and still flattens to a bullet, exactly as
- * it did before (#1643 is about toggles on a page).
- */
-async function parseMaskedMarkdown(
-  editor: any,
-  markdown: string,
-  insideColumn = false
-): Promise<Block[]> {
-  // Column regions come off before toggles: a column holds toggles, blank
-  // lines and fences of its own. A column cannot hold another column list,
-  // and MCM does not nest regions either, so a column body is read without
-  // this step. Twin of main's `parseMaskedMarkdown`.
-  if (insideColumn) return parseMarkdownWithToggles(editor, markdown)
-
-  const blocks: Block[] = []
-  for (const segment of splitMarkdownByColumnRegions(markdown)) {
-    if (segment.kind === 'columns') {
-      blocks.push(
-        await buildColumnListBlock<Block>(
-          segment,
-          (body) => parseMaskedMarkdown(editor, body, true),
-          emptyParagraph
-        )
-      )
-    } else if (segment.kind === 'gap') {
-      pushEmptyParagraphs(blocks, segment.extraLines)
-    } else {
-      blocks.push(...(await parseMarkdownWithToggles(editor, segment.text)))
-    }
-  }
-  return blocks
-}
-
-async function parseMarkdownWithToggles(editor: any, markdown: string): Promise<Block[]> {
-  const blocks: Block[] = []
-
-  for (const segment of splitMarkdownByToggles(markdown)) {
-    if (segment.kind === 'toggle') {
-      blocks.push(await parseToggleSegment(editor, segment))
-    } else if (segment.kind === 'gap') {
-      // Blank lines the user left at a toggle's edge. Same currency, and the
-      // same empty paragraphs, as a gap the blank-line scanner finds inside a
-      // markdown segment (#1877).
-      pushEmptyParagraphs(blocks, segment.extraLines)
-    } else {
-      blocks.push(...(await parseMarkdownWithoutToggles(editor, segment.text)))
-    }
-  }
-
-  return blocks
-}
-
-async function parseToggleSegment(editor: any, segment: ToggleBlockSegment): Promise<Block> {
-  const parsedSummary = await parseMarkdown(editor, segment.summary)
-  const colors = segment.colorsMarker ? parseBlockColorsMarker(segment.colorsMarker) : null
-
-  // SAFETY: `toggleListItem` as its spec declares it — block colours plus
-  // `open`, summary as inline content, body as children.
-  return schemaBlock({
-    type: 'toggleListItem' as const,
-    props: { ...colors, open: segment.open },
-    content: parsedSummary[0]?.content ?? [],
-    children: segment.body ? await parseMaskedMarkdown(editor, segment.body) : []
-  })
-}
-
-function emptyParagraph(): Block {
-  // SAFETY: an empty paragraph, the schema's own default block.
-  return schemaBlock({ type: 'paragraph', content: [], children: [], props: {} })
-}
-
-function pushEmptyParagraphs(blocks: Block[], count: number): void {
-  for (let i = 0; i < count; i++) blocks.push(emptyParagraph())
-}
-
-async function parseMarkdownWithoutToggles(editor: any, markdown: string): Promise<Block[]> {
-  const quotedSegments = splitMarkdownByBlockquoteRuns(markdown)
-  const blocks: Block[] = []
-
-  for (const cseg of quotedSegments) {
-    if (cseg.kind === 'gap') {
-      // Blank lines at a callout's or a quote's edge; the blank-line scanner
-      // never sees them, so they are carried here (#1892).
-      pushEmptyParagraphs(blocks, cseg.extraLines)
-    } else if (cseg.kind === 'quote') {
-      const claimed = await resolveQuoteRun(
-        cseg.run,
-        async (md) => parseMarkdown(editor, md),
-        async (parsed) => serializeBlocks(editor, schemaBlocks(parsed))
-      )
-      if (claimed) {
-        // SAFETY: `quote` as its spec declares it, with the run's parsed
-        // content and children.
-        const quote = schemaBlock({
-          type: 'quote' as const,
-          props: {},
-          content: claimed.content,
-          children: claimed.children
-        })
-        applyMarkers(cseg.markers, quote)
-        blocks.push(quote)
-      } else {
-        // Same rule as a declined callout: a run the byte-round-trip guard
-        // refuses is not ours to reshape, so its original lines parse as any
-        // other markdown would.
-        await parseMarkdownSegmentText(editor, [...cseg.markers, cseg.run.raw].join('\n'), blocks)
-      }
-    } else if (cseg.kind === 'callout') {
-      const claimed = await resolveCalloutRun(
-        cseg.run,
-        async (md) => parseMarkdown(editor, md),
-        async (parsed) => serializeBlocks(editor, schemaBlocks(parsed))
-      )
-      if (claimed) {
-        // SAFETY: `callout` as its spec declares it; `claimed.type` is one of
-        // the callout kinds `resolveCalloutRun` recognises.
-        const callout = schemaBlock({
-          type: 'callout' as const,
-          props:
-            claimed.fold === 'none'
-              ? { type: claimed.type }
-              : { type: claimed.type, fold: claimed.fold },
-          content: claimed.content,
-          children: claimed.children
-        })
-        applyMarkers(cseg.markers, callout)
-        blocks.push(callout)
-      } else {
-        // A run the byte-round-trip guard declines is not ours to reshape:
-        // parse its original lines exactly as any other markdown.
-        await parseMarkdownSegmentText(editor, [...cseg.markers, cseg.run.raw].join('\n'), blocks)
-      }
-    } else {
-      await parseMarkdownSegmentText(editor, cseg.text, blocks)
-    }
-  }
-
-  // Twin of main's: levels apply across the whole run, since a list item and
-  // the callout nested under it are claimed by different parsers (#2365).
-  return foldBlockNestingMarkers(blocks)
-}
-
-function applyMarkers(markers: string[], block: Block): void {
-  // SAFETY: `MarkedBlock` is the `{ type, props }` subset the sidecar patches
-  // read and write; every `Block` has both.
-  const marked = markedBlock(block)
-  for (const line of markers) parseSidecarMarkerLine(line)?.(marked)
-}
-
-async function parseMarkdownSegmentText(editor: any, text: string, blocks: Block[]): Promise<void> {
-  const blankSegments = splitMarkdownPreservingBlanks(separateBlockImages(text))
-  for (const seg of blankSegments) {
-    if (seg.type === 'content') {
-      const embedParts = splitByEmbedMarkers(seg.text)
-      for (const part of embedParts) {
-        if (part.kind === 'embed') {
-          // SAFETY: `youtubeEmbed`'s declared props, all strings.
-          blocks.push(
-            schemaBlock({
-              type: 'youtubeEmbed' as const,
-              props: { videoId: part.videoId, videoUrl: part.url, alt: part.alt }
-            })
-          )
-        } else if (part.kind === 'bookmark') {
-          // SAFETY: `bookmark`'s two required props; the rest of its
-          // propSchema has defaults and is rehydrated at render time.
-          blocks.push(
-            schemaBlock({
-              type: 'bookmark' as const,
-              props: { url: part.url, domain: extractDomain(part.url) }
-            })
-          )
-        } else if (part.kind === 'file') {
-          // SAFETY: `part.props` came from `parseFileBlockMarker`, which
-          // returns exactly the `file` spec's props.
-          blocks.push(
-            schemaBlock({
-              type: 'file' as const,
-              props: part.props
-            })
-          )
-        } else if (part.kind === 'math') {
-          // SAFETY: `mathBlock`'s one declared prop, a string.
-          blocks.push(
-            schemaBlock({
-              type: 'mathBlock' as const,
-              props: { latex: part.latex }
-            })
-          )
-        } else if (part.kind === 'whiteboard') {
-          // SAFETY: `whiteboard`'s one declared prop, a string.
-          blocks.push(
-            schemaBlock({
-              type: 'whiteboard' as const,
-              props: { canvasId: part.canvasId }
-            })
-          )
-        } else {
-          const parsed = await parseMarkdownWithNestingMarkers(part.text, (md) =>
-            parseMarkdown(editor, md)
-          )
-          const first = parsed.find((block) => !isBlockNestingMarker(block))
-          if (first) {
-            // SAFETY: as in `applyMarkers` — the `{ type, props }` subset.
-            const marked = markedBlock(first)
-            for (const apply of part.patches ?? []) apply(marked)
-          }
-          blocks.push(...parsed)
-        }
-      }
-    } else {
-      for (let i = 0; i < seg.extraLines; i++) {
-        // SAFETY: an empty paragraph, the schema's own default block.
-        blocks.push(emptyParagraph())
-      }
-    }
-  }
+  // The pipeline is main's too (`markdownToBlocks` in blocknote-converter.ts):
+  // the same bytes have to open as the same document in either process.
+  const blocks = await parseNoteMarkdown<Block>(
+    {
+      parse: (md) => parseMarkdownToBlocksRepaired<Block>(editor, md),
+      serialize: (parsed) => serializeBlocks(editor, parsed)
+    },
+    withEmbeds
+  )
+  return schemaBlocks(blocks)
 }
 
 export async function serializeBlocksPreservingBlanks(
@@ -714,111 +433,4 @@ export async function serializeBlocksPreservingBlanks(
   }
 
   return assembleMarkdownWithBlanks(segments)
-}
-
-type EmbedPart =
-  | { kind: 'text'; text: string; patches?: SidecarPatch[] }
-  | { kind: 'embed'; url: string; videoId: string; alt: string }
-  | { kind: 'bookmark'; url: string }
-  | { kind: 'file'; props: FileBlockProps }
-  | { kind: 'math'; latex: string }
-  | { kind: 'whiteboard'; canvasId: string }
-
-const BOOKMARK_LINE_REGEX = /^!\[bookmark\]\(([^)]+)\)$/
-const FILE_BLOCK_LINE_REGEX = /^<!-- file:\{[^}]+\} -->$/
-
-function splitByEmbedMarkers(text: string): EmbedPart[] {
-  const lines = text.split('\n')
-  const parts: EmbedPart[] = []
-  // Only the math and whiteboard claims are fence-guarded. The three older
-  // marker branches below are unchanged, deliberately: they predate this tracker,
-  // so guarding them here would change how existing files parse. The whiteboard
-  // is new, so it matches main's guarded `parseCustomBlockMarkerLine` exactly.
-  const fence = createFenceTracker()
-  let buffer: string[] = []
-  let pending: SidecarPatch[] = []
-
-  const flushBuffer = (): void => {
-    if (buffer.length === 0) return
-    const part: EmbedPart = { kind: 'text', text: buffer.join('\n') }
-    if (pending.length > 0) part.patches = pending
-    parts.push(part)
-    buffer = []
-    pending = []
-  }
-
-  for (let index = 0; index < lines.length; index++) {
-    const line = lines[index]
-    const insideFence = fence.consume(line)
-
-    // `readMathRun` claims only a run that owns its whole paragraph and
-    // re-serializes byte-for-byte, so `$$` written by somebody else stays the
-    // markdown it is. A paragraph starts after a blank line, which the buffer
-    // holds when a block sits above. Main's twin lives in
-    // `parseContentWithMarkers`.
-    const atParagraphStart =
-      index === 0 || lines[index - 1].trim() === '' || (buffer.length === 0 && pending.length > 0)
-    const math = insideFence ? null : readMathRun(lines, index, atParagraphStart)
-    if (math) {
-      flushBuffer()
-      // Sidecar markers are dropped the way the file branch drops them: a math
-      // block declares neither colours nor alignment, so every patch is a no-op.
-      pending = []
-      parts.push({ kind: 'math', latex: math.latex })
-      for (let consumed = index + 1; consumed < math.end; consumed++) {
-        fence.consume(lines[consumed])
-      }
-      index = math.end - 1
-      continue
-    }
-
-    const trimmedLine = line.trim()
-    const patch = parseSidecarMarkerLine(trimmedLine)
-    if (patch) {
-      flushBuffer()
-      pending.push(patch)
-      continue
-    }
-    const fileProps = FILE_BLOCK_LINE_REGEX.test(trimmedLine)
-      ? parseFileBlockMarker(trimmedLine)
-      : null
-    if (fileProps) {
-      flushBuffer()
-      pending = []
-      parts.push({ kind: 'file', props: fileProps })
-      continue
-    }
-
-    // Any alt text, so another app's `![](youtube-url)` plays instead of
-    // rendering as a broken image. Main's twin is `parseCustomBlockMarkerLine`.
-    const embed = parseYoutubeEmbedLine(line)
-    if (embed) {
-      flushBuffer()
-      parts.push({ kind: 'embed', url: embed.videoUrl, videoId: embed.videoId, alt: embed.alt })
-      continue
-    }
-
-    const bookmarkMatch = line.match(BOOKMARK_LINE_REGEX)
-    if (bookmarkMatch) {
-      flushBuffer()
-      parts.push({ kind: 'bookmark', url: bookmarkMatch[1] })
-      continue
-    }
-
-    // Matched on the raw line like the two image markers above, and only for a
-    // `memry://canvas/<id>` target. Main's twin is `parseCustomBlockMarkerLine`.
-    const canvasId = insideFence ? null : parseWhiteboardLine(line)
-    if (canvasId) {
-      flushBuffer()
-      // A whiteboard declares no colours or alignment, so a patch is a no-op;
-      // dropped as main drops it.
-      pending = []
-      parts.push({ kind: 'whiteboard', canvasId })
-      continue
-    }
-    buffer.push(line)
-  }
-
-  flushBuffer()
-  return parts
 }

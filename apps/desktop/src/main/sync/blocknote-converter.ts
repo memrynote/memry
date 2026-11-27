@@ -4,28 +4,15 @@ import { type Block, type PartialBlock } from '@blocknote/core'
 import { createMemrySchema } from '@memry/editor-schema'
 import { memryCodeBlockOptions } from '@memry/editor-schema/code-block'
 import { normalizeLinkMentions, writeHtmlCommentTokens } from '@memry/editor-schema/inline'
+import { parseNoteMarkdown } from '@memry/editor-schema/note-markdown'
 import {
-  BOOKMARK_LINE_REGEX,
-  FILE_BLOCK_LINE_REGEX,
-  parseFileBlockMarker,
-  parseWhiteboardLine,
-  parseYoutubeEmbedLine,
   serializeFileBlock,
   type FileBlockProps,
-  readCalloutRun,
-  readMathRun,
-  readStructuredQuoteRun,
-  resolveCalloutRun,
-  resolveQuoteRun,
   serializeCalloutBlock,
   serializeMathBlock,
   serializeQuoteBlock,
   serializeToggleBlock,
-  splitMarkdownByToggles,
-  splitMarkdownByColumnRegions,
-  buildColumnListBlock,
-  serializeColumnListBlock,
-  type ToggleBlockSegment
+  serializeColumnListBlock
 } from '@memry/editor-schema/blocks'
 import { createServerBlockSpecs, createServerInlineSpecs } from '@memry/editor-schema/server'
 import * as Y from 'yjs'
@@ -49,25 +36,12 @@ import { normalizePlainCheckboxes, withPlainCheckboxMarkers } from '@memry/share
 import {
   type BlockColors,
   hasNonDefaultColors,
-  parseBlockColorsMarker,
   serializeBlockColorsMarker
 } from '@memry/shared/block-colors'
+import { sidecarMarkerLines } from '@memry/shared/block-markers'
+import { extractInlineColorRuns, restoreInlineColorTokens } from '@memry/shared/inline-colors'
 import {
-  type MarkedBlock,
-  type SidecarPatch,
-  parseSidecarMarkerLine,
-  sidecarMarkerLines
-} from '@memry/shared/block-markers'
-import {
-  applyInlineColorTokens,
-  extractInlineColorRuns,
-  maskInlineColorSpans,
-  restoreInlineColorTokens
-} from '@memry/shared/inline-colors'
-import {
-  splitMarkdownPreservingBlanks,
   assembleMarkdownWithBlanks,
-  separateBlockImages,
   extractWikiImageEmbedRefs,
   rewriteWikiImageEmbeds,
   normalizeSerializedMarkdown,
@@ -79,13 +53,7 @@ import {
   parseMarkdownToBlocks,
   parsesHtmlComments
 } from './blocknote-parse-breaks'
-import {
-  createBlockNestingMarker,
-  foldBlockNestingMarkers,
-  isBlockNestingMarker,
-  parseMarkdownWithNestingMarkers
-} from '@memry/shared/block-nesting'
-import { createFenceTracker } from '@memry/shared/markdown-fences'
+import { createBlockNestingMarker } from '@memry/shared/block-nesting'
 import {
   inlineLinkReferences,
   readLinkReferencesFromYDoc,
@@ -764,22 +732,6 @@ function isEmptyWhiteboard(block: Block): boolean {
   return !('canvasId' in props) || !props.canvasId
 }
 
-function createEmptyParagraph(): Block {
-  // SAFETY: `Block` is a union discriminated on the schema's block types, with
-  // `props` keyed per type, so no hand-written literal is assignable to it
-  // without naming the whole schema. Every literal cast in this file is this
-  // same case: the fields are exactly what the named `type` declares, and the
-  // serializer round-trip tests are what actually check them.
-  // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- BlockNote Block generics do not model the Memry custom blocks this converter builds; the shape is fixed by packages/editor-schema; BlockNote Block/PartialBlock generics do not model the Memry custom blocks and props; the shape is fixed by packages/editor-schema
-  return {
-    type: 'paragraph',
-    content: [],
-    children: [],
-    id: crypto.randomUUID(),
-    props: {}
-  } as unknown as Block
-}
-
 const MARKDOWN_LIST_BLOCK_TYPES = new Set(['bulletListItem', 'numberedListItem', 'checkListItem'])
 
 // Every blocks→markdown serialization funnels through here so list markers,
@@ -1002,418 +954,15 @@ async function markdownToBlocksPreserving(
   // Obsidian image embeds become `![alt](memry-file://…)` first, so the same
   // note renders identically here and in the editor (see normalize-note-blocks).
   const withEmbeds = await resolveWikiImageEmbedsInMarkdown(markdown, notePath)
-  // Inline color spans are masked into markdown-inert tokens before parsing
-  // (BlockNote strips raw spans), then re-applied as styles on the parsed runs.
-  const { text, spans } = maskInlineColorSpans(separateBlockImages(withEmbeds))
-  const blocks = await parseMaskedMarkdown(editor, text)
-
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote Block/PartialBlock generics do not model the Memry custom blocks and props; the shape is fixed by packages/editor-schema
-  return applyInlineColorTokens(blocks, spans) as Block[]
-}
-
-/**
- * Twin of the renderer's `parseMaskedMarkdown` (markdown-utils.ts).
- *
- * Toggle regions come off FIRST, before the blank-line and marker-line
- * scanners: those read one line at a time and would shred a toggle body apart
- * at its own paragraph gaps. Each body re-enters this function, so a toggle
- * nested inside a toggle works at any depth, images and all.
- */
-async function parseMaskedMarkdown(
-  editor: ServerBlockNoteEditor,
-  markdown: string,
-  insideColumn = false
-): Promise<Block[]> {
-  // Column regions come off before toggles: a column holds toggles, blank
-  // lines and fences of its own. A column cannot hold another column list,
-  // and MCM does not nest regions either, so a column body is read without
-  // this step. Twin of the renderer's `parseMaskedMarkdown`.
-  if (insideColumn) return parseMarkdownWithToggles(editor, markdown)
-
-  const blocks: Block[] = []
-  for (const segment of splitMarkdownByColumnRegions(markdown)) {
-    if (segment.kind === 'columns') {
-      blocks.push(
-        await buildColumnListBlock<Block>(
-          segment,
-          (body) => parseMaskedMarkdown(editor, body, true),
-          createEmptyParagraph,
-          () => crypto.randomUUID()
-        )
-      )
-    } else if (segment.kind === 'gap') {
-      for (let i = 0; i < segment.extraLines; i++) blocks.push(createEmptyParagraph())
-    } else {
-      blocks.push(...(await parseMarkdownWithToggles(editor, segment.text)))
-    }
-  }
-  return blocks
-}
-
-async function parseMarkdownWithToggles(
-  editor: ServerBlockNoteEditor,
-  markdown: string
-): Promise<Block[]> {
-  const blocks: Block[] = []
-
-  for (const segment of splitMarkdownByToggles(markdown)) {
-    if (segment.kind === 'toggle') {
-      blocks.push(await parseToggleSegment(editor, segment))
-    } else if (segment.kind === 'gap') {
-      // Blank lines the user left at a toggle's edge. Same currency, and the
-      // same empty paragraphs, as a gap the blank-line scanner finds inside a
-      // markdown segment (#1877).
-      for (let i = 0; i < segment.extraLines; i++) {
-        blocks.push(createEmptyParagraph())
-      }
-    } else {
-      blocks.push(...(await parseMarkdownWithoutToggles(editor, segment.text)))
-    }
-  }
-
-  return blocks
-}
-
-async function parseToggleSegment(
-  editor: ServerBlockNoteEditor,
-  segment: ToggleBlockSegment
-): Promise<Block> {
-  const parsedSummary = await parseMarkdownToBlocks(editor, segment.summary)
-  const colors = segment.colorsMarker ? parseBlockColorsMarker(segment.colorsMarker) : null
-
-  // SAFETY: `toggleListItem` as the renderer's own spec declares it — block
-  // colours plus `open`, summary as inline content, body as children.
-  // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- BlockNote Block generics do not model the Memry custom blocks this converter builds; the shape is fixed by packages/editor-schema; BlockNote Block/PartialBlock generics do not model the Memry custom blocks and props; the shape is fixed by packages/editor-schema
-  return {
-    type: 'toggleListItem',
-    id: crypto.randomUUID(),
-    props: { ...colors, open: segment.open },
-    content: parsedSummary[0]?.content ?? [],
-    children: segment.body ? await parseMaskedMarkdown(editor, segment.body) : []
-  } as unknown as Block
-}
-
-async function parseMarkdownWithoutToggles(
-  editor: ServerBlockNoteEditor,
-  markdown: string
-): Promise<Block[]> {
-  const segments = splitMarkdownPreservingBlanks(markdown)
-  const blocks: Block[] = []
-
-  for (const seg of segments) {
-    if (seg.type === 'content') {
-      blocks.push(...(await parseContentWithMarkers(editor, seg.text)))
-    } else {
-      for (let i = 0; i < seg.extraLines; i++) {
-        blocks.push(createEmptyParagraph())
-      }
-    }
-  }
-
-  // A nesting marker can sit between blocks different parsers claim (a list
-  // item and the callout under it), so levels apply to the whole run (#2365).
-  return foldBlockNestingMarkers(blocks)
-}
-
-async function parseContentWithMarkers(
-  editor: ServerBlockNoteEditor,
-  text: string
-): Promise<Block[]> {
-  const blocks: Block[] = []
-  let buffer: string[] = []
-  let pending: SidecarPatch[] = []
-
-  const applyPending = (block: Block | undefined): void => {
-    if (block) {
-      // SAFETY: `MarkedBlock` is the `{ type, props }` subset the sidecar
-      // patches read and write; every `Block` has both.
-      // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- BlockNote Block generics do not model the Memry custom blocks this converter builds; the shape is fixed by packages/editor-schema; BlockNote Block/PartialBlock generics do not model the Memry custom blocks and props; the shape is fixed by packages/editor-schema
-      const marked = block as unknown as MarkedBlock
-      for (const apply of pending) apply(marked)
-    }
-    pending = []
-  }
-
-  const flushBuffer = async (): Promise<void> => {
-    if (buffer.length === 0) return
-    const parsed = await parseMarkdownWithNestingMarkers(buffer.join('\n'), (md) =>
-      parseMarkdownToBlocks(editor, md)
-    )
-    applyPending(parsed.find((block) => !isBlockNestingMarker(block)))
-    blocks.push(...parsed)
-    buffer = []
-  }
-
-  const fence = createFenceTracker()
-  const lines = text.split('\n')
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]
-    const trimmed = line.trim()
-    // A marker inside a code fence is the author's text, not a marker.
-    const insideFence = fence.consume(line)
-
-    // Callouts are claimed here ONLY in the exact shapes this feature owns —
-    // see parseCalloutRunAt. Everything else `> `-prefixed stays a quote block
-    // and its bytes stay untouched, which is what keeps `> [!danger]` or a
-    // titled callout from another app byte-identical through Memry.
-    if (!insideFence) {
-      const afterSidecarMarker = buffer.length === 0 && pending.length > 0
-      const atParagraphStart = i === 0 || lines[i - 1].trim() === '' || afterSidecarMarker
-      const claimed = await parseCalloutRunAt(editor, lines, i, atParagraphStart)
-      if (claimed) {
-        await flushBuffer()
-        // SAFETY: `callout` as its spec declares it; `claimed.type` is one of
-        // the callout kinds `parseCalloutRunAt` recognises.
-        // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- BlockNote Block generics do not model the Memry custom blocks this converter builds; the shape is fixed by packages/editor-schema; BlockNote Block/PartialBlock generics do not model the Memry custom blocks and props; the shape is fixed by packages/editor-schema
-        const callout = {
-          type: 'callout',
-          props: { type: claimed.type, fold: claimed.fold },
-          content: claimed.content,
-          children: claimed.children
-        } as unknown as Block
-        applyPending(callout)
-        blocks.push(callout)
-        for (let consumed = i + 1; consumed < claimed.end; consumed++) {
-          fence.consume(lines[consumed])
-        }
-        i = claimed.end - 1
-        continue
-      }
-
-      // A `$$` fence claims nothing a callout or a quote could have claimed, so
-      // it is read after both. `readMathRun` demands the run own its whole
-      // paragraph and re-serialize byte-for-byte, which is what keeps someone
-      // else's `$$` notation on the untouched path.
-      const math = readMathRun(lines, i, atParagraphStart)
-      if (math) {
-        await flushBuffer()
-        // SAFETY: `mathBlock` as its spec declares it - one string prop.
-        // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- BlockNote Block generics do not model the Memry custom blocks this converter builds; the shape is fixed by packages/editor-schema; BlockNote Block/PartialBlock generics do not model the Memry custom blocks and props; the shape is fixed by packages/editor-schema
-        const block = {
-          type: 'mathBlock',
-          props: { latex: math.latex }
-        } as unknown as Block
-        applyPending(block)
-        blocks.push(block)
-        for (let consumed = i + 1; consumed < math.end; consumed++) {
-          fence.consume(lines[consumed])
-        }
-        i = math.end - 1
-        continue
-      }
-
-      const quoted = atParagraphStart ? await parseQuoteRunAt(editor, lines, i) : null
-      if (quoted) {
-        await flushBuffer()
-        // SAFETY: `quote` as its spec declares it, with the run's parsed
-        // content and children.
-        // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- BlockNote Block generics do not model the Memry custom blocks this converter builds; the shape is fixed by packages/editor-schema; BlockNote Block/PartialBlock generics do not model the Memry custom blocks and props; the shape is fixed by packages/editor-schema
-        const quote = {
-          type: 'quote',
-          props: {},
-          content: quoted.content,
-          children: quoted.children
-        } as unknown as Block
-        applyPending(quote)
-        blocks.push(quote)
-        for (let consumed = i + 1; consumed < quoted.end; consumed++) {
-          fence.consume(lines[consumed])
-        }
-        i = quoted.end - 1
-        continue
-      }
-    }
-
-    // Deliberately NOT fence-guarded: this branch predates custom-block parsing
-    // and guarding it would drop a sidecar marker that follows a fence this
-    // tracker read differently, which is data loss on a path #1432 never
-    // touched. The renderer's twin (markdown-utils.ts) is unguarded too.
-    const patch = parseSidecarMarkerLine(trimmed)
-    if (patch) {
-      await flushBuffer()
-      pending.push(patch)
-      continue
-    }
-
-    const marker = insideFence ? null : parseCustomBlockMarkerLine(line)
-    if (marker) {
-      await flushBuffer()
-      pending = []
-      blocks.push(marker)
-      continue
-    }
-
-    buffer.push(line)
-  }
-  await flushBuffer()
-
-  return blocks
-}
-
-/**
- * Claim a callout at `lines[i]`, or null to leave the bytes alone.
- *
- * The claim is proven, not pattern-matched: `resolveCalloutRun` re-serializes
- * the body and claims only when `serializeCalloutBlock` would write the run
- * back byte-for-byte. A type outside `CALLOUT_TYPE_VALUES`, a title after the marker, a
- * blank `>` line, a list in the body — all decline and stay quote blocks with
- * their bytes untouched, which is the Obsidian-vault guarantee the old
- * "never parse callouts" rule existed to protect (#1846). What that rule cost
- * was every Memry callout on this path: seeding a doc from the vault file
- * demoted `> [!info]` to a quote block, the editor lost the callout UI, and
- * the marker eventually tore away from its body as plain text.
- *
- * The bare `[!info]`-plus-body shape is the already-torn form of that damage;
- * `readCalloutRun` heals it only at a paragraph start with the body directly
- * below, so a lone `[!info]` someone typed as text stays text.
- */
-async function parseCalloutRunAt(
-  editor: ServerBlockNoteEditor,
-  lines: readonly string[],
-  i: number,
-  atParagraphStart: boolean
-): Promise<{
-  type: string
-  fold: string
-  content: unknown
-  children: Block[]
-  end: number
-} | null> {
-  const run = readCalloutRun(lines, i, atParagraphStart)
-  if (!run) return null
-
-  const claimed = await resolveCalloutRun(
-    run,
-    async (md) => await parseMarkdownToBlocks(editor, md),
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote Block/PartialBlock generics do not model the Memry custom blocks and props; the shape is fixed by packages/editor-schema
-    async (parsed) => serializeBlocks(editor, parsed as PartialBlock[])
+  // The pipeline is the renderer's too (`parseMarkdownPreservingBlanks`): the
+  // same bytes have to open as the same document in either process.
+  return parseNoteMarkdown<Block>(
+    {
+      parse: (md) => parseMarkdownToBlocks(editor, md),
+      serialize: (blocks) => serializeBlocks(editor, blocks)
+    },
+    withEmbeds
   )
-  if (!claimed) return null
-
-  return {
-    type: claimed.type,
-    fold: claimed.fold,
-    content: claimed.content,
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote Block/PartialBlock generics do not model the Memry custom blocks and props; the shape is fixed by packages/editor-schema
-    children: claimed.children as Block[],
-    end: run.end
-  }
-}
-
-/**
- * Claim a structured blockquote at `lines[i]`, or null to leave the bytes on
- * BlockNote's own quote path.
- *
- * Only the two shapes BlockNote's flat quote block loses are read (a blank `>`
- * separator, a `> >` nesting level), and even those only when re-serializing
- * the parse reproduces the run byte-for-byte — see `resolveQuoteRun`. The
- * claimed run becomes a quote block that owns its later blocks as children,
- * which `serializeQuote` writes back inside the blockquote.
- *
- * Inner blocks are parsed flat, so a quote nested two levels deep declines and
- * keeps today's behavior rather than round-tripping through a half-applied
- * nesting.
- */
-async function parseQuoteRunAt(
-  editor: ServerBlockNoteEditor,
-  lines: readonly string[],
-  i: number
-): Promise<{ content: unknown; children: Block[]; end: number } | null> {
-  const run = readStructuredQuoteRun(lines, i)
-  if (!run) return null
-
-  const claimed = await resolveQuoteRun(
-    run,
-    async (md) => await parseMarkdownToBlocks(editor, md),
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote Block/PartialBlock generics do not model the Memry custom blocks and props; the shape is fixed by packages/editor-schema
-    async (parsed) => serializeBlocks(editor, parsed as PartialBlock[])
-  )
-  if (!claimed) return null
-
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote Block/PartialBlock generics do not model the Memry custom blocks and props; the shape is fixed by packages/editor-schema
-  return { content: claimed.content, children: claimed.children as Block[], end: run.end }
-}
-
-/**
- * The custom blocks whose on-disk form is a single marker line.
- *
- * Without this, the main process — which is what seeds a note's shared Y.Doc
- * from the vault file — parses each marker as something else and the block is
- * gone before the editor ever sees it: `<!-- file:{…} -->` is dropped outright
- * (an HTML comment BlockNote has no block for), and the `![…](url)` markers
- * become plain image blocks pointing at a page or a canvas rather than an image.
- *
- * The renderer's own parser does exactly this (`splitByEmbedMarkers` in
- * markdown-utils.ts); it only ever runs on the non-collaborative path, so this
- * is the same rule applied where the collaborative path actually parses.
- *
- * Callouts have no case here because their form spans lines; they are claimed
- * by `parseCalloutRunAt` in the caller's line loop, under the byte-round-trip
- * guard documented there.
- */
-function parseCustomBlockMarkerLine(line: string): Block | null {
-  // Matched exactly the way the renderer matches (markdown-utils.ts): `file` on
-  // the trimmed line, the three image markers on the raw one. Trimming those
-  // as well would claim a marker indented under a list item, dropping the
-  // nesting the parent preserved — and would make the same file parse to a
-  // different document depending on which process read it.
-  const trimmed = line.trim()
-  if (FILE_BLOCK_LINE_REGEX.test(trimmed)) {
-    const props = parseFileBlockMarker(trimmed)
-    if (props) {
-      // SAFETY: `parseFileBlockMarker` returns exactly the `file` spec's props.
-      // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- BlockNote Block generics do not model the Memry custom blocks this converter builds; the shape is fixed by packages/editor-schema; BlockNote Block/PartialBlock generics do not model the Memry custom blocks and props; the shape is fixed by packages/editor-schema
-      return { type: 'file', props } as unknown as Block
-    }
-  }
-
-  // Any alt text, so another app's `![](youtube-url)` plays instead of
-  // rendering as a broken image. A non-YouTube line stays an image.
-  const embed = parseYoutubeEmbedLine(line)
-  if (embed) {
-    // SAFETY: `youtubeEmbed`'s declared props, all strings.
-    // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- BlockNote Block generics do not model the Memry custom blocks this converter builds; the shape is fixed by packages/editor-schema; BlockNote Block/PartialBlock generics do not model the Memry custom blocks and props; the shape is fixed by packages/editor-schema
-    return { type: 'youtubeEmbed', props: embed } as unknown as Block
-  }
-
-  const bookmark = line.match(BOOKMARK_LINE_REGEX)
-  if (bookmark) {
-    const url = bookmark[1]
-    // `![bookmark](assets/photo.png)` is someone's image with an unlucky alt
-    // text, not a bookmark card. The embed branch checks for a video id
-    // for the same reason; this is its counterpart.
-    const parsed = parseHttpUrl(url)
-    if (parsed) {
-      // SAFETY: `bookmark`'s two required props; the rest of its propSchema
-      // has defaults and is rehydrated at render time.
-      // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- BlockNote Block generics do not model the Memry custom blocks this converter builds; the shape is fixed by packages/editor-schema; BlockNote Block/PartialBlock generics do not model the Memry custom blocks and props; the shape is fixed by packages/editor-schema
-      return {
-        type: 'bookmark',
-        props: { url, domain: parsed.hostname.replace(/^www\./, '') }
-      } as unknown as Block
-    }
-  }
-
-  // Only a `memry://canvas/<id>` target is claimed (`WHITEBOARD_LINE_REGEX`),
-  // so `![whiteboard](https://…)` stays somebody's image.
-  const canvasId = parseWhiteboardLine(line)
-  if (canvasId) {
-    // SAFETY: `whiteboard`'s one declared prop, a string.
-    // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- BlockNote Block generics do not model the Memry custom blocks this converter builds; the shape is fixed by packages/editor-schema; BlockNote Block/PartialBlock generics do not model the Memry custom blocks and props; the shape is fixed by packages/editor-schema
-    return { type: 'whiteboard', props: { canvasId } } as unknown as Block
-  }
-
-  return null
-}
-
-function parseHttpUrl(url: string): URL | null {
-  try {
-    const parsed = new URL(url)
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? parsed : null
-  } catch {
-    return null
-  }
 }
 
 async function blocksToMarkdownPreserving(

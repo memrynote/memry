@@ -13,13 +13,14 @@ return `null` so the note stops writing back at all.
 
 ## Layout
 
-| Path                                        | What lives there                                                |
-| ------------------------------------------- | --------------------------------------------------------------- |
-| `src/schema.ts`                             | `createMemrySchema` — the one place a Memry schema is assembled |
-| `src/inline/`                               | inline node configs, their on-disk form, and the portable specs |
-| `src/blocks/configs`                        | block configs: type + propSchema + content, no presentation     |
-| `src/blocks/markdown`                       | the bytes each custom block reaches the vault file as           |
-| `src/blocks/server-specs` / `src/server.ts` | main's headless half — Node + jsdom, no React                   |
+| Path                                        | What lives there                                                 |
+| ------------------------------------------- | ---------------------------------------------------------------- |
+| `src/schema.ts`                             | `createMemrySchema` — the one place a Memry schema is assembled  |
+| `src/inline/`                               | inline node configs, their on-disk form, and the portable specs  |
+| `src/blocks/configs`                        | block configs: type + propSchema + content, no presentation      |
+| `src/blocks/markdown`                       | the bytes each custom block reaches the vault file as            |
+| `src/note-markdown`                         | markdown to a note's blocks, the one pipeline both processes run |
+| `src/blocks/server-specs` / `src/server.ts` | main's headless half — Node + jsdom, no React                    |
 
 Presentation stays with each process (main has no React). Everything that
 decides what reaches disk is shared.

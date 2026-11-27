@@ -102,7 +102,7 @@ describe('parseMarkdownPreservingBlanks', () => {
         }),
         expect.objectContaining({
           type: 'callout',
-          props: { type: 'warning' },
+          props: { type: 'warning', fold: 'none' },
           content: [{ type: 'text', text: 'Body line', styles: {} }]
         })
       ])
@@ -135,7 +135,7 @@ describe('parseMarkdownPreservingBlanks', () => {
     expect(callouts.map((b) => (b.props as { fold?: string }).fold)).toEqual([
       'closed',
       'open',
-      undefined
+      'none'
     ])
 
     const markdown = await serializeBlocksPreservingBlanks(editor, callouts)
@@ -191,7 +191,7 @@ describe('parseMarkdownPreservingBlanks', () => {
       expect.arrayContaining([
         expect.objectContaining({
           type: 'callout',
-          props: { type: 'info' },
+          props: { type: 'info', fold: 'none' },
           content: [{ type: 'text', text: 'Her text line', styles: {} }]
         })
       ])
@@ -1213,7 +1213,7 @@ describe('text alignment markers (#1937)', () => {
     expect(blocks).toEqual([
       expect.objectContaining({
         type: 'callout',
-        props: { type: 'info', textAlignment: 'center' },
+        props: { type: 'info', fold: 'none', textAlignment: 'center' },
         content: [{ type: 'text', text: 'Heads up', styles: {} }]
       })
     ])

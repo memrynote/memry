@@ -2,15 +2,9 @@ import { createReactBlockSpec } from '@blocknote/react'
 import {
   CALLOUT_TYPE_VALUES,
   calloutConfig,
-  readCalloutRun,
-  readStructuredQuoteRun,
-  type CalloutRun,
   type CalloutTypeDefinition,
-  type CalloutTypeValue,
-  type QuoteRun
+  type CalloutTypeValue
 } from '@memry/editor-schema/blocks'
-import { createFenceTracker } from '@memry/shared/markdown-fences'
-import { parseSidecarMarkerLine } from '@memry/shared/block-markers'
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -181,10 +175,6 @@ function isCalloutEditor(editor: unknown): editor is CalloutEditor {
     'getTextCursorPosition' in editor &&
     typeof editor.getTextCursorPosition === 'function'
   )
-}
-
-function isMarkerLine(line: string): boolean {
-  return parseSidecarMarkerLine(line.trim()) !== null
 }
 
 function isBuiltIn(type: string): type is CalloutTypeValue {
@@ -406,109 +396,3 @@ export function getCustomCalloutSlashMenuItems(
 // marker are someone else's bytes and stay quote blocks, on this path exactly
 // as on the CRDT one.
 export { serializeCalloutBlock } from '@memry/editor-schema/blocks'
-
-export type CalloutSegment = { kind: 'callout'; run: CalloutRun; markers: string[] }
-/**
- * A blockquote run whose inner structure BlockNote's flat quote block loses —
- * claimed under the same byte-round-trip proof as a callout, and for the same
- * reason: the bytes belong to whoever wrote the file (#1881).
- */
-export type QuoteSegment = { kind: 'quote'; run: QuoteRun; markers: string[] }
-export type MarkdownSegment = { kind: 'markdown'; text: string }
-/**
- * Blank lines beyond the standard paragraph break at a callout's or a quote's
- * edge. Callers emit `extraLines` empty paragraphs, exactly as for the toggle
- * splitter's gap segment (#1877).
- */
-export type GapSegment = { kind: 'gap'; extraLines: number }
-export type ContentSegment = CalloutSegment | QuoteSegment | MarkdownSegment | GapSegment
-
-/**
- * Split markdown into claimed callout / structured quote runs and the markdown
- * between them.
- *
- * This runs BEFORE `splitMarkdownPreservingBlanks`, so the blank lines at each
- * run's edge never reach the blank-line scanner: they are this function's to
- * carry, as `gap` segments, or they collapse to a single paragraph break on the
- * next write-back (#1892). Same rules as `splitMarkdownByToggles`.
- */
-export function splitMarkdownByBlockquoteRuns(markdown: string): ContentSegment[] {
-  const lines = markdown.split('\n')
-  const segments: ContentSegment[] = []
-  const fence = createFenceTracker()
-
-  let mdLines: string[] = []
-  let i = 0
-
-  // One blank line is the paragraph break assembly writes on its own, so only
-  // the lines beyond it are carried. A gap before the first segment is dropped:
-  // with nothing in front, assembly's `\n\n` would add blank lines, not extend
-  // a separator (see `splitMarkdownByToggles`).
-  const pushGap = (blankLines: number): void => {
-    if (segments.length > 0 && blankLines > 1) {
-      segments.push({ kind: 'gap', extraLines: blankLines - 1 })
-    }
-  }
-
-  const flushMarkdown = (): void => {
-    let first = 0
-    while (first < mdLines.length && mdLines[first].trim() === '') first++
-    let afterLast = mdLines.length
-    while (afterLast > first && mdLines[afterLast - 1].trim() === '') afterLast--
-
-    const text = mdLines.slice(first, afterLast).join('\n').trim()
-    if (text) {
-      pushGap(first)
-      segments.push({ kind: 'markdown', text })
-      pushGap(mdLines.length - afterLast)
-    } else {
-      // Nothing but blanks: a single seam between two runs, counted once.
-      pushGap(mdLines.length)
-    }
-    mdLines = []
-  }
-
-  // Sidecar marker lines belong to the block below them, so a run that sits
-  // under one still starts its paragraph: main's `afterSidecarMarker` twin.
-  const startsParagraph = (index: number): boolean => {
-    let above = index - 1
-    while (above >= 0 && isMarkerLine(lines[above])) above--
-    return above < 0 || lines[above].trim() === ''
-  }
-
-  const popTrailingMarkers = (): string[] => {
-    const markers: string[] = []
-    while (mdLines.length > 0 && isMarkerLine(mdLines[mdLines.length - 1])) {
-      markers.unshift((mdLines.pop() ?? '').trim())
-    }
-    return markers
-  }
-
-  while (i < lines.length) {
-    const insideFence = fence.consume(lines[i])
-    const atParagraphStart = startsParagraph(i)
-    const run = insideFence ? null : readCalloutRun(lines, i, atParagraphStart)
-
-    const quoteRun =
-      run || insideFence || !atParagraphStart ? null : readStructuredQuoteRun(lines, i)
-
-    const claimed: { kind: 'callout'; run: CalloutRun } | { kind: 'quote'; run: QuoteRun } | null =
-      run ? { kind: 'callout', run } : quoteRun ? { kind: 'quote', run: quoteRun } : null
-
-    if (claimed) {
-      const markers = popTrailingMarkers()
-      flushMarkdown()
-      segments.push({ ...claimed, markers })
-      for (let consumed = i + 1; consumed < claimed.run.end; consumed++) {
-        fence.consume(lines[consumed])
-      }
-      i = claimed.run.end
-    } else {
-      mdLines.push(lines[i])
-      i++
-    }
-  }
-
-  flushMarkdown()
-  return segments
-}

@@ -2185,7 +2185,7 @@ describe('custom blocks survive the CRDT write path', () => {
   // `<details>` form is written by the converter's top-level walk, which a block
   // nested under a bullet never reaches. It flattens to a plain bullet, as it
   // did before the fold prop and before #1643 — see the note on
-  // `parseMaskedMarkdown` in markdown-utils.ts.
+  // `parseMaskedMarkdown` in editor-schema's note-markdown.ts.
   it.each(BLOCK_CASES.filter((c) => c.type !== 'toggleListItem'))(
     '$type keeps its marker nested under a list item',
     async ({ block, markdown }) => {
