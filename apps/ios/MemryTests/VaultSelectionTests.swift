@@ -314,6 +314,7 @@ struct OfflineLaunchTests {
             ApiError.Transport(source: .Failed(what: "x")),
             ApiError.Status(status: 503, code: nil, message: "x"),
             ApiError.Status(status: 408, code: nil, message: "x"),
+            ApiError.RateLimited(retryAfterS: 60, message: "x"),
         ]
         for fault in faults {
             let opener = ScriptedOpener()
@@ -478,6 +479,23 @@ struct OfflineLaunchTests {
         watch.cancel()
         await watch.value
         #expect(selection.phase == .opened(personal))
+    }
+
+    /// Reloading from an opened vault swaps the view to the list, whose `.task`
+    /// loads again. Two loads meant two reads and two opens per reload.
+    @Test("a load while one is out reads and opens nothing more")
+    func loadsDoNotOverlap() async {
+        let registry = GatedRegistry()
+        let opener = ScriptedOpener()
+        let gated = VaultSelectionViewModel(registry: registry, opener: opener, snapshot: isolatedSnapshot())
+        let first = Task { await gated.load() }
+        await registry.nextCall()
+        await gated.load()
+        #expect(registry.pending == 1)
+        registry.release(.success([personal]))
+        await first.value
+        #expect(opener.openedVaultIds == ["b"])
+        #expect(gated.phase == .opened(personal))
     }
 
     /// The ABA: a read started for one screen must not touch the screen a

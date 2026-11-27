@@ -92,7 +92,8 @@ final class StoreKitBilling {
     var account: (any AppStoreBillingAccount)? {
         didSet { if account != nil { Task { await submitCurrentEntitlements() } } }
     }
-    /// Told when the server accepted a transaction.
+    /// Told when the server accepted a transaction that changed the plan, its
+    /// status, or the vault allowance.
     var entitlementChanged: (@MainActor (BillingStatus) -> Void)?
 
     private var updates: Task<Void, Never>?
@@ -186,6 +187,21 @@ final class StoreKitBilling {
         }
     }
 
+    /// Records the server's answer to a submit, and tells the listener only
+    /// when the entitlement moved. Each vault scope that opens sets ``account``,
+    /// which submits the current entitlements again. Telling the listener every
+    /// time reloaded a vault the account could not take, which opened a new
+    /// scope, which submitted again: a loop that ran into 429s on the vault list.
+    func accepted(_ status: BillingStatus) {
+        let previous = billing
+        billing = status
+        guard previous?.plan != status.plan
+            || previous?.status != status.status
+            || previous?.maxVaults != status.maxVaults
+        else { return }
+        entitlementChanged?(status)
+    }
+
     /// - Returns: `true` when the server accepted the transaction.
     @discardableResult
     private func handle(_ result: VerificationResult<Transaction>) async -> Bool {
@@ -199,9 +215,8 @@ final class StoreKitBilling {
             guard let account else { return false }
             do {
                 let status = try await account.submitAppStoreTransaction(signedTransactionInfo: result.jwsRepresentation)
-                billing = status
+                accepted(status)
                 await transaction.finish()
-                entitlementChanged?(status)
                 return true
             } catch {
                 // Left unfinished: StoreKit delivers it again and it is retried.

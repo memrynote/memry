@@ -261,6 +261,23 @@ struct FreeLocalVaultTests {
         #expect(!BillingFacts.isKnownUnpaid(nil))
     }
 
+    /// Every vault scope that opens submits the current entitlements again. A
+    /// listener told each time reloaded a vault the account could not take,
+    /// which opened a new scope, which submitted again, until the server 429'd.
+    @Test("a resubmitted, unchanged entitlement is not news; a new plan is")
+    @MainActor
+    func unchangedEntitlementIsQuiet() {
+        let billing = StoreKitBilling()
+        var told: [String] = []
+        billing.entitlementChanged = { told.append($0.plan) }
+        billing.accepted(status(plan: "plus", status: "active"))
+        billing.accepted(status(plan: "plus", status: "active"))
+        billing.accepted(status(plan: "plus", status: "active"))
+        #expect(told == ["plus"])
+        billing.accepted(status(plan: "pro", status: "active"))
+        #expect(told == ["plus", "pro"])
+    }
+
     @Test("the web checkout carries the token in the fragment")
     func checkoutURL() {
         #expect(PlansLinks.checkout(token: "abc")?.absoluteString == "https://memrynote.com/account/sync?utm_source=app&utm_medium=ios&utm_campaign=checkout#token=abc")

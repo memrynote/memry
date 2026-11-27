@@ -77,6 +77,12 @@ final class VaultSelectionViewModel {
     /// the same phase and notice as the screen the stale read was for.
     private var loadGeneration = 0
 
+    /// A ``load()`` is out. A second one returns at once: the screen it would
+    /// decide is the one the first is deciding. Without this, a reload from an
+    /// opened vault swapped the view to the list, whose `.task` loaded again,
+    /// and both ends opened the vault.
+    private var isLoading = false
+
     /// The latest registry read. ``readRegistry()`` runs the next one after
     /// it, because the signed-in registry writes (it creates and registers
     /// the local vault) and two overlapping calls would race those writes.
@@ -178,6 +184,9 @@ final class VaultSelectionViewModel {
     /// it cannot be cancelled (spec-defect 108), so the screen shows what is
     /// happening and offers no button that would lie about stopping it.
     func load() async {
+        guard !isLoading else { return }
+        isLoading = true
+        defer { isLoading = false }
         loadGeneration += 1
         dismissRemovedVaultNotice()
         phase = .loading
@@ -230,9 +239,10 @@ final class VaultSelectionViewModel {
 
     /// A registry failure that is the network or the server being away, not
     /// an answer about the account (`ErrorMapping`: offline, timeout, failed,
-    /// 5xx and 408).
+    /// 5xx and 408, and 429: a server asking for a pause says nothing about
+    /// the account either).
     private static let localFirstCodes: Set<ErrorCode> = [
-        offlineCode, "transport.timeout", "transport.failed", "api.statusServerFault",
+        offlineCode, "transport.timeout", "transport.failed", "api.statusServerFault", "api.rateLimited",
     ]
 
     /// A vault is open without the registry: one read, from the notice's
