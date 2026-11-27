@@ -259,6 +259,11 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "note_snapshot_outside_writes",
         sql: include_str!("migrations/data/0041_note_snapshot_outside_writes.sql"),
     },
+    Migration {
+        version: 42,
+        name: "reminder_fires",
+        sql: include_str!("migrations/data/0042_reminder_fires.sql"),
+    },
 ];
 
 /// `index.db`: the rebuildable search and link index.

@@ -206,6 +206,8 @@ rcgen = { version = "0.14", default-features = false, features = ["ring", "pem"]
 yrs = { workspace = true }
 # `journal_folder_held` counts the database steps a pass over the held days takes (`hooks`).
 rusqlite = { workspace = true, features = ["hooks"] }
+# `benches/vault_queries.rs` (Step 40, #3557). No plots and no rayon: the bench prints p50 and p95.
+criterion = { version = "0.8.2", default-features = false, features = ["cargo_bench_support"] }
 
 [target.'cfg(target_os = "linux")'.dev-dependencies]
 # `shell/tray_host.rs` tests the real zbus over a socket pair, which is the `p2p` feature.
@@ -223,6 +225,11 @@ path = "../memry-ml-worker/src/bin/stub.rs"
 required-features = ["test-hooks"]
 test = false
 doc = false
+
+# The query latency bench over a 15,000-note vault: `cargo bench -p memry-desktop --bench vault_queries`.
+[[bench]]
+name = "vault_queries"
+harness = false
 
 # Integration tests: one binary for every file that runs in a shared process
 

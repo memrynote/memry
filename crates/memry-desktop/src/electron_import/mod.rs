@@ -22,6 +22,7 @@ pub mod secrets;
 pub mod secrets_import;
 pub mod vault_db;
 pub mod vault_evidence;
+pub mod vault_prep;
 pub mod ystore;
 pub mod ystore_import;
 

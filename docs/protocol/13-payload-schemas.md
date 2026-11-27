@@ -1071,6 +1071,20 @@ it, and a capture's file never changes once uploaded
 `data.attachmentId ?? existing.attachmentId`). A string sets it, including over
 a different known id. `metadata` is `z.unknown()` and replaced whole.
 
+**A fired reminder's item, as the core creates it.** The core files the item
+of a reminder firing under the id `inbox_rem_<reminderId>_<fireInstant>`, where
+`fireInstant` is the UTC epoch milliseconds the reminder fired for, so every
+core device mints the same id for the same firing
+(`crates/memry-core/src/domain/reminders/fire.rs:71-73`). Its create carries
+the clock `{"reminder-fire": 1}` on every device (`:47`, `:101`), a key that
+is no device id (device ids are UUIDs) and that the algebra treats like any
+other key (chapter 06 §6.1). Every device's create is therefore one version: a
+later edit or delete ticks on top of it and dominates it under the apply rule
+above, and the server refuses a second create as a replay (chapter 05 §5.7).
+A receiver needs no rule of its own. Desktop files `inbox_rem_<nanoid>` with
+its own device clock on each device, and no `inbox.json` vector covers this
+item, since the vectors come from the TypeScript code paths.
+
 ### 13.7.16 `calendar_source` — `packages/contracts/src/sync-payloads.ts:541-560`
 
 `provider`, `kind` (`account` | `calendar`), `accountId`, `remoteId`, `title`,

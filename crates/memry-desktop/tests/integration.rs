@@ -173,6 +173,8 @@ mod editor_host;
 mod editor_readonly;
 #[path = "electron_profile_fixture.rs"]
 mod electron_profile_fixture;
+#[path = "electron_vault_prep.rs"]
+mod electron_vault_prep;
 #[path = "electron_yjs_journal.rs"]
 mod electron_yjs_journal;
 #[path = "embedding_file_text.rs"]
@@ -431,6 +433,8 @@ mod property_definitions_seed;
 mod property_definitions_sync;
 #[path = "property_usage.rs"]
 mod property_usage;
+#[path = "reminder_scheduler.rs"]
+mod reminder_scheduler;
 #[path = "sanitize_svg_inert.rs"]
 mod sanitize_svg_inert;
 #[path = "sanitize_svg_untrusted.rs"]
