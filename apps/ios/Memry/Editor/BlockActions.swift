@@ -136,11 +136,11 @@ extension NoteEditorViewModel {
         -> EditorUndoStep
     {
         let before = await snapshot(blockId)
-        await turnInto(blockId, kind: choice.id, level: choice.level)
+        await turnInto(blockId, kind: choice.kind, level: choice.level)
         if let before, let after = await snapshot(blockId) {
             return .turnInto(before: before, after: after)
         }
-        return .turnInto(blockId: blockId, from: previous, to: choice.id)
+        return .turnInto(blockId: blockId, from: previous, to: choice.kind)
     }
 }
 
@@ -171,7 +171,7 @@ struct BlockActionTarget {
 
     /// Whether `choice` is what the block already is, for the checkmark.
     func isCurrent(_ choice: InsertableBlock) -> Bool {
-        guard choice.id == block.kind else { return false }
+        guard choice.kind == block.kind else { return false }
         guard let level = choice.level else { return true }
         return Int(block.props.first { $0.name == "level" }?.value ?? "1") == level
     }

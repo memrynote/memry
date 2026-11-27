@@ -360,7 +360,7 @@ extension EditorSession {
         let blockId = field.blockId
         let sourceKind: BlockSourceRequest.Kind = kind == "diagram" ? .diagram : .math
         if field.textView.text.isEmpty {
-            turnInto(InsertableBlock(id: kind, name: "", symbol: ""))
+            turnInto(InsertableBlock(kind: kind, name: "", symbol: ""))
             editSource(BlockSourceRequest(blockId: blockId, source: "", kind: sourceKind))
             return
         }
@@ -452,7 +452,7 @@ extension EditorSession {
             // A table draws in the reload the turn itself triggers, so it
             // asks for the caret before that write rather than after it.
             if kind == "table" { pendingFocus = blockId }
-            turnInto(InsertableBlock(id: kind, name: "", symbol: "", level: level))
+            turnInto(InsertableBlock(kind: kind, name: "", symbol: "", level: level))
             commit(field) { [weak self] in
                 guard let self, let model = self.model else { return }
                 for (name, value) in props.sorted(by: { $0.key < $1.key }) {

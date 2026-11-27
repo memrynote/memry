@@ -577,7 +577,7 @@ struct EditorPanelView: View {
     }
 
     private var currentBlock: String? {
-        InsertableBlock.all.first { $0.id == session.focusedKind && ($0.level == nil || $0.level == session.focusedLevel) }?.name
+        InsertableBlock.all.first { $0.kind == session.focusedKind && ($0.level == nil || $0.level == session.focusedLevel) }?.name
     }
 
     private func section<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {

@@ -749,7 +749,7 @@ final class EditorSession {
     func turn(_ model: NoteEditorViewModel, _ blockId: String, into block: InsertableBlock) async {
         let previous = focusedKind ?? "paragraph"
         history.record(await model.turnIntoStep(blockId, into: block, from: previous))
-        focusedKind = block.id
+        focusedKind = block.kind
         focusedLevel = block.level
     }
 

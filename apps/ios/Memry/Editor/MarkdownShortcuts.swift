@@ -191,7 +191,7 @@ extension EditorSession {
             }
             return
         }
-        let choice = InsertableBlock(id: rule.kind, name: "", symbol: "", level: rule.level)
+        let choice = InsertableBlock(kind: rule.kind, name: "", symbol: "", level: rule.level)
         turnKeepingCaret(field, into: choice, props: rule.props)
     }
 
@@ -203,7 +203,7 @@ extension EditorSession {
     func turnKeepingCaret(_ field: BlockField, into choice: InsertableBlock, props: [String: String] = [:]) {
         let blockId = field.blockId
         shortcutField = field
-        shortcutKind = choice.id
+        shortcutKind = choice.kind
         commit(field) { [weak self] in
             guard let self, let model = self.model else { return }
             await self.turn(model, blockId, into: choice)
