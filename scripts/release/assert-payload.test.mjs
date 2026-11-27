@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { describe, it } from 'node:test'
@@ -129,7 +129,7 @@ describe('checkPayload', () => {
       links: () =>
         `${LINKS.macos}\n@rpath/libonnxruntime.1.31.0.dylib (compatibility version 0.0.0)`
     })
-    assert.equal(ort.length, 2)
+    assert.equal(ort.length, MANIFEST.platforms.macos.executables.length)
   })
 
   it('fails a Windows executable that needs the VC++ redistributable', () => {
@@ -195,8 +195,36 @@ describe('readReleaseConfig', () => {
     const config = readReleaseConfig('macos')
     assert.equal(config.mainBinaryName, 'MemryNote')
     assert.equal(config.bundle.active, true)
-    assert.deepEqual(config.bundle.externalBin, ['binaries/memry-ml-worker'])
     assert.equal(config.bundle.macOS.minimumSystemVersion, '13.0')
+  })
+
+  it('bundles the worker on every platform and the EventKit helper beside it on macOS only', () => {
+    assert.deepEqual(readReleaseConfig('macos').bundle.externalBin, [
+      'binaries/memry-ml-worker',
+      '../eventkit/bin/memry-eventkit'
+    ])
+    for (const platform of ['windows', 'linux']) {
+      assert.deepEqual(readReleaseConfig(platform).bundle.externalBin, ['binaries/memry-ml-worker'])
+    }
+  })
+
+  it('lists the EventKit helper in the macOS payload manifest', () => {
+    assert.ok(MANIFEST.platforms.macos.executables.includes('memry-eventkit'))
+  })
+
+  it('passes the macOS overlay to the rehearsal workflow macOS build, as the config the checks read', () => {
+    const workflow = readFileSync(
+      path.resolve(import.meta.dirname, '../../.github/workflows/update-bridge-rehearsal.yml'),
+      'utf8'
+    )
+    const macBuild = workflow
+      .split('\n')
+      .filter((line) => line.includes('tauri build') && line.includes('--bundles app '))
+    assert.equal(macBuild.length, 1)
+    assert.match(
+      macBuild[0],
+      /--config src-tauri\/tauri\.release\.conf\.json --config src-tauri\/tauri\.release\.macos\.conf\.json /
+    )
   })
 
   it('applies RFC 7396: null deletes, arrays and scalars replace', () => {

@@ -130,7 +130,7 @@ pub fn usage(
     note_id: &str,
     anchor: Option<&str>,
 ) -> Result<PortalUsageView, StorageError> {
-    let hosts = open.vault.search()?.portal_usage(note_id, anchor)?;
+    let hosts = open.vault.search(None)?.portal_usage(note_id, anchor)?;
     Ok(PortalUsageView {
         hosts: hosts.into_iter().map(PortalHostView::from).collect(),
     })
@@ -142,7 +142,7 @@ pub fn search(
     open: &OpenVault,
     input: &PortalSearchInput,
 ) -> Result<PortalSearchView, StorageError> {
-    let found = open.vault.search()?.portal_search(
+    let found = open.vault.search(None)?.portal_search(
         input.text.as_deref(),
         input.tag.as_deref(),
         input.limit as usize,

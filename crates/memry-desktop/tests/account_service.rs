@@ -26,9 +26,12 @@ use serde_json::{Value, json};
 
 pub(crate) const MASTER: [u8; 32] = [9; 32];
 
+/// A status, a body, and the release a held answer waits for.
+type Answer = (u16, String, Option<Arc<tokio::sync::Notify>>);
+
 #[derive(Default)]
 pub(crate) struct Script {
-    answers: Mutex<VecDeque<(u16, String)>>,
+    answers: Mutex<VecDeque<Answer>>,
     paths: Mutex<Vec<String>>,
     /// The `authorization` header of each request, by path.
     bearers: Mutex<Vec<(String, Option<String>)>>,
@@ -57,12 +60,15 @@ impl Transport for Script {
             .lock()
             .unwrap()
             .push((path.clone(), request.headers.get("authorization").cloned()));
-        let (status, body) = self
+        let (status, body, held) = self
             .answers
             .lock()
             .unwrap()
             .pop_front()
             .unwrap_or_else(|| panic!("no answer scripted for {path}"));
+        if let Some(held) = held {
+            held.notified().await;
+        }
         Ok(HttpResponse {
             status,
             headers: HashMap::new(),
@@ -86,7 +92,17 @@ impl Script {
         self.answers
             .lock()
             .unwrap()
-            .push_back((status, body.to_string()));
+            .push_back((status, body.to_string(), None));
+    }
+
+    /// An answer that reaches its request only once the returned handle's `notify_one` runs.
+    pub(crate) fn held_answer(&self, status: u16, body: Value) -> Arc<tokio::sync::Notify> {
+        let held = Arc::new(tokio::sync::Notify::new());
+        self.answers
+            .lock()
+            .unwrap()
+            .push_back((status, body.to_string(), Some(held.clone())));
+        held
     }
 
     /// `(method, path, body)` of every request so far.
@@ -113,8 +129,11 @@ impl Script {
 pub(crate) struct Keychain {
     items: Mutex<HashMap<SecureStoreKey, Vec<u8>>>,
     master_locked: bool,
-    access_locked: AtomicBool,
-    undeletable: Mutex<Vec<SecureStoreKey>>,
+    pub(crate) access_locked: AtomicBool,
+    pub(crate) undeletable: Mutex<Vec<SecureStoreKey>>,
+    unsettable: Mutex<Vec<SecureStoreKey>>,
+    /// The next `clear` fails and removes nothing; per-entry deletes still work.
+    clear_refused: AtomicBool,
 }
 
 impl SecureStore for Keychain {
@@ -127,6 +146,11 @@ impl SecureStore for Keychain {
         Ok(self.items.lock().unwrap().get(&key).cloned())
     }
     fn set(&self, key: SecureStoreKey, value: Vec<u8>) -> Result<(), SecureStoreError> {
+        if self.unsettable.lock().unwrap().contains(&key) {
+            return Err(SecureStoreError::Failed {
+                what: "the keychain refused".into(),
+            });
+        }
         self.items.lock().unwrap().insert(key, value);
         Ok(())
     }
@@ -141,6 +165,11 @@ impl SecureStore for Keychain {
     }
     /// Every entry, one after another; the first refusal is returned (`KeyringStore::clear`).
     fn clear(&self) -> Result<(), SecureStoreError> {
+        if self.clear_refused.swap(false, Ordering::SeqCst) {
+            return Err(SecureStoreError::Failed {
+                what: "the keychain refused".into(),
+            });
+        }
         let keys: Vec<_> = self.items.lock().unwrap().keys().copied().collect();
         keys.into_iter()
             .map(|key| self.delete(key))
@@ -151,6 +180,12 @@ impl SecureStore for Keychain {
 impl Keychain {
     pub(crate) fn refuse_delete(&self, keys: &[SecureStoreKey]) {
         self.undeletable.lock().unwrap().extend_from_slice(keys);
+    }
+    pub(crate) fn refuse_set(&self, keys: &[SecureStoreKey]) {
+        self.unsettable.lock().unwrap().extend_from_slice(keys);
+    }
+    pub(crate) fn refuse_next_clear(&self) {
+        self.clear_refused.store(true, Ordering::SeqCst);
     }
     pub(crate) fn has(&self, key: SecureStoreKey) -> bool {
         self.items.lock().unwrap().contains_key(&key)
@@ -170,7 +205,7 @@ impl Keychain {
     }
 }
 
-fn jwt(payload: Value) -> String {
+pub(crate) fn jwt(payload: Value) -> String {
     let header = URL_SAFE_NO_PAD.encode(br#"{"alg":"EdDSA","typ":"JWT"}"#);
     let body = URL_SAFE_NO_PAD.encode(serde_json::to_vec(&payload).unwrap());
     format!("{header}.{body}.c2ln")
@@ -233,10 +268,11 @@ impl Fixture {
             .extend(verify.as_object().unwrap().clone());
         {
             let mut answers = self.script.answers.lock().unwrap();
-            answers.push_front((200, answer.to_string()));
+            answers.push_front((200, answer.to_string(), None));
             answers.push_front((
                 200,
                 json!({ "success": true, "expiresIn": 600 }).to_string(),
+                None,
             ));
         }
         self.service
@@ -365,6 +401,21 @@ async fn a_failed_registration_keeps_the_device_key_it_had() {
     );
 }
 
+/// A master key the keychain refuses after setup published the keys fails the setup, and the
+/// phrase stays held for the user (as Electron does).
+#[tokio::test]
+async fn a_refused_master_key_write_keeps_the_phrase_held() {
+    let f = fixture(Keychain::default());
+    f.verify(json!({ "needsSetup": true })).await.unwrap();
+    f.answer_registration("server-device-1");
+    f.script.answer(200, json!({ "success": true }));
+    f.keychain.refuse_set(&[SecureStoreKey::MasterKey]);
+
+    f.service.setup_new_account().await.unwrap_err();
+
+    assert!(f.service.recovery_phrase().is_some());
+}
+
 #[tokio::test]
 async fn first_device_setup_stores_the_key_and_holds_the_phrase_until_confirmed() {
     let f = fixture(Keychain::default());
@@ -401,6 +452,26 @@ fn account_phrase() -> (String, Value) {
         "keyVerifier": keys::account_key_verifier(&master).unwrap(),
     });
     (phrase, material)
+}
+
+/// The master key an integrity sign-out kept is the last account's: a new account's setup that
+/// the server refuses leaves the device without it, never signed in with it.
+#[tokio::test]
+async fn a_refused_setup_never_signs_in_with_the_last_accounts_master_key() {
+    let keychain = Keychain::default();
+    keychain
+        .set(SecureStoreKey::MasterKey, MASTER.to_vec())
+        .unwrap();
+    let f = fixture(keychain);
+    f.verify(json!({ "needsSetup": true })).await.unwrap();
+    f.answer_registration("server-device-1");
+    f.script.answer(409, json!({ "error": "ALREADY_SET_UP" }));
+
+    let error = f.service.setup_new_account().await.unwrap_err();
+
+    assert!(matches!(error, AccountError::SetupConflict), "{error:?}");
+    assert!(!f.keychain.has(SecureStoreKey::MasterKey));
+    assert!(!f.service.info().signed_in);
 }
 
 /// A 409 on `/auth/setup` leaves this device registered with no master key: it is not signed in,

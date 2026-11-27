@@ -1,5 +1,5 @@
 //! Versions of a note's body (desktop `note-snapshots.ts`, `notes-versions.ts`), in the
-//! `note_snapshots` table of `data.db` (migration 0018). Versions never sync.
+//! `note_snapshots` table of `data.db` (migration 0019). Versions never sync.
 //!
 //! [`keep`] is the one writer, with Electron's rules (`note-snapshots.ts:26-28`):
 //! - a version whose content this note already holds is not kept twice
@@ -59,8 +59,9 @@ pub enum Reason {
     Significant,
     /// Bytes the app did not write and writes over (a locked note's revert, an outside edit
     /// under a document ahead of it, the body an outside edit replaces, a file the write-back
-    /// did not write this run). Stored as `significant`, as Electron stores it; it prunes only
-    /// `significant` versions.
+    /// did not write this run). Stored as `significant`, as Electron stores it, and marked in
+    /// `note_snapshot_outside_writes` ([`Listed::outside_write`]); it prunes only `significant`
+    /// versions.
     OutsideWrite,
     /// The note was open as the app quit.
     Close,
@@ -102,6 +103,9 @@ pub struct Listed {
     pub word_count: i64,
     pub reason: String,
     pub created_at: String,
+    /// Kept by its newest keep as a [`Reason::OutsideWrite`]: text the app wrote over, which
+    /// the note's file no longer holds.
+    pub outside_write: bool,
 }
 
 /// A kept version with what it restores to.
@@ -112,7 +116,8 @@ pub struct Kept {
 }
 
 /// Keeps `version` unless the note already has one with the same content (which is moved up
-/// to the newest instead, 1 ms past it on a clock behind), or it is an automatic or timer version less than
+/// to the newest instead, 1 ms past it on a clock behind, its outside-write mark now
+/// `version`'s), or it is an automatic or timer version less than
 /// [`MIN_INTERVAL_MS`] after the note's last one. True when a row was written.
 pub fn keep(conn: &Connection, version: Version<'_>, now_ms: i64) -> Result<bool, StorageError> {
     let hash = content_hash(version.content);
@@ -128,6 +133,20 @@ pub fn keep(conn: &Connection, version: Version<'_>, now_ms: i64) -> Result<bool
         )
         .map_err(failed)?;
     if held > 0 {
+        conn.execute(
+            "DELETE FROM note_snapshot_outside_writes WHERE snapshot_id IN (
+               SELECT id FROM note_snapshots WHERE note_id = ?1 AND content_hash = ?2)",
+            params![version.note_id, hash],
+        )
+        .map_err(failed)?;
+        if version.reason == Reason::OutsideWrite {
+            conn.execute(
+                "INSERT OR IGNORE INTO note_snapshot_outside_writes (snapshot_id)
+                 SELECT id FROM note_snapshots WHERE note_id = ?1 AND content_hash = ?2",
+                params![version.note_id, hash],
+            )
+            .map_err(failed)?;
+        }
         return Ok(false);
     }
     if matches!(version.reason, Reason::Auto | Reason::Timer)
@@ -158,10 +177,11 @@ pub fn is_significant(old_body: &str, new_body: &str) -> bool {
 /// The note's versions, newest first (`getVersionHistory`).
 pub fn list(conn: &Connection, note_id: &str) -> Result<Vec<Listed>, StorageError> {
     let mut statement = conn
-        .prepare(
-            "SELECT id, note_id, title, word_count, reason, created_at FROM note_snapshots
-             WHERE note_id = ?1 ORDER BY created_at DESC, rowid DESC LIMIT ?2",
-        )
+        .prepare(&format!(
+            "SELECT id, note_id, title, word_count, reason, created_at, {OUTSIDE_WRITE}
+             FROM note_snapshots WHERE note_id = ?1 ORDER BY created_at DESC, rowid DESC
+             LIMIT ?2"
+        ))
         .map_err(failed)?;
     let rows = statement
         .query_map(params![note_id, MAX_LISTED], listed)
@@ -172,13 +192,15 @@ pub fn list(conn: &Connection, note_id: &str) -> Result<Vec<Listed>, StorageErro
 /// One version by its id (`getVersion`).
 pub fn get(conn: &Connection, id: &str) -> Result<Option<Kept>, StorageError> {
     conn.query_row(
-        "SELECT id, note_id, title, word_count, reason, created_at, content FROM note_snapshots
-         WHERE id = ?1",
+        &format!(
+            "SELECT id, note_id, title, word_count, reason, created_at, {OUTSIDE_WRITE}, content
+             FROM note_snapshots WHERE id = ?1"
+        ),
         params![id],
         |row| {
             Ok(Kept {
                 listed: listed(row)?,
-                content: row.get(6)?,
+                content: row.get(7)?,
             })
         },
     )
@@ -191,7 +213,25 @@ pub fn delete(conn: &Connection, id: &str) -> Result<bool, StorageError> {
     let deleted = conn
         .execute("DELETE FROM note_snapshots WHERE id = ?1", params![id])
         .map_err(failed)?;
+    unmark_gone(conn)?;
     Ok(deleted > 0)
+}
+
+/// Whether the row's version is marked as an outside write, as a column of a query over
+/// `note_snapshots`.
+const OUTSIDE_WRITE: &str = "EXISTS (SELECT 1 FROM note_snapshot_outside_writes o
+                              WHERE o.snapshot_id = note_snapshots.id)";
+
+/// Drops the outside-write marks of versions that are gone: deleted or pruned here, or by an
+/// older build, which knows no marks.
+fn unmark_gone(conn: &Connection) -> Result<(), StorageError> {
+    conn.execute(
+        "DELETE FROM note_snapshot_outside_writes
+         WHERE snapshot_id NOT IN (SELECT id FROM note_snapshots)",
+        [],
+    )
+    .map_err(failed)?;
+    Ok(())
 }
 
 fn listed(row: &rusqlite::Row<'_>) -> rusqlite::Result<Listed> {
@@ -202,6 +242,7 @@ fn listed(row: &rusqlite::Row<'_>) -> rusqlite::Result<Listed> {
         word_count: row.get(3)?,
         reason: row.get(4)?,
         created_at: row.get(5)?,
+        outside_write: row.get(6)?,
     })
 }
 
@@ -258,6 +299,13 @@ fn insert(
         ],
     )
     .map_err(failed)?;
+    if version.reason == Reason::OutsideWrite {
+        conn.execute(
+            "INSERT INTO note_snapshot_outside_writes (snapshot_id) VALUES (?1)",
+            params![id],
+        )
+        .map_err(failed)?;
+    }
     let held: i64 = conn
         .query_row(
             "SELECT COUNT(*) FROM note_snapshots WHERE note_id = ?1",
@@ -277,7 +325,7 @@ fn insert(
         params![version.note_id, id, only, held - MAX_PER_NOTE],
     )
     .map_err(failed)?;
-    Ok(())
+    unmark_gone(conn)
 }
 
 /// `calculateWordCount`: fenced code (```` ```…``` ````, shortest match) and inline code

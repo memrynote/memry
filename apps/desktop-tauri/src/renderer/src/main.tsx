@@ -27,8 +27,10 @@ import { setActiveLocale } from './lib/active-locale'
 import { THEME_STORAGE_KEY } from './lib/startup-theme'
 import { getStartupLocale } from './lib/startup-locale'
 import { prefetchRestoredTabPage } from './lib/launch-restore'
+import { reportLaunchMarks } from './lib/launch-marks'
 import { APP_QUERY_DEFAULT_OPTIONS } from './lib/query-client-options'
 import { createLogger } from './lib/logger'
+import { installImeCompositionGuard } from './lib/ime-composition-guard'
 import { installNotPortedShim } from './lib/not-ported'
 import { installPortedApi } from './lib/ported-api'
 import { applyStartupState } from './lib/startup'
@@ -78,6 +80,7 @@ commands
   .then((info) => log.info('app info', info))
   .catch((error: unknown) => log.warn('app_info failed', error))
 registerRendererDiagnostics()
+installImeCompositionGuard(window)
 
 // Sanitize a stale or corrupted theme value in localStorage before next-themes
 // reads it. A pre-existing bug elsewhere can write `[object Object]` here,
@@ -133,7 +136,11 @@ const rootComponentReady: Promise<React.ComponentType> = isQuickCaptureWindow
 // to restore, so a wrong guess costs one speculative chunk fetch. Skipped for
 // the secondary windows, which never render a note tab and would just be
 // paying for a chunk they never use.
-if (!isSecondaryWindow) prefetchRestoredTabPage()
+if (!isSecondaryWindow) {
+  prefetchRestoredTabPage()
+  // The main window's launch timings, for `scripts/launch-bench.mjs`.
+  reportLaunchMarks()
+}
 
 // Started at module scope rather than inside boot(): the locale is already
 // known, so there is nothing left for the 11 locale namespace chunks to wait

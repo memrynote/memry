@@ -42,8 +42,10 @@ pub fn init(paths: &AppPaths) -> LogGuard {
     } else {
         (LevelFilter::INFO, LevelFilter::WARN)
     };
+    // rmcp's debug lines carry each MCP call's tool arguments, which hold vault content.
     let file_filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new(file_level.to_string()));
+        .unwrap_or_else(|_| EnvFilter::new(file_level.to_string()))
+        .add_directive("rmcp=info".parse().expect("a static directive parses"));
     let file = tracing_subscriber::fmt::layer()
         .event_format(format::LineFormat)
         .with_writer(writer)

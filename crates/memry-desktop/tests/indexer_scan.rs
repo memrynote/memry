@@ -30,7 +30,7 @@ use memry_desktop::notes::read;
 use memry_desktop::notes::view::{NoteListOptions, NoteListPageView};
 use memry_desktop::vault::hash::content_hash;
 use rusqlite::trace::TraceEventCodes;
-use vault_env::{Env, indexed};
+use vault_env::{Env, QUIET, indexed};
 
 const NOTES: usize = 1000;
 
@@ -146,6 +146,22 @@ fn count_index_statements(e: &Env, on: bool) -> usize {
         .unwrap()
 }
 
+/// The seeded vault is one a closed app leaves: each note's document holds its file's text, so a
+/// write-back pass over a note, at any time, leaves the file as written.
+#[test]
+fn a_write_back_pass_over_a_seeded_note_leaves_its_file() {
+    let (mut e, _store, notes) = seeded(12);
+    e.open();
+    for (id, _) in &notes {
+        e.tier.schedule(id);
+    }
+    std::thread::sleep(QUIET);
+    for (i, (_, path)) in notes.iter().enumerate() {
+        assert_eq!(e.read(path), note_text(i), "{path}");
+    }
+    e.close();
+}
+
 #[test]
 fn a_generated_vault_is_measured_once_per_note_and_its_passes_report_to_the_total() {
     let (mut e, _store, notes) = seeded(NOTES);
@@ -184,6 +200,10 @@ fn a_generated_vault_is_measured_once_per_note_and_its_passes_report_to_the_tota
     });
     assert!(reported.lock().unwrap().is_empty());
 
+    // The edit's pass may still be in its search reindex, which commits in batches and rests
+    // between them (#5417): a reindex queued behind it ends after it, so the count below
+    // takes in only its own statements.
+    index.reindex(recorder(&Steps::default())).unwrap();
     let steps = Steps::default();
     count_index_statements(&e, true);
     assert_eq!(index.indexing(), None);

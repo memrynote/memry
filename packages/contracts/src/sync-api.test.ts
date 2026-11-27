@@ -57,7 +57,8 @@ import {
   RecordPushItemIdentitySchema,
   CrdtSnapshotBaseRevisionSchema,
   CrdtSnapshotCoversThroughSchema,
-  CRDT_SNAPSHOT_NOT_COVERED
+  CRDT_SNAPSHOT_NOT_COVERED,
+  CrdtManifestResponseSchema
 } from './sync-api'
 
 const VALID_UUID = '11111111-1111-4111-8111-111111111111'
@@ -1130,5 +1131,29 @@ describe('CrdtSnapshotBaseRevisionSchema', () => {
     expect(CrdtSnapshotBaseRevisionSchema.safeParse('rev-1').success).toBe(true)
     expect(CrdtSnapshotBaseRevisionSchema.safeParse('').success).toBe(false)
     expect(CrdtSnapshotBaseRevisionSchema.safeParse(7).success).toBe(false)
+  })
+})
+
+// #5232: a reader fails closed on a body manifest page it cannot read whole.
+describe('CrdtManifestResponseSchema', () => {
+  const document = {
+    noteId: 'note-1',
+    floor: 0,
+    snapshot: { revision: 'rev-1', sequenceNum: 4 },
+    maxSequenceNum: 6
+  }
+
+  it('accepts a page with and without a snapshot', () => {
+    const page = { documents: [document, { ...document, snapshot: null }], nextCursor: null }
+    expect(CrdtManifestResponseSchema.parse(page)).toEqual(page)
+  })
+
+  it('rejects a document without its floor or with a negative one', () => {
+    const { floor: _floor, ...withoutFloor } = document
+    for (const bad of [withoutFloor, { ...document, floor: -1 }]) {
+      expect(
+        CrdtManifestResponseSchema.safeParse({ documents: [bad], nextCursor: null }).success
+      ).toBe(false)
+    }
   })
 })

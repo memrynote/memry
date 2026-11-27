@@ -6,8 +6,8 @@
  * Two things are pinned here: the line removal is surgical (every other byte of
  * the file survives, including content nested under the line), and the write
  * lands in the same order as every other main-originated note edit —
- * `markWritebackIgnored` before `atomicWrite`, `feedExternalEditToCrdt` after,
- * with the post-edit body.
+ * `feedExternalEditToCrdt` with the post-edit body first, then `recordAppWrite`
+ * before `atomicWrite` and its `landed` after.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
@@ -15,6 +15,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 const calls: string[] = []
 const feedCalls: Array<{ noteId: string; content: string }> = []
 const files = new Map<string, string>()
+const recorded: Array<{ path: string; bytes: unknown }> = []
 const emitted: Array<{ channel: string; event: unknown }> = []
 const noteRows = new Map<string, Record<string, unknown>>()
 
@@ -40,8 +41,15 @@ vi.mock('../sync/crdt-writeback-port', async () => {
   const writeback = await import('../sync/crdt-writeback')
   return { crdtWriteback: () => writeback }
 })
-vi.mock('../sync/crdt-writeback', () => ({
-  markWritebackIgnored: vi.fn(() => calls.push('markWritebackIgnored'))
+vi.mock('../sync/crdt-writeback', () => ({}))
+vi.mock('../vault/app-writes', () => ({
+  recordAppWrite: vi.fn((path: string, bytes: unknown) => {
+    calls.push('recordAppWrite')
+    recorded.push({ path, bytes })
+    return () => {
+      calls.push('landed')
+    }
+  })
 }))
 vi.mock('../vault/note-sync', () => ({
   syncNoteToCache: vi.fn(() => {
@@ -92,6 +100,7 @@ function seedNote(id: string, notePath: string, file: string): void {
 
 beforeEach(() => {
   calls.length = 0
+  recorded.length = 0
   feedCalls.length = 0
   emitted.length = 0
   files.clear()
@@ -154,19 +163,23 @@ describe('removeTaskLineFromSourceNote', () => {
     )
   })
 
-  it('marks the write ignored before writing and feeds the CRDT after', async () => {
+  // Doc first (D-DOC-FIRST): a crash before the file write leaves the doc
+  // ahead of the file, which the write-back then writes.
+  it('feeds the doc, then records the bytes before writing them and reports them landed', async () => {
     seedNote('note-1', 'Plan.md', '# Plan\n\n- [ ] Drop {task:t2}\n')
 
     await removeTaskLineFromSourceNote('t2', 'note-1')
 
     expect(calls).toEqual([
-      'markWritebackIgnored',
+      'feedExternalEditToCrdt',
+      'recordAppWrite',
       'atomicWrite',
+      'landed',
       'syncNoteToCache',
-      'emitNoteEvent',
-      'feedExternalEditToCrdt'
+      'emitNoteEvent'
     ])
     expect(feedCalls).toEqual([{ noteId: 'note-1', content: '# Plan\n' }])
+    expect(recorded).toEqual([{ path: '/vault/Plan.md', bytes: files.get('/vault/Plan.md') }])
   })
 
   it('is idempotent: a second delete of the same task writes nothing', async () => {

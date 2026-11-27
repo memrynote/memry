@@ -1,0 +1,3097 @@
+{
+  "source": "noteplan",
+  "cases": [
+    {
+      "name": "sample",
+      "sources": [
+        "sample"
+      ],
+      "timeline": [
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": "",
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": {
+            "code": "status.noteplan.scanning",
+            "message": "Scanning NotePlan folder…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": {
+            "code": "status.noteplan.scanning",
+            "message": "Scanning NotePlan folder…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.noteplan.scanning",
+            "message": "Scanning NotePlan folder…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Week 33 review",
+            "params": {
+              "title": "Week 33 review"
+            }
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "createNoteAsWritten",
+          "id": "note-1",
+          "title": "Week 33 review",
+          "folder": "NotePlan/Calendar",
+          "tags": [],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "2026-01-14T12:00:00.000Z",
+          "content": "- shipped the importer\n"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Week 33 review",
+            "params": {
+              "title": "Week 33 review"
+            }
+          },
+          "imported": 1,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Week 33 review",
+            "params": {
+              "title": "Week 33 review"
+            }
+          },
+          "imported": 1,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 1,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Project Aurora: Website Redesign",
+            "params": {
+              "title": "Project Aurora: Website Redesign"
+            }
+          },
+          "imported": 1,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 1,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "createTask",
+          "projectId": "inbox",
+          "title": "Project kickoff",
+          "dueDate": "2025-11-03",
+          "parentId": null,
+          "sourceNoteId": "note-2"
+        },
+        {
+          "op": "createTask",
+          "projectId": "inbox",
+          "title": "Confirm stakeholders",
+          "dueDate": null,
+          "parentId": "task-1",
+          "sourceNoteId": "note-2"
+        },
+        {
+          "op": "createTask",
+          "projectId": "inbox",
+          "title": "Measurement setup",
+          "dueDate": null,
+          "parentId": null,
+          "sourceNoteId": "note-2"
+        },
+        {
+          "op": "createNoteAsWritten",
+          "id": "note-2",
+          "title": "Project Aurora: Website Redesign",
+          "folder": "NotePlan/10 - Projects",
+          "tags": [],
+          "properties": [
+            [
+              "type",
+              "area"
+            ],
+            [
+              "status",
+              "Active"
+            ],
+            [
+              "owner",
+              "Web"
+            ]
+          ],
+          "created": "<birthtime>",
+          "modified": "2026-01-14T12:00:00.000Z",
+          "content": "## Tasks\n- [ ] Project kickoff {task:task-1}\n  - [ ] Confirm stakeholders {task:task-2}\n  - [ ] Agenda shared\n- [ ] Measurement setup {task:task-3}\n"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Project Aurora: Website Redesign",
+            "params": {
+              "title": "Project Aurora: Website Redesign"
+            }
+          },
+          "imported": 2,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 1,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Project Aurora: Website Redesign",
+            "params": {
+              "title": "Project Aurora: Website Redesign"
+            }
+          },
+          "imported": 2,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 2,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Start Here",
+            "params": {
+              "title": "Start Here"
+            }
+          },
+          "imported": 2,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 2,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "createNoteAsWritten",
+          "id": "note-3",
+          "title": "Start Here",
+          "folder": "NotePlan",
+          "tags": [
+            "guides/onboarding"
+          ],
+          "properties": [
+            [
+              "type",
+              "guide"
+            ]
+          ],
+          "created": "<birthtime>",
+          "modified": "2026-01-14T12:00:00.000Z",
+          "content": "Some guidance. Tagged #guides/onboarding.\n"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Start Here",
+            "params": {
+              "title": "Start Here"
+            }
+          },
+          "imported": 3,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 2,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Start Here",
+            "params": {
+              "title": "Start Here"
+            }
+          },
+          "imported": 3,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 3,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Note With Image",
+            "params": {
+              "title": "Note With Image"
+            }
+          },
+          "imported": 3,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 3,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "saveAttachment",
+          "noteId": "note-4",
+          "name": "gopher.png",
+          "size": 69,
+          "sha256": "b1ff9c8ea3a780bad09b346c423d2d0e46815926879b18e841d928376a946640"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Note With Image",
+            "params": {
+              "title": "Note With Image"
+            }
+          },
+          "imported": 3,
+          "attachments": 1,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 3,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "createNoteAsWritten",
+          "id": "note-4",
+          "title": "Note With Image",
+          "folder": "NotePlan",
+          "tags": [],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "2026-01-14T12:00:00.000Z",
+          "content": "See the diagram below.\n\n![gopher.png](attachments/note-4/gopher.png)\n"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Note With Image",
+            "params": {
+              "title": "Note With Image"
+            }
+          },
+          "imported": 4,
+          "attachments": 1,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 3,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Note With Image",
+            "params": {
+              "title": "Note With Image"
+            }
+          },
+          "imported": 4,
+          "attachments": 1,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 4,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Old Thing",
+            "params": {
+              "title": "Old Thing"
+            }
+          },
+          "imported": 4,
+          "attachments": 1,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 4,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "createNoteAsWritten",
+          "id": "note-5",
+          "title": "Old Thing",
+          "folder": "NotePlan/Archive",
+          "tags": [],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "2026-01-14T12:00:00.000Z",
+          "content": "Archived long ago.\n"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Old Thing",
+            "params": {
+              "title": "Old Thing"
+            }
+          },
+          "imported": 5,
+          "attachments": 1,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 4,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Old Thing",
+            "params": {
+              "title": "Old Thing"
+            }
+          },
+          "imported": 5,
+          "attachments": 1,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 5,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing 2026-08-12",
+            "params": {
+              "title": "2026-08-12"
+            }
+          },
+          "imported": 5,
+          "attachments": 1,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 5,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "createTask",
+          "projectId": "inbox",
+          "title": "Watch the getting-started video",
+          "dueDate": "2026-08-13",
+          "parentId": null,
+          "sourceNoteId": "j2026-08-12"
+        },
+        {
+          "op": "createTask",
+          "projectId": "inbox",
+          "title": "Read the manual",
+          "dueDate": null,
+          "parentId": null,
+          "sourceNoteId": "j2026-08-12"
+        },
+        {
+          "op": "completeTask",
+          "id": "task-5",
+          "completedAt": "2026-08-12",
+          "recordOnly": true
+        },
+        {
+          "op": "createTask",
+          "projectId": "inbox",
+          "title": "Abandoned idea",
+          "dueDate": null,
+          "parentId": null,
+          "sourceNoteId": "j2026-08-12"
+        },
+        {
+          "op": "archiveTask",
+          "id": "task-6"
+        },
+        {
+          "op": "createJournalEntry",
+          "date": "2026-08-12",
+          "tags": [],
+          "properties": [
+            [
+              "mood",
+              "focused"
+            ]
+          ],
+          "content": "# Monday kickoff\nHere's your first task:\n- [ ] Watch the getting-started video {task:task-4}\n- [x] Read the manual {task:task-5}\n- [x] Abandoned idea {task:task-6}\n\n## Today's Plan\n- [ ] 08:00 - 09:00 Reply to emails\n- [x] Gym\n\n- Websites to read later\nSee also [[Start Here]].\n"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing 2026-08-12",
+            "params": {
+              "title": "2026-08-12"
+            }
+          },
+          "imported": 6,
+          "attachments": 1,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 5,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing 2026-08-12",
+            "params": {
+              "title": "2026-08-12"
+            }
+          },
+          "imported": 6,
+          "attachments": 1,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 6,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "done",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing 2026-08-12",
+            "params": {
+              "title": "2026-08-12"
+            }
+          },
+          "imported": 6,
+          "attachments": 1,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 6,
+          "total": 6,
+          "done": true,
+          "summary": {
+            "imported": 6,
+            "attachments": 1,
+            "skipped": 0,
+            "failed": []
+          }
+        }
+      ],
+      "summary": {
+        "imported": 6,
+        "attachments": 1,
+        "skipped": 0,
+        "failed": []
+      }
+    },
+    {
+      "name": "edge",
+      "sources": [
+        "edge"
+      ],
+      "journals": {
+        "2026-01-01": {
+          "content": "  My own words\n",
+          "tags": [
+            "mine",
+            "daily"
+          ],
+          "properties": {
+            "weather": "sun",
+            "mood": "calm"
+          }
+        }
+      },
+      "timeline": [
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": "",
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": {
+            "code": "status.noteplan.scanning",
+            "message": "Scanning NotePlan folder…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": {
+            "code": "status.noteplan.scanning",
+            "message": "Scanning NotePlan folder…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": {
+            "code": "status.noteplan.scanning",
+            "message": "Scanning NotePlan folder…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 2,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": {
+            "code": "status.noteplan.scanning",
+            "message": "Scanning NotePlan folder…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 3,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": {
+            "code": "status.noteplan.scanning",
+            "message": "Scanning NotePlan folder…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 4,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": {
+            "code": "status.noteplan.scanning",
+            "message": "Scanning NotePlan folder…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 5,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": {
+            "code": "status.noteplan.scanning",
+            "message": "Scanning NotePlan folder…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 6,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": {
+            "code": "status.noteplan.scanning",
+            "message": "Scanning NotePlan folder…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 6,
+          "failed": 0,
+          "completed": 0,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.noteplan.scanning",
+            "message": "Scanning NotePlan folder…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 6,
+          "failed": 0,
+          "completed": 0,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing August",
+            "params": {
+              "title": "August"
+            }
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 6,
+          "failed": 0,
+          "completed": 0,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "createNoteAsWritten",
+          "id": "note-1",
+          "title": "August",
+          "folder": "NotePlan/Calendar",
+          "tags": [],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "2026-01-14T12:00:00.000Z",
+          "content": "- [x] month checklist\n"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing August",
+            "params": {
+              "title": "August"
+            }
+          },
+          "imported": 1,
+          "attachments": 0,
+          "skipped": 6,
+          "failed": 0,
+          "completed": 0,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing August",
+            "params": {
+              "title": "August"
+            }
+          },
+          "imported": 1,
+          "attachments": 0,
+          "skipped": 6,
+          "failed": 0,
+          "completed": 1,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing 2026-Q3",
+            "params": {
+              "title": "2026-Q3"
+            }
+          },
+          "imported": 1,
+          "attachments": 0,
+          "skipped": 6,
+          "failed": 0,
+          "completed": 1,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "createNoteAsWritten",
+          "id": "note-2",
+          "title": "2026-Q3",
+          "folder": "NotePlan/Calendar",
+          "tags": [],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "2026-01-14T12:00:00.000Z",
+          "content": "quarter without heading\n"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing 2026-Q3",
+            "params": {
+              "title": "2026-Q3"
+            }
+          },
+          "imported": 2,
+          "attachments": 0,
+          "skipped": 6,
+          "failed": 0,
+          "completed": 1,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing 2026-Q3",
+            "params": {
+              "title": "2026-Q3"
+            }
+          },
+          "imported": 2,
+          "attachments": 0,
+          "skipped": 6,
+          "failed": 0,
+          "completed": 2,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing 2026 goals",
+            "params": {
+              "title": "2026 goals"
+            }
+          },
+          "imported": 2,
+          "attachments": 0,
+          "skipped": 6,
+          "failed": 0,
+          "completed": 2,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "createTask",
+          "projectId": "inbox",
+          "title": "Ship it",
+          "dueDate": null,
+          "parentId": null,
+          "sourceNoteId": "note-3"
+        },
+        {
+          "op": "createNoteAsWritten",
+          "id": "note-3",
+          "title": "2026 goals",
+          "folder": "NotePlan/Calendar",
+          "tags": [],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "2026-01-14T12:00:00.000Z",
+          "content": "- [ ] Ship it {task:task-1}\n"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing 2026 goals",
+            "params": {
+              "title": "2026 goals"
+            }
+          },
+          "imported": 3,
+          "attachments": 0,
+          "skipped": 6,
+          "failed": 0,
+          "completed": 2,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing 2026 goals",
+            "params": {
+              "title": "2026 goals"
+            }
+          },
+          "imported": 3,
+          "attachments": 0,
+          "skipped": 6,
+          "failed": 0,
+          "completed": 3,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Template",
+            "params": {
+              "title": "Template"
+            }
+          },
+          "imported": 3,
+          "attachments": 0,
+          "skipped": 6,
+          "failed": 0,
+          "completed": 3,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "createTask",
+          "projectId": "inbox",
+          "title": "Template task",
+          "dueDate": null,
+          "parentId": null,
+          "sourceNoteId": "note-4"
+        },
+        {
+          "op": "createNoteAsWritten",
+          "id": "note-4",
+          "title": "Template",
+          "folder": "NotePlan/@Templates",
+          "tags": [],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "2026-01-14T12:00:00.000Z",
+          "content": "- [ ] Template task {task:task-2}\n"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Template",
+            "params": {
+              "title": "Template"
+            }
+          },
+          "imported": 4,
+          "attachments": 0,
+          "skipped": 6,
+          "failed": 0,
+          "completed": 3,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Template",
+            "params": {
+              "title": "Template"
+            }
+          },
+          "imported": 4,
+          "attachments": 0,
+          "skipped": 6,
+          "failed": 0,
+          "completed": 4,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Has Pic",
+            "params": {
+              "title": "Has Pic"
+            }
+          },
+          "imported": 4,
+          "attachments": 0,
+          "skipped": 6,
+          "failed": 0,
+          "completed": 4,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "saveAttachment",
+          "noteId": "note-5",
+          "name": "shot.png",
+          "size": 69,
+          "sha256": "b1ff9c8ea3a780bad09b346c423d2d0e46815926879b18e841d928376a946640"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Has Pic",
+            "params": {
+              "title": "Has Pic"
+            }
+          },
+          "imported": 4,
+          "attachments": 1,
+          "skipped": 6,
+          "failed": 0,
+          "completed": 4,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "createNoteAsWritten",
+          "id": "note-5",
+          "title": "Has Pic",
+          "folder": "NotePlan",
+          "tags": [],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "2026-01-14T12:00:00.000Z",
+          "content": "![shot.png](attachments/note-5/shot.png)\nSee [[Nested]] and [[Real Title|alias]].\n"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Has Pic",
+            "params": {
+              "title": "Has Pic"
+            }
+          },
+          "imported": 5,
+          "attachments": 1,
+          "skipped": 6,
+          "failed": 0,
+          "completed": 4,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Has Pic",
+            "params": {
+              "title": "Has Pic"
+            }
+          },
+          "imported": 5,
+          "attachments": 1,
+          "skipped": 6,
+          "failed": 0,
+          "completed": 5,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing UPPER.TXT",
+            "params": {
+              "title": "UPPER.TXT"
+            }
+          },
+          "imported": 5,
+          "attachments": 1,
+          "skipped": 6,
+          "failed": 0,
+          "completed": 5,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "createNoteAsWritten",
+          "id": "note-6",
+          "title": "UPPER.TXT",
+          "folder": "NotePlan",
+          "tags": [],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "2026-01-14T12:00:00.000Z",
+          "content": "upper case extension\n"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing UPPER.TXT",
+            "params": {
+              "title": "UPPER.TXT"
+            }
+          },
+          "imported": 6,
+          "attachments": 1,
+          "skipped": 6,
+          "failed": 0,
+          "completed": 5,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing UPPER.TXT",
+            "params": {
+              "title": "UPPER.TXT"
+            }
+          },
+          "imported": 6,
+          "attachments": 1,
+          "skipped": 6,
+          "failed": 0,
+          "completed": 6,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Assets",
+            "params": {
+              "title": "Assets"
+            }
+          },
+          "imported": 6,
+          "attachments": 1,
+          "skipped": 6,
+          "failed": 0,
+          "completed": 6,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "saveAttachment",
+          "noteId": "note-7",
+          "name": "pic.png",
+          "size": 69,
+          "sha256": "b1ff9c8ea3a780bad09b346c423d2d0e46815926879b18e841d928376a946640"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Assets",
+            "params": {
+              "title": "Assets"
+            }
+          },
+          "imported": 6,
+          "attachments": 2,
+          "skipped": 6,
+          "failed": 0,
+          "completed": 6,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Assets",
+            "params": {
+              "title": "Assets"
+            }
+          },
+          "imported": 6,
+          "attachments": 2,
+          "skipped": 7,
+          "failed": 0,
+          "completed": 6,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Assets",
+            "params": {
+              "title": "Assets"
+            }
+          },
+          "imported": 6,
+          "attachments": 2,
+          "skipped": 8,
+          "failed": 0,
+          "completed": 6,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "createTask",
+          "projectId": "inbox",
+          "title": "Task with pic",
+          "dueDate": null,
+          "parentId": null,
+          "sourceNoteId": "note-7"
+        },
+        {
+          "op": "createNoteAsWritten",
+          "id": "note-7",
+          "title": "Assets",
+          "folder": "NotePlan",
+          "tags": [],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "2026-01-14T12:00:00.000Z",
+          "content": "![pic.png](attachments/note-7/pic.png)\n![out](../../outside.png)\n![gone](missing.png)\n- [ ] Task with pic {task:task-3}\n"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Assets",
+            "params": {
+              "title": "Assets"
+            }
+          },
+          "imported": 7,
+          "attachments": 2,
+          "skipped": 8,
+          "failed": 0,
+          "completed": 6,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Assets",
+            "params": {
+              "title": "Assets"
+            }
+          },
+          "imported": 7,
+          "attachments": 2,
+          "skipped": 8,
+          "failed": 0,
+          "completed": 7,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Title Line",
+            "params": {
+              "title": "Title Line"
+            }
+          },
+          "imported": 7,
+          "attachments": 2,
+          "skipped": 8,
+          "failed": 0,
+          "completed": 7,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "createNoteAsWritten",
+          "id": "note-8",
+          "title": "Title Line",
+          "folder": "NotePlan",
+          "tags": [],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "2026-01-14T12:00:00.000Z",
+          "content": "Body after blank.\n"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Title Line",
+            "params": {
+              "title": "Title Line"
+            }
+          },
+          "imported": 8,
+          "attachments": 2,
+          "skipped": 8,
+          "failed": 0,
+          "completed": 7,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Title Line",
+            "params": {
+              "title": "Title Line"
+            }
+          },
+          "imported": 8,
+          "attachments": 2,
+          "skipped": 8,
+          "failed": 0,
+          "completed": 8,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Nested",
+            "params": {
+              "title": "Nested"
+            }
+          },
+          "imported": 8,
+          "attachments": 2,
+          "skipped": 8,
+          "failed": 0,
+          "completed": 8,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "createTask",
+          "projectId": "inbox",
+          "title": "Top",
+          "dueDate": "2026-03-01",
+          "parentId": null,
+          "sourceNoteId": "note-9"
+        },
+        {
+          "op": "createTask",
+          "projectId": "inbox",
+          "title": "Child",
+          "dueDate": null,
+          "parentId": "task-4",
+          "sourceNoteId": "note-9"
+        },
+        {
+          "op": "createTask",
+          "projectId": "inbox",
+          "title": "Grandchild",
+          "dueDate": null,
+          "parentId": "task-5",
+          "sourceNoteId": "note-9"
+        },
+        {
+          "op": "createTask",
+          "projectId": "inbox",
+          "title": "Spaces child",
+          "dueDate": null,
+          "parentId": "task-5",
+          "sourceNoteId": "note-9"
+        },
+        {
+          "op": "createTask",
+          "projectId": "inbox",
+          "title": "Dropped",
+          "dueDate": null,
+          "parentId": null,
+          "sourceNoteId": "note-9"
+        },
+        {
+          "op": "archiveTask",
+          "id": "task-8"
+        },
+        {
+          "op": "createNoteAsWritten",
+          "id": "note-9",
+          "title": "Nested",
+          "folder": "NotePlan/deep/er",
+          "tags": [],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "2026-01-14T12:00:00.000Z",
+          "content": "- [ ] Top {task:task-4}\n  - [ ] Child {task:task-5}\n    - [ ] Grandchild {task:task-6}\n    - [ ] Spaces child {task:task-7}\n- [x] Dropped {task:task-8}\n- [x] checked list\n- [ ] open list\n- bullet\n  - tabbed bullet\n*no space is text\n---\nLiteral {np-task:t9} and {task:task-4} stay or swap.\n"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Nested",
+            "params": {
+              "title": "Nested"
+            }
+          },
+          "imported": 9,
+          "attachments": 2,
+          "skipped": 8,
+          "failed": 0,
+          "completed": 8,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Nested",
+            "params": {
+              "title": "Nested"
+            }
+          },
+          "imported": 9,
+          "attachments": 2,
+          "skipped": 8,
+          "failed": 0,
+          "completed": 9,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Real Title",
+            "params": {
+              "title": "Real Title"
+            }
+          },
+          "imported": 9,
+          "attachments": 2,
+          "skipped": 8,
+          "failed": 0,
+          "completed": 9,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "createNoteAsWritten",
+          "id": "note-10",
+          "title": "Real Title",
+          "folder": "NotePlan",
+          "tags": [],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "2026-01-14T12:00:00.000Z",
+          "content": "```\n# not title\n```\ntext\n"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Real Title",
+            "params": {
+              "title": "Real Title"
+            }
+          },
+          "imported": 10,
+          "attachments": 2,
+          "skipped": 8,
+          "failed": 0,
+          "completed": 9,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Real Title",
+            "params": {
+              "title": "Real Title"
+            }
+          },
+          "imported": 10,
+          "attachments": 2,
+          "skipped": 8,
+          "failed": 0,
+          "completed": 10,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing frontmatter",
+            "params": {
+              "title": "frontmatter"
+            }
+          },
+          "imported": 10,
+          "attachments": 2,
+          "skipped": 8,
+          "failed": 0,
+          "completed": 10,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "createNoteAsWritten",
+          "id": "note-11",
+          "title": "frontmatter",
+          "folder": "NotePlan",
+          "tags": [
+            "5",
+            "a",
+            "b",
+            "c"
+          ],
+          "properties": [
+            [
+              "type",
+              "guide"
+            ],
+            [
+              "status",
+              "open"
+            ]
+          ],
+          "created": "<birthtime>",
+          "modified": "2026-01-14T12:00:00.000Z",
+          "content": "No heading here, #a and #c.\n"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing frontmatter",
+            "params": {
+              "title": "frontmatter"
+            }
+          },
+          "imported": 11,
+          "attachments": 2,
+          "skipped": 8,
+          "failed": 0,
+          "completed": 10,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing frontmatter",
+            "params": {
+              "title": "frontmatter"
+            }
+          },
+          "imported": 11,
+          "attachments": 2,
+          "skipped": 8,
+          "failed": 0,
+          "completed": 11,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Image",
+            "params": {
+              "title": "Image"
+            }
+          },
+          "imported": 11,
+          "attachments": 2,
+          "skipped": 8,
+          "failed": 0,
+          "completed": 11,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "createNoteAsWritten",
+          "id": "note-12",
+          "title": "Image",
+          "folder": "NotePlan",
+          "tags": [],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "2026-01-14T12:00:00.000Z",
+          "content": ""
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Image",
+            "params": {
+              "title": "Image"
+            }
+          },
+          "imported": 12,
+          "attachments": 2,
+          "skipped": 8,
+          "failed": 0,
+          "completed": 11,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Image",
+            "params": {
+              "title": "Image"
+            }
+          },
+          "imported": 12,
+          "attachments": 2,
+          "skipped": 8,
+          "failed": 0,
+          "completed": 12,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Solo",
+            "params": {
+              "title": "Solo"
+            }
+          },
+          "imported": 12,
+          "attachments": 2,
+          "skipped": 8,
+          "failed": 0,
+          "completed": 12,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "createNoteAsWritten",
+          "id": "note-13",
+          "title": "Solo",
+          "folder": "NotePlan",
+          "tags": [
+            "solo"
+          ],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "2026-01-14T12:00:00.000Z",
+          "content": "body\n"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Solo",
+            "params": {
+              "title": "Solo"
+            }
+          },
+          "imported": 13,
+          "attachments": 2,
+          "skipped": 8,
+          "failed": 0,
+          "completed": 12,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Solo",
+            "params": {
+              "title": "Solo"
+            }
+          },
+          "imported": 13,
+          "attachments": 2,
+          "skipped": 8,
+          "failed": 0,
+          "completed": 13,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Old",
+            "params": {
+              "title": "Old"
+            }
+          },
+          "imported": 13,
+          "attachments": 2,
+          "skipped": 8,
+          "failed": 0,
+          "completed": 13,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "createTask",
+          "projectId": "inbox",
+          "title": "Archived done",
+          "dueDate": null,
+          "parentId": null,
+          "sourceNoteId": "note-14"
+        },
+        {
+          "op": "completeTask",
+          "id": "task-9",
+          "completedAt": "2020-05-05",
+          "recordOnly": true
+        },
+        {
+          "op": "createNoteAsWritten",
+          "id": "note-14",
+          "title": "Old",
+          "folder": "NotePlan/Archive/sub",
+          "tags": [],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "2026-01-14T12:00:00.000Z",
+          "content": "- [x] Archived done {task:task-9}\n"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Old",
+            "params": {
+              "title": "Old"
+            }
+          },
+          "imported": 14,
+          "attachments": 2,
+          "skipped": 8,
+          "failed": 0,
+          "completed": 13,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Old",
+            "params": {
+              "title": "Old"
+            }
+          },
+          "imported": 14,
+          "attachments": 2,
+          "skipped": 8,
+          "failed": 0,
+          "completed": 14,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing 2026-01-01",
+            "params": {
+              "title": "2026-01-01"
+            }
+          },
+          "imported": 14,
+          "attachments": 2,
+          "skipped": 8,
+          "failed": 0,
+          "completed": 14,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "createTask",
+          "projectId": "inbox",
+          "title": "Moved on",
+          "dueDate": "2026-01-02",
+          "parentId": null,
+          "sourceNoteId": "j2026-01-01"
+        },
+        {
+          "op": "createTask",
+          "projectId": "inbox",
+          "title": "Due tight >2026-01-03x",
+          "dueDate": null,
+          "parentId": null,
+          "sourceNoteId": "j2026-01-01"
+        },
+        {
+          "op": "createTask",
+          "projectId": "inbox",
+          "title": "Timed",
+          "dueDate": "2026-01-05",
+          "parentId": null,
+          "sourceNoteId": "j2026-01-01"
+        },
+        {
+          "op": "completeTask",
+          "id": "task-12",
+          "completedAt": "2026-01-01",
+          "recordOnly": true
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing 2026-01-01",
+            "params": {
+              "title": "2026-01-01"
+            }
+          },
+          "imported": 14,
+          "attachments": 2,
+          "skipped": 9,
+          "failed": 0,
+          "completed": 14,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "createTask",
+          "projectId": "inbox",
+          "title": "Child done",
+          "dueDate": null,
+          "parentId": null,
+          "sourceNoteId": "j2026-01-01"
+        },
+        {
+          "op": "completeTask",
+          "id": "task-13",
+          "completedAt": null,
+          "recordOnly": true
+        },
+        {
+          "op": "createJournalEntry",
+          "date": "2026-01-01",
+          "tags": [
+            "mine",
+            "daily",
+            "year/2026",
+            "été"
+          ],
+          "properties": [
+            [
+              "weather",
+              "sun"
+            ],
+            [
+              "mood",
+              "tired"
+            ]
+          ],
+          "content": "My own words\n\n## Imported from NotePlan\n\n# New Year\r\nPlan #year/2026 and no#42 #été\r\n- [ ] Moved on {task:task-10}\n- [ ] Due tight >2026-01-03x {task:task-11}\n- [x] Timed {task:task-12}\n- [ ] \n  - [x] Child done {task:task-13}\n```\r\n* not a task #fenced\r\n```\r\n## #heading-not-tag\r\n"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing 2026-01-01",
+            "params": {
+              "title": "2026-01-01"
+            }
+          },
+          "imported": 15,
+          "attachments": 2,
+          "skipped": 9,
+          "failed": 0,
+          "completed": 14,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing 2026-01-01",
+            "params": {
+              "title": "2026-01-01"
+            }
+          },
+          "imported": 15,
+          "attachments": 2,
+          "skipped": 9,
+          "failed": 0,
+          "completed": 15,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing 2026-01-01",
+            "params": {
+              "title": "2026-01-01"
+            }
+          },
+          "imported": 15,
+          "attachments": 2,
+          "skipped": 9,
+          "failed": 0,
+          "completed": 15,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "createTask",
+          "projectId": "inbox",
+          "title": "Same-day task",
+          "dueDate": null,
+          "parentId": null,
+          "sourceNoteId": "j2026-01-01"
+        },
+        {
+          "op": "createJournalEntry",
+          "date": "2026-01-01",
+          "tags": [
+            "mine",
+            "daily"
+          ],
+          "properties": [
+            [
+              "weather",
+              "sun"
+            ],
+            [
+              "mood",
+              "calm"
+            ]
+          ],
+          "content": "My own words\n\n## Imported from NotePlan\n\nSecond file, same day.\n- [ ] Same-day task {task:task-14}\n"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing 2026-01-01",
+            "params": {
+              "title": "2026-01-01"
+            }
+          },
+          "imported": 16,
+          "attachments": 2,
+          "skipped": 9,
+          "failed": 0,
+          "completed": 15,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing 2026-01-01",
+            "params": {
+              "title": "2026-01-01"
+            }
+          },
+          "imported": 16,
+          "attachments": 2,
+          "skipped": 9,
+          "failed": 0,
+          "completed": 16,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing 2026-02-02",
+            "params": {
+              "title": "2026-02-02"
+            }
+          },
+          "imported": 16,
+          "attachments": 2,
+          "skipped": 9,
+          "failed": 0,
+          "completed": 16,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "createTask",
+          "projectId": "inbox",
+          "title": "In a subfolder #sub",
+          "dueDate": null,
+          "parentId": null,
+          "sourceNoteId": "j2026-02-02"
+        },
+        {
+          "op": "createJournalEntry",
+          "date": "2026-02-02",
+          "tags": [
+            "sub"
+          ],
+          "properties": null,
+          "content": "- [ ] In a subfolder #sub {task:task-15}\n"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing 2026-02-02",
+            "params": {
+              "title": "2026-02-02"
+            }
+          },
+          "imported": 17,
+          "attachments": 2,
+          "skipped": 9,
+          "failed": 0,
+          "completed": 16,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing 2026-02-02",
+            "params": {
+              "title": "2026-02-02"
+            }
+          },
+          "imported": 17,
+          "attachments": 2,
+          "skipped": 9,
+          "failed": 0,
+          "completed": 17,
+          "total": 17,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "done",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing 2026-02-02",
+            "params": {
+              "title": "2026-02-02"
+            }
+          },
+          "imported": 17,
+          "attachments": 2,
+          "skipped": 9,
+          "failed": 0,
+          "completed": 17,
+          "total": 17,
+          "done": true,
+          "summary": {
+            "imported": 17,
+            "attachments": 2,
+            "skipped": 9,
+            "failed": [],
+            "skippedReasons": [
+              {
+                "reason": "Not a NotePlan calendar filename",
+                "count": 6
+              },
+              {
+                "reason": "Path traversal outside selected folder",
+                "count": 1
+              },
+              {
+                "reason": "Asset file not found",
+                "count": 1
+              },
+              {
+                "reason": "Task has no title",
+                "count": 1
+              }
+            ]
+          }
+        }
+      ],
+      "summary": {
+        "imported": 17,
+        "attachments": 2,
+        "skipped": 9,
+        "failed": [],
+        "skippedReasons": [
+          {
+            "reason": "Not a NotePlan calendar filename",
+            "count": 6
+          },
+          {
+            "reason": "Path traversal outside selected folder",
+            "count": 1
+          },
+          {
+            "reason": "Asset file not found",
+            "count": 1
+          },
+          {
+            "reason": "Task has no title",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "flat-subtasks",
+      "sources": [
+        "bare"
+      ],
+      "nestedSubtasks": false,
+      "timeline": [
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": "",
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": {
+            "code": "status.noteplan.scanning",
+            "message": "Scanning NotePlan folder…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": {
+            "code": "status.noteplan.scanning",
+            "message": "Scanning NotePlan folder…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 2,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.noteplan.scanning",
+            "message": "Scanning NotePlan folder…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 2,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Bare Inbox",
+            "params": {
+              "title": "Bare Inbox"
+            }
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 2,
+          "done": false
+        },
+        {
+          "op": "createTask",
+          "projectId": "inbox",
+          "title": "Parent",
+          "dueDate": null,
+          "parentId": null,
+          "sourceNoteId": "note-1"
+        },
+        {
+          "op": "createTask",
+          "projectId": "inbox",
+          "title": "Child",
+          "dueDate": null,
+          "parentId": "task-1",
+          "sourceNoteId": "note-1"
+        },
+        {
+          "op": "createTask",
+          "projectId": "inbox",
+          "title": "Grandchild",
+          "dueDate": null,
+          "parentId": null,
+          "sourceNoteId": "note-1"
+        },
+        {
+          "op": "createNoteAsWritten",
+          "id": "note-1",
+          "title": "Bare Inbox",
+          "folder": "NotePlan",
+          "tags": [],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "2026-01-14T12:00:00.000Z",
+          "content": "- [ ] Parent {task:task-1}\n  - [ ] Child {task:task-2}\n    - [ ] Grandchild {task:task-3}\n- [ ] checklist\n"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Bare Inbox",
+            "params": {
+              "title": "Bare Inbox"
+            }
+          },
+          "imported": 1,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 2,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Bare Inbox",
+            "params": {
+              "title": "Bare Inbox"
+            }
+          },
+          "imported": 1,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 1,
+          "total": 2,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing second",
+            "params": {
+              "title": "second"
+            }
+          },
+          "imported": 1,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 1,
+          "total": 2,
+          "done": false
+        },
+        {
+          "op": "createTask",
+          "projectId": "inbox",
+          "title": "Done",
+          "dueDate": null,
+          "parentId": null,
+          "sourceNoteId": "note-2"
+        },
+        {
+          "op": "completeTask",
+          "id": "task-4",
+          "completedAt": "2025-12-31",
+          "recordOnly": true
+        },
+        {
+          "op": "createNoteAsWritten",
+          "id": "note-2",
+          "title": "second",
+          "folder": "NotePlan/sub",
+          "tags": [
+            "bare"
+          ],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "2026-01-14T12:00:00.000Z",
+          "content": "plain #bare\n- [x] Done {task:task-4}\n"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing second",
+            "params": {
+              "title": "second"
+            }
+          },
+          "imported": 2,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 1,
+          "total": 2,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing second",
+            "params": {
+              "title": "second"
+            }
+          },
+          "imported": 2,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 2,
+          "total": 2,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "done",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing second",
+            "params": {
+              "title": "second"
+            }
+          },
+          "imported": 2,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 2,
+          "total": 2,
+          "done": true,
+          "summary": {
+            "imported": 2,
+            "attachments": 0,
+            "skipped": 0,
+            "failed": []
+          }
+        }
+      ],
+      "summary": {
+        "imported": 2,
+        "attachments": 0,
+        "skipped": 0,
+        "failed": []
+      }
+    },
+    {
+      "name": "no-inbox",
+      "sources": [
+        "bare",
+        "sample/Notes"
+      ],
+      "inboxProjectId": null,
+      "timeline": [
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": "",
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": {
+            "code": "status.noteplan.scanning",
+            "message": "Scanning NotePlan folder…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": {
+            "code": "status.noteplan.scanning",
+            "message": "Scanning NotePlan folder…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 5,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.noteplan.scanning",
+            "message": "Scanning NotePlan folder…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 5,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.noteplan.scanning",
+            "message": "Scanning NotePlan folder…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 0,
+          "total": 5,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Bare Inbox",
+            "params": {
+              "title": "Bare Inbox"
+            }
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 0,
+          "total": 5,
+          "done": false
+        },
+        {
+          "op": "createNoteAsWritten",
+          "id": "note-1",
+          "title": "Bare Inbox",
+          "folder": "NotePlan",
+          "tags": [],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "2026-01-14T12:00:00.000Z",
+          "content": "- [ ] Parent\n  - [ ] Child\n    - [ ] Grandchild\n- [ ] checklist\n"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Bare Inbox",
+            "params": {
+              "title": "Bare Inbox"
+            }
+          },
+          "imported": 1,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 0,
+          "total": 5,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Bare Inbox",
+            "params": {
+              "title": "Bare Inbox"
+            }
+          },
+          "imported": 1,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 1,
+          "total": 5,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing second",
+            "params": {
+              "title": "second"
+            }
+          },
+          "imported": 1,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 1,
+          "total": 5,
+          "done": false
+        },
+        {
+          "op": "createNoteAsWritten",
+          "id": "note-2",
+          "title": "second",
+          "folder": "NotePlan/sub",
+          "tags": [
+            "bare"
+          ],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "2026-01-14T12:00:00.000Z",
+          "content": "plain #bare\n- [x] Done\n"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing second",
+            "params": {
+              "title": "second"
+            }
+          },
+          "imported": 2,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 1,
+          "total": 5,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing second",
+            "params": {
+              "title": "second"
+            }
+          },
+          "imported": 2,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 2,
+          "total": 5,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Project Aurora: Website Redesign",
+            "params": {
+              "title": "Project Aurora: Website Redesign"
+            }
+          },
+          "imported": 2,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 2,
+          "total": 5,
+          "done": false
+        },
+        {
+          "op": "createNoteAsWritten",
+          "id": "note-3",
+          "title": "Project Aurora: Website Redesign",
+          "folder": "NotePlan/10 - Projects",
+          "tags": [],
+          "properties": [
+            [
+              "type",
+              "area"
+            ],
+            [
+              "status",
+              "Active"
+            ],
+            [
+              "owner",
+              "Web"
+            ]
+          ],
+          "created": "<birthtime>",
+          "modified": "2026-01-14T12:00:00.000Z",
+          "content": "## Tasks\n- [ ] Project kickoff\n  - [ ] Confirm stakeholders\n  - [ ] Agenda shared\n- [ ] Measurement setup\n"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Project Aurora: Website Redesign",
+            "params": {
+              "title": "Project Aurora: Website Redesign"
+            }
+          },
+          "imported": 3,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 2,
+          "total": 5,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Project Aurora: Website Redesign",
+            "params": {
+              "title": "Project Aurora: Website Redesign"
+            }
+          },
+          "imported": 3,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 3,
+          "total": 5,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Start Here",
+            "params": {
+              "title": "Start Here"
+            }
+          },
+          "imported": 3,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 3,
+          "total": 5,
+          "done": false
+        },
+        {
+          "op": "createNoteAsWritten",
+          "id": "note-4",
+          "title": "Start Here",
+          "folder": "NotePlan",
+          "tags": [
+            "guides/onboarding"
+          ],
+          "properties": [
+            [
+              "type",
+              "guide"
+            ]
+          ],
+          "created": "<birthtime>",
+          "modified": "2026-01-14T12:00:00.000Z",
+          "content": "Some guidance. Tagged #guides/onboarding.\n"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Start Here",
+            "params": {
+              "title": "Start Here"
+            }
+          },
+          "imported": 4,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 3,
+          "total": 5,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Start Here",
+            "params": {
+              "title": "Start Here"
+            }
+          },
+          "imported": 4,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 4,
+          "total": 5,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Note With Image",
+            "params": {
+              "title": "Note With Image"
+            }
+          },
+          "imported": 4,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 4,
+          "total": 5,
+          "done": false
+        },
+        {
+          "op": "saveAttachment",
+          "noteId": "note-5",
+          "name": "gopher.png",
+          "size": 69,
+          "sha256": "b1ff9c8ea3a780bad09b346c423d2d0e46815926879b18e841d928376a946640"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Note With Image",
+            "params": {
+              "title": "Note With Image"
+            }
+          },
+          "imported": 4,
+          "attachments": 1,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 4,
+          "total": 5,
+          "done": false
+        },
+        {
+          "op": "createNoteAsWritten",
+          "id": "note-5",
+          "title": "Note With Image",
+          "folder": "NotePlan",
+          "tags": [],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "2026-01-14T12:00:00.000Z",
+          "content": "See the diagram below.\n\n![gopher.png](attachments/note-5/gopher.png)\n"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Note With Image",
+            "params": {
+              "title": "Note With Image"
+            }
+          },
+          "imported": 5,
+          "attachments": 1,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 4,
+          "total": 5,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Note With Image",
+            "params": {
+              "title": "Note With Image"
+            }
+          },
+          "imported": 5,
+          "attachments": 1,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 5,
+          "total": 5,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "done",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Note With Image",
+            "params": {
+              "title": "Note With Image"
+            }
+          },
+          "imported": 5,
+          "attachments": 1,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 5,
+          "total": 5,
+          "done": true,
+          "summary": {
+            "imported": 5,
+            "attachments": 1,
+            "skipped": 1,
+            "failed": [],
+            "skippedReasons": [
+              {
+                "reason": "No Inbox project to import tasks into",
+                "count": 1
+              }
+            ]
+          }
+        }
+      ],
+      "summary": {
+        "imported": 5,
+        "attachments": 1,
+        "skipped": 1,
+        "failed": [],
+        "skippedReasons": [
+          {
+            "reason": "No Inbox project to import tasks into",
+            "count": 1
+          }
+        ]
+      }
+    }
+  ]
+}

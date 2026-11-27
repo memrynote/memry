@@ -160,7 +160,11 @@ before the store is opened. Doing it there rather than inside the linking flow
 is deliberate: at that point the previous provider has always been destroyed
 (`closeVault` awaits `destroy()`, which closes LevelDB, before
 `resetCrdtProvider()`), so the directory is never moved out from under an open
-LevelDB lock.
+LevelDB lock. The exception is a store that stalled during the close:
+`destroy()` stops waiting for it (see [Markdown Write-Back](#markdown-write-back)),
+and its lock stays held until the stalled call returns. Reopening the same vault
+meanwhile cannot open the store, so that session runs in memory, and logs the note
+the close stalled on (`stalledFlushNoteId`).
 
 The record is written **before** the uuid it describes, for the same reason the
 legacy claim is written before its move:
@@ -312,8 +316,138 @@ seed from the vault file only when the server has none, because for a note the
 server has never seen, the vault file is the only copy of the body (#2594). A
 vault file that differs from the merged body is kept as a version by the
 write-back that replaces it. A merge that fails falls back to the seed, and the
-note's unmerged flag routes that push to the non-pruning update endpoint. An editor open still
-seeds too, which is the open fork in #2544.
+note's unmerged flag routes that push to the non-pruning update endpoint.
+
+An editor open of an empty document seeds from the vault file only for a
+local-only note or a note the server provably holds nothing for (#5290). An
+editor open of a note created on this device that never synced also seeds when
+its merge does not complete, so the note opens editable offline (#5371). A
+seeded push of the same note keeps waiting, so the push stays owed. The open
+needs durable proof that the server holds nothing:
+
+- The app's create command made the note here: it has a `notes_created_here`
+  row. A file the vault ingest or the file watcher indexed has none, because a
+  folder shared through iCloud, Dropbox or git can bring a note another device
+  already synced. Notes created before this table existed have no row either.
+- `note_metadata.synced_at` is null, and its `note` create is still queued.
+- It has no `note_body_sync` row. Every body route records `sent` before its
+  request leaves: the outbox, and the single and batch snapshot pushes (the
+  scheduler, close, compaction). A stored push whose reply was lost still
+  counts.
+- The coordinator has no sign of a server body: no unmerged flag, no owed or
+  deferred pull, no counted failure, and no update applied this session.
+
+No snapshot push starts while the device is offline, as while sync is paused:
+the request could only fail after recording `sent`, and the note would reopen
+read-only offline. The edits wait in the outbox, and its flush once online
+requests the snapshot again. A scheduled snapshot batch that comes due while
+held stays with the scheduler and goes out on the reconnect or the resume.
+
+This hold covers an offline **device**, not an unreachable **server**, and that
+gap is a known, accepted risk (#5247, C58.1). Offline means the OS reports no
+network (`apps/desktop/src/main/sync/network.ts:16`). Only that, or the sync
+pause, holds a body push: the outbox pauses when the OS goes offline
+(`apps/desktop/src/main/sync/runtime.ts:759`), and the snapshot paths hold
+(`apps/desktop/src/main/sync/crdt-provider.ts:510`). When the OS reports online
+but the sync server does not answer, a body push (outbox flush or snapshot)
+still starts. Every body route records `sent` before its request: the outbox
+flush (`apps/desktop/src/main/sync/note-body-outbox.ts:302`,
+`apps/desktop/src/main/sync/note-body-outbox.ts:309`), the single snapshot push
+(`apps/desktop/src/main/sync/crdt-snapshot-push.ts:104`,
+`apps/desktop/src/main/sync/runtime.ts:652`) and the batch snapshot push
+(`apps/desktop/src/main/sync/crdt-snapshot-batch.ts:159`,
+`apps/desktop/src/main/sync/runtime.ts:692`). Then the request fails. The
+`note_body_sync` row ends never-synced status
+(`apps/desktop/src/main/sync/note-sync-state.ts:261`), so a note created on this
+device reopens read-only while the device stays offline
+(`apps/desktop/src/main/sync/crdt-provider.ts:467`), like a note that did sync.
+No data is lost: the vault file and the outbox keep the edits. The state ends
+with the next body push, outbox flush or snapshot, that reaches the server.
+From then on the server holds the body, and the note is an ordinary synced note
+that opens editable once its merge completes. The rule that a request that may
+have reached the server counts as `sent` stays. A fix would hold every body
+route (the outbox flush and both snapshot pushes) after a transport error until
+the next request succeeds. That needs a new shared "last request failed" signal
+for a cosmetic offline state, so the code is left as is.
+
+The bypass has one residual risk: device A creates a note offline, so it holds
+the marker; a shared folder carries the file to device B, and B syncs it before
+A does. When A then opens the note offline, it seeds beside B's server body,
+and the two copies merge into a duplicate once A is back online (#2536).
+
+Journals never qualify. Otherwise, while its merge has not completed or the
+note still has an unmerged remote body, the document stays empty and waits (`awaitingMerge`).
+An update Yjs parks as pending structs does not end the wait; the document has
+to hold a body, or nothing may be pending. The `crdt:open-doc` result carries
+`awaitingRemote: 'merging'` and the renderer keeps its loading state until
+main broadcasts `crdt:doc-loaded`. A seeded push of a waiting note pushes
+nothing. The waiting document is never seeded from the file
+(D-UNMERGED-OPEN-EXIT-2). A note whose body pull fails three times with an
+answer from the server (an unresolvable signer, pending structs, a server
+error; never offline, 429 or 401) counts as stuck, about three minutes with the
+pull backoff; the count is kept in memory too, so it progresses when the debt
+table is unavailable. Main then broadcasts `crdt:doc-wait` with `stuck`. When
+the session ended (`hasSessionEnded`: the refresh token was rejected for good
+or is gone), the open result carries `awaitingRemote: 'signed-out'`, and
+when the last vault key read found no key (a locked keychain), `'vault-locked'`
+(#5342). A refresh that merely failed (offline, a 5xx) is neither. The pull
+stays owed. While a note is stuck, signed out or vault-locked, or the device is
+offline, the editor shows the vault file read-only with a notice, with no
+binding and no saves. A reason that changes after the open reaches the editor
+as `crdt:doc-wait`: the coordinator sends it once a note is stuck, and the
+runtime for every waiting editor once the session ends, or with `merging` once
+any sync cycle reads the vault key again. Once the renderer is signed in again,
+a signed-out editor returns to its loading state, and the next sync drains the
+owed pull. The pull that later merges the body, or a pull that proves the
+server holds nothing, ends the wait, and the editor binds. A reconnect retries
+the merge of every waiting editor document (`resumeWaitingEditorDocs`), which
+is how any other note the server never saw seeds after an offline open.
+
+The CRDT pull (`applyCrdtIncrementals` and `applyCrdtBatch`) seeds a note from its
+vault file only when the server answered with no snapshot and no updates for
+it, the pass merged cleanly, and the document is still open and empty. When
+the doc cache closes a document mid-pass, the provider refuses the updates the
+pass fetched, and the document still reads empty. A seed at that point would
+land beside the server body and duplicate it (#5286). The pull owes the note
+instead, and the retry merges the server body.
+
+Builds before that fix pushed such seeds, and the duplicates they made stay in
+the synced body. Desktop repairs them (`crdt-seed-duplicates.ts`, #5289). Once
+per launch, ten minutes after a full sync that delivered its pull and left no
+note body owed (nothing queued or backed off to pull, no legacy sweep pending,
+online), it reads every document in the store without compacting it. A failed
+sync, or one that still owes bodies, schedules nothing. When the timer fires,
+the store must still be the one that sync settled and no body may be owed;
+otherwise nothing is read, and the next settled sync schedules again. A document counts as
+forked when its fragment holds two live top-level items that both have no left
+and no right origin, which means two devices each wrote the first content into
+an empty body. It counts as duplicated when one of those items' text equals or
+contains the other's. A paragraph repeated inside one body never counts. Two
+devices that imported the same file into a note, or created the same day's
+journal from one template, before either synced also count as duplicated.
+
+The repair changes only an exact duplicate: the fragment holds exactly two live
+items, both such roots, and their block trees are equal in node names,
+attributes other than the block `id`, and text with its marks. A copy that
+differs by one block, carries extra text, or was edited afterwards is kept, and
+so is every duplicated body that is not exact, and every document that holds
+an update still waiting for one it depends on, since that update may edit the
+second copy. The repair opens the document,
+checks it again, and deletes the second root in fragment order as a local
+transaction (origin `seed-duplicate-repair`). It is stored and pushed like any
+edit, and it schedules no file write-back. The editor and the markdown
+serializer show only the first root, so the note's text does not change. Yjs
+orders concurrent roots the same way on every device, so two devices repairing
+at once delete the same item and converge on one copy. A per-note marker in the
+store meta (`seedDuplicateRepairedAt`), written only after the delete is in the
+store, keeps the repair to once per note: a
+copy that comes back later stays. A purge drops the marker with the note. The
+repaired and kept note ids go to the local log at info level, and a warn line
+with the counts only reaches the incident report and shipped logs.
+
+The repair has one residual risk: an edit another device (iOS, which runs no
+repair) makes inside the second copy at the same time as the repair is deleted
+with that copy.
 
 A main-process body edit (the agent note tool, `notes.update`, inbox filing, a
 version restore, appended blocks, a template, a rename's link and embed
@@ -327,6 +461,16 @@ document cannot take the edit is marked in the `crdt_owed_file_bodies` table
 and given a full-state outbox row (#2646). The marker means the vault file is
 ahead of the document. A main-process edit never writes it with a store, and
 never for a large-file-class body.
+
+The body replace behind those feeds (`replaceDocBody`) builds the new body in a
+separate document and keeps the blocks it leaves unchanged at the start and the
+end, with their Yjs items (`fragment-reconcile.ts`). A peer edit inside those
+blocks that arrives after the feed still lands. Only the changed stretch is
+replaced, so when the file and a peer both changed the same block, one side is
+lost (#5319). The first open of a loaded, non-empty document in a session also
+ingests a vault file edited outside Memry before the open resolves, through the
+write-back's outside-edit path, so a pull waiting on the same open merges into
+the fed body instead of overwriting the file.
 
 With a store, a pull writes it for a document the store never held: an emptied
 or new store, as after a store epoch reset (#3277). The pull checks the empty
@@ -506,6 +650,70 @@ ghost, and the hash-tag inline plugin — and any new one must take the same pat
 This only became reachable once every note got a local Y.Doc: before that, a signed-out
 editor fell back to ProseMirror's `history`, whose state survives a view rebuild.
 
+## Comments Change Marks, Never the Body
+
+A comment lives in two places: the doc's `criticMarkupMarks` array, and the file, where
+the write-back serializes it inline as `{==text==}{>>…<<}`. A mark's `start` and `end` are
+offsets into the note's markdown text with the CriticMarkup taken out, and its
+`visibleText` is the markdown they cover: `start **bold` for a comment on "start bold".
+
+While the editor is bound to the doc, the doc owns the marks and the editor owns the text.
+The review state in the renderer (`use-critic-markup-review.ts`) follows both and saves
+neither:
+
+- `ContentArea` observes `criticMarkupMarks` and hands the review state what it holds, on
+  open and after every change, whoever made it. It never writes the review state's copy
+  back. That copy can be the last note's (the note page keeps one review state across
+  notes), or older than a move the write-back made, so writing it put one note's comments
+  into another and undid moves.
+- An add, edit, resolve, delete or undo writes only that change to the array, through the
+  binding `ContentArea` hands over (`ReviewDocBinding`). The write-back puts it in the file.
+- The review state's copy of the text is the editor's markdown, never the file. The file
+  trails the doc: by about a second after typing, and indefinitely after an outside change
+  until the note is reopened. A comment action used to save the whole body from that copy,
+  and main took it as an edit: a paragraph typed after an outside change was gone from
+  every device (#5568). A file refetch used to replace the marks too, and dropped each
+  comment the file had left out.
+- Reading that copy converts the whole note, about 10 ms for 8,000 words, and only marks
+  and a comment draft count in it. So the review state reads it only while the note has a
+  mark or a draft: at once when the first arrives or the draft opens, then 150 ms after
+  each change to the body (`ReviewDocBinding.onBodyChange`, local and remote). While the
+  copy trails the body, Cmd+Z goes to the editor, because the copy cannot tell whether the
+  text changed since the comment action.
+- A new comment takes its range from the editor selection mapped into the editor's
+  markdown, read at that moment, so a comment on words typed a moment ago lands on them.
+- A new note starts the review state over from that note's text before its editor binds.
+
+When the editor is not bound to a doc, it saves markdown itself, and a comment saves the
+body with its marks as before.
+
+### Marks follow the text at write-back
+
+The write-back is the one place that moves marks. It sees both the text the marks were
+placed in, the file it wrote last time, and the text they belong in now, the doc's, for
+this device's edits and every other device's. `critic-mark-anchors.ts` diffs the two and
+carries each mark through the diff before `serializeCriticMarkup` writes it:
+
+- Text typed before a mark shifts it. Text typed inside it grows it, and text deleted
+  inside it shrinks it. Text typed right at either end stays outside it.
+- Two comments on the same word stay on their own copies of it.
+- A comment whose words are all deleted stays as a point where they were, and the pass
+  logs it.
+- A comment added after the last write is not in the file yet. Its offsets count in the
+  file's text when it covers its own words there, and it moves from there.
+
+The device whose edit the pass wrote then puts the moved offsets into the doc, once the
+file holds them, and only for a mark the doc still holds as the pass read it. Every other
+device places the same marks in its own file from the same text and leaves the doc alone.
+If two devices move one mark at once, each replaces its element and the array keeps both;
+every reader takes the first in array order, so all devices show the same one, and the
+next write that touches the array deletes the other. A mark the file cannot hold, because
+its text is gone or another mark covers it, stays in the doc and the rail, and the
+write-back logs it once.
+
+A comment made by an older build holds the words the editor showed (`start bold`). The
+renderer still draws it. The file places it only where its text appears unformatted.
+
 ## Open Doc Lifecycle
 
 Main keeps a Y.Doc open while an editor window is attached to it. Sync pulls may also
@@ -672,6 +880,37 @@ which now resolves the replacement. That includes a write-back armed before the 
 destroying the superseded doc is not what makes it safe, since a destroyed Y.Doc can still
 be read; resolving the note id when the pass runs is.
 
+### Review marks merge by id
+
+The `criticMarkupMarks` root holds one plain object for each suggestion or comment. Yjs
+merges the array but never the keys inside an element. If two devices edit the same
+comment offline, the merged array holds two elements with the same id, in the same order on
+every device. `readCriticMarkupMarksFromYDoc` and the Rust readers keep the first valid
+element of each id. `writeCriticMarkupMarksToYDoc` and `write_critic_marks` change only the
+elements that differ, ignoring key order. They delete removed ids, invalid elements, and
+later copies of an id, and they insert new ids in place. A rewritten element keeps the keys
+the writer does not know, so a field added by a newer build survives an older build that
+follows these rules.
+
+The writers compare the stored mark, read as this build reads it, with the new mark and
+ignore `start` and `end`. An element that differs only in its offsets stays untouched. The
+window moves offsets as the user types and recomputes them from the text, so an offset-only
+write would replace a comment another device edited and lose that edit. Both writers own
+this rule, so the desktop editor and the Rust apply path follow it alike. As a result, the
+stored offsets of an untouched element can lag behind the text.
+
+A write coalesces adjacent deletes and adjacent replacements into runs. It never deletes and
+re-inserts an element it does not change: the stale copy would come before another device's
+concurrent copy of that id, so first-copy-wins would lose that device's edit or undo its
+delete. This has a known performance limit. Each Yjs operation walks the array from its
+start, so a write that changes `k` separate runs of an `n`-element array costs O(k·n). Only
+many scattered changes in one write reach it, and the marks come from the user's own
+devices.
+
+Shipped Electron builds still rewrite the whole array. For that reason,
+a new mark field is also written into the mark's `metadata` string, which every shipped
+build copies unchanged (protocol §12.5.1).
+
 ## IPC Loop Prevention
 
 Three pieces of metadata prevent feedback loops:
@@ -697,7 +936,63 @@ is described in [Vault Files (Tauri)](/architecture/vault-files).
   at roughly a tenth of wall clock instead of saturating a core while the user types.
 - **Nothing is deferred indefinitely** — the trailing pass always runs, and
   `flushPendingWritebacks()` forces any pending pass through before the CRDT provider is
-  destroyed, which covers vault switch.
+  destroyed, which covers vault switch. The flush repeats until no pass is armed, and
+  `destroy()` repeats the flush and its doc store writes until no pass is armed either.
+  A keystroke that lands while a pass converts or a doc is stored therefore still
+  reaches the closing vault's file, and so does the retry of a closed note whose file
+  write failed (`retryWriteback`). The docs are dropped with no await after the last
+  check, so no later update can arm a pass. `resetWritebackState()` cancels and logs any
+  pass still armed, which guards that rule: a timer left armed would fire into whichever
+  vault is open next, where a journal day has the same id.
+- **A stalled store does not hold the close** — a store call that never returns, on a
+  wedged disk or a stuck LevelDB queue, held that loop and the vault switch forever
+  (#5698). `destroy()` waits at most `SHUTDOWN_CLOSE_VAULT_RESERVE_MS` (2 s) for each
+  store call. After a stall it stops asking the store, because y-leveldb queues every
+  later call behind the stalled one, and flushes the write-backs once more, so a pass
+  whose debounce fired during the wait finishes before the close. A pass that takes in
+  an outside edit waits for the store to hold it (`whenPersisted`); once a close has
+  started, that wait gives up after 2 s, logs its note, and the pass fails, its file
+  left as the outside edit made it. A quit starts the close (`beginClose()`) before it
+  flushes the write-backs, so the quit's budget is never spent on a stalled store. The
+  close then logs `CRDT store stalled` with the notes whose writes the store has not
+  confirmed, before it asks the store to close, which is queued behind those writes,
+  so they land if the store recovers. The final snapshot push of a vault switch or a
+  sign-out is bounded like a quit's (`SHUTDOWN_FINAL_SNAPSHOT_PUSH_MS`), and logs the
+  notes it did not push.
+- **A file counts as the doc's only once the store holds it** — the write-back writes
+  the live doc, which runs ahead of the store while its updates are on their way, and
+  a stalled store may never hold them. A file whose hash is the baseline is never taken
+  in, so the next session's first pass would write the older stored doc over it. While
+  the note's updates are still storing, the write-back marks `pending_write_hash` before
+  it writes (`markDocWrite`) and records the file's real hash in `content_hash` after
+  (the watcher's rename match needs it). The mark is
+  `unstored-file:<written hash>:<written snapshot>:<content_hash snapshot>`: every file
+  version the row can point at carries the Yjs snapshot (state vector and delete set) of
+  the doc state serialized into those exact bytes. The write-back takes the snapshot when
+  its conversion reads the doc (`SerializedDoc`), and the conversion on main converts a
+  copy of that state, so a keystroke typed during the write is never counted as in the
+  file. Bytes the store holds carry the empty snapshot. A mark written over an earlier
+  one keeps the earlier snapshot of the bytes under `content_hash`. The rule at open
+  (`takesUnstoredFile`) is one comparison: the file is taken in, keeping the doc as a
+  version first, only when the loaded doc does not cover the snapshot recorded for the
+  file's hash. A file whose hash has no recorded snapshot is an outside edit and is
+  taken in the same way, as is a mark this build cannot read (the bare `unstored-file`
+  or the `<0|1>` flag of pre-release builds of #5698). A covered file becomes the
+  baseline and the mark clears, so a file the store covers never beats a stored edit
+  made after it. Size: a snapshot measured 25-32 KB of base64 on heavy docs, and a mark
+  holds two, in the TEXT `pending_write_hash` column, only until the store holds the
+  write. The mark also clears once a store of the doc
+  instance that wrote the file lands (`whenStored`), or the ingest's own store. A doc that
+  closes while its store missed an update stores its whole state again before it is
+  destroyed; when that fails too, its `whenStored` callers are dropped unanswered. A pass
+  whose file write fails re-reads the file: unchanged bytes give the row back the pending
+  hash it had, and any other bytes keep the mark, since the write may have landed. An open
+  waits for a close of the same note for up to 2 s, then logs the note and goes ahead.
+  A case twin leaving a shared file records its doc-built file the same way, and a twin
+  moving with its own bytes keeps its mark. Downgrade limit: a build without this rule
+  reads the mark as a pending hash that never matches a file and judges the file by
+  `content_hash` alone, which equals the written file. It never takes that file in, and
+  its next write-back writes its stored doc over bytes the store lacked.
 - **A quit flushes write-backs first, not last** — the provider is destroyed at the _end_
   of the shutdown chain, so relying on `destroy()` alone meant a slow teardown step could
   spend the whole shutdown budget and the forced exit would kill the process with the
@@ -706,6 +1001,28 @@ is described in [Vault Files (Tauri)](/architecture/vault-files).
   write-back flush again — followed by `closeAllDatabases()` — on the timeout and
   cleanup-error paths before it force-exits. See
   [Shutdown Budget](/architecture/observability#shutdown-budget).
+- **The file owns its `tags:` list** — a pass keeps the `tags:` of an existing note or
+  journal file and writes the doc's `tags` array only into a file it creates
+  (`crdt-writeback-frontmatter.ts`). Tag edits write only the file, and tags reach other
+  devices in the note or journal record, so the doc's array can be stale: a journal day
+  created with `[a]` and retagged `[b]` got `[a]` back on the next keystroke (#5476).
+  A foreign journal entry folded into its day brings its tags through the day merge instead
+  (protocol §1.9.1). The merge reads the day file's tags in the day's write-back turn
+  (`addJournalTags`), so a tag edit queued behind a running pass is not written over. A
+  foreign id deleted elsewhere adds none of its record's tags, and only the holder tags the
+  deleting device may never have seen: none when no edit of the holder is queued, its row is
+  unedited since its sync (an edit outside the app is neither ticked nor queued), and the
+  tombstone's clock covers the holder row's clock, else all of them, since desktop keeps no
+  snapshot of the tags last synced. The first weighing sets that list and later ones add to
+  it, because the tombstone and the day take away what the first one read. Each sighting of
+  the holder keeps only the listed tags its day file still holds, and the drain reads the
+  owed merge back after the day takes the holder over, so a tag the user removed from the
+  held day before the drain stays removed (#5694). A tag the day
+  lacks merges even when the holder, deleted or live, has no body (#5699). It
+  writes one spelling per tag by the tag fold, the first the file holds, as core `set_tags`
+  does: a file holding `Work` and `work` is written with `Work`. The fold keeps whitespace,
+  so a foreign `" Work "` is added beside `"Work"`, as core adds it. Owed merges union
+  their tags the same way.
 - **The doc is resolved when the pass runs, not when it is scheduled** — a note closed and
   reopened inside the debounce window gets a fresh Y.Doc, so the pass looks the note id up
   in the provider's map at fire time rather than serializing the doc it captured. Otherwise
@@ -724,8 +1041,51 @@ is described in [Vault Files (Tauri)](/architecture/vault-files).
   the load no longer sits between the row and the write. A note runs one pass at a time: a
   pass armed while another converts waits for it, because one that started early would read
   the row from before the first pass's write, take that write for an outside edit and feed
-  it back into the doc over what the user typed since. The quit flush waits for running
-  passes too. That flush converts on main unless the worker is already up, because a worker
+  it back into the doc over what the user typed since. A tags or properties update of a note
+  or journal entry (the note and journal saves, the property editor, the agent's
+  `journal.update`) waits in the same per-note queue, and a pass armed meanwhile waits for it.
+  A pass writes back the frontmatter it read, and such an update leaves the doc as it was,
+  so one that landed between a pass's read and its write was lost with nothing left to re-arm
+  the pass (#5472). A folder rename takes the turn of every note under the folder, all at
+  once, and holds them until the rows are at their new paths (`moveFolderHoldingWritebacks`
+  in `folder-move-index.ts`). A pass takes its note's path from the row it read, so one that
+  read the row before the move wrote the old path after it: the old folder came back with the
+  edit in it, the note's rows moved back there, and the next vault open listed the file at the
+  new path as a second note (#5671). The rename releases the turns before it rewrites the
+  path links to the moved notes, because that rewrite feeds the linking notes' docs and can
+  wait on the store. Folder renames hold their turns one at a time: a rename and one of the
+  folder above it each held a note the other waited for, and neither finished. A quit flush
+  also waits up to the held-work cap (1.5 s) for a rename still queued behind another, which
+  holds no turn yet. A body update
+  feeds the doc before its file outside the queue, because the feed can wait on the store and a pass queued behind it could hang the quit flush. The note command's body update
+  (`updateNote`) and a link rewrite (`landSourceRewrite`) then write the file and the rows in
+  the queue, at the path the row has then: a folder rename that ran during the feed moved the
+  file, and the path read before the feed made the old folder again (#5690). The link rewrite
+  rewrites the bytes the file holds in the queue, so a tag or property written during the
+  feed is kept. An update
+  that creates a journal day (a tags save or the day merge's tags, for a day with no file)
+  writes the file and its index row in the queue, since a pass writes a day file that does
+  not exist yet (`materialize`). The create's sync enqueue waits for the projection lane,
+  outside the turn. The write-back flush waits for a create from before its file write until
+  it is queued (`holdFlushUntil`), so a quit that starts during a create, in a turn or not,
+  queues it while the sync runtime still runs. A stuck projection lane cannot hang a quit, a
+  vault close or a journal format change: a flush waits at most 1.5 s for a held create and
+  logs the day it left. The create seeds the doc after its turn (`finishJournalEntryCreate`),
+  because seeding reads the store, then sends the windows the entry as its file holds it then
+  and returns that entry to the caller. A tags save or a day merge that landed meanwhile is
+  not undone by the older created event, nor by the creating window's next tags save, which
+  sends the list the reply gave it. When that re-read fails, the create stands, the failure
+  is logged, and the windows get no created event. The re-arm
+  restores its body but not the tags or properties written beside it, so a body update that
+  sets them (a journal save with tags, the agent's `journal.update`, `updateNote` with
+  properties) then writes them again over the file's body in the queue: the tags it added and
+  removed, not its whole list, so a tags save queued ahead of it keeps its tags. A file that
+  already holds them is not written (#5479). A remote tags, properties, cover or aliases update
+  rewrites the frontmatter inside the sync apply, which cannot wait. While a pass of the note is
+  pending or running, it applies the same patch again as soon as the running turn ends, ahead of
+  the turns queued behind it (`repairAfterRunningTurn`), so a local edit queued meanwhile lands
+  on top of the remote record instead of under it.
+  The quit flush waits for running passes too. That flush converts on main unless the worker is already up, because a worker
   starting cold would spend the shutdown budget, and a quit that runs out of it loses the
   edit. A note deleted while its pass converts is not written back. One worker serves every pass and
   every seed of a note from its file, and exits after 3 minutes
@@ -733,11 +1093,11 @@ is described in [Vault Files (Tauri)](/architecture/vault-files).
   converts on main instead, as every job did before, and after three worker failures the
   session stops trying it (`worker_disabled`). Custom callout types reach the worker with
   each job, because the parser reads them from a per-process registry.
-- **Per-vault bookkeeping** — write-back tracks self-written files and recent inbound
-  network updates in short-TTL maps. Entries are evicted in an amortized pass (at most one
-  sweep per TTL window) rather than scanned on every watcher event, and
-  `CrdtProvider.destroy()` clears the maps outright, so no vault's note ids or file paths
-  survive into the next one.
+- **Per-vault bookkeeping** — the app keeps the bytes it wrote or is writing to each file
+  (`src/main/vault/app-writes.ts`), and write-back keeps recent inbound network updates, in
+  short-TTL maps. Entries are evicted in an amortized pass (at most one sweep per TTL window)
+  rather than scanned on every watcher event, and `CrdtProvider.destroy()` clears the maps
+  outright, so no vault's note ids or file paths survive into the next one.
 - **Only an edit moves a note's edit time** — the pass re-indexes the note with a
   `modifiedAt`, which is what Recently Edited and the modified sort read. A pass armed by a
   local edit stamps now. A remote pass keeps the note's time, moved forward only to the
@@ -757,6 +1117,28 @@ is described in [Vault Files (Tauri)](/architecture/vault-files).
   exactly as it is and the pass reports `writeback_unrepresentable_node` rather than
   writing a version with that content missing. The note resumes normal write-back as soon
   as the document no longer holds such a node; the refusal does not latch.
+- **A binary note has no CRDT body** — the file at an image, PDF, audio or video note's
+  path is its downloaded blob. Older builds still made a doc for one, and on Windows they
+  made binary notes of pasted attachments whose docs pushed their titles to the server
+  (#5607, see
+  [Note rows made of attachment files](/architecture/local-storage#note-rows-made-of-attachment-files)). This build opens no doc when a binary note is created. A doc opened for one
+  anyway queues no body update and pushes no snapshot at quit, at close or at compaction,
+  and the note-body outbox drops the body rows an older build queued for one unsent.
+  On pull, the change feed fetches and owes no body for a binary note, and a queued or
+  per-note pull of one is dropped like the pull of a deleted note: it opens no doc and
+  arms no write-back. The pack bootstrap opens no doc for a note this device holds as
+  binary. A packed body can land before the note's record, so the settle after the pull
+  purges the doc of a note the record made binary. `isBinaryNote`
+  (`src/main/sync/note-body-apply.ts`) applies the check below to these push and pull gates.
+- **A binary note is never written back** — when a doc exists for a binary note, the pass
+  writes nothing to the note's file and leaves the row's
+  `file_type` and `mime_type` alone. A binary extension on the path (`.png`, not
+  `.png.md`) skips the pass too, so a row an older build saved as markdown this way is
+  never written back before the next vault-open index walk retypes it from its file
+  extension. The retype keeps the row's `file_size`: the file on disk may be the markdown
+  that overwrote the blob (#5412). One check, `isBinaryNoteRow` (`packages/shared/src/file-types.ts`),
+  decides this for the write-back, the doc-open outside-edit ingest, the seed from the file, the
+  owed-file take, the snapshot push and the editor handshake.
 - **Constructible is not the same as serializable** — the scan above answers "can this
   build construct this node name", which is exactly the question the converter's delete
   depends on. It is not "will this node survive serialization". A node whose spec is
@@ -827,13 +1209,48 @@ is described in [Vault Files (Tauri)](/architecture/vault-files).
 - **A file changed outside the app is ingested before it is written** — the pass compares
   the file's hash with the index row's `contentHash`. A mismatch means bytes the doc has
   never seen, so the pass does not write. The watcher ingests an edit made while the app
-  is open. An edit made while the app was closed raises no event, and the launch index
-  pass skips a path it already lists, so the pass that finds the mismatch runs the ingest
-  itself (#2539). It feeds the file into the doc with `feedExternalEditToCrdt`, a full body
-  replace in which the file wins, and moves the index row to the new bytes only once the
-  doc holds them. Later passes then write as usual. If the feed cannot land (a large-file
-  body, or a doc that opens empty with no store) the pass keeps skipping and the file stays
-  as it is.
+  is open, however soon after an app write (#5605). Every writer records the sha256 of the
+  bytes it is about to write to a path and marks them landed once they are in the file
+  (`src/main/vault/app-writes.ts`). The watcher reads the file an event names and drops the
+  event only when it holds bytes the app wrote or is writing there. Any other bytes are an
+  outside edit, and once the watcher has read them, an edit that puts the app's earlier
+  bytes back is an edit too. A record expires 5 s after its write lands, which only bounds
+  the map. The one record without a hash is a binary note's file moved by sync, too large
+  to hash inside the apply: any bytes at its new path count as the app's for those 5 s.
+  The change handler checks the bytes it read again, and compares them with the index row
+  read after the file, `pending_write_hash` included, so a late event that reads a pass's
+  write in progress is never fed back over typing the doc gained since.
+  Builds before #5605 dropped every event on a path for 5 s after an app write, without
+  reading the file. An edit made in that window waited on disk until the next pass, which
+  replaced the doc's body with the file and lost what the doc had gained since, a peer's
+  merged edit included. An edit made while the app was closed raises no event, and the
+  launch index pass skips a path it already lists, so the pass that finds the mismatch runs
+  the ingest itself (#2539). A journal day is checked at vault open instead, once locked
+  files are restored: a day whose bytes differ from its baseline gets the clock tick and
+  queued update an in-app edit gets, then the watcher's ingest
+  (`replayMissedJournalEdits`, #5752). Without the tick its tags never synced, and a peer's
+  delete in step with the old clock removed the day and the edit. A file with the same
+  bytes (a touched mtime, a re-index) ticks nothing. A day the ingest refuses (a case twin
+  shares its file) ticks nothing, and bytes already ticked on an earlier open that the doc
+  could not take yet (a never-opened day's empty doc) tick once, not on every open (#5757).
+  A pulled journal delete keeps the day file's text as an inbox copy, whatever the clocks
+  say, when the file's hash is neither the index baseline nor a pending write: no clock
+  moved for an edit the watcher has not taken yet (before the replay, or inside the
+  debounce), so a file this device has not ingested is never deleted unseen (#5757).
+  A pulled note delete follows the same rule (`holdsUningestedEdit`, #5797) for the file it
+  removes. A case twin's shared file stays with the survivor, which keeps bytes neither twin
+  holds as a version, so it is not checked. A binary file has no text: when its bytes are on
+  no server it is copied beside itself as `<name> (kept from deleted note)<ext>`, which the
+  vault takes in as a new note (`keepUnseenBinary` in `keep-unseen-text.ts`, #5803). The proof is the synced hash of
+  the bytes a download landed, or of an upload whose push the tombstone's clock holds; a note
+  with no synced hash recorded falls back to the watcher's mtime test against `indexedAt`.
+  Before it feeds the file, the pass keeps the body it serialized
+  as a version when that body differs from the file's, the rule the owed-file take follows
+  (#2646). A version that cannot be saved leaves the edit waiting on disk. The pass feeds
+  the file into the doc with `feedExternalEditToCrdt`, a full body replace in which the
+  file wins, and moves the index row to the new bytes only once the doc holds them. Later
+  passes then write as usual. If the feed cannot land (a large-file body, or a doc that
+  opens empty with no store) the pass keeps skipping and the file stays as it is.
 - **A pass keeps a version of bytes it did not write** — the module records, per note, the
   content hash of the file bytes its last successful pass wrote this session. Before a pass
   writes a body that differs from the file's body, it compares the file's hash with that
@@ -875,9 +1292,11 @@ Snapshots are pushed **pre-batch** so other devices receive correct state before
 
 A create for a note this device knows is deleted gets no pre-batch snapshot. Known deleted means
 the note has no `note_metadata` row, or it has a recorded tombstone clock that the row's clock does
-not strictly follow. The server keeps a deleted note's CRDT state and accepts bodies for it, so a
-snapshot sent ahead of a create that the server then refuses as delete-wins would put the deleted
-body back on every device. The manifest check skips the same notes when it re-enqueues local items
+not strictly follow. Before #5367 the server stored a snapshot for a deleted note, so a snapshot
+sent ahead of a create that the server then refuses as delete-wins put the deleted body back on
+every device. The server now refuses a snapshot while the note is deleted, with
+`409 CRDT_SNAPSHOT_NOT_COVERED` (protocol chapter 07 §7.15), and the device owes the note a pull and
+pushes again later. The skip still saves that wasted upload. The manifest check skips the same notes when it re-enqueues local items
 the server manifest lacks, because that manifest omits tombstoned ids.
 
 ## Local-Only Notes Keep Their Body
@@ -1136,15 +1555,37 @@ Both rates are then ≤ 50 % by construction, in every regime, without the clien
 know in advance which regime it is in — which it cannot, because that is what the probe is
 for. For a 1,000-note vault:
 
-| Regime     | Per 100-note chunk                   | Charged delay | GET/min    | POST/min  | Wall clock  |
-| ---------- | ------------------------------------ | ------------- | ---------- | --------- | ----------- |
-| Warm       | 1 probe POST, 0 GETs                 | 4 s           | 0 (0 %)    | 15 (50 %) | ~40 s       |
-| Cold       | 100 GETs, 4 apply POSTs, no probe    | 20 s          | 300 (50 %) | 12 (40 %) | ~3 min 20 s |
-| Old server | one wasted probe, then the cold cost | 20 s          | 300 (50 %) | 12–15     | ~3 min 20 s |
+| Regime     | Per 100-note chunk               | Charged delay | GET/min    | POST/min  | Wall clock  |
+| ---------- | -------------------------------- | ------------- | ---------- | --------- | ----------- |
+| Warm       | 1 probe POST, 0 GETs             | 4 s           | 0 (0 %)    | 15 (50 %) | ~40 s       |
+| Cold       | 1 probe, 100 GETs, 4 apply POSTs | 20 s          | 300 (50 %) | 15 (50 %) | ~3 min 20 s |
+| Old server | one wasted probe, then no probe  | 20 s          | 300 (50 %) | 12–15     | ~3 min 20 s |
 
 Before this, at 25 notes every 15 s with an unconditional baseline, all three regimes cost
-100 GET/min and 4 POST/min and took **ten minutes**. A cold vault costs no probe at all —
-no note has a watermark, so nothing could be skipped and the request is not sent.
+100 GET/min and 4 POST/min and took **ten minutes**. The cold row assumes every note has a
+server snapshot. A cold chunk still sends the probe, because its `snapshotMeta` names the
+notes with no snapshot, and each of those costs no GET (#5234). Outside a fullSync, a cold
+chunk of fewer than 20 notes skips the probe: the POST is the scarce budget, and a record-page
+pull of a few notes would spend one to save a few GETs.
+
+A walk checks every page's `snapshotMeta` against the snapshot it started from: the one
+the baseline GET or the probe saw, or none. A peer snapshot that lands in between prunes
+the updates at or below it, so a page naming a different revision, or a higher sequence,
+stops that note's walk before it records anything above the new snapshot. The note is owed
+and flagged, never settled or seeded, and its re-queued pull takes the new snapshot as its
+baseline (protocol chapter 07 §7.8; #5243, #5474, #5477). The single-note pull returns
+`false` there, so the pending-note replay does not push a snapshot. The Rust core takes the
+new baseline in the same walk instead; both end with the same body.
+
+None of that page's updates reach the doc, and the walk requests no further page for the
+note, even when the page says `hasMore`. Such an owe counts no failed pull, so a note a peer
+keeps snapshotting could stay owed pass after pass with no backoff and no stuck state. The
+coordinator counts these owes per note in memory. A walk that settles the note resets the
+count, and so does dropping the note from the pull (no row left, or no longer synced). Each
+owe after the first in a row logs
+`CRDT walk owed again: a newer server snapshot replaced its baseline` with the count and
+both sequences: the second at debug level, and the third and later at info, because
+packaged builds drop debug lines (#5247).
 
 The batch POST figure is a **floor rather than an exact count**, because an apply
 sub-chunk loops while any of its notes still reports `hasMore`. That is precisely why the
@@ -1266,7 +1707,14 @@ then skipped until some later edit re-armed it.
 
 ## Sign-Out Keeps the Store
 
-Signing out does **not** delete the CRDT store. It used to, and that was the
+Signing out does **not** delete the CRDT store. The data DB rows that describe
+the store stay with it: `crdtStoreEpoch`, the `crdtUnmergedDebt` flag and its
+mirror marker, and the pack settle markers are in sign-out's keep-set
+(`sync/device-local-state.ts`). Wiped, the epoch reads as a mismatch at the next
+start and owes a body sweep of every note; keeping the epoch without the flag
+would drop the debt a mismatch raised just before the sign-out (#5754).
+
+The store used to be deleted here, and that was the
 containment for the cross-vault key collision described in
 [One Store Per Vault](#one-store-per-vault) — a problem the store path now makes
 structurally impossible, so the wipe has nothing left to defend.
@@ -1787,7 +2235,7 @@ the author's text.
 The Tauri app (`apps/desktop-tauri`) has no JavaScript in its backend, so the Rust core owns the documents editor windows type into. The pieces:
 
 - `crates/memry-core/src/api/editor.rs` (`Editor`): opens a note's or journal day's document for a window, stores each window edit, and hands every committed update to the document's listeners.
-- `crates/memry-core/src/crdt/resident.rs` (`Resident`): which documents are in memory and which windows hold each one.
+- `crates/memry-core/src/crdt/editor_resident.rs` (`Resident`): which documents are in memory and which windows hold each one.
 - `crates/memry-desktop/src/editor/`: `EditorHost` serves the editor to windows over Tauri channels (`host.rs`), holds typing while an outside edit lands (`typing.rs`), compacts logs on a timer (`compaction.rs`), and lists, restores and keeps versions (`versions.rs`).
 - `crates/memry-desktop/src/vault/`: the consumer that feeds outside edits into documents, the write-back that writes bodies out to files, and the late-write watch. [Vault Files (Tauri)](/architecture/vault-files) covers the consumer and the write-back.
 - `crates/memry-desktop/src/locks/`: read-only locks on disk.

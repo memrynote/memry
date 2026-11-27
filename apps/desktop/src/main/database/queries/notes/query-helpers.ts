@@ -1,5 +1,5 @@
 import type { PropertyType } from '@memry/db-schema/schema/notes-cache'
-import { spellYamlDate } from '@main/vault/yaml-dates'
+import { parseYamlDate, spellYamlDate } from '@main/vault/yaml-dates'
 import { valueFitsType } from '@main/vault/property-type'
 
 // ============================================================================
@@ -72,6 +72,27 @@ export function deserializeValue(value: string | null, type: PropertyType): unkn
     case 'status':
     default:
       return value
+  }
+}
+
+/**
+ * A stored value as a frontmatter value. `serializeValue` stored a list or a
+ * map as its JSON text and a date in its YAML spelling, which
+ * `deserializeValue` hands back as text: written into a file as that, a list
+ * became a quoted string (#5558). The text of a string that spells JSON or a
+ * date reads the same, so such a string comes back as the list or the date.
+ */
+export function fileValueOf(value: string | null, type: PropertyType): unknown {
+  const typed = deserializeValue(value, type)
+  if (typeof typed !== 'string') return typed
+  if (type === 'date') return parseYamlDate(typed) ?? typed
+  if (!typed.startsWith('[') && !typed.startsWith('{')) return typed
+  try {
+    const parsed: unknown = JSON.parse(typed)
+    return typeof parsed === 'object' && parsed !== null ? parsed : typed
+  } catch {
+    // Text that only starts like JSON is the string it is.
+    return typed
   }
 }
 

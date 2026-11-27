@@ -53,6 +53,7 @@ export async function encryptPushBatch(
   vaultKey: Uint8Array,
   signingKeyBytes: Uint8Array,
   signerDeviceId: string,
+  vaultId: string | null,
   deps: EncryptBatchDeps
 ): Promise<Array<{ queueId: string; pushItem: PushItem }>> {
   // Prepared once, used by whichever path ends up doing the crypto. Building it
@@ -83,7 +84,8 @@ export async function encryptPushBatch(
         rawItems,
         vaultKey,
         signingKeyBytes,
-        signerDeviceId
+        signerDeviceId,
+        vaultId
       )
 
       const byQueueId = new Map(rawItems.map((item) => [item.queueId, item]))
@@ -127,6 +129,7 @@ export async function encryptPushBatch(
         vaultKey,
         ['signingSecretKey']: signingKeyBytes,
         signerDeviceId,
+        vaultId,
         clock: item.clock,
         stateVector: item.stateVector,
         deletedAt: item.deletedAt

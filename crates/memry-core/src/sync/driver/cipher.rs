@@ -154,6 +154,13 @@ impl RecordCipher for DirectoryCipher {
         }
         RecordCipher::open(&current.cipher, envelope)
     }
+
+    fn signing_key(&self, device_id: &str) -> Option<Vec<u8>> {
+        self.current()
+            .directory
+            .signing_key(device_id)
+            .map(<[u8]>::to_vec)
+    }
 }
 
 /// A purged tombstone's signer (chapter 05 §5.12.3), as Electron's
@@ -181,7 +188,7 @@ impl SignerKeys for DirectoryCipher {
         Ok(key)
     }
 
-    fn begin_run(&self) {
+    fn forget_absent(&self) {
         self.absent_signers_lock().clear();
     }
 

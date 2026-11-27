@@ -10,8 +10,12 @@
 //! - a file that exists but cannot be read or is not a JSON object is never replaced. Only a
 //!   missing file is an empty config. The caller gets [`ConfigError::Unreadable`];
 //! - writes are serialized by one process-wide lock, so the preferences, the icon and the
-//!   vault settings never interleave. Another process (an Electron build open on the same
-//!   vault) is not excluded: a write of theirs between our read and our rename can be lost;
+//!   vault settings never interleave, and across processes by the advisory lock on
+//!   `.memry/config.json.lock` ([`crate::registry::config_lock`]), which the command line
+//!   (`memrynote-cli`) takes too. No lock is taken when `.memry` is missing (no other process
+//!   has written the file yet) or is a link (it may lead out of the vault, where no lock file is
+//!   created; the write itself refuses that path). An Electron build open on the same vault
+//!   takes no lock: a write of theirs between our read and our rename can be lost;
 //! - the bytes go through [`fs_atomic`](crate::vault::fs_atomic) (temp file, sync, rename), keep
 //!   the mode of the file they replace (0600 for a new one), and a path that resolves outside
 //!   the vault is never written.
@@ -174,6 +178,7 @@ pub fn update<R>(
     change: impl FnOnce(&mut Map<String, Value>) -> R,
 ) -> Result<R, ConfigError> {
     let _guard = WRITE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let _held = hold_across_processes(vault)?;
     let mut map = match load(vault) {
         Stored::Missing => Map::new(),
         Stored::Object(map) => map,
@@ -183,6 +188,29 @@ pub fn update<R>(
     write_map(vault, &map)?;
     vault_config::invalidate_path(&config_path(vault));
     Ok(result)
+}
+
+/// The cross-process lock, taken only in a real `.memry` folder: with none, no other process
+/// can be writing the file yet, and a `.memry` that is a link may lead out of the vault, where
+/// nothing is created (the write itself refuses that path).
+fn hold_across_processes(vault: &Path) -> Result<Option<File>, ConfigError> {
+    let memry = vault.join(MEMRY_DIR);
+    if !std::fs::symlink_metadata(&memry).is_ok_and(|meta| meta.is_dir()) {
+        return Ok(None);
+    }
+    crate::registry::config_lock::hold(&config_path(vault)).map_err(|error| {
+        if error.kind == std::io::ErrorKind::PermissionDenied {
+            tracing::warn!(
+                scope = "vault_config",
+                "the vault config lock is not writable"
+            );
+            return ConfigError::PermissionDenied;
+        }
+        ConfigError::Write {
+            path: error.path.display().to_string(),
+            message: error.message,
+        }
+    })
 }
 
 fn write_map(vault: &Path, map: &Map<String, Value>) -> Result<(), ConfigError> {
@@ -227,3 +255,6 @@ pub fn write_vault_icon(
         map.insert(VAULT_ICON_KEY.to_owned(), next);
     })
 }
+
+#[cfg(test)]
+mod lock_tests;

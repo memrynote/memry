@@ -62,6 +62,20 @@ max_batch_timeout = 5
 max_concurrency = 1
 max_retries = 3
 
+# Pack backfill (#5278): the cron's per-vault backfill messages and their
+# chains, on their own queue so nudges and the purge retry never wait behind
+# them. Same budget per message as a compaction message.
+[[queues.producers]]
+binding = "PACK_BACKFILL_QUEUE"
+queue = "memry-pack-backfill-dev"
+
+[[queues.consumers]]
+queue = "memry-pack-backfill-dev"
+max_batch_size = 1
+max_batch_timeout = 5
+max_concurrency = 1
+max_retries = 3
+
 # Inherited by env.staging and env.production (observability is an inheritable key)
 [observability.logs]
 enabled = true
@@ -118,6 +132,17 @@ max_batch_timeout = 5
 max_concurrency = 1
 max_retries = 3
 
+[[env.staging.queues.producers]]
+binding = "PACK_BACKFILL_QUEUE"
+queue = "memry-pack-backfill-staging"
+
+[[env.staging.queues.consumers]]
+queue = "memry-pack-backfill-staging"
+max_batch_size = 1
+max_batch_timeout = 5
+max_concurrency = 1
+max_retries = 3
+
 [env.production]
 name = "memry-sync-server-production"
 [env.production.vars]
@@ -162,6 +187,17 @@ queue = "memry-pack-compaction-production"
 
 [[env.production.queues.consumers]]
 queue = "memry-pack-compaction-production"
+max_batch_size = 1
+max_batch_timeout = 5
+max_concurrency = 1
+max_retries = 3
+
+[[env.production.queues.producers]]
+binding = "PACK_BACKFILL_QUEUE"
+queue = "memry-pack-backfill-production"
+
+[[env.production.queues.consumers]]
+queue = "memry-pack-backfill-production"
 max_batch_size = 1
 max_batch_timeout = 5
 max_concurrency = 1

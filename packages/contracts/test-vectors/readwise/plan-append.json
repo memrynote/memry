@@ -1,0 +1,1259 @@
+{
+  "cases": [
+    {
+      "name": "last usable, nothing linked",
+      "highlights": [
+        {
+          "id": 1,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 1",
+          "note": "",
+          "tags": [],
+          "location": 10,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-20T00:00:00Z",
+          "readwise_url": "https://readwise.io/open/1"
+        },
+        {
+          "id": 2,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 2",
+          "note": "",
+          "tags": [],
+          "location": 20,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-21T00:00:00Z",
+          "readwise_url": "https://readwise.io/open/2"
+        },
+        {
+          "id": 3,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3",
+          "note": "",
+          "tags": [],
+          "location": 30,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:00:00Z",
+          "readwise_url": "https://readwise.io/open/3"
+        },
+        {
+          "id": 4,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 4",
+          "note": "",
+          "tags": [],
+          "location": 40,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:00:00.001Z",
+          "readwise_url": "https://readwise.io/open/4"
+        },
+        {
+          "id": 5,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 5",
+          "note": "",
+          "tags": [],
+          "location": 50,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": null,
+          "readwise_url": "https://readwise.io/open/5"
+        },
+        {
+          "id": 6,
+          "is_deleted": true,
+          "is_discard": false,
+          "text": "Highlight 6",
+          "note": "",
+          "tags": [],
+          "location": 60,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-23T00:00:00Z",
+          "readwise_url": "https://readwise.io/open/6"
+        },
+        {
+          "id": 7,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 7",
+          "note": "",
+          "tags": [
+            {
+              "name": ".h1"
+            }
+          ],
+          "location": 70,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-23T00:00:00Z",
+          "readwise_url": "https://readwise.io/open/7"
+        },
+        {
+          "id": 8,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "![](https://cdn.example.com/a.png)",
+          "note": "",
+          "tags": [],
+          "location": 80,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-19T00:00:00Z",
+          "readwise_url": "https://readwise.io/open/8"
+        },
+        {
+          "id": 9,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "![](https://cdn.example.com/missing.png)",
+          "note": "",
+          "tags": [],
+          "location": 90,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-21T12:00:00Z",
+          "readwise_url": "https://readwise.io/open/9"
+        }
+      ],
+      "options": {
+        "noteCreated": "2026-10-21T06:00:00.000Z",
+        "timeZone": "UTC",
+        "last": "2026-10-22T00:00:00.000Z",
+        "linkedIds": []
+      },
+      "out": {
+        "markdown": "- Highlight 3 ([Location 30](https://readwise.io/open/3), 2026-10-22)\n- Highlight 4 ([Location 40](https://readwise.io/open/4), 2026-10-22)\n- Highlight 5 ([Location 50](https://readwise.io/open/5), 2026-10-22)",
+        "last": "2026-10-22T00:00:00.002Z"
+      }
+    },
+    {
+      "name": "last usable, some linked",
+      "highlights": [
+        {
+          "id": 1,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 1",
+          "note": "",
+          "tags": [],
+          "location": 10,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-20T00:00:00Z",
+          "readwise_url": "https://readwise.io/open/1"
+        },
+        {
+          "id": 2,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 2",
+          "note": "",
+          "tags": [],
+          "location": 20,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-21T00:00:00Z",
+          "readwise_url": "https://readwise.io/open/2"
+        },
+        {
+          "id": 3,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3",
+          "note": "",
+          "tags": [],
+          "location": 30,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:00:00Z",
+          "readwise_url": "https://readwise.io/open/3"
+        },
+        {
+          "id": 4,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 4",
+          "note": "",
+          "tags": [],
+          "location": 40,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:00:00.001Z",
+          "readwise_url": "https://readwise.io/open/4"
+        },
+        {
+          "id": 5,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 5",
+          "note": "",
+          "tags": [],
+          "location": 50,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": null,
+          "readwise_url": "https://readwise.io/open/5"
+        },
+        {
+          "id": 6,
+          "is_deleted": true,
+          "is_discard": false,
+          "text": "Highlight 6",
+          "note": "",
+          "tags": [],
+          "location": 60,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-23T00:00:00Z",
+          "readwise_url": "https://readwise.io/open/6"
+        },
+        {
+          "id": 7,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 7",
+          "note": "",
+          "tags": [
+            {
+              "name": ".h1"
+            }
+          ],
+          "location": 70,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-23T00:00:00Z",
+          "readwise_url": "https://readwise.io/open/7"
+        },
+        {
+          "id": 8,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "![](https://cdn.example.com/a.png)",
+          "note": "",
+          "tags": [],
+          "location": 80,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-19T00:00:00Z",
+          "readwise_url": "https://readwise.io/open/8"
+        },
+        {
+          "id": 9,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "![](https://cdn.example.com/missing.png)",
+          "note": "",
+          "tags": [],
+          "location": 90,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-21T12:00:00Z",
+          "readwise_url": "https://readwise.io/open/9"
+        }
+      ],
+      "options": {
+        "noteCreated": "2026-10-21T06:00:00.000Z",
+        "timeZone": "UTC",
+        "last": "2026-10-22T00:00:00.001Z",
+        "linkedIds": [
+          1,
+          2,
+          3
+        ]
+      },
+      "out": {
+        "markdown": "- Highlight 4 ([Location 40](https://readwise.io/open/4), 2026-10-22)\n- Highlight 5 ([Location 50](https://readwise.io/open/5), 2026-10-22)",
+        "last": "2026-10-22T00:00:00.002Z"
+      }
+    },
+    {
+      "name": "last usable, image saved",
+      "highlights": [
+        {
+          "id": 1,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 1",
+          "note": "",
+          "tags": [],
+          "location": 10,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-20T00:00:00Z",
+          "readwise_url": "https://readwise.io/open/1"
+        },
+        {
+          "id": 2,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 2",
+          "note": "",
+          "tags": [],
+          "location": 20,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-21T00:00:00Z",
+          "readwise_url": "https://readwise.io/open/2"
+        },
+        {
+          "id": 3,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3",
+          "note": "",
+          "tags": [],
+          "location": 30,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:00:00Z",
+          "readwise_url": "https://readwise.io/open/3"
+        },
+        {
+          "id": 4,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 4",
+          "note": "",
+          "tags": [],
+          "location": 40,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:00:00.001Z",
+          "readwise_url": "https://readwise.io/open/4"
+        },
+        {
+          "id": 5,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 5",
+          "note": "",
+          "tags": [],
+          "location": 50,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": null,
+          "readwise_url": "https://readwise.io/open/5"
+        },
+        {
+          "id": 6,
+          "is_deleted": true,
+          "is_discard": false,
+          "text": "Highlight 6",
+          "note": "",
+          "tags": [],
+          "location": 60,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-23T00:00:00Z",
+          "readwise_url": "https://readwise.io/open/6"
+        },
+        {
+          "id": 7,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 7",
+          "note": "",
+          "tags": [
+            {
+              "name": ".h1"
+            }
+          ],
+          "location": 70,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-23T00:00:00Z",
+          "readwise_url": "https://readwise.io/open/7"
+        },
+        {
+          "id": 8,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "![](https://cdn.example.com/a.png)",
+          "note": "",
+          "tags": [],
+          "location": 80,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-19T00:00:00Z",
+          "readwise_url": "https://readwise.io/open/8"
+        },
+        {
+          "id": 9,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "![](https://cdn.example.com/missing.png)",
+          "note": "",
+          "tags": [],
+          "location": 90,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-21T12:00:00Z",
+          "readwise_url": "https://readwise.io/open/9"
+        }
+      ],
+      "options": {
+        "noteCreated": "2026-10-21T06:00:00.000Z",
+        "timeZone": "UTC",
+        "last": "2026-10-18T00:00:00.000Z",
+        "linkedIds": [],
+        "images": [
+          [
+            "https://cdn.example.com/a.png",
+            "attachments/a.png"
+          ]
+        ]
+      },
+      "out": {
+        "markdown": "- Highlight 1 ([Location 10](https://readwise.io/open/1), 2026-10-22)\n- Highlight 2 ([Location 20](https://readwise.io/open/2), 2026-10-22)\n- Highlight 3 ([Location 30](https://readwise.io/open/3), 2026-10-22)\n- Highlight 4 ([Location 40](https://readwise.io/open/4), 2026-10-22)\n- Highlight 5 ([Location 50](https://readwise.io/open/5), 2026-10-22)\n- ![](attachments/a.png) ([Location 80](https://readwise.io/open/8), 2026-10-22)",
+        "last": "2026-10-21T00:00:00.001Z"
+      }
+    },
+    {
+      "name": "no last, floor from linked",
+      "highlights": [
+        {
+          "id": 1,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 1",
+          "note": "",
+          "tags": [],
+          "location": 10,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-20T00:00:00Z",
+          "readwise_url": "https://readwise.io/open/1"
+        },
+        {
+          "id": 2,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 2",
+          "note": "",
+          "tags": [],
+          "location": 20,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-21T00:00:00Z",
+          "readwise_url": "https://readwise.io/open/2"
+        },
+        {
+          "id": 3,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3",
+          "note": "",
+          "tags": [],
+          "location": 30,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:00:00Z",
+          "readwise_url": "https://readwise.io/open/3"
+        },
+        {
+          "id": 4,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 4",
+          "note": "",
+          "tags": [],
+          "location": 40,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:00:00.001Z",
+          "readwise_url": "https://readwise.io/open/4"
+        },
+        {
+          "id": 5,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 5",
+          "note": "",
+          "tags": [],
+          "location": 50,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": null,
+          "readwise_url": "https://readwise.io/open/5"
+        },
+        {
+          "id": 6,
+          "is_deleted": true,
+          "is_discard": false,
+          "text": "Highlight 6",
+          "note": "",
+          "tags": [],
+          "location": 60,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-23T00:00:00Z",
+          "readwise_url": "https://readwise.io/open/6"
+        },
+        {
+          "id": 7,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 7",
+          "note": "",
+          "tags": [
+            {
+              "name": ".h1"
+            }
+          ],
+          "location": 70,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-23T00:00:00Z",
+          "readwise_url": "https://readwise.io/open/7"
+        },
+        {
+          "id": 8,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "![](https://cdn.example.com/a.png)",
+          "note": "",
+          "tags": [],
+          "location": 80,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-19T00:00:00Z",
+          "readwise_url": "https://readwise.io/open/8"
+        },
+        {
+          "id": 9,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "![](https://cdn.example.com/missing.png)",
+          "note": "",
+          "tags": [],
+          "location": 90,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-21T12:00:00Z",
+          "readwise_url": "https://readwise.io/open/9"
+        }
+      ],
+      "options": {
+        "noteCreated": "2026-10-21T06:00:00.000Z",
+        "timeZone": "UTC",
+        "last": null,
+        "linkedIds": [
+          2
+        ]
+      },
+      "out": {
+        "markdown": "- Highlight 3 ([Location 30](https://readwise.io/open/3), 2026-10-22)\n- Highlight 4 ([Location 40](https://readwise.io/open/4), 2026-10-22)\n- Highlight 5 ([Location 50](https://readwise.io/open/5), 2026-10-22)",
+        "last": "2026-10-21T06:00:00.000Z"
+      }
+    },
+    {
+      "name": "no last, nothing linked",
+      "highlights": [
+        {
+          "id": 1,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 1",
+          "note": "",
+          "tags": [],
+          "location": 10,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-20T00:00:00Z",
+          "readwise_url": "https://readwise.io/open/1"
+        },
+        {
+          "id": 2,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 2",
+          "note": "",
+          "tags": [],
+          "location": 20,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-21T00:00:00Z",
+          "readwise_url": "https://readwise.io/open/2"
+        },
+        {
+          "id": 3,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3",
+          "note": "",
+          "tags": [],
+          "location": 30,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:00:00Z",
+          "readwise_url": "https://readwise.io/open/3"
+        },
+        {
+          "id": 4,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 4",
+          "note": "",
+          "tags": [],
+          "location": 40,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:00:00.001Z",
+          "readwise_url": "https://readwise.io/open/4"
+        },
+        {
+          "id": 5,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 5",
+          "note": "",
+          "tags": [],
+          "location": 50,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": null,
+          "readwise_url": "https://readwise.io/open/5"
+        },
+        {
+          "id": 6,
+          "is_deleted": true,
+          "is_discard": false,
+          "text": "Highlight 6",
+          "note": "",
+          "tags": [],
+          "location": 60,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-23T00:00:00Z",
+          "readwise_url": "https://readwise.io/open/6"
+        },
+        {
+          "id": 7,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 7",
+          "note": "",
+          "tags": [
+            {
+              "name": ".h1"
+            }
+          ],
+          "location": 70,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-23T00:00:00Z",
+          "readwise_url": "https://readwise.io/open/7"
+        },
+        {
+          "id": 8,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "![](https://cdn.example.com/a.png)",
+          "note": "",
+          "tags": [],
+          "location": 80,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-19T00:00:00Z",
+          "readwise_url": "https://readwise.io/open/8"
+        },
+        {
+          "id": 9,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "![](https://cdn.example.com/missing.png)",
+          "note": "",
+          "tags": [],
+          "location": 90,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-21T12:00:00Z",
+          "readwise_url": "https://readwise.io/open/9"
+        }
+      ],
+      "options": {
+        "noteCreated": "2026-10-21T06:00:00.000Z",
+        "timeZone": "UTC",
+        "last": null,
+        "linkedIds": []
+      },
+      "out": {
+        "markdown": "- Highlight 3 ([Location 30](https://readwise.io/open/3), 2026-10-22)\n- Highlight 4 ([Location 40](https://readwise.io/open/4), 2026-10-22)\n- Highlight 5 ([Location 50](https://readwise.io/open/5), 2026-10-22)",
+        "last": "2026-10-21T06:00:00.000Z"
+      }
+    },
+    {
+      "name": "unparsable last",
+      "highlights": [
+        {
+          "id": 1,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 1",
+          "note": "",
+          "tags": [],
+          "location": 10,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-20T00:00:00Z",
+          "readwise_url": "https://readwise.io/open/1"
+        },
+        {
+          "id": 2,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 2",
+          "note": "",
+          "tags": [],
+          "location": 20,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-21T00:00:00Z",
+          "readwise_url": "https://readwise.io/open/2"
+        },
+        {
+          "id": 3,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3",
+          "note": "",
+          "tags": [],
+          "location": 30,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:00:00Z",
+          "readwise_url": "https://readwise.io/open/3"
+        },
+        {
+          "id": 4,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 4",
+          "note": "",
+          "tags": [],
+          "location": 40,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:00:00.001Z",
+          "readwise_url": "https://readwise.io/open/4"
+        },
+        {
+          "id": 5,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 5",
+          "note": "",
+          "tags": [],
+          "location": 50,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": null,
+          "readwise_url": "https://readwise.io/open/5"
+        },
+        {
+          "id": 6,
+          "is_deleted": true,
+          "is_discard": false,
+          "text": "Highlight 6",
+          "note": "",
+          "tags": [],
+          "location": 60,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-23T00:00:00Z",
+          "readwise_url": "https://readwise.io/open/6"
+        },
+        {
+          "id": 7,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 7",
+          "note": "",
+          "tags": [
+            {
+              "name": ".h1"
+            }
+          ],
+          "location": 70,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-23T00:00:00Z",
+          "readwise_url": "https://readwise.io/open/7"
+        },
+        {
+          "id": 8,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "![](https://cdn.example.com/a.png)",
+          "note": "",
+          "tags": [],
+          "location": 80,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-19T00:00:00Z",
+          "readwise_url": "https://readwise.io/open/8"
+        },
+        {
+          "id": 9,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "![](https://cdn.example.com/missing.png)",
+          "note": "",
+          "tags": [],
+          "location": 90,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-21T12:00:00Z",
+          "readwise_url": "https://readwise.io/open/9"
+        }
+      ],
+      "options": {
+        "noteCreated": "2026-10-21T06:00:00.000Z",
+        "timeZone": "UTC",
+        "last": "x",
+        "linkedIds": [
+          4
+        ]
+      },
+      "out": {
+        "markdown": "- Highlight 5 ([Location 50](https://readwise.io/open/5), 2026-10-22)",
+        "last": "2026-10-21T06:00:00.000Z"
+      }
+    },
+    {
+      "name": "no last, unparsable note creation",
+      "highlights": [
+        {
+          "id": 1,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 1",
+          "note": "",
+          "tags": [],
+          "location": 10,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-20T00:00:00Z",
+          "readwise_url": "https://readwise.io/open/1"
+        },
+        {
+          "id": 2,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 2",
+          "note": "",
+          "tags": [],
+          "location": 20,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-21T00:00:00Z",
+          "readwise_url": "https://readwise.io/open/2"
+        },
+        {
+          "id": 3,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3",
+          "note": "",
+          "tags": [],
+          "location": 30,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:00:00Z",
+          "readwise_url": "https://readwise.io/open/3"
+        },
+        {
+          "id": 4,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 4",
+          "note": "",
+          "tags": [],
+          "location": 40,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:00:00.001Z",
+          "readwise_url": "https://readwise.io/open/4"
+        },
+        {
+          "id": 5,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 5",
+          "note": "",
+          "tags": [],
+          "location": 50,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": null,
+          "readwise_url": "https://readwise.io/open/5"
+        },
+        {
+          "id": 6,
+          "is_deleted": true,
+          "is_discard": false,
+          "text": "Highlight 6",
+          "note": "",
+          "tags": [],
+          "location": 60,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-23T00:00:00Z",
+          "readwise_url": "https://readwise.io/open/6"
+        },
+        {
+          "id": 7,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 7",
+          "note": "",
+          "tags": [
+            {
+              "name": ".h1"
+            }
+          ],
+          "location": 70,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-23T00:00:00Z",
+          "readwise_url": "https://readwise.io/open/7"
+        },
+        {
+          "id": 8,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "![](https://cdn.example.com/a.png)",
+          "note": "",
+          "tags": [],
+          "location": 80,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-19T00:00:00Z",
+          "readwise_url": "https://readwise.io/open/8"
+        },
+        {
+          "id": 9,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "![](https://cdn.example.com/missing.png)",
+          "note": "",
+          "tags": [],
+          "location": 90,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-21T12:00:00Z",
+          "readwise_url": "https://readwise.io/open/9"
+        }
+      ],
+      "options": {
+        "noteCreated": "garbage",
+        "timeZone": "UTC",
+        "last": null,
+        "linkedIds": []
+      },
+      "out": {
+        "markdown": "- Highlight 1 ([Location 10](https://readwise.io/open/1), 2026-10-22)\n- Highlight 2 ([Location 20](https://readwise.io/open/2), 2026-10-22)\n- Highlight 3 ([Location 30](https://readwise.io/open/3), 2026-10-22)\n- Highlight 4 ([Location 40](https://readwise.io/open/4), 2026-10-22)\n- Highlight 5 ([Location 50](https://readwise.io/open/5), 2026-10-22)",
+        "last": "1970-01-01T00:00:00.000Z"
+      }
+    },
+    {
+      "name": "everything linked",
+      "highlights": [
+        {
+          "id": 1,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 1",
+          "note": "",
+          "tags": [],
+          "location": 10,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-20T00:00:00Z",
+          "readwise_url": "https://readwise.io/open/1"
+        },
+        {
+          "id": 2,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 2",
+          "note": "",
+          "tags": [],
+          "location": 20,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-21T00:00:00Z",
+          "readwise_url": "https://readwise.io/open/2"
+        },
+        {
+          "id": 3,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3",
+          "note": "",
+          "tags": [],
+          "location": 30,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:00:00Z",
+          "readwise_url": "https://readwise.io/open/3"
+        },
+        {
+          "id": 4,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 4",
+          "note": "",
+          "tags": [],
+          "location": 40,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:00:00.001Z",
+          "readwise_url": "https://readwise.io/open/4"
+        },
+        {
+          "id": 5,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 5",
+          "note": "",
+          "tags": [],
+          "location": 50,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": null,
+          "readwise_url": "https://readwise.io/open/5"
+        },
+        {
+          "id": 6,
+          "is_deleted": true,
+          "is_discard": false,
+          "text": "Highlight 6",
+          "note": "",
+          "tags": [],
+          "location": 60,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-23T00:00:00Z",
+          "readwise_url": "https://readwise.io/open/6"
+        },
+        {
+          "id": 7,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 7",
+          "note": "",
+          "tags": [
+            {
+              "name": ".h1"
+            }
+          ],
+          "location": 70,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-23T00:00:00Z",
+          "readwise_url": "https://readwise.io/open/7"
+        },
+        {
+          "id": 8,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "![](https://cdn.example.com/a.png)",
+          "note": "",
+          "tags": [],
+          "location": 80,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-19T00:00:00Z",
+          "readwise_url": "https://readwise.io/open/8"
+        },
+        {
+          "id": 9,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "![](https://cdn.example.com/missing.png)",
+          "note": "",
+          "tags": [],
+          "location": 90,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-21T12:00:00Z",
+          "readwise_url": "https://readwise.io/open/9"
+        }
+      ],
+      "options": {
+        "noteCreated": "2026-10-21T06:00:00.000Z",
+        "timeZone": "UTC",
+        "last": "2026-10-25T00:00:00.000Z",
+        "linkedIds": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          8,
+          9
+        ]
+      },
+      "out": {
+        "markdown": "",
+        "last": "2026-10-25T00:00:00.000Z"
+      }
+    },
+    {
+      "name": "empty",
+      "highlights": [],
+      "options": {
+        "noteCreated": "2026-10-21T06:00:00.000Z",
+        "timeZone": "UTC",
+        "last": "2026-10-25T00:00:00.000Z",
+        "linkedIds": []
+      },
+      "out": {
+        "markdown": "",
+        "last": "2026-10-25T00:00:00.000Z"
+      }
+    },
+    {
+      "name": "empty, no last",
+      "highlights": [],
+      "options": {
+        "noteCreated": "2026-10-21T06:00:00.000Z",
+        "timeZone": "UTC",
+        "last": null,
+        "linkedIds": []
+      },
+      "out": {
+        "markdown": "",
+        "last": "2026-10-21T06:00:00.000Z"
+      }
+    },
+    {
+      "name": "time zone of the day",
+      "highlights": [
+        {
+          "id": 1,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 1",
+          "note": "",
+          "tags": [],
+          "location": 10,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T23:30:00Z",
+          "created_at": "2026-10-22T23:30:00Z",
+          "readwise_url": "https://readwise.io/open/1"
+        }
+      ],
+      "options": {
+        "noteCreated": "2026-10-21T06:00:00.000Z",
+        "timeZone": "Asia/Kolkata",
+        "last": null,
+        "linkedIds": []
+      },
+      "out": {
+        "markdown": "- Highlight 1 ([Location 10](https://readwise.io/open/1), 2026-10-23)",
+        "last": "2026-10-22T23:30:00.001Z"
+      }
+    }
+  ],
+  "linkedIds": [
+    {
+      "markdown": "- a ([Location 10](https://readwise.io/open/1))\n- b ([Page 2](https://readwise.io/open/22), 2026-10-22)",
+      "ids": [
+        1,
+        22
+      ]
+    },
+    {
+      "markdown": "readwise.io/open/007 and readwise.io/open/7 and readwise.io/open/ and readwise.io/open/12x3",
+      "ids": [
+        7,
+        12
+      ]
+    },
+    {
+      "markdown": "readwise_io/open/5 and readwiseXio/open/6",
+      "ids": []
+    },
+    {
+      "markdown": "readwise.io/open/99999999999999999999 readwise.io/open/9007199254740993",
+      "ids": [
+        100000000000000000000,
+        9007199254740992
+      ]
+    },
+    {
+      "markdown": "",
+      "ids": []
+    }
+  ],
+  "imageUrl": [
+    {
+      "text": "![](https://cdn.example.com/a.png)",
+      "url": "https://cdn.example.com/a.png"
+    },
+    {
+      "text": "  ![alt](  <https://cdn.example.com/a b.png>  )  ",
+      "url": null
+    },
+    {
+      "text": "![alt](<https://cdn.example.com/a.png>)",
+      "url": "https://cdn.example.com/a.png"
+    },
+    {
+      "text": "![alt](<https://cdn.example.com/a.png)",
+      "url": "https://cdn.example.com/a.png"
+    },
+    {
+      "text": "![alt](https://cdn.example.com/a.png>)",
+      "url": "https://cdn.example.com/a.png"
+    },
+    {
+      "text": "![alt](https://cdn.example.com/a.png )",
+      "url": "https://cdn.example.com/a.png"
+    },
+    {
+      "text": "![alt](https://cdn.example.com/a.png) trailing",
+      "url": null
+    },
+    {
+      "text": "![a]b](https://x)",
+      "url": null
+    },
+    {
+      "text": "![](<>)",
+      "url": "<"
+    },
+    {
+      "text": "![]()",
+      "url": null
+    },
+    {
+      "text": "![multi\nline](https://cdn.example.com/a.png)",
+      "url": "https://cdn.example.com/a.png"
+    },
+    {
+      "text": "![](https://cdn.example.com/(paren).png)",
+      "url": null
+    },
+    {
+      "text": "!(https://x)",
+      "url": null
+    },
+    {
+      "text": "text",
+      "url": null
+    }
+  ]
+}

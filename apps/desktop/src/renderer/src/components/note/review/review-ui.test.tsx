@@ -55,7 +55,6 @@ function createReview(
     hoveredMarkId: null,
     markPositions: {},
     handlePlainMarkdownChange: vi.fn((markdown: string) => markdown),
-    persistCurrentMarkdown: vi.fn(),
     handleEditorReady: vi.fn(),
     openCommentComposer: vi.fn(),
     cancelCommentDraft: vi.fn(),
@@ -71,6 +70,7 @@ function createReview(
     setHoveredMarkId: vi.fn(),
     setMarkPositions: vi.fn(),
     replaceMarksFromYjs: vi.fn(),
+    setDocBinding: vi.fn(),
     ...overrides
   }
 }
@@ -622,7 +622,11 @@ describe('review UI', () => {
 
   it('undoes submitted, resolved, and deleted comments', () => {
     const { result } = renderHook(() =>
-      useCriticMarkupReview({ markdown: 'comment target', onMarkdownChange: vi.fn() })
+      useCriticMarkupReview({
+        documentKey: 'note-1',
+        markdown: 'comment target',
+        onMarkdownChange: vi.fn()
+      })
     )
 
     act(() => {
@@ -684,6 +688,7 @@ describe('review UI', () => {
   it('anchors a comment to the selected occurrence, not the first matching text', () => {
     const { result } = renderHook(() =>
       useCriticMarkupReview({
+        documentKey: 'note-1',
         markdown: 'Mobile first\n\nMobile second',
         onMarkdownChange: vi.fn()
       })
@@ -724,6 +729,7 @@ describe('review UI', () => {
   it('anchors a comment without selection positions to the first matching text', () => {
     const { result } = renderHook(() =>
       useCriticMarkupReview({
+        documentKey: 'note-1',
         markdown: 'Mobile first\n\nMobile second',
         onMarkdownChange: vi.fn()
       })
@@ -747,7 +753,7 @@ describe('review UI', () => {
   it('submits structured comment refs into the review mark and serialized markdown', () => {
     const onMarkdownChange = vi.fn()
     const { result } = renderHook(() =>
-      useCriticMarkupReview({ markdown: 'comment target', onMarkdownChange })
+      useCriticMarkupReview({ documentKey: 'note-1', markdown: 'comment target', onMarkdownChange })
     )
 
     act(() => {
@@ -783,7 +789,7 @@ describe('review UI', () => {
   it('updates an existing comment and undoes the edit', () => {
     const onMarkdownChange = vi.fn()
     const { result } = renderHook(() =>
-      useCriticMarkupReview({ markdown: 'comment target', onMarkdownChange })
+      useCriticMarkupReview({ documentKey: 'note-1', markdown: 'comment target', onMarkdownChange })
     )
 
     act(() => {
@@ -840,7 +846,7 @@ describe('review UI', () => {
   it('ignores comment updates for unknown ids or empty bodies', () => {
     const onMarkdownChange = vi.fn()
     const { result } = renderHook(() =>
-      useCriticMarkupReview({ markdown: 'comment target', onMarkdownChange })
+      useCriticMarkupReview({ documentKey: 'note-1', markdown: 'comment target', onMarkdownChange })
     )
 
     act(() => {
@@ -878,7 +884,7 @@ describe('review UI', () => {
 
   it('handles Mod+Z through the review undo stack before native editor undo', () => {
     const { result } = renderHook(() =>
-      useCriticMarkupReview({ markdown: 'base', onMarkdownChange: vi.fn() })
+      useCriticMarkupReview({ documentKey: 'note-1', markdown: 'base', onMarkdownChange: vi.fn() })
     )
 
     act(() => {
@@ -911,7 +917,7 @@ describe('review UI', () => {
   it('keeps a locally-added comment when a stale resync lands before save (issue #797)', () => {
     const { result, rerender } = renderHook(
       ({ markdown }: { markdown: string }) =>
-        useCriticMarkupReview({ markdown, onMarkdownChange: vi.fn() }),
+        useCriticMarkupReview({ documentKey: 'note-1', markdown, onMarkdownChange: vi.fn() }),
       { initialProps: { markdown: 'comment target' } }
     )
 
@@ -952,6 +958,194 @@ describe('review UI', () => {
       rerender({ markdown: 'totally different external content' })
     })
     expect(result.current.marks).toHaveLength(0)
+  })
+
+  // The page keeps one review state across notes. A comment the first note had
+  // not saved yet was kept through the switch, as a stale refetch of that note
+  // would be, and was then saved into the next note.
+  it("starts the next note from its own text, without the last note's unsaved comment", () => {
+    const onMarkdownChange = vi.fn()
+    const { result, rerender } = renderHook(
+      ({ documentKey, markdown }: { documentKey: string; markdown: string }) =>
+        useCriticMarkupReview({ documentKey, markdown, onMarkdownChange }),
+      { initialProps: { documentKey: 'note-a', markdown: 'comment target' } }
+    )
+    act(() => {
+      result.current.openCommentComposer({ text: 'comment target', isEmpty: false })
+    })
+    act(() => {
+      result.current.submitComment({
+        body: 'On A.',
+        mentions: [],
+        attachments: [],
+        formatRanges: []
+      })
+    })
+    expect(result.current.marks).toHaveLength(1)
+
+    act(() => {
+      rerender({ documentKey: 'note-b', markdown: 'other words' })
+    })
+    expect(result.current.marks).toEqual([])
+    expect(result.current.plainMarkdown).toBe('other words')
+
+    act(() => {
+      result.current.openCommentComposer({ text: 'other', isEmpty: false })
+    })
+    act(() => {
+      result.current.submitComment({
+        body: 'On B.',
+        mentions: [],
+        attachments: [],
+        formatRanges: []
+      })
+    })
+    expect(onMarkdownChange).toHaveBeenLastCalledWith(expect.not.stringContaining('On A.'))
+  })
+
+  // Bound to the doc, the file trails it: a refetch can lack a comment the
+  // file cannot place or has not been written with yet.
+  it('keeps the doc marks when the file arrives without them while bound to the doc', () => {
+    const { result, rerender } = renderHook(
+      ({ markdown }: { markdown: string }) =>
+        useCriticMarkupReview({ documentKey: 'note-1', markdown, onMarkdownChange: vi.fn() }),
+      { initialProps: { markdown: 'comment target' } }
+    )
+    const docMark = {
+      id: 'comment-1',
+      kind: 'comment' as const,
+      visibleText: 'target',
+      body: 'Only in the doc.',
+      start: 8,
+      end: 14
+    }
+    act(() => {
+      result.current.setDocBinding({
+        readBody: async () => 'comment target',
+        onBodyChange: () => () => {},
+        updateMarks: vi.fn()
+      })
+      result.current.replaceMarksFromYjs([docMark])
+    })
+
+    act(() => {
+      rerender({ markdown: 'comment target, refetched' })
+    })
+
+    expect(result.current.marks).toEqual([docMark])
+  })
+
+  // Reading a bound note's text converts the whole note, about 10ms for 8,000
+  // words. Only marks and a comment draft count in that text.
+  it("reads a bound note's text only while a comment or a draft counts in it", async () => {
+    vi.useFakeTimers()
+    try {
+      const { result } = renderHook(() =>
+        useCriticMarkupReview({
+          documentKey: 'note-1',
+          markdown: 'comment target',
+          onMarkdownChange: vi.fn()
+        })
+      )
+      let body = 'comment target'
+      const readBody = vi.fn(async () => body)
+      let notifyChange = (): void => {}
+      const type = (text: string): void => {
+        body = text
+        notifyChange()
+      }
+      act(() => {
+        result.current.setDocBinding({
+          readBody,
+          onBodyChange: (listener) => {
+            notifyChange = listener
+            return () => {}
+          },
+          updateMarks: vi.fn()
+        })
+      })
+
+      act(() => {
+        type('a comment target')
+        vi.advanceTimersByTime(1000)
+      })
+      expect(readBody).not.toHaveBeenCalled()
+
+      // At once, so the draft starts from the text on screen.
+      await act(async () => {
+        result.current.openCommentComposer({ text: 'target', isEmpty: false })
+      })
+      expect(readBody).toHaveBeenCalledTimes(1)
+      expect(result.current.plainMarkdown).toBe('a comment target')
+      act(() => {
+        result.current.cancelCommentDraft()
+        type('the comment target')
+        vi.advanceTimersByTime(1000)
+      })
+      expect(readBody).toHaveBeenCalledTimes(1)
+
+      // The first comment, from another device: read at once, so its highlight
+      // counts in the text on screen.
+      await act(async () => {
+        result.current.replaceMarksFromYjs([
+          { id: 'comment-1', kind: 'comment', visibleText: 'target', start: 12, end: 18 }
+        ])
+      })
+      expect(readBody).toHaveBeenCalledTimes(2)
+      expect(result.current.plainMarkdown).toBe('the comment target')
+
+      await act(async () => {
+        type('then the comment target')
+        vi.advanceTimersByTime(150)
+      })
+      expect(readBody).toHaveBeenCalledTimes(3)
+      expect(result.current.plainMarkdown).toBe('then the comment target')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  // Without marks the text is not read, so the copy cannot show the typing
+  // that came after a resolve. Cmd+Z then belongs to the typing.
+  it('leaves a resolved comment resolved when Cmd+Z comes after the text changed', async () => {
+    const { result } = renderHook(() =>
+      useCriticMarkupReview({
+        documentKey: 'note-1',
+        markdown: 'comment target',
+        onMarkdownChange: vi.fn()
+      })
+    )
+    let notifyChange = (): void => {}
+    await act(async () => {
+      result.current.setDocBinding({
+        readBody: async () => 'comment target',
+        onBodyChange: (listener) => {
+          notifyChange = listener
+          return () => {}
+        },
+        updateMarks: vi.fn()
+      })
+      result.current.replaceMarksFromYjs([
+        { id: 'comment-1', kind: 'comment', visibleText: 'target', start: 8, end: 14 }
+      ])
+    })
+    act(() => {
+      result.current.resolveMark('comment-1')
+      notifyChange()
+    })
+
+    const undoEvent = new KeyboardEvent('keydown', {
+      key: 'z',
+      metaKey: true,
+      bubbles: true,
+      cancelable: true
+    })
+    act(() => {
+      document.dispatchEvent(undoEvent)
+    })
+
+    expect(undoEvent.defaultPrevented).toBe(false)
+    expect(result.current.marks).toEqual([])
   })
 
   it('renders comment formatting as nested inline elements, outermost mark first', () => {

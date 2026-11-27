@@ -69,6 +69,16 @@ const blockTexts = (page: Page): Promise<string[]> =>
     )
   })
 
+/** The rail buttons that show their shortcut number in place of their icon. */
+const railButtonsWithoutIcon = (page: Page): Promise<string[]> =>
+  page.evaluate(() => {
+    const buttons = [...document.querySelectorAll<HTMLElement>('[data-rail-page]')]
+    if (buttons.length === 0) throw new Error('no rail buttons on screen')
+    return buttons
+      .filter((button) => !button.querySelector('svg'))
+      .map((button) => button.dataset.railPage ?? '')
+  })
+
 test('copied blocks leave markdown on the clipboard and paste back with their formatting', async ({
   app,
   page
@@ -120,5 +130,8 @@ test('copied blocks leave markdown on the clipboard and paste back with their fo
     await expect
       .poll(() => blockTexts(page))
       .toEqual(['First **bold** line', 'Second line', 'First **bold** line'])
+    // The paste let go of its modifier: the rail shows its icons, not the Ctrl+digit numbers it
+    // shows while Ctrl (Cmd on macOS) is held.
+    await expect.poll(() => railButtonsWithoutIcon(page)).toEqual([])
   })
 })

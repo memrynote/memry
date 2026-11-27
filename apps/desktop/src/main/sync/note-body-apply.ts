@@ -1,9 +1,11 @@
 import { getNoteMetadataById } from '@memry/storage-data'
+import { isBinaryNoteRow } from '@memry/shared/file-types'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { createLogger } from '../lib/logger'
 import { getNoteCacheById } from '../database/queries/notes'
 import { getIndexDatabase, isIndexDatabaseInitialized } from '../database/client'
 import type { CrdtProvider } from './crdt-provider'
+import { hasPendingDelete } from './pending-deletes'
 
 const log = createLogger('NoteBodyApply')
 
@@ -83,7 +85,27 @@ export async function landNoteBody(
   }
 }
 
+/**
+ * A note or journal row exists on this device. With no canonical row, the
+ * index row counts unless a delete of the id is pending: the CLI dropped the
+ * row and queued the delete, and the index row lasts until desktop's watcher
+ * sees the unlink (#5693). A body merged in that window would put text into
+ * the body vector the delete carries that the user never saw, and a peer
+ * holding it would drop it with no kept copy.
+ */
 export function isKnownNote(db: DrizzleDb, noteId: string): boolean {
   if (getNoteMetadataById(db, noteId)) return true
+  if (hasPendingDelete(db, 'note', noteId)) return false
   return isIndexDatabaseInitialized() && getNoteCacheById(getIndexDatabase(), noteId) != null
+}
+
+/**
+ * A binary note (image, PDF, audio, video) has no CRDT body: its file is the
+ * blob (#5412). No doc is opened for one, and no body of one is pushed or
+ * pulled (#5607). Read from the canonical row, which a create writes before
+ * the projection brings the index row.
+ */
+export function isBinaryNote(db: DrizzleDb, noteId: string): boolean {
+  const row = getNoteMetadataById(db, noteId)
+  return row !== undefined && isBinaryNoteRow(row)
 }

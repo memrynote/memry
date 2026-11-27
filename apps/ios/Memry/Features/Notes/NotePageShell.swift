@@ -1,6 +1,6 @@
 //
 //  NotePageShell.swift
-//  Find in note, the attachments list, and the page overflow menu.
+//  Find in note, the attachments list, and the page menu's actions.
 //
 //  N801, N805, N808.
 //
@@ -64,7 +64,7 @@ struct NoteAttachmentsList: View {
     /// Downloaded or not, said plainly. A row with no bytes is waiting rather
     /// than broken (FR-045).
     private func subtitle(for attachment: CachedAttachment) -> String {
-        guard attachment.localPath != nil else { return "Not downloaded yet" }
+        guard attachment.intactPath != nil else { return "Not downloaded yet" }
         // A size this device has not been told is **unknown**, not zero: the
         // manifest may not have arrived, and "0 bytes" would be a claim.
         guard let size = attachment.remoteSize else { return "Downloaded" }
@@ -78,164 +78,6 @@ struct NoteAttachmentsList: View {
         if mimeType.hasPrefix("video/") { return "film" }
         return "doc"
     }
-}
-
-// MARK: - N808, the page overflow menu
-
-/// The note page's overflow menu, in groups: editing, looking around the
-/// note, organising it, how it looks, taking it elsewhere, and delete last.
-///
-/// Every write is optional and absent rather than disabled when this device
-/// cannot make it (no signing identity, a read-only note), so the menu never
-/// offers something that would fail.
-struct NotePageMenu: View {
-    let items: NotePageMenuItems
-    /// Undo and redo, which used to be the page's bottom bar. Links and
-    /// date mentions are inserted from the editor. `nil` on a read-only note.
-    var editing: NotePageEditingItems?
-
-    var body: some View {
-        Menu {
-            if let editing {
-                Section {
-                    Button(action: editing.undo) {
-                        Label("Undo", systemImage: "arrow.uturn.backward")
-                    }
-                    .disabled(!editing.canUndo)
-                    Button(action: editing.redo) {
-                        Label("Redo", systemImage: "arrow.uturn.forward")
-                    }
-                    .disabled(!editing.canRedo)
-                }
-            }
-            Section {
-                Button(action: items.find) {
-                    Label("Find in note", systemImage: "magnifyingglass")
-                }
-                Button(action: items.backlinks) {
-                    Label("Backlinks", systemImage: "arrow.down.left")
-                }
-            }
-            organise
-            appearance
-            Section {
-                ShareLink(item: items.export.contents, subject: Text(items.export.title)) {
-                    Label("Share", systemImage: "square.and.arrow.up")
-                }
-                ShareLink(
-                    item: NoteExportFile(export: items.export),
-                    preview: SharePreview(items.export.filename)
-                ) {
-                    Label("Export", systemImage: "arrow.down.doc")
-                }
-                .accessibilityLabel("Export this note as a text file")
-                Button {
-                    // The vault-relative path, which is what a user would paste
-                    // somewhere else. The root is a note with no folder.
-                    UIPasteboard.general.string = items.folderPath ?? ""
-                } label: {
-                    Label("Copy path", systemImage: "doc.on.doc")
-                }
-                .disabled(items.folderPath == nil)
-            }
-            if let delete = items.delete {
-                Section {
-                    Button(role: .destructive, action: delete) {
-                        Label("Delete", systemImage: "trash")
-                    }
-                }
-            }
-        } label: {
-            Label("More", systemImage: "ellipsis.circle")
-                .labelStyle(.iconOnly)
-        }
-        .accessibilityLabel("More actions for this note")
-    }
-
-    @ViewBuilder
-    private var organise: some View {
-        Section {
-            if let toggleFavorite = items.toggleFavorite {
-                Button(action: toggleFavorite) {
-                    if items.isFavorite {
-                        Label("Remove from favorites", systemImage: "star.slash")
-                    } else {
-                        Label("Add to favorites", systemImage: "star")
-                    }
-                }
-            }
-            if let addReminder = items.addReminder {
-                Button(action: addReminder) {
-                    Label("Reminder", systemImage: "bell")
-                }
-            }
-            if let rename = items.rename {
-                Button(action: rename) {
-                    Label("Rename", systemImage: "pencil")
-                }
-            }
-            if let duplicate = items.duplicate {
-                Button(action: duplicate) {
-                    Label("Duplicate", systemImage: "plus.square.on.square")
-                }
-            }
-            if let move = items.move {
-                Button(action: move) {
-                    Label("Move to", systemImage: "folder")
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var appearance: some View {
-        if items.changeIcon != nil || items.changeCover != nil {
-            Section {
-                if let changeIcon = items.changeIcon {
-                    Button(action: changeIcon) {
-                        Label("Change icon", systemImage: "face.smiling")
-                    }
-                }
-                if let changeCover = items.changeCover {
-                    Button(action: changeCover) {
-                        Label("Change cover", systemImage: "photo")
-                    }
-                }
-                if let repositionCover = items.repositionCover {
-                    Button(action: repositionCover) {
-                        Label("Reposition cover", systemImage: "arrow.up.and.down")
-                    }
-                }
-            }
-        }
-    }
-}
-
-/// What the page menu offers. A `nil` action is one this device cannot take
-/// on this note, and its row is left out.
-struct NotePageMenuItems {
-    let folderPath: String?
-    let export: NoteExport
-    let find: () -> Void
-    let backlinks: () -> Void
-    var isFavorite = false
-    var toggleFavorite: (() -> Void)?
-    var addReminder: (() -> Void)?
-    var rename: (() -> Void)?
-    var duplicate: (() -> Void)?
-    var move: (() -> Void)?
-    var changeIcon: (() -> Void)?
-    var changeCover: (() -> Void)?
-    var repositionCover: (() -> Void)?
-    var delete: (() -> Void)?
-}
-
-/// The editing entries of the page menu.
-struct NotePageEditingItems {
-    let canUndo: Bool
-    let canRedo: Bool
-    let undo: () -> Void
-    let redo: () -> Void
 }
 
 /// The page menu's write actions (N808).
@@ -259,6 +101,8 @@ final class NotePageActions {
     private(set) var status: Status = .idle
     /// Whether the note is in the sidebar's bookmarks (desktop's favorites).
     private(set) var isFavorite = false
+    /// The note's `fullWidth` override; `nil` follows this device's width.
+    private(set) var fullWidth: Bool?
     /// `true` once the note is gone, so the caller can leave the screen
     /// rather than showing a note that no longer exists.
     private(set) var deleted = false
@@ -280,9 +124,14 @@ final class NotePageActions {
         return error
     }
 
+    /// A title that landed is announced with `titleSaved`, so every page on
+    /// this note re-reads it.
     func rename(to title: String) async {
         guard let writer else { return }
         await run { try await writer.rename(id: noteId, title: title) }
+        if status == .idle {
+            NotificationCenter.default.post(name: NoteReadViewModel.titleSaved, object: noteId)
+        }
     }
 
     /// `nil` is the vault root, and it travels as an explicit null so every
@@ -310,6 +159,25 @@ final class NotePageActions {
         await run { isFavorite = try await writer.toggleBookmark(itemType: "note", itemId: noteId) }
     }
 
+    /// Re-read on open and after each sync pass, where desktop's toggle lands.
+    func loadFullWidth() async {
+        guard let writer else { return }
+        do {
+            fullWidth = try await writer.fullWidth(id: noteId)
+        } catch {
+            Log.storage.error("a note's width did not read")
+        }
+    }
+
+    /// Flips the page's effective width into an override, as desktop does.
+    func toggleFullWidth(isFull: Bool) async {
+        guard let writer else { return }
+        await run {
+            try await writer.setFullWidth(id: noteId, fullWidth: !isFull)
+            fullWidth = !isFull
+        }
+    }
+
     /// Copies the note beside itself and returns the copy's id.
     func duplicate(title: String) async -> String? {
         guard let writer else { return nil }
@@ -327,8 +195,9 @@ final class NotePageActions {
             status = .idle
             requestSync?()
         } catch {
-            Log.storage.error("a note page action did not land")
-            status = .failed(ErrorMapping.userFacing(error))
+            let mapped = ErrorMapping.userFacing(error)
+            Log.storage.error("a note page action did not land", .code(mapped.code))
+            status = .failed(mapped)
         }
     }
 }

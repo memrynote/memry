@@ -29,6 +29,7 @@ import { writeLockRow } from '../vault-locks/store'
 import type * as IndexModule from './status'
 import type * as DatabaseModule from '../database'
 import type * as NotesModule from './notes'
+import type { SyncNoteDelete } from './notes-crud'
 
 // ============================================================================
 // Type-Safe Mocks
@@ -76,6 +77,9 @@ vi.mock('../sync/crdt-external-feed', () => ({
 // ============================================================================
 // Test Suite
 // ============================================================================
+
+/** These tests sync nothing: the delete's step runs, and queues no tombstone. */
+const withoutSync: SyncNoteDelete = async (inStep) => inStep?.(() => {})
 
 describe('notes operations', () => {
   let tempVault: TestVaultResult
@@ -636,6 +640,31 @@ describe('notes operations', () => {
       })
 
       expect(flushProjectionEventsSpy).not.toHaveBeenCalled()
+    })
+
+    // The watcher ignores Memry's own write, so the doc takes a new body before
+    // the file does (D-DOC-FIRST, #2646). No `writing`: an open doc keeps its
+    // own alternatives. A metadata-only edit keeps the body the doc holds.
+    it("feeds a body edit, and only a body edit, to the note's CRDT doc", async () => {
+      const created = await notes.createNote({ title: 'Feed Body', content: 'Before' })
+      crdtMocks.feedExternalEditToCrdt.mockClear()
+
+      await notes.updateNote({ id: created.id, tags: ['focus'] })
+      await notes.updateNote({ id: created.id, content: 'new content' })
+
+      expect(crdtMocks.feedExternalEditToCrdt.mock.calls).toEqual([[created.id, 'new content']])
+    })
+
+    it('refuses the body, with the file untouched, when the CRDT feed throws', async () => {
+      const created = await notes.createNote({ title: 'Feed Throws', content: 'Before' })
+      crdtMocks.feedExternalEditToCrdt.mockRejectedValueOnce(new Error('converter failed'))
+
+      await expect(notes.updateNote({ id: created.id, content: 'After' })).rejects.toThrow(
+        'converter failed'
+      )
+
+      const { content } = readTestNote(path.join(tempVault.path, created.path))
+      expect(content.trim()).toBe('Before')
     })
 
     it('T363: updates file content', async () => {
@@ -1611,7 +1640,7 @@ describe('notes operations', () => {
 
       flushProjectionEventsSpy.mockClear()
 
-      await notes.deleteNote(created.id)
+      await notes.deleteNote(created.id, withoutSync)
 
       expect(flushProjectionEventsSpy).not.toHaveBeenCalled()
     })
@@ -1625,7 +1654,7 @@ describe('notes operations', () => {
       const filePath = path.join(tempVault.path, created.path)
       expect(fs.existsSync(filePath)).toBe(true)
 
-      await notes.deleteNote(created.id)
+      await notes.deleteNote(created.id, withoutSync)
 
       expect(fs.existsSync(filePath)).toBe(false)
     })
@@ -1636,14 +1665,16 @@ describe('notes operations', () => {
         content: 'Content.'
       })
 
-      await notes.deleteNote(created.id)
+      await notes.deleteNote(created.id, withoutSync)
 
       const retrieved = await notes.getNoteById(created.id)
       expect(retrieved).toBeNull()
     })
 
     it('T366: throws NOT_FOUND for non-existent note', async () => {
-      await expect(notes.deleteNote('nonexistent123')).rejects.toThrow('Note not found')
+      await expect(notes.deleteNote('nonexistent123', withoutSync)).rejects.toThrow(
+        'Note not found'
+      )
     })
 
     it('T366: emits DELETED event', async () => {
@@ -1660,7 +1691,7 @@ describe('notes operations', () => {
 
       mockSend.mockClear()
 
-      await notes.deleteNote(created.id)
+      await notes.deleteNote(created.id, withoutSync)
 
       expect(mockSend).toHaveBeenCalledWith(
         'notes:deleted',
@@ -1891,7 +1922,7 @@ describe('notes operations', () => {
         content: 'Points at [[Doomed Target]].'
       })
 
-      await notes.deleteNote(target.id)
+      await notes.deleteNote(target.id, withoutSync)
 
       expect((await notes.getNoteLinks(source.id)).outgoing).toEqual([
         { sourceId: source.id, targetId: null, targetTitle: 'Doomed Target' }
@@ -2016,7 +2047,7 @@ describe('notes operations', () => {
       })
 
       setPropertyRefs(testDb.db, ghost.id, { father: [`memry://note/${target.id}`] })
-      await notes.deleteNote(ghost.id)
+      await notes.deleteNote(ghost.id, withoutSync)
 
       const links = await notes.getNoteLinks(target.id)
 
@@ -2189,6 +2220,23 @@ describe('notes operations', () => {
 
         expect(fs.existsSync(folderPath)).toBe(false)
       })
+
+      // Windows reads a peer's `Work.` as `Work`, so the delete is refused, with
+      // copy the user can act on rather than an untranslated sentence.
+      it('refuses on Windows a folder whose name ends in a dot or space, and deletes nothing', async () => {
+        const platform = process.platform
+        Object.defineProperty(process, 'platform', { value: 'win32' })
+        const folderPath = path.join(tempVault.path, 'Work.')
+        fs.mkdirSync(folderPath)
+        try {
+          await expect(notes.deleteFolder('Work.')).rejects.toThrow(
+            'errors:folder.deleteWindowsName'
+          )
+          expect(fs.existsSync(folderPath)).toBe(true)
+        } finally {
+          Object.defineProperty(process, 'platform', { value: platform })
+        }
+      })
     })
   })
 
@@ -2253,6 +2301,31 @@ describe('notes operations', () => {
 
       const markdown = await notes.createNote({ title: 'Markdown File', content: 'C.' })
       await expect(notes.getFileById(markdown.id)).resolves.toBeNull()
+    })
+
+    it('keeps a synced file whose bytes have not downloaded yet (#5616)', async () => {
+      const { getNoteMetadataById, upsertNoteMetadata } = await import('@memry/storage-data')
+      const row = {
+        id: 'synced-pdf',
+        path: 'notes/report.pdf',
+        title: 'report',
+        fileType: 'pdf' as const,
+        mimeType: 'application/pdf',
+        fileSize: 10,
+        createdAt: '2026-01-15T12:00:00.000Z',
+        modifiedAt: '2026-01-15T12:00:00.000Z'
+      }
+      // As a pull leaves it: the attachment id on the canonical row only.
+      upsertNoteMetadata(dataDb.db, { ...row, attachmentId: 'att-report' })
+      const { insertNoteCache } = await import('@main/database/queries/notes')
+      insertNoteCache(testDb.db, row)
+
+      await expect(notes.getFileById('synced-pdf')).resolves.toMatchObject({
+        id: 'synced-pdf',
+        path: 'notes/report.pdf',
+        fileType: 'pdf'
+      })
+      expect(getNoteMetadataById(dataDb.db, 'synced-pdf')?.attachmentId).toBe('att-report')
     })
 
     it('returns the filed voice transcript with audio file metadata', async () => {

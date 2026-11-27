@@ -439,6 +439,7 @@ impl Worker {
                         self.reconciler.rehome(&rel);
                         debounce.touch(rel, now);
                     }
+                    Msg::Named(rel, note_id) => self.reconciler.named(&rel, &note_id),
                     Msg::Error(error) => {
                         self.report(&error, now);
                         self.net.lost_events(now);

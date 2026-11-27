@@ -53,6 +53,8 @@ struct CalendarScreen: View {
     let browse: VaultBrowseViewModel?
     @Environment(TasksRouter.self) var router
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
     @State var sheet: CalendarSheet?
     @State var composer: CalendarComposerRequest?
     @State var deleting: CalendarItem?
@@ -81,7 +83,10 @@ struct CalendarScreen: View {
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { toolbarItems }
-        .sheet(item: $sheet) { sheetContent($0) }
+        .sheet(item: $sheet) {
+            sheetContent($0)
+                .environment(\.calendarSheetLayout, LayoutWidth(horizontal: horizontalSizeClass, vertical: verticalSizeClass))
+        }
         .alert(CalendarCopy.deleteTitle, isPresented: deleteBinding, presenting: deleting) { item in
             Button(CalendarCopy.deleteConfirm, role: .destructive) { Task { await delete(item) } }
             Button(CalendarCopy.cancel, role: .cancel) {}
@@ -96,6 +101,8 @@ struct CalendarScreen: View {
             }
         }
         .sheet(isPresented: $pickingDefault) { CalendarDefaultPickerSheet(store: store) }
+        // On appearing only: a window that widens while Calendar is open keeps the view it shows.
+        .onAppear { store.state.openFirst(at: LayoutWidth(horizontal: horizontalSizeClass, vertical: verticalSizeClass)) }
         .task { await start() }
         .task(id: loadKey) { await store.ensure(currentWindow) }
         .onChange(of: scenePhase) { _, phase in

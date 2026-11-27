@@ -81,6 +81,23 @@ impl LockStore {
         })
     }
 
+    /// [`vault_locks::insert_baseline`], stamped now.
+    pub fn insert_baseline(
+        &self,
+        note_id: &str,
+        content: &str,
+        content_hash: &str,
+    ) -> Result<bool, StorageError> {
+        let (note_id, content, hash) = (
+            note_id.to_owned(),
+            content.to_owned(),
+            content_hash.to_owned(),
+        );
+        self.db.call_blocking(move |conn| {
+            vault_locks::insert_baseline(conn, &note_id, &content, &hash, now_ms())
+        })
+    }
+
     /// [`vault_locks::delete_baseline`].
     pub fn delete_baseline(&self, note_id: &str) -> Result<(), StorageError> {
         let note_id = note_id.to_owned();

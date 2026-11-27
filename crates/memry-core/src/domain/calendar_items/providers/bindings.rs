@@ -10,6 +10,7 @@ use crate::api::errors::StorageError;
 use crate::domain::calendar_items::BINDING_TYPE;
 use crate::domain::calendar_items::write::live_payload;
 use crate::domain::notes::{failed, insert_local, iso, next_clock};
+use crate::storage::nested_tx;
 use crate::storage::repositories::{Change, sync_items};
 use crate::sync::outbox;
 
@@ -165,6 +166,37 @@ pub fn for_object(
     .map_err(failed)
 }
 
+/// `boundObjectEtags`: each object of one CalDAV calendar a live binding
+/// names, once, with the ETag last written or read back.
+pub fn caldav_objects(
+    conn: &Connection,
+    calendar_id: &str,
+) -> Result<Vec<(String, Option<String>)>, StorageError> {
+    let mut stmt = conn
+        .prepare(
+            "SELECT remote_event_id, remote_version FROM calendar_bindings
+              WHERE provider = 'caldav' AND remote_calendar_id = ?1
+                AND archived_at IS NULL AND deleted_at IS NULL
+              ORDER BY created_at_raw, id",
+        )
+        .map_err(failed)?;
+    let rows = stmt
+        .query_map([calendar_id], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, Option<String>>(1)?))
+        })
+        .map_err(failed)?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(failed)?;
+    let mut objects: Vec<(String, Option<String>)> = Vec::new();
+    for (remote, etag) in rows {
+        let href = caldav_parts(&remote).0;
+        if !objects.iter().any(|(h, _)| h == href) {
+            objects.push((href.to_owned(), etag));
+        }
+    }
+    Ok(objects)
+}
+
 /// What the provider answered for a write.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Written {
@@ -185,7 +217,7 @@ pub fn record_push(
     device_id: &str,
     now_ms: i64,
 ) -> Result<String, StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let existing = find(&tx, provider, target)?;
     let at = iso(now_ms)?;
     let id = existing.as_ref().map_or_else(
@@ -242,7 +274,7 @@ pub fn record_delete(
     device_id: &str,
     now_ms: i64,
 ) -> Result<(), StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     if let Some(stored) = live_payload(&tx, BINDING_TYPE, binding_id)? {
         let at = iso(now_ms)?;
         let changes = vec![

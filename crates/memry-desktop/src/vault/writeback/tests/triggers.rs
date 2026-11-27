@@ -290,6 +290,7 @@ fn a_file_the_app_wrote_in_an_earlier_run_is_no_outside_text() {
         f.echo.clone(),
         None,
         Arc::default(),
+        f.store.clone(),
     );
     f.edit_in_app(&id, "typed in the app again");
     let outcome = f.run(&id);

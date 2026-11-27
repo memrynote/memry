@@ -17,6 +17,10 @@ export interface PullRunState {
   latency: PullLatencyTrace
   /** Set when the run stopped on a page it could not apply — no success finalize. */
   refused?: boolean
-  /** The run started from cursor 0: it applies no purged tombstone (#2302). */
+  /** The run started from cursor 0: it applies no purged tombstone (#2302), except to `packApplied`. */
   fromZero?: boolean
+  /** `type:id` → held cursor of the rows the record-pack phase applied (#5390); see `readPackApplied`. */
+  packApplied?: Map<string, number>
+  /** Notes whose body record packs' bootstrap already settled: owed no body pull (#5390). */
+  bodySettled?: ReadonlySet<string>
 }

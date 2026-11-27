@@ -17,6 +17,7 @@
       "filterAll": "Tous les fichiers"
     },
     "exportCancelled": "Exportation annulée",
+    "exportVaultChanged": "Un autre coffre a été ouvert pendant que vous choisissiez où enregistrer. Exportez à nouveau la note.",
     "dataDbRecovery": {
       "title": "Réparer la base de données du coffre",
       "message": "La base de données de Memry pour ce coffre est endommagée.",

@@ -78,7 +78,7 @@ struct ViewQuerySheetTests {
         session.editView(blockId: "v", text: before)
         await done(session, after)
 
-        #expect(editor.all == [.replaceText(blockId: "v", text: after, base: nil)])
-        #expect(session.history.popUndo()?.backward == .replaceText(blockId: "v", text: before))
+        #expect(editor.all == [.replaceText(blockId: "v", text: after, base: before)])
+        #expect(session.history.popUndo()?.backward == .replaceText(blockId: "v", text: before, base: after))
     }
 }

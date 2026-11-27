@@ -27,6 +27,12 @@ import { DeviceList } from '@/components/sync/device-list'
 import { UnsentNotesList } from '@/components/settings/unsent-notes-list'
 import type { StorageBreakdownResult } from '@memry/contracts/ipc-sync-ops'
 import {
+  commands,
+  type BillingStatusDto,
+  type PlanChangePlan,
+  type PlanChangePreviewDto
+} from '../../../../generated/bindings'
+import {
   SettingsHeader,
   SettingsGroup,
   SettingRow,
@@ -41,46 +47,10 @@ const MEMRY_ISSUES_URL =
 const MEMRY_ICON_SRC = new URL('../../../../../src-tauri/icons/icon.png', import.meta.url).href
 const BILLING_SUPPORT_EMAIL = 'billing@memrynote.com'
 
-type BillingPlan = 'free' | 'plus' | 'pro' | 'believer'
-type BillingStatusValue = 'inactive' | 'active' | 'past_due' | 'paused' | 'canceled'
-
-type BillingCadence = 'monthly' | 'annual' | 'lifetime'
-
-interface PlanChangePreview {
-  isUpgrade: boolean
-  effective: 'immediate' | 'next_billing_period'
-  immediateChargeAmount: string | null
-  recurringAmount: string
-  currencyCode: string
-  nextBilledAt: string | null
-}
-
 /** Paddle reports money in minor units; `"4349"` is $43.49. */
 function formatMinorUnits(amount: string): string {
   const value = Number(amount) / 100
   return Number.isFinite(value) ? `$${value.toFixed(2)}` : amount
-}
-
-function isPlanChangePreview(value: unknown): value is PlanChangePreview {
-  return Boolean(value && typeof value === 'object' && 'recurringAmount' in value)
-}
-
-interface BillingStatus {
-  plan: BillingPlan
-  cadence: BillingCadence | null
-  status: BillingStatusValue
-  email: string | null
-  limits: {
-    storageLimit: number
-    maxFileSize: number
-    maxVaults: number | null
-    versionHistoryDays: number
-  }
-  usage: {
-    storageUsed: number
-  }
-  expiresAt: number | null
-  canManageBilling: boolean
 }
 
 function AccountCommunityFooter() {
@@ -131,12 +101,6 @@ function formatBytes(bytes: number): string {
   return `${value >= 10 ? value.toFixed(0) : value.toFixed(1)} ${units[unitIndex]}`
 }
 
-function isBillingStatus(value: unknown): value is BillingStatus {
-  return Boolean(
-    value && typeof value === 'object' && 'plan' in value && 'status' in value && 'limits' in value
-  )
-}
-
 /**
  * Offers a monthly subscriber the yearly switch. First click prices it through Paddle's preview,
  * second confirms. Switching cadence must go through change-plan, not a fresh checkout: a second
@@ -146,11 +110,11 @@ function AnnualSwitchRow({
   plan,
   onSwitched
 }: {
-  plan: 'plus' | 'pro'
-  onSwitched: (billing: BillingStatus) => void
+  plan: PlanChangePlan
+  onSwitched: (billing: BillingStatusDto) => void
 }) {
   const { t } = useT('settings')
-  const [preview, setPreview] = useState<PlanChangePreview | null>(null)
+  const [preview, setPreview] = useState<PlanChangePreviewDto | null>(null)
   const [isPricing, setIsPricing] = useState(false)
   const [isSwitching, setIsSwitching] = useState(false)
   const failed = t('account.billing.annualSwitch.failed')
@@ -159,8 +123,8 @@ function AnnualSwitchRow({
     if (!preview) {
       setIsPricing(true)
       try {
-        const result = await window.api.account.previewPlanChange({ plan, cadence: 'annual' })
-        if (!isPlanChangePreview(result)) throw new Error(result.error ?? failed)
+        const result = await commands.accountPreviewPlanChange({ plan, cadence: 'annual' })
+        if (!('plan' in result)) throw new Error(result.error ?? failed)
         setPreview(result)
       } catch (error: unknown) {
         toast.error(extractErrorMessage(error, failed))
@@ -172,8 +136,8 @@ function AnnualSwitchRow({
 
     setIsSwitching(true)
     try {
-      const result = await window.api.account.changePlan({ plan, cadence: 'annual' })
-      if (!isBillingStatus(result)) throw new Error(result.error ?? failed)
+      const result = await commands.accountChangePlan({ plan, cadence: 'annual' })
+      if (!('plan' in result)) throw new Error(result.error ?? failed)
       onSwitched(result)
       setPreview(null)
       toast.success(t('account.billing.annualSwitch.success'))
@@ -231,7 +195,7 @@ function SyncUpgradeCard({
   onStartCheckout,
   onRefreshBilling
 }: {
-  billingStatus: BillingStatusValue | undefined
+  billingStatus: string | undefined
   isCheckoutStarting: boolean
   isBillingRefreshing: boolean
   onStartCheckout: () => void
@@ -331,7 +295,7 @@ export function AccountSettings() {
   const { linkingRequest, clearLinkingRequest, triggerSync } = useSync()
   const syncStatus = useSyncStatus()
   const [storage, setStorage] = useState<StorageBreakdownResult | null>(null)
-  const [billing, setBilling] = useState<BillingStatus | null>(null)
+  const [billing, setBilling] = useState<BillingStatusDto | null>(null)
   const [billingError, setBillingError] = useState<string | null>(null)
   const [activationPending, setActivationPending] = useState(false)
   const [showSignOutDialog, setShowSignOutDialog] = useState(false)
@@ -386,8 +350,8 @@ export function AccountSettings() {
     if (state.status !== 'authenticated') return
     setBillingError(null)
     try {
-      const result = await window.api.account.getBillingStatus()
-      if (isBillingStatus(result)) {
+      const result = await commands.accountGetBillingStatus()
+      if ('plan' in result) {
         setBilling(result)
         setActivationPending(result.plan !== 'free' && result.status !== 'active')
       } else {
@@ -420,7 +384,7 @@ export function AccountSettings() {
     setIsCheckoutStarting(true)
     setActivationPending(true)
     try {
-      const result = await window.api.account.startCheckout()
+      const result = await commands.accountStartCheckout(null)
       if (!result.success) {
         setActivationPending(false)
         toast.error(result.error ?? t('account.billing.toasts.checkoutFailed'))
@@ -439,8 +403,8 @@ export function AccountSettings() {
     setIsBillingRefreshing(true)
     setBillingError(null)
     try {
-      const result = await window.api.account.refreshBillingStatus()
-      if (!isBillingStatus(result)) {
+      const result = await commands.accountRefreshBillingStatus(null)
+      if (!('plan' in result)) {
         throw new Error(result.error ?? t('account.billing.toasts.refreshFailed'))
       }
       setBilling(result)
@@ -465,7 +429,7 @@ export function AccountSettings() {
   const handleOpenBillingPortal = useCallback(async () => {
     setIsPortalOpening(true)
     try {
-      const result = await window.api.account.openBillingPortal()
+      const result = await commands.accountOpenBillingPortal()
       if (result.reason === 'no-billing-customer') {
         toast.error(t('account.billing.toasts.portalNoCustomer'))
       } else if (!result.success) {

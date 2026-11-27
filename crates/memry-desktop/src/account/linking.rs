@@ -243,8 +243,9 @@ impl AccountService {
 
     /// `APPROVE_LINKING` (`linking-service.ts:653-766`): core verifies the scanning device's
     /// confirm tag before it reads the master key, then seals the key and the account's vault
-    /// list for it. An account that lists no vault sends the open vault's server id instead
-    /// (`collectVaultTransfer`). The pending code is gone either way.
+    /// list for it. An account that lists no vault sends the open vault's id instead, its server
+    /// id when bound and its own id otherwise (`collectVaultTransfer`, `vault-transfer.ts:43-47`).
+    /// The pending code is gone either way.
     pub async fn approve_linking(
         &self,
         session_id: &str,
@@ -252,13 +253,14 @@ impl AccountService {
     ) -> Result<(), AccountError> {
         self.pending_invite(session_id)?;
         let fallback = match open.map(|open| open.vault.clone()) {
-            Some(vault) => tokio::task::spawn_blocking(move || vault.server_vault_id())
-                .await
-                .ok()
-                .and_then(Result::ok)
-                .flatten()
-                .into_iter()
-                .collect(),
+            Some(vault) => {
+                tokio::task::spawn_blocking(move || super::binding::local_vault_uuid(&vault))
+                    .await
+                    .ok()
+                    .and_then(Result::ok)
+                    .into_iter()
+                    .collect()
+            }
             None => Vec::new(),
         };
         let approved = self.linking.approver.approve_with_fallback(fallback).await;
