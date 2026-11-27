@@ -49,11 +49,10 @@ fn without_block_ids(canonical: &str) -> String {
 /// `<details>` markup a quote, a callout or a heading now keeps as text, a
 /// callout, quote or math block indented under a list item, a quote body the
 /// writer's underscore spelling stops settling (desktop reads a flat quote,
-/// which the core does not build), a paragraph of only a code span of spaces,
-/// which ProseMirror keeps or drops by its neighbours. A
+/// which the core does not build). A
 /// fallback is lossless (every line stays text), so each must fall back, and
 /// the run it keeps literal is checked below.
-const KEPT_LITERAL: [&str; 17] = [
+const KEPT_LITERAL: [&str; 15] = [
     "comment: %% in a callout body and a quote",
     "callout: a body holding a table",
     "quote: a run opening on a table",
@@ -69,8 +68,6 @@ const KEPT_LITERAL: [&str; 17] = [
     "list item child: a structured quote",
     "list item child: a numbered item's callout",
     "writer: a code span with an underscore before touching runs",
-    "blank paragraph: a whitespace-only code span between paragraphs",
-    "blank paragraph: a whitespace-only code span after a paragraph",
 ];
 
 #[test]

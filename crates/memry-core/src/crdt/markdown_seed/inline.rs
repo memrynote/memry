@@ -18,6 +18,7 @@ use crate::domain::journal_rules::js_trim;
 use super::closers::Closers;
 use super::code_spans::keep_code_whitespace;
 use super::comment_nodes::has_token;
+use super::comments::encode;
 use super::hard_breaks::JOIN;
 use super::links::{destination_and_title, link};
 use super::media::{self, Media};
@@ -187,6 +188,14 @@ fn inline_token(
     if text[i] == '['
         && let Some((href, inner, end)) = link(closers, i)
     {
+        // A link with no label has no text to hold its address: it travels as
+        // a comment's token, a node once the blocks exist, as desktop's
+        // `maskEmptyLinks` does (`editor-schema/src/inline/empty-links.ts`).
+        // One whose address crosses a line break stays as it was.
+        if inner.iter().all(|c| matches!(c, ' ' | '\t')) && !text[i..end].contains(&'\n') {
+            push_text(nodes, &encode(&collect(&text[i..end])));
+            return Ok(Some(end));
+        }
         if has_token(&href) {
             return Err(Unsupported("comment in a link address"));
         }

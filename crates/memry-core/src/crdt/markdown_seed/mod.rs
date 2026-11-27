@@ -29,7 +29,8 @@
 //! marker lines, callouts, `$$` math blocks, quotes with a blank `>` line
 //! between paragraphs, Memry's `<details data-memry-toggle>` toggles, and
 //! inline bold, italic, strike, code and links, and Obsidian `%% … %%`
-//! comments as `htmlComment` nodes ([`comments`], [`comment_nodes`]). Wiki
+//! comments as `htmlComment` nodes ([`comments`], [`comment_nodes`]), and so
+//! is a link with no label (`[](u)`), written back as it was. Wiki
 //! links, tags and `{{…}}`
 //! tokens stay plain text, which is what desktop's converter does with them
 //! too, and so does a `<details>` block another app wrote.
