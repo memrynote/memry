@@ -20,7 +20,7 @@ pub(in crate::notes) fn is_large_file(size: u64, raw: &str) -> bool {
 /// without `.md`, as `path.basename(p, '.md')` reads it (a name that is only `.md` keeps it).
 /// Exact: a title that differs from a record's only in case or Unicode normalization is
 /// another title, as it is to Electron.
-pub(in crate::notes) fn place(path: &str) -> (Option<&str>, &str) {
+pub(crate) fn place(path: &str) -> (Option<&str>, &str) {
     let (folder, name) = match path.rsplit_once('/') {
         Some((folder, name)) => (Some(folder), name),
         None => (None, path),

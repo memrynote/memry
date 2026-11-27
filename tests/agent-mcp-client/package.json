@@ -1,0 +1,10 @@
+{
+  "name": "@memry/agent-mcp-client",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Drives the Rust vault MCP server with the official TypeScript MCP client (crates/memry-desktop/tests/agent_mcp_client.rs).",
+  "devDependencies": {
+    "@modelcontextprotocol/sdk": "1.32.2"
+  }
+}

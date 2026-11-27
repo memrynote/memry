@@ -105,6 +105,7 @@ use crate::markdown::shared::markdown_class::{MarkdownClassThresholds, classify_
 use crate::markdown::shared::writing_tools::{WritingFrontmatter, merge_writing_yaml};
 use crate::protocol::account::MAX_UPDATE_BYTES;
 use crate::protocol::crdt_envelope;
+use crate::storage::nested_tx;
 use crate::sync::body_debt;
 
 /// What a feed did. Anything but [`FeedOutcome::Fed`] left the document and the
@@ -321,7 +322,7 @@ fn author(
         return Ok(FeedOutcome::LargeFile);
     }
 
-    let tx = conn.unchecked_transaction().map_err(storage_failed)?;
+    let tx = nested_tx::begin(conn).map_err(storage_failed)?;
     // Under the writer: no edit lands between this read and the feed's commit.
     if let Write::Replace {
         compared_at: Some(compared_at),
@@ -460,7 +461,7 @@ fn collecting_sink() -> (UpdateSink, Arc<Mutex<Vec<Vec<u8>>>>) {
 /// No update can carry the file's text: the file owes its body, as a refused
 /// feed's does ([`refuse`]).
 fn too_large(
-    tx: rusqlite::Transaction<'_>,
+    tx: nested_tx::NestedTx<'_>,
     note_id: &str,
     now_ms: i64,
 ) -> Result<FeedOutcome, CrdtError> {
@@ -472,7 +473,7 @@ fn too_large(
 /// The file holds an edit the document did not take: it owes its body, so the
 /// write-back keeps the file rather than write the document over it.
 fn refuse(
-    tx: rusqlite::Transaction<'_>,
+    tx: nested_tx::NestedTx<'_>,
     note_id: &str,
     now_ms: i64,
     refusal: Refusal,

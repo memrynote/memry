@@ -1,9 +1,10 @@
 //! The vault's identity: one UUID v4 in `meta.vault.id`, minted once, read on every open.
 //!
-//! It is stamped into synced records (a canvas carries it as `vaultId`), so it must not
-//! depend on where the folder lives: a path-derived id changed when the folder was renamed or
-//! moved. Desktop's Electron build keeps the same kind of per-database id
-//! (`getOrCreateVaultUuid`), so canvases filter the same way on both.
+//! An unbound vault stamps it into synced records (a canvas carries it as `vaultId`), so it
+//! must not depend on where the folder lives: a path-derived id changed when the folder was
+//! renamed or moved. Once the vault is bound to a server vault, records state the server id
+//! instead and list under either (`sync::server_vault::RecordVault`, #5505), as Electron's adopted
+//! `getOrCreateVaultUuid` does.
 //!
 //! **Never overwritten.** A present value is the id, whatever it holds; an empty or
 //! malformed one is an error, not a reason to mint over it (a second id would orphan every

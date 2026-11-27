@@ -77,6 +77,10 @@ class SettingsHandler implements SyncItemHandler<SettingsSyncPayload> {
     return 'applied'
   }
 
+  // No client issues a settings delete: desktop's `enqueueDelete` queues
+  // nothing and the Rust core has no settings delete. Applying one would wipe
+  // every preference here, so it is skipped and the singleton stays live
+  // (#5428).
   applyDelete(_ctx: ApplyContext, _itemId: string, _clock?: VectorClock): 'applied' | 'skipped' {
     return 'skipped'
   }

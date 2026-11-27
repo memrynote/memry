@@ -16,11 +16,11 @@
 //! A day that has a file already, by its row or at its path, is never written over: the create
 //! answers it as a read does. Where the file's text comes from:
 //! - a new day: the caller's, which seeds the empty body;
-//! - a deleted day opened again: the caller's, which replaces the body the day was deleted
-//!   with, kept as a version first (`ExternalFeed::feed_app_edit`), so file and body agree. A
-//!   body that does not take it fails the create, which deletes the day again. Known gap: a
-//!   crash after the revive and before the feed leaves a live day holding the deleted body and
-//!   no file, and the next create writes that body to the file, as for a synced day;
+//! - a deleted day opened again: the caller's, which seeds the new body the revive starts
+//!   (`journal::revive_in`, #5351), so file and body agree; the delete kept the old body as a
+//!   version. A body that does not take it fails the create, which deletes the day again. A
+//!   crash after the revive and before the feed leaves a live day with an empty body and no
+//!   file, whose next create writes the caller's text;
 //! - a live day with no file (one another device made): its own body, which the document
 //!   holds; the caller's text goes only into an empty one. A body that is not here yet or that
 //!   the file would not hold whole fails the create, and nothing is written.
@@ -31,8 +31,9 @@
 //! the next create finishes; between 3 and 4, a file whose text seeds the empty body at the
 //! next open walk.
 //!
-//! **Delete** (`journal:deleteEntry`): the file first, for good when the day's document took
-//! its bytes and to the trash otherwise (13f's delete), then the tombstone, then the row. A
+//! **Delete** (`journal:deleteEntry`): the body kept as a version, the file, for good when the
+//! day's document took its bytes and to the trash otherwise (13f's delete), then the
+//! tombstone, then the row. A
 //! file at the day's path that no row names (one the identity left unclaimed) is the one the
 //! page shows: it goes to the trash, told to the own-write record first.
 //!
@@ -53,7 +54,7 @@ use memry_core::markdown::frontmatter::{
 use memry_core::markdown::shared::writing_tools::merge_writing_yaml;
 use serde_json::{Map, Value};
 
-use super::{JournalEntryView, SCOPE, day_path, entry, is_reserved_day_key, view_of};
+use super::{JournalEntryView, SCOPE, day_path, is_reserved_day_key, view_of};
 use crate::journal::folder_follow::{Follow, follow_moved_journal};
 use crate::locks::Locks;
 use crate::notes::create::{Seed, remove_file, remove_row};
@@ -145,7 +146,7 @@ impl NotesService {
         let mut lane = rows.lane_of(session)?;
         let existing = |lane| {
             drop(lane);
-            answer(open, &journal, date)
+            self.answer(open, &journal, date)
         };
         let rel = match journal.stamp(date)? {
             Some(DayStamp {
@@ -345,8 +346,11 @@ impl NotesService {
             Some(row) => Some(row.path.clone()),
             None => day_path(&open.path, date).ok(),
         };
-        if let Some(rel) = rel {
-            Locks::of(open).refuse_path(&rel)?;
+        if let Some(rel) = &rel {
+            Locks::of(open).refuse_path(rel)?;
+        }
+        if let (Some(stamp), Some(rel)) = (&stamp, &rel) {
+            self.keep_deleted_text(open, &journal, date, stamp, rel)?;
         }
         let trashed = match &row {
             // Electron unlinks a day's file for good; one holding text the day never took goes
@@ -370,6 +374,54 @@ impl NotesService {
             });
         }
         Ok(true)
+    }
+
+    /// Keeps the day's body as a version before the delete. The body does not outlive the
+    /// delete: a day opened again starts a new one (`journal::revive_in`, #5351), so this
+    /// version is what a create over the deleted day keeps of the old text. A body that is not
+    /// here (not pulled) or whose text is in the file the delete trashes (`FileAhead`) keeps
+    /// none.
+    fn keep_deleted_text(
+        &self,
+        open: &OpenVault,
+        journal: &Journal,
+        date: &str,
+        stamp: &DayStamp,
+        rel: &str,
+    ) -> Result<(), NotesError> {
+        let settings = open.vault.app_settings(self.store.clone()).ok();
+        let embeds = Resolved::of_markdown(&open.path, &open.vault.note_files(), "", rel);
+        let write_back = open.vault.write_back();
+        let read = write_back.body(
+            &converter_for(settings.as_ref()),
+            &stamp.id,
+            rel,
+            None,
+            &embeds,
+        )?;
+        let body = match read {
+            BodyRead::Body(body) => body,
+            BodyRead::NoNote | BodyRead::FileAhead | BodyRead::BodyNotPulled => return Ok(()),
+            BodyRead::NotRepresentable(_) | BodyRead::Failed(_) => {
+                tracing::warn!(
+                    scope = SCOPE,
+                    note_id = stamp.id,
+                    "a deleted day's body did not serialize: no version kept"
+                );
+                return Ok(());
+            }
+        };
+        if body.markdown.trim().is_empty() {
+            return Ok(());
+        }
+        let mut properties = journal.day_properties(&stamp.id)?;
+        properties
+            .retain(|name, value| !is_reserved_day_key(name) && !is_reserved_key(name, value));
+        let mut frontmatter = day_frontmatter(date, &stamp.tags, &properties);
+        merge_writing_yaml(&mut frontmatter, &body.writing);
+        let content = day_file(&frontmatter, &body.markdown)?;
+        write_back.keep_replaced(&stamp.id, &content, &body.markdown)?;
+        Ok(())
     }
 
     /// Moves the file at the day's path to the trash when no row names it; `false` when there
@@ -413,7 +465,7 @@ fn text_of(
         &converter_for(settings.as_ref()),
         &opened.id,
         rel,
-        "",
+        None,
         &embeds,
     )?;
     let why = match read {
@@ -428,13 +480,18 @@ fn text_of(
     Err(NotesError::DayTextUnwritable(why))
 }
 
-/// The day as a read of it answers, for a create that found it made.
-pub(super) fn answer(
-    open: &OpenVault,
-    journal: &Journal,
-    date: &str,
-) -> Result<JournalEntryView, NotesError> {
-    entry(open, journal, date)?.ok_or_else(|| NotesError::NotFound(date.to_owned()))
+impl NotesService {
+    /// The day as the page reads it ([`NotesService::day_entry`]), for a create that found it
+    /// made and an update: the record's property values over the file's.
+    pub(super) fn answer(
+        &self,
+        open: &OpenVault,
+        journal: &Journal,
+        date: &str,
+    ) -> Result<JournalEntryView, NotesError> {
+        self.day_entry(open, journal, date)?
+            .ok_or_else(|| NotesError::NotFound(date.to_owned()))
+    }
 }
 
 /// Days are written in order by date: a day's record id is known only once it is opened.

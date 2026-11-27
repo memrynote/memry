@@ -1,4 +1,7 @@
 {
+  "wikiLink": {
+    "openFailed": "Não foi possível abrir este link"
+  },
   "portalBlock": {
     "copyFailed": "Não foi possível copiar o portal",
     "hiddenCount": "{count} oculto(s)",
@@ -956,6 +959,8 @@
     "componentsVaultSwitcher": {
       "noVaultsYet": "Ainda não há cofres",
       "openVault": "Abrir cofre",
+      "createVault": "Criar cofre",
+      "openFolderAsVault": "Abrir pasta como cofre",
       "settings": "Configurações",
       "remove": "Remover “",
       "removeVaultTitle": "Remover “{name}” da lista?",

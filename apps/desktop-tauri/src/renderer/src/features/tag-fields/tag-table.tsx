@@ -1,3 +1,4 @@
+import { folderViewService } from '@/services/folder-view-service'
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -264,7 +265,7 @@ export function MentionedInSection({
   const { data } = useQuery({
     queryKey: ['tags', 'mentioned-in', tag.key],
     queryFn: () =>
-      window.api.folderView.listWithProperties({
+      folderViewService.listWithProperties({
         scope: { kind: 'tag', tag: tag.key },
         rows: 'mentions',
         limit: 200,

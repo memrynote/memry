@@ -167,6 +167,7 @@ mod tests {
 
     #[test]
     fn a_local_edit_composes_with_its_outbox_row_in_one_transaction() {
+        use crate::storage::nested_tx;
         use crate::sync::outbox;
 
         let (db, _dir) = open("repo-local-edit-compose");
@@ -176,7 +177,7 @@ mod tests {
             // The composition follow-up: the merged payload and the outbox row
             // that publishes it commit together, or neither does (FR-030,
             // data-model §A.2).
-            let tx = conn.unchecked_transaction().expect("begin");
+            let tx = nested_tx::begin(conn).expect("begin");
             let pushed = sync_items::apply_local_edit_in(
                 &tx,
                 "note",

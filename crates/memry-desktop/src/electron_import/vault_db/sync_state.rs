@@ -155,10 +155,10 @@ pub const SYNC_STATE_KEYS: &[SyncStateKey] = &[
         Exact("noteBodyLegacySweep"),
         "core pulls per document and runs no legacy note body sweep",
     ),
-    convert(
+    skip(
         Exact("packsAppliedThroughCursor"),
-        packs_applied_through,
-        "Step 17 pack_bootstrap applied-through cursor",
+        "the core keeps no pack watermark since #5339: a vault holding a cursor is past its \
+         first sync and runs no pack bootstrap",
     ),
     skip(
         Exact("packSeedSettlePending"),
@@ -289,10 +289,6 @@ pub fn mismatches(source: &Connection, writer: &ImportWriter) -> Result<Vec<Stri
             planned.cursor_skip_repair != staged.cursor_skip_repair,
         ),
         ("pause", planned.paused != staged.paused),
-        (
-            "pack watermark",
-            planned.packs_applied_through != staged.packs_applied_through,
-        ),
         ("quarantine", planned.quarantined != staged.quarantined),
         ("refused items", planned.refused != staged.refused),
     ];
@@ -338,17 +334,6 @@ fn cursor_skip_repair(plan: &mut SyncStatePlan, value: &str) -> Carried {
     }
     plan.state.cursor_skip_repair = Some(value.to_owned());
     Carried::Written
-}
-
-/// A missing or unreadable watermark reads as 0 in both apps.
-fn packs_applied_through(plan: &mut SyncStatePlan, value: &str) -> Carried {
-    match value.parse::<i64>() {
-        Ok(watermark) => {
-            plan.state.packs_applied_through = Some(watermark);
-            Carried::Written
-        }
-        Err(_) => Carried::Dropped("unreadablePacksAppliedThroughCursor"),
-    }
 }
 
 #[derive(Deserialize)]

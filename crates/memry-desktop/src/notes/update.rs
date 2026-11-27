@@ -211,11 +211,23 @@ struct Edit {
     frontmatter: Option<Map<String, Value>>,
     keep_replaced: bool,
     editor: Option<String>,
+    ignore_inline_tags: bool,
 }
 
 impl NotesService {
     pub fn update(&self, open: &OpenVault, input: NoteUpdateInput) -> Result<Updated, NotesError> {
         self.update_checked(open, input, &mut || {})
+    }
+
+    /// [`Self::update`] where the body's `#tags` never touch the header tags
+    /// (`updateNoteCommand({ ignoreInlineTags: true })`): a Readwise highlight's `#tag` stays
+    /// out of the note's `tags`, and a removed one never strips a tag the user set (D4).
+    pub fn update_ignoring_inline_tags(
+        &self,
+        open: &OpenVault,
+        input: NoteUpdateInput,
+    ) -> Result<Updated, NotesError> {
+        self.update_with(open, input, true, &mut || {})
     }
 
     /// [`Self::update`] with a hook that runs after the new file is written aside and before
@@ -227,7 +239,18 @@ impl NotesService {
         input: NoteUpdateInput,
         between: &mut dyn FnMut(),
     ) -> Result<Updated, NotesError> {
+        self.update_with(open, input, false, between)
+    }
+
+    fn update_with(
+        &self,
+        open: &OpenVault,
+        input: NoteUpdateInput,
+        ignore_inline_tags: bool,
+        between: &mut dyn FnMut(),
+    ) -> Result<Updated, NotesError> {
         let edit = Edit {
+            ignore_inline_tags,
             header_tags: input
                 .header_tags
                 .map(HeaderTagEditInput::checked)
@@ -425,6 +448,7 @@ fn next_text(
     let update = Update {
         header_tags: edit.header_tags.as_ref(),
         content: edit.content.as_deref(),
+        ignore_inline_tags: edit.ignore_inline_tags,
         ..Update::default()
     };
     let tags = header_tags::next(&existing, &update, with_fields);

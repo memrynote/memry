@@ -1,0 +1,10 @@
+---
+type: guide
+tags: [b, 5, a]
+bg-color: red
+bg-pattern: dots
+icon-color: x
+bg-color-dark: y
+status: open
+---
+No heading here, #a and #c.

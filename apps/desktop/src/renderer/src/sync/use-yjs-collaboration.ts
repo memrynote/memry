@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useSyncExternalStore, type RefObject } from 'react'
 import * as Y from 'yjs'
-import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
+import { CRDT_FRAGMENT_NAME, type CrdtRemoteBodyWait } from '@memry/contracts/ipc-crdt'
 import { YjsIpcProvider } from './yjs-ipc-provider'
 import { createYjsDocRegistry, type DocEntryHandle } from './yjs-doc-registry'
 import { createLogger } from '@/lib/logger'
@@ -33,6 +33,12 @@ export interface UseYjsCollaborationReturn extends YjsCollaborationState {
    * the note is also open in a tab), so exactly one editor runs the effects.
    */
   isSideEffectOwner: boolean
+  /**
+   * While not ready: what the binding waits on (`YjsIpcProvider.remoteWait`,
+   * #5290). The editor shows the vault file read-only while it is `stuck` or
+   * the device is offline.
+   */
+  remoteWait: CrdtRemoteBodyWait | null
 }
 
 /**
@@ -46,13 +52,15 @@ interface EntrySnapshot {
   doc: Y.Doc | null
   provider: YjsIpcProvider | null
   isReady: boolean
+  remoteWait: CrdtRemoteBodyWait | null
 }
 
 const CONNECTING_SNAPSHOT: EntrySnapshot = {
   fragment: null,
   doc: null,
   provider: null,
-  isReady: false
+  isReady: false,
+  remoteWait: null
 }
 
 interface DocEntry extends DocEntryHandle {
@@ -109,7 +117,10 @@ const docRegistry = createYjsDocRegistry<DocEntry>((slotKey, notifyChanged) => {
     noteId,
     doc,
     vaultPath,
-    canRebind: (readyVaultPath) => rebindGate(readyVaultPath)
+    canRebind: (readyVaultPath) => rebindGate(readyVaultPath),
+    onRemoteWait: (remoteWait) => {
+      if (!destroyed && !snapshot.isReady) publish({ ...snapshot, remoteWait })
+    }
   })
 
   const listeners = new Set<() => void>()
@@ -128,7 +139,7 @@ const docRegistry = createYjsDocRegistry<DocEntry>((slotKey, notifyChanged) => {
     .then(() => {
       if (destroyed) return
       const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
-      publish({ fragment, doc, provider, isReady: true })
+      publish({ fragment, doc, provider, isReady: true, remoteWait: null })
       log.debug('Collaboration ready', { noteId })
     })
     .catch((err: unknown) => {
@@ -137,7 +148,7 @@ const docRegistry = createYjsDocRegistry<DocEntry>((slotKey, notifyChanged) => {
       provider.destroy()
       doc.destroy()
       isRemoteUpdateRef.current = false
-      publish({ fragment: null, doc: null, provider: null, isReady: true })
+      publish({ fragment: null, doc: null, provider: null, isReady: true, remoteWait: null })
     })
 
   return {
@@ -323,7 +334,16 @@ export function useYjsCollaboration(
           isReady: activeState.isReady
         }
 
-  return { ...state, isRemoteUpdateRef: activeState.isRemoteUpdateRef, isSideEffectOwner }
+  const remoteWait =
+    noteId && enabled && activeState.noteId === noteId && !activeState.isReady
+      ? activeState.remoteWait
+      : null
+  return {
+    ...state,
+    isRemoteUpdateRef: activeState.isRemoteUpdateRef,
+    isSideEffectOwner,
+    remoteWait
+  }
 }
 
 /**

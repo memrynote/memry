@@ -22,6 +22,16 @@ enum PresentingWindow {
         return nil
     }
 
+    /// Whether anything is presented over `window`: a sheet, the search
+    /// palette, an alert or a menu, from its root controller or any child.
+    static func isPresenting(over window: UIWindow) -> Bool {
+        window.rootViewController.map(presents) == true
+    }
+
+    private static func presents(_ controller: UIViewController) -> Bool {
+        controller.presentedViewController != nil || controller.children.contains(where: presents)
+    }
+
     /// The keyboard's end frame in `window`'s coordinates, or `nil` when it
     /// belongs to another screen's keyboard. A keyboard notification names
     /// its screen as the object and gives the frame in that screen's

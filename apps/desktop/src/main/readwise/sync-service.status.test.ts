@@ -75,8 +75,7 @@ vi.mock('../journal/runtime-effects', () => ({
   enqueueJournalCreate: vi.fn(),
   enqueueJournalUpdate: vi.fn(),
   enqueueJournalDelete: vi.fn(),
-  initializeJournalCrdt: vi.fn(async () => {}),
-  feedJournalBodyToCrdt: vi.fn(async () => {})
+  initializeJournalCrdt: vi.fn(async () => {})
 }))
 vi.mock('../lib/window-broadcast', () => ({ broadcastToAllWindows: vi.fn() }))
 vi.mock('../journal/update-entry', async (importOriginal) => {

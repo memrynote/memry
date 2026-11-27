@@ -260,7 +260,9 @@ vi.mock('@/components/ui/slider', () => ({
 vi.mock('@/components/ui/dialog', () => ({
   Dialog: ({ children, open }: { children: React.ReactNode; open?: boolean }) =>
     open ? <div>{children}</div> : null,
-  DialogContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>
+  DialogContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  DialogTitle: ({ children }: { children: React.ReactNode }) => <h2>{children}</h2>,
+  DialogDescription: ({ children }: { children: React.ReactNode }) => <p>{children}</p>
 }))
 
 vi.mock('@/components/ui/alert-dialog', () => ({
@@ -653,8 +655,10 @@ describe('settings section coverage', () => {
 
     expect(screen.getByTestId('account-stats-strip')).toHaveTextContent('account.v2.stats.plan')
 
+    // Free plan: Link new device explains the plan instead of showing a code.
     fireEvent.click(screen.getByRole('button', { name: 'devices.linkNew' }))
-    expect(screen.getByText('qr linking')).toBeInTheDocument()
+    expect(screen.getByText('devices.linkNeedsPlan.title')).toBeInTheDocument()
+    expect(screen.queryByText('qr linking')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByText('approve link'))
     expect(mocks.syncContext.clearLinkingRequest).toHaveBeenCalled()
@@ -697,6 +701,10 @@ describe('settings section coverage', () => {
     render(<AccountSettings />)
     expect((await screen.findAllByText('account.billing.plans.pro')).length).toBeGreaterThan(0)
     expect(screen.queryByText('account.sync.upsell.title')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'devices.linkNew' }))
+    expect(screen.getByText('qr linking')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('qr linking'))
 
     // The account section now has a second switch (attachment auto-download);
     // the sync toggle is the first one in the group.

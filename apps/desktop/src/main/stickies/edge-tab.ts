@@ -89,7 +89,12 @@ function createTab(): void {
     show: false
   })
   window.setAlwaysOnTop(true, 'floating')
-  window.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
+  // Without skipTransformProcessType, visibleOnFullScreen makes Electron call
+  // app.dock.hide() on macOS, and the Dock icon never comes back.
+  window.setVisibleOnAllWorkspaces(true, {
+    visibleOnFullScreen: true,
+    skipTransformProcessType: true
+  })
 
   const view = new WebContentsView({
     webPreferences: {

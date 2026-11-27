@@ -13,14 +13,17 @@ import {
 import { getCanonicalJournalByDate } from '@memry/domain-notes'
 import { getJournalEntryByDate } from '../notes/store'
 import { syncJournalCache } from '../vault/journal-cache-sync'
-import { writeNoteInOrder } from '../vault/note-write'
+import { baselineAfterWrite } from '../sync/writeback-baseline'
+import { takeWritebackTurn } from '../sync/crdt-writeback'
+import { resolveJournalEntryId } from './create-entry'
 
 /**
- * Property writes of one journal entry run one at a time, so a patch reads
- * the file after every earlier write instead of overwriting it.
+ * Property writes of one journal entry take its write-back turn, so a patch
+ * reads the file after every earlier write instead of overwriting it, and a
+ * pass never writes back the properties it read before this write (#5472).
  */
 const queueJournalWrite = <T>(date: string, write: () => Promise<T>): Promise<T> =>
-  writeNoteInOrder(`journal:${date}`, write)
+  takeWritebackTurn(resolveJournalEntryId(date), write)
 
 /** Replaces a journal entry's properties with `properties`. */
 export function updateJournalProperties(
@@ -52,7 +55,7 @@ async function writeProperties(date: string, properties: Record<string, unknown>
   }
 
   // Write entry with updated properties (preserving content and tags)
-  const { entry, fileContent, frontmatter } = await writeJournalEntryWithContent(
+  const { entry, fileContent, frontmatter, previousFile } = await writeJournalEntryWithContent(
     date,
     existing.content,
     existing.tags,
@@ -73,6 +76,7 @@ async function writeProperties(date: string, properties: Record<string, unknown>
       id: noteId,
       path: journalPath,
       fileContent,
+      contentHash: baselineAfterWrite(db, noteId, previousFile, fileContent),
       frontmatter,
       parsedContent: entry.content,
       title: entry.date,

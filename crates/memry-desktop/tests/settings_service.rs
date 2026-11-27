@@ -43,14 +43,14 @@ impl SecureStore for MemoryStore {
     }
 }
 
-struct World {
+pub(crate) struct World {
     dir: tempfile::TempDir,
     session: Session,
-    service: SettingsService,
+    pub(crate) service: SettingsService,
     config: Arc<AppConfig>,
 }
 
-fn world() -> World {
+pub(crate) fn world() -> World {
     let dir = tempfile::tempdir().expect("tmp");
     let app = dir.path().join("app");
     std::fs::create_dir_all(&app).expect("app dir");
@@ -72,7 +72,7 @@ impl World {
         path
     }
 
-    fn open(&self, name: &str) -> memry_desktop::session::OpenVault {
+    pub(crate) fn open(&self, name: &str) -> memry_desktop::session::OpenVault {
         self.session
             .open(&self.vault(name), OpenSource::Select)
             .expect("open")
@@ -80,7 +80,7 @@ impl World {
     }
 }
 
-fn patch(value: Value) -> Map<String, Value> {
+pub(crate) fn patch(value: Value) -> Map<String, Value> {
     value.as_object().cloned().expect("object")
 }
 

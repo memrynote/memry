@@ -41,6 +41,35 @@ final class DateMentionChip: NSObject {
     }
 }
 
+/// A date chip to rewrite, found in its block as the core holds it, so
+/// another pane's edits since never move the write (#4706, #4762): the
+/// chip carrying `anchorId`, or for a chip written before anchors existed,
+/// the one at the pane's place for it, `place`. A surface that reads no
+/// block (the journal) holds only this pane's text, and `place` is it.
+struct DateChipAnchor: Sendable, Equatable {
+    let anchorId: String
+    /// The chip's U+FFFC in the pane's text, as an anchor that replaces it.
+    let place: NodeAnchor
+
+    /// The chip's UTF-16 location in `BlockText.shown(runs)`, or `nil` when
+    /// the block holds no such chip.
+    func location(in runs: [InlineRun]?) -> Int? {
+        guard let runs else { return place.location }
+        var at = 0
+        var unanchored: Set<Int> = []
+        for segment in BlockText.segments(runs) {
+            if segment.isNode, segment.run.marks.contains("dateMention") {
+                let id = segment.run.markAttrs["dateMention.anchorId"] ?? ""
+                if id == anchorId { return at }
+                if id.isEmpty { unanchored.insert(at) }
+            }
+            at += segment.isNode ? 1 : (segment.text as NSString).length
+        }
+        guard let placed = place.location(in: BlockText.shown(runs)), unanchored.contains(placed) else { return nil }
+        return placed
+    }
+}
+
 /// A date chip whose sheet is open.
 struct DateMentionEditRequest: Identifiable, Equatable {
     let blockId: String

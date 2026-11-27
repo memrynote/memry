@@ -5,7 +5,7 @@
 use rusqlite::{Connection, params};
 use serde_json::{Value, json};
 
-use super::{ITEM_TYPE, delete, list, sync_id, upsert};
+use super::{ITEM_TYPE, delete, insert_if_absent_in, list, sync_id, upsert};
 use crate::domain::desktop_records::testing::{
     DEVICE, NOW, clock, open, payload, pull, queued, remote, remote_delete,
 };
@@ -280,4 +280,29 @@ fn a_remote_delete_removes_the_folder_unless_the_local_clock_is_after_it() {
         Ok(())
     })
     .expect("delete");
+}
+
+/// #5535: a vault that downloaded the account vault binds the server id over its own local id,
+/// and Electron lists, renames and deletes only folders stating its vault
+/// (`folder-store.ts:126`, `:307`, `reconcile.ts:621`), so a folder made here states the server id.
+#[test]
+fn a_folder_made_on_a_downloaded_vault_states_the_server_id() {
+    let (db, _dir) = open("canvas-folder-server-vault");
+    db.call_blocking(|conn| {
+        crate::sync::server_vault::bind(conn, "server-vault")?;
+        upsert(conn, VAULT, "Work", None, DEVICE, NOW)?;
+        let tx = crate::storage::nested_tx::begin(conn).expect("tx");
+        assert!(insert_if_absent_in(&tx, VAULT, "Home", false, DEVICE, NOW)?);
+        tx.commit().expect("commit");
+        for id in ["cvf_work", "cvf_home"] {
+            assert_eq!(
+                payload(conn, ITEM_TYPE, id)["vaultId"],
+                json!("server-vault")
+            );
+            assert_eq!(row(conn, id).0.as_deref(), Some("server-vault"));
+        }
+        assert_eq!(paths(conn), ["Home", "Work"]);
+        Ok(())
+    })
+    .expect("bound folder");
 }

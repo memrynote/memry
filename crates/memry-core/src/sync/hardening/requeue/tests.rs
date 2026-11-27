@@ -1,6 +1,7 @@
 use rusqlite::Connection;
 use serde_json::{Value, json};
 
+use crate::storage::nested_tx;
 use crate::storage::repositories::sync_items::{self, InboundRecord};
 use crate::storage::{open_data, test_support::temp_dir};
 use crate::sync::apply::apply_inbound_on;
@@ -137,6 +138,8 @@ fn an_apply_that_is_not_concurrent_queues_nothing() {
     .expect("ordered applies");
 }
 
+/// The `create` case passes without the queued-row check too (the requeue's upsert keeps a
+/// queued `create` as `create`): it guards a future change of that collapse.
 #[test]
 fn a_merge_keeps_a_queued_create_or_delete_as_it_is() {
     let dir = temp_dir("requeue-queued");
@@ -152,7 +155,7 @@ fn a_merge_keeps_a_queued_create_or_delete_as_it_is() {
                 1,
                 Some("a"),
             )?;
-            let tx = conn.unchecked_transaction().expect("begin");
+            let tx = nested_tx::begin(conn).expect("begin");
             outbox::enqueue(&tx, &queued_op(item_type, &format!("{item_type}-1")), 1)?;
             tx.commit().expect("commit");
             let op = queued(conn, item_type)[0].0.clone();

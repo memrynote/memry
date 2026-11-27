@@ -9,7 +9,8 @@ use memry_core::domain::notes::new_files::NewFileNote;
 use memry_core::markdown::frontmatter::split_frontmatter_block;
 
 use super::{
-    NotesIdentity, SCOPE, created_ms, electron_db_beside, is_large_file, moving, place, properties,
+    NotesIdentity, SCOPE, aliases, created_ms, electron_db_beside, is_large_file, moving, place,
+    properties,
 };
 use crate::vault::consumer::identity::{Candidate, IdentityCtx, IdentityError, NewFile};
 use crate::vault::file_types::FileType;
@@ -94,6 +95,9 @@ pub(super) fn adopt(
         .map(|((at, text), _)| (at, files[at].id, text))
         .collect();
     let found: Vec<(&str, &NoteFile)> = made.iter().map(|(_, id, text)| (*id, *text)).collect();
+    for (id, text) in &found {
+        aliases::found(&writer, id, text, None);
+    }
     // A record whose properties did not go in is asked about alone, which adopts it and
     // fills them again.
     if let Err(error) = properties::found_all(&writer, ctx, identity.store.clone(), &found) {

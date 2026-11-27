@@ -68,9 +68,9 @@ describe('extractInlineTags', () => {
       expect(extractInlineTags(blocks)).toEqual(['my-tag', 'my_tag'])
     })
 
-    it('skips tags starting with a digit, as the indexer does', () => {
-      const blocks = [textBlock([textItem('#123invalid and #valid #2024 #a2024')])]
-      expect(extractInlineTags(blocks)).toEqual(['valid', 'a2024'])
+    it('skips a tag without a letter, as the indexer does', () => {
+      const blocks = [textBlock([textItem('#123abc and #퓨리 #2024 #a2024')])]
+      expect(extractInlineTags(blocks)).toEqual(['123abc', '퓨리', 'a2024'])
     })
 
     it('reads an existing chip the way its saved #tag text indexes', () => {

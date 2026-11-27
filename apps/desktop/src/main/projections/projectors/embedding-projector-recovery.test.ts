@@ -187,7 +187,8 @@ describe('embedding projector durable recovery (real SQLite and vault files)', (
     expect(state()).toEqual({
       noteId: 'note',
       inputVersion: EMBEDDING_INPUT_VERSION,
-      chunkCount: 0
+      chunkCount: 0,
+      inputHash: expect.any(String)
     })
     expect(headVector()).toBe(Buffer.from(vector(0).buffer).toString('hex').toUpperCase())
     expect(inference.generate).toHaveBeenCalledTimes(2)
@@ -196,6 +197,41 @@ describe('embedding projector durable recovery (real SQLite and vault files)', (
     await current.project(upsert('A newer live edit after the vault has finished opening.'))
     expect(headVector()).toBe(Buffer.from(vector(1).buffer).toString('hex').toUpperCase())
     expect(state()?.inputVersion).toBe(EMBEDDING_INPUT_VERSION)
+  })
+
+  it('does not embed a note again when an event carries the text its vectors came from', async () => {
+    const current = projector()
+    await current.project(upsert(OLD_BODY))
+    const embedded = { state: state(), vectors: vectors() }
+    const firstCalls = inference.generate.mock.calls.length
+    inference.generate.mockClear()
+
+    await current.project(upsert(OLD_BODY))
+    indexing = true
+    await current.project(upsert(OLD_BODY))
+    indexing = false
+    await current.project({ type: 'note.text-extracted', noteId: 'note' })
+    await current.reconcile()
+    const republished = {
+      calls: inference.generate.mock.calls.length,
+      state: state(),
+      vectors: vectors()
+    }
+
+    // A row an older build wrote has no hash: embedded once more, then current.
+    getRawIndexDatabase().prepare('UPDATE note_embedding_state SET input_hash = NULL').run()
+    await current.project(upsert(OLD_BODY))
+    const olderBuildCalls = inference.generate.mock.calls.length
+    await current.project(upsert(OLD_BODY))
+    const afterOlderBuild = inference.generate.mock.calls.length
+
+    await current.project(upsert(NEW_BODY))
+
+    expect(firstCalls).toBeGreaterThan(2)
+    expect(republished).toEqual({ calls: 0, ...embedded })
+    expect(olderBuildCalls).toBe(firstCalls)
+    expect(afterOlderBuild).toBe(firstCalls)
+    expect(inference.generate.mock.calls.length).toBe(firstCalls + 2)
   })
 
   it('preserves old vectors and chunk ownership through a disabled edit and recovers after reopening SQLite', async () => {
@@ -234,7 +270,8 @@ describe('embedding projector durable recovery (real SQLite and vault files)', (
     expect(state()).toEqual({
       noteId: 'note',
       inputVersion: EMBEDDING_INPUT_VERSION,
-      chunkCount: 0
+      chunkCount: 0,
+      inputHash: expect.any(String)
     })
     expect(headVector()).toBe(Buffer.from(vector(1).buffer).toString('hex').toUpperCase())
     expect(vectors().chunks).toEqual([])
@@ -258,7 +295,8 @@ describe('embedding projector durable recovery (real SQLite and vault files)', (
     expect(state()).toEqual({
       noteId: 'note',
       inputVersion: EMBEDDING_INPUT_VERSION,
-      chunkCount: 0
+      chunkCount: 0,
+      inputHash: expect.any(String)
     })
     expect(headVector()).toBe(Buffer.from(vector(1).buffer).toString('hex').toUpperCase())
   })
