@@ -417,11 +417,32 @@ mod tests {
         );
     }
 
+    /// The link's text, a soft break as the `\n` it is.
+    fn flat(content: &[SeedInline]) -> String {
+        content
+            .iter()
+            .map(|piece| match piece {
+                SeedInline::Text { text, .. } => text.as_str(),
+                SeedInline::HardBreak { .. } => "\n",
+                _ => "<node>",
+            })
+            .collect()
+    }
+
     #[test]
-    fn an_empty_label_link_across_lines_stays_literal_text() {
-        let plan = super::super::plan("[](u\nv)");
-        assert_eq!(plan.fallbacks.len(), 1);
-        assert_eq!(plan.blocks.len(), 2);
+    fn an_empty_label_link_across_lines_is_the_text_it_was() {
+        for source in ["[](u\nv)", "[ ](u\nv \"t\")", "[](<1\nv>)"] {
+            let plan = super::super::plan(source);
+            assert!(
+                plan.fallbacks.is_empty(),
+                "{source:?}: {:?}",
+                plan.fallbacks
+            );
+            assert_eq!(plan.blocks.len(), 1, "{source:?}");
+            assert_eq!(flat(&plan.blocks[0].content), source, "{source:?}");
+        }
+        let plan = super::super::plan("a [](u\nv) b");
+        assert_eq!(flat(&plan.blocks[0].content), "a [](u\nv) b");
     }
 
     /// A paste is planned on the main thread, so a long run of openers no

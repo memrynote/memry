@@ -1645,6 +1645,23 @@ const htmlCommentCases: RoundtripCase[] = [
     name: 'empty-label link in a table cell',
     markdown: '| a     |\n| ----- |\n| [](u) |'
   },
+  // A link with no label whose address crosses a line stays the text it was.
+  { name: 'empty-label link across lines', markdown: '[](u\nv)', canonical: '[\\](u\nv)' },
+  {
+    name: 'empty-label link across lines, with a title',
+    markdown: '[](u\nv "t")',
+    canonical: '[\\](u\nv "t")'
+  },
+  {
+    name: 'empty-label link across lines, in a line of text',
+    markdown: 'a [](u\nv) b',
+    canonical: 'a [\\](u\nv) b'
+  },
+  {
+    name: 'empty-label link across lines, in a quote',
+    markdown: '> [](u\n> v)',
+    canonical: '> [\\](u\n> v)'
+  },
   // A block holding only a code span of spaces lost the span, and with it the block.
   { name: 'code span of one space alone', markdown: '` `' },
   { name: 'code span of spaces alone before a paragraph', markdown: '`  `\n\nb' },
