@@ -377,41 +377,44 @@ fn container_start(line: &str) -> bool {
 
 /// `HTML_BLOCK_COMMENT`: after any block quote and list item markers that
 /// start the block inside them, up to three spaces and `<!--`.
-fn html_block_comment(line: &str) -> bool {
-    let spaces = line.bytes().take_while(|b| *b == b' ').count().min(3);
-    for n in (0..=spaces).rev() {
-        let rest = &line[n..];
+///
+/// The pattern's alternatives each step past one marker, and at most one fits
+/// at a given place: a fourth space fits none, `>` and a list marker begin
+/// with different characters, and a `>` followed by a space or tab takes it,
+/// since the line that starts with that space is read by the same steps as
+/// the line without it. So one walk along the line decides, however many
+/// markers it holds.
+fn html_block_comment(mut line: &str) -> bool {
+    loop {
+        let spaces = line.bytes().take_while(|b| *b == b' ').count();
+        if spaces > 3 {
+            return false;
+        }
+        let rest = &line[spaces..];
         if rest.starts_with("<!--") {
             return true;
         }
         if let Some(after) = rest.strip_prefix('>') {
-            let optional = after.strip_prefix([' ', '\t']);
-            if optional.is_some_and(html_block_comment) || html_block_comment(after) {
-                return true;
-            }
+            line = after.strip_prefix([' ', '\t']).unwrap_or(after);
+            continue;
         }
-        let marker = rest
-            .strip_prefix(['-', '*', '+'])
-            .or_else(|| {
-                let digits = rest.bytes().take_while(u8::is_ascii_digit).count();
-                rest[digits..]
-                    .strip_prefix(['.', ')'])
-                    .filter(|_| (1..=9).contains(&digits))
-            })
-            .map(|after| {
-                let blank = after.bytes().take_while(|b| *b == b' ').count();
-                (blank, after)
-            });
-        if let Some((blank, after)) = marker {
-            for k in (1..=blank.min(4)).rev() {
-                let tail = &after[k..];
-                if !tail.starts_with(' ') && html_block_comment(tail) {
-                    return true;
-                }
-            }
+        let marker = rest.strip_prefix(['-', '*', '+']).or_else(|| {
+            let digits = rest.bytes().take_while(u8::is_ascii_digit).count();
+            rest[digits..]
+                .strip_prefix(['.', ')'])
+                .filter(|_| (1..=9).contains(&digits))
+        });
+        // Up to four spaces follow the marker, and the item's text starts
+        // after all of them.
+        let Some(after) = marker else {
+            return false;
+        };
+        let blank = after.bytes().take_while(|b| *b == b' ').count();
+        if !(1..=4).contains(&blank) {
+            return false;
         }
+        line = &after[blank..];
     }
-    false
 }
 
 #[cfg(test)]
@@ -457,5 +460,22 @@ mod tests {
     fn a_multiline_html_comment_is_flagged() {
         assert!(mask("%% a %%\n<!--\nx\n-->").multiline_html);
         assert!(!mask("%% a %%\n<!-- x -->").multiline_html);
+    }
+
+    #[test]
+    fn an_html_block_comment_opens_behind_quote_and_list_markers() {
+        for open in [
+            "<!-- c",
+            "   <!--",
+            "> <!--",
+            ">\t<!--",
+            "> > - <!--",
+            "1.   > <!--",
+        ] {
+            assert!(html_block_comment(open), "{open:?}");
+        }
+        for text in ["    <!--", "> x <!--", "-     <!--", "10 <!--", ">  \t<!--"] {
+            assert!(!html_block_comment(text), "{text:?}");
+        }
     }
 }
