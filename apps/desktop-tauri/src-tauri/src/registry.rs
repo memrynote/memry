@@ -6,6 +6,9 @@ use tauri_specta::{Builder, ErrorHandlingMode, collect_commands, collect_events}
 
 use crate::startup::StartupState;
 
+// The bookmark and recents commands and events (`registry/bookmarks.rs`).
+#[macro_use]
+mod bookmarks;
 // The task domain's commands and events (`registry/tasks.rs`, `registry/projects.rs`).
 #[macro_use]
 mod projects;
