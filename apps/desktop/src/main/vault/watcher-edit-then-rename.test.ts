@@ -375,6 +375,9 @@ describe('an outside edit followed by a rename inside the change debounce', () =
     'a rename whose new name the folder reports after the app took it reads no body',
     async () => {
       seed('n1', 'Docs/apple.md', '# apple\n\nbody\n')
+      // The index has not read the body, so the rename matches by size + mtime.
+      const modifiedAt = new Date('2026-01-12T00:00:00.000Z')
+      fs.utimesSync(path.join(vault.path, 'Docs/apple.md'), modifiedAt, modifiedAt)
       index.db.update(noteCache).set({ contentHash: null }).where(eq(noteCache.id, 'n1')).run()
       lostChanges.add(path.join(vault.path, 'Docs/apple.md'))
       await watch()
