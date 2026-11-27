@@ -1801,7 +1801,7 @@
     {
       "name": "underscore line in a quote above an italic run",
       "markdown": "> \\_\n> *a\\**\n>\n> z",
-      "canonical": null,
+      "canonical": "> _\n> *a\\**\n>\n> z",
       "pending": null,
       "sha256": "0cd818909aa0050f61996a60bbb3628c901b8ee8c15e7b526c4ce7d5f7affd4f"
     },

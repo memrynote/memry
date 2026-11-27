@@ -1164,7 +1164,11 @@ const htmlCommentCases: RoundtripCase[] = [
     name: 'underscore inside an italic run opening with bold',
     markdown: '_**Note:** use snake\\_case_'
   },
-  { name: 'underscore line in a quote above an italic run', markdown: '> \\_\n> *a\\**\n>\n> z' },
+  {
+    name: 'underscore line in a quote above an italic run',
+    markdown: '> \\_\n> *a\\**\n>\n> z',
+    canonical: '> _\n> *a\\**\n>\n> z'
+  },
   {
     name: 'bold stops at a code span (BBF-62)',
     markdown: '**`a` x `c`**',

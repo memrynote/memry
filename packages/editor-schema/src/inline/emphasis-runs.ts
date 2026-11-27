@@ -316,8 +316,8 @@ export function restoreEmphasisRuns(markdown: string, marks: Span[]): string {
 }
 
 /**
- * Whether house style spells a run of `items` with underscores, see
- * `meetsInnerStars`, once the escaper has escaped every `_` in their text.
+ * Whether house style spells a run of escaped `items` with underscores, see
+ * `meetsInnerStars`, once every bare `_` in their text is escaped too.
  */
 export function spellsRunsWithUnderscores(items: InlineItem[]): boolean {
   const spell = (list: InlineItem[]): string =>
@@ -326,7 +326,8 @@ export function spellsRunsWithUnderscores(items: InlineItem[]): boolean {
         if (Array.isArray(item.content)) return `[${spell(item.content)}](${item.href ?? ''})`
         if (item.type !== 'text') return '\uFFFC'
         const text = item.text ?? ''
-        return item.styles?.code === true ? `\`${text}\`` : text.replaceAll('_', '\\_')
+        if (item.styles?.code === true) return `\`${text}\``
+        return text.replace(/\\[\s\S]|_/g, (match) => (match === '_' ? '\\_' : match))
       })
       .join('')
   const marks: Span[] = []
