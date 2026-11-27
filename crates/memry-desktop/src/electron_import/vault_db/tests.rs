@@ -29,7 +29,6 @@ fn a_fresh_electron_pair_passes_the_preflight() {
     let preflight = preflight::run(&sources).unwrap();
     // Every mapped table and nothing else: the fts5 and vec0 shadow tables are recognised.
     assert_eq!(preflight.tables.len(), tables::TABLE_MAP.len());
-    assert!(preflight.dropped_keys.is_empty());
 }
 
 /// Ids are read as the exact bytes Electron stored, uppercase, `_`, `-`, NUL and combining

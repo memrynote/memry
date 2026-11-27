@@ -100,6 +100,9 @@ pub(crate) fn announce(
         }
     }
     notify(app, key, fields);
+    if key == "sticky" {
+        crate::windows::edge_tab::refresh(app);
+    }
     if key == "keyboard" {
         crate::menu::apply(app, false);
         crate::shortcuts::apply_from_settings(app);
