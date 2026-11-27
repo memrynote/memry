@@ -47,10 +47,12 @@ fn without_block_ids(canonical: &str) -> String {
 /// them needs desktop's serialization of a block the core does not write: a
 /// table or a code block under a quote, a comment node, a quoted list, the
 /// `<details>` markup a quote, a callout or a heading now keeps as text, a
-/// callout, quote or math block indented under a list item. A
+/// callout, quote or math block indented under a list item, a quote body the
+/// writer's underscore spelling stops settling (desktop reads a flat quote,
+/// which the core does not build). A
 /// fallback is lossless (every line stays text), so each must fall back, and
 /// the run it keeps literal is checked below.
-const KEPT_LITERAL: [&str; 13] = [
+const KEPT_LITERAL: [&str; 16] = [
     "comment: %% in a callout body and a quote",
     "callout: a body holding a table",
     "quote: a run opening on a table",
@@ -64,6 +66,9 @@ const KEPT_LITERAL: [&str; 13] = [
     "list item child: a math block",
     "list item child: a structured quote",
     "list item child: a numbered item's callout",
+    "writer: an italic run ending in a star beside an underscore",
+    "writer: a bold run ending in a star then an underscore run",
+    "writer: a code span between an underscore and an italic star",
 ];
 
 #[test]

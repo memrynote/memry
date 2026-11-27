@@ -68,16 +68,22 @@ fn rewritten_line(line: &str) -> bool {
 /// with `restoreEmphasisRuns` putting each mark's delimiters back.
 fn inline(content: &[SeedInline], heading: bool) -> Result<String, Unsupported> {
     let mut out = String::new();
+    let mut underscored = Vec::new();
     for item in escape_items(items(content)?, heading)? {
-        write_item(&item, &mut out)?;
+        write_item(&item, &mut out, &mut underscored)?;
     }
+    resolve_underscores(&mut out, &underscored);
     Ok(out)
 }
 
 /// A break is `\` and a newline.
 const BREAK: &str = "\\\n";
 
-fn write_item(item: &Item, out: &mut String) -> Result<(), Unsupported> {
+fn write_item(
+    item: &Item,
+    out: &mut String,
+    underscored: &mut Vec<Delimiters>,
+) -> Result<(), Unsupported> {
     let marks = &item.marks;
     if let Some(href) = &marks.link {
         return write_link(&item.text, href, out);
@@ -104,35 +110,104 @@ fn write_item(item: &Item, out: &mut String) -> Result<(), Unsupported> {
         out.push_str(&text);
         return Ok(());
     };
-    out.push_str(&emphasis(&text, delimiter));
+    emphasis(&text, delimiter, out, underscored);
     Ok(())
+}
+
+/// Where an underscore pair may stand for one run's stars: the byte offsets
+/// of its opening and closing delimiter, which are as long as each other.
+struct Delimiters {
+    open: usize,
+    close: usize,
+    len: usize,
 }
 
 /// `restoreEmphasisRuns`: a run's leading and trailing whitespace and breaks
 /// stay outside its delimiters (`EDGES`), and a run of nothing else has none.
-fn emphasis(run: &str, delimiter: &str) -> String {
-    let lead = edge_prefix(run);
+/// A run the parser would misread with stars is an underscore candidate.
+fn emphasis(run: &str, delimiter: &str, out: &mut String, underscored: &mut Vec<Delimiters>) {
+    let lead = edge_prefix(run, false);
     let trail = run[lead..]
         .char_indices()
         .map(|(at, _)| lead + at)
         .chain([run.len()])
-        .find(|&at| edge_prefix(&run[at..]) == run.len() - at)
+        .find(|&at| edge_prefix(&run[at..], true) == run.len() - at)
         .unwrap_or(run.len());
     if lead >= trail {
-        return run.to_owned();
+        out.push_str(run);
+        return;
     }
-    format!(
-        "{}{delimiter}{}{delimiter}{}",
-        &run[..lead],
-        &run[lead..trail],
-        &run[trail..]
-    )
+    let content = &run[lead..trail];
+    out.push_str(&run[..lead]);
+    let open = out.len();
+    out.push_str(delimiter);
+    out.push_str(content);
+    let close = out.len();
+    out.push_str(delimiter);
+    out.push_str(&run[trail..]);
+    if meets_inner_stars(delimiter, content) && !has_bare_underscore(content) {
+        underscored.push(Delimiters {
+            open,
+            close,
+            len: delimiter.len(),
+        });
+    }
+}
+
+/// `meetsInnerStars`, for a run with no run inside it: three stars in a row
+/// open bold italic, so an italic run whose content starts or ends with `*`
+/// and a bold run whose content ends with one came back as text.
+fn meets_inner_stars(delimiter: &str, content: &str) -> bool {
+    match delimiter {
+        "*" => content.starts_with('*') || content.ends_with('*'),
+        "**" => content.ends_with('*'),
+        _ => false,
+    }
+}
+
+/// `hasBareUnderscore`: `parseDelimited` skips an escaped character, so only a
+/// bare `_` could close an underscore run early.
+fn has_bare_underscore(content: &str) -> bool {
+    let mut chars = content.chars();
+    while let Some(c) = chars.next() {
+        if c == '\\' {
+            chars.next();
+        } else if c == '_' {
+            return true;
+        }
+    }
+    false
+}
+
+/// `resolveUnderscores`: each candidate pair spelled `_` or `__` where the
+/// parser reads them (`tryItalic` and `tryBold` refuse an opener between two
+/// word characters, and no run closes on an underscore next to another), and
+/// with its stars where it would not. Each is judged on the text before any
+/// pair changes.
+fn resolve_underscores(out: &mut String, pairs: &[Delimiters]) {
+    let word = |c: Option<char>| c.is_some_and(|c| c.is_ascii_alphanumeric() || c == '_');
+    let readable: Vec<&Delimiters> = pairs
+        .iter()
+        .filter(|pair| {
+            let before = out[..pair.open].chars().next_back();
+            let first = out[pair.open + pair.len..].chars().next();
+            let after = out[pair.close + pair.len..].chars().next();
+            let opens = !(word(before) && word(first)) && before != Some('_');
+            opens && after != Some('_')
+        })
+        .collect();
+    for pair in readable {
+        let swap = "_".repeat(pair.len);
+        out.replace_range(pair.open..pair.open + pair.len, &swap);
+        out.replace_range(pair.close..pair.close + pair.len, &swap);
+    }
 }
 
 /// The length of the longest prefix of `text` matching
 /// `/(?:\\\n(?:[^\S\n]*>)*|\s)*/`: a break (with the `>` prefixes a quote
-/// carries onto the next line) or whitespace.
-fn edge_prefix(text: &str) -> usize {
+/// carries onto the next line) or whitespace. At a run's end (`trailing`) a
+/// `<br>` is one too: the break the escaper spelled for a heading's line.
+fn edge_prefix(text: &str, trailing: bool) -> usize {
     let mut at = 0;
     loop {
         let rest = &text[at..];
@@ -150,6 +225,8 @@ fn edge_prefix(text: &str) -> usize {
                     break;
                 }
             }
+        } else if trailing && rest.starts_with("<br>") {
+            at += "<br>".len();
         } else if let Some(c) = rest.chars().next().filter(|c| is_js_whitespace(*c)) {
             at += c.len_utf8();
         } else {
@@ -386,5 +463,47 @@ mod tests {
             serialize(&[block]).expect("serialized"),
             "**x** and [y](https://e.com/a(1))\n"
         );
+    }
+
+    #[test]
+    fn a_run_whose_stars_the_parser_would_misread_is_spelled_with_underscores() {
+        let italic = SeedMarks {
+            italic: true,
+            ..SeedMarks::default()
+        };
+        let bold = SeedMarks {
+            bold: true,
+            ..SeedMarks::default()
+        };
+        let plain = SeedMarks::default();
+        let written = |content: Vec<SeedInline>| serialize(&[paragraph(content)]).expect("written");
+        assert_eq!(written(vec![text("a*", italic.clone())]), "_a\\*_\n");
+        // An escaped star opens the content with a backslash, not a star.
+        assert_eq!(written(vec![text("*a", italic.clone())]), "*\\*a*\n");
+        assert_eq!(written(vec![text("a*", bold.clone())]), "__a\\*__\n");
+        assert_eq!(written(vec![text("*a", bold)]), "**\\*a**\n");
+        // A bare underscore would close the run early, and an opener between
+        // two word characters is no opener.
+        assert_eq!(written(vec![text("a_b*", italic.clone())]), "*a_b\\**\n");
+        assert_eq!(
+            written(vec![text("x", plain.clone()), text("a*", italic)]),
+            "x*a\\**\n"
+        );
+    }
+
+    #[test]
+    fn a_heading_break_closing_a_marked_run_is_written_after_the_run() {
+        let bold = SeedMarks {
+            bold: true,
+            ..SeedMarks::default()
+        };
+        let heading = SeedBlock::new(
+            SeedKind::Heading { level: 2 },
+            vec![
+                text("a", bold.clone()),
+                SeedInline::HardBreak { marks: bold },
+            ],
+        );
+        assert_eq!(serialize(&[heading]).expect("written"), "## **a**<br>\n");
     }
 }

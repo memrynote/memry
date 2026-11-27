@@ -53,7 +53,7 @@ pub(super) fn escape_items(items: Vec<Item>, heading: bool) -> Result<Vec<Item>,
     {
         return Err(UNSERIALIZED);
     }
-    let (spelling, segments) = spell(&items);
+    let (spelling, delimiters, segments) = spell(&items);
     if segments
         .iter()
         .any(|segment| segment.in_link && items[segment.item].text.contains('`'))
@@ -72,7 +72,7 @@ pub(super) fn escape_items(items: Vec<Item>, heading: bool) -> Result<Vec<Item>,
         let mut out = String::with_capacity(text.len());
         for (offset, ch) in text.chars().enumerate() {
             let at = segment.at + offset;
-            if ch == '\n' && place.line_block && unwritable_break(&spelling, at) {
+            if ch == '\n' && place.line_block && unwritable_break(&spelling, &delimiters, at) {
                 return Err(UNSERIALIZED);
             } else if ch == '\n' && place.one_line {
                 out.push_str("<br>");
@@ -97,14 +97,21 @@ pub(super) fn escape_items(items: Vec<Item>, heading: bool) -> Result<Vec<Item>,
 }
 
 /// `spell`: the block as the writer spells it, near enough to tell markup,
-/// and where each escapable text run starts.
-fn spell(items: &[Item]) -> (Vec<char>, Vec<Segment>) {
+/// which of its characters are a mark's delimiters, and where each escapable
+/// text run starts.
+fn spell(items: &[Item]) -> (Vec<char>, Vec<bool>, Vec<Segment>) {
     let mut spelling = Vec::new();
+    let mut delimiters = Vec::new();
     let mut segments = Vec::new();
+    // `delimiters` flags, per character of `spelling`, a mark's `**`, `*` or `~~`.
+    let flag = |spelling: &[char], delimiters: &mut Vec<bool>, on: bool| {
+        delimiters.resize(spelling.len(), on);
+    };
     for (index, item) in items.iter().enumerate() {
         let marks = &item.marks;
         if item.is_code() {
             spelling.extend(['`', NODE, '`']);
+            flag(&spelling, &mut delimiters, false);
         } else if let Some(href) = &marks.link {
             spelling.push('[');
             segments.push(Segment {
@@ -116,6 +123,7 @@ fn spell(items: &[Item]) -> (Vec<char>, Vec<Segment>) {
             spelling.extend([']', '(']);
             spelling.extend(href.chars());
             spelling.push(')');
+            flag(&spelling, &mut delimiters, false);
         } else {
             let delimiter = if marks.bold {
                 "**"
@@ -127,16 +135,19 @@ fn spell(items: &[Item]) -> (Vec<char>, Vec<Segment>) {
                 ""
             };
             spelling.extend(delimiter.chars());
+            flag(&spelling, &mut delimiters, true);
             segments.push(Segment {
                 item: index,
                 at: spelling.len(),
                 in_link: false,
             });
             spelling.extend(item.text.chars());
+            flag(&spelling, &mut delimiters, false);
             spelling.extend(delimiter.chars());
+            flag(&spelling, &mut delimiters, true);
         }
     }
-    (spelling, segments)
+    (spelling, delimiters, segments)
 }
 
 fn is_space(c: Option<char>) -> bool {
@@ -282,18 +293,22 @@ fn is_table_row(line: &[char]) -> bool {
 
 /// `unwritableBreak`: whether the newline at `at` sits where the writer has no
 /// spelling for it: at the block's start or end, or in a run of three or more.
-/// Desktop writes those as `<br>` or leaves them to the writer's trim, and has
-/// changed which more than once, so a paragraph holding one is not decided.
-fn unwritable_break(spelling: &[char], at: usize) -> bool {
+/// A mark's delimiters do not count, since the writer moves them past the
+/// break. Desktop writes those as `<br>` or leaves them to the writer's trim,
+/// and has changed which more than once, so a paragraph holding one is not
+/// decided.
+fn unwritable_break(spelling: &[char], delimiters: &[bool], at: usize) -> bool {
+    let passes = |i: usize| spelling[i] == '\n' || delimiters[i];
     let mut start = at;
-    while start > 0 && spelling[start - 1] == '\n' {
+    while start > 0 && passes(start - 1) {
         start -= 1;
     }
     let mut end = at + 1;
-    while spelling.get(end) == Some(&'\n') {
+    while end < spelling.len() && passes(end) {
         end += 1;
     }
-    start == 0 || end == spelling.len() || end - start >= 3
+    let run = spelling[start..end].iter().filter(|c| **c == '\n').count();
+    start == 0 || end == spelling.len() || run >= 3
 }
 
 /// `/^ {0,3}([-*_])([ \t]*\1){2,}[ \t]*$/`.

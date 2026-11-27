@@ -205,6 +205,18 @@ fence's info string, `""` for an untagged fence or an indented run, never BlockN
   `packages/editor-schema/src/blocks/item-children.ts:27`,
   `packages/editor-schema/src/note-markdown.ts:274`;
   `crates/memry-core/src/crdt/markdown_seed/prepare.rs:48`, `:60`, `:76`, `:106`).
+- **The writer spells an emphasis run that would meet three stars with underscores.** An
+  italic run whose content starts or ends with `*`, or a bold run whose content ends with one,
+  is written `_…_` or `__…__` when its content holds no bare `_` and its opener is not between
+  two word characters and not after, or its closer before, another `_`; otherwise it keeps its
+  stars. A `<br>` ending a run, which a heading's break becomes, stays outside it, and a mark's
+  delimiters do not count in deciding whether a break is at a paragraph's start or end. A
+  quote body that no longer settles under these spellings is not claimed, so desktop reads it
+  as a flat quote, which the core keeps as literal text
+  (`packages/editor-schema/src/inline/emphasis-runs.ts:41`, `:244`, `:251`, `:267`,
+  `packages/editor-schema/src/inline/markdown-escapes.ts:221`;
+  `crates/memry-core/src/crdt/markdown_seed/roundtrip.rs:128`, `:160`, `:170`, `:187`, `:210`,
+  `crates/memry-core/src/crdt/markdown_seed/escapes.rs:300`).
 - **A table row is never read as a hard break.** A line holding a `|` with a delimiter row
   below it opens a table, which runs until a line without a pipe, and a `\` ending
   one of its rows is the last cell's text, never a break token: `| a \` seeds the header cell `a \`
