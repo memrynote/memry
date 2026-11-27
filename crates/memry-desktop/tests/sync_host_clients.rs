@@ -126,6 +126,10 @@ const ALLOWED: &[(&str, &str)] = &[
         "the local agent provider the person configured, through ai::local_provider::probe",
     ),
     (
+        "crates/memry-desktop/src/onboarding.rs",
+        "Ollama and LM Studio on localhost, the first-run wizard's model server probe, no proxy",
+    ),
+    (
         "crates/memry-desktop/src/services/capture/mod.rs",
         "none: hyper's server types serve the extension's capture API on 127.0.0.1, no request",
     ),

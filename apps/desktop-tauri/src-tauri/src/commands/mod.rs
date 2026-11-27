@@ -38,6 +38,7 @@ pub mod notes_import;
 pub mod notes_similarity;
 pub mod notes_versions;
 pub mod ocr_languages;
+pub mod onboarding;
 pub mod portals;
 pub mod properties;
 pub mod property_definitions;

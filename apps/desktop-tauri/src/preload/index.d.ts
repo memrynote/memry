@@ -73,7 +73,7 @@ import type {
   ReadwiseStatusResult
 } from '@memry/contracts/import-channels'
 import type { Locale, LocaleApi } from '@memry/contracts/locale-api'
-import type { OnboardingAgentStatus, OnboardingSources } from '@memry/contracts/onboarding-api'
+import type { OnboardingAgentStatus } from '@memry/contracts/onboarding-api'
 import type {
   SyncStatusChangedEvent,
   LinkingRequestEvent,
@@ -594,8 +594,6 @@ export interface StickyClientAPI {
 
 export interface OnboardingClientAPI {
   detectAgents: () => Promise<OnboardingAgentStatus[]>
-  detectSources: () => Promise<OnboardingSources>
-  isMemryVault: (path: string) => Promise<boolean>
 }
 
 // Bookmark types
