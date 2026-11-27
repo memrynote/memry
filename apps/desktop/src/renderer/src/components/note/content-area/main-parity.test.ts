@@ -43,8 +43,8 @@ const parse = (markdown: string): Promise<Block[]> =>
 const CALLOUT = '> [!info]\n> hi'
 
 describe('markdown the renderer reads as main does', () => {
-  it('keeps `$$` directly under a callout as text, since it does not start a paragraph', async () => {
-    expect(await types(`${CALLOUT}\n$$\nx\n$$`)).toEqual(['callout', 'paragraph'])
+  it('claims `$$` directly under a callout, where the parser opens a block', async () => {
+    expect(await types(`${CALLOUT}\n$$\nx\n$$`)).toEqual(['callout', 'mathBlock'])
   })
 
   it.each([

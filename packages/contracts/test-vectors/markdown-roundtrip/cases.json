@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 330,
+    "exportedCaseCount": 349,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 340,
+    "caseCount": 359,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -544,6 +544,132 @@
       "canonical": null,
       "pending": null,
       "sha256": "d93da2c32e9fa407006d28d8d232f010d1b6fc5e27f0866b05aabe9d23a8cb7e"
+    },
+    {
+      "name": "callout under a paragraph line",
+      "markdown": "one\n> [!tip]\n> d",
+      "canonical": "one\n\n> [!tip]\n> d",
+      "pending": null,
+      "sha256": "bcce763a495e94d40a1c6cfbb1400d6dcfed4d71986ea5be4c23ceda79a58594"
+    },
+    {
+      "name": "callout under a heading",
+      "markdown": "# H\n> [!tip]\n> d",
+      "canonical": "# H\n\n> [!tip]\n> d",
+      "pending": null,
+      "sha256": "d69d97654d925c7f774f8c831790bf7d8aa5bc25833d6d79774c56d8dbb4fe2b"
+    },
+    {
+      "name": "callout under a list item",
+      "markdown": "- a\n> [!tip]-\n> d",
+      "canonical": "- a\n\n> [!tip]-\n> d",
+      "pending": null,
+      "sha256": "60e7d31cbbb2afb023bfdcefe9ce3c73cc623ed529f98e60b883fffcbbe4f6ba"
+    },
+    {
+      "name": "callout under a table",
+      "markdown": "| a |\n| - |\n| 1 |\n> [!tip]\n> d",
+      "canonical": "| a |\n| - |\n| 1 |\n\n> [!tip]\n> d",
+      "pending": null,
+      "sha256": "f30898af53305e7b83cc121a4dbcb01e326f1611cee811421b6c74084d887dda"
+    },
+    {
+      "name": "callout line without its space",
+      "markdown": "> [!note]\n> body\n>more",
+      "canonical": "> [!note]\n> body\n> more",
+      "pending": null,
+      "sha256": "8c9aeaa6cd1fd1fc31b0a460f181979d4b0636870a7d3b0b3323c29e03e09b17"
+    },
+    {
+      "name": "callout after a quote and its lazy line",
+      "markdown": "> a\nlazy\n> [!tip]\n> d",
+      "canonical": "> a\n> lazy\n\n> [!tip]\n> d",
+      "pending": null,
+      "sha256": "5176b0e8cdaf203fe552a51b939c32f7e67e8be954fa8da6589805ffa80799e3"
+    },
+    {
+      "name": "math under a heading",
+      "markdown": "# H\n$$\ny\n$$",
+      "canonical": "# H\n\n$$\ny\n$$",
+      "pending": null,
+      "sha256": "4c223d86eb012d95ce1c756cea1e640420a4d5bb1e9ba53b430a48c3a9a983b1"
+    },
+    {
+      "name": "math above a heading",
+      "markdown": "$$\ny\n$$\n# H",
+      "canonical": "$$\ny\n$$\n\n# H",
+      "pending": null,
+      "sha256": "b359905aa448ccd7fe4f203001e8a338ff3e509c867380f8ac022109592870e8"
+    },
+    {
+      "name": "math under a list item",
+      "markdown": "- a\n$$\ny\n$$",
+      "canonical": "- a\n\n$$\ny\n$$",
+      "pending": null,
+      "sha256": "f7367d8efd2e02927aca8000a5795a08167bfe47c1d5b80ad90868066dea0d5f"
+    },
+    {
+      "name": "math under a callout",
+      "markdown": "> [!info]\n> c\n$$\ny\n$$",
+      "canonical": "> [!info]\n> c\n\n$$\ny\n$$",
+      "pending": null,
+      "sha256": "562222ead2933c2308b9d97d08ca4c45b19b92dbbcc0e0e3cc03dca2b05efd07"
+    },
+    {
+      "name": "math under a fence",
+      "markdown": "```js\nx\n```\n$$\ny\n$$",
+      "canonical": "```js\nx\n```\n\n$$\ny\n$$",
+      "pending": null,
+      "sha256": "8881b5c4236e2069aa23d2a7b9a7ed7d1eb56ee41eab82669cad837241cba6ca"
+    },
+    {
+      "name": "math under a table",
+      "markdown": "| a |\n| - |\n| 1 |\n$$\ny\n$$",
+      "canonical": "| a |\n| - |\n| 1 |\n\n$$\ny\n$$",
+      "pending": null,
+      "sha256": "873555d7562ab0759cd9ef4374c327d9a4bf7da5a6723b6ee40f26aef485de3d"
+    },
+    {
+      "name": "math fences inside a paragraph stay its text",
+      "markdown": "text\n$$\nx\n$$",
+      "canonical": null,
+      "pending": null,
+      "sha256": "9dfafcf4fb47bdef5f032362f847dfefc7aa6033227cbfffa66e345f8a89ba56"
+    },
+    {
+      "name": "youtube image inside text",
+      "markdown": "see ![](https://www.youtube.com/watch?v=dQw4w9WgXcQ)",
+      "canonical": "see\n\n![](https://www.youtube.com/watch?v=dQw4w9WgXcQ)",
+      "pending": null,
+      "sha256": "477e1f73c050a94fc0aefbd08cef8aa409254da72f89c5d56ce7d936ff235017"
+    },
+    {
+      "name": "indented whiteboard line",
+      "markdown": "a\n\n  ![whiteboard](memry://canvas/abc)",
+      "canonical": "a\n\n![whiteboard](memry://canvas/abc)",
+      "pending": null,
+      "sha256": "717c7a93adc69072bd41cdf76e6e5bb33eb95a959e17ee19bf0da485c800d8cf"
+    },
+    {
+      "name": "image without an address",
+      "markdown": "![x]()",
+      "canonical": "![x](<>)",
+      "pending": null,
+      "sha256": "b307fa7d57c326c3400a159e0dad7b2f2f994579ce08dcecfe49386ec232afbd"
+    },
+    {
+      "name": "file marker whose JSON does not read",
+      "markdown": "<!-- file:{bad} -->",
+      "canonical": null,
+      "pending": null,
+      "sha256": "95281fce0d7be2a6d42d71c478298047ee5b907264b2f56a3fc2b6b6051f6419"
+    },
+    {
+      "name": "bold run around a lifted image",
+      "markdown": "**see ![x](attachments/x.png)** now",
+      "canonical": "**see**  now\n\n![x](attachments/x.png)",
+      "pending": null,
+      "sha256": "fbd03b762df009f96c62e1be96ebd5886de6967e33ea254d037cd6cae20cb3b2"
     },
     {
       "name": "blank line ending a note",
@@ -1983,9 +2109,16 @@
     {
       "name": "html break opening a list-item link text line (BBF-106)",
       "markdown": "- [a\n<br>b](u)",
-      "canonical": "- [a\n\nb](u)",
+      "canonical": "- [a\n\n<br><br>b](u)",
       "pending": null,
       "sha256": "5c40cbe1fb64c844a3fdafee494ae5bdae752f7781c23d7baf84bbdb20615f80"
+    },
+    {
+      "name": "html break opening a line under a list item",
+      "markdown": "- x\n<br>b",
+      "canonical": "- x\n\n<br><br>b",
+      "pending": null,
+      "sha256": "de08d0659b5e7db391df4ba02544ae91d3e7134fc0f6c3b5861dd91c91638638"
     },
     {
       "name": "bold before a soft break inside list-item link text (BBF-106)",

@@ -465,8 +465,12 @@ describe('readStructuredQuoteRun', () => {
     expect(read('Just text')).toBeNull()
   })
 
-  it('refuses the whole run on a `>text` line rather than tearing it in two', () => {
-    expect(read('> One\n>\n>Two')).toBeNull()
+  it('reads a `>text` line as a quote line, its space being optional', () => {
+    expect(read('> One\n>\n>Two')?.innerMarkdown).toBe('One\n\nTwo')
+  })
+
+  it('refuses the whole run on a `>text` line in a legacy read', () => {
+    expect(readStructuredQuoteRun(['> One', '>', '>Two'], 0, false)).toBeNull()
   })
 
   it('stops at the first line outside the quote', () => {

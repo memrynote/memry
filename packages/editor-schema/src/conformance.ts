@@ -341,6 +341,77 @@ const toggleCases: RoundtripCase[] = [
     name: 'two extra blank lines before a toggle survive',
     markdown: `Before\n\n\n\n${serializeToggleBlock('Summary', 'Body line')}`
   },
+  // A callout or math block against the block above it opens where the
+  // parser opens a block. Read as text there, it became the block on the
+  // next seed of its canonical form, which puts a blank line between them.
+  {
+    name: 'callout under a paragraph line',
+    markdown: 'one\n> [!tip]\n> d',
+    canonical: 'one\n\n> [!tip]\n> d'
+  },
+  {
+    name: 'callout under a heading',
+    markdown: '# H\n> [!tip]\n> d',
+    canonical: '# H\n\n> [!tip]\n> d'
+  },
+  {
+    name: 'callout under a list item',
+    markdown: '- a\n> [!tip]-\n> d',
+    canonical: '- a\n\n> [!tip]-\n> d'
+  },
+  {
+    name: 'callout under a table',
+    markdown: '| a |\n| - |\n| 1 |\n> [!tip]\n> d',
+    canonical: '| a |\n| - |\n| 1 |\n\n> [!tip]\n> d'
+  },
+  {
+    name: 'callout line without its space',
+    markdown: '> [!note]\n> body\n>more',
+    canonical: '> [!note]\n> body\n> more'
+  },
+  {
+    name: 'callout after a quote and its lazy line',
+    markdown: '> a\nlazy\n> [!tip]\n> d',
+    canonical: '> a\n> lazy\n\n> [!tip]\n> d'
+  },
+  { name: 'math under a heading', markdown: '# H\n$$\ny\n$$', canonical: '# H\n\n$$\ny\n$$' },
+  { name: 'math above a heading', markdown: '$$\ny\n$$\n# H', canonical: '$$\ny\n$$\n\n# H' },
+  { name: 'math under a list item', markdown: '- a\n$$\ny\n$$', canonical: '- a\n\n$$\ny\n$$' },
+  {
+    name: 'math under a callout',
+    markdown: '> [!info]\n> c\n$$\ny\n$$',
+    canonical: '> [!info]\n> c\n\n$$\ny\n$$'
+  },
+  {
+    name: 'math under a fence',
+    markdown: '```js\nx\n```\n$$\ny\n$$',
+    canonical: '```js\nx\n```\n\n$$\ny\n$$'
+  },
+  {
+    name: 'math under a table',
+    markdown: '| a |\n| - |\n| 1 |\n$$\ny\n$$',
+    canonical: '| a |\n| - |\n| 1 |\n\n$$\ny\n$$'
+  },
+  { name: 'math fences inside a paragraph stay its text', markdown: 'text\n$$\nx\n$$' },
+  // An image the parser lifts or reads indented is written on a line of its
+  // own, which the next seed reads as the marker block it spells.
+  {
+    name: 'youtube image inside text',
+    markdown: 'see ![](https://www.youtube.com/watch?v=dQw4w9WgXcQ)',
+    canonical: 'see\n\n![](https://www.youtube.com/watch?v=dQw4w9WgXcQ)'
+  },
+  {
+    name: 'indented whiteboard line',
+    markdown: 'a\n\n  ![whiteboard](memry://canvas/abc)',
+    canonical: 'a\n\n![whiteboard](memry://canvas/abc)'
+  },
+  { name: 'image without an address', markdown: '![x]()', canonical: '![x](<>)' },
+  { name: 'file marker whose JSON does not read', markdown: '<!-- file:{bad} -->' },
+  {
+    name: 'bold run around a lifted image',
+    markdown: '**see ![x](attachments/x.png)** now',
+    canonical: '**see**  now\n\n![x](attachments/x.png)'
+  },
   // A blank line ending a note came back one line longer on every write: the
   // writer spelled a trailing gap like a gap between two blocks.
   { name: 'blank line ending a note', markdown: 'Hello\n\n' },
@@ -1217,9 +1288,16 @@ const htmlCommentCases: RoundtripCase[] = [
     canonical: '- [a\n\nb  \nc](u)'
   },
   {
+    // The parser ends the item at the lazy line, so the `<br>` opens a
+    // paragraph: a hard break, where it read a soft one the writer dropped.
     name: 'html break opening a list-item link text line (BBF-106)',
     markdown: '- [a\n<br>b](u)',
-    canonical: '- [a\n\nb](u)'
+    canonical: '- [a\n\n<br><br>b](u)'
+  },
+  {
+    name: 'html break opening a line under a list item',
+    markdown: '- x\n<br>b',
+    canonical: '- x\n\n<br><br>b'
   },
   {
     name: 'bold before a soft break inside list-item link text (BBF-106)',
