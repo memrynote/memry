@@ -8,11 +8,11 @@
 
 use crate::domain::journal_rules::js_trim;
 
-use super::comments::TOKEN_PREFIX;
+use super::comments::token_prefix;
 use super::{SeedBlock, SeedInline, SeedKind};
 
 pub(super) fn has_token(text: &str) -> bool {
-    text.contains(TOKEN_PREFIX)
+    text.contains(token_prefix())
 }
 
 /// One piece of text cut at its tokens.
@@ -26,9 +26,9 @@ fn split(text: &str) -> Vec<Part<'_>> {
     let mut parts = Vec::new();
     let mut last = 0;
     let mut from = 0;
-    while let Some(found) = text[from..].find(TOKEN_PREFIX) {
+    while let Some(found) = text[from..].find(token_prefix()) {
         let start = from + found;
-        let digits = start + TOKEN_PREFIX.len();
+        let digits = start + token_prefix().len();
         let hex_len = text[digits..]
             .bytes()
             .take_while(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'))

@@ -26,11 +26,6 @@ pub(super) fn document_fallback(markdown: &str) -> Option<&'static str> {
     if markdown.contains(['\0', '\u{1}', '\u{2028}', '\u{2029}', '\u{FFFC}']) {
         return Some("line terminator or control character");
     }
-    // The masking tokens desktop inserts and restores (`MEMRYHBK`, `MEMRYICO`,
-    // `MEMRYDLT`, `MEMRYTKN`): source text holding one would be rewritten.
-    if markdown.contains("MEMRY") {
-        return Some("masking token text");
-    }
     if ["{++", "{--", "{~~", "{==", "{>>"]
         .iter()
         .any(|open| markdown.contains(open))

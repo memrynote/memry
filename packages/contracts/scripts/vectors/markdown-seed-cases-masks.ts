@@ -43,5 +43,10 @@ export const MARKDOWN_SEED_MASK_CASES: ReadonlyArray<{
     name: 'placeholder text: an empty item line beside the empty block placeholder',
     markdown: '- MEMRYEMBCORE\n-\n- a',
     pins: 'an item that spells the empty-block placeholder keeps it and the empty item beside it stays empty'
+  },
+  {
+    name: 'placeholder text: a details block another app wrote',
+    markdown: '<details>\n<summary>x</summary>\nMEMRYDLT;summary>\n</details>',
+    pins: 'a details block no toggle claims is text whose `<` is hidden behind a placeholder, and text spelling that placeholder stays as written'
   }
 ]

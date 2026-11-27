@@ -7,12 +7,19 @@
 //! [`drop_empty_block_placeholders`]). `document_fallback` keeps `MEMRY` out
 //! of the source, so the word is never text the author wrote.
 
+use std::sync::LazyLock;
+
 use crate::domain::journal_rules::{is_js_whitespace, js_trim};
 
 use super::markers::FenceTracker;
+use super::mask_word::mask_word;
 use super::{SeedBlock, SeedInline, SeedKind};
 
-const PLACEHOLDER: &str = "MEMRYEMBCORE";
+/// `MEMRYEMB` and the process's mask word: no source text spells it.
+fn placeholder() -> &'static str {
+    static PLACEHOLDER: LazyLock<String> = LazyLock::new(|| format!("MEMRYEMB{}", mask_word()));
+    &PLACEHOLDER
+}
 
 /// `markdown` with the placeholder on each empty item or heading line. An item
 /// line counts only where a list item can start without ending a paragraph:
@@ -32,8 +39,9 @@ pub(super) fn mask_empty_block_lines(markdown: &str) -> String {
             .is_none_or(|before| js_trim(lines[before]).is_empty() || is_item_line(lines[before]));
         if is_empty_heading(line) || is_empty_todo(line) || (opens && is_empty_item(line)) {
             out.push(format!(
-                "{} {PLACEHOLDER}",
-                line.trim_end_matches(is_js_whitespace)
+                "{} {}",
+                line.trim_end_matches(is_js_whitespace),
+                placeholder()
             ));
         } else {
             out.push((*line).to_owned());
@@ -47,7 +55,7 @@ pub(super) fn mask_empty_block_lines(markdown: &str) -> String {
 pub(super) fn drop_empty_block_placeholders(blocks: &mut [SeedBlock]) {
     for block in blocks {
         if let [SeedInline::Text { text, .. }] = block.content.as_slice()
-            && js_trim(text) == PLACEHOLDER
+            && js_trim(text) == placeholder()
         {
             block.content.clear();
         }
@@ -62,7 +70,7 @@ pub(super) fn drop_empty_block_placeholders(blocks: &mut [SeedBlock]) {
 pub(super) fn leaks_placeholder(blocks: &[SeedBlock]) -> bool {
     let text_holds = |content: &[SeedInline]| {
         content.iter().any(
-            |piece| matches!(piece, SeedInline::Text { text, .. } if text.contains(PLACEHOLDER)),
+            |piece| matches!(piece, SeedInline::Text { text, .. } if text.contains(placeholder())),
         )
     };
     blocks.iter().any(|block| {
@@ -139,7 +147,7 @@ mod tests {
 
     #[test]
     fn an_empty_line_gets_the_placeholder_only_where_it_opens_a_block() {
-        let word = |line: &str| format!("{line} {PLACEHOLDER}");
+        let word = |line: &str| format!("{line} {}", placeholder());
         assert_eq!(mask_empty_block_lines("#"), word("#"));
         assert_eq!(mask_empty_block_lines("## "), word("##"));
         assert_eq!(mask_empty_block_lines("- [x] "), word("- [x]"));
@@ -160,7 +168,7 @@ mod tests {
 
     #[test]
     fn an_empty_todo_counts_after_any_line() {
-        let word = |line: &str| format!("{line} {PLACEHOLDER}");
+        let word = |line: &str| format!("{line} {}", placeholder());
         assert_eq!(
             mask_empty_block_lines("# H\n- [ ]"),
             format!("# H\n{}", word("- [ ]"))
@@ -187,7 +195,7 @@ mod tests {
 
     #[test]
     fn a_placeholder_left_in_text_is_seen_and_empty_blocks_lose_theirs() {
-        let leaked = [SeedBlock::literal(&format!("a {PLACEHOLDER}"))];
+        let leaked = [SeedBlock::literal(&format!("a {}", placeholder()))];
         assert!(leaks_placeholder(&leaked));
         let (mut blocks, mut fallbacks) = (Vec::new(), Vec::new());
         crate::crdt::markdown_seed::blocks::parse_chunk("#\n\n-\n- a", &mut blocks, &mut fallbacks);

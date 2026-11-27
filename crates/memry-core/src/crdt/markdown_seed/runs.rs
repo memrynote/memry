@@ -3,7 +3,7 @@
 
 use crate::domain::journal_rules::{is_js_whitespace, js_trim};
 
-use super::code_spans::{SPACE_TOKEN, TAB_TOKEN, restore_code_whitespace};
+use super::code_spans::{restore_code_whitespace, space_token, tab_token};
 use super::collapse::collapse_blank_paragraph;
 use super::hard_breaks::unmask_hard_breaks;
 use super::inline::{Html, Tag};
@@ -55,7 +55,7 @@ pub(super) fn cell_content(html: Vec<Html>, breaks: &[String], code_kept: bool) 
             continue;
         };
         if kept(&marks) {
-            let masked = text.replace(' ', SPACE_TOKEN).replace('\t', TAB_TOKEN);
+            let masked = text.replace(' ', space_token()).replace('\t', tab_token());
             nodes.push(PmNode::Text(masked, marks));
             continue;
         }
@@ -100,7 +100,7 @@ fn finish(nodes: Vec<PmNode>, breaks: &[String]) -> Vec<SeedInline> {
     let mut content = expand(runs);
     for piece in &mut content {
         if let SeedInline::Text { text, .. } = piece
-            && text.contains("MEMRYCSP")
+            && (text.contains(space_token()) || text.contains(tab_token()))
         {
             *text = restore_code_whitespace(text);
         }

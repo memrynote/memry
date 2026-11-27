@@ -8,15 +8,25 @@
 //! either line is. A line with `[`, `]` or a tag other than `<br>` is left
 //! alone, as there. The pipes it also hides change nothing outside a table.
 
+use std::sync::LazyLock;
+
 use crate::domain::journal_rules::js_trim;
 
 use super::backtick_runs::BacktickRuns;
+use super::mask_word::mask_word;
 use super::table::unsafe_for_code_mask;
 
-/// `maskCellCodeSpans`' placeholders. Source text holding `MEMRY` never gets
-/// here (`prepare::document_fallback`), so a token is always ours.
-pub(super) const SPACE_TOKEN: &str = "MEMRYCSPSX";
-pub(super) const TAB_TOKEN: &str = "MEMRYCSPTX";
+/// `maskCellCodeSpans`' placeholders, with the process's mask word: no source
+/// text spells one.
+pub(super) fn space_token() -> &'static str {
+    static TOKEN: LazyLock<String> = LazyLock::new(|| format!("MEMRYCSP{}SX", mask_word()));
+    &TOKEN
+}
+
+pub(super) fn tab_token() -> &'static str {
+    static TOKEN: LazyLock<String> = LazyLock::new(|| format!("MEMRYCSP{}TX", mask_word()));
+    &TOKEN
+}
 
 /// `text` with the whitespace of its code spans hidden, on each line that
 /// holds a pipe.
@@ -87,8 +97,8 @@ fn mask_content(content: &[char], out: &mut String) {
     }
     for ch in inner {
         match ch {
-            ' ' => out.push_str(SPACE_TOKEN),
-            '\t' => out.push_str(TAB_TOKEN),
+            ' ' => out.push_str(space_token()),
+            '\t' => out.push_str(tab_token()),
             other => out.push(*other),
         }
     }
@@ -99,7 +109,7 @@ fn mask_content(content: &[char], out: &mut String) {
 
 /// The text with every placeholder turned back into its whitespace.
 pub(super) fn restore_code_whitespace(text: &str) -> String {
-    text.replace(SPACE_TOKEN, " ").replace(TAB_TOKEN, "\t")
+    text.replace(space_token(), " ").replace(tab_token(), "\t")
 }
 
 #[cfg(test)]
@@ -111,13 +121,13 @@ mod tests {
         assert_eq!(keep_code_whitespace("` a`b"), "` a`b");
         assert_eq!(
             keep_code_whitespace("` a|`b"),
-            format!("`{SPACE_TOKEN}a|`b")
+            format!("`{}a|`b", space_token())
         );
         assert_eq!(keep_code_whitespace("` a `|x"), "` a `|x");
         assert_eq!(keep_code_whitespace("` a`|[l](u)"), "` a`|[l](u)");
         assert_eq!(
             keep_code_whitespace("`\ta`\n` b|`"),
-            format!("`\ta`\n`{SPACE_TOKEN}b|`")
+            format!("`\ta`\n`{}b|`", space_token())
         );
     }
 }

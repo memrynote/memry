@@ -71,6 +71,7 @@ mod items;
 mod lift;
 mod links;
 mod markers;
+mod mask_word;
 mod media;
 mod nesting;
 mod prepare;
@@ -319,7 +320,7 @@ pub fn plan(markdown: &str) -> SeedPlan {
     restore_details_markup(&mut out);
     for fallback in &mut fallbacks {
         for line in &mut fallback.lines {
-            *line = line.replace(toggles::DETAILS_LT_TOKEN, "<");
+            *line = line.replace(toggles::details_lt_token(), "<");
         }
     }
     SeedPlan {
@@ -403,9 +404,9 @@ fn restore_details_markup(blocks: &mut [SeedBlock]) {
         for content in cells.into_iter().chain([&mut block.content]) {
             for piece in content {
                 if let SeedInline::Text { text, .. } = piece
-                    && text.contains(toggles::DETAILS_LT_TOKEN)
+                    && text.contains(toggles::details_lt_token())
                 {
-                    *text = text.replace(toggles::DETAILS_LT_TOKEN, "<");
+                    *text = text.replace(toggles::details_lt_token(), "<");
                 }
             }
         }

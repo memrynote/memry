@@ -13,19 +13,24 @@
 //! lines desktop reads, so it sends the whole text there
 //! ([`Masked::multiline_html`]).
 
+use std::sync::LazyLock;
+
 use crate::domain::journal_rules::js_trim;
 
 use super::backtick_runs::BacktickRuns;
 use super::comment_closes::{Later, LaterCloses};
 use super::markers::FenceTracker;
+use super::mask_word::mask_word;
 
-/// The word a masked comment becomes: `MEMRYCMT`, the comment's bytes in hex,
-/// `X`. Source text holding `MEMRY` never gets here
-/// (`prepare::document_fallback`), so a token is always ours.
-pub(super) const TOKEN_PREFIX: &str = "MEMRYCMT";
+/// The word a masked comment becomes: `MEMRYCMT`, the process's mask word,
+/// the comment's bytes in hex, `X`. No source text spells one.
+pub(super) fn token_prefix() -> &'static str {
+    static PREFIX: LazyLock<String> = LazyLock::new(|| format!("MEMRYCMT{}", mask_word()));
+    &PREFIX
+}
 
 pub(super) fn encode(source: &str) -> String {
-    format!("{TOKEN_PREFIX}{}X", hex::encode(source.as_bytes()))
+    format!("{}{}X", token_prefix(), hex::encode(source.as_bytes()))
 }
 
 /// What [`mask`] found.

@@ -25,15 +25,22 @@
 //! its `- ` and its indent, and only a blank line clears `inOtherBlock`), so no
 //! join decision reads a token it wrote.
 
+use std::sync::LazyLock;
+
 use crate::domain::journal_rules::{is_js_whitespace, js_trim};
 
+use super::mask_word::mask_word;
 use super::prepare::split_by_code_fences;
 use super::shapes::is_table_separator;
 
 /// The `<br>` of desktop's list-item join. Never in source text.
 pub(super) const JOIN: char = '\u{1}';
 
-const TOKEN_PREFIX: &str = "MEMRYHBK";
+/// `MEMRYHBK` and the process's mask word: no source text spells a token.
+fn token_prefix() -> &'static str {
+    static PREFIX: LazyLock<String> = LazyLock::new(|| format!("MEMRYHBK{}", mask_word()));
+    &PREFIX
+}
 
 /// `maskHardBreaks`: a line ending in two or more spaces or tabs, or in a
 /// backslash, followed by a non-blank line, has that spelling replaced by
@@ -118,7 +125,7 @@ fn mask_prose(text: &str, breaks: &mut Vec<String>) -> String {
             // would escape the token's first character.
             breaks.push(line[line.len() - spelling..].to_owned());
             line.truncate(line.len() - spelling);
-            line.push_str(&format!("{TOKEN_PREFIX}{};", breaks.len() - 1));
+            line.push_str(&format!("{}{};", token_prefix(), breaks.len() - 1));
             // A list item's continuation line becomes a child paragraph, or a lazy
             // one ends the list, so the break is lost (BBF-99). Joined, the token
             // lands against the item's soft break; the joined line is read again.
@@ -390,10 +397,10 @@ fn address_keeps_split(paragraph: &str) -> bool {
 
 /// The token's `MEMRYHBK<digits>;` at the start of `text`: its length and index.
 fn token_at(text: &str) -> Option<(usize, &str)> {
-    let after = text.strip_prefix(TOKEN_PREFIX)?;
+    let after = text.strip_prefix(token_prefix())?;
     let digits = after.chars().take_while(char::is_ascii_digit).count();
     (digits > 0 && after[digits..].starts_with(';'))
-        .then(|| (TOKEN_PREFIX.len() + digits + 1, &after[..digits]))
+        .then(|| (token_prefix().len() + digits + 1, &after[..digits]))
 }
 
 /// `unmaskHardBreaks`: a token followed by a newline becomes two newlines, and
@@ -403,10 +410,10 @@ pub(super) fn unmask_hard_breaks(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
     let mut done = 0;
     let mut search = 0;
-    while let Some(found) = text[search..].find(TOKEN_PREFIX) {
+    while let Some(found) = text[search..].find(token_prefix()) {
         let start = search + found;
         let Some((length, _)) = token_at(&text[start..]) else {
-            search = start + TOKEN_PREFIX.len();
+            search = start + token_prefix().len();
             continue;
         };
         let blanks_start = text[done..start].trim_end_matches(is_inline_space).len() + done;
@@ -430,10 +437,10 @@ pub(super) fn unmask_hard_breaks(text: &str) -> String {
 pub(super) fn restore_hard_break_spelling(text: &str, breaks: &[String]) -> String {
     let mut out = String::with_capacity(text.len());
     let mut rest = text;
-    while let Some(start) = rest.find(TOKEN_PREFIX) {
+    while let Some(start) = rest.find(token_prefix()) {
         let Some((length, index)) = token_at(&rest[start..]) else {
-            out.push_str(&rest[..start + TOKEN_PREFIX.len()]);
-            rest = &rest[start + TOKEN_PREFIX.len()..];
+            out.push_str(&rest[..start + token_prefix().len()]);
+            rest = &rest[start + token_prefix().len()..];
             continue;
         };
         out.push_str(&rest[..start]);
@@ -450,16 +457,28 @@ pub(super) fn restore_hard_break_spelling(text: &str, breaks: &[String]) -> Stri
 mod tests {
     use super::*;
 
+    /// A token as the tests below spell it, with the process's mask word in.
+    fn salt(text: &str) -> String {
+        text.replace("MEMRYHBK", token_prefix())
+    }
+
+    /// The masked text with the mask word taken out of its tokens.
     fn masked(markdown: &str) -> String {
-        mask_hard_breaks(markdown).0.replace(JOIN, "<br>")
+        mask_hard_breaks(markdown)
+            .0
+            .replace(JOIN, "<br>")
+            .replace(mask_word(), "")
     }
 
     #[test]
     fn a_hard_break_spelling_round_trips_through_its_token() {
         let (masked, breaks) = mask_hard_breaks("a  \nb\\\nc  \n\nd");
-        assert_eq!(masked, "aMEMRYHBK0;\nbMEMRYHBK1;\nc  \n\nd");
+        assert_eq!(
+            masked.replace(mask_word(), ""),
+            "aMEMRYHBK0;\nbMEMRYHBK1;\nc  \n\nd"
+        );
         assert_eq!(breaks, vec!["  ".to_owned(), "\\".to_owned()]);
-        assert_eq!(unmask_hard_breaks("aMEMRYHBK0;\nb"), "a\n\nb");
+        assert_eq!(unmask_hard_breaks(&salt("aMEMRYHBK0;\nb")), "a\n\nb");
         assert_eq!(
             restore_hard_break_spelling(&masked, &breaks),
             "a  \nb\\\nc  \n\nd"
@@ -468,16 +487,16 @@ mod tests {
 
     #[test]
     fn the_blanks_before_a_token_are_its_spelling_only_while_it_keeps_its_newline() {
-        assert_eq!(unmask_hard_breaks("a \tMEMRYHBK0;\nb"), "a\n\nb");
-        assert_eq!(unmask_hard_breaks("a  MEMRYHBK0;b"), "a  b");
-        assert_eq!(unmask_hard_breaks("a MEMRYHBK0;"), "a ");
-        assert_eq!(unmask_hard_breaks("a\n MEMRYHBK0;\nb"), "a\n\n\nb");
+        assert_eq!(unmask_hard_breaks(&salt("a \tMEMRYHBK0;\nb")), "a\n\nb");
+        assert_eq!(unmask_hard_breaks(&salt("a  MEMRYHBK0;b")), "a  b");
+        assert_eq!(unmask_hard_breaks(&salt("a MEMRYHBK0;")), "a ");
+        assert_eq!(unmask_hard_breaks(&salt("a\n MEMRYHBK0;\nb")), "a\n\n\nb");
     }
 
     #[test]
     fn a_token_without_a_recorded_spelling_is_deleted() {
         assert_eq!(
-            restore_hard_break_spelling("one MEMRYHBK9; two", &[]),
+            restore_hard_break_spelling(&salt("one MEMRYHBK9; two"), &[]),
             "one  two"
         );
     }

@@ -9,7 +9,7 @@
     "authoredBy": "desktop's markdownToYFragment path: LF line endings, maskHtmlComments, parseNoteMarkdown (editor-schema note-markdown) with parseMarkdownToBlocksRepaired on desktop's server schema, blocksToYXmlFragment",
     "provenAgainst": "apps/desktop/src/main/sync/markdown-seed-vectors.test.ts",
     "blockIds": "removed from every blockContainer line: BlockNote mints them at random",
-    "caseCount": 162
+    "caseCount": 163
   },
   "cases": [
     {
@@ -983,6 +983,12 @@
       "pins": "an item that spells the empty-block placeholder keeps it and the empty item beside it stays empty",
       "markdown": "- MEMRYEMBCORE\n-\n- a",
       "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"MEMRYEMBCORE\"\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n1 element blockContainer\n2 element bulletListItem backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a\""
+    },
+    {
+      "name": "placeholder text: a details block another app wrote",
+      "pins": "a details block no toggle claims is text whose `<` is hidden behind a placeholder, and text spelling that placeholder stays as written",
+      "markdown": "<details>\n<summary>x</summary>\nMEMRYDLT;summary>\n</details>",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"<details>\"\n3 element hardBreak\n3 text \"<summary>x</summary>\"\n3 element hardBreak\n3 text \"MEMRYDLT;summary>\"\n3 element hardBreak\n3 text \"</details>\""
     }
   ]
 }

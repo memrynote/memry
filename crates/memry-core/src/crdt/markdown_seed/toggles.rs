@@ -3,13 +3,19 @@
 //! the body, `</details>`), the markdown between them, and the blank lines at
 //! their seams. Any other `<details>` markup line stays the author's text.
 
+use std::sync::LazyLock;
+
 use crate::domain::journal_rules::{is_js_whitespace, js_trim};
 
 use super::Unsupported;
+use super::mask_word::mask_word;
 
 /// The `<` of a `<details>` markup line no toggle claimed, while it crosses
-/// the parser (`DETAILS_LT_TOKEN`). Restored in every text run.
-pub(super) const DETAILS_LT_TOKEN: &str = "MEMRYDLT;";
+/// the parser (`DETAILS_LT_TOKEN`), with the process's mask word. Restored in every text run.
+pub(super) fn details_lt_token() -> &'static str {
+    static TOKEN: LazyLock<String> = LazyLock::new(|| format!("MEMRYDLT{};", mask_word()));
+    &TOKEN
+}
 
 #[derive(Debug, PartialEq, Eq)]
 pub(super) enum Segment {
@@ -154,7 +160,7 @@ fn toggle_region(lines: &[&str], open_index: usize, open: bool) -> Option<(Segme
 fn escape_details_markup(line: &str) -> String {
     let markup = details_open_line(line) || summary_line(line).is_some() || line == "</details>";
     if markup {
-        line.replace('<', DETAILS_LT_TOKEN)
+        line.replace('<', details_lt_token())
     } else {
         line.to_owned()
     }
@@ -190,8 +196,8 @@ mod tests {
         assert_eq!(
             segments,
             vec![Segment::Markdown(
-                "MEMRYDLT;details>\nMEMRYDLT;summary>xMEMRYDLT;/summary>\nbody\nMEMRYDLT;/details>"
-                    .to_owned()
+                "<details>\n<summary>x</summary>\nbody\n</details>"
+                    .replace('<', details_lt_token())
             )]
         );
     }
