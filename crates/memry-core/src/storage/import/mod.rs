@@ -23,6 +23,7 @@ mod embeddings;
 mod notes;
 mod outbox;
 mod records;
+mod sync_state;
 
 pub use crdt::{
     DocumentState, ImportBodyPush, ImportBodySync, ImportBodyVersion, ImportDocument,
@@ -33,6 +34,9 @@ pub use embeddings::{DerivedTable, ImportEmbeddedNote};
 pub use notes::{ImportNoteFile, ImportNoteSnapshot};
 pub use outbox::{ImportDeleted, ImportQueued, ImportTombstoneClock};
 pub use records::ImportRecord;
+pub use sync_state::{
+    ImportHistory, ImportQuarantined, ImportRecordCursor, ImportRefused, ImportSyncState,
+};
 
 /// `meta` key a finished import writes into the staged `data.db`, last. Its
 /// presence in `<vault>/.memry/core/data.db` means the vault was imported.

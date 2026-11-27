@@ -80,10 +80,6 @@ pub enum ImportError {
     /// A vault database table `vault_db::tables::TABLE_MAP` does not list. Nothing was written.
     #[error("{db} has an unmapped table {table}")]
     UnmappedTable { db: &'static str, table: String },
-    /// A `sync_state` key `vault_db::sync_state::SYNC_STATE_KEYS` does not list. Nothing was
-    /// written.
-    #[error("sync_state has an unmapped key {0}")]
-    UnmappedSyncStateKey(String),
     /// The source's last drizzle migration is none of the frozen ones the table map describes.
     #[error("{db} is at migration {found:?}, this build reads {expected:?}")]
     SourceSchema {
