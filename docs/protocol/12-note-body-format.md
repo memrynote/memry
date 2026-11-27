@@ -194,6 +194,17 @@ fence's info string, `""` for an untagged fence or an indented run, never BlockN
   (`packages/editor-schema/src/blocks/markdown.ts:691`, `:735`,
   `packages/editor-schema/src/parse-markdown.ts:379`;
   `crates/memry-core/tests/markdown_seed_vectors.rs:52-62`).
+- **A block nesting marker, or a run indented under a list item, keeps the whole source
+  literal.** A `<!-- memry:block-nesting-level=N -->` line sets the nesting level of the text
+  after it, and keeps that level for the text before the next marker, and a lossless parse reads
+  a top-level item, a blank line, then a run indented to the item's text whose first line starts
+  with `>` or is `$$` as that block nested under the item, between two markers it writes. The
+  core reads no level, so a source holding a marker line, or such a run (not inside a fence,
+  not under a deeper item, and only after a blank line), sends every line to the fallback
+  (`packages/shared/src/block-nesting.ts:10`,
+  `packages/editor-schema/src/blocks/item-children.ts:27`,
+  `packages/editor-schema/src/note-markdown.ts:274`;
+  `crates/memry-core/src/crdt/markdown_seed/prepare.rs:48`, `:60`, `:76`, `:106`).
 - **A table row is never read as a hard break.** A line holding a `|` with a delimiter row
   below it opens a table, which runs until a line without a pipe, and a `\` ending
   one of its rows is the last cell's text, never a break token: `| a \` seeds the header cell `a \`
