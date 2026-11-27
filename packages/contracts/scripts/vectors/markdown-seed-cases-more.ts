@@ -204,5 +204,55 @@ export const MARKDOWN_SEED_MORE_CASES: ReadonlyArray<{
     name: 'math above a setext heading: equals signs',
     markdown: '$$\ny\n$$\nH\n===',
     pins: 'a math block y and a level 1 heading H'
+  },
+  {
+    name: 'whitespace-only code span: a bullet item of it',
+    markdown: '- ` `\n- b',
+    pins: 'a bullet item holding a code span of one space, then b'
+  },
+  {
+    name: 'whitespace-only code span: a numbered item and a quote of it',
+    markdown: '1. `  `\n\n> `\t`',
+    pins: 'a numbered item holding two spaces and a quote holding a tab, each as code'
+  },
+  {
+    name: 'whitespace-only code span: bold around it',
+    markdown: '**` `**',
+    pins: 'a code span drops the bold around it: one code run of a space'
+  },
+  {
+    name: 'empty-label link: in a line of text',
+    markdown: 'x [](u) y',
+    pins: 'a paragraph of x, an htmlComment node holding the link as written, and y: the address has no label to ride on'
+  },
+  {
+    name: 'empty-label link: a paragraph of it after a paragraph',
+    markdown: 'kq0xkq1x\n\n[](u)',
+    pins: 'a paragraph holding only an htmlComment node: the link is the block, so no empty paragraph follows'
+  },
+  {
+    name: 'empty-label link: a blank label with a title',
+    markdown: '[ ](u "t")',
+    pins: 'a paragraph holding the link as written, blank label and title included'
+  },
+  {
+    name: 'empty-label link: in a bullet item, a quote and bold',
+    markdown: '- [](u)\n\n> a [](v)\n\n**b [](w) c**',
+    pins: 'each holds an htmlComment node; the bold keeps b and c around the node'
+  },
+  {
+    name: 'empty-label link: in a table cell',
+    markdown: '| a | b |\n| - | - |\n| [](u) | x |',
+    pins: 'a cell holding an htmlComment node'
+  },
+  {
+    name: 'empty-label link: beside an image',
+    markdown: 'a [](u) ![i](v)',
+    pins: 'an image has a node of its own and stays one, the link beside it is the htmlComment node'
+  },
+  {
+    name: 'empty-label link: in a code span and after an escape',
+    markdown: '`[](u)` \\[](v)',
+    pins: 'a code span keeps the link as code, and an escaped bracket makes no link: both stay text'
   }
 ]

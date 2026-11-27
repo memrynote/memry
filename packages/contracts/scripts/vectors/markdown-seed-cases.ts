@@ -607,14 +607,14 @@ export const MARKDOWN_SEED_CASES: ReadonlyArray<{ name: string; markdown: string
       pins: 'a structured quote: the writer spells the run `**a\\***`, the source'
     },
     {
-      name: 'blank paragraph: a whitespace-only code span between paragraphs',
+      name: 'whitespace-only code span: a paragraph of it between paragraphs',
       markdown: 'x\n\n`  `\n\ny',
-      pins: 'the paragraph of only a code span of spaces is no block: the paragraph rule declines it and its whitespace has no place'
+      pins: 'a paragraph holding a code span of two spaces: the spaces travel hidden through the parse, so the paragraph keeps them'
     },
     {
-      name: 'blank paragraph: a whitespace-only code span after a paragraph',
+      name: 'whitespace-only code span: a paragraph of it after a paragraph',
       markdown: 'x\n\n` `',
-      pins: 'no block follows x'
+      pins: 'a second paragraph holding a code span of one space'
     },
     ...MARKDOWN_SEED_MORE_CASES,
     ...MARKDOWN_SEED_MASK_CASES
