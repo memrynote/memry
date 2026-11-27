@@ -13,7 +13,7 @@
 //! queues it. A terminal message never changes again. `content` and
 //! `attachments` are stored sealed ([`crate::crypto::agent_payload`]).
 //! No check that the conversation exists: a message lands before its
-//! conversation does, as migration `0029` explains.
+//! conversation does, as migration `0030` explains.
 
 pub mod merge;
 

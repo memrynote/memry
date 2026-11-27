@@ -2,7 +2,7 @@
   "meta": {
     "generator": "apps/desktop/scripts/generate-agent-mcp-vectors.ts",
     "oracle": "apps/desktop/src/main/agent/mcp/tools/desktop-api-describe.ts (describeDesktopOperation) over packages/contracts/src/agent-desktop-api-args.ts",
-    "note": "`argsSchema` validates the whole `args` array of vault_desktop_read or vault_desktop_write; desktopArgsItemSchemas reads the per-argument schemas out of its prefixItems.",
+    "note": "`argsSchema` validates the whole `args` array of vault_desktop_read or vault_desktop_write; desktopArgsItemSchemas reads the per-argument schemas out of its prefixItems. `checks` are the zod checks it prints without their custom message or cannot print, each at a JSON Pointer into `prefixItems` (of the longest call) or `$defs`.",
     "regenerate": "pnpm --filter @memry/desktop vectors:agent-mcp"
   },
   "operations": [
@@ -26,7 +26,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "notes.getByPath",
@@ -48,7 +49,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "notes.getFile",
@@ -70,7 +72,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "notes.resolveByTitle",
@@ -92,7 +95,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "notes.resolveWikiTarget",
@@ -114,7 +118,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "notes.previewByTitle",
@@ -136,7 +141,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "notes.list",
@@ -227,7 +233,8 @@
             "maxItems": 1
           }
         ]
-      }
+      },
+      "checks": []
     },
     {
       "operation": "notes.getTags",
@@ -239,7 +246,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "notes.getLinks",
@@ -261,7 +269,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "notes.getFolders",
@@ -273,7 +282,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "notes.exists",
@@ -295,7 +305,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "notes.getPropertyDefinitions",
@@ -307,7 +318,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "notes.listAttachments",
@@ -329,7 +341,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "notes.getFolderConfig",
@@ -351,7 +364,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "notes.getFolderTemplate",
@@ -373,7 +387,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "notes.getVersions",
@@ -395,7 +410,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "notes.getVersion",
@@ -417,7 +433,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "notes.getPositions",
@@ -439,7 +456,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "notes.getAllPositions",
@@ -451,7 +469,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "notes.getLocalOnlyCount",
@@ -463,7 +482,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "notes.getCalendarPropertyNames",
@@ -475,7 +495,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tasks.get",
@@ -497,7 +518,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tasks.list",
@@ -616,7 +638,8 @@
             "maxItems": 1
           }
         ]
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tasks.getSubtasks",
@@ -638,7 +661,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tasks.getProject",
@@ -660,7 +684,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tasks.listProjects",
@@ -672,7 +697,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tasks.listStatuses",
@@ -694,7 +720,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tasks.getTags",
@@ -706,7 +733,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tasks.getStats",
@@ -718,7 +746,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tasks.getToday",
@@ -730,7 +759,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tasks.getUpcoming",
@@ -772,7 +802,8 @@
             "maxItems": 1
           }
         ]
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tasks.getOverdue",
@@ -784,7 +815,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tasks.getLinkedTasks",
@@ -806,7 +838,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tasks.listProjectLinks",
@@ -828,7 +861,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tasks.listProjectContents",
@@ -850,7 +884,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tasks.listForItem",
@@ -884,7 +919,8 @@
         ],
         "minItems": 2,
         "maxItems": 2
-      }
+      },
+      "checks": []
     },
     {
       "operation": "inbox.get",
@@ -906,7 +942,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "inbox.list",
@@ -994,7 +1031,8 @@
             "maxItems": 1
           }
         ]
-      }
+      },
+      "checks": []
     },
     {
       "operation": "inbox.previewLink",
@@ -1016,7 +1054,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "inbox.getSuggestions",
@@ -1038,7 +1077,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "inbox.getTags",
@@ -1050,7 +1090,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "inbox.getSnoozed",
@@ -1062,7 +1103,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "inbox.getStats",
@@ -1074,7 +1116,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "inbox.getJobs",
@@ -1136,7 +1179,8 @@
             "maxItems": 1
           }
         ]
-      }
+      },
+      "checks": []
     },
     {
       "operation": "inbox.getPatterns",
@@ -1148,7 +1192,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "inbox.getStaleThreshold",
@@ -1160,7 +1205,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "inbox.listArchived",
@@ -1217,7 +1263,8 @@
             "maxItems": 1
           }
         ]
-      }
+      },
+      "checks": []
     },
     {
       "operation": "inbox.getFilingHistory",
@@ -1265,7 +1312,8 @@
             "maxItems": 1
           }
         ]
-      }
+      },
+      "checks": []
     },
     {
       "operation": "journal.getEntry",
@@ -1288,7 +1336,15 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": [
+        {
+          "at": "/prefixItems/0",
+          "check": "string_format",
+          "format": "regex",
+          "message": "Date must be YYYY-MM-DD"
+        }
+      ]
     },
     {
       "operation": "journal.getHeatmap",
@@ -1312,7 +1368,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "journal.getMonthEntries",
@@ -1345,7 +1402,8 @@
         ],
         "minItems": 2,
         "maxItems": 2
-      }
+      },
+      "checks": []
     },
     {
       "operation": "journal.getYearStats",
@@ -1369,7 +1427,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "journal.getDayContext",
@@ -1392,7 +1451,15 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": [
+        {
+          "at": "/prefixItems/0",
+          "check": "string_format",
+          "format": "regex",
+          "message": "Date must be YYYY-MM-DD"
+        }
+      ]
     },
     {
       "operation": "journal.getAllTags",
@@ -1404,7 +1471,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "journal.getStreak",
@@ -1416,7 +1484,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "properties.get",
@@ -1439,7 +1508,14 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": [
+        {
+          "at": "/prefixItems/0",
+          "check": "min_length",
+          "message": "Entity ID is required"
+        }
+      ]
     },
     {
       "operation": "templates.list",
@@ -1451,7 +1527,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "templates.get",
@@ -1473,7 +1550,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "savedFilters.list",
@@ -1485,7 +1563,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "bookmarks.get",
@@ -1507,7 +1586,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "bookmarks.list",
@@ -1580,7 +1660,8 @@
             "maxItems": 1
           }
         ]
-      }
+      },
+      "checks": []
     },
     {
       "operation": "bookmarks.isBookmarked",
@@ -1616,7 +1697,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "bookmarks.listByType",
@@ -1638,7 +1720,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "bookmarks.getByItem",
@@ -1674,7 +1757,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tags.getNotesByTag",
@@ -1727,7 +1811,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tags.getAllWithCounts",
@@ -1739,7 +1824,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tags.listCategories",
@@ -1751,7 +1837,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "folderView.getConfig",
@@ -1773,7 +1860,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "folderView.getViews",
@@ -1838,7 +1926,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "folderView.listWithProperties",
@@ -1937,7 +2026,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "folderView.getAvailableProperties",
@@ -2002,7 +2092,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "folderView.getFolderSuggestions",
@@ -2024,7 +2115,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "folderView.folderExists",
@@ -2046,7 +2138,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "reminders.get",
@@ -2068,7 +2161,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "reminders.list",
@@ -2170,7 +2264,8 @@
             "maxItems": 1
           }
         ]
-      }
+      },
+      "checks": []
     },
     {
       "operation": "reminders.getUpcoming",
@@ -2202,7 +2297,8 @@
             "maxItems": 1
           }
         ]
-      }
+      },
+      "checks": []
     },
     {
       "operation": "reminders.getDue",
@@ -2214,7 +2310,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "reminders.getForTarget",
@@ -2257,7 +2354,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "reminders.countPending",
@@ -2269,7 +2367,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "calendar.getEvent",
@@ -2291,7 +2390,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "calendar.listEvents",
@@ -2344,7 +2444,8 @@
             "maxItems": 1
           }
         ]
-      }
+      },
+      "checks": []
     },
     {
       "operation": "calendar.getRange",
@@ -2439,7 +2540,8 @@
             "maxItems": 2
           }
         ]
-      }
+      },
+      "checks": []
     },
     {
       "operation": "settings.get",
@@ -2461,7 +2563,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "settings.getJournalSettings",
@@ -2473,7 +2576,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "settings.getAISettings",
@@ -2485,7 +2589,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "settings.getVoiceTranscriptionSettings",
@@ -2497,7 +2602,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "settings.getVoiceModelStatus",
@@ -2509,7 +2615,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "settings.getVoiceRecordingReadiness",
@@ -2521,7 +2628,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "settings.getVoiceTranscriptionOpenAIKeyStatus",
@@ -2533,7 +2641,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "settings.getAIModelStatus",
@@ -2545,7 +2654,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "settings.getTabSettings",
@@ -2557,7 +2667,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "settings.getNoteEditorSettings",
@@ -2569,7 +2680,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "settings.getGeneralSettings",
@@ -2581,7 +2693,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "settings.getEditorSettings",
@@ -2593,7 +2706,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "settings.getTaskSettings",
@@ -2605,7 +2719,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "settings.getKeyboardSettings",
@@ -2617,7 +2732,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "settings.getSyncSettings",
@@ -2629,7 +2745,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "settings.getBackupSettings",
@@ -2641,7 +2758,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "settings.getGraphSettings",
@@ -2653,7 +2771,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "settings.getCalendarSettings",
@@ -2665,7 +2784,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "settings.getFeaturesSettings",
@@ -2677,7 +2797,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "settings.getInboxSettings",
@@ -2689,7 +2810,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "search.query",
@@ -2812,7 +2934,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "search.quick",
@@ -2867,7 +2990,8 @@
             "maxItems": 2
           }
         ]
-      }
+      },
+      "checks": []
     },
     {
       "operation": "search.getStats",
@@ -2879,7 +3003,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "search.getReasons",
@@ -2891,7 +3016,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "search.getAllTags",
@@ -2903,7 +3029,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "graph.getData",
@@ -2915,7 +3042,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "graph.getLocal",
@@ -2953,7 +3081,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "homePages.list",
@@ -2965,7 +3094,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "homePages.get",
@@ -2987,7 +3117,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "vault.getAll",
@@ -2999,7 +3130,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "vault.getStatus",
@@ -3011,7 +3143,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "vault.getConfig",
@@ -3023,7 +3156,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "vault.listAccount",
@@ -3035,7 +3169,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "canvas.list",
@@ -3047,7 +3182,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "canvas.getAsset",
@@ -3078,7 +3214,8 @@
         ],
         "minItems": 2,
         "maxItems": 2
-      }
+      },
+      "checks": []
     },
     {
       "operation": "canvas.listAssets",
@@ -3101,7 +3238,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "canvas.libraryList",
@@ -3113,7 +3251,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "notes.create",
@@ -3185,7 +3324,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "notes.update",
@@ -3301,7 +3441,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "notes.rename",
@@ -3332,7 +3473,8 @@
         ],
         "minItems": 2,
         "maxItems": 2
-      }
+      },
+      "checks": []
     },
     {
       "operation": "notes.move",
@@ -3361,7 +3503,8 @@
         ],
         "minItems": 2,
         "maxItems": 2
-      }
+      },
+      "checks": []
     },
     {
       "operation": "notes.delete",
@@ -3383,7 +3526,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "notes.createFolder",
@@ -3405,7 +3549,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "notes.renameFolder",
@@ -3434,7 +3579,8 @@
         ],
         "minItems": 2,
         "maxItems": 2
-      }
+      },
+      "checks": []
     },
     {
       "operation": "notes.deleteFolder",
@@ -3456,7 +3602,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "notes.createPropertyDefinition",
@@ -3528,7 +3675,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "notes.updatePropertyDefinition",
@@ -3599,7 +3747,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "notes.ensurePropertyDefinition",
@@ -3634,7 +3783,8 @@
         ],
         "minItems": 2,
         "maxItems": 2
-      }
+      },
+      "checks": []
     },
     {
       "operation": "notes.addPropertyOption",
@@ -3679,7 +3829,8 @@
         ],
         "minItems": 2,
         "maxItems": 2
-      }
+      },
+      "checks": []
     },
     {
       "operation": "notes.addStatusOption",
@@ -3736,7 +3887,8 @@
         ],
         "minItems": 3,
         "maxItems": 3
-      }
+      },
+      "checks": []
     },
     {
       "operation": "notes.removePropertyOption",
@@ -3767,7 +3919,8 @@
         ],
         "minItems": 2,
         "maxItems": 2
-      }
+      },
+      "checks": []
     },
     {
       "operation": "notes.renamePropertyOption",
@@ -3806,7 +3959,8 @@
         ],
         "minItems": 3,
         "maxItems": 3
-      }
+      },
+      "checks": []
     },
     {
       "operation": "notes.updateOptionColor",
@@ -3845,7 +3999,8 @@
         ],
         "minItems": 3,
         "maxItems": 3
-      }
+      },
+      "checks": []
     },
     {
       "operation": "notes.deletePropertyDefinition",
@@ -3868,7 +4023,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "notes.uploadAttachment",
@@ -3909,7 +4065,8 @@
         ],
         "minItems": 2,
         "maxItems": 2
-      }
+      },
+      "checks": []
     },
     {
       "operation": "notes.deleteAttachment",
@@ -3938,7 +4095,8 @@
         ],
         "minItems": 2,
         "maxItems": 2
-      }
+      },
+      "checks": []
     },
     {
       "operation": "notes.setFolderConfig",
@@ -3987,7 +4145,8 @@
         ],
         "minItems": 2,
         "maxItems": 2
-      }
+      },
+      "checks": []
     },
     {
       "operation": "notes.restoreVersion",
@@ -4009,7 +4168,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "notes.deleteVersion",
@@ -4031,7 +4191,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "notes.reorder",
@@ -4063,7 +4224,8 @@
         ],
         "minItems": 2,
         "maxItems": 2
-      }
+      },
+      "checks": []
     },
     {
       "operation": "notes.importFiles",
@@ -4142,7 +4304,8 @@
             "maxItems": 3
           }
         ]
-      }
+      },
+      "checks": []
     },
     {
       "operation": "notes.setLocalOnly",
@@ -4171,7 +4334,8 @@
         ],
         "minItems": 2,
         "maxItems": 2
-      }
+      },
+      "checks": []
     },
     {
       "operation": "notes.setCalendarPropertyVisibility",
@@ -4201,7 +4365,8 @@
         ],
         "minItems": 2,
         "maxItems": 2
-      }
+      },
+      "checks": []
     },
     {
       "operation": "notes.applyTemplate",
@@ -4248,7 +4413,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "notes.exportPdf",
@@ -4301,7 +4467,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "notes.exportHtml",
@@ -4354,7 +4521,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tasks.create",
@@ -4667,7 +4835,29 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": [
+        {
+          "at": "/prefixItems/0/properties/dueDate/anyOf/0",
+          "check": "custom",
+          "message": "Date must be a real calendar date in YYYY-MM-DD form"
+        },
+        {
+          "at": "/prefixItems/0/properties/startDate/anyOf/0",
+          "check": "custom",
+          "message": "Date must be a real calendar date in YYYY-MM-DD form"
+        },
+        {
+          "at": "/prefixItems/0/properties/fields",
+          "check": "custom",
+          "message": "At most 100 fields"
+        },
+        {
+          "at": "/$defs/__schema0/anyOf/5",
+          "check": "custom",
+          "message": "At most 50 keys"
+        }
+      ]
     },
     {
       "operation": "tasks.update",
@@ -4965,7 +5155,29 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": [
+        {
+          "at": "/prefixItems/0/properties/dueDate/anyOf/0",
+          "check": "custom",
+          "message": "Date must be a real calendar date in YYYY-MM-DD form"
+        },
+        {
+          "at": "/prefixItems/0/properties/startDate/anyOf/0",
+          "check": "custom",
+          "message": "Date must be a real calendar date in YYYY-MM-DD form"
+        },
+        {
+          "at": "/prefixItems/0/properties/fields",
+          "check": "custom",
+          "message": "At most 100 fields"
+        },
+        {
+          "at": "/$defs/__schema0/anyOf/5",
+          "check": "custom",
+          "message": "At most 50 keys"
+        }
+      ]
     },
     {
       "operation": "tasks.delete",
@@ -4987,7 +5199,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tasks.complete",
@@ -5026,7 +5239,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tasks.uncomplete",
@@ -5048,7 +5262,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tasks.archive",
@@ -5070,7 +5285,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tasks.unarchive",
@@ -5092,7 +5308,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tasks.move",
@@ -5152,7 +5369,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tasks.reorder",
@@ -5189,7 +5407,8 @@
         ],
         "minItems": 2,
         "maxItems": 2
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tasks.duplicate",
@@ -5211,7 +5430,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tasks.convertToSubtask",
@@ -5240,7 +5460,8 @@
         ],
         "minItems": 2,
         "maxItems": 2
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tasks.convertToTask",
@@ -5262,7 +5483,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tasks.createProject",
@@ -5359,7 +5581,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tasks.updateProject",
@@ -5461,7 +5684,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tasks.deleteProject",
@@ -5483,7 +5707,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tasks.archiveProject",
@@ -5505,7 +5730,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tasks.reorderProjects",
@@ -5542,7 +5768,8 @@
         ],
         "minItems": 2,
         "maxItems": 2
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tasks.linkProjectItem",
@@ -5586,7 +5813,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tasks.unlinkProjectItem",
@@ -5630,7 +5858,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tasks.setProjectLinkPinned",
@@ -5669,7 +5898,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tasks.setProjectHomeNote",
@@ -5711,7 +5941,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tasks.captureUrlToProject",
@@ -5746,7 +5977,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tasks.importFilesToProject",
@@ -5788,7 +6020,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tasks.createStatus",
@@ -5834,7 +6067,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tasks.updateStatus",
@@ -5886,7 +6120,8 @@
         ],
         "minItems": 2,
         "maxItems": 2
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tasks.deleteStatus",
@@ -5908,7 +6143,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tasks.reorderStatuses",
@@ -5945,7 +6181,8 @@
         ],
         "minItems": 2,
         "maxItems": 2
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tasks.bulkComplete",
@@ -5970,7 +6207,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tasks.bulkDelete",
@@ -5995,7 +6233,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tasks.bulkMove",
@@ -6027,7 +6266,8 @@
         ],
         "minItems": 2,
         "maxItems": 2
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tasks.bulkArchive",
@@ -6052,7 +6292,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "inbox.captureText",
@@ -6111,7 +6352,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "inbox.captureLink",
@@ -6164,7 +6406,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "inbox.captureImage",
@@ -6243,7 +6486,14 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": [
+        {
+          "at": "/prefixItems/0/properties/data",
+          "check": "custom",
+          "message": "Must be binary data (Buffer, Uint8Array, ArrayBuffer, or serialized buffer)"
+        }
+      ]
     },
     {
       "operation": "inbox.captureVoice",
@@ -6318,7 +6568,14 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": [
+        {
+          "at": "/prefixItems/0/properties/data",
+          "check": "custom",
+          "message": "Must be binary data (Buffer, Uint8Array, ArrayBuffer, or serialized buffer)"
+        }
+      ]
     },
     {
       "operation": "inbox.captureClip",
@@ -6383,7 +6640,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "inbox.capturePdf",
@@ -6430,7 +6688,14 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": [
+        {
+          "at": "/prefixItems/0/properties/data",
+          "check": "instanceof",
+          "expected": "Buffer"
+        }
+      ]
     },
     {
       "operation": "inbox.update",
@@ -6470,7 +6735,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "inbox.archive",
@@ -6492,7 +6758,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "inbox.file",
@@ -6620,7 +6887,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "inbox.trackSuggestion",
@@ -6679,7 +6947,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "inbox.convertToNote",
@@ -6730,7 +6999,8 @@
             "maxItems": 2
           }
         ]
-      }
+      },
+      "checks": []
     },
     {
       "operation": "inbox.convertToTask",
@@ -6810,7 +7080,8 @@
             "maxItems": 2
           }
         ]
-      }
+      },
+      "checks": []
     },
     {
       "operation": "inbox.convertToEvent",
@@ -6871,7 +7142,8 @@
         ],
         "minItems": 2,
         "maxItems": 2
-      }
+      },
+      "checks": []
     },
     {
       "operation": "inbox.convertToReminder",
@@ -6913,7 +7185,8 @@
         ],
         "minItems": 2,
         "maxItems": 2
-      }
+      },
+      "checks": []
     },
     {
       "operation": "inbox.linkToNote",
@@ -7016,7 +7289,8 @@
             "maxItems": 4
           }
         ]
-      }
+      },
+      "checks": []
     },
     {
       "operation": "inbox.addTag",
@@ -7045,7 +7319,8 @@
         ],
         "minItems": 2,
         "maxItems": 2
-      }
+      },
+      "checks": []
     },
     {
       "operation": "inbox.removeTag",
@@ -7074,7 +7349,8 @@
         ],
         "minItems": 2,
         "maxItems": 2
-      }
+      },
+      "checks": []
     },
     {
       "operation": "inbox.snooze",
@@ -7113,7 +7389,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "inbox.unsnooze",
@@ -7135,7 +7412,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "inbox.markViewed",
@@ -7157,7 +7435,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "inbox.bulkFile",
@@ -7229,7 +7508,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "inbox.bulkArchive",
@@ -7265,7 +7545,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "inbox.bulkTag",
@@ -7311,7 +7592,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "inbox.bulkSnooze",
@@ -7352,7 +7634,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "inbox.fileAllStale",
@@ -7364,7 +7647,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "inbox.retryTranscription",
@@ -7386,7 +7670,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "inbox.retryMetadata",
@@ -7408,7 +7693,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "inbox.setStaleThreshold",
@@ -7430,7 +7716,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "inbox.unarchive",
@@ -7452,7 +7739,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "inbox.deletePermanent",
@@ -7474,7 +7762,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "inbox.undoFile",
@@ -7496,7 +7785,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "inbox.undoArchive",
@@ -7518,7 +7808,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "journal.createEntry",
@@ -7568,7 +7859,15 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": [
+        {
+          "at": "/prefixItems/0/properties/date",
+          "check": "string_format",
+          "format": "regex",
+          "message": "Date must be YYYY-MM-DD"
+        }
+      ]
     },
     {
       "operation": "journal.updateEntry",
@@ -7634,7 +7933,15 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": [
+        {
+          "at": "/prefixItems/0/properties/date",
+          "check": "string_format",
+          "format": "regex",
+          "message": "Date must be YYYY-MM-DD"
+        }
+      ]
     },
     {
       "operation": "journal.deleteEntry",
@@ -7657,7 +7964,15 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": [
+        {
+          "at": "/prefixItems/0",
+          "check": "string_format",
+          "format": "regex",
+          "message": "Date must be YYYY-MM-DD"
+        }
+      ]
     },
     {
       "operation": "properties.set",
@@ -7691,7 +8006,14 @@
         ],
         "minItems": 2,
         "maxItems": 2
-      }
+      },
+      "checks": [
+        {
+          "at": "/prefixItems/0",
+          "check": "min_length",
+          "message": "Entity ID is required"
+        }
+      ]
     },
     {
       "operation": "properties.rename",
@@ -7730,7 +8052,24 @@
         ],
         "minItems": 3,
         "maxItems": 3
-      }
+      },
+      "checks": [
+        {
+          "at": "/prefixItems/0",
+          "check": "min_length",
+          "message": "Entity ID is required"
+        },
+        {
+          "at": "/prefixItems/1",
+          "check": "min_length",
+          "message": "Old property name is required"
+        },
+        {
+          "at": "/prefixItems/2",
+          "check": "min_length",
+          "message": "New property name is required"
+        }
+      ]
     },
     {
       "operation": "templates.create",
@@ -7827,7 +8166,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "templates.update",
@@ -7925,7 +8265,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "templates.delete",
@@ -7947,7 +8288,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "templates.duplicate",
@@ -7979,7 +8321,8 @@
         ],
         "minItems": 2,
         "maxItems": 2
-      }
+      },
+      "checks": []
     },
     {
       "operation": "savedFilters.create",
@@ -8534,7 +8877,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "savedFilters.update",
@@ -9099,7 +9443,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "savedFilters.delete",
@@ -9121,7 +9466,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "savedFilters.reorder",
@@ -9158,7 +9504,8 @@
         ],
         "minItems": 2,
         "maxItems": 2
-      }
+      },
+      "checks": []
     },
     {
       "operation": "bookmarks.create",
@@ -9194,7 +9541,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "bookmarks.delete",
@@ -9216,7 +9564,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "bookmarks.toggle",
@@ -9252,7 +9601,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "bookmarks.reorder",
@@ -9278,7 +9628,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "bookmarks.bulkDelete",
@@ -9305,7 +9656,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "bookmarks.bulkCreate",
@@ -9344,7 +9696,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tags.pinNoteToTag",
@@ -9381,7 +9734,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tags.unpinNoteFromTag",
@@ -9418,7 +9772,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tags.renameTag",
@@ -9461,7 +9816,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tags.updateTagColor",
@@ -9498,7 +9854,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tags.deleteTag",
@@ -9520,7 +9877,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tags.removeTagFromNote",
@@ -9557,7 +9915,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tags.mergeTag",
@@ -9594,7 +9953,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tags.updateTagIcon",
@@ -9638,7 +9998,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tags.createCategory",
@@ -9669,7 +10030,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tags.renameCategory",
@@ -9704,7 +10066,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tags.deleteCategory",
@@ -9735,7 +10098,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "tags.reorder",
@@ -9809,7 +10173,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "folderView.setConfig",
@@ -10090,7 +10455,8 @@
         ],
         "minItems": 2,
         "maxItems": 2
-      }
+      },
+      "checks": []
     },
     {
       "operation": "folderView.setView",
@@ -10507,7 +10873,8 @@
             "maxItems": 3
           }
         ]
-      }
+      },
+      "checks": []
     },
     {
       "operation": "folderView.deleteView",
@@ -10579,7 +10946,8 @@
         ],
         "minItems": 2,
         "maxItems": 2
-      }
+      },
+      "checks": []
     },
     {
       "operation": "reminders.create",
@@ -10785,7 +11153,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "reminders.update",
@@ -10844,7 +11213,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "reminders.delete",
@@ -10866,7 +11236,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "reminders.dismiss",
@@ -10888,7 +11259,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "reminders.snooze",
@@ -10926,7 +11298,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "reminders.bulkDismiss",
@@ -10962,7 +11335,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "calendar.createEvent",
@@ -11104,7 +11478,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "calendar.updateEvent",
@@ -11247,7 +11622,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "calendar.deleteEvent",
@@ -11269,7 +11645,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "settings.set",
@@ -11298,7 +11675,8 @@
         ],
         "minItems": 2,
         "maxItems": 2
-      }
+      },
+      "checks": []
     },
     {
       "operation": "settings.setJournalSettings",
@@ -11367,7 +11745,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "settings.setAISettings",
@@ -11395,7 +11774,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "settings.setVoiceTranscriptionSettings",
@@ -11542,7 +11922,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "settings.setTabSettings",
@@ -11578,7 +11959,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "settings.setNoteEditorSettings",
@@ -11610,7 +11992,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "settings.setGeneralSettings",
@@ -11818,7 +12201,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "settings.setEditorSettings",
@@ -11876,7 +12260,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "settings.setTaskSettings",
@@ -11937,7 +12322,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "settings.setKeyboardSettings",
@@ -12135,7 +12521,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "settings.resetKeyboardSettings",
@@ -12147,7 +12534,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "settings.setSyncSettings",
@@ -12181,7 +12569,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "settings.setBackupSettings",
@@ -12244,7 +12633,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "settings.setGraphSettings",
@@ -12289,7 +12679,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "settings.setCalendarSettings",
@@ -12339,7 +12730,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "settings.setFeaturesSettings",
@@ -12385,7 +12777,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "settings.setInboxSettings",
@@ -12429,7 +12822,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "search.rebuildIndex",
@@ -12441,7 +12835,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "search.addReason",
@@ -12504,7 +12899,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "search.clearReasons",
@@ -12516,7 +12912,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "homePages.create",
@@ -12611,7 +13008,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "homePages.update",
@@ -12708,7 +13106,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "homePages.delete",
@@ -12730,7 +13129,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "homePages.reorder",
@@ -12756,7 +13156,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "vault.switch",
@@ -12778,7 +13179,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "vault.reindex",
@@ -12790,7 +13192,8 @@
         "type": "array",
         "minItems": 0,
         "maxItems": 0
-      }
+      },
+      "checks": []
     },
     {
       "operation": "vault.updateConfig",
@@ -12836,7 +13239,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     },
     {
       "operation": "vault.downloadRemote",
@@ -12882,7 +13286,8 @@
             "maxItems": 2
           }
         ]
-      }
+      },
+      "checks": []
     },
     {
       "operation": "canvas.create",
@@ -12968,7 +13373,8 @@
             "maxItems": 1
           }
         ]
-      }
+      },
+      "checks": []
     },
     {
       "operation": "canvas.delete",
@@ -12990,7 +13396,8 @@
         ],
         "minItems": 1,
         "maxItems": 1
-      }
+      },
+      "checks": []
     }
   ]
 }

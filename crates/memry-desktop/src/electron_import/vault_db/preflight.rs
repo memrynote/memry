@@ -2,20 +2,20 @@
 //! a source this build cannot read completely is refused, never imported in part.
 //!
 //! In order: the drizzle ledger ends at the frozen migration `TABLE_MAP` describes; every table
-//! is mapped (shadow tables of a mapped virtual table excepted); every `sync_state` key is
-//! mapped; no table or key whose importer is still pending holds rows.
-
-use std::collections::BTreeMap;
+//! is mapped (shadow tables of a mapped virtual table excepted); no table or `sync_state` key
+//! whose importer is still pending holds rows, and no pending delete is of a type a later stage
+//! imports. An unknown `sync_state` key is reported by the table's importer, not refused:
+//! Electron refuses none.
 
 use rusqlite::{Connection, OptionalExtension};
 
+use super::ImportError;
 use super::source::{Sources, source_error};
 use super::sync_state::{self, KeyRule};
 use super::tables::{
-    ELECTRON_DATA_LAST_MIGRATION, ELECTRON_INDEX_LAST_MIGRATION, Importer, LEDGER_TABLE, SourceDb,
-    TableMapping, mapping,
+    ELECTRON_DATA_LEDGER_ENDS, ELECTRON_INDEX_LEDGER_ENDS, Importer, LEDGER_TABLE, SourceDb,
+    TableMapping, mapping, pending_area,
 };
-use super::{ImportError, VaultImportInput};
 
 /// Shadow tables per module, as Electron's DDL creates them: fts5 always makes these five, and
 /// vec0 these four for a table with a TEXT primary key and no auxiliary or metadata columns. A
@@ -26,19 +26,14 @@ const VEC0_SHADOWS: &[&str] = &["chunks", "rowids", "vector_chunks00", "info"];
 pub(super) struct Preflight {
     /// Every mapped table in the source with its row count, in `TABLE_MAP` order.
     pub tables: Vec<(&'static TableMapping, u64)>,
-    /// `sync_state` keys dropped by rule, counted under their report name.
-    pub dropped_keys: BTreeMap<String, u64>,
 }
 
-pub(super) fn run(
-    sources: &Sources,
-    input: &VaultImportInput<'_>,
-) -> Result<Preflight, ImportError> {
-    for (db, last) in [
-        (SourceDb::Data, ELECTRON_DATA_LAST_MIGRATION),
-        (SourceDb::Index, ELECTRON_INDEX_LAST_MIGRATION),
+pub(super) fn run(sources: &Sources) -> Result<Preflight, ImportError> {
+    for (db, ends) in [
+        (SourceDb::Data, ELECTRON_DATA_LEDGER_ENDS),
+        (SourceDb::Index, ELECTRON_INDEX_LEDGER_ENDS),
     ] {
-        ledger_matches(sources.conn(db), db, last)?;
+        ledger_matches(sources.conn(db), db, ends)?;
     }
 
     let mut tables = Vec::new();
@@ -55,34 +50,48 @@ pub(super) fn run(
     };
     tables.sort_by_key(|(m, _)| order(m));
 
-    let dropped_keys = sync_state_keys(sources.conn(SourceDb::Data))?;
+    pending_sync_state_keys(sources.conn(SourceDb::Data))?;
 
     for (table, count) in &tables {
         if let Some(Importer::Pending(stage)) = table.class.importer()
             && *count > 0
         {
-            return Err(ImportError::NotReady(format!(
-                "{}/{} ({stage})",
-                table.db.name(),
-                table.table,
-            )));
+            return Err(not_ready(
+                stage,
+                format!("{}/{} ({stage})", table.db.name(), table.table),
+            ));
+        }
+        if table.table == "sync_pending_deletes"
+            && *count > 0
+            && let Some((stage, item_type)) =
+                super::tables::replay::later_stage(sources.conn(SourceDb::Data))?
+        {
+            return Err(not_ready(
+                stage,
+                format!("data.db/sync_pending_deletes {item_type} rows ({stage})"),
+            ));
         }
     }
-    if !input.docs.is_empty() {
-        return Err(ImportError::NotReady("documents (36c)".into()));
-    }
-    if !input.extra_owed_docs.is_empty() {
-        return Err(ImportError::NotReady("owed documents (36c)".into()));
-    }
-    Ok(Preflight {
-        tables,
-        dropped_keys,
-    })
+    Ok(Preflight { tables })
 }
 
-/// The newest `__drizzle_migrations.created_at` must be the frozen journal's last `when`. An
-/// older source lacks columns the map reads; a newer one may hold columns it would drop.
-fn ledger_matches(conn: &Connection, db: SourceDb, expected: i64) -> Result<(), ImportError> {
+/// [`ImportError::NotReady`] for a pending stage, in the user's words.
+fn not_ready(stage: &str, detail: String) -> ImportError {
+    tracing::warn!(%detail, "the vault import is not built for this data yet");
+    ImportError::NotReady {
+        area: pending_area(stage).unwrap_or("data"),
+        detail,
+    }
+}
+
+/// The newest `__drizzle_migrations.created_at` must be one of `expected`, the frozen journal
+/// entries `TABLE_MAP` reads alike. An older source lacks columns the map reads; a newer one may
+/// hold columns it would drop.
+fn ledger_matches(
+    conn: &Connection,
+    db: SourceDb,
+    expected: &'static [i64],
+) -> Result<(), ImportError> {
     let has_ledger: bool = conn
         .query_row(
             "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?1)",
@@ -100,7 +109,7 @@ fn ledger_matches(conn: &Connection, db: SourceDb, expected: i64) -> Result<(), 
     } else {
         None
     };
-    if found != Some(expected) {
+    if !found.is_some_and(|end| expected.contains(&end)) {
         return Err(ImportError::SourceSchema {
             db: db.name(),
             found,
@@ -192,9 +201,8 @@ fn row_count(conn: &Connection, db: SourceDb, table: &str) -> Result<u64, Import
     .map_err(|e| source_error(db, e))
 }
 
-/// Classifies every `sync_state` key: an unknown one is [`ImportError::UnmappedSyncStateKey`],
-/// a pending one [`ImportError::NotReady`]. Returns the dropped keys' counts.
-fn sync_state_keys(conn: &Connection) -> Result<BTreeMap<String, u64>, ImportError> {
+/// [`ImportError::NotReady`] for a `sync_state` key whose handler a later stage writes.
+fn pending_sync_state_keys(conn: &Connection) -> Result<(), ImportError> {
     let db = SourceDb::Data;
     let present: Option<i64> = conn
         .query_row(
@@ -204,9 +212,8 @@ fn sync_state_keys(conn: &Connection) -> Result<BTreeMap<String, u64>, ImportErr
         )
         .optional()
         .map_err(|e| source_error(db, e))?;
-    let mut dropped = BTreeMap::new();
     if present.is_none() {
-        return Ok(dropped);
+        return Ok(());
     }
     let mut stmt = conn
         .prepare("SELECT key FROM sync_state ORDER BY key")
@@ -216,22 +223,10 @@ fn sync_state_keys(conn: &Connection) -> Result<BTreeMap<String, u64>, ImportErr
         .map_err(|e| source_error(db, e))?
         .collect::<Result<Vec<_>, _>>()
         .map_err(|e| source_error(db, e))?;
-    let mut pending = None;
     for key in keys {
-        let Some(rule) = sync_state::classify(&key) else {
-            return Err(ImportError::UnmappedSyncStateKey(key));
-        };
-        match rule.rule {
-            KeyRule::Skip { .. } => *dropped.entry(rule.report_name()).or_default() += 1,
-            KeyRule::Pending { stage, .. } => {
-                pending = pending.or(Some(format!("sync_state key {key} ({stage})")));
-            }
-            // The `sync_state` table's importer runs the handler.
-            KeyRule::Convert { .. } => {}
+        if let Some(KeyRule::Pending { stage, .. }) = sync_state::classify(&key).map(|r| r.rule) {
+            return Err(not_ready(stage, format!("sync_state key {key} ({stage})")));
         }
     }
-    match pending {
-        Some(what) => Err(ImportError::NotReady(what)),
-        None => Ok(dropped),
-    }
+    Ok(())
 }

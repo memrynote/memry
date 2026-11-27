@@ -68,11 +68,13 @@
 //!   the empty map: §6.3 step 1's "a missing field clock is the empty clock",
 //!   and the committed `settings: boundary` vector is exactly that payload.
 //!
-//! - **A concurrent path re-queues the merged payload** (§6.9.0, §6.5.2 P3,
-//!   #2399), in the same transaction as the write. Without it a device that
-//!   kept its own value on a concurrent pair holds it alone, while the server
-//!   keeps the peer's row (#2287). A merge with no concurrent path enqueues
-//!   nothing.
+//! - **A path whose local clock is concurrent with or ahead of the remote's
+//!   re-queues the merged payload** (§6.9.0, §6.5.2 P3, #2399, #5506), in the
+//!   same transaction as the write. Without it a device that kept a value the
+//!   server lacks holds it alone: a concurrent pair (#2287), or a peer's push
+//!   built before it pulled this device's tick, which the server takes whole
+//!   because settings carry no record clock. A merge where every local clock
+//!   is equal to or behind the remote's enqueues nothing.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -80,12 +82,14 @@ use rusqlite::{Connection, params};
 use serde_json::{Map, Value};
 
 use crate::api::errors::StorageError;
+use crate::domain::inbox::review;
 use crate::domain::notes::failed;
 use crate::domain::settings::{
-    apply_at, field_clocks_of, read_clock, segments, settings_of, value_at,
+    self, apply_at, field_clocks_of, read_clock, segments, settings_of, value_at,
 };
 use crate::domain::task_merge;
 use crate::domain::tasks::Inbound;
+use crate::storage::nested_tx;
 use crate::storage::repositories::schema::Object;
 use crate::storage::repositories::sync_items::InboundRecord;
 use crate::storage::repositories::{Change, StoredPayload, sync_items};
@@ -110,7 +114,30 @@ use crate::sync::hardening::requeue;
 /// against the row (§13.2 rule 5). A remote that *is* JSON but whose
 /// `settings` or `fieldClocks` will not read is an `Err`, which the caller
 /// records corrupt **without** overwriting the local payload.
+///
+/// A record that moves the review schedule re-arms this device's review guard
+/// ([`review::rearm_if_rescheduled`]), whichever branch stored it.
 pub(crate) fn apply_remote_merged(
+    conn: &Connection,
+    record: &InboundRecord,
+    now_ms: i64,
+) -> Result<Inbound, StorageError> {
+    let before = stored_schedule(conn);
+    let inbound = merge_or_store(conn, record, now_ms)?;
+    review::rearm_if_rescheduled(conn, &before, &stored_schedule(conn))?;
+    Ok(inbound)
+}
+
+/// The stored review schedule. A local copy that will not read holds no
+/// schedule this device could act on, so it compares as unset and the record
+/// replacing it re-arms the guard when it carries one.
+fn stored_schedule(conn: &Connection) -> review::Schedule {
+    settings::all(conn)
+        .map(|stored| review::schedule(&stored))
+        .unwrap_or_default()
+}
+
+fn merge_or_store(
     conn: &Connection,
     record: &InboundRecord,
     now_ms: i64,
@@ -139,7 +166,8 @@ pub(crate) fn apply_remote_merged(
         ("fieldClocks", Change::Set(merged.field_clocks)),
     ];
 
-    let transaction = conn.unchecked_transaction().map_err(failed)?;
+    let transaction = nested_tx::begin(conn).map_err(failed)?;
+    settings::revive(&transaction)?;
     sync_items::apply_local_edit_in(
         &transaction,
         &record.item_type,
@@ -175,8 +203,8 @@ pub(crate) fn apply_remote_merged(
 }
 
 /// The merged `settings` object and `fieldClocks` map, whether either
-/// differs from what this device already holds, and whether any path compared
-/// `concurrent`.
+/// differs from what this device already holds, and whether any local path
+/// clock is `concurrent` with or `after` the remote's.
 struct MergedSettings {
     settings: Map<String, Value>,
     field_clocks: Value,
@@ -227,11 +255,15 @@ fn merge(local: &Object, remote: &Object) -> Result<MergedSettings, StorageError
     }
 
     let empty = VectorClock::new();
+    // §6.9.0: the server lacks a tick this device holds (#5506).
     let requeue = paths.iter().any(|path| {
-        compare(
-            local_clocks.get(*path).unwrap_or(&empty),
-            remote_clocks.get(*path).unwrap_or(&empty),
-        ) == ClockOrder::Concurrent
+        matches!(
+            compare(
+                local_clocks.get(*path).unwrap_or(&empty),
+                remote_clocks.get(*path).unwrap_or(&empty),
+            ),
+            ClockOrder::Concurrent | ClockOrder::After
+        )
     });
     let changed = settings != local_settings || result.merged_field_clocks != local_clocks;
     Ok(MergedSettings {
@@ -381,7 +413,7 @@ mod tests {
         );
         assert_eq!(back.settings["general"], json!({}));
         assert!(!back.changed);
-        assert!(!back.requeue);
+        assert!(back.requeue, "the server lacks the removal tick (#5506)");
     }
 
     #[test]

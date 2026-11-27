@@ -11,7 +11,13 @@
 //!   skips the record, as desktop's schema rejects it
 //!   ([`desktop_records::Kept`]); an absent
 //!   `icon` keeps the local icon and `null` clears it, and `vaultId` stays
-//!   local. `deletedAt` is the remote's: absent or `null` revives the folder.
+//!   local unless the remote states the bound server id
+//!   ([`server_vault::merged_vault_id`], #5669). `deletedAt` is the remote's:
+//!   absent or `null` revives the folder.
+//! - **A restamp contests only `vaultId`** ([`server_vault::restamp`], which
+//!   Electron's handler does not know): a remote restamp whose base this live
+//!   folder is strictly after leaves its path, icon and `deletedAt` as they
+//!   are under the merged clock, re-queued.
 //!
 //! A delete is the tombstone path unchanged ([`crate::domain::desktop_records`]).
 
@@ -20,10 +26,12 @@ use serde_json::Value;
 
 use crate::api::errors::StorageError;
 use crate::domain::desktop_records::{self, Kept};
+use crate::domain::notes::clock_in;
 use crate::domain::task_merge;
 use crate::domain::tasks::Inbound;
-use crate::storage::repositories::StoredPayload;
 use crate::storage::repositories::sync_items::InboundRecord;
+use crate::storage::repositories::{Change, StoredPayload};
+use crate::sync::server_vault;
 
 use super::ITEM_TYPE;
 
@@ -31,7 +39,8 @@ pub(crate) const KEPT: Kept = Kept {
     not_null: &["id", "vaultId", "path", "clock"],
     coalesce: &["path"],
     when_absent: &["icon"],
-    local: &["vaultId"],
+    // `vaultId` is [`server_vault::merged_vault_id`]'s, passed as an extra change.
+    local: &[],
 };
 
 /// Applies one inbound `canvas_folder` record.
@@ -56,5 +65,25 @@ pub fn apply_remote(
     if local.is_none() && !(stated("vaultId") && stated("path")) {
         return Ok(Inbound::Skipped);
     }
-    desktop_records::apply_kept(conn, record, &remote, local.as_ref(), Vec::new(), now_ms)
+    let vault_id = |winner: &StoredPayload| -> Result<Vec<(&'static str, Change)>, StorageError> {
+        let Some(local) = &local else {
+            return Ok(Vec::new());
+        };
+        Ok(
+            server_vault::merged_vault_id(conn, local.object(), remote.object())?
+                .filter(|id| winner.object().get("vaultId") != Some(id))
+                .map(|id| ("vaultId", Change::Set(id)))
+                .into_iter()
+                .collect(),
+        )
+    };
+    if let Some(live) = desktop_records::stored(conn, ITEM_TYPE, &record.item_id, true)?
+        && !desktop_records::fails_desktop_schema(ITEM_TYPE, remote.object(), KEPT.not_null)
+        && server_vault::restamp_superseded(remote.object(), &clock_in(live.object())?)
+    {
+        let extra = vault_id(&live)?;
+        return desktop_records::apply_kept(conn, record, &live, Some(&live), extra, now_ms);
+    }
+    let extra = vault_id(&remote)?;
+    desktop_records::apply_kept(conn, record, &remote, local.as_ref(), extra, now_ms)
 }

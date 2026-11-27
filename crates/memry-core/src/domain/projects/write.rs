@@ -14,6 +14,7 @@ use serde_json::{Value, json};
 
 use crate::api::errors::StorageError;
 use crate::crypto::sodium::random_bytes;
+use crate::storage::nested_tx;
 use crate::storage::repositories::schema::Object;
 use crate::storage::repositories::{Change, sync_items};
 use crate::sync::field_merge::{PROJECT_SYNCABLE_FIELDS, init_all_field_clocks};
@@ -168,7 +169,7 @@ fn first_clocks(device_id: &str) -> Result<(Value, Value), StorageError> {
 /// desktop's `seedUnclocked` does, so every device still meets on the one id.
 /// Returns whether it wrote one.
 pub fn ensure_inbox(conn: &Connection, now_ms: i64) -> Result<bool, StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let exists: bool = tx
         .query_row(
             "SELECT EXISTS(SELECT 1 FROM projects WHERE id = ?1 OR is_inbox = 1)
@@ -209,7 +210,7 @@ pub fn seed_unclocked(
     device_id: &str,
     now_ms: i64,
 ) -> Result<Vec<String>, StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let ids: Vec<String> = {
         let mut statement = tx
             .prepare(
@@ -259,6 +260,23 @@ pub fn update(
     now_ms: i64,
 ) -> Result<Option<Durable<String>>, StorageError> {
     let before = require_live(conn, project_id)?;
+    let written = update_leaving_notes(conn, project_id, edit, device_id, now_ms)?;
+    if let Some(name) = edit.name.filter(|name| *name != before.name) {
+        links::propagate_rename(conn, project_id, &before.name, name, device_id, now_ms)?;
+    }
+    Ok(written)
+}
+
+/// [`update`] without the rename reaching the linked notes: for a shell that rewrites each
+/// note itself through its own property writer ([`super::targets`], [`super::NameEdit`]).
+pub fn update_leaving_notes(
+    conn: &Connection,
+    project_id: &str,
+    edit: &ProjectEdit<'_>,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<Option<Durable<String>>, StorageError> {
+    require_live(conn, project_id)?;
     let mut changes: Vec<(&'static str, Change)> = Vec::new();
     if let Some(name) = edit.name {
         valid_name(name)?;
@@ -288,11 +306,7 @@ pub fn update(
         changes.push(("statuses", Change::Set(Value::Array(next))));
     }
 
-    let written = edit_project(conn, project_id, changes, device_id, now_ms)?;
-    if let Some(name) = edit.name.filter(|name| *name != before.name) {
-        links::propagate_rename(conn, project_id, &before.name, name, device_id, now_ms)?;
-    }
-    Ok(written)
+    edit_project(conn, project_id, changes, device_id, now_ms)
 }
 
 /// Archives the project, or unarchives it with `false` (`archiveProject`,

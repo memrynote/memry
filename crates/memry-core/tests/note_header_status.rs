@@ -25,7 +25,7 @@ use memry_core::api::projects::ProjectDraft;
 use memry_core::api::tasks::Tasks;
 use memry_core::api::tasks_write::NewTaskInput;
 use memry_core::api::vault::Vault;
-use memry_core::crdt::update_log;
+use memry_core::crdt::epoch::HeldBody;
 use memry_core::crypto::sodium;
 use memry_core::domain::notes::{self, NewNote};
 use memry_core::domain::properties;
@@ -142,7 +142,8 @@ impl World {
                     [&name, &type_name],
                 )
                 .expect("the definition");
-                update_log::append_server_update(conn, NOTE, 1, &body(&ids), NOW)
+                HeldBody::never_purged(conn, NOTE)
+                    .and_then(|held| held.append_server_update(1, &body(&ids), NOW))
                     .expect("seed the body");
                 Ok(())
             })

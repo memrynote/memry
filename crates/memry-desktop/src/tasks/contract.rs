@@ -396,6 +396,7 @@ impl TaskUpdateInput {
             linked_note_ids: self.linked_note_ids,
             linked_canvas_ids: self.linked_canvas_ids,
             fields: self.fields,
+            ..TaskPatch::default()
         };
         (self.id, patch)
     }
@@ -439,7 +440,7 @@ pub struct StatusReorderInput {
 }
 
 /// A present field, `null` included: `Some(None)` for `null`.
-fn present<'de, D, T>(d: D) -> Result<Option<Option<T>>, D::Error>
+pub(super) fn present<'de, D, T>(d: D) -> Result<Option<Option<T>>, D::Error>
 where
     D: Deserializer<'de>,
     T: DeserializeOwned,

@@ -1232,6 +1232,10 @@
     "loadingAria": "Chargement des appareils",
     "none": "Aucun appareil associé pour le moment",
     "linkNew": "Associer un nouvel appareil",
+    "linkNeedsPlan": {
+      "title": "L'association nécessite un forfait de synchronisation",
+      "description": "Un appareil associé ne voit vos notes que lorsque la synchronisation est activée. Sans forfait, connectez-vous sur cet appareil avec votre phrase de récupération, et il conservera son propre coffre."
+    },
     "thisDevice": "Cet appareil",
     "lastSeen": "Vu pour la dernière fois il y a {time}",
     "linked": "Associé il y a {time}",
@@ -1398,6 +1402,7 @@
       "selectModel": "Sélectionner un modèle",
       "apiKey": "Clé API",
       "apiKeyDescription": "Stockée localement, envoyée uniquement au fournisseur",
+      "apiKeyKeychainDescription": "Stockée dans le trousseau de votre système, envoyée uniquement au fournisseur",
       "apiKeyPlaceholder": "Saisir la clé API {provider}",
       "ollamaUrl": "URL d'Ollama",
       "ollamaUrlDescription": "Adresse du serveur local",

@@ -4,9 +4,27 @@
 use tauri::Wry;
 use tauri_specta::{Builder, ErrorHandlingMode, collect_commands, collect_events};
 
-use crate::startup::StartupState;
+use crate::{commands::calendar, startup::StartupState};
 
+// The bookmark and recents commands and events (`registry/bookmarks.rs`).
+#[macro_use]
+mod bookmarks;
+#[macro_use]
+mod inbox;
+// The sticky note and edge tab commands and events (`registry/stickies.rs`).
+#[macro_use]
+mod stickies;
+// The task domain's commands and events (`registry/tasks.rs`, `registry/projects.rs`).
+#[macro_use]
+mod projects;
+// The reminder commands and events (`registry/reminders.rs`).
+#[macro_use]
+mod reminders;
+#[macro_use]
+mod tasks;
+mod canvas;
 mod dispatch;
+mod graph;
 mod permission;
 
 pub use dispatch::{dispatcher, invoke_handler};
@@ -23,7 +41,7 @@ pub fn builder() -> Builder<Wry> {
         .dangerously_cast_bigints_to_number()
         // One type per struct: the renderer reads `StartupState` and never writes it.
         .disable_serde_phases()
-        .commands(collect_commands![
+        .commands(calendar::collect_commands_with_calendar!([
             // account
             crate::commands::account::account_get_info,
             crate::commands::account::auth_cancel_oauth,
@@ -39,7 +57,10 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::account::sync_setup_first_device,
             crate::commands::account::sync_setup_new_account,
             // agent
+            crate::commands::agent::agent_edit_vault_trust_list::<Wry>,
             crate::commands::agent::agent_get_local_provider_settings::<Wry>,
+            crate::commands::agent::agent_get_tool_call::<Wry>,
+            crate::commands::agent::agent_get_tool_grants::<Wry>,
             crate::commands::agent::agent_list_local_models::<Wry>,
             crate::commands::agent::agent_probe_local_provider::<Wry>,
             crate::commands::agent::agent_set_local_provider_settings::<Wry>,
@@ -76,23 +97,8 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::calendar_providers::calendar_connect_provider,
             crate::commands::calendar_providers::calendar_disconnect_provider,
             crate::commands::calendar_providers::calendar_discover_provider_calendars,
-            // canvas
-            crate::commands::canvas::canvas_can_upload_asset,
-            crate::commands::canvas::canvas_create::<Wry>,
-            crate::commands::canvas::canvas_delete::<Wry>,
-            crate::commands::canvas::canvas_duplicate::<Wry>,
-            crate::commands::canvas::canvas_get::<Wry>,
-            crate::commands::canvas::canvas_get_asset::<Wry>,
-            crate::commands::canvas::canvas_library_list::<Wry>,
-            crate::commands::canvas::canvas_library_save::<Wry>,
-            crate::commands::canvas::canvas_list::<Wry>,
-            crate::commands::canvas::canvas_list_assets::<Wry>,
-            crate::commands::canvas::canvas_live_closed::<Wry>,
-            crate::commands::canvas::canvas_live_opened::<Wry>,
-            crate::commands::canvas::canvas_open_external,
-            crate::commands::canvas::canvas_reveal_in_finder,
-            crate::commands::canvas::canvas_update::<Wry>,
-            crate::commands::canvas::canvas_upload_asset::<Wry>,
+            crate::commands::calendar_providers::calendar_refresh_provider,
+            // canvas (the canvas commands themselves are in `registry/canvas.rs`)
             crate::commands::canvas_folders::canvas_folder_create::<Wry>,
             crate::commands::canvas_folders::canvas_folder_delete::<Wry>,
             crate::commands::canvas_folders::canvas_folder_list::<Wry>,
@@ -153,6 +159,14 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::home_pages::home_pages_set_cover::<Wry>,
             crate::commands::home_pages::home_pages_set_cover_framing::<Wry>,
             crate::commands::home_pages::home_pages_update::<Wry>,
+            // import (Readwise)
+            crate::commands::readwise::import_readwise_ack_error_toast,
+            crate::commands::readwise::import_readwise_cancel,
+            crate::commands::readwise::import_readwise_connect,
+            crate::commands::readwise::import_readwise_disconnect,
+            crate::commands::readwise::import_readwise_set_options,
+            crate::commands::readwise::import_readwise_status,
+            crate::commands::readwise::import_readwise_sync_now,
             // ios beta
             crate::commands::ios_beta::ios_beta_join,
             // journal
@@ -196,6 +210,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::attachments::notes_upload_attachment_abort::<Wry>,
             crate::commands::attachments::notes_upload_attachment_begin::<Wry>,
             crate::commands::export::notes_export_html::<Wry>,
+            crate::commands::export::notes_export_pdf,
             crate::commands::folders::notes_create_folder::<Wry>,
             crate::commands::folders::notes_delete_folder::<Wry>,
             crate::commands::folders::notes_get_folder_config::<Wry>,
@@ -272,6 +287,9 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::ocr_languages::ocr_languages_get_state,
             crate::commands::ocr_languages::ocr_languages_retry,
             crate::commands::ocr_languages::ocr_languages_set,
+            // onboarding
+            crate::commands::onboarding::onboarding_detect_sources,
+            crate::commands::onboarding::onboarding_is_memry_vault,
             // portals
             crate::commands::portals::portals_get_usage::<Wry>,
             crate::commands::portals::portals_search::<Wry>,
@@ -291,13 +309,6 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::spell::spell_check_word,
             crate::commands::spell::spell_add_word,
             crate::commands::spell::spell_add_words,
-            // stickies
-            crate::commands::stickies::sticky_delete_draft,
-            crate::commands::stickies::sticky_get_session,
-            crate::commands::stickies::sticky_list_drafts,
-            crate::commands::stickies::sticky_resize,
-            crate::commands::stickies::sticky_save_draft,
-            crate::commands::stickies::sticky_tuck,
             // fonts
             crate::fonts::system_fonts_list,
             // log
@@ -377,22 +388,6 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::tags::tags_unpin_note_from_tag::<Wry>,
             crate::commands::tags::tags_update_color,
             crate::commands::tags::tags_update_icon,
-            // tasks
-            crate::commands::tasks::tasks_get::<Wry>,
-            crate::commands::tasks::tasks_get_linked_tasks::<Wry>,
-            crate::commands::tasks::tasks_get_overdue::<Wry>,
-            crate::commands::tasks::tasks_get_stats::<Wry>,
-            crate::commands::tasks::tasks_get_subtasks::<Wry>,
-            crate::commands::tasks::tasks_get_tags::<Wry>,
-            crate::commands::tasks::tasks_get_today::<Wry>,
-            crate::commands::tasks::tasks_get_upcoming::<Wry>,
-            crate::commands::tasks::tasks_list::<Wry>,
-            crate::commands::tasks::tasks_status_create::<Wry>,
-            crate::commands::tasks::tasks_status_delete::<Wry>,
-            crate::commands::tasks::tasks_status_list::<Wry>,
-            crate::commands::tasks::tasks_status_reorder::<Wry>,
-            crate::commands::tasks::tasks_status_update::<Wry>,
-            crate::commands::tasks::tasks_update::<Wry>,
             // telemetry
             crate::commands::telemetry::telemetry_flush,
             crate::commands::telemetry::telemetry_get_settings,
@@ -444,7 +439,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::vault_activity::vault_activity_reveal,
             crate::commands::vault_activity::vault_activity_set_retention,
             // vault index
-            crate::commands::vault_index::vault_reindex,
+            crate::commands::vault_index::vault_reindex::<Wry>,
             // vault files
             crate::commands::vault_files::vault_resolve_embeds,
             // vault locks
@@ -467,14 +462,16 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::shell::window_minimize,
             crate::commands::shell::window_set_caption_rects,
             crate::commands::shell::window_toggle_maximize,
-        ])
-        .events(collect_events![
+        ]))
+        .events(calendar::collect_events_with_calendar!([
             // account
             crate::events::AuthOauthCallbackEvent,
             crate::events::AuthOauthErrorEvent,
             crate::events::AuthOtpDetectedEvent,
             crate::events::AuthSessionExpiredEvent,
             crate::events::AuthSessionRefreshedEvent,
+            // agent
+            crate::events::AgentEventEmittedEvent,
             // ai
             crate::events::AiEmbeddingProgressEvent,
             crate::events::AiInlineSettingsChangedEvent,
@@ -500,8 +497,8 @@ pub fn builder() -> Builder<Wry> {
             crate::events::HomePageCreatedEvent,
             crate::events::HomePageDeletedEvent,
             crate::events::HomePageUpdatedEvent,
-            // inbox
-            crate::events::InboxOpenItemEvent,
+            // import (Readwise)
+            crate::events::ImportReadwiseStatusChangedEvent,
             // journal
             crate::events::JournalEntryCreatedEvent,
             crate::events::JournalEntryDeletedEvent,
@@ -521,8 +518,6 @@ pub fn builder() -> Builder<Wry> {
             crate::events::SettingsOpenSectionEvent,
             // menu
             crate::events::MenuCommandInvokedEvent,
-            // stickies
-            crate::events::StickyDraftsChangedEvent,
             // sync
             crate::events::SyncCertificatePinFailedEvent,
             crate::events::SyncClockSkewWarningEvent,
@@ -564,10 +559,6 @@ pub fn builder() -> Builder<Wry> {
             crate::events::TagNotesChangedEvent,
             crate::events::TagRenamedEvent,
             crate::events::TagsProgressEvent,
-            // tasks
-            crate::events::TaskActivityCreatedEvent,
-            crate::events::TaskCreatedEvent,
-            crate::events::TaskUpdatedEvent,
             // vault
             crate::events::VaultActivityChangedEvent,
             crate::events::VaultConfigChangedEvent,
@@ -586,7 +577,7 @@ pub fn builder() -> Builder<Wry> {
             crate::events::WindowCaptionHoverChangedEvent,
             crate::events::WindowCaptionPressedChangedEvent,
             crate::events::WindowChromeStateChangedEvent,
-        ])
+        ]))
         .typ::<StartupState>()
         // `ai_provider_request` is a binary command; its argument and answer still get types.
         .typ::<memry_desktop::ai::proxy::AiProviderRequest>()

@@ -58,6 +58,10 @@ const ALLOWED: &[(&str, &str)] = &[
     ),
     ("crates/memry-desktop/src/readwise/client.rs", "readwise.io"),
     (
+        "crates/memry-desktop/src/import/remote.rs",
+        "the image hosts an imported HTML page names: https only, public addresses only (PublicOnly resolver, each redirect rechecked), no credentials",
+    ),
+    (
         "crates/memry-desktop/src/calendar_providers/ics_fetch.rs",
         "user-chosen ICS feed hosts: a conditional GET with no credentials, redirects followed by hand over http(s)",
     ),
@@ -68,6 +72,10 @@ const ALLOWED: &[(&str, &str)] = &[
     (
         "crates/memry-desktop/src/calendar_providers/caldav_transport.rs",
         "user-chosen CalDAV hosts: the password goes only to the origin the person typed, redirects followed by hand, never logged",
+    ),
+    (
+        "crates/memry-desktop/src/calendar_providers/caldav_dav.rs",
+        "user-chosen CalDAV hosts, only the method type; requests go through calendar_providers::caldav_transport",
     ),
     (
         "crates/memry-desktop/src/calendar_providers/caldav_discover.rs",
@@ -120,6 +128,10 @@ const ALLOWED: &[(&str, &str)] = &[
     (
         "apps/desktop-tauri/src-tauri/src/commands/agent.rs",
         "the local agent provider the person configured, through ai::local_provider::probe",
+    ),
+    (
+        "crates/memry-desktop/src/onboarding.rs",
+        "Ollama and LM Studio on localhost, the first-run wizard's model server probe, no proxy",
     ),
     (
         "crates/memry-desktop/src/services/capture/mod.rs",

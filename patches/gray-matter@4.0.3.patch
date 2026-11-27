@@ -1,0 +1,24 @@
+diff --git a/lib/engines.js b/lib/engines.js
+index 38f993db06cf364191ac635a6590c2d29303297d..cc1d67d82e41bd9960c02235f04ae725dcb32226 100644
+--- a/lib/engines.js
++++ b/lib/engines.js
+@@ -36,17 +36,6 @@ engines.json = {
+ engines.javascript = {
+-  parse: function parse(str, options, wrap) {
+-    /* eslint no-eval: 0 */
+-    try {
+-      if (wrap !== false) {
+-        str = '(function() {\nreturn ' + str.trim() + ';\n}());';
+-      }
+-      return eval(str) || {};
+-    } catch (err) {
+-      if (wrap !== false && /(unexpected|identifier)/i.test(err.message)) {
+-        return parse(str, options, false);
+-      }
+-      throw new SyntaxError(err);
+-    }
++  parse: function() {
++    throw new Error('frontmatter language "javascript" is not supported');
+   },
+   stringify: function() {
+     throw new Error('stringifying JavaScript is not supported');

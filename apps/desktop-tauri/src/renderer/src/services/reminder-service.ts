@@ -1,43 +1,63 @@
 /**
  * Reminder Service
  *
- * Thin wrapper around window.api.reminders for the renderer process.
- * Provides typed interface for reminder operations.
+ * The reminder commands of Step 21f2 (`commands/reminders.rs`) in the shapes of Electron's
+ * `reminder:*` channels: a write answers `{ success, reminder }`, or `{ success: false, error }`
+ * when the command throws. The events carry the reminder's id and target; the due and clicked
+ * events are answered with the reminders read back by id, as Electron sends them.
  *
  * @module services/reminder-service
  */
 
 import type {
-  Reminder,
-  ReminderWithTarget,
+  BulkDismissResponse,
   CreateReminderInput,
-  UpdateReminderInput,
-  SnoozeReminderInput,
-  ListRemindersInput,
-  ReminderListResponse,
+  ListRemindersInput as ListRemindersSchemaInput,
+  Reminder,
   ReminderCreateResponse,
-  ReminderUpdateResponse,
   ReminderDeleteResponse,
   ReminderDismissResponse,
-  ReminderSnoozeResponse,
-  BulkDismissResponse,
-  ReminderTargetType,
-  ReminderCreatedEvent,
-  ReminderUpdatedEvent,
-  ReminderDeletedEvent,
   ReminderDueEvent,
-  ReminderDismissedEvent,
-  ReminderSnoozedEvent
-} from '../../../preload/index.d'
+  ReminderListResponse,
+  ReminderSnoozeResponse,
+  ReminderTargetType,
+  ReminderUpdateResponse,
+  ReminderWithTarget,
+  SnoozeReminderInput,
+  UpdateReminderInput
+} from '@memry/contracts/reminders-api'
+import {
+  commands,
+  events,
+  type ReminderCreatedEvent,
+  type ReminderDeletedEvent,
+  type ReminderDismissedEvent,
+  type ReminderHint,
+  type ReminderListView,
+  type ReminderSnoozedEvent,
+  type ReminderUpdatedEvent,
+  type ReminderView,
+  type ReminderWithTargetView
+} from '../../../generated/bindings'
+import { extractErrorMessage } from '../lib/ipc-error'
+import { createLogger } from '../lib/logger'
+import { subscribeToEvent } from './tauri-event'
 
-// Re-export types for convenience
+const log = createLogger('ReminderService')
+
+/** Electron's `listReminders` takes the schema's fields, each optional. */
+export type ListRemindersInput = Partial<ListRemindersSchemaInput>
+
+export interface ReminderClickedEvent {
+  reminder: ReminderWithTarget
+}
+
 export type {
   Reminder,
   ReminderWithTarget,
   CreateReminderInput,
   UpdateReminderInput,
   SnoozeReminderInput,
-  ListRemindersInput,
   ReminderListResponse,
   ReminderCreateResponse,
   ReminderUpdateResponse,
@@ -54,103 +74,121 @@ export type {
   ReminderSnoozedEvent
 }
 
-// ============================================================================
-// Reminder Service
-// ============================================================================
-
-export const reminderService = {
-  /**
-   * Create a new reminder
-   */
-  create: (input: CreateReminderInput): Promise<ReminderCreateResponse> => {
-    return window.api.reminders.create(input)
-  },
-
-  /**
-   * Update an existing reminder
-   */
-  update: (input: UpdateReminderInput): Promise<ReminderUpdateResponse> => {
-    return window.api.reminders.update(input)
-  },
-
-  /**
-   * Delete a reminder
-   */
-  delete: (id: string): Promise<ReminderDeleteResponse> => {
-    return window.api.reminders.delete(id)
-  },
-
-  /**
-   * Get a reminder by ID
-   */
-  get: (id: string): Promise<ReminderWithTarget | null> => {
-    return window.api.reminders.get(id)
-  },
-
-  /**
-   * List reminders with optional filters
-   */
-  list: (options?: ListRemindersInput): Promise<ReminderListResponse> => {
-    return window.api.reminders.list(options)
-  },
-
-  /**
-   * Get upcoming reminders (next N days)
-   */
-  getUpcoming: (days?: number): Promise<ReminderListResponse> => {
-    return window.api.reminders.getUpcoming(days)
-  },
-
-  /**
-   * Get due reminders (ready to be shown)
-   */
-  getDue: (): Promise<ReminderWithTarget[]> => {
-    return window.api.reminders.getDue()
-  },
-
-  /**
-   * Get reminders for a specific target
-   */
-  getForTarget: (targetType: ReminderTargetType, targetId: string): Promise<Reminder[]> => {
-    return window.api.reminders.getForTarget({ targetType, targetId })
-  },
-
-  /**
-   * Count pending reminders (for badge display)
-   */
-  countPending: (): Promise<number> => {
-    return window.api.reminders.countPending()
-  },
-
-  /**
-   * Dismiss a reminder
-   */
-  dismiss: (id: string): Promise<ReminderDismissResponse> => {
-    return window.api.reminders.dismiss(id)
-  },
-
-  /**
-   * Snooze a reminder to a later time
-   */
-  snooze: (input: SnoozeReminderInput): Promise<ReminderSnoozeResponse> => {
-    return window.api.reminders.snooze(input)
-  },
-
-  /**
-   * Bulk dismiss multiple reminders
-   */
-  bulkDismiss: (reminderIds: string[]): Promise<BulkDismissResponse> => {
-    return window.api.reminders.bulkDismiss({ reminderIds })
+function toReminder(view: ReminderView): Reminder {
+  return {
+    ...view,
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- carried verbatim from the row; its writers constrain it to the union
+    targetType: view.targetType as ReminderTargetType,
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- carried verbatim from the row; its writers constrain it to the union
+    status: view.status as Reminder['status']
   }
 }
 
-// ============================================================================
-// Convenience Functions
-// ============================================================================
+function toReminderWithTarget(view: ReminderWithTargetView): ReminderWithTarget {
+  return {
+    ...toReminder(view),
+    targetTitle: view.targetTitle,
+    targetExists: view.targetExists,
+    highlightExists: view.highlightExists ?? undefined,
+    projectId: view.projectId
+  }
+}
 
-/**
- * Create a note reminder
- */
+function toListResponse(view: ReminderListView): ReminderListResponse {
+  return { ...view, reminders: view.reminders.map(toReminderWithTarget) }
+}
+
+function failure(error: unknown): string | undefined {
+  return extractErrorMessage(error, '') || undefined
+}
+
+async function written(write: () => Promise<ReminderView>): Promise<ReminderCreateResponse> {
+  try {
+    return { success: true, reminder: toReminder(await write()) }
+  } catch (error) {
+    return { success: false, reminder: null, error: failure(error) }
+  }
+}
+
+/** The reminders `hints` name that are still there, read back by id. */
+async function readBack(hints: ReminderHint[]): Promise<ReminderWithTarget[]> {
+  const views = await Promise.all(hints.map((hint) => commands.reminderGet(hint.id)))
+  return views.flatMap((view) => (view ? [toReminderWithTarget(view)] : []))
+}
+
+/** `callback` with what `resolve` reads for each event, until unsubscribed. */
+function subscribeResolved<T, R>(
+  event: { listen: (handler: (event: { payload: T }) => void) => Promise<() => void> },
+  resolve: (payload: T) => Promise<R | null>,
+  callback: (resolved: R) => void
+): () => void {
+  let active = true
+  const deliver = async (payload: T): Promise<void> => {
+    try {
+      const resolved = await resolve(payload)
+      if (active && resolved) callback(resolved)
+    } catch (error) {
+      log.warn('could not read the reminders of an event', error)
+    }
+  }
+  const unsubscribe = subscribeToEvent(event, (payload) => void deliver(payload))
+  return () => {
+    active = false
+    unsubscribe()
+  }
+}
+
+export const reminderService = {
+  create: (input: CreateReminderInput): Promise<ReminderCreateResponse> =>
+    written(() => commands.reminderCreate(input)),
+
+  update: (input: UpdateReminderInput): Promise<ReminderUpdateResponse> =>
+    written(() => commands.reminderUpdate(input)),
+
+  delete: async (id: string): Promise<ReminderDeleteResponse> => {
+    try {
+      await commands.reminderDelete(id)
+      return { success: true }
+    } catch (error) {
+      return { success: false, error: failure(error) }
+    }
+  },
+
+  get: async (id: string): Promise<ReminderWithTarget | null> => {
+    const view = await commands.reminderGet(id)
+    return view ? toReminderWithTarget(view) : null
+  },
+
+  list: async (options?: ListRemindersInput): Promise<ReminderListResponse> =>
+    toListResponse(await commands.reminderList(options ?? null)),
+
+  /** Pending and snoozed reminders of the next `days` days (7 when absent). */
+  getUpcoming: async (days?: number): Promise<ReminderListResponse> =>
+    toListResponse(await commands.reminderGetUpcoming(days ?? null)),
+
+  getDue: async (): Promise<ReminderWithTarget[]> =>
+    (await commands.reminderGetDue()).map(toReminderWithTarget),
+
+  getForTarget: async (targetType: ReminderTargetType, targetId: string): Promise<Reminder[]> =>
+    (await commands.reminderGetForTarget({ targetType, targetId })).map(toReminder),
+
+  countPending: (): Promise<number> => commands.reminderCountPending(),
+
+  dismiss: (id: string): Promise<ReminderDismissResponse> =>
+    written(() => commands.reminderDismiss(id)),
+
+  snooze: (input: SnoozeReminderInput): Promise<ReminderSnoozeResponse> =>
+    written(() => commands.reminderSnooze(input)),
+
+  bulkDismiss: async (reminderIds: string[]): Promise<BulkDismissResponse> => {
+    try {
+      return { success: true, dismissedCount: await commands.reminderBulkDismiss(reminderIds) }
+    } catch (error) {
+      return { success: false, dismissedCount: 0, error: failure(error) }
+    }
+  }
+}
+
 export async function createNoteReminder(
   noteId: string,
   remindAt: string,
@@ -165,9 +203,6 @@ export async function createNoteReminder(
   })
 }
 
-/**
- * Create a journal reminder
- */
 export async function createJournalReminder(
   journalDate: string,
   remindAt: string,
@@ -182,48 +217,62 @@ export async function createJournalReminder(
   })
 }
 
-// ============================================================================
-// Event Subscriptions
-// ============================================================================
-
-/**
- * Subscribe to reminder created events
- */
 export function onReminderCreated(callback: (event: ReminderCreatedEvent) => void): () => void {
-  return window.api.onReminderCreated(callback)
+  return subscribeToEvent(events.reminderCreatedEvent, callback)
 }
 
-/**
- * Subscribe to reminder updated events
- */
 export function onReminderUpdated(callback: (event: ReminderUpdatedEvent) => void): () => void {
-  return window.api.onReminderUpdated(callback)
+  return subscribeToEvent(events.reminderUpdatedEvent, callback)
 }
 
-/**
- * Subscribe to reminder deleted events
- */
 export function onReminderDeleted(callback: (event: ReminderDeletedEvent) => void): () => void {
-  return window.api.onReminderDeleted(callback)
+  return subscribeToEvent(events.reminderDeletedEvent, callback)
 }
 
-/**
- * Subscribe to reminder due events (reminder is ready to show)
- */
-export function onReminderDue(callback: (event: ReminderDueEvent) => void): () => void {
-  return window.api.onReminderDue(callback)
-}
-
-/**
- * Subscribe to reminder dismissed events
- */
 export function onReminderDismissed(callback: (event: ReminderDismissedEvent) => void): () => void {
-  return window.api.onReminderDismissed(callback)
+  return subscribeToEvent(events.reminderDismissedEvent, callback)
+}
+
+export function onReminderSnoozed(callback: (event: ReminderSnoozedEvent) => void): () => void {
+  return subscribeToEvent(events.reminderSnoozedEvent, callback)
+}
+
+/** A scheduler tick fired reminders: each one that is still there, with its target. */
+export function onReminderDue(callback: (event: ReminderDueEvent) => void): () => void {
+  return subscribeResolved(
+    events.reminderDueEvent,
+    async ({ reminders: hints, count }) => {
+      const reminders = await readBack(hints)
+      return reminders.length > 0 ? { reminders, count } : null
+    },
+    callback
+  )
+}
+
+/** A scheduler tick fired reminders: their ids and targets as the event names them, not read back. */
+export function onRemindersFired(callback: (reminders: ReminderHint[]) => void): () => void {
+  return subscribeToEvent(events.reminderDueEvent, ({ reminders }) => callback(reminders))
 }
 
 /**
- * Subscribe to reminder snoozed events
+ * A pull applied a reminder another device changed: Electron's sync handler sends `{ id }` on
+ * the created, updated and deleted channels (`reminder-handler.ts`).
  */
-export function onReminderSnoozed(callback: (event: ReminderSnoozedEvent) => void): () => void {
-  return window.api.onReminderSnoozed(callback)
+export function onReminderSynced(callback: (event: { id: string }) => void): () => void {
+  return subscribeToEvent(events.syncItemSyncedEvent, ({ operation, items }) => {
+    if (operation !== 'pull') return
+    for (const item of items) if (item.type === 'reminder') callback({ id: item.itemId })
+  })
+}
+
+/** The user clicked a reminder's notification. */
+export function onReminderClicked(callback: (event: ReminderClickedEvent) => void): () => void {
+  return subscribeResolved(
+    events.reminderClickedEvent,
+    async ({ reminder }) => {
+      const [found] = await readBack([reminder])
+      return found ? { reminder: found } : null
+    },
+    callback
+  )
 }

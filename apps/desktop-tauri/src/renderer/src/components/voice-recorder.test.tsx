@@ -2,33 +2,13 @@ import React from 'react'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { fakePcm } from '@tests/utils/fake-pcm-capture'
 import { VoiceRecorder, type VoiceRecorderHandle } from './voice-recorder'
 
-class MockMediaRecorder {
-  static isTypeSupported = vi.fn(() => true)
-
-  state: 'inactive' | 'recording' = 'inactive'
-  ondataavailable: ((event: { data: Blob }) => void) | null = null
-  onstop: (() => void) | null = null
-  onerror: ((event: unknown) => void) | null = null
-
-  constructor(
-    public stream: MediaStream,
-    public options: MediaRecorderOptions
-  ) {}
-
-  start(): void {
-    this.state = 'recording'
-  }
-
-  stop(): void {
-    this.state = 'inactive'
-    queueMicrotask(() => {
-      this.ondataavailable?.({ data: new Blob(['voice'], { type: 'audio/webm' }) })
-      this.onstop?.()
-    })
-  }
-}
+vi.mock(
+  '@/lib/pcm-capture',
+  async () => (await import('@tests/utils/fake-pcm-capture')).pcmCaptureModule
+)
 
 class MockAnalyser {
   // The real AnalyserNode default, so a test that asserts a smaller window is
@@ -84,6 +64,7 @@ describe('VoiceRecorder', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    fakePcm.reset()
     createdAnalysers.length = 0
     pendingFrames = []
     audioContexts.length = 0
@@ -92,11 +73,6 @@ describe('VoiceRecorder', () => {
     Object.defineProperty(navigator, 'mediaDevices', {
       configurable: true,
       value: { getUserMedia }
-    })
-
-    Object.defineProperty(globalThis, 'MediaRecorder', {
-      configurable: true,
-      value: MockMediaRecorder
     })
 
     Object.defineProperty(globalThis, 'AudioContext', {
@@ -119,7 +95,7 @@ describe('VoiceRecorder', () => {
     })
   })
 
-  it('starts recording, stops, and returns the captured blob', async () => {
+  it('starts recording, stops, and returns the captured audio', async () => {
     render(<VoiceRecorder onRecordingComplete={onRecordingComplete} onCancel={onCancel} />)
 
     await userEvent.click(screen.getByLabelText('Start voice recording'))
@@ -136,9 +112,8 @@ describe('VoiceRecorder', () => {
     await userEvent.click(screen.getByLabelText('Stop recording'))
 
     await waitFor(() => expect(onRecordingComplete).toHaveBeenCalled())
-    const [blob, duration] = onRecordingComplete.mock.calls[0]
-    expect(blob).toBeInstanceOf(Blob)
-    expect(blob.type).toBe('audio/webm')
+    const [audio, duration] = onRecordingComplete.mock.calls[0]
+    expect(audio).toBe(fakePcm.recording)
     expect(duration).toEqual(expect.any(Number))
     expect(trackStop).toHaveBeenCalled()
   })

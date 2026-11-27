@@ -22,8 +22,10 @@ use crate::api::errors::StorageError;
 use crate::domain::desktop_records::{self, live};
 use crate::domain::notes::{failed, object};
 use crate::domain::recreate::write_over_tombstone;
+use crate::storage::nested_tx;
 use crate::storage::repositories::{Change, sync_items};
 use crate::sync::outbox;
+use crate::sync::server_vault::RecordVault;
 
 /// The sync type of a folder record.
 pub const ITEM_TYPE: &str = "canvas_folder";
@@ -67,7 +69,7 @@ pub fn upsert(
     device_id: &str,
     now_ms: i64,
 ) -> Result<CanvasFolder, StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let folder = upsert_in(&tx, vault_id, path, icon, device_id, now_ms)?;
     tx.commit().map_err(failed)?;
     Ok(folder)
@@ -105,11 +107,12 @@ pub(crate) fn upsert_in(
         }
         desktop_records::edit(tx, ITEM_TYPE, &id, &stored, changes, device_id, now_ms)?;
     } else {
+        let vault = RecordVault::read(tx, vault_id)?;
         write_over_tombstone(
             tx,
             ITEM_TYPE,
             &id,
-            new_payload(&id, vault_id, path, icon.flatten()),
+            new_payload(&id, vault.stamp(), path, icon.flatten()),
             device_id,
             now_ms,
         )?;
@@ -133,11 +136,12 @@ pub(crate) fn insert_if_absent_in(
     if sync_items::load(tx, ITEM_TYPE, &id)?.is_some() {
         return Ok(false);
     }
+    let vault = RecordVault::read(tx, vault_id)?;
     write_over_tombstone(
         tx,
         ITEM_TYPE,
         &id,
-        new_payload(&id, vault_id, path, None),
+        new_payload(&id, vault.stamp(), path, None),
         device_id,
         now_ms,
     )?;
@@ -191,7 +195,7 @@ pub fn delete(
     if get_any(conn, &id)?.is_none_or(|(_, deleted)| deleted) {
         return Ok(false);
     }
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     tombstone_in(&tx, &id, device_id, now_ms)?;
     tx.commit().map_err(failed)?;
     Ok(true)

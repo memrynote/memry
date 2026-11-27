@@ -7,6 +7,7 @@ use rusqlite::{Connection, OptionalExtension, params};
 
 use super::{ImportWriter, failed};
 use crate::api::errors::StorageError;
+use crate::storage::nested_tx;
 use crate::storage::repositories::StoredPayload;
 use crate::storage::repositories::projectors::{self, ItemContext};
 use crate::storage::repositories::sync_items::PAYLOAD_STATE_FULL;
@@ -32,21 +33,25 @@ impl ImportWriter {
         records: &[ImportRecord],
         now_ms: i64,
     ) -> Result<(), StorageError> {
-        let tx = self.data.transaction().map_err(failed)?;
+        let tx = nested_tx::begin(&self.data).map_err(failed)?;
         for record in records {
             put(&tx, record, now_ms)?;
         }
         tx.commit().map_err(failed)
     }
 
-    /// `(item_id, clock)` of every staged record of `item_type`, for stage checks 2 and 5.
+    /// `(item_id, clock)` of every live staged record of `item_type`, for stage checks 2 and 5. A
+    /// queued delete's tombstone has no source row.
     pub fn record_clocks(
         &self,
         item_type: &str,
     ) -> Result<Vec<(String, Option<String>)>, StorageError> {
         let mut stmt = self
             .data
-            .prepare("SELECT item_id, clock FROM sync_items WHERE item_type = ?1 ORDER BY item_id")
+            .prepare(
+                "SELECT item_id, clock FROM sync_items
+                  WHERE item_type = ?1 AND deleted_at IS NULL ORDER BY item_id",
+            )
             .map_err(failed)?;
         stmt.query_map([item_type], |row| Ok((row.get(0)?, row.get(1)?)))
             .map_err(failed)?
@@ -54,7 +59,8 @@ impl ImportWriter {
             .map_err(failed)
     }
 
-    /// The staged payload of one record, for the `sync_unknown_fields` importer.
+    /// The staged payload of one live record, for the `sync_unknown_fields` importer. A queued
+    /// delete's tombstone is pushed as frozen, so it takes no kept fields.
     pub fn record_payload(
         &self,
         item_type: &str,
@@ -62,7 +68,8 @@ impl ImportWriter {
     ) -> Result<Option<String>, StorageError> {
         self.data
             .query_row(
-                "SELECT payload FROM sync_items WHERE item_type = ?1 AND item_id = ?2",
+                "SELECT payload FROM sync_items
+                  WHERE item_type = ?1 AND item_id = ?2 AND deleted_at IS NULL",
                 [item_type, item_id],
                 |row| row.get(0),
             )

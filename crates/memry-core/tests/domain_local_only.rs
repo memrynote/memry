@@ -17,6 +17,7 @@ use std::sync::Arc;
 
 use memry_core::api::errors::StorageError;
 use memry_core::crdt::body_edit::BlockEdit;
+use memry_core::crdt::epoch::HeldBody;
 use memry_core::crdt::registry::UpdateSink;
 use memry_core::crdt::update_log;
 use memry_core::crdt::{DocumentRegistry, extract_text};
@@ -430,11 +431,11 @@ fn a_peers_record_and_body_reach_a_local_only_note_and_queue_nothing() {
 
     run(&db, move |conn| {
         apply_inbound(conn, &inbound, NOW + 10)?;
-        update_log::append_server_update(conn, "n1", 1, &update, NOW + 10).map_err(|error| {
-            StorageError::Failed {
+        HeldBody::never_purged(conn, "n1")
+            .and_then(|held| held.append_server_update(1, &update, NOW + 10))
+            .map_err(|error| StorageError::Failed {
                 what: error.to_string(),
-            }
-        })
+            })
     });
 
     assert_eq!(title_of(&db, "n1"), "Edited by the peer");

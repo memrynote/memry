@@ -38,6 +38,7 @@
 
 pub mod claim;
 pub mod client;
+pub mod connection;
 pub mod cursor;
 pub mod engine;
 pub mod highlights;
@@ -49,6 +50,7 @@ pub mod limiter;
 pub mod options;
 pub mod plan_append;
 pub mod plan_note;
+pub mod pull_gate;
 pub mod reader;
 pub mod reader_notes;
 pub mod reader_sync;
@@ -57,8 +59,11 @@ mod run_end;
 pub mod run_state;
 pub mod run_status;
 pub mod run_types;
+pub mod scheduler;
 pub mod section;
+pub mod slot;
 pub mod status_publish;
+pub mod sync_view;
 pub mod telemetry;
 pub mod text;
 pub mod token;

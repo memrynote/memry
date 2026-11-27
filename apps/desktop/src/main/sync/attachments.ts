@@ -14,7 +14,12 @@ import { generateFileKey } from '../crypto/keys'
 import { secureCleanup } from '../crypto/index'
 import { signPayload, verifySignature } from '../crypto/signatures'
 import { CBOR_FIELD_ORDER } from '@memry/contracts/cbor-ordering'
-import { EmptyAttachmentError } from './attachment-errors'
+import {
+  EmptyAttachmentError,
+  SupersededDownloadError,
+  TextInMediaFileError
+} from './attachment-errors'
+import { mediaFileHoldsText } from './media-signature'
 import {
   NetworkError,
   SyncServerError,
@@ -28,9 +33,9 @@ import {
   AttachmentPresigner,
   PRESIGN_EXPIRY_SAFETY_MS,
   fetchChunkFromPresignedUrl,
-  putChunkToPresignedUrl,
-  type PresignedUrlWindow
+  putChunkToPresignedUrl
 } from './attachment-presign'
+import { AttachmentDownloadPrefetch } from './attachment-download-prefetch'
 import { withRetry, DeadLetterError, type RetryOptions } from '@memry/sync-client/retry'
 import { ManifestSignatureError } from '@memry/sync-client/push'
 import { recordBootstrapBytes } from './bootstrap-metrics'
@@ -180,14 +185,13 @@ interface UploadState {
 }
 
 /**
- * Per-transfer state of the direct-to-R2 download path (#1836). The window is
- * a batch of presigned GETs armed over the remaining chunks; one refresh is
+ * Per-transfer state of the direct-to-R2 download path (#1836). URLs come from
+ * the service's shared cache (AttachmentDownloadPrefetch); one refresh is
  * allowed on an expired/rejected URL before the transfer drops to the proxied
  * path for good — that keeps a broken presign deployment from doubling every
  * chunk's latency forever.
  */
 interface DirectDownloadState {
-  window: PresignedUrlWindow | null
   refreshUsed: boolean
   fallbackToProxied: boolean
 }
@@ -215,6 +219,32 @@ export interface AttachmentSyncDeps {
   getReusableAttachmentIds?: (noteId: string, filePath: string) => string[]
   /** The open vault; an upload reads only files inside it. */
   getVaultPath: () => string | null
+  /**
+   * Called right before a downloaded file appears at its path. The vault
+   * watcher must read that write as this download, not as an edit: a binary
+   * note's file read as an edit ticks the note's clock and uploads the bytes
+   * the server already holds (#5255). Returns the path the file lands at: a
+   * case twin's download asked for at a path its note has since left lands at
+   * the note's file now (#5560). `sha256` is the manifest's checksum of the
+   * bytes, already verified. `fileOwnerId` is the note whose own file the
+   * download lands on; throwing `SupersededDownloadError` drops the landing.
+   */
+  beforeFileLands?: (
+    filePath: string,
+    attachmentId: string,
+    sha256: string,
+    fileOwnerId?: string
+  ) => string | Promise<string>
+  /**
+   * Where `beforeFileLands` would land a binary note's file, with none of its
+   * effects, and throwing as it does. A file already holding the bytes skips
+   * the chunks only when it would land on itself (REVIEW-5700).
+   */
+  landingFor?: (
+    filePath: string,
+    attachmentId: string,
+    fileOwnerId: string
+  ) => string | Promise<string>
   fetchFn?: FetchFn
 }
 
@@ -272,7 +302,8 @@ async function binaryFetch(
   url: string,
   token: string,
   body?: Uint8Array | string,
-  fetchFn?: FetchFn
+  fetchFn?: FetchFn,
+  signal?: AbortSignal
 ): Promise<Response> {
   const fetchImpl = fetchFn ?? ((...args: Parameters<typeof net.fetch>) => net.fetch(...args))
 
@@ -294,7 +325,8 @@ async function binaryFetch(
     response = await fetchImpl(url, {
       method,
       headers,
-      body: fetchBody
+      body: fetchBody,
+      ...(signal ? { signal } : {})
     })
   } catch (err) {
     log.warn('fetch failed', { method, url, err })
@@ -359,6 +391,26 @@ function hashFileInto(
   })
 }
 
+/**
+ * Whether the file at `filePath` holds exactly the manifest's bytes. Size
+ * first, then hash: a same-size edit is other bytes.
+ */
+async function holdsManifestBytes(
+  filePath: string,
+  manifest: Pick<AttachmentManifest, 'size' | 'checksum'>
+): Promise<boolean> {
+  try {
+    if ((await stat(filePath)).size !== manifest.size) return false
+    const hashState = sodium.crypto_hash_sha256_init()
+    await hashFileInto(hashState, filePath)
+    // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
+    return sodium.to_hex(sodium.crypto_hash_sha256_final(hashState)) === manifest.checksum
+  } catch {
+    // Not on disk, or unreadable: the download replaces it.
+    return false
+  }
+}
+
 // ============================================================================
 // AttachmentSyncService
 // ============================================================================
@@ -373,6 +425,22 @@ const fromB64 = (s: string): Uint8Array =>
   // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
   sodium.from_base64(s, sodium.base64_variants.ORIGINAL)
 
+/**
+ * §14.7: the attachment id is the manifest's own `id`, as memry-core's
+ * fetch_with_manifest checks. A server answer naming another attachment, from
+ * the single GET or under a batch key, is refused before anything acts on it: a
+ * download would land that file under this id (#5652), and a deleted-asset
+ * release would free that attachment's chunks on the server (#5664). A plain
+ * Error, so markDownloadFailed counts it transient (never abandoned or pruned)
+ * and every chunkHashesOf caller keeps its work for a later pass. It logs
+ * nothing: the caller that gives up the work reports this message once, and
+ * a batch prefetch stays quiet because its download refuses the manifest again.
+ */
+function requireOwnManifest(attachmentId: string, manifest: AttachmentManifest): void {
+  if (manifest.id === attachmentId) return
+  throw new Error(`Manifest names attachment ${manifest.id}, not ${attachmentId}`)
+}
+
 export class AttachmentSyncService {
   private deps: AttachmentSyncDeps
   private activeUploads = new Map<string, UploadState>()
@@ -384,12 +452,20 @@ export class AttachmentSyncService {
    * instead of being re-probed on every download.
    */
   private readonly presigner: AttachmentPresigner
+  private readonly prefetch: AttachmentDownloadPrefetch
 
   constructor(deps: AttachmentSyncDeps) {
     this.deps = deps
     this.presigner = new AttachmentPresigner({
       getSyncServerUrl: deps.getSyncServerUrl,
       ...(deps.fetchFn ? { fetchFn: deps.fetchFn } : {})
+    })
+    this.prefetch = new AttachmentDownloadPrefetch({
+      chunkHashesOf: async (attachmentId, encrypted) => {
+        const vaultKey = await deps.getVaultKey()
+        if (!vaultKey) throw new Error('Vault is locked — no vault key')
+        return this.manifestChunkHashes(attachmentId, encrypted, vaultKey)
+      }
     })
   }
 
@@ -441,6 +517,9 @@ export class AttachmentSyncService {
       }
       if (fileStat.size === 0) {
         throw new EmptyAttachmentError(getMainI18n().t('errors:attachment.emptyFile'))
+      }
+      if (await mediaFileHoldsText(file, path.extname(filePath).slice(1), fileStat.size)) {
+        throw new TextInMediaFileError(getMainI18n().t('errors:attachment.textInMediaFile'))
       }
 
       // Plan preflight, before the expensive read+hash+encrypt pass below. The
@@ -722,7 +801,14 @@ export class AttachmentSyncService {
   async downloadAttachment(
     attachmentId: string,
     targetPath: string,
-    opts?: { targetIsDir?: boolean; onProgress?: ProgressCallback } & DownloadNetOptions
+    opts?: {
+      targetIsDir?: boolean
+      onProgress?: ProgressCallback
+      /** Attachment ids queued to download next; their manifests share one call. */
+      upcoming?: () => string[]
+      /** The note whose own file `targetPath` is (#5580). */
+      fileOwnerId?: string
+    } & DownloadNetOptions
   ): Promise<DownloadResult> {
     const [token, vaultKey] = await this.requireAuth()
     // Per-call callback wins over the shared slot, mirroring uploadAttachment:
@@ -746,7 +832,14 @@ export class AttachmentSyncService {
     if (opts?.isOnline) netOpts.isOnline = opts.isOnline
     if (opts?.signal) netOpts.signal = opts.signal
 
-    const encryptedManifest = await this.fetchManifest(token, attachmentId, netOpts)
+    const batchUrl = `${this.deps.getSyncServerUrl()}/sync/attachments/manifests/batch`
+    const encryptedManifest =
+      (await this.prefetch.takeManifest(attachmentId, opts?.upcoming, async (attachmentIds) => {
+        // The server charges one blob_download token per id, so the pacer does too.
+        for (let i = 0; i < attachmentIds.length; i++) await netOpts.pace?.()
+        const body = JSON.stringify({ attachmentIds })
+        return binaryFetch('POST', batchUrl, token, body, this.deps.fetchFn, netOpts.signal)
+      })) ?? (await this.fetchManifest(token, attachmentId, netOpts))
 
     const signerPublicKey = await this.deps.getDevicePublicKey(encryptedManifest.signerDeviceId)
     if (!signerPublicKey) {
@@ -761,6 +854,8 @@ export class AttachmentSyncService {
     let trackedProgress: TransferProgress | null = null
 
     try {
+      // Before any chunk request or write.
+      requireOwnManifest(attachmentId, manifest)
       const totalChunks = manifest.chunks.length
       // Embedded-attachment flow: the caller only knows the note's attachments
       // directory — the filename lives in the (signed, decrypted) manifest.
@@ -781,6 +876,31 @@ export class AttachmentSyncService {
           }
         } catch {
           // not on disk yet — proceed with the download
+        }
+      }
+
+      // A binary note's file a re-drive finds already holding these bytes, as
+      // after a runtime restart dropped a request the new one landed
+      // (VERIFY-5683). Only a landing on this same file skips the chunks: a
+      // case twin's lands elsewhere. The landing runs then, its checks and
+      // records included; a landing elsewhere runs once, after the download.
+      if (
+        opts?.fileOwnerId !== undefined &&
+        (await holdsManifestBytes(destPath, manifest)) &&
+        ((await this.deps.landingFor?.(destPath, attachmentId, opts.fileOwnerId)) ?? destPath) ===
+          destPath
+      ) {
+        const landAt = await this.deps.beforeFileLands?.(
+          destPath,
+          attachmentId,
+          manifest.checksum,
+          opts.fileOwnerId
+        )
+        if ((landAt ?? destPath) === destPath) {
+          log.debug('binary note file already holds the attachment, skipping download', {
+            attachmentId
+          })
+          return { filePath: destPath, manifest }
         }
       }
 
@@ -830,12 +950,12 @@ export class AttachmentSyncService {
       }
 
       let bytesDownloaded = resumeFrom.bytesWritten
+      let landedAt = destPath
       let handle: Awaited<ReturnType<typeof open>> | null = null
       // Direct-to-R2 state for THIS transfer (#1836): URLs arm lazily over the
       // remaining chunks and degrade to the proxied path on any presign
       // trouble (server unavailable, expired URL past its one refresh).
       const directState: DirectDownloadState = {
-        window: null,
         refreshUsed: false,
         fallbackToProxied: false
       }
@@ -898,8 +1018,16 @@ export class AttachmentSyncService {
         }
 
         try {
-          await rename(partialPath, destPath)
+          landedAt =
+            (await this.deps.beforeFileLands?.(
+              destPath,
+              attachmentId,
+              manifest.checksum,
+              opts?.fileOwnerId
+            )) ?? destPath
+          await rename(partialPath, landedAt)
         } catch (renameErr) {
+          if (renameErr instanceof SupersededDownloadError) throw renameErr
           log.error('failed to write attachment', { filePath: destPath, err: renameErr })
           if (isDiskSpaceError(renameErr)) {
             throw new Error(getMainI18n().t('errors:attachment.diskFull'), { cause: renameErr })
@@ -933,12 +1061,12 @@ export class AttachmentSyncService {
         throw err
       }
 
-      log.info('download complete', { attachmentId, path: destPath })
+      log.info('download complete', { attachmentId, path: landedAt })
       emitTerminal('completed')
       // Bootstrap throughput (#1835); no-op outside a fresh-device bootstrap.
       recordBootstrapBytes('attachments', bytesDownloaded)
 
-      return { filePath: destPath, manifest }
+      return { filePath: landedAt, manifest }
     } catch (err) {
       // Chunk fetch/decrypt failures, integrity mismatches and write failures
       // all reach here. The already-materialized early return above is silent by
@@ -1237,7 +1365,8 @@ export class AttachmentSyncService {
    * The server chunk hashes of an uploaded attachment, read from its signed
    * manifest, for freeing a deleted note's attachments (#3015). An empty list
    * means the server has no manifest for the id, so there is nothing to free.
-   * Any other failure throws, and the caller keeps the work for a later pass.
+   * Any other failure throws, a manifest naming another attachment included,
+   * and the caller keeps the work for a later pass.
    */
   async chunkHashesOf(attachmentId: string): Promise<string[]> {
     const [token, vaultKey] = await this.requireAuth()
@@ -1248,11 +1377,40 @@ export class AttachmentSyncService {
       if (err instanceof SyncServerError && err.statusCode === 404) return []
       throw err
     }
+    return this.manifestChunkHashes(attachmentId, encrypted, vaultKey)
+  }
+
+  /**
+   * The whole-file sha256 of an uploaded attachment, read from its signed
+   * manifest (#5608). Throws when the server has no manifest for the id, or
+   * it cannot be fetched or verified, or it names another attachment.
+   */
+  async checksumOf(attachmentId: string, netOpts: DownloadNetOptions): Promise<string> {
+    const [token, vaultKey] = await this.requireAuth()
+    const encrypted = await this.fetchManifest(token, attachmentId, netOpts)
+    return (await this.verifiedManifest(attachmentId, encrypted, vaultKey)).checksum
+  }
+
+  private async manifestChunkHashes(
+    attachmentId: string,
+    encrypted: EncryptedAttachmentManifest,
+    vaultKey: Uint8Array
+  ): Promise<string[]> {
+    const manifest = await this.verifiedManifest(attachmentId, encrypted, vaultKey)
+    return manifest.chunks.map((chunk) => chunk.encryptedHash)
+  }
+
+  private async verifiedManifest(
+    attachmentId: string,
+    encrypted: EncryptedAttachmentManifest,
+    vaultKey: Uint8Array
+  ): Promise<AttachmentManifest> {
     const signer = await this.deps.getDevicePublicKey(encrypted.signerDeviceId)
     if (!signer) throw new Error(`Unknown signer device: ${encrypted.signerDeviceId}`)
     const { manifest, fileKey } = this.decryptManifest(encrypted, vaultKey, signer)
     secureCleanup(fileKey)
-    return manifest.chunks.map((chunk) => chunk.encryptedHash)
+    requireOwnManifest(attachmentId, manifest)
+    return manifest
   }
 
   private async fetchManifest(
@@ -1266,7 +1424,14 @@ export class AttachmentSyncService {
     // which is what keeps the permanent-failure classification exact.
     return this.retryingRequest(
       async () => {
-        const resp = await binaryFetch('GET', url, token, undefined, this.deps.fetchFn)
+        const resp = await binaryFetch(
+          'GET',
+          url,
+          token,
+          undefined,
+          this.deps.fetchFn,
+          netOpts?.signal
+        )
         if (!resp.ok) {
           throw new SyncServerError(`Failed to fetch manifest for ${attachmentId}`, resp.status)
         }
@@ -1285,7 +1450,14 @@ export class AttachmentSyncService {
     const url = `${this.deps.getSyncServerUrl()}/sync/attachments/chunks/${encryptedHash}`
     return this.retryingRequest(
       async () => {
-        const resp = await binaryFetch('GET', url, token, undefined, this.deps.fetchFn)
+        const resp = await binaryFetch(
+          'GET',
+          url,
+          token,
+          undefined,
+          this.deps.fetchFn,
+          netOpts?.signal
+        )
         if (!resp.ok) {
           throw new SyncServerError(`Failed to download chunk ${encryptedHash}`, resp.status)
         }
@@ -1337,9 +1509,14 @@ export class AttachmentSyncService {
         log.info('presigned chunk URL rejected; refreshing batch once', {
           hash: encryptedHash.slice(0, 12)
         })
-        const refreshed = await this.presigner.fetchBatch(token, pendingHashes, netOpts)
-        state.window = refreshed
-        const retryUrl = refreshed?.urls.get(encryptedHash)
+        for (const h of pendingHashes) this.prefetch.forget(h)
+        const retryUrl = await this.nextPresignedDownloadUrl(
+          token,
+          encryptedHash,
+          pendingHashes,
+          state,
+          netOpts
+        )
         if (retryUrl) {
           try {
             return await this.fetchPresignedChunk(retryUrl, netOpts)
@@ -1378,10 +1555,10 @@ export class AttachmentSyncService {
   }
 
   /**
-   * Return the still-valid URL for `hash`, arming a fresh batch window over
-   * `pendingHashes` when absent or expired. Null means "use the proxied path"
-   * without flipping any fallback state — the NEXT chunk may legitimately get
-   * URLs again (e.g. this one was simply outside the batch).
+   * Return a live URL for `hash`, presigning `pendingHashes` when it has none.
+   * Null means "use the proxied path" without flipping any fallback state — the
+   * NEXT chunk may legitimately get URLs again (the presign call failed
+   * transiently).
    */
   private async nextPresignedDownloadUrl(
     token: string,
@@ -1391,12 +1568,9 @@ export class AttachmentSyncService {
     netOpts?: DownloadNetOptions
   ): Promise<string | null> {
     if (state.fallbackToProxied || !this.presigner.available) return null
-    if (state.window && Date.now() < state.window.expiresAtMs) {
-      return state.window.urls.get(hash) ?? null
-    }
-    const window = await this.presigner.fetchBatch(token, pendingHashes, netOpts)
-    state.window = window
-    return window?.urls.get(hash) ?? null
+    return this.prefetch.presignedUrl(hash, pendingHashes, (hashes) =>
+      this.presigner.fetchBatch(token, hashes, netOpts)
+    )
   }
 
   /**

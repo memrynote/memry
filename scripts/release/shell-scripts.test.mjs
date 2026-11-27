@@ -96,13 +96,15 @@ describe('check-glibc.sh', () => {
 })
 
 describe('repack-deb.sh', { skip: !has('dpkg-deb') && 'needs dpkg-deb' }, () => {
-  it('renames the package, sets Depends and Homepage, and keeps the payload', () =>
+  it('renames the package, sets Depends and Homepage, keeps the payload and drops export-bindings', () =>
     inTemp((dir) => {
       const root = path.join(dir, 'root')
       mkdirSync(path.join(root, 'DEBIAN'), { recursive: true })
       mkdirSync(path.join(root, 'usr/bin'), { recursive: true })
-      writeFileSync(path.join(root, 'usr/bin/memrynote'), '#!/bin/sh\n')
-      chmodSync(path.join(root, 'usr/bin/memrynote'), 0o755)
+      for (const bin of ['memrynote', 'export-bindings']) {
+        writeFileSync(path.join(root, 'usr/bin', bin), '#!/bin/sh\n')
+        chmodSync(path.join(root, 'usr/bin', bin), 0o755)
+      }
       // The control file tauri-bundler 2 writes.
       writeFileSync(
         path.join(root, 'DEBIAN/control'),
@@ -137,6 +139,7 @@ describe('repack-deb.sh', { skip: !has('dpkg-deb') && 'needs dpkg-deb' }, () => 
       assert.equal(field('Description'), 'MemryNote\n A local-first notes app.')
       const listing = spawnSync('dpkg-deb', ['-c', out], { encoding: 'utf8' }).stdout
       assert.match(listing, /-rwxr-xr-x root\/root .* \.\/usr\/bin\/memrynote/)
+      assert.doesNotMatch(listing, /export-bindings/)
     }))
 })
 
@@ -192,17 +195,21 @@ describe(
       '../../apps/desktop-tauri/eventkit/entitlements.plist'
     )
 
-    it('signs the EventKit helper with the calendars entitlement only, the rest with the app entitlements', () =>
+    it('gives the app entitlements to the main binary and the bundle only, and the EventKit helper calendars only', () =>
       inTemp((dir) => {
         const app = path.join(dir, 'MemryNote.app')
-        mkdirSync(path.join(app, 'Contents/MacOS'), { recursive: true })
-        writeFileSync(
-          path.join(app, 'Contents/Info.plist'),
-          '<?xml version="1.0" encoding="UTF-8"?><plist version="1.0"><dict>' +
-            '<key>CFBundleExecutable</key><string>MemryNote</string></dict></plist>'
-        )
-        for (const name of ['MemryNote', 'memry-ml-worker', 'memry-eventkit']) {
-          writeFileSync(path.join(app, 'Contents/MacOS', name), 'bin')
+        const files = {
+          'Contents/Info.plist':
+            '<?xml version="1.0" encoding="UTF-8"?><plist version="1.0"><dict>' +
+            '<key>CFBundleExecutable</key><string>MemryNote</string></dict></plist>',
+          'Contents/MacOS/MemryNote': 'bin',
+          'Contents/MacOS/memry-ml-worker': 'bin',
+          'Contents/MacOS/memry-eventkit': 'bin',
+          'Contents/Resources/pdfium/libpdfium.dylib': 'lib'
+        }
+        for (const [rel, body] of Object.entries(files)) {
+          mkdirSync(path.dirname(path.join(app, rel)), { recursive: true })
+          writeFileSync(path.join(app, rel), body)
         }
         const bin = path.join(dir, 'bin')
         const calls = path.join(dir, 'calls')
@@ -211,17 +218,46 @@ describe(
           binDir: bin
         })
         assert.equal(result.status, 0, result.stderr)
-        const sign = (file, entitlements) =>
-          `codesign --force --timestamp --options runtime --entitlements ${entitlements} --keychain kc --sign Developer ID ${file}`
-        const macos = path.join(app, 'Contents/MacOS')
+        const signing = '--force --timestamp --options runtime'
         assert.deepEqual(readFileSync(calls, 'utf8').trim().split('\n'), [
-          sign(path.join(macos, 'memry-ml-worker'), 'app.plist'),
-          sign(path.join(macos, 'memry-eventkit'), eventkitEntitlements),
-          sign(path.join(macos, 'MemryNote'), 'app.plist'),
-          sign(app, 'app.plist'),
+          `codesign ${signing} --keychain kc --sign Developer ID ${app}/Contents/MacOS/memry-ml-worker`,
+          `codesign ${signing} --entitlements ${eventkitEntitlements} --keychain kc --sign Developer ID ${app}/Contents/MacOS/memry-eventkit`,
+          `codesign ${signing} --keychain kc --sign Developer ID ${app}/Contents/Resources/pdfium/libpdfium.dylib`,
+          `codesign ${signing} --entitlements app.plist --keychain kc --sign Developer ID ${app}/Contents/MacOS/MemryNote`,
+          `codesign ${signing} --entitlements app.plist --keychain kc --sign Developer ID ${app}`,
           `codesign --verify --strict --verbose=2 ${app}`
         ])
       }))
+
+    for (const missing of ['Contents/MacOS/memry-eventkit', 'Contents/MacOS/memry-ml-worker']) {
+      it(`fails before signing when the manifest's ${path.basename(missing)} is not in the bundle`, () =>
+        inTemp((dir) => {
+          const app = path.join(dir, 'MemryNote.app')
+          const files = {
+            'Contents/Info.plist':
+              '<?xml version="1.0" encoding="UTF-8"?><plist version="1.0"><dict>' +
+              '<key>CFBundleExecutable</key><string>MemryNote</string></dict></plist>',
+            'Contents/MacOS/MemryNote': 'bin',
+            'Contents/MacOS/memry-ml-worker': 'bin',
+            'Contents/MacOS/memry-eventkit': 'bin',
+            'Contents/Resources/pdfium/libpdfium.dylib': 'lib'
+          }
+          delete files[missing]
+          for (const [rel, body] of Object.entries(files)) {
+            mkdirSync(path.dirname(path.join(app, rel)), { recursive: true })
+            writeFileSync(path.join(app, rel), body)
+          }
+          const bin = path.join(dir, 'bin')
+          const calls = path.join(dir, 'calls')
+          stub(bin, 'codesign', `echo "codesign $*" >> "${calls}"`)
+          const result = run('sign-macos-bundle.sh', [app, 'Developer ID', 'app.plist', 'kc'], {
+            binDir: bin
+          })
+          assert.notEqual(result.status, 0)
+          assert.match(result.stderr, new RegExp(`missing .*${path.basename(missing)}`))
+          assert.equal(existsSync(calls), false)
+        }))
+    }
   }
 )
 

@@ -18,7 +18,7 @@ pub const MAX_CLOCK_BYTES: usize = 64 * 1024;
 /// The `vault_metadata` row Electron reads (`agent/storage/vault-id.ts:7`).
 const SINGLETON_ID: &str = "singleton";
 
-pub(super) fn malformed(table: &'static str, rowid: i64, what: &'static str) -> ImportError {
+pub(crate) fn malformed(table: &'static str, rowid: i64, what: &'static str) -> ImportError {
     ImportError::MalformedRow { table, rowid, what }
 }
 
@@ -43,7 +43,7 @@ pub fn parse_clock(
     }
 }
 
-fn text(row: &Row<'_>, column: &str) -> Result<Option<String>, ImportError> {
+pub(super) fn text(row: &Row<'_>, column: &str) -> Result<Option<String>, ImportError> {
     row.get(column).map_err(|e| source_error(SourceDb::Data, e))
 }
 
@@ -52,7 +52,7 @@ fn text(row: &Row<'_>, column: &str) -> Result<Option<String>, ImportError> {
 pub(super) fn records(
     ctx: &mut TableCtx<'_>,
     sql: &str,
-    build: impl Fn(&Row<'_>, i64) -> Result<ImportRecord, ImportError>,
+    mut build: impl FnMut(&Row<'_>, i64) -> Result<ImportRecord, ImportError>,
 ) -> Result<TableStats, ImportError> {
     let records = {
         let mut stmt = ctx
@@ -77,6 +77,7 @@ pub(super) fn records(
     Ok(TableStats {
         written: records.len() as u64,
         dropped: Vec::new(),
+        notices: Vec::new(),
     })
 }
 

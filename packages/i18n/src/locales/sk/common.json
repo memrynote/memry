@@ -1,4 +1,7 @@
 {
+  "wikiLink": {
+    "openFailed": "Tento odkaz sa nepodarilo otvoriť"
+  },
   "portalBlock": {
     "copyFailed": "Portál sa nepodarilo skopírovať",
     "hiddenCount": "Skryté: {count}",

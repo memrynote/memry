@@ -16,9 +16,11 @@
 //!
 //! The writes live in [`store`]: each is one transaction with its outbox row,
 //! and a scene over [`CANVAS_SCENE_SYNC_CAP_BYTES`] saves without one. The
-//! `canvases` table (migration `0036`) indexes every field but the scene, which
+//! `canvases` table (migration `0037`) indexes every field but the scene, which
 //! stays in the payload; [`edges`] indexes what each scene points at, and
 //! [`folder_paths`] and [`scene_refs`] are the pure rules both build on.
+//! [`set_scene_expecting`] is [`update`] guarded by the scene the caller read
+//! (#4820): a `Stale` refusal writes and queues nothing.
 
 pub mod edges;
 /// Desktop writes the files, and links the JavaScript JSON helpers this uses.
@@ -31,14 +33,18 @@ mod scene_assets;
 pub mod scene_refs;
 mod store;
 
+use rusqlite::{Connection, params};
 use serde_json::{Map, Value, json};
 
 use crate::api::errors::StorageError;
+use crate::storage::nested_tx;
 
 pub use store::{
     CanvasCopy, CanvasEdit, Saved, SyncHold, Updated, create, delete, duplicate, get, list, new_id,
     sync_hold, update,
 };
+
+use super::notes::failed;
 
 /// The `(type, _)` half of every key this module writes.
 pub const ITEM_TYPE: &str = "canvas";
@@ -130,5 +136,80 @@ pub fn canonical_scene(scene: &str) -> Result<String, StorageError> {
     Ok(Value::Object(canonical).to_string())
 }
 
+/// What [`set_scene_expecting`] did.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SceneWrite {
+    /// The stored scene was the expected one; the new scene replaced it.
+    Written(Canvas),
+    /// The stored scene had changed since the caller read it, so nothing was
+    /// written. Carries the canvas as stored, for the caller to re-apply its
+    /// edit to.
+    Stale(Canvas),
+}
+
+/// A scene [`update`] guarded by the scene the caller read (#4820): a pull can
+/// land between a shell's read and its write, and an unguarded write built on
+/// the old read would erase that pull's edit under a dominating clock.
+/// `expected` is compared to the stored text exactly, in the write's own
+/// transaction. The write is [`update`]'s, sync cap included.
+pub fn set_scene_expecting(
+    conn: &Connection,
+    canvas_id: &str,
+    scene: &str,
+    expected: &str,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<SceneWrite, StorageError> {
+    let tx = nested_tx::begin(conn).map_err(failed)?;
+    let current = get(&tx, canvas_id)?.ok_or_else(|| StorageError::NotFound {
+        what: format!("no canvas {canvas_id}"),
+    })?;
+    if current.scene != expected {
+        return Ok(SceneWrite::Stale(current));
+    }
+    let edit = CanvasEdit {
+        scene: Some(scene),
+        ..CanvasEdit::default()
+    };
+    let Updated::Saved(saved) = update(&tx, canvas_id, &edit, device_id, now_ms)? else {
+        return Err(StorageError::Failed {
+            what: format!("canvas {canvas_id} reported a conflict it was not asked to check"),
+        });
+    };
+    tx.commit().map_err(failed)?;
+    Ok(SceneWrite::Written(saved.canvas))
+}
+
+/// Every live canvas whose `ownerNoteId` is `owner_note_id`, the note's own
+/// whiteboard and any "(conflict copy)" a pull made of it ([`merge`] gives the
+/// copy the same owner), ordered by id.
+pub fn list_owned_by(conn: &Connection, owner_note_id: &str) -> Result<Vec<Canvas>, StorageError> {
+    // `json_valid` first: `json_extract` over malformed text is an error, and
+    // one corrupt row must not hide every other canvas.
+    let mut statement = conn
+        .prepare(
+            "SELECT item_id FROM sync_items
+              WHERE item_type = ?1 AND deleted_at IS NULL
+                AND CASE WHEN json_valid(payload)
+                         THEN json_extract(payload, '$.ownerNoteId') END = ?2
+              ORDER BY item_id",
+        )
+        .map_err(failed)?;
+    let ids = statement
+        .query_map(params![ITEM_TYPE, owner_note_id], |row| {
+            row.get::<_, String>(0)
+        })
+        .map_err(failed)?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(failed)?;
+    let mut canvases = Vec::new();
+    for id in ids {
+        canvases.extend(get(conn, &id)?);
+    }
+    Ok(canvases)
+}
+
+#[cfg(test)]
+mod cas_tests;
 #[cfg(test)]
 mod tests;

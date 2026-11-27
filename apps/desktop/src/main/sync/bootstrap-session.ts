@@ -1,5 +1,6 @@
 import { BOOTSTRAP_TOKEN_HEADER } from '@memry/contracts/bootstrap-api'
 import type { BootstrapOpenResponse, BootstrapRenewResponse } from '@memry/contracts/bootstrap-api'
+import { SyncServerError } from '@memry/sync-client/http-errors'
 
 import { createLogger } from '../lib/logger'
 import {
@@ -77,13 +78,16 @@ function armRenewal(delayMs: number): void {
 }
 
 /**
- * Open a bootstrap session. Returns null when anything says no: the server
- * predates the feature (404), has it unconfigured (501), deems the device
- * already-synced (409), caps concurrent sessions (429), or simply failed.
+ * Open a bootstrap session. Returns `'ineligible'` when the answer is final for
+ * this device: the server deems it already synced (409
+ * BOOTSTRAP_NOT_ELIGIBLE), predates the feature (404) or has it unconfigured
+ * (501). That ends an interrupted bootstrap's resume (#5234), so a relaunch
+ * does not re-post forever. Returns null for a transient no: concurrent
+ * sessions capped (429), another error, or no network.
  */
 export async function openBootstrapSession(
   getAccessToken: GetAccessToken
-): Promise<OpenResult | null> {
+): Promise<OpenResult | 'ineligible' | null> {
   try {
     const accessToken = await getAccessToken()
     if (!accessToken) return null
@@ -143,8 +147,14 @@ export async function openBootstrapSession(
       error: error instanceof Error ? error.message : String(error)
     })
     closeLocalOnly()
-    return null
+    return isFinalRefusal(error) ? 'ineligible' : null
   }
+}
+
+function isFinalRefusal(error: unknown): boolean {
+  if (!(error instanceof SyncServerError)) return false
+  if (error.statusCode === 404 || error.statusCode === 501) return true
+  return error.statusCode === 409 && error.details?.code === 'BOOTSTRAP_NOT_ELIGIBLE'
 }
 
 async function renew(): Promise<void> {

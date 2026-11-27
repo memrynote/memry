@@ -134,3 +134,29 @@ fn a_pulled_day_waits_while_the_settings_cannot_be_read() {
     let outcome = f.run(&id);
     assert_wrote(&mut f, &outcome, "journal/2026-11-02.md");
 }
+
+/// A note whose folder cannot be read right now fails the pass, which is tried again, instead
+/// of breaking it for good: the folder may read once its permissions come back. Red when a read
+/// error in the folder lookup is `Broken`.
+#[cfg(unix)]
+#[test]
+fn a_pulled_note_whose_folder_cannot_be_read_is_tried_again() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let mut f = fixture();
+    let locked = f.root.join("Locked");
+    std::fs::create_dir_all(locked.join("Sub")).unwrap();
+    let id = f
+        .writer
+        .create("Plan".into(), Some("Locked/Sub".into()))
+        .unwrap();
+    walked(&f);
+    std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o000)).unwrap();
+    let outcome = f.run(&id);
+    std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o755)).unwrap();
+    assert!(matches!(outcome, Outcome::Failed(_)), "{outcome:?}");
+    assert!(f.vault.note_files().by_id(&id).unwrap().is_none());
+
+    let outcome = f.run(&id);
+    assert_wrote(&mut f, &outcome, "Locked/Sub/Plan.md");
+}

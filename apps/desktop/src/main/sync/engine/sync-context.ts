@@ -14,7 +14,14 @@ export interface SyncEngineDeps {
   network: NetworkMonitor
   ws: WebSocketManager
   getAccessToken: () => Promise<string | null>
+  /** The session can never refresh again without a new sign-in; see `token-manager.hasSessionEnded`. */
+  hasSessionEnded?: () => boolean
   getVaultKey: () => Promise<Uint8Array | null>
+  /**
+   * A vault key read found the key after one found none; see
+   * `CrdtSyncCoordinator.recordVaultKeyRead`.
+   */
+  onVaultKeyReadable?: () => void
   getSigningKeys: () => Promise<{
     secretKey: Uint8Array
     publicKey: Uint8Array
@@ -108,6 +115,12 @@ export interface SyncContext {
 
   state: EngineSyncState
   syncing: boolean
+  /**
+   * Bumped only by the sync lock holder's own work: a pull slice or page that
+   * commits, a push batch the server answers. The stale-lock watchdog reads it;
+   * user edits and socket frames never move it (#5234).
+   */
+  lockProgress: number
   fullSyncActive: boolean
   abortController: AbortController | null
   inFlightSync: Promise<void> | null
@@ -168,6 +181,10 @@ export const SYNC_STATE_KEYS = {
    * after the last one.
    */
   PACK_SEED_SETTLE_PENDING: 'packSeedSettlePending',
+  /** JSON `{type:id: held cursor}` of the record-pack phase's rows; see `readPackApplied` (#5390). */
+  RECORD_PACKS_APPLIED: 'recordPacksApplied',
+  /** JSON `type:id` list of rows §8.10 rule 2 kept; see `readUnresolved` (#5390). */
+  RECORD_PACKS_UNRESOLVED: 'recordPacksUnresolved',
   /**
    * The one-time re-pull from cursor 0 that heals installs an older build left
    * with a skipped cursor range (#2382). The manifest diff heals missing items
@@ -208,7 +225,52 @@ export const SYNC_STATE_KEYS = {
    * with the store's copy means the two were restored or replaced apart; see
    * `reconcileCrdtStoreEpoch`. Missing reads as a mismatch.
    */
-  CRDT_STORE_EPOCH: 'crdtStoreEpoch'
+  CRDT_STORE_EPOCH: 'crdtStoreEpoch',
+  /**
+   * JSON list of attachment ids whose server blob is itself text (#5415): a
+   * binary note restore downloaded it and the file still held text, so the
+   * restore never asks for it again. Missing reads as an empty list.
+   */
+  BINARY_NOTE_TEXT_BLOBS: 'binaryNoteTextBlobs',
+  /**
+   * JSON list of folded vault paths of binary files two case twins share
+   * whose outside change the watcher held (#5522). The split of the twins
+   * reads it to keep the change instead of downloading over it. Missing
+   * reads as an empty list.
+   */
+  CASE_TWIN_HELD_CHANGES: 'caseTwinHeldChanges',
+  /**
+   * Prefix of one row per binary note whose file may hold bytes that are not
+   * its own (#5560, #5580), `caseTwinForeignBytes:<noteId>`: JSON `{sha256}`
+   * of its file, or null. The watcher pushes no change to them until the
+   * note's own download lands. Missing reads as no hold. Builds before kept
+   * every mark in one JSON object under this key; the first touch moves it.
+   */
+  CASE_TWIN_FOREIGN_BYTES: 'caseTwinForeignBytes',
+  /**
+   * JSON object from the folded vault path of a binary file case twins share
+   * to the sha256 of the bytes a download last landed there (#5585). The
+   * split compares the file with it to find a change the watcher never saw.
+   * Missing reads as empty: the split then keeps the file's bytes.
+   */
+  CASE_TWIN_LANDED_HASHES: 'caseTwinLandedHashes',
+  /**
+   * JSON object from the absolute path of a file the attachment uploader
+   * refused for good (`UnsendableAttachmentError`) to its `{size, mtimeMs}`
+   * at the time (#5606). The upload backfill does not offer a file whose
+   * size and mtime still match; a write changes them and offers it again.
+   * Missing reads as empty.
+   */
+  ATTACHMENT_UPLOAD_REFUSALS: 'attachmentUploadRefusals',
+  /**
+   * JSON object from the folded vault path of a binary file case twins share,
+   * or shared before a split, to `{sha256, copy}`: the bytes a landing last
+   * kept from it as a conflict copy, and the vault path of that copy
+   * (REVIEW-5602). A later landing on the file reads those bytes as kept while
+   * the copy still holds them (VERIFY-5602, VERIFY-5602R2). Missing reads as
+   * empty.
+   */
+  CASE_TWIN_KEPT_COPIES: 'caseTwinKeptCopies'
 } as const
 
 /** The schema-invalid ledger type of a refused change-feed body, keyed by note id (#2297). */
@@ -393,15 +455,15 @@ export const CRDT_SNAPSHOT_CONCURRENCY = 4
 //     -> 15 POST/min = 50% of 30, 0 GET/min = 0% of 600, ~40 s wall clock.
 //
 //   Cold (first sync, or a store rebuilt/quarantined under this one):
-//     10 chunks x 100 notes. No note has a watermark, so NO probe is sent at
-//     all — that path costs exactly what it cost before the probe existed.
-//     Each: 100 GETs + ceil(100/32) = 4 apply POSTs (at R = 1 round each).
-//     delay = max(4_000, 4 x 4_000, 100 x 200) = 20 s
-//     -> 300 GET/min = 50% of 600, 12 POST/min = 40% of 30, ~3 min 20 s.
+//     10 chunks x 100 notes, every note with a server snapshot. Each: 1 probe
+//     POST, 100 GETs + ceil(100/32) = 4 apply POSTs (at R = 1 round each).
+//     delay = max(4_000, 5 x 4_000, 100 x 200) = 20 s
+//     -> 300 GET/min = 50% of 600, 15 POST/min = 50% of 30, ~3 min 20 s.
+//     A note the probe's `snapshotMeta` names no snapshot for costs no GET.
 //
 //   Old server (no `snapshotMeta` in the batch response):
 //     one wasted probe on the first chunk, then `snapshotMetaUnsupported`
-//     latches and the arithmetic is the cold one exactly.
+//     latches and the arithmetic is the cold one without its probe.
 //
 // Before this, at 25 notes / 15 s with an unconditional baseline, all three
 // regimes were 100 GET/min, 4 POST/min and TEN MINUTES.

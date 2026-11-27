@@ -8,6 +8,7 @@ use std::collections::{BTreeSet, HashMap};
 use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
 
+use memry_desktop::electron_import::profile::{HostOs, ProfileEnv};
 use memrynote_cli::output::stringify;
 use memrynote_cli::parse::parse_cli;
 use memrynote_cli::{CliDeps, CliIo, not_ported, run_cli};
@@ -101,6 +102,8 @@ static ISO: LazyLock<Regex> = LazyLock::new(|| {
 });
 static MS: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"(?-u:\b)[0-9]{13}(?-u:\b)").expect("regex"));
+static DURATION: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r#""durationMs":( ?)[0-9]+"#).expect("regex"));
 static BELOW_TOKEN: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r#"<(?:vault|home|tmp)>(?:(?:\\\\|\\|/)[^\\/"'\s]+)+"#).expect("regex")
 });
@@ -129,7 +132,10 @@ fn normalize(text: &str, dirs: &Dirs, ids: &mut HashMap<String, String>) -> Stri
         })
         .into_owned();
     let out = ISO.replace_all(&out, "<iso>");
-    MS.replace_all(&out, "<ms>").into_owned()
+    let out = MS.replace_all(&out, "<ms>");
+    DURATION
+        .replace_all(&out, r#""durationMs":${1}<duration>"#)
+        .into_owned()
 }
 
 #[derive(Default)]
@@ -154,6 +160,16 @@ struct Rig {
     _dir: tempfile::TempDir,
     dirs: Dirs,
     deps: CliDeps,
+}
+
+/// A profile search that finds nothing: the migration guard never blocks a scenario, and never
+/// reads the host's real Electron profile.
+fn no_profile(tmp: &Path) -> ProfileEnv {
+    ProfileEnv {
+        app_data: tmp.join("home"),
+        override_dir: Some(tmp.join("no-electron-profile")),
+        host: HostOs::current(),
+    }
 }
 
 fn rig(registry: &Value, files: &Value) -> Rig {
@@ -191,6 +207,7 @@ fn rig(registry: &Value, files: &Value) -> Rig {
         data_dir: Some(appdata),
         cwd: tmp.clone(),
         home: Some(tmp.join("home")),
+        electron_profile: Some(no_profile(&tmp)),
     };
     Rig {
         _dir: dir,
@@ -359,13 +376,17 @@ fn every_pending_entry_is_not_ported() {
     assert!(wrong.is_empty(), "pending entries that run: {wrong:?}");
 }
 
-/// The Rust CLI prints what the TypeScript CLI printed. An entry here needs Kaan's approval.
+/// Where the Rust CLI does not print what the TypeScript CLI printed, and why. Each entry names
+/// its approval and has a test of its own that pins the Rust behaviour.
 #[test]
-fn there_are_no_deliberate_differences() {
-    assert_eq!(
-        read_json(&golden("deliberate-differences.json")),
-        Value::Array(Vec::new())
-    );
+fn every_deliberate_difference_is_described_and_approved() {
+    let entries = read_json(&golden("deliberate-differences.json"));
+    for entry in entries.as_array().expect("a list") {
+        for field in ["case", "typescript", "rust", "approval", "test"] {
+            let text = entry[field].as_str().unwrap_or_default();
+            assert!(!text.trim().is_empty(), "{entry}: no {field}");
+        }
+    }
 }
 
 #[test]

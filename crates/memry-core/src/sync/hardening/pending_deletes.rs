@@ -205,6 +205,22 @@ mod tests {
                     "ownerNoteId": null, "deletedAt": null,
                 }),
             ),
+            "template" => (
+                "tpl-1",
+                json!({
+                    "id": "tpl-1", "name": "Meeting", "description": null, "icon": null,
+                    "tags": [], "properties": [], "content": "", "syncedAt": null,
+                    "createdAt": "2026-03-10T09:00:00.000Z",
+                    "modifiedAt": "2026-03-10T09:00:00.000Z",
+                }),
+            ),
+            "custom_icon" => (
+                "icon-1",
+                json!({"id": "icon-1", "name": "Logo", "ext": "png", "data": "iVBORw0KGgo="}),
+            ),
+            "tag_category" => ("cat-1", json!({"name": "Work", "sortOrder": 0})),
+            "folder_config" => ("Projects", json!({"icon": null})),
+            "property_definition" => ("mood", json!({"name": "mood", "type": "select"})),
             other => panic!("no fixture for {other}"),
         };
         let mut body = body;
@@ -309,7 +325,6 @@ mod tests {
             let totals = apply_page(
                 conn,
                 vec![pulled(&item_type, &id, payload, clock)],
-                vec![],
                 NOW + 4,
                 Some("a"),
                 &AtRestKey::default(),
@@ -337,7 +352,7 @@ mod tests {
 
     /// Every type this device can delete, or will once its delete is ported,
     /// except `agent_message` ([`WRITTEN_ONCE`]).
-    const TYPES: [&str; 16] = [
+    const TYPES: [&str; 21] = [
         "note",
         "task",
         "project",
@@ -354,6 +369,11 @@ mod tests {
         "canvas_folder",
         "home_page",
         "sticky_draft",
+        "template",
+        "custom_icon",
+        "tag_category",
+        "folder_config",
+        "property_definition",
     ];
 
     /// A message is written once: every pulled update of a held id is

@@ -3,7 +3,7 @@
  * uploads, restores, and garbage-collects canvas image assets.
  *
  * Every side-effecting dependency (attachment upload/download, server
- * dereference, the writeback-ignore guard, telemetry) is INJECTED via
+ * dereference, the watcher's record of app writes, telemetry) is INJECTED via
  * {@link AssetServiceContext} rather than imported, so this module stays
  * free of electron / sync / keychain wiring and is unit-testable in node.
  * The real context is assembled in `asset-service-context.ts`, which is the
@@ -27,6 +27,7 @@ import type { CanvasAssetRow } from '@memry/db-schema'
 import { createLogger } from '../../lib/logger'
 import { toMemryFileUrl } from '../../lib/paths'
 import { atomicWriteBinary, fileExists } from '../../vault/file-ops'
+import type { AppBytes } from '../../vault/app-writes'
 import { getMainRedactOptions } from '../../telemetry/redact-options'
 import type { TrackMainEventOptions } from '../../telemetry/track'
 
@@ -80,8 +81,12 @@ export interface AssetServiceContext {
   holdChunks: (canvasId: string, holds: AssetHold[]) => Promise<HoldOutcome>
   /** Release one canvas's holds on these images. Idempotent; never throws. */
   releaseHolds: (canvasId: string, contentHashes: string[]) => Promise<{ ok: boolean }>
-  /** Suppress the vault watcher's re-upload loop before writing/downloading a file. */
-  markWritebackIgnored: (absolutePath: string) => void
+  /**
+   * Records the bytes about to be written or downloaded as the app's, so the
+   * vault watcher drops their echo instead of uploading them again. Call the
+   * result once they are in the file.
+   */
+  recordAppWrite: (absolutePath: string, bytes: AppBytes) => () => void
   trackEvent: (name: TelemetryEventName, options: TrackMainEventOptions) => void
 }
 
@@ -139,8 +144,9 @@ export async function uploadCanvasAsset(
     // a later restore at a file that doesn't exist.
     const existingDiskPath = canvasAssetDiskPath(ctx.vaultPath, existing.filename)
     if (!(await fileExists(existingDiskPath))) {
-      ctx.markWritebackIgnored(existingDiskPath)
+      const landed = ctx.recordAppWrite(existingDiskPath, bytes)
       await atomicWriteBinary(existingDiskPath, bytes)
+      landed()
     }
     recordAsset(ctx.db, {
       vaultId: ctx.vaultId,
@@ -179,8 +185,9 @@ export async function uploadCanvasAsset(
   // sitting there is these exact bytes from an earlier attempt whose upload
   // failed — rewriting it would be pure disk churn on every retry (#1581).
   if (!(await fileExists(diskPath))) {
-    ctx.markWritebackIgnored(diskPath)
+    const landed = ctx.recordAppWrite(diskPath, bytes)
     await atomicWriteBinary(diskPath, bytes)
+    landed()
   }
 
   const { attachmentId, manifest } = await ctx.uploadAttachment(canvasId, diskPath)
@@ -234,8 +241,10 @@ export async function ensureAssetsPresent(
     if (await fileExists(diskPath)) continue
 
     try {
-      ctx.markWritebackIgnored(diskPath)
+      // The descriptor names the image by the sha256 of its bytes.
+      const landed = ctx.recordAppWrite(diskPath, { sha256: descriptor.contentHash })
       await ctx.downloadAttachment(descriptor.attachmentId, diskPath)
+      landed()
       recordAsset(ctx.db, {
         vaultId: ctx.vaultId,
         canvasId,
@@ -334,7 +343,6 @@ export async function reconcileCanvasAssets(
 
     const diskPath = canvasAssetDiskPath(ctx.vaultPath, row.filename)
     try {
-      ctx.markWritebackIgnored(diskPath)
       await rm(diskPath, { force: true })
     } catch (err) {
       log.warn('failed to unlink orphaned canvas asset file', {

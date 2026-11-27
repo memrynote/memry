@@ -20,6 +20,7 @@ pub mod post_reveal;
 pub mod power;
 pub mod protocols;
 pub mod registry;
+pub mod reminders;
 pub mod shell;
 pub mod shortcuts;
 pub mod shutdown;
@@ -92,6 +93,10 @@ fn register_stages() {
     );
     shell::vault_boot::register_stages();
     shell::account_sync::register_stages();
+    shell::inbox_review::register_stages();
+    shell::readwise::register_stages();
+    // After account sync: the agent's close hook must run before the at-rest key's.
+    shell::agent::register_stages();
     shutdown::register_stages();
     ml_worker::register_stages();
     commands::voice::register_stages();
@@ -105,6 +110,7 @@ fn register_stages() {
     spell::register_stages();
     updater::register_stages();
     commands::ocr_languages::register_stages();
+    windows::pdf_print::register_stages();
     startup::register(Stage::Window, "create main window", create_main_window);
     // After the window exists: Windows subclasses its handle.
     power::register_stages();

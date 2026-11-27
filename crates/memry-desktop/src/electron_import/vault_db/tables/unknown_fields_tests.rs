@@ -54,6 +54,16 @@ fn a_nested_key_lands_only_in_a_parent_the_payload_still_holds() {
     );
 }
 
+/// `row.nestedFields ? JSON.parse(row.nestedFields) : []`: an empty text is no nested fields,
+/// and the kept `fields` still ride along.
+#[test]
+fn an_empty_nested_fields_text_still_merges_the_kept_fields() {
+    assert_eq!(
+        merged(r#"{"a":1}"#, r#"{"x":1}"#, Some("")),
+        r#"{"x":1,"a":1}"#
+    );
+}
+
 #[test]
 fn electron_gives_up_on_an_unreadable_remainder_and_this_import_stops_on_one_it_cannot_write() {
     for (fields, nested) in [

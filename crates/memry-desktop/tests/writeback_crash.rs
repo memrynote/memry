@@ -14,6 +14,7 @@ use std::process::Command;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+use memry_core::crdt::epoch::HeldBody;
 use memry_core::crdt::registry::UpdateSink;
 use memry_core::crdt::{BODY_FRAGMENT, DocumentRegistry, update_log};
 use memry_core::domain::write_back::BodyRead;
@@ -192,7 +193,9 @@ fn commit_page(core: &memry_core::api::vault::Vault, id: &str, text: &str) {
         .map_or(0, |d| i64::try_from(d.as_millis()).unwrap());
     db.call_blocking(move |conn| {
         for (at, update) in updates.iter().enumerate() {
-            update_log::append_server_update(conn, &doc_id, 1 + at as i64, update, now).unwrap();
+            HeldBody::never_purged(conn, &doc_id)
+                .and_then(|held| held.append_server_update(1 + at as i64, update, now))
+                .unwrap();
         }
         Ok(())
     })

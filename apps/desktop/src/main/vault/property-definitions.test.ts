@@ -140,6 +140,20 @@ describe('PropertyDefinitionsService', () => {
     expect(getMemryDirMock).toHaveBeenCalledWith('/vault')
   })
 
+  it('refuses a properties.md written in JavaScript frontmatter without running it', async () => {
+    const probe = globalThis as { __propertiesProbe?: number }
+    delete probe.__propertiesProbe
+    safeReadMock.mockResolvedValue(
+      '---js\n(globalThis.__propertiesProbe = 1, { properties: {} })\n---\n'
+    )
+
+    const service = PropertyDefinitionsService.init('/vault')
+
+    await expect(service.reload()).resolves.toBe(false)
+    expect(probe.__propertiesProbe).toBeUndefined()
+    expect(atomicWriteMock).not.toHaveBeenCalled()
+  })
+
   it('reloads valid frontmatter into memory and both DB caches', async () => {
     safeReadMock.mockResolvedValue(
       propertiesFile(`

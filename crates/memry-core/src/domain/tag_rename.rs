@@ -42,6 +42,7 @@ use crate::domain::tag_admin::{
 };
 use crate::domain::tag_body_rename::renamed_tag;
 use crate::domain::{body_tags, body_write, tag_body_rename, tag_schema_refs, tags};
+use crate::storage::nested_tx;
 
 /// The `meta` key of the rename in progress (desktop's `tags.renameJob` setting); an older
 /// build ignores it, and the rows below.
@@ -220,7 +221,7 @@ pub fn begin(
     if job.to.trim().is_empty() {
         return Err(refuse("a tag name cannot be empty"));
     }
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     match stored(&tx)? {
         Some(other) if other.from != job.from || other.to != job.to => {
             return Ok(Some(RenameJob {
@@ -350,7 +351,7 @@ pub fn recorded(conn: &Connection) -> Result<Option<RenamePlan>, StorageError> {
 
 /// No rename is in progress: its job, holders and begun edits are cleared.
 pub fn finish(conn: &Connection) -> Result<(), StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     tx.execute("DELETE FROM meta WHERE key = ?1", [JOB])
         .map_err(failed)?;
     for prefix in [HOLDER, STARTED] {
@@ -407,7 +408,7 @@ pub fn rename_holder(
     device_id: &str,
     now_ms: i64,
 ) -> Result<bool, StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let Some(job) = stored(&tx)? else {
         return Ok(false);
     };
@@ -475,7 +476,7 @@ pub fn start_holder(
     before: &str,
     after: &str,
 ) -> Result<(), StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     if listed(&tx, id)? {
         let (tags, pinned) = tags::lists(&tx, id)?.unwrap_or_default();
         let begun = Started {

@@ -30,21 +30,49 @@ pub fn local_now() -> LocalDateTime {
     LocalDateTime::from_ms(local.and_utc().timestamp_millis())
 }
 
-/// What a task write changed, for the shell's events (`publisher.ts` `taskUpdated`).
+/// One renderer event of a committed task write, as `publisher.ts` sends it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TaskEvent {
+    /// `tasks:created`.
+    Created(String),
+    /// `tasks:updated`.
+    Updated(String),
+    /// `tasks:deleted`.
+    Deleted(String),
+    /// `tasks:completed`.
+    Completed(String),
+    /// `tasks:moved`.
+    Moved(String),
+    /// `notes:tags-changed`: task tags share the global tag list.
+    TagsChanged,
+    /// `tasks:project-created`.
+    ProjectCreated(String),
+    /// `tasks:project-updated`.
+    ProjectUpdated(String),
+    /// `tasks:project-deleted`.
+    ProjectDeleted(String),
+}
+
+/// A task command's answer and the events the shell sends for it, in Electron's order. A
+/// refusal has no events.
 #[derive(Debug, Clone, PartialEq)]
-pub struct TaskWritten {
-    pub mutation: TaskMutation,
-    /// The task's id when the write landed.
-    pub updated: Option<String>,
-    /// The next occurrence a completing edit created.
-    pub created: Option<String>,
-    /// The edit changed the task's tags (`notes:tags-changed`).
-    pub tags_changed: bool,
+pub struct TaskWritten<M = TaskMutation> {
+    pub mutation: M,
+    pub events: Vec<TaskEvent>,
+}
+
+impl<M> TaskWritten<M> {
+    pub fn quiet(mutation: M) -> Self {
+        Self {
+            mutation,
+            events: Vec::new(),
+        }
+    }
 }
 
 pub struct TasksService {
-    store: TaskStore,
-    now: fn() -> LocalDateTime,
+    pub(super) store: TaskStore,
+    pub(super) now: fn() -> LocalDateTime,
 }
 
 impl TasksService {
@@ -126,28 +154,30 @@ impl TasksService {
             .update(id.clone(), patch, (self.now)(), allow_nested)?
         {
             Ok(update) => update,
-            Err(refusal) => {
-                return Ok(TaskWritten {
-                    mutation: TaskMutation {
-                        success: false,
-                        task: None,
-                        error: Some(refusal.error_key().to_owned()),
-                    },
-                    updated: None,
-                    created: None,
-                    tags_changed: false,
-                });
-            }
+            Err(refusal) => return Ok(TaskWritten::quiet(refused(refusal.error_key()))),
         };
+        // `taskUpdated`, its tags-changed, then the rolled occurrence's `taskCreated`.
+        let mut events = vec![TaskEvent::Updated(id.clone())];
+        if update.changed_fields.iter().any(|field| field == "tags") {
+            events.push(TaskEvent::TagsChanged);
+        }
+        events.extend(
+            update
+                .next_occurrence
+                .map(|next| TaskEvent::Created(next.id)),
+        );
         Ok(TaskWritten {
-            mutation: TaskMutation {
-                success: true,
-                task: self.get(&id)?,
-                error: None,
-            },
-            updated: Some(id),
-            created: update.next_occurrence.map(|next| next.id),
-            tags_changed: update.changed_fields.iter().any(|field| field == "tags"),
+            mutation: self.landed(&id)?,
+            events,
+        })
+    }
+
+    /// The `{ success: true, task }` envelope of a write that landed on `id`.
+    pub(super) fn landed(&self, id: &str) -> Result<TaskMutation, StorageError> {
+        Ok(TaskMutation {
+            success: true,
+            task: self.get(id)?,
+            error: None,
         })
     }
 
@@ -205,11 +235,20 @@ impl TasksService {
     }
 }
 
+/// The `{ success: false, task: null, error }` envelope.
+pub(super) fn refused(error: &str) -> TaskMutation {
+    TaskMutation {
+        success: false,
+        task: None,
+        error: Some(error.to_owned()),
+    }
+}
+
 fn views<T, V: From<T>>(items: Vec<T>) -> Vec<V> {
     items.into_iter().map(Into::into).collect()
 }
 
-fn invalid(what: &str) -> StorageError {
+pub(super) fn invalid(what: &str) -> StorageError {
     StorageError::Invalid {
         what: what.to_owned(),
     }

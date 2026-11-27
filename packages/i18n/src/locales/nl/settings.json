@@ -1232,6 +1232,10 @@
     "loadingAria": "Apparaten laden",
     "none": "Nog geen apparaten gekoppeld",
     "linkNew": "Nieuw apparaat koppelen",
+    "linkNeedsPlan": {
+      "title": "Koppelen vereist een synchronisatieabonnement",
+      "description": "Een gekoppeld apparaat ziet je notities alleen als synchronisatie aan staat. Zonder abonnement log je daar in met je herstelzin en houdt het apparaat zijn eigen kluis."
+    },
     "thisDevice": "Dit apparaat",
     "lastSeen": "Laatst gezien {time} geleden",
     "linked": "{time} geleden gekoppeld",
@@ -1398,6 +1402,7 @@
       "selectModel": "Selecteer een model",
       "apiKey": "API-sleutel",
       "apiKeyDescription": "Lokaal opgeslagen, alleen verzonden naar de aanbieder",
+      "apiKeyKeychainDescription": "Opgeslagen in de sleutelhanger van je besturingssysteem, alleen verzonden naar de aanbieder",
       "apiKeyPlaceholder": "API-sleutel voor {provider} invoeren",
       "ollamaUrl": "Ollama-URL",
       "ollamaUrlDescription": "Lokaal serveradres",

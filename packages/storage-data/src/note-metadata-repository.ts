@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, like, notLike, type SQL } from 'drizzle-orm'
+import { and, asc, count, desc, eq, like, notLike, sql, type SQL } from 'drizzle-orm'
 import {
   noteMetadata,
   propertyDefinitions,
@@ -35,8 +35,100 @@ function trimPathSlashes(value: string): string {
   return value.slice(start, end)
 }
 
+/**
+ * A note path as a case-insensitive file system compares it. APFS and NTFS
+ * fold Unicode case, and APFS also ignores normalization, so `Ärzte/a.md` and
+ * `ärzte/a.md` name one file there. Lowercasing alone misses folds the disks
+ * make: NTFS upcases `ı` to `I`, so `ılık.md` and `Ilık.md` are one file, and
+ * APFS folds `ß` to `ss` and `ς` to `σ`. Uppercasing first maps each of those
+ * to one key. Folding only finds candidates, so a key wider than one disk's
+ * fold is harmless: the caller proves each candidate against the disk.
+ */
+export function foldNotePath(value: string): string {
+  return value.normalize('NFC').toUpperCase().toLowerCase()
+}
+
+/**
+ * Candidate row ids by folded path, for one database connection. A cache of
+ * `note_metadata`, never an answer: it only grows between rebuilds, so a
+ * rolled-back write or a deleted row leaves a stale id that the read filters
+ * out, and a live row is never missing from it.
+ */
+interface FoldedPathIndex {
+  /** `PRAGMA data_version` at build: it moves when another connection commits. */
+  dataVersion: number
+  idsByKey: Map<string, Set<string>>
+}
+
+const foldedPathIndexes = new WeakMap<object, FoldedPathIndex>()
+
+/**
+ * The connection a database or a transaction writes through. Drizzle gives a
+ * transaction its own object over the same client, and a write inside one has
+ * to reach the index the outer database reads.
+ */
+function connectionOf(db: NoteMetadataDb): object {
+  if (!('session' in db)) return db
+  const { session } = db
+  if (typeof session !== 'object' || session === null || !('client' in session)) return db
+  const { client } = session
+  return typeof client === 'object' && client !== null ? client : db
+}
+
+function trackPath(index: FoldedPathIndex, id: string, path: string): void {
+  const key = foldNotePath(path)
+  const ids = index.idsByKey.get(key)
+  if (ids) ids.add(id)
+  else index.idsByKey.set(key, new Set([id]))
+}
+
+function recordPathWrite(db: NoteMetadataDb, row: NoteMetadata | undefined): void {
+  const index = foldedPathIndexes.get(connectionOf(db))
+  if (index && row) trackPath(index, row.id, row.path)
+}
+
+function buildFoldedPathIndex(db: NoteMetadataDb, dataVersion: number): FoldedPathIndex {
+  const index: FoldedPathIndex = { dataVersion, idsByKey: new Map() }
+  for (const row of db
+    .select({ id: noteMetadata.id, path: noteMetadata.path })
+    .from(noteMetadata)
+    .all()) {
+    trackPath(index, row.id, row.path)
+  }
+  return index
+}
+
+/**
+ * Every row whose path folds to the same key as `path`, `path` itself
+ * included. Each candidate is read back by id, so the rows come from the
+ * table, not the index.
+ *
+ * The index is built from one table read on first use, then extended by this
+ * module's writes, so a miss costs a map lookup instead of a table scan per
+ * file. A commit by another connection (the CLI) rebuilds it. A write to
+ * `note_metadata` on this connection that bypasses this module would be
+ * missed until the next rebuild. Inside a transaction the table read sees
+ * writes that may roll back, so an index built there is used for that call
+ * only and never cached.
+ */
+export function listNoteMetadataByFoldedPath(db: NoteMetadataDb, path: string): NoteMetadata[] {
+  const connection = connectionOf(db)
+  const dataVersion = db.get<{ data_version: number }>(sql`PRAGMA data_version`)?.data_version ?? 0
+  let index = foldedPathIndexes.get(connection)
+  if (!index || index.dataVersion !== dataVersion) {
+    index = buildFoldedPathIndex(db, dataVersion)
+    // A transaction may still roll back what this read saw.
+    const inTransaction = 'inTransaction' in connection && connection.inTransaction === true
+    if (!inTransaction) foldedPathIndexes.set(connection, index)
+  }
+  const key = foldNotePath(path)
+  return [...(index.idsByKey.get(key) ?? [])]
+    .map((id) => getNoteMetadataById(db, id))
+    .filter((row): row is NoteMetadata => row !== undefined && foldNotePath(row.path) === key)
+}
+
 export function upsertNoteMetadata(db: NoteMetadataDb, metadata: NewNoteMetadata): NoteMetadata {
-  return db
+  const row = db
     .insert(noteMetadata)
     .values(metadata)
     .onConflictDoUpdate({
@@ -64,6 +156,8 @@ export function upsertNoteMetadata(db: NoteMetadataDb, metadata: NewNoteMetadata
     })
     .returning()
     .get()
+  recordPathWrite(db, row)
+  return row
 }
 
 export function updateNoteMetadata(
@@ -71,7 +165,7 @@ export function updateNoteMetadata(
   id: string,
   updates: Partial<Omit<NoteMetadata, 'id'>>
 ): NoteMetadata | undefined {
-  return db
+  const row = db
     .update(noteMetadata)
     .set({
       ...updates,
@@ -80,6 +174,8 @@ export function updateNoteMetadata(
     .where(eq(noteMetadata.id, id))
     .returning()
     .get()
+  recordPathWrite(db, row)
+  return row
 }
 
 export function deleteNoteMetadata(db: NoteMetadataDb, id: string): void {

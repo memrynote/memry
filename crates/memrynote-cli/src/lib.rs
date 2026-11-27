@@ -7,19 +7,23 @@
 //! and it may only shrink.
 
 pub mod console;
+mod context;
 mod locale;
 mod migrate_installer;
 pub mod output;
 pub mod parse;
 mod registry;
 pub mod shim;
+mod values;
 mod vault;
+mod vault_admin;
 
 use std::ffi::OsString;
 use std::io::Write;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use memry_desktop::electron_import::profile::ProfileEnv;
 use memry_desktop::launch_env::LaunchEnv;
 use memry_desktop::paths::{AppPaths, default_data_dir, profile_identifier};
 use memry_desktop::registry::{AppConfig, CONFIG_FILE, VaultRegistry};
@@ -95,6 +99,8 @@ pub struct CliDeps {
     pub cwd: PathBuf,
     /// What `~` expands to (`os.homedir()`).
     pub home: Option<PathBuf>,
+    /// Where an Electron profile would be, for the migration guard ([`context::check_app`]).
+    pub electron_profile: Option<ProfileEnv>,
 }
 
 impl CliDeps {
@@ -106,6 +112,7 @@ impl CliDeps {
             data_dir: app_data_dir(env, packaged),
             cwd: std::env::current_dir().unwrap_or_default(),
             home: std::env::home_dir(),
+            electron_profile: ProfileEnv::from_host(env),
         }
     }
 
@@ -179,22 +186,23 @@ fn run(parsed: &ParsedCli, io: &mut dyn CliIo, deps: &CliDeps) -> CliResult {
     {
         return Ok(());
     }
-    // Resolved and checked before any group runs (`createMemryApp`), so a command fails on a
-    // missing or unusable vault the same way whether or not it is ported.
+    context::check_app(deps)?;
+    // Resolved, checked and opened before any group runs (`createMemryApp`), so a command fails
+    // on a missing, unusable or unmigrated vault the same way whether or not it is ported.
     let vault = match &parsed.vault_path {
         Some(path) => path.clone(),
         None => registry::resolve_default_vault_path(&deps.registry()?)?,
     };
     vault::check_path(&vault, &deps.cwd)?;
-    route(parsed, io)
+    let vault = context::open(&vault, deps)?;
+    route(parsed, io, &vault)
 }
 
-fn route(parsed: &ParsedCli, io: &mut dyn CliIo) -> CliResult {
+fn route(parsed: &ParsedCli, io: &mut dyn CliIo, vault: &context::VaultContext) -> CliResult {
     match parsed.command.as_deref() {
+        Some("vault") => vault::run(parsed, io, vault),
         Some("locale") => locale::run(parsed, io),
-        Some(command) if command == "vault" || NOT_PORTED.contains(&command) => {
-            Err(not_ported(parsed))
-        }
+        Some(command) if NOT_PORTED.contains(&command) => Err(not_ported(parsed)),
         _ => Err(USAGE.into()),
     }
 }

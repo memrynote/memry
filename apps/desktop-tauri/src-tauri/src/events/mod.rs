@@ -15,18 +15,26 @@ use tauri::{AppHandle, Emitter, EventTarget, Runtime};
 use crate::commands::vault_locks::VaultLockStateView;
 
 mod account;
+mod agent;
 mod ai;
+mod bookmarks;
+mod calendar;
 mod canvas;
 mod home_pages;
+mod reminders;
 mod sync;
 mod tags;
 mod tasks;
 mod voice;
 
 pub use account::*;
+pub use agent::*;
 pub use ai::*;
+pub use bookmarks::*;
+pub use calendar::*;
 pub use canvas::*;
 pub use home_pages::*;
+pub use reminders::*;
 pub use sync::*;
 pub use tags::*;
 pub use tasks::*;
@@ -380,6 +388,11 @@ pub struct VaultLocksExternalEditRestoredEvent {
     pub title: String,
 }
 
+/// The Readwise run started, moved on, ended or failed (`import:readwise:status-changed`): the
+/// page reads the status again.
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+pub struct ImportReadwiseStatusChangedEvent;
+
 /// The registry list or a vault's icon changed (`vault:list-changed`).
 #[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
 pub struct VaultListChangedEvent;
@@ -493,6 +506,18 @@ pub struct StickyDraftsChangedEvent;
 pub struct InboxOpenItemEvent {
     pub item_id: String,
 }
+
+/// The daily inbox review nudge fired (`inbox:review-due`): the renderer shows its toast.
+/// `count` is the number of captures to review.
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+pub struct InboxReviewDueEvent {
+    pub count: i64,
+}
+
+/// The inbox review notification was clicked (`inbox:review-open`): the renderer opens the inbox.
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+pub struct InboxReviewOpenEvent {}
 
 /// A native menu item that the renderer runs as a command was clicked. `command` is the
 /// command id (`tabs.closeTab`).

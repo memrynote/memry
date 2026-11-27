@@ -1,12 +1,15 @@
-//! The slice of JS `Date` the extractors use: `new Date(text)`, `new Date(ms)` and
-//! `toISOString()`. Text without a zone is read as UTC. JS reads it as local time, so the
-//! oracle generator pins `TZ=UTC`; on a machine in another zone Electron's extractors disagree
-//! with this port by up to a day for such text, which only the legacy (non-ISO) formats carry.
+//! The slice of JS `Date` the extractors and the TickTick importer use: `new Date(text)`,
+//! `new Date(ms)` and `toISOString()`. [`parse_date`] reads text without a zone as UTC. JS reads
+//! a zone-less date-time as local time, so the extractors' oracle generator pins `TZ=UTC`; on a
+//! machine in another zone Electron's extractors disagree with this port by up to a day for such
+//! text, which only the legacy (non-ISO) formats carry. [`parse_date_in`] takes the local zone.
 //!
 //! Supported: the ECMAScript ISO format (`YYYY`, `YYYY-MM`, `YYYY-MM-DD`, with `THH:mm[:ss[.s+]]`
-//! and `Z` or `±HH:mm`), and V8's legacy forms of the shape `[weekday,] Month D[,] YYYY
-//! [h:mm[:ss] [AM|PM] [GMT|UTC|±hhmm]]`, `D Month YYYY ...`, `M/D/YYYY` and `YYYY/M/D`. Anything
-//! else is `NaN`, which V8 would sometimes still parse; `tests/article_date.rs` pins the forms.
+//! and `Z` or `z`, or `±HH:mm` or V8's `±HHmm`), where V8 takes a day 1 to 31 in every month and
+//! rolls the excess into the next (`2024-02-30` is `2024-03-01`), and V8's legacy forms of the
+//! shape `[weekday,] Month D[,] YYYY [h:mm[:ss] [AM|PM] [GMT|UTC|±hhmm]]`, `D Month YYYY ...`,
+//! `M/D/YYYY` and `YYYY/M/D`. Anything else is `NaN`, which V8 would sometimes still parse;
+//! `tests/importer_raindrop.rs` pins the forms against node.
 
 use std::sync::LazyLock;
 
@@ -15,6 +18,9 @@ use regex::Regex;
 use crate::web::extract::error::ExtractError;
 
 const MAX_TIME: f64 = 8.64e15;
+/// V8's `kMaxTimeBeforeUTCInMs`: how far a zone-less time may reach before its local offset
+/// applies, ten days past the Date range.
+const MAX_LOCAL_TIME: f64 = MAX_TIME + 864e6;
 
 /// Days since the epoch of a proleptic Gregorian date (month 1 to 12).
 fn days_from_civil(y: i64, m: i64, d: i64) -> i64 {
@@ -40,15 +46,7 @@ pub(crate) fn civil_from_days(z: i64) -> (i64, i64, i64) {
     (if m <= 2 { y + 1 } else { y }, m, d)
 }
 
-fn days_in_month(y: i64, m: i64) -> i64 {
-    match m {
-        1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
-        4 | 6 | 9 | 11 => 30,
-        _ if (y % 4 == 0 && y % 100 != 0) || y % 400 == 0 => 29,
-        _ => 28,
-    }
-}
-
+/// `MakeDate` of the fields, before `TimeClip`; `None` for a field V8 refuses.
 #[allow(clippy::too_many_arguments)]
 fn make_time(
     y: i64,
@@ -60,26 +58,36 @@ fn make_time(
     ms: i64,
     offset_min: i64,
 ) -> Option<f64> {
-    if !(1..=12).contains(&mo) || d < 1 || d > days_in_month(y, mo) {
+    if !(1..=12).contains(&mo) || !(1..=31).contains(&d) {
         return None;
     }
     if h > 24 || mi > 59 || s > 59 || (h == 24 && (mi > 0 || s > 0 || ms > 0)) {
         return None;
     }
-    let days = days_from_civil(y, mo, d);
-    let t = ((days * 24 + h) * 60 + mi - offset_min) * 60 + s;
-    let t = t as f64 * 1000.0 + ms as f64;
+    // Past every Date either way; the bound keeps the arithmetic below in range.
+    if y.abs() > 400_000 {
+        return None;
+    }
+    let days = i128::from(days_from_civil(y, mo, d));
+    let t = ((days * 24 + i128::from(h)) * 60 + i128::from(mi) - i128::from(offset_min)) * 60
+        + i128::from(s);
+    Some(t as f64 * 1000.0 + ms as f64)
+}
+
+/// `TimeClip`.
+fn clip(t: f64) -> Option<f64> {
     (t.abs() <= MAX_TIME).then_some(t)
 }
 
 static ISO: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(
-        r"^([+-][0-9]{6}|[0-9]{4})(?:-([0-9]{2})(?:-([0-9]{2}))?)?(?:T([0-9]{2}):([0-9]{2})(?::([0-9]{2})(?:\.([0-9]+))?)?(Z|[+-][0-9]{2}:[0-9]{2})?)?$",
+        r"^([+-][0-9]{6}|[0-9]{4})(?:-([0-9]{2})(?:-([0-9]{2}))?)?(?:T([0-9]{2}):([0-9]{2})(?::([0-9]{2})(?:\.([0-9]+))?)?([Zz]|[+-][0-9]{2}:?[0-9]{2})?)?$",
     )
     .expect("static pattern")
 });
 
-fn parse_iso(text: &str) -> Option<f64> {
+/// The time `text` names, and whether it named no zone (a date-time V8 reads as local time).
+fn parse_iso(text: &str) -> Option<(f64, bool)> {
     let m = ISO.captures(text)?;
     if &m[1] == "-000000" {
         return None;
@@ -93,10 +101,11 @@ fn parse_iso(text: &str) -> Option<f64> {
         digits.parse().unwrap_or(0)
     });
     let offset = match m.get(8).map(|g| g.as_str()) {
-        Some(z) if z != "Z" => {
+        Some(z) if !z.eq_ignore_ascii_case("z") => {
             let sign = if z.starts_with('-') { -1 } else { 1 };
-            let oh: i64 = z[1..3].parse().ok()?;
-            let om: i64 = z[4..6].parse().ok()?;
+            let digits = z[1..].replace(':', "");
+            let oh: i64 = digits[..2].parse().ok()?;
+            let om: i64 = digits[2..].parse().ok()?;
             if oh > 23 || om > 59 {
                 return None;
             }
@@ -104,7 +113,8 @@ fn parse_iso(text: &str) -> Option<f64> {
         }
         _ => 0,
     };
-    make_time(
+    let local = m.get(4).is_some() && m.get(8).is_none();
+    let t = make_time(
         num(1, 0),
         num(2, 1),
         num(3, 1),
@@ -113,7 +123,8 @@ fn parse_iso(text: &str) -> Option<f64> {
         num(6, 0),
         ms,
         offset,
-    )
+    )?;
+    Some((t, local))
 }
 
 static TOKEN: LazyLock<Regex> =
@@ -126,14 +137,14 @@ const MONTHS: [&str; 12] = [
 ];
 const DAYS: [&str; 7] = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 
-/// The legacy parser for the supported shapes (see the module docs).
-fn parse_legacy(text: &str) -> Option<f64> {
+/// The legacy parser for the supported shapes (see the module docs), as [`parse_iso`].
+fn parse_legacy(text: &str) -> Option<(f64, bool)> {
     let cleaned = COMMENT.replace_all(text, " ");
     let tokens: Vec<&str> = TOKEN.find_iter(&cleaned).map(|m| m.as_str()).collect();
     let (mut month, mut meridiem) = (None::<i64>, None::<&str>);
     let mut numbers: Vec<i64> = Vec::new();
     let mut time = (0i64, 0i64, 0i64, 0i64);
-    let (mut has_time, mut offset) = (false, 0i64);
+    let (mut has_time, mut offset, mut zoned) = (false, 0i64, false);
     let mut slash_date = false;
     let mut i = 0;
     while i < tokens.len() {
@@ -149,6 +160,7 @@ fn parse_legacy(text: &str) -> Option<f64> {
                 meridiem = Some(if lower == "am" { "am" } else { "pm" });
             } else if matches!(lower.as_str(), "utc" | "gmt" | "ut" | "z") {
                 offset = 0;
+                zoned = true;
             } else if !numbers.is_empty() || has_time {
                 return None;
             }
@@ -209,7 +221,8 @@ fn parse_legacy(text: &str) -> Option<f64> {
             } else {
                 (digits.parse::<i64>().ok()?, 0, 2)
             };
-            offset = sign * (oh * 60 + om);
+            offset = sign * oh.saturating_mul(60).saturating_add(om);
+            zoned = true;
             i += used;
         } else {
             if t == "/" {
@@ -244,13 +257,33 @@ fn parse_legacy(text: &str) -> Option<f64> {
         Some(_) => hour %= 12,
         None => {}
     }
-    make_time(year, mo, d, hour, time.1, time.2, time.3, offset)
+    let t = make_time(year, mo, d, hour, time.1, time.2, time.3, offset)?;
+    Some((t, !zoned))
 }
 
-/// `Date.parse(text)` in milliseconds, `None` for `NaN`.
-pub fn parse_date(text: &str) -> Option<f64> {
+fn parse_parts(text: &str) -> Option<(f64, bool)> {
     let text = crate::web::extract::utils::js::trim(text);
     parse_iso(text).or_else(|| parse_legacy(text))
+}
+
+/// `Date.parse(text)` in milliseconds, `None` for `NaN`, with a zone-less time read as UTC.
+pub fn parse_date(text: &str) -> Option<f64> {
+    clip(parse_parts(text)?.0)
+}
+
+/// `Date.parse(text)` on a machine whose zone is `local_offset`: the offset in milliseconds that
+/// zone adds to UTC at a local wall time, given as milliseconds since the epoch read as UTC.
+/// V8 refuses a zone-less time more than ten days past the Date range before the offset applies,
+/// and the result after.
+pub fn parse_date_in(text: &str, local_offset: impl Fn(f64) -> f64) -> Option<f64> {
+    let (t, local) = parse_parts(text)?;
+    if !local {
+        return clip(t);
+    }
+    if t.abs() > MAX_LOCAL_TIME {
+        return None;
+    }
+    clip(t - local_offset(t))
 }
 
 /// `new Date(ms).toISOString()`; `RangeError: Invalid time value` outside the Date range.

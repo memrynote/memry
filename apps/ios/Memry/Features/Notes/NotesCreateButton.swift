@@ -152,7 +152,10 @@ private struct NotesCreateControl: ViewModifier {
                 Task {
                     // Straight into the note that was just made: a create
                     // that leaves the user hunting for the row did half a job.
-                    if let id = await model.createNote(in: folderPath) { open(id) }
+                    if let id = await model.createNote(in: folderPath) {
+                        split?.created(id)
+                        open(id)
+                    }
                 }
             },
             newFolder: {
@@ -190,17 +193,64 @@ enum NotesCreateCopy {
 }
 
 /// A note to open on the Notes page from outside it (a search hit, a
-/// capture's "View"). The Notes page owns its stack, so it takes the request.
+/// capture's "View"), or a note to make there (⌘N). The Notes page owns its
+/// stack and its model, so it takes the request.
 @MainActor
 @Observable
 final class NotesLinks {
     static let shared = NotesLinks()
     private(set) var pending: String?
+    @ObservationIgnored private let seeds: NewNoteSeeds
+
+    init(seeds: NewNoteSeeds = .shared) {
+        self.seeds = seeds
+    }
 
     func open(_ id: String) { pending = id }
 
     func take() -> String? {
         defer { pending = nil }
         return pending
+    }
+
+    /// ⌘N asked the Notes page for a new note, which it makes with its own
+    /// model so its list shows the row.
+    private(set) var newNoteRequested = false
+    /// The keys typed since ⌘N, held from the command on (#4787).
+    @ObservationIgnored private var keys: NewNoteKeys?
+
+    /// A ⌘N the page has not taken yet keeps its hold: one note, one hold.
+    func requestNewNote(window: UIWindow?) {
+        if let keys { keys.hold(in: window) } else { keys = NewNoteKeys(window: window, seeds: seeds) }
+        newNoteRequested = true
+    }
+
+    /// Another tab opened before the page took ⌘N: the request stays for
+    /// the page, and the keys held so far wait for its note. With none
+    /// typed, the request goes: a blank note made later is no one's.
+    func parkNewNote() {
+        guard newNoteRequested, let keys else { return }
+        keys.park()
+        if keys.isEmpty { dropNewNote() }
+    }
+
+    /// Sign-out: the ⌘N not taken yet and every hold's keys go with the
+    /// account, except the journaled keys of `vault`, which survives it.
+    func signedOut(keeping vault: String?) {
+        dropNewNote()
+        seeds.signedOut(keeping: vault)
+    }
+
+    private func dropNewNote() {
+        newNoteRequested = false
+        keys = nil
+    }
+
+    func takeNewNote() -> NewNoteKeys? {
+        defer {
+            newNoteRequested = false
+            keys = nil
+        }
+        return newNoteRequested ? keys : nil
     }
 }

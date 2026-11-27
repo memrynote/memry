@@ -45,6 +45,12 @@
     }
   },
   "page": {
+    "noteFiles": {
+      "downloading": "Bu notun dosyaları indiriliyor…",
+      "failed": "Bu notun dosyaları indirilemedi: {error}",
+      "failedFallback": "indirme başarısız oldu",
+      "retry": "Tekrar dene"
+    },
     "empty": {
       "title": "Seçili not yok",
       "body": "Görüntülemek için kenar çubuğundan bir not seçin"
@@ -196,6 +202,10 @@
   "editor": {
     "bodySyncPending": "Eşitleniyor — bu notun içeriği hâlâ yolda olabilir",
     "databaseReadOnly": "Salt okunur. Bu cihaz değişiklikleri kaydedemiyor.",
+    "remoteBodyStuck": "Eşitleme bekleniyor — bu notun eşitlenmiş içeriği gelene kadar salt okunur",
+    "remoteBodyOffline": "Çevrimdışı — bu not eşitlenene kadar salt okunur",
+    "remoteBodySignedOut": "Oturum kapalı — oturum açıp bu not eşitlenene kadar salt okunur",
+    "remoteBodyVaultLocked": "Bu kasanın şifreleme anahtarı okunamıyor — bu not eşitlenene kadar salt okunur",
     "taskRemoval": {
       "title": "{count, plural, one {Görev bu nottan kaldırıldı} other {# görev bu nottan kaldırıldı}}",
       "description": "{count, plural, one {Görevler sayfasında kalsın mı, yoksa her yerden silinsin mi?} other {Görevler sayfasında kalsınlar mı, yoksa her yerden silinsinler mi?}}",

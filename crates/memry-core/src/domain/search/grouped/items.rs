@@ -70,6 +70,13 @@ pub(super) fn from_hits(
                 };
                 (score, score, MatchType::Exact)
             }
+            // main's fused leg (#4505); the grouped search runs its own semantic leg below, so
+            // a hit of this kind ranks as that leg's semantic-only items do.
+            MatchKind::Semantic => (
+                hit.score,
+                closeness(hit.score) * SEMANTIC_ONLY_MAX_SCORE,
+                MatchType::Fuzzy,
+            ),
         };
         let item = GroupedItem {
             id: hit.id.clone(),

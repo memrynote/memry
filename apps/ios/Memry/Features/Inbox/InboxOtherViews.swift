@@ -116,7 +116,7 @@ struct InboxSnoozedView<Header: View>: View {
 
     private func open(_ entry: InboxPanelEntry) {
         if let item = entry.item {
-            router.path.append(.item(item.id))
+            router.open(item.id)
         } else if entry.targetType == "task", let id = entry.targetId {
             tasksRouter.openTask(id)
         } else {
@@ -164,8 +164,7 @@ struct InboxArchivedView<Header: View>: View {
     var body: some View {
         @Bindable var store = store
         let now = store.clock()
-        let archivedAt: (InboxItemRecord) -> Int64 = { $0.archivedAtMs ?? $0.createdAtMs }
-        let groups = InboxPeriod.group(store.archivedItems.sorted { archivedAt($0) > archivedAt($1) }, now: now, by: archivedAt)
+        let groups = InboxPeriod.group(store.archivedByRecency, now: now, by: InboxStore.archivedAt)
         List {
             Group {
                 header().inboxHeaderRow()
@@ -182,8 +181,8 @@ struct InboxArchivedView<Header: View>: View {
                     InboxGroupHeader(period: period, count: rows.count)
                         .inboxGroupHeaderRow(first: period == groups.first?.0)
                     ForEach(rows, id: \.id) { item in
-                        InboxRow(item: item, store: store, now: now, archived: true)
-                            .onTapGesture { router.path.append(.item(item.id)) }
+                        InboxRow(item: item, store: store, now: now, selected: router.selection?.id == item.id, archived: true)
+                            .onTapGesture { router.open(item.id) }
                             .swipeActions(edge: .trailing) {
                                 Button(InboxCopy.deleteShort, systemImage: "trash", role: .destructive) { deleting = item }
                                     .accessibilityIdentifier("inbox.archived.delete")
@@ -196,6 +195,7 @@ struct InboxArchivedView<Header: View>: View {
                             .accessibilityAction(named: InboxCopy.restore) { Task { await store.restore(item) } }
                             .accessibilityAction(named: InboxCopy.deletePermanently) { deleting = item }
                             .inboxItemRow()
+                            .inboxCurrentRow(router.selection?.id == item.id)
                     }
                 }
                 if !groups.isEmpty {

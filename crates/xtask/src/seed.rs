@@ -102,7 +102,7 @@ fn ensure_wipeable(vault: &Path) -> SeedResult<()> {
 }
 
 /// An unreadable or unparsable config is not a bench vault: the caller refuses the wipe.
-fn is_bench_vault(vault: &Path) -> bool {
+pub(crate) fn is_bench_vault(vault: &Path) -> bool {
     fs::read(config::config_path(vault))
         .ok()
         .and_then(|bytes| serde_json::from_slice::<serde_json::Value>(&bytes).ok())

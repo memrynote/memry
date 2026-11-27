@@ -21,6 +21,7 @@ import { secureCleanup } from '../crypto/index'
 import { getFromServer } from './http-client'
 import { classifyError } from './sync-errors'
 import { syncState } from '@memry/db-schema/schema/sync-state'
+import { sessionState } from './device-local-state'
 import { ItemApplier } from './apply-item'
 import { FullSyncRunner } from './engine/full-sync-runner'
 import type {
@@ -47,11 +48,12 @@ import {
 } from './engine/sync-run-outcome'
 import { QuarantineManager } from './engine/quarantine-manager'
 import { CrdtSyncCoordinator } from './engine/crdt-sync-coordinator'
-import { isKnownNote } from './note-body-apply'
+import { isBinaryNote, isKnownNote } from './note-body-apply'
 import { crdtBodyDebtStore } from './engine/crdt-body-debts'
 import { PushCoordinator } from './engine/push-coordinator'
 import { PullCoordinator } from './engine/pull-coordinator'
 import type { ItemRef } from './engine/corrupt-item-tracker'
+import type { PackedRecords } from './packs/record-packs'
 import { ErrorRecoveryHandler } from './engine/error-recovery-handler'
 import { createSocketApplier, type SocketApplier } from './engine/socket-apply'
 import { reportConflict } from './engine/conflict-report'
@@ -66,10 +68,12 @@ const log = createLogger('SyncEngine')
 // subscriber behind a silent budget. See src/main/sync/emitter-budget.test.ts.
 const MAX_SYNC_ENGINE_LISTENERS = 10
 
-// A sync run legitimately spans many paged requests plus retry backoff, so
-// this sits far above SYNC_REQUEST_TIMEOUT_MS × the retry budget. A lock held
-// longer than this is leaked (a never-settling non-HTTP await): left alone it
-// makes periodicPull skip forever, and only an app restart recovers.
+// How long a lock may be held with no progress of its own: no committed pull
+// slice or page, no answered push batch (`SyncContext.lockProgress`, #5234).
+// Far above SYNC_REQUEST_TIMEOUT_MS × the retry budget, so a lock this quiet
+// is leaked (a never-settling non-HTTP await): left alone it makes
+// periodicPull skip forever, and only an app restart recovers. Not a bound on
+// the run: a fresh bootstrap's record pull applies pages for longer.
 export const SYNC_LOCK_STALE_MS = 15 * 60 * 1000
 
 // Floor between two pulls issued by the 60s tick while the socket has been
@@ -118,7 +122,9 @@ export class SyncEngine extends SyncEventEmitter {
    * close-during-initial-sync), so a fresh engine means a fresh latch.
    */
   private cancelRequested = false
-  private syncLockAcquiredAt: number | null = null
+  /** When `ctx.lockProgress` last moved while the lock was held. */
+  private syncLockProgressAt: number | null = null
+  private syncLockProgressMark: number | null = null
   private activeLockRelease: (() => void) | null = null
   // The socket generation the previous pull tick observed, and when the tick
   // last actually pulled. Both are instance state re-armed with the interval —
@@ -165,12 +171,16 @@ export class SyncEngine extends SyncEventEmitter {
           const keys = await deps.getSigningKeys()
           this.stateManager.setDeviceKeysMissing(keys === null)
           return keys
-        }
+        },
+        // The same for the vault key: a key read again by any cycle ends the
+        // editors' vault-locked wait (see `CrdtSyncCoordinator.isVaultKeyMissing`).
+        getVaultKey: async () => this.crdtSync.recordVaultKeyRead(await deps.getVaultKey())
       },
       options: resolvedOptions,
       applier: new ItemApplier(deps.db, deps.emitToRenderer, adapters),
       state: 'idle',
       syncing: false,
+      lockProgress: 0,
       fullSyncActive: false,
       abortController: null,
       inFlightSync: null,
@@ -200,7 +210,7 @@ export class SyncEngine extends SyncEventEmitter {
     this.crdtSync = new CrdtSyncCoordinator(
       this.ctx,
       (id) => this.pullCoordinator.resolveDeviceKey(id),
-      (id) => isKnownNote(this.ctx.deps.db, id),
+      (id) => isKnownNote(this.ctx.deps.db, id) && !isBinaryNote(this.ctx.deps.db, id),
       crdtBodyDebtStore(this.ctx.deps.db)
     )
     this.pushCoordinator = new PushCoordinator(this.ctx, this.stateManager)
@@ -220,7 +230,7 @@ export class SyncEngine extends SyncEventEmitter {
       this.pushCoordinator,
       this.crdtSync,
       {
-        pull: (missing) => this.pull(missing),
+        pull: (missing, packed) => this.pull(missing, packed),
         push: () => this.push(),
         scheduleSync: (fn) => this.scheduleSync(fn)
       },
@@ -350,6 +360,7 @@ export class SyncEngine extends SyncEventEmitter {
     this.networkReconnectAbortController = null
 
     this.ctx.abortController?.abort()
+    this.fullSyncRunner.abortPackPhase('stop')
     if (this.ctx.inFlightSync) {
       await this.ctx.inFlightSync.catch(() => {})
     }
@@ -428,10 +439,10 @@ export class SyncEngine extends SyncEventEmitter {
    * only thing that separates a delivered pull from a silent one (#1835).
    * `missing` is what a manifest check found missing, pulled by id (#3391).
    */
-  async pull(missing: readonly ItemRef[] = []): Promise<SyncRunOutcome> {
+  async pull(missing: readonly ItemRef[] = [], packed?: PackedRecords): Promise<SyncRunOutcome> {
     const start = Date.now()
     try {
-      const outcome = await this.pullCoordinator.pull(missing)
+      const outcome = await this.pullCoordinator.pull(missing, packed)
       trackSyncRun('pull', outcome, {
         durationMs: Date.now() - start,
         queueCount: this.ctx.deps.queue.getPendingCount()
@@ -466,6 +477,7 @@ export class SyncEngine extends SyncEventEmitter {
     this.cancelRequested = true
     log.info('Sync cancel requested — aborting in-flight sync and refusing further cycles')
     this.ctx.abortController?.abort()
+    this.fullSyncRunner.abortPackPhase('stop')
   }
 
   /**
@@ -482,6 +494,26 @@ export class SyncEngine extends SyncEventEmitter {
    */
   async mergeRemoteCrdtForNote(noteId: string): Promise<boolean> {
     return this.crdtSync.pullCrdtForNote(noteId)
+  }
+
+  /** See `CrdtPullLedger.isBodyPullStuck`. */
+  isCrdtBodyPullStuck(noteId: string): boolean {
+    return this.crdtSync.isBodyPullStuck(noteId)
+  }
+
+  /** See `CrdtSyncCoordinator.isSignedOut`. */
+  isCrdtPullSignedOut(): boolean {
+    return this.crdtSync.isSignedOut()
+  }
+
+  /** See `CrdtSyncCoordinator.isVaultKeyMissing`. */
+  isCrdtPullVaultKeyMissing(): boolean {
+    return this.crdtSync.isVaultKeyMissing()
+  }
+
+  /** See `CrdtSyncCoordinator.knowsServerBody`; a woken note counts too. */
+  knowsCrdtServerBody(noteId: string): boolean {
+    return this.hasUnmergedRemoteCrdtState(noteId) || this.crdtSync.knowsServerBody(noteId)
   }
 
   /**
@@ -663,7 +695,10 @@ export class SyncEngine extends SyncEventEmitter {
   pause(source: SyncPauseSource): PauseSyncResult {
     const wasPaused = this.stateManager.isPaused()
     this.stateManager.setPaused(true, source)
-    if (!wasPaused) this.ctx.abortController?.abort()
+    if (!wasPaused) {
+      this.ctx.abortController?.abort()
+      this.fullSyncRunner.abortPackPhase('pause')
+    }
     return { success: true, wasPaused }
   }
 
@@ -725,6 +760,7 @@ export class SyncEngine extends SyncEventEmitter {
     this.networkReconnectAbortController?.abort()
     this.networkReconnectAbortController = null
     this.ctx.abortController?.abort()
+    this.fullSyncRunner.abortPackPhase('stop')
     this.ctx.deps.ws.disconnect()
 
     if (this.pullInterval) {
@@ -735,9 +771,12 @@ export class SyncEngine extends SyncEventEmitter {
     this.pullCoordinator.clearCaches()
     this.quarantine.clear()
 
+    // A session reset: the IPC handler follows with an integrity teardown that
+    // keeps the vault files and the CRDT store, so the rows that describe them
+    // stay too (device-local-state.ts).
     try {
       this.ctx.deps.db.transaction((tx) => {
-        tx.delete(syncState).run()
+        tx.delete(syncState).where(sessionState()).run()
       })
     } catch (err) {
       log.error('Emergency wipe: failed to clear sync state', {
@@ -846,7 +885,8 @@ export class SyncEngine extends SyncEventEmitter {
     if (this.ctx.syncing) return { refused: 'busy' }
     if (this.stateManager.isPaused()) return { refused: 'paused' }
     this.ctx.syncing = true
-    this.syncLockAcquiredAt = Date.now()
+    this.syncLockProgressAt = Date.now()
+    this.syncLockProgressMark = this.ctx.lockProgress
 
     let release!: () => void
     const prev = this.syncLock
@@ -899,11 +939,18 @@ export class SyncEngine extends SyncEventEmitter {
   // the release risks a brief overlap if the zombie sync later resumes —
   // accepted over sync staying dead until restart.
   private recoverStaleSyncLock(): void {
-    if (!this.ctx.syncing || this.syncLockAcquiredAt === null) return
-    const heldForMs = Date.now() - this.syncLockAcquiredAt
-    if (heldForMs < SYNC_LOCK_STALE_MS) return
+    if (!this.ctx.syncing || this.syncLockProgressAt === null) return
+    if (this.ctx.lockProgress !== this.syncLockProgressMark) {
+      this.syncLockProgressMark = this.ctx.lockProgress
+      this.syncLockProgressAt = Date.now()
+      return
+    }
+    const idleForMs = Date.now() - this.syncLockProgressAt
+    if (idleForMs < SYNC_LOCK_STALE_MS) return
 
-    log.error('Sync lock held past stale threshold — force releasing', { heldForMs })
+    log.error('Sync lock held with no progress past stale threshold — force releasing', {
+      idleForMs
+    })
     this.ctx.abortController?.abort()
     this.ctx.fullSyncActive = false
     this.ctx.inFlightSync = null
@@ -918,7 +965,8 @@ export class SyncEngine extends SyncEventEmitter {
   private releaseLock(): void {
     this.ctx.syncing = false
     this.ctx.abortController = null
-    this.syncLockAcquiredAt = null
+    this.syncLockProgressAt = null
+    this.syncLockProgressMark = null
     this.activeLockRelease = null
     if (this.ctx.state === 'syncing') {
       this.stateManager.setState(this.ctx.deps.network.online ? 'idle' : 'offline')
@@ -982,6 +1030,11 @@ export class SyncEngine extends SyncEventEmitter {
         if (!this.stateManager.isPaused()) {
           this.scheduleSync(() => this.reconnectSync(offlineDurationMs))
         }
+        // An editor that opened offline waits on a merge no pull would retry,
+        // for a note the server never saw (#5290).
+        void this.ctx.deps.crdtProvider?.resumeWaitingEditorDocs().catch((error: unknown) => {
+          log.warn('Retrying the merge of waiting editor docs failed', { error })
+        })
       })().finally(() => {
         if (this.networkReconnectAbortController === reconnectAbortController) {
           this.networkReconnectAbortController = null

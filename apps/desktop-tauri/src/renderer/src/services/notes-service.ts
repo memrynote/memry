@@ -131,8 +131,19 @@ function toListItem(view: NoteListItemView): NoteListItem {
   return { ...view, created: new Date(view.created), modified: new Date(view.modified) }
 }
 
-/** A version as the history lists it. Rust sends the stored reason, which only Memry writes. */
-function toVersion(view: VersionView): SnapshotListItem {
+/**
+ * A version as the history lists it. `outsideWrite` marks text the app wrote over (a locked
+ * note's revert keeps the outside edit), which the file no longer holds; Electron had no mark.
+ */
+export type NoteVersion = SnapshotListItem & { outsideWrite: boolean }
+
+/** The notes service, whose versions carry their outside-write mark. */
+type NotesServiceWithVersions = Omit<NotesServiceApi, 'getVersions'> & {
+  getVersions: (noteId: string) => Promise<NoteVersion[]>
+}
+
+/** Rust sends the stored reason, which only Memry writes. */
+function toVersion(view: VersionView): NoteVersion {
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string DB/wire column narrowed to the union its writers constrain
   return { ...view, reason: view.reason as SnapshotListItem['reason'] }
 }
@@ -540,7 +551,7 @@ const ported = {
     return { success: true }
   },
   getCalendarPropertyNames: (): Promise<string[]> => commands.notesGetCalendarPropertyNames(),
-  getVersions: async (noteId: string): Promise<SnapshotListItem[]> =>
+  getVersions: async (noteId: string): Promise<NoteVersion[]> =>
     (await commands.notesGetVersions(noteId)).map(toVersion),
   getVersion: async (snapshotId: string): Promise<SnapshotDetail | null> => {
     const version = await commands.notesGetVersion(snapshotId)
@@ -668,6 +679,10 @@ const ported = {
   exportHtml: async (input: ExportNoteInput): Promise<ExportNoteResult> => {
     const { success, path, code, error } = await commands.notesExportHtml(input)
     return { success, path: path ?? undefined, code: code ?? undefined, error: error ?? undefined }
+  },
+  exportPdf: async (input: ExportNoteInput): Promise<ExportNoteResult> => {
+    const { success, path, code, error } = await commands.notesExportPdf(input)
+    return { success, path: path ?? undefined, code: code ?? undefined, error: error ?? undefined }
   }
 } satisfies Partial<NotesClientAPI>
 
@@ -721,6 +736,7 @@ type NotesServiceApi = Omit<
   | 'update'
   | 'appendBlocks'
   | 'exportHtml'
+  | 'exportPdf'
   | 'getSimilar'
   | 'getTagSuggestions'
   | 'cluster'
@@ -728,10 +744,11 @@ type NotesServiceApi = Omit<
   update: (input: NoteSaveInput) => Promise<NoteSaveResponse>
   appendBlocks: (input: AppendBlocksInput) => Promise<AppendBlocksSaveResponse>
   exportHtml: (input: ExportNoteInput) => Promise<ExportNoteResult>
+  exportPdf: (input: ExportNoteInput) => Promise<ExportNoteResult>
 }
 
-export const notesService: NotesServiceApi = createWindowApiForwarder<
-  NotesServiceApi,
+export const notesService: NotesServiceWithVersions = createWindowApiForwarder<
+  NotesServiceWithVersions,
   PortedNoteMethod
 >(() => window.api.notes, ported)
 
