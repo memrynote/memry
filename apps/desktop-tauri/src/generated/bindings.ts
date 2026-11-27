@@ -1045,6 +1045,11 @@ export const commands = {
 	windowSetCaptionRects: (min: CaptionRect, max: CaptionRect, close: CaptionRect) => __TAURI_INVOKE<null>("window_set_caption_rects", { min, max, close }),
 	/**  Maximizes the calling window, or restores it when it is maximized. */
 	windowToggleMaximize: () => __TAURI_INVOKE<null>("window_toggle_maximize"),
+	/**
+	 *  Shows the inbox review notification now (Settings > Inbox), so the user can check that the
+	 *  system shows it and, on macOS, answer the permission prompt (`sendTestReviewNotification`).
+	 */
+	settingsSendTestInboxReviewNotification: () => __TAURI_INVOKE<InboxReviewTestResult>("settings_send_test_inbox_review_notification"),
 	tasksArchive: (id: string) => __TAURI_INVOKE<TaskAck>("tasks_archive", { id }),
 	tasksBulkArchive: (input: BulkIdsInput) => __TAURI_INVOKE<BulkMutation>("tasks_bulk_archive", { input }),
 	tasksBulkComplete: (input: BulkIdsInput) => __TAURI_INVOKE<BulkMutation>("tasks_bulk_complete", { input }),
@@ -1145,6 +1150,12 @@ export const commands = {
 	stickyTuck: () => __TAURI_INVOKE<void>("sticky_tuck"),
 	/**  The edge tab unfolds the sticky on a draft, or blank for none (`sticky:unfold`). */
 	stickyUnfold: (draftId: string | null) => __TAURI_INVOKE<null>("sticky_unfold", { draftId }),
+	/**  `graph:clear-layout`: forgets the view's layout. */
+	graphClearLayout: (viewKey: string) => __TAURI_INVOKE<null>("graph_clear_layout", { viewKey }),
+	/**  `graph:get-layout`: the layout saved for the view, `null` when none reads. */
+	graphGetLayout: (viewKey: string) => __TAURI_INVOKE<GraphLayoutView | null>("graph_get_layout", { viewKey }),
+	/**  `graph:save-layout`: replaces the view's layout. */
+	graphSaveLayout: (viewKey: string, layout: GraphLayoutView) => __TAURI_INVOKE<null>("graph_save_layout", { viewKey, layout }),
 };
 
 /** Events */
@@ -1179,6 +1190,8 @@ export const events = {
 	homePageUpdatedEvent: makeEvent<HomePageUpdatedEvent, HomePageUpdatedEvent>("home-page-updated-event"),
 	importReadwiseStatusChangedEvent: makeEvent<ImportReadwiseStatusChangedEvent, ImportReadwiseStatusChangedEvent>("import-readwise-status-changed-event"),
 	inboxOpenItemEvent: makeEvent<InboxOpenItemEvent, InboxOpenItemEvent>("inbox-open-item-event"),
+	inboxReviewDueEvent: makeEvent<InboxReviewDueEvent, InboxReviewDueEvent>("inbox-review-due-event"),
+	inboxReviewOpenEvent: makeEvent<InboxReviewOpenEvent, InboxReviewOpenEvent>("inbox-review-open-event"),
 	journalEntryCreatedEvent: makeEvent<JournalEntryCreatedEvent, JournalEntryCreatedEvent>("journal-entry-created-event"),
 	journalEntryDeletedEvent: makeEvent<JournalEntryDeletedEvent, JournalEntryDeletedEvent>("journal-entry-deleted-event"),
 	journalEntryUpdatedEvent: makeEvent<JournalEntryUpdatedEvent, JournalEntryUpdatedEvent>("journal-entry-updated-event"),
@@ -2646,6 +2659,19 @@ export type GlobalCaptureResult = {
 	fallbackRegistered: boolean,
 };
 
+/**  `GraphLayoutNodeSchema`. */
+export type GraphLayoutNodeView = {
+	x: number | null,
+	y: number | null,
+	pinned?: boolean | null,
+};
+
+/**  `GraphLayoutSchema`. */
+export type GraphLayoutView = {
+	version: number,
+	nodes: { [key in string]: GraphLayoutNodeView },
+};
+
 export type HeaderPair = {
 	name: string,
 	value: string,
@@ -2815,6 +2841,25 @@ export type InboxResultMetadata = {
 	sourceUrl: string | null,
 	sourceTitle: string | null,
 	filedAt: string | null,
+};
+
+/**
+ *  The daily inbox review nudge fired (`inbox:review-due`): the renderer shows its toast.
+ *  `count` is the number of captures to review.
+ */
+export type InboxReviewDueEvent = {
+	count: number,
+};
+
+/**  The inbox review notification was clicked (`inbox:review-open`): the renderer opens the inbox. */
+export type InboxReviewOpenEvent = Record<string, never>;
+
+/**
+ *  What the inbox review test reports: `supported` is false when the platform cannot show a
+ *  notification. A refusal by the user shows nowhere, as in Electron.
+ */
+export type InboxReviewTestResult = {
+	supported: boolean,
 };
 
 export type InheritedFieldsView = {

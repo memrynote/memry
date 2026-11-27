@@ -2,18 +2,22 @@
 //! Numbering follows Step 37's report: 3, 7 and 8 are Step 37's. Check 1 covers every table
 //! the report lists; checks 2 (id sets) and 5 (byte-equal ids, clocks and cursor) cover the
 //! record tables imported so far ([`RECORD_TABLES`]) and the vault id, less the source rows a
-//! queued delete made tombstones; check 4 holds the staged
-//! outbox to the source's queued record pushes. Details name tables and counts, never ids or
-//! values.
+//! queued or pending delete made tombstones, with the clocks the runtime-start replays minted (a
+//! row that never had a clock keeps none: the sync pass seeds it); check 4 holds the staged
+//! outbox to the source's queued record pushes and Electron's runtime-start replays ([`replay`]).
+//! Details name tables and counts, never ids or values.
 
 use std::collections::{BTreeMap, HashSet};
 
 use memry_core::storage::import::{ImportQueued, ImportWriter};
+use memry_core::sync::clock::VectorClock;
+use memry_core::sync::outbox::RecordOp;
 
 use super::source::{Sources, source_error};
 use super::tables::SourceDb;
-use super::tables::queue::{self, Disposition, QueueItem};
+use super::tables::queue::{self, Disposition};
 use super::tables::records::parse_clock;
+use super::tables::replay;
 use super::{FoldedDoc, ImportError, VaultStageReport, docs, read_source_id};
 
 /// `(source table, id column, core item type, rows of the type)` of every imported record table
@@ -51,28 +55,38 @@ pub(super) fn run(
     writer: &ImportWriter,
     device_id: Option<&str>,
     folded: &[FoldedDoc],
+    now_ms: i64,
 ) -> Result<(), ImportError> {
     row_counts(report)?;
     report.checks_passed.push(1);
     let source = sources.conn(SourceDb::Data);
-    let plan = queue::plan(source, writer, device_id)?;
-    let tombstoned: HashSet<(&str, &str)> = plan
-        .iter()
+    // Every record push the import queues, in the order it queues them.
+    let mut planned: Vec<ImportQueued> = queue::plan(source, writer, device_id)?
+        .into_iter()
         .filter_map(|(_, disposition)| match disposition {
-            Disposition::Enqueue(ImportQueued {
-                item_type,
-                item_id,
-                tombstone: Some(_),
-                ..
-            }) => Some((item_type.as_str(), item_id.as_str())),
-            _ => None,
+            Disposition::Enqueue(item) => Some(item),
+            Disposition::Drop(_) => None,
         })
+        .collect();
+    planned.extend(replay::plan_deletes(source, writer, device_id, now_ms)?.queued);
+    let runtime = replay::plan_runtime_start(source, writer, device_id, now_ms)?;
+    planned.extend(runtime.queued);
+    let tombstoned: HashSet<(&str, &str)> = planned
+        .iter()
+        .filter(|item| item.tombstone.is_some())
+        .map(|item| (item.item_type.as_str(), item.item_id.as_str()))
         .collect();
     let mut clock_mismatches = Vec::new();
     let holders = super::journal_day_merges::holder_ids(source)?;
     for (table, id_column, item_type, rows) in RECORD_TABLES {
         let mut expected = source_clocks(source, table, id_column, rows)?;
         expected.retain(|id, _| !tombstoned.contains(&(*item_type, id.as_str())));
+        // A clock the replays minted replaces the source's (none, or a never-synced one).
+        for (id, clock) in expected.iter_mut() {
+            if let Some(minted) = runtime.minted.get(&((*item_type).to_owned(), id.clone())) {
+                *clock = Some(minted.clone());
+            }
+        }
         let mut staged: BTreeMap<String, Option<String>> =
             writer.record_clocks(item_type)?.into_iter().collect();
         // A displaced journal holder has no source row ([`super::journal_day_merges`]).
@@ -107,7 +121,7 @@ pub(super) fn run(
     }
     report.checks_passed.push(2);
     let bodies = docs::planned_body_pushes(source, folded)?;
-    outbox(plan, bodies, writer)?;
+    outbox(&planned, bodies, writer)?;
     report.checks_passed.push(4);
     if source_vault_id(source)? != writer.vault_id()? {
         clock_mismatches.push("vault_metadata: the core vault id is not the source uuid".into());
@@ -131,11 +145,13 @@ pub(super) fn run(
     Ok(())
 }
 
-/// Check 4: the staged outbox holds exactly one row per queued push the plan keeps, with its
-/// type and op, one CRDT row per body push (`docs`), and nothing else. A local-only note's push
-/// is withheld by the outbox itself.
+/// Check 4: the staged outbox holds exactly what `outbox::enqueue` leaves of the planned record
+/// pushes (per `(type, id)` the last op wins, and an upsert over a queued create stays a create),
+/// one CRDT row per body push (`docs`), and nothing else. A local-only note's push is withheld by
+/// the outbox itself. A create or upsert whose record has no clock the core push sends fails too:
+/// the push would retire it unsent.
 fn outbox(
-    plan: Vec<(QueueItem, Disposition)>,
+    planned: &[ImportQueued],
     bodies: Vec<memry_core::storage::import::ImportBodyPush>,
     writer: &ImportWriter,
 ) -> Result<(), ImportError> {
@@ -163,16 +179,34 @@ fn outbox(
             ),
         });
     }
-    let mut expected = Vec::new();
-    for (_, disposition) in plan {
-        let Disposition::Enqueue(item) = disposition else {
-            continue;
-        };
+    let mut collapsed: BTreeMap<(String, String), RecordOp> = BTreeMap::new();
+    for item in planned {
         if item.item_type == "note" && writer.is_local_only_note(&item.item_id)? {
             continue;
         }
-        expected.push((item.item_type, item.item_id, item.op.as_str().to_owned()));
+        let key = (item.item_type.clone(), item.item_id.clone());
+        let op = match collapsed.get(&key) {
+            Some(RecordOp::Create) if item.op == RecordOp::Upsert => RecordOp::Create,
+            _ => item.op,
+        };
+        collapsed.insert(key, op);
     }
+    let mut unclocked = 0;
+    for ((item_type, item_id), op) in &collapsed {
+        if *op != RecordOp::Delete && !sends_clock(writer, item_type, item_id)? {
+            unclocked += 1;
+        }
+    }
+    if unclocked > 0 {
+        return Err(ImportError::CheckFailed {
+            check: 4,
+            detail: format!("outbox: {unclocked} queued pushes have no clock the push sends"),
+        });
+    }
+    let mut expected: Vec<(String, String, String)> = collapsed
+        .into_iter()
+        .map(|((item_type, item_id), op)| (item_type, item_id, op.as_str().to_owned()))
+        .collect();
     expected.sort();
     staged.sort();
     if expected != staged {
@@ -186,6 +220,18 @@ fn outbox(
         });
     }
     Ok(())
+}
+
+/// Whether the live staged record carries a clock the core push sends ([`queue::usable`]).
+fn sends_clock(writer: &ImportWriter, item_type: &str, item_id: &str) -> Result<bool, ImportError> {
+    let Some(payload) = writer.record_payload(item_type, item_id)? else {
+        return Ok(false);
+    };
+    let clock = serde_json::from_str::<serde_json::Value>(&payload)
+        .ok()
+        .and_then(|mut body| body.get_mut("clock").map(serde_json::Value::take))
+        .and_then(|clock| serde_json::from_value::<VectorClock>(clock).ok());
+    Ok(clock.is_some_and(|clock| queue::usable(&clock)))
 }
 
 /// Check 1: every `copy` and `convert` table wrote its source rows minus the named drops.

@@ -9,6 +9,8 @@ use crate::startup::StartupState;
 // The bookmark and recents commands and events (`registry/bookmarks.rs`).
 #[macro_use]
 mod bookmarks;
+#[macro_use]
+mod inbox;
 // The sticky note and edge tab commands and events (`registry/stickies.rs`).
 #[macro_use]
 mod stickies;
@@ -20,8 +22,8 @@ mod projects;
 mod reminders;
 #[macro_use]
 mod tasks;
-
 mod dispatch;
+mod graph;
 mod permission;
 
 pub use dispatch::{dispatcher, invoke_handler};
@@ -38,7 +40,7 @@ pub fn builder() -> Builder<Wry> {
         .dangerously_cast_bigints_to_number()
         // One type per struct: the renderer reads `StartupState` and never writes it.
         .disable_serde_phases()
-        .commands(with_task_commands!(collect_commands![
+        .commands(with_inbox_commands!(collect_commands![
             // account
             crate::commands::account::account_get_info,
             crate::commands::account::auth_cancel_oauth,
@@ -470,7 +472,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::shell::window_set_caption_rects,
             crate::commands::shell::window_toggle_maximize,
         ]))
-        .events(with_task_events!(collect_events![
+        .events(with_inbox_events!(collect_events![
             // account
             crate::events::AuthOauthCallbackEvent,
             crate::events::AuthOauthErrorEvent,
@@ -506,8 +508,6 @@ pub fn builder() -> Builder<Wry> {
             crate::events::HomePageUpdatedEvent,
             // import (Readwise)
             crate::events::ImportReadwiseStatusChangedEvent,
-            // inbox
-            crate::events::InboxOpenItemEvent,
             // journal
             crate::events::JournalEntryCreatedEvent,
             crate::events::JournalEntryDeletedEvent,

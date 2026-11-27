@@ -3,8 +3,9 @@
 //!
 //! In order: the drizzle ledger ends at the frozen migration `TABLE_MAP` describes; every table
 //! is mapped (shadow tables of a mapped virtual table excepted); no table whose importer is
-//! still pending holds rows. An unknown `sync_state` key is reported by the table's importer,
-//! not refused: Electron refuses none.
+//! still pending holds rows, and no pending delete is of a type a later stage imports. An
+//! unknown `sync_state` key is reported by the table's importer, not refused: Electron refuses
+//! none.
 
 use rusqlite::Connection;
 
@@ -55,6 +56,16 @@ pub(super) fn run(sources: &Sources) -> Result<Preflight, ImportError> {
             return Err(not_ready(
                 stage,
                 format!("{}/{} ({stage})", table.db.name(), table.table),
+            ));
+        }
+        if table.table == "sync_pending_deletes"
+            && *count > 0
+            && let Some((stage, item_type)) =
+                super::tables::replay::later_stage(sources.conn(SourceDb::Data))?
+        {
+            return Err(not_ready(
+                stage,
+                format!("data.db/sync_pending_deletes {item_type} rows ({stage})"),
             ));
         }
     }
