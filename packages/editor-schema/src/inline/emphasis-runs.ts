@@ -34,6 +34,8 @@ const openToken = (index: number): string => `MEMRYEMO${PROCESS_WORD}${index};`
 const closeToken = (index: number): string => `MEMRYEMC${PROCESS_WORD}${index};`
 const codeToken = (index: number): string => `MEMRYEMK${PROCESS_WORD}${index};`
 const TOKEN = new RegExp(`MEMRYEM([OCK])${PROCESS_WORD}(\\d+);`, 'g')
+const underscoreToken = (index: number): string => `MEMRYEMU${PROCESS_WORD}${index};`
+const UNDERSCORE_TOKEN = new RegExp(`MEMRYEMU${PROCESS_WORD}(\\d+);`, 'g')
 // A break inside a quote carries the quote's `>` prefix onto the next line.
 const EDGES = /^((?:\\\n(?:[^\S\n]*>)*|\s)*)([\s\S]*?)((?:\\\n(?:[^\S\n]*>)*|\s)*)$/
 
@@ -231,30 +233,95 @@ export function tokenizeEmphasisRuns(items: InlineItem[], marks: Span[]): Inline
   return out
 }
 
+/**
+ * Whether the parser misreads `delimiter` around `content`: three stars in a
+ * row open bold italic (`tryBoldItalic`), so an italic run whose edge meets an
+ * inner bold run (`***a** b*`, `*b **c***`) and a bold run ending in an inner
+ * italic (`**b *c***`) came back as text with stray stars. A run that is one
+ * inner run end to end (`lastRun`) is the `***x***` the parser reads.
+ */
+function meetsInnerStars(delimiter: string, content: string, lastRun: string): boolean {
+  if (content === lastRun) return false
+  if (delimiter === '*') return content.startsWith('*') || content.endsWith('*')
+  return delimiter === '**' && content.endsWith('*')
+}
+
+/** `parseDelimited` skips an escaped character, so only a bare `_` could close an underscore run early. */
+function hasBareUnderscore(content: string): boolean {
+  for (let i = 0; i < content.length; i++) {
+    if (content[i] === '\\') i++
+    else if (content[i] === '_') return true
+  }
+  return false
+}
+
+const isWord = (c: string | undefined): boolean => c !== undefined && /\w/.test(c)
+
+/**
+ * Each underscore token pair spelled `_` or `__`, or with the stars it stands
+ * for where the parser would not read the underscores: `tryItalic` and
+ * `tryBold` refuse an opener between two word characters, and no run closes
+ * on an underscore next to another.
+ */
+function resolveUnderscores(markdown: string, delimiters: string[]): string {
+  if (delimiters.length === 0) return markdown
+  const openings = new Map<string, number>()
+  const readable = new Set<string>()
+  for (const token of markdown.matchAll(UNDERSCORE_TOKEN)) {
+    const at = openings.get(token[1])
+    if (at === undefined) {
+      openings.set(token[1], token.index)
+      continue
+    }
+    const before = markdown[at - 1]
+    const first = markdown[at + token[0].length]
+    const after = markdown[token.index + token[0].length]
+    const opens = !(isWord(before) && isWord(first)) && before !== '_'
+    if (opens && after !== '_') readable.add(token[1])
+  }
+  return markdown.replace(UNDERSCORE_TOKEN, (_token, index: string) => {
+    const delimiter = delimiters[Number(index)]
+    return readable.has(index) ? '_'.repeat(delimiter.length) : delimiter
+  })
+}
+
 /** Each token pair in `markdown` turned into its delimiters. */
 export function restoreEmphasisRuns(markdown: string, marks: Span[]): string {
-  const open: string[] = ['']
+  // `lastRun` is the last run closed inside each open one, delimiters included.
+  const open = [{ text: '', lastRun: '' }]
+  const underscored: string[] = []
   let last = 0
   for (const token of markdown.matchAll(TOKEN)) {
-    open[open.length - 1] += markdown.slice(last, token.index)
+    const top = open[open.length - 1]
+    top.text += markdown.slice(last, token.index)
     last = token.index + token[0].length
     const span = marks[Number(token[2])]
     if (token[1] === 'K') {
-      open[open.length - 1] += typeof span === 'object' ? span.code : ''
+      top.text += typeof span === 'object' ? span.code : ''
       continue
     }
     if (token[1] === 'O') {
-      open.push('')
+      open.push({ text: '', lastRun: '' })
       continue
     }
     if (open.length === 1) continue
-    const run = open.pop() ?? ''
-    const delimiter = typeof span === 'string' ? DELIMITERS[span] : ''
-    const [, before, content, after] = EDGES.exec(run) ?? []
-    open[open.length - 1] += content ? `${before}${delimiter}${content}${delimiter}${after}` : run
+    const run = open.pop() ?? top
+    const parent = open[open.length - 1]
+    const [, before, content, after] = EDGES.exec(run.text) ?? []
+    if (!content) {
+      parent.text += run.text
+      continue
+    }
+    let delimiter: string = typeof span === 'string' ? DELIMITERS[span] : ''
+    if (meetsInnerStars(delimiter, content, run.lastRun) && !hasBareUnderscore(content)) {
+      delimiter = underscoreToken(underscored.push(delimiter) - 1)
+    }
+    parent.lastRun = `${delimiter}${content}${delimiter}`
+    parent.text += `${before}${parent.lastRun}${after}`
   }
   // A pair the serializer cut short keeps its text, without delimiters.
-  return open.join('') + markdown.slice(last)
+  const restored = open.map((run) => run.text).join('') + markdown.slice(last)
+  return resolveUnderscores(restored, underscored)
 }
 
 /**
