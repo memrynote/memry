@@ -321,6 +321,27 @@ impl Session {
         lock(&self.inner.hooks).close.push((name.to_owned(), hook));
     }
 
+    /// [`Self::on_open`] and [`Self::on_close`] for a service that starts after the vault may
+    /// already be open: `open` also runs for the vault open now. Queued behind a running open,
+    /// close or switch, so no vault opens or closes in between; never call it from a hook.
+    pub fn attach_lifecycle(&self, name: &str, stage: OpenStage, open: OpenHook, close: CloseHook) {
+        let _queue = lock(&self.inner.lifecycle);
+        self.on_open(name, stage, Arc::clone(&open));
+        self.on_close(name, close);
+        if let Some(current) = self.current()
+            && let Err(error) = open(&current)
+        {
+            tracing::warn!(hook = name, %error, "a lifecycle hook failed on the open vault");
+        }
+    }
+
+    /// Runs `f` on the open vault, queued behind a running open, close or switch, so the vault
+    /// stays open until `f` returns. `None` when no vault is open; never call it from a hook.
+    pub fn with_current<T>(&self, f: impl FnOnce(&OpenVault) -> T) -> Option<T> {
+        let _queue = lock(&self.inner.lifecycle);
+        self.current().map(|open| f(&open))
+    }
+
     /// Registered before a vault opens; each open starts a lane for it.
     pub fn register_projector(&self, projector: Arc<dyn Projector>) {
         lock(&self.inner.projectors).push(projector);

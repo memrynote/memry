@@ -15,6 +15,7 @@ use tauri::{AppHandle, Emitter, EventTarget, Runtime};
 use crate::commands::vault_locks::VaultLockStateView;
 
 mod account;
+mod agent;
 mod ai;
 mod bookmarks;
 mod canvas;
@@ -25,6 +26,7 @@ mod tasks;
 mod voice;
 
 pub use account::*;
+pub use agent::*;
 pub use ai::*;
 pub use bookmarks::*;
 pub use canvas::*;
