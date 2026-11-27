@@ -1,0 +1,25 @@
+{
+  "title": "Loose note",
+  "textContent": "Has a picture",
+  "labels": [
+    {
+      "name": "work"
+    }
+  ],
+  "attachments": [
+    {
+      "filePath": "pic.gif",
+      "mimetype": "image/gif"
+    },
+    {
+      "filePath": "sub/pic.gif",
+      "mimetype": "image/gif"
+    },
+    {
+      "filePath": "Trip_photo.png",
+      "mimetype": "image/png"
+    }
+  ],
+  "createdTimestampUsec": 1609459200000000,
+  "userEditedTimestampUsec": 1609459200000000
+}

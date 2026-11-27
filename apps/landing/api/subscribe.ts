@@ -98,13 +98,14 @@ type Failure = { status: number; error: string }
 /**
  * The iPhone beta step: a Turnstile check (Apple mails every address we add, so bots must not
  * reach it), then the address joins the external TestFlight group and Apple sends the invite.
- * Re-adding an existing tester succeeds, so a repeat submit stays idempotent.
+ * An address already in the group gets the invite again, or is told it already joined, so a
+ * repeat submit still succeeds.
  */
 async function inviteToTestflight(
   req: VercelRequest,
   email: string,
   turnstileToken: unknown
-): Promise<Failure | null> {
+): Promise<Failure | { outcome: 'invited' | 'resent' | 'joined' }> {
   const turnstileSecret = process.env.TURNSTILE_SECRET_KEY?.trim()
   const ascConfig = readAppStoreConnectConfig(process.env)
   if (!turnstileSecret || !ascConfig) {
@@ -135,8 +136,14 @@ async function inviteToTestflight(
     return { status: 502, error: 'Could not send the TestFlight invite. Please try again.' }
   }
 
-  return null
+  return { outcome: result.outcome }
 }
+
+const SUCCESS_BODY = {
+  invited: { success: true },
+  resent: { success: true, alreadyInvited: true },
+  joined: { success: true, alreadyJoined: true }
+} as const
 
 /**
  * List signup — creates the Resend contact, then files it into the segment of the list it
@@ -186,9 +193,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    let outcome: keyof typeof SUCCESS_BODY = 'invited'
     if (list === 'ios-beta') {
-      const failure = await inviteToTestflight(req, email, fields.turnstileToken)
-      if (failure) return res.status(failure.status).json({ error: failure.error })
+      const invite = await inviteToTestflight(req, email, fields.turnstileToken)
+      if ('error' in invite) return res.status(invite.status).json({ error: invite.error })
+      outcome = invite.outcome
     }
 
     const contactRes = await fetch(`${RESEND_API_BASE_URL}/contacts`, {
@@ -223,7 +232,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    return res.status(200).json({ success: true })
+    return res.status(200).json(SUCCESS_BODY[outcome])
   } catch (error) {
     console.error('[subscribe] request failed:', sanitizeLogValue(error))
     return res.status(500).json({ error: 'Internal server error' })

@@ -2,6 +2,9 @@
 //! [`Frame`]. Every number is a big-endian `u32`; a string is its length then its UTF-8 bytes.
 //! An unknown op code, a payload of the wrong size and invalid UTF-8 are errors, never guesses.
 
+mod wire;
+
+use self::wire::{Reader, cut, put_str, put_u32s};
 use crate::frame::Frame;
 
 /// The largest long edge, in pixels, a page is rendered at.
@@ -27,6 +30,12 @@ pub const MAX_AUDIO_WINDOWS: u32 = 120;
 /// file itself, from the path the app sends: the file and its decoded samples (up to 230 MB) never
 /// cross the pipe, whose frames are capped at 80 MiB.
 pub const MAX_AUDIO_BYTES: usize = 512 * 1024 * 1024;
+/// The largest WAV file a `Transcribe` request carries. The renderer records at most 300 s of
+/// 16 kHz mono PCM16 (9.6 MB); this holds 300 s of 48 kHz stereo PCM16 and stays under the 80 MiB
+/// frame cap.
+pub const MAX_TRANSCRIBE_BYTES: usize = 64 << 20;
+/// The longest language code a `Transcribe` request carries (Whisper's are at most 5 bytes).
+pub const MAX_LANGUAGE_BYTES: usize = 16;
 /// The most files a `ModelManifest` answer lists, and the longest string in it.
 const MAX_MANIFEST_FILES: u32 = 16;
 const MAX_MANIFEST_STRING: usize = 256;
@@ -54,6 +63,9 @@ const AUDIO_CLOSE: u8 = 0x16;
 /// Past the embedding ops (0x10 to 0x13, #4701) and the audio ops (0x14 to 0x16, #4742). Its
 /// answer is `TEXT` (0x82), so it adds no answer code.
 const OCR: u8 = 0x17;
+/// Past the OCR op (#3541). Answered with `DONE` and `TEXT`, so they add no answer code.
+const TRANSCRIBE_LOAD: u8 = 0x18;
+const TRANSCRIBE: u8 = 0x19;
 
 const READY: u8 = 0x80;
 const PDF_OPENED: u8 = 0x81;
@@ -166,6 +178,18 @@ pub enum Request {
     },
     AudioClose {
         recording: u32,
+    },
+    /// Loads the whisper.cpp model file at `model` (ggml), unless it is loaded. Answers `Done`.
+    TranscribeLoad {
+        model: String,
+    },
+    /// The text Whisper hears in `wav` (a WAV file of at most [`MAX_TRANSCRIBE_BYTES`]) in
+    /// `language`, the model at `model` loaded first when it is not. Answers [`Response::Text`];
+    /// a file that does not decode and an unknown language are [`Response::Rejected`].
+    Transcribe {
+        model: String,
+        language: String,
+        wav: Vec<u8>,
     },
 }
 
@@ -287,6 +311,20 @@ impl Request {
                 put_u32s(&mut out, &[*recording]);
                 AUDIO_CLOSE
             }
+            Self::TranscribeLoad { model } => {
+                put_str(&mut out, model);
+                TRANSCRIBE_LOAD
+            }
+            Self::Transcribe {
+                model,
+                language,
+                wav,
+            } => {
+                put_str(&mut out, model);
+                put_str(&mut out, language);
+                out.extend_from_slice(wav);
+                TRANSCRIBE
+            }
         };
         Frame {
             op,
@@ -352,6 +390,12 @@ impl Request {
             AUDIO_CLOSE => Self::AudioClose {
                 recording: r.u32()?,
             },
+            TRANSCRIBE_LOAD => Self::TranscribeLoad { model: r.string()? },
+            TRANSCRIBE => Self::Transcribe {
+                model: r.string()?,
+                language: r.string_within(MAX_LANGUAGE_BYTES)?,
+                wav: r.rest_within(MAX_TRANSCRIBE_BYTES)?,
+            },
             other => return Err(OpError::UnknownOp(other)),
         };
         r.end()?;
@@ -374,6 +418,8 @@ impl Request {
             Self::AudioOpen { .. } => "audio-open",
             Self::EmbedAudioWindow { .. } => "embed-audio-window",
             Self::AudioClose { .. } => "audio-close",
+            Self::TranscribeLoad { .. } => "transcribe-load",
+            Self::Transcribe { .. } => "transcribe",
         }
     }
 }
@@ -509,89 +555,5 @@ impl Response {
         };
         r.end()?;
         Ok(response)
-    }
-}
-
-fn put_u32s(out: &mut Vec<u8>, values: &[u32]) {
-    for value in values {
-        out.extend_from_slice(&value.to_be_bytes());
-    }
-}
-
-/// The longest prefix of `text` of at most `max` bytes that ends on a character boundary.
-fn cut(text: &str, max: usize) -> &str {
-    let mut end = text.len().min(max);
-    while !text.is_char_boundary(end) {
-        end -= 1;
-    }
-    &text[..end]
-}
-
-fn put_str(out: &mut Vec<u8>, value: &str) {
-    // A frame body is capped far below `u32::MAX`; `write_frame` refuses a longer one.
-    put_u32s(out, &[u32::try_from(value.len()).unwrap_or(u32::MAX)]);
-    out.extend_from_slice(value.as_bytes());
-}
-
-struct Reader<'a> {
-    rest: &'a [u8],
-    op: u8,
-}
-
-impl<'a> Reader<'a> {
-    fn new(payload: &'a [u8], op: u8) -> Self {
-        Self { rest: payload, op }
-    }
-
-    fn take(&mut self, n: usize) -> Result<&'a [u8], OpError> {
-        if self.rest.len() < n {
-            return Err(OpError::Malformed(self.op));
-        }
-        let (head, tail) = self.rest.split_at(n);
-        self.rest = tail;
-        Ok(head)
-    }
-
-    fn u32(&mut self) -> Result<u32, OpError> {
-        let bytes = self.take(4)?;
-        Ok(u32::from_be_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]))
-    }
-
-    fn u64(&mut self) -> Result<u64, OpError> {
-        Ok((u64::from(self.u32()?) << 32) | u64::from(self.u32()?))
-    }
-
-    fn string(&mut self) -> Result<String, OpError> {
-        self.string_within(usize::MAX)
-    }
-
-    /// A string of at most `cap` bytes; a longer one is refused before it is copied.
-    fn string_within(&mut self, cap: usize) -> Result<String, OpError> {
-        let len = self.u32()? as usize;
-        if len > cap {
-            return Err(OpError::TooLarge(self.op));
-        }
-        let bytes = self.take(len)?;
-        String::from_utf8(bytes.to_vec()).map_err(|_| OpError::Malformed(self.op))
-    }
-
-    fn rest(&mut self) -> Vec<u8> {
-        std::mem::take(&mut self.rest).to_vec()
-    }
-
-    /// The rest of the payload, refused before it is copied when it is over `cap` bytes.
-    fn rest_within(&mut self, cap: usize) -> Result<Vec<u8>, OpError> {
-        if self.rest.len() > cap {
-            return Err(OpError::TooLarge(self.op));
-        }
-        Ok(self.rest())
-    }
-
-    fn end(&self) -> Result<(), OpError> {
-        if self.rest.is_empty() {
-            Ok(())
-        } else {
-            Err(OpError::Malformed(self.op))
-        }
     }
 }

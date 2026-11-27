@@ -15,7 +15,12 @@ import {
   projectMarker,
   tagMarker
 } from '@memry/domain-tasks/parsing'
-import type { DatePhraseMatch, ParsedQuickAdd, QuickAddSpan } from '@memry/domain-tasks/parsing'
+import type {
+  DatePhraseMatch,
+  ParsedQuickAdd,
+  QuickAddOptions,
+  QuickAddSpan
+} from '@memry/domain-tasks/parsing'
 
 export {
   findNoteLinks,
@@ -52,8 +57,9 @@ export const findDatePhrase = (input: string, now: Date = new Date()): DatePhras
 export const parseQuickAdd = (
   input: string,
   projects: Project[],
-  now: Date = new Date()
-): ParsedQuickAdd => parseQuickAddAt(input, projects, now)
+  now: Date = new Date(),
+  options?: QuickAddOptions
+): ParsedQuickAdd => parseQuickAddAt(input, projects, now, options)
 
 /** The stretches of `input` that carry syntax, for the token overlay. */
 export const findQuickAddSpans = (input: string, now: Date = new Date()): QuickAddSpan[] =>

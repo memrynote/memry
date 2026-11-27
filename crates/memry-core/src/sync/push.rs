@@ -42,25 +42,28 @@ use crate::domain::notes::failed;
 use crate::domain::property_admin;
 use crate::protocol::envelope::{EnvelopeError, SyncOperation};
 use crate::protocol::http::{
-    ApiRequest, Auth, DEFAULT_BASE_DELAY_MS, HttpClient, RetryPolicy, SYNC_TYPES_HEADER,
-    VAULT_ID_HEADER,
+    ApiRequest, Auth, HttpClient, RetryPolicy, SYNC_TYPES_HEADER, VAULT_ID_HEADER,
 };
 use crate::protocol::types::Declaration;
 use crate::storage::Db;
-use crate::storage::repositories::projectors;
+use crate::storage::nested_tx;
 use crate::storage::repositories::projectors::agent::is_sealed_pending;
 use crate::storage::repositories::sync_items::{self, SyncItemRow};
 
+mod answer;
 mod crdt;
+mod delete_wins;
+mod gate;
 mod pre_push_hook;
+mod settle;
 
-use super::crypto_batch::off_runtime;
-use super::engine::PushWave;
-use super::hardening::manifest;
 use super::outbox::{self, Batch, Collapsed, OutboxRow};
-use super::store;
+use super::pull::PullLoop;
+use super::{crypto_batch::off_runtime, engine::PushWave, hardening::manifest};
+use answer::{is_retryable_5xx, rejection_reason, retry_at, string_set};
 use crdt::BatchEnd;
 pub use crdt::{SnapshotFallback, SnapshotFallbackOutcome};
+use delete_wins::take_the_delete;
 pub use pre_push_hook::{HoldDecision, MAX_HOLD_DEFERRALS, PrePushHook};
 
 /// Chapter 05 §5.6, `apps/desktop/src/main/sync/engine/sync-context.ts:126-132`.
@@ -72,7 +75,8 @@ pub const MAX_PUSH_ITERATIONS: u32 = 50;
 /// server already holds a row no component of ours exceeds, so the queued row
 /// has nothing left to say and is acked rather than retried forever.
 pub const REASON_REPLAY_DETECTED: &str = "SYNC_REPLAY_DETECTED";
-/// §5.8: delete wins over a concurrent write. Same reasoning.
+/// §5.8: delete wins over a concurrent write. Same reasoning; a verified
+/// delete applies locally ([`super::delete_wins`], #5406).
 pub const REASON_DELETE_WINS: &str = "SYNC_DELETE_WINS";
 
 /// What a push failed with. A per-item rejection is **not** one of these: it
@@ -133,6 +137,9 @@ pub struct PushReport {
     /// The wave stopped because the ladder reached [`MIN_PUSH_BATCH_SIZE`]
     /// and a single item still drew a 5xx.
     pub halvings: u32,
+    /// Queued upserts of rows the server holds deleted, deleted here instead
+    /// of dropped or sent ([`super::delete_wins`], #5406).
+    pub deleted_locally: usize,
 }
 
 /// What [`PushCoordinator::build`] made of one queued row.
@@ -156,6 +163,15 @@ pub struct PushCoordinator {
     /// Opens the sealed keys of an agent record before it is sealed for the
     /// wire (chapter 04 §4.17).
     at_rest: AtRestKey,
+    /// This device's clock id, which a kept-text inbox copy is minted under
+    /// when a delete applies here (§5.8, #3029).
+    clock_device: String,
+    /// The pull a `SYNC_DELETE_WINS` answer is checked through
+    /// ([`super::delete_wins::apply_delete_wins`]).
+    pull: Option<Arc<PullLoop>>,
+    /// A `SYNC_DELETE_WINS` answer with no pull to check it through is
+    /// deferred, not acked ([`Self::deferring_unchecked_delete_wins`]).
+    defer_unchecked: bool,
     /// §5.6's ceiling. Lowered by a 5xx and **never raised**.
     ceiling: AtomicUsize,
     halvings: AtomicUsize,
@@ -168,6 +184,7 @@ impl PushCoordinator {
         db: Db,
         declaration: Declaration,
         sealer: Arc<dyn PushSealer>,
+        clock_device: &str,
     ) -> Self {
         Self {
             http,
@@ -178,6 +195,9 @@ impl PushCoordinator {
             snapshot_fallback: None,
             crdt_pacing: None,
             at_rest: AtRestKey::default(),
+            clock_device: clock_device.to_owned(),
+            pull: None,
+            defer_unchecked: false,
             ceiling: AtomicUsize::new(PUSH_BATCH_SIZE),
             halvings: AtomicUsize::new(0),
             pre_push: Default::default(),
@@ -201,6 +221,23 @@ impl PushCoordinator {
     /// §7.4.2). Without one such rows are deferred, never retired.
     pub fn with_snapshot_fallback(mut self, fallback: Arc<dyn SnapshotFallback>) -> Self {
         self.snapshot_fallback = Some(fallback);
+        self
+    }
+
+    /// Pulls the id of a `SYNC_DELETE_WINS` answer with its markers, so a
+    /// signed delete or an attested marker can apply. Without it a
+    /// delete-wins item is acked, as before #5406, and only
+    /// `take_the_delete`'s two cases delete.
+    pub fn with_pull(mut self, pull: Arc<PullLoop>) -> Self {
+        self.pull = Some(pull);
+        self
+    }
+
+    /// For a caller that cannot check a `SYNC_DELETE_WINS` answer (the CLI
+    /// without the device directory, #5445): with no pull, such an item is
+    /// deferred with its upsert queued and nothing is deleted (§5.8).
+    pub fn deferring_unchecked_delete_wins(mut self) -> Self {
+        self.defer_unchecked = true;
         self
     }
 
@@ -255,6 +292,21 @@ impl PushCoordinator {
     ) -> Result<(), PushError> {
         let mut ready: Vec<(Collapsed, PendingRecord)> = Vec::with_capacity(items.len());
         for item in items {
+            if self.held_for_unknown_signer(&item).await? {
+                continue;
+            }
+            match self.applies_kept_marker(&item).await {
+                Ok(true) => {
+                    report.deleted_locally += 1;
+                    continue;
+                }
+                Ok(false) => {}
+                Err(error) => {
+                    self.defer_unsettled(&item, &error.to_string()).await?;
+                    report.rejected += 1;
+                    continue;
+                }
+            }
             match self.build(&item).await? {
                 Built::Ready(pending) => ready.push((item, *pending)),
                 // A sealed agent row that does not open waits: no key is
@@ -307,7 +359,15 @@ impl PushCoordinator {
         let mut acked: Vec<i64> = Vec::new();
         let mut deferred: Vec<(Vec<i64>, String, i64)> = Vec::new();
         let mut deleted_there: Vec<(String, String)> = Vec::new();
-        for item in sent {
+        let mut lost: Vec<Collapsed> = Vec::new();
+        // Answers name no type: of two sent items under one id (a tag named
+        // `inbox`, the `inbox` settings row), neither deletes on delete-wins.
+        let sharing = |id: &str| sent.iter().filter(|item| item.row.item_id == id).count();
+        let shared: Vec<bool> = sent
+            .iter()
+            .map(|item| sharing(&item.row.item_id) > 1)
+            .collect();
+        for (item, shared) in sent.into_iter().zip(shared) {
             let key = item.row.item_id.clone();
             if accepted.iter().any(|id| id == &key) {
                 acked.extend(item.ids());
@@ -317,15 +377,24 @@ impl PushCoordinator {
             // §5.7 and §5.8: a replay and a delete-wins are the server saying
             // it already holds a row this one cannot improve on. Keeping the
             // row queued would retry it every pass for ever.
-            if reason == REASON_REPLAY_DETECTED || reason == REASON_DELETE_WINS {
+            // A delete-wins for an id two sent items share deletes neither.
+            // Otherwise [`take_the_delete`]'s two cases delete here, and any
+            // other is checked through the by-id pull when one is wired
+            // ([`Self::with_pull`]).
+            let delete_wins = reason == REASON_DELETE_WINS && !shared;
+            let (item_type, op) = (item.row.item_type.as_str(), item.row.op.as_str());
+            let take_it = delete_wins
+                && ((item_type == property_admin::ITEM_TYPE && op == outbox::OP_UPSERT)
+                    || (op == outbox::OP_CREATE
+                        && manifest::REUPLOADED.contains(&item_type)
+                        && !manifest::PROBED.contains(&item_type)));
+            if take_it {
                 acked.extend(item.ids());
-                let (item_type, op) = (item.row.item_type.as_str(), item.row.op.as_str());
-                if reason == REASON_DELETE_WINS
-                    && ((item_type == property_admin::ITEM_TYPE && op == outbox::OP_UPSERT)
-                        || (op == outbox::OP_CREATE && manifest::REUPLOADED.contains(&item_type)))
-                {
-                    deleted_there.push((item.row.item_type.clone(), key));
-                }
+                deleted_there.push((item.row.item_type.clone(), key));
+            } else if delete_wins && (self.pull.is_some() || self.defer_unchecked) {
+                lost.push(item);
+            } else if reason == REASON_REPLAY_DETECTED || reason == REASON_DELETE_WINS {
+                acked.extend(item.ids());
             } else {
                 let at = retry_at(now, item.row.attempt_count);
                 deferred.push((item.ids(), reason, at));
@@ -336,18 +405,20 @@ impl PushCoordinator {
         report.rejected += deferred.len();
         self.db
             .call(move |conn| {
-                let tx = conn.unchecked_transaction().map_err(failed)?;
+                let tx = nested_tx::begin(conn).map_err(failed)?;
                 outbox::ack(&tx, &acked)?;
                 for (ids, reason, at) in &deferred {
                     outbox::defer(&tx, ids, reason, Some(*at))?;
                 }
+                // #5849: a local delete is stamped inside the hold that writes it.
+                let now = now_ms();
                 for (item_type, item_id) in &deleted_there {
                     take_the_delete(&tx, item_type, item_id, now)?;
                 }
                 tx.commit().map_err(failed)
             })
             .await?;
-        Ok(())
+        self.settle_delete_wins(lost, report).await
     }
 
     /// Reads the live row and seals it, or names why the row retires or waits.
@@ -369,6 +440,9 @@ impl PushCoordinator {
                 "no live sync_items row at send time".to_owned(),
             ));
         };
+        if let Some(built) = self.gate(&item.row, &row).await? {
+            return Ok(built);
+        }
         let operation = match operation_of(&item.row) {
             Some(operation) => operation,
             None => {
@@ -386,7 +460,11 @@ impl PushCoordinator {
                 Err(error) => return Ok(Built::Held(format!("{HELD_REASON}: {error}"))),
             }
         }
-        Ok(Built::Ready(Box::new(PendingRecord { operation, row })))
+        let pending = PendingRecord { operation, row };
+        if let Some(reason) = settle::undeletes(&pending) {
+            return Ok(Built::Retired(reason));
+        }
+        Ok(Built::Ready(Box::new(pending)))
     }
 
     /// Seals a batch on `spawn_blocking`: encryption and signing over a page
@@ -486,44 +564,6 @@ fn local_failure(error: StorageError) -> ApiError {
     }
 }
 
-/// §5.8's client rule for a write the server refused because it holds the item deleted: the
-/// delete wins here too, as a pulled one would, and nothing is queued. Only for a
-/// `property_definition` upsert (#4025): a device that never saw a definition's tombstone (shed
-/// to a marker, §5.12.3, which this core never pulls) can still learn its name and promote it,
-/// and this refusal is the only delete it will ever see. A user's create is a `create`, which the
-/// server re-creates over the marker. And for the manifest check's re-upload, a `create` of a
-/// [`manifest::REUPLOADED`] type: kept live, the row would be re-pushed every 30 minutes for
-/// ever. Acked in the same transaction, so the local record never outlives its outbox row.
-///
-/// A change queued while the refused push was in flight is the user's newer edit, create or
-/// delete: the record stays as it is and that row is pushed next.
-fn take_the_delete(
-    conn: &rusqlite::Connection,
-    item_type: &str,
-    item_id: &str,
-    now_ms: i64,
-) -> Result<(), StorageError> {
-    let queued: bool = conn
-        .query_row(
-            "SELECT EXISTS(SELECT 1 FROM outbox
-              WHERE item_type = ?1 AND item_id = ?2 AND op <> ?3)",
-            rusqlite::params![item_type, item_id, outbox::OP_CRDT_UPDATE],
-            |row| row.get(0),
-        )
-        .map_err(failed)?;
-    let live =
-        sync_items::load(conn, item_type, item_id)?.is_some_and(|row| row.deleted_at.is_none());
-    if queued || !live {
-        return Ok(());
-    }
-    eprintln!(
-        "memry-core: the server holds a {item_type} deleted (SYNC_DELETE_WINS); \
-         deleted here too"
-    );
-    store::mark_deleted(conn, item_type, item_id, now_ms, None, now_ms)?;
-    projectors::delete(conn, item_type, item_id, now_ms)
-}
-
 /// `upsert` is `update` on the wire, chapter 04 §4.9's neutral spelling, since a reader that sees
 /// no `operation` at all reads `update`. `create` is a record a user created (#4025).
 fn operation_of(row: &OutboxRow) -> Option<SyncOperation> {
@@ -533,55 +573,6 @@ fn operation_of(row: &OutboxRow) -> Option<SyncOperation> {
         outbox::OP_DELETE => Some(SyncOperation::Delete),
         _ => None,
     }
-}
-
-/// Chapter 00 §0.5's `INTERNAL_ERROR` row: 500, 502 and 503 are the only
-/// statuses the table calls retryable, and they are the ones §5.6's ladder
-/// answers. A `501` is a deployment gap (§0.6.1) and halving cannot help it.
-fn is_retryable_5xx(error: &ApiError) -> bool {
-    matches!(error, ApiError::Status { status, .. } if matches!(status, 500 | 502 | 503))
-}
-
-fn string_set(body: &Json, key: &str) -> Vec<String> {
-    body.get(key)
-        .and_then(Json::as_array)
-        .map(|values| {
-            values
-                .iter()
-                .filter_map(Json::as_str)
-                .map(str::to_owned)
-                .collect()
-        })
-        .unwrap_or_default()
-}
-
-/// §5.11.1: `rejected` is `[{ id, reason }]`, per item, so a partially
-/// accepted batch is normal and a client must read it rather than infer
-/// success from the status code.
-fn rejection_reason(body: &Json, id: &str) -> String {
-    body.get("rejected")
-        .and_then(Json::as_array)
-        .and_then(|rows| {
-            rows.iter()
-                .find(|row| row.get("id").and_then(Json::as_str) == Some(id))
-        })
-        .and_then(|row| row.get("reason"))
-        .and_then(Json::as_str)
-        .unwrap_or("rejected without a reason")
-        .to_owned()
-}
-
-/// Chapter 00 §0.6.1's ladder: `baseDelayMs * 2 ^ attempt`, zero-based, **no
-/// jitter** — the client population is one device per account, so the
-/// thundering-herd problem jitter solves does not arise and a deterministic
-/// ladder is testable against a paused clock.
-///
-/// A rejected row must also leave the current wave: deferring it to *now*
-/// makes it claimable again on the next iteration and burns the whole
-/// 50-iteration budget re-sending an item the server has already refused.
-fn retry_at(now_ms: i64, attempt_count: i64) -> i64 {
-    let attempt = attempt_count.clamp(0, 16) as u32;
-    now_ms + (DEFAULT_BASE_DELAY_MS as i64).saturating_mul(1i64 << attempt)
 }
 
 fn now_ms() -> i64 {

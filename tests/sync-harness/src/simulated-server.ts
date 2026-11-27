@@ -10,6 +10,35 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.resolve(__dirname, '../../..')
 // Canonical schema = the ordered D1 migrations wrangler applies on deploy.
 const MIGRATIONS_DIR = path.resolve(__dirname, '../../../apps/sync-server/migrations')
+const BACKFILL_QUEUE = 'memry-pack-backfill-dev'
+/** Past the backfill's 10 s hop delay (`pack-backfill.ts`), so a chain's next message runs. */
+const BACKFILL_RETICK_MS = 12_000
+const BACKFILL_SETTLE_DEADLINE_MS = 120_000
+/**
+ * The backfill's limits, copied because Playwright loads this file as CJS and
+ * cannot import the Worker's ESM sources. `tests/backfill-limits.test.ts`
+ * holds each equal to its source.
+ */
+export const BACKFILL_LIMITS = {
+  /** `PACK_MIN_FILL_ROWS` (`pack-sizing.ts`). */
+  minFillRows: 256,
+  /** `PACK_SETTLE_SECONDS` (`pack-sizing.ts`). */
+  settleSeconds: 24 * 60 * 60,
+  /** `PACK_LIST_MAX_PACKS_PER_VAULT` (`@memry/contracts/sync-api`). */
+  maxPacksPerVault: 999,
+  /** `REWRITE_PENDING` (`pack-replaced-objects.ts`). */
+  rewritePending: 'rewrite'
+} as const
+
+/**
+ * Each packed kind's rows, sort column and write-time column, as the
+ * backfill's backlog query reads them (`findBacklogVaults`, `pack-backfill.ts`).
+ */
+const BACKLOG_SOURCES = [
+  { kind: 'record', table: 'sync_items', sort: 'server_cursor', time: 'updated_at' },
+  { kind: 'crdt_snapshot', table: 'crdt_snapshots', sort: 'created_at', time: 'created_at' },
+  { kind: 'crdt_update', table: 'crdt_updates', sort: 'server_cursor', time: 'created_at' }
+] as const
 
 export interface ServerKeys {
   publicKeyPem: string
@@ -21,7 +50,8 @@ export class SimulatedServer {
   private mf: Miniflare | null = null
   private keys: ServerKeys | null = null
 
-  async start(): Promise<void> {
+  /** `bindings` add to or override the Worker's, such as R2 presign credentials. */
+  async start(options: { bindings?: Record<string, string> } = {}): Promise<void> {
     const workerPath = await buildWorker()
 
     this.keys = await this.generateJwtKeys()
@@ -43,6 +73,12 @@ export class SimulatedServer {
 
       d1Databases: { DB: 'test-db' },
       r2Buckets: { STORAGE: 'test-bucket' },
+
+      // The cron's pack backfill (#5278) enqueues here and this Worker's queue
+      // handler consumes, as in wrangler.toml. Push nudges (PACK_QUEUE) stay
+      // unbound, so packs are built only when a test runs the cron.
+      queueProducers: { PACK_BACKFILL_QUEUE: { queueName: BACKFILL_QUEUE } },
+      queueConsumers: { [BACKFILL_QUEUE]: { maxBatchSize: 1, maxBatchTimeout: 0, maxRetries: 3 } },
 
       durableObjects: {
         USER_SYNC_STATE: 'UserSyncState',
@@ -68,7 +104,8 @@ export class SimulatedServer {
         MIN_APP_VERSION: '0.0.0',
         ALLOWED_ORIGIN: 'http://localhost:3000',
         GOOGLE_CLIENT_ID,
-        GOOGLE_CLIENT_SECRET
+        GOOGLE_CLIENT_SECRET,
+        ...options.bindings
       }
     })
 
@@ -98,12 +135,9 @@ export class SimulatedServer {
   }
 
   /**
-   * Run the Worker's scheduled handler.
-   *
-   * The pack pipeline (#1839) reaches vaults two ways: the queue consumer and
-   * the cron backfill. The backfill is the one a harness can drive without a
-   * Queues binding, so this is how an E2E gets real packs built by the real
-   * Worker against the real D1 ledger.
+   * Run the Worker's scheduled handler. Since #5278 its pack backfill only
+   * enqueues: the bound backfill queue's consumer builds the packs after this
+   * returns, so a caller that needs them waits for `pack_index` to settle.
    */
   async triggerScheduled(cron = '0 */6 * * *'): Promise<void> {
     if (!this.mf) throw new Error('Server not started')
@@ -111,9 +145,63 @@ export class SimulatedServer {
     await worker.scheduled({ cron })
   }
 
+  /**
+   * Runs the cron until no vault holds a kind's rows the backfill would pack:
+   * rows above its watermark that pass `packFillReady` (`pack-sizing.ts`) in a
+   * vault below the listing cap, or a purge rewrite still pending
+   * (`BACKFILL_LIMITS.rewritePending`).
+   * A build lists its pack and moves the watermark in one D1 batch, so an empty
+   * backlog means `pack_index` is final. Young rows below the fill stay unpacked.
+   */
+  async settlePackBackfill(): Promise<void> {
+    const deadline = Date.now() + BACKFILL_SETTLE_DEADLINE_MS
+    let retick = 0
+    while (await this.packBacklog()) {
+      if (Date.now() > deadline) throw new Error('the pack backfill never settled')
+      if (Date.now() >= retick) {
+        await this.triggerScheduled()
+        retick = Date.now() + BACKFILL_RETICK_MS
+      }
+      await new Promise((resolve) => setTimeout(resolve, 100))
+    }
+  }
+
+  private async packBacklog(): Promise<boolean> {
+    const db = await this.getD1()
+    const rewrite = await db
+      .prepare('SELECT 1 FROM pack_replaced_objects WHERE replaced_by = ? LIMIT 1')
+      .bind(BACKFILL_LIMITS.rewritePending)
+      .first()
+    if (rewrite) return true
+    const settledBefore = Math.floor(Date.now() / 1000) - BACKFILL_LIMITS.settleSeconds
+    for (const { kind, table, sort, time } of BACKLOG_SOURCES) {
+      const ready = await db
+        .prepare(
+          `SELECT 1 FROM ${table} si
+           LEFT JOIN pack_watermarks w
+             ON w.user_id = si.user_id AND w.vault_id = si.vault_id AND w.item_kind = ?
+           WHERE si.${sort} IS NOT NULL AND (w.user_id IS NULL OR si.${sort} > w.last_sort_value)
+           GROUP BY si.user_id, si.vault_id
+           HAVING (SELECT COUNT(*) FROM pack_index p
+                   WHERE p.user_id = si.user_id AND p.vault_id = si.vault_id) < ?
+             AND (COUNT(*) >= ? OR MIN(si.${time}) <= ?)
+           LIMIT 1`
+        )
+        .bind(kind, BACKFILL_LIMITS.maxPacksPerVault, BACKFILL_LIMITS.minFillRows, settledBefore)
+        .first()
+      if (ready) return true
+    }
+    return false
+  }
+
   async getD1(): Promise<D1Database> {
     if (!this.mf) throw new Error('Server not started')
     return this.mf.getD1Database('DB')
+  }
+
+  async getR2Bucket(): Promise<R2Bucket> {
+    if (!this.mf) throw new Error('Server not started')
+    return this.mf.getR2Bucket('STORAGE')
   }
 
   async getDirectUrl(): Promise<URL> {
@@ -191,27 +279,52 @@ export class SimulatedServer {
   }
 
   private async runD1Migrations(): Promise<void> {
-    const db = await this.getD1()
-    const rawSchema = fs
-      .readdirSync(MIGRATIONS_DIR)
-      .filter((file) => file.endsWith('.sql'))
-      // oxlint-disable-next-line unicorn/no-array-sort -- tsconfig target ES2022 has no Array#toSorted; the array is a fresh filter() result
-      .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))
-      .map((file) => fs.readFileSync(path.join(MIGRATIONS_DIR, file), 'utf-8'))
-      .join('\n')
+    await applyD1Migrations(await this.getD1(), MIGRATIONS_DIR)
+  }
+}
 
-    const cleaned = rawSchema
-      .split('\n')
-      .filter((line) => !line.trimStart().startsWith('--'))
-      .join('\n')
+/** Each statement of one migration file, with `--` comment lines dropped. */
+function migrationStatements(sql: string): string[] {
+  return sql
+    .split('\n')
+    .filter((line) => !line.trimStart().startsWith('--'))
+    .join('\n')
+    .split(';')
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0)
+}
 
-    const statements = cleaned
-      .split(';')
-      .map((s) => s.trim())
-      .filter((s) => s.length > 0)
+/**
+ * Apply every `.sql` file in `dir`, in name order, as wrangler does on deploy.
+ * A failure throws an error that names the file whose statement failed.
+ */
+export async function applyD1Migrations(db: D1Database, dir: string): Promise<void> {
+  const files = fs
+    .readdirSync(dir)
+    .filter((file) => file.endsWith('.sql'))
+    // oxlint-disable-next-line unicorn/no-array-sort -- tsconfig target ES2022 has no Array#toSorted; the array is a fresh filter() result
+    .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))
+    .map((file) => ({
+      file,
+      statements: migrationStatements(fs.readFileSync(path.join(dir, file), 'utf-8'))
+    }))
 
-    for (const stmt of statements) {
-      await db.prepare(stmt).run()
+  // One batch is one round trip to workerd. A run() per statement made about
+  // a hundred, which on a busy host pushed `start()` past the 30 s beforeAll
+  // timeout in whichever suite booted then.
+  try {
+    await db.batch(files.flatMap((f) => f.statements.map((stmt) => db.prepare(stmt))))
+    return
+  } catch (batchError) {
+    // A D1 batch is one transaction, so the failed batch left nothing behind.
+    // Replay one file per batch to find the file the error belongs to.
+    for (const { file, statements } of files) {
+      try {
+        await db.batch(statements.map((stmt) => db.prepare(stmt)))
+      } catch (err) {
+        throw new Error(`D1 migration ${file} failed: ${String(err)}`, { cause: err })
+      }
     }
+    throw batchError
   }
 }

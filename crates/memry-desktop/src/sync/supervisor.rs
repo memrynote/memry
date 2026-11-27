@@ -28,7 +28,7 @@ use super::gate::{self, GateDecision, SyncStartGate};
 use super::result::{SyncNowBlockedReason as Blocked, TriggerSyncResult};
 use super::run_loop::Loop;
 use super::signals::{AuthSignal, AuthSignals, Signals};
-use super::status::{self, StatusFacts, SyncStatus};
+use super::status::{self, StatusFacts, SyncStatus, SyncStatusValue};
 use super::telemetry::BootstrapMetrics;
 use super::triggers::Trigger;
 use crate::shell::power::PowerEvent;
@@ -63,7 +63,7 @@ pub(super) enum Command {
     Trigger(Trigger),
     RequestPush,
     SyncNow(oneshot::Sender<TriggerSyncResult>),
-    SetPaused(bool, oneshot::Sender<Result<(), StorageError>>),
+    SetPaused(bool, oneshot::Sender<Result<bool, StorageError>>),
     Reachable(Reachable),
     Socket {
         generation: u64,
@@ -154,6 +154,20 @@ impl SyncSupervisor {
         self.signals.completed_pulls()
     }
 
+    /// The gate answered for this vault: sync starts, or it does not for a reason the user
+    /// settled (`isSyncDecided`).
+    pub fn decided(&self) -> bool {
+        self.signals.decided()
+    }
+
+    /// `isCaughtUpWithServer`: the last pass ended cleanly, and sync is neither paused nor
+    /// offline now.
+    pub fn caught_up(&self) -> bool {
+        let now = self.status().status;
+        self.signals.caught_up()
+            && !matches!(now, SyncStatusValue::Paused | SyncStatusValue::Offline)
+    }
+
     /// Waits until more than `after` passes have pulled; answers how many have.
     pub async fn wait_for_pull(&self, after: u64) -> u64 {
         self.signals.wait_for_pull(after).await
@@ -212,7 +226,8 @@ impl SyncSupervisor {
     }
 
     /// Pauses or resumes sync, persisted in `meta` `sync.paused` before the driver is told.
-    pub async fn set_paused(&self, paused: bool) -> Result<(), StorageError> {
+    /// Answers the pause it replaced, read in the loop's turn so concurrent callers agree.
+    pub async fn set_paused(&self, paused: bool) -> Result<bool, StorageError> {
         let (reply, answer) = oneshot::channel();
         let gone = || StorageError::Failed {
             what: "sync is not running for this vault; the pause was not saved".into(),

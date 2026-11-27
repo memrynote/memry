@@ -101,10 +101,13 @@ function encodePcm16Wav(audioBuffer: AudioBuffer): ArrayBuffer {
   return buffer
 }
 
-export async function prepareVoiceMemoAudio(blob: Blob): Promise<PreparedVoiceMemo> {
+/** `audio` is a dropped or picked file, or a live recording's PCM from `useVoiceCapture`. */
+export async function prepareVoiceMemoAudio(audio: Blob | AudioBuffer): Promise<PreparedVoiceMemo> {
   // Deliberately not kept in a local: holding the decode would keep the full-rate buffer
   // reachable through the WAV encode and the waveform pass that follow.
-  const rendered = await renderMonoWavAudio(await decodeAudioBlob(blob))
+  const rendered = await renderMonoWavAudio(
+    audio instanceof Blob ? await decodeAudioBlob(audio) : audio
+  )
 
   return {
     data: encodePcm16Wav(rendered),

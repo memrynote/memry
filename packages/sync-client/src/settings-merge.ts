@@ -9,7 +9,10 @@ import { mergeFields } from './field-merge'
 export interface SettingsMergeResult {
   settings: SyncedSettings
   fieldClocks: FieldClockMap
-  /** Some path compared `concurrent`; §6.9.0 requires re-queueing the result. */
+  /**
+   * Some local path clock is concurrent with or ahead of the remote's, so the
+   * server lacks a tick this device holds; §6.9.0 requires re-queueing (#5506).
+   */
   requeue: boolean
 }
 
@@ -56,10 +59,10 @@ export function mergeSettingsPayloads(
   return {
     settings: settings,
     fieldClocks: mergedFieldClocks,
-    requeue: paths.some(
-      (path) =>
-        compare(local.fieldClocks[path] ?? {}, remote.fieldClocks[path] ?? {}) === 'concurrent'
-    )
+    requeue: paths.some((path) => {
+      const order = compare(local.fieldClocks[path] ?? {}, remote.fieldClocks[path] ?? {})
+      return order === 'concurrent' || order === 'after'
+    })
   }
 }
 

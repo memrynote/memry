@@ -6,8 +6,9 @@
 //! an unknown key, or an unknown field inside a known entry, round-trips untouched.
 //!
 //! Every write is whole-file and atomic (temp file in the same directory, fsync, rename,
-//! fsync of the directory) and goes through [`AppConfig::update`] under one mutex, so writers
-//! never interleave. The in-memory copy changes only after the rename succeeded: a failed
+//! fsync of the directory) and goes through [`AppConfig::update`] under one mutex and an
+//! advisory file lock ([`super::config_lock`]), so writers of this and other processes never
+//! interleave. The in-memory copy changes only after the rename succeeded: a failed
 //! write is an error the caller sees, never a cache that disagrees with the disk.
 
 use std::path::{Path, PathBuf};
@@ -20,6 +21,10 @@ use serde_json::{Map, Value};
 /// before each. About 1.1 s in total.
 const RENAME_BACKOFF_MS: [u64; 6] = [20, 40, 80, 160, 320, 480];
 
+/// The age past which a temp file is left from a write that never finished (a crash, a kill).
+/// A write renames its temp file within a second.
+const STALE_TEMP: Duration = Duration::from_secs(60 * 60);
+
 #[derive(Debug, thiserror::Error)]
 pub enum ConfigError {
     /// The file exists but could not be read, so what is in it is unknown. Writing would
@@ -29,6 +34,9 @@ pub enum ConfigError {
     #[error("the config file {path} could not be written: {message}")]
     Write { path: String, message: String },
 }
+
+/// The file name in the app data folder (`memry-config.json` of Electron).
+pub const CONFIG_FILE: &str = "memry-config.json";
 
 pub struct AppConfig {
     path: PathBuf,
@@ -47,7 +55,7 @@ impl AppConfig {
     /// write then creates a fresh file. Any other read failure makes [`AppConfig::update`]
     /// refuse, so an unreadable config is never overwritten.
     pub fn load(path: PathBuf) -> Self {
-        remove_stale_temp(&path);
+        remove_stale_temps(&path);
         let mut state = State {
             map: Map::new(),
             unreadable: None,
@@ -70,6 +78,26 @@ impl AppConfig {
             path,
             state: Mutex::new(state),
         }
+    }
+
+    /// Loads `path` for a process that does not own the file (the command line): a missing
+    /// file is an empty config, and a file that cannot be read or is not a JSON object is an
+    /// error and stays as it is. Only the app, through [`AppConfig::load`], moves it aside.
+    pub fn load_strict(path: PathBuf) -> Result<Self, ConfigError> {
+        let map = read_file(&path).map_err(|unusable| ConfigError::Unreadable {
+            path: path.display().to_string(),
+            message: match unusable {
+                Unusable::NotAnObject => "it is not a JSON object".into(),
+                Unusable::Io(message) => message,
+            },
+        })?;
+        Ok(Self {
+            path,
+            state: Mutex::new(State {
+                map,
+                unreadable: None,
+            }),
+        })
     }
 
     pub fn path(&self) -> &Path {
@@ -98,6 +126,11 @@ impl AppConfig {
         if let Some(message) = &state.unreadable {
             return Err(refuse(message.clone()).into());
         }
+        // Across processes too: the command line writes this file beside the app.
+        let _held = super::config_lock::hold(&self.path).map_err(|error| ConfigError::Write {
+            path: error.path.display().to_string(),
+            message: error.message,
+        })?;
         let current = match read_file(&self.path) {
             Ok(map) => map,
             Err(Unusable::NotAnObject) => {
@@ -145,12 +178,43 @@ fn now_ms() -> u128 {
         .map_or(0, |d| d.as_millis())
 }
 
+/// The temp file of this process's writes. The app and the command line (`memrynote-cli`)
+/// write the same file from two processes; a shared temp name would let one truncate the other's
+/// write in flight, or delete it at load, and rename a mix of both into place.
 fn temp_path(path: &Path) -> PathBuf {
-    PathBuf::from(format!("{}.tmp", path.display()))
+    PathBuf::from(format!("{}.tmp-{}", path.display(), std::process::id()))
 }
 
-fn remove_stale_temp(path: &Path) {
-    let _ = std::fs::remove_file(temp_path(path));
+/// Removes the temp files of writes that never finished: `<name>.tmp` of older builds and
+/// `<name>.tmp-<pid>`, once older than [`STALE_TEMP`]. A younger one may be another process's
+/// write in flight.
+fn remove_stale_temps(path: &Path) {
+    let (Some(dir), Some(name)) = (path.parent(), path.file_name().and_then(|n| n.to_str())) else {
+        return;
+    };
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
+    let shared = format!("{name}.tmp");
+    let prefix = format!("{name}.tmp-");
+    for entry in entries.flatten() {
+        let file_name = entry.file_name();
+        let Some(file_name) = file_name.to_str() else {
+            continue;
+        };
+        if file_name != shared && !file_name.starts_with(&prefix) {
+            continue;
+        }
+        let stale = entry
+            .metadata()
+            .and_then(|meta| meta.modified())
+            .ok()
+            .and_then(|modified| modified.elapsed().ok())
+            .is_some_and(|age| age >= STALE_TEMP);
+        if stale && let Err(err) = std::fs::remove_file(entry.path()) {
+            tracing::warn!(path = %entry.path().display(), %err, "could not remove a stale temp file");
+        }
+    }
 }
 
 fn set_aside(path: &Path) -> Result<(), String> {
@@ -421,5 +485,70 @@ mod tests {
         });
         assert!(matches!(result, Err(ConfigError::Unreadable { .. })));
         assert_eq!(std::fs::read(&path).expect("read"), b"{ half written");
+    }
+
+    #[test]
+    fn a_strict_load_refuses_a_bad_file_and_leaves_it_where_it_is() {
+        let dir = dir();
+        let path = dir.path().join("memry-config.json");
+        std::fs::write(&path, b"[1, 2]").expect("seed");
+        let result = AppConfig::load_strict(path.clone());
+        assert!(matches!(result, Err(ConfigError::Unreadable { .. })));
+        assert_eq!(std::fs::read(&path).expect("read"), b"[1, 2]");
+        assert_eq!(std::fs::read_dir(dir.path()).expect("dir").count(), 1);
+        let missing = AppConfig::load_strict(dir.path().join("none.json")).expect("missing");
+        assert!(missing.read(Map::is_empty));
+    }
+
+    #[test]
+    fn temp_files_of_writes_that_never_finished_are_removed_at_load() {
+        let dir = dir();
+        let path = dir.path().join("memry-config.json");
+        std::fs::write(&path, b"{}").expect("seed");
+        // An older build's shared name and another pid's, both left by a crash long ago.
+        let stale = [
+            dir.path().join("memry-config.json.tmp"),
+            dir.path().join("memry-config.json.tmp-0"),
+        ];
+        let long_ago = SystemTime::now() - Duration::from_secs(2 * 60 * 60);
+        for temp in &stale {
+            let file = std::fs::File::create(temp).expect("temp");
+            file.set_modified(long_ago).expect("age it");
+        }
+        let unrelated = dir.path().join("memry-config.json.bak");
+        std::fs::File::create(&unrelated)
+            .expect("unrelated")
+            .set_modified(long_ago)
+            .expect("age it");
+        AppConfig::load(path);
+        for temp in &stale {
+            assert!(!temp.exists(), "{} was left", temp.display());
+        }
+        assert!(unrelated.exists(), "only temp files are removed");
+    }
+
+    #[test]
+    fn another_processs_write_in_flight_is_left_alone() {
+        let dir = dir();
+        let path = dir.path().join("memry-config.json");
+        std::fs::write(&path, b"{}").expect("seed");
+        // Another process's temp files: an older build's shared name and a pid that is not ours.
+        let theirs = [
+            dir.path().join("memry-config.json.tmp"),
+            dir.path().join("memry-config.json.tmp-0"),
+        ];
+        for temp in &theirs {
+            std::fs::write(temp, b"{\"theirs\":1}").expect("their temp");
+        }
+        let config = AppConfig::load(path);
+        config
+            .update(|map| {
+                map.insert("a".into(), Value::Null);
+                Ok::<_, ConfigError>(())
+            })
+            .expect("update");
+        for temp in &theirs {
+            assert_eq!(std::fs::read(temp).expect("still there"), b"{\"theirs\":1}");
+        }
     }
 }

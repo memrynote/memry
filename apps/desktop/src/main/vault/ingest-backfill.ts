@@ -35,10 +35,17 @@ import { flushProjectionEvents } from '../projections'
 import { queueEmbeddedVaultFiles, syncNoteCreate } from '../notes/runtime-effects'
 import { enqueueJournalCreate, initializeJournalCrdt } from '../journal/runtime-effects'
 import { externalJournalEntry } from '../journal/external-entry'
-import { createSnippet, extractProperties, extractTags, parseNote } from './frontmatter'
+import {
+  createSnippet,
+  extractProperties,
+  extractTags,
+  generateContentHash,
+  parseNote
+} from './frontmatter'
 import { openVaultFile } from '../lib/paths'
 import { scanMarkdownFile } from './file-scan'
 import { syncLargeFileBodyToCache, syncNoteToCache } from './note-sync'
+import { baselineAfterRead } from '../sync/writeback-baseline'
 import { reconcileTaskCheckboxesLazily } from '../tasks/reconcile-markdown-tasks-lazy'
 
 const logger = createLogger('IngestBackfill')
@@ -177,6 +184,7 @@ async function backfillNote(
       id: cached.id,
       path: entry.relativePath,
       fileContent: content,
+      contentHash: baselineAfterRead(cached, generateContentHash(content)),
       frontmatter: parsed.frontmatter,
       parsedContent: parsed.content,
       title: cached.title,
@@ -288,7 +296,7 @@ async function backfillLargeFile(
     emoji: cached.emoji ?? null,
     wordCount: scan.wordCount,
     characterCount: scan.characterCount,
-    contentHash: scan.contentHash,
+    contentHash: baselineAfterRead(cached, scan.contentHash),
     indexedHead: scan.head
   })
   await flushProjectionEvents()

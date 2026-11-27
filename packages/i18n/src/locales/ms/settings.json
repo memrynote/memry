@@ -1232,6 +1232,10 @@
     "loadingAria": "Memuatkan peranti",
     "none": "Tiada peranti dipautkan lagi",
     "linkNew": "Pautkan peranti baharu",
+    "linkNeedsPlan": {
+      "title": "Pemautan memerlukan pelan penyegerakan",
+      "description": "Peranti yang dipautkan hanya melihat nota anda apabila penyegerakan dihidupkan. Tanpa pelan, log masuk di sana dengan frasa pemulihan anda dan peranti itu akan mengekalkan bilik kebalnya sendiri."
+    },
     "thisDevice": "Peranti ini",
     "lastSeen": "Kali terakhir dilihat {time} yang lalu",
     "linked": "Dipautkan {time} yang lalu",
@@ -1398,6 +1402,7 @@
       "selectModel": "Pilih model",
       "apiKey": "Kunci API",
       "apiKeyDescription": "Disimpan secara setempat, dihantar hanya kepada penyedia",
+      "apiKeyKeychainDescription": "Disimpan dalam rantai kunci OS anda, dihantar hanya kepada penyedia",
       "apiKeyPlaceholder": "Masukkan kunci API {provider}",
       "ollamaUrl": "URL Ollama",
       "ollamaUrlDescription": "Alamat pelayan setempat",
@@ -2435,7 +2440,8 @@
         "vault-binding": "Kunci peranti ini telah dipulihkan, tetapi peti besi ini belum ditetapkan untuk disegerakkan dengan akaun anda. Pilih cara menyegerakkannya daripada menu penyegerakan.",
         "vault-foreign": "Kunci peranti ini telah dipulihkan, tetapi peti besi ini milik akaun lain. Ia kekal setempat pada peranti ini.",
         "entitlement": "Kunci peranti ini telah dipulihkan, tetapi penyegerakan memerlukan pelan Sync yang aktif.",
-        "unavailable": "Kunci peranti ini telah dipulihkan, tetapi penyegerakan tidak dapat dimulakan. Ia akan mencuba lagi; mulakan semula Memry jika tidak."
+        "unavailable": "Kunci peranti ini telah dipulihkan, tetapi penyegerakan tidak dapat dimulakan. Ia akan mencuba lagi; mulakan semula Memry jika tidak.",
+        "unavailable-restart": "Kunci peranti ini telah dipulihkan, tetapi penyegerakan tidak dapat dimulakan. Mulakan semula Memry; jika penyegerakan masih tidak bermula, log keluar dan log masuk semula."
       }
     },
     "pagesSettingsAiInlineSection": {

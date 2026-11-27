@@ -56,7 +56,7 @@ vi.mock('@/lib/logger', () => ({
 
 vi.mock('@/lib/ipc-error', () => ({
   extractErrorMessage: (error: unknown, fallback: string) =>
-    error instanceof Error ? error.message : fallback
+    error instanceof Error ? error.message : typeof error === 'string' ? error : fallback
 }))
 
 vi.mock('@/hooks/use-general-settings', () => ({
@@ -81,6 +81,7 @@ vi.mock('@/services/notes-service', () => ({
     create: vi.fn(),
     getFolderTemplate: vi.fn(),
     renameFolder: vi.fn(),
+    checkFolderDelete: vi.fn(),
     deleteFolder: vi.fn(),
     getFolderConfig: vi.fn(),
     setFolderConfig: vi.fn(),
@@ -196,7 +197,8 @@ describe('useNoteTreeActions', () => {
       note: createNote('created', 'Other/New note.md')
     })
     vi.mocked(notesService.renameFolder).mockResolvedValue(true)
-    vi.mocked(notesService.deleteFolder).mockResolvedValue(true)
+    vi.mocked(notesService.checkFolderDelete).mockResolvedValue({ success: true })
+    vi.mocked(notesService.deleteFolder).mockResolvedValue({ success: true })
     vi.mocked(notesService.setFolderConfig).mockResolvedValue({ success: true })
     vi.mocked(notesService.reorder).mockResolvedValue({ success: true })
     vi.mocked(notesService.getAllPositions).mockResolvedValue({
@@ -336,6 +338,21 @@ describe('useNoteTreeActions', () => {
     })
     expect(notesService.openExternal).toHaveBeenCalledWith('work-a')
     expect(notesService.revealInFinder).toHaveBeenCalledWith('work-a')
+  })
+
+  it('shows why a folder delete was refused', async () => {
+    vi.mocked(notesService.deleteFolder).mockResolvedValue({
+      success: false,
+      error: 'errors:folder.deleteCaseTwins'
+    })
+    const { result } = renderActions()
+
+    act(() => result.current.handleDeleteFolderClick('Work'))
+    await act(async () => {
+      await result.current.handleDeleteConfirm()
+    })
+
+    expect(toast.error).toHaveBeenCalledWith('errors:folder.deleteCaseTwins')
   })
 
   it('reveals a folder in the OS file manager and swallows a failed reveal (#2205)', async () => {
@@ -888,6 +905,47 @@ describe('useNoteTreeActions', () => {
       expect(mutations.renameNote.mutateAsync).not.toHaveBeenCalled()
     })
 
+    it('says so and refreshes the tree when the note cannot follow a folder move', async () => {
+      const mutations = createMutations()
+      mutations.moveNote.mutateAsync.mockResolvedValue({
+        success: false,
+        note: null,
+        error: 'Note is locked'
+      })
+      const { result, deps } = renderPaired({ mutations })
+
+      await act(async () => {
+        await result.current.handleMove({
+          draggedId: 'folder-Work/Note A',
+          targetId: 'folder-Work/Nested',
+          position: 'inside'
+        })
+      })
+
+      expect(toast.error).toHaveBeenCalledWith('Note is locked')
+      expect(deps.refreshFolders).toHaveBeenCalled()
+    })
+
+    it('says so and refreshes the tree when the note cannot follow a folder rename', async () => {
+      const mutations = createMutations()
+      mutations.renameNote.mutateAsync.mockResolvedValue({
+        success: false,
+        note: null,
+        error: 'Note is locked'
+      })
+      const { result, deps } = renderPaired({ mutations })
+
+      act(() => result.current.handleRenameFolderClick('Work/Note A'))
+      act(() => result.current.setFolderRenameValue('Plans'))
+      await act(async () => {
+        await result.current.handleFolderRenameSubmit('Work/Note A')
+      })
+
+      expect(deps.renameFolderPath).toHaveBeenCalledWith('Work/Note A', 'Work/Plans')
+      expect(toast.error).toHaveBeenCalledWith('Note is locked')
+      expect(deps.refreshFolders).toHaveBeenCalled()
+    })
+
     it('touches nothing when another note already has the new name', async () => {
       const { result, mutations } = renderPaired()
 
@@ -920,6 +978,24 @@ describe('useNoteTreeActions', () => {
       })
       expect(mutations.deleteNote.mutateAsync).toHaveBeenCalledWith('page-a')
       expect(notesService.deleteFolder).toHaveBeenCalledWith('Work/Note A')
+    })
+
+    it('deletes nothing in the selection when its folder delete would be refused', async () => {
+      vi.mocked(notesService.checkFolderDelete).mockResolvedValue({
+        success: false,
+        error: 'errors:folder.deleteCaseTwins'
+      })
+      const { result, mutations } = renderPaired({ selectedIds: ['work-a', 'folder-Work/Note A'] })
+
+      act(() => result.current.handleBulkDelete())
+      expect(result.current.notesToDelete).toEqual([workA, pageA])
+      await act(async () => {
+        await result.current.handleDeleteConfirm()
+      })
+
+      expect(mutations.deleteNote.mutateAsync).not.toHaveBeenCalled()
+      expect(notesService.deleteFolder).not.toHaveBeenCalled()
+      expect(toast.error).toHaveBeenCalledWith('errors:folder.deleteCaseTwins')
     })
   })
 })

@@ -1,7 +1,9 @@
 //! The importers read files from other apps' exports, so they hold the untrusted-input guards:
 //! a deep frontmatter fails its note instead of the stack, the CSV and asset passes stay linear
 //! in the input (counted in steps, never timed), a file too large to read is refused from its
-//! size, and properties over arbitrary input keep the output within the kit's bound.
+//! size, a FIFO is refused instead of blocking the run, a malformed `%` escape stays as written,
+//! a cancel lands between notes, and properties over arbitrary input keep the output within
+//! the kit's bound.
 
 use std::collections::HashMap;
 use std::fs;
@@ -9,12 +11,16 @@ use std::path::Path;
 use std::sync::Arc;
 
 use memry_core::markdown::frontmatter::{YamlMap, YamlValue};
-use memry_desktop::attachments::MAX_FILE_SIZE;
-use memry_desktop::import::assets::{bytes_scanned, extract_asset_refs, rewrite_asset_refs};
+use memry_desktop::attachments::{MAX_FILE_SIZE, SavedAttachment};
+use memry_desktop::import::assets::{
+    bytes_scanned, extract_asset_refs, percent_decode_ref, rewrite_asset_refs,
+};
 use memry_desktop::import::csv::{CsvImporter, map_rows, parse_csv, steps};
 use memry_desktop::import::markdown::{MarkdownImporter, parse_frontmatter};
 use memry_desktop::import::{
-    ImportContext, ImportInput, ImportSummary, Importer, MAX_SOURCE_BYTES,
+    ImportContext, ImportInput, ImportSink, ImportSummary, ImportedBookmark, ImportedJournalEntry,
+    ImportedNote, ImportedProjectTask, ImportedStatus, ImportedTask, ImportedTickTickTask,
+    Importer, JournalEntry, MAX_SOURCE_BYTES, ProjectStatus, SinkError,
 };
 use memry_test_kit::{assert_steps_at_most, on_small_stack, output_bound, proptest_config};
 use proptest::prelude::*;
@@ -24,7 +30,7 @@ use tokio_util::sync::CancellationToken;
 use crate::import_support::{RecordingSink, Timeline};
 
 /// Runs `importer` over `sources` into a recording sink: the summary and every sink call.
-fn run(importer: &dyn Importer, sources: &[&Path]) -> (ImportSummary, Vec<Value>) {
+pub fn run(importer: &dyn Importer, sources: &[&Path]) -> (ImportSummary, Vec<Value>) {
     let input = ImportInput {
         source_paths: sources
             .iter()
@@ -40,12 +46,12 @@ fn run(importer: &dyn Importer, sources: &[&Path]) -> (ImportSummary, Vec<Value>
     (ctx.summary(), calls)
 }
 
-fn ops(calls: &[Value], op: &str) -> usize {
+pub fn ops(calls: &[Value], op: &str) -> usize {
     calls.iter().filter(|call| call["op"] == op).count()
 }
 
 /// A file of `len` bytes that takes no disk space where the file system supports holes.
-fn sparse(path: &Path, len: u64) {
+pub fn sparse(path: &Path, len: u64) {
     fs::File::create(path).unwrap().set_len(len).unwrap();
 }
 
@@ -202,6 +208,194 @@ fn an_asset_over_the_attachment_cap_is_skipped_before_it_is_read() {
     assert_eq!(created["content"], "![](big.png)\n", "the reference stays");
 }
 
+#[test]
+fn a_percent_not_followed_by_two_hex_digits_leaves_the_ref_as_written() {
+    // `decodeURIComponent` throws on each of these; `from_str_radix` alone takes the sign.
+    for reference in ["a%+1.png", "a%+F.png", "a%2.png", "a%zz.png"] {
+        assert_eq!(percent_decode_ref(reference), reference);
+    }
+    assert_eq!(percent_decode_ref("my%20pic%2B1.png"), "my pic+1.png");
+}
+
+#[cfg(unix)]
+fn mkfifo(path: &Path) {
+    let name = std::ffi::CString::new(path.to_str().unwrap()).unwrap();
+    // SAFETY: the path is NUL-terminated and outlives the call.
+    assert_eq!(unsafe { libc::mkfifo(name.as_ptr(), 0o600) }, 0, "mkfifo");
+}
+
+/// A FIFO would block the read until something writes to it, holding the run and its vault.
+/// The runs go against a deadline, so a read that blocks fails the test instead of hanging it.
+#[cfg(unix)]
+#[test]
+fn a_fifo_source_or_asset_is_refused_without_blocking_the_run() {
+    let dir = tempfile::tempdir().unwrap();
+    let folder = dir.path().join("export");
+    fs::create_dir(&folder).unwrap();
+    mkfifo(&folder.join("pipe.png"));
+    fs::write(
+        folder.join("note.md"),
+        "![](pipe.png)
+",
+    )
+    .unwrap();
+    let (note, csv) = (dir.path().join("pipe.md"), dir.path().join("pipe.csv"));
+    mkfifo(&note);
+    mkfifo(&csv);
+
+    let (done, result) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        done.send((
+            run(&MarkdownImporter, &[&folder, &note]),
+            run(&CsvImporter, &[&csv]),
+        ))
+        .unwrap()
+    });
+    let ((summary, calls), (csv_summary, csv_calls)) = result
+        .recv_timeout(std::time::Duration::from_secs(60))
+        .expect("the imports returned");
+
+    assert_eq!(ops(&calls, "saveAttachment"), 0, "{calls:?}");
+    assert_eq!((summary.imported, summary.skipped), (1, 1), "{summary:?}");
+    let created = calls
+        .iter()
+        .find(|call| call["op"] == "createNote")
+        .unwrap();
+    assert_eq!(created["content"], "![](pipe.png)\n", "the reference stays");
+    for (summary, name) in [(&summary, "pipe.md"), (&csv_summary, "pipe.csv")] {
+        assert_eq!(summary.failed.len(), 1, "{summary:?}");
+        assert!(summary.failed[0].item.ends_with(name), "{summary:?}");
+        assert_eq!(summary.failed[0].error, "Not a regular file");
+    }
+    assert!(csv_calls.is_empty(), "{csv_calls:?}");
+}
+
+/// Cancels the run as it saves its first attachment.
+pub struct CancelOnSave {
+    pub inner: RecordingSink,
+    pub cancel: CancellationToken,
+}
+
+impl ImportSink for CancelOnSave {
+    fn new_note_id(&self) -> String {
+        self.inner.new_note_id()
+    }
+
+    fn save_attachment(
+        &self,
+        note_id: &str,
+        file_name: &str,
+        bytes: &[u8],
+    ) -> Result<SavedAttachment, SinkError> {
+        self.cancel.cancel();
+        self.inner.save_attachment(note_id, file_name, bytes)
+    }
+
+    fn create_note(&self, note: ImportedNote) -> Result<(), SinkError> {
+        self.inner.create_note(note)
+    }
+
+    fn create_note_as_written(&self, note: ImportedNote) -> Result<(), SinkError> {
+        self.inner.create_note_as_written(note)
+    }
+
+    fn inbox_project_id(&self) -> Option<String> {
+        self.inner.inbox_project_id()
+    }
+
+    fn nested_subtasks(&self) -> bool {
+        self.inner.nested_subtasks()
+    }
+
+    fn create_task(&self, task: ImportedTask) -> Result<String, SinkError> {
+        self.inner.create_task(task)
+    }
+
+    fn complete_task(&self, id: &str, completed_at: Option<&str>) -> Result<(), SinkError> {
+        self.inner.complete_task(id, completed_at)
+    }
+
+    fn archive_task(&self, id: &str) -> Result<(), SinkError> {
+        self.inner.archive_task(id)
+    }
+
+    fn create_project(&self, name: &str) -> Result<String, SinkError> {
+        self.inner.create_project(name)
+    }
+
+    fn create_project_task(&self, task: ImportedProjectTask) -> Result<String, SinkError> {
+        self.inner.create_project_task(task)
+    }
+
+    fn create_status_project(
+        &self,
+        name: &str,
+        statuses: &[ImportedStatus],
+    ) -> Result<String, SinkError> {
+        self.inner.create_status_project(name, statuses)
+    }
+
+    fn project_statuses(&self, project_id: &str) -> Vec<ProjectStatus> {
+        self.inner.project_statuses(project_id)
+    }
+
+    fn create_ticktick_task(&self, task: ImportedTickTickTask) -> Result<String, SinkError> {
+        self.inner.create_ticktick_task(task)
+    }
+
+    fn create_reminder(&self, task_id: &str, remind_at: &str) -> Result<(), SinkError> {
+        self.inner.create_reminder(task_id, remind_at)
+    }
+
+    fn journal_entry_id(&self, date: &str) -> Result<String, SinkError> {
+        self.inner.journal_entry_id(date)
+    }
+
+    fn read_journal_entry(&self, date: &str) -> Result<Option<JournalEntry>, SinkError> {
+        self.inner.read_journal_entry(date)
+    }
+
+    fn create_journal_entry(&self, entry: ImportedJournalEntry) -> Result<(), SinkError> {
+        self.inner.create_journal_entry(entry)
+    }
+
+    fn save_bookmark(&self, bookmark: ImportedBookmark) -> Result<(), SinkError> {
+        self.inner.save_bookmark(bookmark)
+    }
+}
+
+#[test]
+fn a_cancel_lands_between_notes_never_inside_one() {
+    let dir = tempfile::tempdir().unwrap();
+    fs::write(dir.path().join("a.md"), "![](one.png) ![](two.png)\n").unwrap();
+    fs::write(dir.path().join("b.md"), "# b\n").unwrap();
+    fs::write(dir.path().join("one.png"), b"one").unwrap();
+    fs::write(dir.path().join("two.png"), b"two").unwrap();
+    let input = ImportInput {
+        source_paths: vec![dir.path().to_string_lossy().into_owned()],
+        options: None,
+    };
+    let (timeline, cancel) = (Timeline::default(), CancellationToken::new());
+    let sink = CancelOnSave {
+        inner: RecordingSink::new(Arc::clone(&timeline)),
+        cancel: cancel.clone(),
+    };
+    let mut ctx = ImportContext::new("cancel", cancel, Box::new(|_| {}));
+
+    MarkdownImporter.run(&input, &mut ctx, &sink).unwrap();
+
+    let calls = timeline.lock().unwrap().clone();
+    assert_eq!(ops(&calls, "saveAttachment"), 2, "{calls:?}");
+    let created: Vec<&Value> = calls.iter().filter(|c| c["op"] == "createNote").collect();
+    assert_eq!(created.len(), 1, "{calls:?}");
+    assert_eq!(
+        created[0]["content"],
+        "![one.png](attachments/note-1/one.png) ![two.png](attachments/note-1/two.png)\n",
+        "the note is written with every asset it references"
+    );
+    assert_eq!(ctx.summary().imported, 1);
+}
+
 /// Bytes a parsed frontmatter value holds: its strings and keys, one per node.
 fn value_bytes(value: &YamlValue) -> usize {
     1 + match value {
@@ -256,4 +450,38 @@ proptest! {
         prop_assert!(bytes_scanned() - before <= 2 * body.len());
         prop_assert!(refs.iter().map(String::len).sum::<usize>() <= body.len());
     }
+}
+
+/// #4278: `a.png`, `./a.png`, `././a.png`... name one file. It is read and saved once per note,
+/// so a crafted note cannot write a 1 MiB file a thousand times, even after a cancel.
+#[test]
+fn refs_to_one_file_save_it_once_per_note() {
+    let dir = tempfile::tempdir().unwrap();
+    fs::write(dir.path().join("a.png"), vec![7u8; 1024 * 1024]).unwrap();
+    let body: String = (0..1000)
+        .map(|n| format!("![]({}a.png)\n", "./".repeat(n)))
+        .collect();
+    fs::write(dir.path().join("n.md"), &body).unwrap();
+    let input = ImportInput {
+        source_paths: vec![dir.path().join("n.md").to_string_lossy().into_owned()],
+        options: None,
+    };
+    let (timeline, cancel) = (Timeline::default(), CancellationToken::new());
+    let sink = CancelOnSave {
+        inner: RecordingSink::new(Arc::clone(&timeline)),
+        cancel: cancel.clone(),
+    };
+    let mut ctx = ImportContext::new("dedupe", cancel, Box::new(|_| {}));
+
+    MarkdownImporter.run(&input, &mut ctx, &sink).unwrap();
+
+    let calls = timeline.lock().unwrap().clone();
+    assert_eq!(ops(&calls, "saveAttachment"), 1, "one saved copy");
+    let created = calls.iter().find(|c| c["op"] == "createNote").unwrap();
+    assert_eq!(
+        created["content"],
+        "![a.png](attachments/note-1/a.png)\n".repeat(1000),
+        "every spelling points at the one copy"
+    );
+    assert_eq!(ctx.summary().attachments, 1);
 }

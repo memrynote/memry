@@ -353,6 +353,9 @@ export const NoteSyncPayloadSchema = z.object({
   mimeType: z.string().nullable().optional(),
   attachmentId: z.string().nullable().optional(),
   attachmentReferences: z.array(z.string()).nullable().optional(),
+  // A journal day's `note j<date>` record only: the ids a Rust core device
+  // removed from the day (chapter 14 §14.7.4). Desktop never sends it.
+  removedAttachmentReferences: z.array(z.string()).optional(),
   folderPath: z.string().nullable().optional(),
   // Absent means "this sender does not know" and leaves the receiver's cover
   // alone; `null` removes it. A value this build cannot read is treated as
@@ -381,6 +384,18 @@ export const JournalSyncPayloadSchema = z.object({
   // As on notes: absent or `null` keeps the receiver's list, `[]` clears it.
   aliases: z.array(z.string()).nullable().optional(),
   clock: VectorClockSchema.optional(),
+  // Chapter 06 §6.12 (#5508): one clock per `tags.<tagKey>` and
+  // `properties.<key>` unit, trusted only while `fieldClocksAt` equals `clock`.
+  // An older build keeps both keys but ticks `clock` past the stamp.
+  fieldClocks: FieldClocksSchema.optional(),
+  fieldClocksAt: VectorClockSchema.optional(),
+  // §6.12.1 (#5572): every unit `fieldClocks` does not name is superseded at or
+  // before this clock. Trusted with the stamp, so an older build's copy is not.
+  fieldClocksFloor: VectorClockSchema.optional(),
+  // §6.12.1 (#5508): a unit's own floor where it differs from
+  // `fieldClocksFloor`, keyed as `fieldClocks` is. Additive: an older build
+  // keeps or drops it and ticks `clock` past the stamp, so it reads untrusted.
+  fieldFloors: FieldClocksSchema.optional(),
   createdAt: SyncTimestampSchema.optional(),
   modifiedAt: SyncTimestampSchema.optional(),
   // Delete tombstones only, as on notes (chapter 05 §5.8, #3037).

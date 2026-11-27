@@ -130,7 +130,10 @@ describe('agent-app', () => {
     assert.equal(await main(['start'], ctx), 0, lines.err.join('\n'))
     const control = JSON.parse(readFileSync(join(tmp, 'memry-e2e', `control-${port}.json`), 'utf8'))
     assert.match(control.device, /^e2e-agent-/)
-    assert.equal(control.extraEnv && Object.keys(control.extraEnv).length, 0)
+    assert.deepEqual(control.extraEnv, {
+      MEMRY_TEST_OS_APP_DATA_DIR: join(control.appDataDir, 'os-app-data'),
+      MEMRY_TEST_OS_APPS_DIR: join(control.appDataDir, 'os-apps')
+    })
     assert.ok(existsSync(join(control.testVaultPath, 'notes')), 'a copy of the test vault')
     // The app opens `currentVault` of its registry; the script prepares both.
     assert.ok(existsSync(join(control.testVaultPath, '.memry')))

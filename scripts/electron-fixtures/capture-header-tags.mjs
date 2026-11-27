@@ -63,7 +63,8 @@ const BODIES: string[] = [
   '#İstanbul #istanbul #Iİ #ıi\\n',
   '#project review with #work/sub and #beta\\n',
   '## Heading #h2tag\\n\\n- [ ] task #todo\\n> quote #q\\n',
-  'url http://x.io/#anchor and #real-one\\n'
+  'url http://x.io/#anchor and #real-one\\n',
+  '#퓨리 #привет #हिन्दी #ภาษาไทย #café #2024 #2024/12 #2024년 日本語#タグ #タグ/子\\n'
 ]
 
 const HEADERS: string[][] = [

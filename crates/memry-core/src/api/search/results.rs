@@ -23,16 +23,18 @@ pub struct SearchResult {
     /// The note's vault folder (`Work/Accounts`), `None` at the vault root and
     /// for everything that is not a note.
     pub folder_path: Option<String>,
-    /// The bm25 score: negative, and more negative is a better match. Carried
-    /// so a shell can show relevance if it wants to, never re-sorted — the
-    /// order returned is already the ranking.
+    /// A per-kind diagnostic value, never re-sorted: the order returned is
+    /// already the ranking. The bm25 score for a body hit (negative, more
+    /// negative is better), zero for a fuzzy or alias hit, and the cosine for
+    /// a semantic hit.
     pub score: f64,
     /// The body text around the match, highlighted runs marked (#4316). Plain
     /// runs only when the hit matched its title alone; empty when the body
     /// (a task's description) is.
     pub snippet: Vec<SnippetSegment>,
-    /// Whether the index, the fuzzy title fallback or an alias found the hit
-    /// (#4319). Only a body hit carries a snippet.
+    /// Whether the index, the fuzzy title fallback, an alias (#4319) or the
+    /// on-device embedding (#4505) found the hit. Only a body hit carries a
+    /// snippet.
     pub match_kind: MatchKind,
     /// The alias the query matched, for a note or journal whose title does
     /// not hold the query. The row shows it as "also: <name>".
@@ -71,4 +73,9 @@ pub struct SearchGroups {
     pub tasks: Vec<SearchResult>,
     /// Captures in every state: filed, archived and snoozed ones too (#4320).
     pub inbox: Vec<SearchResult>,
+    /// The query wanted semantic hits and got FTS alone because the model
+    /// was loading (#4615). Run it once more after
+    /// [`super::Search::semantic_model_loaded`] returns.
+    #[uniffi(default = false)]
+    pub semantic_pending: bool,
 }

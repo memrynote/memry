@@ -15,6 +15,8 @@ import WebKit
 struct WhiteboardEditRequest: Identifiable, Equatable {
     let canvasId: String
     let title: String
+    /// Opens the drawing surface (`InkSurface`) rather than Excalidraw.
+    var ink = false
     var id: String { canvasId }
 }
 

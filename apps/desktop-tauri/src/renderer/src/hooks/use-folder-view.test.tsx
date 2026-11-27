@@ -442,6 +442,100 @@ describe('useFolderView', () => {
     expect((window.api.folderView.setView as any).mock.calls.length).toBe(calls)
   })
 
+  // folder-view.e2e.ts T129 (#3967): "New view" was clicked while the rename of the previous
+  // "New view" was still debounced, so the disk held the old name and the add replaced it.
+  /**
+   * `.folder.md`'s views as the commands keep them. `setView` replaces the view named
+   * `previousName` (else its own name) or appends, as `with_view` does; `setConfig` writes the
+   * views it is given back whole.
+   */
+  function viewsOnDisk(): { names: () => string[] } {
+    let disk: Array<{ name: string; type: string }> = [
+      { name: 'Main', type: 'table' },
+      { name: 'Second', type: 'table' }
+    ]
+    const api = window.api.folderView as ReturnType<typeof folderApi>
+    api.getViews.mockImplementation(() => Promise.resolve({ defaultIndex: 0, views: disk }))
+    api.setView.mockImplementation(
+      (_scope: ViewScope, view: { name: string; type: string }, previousName?: string) => {
+        const at = disk.findIndex((v) => v.name === (previousName ?? view.name))
+        disk = at >= 0 ? disk.map((v, i) => (i === at ? view : v)) : [...disk, view]
+        return Promise.resolve({ success: true })
+      }
+    )
+    api.setConfig.mockImplementation((_path: string, config: { views?: typeof disk }) => {
+      if (config.views) disk = config.views
+      return Promise.resolve({ success: true })
+    })
+    return { names: () => disk.map((v) => v.name) }
+  }
+
+  it('keeps a view added while a rename is still debounced', async () => {
+    const disk = viewsOnDisk()
+    const { result } = renderHook(() => useFolderView({ scope: workScope }), {
+      wrapper: makeWrapper()
+    })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    await act(async () => {
+      await result.current.renameView(1, 'Renamed')
+    })
+    // The switcher names a new view after the names in the cache, where 'Second' is free again.
+    await act(async () => {
+      await result.current.addView({ name: 'Second', type: 'table' })
+    })
+    await act(async () => {
+      vi.advanceTimersByTime(300)
+      await Promise.resolve()
+    })
+
+    expect(disk.names()).toEqual(['Main', 'Renamed', 'Second'])
+  })
+
+  it('writes a view change made before a rename under the name it had then', async () => {
+    const disk = viewsOnDisk()
+    const { result } = renderHook(() => useFolderView({ scope: workScope }), {
+      wrapper: makeWrapper()
+    })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    await act(async () => {
+      await result.current.toggleShowSummaries()
+    })
+    await act(async () => {
+      await result.current.renameView(0, 'Renamed')
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300)
+    })
+
+    expect(disk.names()).toEqual(['Renamed', 'Second'])
+  })
+
+  it('keeps a rename that lands while a summary change rewrites the config', async () => {
+    const disk = viewsOnDisk()
+    const api = window.api.folderView as ReturnType<typeof folderApi>
+    // The config is read, then the debounce runs out before it is written back.
+    api.getConfig.mockImplementation(async () => {
+      const views = (await api.getViews()).views
+      await vi.advanceTimersByTimeAsync(300)
+      return { config: { views } }
+    })
+    const { result } = renderHook(() => useFolderView({ scope: workScope }), {
+      wrapper: makeWrapper()
+    })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    await act(async () => {
+      await result.current.renameView(1, 'Renamed')
+    })
+    await act(async () => {
+      await result.current.updateSummaryConfig('title', { type: 'count' })
+    })
+
+    expect(disk.names()).toEqual(['Main', 'Renamed'])
+  })
+
   it('covers summary delete, note-property deletion, missing cache, and formula failures', async () => {
     const { result } = renderHook(() => useFolderView({ scope: workScope }), {
       wrapper: makeWrapper()

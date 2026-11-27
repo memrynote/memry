@@ -116,8 +116,21 @@ fn again(error: &StreamError) -> StreamError {
         StreamError::Attachment(AttachmentError::ZeroChunkSize) => {
             AttachmentError::ZeroChunkSize.into()
         }
-        // `frame_one` fails only as `Undecryptable`.
-        StreamError::Attachment(_) => AttachmentError::Undecryptable.into(),
+        StreamError::Attachment(AttachmentError::Undecryptable) => {
+            AttachmentError::Undecryptable.into()
+        }
+        // Download failures: framing never produces them. Listed so a new
+        // variant has to choose its repeat here.
+        StreamError::Attachment(
+            AttachmentError::Api(_)
+            | AttachmentError::Manifest(_)
+            | AttachmentError::UnresolvableSigner { .. }
+            | AttachmentError::ChunkTooShort { .. }
+            | AttachmentError::ChunkHashMismatch { .. }
+            | AttachmentError::ChunkSizeMismatch { .. }
+            | AttachmentError::ChecksumMismatch
+            | AttachmentError::MissingChunk { .. },
+        ) => AttachmentError::Undecryptable.into(),
     }
 }
 
@@ -151,7 +164,7 @@ impl<R: Read, N: FnMut(u32) -> Vec<u8>> ChunkFramer<R, N> {
     /// A file past [`MAX_CHUNKS_PER_SESSION`] fails only once the chunk past
     /// the cap is read, and its `chunks` count is a lower bound (always cap +
     /// 1). Callers compare the file size with cap × `chunk_size` before the
-    /// first read (desktop `attachments.ts:470`).
+    /// first read (desktop `attachments.ts:434`).
     pub fn next_chunk(&mut self) -> Result<Option<FramedChunk>, StreamError> {
         match &self.state {
             State::Reading => {}

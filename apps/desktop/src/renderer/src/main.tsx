@@ -29,6 +29,7 @@ import { getStartupLocale } from './lib/startup-locale'
 import { prefetchRestoredTabPage } from './lib/launch-restore'
 import { APP_QUERY_DEFAULT_OPTIONS } from './lib/query-client-options'
 import { createLogger } from './lib/logger'
+import { installImeCompositionGuard } from './lib/ime-composition-guard'
 import {
   registerRendererDiagnostics,
   trackRendererError,
@@ -42,6 +43,7 @@ const queryClient = new QueryClient({ defaultOptions: APP_QUERY_DEFAULT_OPTIONS 
 const log = createLogger('RendererBoot')
 const rendererStartedAt = performance.now()
 registerRendererDiagnostics()
+installImeCompositionGuard(window)
 
 // Sanitize a stale or corrupted theme value in localStorage before next-themes
 // reads it. A pre-existing bug elsewhere can write `[object Object]` here,

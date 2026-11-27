@@ -1232,6 +1232,10 @@
     "loadingAria": "Načítání zařízení",
     "none": "Zatím nejsou propojena žádná zařízení",
     "linkNew": "Propojit nové zařízení",
+    "linkNeedsPlan": {
+      "title": "Propojení vyžaduje plán synchronizace",
+      "description": "Propojené zařízení vidí vaše poznámky, jen když je zapnutá synchronizace. Bez plánu se na něm přihlaste frází pro obnovení a zachová si vlastní trezor."
+    },
     "thisDevice": "Toto zařízení",
     "lastSeen": "Naposledy aktivní před {time}",
     "linked": "Propojeno před {time}",
@@ -1398,6 +1402,7 @@
       "selectModel": "Vyberte model",
       "apiKey": "Klíč API",
       "apiKeyDescription": "Uložen místně, odesílán pouze poskytovateli",
+      "apiKeyKeychainDescription": "Uložen v úložišti klíčů systému, odesílán pouze poskytovateli",
       "apiKeyPlaceholder": "Zadejte klíč API pro {provider}",
       "ollamaUrl": "URL serveru Ollama",
       "ollamaUrlDescription": "Adresa místního serveru",
@@ -2435,7 +2440,8 @@
         "vault-binding": "Klíče tohoto zařízení jsou obnoveny, ale tento trezor zatím není nastaven k synchronizaci s vaším účtem. Způsob synchronizace zvolte v nabídce synchronizace.",
         "vault-foreign": "Klíče tohoto zařízení jsou obnoveny, ale tento trezor patří jinému účtu. Zůstane jen na tomto zařízení.",
         "entitlement": "Klíče tohoto zařízení jsou obnoveny, ale synchronizace vyžaduje aktivní plán Sync.",
-        "unavailable": "Klíče tohoto zařízení jsou obnoveny, ale synchronizaci se nepodařilo spustit. Zkusí to znovu; pokud ne, restartujte Memry."
+        "unavailable": "Klíče tohoto zařízení jsou obnoveny, ale synchronizaci se nepodařilo spustit. Zkusí to znovu; pokud ne, restartujte Memry.",
+        "unavailable-restart": "Klíče tohoto zařízení jsou obnoveny, ale synchronizaci se nepodařilo spustit. Restartujte Memry; pokud se synchronizace ani pak nespustí, odhlaste se a znovu přihlaste."
       }
     },
     "pagesSettingsAiInlineSection": {

@@ -59,8 +59,10 @@ pub mod field_order {
         "keyNonce",
     ];
     /// The delete attestation, §4.8.4 (#2408). `purpose` is what keeps it
-    /// disjoint from `SYNC_ITEM`, whose allowlist rejects that key.
-    pub const DELETE_ATTESTATION: &[&str] = &["purpose", "id", "type", "deletedAt", "clock"];
+    /// disjoint from `SYNC_ITEM`, whose allowlist rejects that key. v1 omits
+    /// `vaultId` (#5247).
+    pub const DELETE_ATTESTATION: &[&str] =
+        &["purpose", "vaultId", "id", "type", "deletedAt", "clock"];
 
     /// Looks an allowlist up by the name chapter 04 §4.7.3 gives it.
     pub fn by_name(name: &str) -> Option<&'static [&'static str]> {

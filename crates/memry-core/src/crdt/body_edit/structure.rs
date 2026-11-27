@@ -546,3 +546,47 @@ pub(super) fn restore_pieces(txn: &mut TransactionMut, element: &XmlElementRef, 
 }
 
 // MARK: - Inline marks (N407)
+
+// MARK: - Removing blocks
+
+/// Removes a block, or a whole `columnList`, by id. A column its last block
+/// left is settled ([`settle_after_removal`]).
+pub(super) fn delete(txn: &mut TransactionMut, block_id: &str) -> Result<(), CrdtError> {
+    let container = locate_row(txn, block_id).ok_or_else(|| missing(block_id))?;
+    refuse_uncopyable_unwrap(txn, &container)?;
+    let parent = container.parent();
+    match parent {
+        Some(XmlOut::Element(element)) => {
+            let index = element
+                .children(txn)
+                .position(|child| match child {
+                    XmlOut::Element(inner) => {
+                        attribute(txn, &inner, "id").as_deref() == Some(block_id)
+                    }
+                    _ => false,
+                })
+                .ok_or_else(|| missing(block_id))? as u32;
+            element.remove_range(txn, index, 1);
+            // The last child of a nested group leaves no empty group behind,
+            // and the last block of a column no empty column: BlockNote's
+            // schema requires both to hold a block.
+            settle_after_removal(txn, &element)?;
+        }
+        _ => {
+            let fragment = txn
+                .get_xml_fragment(BODY_FRAGMENT)
+                .ok_or_else(|| missing(block_id))?;
+            let index = fragment
+                .children(txn)
+                .position(|child| match child {
+                    XmlOut::Element(inner) => {
+                        attribute(txn, &inner, "id").as_deref() == Some(block_id)
+                    }
+                    _ => false,
+                })
+                .ok_or_else(|| missing(block_id))? as u32;
+            fragment.remove_range(txn, index, 1);
+        }
+    }
+    Ok(())
+}

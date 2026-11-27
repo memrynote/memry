@@ -1,6 +1,6 @@
 //! A local TLS server standing in for `api.unsplash.com` and the image CDN. The real `reqwest`
 //! client resolves the real host names to it, so production URLs, the host allowlist, the redirect
-//! check and the timeouts all run unchanged.
+//! check and the timeouts all run unchanged. The calendar feed tests use it for `feeds.example`.
 
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
@@ -9,15 +9,16 @@ use memry_desktop::notes::unsplash::Unsplash;
 use rcgen::{CertificateParams, KeyPair};
 use rustls::pki_types::{CertificateDer, PrivateKeyDer, PrivatePkcs8KeyDer};
 use serde_json::Value;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use tokio::net::TcpListener;
 use tokio_rustls::TlsAcceptor;
 
-pub const HOSTS: [&str; 4] = [
+pub const HOSTS: [&str; 5] = [
     "api.unsplash.com",
     "images.unsplash.com",
     "plus.unsplash.com",
     "other.example",
+    "feeds.example",
 ];
 
 #[derive(Debug, Clone)]
@@ -26,6 +27,9 @@ pub struct Seen {
     pub target: String,
     pub authorization: Option<String>,
     pub accept_version: Option<String>,
+    pub accept: Option<String>,
+    pub if_none_match: Option<String>,
+    pub if_modified_since: Option<String>,
 }
 
 pub enum Reply {
@@ -36,12 +40,19 @@ pub enum Reply {
     },
     /// Closes the connection without answering.
     Hangup,
+    /// Holds the connection open without answering.
+    Stall,
     /// `head`, `bytes` bytes of `0x78`, then `tail`, with no `Content-Length`, ended by closing
     /// the connection.
     Undeclared {
         head: &'static str,
         bytes: usize,
         tail: &'static str,
+    },
+    /// `then`, once the test notifies `gate`. Waits without blocking a runtime worker.
+    Gated {
+        gate: Arc<tokio::sync::Notify>,
+        then: Box<Reply>,
     },
 }
 
@@ -105,8 +116,15 @@ impl Harness {
     }
 }
 
-pub async fn serve(respond: impl Fn(&Seen) -> Reply + Send + Sync + 'static) -> Harness {
+/// The `ring` provider as the process default, as the shell installs it at boot
+/// (`install_crypto_provider`). [`serve`] calls it; a test that builds the app's HTTP client
+/// without a server calls it first, since nextest runs each test in a process of its own.
+pub fn install_provider() {
     let _ = rustls::crypto::ring::default_provider().install_default();
+}
+
+pub async fn serve(respond: impl Fn(&Seen) -> Reply + Send + Sync + 'static) -> Harness {
+    install_provider();
     let key = KeyPair::generate().expect("key pair");
     let cert = CertificateParams::new(HOSTS.map(str::to_owned).to_vec())
         .expect("params")
@@ -124,7 +142,7 @@ pub async fn serve(respond: impl Fn(&Seen) -> Reply + Send + Sync + 'static) -> 
     let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind");
     let addr = listener.local_addr().expect("addr");
     let seen = Arc::new(Mutex::new(Vec::new()));
-    let respond = Arc::new(respond);
+    let respond: Arc<dyn Fn(&Seen) -> Reply + Send + Sync> = Arc::new(respond);
     let log = Arc::clone(&seen);
     tokio::spawn(async move {
         loop {
@@ -134,59 +152,108 @@ pub async fn serve(respond: impl Fn(&Seen) -> Reply + Send + Sync + 'static) -> 
             let (acceptor, respond, log) =
                 (acceptor.clone(), Arc::clone(&respond), Arc::clone(&log));
             tokio::spawn(async move {
-                let Ok(mut tls) = acceptor.accept(tcp).await else {
+                let Ok(tls) = acceptor.accept(tcp).await else {
                     return;
                 };
-                let mut head = Vec::new();
-                let mut chunk = [0u8; 2048];
-                while !head.windows(4).any(|w| w == b"\r\n\r\n") {
-                    match tls.read(&mut chunk).await {
-                        Ok(0) | Err(_) => return,
-                        Ok(n) => head.extend_from_slice(&chunk[..n]),
-                    }
-                }
-                let seen = parse(&String::from_utf8_lossy(&head));
-                log.lock().expect("log").push(seen.clone());
-                match respond(&seen) {
-                    Reply::Hangup => {}
-                    Reply::Ok {
-                        status,
-                        headers,
-                        body,
-                    } => {
-                        let mut out = format!(
-                            "HTTP/1.1 {status} X\r\ncontent-length: {}\r\nconnection: close\r\n",
-                            body.len()
-                        );
-                        for (name, value) in headers {
-                            out.push_str(&format!("{name}: {value}\r\n"));
-                        }
-                        out.push_str("\r\n");
-                        let _ = tls.write_all(out.as_bytes()).await;
-                        let _ = tls.write_all(&body).await;
-                    }
-                    Reply::Undeclared { head, bytes, tail } => {
-                        let _ = tls
-                            .write_all(b"HTTP/1.1 200 X\r\ncontent-type: image/jpeg\r\nconnection: close\r\n\r\n")
-                            .await;
-                        let _ = tls.write_all(head.as_bytes()).await;
-                        let block = vec![b'x'; 64 * 1024];
-                        let mut sent = 0;
-                        while sent < bytes {
-                            let n = block.len().min(bytes - sent);
-                            if tls.write_all(&block[..n]).await.is_err() {
-                                return;
-                            }
-                            sent += n;
-                        }
-                        let _ = tls.write_all(tail.as_bytes()).await;
-                    }
-                }
-                let _ = tls.shutdown().await;
+                answer(tls, respond.as_ref(), &log).await;
             });
         }
     });
     Harness { root, addr, seen }
+}
+
+/// Reads one request head off `stream`, records it, and answers what `respond` says.
+async fn answer<S: AsyncRead + AsyncWrite + Unpin>(
+    mut stream: S,
+    respond: &(dyn Fn(&Seen) -> Reply + Send + Sync),
+    log: &Mutex<Vec<Seen>>,
+) {
+    let mut head = Vec::new();
+    let mut chunk = [0u8; 2048];
+    while !head.windows(4).any(|w| w == b"\r\n\r\n") {
+        match stream.read(&mut chunk).await {
+            Ok(0) | Err(_) => return,
+            Ok(n) => head.extend_from_slice(&chunk[..n]),
+        }
+    }
+    let seen = parse(&String::from_utf8_lossy(&head));
+    log.lock().expect("log").push(seen.clone());
+    let mut reply = respond(&seen);
+    if let Reply::Gated { gate, then } = reply {
+        gate.notified().await;
+        reply = *then;
+    }
+    match reply {
+        Reply::Hangup | Reply::Gated { .. } => {}
+        Reply::Stall => std::future::pending::<()>().await,
+        Reply::Ok {
+            status,
+            headers,
+            body,
+        } => {
+            let mut out = format!(
+                "HTTP/1.1 {status} X\r\ncontent-length: {}\r\nconnection: close\r\n",
+                body.len()
+            );
+            for (name, value) in headers {
+                out.push_str(&format!("{name}: {value}\r\n"));
+            }
+            out.push_str("\r\n");
+            let _ = stream.write_all(out.as_bytes()).await;
+            let _ = stream.write_all(&body).await;
+        }
+        Reply::Undeclared { head, bytes, tail } => {
+            let _ = stream
+                .write_all(
+                    b"HTTP/1.1 200 X\r\ncontent-type: image/jpeg\r\nconnection: close\r\n\r\n",
+                )
+                .await;
+            let _ = stream.write_all(head.as_bytes()).await;
+            let block = vec![b'x'; 64 * 1024];
+            let mut sent = 0;
+            while sent < bytes {
+                let n = block.len().min(bytes - sent);
+                if stream.write_all(&block[..n]).await.is_err() {
+                    return;
+                }
+                sent += n;
+            }
+            let _ = stream.write_all(tail.as_bytes()).await;
+        }
+    }
+    let _ = stream.shutdown().await;
+    let _ = stream.shutdown().await;
+}
+
+/// A plain-HTTP server on `127.0.0.1`, for feeds served without TLS.
+pub struct Plain {
+    pub addr: SocketAddr,
+    seen: Arc<Mutex<Vec<Seen>>>,
+}
+
+impl Plain {
+    pub fn seen(&self) -> Vec<Seen> {
+        self.seen.lock().expect("seen").clone()
+    }
+
+    pub fn url(&self, path: &str) -> String {
+        format!("http://{}{path}", self.addr)
+    }
+}
+
+pub async fn serve_plain(respond: impl Fn(&Seen) -> Reply + Send + Sync + 'static) -> Plain {
+    let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind");
+    let addr = listener.local_addr().expect("addr");
+    let seen = Arc::new(Mutex::new(Vec::new()));
+    let respond: Arc<dyn Fn(&Seen) -> Reply + Send + Sync> = Arc::new(respond);
+    let log = Arc::clone(&seen);
+    tokio::spawn(async move {
+        while let Ok((tcp, _)) = listener.accept().await {
+            let (respond, log) = (Arc::clone(&respond), Arc::clone(&log));
+            tokio::spawn(async move { answer(tcp, respond.as_ref(), &log).await });
+        }
+    });
+    Plain { addr, seen }
 }
 
 fn parse(head: &str) -> Seen {
@@ -206,5 +273,8 @@ fn parse(head: &str) -> Seen {
             .to_owned(),
         authorization: header("authorization"),
         accept_version: header("accept-version"),
+        accept: header("accept"),
+        if_none_match: header("if-none-match"),
+        if_modified_since: header("if-modified-since"),
     }
 }

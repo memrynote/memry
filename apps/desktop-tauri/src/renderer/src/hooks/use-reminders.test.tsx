@@ -24,6 +24,35 @@ import {
   cleanupHookTestEnvironment
 } from '@tests/utils/hook-test-wrapper'
 
+const commands = vi.hoisted(() => ({
+  reminderList: vi.fn(),
+  reminderGetForTarget: vi.fn(),
+  reminderCreate: vi.fn(),
+  reminderUpdate: vi.fn(),
+  reminderDelete: vi.fn(),
+  reminderDismiss: vi.fn(),
+  reminderSnooze: vi.fn()
+}))
+type Listener = (event: { payload: unknown }) => void
+const listeners = vi.hoisted(() => new Map<string, Listener>())
+const events = vi.hoisted(() => {
+  const event = (name: string) => ({
+    listen: vi.fn((listener: Listener) => {
+      listeners.set(name, listener)
+      return Promise.resolve(() => undefined)
+    })
+  })
+  return {
+    reminderCreatedEvent: event('created'),
+    reminderUpdatedEvent: event('updated'),
+    reminderDeletedEvent: event('deleted'),
+    reminderDismissedEvent: event('dismissed'),
+    reminderSnoozedEvent: event('snoozed'),
+    syncItemSyncedEvent: event('synced')
+  }
+})
+vi.mock('../../../generated/bindings', () => ({ commands, events }))
+
 // ============================================================================
 // Test Setup
 // ============================================================================
@@ -57,7 +86,7 @@ describe('useReminders', () => {
         createMockReminder({ id: 'rem-2', note: 'Reminder 2' })
       ]
 
-      ;(window.api.reminders.list as ReturnType<typeof vi.fn>).mockResolvedValue({
+      commands.reminderList.mockResolvedValue({
         reminders: mockReminders,
         total: 2,
         hasMore: false
@@ -71,11 +100,11 @@ describe('useReminders', () => {
 
       expect(result.current.reminders).toHaveLength(2)
       expect(result.current.total).toBe(2)
-      expect(window.api.reminders.list).toHaveBeenCalled()
+      expect(commands.reminderList).toHaveBeenCalled()
     })
 
     it('should load reminders with filters', async () => {
-      ;(window.api.reminders.list as ReturnType<typeof vi.fn>).mockResolvedValue({
+      commands.reminderList.mockResolvedValue({
         reminders: [],
         total: 0,
         hasMore: false
@@ -89,7 +118,7 @@ describe('useReminders', () => {
         expect(result.current.isLoading).toBe(false)
       })
 
-      expect(window.api.reminders.list).toHaveBeenCalledWith(
+      expect(commands.reminderList).toHaveBeenCalledWith(
         expect.objectContaining({
           status: 'pending',
           limit: 10
@@ -98,9 +127,7 @@ describe('useReminders', () => {
     })
 
     it('should handle loading errors gracefully', async () => {
-      ;(window.api.reminders.list as ReturnType<typeof vi.fn>).mockRejectedValue(
-        new Error('Failed to load reminders')
-      )
+      commands.reminderList.mockRejectedValue(new Error('Failed to load reminders'))
 
       const { result } = renderHook(() => useReminders(), { wrapper })
 
@@ -121,9 +148,7 @@ describe('useReminders', () => {
     it('should load reminders for a specific note', async () => {
       const mockReminders = [createMockReminder({ id: 'rem-1', targetId: 'note-1' })]
 
-      ;(window.api.reminders.getForTarget as ReturnType<typeof vi.fn>).mockResolvedValue(
-        mockReminders
-      )
+      commands.reminderGetForTarget.mockResolvedValue(mockReminders)
 
       const { result } = renderHook(() => useRemindersForTarget('note', 'note-1'), { wrapper })
 
@@ -140,96 +165,129 @@ describe('useReminders', () => {
 
       await new Promise((resolve) => setTimeout(resolve, 50))
 
-      expect(window.api.reminders.getForTarget).not.toHaveBeenCalled()
+      expect(commands.reminderGetForTarget).not.toHaveBeenCalled()
       expect(result.current.reminders).toEqual([])
     })
   })
 
   // ==========================================================================
-  // Sync-emitted events
+  // Reminder events
   //
-  // The sync handler (main/sync/item-handlers/reminder-handler.ts) emits
-  // `{ id }` — it has no resolved row for an inbound change. The local IPC path
-  // keeps sending `{ reminder }`. Both shapes must work.
+  // Each reminder command event carries the reminder's id and target
+  // (`ReminderHint`); a view of another target ignores it.
   // ==========================================================================
 
-  describe('sync-emitted events', () => {
-    const lastSubscriber = (fn: unknown): ((event: unknown) => void) => {
-      const calls = (fn as ReturnType<typeof vi.fn>).mock.calls
-      return calls[calls.length - 1][0] as (event: unknown) => void
-    }
+  describe('reminder events', () => {
+    const emit = (name: string, payload: unknown): void => listeners.get(name)?.({ payload })
+    const onThisTarget = { reminder: { id: 'rem-1', targetType: 'note_date', targetId: 'note-1' } }
 
     const mountForTarget = async () => {
-      ;(window.api.reminders.getForTarget as ReturnType<typeof vi.fn>).mockResolvedValue([])
+      commands.reminderGetForTarget.mockResolvedValue([])
 
       const { result } = renderHook(() => useRemindersForTarget('note_date', 'note-1'), { wrapper })
 
       await waitFor(() => {
         expect(result.current.isLoading).toBe(false)
       })
-      expect(window.api.reminders.getForTarget).toHaveBeenCalledTimes(1)
+      expect(commands.reminderGetForTarget).toHaveBeenCalledTimes(1)
 
       return result
     }
 
-    it('does not throw on a {id}-shaped created event and refetches', async () => {
+    it('refetches on a created event for this target', async () => {
       await mountForTarget()
 
-      const emitCreated = lastSubscriber(window.api.onReminderCreated)
-
-      expect(() => emitCreated({ id: 'rem-remote' })).not.toThrow()
+      emit('created', onThisTarget)
 
       await waitFor(() => {
-        expect(window.api.reminders.getForTarget).toHaveBeenCalledTimes(2)
+        expect(commands.reminderGetForTarget).toHaveBeenCalledTimes(2)
       })
     })
 
-    it('refetches on a {id}-shaped updated event (inbound dismiss/snooze)', async () => {
+    it('refetches on an updated event for this target', async () => {
       await mountForTarget()
 
-      const emitUpdated = lastSubscriber(window.api.onReminderUpdated)
-
-      expect(() => emitUpdated({ id: 'rem-remote' })).not.toThrow()
+      emit('updated', onThisTarget)
 
       await waitFor(() => {
-        expect(window.api.reminders.getForTarget).toHaveBeenCalledTimes(2)
+        expect(commands.reminderGetForTarget).toHaveBeenCalledTimes(2)
       })
     })
 
-    it('refetches on a {id}-shaped deleted event', async () => {
+    it('refetches on a deleted event for this target', async () => {
       await mountForTarget()
 
-      const emitDeleted = lastSubscriber(window.api.onReminderDeleted)
-
-      expect(() => emitDeleted({ id: 'rem-remote' })).not.toThrow()
+      emit('deleted', onThisTarget)
 
       await waitFor(() => {
-        expect(window.api.reminders.getForTarget).toHaveBeenCalledTimes(2)
+        expect(commands.reminderGetForTarget).toHaveBeenCalledTimes(2)
       })
     })
 
-    it('still ignores a locally-emitted event for a different target', async () => {
+    it('ignores an event for a different target', async () => {
       await mountForTarget()
 
-      const emitCreated = lastSubscriber(window.api.onReminderCreated)
-
-      emitCreated({ reminder: createMockReminder({ targetType: 'note', targetId: 'other-note' }) })
+      emit('created', { reminder: { id: 'rem-2', targetType: 'note', targetId: 'other-note' } })
 
       await new Promise((resolve) => setTimeout(resolve, 50))
-      expect(window.api.reminders.getForTarget).toHaveBeenCalledTimes(1)
+      expect(commands.reminderGetForTarget).toHaveBeenCalledTimes(1)
     })
 
-    it('still refetches for a locally-emitted event on this target', async () => {
+    // Another device's change reaches this one as a pulled item that names only the id
+    // (Electron's sync handler sends `{ id }`), so every reminder view refetches.
+    it('refetches on a pulled reminder change (another device dismissed it)', async () => {
       await mountForTarget()
 
-      const emitCreated = lastSubscriber(window.api.onReminderCreated)
-
-      emitCreated({
-        reminder: createMockReminder({ targetType: 'note_date', targetId: 'note-1' })
+      emit('synced', {
+        operation: 'pull',
+        items: [{ itemId: 'rem-remote', type: 'reminder', itemOperation: 'update' }]
       })
 
       await waitFor(() => {
-        expect(window.api.reminders.getForTarget).toHaveBeenCalledTimes(2)
+        expect(commands.reminderGetForTarget).toHaveBeenCalledTimes(2)
+      })
+    })
+
+    it('ignores a pushed reminder and a pulled item of another type', async () => {
+      await mountForTarget()
+
+      emit('synced', {
+        operation: 'push',
+        items: [{ itemId: 'rem-1', type: 'reminder', itemOperation: 'update' }]
+      })
+      emit('synced', {
+        operation: 'pull',
+        items: [{ itemId: 'task-1', type: 'task', itemOperation: 'update' }]
+      })
+
+      await new Promise((resolve) => setTimeout(resolve, 50))
+      expect(commands.reminderGetForTarget).toHaveBeenCalledTimes(1)
+    })
+
+    it('refetches a reminder list on a pulled reminder change', async () => {
+      commands.reminderList.mockResolvedValue({ reminders: [], total: 0, hasMore: false })
+      const { result } = renderHook(() => useReminders(), { wrapper })
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
+
+      emit('synced', {
+        operation: 'pull',
+        items: [{ itemId: 'rem-remote', type: 'reminder', itemOperation: 'update' }]
+      })
+
+      await waitFor(() => {
+        expect(commands.reminderList).toHaveBeenCalledTimes(2)
+      })
+    })
+
+    it('refetches on a dismissed event for this target', async () => {
+      await mountForTarget()
+
+      emit('dismissed', onThisTarget)
+
+      await waitFor(() => {
+        expect(commands.reminderGetForTarget).toHaveBeenCalledTimes(2)
       })
     })
   })
@@ -260,10 +318,7 @@ describe('useCreateReminder', () => {
   it('should create a reminder successfully', async () => {
     const newReminder = createMockReminder({ id: 'rem-new' })
 
-    ;(window.api.reminders.create as ReturnType<typeof vi.fn>).mockResolvedValue({
-      success: true,
-      reminder: newReminder
-    })
+    commands.reminderCreate.mockResolvedValue(newReminder)
 
     const { result } = renderHook(() => useCreateReminder(), { wrapper })
 
@@ -275,29 +330,31 @@ describe('useCreateReminder', () => {
       })
     })
 
-    expect(window.api.reminders.create).toHaveBeenCalledWith({
+    expect(commands.reminderCreate).toHaveBeenCalledWith({
       targetType: 'note',
       targetId: 'note-1',
       dueAt: '2026-01-10T10:00:00Z'
     })
   })
 
-  it('should handle create errors', async () => {
-    ;(window.api.reminders.create as ReturnType<typeof vi.fn>).mockRejectedValue(
-      new Error('Failed to create reminder')
-    )
+  it('answers a refused create with its message, as Electron withErrorHandler does', async () => {
+    commands.reminderCreate.mockRejectedValue(new Error('Failed to create reminder'))
 
     const { result } = renderHook(() => useCreateReminder(), { wrapper })
 
-    await expect(
-      act(async () => {
-        await result.current.mutateAsync({
-          targetType: 'note',
-          targetId: 'note-1',
-          dueAt: '2026-01-10T10:00:00Z'
-        })
+    let response: unknown
+    await act(async () => {
+      response = await result.current.mutateAsync({
+        targetType: 'note',
+        targetId: 'note-1',
+        remindAt: '2026-01-10T10:00:00Z'
       })
-    ).rejects.toThrow('Failed to create reminder')
+    })
+    expect(response).toEqual({
+      success: false,
+      reminder: null,
+      error: 'Failed to create reminder'
+    })
   })
 })
 
@@ -324,9 +381,7 @@ describe('useUpdateReminder', () => {
   )
 
   it('should update a reminder successfully', async () => {
-    ;(window.api.reminders.update as ReturnType<typeof vi.fn>).mockResolvedValue({
-      success: true
-    })
+    commands.reminderUpdate.mockResolvedValue(createMockReminder({ id: 'rem-1' }))
 
     const { result } = renderHook(() => useUpdateReminder(), { wrapper })
 
@@ -337,7 +392,7 @@ describe('useUpdateReminder', () => {
       })
     })
 
-    expect(window.api.reminders.update).toHaveBeenCalledWith({
+    expect(commands.reminderUpdate).toHaveBeenCalledWith({
       id: 'rem-1',
       dueAt: '2026-01-15T10:00:00Z'
     })
@@ -367,9 +422,7 @@ describe('useDeleteReminder', () => {
   )
 
   it('should delete a reminder successfully', async () => {
-    ;(window.api.reminders.delete as ReturnType<typeof vi.fn>).mockResolvedValue({
-      success: true
-    })
+    commands.reminderDelete.mockResolvedValue(createMockReminder({ id: 'rem-1' }))
 
     const { result } = renderHook(() => useDeleteReminder(), { wrapper })
 
@@ -377,7 +430,7 @@ describe('useDeleteReminder', () => {
       await result.current.mutateAsync('rem-1')
     })
 
-    expect(window.api.reminders.delete).toHaveBeenCalledWith('rem-1')
+    expect(commands.reminderDelete).toHaveBeenCalledWith('rem-1')
   })
 })
 
@@ -404,9 +457,7 @@ describe('useDismissReminder', () => {
   )
 
   it('should dismiss a reminder successfully', async () => {
-    ;(window.api.reminders.dismiss as ReturnType<typeof vi.fn>).mockResolvedValue({
-      success: true
-    })
+    commands.reminderDismiss.mockResolvedValue(createMockReminder({ id: 'rem-1' }))
 
     const { result } = renderHook(() => useDismissReminder(), { wrapper })
 
@@ -414,7 +465,7 @@ describe('useDismissReminder', () => {
       await result.current.mutateAsync('rem-1')
     })
 
-    expect(window.api.reminders.dismiss).toHaveBeenCalledWith('rem-1')
+    expect(commands.reminderDismiss).toHaveBeenCalledWith('rem-1')
   })
 })
 
@@ -441,9 +492,7 @@ describe('useSnoozeReminder', () => {
   )
 
   it('should snooze a reminder successfully', async () => {
-    ;(window.api.reminders.snooze as ReturnType<typeof vi.fn>).mockResolvedValue({
-      success: true
-    })
+    commands.reminderSnooze.mockResolvedValue(createMockReminder({ id: 'rem-1' }))
 
     const { result } = renderHook(() => useSnoozeReminder(), { wrapper })
 
@@ -454,7 +503,7 @@ describe('useSnoozeReminder', () => {
       })
     })
 
-    expect(window.api.reminders.snooze).toHaveBeenCalledWith({
+    expect(commands.reminderSnooze).toHaveBeenCalledWith({
       id: 'rem-1',
       snoozeUntil: '2026-01-05T14:00:00Z'
     })

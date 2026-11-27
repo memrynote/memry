@@ -13,7 +13,7 @@ impl Loop {
     pub(super) async fn pause_command(
         &mut self,
         paused: bool,
-        reply: oneshot::Sender<Result<(), StorageError>>,
+        reply: oneshot::Sender<Result<bool, StorageError>>,
     ) {
         let resume = self.resume_trigger();
         let outcome = self.set_paused(paused).await;
@@ -39,8 +39,9 @@ impl Loop {
     /// also cuts the pass in flight and answers its Sync Now callers `paused`, as Electron's
     /// `pause` aborts its run (`engine.ts:663-668`). The driver makes the cut: its requests answer
     /// `Cancelled`, and the pass ends on its own. Aborting the task instead would drop it at an
-    /// await, and with it whatever it held in memory there.
-    pub(super) async fn set_paused(&mut self, paused: bool) -> Result<(), StorageError> {
+    /// await, and with it whatever it held in memory there. Answers the pause it replaced.
+    pub(super) async fn set_paused(&mut self, paused: bool) -> Result<bool, StorageError> {
+        let was_paused = self.paused;
         let db = self.db.clone();
         let write = move || db.call_blocking(move |conn| pause::write(conn, paused));
         let written = match tokio::task::spawn_blocking(write).await {
@@ -63,7 +64,7 @@ impl Loop {
             self.stop_socket();
             self.release_waiters(Blocked::Paused);
         }
-        written
+        written.map(|()| was_paused)
     }
 
     /// Aborts a running pass, with the driver it runs on about to go, and releases its waiters.

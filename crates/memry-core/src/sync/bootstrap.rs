@@ -30,9 +30,10 @@
 //!   absolute lifetime is six hours (§10.10) and a first sync that outlives it
 //!   gets `403 BOOTSTRAP_SESSION_EXPIRED` on renewal. That is **an ordinary
 //!   rate change, not an error**: no reset, no restart, no failure reported.
-//! - **Never open a second session.** The window is one-shot per device per
-//!   vault by design (§10.9), so an expired one cannot be replaced and a
-//!   second attempt can only earn a `409 BOOTSTRAP_NOT_ELIGIBLE`.
+//! - **Never open a second session in one run.** An expired session is not
+//!   replaced mid-run (§10.11 rule 3). A resumed run is a new client and opens
+//!   its own, which the server grants while the device is young enough
+//!   (§10.9).
 //!
 //! Progress reporting survives all of it, because progress is measured against
 //! `tailCursor` and the client's own cursor (§10.4), neither of which the
@@ -42,9 +43,13 @@ use std::sync::{Arc, Mutex};
 
 use serde_json::{Value as Json, json};
 
+use crate::api::errors::ApiError;
 use crate::protocol::http::{
     ApiRequest, Auth, BOOTSTRAP_TOKEN_HEADER, HttpClient, RetryPolicy, VAULT_ID_HEADER,
 };
+use crate::seams::diagnostics::{BootstrapOutcome, CoreDiagnostic};
+
+use super::diagnostics::RunDiagnostics;
 
 /// §10.10, `BOOTSTRAP_SESSION_TTL_SECONDS`. The token's own life, renewable.
 pub const BOOTSTRAP_SESSION_TTL_SECONDS: i64 = 3_600;
@@ -96,6 +101,9 @@ pub struct BootstrapOpen {
     /// Why there is no session, for a log line. **Never shown to a user**
     /// (§10.5) and never a reason to retry.
     pub fallback_reason: Option<String>,
+    /// The wait a `RATE_LIMITED` 429 on the open asked for, in seconds, so a
+    /// caller that opens again soon holds back until then (#5247).
+    pub rate_limit_s: Option<u64>,
 }
 
 impl BootstrapOpen {
@@ -119,9 +127,32 @@ pub enum SessionState {
 }
 
 /// The session client. One per vault, held for the length of a first sync.
+/// How long [`BootstrapClient::close`] waits for the server.
+pub const BOOTSTRAP_CLOSE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(5);
+
+/// See [`BootstrapClient::close_on_drop`].
+pub struct CloseOnDrop(Arc<BootstrapClient>);
+
+impl Drop for CloseOnDrop {
+    fn drop(&mut self) {
+        if self.0.lock().session.is_none() {
+            return;
+        }
+        let Ok(runtime) = tokio::runtime::Handle::try_current() else {
+            eprintln!(
+                "memry-core: a dropped run left its bootstrap session open: no runtime to close it"
+            );
+            return;
+        };
+        let client = Arc::clone(&self.0);
+        runtime.spawn(async move { client.close().await });
+    }
+}
+
 pub struct BootstrapClient {
     http: Arc<HttpClient>,
     vault_id: Option<String>,
+    diagnostics: Arc<RunDiagnostics>,
     inner: Mutex<Inner>,
 }
 
@@ -139,8 +170,15 @@ impl BootstrapClient {
         Self {
             http,
             vault_id: None,
+            diagnostics: RunDiagnostics::silent(),
             inner: Mutex::new(Inner::default()),
         }
+    }
+
+    /// Reports how the open answered (#5215).
+    pub fn with_diagnostics(mut self, diagnostics: Arc<RunDiagnostics>) -> Self {
+        self.diagnostics = diagnostics;
+        self
     }
 
     pub fn with_vault(mut self, vault_id: &str) -> Self {
@@ -169,9 +207,8 @@ impl BootstrapClient {
             return BootstrapOpen {
                 session: None,
                 tail_cursor: 0,
-                fallback_reason: Some(
-                    "the bootstrap window is one-shot per device per vault (§10.9)".to_owned(),
-                ),
+                fallback_reason: Some("one bootstrap session per run (§10.11 rule 3)".to_owned()),
+                rate_limit_s: None,
             };
         }
         self.lock().opened_once = true;
@@ -188,6 +225,8 @@ impl BootstrapClient {
             Ok(body) => body,
             Err(error) => {
                 self.lock().finished = true;
+                let (outcome, status) = open_failure(&error);
+                self.opened(outcome, status);
                 return BootstrapOpen {
                     session: None,
                     tail_cursor: 0,
@@ -195,6 +234,7 @@ impl BootstrapClient {
                     // deployment gap and this string is the whole of the
                     // client's reaction to it.
                     fallback_reason: Some(error.to_string()),
+                    rate_limit_s: error.rate_limit_wait_s(),
                 };
             }
         };
@@ -202,18 +242,22 @@ impl BootstrapClient {
         let tail_cursor = read_tail_cursor(&body);
         let Some(session) = read_session(&body, now_s) else {
             self.lock().finished = true;
+            self.opened(BootstrapOutcome::NoToken, 200);
             return BootstrapOpen {
                 session: None,
                 tail_cursor,
                 fallback_reason: Some("the open response carried no session token".to_owned()),
+                rate_limit_s: None,
             };
         };
 
         self.lock().session = Some(session.clone());
+        self.opened(BootstrapOutcome::Granted, 200);
         BootstrapOpen {
             session: Some(session),
             tail_cursor,
             fallback_reason: None,
+            rate_limit_s: None,
         }
     }
 
@@ -232,16 +276,26 @@ impl BootstrapClient {
 
         let request = self
             .request("POST", "/sync/bootstrap/renew")
+            .header(BOOTSTRAP_TOKEN_HEADER, &session.token)
             .retry(RetryPolicy::polled())
             .json(&json!({}));
 
         match self.http.send_json::<Json>(request).await {
             Ok(body) => match read_session(&body, now_s) {
                 Some(renewed) => {
-                    self.lock().session = Some(renewed);
+                    let mut inner = self.lock();
+                    // A close that ran while this renewal was in flight ended
+                    // the window; writing the token back would reopen it.
+                    if inner.finished {
+                        return false;
+                    }
+                    inner.session = Some(renewed);
                     true
                 }
                 None => {
+                    eprintln!(
+                        "memry-core: bootstrap renewal response carried no session, continuing at steady-state pacing"
+                    );
                     self.fall_back();
                     false
                 }
@@ -250,7 +304,10 @@ impl BootstrapClient {
             // BOOTSTRAP_SESSION_EXPIRED` — the six-hour absolute lifetime
             // spent mid-run — is the expected one and is not distinguished,
             // because the reaction is identical for all of them.
-            Err(_) => {
+            Err(error) => {
+                eprintln!(
+                    "memry-core: bootstrap renewal failed, continuing at steady-state pacing: {error}"
+                );
                 self.fall_back();
                 false
             }
@@ -291,15 +348,47 @@ impl BootstrapClient {
     /// device until its `exp` regardless. Closing is a courtesy to the
     /// concurrency cap, not a security boundary.
     pub async fn close(&self) {
-        if self.lock().session.take().is_none() {
-            return;
-        }
-        self.lock().finished = true;
+        let session = {
+            let mut inner = self.lock();
+            let Some(session) = inner.session.take() else {
+                return;
+            };
+            inner.finished = true;
+            session
+        };
+        // The server finds the session to delete through this header alone.
         let request = self
             .request("POST", "/sync/bootstrap/close")
+            .header(BOOTSTRAP_TOKEN_HEADER, &session.token)
             .retry(RetryPolicy::never())
             .json(&json!({}));
-        let _ = self.http.send_json::<Json>(request).await;
+        // Bounded: a stalled network must not hold a failed run's caller for
+        // the transport's whole timeout over a courtesy.
+        let sent = tokio::time::timeout(
+            BOOTSTRAP_CLOSE_TIMEOUT,
+            self.http.send_json::<Json>(request),
+        );
+        let failure = match sent.await {
+            Ok(Ok(_)) => return,
+            Ok(Err(error)) => error.to_string(),
+            Err(_) => format!("no answer in {}s", BOOTSTRAP_CLOSE_TIMEOUT.as_secs()),
+        };
+        eprintln!(
+            "memry-core: bootstrap session close failed, its slot frees at expiry {}: {failure}",
+            session.expires_at
+        );
+    }
+
+    /// A guard that closes the session when dropped, for a run that is
+    /// dropped or cancelled before its own [`Self::close`]. Without it the
+    /// slot stays taken until the session expires, up to an hour.
+    pub fn close_on_drop(self: &Arc<Self>) -> CloseOnDrop {
+        CloseOnDrop(Arc::clone(self))
+    }
+
+    fn opened(&self, outcome: BootstrapOutcome, status: u16) {
+        self.diagnostics
+            .emit(CoreDiagnostic::BootstrapOpened { outcome, status });
     }
 
     fn fall_back(&self) {
@@ -320,6 +409,32 @@ impl BootstrapClient {
         self.inner
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
+}
+
+/// What a failed open tells a log: the closed outcome, and the HTTP status, 0
+/// when no answer came back. The server's code is mapped here and never
+/// passed on as text.
+fn open_failure(error: &ApiError) -> (BootstrapOutcome, u16) {
+    match error {
+        ApiError::Status {
+            status: 409,
+            code: Some(code),
+            ..
+        } if code == "BOOTSTRAP_NOT_ELIGIBLE" => (BootstrapOutcome::NotEligible, 409),
+        ApiError::Status {
+            status: 429,
+            code: Some(code),
+            ..
+        } if code == "BOOTSTRAP_SESSION_LIMIT" => (BootstrapOutcome::SessionLimit, 429),
+        ApiError::BootstrapUnavailable => (BootstrapOutcome::NotImplemented, 501),
+        ApiError::Status { status: 501, .. } => (BootstrapOutcome::NotImplemented, 501),
+        ApiError::Status { status, .. } => (BootstrapOutcome::Failed, *status),
+        ApiError::RateLimited { .. } => (BootstrapOutcome::Failed, 429),
+        ApiError::Unauthorized { .. } => (BootstrapOutcome::Failed, 401),
+        ApiError::PaymentRequired { .. } => (BootstrapOutcome::Failed, 402),
+        ApiError::UpgradeRequired { .. } => (BootstrapOutcome::Failed, 426),
+        _ => (BootstrapOutcome::Failed, 0),
     }
 }
 
