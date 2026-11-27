@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 296,
+    "exportedCaseCount": 301,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 306,
+    "caseCount": 311,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -418,6 +418,41 @@
       "canonical": null,
       "pending": null,
       "sha256": "8ae71606eee2deeb2998ec27799c3bccf3dcfbc005f28909a9313614ffce4170"
+    },
+    {
+      "name": "callout holding a table",
+      "markdown": "> [!note]\n> | a | b |\n> |---|---|\n> | c | d |",
+      "canonical": "> [!note]\n> | a | b |\n> | - | - |\n> | c | d |",
+      "pending": null,
+      "sha256": "e5e83c1a7bff255bdecc10adcc5dba8b0c9e764014601b2855f188448714f885"
+    },
+    {
+      "name": "quote opening on a table",
+      "markdown": "> | a | b |\n> |---|---|\n> | c | d |",
+      "canonical": "> | a | b |\n> | - | - |\n> | c | d |",
+      "pending": null,
+      "sha256": "0f519bb533ee1f079c3ab91f0c799e3db727e8251c0394c903d388047f6fd85d"
+    },
+    {
+      "name": "quote line then a heading",
+      "markdown": "> a\n> # h",
+      "canonical": "> a\n>\n> # h",
+      "pending": null,
+      "sha256": "ef2b996c4e19403a1ed590f174d5ad96f859f5dd6ff85a5cded32790d45c54b5"
+    },
+    {
+      "name": "quote line then a table",
+      "markdown": "> x\n>\n> | a | b |\n> |---|---|\n> | c | d |",
+      "canonical": "> x\n>\n> | a | b |\n> | - | - |\n> | c | d |",
+      "pending": null,
+      "sha256": "1374e4808d88d30b4391b14c3a4ab83af0638624801e088d85e91850164c03be"
+    },
+    {
+      "name": "callout body in another spelling",
+      "markdown": "> [!tip]\n> Use __bold__",
+      "canonical": "> [!tip]\n> Use **bold**",
+      "pending": null,
+      "sha256": "b64a54ce5fcb6baa4eeb0f062f3ddcb994aa0dbd76408ad09c2c0f2e9f0b72b6"
     },
     {
       "name": "empty toggle",
@@ -1696,7 +1731,7 @@
     {
       "name": "quoted fence, lazy line (BBF-113)",
       "markdown": "> ```\n> - x\n> ```\nz",
-      "canonical": "> \\- xz",
+      "canonical": "> ```\n> - x\n> ```\n\nz",
       "pending": null,
       "sha256": "0e7e0968dd25467e2bd31238367c7c330b81d6c7805174e29b6ce8a32b0d9611"
     },

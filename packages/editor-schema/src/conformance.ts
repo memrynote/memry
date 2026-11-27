@@ -253,6 +253,34 @@ const calloutCases: RoundtripCase[] = [
     // The flat fallback used to drop the outer level (#1896).
     name: 'nested quote with no outer paragraph keeps both levels',
     markdown: '> > Inner only'
+  },
+  // Any block a flat quote cannot hold is claimed once its canonical form
+  // settles: the fallback turned a table into its cells' text and a callout
+  // into a quote with `[!note]` in it.
+  {
+    name: 'callout holding a table',
+    markdown: '> [!note]\n> | a | b |\n> |---|---|\n> | c | d |',
+    canonical: '> [!note]\n> | a | b |\n> | - | - |\n> | c | d |'
+  },
+  {
+    name: 'quote opening on a table',
+    markdown: '> | a | b |\n> |---|---|\n> | c | d |',
+    canonical: '> | a | b |\n> | - | - |\n> | c | d |'
+  },
+  {
+    name: 'quote line then a heading',
+    markdown: '> a\n> # h',
+    canonical: '> a\n>\n> # h'
+  },
+  {
+    name: 'quote line then a table',
+    markdown: '> x\n>\n> | a | b |\n> |---|---|\n> | c | d |',
+    canonical: '> x\n>\n> | a | b |\n> | - | - |\n> | c | d |'
+  },
+  {
+    name: 'callout body in another spelling',
+    markdown: '> [!tip]\n> Use __bold__',
+    canonical: '> [!tip]\n> Use **bold**'
   }
 ]
 
@@ -1062,13 +1090,12 @@ const htmlCommentCases: RoundtripCase[] = [
     canonical: '> [!note]\n> - [a\n> b](u)'
   },
   // A fence in a quote stays a fence: `- ` inside it is code, not a list, and
-  // an untagged fence stays untagged (BBF-113). A fence-only quote keeps main's
-  // flat bytes, the same in both pipelines, its `-` escaped so the quote's text
-  // does not come back as a list inside it.
+  // an untagged fence stays untagged (BBF-113). A line after the closed fence
+  // continues no paragraph, so it is a paragraph of its own.
   {
     name: 'quoted fence, lazy line (BBF-113)',
     markdown: '> ```\n> - x\n> ```\nz',
-    canonical: '> \\- xz'
+    canonical: '> ```\n> - x\n> ```\n\nz'
   },
   {
     name: 'quoted item, bare fence (BBF-113)',
