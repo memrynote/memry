@@ -1,11 +1,12 @@
 //! The sticky note and edge tab commands and events, appended to the task domain's lists by
 //! `registry/reminders.rs`: `with_sticky_commands!(collect_commands![...])` hands
 //! `collect_commands!` the list with these appended, and `with_sticky_events!` does the same
-//! for `collect_events!`.
+//! for `collect_events!`. The command list goes on to `registry/graph.rs`, which appends the
+//! graph ones.
 
 macro_rules! with_sticky_commands {
     ($collect:ident![$($commands:tt)*]) => {
-        $collect![
+        graph::with_graph_commands!($collect![
             $($commands)*
             crate::commands::stickies::sticky_delete_draft,
             crate::commands::stickies::sticky_get_session,
@@ -18,7 +19,7 @@ macro_rules! with_sticky_commands {
             crate::commands::sticky_send::sticky_open_target,
             crate::commands::sticky_send::sticky_send,
             crate::commands::sticky_send::sticky_undo_send,
-        ]
+        ])
     };
 }
 

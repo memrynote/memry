@@ -41,6 +41,7 @@ pub mod fold_chunks;
 #[cfg(feature = "markdown")]
 pub mod folder_view;
 pub mod folders;
+pub mod graph;
 // Desktop's note edit only: iOS writes no note file, so it links none of it.
 #[cfg(feature = "markdown")]
 pub mod header_tags;

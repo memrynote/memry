@@ -1151,6 +1151,12 @@ export const commands = {
 	stickySend: (input: StickySendInput) => __TAURI_INVOKE<StickySent>("sticky_send", { input }),
 	/**  Takes a note or task send back within its minute and answers the draft it restores. */
 	stickyUndoSend: (undoToken: string) => __TAURI_INVOKE<StickyDraftView>("sticky_undo_send", { undoToken }),
+	/**  `graph:clear-layout`: forgets the view's layout. */
+	graphClearLayout: (viewKey: string) => __TAURI_INVOKE<null>("graph_clear_layout", { viewKey }),
+	/**  `graph:get-layout`: the layout saved for the view, `null` when none reads. */
+	graphGetLayout: (viewKey: string) => __TAURI_INVOKE<GraphLayoutView | null>("graph_get_layout", { viewKey }),
+	/**  `graph:save-layout`: replaces the view's layout. */
+	graphSaveLayout: (viewKey: string, layout: GraphLayoutView) => __TAURI_INVOKE<null>("graph_save_layout", { viewKey, layout }),
 };
 
 /** Events */
@@ -2651,6 +2657,19 @@ export type GlobalCaptureResult = {
 	status: ShortcutStatus,
 	/**  Whether the built-in fallback holds quick capture. */
 	fallbackRegistered: boolean,
+};
+
+/**  `GraphLayoutNodeSchema`. */
+export type GraphLayoutNodeView = {
+	x: number | null,
+	y: number | null,
+	pinned?: boolean | null,
+};
+
+/**  `GraphLayoutSchema`. */
+export type GraphLayoutView = {
+	version: number,
+	nodes: { [key in string]: GraphLayoutNodeView },
 };
 
 export type HeaderPair = {
