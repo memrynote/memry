@@ -4,7 +4,7 @@
 use tauri::Wry;
 use tauri_specta::{Builder, ErrorHandlingMode, collect_commands, collect_events};
 
-use crate::startup::StartupState;
+use crate::{commands::calendar, startup::StartupState};
 
 // The bookmark and recents commands and events (`registry/bookmarks.rs`).
 #[macro_use]
@@ -40,7 +40,7 @@ pub fn builder() -> Builder<Wry> {
         .dangerously_cast_bigints_to_number()
         // One type per struct: the renderer reads `StartupState` and never writes it.
         .disable_serde_phases()
-        .commands(with_inbox_commands!(collect_commands![
+        .commands(calendar::collect_commands_with_calendar!([
             // account
             crate::commands::account::account_get_info,
             crate::commands::account::auth_cancel_oauth,
@@ -472,7 +472,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::shell::window_set_caption_rects,
             crate::commands::shell::window_toggle_maximize,
         ]))
-        .events(with_inbox_events!(collect_events![
+        .events(calendar::collect_events_with_calendar!([
             // account
             crate::events::AuthOauthCallbackEvent,
             crate::events::AuthOauthErrorEvent,

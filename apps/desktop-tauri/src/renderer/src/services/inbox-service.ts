@@ -30,7 +30,6 @@ import type {
   InboxListResponse,
   InboxMetadataCompleteEvent,
   InboxProcessingErrorEvent,
-  InboxSnoozeDueEvent,
   InboxSnoozedEvent,
   InboxStats,
   InboxSuggestionsResponse as SuggestionsResponse,
@@ -43,7 +42,7 @@ import type {
   TranscribeAudioInput,
   TranscribeAudioResponse
 } from '@memry/rpc/inbox'
-import { commands, events } from '../../../generated/bindings'
+import { commands, events, type InboxSnoozeDueEvent } from '../../../generated/bindings'
 import { invokeBinary } from '../lib/ipc-binary'
 import { subscribeToEvent } from './tauri-event'
 import { createWindowApiForwarder } from './window-api-forwarder'
@@ -134,8 +133,9 @@ export function onInboxSnoozed(callback: (event: InboxSnoozedEvent) => void): ()
   return window.api.onInboxSnoozed(callback)
 }
 
+/** The snooze scheduler brought `items` back: refresh the list, show the banner and toast. */
 export function onInboxSnoozeDue(callback: (event: InboxSnoozeDueEvent) => void): () => void {
-  return window.api.onInboxSnoozeDue(callback)
+  return subscribeToEvent(events.inboxSnoozeDueEvent, callback)
 }
 
 /** The daily review nudge fired: `count` captures to review. */

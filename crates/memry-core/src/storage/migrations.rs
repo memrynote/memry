@@ -274,6 +274,11 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "graph_layouts",
         sql: include_str!("migrations/data/0044_graph_layouts.sql"),
     },
+    Migration {
+        version: 45,
+        name: "attachment_revivals",
+        sql: include_str!("migrations/data/0045_attachment_revivals.sql"),
+    },
 ];
 
 /// `index.db`: the rebuildable search and link index.

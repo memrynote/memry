@@ -71,6 +71,7 @@ fn calendar_day(conn: &Connection) -> Vec<ProjectionItem> {
         start_at: "2026-03-20T00:00:00.000Z".into(),
         end_at: "2026-03-21T00:00:00.000Z".into(),
         include_unselected_sources: false,
+        include_completed_tasks: false,
         include_external: false,
         external_providers: None,
         enabled_property_names: vec![],
