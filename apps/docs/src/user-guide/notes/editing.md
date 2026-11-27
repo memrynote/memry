@@ -832,6 +832,18 @@ This works inside a table cell too. **Mention** replaces the pasted URL in that 
 
 A Markdown document you copy from an AI chat such as Claude or bolt.new, or from a text editor, pastes as formatted blocks: headings, bulleted and numbered lists, quotes, tables, and code blocks. This works with either line ending, so text copied on Windows (where lines end in `\r\n`) gives the same blocks as text copied on macOS or Linux.
 
+Pasted Markdown is read the same way MemryNote reads a note file, so a paste gives the blocks the note will show after it is saved and opened again:
+
+- A `> [!note]` or `> [!tip]` callout becomes a [callout](#callouts). The same rules apply as in a file: a callout with a title, a type MemryNote does not have, or an uppercase marker stays a quote.
+- A `$$` equation on lines of its own becomes an [equation block](#equations).
+- A code fence tagged `mermaid` becomes a [diagram](#diagrams).
+- A line holding only an image becomes an image block, and a YouTube link written as an image (`![](https://www.youtube.com/watch?v=…)`) becomes a playable embed.
+- A toggle that MemryNote saved (`<details data-memry-toggle>`) becomes a [toggle](#toggle-lists) again. A plain `<details>` section from somewhere else stays as text, as it does in a file.
+
+Pasting into an empty line replaces it. Pasting in the middle of a paragraph splits it: a first line of plain text joins the text before the cursor, and a callout, equation or table starts its own block. **Undo** takes back the whole paste in one step.
+
+When the clipboard also carries rich text, as it does when you copy part of a web page, the rich text is pasted unless the plain text looks like Markdown. A code block keeps everything you paste into it as plain text.
+
 ## Pasting into a Table Cell
 
 Pasted text is normally read as Markdown, so a pasted `# Heading` becomes a heading and a pasted `| a | b |` becomes a table. Inside a table cell that reading is switched off: a cell holds text, and text is what you get. Paste a row of pipes into a cell and you get a row of pipes, not a second table spliced over the one you are editing.

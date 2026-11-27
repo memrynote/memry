@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { BlockNoteEditor } from '@blocknote/core'
 import { TextSelection } from '@tiptap/pm/state'
 import { handleEditorPaste, isSelectionInTableCell } from './table-cell-paste'
@@ -166,14 +166,19 @@ describe('pasting markdown with Windows line endings', () => {
     ''
   ].join('\r\n')
 
-  function pastedBlocks(clipboard: Record<string, string>): Array<[string, string]> {
+  async function pastedBlocks(clipboard: Record<string, string>): Promise<Array<[string, string]>> {
     const editor = mountEditor()
     const intro = findText(editor, 'Intro')
     select(editor, intro.to, intro.to)
 
     const data = new FakeDataTransfer()
     for (const [type, value] of Object.entries(clipboard)) data.setData(type, value)
+    const before = JSON.stringify(editor.document)
     dispatchClipboardEvent(editor, 'paste', data)
+    // Parsing pasted markdown is asynchronous (see paste-markdown.ts).
+    await vi.waitFor(() => {
+      expect(JSON.stringify(editor.document)).not.toBe(before)
+    })
 
     return editor.document
       .filter((block) => block.type !== 'table')
@@ -193,12 +198,12 @@ describe('pasting markdown with Windows line endings', () => {
     ['codeBlock', 'const x = 1']
   ]
 
-  it('parses plain text into lists and code blocks', () => {
-    expect(pastedBlocks({ 'text/plain': doc })).toEqual(expect.arrayContaining(expected))
+  it('parses plain text into lists and code blocks', async () => {
+    expect(await pastedBlocks({ 'text/plain': doc })).toEqual(expect.arrayContaining(expected))
   })
 
-  it('parses the markdown when the clipboard also carries HTML', () => {
-    const blocks = pastedBlocks({ 'text/html': '<p>rendered</p>', 'text/plain': doc })
+  it('parses the markdown when the clipboard also carries HTML', async () => {
+    const blocks = await pastedBlocks({ 'text/html': '<p>rendered</p>', 'text/plain': doc })
     expect(blocks).toEqual(expect.arrayContaining(expected))
   })
 })

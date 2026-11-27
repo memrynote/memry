@@ -224,6 +224,10 @@ describe('pasting markdown as plain text', () => {
       ['paragraph', 'end'],
       ['paragraph', 'after']
     ])
+    // The split copies the block's id onto its second half; a duplicate id
+    // breaks every block lookup in the editor.
+    const ids = editor.document.map((block) => block.id)
+    expect(new Set(ids).size).toBe(ids.length)
   })
 
   it('puts a block pasted at the end of a paragraph after it', async () => {

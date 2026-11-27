@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { BlockNoteEditor } from '@blocknote/core'
 import { parsePortalDefinition } from '@memry/shared/portal-block'
 import { handleEditorPaste } from '../table-cell-paste'
@@ -41,7 +41,7 @@ afterEach(() => {
 })
 
 describe('pasting a "Copy as portal" fence', () => {
-  it('inserts a memry-portal block with the copied definition', () => {
+  it('inserts a memry-portal block with the copied definition', async () => {
     const editor = BlockNoteEditor.create({
       pasteHandler: handleEditorPaste,
       initialContent: [{ type: 'paragraph', content: '' }]
@@ -58,10 +58,14 @@ describe('pasting a "Copy as portal" fence', () => {
     Object.defineProperty(event, 'clipboardData', { value: data })
     ;(editor as any).prosemirrorView.dom.dispatchEvent(event)
 
-    const portal = (editor.document as any[]).find(
-      (block) => block.type === 'codeBlock' && block.props.language === 'memry-portal'
-    )
-    expect(portal).toBeDefined()
+    // Parsing pasted markdown is asynchronous (see paste-markdown.ts).
+    const portal = await vi.waitFor(() => {
+      const found = (editor.document as any[]).find(
+        (block) => block.type === 'codeBlock' && block.props.language === 'memry-portal'
+      )
+      expect(found).toBeDefined()
+      return found
+    })
     const text = portal.content.map((run: { text: string }) => run.text).join('')
     const parsed = parsePortalDefinition(text)
     expect(parsed.ok && parsed.definition.target).toEqual(definition.target)

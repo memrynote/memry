@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { BlockNoteEditor } from '@blocknote/core'
 import { TextSelection } from '@tiptap/pm/state'
 import { handleEditorPaste } from './table-cell-paste'
@@ -246,15 +246,18 @@ describe('pasting a bare URL', () => {
     expect(inlineShape(block)).toBe(`before<link ${URL}>after`)
   })
 
-  it('leaves plain text that is not a bare URL to the default handler', () => {
+  it('leaves plain text that is not a bare URL to the markdown paste', async () => {
     const editor = mountEditor([{ type: 'bulletListItem', content: 'beforeafter' }])
     placeCursorInside(editor, 'beforeafter', 'before'.length)
 
     paste(editor, 'see https://example.com for more')
 
-    const [block] = editor.document as any[]
-    expect(block.type).toBe('bulletListItem')
-    // The default handler's own autolinking, untouched by this fix.
-    expect(inlineShape(block)).toBe('beforesee <link https://example.com> for moreafter')
+    // Parsing pasted markdown is asynchronous (see paste-markdown.ts).
+    await vi.waitFor(() => {
+      const [block] = editor.document as any[]
+      expect(block.type).toBe('bulletListItem')
+      // The markdown parser's own autolinking, untouched by this fix.
+      expect(inlineShape(block)).toBe('beforesee <link https://example.com> for moreafter')
+    })
   })
 })
