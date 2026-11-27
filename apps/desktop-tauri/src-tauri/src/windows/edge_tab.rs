@@ -211,35 +211,34 @@ fn cursor_display(app: &AppHandle<Wry>) -> Option<Placement> {
     })
 }
 
-fn bounds(state: &TabState) -> Option<edge_tab::Bounds> {
-    let placement = state.placement?;
-    Some(edge_tab::bounds(
+fn place(window: &WebviewWindow<Wry>, state: &TabState) -> tauri::Result<()> {
+    let Some(placement) = state.placement else {
+        return Ok(());
+    };
+    let bounds = edge_tab::bounds(
         placement.area,
         placement.scale,
         state.edge,
         state.peeking,
         state.drafts,
-    ))
-}
-
-fn place(window: &WebviewWindow<Wry>, state: &TabState) -> tauri::Result<()> {
-    let Some(bounds) = bounds(state) else {
-        return Ok(());
-    };
+    );
     // The corner first: on another display the size is then read at that display's scale.
     window.set_position(PhysicalPosition::new(bounds.x, bounds.y))?;
+    #[cfg(target_os = "linux")]
+    {
+        use gtk::prelude::WidgetExt;
+        // GTK holds a non-resizable window at its natural size, 200x200 for a page that requests
+        // none (`NO_CONTENT_CHILD_NAT`), and `set_size` cannot take it below that. A size request
+        // makes the window's natural size the tab's. Runs on the main thread, which owns GTK.
+        window
+            .gtk_window()?
+            .set_size_request(bounds.width.round() as i32, bounds.height.round() as i32);
+    }
     window.set_size(LogicalSize::new(bounds.width, bounds.height))
 }
 
 fn build(app: &AppHandle<Wry>) -> tauri::Result<()> {
-    let initial = bounds(&app.state::<EdgeTab>().lock());
-    let mut builder = sticky::floating_page(app, LABEL, "sticky-tab");
-    // Built at its collapsed size: GTK keeps a non-resizable window at least as big as the size
-    // it was built with (800x600 by default), so a later `set_size` could not shrink it.
-    if let Some(initial) = initial {
-        builder = builder.inner_size(initial.width, initial.height);
-    }
-    let window = builder
+    let window = sticky::floating_page(app, LABEL, "sticky-tab")
         .title("Sticky drafts")
         .focused(false)
         .focusable(false)
