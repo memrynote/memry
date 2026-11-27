@@ -1620,6 +1620,10 @@ const htmlCommentCases: RoundtripCase[] = [
     canonical: '| h            |\n| ------------ |\n| ```a``\\|b``` |'
   },
   { name: 'code span holding two backticks on a quote line', markdown: '> `c``c`\n> y' },
+  // Breaks right after a code span sit in its run, where the writer had no
+  // `<br>` for them.
+  { name: 'code span then three breaks', markdown: '`a`<br><br><br>b' },
+  { name: 'code span then a break ending the paragraph', markdown: '`a`<br>' },
   // A break splits a code run into one span per line, each stripped on its own.
   { name: 'code spans of a led line and of spaces across a break', markdown: 'x ` y`\n`  `' },
   { name: 'code span with a space at both ends after a break', markdown: '`a`\n`  b  `' },
