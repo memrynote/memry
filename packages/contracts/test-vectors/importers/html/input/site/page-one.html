@@ -1,0 +1,39 @@
+<!doctype html>
+<html>
+<head><title>  Page One &amp; Co  </title></head>
+<body>
+<h1>Heading <em>one</em></h1>
+<p>Text with <strong>bold</strong>, <b>b</b>, <i>i</i>, <del>gone</del>, <mark>hi</mark>, <code>x &lt; y</code> and <time>@10:00</time>.<br>Next line</p>
+loose text <span>inline span</span> <a href="https://example.com/a?b=1">external</a> <a href="mailto:me@example.com">mail</a>
+<div>Wiki: <a href="page-two.htm#top">second</a> and <a href="./PAGE-TWO.HTM?x=1">again</a> and <a href="doc.pdf">pdf link</a> and <a href="">empty</a> <a href="missing.md"></a></div>
+<ul>
+  <li>plain <ul><li><input type="checkbox" checked> child done</li><li><input type="checkbox"> child open</li></ul></li>
+  <li class="to-do">class todo</li>
+  <li><span class="checkbox checkbox-on"></span>notion style</li>
+</ul>
+<ol><li>first</li><li>second<ol><li>inner</li></ol></li></ol>
+<blockquote><p>quoted</p><p>twice</p></blockquote>
+<blockquote>bare quote</blockquote>
+<pre><code class="language-Rust">fn main() {}
+</code></pre>
+<pre class="language-js">let a = 1</pre>
+<hr>
+<table><tr><th>A</th><th>B</th></tr><tr><td>1</td></tr><tr><td>x<br>y</td><td>2</td><td>3</td></tr></table>
+<figure class="callout"><span>i</span><div><p>Callout body</p></div></figure>
+<figure><img src="local.png" alt=" Fig "><figcaption>cap</figcaption></figure>
+<img src="sub/my%20image.png" alt="spaced">
+<img src="data:image/png;base64,iVBORw0KGgo=" alt="inline">
+<img src="http://example.com/insecure.png" alt="insecure">
+<img src="https://localhost/x.png" alt="loop">
+<img src="https://127.0.0.1/x.png" alt="ip">
+<img src="https://[::1]/x.png" alt="v6">
+<img src="../outside.png" alt="outside">
+<img src="nothere.png" alt="missing">
+<img src="doc.pdf" alt="as file">
+<img src="tool.exe" alt="refused">
+<img src="bad%zz.png" alt="bad escape">
+<img alt="no src">
+<section><article><main><header><h2>Deep</h2></header><h6>six</h6></main></article></section>
+<!-- comment -->
+</body>
+</html>
