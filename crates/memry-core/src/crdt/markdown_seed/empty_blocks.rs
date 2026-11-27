@@ -80,14 +80,11 @@ fn blank(c: char) -> bool {
     matches!(c, ' ' | '\t')
 }
 
-/// `/^ {0,3}#{1,6}[ \t]*$/`.
+/// `/^#{1,6}[ \t]*$/`: flush left, since BlockNote reads an indented `#` as
+/// paragraph text.
 fn is_empty_heading(line: &str) -> bool {
-    let rest = line.trim_start_matches(' ');
-    if line.len() - rest.len() > 3 {
-        return false;
-    }
-    let hashes = rest.chars().take_while(|c| *c == '#').count();
-    (1..=6).contains(&hashes) && rest[hashes..].chars().all(blank)
+    let hashes = line.chars().take_while(|c| *c == '#').count();
+    (1..=6).contains(&hashes) && line[hashes..].chars().all(blank)
 }
 
 /// The text after a list marker, and whether the marker is a bullet:
@@ -151,11 +148,16 @@ mod tests {
     }
 
     #[test]
-    fn a_marker_line_inside_a_paragraph_keeps_its_chunk_literal() {
-        let (mut blocks, mut fallbacks) = (Vec::new(), Vec::new());
-        crate::crdt::markdown_seed::blocks::parse_chunk("a  \n #", &mut blocks, &mut fallbacks);
-        assert_eq!(fallbacks.len(), 1);
-        assert!(!leaks_placeholder(&blocks));
+    fn only_a_flush_left_hash_is_an_empty_heading() {
+        assert_eq!(mask_empty_block_lines(" #"), " #");
+        assert_eq!(mask_empty_block_lines("   ##\t"), "   ##\t");
+        assert_eq!(mask_empty_block_lines("a  \n #"), "a  \n #");
+    }
+
+    #[test]
+    fn a_placeholder_left_in_text_is_seen_and_empty_blocks_lose_theirs() {
+        let leaked = [SeedBlock::literal(&format!("a {PLACEHOLDER}"))];
+        assert!(leaks_placeholder(&leaked));
         let (mut blocks, mut fallbacks) = (Vec::new(), Vec::new());
         crate::crdt::markdown_seed::blocks::parse_chunk("#\n\n-\n- a", &mut blocks, &mut fallbacks);
         assert!(fallbacks.is_empty());

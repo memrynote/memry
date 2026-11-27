@@ -129,17 +129,20 @@ fence's info string, `""` for an untagged fence or an indented run, never BlockN
   row, so `` ` |`é `` keeps its leading space and `` ` a`b `` does not
   (`packages/editor-schema/src/inline/cell-code-spans.ts:95-111`,
   `crates/memry-core/src/crdt/markdown_seed/code_spans.rs:22`).
-- **A marker alone on its line is an empty block.** A heading line of `#` to `######` with
-  nothing after it is an empty heading, and a bullet (`-`, `*`, `+`), a number (`1.`, `1)`) or
+- **A marker alone on its line is an empty block.** A flush-left heading line of `#` to
+  `######` with nothing after it is an empty heading (an indented one gets no placeholder and
+  is left to the parser), and a bullet (`-`, `*`, `+`), a number (`1.`, `1)`) or
   a to-do (`- [ ]`, a box only after a bullet) with nothing after it is an empty item, where
   BlockNote's parser reads each as a paragraph of the marker. An item line counts only at the
   top of the text, after a blank line or after another item line, so `-` under paragraph text
   stays text, and never inside a fence. Desktop gives each such line a placeholder word for the
   parser and takes it back out (`packages/editor-schema/src/empty-blocks.ts:24-33`, `:35-50`,
-  `:56-66`, called from `packages/editor-schema/src/parse-markdown.ts:379`, `:399`), so the last
+  `:56-71`, called from `packages/editor-schema/src/parse-markdown.ts:379`, `:399`), and strips
+  any it left inside text, so the last
   line of `1. \n2. ` is an empty numbered item, not a paragraph; the core does the same
   (`crates/memry-core/src/crdt/markdown_seed/empty_blocks.rs:20`, `:46`,
-  `crates/memry-core/src/crdt/markdown_seed/blocks.rs:43`, `:78`).
+  `crates/memry-core/src/crdt/markdown_seed/blocks.rs:46`, `:73`). A placeholder the parser
+  does leave in text keeps its chunk literal (`empty_blocks.rs:61`).
 - **A table row is never read as a hard break.** A line holding a `|` with a delimiter row
   below it opens a table, which runs until a line without a pipe, and a `\` ending
   one of its rows is the last cell's text, never a break token: `| a \` seeds the header cell `a \`
