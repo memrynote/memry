@@ -141,8 +141,9 @@ struct SlashMenuConvertTests {
         let field = BlockField(block: block, session: session, style: style, alignment: .natural)
         field.render()
         session.focusChanged(to: field)
-        field.textView.selectedRange = NSRange(location: (typed as NSString).length, length: 0)
-        session.selectionChanged(in: field)
+        field.textView.text = "Milk "
+        field.textView.selectedRange = NSRange(location: 5, length: 0)
+        field.typeKeys("/numbered")
         session.choose(try #require(session.suggestions.first { $0.id == "slash:numbered_list" }))
         await settle()
         #expect(try await line() == "numberedListItem Milk")
