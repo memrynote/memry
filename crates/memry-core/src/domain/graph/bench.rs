@@ -10,12 +10,13 @@ use rusqlite::{Connection, params};
 use super::rows::{self, Among};
 use super::{graph_data, local_graph};
 use crate::domain::canvas::edges as canvas_edges;
+use crate::storage::nested_tx;
 use crate::storage::test_support::temp_dir;
 use crate::storage::{open_data, open_index};
 
 fn seed(data: &Connection, index: &Connection, n: usize) {
-    data.execute_batch("BEGIN").expect("begin data");
-    index.execute_batch("BEGIN").expect("begin index");
+    let data_tx = nested_tx::begin(data).expect("begin data");
+    let index_tx = nested_tx::begin(index).expect("begin index");
     for i in 0..n {
         data.execute(
             "INSERT INTO notes (id, title, file_type) VALUES (?1, ?2, 'markdown')",
@@ -127,8 +128,8 @@ fn seed(data: &Connection, index: &Connection, n: usize) {
             )
             .expect("canvas edge");
     }
-    data.execute_batch("COMMIT").expect("commit data");
-    index.execute_batch("COMMIT").expect("commit index");
+    data_tx.commit().expect("commit data");
+    index_tx.commit().expect("commit index");
 }
 
 /// The fastest of nine runs, after one warm-up: on a loaded host the minimum is the closest
