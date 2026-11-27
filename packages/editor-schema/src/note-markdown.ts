@@ -37,6 +37,7 @@ import {
   splitMarkdownByColumnRegions
 } from './blocks/columns'
 import { opensBlock } from './blocks/block-starts'
+import { liftItemChildRuns } from './blocks/item-children'
 import { readStructuredQuoteRun, resolveQuoteRun } from './blocks/quote'
 
 /**
@@ -270,7 +271,7 @@ async function parseContentWithMarkers<B extends NoteBlock<B>>(
   }
 
   const fence = createFenceTracker()
-  const lines = text.split('\n')
+  const lines = host.legacyBlocks ? text.split('\n') : liftItemChildRuns(text.split('\n'))
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]
