@@ -106,3 +106,27 @@ fn unmatched_backtick_runs_beside_a_comment_plan_in_linear_time() {
 fn one_long_backtick_run_plans_in_linear_time() {
     within("one run", format!("a{}", "`".repeat(8000)), BOUND);
 }
+
+#[test]
+fn adjacent_html_comments_on_one_line_plan_in_linear_time() {
+    within("html comments", "<!-- a -->".repeat(4000), BOUND);
+    within("html comments, spaced", "<!-- a --> ".repeat(4000), BOUND);
+}
+
+#[test]
+fn adjacent_percent_comments_beside_code_spans_plan_in_linear_time() {
+    within("%% comments", "%% a %%".repeat(8000), BOUND);
+    within("%% comments, code spans", "`a`%% a %%".repeat(4000), BOUND);
+}
+
+#[test]
+fn many_comments_in_a_table_row_plan_in_linear_time() {
+    let row = format!("| {} |", "<!-- a --> ".repeat(4000));
+    within("comments in a table row", row, BOUND);
+}
+
+#[test]
+fn many_unclosed_html_comments_before_a_fence_plan_in_linear_time() {
+    let text = format!("{}```\n", "x <!--\n".repeat(4000));
+    within("unclosed comments, then a fence", text, BOUND);
+}
