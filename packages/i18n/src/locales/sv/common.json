@@ -1,4 +1,7 @@
 {
+  "wikiLink": {
+    "openFailed": "Det gick inte att öppna den här länken"
+  },
   "portalBlock": {
     "copyFailed": "Det gick inte att kopiera portalen",
     "hiddenCount": "{count} dolda",
@@ -956,6 +959,8 @@
     "componentsVaultSwitcher": {
       "noVaultsYet": "Inga valv ännu",
       "openVault": "Öppna valv",
+      "createVault": "Skapa valv",
+      "openFolderAsVault": "Öppna mapp som valv",
       "settings": "Inställningar",
       "remove": "Ta bort ”",
       "removeVaultTitle": "Ta bort ”{name}” från listan?",

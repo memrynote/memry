@@ -11,6 +11,7 @@ use std::time::Duration;
 use memry_core::api::editor::Editor;
 use memry_core::api::errors::SecureStoreError;
 use memry_core::api::errors::StorageError;
+use memry_core::crdt::epoch::HeldBody;
 use memry_core::crdt::{body_writes, update_log};
 use memry_core::domain::external_feed::{FeedInput, FeedOutcome};
 use memry_core::domain::vault_locks::TargetKind;
@@ -749,4 +750,51 @@ fn a_window_edit_waiting_for_an_outside_edit_reaches_the_other_windows_after_it(
     writer.join().unwrap().unwrap();
 
     assert_eq!(kinds(&side_frames), [(2, None), (0, None)]);
+}
+
+/// Readwise's busy check (`note-writer.ts:223`): open in a window or closed within the grace
+/// period, or a server update less than the window ago.
+#[test]
+fn a_note_is_busy_while_a_window_holds_it_and_after_a_server_update() {
+    let env = env();
+    let note = env.note();
+    let quiet = env.note();
+    let window = Duration::from_secs(60);
+    assert!(!env.host.is_busy(&env.vault, &note, window));
+
+    let (main, frames) = env.open(&note, "main");
+    assert!(env.host.is_busy(&env.vault, &note, Duration::ZERO));
+    assert!(!env.host.took_remote_update(&env.vault, &note, window));
+
+    let update = main.type_text("from the server");
+    let db = env.session.current().unwrap().vault.db_handle();
+    let id = note.clone();
+    db.call_blocking(move |conn| {
+        HeldBody::never_purged(conn, &id)
+            .and_then(|held| held.append_server_update(1, &update, 1))
+            .map_err(|error| StorageError::Failed {
+                what: error.to_string(),
+            })
+    })
+    .unwrap();
+    assert_eq!(kinds(&frames), [(1, None)]);
+    assert!(env.host.took_remote_update(&env.vault, &note, window));
+    assert!(
+        !env.host
+            .took_remote_update(&env.vault, &note, Duration::ZERO)
+    );
+
+    // Closed: held within the grace period, and the server update still counts.
+    env.host.close(&note, "main");
+    assert!(env.host.is_busy(&env.vault, &note, Duration::ZERO));
+    assert!(env.host.took_remote_update(&env.vault, &note, window));
+    assert!(!env.host.is_busy(&env.vault, &quiet, window));
+
+    // A run that outlived its vault leaves every note alone.
+    let elsewhere = env.vault.with_file_name("another-vault");
+    assert!(env.host.is_busy(&elsewhere, &quiet, window));
+    assert!(
+        env.host
+            .took_remote_update(&elsewhere, &quiet, Duration::ZERO)
+    );
 }

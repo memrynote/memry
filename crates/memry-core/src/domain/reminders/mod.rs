@@ -253,7 +253,7 @@ pub fn snooze(
 
 /// Stamp, merge and queue one edit. A tombstoned reminder is refused: an edit
 /// would resurrect nothing and push an upsert for a row every peer deleted.
-fn edit(
+pub(crate) fn edit(
     conn: &Connection,
     id: &str,
     changes: Vec<(&'static str, Change)>,

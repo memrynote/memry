@@ -96,6 +96,21 @@ export function finalSnapshotPushTimeoutMs(deadline: ShutdownDeadline): number {
   )
 }
 
+/** Ceiling on quit's wait for the attachment downloads the sync stop aborts. */
+const SHUTDOWN_DOWNLOAD_SETTLE_MS = 2_000
+
+/**
+ * Quit's wait for the attachment downloads the sync stop aborts, clamped like
+ * the final push so the vault close keeps its reserve. Past it they record
+ * nothing: the stop already owed them (REVIEW-5722).
+ */
+export function shutdownDownloadSettleMs(deadline: ShutdownDeadline): number {
+  return Math.max(
+    0,
+    Math.min(SHUTDOWN_DOWNLOAD_SETTLE_MS, deadline.remainingMs() - SHUTDOWN_CLOSE_VAULT_RESERVE_MS)
+  )
+}
+
 /**
  * Budget `close-vault` keeps for what follows its projection drain: the
  * activity-log close and the SQLite checkpoint and close.

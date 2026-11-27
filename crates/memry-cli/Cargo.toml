@@ -53,3 +53,7 @@ yrs = { workspace = true }
 # A unique scratch directory per call that removes itself; `std::process::id()` in a
 # name collides across test binaries when the OS recycles process ids.
 tempfile = "3"
+memry-core = { path = "../memry-core", features = ["test-support"] }
+# `test-util` for a paused clock: the slow-pack tests run minutes of transfer
+# in virtual time.
+tokio = { workspace = true, features = ["test-util"] }

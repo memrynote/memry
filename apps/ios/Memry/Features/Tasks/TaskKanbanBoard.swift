@@ -6,7 +6,9 @@ import SwiftUI
 //
 // **Paged columns.** One column at a time, paging horizontally
 // (`viewAligned`), the next one peeking in at the trailing edge; page dots
-// below say where you are and page on tap. The title header scrolls away
+// below say where you are and page on tap. At regular width a column stops
+// at `maxColumnWidth`, so a wide pane shows several at once (#4350); compact
+// width keeps one column per page. The title header scrolls away
 // with the board as it does on the list. The column mode is the "…" menu's
 // "Columns" (RD12).
 //
@@ -21,9 +23,17 @@ struct TaskKanbanBoard<Header: View>: View {
 
     @State private var dueBuckets: [String: String] = [:]
     @State private var visibleColumn: String?
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
 
     /// How much of the next column shows at the trailing edge.
     private static var peek: CGFloat { Tokens.Size.minimumHitArea + Tokens.Space.section }
+    /// A column's widest at regular width: about desktop's column.
+    private static var maxColumnWidth: CGFloat { 340 }
+
+    private var columnCap: CGFloat {
+        LayoutWidth(horizontal: horizontalSizeClass, vertical: verticalSizeClass) == .regular ? Self.maxColumnWidth : .infinity
+    }
 
     var body: some View {
         let lanes = store.kanbanLanes(dueBuckets: dueBuckets)
@@ -43,7 +53,7 @@ struct TaskKanbanBoard<Header: View>: View {
                                 onDrop: drop
                             )
                             .containerRelativeFrame(.horizontal) { length, _ in
-                                max(length - Self.peek - Tokens.Space.medium, Tokens.Size.minimumHitArea)
+                                min(max(length - Self.peek - Tokens.Space.medium, Tokens.Size.minimumHitArea), columnCap)
                             }
                             .id(lane.id)
                         }

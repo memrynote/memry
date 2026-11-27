@@ -4,7 +4,11 @@ import { renderWithProviders } from '@tests/utils/render'
 import type { NoteSyncState } from '@memry/contracts/ipc-sync-ops'
 import { NoteSyncLine } from './note-sync-line'
 
-const getNoteSyncState = vi.fn<(noteId: string) => Promise<NoteSyncState | null>>()
+const { getNoteSyncState } = vi.hoisted(() => ({
+  getNoteSyncState: vi.fn<(noteId: string) => Promise<NoteSyncState | null>>()
+}))
+
+vi.mock('@/services/sync-service', () => ({ syncService: { getNoteSyncState } }))
 
 const base: NoteSyncState = {
   state: 'confirmed',
@@ -17,11 +21,6 @@ const base: NoteSyncState = {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  const api = window.api as typeof window.api & {
-    syncOps?: { getNoteSyncState?: typeof getNoteSyncState }
-  }
-  api.syncOps = api.syncOps ?? {}
-  api.syncOps.getNoteSyncState = getNoteSyncState
 })
 
 describe('NoteSyncLine (#2647)', () => {

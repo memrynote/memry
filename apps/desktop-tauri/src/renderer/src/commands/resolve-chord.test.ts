@@ -6,6 +6,7 @@ import { resolveChord, resolveFolderChord, type KeydownEnv } from './resolve-cho
 // Off macOS `meta` is Ctrl, so a default of ⌘W is a Ctrl+W keystroke here.
 const env = (overrides: Partial<KeydownEnv> = {}): KeydownEnv => ({
   isMac: false,
+  isLinux: false,
   isRecording: false,
   isBlocked: false,
   isInInput: false,
@@ -261,6 +262,25 @@ describe('resolveChord: platform bindings and AltGr', () => {
     const altGr = press(nextVaultOther)
     altGr.getModifierState = (key: string) => key === 'AltGraph'
     expect(resolve(altGr, env())).toBeNull()
+  })
+
+  it("opens today's journal on ⌥⌘T and Ctrl+Alt+T, and leaves ⌘T to the new tab", () => {
+    // Option composes ⌥T into † on macOS; the chord matches the physical key.
+    const optionT = press({ key: '†', code: 'KeyT', metaKey: true, altKey: true })
+    expect(resolve(optionT, env({ isMac: true }))).toBe('go.journal')
+    expect(resolve(press({ key: 't', ctrlKey: true, altKey: true }), env())).toBe('go.journal')
+    expect(resolve(press({ key: 't', metaKey: true }), env({ isMac: true }))).toBe('tabs.newTab')
+
+    const altGrT = press({ key: 't', ctrlKey: true, altKey: true })
+    altGrT.getModifierState = (key: string) => key === 'AltGraph'
+    expect(resolve(altGrT, env())).toBeNull()
+  })
+
+  it("opens today's journal on Ctrl+Alt+J on Linux, where GNOME takes Ctrl+Alt+T", () => {
+    const linux = env({ isLinux: true })
+    expect(resolve(press({ key: 'j', ctrlKey: true, altKey: true }), linux)).toBe('go.journal')
+    expect(resolve(press({ key: 't', ctrlKey: true, altKey: true }), linux)).toBeNull()
+    expect(resolve(press({ key: 'j', ctrlKey: true, altKey: true }), env())).toBeNull()
   })
 
   it('reads ⌘ as the Meta key on macOS and as Ctrl elsewhere', () => {

@@ -6,30 +6,32 @@
 use rusqlite::Connection;
 use serde_json::{Value, json};
 
-use super::{EMPTY_SCENE, ITEM_TYPE, NewCanvas, canonical_scene, create, get, set_scene};
+use super::{
+    CanvasEdit, EMPTY_SCENE, ITEM_TYPE, NewCanvas, Updated, canonical_scene, create, get, update,
+};
 use crate::storage::repositories::sync_items::{self, ApplyOutcome, InboundRecord};
 use crate::storage::{Db, open_data, test_support::temp_dir};
 use crate::sync::apply::{Pending, apply_inbound, apply_inbound_on, apply_page};
 use crate::sync::clock::clock_of;
 
-const VAULT_ID: &str = "vault-1";
-const LOCAL_DEVICE: &str = "device-LOCAL";
-const NOW: i64 = 1_760_000_000_000;
+pub(super) const VAULT_ID: &str = "vault-1";
+pub(super) const LOCAL_DEVICE: &str = "device-LOCAL";
+pub(super) const NOW: i64 = 1_760_000_000_000;
 
 /// `sceneWith(entityId)` as desktop's `JSON.stringify` writes it.
-fn scene_with(entity_id: &str) -> String {
+pub(super) fn scene_with(entity_id: &str) -> String {
     format!(
         r#"{{"type":"excalidraw","version":2,"source":"test","elements":[{{"id":"rect-{entity_id}","type":"rectangle","x":0,"y":0,"width":260,"height":168,"angle":0,"customData":{{"entityType":"note","entityId":"{entity_id}"}}}}],"appState":{{}},"files":{{}},"marker":""}}"#
     )
 }
 
-fn open(label: &str) -> (Db, crate::storage::test_support::TempDir) {
+pub(super) fn open(label: &str) -> (Db, crate::storage::test_support::TempDir) {
     let dir = temp_dir(label);
     let db = open_data(&dir.path().join("data.db")).expect("open data.db");
     (db, dir)
 }
 
-fn inbound(item_id: &str, payload: Value) -> InboundRecord {
+pub(super) fn inbound(item_id: &str, payload: Value) -> InboundRecord {
     InboundRecord {
         item_type: ITEM_TYPE.to_owned(),
         item_id: item_id.to_owned(),
@@ -42,7 +44,7 @@ fn inbound(item_id: &str, payload: Value) -> InboundRecord {
 }
 
 /// `seedCanvas(db, id, scene, clock, opts)`: the local row, as a pull leaves it.
-fn seed(conn: &Connection, id: &str, scene: &str, clock: Value, extra: Value) {
+pub(super) fn seed(conn: &Connection, id: &str, scene: &str, clock: Value, extra: Value) {
     let mut payload = json!({
         "id": id, "vaultId": VAULT_ID, "title": "My Canvas", "scene": scene,
         "folder": null, "icon": null, "ownerNoteId": null, "clock": clock, "deletedAt": null,
@@ -56,14 +58,14 @@ fn seed(conn: &Connection, id: &str, scene: &str, clock: Value, extra: Value) {
     );
 }
 
-fn stored(conn: &Connection, id: &str) -> Value {
+pub(super) fn stored(conn: &Connection, id: &str) -> Value {
     let raw = sync_items::push_payload(conn, ITEM_TYPE, id)
         .expect("read")
         .expect("a payload");
     serde_json::from_str(&raw).expect("JSON")
 }
 
-fn canvas_ids(conn: &Connection) -> Vec<String> {
+pub(super) fn canvas_ids(conn: &Connection) -> Vec<String> {
     let mut statement = conn
         .prepare("SELECT item_id FROM sync_items WHERE item_type = 'canvas' ORDER BY item_id")
         .expect("prepare");
@@ -74,7 +76,7 @@ fn canvas_ids(conn: &Connection) -> Vec<String> {
         .expect("rows")
 }
 
-fn outbox(conn: &Connection) -> Vec<(String, String, String)> {
+pub(super) fn outbox(conn: &Connection) -> Vec<(String, String, String)> {
     let mut statement = conn
         .prepare("SELECT item_type, item_id, op FROM outbox ORDER BY id")
         .expect("prepare");
@@ -325,6 +327,38 @@ fn a_concurrent_edit_over_a_different_scene_keeps_both_drawings() {
     .expect("conflict");
 }
 
+/// The iPad's drawing surface writes back no element missing from the stored
+/// scene (#4378): ink a pull moved off the canvas lives in the conflict copy.
+#[test]
+fn ipad_ink_a_desktop_edit_displaced_stays_in_the_conflict_copy() {
+    let (db, _dir) = open("canvas-ink-conflict");
+    db.call_blocking(|conn| {
+        let ink = r#"{"type":"excalidraw","version":2,"source":"memry","elements":[{"id":"ink-1","type":"freedraw","x":10,"y":20,"points":[[0,0],[40,5]],"pressures":[0.5,0.5],"version":1,"isDeleted":false,"customData":{"memryInk":true,"inkType":"com.apple.ink.pen"}}],"appState":{},"files":{}}"#;
+        seed(conn, "c1", ink, json!({ LOCAL_DEVICE: 1 }), json!({ "ownerNoteId": "note-1" }));
+        let desktop = inbound(
+            "c1",
+            json!({ "id": "c1", "vaultId": VAULT_ID, "scene": scene_with("note-remote"),
+                    "clock": { "B": 3 } }),
+        );
+        assert_eq!(
+            apply_inbound_on(conn, &desktop, NOW, Some(LOCAL_DEVICE))?,
+            ApplyOutcome::Applied
+        );
+
+        assert_eq!(stored(conn, "c1")["scene"], json!(scene_with("note-remote")));
+        let ids = canvas_ids(conn);
+        let copy_id = ids.iter().find(|id| *id != "c1").expect("a copy");
+        let copy = stored(conn, copy_id);
+        assert_eq!(copy["title"], json!("My Canvas (conflict copy)"));
+        let scene: Value = serde_json::from_str(copy["scene"].as_str().expect("scene"))
+            .expect("scene JSON");
+        assert_eq!(scene["elements"][0]["id"], json!("ink-1"));
+        assert_eq!(scene["elements"][0]["customData"]["memryInk"], json!(true));
+        Ok(())
+    })
+    .expect("ink conflict");
+}
+
 #[test]
 fn a_concurrent_edit_over_an_identical_scene_merges_clocks_only() {
     let (db, _dir) = open("canvas-identical");
@@ -400,7 +434,6 @@ fn a_delete_beats_a_concurrent_edit_and_loses_to_a_later_one() {
         let concurrent = apply_page(
             conn,
             vec![delete("c1", clock_of([("B", 1)]))],
-            vec![],
             NOW,
             Some(LOCAL_DEVICE),
             &crate::crypto::agent_envelope::AtRestKey::default(),
@@ -418,7 +451,6 @@ fn a_delete_beats_a_concurrent_edit_and_loses_to_a_later_one() {
         let older = apply_page(
             conn,
             vec![delete("c2", clock_of([("A", 2)]))],
-            vec![],
             NOW,
             Some(LOCAL_DEVICE),
             &crate::crypto::agent_envelope::AtRestKey::default(),
@@ -440,12 +472,13 @@ fn a_local_create_writes_desktops_push_shape_and_queues_it() {
                 title: Some("MB live board"),
                 owner_note_id: Some("note-1"),
                 scene: None,
+                ..NewCanvas::default()
             },
             VAULT_ID,
             LOCAL_DEVICE,
             NOW,
         )?
-        .acknowledge();
+        .canvas;
         let raw = sync_items::push_payload(conn, ITEM_TYPE, &canvas.id)?.expect("a payload");
         assert_eq!(
             raw,
@@ -469,7 +502,14 @@ fn a_scene_edit_is_canonicalized_and_ticks_the_clock() {
     db.call_blocking(|conn| {
         seed(conn, "c1", &scene_with("note-1"), json!({ "B": 3 }), json!({}));
         let pretty = "{\n  \"elements\": [],\n  \"type\": \"excalidraw\",\n  \"memry\": {\"id\": \"c1\"}\n}";
-        let canvas = set_scene(conn, "c1", pretty, LOCAL_DEVICE, NOW)?.acknowledge();
+        let edit = CanvasEdit {
+            scene: Some(pretty),
+            ..CanvasEdit::default()
+        };
+        let Updated::Saved(saved) = update(conn, "c1", &edit, LOCAL_DEVICE, NOW)? else {
+            panic!("no conflict was asked for");
+        };
+        let canvas = saved.canvas;
         assert_eq!(
             canvas.scene,
             r#"{"type":"excalidraw","version":2,"source":"memry","elements":[],"appState":{},"files":{}}"#

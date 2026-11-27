@@ -126,7 +126,7 @@ fn seeded(note_count: usize, task_count: usize) -> Seeded {
         })
         .collect();
 
-    let search = vault.search().expect("the search surface");
+    let search = vault.search(None).expect("the search surface");
     search.reindex().expect("index the vault");
     let notes = vault.notes();
     Seeded {

@@ -1,0 +1,2834 @@
+{
+  "meta": {
+    "spec": "002-native-foundation-ios",
+    "sodiumVersion": "1.0.21",
+    "encoding": "hex unless the field name says otherwise; *Base64/*B64 are standard base64 with padding",
+    "class": "journal-merge",
+    "chapter": "docs/protocol/06-vector-clocks-and-field-merge.md",
+    "implementation": "packages/sync-client/src/journal-merge.ts",
+    "caseCount": 39
+  },
+  "edits": [
+    {
+      "name": "legacy-base-add-tag",
+      "pins": "§6.12.2: an unclocked base clocks no unit and its clock is the floor; the added tag takes the new clock",
+      "base": {
+        "tags": [
+          "lm-jtag"
+        ],
+        "properties": {
+          "mood": "good",
+          "energy": 7
+        },
+        "clock": {
+          "X": 1
+        }
+      },
+      "next": {
+        "tags": [
+          "lm-jtag",
+          "t-a"
+        ],
+        "properties": {
+          "mood": "good",
+          "energy": 7
+        },
+        "clock": {
+          "X": 1,
+          "A": 1
+        }
+      },
+      "expected": {
+        "fieldClocks": {
+          "tags.t-a": {
+            "X": 1,
+            "A": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "A": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1
+        }
+      }
+    },
+    {
+      "name": "remove-tag-leaves-tombstone",
+      "pins": "§6.12.2: a removed tag keeps a clocked unit, the tombstone",
+      "base": {
+        "tags": [
+          "lm-jtag"
+        ],
+        "properties": {
+          "mood": "good",
+          "energy": 7
+        },
+        "clock": {
+          "X": 1
+        }
+      },
+      "next": {
+        "tags": [],
+        "properties": {
+          "mood": "good",
+          "energy": 7
+        },
+        "clock": {
+          "X": 1,
+          "I": 1
+        }
+      },
+      "expected": {
+        "fieldClocks": {
+          "tags.lm-jtag": {
+            "X": 1,
+            "I": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "I": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1
+        }
+      }
+    },
+    {
+      "name": "trusted-base-change-property",
+      "pins": "§6.12.2: unchanged units keep their clocks",
+      "base": {
+        "tags": [
+          "lm-jtag",
+          "t-a"
+        ],
+        "properties": {
+          "mood": "good",
+          "energy": 7
+        },
+        "clock": {
+          "X": 1,
+          "A": 1
+        },
+        "fieldClocks": {
+          "tags.t-a": {
+            "X": 1,
+            "A": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "A": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1
+        }
+      },
+      "next": {
+        "tags": [
+          "lm-jtag",
+          "t-a"
+        ],
+        "properties": {
+          "mood": "tired",
+          "energy": 7
+        },
+        "clock": {
+          "X": 1,
+          "A": 2
+        }
+      },
+      "expected": {
+        "fieldClocks": {
+          "tags.t-a": {
+            "X": 1,
+            "A": 1
+          },
+          "properties.mood": {
+            "X": 1,
+            "A": 2
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "A": 2
+        },
+        "fieldClocksFloor": {
+          "X": 1
+        }
+      }
+    },
+    {
+      "name": "recase-is-a-write",
+      "pins": "§6.12.2: a new spelling of the same tag key is a write to that unit",
+      "base": {
+        "tags": [
+          "Work"
+        ],
+        "properties": {},
+        "clock": {
+          "A": 1
+        }
+      },
+      "next": {
+        "tags": [
+          "work"
+        ],
+        "properties": {},
+        "clock": {
+          "A": 2
+        }
+      },
+      "expected": {
+        "fieldClocks": {
+          "tags.work": {
+            "A": 2
+          }
+        },
+        "fieldClocksAt": {
+          "A": 2
+        },
+        "fieldClocksFloor": {
+          "A": 1
+        }
+      }
+    },
+    {
+      "name": "trusted-base-carries-its-floor",
+      "pins": "§6.12.2: an edit from a base applied whole keeps the base floor (#5572)",
+      "base": {
+        "tags": [],
+        "properties": {
+          "p": 1
+        },
+        "clock": {
+          "X": 1,
+          "O": 1
+        },
+        "fieldClocks": {},
+        "fieldClocksAt": {
+          "X": 1,
+          "O": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1,
+          "O": 1
+        }
+      },
+      "next": {
+        "tags": [
+          "added"
+        ],
+        "properties": {
+          "p": 1
+        },
+        "clock": {
+          "X": 1,
+          "O": 1,
+          "D": 1
+        }
+      },
+      "expected": {
+        "fieldClocks": {
+          "tags.added": {
+            "X": 1,
+            "O": 1,
+            "D": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "O": 1,
+          "D": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1,
+          "O": 1
+        }
+      }
+    },
+    {
+      "name": "no-base",
+      "pins": "§6.12.2: with no synced base an edit carries no unit clocks and is read whole at its clock (VERIFY-5529)",
+      "base": null,
+      "next": {
+        "tags": [
+          "a"
+        ],
+        "properties": {
+          "k": 1
+        },
+        "clock": {
+          "A": 3
+        }
+      },
+      "expected": null
+    },
+    {
+      "name": "edit-keeps-unit-floors-it-did-not-clock",
+      "pins": "§6.12.2: an edit keeps the base fieldFloors of every unit it did not change",
+      "base": {
+        "tags": [],
+        "properties": {
+          "k": 1
+        },
+        "clock": {
+          "X": 1,
+          "D": 3,
+          "E": 1
+        },
+        "fieldClocks": {
+          "properties.k": {
+            "X": 1,
+            "D": 2
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "D": 3,
+          "E": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1,
+          "D": 1,
+          "E": 1
+        },
+        "fieldFloors": {
+          "tags.d": {
+            "X": 1,
+            "E": 1
+          }
+        }
+      },
+      "next": {
+        "tags": [],
+        "properties": {
+          "k": 2
+        },
+        "clock": {
+          "X": 1,
+          "D": 9,
+          "E": 1
+        }
+      },
+      "expected": {
+        "fieldClocks": {
+          "properties.k": {
+            "X": 1,
+            "D": 9,
+            "E": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "D": 9,
+          "E": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1,
+          "D": 1,
+          "E": 1
+        },
+        "fieldFloors": {
+          "tags.d": {
+            "X": 1,
+            "E": 1
+          }
+        }
+      }
+    },
+    {
+      "name": "edit-drops-the-unit-floor-it-clocks",
+      "pins": "§6.12.2: a unit the edit clocks carries its write clock, not its unit floor",
+      "base": {
+        "tags": [],
+        "properties": {
+          "k": 1
+        },
+        "clock": {
+          "X": 1,
+          "D": 3,
+          "E": 1
+        },
+        "fieldClocks": {
+          "properties.k": {
+            "X": 1,
+            "D": 2
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "D": 3,
+          "E": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1,
+          "D": 1,
+          "E": 1
+        },
+        "fieldFloors": {
+          "tags.d": {
+            "X": 1,
+            "E": 1
+          }
+        }
+      },
+      "next": {
+        "tags": [
+          "d"
+        ],
+        "properties": {
+          "k": 1
+        },
+        "clock": {
+          "X": 1,
+          "D": 9,
+          "E": 1
+        }
+      },
+      "expected": {
+        "fieldClocks": {
+          "properties.k": {
+            "X": 1,
+            "D": 2
+          },
+          "tags.d": {
+            "X": 1,
+            "D": 9,
+            "E": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "D": 9,
+          "E": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1,
+          "D": 1,
+          "E": 1
+        }
+      }
+    }
+  ],
+  "wholesales": [
+    {
+      "name": "untrusted-remote-is-its-floor",
+      "pins": "§6.12.1: an older build’s record clocks no unit, and its clock is the floor that carries its removals (#5572)",
+      "remote": {
+        "tags": [],
+        "properties": {
+          "p": 1
+        },
+        "clock": {
+          "X": 1,
+          "O": 1
+        }
+      },
+      "expected": {
+        "fieldClocks": {},
+        "fieldClocksAt": {
+          "X": 1,
+          "O": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1,
+          "O": 1
+        }
+      }
+    },
+    {
+      "name": "stale-stamp-is-dropped",
+      "pins": "§6.12.1: unit clocks an older build kept past their stamp are not writes",
+      "remote": {
+        "tags": [
+          "lm-jtag",
+          "old"
+        ],
+        "properties": {
+          "mood": "good"
+        },
+        "clock": {
+          "X": 1,
+          "C": 1,
+          "O": 1
+        },
+        "fieldClocks": {
+          "properties.p3c": {
+            "X": 1,
+            "C": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "C": 1
+        }
+      },
+      "expected": {
+        "fieldClocks": {},
+        "fieldClocksAt": {
+          "X": 1,
+          "C": 1,
+          "O": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1,
+          "C": 1,
+          "O": 1
+        }
+      }
+    },
+    {
+      "name": "trusted-remote-keeps-its-own",
+      "pins": "§6.12.1: a trusted remote is kept as it arrived",
+      "remote": {
+        "tags": [
+          "lm-jtag",
+          "t-a"
+        ],
+        "properties": {
+          "mood": "good",
+          "energy": 7
+        },
+        "clock": {
+          "X": 1,
+          "A": 1
+        },
+        "fieldClocks": {
+          "tags.t-a": {
+            "X": 1,
+            "A": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "A": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1
+        }
+      },
+      "expected": null
+    },
+    {
+      "name": "trusted-remote-keeps-its-field-floors",
+      "pins": "§6.12.1: a trusted remote with fieldFloors is kept as it arrived",
+      "remote": {
+        "tags": [],
+        "properties": {
+          "k": 1
+        },
+        "clock": {
+          "X": 1,
+          "D": 3,
+          "E": 1
+        },
+        "fieldClocks": {
+          "properties.k": {
+            "X": 1,
+            "D": 2
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "D": 3,
+          "E": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1,
+          "D": 1,
+          "E": 1
+        },
+        "fieldFloors": {
+          "tags.d": {
+            "X": 1,
+            "E": 1
+          }
+        }
+      },
+      "expected": null
+    },
+    {
+      "name": "older-build-echo-of-field-floors-is-whole",
+      "pins": "§6.12.1: an older build kept fieldFloors verbatim but ticked clock, so the record is untrusted and its clock is the floor",
+      "remote": {
+        "tags": [
+          "old"
+        ],
+        "properties": {
+          "k": 1
+        },
+        "clock": {
+          "X": 1,
+          "D": 3,
+          "E": 1,
+          "O": 1
+        },
+        "fieldClocks": {
+          "properties.k": {
+            "X": 1,
+            "D": 2
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "D": 3,
+          "E": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1,
+          "D": 1,
+          "E": 1
+        },
+        "fieldFloors": {
+          "tags.d": {
+            "X": 1,
+            "E": 1
+          }
+        }
+      },
+      "expected": {
+        "fieldClocks": {},
+        "fieldClocksAt": {
+          "X": 1,
+          "D": 3,
+          "E": 1,
+          "O": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1,
+          "D": 3,
+          "E": 1,
+          "O": 1
+        }
+      }
+    }
+  ],
+  "merges": [
+    {
+      "name": "field-floors-concurrent-floors",
+      "pins": "§6.12.3: neither concurrent floor claims d, so the remote removal stands under its own unit floor, and k re-queues",
+      "local": {
+        "tags": [
+          "d"
+        ],
+        "properties": {
+          "k": 1
+        },
+        "clock": {
+          "X": 1,
+          "D": 2
+        },
+        "fieldClocks": {
+          "properties.k": {
+            "X": 1,
+            "D": 2
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "D": 2
+        },
+        "fieldClocksFloor": {
+          "X": 1,
+          "D": 1
+        }
+      },
+      "remote": {
+        "tags": [],
+        "properties": {},
+        "clock": {
+          "X": 1,
+          "E": 1
+        }
+      },
+      "device": "D",
+      "expected": {
+        "tags": [],
+        "properties": {
+          "k": 1
+        },
+        "clock": {
+          "X": 1,
+          "D": 3,
+          "E": 1
+        },
+        "requeue": true,
+        "fieldClocks": {
+          "properties.k": {
+            "X": 1,
+            "D": 2
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "D": 3,
+          "E": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1,
+          "D": 1,
+          "E": 1
+        },
+        "fieldFloors": {
+          "tags.d": {
+            "X": 1,
+            "E": 1
+          }
+        }
+      }
+    },
+    {
+      "name": "new-peer-reads-field-floors",
+      "pins": "§6.12.1: a trusted remote reads its fieldFloors entry for a floored unit, fieldClocksFloor for the rest",
+      "local": {
+        "tags": [
+          "d"
+        ],
+        "properties": {},
+        "clock": {
+          "X": 1,
+          "E": 2
+        },
+        "fieldClocks": {
+          "tags.d": {
+            "X": 1,
+            "E": 2
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "E": 2
+        },
+        "fieldClocksFloor": {
+          "X": 1,
+          "E": 1
+        }
+      },
+      "remote": {
+        "tags": [],
+        "properties": {
+          "k": 1
+        },
+        "clock": {
+          "X": 1,
+          "D": 3,
+          "E": 1
+        },
+        "fieldClocks": {
+          "properties.k": {
+            "X": 1,
+            "D": 2
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "D": 3,
+          "E": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1,
+          "D": 1,
+          "E": 1
+        },
+        "fieldFloors": {
+          "tags.d": {
+            "X": 1,
+            "E": 1
+          }
+        }
+      },
+      "device": "E",
+      "expected": {
+        "tags": [
+          "d"
+        ],
+        "properties": {
+          "k": 1
+        },
+        "clock": {
+          "X": 1,
+          "E": 3,
+          "D": 3
+        },
+        "requeue": true,
+        "fieldClocks": {
+          "properties.k": {
+            "X": 1,
+            "D": 2
+          },
+          "tags.d": {
+            "X": 1,
+            "E": 2
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "E": 3,
+          "D": 3
+        },
+        "fieldClocksFloor": {
+          "X": 1,
+          "E": 1,
+          "D": 1
+        }
+      }
+    },
+    {
+      "name": "floored-record-pulls-new-edit",
+      "pins": "§6.12.3: a merge of a floored record and a newer edit drops no unit floor the edit did not clock",
+      "local": {
+        "tags": [],
+        "properties": {
+          "k": 1
+        },
+        "clock": {
+          "X": 1,
+          "D": 3,
+          "E": 1
+        },
+        "fieldClocks": {
+          "properties.k": {
+            "X": 1,
+            "D": 2
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "D": 3,
+          "E": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1,
+          "D": 1,
+          "E": 1
+        },
+        "fieldFloors": {
+          "tags.d": {
+            "X": 1,
+            "E": 1
+          }
+        }
+      },
+      "remote": {
+        "tags": [
+          "e"
+        ],
+        "properties": {
+          "k": 1
+        },
+        "clock": {
+          "X": 1,
+          "D": 4,
+          "E": 1
+        },
+        "fieldClocks": {
+          "properties.k": {
+            "X": 1,
+            "D": 2
+          },
+          "tags.e": {
+            "X": 1,
+            "D": 4,
+            "E": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "D": 4,
+          "E": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1,
+          "D": 1,
+          "E": 1
+        },
+        "fieldFloors": {
+          "tags.d": {
+            "X": 1,
+            "E": 1
+          }
+        }
+      },
+      "device": "D",
+      "expected": {
+        "tags": [
+          "e"
+        ],
+        "properties": {
+          "k": 1
+        },
+        "clock": {
+          "X": 1,
+          "D": 4,
+          "E": 1
+        },
+        "requeue": false,
+        "fieldClocks": {
+          "properties.k": {
+            "X": 1,
+            "D": 2
+          },
+          "tags.e": {
+            "X": 1,
+            "D": 4,
+            "E": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "D": 4,
+          "E": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1,
+          "D": 1,
+          "E": 1
+        }
+      }
+    },
+    {
+      "name": "older-build-echo-of-field-floors-is-whole",
+      "pins": "§6.12.1: an older build that kept fieldFloors and ticked clock is read whole at its clock, today’s rule",
+      "local": {
+        "tags": [
+          "e"
+        ],
+        "properties": {
+          "k": 1
+        },
+        "clock": {
+          "X": 1,
+          "D": 4,
+          "E": 1
+        },
+        "fieldClocks": {
+          "properties.k": {
+            "X": 1,
+            "D": 2
+          },
+          "tags.e": {
+            "X": 1,
+            "D": 4,
+            "E": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "D": 4,
+          "E": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1,
+          "D": 1,
+          "E": 1
+        },
+        "fieldFloors": {
+          "tags.d": {
+            "X": 1,
+            "E": 1
+          }
+        }
+      },
+      "remote": {
+        "tags": [
+          "old"
+        ],
+        "properties": {
+          "k": 1
+        },
+        "clock": {
+          "X": 1,
+          "D": 3,
+          "E": 1,
+          "O": 1
+        },
+        "fieldClocks": {
+          "properties.k": {
+            "X": 1,
+            "D": 2
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "D": 3,
+          "E": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1,
+          "D": 1,
+          "E": 1
+        },
+        "fieldFloors": {
+          "tags.d": {
+            "X": 1,
+            "E": 1
+          }
+        }
+      },
+      "device": "D",
+      "expected": {
+        "tags": [
+          "e",
+          "old"
+        ],
+        "properties": {
+          "k": 1
+        },
+        "clock": {
+          "X": 1,
+          "D": 5,
+          "E": 1,
+          "O": 1
+        },
+        "requeue": true,
+        "fieldClocks": {
+          "tags.e": {
+            "X": 1,
+            "D": 4,
+            "E": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "D": 5,
+          "E": 1,
+          "O": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1,
+          "D": 3,
+          "E": 1,
+          "O": 1
+        }
+      }
+    },
+    {
+      "name": "older-build-dropped-field-floors-is-whole",
+      "pins": "§6.12.1: an older build that dropped fieldFloors and ticked clock is read whole at its clock, today’s rule",
+      "local": {
+        "tags": [
+          "e"
+        ],
+        "properties": {
+          "k": 1
+        },
+        "clock": {
+          "X": 1,
+          "D": 4,
+          "E": 1
+        },
+        "fieldClocks": {
+          "properties.k": {
+            "X": 1,
+            "D": 2
+          },
+          "tags.e": {
+            "X": 1,
+            "D": 4,
+            "E": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "D": 4,
+          "E": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1,
+          "D": 1,
+          "E": 1
+        },
+        "fieldFloors": {
+          "tags.d": {
+            "X": 1,
+            "E": 1
+          }
+        }
+      },
+      "remote": {
+        "tags": [],
+        "properties": {
+          "k": 1
+        },
+        "clock": {
+          "X": 1,
+          "D": 3,
+          "E": 1,
+          "O": 1
+        },
+        "fieldClocks": {
+          "properties.k": {
+            "X": 1,
+            "D": 2
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "D": 3,
+          "E": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1,
+          "D": 1,
+          "E": 1
+        }
+      },
+      "device": "D",
+      "expected": {
+        "tags": [
+          "e"
+        ],
+        "properties": {
+          "k": 1
+        },
+        "clock": {
+          "X": 1,
+          "D": 5,
+          "E": 1,
+          "O": 1
+        },
+        "requeue": true,
+        "fieldClocks": {
+          "tags.e": {
+            "X": 1,
+            "D": 4,
+            "E": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "D": 5,
+          "E": 1,
+          "O": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1,
+          "D": 3,
+          "E": 1,
+          "O": 1
+        }
+      }
+    },
+    {
+      "name": "pre-field-floors-peer-record",
+      "pins": "§6.12.1: a trusted record from a build before fieldFloors reads fieldClocksFloor for every unclocked unit",
+      "local": {
+        "tags": [],
+        "properties": {
+          "k": 1
+        },
+        "clock": {
+          "X": 1,
+          "D": 3,
+          "E": 1
+        },
+        "fieldClocks": {
+          "properties.k": {
+            "X": 1,
+            "D": 2
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "D": 3,
+          "E": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1,
+          "D": 1,
+          "E": 1
+        },
+        "fieldFloors": {
+          "tags.d": {
+            "X": 1,
+            "E": 1
+          }
+        }
+      },
+      "remote": {
+        "tags": [
+          "d",
+          "x"
+        ],
+        "properties": {
+          "k": 1
+        },
+        "clock": {
+          "X": 1,
+          "D": 2,
+          "F": 1
+        },
+        "fieldClocks": {
+          "properties.k": {
+            "X": 1,
+            "D": 2
+          },
+          "tags.x": {
+            "X": 1,
+            "D": 2,
+            "F": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "D": 2,
+          "F": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1,
+          "D": 1
+        }
+      },
+      "device": "D",
+      "expected": {
+        "tags": [
+          "d",
+          "x"
+        ],
+        "properties": {
+          "k": 1
+        },
+        "clock": {
+          "X": 1,
+          "D": 3,
+          "E": 1,
+          "F": 1
+        },
+        "requeue": false,
+        "fieldClocks": {
+          "properties.k": {
+            "X": 1,
+            "D": 2
+          },
+          "tags.x": {
+            "X": 1,
+            "D": 2,
+            "F": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "D": 3,
+          "E": 1,
+          "F": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1,
+          "D": 1,
+          "E": 1
+        },
+        "fieldFloors": {
+          "tags.d": {
+            "X": 1,
+            "D": 1
+          }
+        }
+      }
+    },
+    {
+      "name": "issue-5508-a-pulls-cli",
+      "pins": "#5508: an added tag and a concurrently set property both survive",
+      "local": {
+        "tags": [
+          "lm-jtag",
+          "t-a"
+        ],
+        "properties": {
+          "mood": "good",
+          "energy": 7
+        },
+        "clock": {
+          "X": 1,
+          "A": 1
+        },
+        "fieldClocks": {
+          "tags.t-a": {
+            "X": 1,
+            "A": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "A": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1
+        }
+      },
+      "remote": {
+        "tags": [
+          "lm-jtag"
+        ],
+        "properties": {
+          "mood": "good",
+          "energy": 7,
+          "p3c": "c-val"
+        },
+        "clock": {
+          "X": 1,
+          "C": 1
+        },
+        "fieldClocks": {
+          "properties.p3c": {
+            "X": 1,
+            "C": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "C": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1
+        }
+      },
+      "device": "L",
+      "expected": {
+        "tags": [
+          "lm-jtag",
+          "t-a"
+        ],
+        "properties": {
+          "mood": "good",
+          "energy": 7,
+          "p3c": "c-val"
+        },
+        "clock": {
+          "X": 1,
+          "A": 1,
+          "C": 1,
+          "L": 1
+        },
+        "requeue": true,
+        "fieldClocks": {
+          "properties.p3c": {
+            "X": 1,
+            "C": 1
+          },
+          "tags.t-a": {
+            "X": 1,
+            "A": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "A": 1,
+          "C": 1,
+          "L": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1
+        }
+      }
+    },
+    {
+      "name": "issue-5508-b-pulls-a-merged",
+      "pins": "#5508: a second concurrent add merges into the set",
+      "local": {
+        "tags": [
+          "lm-jtag",
+          "t-b"
+        ],
+        "properties": {
+          "mood": "good",
+          "energy": 7
+        },
+        "clock": {
+          "X": 1,
+          "B": 1
+        },
+        "fieldClocks": {
+          "tags.t-b": {
+            "X": 1,
+            "B": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "B": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1
+        }
+      },
+      "remote": {
+        "tags": [
+          "lm-jtag",
+          "t-a"
+        ],
+        "properties": {
+          "mood": "good",
+          "energy": 7,
+          "p3c": "c-val"
+        },
+        "clock": {
+          "X": 1,
+          "A": 2,
+          "C": 1
+        },
+        "fieldClocks": {
+          "properties.p3c": {
+            "X": 1,
+            "C": 1
+          },
+          "tags.t-a": {
+            "X": 1,
+            "A": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "A": 2,
+          "C": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1
+        }
+      },
+      "device": "L",
+      "expected": {
+        "tags": [
+          "lm-jtag",
+          "t-b",
+          "t-a"
+        ],
+        "properties": {
+          "mood": "good",
+          "energy": 7,
+          "p3c": "c-val"
+        },
+        "clock": {
+          "X": 1,
+          "B": 1,
+          "A": 2,
+          "C": 1,
+          "L": 1
+        },
+        "requeue": true,
+        "fieldClocks": {
+          "properties.p3c": {
+            "X": 1,
+            "C": 1
+          },
+          "tags.t-a": {
+            "X": 1,
+            "A": 1
+          },
+          "tags.t-b": {
+            "X": 1,
+            "B": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "B": 1,
+          "A": 2,
+          "C": 1,
+          "L": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1
+        }
+      }
+    },
+    {
+      "name": "issue-5508-ios-pulls-b-merged",
+      "pins": "#5508: the iOS removal of lm-jtag wins over the untouched unit; all four edits survive",
+      "local": {
+        "tags": [],
+        "properties": {
+          "mood": "good",
+          "energy": 7
+        },
+        "clock": {
+          "X": 1,
+          "I": 1
+        },
+        "fieldClocks": {
+          "tags.lm-jtag": {
+            "X": 1,
+            "I": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "I": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1
+        }
+      },
+      "remote": {
+        "tags": [
+          "lm-jtag",
+          "t-b",
+          "t-a"
+        ],
+        "properties": {
+          "mood": "good",
+          "energy": 7,
+          "p3c": "c-val"
+        },
+        "clock": {
+          "X": 1,
+          "B": 2,
+          "A": 2,
+          "C": 1
+        },
+        "fieldClocks": {
+          "properties.p3c": {
+            "X": 1,
+            "C": 1
+          },
+          "tags.t-a": {
+            "X": 1,
+            "A": 1
+          },
+          "tags.t-b": {
+            "X": 1,
+            "B": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "B": 2,
+          "A": 2,
+          "C": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1
+        }
+      },
+      "device": "L",
+      "expected": {
+        "tags": [
+          "t-b",
+          "t-a"
+        ],
+        "properties": {
+          "mood": "good",
+          "energy": 7,
+          "p3c": "c-val"
+        },
+        "clock": {
+          "X": 1,
+          "I": 1,
+          "B": 2,
+          "A": 2,
+          "C": 1,
+          "L": 1
+        },
+        "requeue": true,
+        "fieldClocks": {
+          "properties.p3c": {
+            "X": 1,
+            "C": 1
+          },
+          "tags.lm-jtag": {
+            "X": 1,
+            "I": 1
+          },
+          "tags.t-a": {
+            "X": 1,
+            "A": 1
+          },
+          "tags.t-b": {
+            "X": 1,
+            "B": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "I": 1,
+          "B": 2,
+          "A": 2,
+          "C": 1,
+          "L": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1
+        }
+      }
+    },
+    {
+      "name": "removal-beats-stale-readd",
+      "pins": "§6.12.3: a peer still holding the tag at an older unit clock does not resurrect it",
+      "local": {
+        "tags": [],
+        "properties": {
+          "mood": "good",
+          "energy": 7
+        },
+        "clock": {
+          "X": 1,
+          "I": 1
+        },
+        "fieldClocks": {
+          "tags.lm-jtag": {
+            "X": 1,
+            "I": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "I": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1
+        }
+      },
+      "remote": {
+        "tags": [
+          "lm-jtag"
+        ],
+        "properties": {
+          "mood": "good",
+          "energy": 8
+        },
+        "clock": {
+          "X": 1,
+          "B": 2
+        },
+        "fieldClocks": {
+          "properties.energy": {
+            "X": 1,
+            "B": 2
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "B": 2
+        },
+        "fieldClocksFloor": {
+          "X": 1
+        }
+      },
+      "device": "L",
+      "expected": {
+        "tags": [],
+        "properties": {
+          "mood": "good",
+          "energy": 8
+        },
+        "clock": {
+          "X": 1,
+          "I": 1,
+          "B": 2,
+          "L": 1
+        },
+        "requeue": true,
+        "fieldClocks": {
+          "properties.energy": {
+            "X": 1,
+            "B": 2
+          },
+          "tags.lm-jtag": {
+            "X": 1,
+            "I": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "I": 1,
+          "B": 2,
+          "L": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1
+        }
+      }
+    },
+    {
+      "name": "concurrent-add-and-remove-tie-remote-wins",
+      "pins": "§6.3 rule 5 per unit: equal totals, remote wins",
+      "local": {
+        "tags": [],
+        "properties": {},
+        "clock": {
+          "X": 1,
+          "A": 1
+        },
+        "fieldClocks": {
+          "tags.x": {
+            "X": 1,
+            "A": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "A": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1
+        }
+      },
+      "remote": {
+        "tags": [
+          "X"
+        ],
+        "properties": {},
+        "clock": {
+          "X": 1,
+          "B": 1
+        },
+        "fieldClocks": {
+          "tags.x": {
+            "X": 1,
+            "B": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "B": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1
+        }
+      },
+      "device": "L",
+      "expected": {
+        "tags": [
+          "X"
+        ],
+        "properties": {},
+        "clock": {
+          "X": 1,
+          "A": 1,
+          "B": 1
+        },
+        "requeue": false,
+        "fieldClocks": {
+          "tags.x": {
+            "X": 1,
+            "B": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "A": 1,
+          "B": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1
+        }
+      }
+    },
+    {
+      "name": "offline-tie-greater-value-wins",
+      "pins": "§6.12.3: a unit tie on ticks goes to the greater canonical value, so both sides agree; §6.3 rule 5’s _offline test does not apply per unit",
+      "local": {
+        "tags": [],
+        "properties": {
+          "k": "local"
+        },
+        "clock": {
+          "A": 1,
+          "_offline": 1
+        },
+        "fieldClocks": {
+          "properties.k": {
+            "A": 1,
+            "_offline": 1
+          }
+        },
+        "fieldClocksAt": {
+          "A": 1,
+          "_offline": 1
+        }
+      },
+      "remote": {
+        "tags": [],
+        "properties": {
+          "k": "remote"
+        },
+        "clock": {
+          "B": 2
+        },
+        "fieldClocks": {
+          "properties.k": {
+            "B": 2
+          }
+        },
+        "fieldClocksAt": {
+          "B": 2
+        }
+      },
+      "device": "L",
+      "expected": {
+        "tags": [],
+        "properties": {
+          "k": "remote"
+        },
+        "clock": {
+          "A": 1,
+          "_offline": 1,
+          "B": 2
+        },
+        "requeue": false,
+        "fieldClocks": {
+          "properties.k": {
+            "B": 2
+          }
+        },
+        "fieldClocksAt": {
+          "A": 1,
+          "_offline": 1,
+          "B": 2
+        }
+      }
+    },
+    {
+      "name": "case-variant-keeps-local-spelling",
+      "pins": "§1.9.1 step 6: one unit per tag key, the spelling already here is kept",
+      "local": {
+        "tags": [
+          "Work"
+        ],
+        "properties": {},
+        "clock": {
+          "X": 1,
+          "A": 1
+        },
+        "fieldClocks": {
+          "tags.work": {
+            "X": 1,
+            "A": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "A": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1
+        }
+      },
+      "remote": {
+        "tags": [
+          "work",
+          "home"
+        ],
+        "properties": {},
+        "clock": {
+          "X": 1,
+          "B": 2
+        },
+        "fieldClocks": {
+          "tags.work": {
+            "X": 1,
+            "B": 2
+          },
+          "tags.home": {
+            "X": 1,
+            "B": 2
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "B": 2
+        },
+        "fieldClocksFloor": {
+          "X": 1
+        }
+      },
+      "device": "L",
+      "expected": {
+        "tags": [
+          "Work",
+          "home"
+        ],
+        "properties": {},
+        "clock": {
+          "X": 1,
+          "A": 1,
+          "B": 2,
+          "L": 1
+        },
+        "requeue": true,
+        "fieldClocks": {
+          "tags.home": {
+            "X": 1,
+            "B": 2
+          },
+          "tags.work": {
+            "X": 1,
+            "B": 2
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "A": 1,
+          "B": 2,
+          "L": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1
+        }
+      }
+    },
+    {
+      "name": "old-build-remote-is-whole-record",
+      "pins": "§6.12.1: an older build ticked clock past fieldClocksAt; every unit in the union is read at its clock, so t-a, absent from it, is removed: today’s rule",
+      "local": {
+        "tags": [
+          "lm-jtag",
+          "t-a"
+        ],
+        "properties": {
+          "mood": "good",
+          "energy": 7
+        },
+        "clock": {
+          "X": 1,
+          "A": 1
+        },
+        "fieldClocks": {
+          "tags.t-a": {
+            "X": 1,
+            "A": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "A": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1
+        }
+      },
+      "remote": {
+        "tags": [
+          "lm-jtag",
+          "old"
+        ],
+        "properties": {
+          "mood": "good"
+        },
+        "clock": {
+          "X": 1,
+          "C": 1,
+          "O": 1
+        },
+        "fieldClocks": {
+          "properties.p3c": {
+            "X": 1,
+            "C": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "C": 1
+        }
+      },
+      "device": "L",
+      "expected": {
+        "tags": [
+          "lm-jtag",
+          "t-a",
+          "old"
+        ],
+        "properties": {
+          "mood": "good"
+        },
+        "clock": {
+          "X": 1,
+          "A": 1,
+          "C": 1,
+          "O": 1,
+          "L": 1
+        },
+        "requeue": true,
+        "fieldClocks": {
+          "tags.t-a": {
+            "X": 1,
+            "A": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "A": 1,
+          "C": 1,
+          "O": 1,
+          "L": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1,
+          "C": 1,
+          "O": 1
+        }
+      }
+    },
+    {
+      "name": "legacy-remote-without-field-clocks",
+      "pins": "§6.12.1: a payload with no fieldClocks names its units at its clock",
+      "local": {
+        "tags": [
+          "lm-jtag",
+          "t-a"
+        ],
+        "properties": {
+          "mood": "good",
+          "energy": 7
+        },
+        "clock": {
+          "X": 1,
+          "A": 1
+        },
+        "fieldClocks": {
+          "tags.t-a": {
+            "X": 1,
+            "A": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "A": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1
+        }
+      },
+      "remote": {
+        "tags": [
+          "lm-jtag"
+        ],
+        "properties": {
+          "mood": "good",
+          "energy": 9
+        },
+        "clock": {
+          "X": 1,
+          "O": 3
+        }
+      },
+      "device": "L",
+      "expected": {
+        "tags": [
+          "lm-jtag",
+          "t-a"
+        ],
+        "properties": {
+          "mood": "good",
+          "energy": 9
+        },
+        "clock": {
+          "X": 1,
+          "A": 1,
+          "O": 3,
+          "L": 1
+        },
+        "requeue": true,
+        "fieldClocks": {
+          "tags.t-a": {
+            "X": 1,
+            "A": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "A": 1,
+          "O": 3,
+          "L": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1,
+          "O": 3
+        }
+      }
+    },
+    {
+      "name": "old-build-removes-tag-and-property",
+      "pins": "§6.12.1: an older build removed a tag and a property; a body-only local edit does not resurrect them",
+      "local": {
+        "tags": [
+          "T"
+        ],
+        "properties": {
+          "p": 1
+        },
+        "clock": {
+          "X": 1,
+          "N": 1
+        },
+        "fieldClocks": {},
+        "fieldClocksAt": {
+          "X": 1,
+          "N": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1
+        }
+      },
+      "remote": {
+        "tags": [],
+        "properties": {},
+        "clock": {
+          "X": 1,
+          "O": 1
+        },
+        "fieldClocks": {},
+        "fieldClocksAt": {
+          "X": 1
+        }
+      },
+      "device": "L",
+      "expected": {
+        "tags": [],
+        "properties": {},
+        "clock": {
+          "X": 1,
+          "N": 1,
+          "O": 1
+        },
+        "requeue": false,
+        "fieldClocks": {},
+        "fieldClocksAt": {
+          "X": 1,
+          "N": 1,
+          "O": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1,
+          "O": 1
+        }
+      }
+    },
+    {
+      "name": "legacy-remote-removes-tag-and-property",
+      "pins": "§6.12.1: a payload with no fieldClocks that lacks a unit removes it at its clock",
+      "local": {
+        "tags": [
+          "T"
+        ],
+        "properties": {
+          "p": 1
+        },
+        "clock": {
+          "X": 1,
+          "N": 1
+        },
+        "fieldClocks": {},
+        "fieldClocksAt": {
+          "X": 1,
+          "N": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1
+        }
+      },
+      "remote": {
+        "tags": [],
+        "properties": {},
+        "clock": {
+          "X": 1,
+          "O": 1
+        }
+      },
+      "device": "L",
+      "expected": {
+        "tags": [],
+        "properties": {},
+        "clock": {
+          "X": 1,
+          "N": 1,
+          "O": 1
+        },
+        "requeue": false,
+        "fieldClocks": {},
+        "fieldClocksAt": {
+          "X": 1,
+          "N": 1,
+          "O": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1,
+          "O": 1
+        }
+      }
+    },
+    {
+      "name": "no-base-1-saves-old-build-removes",
+      "pins": "§6.12.1: an untrusted local side proves no unit clock; 1 body-only save(s) do not outrank an older build’s concurrent removal",
+      "local": {
+        "tags": [
+          "T"
+        ],
+        "properties": {
+          "p": 1
+        },
+        "clock": {
+          "X": 1,
+          "N": 1
+        }
+      },
+      "remote": {
+        "tags": [],
+        "properties": {},
+        "clock": {
+          "X": 1,
+          "O": 1
+        }
+      },
+      "device": "L",
+      "expected": {
+        "tags": [],
+        "properties": {},
+        "clock": {
+          "X": 1,
+          "N": 1,
+          "O": 1
+        },
+        "requeue": false,
+        "fieldClocks": {},
+        "fieldClocksAt": {
+          "X": 1,
+          "N": 1,
+          "O": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1,
+          "N": 1,
+          "O": 1
+        },
+        "fieldFloors": {
+          "properties.p": {
+            "X": 1,
+            "O": 1
+          },
+          "tags.t": {
+            "X": 1,
+            "O": 1
+          }
+        }
+      }
+    },
+    {
+      "name": "no-base-2-saves-old-build-removes",
+      "pins": "§6.12.1: an untrusted local side proves no unit clock; 2 body-only save(s) do not outrank an older build’s concurrent removal",
+      "local": {
+        "tags": [
+          "T"
+        ],
+        "properties": {
+          "p": 1
+        },
+        "clock": {
+          "X": 1,
+          "N": 2
+        }
+      },
+      "remote": {
+        "tags": [],
+        "properties": {},
+        "clock": {
+          "X": 1,
+          "O": 1
+        }
+      },
+      "device": "L",
+      "expected": {
+        "tags": [],
+        "properties": {},
+        "clock": {
+          "X": 1,
+          "N": 2,
+          "O": 1
+        },
+        "requeue": false,
+        "fieldClocks": {},
+        "fieldClocksAt": {
+          "X": 1,
+          "N": 2,
+          "O": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1,
+          "N": 2,
+          "O": 1
+        },
+        "fieldFloors": {
+          "properties.p": {
+            "X": 1,
+            "O": 1
+          },
+          "tags.t": {
+            "X": 1,
+            "O": 1
+          }
+        }
+      }
+    },
+    {
+      "name": "no-base-3-saves-old-build-removes",
+      "pins": "§6.12.1: an untrusted local side proves no unit clock; 3 body-only save(s) do not outrank an older build’s concurrent removal",
+      "local": {
+        "tags": [
+          "T"
+        ],
+        "properties": {
+          "p": 1
+        },
+        "clock": {
+          "X": 1,
+          "N": 3
+        }
+      },
+      "remote": {
+        "tags": [],
+        "properties": {},
+        "clock": {
+          "X": 1,
+          "O": 1
+        }
+      },
+      "device": "L",
+      "expected": {
+        "tags": [],
+        "properties": {},
+        "clock": {
+          "X": 1,
+          "N": 3,
+          "O": 1
+        },
+        "requeue": false,
+        "fieldClocks": {},
+        "fieldClocksAt": {
+          "X": 1,
+          "N": 3,
+          "O": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1,
+          "N": 3,
+          "O": 1
+        },
+        "fieldFloors": {
+          "properties.p": {
+            "X": 1,
+            "O": 1
+          },
+          "tags.t": {
+            "X": 1,
+            "O": 1
+          }
+        }
+      }
+    },
+    {
+      "name": "issue-5572-relay",
+      "pins": "#5572: the relay’s floor removes the tag the older build removed; q, a write concurrent with that record, survives",
+      "local": {
+        "tags": [
+          "gone"
+        ],
+        "properties": {
+          "p": 1,
+          "q": 1
+        },
+        "clock": {
+          "X": 1,
+          "C": 1
+        },
+        "fieldClocks": {
+          "properties.q": {
+            "X": 1,
+            "C": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "C": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1
+        }
+      },
+      "remote": {
+        "tags": [
+          "added"
+        ],
+        "properties": {
+          "p": 1
+        },
+        "clock": {
+          "X": 1,
+          "O": 1,
+          "D": 1
+        },
+        "fieldClocks": {
+          "tags.added": {
+            "X": 1,
+            "O": 1,
+            "D": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "O": 1,
+          "D": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1,
+          "O": 1
+        }
+      },
+      "device": "L",
+      "expected": {
+        "tags": [
+          "added"
+        ],
+        "properties": {
+          "p": 1,
+          "q": 1
+        },
+        "clock": {
+          "X": 1,
+          "C": 1,
+          "O": 1,
+          "D": 1,
+          "L": 1
+        },
+        "requeue": true,
+        "fieldClocks": {
+          "properties.q": {
+            "X": 1,
+            "C": 1
+          },
+          "tags.added": {
+            "X": 1,
+            "O": 1,
+            "D": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "C": 1,
+          "O": 1,
+          "D": 1,
+          "L": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1,
+          "O": 1
+        }
+      }
+    },
+    {
+      "name": "issue-5572-relay-pulls-stale-copy",
+      "pins": "§6.12.3: the same pair the other way round: the local floor removes the stale copy and re-queues",
+      "local": {
+        "tags": [
+          "added"
+        ],
+        "properties": {
+          "p": 1
+        },
+        "clock": {
+          "X": 1,
+          "O": 1,
+          "D": 1
+        },
+        "fieldClocks": {
+          "tags.added": {
+            "X": 1,
+            "O": 1,
+            "D": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "O": 1,
+          "D": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1,
+          "O": 1
+        }
+      },
+      "remote": {
+        "tags": [
+          "gone"
+        ],
+        "properties": {
+          "p": 1,
+          "q": 1
+        },
+        "clock": {
+          "X": 1,
+          "C": 1
+        },
+        "fieldClocks": {
+          "properties.q": {
+            "X": 1,
+            "C": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "C": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1
+        }
+      },
+      "device": "L",
+      "expected": {
+        "tags": [
+          "added"
+        ],
+        "properties": {
+          "p": 1,
+          "q": 1
+        },
+        "clock": {
+          "X": 1,
+          "O": 1,
+          "D": 1,
+          "C": 1,
+          "L": 1
+        },
+        "requeue": true,
+        "fieldClocks": {
+          "properties.q": {
+            "X": 1,
+            "C": 1
+          },
+          "tags.added": {
+            "X": 1,
+            "O": 1,
+            "D": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "O": 1,
+          "D": 1,
+          "C": 1,
+          "L": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1,
+          "O": 1
+        }
+      }
+    },
+    {
+      "name": "older-builds-applied-whole-then-concurrent-removal",
+      "pins": "§6.12.1: a record applied whole clocks no unit, so its body-only ticks do not outrank a concurrent older build’s removal",
+      "local": {
+        "tags": [
+          "T"
+        ],
+        "properties": {
+          "p": 1
+        },
+        "clock": {
+          "X": 1,
+          "N": 2
+        },
+        "fieldClocks": {},
+        "fieldClocksAt": {
+          "X": 1,
+          "N": 2
+        },
+        "fieldClocksFloor": {
+          "X": 1,
+          "N": 2
+        }
+      },
+      "remote": {
+        "tags": [],
+        "properties": {},
+        "clock": {
+          "X": 1,
+          "O": 1
+        }
+      },
+      "device": "L",
+      "expected": {
+        "tags": [],
+        "properties": {},
+        "clock": {
+          "X": 1,
+          "N": 2,
+          "O": 1
+        },
+        "requeue": false,
+        "fieldClocks": {},
+        "fieldClocksAt": {
+          "X": 1,
+          "N": 2,
+          "O": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1,
+          "N": 2,
+          "O": 1
+        },
+        "fieldFloors": {
+          "properties.p": {
+            "X": 1,
+            "O": 1
+          },
+          "tags.t": {
+            "X": 1,
+            "O": 1
+          }
+        }
+      }
+    },
+    {
+      "name": "untrusted-base-edit-then-concurrent-removal",
+      "pins": "§6.12.2: an edit from an untrusted base clocks only what it changed, so the base’s ticks do not outrank a concurrent removal",
+      "local": {
+        "tags": [
+          "T"
+        ],
+        "properties": {
+          "p": 1
+        },
+        "clock": {
+          "X": 1,
+          "N": 3
+        },
+        "fieldClocks": {},
+        "fieldClocksAt": {
+          "X": 1,
+          "N": 3
+        },
+        "fieldClocksFloor": {
+          "X": 1,
+          "N": 2
+        }
+      },
+      "remote": {
+        "tags": [],
+        "properties": {},
+        "clock": {
+          "X": 1,
+          "O": 1
+        }
+      },
+      "device": "L",
+      "expected": {
+        "tags": [],
+        "properties": {},
+        "clock": {
+          "X": 1,
+          "N": 3,
+          "O": 1
+        },
+        "requeue": false,
+        "fieldClocks": {},
+        "fieldClocksAt": {
+          "X": 1,
+          "N": 3,
+          "O": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1,
+          "N": 2,
+          "O": 1
+        },
+        "fieldFloors": {
+          "properties.p": {
+            "X": 1,
+            "O": 1
+          },
+          "tags.t": {
+            "X": 1,
+            "O": 1
+          }
+        }
+      }
+    },
+    {
+      "name": "local-dominates-every-unit-requeues",
+      "pins": "§6.5.2 P3: a local unit ahead of the remote re-queues",
+      "local": {
+        "tags": [
+          "lm-jtag",
+          "t-a"
+        ],
+        "properties": {
+          "mood": "tired",
+          "energy": 7
+        },
+        "clock": {
+          "X": 1,
+          "A": 2
+        },
+        "fieldClocks": {
+          "tags.t-a": {
+            "X": 1,
+            "A": 1
+          },
+          "properties.mood": {
+            "X": 1,
+            "A": 2
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "A": 2
+        },
+        "fieldClocksFloor": {
+          "X": 1
+        }
+      },
+      "remote": {
+        "tags": [
+          "lm-jtag"
+        ],
+        "properties": {
+          "mood": "good",
+          "energy": 7,
+          "z": true
+        },
+        "clock": {
+          "X": 1,
+          "Z": 1
+        },
+        "fieldClocks": {
+          "properties.z": {
+            "X": 1,
+            "Z": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "Z": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1
+        }
+      },
+      "device": "L",
+      "expected": {
+        "tags": [
+          "lm-jtag",
+          "t-a"
+        ],
+        "properties": {
+          "mood": "tired",
+          "energy": 7,
+          "z": true
+        },
+        "clock": {
+          "X": 1,
+          "A": 2,
+          "Z": 1,
+          "L": 1
+        },
+        "requeue": true,
+        "fieldClocks": {
+          "properties.mood": {
+            "X": 1,
+            "A": 2
+          },
+          "properties.z": {
+            "X": 1,
+            "Z": 1
+          },
+          "tags.t-a": {
+            "X": 1,
+            "A": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "A": 2,
+          "Z": 1,
+          "L": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1
+        }
+      }
+    },
+    {
+      "name": "null-property-is-a-value",
+      "pins": "§13.4 inside properties: null is a value, absence is a removal",
+      "local": {
+        "tags": [],
+        "properties": {},
+        "clock": {
+          "X": 1,
+          "A": 1
+        },
+        "fieldClocks": {
+          "properties.k": {
+            "X": 1,
+            "A": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "A": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1
+        }
+      },
+      "remote": {
+        "tags": [],
+        "properties": {
+          "k": null
+        },
+        "clock": {
+          "X": 1,
+          "B": 1,
+          "C": 1
+        },
+        "fieldClocks": {
+          "properties.k": {
+            "X": 1,
+            "B": 1,
+            "C": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "B": 1,
+          "C": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1
+        }
+      },
+      "device": "L",
+      "expected": {
+        "tags": [],
+        "properties": {
+          "k": null
+        },
+        "clock": {
+          "X": 1,
+          "A": 1,
+          "B": 1,
+          "C": 1
+        },
+        "requeue": false,
+        "fieldClocks": {
+          "properties.k": {
+            "X": 1,
+            "B": 1,
+            "C": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "A": 1,
+          "B": 1,
+          "C": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1
+        }
+      }
+    }
+  ]
+}

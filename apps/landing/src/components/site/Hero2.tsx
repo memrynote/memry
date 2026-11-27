@@ -272,6 +272,17 @@ export function Hero2() {
               </Link>
             )}
           </motion.div>
+          {/* "Is memrynote free?" is the most opened FAQ on the page; answer it at the button. */}
+          {!isMobile && (
+            <motion.p
+              className="mt-3 text-[13px] text-muted"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={HERO_IN}
+            >
+              No account needed. macOS, Windows and Linux.
+            </motion.p>
+          )}
         </div>
 
         {/* App screenshot — flat and whole. No perspective tilt: that 3D transform
@@ -340,7 +351,11 @@ export function Hero2() {
                     aria-hidden
                   />
                 </span>
-                <span className="text-[14px] font-medium leading-[18px] text-ink">Watch demo</span>
+                {/* The length is the cue: most visitors never open the demo, and the ones who
+                    do watch most of it. Keep it in step with /demos/memrynote-demo.mp4. */}
+                <span className="text-[14px] font-medium leading-[18px] text-ink">
+                  Watch the 80-second demo
+                </span>
               </span>
             </span>
           </motion.button>

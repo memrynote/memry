@@ -157,7 +157,7 @@ function vectorFiles(external: MarkdownSource[]): VectorFile[] {
     },
     {
       path: 'layer-critic.json',
-      note: 'Function-level cases of CriticMarkup parsing and writing tools marker decoding (packages/shared critic-markup and writing-tools).',
+      note: 'Function-level cases of CriticMarkup parsing, the per-id write and first-copy-wins read of the criticMarkupMarks root (critic.yjsWrite, protocol 12.5.1), and writing tools marker decoding (packages/shared critic-markup and writing-tools).',
       cases: criticCases(external)
     }
   ]

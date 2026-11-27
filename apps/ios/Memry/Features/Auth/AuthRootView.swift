@@ -103,6 +103,8 @@ struct AuthRootView: View {
                 AuthUnavailableView(error: error)
             }
         }
+        // In-app feedback sends through the session, signed in or not.
+        .environment(\.feedbackSession, startup.session)
         .task { await startup.begin() }
     }
 

@@ -571,6 +571,7 @@ const createMockApi = () => ({
   onMainInvoke: vi.fn().mockReturnValue(() => {}),
   respondToMainInvoke: vi.fn(),
   onVaultStatusChanged: vi.fn().mockReturnValue(() => {}),
+  onSyncStatusChanged: vi.fn().mockReturnValue(() => {}),
   onVaultIndexProgress: vi.fn().mockReturnValue(() => {}),
   onTagsProgress: vi.fn().mockReturnValue(() => {}),
   onVaultError: vi.fn().mockReturnValue(() => {}),
@@ -630,6 +631,11 @@ const createMockApi = () => ({
   // degraded-persistence notice silent for every other suite.
   syncCrdt: {
     getHealth: vi.fn().mockResolvedValue({ persistent: true, inMemorySessions: 0 })
+  },
+
+  // Opening a note or file asks for its missing files (#5616); none are missing.
+  syncAttachments: {
+    downloadNoteFiles: vi.fn().mockResolvedValue({ success: true })
   }
 })
 

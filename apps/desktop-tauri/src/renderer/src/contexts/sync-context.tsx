@@ -19,6 +19,16 @@ import {
   onVaultBindingChanged,
   syncAccountService
 } from '@/services/sync-account-service'
+import {
+  onCertificatePinFailed,
+  onClockSkewWarning,
+  onInitialSyncProgress,
+  onQueueCleared,
+  onSecurityWarning,
+  onSyncStatusChanged,
+  onSyncedRecords,
+  syncService
+} from '@/services/sync-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { requestOpenSettings } from '@/lib/settings-navigation'
 import { DeviceRevokedDialog } from '@/components/sync/device-revoked-dialog'
@@ -106,7 +116,7 @@ type SyncAction =
   | { type: 'PRUNE_STALE'; now: number }
   | { type: 'QUEUE_CLEARED' }
   | { type: 'CLOCK_SKEW_WARNING' }
-  | { type: 'ITEM_SYNCED'; lastSyncAt: number; operation: 'push' | 'pull' }
+  | { type: 'RECORDS_PULLED'; lastSyncAt: number; count: number }
   | { type: 'INITIAL_SYNC_PROGRESS'; phase: InitialSyncPhase; current: number; total: number }
   | { type: 'RESET' }
 
@@ -156,7 +166,10 @@ function pruneProgress(
 export function syncReducer(state: SyncState, action: SyncAction): SyncState {
   switch (action.type) {
     case 'STATUS_CHANGED': {
-      const leavingSyncing = state.status === 'syncing' && action.status !== 'syncing'
+      // Main sends a page's count up to 150 ms after the status leaves `syncing`, so a reset on
+      // leaving would let the last page's count carry into the next cycle. A cycle's counts
+      // start at zero when it starts.
+      const startingSync = state.status !== 'syncing' && action.status === 'syncing'
       // A pull that dies in a rethrowing failure category (offline, rate-limit,
       // auth) never reaches phase:'complete', so the last INITIAL_SYNC_PROGRESS
       // event would outlive its transfer and keep the skeleton and the
@@ -176,7 +189,7 @@ export function syncReducer(state: SyncState, action: SyncAction): SyncState {
         errorCategory: action.errorCategory ?? null,
         offlineSince: action.offlineSince ?? null,
         initialSyncProgress: transferEnded ? null : state.initialSyncProgress,
-        syncActivity: leavingSyncing ? { pushCount: 0, pullCount: 0 } : state.syncActivity
+        syncActivity: startingSync ? { pushCount: 0, pullCount: 0 } : state.syncActivity
       }
     }
     case 'SET_ERROR':
@@ -229,15 +242,15 @@ export function syncReducer(state: SyncState, action: SyncAction): SyncState {
       return { ...state, pendingCount: 0 }
     case 'CLOCK_SKEW_WARNING':
       return { ...state, clockSkewDetected: true }
-    case 'ITEM_SYNCED':
+    case 'RECORDS_PULLED':
       return {
         ...state,
-        // Main sets the first lastSyncAt when a pull completes. A pushed item,
-        // or an item applied mid-pull, must not stand in for it.
+        // Main sets the first lastSyncAt when a pull completes. Records applied
+        // mid-pull must not stand in for it.
         lastSyncAt: state.lastSyncAt === null ? null : action.lastSyncAt,
         syncActivity: {
-          pushCount: state.syncActivity.pushCount + (action.operation === 'push' ? 1 : 0),
-          pullCount: state.syncActivity.pullCount + (action.operation === 'pull' ? 1 : 0)
+          ...state.syncActivity,
+          pullCount: state.syncActivity.pullCount + action.count
         }
       }
     case 'INITIAL_SYNC_PROGRESS':
@@ -325,7 +338,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
 
     const init = async (): Promise<void> => {
       try {
-        const status = await window.api.syncOps.getStatus()
+        const status = await syncService.getStatus()
         if (cancelled) return
         const error = status.error ? extractErrorMessage(status.error, '') : undefined
         dispatch({
@@ -369,36 +382,41 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
     })
 
     cleanups.push(
-      window.api.onSyncStatusChanged((event) => {
-        if (cancelled) return
-        const error = event.error ? extractErrorMessage(event.error, '') : undefined
-        dispatch({
-          type: 'STATUS_CHANGED',
-          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- IPC status event type is unresolved here; main emits the SyncStatus set
-          status: event.status as SyncStatus,
-          lastSyncAt: event.lastSyncAt,
-          pendingCount: event.pendingCount,
-          error,
-          errorCategory: event.errorCategory,
-          offlineSince: event.offlineSince
-        })
-        if (event.errorCategory === 'storage_quota_exceeded') {
-          toast.error(t('sync.storageQuotaExceeded'), { duration: 10000 })
+      onSyncStatusChanged(
+        (event) => {
+          if (cancelled) return
+          const error = event.error ? extractErrorMessage(event.error, '') : undefined
+          dispatch({
+            type: 'STATUS_CHANGED',
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- IPC status event type is unresolved here; main emits the SyncStatus set
+            status: event.status as SyncStatus,
+            lastSyncAt: event.lastSyncAt,
+            pendingCount: event.pendingCount,
+            error,
+            errorCategory: event.errorCategory,
+            offlineSince: event.offlineSince
+          })
+          if (event.errorCategory === 'storage_quota_exceeded') {
+            toast.error(t('sync.storageQuotaExceeded'), { duration: 10000 })
+          }
+          if (event.errorCategory === 'file_too_large') {
+            toast.error(t('sync.fileTooLarge'), { duration: 10000 })
+          }
+          if (event.errorCategory === 'note_too_large') {
+            // An older main process sends no title; the unnamed message is the
+            // fallback, not the default.
+            toast.error(
+              event.errorNoteTitle
+                ? t('sync.noteTooLargeNamed', { title: event.errorNoteTitle })
+                : t('sync.noteTooLarge'),
+              { duration: 10000, action: activityAction() }
+            )
+          }
+        },
+        () => {
+          if (!cancelled) void init()
         }
-        if (event.errorCategory === 'file_too_large') {
-          toast.error(t('sync.fileTooLarge'), { duration: 10000 })
-        }
-        if (event.errorCategory === 'note_too_large') {
-          // An older main process sends no title; the unnamed message is the
-          // fallback, not the default.
-          toast.error(
-            event.errorNoteTitle
-              ? t('sync.noteTooLargeNamed', { title: event.errorNoteTitle })
-              : t('sync.noteTooLarge'),
-            { duration: 10000, action: activityAction() }
-          )
-        }
-      })
+      )
     )
 
     // Attachment upload failures were emitted to this channel with no listener,
@@ -469,28 +487,28 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
     )
 
     cleanups.push(
-      window.api.onQueueCleared(() => {
+      onQueueCleared(() => {
         if (cancelled) return
         dispatch({ type: 'QUEUE_CLEARED' })
       })
     )
 
     cleanups.push(
-      window.api.onClockSkewWarning(() => {
+      onClockSkewWarning(() => {
         if (cancelled) return
         dispatch({ type: 'CLOCK_SKEW_WARNING' })
       })
     )
 
     cleanups.push(
-      window.api.onItemSynced((event) => {
+      onSyncedRecords('all', (items) => {
         if (cancelled) return
-        dispatch({ type: 'ITEM_SYNCED', lastSyncAt: Date.now(), operation: event.operation })
+        dispatch({ type: 'RECORDS_PULLED', lastSyncAt: Date.now(), count: items.length })
       })
     )
 
     cleanups.push(
-      window.api.onInitialSyncProgress((event) => {
+      onInitialSyncProgress((event) => {
         if (cancelled) return
         dispatch({
           type: 'INITIAL_SYNC_PROGRESS',
@@ -516,7 +534,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
     )
 
     cleanups.push(
-      window.api.onSecurityWarning((event) => {
+      onSecurityWarning((event) => {
         if (cancelled) return
         const message = event.permanent
           ? t('sync.securityQuarantinePermanent')
@@ -526,9 +544,12 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
     )
 
     cleanups.push(
-      window.api.onCertificatePinFailed(() => {
+      onCertificatePinFailed(() => {
         if (cancelled) return
-        toast.error(t('sync.certificatePinPaused'), { duration: 15000 })
+        toast.error(t('sync.certificatePinPaused'), {
+          id: 'sync-certificate-pin-failed',
+          duration: 15000
+        })
       })
     )
 
@@ -559,7 +580,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
   useEffect(() => {
     if (authState.status === 'authenticated' && state.sessionExpired) {
       dispatch({ type: 'CLEAR_ERROR' })
-      void window.api.syncOps.triggerSync().catch(() => {})
+      void syncService.triggerSync().catch(() => {})
     }
   }, [authState.status, state.sessionExpired])
 
@@ -584,7 +605,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
   const triggerSync = useCallback(async (): Promise<void> => {
     if (authState.status !== 'authenticated') return
     try {
-      announceSyncNowResult(await window.api.syncOps.triggerSync(), t)
+      announceSyncNowResult(await syncService.triggerSync(), t)
     } catch (err) {
       dispatch({ type: 'SET_ERROR', error: extractErrorMessage(err, t('sync.triggerFailed')) })
     }
@@ -595,7 +616,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
     async (surface: SyncControlSurface): Promise<void> => {
       if (authState.status !== 'authenticated') return
       try {
-        const result = await window.api.syncOps.pause(surface)
+        const result = await syncService.pause(surface)
         if (!result.success) toast.error(t('sync.pauseFailed'))
       } catch (err) {
         dispatch({ type: 'SET_ERROR', error: extractErrorMessage(err, t('sync.pauseFailed')) })
@@ -608,7 +629,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
     async (surface: SyncControlSurface): Promise<void> => {
       if (authState.status !== 'authenticated') return
       try {
-        const result = await window.api.syncOps.resume(surface)
+        const result = await syncService.resume(surface)
         if (!result.success) toast.error(t('sync.resumeFailed'))
       } catch (err) {
         dispatch({ type: 'SET_ERROR', error: extractErrorMessage(err, t('sync.resumeFailed')) })
@@ -711,7 +732,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
   const handleVaultRecovered = useCallback(() => {
     setVaultRecovery(null)
     toast.success(t('sync.vaultRecovered'), { duration: 6000 })
-    void window.api.syncOps.triggerSync().catch(() => {})
+    void syncService.triggerSync().catch(() => {})
   }, [t])
 
   return (
