@@ -1189,6 +1189,13 @@ const htmlCommentCases: RoundtripCase[] = [
   { name: 'bold run ending in two breaks', markdown: '**a<br>**', canonical: '**a**<br><br>' },
   { name: 'italic run ending in a soft break', markdown: '*a\n*', canonical: '*a*<br>' },
   { name: 'strike run ending in a soft break', markdown: '~~a\n~~', canonical: '~~a~~<br>' },
+  // The space before such a break went outside the run on the next seed.
+  { name: 'italic run ending in a space and a break', markdown: '*a \n*b', canonical: '*a* \nb' },
+  {
+    name: 'italic run ending a paragraph in a space and a break',
+    markdown: '_a \n_',
+    canonical: '*a* <br>'
+  },
   {
     // In a quote the tag keeps the soft break it always parsed to.
     name: 'html break inside a quote stays soft (BBF-85)',

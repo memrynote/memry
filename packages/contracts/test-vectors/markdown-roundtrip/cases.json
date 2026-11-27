@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 387,
+    "exportedCaseCount": 389,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 397,
+    "caseCount": 399,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -1874,6 +1874,20 @@
       "canonical": "~~a~~<br>",
       "pending": null,
       "sha256": "1c633a0b69abcfbb4d27ba52586219474893f31b4e7e4b14ea59e1073fb97bce"
+    },
+    {
+      "name": "italic run ending in a space and a break",
+      "markdown": "*a \n*b",
+      "canonical": "*a* \nb",
+      "pending": null,
+      "sha256": "858cce1018dcdf77d0bea16acf86c8c22929b5fee4390e8f696aca4bca85cca1"
+    },
+    {
+      "name": "italic run ending a paragraph in a space and a break",
+      "markdown": "_a \n_",
+      "canonical": "*a* <br>",
+      "pending": null,
+      "sha256": "f51258ebd8268c205c29d0a8b2f8624add162ea28939dab4bb4859b6e8ab9adb"
     },
     {
       "name": "html break inside a quote stays soft (BBF-85)",
