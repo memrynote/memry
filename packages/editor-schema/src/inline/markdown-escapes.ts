@@ -13,7 +13,9 @@
  *
  * A line break in a table cell or a heading is written `<br>`, which the
  * parser reads back as the same break; the backslash form ended the row or the
- * heading.
+ * heading. So is a break the writer has no other spelling for: one at a
+ * block's edge, which it trims, and one in a run of three or more, which it
+ * writes as blank lines that end the paragraph.
  *
  * `<`, `$`, `%` and `=` have no backslash escape in the parser, so text that
  * spells an HTML tag, math, an Obsidian comment or a setext underline is
@@ -75,7 +77,9 @@ function spell(items: Item[]): { spelling: string; segments: Segment[] } {
       if (item.type === 'text' && typeof item.text === 'string') {
         const styles = item.styles ?? {}
         if (styles.code === true) {
-          spelling += `\`${NODE}\``
+          // A break at a code run's edge is written outside its backticks.
+          const [, before, after] = /^(\n*)[\s\S]*?(\n*)$/.exec(item.text) ?? ['', '', '']
+          spelling += `${before}\`${NODE}\`${after}`
           continue
         }
         const bold = styles.bold === true ? '**' : ''
@@ -121,13 +125,19 @@ function pairs(spelling: string, at: number): boolean {
   return false
 }
 
-/** The offset in `line` of a character that opens a block at a line start, or -1. */
-function blockOpener(line: string): number {
-  if (/^(#{1,6}(\s|$)|>|[-+*](\s|$)|-+[ \t]*$)/.test(line)) return 0
+/**
+ * The offset in `line` of a character that opens a block at a line start, or
+ * -1: the block starts `tokenize` (`markdownToHtml.ts`) reads, and on a line
+ * after the first, the table row it ends a paragraph at.
+ */
+function blockOpener(line: string, continuation: boolean): number {
+  if (/^(#{1,6}(\s|$)|-+[ \t]*$)/.test(line)) return 0
   if (/^ {0,3}([-*_])([ \t]*\1){2,}[ \t]*$/.test(line)) return line.search(/\S/)
+  if (/^\s{0,3}>|^\s*[-+*](\s|$)/.test(line)) return line.search(/\S/)
   if (/^\[[^\]]*\]:/.test(line)) return 0
   if (line.includes('|') && DELIMITER_ROW.test(line)) return line.indexOf('|')
-  const ordered = /^\d{1,9}[.)](\s|$)/.exec(line)
+  if (continuation && /^\s*\|(.+\|)+\s*$/.test(line)) return line.indexOf('|')
+  const ordered = /^\s*\d+[.)](\s|$)/.exec(line)
   return ordered ? ordered[0].search(/[.)]/) : -1
 }
 
@@ -143,7 +153,9 @@ function isMarkup(spelling: string, at: number, segment: Segment, place: Place):
   const next = spelling[at + 1]
   switch (spelling[at]) {
     case '\\':
-      return next !== undefined && (next === '\n' || ESCAPABLE.includes(next))
+      // The writer reads a backslash before a newline, or one ending the
+      // block, as a break.
+      return next === undefined || next === '\n' || ESCAPABLE.includes(next)
     case '`':
       return place.cell || spelling.indexOf('`') !== at || spelling.lastIndexOf('`') !== at
     case '*':
@@ -168,7 +180,7 @@ function lineOpeners(spelling: string, place: Place): Set<number> {
   if (!place.lineBlock) return out
   for (let start = 0; ;) {
     const end = spelling.indexOf('\n', start)
-    const opener = blockOpener(spelling.slice(start, end < 0 ? undefined : end))
+    const opener = blockOpener(spelling.slice(start, end < 0 ? undefined : end), start > 0)
     if (opener >= 0) out.add(start + opener)
     if (end < 0) return out
     start = end + 1
@@ -189,6 +201,18 @@ function unclosedWikiOpeners(spelling: string): Set<number> {
   return out
 }
 
+/**
+ * Whether the newline at `at` sits where the writer has no spelling for it: at
+ * the block's start or end, or in a run of three or more.
+ */
+function unwritableBreak(spelling: string, at: number): boolean {
+  let start = at
+  while (spelling[start - 1] === '\n') start--
+  let end = at + 1
+  while (spelling[end] === '\n') end++
+  return start === 0 || end === spelling.length || end - start >= 3
+}
+
 function escapeSegment(
   spelling: string,
   segment: Segment,
@@ -205,8 +229,9 @@ function escapeSegment(
   for (let i = 0; i < segment.text.length; i++) {
     const at = segment.at + i
     const char = segment.text[i]
-    if (char === '\n' && place.oneLine) out += '<br>'
-    else if (!keep.has(at) && (forced.has(at) || isMarkup(spelling, at, segment, place))) {
+    if (char === '\n' && (place.oneLine || (place.lineBlock && unwritableBreak(spelling, at)))) {
+      out += '<br>'
+    } else if (!keep.has(at) && (forced.has(at) || isMarkup(spelling, at, segment, place))) {
       out += `\\${char}`
     } else out += char
   }
