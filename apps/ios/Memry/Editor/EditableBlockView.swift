@@ -494,6 +494,7 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
         let changed = block != next || restyled
         let behind = BlockText.shown(next.inline) != base
         block = next
+        if changed { session?.readFocusedBlock(of: self) }
         if changed || stale || behind, !dirty { render() }
         return changed
     }
