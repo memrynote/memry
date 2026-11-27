@@ -14,6 +14,7 @@ mod notes;
 pub mod queue;
 pub mod records;
 mod row_dumps;
+pub mod sync_history;
 mod tags;
 pub mod unknown_fields;
 
@@ -193,10 +194,10 @@ pub const TABLE_MAP: &[TableMapping] = &[
     map!(Data Migration "sticky_drafts" [16, Convert, "36b"]: "core sticky_draft record table of Step 16"),
     map!(Data Migration "suggestion_feedback" [26, Convert, "36d1"]: "Step 27 inbox_suggestion_feedback (device-local)"),
     map!(Data Migration "sync_devices" [19, Skip]: "device list comes from the server, device id from memry-config.json; the key check is Step 37"),
-    map!(Data Migration "sync_history" [17, Convert, "36c3"]: "Step 17 sync_history: type becomes kind, epoch seconds to ms, newest 500 rows"),
+    map!(Data Migration "sync_history" [17, Convert => sync_history::import]: "Step 17 sync_history: type becomes kind, epoch seconds to ms, newest 500 rows"),
     map!(Data Migration "sync_intents" [17, Convert, "36c2"]: "each row becomes one core outbox record row for its type and item id"),
     map!(Data Migration "sync_pending_deletes" [17, Convert, "36c2"]: "core outbox delete rows plus tombstone sync items"),
-    map!(Data Migration "sync_state" [17, Convert, "36c3"]: "per-key rules in sync_state.rs (SYNC_STATE_KEYS)"),
+    map!(Data Migration "sync_state" [17, Convert => super::sync_state::import]: "per-key rules in sync_state.rs (SYNC_STATE_KEYS)"),
     map!(Data Migration "tag_categories" [13, Convert => tags::tag_categories]: "core tag_categories table"),
     map!(Data Migration "tag_definitions" [13, Convert => tags::tag_definitions]: "core tag_definitions table"),
     map!(Data Migration "task_activity" [21, Convert, "36d2"]: "core task_activity table"),
