@@ -12,6 +12,7 @@ import {
   splitHtmlCommentTokens
 } from '@memry/shared/html-comments'
 import { restoreDetailsMarkup } from './blocks/markdown'
+import { dropEmptyBlockPlaceholders, maskEmptyBlockLines } from './empty-blocks'
 import { maskCellCodeSpans, restoreCellCodeSpans } from './inline/cell-code-spans'
 import { linkCodeAsText } from './inline/link-code-spans'
 import { maskLinkDestinations, restoreLinkDestinations } from './inline/link-destinations'
@@ -308,8 +309,8 @@ function restoreStringProps(node: BlockLike, restore: (value: string) => string)
  * `htmlComments: false` parses as builds before #2741 did, dropping every
  * comment, and `losslessBlocks: false` as builds before lossless blocks did,
  * splitting a table row on a code span's pipe, cutting it to its header's
- * width and dropping a list item's images, for reading a source the way an
- * older build read it.
+ * width, dropping a list item's images and reading an empty list item or
+ * heading as text, for reading a source the way an older build read it.
  */
 export async function parseMarkdownToBlocksRepaired<T>(
   editor: MarkdownParsingEditor,
@@ -342,8 +343,11 @@ export async function parseMarkdownToBlocksRepaired<T>(
   const { markdown: codeMasked, chars: codeChars } = maskCellCodeSpans(tokensMasked, {
     pipes: losslessBlocks
   })
-  // A row wider than its table's header keeps its extra cells.
-  const withTokensMasked = losslessBlocks ? widenTables(codeMasked) : codeMasked
+  // A row wider than its table's header keeps its extra cells, and an empty
+  // list item or heading stays one.
+  const withTokensMasked = losslessBlocks
+    ? maskEmptyBlockLines(widenTables(codeMasked))
+    : codeMasked
 
   // BlockNote parses markdown by way of this same HTML, so the detour changes
   // nothing but the lifted images and the code in link text, and a note with
@@ -361,6 +365,7 @@ export async function parseMarkdownToBlocksRepaired<T>(
     ? editor.tryParseMarkdownToBlocks(withTokensMasked)
     : editor.tryParseHTMLToBlocks(repaired))) as BlockLike[]
   repairBlocks(parsed, { breaks, tokens, codeChars, destinations })
+  if (losslessBlocks) dropEmptyBlockPlaceholders(parsed)
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- T is the caller's block type, which this package cannot name without its schema
   return parsed as T[]
 }

@@ -34,7 +34,8 @@ const openToken = (index: number): string => `MEMRYEMO${PROCESS_WORD}${index};`
 const closeToken = (index: number): string => `MEMRYEMC${PROCESS_WORD}${index};`
 const codeToken = (index: number): string => `MEMRYEMK${PROCESS_WORD}${index};`
 const TOKEN = new RegExp(`MEMRYEM([OCK])${PROCESS_WORD}(\\d+);`, 'g')
-const EDGES = /^((?:\\\n|\s)*)([\s\S]*?)((?:\\\n|\s)*)$/
+// A break inside a quote carries the quote's `>` prefix onto the next line.
+const EDGES = /^((?:\\\n(?:[^\S\n]*>)*|\s)*)([\s\S]*?)((?:\\\n(?:[^\S\n]*>)*|\s)*)$/
 
 function holds(item: InlineItem, mark: EmphasisMark): boolean {
   if (Array.isArray(item.content)) {
@@ -169,11 +170,17 @@ function codeTokens(items: InlineItem[], marks: Span[]): InlineItem[] {
  * (BBF-108) gained backslashes on every save. An address whose unescaped
  * parentheses balance is valid as written, so it travels as tokens. So does an
  * `href` with whitespace, which is the destination and title as written
- * (`link-destinations.ts`, BBF-109).
+ * (`link-destinations.ts`, BBF-109). The serializer writes a link whose text
+ * is its address as the bare address, which the parser reads as text, so that
+ * address travels as one token and the link keeps its brackets.
  */
 function hrefParenTokens(item: InlineItem, marks: Span[]): InlineItem {
   const href = item.href
-  if (item.type !== 'link' || !href || !/[\\()<>\s]/.test(href)) return item
+  if (item.type !== 'link' || !href) return item
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- content is `unknown`; the caller passes a link, whose content is always an array
+  const text = (item.content as InlineItem[]).map((child) => child.text ?? '').join('')
+  if (text === href) return { ...item, href: codeToken(marks.push({ code: href }) - 1) }
+  if (!/[\\()<>\s]/.test(href)) return item
   if (href !== href.trim() || href.includes('\n')) return item
   if (!/\s/.test(href) && href.startsWith('<')) return item
   let depth = 0

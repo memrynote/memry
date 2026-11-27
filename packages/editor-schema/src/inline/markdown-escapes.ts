@@ -64,10 +64,6 @@ interface Segment {
 const isLink = (item: Item): item is Item & { content: Item[] } =>
   item.type === 'link' && Array.isArray(item.content)
 
-/** BlockNote writes a link whose text is its address as the bare address. */
-const isBareLink = (item: Item & { content: Item[] }): boolean =>
-  item.content.map((child) => child.text ?? '').join('') === item.href
-
 /** The block as the writer spells it, near enough to tell markup, and its text runs. */
 function spell(items: Item[]): { spelling: string; segments: Segment[] } {
   let spelling = ''
@@ -88,12 +84,10 @@ function spell(items: Item[]): { spelling: string; segments: Segment[] } {
         spelling += bold + italic + strike
         segments.push({ at: spelling.length, text: item.text, inLink })
         spelling += item.text + strike + italic + bold
-      } else if (isLink(item) && !isBareLink(item)) {
+      } else if (isLink(item)) {
         spelling += '['
         walk(item.content, true)
         spelling += `](${item.href ?? ''})`
-      } else if (isLink(item)) {
-        spelling += item.href
       } else {
         spelling += NODE
       }
@@ -262,9 +256,13 @@ export function escapeMarkdownText<T extends Item>(items: T[], blockType?: strin
   const rewrite = (list: Item[]): Item[] =>
     list.map((item) => {
       if (item.type === 'text' && typeof item.text === 'string') {
-        return item.styles?.code === true ? item : { ...item, text: escaped[next++] }
+        if (item.styles?.code !== true) return { ...item, text: escaped[next++] }
+        // The parser strips one space off each end of a code span that has
+        // one at both, so ` b ` is written with a second.
+        const spaced = /^ [\s\S]* $/.test(item.text) && /[^ ]/.test(item.text)
+        return spaced ? { ...item, text: ` ${item.text} ` } : item
       }
-      if (isLink(item) && !isBareLink(item)) return { ...item, content: rewrite(item.content) }
+      if (isLink(item)) return { ...item, content: rewrite(item.content) }
       return item
     })
   // SAFETY: only `text` and `content` are replaced, with values of the same shape.

@@ -403,9 +403,15 @@ function normalizeProseMarkdown(text: string): string {
         continue
       }
     }
-    // `*`/`+` bullet marker → `-` (needs the trailing space, so `*emphasis*` and
-    // `***` thematic breaks are untouched).
-    out.push(line.replace(/^([ \t]*)[*+](\s)/, '$1-$2'))
+    // `*`/`+` bullet marker → `-` (needs the trailing space or the line's end,
+    // so `*emphasis*` and `***` thematic breaks are untouched; a literal `*`
+    // alone on a line is written escaped).
+    // An empty item or heading keeps no space after its marker.
+    out.push(
+      line
+        .replace(/^([ \t]*)[*+](\s|$)/, '$1-$2')
+        .replace(/^([ \t]*(?:-|\d{1,9}[.)])(?: \[[ xX]\])?| {0,3}#{1,6})[ \t]+$/, '$1')
+    )
   }
   return compactTables(out).join('\n')
 }
