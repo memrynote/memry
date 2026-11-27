@@ -20,8 +20,8 @@ mod projects;
 mod reminders;
 #[macro_use]
 mod tasks;
-
 mod dispatch;
+mod graph;
 mod permission;
 
 pub use dispatch::{dispatcher, invoke_handler};

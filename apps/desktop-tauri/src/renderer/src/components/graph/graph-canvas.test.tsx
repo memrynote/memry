@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
+import { MotionConfig } from 'motion/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { GraphDataResponse, GraphSettings } from '@memry/contracts/graph-api'
 import type { GraphFilterState } from '@/hooks/use-graph-filters'
@@ -792,6 +793,27 @@ describe('GraphCanvas', () => {
 
       expect(graph.getNodeAttribute('note-a', 'x')).not.toBe(before)
       expect(graphCanvasMocks.sigma.refresh).toHaveBeenCalled()
+    })
+
+    it('shows the settled layout without motion when reduced motion is on', () => {
+      // The app's Reduce motion setting reaches components as this MotionConfig.
+      render(
+        <MotionConfig reducedMotion="always">
+          <GraphCanvas
+            data={data}
+            filterState={filters}
+            graphSettings={livePhysics}
+            onFocusNode={vi.fn()}
+          />
+        </MotionConfig>
+      )
+      const graph = graphCanvasMocks.sigmaContainerProps?.graph
+      const settled = graph.getNodeAttribute('note-a', 'x')
+
+      for (let i = 0; i < 5; i++) vi.advanceTimersToNextFrame()
+
+      expect(Number.isFinite(settled)).toBe(true)
+      expect(graph.getNodeAttribute('note-a', 'x')).toBe(settled)
     })
 
     it('pins a node to the pointer while it is being dragged', () => {

@@ -103,6 +103,10 @@ vi.mock('@/services/inbox-service', () => ({
   }
 }))
 
+const graphService = vi.hoisted(() => ({ getData: vi.fn(), getLocal: vi.fn() }))
+
+vi.mock('@/services/graph-service', () => ({ graphService }))
+
 vi.mock('./use-inbox', () => ({
   inboxKeys: {
     lists: () => ['inbox', 'lists'],
@@ -267,10 +271,8 @@ beforeEach(() => {
     .mockResolvedValue({ overrides: { save: 'Mod+S' }, globalCapture: 'Mod+Shift+Space' })
   api.settings.setKeyboardSettings = vi.fn().mockResolvedValue({ success: true })
   api.settings.resetKeyboardSettings = vi.fn().mockResolvedValue({ success: true })
-  api.graph = {
-    getData: vi.fn().mockResolvedValue({ nodes: [{ id: 'note-1' }], edges: [] }),
-    getLocal: vi.fn().mockResolvedValue({ nodes: [{ id: 'local-1' }], edges: [] })
-  } as never
+  graphService.getData.mockResolvedValue({ nodes: [{ id: 'note-1' }], edges: [] })
+  graphService.getLocal.mockResolvedValue({ nodes: [{ id: 'local-1' }], edges: [] })
   api.journal = {
     ...api.journal,
     getDayContext: vi.fn().mockResolvedValue({
@@ -580,7 +582,7 @@ describe('state and settings hooks', () => {
       initialProps: { noteId: undefined as string | undefined },
       wrapper
     })
-    expect(window.api.graph.getLocal).not.toHaveBeenCalled()
+    expect(graphService.getLocal).not.toHaveBeenCalled()
     local.rerender({ noteId: 'note-1' })
     await waitFor(() => expect(local.result.current.data?.nodes).toEqual([{ id: 'local-1' }]))
 
