@@ -65,6 +65,16 @@ describe('markdown the renderer reads as main does', () => {
     expect(block.props).toMatchObject({ url })
   })
 
+  it.each([
+    ['a list item', '- ![x](assets/p.png)', 'assets/p.png'],
+    ['a list item body', '- a\n\n  ![x](../attachments/p.png)', '../attachments/p.png']
+  ])('keeps a note-relative image address as written in %s', async (_, markdown, url) => {
+    // `img.src` resolves against the page's base URL; written back, that is
+    // how a vault stops being portable between machines.
+    const urls = JSON.stringify(await parse(markdown)).match(/"url":"[^"]*"/g)
+    expect(urls).toEqual([`"url":"${url}"`])
+  })
+
   it('keeps a file marker inside a code fence as code', async () => {
     const marker =
       '<!-- file:{"url":"memry-file://local/a.pdf","name":"a.pdf","size":1,"mimeType":"application/pdf"} -->'
