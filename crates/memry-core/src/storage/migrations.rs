@@ -275,9 +275,9 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         sql: include_str!("migrations/data/0044_graph_layouts.sql"),
     },
     Migration {
-        version: 44,
+        version: 45,
         name: "attachment_revivals",
-        sql: include_str!("migrations/data/0044_attachment_revivals.sql"),
+        sql: include_str!("migrations/data/0045_attachment_revivals.sql"),
     },
 ];
 

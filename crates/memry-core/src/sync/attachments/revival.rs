@@ -8,7 +8,7 @@
 //! local file of each gone one, and drops the gone ids from the references.
 //!
 //! Electron keeps revived notes in memory and loses them on a restart. Here
-//! they are rows of `attachment_revived_notes` (data migration 0044), and a
+//! they are rows of `attachment_revived_notes` (data migration 0045), and a
 //! row goes only once its check settled, so a check cut off anywhere runs
 //! again. The writes follow one order, each step committed before the next:
 //! record moves, then the queue rows, then the dropped references, then the
