@@ -205,8 +205,9 @@ final class EditorSession {
     @ObservationIgnored private var panelSwapGeneration = 0
     // `nonisolated(unsafe)`: written once in `init`, read only by `deinit`,
     // which runs after the last reference is gone.
-    @ObservationIgnored private nonisolated(unsafe) var keyboardObserver: NSObjectProtocol?
-    @ObservationIgnored private nonisolated(unsafe) var presentationObservers: [NSObjectProtocol] = []
+    @ObservationIgnored private nonisolated(unsafe) var keyboardObservers: [NSObjectProtocol] = []
+    /// Looks again while anything is presented over the page (`syncToolbar`).
+    @ObservationIgnored private var coveredWatch: Timer?
     @ObservationIgnored private var leaving: AnyCancellable?
     /// Background tasks held until their resign's writes land. Each resign
     /// ends only its own, so a later resign's write stays protected.
@@ -222,42 +223,36 @@ final class EditorSession {
     /// `notifications`: the center the lifecycle notifications are posted
     /// to, a seam for tests: the app-wide one reaches every suite's editors.
     init(notifications: NotificationCenter = .default) {
-        keyboardObserver = NotificationCenter.default.addObserver(
-            forName: UIResponder.keyboardWillShowNotification, object: nil, queue: .main
-        ) { [weak self] note in
-            guard let frame = note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else { return }
-            let screen = note.object as? UIScreen
-            let isLocal = note.userInfo?[UIResponder.keyboardIsLocalUserInfoKey] as? Bool != false
-            MainActor.assumeIsolated {
-                // #4344: a keyboard on another screen, or another app's on
-                // this one (Split View, Stage Manager), says nothing about
-                // this window's.
-                guard isLocal, let self, self.panel == .none, let screen, self.accessory.window != nil,
-                      screen === self.field?.textView.window?.windowScene?.screen
-                else { return }
-                // The keys are what lies below the toolbar on screen. The
-                // frame's height minus the toolbar's overstated them: iOS 26
-                // gives the first frame a bottom inset more than the toolbar
-                // and keys, and a hardware keyboard's runs off the screen.
-                let toolbar = self.accessory.convert(self.accessory.bounds, to: screen.coordinateSpace)
-                let keys = min(frame.maxY, screen.bounds.maxY) - toolbar.maxY
-                if keys > 200 { self.keyboardHeight = keys }
+        // The toolbar can still be out of its window as the keys are about
+        // to show; it is placed by the time they have shown.
+        let shows = [UIResponder.keyboardWillShowNotification, UIResponder.keyboardDidShowNotification]
+        keyboardObservers = shows.map {
+            NotificationCenter.default.addObserver(forName: $0, object: nil, queue: .main) { [weak self] note in
+                guard let frame = note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else { return }
+                let screen = note.object as? UIScreen
+                let isLocal = note.userInfo?[UIResponder.keyboardIsLocalUserInfoKey] as? Bool != false
+                MainActor.assumeIsolated {
+                    // #4344: a keyboard on another screen, or another app's
+                    // on this one (Split View, Stage Manager), says nothing
+                    // about this window's.
+                    guard isLocal, let self, self.panel == .none, let screen, self.accessory.window != nil,
+                          screen === self.field?.textView.window?.windowScene?.screen
+                    else { return }
+                    // The keys are what lies below the toolbar on screen. The
+                    // frame's height minus the toolbar's overstated them: iOS
+                    // 26 gives the first frame a bottom inset more than the
+                    // toolbar and keys, and a hardware keyboard's runs off the
+                    // screen.
+                    let toolbar = self.accessory.convert(self.accessory.bounds, to: screen.coordinateSpace)
+                    let keys = min(frame.maxY, screen.bounds.maxY) - toolbar.maxY
+                    if keys > 200 { self.keyboardHeight = keys }
+                }
             }
         }
-        // With a hardware keyboard the toolbar floats in the keyboard's
-        // window, above anything the page presents. UIKit hides it as a
-        // menu opens and lays the menu out to the screen's bottom edge, then
-        // shows the toolbar again over the menu's last rows. It steps aside
-        // while a menu or sheet is up; UIKit moves the keyboard as each one
-        // opens and closes. The keys come back while a sheet is still on its
-        // way out and do not move again, so that one counts as closed.
         let moves = [UIResponder.keyboardWillChangeFrameNotification, UIResponder.keyboardDidChangeFrameNotification]
-        presentationObservers = moves.map {
+        keyboardObservers += moves.map {
             NotificationCenter.default.addObserver(forName: $0, object: nil, queue: .main) { [weak self] _ in
-                MainActor.assumeIsolated {
-                    guard let self, let window = self.field?.textView.window else { return }
-                    self.accessory.alpha = PresentingWindow.keepsPresenting(over: window) ? 0 : 1
-                }
+                MainActor.assumeIsolated { self?.syncToolbar() }
             }
         }
         // #2820: typing is committed when editing ends, and leaving the app
@@ -275,8 +270,33 @@ final class EditorSession {
     }
 
     deinit {
-        if let keyboardObserver { NotificationCenter.default.removeObserver(keyboardObserver) }
-        presentationObservers.forEach(NotificationCenter.default.removeObserver)
+        keyboardObservers.forEach(NotificationCenter.default.removeObserver)
+    }
+
+    /// With a hardware keyboard the toolbar floats in the keyboard's window,
+    /// above anything the page presents. UIKit hides it as a menu opens and
+    /// lays the menu out to the screen's bottom edge, then shows the toolbar
+    /// again over the menu's last rows. So it steps aside while a menu, alert
+    /// or sheet is over the page. The keys come back while a sheet is still
+    /// on its way out, so that one counts as closed, but a swipe-down can
+    /// snap the sheet back. Only the page with the caret decides; another
+    /// page's toolbar is not on screen. UIKit says nothing as a presentation
+    /// ends or snaps back, and the keys need not move then, so the toolbar
+    /// looks again every tenth of a second while anything is presented.
+    private func syncToolbar() {
+        guard focusedBlockId != nil, let window = field?.textView.window else { return stopWatchingCover() }
+        accessory.alpha = PresentingWindow.keepsPresenting(over: window) ? 0 : 1
+        guard PresentingWindow.isPresenting(over: window) else { return stopWatchingCover() }
+        guard coveredWatch == nil else { return }
+        coveredWatch = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] timer in
+            guard let self else { return timer.invalidate() }
+            MainActor.assumeIsolated { self.syncToolbar() }
+        }
+    }
+
+    private func stopWatchingCover() {
+        coveredWatch?.invalidate()
+        coveredWatch = nil
     }
 
     /// Commits the focused block's typing, and holds a background task until
@@ -520,6 +540,7 @@ final class EditorSession {
 
     func selectionChanged(in field: BlockField) {
         guard field === self.field else { return }
+        syncToolbar()
         refreshTypingState()
         let textView = field.textView
         let range = textView.selectedRange
