@@ -15,6 +15,7 @@
 
 #[allow(unused_imports)]
 use crate::http_fakes;
+use memry_core::domain::agent_queue::Queue;
 
 use std::path::Path;
 use std::sync::{Arc, Mutex};
@@ -249,6 +250,7 @@ async fn agent_pending_record_pushes_plain_with_no_key() {
         db.clone(),
         declaration(),
         recording.clone(),
+        "device-a",
     )
     .with_at_rest_key(fixture.vault.at_rest_key())
     .drain_wave()
@@ -282,7 +284,8 @@ async fn agent_text_never_reaches_the_database_file_and_pushes_plain() {
                 backend_model: None,
             };
             let conversation =
-                agent_conversation::create(conn, &key, &new, "device-a", NOW).map_err(failed)?;
+                agent_conversation::create(conn, &key, &new, Queue::Outbox, "device-a", NOW)
+                    .map_err(failed)?;
             for (id, content) in [("m1", &first), ("m2", &second)] {
                 let new = NewMessage {
                     id: Some(id),
@@ -293,7 +296,8 @@ async fn agent_text_never_reaches_the_database_file_and_pushes_plain() {
                     tool_call_id: None,
                     status: "completed",
                 };
-                agent_message::append(conn, &key, &new, "device-a", NOW).map_err(failed)?;
+                agent_message::append(conn, &key, &new, Queue::Outbox, "device-a", NOW)
+                    .map_err(failed)?;
             }
             Ok(conversation)
         })
@@ -323,6 +327,7 @@ async fn agent_text_never_reaches_the_database_file_and_pushes_plain() {
         db.clone(),
         declaration(),
         recording.clone(),
+        "device-a",
     )
     .with_at_rest_key(key.clone())
     .drain_wave()
@@ -361,6 +366,7 @@ async fn agent_text_never_reaches_the_database_file_and_pushes_plain() {
         db.clone(),
         declaration(),
         recording.clone(),
+        "device-a",
     )
     .with_at_rest_key(key)
     .drain_wave()
@@ -403,9 +409,10 @@ async fn agent_record_under_another_key_errors_holds_and_is_never_sealed_again()
                 backend: "local",
                 backend_model: None,
             };
-            let id = agent_conversation::create(conn, &writer, &new, "device-a", NOW)
-                .map_err(failed)?
-                .id;
+            let id =
+                agent_conversation::create(conn, &writer, &new, Queue::Outbox, "device-a", NOW)
+                    .map_err(failed)?
+                    .id;
             let message = NewMessage {
                 id: Some("m1"),
                 conversation_id: &id,
@@ -415,7 +422,8 @@ async fn agent_record_under_another_key_errors_holds_and_is_never_sealed_again()
                 tool_call_id: None,
                 status: "completed",
             };
-            agent_message::append(conn, &writer, &message, "device-a", NOW).map_err(failed)?;
+            agent_message::append(conn, &writer, &message, Queue::Outbox, "device-a", NOW)
+                .map_err(failed)?;
             Ok(id)
         })
         .expect("writes");
@@ -457,6 +465,7 @@ async fn agent_record_under_another_key_errors_holds_and_is_never_sealed_again()
         db.clone(),
         declaration(),
         recording.clone(),
+        "device-a",
     )
     .with_at_rest_key(key)
     .drain_wave()

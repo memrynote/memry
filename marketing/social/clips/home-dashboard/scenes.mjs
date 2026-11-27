@@ -66,8 +66,8 @@ export const scenes = {
   async resize(ctx) {
     const { rec, page, zoom, sleep, at } = ctx
     const w = page
-      .locator('.react-grid-item')
-      .filter({ has: header(page) })
+      .locator('.react-grid-item:has(.widget-drag-handle)')
+      .filter({ hasText: 'Journal' })
       .first()
     const handle = w.locator('.react-resizable-handle')
     const c = await rec.center(handle)

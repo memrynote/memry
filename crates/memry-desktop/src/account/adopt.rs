@@ -11,11 +11,14 @@ impl AccountService {
     /// Binds the open vault to the account's first vault (the server lists them by item count)
     /// when the vault is empty, not bound to a server vault yet, and unknown to the account.
     /// Returns the adopted id; `None` changes nothing. A list that cannot be read adopts nothing,
-    /// as Electron does.
+    /// as Electron does, and neither does a sign-out that overtakes the list.
     pub async fn adopt_account_vault_if_absent(
         &self,
         open: &OpenVault,
     ) -> Result<Option<String>, AccountError> {
+        let Some(epoch) = self.signed_in_epoch() else {
+            return Ok(None);
+        };
         let vault = open.vault.clone();
         let path = open.path.clone();
         let (bound, has_content) = tokio::task::spawn_blocking(move || {
@@ -52,10 +55,16 @@ impl AccountService {
         }
         let vault = open.vault.clone();
         let id = target.clone();
-        tokio::task::spawn_blocking(move || vault.bind_server_vault(&id))
-            .await
-            .map_err(|e| AccountError::VaultChoice(e.to_string()))?
-            .map_err(|e| AccountError::VaultChoice(e.to_string()))?;
+        let account = self.epoch.clone();
+        let bound = tokio::task::spawn_blocking(move || {
+            account.write_if(epoch, || vault.bind_server_vault(&id))
+        })
+        .await
+        .map_err(|e| AccountError::VaultChoice(e.to_string()))?;
+        let Some(bound) = bound else {
+            return Ok(None);
+        };
+        bound.map_err(|e| AccountError::VaultChoice(e.to_string()))?;
         tracing::info!(
             scope = "Binding",
             count = vaults.len(),

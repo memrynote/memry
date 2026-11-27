@@ -30,6 +30,17 @@ protocol BlockEditing: Sendable {
     /// and then that write is not undoable. Never stored or synced.
     func snapshot(noteId: String, blockId: String) async throws -> String?
 
+    /// Applies the edit `locate` builds from `blockId`'s runs as the core
+    /// holds them, read in the same turn of the core queue as the write, so
+    /// no other pane's write lands between them (#4706). `locate` gets `nil`
+    /// when the surface reads no block (the journal, test fakes), and then
+    /// a page's own text stands in for it; it answers `nil` when the block
+    /// no longer holds what the edit goes at, and nothing is written.
+    ///
+    func edit(
+        noteId: String, blockId: String, locating locate: @escaping @Sendable ([InlineRun]?) -> BlockEdit?
+    ) async throws -> LocatedEdit
+
     /// Whether a block can leave this body for another note (desktop's block
     /// menu "Move to"): the surface reads snapshots and appends them to
     /// another note's body.
@@ -45,10 +56,25 @@ extension BlockEditing {
     /// A surface with no snapshot read (the journal, test fakes) offers no
     /// undo for a delete.
     func snapshot(noteId: String, blockId: String) async throws -> String? { nil }
+    func edit(
+        noteId: String, blockId: String, locating locate: @escaping @Sendable ([InlineRun]?) -> BlockEdit?
+    ) async throws -> LocatedEdit {
+        guard let edit = locate(nil) else { return .notFound }
+        return try await self.edit(noteId: noteId, edit) ? .landed(edit) : .refused
+    }
 
     /// The journal and test fakes move no block to another note.
     var movesBlocksBetweenNotes: Bool { false }
     func appendSnapshot(_ snapshot: String, toNote noteId: String) async throws -> Bool { false }
+}
+
+/// What `BlockEditing.edit(noteId:blockId:locating:)` did.
+enum LocatedEdit: Sendable {
+    case landed(BlockEdit)
+    /// The note or block is gone, or the core refused the edit.
+    case refused
+    /// The block no longer holds what the edit goes at: nothing was written.
+    case notFound
 }
 
 /// The production editor: the core's own `NotesWriter`, over the shell's one
@@ -79,6 +105,20 @@ struct CoreBlockEditor: BlockEditing {
 
     func snapshot(noteId: String, blockId: String) async throws -> String? {
         try await executor.run { try writer().blockSnapshot(noteId: noteId, blockId: blockId) }
+    }
+
+    func edit(
+        noteId: String, blockId: String, locating locate: @escaping @Sendable ([InlineRun]?) -> BlockEdit?
+    ) async throws -> LocatedEdit {
+        let vault = vault
+        let located = try await executor.run { () throws -> LocatedEdit in
+            // A note or block that is gone refuses the edit, as `edit` does.
+            guard let runs = try vault.notes().blocks(id: noteId)?.first(where: { $0.id == blockId })?.inline else { return .refused }
+            guard let edit = locate(runs) else { return .notFound }
+            return try writer().editBlock(noteId: noteId, edit: edit) ? .landed(edit) : .refused
+        }
+        if case .landed = located { NotesTelemetry.noteUpdated(noteId, source: "editor_body") }
+        return located
     }
 
     var movesBlocksBetweenNotes: Bool { true }

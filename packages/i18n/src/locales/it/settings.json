@@ -1232,6 +1232,10 @@
     "loadingAria": "Caricamento dispositivi",
     "none": "Nessun dispositivo ancora collegato",
     "linkNew": "Collega un nuovo dispositivo",
+    "linkNeedsPlan": {
+      "title": "Il collegamento richiede un piano di sincronizzazione",
+      "description": "Un dispositivo collegato vede le tue note solo quando la sincronizzazione è attiva. Senza un piano, accedi da lì con la tua frase di recupero e il dispositivo manterrà un proprio vault."
+    },
     "thisDevice": "Questo dispositivo",
     "lastSeen": "Visto l'ultima volta {time} fa",
     "linked": "Collegato {time} fa",
@@ -1398,6 +1402,7 @@
       "selectModel": "Seleziona un modello",
       "apiKey": "Chiave API",
       "apiKeyDescription": "Memorizzata in locale, inviata solo al provider",
+      "apiKeyKeychainDescription": "Memorizzata nel portachiavi del sistema operativo, inviata solo al provider",
       "apiKeyPlaceholder": "Inserisci la chiave API {provider}",
       "ollamaUrl": "URL di Ollama",
       "ollamaUrlDescription": "Indirizzo del server locale",
@@ -2238,6 +2243,10 @@
         "prevVault": {
           "label": "Vault precedente",
           "description": "Passa al vault precedente nella barra laterale"
+        },
+        "todayJournal": {
+          "label": "Diario di oggi",
+          "description": "Apri il diario alla voce di oggi"
         }
       },
       "tabs": {
@@ -2431,7 +2440,8 @@
         "vault-binding": "Le chiavi di questo dispositivo sono state ripristinate, ma questo vault non è ancora impostato per sincronizzarsi con il tuo account. Scegli come sincronizzarlo dal menu di sincronizzazione.",
         "vault-foreign": "Le chiavi di questo dispositivo sono state ripristinate, ma questo vault appartiene a un altro account. Resta locale su questo dispositivo.",
         "entitlement": "Le chiavi di questo dispositivo sono state ripristinate, ma la sincronizzazione richiede un piano Sync attivo.",
-        "unavailable": "Le chiavi di questo dispositivo sono state ripristinate, ma non è stato possibile avviare la sincronizzazione. Riproverà; riavvia Memry se non succede."
+        "unavailable": "Le chiavi di questo dispositivo sono state ripristinate, ma non è stato possibile avviare la sincronizzazione. Riproverà; riavvia Memry se non succede.",
+        "unavailable-restart": "Le chiavi di questo dispositivo sono state ripristinate, ma non è stato possibile avviare la sincronizzazione. Riavvia Memry; se la sincronizzazione continua a non partire, esci e accedi di nuovo."
       }
     },
     "pagesSettingsAiInlineSection": {

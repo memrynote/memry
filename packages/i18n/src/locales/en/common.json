@@ -1,4 +1,7 @@
 {
+  "wikiLink": {
+    "openFailed": "Could not open this link"
+  },
   "portalBlock": {
     "copyFailed": "Could not copy the portal",
     "hiddenCount": "{count} hidden",
@@ -956,6 +959,8 @@
     "componentsVaultSwitcher": {
       "noVaultsYet": "No vaults yet",
       "openVault": "Open vault",
+      "createVault": "Create vault",
+      "openFolderAsVault": "Open folder as vault",
       "settings": "Settings",
       "remove": "Remove “",
       "removeVaultTitle": "Remove “{name}” from list?",

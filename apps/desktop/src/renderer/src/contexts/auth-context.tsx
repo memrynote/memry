@@ -251,6 +251,9 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
+/** `useAuth` for a component that may render outside an `AuthProvider`. */
+export const useAuthOptional = (): AuthContextValue | null => useContext(AuthContext)
+
 export const useAuth = (): AuthContextValue => {
   const context = useContext(AuthContext)
   if (!context) {

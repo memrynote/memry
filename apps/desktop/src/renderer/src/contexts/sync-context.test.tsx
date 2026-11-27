@@ -412,6 +412,27 @@ describe('SyncProvider', () => {
       )
     })
 
+    it('#then says why when main sends a reason', async () => {
+      const { result } = renderHook(() => useSync(), { wrapper })
+      await vi.waitFor(() => expect(result.current.state.status).toBe('idle'))
+
+      act(() => {
+        for (const cb of attachmentUploadFailedListeners) {
+          cb({
+            noteId: 'note-1',
+            diskPath: '/vault/attachments/sunset.png',
+            error: 'Holds text',
+            reason: 'Holds text'
+          })
+        }
+      })
+
+      expect(toastMock.error).toHaveBeenCalledWith(
+        expect.stringContaining('sunset.png'),
+        expect.objectContaining({ description: 'Holds text' })
+      )
+    })
+
     it('#then shows the plan-limit toast when the failure is file_too_large', async () => {
       // The whole point of the `file_too_large` category is that the user learns
       // the file is over their plan limit. The generic "it stays on this device"

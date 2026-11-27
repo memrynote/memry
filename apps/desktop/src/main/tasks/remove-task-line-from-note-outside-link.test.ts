@@ -24,7 +24,7 @@ vi.mock('../sync/crdt-writeback-port', async () => {
   const writeback = await import('../sync/crdt-writeback')
   return { crdtWriteback: () => writeback }
 })
-vi.mock('../sync/crdt-writeback', () => ({ markWritebackIgnored: vi.fn() }))
+vi.mock('../sync/crdt-writeback', () => ({}))
 vi.mock('../sync/crdt-external-feed', () => ({ feedExternalEditToCrdt: crdt.feed }))
 vi.mock('../vault/note-sync', () => ({ syncNoteToCache: () => ({ wordCount: 0 }) }))
 vi.mock('../vault/notes-io', () => ({

@@ -82,8 +82,12 @@ struct NoteFindScroll: ViewModifier {
     /// The page's first read of its blocks has finished.
     let blocksRead: Bool
     @Binding var finding: Bool
+    /// Whether this page answers ⌘F: a journal day off screen does not.
+    var answersFind = true
 
     @State private var query = NoteFindQuery()
+    /// ⌘F presses since find opened: each puts the caret in its field.
+    @State private var focusRequest = 0
     @State private var pendingQuery: String?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private let requests = SearchFindRequests.shared
@@ -91,16 +95,33 @@ struct NoteFindScroll: ViewModifier {
     func body(content: Content) -> some View {
         ScrollViewReader { proxy in
             content
+                // #4354: ⌘F, desktop's find in page, also with the caret
+                // in a block.
+                .background {
+                    if answersFind {
+                        Button("Find in note") {
+                            focusRequest += 1
+                            finding = true
+                        }
+                            .keyboardShortcut("f", modifiers: .command)
+                            .opacity(0)
+                            .allowsHitTesting(false)
+                            .accessibilityHidden(true)
+                    }
+                }
                 .safeAreaInset(edge: .top) {
                     if finding {
-                        NoteFindPanel(blocks: blocks, query: $query.text) { index in
+                        NoteFindPanel(blocks: blocks, query: $query.text, focusRequest: focusRequest) { index in
                             proxy.scrollTo(index, anchor: .top)
                         } close: {
                             finding = false
                         }
                     }
                 }
-                .onChange(of: finding) { _, open in query.finding(open) }
+                .onChange(of: finding) { _, open in
+                    query.finding(open)
+                    if !open { focusRequest = 0 }
+                }
                 .onChange(of: requests.pending, initial: true) {
                     if let query = requests.take(for: target) { pendingQuery = query }
                 }

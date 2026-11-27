@@ -9,6 +9,7 @@
 use rusqlite::{Connection, OptionalExtension, params};
 
 use crate::api::errors::StorageError;
+use crate::storage::nested_tx;
 
 use super::clock::OFFLINE_CLOCK_DEVICE_ID;
 use super::first_sync_store::{read_meta, write_meta};
@@ -61,7 +62,7 @@ pub fn has_foreign_history(conn: &Connection, own: &[String]) -> Result<bool, St
 /// and this core has no re-seed, so a dropped row would never reach the server. Cursors and the
 /// server vault id are kept: the account binding stops another account from syncing this vault.
 pub fn clear_session_state(conn: &Connection) -> Result<(), StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     tx.execute("DELETE FROM sync_history", []).map_err(failed)?;
     tx.execute("DELETE FROM meta WHERE key = ?1", params![META_SYNC_PAUSED])
         .map_err(failed)?;

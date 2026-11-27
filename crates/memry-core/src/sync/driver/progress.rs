@@ -1,8 +1,11 @@
 //! The driver's first-sync progress in the shape desktop's renderer already
 //! renders: `InitialSyncProgressEvent` (`packages/contracts/src/ipc-events.ts`).
 //!
-//! The first sync's refs, metadata and bodies passes all report `notes`, the
-//! pack bootstrap reports `packs`, the outbox the catch-up passes will push
+//! The first sync reports one `notes` bar that only moves forward, as
+//! Electron's `initial-sync-progress.ts` counts records applied: the refs pass
+//! is indeterminate (0 of 0), the metadata pass counts the records it pulled
+//! against those outstanding, and the bodies pass reports nothing (Electron's
+//! body pulls emit no progress). The pack bootstrap reports `packs`, the outbox the catch-up passes will push
 //! once their seeds ran reports `tasks` (Electron's `full-sync-runner.ts`), and
 //! the end reports `complete`. `manifest` belongs to the manifest check, which
 //! is not the driver's.
@@ -14,7 +17,7 @@ use crate::storage::Db;
 use crate::sync::engine::PassSeed;
 use crate::sync::first_sync::{FirstSyncPhase, FirstSyncProgress, ProgressSink};
 use crate::sync::outbox;
-use crate::sync::pack_bootstrap::PackBootstrapReport;
+use crate::sync::pack_bootstrap::BodyPackReport;
 
 /// `InitialSyncPhase`, minus `manifest` and `attachments`, which other owners
 /// report.
@@ -76,19 +79,26 @@ impl Phases {
 impl ProgressSink for Phases {
     fn progress(&self, progress: FirstSyncProgress) {
         match progress.phase {
-            FirstSyncPhase::Refs | FirstSyncPhase::Metadata | FirstSyncPhase::Bodies => {
-                self.emit(InitialSyncPhase::Notes, progress.completed, progress.total);
-            }
-            // The catch-up passes still run; the driver reports `complete`.
-            FirstSyncPhase::Done => {}
+            // Records have no total until the feed is read to its end, so the
+            // bar stays indeterminate (0 of 0) until then.
+            FirstSyncPhase::Records => match progress.total {
+                Some(total) => self.emit(InitialSyncPhase::Notes, progress.completed, total),
+                None => self.emit(InitialSyncPhase::Notes, 0, 0),
+            },
+            // Bodies: Electron's body pulls report nothing. Done: the catch-up
+            // passes still run, and the driver reports `complete`.
+            FirstSyncPhase::Bodies | FirstSyncPhase::Done => {}
         }
     }
 
-    fn packs(&self, report: Option<&PackBootstrapReport>) {
+    fn packs(&self, report: Option<&BodyPackReport>) {
         // Core counts pack entries only when the run ends, so the start is
         // indeterminate (0 of 0) and the end is whole.
         let done = report.map_or(0, |report| {
-            (report.entries_applied + report.entries_skipped + report.entries_failed) as u64
+            (report.snapshots_applied
+                + report.updates_applied
+                + report.entries_unusable
+                + report.entries_unconfirmed) as u64
         });
         self.emit(InitialSyncPhase::Packs, done, done);
     }

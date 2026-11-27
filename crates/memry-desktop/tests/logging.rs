@@ -13,6 +13,9 @@ fn log_startup_writes_the_marker_line_into_main_log() {
     let guard = logging::init(&paths);
     logging::log_startup("0.0.0", BuildKind::Dev);
     logging::log_startup("1.2.3", BuildKind::Packaged);
+    // rmcp's debug lines carry each MCP call's tool arguments, which hold vault content.
+    tracing::debug!(target: "rmcp::service", "tool arguments: secret-note-body");
+    tracing::info!(target: "rmcp::service", "rmcp info line");
     drop(guard);
 
     let log = std::fs::read_to_string(paths.log_dir.join("main.log")).expect("main.log exists");
@@ -29,4 +32,6 @@ fn log_startup_writes_the_marker_line_into_main_log() {
             .any(|l| l.ends_with("MemryNote 1.2.3 starting (packaged)"))
     );
     assert!(!log.contains('\u{1b}'), "no ANSI escapes in the file");
+    assert!(!log.contains("secret-note-body"), "log was: {log}");
+    assert!(log.contains("rmcp info line"), "log was: {log}");
 }

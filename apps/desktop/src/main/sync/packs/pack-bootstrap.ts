@@ -1,9 +1,17 @@
+import { randomUUID } from 'node:crypto'
 import path from 'node:path'
 import { promises as fs } from 'node:fs'
 
 import { EVENT_CHANNELS } from '@memry/contracts/ipc-events'
 import type { InitialSyncProgressEvent } from '@memry/contracts/ipc-events'
-import { PackListResponseSchema, type PackSummary } from '@memry/contracts/sync-api'
+import {
+  CrdtUpdatePackEntryMetaSchema,
+  PackListResponseSchema,
+  type CrdtManifestDocument,
+  type CrdtUpdatePackEntryMeta,
+  type PackCoverage,
+  type PackSummary
+} from '@memry/contracts/sync-api'
 import type { PackIndexEntry } from '@memry/contracts/pack-format'
 
 import { createLogger } from '../../lib/logger'
@@ -11,8 +19,20 @@ import { recordBootstrapBytes } from '../bootstrap-metrics'
 import type { PageApplyHandle } from '../bulk-apply'
 import { SYNC_STATE_KEYS } from '../engine/sync-context'
 import { getFromServer } from '../http-client'
+import { readManifestPages } from '../manifest-check'
 import { discardPackFile, downloadPackToFile } from './pack-download'
+import { curablePauseMs, downloadPacks, type PackFetch } from './pack-downloads'
+import { readBodyManifest } from './body-manifest'
+import {
+  planDocument,
+  type BodyWatermark,
+  type PackedSnapshot,
+  type PackedUpdate,
+  type PackSnapshotMeta
+} from './body-plan'
+import type { PackBodyApplier } from './pack-body-applier'
 import { openPackFile, type PackFileHandle } from './pack-file-reader'
+import { planRecordPacks, type PackedRecords, type RecordManifestRead } from './record-packs'
 
 const log = createLogger('PackBootstrap')
 
@@ -26,15 +46,10 @@ const log = createLogger('PackBootstrap')
  * transfer, so the sweep that follows finds every packed note already seeded
  * and issues zero `/sync/crdt/snapshot/:noteId` GETs for them.
  *
- * WHAT IS DELIBERATELY NOT APPLIED FROM PACKS: `record` packs.
- * A record pack entry is the exact R2 payload blob — `{dataNonce,
- * encryptedData, encryptedKey, keyNonce}` and nothing else. The Ed25519
- * signature, the signer device id, the vector clock and the operation live in
- * D1 rows and travel only on `POST /sync/pull`; the pack index carries none of
- * them. Applying those bytes would mean applying unverified content into an
- * end-to-end encrypted vault, so record packs are skipped and their items keep
- * arriving through the item-granular pull, byte-for-byte as they do today.
- * Nothing here touches `SYNC_STATE_KEYS.LAST_CURSOR`.
+ * RECORD PACKS ARE NOT APPLIED HERE. Their entries are rebuilt as pull items
+ * and reconciled against `GET /sync/manifest` (`record-packs.ts`), and the
+ * pull applies them through its own decrypt, signature and clock path before
+ * it moves `SYNC_STATE_KEYS.LAST_CURSOR` (#5390). Nothing here touches it.
  *
  * FAILURE DISCIPLINE. Every path out of this module — an old server 404, a
  * deployment with no presign secrets, zero packs, an expired URL, a malformed
@@ -59,36 +74,26 @@ export const MAX_PARALLEL_PACK_DOWNLOADS = 3
 /** Clock-skew margin subtracted from a presigned URL's claimed expiry. */
 const PRESIGN_EXPIRY_SAFETY_SECONDS = 30
 
+const urlLive = (pack: PackSummary, nowSeconds: number): boolean =>
+  pack.url !== undefined &&
+  pack.expiresAt !== undefined &&
+  pack.expiresAt - PRESIGN_EXPIRY_SAFETY_SECONDS > nowSeconds
+
 /** Floor between two re-lists for fresh presigned URLs, shared by all workers. */
 const PACK_RELIST_MIN_INTERVAL_SECONDS = 60
 
-/** Freshness token a packed snapshot must carry before its bytes are trusted. */
-export interface PackSnapshotMeta {
-  sequenceNum: number
-  revision: string
-}
-
-export interface PackSnapshotApplier {
-  /**
-   * Should this note's packed snapshot be applied? `false` means the local doc
-   * is already at or beyond these bytes (or already holds this exact blob), so
-   * the packed bytes are stale — skip them and leave the note to the ordinary
-   * item-granular sweep.
-   */
-  shouldApply(noteId: string, meta: PackSnapshotMeta): Promise<boolean>
-  /**
-   * Decrypt, verify and seed the Y.Doc, then record the note's snapshot
-   * watermark so the sweep that follows skips its baseline GET. `false` means
-   * the bytes could not be trusted — that one note falls back to its GET.
-   */
-  apply(noteId: string, bytes: Uint8Array, meta: PackSnapshotMeta): Promise<boolean>
-}
-
 export interface PackBootstrapDeps {
   getAccessToken: () => Promise<string | null>
-  /** Directory for pack temp files. Cleaned on success, failure and abort. */
+  /**
+   * Directory for pack temp files. Each run downloads into a directory of its
+   * own under it, removed on success, failure and abort. The next run resumes
+   * a crashed run's files for the packs it downloads and removes the rest.
+   */
   tempDir: string
-  snapshots: PackSnapshotApplier
+  bodies: PackBodyApplier
+  readManifest?: typeof readBodyManifest
+  /** `GET /sync/manifest`, read only when record packs are in hand. */
+  readRecordManifest?: (token: string, signal?: AbortSignal) => Promise<RecordManifestRead | null>
   /** Opens the #1831 page transaction the watermark is committed inside. */
   beginPage: () => PageApplyHandle
   getStateValue: (key: string) => string | null | undefined
@@ -104,6 +109,8 @@ export interface PackBootstrapDeps {
   discard?: (filePath: string) => Promise<void>
   recordBytes?: (channel: 'records' | 'crdt' | 'attachments', byteCount: number) => void
   now?: () => number
+  /** The pack phase's pauses (`pack-downloads.ts`); production waits on a real timer. */
+  sleep?: (ms: number, signal?: AbortSignal) => Promise<void>
   pageEntries?: number
   maxParallelDownloads?: number
 }
@@ -115,8 +122,12 @@ export interface PackBootstrapResult {
   entriesApplied: number
   entriesSkipped: number
   entriesFailed: number
+  /** Packed updates applied across every document. */
+  updatesApplied: number
   /** Highest contiguously-applied pack cursor, or null when none advanced. */
   appliedThroughCursor: number | null
+  /** Reconciled record packs for the pull, null when they cannot be used. */
+  records: PackedRecords | null
 }
 
 const emptyResult = (): PackBootstrapResult => ({
@@ -125,8 +136,24 @@ const emptyResult = (): PackBootstrapResult => ({
   entriesApplied: 0,
   entriesSkipped: 0,
   entriesFailed: 0,
-  appliedThroughCursor: null
+  updatesApplied: 0,
+  appliedThroughCursor: null,
+  records: null
 })
+
+const defaultReadRecordManifest = async (
+  token: string,
+  signal?: AbortSignal
+): Promise<RecordManifestRead | null> => {
+  try {
+    return await readManifestPages(token, { isOnline: () => true, ...(signal ? { signal } : {}) })
+  } catch (error) {
+    log.info('Record manifest read failed — record packs unused', {
+      error: error instanceof Error ? error.message : String(error)
+    })
+    return null
+  }
+}
 
 const defaultFetchPackPage = async (token: string, cursor: string | null): Promise<unknown> => {
   const query = new URLSearchParams({ limit: String(PACK_LIST_PAGE_LIMIT) })
@@ -142,6 +169,14 @@ interface PackListing {
    * Contiguity is meaningless across that hole — see `commitPage`.
    */
   truncated: boolean
+  /**
+   * The list request failed the way the network may cure (§8.12), with the
+   * least pause it asks for: a re-list that may succeed after a pause. Any
+   * other failure (401, 404, 400) leaves it unset, so the pack is a gap.
+   */
+  lostMs?: number
+  /** The first page's `record` coverage statement (§8.10), when it made one. */
+  recordCoverage?: PackCoverage
 }
 
 /**
@@ -160,6 +195,7 @@ const listUsablePacks = async (
   const usable: PackSummary[] = []
   let cursor: string | null = null
   let truncated = false
+  let recordCoverage: PackCoverage | undefined
 
   for (let page = 0; page < MAX_PACK_LIST_PAGES; page++) {
     let raw: unknown
@@ -170,7 +206,8 @@ const listUsablePacks = async (
       log.debug('Pack list unavailable — using the item-granular bootstrap', {
         error: error instanceof Error ? error.message : String(error)
       })
-      return { packs: [], truncated: false }
+      const lostMs = curablePauseMs(error, false)
+      return { packs: [], truncated: false, ...(lostMs === null ? {} : { lostMs }) }
     }
 
     const parsed = PackListResponseSchema.safeParse(raw)
@@ -185,9 +222,10 @@ const listUsablePacks = async (
       if (!pack.url) continue
       if (pack.expiresAt === undefined) continue
       if (pack.expiresAt - PRESIGN_EXPIRY_SAFETY_SECONDS <= nowSeconds) continue
-      // Only `crdt_snapshot` is applicable client-side — see the module doc.
-      if (pack.itemKind !== 'crdt_snapshot') continue
       usable.push(pack)
+    }
+    if (page === 0) {
+      recordCoverage = parsed.data.coverage?.find((entry) => entry.itemKind === 'record')
     }
 
     cursor = parsed.data.nextCursor ?? null
@@ -195,7 +233,7 @@ const listUsablePacks = async (
     truncated = page === MAX_PACK_LIST_PAGES - 1
   }
 
-  return { packs: usable, truncated }
+  return { packs: usable, truncated, ...(recordCoverage ? { recordCoverage } : {}) }
 }
 
 /**
@@ -242,12 +280,29 @@ interface ApplyCounters {
   applied: number
   skipped: number
   failed: number
+  updates: number
+}
+
+/** One opened pack and the entries of its own kind. */
+interface OpenedPack {
+  pack: PackSummary
+  handle: PackFileHandle
+}
+
+const readUpdateMeta = (entry: PackIndexEntry): CrdtUpdatePackEntryMeta | null => {
+  const parsed = CrdtUpdatePackEntryMetaSchema.safeParse(entry.meta)
+  return parsed.success ? parsed.data : null
 }
 
 /**
  * Run the fresh-device pack bootstrap. Returns `usedPacks: false` whenever no
  * pack was opened, which is the caller's signal that nothing changed and the
  * item-granular path must run exactly as it always has.
+ *
+ * Every body pack is downloaded first, then the body manifest is read (after
+ * the reader holds the pack bytes, protocol 08 §8.4.3), then each document is
+ * opened once and takes its confirmed snapshot and its contiguous packed
+ * updates in one pass (#5390).
  */
 export const runPackBootstrap = async (deps: PackBootstrapDeps): Promise<PackBootstrapResult> => {
   const now = deps.now ?? (() => Date.now())
@@ -255,44 +310,69 @@ export const runPackBootstrap = async (deps: PackBootstrapDeps): Promise<PackBoo
   const download = deps.download ?? downloadPackToFile
   const open = deps.openPack ?? ((filePath: string) => openPackFile(filePath))
   const discard = deps.discard ?? discardPackFile
+  const readManifest = deps.readManifest ?? readBodyManifest
+  const readRecordManifest = deps.readRecordManifest ?? defaultReadRecordManifest
   const pageEntries = Math.max(1, deps.pageEntries ?? PACK_APPLY_PAGE_ENTRIES)
   const parallel = Math.max(1, deps.maxParallelDownloads ?? MAX_PARALLEL_PACK_DOWNLOADS)
 
   const accessToken = await deps.getAccessToken().catch(() => null)
-  if (!accessToken) return emptyResult()
-
-  const listing = await listUsablePacks(deps, accessToken, Math.floor(now() / 1000))
-  const allPacks = listing.packs
-  if (allPacks.length === 0) return emptyResult()
+  const listing: PackListing = accessToken
+    ? await listUsablePacks(deps, accessToken, Math.floor(now() / 1000))
+    : { packs: [], truncated: false }
 
   const resumeFrom = Number(deps.getStateValue(SYNC_STATE_KEYS.PACKS_APPLIED_THROUGH_CURSOR) ?? '')
   const alreadyCovered = Number.isFinite(resumeFrom) ? resumeFrom : 0
   // Newest-first: the response is already max_cursor DESC, and re-sorting keeps
-  // that true across pages. Packs fully below a previous run's watermark are
-  // already applied — skip them rather than re-reading their bytes.
-  const packs = allPacks
-    .filter((pack) => pack.maxCursor > alreadyCovered)
+  // that true across pages. Snapshot packs fully below a previous run's
+  // watermark are already applied — skip them rather than re-reading their
+  // bytes. The watermark is on the snapshot axis (epoch seconds), so it says
+  // nothing about update packs, which are always read again: a document that
+  // already holds an update skips it on its own watermark.
+  const snapshotPacks = listing.packs
+    .filter((pack) => pack.itemKind === 'crdt_snapshot' && pack.maxCursor > alreadyCovered)
     .toSorted((a, b) => b.maxCursor - a.maxCursor)
-  if (packs.length === 0) return emptyResult()
+  const updatePacks = listing.packs.filter((pack) => pack.itemKind === 'crdt_update')
+  // Records only before the first cursor: a device that has one already holds
+  // every record below it, and its tail must not move back (#5390).
+  const recordPacks =
+    deps.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR) == null
+      ? listing.packs.filter((pack) => pack.itemKind === 'record')
+      : []
+  const packs = [...snapshotPacks, ...updatePacks, ...recordPacks]
+  if (packs.length === 0) {
+    await sweepPackTempDir(deps.tempDir, null)
+    return emptyResult()
+  }
 
   log.info('Pack bootstrap starting', {
     packCount: packs.length,
+    snapshotPacks: snapshotPacks.length,
+    updatePacks: updatePacks.length,
+    recordPacks: recordPacks.length,
     resumeAboveCursor: alreadyCovered
   })
 
-  const totalEntries = packs.reduce((sum, pack) => sum + pack.itemCount, 0)
-  const counters: ApplyCounters = { applied: 0, skipped: 0, failed: 0 }
+  const counters: ApplyCounters = { applied: 0, skipped: 0, failed: 0, updates: 0 }
   const completed = new Set<string>()
-  let relist: { at: number; pending: Promise<Map<string, PackSummary>> } | null = null
+  let relist: { at: number; pending: Promise<PackListing> } | null = null
+  // URL expiry is judged by the later of the wall clock and the phase's
+  // monotonic clock (§8.12), so a wall clock set back mid-phase cannot keep
+  // a dead URL live.
+  const startedWallMs = now()
+  const startedMonoMs = performance.now()
+  const clockSeconds = (): number =>
+    Math.floor(Math.max(now(), startedWallMs + performance.now() - startedMonoMs) / 1000)
   let packsApplied = 0
-  let openedAnyPack = false
   let appliedThroughCursor: number | null = null
+  // The listed item count until the packs are indexed, then the document count.
+  let totalDocuments = packs.reduce((sum, pack) => sum + pack.itemCount, 0)
+  let processedDocuments = 0
 
   const emitProgress = (): void => {
     deps.emit(EVENT_CHANNELS.INITIAL_SYNC_PROGRESS, {
       phase: 'packs',
-      processedItems: counters.applied + counters.skipped + counters.failed,
-      totalItems: totalEntries
+      processedItems: processedDocuments,
+      totalItems: totalDocuments
     } satisfies InitialSyncProgressEvent)
   }
 
@@ -302,8 +382,8 @@ export const runPackBootstrap = async (deps: PackBootstrapDeps): Promise<PackBoo
    * not commit with it, nor the reverse.
    */
   const commitPage = async (): Promise<void> => {
-    // begin -> setStateValue -> commit runs without an await, so a concurrent
-    // pack worker can never open a second page session inside this window.
+    // begin -> setStateValue -> commit runs without an await, so no other
+    // writer can open a second page session inside this window.
     const handle = deps.beginPage()
     let committed = false
     try {
@@ -311,7 +391,7 @@ export const runPackBootstrap = async (deps: PackBootstrapDeps): Promise<PackBoo
       // the oldest pack in hand is not the bottom of the run and "contiguous
       // from the oldest" claims coverage of a range nothing walked. Apply the
       // packs, record nothing: the next run re-lists from the top.
-      const watermark = listing.truncated ? null : contiguousAppliedCursor(packs, completed)
+      const watermark = listing.truncated ? null : contiguousAppliedCursor(snapshotPacks, completed)
       if (watermark !== null && watermark !== appliedThroughCursor) {
         deps.setStateValue(SYNC_STATE_KEYS.PACKS_APPLIED_THROUGH_CURSOR, String(watermark))
         appliedThroughCursor = watermark
@@ -322,79 +402,6 @@ export const runPackBootstrap = async (deps: PackBootstrapDeps): Promise<PackBoo
       if (!committed) handle.rollback()
     }
     await handle.flushFiles()
-  }
-
-  const applyPack = async (pack: PackSummary, filePath: string): Promise<void> => {
-    let handle: PackFileHandle
-    try {
-      handle = await open(filePath)
-    } catch (error) {
-      // Corrupt footer magic, wrong version, bad payload digest, truncated
-      // file: the whole pack is discarded and every item in it stays on the
-      // item-granular path. Never fatal.
-      log.warn('Discarding an unreadable pack — items fall back to item GETs', {
-        packId: pack.id,
-        error: error instanceof Error ? error.message : String(error)
-      })
-      return
-    }
-
-    openedAnyPack = true
-    let sinceCommit = 0
-    try {
-      for (const entry of handle.entries) {
-        if (deps.signal?.aborted) break
-        if (entry.kind !== 'crdt_snapshot') {
-          counters.skipped++
-          continue
-        }
-        const meta = readSnapshotMeta(entry)
-        if (!meta) {
-          // The server could not resolve this snapshot's freshness token, so
-          // its bytes cannot be shown to be current. Item-granular.
-          counters.skipped++
-          continue
-        }
-        try {
-          if (!(await deps.snapshots.shouldApply(entry.id, meta))) {
-            counters.skipped++
-            continue
-          }
-          const bytes = await handle.readEntry(entry)
-          recordBytes('crdt', bytes.byteLength)
-          const applied = await deps.snapshots.apply(entry.id, bytes, meta)
-          if (applied) {
-            counters.applied++
-            sinceCommit++
-          } else {
-            counters.failed++
-          }
-        } catch (error) {
-          // A per-entry checksum failure, an undecryptable blob, an
-          // unresolvable signer: discard THAT entry only.
-          counters.failed++
-          log.debug('Discarding a pack entry — falling back to its item GET', {
-            packId: pack.id,
-            error: error instanceof Error ? error.message : String(error)
-          })
-        }
-        if (sinceCommit >= pageEntries) {
-          await commitPage()
-          sinceCommit = 0
-          emitProgress()
-        }
-      }
-      if (!deps.signal?.aborted) {
-        completed.add(pack.id)
-        packsApplied++
-      }
-    } finally {
-      await handle.close().catch(() => {
-        /* the pack is done with either way */
-      })
-    }
-    await commitPage()
-    emitProgress()
   }
 
   /**
@@ -409,24 +416,25 @@ export const runPackBootstrap = async (deps: PackBootstrapDeps): Promise<PackBoo
    * re-list is shared by all workers and reused for a minute, so a whole queue
    * of aged-out packs costs one extra request, not one per pack.
    */
-  const freshUrl = async (pack: PackSummary): Promise<string | null> => {
-    const nowSeconds = Math.floor(now() / 1000)
-    const live = (candidate: PackSummary): boolean =>
-      candidate.url !== undefined &&
-      candidate.expiresAt !== undefined &&
-      candidate.expiresAt - PRESIGN_EXPIRY_SAFETY_SECONDS > nowSeconds
-    if (live(pack)) return pack.url!
+  const relistNow = async (nowSeconds: number): Promise<PackListing> => {
+    // A token read now, not at phase start: a re-list can come after 450 s
+    // of pauses, past an access token's life.
+    const token = await deps.getAccessToken().catch(() => null)
+    return token ? listUsablePacks(deps, token, nowSeconds) : { packs: [], truncated: false }
+  }
+
+  const freshUrl = async (pack: PackSummary): Promise<PackSummary | { lostMs: number } | null> => {
+    const nowSeconds = clockSeconds()
+    if (urlLive(pack, nowSeconds)) return pack
 
     if (!relist || nowSeconds - relist.at >= PACK_RELIST_MIN_INTERVAL_SECONDS) {
-      relist = {
-        at: nowSeconds,
-        pending: listUsablePacks(deps, accessToken, nowSeconds).then(
-          (result) => new Map(result.packs.map((entry) => [entry.id, entry]))
-        )
-      }
+      relist = { at: nowSeconds, pending: relistNow(nowSeconds) }
     }
-    const refreshed = (await relist.pending).get(pack.id)
-    if (refreshed && live(refreshed)) return refreshed.url!
+    const listed = await relist.pending
+    const refreshed = listed.packs.find((entry) => entry.id === pack.id)
+    if (refreshed && urlLive(refreshed, nowSeconds)) return refreshed
+    // A re-list the network may cure keeps the pack lost for the next pause.
+    if (listed.lostMs !== undefined) return { lostMs: listed.lostMs }
 
     log.info('Pack URL expired and could not be re-signed — items fall back to item GETs', {
       packId: pack.id
@@ -434,66 +442,302 @@ export const runPackBootstrap = async (deps: PackBootstrapDeps): Promise<PackBoo
     return null
   }
 
-  const runOne = async (pack: PackSummary): Promise<void> => {
-    const filePath = path.join(deps.tempDir, `${sanitizeId(pack.id)}.pack`)
-    const url = await freshUrl(pack)
-    if (!url) return
+  // Two runs never share a file: one's cleanup would delete the other's pack.
+  const runDirName = `${RUN_DIR_PREFIX}${randomUUID()}`
+  const runDir = path.join(deps.tempDir, runDirName)
+  const tempPathOf = (pack: PackSummary): string => path.join(runDir, `${sanitizeId(pack.id)}.pack`)
+
+  const fetchOne = async (pack: PackSummary): Promise<PackFetch<OpenedPack>> => {
+    const filePath = tempPathOf(pack)
+    const signed = await freshUrl(pack)
+    if (!signed) return 'gap'
+    if ('lostMs' in signed) return signed
     try {
       await download({
-        url,
+        url: signed.url!,
         destPath: filePath,
         ...(deps.signal ? { signal: deps.signal } : {}),
         ...(deps.pace ? { pace: deps.pace } : {})
       })
-      await applyPack(pack, filePath)
     } catch (error) {
-      log.info('Pack transfer failed — items fall back to the item-granular path', {
+      const lostMs = deps.signal?.aborted
+        ? null
+        : curablePauseMs(error, !urlLive(signed, clockSeconds()))
+      // A lost pack keeps its partial file: the next try resumes it with a
+      // Range. A gap's file goes now; a lost pack never held goes with the
+      // run's directory.
+      if (lostMs === null) await discard(filePath)
+      log.info(
+        lostMs === null
+          ? 'Pack transfer failed — items fall back to the item-granular path'
+          : 'Pack transfer lost to the network — it downloads again after a pause',
+        { packId: pack.id, error: error instanceof Error ? error.message : String(error) }
+      )
+      return lostMs === null ? 'gap' : { lostMs }
+    }
+    try {
+      return { held: { pack, handle: await open(filePath) } }
+    } catch (error) {
+      // Corrupt footer magic, wrong version, bad payload digest, truncated
+      // file: the whole pack is discarded and every item in it stays on the
+      // item-granular path. Never fatal.
+      log.warn('Discarding an unreadable pack — items fall back to item GETs', {
         packId: pack.id,
         error: error instanceof Error ? error.message : String(error)
       })
-    } finally {
-      // Success, failure and abort alike: the temp file never survives.
       await discard(filePath)
+      return 'gap'
     }
   }
 
+  // Registered before it exists, so a concurrent run's sweep spares it.
+  liveRunDirs.add(runDirName)
+  let held: OpenedPack[] = []
   try {
-    await fs.mkdir(deps.tempDir, { recursive: true })
-  } catch (error) {
-    log.info('Could not create the pack temp directory — item-granular bootstrap', { error })
-    return emptyResult()
-  }
-
-  emitProgress()
-
-  // Newest cursor range first, bounded parallelism: workers pull from one
-  // shared cursor so the ordering survives concurrency.
-  let next = 0
-  const workers = Array.from({ length: Math.min(parallel, packs.length) }, async () => {
-    for (;;) {
-      if (deps.signal?.aborted) return
-      const index = next++
-      if (index >= packs.length) return
-      await runOne(packs[index])
+    try {
+      await fs.mkdir(runDir, { recursive: true })
+    } catch (error) {
+      log.info('Could not create the pack temp directory — item-granular bootstrap', { error })
+      return emptyResult()
     }
-  })
-  await Promise.all(workers)
+    await sweepPackTempDir(deps.tempDir, {
+      runDir,
+      files: new Set(packs.map((pack) => path.basename(tempPathOf(pack))))
+    })
 
-  log.info('Pack bootstrap finished', {
-    packsApplied,
-    ...counters,
-    appliedThroughCursor
-  })
+    emitProgress()
 
-  return {
-    usedPacks: openedAnyPack,
-    packsApplied,
-    entriesApplied: counters.applied,
-    entriesSkipped: counters.skipped,
-    entriesFailed: counters.failed,
-    appliedThroughCursor
+    // Newest range first, bounded parallelism, one pause owner (#5389).
+    const opened = await downloadPacks(packs, {
+      parallel,
+      fetchOne,
+      onPause: () => {
+        relist = null
+      },
+      ...(deps.signal ? { signal: deps.signal } : {}),
+      ...(deps.sleep ? { sleep: deps.sleep } : {})
+    })
+
+    held = opened.filter((entry): entry is OpenedPack => entry !== null)
+    if (held.length === 0 || deps.signal?.aborted) {
+      return { ...emptyResult(), usedPacks: held.length > 0 }
+    }
+
+    // Read after the pack bytes are held, in this run (protocol 08 §8.4.3).
+    // With a token read now: the pauses before it can outlive the first one.
+    const manifestToken = await deps.getAccessToken().catch(() => null)
+    const manifest = manifestToken
+      ? await readManifest(manifestToken, deps.signal ? { signal: deps.signal } : {})
+      : 'short'
+    const recordHeld = held.filter(({ pack }) => pack.itemKind === 'record')
+    const records =
+      recordHeld.length > 0
+        ? await planRecordPacks(recordHeld, listing.recordCoverage, async () =>
+            manifestToken ? readRecordManifest(manifestToken, deps.signal) : null
+          )
+        : null
+    const settledBodies = new Set<string>()
+    // A short read on a server with the route confirms nothing (§8.11): every
+    // body stays on its item routes and no pack is claimed. The record plan
+    // stands on its own manifest read.
+    if (manifest === 'short') {
+      return {
+        ...emptyResult(),
+        usedPacks: true,
+        records: records && { ...records, settledBodies }
+      }
+    }
+
+    const readOf = (handle: PackFileHandle, entry: PackIndexEntry) => async () => {
+      const bytes = await handle.readEntry(entry)
+      recordBytes('crdt', bytes.byteLength)
+      return bytes
+    }
+
+    // Per document, every packed snapshot and update it has. A document is
+    // processed once, in the order its first snapshot pack came (newest
+    // first), then the update-only documents.
+    const snapshotsOf = new Map<string, PackedSnapshot[]>()
+    const updatesOf = new Map<string, PackedUpdate[]>()
+    const order: string[] = []
+    // Per snapshot pack, its usable documents not yet run. A pack is complete
+    // once that set is empty: a document can sit in two packs (dead bytes,
+    // §8.8), so running another pack's copy does not run this pack's others.
+    const remaining = new Map<string, Set<string>>()
+    const seen = new Set<string>()
+    for (const { pack, handle } of held) {
+      if (pack.itemKind === 'record') continue
+      if (pack.itemKind === 'crdt_snapshot') remaining.set(pack.id, new Set())
+      for (const entry of handle.entries) {
+        if (entry.kind !== pack.itemKind) {
+          counters.skipped++
+          continue
+        }
+        if (entry.kind === 'crdt_snapshot') {
+          const meta = readSnapshotMeta(entry)
+          if (!meta) {
+            // The server could not resolve this snapshot's freshness token, so
+            // its bytes cannot be shown to be current. Item-granular.
+            counters.skipped++
+            continue
+          }
+          const list = snapshotsOf.get(entry.id) ?? []
+          list.push({ entry, packId: pack.id, meta, read: readOf(handle, entry) })
+          snapshotsOf.set(entry.id, list)
+        } else if (entry.kind === 'crdt_update' && manifest !== null) {
+          const meta = readUpdateMeta(entry)
+          if (!meta) {
+            counters.skipped++
+            continue
+          }
+          const list = updatesOf.get(entry.id) ?? []
+          list.push({
+            entry,
+            packId: pack.id,
+            sequenceNum: meta.sequenceNum,
+            signerDeviceId: meta.signerDeviceId,
+            createdAt: meta.createdAt,
+            read: readOf(handle, entry)
+          })
+          updatesOf.set(entry.id, list)
+        } else {
+          counters.skipped++
+          continue
+        }
+        if (!seen.has(entry.id)) {
+          seen.add(entry.id)
+          order.push(entry.id)
+        }
+        remaining.get(pack.id)?.add(entry.id)
+      }
+    }
+    totalDocuments = order.length
+    emitProgress()
+
+    const packsOf = new Map<string, string[]>()
+    for (const [packId, noteIds] of remaining) {
+      for (const noteId of noteIds) packsOf.set(noteId, [...(packsOf.get(noteId) ?? []), packId])
+    }
+    const complete = (packId: string): void => {
+      remaining.delete(packId)
+      completed.add(packId)
+      packsApplied++
+    }
+    // A pack with no usable entry has nothing to run.
+    for (const [packId, noteIds] of remaining) if (noteIds.size === 0) complete(packId)
+
+    let sinceCommit = 0
+    let aborted = false
+    for (const noteId of order) {
+      if (deps.signal?.aborted) {
+        aborted = true
+        break
+      }
+      try {
+        const candidates = snapshotsOf.get(noteId) ?? []
+        const wanted = manifest?.get(noteId)?.snapshot?.revision
+        const snapshot =
+          (manifest
+            ? candidates.find((candidate) => candidate.meta.revision === wanted)
+            : candidates.toSorted((a, b) => b.meta.sequenceNum - a.meta.sequenceNum)[0]) ?? null
+        const local = await deps.bodies.localWatermark(noteId)
+        let watermark = local
+        const plan = planDocument(noteId, local, snapshot, updatesOf.get(noteId) ?? [], manifest)
+        if (!plan) {
+          counters.skipped++
+        } else {
+          const reached = await deps.bodies.applyDocument(noteId, plan)
+          if (reached) {
+            watermark = reached
+            counters.applied++
+            counters.updates += plan.updates.filter(
+              (update) => update.sequenceNum <= reached.appliedSequence
+            ).length
+            sinceCommit++
+          } else {
+            counters.failed++
+          }
+        }
+        if (isSettled(watermark, manifest?.get(noteId))) settledBodies.add(noteId)
+      } catch (error) {
+        // A per-entry checksum failure, an undecryptable blob, an
+        // unresolvable signer: discard THAT document only.
+        counters.failed++
+        log.debug('Discarding packed bodies of a document — it falls back to its item routes', {
+          noteId,
+          error: error instanceof Error ? error.message : String(error)
+        })
+      }
+      processedDocuments++
+      let ending = false
+      for (const packId of packsOf.get(noteId) ?? []) {
+        const left = remaining.get(packId)
+        left?.delete(noteId)
+        if (left?.size === 0) {
+          complete(packId)
+          ending = true
+        }
+      }
+      if (sinceCommit >= pageEntries || ending) {
+        await commitPage()
+        sinceCommit = 0
+        emitProgress()
+      }
+    }
+    if (!aborted) {
+      for (const { pack } of held) {
+        if (pack.itemKind === 'crdt_update') packsApplied++
+      }
+    }
+    await commitPage()
+    emitProgress()
+
+    deps.bodies.logRefusals()
+    log.info('Pack bootstrap finished', {
+      packsApplied,
+      ...counters,
+      manifestRead: manifest !== null,
+      appliedThroughCursor
+    })
+
+    return {
+      usedPacks: true,
+      packsApplied,
+      entriesApplied: counters.applied,
+      entriesSkipped: counters.skipped,
+      entriesFailed: counters.failed,
+      updatesApplied: counters.updates,
+      appliedThroughCursor,
+      records: records && { ...records, settledBodies }
+    }
+  } finally {
+    for (const { handle } of held) {
+      await handle.close().catch(() => {
+        /* the pack is done with either way */
+      })
+    }
+    // Success, failure and abort alike: no temp file survives the run.
+    await fs.rm(runDir, { recursive: true, force: true }).catch((error: unknown) => {
+      log.debug('Could not remove the pack temp directory', {
+        error: error instanceof Error ? error.message : String(error)
+      })
+    })
+    liveRunDirs.delete(runDirName)
   }
 }
+
+/**
+ * The document holds its body manifest's head: its last stored update under
+ * the manifest's snapshot revision, so a body pull would bring nothing.
+ */
+const isSettled = (
+  held: BodyWatermark | null,
+  document: CrdtManifestDocument | undefined
+): boolean =>
+  held !== null &&
+  document !== undefined &&
+  held.appliedSequence === document.maxSequenceNum &&
+  held.snapshotRevision === document.snapshot?.revision
 
 /** Only `{sequenceNum, revision}` both present makes a snapshot trustworthy. */
 const readSnapshotMeta = (entry: PackIndexEntry): PackSnapshotMeta | null => {
@@ -507,3 +751,53 @@ const readSnapshotMeta = (entry: PackIndexEntry): PackSnapshotMeta | null => {
 
 /** Pack ids are server-generated, but a temp path must never escape its dir. */
 const sanitizeId = (id: string): string => id.replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 128)
+
+const RUN_DIR_PREFIX = 'run-'
+
+/** Run directories of the pack phases running in this process. */
+const liveRunDirs = new Set<string>()
+
+/**
+ * Remove what a quit or crash left in the temp dir: run directories no live
+ * run owns, and the `<packId>.pack` files builds before run directories wrote
+ * there. Nothing else in it is touched. A dead run's file for a pack this run
+ * downloads first moves into `resume.runDir`: the download continues it with a
+ * Range (a finished file gets a 416 and no bytes), and the payload digest
+ * still checks it.
+ */
+const sweepPackTempDir = async (
+  tempDir: string,
+  resume: { runDir: string; files: ReadonlySet<string> } | null
+): Promise<void> => {
+  const names = await fs.readdir(tempDir).catch((error: unknown) => {
+    if (!(error instanceof Error && 'code' in error && error.code === 'ENOENT')) {
+      log.debug('Could not read the pack temp directory', {
+        error: error instanceof Error ? error.message : String(error)
+      })
+    }
+    return []
+  })
+  for (const name of names) {
+    const runDir = name.startsWith(RUN_DIR_PREFIX)
+    const stale = runDir ? !liveRunDirs.has(name) : name.endsWith('.pack')
+    if (!stale) continue
+    const at = path.join(tempDir, name)
+    if (runDir && resume) {
+      for (const file of await fs.readdir(at).catch((): string[] => [])) {
+        if (!resume.files.has(file)) continue
+        await fs
+          .rename(path.join(at, file), path.join(resume.runDir, file))
+          .catch((error: unknown) => {
+            log.debug('Could not resume a pack file a crash left', {
+              error: error instanceof Error ? error.message : String(error)
+            })
+          })
+      }
+    }
+    await fs.rm(at, { recursive: true, force: true }).catch((error: unknown) => {
+      log.debug('Could not remove a pack temp file a quit or crash left', {
+        error: error instanceof Error ? error.message : String(error)
+      })
+    })
+  }
+}

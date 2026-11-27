@@ -16,9 +16,11 @@ use crate::domain::tag_categories::{self, TagAssignment, TagCategory};
 use crate::domain::tag_mint;
 use crate::domain::tag_rename::{self, Holder, RenameJob, Started};
 use crate::domain::tag_retag;
+use crate::domain::tag_views;
 use crate::domain::tags;
 use crate::seams::secure_store::SecureStore;
 use crate::storage::Db;
+use crate::storage::nested_tx;
 use crate::sync::engine::PassSeed;
 
 pub struct TagHub {
@@ -52,6 +54,26 @@ impl TagHub {
     pub fn set_icon(&self, tag: &str, icon: Option<&str>) -> Result<(), StorageError> {
         self.db
             .call_blocking(|conn| tag_admin::set_icon(conn, tag, icon, &self.device_id, now_ms()))
+    }
+
+    /// Reads a tag's saved folder views and writes what `change` makes of them, whole, in one
+    /// transaction, so a sync apply between the read and the write is never written over. A
+    /// `change` that refuses writes nothing and is the inner answer.
+    pub fn edit_views<E>(
+        &self,
+        tag: &str,
+        change: impl FnOnce(Vec<serde_json::Value>) -> Result<Vec<serde_json::Value>, E>,
+    ) -> Result<Result<(), E>, StorageError> {
+        self.db.call_blocking(|conn| {
+            let tx = nested_tx::begin(conn).map_err(failed)?;
+            let views = match change(tag_views::read(&tx, tag)?.list()) {
+                Ok(views) => views,
+                Err(refused) => return Ok(Err(refused)),
+            };
+            tag_admin::set_views(&tx, tag, views, &self.device_id, now_ms())?;
+            tx.commit().map_err(failed)?;
+            Ok(Ok(()))
+        })
     }
 
     /// Pins or unpins `tag` on the note or journal day `id` ([`tags::set_pinned`]); `false`
@@ -97,7 +119,7 @@ impl TagHub {
     pub fn cache_body_tags(&self, id: &str, tags: &[String]) -> Result<(), StorageError> {
         self.db.call_blocking(|conn| {
             // One write: a cache half cleared drops tags the body has.
-            let tx = conn.unchecked_transaction().map_err(failed)?;
+            let tx = nested_tx::begin(conn).map_err(failed)?;
             body_tags::write(&tx, id, tags)?;
             tx.commit().map_err(failed)
         })

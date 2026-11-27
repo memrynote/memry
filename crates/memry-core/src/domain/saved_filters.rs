@@ -28,6 +28,7 @@ use serde_json::{Value, json};
 
 use crate::api::errors::StorageError;
 use crate::crypto::sodium;
+use crate::storage::nested_tx;
 use crate::storage::repositories::schema::Object;
 use crate::storage::repositories::{Change, StoredPayload, sync_items};
 use crate::sync::outbox::{self, Durable};
@@ -302,7 +303,7 @@ pub fn reorder(
             what: "ids and positions arrays must have the same length".to_owned(),
         });
     }
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let mut moved = Vec::new();
     for (id, position) in ids.iter().zip(positions) {
         let Some(current) = get(&tx, id)? else {

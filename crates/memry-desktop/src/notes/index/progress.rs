@@ -10,10 +10,11 @@ pub struct IndexProgress {
 }
 
 /// Lets a step through when it is the first, the last (`built == total`), or `interval` after
-/// the last one let through; never one below a step already let through.
+/// the last one let through; never one below a step already let through, except a last step
+/// not yet let through: a rerun over fewer notes still ends its asker's progress.
 pub struct ProgressThrottle {
     interval: Duration,
-    last: Option<(Instant, usize)>,
+    last: Option<(Instant, IndexProgress)>,
 }
 
 impl ProgressThrottle {
@@ -27,14 +28,11 @@ impl ProgressThrottle {
     pub fn offer(&mut self, step: IndexProgress, now: Instant) -> bool {
         let pass = match self.last {
             None => true,
-            Some((at, built)) => {
-                step.built >= built
-                    && (step.built == step.total || now.duration_since(at) >= self.interval)
-                    && !(step.built == built && built == step.total)
-            }
+            Some((_, last)) if step.built == step.total => step != last,
+            Some((at, last)) => step.built >= last.built && now.duration_since(at) >= self.interval,
         };
         if pass {
-            self.last = Some((now, step.built));
+            self.last = Some((now, step));
         }
         pass
     }
@@ -63,6 +61,25 @@ mod tests {
         .map(|(step, now)| throttle.offer(step, now))
         .collect();
         assert_eq!(passed, [true, false, true, false, false, true, false]);
+    }
+
+    /// A pass held at 10 of 10, rerun over 6 notes: its steps below 10 stay out, its last one
+    /// goes through once.
+    #[test]
+    fn a_rerun_over_fewer_notes_still_reports_its_last_step() {
+        let mut throttle = ProgressThrottle::new(Duration::from_millis(250));
+        let t0 = Instant::now();
+        let at = |ms| t0 + Duration::from_millis(ms);
+        assert!(throttle.offer(
+            IndexProgress {
+                built: 10,
+                total: 10
+            },
+            at(0)
+        ));
+        assert!(!throttle.offer(IndexProgress { built: 3, total: 6 }, at(500)));
+        assert!(throttle.offer(IndexProgress { built: 6, total: 6 }, at(510)));
+        assert!(!throttle.offer(IndexProgress { built: 6, total: 6 }, at(900)));
     }
 
     #[test]

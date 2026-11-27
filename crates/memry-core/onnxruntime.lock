@@ -1,0 +1,14 @@
+# The one pin for the ONNX Runtime iOS archive (Microsoft's onnxruntime-c pod),
+# linked into libmemry_core.a by build-xcframework.sh with the `semantic`
+# feature. 1.30.0 is the runtime desktop's @huggingface/transformers runs.
+# CI's archive cache is keyed on this file's hash.
+#
+# Served from this repo's `ort-pod-1.30.0` build-input release, not
+# download.onnxruntime.ai, whose TLS certificate does not name the host
+# (#5531). The release holds the tree unpacked from
+# https://download.onnxruntime.ai/pod-archive-onnxruntime-c-1.30.0.zip after it
+# matched sha256 e6f1670c14406fd9f082bb400ab197a9b0a9646058ca6366e440642e2b54a2ea
+# (63965603 bytes), repacked with `zip -r -y -X`, so the binaries are unchanged.
+url=https://github.com/memrynote/memry/releases/download/ort-pod-1.30.0/pod-archive-onnxruntime-c-1.30.0.zip
+sha256=2646b471b99948da6b7f81f81f2514b3bc4c5a56466931a2ac4b9ffef462e34d
+size=63961131

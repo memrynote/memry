@@ -1,26 +1,17 @@
 import MemryCore
 import SwiftUI
 
-// JP031. The Journal tab's content for one opened vault: the store, the one
-// stack (Year › Month › Day) and what restores it. Opening the tab with no
-// saved stack lands on today (desktop opens on today).
+// JP031. The Journal tab's content for one opened vault: the store's stack
+// (Year › Month › Day) and what restores it. Opening the tab with no saved
+// stack lands on today (desktop opens on today). The store is the vault's,
+// built by `VaultJournalScope`.
 
 /// The Journal tab: the store's screens, or why there are none.
 struct JournalTabContent: View {
-    let vault: Vault
-    let secureStore: (any SecureStore)?
-    /// The vault's sync pass is running; its end re-reads what is shown.
-    let isSyncing: Bool
-    /// The vault's tasks store, for the Day section.
-    var tasksStore: TasksStore?
-    /// The vault's sync, for on-demand body fetches and attachments.
-    var filler: (any VaultFilling)?
-
-    @Environment(\.requestVaultSync) private var requestVaultSync
+    @Environment(\.journalStore) private var store
+    @Environment(\.journalStoreFailure) private var failure
+    @Environment(\.journalTasks) private var tasksStore
     @Environment(JournalRouter.self) private var router
-    @Environment(\.scenePhase) private var scenePhase
-    @State private var store: JournalStore?
-    @State private var failure: UserFacingError?
     @State private var capturing = false
     @Environment(\.quickCapture) private var capture
 
@@ -28,7 +19,6 @@ struct JournalTabContent: View {
         Group {
             if let store {
                 JournalRootView(store: store)
-                    .environment(\.journalTasks, tasksStore)
                     // Once for the tab: the Day screen keeps three pages
                     // alive, and each binding its own would present twice.
                     .modifier(JournalSubtaskPrompts(tasks: tasksStore))
@@ -70,53 +60,14 @@ struct JournalTabContent: View {
                 ProgressView(JournalCopy.loading)
             }
         }
-        .task(id: vault.id()) { make() }
-        // The sync request is nil until the tasks store exists, which can be
-        // after this store was made on a cold launch.
-        .onChange(of: requestVaultSync == nil) { store?.requestSync = requestVaultSync }
-        // And once the store exists: `make()` runs in a task that may hold a
-        // render from before the request arrived, and the change above found
-        // no store to hand it to (#2910).
-        .onChange(of: store?.vaultId) { store?.requestSync = requestVaultSync }
-        .onChange(of: isSyncing) { _, syncing in
-            if !syncing, let store {
-                Task { await store.syncFinished() }
-            }
-        }
-        .onChange(of: scenePhase) { _, phase in
-            if phase == .active { store?.clock.refresh() }
-        }
-        // A capture wrote today's day outside this store: re-read.
-        .onChange(of: capture?.journalWrites) {
-            Task { await store?.refresh() }
+        // A route that arrived first (a reminder tap on a cold start) wins
+        // over the saved stack; with neither, the tab opens on today.
+        .onChange(of: store?.vaultId, initial: true) {
+            guard let store, router.path.isEmpty else { return }
+            let savedStack = LaunchSnapshot.shared.stack("journal").map { String(decoding: $0, as: UTF8.self) } ?? ""
+            if !router.restore(savedStack) { router.showDay(store.clock.today) }
         }
         .onChange(of: router.saved) { _, saved in LaunchSnapshot.shared.setStack("journal", Data(saved.utf8)) }
-    }
-
-    private func make() {
-        guard store?.vaultId != vault.id() else { return }
-        store = nil
-        failure = nil
-        guard let secureStore else {
-            failure = ErrorMapping.userFacing(SyncError.Locked)
-            return
-        }
-        do {
-            let clock = JournalClock()
-            clock.start()
-            let made = JournalStore(core: try vault.journal(store: secureStore), clock: clock, vaultId: vault.id())
-            made.requestSync = requestVaultSync
-            made.context = Self.context(vault: vault, secureStore: secureStore, filler: filler)
-            store = made
-            // A route that arrived first (a reminder tap on a cold start) wins
-            // over the saved stack; with neither, the tab opens on today.
-            let savedStack = LaunchSnapshot.shared.stack("journal").map { String(decoding: $0, as: UTF8.self) } ?? ""
-            if router.path.isEmpty, !router.restore(savedStack) {
-                router.showDay(clock.today)
-            }
-        } catch {
-            failure = ErrorMapping.userFacing(error)
-        }
     }
 }
 
@@ -150,12 +101,15 @@ struct JournalRootView: View {
         @Bindable var router = router
         NavigationStack(path: $router.path) {
             JournalYearScreen(store: store)
+                .modifier(JournalDayPanelBeside())
                 .navigationDestination(for: JournalRoute.self) { route in
                     switch route {
                     case let .month(year, month):
                         JournalMonthScreen(store: store, year: year, month: month)
+                            .modifier(JournalDayPanelBeside())
                     case let .day(date):
                         JournalDayScreen(store: store, date: date)
+                            .modifier(JournalDayPanelBeside())
                     case .settings:
                         // A Settings page, opened from Settings › Journal.
                         JournalSettingsScreen(store: store)

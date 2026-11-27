@@ -272,7 +272,7 @@ pub(super) struct Named {
 /// already bears the name Electron's rule makes of the title keeps it, even where a new name
 /// would be cut or hardened (`con.md`, a name over [`sanitize_new_filename`]'s bytes): renaming
 /// a note to its own title moves nothing.
-fn name_for(name: &str, title: &str) -> String {
+pub(crate) fn name_for(name: &str, title: &str) -> String {
     let ext = extension_of(name);
     if name.strip_suffix(ext) == Some(sanitize_filename(title).as_str()) {
         return name.to_owned();
@@ -291,7 +291,7 @@ fn extension_of(name: &str) -> &str {
 /// A move's folder, a path of the vault the sidebar lists: empty segments (`a//b`, a leading
 /// or trailing `/`) and `.` dropped as `path.join` drops them, and every other segment one name
 /// of the user's file system ([`is_plain_relative`]; `Re: plan` is a folder on macOS).
-pub(super) fn plain_folder(folder: &str) -> Result<String, NotesError> {
+pub(crate) fn plain_folder(folder: &str) -> Result<String, NotesError> {
     let segments: Vec<&str> = folder
         .split('/')
         .filter(|segment| !segment.is_empty() && *segment != ".")
@@ -316,7 +316,7 @@ pub(super) fn plain_folder(folder: &str) -> Result<String, NotesError> {
 /// The first name for the note in `folder`, vault-relative with `/`: one no other note holds
 /// and nothing on disk is at, or the note's own file. A folder outside the vault, one the
 /// vault ignores, or one reached through a link is refused.
-fn free_target(
+pub(crate) fn free_target(
     lane: &Lane<'_>,
     root: &Path,
     note_id: &str,

@@ -13,7 +13,7 @@ use memry_core::api::auth::{AuthSession, AuthState, DeviceDescriptor};
 use memry_core::api::errors::AuthError;
 use memry_core::api::errors::TransportError;
 use memry_core::protocol::auth::{DeviceFormFactor, DevicePlatform};
-use memry_core::seams::secure_store::SecureStoreKey;
+use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_core::seams::transport::HttpResponse;
 use serde_json::json;
 
@@ -148,4 +148,304 @@ async fn a_clean_sign_out_leaves_no_marker() {
     assert_eq!(session.sign_out().await.unwrap(), AuthState::SignedOut);
 
     assert!(!marker.exists());
+}
+
+/// #4766: a sign-out the keychain refused leaves the device key behind. The next sign-in, of any
+/// account, deletes it first and registers a new one, so the next account never signs as this
+/// device's last account.
+#[tokio::test]
+async fn a_new_sign_in_never_reuses_the_device_key_a_refused_sign_out_kept() {
+    let dir = tempfile::tempdir().unwrap();
+    let marker = dir.path().join("signed-out");
+    let (session, _transport, store) = refused_sign_out(&marker, sign_in_script("jti-2")).await;
+    let kept = store.get(SecureStoreKey::DeviceSigningKey).unwrap();
+    assert!(kept.is_some(), "the refused sign-out kept the device key");
+
+    session
+        .request_email_code("next@example.com".to_string())
+        .await
+        .unwrap();
+    assert_eq!(store.get(SecureStoreKey::DeviceSigningKey).unwrap(), None);
+    assert_eq!(store.text(SecureStoreKey::RefreshToken), None);
+    session
+        .verify_email_code("123456".to_string())
+        .await
+        .unwrap();
+    session.register_device().await.unwrap();
+
+    let registered = store.get(SecureStoreKey::DeviceSigningKey).unwrap();
+    assert!(registered.is_some());
+    assert_ne!(registered, kept);
+}
+
+/// A sign-out the keychain carried out keeps the device key a later local write mints: only a
+/// refused one sends the next sign-in through the delete.
+#[tokio::test]
+async fn a_clean_sign_out_keeps_the_key_minted_after_it() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut script = sign_in_script("jti-1");
+    script.push(response(200, "{}"));
+    script.push(response(200, r#"{"success":true,"expiresIn":600}"#));
+    let store = FakeSecureStore::new();
+    let session = launch(
+        FakeTransport::new(script),
+        store.clone(),
+        &dir.path().join("signed-out"),
+    );
+    sign_in(&session).await;
+    session.sign_out().await.unwrap();
+    memry_core::api::auth::ensure_device_identity(store.clone()).unwrap();
+    let minted = store.get(SecureStoreKey::DeviceSigningKey).unwrap();
+
+    session
+        .request_email_code("next@example.com".to_string())
+        .await
+        .unwrap();
+
+    assert!(minted.is_some());
+    assert_eq!(store.get(SecureStoreKey::DeviceSigningKey).unwrap(), minted);
+}
+
+/// A marker path whose existence cannot be read counts as a sign-out (the fail-closed side), and
+/// the failure reaches the shell.
+#[cfg(unix)]
+#[tokio::test]
+async fn an_unreadable_marker_refuses_the_restore_and_reports_why() {
+    let dir = tempfile::tempdir().unwrap();
+    let file = dir.path().join("not-a-dir");
+    std::fs::write(&file, b"").unwrap();
+    let store = FakeSecureStore::new();
+    store.put_text(SecureStoreKey::RefreshToken, "refresh-from-the-last-run");
+
+    let session = launch(
+        FakeTransport::new(Vec::new()),
+        store,
+        &file.join("signed-out"),
+    );
+
+    assert_eq!(session.restore().unwrap(), AuthState::SignedOut);
+    assert!(session.take_sign_out_marker_fault().is_some());
+}
+
+/// A sign-out from a state with no edge, whose clear the keychain refused, is not restored after
+/// a relaunch either.
+#[tokio::test]
+async fn a_refused_clear_without_an_edge_is_not_restored_after_a_relaunch() {
+    let dir = tempfile::tempdir().unwrap();
+    let marker = dir.path().join("signed-out");
+    let store = FakeSecureStore::new();
+    store.put_text(SecureStoreKey::RefreshToken, "refresh-from-the-last-run");
+    store.fail_clear();
+    let session = launch(FakeTransport::new(Vec::new()), store.clone(), &marker);
+
+    session.clear_without_edge().unwrap_err();
+    drop(session);
+    let relaunched = launch(FakeTransport::new(Vec::new()), store, &marker);
+
+    assert_eq!(relaunched.restore().unwrap(), AuthState::SignedOut);
+}
+
+/// A marker write that fails and a later one that succeeds leave nothing to report: the file is
+/// there, so the next launch refuses the restore.
+#[tokio::test]
+async fn a_marker_written_after_a_failed_write_reports_nothing() {
+    let dir = tempfile::tempdir().unwrap();
+    let parent = dir.path().join("app");
+    std::fs::write(&parent, b"").unwrap();
+    let marker = parent.join("signed-out");
+    let store = FakeSecureStore::new();
+    store.put_text(SecureStoreKey::RefreshToken, "refresh-from-the-last-run");
+    store.fail_clear();
+    let session = launch(FakeTransport::new(Vec::new()), store, &marker);
+    session.clear_without_edge().unwrap_err();
+
+    std::fs::remove_file(&parent).unwrap();
+    session.clear_without_edge().unwrap_err();
+
+    assert!(marker.exists());
+    assert_eq!(session.take_sign_out_marker_fault(), None);
+}
+
+/// A marker that registration could not remove (the folder refused it) is moot once the next
+/// refused sign-out writes it again: that sign-out reports no restore risk.
+#[cfg(unix)]
+#[tokio::test]
+async fn a_failed_removal_at_registration_is_moot_once_the_next_sign_out_writes_the_marker() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let dir = tempfile::tempdir().unwrap();
+    let parent = dir.path().join("app");
+    let marker = parent.join("signed-out");
+    let mut extra = sign_in_script("jti-2");
+    extra.push(response(200, "{}"));
+    let (session, _transport, _store) = refused_sign_out(&marker, extra).await;
+    assert_eq!(session.take_sign_out_marker_fault(), None);
+    std::fs::set_permissions(&parent, std::fs::Permissions::from_mode(0o555)).unwrap();
+
+    sign_in(&session).await;
+    let refused = session.sign_out().await;
+    std::fs::set_permissions(&parent, std::fs::Permissions::from_mode(0o755)).unwrap();
+
+    assert!(matches!(refused, Err(AuthError::SecureStore { .. })));
+    assert!(marker.exists());
+    assert_eq!(session.take_sign_out_marker_fault(), None);
+}
+
+/// A marker path that could not be read or cleared at sign-in, and holds no file by the time
+/// the device registers, leaves nothing to report.
+#[cfg(unix)]
+#[tokio::test]
+async fn a_marker_fault_at_sign_in_is_dropped_once_registration_finds_no_marker() {
+    let dir = tempfile::tempdir().unwrap();
+    let parent = dir.path().join("app");
+    std::fs::write(&parent, b"").unwrap();
+    let session = launch(
+        FakeTransport::new(sign_in_script("jti-1")),
+        FakeSecureStore::new(),
+        &parent.join("signed-out"),
+    );
+    session
+        .request_email_code("kaan@example.com".to_string())
+        .await
+        .unwrap();
+
+    std::fs::remove_file(&parent).unwrap();
+    session
+        .verify_email_code("123456".to_string())
+        .await
+        .unwrap();
+    session.register_device().await.unwrap();
+
+    assert_eq!(session.take_sign_out_marker_fault(), None);
+}
+
+const DELETED_BY_INTEGRITY: [SecureStoreKey; 4] = [
+    SecureStoreKey::AccessToken,
+    SecureStoreKey::RefreshToken,
+    SecureStoreKey::SetupToken,
+    SecureStoreKey::DeviceSigningKey,
+];
+
+/// The `integrity` sign-out keeps the master key, deletes the other four secrets, asks the
+/// server nothing, and the next launch restores nothing.
+#[tokio::test]
+async fn the_integrity_sign_out_keeps_only_the_master_key_and_is_not_restored() {
+    let dir = tempfile::tempdir().unwrap();
+    let marker = dir.path().join("signed-out");
+    let transport = FakeTransport::new(sign_in_script("jti-1"));
+    let store = FakeSecureStore::new();
+    let session = launch(transport.clone(), store.clone(), &marker);
+    sign_in(&session).await;
+    store.put_text(SecureStoreKey::MasterKey, "master");
+    store.put_text(SecureStoreKey::SetupToken, "setup");
+
+    let kept = session.sign_out_keeping_master_key();
+
+    assert!(kept.is_empty(), "{kept:?}");
+    assert_eq!(session.state(), AuthState::SignedOut);
+    assert_eq!(
+        store.text(SecureStoreKey::MasterKey).as_deref(),
+        Some("master")
+    );
+    for key in DELETED_BY_INTEGRITY {
+        assert_eq!(store.get(key).unwrap(), None, "{key:?} remains");
+    }
+    assert!(transport.calls_to("/auth/logout").is_empty());
+    drop(session);
+    let relaunched = launch(transport, store, &marker);
+    assert_eq!(relaunched.restore().unwrap(), AuthState::SignedOut);
+}
+
+/// A code in flight ends with the sign-in: the state has no sign-out edge, only a failed one.
+#[tokio::test]
+async fn the_integrity_sign_out_ends_a_code_in_flight() {
+    let dir = tempfile::tempdir().unwrap();
+    let session = launch(
+        FakeTransport::new(sign_in_script("jti-1")),
+        FakeSecureStore::new(),
+        &dir.path().join("signed-out"),
+    );
+    session
+        .request_email_code("kaan@example.com".to_string())
+        .await
+        .unwrap();
+
+    assert!(session.sign_out_keeping_master_key().is_empty());
+
+    assert_eq!(session.state(), AuthState::SignedOut);
+}
+
+/// A session over a device key this install holds and an access token far from expiry.
+fn holding_a_device_key() -> (AuthSession, Arc<FakeTransport>, String, tempfile::TempDir) {
+    let dir = tempfile::tempdir().unwrap();
+    let store = FakeSecureStore::new();
+    memry_core::api::auth::ensure_device_identity(store.clone()).unwrap();
+    let secret = store
+        .get(SecureStoreKey::DeviceSigningKey)
+        .unwrap()
+        .unwrap();
+    let public = memry_core::crypto::keys::base64_encode(&secret[32..]);
+    store.put_text(
+        SecureStoreKey::AccessToken,
+        &jwt(json!({ "sub": "user-1", "device_id": "device-1", "exp": 4_102_444_800u64 })),
+    );
+    let transport = FakeTransport::new(Vec::new());
+    let session = launch(transport.clone(), store, &dir.path().join("signed-out"));
+    (session, transport, public, dir)
+}
+
+#[tokio::test]
+async fn a_device_key_only_a_revoked_device_holds_is_not_listed() {
+    let (session, transport, public, _dir) = holding_a_device_key();
+    let rows = json!({ "devices": [
+        { "id": "device-1", "signingPublicKey": public, "revokedAt": 1_700_000_000 },
+        { "id": "device-2", "signingPublicKey": "AAAA", "revokedAt": null },
+    ] });
+    transport.push(response(200, &rows.to_string()));
+
+    assert_eq!(session.listed_device_id().await.unwrap(), None);
+}
+
+#[tokio::test]
+async fn a_device_key_a_live_device_holds_is_listed_under_its_id() {
+    let (session, transport, public, _dir) = holding_a_device_key();
+    let rows = json!([
+        { "id": "device-0", "signingPublicKey": public, "revokedAt": 1_700_000_000 },
+        { "id": "device-1", "signingPublicKey": public, "revokedAt": null },
+    ]);
+    transport.push(response(200, &rows.to_string()));
+
+    assert_eq!(
+        session.listed_device_id().await.unwrap().as_deref(),
+        Some("device-1")
+    );
+}
+
+/// No device key: nothing is listed, no request is made, and no key is minted (a minted key
+/// would be one the server never saw).
+#[tokio::test]
+async fn no_device_key_lists_nothing_and_mints_none() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = FakeSecureStore::new();
+    let transport = FakeTransport::new(Vec::new());
+    let session = launch(
+        transport.clone(),
+        store.clone(),
+        &dir.path().join("signed-out"),
+    );
+
+    assert_eq!(session.listed_device_id().await.unwrap(), None);
+
+    assert_eq!(transport.call_count(), 0);
+    assert_eq!(store.get(SecureStoreKey::DeviceSigningKey).unwrap(), None);
+}
+
+/// A live device holding this key with no id is an answer the client cannot use, not "not listed".
+#[tokio::test]
+async fn a_listed_device_without_an_id_is_a_malformed_answer() {
+    let (session, transport, public, _dir) = holding_a_device_key();
+    let rows = json!([{ "signingPublicKey": public, "revokedAt": null }]);
+    transport.push(response(200, &rows.to_string()));
+
+    assert!(session.listed_device_id().await.is_err());
 }

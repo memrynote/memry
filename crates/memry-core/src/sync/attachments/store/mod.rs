@@ -1,5 +1,5 @@
 //! The durable state of attachment sync: the four tables of data migration
-//! 0034, one module each, in Electron's shapes so the Electron import (#3553)
+//! 0035, one module each, in Electron's shapes so the Electron import (#3553)
 //! copies rows unchanged.
 //!
 //! | Module                | Table                          | Electron owner                       |

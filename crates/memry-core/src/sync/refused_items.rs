@@ -123,32 +123,31 @@ pub(crate) fn take_retryable(
     Ok(pairs)
 }
 
-/// Drops every entry under `item_id`: an untyped tombstone deleted every row
-/// under it (§5.12.1).
-pub(crate) fn resolve_id(conn: &Connection, item_id: &str) -> Result<(), StorageError> {
-    conn.execute(
-        "DELETE FROM sync_refused_items WHERE item_id = ?1",
-        params![item_id],
-    )
-    .map(drop)
-    .map_err(failed)
-}
-
 /// Every ledger row, ordered by type and id.
 pub fn entries(conn: &Connection) -> Result<Vec<RefusedItem>, StorageError> {
+    Ok(entries_refused_at(conn)?
+        .into_iter()
+        .map(|(item, _)| item)
+        .collect())
+}
+
+/// Every ledger row with its `refused_at` (the last refusal or refetch, epoch ms), ordered by
+/// type and id: desktop lists them as quarantined items.
+pub fn entries_refused_at(conn: &Connection) -> Result<Vec<(RefusedItem, i64)>, StorageError> {
     let mut statement = conn
         .prepare(
-            "SELECT item_type, item_id, refused_by_version FROM sync_refused_items
+            "SELECT item_type, item_id, refused_by_version, refused_at FROM sync_refused_items
              ORDER BY item_type, item_id",
         )
         .map_err(failed)?;
     let rows = statement
         .query_map([], |row| {
-            Ok(RefusedItem {
+            let item = RefusedItem {
                 item_type: row.get(0)?,
                 item_id: row.get(1)?,
                 refused_by_version: row.get(2)?,
-            })
+            };
+            Ok((item, row.get(3)?))
         })
         .map_err(failed)?
         .collect::<Result<Vec<_>, _>>()

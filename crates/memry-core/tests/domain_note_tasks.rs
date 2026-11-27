@@ -20,6 +20,7 @@
 
 use memry_core::crdt::blocks::Block;
 use memry_core::crdt::body_edit::BlockEdit;
+use memry_core::crdt::epoch::HeldBody;
 use memry_core::crdt::update_log;
 use memry_core::domain::body_write;
 use memry_core::domain::note_tasks::{
@@ -156,7 +157,9 @@ fn seed_note(conn: &Connection, specs: &[Spec]) {
         NOW,
     )
     .expect("create the note");
-    update_log::append_server_update(conn, NOTE, 1, &body(specs), NOW).expect("seed the body");
+    HeldBody::never_purged(conn, NOTE)
+        .and_then(|held| held.append_server_update(1, &body(specs), NOW))
+        .expect("seed the body");
 }
 
 fn blocks(conn: &Connection) -> Vec<Block> {

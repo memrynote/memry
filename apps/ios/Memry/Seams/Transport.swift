@@ -57,6 +57,10 @@ final class URLSessionTransport: Transport, @unchecked Sendable {
     private let collector: HTTPResponseCollector
     private let session: URLSession
     private let socketSession: URLSession
+    /// Chapter 00 §0.6: a request that receives no bytes for this long fails,
+    /// whatever its deadline. The core's `IDLE_TIMEOUT_MS`.
+    static let idleTimeoutMs: UInt64 = 60_000
+
     private let socketRouter: SocketRouter
     private let emitter: CoreEventEmitter
     private let exchangeHold: ExchangeHold
@@ -119,10 +123,12 @@ final class URLSessionTransport: Transport, @unchecked Sendable {
         urlRequest.httpBody = request.body
         // The per-request ceiling is mandatory (chapter 00 §0.6) and it is the
         // request's, never a session default. `timeoutInterval` is an *idle*
-        // timer, so it is set here and backed by a real deadline in the
-        // collector: a server dribbling one byte a second would otherwise never
-        // trip it, and the in-flight guard it exists to protect would latch.
-        urlRequest.timeoutInterval = TimeInterval(request.timeoutMs) / 1000
+        // timer, so the deadline is the collector's: a server dribbling one
+        // byte a second would otherwise never trip it, and the in-flight guard
+        // it exists to protect would latch. The idle timer is §0.6's 60 s, or
+        // the deadline when that is shorter, so a pack GET with a long
+        // deadline still fails a minute after its bytes stop (#5331).
+        urlRequest.timeoutInterval = TimeInterval(min(request.timeoutMs, Self.idleTimeoutMs)) / 1000
         for (name, value) in request.headers {
             // Lowercase in both directions, from the contract. HTTP header
             // names are case-insensitive on the wire, so this costs nothing and

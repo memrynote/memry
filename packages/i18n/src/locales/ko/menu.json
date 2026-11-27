@@ -102,7 +102,6 @@
   "commands": {
     "goHome": "홈으로 이동",
     "goInbox": "수신함으로 이동",
-    "goJournal": "저널로 이동",
     "goCalendar": "캘린더로 이동",
     "goTasks": "작업으로 이동",
     "goGraph": "그래프로 이동",

@@ -17,10 +17,12 @@ on:
       - 'packages/**'
       - 'pnpm-lock.yaml'
       - 'oxlint.config.mts'
+      - 'turbo.json'
       - '.github/workflows/desktop-tauri-ci.yml'
       - '.github/actions/apt-install/**'
       - '.github/actions/ci-tier/**'
       - '.github/actions/free-disk/**'
+      - '.github/actions/libsodium-dist/**'
       - '.github/actions/paths-changed/**'
       - '.github/actions/setup-pnpm/**'
       - '.github/actions/tesseract-sources/**'
@@ -59,6 +61,10 @@ env:
   # Line tables keep file:line in panics and backtraces of the debug builds this workflow uploads;
   # full debug info only made every link slower and the cargo cache larger.
   CARGO_PROFILE_DEV_DEBUG: line-tables-only
+  # Swatinem/rust-cache exported this in every job that ran it. No job here caches cargo any more (its
+  # 11 entries were 13 GB per full push against the repo's 10 GB cap), and incremental data would only
+  # grow a target dir nothing saves.
+  CARGO_INCREMENTAL: 0
 
 jobs:
   # Tiering: a PR whose base is not main (feat/tauri-v2 or a stacked PR's branch) runs the fast
@@ -83,6 +89,9 @@ jobs:
       intel: ${{ steps.tier.outputs.intel }}
       macos: ${{ steps.tier.outputs.macos }}
       build_matrix: ${{ steps.matrix.outputs.build }}
+      e2e_build_matrix: ${{ steps.matrix.outputs.e2e_build }}
+      e2e_matrix: ${{ steps.matrix.outputs.e2e }}
+      e2e: ${{ steps.matrix.outputs.e2e_any }}
       paths: ${{ steps.paths.outputs.changed }}
     steps:
       # The CI definitions and the Rust sources, whose `#[cfg(<os>)] mod` declarations tell the tier
@@ -108,7 +117,8 @@ jobs:
 
       # The build matrix (rules in .github/actions/ci-tier/tauri-builds.jq). Post-merge (#5035): the
       # scheduled run of feat/tauri-v2 builds only macos-arm64 and the windows-arm64 e2e specs, a push
-      # the merge queue passed builds nothing.
+      # the merge queue passed builds nothing. A leg with a `shard` runs e2e specs: its platform's app
+      # is built once in e2e-build, and each shard downloads it in the e2e job.
       - name: Build the build matrix
         id: matrix
         env:
@@ -122,7 +132,13 @@ jobs:
         run: |
           matrix=$(jq -cn --arg full "$FULL" --arg macos "$MACOS" --arg intel "$INTEL" --arg queue "$QUEUE" --arg post_merge "$POST_MERGE" --arg win "$WINDOWS_LEGS" --arg mac "$MACOS_LEGS" \
             -f .github/actions/ci-tier/tauri-builds.jq)
-          echo "build=$matrix" >> "$GITHUB_OUTPUT"
+          split=$(jq -c -f .github/actions/ci-tier/tauri-split.jq <<<"$matrix")
+          {
+            echo "build=$(jq -c .build <<<"$split")"
+            echo "e2e_build=$(jq -c .e2e_build <<<"$split")"
+            echo "e2e=$(jq -c .e2e <<<"$split")"
+            echo "e2e_any=$(jq -c .e2e_any <<<"$split")"
+          } >> "$GITHUB_OUTPUT"
           echo "Build matrix: $matrix"
 
       # Replaces the `pull_request.paths` filter: a filtered workflow never runs, so its required gate
@@ -132,7 +148,7 @@ jobs:
         uses: ./.github/actions/paths-changed
         with:
           token: ${{ github.token }}
-          include: '^(apps/desktop-tauri/|crates/|packages/|pnpm-lock\.yaml$|oxlint\.config\.mts$|\.github/workflows/desktop-tauri-ci\.yml$|\.github/actions/(apt-install|ci-tier|free-disk|paths-changed|setup-pnpm|tesseract-sources)/|scripts/check-renderer-no-sync-host(\.test)?\.mjs$|scripts/(release|rehearsal)/)'
+          include: '^(apps/desktop-tauri/|crates/|packages/|pnpm-lock\.yaml$|oxlint\.config\.mts$|turbo\.json$|\.github/workflows/desktop-tauri-ci\.yml$|\.github/actions/(apt-install|ci-tier|free-disk|libsodium-dist|paths-changed|setup-pnpm|tesseract-sources)/|scripts/check-renderer-no-sync-host(\.test)?\.mjs$|scripts/(release|rehearsal)/)'
 
   static:
     name: Static checks
@@ -181,7 +197,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
 
       - name: Install Linux system libraries
         uses: ./.github/actions/apt-install
@@ -206,26 +221,6 @@ jobs:
         with:
           toolchain: '1.98.1'
 
-      # Saves only on push, dispatch and PRs into main. A tiered PR (base not main) and a merge-queue run
-      # restore what the push to feat/tauri-v2 saved and write nothing (a save is 2-4 GB per job).
-      - name: Cache cargo
-        id: cargo-cache
-        uses: Swatinem/rust-cache@v2
-        timeout-minutes: 8
-        continue-on-error: true
-        env:
-          SEGMENT_DOWNLOAD_TIMEOUT_MINS: 3
-        with:
-          workspaces: crates
-          key: ubuntu-22.04
-          save-if: ${{ github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref == 'main') }}
-
-      # A restore cut off at the step timeout can leave half an archive on disk. Start the
-      # build cold rather than from files cargo might trust.
-      - name: Drop a partial cargo cache
-        if: steps.cargo-cache.outcome == 'failure'
-        run: rm -rf crates/target "$HOME/.cargo/registry/cache" "$HOME/.cargo/registry/index" "$HOME/.cargo/git/db"
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
 
@@ -236,14 +231,27 @@ jobs:
           pnpm --filter @memry/extension exec wxt prepare
           pnpm lint
 
+      # A cache hit skips a typecheck, so every file a cached typecheck loads must be in its hash.
+      - name: Turbo typecheck inputs are complete
+        run: node tools/turbo-cache/check-task-inputs.mjs
+
       - name: Typecheck
+        # Turbo remote cache (tools/turbo-cache), read-only: a hit replays a typecheck the push-to-feat
+        # writer ran on the same inputs. No remote cache when TURBO_API or the signature key is unset,
+        # and none for a fork's pull request.
+        # This step is also the IPC bindings check: desktop and desktop-tauri run `pnpm ipc:check` in
+        # pretypecheck, and their typecheck hash covers every file it reads (crates/**, the toolchain,
+        # contracts, i18n). A hit means ipc:check passed on identical inputs; a miss runs it here.
+        env:
+          TURBO_API: ${{ vars.TURBO_API }}
+          TURBO_TEAM: ${{ vars.TURBO_TEAM }}
+          TURBO_TOKEN: ${{ vars.TURBO_API != '' && secrets.TURBO_REMOTE_CACHE_SIGNATURE_KEY != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && secrets.TURBO_READ_TOKEN || '' }}
+          TURBO_REMOTE_CACHE_SIGNATURE_KEY: ${{ secrets.TURBO_REMOTE_CACHE_SIGNATURE_KEY }}
+          TURBO_CACHE: local:rw,remote:r
         run: pnpm typecheck
 
       - name: Format
         run: pnpm format:check
-
-      - name: IPC bindings are current
-        run: pnpm ipc:check
 
       # The certificate pins live in the Rust transport; a webview request to a memry host skips them.
       - name: Renderer makes no memry-host request
@@ -281,7 +289,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
 
       # Only the Tauri app and the workspace packages it depends on: this job never runs the
       # Electron app, the extension or the sites, and their dependencies were a quarter of the
@@ -296,6 +303,12 @@ jobs:
         if: matrix.shard == 1
         run: pnpm --filter @memry/desktop-tauri test:scripts
 
+      # The library icon table the note export reads (crates/memry-desktop/resources) is
+      # generated from @hugeicons/core-free-icons; a bump of the package without a regenerate fails.
+      - name: Check export icons
+        if: matrix.shard == 1
+        run: pnpm check:export-icons
+
   # Fast tier: linux-x64 (plus the windows-x64 and macos-arm64 legs the plan adds for a diff that can
   # break them), and only when the diff can change app behavior. Full: every leg the plan job lists
   # (no Apple Silicon in the merge queue, no Intel except on main and dispatch).
@@ -304,9 +317,10 @@ jobs:
   # platform takes one runner slot per variant: `Build debug` also runs the launch smoke and the
   # no-driver smoke, `Build e2e` also runs the E2E specs. linux-arm64 builds the artifacts the
   # arm64 Ubuntu VM runs (tart; the vm-repro skill downloads its e2e one); it has no smoke or
-  # specs. macos-x64 has no e2e leg: nothing downloads it.
+  # specs. macos-x64 has no e2e leg: nothing downloads it. The sharded e2e platforms (linux-x64,
+  # windows-x64) build in e2e-build instead, with these steps, and run their specs in the e2e job.
   build:
-    name: Build ${{ matrix.variant }}${{ matrix.shard && format(' {0}/2', matrix.shard) || '' }} (${{ matrix.platform }})
+    name: Build ${{ matrix.variant }} (${{ matrix.platform }})
     needs: plan
     if: ${{ !cancelled() && needs.plan.outputs.post_merge != 'covered' && (needs.plan.outputs.paths == 'true' || needs.plan.result == 'failure') && (needs.plan.result == 'failure' || needs.plan.outputs.full == 'true' || needs.plan.outputs.tauri == 'true') }}
     runs-on: ${{ matrix.os }}
@@ -315,14 +329,15 @@ jobs:
       fail-fast: false
       # Built by the plan job (see "Build the build matrix"). The fallback is the fast tier, for a plan
       # job that failed.
-      matrix: ${{ fromJSON(needs.plan.outputs.build_matrix || '{"include":[{"platform":"linux-x64","os":"ubuntu-22.04","triple":"x86_64-unknown-linux-gnu","variant":"debug"},{"platform":"linux-x64","os":"ubuntu-22.04","triple":"x86_64-unknown-linux-gnu","variant":"e2e","shard":1},{"platform":"linux-x64","os":"ubuntu-22.04","triple":"x86_64-unknown-linux-gnu","variant":"e2e","shard":2}]}') }}
+      matrix: ${{ fromJSON(needs.plan.outputs.build_matrix || '{"include":[{"platform":"linux-x64","os":"ubuntu-22.04","triple":"x86_64-unknown-linux-gnu","variant":"debug"}]}') }}
     env:
       VITE_MEMRY_DEV_API_PROXY: '1'
     defaults:
       run:
         shell: bash
-    steps:
-      - name: Checkout
+    steps: &build-steps
+      - &checkout
+        name: Checkout
         uses: actions/checkout@v6
         with: *lean-checkout
 
@@ -330,16 +345,18 @@ jobs:
       - name: Free disk space
         uses: ./.github/actions/free-disk
 
-      - name: Setup pnpm
+      - &setup-pnpm
+        name: Setup pnpm
         uses: ./.github/actions/setup-pnpm
 
-      - name: Setup Node.js
+      - &setup-node
+        name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
 
-      - name: Install Linux system libraries
+      - &apt-install
+        name: Install Linux system libraries
         if: runner.os == 'Linux'
         uses: ./.github/actions/apt-install
         timeout-minutes: 12
@@ -366,36 +383,22 @@ jobs:
           targets: ${{ matrix.triple }}
 
       # BoringSSL (btls-sys, under the Inbox web fetch's wreq client) assembles its x86 code with NASM
-      # when it builds natively on Windows.
+      # when it builds natively on Windows x64. Windows ARM64 builds it without assembly (the btls-sys
+      # patch in crates/Cargo.toml) and needs no NASM.
       - name: Install NASM
-        if: runner.os == 'Windows'
+        if: runner.os == 'Windows' && runner.arch == 'X64'
         uses: ilammy/setup-nasm@72793074d3c8cdda771dba85f6deafe00623038b # v1.5.2
 
-      # Saves only on push, dispatch and PRs into main. A tiered PR (base not main) and a merge-queue run
-      # restore what the push to feat/tauri-v2 saved and write nothing (a save is 2-4 GB per job).
-      - name: Cache cargo
-        id: cargo-cache
-        uses: Swatinem/rust-cache@v2
-        timeout-minutes: 8
-        continue-on-error: true
-        env:
-          SEGMENT_DOWNLOAD_TIMEOUT_MINS: 3
-        with:
-          workspaces: crates
-          key: ${{ matrix.os }}-${{ matrix.variant }}-${{ matrix.triple }}
-          # Of two e2e shards, the first saves the entry both restore.
-          save-if: ${{ matrix.shard != 2 && github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref == 'main') }}
-
-      # A restore cut off at the step timeout can leave half an archive on disk. Start the
-      # build cold rather than from files cargo might trust.
-      - name: Drop a partial cargo cache
-        if: steps.cargo-cache.outcome == 'failure'
-        run: rm -rf crates/target "$HOME/.cargo/registry/cache" "$HOME/.cargo/registry/index" "$HOME/.cargo/git/db"
+      # libsodium-sys-stable downloads its MSVC archive without a retry on Windows (build.rs:405
+      # "Peer disconnected"); this caches it, fetches it with retries and sets SODIUM_DIST_DIR.
+      - name: libsodium archives
+        uses: ./.github/actions/libsodium-dist
 
       # Only the Tauri app and the workspace packages it depends on: this job never runs the
       # Electron app, the extension or the sites, and their dependencies were a quarter of the
       # install (Windows ARM spent 6.5 minutes installing).
-      - name: Install dependencies
+      - &install
+        name: Install dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts --filter "@memry/desktop-tauri..."
 
       - name: Build (debug)
@@ -416,7 +419,7 @@ jobs:
         if: matrix.variant == 'e2e' && contains(fromJSON('["windows-arm64","linux-arm64"]'), matrix.platform)
         uses: ./.github/actions/tesseract-sources
         with:
-          save: ${{ github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref != 'feat/tauri-v2') }}
+          save: ${{ github.ref == 'refs/heads/feat/tauri-v2' }}
 
       - name: Build memry-ml-worker and fetch pdfium
         if: matrix.variant == 'e2e' && contains(fromJSON('["windows-arm64","linux-arm64"]'), matrix.platform)
@@ -480,23 +483,26 @@ jobs:
           echo "dir=$dir" >> "$GITHUB_OUTPUT"
 
       - name: Upload app
-        if: matrix.shard != 2
         uses: actions/upload-artifact@v4
         with:
           name: memry-tauri-${{ matrix.variant }}-${{ matrix.platform }}
           path: ${{ steps.stage.outputs.dir || steps.binary.outputs.path }}
           retention-days: 14
 
-      - name: Harness unit tests
-        if: matrix.variant == 'e2e' && matrix.platform != 'linux-arm64' && matrix.shard != 2
+      # The spec steps below run in a build leg without `shards` (macos-arm64, windows-arm64) and in
+      # each e2e leg; e2e-build (these steps with `shards`) only builds and uploads.
+      - &harness-tests
+        name: Harness unit tests
+        if: matrix.variant == 'e2e' && matrix.platform != 'linux-arm64' && (!matrix.shards || matrix.shard == 1)
         # A test that awaits a child's exit would otherwise hang to the job limit.
         timeout-minutes: 5
         run: pnpm --filter @memry/desktop-tauri test:e2e:harness
 
       # The app's own crash handler misses a fail-fast (Rust's abort) and a stack overflow; WER
       # writes those too. The harness copies the dump of an app that died under it (#3967).
-      - name: WER local dumps (Windows)
-        if: matrix.variant == 'e2e' && runner.os == 'Windows'
+      - &wer-dumps
+        name: WER local dumps (Windows)
+        if: matrix.variant == 'e2e' && runner.os == 'Windows' && (!matrix.shards || matrix.shard)
         shell: pwsh
         run: |
           $key = 'HKLM:\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps\Memrynote.exe'
@@ -507,8 +513,9 @@ jobs:
 
       # `dbus-run-session` gives libsecret a session bus; the keyring is unlocked with an empty
       # password. Every other OS has its keychain already.
-      - name: E2E specs
-        if: matrix.variant == 'e2e' && matrix.platform != 'linux-arm64' && runner.os != 'Linux'
+      - &e2e-specs
+        name: E2E specs
+        if: matrix.variant == 'e2e' && matrix.platform != 'linux-arm64' && runner.os != 'Linux' && (!matrix.shards || matrix.shard)
         env:
           MEMRY_E2E_BINARY: ${{ github.workspace }}/${{ steps.binary.outputs.path }}
           MEMRY_E2E_WER_DUMPS: ${{ runner.os == 'Windows' && format('{0}\wer-dumps', runner.temp) || '' }}
@@ -516,14 +523,15 @@ jobs:
           MEMRY_E2E_FILE_TEXT: ${{ matrix.platform == 'windows-arm64' && '1' || '' }}
           # One app per vCPU: 4 on the Windows runners, 2 on the 3-vCPU macOS runner.
           MEMRY_E2E_WORKERS: ${{ runner.os == 'Windows' && '4' || '2' }}
-          SHARD: ${{ matrix.shard && format('--shard={0}/2', matrix.shard) || '' }}
-        # The two-device spec runs once, in the first shard.
+          SHARD: ${{ matrix.shard && format('--shard={0}/{1}', matrix.shard, matrix.shards) || '' }}
+        # The two-device spec runs once, in the last shard (the lightest of wdio's count split).
         run: |
           pnpm --filter @memry/desktop-tauri test:e2e ${SHARD:+"$SHARD"}
-          if [ "${{ matrix.shard }}" != 2 ]; then pnpm --filter @memry/desktop-tauri test:e2e:multi; fi
+          if [ "${{ matrix.shard || 1 }}" = "${{ matrix.shards || 1 }}" ]; then pnpm --filter @memry/desktop-tauri test:e2e:multi; fi
 
-      - name: E2E specs (Linux)
-        if: matrix.variant == 'e2e' && matrix.platform == 'linux-x64'
+      - &e2e-specs-linux
+        name: E2E specs (Linux)
+        if: matrix.variant == 'e2e' && matrix.platform == 'linux-x64' && (!matrix.shards || matrix.shard)
         env:
           MEMRY_E2E_BINARY: ${{ github.workspace }}/${{ steps.binary.outputs.path }}
           # One app per vCPU. The 48 specs hold ~15 minutes of app time; two workers took ~10.
@@ -532,10 +540,10 @@ jobs:
           # On the shared display no window is focused and `document.hasFocus()` is false, and
           # WebKitGTK then collapses a contenteditable selection (#3967).
           MEMRY_E2E_DISPLAY_PER_APP: '1'
-          SHARD: ${{ matrix.shard && format('--shard={0}/2', matrix.shard) || '' }}
+          SHARD: ${{ matrix.shard && format('--shard={0}/{1}', matrix.shard, matrix.shards) || '' }}
         run: |
           specs="pnpm --filter @memry/desktop-tauri test:e2e${SHARD:+ $SHARD}"
-          if [ "${{ matrix.shard }}" != 2 ]; then specs="$specs && pnpm --filter @memry/desktop-tauri test:e2e:multi"; fi
+          if [ "${{ matrix.shard || 1 }}" = "${{ matrix.shards || 1 }}" ]; then specs="$specs && pnpm --filter @memry/desktop-tauri test:e2e:multi"; fi
           # -noreset: by default Xvfb resets when its last client disconnects and closes every
           # client still in connection setup. An app connecting then panics in GTK init with exit
           # 101; each wdio run hit this when `onPrepare` killed its probe app (#3947).
@@ -544,12 +552,14 @@ jobs:
             xvfb-run -a -s '-screen 0 1920x1080x24 -noreset' bash -c '$specs'
           "
 
-      - name: Purge leaked e2e keychain items
-        if: always() && matrix.variant == 'e2e' && matrix.platform != 'linux-arm64'
+      - &purge-keychain
+        name: Purge leaked e2e keychain items
+        if: always() && matrix.variant == 'e2e' && matrix.platform != 'linux-arm64' && (!matrix.shards || matrix.shard)
         run: pnpm --filter @memry/desktop-tauri keychain:purge-e2e || true
 
-      - name: Upload e2e results
-        if: always() && matrix.variant == 'e2e' && matrix.platform != 'linux-arm64'
+      - &upload-results
+        name: Upload e2e results
+        if: always() && matrix.variant == 'e2e' && matrix.platform != 'linux-arm64' && (!matrix.shards || matrix.shard)
         uses: actions/upload-artifact@v4
         with:
           name: e2e-results-${{ matrix.platform }}${{ matrix.shard && format('-{0}', matrix.shard) || '' }}
@@ -557,27 +567,104 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  # The e2e app of each sharded platform, built once (the build job's steps; its spec steps skip a
+  # leg with `shards`) and uploaded as memry-tauri-e2e-<platform>, the artifact the e2e legs and the
+  # vm-repro skill download.
+  e2e-build:
+    name: Build e2e (${{ matrix.platform }})
+    needs: plan
+    if: ${{ !cancelled() && needs.plan.outputs.post_merge != 'covered' && (needs.plan.outputs.paths == 'true' || needs.plan.result == 'failure') && (needs.plan.result == 'failure' || ((needs.plan.outputs.full == 'true' || needs.plan.outputs.tauri == 'true') && needs.plan.outputs.e2e == 'true')) }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.e2e_build_matrix || '{"include":[{"platform":"linux-x64","os":"ubuntu-22.04","triple":"x86_64-unknown-linux-gnu","variant":"e2e","shards":4}]}') }}
+    env:
+      VITE_MEMRY_DEV_API_PROXY: '1'
+    defaults:
+      run:
+        shell: bash
+    steps: *build-steps
+
+  # The e2e specs of a sharded platform, `shard` of `shards`, against the app e2e-build uploaded. It
+  # waits only for e2e-build, not for the debug and arm64 legs of build. A failed or cancelled
+  # e2e-build makes the gate fail; the gate also fails when e2e-build passed and this job did not.
+  e2e:
+    name: E2E specs ${{ matrix.shard }}/${{ matrix.shards }} (${{ matrix.platform }})
+    needs: [plan, e2e-build]
+    if: ${{ !cancelled() && needs.e2e-build.result == 'success' }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.e2e_matrix || '{"include":[{"platform":"linux-x64","os":"ubuntu-22.04","triple":"x86_64-unknown-linux-gnu","variant":"e2e","shards":4,"shard":1},{"platform":"linux-x64","os":"ubuntu-22.04","triple":"x86_64-unknown-linux-gnu","variant":"e2e","shards":4,"shard":2},{"platform":"linux-x64","os":"ubuntu-22.04","triple":"x86_64-unknown-linux-gnu","variant":"e2e","shards":4,"shard":3},{"platform":"linux-x64","os":"ubuntu-22.04","triple":"x86_64-unknown-linux-gnu","variant":"e2e","shards":4,"shard":4}]}') }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - *checkout
+      - *setup-pnpm
+      - *setup-node
+      - *apt-install
+      - *install
+
+      - name: Download app
+        uses: actions/download-artifact@v4
+        with:
+          name: memry-tauri-e2e-${{ matrix.platform }}
+          path: e2e-app
+
+      # The artifact zip drops the executable bit.
+      - name: Locate binary
+        id: binary
+        run: |
+          case "${{ runner.os }}" in
+            Windows) name=Memrynote.exe ;;
+            macOS) name=MemryNote ;;
+            *) name=memrynote ;;
+          esac
+          chmod +x "e2e-app/$name"
+          echo "path=e2e-app/$name" >> "$GITHUB_OUTPUT"
+
+      - *harness-tests
+      - *wer-dumps
+      - *e2e-specs
+      - *e2e-specs-linux
+      - *purge-keychain
+      - *upload-results
+
   # The one check name a ruleset requires for this workflow (merge queue, #3517). Matrix legs and
   # fast/full tiers change which jobs exist; this name does not. A skipped job counts as passed.
   # Runs only for feat/tauri-v2, the PRs stacked on it and the merge queue, so main and its PRs see
   # no new check.
   gate:
     name: Desktop Tauri CI gate
-    needs: [plan, static, renderer-tests, build]
+    needs: [plan, static, renderer-tests, build, e2e-build, e2e]
     # Skipped (not red) in noop runs: the merge queue is the authoritative gate.
     if: ${{ always() && !((github.event.action == 'labeled' && !(github.base_ref != 'main' && github.event.label.name == 'full-ci')) || (github.event.action == 'opened' && github.base_ref != 'main' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) && (github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.base_ref != 'main') || github.ref == 'refs/heads/feat/tauri-v2') }}
     runs-on: ubuntu-22.04
     timeout-minutes: 5
     steps:
+      # The e2e rule's script only; a failed checkout fails the gate.
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          sparse-checkout-cone-mode: false
+          sparse-checkout: /.github/actions/ci-tier/
+
       - name: Fail when a needed job failed or was cancelled
         env:
           RESULTS: ${{ join(needs.*.result, ' ') }}
           DETECT_RESULT: ${{ needs.plan.result }}
+          E2E_BUILD_RESULT: ${{ needs.e2e-build.result }}
+          E2E_RESULT: ${{ needs.e2e.result }}
         run: |
           echo "needed job results: $RESULTS"
           # A skipped detection job (a noop `labeled` or `opened` run) must not read as a pass.
           if [ "$DETECT_RESULT" != success ]; then echo "::error::plan job result was $DETECT_RESULT"; exit 1; fi
           case " $RESULTS " in *" failure "*|*" cancelled "*) exit 1 ;; esac
+          bash .github/actions/ci-tier/e2e-gate.sh "$E2E_BUILD_RESULT" "$E2E_RESULT"
 
   # A failed scheduled run opens (or comments on) one issue: nothing else reads its result. Write access
   # to issues only, and no checkout, so nothing from the repo runs with it.
