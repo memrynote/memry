@@ -401,5 +401,35 @@ export const MARKDOWN_SEED_CASES: ReadonlyArray<{ name: string; markdown: string
       markdown:
         '> [!tip]\n> line one  \n> line \\*two\\*\n> \\- three\n\n> [!note]\n> soft\n> \\> four',
       pins: 'a hard break keeps its spelling in the proof, and the line after it opens with an escaped `*`, `-` or `>`'
+    },
+    {
+      name: 'callout: a body holding a table',
+      markdown: '> [!note]\n> | a | b |\n> |---|---|\n> | c | d |',
+      pins: 'a callout body of any block is read as a structured run, and the callout is claimed when its canonical form settles, so the table stays a table inside it'
+    },
+    {
+      name: 'quote: a run opening on a table',
+      markdown: '> | a | b |\n> |---|---|\n> | c | d |',
+      pins: 'a quote needs no blank `>` line, nested level or list to be read: a first block that is not a paragraph leaves its own line empty and every block a child'
+    },
+    {
+      name: 'quote: a line then a heading',
+      markdown: '> a\n> # h',
+      pins: 'a heading under a quote line is a child of the quote, claimed through its canonical form, which gains the blank `>` line between blocks'
+    },
+    {
+      name: 'quote: a line, a blank and a table',
+      markdown: '> x\n>\n> | a | b |\n> |---|---|\n> | c | d |',
+      pins: 'a blank `>` line then a table: the paragraph is the quote line and the table its child'
+    },
+    {
+      name: 'callout: a body in another spelling',
+      markdown: '> [!tip]\n> Use __bold__',
+      pins: 'a body that does not reproduce its bytes (`__bold__` is written `**bold**`) is still a callout, since its canonical form settles'
+    },
+    {
+      name: 'quote: a quoted fence then a lazy line',
+      markdown: '> ```\n> - x\n> ```\nz',
+      pins: 'a list marker inside a quoted fence is code, so the run ends at its last `>` line and the next line is a paragraph of its own'
     }
   ]

@@ -9,7 +9,7 @@
     "authoredBy": "desktop's markdownToYFragment path: LF line endings, maskHtmlComments, parseNoteMarkdown (editor-schema note-markdown) with parseMarkdownToBlocksRepaired on desktop's server schema, blocksToYXmlFragment",
     "provenAgainst": "apps/desktop/src/main/sync/markdown-seed-vectors.test.ts",
     "blockIds": "removed from every blockContainer line: BlockNote mints them at random",
-    "caseCount": 75
+    "caseCount": 81
   },
   "cases": [
     {
@@ -256,7 +256,7 @@
       "name": "callout: shapes desktop leaves as quotes",
       "pins": "an uppercase or titled marker, or a body that does not serialize back byte for byte, stays a quote",
       "markdown": "> [!NOTE]\n> GitHub alert\n\n> [!info] Title\n> body\n\n> [!tip]\n> an _italic_ word",
-      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"[!NOTE]\"\n3 element hardBreak\n3 text \"GitHub alert\"\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"[!info] Title\"\n3 element hardBreak\n3 text \"body\"\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"[!tip]\"\n3 element hardBreak\n3 text \"an \"\n3 text \"italic\" italic={}\n3 text \" word\""
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"[!NOTE]\"\n3 element hardBreak\n3 text \"GitHub alert\"\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"[!info] Title\"\n3 element hardBreak\n3 text \"body\"\n1 element blockContainer\n2 element callout fold=\"none\" textAlignment=\"left\" textColor=\"default\" type=\"tip\"\n3 text \"an \"\n3 text \"italic\" italic={}\n3 text \" word\""
     },
     {
       "name": "callout: bare marker heals",
@@ -418,7 +418,7 @@
       "name": "comment: %% in a callout body and a quote",
       "pins": "a callout or quote body holding a comment is not claimed: desktop serializes the comment back as its source, which is not the masked run, so the proof fails and the quote stays flat",
       "markdown": "> [!note]\n> body %% c %%\n> more\n\n> quoted %% d %%",
-      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"[!note]\"\n3 element hardBreak\n3 text \"body \"\n3 element htmlComment source=\"%% c %%\"\n3 element hardBreak\n3 text \"more\"\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"quoted \"\n3 element htmlComment source=\"%% d %%\""
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element callout fold=\"none\" textAlignment=\"left\" textColor=\"default\" type=\"note\"\n3 text \"body \"\n3 element htmlComment source=\"%% c %%\"\n3 element hardBreak\n3 text \"more\"\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"quoted \"\n3 element htmlComment source=\"%% d %%\""
     },
     {
       "name": "parity: image address through the DOM",
@@ -461,6 +461,42 @@
       "pins": "a hard break keeps its spelling in the proof, and the line after it opens with an escaped `*`, `-` or `>`",
       "markdown": "> [!tip]\n> line one  \n> line \\*two\\*\n> \\- three\n\n> [!note]\n> soft\n> \\> four",
       "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element callout fold=\"none\" textAlignment=\"left\" textColor=\"default\" type=\"tip\"\n3 text \"line one\"\n3 element hardBreak\n3 element hardBreak\n3 text \"line *two*\"\n3 element hardBreak\n3 text \"- three\"\n1 element blockContainer\n2 element callout fold=\"none\" textAlignment=\"left\" textColor=\"default\" type=\"note\"\n3 text \"soft\"\n3 element hardBreak\n3 text \"> four\""
+    },
+    {
+      "name": "callout: a body holding a table",
+      "pins": "a callout body of any block is read as a structured run, and the callout is claimed when its canonical form settles, so the table stays a table inside it",
+      "markdown": "> [!note]\n> | a | b |\n> |---|---|\n> | c | d |",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element callout fold=\"none\" textAlignment=\"left\" textColor=\"default\" type=\"note\"\n2 element blockGroup\n3 element blockContainer\n4 element table textColor=\"default\"\n5 element tableRow\n6 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n7 element tableParagraph\n8 text \"a\"\n6 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n7 element tableParagraph\n8 text \"b\"\n5 element tableRow\n6 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n7 element tableParagraph\n8 text \"c\"\n6 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n7 element tableParagraph\n8 text \"d\""
+    },
+    {
+      "name": "quote: a run opening on a table",
+      "pins": "a quote needs no blank `>` line, nested level or list to be read: a first block that is not a paragraph leaves its own line empty and every block a child",
+      "markdown": "> | a | b |\n> |---|---|\n> | c | d |",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n2 element blockGroup\n3 element blockContainer\n4 element table textColor=\"default\"\n5 element tableRow\n6 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n7 element tableParagraph\n8 text \"a\"\n6 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n7 element tableParagraph\n8 text \"b\"\n5 element tableRow\n6 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n7 element tableParagraph\n8 text \"c\"\n6 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n7 element tableParagraph\n8 text \"d\""
+    },
+    {
+      "name": "quote: a line then a heading",
+      "pins": "a heading under a quote line is a child of the quote, claimed through its canonical form, which gains the blank `>` line between blocks",
+      "markdown": "> a\n> # h",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"a\"\n2 element blockGroup\n3 element blockContainer\n4 element heading backgroundColor=\"default\" isToggleable=false level=1 textAlignment=\"left\" textColor=\"default\"\n5 text \"h\""
+    },
+    {
+      "name": "quote: a line, a blank and a table",
+      "pins": "a blank `>` line then a table: the paragraph is the quote line and the table its child",
+      "markdown": "> x\n>\n> | a | b |\n> |---|---|\n> | c | d |",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n3 text \"x\"\n2 element blockGroup\n3 element blockContainer\n4 element table textColor=\"default\"\n5 element tableRow\n6 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n7 element tableParagraph\n8 text \"a\"\n6 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n7 element tableParagraph\n8 text \"b\"\n5 element tableRow\n6 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n7 element tableParagraph\n8 text \"c\"\n6 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n7 element tableParagraph\n8 text \"d\""
+    },
+    {
+      "name": "callout: a body in another spelling",
+      "pins": "a body that does not reproduce its bytes (`__bold__` is written `**bold**`) is still a callout, since its canonical form settles",
+      "markdown": "> [!tip]\n> Use __bold__",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element callout fold=\"none\" textAlignment=\"left\" textColor=\"default\" type=\"tip\"\n3 text \"Use \"\n3 text \"bold\" bold={}"
+    },
+    {
+      "name": "quote: a quoted fence then a lazy line",
+      "pins": "a list marker inside a quoted fence is code, so the run ends at its last `>` line and the next line is a paragraph of its own",
+      "markdown": "> ```\n> - x\n> ```\nz",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer\n2 element quote backgroundColor=\"default\" textColor=\"default\"\n2 element blockGroup\n3 element blockContainer\n4 element codeBlock language=\"\"\n5 text \"- x\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"z\""
     }
   ]
 }
