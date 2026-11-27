@@ -11,7 +11,7 @@ use serde_json::Value;
 use tokio::sync::oneshot;
 
 use super::gate::{PreviewKind, ReviewTarget};
-use super::write_gate::GateHost;
+use super::write_gate::{ApprovalLabel, GateHost};
 
 /// How long an approval may sit unanswered. Half an hour, as in Electron: an expiry tells the
 /// model the call did not go through, so it must not fire under a reader's hands.
@@ -183,6 +183,7 @@ impl Drop for Abandoned<'_> {
                 APPROVAL_ABANDONED_CODE,
                 APPROVAL_ABANDONED_MESSAGE,
             );
+            self.host.approval_decided(ApprovalLabel::Abandoned);
         }
     }
 }

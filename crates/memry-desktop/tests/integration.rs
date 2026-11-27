@@ -36,6 +36,8 @@ mod account_vault_download;
 mod activity_log;
 #[path = "activity_scan.rs"]
 mod activity_scan;
+#[path = "agent_gate_wiring.rs"]
+mod agent_gate_wiring;
 #[path = "agent_mcp.rs"]
 mod agent_mcp;
 #[path = "agent_mcp_http.rs"]
@@ -169,6 +171,8 @@ mod editor_host;
 mod editor_readonly;
 #[path = "electron_profile_fixture.rs"]
 mod electron_profile_fixture;
+#[path = "electron_yjs_journal.rs"]
+mod electron_yjs_journal;
 #[path = "embedding_file_text.rs"]
 mod embedding_file_text;
 #[path = "embedding_owed.rs"]
@@ -227,6 +231,8 @@ mod importer_noteplan;
 mod importer_raindrop;
 #[path = "importer_roam.rs"]
 mod importer_roam;
+#[path = "importer_todoist.rs"]
+mod importer_todoist;
 #[path = "importer_untrusted.rs"]
 mod importer_untrusted;
 #[path = "importer_vectors.rs"]

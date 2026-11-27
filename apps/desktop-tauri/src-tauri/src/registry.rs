@@ -45,7 +45,10 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::account::sync_setup_first_device,
             crate::commands::account::sync_setup_new_account,
             // agent
+            crate::commands::agent::agent_edit_vault_trust_list::<Wry>,
             crate::commands::agent::agent_get_local_provider_settings::<Wry>,
+            crate::commands::agent::agent_get_tool_call::<Wry>,
+            crate::commands::agent::agent_get_tool_grants::<Wry>,
             crate::commands::agent::agent_list_local_models::<Wry>,
             crate::commands::agent::agent_probe_local_provider::<Wry>,
             crate::commands::agent::agent_set_local_provider_settings::<Wry>,
@@ -154,6 +157,14 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::home_pages::home_pages_set_cover::<Wry>,
             crate::commands::home_pages::home_pages_set_cover_framing::<Wry>,
             crate::commands::home_pages::home_pages_update::<Wry>,
+            // import (Readwise)
+            crate::commands::readwise::import_readwise_ack_error_toast,
+            crate::commands::readwise::import_readwise_cancel,
+            crate::commands::readwise::import_readwise_connect,
+            crate::commands::readwise::import_readwise_disconnect,
+            crate::commands::readwise::import_readwise_set_options,
+            crate::commands::readwise::import_readwise_status,
+            crate::commands::readwise::import_readwise_sync_now,
             // ios beta
             crate::commands::ios_beta::ios_beta_join,
             // journal
@@ -460,6 +471,8 @@ pub fn builder() -> Builder<Wry> {
             crate::events::AuthOtpDetectedEvent,
             crate::events::AuthSessionExpiredEvent,
             crate::events::AuthSessionRefreshedEvent,
+            // agent
+            crate::events::AgentEventEmittedEvent,
             // ai
             crate::events::AiEmbeddingProgressEvent,
             crate::events::AiInlineSettingsChangedEvent,
@@ -485,6 +498,8 @@ pub fn builder() -> Builder<Wry> {
             crate::events::HomePageCreatedEvent,
             crate::events::HomePageDeletedEvent,
             crate::events::HomePageUpdatedEvent,
+            // import (Readwise)
+            crate::events::ImportReadwiseStatusChangedEvent,
             // inbox
             crate::events::InboxOpenItemEvent,
             // journal

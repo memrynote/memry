@@ -26,6 +26,7 @@ use serde_json::Value;
 use tokio_util::sync::CancellationToken;
 
 use super::claim::Claim;
+use super::client::ReadwiseClient;
 use super::engine::Engine;
 use super::library::Library;
 use super::pull_gate::{Authority, PullGate, SyncView, authority};
@@ -100,6 +101,8 @@ pub struct RunsParts {
     pub engine: Engine,
     pub gate: Arc<PullGate>,
     pub token: ReadwiseToken,
+    /// The client a connect checks the pasted token with; the engine's own.
+    pub client: ReadwiseClient,
     pub sync: Arc<dyn SyncView>,
     /// `net.isOnline()`.
     pub online: Arc<dyn Fn() -> bool + Send + Sync>,
@@ -172,6 +175,10 @@ impl ReadwiseRuns {
 
     pub fn library(&self) -> &Library {
         &self.parts.library
+    }
+
+    pub(super) fn parts(&self) -> &RunsParts {
+        &self.parts
     }
 
     pub fn gate(&self) -> &Arc<PullGate> {
