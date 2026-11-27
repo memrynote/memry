@@ -17,13 +17,12 @@ use super::hard_breaks::{JOIN, mask_hard_breaks, restore_hard_break_spelling};
 use super::inline::{Html, holds_media, inline_content};
 use super::lift::lift_images;
 use super::media::media_block;
+use super::nesting::{MAX_NESTING, TOO_DEEP};
 use super::prepare::{fence_indented_code, line_fallback};
 use super::runs::block_content;
 use super::table::{escape_wiki_link_pipes_in_table_rows, table_block};
 use super::tokens::{ListType, Token, TokenKind, tokenize};
-use super::{
-    MAX_NESTING, SeedBlock, SeedFallback, SeedInline, SeedKind, SeedMarks, TOO_DEEP, Unsupported,
-};
+use super::{SeedBlock, SeedFallback, SeedInline, SeedKind, SeedMarks, Unsupported};
 
 /// One content chunk: `parseContentWithMarkers` with nothing claimed, then
 /// `parseMarkdownToBlocksRepaired`. A token that holds an unsupported

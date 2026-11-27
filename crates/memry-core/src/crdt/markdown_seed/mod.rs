@@ -72,6 +72,7 @@ mod lift;
 mod links;
 mod markers;
 mod media;
+mod nesting;
 mod prepare;
 mod roundtrip;
 mod run_writer;
@@ -84,6 +85,8 @@ mod web_url;
 mod write;
 
 use yrs::{ReadTxn as _, XmlFragment as _};
+
+use nesting::{MAX_NESTING, TOO_DEEP};
 
 pub(crate) use links::destination as link_destination;
 
@@ -248,15 +251,6 @@ pub struct SeedPlan {
     pub blocks: Vec<SeedBlock>,
     pub fallbacks: Vec<SeedFallback>,
 }
-
-/// How deep a toggle, a list item or inline markup may nest before the seed
-/// keeps its lines as written. The parse recurses once per level, and the
-/// blocks it builds are walked and dropped the same way, so a pasted text of
-/// a few thousand levels must not decide how much stack it gets.
-const MAX_NESTING: usize = 100;
-
-/// The reason a text nested past [`MAX_NESTING`] is kept as written.
-const TOO_DEEP: Unsupported = Unsupported("nesting too deep");
 
 /// A construct this seed does not build, and its name for the report.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

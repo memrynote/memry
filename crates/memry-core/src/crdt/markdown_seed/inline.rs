@@ -21,8 +21,9 @@ use super::comment_nodes::has_token;
 use super::hard_breaks::JOIN;
 use super::links::{destination_and_title, link};
 use super::media::{self, Media};
+use super::nesting::{MAX_NESTING, TOO_DEEP};
 use super::runs;
-use super::{MAX_NESTING, SeedInline, TOO_DEEP, Unsupported};
+use super::{SeedInline, Unsupported};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum Tag {
