@@ -45,6 +45,7 @@ pub mod properties;
 pub mod property_definitions;
 pub mod readwise;
 pub mod recents;
+pub mod reminders;
 pub mod search;
 pub mod settings;
 pub mod shell;

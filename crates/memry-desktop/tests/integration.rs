@@ -429,6 +429,8 @@ mod property_definitions_seed;
 mod property_definitions_sync;
 #[path = "property_usage.rs"]
 mod property_usage;
+#[path = "reminder_commands.rs"]
+mod reminder_commands;
 #[path = "reminder_scheduler.rs"]
 mod reminder_scheduler;
 #[path = "sanitize_svg_inert.rs"]
