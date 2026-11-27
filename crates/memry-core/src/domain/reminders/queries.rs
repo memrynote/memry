@@ -7,8 +7,11 @@
 //! Every read also reads this device's `reminder_fires` rows, so a reminder
 //! fired here for its current instant reads as [`STATUS_TRIGGERED`] through
 //! [`Reminder::shown_status`] while its synced `status` stays untouched.
+//! [`Reminder::is_fired`] is the one answer to "did it fire" for every reader
+//! desktop filters on its local `triggered` status (calendar chips, provider
+//! write-back, the active lists).
 
-use rusqlite::{Connection, OptionalExtension as _, Row, params};
+use rusqlite::{Connection, OptionalExtension as _, Params, Row, params};
 
 use crate::api::errors::StorageError;
 use crate::storage::repositories::instants;
@@ -51,16 +54,23 @@ pub struct Reminder {
 }
 
 impl Reminder {
-    /// Desktop's `activeReminders` filter: `pending` or `snoozed`.
+    /// Desktop's `activeReminders` filter: `pending` or `snoozed` as
+    /// [`Reminder::shown_status`] reads them, so a fired reminder is not active.
     pub fn is_active(&self) -> bool {
-        self.status == STATUS_PENDING || self.status == STATUS_SNOOZED
+        matches!(self.shown_status(), STATUS_PENDING | STATUS_SNOOZED)
     }
 
-    /// The status desktop's renderer reads: `triggered` for an active reminder
-    /// this device fired for its current instant (desktop's scheduler writes
-    /// that status locally), else the synced `status`.
+    /// Fired for its current instant: desktop's `status === 'triggered'`.
+    pub fn is_fired(&self) -> bool {
+        self.shown_status() == STATUS_TRIGGERED
+    }
+
+    /// The status desktop's renderer reads: `triggered` for a `pending` or
+    /// `snoozed` reminder this device fired for its current instant (desktop's
+    /// scheduler writes that status locally), else the synced `status`.
     pub fn shown_status(&self) -> &str {
-        if self.is_active() && self.fired_at_ms.is_some() {
+        let armed = self.status == STATUS_PENDING || self.status == STATUS_SNOOZED;
+        if armed && self.fired_at_ms.is_some() {
             STATUS_TRIGGERED
         } else {
             &self.status
@@ -94,6 +104,27 @@ const COLUMNS: &str = "r.id, r.target_type, r.target_id, r.remind_at, r.title, r
                         FROM reminder_fires f WHERE f.reminder_id = r.id)";
 const FROM: &str = "reminders r";
 
+/// The live reminders that match `condition`, an SQL condition on `reminders r`
+/// with `params` bound to its placeholders: for a reader that selects by its own
+/// range and still reads [`Reminder::is_fired`].
+pub(crate) fn select_where(
+    conn: &Connection,
+    condition: &str,
+    params: impl Params,
+) -> Result<Vec<Reminder>, StorageError> {
+    let mut statement = conn
+        .prepare(&format!(
+            "SELECT {COLUMNS} FROM {FROM} WHERE r.deleted_at IS NULL AND ({condition}) \
+             ORDER BY r.remind_at, r.id"
+        ))
+        .map_err(failed)?;
+    statement
+        .query_map(params, reminder_row)
+        .map_err(failed)?
+        .collect::<Result<_, _>>()
+        .map_err(failed)
+}
+
 /// One live reminder by id, or `None`.
 pub fn get(conn: &Connection, id: &str) -> Result<Option<Reminder>, StorageError> {
     conn.query_row(
@@ -107,7 +138,7 @@ pub fn get(conn: &Connection, id: &str) -> Result<Option<Reminder>, StorageError
 
 /// A task's live reminders, earliest `remindAt` first.
 ///
-/// `active_only` keeps `pending` and `snoozed`, which is desktop's
+/// `active_only` keeps [`Reminder::is_active`] ones, which is desktop's
 /// `activeReminders`; otherwise every status is returned, which is its
 /// `reminders` (`use-task-reminders.ts`). Desktop sorts by the parsed instant,
 /// so this does too; a `remindAt` that will not parse sorts last.
