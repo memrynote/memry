@@ -22,6 +22,9 @@ mod crdt;
 #[cfg(feature = "vec")]
 mod embeddings;
 mod local;
+// Desktop's read-only locks (`domain::vault_locks`) build with `markdown` only.
+#[cfg(feature = "markdown")]
+mod locks;
 mod notes;
 mod outbox;
 mod records;
@@ -36,7 +39,11 @@ pub use crdt::{
 };
 #[cfg(feature = "vec")]
 pub use embeddings::{DerivedTable, ImportEmbeddedNote};
-pub use local::{ImportInboxJob, ImportInboxTag, ImportInboxUpload, ImportLocalEvent};
+pub use local::{
+    ImportInboxJob, ImportInboxTag, ImportInboxUpload, ImportLocalEvent, ImportLocalSetting,
+};
+#[cfg(feature = "markdown")]
+pub use locks::{ImportFileMode, ImportLockBaseline};
 pub use notes::{ImportNoteFile, ImportNoteSnapshot};
 pub use outbox::{ImportDeleted, ImportQueued, ImportTombstoneClock};
 pub use records::ImportRecord;

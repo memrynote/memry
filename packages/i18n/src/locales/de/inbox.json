@@ -579,7 +579,10 @@
       "journalOff": "Das Journal ist in den Einstellungen deaktiviert.",
       "sendFailed": "Der Sticky konnte nicht gesendet werden.",
       "undoExpired": "Zum Rückgängigmachen ist es zu spät.",
-      "undoFailed": "Das Senden konnte nicht rückgängig gemacht werden."
+      "undoFailed": "Das Senden konnte nicht rückgängig gemacht werden.",
+      "journalBusy": "Der heutige Journaleintrag wird noch gespeichert. Versuch es gleich noch einmal.",
+      "folderExcluded": "Der Ordner Sticky ist ausgeschlossen. Entferne ihn in den Einstellungen aus den ausgeschlossenen Ordnern, um Notizen zu senden.",
+      "projectMissing": "Das Projekt dieser Aufgabe existiert nicht. Wähle in den Einstellungen ein Standardprojekt oder sende sie als Notiz."
     },
     "inputLabel": "Sticky-Text",
     "dismissError": "Ausblenden"
