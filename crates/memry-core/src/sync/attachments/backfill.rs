@@ -18,6 +18,7 @@ use rusqlite::Connection;
 use super::plan::{ChangePlan, NoteAttachments};
 use super::queue::{VaultFiles, absolute};
 use super::revival::{NoteRow, live_notes, own_folder_files, records_on_disk};
+use super::store::upload_queue::Refusals;
 use super::store::{files, upload_queue};
 use crate::api::errors::StorageError;
 use crate::storage::{Db, nested_tx};
@@ -124,6 +125,7 @@ pub struct BackfillReport {
 /// One pass over every live note (`backfillUnsyncedAttachmentsWith`).
 pub async fn backfill(db: &Db, vault: Arc<dyn VaultFiles>) -> Result<BackfillReport, StorageError> {
     let notes = db.call(|conn| live_notes(conn, None)).await?;
+    let refusals = Arc::new(db.call(|conn| upload_queue::refusals(conn)).await?);
     let ids: BTreeSet<String> = notes.iter().map(|note| note.id.clone()).collect();
     let file_notes: BTreeMap<String, (String, bool)> = notes
         .iter()
@@ -142,9 +144,9 @@ pub async fn backfill(db: &Db, vault: Arc<dyn VaultFiles>) -> Result<BackfillRep
                 continue;
             }
         };
-        let (vault, id) = (vault.clone(), note.id.clone());
+        let (vault, id, refusals) = (vault.clone(), note.id.clone(), refusals.clone());
         let written = db
-            .call(move |conn| backfill_note(conn, vault.as_ref(), &note, files))
+            .call(move |conn| backfill_note(conn, vault.as_ref(), &refusals, &note, files))
             .await;
         match written {
             Ok(0) => {}
@@ -206,6 +208,7 @@ fn note_files(
 fn backfill_note(
     conn: &Connection,
     vault: &dyn VaultFiles,
+    refusals: &Refusals,
     note: &NoteRow,
     files_found: Vec<String>,
 ) -> Result<usize, StorageError> {
@@ -216,7 +219,14 @@ fn backfill_note(
     // `queueUnsentFileNotes`: a file note whose bytes never went up.
     if let (false, None, Some(path)) = (note.markdown, &note.attachment_id, &note.path)
         && vault.open(path).is_ok()
-        && upload_queue::queue_if_absent(&transaction, &note.id, &absolute(vault, path), now)?
+        && upload_queue::queue_if_absent(
+            &transaction,
+            vault,
+            refusals,
+            &note.id,
+            &absolute(vault, path),
+            now,
+        )?
     {
         queued += 1;
     }
@@ -235,7 +245,8 @@ fn backfill_note(
         files::move_record(&transaction, &note.id, &moved.from, &moved.to, now)?;
     }
     for file in &plan.offer {
-        if upload_queue::queue_if_absent(&transaction, &note.id, &absolute(vault, file), now)? {
+        let path = absolute(vault, file);
+        if upload_queue::queue_if_absent(&transaction, vault, refusals, &note.id, &path, now)? {
             queued += 1;
         }
     }

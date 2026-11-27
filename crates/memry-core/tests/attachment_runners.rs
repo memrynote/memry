@@ -18,6 +18,7 @@
 //! | a file over the limit is refused once until it changes       | `refuseUpload` (#5606)               |
 //! | a revived note queues only its file that was not refused     | `reuploadFreedAttachments` (#5606)   |
 //! | a sign-out keeps refusals, so the file is not offered again  | `device-local-state.ts:63` (#5756)   |
+//! | a file written before its refusal lands is offered again     | REVIEW-5908 refuse race              |
 
 #[allow(unused_imports)]
 use crate::http_fakes;
@@ -774,6 +775,28 @@ mod backfill {
             "a changed file is offered again"
         );
         assert!(server.paths().is_empty(), "{:?}", server.paths());
+    }
+
+    /// The uploader refused the file, then a save rewrote it before the
+    /// refusal landed: the refusal must not hold back the good bytes.
+    #[tokio::test]
+    async fn a_file_written_before_its_refusal_lands_is_offered_again() {
+        let db = scratch_data_db("backfill-refusal-race");
+        let vault = Arc::new(TempVault::new());
+        note(&db, "n1", "n1.md", &[]);
+        vault.write("n1.md", b"text");
+        vault.write("attachments/n1/a.png", b"picture");
+        let path = vault.abs("attachments/n1/a.png");
+        let files = vault.clone();
+        with(&db, move |conn| {
+            upload_queue::refuse(conn, files.as_ref(), "n1", &path)
+        });
+
+        assert_eq!(
+            backfill(&db, vault.clone()).await.unwrap().queued,
+            1,
+            "a file the uploader would take is never held back"
+        );
     }
 
     #[tokio::test]

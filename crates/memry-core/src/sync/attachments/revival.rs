@@ -188,10 +188,12 @@ fn reupload(
 
     // A file the uploader refused, unwritten since, would be refused again
     // (#5711, `note-attachment-revival.ts:99-100`).
+    let refusals = upload_queue::refusals(conn)?;
     let queue = nested_tx::begin(conn).map_err(failed)?;
     let mut queued = 0;
     for file in &plan.reupload {
-        if upload_queue::queue_if_absent(&queue, &note.id, &absolute(vault, file), now)? {
+        let path = absolute(vault, file);
+        if upload_queue::queue_if_absent(&queue, vault, &refusals, &note.id, &path, now)? {
             queued += 1;
         }
     }
