@@ -5,6 +5,7 @@
 
 use crate::domain::journal_rules::{is_js_whitespace, js_trim};
 
+use super::backtick_runs::BacktickRuns;
 use super::inline::cell_content;
 use super::prepare::split_by_code_fences;
 use super::shapes::is_table_separator;
@@ -69,6 +70,7 @@ fn has_cell_pipe(line: &str) -> bool {
 /// splitter turns it into the pipe the writer escaped.
 fn code_span_pipes(line: &[char]) -> Vec<bool> {
     let mut hidden = vec![false; line.len()];
+    let ticks = BacktickRuns::of_chars(line);
     let mut i = 0;
     while i < line.len() {
         if line[i] == '\\' && i + 1 < line.len() {
@@ -80,7 +82,7 @@ fn code_span_pipes(line: &[char]) -> Vec<bool> {
             continue;
         }
         let run = line[i..].iter().take_while(|ch| **ch == '`').count();
-        let Some(close) = closing_run(line, i + run, run) else {
+        let Some(close) = ticks.closing(i + run, run) else {
             i += run;
             continue;
         };
@@ -90,16 +92,6 @@ fn code_span_pipes(line: &[char]) -> Vec<bool> {
         i = close + run;
     }
     hidden
-}
-
-/// The regex ``(?<!`)RUN(?!`)`` from `from`: the first run of exactly `run`
-/// backticks.
-pub(super) fn closing_run(line: &[char], from: usize, run: usize) -> Option<usize> {
-    (from..=line.len().saturating_sub(run)).find(|&at| {
-        line[at..at + run].iter().all(|ch| *ch == '`')
-            && line[at - 1] != '`'
-            && line.get(at + run) != Some(&'`')
-    })
 }
 
 /// `maskCellCodeSpans`' `UNSAFE_LINE`, `/[[\]]|<(?!br\s*\/?>)/i`: a row whose

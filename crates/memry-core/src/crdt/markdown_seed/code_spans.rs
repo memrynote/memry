@@ -10,7 +10,8 @@
 
 use crate::domain::journal_rules::js_trim;
 
-use super::table::{closing_run, unsafe_for_code_mask};
+use super::backtick_runs::BacktickRuns;
+use super::table::unsafe_for_code_mask;
 
 /// `maskCellCodeSpans`' placeholders. Source text holding `MEMRY` never gets
 /// here (`prepare::document_fallback`), so a token is always ours.
@@ -39,6 +40,7 @@ pub(super) fn keep_code_whitespace(text: &str) -> String {
 /// first run of exactly its length.
 fn mask_line(line: &str) -> String {
     let chars: Vec<char> = line.chars().collect();
+    let ticks = BacktickRuns::of_chars(&chars);
     let mut out = String::with_capacity(line.len());
     let mut i = 0;
     while i < chars.len() {
@@ -53,7 +55,7 @@ fn mask_line(line: &str) -> String {
             continue;
         }
         let run = chars[i..].iter().take_while(|c| **c == '`').count();
-        let Some(close) = closing_run(&chars, i + run, run) else {
+        let Some(close) = ticks.closing(i + run, run) else {
             out.extend(&chars[i..i + run]);
             i += run;
             continue;

@@ -15,6 +15,7 @@
 
 use crate::domain::journal_rules::js_trim;
 
+use super::backtick_runs::BacktickRuns;
 use super::markers::FenceTracker;
 
 /// The word a masked comment becomes: `MEMRYCMT`, the comment's bytes in hex,
@@ -130,6 +131,7 @@ pub(super) fn mask(markdown: &str) -> Masked {
         }
 
         let table_row = table_row_line(line);
+        let ticks = BacktickRuns::of_bytes(line);
         let mut i = 0;
         while i < line.len() {
             let tick = line[i..].find('`').map(|at| at + i);
@@ -145,7 +147,7 @@ pub(super) fn mask(markdown: &str) -> Masked {
                     .map(|found| found + at + form.open.len());
                 // GFM splits a row into cells before it reads inline syntax,
                 // so a comment in a cell ends in that cell or is text.
-                if table_row && close.is_none_or(|close| close > cell_pipe(line, at)) {
+                if table_row && close.is_none_or(|close| close > cell_pipe(line, &ticks, at)) {
                     result.push_str(&line[i..at + form.open.len()]);
                     i = at + form.open.len();
                     continue;
@@ -186,7 +188,7 @@ pub(super) fn mask(markdown: &str) -> Masked {
 
             let tick = tick.unwrap_or(0);
             let run_end = tick + line[tick..].bytes().take_while(|b| *b == b'`').count();
-            let Some(close_at) = find_closing_run(line, run_end, run_end - tick) else {
+            let Some(close_at) = ticks.closing(run_end, run_end - tick) else {
                 result.push_str(&line[i..run_end]);
                 i = run_end;
                 continue;
@@ -260,6 +262,7 @@ fn find_later_close(lines: &[&str], index: usize, form: Form, inline: bool) -> L
 }
 
 fn index_outside_code_spans(line: &str, marker: &str) -> Option<usize> {
+    let mut ticks: Option<BacktickRuns> = None;
     let mut i = 0;
     loop {
         let at = line[i..].find(marker).map(|found| found + i);
@@ -271,25 +274,12 @@ fn index_outside_code_spans(line: &str, marker: &str) -> Option<usize> {
             return at;
         }
         let run_end = tick + line[tick..].bytes().take_while(|b| *b == b'`').count();
-        i = match find_closing_run(line, run_end, run_end - tick) {
+        let ticks = ticks.get_or_insert_with(|| BacktickRuns::of_bytes(line));
+        i = match ticks.closing(run_end, run_end - tick) {
             Some(close) => close + (run_end - tick),
             None => run_end,
         };
     }
-}
-
-/// Start of the next backtick run exactly `length` long, or `None`.
-fn find_closing_run(line: &str, from: usize, length: usize) -> Option<usize> {
-    let mut i = from;
-    while i < line.len() {
-        let start = i + line[i..].find('`')?;
-        let end = start + line[start..].bytes().take_while(|b| *b == b'`').count();
-        if end - start == length {
-            return Some(start);
-        }
-        i = end;
-    }
-    None
 }
 
 fn next_comment_open(line: &str, from: usize) -> Option<(Form, usize)> {
@@ -301,7 +291,7 @@ fn next_comment_open(line: &str, from: usize) -> Option<(Form, usize)> {
 
 /// The next unescaped `|` after `from` that ends a cell, or the line's
 /// length. A pipe in `[[target|alias]]` or in a code span is part of it.
-fn cell_pipe(line: &str, from: usize) -> usize {
+fn cell_pipe(line: &str, ticks: &BacktickRuns, from: usize) -> usize {
     let bytes = line.as_bytes();
     let mut depth = 0;
     let mut i = from;
@@ -310,7 +300,7 @@ fn cell_pipe(line: &str, from: usize) -> usize {
             i += 1;
         } else if bytes[i] == b'`' {
             let run_end = i + bytes[i..].iter().take_while(|b| **b == b'`').count();
-            i = match find_closing_run(line, run_end, run_end - i) {
+            i = match ticks.closing(run_end, run_end - i) {
                 Some(close) => close + (run_end - i),
                 None => run_end,
             } - 1;

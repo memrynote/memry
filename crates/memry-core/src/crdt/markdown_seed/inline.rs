@@ -168,7 +168,7 @@ fn inline_token(
         }
     }
     if text[i] == '`'
-        && let Some((code, end)) = inline_code(text, i)
+        && let Some((code, end)) = inline_code(closers, i)
     {
         nodes.push(Html::Code(code));
         return Ok(Some(end));
@@ -273,35 +273,20 @@ fn intraword(text: &[char], i: usize, len: usize) -> bool {
 }
 
 /// `parseInlineCode`.
-fn inline_code(text: &[char], start: usize) -> Option<(String, usize)> {
-    let open = text[start..].iter().take_while(|c| **c == '`').count();
-    let from = start + open;
-    let mut j = from;
-    while j < text.len() {
-        if text[j] != '`' {
-            j += 1;
-            continue;
-        }
-        let close_start = j;
-        while j < text.len() && text[j] == '`' {
-            j += 1;
-        }
-        if j - close_start == open {
-            let mut code: Vec<char> = text[from..close_start]
-                .iter()
-                .map(|c| if *c == '\n' { ' ' } else { *c })
-                .collect();
-            if code.len() >= 2
-                && code[0] == ' '
-                && code[code.len() - 1] == ' '
-                && code.iter().any(|c| *c != ' ')
-            {
-                code = code[1..code.len() - 1].to_vec();
-            }
-            return Some((collect(&code), j));
-        }
+fn inline_code(closers: &mut Closers, start: usize) -> Option<(String, usize)> {
+    let (from, close) = closers.code_span(start)?;
+    let mut code: Vec<char> = closers.text()[from..close]
+        .iter()
+        .map(|c| if *c == '\n' { ' ' } else { *c })
+        .collect();
+    if code.len() >= 2
+        && code[0] == ' '
+        && code[code.len() - 1] == ' '
+        && code.iter().any(|c| *c != ' ')
+    {
+        code = code[1..code.len() - 1].to_vec();
     }
-    None
+    Some((collect(&code), close + (from - start)))
 }
 
 fn delimited(
